@@ -1,0 +1,77 @@
+version: '3'
+
+# Uniform command runner for sextant. `task validate` is the full gate
+# (also run by lefthook pre-push). Tests run with CGO (DuckDB driver).
+
+env:
+  CGO_ENABLED: '1'
+  # Match the prebuilt DuckDB static libs to silence ld version-mismatch warnings.
+  MACOSX_DEPLOYMENT_TARGET: '14.0'
+
+vars:
+  GO: go
+  # Go files we own — exclude tmp/ scans, ref/ external clones, _reference/ copies, testdata/ fixtures.
+  GOFILES:
+    sh: find . -name '*.go' -not -path './tmp/*' -not -path './ref/*' -not -path '*/_reference/*' -not -path '*/testdata/*' 2>/dev/null | tr '\n' ' '
+
+tasks:
+  default:
+    cmds: [task --list]
+    silent: true
+
+  fmt:
+    desc: Format all Go code
+    cmds: ["{{.GO}} fmt ./..."]
+
+  fmt-check:
+    desc: Fail if any Go file (excluding tmp/ and _reference/) is not gofmt-clean
+    cmds:
+      - |
+        files="{{.GOFILES}}"
+        [ -z "$files" ] && exit 0
+        bad=$(gofmt -l $files)
+        if [ -n "$bad" ]; then echo "Not gofmt-clean:"; echo "$bad"; exit 1; fi
+
+  vet:
+    desc: go vet across the workspace
+    cmds: ["{{.GO}} vet ./..."]
+
+  cue-vet:
+    desc: Validate every CUE schema package (+ positive testdata)
+    cmds:
+      - |
+        command -v cue >/dev/null 2>&1 || { echo "cue not installed — skipping"; exit 0; }
+        found=0
+        for schema in $(find . -name 'schema.cue' -not -path './tmp/*' -not -path './ref/*' -not -path '*/cue.mod/*' -not -path '*/testdata/*' | sort); do
+          found=1; d=$(dirname "$schema"); echo "cue vet: $d"
+          (cd "$d" && cue vet ./...) || exit 1
+        done
+        [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
+
+  test:
+    desc: Run all tests (race + CGO/DuckDB)
+    cmds: ["{{.GO}} test -race ./..."]
+
+  test-unit:
+    desc: Fast unit tests only (-short)
+    cmds: ["{{.GO}} test -short ./..."]
+
+  test-integration:
+    desc: Integration tests (Faux-backed end-to-end)
+    cmds: ["{{.GO}} test -race -run Integration ./..."]
+
+  validate:
+    desc: Full gate — fmt-check, vet, cue-vet, test
+    deps: [fmt-check, vet, cue-vet]
+    cmds: [{ task: test }]
+
+  doctor:
+    desc: Toolchain + workspace health
+    cmds:
+      - 'echo "go:        $({{.GO}} version)"'
+      - 'echo "cgo:       CGO_ENABLED=$CGO_ENABLED"'
+      - 'echo "cue:       $(cue version 2>/dev/null | head -1 || echo missing)"'
+      - 'echo "lefthook:  $(lefthook version 2>/dev/null || echo missing)"'
+      - 'echo "duckdb:    $({{.GO}} list -m github.com/marcboeker/go-duckdb/v2 2>/dev/null || echo not-required-yet)"'
+      - 'echo "agentic-kit: $({{.GO}} list -m github.com/geoffmilleraz/agentic-kit 2>/dev/null || echo missing)"'
+      - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'

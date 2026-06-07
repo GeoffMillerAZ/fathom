@@ -1,0 +1,29 @@
+# Two-layer git hooks (see ADR + agentic-kit precedent):
+#   pre-commit (fast) — changed-file gofmt + cue vet
+#   pre-push   (full) — task validate
+# Opt out with LEFTHOOK=0 — never `--no-verify` unless the hook itself is broken.
+
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt-check:
+      glob: "*.go"
+      run: |
+        files=$(printf '%s\n' {staged_files} | grep -v '/_reference/' || true)
+        [ -z "$files" ] && exit 0
+        bad=$(echo "$files" | xargs gofmt -l)
+        if [ -n "$bad" ]; then echo "gofmt needed:"; echo "$bad"; exit 1; fi
+    cue-vet:
+      glob: "*.cue"
+      run: |
+        command -v cue >/dev/null 2>&1 || exit 0
+        dirs=$(printf '%s\n' {staged_files} | grep -vE '/cue.mod/|/testdata/|/ref/' | xargs -n1 dirname 2>/dev/null | sort -u)
+        for d in $dirs; do
+          [ -f "$d/schema.cue" ] || continue
+          (cd "$d" && cue vet ./...) || exit 1
+        done
+
+pre-push:
+  commands:
+    validate:
+      run: task validate

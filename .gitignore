@@ -1,0 +1,25 @@
+# Build / test artifacts
+*.out
+*.test
+coverage.*
+/dist/
+/bin/
+
+# All build artifacts, logs, temp files, and local databases live under workspace/
+/workspace/
+
+# DuckDB stray files (if ever written outside workspace/)
+*.duckdb
+*.duckdb.wal
+
+# Reference clones of external tools (inspiration only; not part of the build)
+/ref/
+
+# Conversion scratch (scanned design docs, tiles, recovered transcripts)
+/tmp/
+
+# OS
+.DS_Store
+
+# Built binary at repo root (module name)
+/sextant
