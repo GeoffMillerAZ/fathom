@@ -1,0 +1,142 @@
+# Assessment: Sextant × Claude Code integration (2026-06-12)
+
+Owner-requested report on whether wiring the sextant fleet index into Claude
+Code sessions improved **effectiveness, correctness, and tokenomics** — with
+measured numbers where they exist, estimates labeled as estimates, and an
+honest verdict on whether this reinvented existing wheels.
+
+## 1. What was integrated (one day, 2026-06-12)
+
+- Fleet index: throughline + agentic-kit + app-kit + sextant in one DuckDB
+  store (~12k symbols, 531 doc chunks, CUE definitions, Templ components;
+  ~4 MB; full rebuild seconds; hash-gated no-op re-ingest ~0.2 s).
+- MCP server registered user-scope → every Claude Code session (and every
+  subagent it spawns) gets ~80 tools; the six that matter are named in each
+  repo's CLAUDE.md: `find_symbol`, `query_symbols`, `find_callers`,
+  `outline`, `repo_map`, `pack_context`.
+- Operating contract in all four repos: index-before-exploration; refresh
+  via the MCP `ingest` tool at session start + post-commit (the DuckDB store
+  is single-writer — measured: CLI ingest fails on the lock while a session
+  lives; best-effort post-commit lefthook covers no-session commits);
+  `staleness_report` before trusting results after heavy edits;
+  `.sextantignore` keeps case data out (the index sits outside the DLP gate).
+- Pre-packed worker briefs codified: the architect's sextant recon (exact
+  signatures, paths, verbatim contract types) ships inside worker prompts;
+  workers never re-discover it, and must stop-and-report on contract
+  conflicts instead of silently drifting.
+
+Integration-day fixes the dogfooding itself forced (all committed same day):
+`.sextantignore` + dir-only filter bug (own index 2,427→222 files), engine
+keyword fallback (query_symbols/pack_context were dead over MCP), staleness
+report trimmed from ~6 KB of fresh-file rows per query to stale-only +
+counts (~100×), bare-name `find_symbol`, `cross_repo_callers` (returned 0
+always — matcher never handled the `pkg.Name` edge format the Go extractor
+emits), result dedup, and a Templ extractor (Throughline's entire UI layer —
+128 components incl. Go→Templ call edges — was invisible).
+
+## 2. Measured numbers
+
+Method: every subagent completion in the session transcript records
+`subagent_tokens` + `tool_uses`. Records deduped by task-id and bucketed
+against the cutover (2026-06-12 21:10 UTC, first session with the registered
+server). Two honesty caveats: (a) **Explore-agent runs record no token
+usage**, so pre-integration totals *understate* the real baseline (those
+waves used raw-walk Explore agents; post-integration waves used none);
+(b) architect main-loop tokens are not separable in either era.
+
+**Whole-period frame** (scope differs — context, not a like-for-like):
+
+| | runs | subagent tokens | tool uses |
+|---|---|---|---|
+| Pre (06-08 → 06-12 21:10, M16+M17 era) | 38 | 11,771,296 | 8,333 |
+| Post (06-12 21:10 → 23:50, M18 era) | 7 | 599,422 | 337 |
+
+**Wave-level frame** (fairest: same architect, same team pattern, similar
+scope per wave — one product milestone built, reviewed, live-verified,
+committed):
+
+| Wave | Workers | Worker tokens | Explore agents | Wall clock |
+|---|---|---|---|---|
+| M17.7+17.8+17.6 (pre) | 3 | 321,199 | 2 (cost unrecorded) | ~1 h 45 m |
+| M17.1–17.4 (pre, 4 milestones) | 4 | 463,772 | several (unrecorded) | spread over day |
+| M18.1 (post) | 2 | 258,465 | **0** | ~45 m |
+| M18.2 (post) | 2 + 1 dead retry | 213,215 | **0** | ~48 m |
+
+**Architect recon** (from the session itself): M18.1 contracts were pinned
+from 6 index calls + 3 targeted file reads; M18.2 from 2 index calls + 4
+reads + 2 greps. Pre-integration the equivalent step was 1–2 background
+Explore agents per wave plus wider architect reads.
+
+**Per-worker behavior shift**: comparable backend builds went from ~148 tool
+uses (M17.4) to ~32 (M18.1 backend) at similar token size — fewer, larger,
+better-aimed actions; the spend moved from searching to building. Worker
+token totals per wave did *not* collapse, and shouldn't: read-to-edit and
+writing code are irreducible. The eliminated category is **discovery and
+re-derivation** — the Explore tier is simply gone, and wall-clock per wave
+roughly halved.
+
+## 3. Effectiveness and correctness (qualitative, with receipts)
+
+- **Docs+code fusion is real**: querying concern "element-coverage" returned
+  the governing design-doc section (doc 31 §M18.1) *and* the exact code it
+  governs (`buildEvidenceMap`, kit `Assess` signature) as one ranked list.
+  Both M18 designs were grounded this way before any file was opened.
+- **Correctness substitute for a broken tool**: gopls is chronically stale in
+  this multi-module workspace (documented failure mode across sessions);
+  `find_callers` answered who-calls questions correctly every time it was
+  used, including across the Go→Templ language boundary.
+- **Evidence-tier honesty carries over**: query results carry tiers and a
+  staleness summary; the operating contract makes "the index might be stale
+  mid-wave" an explicit, managed state instead of a silent wrong answer.
+- **What it did not fix**: worker contract-drift (M18.1's count-vs-links
+  signature drift compiled and would have no-opped at runtime) is a
+  coordination failure, not a discovery failure — caught by architect
+  integration review both eras at a similar rate. The fix was procedural
+  (stop-and-report rule), not index-shaped.
+
+## 4. Did we reinvent the wheel?
+
+Honest component-by-component comparison:
+
+- **LSP / gopls (incl. LSP-over-MCP servers like Serena)**: covers maybe
+  60% of the *code-navigation* value (definitions, references) — when it
+  works. It is stale-prone in this exact workspace, single-language,
+  single-repo-rooted, knows nothing about Markdown design docs, CUE schemas,
+  or Templ, and carries no notion of evidence tiers or staleness honesty.
+- **Aider's repo-map / similar token-budget maps**: equivalent to our
+  `repo_map`/`pack_context` for one repo; no query model, no concern
+  ranking, no fleet, no docs fusion.
+- **Sourcegraph / GitHub code search / Glean**: real cross-repo symbol+ref
+  indexes — but cloud-hosted (a non-starter: case evidence adjacency +
+  local-first doctrine), heavyweight, and still code-only.
+- **ctags/tree-sitter indexers, embeddings-RAG over the repo**: either
+  symbols without semantics or semantics without structure; none ship an
+  MCP surface, deterministic hash-gated freshness, or call edges.
+
+Verdict: **no single existing tool does this combination**, and the
+combination is where the measured value came from: (1) code + design docs +
+schemas + templates in *one ranked query surface*, (2) fleet-wide across
+four sibling repos that genuinely co-evolve, (3) local-first single-file
+artifact with deterministic incremental refresh, (4) MCP-native so every
+subagent inherits it for free, (5) the project's own honesty discipline
+(tiers, staleness, no fabricated relevance) applied to the dev tooling.
+Roughly 60% of the raw capability overlaps things that exist; the 40% that
+doesn't (doc-chunk fusion, fleet queries, honesty semantics, and full
+control to extend it — e.g., today's Templ extractor in one afternoon) is
+exactly the part this codebase's workflow leaned on hardest. Building it was
+not wheel-reinvention; *not* having control of it would have meant living
+with gopls-grade staleness and code-only answers.
+
+## 5. Open improvement backlog (owner-approved direction: keep tuning)
+
+1. Line numbers in symbol results (in flight — observations don't persist
+   them; needs store column + re-ingest).
+2. Mid-wave staleness: `ingest-diff` on query-miss or an editing-session
+   watch mode, so heavy uncommitted edits stop requiring discipline.
+3. Spec-drift phase 2: teach `internal/sdd` the doc/milestone ID conventions
+   (`doc 31`, `M18.2`) + tracker parsing → "which files implement M18.2" as
+   a query, drift as a report.
+4. Pre-packed brief generator: a `brief` tool that assembles the architect's
+   pinned-contract pack (symbols + signatures + doc excerpts) in one call.
+5. LLM knowledge cards + persisted embeddings: deferred until cost-gated;
+   the deterministic layer is carrying the load fine so far.
