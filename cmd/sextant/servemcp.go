@@ -46,7 +46,7 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	defer c.Close()
 
-	srv := mcp.NewServer(c)
+	srv := mcp.NewServerWithFleet(c, &fleetAdapter{c: c, stderr: stderr})
 
 	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {
 		// EOF / context cancel are expected end-of-stream signals; only

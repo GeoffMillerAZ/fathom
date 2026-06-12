@@ -98,3 +98,16 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 - Design docs (drive the implementation): `tmp/design_inspiration/files/` (13 docs).
 - Roadmap + status (exhaustive checklist): `tmp/TRACKING.md`.
 - Decisions: `ADR.md`. Overview/usage: `README.md`. Deeper docs: `docs/`.
+
+## Dogfood: the fleet index
+
+Sextant indexes itself (with throughline, agentic-kit, app-kit) into
+`workspace/db/fleet.duckdb`, served to Claude Code sessions via the
+user-scoped `sextant` MCP server. When working in this repo, use those tools
+(`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`) for
+discovery before any Grep/Read sweep, and refresh via the MCP `ingest` tool
+(`{"service":"sextant"}`) at session start and after commits. The DuckDB
+store is single-writer: while a session's server holds the lock, CLI
+`ingest` fails — that is expected; a best-effort post-commit lefthook covers
+no-session commits. Repo-specific index excludes live in `.sextantignore`
+(`ref/`, `tmp/`, `workspace/`, `bin/`).

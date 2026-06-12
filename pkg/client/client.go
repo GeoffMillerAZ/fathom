@@ -225,6 +225,17 @@ func (c *Client) ListAllSymbols(ctx context.Context, serviceID string) ([]Symbol
 	return nodes, nil
 }
 
+// Observations returns every stored observation for serviceID, with no
+// concern filtering. It powers fleet-level backends that need raw evidence
+// rows (e.g. cross-service drift and caller analysis).
+func (c *Client) Observations(ctx context.Context, serviceID string) ([]Observation, error) {
+	obs, err := c.st.QueryObservations(ctx, serviceID, "")
+	if err != nil {
+		return nil, fmt.Errorf("client.Observations: %w", err)
+	}
+	return obs, nil
+}
+
 // Services returns the sorted distinct service IDs that have been ingested into
 // the store.  An empty store returns a nil slice with no error.
 func (c *Client) Services(ctx context.Context) ([]string, error) {

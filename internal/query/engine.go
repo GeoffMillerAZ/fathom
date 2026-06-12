@@ -88,6 +88,26 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 		return core.QueryResult{}, err
 	}
 
+	// Unscoped-store fallback: a plain ingest writes observations without
+	// concern tags, so a concern-scoped read can come back empty even though
+	// the service has data. Re-read unscoped and rank by keywords, treating
+	// the concern itself as a keyword when none were given. Zero-score
+	// observations are dropped so the fallback never fabricates relevance —
+	// an empty result stays an honest empty result. Doing this here (not in
+	// each surface) keeps CLI, MCP, and the Go client behaviour identical.
+	if len(obs) == 0 {
+		all, allErr := e.store.QueryObservations(ctx, q.ServiceID, "")
+		if allErr != nil {
+			return core.QueryResult{}, allErr
+		}
+		if len(all) > 0 {
+			if len(q.Keywords) == 0 {
+				q.Keywords = []string{q.ConcernID}
+			}
+			obs = filterByKeywords(all, q.Keywords)
+		}
+	}
+
 	// Filter by kind when specified.
 	if len(q.Kinds) > 0 {
 		obs = filterByKind(obs, q.Kinds)
@@ -322,6 +342,19 @@ func observationToNode(o core.Observation) core.SymbolNode {
 		Calls:     o.Calls,
 		Tier:      o.EvidenceTier,
 	}
+}
+
+// filterByKeywords returns only observations with a positive keywordScore,
+// i.e. at least one keyword appears in the Symbol or Claim text. Used by the
+// unscoped-store fallback so it never returns unrelated symbols.
+func filterByKeywords(obs []core.Observation, keywords []string) []core.Observation {
+	out := obs[:0:0]
+	for _, o := range obs {
+		if keywordScore(o, keywords) > 0 {
+			out = append(out, o)
+		}
+	}
+	return out
 }
 
 // filterByKind returns only observations whose SourceKind is in the allow list.

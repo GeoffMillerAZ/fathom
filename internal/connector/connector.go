@@ -58,6 +58,9 @@ var extKindMap = map[string]core.SourceKind{
 	".jsx":  core.KindJSFunc,
 	".ts":   core.KindJSFunc,
 	".tsx":  core.KindJSFunc,
+
+	// Templates
+	".templ": core.KindTemplComponent,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

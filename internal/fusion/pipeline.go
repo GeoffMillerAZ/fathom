@@ -137,6 +137,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Markdown
 	p.exts[".md"] = extractor.NewMarkdownExtractor()
 
+	// Templates
+	p.exts[".templ"] = extractor.NewTemplExtractor()
+
 	// go.mod (matched by full basename via Ext-fallback in extractAndStore)
 	p.exts["go.mod"] = extractor.NewGoModExtractor()
 

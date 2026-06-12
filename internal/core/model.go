@@ -45,6 +45,9 @@ const (
 	KindRubyClass  SourceKind = "RubyClass"
 	KindRubyModule SourceKind = "RubyModule"
 	KindRubyMethod SourceKind = "RubyMethod"
+
+	// Templates
+	KindTemplComponent SourceKind = "TemplComponent"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

@@ -35,7 +35,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	defer c.Close()
 
-	srv := mcp.NewServer(c)
+	srv := mcp.NewServerWithFleet(c, &fleetAdapter{c: c, stderr: stderr})
 	handler := newHTTPHandler(srv)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)

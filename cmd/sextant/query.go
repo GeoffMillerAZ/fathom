@@ -62,26 +62,9 @@ func cmdQuery(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// When the concern-scoped query returns no results (e.g. the store has
-	// unscoped observations from a plain ingest with no concern tagging),
-	// fall back to a keyword search over all symbols for the service.
+	// Unscoped-store keyword fallback lives in the query engine, so every
+	// surface (CLI, MCP, Go client) behaves identically.
 	nodes := result.Nodes
-	if len(nodes) == 0 && len(kws) > 0 {
-		allNodes, findErr := c.ListAllSymbols(ctx, *service)
-		if findErr != nil {
-			fmt.Fprintf(stderr, "error: fallback search failed: %v\n", findErr)
-			return 1
-		}
-		// Filter by keywords manually.
-		for _, n := range allNodes {
-			for _, kw := range kws {
-				if strings.Contains(strings.ToLower(n.Name+" "+n.Signature), strings.ToLower(kw)) {
-					nodes = append(nodes, n)
-					break
-				}
-			}
-		}
-	}
 
 	if len(nodes) == 0 {
 		fmt.Fprintln(stdout, "no symbols found")

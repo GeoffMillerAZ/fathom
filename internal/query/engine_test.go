@@ -597,3 +597,86 @@ func TestQuery_CrossServiceIsolation(t *testing.T) {
 		}
 	}
 }
+
+// ─── unscoped-store fallback ─────────────────────────────────────────────────
+
+// unscopedObs returns observations as a plain ingest stores them: no concern
+// tagging at all.
+func unscopedObs() []core.Observation {
+	return []core.Observation{
+		{ServiceID: "svc", ConcernID: "", Symbol: "Registry.CloseCase", Claim: "func CloseCase(ctx, id, outcomeSummary string) error", EvidenceTier: core.TierVerified, SourceRef: "registry.go", IngestedAt: epoch},
+		{ServiceID: "svc", ConcernID: "", Symbol: "ReadOutcome", Claim: "func ReadOutcome(ctx) (*Outcome, error)", EvidenceTier: core.TierVerified, SourceRef: "outcome.go", IngestedAt: epoch},
+		{ServiceID: "svc", ConcernID: "", Symbol: "ChargeCard", Claim: "charges a card", EvidenceTier: core.TierVerified, SourceRef: "billing.go", IngestedAt: epoch},
+	}
+}
+
+func TestQuery_UnscopedFallback_KeywordsMatch(t *testing.T) {
+	e := query.New(newStore(t, unscopedObs()))
+
+	result, err := e.Query(context.Background(), core.Query{
+		ServiceID: "svc",
+		ConcernID: "outcome",
+		Keywords:  []string{"outcome"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected 2 outcome nodes via fallback, got %d: %v", len(result.Nodes), result.Nodes)
+	}
+	for _, n := range result.Nodes {
+		if n.Name == "ChargeCard" {
+			t.Error("ChargeCard does not match keywords and must not be returned")
+		}
+	}
+}
+
+func TestQuery_UnscopedFallback_ConcernUsedAsKeyword(t *testing.T) {
+	e := query.New(newStore(t, unscopedObs()))
+
+	result, err := e.Query(context.Background(), core.Query{
+		ServiceID: "svc",
+		ConcernID: "outcome",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 2 {
+		t.Fatalf("expected concern to act as keyword in fallback, got %d nodes", len(result.Nodes))
+	}
+}
+
+func TestQuery_UnscopedFallback_NoMatchStaysEmpty(t *testing.T) {
+	e := query.New(newStore(t, unscopedObs()))
+
+	result, err := e.Query(context.Background(), core.Query{
+		ServiceID: "svc",
+		ConcernID: "nonexistent-concern",
+		Keywords:  []string{"zzz-no-such-keyword"},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 0 {
+		t.Errorf("fallback must not fabricate relevance; got %d nodes: %v", len(result.Nodes), result.Nodes)
+	}
+}
+
+func TestQuery_UnscopedFallback_NotTriggeredWhenConcernMatches(t *testing.T) {
+	obs := []core.Observation{
+		{ServiceID: "svc", ConcernID: "auth", Symbol: "ValidateToken", Claim: "validates JWT", EvidenceTier: core.TierVerified, SourceRef: "auth.go", IngestedAt: epoch},
+		{ServiceID: "svc", ConcernID: "", Symbol: "OutcomeHelper", Claim: "auth-adjacent text", EvidenceTier: core.TierVerified, SourceRef: "x.go", IngestedAt: epoch},
+	}
+	e := query.New(newStore(t, obs))
+
+	result, err := e.Query(context.Background(), core.Query{
+		ServiceID: "svc",
+		ConcernID: "auth",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Nodes) != 1 || result.Nodes[0].Name != "ValidateToken" {
+		t.Errorf("concern-scoped hit must bypass fallback; got %v", result.Nodes)
+	}
+}
