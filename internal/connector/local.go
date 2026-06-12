@@ -6,16 +6,24 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/filter"
 )
+
+// IgnoreFileName is the per-repo ignore file read from the service root.
+// It uses gitignore-style patterns (see internal/filter): one pattern per
+// line, # comments, ! negation, ** globs, trailing-slash dir-only rules.
+const IgnoreFileName = ".sextantignore"
 
 // LocalConnector reads source files from a local directory tree.
 // It satisfies the Connector SPI and is suitable for CLI / dev use and for
 // tests that operate directly on an on-disk directory.
 //
 // Discover walks the directory rooted at svc.Path and returns a sorted slice
-// of SourceRefs. skipDir controls which subdirectory names are skipped.
+// of SourceRefs. skipDir controls which subdirectory names are skipped, and a
+// .sextantignore file at the service root adds repo-specific exclusions.
 // Fetch reads and returns the raw bytes of the file at ref.Path (which must
 // be an absolute path when using LocalConnector).
 type LocalConnector struct{}
@@ -26,18 +34,34 @@ func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
 // Discover walks the directory tree at svc.Path, assigns SourceKinds by
 // extension, and returns a deterministically sorted slice of SourceRefs.
 // Directories named vendor, .git, testdata, generated, node_modules,
-// .idea, and .vscode are skipped entirely.
+// .idea, and .vscode are skipped entirely. If a .sextantignore file exists
+// at svc.Path, its patterns are applied to paths relative to svc.Path
+// (matched dirs are pruned from the walk; matched files are dropped).
 func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
+	ignore := loadIgnoreFile(svc.Path)
+
 	var refs []core.SourceRef
 
 	err := filepath.WalkDir(svc.Path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+		rel, relErr := filepath.Rel(svc.Path, path)
+		if relErr != nil {
+			rel = ""
+		}
+		rel = filepath.ToSlash(rel)
+
 		if d.IsDir() {
 			if skipDir(d.Name()) {
 				return filepath.SkipDir
 			}
+			if ignore != nil && rel != "." && rel != "" && ignore.Match(rel+"/") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if ignore != nil && rel != "" && ignore.Match(rel) {
 			return nil
 		}
 		refs = append(refs, core.SourceRef{
@@ -61,4 +85,14 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 // ref.Path must be an absolute path (as returned by Discover).
 func (c *LocalConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte, error) {
 	return os.ReadFile(ref.Path)
+}
+
+// loadIgnoreFile reads root/.sextantignore and compiles it into a Matcher.
+// A missing or unreadable file yields nil (no extra ignores).
+func loadIgnoreFile(root string) *filter.Matcher {
+	data, err := os.ReadFile(filepath.Join(root, IgnoreFileName))
+	if err != nil {
+		return nil
+	}
+	return filter.New(strings.Split(string(data), "\n"))
 }

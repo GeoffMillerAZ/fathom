@@ -1,0 +1,8 @@
+# Repo-specific index excludes (gitignore-style; see internal/filter).
+# Mirrored third-party reference source — not our code.
+ref/
+# Gitignored scratch: converted design docs, tracking.
+tmp/
+# Local DuckDB stores and runtime artifacts.
+workspace/
+bin/

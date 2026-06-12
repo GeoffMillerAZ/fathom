@@ -216,3 +216,59 @@ func TestMatch_LeadingSlashNormalised(t *testing.T) {
 		t.Error("Match should normalise away leading slash")
 	}
 }
+
+// ─── Dir-only pattern tests ──────────────────────────────────────────────────
+
+func TestMatch_DirOnly_DirectoryPath(t *testing.T) {
+	m := filter.New([]string{"ref/"})
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"ref/", true},       // the directory itself (trailing slash = dir)
+		{"ref/foo.md", true}, // file under the dir
+		{"ref/sub/bar.go", true},
+		{"ref", false},         // plain file named "ref" at root
+		{"a/ref", false},       // plain file named "ref" in a subdir
+		{"refs/foo.md", false}, // different directory
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			if got := m.Match(c.path); got != c.want {
+				t.Errorf("Match(%q) = %v, want %v", c.path, got, c.want)
+			}
+		})
+	}
+}
+
+func TestMatch_DirOnly_AnchoredAndNested(t *testing.T) {
+	m := filter.New([]string{"internal/gen/", "tmp/"})
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"internal/gen/", true},
+		{"internal/gen/x.go", true},
+		{"internal/genuine.go", false},
+		{"tmp/scratch.md", true},
+		{"a/tmp/scratch.md", true}, // unanchored dir-only matches any component
+		{"tmp", false},             // file named tmp
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			if got := m.Match(c.path); got != c.want {
+				t.Errorf("Match(%q) = %v, want %v", c.path, got, c.want)
+			}
+		})
+	}
+}
+
+func TestMatch_DirOnly_Negation(t *testing.T) {
+	m := filter.New([]string{"docs/", "!docs/keep/"})
+	if !m.Match("docs/old.md") {
+		t.Error("docs/old.md should be ignored")
+	}
+	if m.Match("docs/keep/important.md") {
+		t.Error("docs/keep/important.md should be re-included by negation")
+	}
+}

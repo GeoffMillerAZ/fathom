@@ -6,6 +6,7 @@ package connector_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -182,4 +183,64 @@ func TestLocalConnector_Discover_IgnoresVendorAndDotGit(t *testing.T) {
 	}
 	lc := connector.NewLocalConnector()
 	connectorContract(t, lc, svc, []string{"errors.go", "payment.go"})
+}
+
+// ─── .sextantignore tests ────────────────────────────────────────────────────
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLocalConnector_Discover_SextantIgnore(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
+	writeFile(t, filepath.Join(root, "ref", "mirror.go"), "package mirror\n")
+	writeFile(t, filepath.Join(root, "tmp", "scratch.md"), "# scratch\n")
+	writeFile(t, filepath.Join(root, "docs", "keep.md"), "# keep\n")
+	writeFile(t, filepath.Join(root, "skip.log"), "noise\n")
+	writeFile(t, filepath.Join(root, connector.IgnoreFileName),
+		"# repo-specific excludes\nref/\ntmp/\n*.log\n"+connector.IgnoreFileName+"\n")
+
+	lc := connector.NewLocalConnector()
+	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+
+	got := map[string]bool{}
+	for _, r := range refs {
+		rel, _ := filepath.Rel(root, r.Path)
+		got[filepath.ToSlash(rel)] = true
+	}
+
+	for _, want := range []string{"keep.go", "docs/keep.md"} {
+		if !got[want] {
+			t.Errorf("expected %s in discovered refs, got %v", want, got)
+		}
+	}
+	for _, banned := range []string{"ref/mirror.go", "tmp/scratch.md", "skip.log", connector.IgnoreFileName} {
+		if got[banned] {
+			t.Errorf("%s should have been ignored, got %v", banned, got)
+		}
+	}
+}
+
+func TestLocalConnector_Discover_NoIgnoreFile(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "a.go"), "package a\n")
+
+	lc := connector.NewLocalConnector()
+	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	if len(refs) != 1 {
+		t.Fatalf("want 1 ref, got %d", len(refs))
+	}
 }

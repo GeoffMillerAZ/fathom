@@ -62,6 +62,31 @@ sextant serve-mcp --store workspace/db/sextant.duckdb
 
 ---
 
+## Ignoring files: `.sextantignore`
+
+`LocalConnector` always skips `vendor`, `.git`, `testdata`, `generated`,
+`node_modules`, `.idea`, and `.vscode`. For repo-specific exclusions, place a
+`.sextantignore` file at the service root (the `--path` directory). It uses
+gitignore-style patterns — one per line, `#` comments, `!` negation, `**`
+globs, and trailing-slash dir-only rules:
+
+```gitignore
+# Mirrored third-party source — not our code.
+ref/
+# Scratch and local stores.
+tmp/
+workspace/
+# Generated code: index the sources, not the codegen.
+*_templ.go
+```
+
+Matched directories are pruned from the walk; matched files are dropped.
+Sensitive data directories (user content, case data, secrets) should always be
+excluded here — the index is queryable by any connected MCP client and is not
+behind an egress/DLP gate.
+
+---
+
 ## CLI subcommands
 
 All subcommands share the convention:

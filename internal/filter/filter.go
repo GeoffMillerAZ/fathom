@@ -92,21 +92,32 @@ func compile(raw string) rule {
 // path must use forward slashes and must not be absolute.
 // The last matching rule wins (gitignore semantics); a match on a negation
 // rule returns false (path is re-included).
+//
+// Callers that know they are passing a directory should append "/" before
+// calling Match so that dir-only rules ("ref/") can apply to it. For file
+// paths, dir-only rules are evaluated against the file's parent directories,
+// mirroring gitignore: "ref/" ignores ref/foo.md but not a file named "ref".
 func (m *Matcher) Match(filePath string) bool {
+	// Capture directory-ness before Clean strips the trailing slash.
+	isDir := strings.HasSuffix(filePath, "/")
 	// Normalise: no leading slash, forward slashes.
 	filePath = strings.TrimPrefix(filePath, "/")
 	filePath = path.Clean(filePath)
 
 	ignored := false
 	for _, r := range m.rules {
-		if r.dirOnly {
-			// We can't know from a plain path string whether it refers to a dir.
-			// Skip dir-only rules for file paths.  Callers that know they are
-			// passing directories should append "/" before calling Match.
-			continue
+		target := filePath
+		if r.dirOnly && !isDir {
+			// Dir-only rule against a file path: match the parent directory
+			// chain instead, so a file whose base name equals the pattern is
+			// not caught.
+			dir := path.Dir(filePath)
+			if dir == "." {
+				continue
+			}
+			target = dir
 		}
-
-		if matches(r, filePath) {
+		if matches(r, target) {
 			ignored = !r.negate
 		}
 	}
