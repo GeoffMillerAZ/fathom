@@ -375,6 +375,9 @@ func filterByKind(obs []core.Observation, kinds []core.SourceKind) []core.Observ
 // buildStalenessReport builds a StalenessReport from the (already filtered)
 // observations. One SourceStatus per distinct SourceRef; uses the latest
 // IngestedAt across all observations for that ref.
+//
+// Sources contains ONLY stale entries to keep MCP payloads compact. Callers
+// that need the full picture use TotalSources and FreshSources counts.
 func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessReport {
 	// Track latest IngestedAt per source ref.
 	latest := map[string]time.Time{}
@@ -385,7 +388,8 @@ func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessRepo
 	}
 
 	now := e.now()
-	sources := make([]core.SourceStatus, 0, len(latest))
+	totalSources := len(latest)
+	var staleEntries []core.SourceStatus
 	reingest := false
 
 	// Sort the keys for deterministic output.
@@ -400,16 +404,20 @@ func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessRepo
 		stale := now.Sub(ingested) > e.maxAge
 		if stale {
 			reingest = true
+			staleEntries = append(staleEntries, core.SourceStatus{
+				SourceRef:    ref,
+				LastIngested: ingested,
+				Stale:        true,
+			})
 		}
-		sources = append(sources, core.SourceStatus{
-			SourceRef:    ref,
-			LastIngested: ingested,
-			Stale:        stale,
-		})
 	}
 
+	freshSources := totalSources - len(staleEntries)
+
 	return core.StalenessReport{
-		Sources:             sources,
+		Sources:             staleEntries,
+		TotalSources:        totalSources,
+		FreshSources:        freshSources,
 		ReingestRecommended: reingest,
 	}
 }
@@ -472,13 +480,20 @@ func callsSymbol(calls []string, symbol string) bool {
 }
 
 // symbolMatches returns true when the observation's Symbol equals name exactly,
-// or when the constructed SymbolKey ("<SourceRef>.<Symbol>" or just ".<Symbol>"
-// suffix) matches name as a suffix.
+// or when the query name is a suffix of the stored symbol (handling "Type.Method"
+// stored symbols matched by bare "Method" queries), or when the stored symbol
+// is a suffix of the query name (handling "pkg.Symbol" queries against "Symbol").
 func symbolMatches(o core.Observation, name string) bool {
 	if o.Symbol == name {
 		return true
 	}
-	// Bare-name part of a dotted key e.g. "pkg.ValidateToken"
+	// Bare query name matches a stored "Type.Method" symbol: e.g. query "CloseCase"
+	// matches stored "Registry.CloseCase".
+	if strings.HasSuffix(o.Symbol, "."+name) {
+		return true
+	}
+	// Qualified query name matches stored bare symbol: e.g. query "auth.ValidateToken"
+	// matches stored "ValidateToken" via the ".Symbol" suffix.
 	if strings.HasSuffix(name, "."+o.Symbol) {
 		return true
 	}

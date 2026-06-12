@@ -236,13 +236,16 @@ func TestQuery_StalenessReport_FreshData(t *testing.T) {
 	if result.Staleness.ReingestRecommended {
 		t.Error("expected ReingestRecommended=false for fresh data")
 	}
-	if len(result.Staleness.Sources) == 0 {
-		t.Error("expected at least one SourceStatus")
+	// Fresh data: Sources contains only stale entries, so it must be empty.
+	if len(result.Staleness.Sources) != 0 {
+		t.Errorf("expected no stale SourceStatus entries for fresh data, got %d", len(result.Staleness.Sources))
 	}
-	for _, ss := range result.Staleness.Sources {
-		if ss.Stale {
-			t.Errorf("source %q should not be stale", ss.SourceRef)
-		}
+	// TotalSources must count the one observed source; FreshSources must equal TotalSources.
+	if result.Staleness.TotalSources != 1 {
+		t.Errorf("TotalSources = %d, want 1", result.Staleness.TotalSources)
+	}
+	if result.Staleness.FreshSources != 1 {
+		t.Errorf("FreshSources = %d, want 1", result.Staleness.FreshSources)
 	}
 }
 
@@ -299,21 +302,29 @@ func TestQuery_StalenessReport_MultipleSourcesOneStale(t *testing.T) {
 	if !result.Staleness.ReingestRecommended {
 		t.Error("expected ReingestRecommended=true when any source is stale")
 	}
-	sourceStale := map[string]bool{}
-	for _, ss := range result.Staleness.Sources {
-		sourceStale[ss.SourceRef] = ss.Stale
+	// Sources contains only stale entries: exactly stale.go.
+	if result.Staleness.TotalSources != 2 {
+		t.Errorf("TotalSources = %d, want 2", result.Staleness.TotalSources)
 	}
-	if sourceStale["fresh.go"] {
-		t.Error("fresh.go should not be stale")
+	if result.Staleness.FreshSources != 1 {
+		t.Errorf("FreshSources = %d, want 1", result.Staleness.FreshSources)
 	}
-	if !sourceStale["stale.go"] {
-		t.Error("stale.go should be stale")
+	if len(result.Staleness.Sources) != 1 {
+		t.Fatalf("expected 1 stale source entry, got %d: %v", len(result.Staleness.Sources), result.Staleness.Sources)
+	}
+	if result.Staleness.Sources[0].SourceRef != "stale.go" {
+		t.Errorf("stale entry = %q, want stale.go", result.Staleness.Sources[0].SourceRef)
+	}
+	if !result.Staleness.Sources[0].Stale {
+		t.Error("stale.go entry must have Stale=true")
 	}
 }
 
 // ─── staleness deduplicated per source ───────────────────────────────────────
 
 func TestQuery_StalenessReport_OneStatusPerSource(t *testing.T) {
+	// Two observations for the same source: both fresh (epoch + 1h, maxAge 24h).
+	// TotalSources must be 1 (deduplicated); Sources (stale-only) must be empty.
 	obs := []core.Observation{
 		{ServiceID: "svc", ConcernID: "c", Symbol: "A", Claim: "a", EvidenceTier: core.TierVerified, SourceRef: "file.go", IngestedAt: epoch},
 		{ServiceID: "svc", ConcernID: "c", Symbol: "B", Claim: "b", EvidenceTier: core.TierVerified, SourceRef: "file.go", IngestedAt: epoch},
@@ -326,12 +337,16 @@ func TestQuery_StalenessReport_OneStatusPerSource(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	seen := map[string]int{}
-	for _, ss := range result.Staleness.Sources {
-		seen[ss.SourceRef]++
+	// Deduplication: two observations on the same file → 1 distinct source.
+	if result.Staleness.TotalSources != 1 {
+		t.Errorf("TotalSources = %d, want 1 (deduplicated)", result.Staleness.TotalSources)
 	}
-	if seen["file.go"] != 1 {
-		t.Errorf("expected exactly 1 SourceStatus for file.go, got %d", seen["file.go"])
+	if result.Staleness.FreshSources != 1 {
+		t.Errorf("FreshSources = %d, want 1", result.Staleness.FreshSources)
+	}
+	// Fresh source: no stale entries in Sources.
+	if len(result.Staleness.Sources) != 0 {
+		t.Errorf("expected 0 stale entries, got %d: %v", len(result.Staleness.Sources), result.Staleness.Sources)
 	}
 }
 
@@ -515,6 +530,69 @@ func TestFindSymbol_NoMatch(t *testing.T) {
 	}
 	if len(nodes) != 0 {
 		t.Errorf("expected no nodes, got %v", nodes)
+	}
+}
+
+// TestFindSymbol_TableDriven exercises exact, qualified, bare-method, and no-match cases.
+func TestFindSymbol_TableDriven(t *testing.T) {
+	obs := []core.Observation{
+		// Plain function.
+		{ServiceID: "svc", ConcernID: "c", Symbol: "CloseCase", Claim: "func", EvidenceTier: core.TierVerified, SourceRef: "registry.go", IngestedAt: epoch},
+		// Method stored as "Registry.CloseCase".
+		{ServiceID: "svc", ConcernID: "c", Symbol: "Registry.CloseCase", Claim: "method", EvidenceTier: core.TierVerified, SourceRef: "registry.go", IngestedAt: epoch},
+		// Unrelated symbol.
+		{ServiceID: "svc", ConcernID: "c", Symbol: "OpenCase", Claim: "func", EvidenceTier: core.TierVerified, SourceRef: "registry.go", IngestedAt: epoch},
+	}
+	ms := newStore(t, obs)
+	e := query.New(ms)
+
+	tests := []struct {
+		name      string
+		query     string
+		wantNames []string // sorted, empty means no match expected
+	}{
+		{
+			name:      "exact match plain func",
+			query:     "CloseCase",
+			wantNames: []string{"CloseCase", "Registry.CloseCase"}, // bare "CloseCase" matches both
+		},
+		{
+			name:      "exact match method",
+			query:     "Registry.CloseCase",
+			wantNames: []string{"CloseCase", "Registry.CloseCase"}, // qualified matches both via suffix rules
+		},
+		{
+			name:      "bare method name matches Type.Method stored symbol",
+			query:     "CloseCase",
+			wantNames: []string{"CloseCase", "Registry.CloseCase"},
+		},
+		{
+			name:      "no match",
+			query:     "NonExistent",
+			wantNames: []string{},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			nodes, err := e.FindSymbol(context.Background(), "svc", tc.query)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			got := make([]string, len(nodes))
+			for i, n := range nodes {
+				got[i] = n.Name
+			}
+			if len(got) != len(tc.wantNames) {
+				t.Errorf("query %q: got %v, want %v", tc.query, got, tc.wantNames)
+				return
+			}
+			for i, w := range tc.wantNames {
+				if got[i] != w {
+					t.Errorf("query %q node[%d]: got %q, want %q", tc.query, i, got[i], w)
+				}
+			}
+		})
 	}
 }
 

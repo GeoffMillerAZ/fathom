@@ -152,9 +152,13 @@ type QueryResult struct {
 }
 
 // StalenessReport tells callers whether the underlying data is fresh (ADR-008).
+// Sources contains only stale entries; TotalSources and FreshSources give the
+// full picture without bloating the payload with per-file rows for fresh files.
 type StalenessReport struct {
-	Sources             []SourceStatus
-	ReingestRecommended bool
+	Sources             []SourceStatus `json:"sources"`
+	TotalSources        int            `json:"total_sources"`
+	FreshSources        int            `json:"fresh_sources"`
+	ReingestRecommended bool           `json:"reingest_recommended"`
 }
 
 // SourceStatus is the freshness of one ingested source.

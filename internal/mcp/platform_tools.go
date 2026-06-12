@@ -249,7 +249,11 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 			Symbol   string `json:"symbol"`
 			FilePath string `json:"file_path,omitempty"`
 		}
+		// SymbolsFor and ObservationsFor are two views over the same stored
+		// rows, so dedupe by (service, symbol) and prefer the symbol view,
+		// which carries FilePath.
 		var callers []caller
+		seen := make(map[string]bool)
 		for _, svc := range fleet.Services() {
 			for _, n := range fleet.SymbolsFor(svc) {
 				for _, callee := range n.Calls {
@@ -259,20 +263,26 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 							Symbol:   n.Name,
 							FilePath: n.FilePath,
 						})
+						seen[svc+"\x00"+n.Name] = true
 						break
 					}
 				}
 			}
 		}
-		// Also search observation Calls.
+		// Also search observation Calls for backends whose symbol view is
+		// narrower than their observation set.
 		for _, svc := range fleet.Services() {
 			for _, obs := range fleet.ObservationsFor(svc) {
+				if seen[svc+"\x00"+obs.Symbol] {
+					continue
+				}
 				for _, callee := range obs.Calls {
 					if matchesSymbol(callee, p.Symbol) {
 						callers = append(callers, caller{
 							Service: svc,
 							Symbol:  obs.Symbol,
 						})
+						seen[svc+"\x00"+obs.Symbol] = true
 						break
 					}
 				}
@@ -300,23 +310,37 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 // matchesSymbol reports whether callee (a SymbolKey or bare name) matches the
-// search target.  A bare target matches if it is a suffix of callee after the
-// "::" separator, or equals callee exactly.
+// search target.  Handles three callee formats:
+//
+//   - Exact: "FormatCents" == "FormatCents"
+//   - SymbolKey: "svc::pkg.Name" — strip the "svc::" prefix, then match tail
+//     exactly or by bare name after the last dot.
+//   - Plain qualified: "pkg.Name" — as emitted by the Go extractor for
+//     cross-package calls; match exactly or by bare name after the last dot.
 func matchesSymbol(callee, target string) bool {
 	if callee == target {
 		return true
 	}
-	// callee may be "service::pkg.Name"; target may be "Name" or "pkg.Name"
+	// Determine the "tail" to match against: strip any "service::" prefix first.
+	tail := callee
 	if idx := strings.LastIndex(callee, "::"); idx >= 0 {
-		tail := callee[idx+2:]
-		if tail == target {
+		tail = callee[idx+2:]
+	}
+	// tail is now either "pkg.Name" or "Name".
+	if tail == target {
+		return true
+	}
+	// Match bare name: target "FormatCents" against tail "output.FormatCents".
+	if dotIdx := strings.LastIndex(tail, "."); dotIdx >= 0 {
+		if tail[dotIdx+1:] == target {
 			return true
 		}
-		// Also match bare name part after last dot.
-		if dotIdx := strings.LastIndex(tail, "."); dotIdx >= 0 {
-			if tail[dotIdx+1:] == target {
-				return true
-			}
+		// Also allow target to be a qualified suffix: "output.FormatCents" matches
+		// tail "output.FormatCents" (already handled above by tail==target), but
+		// also handle target "pkg.Name" matching tail "pkg.Name" via HasSuffix for
+		// deeper paths.
+		if strings.HasSuffix(tail, "."+target) {
+			return true
 		}
 	}
 	return false

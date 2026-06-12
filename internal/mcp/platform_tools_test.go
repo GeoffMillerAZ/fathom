@@ -310,6 +310,121 @@ func TestCrossRepoCallers_MissingSymbol(t *testing.T) {
 	}
 }
 
+// ─── cross_repo_callers: plain pkg.Func edges (Go extractor format) ──────────
+
+// goExtractorFleet builds a fleet where call edges are stored as plain "pkg.Func"
+// strings — the format emitted by the Go extractor for cross-package calls, which
+// has no "::" service prefix.
+func goExtractorFleet() *fakeFleet {
+	return &fakeFleet{
+		svcs: map[string][]core.SymbolNode{
+			// svc-a calls FormatCents (in svc-b) using the plain "output.FormatCents" edge
+			// and NewLedger (in svc-b) using plain "eventstore.New" edge.
+			"svc-a": {
+				{
+					Service: "svc-a", Package: "billing", Name: "ProcessInvoice", Kind: core.KindGoFunc, FilePath: "billing/invoice.go",
+					Calls: []string{"output.FormatCents", "stripe.Charge"},
+				},
+				{
+					Service: "svc-a", Package: "store", Name: "InitStore", Kind: core.KindGoFunc, FilePath: "store/init.go",
+					Calls: []string{"eventstore.New"},
+				},
+			},
+			// svc-b owns the symbols being called.
+			"svc-b": {
+				{Service: "svc-b", Package: "output", Name: "FormatCents", Kind: core.KindGoFunc, FilePath: "output/format.go"},
+				{Service: "svc-b", Package: "eventstore", Name: "New", Kind: core.KindGoFunc, FilePath: "eventstore/store.go"},
+			},
+		},
+		obs: map[string][]core.Observation{
+			"svc-a": {
+				{ServiceID: "svc-a", Symbol: "ProcessInvoice", Calls: []string{"output.FormatCents", "stripe.Charge"}},
+				{ServiceID: "svc-a", Symbol: "InitStore", Calls: []string{"eventstore.New"}},
+			},
+			"svc-b": {},
+		},
+	}
+}
+
+func TestCrossRepoCallers_BareNameMatchesQualifiedEdge(t *testing.T) {
+	srv := newFleetServer(goExtractorFleet())
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1050, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cross_repo_callers",
+			"arguments": map[string]any{"symbol": "FormatCents"},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	callers, ok := p["callers"].([]any)
+	if !ok {
+		t.Fatalf("callers missing: %v", p)
+	}
+	// ProcessInvoice in svc-a calls "output.FormatCents" — bare "FormatCents" must match.
+	if len(callers) == 0 {
+		t.Fatal("cross_repo_callers(FormatCents): expected caller ProcessInvoice from svc-a, got 0")
+	}
+	found := false
+	for _, raw := range callers {
+		c := raw.(map[string]any)
+		if c["symbol"] == "ProcessInvoice" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("ProcessInvoice not in callers: %v", callers)
+	}
+}
+
+func TestCrossRepoCallers_QualifiedNameMatchesQualifiedEdge(t *testing.T) {
+	srv := newFleetServer(goExtractorFleet())
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1051, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cross_repo_callers",
+			"arguments": map[string]any{"symbol": "output.FormatCents"},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	callers, ok := p["callers"].([]any)
+	if !ok {
+		t.Fatalf("callers missing: %v", p)
+	}
+	if len(callers) == 0 {
+		t.Fatal("cross_repo_callers(output.FormatCents): expected at least one caller, got 0")
+	}
+}
+
+func TestCrossRepoCallers_CrossServiceCallerReturned(t *testing.T) {
+	// Verifies that callers from ALL services (including the symbol's home service)
+	// appear in results.
+	srv := newFleetServer(goExtractorFleet())
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1052, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cross_repo_callers",
+			"arguments": map[string]any{"symbol": "New"},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	callers, ok := p["callers"].([]any)
+	if !ok {
+		t.Fatalf("callers missing: %v", p)
+	}
+	// InitStore in svc-a calls "eventstore.New" — bare "New" must match.
+	if len(callers) == 0 {
+		t.Fatal("cross_repo_callers(New): expected InitStore from svc-a, got 0")
+	}
+	services := make(map[string]bool)
+	for _, raw := range callers {
+		c := raw.(map[string]any)
+		services[c["service"].(string)] = true
+	}
+	if !services["svc-a"] {
+		t.Errorf("expected svc-a in results, got services: %v", services)
+	}
+}
+
 // ─── platform profile includes fleet tools ───────────────────────────────────
 
 func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
