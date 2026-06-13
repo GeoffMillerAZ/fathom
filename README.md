@@ -66,6 +66,8 @@ sextant serve-mcp                       # stdio MCP server for editors/agents
 
 | | |
 |---|---|
+| [docs/what-is-sextant.html](docs/what-is-sextant.html) | **Start here** — visual explainer of what sextant is and how it works |
+| [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how sextant bends the curve, tool comparisons (observed vs speculative, labeled) |
 | [docs/claude-code-integration.md](docs/claude-code-integration.md) | **Wire sextant into Claude Code sessions** — setup playbook, operating contract, pre-packed briefs, pitfalls |
 | [docs/assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md) | Measured results of that integration (tokenomics, correctness, wall-clock) |
 | [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, DuckDB store, MCP surface |
