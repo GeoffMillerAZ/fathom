@@ -92,6 +92,26 @@ func ExtractFileRefs(files map[string]string, pattern string, specFilter string)
 	return refs, filesScanned, nil
 }
 
+// ExtractRefsFromText scans a single text string for spec-ID references using
+// pattern (DefaultSpecRefPattern when ""). Returns normalised spec IDs,
+// deduplicated and sorted. Returns an error only for invalid pattern.
+func ExtractRefsFromText(text, pattern string) ([]string, error) {
+	refs, _, err := ExtractFileRefs(map[string]string{"<text>": text}, pattern, "")
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[string]bool)
+	var out []string
+	for _, r := range refs {
+		if !seen[r.SpecID] {
+			seen[r.SpecID] = true
+			out = append(out, r.SpecID)
+		}
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
 // normaliseSpecID converts a raw regex match into a canonical spec ID string.
 //
 //   - "[US-042]" → "US-042"        (strip brackets)

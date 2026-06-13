@@ -55,6 +55,10 @@ func (r *richFakeBackend) ServiceMeta(_ context.Context, _ string) (string, stri
 	return "", "", false, nil
 }
 
+func (r *richFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo, error) {
+	return nil, nil
+}
+
 // compile-time: richFakeBackend must satisfy mcp.QueryInterface.
 var _ mcp.QueryInterface = (*richFakeBackend)(nil)
 

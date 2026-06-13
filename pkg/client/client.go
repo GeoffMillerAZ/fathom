@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/sextant/internal/connector"
 	"github.com/geoffmilleraz/sextant/internal/core"
@@ -301,6 +302,32 @@ func (c *Client) ServiceMeta(ctx context.Context, serviceID string) (path, index
 		return "", "", false, nil
 	}
 	return meta.Path, meta.IndexedCommit, true, nil
+}
+
+// ListCommits returns commit history for serviceID, newest-first, as CommitInfo
+// presentation records (Date is RFC3339, FilesTouchedCount is len(Files)).
+func (c *Client) ListCommits(ctx context.Context, serviceID string) ([]store.CommitInfo, error) {
+	commits, err := c.st.ListCommits(ctx, serviceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]store.CommitInfo, len(commits))
+	for i, cm := range commits {
+		dateStr := ""
+		if cm.Date != 0 {
+			dateStr = time.Unix(0, cm.Date).UTC().Format(time.RFC3339)
+		}
+		out[i] = store.CommitInfo{
+			Hash:              cm.Hash,
+			Date:              dateStr,
+			Author:            cm.Author,
+			Message:           cm.Message,
+			Files:             cm.Files,
+			FilesTouchedCount: len(cm.Files),
+			SpecIDs:           cm.SpecIDs,
+		}
+	}
+	return out, nil
 }
 
 // Close releases all resources held by the client (including the store).

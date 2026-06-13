@@ -39,6 +39,28 @@ type ServiceMeta struct {
 	IndexedAt     int64  // Unix nano
 }
 
+// Commit is a single git commit record for a service.
+type Commit struct {
+	ServiceID string
+	Hash      string // full 40-char SHA
+	Author    string
+	Date      int64    // Unix nano
+	Message   string   // subject line
+	Files     []string // files touched
+	SpecIDs   []string // spec IDs extracted from message
+}
+
+// CommitInfo is a presentation-layer view of a git commit for query/MCP results.
+type CommitInfo struct {
+	Hash              string
+	Date              string // RFC3339
+	Author            string
+	Message           string
+	Files             []string // used for filtering; not serialised in output
+	FilesTouchedCount int
+	SpecIDs           []string
+}
+
 // Store is the persistence contract for sextant's evidence layer.
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
@@ -93,6 +115,14 @@ type Store interface {
 	// GetServiceMeta returns the ingest metadata for serviceID.
 	// found is false when no metadata has been recorded for that service.
 	GetServiceMeta(ctx context.Context, serviceID string) (meta ServiceMeta, found bool, err error)
+
+	// SetCommits replaces all commits for serviceID with the provided slice.
+	// Idempotent: repeated calls replace the stored set.
+	SetCommits(ctx context.Context, serviceID string, commits []Commit) error
+
+	// ListCommits returns commits for serviceID newest-first (by Date desc).
+	// Returns nil slice with no error when no commits are stored.
+	ListCommits(ctx context.Context, serviceID string) ([]Commit, error)
 
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.

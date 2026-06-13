@@ -37,6 +37,7 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/core"
 	"github.com/geoffmilleraz/sextant/internal/extractor"
 	"github.com/geoffmilleraz/sextant/internal/llm"
+	"github.com/geoffmilleraz/sextant/internal/sdd"
 	"github.com/geoffmilleraz/sextant/internal/store"
 )
 
@@ -83,6 +84,7 @@ type Pipeline struct {
 	mu        sync.Mutex
 	queue     map[string][]pendingFile // serviceID → pending files (lazy mode)
 	gitHeadFn func(path string) string // injectable; default = realGitHead
+	gitLogFn  func(path string) string // injectable; default = realGitLog
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.
@@ -108,6 +110,80 @@ func realGitHead(path string) string {
 	return strings.TrimSpace(out.String())
 }
 
+// realGitLog shells out to git to get the last 500 commits for the given
+// directory path. Returns an empty string on any error (best-effort).
+func realGitLog(path string) string {
+	if path == "" {
+		return ""
+	}
+	var out bytes.Buffer
+	cmd := exec.Command("git", "-C", path, "log",
+		"--pretty=format:%H\x1f%an\x1f%aI\x1f%s",
+		"--name-only",
+		"-n", "500")
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return out.String()
+}
+
+// parseGitLog parses output of:
+//
+//	git log --pretty=format:%H%x1f%an%x1f%aI%x1f%s --name-only -n 500
+//
+// Each commit block: one header line (%H\x1f%an\x1f%aI\x1f%s) + file lines + blank separator.
+func parseGitLog(serviceID, raw string) []store.Commit {
+	if raw == "" {
+		return nil
+	}
+	var commits []store.Commit
+	blocks := strings.Split(raw, "\n\n")
+	for _, block := range blocks {
+		block = strings.TrimSpace(block)
+		if block == "" {
+			continue
+		}
+		lines := strings.Split(block, "\n")
+		if len(lines) == 0 {
+			continue
+		}
+		// First line: hash\x1fauthor\x1fdate\x1fsubject
+		parts := strings.SplitN(lines[0], "\x1f", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		hash, author, dateStr, message := parts[0], parts[1], parts[2], parts[3]
+		if hash == "" {
+			continue
+		}
+		var dateNano int64
+		if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
+			dateNano = t.UnixNano()
+		} else if t, err := time.Parse(time.RFC3339Nano, dateStr); err == nil {
+			dateNano = t.UnixNano()
+		}
+		var files []string
+		for _, l := range lines[1:] {
+			l = strings.TrimSpace(l)
+			if l != "" {
+				files = append(files, l)
+			}
+		}
+		specIDs, _ := sdd.ExtractRefsFromText(message, "")
+		commits = append(commits, store.Commit{
+			ServiceID: serviceID,
+			Hash:      hash,
+			Author:    author,
+			Date:      dateNano,
+			Message:   message,
+			Files:     files,
+			SpecIDs:   specIDs,
+		})
+	}
+	return commits
+}
+
 // New constructs a Pipeline with extractors pre-registered for all supported
 // file types. Additional extractors can be added or replaced by calling
 // RegisterExtractor after construction.
@@ -122,6 +198,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		exts:      map[string]extractor.Extractor{},
 		queue:     map[string][]pendingFile{},
 		gitHeadFn: realGitHead,
+		gitLogFn:  realGitLog,
 	}
 
 	// Go
@@ -183,6 +260,13 @@ func (p *Pipeline) WithGitHead(fn func(path string) string) {
 	p.gitHeadFn = fn
 }
 
+// WithGitLog replaces the function used to retrieve git commit history for a
+// directory path. The replacement must return the git log output string, or ""
+// when unavailable. Intended for unit tests.
+func (p *Pipeline) WithGitLog(fn func(path string) string) {
+	p.gitLogFn = fn
+}
+
 // WithEnricher injects an *llm.Enricher into the pipeline. Enrichment only
 // runs when Config.Enrich is also true; passing nil is a no-op.
 func (p *Pipeline) WithEnricher(e *llm.Enricher) {
@@ -228,6 +312,16 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 			IndexedAt:     time.Now().UnixNano(),
 		}
 		_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
+	}
+
+	// Collect git commit history (best-effort; injectable gitLogFn for tests).
+	{
+		raw := p.gitLogFn(svc.Path)
+		if raw != "" {
+			if cs := parseGitLog(svc.ID, raw); len(cs) > 0 {
+				_ = p.st.SetCommits(ctx, svc.ID, cs)
+			}
+		}
 	}
 
 	if len(refs) == 0 {

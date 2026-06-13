@@ -100,6 +100,10 @@ func (f *fakeBackend) ServiceMeta(_ context.Context, _ string) (string, string, 
 	return "", "", false, nil
 }
 
+func (f *fakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo, error) {
+	return nil, nil
+}
+
 // ─── find_callers ────────────────────────────────────────────────────────────
 
 func TestFindCallers(t *testing.T) {

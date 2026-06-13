@@ -54,6 +54,10 @@ func (e *extendedFakeBackend) ServiceMeta(_ context.Context, _ string) (string, 
 	return "", "", false, nil
 }
 
+func (e *extendedFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo, error) {
+	return nil, nil
+}
+
 // compile-time check.
 var _ mcp.QueryInterface = (*extendedFakeBackend)(nil)
 

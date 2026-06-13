@@ -19,6 +19,7 @@ type MemoryStore struct {
 	knowledgeCards map[kcKey]KnowledgeCard
 	docSummaries   map[fpKey]DocSummary
 	serviceMeta    map[string]ServiceMeta
+	commits        map[string][]Commit // serviceID → commits (newest-first)
 }
 
 type fpKey struct {
@@ -38,6 +39,7 @@ func NewMemoryStore() *MemoryStore {
 		knowledgeCards: make(map[kcKey]KnowledgeCard),
 		docSummaries:   make(map[fpKey]DocSummary),
 		serviceMeta:    make(map[string]ServiceMeta),
+		commits:        make(map[string][]Commit),
 	}
 }
 
@@ -214,6 +216,30 @@ func (m *MemoryStore) GetServiceMeta(_ context.Context, serviceID string) (Servi
 	defer m.mu.RUnlock()
 	meta, ok := m.serviceMeta[serviceID]
 	return meta, ok, nil
+}
+
+// SetCommits replaces all commits for serviceID with a copy sorted newest-first.
+func (m *MemoryStore) SetCommits(_ context.Context, serviceID string, commits []Commit) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	cp := make([]Commit, len(commits))
+	copy(cp, commits)
+	sort.Slice(cp, func(i, j int) bool { return cp[i].Date > cp[j].Date })
+	m.commits[serviceID] = cp
+	return nil
+}
+
+// ListCommits returns commits for serviceID newest-first.
+func (m *MemoryStore) ListCommits(_ context.Context, serviceID string) ([]Commit, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	src := m.commits[serviceID]
+	if len(src) == 0 {
+		return nil, nil
+	}
+	out := make([]Commit, len(src))
+	copy(out, src)
+	return out, nil
 }
 
 // Close is a no-op for the in-memory store.

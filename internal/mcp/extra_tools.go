@@ -32,6 +32,7 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/analysis/deps"
 	"github.com/geoffmilleraz/sextant/internal/analysis/doccoverage"
 	"github.com/geoffmilleraz/sextant/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/sextant/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/sextant/internal/analysis/erraudit"
 	"github.com/geoffmilleraz/sextant/internal/analysis/fieldusage"
 	"github.com/geoffmilleraz/sextant/internal/analysis/impact"
@@ -39,6 +40,7 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/analysis/migrationtargets"
 	"github.com/geoffmilleraz/sextant/internal/analysis/naming"
 	"github.com/geoffmilleraz/sextant/internal/analysis/proto"
+	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
 	"github.com/geoffmilleraz/sextant/internal/analysis/schemaexport"
 	"github.com/geoffmilleraz/sextant/internal/analysis/security"
 	"github.com/geoffmilleraz/sextant/internal/analysis/sqlmap"
@@ -47,6 +49,7 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/context/packer"
 	"github.com/geoffmilleraz/sextant/internal/core"
 	"github.com/geoffmilleraz/sextant/internal/cost"
+	"github.com/geoffmilleraz/sextant/internal/graph"
 	"github.com/geoffmilleraz/sextant/internal/sdd"
 )
 
@@ -113,6 +116,12 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	// ── spec / context ───────────────────────────────────────────────────────
 	registerSpecRefs(s, backend)
 	registerBrief(s, backend)
+
+	// ── graph traversal ──────────────────────────────────────────────────────
+	registerTraverse(s, backend)
+
+	// ── investigation: history ───────────────────────────────────────────────────
+	registerHistory(s, backend)
 }
 
 // ─── investigation: blast_radius ─────────────────────────────────────────────
@@ -2284,4 +2293,291 @@ func min8(a, b int) int {
 		return a
 	}
 	return b
+}
+
+// ─── investigation: history ───────────────────────────────────────────────────
+
+func registerHistory(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name:        "history",
+		Description: "Return git commit history for a service, filtered by file path suffix, spec ID, or symbol name.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"file":    map[string]any{"type": "string", "description": "Optional file path suffix filter"},
+				"spec":    map[string]any{"type": "string", "description": "Optional spec ID filter (e.g. M18.2)"},
+				"symbol":  map[string]any{"type": "string", "description": "Optional symbol name; resolved to its file path for filtering"},
+				"limit":   map[string]any{"type": "integer", "description": "Max commits to return (default 20)"},
+			},
+			"required": []string{"service"},
+		},
+		group: GroupInvestigation,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		if backend == nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+		}
+		var p struct {
+			Service string `json:"service"`
+			File    string `json:"file"`
+			Spec    string `json:"spec"`
+			Symbol  string `json:"symbol"`
+			Limit   int    `json:"limit"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "history: invalid args"}
+		}
+		if p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "history: service required"}
+		}
+		limit := p.Limit
+		if limit <= 0 {
+			limit = 20
+		}
+
+		// Resolve symbol → file path filter.
+		fileFilter := p.File
+		if p.Symbol != "" && fileFilter == "" {
+			nodes, err := backend.FindSymbol(ctx, p.Service, p.Symbol)
+			if err == nil && len(nodes) > 0 {
+				fileFilter = nodes[0].FilePath
+			}
+		}
+
+		commits, err := backend.ListCommits(ctx, p.Service)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		}
+
+		// Filter commits.
+		var filtered []CommitInfo
+		for _, c := range commits {
+			if fileFilter != "" {
+				matched := false
+				for _, f := range c.Files {
+					if strings.HasSuffix(f, fileFilter) {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+			}
+			if p.Spec != "" {
+				matched := false
+				for _, id := range c.SpecIDs {
+					if id == p.Spec {
+						matched = true
+						break
+					}
+				}
+				if !matched {
+					continue
+				}
+			}
+			filtered = append(filtered, c)
+			if len(filtered) >= limit {
+				break
+			}
+		}
+
+		// Build output rows.
+		rows := make([]any, len(filtered))
+		for i, c := range filtered {
+			specIDs := c.SpecIDs
+			if specIDs == nil {
+				specIDs = []string{}
+			}
+			rows[i] = map[string]any{
+				"hash":                c.Hash,
+				"date":                c.Date,
+				"author":              c.Author,
+				"message":             c.Message,
+				"files_touched_count": c.FilesTouchedCount,
+				"spec_ids":            stringsToAny(specIDs),
+			}
+		}
+		return map[string]any{"commits": rows, "count": len(rows)}, nil
+	})
+}
+
+// ─── graph traversal: traverse ────────────────────────────────────────────────
+
+func registerTraverse(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name: "traverse",
+		Description: "BFS traversal over a heterogeneous edge graph built from symbols (calls), source files (spec-refs, routes, env-keys). " +
+			"Returns all paths reachable from start within depth hops, optionally filtered by edge kind.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"service":   map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"start":     map[string]any{"type": "string", "description": "Starting node (symbol name, file path, route, spec ID, or env key)"},
+				"kinds":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Edge kinds to traverse: calls, imports, spec-ref, route, env-key (default: all)"},
+				"depth":     map[string]any{"type": "integer", "description": "Max BFS hops (default 3, max effective ~10)"},
+				"direction": map[string]any{"type": "string", "description": "Traversal direction: out (default), in, or both", "enum": []string{"out", "in", "both"}},
+			},
+			"required": []string{"service", "start"},
+		},
+		group: GroupInvestigation,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		if backend == nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+		}
+		var p struct {
+			Service   string   `json:"service"`
+			Start     string   `json:"start"`
+			Kinds     []string `json:"kinds"`
+			Depth     int      `json:"depth"`
+			Direction string   `json:"direction"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "traverse: invalid args"}
+		}
+		if p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "traverse: service required"}
+		}
+		if p.Start == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "traverse: start required"}
+		}
+		depth := p.Depth
+		if depth <= 0 {
+			depth = 3
+		}
+		direction := p.Direction
+		if direction == "" {
+			direction = "out"
+		}
+
+		// Local lang helper (routesLang is unexported in source_tools.go).
+		traverseRoutesLang := func(lang string) string {
+			switch lang {
+			case "go":
+				return "go"
+			case "js", "ts":
+				return "js"
+			case "py":
+				return "python"
+			}
+			return ""
+		}
+
+		// Build edges from call graph (symbols → Calls).
+		nodes, err := backend.ListAllSymbols(ctx, p.Service)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "traverse: list symbols: " + err.Error()}
+		}
+		var edges []graph.Edge
+		for _, n := range nodes {
+			for _, callee := range n.Calls {
+				edges = append(edges, graph.Edge{
+					From:    n.Name,
+					To:      callee,
+					Kind:    graph.KindCalls,
+					Service: n.Service,
+					File:    n.FilePath,
+					Line:    n.Line,
+				})
+			}
+		}
+
+		// Build edges from source files: spec-refs, routes, env-keys.
+		srcs, _ := backend.Sources(ctx, p.Service)
+		for _, f := range srcs {
+			// Spec-ref edges: file → spec_id.
+			specRefs := sdd.ExtractRefs(string(f.Content))
+			for _, ref := range specRefs {
+				edges = append(edges, graph.Edge{
+					From:    f.Path,
+					To:      ref,
+					Kind:    graph.KindSpecRef,
+					Service: p.Service,
+					File:    f.Path,
+				})
+			}
+			// Route edges: route_path → handler.
+			if rlang := traverseRoutesLang(f.Lang); rlang != "" {
+				for _, r := range routes.Extract(rlang, f.Path, f.Content) {
+					from := r.Method + " " + r.Path
+					if from == " " {
+						from = r.Path
+					}
+					to := r.Handler
+					if to == "" {
+						to = f.Path
+					}
+					edges = append(edges, graph.Edge{
+						From:    from,
+						To:      to,
+						Kind:    graph.KindRoute,
+						Service: p.Service,
+						File:    r.File,
+						Line:    r.Line,
+					})
+				}
+			}
+			// Env-key edges: file → env key name.
+			for _, ek := range envkeys.Scan(f.Path, string(f.Content)) {
+				edges = append(edges, graph.Edge{
+					From:    f.Path,
+					To:      ek.Name,
+					Kind:    graph.KindEnvKey,
+					Service: p.Service,
+					File:    ek.File,
+					Line:    ek.Line,
+				})
+			}
+		}
+
+		// Resolve start: if no exact match as a From/To node, try suffix match on symbol names.
+		startNode := p.Start
+		nodeExists := false
+		for _, e := range edges {
+			if e.From == startNode || e.To == startNode {
+				nodeExists = true
+				break
+			}
+		}
+		if !nodeExists {
+			// Try suffix match on symbol names.
+			for _, n := range nodes {
+				if strings.HasSuffix(n.Name, p.Start) || strings.HasSuffix(n.FilePath+"/"+n.Name, p.Start) {
+					startNode = n.Name
+					break
+				}
+			}
+		}
+
+		result := graph.Traverse(edges, startNode, p.Kinds, depth, direction)
+
+		// Serialize paths.
+		pathsOut := make([]any, len(result.Paths))
+		for i, path := range result.Paths {
+			edgesOut := make([]any, len(path.Edges))
+			for j, e := range path.Edges {
+				edgesOut[j] = map[string]any{
+					"from":    e.From,
+					"to":      e.To,
+					"kind":    e.Kind,
+					"service": e.Service,
+					"file":    e.File,
+					"line":    e.Line,
+				}
+			}
+			pathsOut[i] = map[string]any{"edges": edgesOut}
+		}
+
+		// Serialize edge_counts.
+		edgeCountsOut := make(map[string]any, len(result.EdgeCounts))
+		for k, v := range result.EdgeCounts {
+			edgeCountsOut[k] = v
+		}
+
+		return map[string]any{
+			"paths":       pathsOut,
+			"truncated":   result.Truncated,
+			"edge_counts": edgeCountsOut,
+		}, nil
+	})
 }

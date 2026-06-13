@@ -653,6 +653,78 @@ func storeContract(t *testing.T, s Store) {
 			t.Errorf("IndexedCommit = %q, want empty", got.IndexedCommit)
 		}
 	})
+
+	// ------------------------------------------------------------------ //
+	// Commit round-trip + replace-all + newest-first ordering
+	// ------------------------------------------------------------------ //
+	t.Run("commits_roundtrip", func(t *testing.T) {
+		svc := "svc-commits"
+		commits := []Commit{
+			{ServiceID: svc, Hash: "aaa", Author: "Alice", Date: 300, Message: "third M18.2", Files: []string{"a.go"}, SpecIDs: []string{"M18.2"}},
+			{ServiceID: svc, Hash: "bbb", Author: "Bob", Date: 100, Message: "first", Files: []string{"b.go", "c.go"}, SpecIDs: nil},
+			{ServiceID: svc, Hash: "ccc", Author: "Carol", Date: 200, Message: "second", Files: []string{"d.go"}, SpecIDs: nil},
+		}
+		if err := s.SetCommits(ctx, svc, commits); err != nil {
+			t.Fatalf("SetCommits: %v", err)
+		}
+		got, err := s.ListCommits(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListCommits: %v", err)
+		}
+		if len(got) != 3 {
+			t.Fatalf("expected 3 commits, got %d", len(got))
+		}
+		// Newest-first: dates 300, 200, 100
+		if got[0].Hash != "aaa" || got[1].Hash != "ccc" || got[2].Hash != "bbb" {
+			t.Errorf("order wrong: %v %v %v", got[0].Hash, got[1].Hash, got[2].Hash)
+		}
+		if got[0].Author != "Alice" {
+			t.Errorf("Author = %q, want Alice", got[0].Author)
+		}
+		if len(got[0].SpecIDs) != 1 || got[0].SpecIDs[0] != "M18.2" {
+			t.Errorf("SpecIDs = %v, want [M18.2]", got[0].SpecIDs)
+		}
+		if len(got[2].Files) != 2 {
+			t.Errorf("Files = %v, want 2", got[2].Files)
+		}
+	})
+
+	t.Run("commits_replace_all", func(t *testing.T) {
+		svc := "svc-commits-replace"
+		first := []Commit{
+			{ServiceID: svc, Hash: "old1", Date: 100, Message: "old", Files: nil, SpecIDs: nil},
+			{ServiceID: svc, Hash: "old2", Date: 200, Message: "older", Files: nil, SpecIDs: nil},
+		}
+		if err := s.SetCommits(ctx, svc, first); err != nil {
+			t.Fatalf("SetCommits first: %v", err)
+		}
+		second := []Commit{
+			{ServiceID: svc, Hash: "new1", Date: 500, Message: "new", Files: []string{"x.go"}, SpecIDs: nil},
+		}
+		if err := s.SetCommits(ctx, svc, second); err != nil {
+			t.Fatalf("SetCommits second: %v", err)
+		}
+		got, err := s.ListCommits(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListCommits: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("replace-all: expected 1 commit, got %d", len(got))
+		}
+		if got[0].Hash != "new1" {
+			t.Errorf("replace-all: hash = %q, want new1", got[0].Hash)
+		}
+	})
+
+	t.Run("commits_empty_service", func(t *testing.T) {
+		got, err := s.ListCommits(ctx, "svc-no-such-commits-xyz")
+		if err != nil {
+			t.Fatalf("ListCommits empty: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("expected empty for unknown service, got %d", len(got))
+		}
+	})
 }
 
 // -------------------------------------------------------------------------

@@ -96,6 +96,17 @@ CREATE TABLE IF NOT EXISTS service_meta (
     indexed_commit  TEXT   NOT NULL DEFAULT '',
     indexed_at      BIGINT NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS commits (
+    service_id TEXT    NOT NULL,
+    hash       TEXT    NOT NULL,
+    author     TEXT    NOT NULL DEFAULT '',
+    date       BIGINT  NOT NULL DEFAULT 0,
+    message    TEXT    NOT NULL DEFAULT '',
+    files      TEXT    NOT NULL DEFAULT '[]',
+    spec_ids   TEXT    NOT NULL DEFAULT '[]',
+    PRIMARY KEY (service_id, hash)
+);
 `
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
@@ -464,6 +475,60 @@ WHERE service_id = ?
 		return ServiceMeta{}, false, fmt.Errorf("GetServiceMeta: %w", err)
 	}
 	return m, true, nil
+}
+
+// SetCommits replaces all commits for serviceID with the provided slice.
+func (s *DuckStore) SetCommits(ctx context.Context, serviceID string, commits []Commit) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("SetCommits begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if _, err := tx.ExecContext(ctx, `DELETE FROM commits WHERE service_id = ?`, serviceID); err != nil {
+		return fmt.Errorf("SetCommits delete: %w", err)
+	}
+	if len(commits) > 0 {
+		stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO commits (service_id, hash, author, date, message, files, spec_ids)
+VALUES (?, ?, ?, ?, ?, ?, ?)`)
+		if err != nil {
+			return fmt.Errorf("SetCommits prepare: %w", err)
+		}
+		defer stmt.Close()
+		for _, c := range commits {
+			filesJSON, _ := json.Marshal(c.Files)
+			specJSON, _ := json.Marshal(c.SpecIDs)
+			if _, err := stmt.ExecContext(ctx, c.ServiceID, c.Hash, c.Author, c.Date, c.Message,
+				string(filesJSON), string(specJSON)); err != nil {
+				return fmt.Errorf("SetCommits insert: %w", err)
+			}
+		}
+	}
+	return tx.Commit()
+}
+
+// ListCommits returns commits for serviceID newest-first (by date desc).
+func (s *DuckStore) ListCommits(ctx context.Context, serviceID string) ([]Commit, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT service_id, hash, author, date, message, files, spec_ids
+		 FROM commits WHERE service_id = ? ORDER BY date DESC`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("ListCommits query: %w", err)
+	}
+	defer rows.Close()
+	var out []Commit
+	for rows.Next() {
+		var c Commit
+		var filesJSON, specJSON string
+		if err := rows.Scan(&c.ServiceID, &c.Hash, &c.Author, &c.Date, &c.Message,
+			&filesJSON, &specJSON); err != nil {
+			return nil, fmt.Errorf("ListCommits scan: %w", err)
+		}
+		_ = json.Unmarshal([]byte(filesJSON), &c.Files)
+		_ = json.Unmarshal([]byte(specJSON), &c.SpecIDs)
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // Close releases the underlying database connection pool.

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/store"
 )
 
 // JSON-RPC 2.0 error codes.
@@ -28,6 +29,10 @@ const (
 	ErrCodeParams   = -32602
 	ErrCodeInternal = -32603
 )
+
+// CommitInfo is the MCP-layer commit record returned by ListCommits.
+// It is a presentation-layer view of a git commit for tool output.
+type CommitInfo = store.CommitInfo
 
 // QueryInterface is the minimal query surface the MCP tools depend on.
 // It is satisfied by *client.Client, *query.Engine, or any fake for testing.
@@ -49,6 +54,9 @@ type QueryInterface interface {
 	// serviceID.  Implementations that do not persist this may return
 	// ("", "", false, nil).
 	ServiceMeta(ctx context.Context, serviceID string) (path, indexedCommit string, found bool, err error)
+	// ListCommits returns commit history for serviceID newest-first.
+	// Implementations that do not support commits may return nil, nil.
+	ListCommits(ctx context.Context, serviceID string) ([]CommitInfo, error)
 }
 
 // rpcRequest is a minimal representation of a JSON-RPC 2.0 request. The id
