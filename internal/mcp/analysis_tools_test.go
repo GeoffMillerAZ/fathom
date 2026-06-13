@@ -51,6 +51,10 @@ func (r *richFakeBackend) Sources(_ context.Context, _ string) ([]core.SourceFil
 
 func (r *richFakeBackend) IngestService(_ context.Context, _ string) error { return nil }
 
+func (r *richFakeBackend) ServiceMeta(_ context.Context, _ string) (string, string, bool, error) {
+	return "", "", false, nil
+}
+
 // compile-time: richFakeBackend must satisfy mcp.QueryInterface.
 var _ mcp.QueryInterface = (*richFakeBackend)(nil)
 

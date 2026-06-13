@@ -248,17 +248,17 @@ func (c *Client) Services(ctx context.Context) ([]string, error) {
 
 // Sources discovers and fetches every source file for the named service using
 // the client's connector. It calls Discover(svc) then Fetch for each ref and
-// returns the results as []SourceFile sorted by path. The service Path defaults
-// to service ID when no local mapping is available; callers with a local path
-// should pass it as the ID if needed.
+// returns the results as []SourceFile sorted by path.
 //
-// Note: Sources uses the client's connector directly — the service must have a
-// valid ServiceRef.Path (for LocalConnector) or equivalent. For connectors that
-// only need the ID (e.g. FauxConnector), any path is acceptable.
+// The path is resolved from the service_meta recorded at ingest time when
+// available — so source-scanning tools work regardless of the server's
+// working directory. It falls back to the service ID as path so connectors
+// that only need the ID (like FauxConnector) keep working.
 func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
-	// Build a minimal ServiceRef with the service ID as path so connectors that
-	// use svc.ID (like FauxConnector) work without a real path.
 	svcRef := core.ServiceRef{ID: service, Path: service}
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
 
 	refs, err := c.conn.Discover(ctx, svcRef)
 	if err != nil {
@@ -287,6 +287,20 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 func (c *Client) IngestService(ctx context.Context, service string) error {
 	_, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: service})
 	return err
+}
+
+// ServiceMeta returns the stored ingest metadata (path, indexed commit) for
+// serviceID.  found is false when no metadata has been recorded yet.
+// This satisfies the mcp.QueryInterface.ServiceMeta contract.
+func (c *Client) ServiceMeta(ctx context.Context, serviceID string) (path, indexedCommit string, found bool, err error) {
+	meta, ok, storeErr := c.st.GetServiceMeta(ctx, serviceID)
+	if storeErr != nil {
+		return "", "", false, storeErr
+	}
+	if !ok {
+		return "", "", false, nil
+	}
+	return meta.Path, meta.IndexedCommit, true, nil
 }
 
 // Close releases all resources held by the client (including the store).

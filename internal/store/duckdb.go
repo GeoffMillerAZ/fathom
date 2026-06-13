@@ -89,6 +89,13 @@ CREATE TABLE IF NOT EXISTS doc_summaries (
     summary    TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, source_ref)
 );
+
+CREATE TABLE IF NOT EXISTS service_meta (
+    service_id      TEXT   NOT NULL PRIMARY KEY,
+    path            TEXT   NOT NULL DEFAULT '',
+    indexed_commit  TEXT   NOT NULL DEFAULT '',
+    indexed_at      BIGINT NOT NULL DEFAULT 0
+);
 `
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
@@ -423,6 +430,40 @@ SELECT DISTINCT service_id FROM observations ORDER BY service_id
 		return nil, fmt.Errorf("ListServiceIDs rows: %w", err)
 	}
 	return ids, nil
+}
+
+// SetServiceMeta upserts the ingest metadata for svc.ServiceID.
+func (s *DuckStore) SetServiceMeta(ctx context.Context, meta ServiceMeta) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO service_meta (service_id, path, indexed_commit, indexed_at)
+VALUES (?, ?, ?, ?)
+ON CONFLICT (service_id) DO UPDATE SET
+    path           = excluded.path,
+    indexed_commit = excluded.indexed_commit,
+    indexed_at     = excluded.indexed_at
+`, meta.ServiceID, meta.Path, meta.IndexedCommit, meta.IndexedAt)
+	if err != nil {
+		return fmt.Errorf("SetServiceMeta: %w", err)
+	}
+	return nil
+}
+
+// GetServiceMeta returns the ingest metadata for serviceID.
+// found is false when no row exists.
+func (s *DuckStore) GetServiceMeta(ctx context.Context, serviceID string) (ServiceMeta, bool, error) {
+	var m ServiceMeta
+	err := s.db.QueryRowContext(ctx, `
+SELECT service_id, path, indexed_commit, indexed_at
+FROM service_meta
+WHERE service_id = ?
+`, serviceID).Scan(&m.ServiceID, &m.Path, &m.IndexedCommit, &m.IndexedAt)
+	if err == sql.ErrNoRows {
+		return ServiceMeta{}, false, nil
+	}
+	if err != nil {
+		return ServiceMeta{}, false, fmt.Errorf("GetServiceMeta: %w", err)
+	}
+	return m, true, nil
 }
 
 // Close releases the underlying database connection pool.

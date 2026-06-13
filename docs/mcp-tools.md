@@ -32,12 +32,13 @@ These tools are visible regardless of the active profile.
 | `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode]}` | Locate symbol definitions matching a bare name or SymbolKey in the service |
 | `capabilities` | — | `{tools, active_profile, tool_count}` | List all currently visible tools and the active profile |
 | `server_stats` | — | `{uptime_seconds, request_count, started_at}` | Return server uptime and total request count |
-| `staleness_report` | `service` (req) | `{service, source_count, sources}` | Return a staleness summary: distinct source files and their last-ingested state |
+| `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest) |
 | `list_sources` | `service` (req) | `{sources: [string]}` | List distinct source file paths ingested for the service |
 | `secret_scan` | `service` (req) | `{findings: [Finding]}` | Scan source files for hardcoded tokens, high-entropy strings, AWS keys, JWTs, PEM headers, credential-named variables |
 | `shell_out` | `service` (req) | `{findings: [Finding]}` | Find shell-out call sites: `exec.Command` (Go), `subprocess` (Python), `child_process` (JS/TS) |
 | `http_client_calls` | `service` (req) | `{findings: [Finding]}` | Find HTTP client call sites: `http.Get/Post/.Do()` (Go), `fetch`/`axios` (JS/TS), `requests` (Python) |
 | `import_cycles` | `pkg_imports` (req): `{pkg: [imports]}` | `{cycles: [[string]]}` | Detect import cycles in a package import graph; returns SCCs that form cycles |
+| `brief` | `service` (req), `symbols` (opt: `[string]`), `concern` (opt), `budget` (opt, default 16000 chars) | `{brief: string}` | Pre-pack worker context: resolve named symbols, run a concern-scoped query, and return a paste-ready markdown brief. Truncation is always explicit — the output says so when it hits the budget. |
 
 `Finding` shape: `{file, line, rule, message}`.
 
@@ -99,6 +100,7 @@ For cross-service investigation, incident response, and understanding code struc
 | `endpoint_inventory` | `service` (req) | `{endpoints: [{method, path, handlers, files, lines}]}` | Aggregate HTTP routes across all files into a deduplicated endpoint inventory |
 | `dependencies` | `service` (req) | `{dependencies: [{name, version, direct, ecosystem}]}` | Parse dependency lockfiles (go.sum, npm, pip, gem, cargo) and return a SBOM-style dependency list |
 | `deps` | `service` (req) | same as `dependencies` | Alias for `dependencies` |
+| `spec_refs` | `service` (req), `pattern` (opt regex), `spec` (opt) | `{specs: {spec_id: [{file, line}]}, total_refs, files_scanned}` | Scan service source files for spec-ID references. Default pattern covers `[US/EP/FR/NFR-N]`, `MN.N`, and `doc N`. Results are deterministically sorted (spec_id asc, file asc, line asc). Use `spec` to filter to a single normalised ID (e.g. `"M18.2"`). |
 
 ---
 

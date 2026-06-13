@@ -96,6 +96,10 @@ func (f *fakeBackend) Sources(_ context.Context, _ string) ([]core.SourceFile, e
 
 func (f *fakeBackend) IngestService(_ context.Context, _ string) error { return nil }
 
+func (f *fakeBackend) ServiceMeta(_ context.Context, _ string) (string, string, bool, error) {
+	return "", "", false, nil
+}
+
 // ─── find_callers ────────────────────────────────────────────────────────────
 
 func TestFindCallers(t *testing.T) {

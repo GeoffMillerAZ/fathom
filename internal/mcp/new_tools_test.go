@@ -50,6 +50,10 @@ func (e *extendedFakeBackend) Sources(_ context.Context, _ string) ([]core.Sourc
 
 func (e *extendedFakeBackend) IngestService(_ context.Context, _ string) error { return nil }
 
+func (e *extendedFakeBackend) ServiceMeta(_ context.Context, _ string) (string, string, bool, error) {
+	return "", "", false, nil
+}
+
 // compile-time check.
 var _ mcp.QueryInterface = (*extendedFakeBackend)(nil)
 

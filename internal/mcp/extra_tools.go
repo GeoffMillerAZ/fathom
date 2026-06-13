@@ -21,6 +21,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -108,6 +109,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 
 	// ── schema ───────────────────────────────────────────────────────────────
 	registerSchemaExport(s, backend)
+
+	// ── spec / context ───────────────────────────────────────────────────────
+	registerSpecRefs(s, backend)
+	registerBrief(s, backend)
 }
 
 // ─── investigation: blast_radius ─────────────────────────────────────────────
@@ -2086,4 +2091,197 @@ func registerSchemaExport(s *Server, backend QueryInterface) {
 			return map[string]any{"format": "json", "output": jsonStr}, nil
 		}
 	})
+}
+
+// ─── spec / context: spec_refs ────────────────────────────────────────────────
+
+func registerSpecRefs(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name: "spec_refs",
+		Description: "Scan service source files for spec-ID references and return a grouped map of spec_id → [{file, line}]. " +
+			"Covers bracketed IDs ([US-042], [EP-013]), milestone IDs (M18.2), and doc references (doc 31). " +
+			"Results are deterministically sorted (spec_id asc, file asc, line asc).",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"pattern": map[string]any{"type": "string", "description": "Optional regex override (default covers [US/EP/FR/NFR-N], MN.N, doc N)"},
+				"spec":    map[string]any{"type": "string", "description": "Optional: filter output to a single normalised spec ID (e.g. \"M18.2\")"},
+			},
+			"required": []string{"service"},
+		},
+		group: GroupInvestigation,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		if backend == nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+		}
+		var p struct {
+			Service string `json:"service"`
+			Pattern string `json:"pattern"`
+			Spec    string `json:"spec"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid args"}
+		}
+		if p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: service required"}
+		}
+		files, rpcErr := fetchSources(ctx, backend, p.Service)
+		if rpcErr != nil {
+			return nil, rpcErr
+		}
+		// Build path→content map for the pure ExtractFileRefs function.
+		fileMap := make(map[string]string, len(files))
+		for _, f := range files {
+			fileMap[f.Path] = string(f.Content)
+		}
+		refs, scanned, err := sdd.ExtractFileRefs(fileMap, p.Pattern, p.Spec)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_refs: invalid pattern: " + err.Error()}
+		}
+		// Group refs by spec_id.
+		specsMap := make(map[string][]any)
+		for _, r := range refs {
+			specsMap[r.SpecID] = append(specsMap[r.SpecID], map[string]any{
+				"file": r.File,
+				"line": r.Line,
+			})
+		}
+		return map[string]any{
+			"specs":         specsMap,
+			"total_refs":    len(refs),
+			"files_scanned": scanned,
+		}, nil
+	})
+}
+
+// ─── spec / context: brief ────────────────────────────────────────────────────
+
+// defaultBriefBudget is the default char budget for the brief tool (≈4000 tokens × 4 chars/tok).
+const defaultBriefBudget = 16000
+
+func registerBrief(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name: "brief",
+		Description: "Pre-pack worker context in one call: resolve named symbols, run concern-scoped query, and return a paste-ready markdown brief. " +
+			"Respects a char budget; truncated output says so explicitly.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"symbols": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Optional symbol names to resolve via find_symbol"},
+				"concern": map[string]any{"type": "string", "description": "Optional concern keyword for query_symbols hit list"},
+				"budget":  map[string]any{"type": "integer", "description": "Character budget (default 16000 ≈ 4000 tokens)"},
+			},
+			"required": []string{"service"},
+		},
+		group: GroupShared,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		if backend == nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
+		}
+		var p struct {
+			Service string   `json:"service"`
+			Symbols []string `json:"symbols"`
+			Concern string   `json:"concern"`
+			Budget  int      `json:"budget"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "brief: invalid args"}
+		}
+		if p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "brief: service required"}
+		}
+		budget := p.Budget
+		if budget <= 0 {
+			budget = defaultBriefBudget
+		}
+		charBudget := budget * 4
+
+		// Fetch staleness summary for the header.
+		stalenessNote := "unknown"
+		if _, ic, found, _ := backend.ServiceMeta(ctx, p.Service); found {
+			if ic != "" {
+				stalenessNote = "indexed at commit " + ic[:min8(len(ic), 8)]
+			} else {
+				stalenessNote = "indexed (no git)"
+			}
+		}
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "## Pre-packed context (sextant brief · service %s · %s)\n", p.Service, stalenessNote)
+
+		// Symbols section.
+		if len(p.Symbols) > 0 {
+			fmt.Fprintf(&sb, "\n### Symbols\n")
+			for _, sym := range p.Symbols {
+				nodes, err := backend.FindSymbol(ctx, p.Service, sym)
+				if err != nil || len(nodes) == 0 {
+					fmt.Fprintf(&sb, "- `%s` — NOT FOUND — verify before use\n", sym)
+					continue
+				}
+				n := nodes[0]
+				sig := n.Signature
+				if sig == "" {
+					sig = string(n.Kind)
+				}
+				fmt.Fprintf(&sb, "- `%s` — `%s` — %s:%d\n", n.Name, sig, n.FilePath, n.Line)
+			}
+			if sb.Len() > charBudget {
+				return truncatedBriefResult(&sb, charBudget), nil
+			}
+		}
+
+		// Concern section.
+		if p.Concern != "" {
+			fmt.Fprintf(&sb, "\n### Concern: %s\n", p.Concern)
+			result, err := backend.QuerySymbols(ctx, core.Query{
+				ServiceID: p.Service,
+				ConcernID: p.Concern,
+				TopN:      20,
+			})
+			if err == nil {
+				for _, n := range result.Nodes {
+					if sb.Len() > charBudget {
+						break
+					}
+					sig := n.Signature
+					if sig == "" {
+						sig = string(n.Kind)
+					}
+					fmt.Fprintf(&sb, "- `%s` — %s — %s:%d — %s\n", n.Name, string(n.Kind), n.FilePath, n.Line, sig)
+				}
+			}
+			if sb.Len() > charBudget {
+				return truncatedBriefResult(&sb, charBudget), nil
+			}
+		}
+
+		return map[string]any{"brief": sb.String()}, nil
+	})
+}
+
+// truncatedBriefResult trims the brief to charBudget chars and appends a
+// clear truncation notice, then returns the result payload.
+func truncatedBriefResult(sb *strings.Builder, charBudget int) map[string]any {
+	text := sb.String()
+	remaining := len(text) - charBudget
+	if remaining < 0 {
+		remaining = 0
+	}
+	trimmed := text[:charBudget]
+	// Find a safe line boundary.
+	if i := strings.LastIndex(trimmed, "\n"); i > 0 {
+		trimmed = trimmed[:i]
+	}
+	notice := fmt.Sprintf("\n\n…truncated at budget (%d more chars)\n", remaining)
+	return map[string]any{"brief": trimmed + notice}
+}
+
+// min8 returns the minimum of a and b (avoids importing math for one call).
+func min8(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

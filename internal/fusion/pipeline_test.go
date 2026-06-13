@@ -14,6 +14,63 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/store"
 )
 
+// TestIngest_WithGitHead verifies that WithGitHead injects a fake commit hash
+// that ends up in ServiceMeta after Ingest.
+func TestIngest_WithGitHead(t *testing.T) {
+	const fakeCommit = "deadbeef1234567890abcdef"
+	conn := connector.NewFauxConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	p.WithGitHead(func(_ string) string { return fakeCommit })
+
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, paymentSvc); err != nil {
+		t.Fatalf("Ingest error: %v", err)
+	}
+
+	meta, found, err := st.GetServiceMeta(ctx, paymentSvc.ID)
+	if err != nil {
+		t.Fatalf("GetServiceMeta: %v", err)
+	}
+	if !found {
+		t.Fatal("ServiceMeta not found after Ingest")
+	}
+	if meta.IndexedCommit != fakeCommit {
+		t.Errorf("IndexedCommit = %q, want %q", meta.IndexedCommit, fakeCommit)
+	}
+	if meta.ServiceID != paymentSvc.ID {
+		t.Errorf("ServiceID = %q, want %q", meta.ServiceID, paymentSvc.ID)
+	}
+	if meta.IndexedAt == 0 {
+		t.Error("IndexedAt is zero, want non-zero timestamp")
+	}
+}
+
+// TestIngest_WithGitHead_Empty verifies that a git function returning "" is
+// stored as-is (best-effort — no error even with empty commit).
+func TestIngest_WithGitHead_Empty(t *testing.T) {
+	conn := connector.NewFauxConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	p.WithGitHead(func(_ string) string { return "" })
+
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, paymentSvc); err != nil {
+		t.Fatalf("Ingest error: %v", err)
+	}
+
+	meta, found, err := st.GetServiceMeta(ctx, paymentSvc.ID)
+	if err != nil {
+		t.Fatalf("GetServiceMeta: %v", err)
+	}
+	if !found {
+		t.Fatal("ServiceMeta not found after Ingest")
+	}
+	if meta.IndexedCommit != "" {
+		t.Errorf("IndexedCommit = %q, want empty", meta.IndexedCommit)
+	}
+}
+
 // paymentSvc is the ServiceRef used throughout all tests.
 var paymentSvc = core.ServiceRef{
 	ID:   "payment-service",

@@ -18,6 +18,7 @@ type MemoryStore struct {
 	fingerprints   map[fpKey]string
 	knowledgeCards map[kcKey]KnowledgeCard
 	docSummaries   map[fpKey]DocSummary
+	serviceMeta    map[string]ServiceMeta
 }
 
 type fpKey struct {
@@ -36,6 +37,7 @@ func NewMemoryStore() *MemoryStore {
 		fingerprints:   make(map[fpKey]string),
 		knowledgeCards: make(map[kcKey]KnowledgeCard),
 		docSummaries:   make(map[fpKey]DocSummary),
+		serviceMeta:    make(map[string]ServiceMeta),
 	}
 }
 
@@ -195,6 +197,23 @@ func (m *MemoryStore) ListServiceIDs(_ context.Context) ([]string, error) {
 	}
 	sort.Strings(ids)
 	return ids, nil
+}
+
+// SetServiceMeta upserts the ingest metadata for meta.ServiceID.
+func (m *MemoryStore) SetServiceMeta(_ context.Context, meta ServiceMeta) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.serviceMeta[meta.ServiceID] = meta
+	return nil
+}
+
+// GetServiceMeta returns the ingest metadata for serviceID.
+// found is false when no metadata has been recorded.
+func (m *MemoryStore) GetServiceMeta(_ context.Context, serviceID string) (ServiceMeta, bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	meta, ok := m.serviceMeta[serviceID]
+	return meta, ok, nil
 }
 
 // Close is a no-op for the in-memory store.

@@ -9,13 +9,31 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
 )
+
+// currentGitHead shells out to git to return HEAD for path.
+// Returns "" when git is unavailable, the path is not a repo, or any error.
+// Only called at query time (not hot path).
+func currentGitHead(path string) string {
+	if path == "" {
+		return ""
+	}
+	var out bytes.Buffer
+	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.String())
+}
 
 // ─── registerMeta ─────────────────────────────────────────────────────────────
 
@@ -80,7 +98,7 @@ func registerServerStats(s *Server) {
 func registerStalenessReport(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "staleness_report",
-		Description: "Return a staleness summary for a service (source files and their last-ingested timestamp).",
+		Description: "Return a staleness summary for a service (source files, last-ingested state, and git commit drift).",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -118,10 +136,29 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			sources = append(sources, f)
 		}
 		sort.Strings(sources)
+
+		// Fetch commit-drift metadata (best-effort; empty strings if unavailable).
+		indexedCommit := ""
+		currentCommit := ""
+		reingestRecommended := false
+		if repoPath, ic, found, metaErr := backend.ServiceMeta(ctx, p.Service); metaErr == nil && found {
+			indexedCommit = ic
+			// Attempt to resolve current HEAD using the stored path.
+			if repoPath != "" {
+				currentCommit = currentGitHead(repoPath)
+			}
+			if indexedCommit != "" && currentCommit != "" && indexedCommit != currentCommit {
+				reingestRecommended = true
+			}
+		}
+
 		return map[string]any{
-			"service":      p.Service,
-			"source_count": len(sources),
-			"sources":      stringsToAny(sources),
+			"service":              p.Service,
+			"source_count":         len(sources),
+			"sources":              stringsToAny(sources),
+			"indexed_commit":       indexedCommit,
+			"current_commit":       currentCommit,
+			"reingest_recommended": reingestRecommended,
 		}, nil
 	})
 }

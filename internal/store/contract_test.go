@@ -553,6 +553,106 @@ func storeContract(t *testing.T, s Store) {
 			}
 		}
 	})
+
+	// ------------------------------------------------------------------ //
+	// ServiceMeta round-trip + upsert
+	// ------------------------------------------------------------------ //
+	t.Run("service_meta_roundtrip", func(t *testing.T) {
+		meta := ServiceMeta{
+			ServiceID:     "svc-meta",
+			Path:          "/code/svc",
+			IndexedCommit: "abc1234",
+			IndexedAt:     1234567890000000000,
+		}
+		if err := s.SetServiceMeta(ctx, meta); err != nil {
+			t.Fatalf("SetServiceMeta: %v", err)
+		}
+		got, found, err := s.GetServiceMeta(ctx, "svc-meta")
+		if err != nil {
+			t.Fatalf("GetServiceMeta: %v", err)
+		}
+		if !found {
+			t.Fatal("expected found after SetServiceMeta")
+		}
+		if got.ServiceID != meta.ServiceID {
+			t.Errorf("ServiceID = %q, want %q", got.ServiceID, meta.ServiceID)
+		}
+		if got.Path != meta.Path {
+			t.Errorf("Path = %q, want %q", got.Path, meta.Path)
+		}
+		if got.IndexedCommit != meta.IndexedCommit {
+			t.Errorf("IndexedCommit = %q, want %q", got.IndexedCommit, meta.IndexedCommit)
+		}
+		if got.IndexedAt != meta.IndexedAt {
+			t.Errorf("IndexedAt = %d, want %d", got.IndexedAt, meta.IndexedAt)
+		}
+	})
+
+	t.Run("service_meta_not_found", func(t *testing.T) {
+		_, found, err := s.GetServiceMeta(ctx, "svc-does-not-exist-xyz")
+		if err != nil {
+			t.Fatalf("GetServiceMeta: %v", err)
+		}
+		if found {
+			t.Error("expected not found for unknown service")
+		}
+	})
+
+	t.Run("service_meta_upsert", func(t *testing.T) {
+		initial := ServiceMeta{
+			ServiceID:     "svc-meta-up",
+			Path:          "/old/path",
+			IndexedCommit: "aaa",
+			IndexedAt:     100,
+		}
+		if err := s.SetServiceMeta(ctx, initial); err != nil {
+			t.Fatalf("SetServiceMeta initial: %v", err)
+		}
+		updated := ServiceMeta{
+			ServiceID:     "svc-meta-up",
+			Path:          "/new/path",
+			IndexedCommit: "bbb",
+			IndexedAt:     200,
+		}
+		if err := s.SetServiceMeta(ctx, updated); err != nil {
+			t.Fatalf("SetServiceMeta update: %v", err)
+		}
+		got, found, err := s.GetServiceMeta(ctx, "svc-meta-up")
+		if err != nil {
+			t.Fatalf("GetServiceMeta after upsert: %v", err)
+		}
+		if !found {
+			t.Fatal("expected found after upsert")
+		}
+		if got.IndexedCommit != "bbb" {
+			t.Errorf("IndexedCommit = %q, want bbb", got.IndexedCommit)
+		}
+		if got.Path != "/new/path" {
+			t.Errorf("Path = %q, want /new/path", got.Path)
+		}
+	})
+
+	t.Run("service_meta_empty_commit", func(t *testing.T) {
+		meta := ServiceMeta{
+			ServiceID:     "svc-meta-empty",
+			Path:          "/some/path",
+			IndexedCommit: "", // no git repo
+			IndexedAt:     999,
+		}
+		if err := s.SetServiceMeta(ctx, meta); err != nil {
+			t.Fatalf("SetServiceMeta empty commit: %v", err)
+		}
+		got, found, err := s.GetServiceMeta(ctx, "svc-meta-empty")
+		if err != nil {
+			t.Fatalf("GetServiceMeta: %v", err)
+		}
+		if !found {
+			t.Fatal("expected found")
+		}
+		if got.IndexedCommit != "" {
+			t.Errorf("IndexedCommit = %q, want empty", got.IndexedCommit)
+		}
+	})
 }
 
 // -------------------------------------------------------------------------

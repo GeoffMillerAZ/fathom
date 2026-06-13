@@ -20,11 +20,14 @@
 package fusion
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -72,13 +75,14 @@ type Report struct {
 
 // Pipeline is the source fusion pipeline.
 type Pipeline struct {
-	conn     connector.Connector
-	st       store.Store
-	exts     map[string]extractor.Extractor
-	cfg      Config
-	enricher *llm.Enricher // nil → enrichment disabled
-	mu       sync.Mutex
-	queue    map[string][]pendingFile // serviceID → pending files (lazy mode)
+	conn      connector.Connector
+	st        store.Store
+	exts      map[string]extractor.Extractor
+	cfg       Config
+	enricher  *llm.Enricher // nil → enrichment disabled
+	mu        sync.Mutex
+	queue     map[string][]pendingFile // serviceID → pending files (lazy mode)
+	gitHeadFn func(path string) string // injectable; default = realGitHead
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.
@@ -86,6 +90,22 @@ type pendingFile struct {
 	ref     core.SourceRef
 	content []byte
 	hash    string
+}
+
+// realGitHead shells out to git to resolve HEAD for the given directory path.
+// Returns an empty string when git is unavailable, the directory is not a repo,
+// or any other error occurs.  Never panics, never returns an error.
+func realGitHead(path string) string {
+	if path == "" {
+		return ""
+	}
+	var out bytes.Buffer
+	cmd := exec.Command("git", "-C", path, "rev-parse", "HEAD")
+	cmd.Stdout = &out
+	if err := cmd.Run(); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(out.String())
 }
 
 // New constructs a Pipeline with extractors pre-registered for all supported
@@ -96,11 +116,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		cfg.Concurrency = 1
 	}
 	p := &Pipeline{
-		conn:  conn,
-		st:    st,
-		cfg:   cfg,
-		exts:  map[string]extractor.Extractor{},
-		queue: map[string][]pendingFile{},
+		conn:      conn,
+		st:        st,
+		cfg:       cfg,
+		exts:      map[string]extractor.Extractor{},
+		queue:     map[string][]pendingFile{},
+		gitHeadFn: realGitHead,
 	}
 
 	// Go
@@ -153,6 +174,15 @@ func (p *Pipeline) RegisterExtractor(ext string, e extractor.Extractor) {
 	p.exts[ext] = e
 }
 
+// WithGitHead replaces the function used to resolve the git HEAD commit for a
+// directory path. The replacement is called with svc.Path at ingest time and
+// must return an empty string instead of an error when the commit is
+// unavailable.  This is intended for unit tests; production code uses the
+// default (realGitHead).
+func (p *Pipeline) WithGitHead(fn func(path string) string) {
+	p.gitHeadFn = fn
+}
+
 // WithEnricher injects an *llm.Enricher into the pipeline. Enrichment only
 // runs when Config.Enrich is also true; passing nil is a no-op.
 func (p *Pipeline) WithEnricher(e *llm.Enricher) {
@@ -186,6 +216,19 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	var report Report
 	report.Discovered = len(refs)
+
+	// Record ingest metadata (git HEAD + path) for this service.  This is
+	// best-effort: a failure here does not abort the ingest.
+	{
+		commit := p.gitHeadFn(svc.Path)
+		meta := store.ServiceMeta{
+			ServiceID:     svc.ID,
+			Path:          svc.Path,
+			IndexedCommit: commit,
+			IndexedAt:     time.Now().UnixNano(),
+		}
+		_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
+	}
 
 	if len(refs) == 0 {
 		return report, nil

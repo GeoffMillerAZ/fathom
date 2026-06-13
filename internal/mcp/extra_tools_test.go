@@ -3,7 +3,9 @@
 package mcp_test
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/sextant/internal/core"
@@ -1180,10 +1182,277 @@ func TestExtraToolsInList(t *testing.T) {
 		"estimate_cost", "cost_report", "batch",
 		"proto_contract", "proto_conformance",
 		"schema_export",
+		"spec_refs", "brief",
 	}
 	for _, name := range want {
 		if !names[name] {
 			t.Errorf("extra tool %q not found in tools/list", name)
 		}
 	}
+}
+
+// ─── spec_refs ────────────────────────────────────────────────────────────────
+
+func TestSpecRefs_Basic(t *testing.T) {
+	src := `// implements [US-042] and M18.2
+// see also doc 31
+func Handler() {}
+`
+	srv := mcp.NewServer(&sourcesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "Handler"}}},
+		sources:             []core.SourceFile{{Path: "pkg/handler.go", Content: []byte(src), Lang: "go"}},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1400, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_refs",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	specs, ok := p["specs"].(map[string]any)
+	if !ok {
+		t.Fatalf("spec_refs: specs missing or wrong type: %v", p)
+	}
+	if specs["US-042"] == nil {
+		t.Error("spec_refs: expected US-042 in specs")
+	}
+	if specs["M18.2"] == nil {
+		t.Error("spec_refs: expected M18.2 in specs")
+	}
+	if specs["doc 31"] == nil {
+		t.Error("spec_refs: expected 'doc 31' in specs")
+	}
+	if p["total_refs"] == nil {
+		t.Error("spec_refs: total_refs missing")
+	}
+	if p["files_scanned"] == nil {
+		t.Error("spec_refs: files_scanned missing")
+	}
+}
+
+func TestSpecRefs_SpecFilter(t *testing.T) {
+	src := `// [US-042] is here
+// [US-099] is also here
+`
+	srv := mcp.NewServer(&sourcesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "X"}}},
+		sources:             []core.SourceFile{{Path: "pkg/x.go", Content: []byte(src), Lang: "go"}},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1401, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_refs",
+			"arguments": map[string]any{"service": "svc", "spec": "US-042"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	specs, ok := p["specs"].(map[string]any)
+	if !ok {
+		t.Fatalf("spec_refs: specs missing: %v", p)
+	}
+	if specs["US-042"] == nil {
+		t.Error("spec_refs: filtered US-042 missing from result")
+	}
+	if specs["US-099"] != nil {
+		t.Error("spec_refs: US-099 must be filtered out")
+	}
+}
+
+func TestSpecRefs_MissingService(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1402, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_refs",
+			"arguments": map[string]any{},
+		},
+	})
+	xtraError(t, resp)
+}
+
+func TestSpecRefs_InvalidPattern(t *testing.T) {
+	srv := mcp.NewServer(&sourcesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{},
+		sources:             []core.SourceFile{{Path: "f.go", Content: []byte("x"), Lang: "go"}},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1403, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_refs",
+			"arguments": map[string]any{"service": "svc", "pattern": "[invalid("},
+		},
+	})
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("expected params error, got code %v", code)
+	}
+}
+
+func TestSpecRefs_LineNumbers(t *testing.T) {
+	src := "line1\n[US-001]\nline3\n[US-001]\n"
+	srv := mcp.NewServer(&sourcesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{},
+		sources:             []core.SourceFile{{Path: "f.go", Content: []byte(src), Lang: "go"}},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1404, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_refs",
+			"arguments": map[string]any{"service": "svc", "spec": "US-001"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	specs := p["specs"].(map[string]any)
+	hits, ok := specs["US-001"].([]any)
+	if !ok {
+		t.Fatalf("US-001 hits missing: %v", specs)
+	}
+	if len(hits) != 2 {
+		t.Errorf("expected 2 hits for US-001, got %d", len(hits))
+	}
+	lines := []float64{}
+	for _, h := range hits {
+		hm := h.(map[string]any)
+		lines = append(lines, hm["line"].(float64))
+	}
+	if lines[0] != 2 || lines[1] != 4 {
+		t.Errorf("expected lines [2,4], got %v", lines)
+	}
+}
+
+// ─── brief ────────────────────────────────────────────────────────────────────
+
+// briefFakeBackend is a sourcesFakeBackend that also handles FindSymbol and
+// QuerySymbols for the brief tool tests.
+type briefFakeBackend struct {
+	sourcesFakeBackend
+	symbolMap   map[string][]core.SymbolNode // name → nodes
+	queryResult core.QueryResult
+}
+
+func (b *briefFakeBackend) FindSymbol(_ context.Context, _ string, name string) ([]core.SymbolNode, error) {
+	if nodes, ok := b.symbolMap[name]; ok {
+		return nodes, nil
+	}
+	return nil, nil
+}
+
+func (b *briefFakeBackend) QuerySymbols(_ context.Context, _ core.Query) (core.QueryResult, error) {
+	return b.queryResult, nil
+}
+
+var _ mcp.QueryInterface = (*briefFakeBackend)(nil)
+
+func TestBrief_SymbolsAndConcern(t *testing.T) {
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		queryResult: core.QueryResult{
+			Nodes: []core.SymbolNode{
+				{Name: "Middleware", Kind: core.KindGoFunc, FilePath: "pkg/mw.go", Line: 5, Signature: "func Middleware()"},
+			},
+		},
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1500, Method: "tools/call",
+		Params: map[string]any{
+			"name": "brief",
+			"arguments": map[string]any{
+				"service": "svc",
+				"symbols": []string{"Handler"},
+				"concern": "auth",
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if !strings.Contains(brief, "Handler") {
+		t.Error("brief: expected Handler in brief text")
+	}
+	if !strings.Contains(brief, "Middleware") {
+		t.Error("brief: expected concern hit Middleware in brief text")
+	}
+}
+
+func TestBrief_NotFoundSymbol(t *testing.T) {
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{},
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1501, Method: "tools/call",
+		Params: map[string]any{
+			"name": "brief",
+			"arguments": map[string]any{
+				"service": "svc",
+				"symbols": []string{"MissingSymbol"},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if !strings.Contains(brief, "NOT FOUND") {
+		t.Errorf("brief: expected NOT FOUND for missing symbol, got: %q", brief)
+	}
+}
+
+func TestBrief_BudgetTruncation(t *testing.T) {
+	// Create a symbol with a long signature that forces budget overflow.
+	longSig := strings.Repeat("x", 500)
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"BigSym": {{Name: "BigSym", Kind: core.KindGoFunc, FilePath: "pkg/big.go", Line: 1, Signature: longSig}},
+		},
+	}
+	srv := mcp.NewServer(be)
+	// Use budget=1 to force truncation (charBudget = 4 chars).
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1502, Method: "tools/call",
+		Params: map[string]any{
+			"name": "brief",
+			"arguments": map[string]any{
+				"service": "svc",
+				"symbols": []string{"BigSym"},
+				"budget":  1,
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if !strings.Contains(brief, "truncated") {
+		t.Errorf("brief: expected truncation notice, got: %q", brief)
+	}
+}
+
+func TestBrief_MissingService(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1503, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "brief",
+			"arguments": map[string]any{},
+		},
+	})
+	xtraError(t, resp)
 }

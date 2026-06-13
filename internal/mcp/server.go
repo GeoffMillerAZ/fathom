@@ -45,6 +45,10 @@ type QueryInterface interface {
 	// IngestService triggers a re-ingest of the named service, refreshing the
 	// store.  Implementations that do not support re-ingest may return nil.
 	IngestService(ctx context.Context, service string) error
+	// ServiceMeta returns the stored ingest metadata (path, indexed commit) for
+	// serviceID.  Implementations that do not persist this may return
+	// ("", "", false, nil).
+	ServiceMeta(ctx context.Context, serviceID string) (path, indexedCommit string, found bool, err error)
 }
 
 // rpcRequest is a minimal representation of a JSON-RPC 2.0 request. The id

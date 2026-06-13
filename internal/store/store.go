@@ -29,6 +29,16 @@ type DocSummary struct {
 	Summary   string
 }
 
+// ServiceMeta records per-service ingest metadata: the repo path and the git
+// commit that was HEAD at ingest time. Both may be empty strings when the
+// service has no git repo or git is unavailable.
+type ServiceMeta struct {
+	ServiceID     string
+	Path          string // filesystem path used at ingest time
+	IndexedCommit string // git HEAD at ingest time ("" if unavailable)
+	IndexedAt     int64  // Unix nano
+}
+
 // Store is the persistence contract for sextant's evidence layer.
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
@@ -75,6 +85,14 @@ type Store interface {
 	// ListServiceIDs returns the sorted, distinct set of service IDs present in
 	// the observations table.  An empty store returns a nil slice with no error.
 	ListServiceIDs(ctx context.Context) ([]string, error)
+
+	// SetServiceMeta upserts the ingest metadata for serviceID. Implementations
+	// must be idempotent: repeated calls for the same serviceID replace the row.
+	SetServiceMeta(ctx context.Context, meta ServiceMeta) error
+
+	// GetServiceMeta returns the ingest metadata for serviceID.
+	// found is false when no metadata has been recorded for that service.
+	GetServiceMeta(ctx context.Context, serviceID string) (meta ServiceMeta, found bool, err error)
 
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.
