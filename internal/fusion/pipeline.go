@@ -357,6 +357,7 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					ContentHash:  pf.hash,
 					Calls:        node.Calls,
 					Complexity:   node.Complexity,
+					Line:         node.Line,
 					IngestedAt:   now,
 				})
 			}

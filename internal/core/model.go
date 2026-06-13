@@ -99,6 +99,7 @@ type Observation struct {
 	ContentHash  string   // sha256 of the source content (hash-gate fingerprint)
 	Calls        []string // callee symbol keys, for call-graph edges
 	Complexity   int      // cyclomatic complexity (0 = not applicable / not computed)
+	Line         int      // 1-based line of the symbol's definition in SourceRef; 0 = unknown
 	IngestedAt   time.Time
 }
 

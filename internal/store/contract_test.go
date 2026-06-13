@@ -464,6 +464,61 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// Line field round-trips through Put + Query
+	// ------------------------------------------------------------------ //
+	t.Run("line_roundtrip", func(t *testing.T) {
+		obs := []core.Observation{
+			{
+				ServiceID:    "svc-line",
+				ConcernID:    "nav",
+				SourceRef:    "pkg/nav/nav.go",
+				SourceKind:   core.KindGoFunc,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "Navigate",
+				Claim:        "func Navigate(ctx context.Context) error",
+				ContentHash:  "ln123",
+				Calls:        nil,
+				Line:         42,
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+			{
+				ServiceID:    "svc-line",
+				ConcernID:    "nav",
+				SourceRef:    "pkg/nav/nav.go",
+				SourceKind:   core.KindGoFunc,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "NoLine",
+				Claim:        "func NoLine()",
+				ContentHash:  "ln123",
+				Calls:        nil,
+				Line:         0, // unknown — must round-trip as 0
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+		}
+		if err := s.PutObservations(ctx, obs); err != nil {
+			t.Fatalf("PutObservations: %v", err)
+		}
+		got, err := s.QueryObservations(ctx, "svc-line", "nav")
+		if err != nil {
+			t.Fatalf("QueryObservations: %v", err)
+		}
+		bySymbol := make(map[string]core.Observation, len(got))
+		for _, o := range got {
+			bySymbol[o.Symbol] = o
+		}
+		if o, ok := bySymbol["Navigate"]; !ok {
+			t.Error("Navigate missing from results")
+		} else if o.Line != 42 {
+			t.Errorf("Navigate.Line = %d, want 42", o.Line)
+		}
+		if o, ok := bySymbol["NoLine"]; !ok {
+			t.Error("NoLine missing from results")
+		} else if o.Line != 0 {
+			t.Errorf("NoLine.Line = %d, want 0", o.Line)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// ListServiceIDs returns distinct, sorted service IDs
 	// ------------------------------------------------------------------ //
 	t.Run("list_service_ids", func(t *testing.T) {

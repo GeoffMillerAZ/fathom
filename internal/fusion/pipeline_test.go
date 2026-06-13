@@ -10,6 +10,7 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/connector"
 	"github.com/geoffmilleraz/sextant/internal/core"
 	"github.com/geoffmilleraz/sextant/internal/fusion"
+	"github.com/geoffmilleraz/sextant/internal/query"
 	"github.com/geoffmilleraz/sextant/internal/store"
 )
 
@@ -326,6 +327,52 @@ func TestIngest_ObservationFields(t *testing.T) {
 		}
 		if o.IngestedAt.IsZero() {
 			t.Errorf("IngestedAt is zero for symbol=%q", o.Symbol)
+		}
+	}
+}
+
+// TestIngest_LineNumberRoundTrip verifies that line numbers extracted from Go
+// source survive the full extractor → pipeline → store → query path.
+// payment.go in the fauxtown fixture defines Charge at line 26 and
+// validateCharge at line 34. Both must appear with non-zero Line in the query
+// result returned by query.Engine.FindSymbol.
+func TestIngest_LineNumberRoundTrip(t *testing.T) {
+	conn := connector.NewFauxConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	ctx := context.Background()
+
+	if _, err := p.Ingest(ctx, paymentSvc); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+
+	engine := query.New(st)
+
+	// Verify Charge (exported function) carries its line number.
+	chargeNodes, err := engine.FindSymbol(ctx, paymentSvc.ID, "Charge")
+	if err != nil {
+		t.Fatalf("FindSymbol Charge: %v", err)
+	}
+	if len(chargeNodes) == 0 {
+		t.Fatal("FindSymbol returned no nodes for Charge")
+	}
+	for _, n := range chargeNodes {
+		if n.Name == "Charge" && n.Line == 0 {
+			t.Errorf("Charge.Line = 0, want non-zero (extractor sets it from AST position)")
+		}
+	}
+
+	// Verify validateCharge (unexported) also carries its line number.
+	vcNodes, err := engine.FindSymbol(ctx, paymentSvc.ID, "validateCharge")
+	if err != nil {
+		t.Fatalf("FindSymbol validateCharge: %v", err)
+	}
+	if len(vcNodes) == 0 {
+		t.Fatal("FindSymbol returned no nodes for validateCharge")
+	}
+	for _, n := range vcNodes {
+		if n.Name == "validateCharge" && n.Line == 0 {
+			t.Errorf("validateCharge.Line = 0, want non-zero")
 		}
 	}
 }

@@ -334,13 +334,15 @@ func keywordScore(o core.Observation, keywords []string) int {
 // Observations do not carry package info (extractor concern, not query concern).
 func observationToNode(o core.Observation) core.SymbolNode {
 	return core.SymbolNode{
-		Service:   o.ServiceID,
-		Name:      o.Symbol,
-		Kind:      o.SourceKind,
-		FilePath:  o.SourceRef,
-		Signature: o.Claim,
-		Calls:     o.Calls,
-		Tier:      o.EvidenceTier,
+		Service:    o.ServiceID,
+		Name:       o.Symbol,
+		Kind:       o.SourceKind,
+		FilePath:   o.SourceRef,
+		Line:       o.Line,
+		Signature:  o.Claim,
+		Calls:      o.Calls,
+		Tier:       o.EvidenceTier,
+		Complexity: o.Complexity,
 	}
 }
 
