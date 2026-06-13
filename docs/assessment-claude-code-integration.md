@@ -34,6 +34,45 @@ always — matcher never handled the `pkg.Name` edge format the Go extractor
 emits), result dedup, and a Templ extractor (Throughline's entire UI layer —
 128 components incl. Go→Templ call edges — was invisible).
 
+## At a glance
+
+(Full SVG version: [assessment-visual.html](assessment-visual.html) — open in a browser.)
+
+```text
+One discovery question ("where is X, who calls it, which doc governs it")
+  before  ██████████████████████████████████████████████  ~55,000 tok (Explore sweep, 30k–80k)
+  after   ▏                                                   ~600 tok (one index query)   ~90× less
+
+Discovery agents per feature wave
+  before  ██  2
+  after       0
+
+Tool calls per comparable backend worker
+  M17.4 (before)  █████████████████████████████████████  148
+  M17.3 (before)  ██████████████████████████████          120
+  M18.1 (after)   ████████                                 32
+  M18.2 (after)   ███████████▌                             47
+
+Wave wall-clock, dispatch → verified commit
+  M17.7/8 (before)  ███████████████████████████  ~105 min
+  M18.1   (after)   ███████████▌                  ~45 min
+  M18.2   (after)   ████████████▎                 ~48 min
+
+Worker tokens per wave (honest: implementation cost is irreducible)
+  M17.7/8 + Explore (before)  █████████████████████  ~421k (321k recorded + ~100k est. Explore)
+  M18.1 (after)               █████████████           258k, zero Explore
+  M18.2 (after)               ██████████▋             213k, zero Explore
+
+Whole-period subagent spend (context only — scopes differ)
+  pre  (4.5 days, M16+M17+reviews)  ███████████████████████████████  11.77M tok · 8,333 calls
+  post (2.5 h, M18.1+M18.2+sextant) █▋                                0.60M tok ·   337 calls
+
+Integration-day dogfooding fixes (sextant's own hygiene)
+  own-repo files indexed   2,427 → 222     (.sextantignore + dir-filter fix)
+  staleness block / query  ~6 KB → ~60 B   (stale-only + counts)
+  cross_repo_callers       always 0 → works (edge-format match bug)
+```
+
 ## 2. Measured numbers
 
 Method: every subagent completion in the session transcript records
