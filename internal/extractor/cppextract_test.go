@@ -143,3 +143,82 @@ func TestCppExtractor_EmptySource(t *testing.T) {
 		t.Errorf("expected 0 nodes for empty source, got %d", len(nodes))
 	}
 }
+
+// cppCallFixture has a free function caller() calling callee() and helper(),
+// plus a class method Widget.render() that also calls callee().
+const cppCallFixture = `
+void callee(int x) { }
+void helper(void) { }
+void caller(void) {
+    callee(1);
+    helper();
+}
+class Widget {
+public:
+    void render() {
+        callee(0);
+    }
+};
+`
+
+func TestCppExtractor_CallEdges(t *testing.T) {
+	e := NewCppExtractor()
+	nodes, err := e.Extract("svc", "calls.cpp", []byte(cppCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("caller calls callee and helper", func(t *testing.T) {
+		n, ok := byName["caller"]
+		if !ok {
+			t.Fatal("expected symbol caller")
+		}
+		wantCalls := map[string]bool{"callee": true, "helper": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in caller.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("caller.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("caller Calls is sorted", func(t *testing.T) {
+		n := byName["caller"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("Widget.render calls callee", func(t *testing.T) {
+		n, ok := byName["Widget.render"]
+		if !ok {
+			t.Fatal("expected symbol Widget.render")
+		}
+		found := false
+		for _, c := range n.Calls {
+			if c == "callee" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("Widget.render.Calls = %v, want to contain %q", n.Calls, "callee")
+		}
+	})
+
+	t.Run("callee has no calls", func(t *testing.T) {
+		n := byName["callee"]
+		if len(n.Calls) != 0 {
+			t.Errorf("callee.Calls = %v, want empty", n.Calls)
+		}
+	})
+}

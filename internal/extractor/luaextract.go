@@ -82,6 +82,7 @@ func walkLua(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls:    treesitter.CollectCalls(n, src, map[string]string{"function_call": "name"}),
 			})
 		}
 		// Do not recurse into the function body — nested function declarations

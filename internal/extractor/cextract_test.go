@@ -139,3 +139,67 @@ func TestCExtractor_EmptySource(t *testing.T) {
 		t.Errorf("expected 0 nodes for empty source, got %d", len(nodes))
 	}
 }
+
+// cCallFixture has caller() calling callee() and helper(), while callee() and
+// helper() themselves make no calls.
+const cCallFixture = `
+void callee(int x) { }
+void helper(void) { }
+void caller(void) {
+    callee(1);
+    helper();
+}
+`
+
+func TestCExtractor_CallEdges(t *testing.T) {
+	e := NewCExtractor()
+	nodes, err := e.Extract("svc", "calls.c", []byte(cCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("caller calls callee and helper", func(t *testing.T) {
+		n, ok := byName["caller"]
+		if !ok {
+			t.Fatal("expected symbol caller")
+		}
+		wantCalls := map[string]bool{"callee": true, "helper": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in caller.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("caller.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("caller Calls is sorted", func(t *testing.T) {
+		n := byName["caller"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("callee has no calls", func(t *testing.T) {
+		n := byName["callee"]
+		if len(n.Calls) != 0 {
+			t.Errorf("callee.Calls = %v, want empty", n.Calls)
+		}
+	})
+
+	t.Run("helper has no calls", func(t *testing.T) {
+		n := byName["helper"]
+		if len(n.Calls) != 0 {
+			t.Errorf("helper.Calls = %v, want empty", n.Calls)
+		}
+	})
+}

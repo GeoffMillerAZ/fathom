@@ -161,6 +161,11 @@ func walkPHP(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls: treesitter.CollectCalls(n, src, map[string]string{
+					"function_call_expression": "function",
+					"member_call_expression":   "name",
+					"scoped_call_expression":   "name",
+				}),
 			})
 		}
 		// Do not recurse into function bodies.
@@ -182,6 +187,11 @@ func walkPHP(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls: treesitter.CollectCalls(n, src, map[string]string{
+					"function_call_expression": "function",
+					"member_call_expression":   "name",
+					"scoped_call_expression":   "name",
+				}),
 			})
 		}
 		// Do not recurse into method bodies.

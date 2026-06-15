@@ -77,6 +77,7 @@ func walkC(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
 		}
 		// Do not recurse into function bodies — local structs/enums are unusual
