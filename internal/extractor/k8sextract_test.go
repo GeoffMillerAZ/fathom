@@ -43,35 +43,41 @@ func TestK8sExtractor_Basic(t *testing.T) {
 	t.Run("Deployment with namespace", func(t *testing.T) {
 		n, ok := byName["Deployment/production/api-server"]
 		if !ok {
-			t.Fatal("expected symbol Deployment/production/api-server")
+			t.Fatalf("expected symbol Deployment/production/api-server; got nodes: %v", k8sNodeNames(nodes))
 		}
 		if n.Kind != core.KindK8sWorkload {
 			t.Errorf("Kind: got %q, want KindK8sWorkload", n.Kind)
 		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+		if n.Signature != "apps/v1" {
+			t.Errorf("Signature: got %q, want apps/v1", n.Signature)
 		}
 	})
 
 	t.Run("Service without namespace", func(t *testing.T) {
 		n, ok := byName["Service/api-svc"]
 		if !ok {
-			t.Fatal("expected symbol Service/api-svc")
+			t.Fatalf("expected symbol Service/api-svc; got nodes: %v", k8sNodeNames(nodes))
 		}
 		if n.Kind != core.KindK8sWorkload {
 			t.Errorf("Kind: got %q, want KindK8sWorkload", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
 	t.Run("Job", func(t *testing.T) {
 		_, ok := byName["Job/migrate-db"]
 		if !ok {
-			t.Fatal("expected symbol Job/migrate-db")
+			t.Fatalf("expected symbol Job/migrate-db; got nodes: %v", k8sNodeNames(nodes))
 		}
 	})
 
 	if len(nodes) != 3 {
-		t.Errorf("expected 3 nodes, got %d: %v", len(nodes), nodes)
+		t.Errorf("expected 3 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
 	}
 }
 
@@ -87,10 +93,143 @@ metadata:
 		t.Fatalf("Extract: %v", err)
 	}
 	if len(nodes) != 1 {
-		t.Fatalf("expected 1 node, got %d", len(nodes))
+		t.Fatalf("expected 1 node, got %d: %v", len(nodes), k8sNodeNames(nodes))
 	}
 	if nodes[0].Name != "ConfigMap/app-config" {
 		t.Errorf("Name: got %q, want ConfigMap/app-config", nodes[0].Name)
+	}
+	if nodes[0].Tier != core.TierVerified {
+		t.Errorf("Tier: got %q, want TierVerified", nodes[0].Tier)
+	}
+}
+
+// TestK8sExtractor_Containers verifies that container image references are
+// emitted as KindK8sContainer nodes for both spec.containers and
+// spec.template.spec.containers paths.
+func TestK8sExtractor_Containers(t *testing.T) {
+	const containerFixture = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: staging
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: registry.example.com/web:v1.2.3
+        - name: sidecar
+          image: envoyproxy/envoy:v1.28.0
+      initContainers:
+        - name: migrator
+          image: registry.example.com/migrator:latest
+`
+	x := extractor.NewK8sExtractor()
+	nodes, err := x.Extract("svc", "web.yaml", []byte(containerFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("workload node", func(t *testing.T) {
+		n, ok := byName["Deployment/staging/web-app"]
+		if !ok {
+			t.Fatalf("expected Deployment/staging/web-app; got: %v", k8sNodeNames(nodes))
+		}
+		if n.Kind != core.KindK8sWorkload {
+			t.Errorf("Kind: got %q, want KindK8sWorkload", n.Kind)
+		}
+	})
+
+	t.Run("container image web", func(t *testing.T) {
+		n, ok := byName["registry.example.com/web:v1.2.3"]
+		if !ok {
+			t.Fatalf("expected container registry.example.com/web:v1.2.3; got: %v", k8sNodeNames(nodes))
+		}
+		if n.Kind != core.KindK8sContainer {
+			t.Errorf("Kind: got %q, want KindK8sContainer", n.Kind)
+		}
+		if n.Signature != "web" {
+			t.Errorf("Signature (container name): got %q, want web", n.Signature)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("container image sidecar", func(t *testing.T) {
+		n, ok := byName["envoyproxy/envoy:v1.28.0"]
+		if !ok {
+			t.Fatalf("expected container envoyproxy/envoy:v1.28.0; got: %v", k8sNodeNames(nodes))
+		}
+		if n.Kind != core.KindK8sContainer {
+			t.Errorf("Kind: got %q, want KindK8sContainer", n.Kind)
+		}
+		if n.Signature != "sidecar" {
+			t.Errorf("Signature (container name): got %q, want sidecar", n.Signature)
+		}
+	})
+
+	t.Run("initContainer image migrator", func(t *testing.T) {
+		n, ok := byName["registry.example.com/migrator:latest"]
+		if !ok {
+			t.Fatalf("expected initContainer registry.example.com/migrator:latest; got: %v", k8sNodeNames(nodes))
+		}
+		if n.Kind != core.KindK8sContainer {
+			t.Errorf("Kind: got %q, want KindK8sContainer", n.Kind)
+		}
+		if n.Signature != "migrator" {
+			t.Errorf("Signature (container name): got %q, want migrator", n.Signature)
+		}
+	})
+
+	// 1 workload + 3 containers = 4 nodes total.
+	if len(nodes) != 4 {
+		t.Errorf("expected 4 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
+	}
+}
+
+// TestK8sExtractor_HelmMustache verifies that a document containing Helm
+// template mustache expressions is silently skipped (no error, no crash).
+func TestK8sExtractor_HelmMustache(t *testing.T) {
+	// Mix a valid doc with a Helm-template doc that is not valid YAML.
+	const helmFixture = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: valid-config
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-web
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    spec:
+      containers:
+        - name: web
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+`
+	x := extractor.NewK8sExtractor()
+	nodes, err := x.Extract("svc", "chart.yaml", []byte(helmFixture))
+	if err != nil {
+		t.Fatalf("Extract must not return an error for Helm templates, got: %v", err)
+	}
+
+	// The valid ConfigMap doc should be extracted; the Helm doc should be skipped.
+	if len(nodes) == 0 {
+		t.Fatal("expected at least one node from the valid ConfigMap doc")
+	}
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+	if _, ok := byName["ConfigMap/valid-config"]; !ok {
+		t.Errorf("expected ConfigMap/valid-config; got: %v", k8sNodeNames(nodes))
 	}
 }
 
@@ -109,7 +248,16 @@ func TestK8sExtractor_Determinism(t *testing.T) {
 	}
 	for i := range n1 {
 		if n1[i].Name != n2[i].Name {
-			t.Errorf("non-deterministic at [%d]", i)
+			t.Errorf("non-deterministic at [%d]: %q vs %q", i, n1[i].Name, n2[i].Name)
 		}
 	}
+}
+
+// k8sNodeNames returns the Kind:Name of each node for k8s test diagnostics.
+func k8sNodeNames(nodes []core.SymbolNode) []string {
+	out := make([]string, len(nodes))
+	for i, n := range nodes {
+		out[i] = string(n.Kind) + ":" + n.Name
+	}
+	return out
 }
