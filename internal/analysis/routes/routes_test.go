@@ -90,6 +90,45 @@ func TestExtractGoNetHTTP(t *testing.T) {
 }
 
 // -----------------------------------------------------------------
+// Go — net/http 1.22+ method-prefix patterns
+// -----------------------------------------------------------------
+
+const goNetHTTP122Src = `package main
+
+func register(inner *http.ServeMux) {
+	inner.HandleFunc("GET /sources", s.handleUISources)
+	inner.HandleFunc("POST /intake/briefs", s.handleCreateBrief)
+	mux.Handle("DELETE /cases/{id}", s.handleDeleteCase)
+	mux.HandleFunc("/healthz", PingHandler)
+}
+`
+
+func TestExtractGoNetHTTPMethodPrefix(t *testing.T) {
+	got := routes.Extract("go", "server.go", []byte(goNetHTTP122Src))
+	byKey := make(map[string]routes.Route)
+	for _, r := range got {
+		byKey[r.Method+" "+r.Path] = r
+	}
+	// Method prefix is split out; path excludes the method.
+	checks := []struct{ key, handler string }{
+		{"GET /sources", "s.handleUISources"},
+		{"POST /intake/briefs", "s.handleCreateBrief"},
+		{"DELETE /cases/{id}", "s.handleDeleteCase"},
+		{"ANY /healthz", "PingHandler"}, // prefix-less keeps ANY default
+	}
+	for _, c := range checks {
+		r, ok := byKey[c.key]
+		if !ok {
+			t.Errorf("missing route %q; got %v", c.key, got)
+			continue
+		}
+		if r.Handler != c.handler {
+			t.Errorf("route %q handler=%q want %q", c.key, r.Handler, c.handler)
+		}
+	}
+}
+
+// -----------------------------------------------------------------
 // Go — Line numbers
 // -----------------------------------------------------------------
 

@@ -33,6 +33,10 @@ type routePattern struct {
 	method  string // fixed method, or "" to read from capture group "method"
 	pathGrp string // capture group name for path
 	hndGrp  string // capture group name for handler (may be empty)
+	// defaultMethod is used when method == "" and the "method" capture group did
+	// not match (e.g. a Go net/http route registered without a method prefix).
+	// Empty falls back to the global "GET" default.
+	defaultMethod string
 }
 
 // buildPatterns returns compiled patterns for a given language/framework.
@@ -61,23 +65,27 @@ func goPatterns() []*routePattern {
 			`"(?P<path>[^"]+)"` +
 			`(?:\s*,\s*(?P<handler>[A-Za-z_][\w.]*))?\s*`,
 	)
-	// net/http: mux.HandleFunc("/path", handler) or http.HandleFunc("/path", handler)
+	// net/http: mux.HandleFunc("/path", handler) or http.HandleFunc("/path", handler).
+	// Go 1.22+ method-prefix patterns are supported: HandleFunc("GET /path", h)
+	// → the leading method is captured and the path is the remainder.
 	handleFunc := regexp.MustCompile(
 		`(?m)[\w.]*\.?HandleFunc\(\s*` +
-			`"(?P<path>[^"]+)"` +
+			`"(?:(?P<method>GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+)?(?P<path>[^"]+)"` +
 			`(?:\s*,\s*(?P<handler>[A-Za-z_][\w.]*))?`,
 	)
-	// mux.Handle("/path", handler)
+	// mux.Handle("/path", handler) — also supports the Go 1.22+ method prefix.
 	handle := regexp.MustCompile(
 		`(?m)[\w.]*\.?Handle\(\s*` +
-			`"(?P<path>[^"]+)"` +
+			`"(?:(?P<method>GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\s+)?(?P<path>[^"]+)"` +
 			`(?:\s*,\s*(?P<handler>[A-Za-z_][\w.]*))?`,
 	)
 
 	return []*routePattern{
 		{re: typedMethod, pathGrp: "path", hndGrp: "handler"},
-		{re: handleFunc, method: "ANY", pathGrp: "path", hndGrp: "handler"},
-		{re: handle, method: "ANY", pathGrp: "path", hndGrp: "handler"},
+		// method "" so the optional method-prefix group is read; defaultMethod
+		// "ANY" preserves the previous behavior for prefix-less net/http routes.
+		{re: handleFunc, method: "", pathGrp: "path", hndGrp: "handler", defaultMethod: "ANY"},
+		{re: handle, method: "", pathGrp: "path", hndGrp: "handler", defaultMethod: "ANY"},
 	}
 }
 
@@ -181,6 +189,9 @@ func Extract(lang, path string, src []byte) []Route {
 				}
 			}
 
+			if method == "" {
+				method = p.defaultMethod
+			}
 			if method == "" {
 				method = "GET"
 			}
