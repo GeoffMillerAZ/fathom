@@ -9,6 +9,8 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/marcboeker/go-duckdb/v2 v2.4.3
 	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/tree-sitter/go-tree-sitter v0.25.0
+	github.com/tree-sitter/tree-sitter-python v0.25.0
 	github.com/vektah/gqlparser/v2 v2.5.34
 	github.com/yuin/goldmark v1.8.2
 	gopkg.in/yaml.v3 v3.0.1
@@ -33,6 +35,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/marcboeker/go-duckdb/arrowmapping v0.0.21 // indirect
 	github.com/marcboeker/go-duckdb/mapping v0.0.21 // indirect
+	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect

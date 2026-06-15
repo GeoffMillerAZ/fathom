@@ -38,6 +38,7 @@ const (
 	// Python
 	KindPyFunc  SourceKind = "PythonFunc"
 	KindPyClass SourceKind = "PythonClass"
+	KindPyVar   SourceKind = "PythonVar"
 
 	// JavaScript / TypeScript
 	KindJSFunc   SourceKind = "JSFunc"

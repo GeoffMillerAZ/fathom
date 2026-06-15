@@ -1,100 +1,50 @@
 package extractor
 
 import (
-	"bufio"
-	"bytes"
 	"sort"
 	"strings"
 
+	ts "github.com/tree-sitter/go-tree-sitter"
+	tspython "github.com/tree-sitter/tree-sitter-python/bindings/go"
+
 	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
 )
 
+// pyLang is initialised once and shared across all PythonExtractor calls.
+// tree-sitter Language objects are immutable and safe for concurrent use;
+// only the Parser (created fresh per call) carries mutable state.
+var pyLang = ts.NewLanguage(tspython.Language())
+
 // PythonExtractor implements Extractor for Python source files using
-// deterministic regex/line heuristics (no tree-sitter or external deps).
-// It emits KindPyFunc for module-level def, KindPyClass for class, and
-// KindPyFunc (class-qualified name) for methods inside a class.
+// tree-sitter CGO bindings (ADR-013). It emits:
+//
+//   - KindPyClass for class definitions.
+//   - KindPyFunc for module-level functions, async functions, decorated
+//     functions, and class methods (qualified as "ClassName.method").
+//   - KindPyVar for module-level simple identifier assignments.
+//
+// All symbols carry TierVerified.
 type PythonExtractor struct{}
 
 // NewPythonExtractor returns a new PythonExtractor.
 func NewPythonExtractor() *PythonExtractor { return &PythonExtractor{} }
 
-// Extract parses Python source bytes and returns SymbolNodes for every
-// class and function/method definition. Method names are qualified as
-// "ClassName.method_name". Output is sorted by Line then Name.
+// Extract parses src with tree-sitter and returns SymbolNodes for classes,
+// functions/methods, and module-level variable assignments. Output is sorted
+// by Line then Name for determinism.
 func (p *PythonExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
-	scanner := bufio.NewScanner(bytes.NewReader(src))
-	lineNo := 0
+	pkg := pkgFromPath(relPath)
 
-	// Track the current class context by its indentation level.
-	// classStack entries: (indentLevel, className).
-	type classFrame struct {
-		indent int
-		name   string
-	}
-	var classStack []classFrame
-
-	for scanner.Scan() {
-		lineNo++
-		raw := scanner.Text()
-
-		// Determine indentation of this line.
-		indent := leadingSpaces(raw)
-		trimmed := strings.TrimSpace(raw)
-
-		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-			continue
-		}
-
-		// Pop class frames whose indent is >= current indent (we've left their body).
-		for len(classStack) > 0 && classStack[len(classStack)-1].indent >= indent {
-			classStack = classStack[:len(classStack)-1]
-		}
-
-		// class definition
-		if strings.HasPrefix(trimmed, "class ") {
-			name := extractPyIdentAfterKeyword(trimmed, "class ")
-			if name != "" {
-				nodes = append(nodes, core.SymbolNode{
-					Service:  service,
-					Package:  pkgFromPath(relPath),
-					Name:     name,
-					Kind:     core.KindPyClass,
-					FilePath: relPath,
-					Line:     lineNo,
-					Tier:     core.TierPreScan,
-				})
-				classStack = append(classStack, classFrame{indent: indent, name: name})
-			}
-			continue
-		}
-
-		// function/method definition
-		if strings.HasPrefix(trimmed, "def ") || strings.HasPrefix(trimmed, "async def ") {
-			keyword := "def "
-			if strings.HasPrefix(trimmed, "async ") {
-				keyword = "async def "
-			}
-			name := extractPyIdentAfterKeyword(trimmed, keyword)
-			if name == "" {
-				continue
-			}
-			// Determine if this is a method (inside a class) or a module-level func.
-			qualName := name
-			if len(classStack) > 0 {
-				qualName = classStack[len(classStack)-1].name + "." + name
-			}
-			nodes = append(nodes, core.SymbolNode{
-				Service:  service,
-				Package:  pkgFromPath(relPath),
-				Name:     qualName,
-				Kind:     core.KindPyFunc,
-				FilePath: relPath,
-				Line:     lineNo,
-				Tier:     core.TierPreScan,
-			})
-		}
+	err := treesitter.WithTree(pyLang, src, func(root *ts.Node) {
+		// classScope tracks the nearest enclosing class name. An empty string
+		// means we are at module level (or inside a function, not a class).
+		walkPy(root, src, service, pkg, relPath, "", false, &nodes)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(nodes, func(i, j int) bool {
@@ -106,42 +56,113 @@ func (p *PythonExtractor) Extract(service, relPath string, src []byte) ([]core.S
 	return nodes, nil
 }
 
-// leadingSpaces counts the number of leading space characters (spaces + tabs
-// where tab = 1 unit). Used only for relative indentation comparison.
-func leadingSpaces(s string) int {
-	count := 0
-	for _, ch := range s {
-		if ch == ' ' || ch == '\t' {
-			count++
-		} else {
-			break
-		}
+// walkPy recursively descends the tree-sitter CST.
+//
+//   - classScope: the name of the nearest enclosing class ("" at module level
+//     or inside a function scope, so nested functions don't inherit class names).
+//   - inFunction: true when we are inside a function body; suppresses
+//     module-level variable emission for inner assignments.
+func walkPy(
+	n *ts.Node,
+	src []byte,
+	service, pkg, relPath string,
+	classScope string,
+	inFunction bool,
+	out *[]core.SymbolNode,
+) {
+	if n == nil {
+		return
 	}
-	return count
-}
 
-// extractPyIdentAfterKeyword returns the identifier that follows keyword in
-// line. It strips everything after the first non-identifier rune (e.g. '(', ':').
-func extractPyIdentAfterKeyword(line, keyword string) string {
-	rest := strings.TrimPrefix(line, keyword)
-	rest = strings.TrimSpace(rest)
-	// Find end of identifier.
-	end := 0
-	for end < len(rest) {
-		c := rest[end]
-		if isIdentRune(c) {
-			end++
-		} else {
-			break
+	kind := n.Kind()
+
+	switch kind {
+	case "class_definition":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindPyClass,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
 		}
-	}
-	return rest[:end]
-}
+		// Recurse into the class body with this class as the scope.
+		body := n.ChildByFieldName("body")
+		if body != nil {
+			walkPy(body, src, service, pkg, relPath, name, false, out)
+		}
+		// Return: we've already walked the body above; don't fall through to
+		// the generic child walk below.
+		return
 
-// isIdentRune reports whether c is a valid Python identifier character.
-func isIdentRune(c byte) bool {
-	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-		(c >= '0' && c <= '9') || c == '_'
+	case "function_definition":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			symName := name
+			if classScope != "" {
+				symName = classScope + "." + name
+			}
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     symName,
+				Kind:     core.KindPyFunc,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		// Recurse into the function body with NO class scope — nested functions
+		// inside a method are not themselves methods.
+		body := n.ChildByFieldName("body")
+		if body != nil {
+			walkPy(body, src, service, pkg, relPath, "", true, out)
+		}
+		return
+
+	case "decorated_definition":
+		// A decorated_definition wraps the actual class/function. Recurse so
+		// the inner function_definition or class_definition is handled above.
+		// We keep the same scope context (classScope, inFunction).
+
+	case "expression_statement":
+		// Module-level simple assignment: emit KindPyVar only at module scope
+		// (not inside a function).
+		if !inFunction && classScope == "" {
+			// expression_statement has one named child; look for an assignment.
+			child := n.NamedChild(0)
+			if child != nil && child.Kind() == "assignment" {
+				left := child.ChildByFieldName("left")
+				if left != nil && left.Kind() == "identifier" {
+					varName := left.Utf8Text(src)
+					if varName != "" {
+						*out = append(*out, core.SymbolNode{
+							Service:  service,
+							Package:  pkg,
+							Name:     varName,
+							Kind:     core.KindPyVar,
+							FilePath: relPath,
+							Line:     treesitter.Line(n),
+							Tier:     core.TierVerified,
+						})
+					}
+				}
+			}
+		}
+		// No further descent needed for expression statements.
+		return
+	}
+
+	// Generic descent for all other node types (module, block, decorated_definition, …).
+	count := n.NamedChildCount()
+	for i := uint(0); i < count; i++ {
+		child := n.NamedChild(i)
+		walkPy(child, src, service, pkg, relPath, classScope, inFunction, out)
+	}
 }
 
 // pkgFromPath returns a simple package label derived from the file path

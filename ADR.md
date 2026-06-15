@@ -140,3 +140,28 @@ asserted with golden files; determinism is an explicit, tested property.
 
 **Why.** A code-intelligence engine is only trustworthy if its outputs are exact
 and reproducible. Tests encode that contract.
+
+## ADR-013 — Tree-sitter via CGO bindings, superseding ADR-004's wazero mechanism
+
+**Decision.** General-language extraction (Python, JS/TS, Rust, C, C++, C#, Java,
+Ruby, Kotlin, Scala, PHP, Swift, Lua, Bash, …) runs **tree-sitter via the official
+CGO Go bindings** (`github.com/tree-sitter/go-tree-sitter` + per-grammar modules
+like `tree-sitter-python`), not WASM/wazero. This supersedes the *mechanism* in
+ADR-004 while keeping its intent. Go still uses `go/parser`; the Track A config/IaC
+formats still use their native pure-Go parsers (HCL, yaml, proto, gqlparser, CUE,
+goldmark, go-toml).
+
+**Why.** ADR-004 chose wazero to avoid a native grammar build chain, but in
+practice (a) there is no production-grade pure-Go tree-sitter-via-wazero runtime —
+grammar `.wasm` blobs target the Emscripten/web-tree-sitter ABI, not bare wazero;
+(b) the binary **already requires CGO** for DuckDB (ADR-003), so "CGO-free" is not a
+real property of the build; and (c) the CGO grammar modules vendor their C source
+and compile automatically under `go build` — there is no separate emscripten/Docker
+step, so ADR-004's "free of native grammar build chains" goal is actually met, and
+parsing stays deterministic and golden-testable. The cost is slower CGO builds and a
+C toolchain at build time, both of which the DuckDB dependency already imposes. The
+WASM path remains a viable future option if a pure-Go runtime matures.
+
+**Trade-off / reversibility.** This adds one CGO-compiled dependency per language.
+It was implemented incrementally (one language per commit) so any subset can be
+reverted without affecting Track A or the Go extractor.

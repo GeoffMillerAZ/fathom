@@ -7,7 +7,12 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/extractor"
 )
 
+// pyFixture exercises: class, class method, module-level function, async def,
+// @decorator-decorated function, nested function (NOT a method), and a
+// module-level constant assignment.
 const pyFixture = `# Module-level comment
+MODULE_CONST = 42
+
 class Animal:
     """Base class."""
 
@@ -26,6 +31,15 @@ def standalone_func(x, y):
 
 async def async_helper():
     pass
+
+@staticmethod
+def decorated_func():
+    pass
+
+def outer():
+    def inner():
+        pass
+    return inner
 `
 
 func TestPythonExtractor_Basic(t *testing.T) {
@@ -49,8 +63,8 @@ func TestPythonExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindPyClass {
 			t.Errorf("Kind: got %q, want KindPyClass", n.Kind)
 		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -62,6 +76,9 @@ func TestPythonExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindPyClass {
 			t.Errorf("Kind: got %q, want KindPyClass", n.Kind)
 		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 
 	// methods (class-qualified)
@@ -72,6 +89,9 @@ func TestPythonExtractor_Basic(t *testing.T) {
 		}
 		if n.Kind != core.KindPyFunc {
 			t.Errorf("Kind: got %q, want KindPyFunc", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -98,6 +118,9 @@ func TestPythonExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindPyFunc {
 			t.Errorf("Kind: got %q, want KindPyFunc", n.Kind)
 		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 
 	// async func
@@ -108,6 +131,52 @@ func TestPythonExtractor_Basic(t *testing.T) {
 		}
 		if n.Kind != core.KindPyFunc {
 			t.Errorf("Kind: got %q, want KindPyFunc", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	// @decorator-decorated function must be extracted
+	t.Run("decorated_func", func(t *testing.T) {
+		n, ok := byName["decorated_func"]
+		if !ok {
+			t.Fatal("expected symbol decorated_func (decorated with @staticmethod)")
+		}
+		if n.Kind != core.KindPyFunc {
+			t.Errorf("Kind: got %q, want KindPyFunc", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	// nested function inside a function — NOT a method, no class qualification
+	t.Run("nested inner function", func(t *testing.T) {
+		// outer must exist as a plain func
+		if _, ok := byName["outer"]; !ok {
+			t.Fatal("expected symbol outer")
+		}
+		// inner must exist as a plain func, not as "outer.inner"
+		if _, ok := byName["inner"]; !ok {
+			t.Fatal("expected symbol inner (nested func, unqualified)")
+		}
+		if _, ok := byName["outer.inner"]; ok {
+			t.Fatal("inner should NOT be qualified as outer.inner — only class methods get qualified")
+		}
+	})
+
+	// module-level constant assignment → KindPyVar
+	t.Run("MODULE_CONST", func(t *testing.T) {
+		n, ok := byName["MODULE_CONST"]
+		if !ok {
+			t.Fatal("expected symbol MODULE_CONST (module-level assignment)")
+		}
+		if n.Kind != core.KindPyVar {
+			t.Errorf("Kind: got %q, want KindPyVar", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 }
@@ -124,17 +193,17 @@ func TestPythonExtractor_LineNumbers(t *testing.T) {
 		byName[n.Name] = n
 	}
 
-	// Animal class is on line 2.
-	if n, ok := byName["Animal"]; ok {
+	// MODULE_CONST is on line 2.
+	if n, ok := byName["MODULE_CONST"]; ok {
 		if n.Line != 2 {
-			t.Errorf("Animal line: got %d, want 2", n.Line)
+			t.Errorf("MODULE_CONST line: got %d, want 2", n.Line)
 		}
 	}
 
-	// standalone_func is on line 15.
-	if n, ok := byName["standalone_func"]; ok {
-		if n.Line != 15 {
-			t.Errorf("standalone_func line: got %d, want 15", n.Line)
+	// Animal class is on line 4.
+	if n, ok := byName["Animal"]; ok {
+		if n.Line != 4 {
+			t.Errorf("Animal line: got %d, want 4", n.Line)
 		}
 	}
 }
@@ -155,6 +224,19 @@ func TestPythonExtractor_Determinism(t *testing.T) {
 	for i := range n1 {
 		if n1[i].Name != n2[i].Name || n1[i].Line != n2[i].Line {
 			t.Errorf("non-deterministic at [%d]: %+v vs %+v", i, n1[i], n2[i])
+		}
+	}
+}
+
+func TestPythonExtractor_TierVerified(t *testing.T) {
+	x := extractor.NewPythonExtractor()
+	nodes, err := x.Extract("svc", "animal.py", []byte(pyFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	for _, n := range nodes {
+		if n.Tier != core.TierVerified {
+			t.Errorf("symbol %q has Tier %q, want TierVerified", n.Name, n.Tier)
 		}
 	}
 }
