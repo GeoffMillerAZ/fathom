@@ -103,6 +103,17 @@ var extKindMap = map[string]core.SourceKind{
 
 	// JSON
 	".json": core.KindJSONKey,
+
+	// Scala
+	".scala": core.KindScalaClass,
+	".sc":    core.KindScalaClass,
+
+	// PHP
+	".php": core.KindPhpClass,
+
+	// Bash
+	".sh":   core.KindBashFunction,
+	".bash": core.KindBashFunction,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

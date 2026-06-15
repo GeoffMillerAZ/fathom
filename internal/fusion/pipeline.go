@@ -295,6 +295,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// JSON
 	p.exts[".json"] = extractor.NewJSONExtractor()
 
+	// Scala
+	scala := extractor.NewScalaExtractor()
+	p.exts[".scala"] = scala
+	p.exts[".sc"] = scala
+
+	// PHP
+	p.exts[".php"] = extractor.NewPhpExtractor()
+
+	// Bash
+	bash := extractor.NewBashExtractor()
+	p.exts[".sh"] = bash
+	p.exts[".bash"] = bash
+
 	return p
 }
 

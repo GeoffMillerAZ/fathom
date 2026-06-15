@@ -130,6 +130,23 @@ const (
 
 	// JSON
 	KindJSONKey SourceKind = "JSONKey"
+
+	// Scala
+	KindScalaClass  SourceKind = "ScalaClass"
+	KindScalaObject SourceKind = "ScalaObject"
+	KindScalaTrait  SourceKind = "ScalaTrait"
+	KindScalaDef    SourceKind = "ScalaDef"
+
+	// PHP
+	KindPhpClass     SourceKind = "PhpClass"
+	KindPhpInterface SourceKind = "PhpInterface"
+	KindPhpTrait     SourceKind = "PhpTrait"
+	KindPhpFunction  SourceKind = "PhpFunction"
+	KindPhpMethod    SourceKind = "PhpMethod"
+	KindPhpEnum      SourceKind = "PhpEnum"
+
+	// Bash
+	KindBashFunction SourceKind = "BashFunction"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values
