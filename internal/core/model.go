@@ -60,6 +60,22 @@ const (
 	KindRubyModule SourceKind = "RubyModule"
 	KindRubyMethod SourceKind = "RubyMethod"
 
+	// Rust
+	KindRustFn     SourceKind = "RustFn"
+	KindRustStruct SourceKind = "RustStruct"
+	KindRustEnum   SourceKind = "RustEnum"
+	KindRustTrait  SourceKind = "RustTrait"
+	KindRustImpl   SourceKind = "RustImpl"
+	KindRustMod    SourceKind = "RustMod"
+
+	// C#
+	KindCSharpClass     SourceKind = "CSharpClass"
+	KindCSharpInterface SourceKind = "CSharpInterface"
+	KindCSharpStruct    SourceKind = "CSharpStruct"
+	KindCSharpEnum      SourceKind = "CSharpEnum"
+	KindCSharpMethod    SourceKind = "CSharpMethod"
+	KindCSharpNamespace SourceKind = "CSharpNamespace"
+
 	// Templates
 	KindTemplComponent SourceKind = "TemplComponent"
 

@@ -218,6 +218,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Java
 	p.exts[".java"] = extractor.NewJavaExtractor()
 
+	// Rust
+	p.exts[".rs"] = extractor.NewRustExtractor()
+
+	// C#
+	p.exts[".cs"] = extractor.NewCSharpExtractor()
+
 	// Ruby
 	p.exts[".rb"] = extractor.NewRubyExtractor()
 

@@ -58,6 +58,8 @@ var extKindMap = map[string]core.SourceKind{
 	".jsx":  core.KindJSFunc,
 	".ts":   core.KindJSFunc,
 	".tsx":  core.KindJSFunc,
+	".rs":   core.KindRustFn,
+	".cs":   core.KindCSharpClass,
 
 	// Templates
 	".templ": core.KindTemplComponent,
