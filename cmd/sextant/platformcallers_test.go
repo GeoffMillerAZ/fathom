@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/store"
 )
 
 // fleetRoot returns the absolute path to testdata/fleet, resolved relative to
@@ -24,14 +28,60 @@ func fleetRoot(t *testing.T) string {
 
 // ─── flag validation ─────────────────────────────────────────────────────────
 
-func TestPlatformCallersMissingRepos(t *testing.T) {
+// TestPlatformCallers_StoreDefaultEmpty documents the new contract: --repos is
+// no longer required. With no --repos the command reads the store (the
+// language-agnostic source) and, when empty, reports no callers and exits 0. We
+// point --store at a temp path so the test never touches the real workspace.
+func TestPlatformCallers_StoreDefaultEmpty(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "empty.duckdb")
 	var out, errBuf bytes.Buffer
-	code := run([]string{"platform-callers", "--symbol", "Greet"}, &out, &errBuf)
-	if code == 0 {
-		t.Fatal("expected nonzero exit when --repos is missing")
+	code := run([]string{
+		"platform-callers",
+		"--store", dbPath,
+		"--symbol", "Greet",
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("expected exit 0 against an empty store; stderr=%s", errBuf.String())
 	}
-	if errBuf.String() == "" {
-		t.Fatal("expected non-empty stderr")
+	if !strings.Contains(out.String(), "no cross-repo callers") {
+		t.Errorf("expected 'no cross-repo callers'; got:\n%s", out.String())
+	}
+}
+
+// TestPlatformCallers_StorePath proves the language-agnostic CLI path: seed a
+// store with a cross-service Python pair (snake_case, no Go AST), then resolve
+// the caller via --store.
+func TestPlatformCallers_StorePath(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fleet.duckdb")
+	st, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	if err := st.PutObservations(context.Background(), []core.Observation{
+		{ServiceID: "py-lib", SourceRef: "helpers.py", Symbol: "validate", Package: "helpers", EvidenceTier: core.TierVerified},
+		{ServiceID: "py-api", SourceRef: "app.py", Symbol: "handler", Package: "app", Calls: []string{"helpers.validate"}, EvidenceTier: core.TierVerified},
+	}); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	// Release the single-writer lock before the CLI reopens the same store.
+	if err := st.Close(); err != nil {
+		t.Fatalf("store.Close: %v", err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"platform-callers",
+		"--store", dbPath,
+		"--symbol", "validate",
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("platform-callers exited %d; stderr=%s", code, errBuf.String())
+	}
+	outStr := out.String()
+	for _, want := range []string{"py-api", "py-lib", "validate", "total:"} {
+		if !strings.Contains(outStr, want) {
+			t.Errorf("output missing %q; got:\n%s", want, outStr)
+		}
 	}
 }
 
