@@ -150,3 +150,60 @@ func TestCSharpExtractor_EmptySource(t *testing.T) {
 		t.Errorf("expected 0 nodes for empty source, got %d", len(nodes))
 	}
 }
+
+// csharpCallFixture is a minimal C# file for verifying call-edge extraction.
+// Caller() calls Helper() and Console.WriteLine — the invocation_expression
+// "function" field captures "Helper" and "Console.WriteLine" respectively.
+const csharpCallFixture = `class CallTest {
+    public void Caller() {
+        Helper();
+        Console.WriteLine("hi");
+    }
+    private void Helper() {}
+}
+`
+
+func TestCSharpExtractor_CallEdges(t *testing.T) {
+	e := NewCSharpExtractor()
+	nodes, err := e.Extract("svc", "CallTest.cs", []byte(csharpCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("Caller calls Helper", func(t *testing.T) {
+		n, ok := byName["CallTest.Caller"]
+		if !ok {
+			t.Fatal("expected symbol CallTest.Caller")
+		}
+		found := false
+		for _, c := range n.Calls {
+			if c == "Helper" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("CallTest.Caller.Calls = %v, want to contain %q", n.Calls, "Helper")
+		}
+	})
+
+	t.Run("Caller Calls is sorted", func(t *testing.T) {
+		n := byName["CallTest.Caller"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("Helper has no calls", func(t *testing.T) {
+		n := byName["CallTest.Helper"]
+		if len(n.Calls) != 0 {
+			t.Errorf("Helper.Calls = %v, want empty", n.Calls)
+		}
+	})
+}

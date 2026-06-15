@@ -115,6 +115,7 @@ func walkJava(
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
 			Tier:     core.TierVerified,
+			Calls:    treesitter.CollectCalls(n, src, map[string]string{"method_invocation": "name"}),
 		})
 		// Do not recurse into method/constructor bodies — inner types there
 		// are unusual and not worth complicating the scope.

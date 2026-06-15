@@ -90,6 +90,10 @@ func walkRust(
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
 			Tier:     core.TierVerified,
+			Calls: treesitter.CollectCalls(n, src, map[string]string{
+				"call_expression":  "function",
+				"macro_invocation": "macro",
+			}),
 		})
 		// Do not recurse into function bodies — inner items are unusual and
 		// not worth complicating the scope.

@@ -128,3 +128,62 @@ func TestRubyExtractor_Determinism(t *testing.T) {
 		}
 	}
 }
+
+// rubyCallFixture is a minimal Ruby file for verifying call-edge extraction.
+// greet() calls helper("arg") and puts("hi") — both emit "call" nodes with
+// a "method" field. helper() makes no calls.
+const rubyCallFixture = `class Caller
+  def greet
+    helper("arg")
+    puts("hi")
+  end
+  def helper(x)
+  end
+end
+`
+
+func TestRubyExtractor_CallEdges(t *testing.T) {
+	x := extractor.NewRubyExtractor()
+	nodes, err := x.Extract("svc", "caller.rb", []byte(rubyCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("greet calls helper and puts", func(t *testing.T) {
+		n, ok := byName["Caller.greet"]
+		if !ok {
+			t.Fatal("expected symbol Caller.greet")
+		}
+		wantCalls := map[string]bool{"helper": true, "puts": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in Caller.greet.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("Caller.greet.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("greet Calls is sorted", func(t *testing.T) {
+		n := byName["Caller.greet"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("helper has no calls", func(t *testing.T) {
+		n := byName["Caller.helper"]
+		if len(n.Calls) != 0 {
+			t.Errorf("helper.Calls = %v, want empty", n.Calls)
+		}
+	})
+}

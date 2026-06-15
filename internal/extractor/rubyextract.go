@@ -113,6 +113,7 @@ func walkRuby(
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
 			Tier:     core.TierVerified,
+			Calls:    treesitter.CollectCalls(n, src, map[string]string{"call": "method"}),
 		})
 		// Do not descend into method bodies — methods don't alter container scope.
 		return

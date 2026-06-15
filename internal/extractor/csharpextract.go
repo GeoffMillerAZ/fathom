@@ -196,6 +196,7 @@ func walkCSharp(
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
 			Tier:     core.TierVerified,
+			Calls:    treesitter.CollectCalls(n, src, map[string]string{"invocation_expression": "function"}),
 		})
 		// Do not recurse into method/constructor bodies — inner types there
 		// are unusual and not worth complicating the scope.

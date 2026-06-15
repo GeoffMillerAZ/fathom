@@ -128,3 +128,59 @@ func TestRustExtractor_EmptySource(t *testing.T) {
 		t.Errorf("expected 0 nodes for empty source, got %d", len(nodes))
 	}
 }
+
+// rustCallFixture is a minimal Rust file for verifying call-edge extraction.
+// greet() calls helper() (call_expression) and println! (macro_invocation).
+// helper() makes no calls.
+const rustCallFixture = `fn greet() {
+    helper();
+    println!("hi");
+}
+fn helper() {}
+`
+
+func TestRustExtractor_CallEdges(t *testing.T) {
+	e := NewRustExtractor()
+	nodes, err := e.Extract("svc", "src/calls.rs", []byte(rustCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("greet calls helper and println", func(t *testing.T) {
+		n, ok := byName["greet"]
+		if !ok {
+			t.Fatal("expected symbol greet")
+		}
+		wantCalls := map[string]bool{"helper": true, "println": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in greet.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("greet.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("greet Calls is sorted", func(t *testing.T) {
+		n := byName["greet"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("helper has no calls", func(t *testing.T) {
+		n := byName["helper"]
+		if len(n.Calls) != 0 {
+			t.Errorf("helper.Calls = %v, want empty", n.Calls)
+		}
+	})
+}

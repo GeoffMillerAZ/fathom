@@ -156,3 +156,61 @@ func TestJavaExtractor_Determinism(t *testing.T) {
 		}
 	}
 }
+
+// javaCallFixture is a minimal Java file for verifying call-edge extraction.
+// caller() calls callee() and helper(); callee() and helper() make no calls.
+const javaCallFixture = `public class CallTest {
+    public void caller() {
+        callee();
+        helper();
+    }
+    public void callee() {}
+    public void helper() {}
+}
+`
+
+func TestJavaExtractor_CallEdges(t *testing.T) {
+	x := extractor.NewJavaExtractor()
+	nodes, err := x.Extract("svc", "CallTest.java", []byte(javaCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("caller calls callee and helper", func(t *testing.T) {
+		n, ok := byName["CallTest.caller"]
+		if !ok {
+			t.Fatal("expected symbol CallTest.caller")
+		}
+		wantCalls := map[string]bool{"callee": true, "helper": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in CallTest.caller.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("CallTest.caller.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("caller Calls is sorted", func(t *testing.T) {
+		n := byName["CallTest.caller"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("callee has no calls", func(t *testing.T) {
+		n := byName["CallTest.callee"]
+		if len(n.Calls) != 0 {
+			t.Errorf("callee.Calls = %v, want empty", n.Calls)
+		}
+	})
+}
