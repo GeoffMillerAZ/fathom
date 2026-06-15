@@ -41,9 +41,12 @@ const (
 	KindPyVar   SourceKind = "PythonVar"
 
 	// JavaScript / TypeScript
-	KindJSFunc   SourceKind = "JSFunc"
-	KindJSClass  SourceKind = "JSClass"
-	KindJSMethod SourceKind = "JSMethod"
+	KindJSFunc      SourceKind = "JSFunc"
+	KindJSClass     SourceKind = "JSClass"
+	KindJSMethod    SourceKind = "JSMethod"
+	KindTSInterface SourceKind = "TSInterface"
+	KindTSType      SourceKind = "TSType"
+	KindTSEnum      SourceKind = "TSEnum"
 
 	// Java
 	KindJavaClass     SourceKind = "JavaClass"

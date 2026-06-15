@@ -1,143 +1,77 @@
 package extractor
 
 import (
-	"bufio"
-	"bytes"
-	"regexp"
 	"sort"
-	"strings"
+
+	ts "github.com/tree-sitter/go-tree-sitter"
+	tsjs "github.com/tree-sitter/tree-sitter-javascript/bindings/go"
+	tsts "github.com/tree-sitter/tree-sitter-typescript/bindings/go"
 
 	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+)
+
+// jsLang, tsLang, and tsxLang are initialised once and shared across all
+// JSExtractor calls. tree-sitter Language objects are immutable and safe for
+// concurrent use; only the Parser (created fresh per call) carries mutable
+// state.
+var (
+	jsLang  = ts.NewLanguage(tsjs.Language())
+	tsLang  = ts.NewLanguage(tsts.LanguageTypescript())
+	tsxLang = ts.NewLanguage(tsts.LanguageTSX())
 )
 
 // JSExtractor implements Extractor for JavaScript, TypeScript, JSX, and TSX
-// source files. It uses line-based heuristics to find:
-//   - function declarations: function Foo(...)
-//   - class declarations: class Foo / class Foo extends Bar
-//   - class method definitions: methodName(...) { inside a class body
-//   - exported const arrow functions: export const Foo = (...) =>
+// source files using tree-sitter CGO bindings (ADR-013). It emits:
 //
-// It is deterministic, uses only stdlib regexp, and is safe for concurrent use.
+//   - KindJSFunc for function declarations, generator function declarations,
+//     and variable declarators whose initialiser is an arrow function or
+//     function expression.
+//   - KindJSClass for class declarations.
+//   - KindJSMethod for method definitions, qualified as "ClassName.method".
+//   - KindTSInterface for TypeScript interface declarations.
+//   - KindTSType for TypeScript type alias declarations.
+//   - KindTSEnum for TypeScript enum declarations.
+//
+// All symbols carry TierVerified.
 type JSExtractor struct{}
 
 // NewJSExtractor returns a new JSExtractor.
 func NewJSExtractor() *JSExtractor { return &JSExtractor{} }
 
-var (
-	jsFuncDecl   = regexp.MustCompile(`^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)`)
-	jsClassDecl  = regexp.MustCompile(`^\s*(?:export\s+)?(?:default\s+)?(?:abstract\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)`)
-	jsMethodDecl = regexp.MustCompile(`^\s+(?:(?:public|private|protected|static|async|override|readonly|abstract)\s+)*([A-Za-z_$][A-Za-z0-9_$]*)\s*(?:<[^>]*>)?\s*\(`)
-	// jsArrowExport matches: export const Name = (...) => or export const Name = async (...) =>
-	// It allows TypeScript return-type annotations between ) and =>.
-	jsArrowExport = regexp.MustCompile(`^\s*export\s+const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][A-Za-z0-9_$]*)(?:\s*:\s*[^=]+)?\s*=>`)
-)
+// langForPath selects the tree-sitter grammar based on the file extension.
+func langForPath(relPath string) *ts.Language {
+	// Find the last dot.
+	for i := len(relPath) - 1; i >= 0; i-- {
+		if relPath[i] == '.' {
+			ext := relPath[i:]
+			switch ext {
+			case ".ts":
+				return tsLang
+			case ".tsx":
+				return tsxLang
+			}
+			// .js, .jsx, .mjs, .cjs and everything else → javascript
+			return jsLang
+		}
+	}
+	return jsLang
+}
 
-// Extract parses JS/TS/JSX/TSX source and returns SymbolNodes.
-// Output is sorted by Line then Name.
+// Extract parses src with tree-sitter and returns SymbolNodes for classes,
+// functions/methods, and TypeScript-specific constructs. Output is sorted by
+// Line then Name for determinism.
 func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
-	scanner := bufio.NewScanner(bytes.NewReader(src))
-	lineNo := 0
-
-	// Track current class context for method qualification.
-	type classFrame struct {
-		name       string
-		braceDepth int // brace depth at which the class body opened
-	}
-	var classStack []classFrame
-	braceDepth := 0
-
+	lang := langForPath(relPath)
 	pkg := pkgFromPath(relPath)
 
-	for scanner.Scan() {
-		lineNo++
-		line := scanner.Text()
-		stripped := strings.TrimSpace(line)
-
-		// Track brace depth to know when we've exited a class body.
-		for _, ch := range line {
-			switch ch {
-			case '{':
-				braceDepth++
-			case '}':
-				braceDepth--
-				for len(classStack) > 0 && classStack[len(classStack)-1].braceDepth > braceDepth {
-					classStack = classStack[:len(classStack)-1]
-				}
-			}
-		}
-
-		if stripped == "" || strings.HasPrefix(stripped, "//") || strings.HasPrefix(stripped, "*") {
-			continue
-		}
-
-		// class declaration
-		if m := jsClassDecl.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			nodes = append(nodes, core.SymbolNode{
-				Service:  service,
-				Package:  pkg,
-				Name:     name,
-				Kind:     core.KindJSClass,
-				FilePath: relPath,
-				Line:     lineNo,
-				Tier:     core.TierPreScan,
-			})
-			classStack = append(classStack, classFrame{name: name, braceDepth: braceDepth})
-			continue
-		}
-
-		// exported const arrow function
-		if m := jsArrowExport.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			nodes = append(nodes, core.SymbolNode{
-				Service:  service,
-				Package:  pkg,
-				Name:     name,
-				Kind:     core.KindJSFunc,
-				FilePath: relPath,
-				Line:     lineNo,
-				Tier:     core.TierPreScan,
-			})
-			continue
-		}
-
-		// function declaration
-		if m := jsFuncDecl.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			nodes = append(nodes, core.SymbolNode{
-				Service:  service,
-				Package:  pkg,
-				Name:     name,
-				Kind:     core.KindJSFunc,
-				FilePath: relPath,
-				Line:     lineNo,
-				Tier:     core.TierPreScan,
-			})
-			continue
-		}
-
-		// method inside a class body (must be inside a classStack frame)
-		if len(classStack) > 0 && braceDepth > classStack[len(classStack)-1].braceDepth {
-			if m := jsMethodDecl.FindStringSubmatch(line); m != nil {
-				methodName := m[1]
-				// Skip keywords that look like method names.
-				if isJSKeyword(methodName) {
-					continue
-				}
-				qualName := classStack[len(classStack)-1].name + "." + methodName
-				nodes = append(nodes, core.SymbolNode{
-					Service:  service,
-					Package:  pkg,
-					Name:     qualName,
-					Kind:     core.KindJSMethod,
-					FilePath: relPath,
-					Line:     lineNo,
-					Tier:     core.TierPreScan,
-				})
-			}
-		}
+	err := treesitter.WithTree(lang, src, func(root *ts.Node) {
+		walkJS(root, src, service, pkg, relPath, "", &nodes)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(nodes, func(i, j int) bool {
@@ -149,19 +83,157 @@ func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	return nodes, nil
 }
 
-// isJSKeyword reports whether s is a JS/TS keyword that should not be treated
-// as a method name when matched by the method regex.
-// Note: "delete", "get", "set" are valid method names in classes, so they are
-// not included here.
-func isJSKeyword(s string) bool {
-	switch s {
-	case "if", "for", "while", "switch", "catch", "return", "new",
-		"typeof", "instanceof", "import", "export", "class", "extends",
-		"constructor", "static", "async", "await",
-		"const", "let", "var", "function", "yield", "void",
-		"throw", "try", "finally", "else", "case", "default", "break",
-		"continue", "debugger", "in", "of", "do", "super", "this":
-		return true
+// walkJS recursively descends the tree-sitter CST.
+//
+//   - classScope: the name of the nearest enclosing class ("" at module level
+//     or inside a function, so nested functions don't inherit class names).
+func walkJS(
+	n *ts.Node,
+	src []byte,
+	service, pkg, relPath string,
+	classScope string,
+	out *[]core.SymbolNode,
+) {
+	if n == nil {
+		return
 	}
-	return false
+
+	kind := n.Kind()
+
+	switch kind {
+	case "function_declaration", "generator_function_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindJSFunc,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		// Recurse into the function body with no class scope.
+		body := n.ChildByFieldName("body")
+		if body != nil {
+			walkJS(body, src, service, pkg, relPath, "", out)
+		}
+		return
+
+	case "class_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindJSClass,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		// Recurse into the class body with this class as scope.
+		body := n.ChildByFieldName("body")
+		if body != nil {
+			walkJS(body, src, service, pkg, relPath, name, out)
+		}
+		return
+
+	case "method_definition":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" && classScope != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     classScope + "." + name,
+				Kind:     core.KindJSMethod,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		// Don't recurse into method bodies — methods aren't classes.
+		return
+
+	case "variable_declarator":
+		// Emit KindJSFunc when the initialiser is an arrow_function or
+		// function / function_expression.
+		val := n.ChildByFieldName("value")
+		if val != nil {
+			vk := val.Kind()
+			if vk == "arrow_function" || vk == "function" || vk == "function_expression" {
+				name := treesitter.FieldText(n, "name", src)
+				if name != "" {
+					*out = append(*out, core.SymbolNode{
+						Service:  service,
+						Package:  pkg,
+						Name:     name,
+						Kind:     core.KindJSFunc,
+						FilePath: relPath,
+						Line:     treesitter.Line(n),
+						Tier:     core.TierVerified,
+					})
+				}
+			}
+		}
+		return
+
+	case "export_statement":
+		// Recurse so inner declarations (function, class, const, …) are
+		// captured by the cases above.
+
+	case "interface_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindTSInterface,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		return
+
+	case "type_alias_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindTSType,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		return
+
+	case "enum_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindTSEnum,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				Tier:     core.TierVerified,
+			})
+		}
+		return
+	}
+
+	// Generic descent for all other node types.
+	count := n.NamedChildCount()
+	for i := uint(0); i < count; i++ {
+		child := n.NamedChild(i)
+		walkJS(child, src, service, pkg, relPath, classScope, out)
+	}
 }

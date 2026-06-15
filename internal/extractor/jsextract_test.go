@@ -7,6 +7,8 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/extractor"
 )
 
+// jsFixture is a plain JavaScript module covering function declarations, class
+// declarations with methods, and exported arrow-function consts.
 const jsFixture = `// A simple JS module
 
 export function greet(name) {
@@ -50,8 +52,8 @@ func TestJSExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindJSFunc {
 			t.Errorf("Kind: got %q, want KindJSFunc", n.Kind)
 		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -63,6 +65,9 @@ func TestJSExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindJSFunc {
 			t.Errorf("Kind: got %q, want KindJSFunc", n.Kind)
 		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 
 	t.Run("class Calculator", func(t *testing.T) {
@@ -72,6 +77,9 @@ func TestJSExtractor_Basic(t *testing.T) {
 		}
 		if n.Kind != core.KindJSClass {
 			t.Errorf("Kind: got %q, want KindJSClass", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -83,12 +91,18 @@ func TestJSExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindJSMethod {
 			t.Errorf("Kind: got %q, want KindJSMethod", n.Kind)
 		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 
 	t.Run("method Calculator.subtract", func(t *testing.T) {
-		_, ok := byName["Calculator.subtract"]
+		n, ok := byName["Calculator.subtract"]
 		if !ok {
 			t.Fatal("expected symbol Calculator.subtract")
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -100,9 +114,14 @@ func TestJSExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindJSFunc {
 			t.Errorf("Kind: got %q, want KindJSFunc", n.Kind)
 		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 }
 
+// tsFixture exercises TypeScript-specific declarations: interface, type alias,
+// enum, as well as class methods and exported arrow consts.
 const tsFixture = `export class UserService {
   constructor(private db: Database) {}
 
@@ -118,6 +137,18 @@ const tsFixture = `export class UserService {
 export const parseToken = (token: string): Claims => {
   return JSON.parse(token);
 };
+
+interface Repository<T> {
+  findById(id: string): Promise<T>;
+  save(item: T): void;
+}
+
+type UserID = string;
+
+enum Status {
+  Active = "active",
+  Inactive = "inactive",
+}
 `
 
 func TestJSExtractor_TypeScript(t *testing.T) {
@@ -132,18 +163,82 @@ func TestJSExtractor_TypeScript(t *testing.T) {
 		byName[n.Name] = n
 	}
 
-	if _, ok := byName["UserService"]; !ok {
-		t.Error("expected symbol UserService")
-	}
-	if _, ok := byName["UserService.findById"]; !ok {
-		t.Error("expected symbol UserService.findById")
-	}
-	if _, ok := byName["UserService.delete"]; !ok {
-		t.Error("expected symbol UserService.delete")
-	}
-	if _, ok := byName["parseToken"]; !ok {
-		t.Error("expected symbol parseToken")
-	}
+	t.Run("class UserService", func(t *testing.T) {
+		n, ok := byName["UserService"]
+		if !ok {
+			t.Fatal("expected symbol UserService")
+		}
+		if n.Kind != core.KindJSClass {
+			t.Errorf("Kind: got %q, want KindJSClass", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("method UserService.findById", func(t *testing.T) {
+		if _, ok := byName["UserService.findById"]; !ok {
+			t.Error("expected symbol UserService.findById")
+		}
+	})
+
+	t.Run("method UserService.delete", func(t *testing.T) {
+		if _, ok := byName["UserService.delete"]; !ok {
+			t.Error("expected symbol UserService.delete")
+		}
+	})
+
+	t.Run("arrow const parseToken", func(t *testing.T) {
+		n, ok := byName["parseToken"]
+		if !ok {
+			t.Fatal("expected symbol parseToken")
+		}
+		if n.Kind != core.KindJSFunc {
+			t.Errorf("Kind: got %q, want KindJSFunc", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("interface Repository", func(t *testing.T) {
+		n, ok := byName["Repository"]
+		if !ok {
+			t.Fatal("expected symbol Repository")
+		}
+		if n.Kind != core.KindTSInterface {
+			t.Errorf("Kind: got %q, want KindTSInterface", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("type alias UserID", func(t *testing.T) {
+		n, ok := byName["UserID"]
+		if !ok {
+			t.Fatal("expected symbol UserID")
+		}
+		if n.Kind != core.KindTSType {
+			t.Errorf("Kind: got %q, want KindTSType", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("enum Status", func(t *testing.T) {
+		n, ok := byName["Status"]
+		if !ok {
+			t.Fatal("expected symbol Status")
+		}
+		if n.Kind != core.KindTSEnum {
+			t.Errorf("Kind: got %q, want KindTSEnum", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
 }
 
 func TestJSExtractor_Determinism(t *testing.T) {
@@ -161,7 +256,7 @@ func TestJSExtractor_Determinism(t *testing.T) {
 	}
 	for i := range n1 {
 		if n1[i].Name != n2[i].Name {
-			t.Errorf("non-deterministic at [%d]", i)
+			t.Errorf("non-deterministic at [%d]: %q vs %q", i, n1[i].Name, n2[i].Name)
 		}
 	}
 }
