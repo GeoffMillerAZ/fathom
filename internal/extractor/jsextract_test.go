@@ -3,6 +3,7 @@ package extractor_test
 import (
 	"testing"
 
+	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/sextant/internal/core"
 	"github.com/geoffmilleraz/sextant/internal/extractor"
 )
@@ -259,4 +260,123 @@ func TestJSExtractor_Determinism(t *testing.T) {
 			t.Errorf("non-deterministic at [%d]: %q vs %q", i, n1[i].Name, n2[i].Name)
 		}
 	}
+}
+
+// jsCallFixture exercises call-edge extraction for plain JS.
+// - callee() is called by caller() and by the arrow const arrowCaller.
+// - callee itself makes no calls.
+const jsCallFixture = `function callee() {}
+
+function helper() {}
+
+function caller() {
+  callee();
+  helper();
+}
+
+const arrowCaller = () => {
+  callee();
+};
+
+class MyService {
+  doWork() {
+    callee();
+  }
+}
+`
+
+func TestJSExtractor_CallEdges(t *testing.T) {
+	x := extractor.NewJSExtractor()
+	nodes, err := x.Extract("svc", "edges.js", []byte(jsCallFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("caller calls callee and helper", func(t *testing.T) {
+		n, ok := byName["caller"]
+		if !ok {
+			t.Fatal("expected symbol caller")
+		}
+		wantCalls := map[string]bool{"callee": true, "helper": true}
+		for _, c := range n.Calls {
+			if !wantCalls[c] {
+				t.Errorf("unexpected call %q in caller.Calls", c)
+			}
+			delete(wantCalls, c)
+		}
+		for missing := range wantCalls {
+			t.Errorf("caller.Calls missing %q", missing)
+		}
+	})
+
+	t.Run("caller Calls is sorted", func(t *testing.T) {
+		n := byName["caller"]
+		for i := 1; i < len(n.Calls); i++ {
+			if n.Calls[i] < n.Calls[i-1] {
+				t.Errorf("Calls not sorted at [%d]: %q > %q", i, n.Calls[i-1], n.Calls[i])
+			}
+		}
+	})
+
+	t.Run("arrowCaller calls callee", func(t *testing.T) {
+		n, ok := byName["arrowCaller"]
+		if !ok {
+			t.Fatal("expected symbol arrowCaller")
+		}
+		found := false
+		for _, c := range n.Calls {
+			if c == "callee" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("arrowCaller.Calls = %v, want to contain %q", n.Calls, "callee")
+		}
+	})
+
+	t.Run("method MyService.doWork calls callee", func(t *testing.T) {
+		n, ok := byName["MyService.doWork"]
+		if !ok {
+			t.Fatal("expected symbol MyService.doWork")
+		}
+		found := false
+		for _, c := range n.Calls {
+			if c == "callee" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("MyService.doWork.Calls = %v, want to contain %q", n.Calls, "callee")
+		}
+	})
+
+	t.Run("callee has no calls", func(t *testing.T) {
+		n := byName["callee"]
+		if len(n.Calls) != 0 {
+			t.Errorf("callee.Calls = %v, want empty", n.Calls)
+		}
+	})
+
+	t.Run("callgraph RenameImpact resolves bare-name edge", func(t *testing.T) {
+		g := callgraph.Build(nodes)
+		impact := callgraph.RenameImpact(g, "callee")
+		// expected callers: svc::edges.caller, svc::edges.arrowCaller, svc::edges.MyService.doWork
+		callerKey := "svc::edges.caller"
+		arrowKey := "svc::edges.arrowCaller"
+		methodKey := "svc::edges.MyService.doWork"
+		impactSet := make(map[string]bool, len(impact))
+		for _, k := range impact {
+			impactSet[k] = true
+		}
+		for _, want := range []string{callerKey, arrowKey, methodKey} {
+			if !impactSet[want] {
+				t.Errorf("RenameImpact(%q) = %v, want to include %q", "callee", impact, want)
+			}
+		}
+	})
 }

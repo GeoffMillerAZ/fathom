@@ -112,6 +112,7 @@ func walkJS(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
 		}
 		// Recurse into the function body with no class scope.
@@ -152,6 +153,7 @@ func walkJS(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
 		}
 		// Don't recurse into method bodies — methods aren't classes.
@@ -174,6 +176,7 @@ func walkJS(
 						FilePath: relPath,
 						Line:     treesitter.Line(n),
 						Tier:     core.TierVerified,
+						Calls:    treesitter.CollectCalls(val, src, map[string]string{"call_expression": "function"}),
 					})
 				}
 			}

@@ -4,6 +4,9 @@
 package treesitter
 
 import (
+	"sort"
+	"strings"
+
 	ts "github.com/tree-sitter/go-tree-sitter"
 )
 
@@ -56,4 +59,58 @@ func FieldText(n *ts.Node, field string, src []byte) string {
 // Line converts a node's zero-based start row to a 1-based line number.
 func Line(n *ts.Node) int {
 	return int(n.StartPosition().Row) + 1
+}
+
+// CollectCalls walks the subtree rooted at root and returns the sorted,
+// de-duplicated callee texts. For each descendant node whose Kind() is a key
+// in callFields, it reads the child at the named field callFields[kind] (when
+// the field name is "", it uses the node's own text) and records that text.
+// Call it with a function/method node to get that function's outgoing calls.
+//
+// Returns nil when no calls are found. Empty/whitespace callee texts are
+// skipped.
+func CollectCalls(root *ts.Node, src []byte, callFields map[string]string) []string {
+	if root == nil {
+		return nil
+	}
+	seen := make(map[string]struct{})
+	collectCallsRec(root, src, callFields, seen)
+	if len(seen) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(seen))
+	for text := range seen {
+		out = append(out, text)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// collectCallsRec is the recursive inner walk for CollectCalls.
+func collectCallsRec(n *ts.Node, src []byte, callFields map[string]string, seen map[string]struct{}) {
+	if n == nil {
+		return
+	}
+	kind := n.Kind()
+	if field, ok := callFields[kind]; ok {
+		var text string
+		if field == "" {
+			text = n.Utf8Text(src)
+		} else {
+			child := n.ChildByFieldName(field)
+			if child != nil {
+				text = child.Utf8Text(src)
+			}
+		}
+		text = strings.TrimSpace(text)
+		if text != "" {
+			seen[text] = struct{}{}
+		}
+		// Still descend: a call expression may be nested inside another call
+		// expression (e.g. foo(bar())).
+	}
+	count := n.NamedChildCount()
+	for i := uint(0); i < count; i++ {
+		collectCallsRec(n.NamedChild(i), src, callFields, seen)
+	}
 }

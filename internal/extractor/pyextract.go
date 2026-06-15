@@ -114,6 +114,7 @@ func walkPy(
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
 				Tier:     core.TierVerified,
+				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call": "function"}),
 			})
 		}
 		// Recurse into the function body with NO class scope — nested functions
