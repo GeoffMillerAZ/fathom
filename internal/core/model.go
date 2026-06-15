@@ -31,6 +31,7 @@ const (
 	KindK8sWorkload       SourceKind = "K8sWorkload"
 	KindK8sContainer      SourceKind = "K8sContainer"
 	KindCUEDefinition     SourceKind = "CUEDefinition"
+	KindCUEField          SourceKind = "CUEField"
 	KindDocChunk          SourceKind = "DocChunk"
 	KindModuleDep         SourceKind = "ModuleDep"
 

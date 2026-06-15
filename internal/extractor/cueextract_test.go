@@ -21,7 +21,7 @@ const cueFixture = `package config
   image: string
 }
 
-// Not a definition — should be ignored.
+// Not a definition — should be a plain CUEField.
 someValue: "hello"
 `
 
@@ -45,25 +45,39 @@ func TestCUEExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindCUEDefinition {
 			t.Errorf("Kind: got %q, want KindCUEDefinition", n.Kind)
 		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
 	t.Run("#Deployment", func(t *testing.T) {
-		_, ok := byName["#Deployment"]
+		n, ok := byName["#Deployment"]
 		if !ok {
 			t.Fatal("expected symbol #Deployment")
 		}
+		if n.Kind != core.KindCUEDefinition {
+			t.Errorf("Kind: got %q, want KindCUEDefinition", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
 	})
 
-	// Non-definition values should not appear.
-	if _, ok := byName["someValue"]; ok {
-		t.Error("unexpected symbol someValue (not a CUE definition)")
-	}
+	t.Run("someValue_is_KindCUEField", func(t *testing.T) {
+		n, ok := byName["someValue"]
+		if !ok {
+			t.Fatal("expected symbol someValue (non-definition top-level field)")
+		}
+		if n.Kind != core.KindCUEField {
+			t.Errorf("someValue Kind: got %q, want KindCUEField", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("someValue Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
 
-	if len(nodes) != 2 {
-		t.Errorf("expected 2 nodes, got %d", len(nodes))
+	if len(nodes) != 3 {
+		t.Errorf("expected 3 nodes (#Service, #Deployment, someValue), got %d", len(nodes))
 	}
 }
 
@@ -99,5 +113,10 @@ func TestCUEExtractor_Determinism(t *testing.T) {
 	}
 	if len(n1) != len(n2) {
 		t.Fatalf("non-deterministic length: %d vs %d", len(n1), len(n2))
+	}
+	for i := range n1 {
+		if n1[i].Name != n2[i].Name || n1[i].Line != n2[i].Line {
+			t.Errorf("non-deterministic at index %d: %+v vs %+v", i, n1[i], n2[i])
+		}
 	}
 }
