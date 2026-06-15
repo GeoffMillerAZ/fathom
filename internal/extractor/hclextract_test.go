@@ -28,6 +28,31 @@ data "aws_iam_policy_document" "assume_role" {
 }
 `
 
+const hclExtendedFixture = `# Extended Terraform fixture
+
+variable "region" {
+  type    = string
+  default = "us-east-1"
+}
+
+variable "env" {
+  type = string
+}
+
+output "bucket_arn" {
+  value = "arn:aws:s3:::example"
+}
+
+provider "aws" {
+  region = var.region
+}
+
+locals {
+  prefix = "app"
+  suffix = "prod"
+}
+`
+
 func TestHCLExtractor_Basic(t *testing.T) {
 	x := extractor.NewHCLExtractor()
 	nodes, err := x.Extract("svc", "main.tf", []byte(hclFixture))
@@ -48,8 +73,8 @@ func TestHCLExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindTerraformResource {
 			t.Errorf("Kind: got %q, want KindTerraformResource", n.Kind)
 		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
 	})
 
@@ -65,15 +90,88 @@ func TestHCLExtractor_Basic(t *testing.T) {
 		if !ok {
 			t.Fatal("expected symbol module.vpc")
 		}
-		if n.Kind != core.KindTerraformResource {
-			t.Errorf("Kind: got %q, want KindTerraformResource", n.Kind)
+		if n.Kind != core.KindTerraformModule {
+			t.Errorf("Kind: got %q, want KindTerraformModule", n.Kind)
 		}
 	})
 
 	t.Run("data source", func(t *testing.T) {
-		_, ok := byName["data.aws_iam_policy_document.assume_role"]
+		n, ok := byName["data.aws_iam_policy_document.assume_role"]
 		if !ok {
 			t.Fatal("expected symbol data.aws_iam_policy_document.assume_role")
+		}
+		if n.Kind != core.KindTerraformData {
+			t.Errorf("Kind: got %q, want KindTerraformData", n.Kind)
+		}
+	})
+}
+
+func TestHCLExtractor_Extended(t *testing.T) {
+	x := extractor.NewHCLExtractor()
+	nodes, err := x.Extract("svc", "vars.tf", []byte(hclExtendedFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	t.Run("variable region", func(t *testing.T) {
+		n, ok := byName["var.region"]
+		if !ok {
+			t.Fatal("expected symbol var.region")
+		}
+		if n.Kind != core.KindTerraformVariable {
+			t.Errorf("Kind: got %q, want KindTerraformVariable", n.Kind)
+		}
+		if n.Tier != core.TierVerified {
+			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		}
+	})
+
+	t.Run("variable env", func(t *testing.T) {
+		_, ok := byName["var.env"]
+		if !ok {
+			t.Fatal("expected symbol var.env")
+		}
+	})
+
+	t.Run("output bucket_arn", func(t *testing.T) {
+		n, ok := byName["output.bucket_arn"]
+		if !ok {
+			t.Fatal("expected symbol output.bucket_arn")
+		}
+		if n.Kind != core.KindTerraformOutput {
+			t.Errorf("Kind: got %q, want KindTerraformOutput", n.Kind)
+		}
+	})
+
+	t.Run("provider aws", func(t *testing.T) {
+		n, ok := byName["provider.aws"]
+		if !ok {
+			t.Fatal("expected symbol provider.aws")
+		}
+		if n.Kind != core.KindTerraformProvider {
+			t.Errorf("Kind: got %q, want KindTerraformProvider", n.Kind)
+		}
+	})
+
+	t.Run("local prefix", func(t *testing.T) {
+		n, ok := byName["local.prefix"]
+		if !ok {
+			t.Fatal("expected symbol local.prefix")
+		}
+		if n.Kind != core.KindTerraformLocal {
+			t.Errorf("Kind: got %q, want KindTerraformLocal", n.Kind)
+		}
+	})
+
+	t.Run("local suffix", func(t *testing.T) {
+		_, ok := byName["local.suffix"]
+		if !ok {
+			t.Fatal("expected symbol local.suffix")
 		}
 	})
 }
@@ -95,5 +193,16 @@ func TestHCLExtractor_Determinism(t *testing.T) {
 		if n1[i].Name != n2[i].Name {
 			t.Errorf("non-deterministic at [%d]", i)
 		}
+	}
+}
+
+func TestHCLExtractor_EmptyInput(t *testing.T) {
+	x := extractor.NewHCLExtractor()
+	nodes, err := x.Extract("svc", "empty.tf", []byte(""))
+	if err != nil {
+		t.Fatalf("Extract empty: %v", err)
+	}
+	if len(nodes) != 0 {
+		t.Errorf("expected 0 nodes for empty input, got %d", len(nodes))
 	}
 }
