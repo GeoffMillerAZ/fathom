@@ -1,10 +1,18 @@
-// Package platformlink builds the cross-repo platform graph by walking Go source
-// files across multiple service repos, extracting exported symbols and their
-// outbound call references, then joining calls that resolve to exported symbols
-// in a different service into directed core.CrossRepoEdge records.
+// Package platformlink builds the cross-repo platform graph from extracted
+// symbol nodes across a fleet of service repos: it joins each symbol's outbound
+// call references to symbols defined in a *different* service, producing
+// directed core.CrossRepoEdge records.
 //
-// BuildPlatformGraph is a pure function: identical inputs always produce an
-// identical, sorted graph with no shared state or network access.
+// It is language-agnostic. BuildFromSymbols operates on already-extracted
+// []core.SymbolNode — typically read back from the store, where every
+// extractor's symbols and call edges now live — so cross-repo blast radius
+// works for every language whose extractor populates node.Calls, not only Go.
+// BuildPlatformGraph is a convenience that walks Go source on disk and feeds the
+// same core; the canonical multi-language entry point is
+// pkg/platform.BuildFromStore.
+//
+// All builders are pure: identical inputs always produce an identical, sorted
+// graph with no shared state or network access.
 package platformlink
 
 import (
@@ -64,17 +72,111 @@ func (g *Graph) BlastRadius(service string) []string {
 	return svcs
 }
 
-// symbolRecord is an internal index entry for a single exported symbol.
+// symbolRecord is an internal index entry for a single defined symbol.
 type symbolRecord struct {
 	service  string
-	pkg      string // package name (last path element of the import path)
+	pkg      string // package / namespace / receiver of the symbol
 	name     string // bare symbol name, e.g. "Greet"
 	filePath string // service-relative file path
 }
 
-// BuildPlatformGraph walks all Go source files in each repo, extracts exported
-// symbols and their cross-package call references, and joins references that
-// resolve to an exported symbol in a different service into cross-repo edges.
+// BuildFromSymbols builds the cross-repo graph from already-extracted symbol
+// nodes grouped by service ID. This is the language-agnostic core: it works for
+// any language whose extractor populates node.Package / node.Name / node.Calls
+// (read back from the store), not just Go.
+//
+// Matching is qualified and conservative. A caller's outbound call "pkg.Name"
+// links to every symbol in a *different* service whose Package=="pkg" and
+// Name=="Name". Two forms of callee are intentionally NOT cross-linked:
+//
+//   - intra-service-resolved keys ("service::pkg.Name"), which are same-service
+//     by construction; and
+//   - bare, unqualified callees ("Name" with no package), because bare names
+//     collide fleet-wide and cross-linking them would manufacture false edges.
+//
+// The targeted cross_repo_callers MCP tool handles bare-name lookups precisely
+// when a caller actually wants them. A call "pkg.Name" that matches symbols in
+// several services fans out to all of them — that is the true blast radius.
+//
+// Pure and deterministic: same input → identical sorted edges.
+func BuildFromSymbols(nodesByService map[string][]core.SymbolNode) *Graph {
+	if len(nodesByService) == 0 {
+		return &Graph{}
+	}
+
+	// Deterministic service processing order.
+	serviceIDs := make([]string, 0, len(nodesByService))
+	for svcID := range nodesByService {
+		serviceIDs = append(serviceIDs, svcID)
+	}
+	sort.Strings(serviceIDs)
+
+	// Phase 1: build the cross-service symbol index, keyed by "Package.Name".
+	// Multiple services may define the same qualified key; keep them all so a
+	// call fans out to every defining service. No Go-capitalization gate —
+	// visibility is language-specific and not parsed here, and cross-service
+	// calls only reference reachable symbols in practice.
+	exportIndex := map[string][]symbolRecord{}
+	for _, svcID := range serviceIDs {
+		for _, node := range nodesByService[svcID] {
+			if node.Name == "" || node.Package == "" {
+				continue
+			}
+			qualKey := node.Package + "." + node.Name
+			exportIndex[qualKey] = append(exportIndex[qualKey], symbolRecord{
+				service:  svcID,
+				pkg:      node.Package,
+				name:     node.Name,
+				filePath: node.FilePath,
+			})
+		}
+	}
+
+	// Phase 2: for each qualifying outbound call that resolves to a symbol in a
+	// different service, emit a cross-repo edge.
+	edgeSet := map[core.CrossRepoEdge]bool{}
+	for _, svcID := range serviceIDs {
+		for _, node := range nodesByService[svcID] {
+			for _, callKey := range node.Calls {
+				// Intra-service resolved keys ("service::pkg.Name") are same-service.
+				if strings.Contains(callKey, "::") {
+					continue
+				}
+				// Require a package qualifier; bare names are too ambiguous fleet-wide.
+				if !strings.Contains(callKey, ".") {
+					continue
+				}
+				for _, target := range exportIndex[callKey] {
+					if target.service == svcID {
+						continue
+					}
+					edgeSet[core.CrossRepoEdge{
+						FromService: svcID,
+						FromFile:    node.FilePath,
+						ToService:   target.service,
+						ToKey:       target.name,
+						ToFile:      target.filePath,
+					}] = true
+				}
+			}
+		}
+	}
+
+	// Phase 3: collect and sort edges for determinism.
+	edges := make([]core.CrossRepoEdge, 0, len(edgeSet))
+	for e := range edgeSet {
+		edges = append(edges, e)
+	}
+	sortEdges(edges)
+
+	return &Graph{edges: edges}
+}
+
+// BuildPlatformGraph walks all Go source files in each repo, extracts symbols
+// and their cross-package call references, and joins references that resolve to
+// a symbol in a different service into cross-repo edges. It is a convenience
+// wrapper over BuildFromSymbols for the Go-on-disk case; the store-backed,
+// multi-language path is pkg/platform.BuildFromStore.
 //
 // repos maps serviceID → absolute local path. The function is pure: same repos
 // map → identical output (sorted edges, no randomness, no side effects).
@@ -85,17 +187,6 @@ func BuildPlatformGraph(repos map[string]string) (*Graph, error) {
 
 	ge := extractor.NewGoExtractor()
 
-	// Phase 1: extract all symbols from every service.
-	// exported index: key = "pkgName.SymbolName" → []symbolRecord
-	// We use pkgName (last directory element) as the package identifier because
-	// cross-package calls in Go source look like "alpha.Greet" where "alpha" is
-	// the package name declared in the file.
-	type perService struct {
-		nodes    []core.SymbolNode
-		rootPath string
-	}
-	allServices := make(map[string]*perService, len(repos))
-
 	// Sorted service IDs for deterministic processing order.
 	serviceIDs := make([]string, 0, len(repos))
 	for svcID := range repos {
@@ -103,9 +194,10 @@ func BuildPlatformGraph(repos map[string]string) (*Graph, error) {
 	}
 	sort.Strings(serviceIDs)
 
+	nodesByService := make(map[string][]core.SymbolNode, len(repos))
 	for _, svcID := range serviceIDs {
 		rootPath := repos[svcID]
-		ps := &perService{rootPath: rootPath}
+		var nodes []core.SymbolNode
 
 		err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
@@ -122,7 +214,7 @@ func BuildPlatformGraph(repos map[string]string) (*Graph, error) {
 			if !strings.HasSuffix(path, ".go") {
 				return nil
 			}
-			// Skip generated files.
+			// Skip generated and test files.
 			if strings.HasSuffix(path, ".pb.go") || strings.HasSuffix(path, "_test.go") {
 				return nil
 			}
@@ -137,105 +229,22 @@ func BuildPlatformGraph(repos map[string]string) (*Graph, error) {
 				return relErr
 			}
 
-			nodes, extractErr := ge.Extract(svcID, relPath, src)
+			extracted, extractErr := ge.Extract(svcID, relPath, src)
 			if extractErr != nil {
 				// Non-fatal: skip unparseable files.
 				return nil
 			}
-			ps.nodes = append(ps.nodes, nodes...)
+			nodes = append(nodes, extracted...)
 			return nil
 		})
 		if err != nil {
 			return nil, err
 		}
 
-		allServices[svcID] = ps
+		nodesByService[svcID] = nodes
 	}
 
-	// Phase 2: build a cross-service exported symbol index.
-	// Maps "pkgName.SymbolName" → symbolRecord for all exported symbols across
-	// all services. We only index exported names (ast.IsExported = starts with
-	// upper-case), which is the default from GoExtractor.
-	exportIndex := map[string]symbolRecord{}
-
-	for _, svcID := range serviceIDs {
-		ps := allServices[svcID]
-		for _, node := range ps.nodes {
-			if !isExported(node.Name) {
-				continue
-			}
-			// node.Package is either the Go package name (for funcs/types) or the
-			// receiver type name (for methods). For cross-repo matching we index
-			// both "pkgName.SymbolName" and bare "SymbolName" so callers can find
-			// symbols even when the local import alias differs.
-			qualKey := node.Package + "." + node.Name
-			exportIndex[qualKey] = symbolRecord{
-				service:  svcID,
-				pkg:      node.Package,
-				name:     node.Name,
-				filePath: node.FilePath,
-			}
-		}
-	}
-
-	// Phase 3: for each call edge, check whether the callee resolves to a symbol
-	// in a *different* service. If so, emit a CrossRepoEdge.
-	edgeSet := map[core.CrossRepoEdge]bool{}
-
-	for _, svcID := range serviceIDs {
-		ps := allServices[svcID]
-		for _, node := range ps.nodes {
-			for _, callKey := range node.Calls {
-				// callKey from GoExtractor is either:
-				//   "service::pkg.Name"  (intra-service, already resolved)
-				//   "pkg.Name"           (unresolved selector call — potential cross-repo)
-				//   "bare"               (unresolved simple call)
-
-				// We only care about selector calls ("pkg.Name") that are not
-				// already resolved to the same service.
-				if strings.Contains(callKey, "::") {
-					// Intra-service resolved key — skip.
-					continue
-				}
-				if !strings.Contains(callKey, ".") {
-					// Bare builtin/local name — skip.
-					continue
-				}
-
-				// callKey looks like "alpha.Greet"
-				target, ok := exportIndex[callKey]
-				if !ok {
-					continue
-				}
-				// Only emit cross-service edges.
-				if target.service == svcID {
-					continue
-				}
-
-				// Derive bare symbol name from callKey (the part after the dot).
-				parts := strings.SplitN(callKey, ".", 2)
-				bareSymbol := parts[1]
-
-				edge := core.CrossRepoEdge{
-					FromService: svcID,
-					FromFile:    node.FilePath,
-					ToService:   target.service,
-					ToKey:       bareSymbol,
-					ToFile:      target.filePath,
-				}
-				edgeSet[edge] = true
-			}
-		}
-	}
-
-	// Phase 4: collect and sort edges for determinism.
-	edges := make([]core.CrossRepoEdge, 0, len(edgeSet))
-	for e := range edgeSet {
-		edges = append(edges, e)
-	}
-	sortEdges(edges)
-
-	return &Graph{edges: edges}, nil
+	return BuildFromSymbols(nodesByService), nil
 }
 
 // sortEdges sorts a slice of CrossRepoEdge in a stable, deterministic order.
@@ -256,16 +265,4 @@ func sortEdges(edges []core.CrossRepoEdge) {
 		}
 		return a.ToFile < b.ToFile
 	})
-}
-
-// isExported reports whether name is an exported Go identifier.
-func isExported(name string) bool {
-	if name == "" {
-		return false
-	}
-	// Methods are stored as "ReceiverType.MethodName"; check the method part.
-	if i := strings.LastIndex(name, "."); i >= 0 {
-		name = name[i+1:]
-	}
-	return name[0] >= 'A' && name[0] <= 'Z'
 }
