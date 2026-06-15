@@ -66,6 +66,14 @@ var extKindMap = map[string]core.SourceKind{
 	"Chart.yaml":  core.KindHelmChart,
 	"values.yaml": core.KindHelmValue,
 	".tpl":        core.KindHelmTemplate,
+
+	// Docker
+	"Dockerfile":          core.KindDockerStage,
+	".dockerfile":         core.KindDockerStage,
+	"docker-compose.yml":  core.KindComposeService,
+	"docker-compose.yaml": core.KindComposeService,
+	"compose.yml":         core.KindComposeService,
+	"compose.yaml":        core.KindComposeService,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

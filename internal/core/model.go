@@ -61,6 +61,10 @@ const (
 	KindHelmDependency SourceKind = "HelmDependency"
 	KindHelmValue      SourceKind = "HelmValue"
 	KindHelmTemplate   SourceKind = "HelmTemplate"
+
+	// Docker
+	KindDockerStage    SourceKind = "DockerStage"
+	KindComposeService SourceKind = "ComposeService"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

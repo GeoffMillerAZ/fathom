@@ -246,6 +246,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["values.yaml"] = extractor.NewHelmValuesExtractor()
 	p.exts[".tpl"] = extractor.NewHelmTemplateExtractor()
 
+	// Dockerfile (full-basename keys take precedence over extension dispatch)
+	p.exts["Dockerfile"] = extractor.NewDockerfileExtractor()
+	p.exts[".dockerfile"] = extractor.NewDockerfileExtractor()
+
+	// Docker Compose (full-basename keys take precedence over .yaml k8s extractor)
+	compose := extractor.NewComposeExtractor()
+	p.exts["docker-compose.yml"] = compose
+	p.exts["docker-compose.yaml"] = compose
+	p.exts["compose.yml"] = compose
+	p.exts["compose.yaml"] = compose
+
 	return p
 }
 
