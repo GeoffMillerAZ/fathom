@@ -70,6 +70,20 @@ const (
 	KindGHAWorkflow SourceKind = "GHAWorkflow"
 	KindGHAJob      SourceKind = "GHAJob"
 	KindGHAAction   SourceKind = "GHAAction"
+
+	// Protocol Buffers
+	KindProtoMessage SourceKind = "ProtoMessage"
+	KindProtoService SourceKind = "ProtoService"
+	KindProtoRPC     SourceKind = "ProtoRPC"
+	KindProtoEnum    SourceKind = "ProtoEnum"
+
+	// GraphQL
+	KindGraphQLType  SourceKind = "GraphQLType"
+	KindGraphQLField SourceKind = "GraphQLField"
+
+	// TOML
+	KindTOMLTable SourceKind = "TOMLTable"
+	KindTOMLKey   SourceKind = "TOMLKey"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

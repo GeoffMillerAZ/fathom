@@ -74,6 +74,16 @@ var extKindMap = map[string]core.SourceKind{
 	"docker-compose.yaml": core.KindComposeService,
 	"compose.yml":         core.KindComposeService,
 	"compose.yaml":        core.KindComposeService,
+
+	// Protocol Buffers
+	".proto": core.KindProtoMessage,
+
+	// GraphQL
+	".graphql": core.KindGraphQLType,
+	".gql":     core.KindGraphQLType,
+
+	// TOML
+	".toml": core.KindTOMLTable,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

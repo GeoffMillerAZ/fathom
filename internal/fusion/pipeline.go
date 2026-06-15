@@ -259,6 +259,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["compose.yml"] = compose
 	p.exts["compose.yaml"] = compose
 
+	// Protocol Buffers
+	p.exts[".proto"] = extractor.NewProtoExtractor()
+
+	// GraphQL
+	gql := extractor.NewGraphQLExtractor()
+	p.exts[".graphql"] = gql
+	p.exts[".gql"] = gql
+
+	// TOML
+	p.exts[".toml"] = extractor.NewTOMLExtractor()
+
 	return p
 }
 
