@@ -488,7 +488,7 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					ServiceID:    serviceID,
 					SourceRef:    pf.ref.Path,
 					SourceKind:   node.Kind,
-					EvidenceTier: core.TierVerified,
+					EvidenceTier: node.Tier,
 					Symbol:       node.Name,
 					Claim:        node.Signature,
 					ContentHash:  pf.hash,

@@ -48,8 +48,8 @@ func TestK8sExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindK8sWorkload {
 			t.Errorf("Kind: got %q, want KindK8sWorkload", n.Kind)
 		}
-		if n.Tier != core.TierVerified {
-			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		if n.Tier != core.TierPreScan {
+			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
 		}
 	})
 

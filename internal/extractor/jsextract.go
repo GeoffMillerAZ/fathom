@@ -82,7 +82,7 @@ func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 				Kind:     core.KindJSClass,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			classStack = append(classStack, classFrame{name: name, braceDepth: braceDepth})
 			continue
@@ -98,7 +98,7 @@ func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 				Kind:     core.KindJSFunc,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			continue
 		}
@@ -113,7 +113,7 @@ func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 				Kind:     core.KindJSFunc,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			continue
 		}
@@ -134,7 +134,7 @@ func (j *JSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 					Kind:     core.KindJSMethod,
 					FilePath: relPath,
 					Line:     lineNo,
-					Tier:     core.TierVerified,
+					Tier:     core.TierPreScan,
 				})
 			}
 		}

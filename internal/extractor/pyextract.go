@@ -63,7 +63,7 @@ func (p *PythonExtractor) Extract(service, relPath string, src []byte) ([]core.S
 					Kind:     core.KindPyClass,
 					FilePath: relPath,
 					Line:     lineNo,
-					Tier:     core.TierVerified,
+					Tier:     core.TierPreScan,
 				})
 				classStack = append(classStack, classFrame{indent: indent, name: name})
 			}
@@ -92,7 +92,7 @@ func (p *PythonExtractor) Extract(service, relPath string, src []byte) ([]core.S
 				Kind:     core.KindPyFunc,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 		}
 	}

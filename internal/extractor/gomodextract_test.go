@@ -49,8 +49,8 @@ func TestGoModExtractor_Basic(t *testing.T) {
 		if n.Kind != core.KindModuleDep {
 			t.Errorf("%q Kind: got %q, want KindModuleDep", dep.name, n.Kind)
 		}
-		if n.Tier != core.TierVerified {
-			t.Errorf("%q Tier: got %q, want TierVerified", dep.name, n.Tier)
+		if n.Tier != core.TierPreScan {
+			t.Errorf("%q Tier: got %q, want TierPreScan", dep.name, n.Tier)
 		}
 		if n.Signature != dep.version {
 			t.Errorf("%q Signature: got %q, want %q", dep.name, n.Signature, dep.version)

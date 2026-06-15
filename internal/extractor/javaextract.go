@@ -96,7 +96,7 @@ func (j *JavaExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 				Kind:     kind,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			classStack = append(classStack, classFrame{name: name, kind: kind, braceDepth: braceDepth})
 			continue
@@ -117,7 +117,7 @@ func (j *JavaExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 					Kind:     core.KindJavaMethod,
 					FilePath: relPath,
 					Line:     lineNo,
-					Tier:     core.TierVerified,
+					Tier:     core.TierPreScan,
 				})
 			}
 		}

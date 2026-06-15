@@ -45,7 +45,7 @@ func (c *CUEExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Kind:     core.KindCUEDefinition,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 		}
 	}

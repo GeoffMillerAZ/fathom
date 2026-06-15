@@ -97,7 +97,7 @@ func (r *RubyExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 				Kind:     core.KindRubyClass,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			scopeStack = append(scopeStack, scopeFrame{name: qualName, kind: core.KindRubyClass, depth: depth})
 			continue
@@ -118,7 +118,7 @@ func (r *RubyExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 				Kind:     core.KindRubyModule,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			scopeStack = append(scopeStack, scopeFrame{name: qualName, kind: core.KindRubyModule, depth: depth})
 			continue
@@ -139,7 +139,7 @@ func (r *RubyExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 				Kind:     core.KindRubyMethod,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			// defs are scopes too (they have their own 'end'), but we don't
 			// push them as class/module scopes for method-qualification purposes.

@@ -90,7 +90,7 @@ func (t *TemplExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 				FilePath:  relPath,
 				Line:      lineNo,
 				Signature: sig,
-				Tier:      core.TierVerified,
+				Tier:      core.TierPreScan,
 			}
 			nodes = append(nodes, node)
 			decls = append(decls, declEntry{nodeIdx: len(nodes) - 1, startAt: lineNo})
@@ -108,7 +108,7 @@ func (t *TemplExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 				FilePath:  relPath,
 				Line:      lineNo,
 				Signature: sig,
-				Tier:      core.TierVerified,
+				Tier:      core.TierPreScan,
 			}
 			nodes = append(nodes, node)
 			decls = append(decls, declEntry{nodeIdx: len(nodes) - 1, startAt: lineNo})

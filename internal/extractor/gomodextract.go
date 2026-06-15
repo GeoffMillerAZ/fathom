@@ -63,7 +63,7 @@ func (g *GoModExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 					FilePath:  relPath,
 					Line:      lineNo,
 					Signature: version,
-					Tier:      core.TierVerified,
+					Tier:      core.TierPreScan,
 				})
 			}
 			continue
@@ -81,7 +81,7 @@ func (g *GoModExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 					FilePath:  relPath,
 					Line:      lineNo,
 					Signature: version,
-					Tier:      core.TierVerified,
+					Tier:      core.TierPreScan,
 				})
 			}
 		}

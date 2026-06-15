@@ -67,8 +67,8 @@ func TestTemplExtractor_ComponentWithParams(t *testing.T) {
 		if n.Kind != core.KindTemplComponent {
 			t.Errorf("Kind: got %q, want KindTemplComponent", n.Kind)
 		}
-		if n.Tier != core.TierVerified {
-			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
+		if n.Tier != core.TierPreScan {
+			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
 		}
 		if n.FilePath != "web/views/page.templ" {
 			t.Errorf("FilePath: got %q, want %q", n.FilePath, "web/views/page.templ")

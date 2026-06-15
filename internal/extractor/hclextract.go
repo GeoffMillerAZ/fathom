@@ -52,7 +52,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Kind:     core.KindTerraformResource,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			continue
 		}
@@ -66,7 +66,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Kind:     core.KindTerraformResource,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			continue
 		}
@@ -80,7 +80,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Kind:     core.KindTerraformResource,
 				FilePath: relPath,
 				Line:     lineNo,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 			continue
 		}

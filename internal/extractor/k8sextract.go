@@ -87,7 +87,7 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Kind:     core.KindK8sWorkload,
 				FilePath: relPath,
 				Line:     startLine,
-				Tier:     core.TierVerified,
+				Tier:     core.TierPreScan,
 			})
 		}
 
