@@ -1,0 +1,162 @@
+# Cross-repo blast radius & impact
+
+Answer "if I change X, what breaks — here and in every other service?" across a language-agnostic fleet.
+
+## When to use this
+
+- You are about to rename, refactor, or delete a symbol in a shared library and need to know every consumer, in every language, before you touch anything.
+- You are reviewing a PR that touches a widely-called function and want to surface all call sites and affected tests automatically.
+- You want to confirm that a planned rename has zero callers left after a migration.
+- You need to know whether two symbols are connected at all — or find the shortest path between them — to reason about transitive breakage.
+
+## Tools
+
+| Name | Kind | What it gives you |
+|---|---|---|
+| `find_callers` | MCP tool (investigation) | All symbols in the **current service** that call a named symbol |
+| `test_impact` | MCP tool (investigation) | Test functions that transitively reach the symbol via the call graph |
+| `blast_radius` | MCP tool (investigation) | Blast radius of **changed files**: symbols defined there + their transitive callers + affected tests + touched files |
+| `diff_impact` | MCP tool (investigation) | Alias of `blast_radius`, framed for diff/PR review |
+| `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
+| `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
+| `call_path` | MCP tool (coding) | Shortest directed call path between two symbols (BFS) |
+| `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges |
+| `platform_callers` | MCP tool (platform) | Alias for `cross_repo_callers` — identical result |
+| `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
+| `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
+| `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |
+| `ingest` | MCP tool | Re-index a service in-session to pull in new call edges |
+| `sextant platform-callers` | CLI | Cross-repo caller lookup from the terminal (language-agnostic) |
+
+## How it enhances Claude Code
+
+Without sextant, Claude Code must grep across repos and parse raw source to answer impact questions — a slow, incomplete, and token-heavy process that misses transitive callers.
+
+With sextant:
+
+1. **Call edges are pre-indexed** across ~25 languages. `cross_repo_callers` returns structured results in one round-trip instead of many grep passes.
+2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
+3. **Rename safety is explicit.** `rename_impact` returns every call site as a list; Claude Code can iterate it, edit each site, and confirm the list shrinks to zero.
+4. **Path existence is a boolean gate.** `reachable` lets Claude Code answer "does this change propagate to the payment path?" without speculative reasoning — reducing plan drift.
+
+The result: impact review that would take dozens of file reads and grep calls collapses to 3-5 structured tool calls, and Claude Code can cite specific files and line numbers from the evidence rather than hedging.
+
+## Worked example
+
+**Scenario:** The `ValidateToken` function in `auth-lib` is being refactored. You need to know what breaks across the fleet before touching the signature.
+
+**1. Confirm the index is fresh.**
+
+```json
+{ "name": "staleness_report", "arguments": { "service": "auth-lib" } }
+```
+
+Returns `{ "reingest_recommended": false, "indexed_commit": "a3f9c1d", "current_commit": "a3f9c1d" }`. Good — index is current.
+
+**2. Find cross-repo callers (fleet-wide).**
+
+```json
+{ "name": "cross_repo_callers", "arguments": { "symbol": "ValidateToken" } }
+```
+
+Returns:
+```json
+{
+  "callers": [
+    { "service": "payment-service",  "symbol": "ProcessCheckout",    "file_path": "internal/checkout/handler.go" },
+    { "service": "order-service",    "symbol": "SubmitOrder",         "file_path": "cmd/api/routes.go" },
+    { "service": "notification-svc", "symbol": "sendAuthenticatedMsg","file_path": "pkg/notify/send.py" }
+  ],
+  "count": 3
+}
+```
+
+Three services — in Go and Python — call `ValidateToken`. The Python caller is only visible because call edges are language-agnostic; a Go-only grep would have missed it.
+
+**3. Find callers inside `auth-lib` itself.**
+
+```json
+{ "name": "find_callers", "arguments": { "service": "auth-lib", "symbol": "ValidateToken" } }
+```
+
+Returns internal callers: `RefreshSession`, `AdminOverride`. Both need to be updated.
+
+**4. Find all tests that transitively cover the symbol.**
+
+```json
+{ "name": "test_impact", "arguments": { "service": "auth-lib", "symbol": "ValidateToken" } }
+```
+
+Returns `{ "tests": ["TestValidateToken_Expired", "TestRefreshSession_Invalid", "TestAdminOverride_Bypass"] }`. Run exactly these before and after the change.
+
+**5. Confirm rename scope.**
+
+```json
+{ "name": "rename_impact", "arguments": { "service": "auth-lib", "symbol": "ValidateToken" } }
+```
+
+Returns the same caller list as `find_callers` but formatted as call sites — use this as the checklist to update.
+
+**6. Gate on reachability before touching the payment path.**
+
+```json
+{ "name": "reachable", "arguments": { "service": "payment-service", "from": "ProcessCheckout", "to": "ChargeCard" } }
+```
+
+Returns `{ "reachable": true }`. The checkout → charge path exists, so this change carries payment-path risk. Escalate review accordingly.
+
+**CLI equivalent (from a terminal, outside a Claude Code session):**
+
+```sh
+sextant platform-callers --store workspace/db/fleet.duckdb --symbol ValidateToken
+```
+
+Produces the same cross-repo caller list. The `--repos` flag is a legacy Go-only filter; omit it to get language-agnostic results.
+
+### Diff / PR variant: blast radius of a change
+
+When you have a set of changed files (a PR, a commit), use `blast_radius` (or its PR-framed alias `diff_impact`) to get the symbols those files define plus everything transitively affected — the exact review surface:
+
+```json
+{ "name": "blast_radius", "arguments": { "service": "auth-lib", "changed_files": ["internal/auth/token.go"] } }
+```
+
+Returns the defined symbols, their transitive callers, the affected tests, and the touched files.
+
+For a single symbol's reach across the **whole fleet** in one call, use `cross_repo_blast_radius`:
+
+```json
+{ "name": "cross_repo_blast_radius", "arguments": { "symbol": "ValidateToken" } }
+```
+
+Returns the symbol in each service plus every cross-service caller — the one-call answer to "who is affected, fleet-wide?"
+
+## Setup & notes
+
+**Profile:** Use `investigation` for single-repo work (`find_callers`, `test_impact`). Switch to `platform` for fleet-wide queries (`cross_repo_callers`, `list_services`). You can switch mid-session:
+
+```json
+{ "name": "set_profile", "arguments": { "profile": "platform" } }
+```
+
+Then switch back to `investigation` or `coding` when done.
+
+**Cross-repo edges require call-edge data in the index.** If `cross_repo_callers` returns zero results for a symbol you know is called externally, the index was built without call edges populated. Re-ingest with a current build:
+
+```json
+{ "name": "ingest", "arguments": { "service": "auth-lib" } }
+```
+
+After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `sextant ingest` will fail while a Claude Code session holds the single-writer DuckDB lock — use the MCP `ingest` tool instead.
+
+**Staleness matters for impact analysis.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` before a blast-radius review. If `reingest_recommended` is `true`, call `ingest` before proceeding — stale call edges produce false negatives (missing callers).
+
+**`platform_callers` is an alias.** `cross_repo_callers` and `platform_callers` are identical; either name works. The CLI uses `platform-callers` (hyphenated).
+
+**`--repos` flag is Go-only (legacy).** When using the CLI, omit `--repos` to get language-agnostic results. The flag filters to a subset of repos using Go module paths and does not apply to Python, TypeScript, Java, or other languages.
+
+**`concern` is not required for impact tools.** `find_callers`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, and `test_impact` take `symbol` as their scope — no `concern` argument needed. (`query_symbols` and `pack_context` do require `concern`; they are for a different pattern.)
+
+## Maintained
+
+This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `sextant platform-callers`. Update it when these change.
