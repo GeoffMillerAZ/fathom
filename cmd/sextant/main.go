@@ -47,6 +47,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdWatch(args[1:], stdout, stderr)
 	case "gen-claude-md":
 		return cmdGenClaudeMd(args[1:], stdout, stderr)
+	case "gen-status-cue":
+		return cmdGenStatusCue(args[1:], stdout, stderr)
 	case "gen-platform-manifest":
 		return cmdGenPlatformManifest(args[1:], stdout, stderr)
 	case "query":
@@ -76,6 +78,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  ingest-diff           Ingest only files changed since a git ref")
 	fmt.Fprintln(w, "  watch                 Poll for file changes and re-ingest automatically")
 	fmt.Fprintln(w, "  gen-claude-md         Generate a CLAUDE.md from stored symbols")
+	fmt.Fprintln(w, "  gen-status-cue        Generate a CUE status file from a plan + evidence")
 	fmt.Fprintln(w, "  gen-platform-manifest Generate a platform manifest from *.duckdb store files")
 	fmt.Fprintln(w, "  inspect               List stored symbols for a service")
 	fmt.Fprintln(w, "  query                 Query symbols for a concern")
