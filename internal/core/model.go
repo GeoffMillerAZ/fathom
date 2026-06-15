@@ -76,6 +76,19 @@ const (
 	KindCSharpMethod    SourceKind = "CSharpMethod"
 	KindCSharpNamespace SourceKind = "CSharpNamespace"
 
+	// C
+	KindCFunc    SourceKind = "CFunc"
+	KindCStruct  SourceKind = "CStruct"
+	KindCEnum    SourceKind = "CEnum"
+	KindCTypedef SourceKind = "CTypedef"
+
+	// C++
+	KindCppFunc      SourceKind = "CppFunc"
+	KindCppClass     SourceKind = "CppClass"
+	KindCppStruct    SourceKind = "CppStruct"
+	KindCppEnum      SourceKind = "CppEnum"
+	KindCppNamespace SourceKind = "CppNamespace"
+
 	// Templates
 	KindTemplComponent SourceKind = "TemplComponent"
 

@@ -221,6 +221,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Rust
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
+	// C
+	c := extractor.NewCExtractor()
+	p.exts[".c"] = c
+	p.exts[".h"] = c
+
+	// C++
+	cpp := extractor.NewCppExtractor()
+	p.exts[".cc"] = cpp
+	p.exts[".cpp"] = cpp
+	p.exts[".cxx"] = cpp
+	p.exts[".hpp"] = cpp
+	p.exts[".hh"] = cpp
+
 	// C#
 	p.exts[".cs"] = extractor.NewCSharpExtractor()
 

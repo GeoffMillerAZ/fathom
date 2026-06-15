@@ -61,6 +61,17 @@ var extKindMap = map[string]core.SourceKind{
 	".rs":   core.KindRustFn,
 	".cs":   core.KindCSharpClass,
 
+	// C
+	".c": core.KindCFunc,
+	".h": core.KindCFunc,
+
+	// C++
+	".cc":  core.KindCppFunc,
+	".cpp": core.KindCppFunc,
+	".cxx": core.KindCppFunc,
+	".hpp": core.KindCppFunc,
+	".hh":  core.KindCppFunc,
+
 	// Templates
 	".templ": core.KindTemplComponent,
 
