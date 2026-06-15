@@ -1,0 +1,2012 @@
+# sextant calibration corpus — curated public sample repos per language/tool.
+#
+# Purpose: real-world code to calibrate and stress-test sextant's extractors. Each
+# repo is pinned to a real commit (sha resolved via `git ls-remote`; ref is the tag).
+# `calibration/clone.sh` shallow-clones these into workspace/calibration/ (gitignored);
+# `calibration/baseline.sh` measures the current extractors against them. See README.md.
+#
+# Per-language fields:
+#   approach            pure-go-parser | tree-sitter | hybrid | structured-heuristic
+#   go_parser_lib       authoritative pure-Go parser (Track A), or "none"
+#   tree_sitter_grammar grammar for the wazero/WASM AST path (Track B), or "none"
+#   scip_indexer        indexer that yields real call/reference edges, or "none"
+#   edges_feasible      whether call/reference edges are realistically obtainable
+#   symbols             the symbol kinds an *excellent* extractor should emit
+#
+# Two tracks fall out of this corpus:
+#   Track A — pure-Go parsers (no WASM): Go, Dockerfile, Terraform/HCL, k8s YAML,
+#     docker-compose, GitHub Actions, CUE, proto, GraphQL, SQL, JSON, TOML, Markdown.
+#   Track B — tree-sitter via wazero (ADR-004): Java, Kotlin, Ruby, PHP, Scala, C,
+#     C++, C#, Rust, Swift, Lua, Bash. Python/JS/TS/Helm are hybrid.
+#
+# Regenerate from a curation run with:
+#   jq '.result.languages | map({...})' <run>.output | yq -p=json -o=yaml
+# (curated 2026-06-15; 30 languages/tools, 83 repos).
+languages:
+  - language: Python
+    category: language
+    extensions:
+      - .py
+      - .pyi
+    approach: hybrid
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-python
+    scip_indexer: sourcegraph/scip-python
+    edges_feasible: true
+    symbols:
+      - functions
+      - async functions
+      - classes
+      - methods
+      - nested classes
+      - decorators
+      - module-level constants/variables
+      - imports
+      - from-imports (aliased)
+      - type aliases
+      - dataclasses
+      - properties
+      - class attributes / annotations
+      - enums
+    repos:
+      - name: fastapi
+        url: https://github.com/fastapi/fastapi
+        ref: 0.119.1
+        sha: 864b569cf8453654fc3bc2c64108c0f644e2918c
+        license: MIT
+        idioms:
+          - heavy decorators (route decorators, Depends)
+          - extensive type hints / generics (typing.Annotated)
+          - Pydantic models (class-based with field annotations)
+          - async def endpoints
+          - dependency-injection callables
+          - overloaded signatures (@overload)
+          - module-level re-exports in __init__.py
+          - TYPE_CHECKING-guarded imports
+      - name: flask
+        url: https://github.com/pallets/flask
+        ref: 3.1.3
+        sha: 8d05782cf7e01c815ceed85eac9d744533af4c44
+        license: BSD-3-Clause
+        idioms:
+          - decorators (@app.route, @property)
+          - metaclass-ish app/blueprint patterns
+          - context-local proxies
+          - class methods / classmethods / staticmethods
+          - type-annotated public API
+          - __all__ exports
+          - nested helper functions / closures
+      - name: django
+        url: https://github.com/django/django
+        ref: 5.2.9
+        sha: f3e159479e30f77dd81683db9d94261a7bbf8789
+        license: BSD-3-Clause
+        idioms:
+          - metaclasses (ModelBase, Field machinery)
+          - deep multiple inheritance / mixins
+          - descriptors and __get__/__set__
+          - dynamically-generated methods
+          - nested Meta classes
+          - abstract base classes
+          - extensive module-level imports and lazy imports
+          - property descriptors
+  - language: JavaScript
+    category: language
+    extensions:
+      - .js
+      - .mjs
+      - .cjs
+      - .jsx
+    approach: hybrid
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-javascript
+    scip_indexer: sourcegraph/scip-typescript
+    edges_feasible: true
+    symbols:
+      - functions
+      - arrow functions
+      - async functions
+      - generator functions
+      - classes
+      - methods
+      - getters/setters
+      - static methods
+      - object-literal methods
+      - module-level const/let/var
+      - ES module imports/exports
+      - CommonJS require/module.exports
+      - default exports
+      - re-exports
+    repos:
+      - name: express
+        url: https://github.com/expressjs/express
+        ref: v4.22.2
+        sha: df0abc9333a3398b97b71f6ea7cd77d5ea3e9f97
+        license: MIT
+        idioms:
+          - CommonJS require/module.exports
+          - prototype-based method assignment (app.method = function)
+          - function factories / higher-order middleware
+          - closures
+          - dynamically attached methods on prototypes
+          - module.exports mutation patterns
+      - name: axios
+        url: https://github.com/axios/axios
+        ref: v1.9.0
+        sha: 95626fe0531e2939f1b0bbc2adcc5d727cf84b73
+        license: MIT
+        idioms:
+          - ESM import/export
+          - default + named exports
+          - classes with methods
+          - promise chaining / async functions
+          - factory functions (createInstance)
+          - mixin/extend helpers
+          - interceptor manager patterns
+      - name: lodash
+        url: https://github.com/lodash/lodash
+        ref: 4.17.23
+        sha: fd6aaf9433b9bc56452ffc9469e4c6f5793deb2b
+        license: MIT
+        idioms:
+          - hundreds of standalone function modules (module.exports = fn)
+          - internal _baseX helper functions
+          - currying / partial application
+          - function composition
+          - IIFEs
+          - lazy-evaluation wrapper class (LodashWrapper)
+          - chaining API
+  - language: TypeScript
+    category: language
+    extensions:
+      - .ts
+      - .tsx
+      - .mts
+      - .cts
+    approach: hybrid
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-typescript
+    scip_indexer: sourcegraph/scip-typescript
+    edges_feasible: true
+    symbols:
+      - functions
+      - arrow functions
+      - async functions
+      - classes
+      - abstract classes
+      - methods
+      - getters/setters
+      - interfaces
+      - type aliases
+      - enums
+      - const enums
+      - namespaces/modules
+      - generics (type parameters)
+      - decorators
+      - constants/variables
+      - imports/exports
+      - default exports
+      - ambient declarations (declare)
+      - overload signatures
+    repos:
+      - name: nest
+        url: https://github.com/nestjs/nest
+        ref: v11.1.26
+        sha: adecad1ce9e7ce813649272edfb650f5e7ac5540
+        license: MIT
+        idioms:
+          - heavy decorators (@Module, @Injectable, @Controller, @Get, param decorators)
+          - dependency-injection metadata (reflect-metadata)
+          - generics with constraints
+          - abstract classes
+          - interfaces + implements
+          - namespaces
+          - method/constructor overloads
+          - decorator factories
+      - name: zod
+        url: https://github.com/colinhacks/zod
+        ref: v4.4.3
+        sha: 1fb56a5c18c27102dbc92260a4007c7732a0ccca
+        license: MIT
+        idioms:
+          - extreme generics (conditional types, mapped types, infer)
+          - type-level programming / type aliases
+          - abstract base classes with generic methods
+          - method chaining builders
+          - branded types
+          - const assertions
+          - namespace merging
+          - overloaded function signatures
+      - name: typeorm
+        url: https://github.com/typeorm/typeorm
+        ref: 0.3.30
+        sha: 6c880a342d52ee1bcbebf07e80f2a8920d5cf3e1
+        license: MIT
+        idioms:
+          - property and class decorators (@Entity, @Column, @OneToMany)
+          - abstract repositories with generics
+          - interfaces + implements across many files
+          - enums
+          - namespaces
+          - decorator metadata
+          - deep inheritance and mixins
+          - ambient/declaration merging
+  - language: Go
+    category: language
+    extensions:
+      - .go
+    approach: pure-go-parser
+    go_parser_lib: go/parser (with go/ast, go/token, go/types and golang.org/x/tools/go/packages for type-resolved edges)
+    tree_sitter_grammar: none
+    scip_indexer: sourcegraph/scip-go
+    edges_feasible: true
+    symbols:
+      - functions
+      - methods
+      - structs
+      - interfaces
+      - types
+      - constants
+      - variables
+      - imports
+      - packages
+      - type-aliases
+      - generic-type-params
+      - struct-fields
+      - interface-methods
+    repos:
+      - name: spf13/cobra
+        url: https://github.com/spf13/cobra
+        ref: v1.9.1
+        sha: a655097faf7d54f78933a815984b9919d51a05d2
+        license: Apache-2.0
+        idioms:
+          - methods on structs (pointer/value receivers)
+          - functional options pattern
+          - closures and func-typed fields
+          - embedded structs
+          - variadic functions
+          - interface satisfaction
+          - init() functions
+          - build tags
+      - name: cli/cli
+        url: https://github.com/cli/cli
+        ref: v2.69.0
+        sha: 45ffa3c668f7105e92089220d42aa64c9acbd11c
+        license: MIT
+        idioms:
+          - multi-package internal layout
+          - interfaces with many implementations
+          - generated mocks/fakes
+          - context propagation
+          - table-driven tests
+          - embedded interfaces
+          - generics
+          - struct tags (json/yaml)
+      - name: prometheus/prometheus
+        url: https://github.com/prometheus/prometheus
+        ref: v3.9.1
+        sha: 64088ce2ad73e4caf589207d3a246e64e329e663
+        license: Apache-2.0
+        idioms:
+          - goroutines and channels
+          - sync primitives
+          - generics
+          - large interface hierarchies
+          - generated protobuf code
+          - custom lexers/parsers
+          - build tags and platform-specific files
+          - benchmark functions
+  - language: Java
+    category: language
+    extensions:
+      - .java
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-java
+    scip_indexer: sourcegraph/scip-java
+    edges_feasible: true
+    symbols:
+      - classes
+      - interfaces
+      - enums
+      - records
+      - annotations
+      - methods
+      - constructors
+      - fields
+      - constants
+      - nested/inner-classes
+      - imports
+      - packages
+      - type-parameters
+      - annotation-usages
+    repos:
+      - name: google/guava
+        url: https://github.com/google/guava
+        ref: v33.6.0
+        sha: de1d87eabff93cb4a7fa8e52df5fc46802c95b17
+        license: Apache-2.0
+        idioms:
+          - bounded generics and wildcards (<T extends Comparable<? super T>>)
+          - static nested classes
+          - abstract classes
+          - anonymous inner classes
+          - annotations (@GwtCompatible, @Nullable)
+          - builder pattern
+          - varargs
+          - static factory methods
+          - method overloading
+      - name: square/retrofit
+        url: https://github.com/square/retrofit
+        ref: parent-2.8.1
+        sha: da7d27425b9fa79d8ccc301fde20d83173463d26
+        license: Apache-2.0
+        idioms:
+          - interface methods with annotations
+          - custom annotations (@GET/@POST/@Path/@Query)
+          - generics and type tokens
+          - anonymous classes
+          - static nested classes
+          - reflection-based dispatch
+          - builder pattern
+          - default interface methods
+  - language: Kotlin
+    category: language
+    extensions:
+      - .kt
+      - .kts
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: fwcd/tree-sitter-kotlin
+    scip_indexer: sourcegraph/scip-java
+    edges_feasible: true
+    symbols:
+      - classes
+      - interfaces
+      - objects
+      - data-classes
+      - sealed-classes
+      - enums
+      - functions
+      - extension-functions
+      - properties
+      - companion-objects
+      - type-aliases
+      - annotations
+      - constructors
+      - imports
+      - packages
+      - top-level-declarations
+    repos:
+      - name: square/okhttp
+        url: https://github.com/square/okhttp
+        ref: parent-5.4.0
+        sha: 95c1c03d45fc935e91c2968859fd9add09f85af2
+        license: Apache-2.0
+        idioms:
+          - companion objects
+          - extension functions
+          - data classes
+          - sealed classes
+          - DSL/builder with lambdas
+          - operator overloading
+          - nullable types and elvis
+          - Java interop (@JvmStatic/@JvmField)
+          - inline/reified functions
+      - name: Kotlin/kotlinx.coroutines
+        url: https://github.com/Kotlin/kotlinx.coroutines
+        ref: 1.9.0
+        sha: d8d6f8f37978b8e202d93b34f23f101df9c5724d
+        license: Apache-2.0
+        idioms:
+          - suspend functions
+          - inline/crossinline/noinline functions
+          - reified generics
+          - expect/actual multiplatform declarations
+          - flows and channels
+          - higher-order functions with lambdas
+          - internal/internal visibility modifiers
+          - operator and infix functions
+      - name: JetBrains/Exposed
+        url: https://github.com/JetBrains/Exposed
+        ref: 1.3.0
+        sha: a68a26884952875722c1802ef42b382876d7d056
+        license: Apache-2.0
+        idioms:
+          - object declarations (singleton tables)
+          - operator overloading (get/invoke/compareTo)
+          - infix functions
+          - extension functions and properties
+          - generics with reified types
+          - delegated properties
+          - sealed classes
+          - DSL receivers (with/apply)
+  - language: Ruby
+    category: language
+    extensions:
+      - .rb
+      - .rake
+      - .gemspec
+      - .ru
+      - Rakefile
+      - Gemfile
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-ruby
+    scip_indexer: sourcegraph/scip-ruby
+    edges_feasible: true
+    symbols:
+      - modules
+      - classes
+      - methods (instance)
+      - singleton/class methods (self.)
+      - constants
+      - attr_accessor/reader/writer
+      - mixins (include/extend/prepend)
+      - superclass/inheritance edges
+      - require/require_relative imports
+      - DSL-defined methods (best-effort)
+      - call edges (via scip-ruby)
+    repos:
+      - name: sinatra/sinatra
+        url: https://github.com/sinatra/sinatra
+        ref: v4.2.1
+        sha: 518c22e9dd45c1c2fa4e11017e02766a8fc443f6
+        license: MIT
+        idioms:
+          - DSL methods (get/post/etc.) defined via define_method/class_eval
+          - modules and mixins (include/extend/prepend)
+          - singleton class (class << self)
+          - blocks/procs/yield with implicit block params
+          - class reopening / monkeypatching
+          - metaprogramming (method_missing, send, instance_eval)
+          - nested modules and namespaced constants
+          - keyword + splat (*args/**kwargs/&block) arguments
+      - name: jekyll/jekyll
+        url: https://github.com/jekyll/jekyll
+        ref: v4.4.1
+        sha: 29e9da20a4d15e76e8fe3777de6ddf528cc951ad
+        license: MIT
+        idioms:
+          - deep class/module hierarchies and namespacing
+          - attr_accessor/attr_reader/attr_writer
+          - plugin registration DSL (Liquid::Template.register_tag, hooks)
+          - include/extend mixins and Comparable/Enumerable
+          - class methods via def self.x and class << self
+          - constant definitions and frozen string literals
+          - blocks and Enumerable chaining
+          - require/require_relative dependency edges
+          - .gemspec and Rakefile metaprogramming
+      - name: fastlane/fastlane
+        url: https://github.com/fastlane/fastlane
+        ref: fastlane/2.229.1
+        sha: f964375231fa9b2e727b191629d8439c556d6ab5
+        license: MIT
+        idioms:
+          - class inheritance hierarchies (subclassing Action)
+          - DSL via metaprogramming (method_missing, define_method)
+          - self.x class methods and singleton methods
+          - module mixins across gems
+          - dynamic constant lookup and const_get
+          - keyword arguments and option hashes
+          - require graph across many gems
+          - blocks/procs passed as lane configuration
+  - language: PHP
+    category: language
+    extensions:
+      - .php
+      - .phtml
+      - .php5
+      - .phps
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-php
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - namespaces
+      - classes
+      - abstract classes
+      - interfaces
+      - traits
+      - enums (+ cases)
+      - methods
+      - static methods
+      - functions
+      - properties (typed/readonly/promoted)
+      - constants + enum cases
+      - attributes (#[...])
+      - use imports/aliases
+      - implements/extends/uses edges
+      - call edges (static from AST)
+    repos:
+      - name: laravel/framework
+        url: https://github.com/laravel/framework
+        ref: v11.54.0
+        sha: 4e7ae67eedd803eaea8ceb5f7e113f495d2c0c58
+        license: MIT
+        idioms:
+          - namespaces and use imports/aliases
+          - interfaces, abstract classes, traits (use Trait)
+          - 'PHP 8 attributes #[Attribute]'
+          - enums (backed + pure)
+          - typed properties, union/nullable types, named args
+          - magic methods (__call/__get/__set/__invoke) in facades
+          - static methods and late static binding
+          - closures/arrow fns and first-class callable syntax
+          - constructor property promotion
+      - name: guzzle/guzzle
+        url: https://github.com/guzzle/guzzle
+        ref: 7.9.3
+        sha: 7b2f29fe81dc4da0ca0ea7d42107a0845946ea77
+        license: MIT
+        idioms:
+          - PSR interfaces (interface implements edges)
+          - traits and trait method resolution
+          - namespaces and grouped use statements
+          - closures and middleware higher-order functions
+          - static factory methods
+          - typed function signatures and return types
+          - abstract classes
+          - exceptions class hierarchy
+      - name: Seldaek/monolog
+        url: https://github.com/Seldaek/monolog
+        ref: 3.9.0
+        sha: 10d85740180ecba7896c87e06a166e0c95a0e3b6
+        license: MIT
+        idioms:
+          - abstract classes and inheritance chains
+          - interfaces (PSR-3 LoggerInterface)
+          - enums (Level enum)
+          - traits
+          - namespaces
+          - typed properties and readonly properties
+          - static methods
+          - exception hierarchy
+  - language: Scala
+    category: language
+    extensions:
+      - .scala
+      - .sc
+      - .sbt
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-scala
+    scip_indexer: sourcegraph/scip-java
+    edges_feasible: true
+    symbols:
+      - objects (incl. companion)
+      - classes
+      - case classes / case objects
+      - traits (sealed/abstract)
+      - defs (methods)
+      - vals/vars
+      - type members and type aliases
+      - given/implicit instances
+      - extension methods
+      - package objects
+      - extends/with (inheritance + mixin) edges
+      - import edges
+      - call/reference edges (via scip-java/semanticdb)
+    repos:
+      - name: typelevel/cats
+        url: https://github.com/typelevel/cats
+        ref: v2.13.0
+        sha: 32a50dcfad9d897459bb755c4b5a22b4c7bc745c
+        license: MIT
+        idioms:
+          - type classes (traits with type params)
+          - implicits / given / using (Scala 2 & 3)
+          - higher-kinded types F[_]
+          - sealed traits and ADTs
+          - case classes and case objects
+          - companion objects
+          - implicit/extension methods
+          - for-comprehensions and monadic syntax
+          - self-types and trait linearization
+          - variance annotations (+A/-A)
+      - name: zio/zio
+        url: https://github.com/zio/zio
+        ref: v2.1.26
+        sha: f053ccf444dbb267dcfe6f6e6048977e568dd23d
+        license: Apache-2.0
+        idioms:
+          - sealed trait ADT hierarchies (the ZIO data type)
+          - opaque types and type aliases
+          - given/using and implicit resolution
+          - extension methods
+          - macros and inline (Scala 3)
+          - companion objects with factory methods
+          - higher-kinded type signatures
+          - case classes / case objects
+          - variance and bounded type parameters
+          - package objects
+      - name: http4s/http4s
+        url: https://github.com/http4s/http4s
+        ref: v1.0.0-M46
+        sha: c63fbff43dfe7e3bec25b789fd0a0027ec40ed62
+        license: Apache-2.0
+        idioms:
+          - tagless-final (F[_] effect abstraction)
+          - implicit/given codecs (EntityEncoder/Decoder)
+          - pattern-matching DSLs and custom extractors (unapply)
+          - sealed traits and case classes for HTTP model
+          - companion objects with smart constructors
+          - type-class instances and derivation
+          - for-comprehensions
+          - partial functions (HttpRoutes)
+          - extension methods
+  - language: C
+    category: language
+    extensions:
+      - .c
+      - .h
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-c
+    scip_indexer: sourcegraph/scip-clang
+    edges_feasible: true
+    symbols:
+      - functions
+      - structs
+      - unions
+      - enums
+      - typedefs
+      - macros
+      - global_variables
+      - function_prototypes
+      - includes
+      - function_pointer_typedefs
+    repos:
+      - name: curl/curl
+        url: https://github.com/curl/curl.git
+        ref: curl-8_9_1
+        sha: 541d30346047d973e3e7487d08d24d515a547938
+        license: curl (MIT/X derivative, permissive)
+        idioms:
+          - X-macros
+          - heavy preprocessor conditionals (#ifdef platform gates)
+          - function pointer typedefs (callbacks)
+          - opaque struct handles
+          - static functions
+          - extern declarations
+          - K&R-style legacy patterns
+          - vtable-like struct-of-function-pointers backends
+      - name: libuv/libuv
+        url: https://github.com/libuv/libuv.git
+        ref: v1.49.2
+        sha: 6a276e37f31cc594b4656fd297193963f15ef556
+        license: MIT
+        idioms:
+          - struct inheritance via macro fields (UV_HANDLE_FIELDS)
+          - function pointer typedefs (event callbacks)
+          - platform-conditional source files
+          - inline functions
+          - anonymous unions
+          - enum-driven type tagging
+          - macro-generated declarations
+      - name: sqlite/sqlite
+        url: https://github.com/sqlite/sqlite.git
+        ref: version-3.49.2
+        sha: 1b571af11a0348773889f45b66d319577026b775
+        license: Public Domain
+        idioms:
+          - very large single translation units
+          - static helper functions at scale
+          - extensive macro definitions
+          - struct-of-function-pointers virtual tables (vtable pattern)
+          - bitfield structs
+          - forward declarations
+          - conditional compilation
+  - language: C++
+    category: language
+    extensions:
+      - .cpp
+      - .cc
+      - .cxx
+      - .hpp
+      - .hh
+      - .h
+      - .hxx
+      - .ipp
+      - .tcc
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-cpp
+    scip_indexer: sourcegraph/scip-clang
+    edges_feasible: true
+    symbols:
+      - functions
+      - classes
+      - structs
+      - methods
+      - constructors
+      - destructors
+      - templates
+      - template_specializations
+      - namespaces
+      - enums
+      - enum_classes
+      - typedefs
+      - using_aliases
+      - operators
+      - macros
+      - concepts
+      - constants
+      - includes
+      - friend_declarations
+    repos:
+      - name: nlohmann/json
+        url: https://github.com/nlohmann/json.git
+        ref: v3.12.0
+        sha: 65ee68451d8eb2b5f3a30b410476ab83deb3289b
+        license: MIT
+        idioms:
+          - heavy template metaprogramming
+          - SFINAE
+          - template specialization
+          - ADL/customization points
+          - user-defined literals
+          - operator overloading
+          - nested classes
+          - namespaces with inline/versioned namespaces
+          - macros for portability
+          - constexpr
+          - iterator classes
+      - name: fmtlib/fmt
+        url: https://github.com/fmtlib/fmt.git
+        ref: 11.2.0
+        sha: 40626af88bd7df9a5fb80be7b25ac85b122d6c21
+        license: MIT
+        idioms:
+          - variadic templates
+          - constexpr/consteval (compile-time format parsing)
+          - concepts (C++20)
+          - user-defined literals
+          - template specialization
+          - inline namespaces (FMT_VERSION)
+          - type traits
+          - operator overloading
+          - CRTP-like patterns
+  - language: C#
+    category: language
+    extensions:
+      - .cs
+      - .csx
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-c-sharp
+    scip_indexer: sourcegraph/scip-dotnet
+    edges_feasible: true
+    symbols:
+      - classes
+      - structs
+      - interfaces
+      - records
+      - enums
+      - methods
+      - constructors
+      - properties
+      - fields
+      - events
+      - delegates
+      - namespaces
+      - generics_type_parameters
+      - extension_methods
+      - attributes
+      - constants
+      - operators
+      - indexers
+      - usings
+    repos:
+      - name: JamesNK/Newtonsoft.Json
+        url: https://github.com/JamesNK/Newtonsoft.Json.git
+        ref: 13.0.4
+        sha: 4e13299d4b0ec96bd4df9954ef646bd2d1b5bf2a
+        license: MIT
+        idioms:
+          - generics with constraints
+          - attributes (custom + serialization attributes)
+          - reflection-driven patterns
+          - nested classes
+          - partial classes
+          - conditional compilation (#if NET...)
+          - extension methods
+          - explicit interface implementations
+          - operator overloading
+          - indexers
+      - name: App-vNext/Polly
+        url: https://github.com/App-vNext/Polly.git
+        ref: 8.7.0
+        sha: a824c6b9258daa2879b8fa2ea768bf06bd5e6cf0
+        license: BSD-3-Clause
+        idioms:
+          - async/await (Task/ValueTask)
+          - generics with multiple type parameters
+          - records and record structs
+          - nullable reference types
+          - extension methods (fluent builder API)
+          - delegates and Func/Action types
+          - interfaces
+          - sealed/abstract class hierarchies
+          - expression-bodied members
+          - file-scoped namespaces
+      - name: serilog/serilog
+        url: https://github.com/serilog/serilog.git
+        ref: v4.3.1
+        sha: 0597ddfbd4ec594d9c42edd745fe728a2198bad9
+        license: Apache-2.0
+        idioms:
+          - interfaces and dependency-injection patterns
+          - extension methods (fluent configuration API)
+          - generics
+          - delegates
+          - params arrays
+          - structs (LogEvent value types)
+          - static factory classes
+          - nullable reference types
+          - expression-bodied members
+  - language: Rust
+    category: language
+    extensions:
+      - .rs
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-rust
+    scip_indexer: sourcegraph/scip-rust (deprecated) — preferred path is rust-analyzer's built-in `rust-analyzer scip` SCIP emitter for real call/reference edges
+    edges_feasible: true
+    symbols:
+      - functions
+      - methods
+      - structs
+      - enums
+      - traits
+      - trait_impls
+      - impl_blocks
+      - type_aliases
+      - constants
+      - statics
+      - macros
+      - modules
+      - use_imports
+      - associated_functions
+      - associated_types
+      - enum_variants
+    repos:
+      - name: ripgrep
+        url: https://github.com/BurntSushi/ripgrep
+        ref: 14.1.1
+        sha: 0e8390a66fbcf6eeac1aeb0541b367663a597c79
+        license: MIT
+        idioms:
+          - traits
+          - trait impls
+          - generics
+          - lifetimes
+          - enums with data
+          - modules
+          - Cargo workspace crates
+          - builder pattern
+          - macros
+          - error enums
+          - iterators/closures
+      - name: tokio
+        url: https://github.com/tokio-rs/tokio
+        ref: tokio-1.49.0
+        sha: e3b89bbefa7564e2eba2fb9f849ef7bf87d60fad
+        license: MIT
+        idioms:
+          - async/await
+          - futures/Pin
+          - complex generic bounds (where clauses)
+          - declarative macros (macro_rules!)
+          - feature/cfg-gated modules
+          - trait objects
+          - unsafe blocks
+          - associated types
+          - lifetimes
+          - re-exports
+      - name: clap
+        url: https://github.com/clap-rs/clap
+        ref: v4.6.1
+        sha: 3030224d254dec52f5380592a8c8363081294aa2
+        license: MIT
+        idioms:
+          - derive macros
+          - proc-macro crate (proc_macro2/syn/quote)
+          - attribute macros
+          - builder pattern
+          - generics
+          - trait default methods
+          - enums
+          - feature gates
+  - language: Swift
+    category: language
+    extensions:
+      - .swift
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: alex-pinkus/tree-sitter-swift
+    scip_indexer: none
+    edges_feasible: false
+    symbols:
+      - functions
+      - methods
+      - classes
+      - structs
+      - enums
+      - enum_cases
+      - protocols
+      - extensions
+      - protocol_conformances
+      - initializers
+      - computed_properties
+      - stored_properties
+      - typealiases
+      - actors
+      - property_wrappers
+      - subscripts
+      - operators
+      - imports
+      - generics/associatedtypes
+    repos:
+      - name: Alamofire
+        url: https://github.com/Alamofire/Alamofire
+        ref: 5.9.1
+        sha: f455c2975872ccd2d9c81594c658af65716e9b9a
+        license: MIT
+        idioms:
+          - protocols + default extensions
+          - generics
+          - extensions on existing types
+          - closures/escaping closures
+          - enums with associated values
+          - result builders
+          - async/await + completion handlers
+          - access control
+          - operator/subscript overloads
+          - nested types
+      - name: swift-composable-architecture
+        url: https://github.com/pointfreeco/swift-composable-architecture
+        ref: 1.9.3
+        sha: 899a68ce3c4eca42a42e6bad2c925b82dcab5187
+        license: MIT
+        idioms:
+          - Swift macros (@attached/@freestanding)
+          - result builders (@resultBuilder)
+          - property wrappers
+          - protocols with associatedtype
+          - generic constraints (some/any)
+          - enums with associated values
+          - '@dynamicMemberLookup'
+          - extensions
+          - actors/Sendable
+      - name: swift-nio
+        url: https://github.com/apple/swift-nio
+        ref: 2.99.0
+        sha: f71c8d2a5e74a2c6d11a0fbe324774b5d6084237
+        license: Apache-2.0
+        idioms:
+          - multi-module SwiftPM targets
+          - protocols + conditional conformance
+          - generics with where clauses
+          - unsafe/pointer APIs
+          - extensions
+          - enums
+          - operators
+          - '@inlinable/@usableFromInline'
+          - Sendable/actors
+          - typealiases
+  - language: Lua
+    category: language
+    extensions:
+      - .lua
+      - .rockspec
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter-grammars/tree-sitter-lua
+    scip_indexer: none
+    edges_feasible: false
+    symbols:
+      - functions
+      - local_functions
+      - methods (table.func / obj:method)
+      - module_tables
+      - table_fields
+      - local_variables (module-level)
+      - global_assignments
+      - requires/imports
+      - metatables (setmetatable patterns)
+      - returned_module
+    repos:
+      - name: kong
+        url: https://github.com/Kong/kong
+        ref: 3.9.2
+        sha: 3666d50bdf2b8d0da66c414464d3055219e7c0c6
+        license: Apache-2.0
+        idioms:
+          - module table pattern (local M = {}; return M)
+          - OOP via metatables/setmetatable
+          - method syntax obj:method()
+          - require() dependency graph
+          - closures/upvalues
+          - varargs (...)
+          - pcall/error
+          - metamethods (__index)
+          - rockspec manifests
+      - name: telescope.nvim
+        url: https://github.com/nvim-telescope/telescope.nvim
+        ref: v0.2.2
+        sha: 5255aa27c422de944791318024167ad5d40aad20
+        license: MIT
+        idioms:
+          - module pattern
+          - metatable OOP (setmetatable + __index classes)
+          - closures capturing upvalues
+          - obj:method() definitions
+          - nested anonymous functions
+          - require graph
+          - table-of-functions dispatch
+          - varargs
+      - name: lazy.nvim
+        url: https://github.com/folke/lazy.nvim
+        ref: v9.9.0
+        sha: 26d121ea13bee96b079403cee6598f04969d4983
+        license: Apache-2.0
+        idioms:
+          - metatable class OOP (M.new + setmetatable)
+          - module pattern
+          - method definitions obj:method()
+          - LuaCATS ---@class/---@field annotations
+          - closures
+          - require graph
+          - vim API integration
+          - table constructors
+  - language: Shell/Bash
+    category: language
+    extensions:
+      - .sh
+      - .bash
+      - .bats
+      - .zsh
+      - .ksh
+    approach: tree-sitter
+    go_parser_lib: none
+    tree_sitter_grammar: tree-sitter/tree-sitter-bash
+    scip_indexer: none
+    edges_feasible: false
+    symbols:
+      - functions
+      - variables
+      - exported-variables
+      - aliases
+      - sourced-files
+      - command-invocations
+      - traps
+      - here-documents
+      - subshells
+    repos:
+      - name: nvm-sh/nvm
+        url: https://github.com/nvm-sh/nvm
+        ref: v0.40.5
+        sha: e75e30e8da8a0320be92c367fdd0470073097c38
+        license: MIT
+        idioms:
+          - function definitions with and without the 'function' keyword
+          - nested function definitions
+          - local/declare/readonly variable scoping
+          - command substitution $() and backticks
+          - source/. dotting other scripts
+          - case/esac dispatch and large case statements
+          - parameter expansion and indirection (${!var}, ${var%...}, ${var//.../...})
+          - here-documents and here-strings
+          - subshells and process substitution
+          - trap handlers and signal cleanup
+          - POSIX vs bash dual-compatibility branches
+      - name: junegunn/fzf
+        url: https://github.com/junegunn/fzf
+        ref: v0.73.1
+        sha: d3be1c9bfd547be77995536f0d374dcdfe9929dd
+        license: MIT
+        idioms:
+          - bash and zsh dual-dialect scripts in one repo
+          - dynamically generated functions and eval-defined functions
+          - complex completion functions (_fzf_complete*)
+          - key-binding bind/zle widgets
+          - parameter expansion heavy quoting
+          - command substitution piped through awk/sed
+          - conditional sourcing based on shell detection
+          - long option-parsing while/case loops
+      - name: bats-core/bats-core
+        url: https://github.com/bats-core/bats-core
+        ref: v1.12.0
+        sha: cf931b7b7c79998ded0f364126dbc9d46739a76f
+        license: MIT
+        idioms:
+          - .bats DSL files (@test blocks compiled into shell functions)
+          - metaprogramming via dynamically named functions
+          - extensive use of declare -A associative arrays
+          - source-with-arguments and recursive sourcing
+          - trap-based teardown and error trapping (set -E)
+          - indirect variable references and namerefs (declare -n)
+          - fd manipulation and exec redirections
+          - subshell isolation for test runs
+  - language: Makefile
+    category: config-tool
+    extensions:
+      - Makefile
+      - makefile
+      - GNUmakefile
+      - .mk
+      - .make
+    approach: pure-go-parser
+    go_parser_lib: none (no authoritative pure-Go GNU Make parser; see notes)
+    tree_sitter_grammar: alemuller/tree-sitter-make
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - targets
+      - phony-targets
+      - pattern-rules
+      - variables
+      - recursively-expanded-variables
+      - simply-expanded-variables
+      - includes
+      - user-defined-functions (define/endef)
+      - prerequisites
+      - recipe-command-invocations
+      - conditionals (ifeq/ifdef)
+    repos:
+      - name: prometheus/prometheus
+        url: https://github.com/prometheus/prometheus
+        ref: v3.9.1
+        sha: 64088ce2ad73e4caf589207d3a246e64e329e663
+        license: Apache-2.0
+        idioms:
+          - include directives (Makefile includes Makefile.common)
+          - recursively- vs simply-expanded variables (= vs := vs ?=)
+          - $(shell ...) and $(call ...) function invocations
+          - .PHONY target declarations
+          - conditional directives (ifeq/ifdef/ifndef)
+          - automatic variables ($@, $<, $^)
+          - target-specific variable assignments
+          - tab-indented multi-line recipes with line continuations
+      - name: docker/cli
+        url: https://github.com/docker/cli
+        ref: v29.5.3
+        sha: 399dafa7297616617513c2d99efc92842b0fd7e2
+        license: Apache-2.0
+        idioms:
+          - define/endef multi-line user-defined functions (canned recipes)
+          - $(call my_func,args) invocations of define'd macros
+          - 'pattern rules (%.x: %.y)'
+          - multiple Makefiles (Makefile + docker.Makefile) with includes
+          - conditional assignment and override directives
+          - $(eval ...) metaprogramming
+          - .PHONY and grouped targets
+          - environment-variable-driven recipe branching
+  - language: Dockerfile
+    category: config-tool
+    extensions:
+      - Dockerfile
+      - .dockerfile
+      - Containerfile
+    approach: pure-go-parser
+    go_parser_lib: github.com/moby/buildkit/frontend/dockerfile/parser
+    tree_sitter_grammar: camdencheek/tree-sitter-dockerfile
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - stages (FROM ... AS name)
+      - base-images
+      - build-args (ARG)
+      - env-vars (ENV)
+      - exposed-ports (EXPOSE)
+      - volumes (VOLUME)
+      - labels (LABEL)
+      - entrypoint
+      - cmd
+      - workdir
+      - user
+      - run-commands
+      - copy/add-sources-and-dests
+      - copy --from references (stage/image edges)
+      - healthcheck
+    repos:
+      - name: docker/cli
+        url: https://github.com/docker/cli
+        ref: v29.5.3
+        sha: 399dafa7297616617513c2d99efc92842b0fd7e2
+        license: Apache-2.0
+        idioms:
+          - '# syntax= parser directives'
+          - multi-stage builds (FROM image AS stage)
+          - COPY --from=stage and COPY --from=image cross-stage references
+          - ARG before/after FROM and ARG in FROM image refs
+          - BuildKit RUN --mount=type=cache/secret/ssh flags
+          - heredoc RUN (RUN <<EOF) blocks
+          - ENV with multiple key=value pairs and line continuations
+          - ENTRYPOINT/CMD exec vs shell form
+      - name: docker/compose
+        url: https://github.com/docker/compose
+        ref: v2.39.4
+        sha: a32dc3da722e6b2e4fbfc72e40b1a697c4686460
+        license: Apache-2.0
+        idioms:
+          - BUILDPLATFORM/TARGETPLATFORM/TARGETARCH automatic ARGs
+          - cross-stage COPY --from=xx and tool-image stages
+          - RUN --mount=type=cache build cache mounts
+          - global ARG with ${VAR} interpolation inside FROM
+          - named stages reused as bases for multiple downstream stages
+          - platform-conditional stage selection
+          - ENV/ARG interplay and default values
+  - language: Terraform/HCL
+    category: config-tool
+    extensions:
+      - .tf
+      - .tf.json
+      - .tfvars
+      - .hcl
+    approach: pure-go-parser
+    go_parser_lib: github.com/hashicorp/hcl/v2 (with hclparse, hclsyntax, and the terraform-config-inspect helper github.com/hashicorp/terraform-config-inspect/tfconfig)
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - resource (type + name)
+      - data source (type + name)
+      - module call (name + source)
+      - variable
+      - output
+      - local
+      - provider
+      - terraform/backend/required_providers settings
+      - moved/import/check blocks
+      - 'reference edges: resource->resource attribute refs, var/local interpolations, module output refs, depends_on, module source links'
+    repos:
+      - name: terraform-aws-modules/terraform-aws-vpc
+        url: https://github.com/terraform-aws-modules/terraform-aws-vpc
+        ref: v6.6.1
+        sha: 3ffbd46fb1c7733e1b34d8666893280454e27436
+        license: Apache-2.0
+        idioms:
+          - resource/data/module/variable/output/locals blocks
+          - for_each and count meta-arguments
+          - dynamic blocks with nested content
+          - ternary/conditional expressions and try()/coalesce()
+          - complex variable validation blocks
+          - interpolation references across resources (resource attribute refs)
+          - merge()/lookup()/flatten() function calls
+          - provider and lifecycle meta-blocks
+      - name: terraform-aws-modules/terraform-aws-eks
+        url: https://github.com/terraform-aws-modules/terraform-aws-eks
+        ref: v9.0.0
+        sha: 908c656cf5da50d576d77696efac1d76dfb86a07
+        license: Apache-2.0
+        idioms:
+          - nested module calls with relative source paths (./modules/...)
+          - module output references (module.x.y) creating cross-file edges
+          - depends_on between resources and modules
+          - extensive dynamic blocks for IAM/launch templates
+          - for_each over local maps and var maps
+          - provider aliasing and configuration_aliases
+          - templatefile() and file() function references
+  - language: Kubernetes YAML manifests
+    category: config-tool
+    extensions:
+      - .yaml
+      - .yml
+    approach: pure-go-parser
+    go_parser_lib: gopkg.in/yaml.v3 for raw multi-doc decoding; optionally sigs.k8s.io/yaml + k8s.io/apimachinery/pkg/apis/meta/v1/unstructured (unstructured.Unstructured) for typed kind/apiVersion/metadata access
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - kind
+      - apiVersion
+      - metadata.name
+      - metadata.namespace
+      - metadata.labels / annotations
+      - containers (name + image)
+      - selector / matchLabels
+      - configMap/secret references (envFrom, valueFrom, volumes)
+      - serviceAccountName and RBAC roleRef/subjects
+      - ownerReferences
+      - ports and volume/volumeMount references
+    repos:
+      - name: kubernetes/examples
+        url: https://github.com/kubernetes/examples
+        ref: master
+        sha: d6b8cd27eacb51e651a1aa6f7c190a28713eff6e
+        license: Apache-2.0
+        idioms:
+          - multi-document YAML files (--- separated objects in one file)
+          - diverse apiVersion/kind matrix incl. RBAC and storage
+          - 'nested container specs: env, envFrom, volumeMounts, ports, probes'
+          - label selectors and template metadata (workload->pod linkage)
+          - ConfigMap/Secret references via valueFrom and volumes
+          - anchors/aliases occasionally; quoted vs block scalars
+          - owner/selector cross-references between Service and Deployment
+      - name: argoproj/argocd-example-apps
+        url: https://github.com/argoproj/argocd-example-apps
+        ref: master
+        sha: 8088f4c0d970abb09e250248cc97e35623447cb5
+        license: Apache-2.0
+        idioms:
+          - Deployment + Service pairing via matchLabels
+          - namespace-scoped and cluster-scoped objects
+          - container image refs and resource limits
+          - Kustomize bases/overlays (kustomization.yaml) alongside raw manifests
+          - multi-doc files and per-directory app structure
+          - ServiceAccount / Role / RoleBinding reference chains
+  - language: Helm charts
+    category: config-tool
+    extensions:
+      - .yaml
+      - .tpl
+      - .yml
+      - Chart.yaml
+      - values.yaml
+    approach: hybrid
+    go_parser_lib: gopkg.in/yaml.v3 for Chart.yaml + values.yaml; text/template + text/template/parse (Go stdlib, the same parser Helm uses) to walk template/_helpers.tpl ASTs; optionally helm.sh/helm/v3/pkg/chart + chartutil to load chart metadata/dependencies natively
+    tree_sitter_grammar: none (a tree-sitter-helm/go-template grammar exists but is unnecessary since Go's own text/template/parse is authoritative)
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - chart (name + version + appVersion from Chart.yaml)
+      - dependencies (sub-chart name + version + repository + condition)
+      - values keys (tree from values.yaml)
+      - named templates ({{ define }} blocks in _helpers.tpl and templates)
+      - template files (each templates/*.yaml as a unit)
+      - include/template call edges between named templates
+      - .Values references (template -> values key edges)
+      - rendered resource kinds/names (where statically inferable)
+      - hooks and annotations (helm.sh/hook)
+    repos:
+      - name: bitnami/charts (redis chart)
+        url: https://github.com/bitnami/charts
+        ref: redis/23.1.1
+        sha: e3296a831406bacf5ce661c5274590d0b40efcdd
+        license: Apache-2.0
+        idioms:
+          - 'named templates: {{ define }} and {{ include }} / {{ template }}'
+          - _helpers.tpl helper library functions
+          - 'Go text/template control flow: if/else/range/with'
+          - Sprig functions (default, tpl, toYaml, nindent, quote)
+          - Chart.yaml dependencies (sub-charts / library chart bitnami/common)
+          - deeply nested values.yaml with global.* and per-component keys
+          - template-generated multi-doc YAML and conditional resources
+          - values references {{ .Values.x.y }} and {{ .Release.* }}/{{ .Chart.* }}
+      - name: prometheus-community/helm-charts (kube-prometheus-stack)
+        url: https://github.com/prometheus-community/helm-charts
+        ref: kube-prometheus-stack-86.2.3
+        sha: 4008f7978ac216a429dd8243c87ccb351aac0403
+        license: Apache-2.0
+        idioms:
+          - many sub-chart dependencies in Chart.yaml (dependency graph)
+          - very large _helpers.tpl with chained include calls
+          - required/ fail / tpl dynamic rendering
+          - conditional resource emission based on .Values and .Capabilities
+          - range over .Values maps producing multiple resources
+          - CRD templates and hooks (helm.sh/hook annotations)
+          - global values propagation to sub-charts
+  - language: docker-compose
+    category: config-tool
+    extensions:
+      - .yml
+      - .yaml
+    approach: pure-go-parser
+    go_parser_lib: gopkg.in/yaml.v3 (generic YAML AST; for full schema/anchor resolution and interpolation, github.com/compose-spec/compose-go/v2/loader is the authoritative pure-Go Compose loader)
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - service
+      - image
+      - build-context
+      - named-volume
+      - network
+      - secret
+      - config
+      - port-mapping
+      - environment-var
+      - depends_on-edge
+      - healthcheck
+      - profile
+      - x-extension-field
+      - yaml-anchor
+    repos:
+      - name: docker/awesome-compose
+        url: https://github.com/docker/awesome-compose
+        ref: master
+        sha: 8ded149643ef0ba21fce5a5d39894b39fff6c7ee
+        license: Creative Commons Zero v1.0 Universal (CC0-1.0 / public domain)
+        idioms:
+          - multi-service top-level services map
+          - 'depends_on (short and long condition: service_healthy form)'
+          - build context + dockerfile + args
+          - ports (short and long syntax)
+          - named + bind volumes
+          - environment maps and lists
+          - networks
+          - healthcheck blocks
+          - restart policies
+          - secrets/configs in some stacks
+      - name: getsentry/self-hosted
+        url: https://github.com/getsentry/self-hosted
+        ref: 26.5.2
+        sha: 302141abb05b6ea4ab66d6203e468e9b0ba1200c
+        license: FSL-1.1-Apache-2.0 (Functional Source License, converts to Apache-2.0; permissive for non-competing use)
+        idioms:
+          - YAML anchors & aliases (&, *)
+          - merge keys (<<:)
+          - x- extension fields (x-sentry-defaults etc.)
+          - env_file
+          - long-form depends_on with condition
+          - large service-dependency graph
+          - image vs build mix
+          - ulimits/logging options
+          - profiles
+      - name: n8n-io/n8n
+        url: https://github.com/n8n-io/n8n
+        ref: n8n@1.99.1
+        sha: 88933dae3ffee766dce971f41cb3ee045a5831b4
+        license: Sustainable Use License + n8n Enterprise (source-available; docker-compose examples are freely usable)
+        idioms:
+          - variable interpolation ${VAR} and ${VAR:-default}
+          - profiles
+          - healthcheck with test/interval/retries
+          - 'depends_on: condition: service_healthy'
+          - shared named volumes between services
+          - command overrides
+          - queue/worker multi-service topology
+  - language: GitHub Actions workflows
+    category: config-tool
+    extensions:
+      - .yml
+      - .yaml
+    approach: pure-go-parser
+    go_parser_lib: gopkg.in/yaml.v3 (generic AST); rhysd/actionlint provides a pure-Go typed workflow parser (github.com/rhysd/actionlint, Workflow/Job/Step structs) that is the authoritative choice for full GitHub Actions semantics
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - workflow
+      - trigger (on event)
+      - job
+      - step
+      - action-reference (uses)
+      - run-command
+      - matrix-axis
+      - needs-edge
+      - reusable-workflow-call
+      - permissions
+      - env-var
+      - secret-reference
+      - concurrency-group
+      - input/output
+    repos:
+      - name: actions/starter-workflows
+        url: https://github.com/actions/starter-workflows
+        ref: main
+        sha: 1035244887e26fbbd4f1017d919fb5995cc521c4
+        license: MIT (CC0 for some template content)
+        idioms:
+          - 'on: triggers (push/pull_request/schedule/workflow_dispatch/workflow_call)'
+          - jobs with strategy.matrix
+          - 'steps: uses vs run'
+          - 'with: inputs'
+          - permissions blocks
+          - env at workflow/job/step scope
+          - concurrency
+          - $\{{ }} expressions
+      - name: cli/cli
+        url: https://github.com/cli/cli
+        ref: v2.94.0
+        sha: cac0ba166220017af1d299001b698e811077d5a6
+        license: MIT
+        idioms:
+          - matrix (os/version) with include/exclude
+          - 'needs: job dependency graph'
+          - 'reusable workflow uses: ./.github/workflows/x.yml'
+          - 'secrets: inherit and explicit secret refs'
+          - 'if: conditional expressions'
+          - outputs between jobs
+          - permissions scoping
+          - third-party action pins by SHA
+      - name: nektos/act
+        url: https://github.com/nektos/act
+        ref: v0.2.89
+        sha: 434d69682c7a8db2ac913e5dc3e80ba68055d50d
+        license: MIT
+        idioms:
+          - composite/local action references
+          - 'container: and services: in jobs'
+          - matrix edge cases
+          - outputs and step ids
+          - 'uses: with docker:// and ./local paths'
+          - env precedence
+          - intentionally tricky/edge fixtures for parser robustness
+  - language: CUE
+    category: config-tool
+    extensions:
+      - .cue
+    approach: pure-go-parser
+    go_parser_lib: cuelang.org/go/cue/parser + cuelang.org/go/cue/ast (official pure-Go CUE parser/AST; cuelang.org/go/cue + cue/load for full value/instance resolution)
+    tree_sitter_grammar: none (a tree-sitter-cue grammar exists but is unnecessary given the first-party pure-Go parser)
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - package
+      - import
+      - definition (#Name)
+      - hidden-definition (_name)
+      - field
+      - optional-field
+      - alias
+      - constraint/disjunction
+      - attribute (@attr)
+      - embedding
+      - comprehension
+      - reference-edge
+      - import-edge
+    repos:
+      - name: cue-lang/cue
+        url: https://github.com/cue-lang/cue
+        ref: v0.9.2
+        sha: a02ef5abb5cf8d37a3f1e442f061885532fc6461
+        license: Apache-2.0
+        idioms:
+          - definitions (#Foo) and hidden defs (_foo)
+          - field constraints and disjunctions (a | b)
+          - comprehensions (for/if)
+          - embeddings
+          - imports & package clauses
+          - string interpolation \()
+          - lists & list comprehensions
+          - open/closed structs
+          - optional fields (?:)
+          - default values (*)
+          - attributes (@attr)
+          - references & aliases (X=...)
+      - name: stefanprodan/timoni
+        url: https://github.com/stefanprodan/timoni
+        ref: v0.9.0
+        sha: b896bce4f078f00f4464a0147c145063251eb5f1
+        license: Apache-2.0
+        idioms:
+          - package clauses + imports across files
+          - '#Config / #Instance definitions'
+          - k8s schema constraints
+          - disjunctions for typed enums
+          - comprehensions generating resource lists
+          - embeddings and unification across modules
+          - attributes for tooling (@if, @embed)
+      - name: holos-run/holos
+        url: https://github.com/holos-run/holos
+        ref: v0.99.3
+        sha: 03b796312ada292e3fd2c4ccc5d82af5a766dc62
+        license: Apache-2.0
+        idioms:
+          - deep package/import graphs
+          - 'large #Definition hierarchies'
+          - cross-file unification
+          - disjunctions & constraints
+          - comprehensions over component sets
+          - field references across packages (qualified identifiers)
+          - embeddings
+  - language: Protocol Buffers (proto3)
+    category: language
+    extensions:
+      - .proto
+    approach: pure-go-parser
+    go_parser_lib: github.com/emicklei/proto
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - package
+      - message
+      - field
+      - enum
+      - enum_value
+      - service
+      - rpc
+      - oneof
+      - map_field
+      - nested_message
+      - nested_enum
+      - import
+      - option
+      - extension
+      - reserved
+      - well_known_type_ref
+      - rpc_request_type
+      - rpc_response_type
+    repos:
+      - name: grpc/grpc-go
+        url: https://github.com/grpc/grpc-go
+        ref: v1.79.3
+        sha: dda86dbd9cecb8b35b58c73d507d81d67761205f
+        license: Apache-2.0
+        idioms:
+          - service + rpc definitions
+          - unary and streaming rpc (stream keyword on request/response)
+          - imports of well-known types (google/protobuf/*.proto)
+          - nested messages and enums
+          - oneof
+          - map fields
+          - repeated fields
+          - custom options
+          - package qualifiers and fully-qualified type refs across files
+      - name: temporalio/api
+        url: https://github.com/temporalio/api
+        ref: v1.62.9
+        sha: ddc38c85eee8c72d44c795534ad6485a5df6a53e
+        license: MIT
+        idioms:
+          - large multi-package proto3 API surface
+          - deeply nested messages
+          - many enums and enum aliasing
+          - oneof
+          - map<>
+          - google.protobuf.Duration/Timestamp/Any imports
+          - cross-package message references
+          - custom field/message options (gogo/go_package, visibility, validate)
+          - well-structured service definitions with rich request/response messages
+      - name: bufbuild/protovalidate
+        url: https://github.com/bufbuild/protovalidate
+        ref: v0.9.0
+        sha: 41573d95c71f9d0edc23311f4d3615a7010e8b05
+        license: Apache-2.0
+        idioms:
+          - proto3 custom options and extensions (extend google.protobuf.*Options)
+          - message-level and field-level option usage
+          - complex nested option message definitions
+          - enums with option metadata
+          - reserved fields/names
+          - well-known type imports
+          - CEL-expression string options
+  - language: GraphQL schemas
+    category: language
+    extensions:
+      - .graphql
+      - .graphqls
+      - .gql
+      - .sdl
+    approach: pure-go-parser
+    go_parser_lib: github.com/vektah/gqlparser/v2
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - type
+      - interface
+      - union
+      - enum
+      - enum_value
+      - input
+      - scalar
+      - field
+      - field_argument
+      - directive_definition
+      - directive_application
+      - schema_definition
+      - query_root
+      - mutation_root
+      - subscription_root
+      - extend_type
+      - implements_interface
+      - field_type_ref
+      - input_field
+    repos:
+      - name: octokit/graphql-schema
+        url: https://github.com/octokit/graphql-schema
+        ref: v9.0.0
+        sha: d48864e39a0ac63951c3f9b3a67df8a1e67cb980
+        license: MIT
+        idioms:
+          - massive real-world SDL (the full GitHub GraphQL API)
+          - interfaces and types implementing multiple interfaces
+          - unions
+          - enums with deprecation directives
+          - input object types
+          - custom scalars
+          - Relay connection/edge patterns
+          - field arguments with defaults
+          - '@deprecated/@possibleTypes directives'
+          - extensive descriptions/doc comments
+      - name: graphql/graphql-js
+        url: https://github.com/graphql/graphql-js
+        ref: v16.9.0
+        sha: 9c9504e9fe74fc2ede1d6a1c976d30f8faf75b2d
+        license: MIT
+        idioms:
+          - canonical Star Wars schema (interfaces, unions, enums)
+          - schema definition language edge cases used as parser test fixtures
+          - custom directives and directive definitions
+          - extend type/interface/enum
+          - repeatable directives
+          - block-string descriptions
+          - default argument values
+          - non-null and list type modifiers in every combination
+      - name: 99designs/gqlgen
+        url: https://github.com/99designs/gqlgen
+        ref: v0.17.91
+        sha: 822e2284ab854b7fffb7c2d91bf6d49f6c932300
+        license: MIT
+        idioms:
+          - federation directives (@key, @external, @requires, @provides)
+          - many independent example schemas (todo, starwars, chat, scalars, selection)
+          - input types and nested inputs
+          - interfaces and unions
+          - custom scalars and scalar mapping
+          - directive definitions and applications
+          - schema stitching across multiple .graphqls files
+          - field arguments and default values
+  - language: SQL (schema/migrations)
+    category: language
+    extensions:
+      - .sql
+      - .ddl
+    approach: pure-go-parser
+    go_parser_lib: github.com/auxten/postgresql-parser (CockroachDB-derived pure-Go Postgres parser) or github.com/pganalyze/pg_query_go (libpg_query bindings, requires cgo); for broad multi-dialect coverage use github.com/xwb1989/sqlparser (Vitess-derived MySQL) — no single pure-Go parser covers all dialects
+    tree_sitter_grammar: 'tree-sitter/tree-sitter-sql (community: DerekStride/tree-sitter-sql) as a dialect-agnostic fallback'
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - table
+      - column
+      - primary_key
+      - foreign_key
+      - unique_constraint
+      - check_constraint
+      - index
+      - view
+      - materialized_view
+      - sequence
+      - function
+      - procedure
+      - trigger
+      - type
+      - enum_type
+      - schema
+      - extension
+      - alter_table_action
+      - foreign_key_ref
+      - create/alter/drop_statement
+    repos:
+      - name: gitlabhq/gitlabhq
+        url: https://github.com/gitlabhq/gitlabhq
+        ref: v17.9.8
+        sha: c5528377549d5edd0b699c4d66afc8924c9684b5
+        license: MIT (MIT Expat for the main tree; doc/ is CC-BY-SA, ee/ has separate license — exclude those dirs)
+        idioms:
+          - enormous Postgres DDL dump (hundreds of tables)
+          - foreign keys with ON DELETE/UPDATE actions
+          - composite and partial indexes
+          - CHECK constraints
+          - partitioned tables
+          - sequences and ownership
+          - triggers and functions (PL/pgSQL)
+          - ALTER TABLE migrations
+          - extensions (CREATE EXTENSION)
+          - schema-qualified identifiers
+          - Postgres-specific types
+      - name: sqitchers/sqitch
+        url: https://github.com/sqitchers/sqitch
+        ref: v1.6.1
+        sha: 396d10f99a95b23cde3a19bd78ed95f08978da92
+        license: MIT
+        idioms:
+          - multi-dialect SQL (Postgres, MySQL, SQLite, Oracle, Snowflake, Firebird, Vertica, Exasol)
+          - deploy/revert/verify change-script triads
+          - registry DDL (tables, indexes, foreign keys, functions)
+          - engine-specific syntax differences
+          - transactional DDL blocks (BEGIN/COMMIT)
+          - BEGIN/END procedural blocks
+      - name: lerocha/chinook-database
+        url: https://github.com/lerocha/chinook-database
+        ref: v1.4.5
+        sha: 4a944a942426e1f3263fe539155fb7ef92b04b4a
+        license: MIT (custom-formatted MIT text in LICENSE.md; GitHub reports NOASSERTION but the terms are MIT)
+        idioms:
+          - the same schema emitted across many dialects (SQL Server, MySQL, Postgres, SQLite, Oracle, DB2)
+          - CREATE TABLE with foreign keys and referential actions
+          - primary/foreign key constraints
+          - indexes
+          - identity/auto-increment columns across dialects
+          - quoting and identifier-style differences
+          - mixed DDL+DML files
+  - language: JSON / JSON5 config
+    category: config-tool
+    extensions:
+      - .json
+      - .json5
+      - .jsonc
+    approach: pure-go-parser
+    go_parser_lib: 'encoding/json (standard JSON) + github.com/tailscale/hujson or github.com/tidwall/jsonc (JSONC: comments/trailing commas) + github.com/yosuke-furukawa/json5 (full JSON5)'
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: false
+    symbols:
+      - object-keys (dotted JSON-Pointer paths)
+      - top-level config sections
+      - nested objects
+      - arrays
+      - scalar values (string/number/bool/null)
+      - $ref / $id / $schema references
+      - $defs / definitions entries
+      - comments (JSONC/JSON5)
+      - schema $ref edges (JSON-Pointer targets)
+    repos:
+      - name: json5/json5
+        url: https://github.com/json5/json5
+        ref: v2.2.3
+        sha: 8b9ebe0bb5c6af5bd0ea4fe35846c503ea1f0975
+        license: MIT
+        idioms:
+          - single-line and block comments
+          - trailing commas
+          - unquoted ECMAScript-identifier keys
+          - single-quoted strings
+          - hexadecimal numbers
+          - leading/trailing decimal point numbers
+          - +/-Infinity and NaN literals
+          - line-continuation multi-line strings
+          - deeply nested objects/arrays
+      - name: tsconfig/bases
+        url: https://github.com/tsconfig/bases
+        ref: main
+        sha: 12474cd696ec17c6ac4ccc19261860bf3c7fdc56
+        license: MIT
+        idioms:
+          - JSONC comments in config
+          - $schema URI references
+          - nested compilerOptions objects
+          - extends inheritance chains
+          - string arrays (lib/types/paths)
+          - boolean/enum-string config flags
+          - dotted path keys (paths mapping)
+      - name: json-schema-org/JSON-Schema-Test-Suite
+        url: https://github.com/json-schema-org/JSON-Schema-Test-Suite
+        ref: Test-JSON-Schema-Acceptance-1.037
+        sha: 7c20e53b09246f05b53c5de657b92517c07927f1
+        license: MIT
+        idioms:
+          - $ref and recursive $ref
+          - $id base-URI resolution
+          - $defs and definitions
+          - $anchor / $dynamicRef / $dynamicAnchor
+          - deeply nested schemas
+          - JSON-Pointer reference edges
+          - large file count (throughput)
+          - mixed draft dialects
+  - language: TOML config
+    category: config-tool
+    extensions:
+      - .toml
+    approach: pure-go-parser
+    go_parser_lib: github.com/pelletier/go-toml/v2 (preferred; exposes positions + unmarshal-to-tree) or github.com/BurntSushi/toml
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: false
+    symbols:
+      - tables ([table])
+      - array-of-tables ([[table]])
+      - dotted keys
+      - key-value pairs
+      - inline tables
+      - arrays
+      - typed scalars (string/int/float/bool/datetime)
+      - comments
+      - fully-qualified key paths
+    repos:
+      - name: BurntSushi/ripgrep
+        url: https://github.com/BurntSushi/ripgrep
+        ref: 14.1.1
+        sha: 744a802f6be16bde8ce05b237a32a518e1e4c31b
+        license: Unlicense OR MIT
+        idioms:
+          - '[workspace] and workspace member arrays'
+          - '[[bin]] array-of-tables'
+          - '[dependencies] with inline-table specs'
+          - version/feature dotted-key dependencies
+          - '[features] tables'
+          - '[profile.release] nested tables'
+          - comments interleaved with keys
+      - name: alacritty/alacritty
+        url: https://github.com/alacritty/alacritty
+        ref: v0.15.1
+        sha: d8f4b75aad06f5dc3a46a397e2ed0f2464e13f18
+        license: Apache-2.0
+        idioms:
+          - deeply nested config tables ([colors.primary])
+          - '[[keyboard.bindings]] array-of-tables'
+          - inline tables for colors/font specs
+          - multi-line arrays
+          - import arrays (config includes)
+          - dotted keys
+          - string/int/bool/float mixed scalars
+          - Cargo workspace manifests
+      - name: starship/starship
+        url: https://github.com/starship/starship
+        ref: v1.9.1
+        sha: b8d8918b01cf255ec0e7152433b2cdd484d917c6
+        license: ISC
+        idioms:
+          - many nested module tables ([git_branch], [aws], [nodejs])
+          - multi-line literal strings (format templates)
+          - inline tables
+          - boolean disabled flags across tables
+          - unicode in string values
+          - dotted keys
+          - '[[palette]]-style nested config'
+          - comments documenting options
+  - language: Markdown docs
+    category: config-tool
+    extensions:
+      - .md
+      - .markdown
+      - .mdx
+    approach: pure-go-parser
+    go_parser_lib: 'github.com/yuin/goldmark (+ goldmark extensions: extension.GFM, extension.Footnote; meta plugin github.com/yuin/goldmark-meta for YAML front-matter)'
+    tree_sitter_grammar: none
+    scip_indexer: none
+    edges_feasible: true
+    symbols:
+      - headings (with level + anchor slug)
+      - document title (H1)
+      - fenced code blocks (with language)
+      - inline code
+      - links (inline + reference-style)
+      - link reference definitions
+      - images
+      - tables (GFM)
+      - front-matter keys (YAML/TOML)
+      - task-list items (GFM)
+      - footnotes
+      - intra/inter-doc link reference edges
+    repos:
+      - name: rust-lang/book
+        url: https://github.com/rust-lang/book
+        ref: main
+        sha: 05d114287b7d6f6c9253d5242540f00fbd6172ab
+        license: MIT OR Apache-2.0
+        idioms:
+          - deep nested heading hierarchy
+          - fenced code blocks with info strings (rust,ignore)
+          - relative cross-document links (link edges)
+          - SUMMARY.md nested link list (TOC graph)
+          - images with relative paths
+          - GFM tables
+          - blockquotes and admonitions
+          - footnotes
+      - name: tldr-pages/tldr
+        url: https://github.com/tldr-pages/tldr
+        ref: v2.3
+        sha: 625d3423127117eed2e1613f4a6566b0c2064f41
+        license: CC-BY-4.0 (content) / MIT (tooling)
+        idioms:
+          - strict single-H1 templated structure
+          - blockquote with inline link
+          - inline code spans with {{placeholders}}
+          - fenced code blocks
+          - bullet lists
+          - huge file count (scale/throughput)
+          - i18n / non-ASCII content in translations
+      - name: yuin/goldmark
+        url: https://github.com/yuin/goldmark
+        ref: v1.8.2
+        sha: 379bf24a47e6ef07f34d7536aead86d8792ac300
+        license: MIT
+        idioms:
+          - ATX and setext headings
+          - link reference definitions + reference links
+          - fenced and indented code blocks
+          - GFM tables / strikethrough / task lists / autolinks
+          - footnotes and definition lists
+          - raw HTML blocks/inline
+          - lazy paragraph continuation
+          - nested lists and blockquotes

@@ -75,3 +75,25 @@ tasks:
       - 'echo "duckdb:    $({{.GO}} list -m github.com/marcboeker/go-duckdb/v2 2>/dev/null || echo not-required-yet)"'
       - 'echo "agentic-kit: $({{.GO}} list -m github.com/geoffmilleraz/agentic-kit 2>/dev/null || echo missing)"'
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
+
+  build:
+    desc: Build the sextant CLI to workspace/tmp/sextant
+    cmds:
+      - "{{.GO}} build -o workspace/tmp/sextant ./cmd/sextant"
+
+  calibrate-clone:
+    desc: "Shallow-clone the calibration corpus into workspace/ (optional: LANG filter, e.g. task calibrate-clone -- Python Helm)"
+    cmds:
+      - bash calibration/clone.sh {{.CLI_ARGS}}
+
+  calibrate-baseline:
+    desc: "Measure current extractors against the cloned corpus (optional LANG filter via -- )"
+    deps: [build]
+    cmds:
+      - bash calibration/baseline.sh {{.CLI_ARGS}}
+
+  calibrate:
+    desc: Clone the corpus and run the extractor baseline end-to-end
+    cmds:
+      - { task: calibrate-clone }
+      - { task: calibrate-baseline }
