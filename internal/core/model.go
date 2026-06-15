@@ -65,6 +65,11 @@ const (
 	// Docker
 	KindDockerStage    SourceKind = "DockerStage"
 	KindComposeService SourceKind = "ComposeService"
+
+	// GitHub Actions
+	KindGHAWorkflow SourceKind = "GHAWorkflow"
+	KindGHAJob      SourceKind = "GHAJob"
+	KindGHAAction   SourceKind = "GHAAction"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

@@ -224,10 +224,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Terraform HCL
 	p.exts[".tf"] = extractor.NewHCLExtractor()
 
-	// Kubernetes YAML
+	// YAML: route .github/workflows/* to GHA extractor, everything else to K8s.
 	k8s := extractor.NewK8sExtractor()
-	p.exts[".yaml"] = k8s
-	p.exts[".yml"] = k8s
+	gha := extractor.NewGHAExtractor()
+	yamlExt := extractor.NewYAMLExtractor(k8s, gha)
+	p.exts[".yaml"] = yamlExt
+	p.exts[".yml"] = yamlExt
 
 	// CUE
 	p.exts[".cue"] = extractor.NewCUEExtractor()
