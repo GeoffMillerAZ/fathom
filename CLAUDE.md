@@ -98,6 +98,12 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 - Design docs (drive the implementation): `tmp/design_inspiration/files/` (13 docs).
 - Roadmap + status (exhaustive checklist): `tmp/TRACKING.md`.
 - Decisions: `ADR.md`. Overview/usage: `README.md`. Deeper docs: `docs/`.
+- **Adoption / use-case guides:** `docs/use-cases/` — one how-to per use case
+  (getting-started + coding-context, cross-repo-blast-radius, spec-verification,
+  incident-investigation, change-review, fleet-health) for repos wiring sextant
+  into Claude Code. Convention: every use case has exactly one doc here; when an
+  MCP tool or CLI command is added/renamed/removed, update the relevant doc's
+  `## Maintained` line (and the catalog in `docs/mcp-tools.md`).
 
 ## Dogfood: the fleet index
 
