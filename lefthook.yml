@@ -28,11 +28,22 @@ pre-push:
     validate:
       run: task validate
 
-# Best-effort self-index refresh into the fleet store. Fails silently when a
-# live MCP server holds the DuckDB write lock (sessions refresh via the MCP
-# `ingest` tool instead).
+# Best-effort post-commit upkeep.
+#  1. rebuild-binary — when a commit touched Go source, rebuild bin/sextant so the
+#     on-disk binary tracks HEAD. Without this, a query-engine fix is committed but
+#     bin/sextant stays stale for days and every consumer serves old logic (the
+#     2026-06 staleness finding — docs/dogfood-observations.md). A running serve-mcp
+#     process still needs a restart to load the new binary; this keeps the binary
+#     itself honest so the next start is current.
+#  2. sextant-refresh — re-index sextant into the fleet store with the fresh binary.
+#     Fails silently when a live MCP server holds the DuckDB write lock (sessions
+#     refresh via the MCP `ingest` tool instead).
 post-commit:
   commands:
+    rebuild-binary:
+      run: |
+        git diff-tree --no-commit-id --name-only -r HEAD | grep -q '\.go$' || exit 0
+        go build -o bin/sextant ./cmd/sextant >/dev/null 2>&1 || true
     sextant-refresh:
       run: |
         [ -x bin/sextant ] || exit 0

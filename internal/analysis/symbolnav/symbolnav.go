@@ -351,9 +351,10 @@ func isCLIRoot(sig string) bool {
 // Outline returns the SymbolNodes defined in the given file, ordered by their
 // Line number (ascending).  Ties are broken by Name for determinism.
 func Outline(nodes []core.SymbolNode, file string) []core.SymbolNode {
+	file = strings.TrimPrefix(file, "./")
 	var out []core.SymbolNode
 	for _, n := range nodes {
-		if n.FilePath == file {
+		if fileMatches(n.FilePath, file) {
 			out = append(out, n)
 		}
 	}
@@ -364,6 +365,21 @@ func Outline(nodes []core.SymbolNode, file string) []core.SymbolNode {
 		return out[i].Name < out[j].Name
 	})
 	return out
+}
+
+// fileMatches reports whether a stored FilePath matches the queried file. The
+// store keys symbols by absolute path, but the documented `outline` contract
+// accepts a repo-relative path; this reconciles the two. A relative query is
+// matched on a path-segment suffix (the leading "/" prevents "participant.go"
+// from matching "myparticipant.go"); an absolute query is matched exactly.
+func fileMatches(stored, query string) bool {
+	if query == "" {
+		return false
+	}
+	if stored == query {
+		return true
+	}
+	return strings.HasSuffix(stored, "/"+query)
 }
 
 // ─── Implementations ─────────────────────────────────────────────────────────

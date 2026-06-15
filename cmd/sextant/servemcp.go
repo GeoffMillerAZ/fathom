@@ -46,6 +46,12 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 	defer c.Close()
 
+	// Announce build identity at startup. A long-running serve-mcp process can
+	// outlive several commits; logging the embedded VCS revision makes a stale
+	// server self-evident (compare against `git rev-parse HEAD`). See
+	// docs/dogfood-observations.md (staleness finding).
+	fmt.Fprintf(stderr, "sextant serve-mcp starting: %s\n", BuildRevision())
+
 	srv := mcp.NewServerWithFleet(c, &fleetAdapter{c: c, stderr: stderr})
 
 	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {

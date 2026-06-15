@@ -432,6 +432,40 @@ func TestOutline_deterministic(t *testing.T) {
 	}
 }
 
+// TestOutline_relativePathMatchesAbsoluteStore is the O1 regression: the store
+// keys FilePath absolutely, but the `outline` tool contract accepts a
+// repo-relative path. A relative query must return the same symbols as the
+// absolute one, and a segment-boundary suffix must not false-match a sibling.
+func TestOutline_relativePathMatchesAbsoluteStore(t *testing.T) {
+	abs := "/Volumes/x/code/throughline/app/participants/participant.go"
+	nodes := []core.SymbolNode{
+		{Name: "Participant", Kind: core.KindGoType, FilePath: abs, Line: 44},
+		{Name: "Participant.HasAlias", Kind: core.KindGoMethod, FilePath: abs, Line: 107},
+		// A sibling whose name is a substring of the query's basename: must NOT match.
+		{Name: "Other", Kind: core.KindGoType, FilePath: "/Volumes/x/code/throughline/app/myparticipant.go", Line: 10},
+	}
+
+	rel := symbolnav.Outline(nodes, "app/participants/participant.go")
+	if len(rel) != 2 {
+		t.Fatalf("relative Outline got %d symbols; want 2 (%+v)", len(rel), rel)
+	}
+	if rel[0].Name != "Participant" || rel[1].Name != "Participant.HasAlias" {
+		t.Errorf("relative Outline = %q,%q; want Participant,Participant.HasAlias", rel[0].Name, rel[1].Name)
+	}
+
+	// Absolute query returns the identical set.
+	absOut := symbolnav.Outline(nodes, abs)
+	if !reflect.DeepEqual(rel, absOut) {
+		t.Errorf("relative and absolute Outline disagree:\n rel=%+v\n abs=%+v", rel, absOut)
+	}
+
+	// Bare basename also resolves on the segment boundary, never the sibling.
+	bare := symbolnav.Outline(nodes, "participant.go")
+	if len(bare) != 2 {
+		t.Errorf("bare-basename Outline got %d; want 2 (sibling myparticipant.go must not match)", len(bare))
+	}
+}
+
 // ─── Implementations ─────────────────────────────────────────────────────────
 
 func TestImplementations_basic(t *testing.T) {

@@ -111,3 +111,17 @@ store is single-writer: while a session's server holds the lock, CLI
 `ingest` fails — that is expected; a best-effort post-commit lefthook covers
 no-session commits. Repo-specific index excludes live in `.sextantignore`
 (`ref/`, `tmp/`, `workspace/`, `bin/`).
+
+**Dogfood discipline (we are sextant's first consumer — keep it sharp for the
+rest of the fleet):**
+- **Log what you observe.** Recall gaps, contract mismatches, latency, pleasant
+  surprises → `docs/dogfood-observations.md`, with a reproduction (probe a
+  known-good case beside the failing one and root-cause the difference). When you
+  fix sextant, record it in `CHANGELOG.md` and close the observation.
+- **Staleness is the silent failure.** `serve-mcp` is a long-running process that
+  can outlive several commits; a committed fix does **not** reach it until the
+  binary is rebuilt *and* the server restarted. If a tool misbehaves, first run
+  `sextant version` and compare to `git rev-parse HEAD` — a mismatch means stale,
+  not buggy. The `post-commit` hook rebuilds `bin/sextant` on Go changes, but a
+  running server still needs a restart (reload the MCP config / session) to load
+  it. Reap duplicate `serve-mcp` processes — only one can hold the write lock.
