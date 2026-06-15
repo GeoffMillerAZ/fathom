@@ -147,6 +147,9 @@ const (
 
 	// Bash
 	KindBashFunction SourceKind = "BashFunction"
+
+	// Lua
+	KindLuaFunction SourceKind = "LuaFunction"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

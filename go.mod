@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/marcboeker/go-duckdb/v2 v2.4.3
 	github.com/pelletier/go-toml/v2 v2.3.1
+	github.com/tree-sitter-grammars/tree-sitter-lua v0.5.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
 	github.com/tree-sitter/tree-sitter-bash v0.25.1
 	github.com/tree-sitter/tree-sitter-c v0.24.2

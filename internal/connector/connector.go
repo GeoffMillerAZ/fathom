@@ -114,6 +114,9 @@ var extKindMap = map[string]core.SourceKind{
 	// Bash
 	".sh":   core.KindBashFunction,
 	".bash": core.KindBashFunction,
+
+	// Lua
+	".lua": core.KindLuaFunction,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

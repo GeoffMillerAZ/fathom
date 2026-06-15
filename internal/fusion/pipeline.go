@@ -308,6 +308,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".sh"] = bash
 	p.exts[".bash"] = bash
 
+	// Lua
+	p.exts[".lua"] = extractor.NewLuaExtractor()
+
 	return p
 }
 
