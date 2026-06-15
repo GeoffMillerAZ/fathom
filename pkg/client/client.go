@@ -214,13 +214,16 @@ func (c *Client) ListAllSymbols(ctx context.Context, serviceID string) ([]Symbol
 	nodes := make([]SymbolNode, 0, len(obs))
 	for _, o := range obs {
 		nodes = append(nodes, core.SymbolNode{
-			Service:   o.ServiceID,
-			Name:      o.Symbol,
-			Kind:      o.SourceKind,
-			FilePath:  o.SourceRef,
-			Signature: o.Claim,
-			Calls:     o.Calls,
-			Tier:      o.EvidenceTier,
+			Service:    o.ServiceID,
+			Package:    o.Package,
+			Name:       o.Symbol,
+			Kind:       o.SourceKind,
+			FilePath:   o.SourceRef,
+			Line:       o.Line,
+			Signature:  o.Claim,
+			Calls:      o.Calls,
+			Tier:       o.EvidenceTier,
+			Complexity: o.Complexity,
 		})
 	}
 	return nodes, nil

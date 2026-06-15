@@ -560,6 +560,7 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					SourceKind:   node.Kind,
 					EvidenceTier: node.Tier,
 					Symbol:       node.Name,
+					Package:      node.Package,
 					Claim:        node.Signature,
 					ContentHash:  pf.hash,
 					Calls:        node.Calls,

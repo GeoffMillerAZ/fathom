@@ -197,6 +197,7 @@ type Observation struct {
 	SourceKind   SourceKind
 	EvidenceTier EvidenceTier
 	Symbol       string   // symbol name, e.g. "ValidateToken"
+	Package      string   // package / namespace / receiver of the symbol ("" = none)
 	Claim        string   // human/agent-readable fact, e.g. "func ValidateToken(ctx, string) error"
 	ContentHash  string   // sha256 of the source content (hash-gate fingerprint)
 	Calls        []string // callee symbol keys, for call-graph edges

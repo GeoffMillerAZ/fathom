@@ -63,6 +63,45 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// Package round-trips (regression: it used to be silently dropped, which
+	// broke SymbolKey reconstruction to "svc::.Name" and cross-repo matching)
+	// ------------------------------------------------------------------ //
+	t.Run("package_round_trips", func(t *testing.T) {
+		obs := []core.Observation{
+			{
+				ServiceID:    "svc-pkg",
+				SourceRef:    "internal/auth/token.go",
+				SourceKind:   core.KindGoFunc,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "ValidateToken",
+				Package:      "auth",
+				Claim:        "func ValidateToken()",
+				Calls:        []string{"db.Query"},
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+		}
+		if err := s.PutObservations(ctx, obs); err != nil {
+			t.Fatalf("PutObservations: %v", err)
+		}
+		got, err := s.QueryObservations(ctx, "svc-pkg", "")
+		if err != nil {
+			t.Fatalf("QueryObservations: %v", err)
+		}
+		var found bool
+		for _, o := range got {
+			if o.Symbol == "ValidateToken" {
+				found = true
+				if o.Package != "auth" {
+					t.Fatalf("Package not round-tripped: got %q want %q", o.Package, "auth")
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("ValidateToken observation not returned")
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// Concern-scoped filtering
 	// ------------------------------------------------------------------ //
 	t.Run("concern_scoping", func(t *testing.T) {

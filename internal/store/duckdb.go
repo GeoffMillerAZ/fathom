@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS observations (
     source_kind   TEXT    NOT NULL,
     evidence_tier TEXT    NOT NULL,
     symbol        TEXT    NOT NULL DEFAULT '',
+    package       TEXT    NOT NULL DEFAULT '',
     claim         TEXT    NOT NULL DEFAULT '',
     content_hash  TEXT    NOT NULL DEFAULT '',
     calls         TEXT    NOT NULL DEFAULT '[]',
@@ -111,10 +112,13 @@ CREATE TABLE IF NOT EXISTS commits (
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
 	}
-	// Idempotent migration: add line column to existing DBs that predate it.
+	// Idempotent migrations: add columns to existing DBs that predate them.
 	// DuckDB supports ADD COLUMN IF NOT EXISTS but NOT NULL + DEFAULT constraints
-	// are not yet allowed in that form; we catch "already exists" and continue.
-	_, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS line INTEGER DEFAULT 0`)
+	// are not yet allowed in that form, so we add them with a plain DEFAULT.
+	if _, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS line INTEGER DEFAULT 0`); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS package TEXT DEFAULT ''`)
 	return err
 }
 
@@ -133,8 +137,8 @@ func (s *DuckStore) PutObservations(ctx context.Context, obs []core.Observation)
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO observations
     (service_id, concern_id, source_ref, source_kind, evidence_tier,
-     symbol, claim, content_hash, calls, complexity, line, ingested_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     symbol, package, claim, content_hash, calls, complexity, line, ingested_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutObservations prepare: %w", err)
@@ -157,6 +161,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			string(o.SourceKind),
 			string(o.EvidenceTier),
 			o.Symbol,
+			o.Package,
 			o.Claim,
 			o.ContentHash,
 			string(callsJSON),
@@ -186,7 +191,7 @@ func (s *DuckStore) QueryObservations(ctx context.Context, serviceID, concernID 
 	if concernID == "" {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
 FROM observations
 WHERE service_id = ?
 ORDER BY ingested_at
@@ -194,7 +199,7 @@ ORDER BY ingested_at
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
 FROM observations
 WHERE service_id = ? AND concern_id = ?
 ORDER BY ingested_at
@@ -223,6 +228,7 @@ func scanObservations(rows *sql.Rows) ([]core.Observation, error) {
 			(*string)(&o.SourceKind),
 			(*string)(&o.EvidenceTier),
 			&o.Symbol,
+			&o.Package,
 			&o.Claim,
 			&o.ContentHash,
 			&callsJSON,
