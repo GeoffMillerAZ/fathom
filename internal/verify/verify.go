@@ -1,0 +1,282 @@
+// Package verify computes an evidence-backed "definition of done" for plan tasks.
+//
+// It is the read-only verification layer of sextant: given a Plan (a human-edited
+// list of tasks, each with an acceptance contract) and an Evidence view over the
+// code index, VerifyPlan returns a per-task verdict where "done" is a
+// deterministic predicate over governed code evidence — not a box someone ticked.
+// An agent can claim a task is complete; verify can disagree, with citations.
+//
+// Honesty boundary (load-bearing): this layer is STATIC. `test_reaches` means a
+// Test* function statically reaches the symbol via the call graph; it does NOT
+// mean the test passes, asserts anything, or even runs. `tier == verified` means
+// "parsed from real code," not "works." Whether the code actually works at
+// runtime (`runtime_pass`) is reported as Unknown until external CI/coverage
+// evidence is ingested as its own evidence tier. verify never emits "passing"
+// from a static check.
+//
+// VerifyPlan is pure and deterministic: a function of (plan, evidence) only — no
+// clock, no I/O, no randomness. Tasks and criteria come out in a fixed order.
+package verify
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
+	"github.com/geoffmilleraz/sextant/internal/core"
+)
+
+// Plan is the parsed form of a human-edited plan file. verify reads it; it never
+// owns, stores, or mutates it.
+type Plan struct {
+	Service string
+	Tasks   []Task
+}
+
+// Task is one unit of planned work with an acceptance contract.
+type Task struct {
+	ID      string
+	Title   string
+	SpecIDs []string // declared spec IDs this task implements (e.g. "[US-042]")
+	Expect  Expect
+}
+
+// Expect is a task's acceptance contract. The zero value is the STRICTEST
+// contract (a test must reach the symbol, any contradiction fails it, the symbol
+// must be at the verified tier) so that an under-specified task cannot pass by
+// omission. Loosen explicitly.
+type Expect struct {
+	Symbol             string            // claimed symbol that must exist (e.g. "ValidateToken")
+	ReachableFrom      string            // optional: an entrypoint that must reach Symbol
+	SkipTest           bool              // false (default) → a Test* must statically reach Symbol
+	AllowContradiction bool              // false (default) → any contradiction on Symbol fails the task
+	MinTier            core.EvidenceTier // "" (default) → treated as TierVerified
+}
+
+// CriterionStatus is the outcome of a single acceptance criterion.
+type CriterionStatus string
+
+const (
+	Pass    CriterionStatus = "pass"
+	Fail    CriterionStatus = "fail"
+	Unknown CriterionStatus = "unknown" // not statically computable (e.g. runtime_pass)
+	NA      CriterionStatus = "n/a"     // not applicable (e.g. tier when symbol is absent)
+)
+
+// Criterion is one checked clause of a task's contract, with a citation.
+type Criterion struct {
+	Name   string // symbol_present | tier | test_reaches | edge_wired | no_contradiction | spec_covered | runtime_pass
+	Status CriterionStatus
+	Detail string // evidence: file:line, tier, reaching test, etc.
+}
+
+// TaskVerdict is the rolled-up verdict for one task.
+type TaskVerdict struct {
+	TaskID   string
+	Title    string
+	Status   CriterionStatus // Pass | Fail | Unknown (overall, static)
+	Label    string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
+	Criteria []Criterion
+}
+
+// Summary holds report-level counts.
+type Summary struct {
+	Total   int
+	Pass    int
+	Fail    int
+	Unknown int
+}
+
+// Report is the full verification result for a plan.
+type Report struct {
+	Service string
+	Tasks   []TaskVerdict
+	Summary Summary
+}
+
+// Evidence is the narrow view of the code index that verify needs. The MCP tool
+// and the CLI implement it over the live store/call-graph; tests implement a
+// fake. Implementations must return deterministically ordered results.
+type Evidence interface {
+	// FindSymbol returns symbol nodes matching name (exact / bare / qualified).
+	FindSymbol(name string) []core.SymbolNode
+	// TestReaches returns the canonical keys of Test* functions that statically
+	// reach symbol via the call graph (empty if none).
+	TestReaches(symbol string) []string
+	// Reachable reports whether `from` reaches `to` in the call graph.
+	Reachable(from, to string) bool
+	// Contradictions returns all detected contradictions for the service.
+	Contradictions() []core.Contradiction
+	// SpecImplementors returns the symbols implementing specID (nil if uncovered).
+	SpecImplementors(specID string) []string
+}
+
+// VerifyPlan evaluates every task in plan against ev and returns a sorted,
+// deterministic report.
+func VerifyPlan(plan Plan, ev Evidence) Report {
+	// Index contradictions once, by their (bare) symbol name.
+	contraBySymbol := map[string][]core.Contradiction{}
+	for _, c := range ev.Contradictions() {
+		contraBySymbol[c.Symbol] = append(contraBySymbol[c.Symbol], c)
+	}
+
+	verdicts := make([]TaskVerdict, 0, len(plan.Tasks))
+	for _, t := range plan.Tasks {
+		verdicts = append(verdicts, verifyTask(t, ev, contraBySymbol))
+	}
+	// Deterministic order by task ID.
+	sort.Slice(verdicts, func(i, j int) bool { return verdicts[i].TaskID < verdicts[j].TaskID })
+
+	sum := Summary{Total: len(verdicts)}
+	for _, v := range verdicts {
+		switch v.Status {
+		case Pass:
+			sum.Pass++
+		case Fail:
+			sum.Fail++
+		default:
+			sum.Unknown++
+		}
+	}
+	return Report{Service: plan.Service, Tasks: verdicts, Summary: sum}
+}
+
+func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
+	e := t.Expect
+	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified"}
+
+	// fail downgrades the overall status and records the most salient label
+	// (first failure wins, since criteria are appended in priority order).
+	fail := func(name, detail, label string) {
+		v.Criteria = append(v.Criteria, Criterion{name, Fail, detail})
+		if v.Status != Fail {
+			v.Status = Fail
+			v.Label = label
+		}
+	}
+	pass := func(name, detail string) { v.Criteria = append(v.Criteria, Criterion{name, Pass, detail}) }
+	na := func(name, detail string) { v.Criteria = append(v.Criteria, Criterion{name, NA, detail}) }
+
+	checked := false
+
+	// --- symbol presence + tier + test_reaches ---
+	var matches []core.SymbolNode
+	if e.Symbol != "" {
+		checked = true
+		matches = ev.FindSymbol(e.Symbol)
+		if len(matches) == 0 {
+			fail("symbol_present", fmt.Sprintf("%q not found in the index", e.Symbol), "claimed-but-absent")
+		} else {
+			pass("symbol_present", fmt.Sprintf("%s at %s:%d", e.Symbol, matches[0].FilePath, matches[0].Line))
+		}
+
+		// tier
+		if len(matches) == 0 {
+			na("tier", "symbol absent")
+		} else {
+			minTier := e.MinTier
+			if minTier == "" {
+				minTier = core.TierVerified
+			}
+			best := bestTier(matches)
+			if scoring.TierRank(string(best)) >= scoring.TierRank(string(minTier)) {
+				pass("tier", fmt.Sprintf("%s (>= required %s)", best, minTier))
+			} else {
+				label := "below-required-tier"
+				if best == core.TierPreScan {
+					label = "likely-unconfirmed"
+				}
+				fail("tier", fmt.Sprintf("%s (< required %s)", best, minTier), label)
+			}
+		}
+
+		// test_reaches (static)
+		if !e.SkipTest {
+			if len(matches) == 0 {
+				na("test_reaches", "symbol absent")
+			} else if tests := ev.TestReaches(e.Symbol); len(tests) > 0 {
+				pass("test_reaches", fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(tests), tests[0]))
+			} else {
+				fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
+			}
+		}
+
+		// no_contradiction
+		if !e.AllowContradiction {
+			if cs := contradictionsFor(e.Symbol, contraBySymbol); len(cs) > 0 {
+				fail("no_contradiction",
+					fmt.Sprintf("conflicting evidence: %s vs %s", cs[0].A.SourceRef, cs[0].B.SourceRef),
+					"contradicted")
+			} else {
+				pass("no_contradiction", "no conflicting evidence")
+			}
+		}
+	}
+
+	// --- edge wiring (requires both endpoints) ---
+	if e.ReachableFrom != "" && e.Symbol != "" {
+		checked = true
+		if ev.Reachable(e.ReachableFrom, e.Symbol) {
+			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, e.Symbol))
+		} else {
+			fail("edge_wired", fmt.Sprintf("%s does not reach %s", e.ReachableFrom, e.Symbol), "edge-not-wired")
+		}
+	}
+
+	// --- spec coverage ---
+	if len(t.SpecIDs) > 0 {
+		checked = true
+		specs := append([]string(nil), t.SpecIDs...)
+		sort.Strings(specs)
+		var uncovered []string
+		for _, s := range specs {
+			if len(ev.SpecImplementors(s)) == 0 {
+				uncovered = append(uncovered, s)
+			}
+		}
+		if len(uncovered) == 0 {
+			pass("spec_covered", fmt.Sprintf("all %d spec(s) have implementing symbols", len(specs)))
+		} else {
+			fail("spec_covered", "uncovered: "+strings.Join(uncovered, ", "), "spec-uncovered")
+		}
+	}
+
+	// --- runtime: never asserted by a static check ---
+	v.Criteria = append(v.Criteria, Criterion{
+		Name:   "runtime_pass",
+		Status: Unknown,
+		Detail: "no CI/coverage evidence ingested — static checks cannot prove the test passes",
+	})
+
+	if !checked {
+		// No acceptance contract to evaluate — don't pretend it's verified.
+		v.Status = Unknown
+		v.Label = "no-contract"
+	}
+	return v
+}
+
+// bestTier returns the highest-ranked evidence tier among the matched nodes.
+func bestTier(nodes []core.SymbolNode) core.EvidenceTier {
+	best := nodes[0].Tier
+	for _, n := range nodes[1:] {
+		if scoring.TierRank(string(n.Tier)) > scoring.TierRank(string(best)) {
+			best = n.Tier
+		}
+	}
+	return best
+}
+
+// contradictionsFor returns contradictions whose symbol matches name by exact or
+// bare-name suffix (contradiction symbols are typically bare).
+func contradictionsFor(name string, idx map[string][]core.Contradiction) []core.Contradiction {
+	if cs, ok := idx[name]; ok {
+		return cs
+	}
+	bare := name
+	if i := strings.LastIndex(bare, "."); i >= 0 {
+		bare = bare[i+1:]
+	}
+	return idx[bare]
+}
