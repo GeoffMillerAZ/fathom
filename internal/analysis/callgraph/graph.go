@@ -34,6 +34,13 @@ type Graph struct {
 	// matching.  Only populated when the bare name is unambiguous (exactly
 	// one node with that Name).
 	byName map[string]string
+
+	// byPkgName maps "package.Name" -> canonical key. It resolves cross-package
+	// selector calls ("pkg.Name", e.g. an external "pkg_test" package calling
+	// "pkg.Name") precisely: the left side must be a real indexed package, so a
+	// receiver-method call ("recv.Name") is not mistaken for a package selector.
+	// Only populated when "package.Name" is unambiguous.
+	byPkgName map[string]string
 }
 
 // NodeCount returns the number of nodes in the graph.
@@ -55,23 +62,32 @@ func (g *Graph) EdgeCount() int {
 // — they represent external dependencies.
 func Build(nodes []core.SymbolNode) *Graph {
 	g := &Graph{
-		nodes:   make(map[string]core.SymbolNode, len(nodes)),
-		callees: make(map[string][]string, len(nodes)),
-		callers: make(map[string][]string, len(nodes)),
-		byName:  make(map[string]string),
+		nodes:     make(map[string]core.SymbolNode, len(nodes)),
+		callees:   make(map[string][]string, len(nodes)),
+		callers:   make(map[string][]string, len(nodes)),
+		byName:    make(map[string]string),
+		byPkgName: make(map[string]string),
 	}
 
-	// First pass: register all nodes and build byName index.
-	// Count how many nodes share each bare name; keep only unambiguous ones.
+	// First pass: register all nodes and build the byName / byPkgName indexes.
+	// Count how many nodes share each bare name and each "package.Name"; keep
+	// only the unambiguous ones.
 	nameCounts := make(map[string]int, len(nodes))
+	pkgNameCounts := make(map[string]int, len(nodes))
 	for _, n := range nodes {
 		key := n.Key()
 		g.nodes[key] = n
 		nameCounts[n.Name]++
+		if n.Package != "" {
+			pkgNameCounts[n.Package+"."+n.Name]++
+		}
 	}
 	for _, n := range nodes {
 		if nameCounts[n.Name] == 1 {
 			g.byName[n.Name] = n.Key()
+		}
+		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
+			g.byPkgName[n.Package+"."+n.Name] = n.Key()
 		}
 	}
 
@@ -113,6 +129,10 @@ func (g *Graph) resolve(raw string) string {
 	}
 	// Unambiguous bare-name lookup.
 	if key, ok := g.byName[raw]; ok {
+		return key
+	}
+	// Precise package-qualified lookup: raw "pkg.Name" -> "svc::pkg.Name".
+	if key, ok := g.byPkgName[raw]; ok {
 		return key
 	}
 	// Suffix match: raw might be "pkg.Name" and the key is "svc::pkg.Name".
@@ -341,6 +361,10 @@ func (g *Graph) canonicalize(symbol string) string {
 		return symbol
 	}
 	if key, ok := g.byName[symbol]; ok {
+		return key
+	}
+	// Precise package-qualified lookup: "pkg.Name" -> "svc::pkg.Name".
+	if key, ok := g.byPkgName[symbol]; ok {
 		return key
 	}
 	// Try suffix match ".<symbol>" for dotted partial keys like "pkg.Name".
