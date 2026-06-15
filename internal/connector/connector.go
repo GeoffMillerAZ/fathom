@@ -84,6 +84,12 @@ var extKindMap = map[string]core.SourceKind{
 
 	// TOML
 	".toml": core.KindTOMLTable,
+
+	// SQL (DDL)
+	".sql": core.KindSQLTable,
+
+	// JSON
+	".json": core.KindJSONKey,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

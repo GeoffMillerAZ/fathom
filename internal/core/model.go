@@ -85,6 +85,16 @@ const (
 	// TOML
 	KindTOMLTable SourceKind = "TOMLTable"
 	KindTOMLKey   SourceKind = "TOMLKey"
+
+	// SQL (DDL)
+	KindSQLTable    SourceKind = "SQLTable"
+	KindSQLView     SourceKind = "SQLView"
+	KindSQLIndex    SourceKind = "SQLIndex"
+	KindSQLFunction SourceKind = "SQLFunction"
+	KindSQLType     SourceKind = "SQLType"
+
+	// JSON
+	KindJSONKey SourceKind = "JSONKey"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

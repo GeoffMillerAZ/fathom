@@ -270,6 +270,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// TOML
 	p.exts[".toml"] = extractor.NewTOMLExtractor()
 
+	// SQL (DDL)
+	p.exts[".sql"] = extractor.NewSQLExtractor()
+
+	// JSON
+	p.exts[".json"] = extractor.NewJSONExtractor()
+
 	return p
 }
 
