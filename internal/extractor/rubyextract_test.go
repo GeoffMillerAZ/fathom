@@ -7,6 +7,10 @@ import (
 	"github.com/geoffmilleraz/sextant/internal/extractor"
 )
 
+// rubyFixture exercises all constructs the new tree-sitter extractor must handle:
+//   - a module containing a class
+//   - instance methods inside the class
+//   - a singleton method (def self.foo) inside the class
 const rubyFixture = `module Payments
   class Gateway
     def initialize(config)
@@ -15,6 +19,10 @@ const rubyFixture = `module Payments
 
     def charge(amount)
       # process payment
+    end
+
+    def self.supported_currencies
+      ["USD", "EUR"]
     end
   end
 
@@ -36,6 +44,13 @@ func TestRubyExtractor_Basic(t *testing.T) {
 		byName[n.Name] = n
 	}
 
+	// All symbols must carry TierVerified (not TierPreScan as in the old extractor).
+	for _, n := range nodes {
+		if n.Tier != core.TierVerified {
+			t.Errorf("symbol %q: Tier=%q, want TierVerified", n.Name, n.Tier)
+		}
+	}
+
 	t.Run("module Payments", func(t *testing.T) {
 		n, ok := byName["Payments"]
 		if !ok {
@@ -43,9 +58,6 @@ func TestRubyExtractor_Basic(t *testing.T) {
 		}
 		if n.Kind != core.KindRubyModule {
 			t.Errorf("Kind: got %q, want KindRubyModule", n.Kind)
-		}
-		if n.Tier != core.TierPreScan {
-			t.Errorf("Tier: got %q, want TierPreScan", n.Tier)
 		}
 	})
 
@@ -60,9 +72,12 @@ func TestRubyExtractor_Basic(t *testing.T) {
 	})
 
 	t.Run("method initialize", func(t *testing.T) {
-		_, ok := byName["Payments::Gateway.initialize"]
+		n, ok := byName["Payments::Gateway.initialize"]
 		if !ok {
 			t.Fatal("expected symbol Payments::Gateway.initialize")
+		}
+		if n.Kind != core.KindRubyMethod {
+			t.Errorf("Kind: got %q, want KindRubyMethod", n.Kind)
 		}
 	})
 
@@ -70,6 +85,26 @@ func TestRubyExtractor_Basic(t *testing.T) {
 		_, ok := byName["Payments::Gateway.charge"]
 		if !ok {
 			t.Fatal("expected symbol Payments::Gateway.charge")
+		}
+	})
+
+	t.Run("singleton method self.supported_currencies", func(t *testing.T) {
+		n, ok := byName["Payments::Gateway.supported_currencies"]
+		if !ok {
+			t.Fatal("expected singleton method Payments::Gateway.supported_currencies")
+		}
+		if n.Kind != core.KindRubyMethod {
+			t.Errorf("Kind: got %q, want KindRubyMethod", n.Kind)
+		}
+	})
+
+	t.Run("module singleton method self.version", func(t *testing.T) {
+		n, ok := byName["Payments.version"]
+		if !ok {
+			t.Fatal("expected module singleton method Payments.version")
+		}
+		if n.Kind != core.KindRubyMethod {
+			t.Errorf("Kind: got %q, want KindRubyMethod", n.Kind)
 		}
 	})
 }

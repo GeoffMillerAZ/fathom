@@ -52,6 +52,8 @@ const (
 	KindJavaClass     SourceKind = "JavaClass"
 	KindJavaInterface SourceKind = "JavaInterface"
 	KindJavaMethod    SourceKind = "JavaMethod"
+	KindJavaEnum      SourceKind = "JavaEnum"
+	KindJavaRecord    SourceKind = "JavaRecord"
 
 	// Ruby
 	KindRubyClass  SourceKind = "RubyClass"

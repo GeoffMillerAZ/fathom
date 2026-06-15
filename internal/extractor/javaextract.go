@@ -1,126 +1,49 @@
 package extractor
 
 import (
-	"bufio"
-	"bytes"
-	"regexp"
 	"sort"
-	"strings"
+
+	ts "github.com/tree-sitter/go-tree-sitter"
+	tsjava "github.com/tree-sitter/tree-sitter-java/bindings/go"
 
 	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
 )
 
-// JavaExtractor implements Extractor for Java source files using line-based
-// heuristics. It detects:
-//   - class declarations → KindJavaClass
-//   - interface declarations → KindJavaInterface
-//   - method declarations (heuristic; inner classes best-effort) → KindJavaMethod
+// javaLang is initialised once and shared across all JavaExtractor calls.
+// tree-sitter Language objects are immutable and safe for concurrent use;
+// only the Parser (created fresh per call) carries mutable state.
+var javaLang = ts.NewLanguage(tsjava.Language())
+
+// JavaExtractor implements Extractor for Java source files using
+// tree-sitter CGO bindings (ADR-013). It emits:
 //
-// Method names are qualified as "ClassName.methodName" using a class-stack
-// that tracks brace depth.
+//   - KindJavaClass for class and static nested class declarations.
+//   - KindJavaInterface for interface declarations.
+//   - KindJavaEnum for enum declarations.
+//   - KindJavaRecord for record declarations.
+//   - KindJavaMethod for method declarations and constructor declarations,
+//     qualified as "EnclosingType.methodName".
+//
+// All symbols carry TierVerified.
 type JavaExtractor struct{}
 
 // NewJavaExtractor returns a new JavaExtractor.
 func NewJavaExtractor() *JavaExtractor { return &JavaExtractor{} }
 
-var (
-	// javaClassDecl matches class/interface/enum/record declarations (simplified).
-	javaClassRe = regexp.MustCompile(
-		`(?:^|\s)(?:public|private|protected|static|abstract|final|sealed|non-sealed)?\s*` +
-			`(?:public|private|protected|static|abstract|final|sealed|non-sealed)?\s*` +
-			`(class|interface|enum|record)\s+([A-Za-z_][A-Za-z0-9_]*)`)
-
-	// javaMethodRe matches method declarations. Simplified: return-type name(
-	// where return-type is a word and name is followed by '('.
-	javaMethodRe = regexp.MustCompile(
-		`^\s+(?:(?:public|private|protected|static|final|synchronized|native|abstract|default|override|@\w+)\s+)*` +
-			`(?:<[^>]*>\s*)?` +
-			`(?:[A-Za-z_][A-Za-z0-9_<>\[\],\s]*\s+)` +
-			`([A-Za-z_][A-Za-z0-9_]*)\s*\(`)
-)
-
-// Extract parses Java source bytes and returns SymbolNodes.
+// Extract parses Java source bytes with tree-sitter and returns SymbolNodes
+// for classes, interfaces, enums, records, methods, and constructors. Output
+// is sorted by Line then Name for determinism.
 func (j *JavaExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
-	scanner := bufio.NewScanner(bytes.NewReader(src))
-	lineNo := 0
-
-	type classFrame struct {
-		name       string
-		kind       core.SourceKind
-		braceDepth int
-	}
-	var classStack []classFrame
-	braceDepth := 0
 	pkg := pkgFromPath(relPath)
 
-	for scanner.Scan() {
-		lineNo++
-		line := scanner.Text()
-		stripped := strings.TrimSpace(line)
-
-		if stripped == "" || strings.HasPrefix(stripped, "//") || strings.HasPrefix(stripped, "*") {
-			continue
-		}
-
-		// Update brace depth and pop class frames.
-		for _, ch := range line {
-			switch ch {
-			case '{':
-				braceDepth++
-			case '}':
-				braceDepth--
-				for len(classStack) > 0 && classStack[len(classStack)-1].braceDepth > braceDepth {
-					classStack = classStack[:len(classStack)-1]
-				}
-			}
-		}
-
-		// Class / interface / enum / record declaration.
-		if m := javaClassRe.FindStringSubmatch(line); m != nil {
-			keyword := m[1]
-			name := m[2]
-			// Qualify with enclosing class for inner classes.
-			if len(classStack) > 0 {
-				name = classStack[len(classStack)-1].name + "." + name
-			}
-			kind := core.KindJavaClass
-			if keyword == "interface" {
-				kind = core.KindJavaInterface
-			}
-			nodes = append(nodes, core.SymbolNode{
-				Service:  service,
-				Package:  pkg,
-				Name:     name,
-				Kind:     kind,
-				FilePath: relPath,
-				Line:     lineNo,
-				Tier:     core.TierPreScan,
-			})
-			classStack = append(classStack, classFrame{name: name, kind: kind, braceDepth: braceDepth})
-			continue
-		}
-
-		// Method declaration (must be inside a class body).
-		if len(classStack) > 0 && braceDepth > classStack[len(classStack)-1].braceDepth {
-			if m := javaMethodRe.FindStringSubmatch(line); m != nil {
-				methodName := m[1]
-				if isJavaKeyword(methodName) {
-					continue
-				}
-				qualName := classStack[len(classStack)-1].name + "." + methodName
-				nodes = append(nodes, core.SymbolNode{
-					Service:  service,
-					Package:  pkg,
-					Name:     qualName,
-					Kind:     core.KindJavaMethod,
-					FilePath: relPath,
-					Line:     lineNo,
-					Tier:     core.TierPreScan,
-				})
-			}
-		}
+	err := treesitter.WithTree(javaLang, src, func(root *ts.Node) {
+		walkJava(root, src, service, pkg, relPath, nil, &nodes)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	sort.Slice(nodes, func(i, j int) bool {
@@ -132,16 +55,112 @@ func (j *JavaExtractor) Extract(service, relPath string, src []byte) ([]core.Sym
 	return nodes, nil
 }
 
-// isJavaKeyword reports whether s is a Java keyword to filter false positives.
-func isJavaKeyword(s string) bool {
-	switch s {
-	case "if", "for", "while", "switch", "return", "new", "throw",
-		"try", "catch", "finally", "else", "do", "super", "this",
-		"import", "package", "class", "interface", "enum", "record",
-		"extends", "implements", "static", "final", "abstract",
-		"public", "private", "protected", "void", "boolean", "int",
-		"long", "double", "float", "byte", "short", "char":
-		return true
+// walkJava recursively descends the tree-sitter CST.
+//
+// scopeStack tracks the qualified names of enclosing type declarations (class,
+// interface, enum, record) so that nested types and methods can be qualified
+// correctly (e.g., "Outer.Inner", "Outer.method").
+func walkJava(
+	n *ts.Node,
+	src []byte,
+	service, pkg, relPath string,
+	scopeStack []string,
+	out *[]core.SymbolNode,
+) {
+	if n == nil {
+		return
 	}
-	return false
+
+	kind := n.Kind()
+
+	switch kind {
+	case "class_declaration", "interface_declaration", "enum_declaration", "record_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name == "" {
+			break
+		}
+		// Qualify with enclosing type for nested declarations.
+		qualName := qualifyJava(scopeStack, name)
+
+		symKind := javaTypeKind(kind)
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     qualName,
+			Kind:     symKind,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			Tier:     core.TierVerified,
+		})
+
+		// Recurse into the body with this type name pushed onto the scope stack.
+		newScope := append(append([]string{}, scopeStack...), qualName)
+		body := typeBodyNode(n, kind)
+		if body != nil {
+			walkJava(body, src, service, pkg, relPath, newScope, out)
+		}
+		return
+
+	case "method_declaration", "constructor_declaration":
+		name := treesitter.FieldText(n, "name", src)
+		if name == "" {
+			break
+		}
+		qualName := qualifyJava(scopeStack, name)
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     qualName,
+			Kind:     core.KindJavaMethod,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			Tier:     core.TierVerified,
+		})
+		// Do not recurse into method/constructor bodies — inner types there
+		// are unusual and not worth complicating the scope.
+		return
+	}
+
+	// Generic descent for all other node types (program, class_body, block, …).
+	count := n.NamedChildCount()
+	for i := uint(0); i < count; i++ {
+		child := n.NamedChild(i)
+		walkJava(child, src, service, pkg, relPath, scopeStack, out)
+	}
+}
+
+// javaTypeKind maps a tree-sitter node kind to the appropriate core.SourceKind.
+func javaTypeKind(nodeKind string) core.SourceKind {
+	switch nodeKind {
+	case "interface_declaration":
+		return core.KindJavaInterface
+	case "enum_declaration":
+		return core.KindJavaEnum
+	case "record_declaration":
+		return core.KindJavaRecord
+	default: // "class_declaration"
+		return core.KindJavaClass
+	}
+}
+
+// typeBodyNode returns the body child of a Java type declaration. The field
+// name differs by node kind in the tree-sitter-java grammar.
+func typeBodyNode(n *ts.Node, nodeKind string) *ts.Node {
+	switch nodeKind {
+	case "interface_declaration":
+		return n.ChildByFieldName("body") // interface_body
+	case "enum_declaration":
+		return n.ChildByFieldName("body") // enum_body
+	default:
+		return n.ChildByFieldName("body") // class_body
+	}
+}
+
+// qualifyJava returns "Outer.name" when scopeStack is non-empty, or just name
+// at top level. The outermost scope entry is already a fully qualified name.
+func qualifyJava(scopeStack []string, name string) string {
+	if len(scopeStack) == 0 {
+		return name
+	}
+	return scopeStack[len(scopeStack)-1] + "." + name
 }
