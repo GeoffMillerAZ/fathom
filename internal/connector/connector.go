@@ -61,6 +61,11 @@ var extKindMap = map[string]core.SourceKind{
 
 	// Templates
 	".templ": core.KindTemplComponent,
+
+	// Helm
+	"Chart.yaml":  core.KindHelmChart,
+	"values.yaml": core.KindHelmValue,
+	".tpl":        core.KindHelmTemplate,
 }
 
 // kindFor returns the SourceKind for a file identified by basename and

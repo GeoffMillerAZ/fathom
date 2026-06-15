@@ -55,6 +55,12 @@ const (
 
 	// Templates
 	KindTemplComponent SourceKind = "TemplComponent"
+
+	// Helm
+	KindHelmChart      SourceKind = "HelmChart"
+	KindHelmDependency SourceKind = "HelmDependency"
+	KindHelmValue      SourceKind = "HelmValue"
+	KindHelmTemplate   SourceKind = "HelmTemplate"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values

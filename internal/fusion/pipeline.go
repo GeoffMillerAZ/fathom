@@ -241,6 +241,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// go.mod (matched by full basename via Ext-fallback in extractAndStore)
 	p.exts["go.mod"] = extractor.NewGoModExtractor()
 
+	// Helm (full-basename keys take precedence over .yaml k8s extractor)
+	p.exts["Chart.yaml"] = extractor.NewHelmChartExtractor()
+	p.exts["values.yaml"] = extractor.NewHelmValuesExtractor()
+	p.exts[".tpl"] = extractor.NewHelmTemplateExtractor()
+
 	return p
 }
 
