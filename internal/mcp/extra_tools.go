@@ -70,6 +70,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerPropagateConcern(s, backend)
 	registerEvidenceSummary(s, backend)
 	registerContradictionScan(s, backend)
+	registerVerifyPlan(s, backend)
 
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)
