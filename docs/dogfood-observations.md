@@ -79,6 +79,16 @@ _(none — see Resolved below; new findings go here.)_
   should be reaped; only one can hold the write lock.
 - **Status:** mechanism fixed; binary rebuilt from HEAD. **Impact:** future fixes reach
   consumers; staleness is now self-evident instead of silent.
+- **Update 2026-06-16 — residual SUPERSEDED by 0.2.0.** The deployment moved to a single
+  always-on HTTP daemon (launchd `serve-http` at `localhost:7575/rpc`, one shared store),
+  so there are no per-session servers and no lock contention. The two manual residuals above
+  are now closed by the tool: `serve-mcp --auto-refresh` (default on) re-ingests a service on
+  git-HEAD drift before answering — killing the *data*-staleness loop — and a second
+  `serve-mcp` on the same store now refuses with actionable guidance instead of silently
+  contending for the lock (no more "reap duplicates" chore). **Only *binary* staleness
+  remains a manual step**: a code change still needs the daemon's binary rebuilt and the
+  daemon restarted (it can't hot-swap itself); `sextant version` vs `git rev-parse HEAD` is
+  still the one-line check. See CLAUDE.md "Dogfood: the fleet index" for the daemon model.
 
 ---
 
