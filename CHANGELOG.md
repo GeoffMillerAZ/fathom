@@ -5,6 +5,10 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.2.0] — 2026-06-16
+
 Enhancements driven by mining throughline's real Claude Code sessions (841 sextant calls,
 1666 shell greps, a heavy manual freshness loop).
 
