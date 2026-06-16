@@ -23,8 +23,9 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"concern": map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
+				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"concern":       map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
+				"plan_markdown": map[string]any{"type": "string", "description": "Alternative to tasks: a Markdown checklist (e.g. the contents of TRACKING.md). Each '- [ ] title [SPEC-ID] {symbol: Foo, reachable_from: Bar, min_tier: verified}' line becomes a task; a line with no annotation/spec verifies as no-contract."},
 				"tasks": map[string]any{
 					"type":        "array",
 					"description": "Plan tasks, each with an acceptance contract",
@@ -44,7 +45,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 					},
 				},
 			},
-			"required": []string{"service", "tasks"},
+			"required": []string{"service"},
 		},
 		group: GroupInvestigation,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
@@ -52,9 +53,10 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
 		var p struct {
-			Service string `json:"service"`
-			Concern string `json:"concern"`
-			Tasks   []struct {
+			Service      string `json:"service"`
+			Concern      string `json:"concern"`
+			PlanMarkdown string `json:"plan_markdown"`
+			Tasks        []struct {
 				ID                 string   `json:"id"`
 				Title              string   `json:"title"`
 				SpecIDs            []string `json:"spec_ids"`
@@ -85,13 +87,40 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			contras = res.Contradictions
 		}
 
+		// Build the plan: from a Markdown checklist when provided, else from the
+		// structured tasks.
+		var plan verify.Plan
+		if p.PlanMarkdown != "" && len(p.Tasks) == 0 {
+			plan = verify.ParseMarkdownPlan(p.Service, []byte(p.PlanMarkdown))
+		} else {
+			plan = verify.Plan{Service: p.Service}
+			for _, t := range p.Tasks {
+				var mt core.EvidenceTier
+				if core.EvidenceTier(t.MinTier).Valid() {
+					mt = core.EvidenceTier(t.MinTier)
+				}
+				plan.Tasks = append(plan.Tasks, verify.Task{
+					ID:      t.ID,
+					Title:   t.Title,
+					SpecIDs: t.SpecIDs,
+					Expect: verify.Expect{
+						Symbol:             t.Symbol,
+						ReachableFrom:      t.ReachableFrom,
+						SkipTest:           t.SkipTest,
+						AllowContradiction: t.AllowContradiction,
+						MinTier:            mt,
+					},
+				})
+			}
+		}
+
 		// Spec matrix (built only if some task declares spec IDs).
 		var (
 			matrix  sdd.Matrix
 			haveMat bool
 		)
 		var allSpecs []string
-		for _, t := range p.Tasks {
+		for _, t := range plan.Tasks {
 			allSpecs = append(allSpecs, t.SpecIDs...)
 		}
 		if len(allSpecs) > 0 {
@@ -102,27 +131,6 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		ev := &verifyEvidence{
 			ctx: ctx, backend: backend, service: p.Service,
 			graph: graph, contras: contras, matrix: matrix, haveMat: haveMat,
-		}
-
-		// Translate wire tasks → verify.Plan.
-		plan := verify.Plan{Service: p.Service}
-		for _, t := range p.Tasks {
-			var mt core.EvidenceTier
-			if core.EvidenceTier(t.MinTier).Valid() {
-				mt = core.EvidenceTier(t.MinTier)
-			}
-			plan.Tasks = append(plan.Tasks, verify.Task{
-				ID:      t.ID,
-				Title:   t.Title,
-				SpecIDs: t.SpecIDs,
-				Expect: verify.Expect{
-					Symbol:             t.Symbol,
-					ReachableFrom:      t.ReachableFrom,
-					SkipTest:           t.SkipTest,
-					AllowContradiction: t.AllowContradiction,
-					MinTier:            mt,
-				},
-			})
 		}
 
 		return verifyReportToMap(verify.VerifyPlan(plan, ev)), nil

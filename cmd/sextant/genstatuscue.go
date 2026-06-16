@@ -88,7 +88,7 @@ type wireExpect struct {
 // deterministic CUE status document to --output.
 func cmdGenStatusCue(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-status-cue", stderr)
-	planPath := fs.String("plan", "", "path to plan file (.cue or .json) (required)")
+	planPath := fs.String("plan", "", "path to plan file (.cue, .json, or .md checklist) (required)")
 	service := fs.String("service", "", "service ID (required)")
 	storePath := fs.String("store", "workspace/db/sextant.duckdb", "DuckDB store path")
 	output := fs.String("output", "workspace/artifacts/STATUS.cue", "output path for STATUS.cue")
@@ -204,6 +204,15 @@ func loadPlan(path, serviceOverride string) (verify.Plan, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return verify.Plan{}, fmt.Errorf("reading %q: %w", path, err)
+	}
+
+	// Markdown checklist plans (e.g. TRACKING.md) parse directly. The service
+	// must come from --service, since a Markdown plan has no service field.
+	if strings.HasSuffix(path, ".md") {
+		if serviceOverride == "" {
+			return verify.Plan{}, fmt.Errorf("a Markdown plan requires --service")
+		}
+		return verify.ParseMarkdownPlan(serviceOverride, raw), nil
 	}
 
 	var wire wirePlan
