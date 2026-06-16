@@ -5,7 +5,25 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
-_Nothing yet._
+Enhancements driven by mining throughline's real Claude Code sessions (841 sextant calls,
+1666 shell greps, a heavy manual freshness loop).
+
+### Added
+- **`references` MCP tool** — evidence-tiered, fleet-wide occurrence search (substring /
+  whole-word / regex). Returns text matches at the `pre-scan` tier plus symbol definitions
+  cross-referenced from the index at their real tier. Turns the ~658 repo-by-repo greps a
+  session does into one structured call.
+- **`verify_plan` accepts a Markdown checklist** (`plan_markdown`), and `gen-status-cue`
+  accepts a `.md` plan file: each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a
+  verifiable task. A `/verify` slash command runs the loop — surfacing `[x]`-but-not-verified
+  items before "done" is trusted. (throughline's sessions were hand-rolling this.)
+
+### Changed
+- **`serve-mcp --auto-refresh` (default on)** — a query for a service whose git HEAD has
+  drifted from the indexed commit transparently re-ingests (hash-gated, debounced per
+  commit) before answering. Removes the manual staleness→ingest loop (49 ingests / 19
+  staleness checks per 3 sessions). A second `serve-mcp` on the same store now refuses with
+  actionable guidance instead of DuckDB's raw single-writer lock error.
 
 ## [0.1.0] — 2026-06-15
 

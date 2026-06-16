@@ -149,7 +149,9 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 **Staleness:** If `serve-mcp` has been running since before the last commit, results may be stale. Check with `staleness_report` or call `ingest` proactively at session start.
 
-**`gen-status-cue` is a CLI command, not an MCP tool.** It renders `STATUS.cue` to `workspace/artifacts/` by default (per the workspace convention). The plan file passed via `--plan` is the human-owned source of truth; never hand-edit the generated `STATUS.cue` — regenerate it. It accepts a `.cue` plan (matching `schema/plan/schema.cue`) or a `.json` plan.
+**`gen-status-cue` is a CLI command, not an MCP tool.** It renders `STATUS.cue` to `workspace/artifacts/` by default (per the workspace convention). The plan file passed via `--plan` is the human-owned source of truth; never hand-edit the generated `STATUS.cue` — regenerate it. It accepts a `.cue` plan (matching `schema/plan/schema.cue`), a `.json` plan, or a `.md` Markdown checklist (each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a task).
+
+**In the loop.** `verify_plan` also accepts `plan_markdown` — the contents of a checklist like `TRACKING.md` — directly, so an agent can verify before reporting done. The `/verify` slash command automates this: read the plan → call `verify_plan` → surface every `[x]` item that is **not** `verified`. Annotate a checklist line with `{symbol: Foo}` (and optionally `[US-042]`, `{reachable_from: Bar}`) to give it a checkable contract; an unannotated line verifies as `no-contract` (honest, not a false pass).
 
 **Tier thresholds:** `verified` verdict requires evidence at the `verified` tier. Evidence from heuristic extractors (non-Go files) arrives at lower tiers and produces `likely-unconfirmed`, not `verified`. Go sources processed by the AST extractor can reach `verified`. This is not a bug — it is an honest representation of evidence quality.
 

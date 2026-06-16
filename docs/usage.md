@@ -245,15 +245,17 @@ Serve the MCP JSON-RPC 2.0 protocol over stdio. This is the mode used by editor 
 clients (e.g. Claude Code). No network port is opened.
 
 ```sh
-sextant serve-mcp --store <path> [--mode local|faux]
+sextant serve-mcp --store <path> [--mode local|faux] [--auto-refresh]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--store` | (required) | DuckDB store path |
 | `--mode` | `local` | Connector mode |
+| `--auto-refresh` | `true` | Re-ingest a service when its git HEAD has drifted from the indexed commit, before answering the query (hash-gated, debounced per commit). Removes the manual staleness→ingest loop. Pass `--auto-refresh=false` to disable. |
 
-The process reads JSON-RPC 2.0 messages from stdin and writes responses to stdout. See
+A second `serve-mcp` on the same store refuses with actionable guidance (DuckDB is
+single-writer). The process reads JSON-RPC 2.0 messages from stdin and writes responses to stdout. See
 [Connecting an MCP client](#connecting-an-mcp-client) below and
 [mcp-tools.md](mcp-tools.md) for the full tool list.
 
