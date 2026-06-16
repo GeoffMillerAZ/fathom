@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/geoffmilleraz/sextant/internal/mcp"
 	"github.com/geoffmilleraz/sextant/pkg/client"
@@ -22,6 +23,7 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlagSet("serve-mcp", stderr)
 	storePath := fs.String("store", "", "DuckDB store path (required)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
+	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -41,6 +43,13 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	c, err := client.NewConstantClient(m, *storePath)
 	if err != nil {
+		if isStoreLockConflict(err) {
+			fmt.Fprintf(stderr, "error: another sextant process already holds the store %q.\n", *storePath)
+			fmt.Fprintf(stderr, "  %v\n", err)
+			fmt.Fprintln(stderr, "  DuckDB is single-writer: only one serve-mcp can hold a store. Reap the other")
+			fmt.Fprintln(stderr, "  process (the lock error above names its PID), or point --store at a different file.")
+			return 1
+		}
 		fmt.Fprintf(stderr, "error: opening client: %v\n", err)
 		return 1
 	}
@@ -52,7 +61,15 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// docs/dogfood-observations.md (staleness finding).
 	fmt.Fprintf(stderr, "sextant serve-mcp starting: %s\n", BuildRevision())
 
-	srv := mcp.NewServerWithFleet(c, &fleetAdapter{c: c, stderr: stderr})
+	// Default: keep the index fresh transparently. A query for a service whose
+	// git HEAD has drifted from the indexed commit triggers a hash-gated
+	// re-ingest before the answer — removing the manual staleness→ingest loop.
+	var backend mcp.QueryInterface = c
+	if *autoRefresh {
+		backend = mcp.NewAutoRefresh(c, stderr)
+	}
+
+	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, stderr: stderr})
 
 	if err := srv.Serve(context.Background(), stdin, stdout); err != nil {
 		// EOF / context cancel are expected end-of-stream signals; only
@@ -61,4 +78,11 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// isStoreLockConflict reports whether err is DuckDB's single-writer lock
+// conflict (another process already holds the store file).
+func isStoreLockConflict(err error) bool {
+	s := err.Error()
+	return strings.Contains(s, "Conflicting lock") || strings.Contains(s, "Could not set lock")
 }
