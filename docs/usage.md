@@ -326,23 +326,24 @@ sextant platform-ingest --root /src/services --store-dir workspace/db/platform
 
 ### `platform-callers`
 
-Print cross-repo callers of a symbol. Builds the platform graph live from Go source on
-disk without a store.
+Print cross-repo callers of a symbol. By default it reads the symbols and call edges
+already ingested into the store, so callers are found for **every language** whose
+extractor populated them — not just Go.
 
 ```sh
-sextant platform-callers --repos <id=path,...> --symbol <name>
+sextant platform-callers --store <path> --symbol <name> [--services a,b,c]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--repos` | (required) | Comma-separated `id=path` pairs, e.g. `svc-a=/src/a,svc-b=/src/b` |
-| `--symbol` | (required) | Bare exported symbol name to look up |
+| `--symbol` | (required) | Bare symbol name to find cross-repo callers of |
+| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path (language-agnostic source) |
+| `--services` | (all in store) | Comma-separated service IDs to include |
+| `--repos` | — | Legacy Go-only mode: comma-separated `id=path` pairs; walks Go source on disk and overrides `--store` when set |
 
 ```sh
-sextant platform-callers \
-    --repos payment-service=/src/payment,order-service=/src/order \
-    --symbol ProcessPayment
-# cross-repo callers of "ProcessPayment":
+sextant platform-callers --store workspace/db/fleet.duckdb --symbol ProcessPayment
+# cross-repo callers of "ProcessPayment" (store workspace/db/fleet.duckdb (all languages)):
 #
 # FROM-SERVICE             FROM-FILE                                TO-SERVICE               TO-FILE
 # ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -350,6 +351,9 @@ sextant platform-callers \
 #
 # total: 1 caller(s)
 ```
+
+Cross-repo edges require the index to carry call edges; re-ingest with a current build so
+`Package` and `Calls` are populated.
 
 ---
 
@@ -375,6 +379,37 @@ kind/count breakdown table and a full symbol listing.
 sextant gen-claude-md --service my-service
 # wrote workspace/artifacts/CLAUDE.md (891 symbols)
 ```
+
+---
+
+### `gen-status-cue`
+
+Render an evidence-backed plan-verification status to a deterministic CUE file. Loads a
+plan (`.cue` matching `schema/plan/schema.cue`, or `.json`), verifies each task against the
+index (the same checks as the `verify_plan` MCP tool), and writes a `STATUS.cue`.
+
+The plan file is the human-owned source of truth; `STATUS.cue` is regenerated, never
+hand-edited — there is no bidirectional sync and no plan state stored in the database.
+
+```sh
+sextant gen-status-cue --plan <file> --service <id> [--store <path>] [--output <path>] [--concern <c>]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--plan` | (required) | Path to a `.cue` or `.json` plan file |
+| `--service` | (required) | Service ID to verify against |
+| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--output` | `workspace/artifacts/STATUS.cue` | Output CUE file path |
+| `--concern` | — | Optional concern to scope contradiction detection |
+
+```sh
+sextant gen-status-cue --plan plan.cue --service my-service
+# wrote workspace/artifacts/STATUS.cue: 4 tasks, 2 verified, 1 failing, 1 unknown
+```
+
+Output is deterministic and `cue vet`-able. `runtime_pass` is always `unknown` — a static
+check never claims a test passes.
 
 ---
 
