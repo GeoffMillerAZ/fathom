@@ -107,16 +107,32 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 
 ## Dogfood: the fleet index
 
-Sextant indexes itself (with throughline, agentic-kit, app-kit) into
-`workspace/db/fleet.duckdb`, served to Claude Code sessions via the
-user-scoped `sextant` MCP server. When working in this repo, use those tools
-(`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`) for
-discovery before any Grep/Read sweep, and refresh via the MCP `ingest` tool
-(`{"service":"sextant"}`) at session start and after commits. The DuckDB
-store is single-writer: while a session's server holds the lock, CLI
-`ingest` fails — that is expected; a best-effort post-commit lefthook covers
-no-session commits. Repo-specific index excludes live in `.sextantignore`
-(`ref/`, `tmp/`, `workspace/`, `bin/`).
+Sextant indexes the fleet (agentic-kit, app-kit, sextant; platform-kit once
+it's added) into `workspace/db/fleet.duckdb`, served by a **single always-on
+HTTP daemon** — launchd `com.geoffmilleraz.sextant-http` running `serve-http`
+at `http://localhost:7575/rpc`, registered user-scope as an **HTTP MCP**. Every
+session shares one index and one store, so there is no per-session server, no
+single-writer lock contention, and no "Failed to connect." If a session doesn't
+see the sextant tools (`find_symbol`, `repo_map`, …), it started before the
+switch — restart it once.
+
+When working in this (or any fleet) repo:
+1. **Index first.** Resolve where / what / who-calls via sextant (`find_symbol`,
+   `query_symbols`, `find_callers`, `outline`, `repo_map`, `pack_context`)
+   before any Grep/Read sweep. Read files to *edit* them, not to discover them.
+   The index is fleet-wide, so cross-repo questions are one query.
+2. **Refresh through the server, never the CLI.** The daemon holds the
+   single-writer DuckDB lock, so a shell `sextant ingest` fails with a lock
+   error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at session
+   start and after each commit (hash-gated, ~0.2s when clean). Because the store
+   is shared, your refresh updates the index for *every* session.
+3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report` before
+   trusting results, or just read the file you're about to change.
+4. **Scope.** Only fleet repos are indexed. A repo that isn't a sextant service
+   yet must be ingested as a new service before its symbols appear.
+
+Repo-specific index excludes live in `.sextantignore` (`ref/`, `tmp/`,
+`workspace/`, `bin/`).
 
 **Dogfood discipline (we are sextant's first consumer — keep it sharp for the
 rest of the fleet):**
@@ -124,10 +140,12 @@ rest of the fleet):**
   surprises → `docs/dogfood-observations.md`, with a reproduction (probe a
   known-good case beside the failing one and root-cause the difference). When you
   fix sextant, record it in `CHANGELOG.md` and close the observation.
-- **Staleness is the silent failure.** `serve-mcp` is a long-running process that
-  can outlive several commits; a committed fix does **not** reach it until the
-  binary is rebuilt *and* the server restarted. If a tool misbehaves, first run
-  `sextant version` and compare to `git rev-parse HEAD` — a mismatch means stale,
-  not buggy. The `post-commit` hook rebuilds `bin/sextant` on Go changes, but a
-  running server still needs a restart (reload the MCP config / session) to load
-  it. Reap duplicate `serve-mcp` processes — only one can hold the write lock.
+- **Staleness — two kinds.** *Data* staleness is handled automatically:
+  `serve-http` re-ingests a service on git-HEAD drift before answering
+  (`--auto-refresh`, default on), and you can force it via the `ingest` MCP tool.
+  *Binary* staleness is the one to watch — the daemon runs a built binary, so a
+  committed Go fix doesn't reach it until `bin/sextant` is rebuilt **and** the
+  daemon restarted (`launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.sextant-http`).
+  The `post-commit` hook rebuilds `bin/sextant` on Go changes; if a tool
+  misbehaves, compare `sextant version` to `git rev-parse HEAD` — a mismatch
+  means stale, not buggy.
