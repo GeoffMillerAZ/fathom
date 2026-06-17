@@ -1,6 +1,31 @@
 package core
 
-import "strings"
+import (
+	"fmt"
+	"path/filepath"
+	"strings"
+)
+
+// ValidServiceID reports whether id is a well-formed logical service identifier.
+// Service IDs are logical NAMES, not paths. A path-like ID — e.g. "../app-kit"
+// from `ingest --service ../app-kit` — pollutes the fleet with duplicate,
+// confusingly-named services (an agent can't tell which to query). Reject
+// path separators, traversal, the empty string, and surrounding whitespace.
+func ValidServiceID(id string) error {
+	if id == "" {
+		return fmt.Errorf("service ID is empty")
+	}
+	if strings.TrimSpace(id) != id {
+		return fmt.Errorf("service ID %q has leading or trailing whitespace", id)
+	}
+	if strings.ContainsAny(id, `/\`) {
+		return fmt.Errorf("service ID %q looks like a path (contains a slash); use a logical name like %q", id, filepath.Base(filepath.Clean(id)))
+	}
+	if strings.Contains(id, "..") {
+		return fmt.Errorf("service ID %q contains %q; use a logical name", id, "..")
+	}
+	return nil
+}
 
 // SymbolKey is the canonical, stable identifier for a symbol used in call edges
 // and cross-references: "service::package.Name". Deterministic for a given input.

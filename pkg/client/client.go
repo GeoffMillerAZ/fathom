@@ -153,6 +153,9 @@ func NewConstantClient(mode Mode, storePath string) (*Client, error) {
 
 // Ingest runs the full fusion pipeline for svc and returns a Report.
 func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
+	if err := core.ValidServiceID(svc.ID); err != nil {
+		return Report{}, fmt.Errorf("ingest: %w", err)
+	}
 	return c.pipe.Ingest(ctx, svc)
 }
 
