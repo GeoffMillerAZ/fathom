@@ -5,7 +5,25 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
-_Nothing yet._
+Uplifts from mining local Claude Code usage across the fleet. The finding: sextant works
+when called, but is dramatically under-used — agents reach for shell grep 10×+ more than
+sextant even where the index exists, because "index first" lived only in passive docs.
+
+### Added
+- **`session-hook` — a Claude Code SessionStart adoption hook.** `sextant session-hook`
+  pings the shared serve-http daemon, maps the project dir to a service, and injects an
+  active reminder ("this repo is service X (N symbols); resolve symbols/callers/structure
+  via sextant BEFORE Grep/Read") — or an honest signal when the daemon is down or the repo
+  isn't indexed. Short HTTP timeout, always exits 0, hides malformed services from the list.
+
+### Fixed
+- **Reject path-like service IDs (fleet hygiene).** `ingest --service ../app-kit` had
+  polluted the fleet with duplicate, confusingly-named services. `core.ValidServiceID`
+  rejects path separators / `..` / whitespace at the `client.Ingest` chokepoint (CLI + the
+  ingest MCP tool), suggesting a clean name. Prevents recurrence.
+- **Bound list-tool output to a char budget.** A real `query_symbols` result hit ~57KB and
+  blew the caller's token budget. `query_symbols` and `references` now keep the longest
+  prefix of records that fits ~16KB and flag `truncated`, so one result can't blow context.
 
 ## [0.2.0] — 2026-06-16
 

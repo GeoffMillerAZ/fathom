@@ -446,6 +446,34 @@ sextant version
 
 ---
 
+### `session-hook`
+
+Emit Claude Code **SessionStart** hook JSON that primes the session to use sextant's index
+before falling back to Grep/Read. It pings the shared serve-http daemon, maps the project
+dir (`$CLAUDE_PROJECT_DIR`, else cwd) to a service, and prints a one-line `additionalContext`
+— or an honest "daemon down / repo not indexed" signal. Always exits 0; never stalls startup.
+
+```sh
+sextant session-hook [--url http://localhost:7575] [--dir <project-dir>]
+```
+
+Wire it into `~/.claude/settings.json` (alongside any existing SessionStart hook):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "startup|resume|clear|compact",
+        "hooks": [ { "type": "command", "command": "/abs/path/bin/sextant session-hook", "timeout": 10 } ] }
+    ]
+  }
+}
+```
+
+The daemon URL can also be set with `SEXTANT_HTTP`.
+
+---
+
 ## Go client (`pkg/client`)
 
 `pkg/client` exposes a thin `Client` that wires together the connector, fusion pipeline,

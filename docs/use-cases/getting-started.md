@@ -261,11 +261,11 @@ Returns ranked `SymbolNode` objects:
 |---|---|---|
 | Transport | stdio (no port) | HTTP on `--addr` (default `:7575`) |
 | Clients | One — the process that launched it | Many concurrent |
-| Use case | Editor session, Claude Code, single agent | CI pipeline, multi-agent platform, browser tooling |
+| Use case | One editor / Claude Code session | Multiple concurrent Claude Code sessions, CI, multi-agent platform |
 | Endpoints | — | `POST /rpc`, `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
 | DuckDB lock | Holds the single-writer lock while running | Same |
 
-For most adopters: use `serve-mcp` registered with Claude Code. Stand up `serve-http` when you need a shared fleet server or want to call sextant from CI without per-job MCP registration.
+For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session and DuckDB is single-writer, so only the first session to start connects and the rest report `✘ Failed to connect`; one shared `serve-http` daemon makes every session an HTTP client of a single lock-holder. Also use `serve-http` to call sextant from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
 
 ---
 
@@ -324,6 +324,7 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 - **`workspace/` is gitignored** in sextant's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so DuckDB files and generated artifacts are never committed.
 - **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required for DuckDB's CGO build on macOS. On Linux this env var is ignored.
 - **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, `contradiction_scan`, and `propagate_concern` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
+- **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use sextant before Grep/Read," or an honest signal when the index doesn't cover the repo.
 
 ---
 
