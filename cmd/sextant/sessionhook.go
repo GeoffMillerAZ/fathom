@@ -1,0 +1,156 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/sextant/internal/core"
+)
+
+// cmdSessionHook implements the "session-hook" subcommand: a Claude Code
+// SessionStart hook that primes each session to use sextant's index before
+// falling back to Grep/Read.
+//
+// Telemetry across real fleet sessions showed sextant is dramatically
+// under-used — agents reach for shell grep 10×+ more than sextant even where
+// the index exists, because "index first" lives only in passive docs. This hook
+// makes it active: at session start it pings the shared serve-http daemon, maps
+// the project dir to a service, and emits a one-line reminder (or an honest
+// "not available / not indexed" signal) into the session context.
+//
+// It prints the SessionStart hook JSON to stdout and always exits 0 (a context
+// hook must never block session start). HTTP calls use a short timeout so a slow
+// or down daemon can't stall startup.
+func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("session-hook", stderr)
+	url := fs.String("url", defaultSextantURL(), "sextant serve-http base URL")
+	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	projDir := *dir
+	if projDir == "" {
+		projDir = os.Getenv("CLAUDE_PROJECT_DIR")
+	}
+	if projDir == "" {
+		projDir, _ = os.Getwd()
+	}
+	repo := filepath.Base(strings.TrimRight(projDir, "/"))
+
+	ctx := buildSessionContext(*url, repo)
+
+	_ = json.NewEncoder(stdout).Encode(map[string]any{
+		"hookSpecificOutput": map[string]any{
+			"hookEventName":     "SessionStart",
+			"additionalContext": ctx,
+		},
+	})
+	return 0
+}
+
+func defaultSextantURL() string {
+	if u := os.Getenv("SEXTANT_HTTP"); u != "" {
+		return u
+	}
+	return "http://localhost:7575"
+}
+
+type svcInfo struct {
+	symbols int
+	langs   string
+}
+
+// buildSessionContext returns the additionalContext line for the current repo.
+func buildSessionContext(baseURL, repo string) string {
+	hc := &http.Client{Timeout: 2 * time.Second}
+
+	resp, err := hc.Get(baseURL + "/healthz")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		if resp != nil {
+			resp.Body.Close()
+		}
+		return fmt.Sprintf("⚠️ sextant code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.sextant-http", baseURL)
+	}
+	resp.Body.Close()
+
+	svcs := fetchServices(hc, baseURL)
+	if info, ok := svcs[strings.ToLower(repo)]; ok {
+		langs := ""
+		if info.langs != "" {
+			langs = ", " + info.langs
+		}
+		return fmt.Sprintf("✅ sextant code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via sextant BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", repo, info.symbols, langs, repo)
+	}
+
+	known := make([]string, 0, len(svcs))
+	for k := range svcs {
+		known = append(known, k)
+	}
+	sort.Strings(known)
+	return fmt.Sprintf("ℹ️ sextant code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo by ingesting it as a new service.)", repo, strings.Join(known, ", "))
+}
+
+// fetchServices calls the list_services MCP tool over HTTP and returns a map
+// keyed by lower-cased service ID. Best-effort: returns an empty map on any error.
+func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
+	out := map[string]svcInfo{}
+	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`)
+	resp, err := hc.Post(baseURL+"/rpc", "application/json", body)
+	if err != nil {
+		return out
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return out
+	}
+	// Unwrap: {"result":{"content":[{"text":"<json>"}]}} or {"result":{services:...}}
+	var env struct {
+		Result struct {
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+			Services []rawSvc `json:"services"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return out
+	}
+	svcs := env.Result.Services
+	if len(svcs) == 0 && len(env.Result.Content) > 0 {
+		var inner struct {
+			Services []rawSvc `json:"services"`
+		}
+		if err := json.Unmarshal([]byte(env.Result.Content[0].Text), &inner); err == nil {
+			svcs = inner.Services
+		}
+	}
+	for _, s := range svcs {
+		if err := core.ValidServiceID(s.Service); err != nil {
+			continue // skip malformed/path-like service IDs (e.g. "../app-kit")
+		}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages)}
+	}
+	return out
+}
+
+type rawSvc struct {
+	Service     string   `json:"service"`
+	SymbolCount int      `json:"symbol_count"`
+	Languages   []string `json:"languages"`
+}
+
+func joinLangs(l []string) string {
+	if len(l) == 0 {
+		return ""
+	}
+	return strings.Join(l, "/")
+}

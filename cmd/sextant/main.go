@@ -51,6 +51,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdGenStatusCue(args[1:], stdout, stderr)
 	case "gen-platform-manifest":
 		return cmdGenPlatformManifest(args[1:], stdout, stderr)
+	case "session-hook":
+		return cmdSessionHook(args[1:], stdout, stderr)
 	case "query":
 		return cmdQuery(args[1:], stdout, stderr)
 	case "inspect":
