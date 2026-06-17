@@ -170,12 +170,13 @@ func registerReferences(s *Server, backend QueryInterface) {
 			}
 		}
 
+		occs, budgetTrunc := fitToBudget(occs, 0)
 		return map[string]any{
 			"query":       p.Query,
 			"definitions": defs,
 			"occurrences": occs,
 			"count":       len(occs),
-			"truncated":   truncated,
+			"truncated":   truncated || budgetTrunc,
 		}, nil
 	})
 }

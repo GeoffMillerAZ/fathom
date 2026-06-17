@@ -105,10 +105,12 @@ func registerTools(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
+		nodes := toNodeDTOs(result.Nodes)
+		nodes, budgetTrunc := fitToBudget(nodes, 0)
 		return symbolQueryResult{
-			Nodes:     toNodeDTOs(result.Nodes),
+			Nodes:     nodes,
 			Staleness: result.Staleness,
-			Truncated: len(result.Nodes) >= topN,
+			Truncated: budgetTrunc || len(result.Nodes) >= topN,
 		}, nil
 	})
 
