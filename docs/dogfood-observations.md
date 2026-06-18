@@ -90,6 +90,30 @@ _(none — see Resolved below; new findings go here.)_
   daemon restarted (it can't hot-swap itself); `sextant version` vs `git rev-parse HEAD` is
   still the one-line check. See CLAUDE.md "Dogfood: the fleet index" for the daemon model.
 
+### O4 — the shared daemon's index was "frozen": every refresh clobbered the service path — FIXED
+- **Tool:** `ingest` / `staleness_report` / auto-refresh on the `serve-http` daemon.
+  **Severity:** high — the always-on index silently stopped tracking new commits.
+- **Symptom:** after a clean fleet re-ingest, `staleness_report{service:"sextant"}` returned
+  **empty** `indexed_commit`/`current_commit`, and `find_symbol` missed newly-added symbols
+  (e.g. `ValidServiceID`) — yet `query_symbols`/sources still worked. The data was there; the
+  *freshness metadata* was gone.
+- **Evidence (verbatim probe):** `scripts/reingest-fleet.sh` set `indexed_commit=79c0cad`;
+  one `find_symbol` query later (which fires auto-refresh on HEAD-drift) it was **empty
+  again**, while symbols still resolved. So a *refresh*, not a query, was wiping it.
+- **Root cause:** `client.IngestService(service)` re-ingested with
+  `ServiceRef{ID: service, Path: service}` — walking the bare service ID as a directory
+  (e.g. `./sextant`, nonexistent), ingesting nothing, and `SetServiceMeta` then recorded an
+  empty path + commit. Auto-refresh, `staleness_report`, and the `ingest` tool all key off
+  `ServiceMeta.path`, so every refresh froze the index. (Sibling `Sources` already resolved
+  the path from `service_meta`; `IngestService` just never did.)
+- **Fix (`4bbaf56`):** `IngestService` now uses the stored `meta.Path` (mirrors `Sources`),
+  falling back to the ID only for path-less connectors. Added `serve-http --auto-refresh`
+  (the daemon runs serve-http, which never had it) and `scripts/reingest-fleet.sh` to rebuild
+  cleanly (path metadata + no malformed/bloated services — sextant was 7093 symbols from
+  indexing `ref/`/`tmp/`; correctly ~2923 with `.sextantignore`). Regression:
+  `TestIngestService_UsesAndPreservesStoredPath`.
+- **Status:** fixed; the freshness loop the 0.2.0 daemon promised now actually holds.
+
 ---
 
 ## Confirmed-good (keep regression coverage)
