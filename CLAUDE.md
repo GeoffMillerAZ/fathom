@@ -149,3 +149,10 @@ rest of the fleet):**
   The `post-commit` hook rebuilds `bin/sextant` on Go changes; if a tool
   misbehaves, compare `sextant version` to `git rev-parse HEAD` — a mismatch
   means stale, not buggy.
+- **Rebuilding the fleet index.** If the index is stale despite auto-refresh,
+  has duplicate/path-like services, or is bloated (originally ingested without
+  `.sextantignore`), rebuild it cleanly with `scripts/reingest-fleet.sh` (run
+  from a real terminal — it stops/starts the daemon). It re-ingests each fleet
+  repo with a clean `--service`/`--path`, recording the `ServiceMeta`
+  path+commit that auto-refresh, `staleness_report`, and the `ingest` tool all
+  depend on.
