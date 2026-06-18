@@ -17,6 +17,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("serve-http", stderr)
 	storePath := fs.String("store", "", "DuckDB store path (required)")
 	addr := fs.String("addr", ":7575", "listen address (host:port)")
+	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -35,7 +36,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	defer c.Close()
 
-	srv := mcp.NewServerWithFleet(c, &fleetAdapter{c: c, stderr: stderr})
+	// Default: keep the shared index fresh transparently. A query for a service
+	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
+	// re-ingest before the answer — so the always-on daemon never serves a stale
+	// index without anyone noticing.
+	var backend mcp.QueryInterface = c
+	if *autoRefresh {
+		backend = mcp.NewAutoRefresh(c, stderr)
+	}
+
+	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, stderr: stderr})
 	handler := newHTTPHandler(srv)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
