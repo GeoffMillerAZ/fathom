@@ -277,11 +277,21 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 	return files, nil
 }
 
-// IngestService re-ingests the named service using a minimal ServiceRef
-// (ID == Path) and satisfies the mcp.QueryInterface.IngestService contract.
-// Use Ingest for full control over the ServiceRef.
+// IngestService re-ingests the named service and satisfies the
+// mcp.QueryInterface.IngestService contract (used by the ingest MCP tool and by
+// auto-refresh). It re-ingests from the filesystem path recorded in
+// service_meta at the last ingest — NOT the service ID — so the re-ingest reads
+// the real source and re-records the same path. Re-ingesting from the bare ID
+// (a non-path) re-walked the wrong directory and clobbered ServiceMeta.path to
+// empty, which silently froze the daemon's index (auto-refresh / staleness /
+// ingest all depend on that path). Falls back to the ID only when no path is
+// recorded (e.g. FauxConnector). Use Ingest for full control over the ServiceRef.
 func (c *Client) IngestService(ctx context.Context, service string) error {
-	_, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: service})
+	ref := ServiceRef{ID: service, Path: service}
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+		ref.Path = meta.Path
+	}
+	_, err := c.pipe.Ingest(ctx, ref)
 	return err
 }
 

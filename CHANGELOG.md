@@ -17,6 +17,15 @@ sextant even where the index exists, because "index first" lived only in passive
   isn't indexed. Short HTTP timeout, always exits 0, hides malformed services from the list.
 
 ### Fixed
+- **`IngestService` re-ingests from the recorded path, not the service ID.** It used
+  `ServiceRef{ID: service, Path: service}` — re-walking the bare ID as a directory, which
+  ingested nothing and **clobbered `ServiceMeta.path` to empty**. Since auto-refresh,
+  `staleness_report`, and the `ingest` MCP tool all key off that path, every refresh
+  silently froze the shared daemon's index. Now it uses the stored `meta.Path` (mirroring
+  `Sources`), so refreshes preserve the path and actually pick up new commits. Regression:
+  `TestIngestService_UsesAndPreservesStoredPath`. Also serves `serve-http --auto-refresh`
+  (added so the always-on daemon self-refreshes) and `scripts/reingest-fleet.sh` (rebuild
+  the fleet index cleanly with path metadata + no malformed/bloated services).
 - **Reject path-like service IDs (fleet hygiene).** `ingest --service ../app-kit` had
   polluted the fleet with duplicate, confusingly-named services. `core.ValidServiceID`
   rejects path separators / `..` / whitespace at the `client.Ingest` chokepoint (CLI + the
