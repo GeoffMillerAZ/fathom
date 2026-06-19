@@ -64,6 +64,15 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 		if ignore != nil && rel != "" && ignore.Match(rel) {
 			return nil
 		}
+		// Index only regular files. Symlinks, devices, sockets, and pipes are
+		// skipped: WalkDir does not follow symlinks, so a symlink to a directory
+		// (e.g. a Nix/devbox profile link like .devbox/nix/profile/default-9-link)
+		// surfaces here as a non-dir entry — and Fetch's os.ReadFile on it fails
+		// with "is a directory", which would abort the whole ingest over one stray
+		// link. A regular-file gate keeps ingest robust on real-world trees.
+		if !d.Type().IsRegular() {
+			return nil
+		}
 		refs = append(refs, core.SourceRef{
 			Service: svc.ID,
 			Path:    path,

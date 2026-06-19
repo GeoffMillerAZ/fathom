@@ -231,6 +231,54 @@ func TestLocalConnector_Discover_SextantIgnore(t *testing.T) {
 	}
 }
 
+// TestLocalConnector_Discover_SkipsSymlinkToDir is a regression test for an
+// ingest abort on real-world trees: WalkDir does not follow symlinks, so a
+// symlink pointing at a directory (e.g. a Nix/devbox profile link) surfaces as a
+// non-dir entry. If Discover emitted it as a SourceRef, Fetch's os.ReadFile would
+// fail with "is a directory" and — because the fusion fetch pass treats the first
+// fetch error as fatal — abort the entire ingest over one stray link. Discover
+// must skip non-regular files so a regular file beside the link still indexes.
+func TestLocalConnector_Discover_SkipsSymlinkToDir(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
+	// A directory and a symlink that points at it (the .devbox/nix shape).
+	target := filepath.Join(root, "profile")
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(root, "default-9-link")); err != nil {
+		t.Skipf("symlinks unsupported on this platform: %v", err)
+	}
+
+	lc := connector.NewLocalConnector()
+	ctx := context.Background()
+	refs, err := lc.Discover(ctx, core.ServiceRef{ID: "svc", Path: root})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+
+	for _, r := range refs {
+		if filepath.Base(r.Path) == "default-9-link" {
+			t.Fatalf("symlink-to-dir was emitted as a SourceRef: %q", r.Path)
+		}
+		// Every emitted ref must Fetch without the "is a directory" abort.
+		if _, err := lc.Fetch(ctx, r); err != nil {
+			t.Errorf("Fetch(%q): %v", r.Path, err)
+		}
+	}
+
+	// The regular file beside the link still indexes.
+	var sawKeep bool
+	for _, r := range refs {
+		if filepath.Base(r.Path) == "keep.go" {
+			sawKeep = true
+		}
+	}
+	if !sawKeep {
+		t.Error("keep.go should have been discovered alongside the skipped symlink")
+	}
+}
+
 func TestLocalConnector_Discover_NoIgnoreFile(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "a.go"), "package a\n")

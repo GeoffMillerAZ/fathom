@@ -114,6 +114,28 @@ _(none — see Resolved below; new findings go here.)_
   `TestIngestService_UsesAndPreservesStoredPath`.
 - **Status:** fixed; the freshness loop the 0.2.0 daemon promised now actually holds.
 
+### O5 — one Nix/devbox symlink aborted a whole-repo ingest — FIXED
+- **Tool:** `ingest` (LocalConnector). **Severity:** high — a single stray symlink made
+  an entire repo un-indexable, so the repo silently never joined the fleet.
+- **Symptom:** ingesting `resume_as_code` failed hard:
+  `error: ingest failed: fusion: fetch: read .../.devbox/nix/profile/default-9-link: is a directory`.
+  No symbols stored; the repo could not be added as a service at all.
+- **Evidence (verbatim probe):** the failing path is a **symlink to a directory** (a Nix
+  profile link devbox creates). `WalkDir` does not follow symlinks, so it surfaced as a
+  non-dir entry and was emitted as a `SourceRef`; `Fetch`'s `os.ReadFile` on it returned
+  "is a directory". The fusion fetch pass treats the **first** fetch error as fatal
+  (deterministic first-error abort), so one link killed the ingest of 394 real files.
+- **Root cause:** `LocalConnector.Discover` emitted every non-dir `WalkDir` entry —
+  including symlinks/devices/sockets/pipes — none of which `os.ReadFile` can read as a
+  source file.
+- **Fix (this commit):** `Discover` now gates on `d.Type().IsRegular()`, skipping all
+  non-regular entries. `resume_as_code` went from a hard abort to **1,160 symbols, 0
+  skipped**, with the Nix store behind the link correctly excluded (not indexed as noise).
+  Regression: `TestLocalConnector_Discover_SkipsSymlinkToDir`. `resume_as_code` added to
+  `scripts/reingest-fleet.sh`.
+- **Status:** fixed. **Impact:** any real-world repo with Nix/devbox, vendored symlinks,
+  or build-tool profile links now ingests instead of aborting.
+
 ---
 
 ## Confirmed-good (keep regression coverage)

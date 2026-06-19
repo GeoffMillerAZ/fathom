@@ -17,6 +17,15 @@ sextant even where the index exists, because "index first" lived only in passive
   isn't indexed. Short HTTP timeout, always exits 0, hides malformed services from the list.
 
 ### Fixed
+- **Ingest no longer aborts on a symlink-to-directory (Nix/devbox trees).** `WalkDir`
+  does not follow symlinks, so a link like `.devbox/nix/profile/default-9-link`
+  surfaced as a non-dir entry; `Fetch`'s `os.ReadFile` then failed with "is a
+  directory", and because the fusion fetch pass treats the first fetch error as
+  fatal, **one stray link aborted the entire ingest**. `LocalConnector.Discover` now
+  emits only regular files (symlinks/devices/sockets/pipes skipped). Found
+  dogfooding `resume_as_code`, which went from a hard abort to 1,160 clean symbols
+  (the Nix store behind the link is correctly excluded, not indexed as noise).
+  Regression: `TestLocalConnector_Discover_SkipsSymlinkToDir`.
 - **`IngestService` re-ingests from the recorded path, not the service ID.** It used
   `ServiceRef{ID: service, Path: service}` — re-walking the bare ID as a directory, which
   ingested nothing and **clobbered `ServiceMeta.path` to empty**. Since auto-refresh,

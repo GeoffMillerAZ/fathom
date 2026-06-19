@@ -29,7 +29,7 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 
 # Fleet services — ingested as "<name>" from "$FLEET_BASE/<name>".
-SERVICES=(sextant agentic-kit app-kit throughline geoffmiller-cloud)
+SERVICES=(sextant agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
 
 echo "==> sextant fleet re-ingest  (store: $STORE)"
 [ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $SEXTANT_REPO && go build -o bin/sextant ./cmd/sextant)"; exit 1; }
