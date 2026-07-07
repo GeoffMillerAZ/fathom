@@ -202,9 +202,13 @@ The returned prompt guides the agent through rename impact, test impact, API sur
 
 **Profile.** Most tools in this workflow (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`) are in the `coding` group. `diff_impact` is in the `investigation` group. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: set `coding` profile for the main review pass, then switch to `investigation` for `diff_impact`.
 
+On stdio `serve-mcp`:
+
 ```json
 { "name": "set_profile", "arguments": { "profile": "coding" } }
 ```
+
+Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/coding` or `POST /rpc/investigation` instead (or `POST /rpc` for the full surface).
 
 **`api_diff` requires two indexed snapshots.** The tool compares the exported symbol stores of `service_a` and `service_b`. To compare before/after a PR, you need the baseline service indexed separately — either as a second service ID pointing at the base branch checkout, or by re-ingesting the current branch under a distinct service ID (e.g. `payment-service-base`).
 

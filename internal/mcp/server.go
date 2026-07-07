@@ -128,6 +128,12 @@ func NewServerWithFleet(backend QueryInterface, fleet FleetBackend) *Server {
 	return newServer(backend, fleet, nil)
 }
 
+// NewServerWithFleetAndLogger constructs a Server wired to a per-service
+// backend, a fleet backend, and a JSONL call logger.  Any may be nil.
+func NewServerWithFleetAndLogger(backend QueryInterface, fleet FleetBackend, logger *CallLogger) *Server {
+	return newServer(backend, fleet, logger)
+}
+
 func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger) *Server {
 	s := &Server{
 		handlers:   make(map[string]Handler),
@@ -283,12 +289,10 @@ func (s *Server) totalRequests() int64 {
 	return s.reqCount
 }
 
-// setProfile updates the active profile (must be a known group name or "").
+// setProfile updates the active profile (must be a known surface name or "").
 func (s *Server) setProfile(p string) *rpcError {
-	switch p {
-	case "", "coding", "investigation", "shared", "platform":
-	default:
-		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: coding, investigation, shared, platform", p)}
+	if p != "" && !ValidSurface(p) {
+		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: companion, coding, investigation, shared, platform", p)}
 	}
 	s.profileMu.Lock()
 	defer s.profileMu.Unlock()

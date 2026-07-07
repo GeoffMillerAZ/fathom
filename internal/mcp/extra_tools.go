@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/sextant/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/sextant/internal/analysis/archconformance"
@@ -1907,17 +1908,42 @@ func registerBatch(s *Server) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "batch: calls required"}
 		}
 		results := make([]any, len(p.Calls))
+		sc := scopeFrom(ctx)
+		// Sub-calls are logged individually (via:"batch") so surface telemetry
+		// counts the tools a batch actually exercised, not just "batch".
+		logSub := func(name, group string, argsRaw json.RawMessage, latency time.Duration, rpcErr *rpcError) {
+			if s.callLogger == nil {
+				return
+			}
+			var sa struct {
+				Service string `json:"service"`
+			}
+			_ = json.Unmarshal(argsRaw, &sa)
+			var subErr error
+			if rpcErr != nil {
+				subErr = &rpcErrWrapper{rpcErr}
+			}
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", latency, subErr)
+		}
 		for i, call := range p.Calls {
+			argsRaw := call.Arguments
+			if argsRaw == nil {
+				argsRaw = json.RawMessage("{}")
+			}
 			te, ok := s.findTool(call.Name)
 			if !ok {
 				results[i] = batchResult{Name: call.Name, Error: "tool not found: " + call.Name}
 				continue
 			}
-			argsRaw := call.Arguments
-			if argsRaw == nil {
-				argsRaw = json.RawMessage("{}")
+			if sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
+				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
+				logSub(call.Name, string(te.desc.group), argsRaw, 0, gateErr)
+				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
+				continue
 			}
+			start := time.Now()
 			result, rpcErr := te.handler(ctx, argsRaw)
+			logSub(call.Name, string(te.desc.group), argsRaw, time.Since(start), rpcErr)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue

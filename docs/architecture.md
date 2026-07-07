@@ -267,12 +267,15 @@ the full tool reference.
 | Mode | Command | Transport | Use case |
 |---|---|---|---|
 | stdio | `serve-mcp` | JSON-RPC 2.0 on stdin/stdout | Editor / agent clients (Claude Code, etc.) — zero ports |
-| HTTP | `serve-http` | POST `/rpc`, GET `/events` SSE, GET `/healthz`, GET `/metrics`, POST `/reload` | Multi-client, platform / CI use |
+| HTTP | `serve-http` | POST `/rpc` (full surface), POST `/rpc/{surface}` (scoped), GET `/events` SSE, GET `/healthz`, GET `/metrics`, POST `/reload` | Multi-client, platform / CI use |
 
-### Tool groups and profiles
+### Tool groups, profiles, and surfaces
 
-Tools are grouped into four profiles. Clients call `set_profile` to filter the visible
-surface:
+Tools are grouped into four profiles. On stdio, clients call `set_profile` to filter the
+visible surface (valid values: the four groups plus `companion`); over HTTP `set_profile`
+is rejected and each request selects an immutable surface via the path — `POST
+/rpc/{surface}` filters `tools/list` and hard-gates `tools/call` (`companion` is a curated
+14-tool coding hot loop; the group surfaces mirror the profiles):
 
 | Profile | Tool group | Purpose |
 |---|---|---|
@@ -289,8 +292,10 @@ stale derived data.
 
 ### Call logging
 
-MCP call/response pairs are logged as JSONL to `workspace/logs/mcp-calls.json`. The
-writer is injectable for testing.
+`serve-http` appends one JSONL record per tool call (tool, service, group, surface,
+latency, error; `batch` sub-calls are logged individually with `via:"batch"`) to the
+`--call-log` path, default `workspace/logs/mcp-calls.jsonl`. The writer is injectable
+for testing.
 
 ---
 

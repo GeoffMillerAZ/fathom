@@ -55,9 +55,11 @@ func (f *verifyFakeBackend) FindSymbol(_ context.Context, _, name string) ([]cor
 func (f *verifyFakeBackend) ListAllSymbols(_ context.Context, _ string) ([]core.SymbolNode, error) {
 	return f.nodes, nil
 }
+
 func (f *verifyFakeBackend) Services(_ context.Context) ([]string, error) {
 	return []string{"svc"}, nil
 }
+
 func (f *verifyFakeBackend) Sources(_ context.Context, _ string) ([]core.SourceFile, error) {
 	return nil, nil
 }

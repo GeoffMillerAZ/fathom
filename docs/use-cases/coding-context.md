@@ -52,13 +52,17 @@ The concrete payoffs:
 
 Scenario: an agent is about to modify token validation in `auth-service` and needs tight context.
 
-**1. Switch to the coding profile** to filter the tool surface to coding-relevant tools:
+**1. Switch to the coding profile** to filter the tool surface to coding-relevant tools.
+
+On stdio `serve-mcp`:
 
 ```json
 set_profile { "profile": "coding" }
 ```
 
 Returns: `{ "profile": "coding", "ok": true }`
+
+Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 14-tool coding hot-loop) or `POST /rpc/coding` instead.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 
@@ -127,7 +131,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 ## Setup & notes
 
-**Profile**: set `coding` at session start. This exposes `query_symbols`, `symbol_context`, `find_callees`, `call_hierarchy`, `outline`, `entrypoints`, and the shared tools (`find_symbol`, `repo_map`, `pack_context`, `brief`, `batch`). Without a profile set, all tool groups are visible.
+**Profile**: set `coding` at session start (stdio `serve-mcp` only — call `set_profile { "profile": "coding" }`; over the shared HTTP daemon, register against `POST /rpc/companion` or `POST /rpc/coding` instead). This exposes `query_symbols`, `symbol_context`, `find_callees`, `call_hierarchy`, `outline`, `entrypoints`, and the shared tools (`find_symbol`, `repo_map`, `pack_context`, `brief`, `batch`). Without a profile set, all tool groups are visible.
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 

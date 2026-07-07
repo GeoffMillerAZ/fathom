@@ -133,13 +133,13 @@ Returns the symbol in each service plus every cross-service caller — the one-c
 
 ## Setup & notes
 
-**Profile:** Use `investigation` for single-repo work (`find_callers`, `test_impact`). Switch to `platform` for fleet-wide queries (`cross_repo_callers`, `list_services`). You can switch mid-session:
+**Profile:** Use `investigation` for single-repo work (`find_callers`, `test_impact`). Switch to `platform` for fleet-wide queries (`cross_repo_callers`, `list_services`). You can switch mid-session (stdio `serve-mcp` only):
 
 ```json
 { "name": "set_profile", "arguments": { "profile": "platform" } }
 ```
 
-Then switch back to `investigation` or `coding` when done.
+Then switch back to `investigation` or `coding` when done. Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/platform` for fleet-wide queries or `POST /rpc/investigation` for single-repo work instead.
 
 **Cross-repo edges require call-edge data in the index.** If `cross_repo_callers` returns zero results for a symbol you know is called externally, the index was built without call edges populated. Re-ingest with a current build:
 

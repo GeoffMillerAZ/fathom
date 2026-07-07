@@ -2,10 +2,11 @@
 //
 // CallLogger appends JSONL entries to an io.Writer whenever a tools/call
 // completes. Each entry records: ts (RFC3339Nano), tool, service (if
-// parseable), group, latency_ms, error (if any).
+// parseable), group, surface, via ("batch" for batch sub-calls), latency_ms,
+// error (if any).
 //
-// The zero-writer sentinel is DefaultCallLogPath; NewCallLogger accepts any
-// io.Writer so tests can inject a bytes.Buffer.
+// NewCallLogger accepts any io.Writer (tests inject a bytes.Buffer); pass nil
+// for a no-op logger. The default log path is the serve-http --call-log flag.
 package mcp
 
 import (
@@ -21,6 +22,8 @@ type callLogEntry struct {
 	Tool      string  `json:"tool"`
 	Service   string  `json:"service,omitempty"`
 	Group     string  `json:"group,omitempty"`
+	Surface   string  `json:"surface,omitempty"`
+	Via       string  `json:"via,omitempty"` // "batch" for batch sub-calls
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
 }
@@ -43,7 +46,7 @@ func NewCallLogger(w io.Writer) *CallLogger {
 
 // log writes one JSONL entry.  It ignores marshal / write errors to avoid
 // disrupting tool call results.
-func (l *CallLogger) log(tool, service, group string, latency time.Duration, callErr error) {
+func (l *CallLogger) log(tool, service, group, surface, via string, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
@@ -52,6 +55,8 @@ func (l *CallLogger) log(tool, service, group string, latency time.Duration, cal
 		Tool:      tool,
 		Service:   service,
 		Group:     group,
+		Surface:   surface,
+		Via:       via,
 		LatencyMS: float64(latency.Milliseconds()),
 	}
 	if callErr != nil {
@@ -61,8 +66,10 @@ func (l *CallLogger) log(tool, service, group string, latency time.Duration, cal
 	if err != nil {
 		return
 	}
+	// One record = one Write: the file is opened O_APPEND, so a single write
+	// keeps each JSONL line atomic even across a daemon kill/restart.
+	b = append(b, '\n')
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	_, _ = l.w.Write(b)
-	_, _ = l.w.Write([]byte("\n"))
 }

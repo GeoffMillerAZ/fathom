@@ -148,7 +148,7 @@ At this point you have: the failing entry point, the blast radius of the deploy,
 
 ## Setup & notes
 
-**Profile.** Set `investigation` before running these tools. It activates the investigation group (which includes `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`) plus the shared group. Some tools (`entrypoints`, `staleness_report`) are available in any profile.
+**Profile.** Set `investigation` before running these tools. It activates the investigation group (which includes `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`) plus the shared group. Some tools (`entrypoints`, `staleness_report`) are available in any profile. (`set_profile` is available on stdio `serve-mcp` only; over the shared HTTP daemon, register against `POST /rpc/investigation` instead.)
 
 ```json
 { "name": "set_profile", "arguments": { "profile": "investigation" } }

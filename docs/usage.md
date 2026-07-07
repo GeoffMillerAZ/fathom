@@ -36,7 +36,7 @@ repo root. This directory is gitignored. Never write generated files elsewhere i
 | Path | Contents |
 |---|---|
 | `workspace/db/` | DuckDB stores (default: `workspace/db/sextant.duckdb`) |
-| `workspace/logs/` | Run and MCP call logs (`mcp-calls.json`) |
+| `workspace/logs/` | Run and MCP call logs (`mcp-calls.jsonl`) |
 | `workspace/artifacts/` | Generated artifacts (`CLAUDE.md`, manifests, exports) |
 | `workspace/tmp/` | Ephemeral scratch files |
 
@@ -273,12 +273,15 @@ sextant serve-http --store <path> [--addr <host:port>]
 |---|---|---|
 | `--store` | (required) | DuckDB store path |
 | `--addr` | `:7575` | Listen address |
+| `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
+| `--call-log` | `workspace/logs/mcp-calls.jsonl` | JSONL tool-call log, resolved against the daemon working directory; empty disables |
 
 HTTP endpoints:
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) |
+| `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
+| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`companion`, `coding`, `investigation`, `shared`, `platform`): filters `tools/list` **and** hard-gates `tools/call` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | SSE stream — sends `hello` event then stays open |
 | `GET` | `/metrics` | Text metrics: `sextant_uptime_seconds`, `sextant_requests_total` |
@@ -591,9 +594,10 @@ curl -s -X POST http://localhost:7575/rpc \
   }'
 ```
 
-### Switching profiles
+### Switching profiles (stdio only)
 
-Once connected, call `set_profile` to filter the visible tool surface:
+On a stdio `serve-mcp` session — where one client owns the process — call `set_profile`
+to filter the visible tool surface:
 
 ```json
 {
@@ -607,6 +611,10 @@ Once connected, call `set_profile` to filter the visible tool surface:
 }
 ```
 
-Valid profiles: `coding`, `investigation`, `shared`, `platform`.
+Valid profiles: `companion`, `coding`, `investigation`, `shared`, `platform`.
+
+Over HTTP the daemon is shared, so `set_profile` is **rejected** — register the matching
+path-scoped surface endpoint instead (e.g. `POST /rpc/companion`; bare `POST /rpc` is the
+full surface). See the serve-http endpoints table above.
 
 See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources.

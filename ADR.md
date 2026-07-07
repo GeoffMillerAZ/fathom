@@ -124,6 +124,42 @@ graphs and is cleared on any ingest.
 **Why.** Editors want a local stdio server with no ports; platforms want a shared
 HTTP server. Tool groups keep the surface relevant to the task at hand.
 
+**Amended by ADR-014:** `set_profile` is stdio-only; over HTTP the surface is
+selected per request by the endpoint path.
+
+## ADR-014 — Path-scoped tool surfaces on the shared HTTP daemon
+
+**Decision.** Over HTTP, the tool surface is an **immutable per-request
+selection carried in the request context**, chosen by the endpoint path:
+`POST /rpc` is the full registry; `POST /rpc/{surface}` serves `companion` (a
+curated coding-agent allowlist) or one of the four ADR-010 groups (group +
+shared tools). A named surface filters `tools/list` **and hard-gates**
+`tools/call` (including `batch` sub-calls) and hides canned prompts whose
+workflows it gates. `set_profile` is rejected on every HTTP request; it remains
+valid on stdio (where one client owns the process, the profile stays advisory —
+list-filtering only), gaining `companion` as a value. Deliberately **not**
+chosen: one `mcp.Server` instance per surface (duplicates stats/prompt/resource
+state and re-creates split-brain risk with any future per-server cache), a
+second daemon per use case (single-writer DuckDB), and a meta-tool gateway
+(destroys per-tool schemas, permissions, and ToolSearch discovery).
+
+**Why.** The daemon is shared by many concurrent sessions, so the ADR-010
+profile — a process-global mutable — let any client flip every other client's
+`tools/list`, and `listChanged:false` meant nobody re-fetched; meanwhile
+`tools/call` ignored the profile entirely, so "hidden" tools were still
+callable. Per-request scoping fixes both without forking the registry. Scoped
+endpoints also give schema-loading MCP clients a hard-bounded, ~80%-smaller
+surface, while schema-deferring clients (Claude Code) stay on `/rpc` where
+deferral already makes the full registry cheap. The `serve-http --call-log`
+JSONL (per-call tool/surface/latency, `via:"batch"` for sub-calls) makes
+surface curation measurable instead of argued.
+
+**Trade-off / reversibility.** Surface membership is a contract (pinned by
+tests and `docs/mcp-tools.md`); the `companion` allowlist is a second place a
+new hot-loop tool must be added. Purely additive over ADR-010 — removing the
+scoped endpoints restores the prior behavior, except `set_profile`-over-HTTP,
+which was judged a defect, not a feature.
+
 ## ADR-011 — Generalized / org-agnostic, open-source-ready
 
 **Decision.** No organization-specific names, hosts, catalogs, or product

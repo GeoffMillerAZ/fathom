@@ -149,9 +149,9 @@ Highlights any symbol that exists in multiple services with conflicting kinds â€
 
 **Profiles:**
 
-- Use `set_profile` with `"platform"` for fleet-wide operations (`list_services`, `fleet_drift`, `query_cross_service`). Platform profile includes all shared tools.
-- Use `set_profile` with `"coding"` for single-service quality metrics (`complexity`, `god_object`, `cloc`, `dependencies`, `antipatterns`). Coding profile also includes shared tools including `secret_scan`, `shell_out`, `http_client_calls`.
-- If you need both fleet and per-service tools in the same session, call `set_profile "platform"` first (it exposes the broadest surface including shared tools), then call per-service tools directly.
+- Use `set_profile` with `"platform"` for fleet-wide operations (`list_services`, `fleet_drift`, `query_cross_service`). Platform profile includes all shared tools. Over the shared HTTP daemon, register against `POST /rpc/platform` instead.
+- Use `set_profile` with `"coding"` for single-service quality metrics (`complexity`, `god_object`, `cloc`, `dependencies`, `antipatterns`). Coding profile also includes shared tools including `secret_scan`, `shell_out`, `http_client_calls`. Over HTTP, use `POST /rpc/coding`.
+- If you need both fleet and per-service tools in the same session, call `set_profile "platform"` first (it exposes the broadest surface including shared tools), then call per-service tools directly. (`set_profile` is available on stdio `serve-mcp` only; over HTTP, the path-scoped endpoint is the equivalent.)
 
 **Concern argument:** The tools in this use case do **not** require a `concern` argument â€” they are structural/metric queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
 

@@ -43,29 +43,6 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	s.tools = append(s.tools, toolEntry{desc: desc, handler: h})
 }
 
-// visibleTools returns the tool descriptors visible under the current profile.
-// "" (no profile set) shows all tools. A named profile shows tools in that
-// group plus shared tools.
-func (s *Server) visibleTools() []toolDescriptor {
-	profile := s.activeProfile()
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if profile == "" {
-		descs := make([]toolDescriptor, len(s.tools))
-		for i, te := range s.tools {
-			descs[i] = te.desc
-		}
-		return descs
-	}
-	var descs []toolDescriptor
-	for _, te := range s.tools {
-		if te.desc.group == GroupShared || string(te.desc.group) == profile {
-			descs = append(descs, te.desc)
-		}
-	}
-	return descs
-}
-
 // findTool returns the toolEntry for a given name, or (zero, false).
 func (s *Server) findTool(name string) (toolEntry, bool) {
 	s.mu.Lock()
@@ -114,8 +91,8 @@ func (s *Server) handlePing(_ context.Context, _ json.RawMessage) (any, *rpcErro
 	return map[string]any{"pong": true}, nil
 }
 
-func (s *Server) handleToolsList(_ context.Context, _ json.RawMessage) (any, *rpcError) {
-	descs := s.visibleTools()
+func (s *Server) handleToolsList(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
+	descs := s.visibleToolsCtx(ctx)
 	// Convert to []any for JSON serialisation so the output matches the MCP
 	// spec (array of objects with name/description/inputSchema).
 	tools := make([]any, len(descs))
@@ -129,8 +106,7 @@ func (s *Server) handleToolsList(_ context.Context, _ json.RawMessage) (any, *rp
 	return map[string]any{"tools": tools}, nil
 }
 
-func (s *Server) handleToolsCall(_ context.Context, params json.RawMessage) (any, *rpcError) {
-	ctx := context.Background()
+func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (any, *rpcError) {
 	if s.callLogger == nil {
 		return s.handleToolsCallWithCtx(ctx, params)
 	}
@@ -167,7 +143,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 		// Construct a Go error-like message for the log entry without importing errors.
 		logErr = &rpcErrWrapper{rpcErr}
 	}
-	s.callLogger.log(toolName, args.Arguments.Service, group, latency, logErr)
+	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", latency, logErr)
 	return result, rpcErr
 }
 
@@ -190,6 +166,9 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	te, ok := s.findTool(p.Name)
 	if !ok {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool not found: " + p.Name}
+	}
+	if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
+		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
 	}
 	result, rpcErr := te.handler(ctx, p.Arguments)
 	if rpcErr != nil {

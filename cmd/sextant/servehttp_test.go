@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -237,6 +238,162 @@ func TestServeHTTPReloadMethodNotAllowed(t *testing.T) {
 	handler.ServeHTTP(rr, req)
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("GET /reload status = %d, want 405", rr.Code)
+	}
+}
+
+// ─── path-scoped surfaces: POST /rpc/{surface} ───────────────────────────────
+
+// postRPCPath is postRPC against an arbitrary /rpc path.
+func postRPCPath(t *testing.T, handler http.Handler, path string, body io.Reader) map[string]any {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, body)
+	req.Header.Set("Content-Type", "application/json")
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("POST %s status = %d, want 200 (body=%q)", path, rr.Code, rr.Body.String())
+	}
+	var m map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &m); err != nil {
+		t.Fatalf("decode %s response: %v (body=%q)", path, err, rr.Body.String())
+	}
+	return m
+}
+
+func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
+	handler := newTestHandler(t)
+	resp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 20, "method": "tools/list", "params": map[string]any{},
+	}))
+	if resp["error"] != nil {
+		t.Fatalf("tools/list error: %v", resp["error"])
+	}
+	tools := resp["result"].(map[string]any)["tools"].([]any)
+	// Exact membership is pinned in internal/mcp; here pin the count so the
+	// HTTP path provably serves the slim surface, not the full registry.
+	if len(tools) != 14 {
+		t.Fatalf("companion surface lists %d tools, want 14", len(tools))
+	}
+}
+
+func TestServeHTTPSurfaceGatesToolsCall(t *testing.T) {
+	handler := newTestHandler(t)
+	resp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 21, "method": "tools/call",
+		"params": map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+	}))
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("secret_scan via /rpc/companion: want error, got %v", resp)
+	}
+	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
+		t.Errorf("error message %q should name the surface", msg)
+	}
+}
+
+func TestServeHTTPUnknownSurface(t *testing.T) {
+	handler := newTestHandler(t)
+	req := httptest.NewRequest(http.MethodPost, "/rpc/bogus", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 22, "method": "tools/list", "params": map[string]any{},
+	}))
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusNotFound {
+		t.Fatalf("POST /rpc/bogus status = %d, want 404", rr.Code)
+	}
+	if body := rr.Body.String(); !strings.Contains(body, "companion") {
+		t.Errorf("404 body %q should list the valid surfaces", body)
+	}
+}
+
+func TestServeHTTPTrailingSlashDiagnostic(t *testing.T) {
+	handler := newTestHandler(t)
+	for _, path := range []string{"/rpc/", "/rpc/companion/extra"} {
+		req := httptest.NewRequest(http.MethodPost, path, rpcBody(t, map[string]any{
+			"jsonrpc": "2.0", "id": 25, "method": "tools/list", "params": map[string]any{},
+		}))
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != http.StatusNotFound {
+			t.Fatalf("POST %s status = %d, want 404", path, rr.Code)
+		}
+		if body := rr.Body.String(); !strings.Contains(body, "companion") {
+			t.Errorf("POST %s 404 body %q should list the valid endpoints", path, body)
+		}
+	}
+}
+
+func TestServeHTTPSetProfileDisabled(t *testing.T) {
+	handler := newTestHandler(t)
+	resp := postRPC(t, handler, rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 23, "method": "tools/call",
+		"params": map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "coding"}},
+	}))
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("set_profile over HTTP: want error, got %v", resp)
+	}
+	if msg := errObj["message"].(string); !strings.Contains(msg, "/rpc/") {
+		t.Errorf("error message %q should point at path-scoped surfaces", msg)
+	}
+}
+
+func TestServeHTTPCallLogRecordsSurface(t *testing.T) {
+	store := filepath.Join(t.TempDir(), "test.duckdb")
+	c, err := client.NewConstantClient(client.ModeLocal, store)
+	if err != nil {
+		t.Fatalf("NewConstantClient: %v", err)
+	}
+	t.Cleanup(func() { c.Close() })
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithFleetAndLogger(c, nil, mcp.NewCallLogger(&buf))
+	handler := newHTTPHandler(srv)
+
+	_ = postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 24, "method": "tools/call",
+		"params": map[string]any{"name": "list_services", "arguments": map[string]any{}},
+	}))
+	line := strings.TrimSpace(buf.String())
+	if line == "" {
+		t.Fatal("no call-log line written")
+	}
+	if !strings.Contains(line, `"surface":"companion"`) {
+		t.Errorf("call-log line %q should record the surface", line)
+	}
+	if !strings.Contains(line, `"tool":"list_services"`) {
+		t.Errorf("call-log line %q should record the tool", line)
+	}
+}
+
+// ─── call-log file helper ─────────────────────────────────────────────────────
+
+func TestOpenCallLogCreatesParents(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "logs", "nested", "calls.jsonl")
+	f, err := openCallLog(path)
+	if err != nil {
+		t.Fatalf("openCallLog: %v", err)
+	}
+	if _, err := f.WriteString("x\n"); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	// Reopen appends rather than truncates.
+	f2, err := openCallLog(path)
+	if err != nil {
+		t.Fatalf("openCallLog reopen: %v", err)
+	}
+	if _, err := f2.WriteString("y\n"); err != nil {
+		t.Fatalf("write 2: %v", err)
+	}
+	f2.Close()
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if string(b) != "x\ny\n" {
+		t.Errorf("call log content = %q, want appended \"x\\ny\\n\"", b)
 	}
 }
 

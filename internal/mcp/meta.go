@@ -52,20 +52,21 @@ func registerMeta(s *Server, backend QueryInterface) {
 func registerCapabilities(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "capabilities",
-		Description: "List all registered tools and the currently active profile.",
+		Description: "List the tools visible on this request's surface and the active surface/profile.",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
 		},
 		group: GroupShared,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
-		descs := s.visibleTools()
+	}, func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
+		descs := s.visibleToolsCtx(ctx)
 		names := make([]any, len(descs))
 		for i, d := range descs {
 			names[i] = d.Name
 		}
 		return map[string]any{
 			"tools":          names,
+			"active_surface": s.effectiveSurface(ctx),
 			"active_profile": s.activeProfile(),
 			"tool_count":     len(descs),
 		}, nil
@@ -216,6 +217,9 @@ type promptDef struct {
 	Name        string
 	Description string
 	Arguments   []promptArg
+	// tools lists every tool the template's workflow instructs the model to
+	// call; a scoped endpoint hides prompts whose tools it gates.
+	tools []string
 	// template is called with the arguments map to produce the messages array.
 	template func(args map[string]string) []map[string]any
 }
@@ -236,6 +240,7 @@ var cannedPrompts = []promptDef{
 			{Name: "service", Description: "Service identifier to investigate", Required: true},
 			{Name: "symptom", Description: "Observed symptom or error message", Required: true},
 		},
+		tools: []string{"entrypoints", "complexity", "call_hierarchy", "community", "staleness_report"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			symptom := a["symptom"]
@@ -253,7 +258,8 @@ var cannedPrompts = []promptDef{
 								"4. Use community(%[1]s, <symbol>) to find related code.\n"+
 								"5. Use staleness_report(%[1]s) to check if data is stale.\n\n"+
 								"What do you find?",
-							svc, symptom),
+							svc, symptom,
+						),
 					},
 				},
 			}
@@ -266,6 +272,7 @@ var cannedPrompts = []promptDef{
 			{Name: "service", Description: "Service identifier where the change was made", Required: true},
 			{Name: "change", Description: "Description of the change (e.g. 'added rate limiting to login endpoint')", Required: true},
 		},
+		tools: []string{"rename_impact", "test_impact", "api_surface", "complexity", "call_path"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			change := a["change"]
@@ -283,7 +290,8 @@ var cannedPrompts = []promptDef{
 								"4. Use complexity(%[1]s) to see if complexity increased.\n"+
 								"5. Use call_path(%[1]s, <entry>, <changed>) to trace reachability.\n\n"+
 								"Is the change safe to ship?",
-							svc, change),
+							svc, change,
+						),
 					},
 				},
 			}
@@ -295,6 +303,7 @@ var cannedPrompts = []promptDef{
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier to onboard to", Required: true},
 		},
+		tools: []string{"entrypoints", "api_surface", "list_sources", "type_hierarchy", "god_object"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			return []map[string]any{
@@ -311,7 +320,8 @@ var cannedPrompts = []promptDef{
 								"4. Use type_hierarchy(%[1]s) to understand key interfaces.\n"+
 								"5. Use god_object(%[1]s) to flag any over-large types.\n\n"+
 								"Provide a summary tour of the service architecture.",
-							svc),
+							svc,
+						),
 					},
 				},
 			}
@@ -324,6 +334,7 @@ var cannedPrompts = []promptDef{
 			{Name: "service", Description: "Service identifier to implement the requirement in", Required: true},
 			{Name: "requirement", Description: "Description of the new requirement", Required: true},
 		},
+		tools: []string{"api_surface", "type_hierarchy", "entrypoints", "complexity", "dead_code"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			req := a["requirement"]
@@ -341,7 +352,8 @@ var cannedPrompts = []promptDef{
 								"4. Use complexity(%[1]s) to identify the safest files to change.\n"+
 								"5. Use dead_code(%[1]s) to find any unused stubs to repurpose.\n\n"+
 								"Produce a step-by-step implementation plan.",
-							svc, req),
+							svc, req,
+						),
 					},
 				},
 			}
@@ -361,9 +373,13 @@ func init() {
 
 // registerPromptsHandlers wires prompts/list and prompts/get.
 func registerPromptsHandlers(s *Server) {
-	s.Register("prompts/list", func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
-		items := make([]any, len(cannedPrompts))
-		for i, p := range cannedPrompts {
+	s.Register("prompts/list", func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
+		items := make([]any, 0, len(cannedPrompts))
+		for i := range cannedPrompts {
+			p := &cannedPrompts[i]
+			if !s.promptOnScope(ctx, p) {
+				continue
+			}
 			args := make([]any, len(p.Arguments))
 			for j, a := range p.Arguments {
 				args[j] = map[string]any{
@@ -372,16 +388,16 @@ func registerPromptsHandlers(s *Server) {
 					"required":    a.Required,
 				}
 			}
-			items[i] = map[string]any{
+			items = append(items, map[string]any{
 				"name":        p.Name,
 				"description": p.Description,
 				"arguments":   args,
-			}
+			})
 		}
 		return map[string]any{"prompts": items}, nil
 	})
 
-	s.Register("prompts/get", func(_ context.Context, params json.RawMessage) (any, *rpcError) {
+	s.Register("prompts/get", func(ctx context.Context, params json.RawMessage) (any, *rpcError) {
 		var p struct {
 			Name      string            `json:"name"`
 			Arguments map[string]string `json:"arguments"`
@@ -395,6 +411,9 @@ func registerPromptsHandlers(s *Server) {
 		def, ok := promptIndex[p.Name]
 		if !ok {
 			return nil, &rpcError{Code: ErrCodeNotFound, Message: fmt.Sprintf("prompts/get: unknown prompt %q", p.Name)}
+		}
+		if !s.promptOnScope(ctx, def) {
+			return nil, &rpcError{Code: ErrCodeNotFound, Message: fmt.Sprintf("prompts/get: prompt %q uses tools that are not on the %s surface; POST /rpc serves the full surface", p.Name, scopeFrom(ctx).surface)}
 		}
 		args := p.Arguments
 		if args == nil {
@@ -468,7 +487,7 @@ func registerResourcesHandlers(s *Server, backend QueryInterface) {
 
 // readManifest returns the sextant:///manifest resource.
 func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, *rpcError) {
-	descs := s.visibleTools()
+	descs := s.visibleToolsCtx(ctx)
 	toolNames := make([]string, len(descs))
 	for i, d := range descs {
 		toolNames[i] = d.Name
@@ -485,6 +504,7 @@ func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, 
 		"server":         "sextant",
 		"version":        "1.0.0",
 		"tools":          toolNames,
+		"active_surface": s.effectiveSurface(ctx),
 		"active_profile": s.activeProfile(),
 		"services":       svcs,
 	}

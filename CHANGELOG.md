@@ -10,6 +10,39 @@ when called, but is dramatically under-used — agents reach for shell grep 10×
 sextant even where the index exists, because "index first" lived only in passive docs.
 
 ### Added
+- **Path-scoped tool surfaces on the shared HTTP daemon.** `POST /rpc/{surface}` serves an
+  immutable per-request view of the registry: `companion` is a curated 14-tool coding-agent
+  hot loop (`find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`,
+  `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`,
+  `ingest`, `staleness_report`, `list_services`); `coding`/`investigation`/`shared`/
+  `platform` mirror the group profiles. Bare `/rpc` remains the full surface (the right
+  registration for schema-deferring clients like Claude Code); scoped endpoints cut the
+  tools/list schema payload ~80% for clients that load every schema up front. One daemon,
+  one `mcp.Server`, one store — a surface is context carried per request
+  (`mcp.WithRequestScope`), not a second server. Motivated by the tool-surface strategy
+  review (86 tools ≈ 8.6k schema tokens for non-deferring clients).
+- **Surfaces hard-gate `tools/call`, closing the profile-bypass hole.** Previously a tool
+  hidden from `tools/list` by the active profile was still callable (`findTool` scanned the
+  full registry) — and `batch` dispatched sub-call handlers directly, bypassing any filter.
+  On a named HTTP surface, off-surface calls (including `batch` sub-calls) now return an
+  error naming the surface and pointing at `POST /rpc`. Canned prompts are scoped the same
+  way: a surface hides prompts whose workflow references tools it gates (resources stay
+  available everywhere — data, not capability). The stdio profile stays advisory (a single
+  client owns that process), pinned by regression tests on the non-gating side.
+- **`set_profile` is rejected over HTTP.** The profile is process-global on the shared
+  daemon: any client flipping it changed `tools/list` for *every* session, and
+  `listChanged:false` meant nobody re-fetched. The error points at path-scoped surfaces;
+  stdio keeps `set_profile` and gains `companion` as a valid value. Since every HTTP call
+  to it is dead, `set_profile` is also dropped from every HTTP `tools/list` view — scoped
+  endpoints advertise only what they serve. `capabilities` and the manifest resource now
+  report `active_surface` alongside `active_profile`.
+- **Tool-call telemetry wired into the daemon.** `serve-http --call-log` (default
+  `workspace/logs/mcp-calls.jsonl`, empty disables) appends the existing JSONL CallLogger
+  records — now with the request `surface`, with `batch` sub-calls logged individually
+  (`via:"batch"`) so bundled hot-loop lookups are counted per tool, and with each record
+  written as a single atomic `O_APPEND` write so a daemon kill can't merge lines — making
+  which-tools-does-the-hot-loop-actually-use measurable instead of argued (feeds the
+  sextant-adoption metric and any future surface curation). Decision record: ADR-014.
 - **`session-hook` — a Claude Code SessionStart adoption hook.** `sextant session-hook`
   pings the shared serve-http daemon, maps the project dir to a service, and injects an
   active reminder ("this repo is service X (N symbols); resolve symbols/callers/structure

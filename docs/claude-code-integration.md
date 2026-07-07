@@ -147,6 +147,9 @@ concurrency, one shared index, no contention.
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <!-- anchors the relative --call-log default (workspace/logs/mcp-calls.jsonl);
+       without it launchd starts the daemon at / and call logging is disabled -->
+  <key>WorkingDirectory</key><string>/abs/path/sextant</string>
   <key>StandardOutPath</key><string>/tmp/sextant-http.log</string>
   <key>StandardErrorPath</key><string>/tmp/sextant-http.err</string>
 </dict></plist>
@@ -186,6 +189,37 @@ CLI `ingest` → `launchctl load`.
 The **session operating contract (§4) is unchanged** — index-first, the same handful of tools, refresh
 at session start and after commits. Only the transport (HTTP, not stdio) and the refresh path (MCP
 tool / `POST /reload`, never a CLI `ingest` while the daemon runs) differ.
+
+### Path-scoped surfaces: slim endpoints for schema-loading clients
+
+The daemon serves the same store on several endpoints, each an immutable **surface** of the tool
+registry (see [mcp-tools.md](mcp-tools.md)):
+
+- `POST /rpc` — the full surface, every tool. **Register this for Claude Code**: it defers MCP tool
+  schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
+  session and every tool stays one on-demand load away.
+- `POST /rpc/companion` — the curated 14-tool coding-agent hot loop. Register this for MCP clients
+  that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or anywhere you
+  want a hard-bounded surface: it cuts the schema payload ~80% and off-surface calls are rejected,
+  not silently misrouted.
+- `POST /rpc/{coding|investigation|shared|platform}` — group surfaces for job-specific sessions
+  (change review, incident investigation, fleet health).
+
+For a schema-loading client, point its MCP config at `http://localhost:7575/rpc/companion`
+instead of `/rpc`. If you want the hard-bounded surface in Claude Code too, register it
+**under its own name, alongside** the step-2 full-surface registration (re-using the name
+`sextant` would fail with "already exists" — or silently replace the recommended `/rpc`
+registration):
+
+```sh
+# optional, additive — a slim hard-gated surface next to the full one:
+claude mcp add --transport http --scope user sextant-companion http://localhost:7575/rpc/companion
+```
+
+`set_profile` is rejected over HTTP (the daemon is shared; the profile is process-global) — the
+error points here. Tool selection per surface is measurable from the daemon's call log
+(`--call-log`, default `workspace/logs/mcp-calls.jsonl` resolved against the daemon working
+directory — which is why the plist above sets `WorkingDirectory`).
 
 ## 6. The pre-packed brief pattern (biggest tokenomics lever)
 

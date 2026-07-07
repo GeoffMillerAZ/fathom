@@ -8,10 +8,10 @@ See [architecture.md](architecture.md) for how the tool groups map to the three-
 
 ---
 
-## Tool groups and profiles
+## Tool groups, profiles, and surfaces
 
-Tools are divided into four groups. Clients call `set_profile` to filter the visible
-surface to the group appropriate for the current task.
+Tools are divided into four groups. On **stdio** (one client owns the process), clients
+call `set_profile` to filter the visible surface to the group appropriate for the task.
 
 | Profile | Group constant | Contents |
 |---|---|---|
@@ -20,17 +20,45 @@ surface to the group appropriate for the current task.
 | `investigation` | `GroupInvestigation` | Cross-service, incident investigation, callers, test impact, routes, deps |
 | `platform` | `GroupPlatform` | Fleet-wide: list services, cross-service search, drift, cross-repo callers |
 
+### Path-scoped surfaces (HTTP)
+
+Over **HTTP** (`serve-http`, the shared daemon) the profile is process-global, so
+`set_profile` is **rejected** — one client changing every session's tool list is a
+footgun, not a feature. Instead, each request selects an immutable **surface** via the
+path, and clients register the endpoint that matches their job:
+
+| Surface | Endpoint | Contents |
+|---|---|---|
+| *(full)* | `POST /rpc` | Every registered tool — the default for schema-deferring clients such as Claude Code |
+| `companion` | `POST /rpc/companion` | Curated 14-tool coding-agent hot loop: `find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`, `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`, `ingest`, `staleness_report`, `list_services` |
+| `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (mirrors the stdio profile view) |
+
+Unlike the stdio profile (which only filters `tools/list`), a named surface
+**hard-gates** `tools/call` — an off-surface tool returns an error naming the surface,
+and `batch` sub-calls are gated the same way. The full registry is always one endpoint
+away at `POST /rpc`. Tool calls are recorded per-surface in the daemon's JSONL call log
+(`serve-http --call-log`, default `workspace/logs/mcp-calls.jsonl`; `batch` sub-calls
+are logged individually with `via:"batch"`).
+
+Surface boundaries apply to tools and prompts, not resources: canned prompts are hidden
+on surfaces that gate the tools their workflow uses, while `resources/read` (manifest,
+per-service summaries) stays available everywhere — it is data, not capability. Because
+`set_profile` is rejected over HTTP, it is also dropped from every HTTP `tools/list`
+view.
+
 ---
 
 ## Shared tools (GroupShared)
 
-These tools are visible regardless of the active profile.
+These tools are visible under every group profile and group surface. Two exceptions:
+the `companion` surface/profile shows only its explicit 14-tool allowlist, and
+`set_profile` is dropped from every HTTP view (it is rejected over HTTP).
 
 | Tool | Arguments | Returns | Purpose |
 |---|---|---|---|
-| `set_profile` | `profile`: `"coding"\|"investigation"\|"shared"\|"platform"` | `{profile, ok}` | Switch active profile to filter the tool list |
+| `set_profile` | `profile`: `"companion"\|"coding"\|"investigation"\|"shared"\|"platform"` | `{profile, ok}` | Switch active profile to filter the tool list (stdio only — rejected over HTTP; use a path-scoped surface) |
 | `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode]}` | Locate symbol definitions matching a bare name or SymbolKey in the service |
-| `capabilities` | — | `{tools, active_profile, tool_count}` | List all currently visible tools and the active profile |
+| `capabilities` | — | `{tools, active_surface, active_profile, tool_count}` | List the tools visible on this request's surface and the active surface/profile |
 | `server_stats` | — | `{uptime_seconds, request_count, started_at}` | Return server uptime and total request count |
 | `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest) |
 | `list_sources` | `service` (req) | `{sources: [string]}` | List distinct source file paths ingested for the service |

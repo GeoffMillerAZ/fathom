@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -18,6 +21,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "DuckDB store path (required)")
 	addr := fs.String("addr", ":7575", "listen address (host:port)")
 	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
+	callLogPath := fs.String("call-log", "workspace/logs/mcp-calls.jsonl", "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -45,7 +49,20 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		backend = mcp.NewAutoRefresh(c, stderr)
 	}
 
-	srv := mcp.NewServerWithFleet(backend, &fleetAdapter{c: c, stderr: stderr})
+	// Call logging feeds tool-selection telemetry (which tools each surface
+	// actually uses); failure to open the log never blocks serving.
+	var logger *mcp.CallLogger
+	if *callLogPath != "" {
+		f, err := openCallLog(*callLogPath)
+		if err != nil {
+			fmt.Fprintf(stderr, "warn: call log disabled: %v\n", err)
+		} else {
+			defer f.Close()
+			logger = mcp.NewCallLogger(f)
+		}
+	}
+
+	srv := mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
 	handler := newHTTPHandler(srv)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
@@ -62,22 +79,34 @@ type httpServerState struct {
 	reqCount  atomic.Int64 // incremented on every non-/metrics request
 }
 
+// openCallLog opens (creating parent directories as needed) the JSONL
+// tool-call log for appending.
+func openCallLog(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
+	return os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+}
+
 // newHTTPHandler returns an http.Handler for the serve-http subcommand.
 // It is factored out so tests can drive it via httptest without binding a port.
 //
 // Routes:
 //
-//	POST /rpc     — single JSON-RPC 2.0 request/response
-//	GET  /healthz — liveness probe, returns "ok"
-//	GET  /events  — SSE stream stub (hello event, keep-alive)
-//	GET  /metrics — simple text exposition: uptime and request count
-//	POST /reload  — 200 OK stub; would reload a PlatformStore in production
+//	POST /rpc           — single JSON-RPC 2.0 request/response (full surface)
+//	POST /rpc/{surface} — same, scoped to a named tool surface (companion,
+//	                      coding, investigation, shared, platform); the
+//	                      surface filters tools/list AND gates tools/call
+//	GET  /healthz       — liveness probe, returns "ok"
+//	GET  /events        — SSE stream stub (hello event, keep-alive)
+//	GET  /metrics       — simple text exposition: uptime and request count
+//	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 func newHTTPHandler(srv *mcp.Server) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()
 
-	// POST /rpc — JSON-RPC 2.0 single-message endpoint.
-	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
+	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
+	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {
 		state.reqCount.Add(1)
 		if r.Method != http.MethodPost {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -97,7 +126,10 @@ func newHTTPHandler(srv *mcp.Server) http.Handler {
 			}
 		}
 
-		resp, hasResp := srv.HandleRequest(context.Background(), raw)
+		// Background, not r.Context(): a client disconnect must not cancel a
+		// long-running ingest mid-flight. The scope carries the surface.
+		ctx := mcp.WithRequestScope(context.Background(), surface, true)
+		resp, hasResp := srv.HandleRequest(ctx, raw)
 		if !hasResp {
 			// Notification — no response body.
 			w.WriteHeader(http.StatusNoContent)
@@ -106,6 +138,31 @@ func newHTTPHandler(srv *mcp.Server) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(resp) //nolint:errcheck
+	}
+
+	// POST /rpc — JSON-RPC 2.0 single-message endpoint, full surface.
+	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
+		serveRPC(w, r, "")
+	})
+
+	// POST /rpc/{surface} — the same endpoint scoped to a named surface.
+	mux.HandleFunc("/rpc/{surface}", func(w http.ResponseWriter, r *http.Request) {
+		surface := r.PathValue("surface")
+		if !mcp.ValidSurface(surface) {
+			state.reqCount.Add(1)
+			http.Error(w, fmt.Sprintf("unknown surface %q; valid: %s (POST /rpc serves the full surface)",
+				surface, strings.Join(mcp.SurfaceNames(), ", ")), http.StatusNotFound)
+			return
+		}
+		serveRPC(w, r, surface)
+	})
+
+	// Anything else under /rpc/ (trailing slash, extra segments) gets the same
+	// diagnostic instead of the mux's bare 404.
+	mux.HandleFunc("/rpc/", func(w http.ResponseWriter, r *http.Request) {
+		state.reqCount.Add(1)
+		http.Error(w, fmt.Sprintf("unknown RPC path %q; valid: POST /rpc (full surface) or POST /rpc/{%s}",
+			r.URL.Path, strings.Join(mcp.SurfaceNames(), "|")), http.StatusNotFound)
 	})
 
 	// GET /healthz — liveness probe.

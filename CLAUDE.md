@@ -118,9 +118,13 @@ switch — restart it once.
 
 When working in this (or any fleet) repo:
 1. **Index first.** Resolve where / what / who-calls via sextant (`find_symbol`,
-   `query_symbols`, `find_callers`, `outline`, `repo_map`, `pack_context`)
-   before any Grep/Read sweep. Read files to *edit* them, not to discover them.
-   The index is fleet-wide, so cross-repo questions are one query.
+   `query_symbols`, `references`, `find_callers`, `symbol_context`, `outline`,
+   `repo_map`, `pack_context`) before any Grep/Read sweep — `references` replaces
+   fleet-wide grep, `symbol_context` gives def+callers+callees+tests in one call.
+   Read files to *edit* them, not to discover them. The index is fleet-wide, so
+   cross-repo questions are one query. (These are the core of the 14-tool
+   `companion` surface, which the daemon also serves standalone at
+   `POST /rpc/companion` — see docs/mcp-tools.md.)
 2. **Refresh through the server, never the CLI.** The daemon holds the
    single-writer DuckDB lock, so a shell `sextant ingest` fails with a lock
    error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at session

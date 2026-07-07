@@ -42,10 +42,10 @@ claude mcp add --scope user sextant -- \
 | `ingest-diff` | CLI | Ingest only files changed since a git ref |
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
 | `serve-mcp` | CLI | Stdio MCP server — one client (editor/agent session) |
-| `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `/rpc /healthz /events /metrics` |
+| `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `POST /rpc`, `POST /rpc/{surface}`, `GET /healthz`, `GET /events`, `GET /metrics`; `--call-log` flag for JSONL tool-call logging |
 | `gen-claude-md` | CLI | Generate a static `CLAUDE.md` symbol guide from the store |
 | `version` | CLI | Print binary version (use to detect staleness vs git HEAD) |
-| `set_profile` | MCP tool | Switch the visible tool surface: `coding` / `investigation` / `platform` / `shared` |
+| `set_profile` | MCP tool | Switch the visible tool surface: `companion` / `coding` / `investigation` / `platform` / `shared` (stdio `serve-mcp` only; see Step 5) |
 | `capabilities` | MCP tool | List all currently visible tools and the active profile |
 | `ingest` | MCP tool | Re-index a service from inside a live session (bypasses the single-writer CLI lock) |
 | `staleness_report` | MCP tool | Compare last-ingested state to current git HEAD; `reingest_recommended` flag |
@@ -184,11 +184,15 @@ Equivalent JSON (in `~/.claude/claude_desktop_config.json` or equivalent):
 
 ### Step 5 — Set a profile and verify
 
-In a Claude Code session, call `set_profile` to narrow the tool surface to the current task:
+`set_profile` narrows the tool surface to the current task. It is available on stdio `serve-mcp` sessions only — it is intentionally rejected on the shared HTTP daemon (the profile is process-global and cannot be changed per-client).
+
+On `serve-mcp`:
 
 ```json
 { "name": "set_profile", "arguments": { "profile": "coding" } }
 ```
+
+Over HTTP, register the Claude Code MCP entry against the matching path-scoped surface endpoint instead — e.g. `http://localhost:7575/rpc/companion` or `http://localhost:7575/rpc/coding`. The surface endpoint filters `tools/list` and hard-gates `tools/call` to that group.
 
 Then call `capabilities` to confirm what is visible:
 
@@ -209,6 +213,7 @@ Profile reference:
 
 | Profile | Visible groups | Best for |
 |---|---|---|
+| `companion` | coding hot-loop (14 curated tools) | Focused coding session; smallest surface; matches `POST /rpc/companion` HTTP endpoint |
 | `coding` | coding + shared | Active feature work, symbol navigation, call-graph, impact analysis |
 | `investigation` | investigation + shared | Incident response, cross-service tracing, routes, test impact |
 | `platform` | platform + shared | Fleet-wide drift, cross-repo callers, all-service search |
@@ -262,7 +267,8 @@ Returns ranked `SymbolNode` objects:
 | Transport | stdio (no port) | HTTP on `--addr` (default `:7575`) |
 | Clients | One — the process that launched it | Many concurrent |
 | Use case | One editor / Claude Code session | Multiple concurrent Claude Code sessions, CI, multi-agent platform |
-| Endpoints | — | `POST /rpc`, `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
+| Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped: filters tools/list and hard-gates tools/call; surface ∈ `companion`/`coding`/`investigation`/`shared`/`platform`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
+| Call log | — | `--call-log <path>` writes a JSONL tool-call log (default `workspace/logs/mcp-calls.jsonl` relative to daemon working dir; empty string disables) |
 | DuckDB lock | Holds the single-writer lock while running | Same |
 
 For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session and DuckDB is single-writer, so only the first session to start connects and the rest report `✘ Failed to connect`; one shared `serve-http` daemon makes every session an HTTP client of a single lock-holder. Also use `serve-http` to call sextant from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
