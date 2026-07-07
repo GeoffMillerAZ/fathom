@@ -5,6 +5,17 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Renamed
+- **sextant → fathom** (ADR-015). Module path `github.com/geoffmilleraz/fathom`,
+  binary `cmd/fathom` → `bin/fathom`, MCP serverInfo/resource URIs/metrics prefixes,
+  docs and scripts. Back-compat kept where the old name is data in the field:
+  `.sextantignore` still honoured (legacy fallback behind `.fathomignore`),
+  adoption metrics count both `mcp__sextant__`/`mcp__fathom__` prefixes,
+  `session-hook` treats the two service/dir names as one identity, and
+  `reingest-fleet.sh` finds the repo under either directory name. Historical
+  records (this changelog below, USAGE_JOURNAL.md, dogfood-observations.md)
+  intentionally keep "sextant". Operator steps: `docs/rename-migration.md`.
+
 Uplifts from mining local Claude Code usage across the fleet. The finding: sextant works
 when called, but is dramatically under-used — agents reach for shell grep 10×+ more than
 sextant even where the index exists, because "index first" lived only in passive docs.

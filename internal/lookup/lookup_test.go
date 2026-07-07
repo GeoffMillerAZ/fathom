@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ package routes_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 )
 
 // -----------------------------------------------------------------

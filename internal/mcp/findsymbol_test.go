@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // findSymbolPayload decodes the MCP content envelope of a find_symbol result.

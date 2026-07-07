@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/ownership"
+	"github.com/geoffmilleraz/fathom/internal/ownership"
 )
 
 // ─── Parse — basic ───────────────────────────────────────────────────────────

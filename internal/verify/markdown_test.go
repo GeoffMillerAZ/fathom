@@ -3,8 +3,8 @@ package verify_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 func TestParseMarkdownPlan(t *testing.T) {

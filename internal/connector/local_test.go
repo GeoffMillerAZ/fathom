@@ -11,8 +11,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // fauxRoot returns the absolute path to the testdata/fauxtown directory
@@ -185,7 +185,7 @@ func TestLocalConnector_Discover_IgnoresVendorAndDotGit(t *testing.T) {
 	connectorContract(t, lc, svc, []string{"errors.go", "payment.go"})
 }
 
-// ─── .sextantignore tests ────────────────────────────────────────────────────
+// ─── .fathomignore tests ────────────────────────────────────────────────────
 
 func writeFile(t *testing.T, path, content string) {
 	t.Helper()
@@ -197,7 +197,7 @@ func writeFile(t *testing.T, path, content string) {
 	}
 }
 
-func TestLocalConnector_Discover_SextantIgnore(t *testing.T) {
+func TestLocalConnector_Discover_FathomIgnore(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
 	writeFile(t, filepath.Join(root, "ref", "mirror.go"), "package mirror\n")
@@ -228,6 +228,33 @@ func TestLocalConnector_Discover_SextantIgnore(t *testing.T) {
 		if got[banned] {
 			t.Errorf("%s should have been ignored, got %v", banned, got)
 		}
+	}
+}
+
+// A repo that adopted the tool under its former name keeps its excludes: the
+// legacy .sextantignore is honoured when no .fathomignore exists.
+func TestLocalConnector_Discover_LegacyIgnoreFallback(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
+	writeFile(t, filepath.Join(root, "ref", "mirror.go"), "package mirror\n")
+	writeFile(t, filepath.Join(root, connector.LegacyIgnoreFileName),
+		"ref/\n"+connector.LegacyIgnoreFileName+"\n")
+
+	lc := connector.NewLocalConnector()
+	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	got := map[string]bool{}
+	for _, r := range refs {
+		rel, _ := filepath.Rel(root, r.Path)
+		got[filepath.ToSlash(rel)] = true
+	}
+	if !got["keep.go"] {
+		t.Errorf("expected keep.go in discovered refs, got %v", got)
+	}
+	if got["ref/mirror.go"] {
+		t.Errorf("legacy ignore file not honoured: ref/mirror.go should be excluded, got %v", got)
 	}
 }
 

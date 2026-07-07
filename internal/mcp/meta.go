@@ -231,11 +231,11 @@ type promptArg struct {
 	Required    bool   `json:"required"`
 }
 
-// cannedPrompts is the list of sextant's built-in prompts.
+// cannedPrompts is the list of fathom's built-in prompts.
 var cannedPrompts = []promptDef{
 	{
 		Name:        "investigate_incident",
-		Description: "Guide an investigation into a production incident using sextant tools.",
+		Description: "Guide an investigation into a production incident using fathom tools.",
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier to investigate", Required: true},
 			{Name: "symptom", Description: "Observed symptom or error message", Required: true},
@@ -267,7 +267,7 @@ var cannedPrompts = []promptDef{
 	},
 	{
 		Name:        "review_change",
-		Description: "Review a code change using sextant impact-analysis tools.",
+		Description: "Review a code change using fathom impact-analysis tools.",
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier where the change was made", Required: true},
 			{Name: "change", Description: "Description of the change (e.g. 'added rate limiting to login endpoint')", Required: true},
@@ -329,7 +329,7 @@ var cannedPrompts = []promptDef{
 	},
 	{
 		Name:        "plan_requirement",
-		Description: "Plan implementation of a new requirement using sextant structural analysis.",
+		Description: "Plan implementation of a new requirement using fathom structural analysis.",
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier to implement the requirement in", Required: true},
 			{Name: "requirement", Description: "Description of the new requirement", Required: true},
@@ -430,8 +430,8 @@ func registerPromptsHandlers(s *Server) {
 // ─── resources ────────────────────────────────────────────────────────────────
 
 const (
-	manifestURI      = "sextant:///manifest"
-	serviceURIPrefix = "sextant:///service/"
+	manifestURI      = "fathom:///manifest"
+	serviceURIPrefix = "fathom:///service/"
 )
 
 // registerResourcesHandlers wires resources/list and resources/read.
@@ -440,7 +440,7 @@ func registerResourcesHandlers(s *Server, backend QueryInterface) {
 		resources := []any{
 			map[string]any{
 				"uri":         manifestURI,
-				"name":        "Sextant Manifest",
+				"name":        "Fathom Manifest",
 				"description": "Server manifest: registered tools, active profile, and known services.",
 				"mimeType":    "application/json",
 			},
@@ -485,7 +485,7 @@ func registerResourcesHandlers(s *Server, backend QueryInterface) {
 	})
 }
 
-// readManifest returns the sextant:///manifest resource.
+// readManifest returns the fathom:///manifest resource.
 func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, *rpcError) {
 	descs := s.visibleToolsCtx(ctx)
 	toolNames := make([]string, len(descs))
@@ -501,7 +501,7 @@ func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, 
 		}
 	}
 	payload := map[string]any{
-		"server":         "sextant",
+		"server":         "fathom",
 		"version":        "1.0.0",
 		"tools":          toolNames,
 		"active_surface": s.effectiveSurface(ctx),
@@ -523,7 +523,7 @@ func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, 
 	}, nil
 }
 
-// readServiceResource returns the sextant:///service/<id> resource.
+// readServiceResource returns the fathom:///service/<id> resource.
 func readServiceResource(ctx context.Context, backend QueryInterface, svcID string) (any, *rpcError) {
 	if backend == nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}

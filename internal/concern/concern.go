@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // PropagateConcern walks the call graph backward from seed, collecting symbol

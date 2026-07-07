@@ -18,8 +18,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ─── public types ────────────────────────────────────────────────────────────

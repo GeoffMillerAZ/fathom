@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // storeContract runs the full Store interface contract against the supplied

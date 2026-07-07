@@ -3,8 +3,8 @@ package archconformance_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/archconformance"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // helpers

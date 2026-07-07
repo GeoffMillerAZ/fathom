@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/store"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // TestIngestService_UsesAndPreservesStoredPath is a regression test for the bug

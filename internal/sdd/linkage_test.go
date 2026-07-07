@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/sdd"
 )
 
 // ─── ExtractRefs ──────────────────────────────────────────────────────────────

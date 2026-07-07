@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // traverseFakeBackend is a minimal QueryInterface implementation for traverse tests.

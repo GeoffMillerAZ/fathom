@@ -1,4 +1,4 @@
-// Package graph provides a typed edge graph and BFS traversal for sextant.
+// Package graph provides a typed edge graph and BFS traversal for fathom.
 // All functions are pure, deterministic, and require no I/O.
 package graph
 

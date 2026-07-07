@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // newTestHandler builds a real mcp.Server backed by a faux client pointing at
@@ -100,8 +100,8 @@ func TestServeHTTPInitialize(t *testing.T) {
 	if !ok {
 		t.Fatalf("serverInfo missing: %v", result)
 	}
-	if si["name"] != "sextant" {
-		t.Errorf("serverInfo.name = %v, want sextant", si["name"])
+	if si["name"] != "fathom" {
+		t.Errorf("serverInfo.name = %v, want fathom", si["name"])
 	}
 }
 
@@ -198,11 +198,11 @@ func TestServeHTTPMetrics(t *testing.T) {
 		t.Fatalf("GET /metrics status = %d, want 200", rr.Code)
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, "sextant_uptime_seconds") {
-		t.Errorf("GET /metrics body = %q, want sextant_uptime_seconds", body)
+	if !strings.Contains(body, "fathom_uptime_seconds") {
+		t.Errorf("GET /metrics body = %q, want fathom_uptime_seconds", body)
 	}
-	if !strings.Contains(body, "sextant_requests_total") {
-		t.Errorf("GET /metrics body = %q, want sextant_requests_total", body)
+	if !strings.Contains(body, "fathom_requests_total") {
+		t.Errorf("GET /metrics body = %q, want fathom_requests_total", body)
 	}
 }
 

@@ -11,15 +11,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // cmdSessionHook implements the "session-hook" subcommand: a Claude Code
-// SessionStart hook that primes each session to use sextant's index before
+// SessionStart hook that primes each session to use fathom's index before
 // falling back to Grep/Read.
 //
-// Telemetry across real fleet sessions showed sextant is dramatically
-// under-used — agents reach for shell grep 10×+ more than sextant even where
+// Telemetry across real fleet sessions showed fathom is dramatically
+// under-used — agents reach for shell grep 10×+ more than fathom even where
 // the index exists, because "index first" lives only in passive docs. This hook
 // makes it active: at session start it pings the shared serve-http daemon, maps
 // the project dir to a service, and emits a one-line reminder (or an honest
@@ -30,7 +30,7 @@ import (
 // or down daemon can't stall startup.
 func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("session-hook", stderr)
-	url := fs.String("url", defaultSextantURL(), "sextant serve-http base URL")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -56,8 +56,8 @@ func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func defaultSextantURL() string {
-	if u := os.Getenv("SEXTANT_HTTP"); u != "" {
+func defaultFathomURL() string {
+	if u := os.Getenv("FATHOM_HTTP"); u != "" {
 		return u
 	}
 	return "http://localhost:7575"
@@ -77,17 +77,28 @@ func buildSessionContext(baseURL, repo string) string {
 		if resp != nil {
 			resp.Body.Close()
 		}
-		return fmt.Sprintf("⚠️ sextant code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.sextant-http", baseURL)
+		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http", baseURL)
 	}
 	resp.Body.Close()
 
 	svcs := fetchServices(hc, baseURL)
-	if info, ok := svcs[strings.ToLower(repo)]; ok {
+	// The fathom repo's directory may still carry the pre-rename brand (or the
+	// service was registered under it); treat the two names as one identity.
+	lookup := strings.ToLower(repo)
+	if _, ok := svcs[lookup]; !ok {
+		switch lookup {
+		case "sextant":
+			lookup = "fathom"
+		case "fathom":
+			lookup = "sextant"
+		}
+	}
+	if info, ok := svcs[lookup]; ok {
 		langs := ""
 		if info.langs != "" {
 			langs = ", " + info.langs
 		}
-		return fmt.Sprintf("✅ sextant code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via sextant BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", repo, info.symbols, langs, repo)
+		return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
 	}
 
 	known := make([]string, 0, len(svcs))
@@ -95,7 +106,7 @@ func buildSessionContext(baseURL, repo string) string {
 		known = append(known, k)
 	}
 	sort.Strings(known)
-	return fmt.Sprintf("ℹ️ sextant code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo by ingesting it as a new service.)", repo, strings.Join(known, ", "))
+	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo by ingesting it as a new service.)", repo, strings.Join(known, ", "))
 }
 
 // fetchServices calls the list_services MCP tool over HTTP and returns a map

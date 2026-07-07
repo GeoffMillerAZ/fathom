@@ -11,7 +11,7 @@ import (
 
 	_ "github.com/marcboeker/go-duckdb/v2"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // DuckStore is a DuckDB-backed implementation of Store.

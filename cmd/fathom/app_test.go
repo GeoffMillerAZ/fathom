@@ -204,10 +204,10 @@ func TestRunTable(t *testing.T) {
 		wantErr  string // substring expected in stderr (empty = don't check)
 	}{
 		{
-			name:     "version outputs sextant",
+			name:     "version outputs fathom",
 			args:     []string{"version"},
 			wantCode: 0,
-			wantOut:  "sextant",
+			wantOut:  "fathom",
 		},
 		{
 			name:     "query no concern nonzero",

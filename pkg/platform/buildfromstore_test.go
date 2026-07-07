@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/store"
-	"github.com/geoffmilleraz/sextant/pkg/platform"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/platform"
 )
 
 // TestBuildFromStore_MultiLanguage proves the store-backed, language-agnostic

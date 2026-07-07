@@ -3,7 +3,7 @@ package ineffassign_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/ineffassign"
+	"github.com/geoffmilleraz/fathom/internal/analysis/ineffassign"
 )
 
 const cleanSrc = `package p

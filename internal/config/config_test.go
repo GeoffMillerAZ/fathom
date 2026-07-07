@@ -47,13 +47,13 @@ func TestLoad_OverrideDefaultProfile(t *testing.T) {
 }
 
 func TestLoad_OverrideStoreDir(t *testing.T) {
-	json := []byte(`{"storeDir":"/tmp/sextant"}`)
+	json := []byte(`{"storeDir":"/tmp/fathom"}`)
 	cfg, err := Load(json)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.StoreDir != "/tmp/sextant" {
-		t.Fatalf("want /tmp/sextant got %q", cfg.StoreDir)
+	if cfg.StoreDir != "/tmp/fathom" {
+		t.Fatalf("want /tmp/fathom got %q", cfg.StoreDir)
 	}
 }
 

@@ -5,9 +5,9 @@ import (
 	"testing"
 
 	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/query"
-	"github.com/geoffmilleraz/sextant/internal/vector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/query"
+	"github.com/geoffmilleraz/fathom/internal/vector"
 )
 
 // buildHybridEngine creates an Engine with a vector.Indexer backed by

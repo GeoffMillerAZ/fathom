@@ -3,7 +3,7 @@ package cloc_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/cloc"
+	"github.com/geoffmilleraz/fathom/internal/analysis/cloc"
 )
 
 // ─── Go / C-style ────────────────────────────────────────────────────────────

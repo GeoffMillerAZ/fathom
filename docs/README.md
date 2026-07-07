@@ -1,6 +1,6 @@
-# Sextant Docs
+# Fathom Docs
 
-Engineer-facing documentation for the sextant code-intelligence + evidence engine.
+Engineer-facing documentation for the fathom code-intelligence + evidence engine.
 
 | Document | What it covers |
 |---|---|

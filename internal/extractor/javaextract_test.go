@@ -3,8 +3,8 @@ package extractor_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // javaFixture exercises all constructs the new tree-sitter extractor must handle:

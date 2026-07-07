@@ -6,8 +6,8 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 	tscsharp "github.com/tree-sitter/tree-sitter-c-sharp/bindings/go"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor/treesitter"
 )
 
 // csharpLang is initialised once and shared across all CSharpExtractor calls.

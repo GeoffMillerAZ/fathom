@@ -9,7 +9,7 @@ import (
 	"sync"
 	"unicode"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Index is a concurrency-safe inverted index mapping lowercase keyword tokens

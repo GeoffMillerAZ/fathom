@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Version is the current sextant CLI version.
-const Version = "sextant v0.1.0"
+// Version is the current fathom CLI version.
+const Version = "fathom v0.1.0"
 
 // BuildRevision returns a one-line build identity: the version plus the VCS
 // revision, commit time, and dirty flag that the Go toolchain embeds via

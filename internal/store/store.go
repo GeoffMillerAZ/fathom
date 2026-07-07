@@ -1,4 +1,4 @@
-// Package store defines the persistence interface for sextant observations and
+// Package store defines the persistence interface for fathom observations and
 // the fingerprint (hash-gate) index. Two implementations are provided:
 // DuckStore (DuckDB-backed, for production use) and MemoryStore (in-process
 // fake, for fast unit tests and session-mode operation).
@@ -7,7 +7,7 @@ package store
 import (
 	"context"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // KnowledgeCard is an enrichment row produced for a single symbol. It mirrors
@@ -61,7 +61,7 @@ type CommitInfo struct {
 	SpecIDs           []string
 }
 
-// Store is the persistence contract for sextant's evidence layer.
+// Store is the persistence contract for fathom's evidence layer.
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
 type Store interface {

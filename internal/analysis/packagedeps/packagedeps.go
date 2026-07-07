@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/depgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/depgraph"
 )
 
 // Build constructs a package-level dependency graph from nodes.

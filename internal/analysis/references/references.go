@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // maxTextLen is the maximum number of bytes kept from a matched line.

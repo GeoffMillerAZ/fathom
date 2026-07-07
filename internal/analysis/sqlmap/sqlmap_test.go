@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/sqlmap"
+	"github.com/geoffmilleraz/fathom/internal/analysis/sqlmap"
 )
 
 const basicSrc = `package repo

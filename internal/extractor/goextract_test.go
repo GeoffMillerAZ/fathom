@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // fixture is a small Go source file that exercises all symbol kinds and a call edge.

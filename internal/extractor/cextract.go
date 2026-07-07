@@ -6,8 +6,8 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 	tsc "github.com/tree-sitter/tree-sitter-c/bindings/go"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor/treesitter"
 )
 
 // cLang is initialised once and shared across all CExtractor calls.

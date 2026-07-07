@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // cmdServeMCP is the entry point for the "serve-mcp" subcommand.
@@ -44,7 +44,7 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	c, err := client.NewConstantClient(m, *storePath)
 	if err != nil {
 		if isStoreLockConflict(err) {
-			fmt.Fprintf(stderr, "error: another sextant process already holds the store %q.\n", *storePath)
+			fmt.Fprintf(stderr, "error: another fathom process already holds the store %q.\n", *storePath)
 			fmt.Fprintf(stderr, "  %v\n", err)
 			fmt.Fprintln(stderr, "  DuckDB is single-writer: only one serve-mcp can hold a store. Reap the other")
 			fmt.Fprintln(stderr, "  process (the lock error above names its PID), or point --store at a different file.")
@@ -59,7 +59,7 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	// outlive several commits; logging the embedded VCS revision makes a stale
 	// server self-evident (compare against `git rev-parse HEAD`). See
 	// docs/dogfood-observations.md (staleness finding).
-	fmt.Fprintf(stderr, "sextant serve-mcp starting: %s\n", BuildRevision())
+	fmt.Fprintf(stderr, "fathom serve-mcp starting: %s\n", BuildRevision())
 
 	// Default: keep the index fresh transparently. A query for a service whose
 	// git HEAD has drifted from the indexed commit triggers a hash-gated

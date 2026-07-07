@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/doccoverage"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/doccoverage"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 func sym(name string) core.SymbolNode {

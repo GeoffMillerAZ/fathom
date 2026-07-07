@@ -13,8 +13,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // connectorContract runs the shared behavioural contract for any Connector.

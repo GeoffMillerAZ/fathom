@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/context/packer"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/context/packer"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ---------------------------------------------------------------------------

@@ -3,8 +3,8 @@ package references_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/references"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/references"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ─── fixtures ────────────────────────────────────────────────────────────────

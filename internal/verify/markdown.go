@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/sdd"
 )
 
 // taskLineRe matches a Markdown checklist item: "- [ ] title", "* [x] title",

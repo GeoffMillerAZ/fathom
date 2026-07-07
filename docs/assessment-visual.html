@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sextant × Claude Code — visual metrics report (2026-06-12)</title>
+<title>Fathom × Claude Code — visual metrics report (2026-06-12)</title>
 <style>
   body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color:#1a1d23; background:#fafaf9; margin:0; }
   main { max-width: 760px; margin: 0 auto; padding: 40px 24px 72px; }
@@ -12,9 +12,9 @@
   .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
   footer { font-size:12px; color:#9ca3af; margin-top: 28px; }
 </style></head><body><main>
-<h1>Sextant × Claude Code — visual metrics</h1>
+<h1>Fathom × Claude Code — visual metrics</h1>
 <p class="lead">Before/after the fleet-index integration (cutover 2026-06-12 21:10 UTC). Numbers mined from session transcripts (subagent usage records, deduped by task-id); estimates are labeled. Method, caveats, and the full narrative: <code>docs/assessment-claude-code-integration.md</code>.</p>
-<p class="legend"><span><i style="background:#94a3b8"></i>Before (raw exploration)</span><span><i style="background:#2563eb"></i>After (sextant-first)</span><span><i style="background:#dc2626"></i>Defect fixed by dogfooding</span></p>
+<p class="legend"><span><i style="background:#94a3b8"></i>Before (raw exploration)</span><span><i style="background:#2563eb"></i>After (fathom-first)</span><span><i style="background:#dc2626"></i>Defect fixed by dogfooding</span></p>
 <section><svg viewBox="0 0 640 174" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial" style="max-width:640px;width:100%;height:auto">
 <text x="0" y="20" font-size="16" font-weight="650" fill="#1a1d23">Answering one discovery question</text>
 <text x="0" y="40" font-size="12" fill="#6b7280">“Where is X, what calls it, and which design doc governs it?” — tokens consumed</text>
@@ -84,7 +84,7 @@
 </svg><p class="note">Honesty chart: per-wave worker totals drop ~35–50% (incl. estimated Explore overhead), not 10×. Reading files you’re about to edit and writing code are irreducible. The 10×–100× wins live in the discovery layer (chart 1) and in architect-side recon.</p></section>
 <section><svg viewBox="0 0 640 174" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial" style="max-width:640px;width:100%;height:auto">
 <text x="0" y="20" font-size="16" font-weight="650" fill="#1a1d23">Whole-period subagent spend (context, not like-for-like)</text>
-<text x="0" y="40" font-size="12" fill="#6b7280">Pre: 4.5 days of M16+M17 incl. reviews · Post: 2.5 hours delivering M18.1+M18.2+sextant fixes</text>
+<text x="0" y="40" font-size="12" fill="#6b7280">Pre: 4.5 days of M16+M17 incl. reviews · Post: 2.5 hours delivering M18.1+M18.2+fathom fixes</text>
 <text x="190" y="81.0" font-size="13" fill="#374151" text-anchor="end">Pre-integration era</text>
 <rect x="200" y="60" width="330" height="34" rx="5" fill="#94a3b8"/>
 <text x="538" y="81.0" font-size="13" font-weight="600" fill="#1a1d23">11.77M</text>
@@ -95,9 +95,9 @@
 <text x="204" y="129.0" font-size="11" fill="#ffffff">7 runs · 337 tool calls</text>
 </svg><p class="note">Context only — the eras differ in scope (the “before” period includes large audit/review agents). Shown because the totals are real; not claimed as a controlled comparison.</p></section>
 <section><svg viewBox="0 0 640 270" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Segoe UI,Helvetica,Arial" style="max-width:640px;width:100%;height:auto">
-<text x="0" y="20" font-size="16" font-weight="650" fill="#1a1d23">Sextant index hygiene &amp; speed (its own metrics)</text>
+<text x="0" y="20" font-size="16" font-weight="650" fill="#1a1d23">Fathom index hygiene &amp; speed (its own metrics)</text>
 <text x="0" y="40" font-size="12" fill="#6b7280">Fixed on integration day by dogfooding</text>
-<text x="190" y="81.0" font-size="13" fill="#374151" text-anchor="end">Own-repo files indexed before .sextantignore</text>
+<text x="190" y="81.0" font-size="13" fill="#374151" text-anchor="end">Own-repo files indexed before .fathomignore</text>
 <rect x="200" y="60" width="133" height="34" rx="5" fill="#dc2626"/>
 <text x="341" y="81.0" font-size="13" font-weight="600" fill="#1a1d23">2,427</text>
 <text x="190" y="129.0" font-size="13" fill="#374151" text-anchor="end">After ignore rules</text>
@@ -109,6 +109,6 @@
 <text x="190" y="225.0" font-size="13" fill="#374151" text-anchor="end">After stale-only trim (bytes)</text>
 <rect x="200" y="204" width="3" height="34" rx="5" fill="#2563eb"/>
 <text x="211" y="225.0" font-size="13" font-weight="600" fill="#1a1d23">60</text>
-</svg><p class="note">Dogfooding found 8 sextant defects on day one (dead MCP queries, always-empty cross-repo callers, 6&nbsp;KB staleness bloat per query, index pollution, missing Templ extractor…). All fixed and committed same day — owning the tool is itself a measured advantage.</p></section>
-<footer>Generated 2026-06-12 · sources: session transcript usage records · sextant repo docs/assessment-claude-code-integration.md</footer>
+</svg><p class="note">Dogfooding found 8 fathom defects on day one (dead MCP queries, always-empty cross-repo callers, 6&nbsp;KB staleness bloat per query, index pollution, missing Templ extractor…). All fixed and committed same day — owning the tool is itself a measured advantage.</p></section>
+<footer>Generated 2026-06-12 · sources: session transcript usage records · fathom repo docs/assessment-claude-code-integration.md</footer>
 </main></body></html>

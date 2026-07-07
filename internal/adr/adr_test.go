@@ -3,7 +3,7 @@ package adr_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/adr"
+	"github.com/geoffmilleraz/fathom/internal/adr"
 )
 
 // ─── Parse — ID extraction ────────────────────────────────────────────────────

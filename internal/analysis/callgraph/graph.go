@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Graph is a directed call graph.  Nodes are identified by their canonical

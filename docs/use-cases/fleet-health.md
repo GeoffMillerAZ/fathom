@@ -1,6 +1,6 @@
 # Fleet & Codebase Health
 
-Use sextant to get an objective quality and security posture across an entire fleet of services, or drill into a single repo's complexity and dependency surface.
+Use fathom to get an objective quality and security posture across an entire fleet of services, or drill into a single repo's complexity and dependency surface.
 
 ---
 
@@ -32,7 +32,7 @@ Use sextant to get an objective quality and security posture across an entire fl
 | `staleness_report` | MCP tool | Whether the index is in sync with HEAD; flags `reingest_recommended` |
 | `set_profile` | MCP tool | Switch the visible tool set |
 | `ingest` | MCP tool | Re-index a service in-session after commits |
-| `sextant ingest` | CLI | Index a repo into the fleet store (use when no session holds the DuckDB lock) |
+| `fathom ingest` | CLI | Index a repo into the fleet store (use when no session holds the DuckDB lock) |
 
 > **Security rollup:** `security_rollup` is a single MCP tool (GroupShared) that internally runs `secret_scan`, `shell_out`, and `http_client_calls` and returns an aggregated posture report including license findings. Use it for a one-call sweep; call the individual tools when you need granular control.
 
@@ -40,9 +40,9 @@ Use sextant to get an objective quality and security posture across an entire fl
 
 ## How it enhances Claude Code
 
-Without sextant, an agent doing a health sweep reads files, greps, and re-derives structure on every session — expensive, error-prone, and blind to the fleet.
+Without fathom, an agent doing a health sweep reads files, greps, and re-derives structure on every session — expensive, error-prone, and blind to the fleet.
 
-With sextant:
+With fathom:
 
 - **Fleet orientation in one call.** `list_services` returns symbol counts and languages for every ingested service. The agent knows the fleet's shape before reading a single file.
 - **Targeted security sweeps.** `secret_scan`, `shell_out`, and `http_client_calls` run against the pre-indexed store. Findings carry file and line — the agent can surface them directly or use them to open exactly the right files.
@@ -164,15 +164,15 @@ Highlights any symbol that exists in multiple services with conflicting kinds �
 **Registering the MCP server** (one-time, user-scoped):
 
 ```sh
-claude mcp add --scope user sextant -- \
-  /abs/path/bin/sextant serve-mcp \
+claude mcp add --scope user fathom -- \
+  /abs/path/bin/fathom serve-mcp \
   --store /abs/path/workspace/db/fleet.duckdb
 ```
 
 **Ingesting a repo** (CLI, outside a session or before first use):
 
 ```sh
-sextant ingest --service payment-service --path /path/to/payment-service
+fathom ingest --service payment-service --path /path/to/payment-service
 ```
 
 **`dependencies` parses lockfiles** — `go.sum`, `package-lock.json`/`yarn.lock`, `requirements.txt`/`Pipfile.lock`, `Gemfile.lock`, `Cargo.lock`. Services without a recognised lockfile return an empty list; that is expected for generated or vendored repos.
@@ -181,4 +181,4 @@ sextant ingest --service payment-service --path /path/to/payment-service
 
 ## Maintained
 
-This doc covers: `list_services`, `fleet_drift`, `query_cross_service`, `complexity`, `hotspots`, `god_object`, `security_rollup`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `dependencies`, `deps`, `staleness_report`, `set_profile`, `ingest`, `sextant ingest`. Update it when these change.
+This doc covers: `list_services`, `fleet_drift`, `query_cross_service`, `complexity`, `hotspots`, `god_object`, `security_rollup`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `dependencies`, `deps`, `staleness_report`, `set_profile`, `ingest`, `fathom ingest`. Update it when these change.

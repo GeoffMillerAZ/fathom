@@ -1,6 +1,6 @@
-// Package platform is the public API for sextant's cross-repo platform graph.
+// Package platform is the public API for fathom's cross-repo platform graph.
 // It re-exports the internal platformlink results for external consumers,
-// mirroring the sextant_platform_callers and cross_repo_blast_radius MCP tools.
+// mirroring the fathom_platform_callers and cross_repo_blast_radius MCP tools.
 //
 // Usage:
 //
@@ -16,9 +16,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/platformlink"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/platformlink"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Graph is the cross-repo platform graph. Use Build to obtain one.
@@ -39,7 +39,7 @@ func Build(repos map[string]string) (*Graph, error) {
 
 // PlatformCallers returns all cross-repo edges where the callee symbol name
 // matches the given symbol (bare name, e.g. "ProcessPayment"). This mirrors
-// the sextant_platform_callers MCP tool.
+// the fathom_platform_callers MCP tool.
 func PlatformCallers(g *Graph, symbol string) []core.CrossRepoEdge {
 	return g.inner.Callers(symbol)
 }

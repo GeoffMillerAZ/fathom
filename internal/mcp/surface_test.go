@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // companionWant is the curated coding-companion allowlist, pinned exactly.

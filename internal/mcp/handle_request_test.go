@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // handleReq is a helper that calls HandleRequest and decodes the response.
@@ -53,8 +53,8 @@ func TestHandleRequestInitialize(t *testing.T) {
 	if !ok {
 		t.Fatalf("serverInfo missing: %v", result)
 	}
-	if si["name"] != "sextant" {
-		t.Errorf("serverInfo.name = %v, want sextant", si["name"])
+	if si["name"] != "fathom" {
+		t.Errorf("serverInfo.name = %v, want fathom", si["name"])
 	}
 }
 

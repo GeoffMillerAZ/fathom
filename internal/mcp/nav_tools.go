@@ -14,11 +14,11 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/apisurface"
-	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
-	"github.com/geoffmilleraz/sextant/internal/analysis/complexity"
-	"github.com/geoffmilleraz/sextant/internal/analysis/godobject"
-	"github.com/geoffmilleraz/sextant/internal/analysis/symbolnav"
+	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
+	"github.com/geoffmilleraz/fathom/internal/analysis/godobject"
+	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 )
 
 // registerNavTools is called from registerTools (tools.go).

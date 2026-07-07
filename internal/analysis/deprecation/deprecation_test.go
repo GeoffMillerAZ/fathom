@@ -3,7 +3,7 @@ package deprecation_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/deprecation"
+	"github.com/geoffmilleraz/fathom/internal/analysis/deprecation"
 )
 
 // ─── Scan with DefaultDeprecated ─────────────────────────────────────────────

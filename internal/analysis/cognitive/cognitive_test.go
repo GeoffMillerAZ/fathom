@@ -3,7 +3,7 @@ package cognitive_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/cognitive"
+	"github.com/geoffmilleraz/fathom/internal/analysis/cognitive"
 )
 
 const simpleSrc = `package p

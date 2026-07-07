@@ -3,7 +3,7 @@ package license_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/license"
+	"github.com/geoffmilleraz/fathom/internal/analysis/license"
 )
 
 // Minimal representative extracts from actual license texts.

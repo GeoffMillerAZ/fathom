@@ -3,7 +3,7 @@ package security_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/security"
+	"github.com/geoffmilleraz/fathom/internal/analysis/security"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

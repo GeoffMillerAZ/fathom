@@ -9,8 +9,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/apisurface"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Entry represents one API change.

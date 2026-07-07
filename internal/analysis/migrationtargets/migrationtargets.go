@@ -17,7 +17,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Target is a symbol that should be migrated away from a deprecated package.

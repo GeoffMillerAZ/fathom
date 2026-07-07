@@ -1,4 +1,4 @@
-module github.com/geoffmilleraz/sextant
+module github.com/geoffmilleraz/fathom
 
 go 1.26
 

@@ -3,7 +3,7 @@ package markers_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/markers"
+	"github.com/geoffmilleraz/fathom/internal/analysis/markers"
 )
 
 const goSrc = `package p

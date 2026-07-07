@@ -1,6 +1,6 @@
-# Sextant Architecture
+# Fathom Architecture
 
-Sextant is a code-intelligence + evidence engine. It ingests source across one or many
+Fathom is a code-intelligence + evidence engine. It ingests source across one or many
 repositories, extracts symbols, call edges, and facts, stores them as governed evidence
 observations, and answers concern-scoped queries — for AI coding assistants, cross-repo
 blast-radius, change review, incident investigation, and fleet health.
@@ -161,7 +161,7 @@ type SymbolNode struct {
 
 ### Evidence tiers (ADR-007, ADR-009)
 
-Sextant inherits evidence tiers from agentic-kit's `review/scoring` foundation. A code fact
+Fathom inherits evidence tiers from agentic-kit's `review/scoring` foundation. A code fact
 never outranks a doc claim in the query layer's confidence ceilings.
 
 | Tier | Origin | Confidence ceiling |
@@ -222,7 +222,7 @@ type StalenessReport struct {
 ```
 
 Callers must never silently trust stale data. Silent staleness is a correctness trap for AI
-consumers — sextant surfaces it explicitly on every query response.
+consumers — fathom surfaces it explicitly on every query response.
 
 ### Contradiction detection
 
@@ -252,7 +252,7 @@ Schema tables in the DuckDB store:
 | `knowledge_cards` | LLM-generated structured summaries per symbol (opt-in enrichment) |
 | `doc_summaries` | Document-level summaries for Markdown sources |
 
-Default store path: `workspace/db/sextant.duckdb` (gitignored; all artifacts go under
+Default store path: `workspace/db/fathom.duckdb` (gitignored; all artifacts go under
 `workspace/` — see the workspace convention in [usage.md](usage.md)).
 
 ---

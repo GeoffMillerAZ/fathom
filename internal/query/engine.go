@@ -1,4 +1,4 @@
-// Package query implements the Layer 3 knowledge query engine for sextant.
+// Package query implements the Layer 3 knowledge query engine for fathom.
 // It reads observations from a store.Store and produces typed query results
 // including staleness reports and contradiction detection.
 //
@@ -20,9 +20,9 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/store"
-	"github.com/geoffmilleraz/sextant/internal/vector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/vector"
 )
 
 const (

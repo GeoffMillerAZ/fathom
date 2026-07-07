@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/llmsec"
+	"github.com/geoffmilleraz/fathom/internal/llmsec"
 )
 
 func TestRedact_Clean(t *testing.T) {

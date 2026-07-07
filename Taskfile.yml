@@ -1,6 +1,6 @@
 version: '3'
 
-# Uniform command runner for sextant. `task validate` is the full gate
+# Uniform command runner for fathom. `task validate` is the full gate
 # (also run by lefthook pre-push). Tests run with CGO (DuckDB driver).
 
 env:
@@ -78,9 +78,9 @@ tasks:
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 
   build:
-    desc: Build the sextant CLI to workspace/tmp/sextant
+    desc: Build the fathom CLI to workspace/tmp/fathom
     cmds:
-      - "{{.GO}} build -o workspace/tmp/sextant ./cmd/sextant"
+      - "{{.GO}} build -o workspace/tmp/fathom ./cmd/fathom"
 
   calibrate-clone:
     desc: "Shallow-clone the calibration corpus into workspace/ (optional: LANG filter, e.g. task calibrate-clone -- Python Helm)"

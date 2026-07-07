@@ -1,4 +1,4 @@
-// Package plan defines the CUE schema for sextant plan files and their
+// Package plan defines the CUE schema for fathom plan files and their
 // generated verification status output.
 //
 // A plan file declares a set of tasks with acceptance contracts (#Plan).
@@ -52,7 +52,7 @@ package plan
 
 // #Plan is the top-level schema for a hand-edited plan file.
 #Plan: {
-	// service is the sextant service ID to evaluate the plan against.
+	// service is the fathom service ID to evaluate the plan against.
 	service: string
 
 	// tasks is the list of tasks to verify.
@@ -104,7 +104,7 @@ package plan
 
 // #Status is the top-level schema for the generated STATUS.cue document.
 #Status: {
-	// service is the sextant service ID that was evaluated.
+	// service is the fathom service ID that was evaluated.
 	service: string
 
 	// summary holds report-level pass/fail/unknown counts.

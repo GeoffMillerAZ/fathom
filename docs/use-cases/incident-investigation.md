@@ -32,9 +32,9 @@ Triage a production symptom fast using pre-computed call graphs, complexity hots
 
 ## How it enhances Claude Code
 
-Without sextant, investigating an incident means cold-reading unfamiliar code, grepping for handler names, and manually chasing call chains — an expensive, error-prone process that burns large amounts of context.
+Without fathom, investigating an incident means cold-reading unfamiliar code, grepping for handler names, and manually chasing call chains — an expensive, error-prone process that burns large amounts of context.
 
-With sextant:
+With fathom:
 
 - **Concern scoping** keeps tool results focused. Passing `concern: "checkout"` to `contradiction_scan` means you get contradictions in the checkout concern only — not a fleet-wide data dump. This is the ~77% token-reduction mechanism described in ADR-006.
 - **Pre-computed call graphs** let `find_callers` and `blast_radius` answer "what does this touch?" in a single tool call rather than a grep sweep across dozens of files.

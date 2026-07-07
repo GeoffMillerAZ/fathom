@@ -3,7 +3,7 @@ package filter_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
 // ─── Match tests ─────────────────────────────────────────────────────────────
@@ -183,7 +183,7 @@ func TestDefaultIgnore(t *testing.T) {
 	shouldPass := []string{
 		"main.go",
 		"internal/auth/token.go",
-		"cmd/sextant/main.go",
+		"cmd/fathom/main.go",
 		"pkg/client/client.go",
 	}
 	for _, p := range shouldIgnore {

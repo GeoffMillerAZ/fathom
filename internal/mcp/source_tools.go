@@ -27,17 +27,17 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/antipattern"
-	"github.com/geoffmilleraz/sextant/internal/analysis/cloc"
-	"github.com/geoffmilleraz/sextant/internal/analysis/cognitive"
-	"github.com/geoffmilleraz/sextant/internal/analysis/deprecation"
-	"github.com/geoffmilleraz/sextant/internal/analysis/deps"
-	"github.com/geoffmilleraz/sextant/internal/analysis/endpoints"
-	"github.com/geoffmilleraz/sextant/internal/analysis/envkeys"
-	"github.com/geoffmilleraz/sextant/internal/analysis/markers"
-	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
-	"github.com/geoffmilleraz/sextant/internal/analysis/security"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/antipattern"
+	"github.com/geoffmilleraz/fathom/internal/analysis/cloc"
+	"github.com/geoffmilleraz/fathom/internal/analysis/cognitive"
+	"github.com/geoffmilleraz/fathom/internal/analysis/deprecation"
+	"github.com/geoffmilleraz/fathom/internal/analysis/deps"
+	"github.com/geoffmilleraz/fathom/internal/analysis/endpoints"
+	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
+	"github.com/geoffmilleraz/fathom/internal/analysis/markers"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/security"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerSourceTools is called from registerTools (tools.go) and adds the

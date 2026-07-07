@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/llm"
-	"github.com/geoffmilleraz/sextant/internal/llmsec"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/llm"
+	"github.com/geoffmilleraz/fathom/internal/llmsec"
 )
 
 // newEnricher builds an Enricher backed by a MockClient for deterministic tests.

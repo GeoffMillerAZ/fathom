@@ -1,4 +1,4 @@
-// Package core defines sextant's shared domain model — the stable data contract
+// Package core defines fathom's shared domain model — the stable data contract
 // that the connector, fusion pipeline, store, extractors, and query engine all
 // build against. Keeping these types in one internal package prevents drift and
 // lets pkg/client re-export them for external consumers.

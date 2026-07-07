@@ -33,12 +33,12 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor"
-	"github.com/geoffmilleraz/sextant/internal/llm"
-	"github.com/geoffmilleraz/sextant/internal/sdd"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/llm"
+	"github.com/geoffmilleraz/fathom/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Config controls pipeline behaviour.

@@ -1,6 +1,6 @@
-# Sextant Usage
+# Fathom Usage
 
-How to ingest repos, query symbols, run the MCP server, and embed sextant in Go code.
+How to ingest repos, query symbols, run the MCP server, and embed fathom in Go code.
 
 See [architecture.md](architecture.md) for design context and [mcp-tools.md](mcp-tools.md)
 for the full MCP tool reference.
@@ -35,7 +35,7 @@ repo root. This directory is gitignored. Never write generated files elsewhere i
 
 | Path | Contents |
 |---|---|
-| `workspace/db/` | DuckDB stores (default: `workspace/db/sextant.duckdb`) |
+| `workspace/db/` | DuckDB stores (default: `workspace/db/fathom.duckdb`) |
 | `workspace/logs/` | Run and MCP call logs (`mcp-calls.jsonl`) |
 | `workspace/artifacts/` | Generated artifacts (`CLAUDE.md`, manifests, exports) |
 | `workspace/tmp/` | Ephemeral scratch files |
@@ -48,25 +48,25 @@ repo root. This directory is gitignored. Never write generated files elsewhere i
 
 ```sh
 # 1. Ingest the current directory as a service named "my-service"
-sextant ingest --service my-service --path .
+fathom ingest --service my-service --path .
 
 # 2. List stored symbols
-sextant inspect --service my-service
+fathom inspect --service my-service
 
 # 3. Query symbols relevant to the "auth" concern
-sextant query --service my-service --concern auth --keywords token,validate
+fathom query --service my-service --concern auth --keywords token,validate
 
 # 4. Start a stdio MCP server for your editor/agent
-sextant serve-mcp --store workspace/db/sextant.duckdb
+fathom serve-mcp --store workspace/db/fathom.duckdb
 ```
 
 ---
 
-## Ignoring files: `.sextantignore`
+## Ignoring files: `.fathomignore`
 
 `LocalConnector` always skips `vendor`, `.git`, `testdata`, `generated`,
 `node_modules`, `.idea`, and `.vscode`. For repo-specific exclusions, place a
-`.sextantignore` file at the service root (the `--path` directory). It uses
+`.fathomignore` file at the service root (the `--path` directory). It uses
 gitignore-style patterns — one per line, `#` comments, `!` negation, `**`
 globs, and trailing-slash dir-only rules:
 
@@ -91,7 +91,7 @@ behind an egress/DLP gate.
 
 All subcommands share the convention:
 
-- `--store` defaults to `workspace/db/sextant.duckdb`
+- `--store` defaults to `workspace/db/fathom.duckdb`
 - `--mode` selects the connector: `local` (default), `faux` (fixture data), or `github`
 - Exit 0 on success, 1 on any error
 
@@ -100,14 +100,14 @@ All subcommands share the convention:
 Ingest a service into the knowledge store.
 
 ```sh
-sextant ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
+fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Logical service ID, e.g. `payment-service` |
 | `--path` | `.` | Source root directory (local mode) |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts.
@@ -116,7 +116,7 @@ The pipeline is hash-gated: unchanged files (same SHA-256 as the stored fingerpr
 skipped. Re-ingesting a large repo where few files changed is near-free.
 
 ```sh
-sextant ingest --service payment-service --path /src/payment
+fathom ingest --service payment-service --path /src/payment
 # service:    payment-service
 # discovered: 142
 # extracted:  38
@@ -132,7 +132,7 @@ Ingest only files changed since a git ref. When `--base` is omitted, falls back 
 ingest.
 
 ```sh
-sextant ingest-diff --service <id> [--path <dir>] [--base <git-ref>] [--store <path>] [--mode local|faux]
+fathom ingest-diff --service <id> [--path <dir>] [--base <git-ref>] [--store <path>] [--mode local|faux]
 ```
 
 | Flag | Default | Description |
@@ -140,11 +140,11 @@ sextant ingest-diff --service <id> [--path <dir>] [--base <git-ref>] [--store <p
 | `--service` | (required) | Logical service ID |
 | `--path` | `.` | Source root directory |
 | `--base` | `""` | Git ref to diff against (e.g. `HEAD~1`, `main`). Empty = full ingest |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 | `--mode` | `local` | Connector mode |
 
 ```sh
-sextant ingest-diff --service payment-service --path /src/payment --base main
+fathom ingest-diff --service payment-service --path /src/payment --base main
 # service:    payment-service
 # base:       main
 # changed:    7 files
@@ -159,7 +159,7 @@ sextant ingest-diff --service payment-service --path /src/payment --base main
 Poll for file changes and re-ingest automatically.
 
 ```sh
-sextant watch --service <id> --path <dir> [--interval <duration>] [--store <path>] [--mode local|faux]
+fathom watch --service <id> --path <dir> [--interval <duration>] [--store <path>] [--mode local|faux]
 ```
 
 | Flag | Default | Description |
@@ -167,14 +167,14 @@ sextant watch --service <id> --path <dir> [--interval <duration>] [--store <path
 | `--service` | (required) | Logical service ID |
 | `--path` | (required) | Source root to watch |
 | `--interval` | `5s` | Polling interval, e.g. `5s`, `1m` |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 | `--mode` | `local` | Connector mode |
 
 `watch` uses mtime comparison. On any change it triggers a full `Ingest` for the service
 and prints a summary line. Runs until interrupted.
 
 ```sh
-sextant watch --service my-service --path . --interval 10s
+fathom watch --service my-service --path . --interval 10s
 # [watch] watching my-service at . (interval=10s)
 # [watch] my-service: re-ingested (discovered=142 extracted=3 symbols=891)
 ```
@@ -186,17 +186,17 @@ sextant watch --service my-service --path . --interval 10s
 List stored symbols for a service.
 
 ```sh
-sextant inspect --service <id> [--kind <SourceKind>] [--store <path>]
+fathom inspect --service <id> [--kind <SourceKind>] [--store <path>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID to inspect |
 | `--kind` | `""` | Filter by SourceKind (e.g. `GoFunc`, `GoType`, `K8sWorkload`) |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 
 ```sh
-sextant inspect --service my-service --kind GoFunc
+fathom inspect --service my-service --kind GoFunc
 # service: my-service
 # symbols: 47
 #
@@ -212,7 +212,7 @@ sextant inspect --service my-service --kind GoFunc
 Query symbols for a concern. ConcernID is mandatory (ADR-006).
 
 ```sh
-sextant query --service <id> --concern <concern-id> [--keywords <kw,...>] [--top <n>] [--store <path>]
+fathom query --service <id> --concern <concern-id> [--keywords <kw,...>] [--top <n>] [--store <path>]
 ```
 
 | Flag | Default | Description |
@@ -221,13 +221,13 @@ sextant query --service <id> --concern <concern-id> [--keywords <kw,...>] [--top
 | `--concern` | (required) | Concern ID to scope the query, e.g. `authentication`, `billing` |
 | `--keywords` | `""` | Comma-separated keywords for relevance scoring |
 | `--top` | `20` | Maximum results to return |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 
 When the concern-scoped query returns no results, the command falls back to a keyword
 substring search over all symbols for the service.
 
 ```sh
-sextant query --service payment-service --concern auth --keywords token,validate --top 5
+fathom query --service payment-service --concern auth --keywords token,validate --top 5
 #   1  ValidateToken                             GoFunc  internal/auth/token.go
 #      func ValidateToken(ctx context.Context, tok string) error
 #   2  RefreshToken                              GoFunc  internal/auth/token.go
@@ -245,7 +245,7 @@ Serve the MCP JSON-RPC 2.0 protocol over stdio. This is the mode used by editor 
 clients (e.g. Claude Code). No network port is opened.
 
 ```sh
-sextant serve-mcp --store <path> [--mode local|faux] [--auto-refresh]
+fathom serve-mcp --store <path> [--mode local|faux] [--auto-refresh]
 ```
 
 | Flag | Default | Description |
@@ -266,7 +266,7 @@ single-writer). The process reads JSON-RPC 2.0 messages from stdin and writes re
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-sextant serve-http --store <path> [--addr <host:port>]
+fathom serve-http --store <path> [--addr <host:port>]
 ```
 
 | Flag | Default | Description |
@@ -284,11 +284,11 @@ HTTP endpoints:
 | `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`companion`, `coding`, `investigation`, `shared`, `platform`): filters `tools/list` **and** hard-gates `tools/call` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | SSE stream — sends `hello` event then stays open |
-| `GET` | `/metrics` | Text metrics: `sextant_uptime_seconds`, `sextant_requests_total` |
+| `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total` |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
 
 ```sh
-sextant serve-http --store workspace/db/sextant.duckdb --addr :7575
+fathom serve-http --store workspace/db/fathom.duckdb --addr :7575
 # serve-http: listening on :7575
 
 # In another terminal:
@@ -308,7 +308,7 @@ Ingest all services under a root directory. Each immediate subdirectory is treat
 service; each gets its own `<service-id>.duckdb` file in the output store directory.
 
 ```sh
-sextant platform-ingest --root <dir> --store-dir <dir>
+fathom platform-ingest --root <dir> --store-dir <dir>
 ```
 
 | Flag | Default | Description |
@@ -317,7 +317,7 @@ sextant platform-ingest --root <dir> --store-dir <dir>
 | `--store-dir` | (required) | Output directory for per-service `.duckdb` files |
 
 ```sh
-sextant platform-ingest --root /src/services --store-dir workspace/db/platform
+fathom platform-ingest --root /src/services --store-dir workspace/db/platform
 # service:    auth-service
 #   discovered: 89
 #   extracted:  89
@@ -336,18 +336,18 @@ already ingested into the store, so callers are found for **every language** who
 extractor populated them — not just Go.
 
 ```sh
-sextant platform-callers --store <path> --symbol <name> [--services a,b,c]
+fathom platform-callers --store <path> --symbol <name> [--services a,b,c]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--symbol` | (required) | Bare symbol name to find cross-repo callers of |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path (language-agnostic source) |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path (language-agnostic source) |
 | `--services` | (all in store) | Comma-separated service IDs to include |
 | `--repos` | — | Legacy Go-only mode: comma-separated `id=path` pairs; walks Go source on disk and overrides `--store` when set |
 
 ```sh
-sextant platform-callers --store workspace/db/fleet.duckdb --symbol ProcessPayment
+fathom platform-callers --store workspace/db/fleet.duckdb --symbol ProcessPayment
 # cross-repo callers of "ProcessPayment" (store workspace/db/fleet.duckdb (all languages)):
 #
 # FROM-SERVICE             FROM-FILE                                TO-SERVICE               TO-FILE
@@ -368,20 +368,20 @@ Generate a `CLAUDE.md` from stored symbols. The output is a Markdown file suitab
 dropping into an AI coding assistant's context.
 
 ```sh
-sextant gen-claude-md --service <id> [--store <path>] [--output <path>]
+fathom gen-claude-md --service <id> [--store <path>] [--output <path>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 | `--output` | `workspace/artifacts/CLAUDE.md` | Output file path |
 
 Output is deterministic: symbols are sorted by kind then name. The file includes a
 kind/count breakdown table and a full symbol listing.
 
 ```sh
-sextant gen-claude-md --service my-service
+fathom gen-claude-md --service my-service
 # wrote workspace/artifacts/CLAUDE.md (891 symbols)
 ```
 
@@ -397,19 +397,19 @@ The plan file is the human-owned source of truth; `STATUS.cue` is regenerated, n
 hand-edited — there is no bidirectional sync and no plan state stored in the database.
 
 ```sh
-sextant gen-status-cue --plan <file> --service <id> [--store <path>] [--output <path>] [--concern <c>]
+fathom gen-status-cue --plan <file> --service <id> [--store <path>] [--output <path>] [--concern <c>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--plan` | (required) | Path to a `.cue` or `.json` plan file |
 | `--service` | (required) | Service ID to verify against |
-| `--store` | `workspace/db/sextant.duckdb` | DuckDB store path |
+| `--store` | `workspace/db/fathom.duckdb` | DuckDB store path |
 | `--output` | `workspace/artifacts/STATUS.cue` | Output CUE file path |
 | `--concern` | — | Optional concern to scope contradiction detection |
 
 ```sh
-sextant gen-status-cue --plan plan.cue --service my-service
+fathom gen-status-cue --plan plan.cue --service my-service
 # wrote workspace/artifacts/STATUS.cue: 4 tasks, 2 verified, 1 failing, 1 unknown
 ```
 
@@ -424,7 +424,7 @@ Generate a platform manifest YAML from `*.duckdb` store files. The manifest list
 IDs and their store paths, suitable for feeding to `serve-http` platform mode.
 
 ```sh
-sextant gen-platform-manifest --store-dir <dir> [--output <path>]
+fathom gen-platform-manifest --store-dir <dir> [--output <path>]
 ```
 
 | Flag | Default | Description |
@@ -433,7 +433,7 @@ sextant gen-platform-manifest --store-dir <dir> [--output <path>]
 | `--output` | `workspace/artifacts/platform-manifest.yaml` | Output YAML path |
 
 ```sh
-sextant gen-platform-manifest --store-dir workspace/db/platform
+fathom gen-platform-manifest --store-dir workspace/db/platform
 # wrote workspace/artifacts/platform-manifest.yaml (4 services)
 ```
 
@@ -444,20 +444,20 @@ sextant gen-platform-manifest --store-dir workspace/db/platform
 Print version information.
 
 ```sh
-sextant version
+fathom version
 ```
 
 ---
 
 ### `session-hook`
 
-Emit Claude Code **SessionStart** hook JSON that primes the session to use sextant's index
+Emit Claude Code **SessionStart** hook JSON that primes the session to use fathom's index
 before falling back to Grep/Read. It pings the shared serve-http daemon, maps the project
 dir (`$CLAUDE_PROJECT_DIR`, else cwd) to a service, and prints a one-line `additionalContext`
 — or an honest "daemon down / repo not indexed" signal. Always exits 0; never stalls startup.
 
 ```sh
-sextant session-hook [--url http://localhost:7575] [--dir <project-dir>]
+fathom session-hook [--url http://localhost:7575] [--dir <project-dir>]
 ```
 
 Wire it into `~/.claude/settings.json` (alongside any existing SessionStart hook):
@@ -467,13 +467,13 @@ Wire it into `~/.claude/settings.json` (alongside any existing SessionStart hook
   "hooks": {
     "SessionStart": [
       { "matcher": "startup|resume|clear|compact",
-        "hooks": [ { "type": "command", "command": "/abs/path/bin/sextant session-hook", "timeout": 10 } ] }
+        "hooks": [ { "type": "command", "command": "/abs/path/bin/fathom session-hook", "timeout": 10 } ] }
     ]
   }
 }
 ```
 
-The daemon URL can also be set with `SEXTANT_HTTP`.
+The daemon URL can also be set with `FATHOM_HTTP`.
 
 ---
 
@@ -483,10 +483,10 @@ The daemon URL can also be set with `SEXTANT_HTTP`.
 query engine, and store. Import it without touching any `internal/` package.
 
 ```go
-import "github.com/geoffmilleraz/sextant/pkg/client"
+import "github.com/geoffmilleraz/fathom/pkg/client"
 
 // Open (or create) a DuckDB store; wire a local-mode connector.
-c, err := client.NewConstantClient(client.ModeLocal, "workspace/db/sextant.duckdb")
+c, err := client.NewConstantClient(client.ModeLocal, "workspace/db/fathom.duckdb")
 if err != nil { /* handle */ }
 defer c.Close()
 
@@ -543,20 +543,20 @@ Pass `""` for `storePath` to use an in-memory DuckDB database (useful in tests).
 
 ### Claude Code (stdio)
 
-Add sextant to your Claude Code MCP configuration:
+Add fathom to your Claude Code MCP configuration:
 
 ```json
 {
   "mcpServers": {
-    "sextant": {
-      "command": "sextant",
-      "args": ["serve-mcp", "--store", "/path/to/workspace/db/sextant.duckdb"]
+    "fathom": {
+      "command": "fathom",
+      "args": ["serve-mcp", "--store", "/path/to/workspace/db/fathom.duckdb"]
     }
   }
 }
 ```
 
-Claude Code will launch the `sextant serve-mcp` process and communicate over stdio.
+Claude Code will launch the `fathom serve-mcp` process and communicate over stdio.
 
 ### Any MCP-compatible client (stdio)
 
@@ -565,11 +565,11 @@ Pipe JSON-RPC 2.0 messages to the `serve-mcp` process:
 ```sh
 # Initialize
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"my-client","version":"1.0"}}}' \
-  | sextant serve-mcp --store workspace/db/sextant.duckdb
+  | fathom serve-mcp --store workspace/db/fathom.duckdb
 
 # tools/list
 echo '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
-  | sextant serve-mcp --store workspace/db/sextant.duckdb
+  | fathom serve-mcp --store workspace/db/fathom.duckdb
 ```
 
 ### HTTP client

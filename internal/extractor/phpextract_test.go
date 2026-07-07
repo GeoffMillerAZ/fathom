@@ -3,7 +3,7 @@ package extractor
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // phpFixture is a deterministic PHP source fragment exercising all symbol types

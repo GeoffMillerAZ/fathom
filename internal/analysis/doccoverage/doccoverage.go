@@ -16,7 +16,7 @@ import (
 	"sort"
 	"unicode"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Report is the documentation coverage result.

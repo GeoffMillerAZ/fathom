@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // runServeHTTP is the testable entry point for the "serve-http" subcommand.
@@ -192,7 +192,7 @@ func newHTTPHandler(srv *mcp.Server) http.Handler {
 		w.WriteHeader(http.StatusOK)
 
 		// Send the initial hello event.
-		fmt.Fprint(w, "event: hello\ndata: {\"server\":\"sextant\"}\n\n")
+		fmt.Fprint(w, "event: hello\ndata: {\"server\":\"fathom\"}\n\n")
 		if f, ok := w.(http.Flusher); ok {
 			f.Flush()
 		}
@@ -212,8 +212,8 @@ func newHTTPHandler(srv *mcp.Server) http.Handler {
 		reqCount := state.reqCount.Load()
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "sextant_uptime_seconds %.3f\n", uptime)
-		fmt.Fprintf(w, "sextant_requests_total %d\n", reqCount)
+		fmt.Fprintf(w, "fathom_uptime_seconds %.3f\n", uptime)
+		fmt.Fprintf(w, "fathom_requests_total %d\n", reqCount)
 	})
 
 	// POST /reload — 200 OK stub; in production this would call

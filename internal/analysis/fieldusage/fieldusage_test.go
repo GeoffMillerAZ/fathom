@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/fieldusage"
+	"github.com/geoffmilleraz/fathom/internal/analysis/fieldusage"
 )
 
 const basicSrc = `package foo

@@ -3,7 +3,7 @@ package extractor
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // bashFixture exercises both function definition styles supported by Bash:

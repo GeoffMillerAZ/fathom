@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // MemoryStore is an in-process Store implementation backed by plain Go maps.

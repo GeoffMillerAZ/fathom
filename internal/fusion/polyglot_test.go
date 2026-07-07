@@ -9,10 +9,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/fusion"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 var polyglotSvc = core.ServiceRef{

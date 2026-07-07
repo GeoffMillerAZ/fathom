@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 #
-# Measure how much Claude Code actually reaches for sextant vs. shell grep in a
+# Measure how much Claude Code actually reaches for fathom vs. shell grep in a
 # project's sessions — the dogfood adoption signal.
 #
-# The SessionStart adoption hook (sextant session-hook) was installed to push
+# The SessionStart adoption hook (fathom session-hook) was installed to push
 # agents toward the index instead of grepping. This script quantifies whether it
-# worked: for each Claude Code transcript of a project, it counts sextant MCP
+# worked: for each Claude Code transcript of a project, it counts fathom MCP
 # tool calls vs. grep-style searches (Grep tool + `grep`/`rg` in Bash), and
 # splits the sessions at the hook-install date so you can read before/after.
 #
 # Read-only: it only parses ~/.claude/projects/*/*.jsonl. Nothing is written.
 #
-#   bash scripts/sextant-adoption.sh app-kit
-#   bash scripts/sextant-adoption.sh app-kit resume_as_code sextant
-#   HOOK_DATE=2026-06-17 bash scripts/sextant-adoption.sh app-kit
+#   bash scripts/fathom-adoption.sh app-kit
+#   bash scripts/fathom-adoption.sh app-kit resume_as_code fathom
+#   HOOK_DATE=2026-06-17 bash scripts/fathom-adoption.sh app-kit
 #
 # Args: one or more project names (substring-matched against the encoded
 # ~/.claude/projects dir names, so the ~/code-symlink variants are all caught).
@@ -22,7 +22,7 @@ set -euo pipefail
 
 PROJECTS_DIR="$HOME/.claude/projects"
 HOOK_DATE="${HOOK_DATE:-2026-06-17}"   # when the SessionStart adoption hook went live
-DEFAULT_NAMES=(sextant agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
+DEFAULT_NAMES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
 
 names=("$@")
 [ ${#names[@]} -eq 0 ] && names=("${DEFAULT_NAMES[@]}")
@@ -35,7 +35,7 @@ import json, os, sys, glob
 projects_dir, hook_date = sys.argv[1], sys.argv[2]
 names = sys.argv[3:]
 
-def is_sextant(name): return isinstance(name, str) and name.startswith("mcp__sextant__")
+def is_fathom(name): return isinstance(name, str) and (name.startswith("mcp__fathom__") or name.startswith("mcp__sextant__"))  # legacy prefix: pre-rename transcripts
 
 def is_grep(name, inp):
     if name == "Grep":
@@ -49,11 +49,11 @@ def is_grep(name, inp):
     return False
 
 def walk(obj, sx, gp):
-    """Recursively find tool_use blocks; tally sextant vs grep."""
+    """Recursively find tool_use blocks; tally fathom vs grep."""
     if isinstance(obj, dict):
         if obj.get("type") == "tool_use":
             nm = obj.get("name", "")
-            if is_sextant(nm): sx[0] += 1
+            if is_fathom(nm): sx[0] += 1
             elif is_grep(nm, obj.get("input", {})): gp[0] += 1
         for v in obj.values(): walk(v, sx, gp)
     elif isinstance(obj, list):
@@ -93,7 +93,7 @@ for name in names:
     sessions.sort()
     pre = [s for s in sessions if s[0] and s[0] < hook_date]
     post = [s for s in sessions if s[0] and s[0] >= hook_date]
-    print(f"  {'date':<11} {'sextant':>8} {'grep':>6} {'sextant share':>14}")
+    print(f"  {'date':<11} {'fathom':>8} {'grep':>6} {'fathom share':>14}")
     for day, sx, gp, _ in sessions:
         share = sx / (sx + gp) if (sx + gp) else 0
         marker = "  <- post-hook" if (day and day >= hook_date) else ""
@@ -105,12 +105,12 @@ for name in names:
     ps, pg, psh, pn = agg(pre)
     qs, qg, qsh, qn = agg(post)
     print(f"  --")
-    print(f"  pre-hook  ({pn} sess): sextant {ps:>5}  grep {pg:>5}  share {psh:.0%}")
-    print(f"  post-hook ({qn} sess): sextant {qs:>5}  grep {qg:>5}  share {qsh:.0%}")
+    print(f"  pre-hook  ({pn} sess): fathom {ps:>5}  grep {pg:>5}  share {psh:.0%}")
+    print(f"  post-hook ({qn} sess): fathom {qs:>5}  grep {qg:>5}  share {qsh:.0%}")
     if pn and qn:
         delta = qsh - psh
-        print(f"  Δ sextant share: {delta:+.0%}")
+        print(f"  Δ fathom share: {delta:+.0%}")
     grand[name] = (pre, post)
 
-print(f"\n(hook install date = {hook_date}; 'sextant share' = sextant / (sextant + grep))")
+print(f"\n(hook install date = {hook_date}; 'fathom share' = fathom / (fathom + grep))")
 PY

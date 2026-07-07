@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-Sextant exposes a JSON-RPC 2.0 MCP server (stdio or HTTP). This page documents every
+Fathom exposes a JSON-RPC 2.0 MCP server (stdio or HTTP). This page documents every
 registered tool, prompt, and resource.
 
 See [usage.md](usage.md) for how to connect a client and switch profiles.
@@ -174,9 +174,9 @@ Queries and navigation tools return `SymbolNode` objects:
 
 ## Prompts
 
-Sextant registers four canned prompts (via `prompts/list` and `prompts/get`). Each prompt
+Fathom registers four canned prompts (via `prompts/list` and `prompts/get`). Each prompt
 returns a structured sequence of instructions that guides an AI agent to use the
-appropriate sextant tools for the task.
+appropriate fathom tools for the task.
 
 | Prompt | Arguments | Purpose |
 |---|---|---|
@@ -206,12 +206,12 @@ appropriate sextant tools for the task.
 
 ## Resources
 
-Sextant registers two MCP resource types (via `resources/list` and `resources/read`).
+Fathom registers two MCP resource types (via `resources/list` and `resources/read`).
 
 | URI | MIME type | Contents |
 |---|---|---|
-| `sextant:///manifest` | `application/json` | Server manifest: registered tools, active profile, known service IDs, server version |
-| `sextant:///service/<id>` | `application/json` | Per-service symbol summary: symbol count, file count, file list, kind breakdown |
+| `fathom:///manifest` | `application/json` | Server manifest: registered tools, active profile, known service IDs, server version |
+| `fathom:///service/<id>` | `application/json` | Per-service symbol summary: symbol count, file count, file list, kind breakdown |
 
 ### Reading the manifest
 
@@ -220,14 +220,14 @@ Sextant registers two MCP resource types (via `resources/list` and `resources/re
   "jsonrpc": "2.0",
   "id": 1,
   "method": "resources/read",
-  "params": { "uri": "sextant:///manifest" }
+  "params": { "uri": "fathom:///manifest" }
 }
 ```
 
 Response `contents[0].text` is a JSON object:
 ```json
 {
-  "server": "sextant",
+  "server": "fathom",
   "version": "1.0.0",
   "tools": ["query_symbols", "find_callers", ...],
   "active_profile": "coding",
@@ -242,7 +242,7 @@ Response `contents[0].text` is a JSON object:
   "jsonrpc": "2.0",
   "id": 2,
   "method": "resources/read",
-  "params": { "uri": "sextant:///service/payment-service" }
+  "params": { "uri": "fathom:///service/payment-service" }
 }
 ```
 

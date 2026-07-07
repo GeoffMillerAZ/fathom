@@ -6,8 +6,8 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 	tsbash "github.com/tree-sitter/tree-sitter-bash/bindings/go"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor/treesitter"
 )
 
 // bashLang is initialised once and shared across all BashExtractor calls.

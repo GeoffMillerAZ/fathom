@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // refreshFake is a QueryInterface whose ServiceMeta reports a fixed indexed

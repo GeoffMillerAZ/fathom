@@ -34,7 +34,7 @@ Give Claude Code (or any AI coding agent) a precise, token-efficient context sli
 
 ## How it enhances Claude Code
 
-Without sextant, an agent either reads files speculatively (burning tokens on irrelevant code) or misses context entirely and drifts.
+Without fathom, an agent either reads files speculatively (burning tokens on irrelevant code) or misses context entirely and drifts.
 
 Concern scoping (ADR-006) measures approximately 77% fewer tokens than a naive full-symbol dump, because `query_symbols` and `pack_context` both rank symbols by relevance to the stated concern and drop everything else. The agent receives only the symbols, callers, and call edges that matter for the change it is about to make.
 
@@ -139,7 +139,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 **Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom.
 
-**Static context injection**: for sessions where the MCP server is not available, run `sextant gen-claude-md --service auth-service` to write a `CLAUDE.md` to `workspace/artifacts/CLAUDE.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
+**Static context injection**: for sessions where the MCP server is not available, run `fathom gen-claude-md --service auth-service` to write a `CLAUDE.md` to `workspace/artifacts/CLAUDE.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
 
 **`call_hierarchy` depth**: defaults to 2, maximum 5. Keep it low (2–3) for tight context; higher depths expand rapidly and may exceed budget.
 

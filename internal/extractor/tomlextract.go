@@ -3,7 +3,7 @@ package extractor
 import (
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	toml "github.com/pelletier/go-toml/v2"
 )
 

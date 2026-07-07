@@ -9,7 +9,7 @@ import (
 	"math"
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // FuncComplexity is the complexity report for a single func or method symbol.

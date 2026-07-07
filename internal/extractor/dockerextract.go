@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // DockerfileExtractor implements Extractor for Dockerfile files. It uses a

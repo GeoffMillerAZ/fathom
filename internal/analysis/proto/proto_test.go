@@ -3,7 +3,7 @@ package proto_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/proto"
+	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 )
 
 const fixture = `

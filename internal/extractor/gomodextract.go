@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // GoModExtractor implements Extractor for go.mod files. It parses require

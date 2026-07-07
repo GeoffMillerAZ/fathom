@@ -14,7 +14,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // PlatformStore manages a fleet of per-service DuckDB stores rooted at a

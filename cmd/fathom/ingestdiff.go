@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // runIngestDiff is the testable core of cmdIngestDiff. The gitRunner parameter
@@ -20,7 +20,7 @@ func runIngestDiff(
 	fs := newFlagSet("ingest-diff", stderr)
 	service := fs.String("service", "", "logical service ID (required)")
 	path := fs.String("path", ".", "path to service source root")
-	storePath := fs.String("store", "workspace/db/sextant.duckdb", "DuckDB store path")
+	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path")
 	base := fs.String("base", "", "git ref to diff against (empty = full ingest)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 

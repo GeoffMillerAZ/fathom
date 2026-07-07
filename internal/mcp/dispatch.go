@@ -81,7 +81,7 @@ func (s *Server) handleInitialize(_ context.Context, _ json.RawMessage) (any, *r
 			"prompts":   map[string]any{"listChanged": false},
 		},
 		"serverInfo": map[string]any{
-			"name":    "sextant",
+			"name":    "fathom",
 			"version": "1.0.0",
 		},
 	}, nil

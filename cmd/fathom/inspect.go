@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 func cmdInspect(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("inspect", stderr)
 	service := fs.String("service", "", "service ID to inspect (required)")
 	kind := fs.String("kind", "", "filter by SourceKind (e.g. GoFunc, GoType)")
-	storePath := fs.String("store", "workspace/db/sextant.duckdb", "DuckDB store path")
+	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

@@ -1,6 +1,6 @@
 # scripts/
 
-Helper scripts for the sextant project.
+Helper scripts for the fathom project.
 
 ## ci.sh
 

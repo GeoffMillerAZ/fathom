@@ -3,7 +3,7 @@ package configdrift_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/configdrift"
+	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
 )
 
 func TestDrift_Basic(t *testing.T) {

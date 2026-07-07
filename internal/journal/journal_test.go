@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/sextant/internal/journal"
+	"github.com/geoffmilleraz/fathom/internal/journal"
 )
 
 func TestRecordFindings_Empty(t *testing.T) {

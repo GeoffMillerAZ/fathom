@@ -1,6 +1,6 @@
 # Why DuckDB?
 
-Sextant uses **DuckDB** (`github.com/marcboeker/go-duckdb/v2`) as its storage engine.
+Fathom uses **DuckDB** (`github.com/marcboeker/go-duckdb/v2`) as its storage engine.
 This page explains the reasoning for engineers who wonder why an embedded analytical
 database is the right fit, and what the CGO trade-off means in practice.
 
@@ -19,10 +19,10 @@ the wrong tool.
 
 ---
 
-## Sextant's workload is analytical, not transactional
+## Fathom's workload is analytical, not transactional
 
 A typical ingested repo produces tens of thousands of `Observation` rows. The queries
-sextant needs to answer efficiently are not transactional point-lookups but analytical
+fathom needs to answer efficiently are not transactional point-lookups but analytical
 scans:
 
 - **Hotspot detection**: `GROUP BY symbol ORDER BY SUM(complexity) DESC LIMIT 10` over
@@ -43,7 +43,7 @@ advantage.
 
 ---
 
-## Concrete reasons DuckDB fits sextant
+## Concrete reasons DuckDB fits fathom
 
 ### 1. Columnar scans over observations
 

@@ -1,4 +1,4 @@
-// Package llmsec provides LLM security helpers for sextant: DLP-based text
+// Package llmsec provides LLM security helpers for fathom: DLP-based text
 // redaction to strip credentials and other sensitive content from symbol data
 // before it is forwarded to any language model.
 //

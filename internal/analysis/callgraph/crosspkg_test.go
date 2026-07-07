@@ -3,8 +3,8 @@ package callgraph_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // TestCrossPackageSelectorResolves covers the very common Go pattern where a

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Rebuild the sextant fleet index from scratch with clean service IDs and path
+# Rebuild the fathom fleet index from scratch with clean service IDs and path
 # metadata.
 #
 # Why: the live fleet store was ingested without ServiceMeta.path/commit (and
@@ -20,24 +20,24 @@
 #
 set -euo pipefail
 
-SEXTANT_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BIN="$SEXTANT_REPO/bin/sextant"
-STORE="$SEXTANT_REPO/workspace/db/fleet.duckdb"
-FLEET_BASE="$(dirname "$SEXTANT_REPO")"
-LABEL="com.geoffmilleraz.sextant-http"
+FATHOM_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BIN="$FATHOM_REPO/bin/fathom"
+STORE="$FATHOM_REPO/workspace/db/fleet.duckdb"
+FLEET_BASE="$(dirname "$FATHOM_REPO")"
+LABEL="com.geoffmilleraz.fathom-http"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 
 # Fleet services — ingested as "<name>" from "$FLEET_BASE/<name>".
-SERVICES=(sextant agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
+SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
 
-echo "==> sextant fleet re-ingest  (store: $STORE)"
-[ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $SEXTANT_REPO && go build -o bin/sextant ./cmd/sextant)"; exit 1; }
+echo "==> fathom fleet re-ingest  (store: $STORE)"
+[ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $FATHOM_REPO && go build -o bin/fathom ./cmd/fathom)"; exit 1; }
 
 echo "==> stopping the daemon (releases the single-writer DuckDB lock)"
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
-for _ in $(seq 1 15); do pgrep -f "bin/sextant serve-http" >/dev/null || break; sleep 1; done
-if pgrep -f "bin/sextant serve-http" >/dev/null; then
+for _ in $(seq 1 15); do pgrep -f "bin/fathom serve-http" >/dev/null || break; sleep 1; done
+if pgrep -f "bin/fathom serve-http" >/dev/null; then
   echo "ERROR: a serve-http process is still holding the lock; reap it and retry."; exit 1
 fi
 
@@ -52,6 +52,9 @@ fi
 echo "==> ingesting each fleet repo with a clean service ID + path"
 for svc in "${SERVICES[@]}"; do
   path="$FLEET_BASE/$svc"
+  # The fathom repo itself may still live in a directory named after the old
+  # brand — resolve its service to this script's own repo root.
+  if [ "$svc" = "fathom" ] && [ ! -d "$path/.git" ]; then path="$FATHOM_REPO"; fi
   if [ ! -d "$path/.git" ]; then echo "    - skip $svc (no git repo at $path)"; continue; fi
   if out="$("$BIN" ingest --service "$svc" --path "$path" --store "$STORE" 2>&1)"; then
     echo "    - $svc  $(echo "$out" | awk '/^symbols:/{print "→ "$2" symbols"}')  ($path)"
@@ -69,7 +72,7 @@ for i in $(seq 1 30); do
   if curl -s -m 2 http://localhost:7575/healthz 2>/dev/null | grep -q ok; then echo "    healthz OK (${i}s)"; ok=1; break; fi
   sleep 1
 done
-if [ "$ok" != 1 ]; then echo "    daemon not up yet — check /tmp/sextant-http.err"; exit 1; fi
+if [ "$ok" != 1 ]; then echo "    daemon not up yet — check /tmp/fathom-http.err"; exit 1; fi
 
 echo "    services + symbol counts (no '../' duplicates expected):"
 curl -s -m 8 -X POST http://localhost:7575/rpc -H 'content-type: application/json' \
@@ -81,10 +84,10 @@ for s in p.get("services",[]): print("      %-20s %s symbols" % (s.get("service"
 
 echo "    freshness (indexed_commit should now be populated):"
 curl -s -m 8 -X POST http://localhost:7575/rpc -H 'content-type: application/json' \
-  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"staleness_report","arguments":{"service":"sextant"}}}' 2>/dev/null \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"staleness_report","arguments":{"service":"fathom"}}}' 2>/dev/null \
   | python3 -c 'import sys,json
 r=json.load(sys.stdin).get("result",{}); c=r.get("content")
 p=json.loads(c[0]["text"]) if isinstance(c,list) and c else r
-print("      sextant indexed_commit:", p.get("indexed_commit") or "(still empty — check ingest)")'
+print("      fathom indexed_commit:", p.get("indexed_commit") or "(still empty — check ingest)")'
 
 echo "==> done. Clean fleet index with path metadata; the daemon self-refreshes on HEAD drift."

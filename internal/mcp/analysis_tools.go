@@ -13,8 +13,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
-	"github.com/geoffmilleraz/sextant/internal/depgraph"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/depgraph"
 )
 
 // registerAnalysisTools is called from registerTools (tools.go) and adds the

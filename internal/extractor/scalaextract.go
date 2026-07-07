@@ -6,8 +6,8 @@ import (
 	ts "github.com/tree-sitter/go-tree-sitter"
 	tsscala "github.com/tree-sitter/tree-sitter-scala/bindings/go"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor/treesitter"
 )
 
 // scalaLang is initialised once and shared across all ScalaExtractor calls.

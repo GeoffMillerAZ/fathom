@@ -1,13 +1,13 @@
 ---
 description: Evidence-check a plan/checklist against code — which "done" items aren't actually backed by code?
-argument-hint: "[plan file, default tmp/TRACKING.md] [service, default sextant]"
+argument-hint: "[plan file, default tmp/TRACKING.md] [service, default fathom]"
 ---
 
 Run an **evidence-backed definition-of-done** check before trusting any "done" claim.
 
-1. Resolve the plan file and service from `$ARGUMENTS` (default: plan = `tmp/TRACKING.md`, service = `sextant`).
+1. Resolve the plan file and service from `$ARGUMENTS` (default: plan = `tmp/TRACKING.md`, service = `fathom`).
 2. Read the plan file's contents.
-3. Call the sextant MCP tool **`verify_plan`** with:
+3. Call the fathom MCP tool **`verify_plan`** with:
    - `service`: the service
    - `plan_markdown`: the full contents of the plan file
    (The tool parses each `- [ ] / [x]` line; add `{symbol: Foo}` / `[US-042]` annotations to a line to give it a checkable contract.)

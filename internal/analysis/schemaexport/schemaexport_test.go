@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/schemaexport"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/schemaexport"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ func TestExportJSON_CallsSorted(t *testing.T) {
 
 func TestExportDOT_StartsWithDigraph(t *testing.T) {
 	out := schemaexport.ExportDOT(edges())
-	if !strings.HasPrefix(out, "digraph sextant {") {
+	if !strings.HasPrefix(out, "digraph fathom {") {
 		t.Errorf("ExportDOT missing header; got: %q", out[:min(len(out), 40)])
 	}
 }
@@ -186,7 +186,7 @@ func TestExportDOT_Determinism(t *testing.T) {
 
 func TestExportDOT_Empty(t *testing.T) {
 	out := schemaexport.ExportDOT(nil)
-	if out != "digraph sextant {\n}\n" {
+	if out != "digraph fathom {\n}\n" {
 		t.Errorf("ExportDOT(nil) = %q, want empty digraph", out)
 	}
 }

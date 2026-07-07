@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // FauxConnector is a Connector that reads from the in-repo

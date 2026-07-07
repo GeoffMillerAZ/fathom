@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/dataflow"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/dataflow"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // fixture: A -> B -> C; D is an orphan; TestFoo -> A.

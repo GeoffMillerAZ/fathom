@@ -13,7 +13,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/cluster"
+	"github.com/geoffmilleraz/fathom/internal/cluster"
 )
 
 // CloneGroup is a set of file identifiers (or "file:chunkN" chunk keys) that

@@ -3,8 +3,8 @@ package concern_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/concern"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/concern"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ---------------------------------------------------------------------------

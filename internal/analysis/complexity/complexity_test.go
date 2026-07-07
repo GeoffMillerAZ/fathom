@@ -4,8 +4,8 @@ import (
 	"math"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/complexity"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // makeNode is a helper to build a SymbolNode for a func/method with given complexity.

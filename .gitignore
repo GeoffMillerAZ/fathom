@@ -23,3 +23,4 @@ coverage.*
 
 # Built binary at repo root (module name)
 /sextant
+/fathom

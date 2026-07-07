@@ -11,7 +11,7 @@ package crossrepocycles
 import (
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/depgraph"
+	"github.com/geoffmilleraz/fathom/internal/depgraph"
 )
 
 // Detect finds all import cycles in the cross-repo service dependency graph.

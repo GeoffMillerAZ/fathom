@@ -27,13 +27,13 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `review_change` | MCP prompt | Structured agent workflow for reviewing a code change: rename impact → test impact → API surface → complexity → call path |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
 | `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
-| `sextant ingest-diff` | CLI | Ingest only files changed since a given git ref, then exit (pre-session or CI use) |
+| `fathom ingest-diff` | CLI | Ingest only files changed since a given git ref, then exit (pre-session or CI use) |
 
 ---
 
 ## How it enhances Claude Code
 
-Without sextant, an agent reviewing a PR must read changed files and mentally trace impact — it misses callers defined in files it did not read, cannot compare API surfaces across services, and has no conformance gate. With sextant:
+Without fathom, an agent reviewing a PR must read changed files and mentally trace impact — it misses callers defined in files it did not read, cannot compare API surfaces across services, and has no conformance gate. With fathom:
 
 1. **Impact is grounded in the call graph.** `diff_impact` returns the exact set of symbols and tests that transitively depend on the changed files, so the agent knows what to re-test without guessing.
 2. **API breakage is explicit.** `api_diff` names every added, removed, and changed exported symbol between the baseline and the changed version. The agent can block the merge rather than let a silent breaking change through.
@@ -217,7 +217,7 @@ Over the shared HTTP daemon, `set_profile` is rejected — register against `POS
 **CLI alternative for CI.** When no MCP session is running, use the CLI to update the store before running queries:
 
 ```sh
-sextant ingest-diff --service payment-service --path /path/to/payment-service --base origin/main --store workspace/db/fleet.duckdb
+fathom ingest-diff --service payment-service --path /path/to/payment-service --base origin/main --store workspace/db/fleet.duckdb
 ```
 
 This runs `git diff --name-only origin/main`, ingests changed files, and exits. A subsequent MCP session will pick up the updated store.
@@ -230,4 +230,4 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 ## Maintained
 
-This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `sextant ingest-diff`. Update it when these change.
+This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`. Update it when these change.

@@ -13,7 +13,7 @@ package connector
 import (
 	"context"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Connector is the source-provider SPI. Implementations must be safe for

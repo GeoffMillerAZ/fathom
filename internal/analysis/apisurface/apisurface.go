@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // goAPIKinds is the set of SourceKind values that can appear in a Go public API.

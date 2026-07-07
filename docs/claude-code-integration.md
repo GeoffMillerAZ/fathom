@@ -1,6 +1,6 @@
 # Claude Code integration guide
 
-How to wire sextant into Claude Code so coding sessions (and every subagent
+How to wire fathom into Claude Code so coding sessions (and every subagent
 they spawn) query a pre-built index instead of re-reading the repo. This is
 the playbook proven on a four-repo fleet on 2026-06-12; measured results in
 [assessment-claude-code-integration.md](assessment-claude-code-integration.md)
@@ -10,18 +10,18 @@ halved, comparable workers dropped from ~148 tool calls to ~32.
 ## 1. Build and index
 
 ```sh
-cd sextant
-CGO_ENABLED=1 go build -o bin/sextant ./cmd/sextant   # macOS: MACOSX_DEPLOYMENT_TARGET=14.0 silences linker warnings
+cd fathom
+CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom   # macOS: MACOSX_DEPLOYMENT_TARGET=14.0 silences linker warnings
 
 # One store for the whole fleet — one service per repo:
 for repo in my-app my-lib; do
-  bin/sextant ingest --service $repo --path ../$repo --store workspace/db/fleet.duckdb
+  bin/fathom ingest --service $repo --path ../$repo --store workspace/db/fleet.duckdb
 done
 ```
 
 Full ingest is seconds per repo; re-ingest is hash-gated (~0.2 s when clean).
 
-## 2. `.sextantignore` — do this BEFORE first ingest
+## 2. `.fathomignore` — do this BEFORE first ingest
 
 Gitignore-style file at each repo root. Two purposes:
 
@@ -54,9 +54,9 @@ indexed → 222 after).
 User scope makes it available in every repo and to every subagent:
 
 ```sh
-claude mcp add --scope user sextant -- \
-  /abs/path/sextant/bin/sextant serve-mcp --store /abs/path/sextant/workspace/db/fleet.duckdb
-claude mcp list   # expect: sextant … ✔ Connected
+claude mcp add --scope user fathom -- \
+  /abs/path/fathom/bin/fathom serve-mcp --store /abs/path/fathom/workspace/db/fleet.duckdb
+claude mcp list   # expect: fathom … ✔ Connected
 ```
 
 Beware shell line-wrapping: a wrapped command registers `--store` without
@@ -70,10 +70,10 @@ The index pays off only if agents are *told* to use it. Add a section like
 this to each repo's CLAUDE.md (adapt the service name):
 
 ```markdown
-## Sextant fleet index (code intelligence — use it first)
+## Fathom fleet index (code intelligence — use it first)
 
 1. **Index before exploration.** Resolve "where/what/who-calls" questions
-   via sextant tools (`find_symbol`, `query_symbols`, `find_callers`,
+   via fathom tools (`find_symbol`, `query_symbols`, `find_callers`,
    `outline`, `repo_map`, `pack_context`) before any Grep/Read sweep.
    Read files to edit them, not to discover them.
    **Never re-discover what the architect already discovered:** worker
@@ -85,7 +85,7 @@ this to each repo's CLAUDE.md (adapt the service name):
    session start and after each commit — hash-gated, ~0.2 s when clean.
 3. **Honesty:** after heavy uncommitted edits, run `staleness_report`
    before trusting results.
-4. **Privacy:** keep sensitive dirs in `.sextantignore`.
+4. **Privacy:** keep sensitive dirs in `.fathomignore`.
 ```
 
 Name the ~6 tools that matter. Don't list all ~80 — modern Claude Code
@@ -107,11 +107,11 @@ not theoretical. Therefore:
 ```yaml
 post-commit:
   commands:
-    sextant-refresh:
+    fathom-refresh:
       run: |
-        [ -x ../sextant/bin/sextant ] || exit 0
-        ../sextant/bin/sextant ingest --service my-app --path . \
-          --store ../sextant/workspace/db/fleet.duckdb >/dev/null 2>&1 || true
+        [ -x ../fathom/bin/fathom ] || exit 0
+        ../fathom/bin/fathom ingest --service my-app --path . \
+          --store ../fathom/workspace/db/fleet.duckdb >/dev/null 2>&1 || true
 ```
 
 No daemon/watcher needed: hash-gating makes on-demand refresh effectively
@@ -134,43 +134,43 @@ concurrency, one shared index, no contention.
 `KeepAlive`, grabs the store lock the instant it's free:
 
 ```xml
-<!-- ~/Library/LaunchAgents/<reverse-dns>.sextant-http.plist  — adapt the absolute paths -->
+<!-- ~/Library/LaunchAgents/<reverse-dns>.fathom-http.plist  — adapt the absolute paths -->
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>Label</key><string>org.example.sextant-http</string>
+  <key>Label</key><string>org.example.fathom-http</string>
   <key>ProgramArguments</key><array>
-    <string>/abs/path/sextant/bin/sextant</string>
+    <string>/abs/path/fathom/bin/fathom</string>
     <string>serve-http</string>
-    <string>--store</string><string>/abs/path/sextant/workspace/db/fleet.duckdb</string>
+    <string>--store</string><string>/abs/path/fathom/workspace/db/fleet.duckdb</string>
     <string>--addr</string><string>127.0.0.1:7575</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <!-- anchors the relative --call-log default (workspace/logs/mcp-calls.jsonl);
        without it launchd starts the daemon at / and call logging is disabled -->
-  <key>WorkingDirectory</key><string>/abs/path/sextant</string>
-  <key>StandardOutPath</key><string>/tmp/sextant-http.log</string>
-  <key>StandardErrorPath</key><string>/tmp/sextant-http.err</string>
+  <key>WorkingDirectory</key><string>/abs/path/fathom</string>
+  <key>StandardOutPath</key><string>/tmp/fathom-http.log</string>
+  <key>StandardErrorPath</key><string>/tmp/fathom-http.err</string>
 </dict></plist>
 ```
 
 ```sh
-cp <reverse-dns>.sextant-http.plist ~/Library/LaunchAgents/
-launchctl load ~/Library/LaunchAgents/<reverse-dns>.sextant-http.plist
-tail -f /tmp/sextant-http.log     # expect: serve-http: listening on 127.0.0.1:7575
+cp <reverse-dns>.fathom-http.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/<reverse-dns>.fathom-http.plist
+tail -f /tmp/fathom-http.log     # expect: serve-http: listening on 127.0.0.1:7575
 ```
 
-No launchd (Linux/CI)? `nohup sextant serve-http --store … --addr :7575 &` works, but it dies with the
+No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr :7575 &` works, but it dies with the
 shell — use a systemd unit or supervisor for persistence.
 
 **2 — Register over HTTP at user scope.** Remove the stdio entry first, or `add` fails with
 "already exists":
 
 ```sh
-claude mcp remove sextant -s user
-claude mcp add --transport http --scope user sextant http://localhost:7575/rpc
-claude mcp get sextant            # expect:  Type: http  ·  Status: ✔ Connected
+claude mcp remove fathom -s user
+claude mcp add --transport http --scope user fathom http://localhost:7575/rpc
+claude mcp get fathom            # expect:  Type: http  ·  Status: ✔ Connected
 ```
 
 If `http` won't connect, register the SSE endpoint instead: `--transport sse … http://localhost:7575/events`.
@@ -208,12 +208,12 @@ registry (see [mcp-tools.md](mcp-tools.md)):
 For a schema-loading client, point its MCP config at `http://localhost:7575/rpc/companion`
 instead of `/rpc`. If you want the hard-bounded surface in Claude Code too, register it
 **under its own name, alongside** the step-2 full-surface registration (re-using the name
-`sextant` would fail with "already exists" — or silently replace the recommended `/rpc`
+`fathom` would fail with "already exists" — or silently replace the recommended `/rpc`
 registration):
 
 ```sh
 # optional, additive — a slim hard-gated surface next to the full one:
-claude mcp add --transport http --scope user sextant-companion http://localhost:7575/rpc/companion
+claude mcp add --transport http --scope user fathom-companion http://localhost:7575/rpc/companion
 ```
 
 `set_profile` is rejected over HTTP (the daemon is shared; the profile is process-global) — the
@@ -239,13 +239,13 @@ no-ops at runtime — we hit exactly this once before adding the rule.
 
 ## 7. Pitfalls checklist
 
-- [ ] `.sextantignore` written before first ingest (privacy + noise).
+- [ ] `.fathomignore` written before first ingest (privacy + noise).
 - [ ] `claude mcp list` shows ✔ Connected after registration.
 - [ ] Running more than one session at once? You're on the shared HTTP server (see **Multiple
       concurrent sessions**), not per-session stdio — otherwise all but one session fails on the
       single-writer lock and `claude mcp list` shows `✘ Failed to connect`.
 - [ ] CLAUDE.md operating contract added to EVERY repo in the fleet.
-- [ ] Session restart after rebuilding the sextant binary or recreating
+- [ ] Session restart after rebuilding the fathom binary or recreating
       the store (the running server keeps its old file handle).
 - [ ] Schema/extractor changes need a from-scratch re-ingest — the hash
       gate skips unchanged files, so new extractors never see them

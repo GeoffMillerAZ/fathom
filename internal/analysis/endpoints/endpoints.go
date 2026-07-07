@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 )
 
 // Endpoint represents a unique HTTP method+path combination across all files

@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/references"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/references"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerReferences wires the "references" tool into the investigation group.

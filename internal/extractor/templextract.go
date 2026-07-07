@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // TemplExtractor implements Extractor for a-h/templ template files (.templ).

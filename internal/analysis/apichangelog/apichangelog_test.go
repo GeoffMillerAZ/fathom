@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/apichangelog"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/apichangelog"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // helpers to build SymbolNode fixtures quickly.

@@ -1,4 +1,4 @@
-// Package llm provides knowledge-card enrichment for sextant symbols.
+// Package llm provides knowledge-card enrichment for fathom symbols.
 //
 // An Enricher holds an injected llmclient.LLMClient and a llmsec.Redactor.
 // For every SymbolNode it builds a concise prompt, runs the DLP gate over the
@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/llmsec"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/llmsec"
 )
 
 // KnowledgeCard is the enriched summary produced for a single symbol.

@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/platformlink"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/platformlink"
 )
 
 // TestBuildFromSymbols_MultiLanguage proves cross-repo edges are detected for

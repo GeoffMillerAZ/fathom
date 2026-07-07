@@ -1,6 +1,6 @@
-# Architecture Decision Records — sextant
+# Architecture Decision Records — fathom
 
-Sextant is a code-intelligence + evidence engine: it ingests source across one or
+Fathom is a code-intelligence + evidence engine: it ingests source across one or
 many repos, extracts symbols/edges/facts, stores them as **evidence
 observations**, and answers concern-scoped queries (for AI coding assistants,
 cross-repo blast-radius, investigations, fleet health). It exposes a Go client,
@@ -38,7 +38,7 @@ the TDD strategy.**
 **Context / change.** The original design used `modernc.org/sqlite` (pure-Go,
 CGO-free) specifically because the project had a no-CGO constraint. **That
 constraint has been lifted.** DuckDB is a columnar analytical engine that fits
-sextant's workload far better: large `observations` scans, group-bys for
+fathom's workload far better: large `observations` scans, group-bys for
 hotspots/metrics/fleet rollups, and (future) Parquet export for the analytical
 substrate. CGO build cost is accepted.
 
@@ -88,7 +88,7 @@ specific and keeps results relevant and cheap.
 `pre-scan` (4), `doc-claimed` (2), `sme-stated` (2), `assumed` (1). The query
 engine respects ceilings when scoring — a doc claim never outranks a code fact.
 
-**Why.** sextant is a downstream consumer of the agentic-kit platform; evidence
+**Why.** fathom is a downstream consumer of the agentic-kit platform; evidence
 governance is exactly what that platform provides. We import it rather than
 reinvent. See ADR-009.
 
@@ -102,7 +102,7 @@ this." Silent staleness is a correctness trap for AI consumers.
 
 ## ADR-009 — Depend on agentic-kit as the platform substrate
 
-**Decision.** sextant imports `github.com/geoffmilleraz/agentic-kit` (resolved
+**Decision.** fathom imports `github.com/geoffmilleraz/agentic-kit` (resolved
 locally via `go.work` + a `replace` directive during co-development). Reuse:
 `review/scoring` (evidence tiers), `evidence/*` (observation/contradiction
 shapes), `telemetry`, `llmclient` (knowledge-card enrichment), `security`

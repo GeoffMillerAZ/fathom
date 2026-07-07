@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // ─── extendedFakeBackend ─────────────────────────────────────────────────────
@@ -693,7 +693,7 @@ func TestResourcesList(t *testing.T) {
 	if !ok || len(resources) == 0 {
 		t.Fatalf("resources/list: missing or empty resources: %v", result)
 	}
-	// Must include sextant:///manifest.
+	// Must include fathom:///manifest.
 	uris := make(map[string]bool)
 	for _, raw := range resources {
 		r := raw.(map[string]any)
@@ -701,12 +701,12 @@ func TestResourcesList(t *testing.T) {
 			uris[uri] = true
 		}
 	}
-	if !uris["sextant:///manifest"] {
-		t.Errorf("sextant:///manifest not in resources list: %v", uris)
+	if !uris["fathom:///manifest"] {
+		t.Errorf("fathom:///manifest not in resources list: %v", uris)
 	}
-	// Must include sextant:///service/<id> for each known service.
+	// Must include fathom:///service/<id> for each known service.
 	for _, svc := range []string{"svc", "other-svc"} {
-		uri := "sextant:///service/" + svc
+		uri := "fathom:///service/" + svc
 		if !uris[uri] {
 			t.Errorf("resource %q not in list; have: %v", uri, uris)
 		}
@@ -722,7 +722,7 @@ func TestResourcesRead_Manifest(t *testing.T) {
 		"id":      510,
 		"method":  "resources/read",
 		"params": map[string]any{
-			"uri": "sextant:///manifest",
+			"uri": "fathom:///manifest",
 		},
 	})
 	if !hasResp {
@@ -745,7 +745,7 @@ func TestResourcesRead_Service(t *testing.T) {
 		"id":      511,
 		"method":  "resources/read",
 		"params": map[string]any{
-			"uri": "sextant:///service/svc",
+			"uri": "fathom:///service/svc",
 		},
 	})
 	if !hasResp {
@@ -768,7 +768,7 @@ func TestResourcesRead_UnknownURI(t *testing.T) {
 		"id":      512,
 		"method":  "resources/read",
 		"params": map[string]any{
-			"uri": "sextant:///unknown/path",
+			"uri": "fathom:///unknown/path",
 		},
 	})
 	if !hasResp {

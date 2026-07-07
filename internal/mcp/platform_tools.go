@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/configdrift"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/configdrift"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // FleetBackend is the minimal interface the platform tools require.  It is

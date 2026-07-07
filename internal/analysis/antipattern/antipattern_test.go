@@ -3,7 +3,7 @@ package antipattern_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/antipattern"
+	"github.com/geoffmilleraz/fathom/internal/analysis/antipattern"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

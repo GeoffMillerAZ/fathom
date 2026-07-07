@@ -1,4 +1,4 @@
-// Package config handles sextant's runtime configuration and named profiles.
+// Package config handles fathom's runtime configuration and named profiles.
 package config
 
 import (
@@ -43,7 +43,7 @@ func defaults() Config {
 	home, _ := os.UserHomeDir()
 	return Config{
 		DefaultProfile: ProfileCoding,
-		StoreDir:       filepath.Join(home, ".sextant", "store"),
+		StoreDir:       filepath.Join(home, ".fathom", "store"),
 		Profiles: map[string]ProfileCfg{
 			ProfileCoding: {
 				MaxResults:         20,

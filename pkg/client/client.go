@@ -1,4 +1,4 @@
-// Package client is the public Go embedding API for sextant.
+// Package client is the public Go embedding API for fathom.
 //
 // It exposes a thin Client that wires together a Connector, a fusion Pipeline,
 // a query Engine, and a Store so that callers never import internal packages
@@ -18,11 +18,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/fusion"
-	"github.com/geoffmilleraz/sextant/internal/query"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/query"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // SourceFile is a single fetched source file. It is a re-export of
@@ -103,7 +103,7 @@ type Report = fusion.Report
 // re-export of core.SymbolNode.
 type SymbolNode = core.SymbolNode
 
-// Client wraps the sextant pipeline and query engine so callers can ingest
+// Client wraps the fathom pipeline and query engine so callers can ingest
 // services and query symbols without importing internal packages.
 //
 // Client is safe for concurrent use by multiple goroutines once constructed.

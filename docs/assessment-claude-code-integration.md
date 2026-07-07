@@ -1,13 +1,13 @@
-# Assessment: Sextant × Claude Code integration (2026-06-12)
+# Assessment: Fathom × Claude Code integration (2026-06-12)
 
-Owner-requested report on whether wiring the sextant fleet index into Claude
+Owner-requested report on whether wiring the fathom fleet index into Claude
 Code sessions improved **effectiveness, correctness, and tokenomics** — with
 measured numbers where they exist, estimates labeled as estimates, and an
 honest verdict on whether this reinvented existing wheels.
 
 ## 1. What was integrated (one day, 2026-06-12)
 
-- Fleet index: throughline + agentic-kit + app-kit + sextant in one DuckDB
+- Fleet index: throughline + agentic-kit + app-kit + fathom in one DuckDB
   store (~12k symbols, 531 doc chunks, CUE definitions, Templ components;
   ~4 MB; full rebuild seconds; hash-gated no-op re-ingest ~0.2 s).
 - MCP server registered user-scope → every Claude Code session (and every
@@ -19,14 +19,14 @@ honest verdict on whether this reinvented existing wheels.
   is single-writer — measured: CLI ingest fails on the lock while a session
   lives; best-effort post-commit lefthook covers no-session commits);
   `staleness_report` before trusting results after heavy edits;
-  `.sextantignore` keeps case data out (the index sits outside the DLP gate).
-- Pre-packed worker briefs codified: the architect's sextant recon (exact
+  `.fathomignore` keeps case data out (the index sits outside the DLP gate).
+- Pre-packed worker briefs codified: the architect's fathom recon (exact
   signatures, paths, verbatim contract types) ships inside worker prompts;
   workers never re-discover it, and must stop-and-report on contract
   conflicts instead of silently drifting.
 
 Integration-day fixes the dogfooding itself forced (all committed same day):
-`.sextantignore` + dir-only filter bug (own index 2,427→222 files), engine
+`.fathomignore` + dir-only filter bug (own index 2,427→222 files), engine
 keyword fallback (query_symbols/pack_context were dead over MCP), staleness
 report trimmed from ~6 KB of fresh-file rows per query to stale-only +
 counts (~100×), bare-name `find_symbol`, `cross_repo_callers` (returned 0
@@ -65,10 +65,10 @@ Worker tokens per wave (honest: implementation cost is irreducible)
 
 Whole-period subagent spend (context only — scopes differ)
   pre  (4.5 days, M16+M17+reviews)  ███████████████████████████████  11.77M tok · 8,333 calls
-  post (2.5 h, M18.1+M18.2+sextant) █▋                                0.60M tok ·   337 calls
+  post (2.5 h, M18.1+M18.2+fathom) █▋                                0.60M tok ·   337 calls
 
-Integration-day dogfooding fixes (sextant's own hygiene)
-  own-repo files indexed   2,427 → 222     (.sextantignore + dir-filter fix)
+Integration-day dogfooding fixes (fathom's own hygiene)
+  own-repo files indexed   2,427 → 222     (.fathomignore + dir-filter fix)
   staleness block / query  ~6 KB → ~60 B   (stale-only + counts)
   cross_repo_callers       always 0 → works (edge-format match bug)
 ```

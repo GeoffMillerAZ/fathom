@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ci.sh — sextant CI helper
+# ci.sh — fathom CI helper
 #
 # Runs the full validation gate (task validate) and prints a compact summary.
 # Exits 0 on success, 1 on failure.
@@ -25,7 +25,7 @@ TASK_FLAGS="${TASK_FLAGS:-}"
 
 print_header() {
     echo "======================================================================"
-    echo "  sextant CI — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    echo "  fathom CI — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
     echo "======================================================================"
 }
 

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/clone"
+	"github.com/geoffmilleraz/fathom/internal/analysis/clone"
 )
 
 // ─── fixtures ─────────────────────────────────────────────────────────────────

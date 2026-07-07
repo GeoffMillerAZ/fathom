@@ -1,12 +1,12 @@
-# sextant
+# fathom
 
-**Code-intelligence + evidence engine.** Sextant ingests source across one or
+**Code-intelligence + evidence engine.** Fathom ingests source across one or
 many repositories, extracts symbols, call edges, and facts, stores them as
 **governed evidence observations**, and answers *concern-scoped* queries — for AI
 coding assistants, cross-repo blast-radius, change review, incident
 investigation, and fleet-wide health.
 
-It ships three surfaces: a Go client (`pkg/client`), a CLI (`cmd/sextant`), and
+It ships three surfaces: a Go client (`pkg/client`), a CLI (`cmd/fathom`), and
 an **MCP server** (stdio + HTTP) that editors and agents connect to.
 
 > General-purpose and org-agnostic — no vendor-specific names or catalogs;
@@ -30,7 +30,7 @@ Layer                concern-scoped · evidence-tiered · staleness-aware
   grammars run in the pure-Go **wazero/WASM** runtime (ADR-004).
 - Storage is **DuckDB** (ADR-003).
 - Evidence tiers (`verified` › `pre-scan` › `doc-claimed` › `sme-stated` ›
-  `assumed`) come from **[agentic-kit](../agentic-kit)** — sextant builds on that
+  `assumed`) come from **[agentic-kit](../agentic-kit)** — fathom builds on that
   governed-evidence platform (ADR-009).
 
 ## Quickstart
@@ -57,18 +57,18 @@ callers, _ := c.FindCallers(ctx, "my-service", "ValidateToken")
 ```
 
 ```sh
-sextant ingest    --service my-service --path .
-sextant inspect   --service my-service --kind GoFunc
-sextant serve-mcp                       # stdio MCP server for editors/agents
+fathom ingest    --service my-service --path .
+fathom inspect   --service my-service --kind GoFunc
+fathom serve-mcp                       # stdio MCP server for editors/agents
 ```
 
 ## Docs
 
 | | |
 |---|---|
-| [docs/what-is-sextant.html](docs/what-is-sextant.html) | **Start here** — visual explainer of what sextant is and how it works |
-| [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how sextant bends the curve, tool comparisons (observed vs speculative, labeled) |
-| [docs/claude-code-integration.md](docs/claude-code-integration.md) | **Wire sextant into Claude Code sessions** — setup playbook, operating contract, pre-packed briefs, pitfalls |
+| [docs/what-is-fathom.html](docs/what-is-fathom.html) | **Start here** — visual explainer of what fathom is and how it works |
+| [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how fathom bends the curve, tool comparisons (observed vs speculative, labeled) |
+| [docs/claude-code-integration.md](docs/claude-code-integration.md) | **Wire fathom into Claude Code sessions** — setup playbook, operating contract, pre-packed briefs, pitfalls |
 | [docs/assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md) | Measured results of that integration (tokenomics, correctness, wall-clock) |
 | [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, DuckDB store, MCP surface |
 | [docs/usage.md](docs/usage.md) | Quickstart, all CLI subcommands, Go client API, connecting an MCP client |
@@ -78,7 +78,7 @@ sextant serve-mcp                       # stdio MCP server for editors/agents
 ## Layout
 
 ```
-cmd/sextant/   CLI entry point (ingest, inspect, serve-mcp, watch, gen-*)
+cmd/fathom/   CLI entry point (ingest, inspect, serve-mcp, watch, gen-*)
 pkg/           Public API surface importable by other repos (client, platform)
 internal/      All implementation (connector, fusion, store, extractor, query,
                mcp, analysis, platformlink, depgraph, llm, vector, sdd, adr, …)

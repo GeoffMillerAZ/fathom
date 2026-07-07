@@ -3,7 +3,7 @@ package extractor
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // cppFixture exercises all the C++ symbol types CppExtractor emits:

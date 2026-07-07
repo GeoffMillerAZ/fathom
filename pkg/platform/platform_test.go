@@ -5,7 +5,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/pkg/platform"
+	"github.com/geoffmilleraz/fathom/pkg/platform"
 )
 
 func repoRoot(t *testing.T) string {

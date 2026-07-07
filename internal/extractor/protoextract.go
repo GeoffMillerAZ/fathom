@@ -5,7 +5,7 @@ import (
 	"sort"
 
 	"github.com/emicklei/proto"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ProtoExtractor implements Extractor for Protocol Buffer (.proto) files using

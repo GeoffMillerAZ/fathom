@@ -1,10 +1,10 @@
-// Package client is the public Go embedding API for sextant. It re-exports the
+// Package client is the public Go embedding API for fathom. It re-exports the
 // stable domain types from internal packages so external consumers only need to
 // import pkg/client — never an internal package.
 package client
 
 import (
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Additional domain types re-exported for external consumers.

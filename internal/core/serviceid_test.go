@@ -3,11 +3,11 @@ package core_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 func TestValidServiceID(t *testing.T) {
-	valid := []string{"app-kit", "sextant", "agentic_kit", "svc1", "geoffmiller-cloud"}
+	valid := []string{"app-kit", "fathom", "agentic_kit", "svc1", "geoffmiller-cloud"}
 	for _, id := range valid {
 		if err := core.ValidServiceID(id); err != nil {
 			t.Errorf("ValidServiceID(%q) = %v, want nil", id, err)

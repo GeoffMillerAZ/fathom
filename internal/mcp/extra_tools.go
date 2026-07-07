@@ -26,32 +26,32 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/apisurface"
-	"github.com/geoffmilleraz/sextant/internal/analysis/archconformance"
-	"github.com/geoffmilleraz/sextant/internal/analysis/clone"
-	"github.com/geoffmilleraz/sextant/internal/analysis/complexity"
-	"github.com/geoffmilleraz/sextant/internal/analysis/deps"
-	"github.com/geoffmilleraz/sextant/internal/analysis/doccoverage"
-	"github.com/geoffmilleraz/sextant/internal/analysis/docdrift"
-	"github.com/geoffmilleraz/sextant/internal/analysis/envkeys"
-	"github.com/geoffmilleraz/sextant/internal/analysis/erraudit"
-	"github.com/geoffmilleraz/sextant/internal/analysis/fieldusage"
-	"github.com/geoffmilleraz/sextant/internal/analysis/impact"
-	"github.com/geoffmilleraz/sextant/internal/analysis/license"
-	"github.com/geoffmilleraz/sextant/internal/analysis/migrationtargets"
-	"github.com/geoffmilleraz/sextant/internal/analysis/naming"
-	"github.com/geoffmilleraz/sextant/internal/analysis/proto"
-	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
-	"github.com/geoffmilleraz/sextant/internal/analysis/schemaexport"
-	"github.com/geoffmilleraz/sextant/internal/analysis/security"
-	"github.com/geoffmilleraz/sextant/internal/analysis/sqlmap"
-	"github.com/geoffmilleraz/sextant/internal/analysis/structtags"
-	"github.com/geoffmilleraz/sextant/internal/concern"
-	"github.com/geoffmilleraz/sextant/internal/context/packer"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/cost"
-	"github.com/geoffmilleraz/sextant/internal/graph"
-	"github.com/geoffmilleraz/sextant/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
+	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/analysis/clone"
+	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
+	"github.com/geoffmilleraz/fathom/internal/analysis/deps"
+	"github.com/geoffmilleraz/fathom/internal/analysis/doccoverage"
+	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
+	"github.com/geoffmilleraz/fathom/internal/analysis/erraudit"
+	"github.com/geoffmilleraz/fathom/internal/analysis/fieldusage"
+	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
+	"github.com/geoffmilleraz/fathom/internal/analysis/license"
+	"github.com/geoffmilleraz/fathom/internal/analysis/migrationtargets"
+	"github.com/geoffmilleraz/fathom/internal/analysis/naming"
+	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/schemaexport"
+	"github.com/geoffmilleraz/fathom/internal/analysis/security"
+	"github.com/geoffmilleraz/fathom/internal/analysis/sqlmap"
+	"github.com/geoffmilleraz/fathom/internal/analysis/structtags"
+	"github.com/geoffmilleraz/fathom/internal/concern"
+	"github.com/geoffmilleraz/fathom/internal/context/packer"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/cost"
+	"github.com/geoffmilleraz/fathom/internal/graph"
+	"github.com/geoffmilleraz/fathom/internal/sdd"
 )
 
 // costTracker is a package-level cost tracker shared across all cost_report
@@ -2246,7 +2246,7 @@ func registerBrief(s *Server, backend QueryInterface) {
 		}
 
 		var sb strings.Builder
-		fmt.Fprintf(&sb, "## Pre-packed context (sextant brief · service %s · %s)\n", p.Service, stalenessNote)
+		fmt.Fprintf(&sb, "## Pre-packed context (fathom brief · service %s · %s)\n", p.Service, stalenessNote)
 
 		// Symbols section.
 		if len(p.Symbols) > 0 {

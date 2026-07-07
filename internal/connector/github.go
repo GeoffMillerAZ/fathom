@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // GitHubConnector satisfies the Connector SPI by reading files from a GitHub

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // seedService creates <dir>/<id>.duckdb and writes obs into it, then closes it.

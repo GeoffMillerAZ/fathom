@@ -1,6 +1,6 @@
 // Package verify computes an evidence-backed "definition of done" for plan tasks.
 //
-// It is the read-only verification layer of sextant: given a Plan (a human-edited
+// It is the read-only verification layer of fathom: given a Plan (a human-edited
 // list of tasks, each with an acceptance contract) and an Evidence view over the
 // code index, VerifyPlan returns a per-task verdict where "done" is a
 // deterministic predicate over governed code evidence — not a box someone ticked.
@@ -24,7 +24,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Plan is the parsed form of a human-edited plan file. verify reads it; it never

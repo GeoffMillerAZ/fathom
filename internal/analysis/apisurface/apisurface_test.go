@@ -3,8 +3,8 @@ package apisurface_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/apisurface"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // helpers

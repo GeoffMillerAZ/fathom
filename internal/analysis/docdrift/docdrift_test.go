@@ -3,7 +3,7 @@ package docdrift_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 )
 
 const goodMD = `# Overview

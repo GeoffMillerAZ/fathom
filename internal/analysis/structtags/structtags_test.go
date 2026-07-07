@@ -3,7 +3,7 @@ package structtags_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/structtags"
+	"github.com/geoffmilleraz/fathom/internal/analysis/structtags"
 )
 
 const cleanSrc = `package foo

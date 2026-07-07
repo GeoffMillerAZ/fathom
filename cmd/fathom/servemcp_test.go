@@ -113,8 +113,8 @@ func TestServeMCPInitialize(t *testing.T) {
 	if !ok {
 		t.Fatalf("serverInfo missing in initialize result: %v", result)
 	}
-	if si["name"] != "sextant" {
-		t.Errorf("serverInfo.name = %v, want sextant", si["name"])
+	if si["name"] != "fathom" {
+		t.Errorf("serverInfo.name = %v, want fathom", si["name"])
 	}
 }
 

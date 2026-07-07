@@ -3,8 +3,8 @@ package endpoints_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/endpoints"
-	"github.com/geoffmilleraz/sextant/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/analysis/endpoints"
+	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 )
 
 // helper: build Route quickly

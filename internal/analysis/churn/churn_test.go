@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/churn"
+	"github.com/geoffmilleraz/fathom/internal/analysis/churn"
 )
 
 // fixed "now" for deterministic tests.

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/depgraph"
+	"github.com/geoffmilleraz/fathom/internal/depgraph"
 )
 
 // helpers

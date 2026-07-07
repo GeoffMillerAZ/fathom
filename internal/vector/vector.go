@@ -1,5 +1,5 @@
 // Package vector provides the vector store interface and embedding integration
-// for sextant's optional semantic search layer. When an EmbeddingClient and a
+// for fathom's optional semantic search layer. When an EmbeddingClient and a
 // VectorStore are wired into the query engine, Search calls embed the query
 // text and retrieve the nearest symbols by cosine similarity.
 package vector
@@ -11,7 +11,7 @@ import (
 	"sync"
 
 	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Entry is the unit stored in a VectorStore: a pre-computed embedding together

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -91,8 +91,8 @@ func TestInitialize(t *testing.T) {
 	if !ok {
 		t.Fatalf("serverInfo missing: %v", result)
 	}
-	if si["name"] != "sextant" {
-		t.Errorf("serverInfo.name = %v, want sextant", si["name"])
+	if si["name"] != "fathom" {
+		t.Errorf("serverInfo.name = %v, want fathom", si["name"])
 	}
 	caps, ok := result["capabilities"].(map[string]any)
 	if !ok {

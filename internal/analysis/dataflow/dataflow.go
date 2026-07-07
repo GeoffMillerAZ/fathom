@@ -10,7 +10,7 @@ package dataflow
 import (
 	"sort"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Trace returns the sorted slice of canonical symbol keys reachable from the

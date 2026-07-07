@@ -5,9 +5,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/callgraph"
-	"github.com/geoffmilleraz/sextant/internal/analysis/symbolnav"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ─── fixtures ────────────────────────────────────────────────────────────────

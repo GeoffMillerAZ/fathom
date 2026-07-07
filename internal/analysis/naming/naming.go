@@ -15,7 +15,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // Issue is a single naming-convention violation.

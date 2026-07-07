@@ -1,4 +1,4 @@
-// Package sdd provides spec-driven design linkage analysis for sextant.
+// Package sdd provides spec-driven design linkage analysis for fathom.
 // It recognises spec ID tokens (e.g. [US-042], [EP-013], [FR-7], [NFR-1]),
 // extracts references from source text, and builds a coverage matrix that
 // classifies which specs are implemented, which are uncovered, and which

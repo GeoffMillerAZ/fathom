@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // fleetAdapter exposes a single multi-service store client as the

@@ -1,8 +1,8 @@
-# Use-case guides for adopting sextant to enhance Claude Code
+# Use-case guides for adopting fathom to enhance Claude Code
 
-These guides show how to wire sextant into your AI coding workflows and get concrete value from each use case. Each doc covers the relevant MCP tools and CLI commands, a worked example, and setup notes.
+These guides show how to wire fathom into your AI coding workflows and get concrete value from each use case. Each doc covers the relevant MCP tools and CLI commands, a worked example, and setup notes.
 
-Start with **getting-started.md** if this is your first time setting up sextant.
+Start with **getting-started.md** if this is your first time setting up fathom.
 
 ---
 
@@ -28,4 +28,4 @@ Each use case has exactly one doc here. When an MCP tool or CLI command is added
 2. Update the Tools table, any worked-example calls, and the Maintained line to reflect the change.
 3. If a tool moves between profiles (coding / investigation / platform / shared), update any profile guidance in the doc's **Setup & notes** section.
 
-The MCP tool registry lives in `internal/mcp/*.go` (search for `Name:` fields). CLI subcommands are the `case` arms in `cmd/sextant/main.go`.
+The MCP tool registry lives in `internal/mcp/*.go` (search for `Name:` fields). CLI subcommands are the `case` arms in `cmd/fathom/main.go`.

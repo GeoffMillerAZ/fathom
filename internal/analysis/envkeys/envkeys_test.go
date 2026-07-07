@@ -3,7 +3,7 @@ package envkeys_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/envkeys"
+	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 )
 
 // ─── Go patterns ─────────────────────────────────────────────────────────────

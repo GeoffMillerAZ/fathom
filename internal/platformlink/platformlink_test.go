@@ -6,8 +6,8 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/platformlink"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/platformlink"
 )
 
 // repoRoot returns the absolute path to the repository root so tests can

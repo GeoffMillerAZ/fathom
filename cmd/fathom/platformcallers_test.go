@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // fleetRoot returns the absolute path to testdata/fleet, resolved relative to
@@ -21,8 +21,8 @@ func fleetRoot(t *testing.T) string {
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	// file is .../cmd/sextant/platformcallers_test.go
-	// testdata/fleet is two levels up from cmd/sextant
+	// file is .../cmd/fathom/platformcallers_test.go
+	// testdata/fleet is two levels up from cmd/fathom
 	return filepath.Join(filepath.Dir(file), "..", "..", "testdata", "fleet")
 }
 

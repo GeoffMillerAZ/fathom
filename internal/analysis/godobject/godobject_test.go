@@ -3,8 +3,8 @@ package godobject_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/godobject"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/godobject"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // buildNodes creates a type node + n method nodes in the same package.

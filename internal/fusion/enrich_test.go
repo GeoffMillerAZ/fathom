@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/fusion"
-	"github.com/geoffmilleraz/sextant/internal/llm"
-	"github.com/geoffmilleraz/sextant/internal/llmsec"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/llm"
+	"github.com/geoffmilleraz/fathom/internal/llmsec"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // mockEnrichResponse is a canned LLM response that parseResponse handles cleanly.

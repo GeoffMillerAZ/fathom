@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/packagedeps"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/packagedeps"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // fixture symbols

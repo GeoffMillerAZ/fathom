@@ -7,8 +7,8 @@ import (
 	tslua "github.com/tree-sitter-grammars/tree-sitter-lua/bindings/go"
 	ts "github.com/tree-sitter/go-tree-sitter"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/extractor/treesitter"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor/treesitter"
 )
 
 // luaLang is initialised once and shared across all LuaExtractor calls.

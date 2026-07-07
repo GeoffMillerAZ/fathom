@@ -1,4 +1,4 @@
-// Command sextant is the CLI entry point for the sextant knowledge-index tool.
+// Command fathom is the CLI entry point for the fathom knowledge-index tool.
 //
 // Subcommands: ingest, inspect, query, serve-mcp, serve-http, platform-ingest,
 // version, help.
@@ -73,7 +73,7 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "Usage: sextant <subcommand> [flags]")
+	fmt.Fprintln(w, "Usage: fathom <subcommand> [flags]")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Subcommands:")
 	fmt.Fprintln(w, "  ingest                Ingest a service into the knowledge store")

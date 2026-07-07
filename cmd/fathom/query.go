@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 func cmdQuery(args []string, stdout, stderr io.Writer) int {
@@ -15,7 +15,7 @@ func cmdQuery(args []string, stdout, stderr io.Writer) int {
 	concern := fs.String("concern", "", "concern ID to scope the query (required)")
 	keywords := fs.String("keywords", "", "comma-separated keywords to rank symbols")
 	top := fs.Int("top", 20, "maximum number of results to return")
-	storePath := fs.String("store", "workspace/db/sextant.duckdb", "DuckDB store path")
+	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

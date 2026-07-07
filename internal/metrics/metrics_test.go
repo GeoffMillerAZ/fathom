@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/metrics"
+	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
 // ─── Counter tests ───────────────────────────────────────────────────────────

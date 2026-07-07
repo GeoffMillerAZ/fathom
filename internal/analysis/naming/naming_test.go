@@ -3,8 +3,8 @@ package naming_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/naming"
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/analysis/naming"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 func node(name string, kind core.SourceKind) core.SymbolNode {

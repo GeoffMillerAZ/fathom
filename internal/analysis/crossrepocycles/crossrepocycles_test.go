@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/crossrepocycles"
+	"github.com/geoffmilleraz/fathom/internal/analysis/crossrepocycles"
 )
 
 func TestDetect_NoCycle(t *testing.T) {

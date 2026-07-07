@@ -6,7 +6,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // autoRefreshBackend wraps a QueryInterface and, before each per-service read,

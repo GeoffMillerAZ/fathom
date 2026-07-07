@@ -1,4 +1,4 @@
-// Package schemaexport serialises the sextant symbol graph to common interchange
+// Package schemaexport serialises the fathom symbol graph to common interchange
 // formats.
 //
 //   - ExportJSON encodes []core.SymbolNode as a deterministic, indented JSON
@@ -16,7 +16,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // ExportJSON serialises nodes to a deterministic, indented JSON array.
@@ -53,7 +53,7 @@ func ExportJSON(nodes []core.SymbolNode) (string, error) {
 // ExportDOT serialises edges to a Graphviz digraph in DOT language.
 //
 // Edge labels include the FromSymbol → ToSymbol names.  Edges are sorted by
-// (FromSymbol, ToSymbol) for determinism.  The digraph is named "sextant".
+// (FromSymbol, ToSymbol) for determinism.  The digraph is named "fathom".
 func ExportDOT(edges []core.Edge) string {
 	// Work on a copy and sort.
 	sorted := make([]core.Edge, len(edges))
@@ -66,7 +66,7 @@ func ExportDOT(edges []core.Edge) string {
 	})
 
 	var sb strings.Builder
-	sb.WriteString("digraph sextant {\n")
+	sb.WriteString("digraph fathom {\n")
 	for _, e := range sorted {
 		// DOT identifiers must be quoted when they contain special characters.
 		sb.WriteString("  ")

@@ -10,7 +10,7 @@ import (
 	goldast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // MarkdownExtractor implements Extractor for Markdown (.md) files. It uses

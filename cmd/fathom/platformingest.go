@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // cmdPlatformIngest is the entry point for the "platform-ingest" subcommand.

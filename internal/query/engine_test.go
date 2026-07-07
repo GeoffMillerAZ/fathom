@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/query"
-	"github.com/geoffmilleraz/sextant/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/query"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // fixed point in time used across tests

@@ -210,7 +210,7 @@ func globMatch(pattern, name string) bool {
 
 // DefaultIgnore returns a Matcher pre-loaded with common ignore patterns:
 // vendor, node_modules, .git, testdata, *.pb.go, dist, build.
-// These are the defaults used by sextant's file-walking pipeline.
+// These are the defaults used by fathom's file-walking pipeline.
 func DefaultIgnore() *Matcher {
 	return New([]string{
 		"vendor",

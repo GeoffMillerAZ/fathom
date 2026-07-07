@@ -3,7 +3,7 @@ package cluster_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/cluster"
+	"github.com/geoffmilleraz/fathom/internal/cluster"
 )
 
 // ---------------------------------------------------------------------------

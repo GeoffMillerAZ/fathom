@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/erraudit"
+	"github.com/geoffmilleraz/fathom/internal/analysis/erraudit"
 )
 
 const ignoredErrSrc = `package foo

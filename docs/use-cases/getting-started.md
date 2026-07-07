@@ -1,6 +1,6 @@
-# Getting started: wire sextant into Claude Code
+# Getting started: wire fathom into Claude Code
 
-How to build, index, register, and start using sextant as a live code-intelligence layer for Claude Code (and other AI coding agents) — from zero to first query.
+How to build, index, register, and start using fathom as a live code-intelligence layer for Claude Code (and other AI coding agents) — from zero to first query.
 
 ---
 
@@ -8,15 +8,15 @@ How to build, index, register, and start using sextant as a live code-intelligen
 
 ```sh
 # 1. Build (macOS — DuckDB requires CGO)
-CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/sextant ./cmd/sextant
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 
 # 2. Index your repo
-./bin/sextant ingest --service my-service --path . \
+./bin/fathom ingest --service my-service --path . \
   --store workspace/db/fleet.duckdb
 
 # 3. Register with Claude Code (--scope user = all repos + subagents)
-claude mcp add --scope user sextant -- \
-  /abs/path/bin/sextant serve-mcp \
+claude mcp add --scope user fathom -- \
+  /abs/path/bin/fathom serve-mcp \
   --store /abs/path/workspace/db/fleet.duckdb
 
 # 4. In Claude Code: set a profile, then query
@@ -27,7 +27,7 @@ claude mcp add --scope user sextant -- \
 
 ## When to use this
 
-- You are adopting sextant in a repo for the first time and need a complete setup walkthrough.
+- You are adopting fathom in a repo for the first time and need a complete setup walkthrough.
 - You want Claude Code sessions (including spawned subagents) to have access to live symbol intelligence for your codebase.
 - You are indexing multiple repos into a shared fleet store for cross-repo queries.
 - You want to generate a `CLAUDE.md` symbol guide that AI agents can reference without live queries.
@@ -54,12 +54,12 @@ claude mcp add --scope user sextant -- \
 
 ## How it enhances Claude Code
 
-Claude Code has no innate knowledge of your codebase structure. Without sextant, agents resort to repeated grep/read sweeps — slow, token-heavy, and prone to missing cross-file relationships. With sextant:
+Claude Code has no innate knowledge of your codebase structure. Without fathom, agents resort to repeated grep/read sweeps — slow, token-heavy, and prone to missing cross-file relationships. With fathom:
 
 - **Symbol queries replace file sweeps.** `query_symbols` returns ranked, concern-scoped results in one call, typically cutting context token usage ~77% vs naive file reads.
 - **Call-graph edges are precomputed.** Callers, callees, and cross-repo paths are stored as indexed edges — no grep required.
 - **Staleness is surfaced, not hidden.** Every query result carries a staleness indicator; `staleness_report` tells the agent exactly when the index has drifted from HEAD.
-- **Subagents share the same server.** `--scope user` in the MCP registration means any Claude Code subagent spawned in any repo can call sextant tools without per-project setup.
+- **Subagents share the same server.** `--scope user` in the MCP registration means any Claude Code subagent spawned in any repo can call fathom tools without per-project setup.
 - **Profiles keep the tool surface focused.** Switch to `coding` for a feature task; switch to `investigation` for an incident; switch to `platform` for fleet-wide blast-radius work. Irrelevant tools are hidden from the agent's tool list.
 
 ---
@@ -71,18 +71,18 @@ Claude Code has no innate knowledge of your codebase structure. Without sextant,
 If you are building from source (DuckDB requires CGO):
 
 ```sh
-CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/sextant ./cmd/sextant
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 ```
 
 On Linux, omit `MACOSX_DEPLOYMENT_TARGET`. If you have a prebuilt binary, skip this step.
 
-Sextant builds on `agentic-kit` via `go.work` + `replace`. Adopters who only want the binary do not need to understand this — just build once and use.
+Fathom builds on `agentic-kit` via `go.work` + `replace`. Adopters who only want the binary do not need to understand this — just build once and use.
 
 ---
 
-### Step 2 — Create a `.sextantignore`
+### Step 2 — Create a `.fathomignore`
 
-Place a `.sextantignore` at your repo root (the directory you will pass to `--path`). Uses gitignore syntax. The following dirs are already skipped by default: `vendor/`, `.git/`, `testdata/`, `generated/`, `node_modules/`, `.idea/`, `.vscode/`.
+Place a `.fathomignore` at your repo root (the directory you will pass to `--path`). Uses gitignore syntax. The following dirs are already skipped by default: `vendor/`, `.git/`, `testdata/`, `generated/`, `node_modules/`, `.idea/`, `.vscode/`.
 
 Typical additions:
 
@@ -111,7 +111,7 @@ Matched directories are pruned from the walk; matched files are skipped. Exclude
 ### Step 3 — Index your repo
 
 ```sh
-./bin/sextant ingest \
+./bin/fathom ingest \
   --service my-service \
   --path . \
   --store workspace/db/fleet.duckdb
@@ -132,7 +132,7 @@ symbols:    891
 
 ```sh
 for svc in auth-service payment-service order-service; do
-  ./bin/sextant ingest \
+  ./bin/fathom ingest \
     --service "$svc" \
     --path "../$svc" \
     --store workspace/db/fleet.duckdb
@@ -144,7 +144,7 @@ This populates the fleet for cross-repo queries (`cross_repo_callers`, `query_cr
 Alternatively, use `platform-ingest` if your services are subdirectories under one root:
 
 ```sh
-./bin/sextant platform-ingest \
+./bin/fathom platform-ingest \
   --root /src/services \
   --store-dir workspace/db/platform
 ```
@@ -156,8 +156,8 @@ Alternatively, use `platform-ingest` if your services are subdirectories under o
 Use absolute paths — Claude Code launches the process from your home directory, not the repo root.
 
 ```sh
-claude mcp add --scope user sextant -- \
-  /abs/path/to/bin/sextant serve-mcp \
+claude mcp add --scope user fathom -- \
+  /abs/path/to/bin/fathom serve-mcp \
   --store /abs/path/to/workspace/db/fleet.duckdb
 ```
 
@@ -168,8 +168,8 @@ Equivalent JSON (in `~/.claude/claude_desktop_config.json` or equivalent):
 ```json
 {
   "mcpServers": {
-    "sextant": {
-      "command": "/abs/path/to/bin/sextant",
+    "fathom": {
+      "command": "/abs/path/to/bin/fathom",
       "args": [
         "serve-mcp",
         "--store",
@@ -271,7 +271,7 @@ Returns ranked `SymbolNode` objects:
 | Call log | — | `--call-log <path>` writes a JSONL tool-call log (default `workspace/logs/mcp-calls.jsonl` relative to daemon working dir; empty string disables) |
 | DuckDB lock | Holds the single-writer lock while running | Same |
 
-For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session and DuckDB is single-writer, so only the first session to start connects and the rest report `✘ Failed to connect`; one shared `serve-http` daemon makes every session an HTTP client of a single lock-holder. Also use `serve-http` to call sextant from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
+For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session and DuckDB is single-writer, so only the first session to start connects and the rest report `✘ Failed to connect`; one shared `serve-http` daemon makes every session an HTTP client of a single lock-holder. Also use `serve-http` to call fathom from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
 
 ---
 
@@ -296,11 +296,11 @@ This runs the ingest pipeline inside the server process, which already holds the
 { "name": "staleness_report", "arguments": { "service": "my-service" } }
 ```
 
-Returns `reingest_recommended: true` when the repo HEAD has advanced since the last ingest. You can also compare `sextant version` output to `git rev-parse HEAD` manually.
+Returns `reingest_recommended: true` when the repo HEAD has advanced since the last ingest. You can also compare `fathom version` output to `git rev-parse HEAD` manually.
 
 **Automatic staleness on every query:** `query_symbols` and other query tools embed a staleness indicator in their response. Agents should surface a re-ingest prompt to the user when `reingest_recommended` is `true`.
 
-For always-current indexes in long-lived sessions, consider `sextant watch` in a separate terminal — it polls and re-ingests on file changes, but it requires the MCP server to not be holding the lock, which means you cannot use `watch` and `serve-mcp` against the same store file simultaneously. Solutions:
+For always-current indexes in long-lived sessions, consider `fathom watch` in a separate terminal — it polls and re-ingests on file changes, but it requires the MCP server to not be holding the lock, which means you cannot use `watch` and `serve-mcp` against the same store file simultaneously. Solutions:
 
 - Use two store files: a live file for `watch` + CLI work, a separate file for `serve-mcp` (refresh it explicitly).
 - Or rely on the in-session `ingest` MCP tool after each significant change.
@@ -312,7 +312,7 @@ For always-current indexes in long-lived sessions, consider `sextant watch` in a
 For AI agents that work better with a pre-loaded symbol reference rather than live MCP queries, generate a `CLAUDE.md`:
 
 ```sh
-./bin/sextant gen-claude-md \
+./bin/fathom gen-claude-md \
   --service my-service \
   --store workspace/db/fleet.duckdb \
   --output workspace/artifacts/CLAUDE.md
@@ -325,18 +325,18 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 ## Setup & notes
 
 - **Absolute paths everywhere.** The `claude mcp add` command and the JSON config both require absolute paths — Claude Code launches the binary from the home directory, not the repo root.
-- **`--scope user` is recommended** over `--scope project`. User scope means subagents in any repo see the sextant tools; project scope limits it to one repo's sessions.
+- **`--scope user` is recommended** over `--scope project`. User scope means subagents in any repo see the fathom tools; project scope limits it to one repo's sessions.
 - **One store, many services.** A single `fleet.duckdb` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.duckdb` files).
-- **`workspace/` is gitignored** in sextant's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so DuckDB files and generated artifacts are never committed.
+- **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so DuckDB files and generated artifacts are never committed.
 - **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required for DuckDB's CGO build on macOS. On Linux this env var is ignored.
 - **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, `contradiction_scan`, and `propagate_concern` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
-- **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use sextant before Grep/Read," or an honest signal when the index doesn't cover the repo.
+- **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use fathom before Grep/Read," or an honest signal when the index doesn't cover the repo.
 
 ---
 
 ## Next steps
 
-Once sextant is wired in and returning results, see the per-use-case guides for how to apply it to specific workflows:
+Once fathom is wired in and returning results, see the per-use-case guides for how to apply it to specific workflows:
 
 - **[coding-context.md](coding-context.md)** — Stay in the relevant slice of the codebase during active feature work.
 - **[cross-repo-blast-radius.md](cross-repo-blast-radius.md)** — Before a refactor, find all callers across every service.

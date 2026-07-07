@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // SQLExtractor implements Extractor for SQL DDL files (.sql).

@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/geoffmilleraz/sextant/internal/store"
-	"github.com/geoffmilleraz/sextant/pkg/platform"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/platform"
 )
 
 // cmdPlatformCallers implements the "platform-callers" subcommand: it prints
@@ -26,13 +26,13 @@ import (
 //
 // Examples:
 //
-//	sextant platform-callers --symbol ProcessPayment
-//	sextant platform-callers --store workspace/db/fleet.duckdb --symbol Greet
-//	sextant platform-callers --repos svc-a=/src/a,svc-b=/src/b --symbol Greet
+//	fathom platform-callers --symbol ProcessPayment
+//	fathom platform-callers --store workspace/db/fleet.duckdb --symbol Greet
+//	fathom platform-callers --repos svc-a=/src/a,svc-b=/src/b --symbol Greet
 func cmdPlatformCallers(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("platform-callers", stderr)
 	symbolFlag := fs.String("symbol", "", "bare symbol name to find cross-repo callers of (required)")
-	storePath := fs.String("store", "workspace/db/sextant.duckdb", "DuckDB store path (language-agnostic source)")
+	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path (language-agnostic source)")
 	servicesFlag := fs.String("services", "", "comma-separated service IDs to include (default: all services in the store)")
 	reposFlag := fs.String("repos", "", "legacy Go-only mode: comma-separated id=path pairs; overrides --store when set")
 

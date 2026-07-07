@@ -26,13 +26,13 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
 | `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |
 | `ingest` | MCP tool | Re-index a service in-session to pull in new call edges |
-| `sextant platform-callers` | CLI | Cross-repo caller lookup from the terminal (language-agnostic) |
+| `fathom platform-callers` | CLI | Cross-repo caller lookup from the terminal (language-agnostic) |
 
 ## How it enhances Claude Code
 
-Without sextant, Claude Code must grep across repos and parse raw source to answer impact questions — a slow, incomplete, and token-heavy process that misses transitive callers.
+Without fathom, Claude Code must grep across repos and parse raw source to answer impact questions — a slow, incomplete, and token-heavy process that misses transitive callers.
 
-With sextant:
+With fathom:
 
 1. **Call edges are pre-indexed** across ~25 languages. `cross_repo_callers` returns structured results in one round-trip instead of many grep passes.
 2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
@@ -108,7 +108,7 @@ Returns `{ "reachable": true }`. The checkout → charge path exists, so this ch
 **CLI equivalent (from a terminal, outside a Claude Code session):**
 
 ```sh
-sextant platform-callers --store workspace/db/fleet.duckdb --symbol ValidateToken
+fathom platform-callers --store workspace/db/fleet.duckdb --symbol ValidateToken
 ```
 
 Produces the same cross-repo caller list. The `--repos` flag is a legacy Go-only filter; omit it to get language-agnostic results.
@@ -147,7 +147,7 @@ Then switch back to `investigation` or `coding` when done. Over the shared HTTP 
 { "name": "ingest", "arguments": { "service": "auth-lib" } }
 ```
 
-After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `sextant ingest` will fail while a Claude Code session holds the single-writer DuckDB lock — use the MCP `ingest` tool instead.
+After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `fathom ingest` will fail while a Claude Code session holds the single-writer DuckDB lock — use the MCP `ingest` tool instead.
 
 **Staleness matters for impact analysis.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` before a blast-radius review. If `reingest_recommended` is `true`, call `ingest` before proceeding — stale call edges produce false negatives (missing callers).
 
@@ -159,4 +159,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `sextant platform-callers`. Update it when these change.
+This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `fathom platform-callers`. Update it when these change.

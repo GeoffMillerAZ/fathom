@@ -3,7 +3,7 @@ package deps_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/sextant/internal/analysis/deps"
+	"github.com/geoffmilleraz/fathom/internal/analysis/deps"
 )
 
 // -----------------------------------------------------------------

@@ -1,4 +1,4 @@
-// Package journal provides a write path from sextant findings into an
+// Package journal provides a write path from fathom findings into an
 // agentic-kit investigation journal.
 package journal
 
@@ -9,7 +9,7 @@ import (
 	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
 )
 
-// Finding is a single sextant finding to be recorded in a journal.
+// Finding is a single fathom finding to be recorded in a journal.
 type Finding struct {
 	Step string
 	Note string

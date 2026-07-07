@@ -1,14 +1,14 @@
-# CLAUDE.md — sextant
+# CLAUDE.md — fathom
 
 Guidance for AI agents (and humans) working in this repo.
 
-## What sextant is
+## What fathom is
 
 A **code-intelligence + evidence engine**. It ingests source across one or many
 repos, extracts symbols / call edges / facts, stores them as governed **evidence
 observations**, and answers *concern-scoped* queries — for AI coding assistants,
 cross-repo blast-radius, change review, incident investigation, and fleet health.
-Surfaces: a Go client (`pkg/client`), a CLI (`cmd/sextant`), and an **MCP server**
+Surfaces: a Go client (`pkg/client`), a CLI (`cmd/fathom`), and an **MCP server**
 (stdio + HTTP).
 
 It builds on **agentic-kit** (`../agentic-kit`, wired via `go.work` + `replace`)
@@ -21,7 +21,7 @@ for governed-evidence primitives: evidence tiers (`review/scoring`), `llmclient`
 `workspace/` at the repo root, which is gitignored.** Never write generated files
 elsewhere in the tree.
 
-- `workspace/db/`        — DuckDB stores (CLI default: `workspace/db/sextant.duckdb`)
+- `workspace/db/`        — DuckDB stores (CLI default: `workspace/db/fathom.duckdb`)
 - `workspace/logs/`      — run/test logs
 - `workspace/artifacts/` — generated artifacts (gen-claude-md output, manifests, exports)
 - `workspace/tmp/`       — ephemeral scratch
@@ -100,24 +100,24 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 - Decisions: `ADR.md`. Overview/usage: `README.md`. Deeper docs: `docs/`.
 - **Adoption / use-case guides:** `docs/use-cases/` — one how-to per use case
   (getting-started + coding-context, cross-repo-blast-radius, spec-verification,
-  incident-investigation, change-review, fleet-health) for repos wiring sextant
+  incident-investigation, change-review, fleet-health) for repos wiring fathom
   into Claude Code. Convention: every use case has exactly one doc here; when an
   MCP tool or CLI command is added/renamed/removed, update the relevant doc's
   `## Maintained` line (and the catalog in `docs/mcp-tools.md`).
 
 ## Dogfood: the fleet index
 
-Sextant indexes the fleet (agentic-kit, app-kit, sextant; platform-kit once
+Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.duckdb`, served by a **single always-on
-HTTP daemon** — launchd `com.geoffmilleraz.sextant-http` running `serve-http`
+HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
 at `http://localhost:7575/rpc`, registered user-scope as an **HTTP MCP**. Every
 session shares one index and one store, so there is no per-session server, no
 single-writer lock contention, and no "Failed to connect." If a session doesn't
-see the sextant tools (`find_symbol`, `repo_map`, …), it started before the
+see the fathom tools (`find_symbol`, `repo_map`, …), it started before the
 switch — restart it once.
 
 When working in this (or any fleet) repo:
-1. **Index first.** Resolve where / what / who-calls via sextant (`find_symbol`,
+1. **Index first.** Resolve where / what / who-calls via fathom (`find_symbol`,
    `query_symbols`, `references`, `find_callers`, `symbol_context`, `outline`,
    `repo_map`, `pack_context`) before any Grep/Read sweep — `references` replaces
    fleet-wide grep, `symbol_context` gives def+callers+callees+tests in one call.
@@ -126,36 +126,36 @@ When working in this (or any fleet) repo:
    `companion` surface, which the daemon also serves standalone at
    `POST /rpc/companion` — see docs/mcp-tools.md.)
 2. **Refresh through the server, never the CLI.** The daemon holds the
-   single-writer DuckDB lock, so a shell `sextant ingest` fails with a lock
+   single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock
    error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at session
    start and after each commit (hash-gated, ~0.2s when clean). Because the store
    is shared, your refresh updates the index for *every* session.
 3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report` before
    trusting results, or just read the file you're about to change.
-4. **Scope.** Only fleet repos are indexed. A repo that isn't a sextant service
+4. **Scope.** Only fleet repos are indexed. A repo that isn't a fathom service
    yet must be ingested as a new service before its symbols appear.
 
-Repo-specific index excludes live in `.sextantignore` (`ref/`, `tmp/`,
+Repo-specific index excludes live in `.fathomignore` (`ref/`, `tmp/`,
 `workspace/`, `bin/`).
 
-**Dogfood discipline (we are sextant's first consumer — keep it sharp for the
+**Dogfood discipline (we are fathom's first consumer — keep it sharp for the
 rest of the fleet):**
 - **Log what you observe.** Recall gaps, contract mismatches, latency, pleasant
   surprises → `docs/dogfood-observations.md`, with a reproduction (probe a
   known-good case beside the failing one and root-cause the difference). When you
-  fix sextant, record it in `CHANGELOG.md` and close the observation.
+  fix fathom, record it in `CHANGELOG.md` and close the observation.
 - **Staleness — two kinds.** *Data* staleness is handled automatically:
   `serve-http` re-ingests a service on git-HEAD drift before answering
   (`--auto-refresh`, default on), and you can force it via the `ingest` MCP tool.
   *Binary* staleness is the one to watch — the daemon runs a built binary, so a
-  committed Go fix doesn't reach it until `bin/sextant` is rebuilt **and** the
-  daemon restarted (`launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.sextant-http`).
-  The `post-commit` hook rebuilds `bin/sextant` on Go changes; if a tool
-  misbehaves, compare `sextant version` to `git rev-parse HEAD` — a mismatch
+  committed Go fix doesn't reach it until `bin/fathom` is rebuilt **and** the
+  daemon restarted (`launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http`).
+  The `post-commit` hook rebuilds `bin/fathom` on Go changes; if a tool
+  misbehaves, compare `fathom version` to `git rev-parse HEAD` — a mismatch
   means stale, not buggy.
 - **Rebuilding the fleet index.** If the index is stale despite auto-refresh,
   has duplicate/path-like services, or is bloated (originally ingested without
-  `.sextantignore`), rebuild it cleanly with `scripts/reingest-fleet.sh` (run
+  `.fathomignore`), rebuild it cleanly with `scripts/reingest-fleet.sh` (run
   from a real terminal — it stops/starts the daemon). It re-ingests each fleet
   repo with a clean `--service`/`--path`, recording the `ServiceMeta`
   path+commit that auto-refresh, `staleness_report`, and the `ingest` tool all

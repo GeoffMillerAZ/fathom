@@ -1,4 +1,4 @@
-// Package client_test contains end-to-end tests for the public sextant client.
+// Package client_test contains end-to-end tests for the public fathom client.
 // Tests use FauxConnector + MemoryStore (or the DuckDB-backed path via
 // NewConstantClient) so they are network-free, secret-free, and deterministic.
 package client_test
@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/sextant/internal/connector"
-	"github.com/geoffmilleraz/sextant/internal/core"
-	"github.com/geoffmilleraz/sextant/internal/store"
-	"github.com/geoffmilleraz/sextant/pkg/client"
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // paymentSvc is the ServiceRef for the fauxtown payment-service fixture.

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/geoffmilleraz/sextant/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // maxSubstringMatches caps the substring tier so a short query ("get") cannot
