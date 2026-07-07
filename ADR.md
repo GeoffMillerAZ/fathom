@@ -201,3 +201,65 @@ WASM path remains a viable future option if a pure-Go runtime matures.
 **Trade-off / reversibility.** This adds one CGO-compiled dependency per language.
 It was implemented incrementally (one language per commit) so any subset can be
 reverted without affecting Track A or the Go extractor.
+
+## ADR-015 — Rename to fathom; two strata: deterministic index + semantic layers
+
+**Decision.** The project is renamed **fathom**. Its knowledge model is explicitly
+two strata: the **deterministic index** (scraped: symbols, call edges, specs,
+routes — cheap, incremental, provable) and **semantic layers** (reasoned:
+LLM-compiled governed claims — purpose, obligations, precedent — with citations,
+tiers, and staleness). The old name survives only in historical records
+(CHANGELOG entries, USAGE_JOURNAL.md, dogfood-observations.md) and in field
+back-compat (`.sextantignore` fallback, legacy telemetry prefixes, service-name
+aliasing in session-hook and reingest tooling; see `docs/rename-migration.md`).
+
+**Why.** A sextant navigates by surface sightings; a fathom measures depth. The
+product's differentiation is no longer only navigation (where is the symbol) but
+governed depth (what governs this file, why, and how sure are we). The rename
+landed with the semantic-layers founding design so the brand and the architecture
+say the same thing.
+
+**Trade-off / reversibility.** One-time operator migration (daemon label, MCP
+registration, fleet re-ingest); GitHub redirects the old repo URL. Back-compat
+shims are removable once the fleet has migrated.
+
+## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
+
+**Decision.** Semantic layers are **LLM-compiled, governed claims** stored in
+additive tables beside observations (`semantic_claims`, `claim_links`,
+`compile_runs`, minimal `claim_events`) — never inside `observations` (re-ingest
+purges destructively; contradiction scan is kind-blind). Claim identity is
+content-addressed (layer, kind, subject, aiprovenance `repro_key`); superseded
+claims are status-flipped, never deleted. V1 claims carry the existing
+`doc-claimed` tier (citation-grounded doc restatements); a distinct `ai-derived`
+tier waits for the first non-citable claim kind. Freshness is dual: a token-free
+post-ingest citation sweep AND a query-time status check — stale claims are
+served flagged, never silently. Compilation is incremental (per-section input
+digests), DLP-gated, budget-gated (dry-run estimate mandatory; real usage
+ledgered), and verified at compile time (claims with unresolvable citations or
+scopes are rejected). The first layer is a **tracer bullet** — `obligations`
+(governing docs → per-file rules, served ≤150 tokens on the companion surface,
+zero-output-on-clean) — gated by eval fixtures (precision ≥0.90 with scope
+traps) and a 3-week generalize-or-kill telemetry gate. The generic layer
+runtime, lifecycle FSM/ledger, graph ontology, vectors, and new tiers are
+deferred with named revival evidence. Full design: `docs/design/semantic-layers.md`.
+
+**Why.** Judged synthesis of four competing architectures under three lenses.
+The external record: deterministic spine first (embeddings-first engines got
+retracted); freshness is the product-killer nobody solved for LLM artifacts;
+coverage-first ontologies die before delivering; knowledge without a consuming
+tool stalls; costs must scale with change size, not repo size. Fathom's edge is
+governance — provenance, contradiction, staleness, costed compilation,
+telemetry-gated existence — which no surveyed system exposes.
+
+**Expert-module commitments (locked now so the north star needs no restart):**
+corpus-agnostic core (open ref strings, never code-only types); the store is the
+module (self-describing: claims, ledger, evals, watermarks travel inside it);
+vectors are an additive in-store column (DuckDB VSS) when earned, never a second
+store; determinism + tiers are the product; federation composes above the engine
+(one module = one store), never inside it.
+
+**Trade-off / reversibility.** If the tracer bullet fails its gate, the sunk cost
+is three small tables and one compiler pass. Claim tables are additive; the
+schema's stable IDs and repro keys make every deferred piece (ledger, tiers,
+runtime) a non-destructive retrofit.

@@ -96,6 +96,9 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 ## Source of truth
 
 - Design docs (drive the implementation): `tmp/design_inspiration/files/` (13 docs).
+- **Semantic layers + expert modules (the active program):**
+  `docs/design/semantic-layers.md` (founding design, ADR-015/016) and
+  `docs/design/product-vision.md` (use cases, product shape, roadmap horizons).
 - Roadmap + status (exhaustive checklist): `tmp/TRACKING.md`.
 - Decisions: `ADR.md`. Overview/usage: `README.md`. Deeper docs: `docs/`.
 - **Adoption / use-case guides:** `docs/use-cases/` — one how-to per use case
