@@ -18,7 +18,7 @@ Give Claude Code (or any AI coding agent) a precise, token-efficient context sli
 | Name | Kind | What it gives you |
 |---|---|---|
 | `query_symbols` | MCP tool | Concern-scoped ranked symbol list; `concern` and `service` required |
-| `find_symbol` | MCP tool | Definition(s) matching a bare symbol name |
+| `find_symbol` | MCP tool | Definition(s) by name — tiered: exact → case-insensitive → substring, `matched_via` says which; a full miss returns `did_you_mean` suggestions |
 | `outline` | MCP tool | All symbols in a specific file, ordered by line number |
 | `repo_map` | MCP tool | Budget-bounded symbol map ranked by outbound call-edge count |
 | `pack_context` | MCP tool | Packs ranked evidence items into a token budget; `concern` and `service` required |

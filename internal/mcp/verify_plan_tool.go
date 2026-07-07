@@ -19,27 +19,27 @@ import (
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
-		Description: "Evidence-backed definition-of-done. For each plan task, verify the claimed symbol exists at a sufficient evidence tier, a test statically reaches it, a required call-edge is wired, declared specs are covered, and there is no contradiction. Returns a per-task verdict (verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | spec-uncovered | no-contract) with cited evidence. STATIC only: test_reaches means a test reaches the symbol via the call graph, NOT that it passes; runtime_pass is always 'unknown' until CI/coverage evidence is ingested.",
+		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"concern":       map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
-				"plan_markdown": map[string]any{"type": "string", "description": "Alternative to tasks: a Markdown checklist (e.g. the contents of TRACKING.md). Each '- [ ] title [SPEC-ID] {symbol: Foo, reachable_from: Bar, min_tier: verified}' line becomes a task; a line with no annotation/spec verifies as no-contract."},
+				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, reachable_from: Bar, min_tier: verified}' line becomes a task"},
 				"tasks": map[string]any{
 					"type":        "array",
-					"description": "Plan tasks, each with an acceptance contract",
+					"description": "Plan tasks with acceptance contracts",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
-							"id":                  map[string]any{"type": "string", "description": "Task identifier"},
-							"title":               map[string]any{"type": "string", "description": "Human-readable task title"},
-							"spec_ids":            map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Declared spec IDs (e.g. [\"[US-042]\"]) that must be covered"},
-							"symbol":              map[string]any{"type": "string", "description": "Claimed symbol that must exist in the index"},
-							"reachable_from":      map[string]any{"type": "string", "description": "Optional entrypoint that must reach symbol via the call graph"},
-							"skip_test":           map[string]any{"type": "boolean", "description": "If true, do not require a test to reach symbol (default false = test required)"},
-							"allow_contradiction": map[string]any{"type": "boolean", "description": "If true, contradictions do not fail the task (default false)"},
-							"min_tier":            map[string]any{"type": "string", "description": "Minimum evidence tier: verified|pre-scan|doc-claimed|sme-stated|assumed (default verified)"},
+							"id":                  map[string]any{"type": "string", "description": "Task ID"},
+							"title":               map[string]any{"type": "string", "description": "Task title"},
+							"spec_ids":            map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec IDs that must be covered"},
+							"symbol":              map[string]any{"type": "string", "description": "Symbol that must exist in the index"},
+							"reachable_from":      map[string]any{"type": "string", "description": "Entrypoint that must reach symbol"},
+							"skip_test":           map[string]any{"type": "boolean", "description": "Don't require a test to reach symbol"},
+							"allow_contradiction": map[string]any{"type": "boolean", "description": "Contradictions don't fail the task"},
+							"min_tier":            map[string]any{"type": "string", "enum": []string{"verified", "pre-scan", "doc-claimed", "sme-stated", "assumed"}, "description": "Minimum evidence tier (default verified)"},
 						},
 						"required": []string{"id"},
 					},

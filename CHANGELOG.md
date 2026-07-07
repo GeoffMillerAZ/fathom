@@ -49,6 +49,31 @@ sextant even where the index exists, because "index first" lived only in passive
   via sextant BEFORE Grep/Read") — or an honest signal when the daemon is down or the repo
   isn't indexed. Short HTTP timeout, always exits 0, hides malformed services from the list.
 
+### Changed
+- **Query-side staleness is constant-size now** (USAGE_JOURNAL.md ask #4: an 8-node
+  `query_symbols` answer arrived buried under ~117 lines of per-source staleness
+  metadata). The `staleness` block on query responses now carries at most 3 example rows
+  (the oldest stale sources) plus `stale_sources`, `total_sources`, `fresh_sources`, and
+  a new `oldest_ingested_at` low-water mark; `reingest_recommended` unchanged. The full
+  source list and commit drift stay available via the `staleness_report` tool.
+  Regression: `TestQuery_StalenessReport_CompactWhenManyStale`.
+- **`find_symbol` no longer punishes not knowing the exact identifier**
+  (USAGE_JOURNAL.md ask #3: `find_symbol("serveHTTP")` → `[]` because that wasn't the
+  exact spelling). Matching now degrades deterministically — exact/key-suffix →
+  case-insensitive (same equality rules, case-folded) → substring (capped at 20,
+  tightest names first, explicit `truncated`) — and a full miss returns up to 5
+  `did_you_mean` suggestions when any exist: edit-distance typo candidates from the
+  symbol list first ("authentiction" → `Authentication`), else concern-ranked. The
+  response reports `matched_via` (`exact`/`case_insensitive`/`substring`/`none`);
+  results are existence proof only for the first two tiers. Fallback tiers run only on
+  an exact miss, in the MCP layer, so no backend interface changed. Regressions:
+  `internal/mcp/findsymbol_test.go`.
+- **`verify_plan`'s tool schema slimmed ~27% (~150 tokens; description nearly halved)**
+  (it was the heaviest schema on the surface at ~554 tokens, ~6% of the whole registry
+  for schema-loading clients). `min_tier`'s valid values moved from prose into a proper
+  JSON-schema `enum`. Behavior is unchanged; the full verdict reference lives in
+  `docs/mcp-tools.md`.
+
 ### Fixed
 - **Ingest no longer aborts on a symlink-to-directory (Nix/devbox trees).** `WalkDir`
   does not follow symlinks, so a link like `.devbox/nix/profile/default-9-link`

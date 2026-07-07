@@ -164,7 +164,7 @@ func registerTools(s *Server, backend QueryInterface) {
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate one or more symbol definitions matching the given name in the given service.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -174,7 +174,7 @@ func registerTools(s *Server, backend QueryInterface) {
 				},
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified)",
+					"description": "Symbol name (bare or fully-qualified; exact spelling not required)",
 				},
 			},
 			"required": []string{"service", "name"},
@@ -201,7 +201,45 @@ func registerTools(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		return map[string]any{"symbols": toNodeDTOs(nodes)}, nil
+		if len(nodes) > 0 {
+			return map[string]any{"symbols": toNodeDTOs(nodes), "matched_via": "exact"}, nil
+		}
+
+		// Exact tier missed — degrade over the service's symbol list. Fallback
+		// errors never fail the lookup; the answer is just "no match".
+		var all []core.SymbolNode
+		if listed, listErr := backend.ListAllSymbols(ctx, p.Service); listErr == nil {
+			all = listed
+			if ci := caseFoldMatches(all, p.Name); len(ci) > 0 {
+				return map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}, nil
+			}
+			if sub, truncated := substringMatches(all, p.Name); len(sub) > 0 {
+				resp := map[string]any{"symbols": toNodeDTOs(sub), "matched_via": "substring"}
+				if truncated {
+					resp["truncated"] = true
+				}
+				return resp, nil
+			}
+		}
+
+		// Full miss: did_you_mean suggestions, never matches. Edit-distance
+		// over the symbol list catches typos ("authentiction"); the
+		// concern-ranked query is the last resort for conceptual near-misses.
+		resp := map[string]any{"symbols": []any{}, "matched_via": "none"}
+		if fuzzy := fuzzySuggestions(all, p.Name); len(fuzzy) > 0 {
+			resp["did_you_mean"] = suggestionDTOs(fuzzy)
+			return resp, nil
+		}
+		ranked, qErr := backend.QuerySymbols(ctx, core.Query{
+			ServiceID: p.Service,
+			ConcernID: p.Name,
+			Keywords:  nameTokens(p.Name),
+			TopN:      maxSuggestions,
+		})
+		if qErr == nil && len(ranked.Nodes) > 0 {
+			resp["did_you_mean"] = suggestionDTOs(ranked.Nodes)
+		}
+		return resp, nil
 	})
 
 	// Register analysis tools (call-graph and import-cycle analysis).

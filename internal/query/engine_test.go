@@ -350,6 +350,56 @@ func TestQuery_StalenessReport_OneStatusPerSource(t *testing.T) {
 	}
 }
 
+// ─── staleness stays compact when the whole index is stale ───────────────────
+
+func TestQuery_StalenessReport_CompactWhenManyStale(t *testing.T) {
+	// The dogfood failure mode: a stale index used to attach one SourceStatus
+	// row per source to EVERY query answer (117 lines dwarfing an 8-node
+	// result). The report must stay constant-size: at most 3 example rows
+	// (oldest first), with counts and the oldest-ingest low-water mark
+	// carrying the full picture.
+	stale := func(h int) time.Time { return epoch.Add(-time.Duration(h) * time.Hour) }
+	obs := []core.Observation{
+		{ServiceID: "svc", ConcernID: "c", Symbol: "A", Claim: "a", EvidenceTier: core.TierVerified, SourceRef: "a.go", IngestedAt: stale(30)},
+		{ServiceID: "svc", ConcernID: "c", Symbol: "B", Claim: "b", EvidenceTier: core.TierVerified, SourceRef: "b.go", IngestedAt: stale(80)},
+		{ServiceID: "svc", ConcernID: "c", Symbol: "C", Claim: "c", EvidenceTier: core.TierVerified, SourceRef: "c.go", IngestedAt: stale(50)},
+		{ServiceID: "svc", ConcernID: "c", Symbol: "D", Claim: "d", EvidenceTier: core.TierVerified, SourceRef: "d.go", IngestedAt: stale(70)},
+		{ServiceID: "svc", ConcernID: "c", Symbol: "E", Claim: "e", EvidenceTier: core.TierVerified, SourceRef: "e.go", IngestedAt: stale(60)},
+		{ServiceID: "svc", ConcernID: "c", Symbol: "F", Claim: "f", EvidenceTier: core.TierVerified, SourceRef: "fresh.go", IngestedAt: epoch.Add(-1 * time.Hour)},
+	}
+	ms := newStore(t, obs)
+	e := query.New(ms, query.WithNow(func() time.Time { return epoch }), query.WithMaxAge(24*time.Hour))
+
+	result, err := e.Query(context.Background(), core.Query{ServiceID: "svc", ConcernID: "c"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	st := result.Staleness
+	if st.TotalSources != 6 || st.FreshSources != 1 {
+		t.Errorf("TotalSources=%d FreshSources=%d, want 6/1", st.TotalSources, st.FreshSources)
+	}
+	if st.StaleSources != 5 {
+		t.Errorf("StaleSources = %d, want 5", st.StaleSources)
+	}
+	if !st.ReingestRecommended {
+		t.Error("expected ReingestRecommended=true")
+	}
+	// Examples are capped at 3, oldest first.
+	if len(st.Sources) != 3 {
+		t.Fatalf("expected 3 example rows (capped), got %d: %v", len(st.Sources), st.Sources)
+	}
+	wantOrder := []string{"b.go", "d.go", "e.go"}
+	for i, want := range wantOrder {
+		if st.Sources[i].SourceRef != want {
+			t.Errorf("Sources[%d] = %q, want %q (oldest first)", i, st.Sources[i].SourceRef, want)
+		}
+	}
+	// The low-water mark is the oldest ingest across ALL sources.
+	if !st.OldestIngestedAt.Equal(stale(80)) {
+		t.Errorf("OldestIngestedAt = %v, want %v", st.OldestIngestedAt, stale(80))
+	}
+}
+
 // ─── contradiction detection ──────────────────────────────────────────────────
 
 func TestQuery_ContradictionDetected(t *testing.T) {

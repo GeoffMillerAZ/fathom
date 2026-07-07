@@ -256,12 +256,17 @@ type QueryResult struct {
 }
 
 // StalenessReport tells callers whether the underlying data is fresh (ADR-008).
-// Sources contains only stale entries; TotalSources and FreshSources give the
-// full picture without bloating the payload with per-file rows for fresh files.
+// It is constant-size by design — it rides on every query answer, so it must
+// never dwarf the answer itself: Sources holds at most a few example rows (the
+// oldest stale sources); the counts and OldestIngestedAt carry the full
+// picture. The full source list and commit drift live behind the
+// staleness_report tool.
 type StalenessReport struct {
-	Sources             []SourceStatus `json:"sources"`
+	Sources             []SourceStatus `json:"sources,omitempty"` // oldest stale sources, capped (examples, not the full list)
+	StaleSources        int            `json:"stale_sources"`
 	TotalSources        int            `json:"total_sources"`
 	FreshSources        int            `json:"fresh_sources"`
+	OldestIngestedAt    time.Time      `json:"oldest_ingested_at,omitzero"` // ingest low-water mark across all sources
 	ReingestRecommended bool           `json:"reingest_recommended"`
 }
 

@@ -15,6 +15,8 @@ type (
 	Observation = core.Observation
 
 	// StalenessReport tells callers whether the underlying data is fresh.
+	// Constant-size: Sources holds at most a few example rows (oldest stale
+	// first); StaleSources/TotalSources/FreshSources carry the counts.
 	StalenessReport = core.StalenessReport
 
 	// Contradiction reports two observations asserting incompatible claims.

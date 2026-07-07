@@ -374,12 +374,19 @@ func filterByKind(obs []core.Observation, kinds []core.SourceKind) []core.Observ
 	return out
 }
 
+// maxStaleExamples caps the SourceStatus rows a query-side StalenessReport
+// carries. The report rides on every answer; when a whole index went stale it
+// used to list every source (117 lines around an 8-node result). The full
+// source list and commit drift are the staleness_report tool's job.
+const maxStaleExamples = 3
+
 // buildStalenessReport builds a StalenessReport from the (already filtered)
-// observations. One SourceStatus per distinct SourceRef; uses the latest
-// IngestedAt across all observations for that ref.
+// observations. One source per distinct SourceRef; uses the latest IngestedAt
+// across all observations for that ref.
 //
-// Sources contains ONLY stale entries to keep MCP payloads compact. Callers
-// that need the full picture use TotalSources and FreshSources counts.
+// The report is constant-size: Sources holds at most maxStaleExamples stale
+// entries (oldest first); StaleSources/TotalSources/FreshSources and
+// OldestIngestedAt carry the full picture.
 func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessReport {
 	// Track latest IngestedAt per source ref.
 	latest := map[string]time.Time{}
@@ -392,7 +399,7 @@ func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessRepo
 	now := e.now()
 	totalSources := len(latest)
 	var staleEntries []core.SourceStatus
-	reingest := false
+	var oldest time.Time
 
 	// Sort the keys for deterministic output.
 	refs := make([]string, 0, len(latest))
@@ -403,9 +410,10 @@ func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessRepo
 
 	for _, ref := range refs {
 		ingested := latest[ref]
-		stale := now.Sub(ingested) > e.maxAge
-		if stale {
-			reingest = true
+		if oldest.IsZero() || ingested.Before(oldest) {
+			oldest = ingested
+		}
+		if now.Sub(ingested) > e.maxAge {
 			staleEntries = append(staleEntries, core.SourceStatus{
 				SourceRef:    ref,
 				LastIngested: ingested,
@@ -414,13 +422,22 @@ func (e *Engine) buildStalenessReport(obs []core.Observation) core.StalenessRepo
 		}
 	}
 
-	freshSources := totalSources - len(staleEntries)
+	staleSources := len(staleEntries)
+	// Oldest first; ties break on the already-sorted SourceRef for determinism.
+	sort.SliceStable(staleEntries, func(i, j int) bool {
+		return staleEntries[i].LastIngested.Before(staleEntries[j].LastIngested)
+	})
+	if len(staleEntries) > maxStaleExamples {
+		staleEntries = staleEntries[:maxStaleExamples]
+	}
 
 	return core.StalenessReport{
 		Sources:             staleEntries,
+		StaleSources:        staleSources,
 		TotalSources:        totalSources,
-		FreshSources:        freshSources,
-		ReingestRecommended: reingest,
+		FreshSources:        totalSources - staleSources,
+		OldestIngestedAt:    oldest,
+		ReingestRecommended: staleSources > 0,
 	}
 }
 
