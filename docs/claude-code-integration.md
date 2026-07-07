@@ -46,6 +46,11 @@ indexed → 222 after).
 
 ## 3. Register the MCP server
 
+> **Run more than one Claude Code session at a time?** Skip the per-session stdio registration below
+> and use the shared HTTP server instead (see **Multiple concurrent sessions** further down). Each
+> stdio `serve-mcp` holds the single-writer DuckDB lock, so with concurrent sessions only the first
+> connects and the rest report `✘ Failed to connect`.
+
 User scope makes it available in every repo and to every subagent:
 
 ```sh
@@ -112,6 +117,76 @@ post-commit:
 No daemon/watcher needed: hash-gating makes on-demand refresh effectively
 free, and `staleness_report` makes drift visible instead of silent.
 
+## Multiple concurrent sessions: the shared HTTP server
+
+The stdio `serve-mcp` registration in §3 starts **one server per Claude Code session**, and DuckDB is
+**single-writer**. Run two sessions at once and only the first to open the store gets the lock; every
+other session — and every `claude mcp list` health check — reports **`✘ Failed to connect`**. Killing
+the lock-holder doesn't help: it's a *live* server owned by one of your other sessions, so you'd just
+break that one. Restarts don't help either — the next session loses the same race. The per-session
+model simply doesn't fit a multi-session workflow.
+
+The fix is built in: run **one** `serve-http` daemon (the documented shared fleet server) and register
+it over **HTTP**. Every session becomes an HTTP client of that single lock-holder — unlimited
+concurrency, one shared index, no contention.
+
+**1 — Run one always-on server.** A launchd agent keeps it up across logins/reboots and, via
+`KeepAlive`, grabs the store lock the instant it's free:
+
+```xml
+<!-- ~/Library/LaunchAgents/<reverse-dns>.sextant-http.plist  — adapt the absolute paths -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>org.example.sextant-http</string>
+  <key>ProgramArguments</key><array>
+    <string>/abs/path/sextant/bin/sextant</string>
+    <string>serve-http</string>
+    <string>--store</string><string>/abs/path/sextant/workspace/db/fleet.duckdb</string>
+    <string>--addr</string><string>127.0.0.1:7575</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>/tmp/sextant-http.log</string>
+  <key>StandardErrorPath</key><string>/tmp/sextant-http.err</string>
+</dict></plist>
+```
+
+```sh
+cp <reverse-dns>.sextant-http.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/<reverse-dns>.sextant-http.plist
+tail -f /tmp/sextant-http.log     # expect: serve-http: listening on 127.0.0.1:7575
+```
+
+No launchd (Linux/CI)? `nohup sextant serve-http --store … --addr :7575 &` works, but it dies with the
+shell — use a systemd unit or supervisor for persistence.
+
+**2 — Register over HTTP at user scope.** Remove the stdio entry first, or `add` fails with
+"already exists":
+
+```sh
+claude mcp remove sextant -s user
+claude mcp add --transport http --scope user sextant http://localhost:7575/rpc
+claude mcp get sextant            # expect:  Type: http  ·  Status: ✔ Connected
+```
+
+If `http` won't connect, register the SSE endpoint instead: `--transport sse … http://localhost:7575/events`.
+
+**3 — Free the lock once.** `serve-http` can't open the store while any stdio `serve-mcp` still holds
+it. Quit your running sessions once so their stdio servers exit; `KeepAlive` then hands the lock to
+`serve-http` for good. Reopen sessions — each picks up the HTTP registration at start and shares the
+one server.
+
+**Refreshing changes.** The daemon is the single writer, so a **CLI `ingest` will fail** with a lock
+error. Refresh through the **`ingest` MCP tool** (`{"service":"<repo>"}`) from any session, or
+`POST /reload`; because the store is shared, one refresh updates the index for **every** session. To
+add a new repo as a service while the daemon runs, ingest via the MCP tool, or `launchctl unload` →
+CLI `ingest` → `launchctl load`.
+
+The **session operating contract (§4) is unchanged** — index-first, the same handful of tools, refresh
+at session start and after commits. Only the transport (HTTP, not stdio) and the refresh path (MCP
+tool / `POST /reload`, never a CLI `ingest` while the daemon runs) differ.
+
 ## 6. The pre-packed brief pattern (biggest tokenomics lever)
 
 The architect does recon ONCE via the index, then ships it verbatim inside
@@ -132,6 +207,9 @@ no-ops at runtime — we hit exactly this once before adding the rule.
 
 - [ ] `.sextantignore` written before first ingest (privacy + noise).
 - [ ] `claude mcp list` shows ✔ Connected after registration.
+- [ ] Running more than one session at once? You're on the shared HTTP server (see **Multiple
+      concurrent sessions**), not per-session stdio — otherwise all but one session fails on the
+      single-writer lock and `claude mcp list` shows `✘ Failed to connect`.
 - [ ] CLAUDE.md operating contract added to EVERY repo in the fleet.
 - [ ] Session restart after rebuilding the sextant binary or recreating
       the store (the running server keeps its old file handle).
