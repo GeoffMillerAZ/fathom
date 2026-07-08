@@ -289,3 +289,67 @@ func extractPayload(t *testing.T, resp map[string]any) map[string]any {
 	}
 	return payload
 }
+
+// ─── regression O7: capabilities must survive the auto-refresh wrapper ───────
+
+// TestSemanticTools_ThroughAutoRefreshWrapper exercises the semantic tools the
+// way the DAEMON actually serves them — behind mcp.NewAutoRefresh. Interface
+// embedding does not forward methods outside QueryInterface's method set, so
+// without explicit forwards on the wrapper every semantic capability was
+// silently stripped in production while direct-backend tests stayed green
+// (and the edit-hook's silent-on-error contract hid it — dogfood O7).
+func TestSemanticTools_ThroughAutoRefreshWrapper(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Service: "svc", File: "pkg/foo.go",
+			Rules: []semantic.Obligation{{Rule: "Sort outputs.", Src: "d.md#L1-L2", Tier: "doc-claimed"}},
+		},
+		compileRun:    core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 3},
+		claimsSummary: map[string]any{"obligations": map[string]any{"fresh": 1}},
+	}
+	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+
+	// obligations
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "file": "pkg/foo.go"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("obligations through wrapper: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if rules, ok := payload["rules"].([]any); !ok || len(rules) != 1 {
+		t.Errorf("obligations rules through wrapper = %v", payload["rules"])
+	}
+
+	// compile_layer (dry run default)
+	resp = roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "compile_layer",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("compile_layer through wrapper: %v", resp["error"])
+	}
+
+	// staleness_report layers section
+	resp = roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "staleness_report",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("staleness_report through wrapper: %v", resp["error"])
+	}
+	payload = extractPayload(t, resp)
+	if payload["layers"] == nil {
+		t.Error("staleness_report through wrapper lost the layers summary")
+	}
+}

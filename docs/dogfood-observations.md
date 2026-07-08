@@ -19,6 +19,27 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O7 — optional-capability interfaces silently stripped by the auto-refresh wrapper (fixed)
+
+- **Symptom:** first post-migration smoke test: `fathom compile --service fathom` over
+  HTTP → "RPC error: backend does not support layer compilation", while the same call
+  worked in every unit test; the edit-hook smoke test looked like an expected
+  zero-obligations silence but was actually failing the same way.
+- **Evidence:** `compile_layer`/`obligations` assert optional interfaces on the served
+  backend; the daemon serves `mcp.NewAutoRefresh(client)` — a struct embedding the
+  `QueryInterface` *interface*, which forwards only that interface's method set. Every
+  semantic method fell off the wrapper. Direct-backend tests (no wrapper) stayed green.
+- **Root cause:** Go interface embedding + type-assertion capability detection don't
+  compose across wrappers; and the edit-hook's (correct) silent-on-error contract
+  masked the failure in manual smoke testing.
+- **Fix (same session):** explicit forwards on `autoRefreshBackend` (Obligations /
+  ObligationsIndexStale / CompileObligations / ClaimsSummary), with `ensure()` freshness
+  on the read paths — plus `TestSemanticTools_ThroughAutoRefreshWrapper`, which
+  exercises the tools exactly as the daemon serves them.
+- **Status:** resolved. **Impact/lesson:** any future optional backend capability MUST
+  be forwarded on every wrapper and covered by a through-the-wrapper test; smoke tests
+  of silent-by-design channels must use the loud path (the raw tool) first.
+
 ### O6 — test_reaches misses tests that exercise a symbol only through method calls
 
 - **Symptom:** `fathom verify` failed `test_reaches` on two genuinely-tested symbols

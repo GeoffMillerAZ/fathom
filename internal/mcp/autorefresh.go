@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // autoRefreshBackend wraps a QueryInterface and, before each per-service read,
@@ -121,4 +122,50 @@ func (a *autoRefreshBackend) ListAllSymbols(ctx context.Context, serviceID strin
 func (a *autoRefreshBackend) Sources(ctx context.Context, service string) ([]core.SourceFile, error) {
 	a.ensure(ctx, service)
 	return a.QueryInterface.Sources(ctx, service)
+}
+
+// ─── forwarded optional capabilities ─────────────────────────────────────────
+//
+// Optional-capability interfaces (semantic tools, claims summary) are detected
+// by type assertion on the SERVED backend — and interface embedding does not
+// forward methods outside QueryInterface's method set, so without these
+// explicit forwards, wrapping the client in auto-refresh silently stripped
+// every semantic capability from the daemon (dogfood O7). Obligations and
+// compile additionally get ensure() so claims are checked against a fresh
+// index and a fresh citation sweep.
+
+var errSemanticUnsupported = fmt.Errorf("backend does not serve semantic layers")
+
+func (a *autoRefreshBackend) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	ob, ok := a.QueryInterface.(obligationsBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return ob.Obligations(ctx, service, file, maxRules)
+}
+
+func (a *autoRefreshBackend) ObligationsIndexStale(ctx context.Context, service, file string) bool {
+	ob, ok := a.QueryInterface.(obligationsBackend)
+	if !ok {
+		return false
+	}
+	return ob.ObligationsIndexStale(ctx, service, file)
+}
+
+func (a *autoRefreshBackend) CompileObligations(ctx context.Context, service string, dryRun bool) (core.CompileRun, error) {
+	a.ensure(ctx, service)
+	cb, ok := a.QueryInterface.(compileBackend)
+	if !ok {
+		return core.CompileRun{}, errSemanticUnsupported
+	}
+	return cb.CompileObligations(ctx, service, dryRun)
+}
+
+func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) (map[string]any, error) {
+	cs, ok := a.QueryInterface.(claimsSummaryBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return cs.ClaimsSummary(ctx, service)
 }
