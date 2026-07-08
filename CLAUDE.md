@@ -122,12 +122,16 @@ switch — restart it once.
 When working in this (or any fleet) repo:
 1. **Index first.** Resolve where / what / who-calls via fathom (`find_symbol`,
    `query_symbols`, `references`, `find_callers`, `symbol_context`, `outline`,
-   `repo_map`, `pack_context`) before any Grep/Read sweep — `references` replaces
-   fleet-wide grep, `symbol_context` gives def+callers+callees+tests in one call.
+   `repo_map`, `pack_context`, `obligations`) before any Grep/Read sweep —
+   `references` replaces fleet-wide grep, `symbol_context` gives
+   def+callers+callees+tests in one call, `obligations` surfaces governing rules
+   for a file before editing it.
    Read files to *edit* them, not to discover them. The index is fleet-wide, so
-   cross-repo questions are one query. (These are the core of the 14-tool
+   cross-repo questions are one query. (These are the core of the 15-tool
    `companion` surface, which the daemon also serves standalone at
    `POST /rpc/companion` — see docs/mcp-tools.md.)
+   After the obligations layer is compiled, every Edit/Write gets governing rules
+   injected via the PostToolUse edit-hook (docs/design/coding-agent-excellence.md §5.2).
 2. **Refresh through the server, never the CLI.** The daemon holds the
    single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock
    error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at session

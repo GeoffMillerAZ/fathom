@@ -62,7 +62,7 @@ set_profile { "profile": "coding" }
 
 Returns: `{ "profile": "coding", "ok": true }`
 
-Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 14-tool coding hot-loop) or `POST /rpc/coding` instead.
+Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 15-tool coding hot-loop) or `POST /rpc/coding` instead.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 
@@ -145,6 +145,27 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 ---
 
+## Decision-moment obligations
+
+When an agent edits a file it should know the governing rules for that file — architectural constraints, naming conventions, test requirements — before writing, not after review catches a violation. Fathom surfaces these via the compiled obligations layer (ADR-016).
+
+**Primary channel — PostToolUse edit-hook:** The `fathom edit-hook` CLI subcommand is wired as a Claude Code `PostToolUse` hook (matcher: `Edit|Write|MultiEdit`). After every file write it calls `obligations` on the file just edited and injects any governing rules into the session context. Silent on clean files (zero-output-on-clean contract); silent on any error so it never blocks a write.
+
+**Pull path — `obligations` MCP tool:** Call directly when you need to inspect governing rules before editing or when the edit-hook is not wired:
+
+```json
+obligations {
+  "service": "my-service",
+  "file": "internal/auth/token.go"
+}
+```
+
+Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empty response with no `index_stale` field means no obligations apply to the file. Each rule carries its source citation and evidence tier; stale or contradicted rules are flagged explicitly. `max_rules` caps the list (default 6).
+
+**Compile the layer first:** obligations requires a prior `compile_layer` run to populate claims (`dry_run` defaults true — estimate cost before executing). This is a one-time spending step per service; see `docs/design/coding-agent-excellence.md §5.2` for the design rationale.
+
+---
+
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `find_callees`, `call_hierarchy`, `entrypoints`, `batch`, `set_profile`, `staleness_report`, `gen-claude-md`. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `find_callees`, `call_hierarchy`, `entrypoints`, `batch`, `set_profile`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`. Update it when these change.

@@ -66,9 +66,39 @@ service `fathom`; stops/starts the daemon itself):
 /Volumes/m2ext/code/geoffmilleraz/sextant/scripts/reingest-fleet.sh
 ```
 
-**4. Update the SessionStart hook** wherever it is registered (user or project
-`settings.json`): the command is now `bin/fathom session-hook` (search your
-settings for `session-hook`).
+**4. Update the SessionStart hook and add the obligations edit-hook** in
+`~/.claude/settings.json` (agent-config changes are yours to approve — an
+agent session cannot install these for you):
+
+- In the existing `SessionStart` entry, change the command
+  `…/sextant/bin/sextant session-hook` → `…/sextant/bin/fathom session-hook`.
+- Add the PostToolUse injection hook (the forced delivery channel for
+  semantic-layer obligations — `docs/design/coding-agent-excellence.md` §5.2;
+  silent on clean files, silent on any error, never blocks):
+
+```json
+"PostToolUse": [
+  {
+    "matcher": "Edit|Write|MultiEdit",
+    "hooks": [
+      {
+        "type": "command",
+        "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook",
+        "timeout": 5
+      }
+    ]
+  }
+]
+```
+
+**4b. Compile the obligations layer** (once, after the daemon swap; pennies —
+estimate first): the daemon picks up `ANTHROPIC_API_KEY` from its environment
+to enable `compile_layer`; or run it directly against a stopped daemon's store:
+
+```sh
+bin/fathom compile --service fathom --url http://localhost:7575            # dry-run estimate
+bin/fathom compile --service fathom --url http://localhost:7575 --dry-run=false
+```
 
 **5. Optional, whenever convenient — rename the directory:**
 

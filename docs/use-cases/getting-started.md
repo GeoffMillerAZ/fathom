@@ -213,7 +213,7 @@ Profile reference:
 
 | Profile | Visible groups | Best for |
 |---|---|---|
-| `companion` | coding hot-loop (14 curated tools) | Focused coding session; smallest surface; matches `POST /rpc/companion` HTTP endpoint |
+| `companion` | coding hot-loop (15 curated tools) | Focused coding session; smallest surface; matches `POST /rpc/companion` HTTP endpoint |
 | `coding` | coding + shared | Active feature work, symbol navigation, call-graph, impact analysis |
 | `investigation` | investigation + shared | Incident response, cross-service tracing, routes, test impact |
 | `platform` | platform + shared | Fleet-wide drift, cross-repo callers, all-service search |
@@ -257,6 +257,64 @@ Returns ranked `SymbolNode` objects:
   "truncated": false
 }
 ```
+
+---
+
+## Wiring Claude Code hooks
+
+Two hooks turn fathom from a tool the agent must remember to call into one it is nudged toward automatically.
+
+### SessionStart — `fathom session-hook`
+
+The `session-hook` subcommand runs at session start and injects a service-context message: "this repo is service X — use fathom tools before Grep/Read." It is a no-op (exits 0, emits nothing) when the repo is not in the fleet index.
+
+Register it in `~/.claude/settings.json` under `hooks.SessionStart`:
+
+```json
+"hooks": {
+  "SessionStart": [
+    {
+      "hooks": [
+        {
+          "type": "command",
+          "command": "/abs/path/to/bin/fathom session-hook"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Replace `/abs/path/to/bin/fathom` with the absolute path to your built binary. If you previously registered `sextant session-hook`, update the command to `fathom session-hook` (the binary was renamed; the subcommand is unchanged).
+
+### PostToolUse — `fathom edit-hook` (obligations injection)
+
+The `edit-hook` subcommand fires after every `Edit`, `Write`, or `MultiEdit` call. It calls the `obligations` MCP tool for the file just written and injects any governing rules into the session context. It is silent when no rules apply (zero-output-on-clean) and silent on any error — it never blocks a write.
+
+Register it in `~/.claude/settings.json` under `hooks.PostToolUse`:
+
+```json
+"hooks": {
+  "PostToolUse": [
+    {
+      "matcher": "Edit|Write|MultiEdit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "/abs/path/to/bin/fathom edit-hook",
+          "timeout": 5
+        }
+      ]
+    }
+  ]
+}
+```
+
+The hook requires the obligations layer to be compiled for the service first (`fathom compile --service <id>` or via the `compile_layer` MCP tool with `dry_run:false`). Until compiled, the hook exits clean.
+
+### Lefthook pre-push — `fathom verify`
+
+If your repo has plan files in `docs/plans/*.md`, the `lefthook.yml` pre-push hook runs `fathom verify` to gate claimed-but-unproven tasks before they leave the workstation. See [spec-verification.md](spec-verification.md) for the full gate reference.
 
 ---
 
@@ -349,4 +407,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `ingest`, `ingest-diff`, `watch`, `serve-mcp`, `serve-http`, `gen-claude-md`, `platform-ingest`, `version`, `set_profile`, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`. Update it when these change.
+This doc covers: `ingest`, `ingest-diff`, `watch`, `serve-mcp`, `serve-http`, `gen-claude-md`, `platform-ingest`, `version`, `set_profile`, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. Update it when these change.

@@ -20,11 +20,21 @@ index-provable contract, so it is recorded in CHANGELOG.md, not claimed here.)
 - [x] Store root remap CLI [ADR-017] {symbol: cmdRemap, reachable_from: runWithStdin, skip_test: true}
 - [x] Portability round-trip proven {symbol: TestStorePortability_RoundTrip, skip_test: true}
 
-## Open (claims land as the work does)
+## Shipped — semantic layers v1 (the obligations tracer bullet)
 
-- [ ] Claims schema: semantic_claims/claim_links/compile_runs/claim_events [ADR-016] {symbol: PutClaims}
-- [ ] Obligations compile with anchor verification [ADR-016] {symbol: CompileObligations}
-- [ ] Post-ingest citation sweep flips stale claims [ADR-016] {symbol: SweepClaims}
-- [ ] Obligations serving tool, zero-output-on-clean [ADR-016] {symbol: registerObligations, skip_test: true}
-- [ ] PostToolUse edit-hook injection {symbol: cmdEditHook, reachable_from: runWithStdin, skip_test: true}
-- [ ] Non-git expert module end-to-end (findings corpus)
+(skip_test on method-reached symbols cites dogfood O6 — the test_reaches
+method-edge gap; the tests exist, the static edge doesn't yet.)
+
+- [x] Claims schema: semantic_claims/claim_links/compile_runs/claim_events [ADR-016] {symbol: PutClaims, skip_test: true}
+- [x] Obligations compiler with compile-time anchor + scope verification [ADR-016] {symbol: Compile, skip_test: true}
+- [x] Post-ingest citation sweep flips stale claims [ADR-016] {symbol: Sweep}
+- [x] Obligations serving, zero-output-on-clean [ADR-016] {symbol: ObligationsFor}
+- [x] Obligations + compile_layer MCP tools on their surfaces [ADR-016] {symbol: registerSemanticTools, skip_test: true}
+- [x] PostToolUse edit-hook injection {symbol: cmdEditHook, reachable_from: runWithStdin, skip_test: true}
+- [x] Non-git expert module end-to-end (findings corpus) {symbol: TestExpertModule_NonGitCorpus_EndToEnd, skip_test: true}
+- [x] Precision eval harness with scope traps [ADR-016] {symbol: TestObligationsEval_Precision, skip_test: true}
+
+## Open
+
+- [ ] Obligations layer compiled on the fleet store + injection coverage ≥90% (operator: migration step 4/4b, then 4-week gate)
+- [ ] O6: method-call edge attribution in goextract, then remove skip_test workarounds above

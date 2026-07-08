@@ -30,7 +30,7 @@ path, and clients register the endpoint that matches their job:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool — the default for schema-deferring clients such as Claude Code |
-| `companion` | `POST /rpc/companion` | Curated 14-tool coding-agent hot loop: `find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`, `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`, `ingest`, `staleness_report`, `list_services` |
+| `companion` | `POST /rpc/companion` | Curated 15-tool coding-agent hot loop: `find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`, `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`, `ingest`, `staleness_report`, `list_services`, `obligations` |
 | `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (mirrors the stdio profile view) |
 
 Unlike the stdio profile (which only filters `tools/list`), a named surface
@@ -51,7 +51,7 @@ view.
 ## Shared tools (GroupShared)
 
 These tools are visible under every group profile and group surface. Two exceptions:
-the `companion` surface/profile shows only its explicit 14-tool allowlist, and
+the `companion` surface/profile shows only its explicit 15-tool allowlist, and
 `set_profile` is dropped from every HTTP view (it is rejected over HTTP).
 
 | Tool | Arguments | Returns | Purpose |
@@ -60,13 +60,14 @@ the `companion` surface/profile shows only its explicit 14-tool allowlist, and
 | `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode], matched_via, truncated?, did_you_mean?}` | Locate symbol definitions with tiered matching: exact/key-suffix → case-insensitive → substring (capped at 20, tightest first); a full miss returns up to 5 concern-ranked `did_you_mean` suggestions. `matched_via` = `exact` \| `case_insensitive` \| `substring` \| `none` |
 | `capabilities` | — | `{tools, active_surface, active_profile, tool_count}` | List the tools visible on this request's surface and the active surface/profile |
 | `server_stats` | — | `{uptime_seconds, request_count, started_at}` | Return server uptime and total request count |
-| `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest) |
+| `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended, layers?}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest). When compiled claims exist, appends a `layers` map with a per-layer claims summary. |
 | `list_sources` | `service` (req) | `{sources: [string]}` | List distinct source file paths ingested for the service |
 | `secret_scan` | `service` (req) | `{findings: [Finding]}` | Scan source files for hardcoded tokens, high-entropy strings, AWS keys, JWTs, PEM headers, credential-named variables |
 | `shell_out` | `service` (req) | `{findings: [Finding]}` | Find shell-out call sites: `exec.Command` (Go), `subprocess` (Python), `child_process` (JS/TS) |
 | `http_client_calls` | `service` (req) | `{findings: [Finding]}` | Find HTTP client call sites: `http.Get/Post/.Do()` (Go), `fetch`/`axios` (JS/TS), `requests` (Python) |
 | `import_cycles` | `pkg_imports` (req): `{pkg: [imports]}` | `{cycles: [[string]]}` | Detect import cycles in a package import graph; returns SCCs that form cycles |
 | `brief` | `service` (req), `symbols` (opt: `[string]`), `concern` (opt), `budget` (opt, default 16000 chars) | `{brief: string}` | Pre-pack worker context: resolve named symbols, run a concern-scoped query, and return a paste-ready markdown brief. Truncation is always explicit — the output says so when it hits the budget. |
+| `obligations` | `service` (req), `file` (req), `max_rules` (opt, default 6) | `{service, file, rules?, compiled_at_watermark?, index_stale?}` | Return compiled obligations (governing rules) for a file at decision time. Empty result with no `index_stale` field means a clean file (zero-output-on-clean contract). Each rule carries its source citation and evidence tier; drifted or contradicted rules are flagged. Also on the `companion` surface. |
 
 `Finding` shape: `{file, line, rule, message}`.
 
@@ -133,6 +134,7 @@ For cross-service investigation, incident response, and understanding code struc
 | `spec_refs` | `service` (req), `pattern` (opt regex), `spec` (opt) | `{specs: {spec_id: [{file, line}]}, total_refs, files_scanned}` | Scan service source files for spec-ID references. Default pattern covers `[US/EP/FR/NFR-N]`, `MN.N`, and `doc N`. Results are deterministically sorted (spec_id asc, file asc, line asc). Use `spec` to filter to a single normalised ID (e.g. `"M18.2"`). |
 | `traverse` | `service` (req), `start` (req), `kinds` (opt: `["calls"\|"imports"\|"spec-ref"\|"route"\|"env-key"]`), `depth` (opt, default 3), `direction` (opt: `"out"\|"in"\|"both"`, default `"out"`) | `{paths: [[{from,to,kind,file,line}…]…], truncated: bool, edge_counts: {kind: n}}` | BFS traversal of the typed edge graph starting at a symbol, file, spec ID, or route. Assembles call edges (symbol→callee), import edges (pkg→pkg), spec-ref edges (file→spec_id), route edges (route→handler), and env-key edges (file→key) on demand. Returns at most 200 paths; `truncated=true` when capped. No silent caps. |
 | `history` | `service` (req), `file` (opt, suffix match), `spec` (opt, e.g. `"M18.2"`), `symbol` (opt, resolved to file), `limit` (opt, default 20) | `{commits: [{hash, date, author, message, files_touched_count, spec_ids}], count}` | Return git commit history for a service, ingested during last ingest (up to 500 commits). Filter by file path suffix, spec ID, or symbol name (resolved to its file). Results newest-first. |
+| `compile_layer` | `service` (req), `layer` (opt, default `"obligations"`), `dry_run` (opt, **default true**) | `{run_id, service, layer, dry_run, sections_total, sections_compiled, claims_emitted, claims_rejected, tokens_in, tokens_out, cost_usd, duration_ms, model, prompt_version, ran_at}` | Compile a semantic layer for a service. `dry_run` defaults `true` — estimates cost without calling the LLM or writing claims; set `dry_run:false` to execute. Only the `obligations` layer exists (ADR-016). Full surface only (not on `companion`). |
 
 ---
 

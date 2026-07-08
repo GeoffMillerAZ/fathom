@@ -5,6 +5,75 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — semantic layers v1: the obligations tracer bullet (ADR-016)
+- **Governed-claims substrate.** Four additive tables beside observations —
+  `semantic_claims` (content-addressed `claim_id`; tier + `tier_profile`; status
+  fresh/stale/contradicted/superseded/refuted; flattened provenance: model, prompt
+  version, repro key, input digest, compile watermark), `claim_links` (`cites` with
+  line-range hash, `scopes` globs), `compile_runs` (real token/USD ledger), and
+  append-only `claim_events` (the refute channel). Superseded claims are status-flipped,
+  never deleted. Both store implementations + contract tests.
+- **Obligations compiler** (`internal/semantic`): governing docs → markdown sections
+  (fence-aware, stable subjects) → digest gate (unchanged sections cost $0) → DLP
+  redaction → injected LLM (strict JSON; mock/replay in tests) → **compile-time anchor
+  and scope verification** (a claim whose cited lines don't resolve or whose scope globs
+  match no indexed file is rejected, counted per run) → transactional store + supersede.
+  Rules are word-budgeted at compile (≤28 words) so a 6-rule payload stays ≤150 tokens.
+  Dry-run estimation is the default spending gate. Layer definition schema:
+  `schema/semantic/schema.cue` (+ Go-asserted negatives).
+- **Citation sweep** (post-ingest, token-free): re-hashes every served claim's cited
+  lines; drift flips status to `stale`, unresolvable citations to `contradicted`,
+  restored docs heal back to `fresh`. Wired into `IngestService` so the daemon's
+  auto-refresh keeps claims honest.
+- **Decision-moment serving.** `obligations` MCP tool (on the companion surface, now 15
+  tools): rules governing a file, ordered by scope specificity, capped at 6, each with
+  `src` citation + tier, drifted rules served *flagged*; **zero-output-on-clean**.
+  `compile_layer` tool (full surface only; `dry_run` defaults true) + `fathom compile`
+  CLI. `staleness_report` gains a per-layer claims summary.
+- **PostToolUse injection** (`fathom edit-hook`): after every Edit/Write, Claude Code
+  gets the edited file's obligations injected (≤150 tokens) plus an index-behind-your-
+  working-tree warning; silent on clean, silent on any error (hooks never block —
+  the coding-agent-excellence §5.3 failure policy). This is the configuration-forced
+  delivery channel the 0–7% pulled-tool share demanded.
+- **Precision eval harness** (`internal/semantic/eval_test.go` + labeled fixture corpus
+  with deliberate scope traps): gates the layer at precision ≥0.90 / recall ≥0.75
+  against a real model; opt-in (`FATHOM_EVAL_LLM=1`), deterministic suite stays free.
+
+### Added — done-means-proven gate (H1.2)
+- **Checkbox semantics**: `[x]` in a plan is a *claim*; `verify.Gate` fails any claimed
+  task whose contract fails (`--strict` also gates Unknown). `[ ]` open and `[-]`
+  skipped never gate.
+- **`fathom verify` CLI**: HTTP-first against the daemon, `--store` for CI; the gate is
+  always computed locally so a stale daemon can't launder a claim. Exit 0/1/2 with
+  fail-open pre-push (exit 2 warns and allows) and fail-closed strict CI. Wired into
+  lefthook pre-push + `scripts/ci.sh` here and in agentic-kit (`docs/plans/` in both).
+  First gated run caught 3 over-claims by the plan's own author (demo:
+  `docs/plans/README.md`; recall gap filed as dogfood O6).
+- **Gate honesty: an empty index is "cannot verify", never "all claims false".**
+  Caught live against the pre-migration daemon: verifying a service with zero
+  indexed symbols made every claim read `symbol not found` — evidence-shaped
+  output for an operational problem, which would have blocked every push (the
+  §5.3 trust-fatal mode). `fathom verify` now probes the index first (HTTP:
+  `list_services`; store: symbol count) and exits 2 (fail-open) with a
+  fix-it message when the service isn't indexed.
+
+### Added — born-portable stores (ADR-017)
+- **Repo-relative anchors** from every connector (LocalConnector included — absolute
+  refs from legacy stores still read); **`fathom remap`** repoints a service root in one
+  metadata update; **Watermark SPI** (git HEAD or content-addressed `manifest:` hash)
+  makes freshness domain-neutral — non-git corpora (docs folders, findings exports)
+  auto-refresh and sweep honestly; **ingest self-heal** purges pre-ADR-017
+  absolute-anchored content wholesale so no symbol duplicates across anchor styles.
+  Contract: `TestStorePortability_RoundTrip` (move corpus + remap → citations, queries,
+  freshness, and hash-gating all survive).
+
+### Fixed
+- `fathom-adoption.sh` measured nothing for this repo after the rename (transcript dirs
+  are path-keyed): name-era aliasing, per-ISO-week rollup, and a daemon call-log summary
+  section. Measured baseline: **0% fathom share (0 vs 193 grep calls)** — the number the
+  forced channels exist to move.
+
+
 ### Renamed
 - **sextant → fathom** (ADR-015). Module path `github.com/geoffmilleraz/fathom`,
   binary `cmd/fathom` → `bin/fathom`, MCP serverInfo/resource URIs/metrics prefixes,

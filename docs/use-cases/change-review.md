@@ -228,6 +228,12 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 ---
 
+## The `fathom verify` gate as a pre-push complement
+
+Impact analysis answers *what is affected*; the `fathom verify` gate answers *what is proven done*. Before pushing, `lefthook` runs `fathom verify` over any plan files in `docs/plans/*.md`, checking each `[x]`-claimed task against the index. A claimed task that lacks code evidence blocks the push (exit 1); an operational error (daemon down) warns and allows (exit 2, fail-open). In CI, `scripts/ci.sh` adds `--strict` to treat exit 2 as a failure. Run `fathom verify` manually with `--plan <file> --service <id>` or pass `--store` to bypass the daemon. See [spec-verification.md](spec-verification.md) for the full gate reference.
+
+---
+
 ## Maintained
 
-This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`. Update it when these change.
+This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`. Update it when these change.

@@ -133,6 +133,34 @@ fathom gen-status-cue \
 
 Writes a deterministic `STATUS.cue` with each task's verdict and cited evidence (`file:line`, tier). The plan file is the human-owned source of truth; `STATUS.cue` is regenerated, never hand-edited — commit it so reviewers see exactly what is and isn't backed by code.
 
+## The `fathom verify` gate (done-means-proven)
+
+`fathom verify` reads plan files in `docs/plans/*.md` and checks every `[x]`-marked checkbox against the index. A `[x]` line is a *claim* — the task is declared done. The gate verifies each claim has code evidence; unclaimed (`[ ]`) lines are skipped.
+
+**Checkbox semantics:** Annotate a line with `{symbol: Foo}` to name what should exist; add `[US-042]` for spec coverage; add `{reachable_from: Bar}` to require a test edge. An unannotated `[x]` line verifies as `no-contract` (honest, not a false pass).
+
+**Plan file convention:** `docs/plans/README.md` describes the format. `fathom verify` skips any file named `README.md` (it describes the convention, not a plan).
+
+**Exit codes:**
+- `0` — all claimed `[x]` tasks are backed by evidence, or no plan files found.
+- `1` — at least one claimed task fails verification; push blocked.
+- `2` — operational error (unreadable plan, daemon unreachable); fail-open, push allowed.
+
+**Lefthook pre-push (fail-open):** `lefthook.yml` runs `fathom verify` over every `docs/plans/*.md` file at pre-push. Exit 1 blocks the push; exit 2 warns and allows (daemon may be down during local work):
+
+```sh
+bin/fathom verify --service <service> --plan docs/plans/my-plan.md
+```
+
+**CI (`--strict`, fail-closed):** `scripts/ci.sh` adds `--strict`, which treats operational-error exit 2 as failure — recommended when a daemon is guaranteed available:
+
+```sh
+bin/fathom verify --strict --service <service> --plan docs/plans/my-plan.md \
+  --store workspace/db/fleet.duckdb   # or omit to use the HTTP daemon
+```
+
+**HTTP-first, store fallback:** by default `fathom verify` queries `http://localhost:7575/rpc` (the shared daemon). Pass `--store <path>` to bypass the daemon and query a DuckDB file directly — useful in CI environments without a running daemon.
+
 ## Setup & notes
 
 **Profile:** Set `investigation` before running spec-verification workflows:
@@ -157,4 +185,4 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 ## Maintained
 
-This doc covers: `verify_plan`, `spec_coverage`, `spec_status`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`. Update it when these change.
+This doc covers: `verify_plan`, `spec_coverage`, `spec_status`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`. Update it when these change.
