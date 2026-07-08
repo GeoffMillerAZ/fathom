@@ -88,6 +88,19 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		reports = reps
 	} else {
 		hc := &http.Client{Timeout: 10 * time.Second}
+		// Probe first: a service with no symbols in the index would make every
+		// claim read as "not found" — evidence-shaped output for an operational
+		// problem. That must be exit 2 (fail-open), never a blocking gate fail
+		// (§5.3: a gate that blocks pushes for infra reasons gets uninstalled).
+		indexed, err := daemonServiceIndexed(hc, *url, *service)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: probing daemon for service %q: %v\n", *service, err)
+			return 2
+		}
+		if !indexed {
+			fmt.Fprintf(stderr, "error: service %q is not indexed on the daemon at %s — claims cannot be verified (operational, fail-open). Ingest it (MCP ingest tool or scripts/reingest-fleet.sh) and retry.\n", *service, *url)
+			return 2
+		}
 		for i, lp := range localPlans {
 			rep, err := verifyViaHTTP(hc, *url, *service, *concern, planBytes[i], lp)
 			if err != nil {
@@ -175,6 +188,11 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {
 		return nil, fmt.Errorf("listing symbols for %q: %w", service, err)
+	}
+	// An empty index means "cannot verify", not "all claims false" — surface
+	// it as an operational error (exit 2) rather than gate-failing every claim.
+	if len(nodes) == 0 {
+		return nil, fmt.Errorf("service %q has no symbols in store %q — ingest it before verifying", service, storePath)
 	}
 	graph := callgraph.Build(nodes)
 
@@ -323,6 +341,41 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 			Unknown: hvr.Summary.Unknown,
 		},
 	}, nil
+}
+
+// daemonServiceIndexed reports whether the daemon's index has symbols for
+// service (via the list_services tool). false-with-nil-error means the daemon
+// answered and the service is genuinely absent/empty.
+func daemonServiceIndexed(hc *http.Client, baseURL, service string) (bool, error) {
+	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`
+	resp, err := hc.Post(baseURL+"/rpc", "application/json", strings.NewReader(reqBody))
+	if err != nil {
+		return false, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return false, fmt.Errorf("reading list_services response: %w", err)
+	}
+	inner, err := unwrapRPCResult(raw)
+	if err != nil {
+		return false, fmt.Errorf("unwrap list_services response: %w", err)
+	}
+	var payload struct {
+		Services []struct {
+			Service     string `json:"service"`
+			SymbolCount int    `json:"symbol_count"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(inner, &payload); err != nil {
+		return false, fmt.Errorf("parse list_services result: %w", err)
+	}
+	for _, s := range payload.Services {
+		if strings.EqualFold(s.Service, service) && s.SymbolCount > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // unwrapRPCResult extracts the inner JSON text from an MCP JSON-RPC envelope:

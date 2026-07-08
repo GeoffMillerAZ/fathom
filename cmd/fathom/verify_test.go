@@ -3,12 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // ─── flag validation ──────────────────────────────────────────────────────────
@@ -35,7 +38,8 @@ func TestCmdVerify_MissingService(t *testing.T) {
 
 func TestCmdVerify_UnreadablePlan(t *testing.T) {
 	var out, errBuf bytes.Buffer
-	code := run([]string{"verify", "--service", "svc",
+	code := run([]string{
+		"verify", "--service", "svc",
 		"--plan", "/no/such/plan.md",
 		"--store", filepath.Join(t.TempDir(), "test.duckdb"),
 	}, &out, &errBuf)
@@ -231,11 +235,17 @@ func TestCmdVerify_OperationalError_BadStore(t *testing.T) {
 
 // ─── HTTP mode ────────────────────────────────────────────────────────────────
 
-// cannedVerifyServer returns an httptest.Server that always responds with a
-// verify_plan result where task md-001 has the given status/label.
+// cannedVerifyServer returns an httptest.Server that answers list_services
+// (the CLI's indexed-service probe) with a populated "svc" and verify_plan
+// with a result where task md-001 has the given status/label.
 func cannedVerifyServer(t *testing.T, taskStatus, taskLabel string, taskClaimed bool) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if strings.Contains(string(body), `"list_services"`) {
+			writeRPCText(w, `{"services":[{"service":"svc","symbol_count":42}]}`)
+			return
+		}
 		task := map[string]any{
 			"id":     "md-001",
 			"title":  "test task",
@@ -275,6 +285,56 @@ func cannedVerifyServer(t *testing.T, taskStatus, taskLabel string, taskClaimed 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(resp)
 	}))
+}
+
+// writeRPCText writes a JSON-RPC MCP text-content envelope around inner.
+func writeRPCText(w http.ResponseWriter, inner string) {
+	resp := map[string]any{
+		"jsonrpc": "2.0", "id": 1,
+		"result": map[string]any{
+			"content": []any{map[string]any{"type": "text", "text": inner}},
+		},
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// TestCmdVerify_HTTP_ServiceNotIndexed: the daemon answers but has no symbols
+// for the service — every claim would read "not found" (evidence-shaped output
+// for an operational problem). Must be exit 2 (fail-open), never exit 1.
+func TestCmdVerify_HTTP_ServiceNotIndexed(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeRPCText(w, `{"services":[{"service":"other","symbol_count":9}]}`)
+	}))
+	defer ts.Close()
+
+	plan := writeTempPlan(t, "- [x] claimed work {symbol: Ghost}\n")
+	var out, errBuf bytes.Buffer
+	code := run([]string{"verify", "--service", "svc", "--url", ts.URL, "--plan", plan}, &out, &errBuf)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (operational fail-open); stderr: %s", code, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "not indexed") {
+		t.Errorf("stderr %q does not explain the unindexed service", errBuf.String())
+	}
+}
+
+// TestCmdVerify_Store_EmptyIndex: same principle in store mode.
+func TestCmdVerify_Store_EmptyIndex(t *testing.T) {
+	storePath := filepath.Join(t.TempDir(), "empty.duckdb")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	plan := writeTempPlan(t, "- [x] claimed work {symbol: Ghost}\n")
+	var out, errBuf bytes.Buffer
+	code := run([]string{"verify", "--service", "svc", "--store", storePath, "--plan", plan}, &out, &errBuf)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (operational fail-open); stderr: %s", code, errBuf.String())
+	}
 }
 
 // TestCmdVerify_HTTP_Pass: daemon returns pass for a claimed task → exit 0.
