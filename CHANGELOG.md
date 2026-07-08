@@ -39,6 +39,20 @@ All notable changes to sextant. Format loosely follows
   with deliberate scope traps): gates the layer at precision ≥0.90 / recall ≥0.75
   against a real model; opt-in (`FATHOM_EVAL_LLM=1`), deterministic suite stays free.
 
+### Added — fleet onboarding ergonomics
+- **`ingest` tool onboards new services**: optional `path` (absolute corpus root)
+  ingests a repo the index has never seen — through the live daemon, no
+  single-writer lock dance. The session-hook's "add this repo" guidance now names
+  the exact call. Capability forwarded through the auto-refresh wrapper (the O7
+  lesson) with a through-the-wrapper test.
+- **Subdirectory-rooted projects resolve their service**: both hooks now try the
+  project dir's basename, then the enclosing git repo's basename (a Claude
+  project rooted at `<repo>/deploy` no longer resolves to service "deploy");
+  the edit-hook resolves file paths against whichever root matched.
+  `reingest-fleet.sh` gains nested-path support + three fleet repos
+  (growing-gardens-bi, car-assistant, crossplane-platform); the adoption
+  script's default names follow.
+
 ### Added — done-means-proven gate (H1.2)
 - **Checkbox semantics**: `[x]` in a plan is a *claim*; `verify.Gate` fails any claimed
   task whose contract fails (`--strict` also gates Unknown). `[ ]` open and `[-]`

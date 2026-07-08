@@ -43,9 +43,8 @@ func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
 	if projDir == "" {
 		projDir, _ = os.Getwd()
 	}
-	repo := filepath.Base(strings.TrimRight(projDir, "/"))
 
-	ctx := buildSessionContext(*url, repo)
+	ctx := buildSessionContext(*url, projDir)
 
 	_ = json.NewEncoder(stdout).Encode(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -68,8 +67,11 @@ type svcInfo struct {
 	langs   string
 }
 
-// buildSessionContext returns the additionalContext line for the current repo.
-func buildSessionContext(baseURL, repo string) string {
+// buildSessionContext returns the additionalContext line for the project at
+// projDir. Service identity tries the dir basename first, then the enclosing
+// git repo's basename (projects rooted in a subdirectory like <repo>/deploy),
+// each with pre/post-rename aliasing.
+func buildSessionContext(baseURL, projDir string) string {
 	hc := &http.Client{Timeout: 2 * time.Second}
 
 	resp, err := hc.Get(baseURL + "/healthz")
@@ -82,31 +84,28 @@ func buildSessionContext(baseURL, repo string) string {
 	resp.Body.Close()
 
 	svcs := fetchServices(hc, baseURL)
-	// The fathom repo's directory may still carry the pre-rename brand (or the
-	// service was registered under it); treat the two names as one identity.
-	lookup := strings.ToLower(repo)
-	if _, ok := svcs[lookup]; !ok {
-		switch lookup {
-		case "sextant":
-			lookup = "fathom"
-		case "fathom":
-			lookup = "sextant"
+	for _, cand := range serviceCandidates(projDir) {
+		for _, name := range withNameAliases(cand.name) {
+			lookup := strings.ToLower(name)
+			info, ok := svcs[lookup]
+			if !ok {
+				continue
+			}
+			langs := ""
+			if info.langs != "" {
+				langs = ", " + info.langs
+			}
+			return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
 		}
-	}
-	if info, ok := svcs[lookup]; ok {
-		langs := ""
-		if info.langs != "" {
-			langs = ", " + info.langs
-		}
-		return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
 	}
 
+	repo := filepath.Base(strings.TrimRight(projDir, "/"))
 	known := make([]string, 0, len(svcs))
 	for k := range svcs {
 		known = append(known, k)
 	}
 	sort.Strings(known)
-	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo by ingesting it as a new service.)", repo, strings.Join(known, ", "))
+	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, strings.Join(known, ", "))
 }
 
 // fetchServices calls the list_services MCP tool over HTTP and returns a map

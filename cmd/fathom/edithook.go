@@ -64,24 +64,39 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
-	// Service ID: basename of project dir with sextant/fathom alias treatment.
-	service := serviceIDFromDir(projDir)
-
-	// Make file repo-relative if absolute.
-	repoRelFile := filePath
-	if filepath.IsAbs(filePath) && projDir != "" {
-		if rel, relErr := filepath.Rel(projDir, filePath); relErr == nil && !strings.HasPrefix(rel, "..") {
-			repoRelFile = rel
+	// Try each service-identity candidate (dir basename, then the enclosing
+	// git repo for subdirectory-rooted projects), resolving the file against
+	// that candidate's root. First candidate with something to say wins; a
+	// candidate the index doesn't know simply yields an empty payload.
+	var (
+		obl         semantic.Obligations
+		indexStale  bool
+		repoRelFile string
+		found       bool
+	)
+	for _, cand := range serviceCandidates(projDir) {
+		rel := filePath
+		if filepath.IsAbs(filePath) {
+			if r, relErr := filepath.Rel(cand.root, filePath); relErr == nil && !strings.HasPrefix(r, "..") {
+				rel = r
+			}
+		}
+		for _, name := range withNameAliases(cand.name) {
+			o, stale, ok := fetchObligations(*url, strings.ToLower(name), rel)
+			if !ok {
+				return 0 // daemon down or error → silent
+			}
+			if len(o.Rules) > 0 || stale {
+				obl, indexStale, repoRelFile, found = o, stale, rel, true
+				break
+			}
+		}
+		if found {
+			break
 		}
 	}
-
-	// Call obligations tool over HTTP. Short timeout — never block the hook.
-	obl, indexStale, ok := fetchObligations(*url, service, repoRelFile)
-	if !ok {
-		return 0 // daemon down or error → silent
-	}
-	if len(obl.Rules) == 0 && !indexStale {
-		return 0 // clean file → silent
+	if !found {
+		return 0 // clean file (or unindexed project) → silent
 	}
 
 	// Build compact text.
@@ -106,19 +121,6 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	})
 	fmt.Fprintln(stdout, string(out))
 	return 0
-}
-
-// serviceIDFromDir derives the service ID from a project directory path,
-// applying the same sextant/fathom alias that session-hook uses.
-func serviceIDFromDir(projDir string) string {
-	base := filepath.Base(strings.TrimRight(projDir, "/"))
-	switch strings.ToLower(base) {
-	case "sextant":
-		return "fathom"
-	case "fathom":
-		return "fathom"
-	}
-	return base
 }
 
 // fetchObligations calls the obligations MCP tool over HTTP. Returns the

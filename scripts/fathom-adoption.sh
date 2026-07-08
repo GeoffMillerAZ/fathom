@@ -34,7 +34,7 @@ set -euo pipefail
 
 PROJECTS_DIR="$HOME/.claude/projects"
 HOOK_DATE="${HOOK_DATE:-2026-06-17}"   # when the SessionStart adoption hook went live
-DEFAULT_NAMES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
+DEFAULT_NAMES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
 
 names=("$@")
 [ ${#names[@]} -eq 0 ] && names=("${DEFAULT_NAMES[@]}")

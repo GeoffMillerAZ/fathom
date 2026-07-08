@@ -1577,11 +1577,12 @@ func registerSecurityRollup(s *Server, backend QueryInterface) {
 func registerIngest(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Trigger a re-ingest of the named service to refresh the symbol store.",
+		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"path":    map[string]any{"type": "string", "description": "Absolute corpus root — required only when first onboarding a new service"},
 			},
 			"required": []string{"service"},
 		},
@@ -1590,11 +1591,23 @@ func registerIngest(s *Server, backend QueryInterface) {
 		if backend == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
-		svc, rpcErr := serviceArg(args, "ingest")
-		if rpcErr != nil {
-			return nil, rpcErr
+		var p struct {
+			Service string `json:"service"`
+			Path    string `json:"path"`
 		}
-		if err := backend.IngestService(ctx, svc); err != nil {
+		if err := json.Unmarshal(args, &p); err != nil || p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
+		}
+		svc := p.Service
+		if p.Path != "" {
+			ia, ok := backend.(ingestAtBackend)
+			if !ok {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
+			}
+			if err := ia.IngestServiceAt(ctx, svc, p.Path); err != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
+			}
+		} else if err := backend.IngestService(ctx, svc); err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
 		}
 		return map[string]any{"service": svc, "ok": true}, nil

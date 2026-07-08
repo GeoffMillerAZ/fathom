@@ -136,6 +136,20 @@ func (a *autoRefreshBackend) Sources(ctx context.Context, service string) ([]cor
 
 var errSemanticUnsupported = fmt.Errorf("backend does not serve semantic layers")
 
+// ingestAtBackend is the optional backend capability for onboarding a new
+// service from an explicit corpus root (the ingest tool's `path` argument).
+type ingestAtBackend interface {
+	IngestServiceAt(ctx context.Context, service, path string) error
+}
+
+func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path string) error {
+	ia, ok := a.QueryInterface.(ingestAtBackend)
+	if !ok {
+		return fmt.Errorf("backend does not support onboarding by path")
+	}
+	return ia.IngestServiceAt(ctx, service, path)
+}
+
 func (a *autoRefreshBackend) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
 	a.ensure(ctx, service)
 	ob, ok := a.QueryInterface.(obligationsBackend)

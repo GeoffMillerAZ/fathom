@@ -353,3 +353,52 @@ func TestSemanticTools_ThroughAutoRefreshWrapper(t *testing.T) {
 		t.Error("staleness_report through wrapper lost the layers summary")
 	}
 }
+
+// ─── ingest tool: onboarding a new service by path ────────────────────────────
+
+type ingestAtFake struct {
+	fakeBackend
+	gotService, gotPath string
+}
+
+func (f *ingestAtFake) IngestServiceAt(_ context.Context, service, path string) error {
+	f.gotService, f.gotPath = service, path
+	return nil
+}
+
+// TestIngestTool_WithPath_ThroughWrapper: the ingest tool's path argument must
+// reach the backend through the auto-refresh wrapper (same O7 class as the
+// semantic capabilities).
+func TestIngestTool_WithPath_ThroughWrapper(t *testing.T) {
+	fake := &ingestAtFake{}
+	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "ingest",
+			"arguments": map[string]any{"service": "newrepo", "path": "/abs/corpus"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("ingest with path through wrapper: %v", resp["error"])
+	}
+	if fake.gotService != "newrepo" || fake.gotPath != "/abs/corpus" {
+		t.Errorf("backend got (%q, %q), want (newrepo, /abs/corpus)", fake.gotService, fake.gotPath)
+	}
+}
+
+// TestIngestTool_WithPath_Unsupported: a backend without the capability gets a
+// clear error, not a silent re-ingest of the wrong directory.
+func TestIngestTool_WithPath_Unsupported(t *testing.T) {
+	srv := mcp.NewServer(&fakeBackend{})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "ingest",
+			"arguments": map[string]any{"service": "newrepo", "path": "/abs/corpus"},
+		},
+	})
+	if resp["error"] == nil {
+		t.Fatal("expected error for path-onboarding on an unsupported backend")
+	}
+}

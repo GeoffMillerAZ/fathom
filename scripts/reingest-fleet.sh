@@ -29,7 +29,11 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 
 # Fleet services — ingested as "<name>" from "$FLEET_BASE/<name>".
-SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code)
+SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
+# Services whose corpus is NOT $FLEET_BASE/<svc> (nested project roots).
+declare -A SERVICE_PATHS=(
+  [crossplane-platform]="$FLEET_BASE/planning/projects/pdk/substrates/timoni/crossplane-platform"
+)
 
 echo "==> fathom fleet re-ingest  (store: $STORE)"
 [ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $FATHOM_REPO && go build -o bin/fathom ./cmd/fathom)"; exit 1; }
@@ -51,11 +55,11 @@ fi
 
 echo "==> ingesting each fleet repo with a clean service ID + path"
 for svc in "${SERVICES[@]}"; do
-  path="$FLEET_BASE/$svc"
+  path="${SERVICE_PATHS[$svc]:-$FLEET_BASE/$svc}"
   # The fathom repo itself may still live in a directory named after the old
   # brand — resolve its service to this script's own repo root.
   if [ "$svc" = "fathom" ] && [ ! -d "$path/.git" ]; then path="$FATHOM_REPO"; fi
-  if [ ! -d "$path/.git" ]; then echo "    - skip $svc (no git repo at $path)"; continue; fi
+  if ! git -C "$path" rev-parse --show-toplevel >/dev/null 2>&1; then echo "    - skip $svc (not inside a git repo: $path)"; continue; fi
   if out="$("$BIN" ingest --service "$svc" --path "$path" --store "$STORE" 2>&1)"; then
     echo "    - $svc  $(echo "$out" | awk '/^symbols:/{print "→ "$2" symbols"}')  ($path)"
   else

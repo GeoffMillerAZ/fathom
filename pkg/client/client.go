@@ -14,6 +14,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -306,6 +307,32 @@ func (c *Client) IngestService(ctx context.Context, service string) error {
 		return err
 	}
 	// Best-effort post-ingest sweep: run only when claims exist.
+	if claims, err := c.st.ClaimsForService(ctx, service, ""); err == nil && len(claims) > 0 {
+		_, _ = c.SweepClaims(ctx, service)
+	}
+	return nil
+}
+
+// IngestServiceAt ingests service from an explicit corpus root — the
+// first-time-onboarding path the `ingest` MCP tool exposes so a new repo can
+// join the index without touching the daemon's store from a second process
+// (single-writer lock). path must be an absolute, existing directory; after
+// the first ingest records ServiceMeta, plain IngestService (and
+// auto-refresh) keep the service fresh from the recorded path.
+func (c *Client) IngestServiceAt(ctx context.Context, service, path string) error {
+	if err := core.ValidServiceID(service); err != nil {
+		return fmt.Errorf("ingest at: %w", err)
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("ingest at: path %q must be absolute", path)
+	}
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return fmt.Errorf("ingest at: path %q is not an existing directory", path)
+	}
+	if _, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path}); err != nil {
+		return err
+	}
 	if claims, err := c.st.ClaimsForService(ctx, service, ""); err == nil && len(claims) > 0 {
 		_, _ = c.SweepClaims(ctx, service)
 	}
