@@ -1,0 +1,245 @@
+package semantic
+
+import (
+	"context"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
+)
+
+// govDoc has one heading section with two citable rule lines.
+// Line numbers (1-based):
+//
+//	1: # Conventions
+//	2: (blank)
+//	3: - Never call time.Now() in query logic; inject clocks.
+//	4: - All outputs must be sorted.
+const govDoc = `# Conventions
+
+- Never call time.Now() in query logic; inject clocks.
+- All outputs must be sorted.
+`
+
+var indexedFiles = []string{"internal/query/engine.go", "internal/mcp/tools.go", "docs/x.md"}
+
+func fixedNow() time.Time { return time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC) }
+
+func newCompiler(t *testing.T, st store.Store, entries ...llmclient.MockEntry) *Compiler {
+	t.Helper()
+	return &Compiler{
+		St:    st,
+		LLM:   llmclient.NewMockClient(entries...),
+		Model: "mock-model",
+		Now:   fixedNow,
+	}
+}
+
+func compileInput(dryRun bool) CompileInput {
+	return CompileInput{
+		ServiceID:    "svc",
+		Docs:         []core.SourceFile{{Path: "docs/conventions.md", Content: []byte(govDoc)}},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+		DryRun:       dryRun,
+	}
+}
+
+func TestCompile_HappyPath(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[
+  {"rule":"Inject clocks; never call time.Now() in query logic.","scope":["internal/query/**"],"cite_start":3,"cite_end":3},
+  {"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}
+]`,
+		Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
+	}})
+
+	run, err := c.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 2 || run.ClaimsRejected != 0 {
+		t.Fatalf("emitted=%d rejected=%d, want 2/0", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	if run.SectionsCompiled != 1 || run.SectionsTotal != 1 {
+		t.Errorf("sections compiled/total = %d/%d, want 1/1", run.SectionsCompiled, run.SectionsTotal)
+	}
+	if run.TokensIn != 100 || run.TokensOut != 50 {
+		t.Errorf("usage %d/%d, want the mock's real usage 100/50", run.TokensIn, run.TokensOut)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != 2 {
+		t.Fatalf("stored %d claims, want 2", len(claims))
+	}
+	for _, cl := range claims {
+		if cl.Status != core.ClaimFresh || cl.Tier != core.TierDocClaimed {
+			t.Errorf("claim %s status/tier = %s/%s", cl.ClaimID, cl.Status, cl.Tier)
+		}
+		if cl.PromptVersion != PromptVersion || cl.Model != "mock-model" || cl.InputDigest == "" || cl.ReproKey == "" {
+			t.Errorf("claim %s provenance incomplete: %+v", cl.ClaimID, cl)
+		}
+		if cl.CompiledAtWatermark != "manifest:aaa" {
+			t.Errorf("claim %s watermark = %q", cl.ClaimID, cl.CompiledAtWatermark)
+		}
+		if cl.Subject != "docs/conventions.md#conventions" {
+			t.Errorf("claim subject = %q", cl.Subject)
+		}
+	}
+
+	// Citation link carries a hash that re-verifies against the doc.
+	ids := []string{claims[0].ClaimID, claims[1].ClaimID}
+	links, err := st.ClaimLinks(ctx, "svc", ids)
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	var cites, scopes int
+	for _, l := range links {
+		switch l.Rel {
+		case core.RelCites:
+			cites++
+			path, s, e, ok := core.ParseCiteRef(l.TargetRef)
+			if !ok || path != "docs/conventions.md" {
+				t.Fatalf("bad cite ref %q", l.TargetRef)
+			}
+			h, ok := core.HashLines([]byte(govDoc), s, e)
+			if !ok || h != l.TargetHash {
+				t.Errorf("cite hash mismatch for %q", l.TargetRef)
+			}
+		case core.RelScopes:
+			scopes++
+		}
+	}
+	if cites != 2 || scopes != 2 {
+		t.Errorf("links cites/scopes = %d/%d, want 2/2", cites, scopes)
+	}
+
+	runs, err := st.CompileRuns(ctx, "svc", LayerObligations)
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("CompileRuns = %d, %v; want 1 recorded run", len(runs), err)
+	}
+}
+
+func TestCompile_RejectsBadAnchorsAndScopes(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	longRule := strings.Repeat("word ", maxRuleWords+1)
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[
+  {"rule":"Cite outside the section.","scope":["**"],"cite_start":99,"cite_end":120},
+  {"rule":"Scope matches nothing.","scope":["nonexistent/dir/**"],"cite_start":3,"cite_end":3},
+  {"rule":"` + strings.TrimSpace(longRule) + `","scope":["**"],"cite_start":3,"cite_end":3},
+  {"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}
+]`,
+	}})
+
+	run, err := c.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 || run.ClaimsRejected != 3 {
+		t.Fatalf("emitted=%d rejected=%d, want 1 emitted / 3 rejected (bad cite, dead scope, over-budget rule)", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+}
+
+func TestCompile_DigestGateSkipsUnchangedSections(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
+		t.Fatalf("first Compile: %v", err)
+	}
+
+	// Second compile: same doc, a mock with NO entries — it would answer
+	// "mock: no more entries" (parse failure) if the gate leaked an LLM call.
+	c2 := newCompiler(t, st)
+	run, err := c2.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("second Compile: %v", err)
+	}
+	if run.SectionsCompiled != 0 {
+		t.Errorf("SectionsCompiled = %d, want 0 (digest-gated)", run.SectionsCompiled)
+	}
+	if run.ClaimsEmitted != 0 {
+		t.Errorf("ClaimsEmitted = %d, want 0", run.ClaimsEmitted)
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if len(claims) != 1 || claims[0].Status != core.ClaimFresh {
+		t.Errorf("prior claim disturbed by gated recompile: %+v", claims)
+	}
+}
+
+func TestCompile_SupersedesReplacedClaims(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
+		t.Fatalf("first Compile: %v", err)
+	}
+
+	// The doc changes (rule rewritten) — the section digest changes, and the
+	// recompile emits a different claim.
+	changed := strings.Replace(govDoc, "All outputs must be sorted.", "All outputs must be sorted deterministically.", 1)
+	in := compileInput(false)
+	in.Docs = []core.SourceFile{{Path: "docs/conventions.md", Content: []byte(changed)}}
+	c2 := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs deterministically.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	if _, err := c2.Compile(ctx, in); err != nil {
+		t.Fatalf("second Compile: %v", err)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	var fresh, superseded int
+	for _, cl := range claims {
+		switch cl.Status {
+		case core.ClaimFresh:
+			fresh++
+			if cl.Rule != "Sort all outputs deterministically." {
+				t.Errorf("fresh claim rule = %q", cl.Rule)
+			}
+		case core.ClaimSuperseded:
+			superseded++
+		}
+	}
+	if fresh != 1 || superseded != 1 {
+		t.Errorf("fresh=%d superseded=%d, want 1/1 (audit history kept, never deleted)", fresh, superseded)
+	}
+}
+
+func TestCompile_DryRunSpendsNothing(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := &Compiler{St: st, Now: fixedNow} // no LLM at all: dry run must not need one
+
+	run, err := c.Compile(ctx, compileInput(true))
+	if err != nil {
+		t.Fatalf("dry-run Compile: %v", err)
+	}
+	if !run.DryRun || run.SectionsCompiled != 1 || run.TokensIn == 0 {
+		t.Errorf("dry run = %+v; want DryRun, 1 section, non-zero token estimate", run)
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", "")
+	if len(claims) != 0 {
+		t.Errorf("dry run wrote %d claims", len(claims))
+	}
+	runs, _ := st.CompileRuns(ctx, "svc", "")
+	if len(runs) != 0 {
+		t.Errorf("dry run recorded %d compile runs, want 0", len(runs))
+	}
+}

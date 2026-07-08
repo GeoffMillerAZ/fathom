@@ -33,6 +33,7 @@ var companionTools = map[string]bool{
 	"find_symbol":      true,
 	"ingest":           true,
 	"list_services":    true,
+	"obligations":      true,
 	"outline":          true,
 	"pack_context":     true,
 	"query_symbols":    true,

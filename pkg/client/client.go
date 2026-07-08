@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
@@ -112,6 +113,12 @@ type Client struct {
 	engine *query.Engine
 	st     store.Store
 	conn   connector.Connector // retained for Sources()
+
+	// Optional LLM config for semantic-layer compilation (WithLLM).
+	llm        llmclient.LLMClient
+	llmModel   string
+	llmInRate  float64
+	llmOutRate float64
 }
 
 // New constructs a Client from an explicit connector and store. Callers that
@@ -286,13 +293,23 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 // empty, which silently froze the daemon's index (auto-refresh / staleness /
 // ingest all depend on that path). Falls back to the ID only when no path is
 // recorded (e.g. FauxConnector). Use Ingest for full control over the ServiceRef.
+//
+// ADR-016 post-ingest sweep: after a successful ingest, if the service has any
+// compiled claims, SweepClaims is run best-effort (error ignored). This is the
+// $0-token citation-freshness pass — status flips happen without any LLM call.
 func (c *Client) IngestService(ctx context.Context, service string) error {
 	ref := ServiceRef{ID: service, Path: service}
 	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
 		ref.Path = meta.Path
 	}
-	_, err := c.pipe.Ingest(ctx, ref)
-	return err
+	if _, err := c.pipe.Ingest(ctx, ref); err != nil {
+		return err
+	}
+	// Best-effort post-ingest sweep: run only when claims exist.
+	if claims, err := c.st.ClaimsForService(ctx, service, ""); err == nil && len(claims) > 0 {
+		_, _ = c.SweepClaims(ctx, service)
+	}
+	return nil
 }
 
 // ServiceWatermark returns the connector's *current* freshness token for the

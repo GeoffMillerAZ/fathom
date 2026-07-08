@@ -153,14 +153,21 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			}
 		}
 
-		return map[string]any{
+		resp := map[string]any{
 			"service":              p.Service,
 			"source_count":         len(sources),
 			"sources":              stringsToAny(sources),
 			"indexed_commit":       indexedCommit,
 			"current_commit":       currentCommit,
 			"reingest_recommended": reingestRecommended,
-		}, nil
+		}
+		// Optional: append per-layer claims summary when backend supports it.
+		if csb, ok := backend.(claimsSummaryBackend); ok {
+			if summary, err := csb.ClaimsSummary(ctx, p.Service); err == nil && len(summary) > 0 {
+				resp["layers"] = summary
+			}
+		}
+		return resp, nil
 	})
 }
 

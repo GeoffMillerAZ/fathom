@@ -256,6 +256,9 @@ func registerTools(s *Server, backend QueryInterface) {
 
 	// Register extra analyzer tools (impact, spec, arch, coding, etc.).
 	registerExtraTools(s, backend)
+
+	// Register semantic-layer tools (obligations, compile_layer).
+	registerSemanticTools(s, backend)
 }
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────

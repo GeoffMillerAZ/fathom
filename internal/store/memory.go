@@ -21,6 +21,10 @@ type MemoryStore struct {
 	docSummaries   map[fpKey]DocSummary
 	serviceMeta    map[string]ServiceMeta
 	commits        map[string][]Commit // serviceID → commits (newest-first)
+	claims         map[claimKey]core.SemanticClaim
+	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
+	claimEvents    []core.ClaimEvent
+	compileRuns    []core.CompileRun
 }
 
 type fpKey struct {
@@ -33,6 +37,11 @@ type kcKey struct {
 	symbol    string
 }
 
+type claimKey struct {
+	serviceID string
+	claimID   string
+}
+
 // NewMemoryStore returns an empty MemoryStore.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
@@ -41,6 +50,8 @@ func NewMemoryStore() *MemoryStore {
 		docSummaries:   make(map[fpKey]DocSummary),
 		serviceMeta:    make(map[string]ServiceMeta),
 		commits:        make(map[string][]Commit),
+		claims:         make(map[claimKey]core.SemanticClaim),
+		claimLinks:     make(map[string][]core.ClaimLink),
 	}
 }
 
@@ -282,6 +293,171 @@ func (m *MemoryStore) ListCommits(_ context.Context, serviceID string) ([]Commit
 	out := make([]Commit, len(src))
 	copy(out, src)
 	return out, nil
+}
+
+// PutClaims upserts claims and replaces the link set for every distinct
+// claim_id that appears in links. Scope slices are copied so stored values are
+// independent of the caller's slice.
+func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, c := range claims {
+		sc := c
+		if c.Scope != nil {
+			sc.Scope = make([]string, len(c.Scope))
+			copy(sc.Scope, c.Scope)
+		}
+		m.claims[claimKey{c.ServiceID, c.ClaimID}] = sc
+	}
+	// Collect distinct claim_ids whose link sets must be replaced.
+	distinct := make(map[string]struct{}, len(links))
+	for _, l := range links {
+		distinct[l.ClaimID] = struct{}{}
+	}
+	for id := range distinct {
+		m.claimLinks[id] = nil
+	}
+	for _, l := range links {
+		m.claimLinks[l.ClaimID] = append(m.claimLinks[l.ClaimID], l)
+	}
+	return nil
+}
+
+// ClaimsForService returns claims for serviceID (optionally filtered by layer)
+// ordered deterministically by (layer, subject, claim_id). Scope slices are
+// copied so callers cannot mutate stored state.
+func (m *MemoryStore) ClaimsForService(_ context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []core.SemanticClaim
+	for k, c := range m.claims {
+		if k.serviceID != serviceID {
+			continue
+		}
+		if layer != "" && c.Layer != layer {
+			continue
+		}
+		sc := c
+		if c.Scope != nil {
+			sc.Scope = make([]string, len(c.Scope))
+			copy(sc.Scope, c.Scope)
+		}
+		result = append(result, sc)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Layer != result[j].Layer {
+			return result[i].Layer < result[j].Layer
+		}
+		if result[i].Subject != result[j].Subject {
+			return result[i].Subject < result[j].Subject
+		}
+		return result[i].ClaimID < result[j].ClaimID
+	})
+	return result, nil
+}
+
+// ClaimLinks returns links for the supplied claim IDs ordered by (claim_id,
+// rel, target_ref). The serviceID parameter is accepted for interface
+// conformance; claim_id is content-addressed and globally unique, so
+// service-level filtering is not required in the in-process store.
+func (m *MemoryStore) ClaimLinks(_ context.Context, _ string, claimIDs []string) ([]core.ClaimLink, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if len(claimIDs) == 0 {
+		return nil, nil
+	}
+	want := make(map[string]struct{}, len(claimIDs))
+	for _, id := range claimIDs {
+		want[id] = struct{}{}
+	}
+	var result []core.ClaimLink
+	for id, ls := range m.claimLinks {
+		if _, ok := want[id]; !ok {
+			continue
+		}
+		result = append(result, ls...)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].ClaimID != result[j].ClaimID {
+			return result[i].ClaimID < result[j].ClaimID
+		}
+		if result[i].Rel != result[j].Rel {
+			return result[i].Rel < result[j].Rel
+		}
+		return result[i].TargetRef < result[j].TargetRef
+	})
+	return result, nil
+}
+
+// SetClaimStatus flips the status of a single claim. No-op when absent.
+func (m *MemoryStore) SetClaimStatus(_ context.Context, serviceID, claimID string, status core.ClaimStatus) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	k := claimKey{serviceID, claimID}
+	if c, ok := m.claims[k]; ok {
+		c.Status = status
+		m.claims[k] = c
+	}
+	return nil
+}
+
+// AppendClaimEvent appends one verdict to the claim's append-only event log.
+func (m *MemoryStore) AppendClaimEvent(_ context.Context, ev core.ClaimEvent) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.claimEvents = append(m.claimEvents, ev)
+	return nil
+}
+
+// ClaimEvents returns all events for claimID ordered by (at, verdict).
+func (m *MemoryStore) ClaimEvents(_ context.Context, claimID string) ([]core.ClaimEvent, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []core.ClaimEvent
+	for _, ev := range m.claimEvents {
+		if ev.ClaimID == claimID {
+			result = append(result, ev)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if !result[i].At.Equal(result[j].At) {
+			return result[i].At.Before(result[j].At)
+		}
+		return result[i].Verdict < result[j].Verdict
+	})
+	return result, nil
+}
+
+// RecordCompileRun appends a cost/audit ledger row for one compilation pass.
+func (m *MemoryStore) RecordCompileRun(_ context.Context, run core.CompileRun) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.compileRuns = append(m.compileRuns, run)
+	return nil
+}
+
+// CompileRuns returns compile runs for serviceID (optionally filtered by
+// layer; layer "" returns all), newest-first by RanAt then run_id.
+func (m *MemoryStore) CompileRuns(_ context.Context, serviceID, layer string) ([]core.CompileRun, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []core.CompileRun
+	for _, r := range m.compileRuns {
+		if r.ServiceID != serviceID {
+			continue
+		}
+		if layer != "" && r.Layer != layer {
+			continue
+		}
+		result = append(result, r)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if !result[i].RanAt.Equal(result[j].RanAt) {
+			return result[i].RanAt.After(result[j].RanAt)
+		}
+		return result[i].RunID < result[j].RunID
+	})
+	return result, nil
 }
 
 // Close is a no-op for the in-memory store.

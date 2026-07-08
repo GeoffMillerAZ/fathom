@@ -137,6 +137,40 @@ type Store interface {
 	// Returns nil slice with no error when no commits are stored.
 	ListCommits(ctx context.Context, serviceID string) ([]Commit, error)
 
+	// PutClaims upserts semantic claims by (service_id, claim_id). For every
+	// distinct claim_id that appears in links, the stored link set for that
+	// claim is replaced (delete-then-insert). Empty inputs are a no-op.
+	PutClaims(ctx context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error
+
+	// ClaimsForService returns claims for serviceID. When layer is non-empty
+	// only claims on that layer are returned; layer "" returns all layers.
+	// Results are ordered deterministically by (layer, subject, claim_id).
+	ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error)
+
+	// ClaimLinks returns links for the given claim IDs within serviceID,
+	// ordered by (claim_id, rel, target_ref). An empty claimIDs slice returns
+	// nil with no error.
+	ClaimLinks(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error)
+
+	// SetClaimStatus flips the status of a single claim. It is a no-op (no
+	// error) when (service_id, claim_id) is absent.
+	SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error
+
+	// AppendClaimEvent appends one human/machine verdict to the claim's
+	// append-only event log.
+	AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error
+
+	// ClaimEvents returns all events for claimID ordered by (at, verdict).
+	ClaimEvents(ctx context.Context, claimID string) ([]core.ClaimEvent, error)
+
+	// RecordCompileRun appends a cost/audit ledger row for one compilation
+	// pass.
+	RecordCompileRun(ctx context.Context, run core.CompileRun) error
+
+	// CompileRuns returns compile runs for serviceID, optionally filtered by
+	// layer (layer "" returns all layers), newest-first by RanAt then run_id.
+	CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error)
+
 	// Close releases all resources held by the store. After Close returns the
 	// store must not be used.
 	Close() error

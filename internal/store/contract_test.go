@@ -819,6 +819,332 @@ func storeContract(t *testing.T, s Store) {
 			t.Errorf("expected empty for unknown service, got %d", len(got))
 		}
 	})
+
+	// ------------------------------------------------------------------ //
+	// SemanticClaims: round-trip, upsert, layer filter, link replace
+	// ------------------------------------------------------------------ //
+	t.Run("claims_roundtrip", func(t *testing.T) {
+		compiledAt := time.Unix(1751900000, 123456789).UTC()
+		claims := []core.SemanticClaim{
+			{
+				ClaimID:             "claim-rt",
+				ServiceID:           "svc-claims-rt",
+				Layer:               "obligations",
+				LayerVersion:        "v1",
+				Kind:                "obligation",
+				Subject:             "CLAUDE.md#deterministic-excellence-gate",
+				Rule:                "All outputs must be sorted.",
+				Scope:               []string{"internal/**", "pkg/**"},
+				Tier:                core.TierDocClaimed,
+				TierProfile:         "engineering",
+				Status:              core.ClaimFresh,
+				Model:               "claude-opus-4-5",
+				PromptVersion:       "obligations/v1",
+				ReproKey:            "abc123",
+				InputDigest:         "sha256-input",
+				CompiledAtWatermark: "deadbeef",
+				CompiledAt:          compiledAt,
+			},
+		}
+		links := []core.ClaimLink{
+			{ClaimID: "claim-rt", Rel: core.RelCites, TargetRef: "CLAUDE.md#L10-L20", TargetHash: "hash1"},
+			{ClaimID: "claim-rt", Rel: core.RelScopes, TargetRef: "internal/**", TargetHash: ""},
+		}
+		if err := s.PutClaims(ctx, claims, links); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		got, err := s.ClaimsForService(ctx, "svc-claims-rt", "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("expected 1 claim, got %d", len(got))
+		}
+		c := got[0]
+		if c.ClaimID != "claim-rt" {
+			t.Errorf("ClaimID = %q, want claim-rt", c.ClaimID)
+		}
+		if c.Rule != "All outputs must be sorted." {
+			t.Errorf("Rule = %q", c.Rule)
+		}
+		if len(c.Scope) != 2 || c.Scope[0] != "internal/**" || c.Scope[1] != "pkg/**" {
+			t.Errorf("Scope = %v, want [internal/** pkg/**]", c.Scope)
+		}
+		if c.Tier != core.TierDocClaimed {
+			t.Errorf("Tier = %q, want %q", c.Tier, core.TierDocClaimed)
+		}
+		if c.Status != core.ClaimFresh {
+			t.Errorf("Status = %q, want fresh", c.Status)
+		}
+		if c.Model != "claude-opus-4-5" {
+			t.Errorf("Model = %q", c.Model)
+		}
+		if c.PromptVersion != "obligations/v1" {
+			t.Errorf("PromptVersion = %q", c.PromptVersion)
+		}
+		if c.InputDigest != "sha256-input" {
+			t.Errorf("InputDigest = %q", c.InputDigest)
+		}
+		if c.CompiledAtWatermark != "deadbeef" {
+			t.Errorf("CompiledAtWatermark = %q", c.CompiledAtWatermark)
+		}
+		if !c.CompiledAt.Equal(compiledAt) {
+			t.Errorf("CompiledAt = %v, want %v", c.CompiledAt, compiledAt)
+		}
+		// Links round-trip.
+		gotLinks, err := s.ClaimLinks(ctx, "svc-claims-rt", []string{"claim-rt"})
+		if err != nil {
+			t.Fatalf("ClaimLinks: %v", err)
+		}
+		if len(gotLinks) != 2 {
+			t.Fatalf("expected 2 links, got %d", len(gotLinks))
+		}
+		// Order: (claim_id, rel, target_ref) — "cites" < "scopes"
+		if gotLinks[0].Rel != core.RelCites || gotLinks[1].Rel != core.RelScopes {
+			t.Errorf("link order: got %q, %q; want cites, scopes", gotLinks[0].Rel, gotLinks[1].Rel)
+		}
+		if gotLinks[0].TargetHash != "hash1" {
+			t.Errorf("TargetHash = %q, want hash1", gotLinks[0].TargetHash)
+		}
+	})
+
+	t.Run("claims_upsert_replaces_mutable_fields", func(t *testing.T) {
+		svc := "svc-claims-up"
+		orig := []core.SemanticClaim{
+			{
+				ClaimID: "c-up", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+				Subject: "S", Rule: "R-old", Status: core.ClaimFresh,
+				Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+			},
+		}
+		if err := s.PutClaims(ctx, orig, nil); err != nil {
+			t.Fatalf("PutClaims original: %v", err)
+		}
+		updated := []core.SemanticClaim{
+			{
+				ClaimID: "c-up", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+				Subject: "S", Rule: "R-new", Status: core.ClaimStale,
+				Tier: core.TierDocClaimed, CompiledAt: time.Unix(2, 0).UTC(),
+			},
+		}
+		if err := s.PutClaims(ctx, updated, nil); err != nil {
+			t.Fatalf("PutClaims updated: %v", err)
+		}
+		got, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("expected 1 claim after upsert, got %d", len(got))
+		}
+		if got[0].Rule != "R-new" {
+			t.Errorf("Rule not updated: got %q", got[0].Rule)
+		}
+		if got[0].Status != core.ClaimStale {
+			t.Errorf("Status not updated: got %q", got[0].Status)
+		}
+	})
+
+	t.Run("claims_layer_filter_and_order", func(t *testing.T) {
+		svc := "svc-claims-layers"
+		claims := []core.SemanticClaim{
+			{
+				ClaimID: "cl-b", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+				Subject: "B", Status: core.ClaimFresh, Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+			},
+			{
+				ClaimID: "cl-a", ServiceID: svc, Layer: "findings", Kind: "finding",
+				Subject: "A", Status: core.ClaimFresh, Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+			},
+		}
+		if err := s.PutClaims(ctx, claims, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		all, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService all: %v", err)
+		}
+		if len(all) != 2 {
+			t.Fatalf("expected 2 claims for all layers, got %d", len(all))
+		}
+		// Deterministic order: by (layer, subject, claim_id) — "findings" < "obligations"
+		if all[0].Layer != "findings" || all[1].Layer != "obligations" {
+			t.Errorf("order: got layers %q, %q; want findings, obligations", all[0].Layer, all[1].Layer)
+		}
+		obls, err := s.ClaimsForService(ctx, svc, "obligations")
+		if err != nil {
+			t.Fatalf("ClaimsForService obligations: %v", err)
+		}
+		if len(obls) != 1 || obls[0].ClaimID != "cl-b" {
+			t.Errorf("layer filter: got %v", obls)
+		}
+	})
+
+	t.Run("claims_link_replace_semantics", func(t *testing.T) {
+		svc := "svc-claims-links"
+		claim := []core.SemanticClaim{
+			{
+				ClaimID: "cl-lr", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+				Subject: "S", Status: core.ClaimFresh, Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+			},
+		}
+		// First put: 2 links.
+		if err := s.PutClaims(ctx, claim, []core.ClaimLink{
+			{ClaimID: "cl-lr", Rel: core.RelCites, TargetRef: "a.md#L1-L2", TargetHash: "h1"},
+			{ClaimID: "cl-lr", Rel: core.RelCites, TargetRef: "b.md#L1-L2", TargetHash: "h2"},
+		}); err != nil {
+			t.Fatalf("PutClaims 2 links: %v", err)
+		}
+		got, err := s.ClaimLinks(ctx, svc, []string{"cl-lr"})
+		if err != nil {
+			t.Fatalf("ClaimLinks after 2: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("expected 2 links, got %d", len(got))
+		}
+		// Second put: 1 link — old 2 must be gone.
+		if err := s.PutClaims(ctx, claim, []core.ClaimLink{
+			{ClaimID: "cl-lr", Rel: core.RelCites, TargetRef: "a.md#L1-L2", TargetHash: "h1"},
+		}); err != nil {
+			t.Fatalf("PutClaims 1 link: %v", err)
+		}
+		got, err = s.ClaimLinks(ctx, svc, []string{"cl-lr"})
+		if err != nil {
+			t.Fatalf("ClaimLinks after replace: %v", err)
+		}
+		if len(got) != 1 {
+			t.Errorf("link replace: expected exactly 1 link, got %d", len(got))
+		}
+	})
+
+	t.Run("claims_set_status", func(t *testing.T) {
+		svc := "svc-claim-status"
+		c := core.SemanticClaim{
+			ClaimID: "cst-1", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+			Subject: "S", Status: core.ClaimFresh, Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+		}
+		if err := s.PutClaims(ctx, []core.SemanticClaim{c}, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		if err := s.SetClaimStatus(ctx, svc, "cst-1", core.ClaimStale); err != nil {
+			t.Fatalf("SetClaimStatus: %v", err)
+		}
+		got, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		if len(got) != 1 || got[0].Status != core.ClaimStale {
+			t.Errorf("status not flipped: got %v", got)
+		}
+		// Idempotent on absent claim — must not error.
+		if err := s.SetClaimStatus(ctx, svc, "no-such-claim-xyz", core.ClaimRefuted); err != nil {
+			t.Errorf("SetClaimStatus absent: expected no error, got %v", err)
+		}
+	})
+
+	t.Run("claim_events_append_and_order", func(t *testing.T) {
+		t1 := time.Unix(1000, 0).UTC()
+		t2 := time.Unix(2000, 0).UTC()
+		evs := []core.ClaimEvent{
+			{ClaimID: "evt-claim", Verdict: "corroborated", Author: "alice", Note: "looks good", At: t2},
+			{ClaimID: "evt-claim", Verdict: "refuted", Author: "bob", Note: "wrong", At: t1},
+		}
+		for _, ev := range evs {
+			if err := s.AppendClaimEvent(ctx, ev); err != nil {
+				t.Fatalf("AppendClaimEvent: %v", err)
+			}
+		}
+		got, err := s.ClaimEvents(ctx, "evt-claim")
+		if err != nil {
+			t.Fatalf("ClaimEvents: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("expected 2 events, got %d", len(got))
+		}
+		// Order by at asc: t1 (bob/refuted) first.
+		if !got[0].At.Equal(t1) || got[0].Author != "bob" {
+			t.Errorf("event order wrong: first = %+v", got[0])
+		}
+		if !got[1].At.Equal(t2) || got[1].Author != "alice" {
+			t.Errorf("event order wrong: second = %+v", got[1])
+		}
+		// Unknown claim returns empty, no error.
+		other, err := s.ClaimEvents(ctx, "no-such-claim-xyz")
+		if err != nil {
+			t.Fatalf("ClaimEvents unknown: %v", err)
+		}
+		if len(other) != 0 {
+			t.Errorf("expected empty for unknown claim, got %d", len(other))
+		}
+	})
+
+	t.Run("compile_runs_roundtrip_and_order", func(t *testing.T) {
+		svc := "svc-cr"
+		t1 := time.Unix(1000, 0).UTC()
+		t2 := time.Unix(2000, 0).UTC()
+		runs := []core.CompileRun{
+			{
+				RunID: "run-b", ServiceID: svc, Layer: "obligations",
+				CorpusWatermark: "abc", Model: "claude-sonnet-4-5", PromptVersion: "obligations/v1",
+				DryRun: false, TokensIn: 100, TokensOut: 50, CostUSD: 0.001, DurationMS: 200,
+				SectionsTotal: 5, SectionsCompiled: 3, ClaimsEmitted: 2, ClaimsRejected: 1,
+				RanAt: t1,
+			},
+			{
+				RunID: "run-a", ServiceID: svc, Layer: "obligations",
+				CorpusWatermark: "def", Model: "claude-sonnet-4-5", PromptVersion: "obligations/v1",
+				DryRun: true, TokensIn: 0, TokensOut: 0, CostUSD: 0, DurationMS: 10,
+				SectionsTotal: 5, SectionsCompiled: 0, ClaimsEmitted: 0, ClaimsRejected: 0,
+				RanAt: t2,
+			},
+		}
+		for _, r := range runs {
+			if err := s.RecordCompileRun(ctx, r); err != nil {
+				t.Fatalf("RecordCompileRun: %v", err)
+			}
+		}
+		got, err := s.CompileRuns(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("CompileRuns: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("expected 2 runs, got %d", len(got))
+		}
+		// Newest-first: t2 (run-a) before t1 (run-b).
+		if got[0].RunID != "run-a" || got[1].RunID != "run-b" {
+			t.Errorf("order wrong: got %q, %q; want run-a, run-b", got[0].RunID, got[1].RunID)
+		}
+		if !got[0].DryRun {
+			t.Errorf("DryRun = false, want true")
+		}
+		if got[1].TokensIn != 100 {
+			t.Errorf("TokensIn = %d, want 100", got[1].TokensIn)
+		}
+		if got[1].CostUSD != 0.001 {
+			t.Errorf("CostUSD = %v, want 0.001", got[1].CostUSD)
+		}
+		if !got[0].RanAt.Equal(t2) {
+			t.Errorf("RanAt = %v, want %v", got[0].RanAt, t2)
+		}
+		// Layer filter: "findings" returns none.
+		none, err := s.CompileRuns(ctx, svc, "findings")
+		if err != nil {
+			t.Fatalf("CompileRuns findings: %v", err)
+		}
+		if len(none) != 0 {
+			t.Errorf("expected 0 for findings layer, got %d", len(none))
+		}
+	})
+
+	t.Run("claim_links_empty_ids", func(t *testing.T) {
+		got, err := s.ClaimLinks(ctx, "any-svc", nil)
+		if err != nil {
+			t.Fatalf("ClaimLinks nil ids: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("expected empty for nil claimIDs, got %d", len(got))
+		}
+	})
 }
 
 // -------------------------------------------------------------------------

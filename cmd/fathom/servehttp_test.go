@@ -271,8 +271,8 @@ func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 	tools := resp["result"].(map[string]any)["tools"].([]any)
 	// Exact membership is pinned in internal/mcp; here pin the count so the
 	// HTTP path provably serves the slim surface, not the full registry.
-	if len(tools) != 14 {
-		t.Fatalf("companion surface lists %d tools, want 14", len(tools))
+	if len(tools) != 15 {
+		t.Fatalf("companion surface lists %d tools, want 15", len(tools))
 	}
 }
 

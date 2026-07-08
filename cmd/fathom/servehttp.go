@@ -40,6 +40,24 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	defer c.Close()
 
+	// Semantic-layer compilation over HTTP (the compile_layer tool) needs an
+	// LLM. Wire one only when a key is configured; without it, dry-run
+	// estimation still works and spending compiles return a clear error.
+	// Model override: FATHOM_COMPILE_MODEL (defaults to the cheap tier —
+	// obligations compiles are cents-scale by design, ADR-016 §6).
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		if llmCl, llmErr := buildAnthropicClient(); llmErr == nil {
+			model := os.Getenv("FATHOM_COMPILE_MODEL")
+			if model == "" {
+				model = "claude-haiku-4-5-20251001"
+			}
+			c.WithLLM(llmCl, model, 0.001, 0.005)
+			fmt.Fprintf(stderr, "serve-http: compile_layer enabled (model %s)\n", model)
+		} else {
+			fmt.Fprintf(stderr, "warn: compile_layer disabled: %v\n", llmErr)
+		}
+	}
+
 	// Default: keep the shared index fresh transparently. A query for a service
 	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
 	// re-ingest before the answer — so the always-on daemon never serves a stale

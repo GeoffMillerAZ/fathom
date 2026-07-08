@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "github.com/marcboeker/go-duckdb/v2"
@@ -108,6 +109,62 @@ CREATE TABLE IF NOT EXISTS commits (
     spec_ids   TEXT    NOT NULL DEFAULT '[]',
     PRIMARY KEY (service_id, hash)
 );
+
+CREATE TABLE IF NOT EXISTS semantic_claims (
+    service_id             TEXT   NOT NULL,
+    claim_id               TEXT   NOT NULL,
+    layer                  TEXT   NOT NULL DEFAULT '',
+    layer_version          TEXT   NOT NULL DEFAULT '',
+    kind                   TEXT   NOT NULL DEFAULT '',
+    subject                TEXT   NOT NULL DEFAULT '',
+    rule                   TEXT   NOT NULL DEFAULT '',
+    scope                  TEXT   NOT NULL DEFAULT '[]',
+    tier                   TEXT   NOT NULL DEFAULT '',
+    tier_profile           TEXT   NOT NULL DEFAULT '',
+    status                 TEXT   NOT NULL DEFAULT '',
+    model                  TEXT   NOT NULL DEFAULT '',
+    prompt_version         TEXT   NOT NULL DEFAULT '',
+    repro_key              TEXT   NOT NULL DEFAULT '',
+    input_digest           TEXT   NOT NULL DEFAULT '',
+    compiled_at_watermark  TEXT   NOT NULL DEFAULT '',
+    compiled_at            BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (service_id, claim_id)
+);
+
+CREATE TABLE IF NOT EXISTS claim_links (
+    service_id  TEXT NOT NULL DEFAULT '',
+    claim_id    TEXT NOT NULL DEFAULT '',
+    rel         TEXT NOT NULL DEFAULT '',
+    target_ref  TEXT NOT NULL DEFAULT '',
+    target_hash TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS compile_runs (
+    run_id             TEXT    NOT NULL DEFAULT '',
+    service_id         TEXT    NOT NULL,
+    layer              TEXT    NOT NULL DEFAULT '',
+    corpus_watermark   TEXT    NOT NULL DEFAULT '',
+    model              TEXT    NOT NULL DEFAULT '',
+    prompt_version     TEXT    NOT NULL DEFAULT '',
+    dry_run            BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_in          INTEGER NOT NULL DEFAULT 0,
+    tokens_out         INTEGER NOT NULL DEFAULT 0,
+    cost_usd           DOUBLE  NOT NULL DEFAULT 0,
+    duration_ms        BIGINT  NOT NULL DEFAULT 0,
+    sections_total     INTEGER NOT NULL DEFAULT 0,
+    sections_compiled  INTEGER NOT NULL DEFAULT 0,
+    claims_emitted     INTEGER NOT NULL DEFAULT 0,
+    claims_rejected    INTEGER NOT NULL DEFAULT 0,
+    ran_at             BIGINT  NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS claim_events (
+    claim_id TEXT   NOT NULL DEFAULT '',
+    verdict  TEXT   NOT NULL DEFAULT '',
+    author   TEXT   NOT NULL DEFAULT '',
+    note     TEXT   NOT NULL DEFAULT '',
+    event_at BIGINT NOT NULL DEFAULT 0
+);
 `
 	if _, err := s.db.Exec(ddl); err != nil {
 		return err
@@ -154,7 +211,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		if ingestedAt.IsZero() {
 			ingestedAt = time.Now().UTC()
 		}
-		_, err = stmt.ExecContext(ctx,
+		_, err = stmt.ExecContext(
+			ctx,
 			o.ServiceID,
 			o.ConcernID,
 			o.SourceRef,
@@ -565,6 +623,324 @@ func (s *DuckStore) ListCommits(ctx context.Context, serviceID string) ([]Commit
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// PutClaims upserts claims by (service_id, claim_id) and replaces the link
+// set for every distinct claim_id that appears in links.
+func (s *DuckStore) PutClaims(ctx context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
+	if len(claims) == 0 && len(links) == 0 {
+		return nil
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("PutClaims begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if len(claims) > 0 {
+		stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO semantic_claims
+    (service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
+     tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
+     compiled_at_watermark, compiled_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (service_id, claim_id) DO UPDATE SET
+    layer                 = excluded.layer,
+    layer_version         = excluded.layer_version,
+    kind                  = excluded.kind,
+    subject               = excluded.subject,
+    rule                  = excluded.rule,
+    scope                 = excluded.scope,
+    tier                  = excluded.tier,
+    tier_profile          = excluded.tier_profile,
+    status                = excluded.status,
+    model                 = excluded.model,
+    prompt_version        = excluded.prompt_version,
+    repro_key             = excluded.repro_key,
+    input_digest          = excluded.input_digest,
+    compiled_at_watermark = excluded.compiled_at_watermark,
+    compiled_at           = excluded.compiled_at
+`)
+		if err != nil {
+			return fmt.Errorf("PutClaims prepare claims: %w", err)
+		}
+		defer stmt.Close()
+
+		for _, c := range claims {
+			scopeJSON, err := json.Marshal(c.Scope)
+			if err != nil {
+				return fmt.Errorf("PutClaims marshal scope: %w", err)
+			}
+			_, err = stmt.ExecContext(
+				ctx,
+				c.ServiceID, c.ClaimID,
+				c.Layer, c.LayerVersion, c.Kind, c.Subject, c.Rule, string(scopeJSON),
+				string(c.Tier), c.TierProfile,
+				string(c.Status),
+				c.Model, c.PromptVersion, c.ReproKey, c.InputDigest,
+				c.CompiledAtWatermark, c.CompiledAt.UnixNano(),
+			)
+			if err != nil {
+				return fmt.Errorf("PutClaims exec claim: %w", err)
+			}
+		}
+	}
+
+	if len(links) > 0 {
+		// Collect distinct claim_ids so we can replace their link sets.
+		seen := make(map[string]struct{}, len(links))
+		for _, l := range links {
+			seen[l.ClaimID] = struct{}{}
+		}
+		for id := range seen {
+			if _, err := tx.ExecContext(ctx, `DELETE FROM claim_links WHERE claim_id = ?`, id); err != nil {
+				return fmt.Errorf("PutClaims delete links: %w", err)
+			}
+		}
+		// Build service_id lookup from the claims in this call.
+		svcOf := make(map[string]string, len(claims))
+		for _, c := range claims {
+			svcOf[c.ClaimID] = c.ServiceID
+		}
+		lstmt, err := tx.PrepareContext(ctx, `
+INSERT INTO claim_links (service_id, claim_id, rel, target_ref, target_hash)
+VALUES (?, ?, ?, ?, ?)
+`)
+		if err != nil {
+			return fmt.Errorf("PutClaims prepare links: %w", err)
+		}
+		defer lstmt.Close()
+		for _, l := range links {
+			if _, err := lstmt.ExecContext(ctx, svcOf[l.ClaimID], l.ClaimID, l.Rel, l.TargetRef, l.TargetHash); err != nil {
+				return fmt.Errorf("PutClaims exec link: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("PutClaims commit: %w", err)
+	}
+	return nil
+}
+
+// ClaimsForService returns claims for serviceID ordered by (layer, subject,
+// claim_id). When layer is "" all layers are returned.
+func (s *DuckStore) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
+	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
+	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
+	compiled_at_watermark, compiled_at`
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if layer == "" {
+		rows, err = s.db.QueryContext(ctx, `
+SELECT `+cols+`
+FROM semantic_claims
+WHERE service_id = ?
+ORDER BY layer, subject, claim_id
+`, serviceID)
+	} else {
+		rows, err = s.db.QueryContext(ctx, `
+SELECT `+cols+`
+FROM semantic_claims
+WHERE service_id = ? AND layer = ?
+ORDER BY layer, subject, claim_id
+`, serviceID, layer)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("ClaimsForService query: %w", err)
+	}
+	defer rows.Close()
+	return scanClaims(rows)
+}
+
+func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
+	var result []core.SemanticClaim
+	for rows.Next() {
+		var (
+			c          core.SemanticClaim
+			scopeJSON  string
+			compiledAt int64
+		)
+		if err := rows.Scan(
+			&c.ServiceID, &c.ClaimID,
+			&c.Layer, &c.LayerVersion, &c.Kind, &c.Subject, &c.Rule, &scopeJSON,
+			(*string)(&c.Tier), &c.TierProfile,
+			(*string)(&c.Status),
+			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
+			&c.CompiledAtWatermark, &compiledAt,
+		); err != nil {
+			return nil, fmt.Errorf("scanClaims scan: %w", err)
+		}
+		if err := json.Unmarshal([]byte(scopeJSON), &c.Scope); err != nil {
+			return nil, fmt.Errorf("scanClaims unmarshal scope: %w", err)
+		}
+		c.CompiledAt = time.Unix(0, compiledAt).UTC()
+		result = append(result, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scanClaims rows: %w", err)
+	}
+	return result, nil
+}
+
+// ClaimLinks returns links for the given claim IDs within serviceID, ordered
+// by (claim_id, rel, target_ref). Returns nil with no error for empty claimIDs.
+func (s *DuckStore) ClaimLinks(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error) {
+	if len(claimIDs) == 0 {
+		return nil, nil
+	}
+	placeholders := make([]string, len(claimIDs))
+	args := make([]interface{}, 0, 1+len(claimIDs))
+	args = append(args, serviceID)
+	for i, id := range claimIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	q := `
+SELECT claim_id, rel, target_ref, target_hash
+FROM claim_links
+WHERE service_id = ? AND claim_id IN (` + strings.Join(placeholders, ", ") + `)
+ORDER BY claim_id, rel, target_ref
+`
+	rows, err := s.db.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimLinks query: %w", err)
+	}
+	defer rows.Close()
+	var result []core.ClaimLink
+	for rows.Next() {
+		var l core.ClaimLink
+		if err := rows.Scan(&l.ClaimID, &l.Rel, &l.TargetRef, &l.TargetHash); err != nil {
+			return nil, fmt.Errorf("ClaimLinks scan: %w", err)
+		}
+		result = append(result, l)
+	}
+	return result, rows.Err()
+}
+
+// SetClaimStatus updates the status of a single claim. No error when absent.
+func (s *DuckStore) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
+	_, err := s.db.ExecContext(ctx, `
+UPDATE semantic_claims SET status = ? WHERE service_id = ? AND claim_id = ?
+`, string(status), serviceID, claimID)
+	if err != nil {
+		return fmt.Errorf("SetClaimStatus: %w", err)
+	}
+	return nil
+}
+
+// AppendClaimEvent inserts one verdict row into the append-only event log.
+func (s *DuckStore) AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO claim_events (claim_id, verdict, author, note, event_at)
+VALUES (?, ?, ?, ?, ?)
+`, ev.ClaimID, ev.Verdict, ev.Author, ev.Note, ev.At.UnixNano())
+	if err != nil {
+		return fmt.Errorf("AppendClaimEvent: %w", err)
+	}
+	return nil
+}
+
+// ClaimEvents returns all events for claimID ordered by (event_at, verdict).
+func (s *DuckStore) ClaimEvents(ctx context.Context, claimID string) ([]core.ClaimEvent, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT claim_id, verdict, author, note, event_at
+FROM claim_events
+WHERE claim_id = ?
+ORDER BY event_at, verdict
+`, claimID)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimEvents query: %w", err)
+	}
+	defer rows.Close()
+	var result []core.ClaimEvent
+	for rows.Next() {
+		var (
+			ev core.ClaimEvent
+			at int64
+		)
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at); err != nil {
+			return nil, fmt.Errorf("ClaimEvents scan: %w", err)
+		}
+		ev.At = time.Unix(0, at).UTC()
+		result = append(result, ev)
+	}
+	return result, rows.Err()
+}
+
+// RecordCompileRun appends a cost/audit ledger row for one compilation pass.
+func (s *DuckStore) RecordCompileRun(ctx context.Context, run core.CompileRun) error {
+	_, err := s.db.ExecContext(
+		ctx, `
+INSERT INTO compile_runs
+    (run_id, service_id, layer, corpus_watermark, model, prompt_version,
+     dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
+     sections_total, sections_compiled, claims_emitted, claims_rejected, ran_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`,
+		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
+		run.Model, run.PromptVersion, run.DryRun,
+		run.TokensIn, run.TokensOut, run.CostUSD, run.DurationMS,
+		run.SectionsTotal, run.SectionsCompiled,
+		run.ClaimsEmitted, run.ClaimsRejected,
+		run.RanAt.UnixNano(),
+	)
+	if err != nil {
+		return fmt.Errorf("RecordCompileRun: %w", err)
+	}
+	return nil
+}
+
+// CompileRuns returns compile runs for serviceID, optionally filtered by layer
+// (layer "" returns all), newest-first by RanAt then run_id.
+func (s *DuckStore) CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error) {
+	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
+	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
+	sections_total, sections_compiled, claims_emitted, claims_rejected, ran_at`
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if layer == "" {
+		rows, err = s.db.QueryContext(ctx, `
+SELECT `+cols+`
+FROM compile_runs
+WHERE service_id = ?
+ORDER BY ran_at DESC, run_id
+`, serviceID)
+	} else {
+		rows, err = s.db.QueryContext(ctx, `
+SELECT `+cols+`
+FROM compile_runs
+WHERE service_id = ? AND layer = ?
+ORDER BY ran_at DESC, run_id
+`, serviceID, layer)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("CompileRuns query: %w", err)
+	}
+	defer rows.Close()
+	var result []core.CompileRun
+	for rows.Next() {
+		var (
+			r     core.CompileRun
+			ranAt int64
+		)
+		if err := rows.Scan(
+			&r.RunID, &r.ServiceID, &r.Layer, &r.CorpusWatermark,
+			&r.Model, &r.PromptVersion, &r.DryRun,
+			&r.TokensIn, &r.TokensOut, &r.CostUSD, &r.DurationMS,
+			&r.SectionsTotal, &r.SectionsCompiled,
+			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
+		); err != nil {
+			return nil, fmt.Errorf("CompileRuns scan: %w", err)
+		}
+		r.RanAt = time.Unix(0, ranAt).UTC()
+		result = append(result, r)
+	}
+	return result, rows.Err()
 }
 
 // Close releases the underlying database connection pool.

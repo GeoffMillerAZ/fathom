@@ -305,10 +305,14 @@ func TestGate_StrictUnknown(t *testing.T) {
 // TestGate_Deterministic: failure list is in report order (sorted by task ID).
 func TestGate_Deterministic(t *testing.T) {
 	rep := verify.Report{Tasks: []verify.TaskVerdict{
-		{TaskID: "md-002", Title: "b", Status: verify.Fail, Claimed: true,
-			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "B absent"}}},
-		{TaskID: "md-001", Title: "a", Status: verify.Fail, Claimed: true,
-			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "A absent"}}},
+		{
+			TaskID: "md-002", Title: "b", Status: verify.Fail, Claimed: true,
+			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "B absent"}},
+		},
+		{
+			TaskID: "md-001", Title: "a", Status: verify.Fail, Claimed: true,
+			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "A absent"}},
+		},
 	}}
 	gr := verify.Gate(rep, false)
 	if gr.Pass {

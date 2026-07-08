@@ -27,6 +27,7 @@ var companionWant = []string{
 	"find_symbol",
 	"ingest",
 	"list_services",
+	"obligations",
 	"outline",
 	"pack_context",
 	"query_symbols",
