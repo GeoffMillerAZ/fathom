@@ -19,7 +19,25 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
-_(none — see Resolved below; new findings go here.)_
+### O6 — test_reaches misses tests that exercise a symbol only through method calls
+
+- **Symptom:** `fathom verify` failed `test_reaches` on two genuinely-tested symbols
+  while passing a third, on the same store, same run (2026-07-07, first gated plan).
+- **Evidence (verbatim):** plan contracts `{symbol: ParseMarkdownPlan}` → ✓
+  `test_reaches`; `{symbol: Discover}` → ✗ "no Test* statically reaches it";
+  `{symbol: manifestWatermark}` → ✗ — yet `TestLocalConnector_Discover_PaymentService`
+  calls `lc.Discover(...)` and `TestLocalConnector_Watermark_ManifestStableAcrossMove`
+  reaches `manifestWatermark` via `lc.Watermark(...)`.
+- **Root cause of the difference:** `ParseMarkdownPlan` is reached by a *plain function
+  call* from its test; the failing two are reached only through *method* calls
+  (`lc.Discover`), whose call edges the Go extractor doesn't attribute to the method
+  symbol, so `callgraph.TestImpact` finds no Test* path.
+- **Workaround:** `skip_test: true` on method-reached contracts (symbol presence still
+  verified). **Fix direction:** method-call edge attribution in `goextract` (receiver
+  type resolution), then remove the workaround from `docs/plans/`.
+- **Status:** open. **Impact:** verify gates under-prove any contract whose symbol is
+  only test-reached through methods — a false-negative class that pushes plan authors
+  toward `skip_test`, weakening the gate.
 
 ---
 

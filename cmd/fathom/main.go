@@ -65,6 +65,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPlatformIngest(args[1:], stdout, stderr)
 	case "platform-callers":
 		return cmdPlatformCallers(args[1:], stdout, stderr)
+	case "verify":
+		return cmdVerify(args[1:], stdout, stderr)
+	case "remap":
+		return cmdRemap(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)
@@ -88,6 +92,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  serve-http            Serve the MCP JSON-RPC protocol over HTTP (POST /rpc)")
 	fmt.Fprintln(w, "  platform-ingest       Ingest all services under a root directory")
 	fmt.Fprintln(w, "  platform-callers      Print cross-repo callers of a symbol")
+	fmt.Fprintln(w, "  verify                Verify plan files against the index (done-means-proven gate)")
+	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

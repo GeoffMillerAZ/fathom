@@ -10,8 +10,8 @@ import (
 )
 
 // taskLineRe matches a Markdown checklist item: "- [ ] title", "* [x] title",
-// "- [-] title". The captured group is the title text after the checkbox.
-var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[[ xX\-]\]\s+(.*\S)\s*$`)
+// "- [-] title". Group 1 is the checkbox char; group 2 is the title text.
+var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX\-])\]\s+(.*\S)\s*$`)
 
 // ParseMarkdownPlan turns a Markdown checklist (the kind people actually write —
 // e.g. tmp/TRACKING.md) into a verify.Plan, so verify_plan / gen-status-cue can
@@ -34,13 +34,16 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		if m == nil {
 			continue
 		}
-		raw := m[1]
+		check := m[1] // ' ', 'x', 'X', or '-'
+		raw := m[2]
 		ann, title := parseAnnotation(raw)
 		n++
 		t := Task{
 			ID:      fmt.Sprintf("md-%03d", n),
 			Title:   title,
 			SpecIDs: sdd.ExtractRefs(raw),
+			Claimed: check == "x" || check == "X",
+			Skipped: check == "-",
 		}
 		if ann != nil {
 			t.Expect.Symbol = ann["symbol"]

@@ -63,6 +63,35 @@ Some prose that is not a task.
 	}
 }
 
+// TestParseMarkdownPlan_CheckboxSemantics: [ ] open, [x]/[X] claimed, [-] skipped.
+func TestParseMarkdownPlan_CheckboxSemantics(t *testing.T) {
+	md := []byte("- [ ] open task\n- [x] lower x claimed\n- [X] upper X claimed\n- [-] skipped task\n")
+	plan := verify.ParseMarkdownPlan("svc", md)
+	if len(plan.Tasks) != 4 {
+		t.Fatalf("want 4 tasks, got %d: %+v", len(plan.Tasks), plan.Tasks)
+	}
+
+	open := plan.Tasks[0]
+	if open.Claimed || open.Skipped {
+		t.Errorf("[ ] task: Claimed=%v Skipped=%v, want both false", open.Claimed, open.Skipped)
+	}
+
+	lowerX := plan.Tasks[1]
+	if !lowerX.Claimed || lowerX.Skipped {
+		t.Errorf("[x] task: Claimed=%v Skipped=%v, want Claimed=true Skipped=false", lowerX.Claimed, lowerX.Skipped)
+	}
+
+	upperX := plan.Tasks[2]
+	if !upperX.Claimed || upperX.Skipped {
+		t.Errorf("[X] task: Claimed=%v Skipped=%v, want Claimed=true Skipped=false", upperX.Claimed, upperX.Skipped)
+	}
+
+	skipped := plan.Tasks[3]
+	if skipped.Claimed || !skipped.Skipped {
+		t.Errorf("[-] task: Claimed=%v Skipped=%v, want Claimed=false Skipped=true", skipped.Claimed, skipped.Skipped)
+	}
+}
+
 // TestParseMarkdownPlan_EndToEnd: a parsed markdown plan verifies correctly.
 func TestParseMarkdownPlan_EndToEnd(t *testing.T) {
 	md := []byte("- [x] do it {symbol: Foo}\n- [x] ghost {symbol: Ghost}\n")

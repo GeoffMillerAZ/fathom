@@ -2,6 +2,7 @@ package verify_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -182,6 +183,141 @@ func TestVerifyPlan_NoContract(t *testing.T) {
 	rep := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{{ID: "T-1", Title: "vibes"}}}, fakeEvidence{})
 	if v := rep.Tasks[0]; v.Status != verify.Unknown || v.Label != "no-contract" {
 		t.Fatalf("got %s/%s, want unknown/no-contract", v.Status, v.Label)
+	}
+}
+
+// TestVerifyPlan_ClaimedSkippedPropagation: Claimed/Skipped on Task flow through
+// to TaskVerdict.
+func TestVerifyPlan_ClaimedSkippedPropagation(t *testing.T) {
+	ev := fakeEvidence{
+		symbols: map[string][]core.SymbolNode{"Foo": {node("Foo", "a.go", 1, core.TierVerified)}},
+		tests:   map[string][]string{"Foo": {"TestFoo"}},
+	}
+	plan := verify.Plan{Tasks: []verify.Task{
+		{ID: "T-1", Title: "done", Claimed: true, Expect: verify.Expect{Symbol: "Foo"}},
+		{ID: "T-2", Title: "open", Claimed: false, Expect: verify.Expect{Symbol: "Foo"}},
+		{ID: "T-3", Title: "skipped", Skipped: true, Expect: verify.Expect{Symbol: "Foo"}},
+	}}
+	rep := verify.VerifyPlan(plan, ev)
+	byID := map[string]verify.TaskVerdict{}
+	for _, tv := range rep.Tasks {
+		byID[tv.TaskID] = tv
+	}
+	if !byID["T-1"].Claimed {
+		t.Error("T-1 Claimed should be true")
+	}
+	if byID["T-2"].Claimed {
+		t.Error("T-2 Claimed should be false")
+	}
+	if !byID["T-3"].Skipped {
+		t.Error("T-3 Skipped should be true")
+	}
+}
+
+// TestGate_Pass: all claimed tasks pass → gate passes.
+func TestGate_Pass(t *testing.T) {
+	rep := verify.Report{Tasks: []verify.TaskVerdict{
+		{TaskID: "md-001", Title: "do it", Status: verify.Pass, Claimed: true},
+		{TaskID: "md-002", Title: "open", Status: verify.Fail, Claimed: false},
+	}}
+	gr := verify.Gate(rep, false)
+	if !gr.Pass {
+		t.Fatalf("gate should pass; failures=%v", gr.Failures)
+	}
+	if len(gr.Failures) != 0 {
+		t.Fatalf("want no failures, got %v", gr.Failures)
+	}
+}
+
+// TestGate_FailOnClaimed: a claimed task that fails verification blocks the gate.
+func TestGate_FailOnClaimed(t *testing.T) {
+	rep := verify.Report{Tasks: []verify.TaskVerdict{
+		{
+			TaskID: "md-001", Title: "missing ghost", Status: verify.Fail,
+			Label:   "claimed-but-absent",
+			Claimed: true,
+			Criteria: []verify.Criterion{
+				{Name: "symbol_present", Status: verify.Fail, Detail: `"Ghost" not found in the index`},
+			},
+		},
+	}}
+	gr := verify.Gate(rep, false)
+	if gr.Pass {
+		t.Fatal("gate should fail for a claimed failing task")
+	}
+	if len(gr.Failures) != 1 {
+		t.Fatalf("want 1 failure, got %d: %v", len(gr.Failures), gr.Failures)
+	}
+	if !strings.Contains(gr.Failures[0], "md-001") {
+		t.Errorf("failure should mention task ID: %q", gr.Failures[0])
+	}
+	if !strings.Contains(gr.Failures[0], "Ghost") {
+		t.Errorf("failure should cite the criterion detail: %q", gr.Failures[0])
+	}
+}
+
+// TestGate_SkippedExempt: [-] skipped tasks never gate, even if they would fail.
+func TestGate_SkippedExempt(t *testing.T) {
+	rep := verify.Report{Tasks: []verify.TaskVerdict{
+		{
+			TaskID: "md-001", Status: verify.Fail, Claimed: true, Skipped: true,
+			Criteria: []verify.Criterion{
+				{Name: "symbol_present", Status: verify.Fail, Detail: "absent"},
+			},
+		},
+	}}
+	gr := verify.Gate(rep, false)
+	if !gr.Pass {
+		t.Fatalf("skipped task should not gate; failures=%v", gr.Failures)
+	}
+}
+
+// TestGate_StrictUnknown: under --strict, a claimed task with Unknown status gates.
+func TestGate_StrictUnknown(t *testing.T) {
+	rep := verify.Report{Tasks: []verify.TaskVerdict{
+		{
+			TaskID: "md-001", Title: "no contract", Status: verify.Unknown,
+			Label:   "no-contract",
+			Claimed: true,
+			Criteria: []verify.Criterion{
+				{Name: "runtime_pass", Status: verify.Unknown, Detail: "no CI evidence ingested"},
+			},
+		},
+	}}
+	// non-strict: unknown does not gate
+	gr := verify.Gate(rep, false)
+	if !gr.Pass {
+		t.Fatalf("non-strict: unknown claimed task should not gate; failures=%v", gr.Failures)
+	}
+	// strict: unknown gates
+	gr2 := verify.Gate(rep, true)
+	if gr2.Pass {
+		t.Fatal("strict: unknown claimed task should gate")
+	}
+	if len(gr2.Failures) == 0 {
+		t.Fatal("strict: want at least one failure")
+	}
+	if !strings.Contains(gr2.Failures[0], "md-001") {
+		t.Errorf("failure should mention task ID: %q", gr2.Failures[0])
+	}
+}
+
+// TestGate_Deterministic: failure list is in report order (sorted by task ID).
+func TestGate_Deterministic(t *testing.T) {
+	rep := verify.Report{Tasks: []verify.TaskVerdict{
+		{TaskID: "md-002", Title: "b", Status: verify.Fail, Claimed: true,
+			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "B absent"}}},
+		{TaskID: "md-001", Title: "a", Status: verify.Fail, Claimed: true,
+			Criteria: []verify.Criterion{{Name: "symbol_present", Status: verify.Fail, Detail: "A absent"}}},
+	}}
+	gr := verify.Gate(rep, false)
+	if gr.Pass {
+		t.Fatal("should fail")
+	}
+	// VerifyPlan sorts by task ID, so the report tasks are already sorted.
+	// Gate preserves that order.
+	if len(gr.Failures) != 2 || !strings.Contains(gr.Failures[0], "md-002") {
+		t.Errorf("gate failures not in report order: %v", gr.Failures)
 	}
 }
 

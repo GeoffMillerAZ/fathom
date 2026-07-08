@@ -40,6 +40,8 @@ type Task struct {
 	Title   string
 	SpecIDs []string // declared spec IDs this task implements (e.g. "[US-042]")
 	Expect  Expect
+	Claimed bool // true when checkbox is [x] or [X] — the agent claims this is done
+	Skipped bool // true when checkbox is [-] — exempt from gating
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -78,6 +80,8 @@ type TaskVerdict struct {
 	Status   CriterionStatus // Pass | Fail | Unknown (overall, static)
 	Label    string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
 	Criteria []Criterion
+	Claimed  bool // propagated from Task.Claimed ([x])
+	Skipped  bool // propagated from Task.Skipped ([-])
 }
 
 // Summary holds report-level counts.
@@ -93,6 +97,50 @@ type Report struct {
 	Service string
 	Tasks   []TaskVerdict
 	Summary Summary
+}
+
+// GateResult is the outcome of the push/CI blocking gate.
+type GateResult struct {
+	Pass     bool
+	Failures []string // deterministic: "{id} {title}: {first-failing-criterion-detail}"
+}
+
+// Gate decides whether the push/CI gate passes for the given report.
+// A task that is Claimed (checkbox [x]) and not Skipped must verify; if its
+// overall Status is Fail, or if strict is true and Status is Unknown, Gate
+// records a failure. Failures are in report order (sorted by task ID).
+func Gate(rep Report, strict bool) GateResult {
+	res := GateResult{Pass: true}
+	for _, tv := range rep.Tasks {
+		if !tv.Claimed || tv.Skipped {
+			continue
+		}
+		if tv.Status == Fail || (strict && tv.Status == Unknown) {
+			res.Pass = false
+			res.Failures = append(res.Failures, fmt.Sprintf("%s %s: %s",
+				tv.TaskID, tv.Title, gateFailDetail(tv, strict)))
+		}
+	}
+	return res
+}
+
+// gateFailDetail returns the most informative detail string for a failed gate
+// check: the first failing criterion, then the first unknown (strict), then
+// the task label as a last resort.
+func gateFailDetail(tv TaskVerdict, strict bool) string {
+	for _, c := range tv.Criteria {
+		if c.Status == Fail {
+			return c.Detail
+		}
+	}
+	if strict {
+		for _, c := range tv.Criteria {
+			if c.Status == Unknown {
+				return c.Detail
+			}
+		}
+	}
+	return tv.Label
 }
 
 // Evidence is the narrow view of the code index that verify needs. The MCP tool
@@ -144,7 +192,7 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 
 func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
 	e := t.Expect
-	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified"}
+	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped}
 
 	// fail downgrades the overall status and records the most salient label
 	// (first failure wins, since criteria are appended in priority order).

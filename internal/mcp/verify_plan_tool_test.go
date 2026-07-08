@@ -87,6 +87,10 @@ func TestVerifyPlan_Tool(t *testing.T) {
 					map[string]any{"id": "T-3", "title": "ghost", "symbol": "Ghost"},
 					map[string]any{"id": "T-4", "title": "wired", "symbol": "DoWork", "reachable_from": "Router"},
 					map[string]any{"id": "T-5", "title": "conflict", "symbol": "Conflicted"},
+					// T-6: claimed done — should surface claimed=true in output.
+					map[string]any{"id": "T-6", "title": "claimed done", "symbol": "DoWork", "claimed": true},
+					// T-7: skipped — should surface skipped=true in output.
+					map[string]any{"id": "T-7", "title": "skipped item", "symbol": "DoWork", "skipped": true},
 				},
 			},
 		},
@@ -106,6 +110,8 @@ func TestVerifyPlan_Tool(t *testing.T) {
 		"T-3": {"fail", "claimed-but-absent"},
 		"T-4": {"pass", "verified"},
 		"T-5": {"fail", "contradicted"},
+		"T-6": {"pass", "verified"},
+		"T-7": {"pass", "verified"},
 	}
 	for id, exp := range want {
 		tm, ok := byID[id]
@@ -118,6 +124,18 @@ func TestVerifyPlan_Tool(t *testing.T) {
 		if got := tm["label"].(string); got != exp[1] {
 			t.Errorf("%s: label = %q, want %q", id, got, exp[1])
 		}
+	}
+
+	// T-6 must emit claimed=true; T-7 must emit skipped=true.
+	if byID["T-6"]["claimed"] != true {
+		t.Errorf("T-6 should have claimed=true in output, got %v", byID["T-6"]["claimed"])
+	}
+	if byID["T-7"]["skipped"] != true {
+		t.Errorf("T-7 should have skipped=true in output, got %v", byID["T-7"]["skipped"])
+	}
+	// T-1 has no claimed/skipped set — neither key should be present.
+	if _, ok := byID["T-1"]["claimed"]; ok {
+		t.Errorf("T-1 should not have 'claimed' key when false")
 	}
 
 	// runtime_pass is always reported as unknown — the honesty boundary.
@@ -134,7 +152,7 @@ func TestVerifyPlan_Tool(t *testing.T) {
 	}
 
 	summary := p["summary"].(map[string]any)
-	if summary["total"].(float64) != 5 {
-		t.Errorf("summary.total = %v, want 5", summary["total"])
+	if summary["total"].(float64) != 7 {
+		t.Errorf("summary.total = %v, want 7", summary["total"])
 	}
 }

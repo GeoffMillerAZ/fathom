@@ -19,7 +19,7 @@ import (
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
-		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test.",
+		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test. Tasks carry claimed/skipped from checkbox state for gate computation.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -65,6 +65,8 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				SkipTest           bool     `json:"skip_test"`
 				AllowContradiction bool     `json:"allow_contradiction"`
 				MinTier            string   `json:"min_tier"`
+				Claimed            bool     `json:"claimed"`
+				Skipped            bool     `json:"skipped"`
 			} `json:"tasks"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
@@ -103,6 +105,8 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 					ID:      t.ID,
 					Title:   t.Title,
 					SpecIDs: t.SpecIDs,
+					Claimed: t.Claimed,
+					Skipped: t.Skipped,
 					Expect: verify.Expect{
 						Symbol:             t.Symbol,
 						ReachableFrom:      t.ReachableFrom,
@@ -208,13 +212,20 @@ func verifyReportToMap(rep verify.Report) map[string]any {
 				"detail": c.Detail,
 			})
 		}
-		tasks = append(tasks, map[string]any{
+		tm := map[string]any{
 			"id":       t.TaskID,
 			"title":    t.Title,
 			"status":   string(t.Status),
 			"label":    t.Label,
 			"criteria": crit,
-		})
+		}
+		if t.Claimed {
+			tm["claimed"] = true
+		}
+		if t.Skipped {
+			tm["skipped"] = true
+		}
+		tasks = append(tasks, tm)
 	}
 	return map[string]any{
 		"service": rep.Service,
