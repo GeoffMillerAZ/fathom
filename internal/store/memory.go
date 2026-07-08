@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -105,6 +106,47 @@ func (m *MemoryStore) PurgeSource(_ context.Context, serviceID, sourceRef string
 	}
 	m.observations = kept
 	return nil
+}
+
+// PurgeService removes all content rows (observations, fingerprints, doc
+// summaries) for serviceID, keeping identity rows. Mirrors DuckStore for the
+// ADR-017 self-heal.
+func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	kept := m.observations[:0]
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID {
+			continue
+		}
+		kept = append(kept, o)
+	}
+	m.observations = kept
+	for k := range m.fingerprints {
+		if k.serviceID == serviceID {
+			delete(m.fingerprints, k)
+		}
+	}
+	for k := range m.docSummaries {
+		if k.serviceID == serviceID {
+			delete(m.docSummaries, k)
+		}
+	}
+	return nil
+}
+
+// CountAbsoluteSourceRefs counts fingerprint rows whose source_ref is an
+// absolute path (the pre-ADR-017 anchor style).
+func (m *MemoryStore) CountAbsoluteSourceRefs(_ context.Context, serviceID string) (int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	n := 0
+	for k := range m.fingerprints {
+		if k.serviceID == serviceID && filepath.IsAbs(k.sourceRef) {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // PutKnowledgeCards upserts knowledge-card rows keyed by (service_id, symbol).

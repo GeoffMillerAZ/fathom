@@ -295,6 +295,19 @@ func (c *Client) IngestService(ctx context.Context, service string) error {
 	return err
 }
 
+// ServiceWatermark returns the connector's *current* freshness token for the
+// service's corpus (git HEAD SHA, or a content-addressed manifest hash for
+// non-git corpora — ADR-017), resolved from the path recorded in service_meta
+// at the last ingest. Comparing it against the stored IndexedCommit detects
+// corpus drift without assuming git. Empty string means freshness is unknown.
+func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, error) {
+	svcRef := core.ServiceRef{ID: service, Path: service}
+	if meta, found, err := c.st.GetServiceMeta(ctx, service); err == nil && found && meta.Path != "" {
+		svcRef.Path = meta.Path
+	}
+	return c.conn.Watermark(ctx, svcRef)
+}
+
 // ServiceMeta returns the stored ingest metadata (path, indexed commit) for
 // serviceID.  found is false when no metadata has been recorded yet.
 // This satisfies the mcp.QueryInterface.ServiceMeta contract.

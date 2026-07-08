@@ -2,11 +2,13 @@ package connector
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
@@ -27,11 +29,18 @@ const LegacyIgnoreFileName = ".sextantignore"
 // tests that operate directly on an on-disk directory.
 //
 // Discover walks the directory rooted at svc.Path and returns a sorted slice
-// of SourceRefs. skipDir controls which subdirectory names are skipped, and a
-// .fathomignore file at the service root adds repo-specific exclusions.
-// Fetch reads and returns the raw bytes of the file at ref.Path (which must
-// be an absolute path when using LocalConnector).
-type LocalConnector struct{}
+// of SourceRefs whose Paths are relative to svc.Path (ADR-017: stores must
+// never record machine-local absolute anchors). skipDir controls which
+// subdirectory names are skipped, and a .fathomignore file at the service
+// root adds repo-specific exclusions.
+// Fetch resolves a repo-relative ref against the root recorded by Discover
+// for that service; an absolute ref.Path (stores written before ADR-017) is
+// read as-is for back-compat.
+type LocalConnector struct {
+	// roots remembers, per service ID, the root directory of the most recent
+	// Discover, so Fetch can resolve the repo-relative paths Discover emits.
+	roots sync.Map // service ID (string) -> root dir (string)
+}
 
 // NewLocalConnector returns a ready-to-use LocalConnector.
 func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
@@ -44,6 +53,7 @@ func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
 // (matched dirs are pruned from the walk; matched files are dropped).
 func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
 	ignore := loadIgnoreFile(svc.Path)
+	c.roots.Store(svc.ID, svc.Path)
 
 	var refs []core.SourceRef
 
@@ -80,7 +90,7 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 		}
 		refs = append(refs, core.SourceRef{
 			Service: svc.ID,
-			Path:    path,
+			Path:    rel,
 			Kind:    kindForFile(d.Name(), filepath.Ext(d.Name())),
 		})
 		return nil
@@ -95,10 +105,30 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 	return refs, nil
 }
 
-// Fetch returns the raw bytes of the file identified by ref.Path.
-// ref.Path must be an absolute path (as returned by Discover).
+// Fetch returns the raw bytes of the file identified by ref. Repo-relative
+// refs (the ADR-017 convention Discover emits) are resolved against the root
+// recorded for ref.Service by the preceding Discover. Absolute refs — from
+// stores written before ADR-017 — are read as-is.
 func (c *LocalConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte, error) {
-	return os.ReadFile(ref.Path)
+	if filepath.IsAbs(ref.Path) {
+		return os.ReadFile(ref.Path)
+	}
+	root, ok := c.roots.Load(ref.Service)
+	if !ok {
+		return nil, fmt.Errorf("connector: no root recorded for service %q (Discover must precede Fetch for repo-relative refs)", ref.Service)
+	}
+	return os.ReadFile(filepath.Join(root.(string), filepath.FromSlash(ref.Path)))
+}
+
+// Watermark returns the corpus freshness token: the git HEAD SHA when
+// svc.Path is inside a git work tree, else a content-addressed manifest hash
+// (ADR-017: non-git corpora — docs folders, findings exports — get honest
+// freshness too).
+func (c *LocalConnector) Watermark(ctx context.Context, svc core.ServiceRef) (string, error) {
+	if head := gitHead(svc.Path); head != "" {
+		return head, nil
+	}
+	return manifestWatermark(ctx, c, svc)
 }
 
 // loadIgnoreFile reads root/.fathomignore and compiles it into a Matcher.

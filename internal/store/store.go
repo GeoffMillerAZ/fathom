@@ -88,6 +88,19 @@ type Store interface {
 	// that want to force re-ingest should call SetFingerprint afterwards.
 	PurgeSource(ctx context.Context, serviceID, sourceRef string) error
 
+	// PurgeService removes every content row for serviceID — observations,
+	// fingerprints, and doc summaries. Identity rows (service_meta, commits,
+	// knowledge cards) are retained: the service survives, its content is
+	// rebuilt by the next ingest. Used by the ADR-017 anchor-style self-heal.
+	PurgeService(ctx context.Context, serviceID string) error
+
+	// CountAbsoluteSourceRefs reports how many fingerprint rows for serviceID
+	// carry an absolute source_ref — the pre-ADR-017 anchor style. A non-zero
+	// count against a connector that now emits repo-relative refs means the
+	// service's content must be purged and re-ingested wholesale (self-heal),
+	// or every symbol would duplicate under both anchor styles.
+	CountAbsoluteSourceRefs(ctx context.Context, serviceID string) (int, error)
+
 	// PutKnowledgeCards upserts a batch of knowledge-card enrichment rows.
 	// Existing rows that share (service_id, symbol) are replaced.
 	PutKnowledgeCards(ctx context.Context, cards []KnowledgeCard) error

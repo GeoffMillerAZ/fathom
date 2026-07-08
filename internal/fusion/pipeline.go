@@ -72,6 +72,9 @@ type Report struct {
 	// extractor(s) and stored as observations during this run. Zero in lazy mode
 	// until ExtractPending is called.
 	Symbols int
+	// PurgedLegacyAnchors is true when this ingest found pre-ADR-017
+	// absolute-path anchors and rebuilt the service's content wholesale.
+	PurgedLegacyAnchors bool
 }
 
 // Pipeline is the source fusion pipeline.
@@ -371,10 +374,34 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	var report Report
 	report.Discovered = len(refs)
 
-	// Record ingest metadata (git HEAD + path) for this service.  This is
-	// best-effort: a failure here does not abort the ingest.
+	// ADR-017 self-heal: stores written before repo-relative anchors keyed
+	// fingerprints and observations by absolute path. Once the connector
+	// emits relative refs, those legacy rows would never match the hash-gate
+	// again and every symbol would exist twice (old absolute + new relative
+	// anchor). Detect the mix and rebuild this service's content wholesale,
+	// once.
+	if len(refs) > 0 && !filepath.IsAbs(refs[0].Path) {
+		if n, cErr := p.st.CountAbsoluteSourceRefs(ctx, svc.ID); cErr == nil && n > 0 {
+			if pErr := p.st.PurgeService(ctx, svc.ID); pErr != nil {
+				return report, fmt.Errorf("fusion: purge legacy-anchored service %q: %w", svc.ID, pErr)
+			}
+			report.PurgedLegacyAnchors = true
+		}
+	}
+
+	// Record ingest metadata (freshness watermark + path) for this service.
+	// Git-backed corpora record the HEAD SHA; non-git corpora fall back to
+	// the connector's watermark (content-addressed manifest hash — ADR-017:
+	// freshness is domain-neutral, so docs folders and findings exports get
+	// honest drift detection too). Best-effort: a failure here does not abort
+	// the ingest.
 	{
 		commit := p.gitHeadFn(svc.Path)
+		if commit == "" {
+			if wm, wmErr := p.conn.Watermark(ctx, svc); wmErr == nil {
+				commit = wm
+			}
+		}
 		meta := store.ServiceMeta{
 			ServiceID:     svc.ID,
 			Path:          svc.Path,

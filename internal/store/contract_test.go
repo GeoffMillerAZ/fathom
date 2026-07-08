@@ -214,6 +214,61 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// PurgeService + CountAbsoluteSourceRefs (ADR-017 self-heal support)
+	// ------------------------------------------------------------------ //
+	t.Run("purge_service_and_count_absolute_refs", func(t *testing.T) {
+		obs := []core.Observation{
+			makeObs("svc-heal", "x", "/abs/machine/pkg/a.go", "OldA"),
+			makeObs("svc-heal", "x", "pkg/b.go", "NewB"),
+			makeObs("svc-other", "x", "/abs/machine/pkg/z.go", "OtherZ"),
+		}
+		if err := s.PutObservations(ctx, obs); err != nil {
+			t.Fatalf("PutObservations: %v", err)
+		}
+		for _, fp := range []struct{ svc, ref string }{
+			{"svc-heal", "/abs/machine/pkg/a.go"},
+			{"svc-heal", "pkg/b.go"},
+			{"svc-other", "/abs/machine/pkg/z.go"},
+		} {
+			if err := s.SetFingerprint(ctx, fp.svc, fp.ref, "h"); err != nil {
+				t.Fatalf("SetFingerprint: %v", err)
+			}
+		}
+
+		n, err := s.CountAbsoluteSourceRefs(ctx, "svc-heal")
+		if err != nil {
+			t.Fatalf("CountAbsoluteSourceRefs: %v", err)
+		}
+		if n != 1 {
+			t.Errorf("CountAbsoluteSourceRefs(svc-heal) = %d, want 1", n)
+		}
+
+		if err := s.PurgeService(ctx, "svc-heal"); err != nil {
+			t.Fatalf("PurgeService: %v", err)
+		}
+		remaining, err := s.QueryObservations(ctx, "svc-heal", "")
+		if err != nil {
+			t.Fatalf("QueryObservations after purge: %v", err)
+		}
+		if len(remaining) != 0 {
+			t.Errorf("svc-heal observations after PurgeService = %d, want 0", len(remaining))
+		}
+		if _, found, _ := s.Fingerprint(ctx, "svc-heal", "pkg/b.go"); found {
+			t.Error("svc-heal fingerprint survived PurgeService")
+		}
+		n, err = s.CountAbsoluteSourceRefs(ctx, "svc-heal")
+		if err != nil || n != 0 {
+			t.Errorf("CountAbsoluteSourceRefs after purge = %d, %v; want 0, nil", n, err)
+		}
+
+		// Other services are untouched.
+		other, err := s.QueryObservations(ctx, "svc-other", "")
+		if err != nil || len(other) != 1 {
+			t.Errorf("svc-other observations = %d, %v; want 1, nil", len(other), err)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// Complexity round-trips through Put + Query
 	// ------------------------------------------------------------------ //
 	t.Run("complexity_roundtrip", func(t *testing.T) {

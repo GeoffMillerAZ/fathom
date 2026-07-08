@@ -263,3 +263,51 @@ store; determinism + tiers are the product; federation composes above the engine
 is three small tables and one compiler pass. Claim tables are additive; the
 schema's stable IDs and repro keys make every deferred piece (ledger, tiers,
 runtime) a non-destructive retrofit.
+
+## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
+
+**Context.** D-EM2 ("the store is the module") was prose, not code: the local
+connector recorded absolute machine-local paths as observation anchors, so a
+store could not leave its build machine with citations intact — and freshness
+assumed git, so non-git corpora (docs folders, findings exports — the expert-
+module shape) could never say whether they were stale. Both are cheap at schema
+time and migrations forever after, so the tax is paid **before** the ADR-016
+claims DDL lands.
+
+**Decision.**
+1. **Repo-relative anchors.** Every connector emits slash-separated,
+   root-relative `SourceRef.Path`s; `LocalConnector.Fetch` resolves them
+   against the root recorded at Discover (absolute refs from legacy stores are
+   still read as-is). The store never records a machine-local absolute path.
+2. **Root remap.** Moving a corpus (or shipping a store) is one metadata
+   update: `fathom remap --store … --service … --path …` rewrites
+   `service_meta.path`; queries, source fetching, watermarks, and re-ingest
+   resolve through it immediately.
+3. **Watermark SPI.** `Connector.Watermark(ctx, svc)` returns an opaque
+   freshness token: bare git HEAD SHA when available, else a content-addressed
+   `manifest:`-prefixed hash over (relative path, content hash) pairs — stable
+   across moves, changed iff content changes. The fusion pipeline records it as
+   `IndexedCommit`; auto-refresh falls back to it when git HEAD is absent, so
+   non-git corpora auto-refresh too.
+4. **Self-heal.** An ingest that discovers relative refs against a store
+   holding absolute-anchored fingerprints purges that service's content
+   wholesale (observations, fingerprints, doc summaries; identity rows kept)
+   and rebuilds — one-shot, reported via `Report.PurgedLegacyAnchors`. No
+   operator memory required; `scripts/reingest-fleet.sh` remains the clean
+   rebuild.
+5. **Tier profiles (data now, machinery later).** The ADR-016 claims schema
+   carries a `tier_profile` reference column from birth so tier vocabularies
+   can be reinterpreted per corpus domain when a non-engineering module first
+   needs it (its named revival evidence).
+
+**Contract.** `TestStorePortability_RoundTrip` (pkg/client): build a store on
+corpus A, move the corpus, remap the root — symbols answer, citations resolve,
+the watermark reads fresh (not falsely drifted), re-ingest is fully hash-gated.
+That test is the publishable meaning of "portable store" until the H2 format
+spec exists.
+
+**Trade-off / reversibility.** Manifest watermarks read the whole corpus (fine
+for small doc corpora; git corpora use HEAD). Legacy stores keep working
+read-only via the absolute-ref fallback; the first write-path ingest converts
+them. Reverting to absolute anchors would only require connectors to stop
+relativizing — nothing downstream depends on absoluteness anymore.

@@ -55,6 +55,7 @@ type ghTreeEntry struct {
 
 // ghTreeResponse is the top-level response from the GitHub Trees API.
 type ghTreeResponse struct {
+	SHA       string        `json:"sha"`
 	Tree      []ghTreeEntry `json:"tree"`
 	Truncated bool          `json:"truncated"`
 }
@@ -117,4 +118,24 @@ func (gc *GitHubConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte,
 		return nil, fmt.Errorf("GitHubConnector.Fetch %q: %w", ref.Path, err)
 	}
 	return data, nil
+}
+
+// Watermark returns the SHA of the repository's default-branch tree — the
+// same token Discover enumerates from — so drift detection needs one API
+// call, not a corpus walk (ADR-017).
+func (gc *GitHubConnector) Watermark(_ context.Context, svc core.ServiceRef) (string, error) {
+	repo := gc.repo
+	if svc.Repo != "" {
+		repo = svc.Repo
+	}
+	apiPath := fmt.Sprintf("repos/%s/git/trees/HEAD", repo)
+	data, err := gc.runner("api", apiPath)
+	if err != nil {
+		return "", fmt.Errorf("GitHubConnector.Watermark: gh api %s: %w", apiPath, err)
+	}
+	var resp ghTreeResponse
+	if err := json.Unmarshal(data, &resp); err != nil {
+		return "", fmt.Errorf("GitHubConnector.Watermark: parse tree response: %w", err)
+	}
+	return resp.SHA, nil
 }

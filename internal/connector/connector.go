@@ -22,13 +22,22 @@ import (
 // Discover returns a deterministically ordered (sorted by Path) slice of
 // SourceRefs for all files the connector considers ingestible under svc.
 // The Path field on each SourceRef is relative to the connector's root for
-// that service (repo-relative for remote connectors; absolute for local).
+// that service — every connector, including LocalConnector, emits
+// repo-relative, slash-separated paths (ADR-017: anchors must be portable;
+// an ingested store never records machine-local absolute paths).
 //
 // Fetch returns the raw bytes of the file identified by ref. It is valid to
 // call Fetch with any SourceRef returned by Discover.
+//
+// Watermark returns an opaque freshness token for the service's corpus:
+// equal tokens mean unchanged content. Git-backed corpora return the bare
+// HEAD commit SHA; others return a content-addressed manifest hash with the
+// "manifest:" prefix. "" means freshness is unknown — an honest state, not
+// an error (ADR-017: freshness is domain-neutral, never git-only).
 type Connector interface {
 	Discover(ctx context.Context, svc core.ServiceRef) ([]core.SourceRef, error)
 	Fetch(ctx context.Context, ref core.SourceRef) ([]byte, error)
+	Watermark(ctx context.Context, svc core.ServiceRef) (string, error)
 }
 
 // extKindMap maps file extensions (or full basenames) to the SourceKind bucket

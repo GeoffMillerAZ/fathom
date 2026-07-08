@@ -213,10 +213,10 @@ func TestLocalConnector_Discover_FathomIgnore(t *testing.T) {
 		t.Fatalf("Discover: %v", err)
 	}
 
+	// Discover emits repo-relative paths (ADR-017), so refs are used directly.
 	got := map[string]bool{}
 	for _, r := range refs {
-		rel, _ := filepath.Rel(root, r.Path)
-		got[filepath.ToSlash(rel)] = true
+		got[r.Path] = true
 	}
 
 	for _, want := range []string{"keep.go", "docs/keep.md"} {
@@ -247,8 +247,7 @@ func TestLocalConnector_Discover_LegacyIgnoreFallback(t *testing.T) {
 	}
 	got := map[string]bool{}
 	for _, r := range refs {
-		rel, _ := filepath.Rel(root, r.Path)
-		got[filepath.ToSlash(rel)] = true
+		got[r.Path] = true
 	}
 	if !got["keep.go"] {
 		t.Errorf("expected keep.go in discovered refs, got %v", got)

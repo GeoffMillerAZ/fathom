@@ -290,6 +290,36 @@ DELETE FROM observations WHERE service_id = ? AND source_ref = ?
 	return nil
 }
 
+// PurgeService removes all content rows (observations, fingerprints, doc
+// summaries) for serviceID, keeping identity rows (service_meta, commits,
+// knowledge cards). See the Store interface for the ADR-017 self-heal use.
+func (s *DuckStore) PurgeService(ctx context.Context, serviceID string) error {
+	for _, q := range []string{
+		`DELETE FROM observations WHERE service_id = ?`,
+		`DELETE FROM fingerprints WHERE service_id = ?`,
+		`DELETE FROM doc_summaries WHERE service_id = ?`,
+	} {
+		if _, err := s.db.ExecContext(ctx, q, serviceID); err != nil {
+			return fmt.Errorf("PurgeService: %w", err)
+		}
+	}
+	return nil
+}
+
+// CountAbsoluteSourceRefs counts fingerprint rows whose source_ref is an
+// absolute path (the pre-ADR-017 anchor style). POSIX-rooted refs only —
+// the stores this migration concerns were written on macOS/Linux hosts.
+func (s *DuckStore) CountAbsoluteSourceRefs(ctx context.Context, serviceID string) (int, error) {
+	var n int
+	err := s.db.QueryRowContext(ctx, `
+SELECT count(*) FROM fingerprints WHERE service_id = ? AND source_ref LIKE '/%'
+`, serviceID).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("CountAbsoluteSourceRefs: %w", err)
+	}
+	return n, nil
+}
+
 // PutKnowledgeCards upserts a batch of knowledge-card rows. Existing rows for
 // the same (service_id, symbol) are replaced.
 func (s *DuckStore) PutKnowledgeCards(ctx context.Context, cards []KnowledgeCard) error {

@@ -91,3 +91,11 @@ func (f *FauxConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core
 func (f *FauxConnector) Fetch(_ context.Context, ref core.SourceRef) ([]byte, error) {
 	return os.ReadFile(filepath.Join(f.root, ref.Path))
 }
+
+// Watermark returns a content-addressed manifest hash of the fixture corpus.
+// The fixtures are not a git repo of their own, so the manifest scheme is the
+// honest freshness token (and it exercises the non-git path deterministically
+// in tests — ADR-017).
+func (f *FauxConnector) Watermark(ctx context.Context, svc core.ServiceRef) (string, error) {
+	return manifestWatermark(ctx, f, svc)
+}

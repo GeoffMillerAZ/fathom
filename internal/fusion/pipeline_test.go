@@ -5,6 +5,7 @@ package fusion_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -46,8 +47,9 @@ func TestIngest_WithGitHead(t *testing.T) {
 	}
 }
 
-// TestIngest_WithGitHead_Empty verifies that a git function returning "" is
-// stored as-is (best-effort — no error even with empty commit).
+// TestIngest_WithGitHead_Empty verifies that when the git function returns ""
+// the pipeline records the connector's content-addressed watermark instead
+// (ADR-017) — best-effort, no error either way.
 func TestIngest_WithGitHead_Empty(t *testing.T) {
 	conn := connector.NewFauxConnector()
 	st := store.NewMemoryStore()
@@ -66,8 +68,10 @@ func TestIngest_WithGitHead_Empty(t *testing.T) {
 	if !found {
 		t.Fatal("ServiceMeta not found after Ingest")
 	}
-	if meta.IndexedCommit != "" {
-		t.Errorf("IndexedCommit = %q, want empty", meta.IndexedCommit)
+	// With no git HEAD the pipeline falls back to the connector's
+	// content-addressed watermark (ADR-017: freshness is domain-neutral).
+	if !strings.HasPrefix(meta.IndexedCommit, "manifest:") {
+		t.Errorf("IndexedCommit = %q, want a manifest: watermark", meta.IndexedCommit)
 	}
 }
 
@@ -431,5 +435,72 @@ func TestIngest_LineNumberRoundTrip(t *testing.T) {
 		if n.Name == "validateCharge" && n.Line == 0 {
 			t.Errorf("validateCharge.Line = 0, want non-zero")
 		}
+	}
+}
+
+// TestIngest_SelfHealsLegacyAbsoluteAnchors verifies the ADR-017 migration
+// guard: a store carrying pre-ADR-017 absolute-path anchors is purged
+// wholesale on the first ingest that discovers repo-relative refs, so no
+// symbol exists under both anchor styles.
+func TestIngest_SelfHealsLegacyAbsoluteAnchors(t *testing.T) {
+	ctx := context.Background()
+	conn := connector.NewFauxConnector()
+	st := store.NewMemoryStore()
+
+	// Seed the legacy state: one observation + fingerprint keyed by an
+	// absolute machine-local path.
+	legacy := core.Observation{
+		ServiceID:    paymentSvc.ID,
+		SourceRef:    "/machines/old-host/payment-service/payment.go",
+		SourceKind:   core.KindGoFunc,
+		EvidenceTier: core.TierVerified,
+		Symbol:       "Charge",
+		Claim:        "func Charge()",
+		ContentHash:  "stale",
+	}
+	if err := st.PutObservations(ctx, []core.Observation{legacy}); err != nil {
+		t.Fatalf("seed observations: %v", err)
+	}
+	if err := st.SetFingerprint(ctx, paymentSvc.ID, legacy.SourceRef, "stale"); err != nil {
+		t.Fatalf("seed fingerprint: %v", err)
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	p.WithGitHead(func(_ string) string { return "" })
+	report, err := p.Ingest(ctx, paymentSvc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if !report.PurgedLegacyAnchors {
+		t.Error("report.PurgedLegacyAnchors = false, want true")
+	}
+
+	obs, err := st.QueryObservations(ctx, paymentSvc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	for _, o := range obs {
+		if strings.HasPrefix(o.SourceRef, "/") {
+			t.Errorf("absolute anchor survived self-heal: %q", o.SourceRef)
+		}
+	}
+	// The symbol exists exactly once (relative anchor), not duplicated.
+	n := 0
+	for _, o := range obs {
+		if o.Symbol == "Charge" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("Charge observed %d times after self-heal, want exactly 1", n)
+	}
+
+	// A second ingest must not purge again (steady state).
+	report2, err := p.Ingest(ctx, paymentSvc)
+	if err != nil {
+		t.Fatalf("second Ingest: %v", err)
+	}
+	if report2.PurgedLegacyAnchors {
+		t.Error("second ingest purged again; self-heal must be one-shot")
 	}
 }

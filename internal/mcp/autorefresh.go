@@ -39,9 +39,20 @@ func NewAutoRefresh(backend QueryInterface, log io.Writer) QueryInterface {
 	}
 }
 
-// ensure re-ingests service when its working tree HEAD differs from the indexed
-// commit. Best-effort: any failure to determine freshness leaves the index
-// as-is (a stale answer is strictly better than a failed query).
+// serviceWatermarker is the optional backend capability for domain-neutral
+// freshness (ADR-017): the connector's current corpus watermark for a service.
+// pkg/client implements it; test fakes may omit it.
+type serviceWatermarker interface {
+	ServiceWatermark(ctx context.Context, service string) (string, error)
+}
+
+// ensure re-ingests service when its corpus has drifted from the indexed
+// watermark. Git-backed corpora compare HEAD SHAs (cheap, no corpus read);
+// non-git corpora fall back to the connector's content-addressed watermark —
+// costlier (one corpus read), acceptable because non-git corpora (docs
+// folders, findings exports) are small by nature. Best-effort: any failure to
+// determine freshness leaves the index as-is (a stale answer is strictly
+// better than a failed query).
 func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if service == "" {
 		return
@@ -51,6 +62,11 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 		return
 	}
 	head := a.headFn(path)
+	if head == "" {
+		if w, ok := a.QueryInterface.(serviceWatermarker); ok {
+			head, _ = w.ServiceWatermark(ctx, service)
+		}
+	}
 	if head == "" || head == indexed {
 		return
 	}
