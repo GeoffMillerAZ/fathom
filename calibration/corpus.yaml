@@ -1,6 +1,6 @@
-# sextant calibration corpus — curated public sample repos per language/tool.
+# fathom calibration corpus — curated public sample repos per language/tool.
 #
-# Purpose: real-world code to calibrate and stress-test sextant's extractors. Each
+# Purpose: real-world code to calibrate and stress-test fathom's extractors. Each
 # repo is pinned to a real commit (sha resolved via `git ls-remote`; ref is the tag).
 # `calibration/clone.sh` shallow-clones these into workspace/calibration/ (gitignored);
 # `calibration/baseline.sh` measures the current extractors against them. See README.md.

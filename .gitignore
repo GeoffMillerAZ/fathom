@@ -22,5 +22,4 @@ coverage.*
 .DS_Store
 
 # Built binary at repo root (module name)
-/sextant
 /fathom
