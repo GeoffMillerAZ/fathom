@@ -20,7 +20,13 @@ they describe past events.
 
 ## One-time operator migration (run from a real terminal)
 
-The running daemon still uses the old label/binary until you do this.
+**Status (verified 2026-07-08):** steps 1–3 below are **already done** — the
+launchd job is `com.geoffmilleraz.fathom-http`, the MCP server is registered as
+`fathom` (HTTP → `localhost:7575`), and the fleet index carries clean service
+IDs. The **only** remaining `sextant` artifact in the live system is the on-disk
+**directory name** and the absolute paths that point at it (the plist and two
+Claude Code hook commands). To finish, run the turnkey script (step 5) — steps
+1–4 are retained below as the historical record of what was done.
 
 **1. Swap the launchd daemon** (paths assume the directory has NOT been renamed
 yet — adjust if it has):
@@ -100,16 +106,33 @@ bin/fathom compile --service fathom --url http://localhost:7575            # dry
 bin/fathom compile --service fathom --url http://localhost:7575 --dry-run=false
 ```
 
-**5. Optional, whenever convenient — rename the directory:**
+**5. Rename the directory (the last remaining step) — one turnkey script:**
 
 ```sh
-mv /Volumes/m2ext/code/geoffmilleraz/sextant /Volumes/m2ext/code/geoffmilleraz/fathom
+scripts/complete-dir-rename.sh
 ```
 
-Then update the three absolute paths in the plist (binary, store,
-WorkingDirectory) and reload it. Claude Code project history/settings are keyed
-by path, so a fresh project context starts at the new path. `go.work` inside the
-repo uses relative paths and needs no change.
+It stops the daemon, `mv`s the directory, repoints the plist (binary, `--store`,
+`--call-log`, `WorkingDirectory`) and the two Claude Code hook command paths in
+`~/.claude/settings.json`, reloads the daemon, and verifies it's listening on
+`127.0.0.1:7575`. Idempotent. `go.work` uses relative paths and needs no change;
+Claude Code project history is keyed by path, so a fresh project context starts
+at the new path.
+
+**⚠️ Run it from a real terminal, not via an agent** — two human-only gates:
+
+1. It reloads the launchd daemon; `launchctl` daemon ops wedge when driven from
+   the Claude Code Bash tool.
+2. **The daemon binary path holds a path-keyed TCC `SystemPolicyRemovableVolumes`
+   grant** (granted 2026-07-08; see the comment in the plist). Renaming the
+   directory changes the binary path and **invalidates that grant** — the
+   daemon's next start touches `/Volumes/m2ext` and hangs silently in `tccd`
+   until you answer a macOS **Allow** dialog (a GUI click only a human at the
+   machine can make). If the daemon doesn't come up, look for the dialog and
+   click Allow, then re-run the script.
+
+Also close any other Claude Code / editor session working in this directory
+first (their cwd breaks on the move).
 
 **GitHub:** the repository is renamed `GeoffMillerAZ/fathom`; the old URL
 redirects. Local remotes were updated in the same change.
