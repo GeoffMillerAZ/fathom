@@ -13,8 +13,12 @@ import (
 var ObligationsInclude = []string{
 	"CLAUDE.md",
 	"ADR.md",
-	"docs/design/**",
 	"docs/plans/README.md",
+	// Deliberately NOT docs/design/**: the design essays are program specs
+	// full of aspirational/metric statements ("achieve precision ≥0.90"),
+	// which the first fleet compile turned into noisy every-edit rules —
+	// the exact trust-fatal failure ADR-016 §4.6 warns about. Obligations
+	// compile only from documents that BIND the editor of a file.
 }
 
 // SelectCorpus returns the subset of files whose repo-relative path is

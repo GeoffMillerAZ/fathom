@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     duration_ms        BIGINT  NOT NULL DEFAULT 0,
     sections_total     INTEGER NOT NULL DEFAULT 0,
     sections_compiled  INTEGER NOT NULL DEFAULT 0,
+    sections_failed    INTEGER NOT NULL DEFAULT 0,
     claims_emitted     INTEGER NOT NULL DEFAULT 0,
     claims_rejected    INTEGER NOT NULL DEFAULT 0,
     ran_at             BIGINT  NOT NULL DEFAULT 0
@@ -175,7 +176,10 @@ CREATE TABLE IF NOT EXISTS claim_events (
 	if _, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS line INTEGER DEFAULT 0`); err != nil {
 		return err
 	}
-	_, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS package TEXT DEFAULT ''`)
+	if _, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS package TEXT DEFAULT ''`); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS sections_failed INTEGER DEFAULT 0`)
 	return err
 }
 
@@ -877,13 +881,13 @@ func (s *DuckStore) RecordCompileRun(ctx context.Context, run core.CompileRun) e
 INSERT INTO compile_runs
     (run_id, service_id, layer, corpus_watermark, model, prompt_version,
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
-     sections_total, sections_compiled, claims_emitted, claims_rejected, ran_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
 		run.TokensIn, run.TokensOut, run.CostUSD, run.DurationMS,
-		run.SectionsTotal, run.SectionsCompiled,
+		run.SectionsTotal, run.SectionsCompiled, run.SectionsFailed,
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
 	)
@@ -898,7 +902,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 func (s *DuckStore) CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error) {
 	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
-	sections_total, sections_compiled, claims_emitted, claims_rejected, ran_at`
+	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at`
 	var (
 		rows *sql.Rows
 		err  error
@@ -932,7 +936,7 @@ ORDER BY ran_at DESC, run_id
 			&r.RunID, &r.ServiceID, &r.Layer, &r.CorpusWatermark,
 			&r.Model, &r.PromptVersion, &r.DryRun,
 			&r.TokensIn, &r.TokensOut, &r.CostUSD, &r.DurationMS,
-			&r.SectionsTotal, &r.SectionsCompiled,
+			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)

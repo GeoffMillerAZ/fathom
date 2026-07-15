@@ -165,6 +165,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 			"dry_run":           run.DryRun,
 			"sections_total":    run.SectionsTotal,
 			"sections_compiled": run.SectionsCompiled,
+			"sections_failed":   run.SectionsFailed,
 			"claims_emitted":    run.ClaimsEmitted,
 			"claims_rejected":   run.ClaimsRejected,
 			"tokens_in":         run.TokensIn,

@@ -21,11 +21,11 @@ func TestSelectCorpus(t *testing.T) {
 
 	got := SelectCorpus(files, ObligationsInclude)
 
+	// Design essays (docs/design/**) are deliberately excluded — binding
+	// documents only (see ObligationsInclude).
 	want := []string{
 		"ADR.md",
 		"CLAUDE.md",
-		"docs/design/product-vision.md",
-		"docs/design/semantic-layers.md",
 		"docs/plans/README.md",
 	}
 	if len(got) != len(want) {

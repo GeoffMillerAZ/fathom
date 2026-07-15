@@ -170,6 +170,7 @@ type CompileRun struct {
 	DurationMS       int64
 	SectionsTotal    int // sections in the corpus
 	SectionsCompiled int // sections that missed the digest gate (spent tokens)
+	SectionsFailed   int // sections skipped for a malformed/truncated LLM response
 	ClaimsEmitted    int
 	ClaimsRejected   int // failed compile-time anchor/scope verification
 	RanAt            time.Time

@@ -150,6 +150,9 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	fmt.Fprintf(w, "dry_run:           %v%s\n", run.DryRun, dryMarker)
 	fmt.Fprintf(w, "sections_total:    %d\n", run.SectionsTotal)
 	fmt.Fprintf(w, "sections_compiled: %d\n", run.SectionsCompiled)
+	if run.SectionsFailed > 0 {
+		fmt.Fprintf(w, "sections_failed:   %d (malformed/truncated model responses — re-run compiles just these)\n", run.SectionsFailed)
+	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)
 	fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
@@ -175,6 +178,9 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 	fmt.Fprintf(w, "dry_run:           %v%s\n", dryRun, drMarker)
 	fmt.Fprintf(w, "sections_total:    %v\n", m["sections_total"])
 	fmt.Fprintf(w, "sections_compiled: %v\n", m["sections_compiled"])
+	if v, ok := m["sections_failed"]; ok && fmt.Sprint(v) != "0" && v != nil {
+		fmt.Fprintf(w, "sections_failed:   %v\n", v)
+	}
 	fmt.Fprintf(w, "claims_emitted:    %v\n", m["claims_emitted"])
 	fmt.Fprintf(w, "claims_rejected:   %v\n", m["claims_rejected"])
 	fmt.Fprintf(w, "tokens_in:         %v\n", m["tokens_in"])

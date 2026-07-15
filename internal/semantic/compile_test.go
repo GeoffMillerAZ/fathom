@@ -243,3 +243,118 @@ func TestCompile_DryRunSpendsNothing(t *testing.T) {
 		t.Errorf("dry run recorded %d compile runs, want 0", len(runs))
 	}
 }
+
+// TestCompile_BadResponseSkipsSectionOnly: a malformed (or truncated) model
+// response poisons only its own section — the corpus compile continues and
+// the failure is counted. Genuine transport errors still abort.
+func TestCompile_BadResponseSkipsSectionOnly(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// Two docs → two sections. First response is garbage, second is valid.
+	twoDocs := CompileInput{
+		ServiceID: "svc",
+		Docs: []core.SourceFile{
+			{Path: "docs/a.md", Content: []byte("# A\n\n- Rule in A.\n")},
+			{Path: "docs/b.md", Content: []byte("# B\n\n- All outputs must be sorted.\n")},
+		},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+	}
+	c := newCompiler(
+		t, st,
+		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"truncated mid`}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`}},
+	)
+	run, err := c.Compile(ctx, twoDocs)
+	if err != nil {
+		t.Fatalf("Compile aborted on a per-section bad response: %v", err)
+	}
+	if run.SectionsFailed != 1 || run.SectionsCompiled != 1 || run.ClaimsEmitted != 1 {
+		t.Errorf("failed/compiled/emitted = %d/%d/%d, want 1/1/1", run.SectionsFailed, run.SectionsCompiled, run.ClaimsEmitted)
+	}
+
+	// A truncation (max_tokens stop) is the same skippable class.
+	st2 := store.NewMemoryStore()
+	c2 := newCompiler(
+		t, st2,
+		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"cut`, StopReason: llmclient.StopMaxTokens}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`}},
+	)
+	run2, err := c2.Compile(ctx, twoDocs)
+	if err != nil {
+		t.Fatalf("Compile aborted on truncation: %v", err)
+	}
+	if run2.SectionsFailed != 1 || run2.ClaimsEmitted != 1 {
+		t.Errorf("truncation: failed/emitted = %d/%d, want 1/1", run2.SectionsFailed, run2.ClaimsEmitted)
+	}
+
+	// A transport-level error is NOT skippable — it aborts.
+	st3 := store.NewMemoryStore()
+	c3 := newCompiler(t, st3, llmclient.MockEntry{Err: context.DeadlineExceeded})
+	if _, err := c3.Compile(ctx, twoDocs); err == nil {
+		t.Fatal("transport error must abort the compile, not be skipped")
+	}
+}
+
+// TestCompile_RetiresClaimsWhenDocLeavesCorpus: a compile owns its layer — a
+// doc removed from the corpus selector retires its claims (the sweep cannot:
+// the doc still exists on disk and its citations still hash-match).
+func TestCompile_RetiresClaimsWhenDocLeavesCorpus(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
+		t.Fatalf("first Compile: %v", err)
+	}
+
+	// Second compile with an EMPTY corpus (the doc left the selector).
+	c2 := newCompiler(t, st)
+	in := compileInput(false)
+	in.Docs = nil
+	if _, err := c2.Compile(ctx, in); err != nil {
+		t.Fatalf("second Compile: %v", err)
+	}
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil || len(claims) != 1 {
+		t.Fatalf("claims = %d, %v", len(claims), err)
+	}
+	if claims[0].Status != core.ClaimSuperseded {
+		t.Errorf("claim from departed doc = %s, want superseded (audit kept, serving stopped)", claims[0].Status)
+	}
+}
+
+// TestCompile_PromptBumpDefeatsDigestGate: claims compiled under an older
+// prompt version must be recompiled even when the section content is
+// unchanged (observed live: a v1→v2 bump left 27/32 sections on v1 claims).
+func TestCompile_PromptBumpDefeatsDigestGate(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
+		t.Fatalf("first Compile: %v", err)
+	}
+	// Simulate the prior claims having been compiled under an older prompt.
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	for i := range claims {
+		claims[i].PromptVersion = "obligations/v0-old"
+	}
+	if err := st.PutClaims(ctx, claims, nil); err != nil {
+		t.Fatalf("rewrite prompt version: %v", err)
+	}
+
+	c2 := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+	}})
+	run, err := c2.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("second Compile: %v", err)
+	}
+	if run.SectionsCompiled != 1 {
+		t.Errorf("SectionsCompiled = %d, want 1 (prompt bump must defeat the digest gate)", run.SectionsCompiled)
+	}
+}

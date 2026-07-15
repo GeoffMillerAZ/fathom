@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -20,7 +21,9 @@ import (
 
 // PromptVersion identifies the obligations compile prompt. Bump on any prompt
 // change — it is part of every claim's provenance.
-const PromptVersion = "obligations/v1"
+// v2: binding-rules-only (no metrics/roadmap/description), narrow-scope
+// preference — the first fleet compile produced noisy **-scoped rules.
+const PromptVersion = "obligations/v2"
 
 // LayerObligations is the v1 tracer-bullet layer (ADR-016 §4.8 #1).
 const LayerObligations = "obligations"
@@ -119,10 +122,14 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		newLinks           []core.ClaimLink
 		recompiledSubjects []string
 	)
+	currentSubjects := map[string]bool{}
 
 	for _, doc := range docs {
 		sections := SplitMarkdownSections(doc.Path, doc.Content)
 		run.SectionsTotal += len(sections)
+		for _, sec := range sections {
+			currentSubjects[sec.Subject] = true
+		}
 		for _, sec := range sections {
 			// Digest gate: an unchanged section keeps its claims untouched.
 			if prior := bySubject[sec.Subject]; len(prior) > 0 && allDigestsMatch(prior, sec.Digest) {
@@ -138,12 +145,20 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 			}
 
 			drafts, usage, err := c.compileSection(ctx, sec)
+			run.TokensIn += usage.InputTokens
+			run.TokensOut += usage.OutputTokens
 			if err != nil {
+				// A malformed/truncated model response poisons only its own
+				// section: count it, keep the section's prior claims, and
+				// move on — one bad response must never abort an 88-section
+				// corpus. Anything else (auth, network, context) aborts.
+				if errors.Is(err, errBadResponse) {
+					run.SectionsFailed++
+					continue
+				}
 				return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
 			}
 			run.SectionsCompiled++
-			run.TokensIn += usage.InputTokens
-			run.TokensOut += usage.OutputTokens
 			recompiledSubjects = append(recompiledSubjects, sec.Subject)
 
 			for _, d := range drafts {
@@ -169,13 +184,32 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		return run, fmt.Errorf("semantic: store claims: %w", err)
 	}
 
-	// Supersede: prior claims of recompiled subjects that were not re-emitted.
+	// Supersede: prior claims of recompiled subjects that were not re-emitted,
+	// AND claims whose subject is no longer in the corpus at all — a compile
+	// owns its whole layer, so a doc leaving the corpus selector retires its
+	// claims (the sweep can't: the doc still exists and its citations still
+	// hash-match).
 	emitted := map[string]bool{}
 	for _, cl := range newClaims {
 		emitted[cl.ClaimID] = true
 	}
+	retire := map[string]bool{}
 	sort.Strings(recompiledSubjects)
 	for _, subj := range recompiledSubjects {
+		retire[subj] = true
+	}
+	subjects := make([]string, 0, len(bySubject))
+	for subj := range bySubject {
+		if !currentSubjects[subj] {
+			retire[subj] = true
+		}
+		subjects = append(subjects, subj)
+	}
+	sort.Strings(subjects)
+	for _, subj := range subjects {
+		if !retire[subj] {
+			continue
+		}
 		for _, old := range bySubject[subj] {
 			if !emitted[old.ClaimID] && old.Status != core.ClaimSuperseded {
 				if err := c.St.SetClaimStatus(ctx, in.ServiceID, old.ClaimID, core.ClaimSuperseded); err != nil {
@@ -195,9 +229,13 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 // for dry-run estimates.
 const promptOverheadTokens = 260
 
+// allDigestsMatch reports whether every prior claim was compiled from this
+// exact section content AND under the current prompt version — a prompt bump
+// must recompile every section, or stale-prompt claims survive the gate
+// (observed on the v1→v2 recompile: 27/32 sections kept v1 claims).
 func allDigestsMatch(claims []core.SemanticClaim, digest string) bool {
 	for _, cl := range claims {
-		if cl.InputDigest != digest {
+		if cl.InputDigest != digest || cl.PromptVersion != PromptVersion {
 			return false
 		}
 	}
@@ -214,10 +252,13 @@ func (c *Compiler) compileSection(ctx context.Context, sec Section) ([]claimDraf
 		Model:     c.Model,
 		System:    systemPrompt,
 		Prompt:    prompt,
-		MaxTokens: 1200,
+		MaxTokens: 2400, // rule-dense sections (large tables) overflowed 1200 and truncated mid-JSON
 	})
 	if err != nil {
 		return nil, llmclient.Usage{}, err
+	}
+	if resp.StopReason == llmclient.StopMaxTokens {
+		return nil, resp.Usage, fmt.Errorf("%w: response truncated at max_tokens", errBadResponse)
 	}
 	drafts, err := parseDrafts(resp.Text)
 	if err != nil {
@@ -226,16 +267,24 @@ func (c *Compiler) compileSection(ctx context.Context, sec Section) ([]claimDraf
 	return drafts, resp.Usage, nil
 }
 
+// errBadResponse marks a per-section model-output failure (unparseable or
+// truncated JSON) — skippable, unlike transport/auth errors which abort.
+var errBadResponse = errors.New("malformed model response")
+
 const systemPrompt = `You compile engineering obligations from governing documents into strict JSON.
-An obligation is a rule a developer editing matching files MUST follow, restated
-faithfully from the document — never invented. Output ONLY a JSON array (possibly
-empty) of objects: {"rule", "scope", "cite_start", "cite_end"}.
+An obligation is a rule a developer editing matching files MUST follow while
+writing code, restated faithfully from the document — never invented. Output
+ONLY a JSON array (possibly empty) of objects: {"rule", "scope", "cite_start", "cite_end"}.
 - rule: imperative, <= 28 words, self-contained.
-- scope: gitignore-style glob(s) for the code paths the rule governs. Use narrow
-  globs the document justifies; if the document names no paths, use ["**"].
+- scope: gitignore-style glob(s) for the code paths the rule governs. Prefer the
+  NARROWEST glob the document justifies (a named package or directory); use
+  ["**"] only for rules the document explicitly applies to all code.
 - cite_start/cite_end: the 1-based DOCUMENT line range (shown in the input) that
   states the rule. Cite the narrowest range that fully supports the rule.
-Only emit rules the cited lines actually state. No commentary.`
+Emit [] for sections that contain no binding developer rules. These are NOT
+obligations: project metrics/gates ("achieve X%"), roadmap/vision statements,
+descriptions of how the system works, decisions' context/rationale, historical
+records. Only emit rules the cited lines actually state. No commentary.`
 
 // buildSectionPrompt renders the section with absolute document line numbers
 // so the model can cite verifiable ranges.
@@ -262,7 +311,7 @@ func parseDrafts(text string) ([]claimDraft, error) {
 	}
 	var drafts []claimDraft
 	if err := json.Unmarshal([]byte(t), &drafts); err != nil {
-		return nil, fmt.Errorf("strict-JSON parse: %w", err)
+		return nil, fmt.Errorf("%w: strict-JSON parse: %v", errBadResponse, err)
 	}
 	return drafts, nil
 }

@@ -5,6 +5,25 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Changed — obligations v2: first-fleet-compile hardening
+- **Prompt v1 → v2 + corpus narrowed to binding docs** (`CLAUDE.md`, `ADR.md`,
+  `docs/plans/README.md`). The first fleet compile turned `docs/design/**` essays into
+  noisy `**`-scoped aspirational rules ("achieve precision ≥0.90") injected on every
+  edit — the trust-fatal class ADR-016 §4.6 warns about. v2 compiles binding rules only
+  and prefers the narrowest scope the source supports.
+- **Digest gate now includes `PromptVersion`.** A prompt bump previously did not
+  recompile unchanged sections — the v1→v2 recompile silently kept v1 claims on 27/32
+  sections. Covered by `TestCompile_PromptBumpDefeatsDigestGate`.
+- **Per-section failure resilience.** A malformed or truncated model response
+  (strict-JSON parse failure, `StopMaxTokens`) now fails only its own section —
+  counted in the new `compile_runs.sections_failed` — instead of aborting an
+  88-section fleet corpus; transport/auth errors still abort. `MaxTokens` 1200→2400
+  (rule-dense sections were truncating mid-JSON).
+- **Corpus-departure retirement.** Claims whose subject left the corpus selector are
+  superseded on the next compile, not served forever.
+- First full fleet compile under v2: 31/32 sections, 72 claims (9 rejected by
+  compile-time verification), $0.047.
+
 ### Added — semantic layers v1: the obligations tracer bullet (ADR-016)
 - **Governed-claims substrate.** Four additive tables beside observations —
   `semantic_claims` (content-addressed `claim_id`; tier + `tier_profile`; status

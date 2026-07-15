@@ -50,13 +50,15 @@ package semantic
 	}
 }
 
-// obligations is the v1 tracer-bullet layer (ADR-016 §4.8 #1).
+// obligations is the v1 tracer-bullet layer (ADR-016 §4.8 #1). The corpus is
+// deliberately only the BINDING documents — design essays produced noisy
+// aspirational rules on the first fleet compile (see internal/semantic/corpus.go).
 obligations: #Layer & {
 	name:           "obligations"
 	version:        "v1"
 	kind:           "obligation"
-	corpus: include: ["CLAUDE.md", "ADR.md", "docs/design/**", "docs/plans/README.md"]
-	prompt_version: "obligations/v1"
+	corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
+	prompt_version: "obligations/v2"
 	tier:           "doc-claimed"
 	budgets: {
 		max_tokens_per_run: 200000
