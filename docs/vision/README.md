@@ -45,6 +45,8 @@ measured) before laying stones no one is standing on.
 | What does world-class mean, measurably? | The metric table — injection coverage, serve-time precision, share of discovery, adoption friction, context-bench — is the operational definition for the wedge. | [04 §1](04-coding-agents.md) |
 | Is up-front AI preprocessing world-class? | Half right — and the half matters. Distilling *code* loses; distilling *binding documents into governed claims* is differentiated **in design, unproven in measured value** until the context-bench and injection gates run. | [01](01-thesis.md), [07 R8](07-questions-and-risks.md) |
 | Clean up the tools/MCP surface? | Yes, now — the evidence arrived. Two surfaces, a 15-tool agent surface, kill aliases, execute-and-flag gate. | [05](05-surfaces.md) |
+| CUE-driven deterministic SDD state machine? *(2026-07-15 follow-up)* | Goal right — evidence-gated "done" is confirmed whitespace (the whole field self-reports). Mechanism wrong — build a **reconciler**, not a machine: markdown authored, CUE-schema'd underneath, status derived by the pure verify function, transitions enforced at blocking channels. CUE never enters an authoring loop (the Dagger lesson). | [09](09-deterministic-sdd.md) |
+| Deterministic SDD — in fathom or a family alongside it? | Inside fathom, in place (verify-kernel + `schema/plan` extensions); agentic-kit supplies oracle classes behind the Evidence SPI; "bearing" reserved as the intent-spine name only if H3 ever fires. Pilot: the agentic-kit handoff program, ~4 dev-days, 5 metrics, 4 kill criteria. | [09 §4–5](09-deterministic-sdd.md) |
 
 ## The documents
 
@@ -56,6 +58,7 @@ measured) before laying stones no one is standing on.
 6. **[06-use-cases.md](06-use-cases.md)** — the portfolio with FOCUS/OPTION/TRAP verdicts; layer-2 recommendation; landscape.
 7. **[07-questions-and-risks.md](07-questions-and-risks.md)** — red team: risks rated, the questions you're not asking, three decisions.
 8. **[08-roadmap.md](08-roadmap.md)** — the consolidated sequence and your decision checklist. **Start your review here or at 01.**
+9. **[09-deterministic-sdd.md](09-deterministic-sdd.md)** *(added 2026-07-15)* — deterministic SDD: the reconciler reframe, where CUE goes and never goes, the handoff-program pilot, and the dial-to-11 trajectory.
 
 ## How this review was grounded
 
@@ -65,9 +68,9 @@ snapshot), the adoption baseline (0 fathom calls vs 193 greps, recorded in
 `CHANGELOG.md`), the live tool registry (87 tools via `capabilities`), the
 dogfood observations, and the shipped code as of `3bb6c29` plus the
 uncommitted obligations-v2 hardening. **Landscape figures** (competitor
-stats, market claims) come from a July-2026 web survey and are sourced
-inline in [06 §3](06-use-cases.md) — treat them as survey claims, not
-measurements. Where a claim is speculation, the docs label it. One known
+stats, market claims) come from July-2026 web surveys and are sourced
+inline in [06 §3](06-use-cases.md) and [09](09-deterministic-sdd.md) —
+treat them as survey claims, not measurements. Where a claim is speculation, the docs label it. One known
 caveat the critique pass surfaced: the call log has no origin field, so
 gate/hook plumbing and genuine agent tool-picking are not fully separable
 ([04 Gap 1](04-coding-agents.md), [05](05-surfaces.md)).

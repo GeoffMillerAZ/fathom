@@ -128,6 +128,22 @@ linked docs carry the full argument for each.
 - [ ] **The who-pays sentence** ([07 Q4](07-questions-and-risks.md)):
       write it. Force-multiplier ($0, ambition list shrinks) or product
       (verify gate leads, everything else follows it).
+- [ ] **Deterministic SDD = reconciler + pilot** ([09](09-deterministic-sdd.md),
+      added 2026-07-15): plan-grammar v2 (stable IDs, typed dispositions,
+      reason/trigger keys), `verify --require-all`, `gen-plan-cue`
+      round-trip, `stop-hook` (advisory→blocking), minimal `cmd` oracle —
+      ~4–5 dev-days piloted on the agentic-kit handoff program. Honest
+      sequencing: only the *spec authoring* (H1–H8 born typed) is truly
+      parallel — those specs must be written now anyway; the dev-days
+      sequence **after** §1 item 1 (Gap 1 instrumentation stays first) and
+      displace nothing, since items 6–7 are already start-when-green. O6
+      remains the hard precondition for the determinism pitch; week-4
+      keep/kill decision on the five metrics. Also adds 09 §6's
+      out-of-scope-forever list (workflow GUI, durable workflow engine,
+      codegen-from-specs, CUE authoring UX, general task tracker) to
+      product-vision **non-goals** — unconditional, unlike the
+      entry-conditioned never-until entries in §3.
+      → schema/plan v2 + plan doc + ADR on acceptance.
 - [ ] **Hygiene batch** (§1 tail):
       stale docs, dead packages, enrichment tombstone, gate-catch log.
 
