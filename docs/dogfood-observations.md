@@ -19,6 +19,31 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O8 — obligations v2 serves code-scoped and descriptive rules on documentation edits
+
+- **Symptom:** every `Write` to `docs/vision/*.md` (2026-07-14) injected the same six
+  obligations, several of which cannot bind a docs edit.
+- **Evidence (verbatim, from the PostToolUse payload):** editing `docs/vision/README.md`
+  injected — among others — "Always verify code with the race detector using go test
+  -race. [CLAUDE.md#L50-L52]" (a code-only rule), "Assert extractor and query outputs
+  using golden files. [ADR.md#L174-L175]" (code-only), and "Bucket pending results by
+  language and extract. [ADR.md#L68-L68]" — which is a *description of how the lazy
+  pipeline works* (ADR-005 context), not an obligation on any editor. The identical
+  6-rule set appeared for eight different markdown files, suggesting `**`-wide scopes
+  rather than file-class scoping.
+- **Root cause (probable):** the v2 prompt prefers narrow scopes but the compiler has
+  no notion of *file-class* (code vs docs vs config), so rules whose source text doesn't
+  name a path compile with repo-wide scopes; and the "binding rules only" instruction
+  still passes descriptive-imperative sentences ("bucket pending results…") that read
+  like commands.
+- **Fix direction:** serve-time precision pass (docs/vision/04 Gap 3): sample injected
+  payloads across the fleet, add file-class awareness to scoping (a code-only rule must
+  not match `**/*.md`), and tighten the prompt's rejection of descriptive imperatives.
+  Success metric: injected-rule precision ≥0.95 sampled at serve time.
+- **Status:** open. **Impact:** the flagship channel injects ~6 rules on every docs
+  edit with ≤3 relevant — exactly the trust-fatal noise class ADR-016 §4.6 warns
+  about, now observed at serve time rather than compile time.
+
 ### O7 — optional-capability interfaces silently stripped by the auto-refresh wrapper (fixed)
 
 - **Symptom:** first post-migration smoke test: `fathom compile --service fathom` over
