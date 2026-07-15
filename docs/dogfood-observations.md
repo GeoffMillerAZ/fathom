@@ -36,6 +36,11 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   name a path compile with repo-wide scopes; and the "binding rules only" instruction
   still passes descriptive-imperative sentences ("bucket pending results…") that read
   like commands.
+- **Addendum (same session):** the hook also injected the full fathom rule set for an
+  edit to `~/.claude/projects/.../memory/*.md` — a file *outside every indexed repo*.
+  The edit-hook resolves the service from session cwd candidates and apparently still
+  scope-matches a file that doesn't relativize into the service root; it should exit
+  silent when the edited file is outside the resolved candidate's root.
 - **Fix direction:** serve-time precision pass (docs/vision/04 Gap 3): sample injected
   payloads across the fleet, add file-class awareness to scoping (a code-only rule must
   not match `**/*.md`), and tighten the prompt's rejection of descriptive imperatives.
