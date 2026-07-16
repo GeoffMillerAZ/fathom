@@ -17,7 +17,7 @@ func seedServed(t *testing.T, st store.Store, id, rule string, scope []string, s
 		Layer: LayerObligations, LayerVersion: "v1", Kind: KindObligation,
 		Subject: "docs/g.md#s-" + id, Rule: rule, Scope: scope,
 		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: status,
-		PromptVersion: PromptVersion, ReproKey: id, InputDigest: "d",
+		PromptVersion: obligationsPromptVersion(), ReproKey: id, InputDigest: "d",
 		CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
 	}
 	links := []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: "docs/g.md#L1-L2", TargetHash: "h"}}

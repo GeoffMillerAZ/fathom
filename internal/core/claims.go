@@ -174,6 +174,19 @@ type CompileRun struct {
 	ClaimsEmitted    int
 	ClaimsRejected   int // failed compile-time anchor/scope verification
 	RanAt            time.Time
+
+	// Refused is true when the run's pre-flight cost estimate exceeded the
+	// layer's max_usd_per_run budget: the run never started (no LLM calls,
+	// no claims written) but the estimate is still ledgered here — refusals
+	// are recorded, not silent (ADR-016 §4.1, M1-7 enforceBudgets).
+	Refused bool
+	// RefusalReason explains Refused or BudgetStopped (empty otherwise).
+	RefusalReason string
+	// BudgetStopped is true when the run's running token total crossed
+	// max_tokens_per_run mid-corpus: the run stopped cleanly after storing
+	// whatever it had already compiled. Sections not yet reached are
+	// untouched and resume via the digest gate on the next invocation.
+	BudgetStopped bool
 }
 
 // ClaimEvent is one append-only human/machine verdict on a claim (the refute

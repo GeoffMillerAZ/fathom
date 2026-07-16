@@ -214,6 +214,10 @@ func TestCompileLayerDryRunDefault(t *testing.T) {
 			Layer:         "obligations",
 			SectionsTotal: 2,
 			TokensIn:      500,
+			// F5: a budget-stopped run returns nil error — the tool result
+			// must carry the stop, or it is indistinguishable from success.
+			BudgetStopped: true,
+			RefusalReason: "token total 700 exceeds layer \"obligations\" budget max_tokens_per_run=600",
 		},
 	}
 	srv := mcp.NewServer(fake)
@@ -230,6 +234,15 @@ func TestCompileLayerDryRunDefault(t *testing.T) {
 	payload := extractPayload(t, resp)
 	if dr, _ := payload["dry_run"].(bool); !dr {
 		t.Errorf("dry_run should default true, got %v", payload["dry_run"])
+	}
+	if bs, _ := payload["budget_stopped"].(bool); !bs {
+		t.Errorf("budget_stopped should surface true, got %v", payload["budget_stopped"])
+	}
+	if rr, _ := payload["refusal_reason"].(string); rr == "" {
+		t.Errorf("refusal_reason should surface, got %v", payload["refusal_reason"])
+	}
+	if _, present := payload["refused"]; present {
+		t.Errorf("refused should be omitted when false, got %v", payload["refused"])
 	}
 }
 

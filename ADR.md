@@ -264,6 +264,25 @@ is three small tables and one compiler pass. Claim tables are additive; the
 schema's stable IDs and repro keys make every deferred piece (ledger, tiers,
 runtime) a non-destructive retrofit.
 
+**Amendment (2026-07-16, M1).** `#Layer.tier` widens to admit `verified`
+alongside `doc-claimed` and `sme-stated` (schema/semantic/schema.cue,
+`internal/semantic/schema_test.go`): a claim kind whose truth is established
+by a deterministic, Model-empty compile path — one of ADR-018's named
+**oracle classes** (`index`, `cmd`, `lexical`; docs/design/sdd-reconciler.md
+§5) rather than by LLM restatement (`doc-claimed`) or human corroboration
+(`sme-stated`) — may declare a manifest layer without inventing a fourth tier
+ad hoc. No layer emits `verified` claims yet; `ai-derived` stays deliberately
+unadmitted, still awaiting its own revival evidence (§4.2 above). This
+amendment also retires, for the manifest LOADER specifically, the "generic
+layer runtime … deferred with named revival evidence" clause above: M1
+(`internal/semantic.LoadLayer`, docs/plans/m1-manifest.md) makes
+`schema/semantic/schema.cue` a runtime artifact instead of documentation —
+any layer definition the manifest declares is now loadable generically
+(corpus globs, tier, budgets, serving caps decoded via `cuelang.org/go`, not
+hand-mirrored Go constants), so the revival evidence for "the manifest
+generalizes beyond one hand-coded layer" is satisfied by the loader
+existing, independent of whether a second layer has shipped.
+
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
 **Context.** D-EM2 ("the store is the module") was prose, not code: the local

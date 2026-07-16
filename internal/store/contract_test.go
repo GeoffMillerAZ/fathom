@@ -1169,6 +1169,8 @@ func storeContract(t *testing.T, s Store) {
 				DryRun: false, TokensIn: 100, TokensOut: 50, CostUSD: 0.001, DurationMS: 200,
 				SectionsTotal: 5, SectionsCompiled: 3, ClaimsEmitted: 2, ClaimsRejected: 1,
 				RanAt: t1,
+				// M1-7: a mid-run budget stop must round-trip too.
+				BudgetStopped: true, RefusalReason: "token total 700 exceeds layer \"obligations\" budget max_tokens_per_run=600",
 			},
 			{
 				RunID: "run-a", ServiceID: svc, Layer: "obligations",
@@ -1176,6 +1178,8 @@ func storeContract(t *testing.T, s Store) {
 				DryRun: true, TokensIn: 0, TokensOut: 0, CostUSD: 0, DurationMS: 10,
 				SectionsTotal: 5, SectionsCompiled: 0, ClaimsEmitted: 0, ClaimsRejected: 0,
 				RanAt: t2,
+				// M1-7: a pre-flight refusal must round-trip too.
+				Refused: true, RefusalReason: "estimated cost $1.5000 exceeds layer \"obligations\" budget max_usd_per_run=$0.0001",
 			},
 		}
 		for _, r := range runs {
@@ -1205,6 +1209,19 @@ func storeContract(t *testing.T, s Store) {
 		}
 		if !got[0].RanAt.Equal(t2) {
 			t.Errorf("RanAt = %v, want %v", got[0].RanAt, t2)
+		}
+		// M1-7: Refused / RefusalReason / BudgetStopped round-trip.
+		if !got[0].Refused || got[0].RefusalReason == "" {
+			t.Errorf("run-a (newest) Refused/RefusalReason = %v/%q, want true/non-empty", got[0].Refused, got[0].RefusalReason)
+		}
+		if got[0].BudgetStopped {
+			t.Errorf("run-a BudgetStopped = true, want false")
+		}
+		if !got[1].BudgetStopped || got[1].RefusalReason == "" {
+			t.Errorf("run-b (oldest) BudgetStopped/RefusalReason = %v/%q, want true/non-empty", got[1].BudgetStopped, got[1].RefusalReason)
+		}
+		if got[1].Refused {
+			t.Errorf("run-b Refused = true, want false")
 		}
 		// Layer filter: "findings" returns none.
 		none, err := s.CompileRuns(ctx, svc, "findings")

@@ -13,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -25,7 +26,7 @@ import (
 func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("compile", stderr)
 	service := fs.String("service", "", "service ID (required)")
-	layer := fs.String("layer", "obligations", "layer to compile (only 'obligations' exists; see ADR-016)")
+	layer := fs.String("layer", "obligations", "layer to compile (must be defined in the semantic-layer manifest, schema/semantic/schema.cue; see ADR-016)")
 	dryRun := fs.Bool("dry-run", true, "estimate cost without calling the LLM (default true; use --dry-run=false to spend)")
 	storePath := fs.String("store", "", "DuckDB store path (direct mode; bypasses daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
@@ -37,8 +38,8 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	if *layer != "obligations" {
-		fmt.Fprintf(stderr, "error: only the obligations layer exists; see ADR-016\n")
+	if _, err := semantic.LoadLayer(*layer); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 
@@ -153,6 +154,12 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	if run.SectionsFailed > 0 {
 		fmt.Fprintf(w, "sections_failed:   %d (malformed/truncated model responses — re-run compiles just these)\n", run.SectionsFailed)
 	}
+	if run.BudgetStopped {
+		fmt.Fprintf(w, "budget_stopped:    true (%s — re-run to resume; the digest gate skips completed sections)\n", run.RefusalReason)
+	}
+	if run.Refused {
+		fmt.Fprintf(w, "refused:           true (%s)\n", run.RefusalReason)
+	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)
 	fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
@@ -180,6 +187,12 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 	fmt.Fprintf(w, "sections_compiled: %v\n", m["sections_compiled"])
 	if v, ok := m["sections_failed"]; ok && fmt.Sprint(v) != "0" && v != nil {
 		fmt.Fprintf(w, "sections_failed:   %v\n", v)
+	}
+	if bs, _ := m["budget_stopped"].(bool); bs {
+		fmt.Fprintf(w, "budget_stopped:    true (%v — re-run to resume; the digest gate skips completed sections)\n", m["refusal_reason"])
+	}
+	if rf, _ := m["refused"].(bool); rf {
+		fmt.Fprintf(w, "refused:           true (%v)\n", m["refusal_reason"])
 	}
 	fmt.Fprintf(w, "claims_emitted:    %v\n", m["claims_emitted"])
 	fmt.Fprintf(w, "claims_rejected:   %v\n", m["claims_rejected"])

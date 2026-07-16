@@ -22,7 +22,7 @@ func seedClaim(t *testing.T, st store.Store, id, subject string, status core.Cla
 		Layer: LayerObligations, LayerVersion: "v1", Kind: KindObligation,
 		Subject: subject, Rule: "rule for " + id, Scope: []string{"**"},
 		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: status,
-		PromptVersion: PromptVersion, ReproKey: id, InputDigest: "d-" + id,
+		PromptVersion: obligationsPromptVersion(), ReproKey: id, InputDigest: "d-" + id,
 		CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
 	}
 	links := []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: core.CiteRef(docPath, start, end), TargetHash: hash}}

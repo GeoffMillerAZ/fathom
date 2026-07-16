@@ -42,6 +42,76 @@ All notable changes to sextant. Format loosely follows
   brace block — prose braces and code literals in titles no longer hijack
   contracts (caught live by the first non-vacuous gate run over the fleet).
 
+### Added — M1: the manifest goes live (semantic layers, ADR-016 amendment)
+- **`schema/semantic/schema.cue` is now a runtime artifact, not documentation.**
+  `internal/semantic.LoadLayer` embeds a package-local, byte-identity-tested
+  copy of the schema (`internal/semantic/manifest_schema.cue`,
+  `TestManifestSchemaMatchesSource`) and decodes `#Layer` instances (corpus
+  globs, tier, budgets, serving caps) via `cuelang.org/go`. The obligations
+  layer's corpus include list and per-claim rule-length budget now come from
+  the manifest instead of the hand-synced `ObligationsInclude` Go var and a
+  bare `maxRuleWords` const — both retired (grep-clean under
+  `internal/semantic`). `cmd/fathom compile` and the `compile_layer` MCP tool
+  accept any manifest-listed layer (today still exactly `obligations`) and
+  reject unknown names with the manifest's live layer list instead of a
+  hardcoded string check.
+- **Content-addressed prompt identity** (agentic-kit v0.7.0
+  `prompttemplate`). The obligations system prompt moved into a
+  `prompttemplate.Template` (`internal/semantic/prompts.go`); `PromptVersion`
+  is no longer a hand-bumped const — `obligationsPromptVersion()` derives it
+  as `obligations/<hash8>` from `Template.TextHash()`. The digest gate
+  (`allDigestsMatch`) keys on this derived identity, so any edit to the
+  prompt text is now automatically a new compile identity — the exact bug
+  class that silently left 27/32 sections on stale v1 claims after the
+  v1→v2 bump cannot recur.
+  **This is a flag-day recompile.** The prompt text did not change in this
+  slice, but its identity's FORM did (hash-derived vs. the retired
+  `obligations/v2` const), so the very next real compile will see every
+  existing claim's `PromptVersion` mismatch and recompile the whole corpus
+  once. No compile was run as part of this change (no API keys, no LLM
+  calls — mocks only); sequence the actual fleet recompile deliberately —
+  ideally folded with the O8 serve-time precision prompt revision so the
+  fleet pays one recompile, not two — and never mid-measurement-window.
+- **Typed compile failures** (agentic-kit `llmclient/structured`). Section
+  completion now goes through `structured.Complete`, which sets
+  `Request.OutputSchema` to the claim-draft JSON Schema and classifies
+  truncation/malformed model output as `structured.ErrTruncated` /
+  `structured.ErrMalformed` — the hand-rolled `errBadResponse` classifier and
+  its fenced-code-block-stripping retire. Skip-section policy
+  (`sections_failed++`) is unchanged; transport errors still abort the run.
+- **Run-level budget enforcement** (`enforceBudgets`, ADR-016 §4.1). A real
+  compile now refuses to start when its pre-flight, digest-gate-aware cost
+  estimate exceeds the layer's `max_usd_per_run` (typed refusal, still
+  ledgered), and stops cleanly mid-corpus when the running token total
+  crosses `max_tokens_per_run` — sections not yet reached are left untouched
+  and resume via the ordinary digest gate on the next invocation. Both cases
+  are recorded on the existing `compile_runs` ledger, additively
+  (`core.CompileRun.Refused` / `RefusalReason` / `BudgetStopped`; new
+  columns on the DuckDB backend, migrated idempotently).
+- **`#Layer.tier` widens to admit `verified`** for deterministic,
+  Model-empty compile paths (ADR-018 oracle classes: `index`/`cmd`/`lexical`)
+  — amendment recorded under ADR-016 in `ADR.md`. No layer emits it yet;
+  `ai-derived` stays unadmitted, still awaiting its own revival evidence.
+- Spec: `docs/plans/m1-manifest.md` (M1-1..M1-8, all landed).
+- **Adversarial-review fixes (same slice, pre-recompile):**
+  (F1) the structured-outputs schema is now OBJECT-rooted
+  (`{"claims":[...]}`) with `additionalProperties:false` on every object —
+  Anthropic structured outputs reject array roots / open objects with a 400,
+  which is transport-class and would have aborted every real compile at
+  section 1; the system prompt and decode target moved to the envelope shape
+  (`TestClaimDraftSchema_AnthropicStructuredOutputCompatible` pins both wire
+  constraints). This prompt/schema change MUST land before the flag-day
+  recompile — the TextHash identity covers the prompt text, not the schema,
+  so sequencing is the protection.
+  (F2) superseded/refuted claims no longer feed the digest gate: one
+  superseded row (old digest or old PromptVersion) previously forced its
+  subject to re-LLM on every future run, forever
+  (`TestCompile_SupersededClaimsDoNotDefeatDigestGate`).
+  (F5) a budget-stopped run is no longer indistinguishable from success at
+  the operator surfaces: `compile_layer` returns
+  `budget_stopped`/`refusal_reason` (and `refused` symmetrically) and the
+  CLI printers render them.
+
 ### Fixed — extractor-epoch fingerprint salt: extractor upgrades now reach unchanged files (O9)
 - The pass-3 hash-gate keyed fingerprints on file content only, so a binary
   with improved extraction (e.g. H1's aliased-selector canonicalization and

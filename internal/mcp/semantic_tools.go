@@ -105,7 +105,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 	// dry_run:true so cost is estimated before any spending commit.
 	s.registerTool(toolDescriptor{
 		Name:        "compile_layer",
-		Description: "Compile a semantic layer for a service. dry_run defaults true (estimate cost before spending). Only the obligations layer exists; see ADR-016.",
+		Description: "Compile a semantic layer for a service. dry_run defaults true (estimate cost before spending). Layer must be defined in the semantic-layer manifest (schema/semantic/schema.cue); see ADR-016.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -145,8 +145,8 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		if p.Layer != nil {
 			layer = *p.Layer
 		}
-		if layer != "obligations" {
-			return nil, &rpcError{Code: ErrCodeInvalid, Message: "compile_layer: only the obligations layer exists; see ADR-016"}
+		if _, err := semantic.LoadLayer(layer); err != nil {
+			return nil, &rpcError{Code: ErrCodeInvalid, Message: "compile_layer: " + err.Error()}
 		}
 		// dry_run defaults TRUE — spending requires explicit dry_run:false.
 		dryRun := true
@@ -158,7 +158,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		return map[string]any{
+		result := map[string]any{
 			"run_id":            run.RunID,
 			"service":           run.ServiceID,
 			"layer":             run.Layer,
@@ -175,6 +175,20 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 			"model":             run.Model,
 			"prompt_version":    run.PromptVersion,
 			"ran_at":            run.RanAt.UTC().Format("2006-01-02T15:04:05Z"),
-		}, nil
+		}
+		// A budget-stopped run returns nil error and is otherwise
+		// indistinguishable from success — surface it (F5, M1-7). Refused
+		// runs surface via the error path above, but keep the fields
+		// symmetric in case a backend ever ledgers-and-returns.
+		if run.BudgetStopped {
+			result["budget_stopped"] = true
+		}
+		if run.Refused {
+			result["refused"] = true
+		}
+		if run.RefusalReason != "" {
+			result["refusal_reason"] = run.RefusalReason
+		}
+		return result, nil
 	})
 }

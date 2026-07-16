@@ -52,6 +52,9 @@ func TestCompileViaHTTP(t *testing.T) {
 		"cost_usd":          0.0,
 		"duration_ms":       5.0,
 		"ran_at":            "2026-07-07T12:00:00Z",
+		// F5: a budget-stopped run must be visibly distinct from success.
+		"budget_stopped": true,
+		"refusal_reason": "token total 700 exceeds layer \"obligations\" budget max_tokens_per_run=600",
 	}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]any{
@@ -82,6 +85,13 @@ func TestCompileViaHTTP(t *testing.T) {
 	}
 	if !strings.Contains(outStr, "sections_total") {
 		t.Errorf("output should contain sections_total, got %q", outStr)
+	}
+	// F5: a budget stop must be visible in the human output.
+	if !strings.Contains(outStr, "budget_stopped:    true") {
+		t.Errorf("output should surface budget_stopped, got %q", outStr)
+	}
+	if !strings.Contains(outStr, "max_tokens_per_run") {
+		t.Errorf("output should surface the refusal reason, got %q", outStr)
 	}
 }
 

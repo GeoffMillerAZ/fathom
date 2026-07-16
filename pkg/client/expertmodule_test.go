@@ -92,7 +92,7 @@ func TestExpertModule_NonGitCorpus_EndToEnd(t *testing.T) {
 	comp := &semantic.Compiler{
 		St: st,
 		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
-			Text: `[{"rule":"Add retry with exponential backoff to all outbound pricing quote calls.","scope":["mod/**"],"cite_start":4,"cite_end":5}]`,
+			Text: `{"claims":[{"rule":"Add retry with exponential backoff to all outbound pricing quote calls.","scope":["mod/**"],"cite_start":4,"cite_end":5}]}`,
 		}}),
 		Model: "mock-model",
 		Now:   func() time.Time { return time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC) },
