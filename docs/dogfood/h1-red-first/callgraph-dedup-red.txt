@@ -1,0 +1,22 @@
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution/triplicated_symbol_still_resolves
+    dedup_test.go:80: TestImpact(svc::widget.Frobnicate) = [], want [svc::widget_test.TestFrobnicate]
+    dedup_test.go:83: Reachable(svc::widget_test.TestFrobnicate, svc::widget.Frobnicate) = false, want true
+    dedup_test.go:86: RenameImpact(svc::widget.Frobnicate) = [], want [svc::widget_test.TestFrobnicate]
+    dedup_test.go:90: CallPath(svc::widget_test.TestFrobnicate, svc::widget.Frobnicate) = [], want [svc::widget_test.TestFrobnicate svc::widget.Frobnicate]
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution/non-duplicated_symbol_resolves_alongside_duplicates
+--- FAIL: TestBuild_DuplicateObservationsDoNotPoisonResolution (0.00s)
+    --- FAIL: TestBuild_DuplicateObservationsDoNotPoisonResolution/triplicated_symbol_still_resolves (0.00s)
+    --- PASS: TestBuild_DuplicateObservationsDoNotPoisonResolution/non-duplicated_symbol_resolves_alongside_duplicates (0.00s)
+=== RUN   TestBuild_DuplicateObservationsBareNameLookup
+    dedup_test.go:102: TestImpact(bare Frobnicate) = [], want [svc::widget_test.TestFrobnicate]
+--- FAIL: TestBuild_DuplicateObservationsBareNameLookup (0.00s)
+=== RUN   TestBuild_DuplicateObservationsNoDuplicateEdges
+    dedup_test.go:120: RenameImpact(Leaf) = [svc::pkg.Caller svc::pkg.Caller svc::pkg.Caller], want [svc::pkg.Caller] (edges must be deduplicated)
+    dedup_test.go:123: EdgeCount() = 3, want 1
+--- FAIL: TestBuild_DuplicateObservationsNoDuplicateEdges (0.00s)
+=== RUN   TestBuild_GenuineAmbiguityStaysAmbiguous
+--- PASS: TestBuild_GenuineAmbiguityStaysAmbiguous (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/sextant/internal/analysis/callgraph	0.400s
+FAIL

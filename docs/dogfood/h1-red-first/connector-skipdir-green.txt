@@ -1,0 +1,22 @@
+=== RUN   TestFauxConnector_Discover_SkipsClaudeWorktrees
+--- PASS: TestFauxConnector_Discover_SkipsClaudeWorktrees (0.00s)
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/vendor
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.git
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/testdata
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/generated
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/node_modules
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.idea
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.vscode
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.claude
+--- PASS: TestLocalConnector_Discover_SkipsToolStateDirs (0.01s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/vendor (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.git (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/testdata (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/generated (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/node_modules (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.idea (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.vscode (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.claude (0.00s)
+PASS
+ok  	github.com/geoffmilleraz/sextant/internal/connector	0.270s

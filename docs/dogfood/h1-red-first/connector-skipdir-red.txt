@@ -1,0 +1,26 @@
+=== RUN   TestFauxConnector_Discover_SkipsClaudeWorktrees
+    faux_test.go:172: discovered ref under .claude/: "worktree-service/.claude/worktrees/agent-0001/main.go"
+    faux_test.go:176: Discover returned 2 refs, want 1 (main.go only): [{Service:worktree-service Path:worktree-service/.claude/worktrees/agent-0001/main.go Kind:GoFunc} {Service:worktree-service Path:worktree-service/main.go Kind:GoFunc}]
+--- FAIL: TestFauxConnector_Discover_SkipsClaudeWorktrees (0.00s)
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/vendor
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.git
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/testdata
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/generated
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/node_modules
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.idea
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.vscode
+=== RUN   TestLocalConnector_Discover_SkipsToolStateDirs/.claude
+    local_test.go:210: Discover returned 2 refs, want 1 (keep.go only): [{Service:svc Path:/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/TestLocalConnector_Discover_SkipsToolStateDirs.claude2427446187/001/.claude/worktrees/agent-stale/copy.go Kind:GoFunc} {Service:svc Path:/var/folders/2r/2zrkv4fd549bnlc5vwfzd4b00000gn/T/TestLocalConnector_Discover_SkipsToolStateDirs.claude2427446187/001/keep.go Kind:GoFunc}]
+--- FAIL: TestLocalConnector_Discover_SkipsToolStateDirs (0.01s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/vendor (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.git (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/testdata (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/generated (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/node_modules (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.idea (0.00s)
+    --- PASS: TestLocalConnector_Discover_SkipsToolStateDirs/.vscode (0.00s)
+    --- FAIL: TestLocalConnector_Discover_SkipsToolStateDirs/.claude (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/sextant/internal/connector	0.272s
+FAIL

@@ -1,0 +1,7 @@
+✗ [md-001] Deterministic, scriptable LLM client for tests
+    test_reaches: no Test* statically reaches it
+✗ [md-002] Failover across LLM lanes
+    test_reaches: no Test* statically reaches it
+✓ [md-003] Prompt-injection detector
+
+3 tasks total; 3 claimed: 1 verified, 2 failing

@@ -1,0 +1,14 @@
+# github.com/geoffmilleraz/sextant/internal/fusion.test
+=== RUN   TestIngest_OrphanPurge_DeletedFile
+    pipeline_test.go:434: Gone still in store after its source file vanished from the Discover set
+    pipeline_test.go:445: fingerprint for gone.go still present after orphan purge
+--- FAIL: TestIngest_OrphanPurge_DeletedFile (0.04s)
+=== RUN   TestIngest_OrphanPurge_NewlyIgnoredFile
+    pipeline_test.go:470: Gone still in store after gone.go became ignored
+--- FAIL: TestIngest_OrphanPurge_NewlyIgnoredFile (0.03s)
+=== RUN   TestIngest_OrphanPurge_FileRestored
+    pipeline_test.go:500: Gone still in store after second ingest — orphan purge did not fire
+--- FAIL: TestIngest_OrphanPurge_FileRestored (0.04s)
+FAIL
+FAIL	github.com/geoffmilleraz/sextant/internal/fusion	0.860s
+FAIL

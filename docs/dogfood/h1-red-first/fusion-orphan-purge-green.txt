@@ -1,0 +1,9 @@
+# github.com/geoffmilleraz/sextant/internal/fusion.test
+=== RUN   TestIngest_OrphanPurge_DeletedFile
+--- PASS: TestIngest_OrphanPurge_DeletedFile (0.07s)
+=== RUN   TestIngest_OrphanPurge_NewlyIgnoredFile
+--- PASS: TestIngest_OrphanPurge_NewlyIgnoredFile (0.04s)
+=== RUN   TestIngest_OrphanPurge_FileRestored
+--- PASS: TestIngest_OrphanPurge_FileRestored (0.05s)
+PASS
+ok  	github.com/geoffmilleraz/sextant/internal/fusion	0.882s
