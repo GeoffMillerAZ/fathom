@@ -457,9 +457,15 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	// Scope globs must be non-empty, each match >= 1 indexed file, and none
 	// may be over-broad (ADR-016 §4.4 scope-trap defense, extended by O8/
 	// OP-2): a glob matching more than half of the indexed corpus is a
-	// catch-all in disguise (typically "**" or an equivalent repo-wide
+	// catch-all in disguise (typically "**" or a repo-wide directory
 	// pattern) and is rejected exactly like a failed citation, not silently
-	// narrowed or allowed through.
+	// narrowed or allowed through. Single-file-class extension globs are
+	// EXEMPT from the breadth check (never from the zero-match check):
+	// prompt v3 mandates "**/*.go"-shaped scopes as the only legitimate form
+	// for fleet-wide rules, and in a go-majority corpus that glob necessarily
+	// matches >50% of files — without the exemption the guard would reject
+	// every prompt-compliant repo-wide code rule (the guard and the prompt
+	// would structurally contradict each other).
 	scope := append([]string(nil), d.Scope...)
 	sort.Strings(scope)
 	if len(scope) == 0 {
@@ -476,8 +482,8 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 		if matched == 0 {
 			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q matches no indexed file", g)
 		}
-		if matched*2 > len(indexedFiles) {
-			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q is over-broad: matches %d/%d indexed files (>50%%), rejected as a catch-all scope", g, matched, len(indexedFiles))
+		if matched*2 > len(indexedFiles) && !isFileClassGlob(g) {
+			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q is over-broad: matches %d/%d indexed files (>50%%) and is not a single-file-class extension glob, rejected as a catch-all scope", g, matched, len(indexedFiles))
 		}
 	}
 
@@ -509,4 +515,28 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})
 	}
 	return claim, links, nil
+}
+
+// isFileClassGlob reports whether g is a single-file-class extension glob:
+// its final path segment is "*.<ext>" with exactly one literal extension and
+// no further glob metacharacters (e.g. "**/*.go", "docs/**/*.md", "*.go";
+// "*.pb.go" also qualifies — a compound suffix is a strict subset of one
+// class). Such a glob is class-scoped by construction — the very shape
+// prompt v3 mandates for legitimately repo-wide rules — so verifyDraft
+// exempts it from the >50% over-broad breadth check. Bare "**", directory
+// globs ("internal/**"), and multi-extension patterns ("*.{go,md}") are NOT
+// class globs and stay subject to the breadth check.
+func isFileClassGlob(g string) bool {
+	seg := g
+	if i := strings.LastIndex(g, "/"); i >= 0 {
+		seg = g[i+1:]
+	}
+	if !strings.HasPrefix(seg, "*.") {
+		return false
+	}
+	ext := seg[2:]
+	if ext == "" {
+		return false
+	}
+	return !strings.ContainsAny(ext, "*?[{}")
 }

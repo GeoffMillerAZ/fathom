@@ -81,30 +81,43 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
+	// A relative file path would bypass the root-refusal check below (it
+	// cannot be relativized against a root); absolutize it so OP-3 always
+	// sees a real path. Claude Code sends absolute paths, so this is a
+	// defensive normalization, not a hot path.
+	if !filepath.IsAbs(filePath) {
+		a, err := filepath.Abs(filePath)
+		if err != nil {
+			return 0 // silent
+		}
+		filePath = a
+	}
+
 	// Try each service-identity candidate (dir basename, then the enclosing
 	// git repo for subdirectory-rooted projects), resolving the file against
-	// that candidate's root. First candidate with something to say wins; a
-	// candidate the index doesn't know simply yields an empty payload.
+	// that candidate's root. First candidate with rules (or a stale flag)
+	// wins; the first candidate that merely RELATIVIZES supplies the
+	// service/file identity for spec-line injection, which fires with or
+	// without obligations (OP-4: "silent on none" means no spec IDs, not no
+	// obligations — post-recompile, narrower scopes make rule-less files the
+	// common case). A file that relativizes under NO candidate root is
+	// refused outright (O8 addendum): never query the daemon with an
+	// out-of-repo path.
 	var (
 		obl         semantic.Obligations
 		indexStale  bool
 		repoRelFile string
 		svcName     string
 		found       bool
+		resolved    bool
 	)
 	for _, cand := range serviceCandidates(projDir) {
-		rel := filePath
-		if filepath.IsAbs(filePath) {
-			r, relErr := filepath.Rel(cand.root, filePath)
-			if relErr != nil || strings.HasPrefix(r, "..") {
-				// The file does not relativize under this candidate's root
-				// at all — O8 addendum: this used to fall back to the RAW
-				// absolute path and still query the daemon with it (e.g. an
-				// edit outside every indexed repo). Never query with an
-				// out-of-repo path; try the next candidate instead.
-				continue
-			}
-			rel = r
+		rel, ok := relativeToRoot(cand.root, filePath)
+		if !ok {
+			continue
+		}
+		if !resolved {
+			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
 		}
 		for _, name := range withNameAliases(cand.name) {
 			o, stale, ok := fetchObligations(*url, strings.ToLower(name), rel)
@@ -121,55 +134,72 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			break
 		}
 	}
-	if !found {
+	if !resolved {
 		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false"})
-		return 0 // clean file (or unindexed project) → silent
+		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
 	// Build compact text.
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
-	for _, r := range obl.Rules {
-		status := ""
-		if r.Status != "" {
-			status = ", " + r.Status + ""
+	if found {
+		fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
+		for _, r := range obl.Rules {
+			status := ""
+			if r.Status != "" {
+				status = ", " + r.Status + ""
+			}
+			fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, status)
 		}
-		fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, status)
-	}
-	if indexStale {
-		sb.WriteString("\n⚠️ index is behind your working tree for this file")
+		if indexStale {
+			sb.WriteString("\n⚠️ index is behind your working tree for this file")
+		}
 	}
 
 	// OP-4 (spec-line injection, docs/vision/04 §4 item 3): when the edited
 	// file cites bracketed spec IDs, tie those knowledge concepts to code by
 	// appending where each one is actually defined — beneath the obligations
-	// payload, dropped first if the ≤150-token budget is already spent.
-	// Silent on any error (hook doctrine): a missing/unreadable file, a
+	// payload when there is one, as a payload of their own when there isn't.
+	// The ≤150-token budget covers the WHOLE payload and spec lines drop
+	// first: when obligations alone already spend it, skip every spec_refs
+	// RPC up front rather than paying hook latency for lines that cannot
+	// fit. Silent on any error (hook doctrine): a missing/unreadable file, a
 	// pattern error, or a daemon error simply means no spec lines, never a
 	// failure of the obligations payload already built above.
-	if raw, rerr := os.ReadFile(filePath); rerr == nil {
-		if ids, ierr := sdd.ExtractRefsFromText(string(raw), ""); ierr == nil && len(ids) > 0 {
-			if len(ids) > maxSpecIDsPerEdit {
-				ids = ids[:maxSpecIDsPerEdit]
-			}
-			for _, id := range ids {
-				specs, ok := fetchSpecRefs(*url, svcName, id)
-				if !ok {
-					continue
+	if cost.Estimate(sb.String()) <= specLineTokenBudget {
+		if raw, rerr := os.ReadFile(filePath); rerr == nil {
+			if ids, ierr := sdd.ExtractRefsFromText(string(raw), ""); ierr == nil && len(ids) > 0 {
+				if len(ids) > maxSpecIDsPerEdit {
+					ids = ids[:maxSpecIDsPerEdit]
 				}
-				for _, loc := range specs[id] {
-					if loc.File == repoRelFile {
-						continue // the citing file itself, not the definition
+				for _, id := range ids {
+					specs, ok := fetchSpecRefs(*url, svcName, id)
+					if !ok {
+						continue
 					}
-					line := fmt.Sprintf("\n▸ implements [%s] — defined at %s:%d", id, loc.File, loc.Line)
-					if cost.Estimate(sb.String()+line) > specLineTokenBudget {
-						continue // budget already spent; spec lines drop first
+					for _, loc := range specs[id] {
+						if loc.File == repoRelFile {
+							continue // the citing file itself, not the definition
+						}
+						header := ""
+						if sb.Len() == 0 {
+							header = fmt.Sprintf("⚖️ fathom spec refs — %s:", repoRelFile)
+						}
+						line := fmt.Sprintf("\n▸ implements [%s] — defined at %s:%d", id, loc.File, loc.Line)
+						if cost.Estimate(sb.String()+header+line) > specLineTokenBudget {
+							continue // budget already spent; spec lines drop first
+						}
+						sb.WriteString(header)
+						sb.WriteString(line)
+						break // one defining location per spec ID
 					}
-					sb.WriteString(line)
-					break // one defining location per spec ID
 				}
 			}
 		}
+	}
+
+	if sb.Len() == 0 {
+		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false"})
+		return 0 // clean file (or unindexed project), no spec IDs → silent
 	}
 
 	out, _ := json.Marshal(map[string]any{
@@ -181,6 +211,47 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true"})
 	fmt.Fprintln(stdout, string(out))
 	return 0
+}
+
+// relativeToRoot relativizes an absolute file path under a candidate root.
+// It first tries the cheap lexical form; when that refuses, it retries with
+// BOTH sides symlink-resolved. The lexical-only check false-refused whole
+// sessions on symlinked layouts (e.g. ~/code → /Volumes/…/code, or macOS
+// /var → /private/var): gitToplevel returns the PHYSICAL work-tree path
+// while the session may address files through the symlink — or vice versa —
+// so filepath.Rel sees two unrelated prefixes and every in-repo file
+// ..-escapes. Pre-OP-3 that fallback-degraded; with root refusal it would
+// be a fatal recall loss, hence the physical retry. Returns ok=false only
+// when the file lives under the root by neither reading.
+func relativeToRoot(root, file string) (string, bool) {
+	if r, err := filepath.Rel(root, file); err == nil && !escapesRoot(r) {
+		return r, true
+	}
+	if r, err := filepath.Rel(resolveSymlinks(root), resolveSymlinks(file)); err == nil && !escapesRoot(r) {
+		return r, true
+	}
+	return "", false
+}
+
+// escapesRoot reports whether a filepath.Rel result points outside the root
+// (".." or "../…"), without catching a root-level entry whose name merely
+// begins with two dots (e.g. "..foo").
+func escapesRoot(rel string) bool {
+	return rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// resolveSymlinks best-effort resolves symlinks in p. When p itself cannot
+// be resolved (e.g. the path does not exist), its parent directory is
+// resolved and the base rejoined; on any failure the lexical path is
+// returned unchanged — never an error, per the hook's silent discipline.
+func resolveSymlinks(p string) string {
+	if r, err := filepath.EvalSymlinks(p); err == nil {
+		return r
+	}
+	if r, err := filepath.EvalSymlinks(filepath.Dir(p)); err == nil {
+		return filepath.Join(r, filepath.Base(p))
+	}
+	return p
 }
 
 // fetchObligations calls the obligations MCP tool over HTTP. Returns the

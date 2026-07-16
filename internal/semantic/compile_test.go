@@ -182,6 +182,61 @@ func TestCompile_RejectsOverBroadScope(t *testing.T) {
 	}
 }
 
+// TestCompile_OverBroadGuardExemptsFileClassGlobs (O8/OP-2 refinement): the
+// >50% breadth check and prompt v3 must not contradict each other. Prompt v3
+// mandates single-file-class extension globs (e.g. "**/*.go") as the ONLY
+// legitimate shape for repo-wide rules — in a go-majority corpus such a glob
+// necessarily matches >50% of indexed files, so the guard exempts globs whose
+// final segment is "*.<ext>" (class-scoped by construction). Bare "**" and
+// multi-class directory globs matching >50% stay rejected; zero-match
+// rejection still applies to everything.
+func TestCompile_OverBroadGuardExemptsFileClassGlobs(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	// Go-majority corpus (3 .go + 1 .md) — the fathom-like shape where the
+	// original guard rejected every prompt-compliant fleet-wide code rule.
+	goMajority := []string{"internal/a/a.go", "internal/b/b.go", "internal/c/c.go", "docs/x.md"}
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[
+  {"rule":"Inject clocks in all Go code.","scope":["**/*.go"],"cite_start":3,"cite_end":3},
+  {"rule":"Everything must be globally consistent.","scope":["**"],"cite_start":3,"cite_end":3},
+  {"rule":"Follow internal conventions.","scope":["internal/**"],"cite_start":3,"cite_end":3},
+  {"rule":"Sort all outputs.","scope":["**/*.md"],"cite_start":4,"cite_end":4}
+]}`,
+	}})
+
+	in := compileInput(false)
+	in.IndexedFiles = goMajority
+	run, err := c.Compile(ctx, in)
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	// "**/*.go" matches 3/4 (>50%) but is a single-class extension glob →
+	// ACCEPTED. "**" matches 4/4 → REJECTED. "internal/**" matches 3/4 and
+	// is a multi-class directory glob → REJECTED. "**/*.md" matches 1/4 →
+	// accepted normally.
+	if run.ClaimsEmitted != 2 || run.ClaimsRejected != 2 {
+		t.Fatalf("emitted=%d rejected=%d, want 2/2 (class globs exempt; ** and broad dir globs rejected)", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	gotRules := map[string]bool{}
+	for _, cl := range claims {
+		gotRules[cl.Rule] = true
+	}
+	if !gotRules["Inject clocks in all Go code."] {
+		t.Errorf("the prompt-compliant fleet-wide code rule (scope **/*.go) must be accepted; stored: %+v", gotRules)
+	}
+	if !gotRules["Sort all outputs."] {
+		t.Errorf("the narrow markdown-class rule must be accepted; stored: %+v", gotRules)
+	}
+	if gotRules["Everything must be globally consistent."] || gotRules["Follow internal conventions."] {
+		t.Errorf("catch-all and broad directory scopes must be rejected; stored: %+v", gotRules)
+	}
+}
+
 func TestCompile_DigestGateSkipsUnchangedSections(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()

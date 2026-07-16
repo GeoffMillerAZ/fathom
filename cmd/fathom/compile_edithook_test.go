@@ -125,11 +125,18 @@ func TestEditHookSilentOnDaemonError(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	// The file must relativize under the project dir (absolute, in-root) so
+	// the hook genuinely reaches the daemon and exercises the error path —
+	// an out-of-repo path would be refused before any request is made.
+	dir := t.TempDir()
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`,
+		filepath.Join(dir, "some", "file.go"), dir)
+
 	var out, errBuf bytes.Buffer
 	origStdin := os.Stdin
 	r, w, _ := os.Pipe()
 	os.Stdin = r
-	w.WriteString(`{"tool_input":{"file_path":"/some/file.go"},"cwd":"/repo"}`)
+	w.WriteString(hookInput)
 	w.Close()
 	os.Stdin = r
 
@@ -168,9 +175,13 @@ func TestEditHookSilentOnCleanFile(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	// Absolute in-root path (what Claude Code sends): the hook must reach the
+	// daemon, get an empty payload, find no spec IDs (the file doesn't even
+	// exist), and stay silent.
+	dir := t.TempDir()
 	var out, errBuf bytes.Buffer
-	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":"pkg/foo.go"},"cwd":"%s"}`,
-		filepath.Join(os.TempDir(), "myrepo"))
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`,
+		filepath.Join(dir, "pkg", "foo.go"), dir)
 
 	// We need to provide stdin with hookInput.
 	origStdin := os.Stdin
@@ -221,7 +232,8 @@ func TestEditHookOutputWithRules(t *testing.T) {
 	defer srv.Close()
 
 	dir := t.TempDir()
-	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":"internal/core/engine.go"},"cwd":"%s"}`, dir)
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`,
+		filepath.Join(dir, "internal", "core", "engine.go"), dir)
 
 	origStdin := os.Stdin
 	pr, pw, _ := os.Pipe()

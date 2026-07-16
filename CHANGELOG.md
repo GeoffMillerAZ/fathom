@@ -22,22 +22,42 @@ All notable changes to sextant. Format loosely follows
   compile-time backstop for prompt v3's "never `**`" instruction. This makes
   `"**"` always over-broad in a non-empty corpus, so every prior test scope of
   `["**"]` was rewritten to a real narrow glob (`internal/mcp/**` against the
-  shared 3-file test fixture).
+  shared 3-file test fixture). **Exemption (review fix):** single-file-class
+  extension globs — a glob whose final segment is `*.<ext>` with one literal
+  extension (`**/*.go`, `docs/**/*.md`, `*.pb.go`) — are exempt from the
+  breadth check (never from zero-match rejection): they are class-scoped by
+  construction, exactly the shape prompt v3 mandates for legitimately
+  fleet-wide rules, and in a go-majority corpus `**/*.go` necessarily exceeds
+  50% — without the exemption the guard would reject every prompt-compliant
+  repo-wide code rule at the OP-6 recompile. Bare `**`, directory globs
+  (`internal/**`), and multi-extension patterns matching >50% stay rejected.
 - **Edit-hook root refusal** (`cmd/fathom/edithook.go` `cmdEditHook`): a file
-  that does not relativize under ANY resolved service-candidate root (absolute
-  path, `filepath.Rel` fails or yields a `..`-prefixed result) now skips that
-  candidate outright instead of falling back to querying the daemon with the
-  raw out-of-repo path — the O8 addendum (obligations fired for a file outside
-  every indexed repo) goes silent.
+  that does not relativize under ANY resolved service-candidate root now skips
+  that candidate outright instead of falling back to querying the daemon with
+  the raw out-of-repo path — the O8 addendum (obligations fired for a file
+  outside every indexed repo) goes silent. **Review fixes:** the check is not
+  purely lexical — `relativeToRoot` retries with both sides
+  `filepath.EvalSymlinks`-resolved (falling back to the lexical path on error),
+  so symlinked layouts (`~/code` → `/Volumes/…/code`, macOS `/var` →
+  `/private/var`) where `gitToplevel` returns the physical root while the
+  session addresses files through the symlink don't false-refuse every in-repo
+  file; the `..`-escape test is `rel == ".." || strings.HasPrefix(rel, "../")`
+  (a root-level `..foo` entry is not an escape); and a relative `file_path` is
+  absolutized before the candidate loop so it cannot bypass the refusal.
 - **Spec-line injection** (`cmd/fathom/edithook.go`): when the edited file cites
   bracketed spec IDs (`internal/sdd.ExtractRefsFromText`, the same extraction
   `spec_refs` uses), the edit-hook looks up each ID (capped at 3) via the
   `spec_refs` MCP tool and appends `"▸ implements [ID] — defined at
-  <file:line>"` beneath the obligations payload for the location OUTSIDE the
-  edited file — literally tying the cited spec to where it's defined, in the
-  channel that already works (docs/vision/04 §4 item 3). Shares the
-  obligations payload's ≤150-token budget; spec lines are dropped first (never
-  truncating obligations) when the budget is already spent. Silent on any
+  <file:line>"` for the location OUTSIDE the edited file — literally tying the
+  cited spec to where it's defined, in the channel that already works
+  (docs/vision/04 §4 item 3). **Review fix:** spec lines fire independently of
+  obligations — a file citing a spec ID with zero matching rules (the common
+  case post-recompile, with prompt v3's narrower scopes) gets a
+  spec-lines-only payload under its own `⚖️ fathom spec refs` header;
+  zero-output-on-clean is preserved (no rules AND no spec IDs → silent).
+  Shares the obligations payload's ≤150-token budget; spec lines are dropped
+  first (never truncating obligations), and when obligations alone already
+  spend the budget every spec_refs RPC is skipped up front. Silent on any
   error (unreadable file, daemon down, etc.) per hook doctrine.
 - **`plan` project skill** (`.claude/skills/plan/SKILL.md`): scaffolds a
   gate-ready grammar-v2 plan (stable `id`s, `{symbol, package}` contracts

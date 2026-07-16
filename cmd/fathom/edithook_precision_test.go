@@ -127,6 +127,68 @@ func TestEditHookAbsolutePathInsideCandidateRootStillResolves(t *testing.T) {
 	}
 }
 
+// TestEditHookResolvesThroughSymlinkedRoot: the root-refusal check must not
+// be purely lexical. gitToplevel returns the PHYSICAL work-tree path while a
+// session may address files through a symlink (~/code → /Volumes/…/code) —
+// or vice versa. Here the project dir is the symlink-resolved (physical)
+// form of a temp dir while the file path uses the raw (on macOS,
+// /var → /private/var symlinked) form: lexically the file ..-escapes the
+// root, so without symlink resolution OP-3 would silently refuse every
+// in-repo file of such a session — a fatal recall loss.
+func TestEditHookResolvesThroughSymlinkedRoot(t *testing.T) {
+	dir := t.TempDir()
+	physDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", dir, err)
+	}
+	rel := "internal/core/engine.go"
+	abs := writeEditedFile(t, dir, rel, "package core\n\nfunc Engine() {}\n") // raw (symlinked) path
+
+	var gotFile string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Arguments struct {
+					File string `json:"file"`
+				} `json:"arguments"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		gotFile = req.Params.Arguments.File
+		cannedPayload := map[string]any{
+			"service": strings.ToLower(filepath.Base(physDir)),
+			"file":    req.Params.Arguments.File,
+			"rules": []any{
+				map[string]any{"rule": "Sort all outputs.", "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed"},
+			},
+		}
+		resp := map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{
+				map[string]any{"type": "text", "text": mustJSON(cannedPayload)},
+			}},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	// Project dir = physical path, file path = raw path.
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`, abs, physDir)
+	hookStdin(t, hookInput)
+
+	var out, errBuf bytes.Buffer
+	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("edit-hook exit = %d, want 0", code)
+	}
+	if gotFile != rel {
+		t.Errorf("daemon received file=%q, want %q (symlink-mismatched root must still relativize)", gotFile, rel)
+	}
+	if !strings.Contains(out.String(), "Sort all outputs") {
+		t.Errorf("expected the obligations rule in output, got %q", out.String())
+	}
+}
+
 // ─── OP-4: spec-line injection ───────────────────────────────────────────────
 
 // specRefsFakeDaemon serves canned "obligations" and "spec_refs" MCP
@@ -295,6 +357,12 @@ func TestEditHookSpecLineDroppedWhenBudgetSpent(t *testing.T) {
 	if strings.Contains(outStr, "▸ implements") {
 		t.Errorf("spec line must be dropped once the token budget is already spent, got %q", outStr)
 	}
+	// Budget short-circuit: when obligations alone already exceed the budget,
+	// no spec_refs RPC is made at all — lines that cannot fit must not cost
+	// hook latency.
+	if len(fake.specQueries) != 0 {
+		t.Errorf("spec_refs queried %d time(s) with the budget already spent, want 0 (pre-loop short-circuit): %v", len(fake.specQueries), fake.specQueries)
+	}
 }
 
 // TestEditHookCapsSpecIDLookupsAtThree: a file citing more than three
@@ -336,6 +404,95 @@ func TestEditHookCapsSpecIDLookupsAtThree(t *testing.T) {
 	}
 	if len(fake.specQueries) > 3 {
 		t.Errorf("spec_refs queried %d times, want at most 3 (cap): %v", len(fake.specQueries), fake.specQueries)
+	}
+}
+
+// TestEditHookSpecLinesWithoutObligations: spec lines fire INDEPENDENTLY of
+// obligations. A file citing [US-042] whose edit matches zero rules still
+// gets its traceability line, as a spec-lines-only payload — post-recompile,
+// prompt v3's narrower scopes make rule-less files the common case, and the
+// plan's "silent on none" means no spec IDs, not no obligations.
+func TestEditHookSpecLinesWithoutObligations(t *testing.T) {
+	dir := t.TempDir()
+	rel := "internal/core/engine.go"
+	abs := writeEditedFile(t, dir, rel, "package core\n\n// implements [US-042]\nfunc Engine() {}\n")
+
+	fake := &specRefsFakeDaemon{
+		t: t,
+		obligationsOut: map[string]any{ // zero rules, not stale
+			"service": strings.ToLower(filepath.Base(dir)),
+			"file":    rel,
+		},
+		specRefs: map[string][]any{
+			"US-042": {
+				map[string]any{"file": "docs/specs/us-042.md", "line": 10},
+			},
+		},
+	}
+	srv := fake.start()
+	defer srv.Close()
+
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`, abs, dir)
+	hookStdin(t, hookInput)
+
+	var out, errBuf bytes.Buffer
+	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("edit-hook exit = %d, want 0", code)
+	}
+	outStr := out.String()
+	if outStr == "" {
+		t.Fatal("expected a spec-lines-only payload, got nothing")
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(outStr)), &payload); err != nil {
+		t.Fatalf("output not valid JSON: %v (output=%q)", err, outStr)
+	}
+	hook, _ := payload["hookSpecificOutput"].(map[string]any)
+	ctx, _ := hook["additionalContext"].(string)
+	if !strings.Contains(ctx, "⚖️ fathom spec refs — "+rel+":") {
+		t.Errorf("spec-lines-only payload missing its header, got %q", ctx)
+	}
+	if !strings.Contains(ctx, "▸ implements [US-042] — defined at docs/specs/us-042.md:10") {
+		t.Errorf("expected the spec line without any obligations, got %q", ctx)
+	}
+	if strings.Contains(ctx, "fathom obligations") {
+		t.Errorf("no obligations header should appear when there are no rules, got %q", ctx)
+	}
+}
+
+// TestEditHookSilentWhenNoRulesAndNoSpecIDs pins the zero-output-on-clean
+// contract after the OP-4 restructure: an in-root file with no matching
+// rules AND no cited spec IDs produces nothing — and no spec_refs RPC is
+// ever attempted (there are no IDs to look up).
+func TestEditHookSilentWhenNoRulesAndNoSpecIDs(t *testing.T) {
+	dir := t.TempDir()
+	rel := "internal/core/engine.go"
+	abs := writeEditedFile(t, dir, rel, "package core\n\nfunc Engine() {}\n")
+
+	fake := &specRefsFakeDaemon{
+		t: t,
+		obligationsOut: map[string]any{ // zero rules, not stale
+			"service": strings.ToLower(filepath.Base(dir)),
+			"file":    rel,
+		},
+	}
+	srv := fake.start()
+	defer srv.Close()
+
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`, abs, dir)
+	hookStdin(t, hookInput)
+
+	var out, errBuf bytes.Buffer
+	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("edit-hook exit = %d, want 0", code)
+	}
+	if out.Len() != 0 {
+		t.Errorf("clean file with no spec IDs: expected no output, got %q", out.String())
+	}
+	if len(fake.specQueries) != 0 {
+		t.Errorf("spec_refs queried %d time(s) for a file with no spec IDs, want 0: %v", len(fake.specQueries), fake.specQueries)
 	}
 }
 
