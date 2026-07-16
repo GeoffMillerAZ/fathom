@@ -5,8 +5,12 @@
 // are safe to compare in tests and stable across repeated calls.
 //
 // Tolerant matching: callee entries in SymbolNode.Calls may be stored as a
-// full SymbolKey ("svc::pkg.Name") or as a bare function name ("Name").  Build
-// resolves each callee to the correct node when the match is unambiguous.
+// full SymbolKey ("svc::pkg.Name"), a bare function name ("Name"), a
+// qualified selector ("pkg.Name", "seg.Name", "<var>.Method"), or a
+// constructor-scoped method reference ("<import-path>#.Method") — the forms
+// documented on GoExtractor.Extract.  Build resolves each callee to the
+// correct node when the match is unambiguous; genuine ambiguity resolves to
+// nothing, never first-match-wins.
 package callgraph
 
 import (
@@ -150,6 +154,20 @@ func Build(nodes []core.SymbolNode) *Graph {
 // the node whose Calls entry is being resolved; it scopes same-package
 // bare-name binding.
 func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
+	// Constructor-scoped method reference: "<import-path>#.Method" (see
+	// GoExtractor.Extract). The Go extractor records this form when the
+	// receiver variable's initializer is a constructor-shaped selector call
+	// into an imported package, so the method lookup is scoped to THAT
+	// package: by Go import mechanics the import path resolves to exactly one
+	// directory, so a node belongs to the package iff the import path ends
+	// with "/"+dir(FilePath). Exactly one method node there whose name ends
+	// in ".Method" → edge; zero or more than one → NOTHING. The encoded form
+	// never falls through to the global rules below (the constructor's return
+	// type is unknown at the AST level; the legacy "<var>.Method" entry the
+	// extractor records alongside remains the global-fallback secondary path).
+	if i := strings.Index(raw, "#."); i > 0 {
+		return g.resolveCtorScoped(raw[:i], raw[i+1:])
+	}
 	// Exact match (full SymbolKey already in nodes).
 	if _, ok := g.nodes[raw]; ok {
 		return raw
@@ -221,6 +239,35 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 		}
 	}
 	return ""
+}
+
+// resolveCtorScoped resolves a constructor-scoped method reference: the
+// unique node within the package at importPath whose Name ends in
+// methodSuffix (".Method", so only "Recv.Method"-shaped method nodes can
+// match — the same name-shape discipline as the global method fallback).
+// Returns "" on zero or multiple matches: honesty preserved package-scoped.
+func (g *Graph) resolveCtorScoped(importPath, methodSuffix string) string {
+	if importPath == "" || len(methodSuffix) < 2 {
+		return ""
+	}
+	var match string
+	for key, n := range g.nodes {
+		if !strings.HasSuffix(n.Name, methodSuffix) || n.FilePath == "" {
+			continue
+		}
+		dir := path.Dir(n.FilePath)
+		if dir == "." || dir == "/" {
+			continue
+		}
+		if importPath != dir && !strings.HasSuffix(importPath, "/"+dir) {
+			continue
+		}
+		if match != "" {
+			return "" // >1 matching method in the package: ambiguous
+		}
+		match = key
+	}
+	return match
 }
 
 // dirName returns the "dir-base.Name" index key for a node, or "" when the

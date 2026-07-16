@@ -1,0 +1,21 @@
+# FIX 3 red — constructor-scoped receiver inference (extractor + callgraph resolver)
+# 2026-07-16T04:56:47Z @ 63316de (pre-fix)
+=== RUN   TestGoExtractor_ConstructorScopedMethodCall
+    goextract_ctor_test.go:46: Calls = [context.Background evidence-ladder.New evidence-ladder.WithClock l.Run], want constructor-scoped form "example.com/kit/foundations/evidence/evidence-ladder#.Run"
+--- FAIL: TestGoExtractor_ConstructorScopedMethodCall (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/fathom/internal/extractor	0.570s
+FAIL
+=== RUN   TestCtorScopedMethodEdge_UniqueInPackageResolves
+    ctorscope_test.go:55: TestImpact(Ladder.Run) = [], want [svc::evidenceladder_test.TestLadderRun]
+--- FAIL: TestCtorScopedMethodEdge_UniqueInPackageResolves (0.00s)
+=== RUN   TestCtorScopedMethodEdge_AmbiguousWithinPackageResolvesToNothing
+--- PASS: TestCtorScopedMethodEdge_AmbiguousWithinPackageResolvesToNothing (0.00s)
+=== RUN   TestCtorScopedMethodEdge_ZeroInPackageResolvesToNothing
+    ctorscope_test.go:108: EdgeCount() = 1, want 0 (no .Run in the constructor's package; no global fall-through)
+--- FAIL: TestCtorScopedMethodEdge_ZeroInPackageResolvesToNothing (0.00s)
+=== RUN   TestCtorScopedMethodEdge_SecondaryGlobalFallbackStillWorks
+--- PASS: TestCtorScopedMethodEdge_SecondaryGlobalFallbackStillWorks (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/fathom/internal/analysis/callgraph	0.232s
+FAIL

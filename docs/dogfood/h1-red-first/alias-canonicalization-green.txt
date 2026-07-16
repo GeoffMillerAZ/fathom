@@ -1,0 +1,96 @@
+# FIX 1 green — alias canonicalization (extractor) + dir-base resolution (callgraph)
+# 2026-07-16T04:52:50Z
+=== RUN   TestGoExtractor_AliasedImportCallCanonicalized
+--- PASS: TestGoExtractor_AliasedImportCallCanonicalized (0.00s)
+PASS
+ok  	github.com/geoffmilleraz/fathom/internal/extractor	0.524s
+=== RUN   TestAliasCanonicalCallee_DirBaseResolves
+--- PASS: TestAliasCanonicalCallee_DirBaseResolves (0.00s)
+=== RUN   TestAliasCanonicalCallee_AmbiguousDirBaseResolvesToNothing
+--- PASS: TestAliasCanonicalCallee_AmbiguousDirBaseResolvesToNothing (0.00s)
+=== RUN   TestBuild_NodeCount
+--- PASS: TestBuild_NodeCount (0.00s)
+=== RUN   TestBuild_EdgeCount
+--- PASS: TestBuild_EdgeCount (0.00s)
+=== RUN   TestRenameImpact_DirectCallers
+--- PASS: TestRenameImpact_DirectCallers (0.00s)
+=== RUN   TestRenameImpact_NoCallers
+--- PASS: TestRenameImpact_NoCallers (0.00s)
+=== RUN   TestRenameImpact_Orphan
+--- PASS: TestRenameImpact_Orphan (0.00s)
+=== RUN   TestRenameImpact_BareName
+--- PASS: TestRenameImpact_BareName (0.00s)
+=== RUN   TestReachable_DirectEdge
+--- PASS: TestReachable_DirectEdge (0.00s)
+=== RUN   TestReachable_Transitive
+--- PASS: TestReachable_Transitive (0.00s)
+=== RUN   TestReachable_NoPath
+--- PASS: TestReachable_NoPath (0.00s)
+=== RUN   TestReachable_Self
+--- PASS: TestReachable_Self (0.00s)
+=== RUN   TestReachable_BareName
+--- PASS: TestReachable_BareName (0.00s)
+=== RUN   TestCallPath_Direct
+--- PASS: TestCallPath_Direct (0.00s)
+=== RUN   TestCallPath_Transitive
+--- PASS: TestCallPath_Transitive (0.00s)
+=== RUN   TestCallPath_NoPath
+--- PASS: TestCallPath_NoPath (0.00s)
+=== RUN   TestCallPath_Self
+--- PASS: TestCallPath_Self (0.00s)
+=== RUN   TestCallPath_BareName
+--- PASS: TestCallPath_BareName (0.00s)
+=== RUN   TestTestImpact_DirectTestCaller
+--- PASS: TestTestImpact_DirectTestCaller (0.00s)
+=== RUN   TestTestImpact_Transitive
+--- PASS: TestTestImpact_Transitive (0.00s)
+=== RUN   TestTestImpact_Orphan
+--- PASS: TestTestImpact_Orphan (0.00s)
+=== RUN   TestTestImpact_BareName
+--- PASS: TestTestImpact_BareName (0.00s)
+=== RUN   TestDeadCode_Orphan
+--- PASS: TestDeadCode_Orphan (0.00s)
+=== RUN   TestDeadCode_NoneWhenAllReachable
+--- PASS: TestDeadCode_NoneWhenAllReachable (0.00s)
+=== RUN   TestDeadCode_EmptyEntrypoints
+--- PASS: TestDeadCode_EmptyEntrypoints (0.00s)
+=== RUN   TestDeterminism_RenameImpact
+--- PASS: TestDeterminism_RenameImpact (0.00s)
+=== RUN   TestDeterminism_CallPath
+--- PASS: TestDeterminism_CallPath (0.00s)
+=== RUN   TestDeterminism_TestImpact
+--- PASS: TestDeterminism_TestImpact (0.00s)
+=== RUN   TestDeterminism_DeadCode
+--- PASS: TestDeterminism_DeadCode (0.00s)
+=== RUN   TestCycleTolerance
+--- PASS: TestCycleTolerance (0.00s)
+=== RUN   TestBuild_UnknownCallee
+--- PASS: TestBuild_UnknownCallee (0.00s)
+=== RUN   TestCrossPackageSelectorResolves
+--- PASS: TestCrossPackageSelectorResolves (0.00s)
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution/triplicated_symbol_still_resolves
+=== RUN   TestBuild_DuplicateObservationsDoNotPoisonResolution/non-duplicated_symbol_resolves_alongside_duplicates
+--- PASS: TestBuild_DuplicateObservationsDoNotPoisonResolution (0.00s)
+    --- PASS: TestBuild_DuplicateObservationsDoNotPoisonResolution/triplicated_symbol_still_resolves (0.00s)
+    --- PASS: TestBuild_DuplicateObservationsDoNotPoisonResolution/non-duplicated_symbol_resolves_alongside_duplicates (0.00s)
+=== RUN   TestBuild_DuplicateObservationsBareNameLookup
+--- PASS: TestBuild_DuplicateObservationsBareNameLookup (0.00s)
+=== RUN   TestBuild_DuplicateObservationsNoDuplicateEdges
+--- PASS: TestBuild_DuplicateObservationsNoDuplicateEdges (0.00s)
+=== RUN   TestBuild_GenuineAmbiguityStaysAmbiguous
+--- PASS: TestBuild_GenuineAmbiguityStaysAmbiguous (0.00s)
+=== RUN   TestMethodEdge_ReceiverVarCallResolves
+--- PASS: TestMethodEdge_ReceiverVarCallResolves (0.00s)
+=== RUN   TestMethodEdge_AmbiguousMethodResolvesToNothing
+--- PASS: TestMethodEdge_AmbiguousMethodResolvesToNothing (0.00s)
+=== RUN   TestMethodEdge_PlainFunctionNotClaimedByVarCall
+--- PASS: TestMethodEdge_PlainFunctionNotClaimedByVarCall (0.00s)
+=== RUN   TestMethodEdge_FunctionAndMethodSuffixCollision
+--- PASS: TestMethodEdge_FunctionAndMethodSuffixCollision (0.00s)
+=== RUN   TestMethodEdge_PackageSelectorStillWins
+--- PASS: TestMethodEdge_PackageSelectorStillWins (0.00s)
+=== RUN   TestMethodEdge_ComposesWithDedup
+--- PASS: TestMethodEdge_ComposesWithDedup (0.00s)
+PASS
+ok  	github.com/geoffmilleraz/fathom/internal/analysis/callgraph	0.238s

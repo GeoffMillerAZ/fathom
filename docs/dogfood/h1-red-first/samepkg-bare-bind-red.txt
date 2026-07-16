@@ -1,0 +1,12 @@
+# FIX 2 red — same-package bare-callee binding (callgraph resolver)
+# 2026-07-16T04:54:44Z @ a366bd4 (pre-fix)
+=== RUN   TestBareCallee_SamePackageBinds
+    samepkg_test.go:51: TestImpact(openai.New) = [], want [svc::openai.TestNew]
+--- FAIL: TestBareCallee_SamePackageBinds (0.00s)
+=== RUN   TestBareCallee_UndeclaredInCallerPackageStaysAmbiguous
+--- PASS: TestBareCallee_UndeclaredInCallerPackageStaysAmbiguous (0.00s)
+=== RUN   TestBareCallee_MethodCallerDoesNotBindThroughReceiverName
+--- PASS: TestBareCallee_MethodCallerDoesNotBindThroughReceiverName (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/fathom/internal/analysis/callgraph	0.345s
+FAIL

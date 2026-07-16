@@ -44,9 +44,18 @@ func NewGoExtractor() *GoExtractor { return &GoExtractor{} }
 //     file-local and meaningless to any resolver); e.g. a call written
 //     `sig.PreconditionSatisfied()` under `import sig ".../evidence-signature"`
 //     is recorded as "evidence-signature.PreconditionSatisfied"
+//   - "<import-path>#.Method"     — a method call on a receiver variable whose
+//     initializer, in the same function body, is a constructor-shaped selector
+//     call into an imported package: `l := ladder.New(...)` then `l.Run(...)`
+//     records "example.com/kit/.../evidence-ladder#.Run" ALONGSIDE the legacy
+//     "l.Run" form. The "#." form carries the constructor package's import
+//     path so a resolver can scope the method lookup to that package's
+//     directory; the legacy form keeps the global unique-suffix method
+//     fallback as the secondary path.
 //
 // All of these are derived from syntactically-present facts of the single file
-// (its AST import table) — never from type information or cross-file inference.
+// (its AST import table, assignment statements within the same function body) —
+// never from type information or cross-file inference.
 func (g *GoExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, relPath, src, 0)
@@ -377,7 +386,48 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 
 	seen := map[string]bool{}
 
+	// varPkg tracks receiver variables whose initializer is a
+	// constructor-shaped selector call into an imported package:
+	// `l := ladder.New(...)` maps "l" → the ladder import path. AST-local
+	// only: same function body, pre-order traversal (an assignment statement
+	// is visited before any later statement that uses the variable). A
+	// variable re-assigned from a DIFFERENT package is dropped — genuine
+	// ambiguity resolves to nothing, never last-wins.
+	varPkg := map[string]string{}
+	varPkgDropped := map[string]bool{}
+
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
+		if as, ok := n.(*ast.AssignStmt); ok && len(as.Lhs) == len(as.Rhs) {
+			for i, lhs := range as.Lhs {
+				lhsIdent, ok := lhs.(*ast.Ident)
+				if !ok || lhsIdent.Name == "_" {
+					continue
+				}
+				rhsCall, ok := as.Rhs[i].(*ast.CallExpr)
+				if !ok {
+					continue
+				}
+				sel, ok := rhsCall.Fun.(*ast.SelectorExpr)
+				if !ok {
+					continue
+				}
+				pkgIdent, ok := sel.X.(*ast.Ident)
+				if !ok {
+					continue
+				}
+				imp, ok := imports[pkgIdent.Name]
+				if !ok || varPkgDropped[lhsIdent.Name] {
+					continue
+				}
+				if prev, ok := varPkg[lhsIdent.Name]; ok && prev != imp {
+					delete(varPkg, lhsIdent.Name)
+					varPkgDropped[lhsIdent.Name] = true
+					continue
+				}
+				varPkg[lhsIdent.Name] = imp
+			}
+			return true
+		}
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
@@ -397,7 +447,14 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			// Selector call: pkg.Func() or receiver.Method()
 			sel := fun.Sel.Name
 			if ident, ok := fun.X.(*ast.Ident); ok {
-				if imp, ok := imports[ident.Name]; ok {
+				if imp, ok := varPkg[ident.Name]; ok {
+					// Method call on a constructor-initialized receiver:
+					// record the constructor-scoped form alongside the
+					// legacy "<var>.Method" form (checked before the import
+					// table — a local variable shadows an import ident).
+					seen[imp+"#."+sel] = true
+					seen[ident.Name+"."+sel] = true
+				} else if imp, ok := imports[ident.Name]; ok {
 					// Canonical package identity: the import path's last
 					// segment, never the file-local alias.
 					seen[path.Base(imp)+"."+sel] = true

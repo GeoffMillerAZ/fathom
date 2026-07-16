@@ -1,0 +1,18 @@
+# FIX 1 red — alias canonicalization (extractor) + dir-base resolution (callgraph)
+# 2026-07-16T04:49:25Z @ 393fa4c (pre-fix)
+=== RUN   TestGoExtractor_AliasedImportCallCanonicalized
+    goextract_alias_test.go:47: Calls = [openai.New sig.PreconditionSatisfied t.Fatal], want "evidence-signature.PreconditionSatisfied" (alias canonicalized to import-path last segment)
+    goextract_alias_test.go:51: Calls = [openai.New sig.PreconditionSatisfied t.Fatal]: file-local alias "sig.PreconditionSatisfied" must not be recorded
+--- FAIL: TestGoExtractor_AliasedImportCallCanonicalized (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/fathom/internal/extractor	0.586s
+FAIL
+=== RUN   TestAliasCanonicalCallee_DirBaseResolves
+    aliasdir_test.go:40: TestImpact(PreconditionSatisfied) = [], want [svc::evidencesignature_test.TestPreconditionSatisfied_Existence]
+    aliasdir_test.go:43: Reachable(test, PreconditionSatisfied) = false, want true
+--- FAIL: TestAliasCanonicalCallee_DirBaseResolves (0.00s)
+=== RUN   TestAliasCanonicalCallee_AmbiguousDirBaseResolvesToNothing
+--- PASS: TestAliasCanonicalCallee_AmbiguousDirBaseResolvesToNothing (0.00s)
+FAIL
+FAIL	github.com/geoffmilleraz/fathom/internal/analysis/callgraph	0.247s
+FAIL
