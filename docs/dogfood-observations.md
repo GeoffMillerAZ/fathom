@@ -19,6 +19,36 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O9 — test_reaches recall residue after H1: aliased external-test calls and re-ambiguated methods
+
+- **Symptom:** first HTTP-mode run of the re-armed gate on the restarted daemon
+  (new binary 5983251, agentic-kit re-ingested at 149a570): evidence-spine.md
+  verifies 13/15 — `{symbol: PreconditionSatisfied}` and `{symbol: Run,
+  package: foundations/evidence/evidence-ladder}` fail `test_reaches`, while
+  H1's store-mode proof (kit at the pre-H2 snapshot) had 15/15.
+- **Evidence (verbatim probes):** both symbols ARE tested —
+  `evidencesignature_test.go:190` calls `sig.PreconditionSatisfied(...)` from
+  an external `_test` package via import alias; `evidenceladder_test.go:97`
+  calls `l.Run(context.Background(), ...)`. Known-good neighbor on the same
+  run: `{symbol: Build, package: foundations/evidence/case-file}` passes.
+- **Root cause (hypotheses, not yet confirmed):** (a) aliased selector
+  canonicalization (H1 commit a366bd4) maps the callee to the import-path
+  segment (`evidence-signature.PreconditionSatisfied`) which may not match the
+  node key when the Go package name differs from the dir segment; (b)
+  `Ladder.Run` was resolvable under Stage-1b's exactly-one-method rule at H1
+  proof time, but H5/H6 (eval-runner, MCP streamable) likely added more `.Run`
+  methods — N>1 receivers → honest refusal → edge drops. Both are recall, not
+  precision: the honesty rule is behaving as designed on inputs the fixes
+  didn't anticipate.
+- **Impact (operational, immediate):** agentic-kit's pre-push gate now BITES —
+  any push there exits 1 until these two verify. Per handoff-h1 doctrine,
+  "uncheck honestly" is not sanctioned for genuinely-tested symbols; the
+  remedy is extractor/callgraph recall work (H1 scope).
+- **Status:** open. Fix direction: confirm (a) with a goextract probe on
+  alias-vs-package-name divergence; for (b) consider `package:`-scoped edge
+  resolution (the target key is already narrowed — let the edge resolver
+  accept `<var>.Method` when the *filtered* candidate set is exactly one).
+
 ### O8 — obligations v2 serves code-scoped and descriptive rules on documentation edits
 
 - **Symptom:** every `Write` to `docs/vision/*.md` (2026-07-14) injected the same six
