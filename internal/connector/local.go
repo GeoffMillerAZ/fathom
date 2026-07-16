@@ -48,7 +48,8 @@ func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
 // Discover walks the directory tree at svc.Path, assigns SourceKinds by
 // extension, and returns a deterministically sorted slice of SourceRefs.
 // Directories named vendor, .git, testdata, generated, node_modules,
-// .idea, and .vscode are skipped entirely. If a .fathomignore file exists
+// .idea, .vscode, and .claude are skipped entirely. If a .fathomignore file
+// exists
 // at svc.Path, its patterns are applied to paths relative to svc.Path
 // (matched dirs are pruned from the walk; matched files are dropped).
 func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {

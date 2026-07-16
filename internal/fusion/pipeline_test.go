@@ -5,6 +5,8 @@ package fusion_test
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -346,6 +348,174 @@ func TestIngest_Lazy(t *testing.T) {
 	const wantSymbols = 5
 	if len(obs) != wantSymbols {
 		t.Errorf("store has %d obs after ExtractPending, want %d", len(obs), wantSymbols)
+	}
+}
+
+// ─── Orphan purge tests ──────────────────────────────────────────────────────
+//
+// These use LocalConnector over a t.TempDir so files can genuinely vanish
+// between ingests — something the read-only fauxtown fixture cannot model.
+
+// writeTestFile writes content to path, creating parent directories.
+func writeTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// orphanFixture creates a temp service with keep.go and gone.go, ingests it,
+// and returns the pipeline, store, ServiceRef, and the absolute path of
+// gone.go. Both files' symbols must be present after the first ingest.
+func orphanFixture(t *testing.T) (*fusion.Pipeline, *store.MemoryStore, core.ServiceRef, string) {
+	t.Helper()
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "keep.go"),
+		"package svc\n\n// Keep survives every ingest.\nfunc Keep() {}\n")
+	gonePath := filepath.Join(root, "gone.go")
+	writeTestFile(t, gonePath,
+		"package svc\n\n// Gone vanishes before the second ingest.\nfunc Gone() {}\n")
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	svc := core.ServiceRef{ID: "orphan-svc", Path: root}
+
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("first Ingest: %v", err)
+	}
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations after first ingest: %v", err)
+	}
+	syms := symbolSet(obs)
+	if !syms["Keep"] || !syms["Gone"] {
+		t.Fatalf("first ingest missing symbols: got %v, want Keep and Gone", syms)
+	}
+	return p, st, svc, gonePath
+}
+
+func symbolSet(obs []core.Observation) map[string]bool {
+	m := make(map[string]bool, len(obs))
+	for _, o := range obs {
+		m[o.Symbol] = true
+	}
+	return m
+}
+
+// TestIngest_OrphanPurge_DeletedFile verifies that a file deleted from disk
+// between ingests has its observations AND fingerprint removed by the next
+// full-service ingest, while other files' symbols stay intact. The purge must
+// key on the Discover-set difference: the hash-gate skips unchanged files, so
+// a change-triggered purge would never fire for a vanished file.
+func TestIngest_OrphanPurge_DeletedFile(t *testing.T) {
+	p, st, svc, gonePath := orphanFixture(t)
+	ctx := context.Background()
+
+	if err := os.Remove(gonePath); err != nil {
+		t.Fatalf("remove gone.go: %v", err)
+	}
+
+	r2, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("second Ingest: %v", err)
+	}
+	// keep.go is unchanged → hash-gated (the purge must not disturb the gate).
+	if r2.Skipped != 1 {
+		t.Errorf("second ingest: Skipped = %d, want 1 (keep.go)", r2.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations after second ingest: %v", err)
+	}
+	syms := symbolSet(obs)
+	if syms["Gone"] {
+		t.Error("Gone still in store after its source file vanished from the Discover set")
+	}
+	if !syms["Keep"] {
+		t.Error("Keep purged — orphan purge must only remove undiscovered source_refs")
+	}
+
+	// The fingerprint must go too, or a restored identical file would be
+	// hash-gated forever with no observations.
+	if _, found, err := st.Fingerprint(ctx, svc.ID, gonePath); err != nil {
+		t.Fatalf("Fingerprint: %v", err)
+	} else if found {
+		t.Error("fingerprint for gone.go still present after orphan purge")
+	}
+}
+
+// TestIngest_OrphanPurge_NewlyIgnoredFile verifies that a file which becomes
+// ignored (dropped from Discover via .sextantignore) is purged exactly like a
+// deleted file — the file still exists on disk, so only a Discover-set-keyed
+// purge can ever remove it.
+func TestIngest_OrphanPurge_NewlyIgnoredFile(t *testing.T) {
+	p, st, svc, _ := orphanFixture(t)
+	ctx := context.Background()
+
+	writeTestFile(t, filepath.Join(svc.Path, connector.IgnoreFileName),
+		"gone.go\n"+connector.IgnoreFileName+"\n")
+
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("second Ingest: %v", err)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations after second ingest: %v", err)
+	}
+	syms := symbolSet(obs)
+	if syms["Gone"] {
+		t.Error("Gone still in store after gone.go became ignored")
+	}
+	if !syms["Keep"] {
+		t.Error("Keep purged — orphan purge must only remove undiscovered source_refs")
+	}
+}
+
+// TestIngest_OrphanPurge_FileRestored pins the fingerprint half of the purge:
+// after a file vanishes and is purged, restoring it with IDENTICAL content
+// must re-extract its symbols. If the purge left the fingerprint behind, the
+// hash-gate would skip the restored file and its symbols would stay lost.
+func TestIngest_OrphanPurge_FileRestored(t *testing.T) {
+	p, st, svc, gonePath := orphanFixture(t)
+	ctx := context.Background()
+
+	content, err := os.ReadFile(gonePath)
+	if err != nil {
+		t.Fatalf("read gone.go: %v", err)
+	}
+	if err := os.Remove(gonePath); err != nil {
+		t.Fatalf("remove gone.go: %v", err)
+	}
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("second Ingest: %v", err)
+	}
+	obsMid, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations after second ingest: %v", err)
+	}
+	if syms := symbolSet(obsMid); syms["Gone"] {
+		t.Error("Gone still in store after second ingest — orphan purge did not fire")
+	}
+
+	// Restore byte-identical content and re-ingest.
+	writeTestFile(t, gonePath, string(content))
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("third Ingest: %v", err)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations after third ingest: %v", err)
+	}
+	if syms := symbolSet(obs); !syms["Gone"] {
+		t.Error("Gone missing after restore — stale fingerprint hash-gated the restored file")
 	}
 }
 

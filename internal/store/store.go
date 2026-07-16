@@ -101,6 +101,17 @@ type Store interface {
 	// or every symbol would duplicate under both anchor styles.
 	CountAbsoluteSourceRefs(ctx context.Context, serviceID string) (int, error)
 
+	// DeleteFingerprint removes the fingerprint entry for (serviceID,
+	// sourceRef). Deleting a missing fingerprint is a no-op, not an error.
+	DeleteFingerprint(ctx context.Context, serviceID, sourceRef string) error
+
+	// ListSourceRefs returns the sorted, distinct set of source_refs known to
+	// the store for serviceID — the union of refs appearing in observations
+	// and fingerprints (fingerprint-only refs exist for files with no
+	// registered extractor). A service with no rows returns a nil slice with
+	// no error.
+	ListSourceRefs(ctx context.Context, serviceID string) ([]string, error)
+
 	// PutKnowledgeCards upserts a batch of knowledge-card enrichment rows.
 	// Existing rows that share (service_id, symbol) are replaced.
 	PutKnowledgeCards(ctx context.Context, cards []KnowledgeCard) error

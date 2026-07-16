@@ -185,6 +185,37 @@ func TestLocalConnector_Discover_IgnoresVendorAndDotGit(t *testing.T) {
 	connectorContract(t, lc, svc, []string{"errors.go", "payment.go"})
 }
 
+// TestLocalConnector_Discover_SkipsToolStateDirs pins the full default skipDir
+// set — including .claude, whose agent worktrees (.claude/worktrees/<agent>/)
+// are full repo copies that polluted the fleet index when ingested. Tool-state
+// dirs are the same class as .idea/.vscode and must never be discovered.
+func TestLocalConnector_Discover_SkipsToolStateDirs(t *testing.T) {
+	skips := []string{
+		"vendor", ".git", "testdata", "generated",
+		"node_modules", ".idea", ".vscode", ".claude",
+	}
+	for _, dir := range skips {
+		t.Run(dir, func(t *testing.T) {
+			root := t.TempDir()
+			writeFile(t, filepath.Join(root, "keep.go"), "package keep\n")
+			writeFile(t, filepath.Join(root, dir, "worktrees", "agent-stale", "copy.go"),
+				"package keep\n")
+
+			lc := connector.NewLocalConnector()
+			refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
+			if err != nil {
+				t.Fatalf("Discover: %v", err)
+			}
+			if len(refs) != 1 {
+				t.Fatalf("Discover returned %d refs, want 1 (keep.go only): %+v", len(refs), refs)
+			}
+			if filepath.Base(refs[0].Path) != "keep.go" {
+				t.Errorf("discovered %q, want keep.go", refs[0].Path)
+			}
+		})
+	}
+}
+
 // ─── .fathomignore tests ────────────────────────────────────────────────────
 
 func writeFile(t *testing.T, path, content string) {

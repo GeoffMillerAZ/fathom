@@ -9,6 +9,9 @@
 //  3. PostFetch — sequential, input-ordered: hash-gate → budget-gate →
 //     dispatch to extractor → PutObservations → SetFingerprint.
 //
+// After a successful ingest an orphan purge removes store rows for
+// source_refs no longer present in the Discover set (see purgeOrphans).
+//
 // Lazy mode: when Config.Lazy is true, post-fetch enqueues pending files
 // instead of extracting them. ExtractPending drains the queue on demand.
 //
@@ -364,6 +367,10 @@ func (p *Pipeline) WithEnricher(e *llm.Enricher) {
 // extractor. Each core.SymbolNode is mapped to a core.Observation and passed
 // to store.PutObservations; store.SetFingerprint is called for every processed
 // file.
+//
+// Orphan purge: after a successful ingest, source_refs stored for svc that no
+// longer appear in the Discover set (deleted or newly ignored files) have
+// their observations and fingerprints removed. See purgeOrphans.
 func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
 	// ── Pass 1: Filter ──────────────────────────────────────────────────────
 	refs, err := p.conn.Discover(ctx, svc)
@@ -422,6 +429,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	}
 
 	if len(refs) == 0 {
+		// Still a full-service ingest: every stored ref is now an orphan.
+		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
+			return report, err
+		}
 		return report, nil
 	}
 
@@ -513,10 +524,16 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// ── Dispatch ─────────────────────────────────────────────────────────────
 	if p.cfg.Lazy {
-		// Lazy mode: enqueue and return without extracting.
+		// Lazy mode: enqueue and return without extracting. The orphan purge
+		// still runs — it depends only on the Discover set vs the store, and
+		// every pending file is in the Discover set, so deferred extraction is
+		// unaffected.
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
+		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
+			return report, err
+		}
 		return report, nil
 	}
 
@@ -526,7 +543,56 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	}
 	report.Extracted = len(pending)
 	report.Symbols = symbols
+
+	// ── Orphan purge ─────────────────────────────────────────────────────────
+	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
+		return report, err
+	}
 	return report, nil
+}
+
+// purgeOrphans removes observations and fingerprints for source_refs that are
+// stored for serviceID but absent from the just-Discovered set — files that
+// were deleted from disk or newly ignored since the previous ingest.
+//
+// The purge is keyed on the Discover-set difference, never on file changes:
+// the hash-gate skips unchanged files, so a change-triggered purge would never
+// fire for rows whose source files simply vanished (e.g. stale agent-worktree
+// copies that stop being discovered once their directory is ignored).
+//
+// Scope: Ingest is the pipeline's only entry point and Connector.Discover
+// always returns the complete ingestible set for a service — there is no
+// partial or filtered ingest — so every Ingest may safely treat undiscovered
+// stored refs as orphans. It runs only after the ingest has otherwise
+// succeeded; fetch, budget, and extraction failures return before the purge.
+func (p *Pipeline) purgeOrphans(ctx context.Context, serviceID string, refs []core.SourceRef) error {
+	stored, err := p.st.ListSourceRefs(ctx, serviceID)
+	if err != nil {
+		return fmt.Errorf("fusion: list source refs %q: %w", serviceID, err)
+	}
+	if len(stored) == 0 {
+		return nil
+	}
+	discovered := make(map[string]struct{}, len(refs))
+	for _, r := range refs {
+		discovered[r.Path] = struct{}{}
+	}
+	// stored is sorted (Store contract), so the purge order is deterministic.
+	for _, ref := range stored {
+		if _, ok := discovered[ref]; ok {
+			continue
+		}
+		if err := p.st.PurgeSource(ctx, serviceID, ref); err != nil {
+			return fmt.Errorf("fusion: purge orphan %q: %w", ref, err)
+		}
+		// Drop the fingerprint too: if the file reappears with identical
+		// content, a stale fingerprint would hash-gate it and its symbols
+		// would never be re-extracted.
+		if err := p.st.DeleteFingerprint(ctx, serviceID, ref); err != nil {
+			return fmt.Errorf("fusion: delete orphan fingerprint %q: %w", ref, err)
+		}
+	}
+	return nil
 }
 
 // ExtractPending drains the lazy queue for serviceID, extracts all pending

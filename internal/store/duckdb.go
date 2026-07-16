@@ -382,6 +382,45 @@ SELECT count(*) FROM fingerprints WHERE service_id = ? AND source_ref LIKE '/%'
 	return n, nil
 }
 
+// DeleteFingerprint removes the fingerprint row for (serviceID, sourceRef).
+// Deleting a missing row is a no-op.
+func (s *DuckStore) DeleteFingerprint(ctx context.Context, serviceID, sourceRef string) error {
+	_, err := s.db.ExecContext(ctx, `
+DELETE FROM fingerprints WHERE service_id = ? AND source_ref = ?
+`, serviceID, sourceRef)
+	if err != nil {
+		return fmt.Errorf("DeleteFingerprint: %w", err)
+	}
+	return nil
+}
+
+// ListSourceRefs returns the sorted distinct source_refs for serviceID across
+// the observations and fingerprints tables.
+func (s *DuckStore) ListSourceRefs(ctx context.Context, serviceID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT source_ref FROM observations WHERE service_id = ?
+UNION
+SELECT source_ref FROM fingerprints WHERE service_id = ?
+ORDER BY source_ref
+`, serviceID, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("ListSourceRefs: %w", err)
+	}
+	defer rows.Close()
+	var refs []string
+	for rows.Next() {
+		var ref string
+		if err := rows.Scan(&ref); err != nil {
+			return nil, fmt.Errorf("ListSourceRefs scan: %w", err)
+		}
+		refs = append(refs, ref)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ListSourceRefs rows: %w", err)
+	}
+	return refs, nil
+}
+
 // PutKnowledgeCards upserts a batch of knowledge-card rows. Existing rows for
 // the same (service_id, symbol) are replaced.
 func (s *DuckStore) PutKnowledgeCards(ctx context.Context, cards []KnowledgeCard) error {

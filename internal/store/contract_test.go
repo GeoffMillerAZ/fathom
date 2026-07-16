@@ -269,6 +269,86 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// DeleteFingerprint removes only the target entry; missing is a no-op
+	// ------------------------------------------------------------------ //
+	t.Run("delete_fingerprint", func(t *testing.T) {
+		svc := "svc-fp-del"
+		if err := s.SetFingerprint(ctx, svc, "a.go", "hash-a"); err != nil {
+			t.Fatalf("SetFingerprint a: %v", err)
+		}
+		if err := s.SetFingerprint(ctx, svc, "b.go", "hash-b"); err != nil {
+			t.Fatalf("SetFingerprint b: %v", err)
+		}
+
+		if err := s.DeleteFingerprint(ctx, svc, "a.go"); err != nil {
+			t.Fatalf("DeleteFingerprint: %v", err)
+		}
+		if _, found, err := s.Fingerprint(ctx, svc, "a.go"); err != nil {
+			t.Fatalf("Fingerprint a after delete: %v", err)
+		} else if found {
+			t.Error("a.go fingerprint still present after DeleteFingerprint")
+		}
+		if _, found, err := s.Fingerprint(ctx, svc, "b.go"); err != nil {
+			t.Fatalf("Fingerprint b: %v", err)
+		} else if !found {
+			t.Error("b.go fingerprint removed — DeleteFingerprint must only remove the target")
+		}
+
+		// Deleting a missing fingerprint is a no-op, not an error.
+		if err := s.DeleteFingerprint(ctx, svc, "a.go"); err != nil {
+			t.Errorf("DeleteFingerprint on missing entry: %v, want nil", err)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
+	// ListSourceRefs returns the sorted union of observation + fingerprint refs
+	// ------------------------------------------------------------------ //
+	t.Run("list_source_refs", func(t *testing.T) {
+		svc := "svc-refs"
+		obs := []core.Observation{
+			makeObs(svc, "", "pkg/obs-only.go", "ObsOnly"),
+			makeObs(svc, "", "pkg/both.go", "Both"),
+			makeObs(svc, "", "pkg/both.go", "Both2"), // duplicate ref must dedupe
+		}
+		if err := s.PutObservations(ctx, obs); err != nil {
+			t.Fatalf("PutObservations: %v", err)
+		}
+		if err := s.SetFingerprint(ctx, svc, "pkg/both.go", "h1"); err != nil {
+			t.Fatalf("SetFingerprint both: %v", err)
+		}
+		// Fingerprint-only ref (a file with no registered extractor).
+		if err := s.SetFingerprint(ctx, svc, "pkg/fp-only.txt", "h2"); err != nil {
+			t.Fatalf("SetFingerprint fp-only: %v", err)
+		}
+		// Another service's rows must not leak in.
+		if err := s.SetFingerprint(ctx, "svc-refs-other", "other.go", "h3"); err != nil {
+			t.Fatalf("SetFingerprint other: %v", err)
+		}
+
+		got, err := s.ListSourceRefs(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListSourceRefs: %v", err)
+		}
+		want := []string{"pkg/both.go", "pkg/fp-only.txt", "pkg/obs-only.go"}
+		if len(got) != len(want) {
+			t.Fatalf("ListSourceRefs = %v, want %v", got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("ListSourceRefs[%d] = %q, want %q", i, got[i], want[i])
+			}
+		}
+
+		empty, err := s.ListSourceRefs(ctx, "svc-refs-none-xyz")
+		if err != nil {
+			t.Fatalf("ListSourceRefs empty: %v", err)
+		}
+		if len(empty) != 0 {
+			t.Errorf("expected no refs for unknown service, got %v", empty)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// Complexity round-trips through Put + Query
 	// ------------------------------------------------------------------ //
 	t.Run("complexity_roundtrip", func(t *testing.T) {

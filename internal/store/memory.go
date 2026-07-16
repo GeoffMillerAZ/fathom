@@ -160,6 +160,42 @@ func (m *MemoryStore) CountAbsoluteSourceRefs(_ context.Context, serviceID strin
 	return n, nil
 }
 
+// DeleteFingerprint removes the fingerprint entry for (serviceID, sourceRef).
+// Deleting a missing fingerprint is a no-op.
+func (m *MemoryStore) DeleteFingerprint(_ context.Context, serviceID, sourceRef string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.fingerprints, fpKey{serviceID, sourceRef})
+	return nil
+}
+
+// ListSourceRefs returns the sorted distinct source_refs for serviceID across
+// observations and fingerprints.
+func (m *MemoryStore) ListSourceRefs(_ context.Context, serviceID string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := make(map[string]struct{})
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID {
+			seen[o.SourceRef] = struct{}{}
+		}
+	}
+	for k := range m.fingerprints {
+		if k.serviceID == serviceID {
+			seen[k.sourceRef] = struct{}{}
+		}
+	}
+	if len(seen) == 0 {
+		return nil, nil
+	}
+	refs := make([]string, 0, len(seen))
+	for ref := range seen {
+		refs = append(refs, ref)
+	}
+	sort.Strings(refs)
+	return refs, nil
+}
+
 // PutKnowledgeCards upserts knowledge-card rows keyed by (service_id, symbol).
 func (m *MemoryStore) PutKnowledgeCards(_ context.Context, cards []KnowledgeCard) error {
 	m.mu.Lock()

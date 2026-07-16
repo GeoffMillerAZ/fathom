@@ -7,6 +7,7 @@ package connector_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -149,6 +150,33 @@ func TestFauxConnector_KindGoFunc_ForGoFiles(t *testing.T) {
 				t.Errorf("%q: Kind = %q, want KindGoFunc", r.Path, r.Kind)
 			}
 		}
+	}
+}
+
+// TestFauxConnector_Discover_SkipsClaudeWorktrees verifies the FauxConnector
+// walker shares the skipDir defaults: the worktree-service fixture carries a
+// stale copy under .claude/worktrees/agent-0001/ that must never be
+// discovered (agent worktrees are tool state, same class as .idea/.vscode).
+func TestFauxConnector_Discover_SkipsClaudeWorktrees(t *testing.T) {
+	fc := connector.NewFauxConnector()
+	ctx := context.Background()
+
+	svc := core.ServiceRef{ID: "worktree-service", Path: "worktree-service"}
+	refs, err := fc.Discover(ctx, svc)
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+
+	for _, r := range refs {
+		if strings.Contains(filepath.ToSlash(r.Path), "/.claude/") {
+			t.Errorf("discovered ref under .claude/: %q", r.Path)
+		}
+	}
+	if len(refs) != 1 {
+		t.Fatalf("Discover returned %d refs, want 1 (main.go only): %+v", len(refs), refs)
+	}
+	if filepath.Base(refs[0].Path) != "main.go" {
+		t.Errorf("discovered %q, want main.go", refs[0].Path)
 	}
 }
 

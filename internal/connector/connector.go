@@ -148,10 +148,12 @@ func kindForFile(base, ext string) core.SourceKind {
 
 // skipDir reports whether a directory entry name should be skipped during
 // tree walking. The list mirrors the DefaultIgnorePatterns described in the
-// fusion pipeline design.
+// fusion pipeline design. .claude is tool state (agent worktrees under
+// .claude/worktrees/ are full repo copies), same class as .idea/.vscode —
+// indexing it duplicates every symbol in the service.
 func skipDir(name string) bool {
 	switch name {
-	case "vendor", ".git", "testdata", "generated", "node_modules", ".idea", ".vscode":
+	case "vendor", ".git", "testdata", "generated", "node_modules", ".idea", ".vscode", ".claude":
 		return true
 	}
 	return false
