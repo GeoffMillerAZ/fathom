@@ -75,7 +75,7 @@ func TestSemanticEndToEnd(t *testing.T) {
 	t.Logf("dry-run: sections=%d tokensIn=%d", run.SectionsTotal, run.TokensIn)
 
 	// Live compile with mock LLM.
-	mockJSON := `[{"rule":"Run tests before committing.","scope":["**"],"cite_start":3,"cite_end":3},{"rule":"Sort all exported slice results.","scope":["pkg/**"],"cite_start":4,"cite_end":4}]`
+	mockJSON := `{"claims":[{"rule":"Run tests before committing.","scope":["**"],"cite_start":3,"cite_end":3},{"rule":"Sort all exported slice results.","scope":["pkg/**"],"cite_start":4,"cite_end":4}]}`
 	mock := llmclient.NewMockClient(llmclient.MockEntry{
 		Response: llmclient.Response{
 			Text:  mockJSON,

@@ -158,7 +158,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		return map[string]any{
+		result := map[string]any{
 			"run_id":            run.RunID,
 			"service":           run.ServiceID,
 			"layer":             run.Layer,
@@ -175,6 +175,20 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 			"model":             run.Model,
 			"prompt_version":    run.PromptVersion,
 			"ran_at":            run.RanAt.UTC().Format("2006-01-02T15:04:05Z"),
-		}, nil
+		}
+		// A budget-stopped run returns nil error and is otherwise
+		// indistinguishable from success — surface it (F5, M1-7). Refused
+		// runs surface via the error path above, but keep the fields
+		// symmetric in case a backend ever ledgers-and-returns.
+		if run.BudgetStopped {
+			result["budget_stopped"] = true
+		}
+		if run.Refused {
+			result["refused"] = true
+		}
+		if run.RefusalReason != "" {
+			result["refusal_reason"] = run.RefusalReason
+		}
+		return result, nil
 	})
 }

@@ -22,17 +22,18 @@ var obligationsSystemPromptTemplate = prompttemplate.Template{
 	Text: `You compile engineering obligations from governing documents into strict JSON.
 An obligation is a rule a developer editing matching files MUST follow while
 writing code, restated faithfully from the document — never invented. Output
-ONLY a JSON array (possibly empty) of objects: {"rule", "scope", "cite_start", "cite_end"}.
+ONLY a JSON object {"claims": [...]} whose claims array (possibly empty) holds
+objects of the shape {"rule", "scope", "cite_start", "cite_end"}.
 - rule: imperative, <= 28 words, self-contained.
 - scope: gitignore-style glob(s) for the code paths the rule governs. Prefer the
   NARROWEST glob the document justifies (a named package or directory); use
   ["**"] only for rules the document explicitly applies to all code.
 - cite_start/cite_end: the 1-based DOCUMENT line range (shown in the input) that
   states the rule. Cite the narrowest range that fully supports the rule.
-Emit [] for sections that contain no binding developer rules. These are NOT
-obligations: project metrics/gates ("achieve X%"), roadmap/vision statements,
-descriptions of how the system works, decisions' context/rationale, historical
-records. Only emit rules the cited lines actually state. No commentary.`,
+Emit {"claims": []} for sections that contain no binding developer rules. These
+are NOT obligations: project metrics/gates ("achieve X%"), roadmap/vision
+statements, descriptions of how the system works, decisions' context/rationale,
+historical records. Only emit rules the cited lines actually state. No commentary.`,
 }
 
 // obligationsPromptVersion derives the obligations compile prompt's identity

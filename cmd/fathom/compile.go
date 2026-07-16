@@ -154,6 +154,12 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	if run.SectionsFailed > 0 {
 		fmt.Fprintf(w, "sections_failed:   %d (malformed/truncated model responses — re-run compiles just these)\n", run.SectionsFailed)
 	}
+	if run.BudgetStopped {
+		fmt.Fprintf(w, "budget_stopped:    true (%s — re-run to resume; the digest gate skips completed sections)\n", run.RefusalReason)
+	}
+	if run.Refused {
+		fmt.Fprintf(w, "refused:           true (%s)\n", run.RefusalReason)
+	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)
 	fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
@@ -181,6 +187,12 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 	fmt.Fprintf(w, "sections_compiled: %v\n", m["sections_compiled"])
 	if v, ok := m["sections_failed"]; ok && fmt.Sprint(v) != "0" && v != nil {
 		fmt.Fprintf(w, "sections_failed:   %v\n", v)
+	}
+	if bs, _ := m["budget_stopped"].(bool); bs {
+		fmt.Fprintf(w, "budget_stopped:    true (%v — re-run to resume; the digest gate skips completed sections)\n", m["refusal_reason"])
+	}
+	if rf, _ := m["refused"].(bool); rf {
+		fmt.Fprintf(w, "refused:           true (%v)\n", m["refusal_reason"])
 	}
 	fmt.Fprintf(w, "claims_emitted:    %v\n", m["claims_emitted"])
 	fmt.Fprintf(w, "claims_rejected:   %v\n", m["claims_rejected"])

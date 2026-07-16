@@ -56,6 +56,24 @@ All notable changes to sextant. Format loosely follows
   — amendment recorded under ADR-016 in `ADR.md`. No layer emits it yet;
   `ai-derived` stays unadmitted, still awaiting its own revival evidence.
 - Spec: `docs/plans/m1-manifest.md` (M1-1..M1-8, all landed).
+- **Adversarial-review fixes (same slice, pre-recompile):**
+  (F1) the structured-outputs schema is now OBJECT-rooted
+  (`{"claims":[...]}`) with `additionalProperties:false` on every object —
+  Anthropic structured outputs reject array roots / open objects with a 400,
+  which is transport-class and would have aborted every real compile at
+  section 1; the system prompt and decode target moved to the envelope shape
+  (`TestClaimDraftSchema_AnthropicStructuredOutputCompatible` pins both wire
+  constraints). This prompt/schema change MUST land before the flag-day
+  recompile — the TextHash identity covers the prompt text, not the schema,
+  so sequencing is the protection.
+  (F2) superseded/refuted claims no longer feed the digest gate: one
+  superseded row (old digest or old PromptVersion) previously forced its
+  subject to re-LLM on every future run, forever
+  (`TestCompile_SupersededClaimsDoNotDefeatDigestGate`).
+  (F5) a budget-stopped run is no longer indistinguishable from success at
+  the operator surfaces: `compile_layer` returns
+  `budget_stopped`/`refusal_reason` (and `refused` symmetrically) and the
+  CLI printers render them.
 
 ### Fixed — extractor-epoch fingerprint salt: extractor upgrades now reach unchanged files (O9)
 - The pass-3 hash-gate keyed fingerprints on file content only, so a binary

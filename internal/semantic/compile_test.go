@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -52,10 +53,10 @@ func TestCompile_HappyPath(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[
+		Text: `{"claims":[
   {"rule":"Inject clocks; never call time.Now() in query logic.","scope":["internal/query/**"],"cite_start":3,"cite_end":3},
   {"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}
-]`,
+]}`,
 		Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
 	}})
 
@@ -133,12 +134,12 @@ func TestCompile_RejectsBadAnchorsAndScopes(t *testing.T) {
 	st := store.NewMemoryStore()
 	longRule := strings.Repeat("word ", defaultMaxRuleWords+1)
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[
+		Text: `{"claims":[
   {"rule":"Cite outside the section.","scope":["**"],"cite_start":99,"cite_end":120},
   {"rule":"Scope matches nothing.","scope":["nonexistent/dir/**"],"cite_start":3,"cite_end":3},
   {"rule":"` + strings.TrimSpace(longRule) + `","scope":["**"],"cite_start":3,"cite_end":3},
   {"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}
-]`,
+]}`,
 	}})
 
 	run, err := c.Compile(ctx, compileInput(false))
@@ -154,7 +155,7 @@ func TestCompile_DigestGateSkipsUnchangedSections(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
 		t.Fatalf("first Compile: %v", err)
@@ -183,7 +184,7 @@ func TestCompile_SupersedesReplacedClaims(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
 		t.Fatalf("first Compile: %v", err)
@@ -195,7 +196,7 @@ func TestCompile_SupersedesReplacedClaims(t *testing.T) {
 	in := compileInput(false)
 	in.Docs = []core.SourceFile{{Path: "docs/conventions.md", Content: []byte(changed)}}
 	c2 := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs deterministically.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs deterministically.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	if _, err := c2.Compile(ctx, in); err != nil {
 		t.Fatalf("second Compile: %v", err)
@@ -264,7 +265,7 @@ func TestCompile_BadResponseSkipsSectionOnly(t *testing.T) {
 	c := newCompiler(
 		t, st,
 		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"truncated mid`}},
-		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]}`}},
 	)
 	run, err := c.Compile(ctx, twoDocs)
 	if err != nil {
@@ -279,7 +280,7 @@ func TestCompile_BadResponseSkipsSectionOnly(t *testing.T) {
 	c2 := newCompiler(
 		t, st2,
 		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"cut`, StopReason: llmclient.StopMaxTokens}},
-		llmclient.MockEntry{Response: llmclient.Response{Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`}},
+		llmclient.MockEntry{Response: llmclient.Response{Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]}`}},
 	)
 	run2, err := c2.Compile(ctx, twoDocs)
 	if err != nil {
@@ -304,7 +305,7 @@ func TestCompile_RetiresClaimsWhenDocLeavesCorpus(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
 		t.Fatalf("first Compile: %v", err)
@@ -333,7 +334,7 @@ func TestCompile_PromptBumpDefeatsDigestGate(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
 		t.Fatalf("first Compile: %v", err)
@@ -348,7 +349,7 @@ func TestCompile_PromptBumpDefeatsDigestGate(t *testing.T) {
 	}
 
 	c2 := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 	}})
 	run, err := c2.Compile(ctx, compileInput(false))
 	if err != nil {
@@ -390,7 +391,7 @@ func TestCompile_UsesStructuredOutputSchema(t *testing.T) {
 	c := &Compiler{
 		St: st,
 		LLM: schemaAssertingClient{t: t, resp: llmclient.Response{
-			Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+			Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
 		}},
 		Model: "mock-model",
 		Now:   fixedNow,
@@ -484,7 +485,7 @@ func TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate(t *t
 		// docs/a.md's only section: a large real usage — big enough on its
 		// own to cross the token budget, so the run stops BEFORE docs/b.md.
 		llmclient.MockEntry{Response: llmclient.Response{
-			Text:  `[{"rule":"Rule in A.","scope":["**"],"cite_start":3,"cite_end":3}]`,
+			Text:  `{"claims":[{"rule":"Rule in A.","scope":["**"],"cite_start":3,"cite_end":3}]}`,
 			Usage: llmclient.Usage{InputTokens: 500, OutputTokens: 200},
 		}},
 	)
@@ -531,7 +532,7 @@ func TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate(t *t
 	// digest gate skips docs/a.md's unchanged section (its claim already
 	// matches content + prompt identity) and compiles only docs/b.md.
 	mock2 := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
-		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`,
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]}`,
 	}})
 	c2 := &Compiler{St: st, LLM: mock2, Model: "mock-model", Now: fixedNow}
 	run2, err := c2.Compile(ctx, twoDocs)
@@ -553,5 +554,120 @@ func TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate(t *t
 		if cl.Status != core.ClaimFresh {
 			t.Errorf("claim %s status = %s, want fresh (nothing should be superseded across a stop+resume)", cl.ClaimID, cl.Status)
 		}
+	}
+}
+
+// ─── F1: schema must satisfy Anthropic structured-outputs constraints ───────
+
+// TestClaimDraftSchema_AnthropicStructuredOutputCompatible pins the two wire
+// constraints of Anthropic structured outputs (a real compile 400s otherwise,
+// and a 400 is a transport-class abort — not skippable): the schema root must
+// be an OBJECT (array roots are not a documented shape), and every object
+// level must set additionalProperties:false.
+func TestClaimDraftSchema_AnthropicStructuredOutputCompatible(t *testing.T) {
+	var schema map[string]any
+	if err := json.Unmarshal(claimDraftSchema, &schema); err != nil {
+		t.Fatalf("claimDraftSchema is not valid JSON: %v", err)
+	}
+	if typ, _ := schema["type"].(string); typ != "object" {
+		t.Fatalf("schema root type = %q, want object (array roots 400 on Anthropic structured outputs)", typ)
+	}
+
+	// Walk every object-typed schema node; each must set additionalProperties:false.
+	var walk func(path string, node map[string]any)
+	walk = func(path string, node map[string]any) {
+		if typ, _ := node["type"].(string); typ == "object" {
+			ap, present := node["additionalProperties"]
+			if !present {
+				t.Errorf("%s: object schema missing additionalProperties:false", path)
+			} else if b, ok := ap.(bool); !ok || b {
+				t.Errorf("%s: additionalProperties = %v, want false", path, ap)
+			}
+			if props, ok := node["properties"].(map[string]any); ok {
+				for name, sub := range props {
+					if subMap, ok := sub.(map[string]any); ok {
+						walk(path+".properties."+name, subMap)
+					}
+				}
+			}
+		}
+		if items, ok := node["items"].(map[string]any); ok {
+			walk(path+".items", items)
+		}
+	}
+	walk("$", schema)
+
+	// The envelope must expose the claims array the decode target expects.
+	props, _ := schema["properties"].(map[string]any)
+	if _, ok := props["claims"]; !ok {
+		t.Errorf("schema root must define a claims property (the {\"claims\":[...]} envelope)")
+	}
+}
+
+// ─── F2: superseded claims must not defeat the digest gate ──────────────────
+
+// TestCompile_SupersededClaimsDoNotDefeatDigestGate: a superseded row keeps
+// its OLD InputDigest/PromptVersion forever — if the digest gate consults it,
+// its subject re-LLMs on every compile for the rest of time. Sequence:
+// compile → edit doc → recompile (creates the superseded twin) → third
+// compile with ZERO changes must be fully digest-gated (0 sections compiled,
+// 0 LLM calls).
+func TestCompile_SupersededClaimsDoNotDefeatDigestGate(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// First compile against govDoc v1.
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
+	}})
+	if _, err := c.Compile(ctx, compileInput(false)); err != nil {
+		t.Fatalf("first Compile: %v", err)
+	}
+
+	// Doc edited → second compile supersedes the v1 claim and emits a fresh one.
+	changed := strings.Replace(govDoc, "All outputs must be sorted.", "All outputs must be sorted deterministically.", 1)
+	in := compileInput(false)
+	in.Docs = []core.SourceFile{{Path: "docs/conventions.md", Content: []byte(changed)}}
+	c2 := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Sort all outputs deterministically.","scope":["**"],"cite_start":4,"cite_end":4}]}`,
+	}})
+	if _, err := c2.Compile(ctx, in); err != nil {
+		t.Fatalf("second Compile: %v", err)
+	}
+	// Sanity: the superseded twin exists beside the fresh claim.
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	var superseded int
+	for _, cl := range claims {
+		if cl.Status == core.ClaimSuperseded {
+			superseded++
+		}
+	}
+	if superseded != 1 {
+		t.Fatalf("superseded = %d, want 1 (the setup requires the twin)", superseded)
+	}
+
+	// Third compile: SAME doc, ZERO changes — must be entirely digest-gated.
+	mock3 := llmclient.NewMockClient() // no entries: a call would poison the run deterministically
+	c3 := &Compiler{St: st, LLM: mock3, Model: "mock-model", Now: fixedNow}
+	run3, err := c3.Compile(ctx, in)
+	if err != nil {
+		t.Fatalf("third Compile: %v", err)
+	}
+	if run3.SectionsCompiled != 0 || run3.SectionsFailed != 0 {
+		t.Errorf("third compile compiled/failed = %d/%d, want 0/0 (superseded twin defeated the digest gate)", run3.SectionsCompiled, run3.SectionsFailed)
+	}
+	if mock3.CallCount() != 0 {
+		t.Errorf("third compile made %d LLM calls, want 0", mock3.CallCount())
+	}
+	// The fresh claim is untouched.
+	after, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	var fresh int
+	for _, cl := range after {
+		if cl.Status == core.ClaimFresh {
+			fresh++
+		}
+	}
+	if fresh != 1 {
+		t.Errorf("fresh = %d after gated recompile, want 1", fresh)
 	}
 }

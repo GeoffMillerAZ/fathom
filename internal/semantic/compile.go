@@ -41,22 +41,43 @@ type claimDraft struct {
 	CiteEnd   int      `json:"cite_end"`   // inclusive
 }
 
+// claimDraftEnvelope is the object-rooted decode target for a section's
+// completion: {"claims": [...]}. Anthropic structured outputs document only
+// object roots and require additionalProperties:false on every object, so
+// the drafts array is wrapped rather than emitted bare — an array-rooted
+// schema would 400 the very first real section and abort the whole compile
+// (a 400 is transport-class, not the skippable ErrTruncated/ErrMalformed).
+type claimDraftEnvelope struct {
+	Claims []claimDraft `json:"claims"`
+}
+
 // claimDraftSchema is the JSON Schema constraining structured.Complete's
-// generation to claimDraft's array shape (M1-6). Its properties mirror
-// claimDraft's json tags exactly — a mismatch surfaces as
-// structured.ErrMalformed via the strict, DisallowUnknownFields decode.
+// generation to claimDraftEnvelope's shape (M1-6). Its properties mirror
+// the json tags exactly — a mismatch surfaces as structured.ErrMalformed
+// via the strict, DisallowUnknownFields decode. Every object level carries
+// additionalProperties:false and the root is an object (see
+// TestClaimDraftSchema_AnthropicStructuredOutputCompatible, which pins both
+// wire constraints).
 var claimDraftSchema = json.RawMessage(`{
-	"type": "array",
-	"items": {
-		"type": "object",
-		"properties": {
-			"rule": {"type": "string"},
-			"scope": {"type": "array", "items": {"type": "string"}},
-			"cite_start": {"type": "integer"},
-			"cite_end": {"type": "integer"}
-		},
-		"required": ["rule", "scope", "cite_start", "cite_end"]
-	}
+	"type": "object",
+	"properties": {
+		"claims": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"rule": {"type": "string"},
+					"scope": {"type": "array", "items": {"type": "string"}},
+					"cite_start": {"type": "integer"},
+					"cite_end": {"type": "integer"}
+				},
+				"required": ["rule", "scope", "cite_start", "cite_end"],
+				"additionalProperties": false
+			}
+		}
+	},
+	"required": ["claims"],
+	"additionalProperties": false
 }`)
 
 // Compiler compiles governing docs into obligations claims. The LLM client
@@ -146,12 +167,21 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	run.RunID = hex.EncodeToString(idSum[:])
 
 	// Existing claims, grouped by subject, for the digest gate + supersede.
+	// Superseded and refuted rows are EXCLUDED: they keep their old
+	// InputDigest/PromptVersion forever, so one such row would make
+	// allDigestsMatch false for its subject on every future run — the
+	// section re-LLMs for the rest of time (F2). They need no supersede
+	// handling either: superseded is already terminal for the sweep, and a
+	// refuted claim keeps its stronger human verdict (neither is served).
 	existing, err := c.St.ClaimsForService(ctx, in.ServiceID, LayerObligations)
 	if err != nil {
 		return run, fmt.Errorf("semantic: load existing claims: %w", err)
 	}
 	bySubject := map[string][]core.SemanticClaim{}
 	for _, cl := range existing {
+		if cl.Status == core.ClaimSuperseded || cl.Status == core.ClaimRefuted {
+			continue
+		}
 		bySubject[cl.Subject] = append(bySubject[cl.Subject], cl)
 	}
 
@@ -380,17 +410,17 @@ func (c *Compiler) compileSection(ctx context.Context, sec Section) ([]claimDraf
 	if c.Redactor != nil {
 		prompt, _ = c.Redactor.Redact(prompt)
 	}
-	var drafts []claimDraft
+	var envelope claimDraftEnvelope
 	resp, err := structured.Complete(ctx, c.LLM, llmclient.Request{
 		Model:     c.Model,
 		System:    obligationsSystemPromptTemplate.Text,
 		Prompt:    prompt,
 		MaxTokens: 2400, // rule-dense sections (large tables) overflowed 1200 and truncated mid-JSON
-	}, claimDraftSchema, &drafts)
+	}, claimDraftSchema, &envelope)
 	if err != nil {
 		return nil, resp.Usage, err
 	}
-	return drafts, resp.Usage, nil
+	return envelope.Claims, resp.Usage, nil
 }
 
 // buildSectionPrompt renders the section with absolute document line numbers
