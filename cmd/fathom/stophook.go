@@ -28,6 +28,7 @@ import (
 //   - Newly claimed tasks FAIL verification → advisory additionalContext by
 //     default; {"decision":"block"} with --block.
 func cmdStopHook(args []string, stdout, stderr io.Writer) int {
+	rpcOrigin = "stop-hook"
 	fs := newFlagSet("stop-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	block := fs.Bool("block", false, "block session end on disproven claims (advisory otherwise)")

@@ -27,6 +27,7 @@ import (
 //   - No rules + index not stale → print nothing, exit 0.
 //   - Otherwise → print hookSpecificOutput JSON with compact obligations text.
 func cmdEditHook(args []string, stdout, stderr io.Writer) int {
+	rpcOrigin = "edit-hook"
 	fs := newFlagSet("edit-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	if err := fs.Parse(args); err != nil {
@@ -54,6 +55,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if filePath == "" {
 		return 0
 	}
+	emitBeat("edit-hook", "seen", nil) // GI-1: the coverage denominator
 
 	// Determine project dir.
 	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
@@ -84,6 +86,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		for _, name := range withNameAliases(cand.name) {
 			o, stale, ok := fetchObligations(*url, strings.ToLower(name), rel)
 			if !ok {
+				emitBeat("edit-hook", "error", nil)
 				return 0 // daemon down or error → silent
 			}
 			if len(o.Rules) > 0 || stale {
@@ -96,6 +99,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !found {
+		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false"})
 		return 0 // clean file (or unindexed project) → silent
 	}
 
@@ -119,6 +123,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			"additionalContext": sb.String(),
 		},
 	})
+	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true"})
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
@@ -143,7 +148,11 @@ func fetchObligations(baseURL, service, file string) (semantic.Obligations, bool
 	}
 
 	hc := &http.Client{Timeout: 2 * time.Second}
-	resp, err := hc.Post(baseURL+"/rpc", "application/json", bytes.NewReader(reqBody))
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return semantic.Obligations{}, false, false
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return semantic.Obligations{}, false, false
 	}

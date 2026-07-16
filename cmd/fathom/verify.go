@@ -34,6 +34,9 @@ func (p *planFlags) Set(v string) error { *p = append(*p, v); return nil }
 //	1 — gate fail (a claimed [x] task failed verification)
 //	2 — operational error (unreadable plan, daemon unreachable, malformed response)
 func cmdVerify(args []string, stdout, stderr io.Writer) int {
+	if rpcOrigin == "" {
+		rpcOrigin = "verify-cli"
+	}
 	fs := newFlagSet("verify", stderr)
 	var plans planFlags
 	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required; .md checklist)")
@@ -292,7 +295,11 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 		return verify.Report{}, fmt.Errorf("marshal request: %w", err)
 	}
 
-	resp, err := hc.Post(baseURL+"/rpc", "application/json", bytes.NewReader(reqBody))
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return verify.Report{}, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return verify.Report{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
 	}
@@ -361,7 +368,11 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 // answered and the service is genuinely absent/empty.
 func daemonServiceIndexed(hc *http.Client, baseURL, service string) (bool, error) {
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`
-	resp, err := hc.Post(baseURL+"/rpc", "application/json", strings.NewReader(reqBody))
+	req, err := originHeader(baseURL, strings.NewReader(reqBody))
+	if err != nil {
+		return false, fmt.Errorf("build request: %w", err)
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
 	}

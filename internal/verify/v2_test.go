@@ -2,6 +2,7 @@ package verify
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -137,5 +138,26 @@ func TestParseMarkdownPlan_V1Unchanged(t *testing.T) {
 	}
 	if !p.Tasks[1].Skipped || p.Tasks[1].Disposition != "" {
 		t.Errorf("v1 skip line changed: %+v", p.Tasks[1])
+	}
+}
+
+func TestParseAnnotation_TrailingBlockRule(t *testing.T) {
+	// GI-7: braces in the title (code literals, prose annotation examples)
+	// must not hijack the contract — the annotation is the TRAILING block.
+	m, title := parseAnnotation("JSONL beats (`Beat{Channel, Kind, At, Meta}`, injected clock) {id: FA-4, symbol: CheckLiveness}")
+	if m["id"] != "FA-4" || m["symbol"] != "CheckLiveness" {
+		t.Fatalf("trailing block not parsed: %v", m)
+	}
+	if !strings.Contains(title, "Beat{Channel, Kind, At, Meta}") {
+		t.Errorf("title lost its code literal: %q", title)
+	}
+	// A prose example annotation earlier in the line stays prose.
+	m2, _ := parseAnnotation("Prove `{symbol: DuckStore.PurgeSource}` flips {id: X-1, symbol: Real}")
+	if m2["symbol"] != "Real" || m2["id"] != "X-1" {
+		t.Errorf("prose example hijacked the contract: %v", m2)
+	}
+	// No annotation at all still returns nil.
+	if m3, _ := parseAnnotation("plain title"); m3 != nil {
+		t.Errorf("want nil map, got %v", m3)
 	}
 }

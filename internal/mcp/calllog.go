@@ -23,7 +23,8 @@ type callLogEntry struct {
 	Service   string  `json:"service,omitempty"`
 	Group     string  `json:"group,omitempty"`
 	Surface   string  `json:"surface,omitempty"`
-	Via       string  `json:"via,omitempty"` // "batch" for batch sub-calls
+	Via       string  `json:"via,omitempty"`    // "batch" for batch sub-calls
+	Origin    string  `json:"origin,omitempty"` // caller-declared channel (X-Fathom-Origin); "" = agent choice
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
 }
@@ -46,7 +47,7 @@ func NewCallLogger(w io.Writer) *CallLogger {
 
 // log writes one JSONL entry.  It ignores marshal / write errors to avoid
 // disrupting tool call results.
-func (l *CallLogger) log(tool, service, group, surface, via string, latency time.Duration, callErr error) {
+func (l *CallLogger) log(tool, service, group, surface, via, origin string, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
@@ -57,6 +58,7 @@ func (l *CallLogger) log(tool, service, group, surface, via string, latency time
 		Group:     group,
 		Surface:   surface,
 		Via:       via,
+		Origin:    origin,
 		LatencyMS: float64(latency.Milliseconds()),
 	}
 	if callErr != nil {

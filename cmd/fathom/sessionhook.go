@@ -29,6 +29,8 @@ import (
 // hook must never block session start). HTTP calls use a short timeout so a slow
 // or down daemon can't stall startup.
 func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
+	rpcOrigin = "session-hook"
+	emitBeat("session-hook", "fired", nil)
 	fs := newFlagSet("session-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
@@ -113,7 +115,11 @@ func buildSessionContext(baseURL, projDir string) string {
 func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
 	out := map[string]svcInfo{}
 	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`)
-	resp, err := hc.Post(baseURL+"/rpc", "application/json", body)
+	req, err := originHeader(baseURL, body)
+	if err != nil {
+		return out
+	}
+	resp, err := hc.Do(req)
 	if err != nil {
 		return out
 	}

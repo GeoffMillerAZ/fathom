@@ -64,6 +64,26 @@ func scopeFrom(ctx context.Context) requestScope {
 	return sc
 }
 
+type originKey struct{}
+
+// WithOrigin returns a context carrying the caller-declared channel origin
+// (the X-Fathom-Origin header): "edit-hook", "session-hook", "stop-hook",
+// "verify-cli" — empty for agent tool choice. The call log records it so
+// demand numbers and kill clocks separate plumbing from agents (GI-6).
+// Self-declared and trusted: this is measurement, not security.
+func WithOrigin(ctx context.Context, origin string) context.Context {
+	if origin == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, originKey{}, origin)
+}
+
+// originFrom extracts the caller-declared origin ("" = agent/unknown).
+func originFrom(ctx context.Context) string {
+	o, _ := ctx.Value(originKey{}).(string)
+	return o
+}
+
 // enforced reports whether tools/call must be hard-gated for this request:
 // only named surfaces over HTTP gate calls. The stdio profile stays advisory
 // (a single client owns the process), and the bare HTTP endpoint is the full

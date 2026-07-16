@@ -73,6 +73,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdCompile(args[1:], stdout, stderr)
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
+	case "instrument":
+		return cmdInstrument(args[1:], stdout, stderr)
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)
 	case "gen-plan-cue":
@@ -104,6 +106,9 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
 	fmt.Fprintln(w, "  compile               Compile a semantic layer for a service (dry-run by default)")
 	fmt.Fprintln(w, "  edit-hook             PostToolUse hook: inject obligations into session context")
+	fmt.Fprintln(w, "  stop-hook             Stop hook: flag tasks claimed [x] this session that fail verification")
+	fmt.Fprintln(w, "  gen-plan-cue          Emit the generated CUE shadow of a Markdown plan (round-trip verified)")
+	fmt.Fprintln(w, "  instrument            Channel-health report: injection coverage, rollup, liveness alarms")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

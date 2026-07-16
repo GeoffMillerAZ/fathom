@@ -81,9 +81,16 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 // surrounding quotes are stripped ({reason: "kit-side done, donor NOT
 // deleted"}). Unquoted values must not contain commas.
 func parseAnnotation(s string) (map[string]string, string) {
-	i := strings.IndexByte(s, '{')
+	// The annotation is the TRAILING brace block: earlier braces in the
+	// title (code literals like Beat{...}, prose examples of annotations)
+	// stay title text. The first non-vacuous gate run over the fleet's
+	// plans caught the old first-brace rule hijacking contracts (GI-7).
 	j := strings.LastIndexByte(s, '}')
-	if i < 0 || j < 0 || j < i {
+	i := -1
+	if j >= 0 {
+		i = strings.LastIndexByte(s[:j], '{')
+	}
+	if i < 0 || j < i {
 		return nil, strings.TrimSpace(s)
 	}
 	block := s[i+1 : j]

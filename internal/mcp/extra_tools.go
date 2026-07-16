@@ -1936,7 +1936,7 @@ func registerBatch(s *Server) {
 			if rpcErr != nil {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", latency, subErr)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), latency, subErr)
 		}
 		for i, call := range p.Calls {
 			argsRaw := call.Arguments

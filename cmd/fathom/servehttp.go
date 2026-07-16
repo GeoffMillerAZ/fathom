@@ -146,7 +146,7 @@ func newHTTPHandler(srv *mcp.Server) http.Handler {
 
 		// Background, not r.Context(): a client disconnect must not cancel a
 		// long-running ingest mid-flight. The scope carries the surface.
-		ctx := mcp.WithRequestScope(context.Background(), surface, true)
+		ctx := mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin"))
 		resp, hasResp := srv.HandleRequest(ctx, raw)
 		if !hasResp {
 			// Notification — no response body.

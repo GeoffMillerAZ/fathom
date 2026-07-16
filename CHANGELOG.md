@@ -5,6 +5,22 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — Gap-1 channel instrumentation: denominator, liveness, origin (docs/plans/gap1-instrumentation.md)
+- Hooks beat a central log (FATHOM_HOOKS_LOG, default ~/.fathom/hooks.jsonl)
+  via agentic-kit v0.7.0 telemetry/heartbeat: edit-hook seen/answered/error,
+  session-hook fired — injection coverage finally has a denominator, and beat
+  failures are swallowed (hooks never break their silent contract).
+- `fathom instrument`: coverage (answered/seen vs the ≥90%% gate), per-day
+  rollup, and liveness alarms from the standing expectations (sessions
+  without edits in 7d; edits unanswered in 1d — the four-dark-days failure
+  made visible). Advisory: exit 0 always.
+- X-Fathom-Origin: every hook/CLI HTTP call declares its channel; the daemon
+  call log records `origin` so demand numbers and kill clocks separate
+  plumbing from agent choice.
+- Grammar hardening (GI-7): the plan-annotation parser takes the TRAILING
+  brace block — prose braces and code literals in titles no longer hijack
+  contracts (caught live by the first non-vacuous gate run over the fleet).
+
 ### Fixed — extractor-epoch fingerprint salt: extractor upgrades now reach unchanged files (O9)
 - The pass-3 hash-gate keyed fingerprints on file content only, so a binary
   with improved extraction (e.g. H1's aliased-selector canonicalization and
