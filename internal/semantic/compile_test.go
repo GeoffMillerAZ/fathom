@@ -84,7 +84,7 @@ func TestCompile_HappyPath(t *testing.T) {
 		if cl.Status != core.ClaimFresh || cl.Tier != core.TierDocClaimed {
 			t.Errorf("claim %s status/tier = %s/%s", cl.ClaimID, cl.Status, cl.Tier)
 		}
-		if cl.PromptVersion != PromptVersion || cl.Model != "mock-model" || cl.InputDigest == "" || cl.ReproKey == "" {
+		if cl.PromptVersion != obligationsPromptVersion() || cl.Model != "mock-model" || cl.InputDigest == "" || cl.ReproKey == "" {
 			t.Errorf("claim %s provenance incomplete: %+v", cl.ClaimID, cl)
 		}
 		if cl.CompiledAtWatermark != "manifest:aaa" {
@@ -131,7 +131,7 @@ func TestCompile_HappyPath(t *testing.T) {
 func TestCompile_RejectsBadAnchorsAndScopes(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
-	longRule := strings.Repeat("word ", maxRuleWords+1)
+	longRule := strings.Repeat("word ", defaultMaxRuleWords+1)
 	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
 		Text: `[
   {"rule":"Cite outside the section.","scope":["**"],"cite_start":99,"cite_end":120},
@@ -356,5 +356,202 @@ func TestCompile_PromptBumpDefeatsDigestGate(t *testing.T) {
 	}
 	if run.SectionsCompiled != 1 {
 		t.Errorf("SectionsCompiled = %d, want 1 (prompt bump must defeat the digest gate)", run.SectionsCompiled)
+	}
+}
+
+// ─── M1-6: structured.Complete adoption ─────────────────────────────────────
+
+// schemaAssertingClient fails the test if a request arrives without
+// OutputSchema set — the direct proof that compileSection routes through
+// agentic-kit's structured.Complete (which sets it) rather than a bare
+// c.LLM.Complete call.
+type schemaAssertingClient struct {
+	t    *testing.T
+	resp llmclient.Response
+}
+
+func (s schemaAssertingClient) Complete(_ context.Context, req llmclient.Request) (llmclient.Response, error) {
+	s.t.Helper()
+	if len(req.OutputSchema) == 0 {
+		s.t.Fatal("compileSection: request has no OutputSchema — expected structured.Complete to set it")
+	}
+	return s.resp, nil
+}
+
+func (s schemaAssertingClient) Stream(context.Context, llmclient.Request) (<-chan llmclient.StreamChunk, error) {
+	ch := make(chan llmclient.StreamChunk)
+	close(ch)
+	return ch, nil
+}
+
+func TestCompile_UsesStructuredOutputSchema(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := &Compiler{
+		St: st,
+		LLM: schemaAssertingClient{t: t, resp: llmclient.Response{
+			Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":4,"cite_end":4}]`,
+		}},
+		Model: "mock-model",
+		Now:   fixedNow,
+	}
+	run, err := c.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 {
+		t.Errorf("ClaimsEmitted = %d, want 1", run.ClaimsEmitted)
+	}
+}
+
+// ─── M1-7: enforceBudgets ────────────────────────────────────────────────────
+
+// TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget: a real compile's
+// pre-flight cost estimate — computed before any LLM call — above the
+// layer's max_usd_per_run refuses the run outright. The refusal is still
+// ledgered (ADR-016 §4.1: refusals are recorded, not silent).
+func TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	mock := llmclient.NewMockClient() // no entries: a real call would prove the gate leaked
+	c := &Compiler{
+		St:    st,
+		LLM:   mock,
+		Model: "mock-model",
+		Layer: LayerDef{
+			Name:    "obligations",
+			Budgets: LayerBudgets{MaxTokensPerRun: 200000, MaxUSDPerRun: 0.0001},
+		},
+		InRatePerKTok: 100.0, // deliberately extreme so any non-trivial estimate trips the gate
+		Now:           fixedNow,
+	}
+
+	run, err := c.Compile(ctx, compileInput(false))
+	if err == nil {
+		t.Fatal("Compile should refuse when the pre-flight cost estimate exceeds max_usd_per_run")
+	}
+	if !run.Refused {
+		t.Errorf("run.Refused = false, want true")
+	}
+	if run.RefusalReason == "" {
+		t.Errorf("run.RefusalReason is empty, want a reason")
+	}
+	if run.BudgetStopped {
+		t.Errorf("run.BudgetStopped = true, want false (this is a pre-flight refusal, not a mid-run stop)")
+	}
+	if run.ClaimsEmitted != 0 {
+		t.Errorf("ClaimsEmitted = %d, want 0 (refused before any LLM call)", run.ClaimsEmitted)
+	}
+	if mock.CallCount() != 0 {
+		t.Errorf("CallCount = %d, want 0 — a refused run must never call the LLM", mock.CallCount())
+	}
+
+	// The refusal is still ledgered.
+	runs, err := st.CompileRuns(ctx, "svc", "")
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("CompileRuns = %d, %v; want 1 recorded refusal", len(runs), err)
+	}
+	if !runs[0].Refused || runs[0].RefusalReason == "" {
+		t.Errorf("recorded run = %+v, want Refused with a reason", runs[0])
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if len(claims) != 0 {
+		t.Errorf("refused run wrote %d claims, want 0", len(claims))
+	}
+}
+
+// TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate:
+// the running token total crossing max_tokens_per_run after the first of two
+// sections stops the run cleanly — it keeps what it already compiled and
+// never reaches the second section. A follow-up compile against the same
+// corpus (a fresh, unbudgeted Compiler) then resumes via the ordinary digest
+// gate: it skips the already-compiled section and finishes the corpus.
+func TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	twoDocs := CompileInput{
+		ServiceID: "svc",
+		Docs: []core.SourceFile{
+			{Path: "docs/a.md", Content: []byte("# A\n\n- Rule in A.\n")},
+			{Path: "docs/b.md", Content: []byte("# B\n\n- All outputs must be sorted.\n")},
+		},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+	}
+
+	mock := llmclient.NewMockClient(
+		// docs/a.md's only section: a large real usage — big enough on its
+		// own to cross the token budget, so the run stops BEFORE docs/b.md.
+		llmclient.MockEntry{Response: llmclient.Response{
+			Text:  `[{"rule":"Rule in A.","scope":["**"],"cite_start":3,"cite_end":3}]`,
+			Usage: llmclient.Usage{InputTokens: 500, OutputTokens: 200},
+		}},
+	)
+	c := &Compiler{
+		St:    st,
+		LLM:   mock,
+		Model: "mock-model",
+		Layer: LayerDef{
+			Name:    "obligations",
+			Budgets: LayerBudgets{MaxTokensPerRun: 600, MaxUSDPerRun: 1000},
+		},
+		InRatePerKTok: 0.001,
+		Now:           fixedNow,
+	}
+	run, err := c.Compile(ctx, twoDocs)
+	if err != nil {
+		t.Fatalf("a clean mid-run budget stop must not return an error: %v", err)
+	}
+	if !run.BudgetStopped {
+		t.Errorf("run.BudgetStopped = false, want true")
+	}
+	if run.Refused {
+		t.Errorf("run.Refused = true, want false (this is a mid-run stop, not a pre-flight refusal)")
+	}
+	if run.RefusalReason == "" {
+		t.Errorf("run.RefusalReason is empty, want a reason")
+	}
+	if run.SectionsCompiled != 1 || run.ClaimsEmitted != 1 {
+		t.Fatalf("compiled/emitted = %d/%d, want 1/1 (only docs/a.md; docs/b.md was never reached)", run.SectionsCompiled, run.ClaimsEmitted)
+	}
+	if mock.CallCount() != 1 {
+		t.Errorf("CallCount = %d, want 1 — the run must stop before calling the LLM for docs/b.md", mock.CallCount())
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil || len(claims) != 1 {
+		t.Fatalf("claims = %d, %v; want 1 (docs/a.md only)", len(claims), err)
+	}
+	if claims[0].Status != core.ClaimFresh {
+		t.Errorf("claims[0].Status = %s, want fresh (a clean stop must not touch what it did compile)", claims[0].Status)
+	}
+
+	// Resume: a fresh, unbudgeted compile against the SAME corpus. The
+	// digest gate skips docs/a.md's unchanged section (its claim already
+	// matches content + prompt identity) and compiles only docs/b.md.
+	mock2 := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `[{"rule":"Sort all outputs.","scope":["**"],"cite_start":3,"cite_end":3}]`,
+	}})
+	c2 := &Compiler{St: st, LLM: mock2, Model: "mock-model", Now: fixedNow}
+	run2, err := c2.Compile(ctx, twoDocs)
+	if err != nil {
+		t.Fatalf("resume Compile: %v", err)
+	}
+	if run2.SectionsCompiled != 1 || run2.ClaimsEmitted != 1 {
+		t.Fatalf("resume compiled/emitted = %d/%d, want 1/1 (docs/b.md only — docs/a.md is digest-gated)", run2.SectionsCompiled, run2.ClaimsEmitted)
+	}
+	if mock2.CallCount() != 1 {
+		t.Errorf("resume CallCount = %d, want 1", mock2.CallCount())
+	}
+
+	all, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("total claims after resume = %d, %v; want 2 (a.md + b.md)", len(all), err)
+	}
+	for _, cl := range all {
+		if cl.Status != core.ClaimFresh {
+			t.Errorf("claim %s status = %s, want fresh (nothing should be superseded across a stop+resume)", cl.ClaimID, cl.Status)
+		}
 	}
 }

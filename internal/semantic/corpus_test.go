@@ -6,6 +6,19 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
+// obligationsInclude loads the obligations layer's corpus include list from
+// the manifest (schema/semantic/schema.cue via LoadLayer) — the corpus_test
+// fixtures exercise SelectCorpus against the SAME globs production compiles
+// use (M1-2: no hand-synced ObligationsInclude Go var exists anymore).
+func obligationsInclude(t *testing.T) []string {
+	t.Helper()
+	def, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(%s): %v", LayerObligations, err)
+	}
+	return def.CorpusInclude
+}
+
 func TestSelectCorpus(t *testing.T) {
 	files := []core.SourceFile{
 		{Path: "CLAUDE.md"},
@@ -19,10 +32,11 @@ func TestSelectCorpus(t *testing.T) {
 		{Path: "docs/other.md"},
 	}
 
-	got := SelectCorpus(files, ObligationsInclude)
+	got := SelectCorpus(files, obligationsInclude(t))
 
 	// Design essays (docs/design/**) are deliberately excluded — binding
-	// documents only (see ObligationsInclude).
+	// documents only (see the obligations layer's corpus.include in
+	// schema/semantic/schema.cue).
 	want := []string{
 		"ADR.md",
 		"CLAUDE.md",
@@ -39,7 +53,7 @@ func TestSelectCorpus(t *testing.T) {
 }
 
 func TestSelectCorpus_Empty(t *testing.T) {
-	got := SelectCorpus(nil, ObligationsInclude)
+	got := SelectCorpus(nil, obligationsInclude(t))
 	if got != nil {
 		t.Errorf("nil input → %v, want nil", got)
 	}
@@ -50,7 +64,7 @@ func TestSelectCorpus_NoneMatch(t *testing.T) {
 		{Path: "internal/core/claims.go"},
 		{Path: "README.md"},
 	}
-	got := SelectCorpus(files, ObligationsInclude)
+	got := SelectCorpus(files, obligationsInclude(t))
 	if len(got) != 0 {
 		t.Errorf("want empty, got %v", paths(got))
 	}
@@ -64,8 +78,9 @@ func TestSelectCorpus_Deterministic(t *testing.T) {
 		{Path: "docs/design/a.md"},
 		{Path: "ADR.md"},
 	}
-	a := SelectCorpus(files, ObligationsInclude)
-	b := SelectCorpus(files, ObligationsInclude)
+	include := obligationsInclude(t)
+	a := SelectCorpus(files, include)
+	b := SelectCorpus(files, include)
 	if len(a) != len(b) {
 		t.Fatalf("non-deterministic: %v vs %v", paths(a), paths(b))
 	}

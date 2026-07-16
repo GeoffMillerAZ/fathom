@@ -74,12 +74,20 @@ func (c *Client) CompileObligations(ctx context.Context, service string, dryRun 
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileObligations (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
 
-	// Resolve corpus: all source files filtered to the obligations include list.
+	// Resolve the layer definition from the manifest (schema/semantic/schema.cue,
+	// M1-1): its corpus include list and budgets are the single authoritative
+	// source — no hand-synced Go mirror exists anymore.
+	layer, err := semantic.LoadLayer(semantic.LayerObligations)
+	if err != nil {
+		return core.CompileRun{}, fmt.Errorf("client.CompileObligations: load layer manifest: %w", err)
+	}
+
+	// Resolve corpus: all source files filtered to the layer's include list.
 	files, err := c.Sources(ctx, service)
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileObligations: fetch sources: %w", err)
 	}
-	corpus := semantic.SelectCorpus(files, semantic.ObligationsInclude)
+	corpus := semantic.SelectCorpus(files, layer.CorpusInclude)
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")
@@ -106,6 +114,7 @@ func (c *Client) CompileObligations(ctx context.Context, service string, dryRun 
 		LLM:            c.llm,
 		Redactor:       llmsec.NewRedactor(llmsec.DefaultPosture()),
 		Model:          c.llmModel,
+		Layer:          layer,
 		InRatePerKTok:  c.llmInRate,
 		OutRatePerKTok: c.llmOutRate,
 	}

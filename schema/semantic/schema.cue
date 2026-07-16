@@ -3,6 +3,12 @@
 // kind, and budgets — the manifest SHAPE exists from day one so that when a
 // second layer earns the generic runtime, definitions generalize instead of
 // being reinvented. V1 ships exactly one definition: the obligations layer.
+//
+// This file is authoritative AND live (M1, docs/plans/m1-manifest.md):
+// internal/semantic embeds a byte-identical copy (internal/semantic/
+// manifest_schema.cue, drift-tested against this file) and LoadLayer decodes
+// it at runtime — corpus globs, tier, budgets, and serving caps here are the
+// only source of truth; nothing hand-mirrors them in Go anymore.
 package semantic
 
 // #Layer is one semantic-layer definition.
@@ -23,13 +29,23 @@ package semantic
 		exclude?: [...string]
 	}
 
-	// prompt_version is the compile prompt identity (bump on any change).
+	// prompt_version is ADVISORY manifest metadata (M1 amendment, ADR-016).
+	// For content-addressed layers (obligations), the runtime's real
+	// compile-time prompt identity is derived from the Go
+	// prompttemplate.Template text via TextHash — see
+	// internal/semantic/prompts.go's obligationsPromptVersion — NOT this
+	// field. It is kept so every #Layer instance satisfies the shape and a
+	// human skimming the manifest sees a plausible label; LoadLayer decodes
+	// it but callers must not treat it as authoritative for the digest gate.
 	prompt_version: string
 
 	// tier every emitted claim carries. V1 layers are citation-grounded
 	// restatements, hence doc-claimed; an LLM-inferred kind would need the
 	// ai-derived tier and its revival evidence first (ADR-016 §4.2).
-	tier: "doc-claimed" | "sme-stated"
+	// verified admits deterministic, Model-empty compile paths (ADR-018
+	// oracle classes — index/cmd/lexical; ADR-016 M1 amendment). No layer
+	// emits verified yet.
+	tier: "doc-claimed" | "sme-stated" | "verified"
 
 	// tier_profile names the tier vocabulary (ADR-017: data now).
 	tier_profile: string | *"engineering"
@@ -52,13 +68,18 @@ package semantic
 
 // obligations is the v1 tracer-bullet layer (ADR-016 §4.8 #1). The corpus is
 // deliberately only the BINDING documents — design essays produced noisy
-// aspirational rules on the first fleet compile (see internal/semantic/corpus.go).
+// aspirational rules on the first fleet compile. This is the manifest's
+// authoritative source for the corpus include list (M1: internal/semantic
+// loads it via LoadLayer; the old hand-synced ObligationsInclude Go var is
+// gone).
 obligations: #Layer & {
-	name:           "obligations"
-	version:        "v1"
-	kind:           "obligation"
+	name:    "obligations"
+	version: "v1"
+	kind:    "obligation"
 	corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
-	prompt_version: "obligations/v2"
+	// Advisory only — see #Layer.prompt_version above. The real identity is
+	// content-addressed at runtime (internal/semantic/prompts.go).
+	prompt_version: "obligations/content-addressed"
 	tier:           "doc-claimed"
 	budgets: {
 		max_tokens_per_run: 200000

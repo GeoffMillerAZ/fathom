@@ -23,11 +23,14 @@ package semantic
 // 	serving: max_rules: 12
 // }
 //
-// 3. A tier the v1 claim model does not admit:
+// 3. A tier the v1+M1 claim model does not admit ("verified" was added by
+//    the M1 amendment for deterministic Model-empty compile paths — see
+//    ADR-016's amendment note in ADR.md — but "ai-derived" still awaits its
+//    own revival evidence per ADR-016 §4.2):
 // bad3: #Layer & {
 // 	name: "x", version: "v1", kind: "x"
 // 	corpus: include: ["docs/**"]
 // 	prompt_version: "x/v1"
-// 	tier: "verified"
+// 	tier: "ai-derived"
 // 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 // }

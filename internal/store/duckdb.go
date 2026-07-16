@@ -156,7 +156,10 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     sections_failed    INTEGER NOT NULL DEFAULT 0,
     claims_emitted     INTEGER NOT NULL DEFAULT 0,
     claims_rejected    INTEGER NOT NULL DEFAULT 0,
-    ran_at             BIGINT  NOT NULL DEFAULT 0
+    ran_at             BIGINT  NOT NULL DEFAULT 0,
+    refused            BOOLEAN NOT NULL DEFAULT FALSE,
+    refusal_reason     TEXT    NOT NULL DEFAULT '',
+    budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
@@ -179,7 +182,16 @@ CREATE TABLE IF NOT EXISTS claim_events (
 	if _, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS package TEXT DEFAULT ''`); err != nil {
 		return err
 	}
-	_, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS sections_failed INTEGER DEFAULT 0`)
+	if _, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS sections_failed INTEGER DEFAULT 0`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS refused BOOLEAN DEFAULT FALSE`); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS refusal_reason TEXT DEFAULT ''`); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS budget_stopped BOOLEAN DEFAULT FALSE`)
 	return err
 }
 
@@ -920,8 +932,9 @@ func (s *DuckStore) RecordCompileRun(ctx context.Context, run core.CompileRun) e
 INSERT INTO compile_runs
     (run_id, service_id, layer, corpus_watermark, model, prompt_version,
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
-     sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
+     refused, refusal_reason, budget_stopped)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
@@ -929,6 +942,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		run.SectionsTotal, run.SectionsCompiled, run.SectionsFailed,
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
+		run.Refused, run.RefusalReason, run.BudgetStopped,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: %w", err)
@@ -941,7 +955,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 func (s *DuckStore) CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error) {
 	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
-	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at`
+	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
+	refused, refusal_reason, budget_stopped`
 	var (
 		rows *sql.Rows
 		err  error
@@ -977,6 +992,7 @@ ORDER BY ran_at DESC, run_id
 			&r.TokensIn, &r.TokensOut, &r.CostUSD, &r.DurationMS,
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
+			&r.Refused, &r.RefusalReason, &r.BudgetStopped,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)
 		}

@@ -50,12 +50,12 @@ bad: #Layer & {
 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 	serving: max_rules: 12
 }`},
-		{"tier outside the v1 claim model", `
+		{"tier outside the v1+M1 claim model (ai-derived awaits its own revival evidence, ADR-016 §4.2)", `
 bad: #Layer & {
 	name: "x", version: "v1", kind: "x"
 	corpus: include: ["docs/**"]
 	prompt_version: "x/v1"
-	tier: "verified"
+	tier: "ai-derived"
 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 }`},
 	}
@@ -76,5 +76,29 @@ bad: #Layer & {
 				t.Errorf("expected validation failure, got none")
 			}
 		})
+	}
+}
+
+// TestLayerSchema_VerifiedTierAdmitted proves the M1-8 tier widening
+// (ADR-016 amendment in ADR.md): "verified" — reserved for deterministic,
+// Model-empty compile paths (ADR-018 oracle classes) — is now a legal
+// #Layer.tier value, even though no shipped layer emits it yet.
+func TestLayerSchema_VerifiedTierAdmitted(t *testing.T) {
+	schema := schemaSource(t)
+	good := `
+verifiedLayer: #Layer & {
+	name: "x", version: "v1", kind: "x"
+	corpus: include: ["docs/**"]
+	prompt_version: "x/v1"
+	tier: "verified"
+	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+}`
+	cctx := cuecontext.New()
+	v := cctx.CompileString(schema + "\n" + good)
+	if v.Err() != nil {
+		t.Fatalf("compile: %v", v.Err())
+	}
+	if err := v.Validate(); err != nil {
+		t.Fatalf("tier %q should validate after the M1-8 widening: %v", "verified", err)
 	}
 }
