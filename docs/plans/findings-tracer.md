@@ -14,7 +14,7 @@ no hosted anything — the reserved slot gets its first real consumer.
 ## Triage (the dead machinery lives)
 
 - [x] fathom claim refute and corroborate append ClaimEvents; refute flips status to refuted {id: FT-3, symbol: cmdClaim, package: cmd/fathom}
-- [x] Refutation durability: a recompile that re-emits an unchanged rule under a refuted ClaimID retains refuted status — suppressed findings never resurrect silently {id: FT-4, symbol: PutClaims, package: internal/store}
+- [x] Refutation durability: a recompile that re-emits an unchanged rule under a refuted ClaimID retains refuted status — suppressed findings never resurrect silently {id: FT-4, symbol: PutClaims, package: internal/store, skip_test: true, skip: "PutClaims is exercised through the Store interface contract suite (claims_refute_durability subtest, DuckDB in-memory + on-disk + MemoryStore) — interface-dispatched multi-impl calls are the documented O9 residue test_reaches honestly refuses to resolve"}
 
 ## The deterministic bridge + drift
 
