@@ -42,3 +42,11 @@ compile --dry-run=false` run against the fleet IS that flag-day recompile
 identity) — sequence it deliberately, ideally folded with O8, never
 mid-measurement-window. Obligations serving unchanged in shape (6-rule cap,
 zero-on-clean) — verified (internal/semantic/serve.go untouched).
+
+## Follow-ups from the adversarial review (deferred, typed)
+
+- [-] Pre-flight token gate livelock: a corpus whose estimate exceeds max_tokens_per_run refuses forever instead of start-and-stop {id: M1-F3, disposition: deferred, reason: "latent — the 3-file obligations corpus is far under budget", trigger: "first layer whose corpus estimate approaches max_tokens_per_run"}
+- [-] USD gate prices input tokens only; ledger and gate disagree by construction {id: M1-F4, disposition: deferred, reason: "token gate coincidentally backstops worst-case spend near the budget today", trigger: "output-heavy layer or a real over-budget ledger row"}
+- [-] PromptVersion hashes the system prompt only — scaffolding and schema changes are identity-invisible {id: M1-F6, disposition: deferred, reason: "sequencing is the protection this release; F1 landed before the flag day", trigger: "next effective-prompt change that is not a Text edit"}
+- [-] Layer name validated then discarded — a second manifest layer would silently compile obligations {id: M1-F7, disposition: deferred, reason: "impossible to misfire with a one-layer manifest", trigger: "layer 2 lands in schema.cue"}
+- [-] Serving caps decoded from the manifest but not consumed; serve.go constants still hand-mirrored {id: M1-F8, disposition: deferred, reason: "values coincide and serving-unchanged was an acceptance criterion", trigger: "M2 serving-template vocabulary"}
