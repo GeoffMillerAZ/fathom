@@ -3,6 +3,8 @@ package semantic
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -755,5 +757,135 @@ func TestCompile_SupersededClaimsDoNotDefeatDigestGate(t *testing.T) {
 	}
 	if fresh != 1 {
 		t.Errorf("fresh = %d after gated recompile, want 1", fresh)
+	}
+}
+
+// ─── FT-6 drift anchors: scope-fp persistence is loud, not best-effort ───────
+
+// findingsDoc line numbers (1-based):
+//
+//	1: # WA-001: query engine lacks retry
+//	2: (blank)
+//	3: Severity: high. Area: reliability.
+//	4: Add retry to the query engine's outbound calls.
+const findingsDoc = `# WA-001: query engine lacks retry
+
+Severity: high. Area: reliability.
+Add retry to the query engine's outbound calls.
+`
+
+func newFindingsCompiler(t *testing.T, st store.Store) *Compiler {
+	t.Helper()
+	layer, err := LoadLayer(LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayer(findings): %v", err)
+	}
+	return &Compiler{
+		St: st,
+		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+		}}),
+		Model: "mock-model",
+		Layer: layer,
+		Now:   fixedNow,
+	}
+}
+
+func findingsInput() CompileInput {
+	return CompileInput{
+		ServiceID:    "svc",
+		Docs:         []core.SourceFile{{Path: "findings/wa-001.md", Content: []byte(findingsDoc)}},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+	}
+}
+
+// failingFPStore fails every Fingerprint read — a transient store error at
+// compile time.
+type failingFPStore struct {
+	*store.MemoryStore
+}
+
+func (f *failingFPStore) Fingerprint(_ context.Context, _, _ string) (string, bool, error) {
+	return "", false, fmt.Errorf("boom: transient store failure")
+}
+
+// TestCompile_FindingDriftAnchor_StoreErrorAborts: a Fingerprint read error
+// while persisting a finding claim's scope-fp drift anchors must ABORT the
+// compile loudly, never silently skip the link — the digest gate would
+// otherwise never recompile the unchanged section, permanently blinding
+// remediation drift for that file.
+func TestCompile_FindingDriftAnchor_StoreErrorAborts(t *testing.T) {
+	ctx := context.Background()
+	st := &failingFPStore{MemoryStore: store.NewMemoryStore()}
+	c := newFindingsCompiler(t, st)
+
+	run, err := c.Compile(ctx, findingsInput())
+	if err == nil {
+		t.Fatalf("Compile succeeded (emitted=%d rejected=%d), want abort on drift-anchor store error", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	if !errors.Is(err, errDriftAnchor) {
+		t.Errorf("error = %v, want errors.Is errDriftAnchor", err)
+	}
+	if run.ClaimsRejected != 0 {
+		t.Errorf("ClaimsRejected = %d — a store error is an abort, not a draft rejection", run.ClaimsRejected)
+	}
+}
+
+// TestCompile_FindingDriftAnchor_MissingFingerprintAborts: an indexed file
+// with no stored fingerprint violates the pipeline contract (SetFingerprint
+// runs for every processed file) — fail loudly rather than emit a finding
+// claim with an incomplete drift-anchor set.
+func TestCompile_FindingDriftAnchor_MissingFingerprintAborts(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore() // no fingerprints seeded
+	c := newFindingsCompiler(t, st)
+
+	_, err := c.Compile(ctx, findingsInput())
+	if err == nil {
+		t.Fatal("Compile succeeded, want abort on missing fingerprint")
+	}
+	if !errors.Is(err, errDriftAnchor) {
+		t.Errorf("error = %v, want errors.Is errDriftAnchor", err)
+	}
+}
+
+// TestCompile_FindingDriftAnchor_Written: with fingerprints present, every
+// finding claim carries one scope-fp link per scope-matched file (the FT-6
+// invariant DriftedFindings relies on).
+func TestCompile_FindingDriftAnchor_Written(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	c := newFindingsCompiler(t, st)
+
+	run, err := c.Compile(ctx, findingsInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 {
+		t.Fatalf("emitted = %d, want 1", run.ClaimsEmitted)
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerFindings)
+	if len(claims) != 1 {
+		t.Fatalf("claims = %d, want 1", len(claims))
+	}
+	links, err := st.ClaimLinks(ctx, "svc", []string{claims[0].ClaimID})
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	var scopeFP []core.ClaimLink
+	for _, l := range links {
+		if l.Rel == core.RelScopeFP {
+			scopeFP = append(scopeFP, l)
+		}
+	}
+	// scope internal/query/** matches exactly one indexed file.
+	if len(scopeFP) != 1 || scopeFP[0].TargetRef != "internal/query/engine.go" || scopeFP[0].TargetHash != "fp-internal/query/engine.go" {
+		t.Errorf("scope-fp links = %+v, want one anchor for internal/query/engine.go", scopeFP)
 	}
 }

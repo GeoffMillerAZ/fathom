@@ -44,13 +44,16 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *dryRun, stdout, stderr)
+		return compileViaStore(*storePath, *service, *layer, *dryRun, stdout, stderr)
 	}
 	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
 }
 
-// compileViaStore runs CompileObligations in-process against a local DuckDB store.
-func compileViaStore(storePath, service string, dryRun bool, stdout, stderr io.Writer) int {
+// compileViaStore runs CompileLayer in-process against a local DuckDB store.
+// F7 (docs/plans/findings-tracer.md FT-1): this path used to always call
+// CompileObligations regardless of --layer, silently discarding a
+// non-default --layer flag even after LoadLayer had validated it above.
+func compileViaStore(storePath, service, layer string, dryRun bool, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -72,9 +75,9 @@ func compileViaStore(storePath, service string, dryRun bool, stdout, stderr io.W
 	}
 
 	ctx := context.Background()
-	run, compErr := c.CompileObligations(ctx, service, dryRun)
+	run, compErr := c.CompileLayer(ctx, service, layer, dryRun)
 	if compErr != nil {
-		fmt.Fprintf(stderr, "error: compile obligations: %v\n", compErr)
+		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, compErr)
 		return 1
 	}
 

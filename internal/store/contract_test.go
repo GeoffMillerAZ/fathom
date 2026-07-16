@@ -1122,6 +1122,63 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	// ------------------------------------------------------------------ //
+	// PutClaims refutation durability (FT-4, docs/plans/findings-tracer.md):
+	// an upsert must not resurrect a refuted claim to the compiler's fresh
+	// status — suppression is refutation with a note, and it must survive
+	// every future recompile of the same claim_id.
+	// ------------------------------------------------------------------ //
+	t.Run("claims_refute_durability", func(t *testing.T) {
+		svc := "svc-claim-durability"
+		base := core.SemanticClaim{
+			ServiceID: svc, Layer: "findings", Kind: "finding",
+			Subject: "findings/wa-001.md#remediation", Rule: "Add retry with backoff.",
+			Scope: []string{"mod/**"}, Tier: core.TierSMEStated, TierProfile: "engineering",
+			Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+		}
+		refuted := base
+		refuted.ClaimID = "cl-refute-target"
+		other := base
+		other.ClaimID = "cl-refute-other"
+		other.Subject = "findings/wa-002.md#remediation"
+
+		// Initial compile: both claims land fresh.
+		if err := s.PutClaims(ctx, []core.SemanticClaim{refuted, other}, nil); err != nil {
+			t.Fatalf("PutClaims initial: %v", err)
+		}
+
+		// A human refutes the first claim (fathom claim refute).
+		if err := s.SetClaimStatus(ctx, svc, refuted.ClaimID, core.ClaimRefuted); err != nil {
+			t.Fatalf("SetClaimStatus refute: %v", err)
+		}
+
+		// A recompile re-emits BOTH claims unchanged, with the compiler's
+		// default fresh status (as Compile always produces for a newly
+		// verified draft) — this must not resurrect the refuted one.
+		recompiled := refuted
+		recompiled.Status = core.ClaimFresh
+		recompiledOther := other
+		recompiledOther.Status = core.ClaimFresh
+		if err := s.PutClaims(ctx, []core.SemanticClaim{recompiled, recompiledOther}, nil); err != nil {
+			t.Fatalf("PutClaims recompile: %v", err)
+		}
+
+		got, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		byID := make(map[string]core.SemanticClaim, len(got))
+		for _, c := range got {
+			byID[c.ClaimID] = c
+		}
+		if c, ok := byID[refuted.ClaimID]; !ok || c.Status != core.ClaimRefuted {
+			t.Errorf("refuted claim status after recompile = %+v, want status=refuted (durability)", c)
+		}
+		if c, ok := byID[other.ClaimID]; !ok || c.Status != core.ClaimFresh {
+			t.Errorf("different claim_id status = %+v, want fresh (unaffected by the other claim's refutation)", c)
+		}
+	})
+
 	t.Run("claim_events_append_and_order", func(t *testing.T) {
 		t1 := time.Unix(1000, 0).UTC()
 		t2 := time.Unix(2000, 0).UTC()

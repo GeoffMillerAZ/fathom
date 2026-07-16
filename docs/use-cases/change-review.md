@@ -234,6 +234,17 @@ Impact analysis answers *what is affected*; the `fathom verify` gate answers *wh
 
 ---
 
+## Review findings as compiled claims (`fathom report` + `fathom claim`)
+
+Review conclusions can outlive the review session as governed claims (the findings layer — one markdown file per finding under `findings/`, compiled with `fathom compile --layer findings` or the `compile_layer` MCP tool; kind `finding`, tier `sme-stated`). Two CLI verbs close the loop:
+
+- **`fathom report --store DB --service S --analyzer security_rollup --out findings/`** writes one deterministic markdown finding document from the security analyzers' current output (per-category sections with `path:line` lists; secret values are redacted). Written into the corpus dir, it flows through the normal ingest → compile → claims path; the report's own output directory is excluded from the scan, and re-running against an unchanged tree reproduces identical bytes.
+- **`fathom claim refute|corroborate --store DB --service S --claim ID --note "..."`** is the triage channel: `refute` flips the claim to `refuted` (suppression with a note — durable across recompiles); `corroborate` records provenance without touching status or tier. Both are store-direct (`--store` required): stop the daemon first when triaging the fleet store.
+
+Once compiled, findings scoped to the files under review surface through the same `obligations` tool (labeled `kind:"finding"`), and `code_drifted:true` flags findings whose scoped code changed since compile — the "did remediation happen?" query.
+
+---
+
 ## Maintained
 
-This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`. Update it when these change.
+This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.

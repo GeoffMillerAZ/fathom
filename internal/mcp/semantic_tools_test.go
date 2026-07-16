@@ -25,6 +25,7 @@ type semanticFakeBackend struct {
 	compileErr       error
 	claimsSummary    map[string]any
 	claimsSummaryErr error
+	gotCompileLayer  string // records the layer name CompileLayer was called with
 }
 
 func (s *semanticFakeBackend) Obligations(_ context.Context, service, file string, _ int) (semantic.Obligations, error) {
@@ -35,7 +36,8 @@ func (s *semanticFakeBackend) ObligationsIndexStale(_ context.Context, _, _ stri
 	return s.indexStale
 }
 
-func (s *semanticFakeBackend) CompileObligations(_ context.Context, _ string, dryRun bool) (core.CompileRun, error) {
+func (s *semanticFakeBackend) CompileLayer(_ context.Context, _, layer string, dryRun bool) (core.CompileRun, error) {
+	s.gotCompileLayer = layer
 	run := s.compileRun
 	run.DryRun = dryRun
 	return run, s.compileErr
@@ -264,6 +266,31 @@ func TestCompileLayerUnknownLayer(t *testing.T) {
 	}
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInvalid) {
 		t.Errorf("unknown layer code = %v, want ErrCodeInvalid", code)
+	}
+}
+
+// ─── compile_layer: the requested layer name actually reaches the backend ────
+
+// TestCompileLayerRoutesRequestedLayerName is the F7 regression (docs/plans/
+// findings-tracer.md FT-1): compile_layer validated the requested layer name
+// via semantic.LoadLayer but then discarded it, always compiling
+// "obligations" regardless of what was asked for. The backend must now
+// receive the exact layer the caller named.
+func TestCompileLayerRoutesRequestedLayerName(t *testing.T) {
+	fake := &semanticFakeBackend{compileRun: core.CompileRun{ServiceID: "svc", Layer: "findings"}}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "compile_layer",
+			"arguments": map[string]any{"service": "svc", "layer": "findings"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotCompileLayer != "findings" {
+		t.Errorf("backend received layer %q, want %q (F7 regression)", fake.gotCompileLayer, "findings")
 	}
 }
 

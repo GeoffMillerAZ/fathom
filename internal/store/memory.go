@@ -334,6 +334,11 @@ func (m *MemoryStore) ListCommits(_ context.Context, serviceID string) ([]Commit
 // PutClaims upserts claims and replaces the link set for every distinct
 // claim_id that appears in links. Scope slices are copied so stored values are
 // independent of the caller's slice.
+//
+// Refutation durability (FT-4, docs/vision/03-findings-and-experts.md §3): a
+// claim_id whose stored status is already ClaimRefuted retains it across the
+// upsert — a recompile that re-emits an unchanged rule under a refuted
+// ClaimID must not silently resurrect it to the compiler's fresh status.
 func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -343,7 +348,11 @@ func (m *MemoryStore) PutClaims(_ context.Context, claims []core.SemanticClaim, 
 			sc.Scope = make([]string, len(c.Scope))
 			copy(sc.Scope, c.Scope)
 		}
-		m.claims[claimKey{c.ServiceID, c.ClaimID}] = sc
+		key := claimKey{c.ServiceID, c.ClaimID}
+		if existing, ok := m.claims[key]; ok && existing.Status == core.ClaimRefuted {
+			sc.Status = core.ClaimRefuted
+		}
+		m.claims[key] = sc
 	}
 	// Collect distinct claim_ids whose link sets must be replaced.
 	distinct := make(map[string]struct{}, len(links))

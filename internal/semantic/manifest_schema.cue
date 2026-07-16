@@ -86,3 +86,25 @@ obligations: #Layer & {
 		max_usd_per_run:    1.0
 	}
 }
+
+// findings is the D3 review-findings tracer bullet
+// (docs/plans/findings-tracer.md FT-1, docs/vision/03-findings-and-experts.md
+// §3.2): one markdown file per review/audit finding in a corpus directory,
+// compiled through the same engine as obligations but under kind "finding"
+// and the honest sme-stated tier — a human review conclusion is not a
+// code-derived fact, and the shipped tier ranking already ranks it below
+// verified/doc-claimed evidence.
+findings: #Layer & {
+	name:    "findings"
+	version: "v1"
+	kind:    "finding"
+	corpus: include: ["findings/**"]
+	// Advisory only — see #Layer.prompt_version above. The real identity is
+	// content-addressed at runtime (internal/semantic/prompts.go).
+	prompt_version: "findings/content-addressed"
+	tier:           "sme-stated"
+	budgets: {
+		max_tokens_per_run: 200000
+		max_usd_per_run:    1.0
+	}
+}

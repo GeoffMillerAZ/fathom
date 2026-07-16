@@ -99,21 +99,30 @@ func ClaimID(layer, kind, subject, reproKey string) string {
 }
 
 // ClaimLink is a typed edge from a claim to a target. The rel vocabulary is
-// open (ADR-016); v1 materializes only "cites" and "scopes".
+// open (ADR-016); v1 materializes "cites", "scopes", and (for finding-kind
+// claims only, FT-6) "scope-fp" — reserved beyond that: supports,
+// contradicts, supersedes.
 type ClaimLink struct {
 	ClaimID string
-	Rel     string // "cites" | "scopes" (reserved: supports, contradicts, supersedes)
+	Rel     string // "cites" | "scopes" | "scope-fp" (reserved: supports, contradicts, supersedes)
 	// TargetRef: for "cites", "path#Lstart-Lend" into the governing corpus;
-	// for "scopes", the code glob. Always repo-relative (ADR-017).
+	// for "scopes", the code glob; for "scope-fp", a repo-relative path.
+	// Always repo-relative (ADR-017).
 	TargetRef string
 	// TargetHash: for "cites", sha256 of the exact cited lines (the sweep
-	// re-hashes these to detect drift). Empty for "scopes".
+	// re-hashes these to detect drift). For "scope-fp", the store's content
+	// fingerprint (fusion.FingerprintHash) of the scoped file AT COMPILE
+	// TIME — the remediation-drift anchor (docs/vision/03-findings-and-
+	// experts.md §2, FT-6): a live re-read of the CURRENT fingerprint that
+	// disagrees means the scoped code changed since compile. Empty for
+	// "scopes".
 	TargetHash string
 }
 
 const (
-	RelCites  = "cites"
-	RelScopes = "scopes"
+	RelCites   = "cites"
+	RelScopes  = "scopes"
+	RelScopeFP = "scope-fp"
 )
 
 // CiteRef builds a citation TargetRef. Lines are 1-based and inclusive.

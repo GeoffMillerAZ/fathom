@@ -64,35 +64,39 @@ func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string
 	return diskHash != stored
 }
 
-// CompileObligations runs the obligations-layer compile for service. When
-// dryRun is true it estimates sections/tokens without calling the LLM or
+// CompileLayer runs the compile for the named manifest layer against
+// service, generalizing what was CompileObligations to any layer defined in
+// schema/semantic/schema.cue (FT-1: findings-tracer.md — F7 fixed here, the
+// M1-3 compile_layer/compile plumbing validated the requested layer name via
+// LoadLayer but then discarded it and always ran the obligations compile).
+// When dryRun is true it estimates sections/tokens without calling the LLM or
 // writing claims. When dryRun is false and no LLM client is configured it
 // returns an error directing the caller to configure ANTHROPIC_API_KEY or run
 // with dry_run:true.
-func (c *Client) CompileObligations(ctx context.Context, service string, dryRun bool) (core.CompileRun, error) {
+func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dryRun bool) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
-		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileObligations (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
+		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
 
 	// Resolve the layer definition from the manifest (schema/semantic/schema.cue,
-	// M1-1): its corpus include list and budgets are the single authoritative
-	// source — no hand-synced Go mirror exists anymore.
-	layer, err := semantic.LoadLayer(semantic.LayerObligations)
+	// M1-1): its corpus include list, kind, tier, and budgets are the single
+	// authoritative source — no hand-synced Go mirror exists anymore.
+	layer, err := semantic.LoadLayer(layerName)
 	if err != nil {
-		return core.CompileRun{}, fmt.Errorf("client.CompileObligations: load layer manifest: %w", err)
+		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: load layer manifest: %w", err)
 	}
 
 	// Resolve corpus: all source files filtered to the layer's include list.
 	files, err := c.Sources(ctx, service)
 	if err != nil {
-		return core.CompileRun{}, fmt.Errorf("client.CompileObligations: fetch sources: %w", err)
+		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: fetch sources: %w", err)
 	}
 	corpus := semantic.SelectCorpus(files, layer.CorpusInclude)
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")
 	if err != nil {
-		return core.CompileRun{}, fmt.Errorf("client.CompileObligations: list indexed files: %w", err)
+		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: list indexed files: %w", err)
 	}
 	seen := make(map[string]struct{}, len(obs))
 	for _, o := range obs {
@@ -125,6 +129,12 @@ func (c *Client) CompileObligations(ctx context.Context, service string, dryRun 
 		Watermark:    watermark,
 		DryRun:       dryRun,
 	})
+}
+
+// CompileObligations is a thin wrapper over CompileLayer("obligations"),
+// kept for existing callers (FT-1).
+func (c *Client) CompileObligations(ctx context.Context, service string, dryRun bool) (core.CompileRun, error) {
+	return c.CompileLayer(ctx, service, semantic.LayerObligations, dryRun)
 }
 
 // SweepClaims runs the token-free post-ingest citation sweep for service

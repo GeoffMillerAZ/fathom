@@ -124,3 +124,80 @@ func statusByID(t *testing.T, st store.Store) map[string]core.ClaimStatus {
 	}
 	return out
 }
+
+// ─── FT-6 DriftedFindings: bounded fingerprint reads on the serve hot path ───
+
+// countingFPStore wraps MemoryStore, counting Fingerprint reads.
+type countingFPStore struct {
+	*store.MemoryStore
+	fpCalls int
+}
+
+func (c *countingFPStore) Fingerprint(ctx context.Context, serviceID, sourceRef string) (string, bool, error) {
+	c.fpCalls++
+	return c.MemoryStore.Fingerprint(ctx, serviceID, sourceRef)
+}
+
+// seedFindingWithScopeFP writes one finding-kind claim whose scope-fp links
+// anchor the given files at the given fingerprint values.
+func seedFindingWithScopeFP(t *testing.T, st store.Store, id string, anchors map[string]string) {
+	t.Helper()
+	claim := core.SemanticClaim{
+		ClaimID: id, ServiceID: "svc",
+		Layer: LayerFindings, LayerVersion: "v1", Kind: KindFinding,
+		Subject: "findings/" + id + ".md#s", Rule: "finding " + id, Scope: []string{"**/*.go"},
+		Tier: core.TierSMEStated, TierProfile: "engineering", Status: core.ClaimFresh,
+		PromptVersion: findingsPromptVersion(), ReproKey: id, InputDigest: "d-" + id,
+		CompiledAtWatermark: "manifest:aaa", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
+	}
+	links := []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: "findings/" + id + ".md#L1-L1", TargetHash: "h"}}
+	for f, fp := range anchors {
+		links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelScopeFP, TargetRef: f, TargetHash: fp})
+	}
+	if err := st.PutClaims(context.Background(), []core.SemanticClaim{claim}, links); err != nil {
+		t.Fatalf("seed PutClaims: %v", err)
+	}
+}
+
+// TestDriftedFindings_QueriesEachFileOnce: DriftedFindings runs on EVERY
+// ObligationsFor serve (the edit-hook hot path). N claims whose broad-but-
+// legal scopes anchor the same files must not multiply store reads — each
+// distinct file is fingerprint-queried at most once per call.
+func TestDriftedFindings_QueriesEachFileOnce(t *testing.T) {
+	ctx := context.Background()
+	st := &countingFPStore{MemoryStore: store.NewMemoryStore()}
+
+	shared := map[string]string{"mod/a.go": "fp-a", "mod/b.go": "fp-b"}
+	for f, fp := range shared {
+		if err := st.SetFingerprint(ctx, "svc", f, fp); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	// Three finding claims all anchoring the SAME two files.
+	seedFindingWithScopeFP(t, st, "f1", shared)
+	seedFindingWithScopeFP(t, st, "f2", shared)
+	seedFindingWithScopeFP(t, st, "f3", shared)
+
+	drifted, err := DriftedFindings(ctx, st, "svc")
+	if err != nil {
+		t.Fatalf("DriftedFindings: %v", err)
+	}
+	if len(drifted) != 0 {
+		t.Errorf("drifted = %v, want none (fingerprints unchanged)", drifted)
+	}
+	if st.fpCalls > 2 {
+		t.Errorf("Fingerprint queried %d times for 2 distinct files across 3 claims, want ≤2 (per-call cache)", st.fpCalls)
+	}
+
+	// Sanity: drift detection still works through the cache — change one file.
+	if err := st.SetFingerprint(ctx, "svc", "mod/a.go", "fp-a-changed"); err != nil {
+		t.Fatalf("SetFingerprint change: %v", err)
+	}
+	drifted, err = DriftedFindings(ctx, st, "svc")
+	if err != nil {
+		t.Fatalf("DriftedFindings after change: %v", err)
+	}
+	if len(drifted) != 3 || !drifted["f1"] || !drifted["f2"] || !drifted["f3"] {
+		t.Errorf("drifted = %v, want all three claims (shared anchor changed)", drifted)
+	}
+}

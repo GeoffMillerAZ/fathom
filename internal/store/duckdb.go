@@ -708,7 +708,12 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     scope                 = excluded.scope,
     tier                  = excluded.tier,
     tier_profile          = excluded.tier_profile,
-    status                = excluded.status,
+    -- Refutation durability (FT-4, docs/vision/03-findings-and-experts.md
+    -- §3): a recompile that re-emits an unchanged rule under a refuted
+    -- ClaimID must NOT resurrect it to the compiler's fresh status —
+    -- suppression is refutation with a note, and it must survive every
+    -- future upsert of the same claim_id, not just the first one.
+    status                = CASE WHEN semantic_claims.status = 'refuted' THEN semantic_claims.status ELSE excluded.status END,
     model                 = excluded.model,
     prompt_version        = excluded.prompt_version,
     repro_key             = excluded.repro_key,
