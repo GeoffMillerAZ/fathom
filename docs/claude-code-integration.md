@@ -1,5 +1,11 @@
 # Claude Code integration guide
 
+> **Superseded for wiring (2026-07-16):** the canonical, current guide is
+> [use-cases/coding-agents.md](use-cases/coding-agents.md) — `fathom init`,
+> the three hooks, the `/rpc/agent` surface, gates, and the cost story.
+> This document predates the obligations layer, the verify gate, and the
+> hook stack; its measured assessment content remains historically accurate.
+
 How to wire fathom into Claude Code so coding sessions (and every subagent
 they spawn) query a pre-built index instead of re-reading the repo. This is
 the playbook proven on a four-repo fleet on 2026-06-12; measured results in

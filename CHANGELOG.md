@@ -5,6 +5,13 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — coding-agents canonical doc + staleness sweep (IA-4/IA-5)
+- docs/use-cases/coding-agents.md is THE adoption guide (the loop, hooks,
+  gates, CLAUDE.md/AGENTS.md doctrine, agent-surface registration, the honest
+  cost story); usage.md set_profile guidance retired; the June
+  claude-code-integration.md banner-superseded (assessment content kept);
+  getting-started/coding-context scoped and pointed at the canonical doc.
+
 ### Added — fathom init: one-command coding-agent wiring (docs/plans/init-and-adoption.md IA-1/IA-2/IA-3)
 - `fathom init` wires a repo end-to-end, idempotently and additive-only: creates
   `.fathomignore` if absent, calls the daemon's `ingest` MCP tool and confirms

@@ -2,6 +2,10 @@
 
 How to build, index, register, and start using fathom as a live code-intelligence layer for Claude Code (and other AI coding agents) — from zero to first query.
 
+> Wiring shortcut: `fathom init` performs the per-repo steps below in one
+> idempotent command — see [coding-agents.md](coding-agents.md) for the
+> canonical hook/gate/stanza guidance. This doc remains the from-source walkthrough.
+
 ---
 
 ## Quickstart (TL;DR)

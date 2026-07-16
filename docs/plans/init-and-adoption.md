@@ -14,8 +14,8 @@ usage.md still documents the deleted set_profile.
 
 ## The canonical doc
 
-- [ ] docs/use-cases/coding-agents.md — THE adoption guide: the loop (index → serve → inject → gate → measure), exact hook wiring, CLAUDE.md/AGENTS.md guidance, agent-surface registration, lefthook/CI gates, instrument feedback loop, and the honest cost story {id: IA-4, symbol: cmdInit, skip_test: true, skip: "docs deliverable anchored to the command it documents"}
-- [ ] Stale guidance retired: usage.md set_profile sections removed, claude-code-integration.md and getting-started.md point at the canonical doc for wiring, use-cases README indexes it {id: IA-5, symbol: cmdInit, skip_test: true, skip: "docs deliverable anchored to the command that supersedes the manual recipes"}
+- [x] docs/use-cases/coding-agents.md — THE adoption guide: the loop (index → serve → inject → gate → measure), exact hook wiring, CLAUDE.md/AGENTS.md guidance, agent-surface registration, lefthook/CI gates, instrument feedback loop, and the honest cost story {id: IA-4, symbol: cmdInit, skip_test: true, skip: "docs deliverable anchored to the command it documents"}
+- [x] Stale guidance retired: usage.md set_profile sections removed, claude-code-integration.md and getting-started.md point at the canonical doc for wiring, use-cases README indexes it {id: IA-5, symbol: cmdInit, skip_test: true, skip: "docs deliverable anchored to the command that supersedes the manual recipes"}
 
 ## Deferred
 

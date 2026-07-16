@@ -10,6 +10,7 @@ Start with **getting-started.md** if this is your first time setting up fathom.
 
 | Doc | Description |
 |---|---|
+| [coding-agents.md](coding-agents.md) | **The canonical wiring guide**: `fathom init`, hooks, gates, CLAUDE.md/AGENTS.md, the agent surface, and the honest cost story |
 | [getting-started.md](getting-started.md) | Build, index, register, and make your first query — zero to live code intelligence in one session |
 | [coding-context.md](coding-context.md) | Assemble a precise, token-efficient symbol context slice for active feature work |
 | [cross-repo-blast-radius.md](cross-repo-blast-radius.md) | Find all callers of a symbol across every service in the fleet before a refactor or rename |

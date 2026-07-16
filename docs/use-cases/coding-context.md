@@ -2,6 +2,9 @@
 
 Give Claude Code (or any AI coding agent) a precise, token-efficient context slice instead of dumping a whole repo into the prompt.
 
+Scope: this doc covers the **query patterns**. The wiring — `fathom init`,
+hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.md).
+
 ---
 
 ## When to use this

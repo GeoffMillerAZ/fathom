@@ -594,27 +594,15 @@ curl -s -X POST http://localhost:7575/rpc \
   }'
 ```
 
-### Switching profiles (stdio only)
+### Selecting a tool surface
 
-On a stdio `serve-mcp` session — where one client owns the process — call `set_profile`
-to filter the visible tool surface:
+The `set_profile` tool was retired (ADR-014 amendment, 2026-07-16): surfaces
+superseded profiles. Select a surface by path — `POST /rpc/agent` is the
+curated 15-tool coding surface (also served at `/rpc/companion` for
+compatibility); bare `POST /rpc` is the full registry. Off-surface calls
+execute and are logged `off_surface` rather than rejected; hard gating is
+available via the server's strict-surfaces option.
 
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 3,
-  "method": "tools/call",
-  "params": {
-    "name": "set_profile",
-    "arguments": { "profile": "coding" }
-  }
-}
-```
-
-Valid profiles: `companion`, `coding`, `investigation`, `shared`, `platform`.
-
-Over HTTP the daemon is shared, so `set_profile` is **rejected** — register the matching
-path-scoped surface endpoint instead (e.g. `POST /rpc/companion`; bare `POST /rpc` is the
-full surface). See the serve-http endpoints table above.
-
-See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources.
+See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources, and
+[use-cases/coding-agents.md](use-cases/coding-agents.md) for the canonical
+coding-agent wiring (hooks, gates, CLAUDE.md/AGENTS.md).
