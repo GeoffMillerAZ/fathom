@@ -1,9 +1,10 @@
 // Surface tests: per-request tool surfaces carried in context.
 //
 // A surface is an immutable per-request view of the tool registry, selected
-// by the HTTP path (/rpc/{surface}) on the shared daemon. Unlike the stdio
-// profile (mutable, process-global, advisory), an HTTP surface hard-gates
-// tools/call and batch sub-calls, and set_profile is rejected over HTTP.
+// by the HTTP path (/rpc/{surface}) on the shared daemon. Gate semantics are
+// execute-and-flag (ADR-014 amendment, 2026-07-16): an off-surface tools/call
+// or batch sub-call still executes, logged with an off_surface flag, unless
+// Server.strictSurfaces restores the pre-amendment hard gate.
 package mcp_test
 
 import (
@@ -17,11 +18,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
-// companionWant is the curated coding-companion allowlist, pinned exactly.
-// Changing the surface is deliberate: update this list and docs/mcp-tools.md.
+// companionWant is the curated 15-tool agent allowlist, pinned exactly
+// (docs/vision/05-surfaces.md §3: companion 15, minus batch and brief, plus
+// verify_plan and capabilities). Changing the surface is deliberate: update
+// this list and docs/mcp-tools.md together. Served identically at both
+// /rpc/agent (the primary path) and /rpc/companion (a compatible alias).
 var companionWant = []string{
-	"batch",
-	"brief",
+	"capabilities",
 	"entrypoints",
 	"find_callers",
 	"find_symbol",
@@ -35,6 +38,7 @@ var companionWant = []string{
 	"repo_map",
 	"staleness_report",
 	"symbol_context",
+	"verify_plan",
 }
 
 // scopedRoundtrip drives a single request through HandleRequest with ctx,
@@ -82,48 +86,59 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 
 func TestCompanionSurfaceToolsList(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
-	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
-	names := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
-	}))
 	want := append([]string(nil), companionWant...)
 	sort.Strings(want)
-	if len(names) != len(want) {
-		t.Fatalf("companion surface has %d tools, want %d\n got: %v\nwant: %v", len(names), len(want), names, want)
-	}
-	for i := range want {
-		if names[i] != want[i] {
-			t.Fatalf("companion surface mismatch at %d: got %q want %q\nfull: %v", i, names[i], want[i], names)
+
+	// /rpc/agent is the primary surface; /rpc/companion is a compatible
+	// alias — both must serve the identical 15-tool list.
+	for _, surface := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion} {
+		ctx := mcp.WithRequestScope(context.Background(), surface, true)
+		names := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
+			JSONRPC: "2.0", ID: 1, Method: "tools/list", Params: map[string]any{},
+		}))
+		if len(names) != len(want) {
+			t.Fatalf("%s surface has %d tools, want %d\n got: %v\nwant: %v", surface, len(names), len(want), names, want)
+		}
+		for i := range want {
+			if names[i] != want[i] {
+				t.Fatalf("%s surface mismatch at %d: got %q want %q\nfull: %v", surface, i, names[i], want[i], names)
+			}
 		}
 	}
 }
 
-// ─── companion surface: tools/call is hard-gated ─────────────────────────────
+// ─── companion surface: tools/call is execute-and-flag, not hard-gated ───────
 
 func TestCompanionSurfaceGatesToolsCall(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithLogger(&fakeBackend{}, mcp.NewCallLogger(&buf))
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
 
-	// Off-surface tools are rejected — even shared-group ones like secret_scan
-	// (the allowlist wins over group membership).
-	for _, tool := range []string{"secret_scan", "blast_radius", "shell_out"} {
+	// Off-surface tools still execute — even shared-group ones like
+	// secret_scan (ADR-014 amendment: an error only teaches abandonment,
+	// which looks identical to no-demand in the call log). The call log
+	// records the pass-through with off_surface:true.
+	for _, tool := range []string{"secret_scan", "dead_code", "shell_out"} {
+		buf.Reset()
 		resp := scopedRoundtrip(t, srv, ctx, request{
 			JSONRPC: "2.0", ID: 2, Method: "tools/call",
 			Params: map[string]any{"name": tool, "arguments": map[string]any{"service": "svc"}},
 		})
-		errObj, ok := resp["error"].(map[string]any)
-		if !ok {
-			t.Fatalf("calling %q on companion surface: want error, got %v", tool, resp)
+		if resp["error"] != nil {
+			t.Fatalf("off-surface %q should execute-and-flag, got error: %v", tool, resp["error"])
 		}
-		if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
-			t.Errorf("%q: code = %v, want %v", tool, code, mcp.ErrCodeNotFound)
+		line := strings.TrimSpace(buf.String())
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line parse for %q: %v (line=%q)", tool, err, line)
 		}
-		if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
-			t.Errorf("%q: error message %q should name the surface", tool, msg)
+		if off, _ := entry["off_surface"].(bool); !off {
+			t.Errorf("%q: call-log entry should carry off_surface:true, got %v", tool, entry)
 		}
 	}
 
-	// On-surface tools still dispatch.
+	// On-surface tools dispatch too, without the flag.
+	buf.Reset()
 	resp := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 3, Method: "tools/call",
 		Params: map[string]any{"name": "find_symbol", "arguments": map[string]any{"service": "svc", "name": "Foo"}},
@@ -131,14 +146,39 @@ func TestCompanionSurfaceGatesToolsCall(t *testing.T) {
 	if resp["error"] != nil {
 		t.Fatalf("find_symbol on companion surface should dispatch, got error: %v", resp["error"])
 	}
+	var onSurfaceEntry map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &onSurfaceEntry); err != nil {
+		t.Fatalf("log line parse: %v", err)
+	}
+	if off, _ := onSurfaceEntry["off_surface"].(bool); off {
+		t.Error("find_symbol is on the companion surface; off_surface should be false/absent")
+	}
+
+	// Hard gating stays available behind strictSurfaces for any future
+	// multi-tenant shape — flipping it restores the pre-amendment error.
+	srv.SetStrictSurfaces(true)
+	strict := scopedRoundtrip(t, srv, ctx, request{
+		JSONRPC: "2.0", ID: 4, Method: "tools/call",
+		Params: map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+	})
+	errObj, ok := strict["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("secret_scan under strictSurfaces: want error, got %v", strict)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("strictSurfaces: code = %v, want %v", code, mcp.ErrCodeNotFound)
+	}
+	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
+		t.Errorf("strictSurfaces: error message %q should name the surface", msg)
+	}
 }
 
-// ─── batch cannot smuggle off-surface tools ──────────────────────────────────
+// ─── batch cannot smuggle off-surface tools — but they still execute-and-flag ─
 
 func TestBatchGatedOnSurface(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
-	resp := scopedRoundtrip(t, srv, ctx, request{
+	batchReq := request{
 		JSONRPC: "2.0", ID: 4, Method: "tools/call",
 		Params: map[string]any{
 			"name": "batch",
@@ -149,7 +189,8 @@ func TestBatchGatedOnSurface(t *testing.T) {
 				},
 			},
 		},
-	})
+	}
+	resp := scopedRoundtrip(t, srv, ctx, batchReq)
 	if resp["error"] != nil {
 		t.Fatalf("batch itself should succeed: %v", resp["error"])
 	}
@@ -168,58 +209,70 @@ func TestBatchGatedOnSurface(t *testing.T) {
 	if len(payload.Results) != 2 {
 		t.Fatalf("batch results = %d, want 2", len(payload.Results))
 	}
-	if !strings.Contains(payload.Results[0].Error, "surface") {
-		t.Errorf("secret_scan sub-call should be surface-gated, got error %q", payload.Results[0].Error)
+	// Off-surface sub-calls execute-and-flag too: secret_scan runs instead of
+	// being gated (ADR-014 amendment).
+	if payload.Results[0].Error != "" {
+		t.Errorf("secret_scan sub-call should execute-and-flag, got error %q", payload.Results[0].Error)
 	}
 	if payload.Results[1].Error != "" {
 		t.Errorf("find_symbol sub-call should succeed, got error %q", payload.Results[1].Error)
 	}
-}
 
-// ─── set_profile is rejected over HTTP ───────────────────────────────────────
-
-func TestSetProfileRejectedOverHTTP(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
-	// Even the full (unscoped) HTTP surface rejects set_profile: the daemon is
-	// shared, and the profile is process-global.
-	ctx := mcp.WithRequestScope(context.Background(), "", true)
-	resp := scopedRoundtrip(t, srv, ctx, request{
+	// strictSurfaces restores the pre-amendment gate for batch sub-calls too.
+	// batch itself is GroupShared, which dropped off the companion allowlist
+	// in this slice (companionTools = 15, minus batch/brief); under strict
+	// mode a companion-scoped batch call would be rejected outright before
+	// even reaching its sub-calls. Use the "shared" surface instead, where
+	// batch stays on-surface (GroupShared is included on every group
+	// surface), so the gating shows up specifically on the off-surface
+	// sub-call (find_callers, GroupInvestigation) rather than the outer call.
+	srv.SetStrictSurfaces(true)
+	sharedCtx := mcp.WithRequestScope(context.Background(), "shared", true)
+	strictResp := scopedRoundtrip(t, srv, sharedCtx, request{
 		JSONRPC: "2.0", ID: 5, Method: "tools/call",
-		Params: map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "coding"}},
+		Params: map[string]any{
+			"name": "batch",
+			"arguments": map[string]any{
+				"calls": []map[string]any{
+					{"name": "find_callers", "arguments": map[string]any{"service": "svc", "symbol": "Foo"}},
+					{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+				},
+			},
+		},
 	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("set_profile over HTTP: want error, got %v", resp)
+	if strictResp["error"] != nil {
+		t.Fatalf("batch is GroupShared, should still succeed on the shared surface under strictSurfaces: %v", strictResp["error"])
 	}
-	if msg := errObj["message"].(string); !strings.Contains(msg, "/rpc/") {
-		t.Errorf("error message %q should point at path-scoped endpoints", msg)
+	strictContent := strictResp["result"].(map[string]any)["content"].([]any)
+	strictText := strictContent[0].(map[string]any)["text"].(string)
+	var strictPayload struct {
+		Results []struct {
+			Name  string `json:"name"`
+			Error string `json:"error"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(strictText), &strictPayload); err != nil {
+		t.Fatalf("strict batch payload parse: %v (text=%q)", err, strictText)
+	}
+	if !strings.Contains(strictPayload.Results[0].Error, "surface") {
+		t.Errorf("find_callers sub-call (GroupInvestigation) under strictSurfaces on shared should be gated, got error %q", strictPayload.Results[0].Error)
+	}
+	if strictPayload.Results[1].Error != "" {
+		t.Errorf("secret_scan sub-call (GroupShared) should still succeed on the shared surface, got error %q", strictPayload.Results[1].Error)
 	}
 }
 
-// ─── stdio: set_profile still works, now including companion ────────────────
-
-func TestSetProfileCompanionOnStdio(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
-	setResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 6, Method: "tools/call",
-		Params: map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "companion"}},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile(companion) on stdio: %v", setResp["error"])
-	}
-	names := toolNames(t, roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 7, Method: "tools/list", Params: map[string]any{},
-	}))
-	if len(names) != len(companionWant) {
-		t.Fatalf("stdio companion profile lists %d tools, want %d: %v", len(names), len(companionWant), names)
-	}
-}
+// set_profile no longer exists (removed entirely, SW-2): stdio always serves
+// the full registry now, and there is no tool for anything to reject over
+// HTTP. The remaining internal profile machinery (setProfile/activeProfile,
+// still used by effectiveSurface for stdio) is exercised directly in
+// TestSetProfileDirect (profile_test.go, package mcp) since no external
+// caller can reach it any more; that test also covers the stdio-profile vs.
+// HTTP-surface view equivalence and stdio's tools/call staying advisory.
 
 // ─── capabilities reports the active surface ─────────────────────────────────
 
 func TestCapabilitiesReportsActiveSurface(t *testing.T) {
-	// capabilities is deliberately NOT on the companion surface (tools/list is
-	// the discovery there); exercise it on a group surface where it is visible.
 	srv := mcp.NewServer(&fakeBackend{})
 	ctx := mcp.WithRequestScope(context.Background(), "coding", true)
 
@@ -247,53 +300,17 @@ func TestCapabilitiesReportsActiveSurface(t *testing.T) {
 		t.Errorf("tool_count = %v, want %d (the tools/list count on the same surface)", count, len(listed))
 	}
 
-	// And the companion surface gates capabilities itself.
-	compCtx := mcp.WithRequestScope(context.Background(), "companion", true)
-	gated := scopedRoundtrip(t, srv, compCtx, request{
-		JSONRPC: "2.0", ID: 10, Method: "tools/call",
-		Params: map[string]any{"name": "capabilities", "arguments": map[string]any{}},
-	})
-	if gated["error"] == nil {
-		t.Error("capabilities should be gated on the companion surface")
-	}
-}
-
-// ─── group surfaces match the stdio profile view ─────────────────────────────
-
-func TestGroupSurfaceMatchesProfileView(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
-
-	ctx := mcp.WithRequestScope(context.Background(), "coding", true)
-	viaSurface := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0", ID: 9, Method: "tools/list", Params: map[string]any{},
-	}))
-
-	srv2 := mcp.NewServer(&fakeBackend{})
-	setResp := roundtrip(t, srv2, request{
-		JSONRPC: "2.0", ID: 10, Method: "tools/call",
-		Params: map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "coding"}},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile(coding): %v", setResp["error"])
-	}
-	viaProfile := toolNames(t, roundtrip(t, srv2, request{
-		JSONRPC: "2.0", ID: 11, Method: "tools/list", Params: map[string]any{},
-	}))
-
-	// The HTTP view drops set_profile (rejected over HTTP); otherwise the two
-	// views must be identical.
-	withoutSetProfile := make([]string, 0, len(viaProfile))
-	for _, name := range viaProfile {
-		if name != "set_profile" {
-			withoutSetProfile = append(withoutSetProfile, name)
-		}
-	}
-	if len(viaSurface) != len(withoutSetProfile) {
-		t.Fatalf("coding surface (%d tools) != coding profile minus set_profile (%d tools)", len(viaSurface), len(withoutSetProfile))
-	}
-	for i := range viaSurface {
-		if viaSurface[i] != withoutSetProfile[i] {
-			t.Fatalf("mismatch at %d: surface %q vs profile %q", i, viaSurface[i], withoutSetProfile[i])
+	// capabilities was promoted onto the companion/agent allowlist
+	// (docs/vision/05-surfaces.md §3) — the discovery escape hatch a 15-tool
+	// surface needs — so it dispatches there too, on both surface names.
+	for _, surface := range []string{mcp.SurfaceCompanion, mcp.SurfaceAgent} {
+		scCtx := mcp.WithRequestScope(context.Background(), surface, true)
+		got := scopedRoundtrip(t, srv, scCtx, request{
+			JSONRPC: "2.0", ID: 10, Method: "tools/call",
+			Params: map[string]any{"name": "capabilities", "arguments": map[string]any{}},
+		})
+		if got["error"] != nil {
+			t.Errorf("capabilities on %s surface: %v", surface, got["error"])
 		}
 	}
 }
@@ -309,38 +326,15 @@ func TestUnscopedHTTPShowsAllTools(t *testing.T) {
 	viaHTTP := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 13, Method: "tools/list", Params: map[string]any{},
 	}))
-	// The HTTP view is the full registry minus set_profile (rejected over HTTP,
-	// so its schema is not advertised).
-	if len(viaHTTP) != len(full)-1 {
-		t.Fatalf("unscoped HTTP lists %d tools, want %d (stdio %d minus set_profile)", len(viaHTTP), len(full)-1, len(full))
+	// set_profile no longer exists, so there is nothing left to strip from
+	// the HTTP view: the unscoped HTTP registry is exactly the stdio registry.
+	if len(viaHTTP) != len(full) {
+		t.Fatalf("unscoped HTTP lists %d tools, want %d (same as stdio)", len(viaHTTP), len(full))
 	}
-	for _, name := range viaHTTP {
-		if name == "set_profile" {
-			t.Error("set_profile should not be listed over HTTP")
+	for i := range full {
+		if viaHTTP[i] != full[i] {
+			t.Fatalf("mismatch at %d: HTTP %q vs stdio %q", i, viaHTTP[i], full[i])
 		}
-	}
-}
-
-// ─── stdio profile stays advisory; bare HTTP stays ungated ───────────────────
-
-func TestStdioProfileDoesNotGateToolsCall(t *testing.T) {
-	// The old contract: a stdio profile only filters tools/list. Calling an
-	// off-profile tool (find_callers is GroupInvestigation) must still work
-	// after set_profile("coding").
-	srv := mcp.NewServer(&fakeBackend{})
-	setResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 30, Method: "tools/call",
-		Params: map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "coding"}},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile(coding): %v", setResp["error"])
-	}
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 31, Method: "tools/call",
-		Params: map[string]any{"name": "find_callers", "arguments": map[string]any{"service": "svc", "symbol": "Foo"}},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("stdio profile must stay advisory: off-profile find_callers failed: %v", resp["error"])
 	}
 }
 
@@ -402,19 +396,19 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"companion", "coding", "investigation", "shared", "platform"} {
+	for _, name := range []string{"agent", "companion", "coding", "investigation", "shared", "platform"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
 		}
 	}
-	for _, name := range []string{"", "bogus", "Companion", "full"} {
+	for _, name := range []string{"", "bogus", "Companion", "Agent", "full"} {
 		if mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = true, want false", name)
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 5 {
-		t.Fatalf("SurfaceNames() = %v, want 5 entries", names)
+	if len(names) != 6 {
+		t.Fatalf("SurfaceNames() = %v, want 6 entries", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)
@@ -485,12 +479,17 @@ func TestCallLoggerRecordsBatchSubCalls(t *testing.T) {
 	if sub["surface"] != "companion" {
 		t.Errorf("sub-call surface = %v, want companion", sub["surface"])
 	}
-	gated, ok := byTool["secret_scan"]
+	// secret_scan is off the companion allowlist but execute-and-flags: it
+	// runs (no error) and its log entry carries off_surface:true.
+	offSurface, ok := byTool["secret_scan"]
 	if !ok {
-		t.Fatalf("gated secret_scan sub-call not logged: %v", byTool)
+		t.Fatalf("off-surface secret_scan sub-call not logged: %v", byTool)
 	}
-	if errMsg, _ := gated["error"].(string); !strings.Contains(errMsg, "surface") {
-		t.Errorf("gated sub-call should log the gate error, got %v", gated["error"])
+	if errMsg, _ := offSurface["error"].(string); errMsg != "" {
+		t.Errorf("off-surface sub-call should execute-and-flag, not error, got %v", offSurface["error"])
+	}
+	if off, _ := offSurface["off_surface"].(bool); !off {
+		t.Errorf("off-surface sub-call should log off_surface:true, got %v", offSurface)
 	}
 	if outer, ok := byTool["batch"]; !ok {
 		t.Error("outer batch entry not logged")

@@ -132,10 +132,16 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	result, rpcErr := s.handleToolsCallWithCtx(ctx, params)
 	latency := time.Since(start)
 
-	// Determine group from the tool descriptor.
+	// Determine group + off-surface flag from the tool descriptor. The flag is
+	// recomputed here (pure: scope + descriptor) rather than threaded through
+	// the dispatch return path.
 	group := ""
+	offSurface := false
 	if te, ok := s.findTool(toolName); ok {
 		group = string(te.desc.group)
+		if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) && !s.strictSurfaces {
+			offSurface = true
+		}
 	}
 
 	var logErr error
@@ -143,7 +149,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 		// Construct a Go error-like message for the log entry without importing errors.
 		logErr = &rpcErrWrapper{rpcErr}
 	}
-	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), latency, logErr)
+	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, latency, logErr)
 	return result, rpcErr
 }
 
@@ -167,7 +173,11 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	if !ok {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool not found: " + p.Name}
 	}
-	if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
+	// Execute-and-flag (ADR-014 amendment): an off-surface call runs and is
+	// LOGGED as off_surface — an error teaches agents to abandon the surface,
+	// which looks identical to no-demand in the log. Hard gating stays
+	// available behind strictSurfaces for any future multi-tenant shape.
+	if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) && s.strictSurfaces {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
 	}
 	result, rpcErr := te.handler(ctx, p.Arguments)

@@ -480,7 +480,9 @@ func TestMarkers_Basic(t *testing.T) {
 	}
 }
 
-func TestTestDebt_Basic(t *testing.T) {
+// TestTestDebt_AliasRemoved: test_debt was deleted as a zero-call alias
+// (docs/plans/surfaces-week1.md SW-1) — the canonical markers stays.
+func TestTestDebt_AliasRemoved(t *testing.T) {
 	files := []core.SourceFile{
 		{Path: "foo/run.go", Content: []byte(goSrc), Lang: "go"},
 	}
@@ -492,9 +494,24 @@ func TestTestDebt_Basic(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	p := sourcesToolPayload(t, resp)
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("test_debt: want tool-not-found, got result: %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("test_debt: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
+	}
+
+	canon := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1083, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "markers",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, canon)
 	if p["markers"] == nil {
-		t.Fatalf("test_debt: markers missing: %v", p)
+		t.Fatalf("markers: markers missing: %v", p)
 	}
 }
 
@@ -541,7 +558,9 @@ func TestRoutes_Basic(t *testing.T) {
 	}
 }
 
-func TestAPIRoutes_Basic(t *testing.T) {
+// TestAPIRoutes_AliasRemoved: api_routes was deleted as a zero-call alias
+// (docs/plans/surfaces-week1.md SW-1) — the canonical routes stays.
+func TestAPIRoutes_AliasRemoved(t *testing.T) {
 	files := []core.SourceFile{
 		{Path: "bar/app.py", Content: []byte(pySrc), Lang: "py"},
 	}
@@ -553,9 +572,24 @@ func TestAPIRoutes_Basic(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	p := sourcesToolPayload(t, resp)
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("api_routes: want tool-not-found, got result: %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("api_routes: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
+	}
+
+	canon := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1093, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "routes",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, canon)
 	if p["routes"] == nil {
-		t.Fatalf("api_routes: routes missing: %v", p)
+		t.Fatalf("routes: routes missing: %v", p)
 	}
 }
 
@@ -647,7 +681,9 @@ func TestDependencies_Basic(t *testing.T) {
 	}
 }
 
-func TestDeps_Basic(t *testing.T) {
+// TestDeps_AliasRemoved: deps was deleted as a zero-call alias
+// (docs/plans/surfaces-week1.md SW-1) — the canonical dependencies stays.
+func TestDeps_AliasRemoved(t *testing.T) {
 	files := []core.SourceFile{
 		{Path: "go.sum", Content: []byte(goSumContent), Lang: "go"},
 	}
@@ -659,9 +695,24 @@ func TestDeps_Basic(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	p := sourcesToolPayload(t, resp)
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("deps: want tool-not-found, got result: %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("deps: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
+	}
+
+	canon := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1113, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "dependencies",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, canon)
 	if p["dependencies"] == nil {
-		t.Fatalf("deps: dependencies missing: %v", p)
+		t.Fatalf("dependencies: dependencies missing: %v", p)
 	}
 }
 
@@ -688,22 +739,16 @@ func TestDependencies_MissingService(t *testing.T) {
 func TestSourceToolsInCorrectProfile(t *testing.T) {
 	srv := newSourcesSrv(nil)
 
+	// set_profile is gone; select each group via the HTTP path scope instead
+	// (see TestSetProfileDirect for the stdio/surface equivalence this relies
+	// on).
 	toolsInProfile := func(profile string) map[string]bool {
-		setResp := roundtrip(t, srv, request{
-			JSONRPC: "2.0", ID: 1200, Method: "tools/call",
-			Params: map[string]any{
-				"name":      "set_profile",
-				"arguments": map[string]any{"profile": profile},
-			},
-		})
-		if setResp["error"] != nil {
-			t.Fatalf("set_profile(%s): %v", profile, setResp["error"])
-		}
-		listResp := roundtrip(t, srv, request{
+		ctx := mcp.WithRequestScope(context.Background(), profile, true)
+		listResp := scopedRoundtrip(t, srv, ctx, request{
 			JSONRPC: "2.0", ID: 1201, Method: "tools/list",
 		})
 		if listResp["error"] != nil {
-			t.Fatalf("tools/list: %v", listResp["error"])
+			t.Fatalf("tools/list(%s): %v", profile, listResp["error"])
 		}
 		result := listResp["result"].(map[string]any)
 		tools := result["tools"].([]any)
@@ -729,9 +774,14 @@ func TestSourceToolsInCorrectProfile(t *testing.T) {
 	}
 
 	investigationTools := toolsInProfile("investigation")
-	for _, name := range []string{"markers", "test_debt", "routes", "api_routes", "endpoint_inventory", "dependencies", "deps"} {
+	for _, name := range []string{"markers", "routes", "endpoint_inventory", "dependencies"} {
 		if !investigationTools[name] {
 			t.Errorf("investigation profile missing tool %q", name)
+		}
+	}
+	for _, name := range []string{"test_debt", "api_routes", "deps"} {
+		if investigationTools[name] {
+			t.Errorf("investigation profile still lists removed alias %q", name)
 		}
 	}
 }
@@ -743,8 +793,7 @@ func TestSourceTools_NilBackend(t *testing.T) {
 	for _, toolName := range []string{
 		"secret_scan", "shell_out", "http_client_calls",
 		"antipatterns", "cognitive", "cloc", "deprecation", "env_keys",
-		"markers", "test_debt", "routes", "api_routes", "endpoint_inventory",
-		"dependencies", "deps",
+		"markers", "routes", "endpoint_inventory", "dependencies",
 	} {
 		resp := roundtrip(t, srv, request{
 			JSONRPC: "2.0", ID: 9000, Method: "tools/call",

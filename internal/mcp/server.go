@@ -99,6 +99,13 @@ type Server struct {
 	profileMu sync.RWMutex
 	profile   string // "", "coding", "investigation", "shared", "platform"
 
+	// strictSurfaces restores the pre-amendment ADR-014 hard gate: off-surface
+	// tools/call errors instead of executing with an off_surface log flag.
+	// Default false — surfaces are ergonomics + measurement, never security
+	// (bare /rpc is the full registry regardless). Keep available for any
+	// future multi-tenant shape.
+	strictSurfaces bool
+
 	// Stats for server_stats meta-tool.
 	startTime  time.Time
 	reqCount   int64
@@ -287,6 +294,14 @@ func (s *Server) totalRequests() int64 {
 	s.reqCountMu.Lock()
 	defer s.reqCountMu.Unlock()
 	return s.reqCount
+}
+
+// SetStrictSurfaces toggles the pre-amendment ADR-014 hard gate: when true, an
+// off-surface tools/call (or batch sub-call) returns a "not on the surface"
+// error instead of executing with an off_surface log flag. Default false.
+// Exposed for tests and for any future multi-tenant deployment shape.
+func (s *Server) SetStrictSurfaces(v bool) {
+	s.strictSurfaces = v
 }
 
 // setProfile updates the active profile (must be a known surface name or "").

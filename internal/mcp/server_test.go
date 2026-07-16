@@ -159,61 +159,6 @@ func TestToolsList(t *testing.T) {
 	}
 }
 
-// ─── tools/call — set_profile filters tools/list ────────────────────────────
-
-func TestSetProfileFiltersToolsList(t *testing.T) {
-	// With a fake backend and "coding" profile, only coding+shared tools appear.
-	fake := &fakeBackend{}
-	srv := mcp.NewServer(fake)
-
-	// Set profile to coding.
-	setResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0",
-		ID:      2,
-		Method:  "tools/call",
-		Params: map[string]any{
-			"name":      "set_profile",
-			"arguments": map[string]any{"profile": "coding"},
-		},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile error: %v", setResp["error"])
-	}
-
-	// Now list tools.
-	listResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0",
-		ID:      3,
-		Method:  "tools/list",
-		Params:  map[string]any{},
-	})
-	if listResp["error"] != nil {
-		t.Fatalf("tools/list error: %v", listResp["error"])
-	}
-	result := listResp["result"].(map[string]any)
-	tools := result["tools"].([]any)
-
-	for _, raw := range tools {
-		tool := raw.(map[string]any)
-		name := tool["name"].(string)
-		// investigation-only tools must not appear in coding profile.
-		if name == "find_callers" {
-			// find_callers is shared so it is allowed
-			continue
-		}
-	}
-	// query_symbols must appear (it's in coding group).
-	found := false
-	for _, raw := range tools {
-		if raw.(map[string]any)["name"] == "query_symbols" {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("query_symbols not found in coding profile")
-	}
-}
-
 // ─── tools/call — query_symbols ─────────────────────────────────────────────
 
 func TestToolsCallQuerySymbols(t *testing.T) {

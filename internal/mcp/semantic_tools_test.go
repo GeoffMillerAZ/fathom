@@ -1,8 +1,10 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -153,11 +155,19 @@ func TestObligationsOnCompanionSurface(t *testing.T) {
 	}
 }
 
-// ─── compile_layer NOT on companion surface ───────────────────────────────────
+// ─── compile_layer off the companion surface: execute-and-flag ────────────────
 
 func TestCompileLayerNotOnCompanionSurface(t *testing.T) {
-	srv := mcp.NewServer(&fakeBackend{})
+	fake := &semanticFakeBackend{
+		compileRun: core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 2, TokensIn: 500},
+	}
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithLogger(fake, mcp.NewCallLogger(&buf))
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
+
+	// compile_layer is off the companion allowlist (full surface only, per
+	// docs/mcp-tools.md) but execute-and-flags rather than being rejected
+	// (ADR-014 amendment): it runs, and the call log carries off_surface:true.
 	resp := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 5, Method: "tools/call",
 		Params: map[string]any{
@@ -165,12 +175,33 @@ func TestCompileLayerNotOnCompanionSurface(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	errObj, ok := resp["error"].(map[string]any)
+	if resp["error"] != nil {
+		t.Fatalf("compile_layer off companion should execute-and-flag, got error: %v", resp["error"])
+	}
+	var entry map[string]any
+	if err := json.Unmarshal([]byte(strings.TrimSpace(buf.String())), &entry); err != nil {
+		t.Fatalf("log line parse: %v (buf=%q)", err, buf.String())
+	}
+	if off, _ := entry["off_surface"].(bool); !off {
+		t.Errorf("compile_layer off-surface call should log off_surface:true, got %v", entry)
+	}
+
+	// Hard gating stays available behind strictSurfaces for any future
+	// multi-tenant shape.
+	srv.SetStrictSurfaces(true)
+	strict := scopedRoundtrip(t, srv, ctx, request{
+		JSONRPC: "2.0", ID: 6, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "compile_layer",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	errObj, ok := strict["error"].(map[string]any)
 	if !ok {
-		t.Fatalf("compile_layer on companion: want surface-gate error, got success")
+		t.Fatalf("compile_layer under strictSurfaces: want surface-gate error, got success")
 	}
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
-		t.Errorf("compile_layer companion gate: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
+		t.Errorf("compile_layer strictSurfaces gate: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
 	}
 }
 

@@ -262,29 +262,66 @@ func postRPCPath(t *testing.T, handler http.Handler, path string, body io.Reader
 
 func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 	handler := newTestHandler(t)
-	resp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
-		"jsonrpc": "2.0", "id": 20, "method": "tools/list", "params": map[string]any{},
-	}))
-	if resp["error"] != nil {
-		t.Fatalf("tools/list error: %v", resp["error"])
-	}
-	tools := resp["result"].(map[string]any)["tools"].([]any)
-	// Exact membership is pinned in internal/mcp; here pin the count so the
-	// HTTP path provably serves the slim surface, not the full registry.
-	if len(tools) != 15 {
-		t.Fatalf("companion surface lists %d tools, want 15", len(tools))
+	// /rpc/agent is the primary surface; /rpc/companion is a compatible
+	// alias — both must serve the identical 15-tool list. Exact membership is
+	// pinned in internal/mcp; here pin the count so the HTTP path provably
+	// serves the slim surface, not the full registry.
+	for _, path := range []string{"/rpc/agent", "/rpc/companion"} {
+		resp := postRPCPath(t, handler, path, rpcBody(t, map[string]any{
+			"jsonrpc": "2.0", "id": 20, "method": "tools/list", "params": map[string]any{},
+		}))
+		if resp["error"] != nil {
+			t.Fatalf("tools/list error on %s: %v", path, resp["error"])
+		}
+		tools := resp["result"].(map[string]any)["tools"].([]any)
+		if len(tools) != 15 {
+			t.Fatalf("%s lists %d tools, want 15", path, len(tools))
+		}
 	}
 }
 
-func TestServeHTTPSurfaceGatesToolsCall(t *testing.T) {
-	handler := newTestHandler(t)
+// TestServeHTTPOffSurfaceExecutesAndFlags: an off-surface tools/call still
+// executes (ADR-014 amendment, docs/plans/surfaces-week1.md SW-4) — a
+// rejection only teaches an agent to abandon the surface. The call log
+// records the pass-through with off_surface:true. Hard gating (the
+// pre-amendment behavior) stays available behind Server.strictSurfaces.
+func TestServeHTTPOffSurfaceExecutesAndFlags(t *testing.T) {
+	store := filepath.Join(t.TempDir(), "test.duckdb")
+	c, err := client.NewConstantClient(client.ModeLocal, store)
+	if err != nil {
+		t.Fatalf("NewConstantClient: %v", err)
+	}
+	t.Cleanup(func() { c.Close() })
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithFleetAndLogger(c, nil, mcp.NewCallLogger(&buf))
+	handler := newHTTPHandler(srv)
+
+	// secret_scan is off the companion allowlist. It still reaches the
+	// handler — any error it returns is its own backend error (no checkout
+	// for "svc" on disk), never the surface-gate message.
 	resp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
 		"jsonrpc": "2.0", "id": 21, "method": "tools/call",
 		"params": map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
 	}))
-	errObj, ok := resp["error"].(map[string]any)
+	if errObj, ok := resp["error"].(map[string]any); ok {
+		if msg, _ := errObj["message"].(string); strings.Contains(msg, "is not on the") {
+			t.Fatalf("off-surface secret_scan should execute, not be gated: %v", msg)
+		}
+	}
+	line := strings.TrimSpace(buf.String())
+	if !strings.Contains(line, `"off_surface":true`) {
+		t.Errorf("call-log line %q should flag off_surface", line)
+	}
+
+	// Hard gating stays available behind strictSurfaces.
+	srv.SetStrictSurfaces(true)
+	strictResp := postRPCPath(t, handler, "/rpc/companion", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 22, "method": "tools/call",
+		"params": map[string]any{"name": "secret_scan", "arguments": map[string]any{"service": "svc"}},
+	}))
+	errObj, ok := strictResp["error"].(map[string]any)
 	if !ok {
-		t.Fatalf("secret_scan via /rpc/companion: want error, got %v", resp)
+		t.Fatalf("secret_scan under strictSurfaces: want error, got %v", strictResp)
 	}
 	if msg := errObj["message"].(string); !strings.Contains(msg, "surface") {
 		t.Errorf("error message %q should name the surface", msg)
@@ -323,20 +360,9 @@ func TestServeHTTPTrailingSlashDiagnostic(t *testing.T) {
 	}
 }
 
-func TestServeHTTPSetProfileDisabled(t *testing.T) {
-	handler := newTestHandler(t)
-	resp := postRPC(t, handler, rpcBody(t, map[string]any{
-		"jsonrpc": "2.0", "id": 23, "method": "tools/call",
-		"params": map[string]any{"name": "set_profile", "arguments": map[string]any{"profile": "coding"}},
-	}))
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("set_profile over HTTP: want error, got %v", resp)
-	}
-	if msg := errObj["message"].(string); !strings.Contains(msg, "/rpc/") {
-		t.Errorf("error message %q should point at path-scoped surfaces", msg)
-	}
-}
+// set_profile no longer exists (removed entirely, SW-2): there is no
+// HTTP-specific rejection to test any more — calling it returns the same
+// generic tool-not-found error as any other unregistered name.
 
 func TestServeHTTPCallLogRecordsSurface(t *testing.T) {
 	store := filepath.Join(t.TempDir(), "test.duckdb")

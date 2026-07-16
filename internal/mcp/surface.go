@@ -1,15 +1,26 @@
 // Package mcp — request-scoped tool surfaces.
 //
 // A surface is an immutable, per-request view of the tool registry, selected
-// by the HTTP path on the shared daemon (POST /rpc/{surface}). It differs from
-// the stdio profile in two ways: it is carried in the request context rather
-// than mutable process-global state (so one client can never change another
-// client's tools/list), and it hard-gates tools/call and batch sub-calls
-// rather than only filtering tools/list.
+// by the HTTP path on the shared daemon (POST /rpc/{surface}). It is carried
+// in the request context rather than mutable process-global state, so one
+// client can never change another client's tools/list.
 //
-// Surfaces: "companion" is a curated allowlist for coding-agent sessions;
-// "coding", "investigation", "shared", "platform" mirror the group profiles
-// (group + shared tools). The empty surface is the full registry.
+// Gate semantics are execute-and-flag, not hard-gate (ADR-014 amendment,
+// 2026-07-16, surfaces week-1): an off-surface tools/call or batch sub-call
+// still executes — an error only teaches an agent to abandon the surface,
+// which looks identical to no-demand in the call log. The call is logged with
+// an off_surface flag instead, so demand is measurable. Surfaces are
+// ergonomics and measurement, never a security boundary — bare /rpc already
+// serves the full, unauthenticated registry. The pre-amendment hard gate
+// (off-surface calls return a "not on the surface" error) stays available
+// behind Server.strictSurfaces (see SetStrictSurfaces) for any future
+// multi-tenant shape.
+//
+// Surfaces: "agent" is the primary 15-tool allowlist for coding-agent
+// sessions, served at POST /rpc/agent; "companion" is a compatible alias
+// (identical allowlist, POST /rpc/companion). "coding", "investigation",
+// "shared", "platform" mirror the group taxonomy (group + shared tools). The
+// empty surface is the full registry.
 package mcp
 
 import (
@@ -20,14 +31,18 @@ import (
 // SurfaceCompanion is the curated coding-agent surface name.
 const SurfaceCompanion = "companion"
 
+// SurfaceAgent is the primary 15-tool agent surface (docs/vision/05, ADR-014
+// amendment): the same allowlist as companion, at POST /rpc/agent — the path
+// the user-scope MCP registration points at.
+const SurfaceAgent = "agent"
+
 // companionTools is the coding-companion allowlist: the navigation /
 // context / freshness hot loop an agentic coding session needs, and nothing
 // else. Kept deliberately small; the full registry stays one endpoint away
 // at POST /rpc. Changing membership is a contract change — update the pinned
 // test in surface_test.go and docs/mcp-tools.md together.
 var companionTools = map[string]bool{
-	"batch":            true,
-	"brief":            true,
+	"capabilities":     true,
 	"entrypoints":      true,
 	"find_callers":     true,
 	"find_symbol":      true,
@@ -41,6 +56,7 @@ var companionTools = map[string]bool{
 	"repo_map":         true,
 	"staleness_report": true,
 	"symbol_context":   true,
+	"verify_plan":      true,
 }
 
 // requestScope is the per-request surface selection carried in context.
@@ -97,7 +113,7 @@ func (sc requestScope) enforced() bool {
 // bare /rpc endpoint is the full surface.
 func ValidSurface(name string) bool {
 	switch name {
-	case SurfaceCompanion, "coding", "investigation", "shared", "platform":
+	case SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform":
 		return true
 	}
 	return false
@@ -105,7 +121,7 @@ func ValidSurface(name string) bool {
 
 // SurfaceNames returns the valid named surfaces, sorted.
 func SurfaceNames() []string {
-	names := []string{SurfaceCompanion, "coding", "investigation", "shared", "platform"}
+	names := []string{SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform"}
 	sort.Strings(names)
 	return names
 }
@@ -117,7 +133,7 @@ func toolOnSurface(surface string, d toolDescriptor) bool {
 	switch surface {
 	case "":
 		return true
-	case SurfaceCompanion:
+	case SurfaceCompanion, SurfaceAgent:
 		return companionTools[d.Name]
 	default:
 		return d.group == GroupShared || string(d.group) == surface
@@ -146,21 +162,12 @@ func (s *Server) visibleToolsFor(surface string) []toolDescriptor {
 	return descs
 }
 
-// visibleToolsCtx returns the descriptors visible to this request: the
-// effective surface's tools, minus set_profile over HTTP — every HTTP call to
-// it is rejected, so listing its schema would only cost clients tokens.
+// visibleToolsCtx returns the descriptors visible to this request: the tools
+// on the request's effective surface (path-selected over HTTP, the process
+// profile over stdio — unreachable today since set_profile was removed, so
+// stdio always resolves to the full registry).
 func (s *Server) visibleToolsCtx(ctx context.Context) []toolDescriptor {
-	descs := s.visibleToolsFor(s.effectiveSurface(ctx))
-	if !scopeFrom(ctx).viaHTTP {
-		return descs
-	}
-	var out []toolDescriptor
-	for _, d := range descs {
-		if d.Name != "set_profile" {
-			out = append(out, d)
-		}
-	}
-	return out
+	return s.visibleToolsFor(s.effectiveSurface(ctx))
 }
 
 // promptOnScope reports whether every tool a prompt's workflow references is

@@ -511,18 +511,12 @@ func TestImportCycles_MissingParam(t *testing.T) {
 func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 	srv := newAnalysisSrv()
 
+	// set_profile is gone; select each group via the HTTP path scope instead
+	// (see TestSetProfileDirect for the stdio/surface equivalence this relies
+	// on).
 	toolsInProfile := func(profile string) map[string]bool {
-		setResp := roundtrip(t, srv, request{
-			JSONRPC: "2.0", ID: 160, Method: "tools/call",
-			Params: map[string]any{
-				"name":      "set_profile",
-				"arguments": map[string]any{"profile": profile},
-			},
-		})
-		if setResp["error"] != nil {
-			t.Fatalf("set_profile(%s): %v", profile, setResp["error"])
-		}
-		listResp := roundtrip(t, srv, request{
+		ctx := mcp.WithRequestScope(context.Background(), profile, true)
+		listResp := scopedRoundtrip(t, srv, ctx, request{
 			JSONRPC: "2.0", ID: 161, Method: "tools/list",
 		})
 		if listResp["error"] != nil {

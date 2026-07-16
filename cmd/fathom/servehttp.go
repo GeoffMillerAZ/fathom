@@ -19,7 +19,7 @@ import (
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("serve-http", stderr)
 	storePath := fs.String("store", "", "DuckDB store path (required)")
-	addr := fs.String("addr", ":7575", "listen address (host:port)")
+	addr := fs.String("addr", "127.0.0.1:7575", "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
 	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 	callLogPath := fs.String("call-log", "workspace/logs/mcp-calls.jsonl", "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 
@@ -112,9 +112,13 @@ func openCallLog(path string) (*os.File, error) {
 // Routes:
 //
 //	POST /rpc           — single JSON-RPC 2.0 request/response (full surface)
-//	POST /rpc/{surface} — same, scoped to a named tool surface (companion,
-//	                      coding, investigation, shared, platform); the
-//	                      surface filters tools/list AND gates tools/call
+//	POST /rpc/{surface} — same, scoped to a named tool surface (agent,
+//	                      companion, coding, investigation, shared, platform);
+//	                      the surface filters tools/list and, by default,
+//	                      execute-and-flags off-surface tools/call (ADR-014
+//	                      amendment) — hard gating is available behind
+//	                      Server.strictSurfaces. agent is the primary
+//	                      15-tool surface; companion is a compatible alias.
 //	GET  /healthz       — liveness probe, returns "ok"
 //	GET  /events        — SSE stream stub (hello event, keep-alive)
 //	GET  /metrics       — simple text exposition: uptime and request count

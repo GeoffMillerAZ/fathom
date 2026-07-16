@@ -5,6 +5,27 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Changed — MCP surfaces week-1: execute-and-flag, agent surface, loopback default (docs/plans/surfaces-week1.md, amends ADR-014)
+- Gate semantics change from hard-gate to **execute-and-flag**: an off-surface
+  `tools/call` or `batch` sub-call now executes instead of erroring, logged
+  with `off_surface:true` in the JSONL call log — an error taught abandonment,
+  which looked identical to no-demand in 8 days of dogfood evidence. The
+  pre-amendment hard gate stays available behind `Server.strictSurfaces` for
+  any future multi-tenant shape.
+- The `companion` allowlist becomes the 15-tool **agent** surface (minus
+  `batch`/`brief`, plus `verify_plan`/`capabilities` — the top non-hook tool
+  and the discovery escape hatch), served at the new primary path
+  `POST /rpc/agent` with `POST /rpc/companion` kept as a compatible alias.
+- `set_profile` is removed entirely (amends ADR-010/014's stdio clause): no
+  production caller reaches it any more, so stdio now always serves the full
+  registry.
+- Four zero-call alias tool registrations deleted: `platform_callers`,
+  `test_debt`, `api_routes`, `deps` — use the canonical `cross_repo_callers`,
+  `markers`, `routes`, `dependencies`.
+- `serve-http`'s default listen address changes from `:7575` (all interfaces)
+  to `127.0.0.1:7575` (loopback) — surfaces were never a security boundary,
+  so the default must not listen on all interfaces regardless.
+
 ### Added — Gap-1 channel instrumentation: denominator, liveness, origin (docs/plans/gap1-instrumentation.md)
 - Hooks beat a central log (FATHOM_HOOKS_LOG, default ~/.fathom/hooks.jsonl)
   via agentic-kit v0.7.0 telemetry/heartbeat: edit-hook seen/answered/error,

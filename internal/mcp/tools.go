@@ -16,39 +16,6 @@ import (
 // registerTools registers all MCP tools into s. backend may be nil, in which
 // case query tools return ErrCodeInternal when called.
 func registerTools(s *Server, backend QueryInterface) {
-	// set_profile — always available on stdio; rejected over HTTP, where the
-	// daemon is shared and the profile would leak across sessions.
-	s.registerTool(toolDescriptor{
-		Name:        "set_profile",
-		Description: "Switch the active tool profile to filter tools/list results (stdio only — over HTTP register a path-scoped surface such as POST /rpc/companion instead). Valid profiles: companion, coding, investigation, shared, platform.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"profile": map[string]any{
-					"type":        "string",
-					"description": "Profile name: companion | coding | investigation | shared | platform",
-					"enum":        []string{"companion", "coding", "investigation", "shared", "platform"},
-				},
-			},
-			"required": []string{"profile"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if scopeFrom(ctx).viaHTTP {
-			return nil, &rpcError{Code: ErrCodeInvalid, Message: "set_profile is disabled over HTTP: the daemon is shared and the profile is process-global. Register a path-scoped surface instead, e.g. POST /rpc/companion (valid surfaces: companion, coding, investigation, shared, platform; POST /rpc is the full surface)."}
-		}
-		var p struct {
-			Profile string `json:"profile"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "set_profile: invalid args"}
-		}
-		if rpcErr := s.setProfile(p.Profile); rpcErr != nil {
-			return nil, rpcErr
-		}
-		return map[string]any{"profile": p.Profile, "ok": true}, nil
-	})
-
 	// query_symbols — concern-scoped symbol search.
 	s.registerTool(toolDescriptor{
 		Name:        "query_symbols",

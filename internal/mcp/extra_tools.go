@@ -1924,7 +1924,7 @@ func registerBatch(s *Server) {
 		sc := scopeFrom(ctx)
 		// Sub-calls are logged individually (via:"batch") so surface telemetry
 		// counts the tools a batch actually exercised, not just "batch".
-		logSub := func(name, group string, argsRaw json.RawMessage, latency time.Duration, rpcErr *rpcError) {
+		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, latency time.Duration, rpcErr *rpcError) {
 			if s.callLogger == nil {
 				return
 			}
@@ -1936,7 +1936,7 @@ func registerBatch(s *Server) {
 			if rpcErr != nil {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), latency, subErr)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, latency, subErr)
 		}
 		for i, call := range p.Calls {
 			argsRaw := call.Arguments
@@ -1948,15 +1948,19 @@ func registerBatch(s *Server) {
 				results[i] = batchResult{Name: call.Name, Error: "tool not found: " + call.Name}
 				continue
 			}
+			subOff := false
 			if sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
-				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
-				logSub(call.Name, string(te.desc.group), argsRaw, 0, gateErr)
-				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
-				continue
+				if s.strictSurfaces {
+					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
+					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, gateErr)
+					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
+					continue
+				}
+				subOff = true
 			}
 			start := time.Now()
 			result, rpcErr := te.handler(ctx, argsRaw)
-			logSub(call.Name, string(te.desc.group), argsRaw, time.Since(start), rpcErr)
+			logSub(call.Name, string(te.desc.group), argsRaw, subOff, time.Since(start), rpcErr)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue

@@ -37,7 +37,6 @@ func registerPlatformTools(s *Server, fleet FleetBackend) {
 	registerQueryCrossService(s, fleet)
 	registerFleetDrift(s, fleet)
 	registerCrossRepoCallers(s, fleet, "cross_repo_callers", "Find all callers of a symbol across every service in the fleet via stored call edges.")
-	registerCrossRepoCallers(s, fleet, "platform_callers", "Alias for cross_repo_callers: find callers of a symbol across every service in the fleet.")
 }
 
 // ─── list_services ────────────────────────────────────────────────────────────

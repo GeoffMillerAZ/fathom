@@ -58,12 +58,9 @@ func registerSourceTools(s *Server, backend QueryInterface) {
 
 	// ── investigation / docs ─────────────────────────────────────────────────
 	registerMarkers(s, backend, "markers", "Scan source files for annotation comments (TODO, FIXME, HACK, XXX, BUG, DEPRECATED).")
-	registerMarkers(s, backend, "test_debt", "Alias for markers: returns all annotation comments including test-debt markers.")
 	registerRoutes(s, backend, "routes", "Extract HTTP route registrations from source files.")
-	registerRoutes(s, backend, "api_routes", "Alias for routes: extract HTTP route registrations from source files.")
 	registerEndpointInventory(s, backend)
 	registerDependencies(s, backend, "dependencies", "Parse dependency lockfiles and return a SBOM-style dependency list.")
-	registerDependencies(s, backend, "deps", "Alias for dependencies: parse dependency lockfiles.")
 }
 
 // ─── shared helpers ──────────────────────────────────────────────────────────

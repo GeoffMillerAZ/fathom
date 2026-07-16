@@ -206,27 +206,6 @@ func TestQuerySymbolsMissingService(t *testing.T) {
 
 // ─── set_profile → unknown profile → -32602 ──────────────────────────────────
 
-func TestSetProfileUnknown(t *testing.T) {
-	srv := mcp.NewServer(nil)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0",
-		ID:      60,
-		Method:  "tools/call",
-		Params: map[string]any{
-			"name":      "set_profile",
-			"arguments": map[string]any{"profile": "bogus"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error for unknown profile, got result: %v", resp)
-	}
-	code := errObj["code"].(float64)
-	if code != -32602 {
-		t.Errorf("error.code = %v, want -32602", code)
-	}
-}
-
 // ─── tools/call with unknown tool name → -32601 ───────────────────────────────
 
 func TestCallUnknownTool(t *testing.T) {
@@ -255,21 +234,11 @@ func TestCallUnknownTool(t *testing.T) {
 func TestInvestigationProfileIncludesFindCallers(t *testing.T) {
 	srv := mcp.NewServer(nil)
 
-	// Switch to investigation profile.
-	setResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0",
-		ID:      80,
-		Method:  "tools/call",
-		Params: map[string]any{
-			"name":      "set_profile",
-			"arguments": map[string]any{"profile": "investigation"},
-		},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile error: %v", setResp["error"])
-	}
-
-	listResp := roundtrip(t, srv, request{
+	// set_profile is gone; select the investigation surface via the HTTP path
+	// scope instead — toolOnSurface resolves named groups identically whether
+	// reached via stdio profile or HTTP surface (see TestSetProfileDirect).
+	ctx := mcp.WithRequestScope(context.Background(), "investigation", true)
+	listResp := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0",
 		ID:      81,
 		Method:  "tools/list",

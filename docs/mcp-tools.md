@@ -10,55 +10,60 @@ See [architecture.md](architecture.md) for how the tool groups map to the three-
 
 ## Tool groups, profiles, and surfaces
 
-Tools are divided into four groups. On **stdio** (one client owns the process), clients
-call `set_profile` to filter the visible surface to the group appropriate for the task.
-
-| Profile | Group constant | Contents |
-|---|---|---|
-| `shared` | `GroupShared` | Always available — `set_profile`, `find_symbol`, meta tools, security scans, `import_cycles` |
-| `coding` | `GroupCoding` | Symbol navigation, complexity, call-graph, impact analysis |
-| `investigation` | `GroupInvestigation` | Cross-service, incident investigation, callers, test impact, routes, deps |
-| `platform` | `GroupPlatform` | Fleet-wide: list services, cross-service search, drift, cross-repo callers |
+Tools are divided into four groups (`GroupShared`, `GroupCoding`, `GroupInvestigation`,
+`GroupPlatform`) that describe fathom's internal taxonomy. `set_profile` — the old,
+process-global way to filter `tools/list` on stdio — was **removed entirely**
+(docs/plans/surfaces-week1.md SW-2; amends ADR-014's stdio clause): no production caller
+reaches it any more, so a **stdio** session always sees the full registry. Scoping now
+lives entirely over HTTP.
 
 ### Path-scoped surfaces (HTTP)
 
-Over **HTTP** (`serve-http`, the shared daemon) the profile is process-global, so
-`set_profile` is **rejected** — one client changing every session's tool list is a
-footgun, not a feature. Instead, each request selects an immutable **surface** via the
-path, and clients register the endpoint that matches their job:
+Over **HTTP** (`serve-http`, the shared daemon — default `127.0.0.1:7575`, loopback
+only) each request selects an immutable **surface** via the path:
 
 | Surface | Endpoint | Contents |
 |---|---|---|
-| *(full)* | `POST /rpc` | Every registered tool — the default for schema-deferring clients such as Claude Code |
-| `companion` | `POST /rpc/companion` | Curated 15-tool coding-agent hot loop: `find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`, `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`, `ingest`, `staleness_report`, `list_services`, `obligations` |
-| `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (mirrors the stdio profile view) |
+| *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend) |
+| `agent` | `POST /rpc/agent` | The primary 15-tool agent surface (see below) — the user-scope MCP registration points here |
+| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 15-tool allowlist |
+| `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (internal taxonomy; zero observed traffic as of the surfaces-week1 review, kept for completeness) |
 
-Unlike the stdio profile (which only filters `tools/list`), a named surface
-**hard-gates** `tools/call` — an off-surface tool returns an error naming the surface,
-and `batch` sub-calls are gated the same way. The full registry is always one endpoint
-away at `POST /rpc`. Tool calls are recorded per-surface in the daemon's JSONL call log
-(`serve-http --call-log`, default `workspace/logs/mcp-calls.jsonl`; `batch` sub-calls
-are logged individually with `via:"batch"`).
+**Agent/companion 15-tool allowlist:** `capabilities`, `entrypoints`, `find_callers`,
+`find_symbol`, `ingest`, `list_services`, `obligations`, `outline`, `pack_context`,
+`query_symbols`, `references`, `repo_map`, `staleness_report`, `symbol_context`,
+`verify_plan`.
+
+**Gate semantics: execute-and-flag, not hard-gate** (ADR-014 amendment, 2026-07-16,
+surfaces week-1). An off-surface `tools/call` — or `batch` sub-call — still **executes**;
+a rejection only teaches an agent to abandon the surface, which looks identical to
+no-demand in the call log. The JSONL call log (`serve-http --call-log`, default
+`workspace/logs/mcp-calls.jsonl`) records the pass-through with `off_surface:true`
+(`batch` sub-calls are logged individually with `via:"batch"`, each with its own
+`off_surface` flag) so demand is measurable instead of argued. Surfaces are **ergonomics
+and measurement, never a security boundary** — bare `/rpc` already serves the full,
+unauthenticated registry. The pre-amendment hard gate (an off-surface call returns an
+error naming the surface) stays available for any future multi-tenant shape, behind the
+server's `strictSurfaces` option.
 
 Surface boundaries apply to tools and prompts, not resources: canned prompts are hidden
-on surfaces that gate the tools their workflow uses, while `resources/read` (manifest,
-per-service summaries) stays available everywhere — it is data, not capability. Because
-`set_profile` is rejected over HTTP, it is also dropped from every HTTP `tools/list`
-view.
+on surfaces that reference tools not on that surface (prompts are pre-declared
+workflows, so they stay hidden rather than execute-and-flag), while `resources/read`
+(manifest, per-service summaries) stays available everywhere — it is data, not
+capability.
 
 ---
 
 ## Shared tools (GroupShared)
 
-These tools are visible under every group profile and group surface. Two exceptions:
-the `companion` surface/profile shows only its explicit 15-tool allowlist, and
-`set_profile` is dropped from every HTTP view (it is rejected over HTTP).
+These tools are visible under every group profile and group surface. One exception: the
+`agent`/`companion` surface shows only its explicit 15-tool allowlist (see above) — other
+shared tools are still callable there, execute-and-flagged rather than hidden.
 
 | Tool | Arguments | Returns | Purpose |
 |---|---|---|---|
-| `set_profile` | `profile`: `"companion"\|"coding"\|"investigation"\|"shared"\|"platform"` | `{profile, ok}` | Switch active profile to filter the tool list (stdio only — rejected over HTTP; use a path-scoped surface) |
-| `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode], matched_via, truncated?, did_you_mean?}` | Locate symbol definitions with tiered matching: exact/key-suffix → case-insensitive → substring (capped at 20, tightest first); a full miss returns up to 5 concern-ranked `did_you_mean` suggestions. `matched_via` = `exact` \| `case_insensitive` \| `substring` \| `none` |
-| `capabilities` | — | `{tools, active_surface, active_profile, tool_count}` | List the tools visible on this request's surface and the active surface/profile |
+| `find_symbol` | `service` (req), `name` (req) | `{symbols: [SymbolNode], matched_via, truncated?, did_you_mean?}` | Locate symbol definitions with tiered matching: exact/key-suffix → case-insensitive → substring (capped at 20, tightest first); a full miss returns up to 5 concern-ranked `did_you_mean` suggestions. `matched_via` = `exact` \| `case_insensitive` \| `substring` \| `none`. Also on the agent/companion surface. |
+| `capabilities` | — | `{tools, active_surface, active_profile, tool_count}` | List the tools visible on this request's surface and the active surface/profile. Also on the agent/companion surface — the discovery escape hatch that makes a small surface safe. |
 | `server_stats` | — | `{uptime_seconds, request_count, started_at}` | Return server uptime and total request count |
 | `staleness_report` | `service` (req) | `{service, source_count, sources, indexed_commit, current_commit, reingest_recommended, layers?}` | Return a staleness summary: distinct source files, last-ingested state, and git-commit drift (`reingest_recommended` is `true` when the repo HEAD has advanced since the last ingest). When compiled claims exist, appends a `layers` map with a per-layer claims summary. |
 | `list_sources` | `service` (req) | `{sources: [string]}` | List distinct source file paths ingested for the service |
@@ -66,8 +71,8 @@ the `companion` surface/profile shows only its explicit 15-tool allowlist, and
 | `shell_out` | `service` (req) | `{findings: [Finding]}` | Find shell-out call sites: `exec.Command` (Go), `subprocess` (Python), `child_process` (JS/TS) |
 | `http_client_calls` | `service` (req) | `{findings: [Finding]}` | Find HTTP client call sites: `http.Get/Post/.Do()` (Go), `fetch`/`axios` (JS/TS), `requests` (Python) |
 | `import_cycles` | `pkg_imports` (req): `{pkg: [imports]}` | `{cycles: [[string]]}` | Detect import cycles in a package import graph; returns SCCs that form cycles |
-| `brief` | `service` (req), `symbols` (opt: `[string]`), `concern` (opt), `budget` (opt, default 16000 chars) | `{brief: string}` | Pre-pack worker context: resolve named symbols, run a concern-scoped query, and return a paste-ready markdown brief. Truncation is always explicit — the output says so when it hits the budget. |
-| `obligations` | `service` (req), `file` (req), `max_rules` (opt, default 6) | `{service, file, rules?, compiled_at_watermark?, index_stale?}` | Return compiled obligations (governing rules) for a file at decision time. Empty result with no `index_stale` field means a clean file (zero-output-on-clean contract). Each rule carries its source citation and evidence tier; drifted or contradicted rules are flagged. Also on the `companion` surface. |
+| `brief` | `service` (req), `symbols` (opt: `[string]`), `concern` (opt), `budget` (opt, default 16000 chars) | `{brief: string}` | Pre-pack worker context: resolve named symbols, run a concern-scoped query, and return a paste-ready markdown brief. Truncation is always explicit — the output says so when it hits the budget. Demoted off the agent/companion surface (surfaces week-1): zero calls, overlaps `repo_map`+`pack_context`; still execute-and-flags there under the default gate. |
+| `obligations` | `service` (req), `file` (req), `max_rules` (opt, default 6) | `{service, file, rules?, compiled_at_watermark?, index_stale?}` | Return compiled obligations (governing rules) for a file at decision time. Empty result with no `index_stale` field means a clean file (zero-output-on-clean contract). Each rule carries its source citation and evidence tier; drifted or contradicted rules are flagged. Also on the agent/companion surface. |
 
 `Finding` shape: `{file, line, rule, message}`.
 
@@ -118,23 +123,24 @@ For cross-service investigation, incident response, and understanding code struc
 
 | Tool | Arguments | Returns | Purpose |
 |---|---|---|---|
-| `find_callers` | `service` (req), `symbol` (req) | `{callers: [SymbolNode]}` | Find all symbols that call the named symbol within the service |
+| `find_callers` | `service` (req), `symbol` (req) | `{callers: [SymbolNode]}` | Find all symbols that call the named symbol within the service. Also on the agent/companion surface. |
 | `community` | `service` (req), `symbol` (req) | `{members: [string]}` | Community of closely related symbols: direct callers, callees, symbols in the same package or file |
 | `type_hierarchy` | `service` (req) | `{hierarchy: {interface: [implementors]}}` | Map from interface name to types that implement it, across the entire service |
 | `test_impact` | `service` (req), `symbol` (req) | `{tests: [string]}` | Test functions (prefixed `Test`) that transitively reach the symbol via the call graph |
-| `verify_plan` | `service` (req); `tasks` (opt: `[{id, title?, spec_ids?, symbol?, reachable_from?, skip_test?, allow_contradiction?, min_tier?}]`) **or** `plan_markdown` (opt: a Markdown checklist — each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a task); `concern` (opt) | `{service, summary:{total,pass,fail,unknown}, tasks:[{id,title,status,label,criteria:[{name,status,detail}]}]}` | Evidence-backed definition-of-done: per-task verdict (`verified` / `claimed-but-absent` / `present-but-untested` / `edge-not-wired` / `contradicted` / `likely-unconfirmed` / `spec-uncovered` / `no-contract`) composed from `find_symbol` + call graph + contradictions + spec coverage, with cited evidence. **STATIC**: `test_reaches` means a test reaches the symbol, not that it passes; `runtime_pass` is always `unknown`. (The tool's own schema is deliberately terse; this row is the full reference.) |
+| `verify_plan` | `service` (req); `tasks` (opt: `[{id, title?, spec_ids?, symbol?, reachable_from?, skip_test?, allow_contradiction?, min_tier?}]`) **or** `plan_markdown` (opt: a Markdown checklist — each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a task); `concern` (opt) | `{service, summary:{total,pass,fail,unknown}, tasks:[{id,title,status,label,criteria:[{name,status,detail}]}]}` | Evidence-backed definition-of-done: per-task verdict (`verified` / `claimed-but-absent` / `present-but-untested` / `edge-not-wired` / `contradicted` / `likely-unconfirmed` / `spec-uncovered` / `no-contract`) composed from `find_symbol` + call graph + contradictions + spec coverage, with cited evidence. **STATIC**: `test_reaches` means a test reaches the symbol, not that it passes; `runtime_pass` is always `unknown`. (The tool's own schema is deliberately terse; this row is the full reference.) Promoted onto the agent/companion surface (surfaces week-1): the top non-hook tool in the daemon's call log. |
 | `references` | `query` (req); `services` (opt, default all); `word` (opt), `regex` (opt), `case_insensitive` (opt); `max` (opt, default 200) | `{query, definitions:[{service,symbol,file,line,tier}], occurrences:[{service,file,line,text,tier}], count, truncated}` | Fleet-wide occurrence search: every mention of an identifier/string across all services' source — text matches at the `pre-scan` tier plus symbol definitions from the index at their real tier. The structured, evidence-tiered alternative to grepping repo-by-repo. |
 | `markers` | `service` (req) | `{markers: [{file, line, kind, text, ticket}]}` | Scan source files for annotation comments: TODO, FIXME, HACK, XXX, BUG, DEPRECATED |
-| `test_debt` | `service` (req) | same as `markers` | Alias for `markers` |
 | `routes` | `service` (req) | `{routes: [{method, path, handler, file, line}]}` | Extract HTTP route registrations from Go, JS/TS, and Python source files |
-| `api_routes` | `service` (req) | same as `routes` | Alias for `routes` |
 | `endpoint_inventory` | `service` (req) | `{endpoints: [{method, path, handlers, files, lines}]}` | Aggregate HTTP routes across all files into a deduplicated endpoint inventory |
 | `dependencies` | `service` (req) | `{dependencies: [{name, version, direct, ecosystem}]}` | Parse dependency lockfiles (go.sum, npm, pip, gem, cargo) and return a SBOM-style dependency list |
-| `deps` | `service` (req) | same as `dependencies` | Alias for `dependencies` |
 | `spec_refs` | `service` (req), `pattern` (opt regex), `spec` (opt) | `{specs: {spec_id: [{file, line}]}, total_refs, files_scanned}` | Scan service source files for spec-ID references. Default pattern covers `[US/EP/FR/NFR-N]`, `MN.N`, and `doc N`. Results are deterministically sorted (spec_id asc, file asc, line asc). Use `spec` to filter to a single normalised ID (e.g. `"M18.2"`). |
 | `traverse` | `service` (req), `start` (req), `kinds` (opt: `["calls"\|"imports"\|"spec-ref"\|"route"\|"env-key"]`), `depth` (opt, default 3), `direction` (opt: `"out"\|"in"\|"both"`, default `"out"`) | `{paths: [[{from,to,kind,file,line}…]…], truncated: bool, edge_counts: {kind: n}}` | BFS traversal of the typed edge graph starting at a symbol, file, spec ID, or route. Assembles call edges (symbol→callee), import edges (pkg→pkg), spec-ref edges (file→spec_id), route edges (route→handler), and env-key edges (file→key) on demand. Returns at most 200 paths; `truncated=true` when capped. No silent caps. |
 | `history` | `service` (req), `file` (opt, suffix match), `spec` (opt, e.g. `"M18.2"`), `symbol` (opt, resolved to file), `limit` (opt, default 20) | `{commits: [{hash, date, author, message, files_touched_count, spec_ids}], count}` | Return git commit history for a service, ingested during last ingest (up to 500 commits). Filter by file path suffix, spec ID, or symbol name (resolved to its file). Results newest-first. |
-| `compile_layer` | `service` (req), `layer` (opt, default `"obligations"`), `dry_run` (opt, **default true**) | `{run_id, service, layer, dry_run, sections_total, sections_compiled, claims_emitted, claims_rejected, tokens_in, tokens_out, cost_usd, duration_ms, model, prompt_version, ran_at}` | Compile a semantic layer for a service. `dry_run` defaults `true` — estimates cost without calling the LLM or writing claims; set `dry_run:false` to execute. Only the `obligations` layer exists (ADR-016). Full surface only (not on `companion`). |
+| `compile_layer` | `service` (req), `layer` (opt, default `"obligations"`), `dry_run` (opt, **default true**) | `{run_id, service, layer, dry_run, sections_total, sections_compiled, claims_emitted, claims_rejected, tokens_in, tokens_out, cost_usd, duration_ms, model, prompt_version, ran_at}` | Compile a semantic layer for a service. `dry_run` defaults `true` — estimates cost without calling the LLM or writing claims; set `dry_run:false` to execute. Only the `obligations` layer exists (ADR-016). Not on the agent/companion allowlist; execute-and-flags there under the default gate. |
+
+`markers`/`routes`/`dependencies` previously had `test_debt`/`api_routes`/`deps` aliases;
+they were deleted as zero-call structural redundancy (surfaces week-1, SW-1) — use the
+canonical names.
 
 ---
 
@@ -147,8 +153,7 @@ Fleet-wide operations across all ingested services.
 | `list_services` | — | `{services: [{service, symbol_count, languages}], count}` | List all services in the fleet with detected languages and symbol counts |
 | `query_cross_service` | `keyword` (req) | `{matches: [{service, symbol, file_path, kind}], count}` | Case-insensitive keyword search across every service in the fleet |
 | `fleet_drift` | — | `{drift: [{key, service, value, majority}], count}` | Report version/kind drift: symbols that appear in multiple services with conflicting kinds |
-| `cross_repo_callers` | `symbol` (req) | `{callers: [{service, symbol, file_path}], count}` | Find all callers of a symbol across every service via stored call edges |
-| `platform_callers` | `symbol` (req) | same as `cross_repo_callers` | Alias for `cross_repo_callers` |
+| `cross_repo_callers` | `symbol` (req) | `{callers: [{service, symbol, file_path}], count}` | Find all callers of a symbol across every service via stored call edges (formerly aliased as `platform_callers`, deleted as zero-call structural redundancy — surfaces week-1, SW-1) |
 | `cross_repo_blast_radius` | `symbol` (req) | `{hits: [{service, symbol, file}], count}` | Blast radius of a symbol across all services: the symbol in each service plus its cross-service callers |
 
 ---

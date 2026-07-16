@@ -352,3 +352,34 @@ the default (stable IDs are a lint convention for gated plans). The pilot
 (agentic-kit handoff program + this repo's own plans) runs 4 weeks against
 the five metrics / four kill criteria in the design doc §6; a kill reverts
 the hook and generator while keeping the harmless grammar extensions.
+
+## Amendment to ADR-014 (2026-07-16, surfaces week-1)
+
+The daemon's 8-day call log (docs/vision/05-surfaces.md) showed both agents
+that ever reached for an off-surface tool bouncing off ADR-014's hard gate —
+an error teaches abandonment, which looks identical to no-demand in the log,
+so the gate was actively destroying the evidence it needed to justify itself.
+Gate semantics change from hard-gate to **execute-and-flag**: an off-surface
+`tools/call` or `batch` sub-call now executes normally, and the JSONL call log
+records it with `off_surface:true` instead of returning a "not on the
+surface" error, so demand is measurable rather than argued. Two facts this
+makes explicit: surfaces are **ergonomics and measurement, never a security
+boundary** — bare `/rpc` already serves the full, unauthenticated registry,
+including `ingest` (writes) and `compile_layer` (LLM spend), so a scoped
+surface was never doing access control; and therefore `serve-http`'s default
+listen address changes from `:7575` (all interfaces) to `127.0.0.1:7575`
+(loopback) in the same change — previously only the launchd plist override
+made it loopback. The pre-amendment hard gate stays available behind
+`Server.strictSurfaces` for any future multi-tenant shape.
+
+`set_profile` is retired entirely (further amends ADR-010/014's stdio
+clause, which had kept it valid there as advisory list-filtering): no
+production caller — stdio or HTTP — reaches it any more, so stdio now always
+serves the full registry. The `companion` allowlist swaps membership to the
+15-tool **agent** surface (docs/vision/05-surfaces.md §3: companion 15, minus
+`batch` and `brief`, plus `verify_plan` and `capabilities`, the top non-hook
+tool and the discovery escape hatch respectively) and is served at the new
+primary path `POST /rpc/agent`, with `POST /rpc/companion` kept as a
+compatible alias. The four ADR-010 group surfaces (`coding`/`investigation`/
+`shared`/`platform`) are unchanged and un-killed — zero observed traffic, kept
+for taxonomy completeness pending the 30-day post-flip log.

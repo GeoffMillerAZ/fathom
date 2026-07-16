@@ -18,15 +18,16 @@ import (
 
 // callLogEntry is the JSONL record written per tools/call invocation.
 type callLogEntry struct {
-	TS        string  `json:"ts"`
-	Tool      string  `json:"tool"`
-	Service   string  `json:"service,omitempty"`
-	Group     string  `json:"group,omitempty"`
-	Surface   string  `json:"surface,omitempty"`
-	Via       string  `json:"via,omitempty"`    // "batch" for batch sub-calls
-	Origin    string  `json:"origin,omitempty"` // caller-declared channel (X-Fathom-Origin); "" = agent choice
-	LatencyMS float64 `json:"latency_ms"`
-	Error     string  `json:"error,omitempty"`
+	TS         string  `json:"ts"`
+	Tool       string  `json:"tool"`
+	Service    string  `json:"service,omitempty"`
+	Group      string  `json:"group,omitempty"`
+	Surface    string  `json:"surface,omitempty"`
+	Via        string  `json:"via,omitempty"`         // "batch" for batch sub-calls
+	Origin     string  `json:"origin,omitempty"`      // caller-declared channel (X-Fathom-Origin); "" = agent choice
+	OffSurface bool    `json:"off_surface,omitempty"` // executed despite not being on the request surface (ADR-014 amendment)
+	LatencyMS  float64 `json:"latency_ms"`
+	Error      string  `json:"error,omitempty"`
 }
 
 // CallLogger serialises callLogEntry records to an io.Writer as JSONL.
@@ -47,19 +48,20 @@ func NewCallLogger(w io.Writer) *CallLogger {
 
 // log writes one JSONL entry.  It ignores marshal / write errors to avoid
 // disrupting tool call results.
-func (l *CallLogger) log(tool, service, group, surface, via, origin string, latency time.Duration, callErr error) {
+func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
 	entry := callLogEntry{
-		TS:        time.Now().UTC().Format(time.RFC3339Nano),
-		Tool:      tool,
-		Service:   service,
-		Group:     group,
-		Surface:   surface,
-		Via:       via,
-		Origin:    origin,
-		LatencyMS: float64(latency.Milliseconds()),
+		TS:         time.Now().UTC().Format(time.RFC3339Nano),
+		Tool:       tool,
+		Service:    service,
+		Group:      group,
+		Surface:    surface,
+		Via:        via,
+		Origin:     origin,
+		OffSurface: offSurface,
+		LatencyMS:  float64(latency.Milliseconds()),
 	}
 	if callErr != nil {
 		entry.Error = callErr.Error()

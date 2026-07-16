@@ -2,6 +2,7 @@
 package mcp_test
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -277,7 +278,10 @@ func TestCrossRepoCallers_FindsCallers(t *testing.T) {
 	}
 }
 
-func TestPlatformCallers_Alias(t *testing.T) {
+// TestPlatformCallers_AliasRemoved: platform_callers was deleted as a
+// zero-call alias (docs/plans/surfaces-week1.md SW-1) — the canonical
+// cross_repo_callers stays.
+func TestPlatformCallers_AliasRemoved(t *testing.T) {
 	srv := newFleetServer(fleetFixture())
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 1031, Method: "tools/call",
@@ -286,9 +290,25 @@ func TestPlatformCallers_Alias(t *testing.T) {
 			"arguments": map[string]any{"symbol": "Charge"},
 		},
 	})
-	p := platformToolPayload(t, resp)
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("platform_callers: want tool-not-found, got result: %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeNotFound) {
+		t.Errorf("platform_callers: code = %v, want ErrCodeNotFound (%d)", code, mcp.ErrCodeNotFound)
+	}
+
+	// The canonical name still works.
+	canon := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1032, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cross_repo_callers",
+			"arguments": map[string]any{"symbol": "Charge"},
+		},
+	})
+	p := platformToolPayload(t, canon)
 	if p["callers"] == nil {
-		t.Fatalf("platform_callers.callers missing: %v", p)
+		t.Fatalf("cross_repo_callers.callers missing: %v", p)
 	}
 }
 
@@ -430,19 +450,11 @@ func TestCrossRepoCallers_CrossServiceCallerReturned(t *testing.T) {
 func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 	srv := newFleetServer(fleetFixture())
 
-	// Switch to platform profile.
-	setResp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1040, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "set_profile",
-			"arguments": map[string]any{"profile": "platform"},
-		},
-	})
-	if setResp["error"] != nil {
-		t.Fatalf("set_profile(platform): %v", setResp["error"])
-	}
-
-	listResp := roundtrip(t, srv, request{
+	// set_profile is gone; select the platform surface via the HTTP path
+	// scope instead (see TestSetProfileDirect for the stdio/surface
+	// equivalence this relies on).
+	ctx := mcp.WithRequestScope(context.Background(), "platform", true)
+	listResp := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 1041, Method: "tools/list",
 	})
 	if listResp["error"] != nil {
@@ -454,9 +466,12 @@ func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 	for _, raw := range tools {
 		names[raw.(map[string]any)["name"].(string)] = true
 	}
-	for _, want := range []string{"list_services", "query_cross_service", "fleet_drift", "cross_repo_callers", "platform_callers"} {
+	for _, want := range []string{"list_services", "query_cross_service", "fleet_drift", "cross_repo_callers"} {
 		if !names[want] {
 			t.Errorf("platform profile missing tool %q", want)
 		}
+	}
+	if names["platform_callers"] {
+		t.Error("platform profile still lists platform_callers — alias should be gone")
 	}
 }
