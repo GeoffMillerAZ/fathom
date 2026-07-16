@@ -41,12 +41,15 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	defer c.Close()
 
 	// Semantic-layer compilation over HTTP (the compile_layer tool) needs an
-	// LLM. Wire one only when a key is configured; without it, dry-run
+	// LLM. Wire one only when a provider is configured (ANTHROPIC_API_KEY for
+	// the default anthropic provider, or FATHOM_LLM_PROVIDER set at all —
+	// including "claude-cli", which needs no key); without either, dry-run
 	// estimation still works and spending compiles return a clear error.
 	// Model override: FATHOM_COMPILE_MODEL (defaults to the cheap tier —
-	// obligations compiles are cents-scale by design, ADR-016 §6).
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		if llmCl, llmErr := buildAnthropicClient(); llmErr == nil {
+	// obligations compiles are cents-scale by design, ADR-016 §6). Provider
+	// selection: buildLLMClient (FATHOM_LLM_PROVIDER; see cmd/fathom/compile.go).
+	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" {
+		if llmCl, llmErr := buildLLMClient(); llmErr == nil {
 			model := os.Getenv("FATHOM_COMPILE_MODEL")
 			if model == "" {
 				model = "claude-haiku-4-5-20251001"

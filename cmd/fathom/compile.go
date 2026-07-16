@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -66,9 +68,9 @@ func compileViaStore(storePath, service, layer string, dryRun bool, stdout, stde
 	defer c.Close()
 
 	if !dryRun {
-		llmCl, llmErr := buildAnthropicClient()
+		llmCl, llmErr := buildLLMClient()
 		if llmErr != nil {
-			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY or use --dry-run=true to estimate cost.\n", llmErr)
+			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY, or set FATHOM_LLM_PROVIDER=claude-cli with a logged-in Claude Code CLI, or use --dry-run=true to estimate cost.\n", llmErr)
 			return 1
 		}
 		c.WithLLM(llmCl, "claude-haiku-4-5-20251001", 0.001, 0.005)
@@ -133,12 +135,57 @@ func compileViaHTTP(baseURL, service, layer string, dryRun bool, stdout, stderr 
 	return 0
 }
 
+// buildLLMClient constructs the llmclient.LLMClient the compile path uses,
+// selecting the provider via FATHOM_LLM_PROVIDER — the single construction
+// site both compileViaStore and serve-http call, so the provider choice is
+// made once and consistently everywhere fathom compiles a semantic layer.
+//
+//   - unset or "anthropic" (the default): buildAnthropicClient — the
+//     Anthropic Messages API, needs ANTHROPIC_API_KEY.
+//   - "claude-cli": buildClaudeCLIClient — shells out to a locally
+//     logged-in Claude Code CLI instead, so compiles ride a Claude Pro/Max
+//     subscription's OAuth login rather than a metered key. FATHOM_CLAUDE_BIN
+//     optionally overrides the resolved binary path (e.g. for a launchd
+//     daemon whose PATH does not include wherever the CLI was installed).
+//
+// Any other value is a typed configuration error, not a silent fallback.
+//
+// Cost-rate wiring (WithLLM's inRatePerKTok/outRatePerKTok) is unchanged
+// under claude-cli: the reported cost_usd on a CompileRun is the same
+// API-equivalent accounting as the anthropic provider produces — it does NOT
+// reflect actual marginal spend, which is $0 against a subscription's plan
+// limits when FATHOM_LLM_PROVIDER=claude-cli. See docs/use-cases/coding-agents.md.
+func buildLLMClient() (llmclient.LLMClient, error) {
+	switch provider := os.Getenv("FATHOM_LLM_PROVIDER"); provider {
+	case "", "anthropic":
+		return buildAnthropicClient()
+	case "claude-cli":
+		return buildClaudeCLIClient()
+	default:
+		return nil, fmt.Errorf("unknown FATHOM_LLM_PROVIDER %q (want \"anthropic\" or \"claude-cli\")", provider)
+	}
+}
+
 // buildAnthropicClient constructs an Anthropic LLM client from the environment.
 // Returns an error when ANTHROPIC_API_KEY is unset.
 func buildAnthropicClient() (llmclient.LLMClient, error) {
 	cl, err := anthropic.New(anthropic.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("construct Anthropic client: %w", err)
+	}
+	return cl, nil
+}
+
+// buildClaudeCLIClient constructs a Claude Code CLI LLM client from the
+// environment. FATHOM_CLAUDE_BIN, when set, overrides the resolved `claude`
+// binary path; otherwise it is resolved from PATH (see
+// foundations/llmclient/claudecli's package doc). Returns an error when the
+// binary cannot be resolved (e.g. not installed, or not on PATH and
+// FATHOM_CLAUDE_BIN is unset).
+func buildClaudeCLIClient() (llmclient.LLMClient, error) {
+	cl, err := claudecli.New(claudecli.Config{Bin: os.Getenv("FATHOM_CLAUDE_BIN")})
+	if err != nil {
+		return nil, fmt.Errorf("construct Claude CLI client: %w", err)
 	}
 	return cl, nil
 }

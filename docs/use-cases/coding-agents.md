@@ -133,6 +133,16 @@ p95 ≤ ~90ms per hook call. Obligations compile: cents per repo *change*
 (digest-gated). Hooks: ≤150 injected tokens on governed edits, zero on
 clean ones.
 
+**Subscription-backed compiles.** `fathom compile --dry-run=false` needs an
+LLM. By default that's the Anthropic API (`ANTHROPIC_API_KEY`, metered).
+Set `FATHOM_LLM_PROVIDER=claude-cli` (with a locally logged-in `claude` CLI)
+to run compiles against a Claude Pro/Max subscription instead — no API key
+needed. The `cost_usd` a `compile_layer` run reports is the same
+API-equivalent accounting either way; under `claude-cli` the actual marginal
+spend is $0 (it draws from the subscription's plan limits, not a metered
+key). `FATHOM_CLAUDE_BIN` overrides the resolved `claude` binary path when
+PATH doesn't include it (e.g. a launchd daemon).
+
 **Measure yours, don't trust ours:**
 
 ```sh

@@ -5,6 +5,31 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — subscription-backed compile provider (claudecli)
+- **`FATHOM_LLM_PROVIDER=claude-cli`.** `cmd/fathom/compile.go`'s single
+  construction site (`buildAnthropicClient`, called by both `compile
+  --dry-run=false` and `serve-http`'s `compile_layer`) is now
+  `buildLLMClient`, which switches on `FATHOM_LLM_PROVIDER`: unset or
+  `"anthropic"` keeps today's behavior (needs `ANTHROPIC_API_KEY`);
+  `"claude-cli"` shells out to a locally logged-in Claude Code CLI instead
+  (via `github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli`,
+  new in agentic-kit), so obligations/findings compiles ride a Claude Pro/Max
+  subscription's OAuth login instead of a metered key.
+  `FATHOM_CLAUDE_BIN` optionally overrides the resolved `claude` binary path
+  (e.g. for the `serve-http` launchd daemon, whose PATH may not include it).
+  The no-provider-available error now names both options. Reported
+  `cost_usd` is the same API-equivalent accounting under either provider;
+  actual marginal spend under `claude-cli` is $0 (subscription plan limits,
+  not a metered key) — documented in `docs/use-cases/coding-agents.md` §5.
+  go.mod's `agentic-kit` require bumped to the pseudo-version pinning the
+  commit that added `claudecli` (kit `go.work`+`replace` still couples the
+  local sibling checkout for day-to-day dev; the pin matters for a cold
+  clone). Tests: `cmd/fathom/compile_test.go` covers `buildLLMClient`'s
+  switch (default/explicit anthropic without a key, claude-cli construct +
+  one real `Complete` through a hermetic fake-shim, unresolvable
+  `FATHOM_CLAUDE_BIN`, an unknown provider value) — the anthropic path's
+  (nonexistent) tests are untouched.
+
 ### Added — findings-as-claims tracer bullet (docs/plans/findings-tracer.md D3, FT-1..FT-6)
 - **Kind:"finding" unlocked end-to-end.** A `findings` `#Layer` instance
   (`schema/semantic/schema.cue`: kind `finding`, corpus `findings/**`, tier
