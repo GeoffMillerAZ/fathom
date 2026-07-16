@@ -25,7 +25,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			"properties": map[string]any{
 				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"concern":       map[string]any{"type": "string", "description": "Optional concern to scope contradiction detection"},
-				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, reachable_from: Bar, min_tier: verified}' line becomes a task"},
+				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alternative to tasks: each '- [ ] title [SPEC-ID] {symbol: Foo, package: dir/of/foo, reachable_from: Bar, min_tier: verified}' line becomes a task. Annotations must sit on the checkbox line itself."},
 				"tasks": map[string]any{
 					"type":        "array",
 					"description": "Plan tasks with acceptance contracts",
@@ -36,6 +36,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 							"title":               map[string]any{"type": "string", "description": "Task title"},
 							"spec_ids":            map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec IDs that must be covered"},
 							"symbol":              map[string]any{"type": "string", "description": "Symbol that must exist in the index"},
+							"package":             map[string]any{"type": "string", "description": "Optional repo-relative directory the symbol's file must live under (disambiguates a bare name that exists in several packages)"},
 							"reachable_from":      map[string]any{"type": "string", "description": "Entrypoint that must reach symbol"},
 							"skip_test":           map[string]any{"type": "boolean", "description": "Don't require a test to reach symbol"},
 							"allow_contradiction": map[string]any{"type": "boolean", "description": "Contradictions don't fail the task"},
@@ -61,6 +62,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				Title              string   `json:"title"`
 				SpecIDs            []string `json:"spec_ids"`
 				Symbol             string   `json:"symbol"`
+				Package            string   `json:"package"`
 				ReachableFrom      string   `json:"reachable_from"`
 				SkipTest           bool     `json:"skip_test"`
 				AllowContradiction bool     `json:"allow_contradiction"`
@@ -109,6 +111,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 					Skipped: t.Skipped,
 					Expect: verify.Expect{
 						Symbol:             t.Symbol,
+						Package:            t.Package,
 						ReachableFrom:      t.ReachableFrom,
 						SkipTest:           t.SkipTest,
 						AllowContradiction: t.AllowContradiction,

@@ -77,6 +77,7 @@ type wireTask struct {
 
 type wireExpect struct {
 	Symbol             string `json:"symbol"              cue:"symbol"`
+	Package            string `json:"package"             cue:"package"`
 	ReachableFrom      string `json:"reachable_from"      cue:"reachable_from"`
 	SkipTest           bool   `json:"skip_test"           cue:"skip_test"`
 	AllowContradiction bool   `json:"allow_contradiction" cue:"allow_contradiction"`
@@ -258,6 +259,7 @@ func loadPlan(path, serviceOverride string) (verify.Plan, error) {
 			SpecIDs: wt.SpecIDs,
 			Expect: verify.Expect{
 				Symbol:             wt.Expect.Symbol,
+				Package:            wt.Expect.Package,
 				ReachableFrom:      wt.Expect.ReachableFrom,
 				SkipTest:           wt.Expect.SkipTest,
 				AllowContradiction: wt.Expect.AllowContradiction,

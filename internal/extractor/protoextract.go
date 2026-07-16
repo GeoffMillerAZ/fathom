@@ -33,7 +33,8 @@ func (p *ProtoExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 		return nodes, nil
 	}
 
-	proto.Walk(def,
+	proto.Walk(
+		def,
 		proto.WithMessage(func(m *proto.Message) {
 			nodes = append(nodes, core.SymbolNode{
 				Service:  service,

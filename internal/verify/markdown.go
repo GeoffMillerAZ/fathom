@@ -19,10 +19,14 @@ var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX\-])\]\s+(.*\S)\s*$`)
 //
 // Each checklist line becomes a Task. The title may carry:
 //   - bracketed spec IDs ([US-042], [EP-013], …), extracted via sdd; and
-//   - an optional annotation block "{symbol: Foo, reachable_from: Bar,
-//     min_tier: verified, skip_test: true, allow_contradiction: false}" that
-//     supplies the acceptance contract. A line with no annotation and no spec
-//     IDs verifies as "no-contract" (honestly Unknown) rather than a false pass.
+//   - an optional annotation block "{symbol: Foo, package: dir/of/foo,
+//     reachable_from: Bar, min_tier: verified, skip_test: true,
+//     allow_contradiction: false}" that supplies the acceptance contract. A
+//     line with no annotation and no spec IDs verifies as "no-contract"
+//     (honestly Unknown) rather than a false pass.
+//
+// The annotation must sit on the checkbox line itself: this parser is
+// line-based, so an annotation on a continuation line is silently ignored.
 //
 // Task IDs are assigned deterministically as "md-001", "md-002", … in document
 // order (zero-padded so they sort correctly).
@@ -47,6 +51,7 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		}
 		if ann != nil {
 			t.Expect.Symbol = ann["symbol"]
+			t.Expect.Package = ann["package"]
 			t.Expect.ReachableFrom = ann["reachable_from"]
 			if mt := core.EvidenceTier(ann["min_tier"]); mt.Valid() {
 				t.Expect.MinTier = mt

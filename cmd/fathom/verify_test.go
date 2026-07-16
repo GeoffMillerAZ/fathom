@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -427,4 +429,140 @@ func writeTempPlan(t *testing.T, content string) string {
 		t.Fatal(err)
 	}
 	return pf
+}
+
+// ─── package: grammar e2e suite (ported from cmd/sextant/verify_test.go) ──────
+
+// seedPackageGrammarStore seeds a DuckDB store with a bare symbol name ("New")
+// that is genuinely ambiguous across two packages, plus a test that reaches
+// exactly one of them via its canonical key. This is the shape the `package:`
+// plan annotation exists to disambiguate: without it, the bare name resolves
+// to nothing in the call graph (ambiguity stays honest, never first-match-wins).
+func seedPackageGrammarStore(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	storePath := filepath.Join(dir, "test.duckdb")
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	ctx := context.Background()
+
+	obs := []core.Observation{
+		{
+			ServiceID:    "svc",
+			SourceRef:    "foundations/pkga/new.go",
+			Symbol:       "New",
+			Package:      "pkga",
+			EvidenceTier: core.TierVerified,
+			SourceKind:   core.KindGoFunc,
+		},
+		{
+			ServiceID:    "svc",
+			SourceRef:    "foundations/pkga/new_test.go",
+			Symbol:       "TestNew",
+			Package:      "pkga",
+			EvidenceTier: core.TierVerified,
+			SourceKind:   core.KindGoFunc,
+			// TestNew calls pkga's New by canonical key — the test_reaches edge.
+			Calls: []string{"svc::pkga.New"},
+		},
+		{
+			// Same bare name in another package: makes "New" ambiguous.
+			ServiceID:    "svc",
+			SourceRef:    "foundations/pkgb/new.go",
+			Symbol:       "New",
+			Package:      "pkgb",
+			EvidenceTier: core.TierVerified,
+			SourceKind:   core.KindGoFunc,
+		},
+	}
+	if err := st.PutObservations(ctx, obs); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("store.Close: %v", err)
+	}
+	return storePath
+}
+
+// verifyMarkdownPlan runs gen-status-cue over a markdown plan checklist against
+// the seeded store and returns the rendered STATUS.cue content.
+func verifyMarkdownPlan(t *testing.T, storePath, planMD string) string {
+	t.Helper()
+	dir := t.TempDir()
+	planPath := filepath.Join(dir, "plan.md")
+	if err := os.WriteFile(planPath, []byte(planMD), 0o644); err != nil {
+		t.Fatalf("writing plan file: %v", err)
+	}
+	outPath := filepath.Join(dir, "STATUS.cue")
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"gen-status-cue",
+		"--plan", planPath,
+		"--service", "svc",
+		"--store", storePath,
+		"--output", outPath,
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("gen-status-cue exited %d\nstdout=%s\nstderr=%s",
+			code, out.String(), errBuf.String())
+	}
+
+	content, err := os.ReadFile(outPath)
+	if err != nil {
+		t.Fatalf("reading output file: %v", err)
+	}
+	return string(content)
+}
+
+// TestVerifyMarkdownPlan_PackageKeyHappyPath: a `package:` annotation
+// disambiguates a bare symbol name that exists in two packages; the claim
+// verifies via the canonical key of the node under that directory.
+func TestVerifyMarkdownPlan_PackageKeyHappyPath(t *testing.T) {
+	storePath := seedPackageGrammarStore(t)
+	got := verifyMarkdownPlan(t, storePath,
+		"- [x] constructor {symbol: New, package: foundations/pkga}\n")
+
+	if !strings.Contains(got, `label:  "verified"`) {
+		t.Errorf("expected verified verdict via package: disambiguation; got:\n%s", got)
+	}
+	if !strings.Contains(got, `status: "pass"`) {
+		t.Errorf("expected pass status; got:\n%s", got)
+	}
+}
+
+// TestVerifyMarkdownPlan_NonexistentSymbol: a claimed symbol that is not in
+// the index must fail with claimed-but-absent — the gate still bites.
+// (Permanent negative proof, not a scratch file.)
+func TestVerifyMarkdownPlan_NonexistentSymbol(t *testing.T) {
+	storePath := seedPackageGrammarStore(t)
+	got := verifyMarkdownPlan(t, storePath,
+		"- [x] ghost feature {symbol: Ghost}\n")
+
+	if !strings.Contains(got, `label:  "claimed-but-absent"`) {
+		t.Errorf("expected claimed-but-absent for a nonexistent symbol; got:\n%s", got)
+	}
+	if !strings.Contains(got, `status: "fail"`) {
+		t.Errorf("expected fail status; got:\n%s", got)
+	}
+}
+
+// TestVerifyMarkdownPlan_WrongPackage: a real symbol claimed under a directory
+// it does not live in must fail with claimed-but-absent — a `package:` filter
+// that empties the match set is a failed claim, never silently ignored.
+// (Permanent negative proof, not a scratch file.)
+func TestVerifyMarkdownPlan_WrongPackage(t *testing.T) {
+	storePath := seedPackageGrammarStore(t)
+	got := verifyMarkdownPlan(t, storePath,
+		"- [x] constructor {symbol: New, package: foundations/pkgc}\n")
+
+	if !strings.Contains(got, `label:  "claimed-but-absent"`) {
+		t.Errorf("expected claimed-but-absent for a wrong package: filter; got:\n%s", got)
+	}
+	if !strings.Contains(got, `status: "fail"`) {
+		t.Errorf("expected fail status; got:\n%s", got)
+	}
 }

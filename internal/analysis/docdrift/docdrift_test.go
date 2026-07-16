@@ -32,7 +32,8 @@ const linkMD = `# Links
 `
 
 func TestAnalyze_NoSymbols(t *testing.T) {
-	drifts := docdrift.Analyze("doc.md", goodMD,
+	drifts := docdrift.Analyze(
+		"doc.md", goodMD,
 		map[string]bool{"ValidateToken": true},
 		map[string]bool{"docs/auth.md": true},
 	)
@@ -42,7 +43,8 @@ func TestAnalyze_NoSymbols(t *testing.T) {
 }
 
 func TestAnalyze_MissingSymbol(t *testing.T) {
-	drifts := docdrift.Analyze("doc.md", driftMD,
+	drifts := docdrift.Analyze(
+		"doc.md", driftMD,
 		map[string]bool{},
 		map[string]bool{},
 	)
@@ -57,7 +59,8 @@ func TestAnalyze_MissingSymbol(t *testing.T) {
 }
 
 func TestAnalyze_MissingFile(t *testing.T) {
-	drifts := docdrift.Analyze("doc.md", driftMD,
+	drifts := docdrift.Analyze(
+		"doc.md", driftMD,
 		map[string]bool{},
 		map[string]bool{},
 	)
@@ -72,7 +75,8 @@ func TestAnalyze_MissingFile(t *testing.T) {
 
 func TestAnalyze_FencedCodeIgnored(t *testing.T) {
 	// OldFunction is inside a fenced block — should not be flagged.
-	drifts := docdrift.Analyze("doc.md", fencedMD,
+	drifts := docdrift.Analyze(
+		"doc.md", fencedMD,
 		map[string]bool{},
 		map[string]bool{},
 	)
@@ -84,7 +88,8 @@ func TestAnalyze_FencedCodeIgnored(t *testing.T) {
 }
 
 func TestAnalyze_LinkTargets(t *testing.T) {
-	drifts := docdrift.Analyze("doc.md", linkMD,
+	drifts := docdrift.Analyze(
+		"doc.md", linkMD,
 		map[string]bool{},
 		map[string]bool{"docs/valid.md": true},
 	)
@@ -107,7 +112,8 @@ func TestAnalyze_LinkTargets(t *testing.T) {
 }
 
 func TestAnalyze_LineNumbers(t *testing.T) {
-	drifts := docdrift.Analyze("doc.md", driftMD,
+	drifts := docdrift.Analyze(
+		"doc.md", driftMD,
 		map[string]bool{},
 		map[string]bool{},
 	)
@@ -145,7 +151,8 @@ func TestAnalyze_Sorted(t *testing.T) {
 func TestAnalyze_Determinism(t *testing.T) {
 	var prev []docdrift.Drift
 	for i := 0; i < 5; i++ {
-		d := docdrift.Analyze("doc.md", driftMD,
+		d := docdrift.Analyze(
+			"doc.md", driftMD,
 			map[string]bool{},
 			map[string]bool{},
 		)
@@ -172,7 +179,8 @@ func TestAnalyze_Empty(t *testing.T) {
 
 func TestAnalyze_KnownSymbolNotFlagged(t *testing.T) {
 	md := "Use `KnownFunc` to do things.\n"
-	drifts := docdrift.Analyze("doc.md", md,
+	drifts := docdrift.Analyze(
+		"doc.md", md,
 		map[string]bool{"KnownFunc": true},
 		map[string]bool{},
 	)

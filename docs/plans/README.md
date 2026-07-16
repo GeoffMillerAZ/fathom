@@ -2,7 +2,8 @@
 
 Plan files here are Markdown checklists where `[x]` claims are gated at
 pre-push and CI. The grammar is specified in
-`docs/design/coding-agent-excellence.md` §4.2.
+`docs/design/coding-agent-excellence.md` §4.2; parsing is
+`internal/verify/markdown.go` (`ParseMarkdownPlan`).
 
 ## Checkbox semantics
 
@@ -15,7 +16,7 @@ pre-push and CI. The grammar is specified in
 ## Line format
 
 ```
-- [ ] Title text [SPEC-ID] {symbol: Sym, reachable_from: Entry, min_tier: verified}
+- [ ] Title text [SPEC-ID] {symbol: Sym, package: dir/of/sym, reachable_from: Entry, min_tier: verified}
 ```
 
 (The example is deliberately unchecked: the parser is line-based and does not
@@ -24,11 +25,39 @@ hooks also exclude this README — plans claim, READMEs describe.)
 
 - **Title**: human description of the work.
 - **Spec IDs**: bracketed references (`[US-042]`) linked to spec documents.
-- **Annotation block** `{…}`: acceptance contract with optional keys `symbol`,
-  `reachable_from`, `min_tier`, `skip_test`, `allow_contradiction`.
+- **Annotation block** `{…}`: the acceptance contract, comma-separated
+  `key: value` pairs.
 
-A line with no annotation and no spec IDs is `Unknown` — reported honestly,
-never a false pass. Under `--strict` (CI), Unknown claimed tasks block.
+A line with no annotation and no spec IDs is `Unknown` (`no-contract`) —
+reported honestly, never a false pass. Under `--strict` (CI), Unknown claimed
+tasks block.
+
+## Annotation keys
+
+| Key | Meaning | Default |
+|-----|---------|---------|
+| `symbol` | Claimed symbol that must exist in the index | — (required for a symbol contract) |
+| `package` | Repo-relative directory the symbol's file must live under. Disambiguates a bare name that exists in several packages: matches are filtered to that directory, and when exactly one canonical symbol remains, `test_reaches`/`edge_wired` query its canonical key instead of the bare name. If the filter empties the match set, `symbol_present` fails with `claimed-but-absent`. If the directory still contains several distinct symbols with that name, the name stays ambiguous and resolves to nothing — never first-match-wins. | unset (no filter) |
+| `reachable_from` | An entrypoint that must statically reach `symbol` | unset |
+| `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
+| `skip_test` | `true` exempts the symbol from the test-reaches requirement | `false` (a `Test*` must statically reach it) |
+| `allow_contradiction` | `true` lets contradictions on the symbol pass | `false` |
+
+The zero value of every key is the **strictest** contract; loosen explicitly.
+
+## Annotation placement (load-bearing)
+
+The annotation block must sit **on the checkbox line itself**. The parser is
+line-based: an annotation on a continuation (wrapped) line is silently
+ignored, and the task verifies as `no-contract` instead of carrying its
+intended contract. Keep the checkbox, title, spec IDs, and `{…}` block on one
+line, however long.
+
+## Honesty boundary
+
+`test_reaches` means a `Test*` function **statically reaches** the symbol via
+the call graph — never that the test passes or even runs. `runtime_pass` is
+always Unknown until CI/coverage evidence is ingested as its own tier.
 
 ## Gate commands
 

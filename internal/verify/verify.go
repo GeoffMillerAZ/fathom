@@ -50,6 +50,7 @@ type Task struct {
 // omission. Loosen explicitly.
 type Expect struct {
 	Symbol             string            // claimed symbol that must exist (e.g. "ValidateToken")
+	Package            string            // optional: repo-relative directory Symbol's file must live under (disambiguates bare names)
 	ReachableFrom      string            // optional: an entrypoint that must reach Symbol
 	SkipTest           bool              // false (default) → a Test* must statically reach Symbol
 	AllowContradiction bool              // false (default) → any contradiction on Symbol fails the task
@@ -209,12 +210,29 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 	checked := false
 
 	// --- symbol presence + tier + test_reaches ---
+	// querySym is the identifier used for reachability queries. It stays the
+	// claimed (possibly bare) name unless a `package:` filter narrows the
+	// matches to exactly one canonical key — then that key is used, so a bare
+	// name that is ambiguous across packages can still verify. A filter that
+	// leaves multiple distinct keys keeps the bare name: ambiguity resolves to
+	// nothing downstream, never first-match-wins.
+	querySym := e.Symbol
 	var matches []core.SymbolNode
 	if e.Symbol != "" {
 		checked = true
 		matches = ev.FindSymbol(e.Symbol)
+		if e.Package != "" {
+			matches = underDir(matches, e.Package)
+			if keys := distinctKeys(matches); len(keys) == 1 {
+				querySym = keys[0]
+			}
+		}
 		if len(matches) == 0 {
-			fail("symbol_present", fmt.Sprintf("%q not found in the index", e.Symbol), "claimed-but-absent")
+			detail := fmt.Sprintf("%q not found in the index", e.Symbol)
+			if e.Package != "" {
+				detail = fmt.Sprintf("%q not found under %q in the index", e.Symbol, e.Package)
+			}
+			fail("symbol_present", detail, "claimed-but-absent")
 		} else {
 			pass("symbol_present", fmt.Sprintf("%s at %s:%d", e.Symbol, matches[0].FilePath, matches[0].Line))
 		}
@@ -243,7 +261,7 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 		if !e.SkipTest {
 			if len(matches) == 0 {
 				na("test_reaches", "symbol absent")
-			} else if tests := ev.TestReaches(e.Symbol); len(tests) > 0 {
+			} else if tests := ev.TestReaches(querySym); len(tests) > 0 {
 				pass("test_reaches", fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(tests), tests[0]))
 			} else {
 				fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
@@ -265,10 +283,10 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 	// --- edge wiring (requires both endpoints) ---
 	if e.ReachableFrom != "" && e.Symbol != "" {
 		checked = true
-		if ev.Reachable(e.ReachableFrom, e.Symbol) {
-			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, e.Symbol))
+		if ev.Reachable(e.ReachableFrom, querySym) {
+			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, querySym))
 		} else {
-			fail("edge_wired", fmt.Sprintf("%s does not reach %s", e.ReachableFrom, e.Symbol), "edge-not-wired")
+			fail("edge_wired", fmt.Sprintf("%s does not reach %s", e.ReachableFrom, querySym), "edge-not-wired")
 		}
 	}
 
@@ -303,6 +321,36 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 		v.Label = "no-contract"
 	}
 	return v
+}
+
+// underDir returns the nodes whose FilePath lies under the repo-relative
+// directory dir. Index paths use forward slashes; matching is a pure string
+// prefix (subdirectories included), preserving VerifyPlan's purity.
+func underDir(nodes []core.SymbolNode, dir string) []core.SymbolNode {
+	prefix := strings.TrimSuffix(dir, "/") + "/"
+	var out []core.SymbolNode
+	for _, n := range nodes {
+		if strings.HasPrefix(n.FilePath, prefix) {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// distinctKeys returns the distinct canonical keys of nodes, in first-seen
+// order (duplicate observations of the same symbol collapse to one key).
+func distinctKeys(nodes []core.SymbolNode) []string {
+	seen := make(map[string]struct{}, len(nodes))
+	var keys []string
+	for _, n := range nodes {
+		k := n.Key()
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // bestTier returns the highest-ranked evidence tier among the matched nodes.
