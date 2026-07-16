@@ -5,6 +5,18 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — extractor-epoch fingerprint salt: extractor upgrades now reach unchanged files (O9)
+- The pass-3 hash-gate keyed fingerprints on file content only, so a binary
+  with improved extraction (e.g. H1's aliased-selector canonicalization and
+  method-edge forms) silently kept every unchanged file's OLD observations —
+  the fleet store served pre-H1 `Calls` forms and `test_reaches` failed on
+  genuinely-tested symbols (dogfood O9, caught by the first HTTP-mode run of
+  the re-armed agentic-kit gate). Fingerprints are now salted with
+  `fusion.ExtractorEpoch` (bump on any extraction-semantics change → full
+  re-extract on next ingest); `ObligationsIndexStale` adopts the shared
+  `fusion.FingerprintHash` so the formulas cannot diverge. Regression:
+  `TestIngest_ExtractorEpochInvalidatesOldFingerprints`.
+
 ### Added — SDD reconciler v0: plan grammar v2, wave gate, CUE shadow, Stop hook (ADR-018)
 - **Plan grammar v2** (`internal/verify`, additive — v1 plans parse unchanged):
   `[~]` in-progress checkbox; author-owned stable `id:` keys (positional

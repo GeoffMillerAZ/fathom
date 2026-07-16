@@ -31,23 +31,29 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   an external `_test` package via import alias; `evidenceladder_test.go:97`
   calls `l.Run(context.Background(), ...)`. Known-good neighbor on the same
   run: `{symbol: Build, package: foundations/evidence/case-file}` passes.
-- **Root cause (hypotheses, not yet confirmed):** (a) aliased selector
-  canonicalization (H1 commit a366bd4) maps the callee to the import-path
-  segment (`evidence-signature.PreconditionSatisfied`) which may not match the
-  node key when the Go package name differs from the dir segment; (b)
-  `Ladder.Run` was resolvable under Stage-1b's exactly-one-method rule at H1
-  proof time, but H5/H6 (eval-runner, MCP streamable) likely added more `.Run`
-  methods — N>1 receivers → honest refusal → edge drops. Both are recall, not
-  precision: the honesty rule is behaving as designed on inputs the fixes
-  didn't anticipate.
-- **Impact (operational, immediate):** agentic-kit's pre-push gate now BITES —
-  any push there exits 1 until these two verify. Per handoff-h1 doctrine,
-  "uncheck honestly" is not sanctioned for genuinely-tested symbols; the
-  remedy is extractor/callgraph recall work (H1 scope).
-- **Status:** open. Fix direction: confirm (a) with a goextract probe on
-  alias-vs-package-name divergence; for (b) consider `package:`-scoped edge
-  resolution (the target key is already narrowed — let the edge resolver
-  accept `<var>.Method` when the *filtered* candidate set is exactly one).
+- **Root cause (CONFIRMED — the two initial hypotheses were wrong):** a fresh
+  full-kit scratch ingest with the new binary verifies BOTH claims (2/2), so
+  the H1 recall fixes (byDirName aliased-selector resolution, method edges)
+  work. The fleet store was serving **stale-extractor observations**: the
+  pass-3 hash-gate keyed fingerprints on file CONTENT only, so re-ingesting
+  after the binary upgrade skipped every unchanged file and kept the
+  pre-H1 `Calls` forms (`sig.PreconditionSatisfied` un-canonicalized, no
+  ctor-scoped method forms). Extractor improvements could never reach
+  unchanged files — the observation-level twin of the documented
+  binary-staleness class.
+- **Fix (this commit):** `fusion.ExtractorEpoch` salts every fingerprint
+  (`fusion.FingerprintHash`, also adopted by `ObligationsIndexStale` so the
+  formulas stay identical — the client test caught the divergence
+  immediately). Bump the epoch in any commit that changes extraction
+  semantics; the salt change invalidates all stored fingerprints and the next
+  ingest re-extracts everything. Regression:
+  `TestIngest_ExtractorEpochInvalidatesOldFingerprints`.
+- **Also learned:** a `--path`-rooted scratch ingest of a single package dir
+  flattens `FilePath` (no parent dirs), which disables `byDirName` — probe
+  stores must be rooted at the repo, or dir-segment resolution silently
+  vanishes. (Cost me one wrong intermediate conclusion.)
+- **Status:** fixed in code; operational step = re-ingest the fleet on the
+  new binary (every service re-extracts once — the epoch salt forces it).
 
 ### O8 — obligations v2 serves code-scoped and descriptive rules on documentation edits
 

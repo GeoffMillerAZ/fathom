@@ -2,8 +2,6 @@ package client
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +9,7 @@ import (
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -39,8 +38,8 @@ func (c *Client) Obligations(ctx context.Context, service, file string, maxRules
 // disagree. Any error (disk, store, missing meta) returns false — the caller
 // should treat the index as authoritative when freshness cannot be determined.
 //
-// Fingerprint formula matches the fusion pipeline (Pass 3): sha256 of raw
-// file bytes, hex-encoded.
+// Fingerprint formula matches the fusion pipeline (Pass 3) exactly via
+// fusion.FingerprintHash — the epoch-salted content hash.
 func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string) bool {
 	// Resolve disk path: absolute passthrough; otherwise join with meta root.
 	diskPath := file
@@ -56,8 +55,7 @@ func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string
 	if err != nil {
 		return false
 	}
-	sum := sha256.Sum256(data)
-	diskHash := hex.EncodeToString(sum[:])
+	diskHash := fusion.FingerprintHash(data)
 
 	stored, found, err := c.st.Fingerprint(ctx, service, file)
 	if err != nil || !found {

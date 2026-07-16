@@ -190,6 +190,26 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 	return commits
 }
 
+// ExtractorEpoch salts every file fingerprint (the pass-3 hash-gate). Bump it
+// in any commit that changes EXTRACTION SEMANTICS (new call-edge forms,
+// symbol naming, kind mappings …): the salt change invalidates all stored
+// fingerprints, so the next ingest of every service re-extracts every file.
+// Without it, hash-gated files keep observations produced by the OLD
+// extractor forever — the stale-observation class dogfood O9 caught (the H1
+// callgraph/extractor fixes were invisible on the fleet store until forced).
+// Epoch 2 = the H1 extractor generation (aliased-selector canonicalization,
+// constructor-scoped receiver inference) + this salt's introduction.
+const ExtractorEpoch = "2"
+
+// FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
+// bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
+// against stored fingerprints (e.g. Client.ObligationsIndexStale) MUST use
+// this function — a plain content hash never matches a stored fingerprint.
+func FingerprintHash(content []byte) string {
+	sum := sha256.Sum256(append(content, []byte("\x00fathom-extractor-epoch:"+ExtractorEpoch)...))
+	return hex.EncodeToString(sum[:])
+}
+
 // New constructs a Pipeline with extractors pre-registered for all supported
 // file types. Additional extractors can be added or replaced by calling
 // RegisterExtractor after construction.
@@ -480,9 +500,11 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	for i, ref := range refs {
 		content := fetched[i].content
 
-		// SHA-256 hash of the raw file content.
-		sum := sha256.Sum256(content)
-		hash := hex.EncodeToString(sum[:])
+		// Epoch-salted content hash (see FingerprintHash / ExtractorEpoch):
+		// an extractor-semantics change must invalidate every stored
+		// fingerprint, or improved extraction never reaches unchanged files —
+		// the stale-observation class dogfood O9 caught.
+		hash := FingerprintHash(content)
 
 		// Hash-gate: compare against stored fingerprint.
 		storedHash, found, fpErr := p.st.Fingerprint(ctx, svc.ID, ref.Path)
