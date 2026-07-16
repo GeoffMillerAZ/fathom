@@ -55,7 +55,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 - **Status:** fixed in code; operational step = re-ingest the fleet on the
   new binary (every service re-extracts once — the epoch salt forces it).
 
-### O8 — obligations v2 serves code-scoped and descriptive rules on documentation edits
+### O8 — obligations v2 serves code-scoped and descriptive rules on documentation edits (fix landed; fleet recompile pending)
 
 - **Symptom:** every `Write` to `docs/vision/*.md` (2026-07-14) injected the same six
   obligations, several of which cannot bind a docs edit.
@@ -81,9 +81,19 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   payloads across the fleet, add file-class awareness to scoping (a code-only rule must
   not match `**/*.md`), and tighten the prompt's rejection of descriptive imperatives.
   Success metric: injected-rule precision ≥0.95 sampled at serve time.
-- **Status:** open. **Impact:** the flagship channel injects ~6 rules on every docs
-  edit with ≤3 relevant — exactly the trust-fatal noise class ADR-016 §4.6 warns
-  about, now observed at serve time rather than compile time.
+- **Status:** fix landed in code (docs/plans/o8-precision-and-speclines.md
+  OP-1..OP-3): prompt v3 (`internal/semantic/prompts.go`) instructs file-class
+  scoping and forbids bare `**`; a compile-time over-broad-scope guard
+  (`verifyDraft`, `internal/semantic/compile.go`) rejects any scope matching
+  more than half the indexed corpus, exactly like a failed citation; the
+  edit-hook (`cmd/fathom/edithook.go`) now exits silently for a file that
+  relativizes under NO service-candidate root instead of falling back to the
+  raw out-of-repo path, closing the addendum. Not yet observably fixed at
+  serve time: every already-compiled claim in the fleet index still carries
+  its old (pre-v3) scope until the flag-day recompile (OP-6, deferred —
+  operator-side, needs a keyed shell) re-runs `compile` on a binary containing
+  this slice. **Impact:** unchanged until OP-6 lands; the compile-time and
+  edit-hook halves of the fix are what OP-6 will activate fleet-wide.
 
 ### O7 — optional-capability interfaces silently stripped by the auto-refresh wrapper (fixed)
 

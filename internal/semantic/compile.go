@@ -454,7 +454,12 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	if !ok {
 		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
 	}
-	// Scope globs must be non-empty and each match >= 1 indexed file.
+	// Scope globs must be non-empty, each match >= 1 indexed file, and none
+	// may be over-broad (ADR-016 §4.4 scope-trap defense, extended by O8/
+	// OP-2): a glob matching more than half of the indexed corpus is a
+	// catch-all in disguise (typically "**" or an equivalent repo-wide
+	// pattern) and is rejected exactly like a failed citation, not silently
+	// narrowed or allowed through.
 	scope := append([]string(nil), d.Scope...)
 	sort.Strings(scope)
 	if len(scope) == 0 {
@@ -462,15 +467,17 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	}
 	for _, g := range scope {
 		m := filter.New([]string{g})
-		matched := false
+		matched := 0
 		for _, f := range indexedFiles {
 			if m.Match(f) {
-				matched = true
-				break
+				matched++
 			}
 		}
-		if !matched {
+		if matched == 0 {
 			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q matches no indexed file", g)
+		}
+		if matched*2 > len(indexedFiles) {
+			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q is over-broad: matches %d/%d indexed files (>50%%), rejected as a catch-all scope", g, matched, len(indexedFiles))
 		}
 	}
 

@@ -5,6 +5,47 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — O8 precision: serve-time trust (docs/plans/o8-precision-and-speclines.md OP-1..OP-5)
+- **Prompt v3** (`internal/semantic/prompts.go`): the obligations compile system
+  prompt now instructs file-class scoping — a rule binds only the file class its
+  governing document addresses (code rules → source globs like `**/*.go`, docs
+  rules → markdown globs like `**/*.md`) and a bare `"**"`/repo-wide catch-all
+  scope is never allowed. All v2 instructions (binding-rules-only, narrowest
+  scope, 28-word rule cap, the `{"claims":[...]}` envelope) are kept. The
+  content-addressed `PromptVersion` (TextHash-derived) rotated to
+  `obligations/c02b1aa1`, forcing every section to recompile under the new
+  prompt rather than silently keeping v2 claims (the v1→v2 hand-bumped-const
+  bug class this mechanism exists to prevent).
+- **Over-broad-scope guard** (`internal/semantic/compile.go` `verifyDraft`): a
+  claim whose scope glob matches more than half of `IndexedFiles` is rejected
+  and counted in `ClaimsRejected`, exactly like a failed citation — the
+  compile-time backstop for prompt v3's "never `**`" instruction. This makes
+  `"**"` always over-broad in a non-empty corpus, so every prior test scope of
+  `["**"]` was rewritten to a real narrow glob (`internal/mcp/**` against the
+  shared 3-file test fixture).
+- **Edit-hook root refusal** (`cmd/fathom/edithook.go` `cmdEditHook`): a file
+  that does not relativize under ANY resolved service-candidate root (absolute
+  path, `filepath.Rel` fails or yields a `..`-prefixed result) now skips that
+  candidate outright instead of falling back to querying the daemon with the
+  raw out-of-repo path — the O8 addendum (obligations fired for a file outside
+  every indexed repo) goes silent.
+- **Spec-line injection** (`cmd/fathom/edithook.go`): when the edited file cites
+  bracketed spec IDs (`internal/sdd.ExtractRefsFromText`, the same extraction
+  `spec_refs` uses), the edit-hook looks up each ID (capped at 3) via the
+  `spec_refs` MCP tool and appends `"▸ implements [ID] — defined at
+  <file:line>"` beneath the obligations payload for the location OUTSIDE the
+  edited file — literally tying the cited spec to where it's defined, in the
+  channel that already works (docs/vision/04 §4 item 3). Shares the
+  obligations payload's ≤150-token budget; spec lines are dropped first (never
+  truncating obligations) when the budget is already spent. Silent on any
+  error (unreadable file, daemon down, etc.) per hook doctrine.
+- **`plan` project skill** (`.claude/skills/plan/SKILL.md`): scaffolds a
+  gate-ready grammar-v2 plan (stable `id`s, `{symbol, package}` contracts
+  grounded via `pack_context`/`test_impact`, typed `disposition`s for skips,
+  `skip_test` always paired with `skip:`, spec-ID brackets, the `fathom verify`
+  command to run before checking any box) so new plans are born gate-ready
+  instead of needing an honesty rewrite after the fact.
+
 ### Added — coding-agents canonical doc + staleness sweep (IA-4/IA-5)
 - docs/use-cases/coding-agents.md is THE adoption guide (the loop, hooks,
   gates, CLAUDE.md/AGENTS.md doctrine, agent-surface registration, the honest

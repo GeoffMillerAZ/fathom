@@ -9,17 +9,17 @@ carries the new prompt.
 
 ## Compile-side precision (the O8 work order)
 
-- [ ] Prompt v3: rules must scope to the file class they bind (code rules to source globs, docs rules to markdown globs); bare catch-all scopes are forbidden by instruction {id: OP-1, symbol: obligationsPromptVersion, package: internal/semantic, skip_test: true, skip: "prompt text change; identity rotation is the test — TextHash-derived PromptVersion changes"}
-- [ ] Over-broad-scope guard in compile verification: a draft whose scope matches more than half of the indexed files is rejected and counted, exactly like a failed citation {id: OP-2, symbol: verifyDraft, package: internal/semantic}
-- [ ] Edit-hook refuses files outside the resolved service root — the out-of-repo injection O8 observed goes silent {id: OP-3, symbol: cmdEditHook, package: cmd/fathom}
+- [x] Prompt v3: rules must scope to the file class they bind (code rules to source globs, docs rules to markdown globs); bare catch-all scopes are forbidden by instruction {id: OP-1, symbol: obligationsPromptVersion, package: internal/semantic, skip_test: true, skip: "prompt text change; identity rotation is the test — TextHash-derived PromptVersion changes"}
+- [x] Over-broad-scope guard in compile verification: a draft whose scope matches more than half of the indexed files is rejected and counted, exactly like a failed citation {id: OP-2, symbol: verifyDraft, package: internal/semantic}
+- [x] Edit-hook refuses files outside the resolved service root — the out-of-repo injection O8 observed goes silent {id: OP-3, symbol: cmdEditHook, package: cmd/fathom}
 
 ## Spec-line injection (knowledge tied to code, in the working channel)
 
-- [ ] When the edited file cites bracketed spec IDs, the edit-hook appends a traceability line per ID (where the spec is defined, via the index) beneath the obligations payload — same ≤150-token discipline, silent on none {id: OP-4, symbol: cmdEditHook, package: cmd/fathom}
+- [x] When the edited file cites bracketed spec IDs, the edit-hook appends a traceability line per ID (where the spec is defined, via the index) beneath the obligations payload — same ≤150-token discipline, silent on none {id: OP-4, symbol: cmdEditHook, package: cmd/fathom}
 
 ## Plan authoring at zero marginal effort
 
-- [ ] A project skill scaffolds v2-grammar plans (stable ids, contracts, typed dispositions) so plans are born gate-ready {id: OP-5, symbol: cmdEditHook, skip_test: true, skip: "skill markdown deliverable; anchored to the channel that consumes the grammar"}
+- [x] A project skill scaffolds v2-grammar plans (stable ids, contracts, typed dispositions) so plans are born gate-ready {id: OP-5, symbol: cmdEditHook, skip_test: true, skip: "skill markdown deliverable; anchored to the channel that consumes the grammar"}
 
 ## Deferred
 
