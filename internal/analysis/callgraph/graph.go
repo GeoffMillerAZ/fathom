@@ -69,20 +69,24 @@ func Build(nodes []core.SymbolNode) *Graph {
 		byPkgName: make(map[string]string),
 	}
 
-	// First pass: register all nodes and build the byName / byPkgName indexes.
-	// Count how many nodes share each bare name and each "package.Name"; keep
-	// only the unambiguous ones.
-	nameCounts := make(map[string]int, len(nodes))
-	pkgNameCounts := make(map[string]int, len(nodes))
+	// First pass: register all nodes (g.nodes dedupes identical SymbolKeys)
+	// and build the byName / byPkgName indexes. The ambiguity counts MUST be
+	// computed over the deduplicated key set, not the raw slice: duplicate
+	// observations of the same symbol (e.g. stale worktree copies indexed
+	// more than once) would otherwise make a genuinely unique name look
+	// ambiguous and silently drop its cross-package call edges.
 	for _, n := range nodes {
-		key := n.Key()
-		g.nodes[key] = n
+		g.nodes[n.Key()] = n
+	}
+	nameCounts := make(map[string]int, len(g.nodes))
+	pkgNameCounts := make(map[string]int, len(g.nodes))
+	for _, n := range g.nodes {
 		nameCounts[n.Name]++
 		if n.Package != "" {
 			pkgNameCounts[n.Package+"."+n.Name]++
 		}
 	}
-	for _, n := range nodes {
+	for _, n := range g.nodes {
 		if nameCounts[n.Name] == 1 {
 			g.byName[n.Name] = n.Key()
 		}
@@ -91,9 +95,10 @@ func Build(nodes []core.SymbolNode) *Graph {
 		}
 	}
 
-	// Second pass: resolve call edges.
-	for _, n := range nodes {
-		callerKey := n.Key()
+	// Second pass: resolve call edges. Iterate the deduplicated node set so
+	// duplicate observations of a caller cannot duplicate its edges; the
+	// adjacency lists are sorted below, so map order does not leak out.
+	for callerKey, n := range g.nodes {
 		seen := make(map[string]struct{}) // deduplicate edges from this caller
 		for _, raw := range n.Calls {
 			calleeKey := g.resolve(raw)
@@ -147,7 +152,33 @@ func (g *Graph) resolve(raw string) string {
 			match = key
 		}
 	}
-	return match
+	if match != "" {
+		return match
+	}
+	// Method-call fallback: extractors name a method node "Recv.Name" (key
+	// "svc::Recv.Recv.Name") while a call site is recorded as "<var>.Name"
+	// (e.g. "h.RunOnce"), which none of the lookups above can map. Accept
+	// only when exactly one node key ends in "."+Method AND that node is a
+	// method node (its Name has the "Recv.Method" shape) — mirroring the
+	// "."+symbol suffix matching the query engine's callsSymbol does.
+	// A method name defined on more than one receiver stays unresolved:
+	// ambiguity resolves to nothing, never first-match-wins.
+	if i := strings.LastIndex(raw, "."); i > 0 && i < len(raw)-1 {
+		msuffix := raw[i:] // "."+Method
+		var mmatch string
+		for key := range g.nodes {
+			if strings.HasSuffix(key, msuffix) {
+				if mmatch != "" {
+					return "" // ambiguous
+				}
+				mmatch = key
+			}
+		}
+		if mmatch != "" && strings.HasSuffix(g.nodes[mmatch].Name, msuffix) {
+			return mmatch
+		}
+	}
+	return ""
 }
 
 // ─── RenameImpact ────────────────────────────────────────────────────────────
