@@ -144,11 +144,21 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if found {
 		fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
 		for _, r := range obl.Rules {
-			status := ""
-			if r.Status != "" {
-				status = ", " + r.Status + ""
+			// FT-2's last hop: non-obligation kinds ("finding") are labeled in
+			// the bracket, and remediation drift (FT-6) is surfaced — a
+			// serving annotation the agent must see, never a status flip
+			// (drifted code can mean the finding was fixed).
+			extra := ""
+			if r.Kind != "" {
+				extra += ", " + r.Kind
 			}
-			fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, status)
+			if r.Status != "" {
+				extra += ", " + r.Status
+			}
+			if r.CodeDrifted {
+				extra += ", code drifted since compile"
+			}
+			fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, extra)
 		}
 		if indexStale {
 			sb.WriteString("\n⚠️ index is behind your working tree for this file")

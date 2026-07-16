@@ -75,7 +75,11 @@ All notable changes to sextant. Format loosely follows
   carries ≥1 scope-fp link), and serving is bounded: a per-call fingerprint
   cache queries each distinct anchored file at most once per
   `ObligationsFor`, regardless of how many claims share it (the edit-hook
-  hot path).
+  hot path). Post-merge follow-up closed FT-2's last hop: the edit-hook's
+  rendered bullet now labels non-obligation kinds after the tier
+  (`[…, sme-stated, finding]`) and appends `code drifted since compile`
+  when `code_drifted` is set — obligation bullets are byte-identical to
+  before.
 - **Findings prompt: no bare `**` scopes.** The findings compile prompt
   instructs the narrowest affected-path globs the document justifies; a
   genuinely repo-wide finding scopes to its affected file class (e.g.
