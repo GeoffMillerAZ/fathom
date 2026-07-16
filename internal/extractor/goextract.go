@@ -6,7 +6,9 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
+	"path"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -30,7 +32,21 @@ func NewGoExtractor() *GoExtractor { return &GoExtractor{} }
 //
 // For func/method nodes, Calls contains the sorted set of callee keys for calls
 // that resolve to other symbols within the same service, plus unresolved callee
-// names (bare or "pkg.Name") for calls outside the service.
+// names for calls outside the file. Unresolved callees take one of four forms:
+//
+//   - "Name"                      — bare identifier (builtin, or a same-package
+//     symbol declared in another file of the package)
+//   - "pkg.Name"                  — selector through an unaliased import (the
+//     identifier in source IS the target's declared package name) or through a
+//     receiver variable ("h.RunOnce")
+//   - "seg.Name"                  — selector through an EXPLICIT import alias,
+//     canonicalized to the import path's last segment (the alias itself is
+//     file-local and meaningless to any resolver); e.g. a call written
+//     `sig.PreconditionSatisfied()` under `import sig ".../evidence-signature"`
+//     is recorded as "evidence-signature.PreconditionSatisfied"
+//
+// All of these are derived from syntactically-present facts of the single file
+// (its AST import table) — never from type information or cross-file inference.
 func (g *GoExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, relPath, src, 0)
@@ -39,6 +55,7 @@ func (g *GoExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	}
 
 	pkgName := f.Name.Name
+	imports := importIdents(f)
 
 	// Build index of top-level func/method names defined in this file so we can
 	// resolve intra-service call edges.
@@ -66,7 +83,7 @@ func (g *GoExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 			if d.Name == nil {
 				continue
 			}
-			node := g.funcNode(service, pkgName, relPath, fset, d, localFuncs)
+			node := g.funcNode(service, pkgName, relPath, fset, d, localFuncs, imports)
 			nodes = append(nodes, node)
 
 		case *ast.GenDecl:
@@ -92,6 +109,7 @@ func (g *GoExtractor) funcNode(
 	fset *token.FileSet,
 	fn *ast.FuncDecl,
 	localFuncs map[string]bool,
+	imports map[string]string,
 ) core.SymbolNode {
 	pos := fset.Position(fn.Pos())
 	name := fn.Name.Name
@@ -106,7 +124,7 @@ func (g *GoExtractor) funcNode(
 	}
 
 	sig := renderFuncSignature(fset, fn)
-	calls := collectCalls(service, pkgName, fn, localFuncs)
+	calls := collectCalls(service, pkgName, fn, localFuncs, imports)
 	complexity := cyclomaticComplexity(fn)
 
 	return core.SymbolNode{
@@ -204,6 +222,54 @@ func (g *GoExtractor) genDeclNodes(
 	return nodes
 }
 
+// importIdents builds the file's import table: the identifier a package is
+// referenced by in this file → its import path. Two entries per import class:
+//
+//   - explicit alias (`import sig "…/evidence-signature"`) → "sig" maps to the
+//     path; "_" and "." imports are skipped (they introduce no selector ident).
+//   - unaliased import → the path's last segment maps to the path. This is a
+//     best-effort identity mapping: the identifier used in source is the
+//     target's DECLARED package name, which we cannot see from this file; when
+//     it differs from the last segment (e.g. ".../go-cmp" → package cmp) the
+//     source ident simply misses this table and the callee is recorded as
+//     written — which is already the declared-name form resolvers key on.
+//
+// If two imports would claim the same identifier the entry is dropped:
+// genuine ambiguity resolves to nothing, never last-wins.
+func importIdents(f *ast.File) map[string]string {
+	idents := map[string]string{}
+	dropped := map[string]bool{}
+	add := func(ident, path string) {
+		if dropped[ident] {
+			return
+		}
+		if prev, ok := idents[ident]; ok && prev != path {
+			delete(idents, ident)
+			dropped[ident] = true
+			return
+		}
+		idents[ident] = path
+	}
+	for _, imp := range f.Imports {
+		if imp.Path == nil {
+			continue
+		}
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil || p == "" {
+			continue
+		}
+		if imp.Name != nil {
+			if imp.Name.Name == "_" || imp.Name.Name == "." {
+				continue
+			}
+			add(imp.Name.Name, p)
+			continue
+		}
+		add(path.Base(p), p)
+	}
+	return idents
+}
+
 // receiverTypeName extracts the base type name from a receiver type expression,
 // stripping pointer indirection.
 func receiverTypeName(expr ast.Expr) string {
@@ -296,9 +362,15 @@ func cyclomaticComplexity(fn *ast.FuncDecl) int {
 //     emit core.SymbolKey(service, pkgName, callee).
 //  2. For selector expressions (pkg.Func or receiver.Method), emit "pkg.Func" as a
 //     bare unresolved key when the selector target is not a local variable (i.e., it
-//     looks like a package-qualified call).
+//     looks like a package-qualified call). When the selector base is an EXPLICIT
+//     import alias from the file's import table, the callee is recorded under the
+//     import path's last segment instead of the file-local alias (see the Extract
+//     doc comment). A local variable that shadows an import identifier is an
+//     accepted AST-level approximation — scope tracking is out of budget here, and
+//     a wrong "seg.Name" form can only fail to resolve (ambiguity → nothing), never
+//     invent an edge to an unrelated symbol the way a raw alias string could.
 //  3. All callee names are deduplicated and sorted.
-func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[string]bool) []string {
+func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[string]bool, imports map[string]string) []string {
 	if fn.Body == nil {
 		return nil
 	}
@@ -325,8 +397,13 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 			// Selector call: pkg.Func() or receiver.Method()
 			sel := fun.Sel.Name
 			if ident, ok := fun.X.(*ast.Ident); ok {
-				qualified := ident.Name + "." + sel
-				seen[qualified] = true
+				if imp, ok := imports[ident.Name]; ok {
+					// Canonical package identity: the import path's last
+					// segment, never the file-local alias.
+					seen[path.Base(imp)+"."+sel] = true
+				} else {
+					seen[ident.Name+"."+sel] = true
+				}
 			}
 		}
 		return true

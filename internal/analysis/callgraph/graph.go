@@ -10,6 +10,7 @@
 package callgraph
 
 import (
+	"path"
 	"sort"
 	"strings"
 
@@ -41,6 +42,17 @@ type Graph struct {
 	// receiver-method call ("recv.Name") is not mistaken for a package selector.
 	// Only populated when "package.Name" is unambiguous.
 	byPkgName map[string]string
+
+	// byDirName maps "dir-base.Name" -> canonical key, where dir-base is the
+	// base name of the node's defining directory (path.Base(path.Dir(FilePath))).
+	// It resolves callees the Go extractor canonicalized from an explicit import
+	// alias to the import path's LAST SEGMENT: by Go import mechanics an import
+	// path resolves to exactly one directory, so the last segment IS the
+	// defining directory's base name — even when the declared package name
+	// differs (kebab-case dirs like "evidence-signature" declare package
+	// "evidencesignature", which byPkgName can never match). Only populated
+	// when "dir-base.Name" is unambiguous across the whole node set.
+	byDirName map[string]string
 }
 
 // NodeCount returns the number of nodes in the graph.
@@ -67,6 +79,7 @@ func Build(nodes []core.SymbolNode) *Graph {
 		callers:   make(map[string][]string, len(nodes)),
 		byName:    make(map[string]string),
 		byPkgName: make(map[string]string),
+		byDirName: make(map[string]string),
 	}
 
 	// First pass: register all nodes (g.nodes dedupes identical SymbolKeys)
@@ -80,10 +93,14 @@ func Build(nodes []core.SymbolNode) *Graph {
 	}
 	nameCounts := make(map[string]int, len(g.nodes))
 	pkgNameCounts := make(map[string]int, len(g.nodes))
+	dirNameCounts := make(map[string]int, len(g.nodes))
 	for _, n := range g.nodes {
 		nameCounts[n.Name]++
 		if n.Package != "" {
 			pkgNameCounts[n.Package+"."+n.Name]++
+		}
+		if dn := dirName(n); dn != "" {
+			dirNameCounts[dn]++
 		}
 	}
 	for _, n := range g.nodes {
@@ -92,6 +109,9 @@ func Build(nodes []core.SymbolNode) *Graph {
 		}
 		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
 			g.byPkgName[n.Package+"."+n.Name] = n.Key()
+		}
+		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
+			g.byDirName[dn] = n.Key()
 		}
 	}
 
@@ -140,6 +160,12 @@ func (g *Graph) resolve(raw string) string {
 	if key, ok := g.byPkgName[raw]; ok {
 		return key
 	}
+	// Directory-base lookup: raw "seg.Name" where seg is an import path's last
+	// segment (the Go extractor's canonicalization of an explicit import
+	// alias) matches the node defined in a directory of that base name.
+	if key, ok := g.byDirName[raw]; ok {
+		return key
+	}
 	// Suffix match: raw might be "pkg.Name" and the key is "svc::pkg.Name".
 	// Accept only if exactly one node matches.
 	suffix := "." + raw
@@ -179,6 +205,19 @@ func (g *Graph) resolve(raw string) string {
 		}
 	}
 	return ""
+}
+
+// dirName returns the "dir-base.Name" index key for a node, or "" when the
+// node's FilePath has no usable directory.
+func dirName(n core.SymbolNode) string {
+	if n.FilePath == "" {
+		return ""
+	}
+	dir := path.Dir(n.FilePath)
+	if dir == "." || dir == "/" {
+		return ""
+	}
+	return path.Base(dir) + "." + n.Name
 }
 
 // ─── RenameImpact ────────────────────────────────────────────────────────────
