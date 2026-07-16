@@ -10,8 +10,9 @@ import (
 )
 
 // taskLineRe matches a Markdown checklist item: "- [ ] title", "* [x] title",
-// "- [-] title". Group 1 is the checkbox char; group 2 is the title text.
-var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX\-])\]\s+(.*\S)\s*$`)
+// "- [~] title", "- [-] title". Group 1 is the checkbox char; group 2 is the
+// title text.
+var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX~\-])\]\s+(.*\S)\s*$`)
 
 // ParseMarkdownPlan turns a Markdown checklist (the kind people actually write —
 // e.g. tmp/TRACKING.md) into a verify.Plan, so verify_plan / gen-status-cue can
@@ -38,18 +39,25 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		if m == nil {
 			continue
 		}
-		check := m[1] // ' ', 'x', 'X', or '-'
+		check := m[1] // ' ', 'x', 'X', '~', or '-'
 		raw := m[2]
 		ann, title := parseAnnotation(raw)
 		n++
 		t := Task{
-			ID:      fmt.Sprintf("md-%03d", n),
-			Title:   title,
-			SpecIDs: sdd.ExtractRefs(raw),
-			Claimed: check == "x" || check == "X",
-			Skipped: check == "-",
+			ID:         fmt.Sprintf("md-%03d", n),
+			Title:      title,
+			SpecIDs:    sdd.ExtractRefs(raw),
+			Claimed:    check == "x" || check == "X",
+			Skipped:    check == "-",
+			InProgress: check == "~",
 		}
 		if ann != nil {
+			if id := ann["id"]; id != "" {
+				t.ID = id // author-owned stable ID overrides positional md-NNN
+			}
+			t.Disposition = ann["disposition"]
+			t.Reason = ann["reason"]
+			t.Trigger = ann["trigger"]
 			t.Expect.Symbol = ann["symbol"]
 			t.Expect.Package = ann["package"]
 			t.Expect.ReachableFrom = ann["reachable_from"]
@@ -57,6 +65,7 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 				t.Expect.MinTier = mt
 			}
 			t.Expect.SkipTest = truthy(ann["skip_test"])
+			t.Expect.SkipReason = ann["skip"]
 			t.Expect.AllowContradiction = truthy(ann["allow_contradiction"])
 		}
 		plan.Tasks = append(plan.Tasks, t)
@@ -67,6 +76,10 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 // parseAnnotation splits a "{key: value, …}" block out of s, returning the
 // parsed key→value map (nil when there is no block) and s with the block
 // removed and trimmed.
+//
+// Values may be double-quoted; a quoted value may contain commas and its
+// surrounding quotes are stripped ({reason: "kit-side done, donor NOT
+// deleted"}). Unquoted values must not contain commas.
 func parseAnnotation(s string) (map[string]string, string) {
 	i := strings.IndexByte(s, '{')
 	j := strings.LastIndexByte(s, '}')
@@ -77,18 +90,49 @@ func parseAnnotation(s string) (map[string]string, string) {
 	title := strings.TrimSpace(strings.TrimSpace(s[:i]) + " " + strings.TrimSpace(s[j+1:]))
 	title = strings.TrimSpace(title)
 	m := map[string]string{}
-	for _, pair := range strings.Split(block, ",") {
+	for _, pair := range splitPairs(block) {
 		kv := strings.SplitN(pair, ":", 2)
 		if len(kv) != 2 {
 			continue
 		}
 		k := strings.TrimSpace(kv[0])
-		v := strings.TrimSpace(kv[1])
+		v := unquote(strings.TrimSpace(kv[1]))
 		if k != "" {
 			m[k] = v
 		}
 	}
 	return m, title
+}
+
+// splitPairs splits an annotation block on commas, treating commas inside
+// double-quoted spans as literal value content.
+func splitPairs(block string) []string {
+	var (
+		out     []string
+		start   int
+		inQuote bool
+	)
+	for i := 0; i < len(block); i++ {
+		switch block[i] {
+		case '"':
+			inQuote = !inQuote
+		case ',':
+			if !inQuote {
+				out = append(out, block[start:i])
+				start = i + 1
+			}
+		}
+	}
+	out = append(out, block[start:])
+	return out
+}
+
+// unquote strips one pair of surrounding double quotes, if present.
+func unquote(v string) string {
+	if len(v) >= 2 && v[0] == '"' && v[len(v)-1] == '"' {
+		return v[1 : len(v)-1]
+	}
+	return v
 }
 
 func truthy(s string) bool {

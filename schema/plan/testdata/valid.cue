@@ -17,5 +17,25 @@ plan: #Plan & {
 			title:   "US-042: charge flow covered"
 			spec_ids: ["[US-042]"]
 		},
+		{
+			// grammar v2: authored state + typed disposition (ADR-018).
+			id:          "T-3"
+			title:       "cmd oracle"
+			state:       "skipped"
+			disposition: "deferred"
+			reason:      "O6 just landed; measure skip-share first"
+			trigger:     "skip_test share still >30% after 4 weeks"
+		},
+		{
+			id:    "T-4"
+			title: "bare name disambiguated + justified skip"
+			state: "claimed"
+			expect: {
+				symbol:      "New"
+				package:     "internal/verify"
+				skip_test:   true
+				skip_reason: "reached only via methods until the cmd oracle lands"
+			}
+		},
 	]
 }

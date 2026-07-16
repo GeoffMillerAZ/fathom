@@ -9,9 +9,14 @@ pre-push and CI. The grammar is specified in
 
 | Checkbox | Meaning | Gated? |
 |----------|---------|--------|
-| `[ ]`    | Open — work not yet claimed done | Never |
+| `[ ]`    | Open — work not yet claimed done | Never (fails `--require-all`) |
 | `[x]`    | Claimed done — MUST verify against the index | Always (--strict in CI) |
-| `[-]`    | Skipped or abandoned — exempt | Never |
+| `[~]`    | In progress — not done, not claimed | Never (fails `--require-all`) |
+| `[-]`    | Skipped or abandoned — exempt; refine with `disposition:` | Never |
+
+`fathom verify --require-all` is the **wave gate** (ADR-018 §2): it
+additionally fails on any open/in-progress task, so a wave advances only when
+everything is claimed-and-verified or explicitly skipped.
 
 ## Line format
 
@@ -42,8 +47,16 @@ tasks block.
 | `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
 | `skip_test` | `true` exempts the symbol from the test-reaches requirement | `false` (a `Test*` must statically reach it) |
 | `allow_contradiction` | `true` lets contradictions on the symbol pass | `false` |
+| `id` | Author-owned stable task ID, overriding positional `md-NNN` (which renumbers when lines are inserted). Use in every gated plan that will be diffed across edits — the Stop hook matches tasks by ID. | positional |
+| `disposition` | `refused` \| `deferred` — types WHY a `[-]` line is skipped; requires `reason` | unset |
+| `reason` | Free-text justification for a disposition or skip. **Double-quote a value containing commas** (`reason: "kit-side done, donor NOT deleted"`); unquoted values must be comma-free. | unset |
+| `trigger` | Revival condition for a `deferred` task — recorded and surfaced, never machine-evaluated in v0 | unset |
+| `skip` | Justification for `skip_test: true` (machine-visible; linted when absent) | unset |
 
 The zero value of every key is the **strictest** contract; loosen explicitly.
+`verify.LintPlan` reports v2 convention violations (duplicate IDs, dispositions
+without reasons, unjustified skips) as **warnings** on stderr — they never
+change exit codes in v0.
 
 ## Annotation placement (load-bearing)
 

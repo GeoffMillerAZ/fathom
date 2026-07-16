@@ -5,6 +5,34 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — SDD reconciler v0: plan grammar v2, wave gate, CUE shadow, Stop hook (ADR-018)
+- **Plan grammar v2** (`internal/verify`, additive — v1 plans parse unchanged):
+  `[~]` in-progress checkbox; author-owned stable `id:` keys (positional
+  `md-NNN` renumbering was fatal for cross-edit diffs); typed dispositions on
+  `[-]` (`disposition: refused|deferred` + `reason:` + recorded-only
+  `trigger:`); `skip:` justification for `skip_test`; double-quoted annotation
+  values may contain commas. `verify.LintPlan` reports convention violations
+  as warnings (never exit-code changes in v0).
+- **Wave gate**: `fathom verify --require-all` (`verify.GateRequireAll`) —
+  fails on open/in-progress tasks so a wave advances only when every task is
+  claimed-and-verified or explicitly skipped. The recorded exit-0 run is the
+  transition record; there is no transition engine (ADR-018: state is
+  derived, never driven).
+- **CUE shadow**: `fathom gen-plan-cue` emits a generated-only `#Plan`
+  document (schema/plan gains state/disposition/reason/trigger +
+  expect.package/skip_reason) and proves **lossless round-trip** against the
+  Markdown parse. CUE is output, never an authoring surface (the Dagger
+  lesson); hand-authored plan CUE is deprecated.
+- **Stop hook**: `fathom stop-hook` — done-means-proven at session
+  granularity: tasks newly claimed `[x]` this session (working tree vs HEAD,
+  matched by stable ID) that FAIL verification surface at session end.
+  Advisory by default; `--block` refuses session end with the failing
+  citation. Silent exit 0 on every operational failure (edit-hook doctrine);
+  Unknown never fires (fail-open honesty).
+- Specs: `docs/design/sdd-reconciler.md` (normative), ADR-018, gated plan
+  `docs/plans/sdd-reconciler-v0.md`; grammar reference updated in
+  `docs/plans/README.md`. Vision record: `docs/vision/09-deterministic-sdd.md`.
+
 ### Changed — obligations v2: first-fleet-compile hardening
 - **Prompt v1 → v2 + corpus narrowed to binding docs** (`CLAUDE.md`, `ADR.md`,
   `docs/plans/README.md`). The first fleet compile turned `docs/design/**` essays into

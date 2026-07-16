@@ -36,12 +36,23 @@ type Plan struct {
 
 // Task is one unit of planned work with an acceptance contract.
 type Task struct {
-	ID      string
-	Title   string
-	SpecIDs []string // declared spec IDs this task implements (e.g. "[US-042]")
-	Expect  Expect
-	Claimed bool // true when checkbox is [x] or [X] — the agent claims this is done
-	Skipped bool // true when checkbox is [-] — exempt from gating
+	ID         string
+	Title      string
+	SpecIDs    []string // declared spec IDs this task implements (e.g. "[US-042]")
+	Expect     Expect
+	Claimed    bool // true when checkbox is [x] or [X] — the agent claims this is done
+	Skipped    bool // true when checkbox is [-] — exempt from gating
+	InProgress bool // true when checkbox is [~] — not done, not gating (except --require-all)
+
+	// Disposition refines WHY a [-] task is skipped: "refused" | "deferred".
+	// It is the one authored state evidence cannot derive (ADR-018); LintPlan
+	// enforces its conventions (only on [-], requires Reason).
+	Disposition string
+	// Reason is the free-text justification for a disposition (or any skip).
+	Reason string
+	// Trigger is the condition under which a deferred task revives. Recorded
+	// and surfaced only — never machine-evaluated in v0 (ADR-018).
+	Trigger string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -53,6 +64,7 @@ type Expect struct {
 	Package            string            // optional: repo-relative directory Symbol's file must live under (disambiguates bare names)
 	ReachableFrom      string            // optional: an entrypoint that must reach Symbol
 	SkipTest           bool              // false (default) → a Test* must statically reach Symbol
+	SkipReason         string            // justification for SkipTest (the "skip:" key; LintPlan warns when absent)
 	AllowContradiction bool              // false (default) → any contradiction on Symbol fails the task
 	MinTier            core.EvidenceTier // "" (default) → treated as TierVerified
 }
@@ -76,13 +88,14 @@ type Criterion struct {
 
 // TaskVerdict is the rolled-up verdict for one task.
 type TaskVerdict struct {
-	TaskID   string
-	Title    string
-	Status   CriterionStatus // Pass | Fail | Unknown (overall, static)
-	Label    string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
-	Criteria []Criterion
-	Claimed  bool // propagated from Task.Claimed ([x])
-	Skipped  bool // propagated from Task.Skipped ([-])
+	TaskID     string
+	Title      string
+	Status     CriterionStatus // Pass | Fail | Unknown (overall, static)
+	Label      string          // verified | claimed-but-absent | present-but-untested | edge-not-wired | contradicted | likely-unconfirmed | below-required-tier | spec-uncovered | no-contract
+	Criteria   []Criterion
+	Claimed    bool // propagated from Task.Claimed ([x])
+	Skipped    bool // propagated from Task.Skipped ([-])
+	InProgress bool // propagated from Task.InProgress ([~])
 }
 
 // Summary holds report-level counts.
@@ -121,6 +134,30 @@ func Gate(rep Report, strict bool) GateResult {
 			res.Failures = append(res.Failures, fmt.Sprintf("%s %s: %s",
 				tv.TaskID, tv.Title, gateFailDetail(tv, strict)))
 		}
+	}
+	return res
+}
+
+// GateRequireAll is the wave-advance oracle (ADR-018 §2): normal Gate
+// semantics PLUS every task must be either claimed (and verifying) or
+// explicitly skipped. Open and in-progress tasks fail the gate — a wave may
+// only advance when nothing is left undecided. Failures stay in report order:
+// claimed-task failures first (from Gate), then incompleteness failures.
+func GateRequireAll(rep Report, strict bool) GateResult {
+	res := Gate(rep, strict)
+	for _, tv := range rep.Tasks {
+		if tv.Claimed || tv.Skipped {
+			continue
+		}
+		state := "open"
+		if tv.InProgress {
+			state = "in-progress"
+		}
+		res.Pass = false
+		res.Failures = append(res.Failures, fmt.Sprintf(
+			"%s %s: not complete (%s) — require-all demands claimed-and-verified or skipped",
+			tv.TaskID, tv.Title, state,
+		))
 	}
 	return res
 }
@@ -193,7 +230,7 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 
 func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
 	e := t.Expect
-	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped}
+	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress}
 
 	// fail downgrades the overall status and records the most salient label
 	// (first failure wins, since criteria are appended in priority order).

@@ -73,6 +73,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdCompile(args[1:], stdout, stderr)
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
+	case "stop-hook":
+		return cmdStopHook(args[1:], stdout, stderr)
+	case "gen-plan-cue":
+		return cmdGenPlanCue(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)

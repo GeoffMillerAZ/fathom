@@ -5,7 +5,9 @@
 // The gen-status-cue command evaluates each task against the live code index
 // and writes a status document (#Status) that is derived from this schema.
 //
-// Source of truth: the hand-edited #Plan file. #Status is generated — do not
+// Source of truth: the Markdown plan file. #Plan documents are GENERATED
+// (fathom gen-plan-cue) — the typed shadow of the Markdown grammar (ADR-018);
+// hand-authoring plan CUE is deprecated. #Status is generated — do not
 // hand-edit it.
 package plan
 
@@ -17,9 +19,16 @@ package plan
 	// symbol is the claimed symbol name that must exist in the code index.
 	symbol?: string
 
+	// package is an optional repo-relative directory the symbol's file must
+	// live under (disambiguates bare names).
+	package?: string
+
 	// reachable_from is an optional entrypoint that must reach symbol via
 	// the static call graph.
 	reachable_from?: string
+
+	// skip_reason justifies skip_test (the "skip:" annotation key).
+	skip_reason?: string
 
 	// skip_test, when true, waives the requirement that a Test* function
 	// statically reaches symbol. Default: false (test IS required).
@@ -45,6 +54,19 @@ package plan
 	// spec_ids lists declared specification identifiers that this task
 	// implements (e.g. ["[US-042]", "[FR-007]"]).
 	spec_ids?: [...string]
+
+	// state is the authored checkbox state (grammar v2): absent = open.
+	state?: "claimed" | "in-progress" | "skipped"
+
+	// disposition refines WHY a skipped task is skipped (requires reason).
+	disposition?: "refused" | "deferred"
+
+	// reason is the free-text justification for a disposition or skip.
+	reason?: string
+
+	// trigger is the revival condition for a deferred task — recorded and
+	// surfaced only, never machine-evaluated in v0 (ADR-018).
+	trigger?: string
 
 	// expect is the acceptance contract for this task.
 	expect?: #Expect

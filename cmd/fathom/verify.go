@@ -41,6 +41,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "DuckDB store path (direct mode; bypasses daemon)")
 	strict := fs.Bool("strict", false, "treat claimed+unknown tasks as gate failures (recommended for CI)")
+	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks (ADR-018 §2)")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 	jsonOut := fs.Bool("json", false, "emit JSON report + gate result instead of human text")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
@@ -73,7 +74,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "error: plan %q: only .md checklist plans are supported by fathom verify\n", pf)
 			return 2
 		}
-		localPlans = append(localPlans, verify.ParseMarkdownPlan(*service, raw))
+		lp := verify.ParseMarkdownPlan(*service, raw)
+		for _, w := range verify.LintPlan(lp) {
+			fmt.Fprintf(stderr, "lint: %s: %s\n", pf, w)
+		}
+		localPlans = append(localPlans, lp)
 		planBytes = append(planBytes, raw)
 	}
 
@@ -114,7 +119,12 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// Compute gate locally over all reports.
 	var allFail []string
 	for _, rep := range reports {
-		gr := verify.Gate(rep, *strict)
+		var gr verify.GateResult
+		if *requireAll {
+			gr = verify.GateRequireAll(rep, *strict)
+		} else {
+			gr = verify.Gate(rep, *strict)
+		}
 		allFail = append(allFail, gr.Failures...)
 	}
 	gatePass := len(allFail) == 0
@@ -306,9 +316,11 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 	// Build verify.Report with locally-known claimed/skipped (gate is local).
 	claimedByID := map[string]bool{}
 	skippedByID := map[string]bool{}
+	inProgressByID := map[string]bool{}
 	for _, t := range localPlan.Tasks {
 		claimedByID[t.ID] = t.Claimed
 		skippedByID[t.ID] = t.Skipped
+		inProgressByID[t.ID] = t.InProgress
 	}
 
 	verdicts := make([]verify.TaskVerdict, 0, len(hvr.Tasks))
@@ -322,13 +334,14 @@ func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []b
 			})
 		}
 		verdicts = append(verdicts, verify.TaskVerdict{
-			TaskID:   ht.ID,
-			Title:    ht.Title,
-			Status:   verify.CriterionStatus(ht.Status),
-			Label:    ht.Label,
-			Criteria: criteria,
-			Claimed:  claimedByID[ht.ID],
-			Skipped:  skippedByID[ht.ID],
+			TaskID:     ht.ID,
+			Title:      ht.Title,
+			Status:     verify.CriterionStatus(ht.Status),
+			Label:      ht.Label,
+			Criteria:   criteria,
+			Claimed:    claimedByID[ht.ID],
+			Skipped:    skippedByID[ht.ID],
+			InProgress: inProgressByID[ht.ID],
 		})
 	}
 	return verify.Report{
@@ -407,6 +420,9 @@ func unwrapRPCResult(raw []byte) ([]byte, error) {
 func verifyIcon(tv verify.TaskVerdict) string {
 	if tv.Skipped {
 		return "–" // en-dash: [-] skipped/abandoned
+	}
+	if tv.InProgress {
+		return "~" // [~] in progress
 	}
 	switch tv.Status {
 	case verify.Pass:

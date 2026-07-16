@@ -311,3 +311,44 @@ for small doc corpora; git corpora use HEAD). Legacy stores keep working
 read-only via the absolute-ref fallback; the first write-path ingest converts
 them. Reverting to absolute anchors would only require connectors to stop
 relativizing — nothing downstream depends on absoluteness anymore.
+
+## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
+
+**Context.** The 2026-07 excellence review (docs/vision/09) examined "should
+SDD be a deterministically driven state machine in CUE?" against the July-2026
+landscape (every shipped SDD tool self-reports "done"; no tool checks task
+state against a code index), the Dagger CUE post-mortem (CUE-as-authoring-UX
+and CUE-as-engine both failed with a funded team), and the fleet's own live
+programs, which hand-invented machine-invisible states (`[~]`, "honestly
+refused", "deferred pending trigger", prose wave-advance rules) that the
+verify gate cannot see. Meanwhile H1 (the handoff program) fixed the gate's
+recall (method-call edges — O6 — plus dedup, `package:`, index hygiene), so
+the evidence layer can finally carry process weight.
+
+**Decision.** Adopt the reconciler shape, not a state machine
+(docs/design/sdd-reconciler.md is normative):
+1. **Grammar v2 (additive):** `[~]` in-progress; author-owned stable `id:`;
+   typed dispositions on `[-]` (`disposition: refused|deferred` + required
+   `reason:`, optional recorded-not-evaluated `trigger:`); `skip:`
+   justification for `skip_test`; double-quoted annotation values.
+   Conventions enforced by `verify.LintPlan` as warnings.
+2. **Wave gate:** `fathom verify --require-all` (`verify.GateRequireAll`) —
+   a wave advances only when every task is claimed-and-verified or
+   explicitly skipped. The recorded exit-0 run is the transition record.
+3. **CUE shadow:** `fathom gen-plan-cue` emits a generated-only `#Plan`
+   document and proves lossless round-trip. CUE is output, never authored.
+4. **Stop hook:** `fathom stop-hook` — newly-claimed-this-session tasks that
+   fail verification surface at session end; advisory by default,
+   `--block` opt-in; silent on any operational failure.
+
+**Rejected:** authored transition tables and lifecycle enums (declared state
+that can lie — checkbox theater one level up); CUE as authoring surface or
+execution engine (`tools/flow`); a separate SDD binary/repo/family (no
+consumer without the index); machine-evaluated triggers in v0 (speculative
+engine); persisted process state (each run stays a pure re-derivation).
+
+**Consequences.** v1 plans parse unchanged; `md-NNN` positional IDs remain
+the default (stable IDs are a lint convention for gated plans). The pilot
+(agentic-kit handoff program + this repo's own plans) runs 4 weeks against
+the five metrics / four kill criteria in the design doc §6; a kill reverts
+the hook and generator while keeping the harmless grammar extensions.

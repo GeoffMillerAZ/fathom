@@ -1,5 +1,17 @@
 # 09 — Deterministic SDD: the reconciler, not the machine
 
+> **Delta, 2026-07-15 (post-agentic-kit upgrade + implementation):** the
+> handoff program executed faster than this doc assumed. H1 fixed the gate's
+> recall — **O6 (method-call edges) is fixed and merged** along with callgraph
+> dedup, the `package:` grammar, and index hygiene — so the hard precondition
+> below is met. `kits/eval-runner` now exists (H5 Stage 1). The H1–H8 specs
+> were authored before typing landed, so the "born typed" pilot premise is
+> stale: the pilot shifts to shadow-typing the live handoff plans + the next
+> program born typed. **The v0 build shipped** (ADR-018,
+> `docs/design/sdd-reconciler.md`, `docs/plans/sdd-reconciler-v0.md`):
+> grammar v2, `verify --require-all`, `gen-plan-cue` round-trip, `stop-hook`
+> (advisory-first). The 4-week metrics window starts when the hooks are wired.
+
 **Verdict.** Your goal is right and the whitespace is real: across the entire
 July-2026 SDD field — [Spec Kit](https://github.com/github/spec-kit) (~122k★),
 AWS Kiro, [OpenSpec](https://github.com/Fission-AI/OpenSpec) (~61k★),
