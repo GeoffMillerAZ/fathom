@@ -11,6 +11,7 @@ package client_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
@@ -101,6 +102,13 @@ func TestFindingsLayer_CompileLayer_EndToEnd(t *testing.T) {
 	}
 	if claims[0].Tier != core.TierSMEStated {
 		t.Errorf("Tier = %q, want sme-stated", claims[0].Tier)
+	}
+	// The wiring-gap guard promptForLayer's fallback comment promises: a
+	// findings compile must run under the FINDINGS prompt identity. If layer
+	// selection ever silently falls back to the obligations prompt, this is
+	// the only assertion that catches it (everything else still passes).
+	if !strings.HasPrefix(claims[0].PromptVersion, "findings/") {
+		t.Errorf("PromptVersion = %q, want findings/<hash8> — the compile fell back to the obligations prompt", claims[0].PromptVersion)
 	}
 
 	// Served payload: labeled as a finding (FT-2), not silently indistinguishable

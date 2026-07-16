@@ -34,11 +34,21 @@ import (
 //	fathom report --store DB --service S --analyzer security_rollup --out findings/
 //
 // Output is exactly ONE file, "<service>-<analyzer>.md", inside --out.
-// Generation is a pure function of the current index — no clock reads, no
-// random ordering — so re-running it against an unchanged index reproduces
+// Generation is a pure function of the corpus working tree at run time
+// (Sources() re-reads the corpus from disk, not the index) — no clock reads,
+// no random ordering — so re-running it against an unchanged tree reproduces
 // the identical bytes (asserted by report_test.go's double-run compare); the
 // findings compiler's own digest gate depends on that determinism to avoid
 // spurious recompiles.
+//
+// Self-scan exclusion: --out normally points INSIDE the corpus (that is the
+// point — the doc joins the findings layer's corpus), so source files under
+// the resolved --out directory are excluded from the scan. Without this the
+// second run scans the first run's doc (whose shell-out/http finding messages
+// embed the matched snippets), gains findings anchored in the report itself,
+// and every run mutates the doc — shifting line numbers, defeating the
+// findings compiler's digest gate, and flipping compiled claims stale on
+// every refresh.
 func cmdReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report", stderr)
 	storePath := fs.String("store", "", "path to the DuckDB store (required)")
@@ -75,6 +85,14 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// Self-scan exclusion (see the command doc above): drop every source file
+	// under the resolved --out directory before scanning. Sources() paths are
+	// repo-relative (ADR-017), so resolve --out against the service root
+	// recorded at ingest and compare repo-relative prefixes.
+	if meta, found, merr := st.GetServiceMeta(ctx, *service); merr == nil && found && meta.Path != "" {
+		files = excludeUnderOut(files, meta.Path, *out)
+	}
+
 	doc := renderSecurityRollupFindings(*service, files)
 
 	if err := os.MkdirAll(*out, 0o755); err != nil {
@@ -91,16 +109,55 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// excludeUnderOut returns files minus everything under the resolved --out
+// directory. root is the service's recorded corpus root; out is the --out
+// flag as given (absolute or CWD-relative). When out resolves outside root
+// there is nothing to exclude.
+func excludeUnderOut(files []core.SourceFile, root, out string) []core.SourceFile {
+	rootAbs, err1 := filepath.Abs(root)
+	outAbs, err2 := filepath.Abs(out)
+	if err1 != nil || err2 != nil {
+		return files
+	}
+	rel, err := filepath.Rel(rootAbs, outAbs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return files // --out is outside the corpus: nothing to exclude
+	}
+	prefix := filepath.ToSlash(rel)
+	if prefix == "." || prefix == "" {
+		// --out IS the corpus root: exclude only prior report docs would need
+		// per-file knowledge; scanning the whole corpus away would render the
+		// report useless. Keep everything — the supported deployment is a
+		// subdirectory (e.g. findings/).
+		return files
+	}
+	kept := files[:0]
+	for _, f := range files {
+		if f.Path == prefix || strings.HasPrefix(f.Path, prefix+"/") {
+			continue
+		}
+		kept = append(kept, f)
+	}
+	return kept
+}
+
 // securityRollupSection is one finding category the security_rollup bridge
 // emits as a single markdown section (a "finding" in the review-findings
 // module's sense, docs/design/expert-modules.md §3.2 — severity, area,
 // affected paths, recommendation — not one section per raw scanner hit,
 // which would make an 80-hit scan an 80-section document).
 type securityRollupSection struct {
-	id       string // stable finding ID, e.g. "SEC-001"
-	heading  string
-	remedy   string // the actionable statement — kept <= 28 words for the findings compiler's rule budget
-	findings []security.Finding
+	id      string // stable finding ID, e.g. "SEC-001"
+	heading string
+	remedy  string // the actionable statement — kept <= 28 words for the findings compiler's rule budget
+	// redactMessages drops the scanner Message from every listed hit: the
+	// secret scanners embed the matched source line verbatim (e.g.
+	// `credential pattern "password = \"...\"" found`), and a committable
+	// finding document must never exfiltrate the credential it reports.
+	// Redaction lives here in the bridge, not in the analyzer — interactive
+	// consumers (the security_rollup MCP tool) legitimately need the context.
+	redactMessages bool
+	findings       []security.Finding
 }
 
 // renderSecurityRollupFindings renders the security_rollup bridge document
@@ -117,10 +174,11 @@ func renderSecurityRollupFindings(service string, files []core.SourceFile) strin
 
 	sections := []securityRollupSection{
 		{
-			id:       "SEC-001",
-			heading:  "Hardcoded secrets",
-			remedy:   "Remove hardcoded credentials from source and rotate any exposed secret before the next release.",
-			findings: secrets,
+			id:             "SEC-001",
+			heading:        "Hardcoded secrets",
+			remedy:         "Remove hardcoded credentials from source and rotate any exposed secret before the next release.",
+			redactMessages: true, // secret messages embed the matched line — never write the credential into the doc
+			findings:       secrets,
 		},
 		{
 			id:       "SEC-002",
@@ -138,7 +196,7 @@ func renderSecurityRollupFindings(service string, files []core.SourceFile) strin
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "# security_rollup findings — %s\n\n", service)
-	b.WriteString("Generated by `fathom report --analyzer security_rollup`. Do not edit by hand — re-run the report to refresh from the current index.\n")
+	b.WriteString("Generated by `fathom report --analyzer security_rollup`. Do not edit by hand — re-run the report to refresh from the current working tree.\n")
 
 	for _, sec := range sections {
 		if len(sec.findings) == 0 {
@@ -159,7 +217,11 @@ func renderSecurityRollupFindings(service string, files []core.SourceFile) strin
 		fmt.Fprintf(&b, "Severity: high. Area: security.\n%s\n\n", sec.remedy)
 		b.WriteString("Affected:\n")
 		for _, find := range found {
-			fmt.Fprintf(&b, "- `%s:%d` (%s) — %s\n", find.File, find.Line, find.Rule, find.Message)
+			if sec.redactMessages {
+				fmt.Fprintf(&b, "- `%s:%d` (%s)\n", find.File, find.Line, find.Rule)
+			} else {
+				fmt.Fprintf(&b, "- `%s:%d` (%s) — %s\n", find.File, find.Line, find.Rule, find.Message)
+			}
 		}
 	}
 	return b.String()

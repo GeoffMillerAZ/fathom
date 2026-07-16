@@ -65,9 +65,9 @@ array (possibly empty) holds objects of the shape {"rule", "scope", "cite_start"
 - rule: the finding's actionable remediation statement, imperative, <= 28 words,
   self-contained — restated faithfully from the document, never invented.
 - scope: gitignore-style glob(s) for the affected code paths the document states.
-  Prefer the NARROWEST glob the document justifies (a named package, module, or
-  file); use ["**"] only when the document explicitly says the finding applies
-  fleet-wide.
+  Use the NARROWEST glob the document justifies (a named package, module, or
+  file). A finding that genuinely applies repo-wide scopes to its affected file
+  class (for example "**/*.go"), never a bare "**".
 - cite_start/cite_end: the 1-based DOCUMENT line range (shown in the input) that
   states the finding's remediation. Cite the narrowest range that fully supports it.
 Emit {"claims": []} for sections with no actionable remediation — severity/area

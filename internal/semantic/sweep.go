@@ -160,14 +160,40 @@ func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map
 		}
 	}
 
+	// Per-call fingerprint cache: this runs on EVERY ObligationsFor serve
+	// (the edit-hook hot path), and a broad-but-legal scope (e.g. **/*.go)
+	// can anchor hundreds of files shared across N claims — each distinct
+	// file is queried at most once per call, regardless of how many claims
+	// link it. A map, not memoization across calls: DriftedFindings stays a
+	// pure read of current store state.
+	type fpState struct {
+		hash  string
+		found bool
+	}
+	cache := map[string]fpState{}
+
 	drifted := map[string]bool{}
 	for _, id := range findingIDs {
+		// A claim with ZERO scope-fp links falls through this loop as
+		// never-drifted. That is safe by the FT-6 compile invariant: the
+		// compiler writes ≥1 scope-fp link for every finding-kind claim —
+		// scopes matching no indexed file are rejected at compile time, and
+		// a fingerprint read failure aborts the whole compile loudly
+		// (errDriftAnchor, compile.go) instead of silently omitting links.
+		// Zero links therefore only occurs for claims that never went
+		// through this compiler (e.g. hand-seeded test data), never as a
+		// degraded state of a real compile.
 		for _, l := range scopeFPByClaim[id] {
-			cur, found, ferr := st.Fingerprint(ctx, serviceID, l.TargetRef)
-			if ferr != nil {
-				return nil, fmt.Errorf("semantic: drift fingerprint %s: %w", l.TargetRef, ferr)
+			cur, ok := cache[l.TargetRef]
+			if !ok {
+				hash, found, ferr := st.Fingerprint(ctx, serviceID, l.TargetRef)
+				if ferr != nil {
+					return nil, fmt.Errorf("semantic: drift fingerprint %s: %w", l.TargetRef, ferr)
+				}
+				cur = fpState{hash: hash, found: found}
+				cache[l.TargetRef] = cur
 			}
-			if !found || cur != l.TargetHash {
+			if !cur.found || cur.hash != l.TargetHash {
 				drifted[id] = true
 				break
 			}

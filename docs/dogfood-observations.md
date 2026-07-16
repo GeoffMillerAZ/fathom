@@ -19,6 +19,23 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O10 — `fathom claim` triage is store-direct: fleet-store triage requires stopping the daemon
+
+- **Symptom (by design, not a bug):** `fathom claim refute|corroborate` (D3 findings
+  tracer, FT-3) opens the DuckDB store directly (`--store` required). Against the
+  always-on fleet daemon's `workspace/db/fleet.duckdb` that write collides with the
+  single-writer lock — triaging a fleet claim means stopping the daemon, running the
+  verb, and restarting.
+- **Why it shipped this way:** a triage verdict is a rare, deliberate, single write
+  best made against a store the operator can inspect; v0 mirrors `verify --store` /
+  `remap --store` rather than growing the read-serving daemon a write verb.
+- **Trade-off cost:** on the dogfood fleet the daemon *is* the store's owner, so the
+  ergonomics are stop/start-shaped for what should be a one-liner.
+- **Candidate fix (when triage sees real use):** a `claim` MCP tool or daemon verb so
+  the daemon (the lock holder) performs the write — same shape as the `ingest` tool
+  solving the same lock problem for refreshes.
+- **Status:** open; documented v0 trade-off.
+
 ### O9 — test_reaches recall residue after H1: aliased external-test calls and re-ambiguated methods
 
 - **Symptom:** first HTTP-mode run of the re-armed gate on the restarted daemon

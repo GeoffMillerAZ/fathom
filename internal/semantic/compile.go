@@ -308,6 +308,11 @@ sectionLoop:
 			for _, d := range drafts {
 				claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion)
 				if verr != nil {
+					// A drift-anchor failure is infrastructure, not a bad
+					// draft: abort the run loudly (FT-6 — see errDriftAnchor).
+					if errors.Is(verr, errDriftAnchor) {
+						return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
+					}
 					run.ClaimsRejected++
 					continue
 				}
@@ -547,6 +552,14 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	// (SetFingerprint runs for every processed file at ingest) — this just
 	// reads it at compile time as the honest "as of" anchor a later live
 	// drift check re-reads (semantic.DriftedFindings, serve.go).
+	//
+	// Anchor persistence is LOUD, never best-effort: a read failure here
+	// aborts the whole compile (errDriftAnchor, checked in the compile loop)
+	// rather than skipping the link — the digest gate would never recompile
+	// the unchanged section, so a silently missing anchor would permanently
+	// blind remediation drift for that file. This is what upholds the FT-6
+	// invariant: every stored finding-kind claim carries ≥1 scope-fp link
+	// (scopes matching zero indexed files were already rejected above).
 	if kind == KindFinding {
 		files := make([]string, 0, len(scopeFiles))
 		for f := range scopeFiles {
@@ -554,10 +567,24 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 		}
 		sort.Strings(files)
 		for _, f := range files {
-			if fp, found, ferr := c.St.Fingerprint(ctx, serviceID, f); ferr == nil && found {
-				links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopeFP, TargetRef: f, TargetHash: fp})
+			fp, found, ferr := c.St.Fingerprint(ctx, serviceID, f)
+			if ferr != nil {
+				return core.SemanticClaim{}, nil, fmt.Errorf("%w: read fingerprint for %s: %v", errDriftAnchor, f, ferr)
 			}
+			if !found {
+				// Violates the pipeline contract (every indexed file has a
+				// fingerprint) — the store is in a state drift cannot be
+				// honestly anchored against.
+				return core.SemanticClaim{}, nil, fmt.Errorf("%w: indexed file %s has no stored fingerprint", errDriftAnchor, f)
+			}
+			links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopeFP, TargetRef: f, TargetHash: fp})
 		}
 	}
 	return claim, links, nil
 }
+
+// errDriftAnchor marks a scope-fp drift-anchor persistence failure inside
+// verifyDraft (FT-6). Unlike every other verifyDraft error — which rejects
+// only the one draft (ClaimsRejected++) — this one is infrastructure, not a
+// bad draft, and the compile loop aborts the whole run on it.
+var errDriftAnchor = errors.New("semantic: finding drift anchor")

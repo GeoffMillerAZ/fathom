@@ -46,8 +46,16 @@ All notable changes to sextant. Format loosely follows
   `internal/mcp/extra_tools.go`'s `security_rollup` shape, so deterministic
   analyzer output flows through the normal ingest→compile→claims pipeline
   instead of a parallel persistence path. Output is a pure function of the
-  current index (no clock/random ordering in the body), verified by a
-  double-run byte-compare (FT-5).
+  corpus working tree at run time (`Sources()` re-reads disk, not the index;
+  no clock/random ordering in the body), verified by a double-run
+  byte-compare — including with `--out` INSIDE the corpus, the intended
+  deployment: source files under the resolved `--out` directory are excluded
+  from the scan, closing the self-scan feedback loop where run N+1 would
+  find shell-out/http snippets embedded in run N's own doc and mutate it
+  every run. Secret-category findings are rendered redacted (`path:line` +
+  rule only — the scanner messages embed the matched source line, and a
+  committable document must never exfiltrate the credential it reports)
+  (FT-5).
 - **Remediation drift (FT-6).** The compiler now persists, for finding-kind
   claims only, a `ClaimLink{Rel:"scope-fp"}` per scope-matched file with its
   compile-time store fingerprint. `semantic.DriftedFindings` is a new, pure
@@ -58,7 +66,22 @@ All notable changes to sextant. Format loosely follows
   `ObligationsFor` both pure functions of current store state, with no third
   claim-status axis, and matches the vision's explicit rule that code drift
   is a serving annotation, never a status flip (a finding whose code changed
-  might be FIXED, not wrong).
+  might be FIXED, not wrong). Anchor persistence is loud, never best-effort:
+  a fingerprint read failure (or a fingerprint-less indexed file) at compile
+  time aborts the run (`errDriftAnchor`) instead of silently omitting the
+  link — the digest gate would never recompile the unchanged section, so a
+  missing anchor would permanently blind drift for that file. This upholds
+  the invariant DriftedFindings relies on (every compiled finding claim
+  carries ≥1 scope-fp link), and serving is bounded: a per-call fingerprint
+  cache queries each distinct anchored file at most once per
+  `ObligationsFor`, regardless of how many claims share it (the edit-hook
+  hot path).
+- **Findings prompt: no bare `**` scopes.** The findings compile prompt
+  instructs the narrowest affected-path globs the document justifies; a
+  genuinely repo-wide finding scopes to its affected file class (e.g.
+  `**/*.go`), never a bare `**` — aligned with the O8 precision work's
+  compile guard. The prompt identity is content-addressed, so this rotates
+  only `findings/<hash8>`; no compiled priors existed.
 
 ### Added — coding-agents canonical doc + staleness sweep (IA-4/IA-5)
 - docs/use-cases/coding-agents.md is THE adoption guide (the loop, hooks,
