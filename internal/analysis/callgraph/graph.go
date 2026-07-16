@@ -121,7 +121,7 @@ func Build(nodes []core.SymbolNode) *Graph {
 	for callerKey, n := range g.nodes {
 		seen := make(map[string]struct{}) // deduplicate edges from this caller
 		for _, raw := range n.Calls {
-			calleeKey := g.resolve(raw)
+			calleeKey := g.resolve(n, raw)
 			if calleeKey == "" {
 				continue // unknown external symbol
 			}
@@ -146,11 +146,27 @@ func Build(nodes []core.SymbolNode) *Graph {
 }
 
 // resolve converts a raw callee reference (full key or bare name) to a
-// canonical key present in g.nodes.  Returns "" when unresolvable.
-func (g *Graph) resolve(raw string) string {
+// canonical key present in g.nodes.  Returns "" when unresolvable.  caller is
+// the node whose Calls entry is being resolved; it scopes same-package
+// bare-name binding.
+func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	// Exact match (full SymbolKey already in nodes).
 	if _, ok := g.nodes[raw]; ok {
 		return raw
+	}
+	// Same-package bare-name binding: a bare (unqualified) identifier cannot
+	// denote another package's symbol — Go's only cross-package reference form
+	// is a qualified identifier, which extractors record with a dot. So when
+	// the CALLER's package declares the bare name, the call binds there, by
+	// language semantics — not first-match-wins. Restricted to plain function
+	// callers: a method node's Package field is its receiver type name, not a
+	// Go package, so binding through it would be a category error.
+	if caller.Kind == core.KindGoFunc && caller.Package != "" &&
+		!strings.Contains(raw, ".") && !strings.Contains(raw, "::") {
+		k := core.SymbolKey(caller.Service, caller.Package, raw)
+		if _, ok := g.nodes[k]; ok {
+			return k
+		}
 	}
 	// Unambiguous bare-name lookup.
 	if key, ok := g.byName[raw]; ok {
