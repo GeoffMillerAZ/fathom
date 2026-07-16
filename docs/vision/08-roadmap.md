@@ -1,5 +1,20 @@
 # 08 — The consolidated roadmap and your decision checklist
 
+> **Delta, 2026-07-16 (round 2 — agentic-kit v0.7.0 landed the fathom asks):**
+> the kit now ships the three seams this roadmap's next slices compose
+> (`docs/plans/2026-07-fathom-asks.md` there, gate-verified):
+> `prompttemplate.Template.TextHash()` → §1 item 6's content-addressed
+> PromptVersion becomes a method call; `llmclient/structured`
+> (`ErrTruncated`/`ErrMalformed`) → the obligations compile's
+> errBadResponse hand-classification retires inside the M1/precision slice;
+> `telemetry/heartbeat` (beats + `CheckLiveness`) → §1 item 1's
+> denominator/liveness watchdog composes a kit primitive instead of
+> hand-rolling. v0.7.0 is the pin for H1.6's go.work decoupling. Hard specs
+> for the next three slices: `docs/plans/gap1-instrumentation.md`,
+> `docs/plans/surfaces-week1.md`, `docs/plans/m1-manifest.md`. Also
+> executed ahead of schedule: O6 (H1 branch), O9 epoch salt, SDD reconciler
+> v0 (ADR-018) — the verify-gate credibility preconditions are met.
+
 **Verdict.** Nothing in this review preempts H1 — it sharpens it. The
 sequence below folds every accepted recommendation into the existing
 H1/H2/H3 frame, amends two things (layer-2 candidate; ADR-014 gate
