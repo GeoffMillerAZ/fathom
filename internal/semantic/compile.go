@@ -26,6 +26,13 @@ const LayerObligations = "obligations"
 // KindObligation is the v1 claim kind.
 const KindObligation = "obligation"
 
+// LayerFindings is the D3 findings tracer-bullet layer (docs/plans/
+// findings-tracer.md, docs/vision/03-findings-and-experts.md §3.2).
+const LayerFindings = "findings"
+
+// KindFinding is the findings-layer claim kind.
+const KindFinding = "finding"
+
 // defaultMaxRuleWords is the per-claim rule-length budget used when no
 // manifest layer is configured on the Compiler (mirrors schema.cue's own
 // default, #Layer.budgets.max_rule_words | *28). Compiler.Layer, when set
@@ -152,18 +159,42 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	}
 	started := now()
 
-	promptVersion := obligationsPromptVersion()
+	// Layer identity: c.Layer (manifest-loaded via semantic.LoadLayer, set by
+	// pkg/client.CompileLayer) is authoritative when present. A zero-value
+	// Layer (Name == "") falls back to the pre-M1 obligations identity, so
+	// direct Compiler construction without a loaded layer — most existing
+	// tests, and the expert-module non-git-corpus test — keeps its exact
+	// original behavior unchanged (FT-1 generalizes the compiler past a
+	// single hardcoded layer without breaking that contract).
+	layerName := LayerObligations
+	layerVersion := "v1"
+	kind := KindObligation
+	tier := core.TierDocClaimed
+	tierProfile := "engineering"
+	systemPrompt, promptVersion := obligationsSystemPromptTemplate.Text, obligationsPromptVersion()
+	if c.Layer.Name != "" {
+		layerName = c.Layer.Name
+		if c.Layer.Version != "" {
+			layerVersion = c.Layer.Version
+		}
+		kind = c.Layer.Kind
+		tier = core.EvidenceTier(c.Layer.Tier)
+		if c.Layer.TierProfile != "" {
+			tierProfile = c.Layer.TierProfile
+		}
+		systemPrompt, promptVersion = promptForLayer(c.Layer.Name)
+	}
 
 	run := core.CompileRun{
 		ServiceID:       in.ServiceID,
-		Layer:           LayerObligations,
+		Layer:           layerName,
 		CorpusWatermark: in.Watermark,
 		Model:           c.Model,
 		PromptVersion:   promptVersion,
 		DryRun:          in.DryRun,
 		RanAt:           started.UTC(),
 	}
-	idSum := sha256.Sum256([]byte(in.ServiceID + "\x00" + LayerObligations + "\x00" + in.Watermark + "\x00" + started.UTC().Format(time.RFC3339Nano)))
+	idSum := sha256.Sum256([]byte(in.ServiceID + "\x00" + layerName + "\x00" + in.Watermark + "\x00" + started.UTC().Format(time.RFC3339Nano)))
 	run.RunID = hex.EncodeToString(idSum[:])
 
 	// Existing claims, grouped by subject, for the digest gate + supersede.
@@ -173,7 +204,7 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// section re-LLMs for the rest of time (F2). They need no supersede
 	// handling either: superseded is already terminal for the sweep, and a
 	// refuted claim keeps its stronger human verdict (neither is served).
-	existing, err := c.St.ClaimsForService(ctx, in.ServiceID, LayerObligations)
+	existing, err := c.St.ClaimsForService(ctx, in.ServiceID, layerName)
 	if err != nil {
 		return run, fmt.Errorf("semantic: load existing claims: %w", err)
 	}
@@ -257,7 +288,7 @@ sectionLoop:
 				return run, fmt.Errorf("semantic: no LLM client configured (section %s needs compilation; run with dry_run to estimate)", sec.Subject)
 			}
 
-			drafts, usage, err := c.compileSection(ctx, sec)
+			drafts, usage, err := c.compileSection(ctx, sec, systemPrompt)
 			run.TokensIn += usage.InputTokens
 			run.TokensOut += usage.OutputTokens
 			if err != nil {
@@ -275,7 +306,7 @@ sectionLoop:
 			recompiledSubjects = append(recompiledSubjects, sec.Subject)
 
 			for _, d := range drafts {
-				claim, links, verr := c.verifyDraft(in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, promptVersion)
+				claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion)
 				if verr != nil {
 					run.ClaimsRejected++
 					continue
@@ -404,8 +435,10 @@ func enforceBudgets(layer LayerDef, tokensIn, tokensOut int, inRatePerKTok float
 // (M1-6), which sets Request.OutputSchema to claimDraftSchema and classifies
 // the two silent failure modes as errors.Is-matchable sentinels
 // (structured.ErrTruncated, structured.ErrMalformed) instead of this package
-// hand-classifying them via the retired errBadResponse wrapper.
-func (c *Compiler) compileSection(ctx context.Context, sec Section) ([]claimDraft, llmclient.Usage, error) {
+// hand-classifying them via the retired errBadResponse wrapper. systemPrompt
+// is the caller's layer-resolved prompt text (promptForLayer, FT-1) — every
+// layer shares the claimDraft envelope/schema; only the instructions differ.
+func (c *Compiler) compileSection(ctx context.Context, sec Section, systemPrompt string) ([]claimDraft, llmclient.Usage, error) {
 	prompt := buildSectionPrompt(sec)
 	if c.Redactor != nil {
 		prompt, _ = c.Redactor.Redact(prompt)
@@ -413,7 +446,7 @@ func (c *Compiler) compileSection(ctx context.Context, sec Section) ([]claimDraf
 	var envelope claimDraftEnvelope
 	resp, err := structured.Complete(ctx, c.LLM, llmclient.Request{
 		Model:     c.Model,
-		System:    obligationsSystemPromptTemplate.Text,
+		System:    systemPrompt,
 		Prompt:    prompt,
 		MaxTokens: 2400, // rule-dense sections (large tables) overflowed 1200 and truncated mid-JSON
 	}, claimDraftSchema, &envelope)
@@ -437,8 +470,10 @@ func buildSectionPrompt(sec Section) string {
 // verifyDraft applies compile-time verification (ADR-016 §4.4): the citation
 // must resolve inside the document, and every scope glob must match at least
 // one indexed file. Failures reject the claim — a claim is only as good as
-// its anchors.
-func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, promptVersion string) (core.SemanticClaim, []core.ClaimLink, error) {
+// its anchors. layerName/layerVersion/kind/tier/tierProfile are the caller's
+// resolved layer identity (FT-1: Compile resolves them once from c.Layer,
+// defaulting to the obligations identity when no layer is loaded).
+func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string) (core.SemanticClaim, []core.ClaimLink, error) {
 	rule := strings.TrimSpace(d.Rule)
 	if rule == "" {
 		return core.SemanticClaim{}, nil, fmt.Errorf("empty rule")
@@ -454,19 +489,23 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	if !ok {
 		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
 	}
-	// Scope globs must be non-empty and each match >= 1 indexed file.
+	// Scope globs must be non-empty and each match >= 1 indexed file. Every
+	// indexed file actually matched by ANY glob is collected into scopeFiles
+	// (not just "matched at least one") — finding-kind claims need the full
+	// matched-file set below to anchor remediation-drift fingerprints (FT-6).
 	scope := append([]string(nil), d.Scope...)
 	sort.Strings(scope)
 	if len(scope) == 0 {
 		return core.SemanticClaim{}, nil, fmt.Errorf("empty scope")
 	}
+	scopeFiles := map[string]bool{}
 	for _, g := range scope {
 		m := filter.New([]string{g})
 		matched := false
 		for _, f := range indexedFiles {
 			if m.Match(f) {
 				matched = true
-				break
+				scopeFiles[f] = true
 			}
 		}
 		if !matched {
@@ -477,16 +516,16 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	reproSum := sha256.Sum256([]byte(sec.Digest + "\x00" + rule + "\x00" + strings.Join(scope, ",")))
 	reproKey := hex.EncodeToString(reproSum[:])
 	claim := core.SemanticClaim{
-		ClaimID:             core.ClaimID(LayerObligations, KindObligation, sec.Subject, reproKey),
+		ClaimID:             core.ClaimID(layerName, kind, sec.Subject, reproKey),
 		ServiceID:           serviceID,
-		Layer:               LayerObligations,
-		LayerVersion:        "v1",
-		Kind:                KindObligation,
+		Layer:               layerName,
+		LayerVersion:        layerVersion,
+		Kind:                kind,
 		Subject:             sec.Subject,
 		Rule:                rule,
 		Scope:               scope,
-		Tier:                core.TierDocClaimed,
-		TierProfile:         "engineering",
+		Tier:                tier,
+		TierProfile:         tierProfile,
 		Status:              core.ClaimFresh,
 		Model:               c.Model,
 		PromptVersion:       promptVersion,
@@ -500,6 +539,25 @@ func (c *Compiler) verifyDraft(serviceID string, d claimDraft, sec Section, doc 
 	}
 	for _, g := range scope {
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})
+	}
+	// Remediation-drift substrate (FT-6, docs/vision/03-findings-and-experts.md
+	// §2): for finding-kind claims only, persist each scope-matched file's
+	// CURRENT store fingerprint as a ClaimLink. No disk access needed here —
+	// the fingerprint is already maintained by the fusion pipeline's hash-gate
+	// (SetFingerprint runs for every processed file at ingest) — this just
+	// reads it at compile time as the honest "as of" anchor a later live
+	// drift check re-reads (semantic.DriftedFindings, serve.go).
+	if kind == KindFinding {
+		files := make([]string, 0, len(scopeFiles))
+		for f := range scopeFiles {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		for _, f := range files {
+			if fp, found, ferr := c.St.Fingerprint(ctx, serviceID, f); ferr == nil && found {
+				links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopeFP, TargetRef: f, TargetHash: fp})
+			}
+		}
 	}
 	return claim, links, nil
 }

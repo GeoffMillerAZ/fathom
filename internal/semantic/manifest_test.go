@@ -97,7 +97,32 @@ func TestLayerNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayerNames: %v", err)
 	}
-	if len(names) != 1 || names[0] != "obligations" {
-		t.Errorf("LayerNames() = %v, want [obligations]", names)
+	want := []string{"findings", "obligations"}
+	if !reflect.DeepEqual(names, want) {
+		t.Errorf("LayerNames() = %v, want %v (sorted)", names, want)
+	}
+}
+
+// TestLoadLayer_Findings pins the D3 findings layer's manifest identity
+// (FT-1): kind "finding", corpus findings/**, tier sme-stated — the honest
+// human-review-conclusion tier, ranked below doc-claimed/verified by the
+// shipped tier ordering.
+func TestLoadLayer_Findings(t *testing.T) {
+	def, err := LoadLayer("findings")
+	if err != nil {
+		t.Fatalf("LoadLayer(findings): %v", err)
+	}
+	if def.Name != "findings" || def.Version != "v1" || def.Kind != "finding" {
+		t.Errorf("identity = %+v", def)
+	}
+	wantInclude := []string{"findings/**"}
+	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
+		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
+	}
+	if def.Tier != "sme-stated" {
+		t.Errorf("Tier = %q, want sme-stated", def.Tier)
+	}
+	if def.Budgets.MaxRuleWords != 28 {
+		t.Errorf("Budgets.MaxRuleWords = %d, want 28 (schema default)", def.Budgets.MaxRuleWords)
 	}
 }

@@ -71,6 +71,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdRemap(args[1:], stdout, stderr)
 	case "compile":
 		return cmdCompile(args[1:], stdout, stderr)
+	case "claim":
+		return cmdClaim(args[1:], stdout, stderr)
+	case "report":
+		return cmdReport(args[1:], stdout, stderr)
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
 	case "instrument":
@@ -107,6 +111,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  verify                Verify plan files against the index (done-means-proven gate)")
 	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
 	fmt.Fprintln(w, "  compile               Compile a semantic layer for a service (dry-run by default)")
+	fmt.Fprintln(w, "  claim                 Triage a compiled claim: refute or corroborate, with a note")
+	fmt.Fprintln(w, "  report                Write an analyzer's output as a markdown finding document (deterministic bridge)")
 	fmt.Fprintln(w, "  edit-hook             PostToolUse hook: inject obligations into session context")
 	fmt.Fprintln(w, "  stop-hook             Stop hook: flag tasks claimed [x] this session that fail verification")
 	fmt.Fprintln(w, "  gen-plan-cue          Emit the generated CUE shadow of a Markdown plan (round-trip verified)")

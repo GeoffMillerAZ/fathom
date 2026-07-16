@@ -18,10 +18,13 @@ type obligationsBackend interface {
 	ObligationsIndexStale(ctx context.Context, service, file string) bool
 }
 
-// compileBackend is the optional backend capability for on-demand obligations
-// compilation.
+// compileBackend is the optional backend capability for on-demand
+// semantic-layer compilation. CompileLayer takes the layer name the caller
+// requested (FT-1/F7: compile_layer previously validated the name via
+// LoadLayer and then discarded it, always compiling obligations regardless
+// of what was asked for).
 type compileBackend interface {
-	CompileObligations(ctx context.Context, service string, dryRun bool) (core.CompileRun, error)
+	CompileLayer(ctx context.Context, service, layer string, dryRun bool) (core.CompileRun, error)
 }
 
 // claimsSummaryBackend is the optional backend capability for attaching a
@@ -154,7 +157,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 			dryRun = *p.DryRun
 		}
 
-		run, err := cb.CompileObligations(ctx, p.Service, dryRun)
+		run, err := cb.CompileLayer(ctx, p.Service, layer, dryRun)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}

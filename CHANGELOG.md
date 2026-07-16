@@ -5,6 +5,61 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — findings-as-claims tracer bullet (docs/plans/findings-tracer.md D3, FT-1..FT-6)
+- **Kind:"finding" unlocked end-to-end.** A `findings` `#Layer` instance
+  (`schema/semantic/schema.cue`: kind `finding`, corpus `findings/**`, tier
+  `sme-stated`) joins `obligations` in the manifest. `internal/semantic.Compile`
+  is now layer-aware — it resolves name/kind/tier/tier_profile/prompt from
+  `Compiler.Layer` (falling back to the pre-M1 obligations identity when no
+  layer is loaded, so every existing direct-Compiler test and the
+  expert-module non-git-corpus test are unaffected) — instead of hardcoding
+  the obligations identity everywhere. A new findings system prompt
+  (`internal/semantic/prompts.go`) shares the obligations claim envelope and
+  JSON schema; only the compile instructions differ (FT-1).
+- **`pkg/client.CompileLayer(ctx, service, layer, dryRun)`** generalizes
+  `CompileObligations` (now a thin wrapper). Fixes finding F7: `cmd/fathom
+  compile --layer` and the `compile_layer` MCP tool validated the requested
+  layer name via `LoadLayer` and then silently discarded it, always compiling
+  "obligations" regardless of what was asked for — both now route the
+  validated name all the way through.
+- **Kind-aware serving.** `semantic.ObligationsFor` now reads claims across
+  every compiled layer (not just `obligations`) and the served `Obligation`
+  gains a `kind` field (`json:"kind,omitempty"`, omitted for the obligations
+  layer — byte-compatible with every existing consumer) so a finding claim
+  scoped to a file is labeled, not silently indistinguishable from an
+  obligation (FT-2).
+- **`fathom claim refute|corroborate --store DB --service S --claim ID --note
+  "..."`** wires the previously-dead `claim_events` machinery
+  (`AppendClaimEvent` had zero non-test callers before this): `refute` appends
+  a `refuted` event and flips claim status to `ClaimRefuted`; `corroborate`
+  appends a `corroborated` event and never changes status or tier —
+  corroboration is provenance, not evidence-laundering (FT-3).
+- **Refutation durability.** `PutClaims` (both `DuckStore` and `MemoryStore`)
+  now retains `ClaimRefuted` status across an upsert of the same `claim_id` —
+  a recompile that re-emits an unchanged rule can no longer silently
+  resurrect a suppressed finding to the compiler's default fresh status
+  (FT-4).
+- **`fathom report --store DB --service S --analyzer security_rollup --out
+  findings/`** is the deterministic bridge: writes ONE markdown finding
+  document (per-category sections — hardcoded secrets, unchecked shell-outs,
+  unsafe HTTP client usage — each with `path:line` lists), mirroring
+  `internal/mcp/extra_tools.go`'s `security_rollup` shape, so deterministic
+  analyzer output flows through the normal ingest→compile→claims pipeline
+  instead of a parallel persistence path. Output is a pure function of the
+  current index (no clock/random ordering in the body), verified by a
+  double-run byte-compare (FT-5).
+- **Remediation drift (FT-6).** The compiler now persists, for finding-kind
+  claims only, a `ClaimLink{Rel:"scope-fp"}` per scope-matched file with its
+  compile-time store fingerprint. `semantic.DriftedFindings` is a new, pure
+  read that re-compares those fingerprints against the CURRENT store state;
+  `ObligationsFor` calls it and sets `code_drifted:true` on the served
+  payload when the scoped code changed since compile. Chosen design: a live
+  re-read at serve time rather than a persisted flag — keeps `Sweep` and
+  `ObligationsFor` both pure functions of current store state, with no third
+  claim-status axis, and matches the vision's explicit rule that code drift
+  is a serving annotation, never a status flip (a finding whose code changed
+  might be FIXED, not wrong).
+
 ### Added — coding-agents canonical doc + staleness sweep (IA-4/IA-5)
 - docs/use-cases/coding-agents.md is THE adoption guide (the loop, hooks,
   gates, CLAUDE.md/AGENTS.md doctrine, agent-surface registration, the honest

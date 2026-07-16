@@ -167,13 +167,13 @@ func (a *autoRefreshBackend) ObligationsIndexStale(ctx context.Context, service,
 	return ob.ObligationsIndexStale(ctx, service, file)
 }
 
-func (a *autoRefreshBackend) CompileObligations(ctx context.Context, service string, dryRun bool) (core.CompileRun, error) {
+func (a *autoRefreshBackend) CompileLayer(ctx context.Context, service, layer string, dryRun bool) (core.CompileRun, error) {
 	a.ensure(ctx, service)
 	cb, ok := a.QueryInterface.(compileBackend)
 	if !ok {
 		return core.CompileRun{}, errSemanticUnsupported
 	}
-	return cb.CompileObligations(ctx, service, dryRun)
+	return cb.CompileLayer(ctx, service, layer, dryRun)
 }
 
 func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) (map[string]any, error) {

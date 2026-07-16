@@ -109,3 +109,69 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 	}
 	return rep, nil
 }
+
+// DriftedFindings computes remediation drift for finding-kind claims (FT-6,
+// docs/vision/03-findings-and-experts.md §2): "has the SCOPED CODE — not the
+// cited finding document — changed since compile?" This is a second,
+// independent pass beside Sweep's citation check, over a different anchor
+// (scope-fp links against code fingerprints, not cites links against doc
+// content) — and, deliberately, a PURE READ: it never calls SetClaimStatus.
+// code_drifted is a SERVING annotation, not a freshness verdict — scoped code
+// changing can mean the finding was FIXED, not that the claim is wrong
+// (docs/vision/03 §2 is explicit: never a status flip). Recomputing this
+// live at serve time (ObligationsFor calls it directly) rather than
+// persisting a drifted flag on the claim keeps both Sweep and ObligationsFor
+// pure functions of current store state, with no third claim-status axis to
+// keep consistent — the simplest design that satisfies the "never a status
+// flip" constraint.
+//
+// Compile time persists each finding claim's scope-matched files' content
+// fingerprints as ClaimLink{Rel: RelScopeFP} (verifyDraft, compile.go) — no
+// disk read needed here, only the store's already-maintained fingerprint
+// table (the same one the fusion pipeline's hash-gate keeps current on every
+// ingest). A scope-fp path with no CURRENT fingerprint at all (re-ingest
+// purged it, the file moved, or the service was never re-indexed after a
+// corpus move) is treated as drifted: the scoped code's current state cannot
+// be verified unchanged, so silence would be dishonest.
+func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map[string]bool, error) {
+	claims, err := st.ClaimsForService(ctx, serviceID, "")
+	if err != nil {
+		return nil, fmt.Errorf("semantic: drift load claims: %w", err)
+	}
+	var findingIDs []string
+	for _, cl := range claims {
+		if cl.Kind == KindFinding && cl.Status.Served() {
+			findingIDs = append(findingIDs, cl.ClaimID)
+		}
+	}
+	if len(findingIDs) == 0 {
+		return nil, nil
+	}
+	sort.Strings(findingIDs) // deterministic iteration order below
+
+	links, err := st.ClaimLinks(ctx, serviceID, findingIDs)
+	if err != nil {
+		return nil, fmt.Errorf("semantic: drift load links: %w", err)
+	}
+	scopeFPByClaim := map[string][]core.ClaimLink{}
+	for _, l := range links {
+		if l.Rel == core.RelScopeFP {
+			scopeFPByClaim[l.ClaimID] = append(scopeFPByClaim[l.ClaimID], l)
+		}
+	}
+
+	drifted := map[string]bool{}
+	for _, id := range findingIDs {
+		for _, l := range scopeFPByClaim[id] {
+			cur, found, ferr := st.Fingerprint(ctx, serviceID, l.TargetRef)
+			if ferr != nil {
+				return nil, fmt.Errorf("semantic: drift fingerprint %s: %w", l.TargetRef, ferr)
+			}
+			if !found || cur != l.TargetHash {
+				drifted[id] = true
+				break
+			}
+		}
+	}
+	return drifted, nil
+}
