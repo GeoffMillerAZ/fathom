@@ -1,0 +1,498 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// cmdInit implements the "init" subcommand: one-command, idempotent,
+// additive-only wiring of a repo into fathom's coding-agent story —
+// .fathomignore, a daemon ingest, Claude Code project hooks, and the
+// CLAUDE.md/AGENTS.md operating-contract stanza. See
+// docs/plans/init-and-adoption.md IA-1/IA-2/IA-3 and
+// docs/design/coding-agent-excellence.md §5.5.
+//
+// Every mutation is create-if-absent or marker-replace, so re-running init
+// on an already-wired repo changes nothing: every step prints "ok X (already
+// present)" instead of "created X", and no file's bytes change.
+//
+// Exit codes:
+//
+//	0 — fully wired AND the daemon confirms the service is indexed
+//	2 — wiring is complete but the daemon is unreachable, or reachable but
+//	    the service still has no symbols (operational; mirrors verify's
+//	    fail-open §5.3 doctrine — init must never look "broken" for a reason
+//	    that has nothing to do with the files it wrote)
+//	1 — never returned for an operational reason; init blocks nothing
+func cmdInit(args []string, stdout, stderr io.Writer) int {
+	rpcOrigin = "init"
+	fs := newFlagSet("init", stderr)
+	path := fs.String("path", "", "repo root to wire (default: cwd)")
+	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	root := *path
+	if root == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: resolving cwd: %v\n", err)
+			return 1
+		}
+		root = wd
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: resolving --path %q: %v\n", root, err)
+		return 1
+	}
+	root = absRoot
+
+	svc := strings.ToLower(*service)
+	if svc == "" {
+		cands := serviceCandidates(root)
+		svc = strings.ToLower(cands[0].name)
+	}
+
+	binPath := *binOverride
+	if binPath == "" {
+		binPath, err = resolveBinPath()
+		if err != nil {
+			fmt.Fprintf(stderr, "error: resolving fathom binary path (pass --bin to override): %v\n", err)
+			return 1
+		}
+	}
+
+	fmt.Fprintf(stdout, "fathom init — service %q, root %s\n", svc, root)
+
+	// a. .fathomignore
+	if err := writeFathomIgnore(root, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: writing .fathomignore: %v\n", err)
+		return 1
+	}
+
+	// b. daemon ingest (fail-soft: wiring continues either way).
+	exitCode := 0
+	indexed, ingestErr := initIngest(*url, svc, root, stdout)
+	if ingestErr != nil {
+		printDaemonDownInstructions(stdout, *url)
+		exitCode = 2
+	} else if !indexed {
+		exitCode = 2
+	}
+
+	// c. project-level Claude Code hooks.
+	if err := wireHooks(root, binPath, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: writing .claude/settings.json: %v\n", err)
+		return 1
+	}
+
+	// d. CLAUDE.md + AGENTS.md stanza — one canonical source, two files.
+	stanza := fathomStanza(svc)
+	if err := applyStanza(filepath.Join(root, "CLAUDE.md"), stanza, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: writing CLAUDE.md: %v\n", err)
+		return 1
+	}
+	if err := applyStanza(filepath.Join(root, "AGENTS.md"), stanza, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: writing AGENTS.md: %v\n", err)
+		return 1
+	}
+
+	// e. manual steps init cannot do for you.
+	printManualSteps(stdout, svc, *url)
+
+	return exitCode
+}
+
+// resolveBinPath returns the current binary's path, resolving symlinks so
+// the command baked into .claude/settings.json survives a `bin/fathom`
+// symlink or PATH shim. Falls back to the unresolved path if symlink
+// evaluation fails (e.g. the binary was already removed).
+func resolveBinPath() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		return resolved, nil
+	}
+	return exe, nil
+}
+
+// ─── a. .fathomignore ──────────────────────────────────────────────────────
+
+var defaultFathomIgnore = []string{
+	"workspace/",
+	"bin/",
+	"tmp/",
+	".claude/",
+	"node_modules/",
+	"vendor/",
+}
+
+// writeFathomIgnore creates <root>/.fathomignore with sensible defaults if
+// absent. It never touches an existing file — a repo may have deliberately
+// customized its excludes.
+func writeFathomIgnore(root string, stdout io.Writer) error {
+	p := filepath.Join(root, ".fathomignore")
+	if _, err := os.Stat(p); err == nil {
+		fmt.Fprintln(stdout, "ok .fathomignore (already present)")
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+
+	var sb strings.Builder
+	sb.WriteString("# fathom index excludes (gitignore-style; see internal/filter).\n")
+	sb.WriteString("# Generated by `fathom init` — edit freely, it will not be overwritten.\n")
+	for _, line := range defaultFathomIgnore {
+		sb.WriteString(line)
+		sb.WriteString("\n")
+	}
+	if err := os.WriteFile(p, []byte(sb.String()), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintln(stdout, "created .fathomignore")
+	return nil
+}
+
+// ─── b. daemon ingest ──────────────────────────────────────────────────────
+
+// initIngest onboards svc at root via the daemon's `ingest` MCP tool, then
+// confirms the result via daemonServiceIndexed — the same probe verify.go
+// uses for its own fail-open check, so "indexed" means the same thing in
+// both commands.
+//
+// err is non-nil only for a network-level daemon-down condition (so the
+// caller can print reachability instructions); a daemon that answers but
+// reports no symbols yet returns ok=false, err=nil with its own MANUAL line
+// already printed.
+func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
+	hc := &http.Client{Timeout: 60 * time.Second}
+
+	reqBody, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "ingest",
+			"arguments": map[string]any{"service": svc, "path": root},
+		},
+	})
+	if err != nil {
+		return false, err
+	}
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return false, err
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return false, err // network-level: daemon unreachable
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return false, err
+	}
+	if _, rpcErr := unwrapRPCResult(raw); rpcErr != nil {
+		// Daemon reachable, but ingest itself failed (e.g. bad path). That's
+		// not "daemon down" — report it and let the caller fail-soft to exit 2.
+		fmt.Fprintf(stdout, "MANUAL: ingest failed: %v\n", rpcErr)
+		return false, nil
+	}
+
+	ok, probeErr := daemonServiceIndexed(hc, baseURL, svc)
+	if probeErr != nil {
+		return false, probeErr
+	}
+	if !ok {
+		fmt.Fprintf(stdout, "MANUAL: ingest ran but service %q has no symbols in the index yet — check the daemon logs\n", svc)
+		return false, nil
+	}
+
+	svcs := fetchServices(hc, baseURL)
+	info := svcs[svc]
+	langs := ""
+	if info.langs != "" {
+		langs = ", " + info.langs
+	}
+	fmt.Fprintf(stdout, "ok ingest (service %q indexed: %d symbols%s)\n", svc, info.symbols, langs)
+	return true, nil
+}
+
+// printDaemonDownInstructions prints how to bring the daemon up when init
+// could not reach it at all.
+func printDaemonDownInstructions(stdout io.Writer, baseURL string) {
+	fmt.Fprintf(stdout, "MANUAL: fathom daemon at %s is unreachable — wiring below is complete, but the index is unconfirmed.\n", baseURL)
+	fmt.Fprintln(stdout, "MANUAL: start it via launchd (if installed): launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http")
+	fmt.Fprintln(stdout, "MANUAL: or run it directly: fathom serve-http --store workspace/db/fathom.duckdb")
+	fmt.Fprintln(stdout, "MANUAL: then re-run `fathom init` — it is idempotent and will only confirm the ingest.")
+}
+
+// ─── c. Claude Code project hooks ─────────────────────────────────────────
+
+// hookSpec describes one fathom Claude Code hook wiring: which event array
+// it lives in, the matcher for its group ("" means no matcher key, as Stop
+// groups conventionally have none), the substring used to detect an
+// already-wired entry, the fathom subcommand, and its timeout in seconds.
+type hookSpec struct {
+	event   string
+	matcher string
+	marker  string
+	sub     string
+	timeout int
+}
+
+var fathomHookSpecs = []hookSpec{
+	{event: "SessionStart", matcher: "startup|resume|clear|compact", marker: "fathom session-hook", sub: "session-hook", timeout: 10},
+	{event: "PostToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
+	{event: "Stop", matcher: "", marker: "fathom stop-hook", sub: "stop-hook", timeout: 10},
+}
+
+// wireHooks JSON-merges the fathom hook entries into <root>/.claude/settings.json,
+// creating the file if absent.
+func wireHooks(root, binPath string, stdout io.Writer) error {
+	dir := filepath.Join(root, ".claude")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	p := filepath.Join(dir, "settings.json")
+
+	existing, err := os.ReadFile(p)
+	existed := err == nil
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	merged, changed, err := mergeHookSettings(existing, binPath)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case !existed:
+		if err := os.WriteFile(p, merged, 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, "created .claude/settings.json")
+	case changed:
+		if err := os.WriteFile(p, merged, 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintln(stdout, "updated .claude/settings.json (fathom hooks added)")
+	default:
+		fmt.Fprintln(stdout, "ok .claude/settings.json (already present)")
+	}
+	return nil
+}
+
+// mergeHookSettings JSON-merges the fathom SessionStart/PostToolUse/Stop hook
+// entries into an existing (possibly empty/absent) Claude Code project
+// settings.json, preserving every unrelated top-level key, hook event, and
+// hook entry. Detection is by command substring ("fathom session-hook"
+// etc.), so re-running never duplicates an entry regardless of the exact
+// binary path baked in. changed reports whether anything was actually added.
+func mergeHookSettings(existing []byte, binPath string) ([]byte, bool, error) {
+	root := map[string]any{}
+	if len(bytes.TrimSpace(existing)) > 0 {
+		if err := json.Unmarshal(existing, &root); err != nil {
+			return nil, false, fmt.Errorf("parsing existing settings.json: %w", err)
+		}
+	}
+
+	hooksObj, _ := root["hooks"].(map[string]any)
+	if hooksObj == nil {
+		hooksObj = map[string]any{}
+	}
+
+	changed := false
+	for _, spec := range fathomHookSpecs {
+		command := binPath + " " + spec.sub
+		if ensureHookEntry(hooksObj, spec, command) {
+			changed = true
+		}
+	}
+	root["hooks"] = hooksObj
+
+	out, err := json.MarshalIndent(root, "", "  ")
+	if err != nil {
+		return nil, false, fmt.Errorf("marshaling settings.json: %w", err)
+	}
+	out = append(out, '\n')
+	return out, changed, nil
+}
+
+// ensureHookEntry adds spec's hook command to hooksObj[spec.event] if no
+// existing entry in that event already contains spec.marker anywhere (any
+// matcher group). It prefers appending into an existing group whose matcher
+// equals spec.matcher over creating a new group, so sibling hooks on the
+// same matcher are never split apart. Reports whether it changed anything.
+func ensureHookEntry(hooksObj map[string]any, spec hookSpec, command string) bool {
+	arr, _ := hooksObj[spec.event].([]any)
+
+	for _, g := range arr {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		hs, _ := gm["hooks"].([]any)
+		for _, h := range hs {
+			hm, ok := h.(map[string]any)
+			if !ok {
+				continue
+			}
+			cmdStr, _ := hm["command"].(string)
+			if strings.Contains(cmdStr, spec.marker) {
+				return false // already wired
+			}
+		}
+	}
+
+	newHook := map[string]any{
+		"type":    "command",
+		"command": command,
+		"timeout": spec.timeout,
+	}
+
+	for i, g := range arr {
+		gm, ok := g.(map[string]any)
+		if !ok {
+			continue
+		}
+		gMatcher, _ := gm["matcher"].(string)
+		if gMatcher == spec.matcher {
+			hs, _ := gm["hooks"].([]any)
+			gm["hooks"] = append(hs, newHook)
+			arr[i] = gm
+			hooksObj[spec.event] = arr
+			return true
+		}
+	}
+
+	newGroup := map[string]any{"hooks": []any{newHook}}
+	if spec.matcher != "" {
+		newGroup["matcher"] = spec.matcher
+	}
+	hooksObj[spec.event] = append(arr, newGroup)
+	return true
+}
+
+// ─── d. CLAUDE.md / AGENTS.md stanza ──────────────────────────────────────
+
+const (
+	fathomStanzaBegin = "<!-- fathom:begin -->"
+	fathomStanzaEnd   = "<!-- fathom:end -->"
+)
+
+// fathomStanza returns the canonical fathom operating-contract block for
+// service, wrapped in begin/end markers. It is the ONE source emitted
+// verbatim into both CLAUDE.md and AGENTS.md (Codex reads the latter
+// automatically) — one stanza, two files, no drift between them.
+const fathomStanzaTemplate = "## fathom code intelligence\n" +
+	"\n" +
+	"This repo is indexed by fathom as service \"{{SERVICE}}\". Before any Grep/Read\n" +
+	"sweep, resolve where/what/who-calls via the fathom MCP tools:\n" +
+	"`find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,\n" +
+	"`pack_context`, `verify_plan`. Read files to *edit* them, not to discover\n" +
+	"them — the index replaces exploratory grep.\n" +
+	"\n" +
+	"Refresh the index via the `ingest` MCP tool (`{\"service\":\"{{SERVICE}}\"}`) at\n" +
+	"session start and after each commit; it is hash-gated, so a clean repo\n" +
+	"refreshes in well under a second.\n" +
+	"\n" +
+	"Obligations — governing rules for the file you are about to touch — are\n" +
+	"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
+	"as binding, not advisory.\n" +
+	"\n" +
+	"Done means proven: a plan task is only \"done\" when the index proves it, not\n" +
+	"when it is claimed. Before checking off a `docs/plans/*.md` item, run:\n" +
+	"\n" +
+	"    fathom verify --service {{SERVICE}} --plan docs/plans/<plan>.md\n" +
+	"\n" +
+	"Exit 0 = every claimed task verifies. Exit 1 = a claimed task is unproven —\n" +
+	"fix the code or uncheck the box. Exit 2 = operational (daemon down / index\n" +
+	"stale) — fail-open, not a verification failure."
+
+func fathomStanza(service string) string {
+	body := strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
+	return fathomStanzaBegin + "\n" + body + "\n" + fathomStanzaEnd
+}
+
+// applyStanza inserts stanza into path if the file is absent, replaces the
+// content between the markers if present, or appends the marked block if the
+// file exists but has never been wired. All three are additive/idempotent:
+// a re-run whose stanza content is unchanged rewrites nothing.
+func applyStanza(path, stanza string, stdout io.Writer) error {
+	name := filepath.Base(path)
+
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+		if err := os.WriteFile(path, []byte(stanza+"\n"), 0o644); err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "created %s\n", name)
+		return nil
+	}
+
+	content := string(existing)
+	beginIdx := strings.Index(content, fathomStanzaBegin)
+	endIdx := strings.Index(content, fathomStanzaEnd)
+
+	var newContent string
+	if beginIdx >= 0 && endIdx > beginIdx {
+		newContent = content[:beginIdx] + stanza + content[endIdx+len(fathomStanzaEnd):]
+	} else {
+		sep := "\n\n"
+		if strings.HasSuffix(content, "\n\n") {
+			sep = ""
+		} else if strings.HasSuffix(content, "\n") {
+			sep = "\n"
+		}
+		newContent = content + sep + stanza + "\n"
+	}
+
+	if newContent == content {
+		fmt.Fprintf(stdout, "ok %s (already present)\n", name)
+		return nil
+	}
+	if err := os.WriteFile(path, []byte(newContent), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "updated %s (fathom stanza)\n", name)
+	return nil
+}
+
+// ─── e. manual steps ───────────────────────────────────────────────────────
+
+// printManualSteps prints the steps init cannot safely do for you: MCP
+// registration (a user-scope, interactive `claude mcp add`), the Codex
+// hand-off (AGENTS.md is already written; Codex's MCP config is its own),
+// and the lefthook pre-push verify gate — printed only, never written,
+// because lefthook.yml is a hand-curated file init must not touch.
+func printManualSteps(stdout io.Writer, service, url string) {
+	fmt.Fprintln(stdout)
+	fmt.Fprintln(stdout, "MANUAL: register the fathom MCP server with Claude Code (one-time, user scope):")
+	fmt.Fprintf(stdout, "MANUAL:   claude mcp add --transport http --scope user fathom %s/rpc/agent\n", url)
+	fmt.Fprintln(stdout, "MANUAL: Codex reads AGENTS.md automatically for the operating contract (already written above);")
+	fmt.Fprintln(stdout, "MANUAL: wire its MCP registration separately, per Codex's own MCP config.")
+	fmt.Fprintln(stdout, "MANUAL: add the verify gate to lefthook.yml's pre-push (fathom does not edit lefthook.yml):")
+	fmt.Fprintln(stdout, "MANUAL:   pre-push:")
+	fmt.Fprintln(stdout, "MANUAL:     commands:")
+	fmt.Fprintln(stdout, "MANUAL:       fathom-verify:")
+	fmt.Fprintln(stdout, "MANUAL:         run: |")
+	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md\n", service)
+}

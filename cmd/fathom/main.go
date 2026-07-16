@@ -79,6 +79,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdStopHook(args[1:], stdout, stderr)
 	case "gen-plan-cue":
 		return cmdGenPlanCue(args[1:], stdout, stderr)
+	case "init":
+		return cmdInit(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)
@@ -109,6 +111,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  stop-hook             Stop hook: flag tasks claimed [x] this session that fail verification")
 	fmt.Fprintln(w, "  gen-plan-cue          Emit the generated CUE shadow of a Markdown plan (round-trip verified)")
 	fmt.Fprintln(w, "  instrument            Channel-health report: injection coverage, rollup, liveness alarms")
+	fmt.Fprintln(w, "  init                  One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

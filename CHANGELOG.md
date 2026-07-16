@@ -5,6 +5,23 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — fathom init: one-command coding-agent wiring (docs/plans/init-and-adoption.md IA-1/IA-2/IA-3)
+- `fathom init` wires a repo end-to-end, idempotently and additive-only: creates
+  `.fathomignore` if absent, calls the daemon's `ingest` MCP tool and confirms
+  the service is indexed (fail-soft exit 2 with startup instructions when the
+  daemon is unreachable or the service still has no symbols), JSON-merges
+  project-level `.claude/settings.json` hooks (SessionStart `session-hook`,
+  PostToolUse `edit-hook`, Stop `stop-hook`), writes the canonical fathom
+  operating-contract stanza into both CLAUDE.md and AGENTS.md between
+  `<!-- fathom:begin/end -->` markers, and prints the manual steps it cannot
+  safely automate (MCP registration one-liner, lefthook pre-push verify
+  snippet). Every mutation is create-if-absent or marker-replace, so a second
+  run changes zero bytes and reports "already present" throughout.
+- `mergeHookSettings` preserves every unrelated top-level key, hook event, and
+  sibling hook entry in an existing `settings.json`; detection is by command
+  substring (`"fathom session-hook"` etc.), so re-running never duplicates an
+  entry regardless of the exact binary path baked in.
+
 ### Changed — MCP surfaces week-1: execute-and-flag, agent surface, loopback default (docs/plans/surfaces-week1.md, amends ADR-014)
 - Gate semantics change from hard-gate to **execute-and-flag**: an off-surface
   `tools/call` or `batch` sub-call now executes instead of erroring, logged
