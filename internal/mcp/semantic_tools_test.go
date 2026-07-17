@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -250,8 +251,16 @@ func TestCompileLayerDryRunDefault(t *testing.T) {
 
 // ─── compile_layer: wrong layer rejected ─────────────────────────────────────
 
+// TestCompileLayerUnknownLayer asserts compile_layer surfaces the BACKEND's
+// own rejection of an unknown layer name (LC-3, docs/plans/layer-catalog.md:
+// the tool handler no longer pre-validates via the embedded-only
+// semantic.LoadLayer — a project-local layer, rooted at the service's own
+// path, is valid too, and only cb.CompileLayer can resolve that union). The
+// fake backend simulates what pkg/client.CompileLayer really does for a name
+// neither embedded nor present in any project's .fathom/layers/: return an
+// error naming the layer.
 func TestCompileLayerUnknownLayer(t *testing.T) {
-	fake := &semanticFakeBackend{}
+	fake := &semanticFakeBackend{compileErr: fmt.Errorf("client.CompileLayer: load layer manifest: semantic: unknown layer %q", "hypotheses")}
 	srv := mcp.NewServer(fake)
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 7, Method: "tools/call",
@@ -264,8 +273,11 @@ func TestCompileLayerUnknownLayer(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected error for unknown layer, got %v", resp)
 	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInvalid) {
-		t.Errorf("unknown layer code = %v, want ErrCodeInvalid", code)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInternal) {
+		t.Errorf("unknown layer code = %v, want ErrCodeInternal (the backend's own resolution error)", code)
+	}
+	if msg, _ := errObj["message"].(string); !strings.Contains(msg, "hypotheses") {
+		t.Errorf("error message = %q, want it to name the requested layer", msg)
 	}
 }
 

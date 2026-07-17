@@ -43,7 +43,20 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	if _, err := semantic.LoadLayer(*layer); err != nil {
+	// Fail-fast validation before touching a store or the network (LC-3,
+	// docs/plans/layer-catalog.md): root-aware via LoadLayerIn, not the
+	// embedded-only LoadLayer, so a project-local pack under CWD's own
+	// .fathom/layers/ validates too — an embedded-only check would reject a
+	// perfectly valid project layer before compileViaStore's real,
+	// service-rooted resolution ever ran. CWD is a heuristic here (the
+	// authoritative root is the SERVICE's own ingested path, resolved later
+	// downstream via ServiceMeta) but is the only root this flag-parse-time
+	// check can know without opening a store or a daemon connection.
+	validateRoot, rerr := os.Getwd()
+	if rerr != nil {
+		validateRoot = ""
+	}
+	if _, err := semantic.LoadLayerIn(validateRoot, *layer); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}

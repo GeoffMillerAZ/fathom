@@ -148,9 +148,14 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		if p.Layer != nil {
 			layer = *p.Layer
 		}
-		if _, err := semantic.LoadLayer(layer); err != nil {
-			return nil, &rpcError{Code: ErrCodeInvalid, Message: "compile_layer: " + err.Error()}
-		}
+		// LC-3 (docs/plans/layer-catalog.md): layer names are no longer
+		// embedded-only — a project's .fathom/layers/ is part of the valid
+		// set too, rooted at the SERVICE's own path, which this handler has
+		// no way to resolve (only cb.CompileLayer does, via ServiceMeta). A
+		// pre-check against semantic.LoadLayer here would reject a valid
+		// project-local layer before ever reaching the backend's real
+		// resolution — removed; cb.CompileLayer below is the single source
+		// of truth for "is this layer valid" and surfaces its own error.
 		// dry_run defaults TRUE — spending requires explicit dry_run:false.
 		dryRun := true
 		if p.DryRun != nil {
