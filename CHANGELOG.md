@@ -5,6 +5,56 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — layer catalog: prompt-as-data, pack shape, adr-rules + spec-bindings, `fathom layers` (docs/plans/layer-catalog.md)
+- **Prompts are data, not Go (LC-1).** Every `#Layer` instance now carries
+  `prompt_file`; `promptForLayer` is generic over `LayerDef` instead of a
+  Go switch statement per layer name — the silent obligations fallback
+  for an unwired-but-manifest-valid layer name (a correctness bug) is
+  gone. Zero identity rotation: `obligations` stays `obligations/c02b1aa1`,
+  pinned by test.
+- **`serving.drift_tracked` replaces the `kind=="finding"` hardcode
+  (LC-2)** at all three remediation-drift sites (compile-side scope-fp
+  writing, and both serve-side `code_drifted` sites) — a schema field, not
+  a Go type check, so a future layer opts into drift tracking by setting
+  one CUE field. `findings` sets it `true`; `obligations` stays at the
+  schema default (`false`).
+- **Built-ins migrate to the vision's pack shape (LC-4):**
+  `schema/semantic/layers/<name>/{layer.cue,prompt.md,eval/,KILL.md}`,
+  mirrored (`layer.cue`+`prompt.md` only) into `internal/semantic/layers/`
+  and `go:embed`'d — `schema.cue` now holds only the `#Layer` definition.
+- **The pack loader unions embedded packs with a project's own
+  `.fathom/layers/` (LC-3)** — presence = enabled (ADR-018 reconciler
+  doctrine, no separate enabled/disabled state anywhere), a project pack
+  overriding an embedded one of the same name. `pkg/client.CompileLayer`
+  resolves through this union rooted at the service's own ingested path,
+  so a project-local pack compiles and serves exactly like a built-in one
+  (`TestClient_CompileLayer_ProjectLocalPack`).
+- **`fathom layers list|show|install`** (LC-7): store-direct like `fathom
+  claim`'s v0 convention. `install` validates a candidate pack against
+  `#Layer` (missing `prompt.md`/empty `eval/` warn, don't fail) and copies
+  it into `.fathom/layers/<name>/` — users never hand-author CUE.
+- **Two new embedded packs, both cleared the precision/recall shipping
+  gate LIVE against `FATHOM_LLM_PROVIDER=claude-cli`** (docs/design/
+  semantic-layers.md §4.6; no API key needed): `adr-rules` (the layer-2
+  proof — architectural constraints from `ADR.md`/`docs/design/*.md`,
+  precision 1.00 / recall 1.00) and `spec-bindings` (the SDD pack —
+  gated-plan task bindings from `docs/plans/**` excluding `README.md`,
+  scoped to each task's `package:` annotation, precision 1.00 / recall
+  1.00 on the first attempt). Results in each pack's `eval/RESULTS.md`.
+- **Third-layer end-to-end proof (LC-8):** a fixture pack nobody wrote any
+  Go for compiles and serves — including remediation-drift tracking for a
+  PROJECT-local pack, which surfaced and fixed a real gap: drift-tracking
+  resolution now consults the same embedded ∪ project union a compile saw
+  (via `ServiceMeta.Path`), not an embedded-only lookup.
+- **Fixed:** `#Layer.corpus.exclude` was decoded from the manifest but
+  never wired into any `SelectCorpus` call — `spec-bindings`' corpus is
+  the first to need it. `SelectCorpus` now takes an independent exclude
+  matcher.
+- Docs: `docs/layers.md` is the new catalog reference (per-pack when-to-use,
+  corpus, cost, gate metrics); `docs/mcp-tools.md`'s `compile_layer` row and
+  `docs/use-cases/coding-agents.md`/`change-review.md` updated for the new
+  verb and packs.
+
 ### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
 - **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`
   (`cmd/fathom/compile.go`) out to six: `openai` (`buildOpenAIClient` —
