@@ -73,6 +73,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdCompile(args[1:], stdout, stderr)
 	case "claim":
 		return cmdClaim(args[1:], stdout, stderr)
+	case "layers":
+		return cmdLayers(args[1:], stdout, stderr)
 	case "report":
 		return cmdReport(args[1:], stdout, stderr)
 	case "edit-hook":
@@ -112,6 +114,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
 	fmt.Fprintln(w, "  compile               Compile a semantic layer for a service (dry-run by default)")
 	fmt.Fprintln(w, "  claim                 Triage a compiled claim: refute or corroborate, with a note")
+	fmt.Fprintln(w, "  layers                List/show/install semantic-layer packs (embedded + project .fathom/layers/)")
 	fmt.Fprintln(w, "  report                Write an analyzer's output as a markdown finding document (deterministic bridge)")
 	fmt.Fprintln(w, "  edit-hook             PostToolUse hook: inject obligations into session context")
 	fmt.Fprintln(w, "  stop-hook             Stop hook: flag tasks claimed [x] this session that fail verification")

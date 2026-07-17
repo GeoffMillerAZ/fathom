@@ -22,6 +22,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"path"
 	"sort"
 	"strings"
 
@@ -66,10 +67,19 @@ type LayerDef struct {
 	PromptVersion string
 
 	// PromptFile is the repo-relative path to this layer's compile system
-	// prompt (LC-1). promptForLayer loads it and derives PromptVersion's
-	// REAL, content-addressed value from its bytes — see #Layer.prompt_file's
-	// doc comment in schema.cue.
+	// prompt (LC-1) — declared manifest metadata, shown by `fathom layers
+	// show` for provenance. Not itself used to locate the file at runtime.
 	PromptFile string
+
+	// PromptText is this layer's compile system prompt, resolved by
+	// decodePack at load time (LC-3): the pack's prompt.md, read as a SIBLING
+	// of layer.cue from whichever source (embedded or project-local disk)
+	// this pack was loaded from. Empty when the pack's prompt.md could not be
+	// read — promptForLayer (prompts.go) is where that becomes a loud error,
+	// deliberately deferred past load time so `fathom layers list`/`show` can
+	// still enumerate a pack whose prompt is missing instead of failing
+	// every layer's lookup over one broken pack.
+	PromptText string
 
 	Tier        string
 	TierProfile string
@@ -230,12 +240,12 @@ func packNames(fsys fs.FS, root string) ([]string, error) {
 // returning its decoded LayerDef. fsys/path abstract over embedded vs (LC-3)
 // project-local disk sources, so this is the ONE place that turns
 // "a directory with a layer.cue in it" into a LayerDef, embedded or not.
-func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, path, dirName string) (LayerDef, error) {
-	raw, err := fs.ReadFile(fsys, path)
+func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, cuePath, dirName string) (LayerDef, error) {
+	raw, err := fs.ReadFile(fsys, cuePath)
 	if err != nil {
 		return LayerDef{}, fmt.Errorf("semantic: pack %q: read layer.cue: %w", dirName, err)
 	}
-	packVal := cctx.CompileBytes(raw, cue.Filename(path))
+	packVal := cctx.CompileBytes(raw, cue.Filename(cuePath))
 	if err := packVal.Err(); err != nil {
 		return LayerDef{}, fmt.Errorf("semantic: pack %q: compile layer.cue: %w", dirName, err)
 	}
@@ -250,6 +260,18 @@ func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, path, dirN
 	if cl.Name != dirName {
 		return LayerDef{}, fmt.Errorf("semantic: pack directory %q declares name %q — a pack's directory name and its layer.cue name field must match", dirName, cl.Name)
 	}
+
+	// Prompt text is a SIBLING of layer.cue within the same pack directory
+	// and the same fsys — resolved here, not via string-matching prompt_file
+	// against a fixed root, so a project-local pack's prompt (LC-3) resolves
+	// exactly like an embedded one's. A read failure is left for
+	// promptForLayer to surface loudly at compile time (see PromptText's doc
+	// comment above).
+	promptText := ""
+	if raw, perr := fs.ReadFile(fsys, path.Join(path.Dir(cuePath), "prompt.md")); perr == nil {
+		promptText = string(raw)
+	}
+
 	return LayerDef{
 		Name:          cl.Name,
 		Version:       cl.Version,
@@ -258,6 +280,7 @@ func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, path, dirN
 		CorpusExclude: cl.Corpus.Exclude,
 		PromptVersion: cl.PromptVersion,
 		PromptFile:    cl.PromptFile,
+		PromptText:    promptText,
 		Tier:          cl.Tier,
 		TierProfile:   cl.TierProfile,
 		Budgets: LayerBudgets{
