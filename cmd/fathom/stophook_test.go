@@ -92,7 +92,8 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
-		{"init", "-q"}, {"add", "."},
+		{"init", "-q"},
+		{"add", "."},
 		{"-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"},
 	} {
 		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)

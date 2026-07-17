@@ -11,17 +11,34 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // runServeHTTP is the testable entry point for the "serve-http" subcommand.
+//
+// CF-7 (docs/plans/config-experience.md): the same user/project
+// config.toml layers compile/providers/smoke read are loaded here too, BEFORE
+// flag parsing, and feed flag DEFAULTS ([daemon] table: store, addr,
+// call_log, auto_refresh) — a flag on the actual invocation still wins
+// (flags > env > project > user > defaults). This is what makes
+// compile_layer work on the always-on daemon with zero plist env: a launchd
+// plist carries no env at all today, which is exactly the "SILENTLY
+// DISABLED" gap the file's grounding names. Restart-to-apply: this load
+// happens once, at process start.
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
+	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+	if cfgErr != nil {
+		fmt.Fprintf(stderr, "error: loading config: %v\n", cfgErr)
+		return 1
+	}
+
 	fs := newFlagSet("serve-http", stderr)
-	storePath := fs.String("store", "", "DuckDB store path (required)")
-	addr := fs.String("addr", "127.0.0.1:7575", "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
-	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
-	callLogPath := fs.String("call-log", "workspace/logs/mcp-calls.jsonl", "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
+	storePath := fs.String("store", loaded.Config.Daemon.Store, "DuckDB store path (required; [daemon].store in config.toml, or --store)")
+	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
+	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
+	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, "workspace/logs/mcp-calls.jsonl"), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -41,16 +58,25 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	defer c.Close()
 
 	// Semantic-layer compilation over HTTP (the compile_layer tool) needs an
-	// LLM. Wire one only when a provider is configured (ANTHROPIC_API_KEY for
-	// the default anthropic provider, or FATHOM_LLM_PROVIDER set at all —
-	// including "claude-cli", which needs no key); without either, dry-run
-	// estimation still works and spending compiles return a clear error.
-	// Model override: FATHOM_COMPILE_MODEL (defaults to the cheap tier —
-	// obligations compiles are cents-scale by design, ADR-016 §6). Provider
-	// selection: buildLLMClient (FATHOM_LLM_PROVIDER; see cmd/fathom/compile.go).
-	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" {
-		if llmCl, llmErr := buildLLMClient(); llmErr == nil {
-			model := compileModel()
+	// LLM. Wire one when a provider is configured EITHER the pre-profile way
+	// (ANTHROPIC_API_KEY, or FATHOM_LLM_PROVIDER set at all) OR via a
+	// config-file profile ([daemon].default_profile, else the top-level
+	// default_profile, else no profile at all — matching
+	// resolveActiveProfile's own fallback chain). Without any of these,
+	// dry-run estimation still works and spending compiles return a clear
+	// error. Model: compileModelForProfile (FATHOM_COMPILE_MODEL beats the
+	// profile's exact pin, which beats the cheap-tier default — ADR-016 §6).
+	daemonProfileName := loaded.Config.Daemon.DefaultProfile
+	if daemonProfileName == "" {
+		daemonProfileName = loaded.Config.DefaultProfile
+	}
+	hasProfileConfig := daemonProfileName != "" || len(loaded.Config.Profiles) > 0
+	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" || hasProfileConfig {
+		p, _, profErr := config.ResolveProfile(loaded.Config, loaded.Provenance, daemonProfileName)
+		if profErr != nil {
+			fmt.Fprintf(stderr, "warn: compile_layer disabled: %v\n", profErr)
+		} else if llmCl, llmErr := buildLLMClientForProfile(p); llmErr == nil {
+			model := compileModelForProfile(p)
 			c.WithLLM(llmCl, model, 0.001, 0.005)
 			fmt.Fprintf(stderr, "serve-http: compile_layer enabled (model %s)\n", model)
 		} else {
@@ -95,6 +121,28 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 type httpServerState struct {
 	startTime time.Time
 	reqCount  atomic.Int64 // incremented on every non-/metrics request
+}
+
+// firstNonEmpty returns configured if non-empty, else fallback — the small
+// helper CF-7 uses to feed a config.toml [daemon] value into a flag's
+// default while still falling back to the pre-config hardcoded default when
+// no config file (or no such key) is present.
+func firstNonEmpty(configured, fallback string) string {
+	if configured != "" {
+		return configured
+	}
+	return fallback
+}
+
+// daemonAutoRefreshDefault resolves the --auto-refresh flag's default from
+// [daemon].auto_refresh: unset (nil, no layer ever set it) keeps the
+// pre-config default of true; an explicit false or true in config.toml is
+// honored as the new default, still overridable by the flag itself.
+func daemonAutoRefreshDefault(d config.Daemon) bool {
+	if d.AutoRefresh == nil {
+		return true
+	}
+	return *d.AutoRefresh
 }
 
 // openCallLog opens (creating parent directories as needed) the JSONL

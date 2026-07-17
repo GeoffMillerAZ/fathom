@@ -156,6 +156,16 @@ column below for the honest caveat on each.
 `anthropic`; an unrecognized value is a typed configuration error listing
 all six lanes, never a silent fallback.
 
+**Prefer a config file over raw env for anything beyond one lane.** The env
+vars above still work exactly as documented (they are the top precedence
+tier), but `~/.fathom/config.toml` / project `.fathom/config.toml` give you
+named, switchable profiles — including AWS GovCloud and Azure Government —
+plus `fathom config --explain` (which tier resolved every key, from where),
+`fathom providers` (auth health, zero tokens), and `fathom smoke` (one real
+completion's latency/cost, opt-in spend). `fathom init` scaffolds a starter
+file. Full guide, precedence rules, and secrets doctrine:
+**[docs/configuration.md](../configuration.md)**.
+
 **Measure yours, don't trust ours:**
 
 ```sh
@@ -183,6 +193,6 @@ numbers and tool-kill decisions run on clean data.
 
 CLI: `fathom init`, `ingest`, `compile`, `verify` (`--strict`,
 `--require-all`), `instrument`, `session-hook`, `edit-hook`, `stop-hook`,
-`gen-plan-cue`. MCP: the `/rpc/agent` surface (15 tools — see
-`docs/mcp-tools.md`). When any of these change, update this doc's examples
-and this line.
+`gen-plan-cue`, `config`, `providers`, `smoke`. MCP: the `/rpc/agent` surface
+(15 tools — see `docs/mcp-tools.md`). When any of these change, update this
+doc's examples and this line.

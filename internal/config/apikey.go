@@ -1,0 +1,72 @@
+package config
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+// apiKeyCmdTimeout bounds api_key_cmd's subprocess lifetime. Credential
+// helpers (`op read …`, `security find-generic-password …`) are expected to
+// return near-instantly; 10s is generous headroom without letting a hung
+// helper block a compile/providers/smoke invocation indefinitely.
+const apiKeyCmdTimeout = 10 * time.Second
+
+// ResolveAPIKey resolves the credential this profile names, at CALL time —
+// never cached on the Profile and never resolved during Load — so a
+// rotated credential (a re-exported env var, a refreshed vault entry) is
+// picked up without re-parsing the config file. Precedence when both are
+// set: APIKeyCmd wins over APIKeyEnv (an explicit command is a stronger
+// signal of operator intent than a bare env-var name).
+//
+// Returns ("", nil) when the profile names neither — the caller (a
+// cmd/fathom build*ClientProfile function) then leaves the adapter's own
+// Config.APIKey empty, letting the adapter fall back to ITS OWN default
+// env var (e.g. anthropic.Config's APIKeyEnv default "ANTHROPIC_API_KEY"),
+// which is what reproduces pre-profile fathom's exact behavior when no
+// profile overrides the credential source.
+//
+// The resolved key is NEVER logged and NEVER embedded in a returned error —
+// only the command's argv (which is configuration, not secret) and the
+// underlying exec error (e.g. "exit status 1", which os/exec never
+// populates with captured stdout/stderr) may appear.
+func (p Profile) ResolveAPIKey(ctx context.Context) (string, error) {
+	if len(p.APIKeyCmd) > 0 {
+		return runAPIKeyCmd(ctx, p.APIKeyCmd)
+	}
+	if p.APIKeyEnv != "" {
+		return os.Getenv(p.APIKeyEnv), nil
+	}
+	return "", nil
+}
+
+// runAPIKeyCmd execs argv (no shell — argv[0] is resolved via PATH or as an
+// absolute path by exec.LookPath semantics, exactly like exec.Command)
+// under apiKeyCmdTimeout and returns its trimmed stdout. Stderr is
+// deliberately never captured or surfaced: a credential helper's stderr
+// could echo back partial secret material on some failure paths, and the
+// secrets doctrine (docs/plans/config-experience.md) is "never logged, never
+// embedded in errors" — a generic failure naming the command (not its
+// output) is what callers get instead.
+func runAPIKeyCmd(ctx context.Context, argv []string) (string, error) {
+	if len(argv) == 0 {
+		return "", fmt.Errorf("config: api_key_cmd is empty")
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, apiKeyCmdTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(cctx, argv[0], argv[1:]...)
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = nil // never captured — see doc comment
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("config: api_key_cmd %q failed (output withheld): %w", argv[0], err)
+	}
+	return strings.TrimSpace(stdout.String()), nil
+}

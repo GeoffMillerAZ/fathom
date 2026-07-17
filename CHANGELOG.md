@@ -5,6 +5,74 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — configuration experience: profiles, ~/.fathom/config.toml, health, smoke (docs/plans/config-experience.md)
+- **`internal/config`**: TOML-authored, CUE-validated (`schema/config/schema.cue`,
+  embedded byte-identical with a drift test — the `internal/semantic/manifest.go`
+  precedent) runtime configuration. `Load` merges a user layer
+  (`~/.fathom/config.toml`) and a project layer (`.fathom/config.toml`)
+  field-by-field — a partial project-layer override never blanks out fields
+  it didn't mention — and tracks per-field `Provenance` (which layer/env-var
+  supplied every value). `ResolveProfile` selects a named profile
+  (`--profile`, else `default_profile`) and layers the **env-overlay**
+  (`FATHOM_LLM_PROVIDER`, `FATHOM_COMPILE_MODEL`, …) on top, so fathom's
+  pre-profile env-only behavior is reproduced byte-for-byte when no config
+  file exists. **Raw secrets are unrepresentable**: `#Profile` is a closed
+  CUE struct with no `api_key` field — `api_key_env` (read at LLM-client
+  construction time, never at load) or `api_key_cmd` (argv-exec, no shell,
+  10s bound, trimmed stdout, output never logged or embedded in errors) are
+  the only credential paths.
+- **`compile --profile`**: a new `cmd/fathom/llmprofile.go` construction
+  path (`buildLLMClientForProfile` + six `build*ClientProfile` functions)
+  sits ALONGSIDE `compile.go`'s original env-only `buildLLMClient` and its
+  six `build*Client` functions, which are byte-for-byte untouched — all 15
+  pre-existing `compile_test.go` provider tests pass unmodified, source and
+  expectations both. `compileModelForProfile` adds the profile as a
+  precedence tier between `FATHOM_COMPILE_MODEL` (still wins) and the
+  cheap-tier default; `compileModel()` itself is unchanged.
+- **`fathom config [--explain] [--json] [--profile X]`**: prints the
+  effective configuration. `--explain` is the flagship feature — every key
+  annotated with its source (`flag`/`env:VAR`/`project:path`/`user:path`/
+  `default`).
+- **`fathom providers [--profile X] [--json]`**: auth-health probe —
+  `map[string]llmclient.Pinger` built from every configured profile (or just
+  one), one `llmclient.ProbeAll` call (zero/near-zero tokens). A profile
+  whose adapter doesn't implement `Pinger` (a type-assertion, not a
+  provider-name allowlist) is reported `not probeable`, never silently
+  dropped. Non-zero exit on any probed or construction failure.
+- **`fathom smoke --profile X|--all [--json]`**: one tiny real completion
+  per selected profile — model, wall-clock latency, tokens, and an estimated
+  cost (the same flat per-KTok rates every `compile` run's `cost_usd`
+  already uses). Spends real tokens, so `--profile`/`--all` is required
+  explicitly; no implicit "smoke everything" default. No live calls in
+  tests — fake shims / `httptest`, mirroring `compile_test.go`'s patterns.
+- **`serve-http`** loads the same config at startup: `[daemon]`
+  (`store`/`addr`/`call_log`/`auto_refresh`) feeds flag *defaults* (a flag
+  on the invocation still wins), and `[daemon].default_profile` (falling
+  back to the top-level `default_profile`) selects `compile_layer`'s
+  provider — closing the gap where the launchd plist carries no env at all
+  and `compile_layer` was silently disabled on the always-on daemon.
+  Read-once: a config change reaches the daemon only after a restart, like
+  every other daemon knob.
+- **`fathom init`** gains a write-if-absent step scaffolding
+  `~/.fathom/config.toml` with every profile shape (subscription, API-key,
+  AWS GovCloud, Azure Government) commented out and the secrets doctrine
+  stated inline; never overwrites an existing file.
+- **AWS GovCloud / Azure Government** are profiles, not modes: `region =
+  "us-gov-west-1"` or an explicit FIPS `endpoint` for Bedrock; `endpoint =
+  "https://<resource>.openai.azure.us"` for Azure OpenAI. Hermetic
+  construct-level proofs (no network) that a profile's region/endpoint
+  actually reaches the kit adapter's `Config`, not just that fathom's own
+  pre-checks pass.
+- Docs: `docs/configuration.md` is the new canonical guide (precedence,
+  profiles, GovCloud/Government recipes, `config`/`providers`/`smoke`,
+  secrets doctrine, daemon restart-to-apply); pointers from `README.md` and
+  `docs/use-cases/coding-agents.md` §5 (the provider-matrix table stays the
+  single source, linked rather than duplicated).
+- Repurposed the pre-existing (unused, zero-importer) `internal/config`
+  package rather than colliding names elsewhere — its old JSON
+  query-profile API (`coding`/`investigation`/`ci`/`platform`) predated this
+  feature and had no callers anywhere in the tree.
+
 ### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
 - **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`
   (`cmd/fathom/compile.go`) out to six: `openai` (`buildOpenAIClient` —

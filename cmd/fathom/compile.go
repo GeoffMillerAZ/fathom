@@ -35,6 +35,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	dryRun := fs.Bool("dry-run", true, "estimate cost without calling the LLM (default true; use --dry-run=false to spend)")
 	storePath := fs.String("store", "", "DuckDB store path (direct mode; bypasses daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
+	profile := fs.String("profile", "", "named LLM profile from ~/.fathom/config.toml or project .fathom/config.toml (direct --store mode only; HTTP mode uses the daemon's own configured profile — CF-3, docs/plans/config-experience.md); default: the config's default_profile, or the env-only lanes when no config file defines one")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -49,7 +50,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *layer, *dryRun, stdout, stderr)
+		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, stdout, stderr)
 	}
 	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
 }
@@ -58,7 +59,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 // F7 (docs/plans/findings-tracer.md FT-1): this path used to always call
 // CompileObligations regardless of --layer, silently discarding a
 // non-default --layer flag even after LoadLayer had validated it above.
-func compileViaStore(storePath, service, layer string, dryRun bool, stdout, stderr io.Writer) int {
+func compileViaStore(storePath, service, layer, profileFlag string, dryRun bool, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -71,12 +72,17 @@ func compileViaStore(storePath, service, layer string, dryRun bool, stdout, stde
 	defer c.Close()
 
 	if !dryRun {
-		llmCl, llmErr := buildLLMClient()
-		if llmErr != nil {
-			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY, or set FATHOM_LLM_PROVIDER=claude-cli with a logged-in Claude Code CLI, or use --dry-run=true to estimate cost.\n", llmErr)
+		p, _, profErr := resolveActiveProfile(profileFlag)
+		if profErr != nil {
+			fmt.Fprintf(stderr, "error: resolving --profile %q: %v\n", profileFlag, profErr)
 			return 1
 		}
-		c.WithLLM(llmCl, compileModel(), 0.001, 0.005)
+		llmCl, llmErr := buildLLMClientForProfile(p)
+		if llmErr != nil {
+			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY, or set FATHOM_LLM_PROVIDER=claude-cli with a logged-in Claude Code CLI, or configure a profile in ~/.fathom/config.toml, or use --dry-run=true to estimate cost.\n", llmErr)
+			return 1
+		}
+		c.WithLLM(llmCl, compileModelForProfile(p), 0.001, 0.005)
 	}
 
 	ctx := context.Background()
@@ -192,6 +198,13 @@ func buildLLMClient() (llmclient.LLMClient, error) {
 	}
 }
 
+// defaultCompileModel is the cheap-tier default compileModel() falls back
+// to. Named (rather than a bare literal) so llmprofile.go's
+// compileModelForProfile (CF-3, docs/plans/config-experience.md) can detect
+// "FATHOM_COMPILE_MODEL was actually set" without re-reading the env var
+// under a second name — compileModel() itself is otherwise untouched.
+const defaultCompileModel = "claude-haiku-4-5-20251001"
+
 // compileModel resolves the compile model from FATHOM_COMPILE_MODEL,
 // defaulting to the cheap tier (obligations compiles are cents-scale by
 // design, ADR-016 §6). Shared by CLI --store mode and the serve-http daemon
@@ -201,7 +214,7 @@ func compileModel() string {
 	if m := os.Getenv("FATHOM_COMPILE_MODEL"); m != "" {
 		return m
 	}
-	return "claude-haiku-4-5-20251001"
+	return defaultCompileModel
 }
 
 // buildAnthropicClient constructs an Anthropic LLM client from the environment.

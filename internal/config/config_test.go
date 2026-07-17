@@ -1,204 +1,517 @@
 package config
 
 import (
+	"context"
+	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 // ---------------------------------------------------------------------------
-// Load
+// Load — absent layers
 // ---------------------------------------------------------------------------
 
-func TestLoad_Empty_AppliesDefaults(t *testing.T) {
-	cfg, err := Load(nil)
+func TestLoad_BothLayersAbsent_EmptyConfigNoError(t *testing.T) {
+	dir := t.TempDir()
+	loaded, err := Load(filepath.Join(dir, "user.toml"), filepath.Join(dir, "project.toml"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.DefaultProfile != ProfileCoding {
-		t.Fatalf("default profile: want %q got %q", ProfileCoding, cfg.DefaultProfile)
+	if loaded.UserFound || loaded.ProjectFound {
+		t.Fatalf("neither layer should be found: %+v", loaded)
 	}
-	if cfg.StoreDir == "" {
-		t.Fatal("storeDir must not be empty after defaults")
+	if loaded.Config.DefaultProfile != "" {
+		t.Errorf("DefaultProfile = %q, want empty", loaded.Config.DefaultProfile)
 	}
-	if len(cfg.Profiles) == 0 {
-		t.Fatal("profiles must be populated from defaults")
+	if len(loaded.Config.Profiles) != 0 {
+		t.Errorf("Profiles = %v, want empty", loaded.Config.Profiles)
 	}
 }
 
-func TestLoad_EmptyJSON_AppliesDefaults(t *testing.T) {
-	cfg, err := Load([]byte(`{}`))
+func TestLoad_EmptyPaths_Skipped(t *testing.T) {
+	loaded, err := Load("", "")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if cfg.DefaultProfile != ProfileCoding {
-		t.Fatalf("want coding default, got %q", cfg.DefaultProfile)
+	if loaded.UserFound || loaded.ProjectFound {
+		t.Fatalf("empty paths must never be treated as found: %+v", loaded)
 	}
 }
 
-func TestLoad_OverrideDefaultProfile(t *testing.T) {
-	json := []byte(`{"defaultProfile":"ci"}`)
-	cfg, err := Load(json)
+// ---------------------------------------------------------------------------
+// Load — single layer, parse + validate
+// ---------------------------------------------------------------------------
+
+func writeTOML(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoad_UserLayer_ParsesProfile(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+default_profile = "work"
+
+[profiles.work]
+provider = "anthropic"
+model = "claude-opus-4-1-20250805"
+`)
+	loaded, err := Load(userPath, filepath.Join(dir, "project.toml"))
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Load: %v", err)
 	}
-	if cfg.DefaultProfile != ProfileCI {
-		t.Fatalf("want ci got %q", cfg.DefaultProfile)
+	if !loaded.UserFound {
+		t.Fatal("expected UserFound")
+	}
+	if loaded.Config.DefaultProfile != "work" {
+		t.Errorf("DefaultProfile = %q, want work", loaded.Config.DefaultProfile)
+	}
+	p, ok := loaded.Config.Profiles["work"]
+	if !ok {
+		t.Fatal("profile 'work' missing")
+	}
+	if p.Provider != "anthropic" || p.Model != "claude-opus-4-1-20250805" {
+		t.Errorf("profile = %+v", p)
 	}
 }
 
-func TestLoad_OverrideStoreDir(t *testing.T) {
-	json := []byte(`{"storeDir":"/tmp/fathom"}`)
-	cfg, err := Load(json)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if cfg.StoreDir != "/tmp/fathom" {
-		t.Fatalf("want /tmp/fathom got %q", cfg.StoreDir)
-	}
-}
+func TestLoad_InvalidTOML_NamesFile(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `this is not valid toml =`)
 
-func TestLoad_InvalidJSON(t *testing.T) {
-	_, err := Load([]byte(`{not json}`))
+	_, err := Load(userPath, "")
 	if err == nil {
-		t.Fatal("expected parse error")
+		t.Fatal("expected error")
+	}
+	var loadErr *LoadError
+	if !errors.As(err, &loadErr) {
+		t.Fatalf("error is not *LoadError: %v", err)
+	}
+	if loadErr.Path != userPath {
+		t.Errorf("LoadError.Path = %q, want %q", loadErr.Path, userPath)
+	}
+}
+
+func TestLoad_UnknownProvider_RejectedNamingFile(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[profiles.bad]
+provider = "not-a-real-provider"
+`)
+	_, err := Load(userPath, "")
+	if err == nil {
+		t.Fatal("expected a schema validation error")
+	}
+	var loadErr *LoadError
+	if !errors.As(err, &loadErr) {
+		t.Fatalf("error is not *LoadError: %v", err)
+	}
+	if loadErr.Path != userPath {
+		t.Errorf("LoadError.Path = %q, want %q", loadErr.Path, userPath)
+	}
+}
+
+func TestLoad_LiteralAPIKeyField_Rejected(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[profiles.leaked]
+provider = "anthropic"
+api_key = "sk-ant-should-not-be-representable"
+`)
+	_, err := Load(userPath, "")
+	if err == nil {
+		t.Fatal("expected a schema validation error rejecting the literal api_key field")
+	}
+	if strings.Contains(err.Error(), "sk-ant-should-not-be-representable") {
+		t.Errorf("error must not echo the attempted secret value: %v", err)
+	}
+}
+
+func TestLoad_MissingProvider_Rejected(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[profiles.noprovider]
+model = "gpt-4o"
+`)
+	if _, err := Load(userPath, ""); err == nil {
+		t.Fatal("expected error: provider is required")
 	}
 }
 
 // ---------------------------------------------------------------------------
-// Validate
+// Load — merge precedence: project over user, field-by-field
 // ---------------------------------------------------------------------------
 
-func TestValidate_DefaultConfig_OK(t *testing.T) {
-	cfg, _ := Load(nil)
-	if err := cfg.Validate(); err != nil {
-		t.Fatalf("default config should be valid: %v", err)
-	}
-}
+func TestLoad_ProjectOverridesUser_FieldByField(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, `
+default_profile = "work"
 
-func TestValidate_MissingStoreDir(t *testing.T) {
-	cfg, _ := Load(nil)
-	cfg.StoreDir = ""
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for empty storeDir")
-	}
-}
-
-func TestValidate_MissingDefaultProfile(t *testing.T) {
-	cfg, _ := Load(nil)
-	cfg.DefaultProfile = ""
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for empty defaultProfile")
-	}
-}
-
-func TestValidate_UnknownDefaultProfile(t *testing.T) {
-	cfg, _ := Load(nil)
-	cfg.DefaultProfile = "nonexistent"
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for unknown defaultProfile")
-	}
-}
-
-func TestValidate_BadSemanticWeight(t *testing.T) {
-	cfg, _ := Load(nil)
-	p := cfg.Profiles[ProfileCoding]
-	p.SemanticWeight = 1.5
-	cfg.Profiles[ProfileCoding] = p
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for semanticWeight > 1")
-	}
-}
-
-func TestValidate_NegativeSemanticWeight(t *testing.T) {
-	cfg, _ := Load(nil)
-	p := cfg.Profiles[ProfileCoding]
-	p.SemanticWeight = -0.1
-	cfg.Profiles[ProfileCoding] = p
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for negative semanticWeight")
-	}
-}
-
-func TestValidate_NegativeMaxResults(t *testing.T) {
-	cfg, _ := Load(nil)
-	p := cfg.Profiles[ProfileCI]
-	p.MaxResults = -1
-	cfg.Profiles[ProfileCI] = p
-	if err := cfg.Validate(); err == nil {
-		t.Fatal("expected error for negative maxResults")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Profile constants
-// ---------------------------------------------------------------------------
-
-func TestProfileConstants_AllPresent(t *testing.T) {
-	cfg, _ := Load(nil)
-	for _, name := range []string{ProfileCoding, ProfileInvestigation, ProfileCI, ProfilePlatform} {
-		if _, ok := cfg.Profile(name); !ok {
-			t.Errorf("profile %q missing from defaults", name)
-		}
-	}
-}
-
-func TestProfile_MissingReturnsNotFound(t *testing.T) {
-	cfg, _ := Load(nil)
-	_, ok := cfg.Profile("unknown-profile")
-	if ok {
-		t.Fatal("expected not-found for unknown profile")
-	}
-}
-
-func TestProfile_KnownReturnsValue(t *testing.T) {
-	cfg, _ := Load(nil)
-	p, ok := cfg.Profile(ProfileInvestigation)
-	if !ok {
-		t.Fatal("investigation profile must exist")
-	}
-	if p.MaxResults <= 0 {
-		t.Fatalf("investigation maxResults should be > 0, got %d", p.MaxResults)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Profile semantic values sanity check
-// ---------------------------------------------------------------------------
-
-func TestCIProfile_HasZeroSemanticWeight(t *testing.T) {
-	cfg, _ := Load(nil)
-	p, _ := cfg.Profile(ProfileCI)
-	if p.SemanticWeight != 0.0 {
-		t.Fatalf("ci profile semanticWeight should be 0, got %v", p.SemanticWeight)
-	}
-}
-
-func TestInvestigationProfile_EnablesCostTracking(t *testing.T) {
-	cfg, _ := Load(nil)
-	p, _ := cfg.Profile(ProfileInvestigation)
-	if !p.EnableCostTracking {
-		t.Fatal("investigation profile must enable cost tracking")
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Load with partial profiles override
-// ---------------------------------------------------------------------------
-
-func TestLoad_PartialProfileOverride(t *testing.T) {
-	json := []byte(`{"profiles":{"coding":{"maxResults":99}}}`)
-	cfg, err := Load(json)
+[profiles.work]
+provider = "anthropic"
+model = "claude-haiku-4-5-20251001"
+bin = "/opt/homebrew/bin/some-shim"
+`)
+	// Each layer validates independently against #Config (provider is
+	// required per #Profile), so a project-layer override that targets an
+	// existing profile name repeats provider — bin, only ever set in the
+	// user layer, is what proves per-FIELD (not whole-profile) merge below.
+	writeTOML(t, projectPath, `
+[profiles.work]
+provider = "anthropic"
+model = "claude-opus-4-1-20250805"
+`)
+	loaded, err := Load(userPath, projectPath)
 	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		t.Fatalf("Load: %v", err)
 	}
-	p, ok := cfg.Profile(ProfileCoding)
+	p := loaded.Config.Profiles["work"]
+	if p.Model != "claude-opus-4-1-20250805" {
+		t.Errorf("Model = %q, want project override", p.Model)
+	}
+	// bin was only ever set in the user layer — the project layer's partial
+	// override must not blow it away (field-by-field merge, not
+	// whole-profile replacement).
+	if p.Bin != "/opt/homebrew/bin/some-shim" {
+		t.Errorf("Bin = %q, want it preserved from the user layer", p.Bin)
+	}
+	// default_profile was only set at the user layer.
+	if loaded.Config.DefaultProfile != "work" {
+		t.Errorf("DefaultProfile = %q, want work (from user layer)", loaded.Config.DefaultProfile)
+	}
+}
+
+func TestLoad_Provenance_NamesCorrectLayer(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	projectPath := filepath.Join(dir, "project.toml")
+	writeTOML(t, userPath, `
+[profiles.work]
+provider = "anthropic"
+model = "claude-haiku-4-5-20251001"
+bin = "/opt/homebrew/bin/some-shim"
+`)
+	writeTOML(t, projectPath, `
+[profiles.work]
+provider = "anthropic"
+model = "claude-opus-4-1-20250805"
+`)
+	loaded, err := Load(userPath, projectPath)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	modelInfo, ok := loaded.Provenance["profiles.work.model"]
 	if !ok {
-		t.Fatal("coding profile missing")
+		t.Fatal("no provenance recorded for profiles.work.model")
 	}
-	if p.MaxResults != 99 {
-		t.Fatalf("want maxResults=99 got %d", p.MaxResults)
+	if modelInfo.Source != SourceProject || modelInfo.Path != projectPath {
+		t.Errorf("model provenance = %+v, want project layer %q", modelInfo, projectPath)
 	}
-	// investigation profile dropped — JSON fully replaces the profiles map.
-	// This is expected merge behaviour: we don't deep-merge sub-maps.
-	_ = strings.Contains("", "") // keep import
+	// bin was only ever set in the user layer — its provenance must still
+	// name the user file even though the project layer also touched this
+	// profile (field-by-field provenance, not whole-profile).
+	binInfo, ok := loaded.Provenance["profiles.work.bin"]
+	if !ok {
+		t.Fatal("no provenance recorded for profiles.work.bin")
+	}
+	if binInfo.Source != SourceUser || binInfo.Path != userPath {
+		t.Errorf("bin provenance = %+v, want user layer %q", binInfo, userPath)
+	}
+}
+
+func TestLoad_DaemonTable(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[daemon]
+store = "workspace/db/fleet.duckdb"
+addr = "127.0.0.1:7575"
+auto_refresh = false
+default_profile = "work"
+`)
+	loaded, err := Load(userPath, "")
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	d := loaded.Config.Daemon
+	if d.Store != "workspace/db/fleet.duckdb" || d.Addr != "127.0.0.1:7575" || d.DefaultProfile != "work" {
+		t.Errorf("daemon = %+v", d)
+	}
+	if d.AutoRefresh == nil || *d.AutoRefresh != false {
+		t.Errorf("AutoRefresh = %v, want explicit false", d.AutoRefresh)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ResolveProfile — named selection + env overlay
+// ---------------------------------------------------------------------------
+
+func TestResolveProfile_NoConfigNoEnv_DefaultsToAnthropic(t *testing.T) {
+	clearProviderEnv(t)
+	p, prov, err := ResolveProfile(Config{Profiles: map[string]Profile{}}, nil, "")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.Provider != ProviderAnthropic {
+		t.Errorf("Provider = %q, want anthropic (built-in default)", p.Provider)
+	}
+	if prov["provider"].Source != SourceDefault {
+		t.Errorf("provider source = %v, want default", prov["provider"].Source)
+	}
+}
+
+func TestResolveProfile_UnknownFlagProfile_Errors(t *testing.T) {
+	clearProviderEnv(t)
+	_, _, err := ResolveProfile(Config{Profiles: map[string]Profile{"a": {Provider: "anthropic"}}}, nil, "nonexistent")
+	if err == nil {
+		t.Fatal("expected error for unknown profile")
+	}
+	if !strings.Contains(err.Error(), "nonexistent") || !strings.Contains(err.Error(), "a") {
+		t.Errorf("error = %v, want it to name the bad value and known profiles", err)
+	}
+}
+
+func TestResolveProfile_DefaultProfile_SelectsNamedProfile(t *testing.T) {
+	clearProviderEnv(t)
+	cfg := Config{
+		DefaultProfile: "work",
+		Profiles: map[string]Profile{
+			"work": {Provider: "bedrock", Region: "us-gov-west-1", Model: "m1"},
+		},
+	}
+	p, _, err := ResolveProfile(cfg, nil, "")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.Provider != "bedrock" || p.Region != "us-gov-west-1" || p.Model != "m1" {
+		t.Errorf("resolved = %+v", p)
+	}
+}
+
+func TestResolveProfile_FlagProfile_OverridesDefault(t *testing.T) {
+	clearProviderEnv(t)
+	cfg := Config{
+		DefaultProfile: "a",
+		Profiles: map[string]Profile{
+			"a": {Provider: "anthropic"},
+			"b": {Provider: "codex-cli"},
+		},
+	}
+	p, _, err := ResolveProfile(cfg, nil, "b")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.Provider != "codex-cli" {
+		t.Errorf("Provider = %q, want codex-cli (the --profile flag choice)", p.Provider)
+	}
+}
+
+func TestResolveProfile_EnvOverlay_WinsOverFileProfile(t *testing.T) {
+	clearProviderEnv(t)
+	t.Setenv("FATHOM_LLM_PROVIDER", "openai")
+	t.Setenv("FATHOM_COMPILE_MODEL", "env-model")
+
+	cfg := Config{
+		DefaultProfile: "work",
+		Profiles: map[string]Profile{
+			"work": {Provider: "anthropic", Model: "file-model"},
+		},
+	}
+	p, prov, err := ResolveProfile(cfg, nil, "")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.Provider != "openai" {
+		t.Errorf("Provider = %q, want env override openai", p.Provider)
+	}
+	if p.Model != "env-model" {
+		t.Errorf("Model = %q, want env override", p.Model)
+	}
+	if prov["provider"].Source != SourceEnv || prov["provider"].Path != "FATHOM_LLM_PROVIDER" {
+		t.Errorf("provider provenance = %+v", prov["provider"])
+	}
+	if prov["model"].Source != SourceEnv || prov["model"].Path != "FATHOM_COMPILE_MODEL" {
+		t.Errorf("model provenance = %+v", prov["model"])
+	}
+}
+
+func TestResolveProfile_FileEndpointSurvivesWhenEnvUnset(t *testing.T) {
+	clearProviderEnv(t)
+	cfg := Config{
+		Profiles: map[string]Profile{
+			"gov": {
+				Provider:   "azure-openai",
+				Endpoint:   "https://example-resource.openai.azure.us",
+				Deployment: "gov-deployment",
+			},
+		},
+	}
+	p, _, err := ResolveProfile(cfg, nil, "gov")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.Endpoint != "https://example-resource.openai.azure.us" {
+		t.Errorf("Endpoint = %q, want the file-sourced Azure Government endpoint", p.Endpoint)
+	}
+	if p.Deployment != "gov-deployment" {
+		t.Errorf("Deployment = %q", p.Deployment)
+	}
+}
+
+func TestResolveProfile_DefaultAPIKeyEnvPerProvider(t *testing.T) {
+	clearProviderEnv(t)
+	cases := []struct {
+		provider string
+		want     string
+	}{
+		{ProviderAnthropic, "ANTHROPIC_API_KEY"},
+		{ProviderOpenAI, "OPENAI_API_KEY"},
+		{ProviderAzureOpenAI, "AZURE_OPENAI_API_KEY"},
+		{ProviderBedrock, ""},
+		{ProviderClaudeCLI, ""},
+		{ProviderCodexCLI, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.provider, func(t *testing.T) {
+			cfg := Config{Profiles: map[string]Profile{"p": {Provider: tc.provider}}}
+			p, _, err := ResolveProfile(cfg, nil, "p")
+			if err != nil {
+				t.Fatalf("ResolveProfile: %v", err)
+			}
+			if p.APIKeyEnv != tc.want {
+				t.Errorf("APIKeyEnv = %q, want %q", p.APIKeyEnv, tc.want)
+			}
+		})
+	}
+}
+
+func TestResolveProfile_ExplicitAPIKeyEnv_NotOverriddenByDefault(t *testing.T) {
+	clearProviderEnv(t)
+	cfg := Config{Profiles: map[string]Profile{
+		"p": {Provider: ProviderOpenAI, APIKeyEnv: "MY_CUSTOM_KEY"},
+	}}
+	p, _, err := ResolveProfile(cfg, nil, "p")
+	if err != nil {
+		t.Fatalf("ResolveProfile: %v", err)
+	}
+	if p.APIKeyEnv != "MY_CUSTOM_KEY" {
+		t.Errorf("APIKeyEnv = %q, want the profile's own override preserved", p.APIKeyEnv)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ResolveAPIKey — env + argv-exec indirection
+// ---------------------------------------------------------------------------
+
+func TestResolveAPIKey_Env(t *testing.T) {
+	t.Setenv("FATHOM_TEST_KEY_VAR", "sekret-value")
+	p := Profile{APIKeyEnv: "FATHOM_TEST_KEY_VAR"}
+	key, err := p.ResolveAPIKey(context.Background())
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if key != "sekret-value" {
+		t.Errorf("key = %q", key)
+	}
+}
+
+func TestResolveAPIKey_NeitherSet_EmptyNoError(t *testing.T) {
+	p := Profile{}
+	key, err := p.ResolveAPIKey(context.Background())
+	if err != nil || key != "" {
+		t.Errorf("key=%q err=%v, want empty/nil", key, err)
+	}
+}
+
+const sentinelKey = "sentinel-9f3a7c-do-not-leak"
+
+func writeExecutableScript(t *testing.T, script string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "keycmd.sh")
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestResolveAPIKey_Cmd_TrimmedStdout(t *testing.T) {
+	script := "#!/bin/sh\nprintf '" + sentinelKey + "\\n'\n"
+	path := writeExecutableScript(t, script)
+
+	p := Profile{APIKeyCmd: []string{path}}
+	key, err := p.ResolveAPIKey(context.Background())
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if key != sentinelKey {
+		t.Errorf("key = %q, want %q", key, sentinelKey)
+	}
+}
+
+func TestResolveAPIKey_Cmd_WinsOverEnv(t *testing.T) {
+	t.Setenv("FATHOM_TEST_KEY_VAR", "env-value-should-not-be-used")
+	script := "#!/bin/sh\nprintf '" + sentinelKey + "'\n"
+	path := writeExecutableScript(t, script)
+
+	p := Profile{APIKeyEnv: "FATHOM_TEST_KEY_VAR", APIKeyCmd: []string{path}}
+	key, err := p.ResolveAPIKey(context.Background())
+	if err != nil {
+		t.Fatalf("ResolveAPIKey: %v", err)
+	}
+	if key != sentinelKey {
+		t.Errorf("key = %q, want the api_key_cmd result to win over api_key_env", key)
+	}
+}
+
+// TestResolveAPIKey_Cmd_FailureNeverLeaksSecret is CF-2's secrecy contract:
+// a failing api_key_cmd must not echo the sentinel value it printed (to
+// stdout, before failing) anywhere in the returned error.
+func TestResolveAPIKey_Cmd_FailureNeverLeaksSecret(t *testing.T) {
+	script := "#!/bin/sh\nprintf '" + sentinelKey + "' >&2\nprintf '" + sentinelKey + "'\nexit 1\n"
+	path := writeExecutableScript(t, script)
+
+	p := Profile{APIKeyCmd: []string{path}}
+	_, err := p.ResolveAPIKey(context.Background())
+	if err == nil {
+		t.Fatal("expected an error from the failing command")
+	}
+	if strings.Contains(err.Error(), sentinelKey) {
+		t.Fatalf("error leaked the sentinel secret: %v", err)
+	}
+}
+
+func TestResolveAPIKey_Cmd_NotFound(t *testing.T) {
+	p := Profile{APIKeyCmd: []string{filepath.Join(t.TempDir(), "does-not-exist")}}
+	_, err := p.ResolveAPIKey(context.Background())
+	if err == nil {
+		t.Fatal("expected an error for a nonexistent command")
+	}
+}
+
+// clearProviderEnv scrubs every env var applyEnvOverlay reads, so tests are
+// hermetic regardless of the developer's or CI's ambient environment.
+func clearProviderEnv(t *testing.T) {
+	t.Helper()
+	for _, v := range []string{
+		"FATHOM_LLM_PROVIDER", "FATHOM_COMPILE_MODEL",
+		"FATHOM_CLAUDE_BIN", "FATHOM_CODEX_BIN", "FATHOM_OPENAI_BASE_URL",
+		"AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_DEPLOYMENT", "AZURE_OPENAI_API_VERSION",
+		"AWS_REGION",
+	} {
+		t.Setenv(v, "")
+	}
 }

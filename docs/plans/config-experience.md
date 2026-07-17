@@ -60,16 +60,16 @@ Design (normative):
 
 ## Tasks
 
-- [ ] internal/config: TOML load + CUE-validated merge across user/project layers, typed errors naming file+key; embedded schema byte-copy with drift test {id: CF-1, symbol: Load, package: internal/config}
-- [ ] Profile resolution: named profiles, default_profile, env-overlay profile, api_key_env/api_key_cmd indirection (cmd exec'd argv-style, output never logged) {id: CF-2, symbol: ResolveProfile, package: internal/config}
-- [ ] buildLLMClient consumes a resolved Profile (env lane preserved byte-for-byte as the overlay); --profile flag on compile {id: CF-3, symbol: buildLLMClient, package: cmd/fathom}
-- [ ] fathom config verb with --explain provenance per key {id: CF-4, symbol: cmdConfig, package: cmd/fathom}
-- [ ] fathom providers: ProbeAll-based auth health across configured profiles; not-probeable reported honestly; table + --json; non-zero exit on failure {id: CF-5, symbol: cmdProviders, package: cmd/fathom}
-- [ ] fathom smoke: opt-in real completion per profile with latency/tokens/cost; table + --json {id: CF-6, symbol: cmdSmoke, package: cmd/fathom}
-- [ ] serve-http loads [daemon] config + default_profile at startup — compile_layer works on the daemon with zero plist env {id: CF-7, symbol: runServeHTTP, package: cmd/fathom, skip_test: true, skip: "startup wiring exercised via the config-load unit tests + existing serve tests; runServeHTTP's own reach is the documented residue class for long-lived server mains"}
-- [ ] init scaffolds ~/.fathom/config.toml write-if-absent with commented profile examples incl. both GovClouds {id: CF-8, symbol: writeStarterConfig, package: cmd/fathom}
-- [ ] GovCloud construction proofs: bedrock gov region + FIPS endpoint profile → adapter config; azure .us endpoint profile → adapter config; hermetic tests, no network {id: CF-9, symbol: buildBedrockClient, package: cmd/fathom}
-- [ ] docs/configuration.md: canonical guide (precedence, profiles, GovCloud recipes, providers/smoke, secrets doctrine, daemon restart-to-apply); README + coding-agents doc pointers {id: CF-10, symbol: cmdConfig, package: cmd/fathom, skip_test: true, skip: "docs deliverable anchored to the verb it documents; prose is not index-provable"}
+- [x] internal/config: TOML load + CUE-validated merge across user/project layers, typed errors naming file+key; embedded schema byte-copy with drift test {id: CF-1, symbol: Load, package: internal/config}
+- [x] Profile resolution: named profiles, default_profile, env-overlay profile, api_key_env/api_key_cmd indirection (cmd exec'd argv-style, output never logged) {id: CF-2, symbol: ResolveProfile, package: internal/config}
+- [x] buildLLMClientForProfile consumes a resolved Profile (env lane preserved byte-for-byte — the original env-only buildLLMClient and its six build*Client functions are untouched, so all 15 pre-existing compile_test.go tests pass unmodified; the profile-aware path is additive in cmd/fathom/llmprofile.go); --profile flag on compile {id: CF-3, symbol: buildLLMClientForProfile, package: cmd/fathom}
+- [x] fathom config verb with --explain provenance per key {id: CF-4, symbol: cmdConfig, package: cmd/fathom}
+- [x] fathom providers: ProbeAll-based auth health across configured profiles; not-probeable reported honestly; table + --json; non-zero exit on failure {id: CF-5, symbol: cmdProviders, package: cmd/fathom}
+- [x] fathom smoke: opt-in real completion per profile with latency/tokens/cost; table + --json {id: CF-6, symbol: cmdSmoke, package: cmd/fathom}
+- [x] serve-http loads [daemon] config + default_profile at startup — compile_layer works on the daemon with zero plist env {id: CF-7, symbol: runServeHTTP, package: cmd/fathom, skip_test: true, skip: "startup wiring exercised via the config-load unit tests + existing serve tests; runServeHTTP's own reach is the documented residue class for long-lived server mains"}
+- [x] init scaffolds ~/.fathom/config.toml write-if-absent with commented profile examples incl. both GovClouds {id: CF-8, symbol: writeStarterConfig, package: cmd/fathom}
+- [x] GovCloud construction proofs: bedrock gov region + FIPS endpoint profile → adapter config; azure .us endpoint profile → adapter config; hermetic tests, no network {id: CF-9, symbol: buildBedrockClientProfile, package: cmd/fathom}
+- [x] docs/configuration.md: canonical guide (precedence, profiles, GovCloud recipes, providers/smoke, secrets doctrine, daemon restart-to-apply); README + coding-agents doc pointers {id: CF-10, symbol: cmdConfig, package: cmd/fathom, skip_test: true, skip: "docs deliverable anchored to the verb it documents; prose is not index-provable"}
 
 ## Deferred
 

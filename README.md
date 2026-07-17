@@ -72,6 +72,7 @@ fathom serve-mcp                       # stdio MCP server for editors/agents
 | [docs/assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md) | Measured results of that integration (tokenomics, correctness, wall-clock) |
 | [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, DuckDB store, MCP surface |
 | [docs/usage.md](docs/usage.md) | Quickstart, all CLI subcommands, Go client API, connecting an MCP client |
+| [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: all tools, prompts, and resources |
 | [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite and the CGO trade-off |
 

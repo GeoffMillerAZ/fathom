@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/config"
 )
 
 // fakeInitDaemon serves ingest + list_services shaped like the real MCP
@@ -43,6 +45,7 @@ func fakeInitDaemon(t *testing.T, service string, symbolCount int) *httptest.Ser
 const testBinPath = "/opt/fathom/bin/fathom"
 
 func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // CF-8: init now scaffolds ~/.fathom/config.toml — never touch the real home in tests
 	dir := t.TempDir()
 	svc := strings.ToLower(filepath.Base(dir))
 	srv := fakeInitDaemon(t, svc, 123)
@@ -119,6 +122,7 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 }
 
 func TestCmdInit_Idempotent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // CF-8: see TestCmdInit_WiresRepoEndToEnd
 	dir := t.TempDir()
 	svc := strings.ToLower(filepath.Base(dir))
 	srv := fakeInitDaemon(t, svc, 42)
@@ -293,7 +297,119 @@ func TestFathomStanza_MarkerReplace(t *testing.T) {
 	}
 }
 
+// ─── e. ~/.fathom/config.toml scaffold (CF-8) ─────────────────────────────
+
+func TestWriteStarterConfig_CreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".fathom", "config.toml")
+
+	var out bytes.Buffer
+	if err := writeStarterConfig(path, &out); err != nil {
+		t.Fatalf("writeStarterConfig: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading scaffolded config: %v", err)
+	}
+	for _, want := range []string{"claude-cli", "anthropic", "bedrock", "azure-openai", "us-gov-west-1", "azure.us", "api_key_env", "api_key_cmd"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("scaffolded config missing %q:\n%s", want, raw)
+		}
+	}
+	if strings.Contains(strings.ToLower(string(raw)), "\napi_key =") {
+		t.Error("scaffolded config must never contain a literal api_key assignment")
+	}
+	if !strings.Contains(out.String(), "created") {
+		t.Errorf("stdout = %s, want a created-file message", out.String())
+	}
+}
+
+func TestWriteStarterConfig_WriteIfAbsent_NeverOverwrites(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".fathom", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	custom := `default_profile = "mine"` + "\n"
+	if err := os.WriteFile(path, []byte(custom), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := writeStarterConfig(path, &out); err != nil {
+		t.Fatalf("writeStarterConfig: %v", err)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw) != custom {
+		t.Errorf("writeStarterConfig overwrote an existing file:\n%s", raw)
+	}
+	if !strings.Contains(out.String(), "already present") {
+		t.Errorf("stdout = %s, want an already-present message", out.String())
+	}
+}
+
+func TestWriteStarterConfig_EmptyPath_NoOp(t *testing.T) {
+	var out bytes.Buffer
+	if err := writeStarterConfig("", &out); err != nil {
+		t.Fatalf("writeStarterConfig(\"\"): %v", err)
+	}
+	if out.String() != "" {
+		t.Errorf("expected silent no-op for an empty path, got %q", out.String())
+	}
+}
+
+// TestWriteStarterConfig_UncommentedProfilesAreValid proves every commented
+// profile block is genuinely well-formed once uncommented — not just
+// plausible-looking prose — by stripping the leading "# " from each
+// candidate block and round-tripping it through config.Load's real TOML+CUE
+// validation.
+func TestWriteStarterConfig_UncommentedProfilesAreValid(t *testing.T) {
+	blocks := [][]string{
+		{"default_profile = \"personal\"", "[profiles.personal]", "provider = \"claude-cli\""},
+		{"[profiles.api]", "provider = \"anthropic\"", "api_key_env = \"ANTHROPIC_API_KEY\""},
+		{"[profiles.gov-bedrock]", "provider = \"bedrock\"", "region = \"us-gov-west-1\"", "model = \"anthropic.claude-3-5-sonnet-20241022-v2:0\""},
+		{"[profiles.gov-azure]", "provider = \"azure-openai\"", "endpoint = \"https://example-resource.openai.azure.us\"", "deployment = \"dep\"", "api_key_env = \"AZURE_OPENAI_API_KEY\""},
+		{"[daemon]", "store = \"workspace/db/fleet.duckdb\"", "addr = \"127.0.0.1:7575\"", "auto_refresh = true", "default_profile = \"personal\""},
+	}
+	for i, lines := range blocks {
+		doc := strings.Join(lines, "\n") + "\n"
+		dir := t.TempDir()
+		path := filepath.Join(dir, "config.toml")
+		if err := os.WriteFile(path, []byte(doc), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := config.Load(path, ""); err != nil {
+			t.Errorf("block %d failed to validate once uncommented:\n%s\nerror: %v", i, doc, err)
+		}
+	}
+}
+
+func TestCmdInit_ScaffoldsConfig(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	dir := t.TempDir()
+	svc := strings.ToLower(filepath.Base(dir))
+	srv := fakeInitDaemon(t, svc, 7)
+	defer srv.Close()
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--path", dir, "--url", srv.URL, "--bin", testBinPath}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(home, ".fathom", "config.toml")); err != nil {
+		t.Errorf("~/.fathom/config.toml not scaffolded: %v", err)
+	}
+	if !strings.Contains(out.String(), "config.toml") {
+		t.Errorf("stdout = %s, want it to mention the config scaffold", out.String())
+	}
+}
+
 func TestCmdInit_DaemonDown(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // CF-8: see TestCmdInit_WiresRepoEndToEnd
 	dir := t.TempDir()
 	var out, errBuf bytes.Buffer
 	// Port 1 is never listening — the connection fails fast (mirrors the
