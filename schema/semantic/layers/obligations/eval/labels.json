@@ -1,0 +1,81 @@
+{
+  "docs": [
+    "standards.md",
+    "security.md"
+  ],
+  "probes": [
+    "internal/query/engine.go",
+    "internal/mcp/tools.go",
+    "internal/connector/local.go",
+    "internal/fusion/pipeline.go",
+    "cmd/fathom/servehttp.go",
+    "docs/notes.md"
+  ],
+  "rules": [
+    {
+      "key": "no-time-now",
+      "cite_substr": "never call time.Now() inside",
+      "governs": [
+        "internal/query/engine.go"
+      ]
+    },
+    {
+      "key": "sorted-output",
+      "cite_substr": "sorted deterministically",
+      "governs": [
+        "internal/query/engine.go",
+        "internal/mcp/tools.go",
+        "internal/connector/local.go",
+        "internal/fusion/pipeline.go",
+        "cmd/fathom/servehttp.go",
+        "docs/notes.md"
+      ]
+    },
+    {
+      "key": "trap-ranking-cap",
+      "cite_substr": "cap result lists",
+      "governs": [
+        "internal/query/engine.go"
+      ],
+      "trap_must_not_govern": [
+        "internal/mcp/tools.go"
+      ]
+    },
+    {
+      "key": "http-timeouts",
+      "cite_substr": "set request timeouts",
+      "governs": [
+        "cmd/fathom/servehttp.go"
+      ]
+    },
+    {
+      "key": "bounded-output",
+      "cite_substr": "bounded output",
+      "governs": [
+        "internal/mcp/tools.go"
+      ]
+    },
+    {
+      "key": "no-secret-logging",
+      "cite_substr": "Never log credentials",
+      "governs": [
+        "internal/query/engine.go",
+        "internal/mcp/tools.go",
+        "internal/connector/local.go",
+        "internal/fusion/pipeline.go",
+        "cmd/fathom/servehttp.go",
+        "docs/notes.md"
+      ]
+    },
+    {
+      "key": "trap-symlinks",
+      "cite_substr": "must never follow",
+      "governs": [
+        "internal/connector/local.go"
+      ],
+      "trap_must_not_govern": [
+        "internal/fusion/pipeline.go"
+      ]
+    }
+  ]
+}

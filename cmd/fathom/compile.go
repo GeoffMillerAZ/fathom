@@ -44,9 +44,22 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	if _, err := semantic.LoadLayer(*layer); err != nil {
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
+	// Advisory pre-check only — NEVER a rejection (LC-3, docs/plans/
+	// layer-catalog.md, critic finding 3): this handler can only see CWD's
+	// own .fathom/layers/, but the authoritative root is the SERVICE's
+	// ingested path (ServiceMeta), which only the backend — compileViaStore's
+	// client.CompileLayer, or the daemon behind compileViaHTTP — can resolve.
+	// A hard rejection here false-negatives the cross-repo case (`fathom
+	// compile --service B --layer <B's project pack>` run from repo A), the
+	// exact bug class this slice closed at the MCP handler by deleting its
+	// pre-check entirely. Unknown at CWD therefore warns and passes through;
+	// the backend's own resolution error is the only rejection.
+	validateRoot, rerr := os.Getwd()
+	if rerr != nil {
+		validateRoot = ""
+	}
+	if _, err := semantic.LoadLayerIn(validateRoot, *layer); err != nil {
+		fmt.Fprintf(stderr, "warning: %v\nwarning: (checked against the current directory only — proceeding; the compile resolves layers against the service's own ingested root)\n", err)
 	}
 	// N2 (config-experience review): HTTP mode has no --profile plumbing —
 	// the daemon compiles with ITS OWN configured profile

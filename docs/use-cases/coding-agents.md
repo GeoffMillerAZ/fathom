@@ -102,6 +102,18 @@ Recompiles cost ~$0 for unchanged sections; run-level budgets from the
 layer manifest are enforced (refusal and mid-run stop are ledgered and
 resumable).
 
+Obligations is one of several **module packs** (`docs/layers.md` is the
+catalog reference: `adr-rules` and `spec-bindings` ship alongside it, plus
+`findings` for review conclusions). `fathom layers list|show|install`
+inspects and installs packs — embedded ones and a project's own
+`.fathom/layers/` — without writing any Go:
+
+```sh
+fathom layers list                 # embedded + project packs, source-labeled
+fathom layers show adr-rules       # full resolved definition + prompt provenance
+fathom layers install ./my-pack    # validates against #Layer, copies into .fathom/layers/
+```
+
 ## 4. Done-means-proven, minimally
 
 Write plans as Markdown checklists in `docs/plans/` (grammar reference:
@@ -191,8 +203,9 @@ numbers and tool-kill decisions run on clean data.
 
 ## Maintained
 
-CLI: `fathom init`, `ingest`, `compile`, `verify` (`--strict`,
-`--require-all`), `instrument`, `session-hook`, `edit-hook`, `stop-hook`,
-`gen-plan-cue`, `config`, `providers`, `smoke`. MCP: the `/rpc/agent` surface
+CLI: `fathom init`, `ingest`, `compile`, `layers` (`list`/`show`/`install`
+— see `docs/layers.md`), `verify` (`--strict`, `--require-all`),
+`instrument`, `session-hook`, `edit-hook`, `stop-hook`, `gen-plan-cue`,
+`config`, `providers`, `smoke`. MCP: the `/rpc/agent` surface
 (15 tools — see `docs/mcp-tools.md`). When any of these change, update this
 doc's examples and this line.

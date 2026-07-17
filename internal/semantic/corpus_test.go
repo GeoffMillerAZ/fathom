@@ -32,7 +32,7 @@ func TestSelectCorpus(t *testing.T) {
 		{Path: "docs/other.md"},
 	}
 
-	got := SelectCorpus(files, obligationsInclude(t))
+	got := SelectCorpus(files, obligationsInclude(t), nil)
 
 	// Design essays (docs/design/**) are deliberately excluded — binding
 	// documents only (see the obligations layer's corpus.include in
@@ -53,7 +53,7 @@ func TestSelectCorpus(t *testing.T) {
 }
 
 func TestSelectCorpus_Empty(t *testing.T) {
-	got := SelectCorpus(nil, obligationsInclude(t))
+	got := SelectCorpus(nil, obligationsInclude(t), nil)
 	if got != nil {
 		t.Errorf("nil input → %v, want nil", got)
 	}
@@ -64,9 +64,39 @@ func TestSelectCorpus_NoneMatch(t *testing.T) {
 		{Path: "internal/core/claims.go"},
 		{Path: "README.md"},
 	}
-	got := SelectCorpus(files, obligationsInclude(t))
+	got := SelectCorpus(files, obligationsInclude(t), nil)
 	if len(got) != 0 {
 		t.Errorf("want empty, got %v", paths(got))
+	}
+}
+
+// TestSelectCorpus_Exclude is LC-6's motivating case (docs/plans/layer-
+// catalog.md): spec-bindings' corpus is docs/plans/** EXCLUDING README.md —
+// CorpusExclude was decoded from the manifest but never wired into any
+// SelectCorpus call before this. An exclude glob removes a file even when an
+// include glob also matches it.
+func TestSelectCorpus_Exclude(t *testing.T) {
+	files := []core.SourceFile{
+		{Path: "docs/plans/README.md"},
+		{Path: "docs/plans/layer-catalog.md"},
+		{Path: "docs/plans/config-experience.md"},
+	}
+	got := SelectCorpus(files, []string{"docs/plans/**"}, []string{"docs/plans/README.md"})
+	want := []string{"docs/plans/config-experience.md", "docs/plans/layer-catalog.md"}
+	if len(got) != len(want) {
+		t.Fatalf("SelectCorpus with exclude = %v, want %v", paths(got), want)
+	}
+	for i, f := range got {
+		if f.Path != want[i] {
+			t.Errorf("got[%d].Path = %q, want %q", i, f.Path, want[i])
+		}
+	}
+}
+
+func TestSelectCorpus_ExcludeEmptyIsNoOp(t *testing.T) {
+	got := SelectCorpus([]core.SourceFile{{Path: "ADR.md"}}, []string{"ADR.md"}, nil)
+	if len(got) != 1 || got[0].Path != "ADR.md" {
+		t.Errorf("SelectCorpus with nil exclude = %v, want [ADR.md]", paths(got))
 	}
 }
 
@@ -79,8 +109,8 @@ func TestSelectCorpus_Deterministic(t *testing.T) {
 		{Path: "ADR.md"},
 	}
 	include := obligationsInclude(t)
-	a := SelectCorpus(files, include)
-	b := SelectCorpus(files, include)
+	a := SelectCorpus(files, include, nil)
+	b := SelectCorpus(files, include, nil)
 	if len(a) != len(b) {
 		t.Fatalf("non-deterministic: %v vs %v", paths(a), paths(b))
 	}

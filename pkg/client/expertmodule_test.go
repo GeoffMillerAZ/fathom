@@ -75,7 +75,7 @@ func TestExpertModule_NonGitCorpus_EndToEnd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Sources: %v", err)
 	}
-	findings := semantic.SelectCorpus(files, []string{"findings/**"})
+	findings := semantic.SelectCorpus(files, []string{"findings/**"}, nil)
 	if len(findings) != 1 {
 		t.Fatalf("selected %d finding docs, want 1", len(findings))
 	}

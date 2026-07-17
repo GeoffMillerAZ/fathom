@@ -1,110 +1,106 @@
 package semantic
 
 // prompts.go — content-addressed prompt identity (M1-4/M1-5,
-// docs/plans/m1-manifest.md). The obligations compile system prompt lives as
-// an agentic-kit prompttemplate.Template; obligationsPromptVersion derives
-// the compile-time identity from the template's TextHash instead of a
-// hand-bumped const. The retired PromptVersion const ("obligations/v2") was
-// exactly the failure mode this closes: the v1→v2 prompt edit forgot to bump
-// the digest gate's key in lockstep, leaving 27/32 sections on stale v1
-// claims. A Text edit below is now AUTOMATICALLY a new compile identity.
+// docs/plans/m1-manifest.md; generalized to prompt-as-data by LC-1,
+// docs/plans/layer-catalog.md). Every #Layer instance now carries its own
+// prompt_file (schema/semantic/schema.cue); manifest.go's decodePack resolves
+// that file's bytes at LOAD time (LC-3: as a sibling of layer.cue in
+// whichever source — embedded or project-local disk — the pack came from,
+// so project packs resolve exactly like built-in ones) into
+// LayerDef.PromptText. promptForLayer derives PromptVersion =
+// "<layer>/" + sha256(bytes)[:8] from that resolved text — a prompt edit is
+// AUTOMATICALLY a new compile identity, closing the v1→v2 bug class this
+// whole mechanism exists to prevent (a hand-bumped const that silently
+// didn't change in lockstep with the text it was supposed to identify).
+//
+// LC-1's identity pin: this refactor moved the obligations/findings prompt
+// TEXT byte-for-byte into what is now (LC-4's pack-shape migration)
+// schema/semantic/layers/{obligations,findings}/prompt.md (extracted
+// verbatim from the retired obligationsSystemPromptTemplate/
+// findingsSystemPromptTemplate Go vars — see TestPackFilesMatchSource and
+// TestObligationsPromptVersion_Pinned) — zero identity rotation, no fleet
+// recompile triggered by either change.
+//
+// FT-1's per-layer switch statement in promptForLayer (a name→prompt hard
+// wire, one case per layer) is gone with it: an unwired-but-manifest-valid
+// layer used to silently compile under the obligations prompt — a
+// correctness bug, not just missing polish (docs/plans/layer-catalog.md).
+// promptForLayer is now data-driven and layer-agnostic; an unknown layer
+// name or a missing/unresolvable prompt_file is a loud, typed error.
 
 import (
+	"fmt"
+
 	prompttemplate "github.com/geoffmilleraz/agentic-kit/foundations/prompt/prompt-template"
 )
 
-// obligationsSystemPromptTemplate is the obligations compile system prompt.
-// It has no {{ }} placeholders — Template is used here purely for its
-// content-addressed TextHash, not for Render.
-var obligationsSystemPromptTemplate = prompttemplate.Template{
-	Name:    "obligations-system-prompt",
-	Version: "1",
-	Text: `You compile engineering obligations from governing documents into strict JSON.
-An obligation is a rule a developer editing matching files MUST follow while
-writing code, restated faithfully from the document — never invented. Output
-ONLY a JSON object {"claims": [...]} whose claims array (possibly empty) holds
-objects of the shape {"rule", "scope", "cite_start", "cite_end"}.
-- rule: imperative, <= 28 words, self-contained.
-- scope: gitignore-style glob(s) naming the FILE CLASS the rule's source
-  actually governs — a rule binds only the file class its governing document
-  addresses. A rule about writing or reviewing code scopes to SOURCE globs
-  (e.g. "**/*.go", "internal/query/**"); a rule about writing or reviewing
-  documentation scopes to MARKDOWN globs (e.g. "**/*.md", "docs/**"). Never
-  mix classes: a code-only rule must not carry a docs glob, and a docs-only
-  rule must not carry a source glob. Prefer the NARROWEST glob the document
-  justifies (a named package, directory, or file-class). NEVER emit a bare
-  "**" or any other repo-wide catch-all scope — even a rule the document
-  says applies broadly still scopes to the file class it governs (e.g. all
-  Go source is "**/*.go", never "**").
-- cite_start/cite_end: the 1-based DOCUMENT line range (shown in the input) that
-  states the rule. Cite the narrowest range that fully supports the rule.
-Emit {"claims": []} for sections that contain no binding developer rules. These
-are NOT obligations: project metrics/gates ("achieve X%"), roadmap/vision
-statements, descriptions of how the system works, decisions' context/rationale,
-historical records. Only emit rules the cited lines actually state. No commentary.`,
-}
-
-// obligationsPromptVersion derives the obligations compile prompt's identity
-// as "obligations/<first 8 hex chars of TextHash>". The digest gate
-// (allDigestsMatch) keys on this, not a hand-maintained version string — a
-// prompt-text edit is automatically a new compile identity for every
-// section, killing the v1-to-v2 bug class (a hand-bumped const that silently
-// didn't change in lockstep with the text it was supposed to identify).
-func obligationsPromptVersion() string {
-	return "obligations/" + obligationsSystemPromptTemplate.TextHash()[:8]
-}
-
-// findingsSystemPromptTemplate is the findings-layer compile system prompt
-// (D3 tracer bullet, docs/plans/findings-tracer.md FT-1). It targets the same
-// strict-JSON claim envelope as obligations ({"claims":[...]}, claimDraft
-// shape) — the compiler is layer-aware, not envelope-aware (one schema, one
-// decode path, for every layer) — but a finding's "rule" is the document's
-// actionable remediation statement, not a developer obligation restated from
-// a standard, and its "scope" is the affected code paths the FINDING names,
-// not a rule's governing area.
-var findingsSystemPromptTemplate = prompttemplate.Template{
-	Name:    "findings-system-prompt",
-	Version: "1",
-	Text: `You compile review/audit findings from a findings corpus into strict JSON.
-A finding document describes one reviewed issue: severity, affected area, and a
-recommended remediation. Output ONLY a JSON object {"claims": [...]} whose claims
-array (possibly empty) holds objects of the shape {"rule", "scope", "cite_start",
-"cite_end"}.
-- rule: the finding's actionable remediation statement, imperative, <= 28 words,
-  self-contained — restated faithfully from the document, never invented.
-- scope: gitignore-style glob(s) for the affected code paths the document states.
-  Use the NARROWEST glob the document justifies (a named package, module, or
-  file). A finding that genuinely applies repo-wide scopes to its affected file
-  class (for example "**/*.go"), never a bare "**".
-- cite_start/cite_end: the 1-based DOCUMENT line range (shown in the input) that
-  states the finding's remediation. Cite the narrowest range that fully supports it.
-Emit {"claims": []} for sections with no actionable remediation — severity/area
-metadata alone, background/context prose, or a finding explicitly marked resolved
-or withdrawn are NOT findings to restate. Only emit rules the cited lines actually
-state. No commentary.`,
-}
-
-// findingsPromptVersion mirrors obligationsPromptVersion's content-addressed
-// derivation for the findings layer's prompt identity: "findings/<first 8 hex
-// chars of TextHash>".
-func findingsPromptVersion() string {
-	return "findings/" + findingsSystemPromptTemplate.TextHash()[:8]
-}
-
 // promptForLayer resolves the compile-time system prompt text and its
-// content-addressed version identity for a manifest layer name (FT-1:
-// generalizing the compiler past the single hardcoded obligations layer).
-// Falls back to the obligations prompt for any layer name this package does
-// not yet wire a prompt for — every caller (pkg/client.CompileLayer,
-// cmd/fathom compile, the compile_layer MCP tool) routes the name through
-// semantic.LoadLayer first, so an unwired-but-manifest-valid layer name
-// silently compiling under the obligations prompt is a wiring gap for a test
-// to catch, not a condition worth a runtime panic over.
-func promptForLayer(layerName string) (systemPrompt, promptVersion string) {
-	switch layerName {
-	case LayerFindings:
-		return findingsSystemPromptTemplate.Text, findingsPromptVersion()
-	default:
-		return obligationsSystemPromptTemplate.Text, obligationsPromptVersion()
+// content-addressed version identity for a manifest layer definition. Every
+// #Layer instance carries its own prompt_file (LC-1) — there is no more
+// per-layer Go wiring, and therefore no more silent fallback: a layer with no
+// prompt_file configured, or whose prompt.md this package could not resolve
+// at load time (decodePack, manifest.go), is a loud error here, not a quiet
+// compile under the wrong prompt.
+func promptForLayer(def LayerDef) (systemPrompt, promptVersion string, err error) {
+	if def.Name == "" {
+		return "", "", fmt.Errorf("semantic: promptForLayer: layer definition has no name")
 	}
+	if def.PromptFile == "" {
+		return "", "", fmt.Errorf("semantic: layer %q: manifest has no prompt_file configured", def.Name)
+	}
+	if def.PromptText == "" {
+		return "", "", fmt.Errorf("semantic: layer %q: prompt_file %q could not be resolved (missing or unreadable prompt.md in the pack)", def.Name, def.PromptFile)
+	}
+	// TextHash is sha256 of the exact Text bytes (agentic-kit prompttemplate
+	// contract) — reused here rather than re-implemented so the hash formula
+	// stays the single one the rest of the fleet already audits.
+	tpl := prompttemplate.Template{Name: def.Name + "-system-prompt", Version: "1", Text: def.PromptText}
+	return def.PromptText, def.Name + "/" + tpl.TextHash()[:8], nil
+}
+
+// obligationsPromptVersion returns the built-in obligations layer's
+// content-addressed compile identity. Kept as a named helper (tests and
+// compile.go's no-Layer-configured default path both want the obligations
+// identity without re-deriving it inline); production code otherwise always
+// resolves a layer's prompt via LoadLayer + promptForLayer like every other
+// layer — this is not a second code path, just a named shortcut through the
+// same one.
+func obligationsPromptVersion() string {
+	v, err := layerPromptVersion(LayerObligations)
+	if err != nil {
+		// The built-in obligations layer's manifest entry and embedded
+		// prompt file are shipped in the same binary — this can only fail
+		// if the binary itself is broken (drift-tested at build time), so a
+		// panic here is the same class of guarantee as a failed
+		// go:embed compile.
+		panic(fmt.Errorf("semantic: built-in obligations layer failed to resolve: %w", err))
+	}
+	return v
+}
+
+// findingsPromptVersion mirrors obligationsPromptVersion for the findings
+// layer.
+func findingsPromptVersion() string {
+	v, err := layerPromptVersion(LayerFindings)
+	if err != nil {
+		panic(fmt.Errorf("semantic: built-in findings layer failed to resolve: %w", err))
+	}
+	return v
+}
+
+func layerPromptVersion(name string) (string, error) {
+	def, err := LoadLayer(name)
+	if err != nil {
+		return "", err
+	}
+	_, v, err := promptForLayer(def)
+	return v, err
+}
+
+// ResolvePrompt exports promptForLayer for callers outside this package that
+// need a layer's resolved prompt text/identity for DISPLAY (cmd/fathom's
+// `fathom layers show`, LC-7) rather than compilation — the compile path
+// itself stays internal to Compiler.Compile.
+func ResolvePrompt(def LayerDef) (systemPrompt, promptVersion string, err error) {
+	return promptForLayer(def)
 }

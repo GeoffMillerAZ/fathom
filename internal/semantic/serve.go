@@ -124,14 +124,28 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 		matched = matched[:max]
 	}
 
-	// Remediation-drift annotation (FT-6): computed once, only when a
-	// finding-kind claim actually reached the served set — DriftedFindings
-	// itself short-circuits to a single empty ClaimsForService read when the
-	// service has no finding claims at all, but skipping the call entirely
-	// for pure-obligations services avoids even that.
+	// Remediation-drift annotation (FT-6): computed once, only when a claim
+	// from a drift-tracked layer (LC-2: serving.drift_tracked, not a
+	// kind=="finding" Go hardcode; LC-3: resolved through the SAME embedded
+	// ∪ project-local union a compile saw, via serviceRoot) actually reached
+	// the served set — DriftedFindings itself short-circuits to a single
+	// empty ClaimsForService read when the service has no drift-tracked
+	// claims at all, but skipping the call entirely for pure-obligations
+	// services avoids even that. layerIsDriftTracked recompiles the whole
+	// pack union per call, so it is memoized per distinct layer name for
+	// this ObligationsFor invocation (the same map pattern DriftedFindings
+	// itself uses for fingerprints) — a served set of 6 same-layer rules
+	// costs one union load, not six, on the edit-hook hot path.
+	root := serviceRoot(ctx, st, serviceID)
 	var drifted map[string]bool
+	trackedByLayer := map[string]bool{}
 	for _, m := range matched {
-		if m.cl.Kind == KindFinding {
+		tracked, ok := trackedByLayer[m.cl.Layer]
+		if !ok {
+			tracked = layerIsDriftTracked(root, m.cl.Layer)
+			trackedByLayer[m.cl.Layer] = tracked
+		}
+		if tracked {
 			drifted, err = DriftedFindings(ctx, st, serviceID)
 			if err != nil {
 				return out, fmt.Errorf("semantic: obligations drift: %w", err)

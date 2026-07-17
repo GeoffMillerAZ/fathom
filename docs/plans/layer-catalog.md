@@ -77,18 +77,19 @@ Design (normative):
 
 ## Tasks
 
-- [ ] prompt_file in #Layer + embedded prompts; generic promptForLayer(LayerDef); loud unknown-layer/missing-file errors; obligations identity pinned unchanged (obligations/c02b1aa1) {id: LC-1, symbol: LoadLayer, package: internal/semantic}
-- [ ] serving.drift_tracked replaces KindFinding gates in scope-fp writing and code_drifted serving {id: LC-2, symbol: DriftedFindings, package: internal/semantic}
-- [ ] Pack loader unions embedded packs with project .fathom/layers/; presence = enabled; project-over-embedded override surfaced {id: LC-3, symbol: LayerNames, package: internal/semantic}
-- [ ] Built-ins migrate to pack shape (schema/semantic/layers/{obligations,findings}/) with byte-copy drift tests extended {id: LC-4, symbol: LoadLayer, package: internal/semantic, skip_test: true, skip: "layout migration proven by LC-1's identity pin + the existing TestManifestSchemaMatchesSource family; the deliverable is file layout, not a new symbol"}
-- [ ] adr-rules pack with eval fixtures passing the §4.6 gate; results recorded in the pack's eval/RESULTS.md {id: LC-5, symbol: CompileLayer, package: pkg/client, skip_test: true, skip: "pack is data + gated eval runs; the compile path is already test-reached — the deliverable is the pack and its recorded metrics"}
-- [ ] spec-bindings pack with eval fixtures passing the gate; results recorded {id: LC-6, symbol: CompileLayer, package: pkg/client, skip_test: true, skip: "same rationale as LC-5 — data + recorded gated metrics"}
-- [ ] fathom layers verb: list/show/install with pack validation {id: LC-7, symbol: cmdLayers, package: cmd/fathom}
-- [ ] Third-layer end-to-end: compile + serve a non-obligations non-findings layer with ZERO layer-specific Go — the no-Go-per-layer claim under test {id: LC-8, symbol: ObligationsFor, package: internal/semantic}
-- [ ] Docs: docs/layers.md catalog reference (each pack: when to use, corpus, cost, gate metrics); mcp-tools.md + use-case Maintained lines updated for the layers verb {id: LC-9, symbol: cmdLayers, package: cmd/fathom, skip_test: true, skip: "docs deliverable anchored to the verb it documents"}
+- [x] prompt_file in #Layer + embedded prompts; generic promptForLayer(LayerDef); loud unknown-layer/missing-file errors; obligations identity pinned unchanged (obligations/c02b1aa1) {id: LC-1, symbol: LoadLayer, package: internal/semantic}
+- [x] serving.drift_tracked replaces KindFinding gates in scope-fp writing and code_drifted serving {id: LC-2, symbol: DriftedFindings, package: internal/semantic}
+- [x] Pack loader unions embedded packs with project .fathom/layers/; presence = enabled; project-over-embedded override surfaced {id: LC-3, symbol: LayerNames, package: internal/semantic}
+- [x] Built-ins migrate to pack shape (schema/semantic/layers/{obligations,findings}/) with byte-copy drift tests extended {id: LC-4, symbol: LoadLayer, package: internal/semantic, skip_test: true, skip: "layout migration proven by LC-1's identity pin + the existing TestManifestSchemaMatchesSource family; the deliverable is file layout, not a new symbol"}
+- [x] adr-rules pack with eval fixtures passing the §4.6 gate; results recorded in the pack's eval/RESULTS.md {id: LC-5, symbol: CompileLayer, package: pkg/client, skip_test: true, skip: "pack is data + gated eval runs; the compile path is already test-reached — the deliverable is the pack and its recorded metrics"}
+- [x] spec-bindings pack with eval fixtures passing the gate; results recorded {id: LC-6, symbol: CompileLayer, package: pkg/client, skip_test: true, skip: "same rationale as LC-5 — data + recorded gated metrics"}
+- [x] fathom layers verb: list/show/install with pack validation {id: LC-7, symbol: cmdLayers, package: cmd/fathom}
+- [x] Third-layer end-to-end: compile + serve a non-obligations non-findings layer with ZERO layer-specific Go — the no-Go-per-layer claim under test {id: LC-8, symbol: ObligationsFor, package: internal/semantic}
+- [x] Docs: docs/layers.md catalog reference (each pack: when to use, corpus, cost, gate metrics); mcp-tools.md + use-case Maintained lines updated for the layers verb {id: LC-9, symbol: cmdLayers, package: cmd/fathom, skip_test: true, skip: "docs deliverable anchored to the verb it documents"}
 
 ## Deferred
 
 - [-] producers.cue deterministic producers + fathom pack/unpack (M3) {id: LC-10, disposition: deferred, reason: "vision 02-shape sequences M3 after M2 proves the pack shape", trigger: "first pack whose corpus is deterministic analyzer output wanting verified tier (also FT-7's trigger)"}
 - [-] Pack registry / catalog service or search UX {id: LC-11, disposition: deferred, reason: "standing non-goal (08-roadmap §non-goals); start with a git repo of packs when H3 conditions fire", trigger: "H3 entry conditions per docs/vision/08"}
 - [-] runbook-invariants pack (incident investigation) {id: LC-12, disposition: deferred, reason: "no runbook corpus exists in the fleet to write honest eval fixtures against", trigger: "first consumer with a real runbook corpus"}
+- [-] fathom layers uninstall — remove a project pack AND retire its stored claims in one verb {id: LC-13, disposition: deferred, reason: "presence governs compilation only; serving derives from the store, so removing a directory leaves orphaned claims serving — list --store surfaces them and fathom claim refute retires them per claim, which is honest but manual", trigger: "first operator bitten by orphaned serving"}

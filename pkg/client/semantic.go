@@ -78,10 +78,20 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
 
-	// Resolve the layer definition from the manifest (schema/semantic/schema.cue,
-	// M1-1): its corpus include list, kind, tier, and budgets are the single
-	// authoritative source — no hand-synced Go mirror exists anymore.
-	layer, err := semantic.LoadLayer(layerName)
+	// Resolve the layer definition from the union of embedded (built-in)
+	// packs and the SERVICE's own project-local .fathom/layers/ (LC-3,
+	// docs/plans/layer-catalog.md): its corpus include list, kind, tier, and
+	// budgets are the single authoritative source — no hand-synced Go mirror
+	// exists anymore. root resolution mirrors SweepClaims below: service_meta
+	// is the only place a service's on-disk root is known, and an
+	// unresolvable root (a service ingested without meta, e.g. some
+	// synthetic test corpora) falls back to embedded-only — a project pack
+	// simply isn't reachable for that service, not a hard error.
+	root := ""
+	if meta, found, merr := c.st.GetServiceMeta(ctx, service); merr == nil && found {
+		root = meta.Path
+	}
+	layer, err := semantic.LoadLayerIn(root, layerName)
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: load layer manifest: %w", err)
 	}
@@ -91,7 +101,7 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: fetch sources: %w", err)
 	}
-	corpus := semantic.SelectCorpus(files, layer.CorpusInclude)
+	corpus := semantic.SelectCorpus(files, layer.CorpusInclude, layer.CorpusExclude)
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")

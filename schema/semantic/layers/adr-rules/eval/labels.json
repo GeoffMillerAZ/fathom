@@ -1,0 +1,51 @@
+{
+  "docs": ["decisions.md"],
+  "probes": [
+    "internal/store/duckdb.go",
+    "internal/query/engine.go",
+    "internal/mcp/tools.go",
+    "internal/extractor/goextract.go",
+    "internal/connector/local.go",
+    "cmd/fathom/servehttp.go",
+    "docs/design/notes.md"
+  ],
+  "rules": [
+    {
+      "key": "born-portable-anchors",
+      "cite_substr": "never an absolute filesystem path",
+      "governs": ["internal/store/duckdb.go"],
+      "trap_must_not_govern": ["internal/query/engine.go", "internal/mcp/tools.go"]
+    },
+    {
+      "key": "query-derived-state",
+      "cite_substr": "never persist mutable state across",
+      "governs": ["internal/query/engine.go"]
+    },
+    {
+      "key": "mcp-typed-errors",
+      "cite_substr": "typed rpcError",
+      "governs": ["internal/mcp/tools.go"]
+    },
+    {
+      "key": "extractor-sorted",
+      "cite_substr": "sorted by file path then symbol name",
+      "governs": ["internal/extractor/goextract.go"]
+    },
+    {
+      "key": "connector-bounded",
+      "cite_substr": "context deadline",
+      "governs": ["internal/connector/local.go"]
+    },
+    {
+      "key": "cli-usage-on-flag-error",
+      "cite_substr": "must print usage to",
+      "governs": ["cmd/fathom/servehttp.go"]
+    },
+    {
+      "key": "docs-status-line",
+      "cite_substr": "Status line naming its adoption state",
+      "governs": ["docs/design/notes.md"],
+      "trap_must_not_govern": ["cmd/fathom/servehttp.go"]
+    }
+  ]
+}

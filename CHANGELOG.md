@@ -5,6 +5,89 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — layer catalog: prompt-as-data, pack shape, adr-rules + spec-bindings, `fathom layers` (docs/plans/layer-catalog.md)
+- **Prompts are data, not Go (LC-1).** Every `#Layer` instance now carries
+  `prompt_file`; `promptForLayer` is generic over `LayerDef` instead of a
+  Go switch statement per layer name — the silent obligations fallback
+  for an unwired-but-manifest-valid layer name (a correctness bug) is
+  gone. Zero identity rotation: `obligations` stays `obligations/c02b1aa1`,
+  pinned by test.
+- **`serving.drift_tracked` replaces the `kind=="finding"` hardcode
+  (LC-2)** at all three remediation-drift sites (compile-side scope-fp
+  writing, and both serve-side `code_drifted` sites) — a schema field, not
+  a Go type check, so a future layer opts into drift tracking by setting
+  one CUE field. `findings` sets it `true`; `obligations` stays at the
+  schema default (`false`).
+- **Built-ins migrate to the vision's pack shape (LC-4):**
+  `schema/semantic/layers/<name>/{layer.cue,prompt.md,eval/,KILL.md}`,
+  mirrored (`layer.cue`+`prompt.md` only) into `internal/semantic/layers/`
+  and `go:embed`'d — `schema.cue` now holds only the `#Layer` definition.
+- **The pack loader unions embedded packs with a project's own
+  `.fathom/layers/` (LC-3)** — presence = enabled (ADR-018 reconciler
+  doctrine, no separate enabled/disabled state anywhere), a project pack
+  overriding an embedded one of the same name. `pkg/client.CompileLayer`
+  resolves through this union rooted at the service's own ingested path,
+  so a project-local pack compiles and serves exactly like a built-in one
+  (`TestClient_CompileLayer_ProjectLocalPack`).
+- **`fathom layers list|show|install`** (LC-7): store-direct like `fathom
+  claim`'s v0 convention. `install` validates a candidate pack against
+  `#Layer` (missing `prompt.md`/empty `eval/` warn, don't fail) and copies
+  it into `.fathom/layers/<name>/` — users never hand-author CUE.
+- **Two new embedded packs, both cleared the precision/recall shipping
+  gate LIVE against `FATHOM_LLM_PROVIDER=claude-cli`** (docs/design/
+  semantic-layers.md §4.6; no API key needed): `adr-rules` (the layer-2
+  proof — architectural constraints from `ADR.md`/`docs/design/*.md`,
+  precision 1.00 / recall 1.00) and `spec-bindings` (the SDD pack —
+  gated-plan task bindings from `docs/plans/**` excluding `README.md`,
+  scoped to each task's `package:` annotation, precision 1.00 / recall
+  1.00 on the first attempt). Results in each pack's `eval/RESULTS.md`.
+- **Third-layer end-to-end proof (LC-8):** a fixture pack nobody wrote any
+  Go for compiles and serves — including remediation-drift tracking for a
+  PROJECT-local pack, which surfaced and fixed a real gap: drift-tracking
+  resolution now consults the same embedded ∪ project union a compile saw
+  (via `ServiceMeta.Path`), not an embedded-only lookup.
+- **Fixed:** `#Layer.corpus.exclude` was decoded from the manifest but
+  never wired into any `SelectCorpus` call — `spec-bindings`' corpus is
+  the first to need it. `SelectCorpus` now takes an independent exclude
+  matcher.
+- Docs: `docs/layers.md` is the new catalog reference (per-pack when-to-use,
+  corpus, cost, gate metrics); `docs/mcp-tools.md`'s `compile_layer` row and
+  `docs/use-cases/coding-agents.md`/`change-review.md` updated for the new
+  verb and packs.
+- **Pre-merge hardening (critic review of the slice):**
+  - A broken project pack no longer takes the whole union down: a
+    half-authored `.fathom/layers/<name>/` is skipped (embedded packs —
+    including one it would have overridden — keep serving), warned once on
+    stderr, and surfaced by `fathom layers list` via `LayerInfo.LoadError`;
+    only requesting it by name errors. Drift tracking for embedded
+    `findings` provably survives an invalid sibling pack
+    (`TestDriftedFindings_SurvivesBrokenProjectPack`).
+  - Honest uninstall semantics: pack presence governs COMPILATION; serving
+    derives from the STORE. `layers list --store --service` gains an
+    orphaned-layers section (claims served with no defining pack); a real
+    `layers uninstall` that retires claims is deferred as LC-13.
+  - `fathom compile`'s flag-parse-time layer check is advisory-only now
+    (warn + pass through): a hard CWD-rooted rejection false-negatived
+    cross-repo project layers (`--service B --layer <B's pack>` from repo
+    A) — the backend's service-rooted resolution is the only rejection
+    (`TestCompile_AcceptsCrossRepoProjectLayer`).
+  - Install hygiene: `layers install` stages into a hidden temp sibling and
+    atomically renames (a mid-copy failure leaves no half-written pack);
+    reinstalling refuses without `--force`; `--force` replaces the whole
+    directory, never merges.
+  - Eval evidence hardening: fixture sets are explicit
+    (`labels.json`.`docs`, never a glob — `RESULTS.md` can't leak into the
+    corpus); both new packs' fixtures expanded to the obligations
+    precedent (adr-rules 7 rules + 2 traps, spec-bindings 6 rules + 2
+    traps) and RE-GATED at 1.00/1.00 twice each under the PINNED production
+    compile model (`claude-haiku-4-5-20251001`, claude-cli lane), recorded
+    with model+lane+date+command in each `eval/RESULTS.md`. The obligations
+    layer re-run under that same pinned model recorded precision 1.00 but
+    recall straddling its bar (0.71/0.86) — a pre-OP-6 signal, recorded in
+    `schema/semantic/layers/obligations/eval/RESULTS.md` and escalated.
+  - `layerIsDriftTracked` memoized per `ObligationsFor` call (one union
+    load per distinct layer, not per served rule, on the edit-hook path).
+
 ### Added — configuration experience: profiles, ~/.fathom/config.toml, health, smoke (docs/plans/config-experience.md)
 - **`internal/config`**: TOML-authored, CUE-validated (`schema/config/schema.cue`,
   embedded byte-identical with a drift test — the `internal/semantic/manifest.go`
