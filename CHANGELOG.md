@@ -30,6 +30,12 @@ All notable changes to sextant. Format loosely follows
   risk, so fathom never hands back a client that could silently lose its
   system prompt and revert to the CLI's ~13k-token built-in persona).
   The unknown-provider error now lists all six lanes.
+  Follow-up in the same landing: CLI `--store` mode no longer hardcodes the
+  Anthropic model string into `WithLLM` — both construction sites share
+  `compileModel()` (`FATHOM_COMPILE_MODEL`, cheap-tier default), because
+  `Request.Model` wins over any adapter's `DefaultModel` when non-empty and
+  the hardcoded string would have silently overridden every non-Anthropic
+  lane in store-direct compiles.
   Docs: `docs/use-cases/coding-agents.md` §5 gets a provider matrix table
   (lane, auth mode, env vars, marginal-cost story) including the honest
   `codex-cli` cost line — roughly 10k input tokens of ambient overhead per

@@ -72,6 +72,22 @@ func newFakeCodexCLI(t *testing.T, script string) string {
 	return path
 }
 
+// compileModel is the one model-resolution seam shared by the daemon
+// (servehttp.go) and CLI --store mode: FATHOM_COMPILE_MODEL, defaulting to
+// the cheap tier. Store mode hardcoding the Anthropic model string would
+// silently override every non-Anthropic lane's DefaultModel (Request.Model
+// wins when non-empty) — the exact gap this pins shut.
+func TestCompileModel(t *testing.T) {
+	t.Setenv("FATHOM_COMPILE_MODEL", "")
+	if got := compileModel(); got != "claude-haiku-4-5-20251001" {
+		t.Fatalf("default model = %q, want the cheap-tier default", got)
+	}
+	t.Setenv("FATHOM_COMPILE_MODEL", "anthropic.claude-3-5-sonnet-20241022-v2:0")
+	if got := compileModel(); got != "anthropic.claude-3-5-sonnet-20241022-v2:0" {
+		t.Fatalf("model override not honored: %q", got)
+	}
+}
+
 func TestBuildLLMClient_DefaultAndExplicitAnthropic_NoKey(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 

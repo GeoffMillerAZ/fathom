@@ -50,10 +50,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// selection: buildLLMClient (FATHOM_LLM_PROVIDER; see cmd/fathom/compile.go).
 	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" {
 		if llmCl, llmErr := buildLLMClient(); llmErr == nil {
-			model := os.Getenv("FATHOM_COMPILE_MODEL")
-			if model == "" {
-				model = "claude-haiku-4-5-20251001"
-			}
+			model := compileModel()
 			c.WithLLM(llmCl, model, 0.001, 0.005)
 			fmt.Fprintf(stderr, "serve-http: compile_layer enabled (model %s)\n", model)
 		} else {

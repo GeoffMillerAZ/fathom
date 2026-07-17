@@ -76,7 +76,7 @@ func compileViaStore(storePath, service, layer string, dryRun bool, stdout, stde
 			fmt.Fprintf(stderr, "error: %v\nSet ANTHROPIC_API_KEY, or set FATHOM_LLM_PROVIDER=claude-cli with a logged-in Claude Code CLI, or use --dry-run=true to estimate cost.\n", llmErr)
 			return 1
 		}
-		c.WithLLM(llmCl, "claude-haiku-4-5-20251001", 0.001, 0.005)
+		c.WithLLM(llmCl, compileModel(), 0.001, 0.005)
 	}
 
 	ctx := context.Background()
@@ -190,6 +190,18 @@ func buildLLMClient() (llmclient.LLMClient, error) {
 	default:
 		return nil, fmt.Errorf("unknown FATHOM_LLM_PROVIDER %q (want one of \"anthropic\", \"claude-cli\", \"openai\", \"azure-openai\", \"bedrock\", \"codex-cli\")", provider)
 	}
+}
+
+// compileModel resolves the compile model from FATHOM_COMPILE_MODEL,
+// defaulting to the cheap tier (obligations compiles are cents-scale by
+// design, ADR-016 §6). Shared by CLI --store mode and the serve-http daemon
+// — Request.Model wins over any adapter's DefaultModel when non-empty, so a
+// hardcoded string here would silently override every non-Anthropic lane.
+func compileModel() string {
+	if m := os.Getenv("FATHOM_COMPILE_MODEL"); m != "" {
+		return m
+	}
+	return "claude-haiku-4-5-20251001"
 }
 
 // buildAnthropicClient constructs an Anthropic LLM client from the environment.
