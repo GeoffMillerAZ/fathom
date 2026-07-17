@@ -5,6 +5,46 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
+- **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`
+  (`cmd/fathom/compile.go`) out to six: `openai` (`buildOpenAIClient` —
+  vanilla OpenAI Chat Completions via `agentic-kit/foundations/llmclient/openai`,
+  `OPENAI_API_KEY` optional for local/compatible hosts, `FATHOM_OPENAI_BASE_URL`
+  override for Ollama/vLLM), `azure-openai` (`buildAzureOpenAIClient` — the
+  same adapter's Azure mode; `AZURE_OPENAI_ENDPOINT` and
+  `AZURE_OPENAI_DEPLOYMENT` are checked by fathom itself, before calling the
+  adapter, so a missing one names the env var an operator actually sets
+  rather than the adapter's Go `Config` field), `bedrock`
+  (`buildBedrockClient` — AWS Bedrock via `agentic-kit/foundations/llmclient/bedrock`'s
+  full credential-chain resolver: explicit → env → shared files including
+  `aws sso login` sessions and `credential_process` → IMDSv2, expiry-aware
+  refresh, no static keys required from fathom; `FATHOM_COMPILE_MODEL` is
+  fathom's own requirement — Bedrock has no meaningful default model, so a
+  missing value fails construction naming the variable), and `codex-cli`
+  (`buildCodexCLIClient` — mirrors `claude-cli` via
+  `agentic-kit/foundations/llmclient/codexcli`, `FATHOM_CODEX_BIN` override;
+  **also Pings the constructed client** before returning it, since
+  codexcli's `Request.System` mapping and ambient-context suppression ride
+  undocumented `codex-cli` config keys a future CLI upgrade could silently
+  drop — a failed Ping is a construction error naming the silent-degradation
+  risk, so fathom never hands back a client that could silently lose its
+  system prompt and revert to the CLI's ~13k-token built-in persona).
+  The unknown-provider error now lists all six lanes.
+  Docs: `docs/use-cases/coding-agents.md` §5 gets a provider matrix table
+  (lane, auth mode, env vars, marginal-cost story) including the honest
+  `codex-cli` cost line — roughly 10k input tokens of ambient overhead per
+  call (~300k for a 31-section compile) against ChatGPT plan limits, ~60%
+  cache-discounted steady-state, versus `claude-cli`'s near-zero ambient
+  overhead under `--safe-mode`.
+  go.mod's `agentic-kit` require bumped to the pseudo-version for the
+  commit landing all three kit slices (aws-credchain, azure-openai,
+  codexcli-adapter). Tests: `cmd/fathom/compile_test.go` — construct-level
+  coverage for `openai`/`azure-openai`/`bedrock` (env fixtures via
+  `t.Setenv`, including a base-URL/Azure-deployment routing round trip
+  against a local `httptest` server), and hermetic fake-shim coverage for
+  `codex-cli` covering both the healthy and degraded Ping outcomes. No real
+  network/API/CLI-login calls in any of it.
+
 ### Added — subscription-backed compile provider (claudecli)
 - **`FATHOM_LLM_PROVIDER=claude-cli`.** `cmd/fathom/compile.go`'s single
   construction site (`buildAnthropicClient`, called by both `compile

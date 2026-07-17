@@ -12,7 +12,10 @@ import (
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -147,22 +150,45 @@ func compileViaHTTP(baseURL, service, layer string, dryRun bool, stdout, stderr 
 //     subscription's OAuth login rather than a metered key. FATHOM_CLAUDE_BIN
 //     optionally overrides the resolved binary path (e.g. for a launchd
 //     daemon whose PATH does not include wherever the CLI was installed).
+//   - "openai": buildOpenAIClient — the OpenAI Chat Completions API (or any
+//     OpenAI-compatible endpoint via FATHOM_OPENAI_BASE_URL), needs
+//     OPENAI_API_KEY (optional for unauthenticated local hosts).
+//   - "azure-openai": buildAzureOpenAIClient — the same OpenAI adapter in
+//     Azure mode, needs AZURE_OPENAI_ENDPOINT + AZURE_OPENAI_DEPLOYMENT
+//     (+ AZURE_OPENAI_API_KEY, AZURE_OPENAI_API_VERSION).
+//   - "bedrock": buildBedrockClient — AWS Bedrock via the kit's full
+//     credential-chain resolver (explicit → env → shared files, including
+//     `aws sso login` sessions and credential_process → IMDSv2); no static
+//     keys required. Needs FATHOM_COMPILE_MODEL set to a Bedrock model or
+//     inference-profile ID.
+//   - "codex-cli": buildCodexCLIClient — shells out to a locally logged-in
+//     Codex CLI (ChatGPT plan OAuth). FATHOM_CODEX_BIN optionally overrides
+//     the resolved binary path.
 //
 // Any other value is a typed configuration error, not a silent fallback.
 //
 // Cost-rate wiring (WithLLM's inRatePerKTok/outRatePerKTok) is unchanged
-// under claude-cli: the reported cost_usd on a CompileRun is the same
-// API-equivalent accounting as the anthropic provider produces — it does NOT
-// reflect actual marginal spend, which is $0 against a subscription's plan
-// limits when FATHOM_LLM_PROVIDER=claude-cli. See docs/use-cases/coding-agents.md.
+// across every subscription-backed lane (claude-cli, codex-cli): the
+// reported cost_usd on a CompileRun is the same API-equivalent accounting
+// every provider produces — it does NOT reflect actual marginal spend, which
+// is $0 against a subscription's plan limits under those two lanes. See
+// docs/use-cases/coding-agents.md §5 for the full per-lane cost story.
 func buildLLMClient() (llmclient.LLMClient, error) {
 	switch provider := os.Getenv("FATHOM_LLM_PROVIDER"); provider {
 	case "", "anthropic":
 		return buildAnthropicClient()
 	case "claude-cli":
 		return buildClaudeCLIClient()
+	case "openai":
+		return buildOpenAIClient()
+	case "azure-openai":
+		return buildAzureOpenAIClient()
+	case "bedrock":
+		return buildBedrockClient()
+	case "codex-cli":
+		return buildCodexCLIClient()
 	default:
-		return nil, fmt.Errorf("unknown FATHOM_LLM_PROVIDER %q (want \"anthropic\" or \"claude-cli\")", provider)
+		return nil, fmt.Errorf("unknown FATHOM_LLM_PROVIDER %q (want one of \"anthropic\", \"claude-cli\", \"openai\", \"azure-openai\", \"bedrock\", \"codex-cli\")", provider)
 	}
 }
 
@@ -186,6 +212,111 @@ func buildClaudeCLIClient() (llmclient.LLMClient, error) {
 	cl, err := claudecli.New(claudecli.Config{Bin: os.Getenv("FATHOM_CLAUDE_BIN")})
 	if err != nil {
 		return nil, fmt.Errorf("construct Claude CLI client: %w", err)
+	}
+	return cl, nil
+}
+
+// buildOpenAIClient constructs a vanilla OpenAI (or OpenAI-compatible)
+// client from the environment. OPENAI_API_KEY is optional — unset works
+// against local, unauthenticated hosts (Ollama, vLLM), matching the
+// adapter's own Config.APIKey doc. FATHOM_OPENAI_BASE_URL, when set,
+// overrides the API base URL (e.g. "http://localhost:11434/v1" for Ollama);
+// unset uses the adapter's default "https://api.openai.com/v1".
+func buildOpenAIClient() (llmclient.LLMClient, error) {
+	cl, err := openai.New(openai.Config{
+		APIKey:  os.Getenv("OPENAI_API_KEY"),
+		BaseURL: os.Getenv("FATHOM_OPENAI_BASE_URL"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("construct OpenAI client: %w", err)
+	}
+	return cl, nil
+}
+
+// buildAzureOpenAIClient constructs the same OpenAI adapter in Azure mode
+// from AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT (the Azure resource base
+// URL), AZURE_OPENAI_DEPLOYMENT, and optional AZURE_OPENAI_API_VERSION
+// (empty defers to the adapter's pinned GA default, openai.DefaultAzureAPIVersion).
+//
+// AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_DEPLOYMENT are checked here, before
+// calling openai.New, so a missing one fails with fathom's own env-var name
+// in the error — openai.New's own validation names its Go Config fields
+// (Config.BaseURL, Config.AzureDeployment), not the environment variables an
+// operator actually sets, so pre-checking gives the operator something they
+// can act on directly.
+func buildAzureOpenAIClient() (llmclient.LLMClient, error) {
+	endpoint := os.Getenv("AZURE_OPENAI_ENDPOINT")
+	if endpoint == "" {
+		return nil, fmt.Errorf("FATHOM_LLM_PROVIDER=azure-openai requires AZURE_OPENAI_ENDPOINT (the Azure resource base URL, e.g. https://<resource>.openai.azure.com) to be set")
+	}
+	deployment := os.Getenv("AZURE_OPENAI_DEPLOYMENT")
+	if deployment == "" {
+		return nil, fmt.Errorf("FATHOM_LLM_PROVIDER=azure-openai requires AZURE_OPENAI_DEPLOYMENT to be set")
+	}
+
+	cl, err := openai.New(openai.Config{
+		APIKey:          os.Getenv("AZURE_OPENAI_API_KEY"),
+		BaseURL:         endpoint,
+		AzureDeployment: deployment,
+		AzureAPIVersion: os.Getenv("AZURE_OPENAI_API_VERSION"),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("construct Azure OpenAI client: %w", err)
+	}
+	return cl, nil
+}
+
+// buildBedrockClient constructs an AWS Bedrock client. No fathom-specific
+// AWS env is read: the kit's awscred chain resolves credentials itself
+// (explicit → AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY/AWS_SESSION_TOKEN →
+// AWS_PROFILE/shared config+credentials files, including `aws sso login`
+// sessions and credential_process → IMDSv2) and region (AWS_REGION, or the
+// shared profile's region key) — no static keys are required from fathom.
+//
+// FATHOM_COMPILE_MODEL is fathom's own requirement, not the kit's: Bedrock
+// has no meaningful default model (unlike the Anthropic/OpenAI APIs), so a
+// missing FATHOM_COMPILE_MODEL fails here, before any credential resolution,
+// naming the requirement directly rather than surfacing an opaque
+// unknown-model error from the first Bedrock InvokeModel call.
+func buildBedrockClient() (llmclient.LLMClient, error) {
+	model := os.Getenv("FATHOM_COMPILE_MODEL")
+	if model == "" {
+		return nil, fmt.Errorf("FATHOM_LLM_PROVIDER=bedrock requires FATHOM_COMPILE_MODEL to be set to a Bedrock model ID (e.g. \"anthropic.claude-3-5-sonnet-20241022-v2:0\") or inference-profile ID")
+	}
+
+	cl, err := bedrock.New(bedrock.Config{DefaultModel: model})
+	if err != nil {
+		return nil, fmt.Errorf("construct Bedrock client (model %q): %w", model, err)
+	}
+	return cl, nil
+}
+
+// buildCodexCLIClient constructs a Codex CLI LLM client from the
+// environment, mirroring buildClaudeCLIClient: FATHOM_CODEX_BIN, when set,
+// overrides the resolved `codex` binary path; otherwise it is resolved from
+// PATH (see foundations/llmclient/codexcli's package doc).
+//
+// Unlike claude-cli, this branch also Pings the constructed client before
+// returning it. codexcli's Request.System mapping and ambient-context
+// suppression ride undocumented codex-cli config keys (see the kit's
+// codexcli.Config doc) that a future CLI upgrade could silently drop —
+// silently losing the system prompt and reverting to the CLI's ~13k-token
+// built-in persona on every call, with no error anywhere. Ping is the
+// adapter's built-in liveness tripwire for exactly that risk: zero-token,
+// local-only, ~300ms. Failing it here — at construction, before any compile
+// runs — turns a silent quality/cost regression into a loud, actionable
+// construction error naming the risk, instead of letting a fathom customer
+// run a compile through a degraded adapter.
+func buildCodexCLIClient() (llmclient.LLMClient, error) {
+	cl, err := codexcli.New(codexcli.Config{Bin: os.Getenv("FATHOM_CODEX_BIN")})
+	if err != nil {
+		return nil, fmt.Errorf("construct Codex CLI client: %w", err)
+	}
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := cl.Ping(pingCtx); err != nil {
+		return nil, fmt.Errorf("codex-cli liveness check failed: the installed codex CLI may be silently degraded — undocumented config keys this adapter depends on (system-prompt mapping, ambient-context suppression) may have been dropped by a CLI upgrade, so fathom refuses to compile through it rather than risk a silent quality or cost regression: %w", err)
 	}
 	return cl, nil
 }

@@ -133,15 +133,28 @@ p95 ≤ ~90ms per hook call. Obligations compile: cents per repo *change*
 (digest-gated). Hooks: ≤150 injected tokens on governed edits, zero on
 clean ones.
 
-**Subscription-backed compiles.** `fathom compile --dry-run=false` needs an
-LLM. By default that's the Anthropic API (`ANTHROPIC_API_KEY`, metered).
-Set `FATHOM_LLM_PROVIDER=claude-cli` (with a locally logged-in `claude` CLI)
-to run compiles against a Claude Pro/Max subscription instead — no API key
-needed. The `cost_usd` a `compile_layer` run reports is the same
-API-equivalent accounting either way; under `claude-cli` the actual marginal
-spend is $0 (it draws from the subscription's plan limits, not a metered
-key). `FATHOM_CLAUDE_BIN` overrides the resolved `claude` binary path when
-PATH doesn't include it (e.g. a launchd daemon).
+**Provider matrix.** `fathom compile --dry-run=false` (and `serve-http`'s
+`compile_layer`) need an LLM, selected via `FATHOM_LLM_PROVIDER` — one
+construction site (`buildLLMClient`, `cmd/fathom/compile.go`), six lanes: two
+metered API-key families, two subscription-CLI families riding a local
+login, and two enterprise endpoints. The `cost_usd` a `compile_layer` run
+reports is the same API-equivalent accounting across every lane; only the
+subscription-CLI lanes (`claude-cli`, `codex-cli`) have $0 actual marginal
+spend (they draw from a plan's limits, not a metered key) — see the cost
+column below for the honest caveat on each.
+
+| Lane | Auth mode | Env vars | Marginal-cost story |
+|---|---|---|---|
+| `anthropic` (default) | API key | `ANTHROPIC_API_KEY` | Metered, per-token Anthropic API pricing. |
+| `claude-cli` | Subscription CLI (OAuth) | `FATHOM_CLAUDE_BIN` (optional binary override) | $0 marginal — draws from a Claude Pro/Max plan's limits. `--safe-mode` suppresses ambient context to near-zero, so `cost_usd`'s API-equivalent accounting stays close to the real token shape. |
+| `openai` | API key | `OPENAI_API_KEY` (optional for local/compatible hosts), `FATHOM_OPENAI_BASE_URL` (optional, e.g. Ollama/vLLM) | Metered, per-token OpenAI (or compatible-host) pricing; $0 against a self-hosted local model. |
+| `azure-openai` | API key (or Entra bearer passthrough) | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`, `AZURE_OPENAI_API_VERSION` (optional, defaults to the adapter's pinned GA version) | Metered against the Azure resource's negotiated/enterprise pricing, not the public OpenAI price list. |
+| `bedrock` | AWS credential chain (no static keys required) | none fathom-specific — the kit chain resolves explicit env, `AWS_PROFILE`/shared files (incl. `aws sso login`), `credential_process`, IMDSv2; `FATHOM_COMPILE_MODEL` required (a Bedrock model or inference-profile ID) | Metered against AWS Bedrock's per-token pricing for the chosen model/inference-profile, billed through the AWS account, not a separate API key. |
+| `codex-cli` | Subscription CLI (ChatGPT plan OAuth) | `FATHOM_CODEX_BIN` (optional binary override) | Real cost, not $0: the undocumented ambient-context suppression this adapter depends on still carries **~10k input tokens of overhead per call** (~300k for a 31-section compile) against ChatGPT plan limits, roughly **60% cache-discounted at steady state** — a materially heavier ambient footprint than `claude-cli`, which suppresses ambient context to near-zero via `--safe-mode`. Construction also Pings the CLI (zero-token, ~300ms, local-only) as a liveness tripwire for that dependence; a degraded CLI fails construction loudly instead of silently losing the system prompt. |
+
+`FATHOM_LLM_PROVIDER` unset or an unrecognized value: unset defaults to
+`anthropic`; an unrecognized value is a typed configuration error listing
+all six lanes, never a silent fallback.
 
 **Measure yours, don't trust ours:**
 
