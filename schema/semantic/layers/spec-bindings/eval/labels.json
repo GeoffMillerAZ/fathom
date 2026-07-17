@@ -1,8 +1,11 @@
 {
+  "docs": ["plan-fixture.md"],
   "probes": [
     "internal/query/engine.go",
     "internal/mcp/tools.go",
     "internal/store/duckdb.go",
+    "internal/extractor/goextract.go",
+    "internal/connector/local.go",
     "docs/notes.md"
   ],
   "rules": [
@@ -25,6 +28,16 @@
       "key": "SB-4",
       "cite_substr": "sqlite backend is fully retired",
       "governs": ["docs/notes.md"]
+    },
+    {
+      "key": "SB-7",
+      "cite_substr": "sorted before return",
+      "governs": ["internal/extractor/goextract.go"]
+    },
+    {
+      "key": "SB-8",
+      "cite_substr": "context deadline",
+      "governs": ["internal/connector/local.go"]
     }
   ]
 }

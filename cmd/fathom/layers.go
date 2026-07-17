@@ -16,10 +16,18 @@ import (
 // layer packs (LC-7, docs/plans/layer-catalog.md). Every verb is store-direct
 // and read-mostly except install, which only ever writes to
 // <root>/.fathom/layers/ — no daemon round-trip, mirroring `fathom claim`'s
-// v0 store-direct-only convention. Presence = enabled (ADR-018 reconciler
-// doctrine): there is no "fathom layers enable/disable" verb, deliberately —
-// a pack governs claims the moment it's installed, and stops the moment its
-// directory is removed.
+// v0 store-direct-only convention.
+//
+// Presence = enabled — for COMPILATION (ADR-018 reconciler doctrine): a
+// pack's presence is what lets `fathom compile --layer <name>` run; there is
+// deliberately no "fathom layers enable/disable" verb. SERVING, however,
+// derives from the STORE: claims a since-removed pack compiled keep serving
+// until retired (refuted per claim via `fathom claim`, or superseded by a
+// recompile) — removing a directory does not reach into the store.
+// `layers list --store --service` surfaces such orphaned layers so an
+// injected rule is always traceable to its (possibly departed) pack; a real
+// `layers uninstall` that also retires the layer's claims is deferred
+// (docs/plans/layer-catalog.md LC-13).
 func cmdLayers(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprintln(stderr, "error: layers requires a verb: list | show | install")
@@ -44,7 +52,7 @@ func printLayersUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  fathom layers list    [--root DIR] [--store PATH --service NAME]")
 	fmt.Fprintln(w, "  fathom layers show    <name> [--root DIR]")
-	fmt.Fprintln(w, "  fathom layers install <dir>  [--root DIR]")
+	fmt.Fprintln(w, "  fathom layers install <dir>  [--root DIR] [--force]")
 }
 
 // layersRoot resolves --root, defaulting to the current working directory —
@@ -104,7 +112,13 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 		header += "  CLAIMS"
 	}
 	fmt.Fprintln(stdout, header)
+	var broken []semantic.LayerInfo
 	for _, info := range infos {
+		if info.LoadError != "" && info.Kind == "" {
+			// Project-only broken pack: no usable definition to tabulate.
+			broken = append(broken, info)
+			continue
+		}
 		source := string(info.Source)
 		if info.Overrides {
 			source += "*"
@@ -119,9 +133,36 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 			line += fmt.Sprintf("  %d", claimCounts[info.Name])
 		}
 		fmt.Fprintln(stdout, line)
+		if info.LoadError != "" {
+			// A broken project pack shadowing this embedded one: the embedded
+			// definition above is what serves; say why the override didn't.
+			broken = append(broken, info)
+		}
 	}
 	if hasOverride(infos) {
 		fmt.Fprintln(stdout, "\n* project pack overrides an embedded pack of the same name")
+	}
+	for _, b := range broken {
+		fmt.Fprintf(stdout, "\n! broken project pack %q (ignored; fix or remove its directory): %s\n", b.Name, b.LoadError)
+	}
+	if claimCounts != nil {
+		known := map[string]bool{}
+		for _, info := range infos {
+			known[info.Name] = true
+		}
+		var orphans []string
+		for layer := range claimCounts {
+			if !known[layer] {
+				orphans = append(orphans, layer)
+			}
+		}
+		sort.Strings(orphans)
+		if len(orphans) > 0 {
+			fmt.Fprintln(stdout, "\norphaned layers — claims still served from the store, but no pack (embedded or project) defines them:")
+			for _, o := range orphans {
+				fmt.Fprintf(stdout, "  %-20s %d claims (serving derives from the store, not pack presence — retire per claim via `fathom claim refute`, or recompile; see docs/layers.md)\n", o, claimCounts[o])
+			}
+		}
 	}
 	return 0
 }
@@ -199,6 +240,16 @@ func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 	if found.Overrides {
 		source += " (overrides an embedded pack of the same name)"
 	}
+	if found.LoadError != "" {
+		if found.Kind == "" {
+			fmt.Fprintf(stdout, "name:              %s\n", found.Name)
+			fmt.Fprintf(stdout, "source:            %s (BROKEN)\n", source)
+			fmt.Fprintf(stdout, "load error:        %s\n", found.LoadError)
+			fmt.Fprintln(stdout, "status:            this project pack failed to load and is ignored; fix or remove its directory")
+			return 0
+		}
+		fmt.Fprintf(stdout, "load error:        a broken project pack of this name was ignored (the embedded definition below serves): %s\n", found.LoadError)
+	}
 	fmt.Fprintf(stdout, "name:              %s\n", found.Name)
 	fmt.Fprintf(stdout, "version:           %s\n", found.Version)
 	fmt.Fprintf(stdout, "kind:              %s\n", found.Kind)
@@ -229,6 +280,7 @@ func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 func cmdLayersInstall(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("layers install", stderr)
 	root := fs.String("root", "", "project root to install into (default: current directory)")
+	force := fs.Bool("force", false, "replace an already-installed pack of the same name (whole-directory replace, never a merge)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -244,7 +296,7 @@ func cmdLayersInstall(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	def, warnings, err := semantic.InstallPack(srcDir, r)
+	def, warnings, err := semantic.InstallPack(srcDir, r, *force)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: install pack: %v\n", err)
 		return 1

@@ -184,6 +184,99 @@ func TestLayers_List_WithStoreShowsClaimCounts(t *testing.T) {
 	}
 }
 
+// TestLayers_List_SurfacesOrphanedLayers is critic finding 2's contract:
+// removing a pack directory does NOT stop its stored claims serving —
+// `layers list --store` must surface such orphaned layers so injected rules
+// are always traceable (see docs/plans/layer-catalog.md LC-13 for the real
+// uninstall verb).
+func TestLayers_List_SurfacesOrphanedLayers(t *testing.T) {
+	root := t.TempDir() // no project packs
+	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	claim := core.SemanticClaim{
+		ClaimID: "cl-ghost", ServiceID: "svc",
+		Layer: "ghost-layer", LayerVersion: "v1", Kind: "ghost-kind",
+		Subject: "gone/pack.md#x", Rule: "A rule from an uninstalled pack.",
+		Scope: []string{"**/*.go"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+		Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+	}
+	if err := st.PutClaims(context.Background(), []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatalf("PutClaims: %v", err)
+	}
+	st.Close()
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root, "--store", storePath, "--service", "svc"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "orphaned layers") {
+		t.Errorf("output missing the orphaned-layers section:\n%s", got)
+	}
+	if !strings.Contains(got, "ghost-layer") {
+		t.Errorf("output missing the orphaned layer name:\n%s", got)
+	}
+}
+
+// TestLayers_List_ShowsBrokenPack: a half-authored project pack must be
+// VISIBLE in list output (critic finding 1's surfacing half), never silently
+// dropped, while the built-ins still tabulate normally.
+func TestLayers_List_ShowsBrokenPack(t *testing.T) {
+	root := t.TempDir()
+	brokenDir := filepath.Join(root, ".fathom", "layers", "half-done")
+	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(brokenDir, "layer.cue"), []byte("not [ cue"), 0o644); err != nil {
+		t.Fatalf("write broken layer.cue: %v", err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "broken project pack") || !strings.Contains(got, "half-done") {
+		t.Errorf("output missing the broken-pack notice:\n%s", got)
+	}
+	if !strings.Contains(got, "obligations") {
+		t.Errorf("built-ins must still tabulate beside a broken pack:\n%s", got)
+	}
+}
+
+// TestLayers_Install_RefusesOverwriteWithoutForce mirrors the package-level
+// InstallPack contract at the CLI surface, including the --force escape.
+func TestLayers_Install_RefusesOverwriteWithoutForce(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "twice-pack")
+	writeTestPack(t, srcDir, "twice-pack")
+	root := t.TempDir()
+
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"layers", "install", "--root", root, srcDir}, &out, &errBuf); code != 0 {
+		t.Fatalf("first install exit = %d, stderr: %s", code, errBuf.String())
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"layers", "install", "--root", root, srcDir}, &out, &errBuf); code == 0 {
+		t.Fatal("second install without --force: want non-zero exit")
+	}
+	if !strings.Contains(errBuf.String(), "--force") {
+		t.Errorf("refusal should mention --force, got %q", errBuf.String())
+	}
+
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"layers", "install", "--root", root, "--force", srcDir}, &out, &errBuf); code != 0 {
+		t.Fatalf("install --force exit = %d, stderr: %s", code, errBuf.String())
+	}
+}
+
 func TestLayers_List_StoreRequiresService(t *testing.T) {
 	root := t.TempDir()
 	var out, errBuf bytes.Buffer

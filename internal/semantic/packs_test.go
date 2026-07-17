@@ -162,6 +162,92 @@ func TestLoadLayerIn_ProjectPackOverridesEmbedded(t *testing.T) {
 	}
 }
 
+// writeBrokenPack writes a pack directory whose layer.cue cannot decode —
+// the "half-authored pack" case the union loader must survive (critic
+// finding 1: one broken project pack must never take down drift tracking,
+// or anything else, for every OTHER layer).
+func writeBrokenPack(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "layer.cue"), []byte("this is { not CUE ]"), 0o644); err != nil {
+		t.Fatalf("write broken layer.cue: %v", err)
+	}
+}
+
+// TestLoadLayerIn_BrokenProjectPackDoesNotBreakUnion: a project pack with an
+// undecodable layer.cue must not fail the whole union — every embedded
+// layer still resolves; only asking for the broken pack BY NAME errors; and
+// ListLayersIn surfaces the breakage via LoadError instead of hiding it.
+func TestLoadLayerIn_BrokenProjectPackDoesNotBreakUnion(t *testing.T) {
+	root := t.TempDir()
+	writeBrokenPack(t, filepath.Join(root, ProjectLayersDir, "half-authored"))
+
+	// Embedded layers resolve exactly as if the broken pack were absent.
+	def, err := LoadLayerIn(root, LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayerIn(findings) with a broken sibling pack: %v", err)
+	}
+	if !def.Serving.DriftTracked {
+		t.Errorf("findings lost drift_tracked because of an unrelated broken pack")
+	}
+
+	// The broken pack itself errors loudly by name.
+	if _, err := LoadLayerIn(root, "half-authored"); err == nil {
+		t.Fatal("LoadLayerIn(half-authored): want a loud error for the broken pack itself")
+	}
+
+	// ListLayersIn shows it as broken, never silently drops it.
+	infos, err := ListLayersIn(root)
+	if err != nil {
+		t.Fatalf("ListLayersIn: %v", err)
+	}
+	found := false
+	for _, info := range infos {
+		if info.Name == "half-authored" {
+			found = true
+			if info.LoadError == "" {
+				t.Errorf("broken pack listed without LoadError: %+v", info)
+			}
+		}
+	}
+	if !found {
+		t.Errorf("broken pack missing from ListLayersIn (silently dropped): %+v", infos)
+	}
+}
+
+// TestLoadLayerIn_BrokenPackShadowingEmbeddedFallsBack: a broken project
+// pack whose name matches an embedded pack must NOT take the built-in down
+// with it — the embedded definition stays live, with the breakage recorded.
+func TestLoadLayerIn_BrokenPackShadowingEmbeddedFallsBack(t *testing.T) {
+	root := t.TempDir()
+	writeBrokenPack(t, filepath.Join(root, ProjectLayersDir, LayerFindings))
+
+	def, err := LoadLayerIn(root, LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayerIn(findings) with a broken project override: %v", err)
+	}
+	if def.Kind != "finding" || !def.Serving.DriftTracked {
+		t.Errorf("embedded findings definition not preserved: %+v", def)
+	}
+
+	infos, err := ListLayersIn(root)
+	if err != nil {
+		t.Fatalf("ListLayersIn: %v", err)
+	}
+	for _, info := range infos {
+		if info.Name == LayerFindings {
+			if info.Source != SourceEmbedded {
+				t.Errorf("Source = %q, want embedded (the broken override is ignored)", info.Source)
+			}
+			if info.LoadError == "" {
+				t.Errorf("breakage not recorded on the surviving embedded entry: %+v", info)
+			}
+		}
+	}
+}
+
 func TestLoadLayerIn_UnknownLayerListsKnownNames(t *testing.T) {
 	root := t.TempDir()
 	writeFixturePack(t, filepath.Join(root, ProjectLayersDir, "custom-pack"), "custom-pack", false)
@@ -271,7 +357,7 @@ func TestInstallPack_CopiesAndBecomesLoadable(t *testing.T) {
 	writeFixturePack(t, srcDir, "adr-rules", false)
 
 	root := t.TempDir()
-	def, warnings, err := InstallPack(srcDir, root)
+	def, warnings, err := InstallPack(srcDir, root, false)
 	if err != nil {
 		t.Fatalf("InstallPack: %v", err)
 	}
@@ -308,10 +394,94 @@ func TestInstallPack_RejectsInvalidSource(t *testing.T) {
 	writeFixturePack(t, packDir, "different-inner-name", false)
 
 	root := t.TempDir()
-	if _, _, err := InstallPack(packDir, root); err == nil {
+	if _, _, err := InstallPack(packDir, root, false); err == nil {
 		t.Fatal("InstallPack: want error for an invalid source pack, and nothing should be copied")
 	}
 	if _, err := os.Stat(filepath.Join(root, ProjectLayersDir)); !os.IsNotExist(err) {
 		t.Errorf(".fathom/layers/ should not exist after a rejected install: stat err = %v", err)
+	}
+}
+
+// TestInstallPack_RefusesOverwriteWithoutForce_ForceReplacesWholly is critic
+// finding 5's contract: a reinstall must never silently overwrite, and a
+// forced reinstall REPLACES the whole directory (never merges — files from
+// the previous version do not survive).
+func TestInstallPack_RefusesOverwriteWithoutForce_ForceReplacesWholly(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "re-pack")
+	writeFixturePack(t, srcDir, "re-pack", false)
+	root := t.TempDir()
+
+	if _, _, err := InstallPack(srcDir, root, false); err != nil {
+		t.Fatalf("first install: %v", err)
+	}
+	// A stray file from "version 1" that the new source does NOT carry.
+	stale := filepath.Join(root, ProjectLayersDir, "re-pack", "old-notes.md")
+	if err := os.WriteFile(stale, []byte("v1 leftovers"), 0o644); err != nil {
+		t.Fatalf("write stale file: %v", err)
+	}
+
+	// Second install without force: refused, and the installed pack (incl.
+	// the stale file) is untouched.
+	if _, _, err := InstallPack(srcDir, root, false); err == nil {
+		t.Fatal("reinstall without force: want an already-installed refusal")
+	} else if !strings.Contains(err.Error(), "already installed") {
+		t.Errorf("refusal error = %v, want it to say already installed", err)
+	}
+	if _, err := os.Stat(stale); err != nil {
+		t.Errorf("refused reinstall must not touch the installed pack: %v", err)
+	}
+
+	// Forced reinstall: succeeds, and the stale file is GONE (replace, not
+	// merge).
+	if _, _, err := InstallPack(srcDir, root, true); err != nil {
+		t.Fatalf("forced reinstall: %v", err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("forced reinstall merged instead of replacing: stale file survives (stat err = %v)", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ProjectLayersDir, "re-pack", "layer.cue")); err != nil {
+		t.Errorf("forced reinstall lost layer.cue: %v", err)
+	}
+}
+
+// TestInstallPack_MidCopyFailureLeavesNoDebris: a copy failure mid-install
+// must leave NEITHER a half-written destination (a layer.cue-less dir would
+// register as a broken pack and pollute every list/compile) NOR a staging
+// dir behind.
+func TestInstallPack_MidCopyFailureLeavesNoDebris(t *testing.T) {
+	srcDir := filepath.Join(t.TempDir(), "fail-pack")
+	writeFixturePack(t, srcDir, "fail-pack", false)
+	// An unreadable file inside the pack makes copyPackDir fail after
+	// layer.cue/prompt.md were already staged.
+	blocked := filepath.Join(srcDir, "eval", "blocked.json")
+	if err := os.WriteFile(blocked, []byte("x"), 0o000); err != nil {
+		t.Fatalf("write blocked file: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0o644) })
+
+	root := t.TempDir()
+	if _, _, err := InstallPack(srcDir, root, false); err == nil {
+		t.Fatal("InstallPack: want a copy error from the unreadable file")
+	}
+
+	// No destination dir.
+	destDir := filepath.Join(root, ProjectLayersDir, "fail-pack")
+	if _, err := os.Stat(destDir); !os.IsNotExist(err) {
+		t.Errorf("half-written destination left behind at %s (stat err = %v)", destDir, err)
+	}
+	// No staging debris (and by extension nothing the union loader could
+	// mistake for a pack).
+	layersDir := filepath.Join(root, ProjectLayersDir)
+	if entries, err := os.ReadDir(layersDir); err == nil {
+		for _, e := range entries {
+			t.Errorf("debris left in %s after failed install: %s", layersDir, e.Name())
+		}
+	}
+	infos, err := ListLayersIn(root)
+	if err != nil {
+		t.Fatalf("ListLayersIn after failed install: %v", err)
+	}
+	if len(infos) != numEmbeddedLayers(t) {
+		t.Errorf("failed install changed the union: %+v", infos)
 	}
 }

@@ -24,7 +24,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +49,12 @@ func repoRootForTest(t *testing.T) (string, error) {
 }
 
 type evalLabels struct {
+	// Docs is the EXPLICIT fixture-document list (file names relative to the
+	// pack's eval/ dir, compiled in this order). Explicit, never a glob: an
+	// eval/ dir also holds RESULTS.md (and potentially other non-fixture
+	// notes), and a glob would silently sweep those into the corpus,
+	// polluting every metric with claims from a results table.
+	Docs   []string `json:"docs"`
 	Probes []string `json:"probes"`
 	Rules  []struct {
 		Key               string   `json:"key"`
@@ -83,7 +88,15 @@ func evalLLM(t *testing.T) (llmclient.LLMClient, string) {
 		if err != nil {
 			t.Skipf("claude-cli unavailable: %v", err)
 		}
-		return llm, model // claude-cli ignores an empty Model (uses the CLI's own default)
+		if model == "" {
+			// Pin the PRODUCTION compile default (compileModel()'s default,
+			// cmd/fathom/compile.go) instead of floating on the CLI's own
+			// default model: an eval result recorded under an unpinned model
+			// doesn't transfer to the fleet-compile lane, which is the whole
+			// point of gating (critic finding 4c on the LC slice).
+			model = "claude-haiku-4-5-20251001"
+		}
+		return llm, model
 	default:
 		t.Fatalf("unknown FATHOM_LLM_PROVIDER %q (want \"\", \"anthropic\", or \"claude-cli\")", provider)
 		return nil, ""
@@ -112,8 +125,9 @@ type evalResult struct {
 	Run            core.CompileRun
 }
 
-// runLayerEval compiles layerName's eval/*.md fixtures (every .md file in
-// its pack's eval/ directory, sorted) through a real model and scores
+// runLayerEval compiles layerName's eval fixtures (the labels.json "docs"
+// list — explicit, never a glob, so RESULTS.md and other non-fixture files
+// in eval/ are never swept into the corpus) through a real model and scores
 // (claim, probe) applications against eval/labels.json.
 func runLayerEval(t *testing.T, layerName string) evalResult {
 	t.Helper()
@@ -121,6 +135,11 @@ func runLayerEval(t *testing.T, layerName string) evalResult {
 		t.Skip("set FATHOM_EVAL_LLM=1 (and ANTHROPIC_API_KEY, or FATHOM_LLM_PROVIDER=claude-cli) to run the spending eval")
 	}
 	llm, model := evalLLM(t)
+	lane := os.Getenv("FATHOM_LLM_PROVIDER")
+	if lane == "" {
+		lane = "anthropic"
+	}
+	t.Logf("eval lane=%q model=%q", lane, model)
 
 	dir := packEvalDir(t, layerName)
 	var labels evalLabels
@@ -131,20 +150,16 @@ func runLayerEval(t *testing.T, layerName string) evalResult {
 	if err := json.Unmarshal(lb, &labels); err != nil {
 		t.Fatalf("parse labels: %v", err)
 	}
-
-	mdFiles, err := filepath.Glob(filepath.Join(dir, "*.md"))
-	if err != nil || len(mdFiles) == 0 {
-		t.Fatalf("glob eval/*.md in %s: %v (found %d)", dir, err, len(mdFiles))
+	if len(labels.Docs) == 0 {
+		t.Fatalf("labels.json in %s must list its fixture docs explicitly (\"docs\": [...]) — a glob would sweep RESULTS.md and other non-fixture files into the corpus", dir)
 	}
-	sort.Strings(mdFiles)
 
 	var docs []core.SourceFile
 	docContent := map[string][]byte{}
-	for _, path := range mdFiles {
-		name := filepath.Base(path)
-		data, err := os.ReadFile(path)
+	for _, name := range labels.Docs {
+		data, err := os.ReadFile(filepath.Join(dir, name))
 		if err != nil {
-			t.Fatalf("read %s: %v", name, err)
+			t.Fatalf("read fixture doc %s: %v", name, err)
 		}
 		docs = append(docs, core.SourceFile{Path: name, Content: data})
 		docContent[name] = data

@@ -25,16 +25,81 @@ func TestCompileRequiresService(t *testing.T) {
 	}
 }
 
-// ─── compile: unknown layer rejected ─────────────────────────────────────────
+// ─── compile: unknown layer rejected (by the backend, not a pre-check) ───────
 
+// TestCompileUnknownLayer: an unknown layer still fails the compile — but
+// via the BACKEND's own resolution error (client.CompileLayer), not a
+// flag-parse-time pre-check. The pre-check is advisory-only (critic finding
+// 3 on the LC slice): it can only see CWD, and a hard rejection there
+// false-negatives project packs of OTHER repos' services. --store makes the
+// test hermetic (the pass-through would otherwise hit the daemon URL).
 func TestCompileUnknownLayer(t *testing.T) {
+	storePath := filepath.Join(t.TempDir(), "s.duckdb")
 	var out, errBuf bytes.Buffer
-	code := run([]string{"compile", "--service=svc", "--layer=hypotheses"}, &out, &errBuf)
+	code := run([]string{"compile", "--service=svc", "--layer=hypotheses", "--store=" + storePath}, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("compile with unknown layer should fail")
 	}
 	if !strings.Contains(errBuf.String(), "obligations") {
 		t.Errorf("error should mention obligations, got %q", errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "warning:") {
+		t.Errorf("the advisory CWD pre-check should have warned before the backend rejected, got %q", errBuf.String())
+	}
+}
+
+// TestCompile_AcceptsCrossRepoProjectLayer is critic finding 3's regression
+// test: `fathom compile --service B --layer <B's project pack>` run from an
+// UNRELATED working directory (repo A) must succeed — the layer is unknown
+// at CWD (warn only) but resolves via the service's own ingested root
+// (ServiceMeta.Path) in the backend.
+func TestCompile_AcceptsCrossRepoProjectLayer(t *testing.T) {
+	packRoot := t.TempDir() // "repo B": owns the project pack
+	packDir := filepath.Join(packRoot, ".fathom", "layers", "xrepo-pack")
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	layerCUE := `name:    "xrepo-pack"
+version: "v1"
+kind:    "xrepo-kind"
+corpus: include: ["docs/**"]
+prompt_version: "xrepo-pack/fixture"
+prompt_file:    "xrepo-pack/prompt.md"
+tier:           "doc-claimed"
+budgets: {
+	max_tokens_per_run: 1000
+	max_usd_per_run:    0.1
+}
+`
+	if err := os.WriteFile(filepath.Join(packDir, "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatalf("write layer.cue: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(packDir, "prompt.md"), []byte("Test prompt."), 0o644); err != nil {
+		t.Fatalf("write prompt.md: %v", err)
+	}
+
+	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	if err := st.SetServiceMeta(context.Background(), store.ServiceMeta{ServiceID: "svc-b", Path: packRoot}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+	st.Close()
+
+	t.Chdir(t.TempDir()) // "repo A": an unrelated CWD with no .fathom/layers/
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"compile", "--service=svc-b", "--layer=xrepo-pack", "--store=" + storePath}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("cross-repo project-layer compile should succeed (dry-run), got exit %d, stderr: %s", code, errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "warning:") {
+		t.Errorf("expected the advisory unknown-at-CWD warning on stderr, got %q", errBuf.String())
+	}
+	if !strings.Contains(out.String(), "xrepo-pack") {
+		t.Errorf("output should name the compiled layer, got %q", out.String())
 	}
 }
 

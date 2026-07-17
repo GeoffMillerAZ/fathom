@@ -24,19 +24,36 @@ A layer ships as a **module pack**: a directory of data, never Go code.
 Built-in packs live at `schema/semantic/layers/<name>/` (authoritative) and
 `internal/semantic/layers/<name>/` (a byte-identical `go:embed`'d mirror,
 drift-tested by `TestPackFilesMatchSource`). A project adds its own packs at
-`.fathom/layers/<name>/` — **presence = enabled** (ADR-018 reconciler
-doctrine: there is no separate enable/disable state anywhere, and
+`.fathom/layers/<name>/` — **presence = enabled, for compilation** (ADR-018
+reconciler doctrine: there is no separate enable/disable state anywhere, and
 deliberately no `fathom layers enable` verb). A project pack overrides an
 embedded pack of the same name.
 
+Two honesty notes on that doctrine:
+
+- **Serving derives from the STORE, not from pack presence.** Removing a
+  pack directory stops future *compiles*; claims it already compiled keep
+  serving until retired — refuted per claim (`fathom claim refute`) or
+  superseded by a recompile. `fathom layers list --store --service`
+  surfaces such **orphaned layers** (claims in the store, no pack in the
+  union) so an injected rule is always traceable; a `layers uninstall` verb
+  that also retires claims is deferred (LC-13,
+  `docs/plans/layer-catalog.md`).
+- **A broken pack never takes the union down.** A half-authored
+  `.fathom/layers/<name>/` (missing/undecodable `layer.cue`) is skipped
+  from resolution — every other layer, including an embedded pack the
+  broken directory would have overridden, keeps compiling and serving — and
+  the breakage is warned once on stderr and shown by `fathom layers list`.
+  Only requesting the broken pack by name errors.
+
 ## The catalog
 
-| Layer | Kind | Tier | Corpus | Drift-tracked | Gate result |
+| Layer | Kind | Tier | Corpus | Drift-tracked | Gate result (see each pack's `eval/RESULTS.md`) |
 |---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | precision 0.90+ / recall 0.75+ (ADR-016 §4.6 baseline) |
+| `obligations` | `obligation` | `doc-claimed` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | ADR-016 baseline pass; on the production compile model, precision 1.00 but recall straddles the bar (0.71/0.86) — a recorded pre-OP-6 signal |
 | `findings` | `finding` | `sme-stated` | `findings/**` | **yes** | shipped without eval/ yet — see its `KILL.md` |
-| `adr-rules` | `adr-rule` | `doc-claimed` | `ADR.md`, `docs/design/*.md` | no | precision 1.00 / recall 1.00 (`eval/RESULTS.md`) |
-| `spec-bindings` | `spec-binding` | `doc-claimed` | `docs/plans/**` excl. `README.md` | no | precision 1.00 / recall 1.00 (`eval/RESULTS.md`) |
+| `adr-rules` | `adr-rule` | `doc-claimed` | `ADR.md`, `docs/design/*.md` | no | precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned |
+| `spec-bindings` | `spec-binding` | `doc-claimed` | `docs/plans/**` excl. `README.md` | no | precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned |
 
 ### `obligations` — every edit
 
@@ -82,6 +99,14 @@ this pack's own `layer.cue`/`prompt.md`/`eval/` is the whole delta.
 describes what a decision does NOT bind" scope-trap rule — a decision
 naming what it excludes must not leak scope onto the excluded package.
 
+**Corpus overlap with `obligations`:** `ADR.md` is in both packs' corpora,
+deliberately — obligations extracts an ADR's *developer rules*, adr-rules
+its *architectural constraints*. The same source line can therefore yield
+one claim of each kind, and both can appear in the same served payload
+(deduplication is by claim identity, not text); the 6-rule serving cap
+bounds the cost. If that double-serving proves noisy in practice, narrow
+one pack's corpus in a project-local override.
+
 ### `spec-bindings` — gated-plan task bindings (the SDD pack)
 
 **When to use:** repos using the `docs/plans/*.md` gated-checklist grammar
@@ -97,6 +122,14 @@ itself carries no gated tasks).
 `package:` value are extracted; a `disposition: deferred`/`refused` task or
 an unannotated line is skipped, not guessed at — proven by two deliberate
 traps in `eval/plan-fixture.md`.
+
+**Completed tasks compile too — by design.** A `[x]` task's binding still
+describes the package's contract (the work was done *to* that rule), so
+spec-bindings serves it like an open task's. The honest caveat: long-lived
+plan files accumulate, and a stale completed binding is historical noise at
+edit time — retire individual claims via `fathom claim refute`, or prune
+old plans out of the corpus with a project-local override's
+`corpus.exclude`.
 
 ## The gate
 
@@ -114,6 +147,15 @@ FATHOM_EVAL_LLM=1 ANTHROPIC_API_KEY=... go test ./internal/semantic -run TestADR
 # subscription lane, no API key (a logged-in Claude Code CLI):
 FATHOM_EVAL_LLM=1 FATHOM_LLM_PROVIDER=claude-cli go test ./internal/semantic -run TestSpecBindingsEval -v
 ```
+
+The fixture set is EXPLICIT — `labels.json`'s `"docs"` list, never a glob —
+so `RESULTS.md` and other non-fixture files in `eval/` can never leak into
+the corpus. On the `claude-cli` lane the harness pins the model to the
+**production compile default** (`claude-haiku-4-5-20251001`,
+`compileModel()`'s default) unless `FATHOM_EVAL_MODEL` overrides it: an
+eval gated under an unrecorded, floating model doesn't transfer to the
+fleet-compile lane. Every `RESULTS.md` entry records model + lane + date +
+command.
 
 **Bar:** precision ≥ 0.90 on (claim, probe) application pairs (every-edit
 exposure makes false positives trust-fatal — precision leads), recall ≥
@@ -133,20 +175,26 @@ signal specific to the layer.
 ```sh
 fathom layers list    [--root DIR] [--store PATH --service NAME]
 fathom layers show    <name> [--root DIR]
-fathom layers install <dir>  [--root DIR]
+fathom layers install <dir>  [--root DIR] [--force]
 ```
 
 Store-direct, like `fathom claim`'s v0 convention — no daemon round-trip.
 `--root` defaults to the current directory. `list` unions embedded packs
 with `<root>/.fathom/layers/`, marking an override with `*`; add
-`--store`/`--service` for a compiled-claims-per-layer column. `show` prints
-the full resolved definition plus prompt provenance (the content-addressed
-compile identity). `install` validates a candidate pack directory against
-`#Layer` (a missing `prompt.md` or empty/absent `eval/` is a warning, not a
-failure — the layer just hasn't cleared its gate yet) and copies it verbatim
-into `<root>/.fathom/layers/<name>/`. Users never hand-author CUE: install
-copies a directory; the shipped packs are authored once, under the gate,
-here.
+`--store`/`--service` for a compiled-claims-per-layer column plus the
+orphaned-layers section (claims served from the store whose pack is gone —
+see the honesty notes above). Broken project packs are listed with their
+load error, never silently dropped. `show` prints the full resolved
+definition plus prompt provenance (the content-addressed compile identity).
+`install` validates a candidate pack directory against `#Layer` (a missing
+`prompt.md` or empty/absent `eval/` is a warning, not a failure — the layer
+just hasn't cleared its gate yet), stages the copy, and atomically renames
+it into `<root>/.fathom/layers/<name>/` — a mid-copy failure leaves no
+half-written pack behind. Reinstalling an existing pack is refused without
+`--force`; `--force` replaces the whole directory (never merges, so stale
+files from the previous version don't survive). Users never hand-author
+CUE: install copies a directory; the shipped packs are authored once, under
+the gate, here.
 
 Compiling a project-local pack works exactly like an embedded one —
 `fathom compile --service <svc> --layer <name>` resolves through the same

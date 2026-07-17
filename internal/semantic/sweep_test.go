@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -199,5 +200,45 @@ func TestDriftedFindings_QueriesEachFileOnce(t *testing.T) {
 	}
 	if len(drifted) != 3 || !drifted["f1"] || !drifted["f2"] || !drifted["f3"] {
 		t.Errorf("drifted = %v, want all three claims (shared anchor changed)", drifted)
+	}
+}
+
+// TestDriftedFindings_SurvivesBrokenProjectPack is critic finding 1 on the
+// LC slice: layerIsDriftTracked resolves through the union loader, and a
+// half-authored project pack under the service's .fathom/layers/ used to
+// hard-fail the WHOLE union — silently disabling code_drifted for the
+// embedded findings layer too. With the lenient union (packs.go), drift
+// tracking for embedded findings must keep working while an invalid pack
+// dir is present.
+func TestDriftedFindings_SurvivesBrokenProjectPack(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// The service's root contains a broken pack — exactly the state a
+	// half-finished `mkdir .fathom/layers/wip` leaves a repo in.
+	root := t.TempDir()
+	brokenDir := root + "/.fathom/layers/wip"
+	if err := os.MkdirAll(brokenDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(brokenDir+"/layer.cue", []byte("not { valid ] cue"), 0o644); err != nil {
+		t.Fatalf("write broken layer.cue: %v", err)
+	}
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "svc", Path: root}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+
+	// A findings claim whose scoped code HAS drifted.
+	if err := st.SetFingerprint(ctx, "svc", "mod/a.go", "fp-a-changed"); err != nil {
+		t.Fatalf("SetFingerprint: %v", err)
+	}
+	seedFindingWithScopeFP(t, st, "f1", map[string]string{"mod/a.go": "fp-a-original"})
+
+	drifted, err := DriftedFindings(ctx, st, "svc")
+	if err != nil {
+		t.Fatalf("DriftedFindings with a broken project pack present: %v", err)
+	}
+	if !drifted["f1"] {
+		t.Fatalf("drifted = %v, want f1 — a broken, unrelated project pack silently disabled drift tracking for the embedded findings layer", drifted)
 	}
 }

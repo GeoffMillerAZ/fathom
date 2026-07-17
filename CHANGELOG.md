@@ -54,6 +54,39 @@ All notable changes to sextant. Format loosely follows
   corpus, cost, gate metrics); `docs/mcp-tools.md`'s `compile_layer` row and
   `docs/use-cases/coding-agents.md`/`change-review.md` updated for the new
   verb and packs.
+- **Pre-merge hardening (critic review of the slice):**
+  - A broken project pack no longer takes the whole union down: a
+    half-authored `.fathom/layers/<name>/` is skipped (embedded packs —
+    including one it would have overridden — keep serving), warned once on
+    stderr, and surfaced by `fathom layers list` via `LayerInfo.LoadError`;
+    only requesting it by name errors. Drift tracking for embedded
+    `findings` provably survives an invalid sibling pack
+    (`TestDriftedFindings_SurvivesBrokenProjectPack`).
+  - Honest uninstall semantics: pack presence governs COMPILATION; serving
+    derives from the STORE. `layers list --store --service` gains an
+    orphaned-layers section (claims served with no defining pack); a real
+    `layers uninstall` that retires claims is deferred as LC-13.
+  - `fathom compile`'s flag-parse-time layer check is advisory-only now
+    (warn + pass through): a hard CWD-rooted rejection false-negatived
+    cross-repo project layers (`--service B --layer <B's pack>` from repo
+    A) — the backend's service-rooted resolution is the only rejection
+    (`TestCompile_AcceptsCrossRepoProjectLayer`).
+  - Install hygiene: `layers install` stages into a hidden temp sibling and
+    atomically renames (a mid-copy failure leaves no half-written pack);
+    reinstalling refuses without `--force`; `--force` replaces the whole
+    directory, never merges.
+  - Eval evidence hardening: fixture sets are explicit
+    (`labels.json`.`docs`, never a glob — `RESULTS.md` can't leak into the
+    corpus); both new packs' fixtures expanded to the obligations
+    precedent (adr-rules 7 rules + 2 traps, spec-bindings 6 rules + 2
+    traps) and RE-GATED at 1.00/1.00 twice each under the PINNED production
+    compile model (`claude-haiku-4-5-20251001`, claude-cli lane), recorded
+    with model+lane+date+command in each `eval/RESULTS.md`. The obligations
+    layer re-run under that same pinned model recorded precision 1.00 but
+    recall straddling its bar (0.71/0.86) — a pre-OP-6 signal, recorded in
+    `schema/semantic/layers/obligations/eval/RESULTS.md` and escalated.
+  - `layerIsDriftTracked` memoized per `ObligationsFor` call (one union
+    load per distinct layer, not per served rule, on the edit-hook path).
 
 ### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
 - **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`

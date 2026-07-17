@@ -219,7 +219,8 @@ func compileLayerSchema(cctx *cue.Context) (cue.Value, error) {
 }
 
 // packNames lists the pack directory names present under root in fsys (one
-// per module pack — LC-3 calls this against project-local disk too).
+// per module pack — LC-3 calls this against project-local disk too). Hidden
+// directories (".install-*" staging dirs, editor debris) are never packs.
 func packNames(fsys fs.FS, root string) ([]string, error) {
 	entries, err := fs.ReadDir(fsys, root)
 	if err != nil {
@@ -227,7 +228,7 @@ func packNames(fsys fs.FS, root string) ([]string, error) {
 	}
 	var names []string
 	for _, e := range entries {
-		if e.IsDir() {
+		if e.IsDir() && !strings.HasPrefix(e.Name(), ".") {
 			names = append(names, e.Name())
 		}
 	}
