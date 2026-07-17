@@ -101,7 +101,7 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 	if err != nil {
 		return core.CompileRun{}, fmt.Errorf("client.CompileLayer: fetch sources: %w", err)
 	}
-	corpus := semantic.SelectCorpus(files, layer.CorpusInclude)
+	corpus := semantic.SelectCorpus(files, layer.CorpusInclude, layer.CorpusExclude)
 
 	// Collect distinct sorted SourceRefs from the live index for scope verification.
 	obs, err := c.st.QueryObservations(ctx, service, "")

@@ -45,7 +45,7 @@ func TestPackFilesMatchSource(t *testing.T) {
 		t.Fatal("runtime.Caller failed")
 	}
 	root := filepath.Join(filepath.Dir(file), "..", "..")
-	for _, pack := range []string{"obligations", "findings"} {
+	for _, pack := range []string{"obligations", "findings", "adr-rules", "spec-bindings"} {
 		for _, leaf := range []string{"layer.cue", "prompt.md"} {
 			src := filepath.Join(root, "schema", "semantic", "layers", pack, leaf)
 			want, err := os.ReadFile(src)
@@ -72,7 +72,7 @@ func TestPackFilesMatchSource_NoExtraEmbeddedPacks(t *testing.T) {
 	if err != nil {
 		t.Fatalf("packNames(embeddedLayers): %v", err)
 	}
-	want := []string{"findings", "obligations"}
+	want := []string{"adr-rules", "findings", "obligations", "spec-bindings"}
 	if !reflect.DeepEqual(names, want) {
 		t.Errorf("embedded pack directories = %v, want %v", names, want)
 	}
@@ -142,7 +142,7 @@ func TestLayerNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LayerNames: %v", err)
 	}
-	want := []string{"findings", "obligations"}
+	want := []string{"adr-rules", "findings", "obligations", "spec-bindings"}
 	if !reflect.DeepEqual(names, want) {
 		t.Errorf("LayerNames() = %v, want %v (sorted)", names, want)
 	}
@@ -169,5 +169,54 @@ func TestLoadLayer_Findings(t *testing.T) {
 	}
 	if def.Budgets.MaxRuleWords != 28 {
 		t.Errorf("Budgets.MaxRuleWords = %d, want 28 (schema default)", def.Budgets.MaxRuleWords)
+	}
+}
+
+// TestLoadLayer_ADRRules pins the LC-5 layer-2 proof pack's manifest
+// identity (docs/plans/layer-catalog.md): kind "adr-rule", corpus ADR.md +
+// docs/design/*.md, doc-claimed tier — architectural constraints restated
+// from decision records, citation-grounded like obligations.
+func TestLoadLayer_ADRRules(t *testing.T) {
+	def, err := LoadLayer("adr-rules")
+	if err != nil {
+		t.Fatalf("LoadLayer(adr-rules): %v", err)
+	}
+	if def.Name != "adr-rules" || def.Version != "v1" || def.Kind != "adr-rule" {
+		t.Errorf("identity = %+v", def)
+	}
+	wantInclude := []string{"ADR.md", "docs/design/*.md"}
+	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
+		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
+	}
+	if def.Tier != "doc-claimed" {
+		t.Errorf("Tier = %q, want doc-claimed", def.Tier)
+	}
+	if def.PromptText == "" {
+		t.Error("PromptText not resolved for the embedded adr-rules pack")
+	}
+}
+
+// TestLoadLayer_SpecBindings pins the LC-6 SDD pack's manifest identity: kind
+// "spec-binding", corpus docs/plans/** excluding README.md (LC-6's
+// motivating case for wiring CorpusExclude, corpus_test.go), doc-claimed
+// tier.
+func TestLoadLayer_SpecBindings(t *testing.T) {
+	def, err := LoadLayer("spec-bindings")
+	if err != nil {
+		t.Fatalf("LoadLayer(spec-bindings): %v", err)
+	}
+	if def.Name != "spec-bindings" || def.Version != "v1" || def.Kind != "spec-binding" {
+		t.Errorf("identity = %+v", def)
+	}
+	wantInclude := []string{"docs/plans/**"}
+	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
+		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
+	}
+	wantExclude := []string{"docs/plans/README.md"}
+	if !reflect.DeepEqual(def.CorpusExclude, wantExclude) {
+		t.Errorf("CorpusExclude = %v, want %v", def.CorpusExclude, wantExclude)
+	}
+	if def.Tier != "doc-claimed" {
+		t.Errorf("Tier = %q, want doc-claimed", def.Tier)
 	}
 }

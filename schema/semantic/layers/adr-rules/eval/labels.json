@@ -1,0 +1,27 @@
+{
+  "probes": [
+    "internal/store/duckdb.go",
+    "internal/query/engine.go",
+    "internal/mcp/tools.go",
+    "cmd/fathom/servehttp.go",
+    "docs/notes.md"
+  ],
+  "rules": [
+    {
+      "key": "born-portable-anchors",
+      "cite_substr": "never an absolute filesystem path",
+      "governs": ["internal/store/duckdb.go"],
+      "trap_must_not_govern": ["internal/query/engine.go", "internal/mcp/tools.go"]
+    },
+    {
+      "key": "query-derived-state",
+      "cite_substr": "never persist mutable state across calls",
+      "governs": ["internal/query/engine.go"]
+    },
+    {
+      "key": "mcp-typed-errors",
+      "cite_substr": "typed rpcError",
+      "governs": ["internal/mcp/tools.go"]
+    }
+  ]
+}

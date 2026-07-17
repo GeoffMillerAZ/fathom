@@ -193,7 +193,8 @@ func TestThirdLayer_ListedByUnionLoader(t *testing.T) {
 	if !found {
 		t.Fatalf("thirdlayer missing from ListLayersIn: %+v", infos)
 	}
-	if len(infos) != 3 {
-		t.Errorf("ListLayersIn = %d entries, want 3 (obligations, findings, thirdlayer)", len(infos))
+	want := numEmbeddedLayers(t) + 1
+	if len(infos) != want {
+		t.Errorf("ListLayersIn = %d entries, want %d (every embedded layer + thirdlayer)", len(infos), want)
 	}
 }

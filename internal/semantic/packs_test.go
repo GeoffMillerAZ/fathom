@@ -60,14 +60,28 @@ func TestLoadLayerIn_EmptyRootIsEmbeddedOnly(t *testing.T) {
 	}
 }
 
+// numEmbeddedLayers returns how many layers ship embedded — tests assert
+// against this instead of a hardcoded count, so a future pack landing
+// (LC-9's docs aside, a new built-in) doesn't spuriously break the union
+// tests below.
+func numEmbeddedLayers(t *testing.T) int {
+	t.Helper()
+	names, err := LayerNames()
+	if err != nil {
+		t.Fatalf("LayerNames: %v", err)
+	}
+	return len(names)
+}
+
 func TestLoadLayerIn_NoProjectDirIsEmbeddedOnly(t *testing.T) {
 	root := t.TempDir() // no .fathom/layers/ at all
 	names, err := ListLayersIn(root)
 	if err != nil {
 		t.Fatalf("ListLayersIn: %v", err)
 	}
-	if len(names) != 2 {
-		t.Fatalf("ListLayersIn(no .fathom/layers) = %d entries, want 2 (embedded only): %+v", len(names), names)
+	want := numEmbeddedLayers(t)
+	if len(names) != want {
+		t.Fatalf("ListLayersIn(no .fathom/layers) = %d entries, want %d (embedded only): %+v", len(names), want, names)
 	}
 	for _, n := range names {
 		if n.Source != SourceEmbedded {
@@ -105,8 +119,9 @@ func TestLoadLayerIn_ProjectPackAddsNewLayer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListLayersIn: %v", err)
 	}
-	if len(names) != 3 {
-		t.Fatalf("ListLayersIn = %d entries, want 3 (2 embedded + 1 project): %+v", len(names), names)
+	want := numEmbeddedLayers(t) + 1
+	if len(names) != want {
+		t.Fatalf("ListLayersIn = %d entries, want %d (embedded + 1 project): %+v", len(names), want, names)
 	}
 }
 
@@ -139,10 +154,11 @@ func TestLoadLayerIn_ProjectPackOverridesEmbedded(t *testing.T) {
 	if !found {
 		t.Fatalf("obligations missing from ListLayersIn: %+v", infos)
 	}
-	// Still exactly 2 total (findings + the overridden obligations) — the
-	// project pack REPLACES, not adds beside, the embedded one.
-	if len(infos) != 2 {
-		t.Errorf("ListLayersIn = %d entries, want 2 (override, not addition): %+v", len(infos), infos)
+	// Still exactly the embedded count total — the project pack REPLACES,
+	// not adds beside, the embedded one of the same name.
+	want := numEmbeddedLayers(t)
+	if len(infos) != want {
+		t.Errorf("ListLayersIn = %d entries, want %d (override, not addition): %+v", len(infos), want, infos)
 	}
 }
 

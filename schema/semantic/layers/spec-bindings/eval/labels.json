@@ -1,0 +1,30 @@
+{
+  "probes": [
+    "internal/query/engine.go",
+    "internal/mcp/tools.go",
+    "internal/store/duckdb.go",
+    "docs/notes.md"
+  ],
+  "rules": [
+    {
+      "key": "SB-1",
+      "cite_substr": "capped and sorted",
+      "governs": ["internal/query/engine.go"]
+    },
+    {
+      "key": "SB-2",
+      "cite_substr": "typed rpcError",
+      "governs": ["internal/mcp/tools.go"]
+    },
+    {
+      "key": "SB-3",
+      "cite_substr": "repo-relative across remap",
+      "governs": ["internal/store/duckdb.go"]
+    },
+    {
+      "key": "SB-4",
+      "cite_substr": "sqlite backend is fully retired",
+      "governs": ["docs/notes.md"]
+    }
+  ]
+}
