@@ -137,21 +137,36 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 //
 // LC-2 (docs/plans/layer-catalog.md): which claims are in scope is now the
 // manifest's serving.drift_tracked field, not a kind=="finding" Go hardcode
-// — resolved per distinct claim.Layer via the embedded manifest (LoadLayer),
-// memoized so an N-claim service costs at most one manifest lookup per
+// — resolved per distinct claim.Layer via the union loader (LoadLayerIn,
+// LC-3: embedded packs ∪ the service's own project-local .fathom/layers/, so
+// a project-installed drift-tracked layer works exactly like an embedded
+// one), memoized so an N-claim service costs at most one manifest lookup per
 // distinct layer, not per claim. A claim whose layer no longer resolves
 // (e.g. a project-local pack later uninstalled) is treated as not
 // drift-tracked rather than erroring this read-hot serving path.
+//
+// serviceRoot resolves a service's on-disk root the same way SweepClaims and
+// pkg/client.CompileLayer do (service_meta.Path) — the ONE place a
+// service's project directory is knowable from just (ctx, st, serviceID).
+// Every serve-time drift check funnels through this so LoadLayerIn always
+// sees the union its compile-time counterpart saw.
+func serviceRoot(ctx context.Context, st store.Store, serviceID string) string {
+	if meta, found, err := st.GetServiceMeta(ctx, serviceID); err == nil && found {
+		return meta.Path
+	}
+	return ""
+}
+
 // layerIsDriftTracked reports whether the named layer's
-// serving.drift_tracked is true, consulting the embedded manifest
-// (LC-2). Both DriftedFindings' per-claim filter and ObligationsFor's
-// serve.go short-circuit share this resolution. An unresolvable layer name
-// (e.g. claims left behind by a project-local pack later uninstalled) is
-// treated as not drift-tracked rather than erroring this serve-time hot
-// path — DriftedFindings' own doc comment explains the same leniency for the
-// per-claim case.
-func layerIsDriftTracked(name string) bool {
-	def, err := LoadLayer(name)
+// serving.drift_tracked is true, consulting the union of embedded packs and
+// root's project-local .fathom/layers/ (LC-2/LC-3). Both DriftedFindings'
+// per-claim filter and ObligationsFor's serve.go short-circuit share this
+// resolution. An unresolvable layer name (e.g. claims left behind by a
+// project-local pack later uninstalled) is treated as not drift-tracked
+// rather than erroring this serve-time hot path — DriftedFindings' own doc
+// comment explains the same leniency for the per-claim case.
+func layerIsDriftTracked(root, name string) bool {
+	def, err := LoadLayerIn(root, name)
 	return err == nil && def.Serving.DriftTracked
 }
 
@@ -160,6 +175,7 @@ func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map
 	if err != nil {
 		return nil, fmt.Errorf("semantic: drift load claims: %w", err)
 	}
+	root := serviceRoot(ctx, st, serviceID)
 	driftTrackedLayer := map[string]bool{}
 	var findingIDs []string
 	for _, cl := range claims {
@@ -168,7 +184,7 @@ func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map
 		}
 		tracked, ok := driftTrackedLayer[cl.Layer]
 		if !ok {
-			tracked = layerIsDriftTracked(cl.Layer)
+			tracked = layerIsDriftTracked(root, cl.Layer)
 			driftTrackedLayer[cl.Layer] = tracked
 		}
 		if tracked {

@@ -126,14 +126,16 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 
 	// Remediation-drift annotation (FT-6): computed once, only when a claim
 	// from a drift-tracked layer (LC-2: serving.drift_tracked, not a
-	// kind=="finding" Go hardcode) actually reached the served set —
-	// DriftedFindings itself short-circuits to a single empty
-	// ClaimsForService read when the service has no drift-tracked claims at
-	// all, but skipping the call entirely for pure-obligations services
-	// avoids even that.
+	// kind=="finding" Go hardcode; LC-3: resolved through the SAME embedded
+	// ∪ project-local union a compile saw, via serviceRoot) actually reached
+	// the served set — DriftedFindings itself short-circuits to a single
+	// empty ClaimsForService read when the service has no drift-tracked
+	// claims at all, but skipping the call entirely for pure-obligations
+	// services avoids even that.
+	root := serviceRoot(ctx, st, serviceID)
 	var drifted map[string]bool
 	for _, m := range matched {
-		if layerIsDriftTracked(m.cl.Layer) {
+		if layerIsDriftTracked(root, m.cl.Layer) {
 			drifted, err = DriftedFindings(ctx, st, serviceID)
 			if err != nil {
 				return out, fmt.Errorf("semantic: obligations drift: %w", err)
