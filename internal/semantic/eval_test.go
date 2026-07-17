@@ -40,13 +40,19 @@ type evalLabels struct {
 	} `json:"rules"`
 }
 
+// evalDir resolves the obligations pack's eval fixtures. LC-4 (docs/plans/
+// layer-catalog.md) moved these from internal/semantic/testdata/eval/ to
+// schema/semantic/layers/obligations/eval/ — the pack-shape location
+// (docs/vision/02-shape.md §3) — since eval fixtures are dev/gate-time
+// artifacts read straight from the source tree, never go:embed'd into the
+// binary.
 func evalDir(t *testing.T) string {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("runtime.Caller failed")
 	}
-	return filepath.Join(filepath.Dir(file), "testdata", "eval")
+	return filepath.Join(filepath.Dir(file), "..", "..", "schema", "semantic", "layers", "obligations", "eval")
 }
 
 func TestObligationsEval_Precision(t *testing.T) {

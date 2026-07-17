@@ -10,11 +10,12 @@ package semantic
 // didn't change in lockstep with the text it was supposed to identify).
 //
 // LC-1's identity pin: this refactor moved the obligations/findings prompt
-// TEXT byte-for-byte into schema/semantic/prompts/{obligations,findings}.md
-// (extracted verbatim from the retired obligationsSystemPromptTemplate/
+// TEXT byte-for-byte into what is now (LC-4's pack-shape migration)
+// schema/semantic/layers/{obligations,findings}/prompt.md (extracted
+// verbatim from the retired obligationsSystemPromptTemplate/
 // findingsSystemPromptTemplate Go vars — see TestPromptFilesMatchSource and
 // TestObligationsPromptVersion_Pinned) — zero identity rotation, no fleet
-// recompile triggered by this change alone.
+// recompile triggered by either change.
 //
 // FT-1's per-layer switch statement in promptForLayer (a name→prompt hard
 // wire, one case per layer) is gone with it: an unwired-but-manifest-valid
@@ -24,31 +25,21 @@ package semantic
 // name or a missing/unresolvable prompt_file is a loud, typed error.
 
 import (
-	"embed"
 	"fmt"
 	"strings"
 
 	prompttemplate "github.com/geoffmilleraz/agentic-kit/foundations/prompt/prompt-template"
 )
 
-// embeddedPrompts mirrors schema/semantic/prompts/*.md byte-identically
-// (TestPromptFilesMatchSource is the drift gate — the same convention
-// manifest.go's manifestSchema embed already established for schema.cue
-// itself). Every BUILT-IN layer's #Layer.prompt_file must resolve under
-// promptFileRoot for this embed to serve it; project-local packs (LC-3) will
-// resolve their prompt_file against project disk instead, via a loader this
-// package extends when that lands.
-//
-//go:embed prompts/obligations.md prompts/findings.md
-var embeddedPrompts embed.FS
-
 // promptFileRoot is the repo-relative directory schema.cue's #Layer.prompt_file
-// values are rooted at for the layers this package embeds. prompt_file is
-// always repo-relative (ADR-017 convention, matching ClaimLink.TargetRef and
+// values are rooted at for the layers this package embeds (LC-4:
+// schema/semantic/layers/, mirrored as internal/semantic/layers/ —
+// manifest.go's embeddedLayers). prompt_file is always repo-relative
+// (ADR-017 convention, matching ClaimLink.TargetRef and
 // #Layer.corpus.include); this constant is the ONLY place that repo-relative
 // convention is translated into the embedded FS's own (necessarily
 // package-local) directory layout.
-const promptFileRoot = "schema/semantic/prompts/"
+const promptFileRoot = "schema/semantic/layers/"
 
 // promptForLayer resolves the compile-time system prompt text and its
 // content-addressed version identity for a manifest layer definition. Every
@@ -65,11 +56,11 @@ func promptForLayer(def LayerDef) (systemPrompt, promptVersion string, err error
 	}
 	rel := strings.TrimPrefix(def.PromptFile, promptFileRoot)
 	if rel == def.PromptFile {
-		return "", "", fmt.Errorf("semantic: layer %q: prompt_file %q is not under the embedded prompt root %q (project-local prompt_file resolution is not yet supported for this layer)", def.Name, def.PromptFile, promptFileRoot)
+		return "", "", fmt.Errorf("semantic: layer %q: prompt_file %q is not under the embedded pack root %q (project-local prompt_file resolution is not yet supported for this layer)", def.Name, def.PromptFile, promptFileRoot)
 	}
-	data, rerr := embeddedPrompts.ReadFile("prompts/" + rel)
+	data, rerr := embeddedLayers.ReadFile("layers/" + rel)
 	if rerr != nil {
-		return "", "", fmt.Errorf("semantic: layer %q: prompt_file %q not found among embedded prompts: %w", def.Name, def.PromptFile, rerr)
+		return "", "", fmt.Errorf("semantic: layer %q: prompt_file %q not found among embedded packs: %w", def.Name, def.PromptFile, rerr)
 	}
 	text := string(data)
 	// TextHash is sha256 of the exact Text bytes (agentic-kit prompttemplate

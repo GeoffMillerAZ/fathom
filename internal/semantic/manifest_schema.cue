@@ -2,13 +2,22 @@
 // (ADR-016 §4.4). A layer definition names its corpus, prompt version, output
 // kind, and budgets — the manifest SHAPE exists from day one so that when a
 // second layer earns the generic runtime, definitions generalize instead of
-// being reinvented. V1 ships exactly one definition: the obligations layer.
+// being reinvented.
 //
 // This file is authoritative AND live (M1, docs/plans/m1-manifest.md):
 // internal/semantic embeds a byte-identical copy (internal/semantic/
 // manifest_schema.cue, drift-tested against this file) and LoadLayer decodes
-// it at runtime — corpus globs, tier, budgets, and serving caps here are the
-// only source of truth; nothing hand-mirrors them in Go anymore.
+// it at runtime.
+//
+// LC-4 (docs/plans/layer-catalog.md, the pack-shape migration): this file now
+// holds ONLY the #Layer definition — the shared shape every pack's instance
+// is validated against. Layer INSTANCES live one per module pack, under
+// schema/semantic/layers/<name>/layer.cue (plain data: no package clause, no
+// "#Layer &" wrapper — a pack author edits values, not CUE), beside that
+// pack's prompt.md, eval/, and KILL.md (docs/vision/02-shape.md §3's exact
+// shape). internal/semantic's loader compiles #Layer from this file and each
+// pack's layer.cue independently, then unifies and decodes — see
+// internal/semantic/manifest.go's loadManifest.
 package semantic
 
 // #Layer is one semantic-layer definition.
@@ -48,6 +57,8 @@ package semantic
 	// const bug class this whole mechanism exists to close). Every #Layer
 	// instance MUST set this: an empty or unresolvable prompt_file is a loud
 	// runtime error, never a silent fallback to another layer's prompt.
+	// LC-4: for a pack-shape layer this is that pack's own prompt.md, i.e.
+	// "schema/semantic/layers/<name>/prompt.md".
 	prompt_file: string
 
 	// tier every emitted claim carries. V1 layers are citation-grounded
@@ -86,53 +97,4 @@ package semantic
 		// layer opts in by setting this field, no compiler/server Go edit.
 		drift_tracked: bool | *false
 	}
-}
-
-// obligations is the v1 tracer-bullet layer (ADR-016 §4.8 #1). The corpus is
-// deliberately only the BINDING documents — design essays produced noisy
-// aspirational rules on the first fleet compile. This is the manifest's
-// authoritative source for the corpus include list (M1: internal/semantic
-// loads it via LoadLayer; the old hand-synced ObligationsInclude Go var is
-// gone).
-obligations: #Layer & {
-	name:    "obligations"
-	version: "v1"
-	kind:    "obligation"
-	corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
-	// Advisory only — see #Layer.prompt_version above. The real identity is
-	// content-addressed at runtime (internal/semantic/prompts.go).
-	prompt_version: "obligations/content-addressed"
-	prompt_file:    "schema/semantic/prompts/obligations.md"
-	tier:           "doc-claimed"
-	budgets: {
-		max_tokens_per_run: 200000
-		max_usd_per_run:    1.0
-	}
-}
-
-// findings is the D3 review-findings tracer bullet
-// (docs/plans/findings-tracer.md FT-1, docs/vision/03-findings-and-experts.md
-// §3.2): one markdown file per review/audit finding in a corpus directory,
-// compiled through the same engine as obligations but under kind "finding"
-// and the honest sme-stated tier — a human review conclusion is not a
-// code-derived fact, and the shipped tier ranking already ranks it below
-// verified/doc-claimed evidence.
-findings: #Layer & {
-	name:    "findings"
-	version: "v1"
-	kind:    "finding"
-	corpus: include: ["findings/**"]
-	// Advisory only — see #Layer.prompt_version above. The real identity is
-	// content-addressed at runtime (internal/semantic/prompts.go).
-	prompt_version: "findings/content-addressed"
-	prompt_file:    "schema/semantic/prompts/findings.md"
-	tier:           "sme-stated"
-	budgets: {
-		max_tokens_per_run: 200000
-		max_usd_per_run:    1.0
-	}
-	// A finding's remediation lives in scoped CODE, not just the cited
-	// finding document — remediation drift (docs/vision/03-findings-and-
-	// experts.md §2, FT-6) is the reason this layer exists.
-	serving: drift_tracked: true
 }

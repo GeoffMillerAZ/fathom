@@ -2,16 +2,26 @@ package semantic
 
 // manifest.go — M1 (docs/plans/m1-manifest.md): schema/semantic/schema.cue
 // stops being documentation and becomes a runtime artifact. LoadLayer embeds
-// a package-local, byte-identical copy of the schema (manifest_test.go fails
-// the gate on drift — see TestManifestSchemaMatchesSource) and decodes
+// a package-local, byte-identical copy of the #Layer schema (manifest_test.go
+// fails the gate on drift — see TestManifestSchemaMatchesSource) and decodes
 // #Layer instances via cuelang.org/go, so corpus globs, tier, budgets, and
 // serving caps all come from ONE authoritative source
-// (schema/semantic/schema.cue) instead of hand-synced Go mirrors
-// (ObligationsInclude and the systemPrompt const, both retired — M1-2).
-
+// (schema/semantic/schema.cue) instead of hand-synced Go mirrors.
+//
+// LC-4 (docs/plans/layer-catalog.md, the pack-shape migration): a layer
+// INSTANCE is no longer a top-level field of schema.cue — each built-in ships
+// as a module pack, schema/semantic/layers/<name>/{layer.cue,prompt.md,
+// eval/,KILL.md} (docs/vision/02-shape.md §3's exact shape), mirrored
+// byte-identically into internal/semantic/layers/ (layer.cue + prompt.md
+// only — eval/ and KILL.md are dev-time/gate artifacts, never needed by the
+// compiled binary) and go:embed'd here. schema.cue keeps ONLY the #Layer
+// definition; loadManifest compiles it once and unifies each pack's
+// standalone (no package clause, no "#Layer &" wrapper) layer.cue data
+// against it — a pack author edits values, never CUE.
 import (
-	_ "embed"
+	"embed"
 	"fmt"
+	"io/fs"
 	"sort"
 	"strings"
 
@@ -23,14 +33,23 @@ import (
 // sync by TestManifestSchemaMatchesSource (manifest_test.go). Embedding it
 // here (rather than reading schema/semantic/schema.cue off disk at runtime)
 // is what makes the manifest a compiled-in artifact of the fathom binary.
+// Post-LC-4 this file holds ONLY the #Layer definition — no instances.
 //
 //go:embed manifest_schema.cue
 var manifestSchema []byte
 
-// LayerDef is the decoded runtime form of one #Layer instance
-// (schema/semantic/schema.cue). It is the single source of a layer's corpus
-// selector, tier, and budgets — nothing in internal/semantic hand-mirrors
-// these values (M1-2).
+// embeddedLayers mirrors schema/semantic/layers/<name>/{layer.cue,prompt.md}
+// byte-identically (TestPackFilesMatchSource, manifest_test.go — extends the
+// TestManifestSchemaMatchesSource/TestPromptFilesMatchSource drift-gate
+// family to the pack-shape files, LC-4). Every directory under "layers" is
+// one embedded (built-in) module pack.
+//
+//go:embed layers
+var embeddedLayers embed.FS
+
+// LayerDef is the decoded runtime form of one #Layer instance. It is the
+// single source of a layer's corpus selector, tier, and budgets — nothing in
+// internal/semantic hand-mirrors these values (M1-2).
 type LayerDef struct {
 	Name    string
 	Version string
@@ -110,10 +129,17 @@ type cueLayer struct {
 	} `json:"serving"`
 }
 
-// LoadLayer decodes the named layer instance from the embedded manifest.
-// Unknown names return an error naming every layer the manifest defines, so
-// callers (cmd/fathom compile, the compile_layer MCP tool) surface the live
-// layer list instead of a hardcoded guess (M1-3).
+// LoadLayer decodes the named layer instance from the embedded (built-in)
+// packs. Unknown names return an error naming every layer the manifest
+// defines, so callers (cmd/fathom compile, the compile_layer MCP tool)
+// surface the live layer list instead of a hardcoded guess (M1-3).
+//
+// LoadLayer is embedded-only — it never consults a project's
+// .fathom/layers/ (LC-3's LoadLayerFrom does). This is deliberate: callers
+// with no natural project root (schema-level validation, the built-in
+// default-obligations fallback in Compile, DriftedFindings' serve-time
+// hot path) get a fast, side-effect-free lookup that can never depend on the
+// filesystem outside the binary.
 func LoadLayer(name string) (LayerDef, error) {
 	layers, err := loadManifest()
 	if err != nil {
@@ -126,7 +152,7 @@ func LoadLayer(name string) (LayerDef, error) {
 	return def, nil
 }
 
-// LayerNames returns the sorted names of every layer the manifest defines.
+// LayerNames returns the sorted names of every embedded (built-in) layer.
 func LayerNames() ([]string, error) {
 	layers, err := loadManifest()
 	if err != nil {
@@ -144,51 +170,106 @@ func layerNames(layers map[string]LayerDef) []string {
 	return names
 }
 
-// loadManifest compiles the embedded schema and decodes every regular
-// top-level field (i.e. every #Layer instance — Value.Fields excludes the
-// #Layer definition itself, which is a CUE definition field, by default).
+// loadManifest compiles the #Layer definition from the embedded schema, then
+// compiles and unifies every embedded pack's layer.cue against it (LC-4).
 func loadManifest() (map[string]LayerDef, error) {
 	cctx := cuecontext.New()
-	v := cctx.CompileBytes(manifestSchema)
-	if err := v.Err(); err != nil {
-		return nil, fmt.Errorf("semantic: compile manifest: %w", err)
-	}
-	if err := v.Validate(cue.Concrete(false)); err != nil {
-		return nil, fmt.Errorf("semantic: validate manifest: %w", err)
-	}
-	iter, err := v.Fields()
+	layerSchema, err := compileLayerSchema(cctx)
 	if err != nil {
-		return nil, fmt.Errorf("semantic: iterate manifest layers: %w", err)
+		return nil, err
+	}
+
+	names, err := packNames(embeddedLayers, "layers")
+	if err != nil {
+		return nil, fmt.Errorf("semantic: list embedded layer packs: %w", err)
 	}
 	layers := map[string]LayerDef{}
-	for iter.Next() {
-		name := iter.Selector().Unquoted()
-		var cl cueLayer
-		if err := iter.Value().Decode(&cl); err != nil {
-			return nil, fmt.Errorf("semantic: decode layer %q: %w", name, err)
+	for _, name := range names {
+		def, err := decodePack(cctx, layerSchema, embeddedLayers, "layers/"+name+"/layer.cue", name)
+		if err != nil {
+			return nil, err
 		}
-		layers[name] = LayerDef{
-			Name:          cl.Name,
-			Version:       cl.Version,
-			Kind:          cl.Kind,
-			CorpusInclude: cl.Corpus.Include,
-			CorpusExclude: cl.Corpus.Exclude,
-			PromptVersion: cl.PromptVersion,
-			PromptFile:    cl.PromptFile,
-			Tier:          cl.Tier,
-			TierProfile:   cl.TierProfile,
-			Budgets: LayerBudgets{
-				MaxTokensPerRun:  cl.Budgets.MaxTokensPerRun,
-				MaxUSDPerRun:     cl.Budgets.MaxUSDPerRun,
-				MaxRuleWords:     cl.Budgets.MaxRuleWords,
-				MaxClaimsPerFile: cl.Budgets.MaxClaimsPerFile,
-			},
-			Serving: LayerServing{
-				MaxRules:     cl.Serving.MaxRules,
-				MaxTokens:    cl.Serving.MaxTokens,
-				DriftTracked: cl.Serving.DriftTracked,
-			},
-		}
+		layers[name] = def
 	}
 	return layers, nil
+}
+
+// compileLayerSchema compiles the embedded #Layer definition and returns it
+// as a Value ready to Unify against a pack's data.
+func compileLayerSchema(cctx *cue.Context) (cue.Value, error) {
+	v := cctx.CompileBytes(manifestSchema, cue.Filename("schema/semantic/schema.cue"))
+	if err := v.Err(); err != nil {
+		return cue.Value{}, fmt.Errorf("semantic: compile layer schema: %w", err)
+	}
+	def := v.LookupPath(cue.ParsePath("#Layer"))
+	if err := def.Err(); err != nil {
+		return cue.Value{}, fmt.Errorf("semantic: schema has no #Layer definition: %w", err)
+	}
+	return def, nil
+}
+
+// packNames lists the pack directory names present under root in fsys (one
+// per module pack — LC-3 calls this against project-local disk too).
+func packNames(fsys fs.FS, root string) ([]string, error) {
+	entries, err := fs.ReadDir(fsys, root)
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() {
+			names = append(names, e.Name())
+		}
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// decodePack reads, compiles, and validates one pack's layer.cue (plain
+// data — no package clause, no "#Layer &" wrapper) against layerSchema,
+// returning its decoded LayerDef. fsys/path abstract over embedded vs (LC-3)
+// project-local disk sources, so this is the ONE place that turns
+// "a directory with a layer.cue in it" into a LayerDef, embedded or not.
+func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, path, dirName string) (LayerDef, error) {
+	raw, err := fs.ReadFile(fsys, path)
+	if err != nil {
+		return LayerDef{}, fmt.Errorf("semantic: pack %q: read layer.cue: %w", dirName, err)
+	}
+	packVal := cctx.CompileBytes(raw, cue.Filename(path))
+	if err := packVal.Err(); err != nil {
+		return LayerDef{}, fmt.Errorf("semantic: pack %q: compile layer.cue: %w", dirName, err)
+	}
+	unified := layerSchema.Unify(packVal)
+	if err := unified.Validate(cue.Concrete(false)); err != nil {
+		return LayerDef{}, fmt.Errorf("semantic: pack %q: layer.cue does not satisfy #Layer: %w", dirName, err)
+	}
+	var cl cueLayer
+	if err := unified.Decode(&cl); err != nil {
+		return LayerDef{}, fmt.Errorf("semantic: pack %q: decode layer.cue: %w", dirName, err)
+	}
+	if cl.Name != dirName {
+		return LayerDef{}, fmt.Errorf("semantic: pack directory %q declares name %q — a pack's directory name and its layer.cue name field must match", dirName, cl.Name)
+	}
+	return LayerDef{
+		Name:          cl.Name,
+		Version:       cl.Version,
+		Kind:          cl.Kind,
+		CorpusInclude: cl.Corpus.Include,
+		CorpusExclude: cl.Corpus.Exclude,
+		PromptVersion: cl.PromptVersion,
+		PromptFile:    cl.PromptFile,
+		Tier:          cl.Tier,
+		TierProfile:   cl.TierProfile,
+		Budgets: LayerBudgets{
+			MaxTokensPerRun:  cl.Budgets.MaxTokensPerRun,
+			MaxUSDPerRun:     cl.Budgets.MaxUSDPerRun,
+			MaxRuleWords:     cl.Budgets.MaxRuleWords,
+			MaxClaimsPerFile: cl.Budgets.MaxClaimsPerFile,
+		},
+		Serving: LayerServing{
+			MaxRules:     cl.Serving.MaxRules,
+			MaxTokens:    cl.Serving.MaxTokens,
+			DriftTracked: cl.Serving.DriftTracked,
+		},
+	}, nil
 }

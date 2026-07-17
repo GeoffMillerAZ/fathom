@@ -33,6 +33,51 @@ func TestManifestSchemaMatchesSource(t *testing.T) {
 	}
 }
 
+// TestPackFilesMatchSource is LC-4's drift gate, extending the
+// TestManifestSchemaMatchesSource family to the pack-shape files: every
+// embedded (built-in) pack's layer.cue and prompt.md
+// (internal/semantic/layers/<name>/, go:embed'd into the binary) must stay
+// byte-identical to its schema/semantic/layers/<name>/ source — the
+// authoritative directory a human, or `fathom layers install`, edits.
+func TestPackFilesMatchSource(t *testing.T) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Join(filepath.Dir(file), "..", "..")
+	for _, pack := range []string{"obligations", "findings"} {
+		for _, leaf := range []string{"layer.cue", "prompt.md"} {
+			src := filepath.Join(root, "schema", "semantic", "layers", pack, leaf)
+			want, err := os.ReadFile(src)
+			if err != nil {
+				t.Fatalf("read source %s: %v", src, err)
+			}
+			got, err := embeddedLayers.ReadFile("layers/" + pack + "/" + leaf)
+			if err != nil {
+				t.Fatalf("read embedded layers/%s/%s: %v", pack, leaf, err)
+			}
+			if string(want) != string(got) {
+				t.Errorf("internal/semantic/layers/%s/%s has drifted from %s — copy the source file verbatim", pack, leaf, src)
+			}
+		}
+	}
+}
+
+// TestPackFilesMatchSource_NoExtraEmbeddedPacks catches the inverse drift:
+// an embedded pack directory with no matching schema/semantic/layers/<name>/
+// source (e.g. a stale mirror left behind after a pack was renamed/removed
+// from the authoritative tree).
+func TestPackFilesMatchSource_NoExtraEmbeddedPacks(t *testing.T) {
+	names, err := packNames(embeddedLayers, "layers")
+	if err != nil {
+		t.Fatalf("packNames(embeddedLayers): %v", err)
+	}
+	want := []string{"findings", "obligations"}
+	if !reflect.DeepEqual(names, want) {
+		t.Errorf("embedded pack directories = %v, want %v", names, want)
+	}
+}
+
 func TestLoadLayer_Obligations(t *testing.T) {
 	def, err := LoadLayer("obligations")
 	if err != nil {

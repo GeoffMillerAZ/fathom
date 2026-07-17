@@ -1,9 +1,6 @@
 package semantic
 
 import (
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 )
@@ -108,43 +105,21 @@ func TestFindingsPromptVersion_Pinned(t *testing.T) {
 	}
 }
 
-// TestPromptFilesMatchSource is LC-1's drift gate, mirroring
-// TestManifestSchemaMatchesSource's existing convention (manifest_test.go):
-// internal/semantic/prompts/*.md (go:embed'd into the binary) must stay
-// byte-identical to schema/semantic/prompts/*.md, the authoritative source a
-// human or a `fathom layers` pack-install workflow edits.
-func TestPromptFilesMatchSource(t *testing.T) {
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		t.Fatal("runtime.Caller failed")
-	}
-	root := filepath.Join(filepath.Dir(file), "..", "..")
-	for _, name := range []string{"obligations.md", "findings.md"} {
-		src := filepath.Join(root, "schema", "semantic", "prompts", name)
-		want, err := os.ReadFile(src)
-		if err != nil {
-			t.Fatalf("read source prompt %s: %v", src, err)
-		}
-		got, err := embeddedPrompts.ReadFile("prompts/" + name)
-		if err != nil {
-			t.Fatalf("read embedded prompt %s: %v", name, err)
-		}
-		if string(want) != string(got) {
-			t.Errorf("internal/semantic/prompts/%s has drifted from %s — copy the source file verbatim", name, src)
-		}
-	}
-}
-
 // TestPromptForLayer_UnknownPromptFileIsLoud is the LC-1 correctness fix: an
 // unknown layer name or missing prompt_file must be a loud, typed error —
 // never a silent fallback to the obligations prompt (the bug FT-1's switch
 // statement carried: an unwired-but-manifest-valid layer name silently
 // compiled under the wrong prompt).
+//
+// Byte-identity of the embedded prompt files against their
+// schema/semantic/layers/<name>/prompt.md source is TestPackFilesMatchSource
+// (manifest_test.go, LC-4) — the pack-shape migration folded prompt.md into
+// the same per-pack drift gate as layer.cue.
 func TestPromptForLayer_UnknownPromptFileIsLoud(t *testing.T) {
 	if _, _, err := promptForLayer(LayerDef{Name: "mystery"}); err == nil {
 		t.Fatal("promptForLayer with no PromptFile: want an error, got nil")
 	}
-	if _, _, err := promptForLayer(LayerDef{Name: "mystery", PromptFile: "schema/semantic/prompts/does-not-exist.md"}); err == nil {
+	if _, _, err := promptForLayer(LayerDef{Name: "mystery", PromptFile: "schema/semantic/layers/mystery/does-not-exist.md"}); err == nil {
 		t.Fatal("promptForLayer with an unresolvable PromptFile: want an error, got nil")
 	}
 	if _, _, err := promptForLayer(LayerDef{}); err == nil {
