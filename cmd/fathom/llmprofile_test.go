@@ -7,6 +7,7 @@ package main
 // newFakeOpenAIServer are shared from compile_test.go (same package).
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -57,6 +58,20 @@ func TestResolveActiveProfile_ReadsProjectConfig(t *testing.T) {
 	}
 	if prov["provider"].Source != config.SourceProject {
 		t.Errorf("provider source = %v, want project", prov["provider"].Source)
+	}
+}
+
+// TestCmdCompile_ProfileWithoutStore_Errors pins N2: --profile has no HTTP
+// plumbing (the daemon compiles with its own configured profile), and
+// silently ignoring an explicit flag is worse UX than refusing.
+func TestCmdCompile_ProfileWithoutStore_Errors(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := cmdCompile([]string{"--service", "svc", "--profile", "work"}, &stdout, &stderr)
+	if code == 0 {
+		t.Fatal("expected nonzero exit for --profile without --store")
+	}
+	if !strings.Contains(stderr.String(), "--store") || !strings.Contains(stderr.String(), "default_profile") {
+		t.Errorf("stderr = %s, want it to name the --store constraint and the daemon's default_profile alternative", stderr.String())
 	}
 }
 
@@ -187,11 +202,52 @@ func TestBuildLLMClientForProfile_AzureOpenAI_MissingDeployment(t *testing.T) {
 	}
 }
 
+// TestBuildLLMClientForProfile_Bedrock_MissingModel pins the FAIL-FAST for
+// a modelless bedrock profile. The assertion is on the exact requirement
+// message ("requires a model"), not a loose Contains(err, "model") — the
+// loose form was proven to pass for the wrong reason (the generic
+// "construct Bedrock client (model %q)" wrapper around an ambient
+// credential-chain error also contains "model"). HOME is isolated so the
+// kit's awscred chain cannot reach a real ~/.aws either — if the fail-fast
+// regressed, this test must see a DIFFERENT error, not accidentally the
+// right-looking one.
 func TestBuildLLMClientForProfile_Bedrock_MissingModel(t *testing.T) {
 	clearProfileEnv(t)
+	t.Setenv("HOME", t.TempDir())
 	_, err := buildLLMClientForProfile(config.Profile{Provider: config.ProviderBedrock, Region: "us-east-1"})
-	if err == nil || !strings.Contains(err.Error(), "model") {
-		t.Fatalf("err = %v, want it to name the missing model", err)
+	if err == nil {
+		t.Fatal("expected an error for a modelless bedrock profile")
+	}
+	if !strings.Contains(err.Error(), "requires a model") {
+		t.Fatalf("err = %v, want the fail-fast's own \"requires a model\" message (anything else means construction proceeded past the guard)", err)
+	}
+}
+
+// TestBuildLLMClientForProfile_Bedrock_ModellessNeverInheritsAnthropicDefault
+// is the S1 regression pin from the other side: the guard must fire on the
+// raw sources (p.Model, FATHOM_COMPILE_MODEL), because
+// compileModelForProfile never returns "" — it falls back to the
+// Anthropic-API cheap-tier default, which is not a Bedrock model id and
+// would construct a client that passes providers' Ping but fails the first
+// compile opaquely.
+func TestBuildLLMClientForProfile_Bedrock_ModellessNeverInheritsAnthropicDefault(t *testing.T) {
+	clearProfileEnv(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("AWS_ACCESS_KEY_ID", "test-access-key")
+	t.Setenv("AWS_SECRET_ACCESS_KEY", "test-secret-key")
+
+	// Valid credentials + region, but no model anywhere: construction must
+	// STILL fail via the guard — a nil error here would mean the client was
+	// silently built around defaultCompileModel.
+	_, err := buildLLMClientForProfile(config.Profile{Provider: config.ProviderBedrock, Region: "us-gov-west-1"})
+	if err == nil {
+		t.Fatal("modelless bedrock profile constructed successfully — it silently inherited the Anthropic-API default model")
+	}
+	if !strings.Contains(err.Error(), "requires a model") {
+		t.Fatalf("err = %v, want the fail-fast message", err)
+	}
+	if strings.Contains(err.Error(), defaultCompileModel) {
+		t.Errorf("err = %v, must not mention the Anthropic default model id", err)
 	}
 }
 

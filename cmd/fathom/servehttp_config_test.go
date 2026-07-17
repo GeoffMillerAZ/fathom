@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -62,6 +63,33 @@ addr = "127.0.0.1:999999"
 	}
 	if !strings.Contains(stderr.String(), "http serve") {
 		t.Errorf("stderr = %s, want it to have reached ListenAndServe (proving --addr was ALSO defaulted from config) and failed on the bad port", stderr.String())
+	}
+}
+
+// TestRunServeHTTP_MalformedConfig_FailsToStart pins the deliberate
+// fail-to-start choice (S3): a daemon that silently ignored a malformed
+// config file would run with whatever defaults remained — the exact
+// silent-misconfiguration class this whole feature exists to kill. The
+// error must name the offending file so the launchd crash-loop's stderr is
+// actionable. Documented in docs/configuration.md's daemon section
+// (pre-flight with `fathom config` before restarting).
+func TestRunServeHTTP_MalformedConfig_FailsToStart(t *testing.T) {
+	userDir, _ := withIsolatedConfigHome(t)
+	cfgPath := filepath.Join(userDir, ".fathom", "config.toml")
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, []byte("this is not valid toml =\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runServeHTTP(nil, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1 (fail-to-start); stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), cfgPath) {
+		t.Errorf("stderr = %s, want it to name the offending config file %s", stderr.String(), cfgPath)
 	}
 }
 

@@ -426,6 +426,13 @@ func TestOpenCallLogCreatesParents(t *testing.T) {
 // ─── flag validation ─────────────────────────────────────────────────────────
 
 func TestServeHTTPMissingStore(t *testing.T) {
+	// CF-7 made runServeHTTP load user+project config unconditionally, so
+	// this test MUST NOT see the operator's real ~/.fathom/config.toml — a
+	// real [daemon].store would defeat the missing-store assertion (and a
+	// real [daemon].addr would send the test to ListenAndServe on a real
+	// port). withIsolatedConfigHome isolates HOME and the cwd (project
+	// config resolves from os.Getwd()).
+	withIsolatedConfigHome(t)
 	var out, errBuf bytes.Buffer
 	code := runServeHTTP([]string{}, &out, &errBuf)
 	if code == 0 {
@@ -434,27 +441,24 @@ func TestServeHTTPMissingStore(t *testing.T) {
 	if errBuf.String() == "" {
 		t.Fatal("expected non-empty stderr")
 	}
+	if !strings.Contains(errBuf.String(), "--store is required") {
+		t.Fatalf("stderr = %q, want the missing-store error specifically", errBuf.String())
+	}
 }
 
 // ─── main dispatch: serve-http subcommand ────────────────────────────────────
 
 func TestRunServeHTTPSubcommand(t *testing.T) {
-	// Verify that "serve-http" is wired through runWithStdin.
-	// We use --addr on a random port; since we never call ListenAndServe in
-	// runServeHTTP for tests (the handler factory is separate), this just
-	// verifies the flag + client construction succeeds when --store is given.
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	// Config isolation is load-bearing (CF-7): with the operator's real
+	// ~/.fathom/config.toml visible, [daemon].store would default --store
+	// and this invocation would proceed to open a store, wire an LLM, and
+	// ListenAndServe on the real [daemon].addr instead of failing fast.
+	withIsolatedConfigHome(t)
 	var out, errBuf bytes.Buffer
-	// runServeHTTP with a valid store but no actual listener — we only test
-	// the handler via newHTTPHandler; the port-binding path is covered by
-	// the integration call below which we skip: just verify dispatch.
-	_ = store
-	_ = out
-	_ = errBuf
 	// Smoke-test: ensure "serve-http" is recognised by runWithStdin's switch.
-	// We pass --store so flag parsing succeeds, but the call will attempt to
-	// bind :0 and start serving — we don't want that in a unit test.
-	// Instead we just verify the flag validation path returns nonzero without a store.
+	// We deliberately omit --store: with config isolated there is no
+	// [daemon].store default, so the flag-validation path returns nonzero
+	// before any port binding.
 	code := runWithStdin([]string{"serve-http"}, nil, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("serve-http without --store should exit nonzero")

@@ -49,7 +49,7 @@ func cmdProviders(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rows := probeProfiles(loaded, names)
+	rows := probeProfiles(loaded, names, providerClientBuilder)
 
 	failed := false
 	for _, r := range rows {
@@ -123,12 +123,24 @@ type providerRow struct {
 	Detail   string
 }
 
+// profileClientBuilder is probeProfiles's construction seam: production
+// passes buildLLMClientForProfile; tests can pass a stub that returns a
+// client deliberately lacking Ping, because every real adapter currently
+// implements llmclient.Pinger and the "not probeable" reporting branch
+// would otherwise be unreachable in tests (N6).
+type profileClientBuilder func(config.Profile) (llmclient.LLMClient, error)
+
+// providerClientBuilder is what cmdProviders actually uses — a var so the
+// N6 test can drive the full command (including its exit-code contract)
+// through a Ping-less stub client, then restore it.
+var providerClientBuilder profileClientBuilder = buildLLMClientForProfile
+
 // probeProfiles resolves and constructs a client for each name, partitions
 // them into probeable (Pinger) vs not, runs ONE llmclient.ProbeAll call
 // across every probeable lane (per ProbeAll's own doc: all lanes probed
 // concurrently, none skipped early), and returns rows in the same name
 // order for deterministic output.
-func probeProfiles(loaded config.Loaded, names []string) []providerRow {
+func probeProfiles(loaded config.Loaded, names []string, build profileClientBuilder) []providerRow {
 	rows := make([]providerRow, 0, len(names))
 	rowIndex := map[string]int{}
 	lanes := map[string]llmclient.Pinger{}
@@ -144,7 +156,7 @@ func probeProfiles(loaded config.Loaded, names []string) []providerRow {
 			continue
 		}
 		row.Provider = p.Provider
-		cl, err := buildLLMClientForProfile(p)
+		cl, err := build(p)
 		if err != nil {
 			row.Status = providerStatusError
 			row.Detail = err.Error()

@@ -72,6 +72,24 @@ All notable changes to sextant. Format loosely follows
   package rather than colliding names elsewhere — its old JSON
   query-profile API (`coding`/`investigation`/`ci`/`platform`) predated this
   feature and had no callers anywhere in the tree.
+- Review hardening (coordinator critique of the first landing): the two
+  pre-existing serve-http tests that reach the new config load now isolate
+  HOME/cwd (they would have started binding real `[daemon].addr` ports the
+  day an operator adopts `[daemon]`); a modelless bedrock **profile**
+  fails fast naming the requirement instead of silently constructing
+  around the Anthropic-API default model id (which passes `providers`'
+  Ping but breaks the first compile opaquely) — plus a table-driven
+  equivalence test (`llmprofile_equivalence_test.go`) that drives all six
+  lanes through BOTH the frozen env-only builders and the profile builders
+  from the same environment and fails on any construct-vs-error or routing
+  divergence; `compile --profile` without `--store` is now an error naming
+  the constraint (HTTP mode compiles with the daemon's own configured
+  profile) instead of silently ignoring the flag; TOML parse errors carry
+  line/column; CUE validation errors print each offending key once
+  (grouped per path); the daemon's fail-to-start on a malformed config is
+  now tested and documented (pre-flight with `fathom config`); the
+  `providers` "not probeable" branch is tested end-to-end through a
+  builder seam (`providerClientBuilder`).
 
 ### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
 - **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`

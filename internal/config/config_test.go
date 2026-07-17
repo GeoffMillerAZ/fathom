@@ -101,6 +101,46 @@ func TestLoad_InvalidTOML_NamesFile(t *testing.T) {
 	}
 }
 
+// TestLoad_InvalidTOML_NamesLineAndColumn pins N4: go-toml's *DecodeError
+// carries the position but its Error() text drops it; readLayer must
+// surface line/column explicitly.
+func TestLoad_InvalidTOML_NamesLineAndColumn(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, "default_profile = \"ok\"\n\n[profiles.work\nprovider = \"anthropic\"\n")
+
+	_, err := Load(userPath, "")
+	if err == nil {
+		t.Fatal("expected a parse error")
+	}
+	if !strings.Contains(err.Error(), "line 3") {
+		t.Errorf("err = %v, want it to carry the offending line number (line 3)", err)
+	}
+	if !strings.Contains(err.Error(), "column") {
+		t.Errorf("err = %v, want it to carry a column number", err)
+	}
+}
+
+// TestLoad_ValidationError_PathAppearsOnce pins N5: formatCUEError used to
+// render "path: path: message" because cue's Error() already prepends the
+// path the formatter was adding again.
+func TestLoad_ValidationError_PathAppearsOnce(t *testing.T) {
+	dir := t.TempDir()
+	userPath := filepath.Join(dir, "user.toml")
+	writeTOML(t, userPath, `
+[profiles.typo]
+provider = "not-a-real-provider"
+`)
+	_, err := Load(userPath, "")
+	if err == nil {
+		t.Fatal("expected a validation error")
+	}
+	const key = "profiles.typo.provider"
+	if got := strings.Count(err.Error(), key); got != 1 {
+		t.Errorf("err = %v\npath %q appears %d times, want exactly once", err, key, got)
+	}
+}
+
 func TestLoad_UnknownProvider_RejectedNamingFile(t *testing.T) {
 	dir := t.TempDir()
 	userPath := filepath.Join(dir, "user.toml")

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
@@ -136,10 +137,19 @@ func buildAzureOpenAIClientProfile(p config.Profile) (llmclient.LLMClient, error
 }
 
 func buildBedrockClientProfile(p config.Profile) (llmclient.LLMClient, error) {
-	model := compileModelForProfile(p)
-	if model == "" {
+	// Fail-fast mirrors buildBedrockClient's own doc: Bedrock has no
+	// meaningful default model, so a missing one must fail HERE, naming the
+	// requirement, before any credential resolution. The check is on the
+	// raw sources (profile field, env var) — NOT on compileModelForProfile's
+	// result, which never returns "" (it falls back to the Anthropic-API
+	// cheap-tier default, a model id that does not exist on Bedrock and
+	// would otherwise construct fine, pass a Ping-based `fathom providers`
+	// check — Ping never touches the model — and only fail opaquely on the
+	// first real compile).
+	if p.Model == "" && os.Getenv("FATHOM_COMPILE_MODEL") == "" {
 		return nil, fmt.Errorf("profile provider=bedrock requires a model (profile field, or FATHOM_COMPILE_MODEL via the env overlay) set to a Bedrock model ID (e.g. \"anthropic.claude-3-5-sonnet-20241022-v2:0\") or inference-profile ID")
 	}
+	model := compileModelForProfile(p)
 	cl, err := bedrock.New(bedrock.Config{
 		Region:       p.Region,
 		BaseURL:      p.Endpoint,

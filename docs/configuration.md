@@ -104,6 +104,23 @@ env precedence tier, above any file. Think of the environment as an
 *implicit, unnamed profile* that always overlays whichever named profile you
 selected.
 
+Two caveats worth reading once:
+
+- **`FATHOM_LLM_PROVIDER` clobbers the provider of *every* profile.** With
+  it exported, `--profile gov-bedrock` still resolves to the env var's
+  provider — and the *rest* of the profile's fields still apply, so you can
+  end up constructing, say, an `openai` client carrying a Bedrock profile's
+  leftover fields. `fathom config --explain` makes this visible
+  (`provider … [env:FATHOM_LLM_PROVIDER]`); the practical advice is to
+  **unset `FATHOM_LLM_PROVIDER` once you adopt profiles** — the file gives
+  you everything the env var did.
+- **A `FATHOM_COMPILE_MODEL` precedence corner:** the env var set to
+  *exactly* the built-in default model string is indistinguishable from
+  unset, so in that one corner a profile's `model` pin wins instead of the
+  env var. Any other value behaves per the normal precedence (env beats
+  profile). If you actually want the default model, leave the variable
+  unset.
+
 ## Secrets doctrine
 
 **There is no `api_key` field.** The schema does not define one, and
@@ -201,6 +218,11 @@ default. Reports model, wall-clock latency, token counts, and an estimated
 cost (the same flat per-KTok rates every `compile` run's `cost_usd` uses, so
 the numbers are directly comparable).
 
+With **zero profiles configured**, `--all` falls back to the single
+env-overlay lane (whatever `FATHOM_LLM_PROVIDER` et al. resolve to, shown as
+`(env-overlay)` in the output) — the same fallback `providers` uses, so both
+verbs stay useful before you've written a config file at all.
+
 ## The daemon: restart-to-apply
 
 `serve-http` loads the same config at startup: `[daemon]` sets `store`,
@@ -224,6 +246,14 @@ same restart-to-apply rule that already governs a rebuilt `bin/fathom`
 binary. Hot-reload was considered and deferred (see
 `docs/plans/config-experience.md`'s Deferred section) — every other daemon
 knob is read-once too, so this is consistent, not a regression.
+
+**A malformed config file means the daemon refuses to start** (exit 1,
+naming the file and the offending key) rather than running with whatever
+defaults remain — silently ignoring a broken config is exactly the
+misconfiguration class this file exists to kill. Under launchd that
+manifests as a **crash-loop**, with the error on stderr in the launchd log.
+Pre-flight before restarting: run `fathom config` (it loads the very same
+layers and prints the same errors) — if it exits 0, the daemon will start.
 
 ## Worked example
 

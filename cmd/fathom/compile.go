@@ -48,6 +48,15 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	// N2 (config-experience review): HTTP mode has no --profile plumbing —
+	// the daemon compiles with ITS OWN configured profile
+	// ([daemon].default_profile, read at daemon startup). Silently ignoring
+	// an explicit flag would be worse than refusing, so refuse, naming the
+	// constraint and both ways out.
+	if *profile != "" && *storePath == "" {
+		fmt.Fprintln(stderr, "error: --profile applies to direct --store mode only; in HTTP mode the daemon compiles with its own configured profile ([daemon].default_profile in ~/.fathom/config.toml, restart-to-apply — see docs/configuration.md). Pass --store for a local compile under this profile, or configure the daemon.")
+		return 1
+	}
 
 	if *storePath != "" {
 		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, stdout, stderr)

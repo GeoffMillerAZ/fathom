@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/internal/config"
 )
 
 // fakeClaudeCLIHealthyPingScript reproduces claudecli.Client.Ping's HEALTHY
@@ -146,4 +150,74 @@ provider = "azure-openai"
 // but keeps the test helper correct if that ever changes.
 func escapeTOML(s string) string {
 	return strings.ReplaceAll(s, `\`, `\\`)
+}
+
+// nonPingerClient implements llmclient.LLMClient but deliberately NOT
+// llmclient.Pinger — the stand-in for a future adapter without Ping.
+type nonPingerClient struct{}
+
+func (nonPingerClient) Complete(ctx context.Context, req llmclient.Request) (llmclient.Response, error) {
+	return llmclient.Response{Text: "pong"}, nil
+}
+
+func (nonPingerClient) Stream(ctx context.Context, req llmclient.Request) (<-chan llmclient.StreamChunk, error) {
+	ch := make(chan llmclient.StreamChunk)
+	close(ch)
+	return ch, nil
+}
+
+var _ llmclient.LLMClient = nonPingerClient{}
+
+// TestProbeProfiles_NotProbeable_ReportedHonestly pins the "not probeable"
+// branch (N6): today every real adapter implements Pinger, so the branch is
+// unreachable through buildLLMClientForProfile — a stub builder returning a
+// Ping-less client exercises the reporting contract directly: the profile
+// is STILL LISTED (never silently dropped), with an honest status that is
+// informational, not a failure.
+func TestProbeProfiles_NotProbeable_ReportedHonestly(t *testing.T) {
+	clearProfileEnv(t)
+	loaded := config.Loaded{Config: config.Config{Profiles: map[string]config.Profile{
+		"pingless": {Provider: config.ProviderAnthropic},
+	}}}
+
+	stub := func(p config.Profile) (llmclient.LLMClient, error) {
+		return nonPingerClient{}, nil
+	}
+	rows := probeProfiles(loaded, []string{"pingless"}, stub)
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1 — a not-probeable profile must never be dropped", len(rows))
+	}
+	r := rows[0]
+	if r.Status != providerStatusNotProbeable {
+		t.Errorf("Status = %q, want %q", r.Status, providerStatusNotProbeable)
+	}
+	if !strings.Contains(r.Detail, "does not implement Ping") {
+		t.Errorf("Detail = %q, want it to explain the missing Ping", r.Detail)
+	}
+}
+
+// TestCmdProviders_NotProbeableIsNotAFailure drives the FULL command (via
+// the providerClientBuilder seam) with a Ping-less client: exit 0, because
+// "not probeable" is a capability gap, not a broken credential — and the
+// row still appears in the output.
+func TestCmdProviders_NotProbeableIsNotAFailure(t *testing.T) {
+	_, projectDir := withIsolatedConfigHome(t)
+	writeProjectConfig(t, projectDir, `
+[profiles.pingless]
+provider = "anthropic"
+`)
+	orig := providerClientBuilder
+	providerClientBuilder = func(p config.Profile) (llmclient.LLMClient, error) {
+		return nonPingerClient{}, nil
+	}
+	t.Cleanup(func() { providerClientBuilder = orig })
+
+	var stdout, stderr bytes.Buffer
+	code := cmdProviders([]string{"--profile", "pingless"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0 — not-probeable alone must not fail the command; stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), string(providerStatusNotProbeable)) {
+		t.Errorf("output = %s, want the not-probeable status printed", stdout.String())
+	}
 }

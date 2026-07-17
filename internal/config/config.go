@@ -22,6 +22,7 @@ package config
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -181,6 +182,15 @@ func readLayer(path string) (map[string]any, bool, error) {
 
 	var raw map[string]any
 	if err := toml.Unmarshal(data, &raw); err != nil {
+		// go-toml's *DecodeError carries the position but its Error() text
+		// drops it — surface line/column explicitly so a parse failure is
+		// actionable (the plan's "errors name file, key, and expected
+		// shape" contract, N4).
+		var derr *toml.DecodeError
+		if errors.As(err, &derr) {
+			row, col := derr.Position()
+			return nil, false, &LoadError{Path: path, Err: fmt.Errorf("parse TOML: line %d, column %d: %w", row, col, err)}
+		}
 		return nil, false, &LoadError{Path: path, Err: fmt.Errorf("parse TOML: %w", err)}
 	}
 
@@ -218,23 +228,42 @@ func validateAgainstSchema(raw map[string]any) error {
 	return nil
 }
 
-// formatCUEError renders a CUE validation error compactly, one line per
-// underlying error, so a load failure prints the actual offending path(s)
-// instead of CUE's default multi-paragraph diagnostic.
+// formatCUEError renders a CUE validation error compactly, grouped by
+// offending path, so a load failure prints each actual offending key ONCE
+// instead of CUE's default multi-paragraph diagnostic. Two N5 fixes live
+// here: the message body comes from Msg() (the bare format+args), not
+// Error() — Error() already prepends the path, which produced
+// "path: path: message" doubling — and errors are grouped per path,
+// because a failed disjunction (e.g. an out-of-enum provider) yields one
+// sub-error per disjunct, all on the same path.
 func formatCUEError(err error) error {
 	errs := cueerrors.Errors(err)
 	if len(errs) == 0 {
 		return err
 	}
-	lines := make([]string, 0, len(errs))
+	byPath := map[string][]string{}
+	var order []string
 	for _, e := range errs {
-		path := e.Path()
-		if len(path) == 0 {
-			lines = append(lines, e.Error())
+		key := strings.Join(e.Path(), ".")
+		format, args := e.Msg()
+		msg := fmt.Sprintf(format, args...)
+		if key == "" {
+			msg = e.Error() // pathless: keep the full text
+		}
+		if _, seen := byPath[key]; !seen {
+			order = append(order, key)
+		}
+		byPath[key] = append(byPath[key], msg)
+	}
+	sort.Strings(order)
+	lines := make([]string, 0, len(order))
+	for _, key := range order {
+		msgs := strings.Join(byPath[key], "; ")
+		if key == "" {
+			lines = append(lines, msgs)
 			continue
 		}
-		lines = append(lines, fmt.Sprintf("%s: %s", strings.Join(path, "."), e.Error()))
+		lines = append(lines, fmt.Sprintf("%s: %s", key, msgs))
 	}
-	sort.Strings(lines)
-	return fmt.Errorf("%s", strings.Join(lines, "; "))
+	return fmt.Errorf("%s", strings.Join(lines, " | "))
 }
