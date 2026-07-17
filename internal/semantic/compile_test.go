@@ -503,14 +503,16 @@ func TestCompile_RefusesToStartWhenEstimatedCostExceedsBudget(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	mock := llmclient.NewMockClient() // no entries: a real call would prove the gate leaked
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 200000, MaxUSDPerRun: 0.0001}
 	c := &Compiler{
-		St:    st,
-		LLM:   mock,
-		Model: "mock-model",
-		Layer: LayerDef{
-			Name:    "obligations",
-			Budgets: LayerBudgets{MaxTokensPerRun: 200000, MaxUSDPerRun: 0.0001},
-		},
+		St:            st,
+		LLM:           mock,
+		Model:         "mock-model",
+		Layer:         layer,
 		InRatePerKTok: 100.0, // deliberately extreme so any non-trivial estimate trips the gate
 		Now:           fixedNow,
 	}
@@ -577,14 +579,16 @@ func TestCompile_StopsMidRunWhenTokenBudgetExceeded_AndResumesViaDigestGate(t *t
 			Usage: llmclient.Usage{InputTokens: 500, OutputTokens: 200},
 		}},
 	)
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 600, MaxUSDPerRun: 1000}
 	c := &Compiler{
-		St:    st,
-		LLM:   mock,
-		Model: "mock-model",
-		Layer: LayerDef{
-			Name:    "obligations",
-			Budgets: LayerBudgets{MaxTokensPerRun: 600, MaxUSDPerRun: 1000},
-		},
+		St:            st,
+		LLM:           mock,
+		Model:         "mock-model",
+		Layer:         layer,
 		InRatePerKTok: 0.001,
 		Now:           fixedNow,
 	}

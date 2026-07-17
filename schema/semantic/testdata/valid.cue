@@ -7,6 +7,7 @@ failureMode: #Layer & {
 	kind:           "failure-mode"
 	corpus: include: ["docs/dogfood-observations.md", "docs/postmortems/**"]
 	prompt_version: "failure-mode/v1"
+	prompt_file:    "schema/semantic/layers/failure-mode/prompt.md"
 	tier:           "sme-stated"
 	budgets: {
 		max_tokens_per_run: 100000

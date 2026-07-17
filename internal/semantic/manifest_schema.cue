@@ -39,6 +39,17 @@ package semantic
 	// it but callers must not treat it as authoritative for the digest gate.
 	prompt_version: string
 
+	// prompt_file is the repo-relative path to this layer's compile system
+	// prompt (LC-1, docs/plans/layer-catalog.md): the text a build target
+	// compiles under. Content-addressed identity is derived FROM this file's
+	// bytes at runtime — internal/semantic.promptForLayer loads it and
+	// computes PromptVersion = "<name>/" + sha256(bytes)[:8] — so a prompt
+	// edit is automatically a new compile identity (the v1→v2 hand-bumped-
+	// const bug class this whole mechanism exists to close). Every #Layer
+	// instance MUST set this: an empty or unresolvable prompt_file is a loud
+	// runtime error, never a silent fallback to another layer's prompt.
+	prompt_file: string
+
 	// tier every emitted claim carries. V1 layers are citation-grounded
 	// restatements, hence doc-claimed; an LLM-inferred kind would need the
 	// ai-derived tier and its revival evidence first (ADR-016 §4.2).
@@ -80,6 +91,7 @@ obligations: #Layer & {
 	// Advisory only — see #Layer.prompt_version above. The real identity is
 	// content-addressed at runtime (internal/semantic/prompts.go).
 	prompt_version: "obligations/content-addressed"
+	prompt_file:    "schema/semantic/prompts/obligations.md"
 	tier:           "doc-claimed"
 	budgets: {
 		max_tokens_per_run: 200000
@@ -102,6 +114,7 @@ findings: #Layer & {
 	// Advisory only — see #Layer.prompt_version above. The real identity is
 	// content-addressed at runtime (internal/semantic/prompts.go).
 	prompt_version: "findings/content-addressed"
+	prompt_file:    "schema/semantic/prompts/findings.md"
 	tier:           "sme-stated"
 	budgets: {
 		max_tokens_per_run: 200000

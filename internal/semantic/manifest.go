@@ -46,6 +46,12 @@ type LayerDef struct {
 	// doc comment in schema.cue.
 	PromptVersion string
 
+	// PromptFile is the repo-relative path to this layer's compile system
+	// prompt (LC-1). promptForLayer loads it and derives PromptVersion's
+	// REAL, content-addressed value from its bytes — see #Layer.prompt_file's
+	// doc comment in schema.cue.
+	PromptFile string
+
 	Tier        string
 	TierProfile string
 
@@ -81,6 +87,7 @@ type cueLayer struct {
 		Exclude []string `json:"exclude"`
 	} `json:"corpus"`
 	PromptVersion string `json:"prompt_version"`
+	PromptFile    string `json:"prompt_file"`
 	Tier          string `json:"tier"`
 	TierProfile   string `json:"tier_profile"`
 	Budgets       struct {
@@ -159,6 +166,7 @@ func loadManifest() (map[string]LayerDef, error) {
 			CorpusInclude: cl.Corpus.Include,
 			CorpusExclude: cl.Corpus.Exclude,
 			PromptVersion: cl.PromptVersion,
+			PromptFile:    cl.PromptFile,
 			Tier:          cl.Tier,
 			TierProfile:   cl.TierProfile,
 			Budgets: LayerBudgets{

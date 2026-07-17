@@ -165,13 +165,28 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	// direct Compiler construction without a loaded layer — most existing
 	// tests, and the expert-module non-git-corpus test — keeps its exact
 	// original behavior unchanged (FT-1 generalizes the compiler past a
-	// single hardcoded layer without breaking that contract).
+	// single hardcoded layer without breaking that contract). LC-1: both
+	// branches now resolve through the SAME generic promptForLayer(LayerDef)
+	// — the fallback is "no layer configured, default to obligations", not a
+	// second prompt-resolution mechanism.
+	layerDef := c.Layer
+	if layerDef.Name == "" {
+		var lerr error
+		layerDef, lerr = LoadLayer(LayerObligations)
+		if lerr != nil {
+			return core.CompileRun{}, fmt.Errorf("semantic: load default obligations layer: %w", lerr)
+		}
+	}
+	systemPrompt, promptVersion, perr := promptForLayer(layerDef)
+	if perr != nil {
+		return core.CompileRun{}, fmt.Errorf("semantic: resolve layer %q prompt: %w", layerDef.Name, perr)
+	}
+
 	layerName := LayerObligations
 	layerVersion := "v1"
 	kind := KindObligation
 	tier := core.TierDocClaimed
 	tierProfile := "engineering"
-	systemPrompt, promptVersion := obligationsSystemPromptTemplate.Text, obligationsPromptVersion()
 	if c.Layer.Name != "" {
 		layerName = c.Layer.Name
 		if c.Layer.Version != "" {
@@ -182,7 +197,6 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		if c.Layer.TierProfile != "" {
 			tierProfile = c.Layer.TierProfile
 		}
-		systemPrompt, promptVersion = promptForLayer(c.Layer.Name)
 	}
 
 	run := core.CompileRun{
