@@ -74,6 +74,17 @@ package semantic
 	serving: {
 		max_rules:  int & >0 & <=6 | *6
 		max_tokens: int & >0 | *150
+
+		// drift_tracked (LC-2, docs/plans/layer-catalog.md) opts a layer into
+		// remediation-drift anchoring: verifyDraft persists each claim's
+		// scope-matched files' content fingerprints as scope-fp ClaimLinks at
+		// compile time, and served payloads carry code_drifted when a
+		// scope-fp's live fingerprint disagrees (DriftedFindings, sweep.go).
+		// Defaults false — most layers restate slow-churn governing docs, not
+		// findings whose remediation code can drift out from under them.
+		// Replaces a Go kind=="finding" hardcode with manifest data: a future
+		// layer opts in by setting this field, no compiler/server Go edit.
+		drift_tracked: bool | *false
 	}
 }
 
@@ -120,4 +131,8 @@ findings: #Layer & {
 		max_tokens_per_run: 200000
 		max_usd_per_run:    1.0
 	}
+	// A finding's remediation lives in scoped CODE, not just the cited
+	// finding document — remediation drift (docs/vision/03-findings-and-
+	// experts.md §2, FT-6) is the reason this layer exists.
+	serving: drift_tracked: true
 }

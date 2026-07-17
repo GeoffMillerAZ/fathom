@@ -73,6 +73,13 @@ type LayerBudgets struct {
 type LayerServing struct {
 	MaxRules  int
 	MaxTokens int
+	// DriftTracked (schema.cue #Layer.serving.drift_tracked, LC-2) gates
+	// remediation-drift anchoring: when true, verifyDraft persists scope-fp
+	// links at compile time and DriftedFindings (sweep.go) computes
+	// code_drifted for this layer's claims at serve time. Replaces the old
+	// kind=="finding" Go hardcode at both sites — a schema field, not a type
+	// check, so a future layer opts in by setting one CUE field.
+	DriftTracked bool
 }
 
 // cueLayer mirrors #Layer's JSON shape for decoding. cuelang.org/go's
@@ -97,8 +104,9 @@ type cueLayer struct {
 		MaxClaimsPerFile int     `json:"max_claims_per_file"`
 	} `json:"budgets"`
 	Serving struct {
-		MaxRules  int `json:"max_rules"`
-		MaxTokens int `json:"max_tokens"`
+		MaxRules     int  `json:"max_rules"`
+		MaxTokens    int  `json:"max_tokens"`
+		DriftTracked bool `json:"drift_tracked"`
 	} `json:"serving"`
 }
 
@@ -176,8 +184,9 @@ func loadManifest() (map[string]LayerDef, error) {
 				MaxClaimsPerFile: cl.Budgets.MaxClaimsPerFile,
 			},
 			Serving: LayerServing{
-				MaxRules:  cl.Serving.MaxRules,
-				MaxTokens: cl.Serving.MaxTokens,
+				MaxRules:     cl.Serving.MaxRules,
+				MaxTokens:    cl.Serving.MaxTokens,
+				DriftTracked: cl.Serving.DriftTracked,
 			},
 		}
 	}

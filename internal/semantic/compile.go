@@ -187,6 +187,13 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	kind := KindObligation
 	tier := core.TierDocClaimed
 	tierProfile := "engineering"
+	// driftTracked resolves the layer's serving.drift_tracked (LC-2,
+	// docs/plans/layer-catalog.md): whether this layer's claims persist
+	// scope-fp drift anchors at compile time. Replaces the old
+	// `kind == KindFinding` hardcode — a schema field, not a Go type check,
+	// gates the behavior, so the next layer that wants drift tracking gets
+	// it by setting one CUE field, not by editing this switch.
+	driftTracked := false
 	if c.Layer.Name != "" {
 		layerName = c.Layer.Name
 		if c.Layer.Version != "" {
@@ -197,6 +204,7 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		if c.Layer.TierProfile != "" {
 			tierProfile = c.Layer.TierProfile
 		}
+		driftTracked = c.Layer.Serving.DriftTracked
 	}
 
 	run := core.CompileRun{
@@ -320,7 +328,7 @@ sectionLoop:
 			recompiledSubjects = append(recompiledSubjects, sec.Subject)
 
 			for _, d := range drafts {
-				claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion)
+				claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion, driftTracked)
 				if verr != nil {
 					// A drift-anchor failure is infrastructure, not a bad
 					// draft: abort the run loudly (FT-6 — see errDriftAnchor).
@@ -489,10 +497,10 @@ func buildSectionPrompt(sec Section) string {
 // verifyDraft applies compile-time verification (ADR-016 §4.4): the citation
 // must resolve inside the document, and every scope glob must match at least
 // one indexed file. Failures reject the claim — a claim is only as good as
-// its anchors. layerName/layerVersion/kind/tier/tierProfile are the caller's
-// resolved layer identity (FT-1: Compile resolves them once from c.Layer,
-// defaulting to the obligations identity when no layer is loaded).
-func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string) (core.SemanticClaim, []core.ClaimLink, error) {
+// its anchors. layerName/layerVersion/kind/tier/tierProfile/driftTracked are
+// the caller's resolved layer identity (FT-1: Compile resolves them once from
+// c.Layer, defaulting to the obligations identity when no layer is loaded).
+func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string, driftTracked bool) (core.SemanticClaim, []core.ClaimLink, error) {
 	rule := strings.TrimSpace(d.Rule)
 	if rule == "" {
 		return core.SemanticClaim{}, nil, fmt.Errorf("empty rule")
@@ -574,8 +582,11 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})
 	}
 	// Remediation-drift substrate (FT-6, docs/vision/03-findings-and-experts.md
-	// §2): for finding-kind claims only, persist each scope-matched file's
-	// CURRENT store fingerprint as a ClaimLink. No disk access needed here —
+	// §2): for drift-tracked layers only (LC-2: serving.drift_tracked, not a
+	// kind=="finding" Go hardcode — findings sets it true, obligations
+	// doesn't set it and defaults to false), persist each scope-matched
+	// file's CURRENT store fingerprint as a ClaimLink. No disk access needed
+	// here —
 	// the fingerprint is already maintained by the fusion pipeline's hash-gate
 	// (SetFingerprint runs for every processed file at ingest) — this just
 	// reads it at compile time as the honest "as of" anchor a later live
@@ -586,9 +597,10 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	// rather than skipping the link — the digest gate would never recompile
 	// the unchanged section, so a silently missing anchor would permanently
 	// blind remediation drift for that file. This is what upholds the FT-6
-	// invariant: every stored finding-kind claim carries ≥1 scope-fp link
-	// (scopes matching zero indexed files were already rejected above).
-	if kind == KindFinding {
+	// invariant: every stored claim of a drift-tracked layer carries ≥1
+	// scope-fp link (scopes matching zero indexed files were already
+	// rejected above).
+	if driftTracked {
 		files := make([]string, 0, len(scopeFiles))
 		for f := range scopeFiles {
 			files = append(files, f)

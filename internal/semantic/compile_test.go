@@ -893,3 +893,100 @@ func TestCompile_FindingDriftAnchor_Written(t *testing.T) {
 		t.Errorf("scope-fp links = %+v, want one anchor for internal/query/engine.go", scopeFP)
 	}
 }
+
+// ─── LC-2: serving.drift_tracked replaces the kind=="finding" hardcode ──────
+
+// TestCompile_ScopeFPGatedByDriftTrackedNotKind proves the LC-2 decoupling
+// directly at the compile-time gate site: scope-fp anchors are written when
+// the RESOLVED LAYER's serving.drift_tracked is true, regardless of the
+// claim's Kind string — and withheld when it is false, even for a claim
+// whose Kind is literally "finding". Kind is claim taxonomy; drift_tracked
+// is a manifest-authored serving decision, and this test is the proof they
+// are no longer the same axis.
+func TestCompile_ScopeFPGatedByDriftTrackedNotKind(t *testing.T) {
+	ctx := context.Background()
+
+	// A layer named "finding"-kind but drift_tracked FALSE must NOT write
+	// scope-fp anchors, even though the pre-LC-2 code gated on Kind alone.
+	st1 := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st1.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	layer1, err := LoadLayer(LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayer(findings): %v", err)
+	}
+	layer1.Serving.DriftTracked = false // override: same kind, tracking OFF
+	c1 := &Compiler{
+		St: st1,
+		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+		}}),
+		Model: "mock-model",
+		Layer: layer1,
+		Now:   fixedNow,
+	}
+	if _, err := c1.Compile(ctx, findingsInput()); err != nil {
+		t.Fatalf("Compile (drift_tracked=false): %v", err)
+	}
+	claims1, _ := st1.ClaimsForService(ctx, "svc", LayerFindings)
+	if len(claims1) != 1 {
+		t.Fatalf("claims = %d, want 1", len(claims1))
+	}
+	links1, err := st1.ClaimLinks(ctx, "svc", []string{claims1[0].ClaimID})
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	for _, l := range links1 {
+		if l.Rel == core.RelScopeFP {
+			t.Errorf("layer with drift_tracked=false wrote a scope-fp link (kind=%q): %+v", claims1[0].Kind, l)
+		}
+	}
+
+	// The inverse: a layer whose Kind is NOT "finding" but whose
+	// drift_tracked IS true must write scope-fp anchors.
+	st2 := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st2.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	layer2, err := LoadLayer(LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayer(findings): %v", err)
+	}
+	layer2.Name = "custom-layer"
+	layer2.Kind = "custom-kind" // deliberately not "finding"
+	layer2.Serving.DriftTracked = true
+	c2 := &Compiler{
+		St: st2,
+		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+		}}),
+		Model: "mock-model",
+		Layer: layer2,
+		Now:   fixedNow,
+	}
+	if _, err := c2.Compile(ctx, findingsInput()); err != nil {
+		t.Fatalf("Compile (drift_tracked=true, kind=custom-kind): %v", err)
+	}
+	claims2, _ := st2.ClaimsForService(ctx, "svc", "custom-layer")
+	if len(claims2) != 1 || claims2[0].Kind != "custom-kind" {
+		t.Fatalf("claims = %+v, want 1 claim of kind custom-kind", claims2)
+	}
+	links2, err := st2.ClaimLinks(ctx, "svc", []string{claims2[0].ClaimID})
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	var scopeFP2 []core.ClaimLink
+	for _, l := range links2 {
+		if l.Rel == core.RelScopeFP {
+			scopeFP2 = append(scopeFP2, l)
+		}
+	}
+	if len(scopeFP2) != 1 {
+		t.Errorf("layer with drift_tracked=true, kind=custom-kind: scope-fp links = %+v, want 1", scopeFP2)
+	}
+}
