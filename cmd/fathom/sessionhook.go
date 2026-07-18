@@ -71,8 +71,7 @@ type svcInfo struct {
 
 // buildSessionContext returns the additionalContext line for the project at
 // projDir. Service identity tries the dir basename first, then the enclosing
-// git repo's basename (projects rooted in a subdirectory like <repo>/deploy),
-// each with pre/post-rename aliasing.
+// git repo's basename (projects rooted in a subdirectory like <repo>/deploy).
 func buildSessionContext(baseURL, projDir string) string {
 	hc := &http.Client{Timeout: 2 * time.Second}
 
@@ -87,18 +86,16 @@ func buildSessionContext(baseURL, projDir string) string {
 
 	svcs := fetchServices(hc, baseURL)
 	for _, cand := range serviceCandidates(projDir) {
-		for _, name := range withNameAliases(cand.name) {
-			lookup := strings.ToLower(name)
-			info, ok := svcs[lookup]
-			if !ok {
-				continue
-			}
-			langs := ""
-			if info.langs != "" {
-				langs = ", " + info.langs
-			}
-			return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
+		lookup := strings.ToLower(cand.name)
+		info, ok := svcs[lookup]
+		if !ok {
+			continue
 		}
+		langs := ""
+		if info.langs != "" {
+			langs = ", " + info.langs
+		}
+		return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
 	}
 
 	repo := filepath.Base(strings.TrimRight(projDir, "/"))

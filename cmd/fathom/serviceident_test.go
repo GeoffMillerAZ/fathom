@@ -42,12 +42,3 @@ func TestServiceCandidates_SubdirOfGitRepo(t *testing.T) {
 		t.Errorf("candidate[1] = %+v, want repo root %s", got[1], root)
 	}
 }
-
-func TestWithNameAliases(t *testing.T) {
-	if got := withNameAliases("sextant"); len(got) != 2 || got[1] != "fathom" {
-		t.Errorf("sextant aliases = %v", got)
-	}
-	if got := withNameAliases("deploy"); len(got) != 1 {
-		t.Errorf("deploy aliases = %v", got)
-	}
-}

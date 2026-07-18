@@ -19,11 +19,6 @@ import (
 // line, # comments, ! negation, ** globs, trailing-slash dir-only rules.
 const IgnoreFileName = ".fathomignore"
 
-// LegacyIgnoreFileName is honoured when IgnoreFileName is absent, so fleets
-// that adopted the tool under its former name keep their excludes across the
-// rename without touching every repo.
-const LegacyIgnoreFileName = ".sextantignore"
-
 // LocalConnector reads source files from a local directory tree.
 // It satisfies the Connector SPI and is suitable for CLI / dev use and for
 // tests that operate directly on an on-disk directory.
@@ -137,10 +132,7 @@ func (c *LocalConnector) Watermark(ctx context.Context, svc core.ServiceRef) (st
 func loadIgnoreFile(root string) *filter.Matcher {
 	data, err := os.ReadFile(filepath.Join(root, IgnoreFileName))
 	if err != nil {
-		data, err = os.ReadFile(filepath.Join(root, LegacyIgnoreFileName))
-		if err != nil {
-			return nil
-		}
+		return nil
 	}
 	return filter.New(strings.Split(string(data), "\n"))
 }

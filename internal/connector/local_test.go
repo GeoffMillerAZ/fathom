@@ -262,14 +262,16 @@ func TestLocalConnector_Discover_FathomIgnore(t *testing.T) {
 	}
 }
 
-// A repo that adopted the tool under its former name keeps its excludes: the
-// legacy .sextantignore is honoured when no .fathomignore exists.
-func TestLocalConnector_Discover_LegacyIgnoreFallback(t *testing.T) {
+// Back-compat for the tool's former name is gone: a repo carrying only the
+// legacy .sextantignore (no .fathomignore) gets no excludes from it at all —
+// .sextantignore is just an ordinary file to Discover now.
+func TestLocalConnector_Discover_NoLegacyIgnoreFallback(t *testing.T) {
+	const legacyIgnoreFileName = ".sextantignore"
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
 	writeFile(t, filepath.Join(root, "ref", "mirror.go"), "package mirror\n")
-	writeFile(t, filepath.Join(root, connector.LegacyIgnoreFileName),
-		"ref/\n"+connector.LegacyIgnoreFileName+"\n")
+	writeFile(t, filepath.Join(root, legacyIgnoreFileName),
+		"ref/\n"+legacyIgnoreFileName+"\n")
 
 	lc := connector.NewLocalConnector()
 	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
@@ -283,8 +285,11 @@ func TestLocalConnector_Discover_LegacyIgnoreFallback(t *testing.T) {
 	if !got["keep.go"] {
 		t.Errorf("expected keep.go in discovered refs, got %v", got)
 	}
-	if got["ref/mirror.go"] {
-		t.Errorf("legacy ignore file not honoured: ref/mirror.go should be excluded, got %v", got)
+	if !got["ref/mirror.go"] {
+		t.Errorf(".sextantignore must no longer be honoured: expected ref/mirror.go to be discovered, got %v", got)
+	}
+	if !got[legacyIgnoreFileName] {
+		t.Errorf(".sextantignore itself is just a regular file now: expected %s to be discovered, got %v", legacyIgnoreFileName, got)
 	}
 }
 

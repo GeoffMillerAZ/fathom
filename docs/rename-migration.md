@@ -1,5 +1,11 @@
 # sextant → fathom migration
 
+> **Historical / superseded.** This document describes the rename as it
+> shipped on 2026-07-07. The back-compat shims listed below (`.sextantignore`
+> fallback, `mcp__sextant__` counting, service-name aliasing) were removed on
+> 2026-07-17 at the owner's request — see the CHANGELOG entry for that date.
+> Kept for the record; do not follow its back-compat claims.
+
 The project is renamed **fathom** (2026-07-07, ADR-015). In-repo, everything is
 done: module path `github.com/geoffmilleraz/fathom`, binary `bin/fathom`, MCP
 server name, docs, scripts. Historical records (CHANGELOG entries,

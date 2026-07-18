@@ -451,7 +451,7 @@ func TestIngest_OrphanPurge_DeletedFile(t *testing.T) {
 }
 
 // TestIngest_OrphanPurge_NewlyIgnoredFile verifies that a file which becomes
-// ignored (dropped from Discover via .sextantignore) is purged exactly like a
+// ignored (dropped from Discover via .fathomignore) is purged exactly like a
 // deleted file — the file still exists on disk, so only a Discover-set-keyed
 // purge can ever remove it.
 func TestIngest_OrphanPurge_NewlyIgnoredFile(t *testing.T) {

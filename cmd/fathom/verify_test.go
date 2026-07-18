@@ -431,7 +431,7 @@ func writeTempPlan(t *testing.T, content string) string {
 	return pf
 }
 
-// ─── package: grammar e2e suite (ported from cmd/sextant/verify_test.go) ──────
+// ─── package: grammar e2e suite ────────────────────────────────────────────
 
 // seedPackageGrammarStore seeds a DuckDB store with a bare symbol name ("New")
 // that is genuinely ambiguous across two packages, plus a test that reaches

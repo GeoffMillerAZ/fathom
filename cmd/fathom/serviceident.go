@@ -41,16 +41,3 @@ func gitToplevel(dir string) string {
 	}
 	return strings.TrimSpace(string(out))
 }
-
-// withNameAliases expands a service name with its pre/post-rename twin, so
-// stores ingested under either brand era resolve (mirrors the connector's
-// legacy-ignore-file treatment).
-func withNameAliases(name string) []string {
-	switch strings.ToLower(name) {
-	case "sextant":
-		return []string{name, "fathom"}
-	case "fathom":
-		return []string{name, "sextant"}
-	}
-	return []string{name}
-}

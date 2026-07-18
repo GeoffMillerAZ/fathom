@@ -119,18 +119,14 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		if !resolved {
 			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
 		}
-		for _, name := range withNameAliases(cand.name) {
-			o, stale, ok := fetchObligations(*url, strings.ToLower(name), rel)
-			if !ok {
-				emitBeat("edit-hook", "error", nil)
-				return 0 // daemon down or error → silent
-			}
-			if len(o.Rules) > 0 || stale {
-				obl, indexStale, repoRelFile, svcName, found = o, stale, rel, strings.ToLower(name), true
-				break
-			}
+		name := strings.ToLower(cand.name)
+		o, stale, ok := fetchObligations(*url, name, rel)
+		if !ok {
+			emitBeat("edit-hook", "error", nil)
+			return 0 // daemon down or error → silent
 		}
-		if found {
+		if len(o.Rules) > 0 || stale {
+			obl, indexStale, repoRelFile, svcName, found = o, stale, rel, name, true
 			break
 		}
 	}

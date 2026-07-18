@@ -289,7 +289,7 @@ Register it in `~/.claude/settings.json` under `hooks.SessionStart`:
 }
 ```
 
-Replace `/abs/path/to/bin/fathom` with the absolute path to your built binary. If you previously registered `sextant session-hook`, update the command to `fathom session-hook` (the binary was renamed; the subcommand is unchanged).
+Replace `/abs/path/to/bin/fathom` with the absolute path to your built binary.
 
 ### PostToolUse — `fathom edit-hook` (obligations injection)
 

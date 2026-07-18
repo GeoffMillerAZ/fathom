@@ -5,6 +5,38 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Removed — sextant back-compat surface (owner decision 2026-07-17: no back-compat wanted)
+- **Pre-rename back-compat is gone, not deprecated.** The rename shipped
+  2026-07-07 (ADR-015) with several shims so a mid-migration fleet wouldn't
+  break; the owner overrode that "kept by design" decision and asked for all
+  of it out. Removed:
+  - `cmd/fathom/serviceident.go`'s `withNameAliases` — the `sextant`↔`fathom`
+    service-name aliasing that `session-hook`, `edit-hook`, and `stop-hook`
+    used to resolve either brand era against the daemon's index. Each hook
+    now looks up only the candidate's own (lower-cased) name; the double
+    loop in all three hooks collapses to a single lookup.
+  - `internal/connector.LegacyIgnoreFileName` (`.sextantignore`) and its
+    fallback read in `loadIgnoreFile` — only `.fathomignore` is honoured
+    now. `TestLocalConnector_Discover_LegacyIgnoreFallback` flips to
+    `TestLocalConnector_Discover_NoLegacyIgnoreFallback`, asserting a
+    `.sextantignore`-only repo now gets zero excludes from it (the file is
+    just an ordinary discovered file to `Discover`).
+  - Migration prose pointing users from `sextant session-hook` to `fathom
+    session-hook` (`docs/use-cases/getting-started.md`).
+  - `docs/rename-migration.md` is marked historical/superseded at the top
+    (its back-compat bullet list is no longer accurate) rather than
+    rewritten — it's a record of what shipped 2026-07-07, not living
+    guidance.
+  **Behavioral consequence:** stores ingested under the service name
+  `"sextant"` and repos relying on `.sextantignore` are no longer
+  recognized — re-ingest under the real service name, or rename the ignore
+  file to `.fathomignore`. The fleet's own store already uses `"fathom"`
+  post `reingest-fleet.sh`, so the dogfood machine is unaffected.
+  `scripts/fathom-adoption.sh`'s `mcp__sextant__`-prefix counting is
+  intentionally untouched — it is retrospective measurement over pre-rename
+  session transcripts that still exist on disk under the old directory
+  name, not a runtime back-compat code path.
+
 ### Added — layer catalog: prompt-as-data, pack shape, adr-rules + spec-bindings, `fathom layers` (docs/plans/layer-catalog.md)
 - **Prompts are data, not Go (LC-1).** Every `#Layer` instance now carries
   `prompt_file`; `promptForLayer` is generic over `LayerDef` instead of a
