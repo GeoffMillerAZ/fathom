@@ -1,0 +1,2 @@
+# fixture doc-waivers.txt for the doc-coverage waiver-suppression test.
+foundations/fakecat/fakepkg

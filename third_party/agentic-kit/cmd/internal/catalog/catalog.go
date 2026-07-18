@@ -1,0 +1,190 @@
+// Package catalog provides the shared generation core for docs/catalog.md:
+// collecting Go package entries from a module tree and rendering them as
+// Markdown. It is used by both cmd/kit-catalog (writes the file) and
+// cmd/constitution-lint (checks freshness in-memory). The two binaries
+// share this single implementation so they cannot drift.
+//
+// Concurrency: Collect and Render are pure functions with no shared state
+// and are safe for concurrent use.
+package catalog
+
+import (
+	"fmt"
+	"go/doc"
+	"go/parser"
+	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// Entry is one Go package found in the tree.
+type Entry struct {
+	RelPath  string // module-relative directory, slash-separated (e.g. "kits/agent-harness")
+	Name     string // package name (e.g. "agentharness", "main")
+	Synopsis string // first sentence of the package doc comment ("" if none)
+}
+
+// SkipDir reports whether a directory (by base name) must not be descended into.
+func SkipDir(name string) bool {
+	if strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+		return true
+	}
+	switch name {
+	case "testdata", "tmp", "workspace", "cue.mod", "node_modules", "vendor":
+		return true
+	}
+	return false
+}
+
+// Collect walks root and returns one Entry per Go package, sorted by
+// RelPath then package name. Test files and test-only packages are ignored.
+func Collect(root string) ([]Entry, error) {
+	var entries []Entry
+	fset := token.NewFileSet()
+	// emptyPkg is used to call the non-deprecated Package.Synopsis method.
+	emptyPkg := &doc.Package{}
+
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			return nil
+		}
+		if path != root && SkipDir(d.Name()) {
+			return fs.SkipDir
+		}
+		dirEntries, err := os.ReadDir(path)
+		if err != nil {
+			return err
+		}
+		// pkgDocs accumulates, per package name in this directory, the first
+		// package doc comment encountered in filename order (matching what a
+		// reader of `go doc` sees first).
+		pkgDocs := map[string]string{}
+		var names []string
+		for _, de := range dirEntries { // os.ReadDir sorts by filename
+			fname := de.Name()
+			if de.IsDir() || !strings.HasSuffix(fname, ".go") ||
+				strings.HasSuffix(fname, "_test.go") ||
+				strings.HasPrefix(fname, ".") || strings.HasPrefix(fname, "_") {
+				continue
+			}
+			f, err := parser.ParseFile(fset, filepath.Join(path, fname), nil,
+				parser.ParseComments|parser.ImportsOnly)
+			if err != nil {
+				return fmt.Errorf("parse %s: %w", filepath.Join(path, fname), err)
+			}
+			pname := f.Name.Name
+			if strings.HasSuffix(pname, "_test") {
+				continue
+			}
+			if _, seen := pkgDocs[pname]; !seen {
+				pkgDocs[pname] = ""
+				names = append(names, pname)
+			}
+			if pkgDocs[pname] == "" && f.Doc != nil {
+				pkgDocs[pname] = f.Doc.Text()
+			}
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		rel = filepath.ToSlash(rel)
+		for _, pname := range names {
+			entries = append(entries, Entry{
+				RelPath:  rel,
+				Name:     pname,
+				Synopsis: emptyPkg.Synopsis(pkgDocs[pname]),
+			})
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].RelPath != entries[j].RelPath {
+			return entries[i].RelPath < entries[j].RelPath
+		}
+		return entries[i].Name < entries[j].Name
+	})
+	return entries, nil
+}
+
+// SectionKey maps a package path to its catalog section: foundations are
+// split by category ("foundations/evidence"); everything else groups by its
+// top-level directory ("kits", "cmd", ...).
+func SectionKey(relPath string) string {
+	parts := strings.SplitN(relPath, "/", 3)
+	if parts[0] == "foundations" && len(parts) > 1 {
+		return "foundations/" + parts[1]
+	}
+	return parts[0]
+}
+
+// SectionRank orders sections: foundations categories first (alphabetical),
+// then the fixed area order, then anything unexpected (alphabetical).
+func SectionRank(section string) int {
+	if strings.HasPrefix(section, "foundations") {
+		return 0
+	}
+	switch section {
+	case "kits":
+		return 1
+	case "runtimes":
+		return 2
+	case "surfaces":
+		return 3
+	case "toolchains":
+		return 4
+	case "cmd":
+		return 5
+	case "examples":
+		return 6
+	case "scenarios":
+		return 7
+	}
+	return 8
+}
+
+// Render produces the full catalog.md content from the given entries.
+func Render(entries []Entry) string {
+	sections := map[string][]Entry{}
+	for _, e := range entries {
+		k := SectionKey(e.RelPath)
+		sections[k] = append(sections[k], e)
+	}
+	keys := make([]string, 0, len(sections))
+	for k := range sections {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		ri, rj := SectionRank(keys[i]), SectionRank(keys[j])
+		if ri != rj {
+			return ri < rj
+		}
+		return keys[i] < keys[j]
+	})
+
+	var b strings.Builder
+	b.WriteString("<!-- Code generated by cmd/kit-catalog; DO NOT EDIT. Regenerate: task docs-index (= go run ./cmd/kit-catalog) -->\n\n")
+	b.WriteString("# Package catalog\n\n")
+	fmt.Fprintf(&b, "%d Go packages. One line each: module-relative import path, package name, doc synopsis.\n", len(entries))
+	b.WriteString("Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.\n")
+	for _, k := range keys {
+		fmt.Fprintf(&b, "\n## %s (%d)\n\n", k, len(sections[k]))
+		for _, e := range sections[k] {
+			syn := e.Synopsis
+			if syn == "" {
+				syn = "(no package doc)"
+			}
+			fmt.Fprintf(&b, "- `%s` (`%s`) — %s\n", e.RelPath, e.Name, syn)
+		}
+	}
+	return b.String()
+}

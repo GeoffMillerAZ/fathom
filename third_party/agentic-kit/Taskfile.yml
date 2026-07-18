@@ -1,0 +1,174 @@
+version: '3'
+
+# Uniform command runner for agentic-kit. No Makefile fragmentation.
+# `task validate` is the full gate (also run by lefthook pre-push).
+
+vars:
+  GO: go
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  fmt:
+    desc: Format all Go code (root module + nested modules)
+    cmds:
+      - "{{.GO}} fmt ./..."
+      - "(cd kits/docextract/pdf && {{.GO}} fmt ./...)"
+      - "(cd kits/docextract/xlsx && {{.GO}} fmt ./...)"
+
+  fmt-check:
+    desc: Fail if any Go file is not gofmt-clean (skips tmp/ and _reference/ scanned partials)
+    cmds:
+      - |
+        unformatted=$(gofmt -l $(find . -name '*.go' -not -path './tmp/*' -not -path '*/_reference/*'))
+        if [ -n "$unformatted" ]; then
+          echo "Not gofmt-clean:"; echo "$unformatted"; exit 1
+        fi
+
+  vet:
+    desc: go vet across the workspace (root module + nested modules)
+    cmds:
+      - "{{.GO}} vet ./..."
+      - "(cd kits/docextract/pdf && {{.GO}} vet ./...)"
+      - "(cd kits/docextract/xlsx && {{.GO}} vet ./...)"
+
+  cue-vet:
+    desc: Validate every CUE schema package and its positive testdata (negative cases live as commented docs + Go rejection tests). Skips silently when cue is absent — CI installs cue so the gate is real there.
+    cmds:
+      - |
+        if ! command -v cue >/dev/null 2>&1; then echo "cue not installed — skipping"; exit 0; fi
+        found=0
+        for schema in $(find . -name 'schema.cue' -not -path './tmp/*' -not -path '*/_reference/*' -not -path './workspace/*' | sort); do
+          found=1
+          d=$(dirname "$schema")
+          echo "cue vet: $d"
+          (cd "$d" && cue vet ./...) || exit 1
+          if ls "$d"/testdata/*.cue >/dev/null 2>&1; then
+            (cd "$d" && cue vet ./testdata/) || exit 1
+          fi
+        done
+        [ "$found" = 0 ] && echo "no schema.cue files yet"
+        exit 0
+
+  test:
+    desc: Run all tests (race-detected, root module + nested modules)
+    cmds:
+      - "{{.GO}} test -race ./..."
+      - "(cd kits/docextract/pdf && {{.GO}} test -race ./...)"
+      - "(cd kits/docextract/xlsx && {{.GO}} test -race ./...)"
+
+  constitution-lint:
+    desc: Run the constitution linter (empty-require, tracking-coverage, concurrency-contract, schema-presence, cassette-version, catalog-fresh, compat-coverage, doc-coverage, org-agnostic, secret-scan, readme-count)
+    cmds:
+      - "{{.GO}} run ./cmd/constitution-lint"
+
+  validate:
+    desc: Full gate — fmt-check, vet, cue-vet, constitution-lint, test
+    deps: [fmt-check, vet, cue-vet]
+    cmds:
+      - task: constitution-lint
+      - task: test
+
+  eval:
+    desc: "Run kits/eval-runner in replay mode over the committed corpus (H5/D9 first subscriber). Fully offline: no provider keys, no network — cassette-backed judge lanes only. Exits non-zero on regression-gate failure and on an empty bank (ErrEmptyBank, enforced in the runner, not here); the printed scenario count is informational."
+    cmds:
+      - "{{.GO}} run ./cmd/eval-runner -dir kits/eval-runner/testdata"
+
+  eval-record:
+    desc: "Regenerate the kits/eval-runner replay corpus (testdata/cassettes/judge.jsonl + testdata/baseline.jsonl) from the deterministic scripted MockClient judge. Offline and deterministic, but overwrites committed fixtures — key-gated via EVALRUNNER_RECORD=1 and never run by tests."
+    cmds:
+      - "EVALRUNNER_RECORD=1 {{.GO}} run ./kits/eval-runner/gen-cassettes -dir kits/eval-runner/testdata"
+
+  wasm-build:
+    desc: Build the governance WASM example (GOOS=js GOARCH=wasm) into workspace/wasm/main.wasm
+    cmds:
+      - mkdir -p workspace/wasm
+      - GOOS=js GOARCH=wasm {{.GO}} build -o workspace/wasm/main.wasm ./examples/governance-wasm
+
+  smoke-live:
+    desc: Live end-to-end agent smoke (requires ANTHROPIC_API_KEY; skipped without it)
+    cmds:
+      - |
+        if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+          echo "SKIP: ANTHROPIC_API_KEY not set"
+          exit 0
+        fi
+        cd examples/agent-cli && {{.GO}} run . -mode live -max-turns 4 -prompt "How many words are in testdata/sample.txt? Use your tools."
+
+  sextant-check:
+    desc: Build+test the first real downstream consumer (../sextant) against kit HEAD via its go.work; skips if not checked out
+    cmds:
+      - |
+        if [ -d ../sextant ]; then
+          (cd ../sextant && {{.GO}} build ./... && {{.GO}} test ./...)
+        else
+          echo "sextant not present — skipping"
+        fi
+
+  throughline-check:
+    desc: "Build+test the second real downstream consumer (../throughline) against kit HEAD; skips if not checked out. throughline VENDORS its deps, so its default build uses the vendored kit snapshot — -mod=readonly bypasses vendor/ and resolves its replace directive to the sibling kit checkout at HEAD, which is the entire point of this check."
+    cmds:
+      - |
+        if [ -d ../throughline ]; then
+          (cd ../throughline && {{.GO}} build -mod=readonly ./... && {{.GO}} test -mod=readonly ./...)
+        else
+          echo "throughline not present — skipping"
+        fi
+
+  growing-gardens-bi-check:
+    desc: Build+test the third downstream consumer (../growing-gardens-bi) against kit HEAD; skips if not checked out
+    cmds:
+      - |
+        if [ -d ../growing-gardens-bi ]; then
+          (cd ../growing-gardens-bi && {{.GO}} build ./... && {{.GO}} test ./...)
+        else
+          echo "growing-gardens-bi not present — skipping"
+        fi
+
+  downstream-check:
+    desc: Run every downstream consumer check (sextant-check + throughline-check + growing-gardens-bi-check) against kit HEAD
+    cmds:
+      - task: sextant-check
+      - task: throughline-check
+      - task: growing-gardens-bi-check
+
+  fuzz:
+    desc: "Run the seed corpora of every fuzz target (go test -run=Fuzz per package). Go permits only one -fuzz target per invocation, so this generic loop executes seeds only — for real coverage-guided fuzzing of a single target use fuzz-long."
+    cmds:
+      - |
+        pkgs=$(find . -name '*_test.go' -not -path './tmp/*' -not -path '*/_reference/*' -not -path './workspace/*' \
+          -exec grep -l 'func Fuzz' {} + 2>/dev/null | xargs -n1 dirname | sort -u)
+        if [ -z "$pkgs" ]; then echo "no fuzz targets found"; exit 0; fi
+        for p in $pkgs; do
+          echo "fuzz seeds: $p"
+          {{.GO}} test -run=Fuzz "$p" || exit 1
+        done
+
+  fuzz-long:
+    desc: "Coverage-guided fuzz one target: task fuzz-long PKG=./path/to/pkg [FUZZ=FuzzName] [FUZZTIME=10s]"
+    preconditions:
+      - sh: test -n "{{.PKG}}"
+        msg: "PKG is required, e.g. task fuzz-long PKG=./foundations/governance/proof-of-work FUZZ=FuzzVerify FUZZTIME=30s"
+    cmds:
+      - '{{.GO}} test -fuzz={{.FUZZ | default "Fuzz"}} -fuzztime={{.FUZZTIME | default "10s"}} {{.PKG}}'
+
+  docs-index:
+    desc: Regenerate docs/catalog.md (one line per Go package) from package doc comments
+    cmds:
+      - "{{.GO}} run ./cmd/kit-catalog"
+
+  release-notes:
+    desc: "Print one version's CHANGELOG.md section verbatim: task release-notes -- v0.6.0"
+    cmds:
+      - "{{.GO}} run ./cmd/release-notes {{.CLI_ARGS}}"
+
+  doctor:
+    desc: Report toolchain versions and workspace health
+    cmds:
+      - 'echo "go:       $({{.GO}} version)"'
+      - 'echo "cue:      $(cue version 2>/dev/null | head -1 || echo missing)"'
+      - 'echo "lefthook: $(lefthook version 2>/dev/null || echo missing)"'
+      - 'echo "packages: $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'

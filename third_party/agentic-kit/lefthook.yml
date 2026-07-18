@@ -1,0 +1,65 @@
+# Two-layer git hook strategy (see helpers/docs reference: architecture-summary.md)
+#   pre-commit (~fast)  — changed-file-scoped checks
+#   pre-push   (~full)  — complete workspace validation
+#
+# Opt out with LEFTHOOK=0 — never `--no-verify` unless the hook itself is broken.
+
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt-check:
+      glob: "*.go"
+      run: |
+        files=$(printf '%s\n' {staged_files} | grep -v '/_reference/' || true)
+        [ -z "$files" ] && exit 0
+        bad=$(echo "$files" | xargs gofmt -l)
+        if [ -n "$bad" ]; then echo "gofmt needed:"; echo "$bad"; exit 1; fi
+    cue-vet:
+      glob: "*.cue"
+      run: |
+        if ! command -v cue >/dev/null 2>&1; then exit 0; fi
+        dirs=$(printf '%s\n' {staged_files} | grep -v '/cue.mod/' | xargs -n1 dirname 2>/dev/null | sort -u)
+        for d in $dirs; do
+          [ -f "$d/schema.cue" ] || continue   # vet schema-bearing dirs only (covers their testdata)
+          (cd "$d" && cue vet ./...) || exit 1
+        done
+
+pre-push:
+  commands:
+    validate:
+      run: task validate
+    # fathom verify gate — "done means proven": [x] claims in docs/plans/*.md
+    # must verify against the code index. exit 1 (claim disproven) blocks the
+    # push; exit 2 (daemon/index unavailable) warns and allows it (fail-open).
+    # Convention + grammar: fathom repo, docs/plans/README.md.
+    fathom-verify:
+      run: |
+        FATHOM="${FATHOM_BIN:-../sextant/bin/fathom}"
+        [ -x "$FATHOM" ] || exit 0
+        plans=""
+        for f in docs/plans/*.md; do
+          [ -e "$f" ] || continue
+          [ "$(basename "$f")" = "README.md" ] && continue
+          plans="$plans $f"
+        done
+        [ -z "$plans" ] && exit 0
+        rc=0
+        for f in $plans; do
+          "$FATHOM" verify --service agentic-kit --plan "$f"
+          code=$?
+          [ $code -eq 1 ] && rc=1
+          [ $code -eq 2 ] && echo "fathom verify: operational error — allowing push (fail-open)"
+        done
+        exit $rc
+
+# Best-effort fleet-index refresh (fathom, né sextant). Fails silently when
+# the fathom daemon holds the DuckDB write lock — sessions refresh through
+# the MCP `ingest` tool instead (see CLAUDE.md).
+post-commit:
+  commands:
+    fathom-refresh:
+      run: |
+        FATHOM="${FATHOM_BIN:-../sextant/bin/fathom}"
+        [ -x "$FATHOM" ] || FATHOM=../sextant/bin/sextant
+        [ -x "$FATHOM" ] || exit 0
+        "$FATHOM" ingest --service agentic-kit --path . --store ../sextant/workspace/db/fleet.duckdb >/dev/null 2>&1 || true

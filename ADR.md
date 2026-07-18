@@ -402,3 +402,64 @@ primary path `POST /rpc/agent`, with `POST /rpc/companion` kept as a
 compatible alias. The four ADR-010 group surfaces (`coding`/`investigation`/
 `shared`/`platform`) are unchanged and un-killed — zero observed traffic, kept
 for taxonomy completeness pending the 30-day post-flip log.
+
+## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
+
+**Context.** fathom's only private dependency is
+`github.com/geoffmilleraz/agentic-kit` (ADR-009); a cold clone of fathom by
+someone without access to that private repo cannot resolve it. A full `go
+mod vendor` of fathom is 565MB — 538MB of it DuckDB's static libs — which is
+not something to commit; the kit's own tree is small enough (low
+double-digit MB at worst) to commit directly.
+
+**Decision.** `third_party/agentic-kit/` is a committed, full mirror of the
+agentic-kit tree at **exactly** the commit `go.mod`'s pseudo-version pins,
+produced by `git -C ../agentic-kit archive <commit> | tar -x` (the whole
+tree minus `.git`; nothing else excluded — exactness is the point, since the
+drift guard below does a byte-level content compare). `go.mod` carries
+`replace github.com/geoffmilleraz/agentic-kit => ./third_party/agentic-kit`.
+Precedence is layered, not switched: with `go.work` active (local
+co-development, sibling `../agentic-kit` checked out), the workspace's `use`
+directive wins over the `go.mod` replace, so day-to-day dev is unchanged;
+with `GOWORK=off` (a cold clone has no `go.work` at all), the `go.mod`
+replace resolves to the in-tree mirror. Both paths are proven by `go list -m
+-f '{{.Dir}}' github.com/geoffmilleraz/agentic-kit` under each mode.
+
+`scripts/sync-kit.sh` (`task sync-kit`) re-archives the sibling at the
+pinned commit into `third_party/agentic-kit`; it refuses to run if the
+sibling lacks that commit. `scripts/vendor-check.sh` (`task vendor-check`,
+a `task validate` dependency, so part of the pre-push lefthook gate) is the
+drift guard: it re-derives the pinned commit's archive into a temp dir,
+content-hashes both trees (sha256 per file keyed by relative path, not raw
+tar bytes — `git archive` embeds the commit timestamp in every tar entry,
+which would make identical content hash differently), and fails the push if
+they disagree. It skips gracefully (exit 0, warning) when `../agentic-kit`
+isn't present or lacks the pinned commit — the expected case for anyone
+without kit access, so the gate never blocks a consumer who was never
+supposed to have the sibling in the first place.
+
+`third_party/agentic-kit/` is excluded from `task fmt-check` / `task
+cue-vet`'s file scans (Taskfile `GOFILES`, the `cue-vet` `find`): it's
+upstream's code and upstream's formatting; our gate owns drift detection
+(`vendor-check`), not gofmt opinions on code we don't maintain.
+
+For a fully offline build, `go mod vendor` now succeeds standalone (the one
+module that used to require private-repo access resolves in-tree); the
+resulting `vendor/` directory is the consumer's own local artifact, never
+committed (`.gitignore`). See docs/distribution.md.
+
+**Why.** Avoids duplicating the 565MB DuckDB vendor problem while still
+letting fathom build with zero private-repo access — the smallest mirror
+that makes a cold clone self-sufficient. Content-hash drift detection (not
+a manual "remember to re-sync" convention) is what makes it safe: a kit pin
+bump that forgets `task sync-kit` fails the push, not silently ships a
+mismatched mirror.
+
+**Trade-off / reversibility.** `third_party/agentic-kit` tracks the kit's
+own commit history size, not just fathom's needs (the pinned commit's
+archive measured ~13MB against an initial ~716KB estimate, including one
+~4.1MB binary that appears to be an accidental upstream commit — see
+docs/distribution.md's size note). Removable entirely by reverting to a
+bare `replace ... => ../agentic-kit` if kit access becomes universal; the
+sync/drift-guard scripts are additive and inert without a `third_party/`
+directory to check.

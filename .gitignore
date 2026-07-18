@@ -18,6 +18,12 @@ coverage.*
 # Conversion scratch (scanned design docs, tiles, recovered transcripts)
 /tmp/
 
+# `go mod vendor` output — a consumer's local build artifact (air-gapped
+# builds, docs/distribution.md), never committed. third_party/agentic-kit is
+# the one private dependency, mirrored in-tree on purpose; it is NOT covered
+# by this rule.
+/vendor/
+
 # OS
 .DS_Store
 

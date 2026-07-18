@@ -1,0 +1,61 @@
+package claudecli
+
+import (
+	"context"
+
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+)
+
+// Stream satisfies llmclient.LLMClient's Stream method. There is no native
+// token-level streaming for this adapter: `claude -p --output-format json`
+// (see the package doc) returns one complete envelope, not incremental
+// chunks — true streaming would require parsing `--output-format
+// stream-json`, which is out of scope for this adapter. Stream instead runs
+// Complete to completion and delivers the result as a single TextDelta chunk
+// followed by the terminal chunk (StopReason + Usage), mirroring the noop
+// adapter's Stream shape. Callers that need real incremental delivery should
+// use Complete and treat this Stream as a compatibility shim for code that is
+// written against the Stream half of the interface.
+//
+// The returned error is always nil; a Complete failure arrives as the
+// terminal chunk's Err, per the llmclient streaming contract (pre-stream
+// failures only travel as the returned error, and this adapter has none —
+// everything is known only after the blocking Complete call finishes).
+func (c *Client) Stream(ctx context.Context, req llmclient.Request) (<-chan llmclient.StreamChunk, error) {
+	ch := make(chan llmclient.StreamChunk, 2)
+	go func() {
+		defer close(ch)
+
+		resp, err := c.Complete(ctx, req)
+		if err != nil {
+			send(ctx, ch, llmclient.StreamChunk{Err: err})
+			return
+		}
+
+		if resp.Text != "" {
+			if !send(ctx, ch, llmclient.StreamChunk{TextDelta: resp.Text}) {
+				return
+			}
+		}
+		u := resp.Usage
+		send(ctx, ch, llmclient.StreamChunk{StopReason: resp.StopReason, Usage: &u})
+	}()
+	return ch, nil
+}
+
+// send delivers c on ch, or — if ctx is cancelled first — makes a
+// best-effort terminal error chunk and reports failure so the caller stops
+// sending. Mirrors the noop and MockClient Stream implementations' shared
+// send-with-cancellation shape.
+func send(ctx context.Context, ch chan<- llmclient.StreamChunk, c llmclient.StreamChunk) bool {
+	select {
+	case ch <- c:
+		return true
+	case <-ctx.Done():
+		select {
+		case ch <- llmclient.StreamChunk{Err: ctx.Err()}:
+		default:
+		}
+		return false
+	}
+}

@@ -1,0 +1,13 @@
+# Sextant index excludes for agentic-kit (fleet member). Index the Go sources.
+bin/
+workspace/
+tmp/
+ref/
+.git/
+# Agent tool state — stale worktree copies must never enter the index (H1)
+.claude/
+# Generated
+*_templ.go
+# Replay cassettes / fixtures are test DATA, not source
+**/testdata/
+**/cassettes/

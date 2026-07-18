@@ -1,0 +1,7 @@
+module {{.Module}}
+
+go 1.26
+
+require github.com/geoffmilleraz/agentic-kit {{.KitVersion}}
+
+replace github.com/geoffmilleraz/agentic-kit => {{.KitReplacePath}}

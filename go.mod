@@ -55,6 +55,7 @@ require (
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
+	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260311193753-579e4da9a98c // indirect
@@ -63,4 +64,9 @@ require (
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
 )
 
-replace github.com/geoffmilleraz/agentic-kit => ../agentic-kit
+// In-tree mirror of the private agentic-kit module at the exact pinned
+// commit (third_party/agentic-kit, see docs/distribution.md, ADR-019) — a
+// cold clone with no access to the private repo builds from this. Local dev
+// with go.work active still resolves ../agentic-kit (the workspace `use`
+// directive wins over this replace); GOWORK=off falls through to this line.
+replace github.com/geoffmilleraz/agentic-kit => ./third_party/agentic-kit

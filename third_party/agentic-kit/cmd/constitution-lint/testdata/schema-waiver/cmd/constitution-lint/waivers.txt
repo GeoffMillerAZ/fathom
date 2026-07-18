@@ -1,0 +1,2 @@
+# waivers for test fixture
+foundations/agent/tool-registry

@@ -44,7 +44,10 @@ lefthook install
 
 Requires: Go 1.26+, **CGO enabled** (DuckDB), [CUE](https://cuelang.org) 0.16+,
 [go-task](https://taskfile.dev), [lefthook](https://github.com/evilmartians/lefthook).
-The sibling `../agentic-kit` module is wired via `go.work` + a `replace`.
+The sibling `../agentic-kit` module is wired via `go.work` + a `replace` for
+local dev. Don't have `../agentic-kit`? Nothing to do — `go.mod`'s `replace`
+falls back to an in-tree mirror (`third_party/agentic-kit`) automatically;
+see [docs/distribution.md](docs/distribution.md).
 
 ## Usage (planned surfaces)
 
@@ -74,6 +77,7 @@ fathom serve-mcp                       # stdio MCP server for editors/agents
 | [docs/usage.md](docs/usage.md) | Quickstart, all CLI subcommands, Go client API, connecting an MCP client |
 | [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: all tools, prompts, and resources |
+| [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
 | [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite and the CGO trade-off |
 
 ## Layout

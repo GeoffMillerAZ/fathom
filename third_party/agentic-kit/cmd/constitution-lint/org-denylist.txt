@@ -1,0 +1,37 @@
+# cmd/constitution-lint/org-denylist.txt
+# One literal token per line, matched case-sensitively as a WHOLE WORD
+# (word-boundary regex around the regex-quoted token — not bare substring:
+# short tokens like the 3-character codename below would otherwise match
+# inside unrelated identifiers, hashes, and .jsonl cassette payloads and
+# fail the gate spuriously). # comments and blank lines are ignored.
+#
+# Seeded from a historical scrub already recorded in this repo
+# (docs/plans/2026-07-uplift.md, Wave 0, line ~183: "org-agnostic doc scrub
+# (s1m/Throughline/Muster/Testament names out)").
+#
+# Verified against the live tree (2026-07-16, at the time this check was
+# introduced): s1m, Muster, and Testament genuinely appear NOWHERE else in
+# the tracked tree — a clean regression guard against reappearance.
+#
+# "Throughline" is DELIBERATELY OMITTED from this list despite being named
+# in that same historical sentence. It is the real, disclosed, currently-in-
+# -use name of one of the kit's three actual downstream consumers (alongside
+# sextant and growing-gardens-bi) — see TRACKING.md (dozens of legitimate
+# hits), CHANGELOG.md, docs/plans/handoff-h3-throughline.md,
+# docs/upgrades/throughline-v0.2-adoption*.md, and several
+# foundations/*/types.go doc comments describing its provenance invariants
+# (e.g. foundations/evidence/evidence-span/types.go). Denylisting it would
+# fail this check against dozens of current, legitimate files for no real
+# leak — exactly the "waiver file containing half the tree" theater trap
+# the H8 handoff plan warns against. If a future decision anonymizes
+# Throughline's name from public-facing material, add it back then with
+# that rationale, not this one.
+#
+# NOTE: the lowercase sibling-repo names sextant, throughline, and
+# growing-gardens-bi are NOT here either — they are required architecture
+# (task downstream-check's three real consumers), used intentionally and
+# correctly throughout Taskfile.yml/TRACKING.md/README.md. This denylist
+# targets the specific historical coded/capitalized tokens only.
+s1m
+Muster
+Testament

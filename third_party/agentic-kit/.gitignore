@@ -1,0 +1,16 @@
+# Build / test artifacts
+*.out
+*.test
+coverage.*
+/dist/
+/bin/
+
+# Local scratch (scanned source reconstructions live here)
+/tmp/
+
+# OS
+.DS_Store
+
+# Compiled binaries / wasm artifacts
+/endpoint-guard
+workspace/wasm/*.wasm

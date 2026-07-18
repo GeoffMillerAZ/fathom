@@ -1,0 +1,46 @@
+{
+  "models": {
+    "example-judge-1": {
+      "id": "example-judge-1",
+      "family": "beta",
+      "lineage": [],
+      "caps": {
+        "thinking": false,
+        "effort": false,
+        "temperature": true,
+        "seed": false,
+        "structured_outputs": true
+      },
+      "cost_tier": 1,
+      "deprecated": false
+    },
+    "example-producer-1": {
+      "id": "example-producer-1",
+      "family": "alpha",
+      "lineage": [],
+      "caps": {
+        "thinking": false,
+        "effort": false,
+        "temperature": true,
+        "seed": false,
+        "structured_outputs": false
+      },
+      "cost_tier": 0,
+      "deprecated": false
+    },
+    "example-judge-same-family": {
+      "id": "example-judge-same-family",
+      "family": "alpha",
+      "lineage": [],
+      "caps": {
+        "thinking": false,
+        "effort": false,
+        "temperature": true,
+        "seed": false,
+        "structured_outputs": true
+      },
+      "cost_tier": 1,
+      "deprecated": false
+    }
+  }
+}

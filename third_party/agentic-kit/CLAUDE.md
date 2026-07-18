@@ -1,0 +1,83 @@
+# CLAUDE.md — agentic-kit contributor guide
+
+Layered, org-agnostic platform for **governed agentic work**, developed almost entirely by AI agents.
+Core idea: **CUE owns the *shape* of data; Go owns *behavior*** — drift between them is a bug.
+Module `github.com/geoffmilleraz/agentic-kit`, Go 1.26. New to CUE? Read `docs/why-cue.md` first.
+
+## The gate (non-negotiable)
+
+- `task validate` = `fmt-check` + `vet` + `cue-vet` + `go test -race ./...`. **Must be green before any commit.**
+- lefthook hooks: pre-commit = fast staged-file checks (gofmt, `cue vet` on schema dirs); pre-push = full `task validate`.
+- **Never `git commit --no-verify`.** Opt out only with `LEFTHOOK=0`, and only if the hook itself is broken.
+- `task downstream-check` builds + tests both real consumers (`../sextant`, `../throughline`) against kit HEAD — run it before tagging or when exported APIs change; each check skips if the sibling isn't checked out.
+- `task doctor` checks toolchain health. `task --list` shows everything.
+
+## Hard rules
+
+- **stdlib only.** Zero external Go dependencies, ever. `go.mod` has no `require` block — keep it that way.
+- **Org-agnostic.** No company/product names, no hard-coded catalogs (sensitivity rules, taxonomies, gateways). Anything org-specific is CUE/config data validated against a schema.
+- **Determinism.** Inject clocks (`now func() time.Time` — never bare `time.Now()` in library code) and seedable randomness. Every time-touching package exposes an injectable clock seam; a nil/unset clock MAY default to `time.Now` only when that default is documented on the seam (kits do this routinely; a handful of foundations do too). What is forbidden is a bare `time.Now()` with no seam. Table-driven tests, no sleeps, no network in tests (httptest only). All tests pass with `-race`.
+- **Layering.** foundations import only stdlib + sibling foundations. kits compose foundations. runtimes/surfaces/toolchains build on both. Imports point downward only — nothing imports from kits/apps back into foundations.
+- **Concurrency contract** stated in every package doc comment (e.g. "safe for concurrent use via sync.Mutex").
+- Dirs are kebab-case; package names collapse the hyphen (`rate-limiter` → `package ratelimiter`).
+- `foundations/governance/*` must stay WASM-safe (compiles to `GOOS=wasip1` / `js`): no file I/O, no goroutine leaks.
+
+## Package shape (every foundation sub-package)
+
+```
+schema.cue    CUE contract (types, constraints, valid value space)
+types.go      Go structs/interfaces mirroring the CUE contract
+<impl>.go     implementation
+mock.go       test double (where an interface exists)
+*_test.go     contract + behavior tests
+testdata/*.cue  positive fixtures (cue vet checks them); negative cases = commented docs + Go rejection tests
+```
+
+Skip `schema.cue` only for **behavioral-only** packages with no data contract (e.g. `foundations/llmclient`).
+
+## Where things live
+
+- `foundations/` — narrow stdlib-only packages, the durable nouns (contracts, evidence, review, security, governance, … — full category list in `docs/catalog.md`)
+- `kits/` — high-order workflows composed from foundations (agent-harness, mcp-server, investigation, command-center, endpoint-guard, governed-prose-kit)
+- `runtimes/` — execution, orchestration, policy, connector substrates
+- `surfaces/` — human/developer-facing interfaces (forms/cueform, editor, demo)
+- `toolchains/` — canonical CUE schemas, generators, materialization
+- `cmd/` — runnable binaries (`endpoint-guard` sidecar, `kit-catalog` docs generator); `examples/` — e.g. governance-wasm; `scenarios/` — seeded end-to-end blueprints
+- `specs/` — docs-as-spec acceptance specs; `docs/` — explainers (`adopting.md`, `agentic.md`, `why-cue.md`, `governance.md`) + the generated `catalog.md`
+- `workspace/` — runtime/state artifacts, not tracked; `tmp/` — gitignored design docs (`tmp/design_inspiration/files/`)
+- `_reference/` dirs — reconstructed scanned sources next to the packages they inform. Go ignores them; **never import them**, only port from them.
+
+## TRACKING.md discipline
+
+- Single source of truth for build status. **Every capability gets a checkbox.**
+- Mark `[x]` only when tests pass **and** the full gate is green. Legend: `[ ]` / `[~]` in progress / `[x]` done & tested / `[-]` deferred.
+- Update it in the same change that lands the work.
+
+## Git
+
+- Conventional-ish subjects: `feat(foundations): …`, `docs: …`, `fix: …` — scope optional, body explains what + why.
+- Co-author trailer on agent-authored commits, e.g.
+  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`
+- Commit only with the gate green; hooks enforce this — don't fight them.
+
+## Working style for agents
+
+- Scope or junk-gate question (add / defer / retire)? `VISION.md` is the arbiter — judge the change against its one-sentence test and junk gate.
+- Read the sibling packages in a category before adding one — match their shape exactly.
+- Mock where an interface exists; tests use injected clocks (`fixedClock`/`advancingClock` patterns are common in tests).
+- Verify before reporting done: `gofmt -l` on touched files (must print nothing), `go vet ./...`, `go build ./...`, `go test -race` on your packages — or just `task validate`.
+
+## Sextant fleet index (code intelligence — use it first)
+
+The fleet index (throughline · agentic-kit · app-kit · sextant) lives in
+`../sextant/workspace/db/fleet.duckdb`, exposed to sessions via the
+user-scoped `sextant` MCP server. Resolve "where/what/who-calls" via its tools
+(`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`,
+`pack_context`) before any Grep/Read sweep — read files to edit them, not to
+discover them. Cross-repo: check downstream impact on throughline/sextant
+symbols before changing exported kit APIs (complements `task downstream-check`).
+Refresh via the MCP `ingest` tool (`{"service":"agentic-kit"}`) at session
+start and after commits (hash-gated, ~0.2 s; the DuckDB store is
+single-writer — CLI ingest fails while a session's server holds the lock; a
+best-effort post-commit lefthook covers no-session commits). After heavy
+uncommitted edits run `staleness_report` before trusting results.

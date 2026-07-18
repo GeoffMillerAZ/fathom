@@ -1,0 +1,14 @@
+{
+  "example-judge-1": {
+    "InputPerMTok": 1.0,
+    "OutputPerMTok": 5.0,
+    "CacheReadPerMTok": 0.1,
+    "CacheWritePerMTok": 1.25
+  },
+  "example-producer-1": {
+    "InputPerMTok": 0.25,
+    "OutputPerMTok": 1.25,
+    "CacheReadPerMTok": 0.025,
+    "CacheWritePerMTok": 0.3
+  }
+}

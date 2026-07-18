@@ -5,6 +5,51 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — build fathom without agentic-kit access (ADR-019, docs/distribution.md)
+- **`third_party/agentic-kit/`** is a committed, full mirror of the private
+  `github.com/geoffmilleraz/agentic-kit` tree at exactly the commit
+  `go.mod`'s pseudo-version pins (`git -C ../agentic-kit archive <commit> |
+  tar -x`, whole tree minus `.git`). `go.mod`'s `replace` now points there
+  instead of `../agentic-kit`; `go.work`'s `use ../agentic-kit` still wins
+  for local co-development (unchanged dev workflow), and `GOWORK=off` falls
+  through to the in-tree mirror — proven both ways with `go list -m -f
+  '{{.Dir}}' github.com/geoffmilleraz/agentic-kit`, and end-to-end with
+  `GOWORK=off go build ./...` and `GOWORK=off go test ./internal/config/
+  ./internal/verify/`, all green from a working tree with no sibling
+  checkout involved in the resolution.
+- **`task sync-kit`** (`scripts/sync-kit.sh`) re-archives `../agentic-kit`
+  at the pinned commit into `third_party/agentic-kit`; refuses if the
+  sibling lacks that commit. Run it (and commit the result) on every kit
+  pin bump.
+- **`task vendor-check`** (`scripts/vendor-check.sh`), now a `task
+  validate` dependency and therefore part of the pre-push lefthook gate: a
+  drift guard that content-hashes (sha256 per file, path-keyed — not raw
+  tar bytes, which `git archive`'s embedded commit timestamp would make
+  disagree even for identical content) `third_party/agentic-kit` against a
+  fresh archive of the pinned commit, and fails if they differ. Skips
+  gracefully (exit 0, warning) when `../agentic-kit` isn't present or
+  lacks the pinned commit — the expected case for a kit-free consumer.
+  Covered by `scripts/vendor-check_test.sh` (5 cases: missing dir, fresh
+  match, tampered mismatch, absent sibling, sibling-missing-commit — all
+  in a throwaway temp layout, no mutation of the real repo or sibling).
+- **`third_party/`** is excluded from `task fmt-check` / `task cue-vet`'s
+  file scans (it's upstream's code, upstream's formatting — `vendor-check`
+  owns drift detection there, not gofmt).
+- **Air-gapped builds:** `go mod vendor` now succeeds standalone (the one
+  module needing private-repo access resolves in-tree); the resulting
+  `vendor/` (~565MB, mostly DuckDB static libs) is gitignored — a
+  consumer's local artifact, never committed.
+- Docs: new `docs/distribution.md` (how to build without kit access, the
+  sync-kit ritual, the air-gapped path); README gets a Quickstart note +
+  a docs-table pointer; ADR-019 records the decision.
+- **Size note:** the ground assumption going in was ~716KB for the kit's
+  tree; the pinned commit actually archives to ~13MB (1,153 files),
+  including one ~4.1MB Mach-O binary (`kit-new`) that appears to be an
+  accidental commit upstream (a `docs:` commit, unrelated to the binary).
+  Archived faithfully per "exclude nothing else" — exactness is what makes
+  the content-hash drift guard meaningful — but flagged here for the
+  agentic-kit maintainer to prune in a future commit.
+
 ### Removed — sextant back-compat surface (owner decision 2026-07-17: no back-compat wanted)
 - **Pre-rename back-compat is gone, not deprecated.** The rename shipped
   2026-07-07 (ADR-015) with several shims so a mid-migration fleet wouldn't

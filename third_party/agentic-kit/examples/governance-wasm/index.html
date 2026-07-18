@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>agentic-kit · Governance WASM Demo</title>
+  <!--
+    wasm_exec.js must be copied from the Go toolchain before serving:
+      cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/governance-wasm/
+
+    Then serve the directory with any static file server, e.g.:
+      python3 -m http.server 8080
+    and open http://localhost:8080/examples/governance-wasm/
+  -->
+  <script src="wasm_exec.js"></script>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 720px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #1a1a1a;
+    }
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.1rem; margin-top: 1.5rem; }
+    label { display: block; margin-bottom: .25rem; font-weight: 600; }
+    textarea, input[type=text], input[type=number] {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: monospace;
+      padding: .5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: .75rem;
+    }
+    button {
+      padding: .5rem 1rem;
+      background: #0066cc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: .5rem;
+    }
+    button:disabled { background: #888; cursor: default; }
+    pre {
+      background: #f4f4f4;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: .75rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      min-height: 2rem;
+    }
+    .ok    { color: #1a7a1a; }
+    .fail  { color: #b00; }
+    .note  { font-size: .85rem; color: #555; }
+    #status { font-style: italic; color: #555; }
+  </style>
+</head>
+<body>
+  <h1>agentic-kit · Governance WASM Demo</h1>
+  <p class="note">
+    All three functions run <strong>inside the browser</strong> via a single
+    Go → WASM compilation of the governance foundations. The PoW solver burns
+    the <em>client's</em> CPU — not the server's — making abuse cost the
+    attacker work.
+  </p>
+  <p id="status">Loading WASM…</p>
+
+  <!-- ── PoW Solver ──────────────────────────────────────────────── -->
+  <h2>1. Proof-of-Work Solver</h2>
+  <p class="note">
+    Paste a Challenge JSON issued by your server (fields: Nonce, Bits,
+    ExpiresAt, MAC). The challenge is HMAC-signed server-side — treat it as
+    opaque and return it verbatim, including the MAC. Click Solve — the
+    browser will brute-force a solution.
+  </p>
+  <label for="challengeIn">Challenge JSON</label>
+  <textarea id="challengeIn" rows="5" placeholder='{"Nonce":"abc:123","Bits":12,"ExpiresAt":"2099-01-01T00:00:00Z","MAC":"<64 hex chars from the server>"}'></textarea>
+  <button id="btnSolve" disabled>Solve (client-side PoW)</button>
+
+  <label style="margin-top:.75rem">Solution</label>
+  <pre id="solutionOut"></pre>
+
+  <!-- ── PoW Pre-check ───────────────────────────────────────────── -->
+  <h2>2. Proof-of-Work Pre-check (client-side only)</h2>
+  <p class="note">
+    After solving above, click Check to confirm the solution meets the
+    challenge's difficulty and the challenge has not expired — a local
+    sanity check before submitting. <strong>Authoritative verification
+    happens server-side only</strong>: the server authenticates the
+    challenge's HMAC signature, enforces the difficulty floor and expiry,
+    and rejects replays. The HMAC secret never leaves the server, so a
+    browser cannot (and must not) verify on its behalf.
+  </p>
+  <button id="btnVerify" disabled>Check solution (local pre-check)</button>
+  <pre id="verifyOut"></pre>
+
+  <!-- ── Prefilter ───────────────────────────────────────────────── -->
+  <h2>3. Edge Prefilter</h2>
+  <p class="note">
+    A zero-cost length / empty check an edge worker runs <em>before</em>
+    forwarding to origin — no model call required.
+  </p>
+  <label for="prefilterText">Text to prefilter</label>
+  <textarea id="prefilterText" rows="3" placeholder="Type something…"></textarea>
+  <label for="maxLen">Max rune length</label>
+  <input type="number" id="maxLen" value="200" min="1" style="width:120px" />
+  <button id="btnPrefilter" disabled>Prefilter</button>
+  <pre id="prefilterOut"></pre>
+
+  <script>
+    const go = new Go();
+
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then(result => {
+      go.run(result.instance);
+      document.getElementById("status").textContent = "WASM ready.";
+      document.getElementById("btnSolve").disabled = false;
+      document.getElementById("btnVerify").disabled = false;
+      document.getElementById("btnPrefilter").disabled = false;
+    }).catch(err => {
+      document.getElementById("status").textContent = "Failed to load WASM: " + err;
+    });
+
+    // ── Solve ──────────────────────────────────────────────────────
+    document.getElementById("btnSolve").addEventListener("click", () => {
+      const challengeJSON = document.getElementById("challengeIn").value.trim();
+      if (!challengeJSON) {
+        document.getElementById("solutionOut").textContent = "(paste a Challenge JSON first)";
+        return;
+      }
+      const btn = document.getElementById("btnSolve");
+      btn.disabled = true;
+      btn.textContent = "Solving…";
+      // Run asynchronously so the UI can update.
+      setTimeout(() => {
+        const solution = govSolvePoW(challengeJSON);
+        document.getElementById("solutionOut").textContent = solution;
+        btn.disabled = false;
+        btn.textContent = "Solve (client-side PoW)";
+      }, 10);
+    });
+
+    // ── Pre-check (local difficulty/expiry only — server is authoritative) ──
+    document.getElementById("btnVerify").addEventListener("click", () => {
+      const challengeJSON = document.getElementById("challengeIn").value.trim();
+      const solution      = document.getElementById("solutionOut").textContent.trim();
+      if (!challengeJSON || !solution) {
+        document.getElementById("verifyOut").textContent = "(solve a challenge first)";
+        return;
+      }
+      const ok = govVerifyPoW(challengeJSON, solution);
+      const out = document.getElementById("verifyOut");
+      out.textContent = ok
+        ? "✓ meets difficulty (server still verifies MAC + replay)"
+        : "✗ does not meet difficulty (or challenge expired)";
+      out.className = ok ? "ok" : "fail";
+    });
+
+    // ── Prefilter ──────────────────────────────────────────────────
+    document.getElementById("btnPrefilter").addEventListener("click", () => {
+      const text   = document.getElementById("prefilterText").value;
+      const maxLen = parseInt(document.getElementById("maxLen").value, 10) || 200;
+      const result = govPrefilter(text, maxLen);
+      const out    = document.getElementById("prefilterOut");
+      out.textContent = result;
+      out.className   = result === "ok" ? "ok" : "fail";
+    });
+  </script>
+</body>
+</html>

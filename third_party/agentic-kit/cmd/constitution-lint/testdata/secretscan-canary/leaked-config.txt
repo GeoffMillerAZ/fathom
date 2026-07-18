@@ -1,0 +1,8 @@
+# Planted-positive canary fixture for TestSecretScanCanary — D10 discipline:
+# a scan that can't find a planted secret proves nothing.
+#
+# Both values below are obviously-fake, universally-recognized-safe
+# placeholders, never anything that could be mistaken for a real active
+# secret:
+AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+ANTHROPIC_API_KEY=sk-ant-api03-FAKEFAKEFAKEFAKEFAKEFAKEFAKEFAKE

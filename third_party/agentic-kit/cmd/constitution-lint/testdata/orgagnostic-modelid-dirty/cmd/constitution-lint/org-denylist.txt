@@ -1,0 +1,2 @@
+# fixture org-denylist.txt for the org-agnostic model-ID dirty test.
+# No tokens needed — this fixture only exercises the model-ID pattern scan.

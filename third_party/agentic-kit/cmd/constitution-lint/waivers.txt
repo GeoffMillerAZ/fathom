@@ -1,0 +1,127 @@
+# cmd/constitution-lint/waivers.txt
+# Packages waived from the schema-presence check.
+# One module-relative path per line; # comments and blank lines are ignored.
+#
+# A waiver is legitimate only for "behavioral-only" packages: packages that
+# expose interfaces, middleware, or pure logic with no data-contract surface of
+# their own. If a package defines structs that cross a package boundary as
+# configuration or data, it needs a schema.cue.
+#
+# To add a waiver: add the path here AND document the reason in the adjacent
+# comment. To remove one: delete the line and create schema.cue.
+
+# ── foundations/agent ────────────────────────────────────────────────────────
+# bounded-exec: behavioral subprocess runner — no data contract, pure behavior.
+foundations/agent/bounded-exec
+# conversation: behavioral conversation-state machine — protocol logic only.
+foundations/agent/conversation
+# mcp-client: behavioral MCP client — transport + handshake + bridge, no data
+# contract surface of its own (the wire format is JSON-RPC, defined by the MCP
+# spec, not by this package's CUE schema).
+foundations/agent/mcp-client
+# tool-registry: behavioral tool dispatch — no schema, pure handler wiring.
+foundations/agent/tool-registry
+
+# ── foundations/cache ────────────────────────────────────────────────────────
+# result-cache: generic TTL+LRU memoization — pure behavioral, no contract surface.
+foundations/cache/result-cache
+
+# ── foundations/communications ───────────────────────────────────────────────
+# clarification-loop: pure behavioral state machine — no shared data type.
+foundations/communications/clarification-loop
+
+# ── foundations/distribution ─────────────────────────────────────────────────
+# (artifact-builder and artifact-store retired Wave 4 — zero consumers)
+
+# ── foundations/embedding ────────────────────────────────────────────────────
+# embedding-client: Embedder interface + CachingEmbedder — behavioral only.
+foundations/embedding/embedding-client
+# vector-store: VectorStore interface + MemoryVectorStore — behavioral only.
+foundations/embedding/vector-store
+
+# ── foundations/evidence ─────────────────────────────────────────────────────
+# doc-provider: DocProvider interface + in-memory impls — behavioral only.
+foundations/evidence/doc-provider
+# evidence-resolver: ref→span registry — behavioral, no data contract surface.
+foundations/evidence/evidence-resolver
+# source-linker: span↔source link sets — behavioral, no CUE schema surface.
+foundations/evidence/source-linker
+#
+# NOTE: foundations/evidence/evidence-anchor is NOT waived — a parallel agent
+# is landing schema.cue for it. Remove this comment once it lands.
+
+# ── foundations/governance ───────────────────────────────────────────────────
+# answer-cache: two-level match cache — behavioral middleware, no contract.
+foundations/governance/answer-cache
+# identity: privacy-preserving identity extraction — behavioral (hash logic only).
+foundations/governance/identity
+# topic-gate: cheapest-first scope decision — behavioral middleware only.
+foundations/governance/topic-gate
+
+# ── foundations/investigation ────────────────────────────────────────────────
+# investigation-memo: keyed Store interface + in-memory impl — behavioral only.
+foundations/investigation/investigation-memo
+
+# ── foundations/llmclient ────────────────────────────────────────────────────
+# llmclient root (foundations/llmclient) is documented as behavioral-only in
+# TRACKING.md §1.2. All sub-packages below are middleware/test-doubles/adapters
+# with no independent data contract.
+#
+# claudecli: CLI shell-out adapter — behavioral only, no data contract of its
+# own (wraps the `claude` binary's own JSON envelope; there is no CUE-owned
+# shape this package defines).
+foundations/llmclient/claudecli
+# codexcli: CLI shell-out adapter, modeled on claudecli — behavioral only, no
+# data contract of its own (wraps the `codex` binary's own JSONL event
+# stream; there is no CUE-owned shape this package defines).
+foundations/llmclient/codexcli
+# egress: WithEgress middleware — wraps LLMClient, no contract of its own.
+foundations/llmclient/egress
+# instrument: WithTelemetry/WithCost middleware — no data contract.
+foundations/llmclient/instrument
+# llm-test: conformance test suite — test helper, no data contract.
+foundations/llmclient/llm-test
+# noop: no-op LLMClient implementation — behavioral stub only.
+foundations/llmclient/noop
+# replay: record/replay cassettes — behavioral adapter, no CUE schema surface.
+foundations/llmclient/replay
+
+# ── foundations/persistence ──────────────────────────────────────────────────
+# jsonl-log: append-log writer/reader — behavioral I/O primitive.
+foundations/persistence/jsonl-log
+
+# NOTE: foundations/quality/fitness-function-registry is NOT waived — a parallel
+# agent is landing schema.cue for it.
+
+# ── foundations/retrieval ────────────────────────────────────────────────────
+# (chat-retriever and lookup-index retired Wave 4 — superseded by evidence-ranker, zero consumers)
+# fuzzy: pure-logic fuzzy matching — no data contract surface.
+foundations/retrieval/fuzzy
+# thread-resolver: message grouping — pure derivation, no contract surface.
+foundations/retrieval/thread-resolver
+
+# ── foundations/review ───────────────────────────────────────────────────────
+# review-queue: priority queue — behavioral, no data contract.
+foundations/review/review-queue
+# run-audit-record: append-only audit log — behavioral primitive.
+foundations/review/run-audit-record
+# run-report: deterministic Markdown renderer over run inputs — behavioral
+# renderer, no data-contract surface of its own (input types mirror caller
+# structs from harness/journal/telemetry; no CUE schema needed).
+foundations/review/run-report
+# scoring: pure-math scoring helpers — behavioral, no CUE contract surface.
+foundations/review/scoring
+
+# ── foundations/telemetry ────────────────────────────────────────────────────
+# metrics: Prometheus text-format registry — behavioral, no data contract.
+foundations/telemetry/metrics
+# sink: Sink interface + MultiSink/MemorySink/FilterSink — behavioral only.
+foundations/telemetry/sink
+
+# ── foundations/topology ─────────────────────────────────────────────────────
+# live-graph: deployment graph + wave planner — behavioral, no CUE contract.
+foundations/topology/live-graph
+# workspace-materialization: transitive dep set computation — behavioral only.
+foundations/topology/workspace-materialization
+# structured: typed strict-JSON completion over OutputSchema — behavioral only (FA-2).
+foundations/llmclient/structured

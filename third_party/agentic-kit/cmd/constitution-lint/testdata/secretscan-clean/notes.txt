@@ -1,0 +1,2 @@
+This fixture directory contains no secret-shaped literals — used to prove
+checkSecretScan produces no false positives on ordinary text.

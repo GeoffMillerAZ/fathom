@@ -1,0 +1,14 @@
+# cmd/constitution-lint/doc-waivers.txt
+# Waives ALL doc-coverage findings for a package directory. One
+# module-relative path per line; # comments and blank lines are ignored.
+#
+# This file is intentionally empty. doc-coverage's first live run
+# (2026-07-16) surfaced 94 missing/malformed doc comments across 23
+# packages; every one of those gaps was fixed in the same change-set that
+# introduced the check, rather than waived, so this file lists nothing.
+# It remains as the escape hatch for any future package that genuinely
+# cannot be brought into doc-coverage compliance in the same change that
+# extends enforcement to it — add a module-relative directory path per
+# line, with a comment above it explaining the gap and why it isn't fixed
+# directly, the way the first-run gaps were described here before they
+# were closed.

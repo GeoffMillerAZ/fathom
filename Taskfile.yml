@@ -11,9 +11,11 @@ env:
 vars:
   GO: go
   # Go files we own — exclude tmp/ scans, ref/ external clones, workspace/ (build
-  # artifacts + calibration clones), _reference/ copies, testdata/ fixtures.
+  # artifacts + calibration clones), _reference/ copies, testdata/ fixtures, and
+  # third_party/ (the vendored agentic-kit mirror — upstream's code, upstream's
+  # formatting; drift from its pinned commit is vendor-check's job, not gofmt's).
   GOFILES:
-    sh: find . -name '*.go' -not -path './tmp/*' -not -path './ref/*' -not -path './workspace/*' -not -path '*/_reference/*' -not -path '*/testdata/*' 2>/dev/null | tr '\n' ' '
+    sh: find . -name '*.go' -not -path './tmp/*' -not -path './ref/*' -not -path './workspace/*' -not -path './third_party/*' -not -path '*/_reference/*' -not -path '*/testdata/*' 2>/dev/null | tr '\n' ' '
 
 tasks:
   default:
@@ -43,7 +45,7 @@ tasks:
       - |
         command -v cue >/dev/null 2>&1 || { echo "cue not installed — skipping"; exit 0; }
         found=0
-        for schema in $(find . -name 'schema.cue' -not -path './tmp/*' -not -path './ref/*' -not -path './workspace/*' -not -path '*/cue.mod/*' -not -path '*/testdata/*' | sort); do
+        for schema in $(find . -name 'schema.cue' -not -path './tmp/*' -not -path './ref/*' -not -path './workspace/*' -not -path './third_party/*' -not -path '*/cue.mod/*' -not -path '*/testdata/*' | sort); do
           found=1; d=$(dirname "$schema"); echo "cue vet: $d"
           (cd "$d" && cue vet ./...) || exit 1
         done
@@ -62,9 +64,17 @@ tasks:
     cmds: ["{{.GO}} test -race -run Integration ./..."]
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, test
-    deps: [fmt-check, vet, cue-vet]
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, test
+    deps: [fmt-check, vet, cue-vet, vendor-check]
     cmds: [{ task: test }]
+
+  sync-kit:
+    desc: Re-archive ../agentic-kit at the commit go.mod pins into third_party/agentic-kit (run after every kit pin bump)
+    cmds: ["bash scripts/sync-kit.sh"]
+
+  vendor-check:
+    desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)
+    cmds: ["bash scripts/vendor-check.sh"]
 
   doctor:
     desc: Toolchain + workspace health

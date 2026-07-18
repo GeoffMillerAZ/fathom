@@ -1,0 +1,37 @@
+# cmd/constitution-lint/org-agnostic-waivers.txt
+# Waives specific path or path:line matches from the org-agnostic check.
+# One entry per line: `path` (whole file) or `path:line` (specific line).
+# # comments and blank lines are ignored; a stated reason is required.
+
+# docs/plans/2026-07-uplift.md:183 quotes the historical scrub sentence
+# itself ("org-agnostic doc scrub (s1m/Throughline/Muster/Testament names
+# out)") — a historical decision record documenting a past scrub, legitimate
+# meta-reference, not a live leak.
+docs/plans/2026-07-uplift.md:183
+
+# examples/agent-cli/main.go hardcodes its own default model + a
+# cost-estimation price table (defaultModel, the per-model pricing map)
+# outside foundations/llmclient/<provider>/ — functionally the same
+# provider-adapter-default shape the carve-out already covers, just living
+# in an example CLI rather than a foundations/llmclient sub-package (this
+# repo's examples/** is out of this worker's edit scope per the H8 Stage-A
+# split; a future pass could move the price table under
+# foundations/llmclient/model-catalog to close this waiver structurally).
+# The literals need periodic manual refresh as models age, same as any
+# provider default — tracked here, not enforced by this check.
+examples/agent-cli/main.go
+
+# cmd/endpoint-guard/config.go:288 embeds an illustrative example value
+# ("claude-haiku-4-5") inside an error message string explaining what to put
+# in a user-supplied config field — the same class of documentation-only
+# example already exempted for `//` doc comments elsewhere, just expressed
+# as a Go string literal instead of a comment. Not a hardcoded runtime
+# default.
+cmd/endpoint-guard/config.go:288
+
+# NOTE: org-denylist.txt and this file are excluded from token-matching
+# STRUCTURALLY in checkOrgAgnostic (not via a waiver line here) — see that
+# function's doc comment. They necessarily document, in plain prose, the
+# exact tokens they scan for and waive, so a per-fixture/per-root waiver
+# line would otherwise be needed everywhere both files exist, including
+# every test fixture that carries its own denylist copy.

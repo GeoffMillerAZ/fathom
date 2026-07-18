@@ -1,0 +1,31 @@
+{
+  "$defs": {
+    "Config": {
+      "description": "#Config holds the tunable parameters for a circuit breaker.",
+      "properties": {
+        "FailureThreshold": {
+          "description": "FailureThreshold is the number of consecutive failures required to open\nthe circuit. Must be at least 1.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "HalfOpenProbes": {
+          "description": "HalfOpenProbes is the number of consecutive successes required in\nhalf-open state before the breaker closes. Must be at least 1.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "OpenCooldown": {
+          "description": "OpenCooldown is the duration (in nanoseconds) the breaker stays open\nbefore transitioning to half-open. Represented as a positive integer\n(Go time.Duration is int64 nanoseconds).",
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "FailureThreshold",
+        "OpenCooldown",
+        "HalfOpenProbes"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

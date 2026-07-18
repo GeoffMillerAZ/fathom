@@ -1,0 +1,43 @@
+# CI gate for agentic-kit.
+#
+# `task validate` is the same full gate developers run locally (and lefthook
+# runs pre-push): fmt-check, vet, cue-vet, go test -race.
+#
+# IMPORTANT: cue MUST be installed here. The cue-vet task silently skips when
+# cue is missing — fine for a contributor's laptop, but in CI that would turn
+# schema validation into theater. Installing cue below closes that hole.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install Task
+        run: go install github.com/go-task/task/v3/cmd/task@latest
+
+      - name: Install CUE (required — cue-vet skips silently without it)
+        run: go install cuelang.org/go/cmd/cue@latest
+
+      - name: Full gate (fmt-check, vet, cue-vet, test -race)
+        run: task validate
+
+      - name: WASI build (governance foundations)
+        run: GOOS=wasip1 GOARCH=wasm go build ./foundations/governance/...
+
+      - name: WASM example build (GOOS=js)
+        run: task wasm-build

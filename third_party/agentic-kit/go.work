@@ -1,0 +1,7 @@
+go 1.26
+
+use (
+	.
+	./kits/docextract/pdf
+	./kits/docextract/xlsx
+)
