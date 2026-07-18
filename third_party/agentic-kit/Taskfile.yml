@@ -99,13 +99,15 @@ tasks:
         cd examples/agent-cli && {{.GO}} run . -mode live -max-turns 4 -prompt "How many words are in testdata/sample.txt? Use your tools."
 
   sextant-check:
-    desc: Build+test the first real downstream consumer (../sextant) against kit HEAD via its go.work; skips if not checked out
+    desc: "Build+test the first real downstream consumer (fathom, dir ../fathom or, pre-rename, ../sextant) against kit HEAD via its go.work; skips if neither is checked out"
     cmds:
       - |
-        if [ -d ../sextant ]; then
+        if [ -d ../fathom ]; then
+          (cd ../fathom && {{.GO}} build ./... && {{.GO}} test ./...)
+        elif [ -d ../sextant ]; then
           (cd ../sextant && {{.GO}} build ./... && {{.GO}} test ./...)
         else
-          echo "sextant not present — skipping"
+          echo "fathom/sextant not present — skipping"
         fi
 
   throughline-check:

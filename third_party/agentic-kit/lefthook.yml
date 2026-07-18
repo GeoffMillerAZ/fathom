@@ -32,9 +32,19 @@ pre-push:
     # must verify against the code index. exit 1 (claim disproven) blocks the
     # push; exit 2 (daemon/index unavailable) warns and allows it (fail-open).
     # Convention + grammar: fathom repo, docs/plans/README.md.
+    #
+    # FATHOM_BIN always wins. Otherwise resolve the first-existing of
+    # ../fathom/bin/fathom, ../sextant/bin/fathom — the fathom repo directory
+    # is mid-rename (sextant -> fathom); this default survives either name
+    # without an env override.
     fathom-verify:
       run: |
-        FATHOM="${FATHOM_BIN:-../sextant/bin/fathom}"
+        FATHOM="${FATHOM_BIN:-}"
+        if [ -z "$FATHOM" ]; then
+          if [ -x ../fathom/bin/fathom ]; then FATHOM=../fathom/bin/fathom
+          else FATHOM=../sextant/bin/fathom
+          fi
+        fi
         [ -x "$FATHOM" ] || exit 0
         plans=""
         for f in docs/plans/*.md; do
@@ -55,11 +65,22 @@ pre-push:
 # Best-effort fleet-index refresh (fathom, né sextant). Fails silently when
 # the fathom daemon holds the DuckDB write lock — sessions refresh through
 # the MCP `ingest` tool instead (see CLAUDE.md).
+#
+# Same rename-resilient resolution as fathom-verify above, plus the
+# older bin/sextant name as a last-resort fallback. The ingest store path is
+# derived from wherever FATHOM actually resolved (strip /bin/<name>), so it
+# never disagrees with which fathom checkout is actually running.
 post-commit:
   commands:
     fathom-refresh:
       run: |
-        FATHOM="${FATHOM_BIN:-../sextant/bin/fathom}"
-        [ -x "$FATHOM" ] || FATHOM=../sextant/bin/sextant
+        FATHOM="${FATHOM_BIN:-}"
+        if [ -z "$FATHOM" ]; then
+          if [ -x ../fathom/bin/fathom ]; then FATHOM=../fathom/bin/fathom
+          elif [ -x ../sextant/bin/fathom ]; then FATHOM=../sextant/bin/fathom
+          else FATHOM=../sextant/bin/sextant
+          fi
+        fi
         [ -x "$FATHOM" ] || exit 0
-        "$FATHOM" ingest --service agentic-kit --path . --store ../sextant/workspace/db/fleet.duckdb >/dev/null 2>&1 || true
+        DOWNSTREAM="${FATHOM%/bin/*}"
+        "$FATHOM" ingest --service agentic-kit --path . --store "$DOWNSTREAM/workspace/db/fleet.duckdb" >/dev/null 2>&1 || true

@@ -95,7 +95,8 @@ Opt out with `LEFTHOOK=0` — never `--no-verify` unless the hook itself is brok
 
 Also useful: `task smoke-live` (end-to-end live agent smoke; needs
 `ANTHROPIC_API_KEY`, skips cleanly without it) and `task downstream-check`
-(builds + tests all three real consumers — `../sextant`, `../throughline`,
+(builds + tests all three real consumers — fathom (`../fathom`, or
+pre-rename `../sextant` — either resolves automatically), `../throughline`,
 `../growing-gardens-bi` — against kit HEAD; each skips cleanly if that sibling
 isn't checked out). Run it before tagging or whenever an exported API
 changes.

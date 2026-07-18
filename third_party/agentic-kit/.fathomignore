@@ -1,4 +1,4 @@
-# Sextant index excludes for agentic-kit (fleet member). Index the Go sources.
+# fathom index excludes for agentic-kit (fleet member). Index the Go sources.
 bin/
 workspace/
 tmp/

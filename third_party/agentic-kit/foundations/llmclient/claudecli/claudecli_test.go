@@ -549,6 +549,143 @@ func TestStream_DelegatesToComplete_Error(t *testing.T) {
 	}
 }
 
+func TestPing_Healthy_NoInputRejectedLocally(t *testing.T) {
+	// The healthy shape, pinned from live probes A-F (testdata/PROBES.md): a
+	// CLI given the exact pinned argv, empty stdin, and no prompt argument
+	// rejects the invocation with a local stderr error and exit 1 before
+	// doing anything else.
+	argvFile := filepath.Join(t.TempDir(), "argv.txt")
+	stdinFile := filepath.Join(t.TempDir(), "stdin.txt")
+	t.Setenv("FAKE_CLAUDE_ARGV_FILE", argvFile)
+	t.Setenv("FAKE_CLAUDE_STDIN_FILE", stdinFile)
+	t.Setenv("FAKE_CLAUDE_RESPONSE", "")
+	t.Setenv("FAKE_CLAUDE_STDERR", "Error: Input must be provided either through stdin or as a prompt argument when using --print")
+	t.Setenv("FAKE_CLAUDE_EXIT_CODE", "1")
+
+	c, err := claudecli.New(claudecli.Config{Bin: newFakeClaude(t)})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	if err := c.Ping(context.Background()); err != nil {
+		t.Fatalf("Ping = %v, want nil (the local no-input rejection IS the healthy outcome)", err)
+	}
+
+	// Ping runs the exact pinned production argv for a zero-valued Request
+	// (no -m, no --system-prompt, no --effort, no --json-schema).
+	argv := readArgv(t, argvFile)
+	want := []string{"-p", "--output-format", "json", "--safe-mode", "--tools", ""}
+	if !equalSlices(argv, want) {
+		t.Errorf("Ping argv = %q, want %q", argv, want)
+	}
+
+	// No prompt is ever sent.
+	stdin, err := os.ReadFile(stdinFile)
+	if err != nil {
+		t.Fatalf("read captured stdin: %v", err)
+	}
+	if len(stdin) != 0 {
+		t.Errorf("Ping stdin = %q, want empty", stdin)
+	}
+}
+
+func TestPing_Degraded_NoLocalRejection(t *testing.T) {
+	// The degradation shapes: a future CLI that silently started accepting
+	// empty-stdin/no-prompt input would NOT reject it — it would proceed
+	// (exit 0 with a normal envelope) or fail some other, unrelated way.
+	// Both must surface as a typed InvalidRequestError.
+	cases := []struct {
+		name     string
+		response string
+		stderr   string
+		exitCode string
+	}{
+		{"cli proceeds with a normal response", successEnvelope, "", "0"},
+		{"cli fails for an unrelated reason", "", "some unrelated failure", "1"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("FAKE_CLAUDE_RESPONSE", tc.response)
+			t.Setenv("FAKE_CLAUDE_STDERR", tc.stderr)
+			t.Setenv("FAKE_CLAUDE_EXIT_CODE", tc.exitCode)
+
+			c, err := claudecli.New(claudecli.Config{Bin: newFakeClaude(t)})
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+
+			err = c.Ping(context.Background())
+			if err == nil {
+				t.Fatal("Ping = nil, want a typed degradation error when the CLI does not reject the empty-stdin, no-prompt-argument invocation")
+			}
+			var invalidErr *llmclient.InvalidRequestError
+			if !errors.As(err, &invalidErr) {
+				t.Fatalf("Ping err = %v (%T), want *llmclient.InvalidRequestError", err, err)
+			}
+			if !strings.Contains(err.Error(), "PROBES.md") {
+				t.Errorf("Ping err = %v, want it to point at testdata/PROBES.md for re-verification", err)
+			}
+		})
+	}
+}
+
+func TestPing_Degraded_HangKilledByTimeout(t *testing.T) {
+	// A degraded CLI that hangs (e.g. waiting on the network despite empty
+	// stdin) is killed by the ping bound and reported as the same typed
+	// degradation error — never as a silent pass and never as an unbounded
+	// wait.
+	t.Setenv("FAKE_CLAUDE_SLEEP_SECONDS", "30")
+	t.Setenv("FAKE_CLAUDE_RESPONSE", "")
+	c, err := claudecli.New(claudecli.Config{Bin: newFakeClaude(t), Timeout: 200 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	start := time.Now()
+	err = c.Ping(context.Background())
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Ping = nil, want a typed degradation error on timeout")
+	}
+	var invalidErr *llmclient.InvalidRequestError
+	if !errors.As(err, &invalidErr) {
+		t.Fatalf("Ping err = %v (%T), want *llmclient.InvalidRequestError", err, err)
+	}
+	if elapsed > 10*time.Second {
+		t.Errorf("Ping took %s, want it to return promptly once the bound elapsed", elapsed)
+	}
+}
+
+func TestPing_CallerCtxCancelPassesThroughUntyped(t *testing.T) {
+	// Per the Pinger contract, caller-chosen stops pass through untyped so
+	// callers can distinguish their own cancellation from a provider failure.
+	t.Setenv("FAKE_CLAUDE_SLEEP_SECONDS", "30")
+	t.Setenv("FAKE_CLAUDE_RESPONSE", "")
+	c, err := claudecli.New(claudecli.Config{Bin: newFakeClaude(t)})
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+	}()
+
+	err = c.Ping(ctx)
+	if err == nil {
+		t.Fatal("Ping = nil, want a cancellation error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Ping err = %v, want it to wrap context.Canceled", err)
+	}
+	var invalidErr *llmclient.InvalidRequestError
+	if errors.As(err, &invalidErr) {
+		t.Errorf("Ping err = %v, must NOT be typed for a caller-chosen stop", err)
+	}
+}
+
 // equalSlices reports whether a and b contain the same elements in the same
 // order.
 func equalSlices(a, b []string) bool {

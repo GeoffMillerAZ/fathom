@@ -9,7 +9,7 @@ Module `github.com/geoffmilleraz/agentic-kit`, Go 1.26. New to CUE? Read `docs/w
 - `task validate` = `fmt-check` + `vet` + `cue-vet` + `go test -race ./...`. **Must be green before any commit.**
 - lefthook hooks: pre-commit = fast staged-file checks (gofmt, `cue vet` on schema dirs); pre-push = full `task validate`.
 - **Never `git commit --no-verify`.** Opt out only with `LEFTHOOK=0`, and only if the hook itself is broken.
-- `task downstream-check` builds + tests both real consumers (`../sextant`, `../throughline`) against kit HEAD — run it before tagging or when exported APIs change; each check skips if the sibling isn't checked out.
+- `task downstream-check` builds + tests both real consumers (fathom — currently checked out at `../sextant`, the on-disk dir rename to `../fathom` is still pending — and `../throughline`) against kit HEAD — run it before tagging or when exported APIs change; each check skips if the sibling isn't checked out, and resolves either dir name automatically.
 - `task doctor` checks toolchain health. `task --list` shows everything.
 
 ## Hard rules
@@ -70,7 +70,9 @@ Skip `schema.cue` only for **behavioral-only** packages with no data contract (e
 ## Sextant fleet index (code intelligence — use it first)
 
 The fleet index (throughline · agentic-kit · app-kit · sextant) lives in
-`../sextant/workspace/db/fleet.duckdb`, exposed to sessions via the
+`../sextant/workspace/db/fleet.duckdb` (that dir's on-disk rename to
+`../fathom` is pending — see the sibling's docs/rename-migration.md; scripts
+here resolve either name automatically), exposed to sessions via the
 user-scoped `sextant` MCP server. Resolve "where/what/who-calls" via its tools
 (`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`,
 `pack_context`) before any Grep/Read sweep — read files to edit them, not to

@@ -319,7 +319,7 @@ type CoverageManifest struct {
 // SkippedFiles categorizes files that were not searched, per D10.
 // Every category has a documented reason that makes the skip explainable.
 type SkippedFiles struct {
-	// Ignored: excluded by .gitignore / .sextantignore / scope constraints.
+	// Ignored: excluded by .gitignore / .fathomignore / scope constraints.
 	Ignored []string `json:"ignored,omitempty"`
 	// Binary: detected as binary (non-text) content.
 	Binary []string `json:"binary,omitempty"`

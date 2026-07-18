@@ -3,6 +3,7 @@ package bedrock
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -60,7 +61,9 @@ type Config struct {
 	// "us-east-1". It selects both the SigV4 credential scope and the
 	// bedrock-runtime host when BaseURL is empty. When empty it is read from
 	// AWS_REGION. Required (no default): GovCloud and commercial endpoints are
-	// distinct and must be chosen explicitly.
+	// distinct and must be chosen explicitly. When both Region and BaseURL are
+	// set explicitly, New rejects a BaseURL whose host does not contain
+	// Region — see RegionBaseURLMismatchError.
 	Region string
 
 	// AccessKeyID is the AWS access-key id. When empty it is read from
@@ -82,7 +85,8 @@ type Config struct {
 	// Empty derives the standard data-plane host
 	// "https://bedrock-runtime.{Region}.amazonaws.com". Set it for a GovCloud
 	// FIPS endpoint, a VPC endpoint, or a test server. A trailing slash is
-	// trimmed. The SigV4 host signed is whatever host this resolves to.
+	// trimmed. The SigV4 host signed is whatever host this resolves to. See
+	// Region for the explicit-mismatch guard this field participates in.
 	BaseURL string
 
 	// DefaultModel is the Bedrock model id used when Request.Model is empty,
@@ -147,11 +151,48 @@ type Client struct {
 
 var _ llmclient.LLMClient = (*Client)(nil)
 
+// RegionBaseURLMismatchError reports that Config.Region and an explicitly
+// set Config.BaseURL name two different AWS endpoints — most commonly a
+// GovCloud region paired with a commercial BaseURL, or the reverse. Bedrock's
+// GovCloud and commercial partitions are entirely separate deployments with
+// no cross-partition routing: without this guard, a mismatched pair does not
+// fail at construction — it fails LATER as a confusing 403 (the right
+// partition's endpoint rejecting the wrong partition's signing scope) or a
+// DNS resolution error, with nothing in that failure pointing back at the
+// Config that caused it. New returns this error before any credential
+// resolution or HTTP call is attempted.
+//
+// This guard fires only when BOTH fields are explicitly set on Config: a
+// Region-only config (BaseURL empty, host derived from Region) or a
+// BaseURL-only config (Region empty — even when a region is later resolved
+// via AWS_REGION or a shared profile) never triggers it. It also never
+// consults a table of known AWS regions or partitions — it is a plain
+// substring test between the two explicitly supplied values.
+type RegionBaseURLMismatchError struct {
+	// Region is the explicit Config.Region value.
+	Region string
+
+	// BaseURL is the explicit Config.BaseURL value whose host does not
+	// contain Region.
+	BaseURL string
+}
+
+// Error implements error. The message names both offending values and both
+// ways to resolve the conflict.
+func (e *RegionBaseURLMismatchError) Error() string {
+	return fmt.Sprintf(
+		"bedrock: Config.Region %q not found in the host of Config.BaseURL %q — these look like they name different AWS endpoints (e.g. a GovCloud region paired with a commercial BaseURL, or the reverse); set BaseURL to a host for %s, or leave BaseURL empty so it is derived from Region",
+		e.Region, e.BaseURL, e.Region,
+	)
+}
+
 // New validates cfg, resolves credentials and region exactly once via the
 // awscred chain (explicit Config fields → AWS_* env vars → shared
 // config/credentials files → IMDSv2), and returns a ready Client. It returns
 // an error when the region cannot be resolved, when no leg of the chain
-// produces credentials, or when a field is out of range.
+// produces credentials, when a field is out of range, or when an explicit
+// Region and an explicit BaseURL name two different endpoints (see
+// RegionBaseURLMismatchError).
 //
 // Explicit credentials never fall through to ambient state: a complete
 // Config.AccessKeyID+SecretAccessKey pair is used verbatim without touching
@@ -190,6 +231,23 @@ func New(cfg Config) (*Client, error) {
 	host, err := hostOf(baseURL)
 	if err != nil {
 		return nil, fmt.Errorf("bedrock: invalid BaseURL %q: %w", baseURL, err)
+	}
+	// Guard against explicit misconfiguration: a caller who set BOTH an
+	// explicit Region AND an explicit BaseURL naming a DIFFERENT endpoint
+	// (most commonly a GovCloud region paired with a commercial BaseURL, or
+	// the reverse) would otherwise sign with the wrong partition's
+	// credential scope and fail later as a confusing 403 or DNS error, with
+	// nothing pointing back at the Config that caused it. Region-only
+	// (BaseURL empty, host derived above) and BaseURL-only (Config.Region
+	// empty — resolved.Region may still be non-empty via env/shared-profile
+	// fallback, but that is not what this guard checks) configs are exempt
+	// by construction: only cfg.Region and cfg.BaseURL, the raw fields the
+	// caller actually set, are compared. isLoopbackHost exempts hermetic
+	// test infrastructure (httptest.Server's 127.0.0.1:port), which can
+	// never carry a region substring — a host-shape check via net.ParseIP,
+	// not an AWS region/partition table.
+	if cfg.BaseURL != "" && cfg.Region != "" && !isLoopbackHost(host) && !strings.Contains(host, cfg.Region) {
+		return nil, &RegionBaseURLMismatchError{Region: cfg.Region, BaseURL: cfg.BaseURL}
 	}
 
 	maxTokens := cfg.DefaultMaxTokens
@@ -257,4 +315,25 @@ func hostOf(baseURL string) (string, error) {
 		return "", fmt.Errorf("empty host")
 	}
 	return rest, nil
+}
+
+// isLoopbackHost reports whether host (optionally "host:port", optionally
+// IPv6-bracketed) names loopback/local infrastructure — the shape every
+// httptest.Server listener uses ("127.0.0.1:port", "[::1]:port"), which can
+// never legitimately carry an AWS region substring. The Region/BaseURL
+// mismatch guard in New exempts it so hermetic tests pointed at a local
+// server are never mistaken for a real, misconfigured endpoint. This is a
+// generic host-shape check via net.ParseIP/"localhost", not an AWS
+// region or partition table.
+func isLoopbackHost(host string) bool {
+	h := host
+	if hostOnly, _, err := net.SplitHostPort(host); err == nil {
+		h = hostOnly
+	}
+	h = strings.TrimSuffix(strings.TrimPrefix(h, "["), "]")
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }

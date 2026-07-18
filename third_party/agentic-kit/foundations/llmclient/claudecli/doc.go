@@ -158,6 +158,22 @@
 //     doc still applies: callers should validate the parsed artifact
 //     themselves (structured.Complete already does).
 //
+// # Ping: a local, pre-API, zero-token liveness probe
+//
+// Client implements llmclient.Pinger. Ping runs the exact pinned production
+// argv for a zero-valued Request with EMPTY stdin and no positional prompt
+// argument — the CLI's own print-mode input-presence check rejects that
+// combination locally, before resolving a model or opening a network
+// connection (verified live, testdata/PROBES.md probes A-F: a hard stderr
+// error, exit 1, empty stdout, in low single digit seconds — the input
+// check runs even ahead of model validation, probe D). That local rejection
+// IS the healthy outcome; any other outcome (the CLI proceeding toward a
+// real call, failing a different LOCAL way, or hanging past Ping's own
+// bound) returns a typed InvalidRequestError. Call it at construction or
+// deploy time (e.g. via llmclient.ProbeAll) and after any claude-cli
+// upgrade — see Ping's own doc comment and testdata/PROBES.md for the full
+// mechanism and the live verification trail.
+//
 // # Cost accounting
 //
 // The envelope's total_cost_usd is Anthropic's API-equivalent accounting of

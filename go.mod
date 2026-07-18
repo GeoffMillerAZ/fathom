@@ -5,7 +5,7 @@ go 1.26
 require (
 	cuelang.org/go v0.13.1
 	github.com/emicklei/proto v1.14.3
-	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260717061147-deae519e21d2
+	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260718052732-c7af59377cae
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/marcboeker/go-duckdb/v2 v2.4.3
 	github.com/pelletier/go-toml/v2 v2.3.1

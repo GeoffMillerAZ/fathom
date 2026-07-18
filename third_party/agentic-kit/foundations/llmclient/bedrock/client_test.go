@@ -201,7 +201,11 @@ func TestNewConfigResolution(t *testing.T) {
 		}
 	})
 	t.Run("BaseURLTrailingSlashTrimmed", func(t *testing.T) {
-		c, err := New(Config{Region: "r", AccessKeyID: "k", SecretAccessKey: "s", BaseURL: "https://vpce.example/"})
+		// Region ("example") is a substring of the BaseURL host
+		// ("vpce.example") so this stays clear of the Region/BaseURL
+		// mismatch guard (TestNew_RegionBaseURLMismatch) — this subtest is
+		// only about trailing-slash trimming.
+		c, err := New(Config{Region: "example", AccessKeyID: "k", SecretAccessKey: "s", BaseURL: "https://vpce.example/"})
 		if err != nil {
 			t.Fatalf("New: %v", err)
 		}
@@ -217,6 +221,97 @@ func TestNewConfigResolution(t *testing.T) {
 		}
 		if c.completeClient != hc || c.streamClient != hc {
 			t.Error("injected HTTPClient must be used verbatim for both Complete and Stream")
+		}
+	})
+}
+
+// TestNew_RegionBaseURLMismatch covers KP-2: New rejects an explicitly-set
+// BaseURL whose host does not contain the explicitly-set Region, but leaves
+// Region-only and BaseURL-only configs — and hermetic test infrastructure —
+// untouched. New never dials anything during construction (credential
+// resolution here always uses the explicit AccessKeyID/SecretAccessKey leg,
+// which touches no network), so every case below is offline.
+func TestNew_RegionBaseURLMismatch(t *testing.T) {
+	t.Run("GovRegionCommercialURL", func(t *testing.T) {
+		_, err := New(Config{
+			Region: "us-gov-west-1", AccessKeyID: "k", SecretAccessKey: "s",
+			BaseURL: "https://bedrock-runtime.us-east-1.amazonaws.com",
+		})
+		var mismatch *RegionBaseURLMismatchError
+		if !errors.As(err, &mismatch) {
+			t.Fatalf("New err = %v (%T), want *RegionBaseURLMismatchError", err, err)
+		}
+		if mismatch.Region != "us-gov-west-1" || mismatch.BaseURL != "https://bedrock-runtime.us-east-1.amazonaws.com" {
+			t.Errorf("mismatch = %+v, want both offending values named", mismatch)
+		}
+		if !strings.Contains(err.Error(), "us-gov-west-1") || !strings.Contains(err.Error(), "us-east-1") {
+			t.Errorf("error message %q must name both Region and BaseURL", err.Error())
+		}
+	})
+
+	t.Run("CommercialRegionGovURL_Reverse", func(t *testing.T) {
+		_, err := New(Config{
+			Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s",
+			BaseURL: "https://bedrock-runtime.us-gov-west-1.amazonaws.com",
+		})
+		var mismatch *RegionBaseURLMismatchError
+		if !errors.As(err, &mismatch) {
+			t.Fatalf("New err = %v (%T), want *RegionBaseURLMismatchError", err, err)
+		}
+	})
+
+	t.Run("MatchingRegionAndURL_NoError", func(t *testing.T) {
+		_, err := New(Config{
+			Region: "us-gov-west-1", AccessKeyID: "k", SecretAccessKey: "s",
+			BaseURL: "https://bedrock-runtime.us-gov-west-1.amazonaws.com",
+		})
+		if err != nil {
+			t.Fatalf("New: %v, want nil (Region matches BaseURL's host)", err)
+		}
+	})
+
+	t.Run("RegionOnly_Untouched", func(t *testing.T) {
+		// No BaseURL at all: the host is derived FROM Region, so it can
+		// never mismatch — the guard must not even need to run.
+		_, err := New(Config{Region: "us-gov-west-1", AccessKeyID: "k", SecretAccessKey: "s"})
+		if err != nil {
+			t.Fatalf("New: %v, want nil (Region-only config)", err)
+		}
+	})
+
+	t.Run("BaseURLOnly_Untouched_EvenWithEnvResolvedRegion", func(t *testing.T) {
+		// Config.Region itself is empty; the region only resolves via
+		// AWS_REGION. The guard must key off the raw Config field, not the
+		// resolved region, so this must succeed even though the env-resolved
+		// region ("us-gov-west-1") does not appear in the BaseURL host.
+		t.Setenv(envRegion, "us-gov-west-1")
+		c, err := New(Config{
+			AccessKeyID: "k", SecretAccessKey: "s",
+			BaseURL: "https://bedrock-runtime.us-east-1.amazonaws.com",
+		})
+		if err != nil {
+			t.Fatalf("New: %v, want nil (BaseURL-only config; Config.Region was never set)", err)
+		}
+		if c.region != "us-gov-west-1" {
+			t.Errorf("region = %q, want the env-resolved us-gov-west-1", c.region)
+		}
+	})
+
+	t.Run("LoopbackBaseURL_Exempt", func(t *testing.T) {
+		// Hermetic test infrastructure (httptest.Server and this package's
+		// own newTestClient helper) always pairs an explicit Region with a
+		// loopback BaseURL that structurally cannot contain a region
+		// substring. New must never dial the BaseURL during construction, so
+		// no live listener is needed for this case.
+		for _, baseURL := range []string{
+			"http://127.0.0.1:54321",
+			"http://localhost:54321",
+			"http://[::1]:54321",
+		} {
+			_, err := New(Config{Region: "us-gov-west-1", AccessKeyID: "k", SecretAccessKey: "s", BaseURL: baseURL})
+			if err != nil {
+				t.Errorf("New with BaseURL %q: %v, want nil (loopback host is exempt from the mismatch guard)", baseURL, err)
+			}
 		}
 	})
 }

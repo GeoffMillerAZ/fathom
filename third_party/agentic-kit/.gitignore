@@ -14,3 +14,4 @@ coverage.*
 # Compiled binaries / wasm artifacts
 /endpoint-guard
 workspace/wasm/*.wasm
+kit-new
