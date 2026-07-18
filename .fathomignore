@@ -1,6 +1,12 @@
 # Repo-specific index excludes (gitignore-style; see internal/filter).
 # Mirrored third-party reference source — not our code.
 ref/
+# In-tree vendored agentic-kit mirror (ADR-019) — upstream's code, indexed as
+# its own fleet service already; ingesting it here duplicates symbol names
+# against internal/semantic and friends, poisoning callgraph resolution for
+# our own code (the exact index-pollution bug class handoff-H1 fixed for
+# .claude/worktrees — see docs/dogfood-observations.md).
+third_party/
 # Gitignored scratch: converted design docs, tracking.
 tmp/
 # Local DuckDB stores and runtime artifacts.
