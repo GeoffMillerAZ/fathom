@@ -10,9 +10,12 @@ import "bytes"
 const binarySniffLimit = 8000
 
 // IsBinary reports whether data appears to be a binary file: a NUL byte
-// anywhere in the first binarySniffLimit bytes (ADR-021 §1 / LT-2). Text
-// source in every language fathom extracts is NUL-free, so this is a cheap,
-// dependency-free classifier with no false positives on real source.
+// anywhere in the first binarySniffLimit bytes (ADR-021 §1 / LT-2). It is a
+// cheap, dependency-free heuristic, not a guarantee: UTF-8 source never
+// contains NUL, but UTF-16/UTF-32-encoded text files DO (every other byte
+// for ASCII-range UTF-16) and will classify as binary — an accepted
+// trade-off, since fathom's extractors only parse UTF-8 anyway. Conversely,
+// a binary whose first 8000 bytes happen to be NUL-free passes as text.
 //
 // Callers use IsBinary to exclude binary content from extraction and from
 // line-counting (cloc): binaries are reported in a files/bytes bucket,

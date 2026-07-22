@@ -14,6 +14,9 @@ workspace/
 bin/
 # A stray `go build -o fathom ./cmd/fathom` at repo root (build artifacts
 # belong in bin/ or workspace/, never root) used to line-count as 423K lines
-# of "other". Connectors now also detect binaries by content (NUL-byte sniff,
-# ADR-021 §1 / LT-2), but this entry keeps it out of the walk entirely.
+# of "other". The leading "/" root-anchors the pattern (gitignore semantics,
+# internal/filter): it excludes ONLY the root-level entry named fathom from
+# discovery — cmd/fathom/ is untouched. Connectors also detect binaries by
+# content (NUL-byte sniff, ADR-021 §1 / LT-2) as defense in depth, but this
+# entry keeps the artifact out of the walk (and out of memory) entirely.
 /fathom

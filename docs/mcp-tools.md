@@ -102,7 +102,7 @@ Symbol navigation, structural analysis, and impact analysis for active coding ta
 | `god_object` | `service` (req), `method_threshold` (opt, default 10), `field_threshold` (opt, default 10) | `{god_objects: [{type, methods, fields}]}` | Identify god-object types with too many methods or fields |
 | `api_surface` | `service` (req) | `{symbols: [SymbolNode]}` | Exported public API surface: exported funcs, methods, types, interfaces, consts, vars |
 | `antipatterns` | `service` (req) | `{findings: [Finding]}` | Detect coding anti-patterns: magic numbers, panic sites, goroutines, regex-in-loop, wall-clock usage, mutex imbalances |
-| `cloc` | `service` (req) | `{by_lang: {lang: {blank, comment, code, total}}, total}` | Count blank, comment, and code lines per language, plus a grand total |
+| `cloc` | `service` (req) | `{by_lang: {lang: {blank, comment, code, total}}, total, binary: {files, bytes}}` | Count blank, comment, and code lines per language, plus a grand total. Files with no registered extractor appear under the explicit `unclassified` label; binary files (NUL-byte sniff) are excluded from all line counts and reported only as a file-count/bytes `binary` bucket |
 | `deprecation` | `service` (req) | `{findings: [{file, line, symbol}]}` | Scan for usage of deprecated stdlib symbols (e.g. `ioutil`, `os.SEEK_*`) |
 | `env_keys` | `service` (req) | `{keys: [{name, file, line}]}` | Extract environment-variable read sites from source files (Go, JS/TS, Python) |
 

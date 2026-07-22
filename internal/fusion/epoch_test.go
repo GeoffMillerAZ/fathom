@@ -90,11 +90,14 @@ func TestIngest_ExtractorEpochInvalidatesOldFingerprints(t *testing.T) {
 // TestIngest_ExtractorEpoch_CUEDepthChangeForcesReExtraction is LT-5: the CUE
 // extractor v2 (nested-field recursion, docs/plans/lang-truth.md) changed
 // extraction semantics for every already-indexed .cue file, so
-// ExtractorEpoch was bumped to 3. A fingerprint minted under a prior epoch
-// (here, epoch "1", simulating a store from before this change) must be
-// treated as stale — the file is re-extracted, not skipped — and the
-// re-extraction must actually surface a nested dotted field, proving the
-// epoch bump and the CUE depth fix are wired together end to end.
+// ExtractorEpoch was bumped "2"→"3". The seeded fingerprint below is salted
+// with epoch "2" — the TRUE prior epoch — deliberately: it pins the bump
+// itself, so a merge-conflict revert of ExtractorEpoch back to "2" makes the
+// seeded fingerprint match again, the file is skipped, and this test fails
+// loudly. (Seeding an older epoch like "1" would mismatch under both "2" and
+// "3" and let a revert slip through green.) The re-extraction must also
+// surface a nested dotted field, proving the epoch bump and the CUE depth
+// fix are wired together end to end.
 func TestIngest_ExtractorEpoch_CUEDepthChangeForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	cueSrc := []byte("package svc\n\n#Layer: {\n\tbudgets: {\n\t\tmax_usd_per_run: number\n\t}\n}\n")
@@ -107,7 +110,7 @@ func TestIngest_ExtractorEpoch_CUEDepthChangeForcesReExtraction(t *testing.T) {
 	svc := core.ServiceRef{ID: "cue-epoch-svc", Path: dir}
 	ctx := context.Background()
 
-	oldSalted := sha256.Sum256(append(append([]byte{}, cueSrc...), []byte("\x00fathom-extractor-epoch:1")...))
+	oldSalted := sha256.Sum256(append(append([]byte{}, cueSrc...), []byte("\x00fathom-extractor-epoch:2")...))
 	if err := st.SetFingerprint(ctx, svc.ID, "schema.cue", hex.EncodeToString(oldSalted[:])); err != nil {
 		t.Fatalf("SetFingerprint: %v", err)
 	}

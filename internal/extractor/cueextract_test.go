@@ -183,6 +183,39 @@ value: list.Contains([1, 2, 3], 1)
 	}
 }
 
+// TestCUEExtractor_MalformedImportNoPanic is the crash-class regression for
+// the import-capture path: `import 42` parses to a partial AST whose
+// ImportSpec has an empty Path.Value, and literal.Unquote("") panics with
+// index-out-of-range. There is no recover() anywhere in fusion/mcp/cmd, so
+// without the guard a single mid-edit save of a .cue file crashes `fathom
+// ingest` and the stdio server outright. Extract must not panic and must
+// still extract the rest of the file.
+func TestCUEExtractor_MalformedImportNoPanic(t *testing.T) {
+	const malformed = `package broken
+
+import 42
+
+good: "value"
+`
+	x := extractor.NewCUEExtractor()
+	nodes, err := x.Extract("svc", "broken.cue", []byte(malformed))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	var sawGood bool
+	for _, n := range nodes {
+		if n.Kind == core.KindCUEImport && n.Name == "" {
+			t.Errorf("malformed import emitted an empty-named import node: %+v", n)
+		}
+		if n.Name == "good" {
+			sawGood = true
+		}
+	}
+	if !sawGood {
+		t.Error("the well-formed remainder of the file was not extracted")
+	}
+}
+
 // TestCUEExtractor_PackageFallback verifies that a file with NO package
 // clause falls back to the filename-derived package (pkgFromPath), preserving
 // the old behavior for package-less data fragments.

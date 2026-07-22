@@ -7,8 +7,8 @@ All notable changes to sextant. Format loosely follows
 
 ### Fixed — language truth: one registry, binary detection, honest CUE (ADR-021 §1, docs/plans/lang-truth.md)
 - **One ext→language registry.** `pkg/client.langFromPath` — a stale
-  10-language table maintained separately from the 24-extractor registry —
-  is deleted. `internal/connector.extClassMap` now pairs each registered
+  10-language table maintained separately from the extractor registry (25
+  distinct language tags across 45 extension/basename keys) — is deleted. `internal/connector.extClassMap` now pairs each registered
   extension/basename with both its `SourceKind` and its language tag in one
   place; `connector.LanguageForPath` is the single source of truth
   `Client.Sources` consumes, and `internal/fusion`'s new
@@ -37,8 +37,27 @@ All notable changes to sextant. Format loosely follows
   as two different wrong packages), and captures imports as
   `core.KindCUEImport` reference observations. Golden-tested against the
   real `schema/semantic/schema.cue` `#Layer` field tree.
-  `fusion.ExtractorEpoch` is bumped to `"3"` so every already-indexed `.cue`
-  file is re-extracted under the new semantics on next ingest.
+  `fusion.ExtractorEpoch` is bumped `"2"`→`"3"` so already-indexed `.cue`
+  files are re-extracted under the new semantics. **Blast radius: the epoch
+  salt is global** — it invalidates every stored fingerprint of every file
+  in every service, so the FIRST ingest of each service after this change
+  re-extracts the entire corpus (a one-time full re-index per service, on
+  the order of a cold ingest), not the usual ~0.2s hash-gated refresh.
+  Subsequent ingests return to normal speed.
+- **Root-anchored ignore patterns.** `internal/filter` previously treated a
+  leading `/` as literal pattern text that could never match a normalised
+  path — every leading-slash `.fathomignore` entry was a silent no-op. A
+  leading `/` now strips and root-anchors the pattern (gitignore
+  semantics): `/fathom` excludes the root-level build artifact from
+  discovery entirely without swallowing `cmd/fathom/`.
+- **Scan tools skip binary files.** The source scanners (`secret_scan`,
+  `shell_out`, `http_client_calls`, `antipatterns`, `deprecation`,
+  `env_keys`, `markers`/`test_debt`) no longer regex-scan
+  binary-classified content.
+- **CUE malformed-import crash.** A mid-edit `.cue` save containing a
+  malformed import (e.g. `import 42`) produced a partial AST whose empty
+  import path made `literal.Unquote` panic, crashing `fathom ingest` and
+  the stdio server; import capture now guards nil/empty/non-string paths.
 
 ### Added — build fathom without agentic-kit access (ADR-019, docs/distribution.md)
 - **`third_party/agentic-kit/`** is a committed, full mirror of the private

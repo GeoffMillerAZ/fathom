@@ -57,9 +57,21 @@ func (c *CUEExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 	var nodes []core.SymbolNode
 
 	for _, imp := range f.Imports {
+		// Malformed imports (e.g. `import 42` in a mid-edit save) parse to a
+		// partial AST whose ImportSpec carries a nil or empty Path — and
+		// literal.Unquote's contract assumes a lexed string token: it indexes
+		// the first byte after stripping leading '#'s, so an empty value (or
+		// an all-'#' value) PANICS with index-out-of-range. Nothing in
+		// fusion/mcp/cmd recovers, so without these guards one bad .cue file
+		// crashes `fathom ingest` and the stdio server outright.
+		if imp.Path == nil || imp.Path.Value == "" {
+			continue
+		}
 		path := imp.Path.Value
-		if unquoted, err := literal.Unquote(path); err == nil {
-			path = unquoted
+		if trimmed := strings.TrimLeft(path, "#"); len(trimmed) > 0 && (trimmed[0] == '"' || trimmed[0] == '\'') {
+			if unquoted, err := literal.Unquote(path); err == nil {
+				path = unquoted
+			}
 		}
 		if path == "" {
 			continue
@@ -95,6 +107,12 @@ func (c *CUEExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 // its doc comment). Non-Field declarations (embeddings, comprehensions, …)
 // and labels the parser cannot resolve to a plain name are silently skipped,
 // matching the extractor's existing best-effort posture on partial ASTs.
+//
+// Recursion descends ONLY into a direct *ast.StructLit value. A struct
+// nested inside a conjunction or disjunction (`a: {x: int} & #Base`,
+// `b: {y: int} | {z: int}`) is an ast.BinaryExpr, not a StructLit, so its
+// fields are not emitted — a documented best-effort limit, consistent with
+// the posture above, rather than a promise of full expression evaluation.
 func walkCUEField(d ast.Decl, service, pkg, relPath, parent string, depth int, nodes *[]core.SymbolNode) {
 	if depth > cueMaxDepth {
 		return

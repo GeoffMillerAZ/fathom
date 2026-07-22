@@ -113,6 +113,34 @@ func TestSecretScan_Basic(t *testing.T) {
 	}
 }
 
+// TestSecretScan_BinaryFileSkipped: source scanners must never chew a
+// binary-classified file (ADR-021 §1 / LT-2 follow-through) — before this
+// guard, a 103MB root build artifact was regex-scanned by every scan tool on
+// every call. The fixture is binary content that CONTAINS a would-be secret;
+// the scanner must report nothing for it.
+func TestSecretScan_BinaryFileSkipped(t *testing.T) {
+	binaryWithSecret := append([]byte{0x00, 0x01, 0x02}, []byte("\naws_key = \"AKIAIOSFODNN7EXAMPLE\"\n")...)
+	files := []core.SourceFile{
+		{Path: "blob", Content: binaryWithSecret, Lang: core.LangBinary},
+	}
+	srv := newSourcesSrv(files)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3300, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "secret_scan",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, resp)
+	findings, ok := p["findings"].([]any)
+	if !ok {
+		t.Fatalf("findings missing: %v", p)
+	}
+	if len(findings) != 0 {
+		t.Errorf("binary file was scanned: %d finding(s): %v", len(findings), findings)
+	}
+}
+
 func TestSecretScan_MissingService(t *testing.T) {
 	srv := newSourcesSrv(nil)
 	resp := roundtrip(t, srv, request{

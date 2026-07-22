@@ -116,6 +116,9 @@ func registerSecretScan(s *Server, backend QueryInterface) {
 		}
 		var all []security.Finding
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, security.SecretScan(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
@@ -151,6 +154,9 @@ func registerShellOut(s *Server, backend QueryInterface) {
 		}
 		var all []security.Finding
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, security.ShellOut(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
@@ -186,6 +192,9 @@ func registerHTTPClientCalls(s *Server, backend QueryInterface) {
 		}
 		var all []security.Finding
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, security.HTTPClientCalls(f.Path, f.Content)...)
 		}
 		sortSecurityFindings(all)
@@ -221,6 +230,9 @@ func registerAntipatterns(s *Server, backend QueryInterface) {
 		}
 		var all []antipattern.Finding
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, antipattern.ScanAll(f.Path, f.Content)...)
 		}
 		sortAntipatternFindings(all)
@@ -392,6 +404,9 @@ func registerDeprecation(s *Server, backend QueryInterface) {
 		}
 		var all []deprecation.Finding
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, deprecation.Scan(f.Path, string(f.Content), nil)...)
 		}
 		sort.Slice(all, func(i, j int) bool {
@@ -443,6 +458,9 @@ func registerEnvKeys(s *Server, backend QueryInterface) {
 		}
 		var all []envkeys.EnvKey
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, envkeys.Scan(f.Path, string(f.Content))...)
 		}
 		sort.Slice(all, func(i, j int) bool {
@@ -495,6 +513,9 @@ func registerMarkers(s *Server, backend QueryInterface, name, description string
 		}
 		var all []markers.Marker
 		for _, f := range files {
+			if f.Lang == core.LangBinary {
+				continue // never regex-scan binary content (ADR-021 §1 / LT-2)
+			}
 			all = append(all, markers.Scan(f.Path, string(f.Content))...)
 		}
 		sort.Slice(all, func(i, j int) bool {

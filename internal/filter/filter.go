@@ -1,6 +1,7 @@
 // Package filter provides deterministic ignore-pattern matching for file paths.
-// It supports ** globs, directory prefixes, extension globs, and negation (!)
-// patterns — the same semantics found in .gitignore and common CI tooling.
+// It supports ** globs, directory prefixes, extension globs, leading-slash
+// root anchoring ("/fathom"), and negation (!) patterns — the same semantics
+// found in .gitignore and common CI tooling.
 //
 // Patterns are evaluated in order. The last matching pattern wins. A negation
 // pattern ("!foo") re-includes a previously excluded path.
@@ -52,6 +53,18 @@ func compile(raw string) rule {
 	if strings.HasPrefix(p, "!") {
 		r.negate = true
 		p = p[1:]
+	}
+
+	// gitignore root anchor: a leading "/" is stripped and forces
+	// root-anchored matching — the pattern matches only from the path root,
+	// never as a bare name deeper in the tree ("/fathom" ignores the
+	// root-level build artifact without swallowing cmd/fathom/). Without
+	// this strip the slash was left embedded in the pattern, which could
+	// never equal a Match()-normalised path (Match strips leading slashes),
+	// making every leading-slash pattern a silent no-op.
+	if strings.HasPrefix(p, "/") {
+		r.isAbs = true
+		p = strings.TrimPrefix(p, "/")
 	}
 
 	if strings.HasSuffix(p, "/") {

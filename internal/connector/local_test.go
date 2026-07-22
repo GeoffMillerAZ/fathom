@@ -262,6 +262,37 @@ func TestLocalConnector_Discover_FathomIgnore(t *testing.T) {
 	}
 }
 
+// TestLocalConnector_Discover_RootAnchoredIgnore is the end-to-end proof for
+// the .fathomignore "/fathom" build-artifact entry (ADR-021 §1 / LT-3): a
+// root-anchored pattern excludes the root-level entry from Discover entirely
+// (it is never even Fetched into memory), while the same name deeper in the
+// tree — cmd/fathom/ — is untouched. Before internal/filter understood
+// leading-slash root anchors this pattern was a silent no-op and the 103MB
+// binary rode through Discover+Fetch on every Sources-backed call, saved
+// only by the NUL sniff at the stats layer.
+func TestLocalConnector_Discover_RootAnchoredIgnore(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "fathom"), "\x00\x01fake root build artifact\n")
+	writeFile(t, filepath.Join(root, "cmd", "fathom", "main.go"), "package main\n")
+	writeFile(t, filepath.Join(root, connector.IgnoreFileName), "/fathom\n"+connector.IgnoreFileName+"\n")
+
+	lc := connector.NewLocalConnector()
+	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
+	if err != nil {
+		t.Fatalf("Discover: %v", err)
+	}
+	got := map[string]bool{}
+	for _, r := range refs {
+		got[r.Path] = true
+	}
+	if got["fathom"] {
+		t.Errorf("root-anchored /fathom entry did not exclude the root binary; got %v", got)
+	}
+	if !got["cmd/fathom/main.go"] {
+		t.Errorf("/fathom must not swallow cmd/fathom/; got %v", got)
+	}
+}
+
 // Back-compat for the tool's former name is gone: a repo carrying only the
 // legacy .sextantignore (no .fathomignore) gets no excludes from it at all —
 // .sextantignore is just an ordinary file to Discover now.

@@ -68,7 +68,8 @@ fathom serve-mcp --store workspace/db/fathom.duckdb
 `node_modules`, `.idea`, and `.vscode`. For repo-specific exclusions, place a
 `.fathomignore` file at the service root (the `--path` directory). It uses
 gitignore-style patterns — one per line, `#` comments, `!` negation, `**`
-globs, and trailing-slash dir-only rules:
+globs, trailing-slash dir-only rules, and leading-slash root anchoring
+(`/fathom` matches only the root-level entry, never `cmd/fathom/`):
 
 ```gitignore
 # Mirrored third-party source — not our code.
@@ -89,10 +90,13 @@ Build artifacts (compiled binaries, generated bundles) belong in `bin/` or
 `workspace/` — both already ignored by convention above — never at the repo
 root, where they get walked like any other file. As defense in depth,
 connectors also detect binary content directly (a NUL byte in the first 8000
-bytes, ADR-021 §1): such files are excluded from extraction and from cloc's
-line counts, reported instead in a files/bytes-only bucket. `.fathomignore`
-should still name known build-artifact paths explicitly (e.g. `/fathom` for a
-stray `go build -o fathom` at repo root) so they never enter the walk at all.
+bytes, ADR-021 §1): such files are excluded from extraction, from cloc's
+line counts (reported instead in a files/bytes-only `binary` bucket), and
+from the regex-based scan tools. `.fathomignore` should still name known
+build-artifact paths explicitly with a root-anchored entry (e.g. `/fathom`
+for a stray `go build -o fathom` at repo root): an ignored path is never
+discovered or fetched into memory at all, whereas the content sniff runs
+only after the bytes have already been read.
 
 ---
 

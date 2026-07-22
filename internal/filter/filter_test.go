@@ -272,3 +272,77 @@ func TestMatch_DirOnly_Negation(t *testing.T) {
 		t.Error("docs/keep/important.md should be re-included by negation")
 	}
 }
+
+// ─── Root-anchored leading-slash patterns ────────────────────────────────────
+
+// TestMatch_RootAnchoredPattern covers gitignore's leading-"/" root-anchor
+// semantics: "/fathom" matches ONLY the root-level entry named fathom (and,
+// as a directory, anything under it) — never a same-named entry deeper in
+// the tree. This is the .fathomignore "/fathom" build-artifact entry: a bare
+// "fathom" pattern must NOT be the fix, since as an unanchored name it would
+// swallow cmd/fathom/ too.
+func TestMatch_RootAnchoredPattern(t *testing.T) {
+	m := filter.New([]string{"/fathom"})
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"fathom", true},              // the root binary itself
+		{"fathom/sub.go", true},       // if fathom were a root dir, its contents
+		{"cmd/fathom/main.go", false}, // NOT the cmd/fathom package
+		{"cmd/fathom", false},         // NOT a nested entry named fathom
+		{"a/b/fathom", false},         // NOT deep in the tree
+		{"fathom2", false},            // different name
+		{"internal/fathom.go", false}, // different file
+	}
+	for _, c := range cases {
+		t.Run(c.path, func(t *testing.T) {
+			if got := m.Match(c.path); got != c.want {
+				t.Errorf("Match(%q) = %v, want %v", c.path, got, c.want)
+			}
+		})
+	}
+}
+
+// TestMatch_RootAnchoredMultiSegment: a leading slash on an already-anchored
+// (slash-containing) pattern is redundant in gitignore but must still work.
+func TestMatch_RootAnchoredMultiSegment(t *testing.T) {
+	m := filter.New([]string{"/internal/gen"})
+	if !m.Match("internal/gen/foo.go") {
+		t.Error("/internal/gen should match internal/gen/foo.go")
+	}
+	if !m.Match("internal/gen") {
+		t.Error("/internal/gen should match internal/gen")
+	}
+	if m.Match("a/internal/gen/foo.go") {
+		t.Error("/internal/gen must not match deeper in the tree")
+	}
+}
+
+// TestMatch_RootAnchoredDirOnly: "/workspace/" — root-anchored AND dir-only.
+func TestMatch_RootAnchoredDirOnly(t *testing.T) {
+	m := filter.New([]string{"/workspace/"})
+	if !m.Match("workspace/db/fleet.duckdb") {
+		t.Error("/workspace/ should match files under root workspace/")
+	}
+	if m.Match("a/workspace/x") {
+		t.Error("/workspace/ must not match a nested workspace dir")
+	}
+	if m.Match("workspace") {
+		t.Error("/workspace/ (dir-only) must not match a root FILE named workspace")
+	}
+}
+
+// TestMatch_RootAnchoredNegation: negation combines with root anchoring.
+func TestMatch_RootAnchoredNegation(t *testing.T) {
+	m := filter.New([]string{"*.log", "!/keep.log"})
+	if !m.Match("a/b/x.log") {
+		t.Error("*.log should match nested logs")
+	}
+	if m.Match("keep.log") {
+		t.Error("!/keep.log should re-include the root keep.log")
+	}
+	if !m.Match("a/keep.log") {
+		t.Error("!/keep.log is root-anchored — a nested keep.log stays ignored")
+	}
+}
