@@ -463,3 +463,61 @@ docs/distribution.md's size note). Removable entirely by reverting to a
 bare `replace ... => ../agentic-kit` if kit access becomes universal; the
 sync/drift-guard scripts are additive and inert without a `third_party/`
 directory to check.
+
+## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
+
+**Decision.** `internal/store` gains a SQLite backend (modernc.org/sqlite,
+pure Go, WAL mode) as the default; DuckDB remains temporarily behind the
+same `Store` interface for migration, then is removed. Backend selection
+is extension-based in a single shared helper (`store.BackendForPath`),
+replacing the four independent `.duckdb` hardcodes (store.Open,
+PlatformStore.load, genmanifest, platformingest).
+
+**Why.** (1) Concurrency: SQLite WAL gives many cross-process readers
+beside one writer — hooks and CLI verbs read the live store while the
+daemon writes; a wedged daemon degrades to "writes pause", not "fathom is
+down". DuckDB's cross-process single-writer forced daemon-stop rituals
+(claim, report, store-mode compile) and made daemon wedges total outages.
+(2) Distribution: dropping DuckDB removes CGO entirely — cross-compiled
+single-binary releases, no 538MB of platform static libs, no
+GOTMPDIR/link/deployment-target pain. (3) Fit: the audited workload is
+point lookups and joins over a 26MB store — no OLAP need; all five ON
+CONFLICT upserts port verbatim (SQLite ≥3.24 semantics).
+
+**Constraints.** Fresh final-column DDL for SQLite (no ALTER-IF-NOT-EXISTS
+emulation; only DuckDB carries legacy on-disk migration). Connection
+pragmas: journal_mode=WAL, busy_timeout, uncapped read pool (the
+SetMaxOpenConns(1) serialization is DuckDB-specific and must NOT carry
+over). PutObservations keeps its purge-then-insert contract — the doc
+comment's implied DB-level idempotency is corrected, not "fixed" with a
+constraint. Migration ports only non-derivable tables (semantic_claims,
+claim_links, claim_events, compile_runs, service_meta, commits);
+observations/fingerprints/cards rebuild by re-ingest.
+
+## ADR-021: Extraction v2 — language truth, tool identity, typed edges, tree-sitter (2026-07-22)
+
+**Decision.** Four connected corrections to how fathom understands source:
+(1) One language registry: the extractor registry becomes the single
+source of language identity; `langFromPath`'s parallel 10-language table
+is deleted. Binary files are detected (NUL-byte sniff) and excluded from
+line counting; unclassified files are surfaced, never silently bucketed.
+(2) Tool identity: extractor dispatch moves from path-only lookup to a
+pass-3 classifier — content + path + a per-ingest sibling index —
+returning a ToolKind that keys extractor registration. Helm templates,
+kustomizations, compose, k8s manifests, CUE modules, timoni bundles,
+OpenAPI documents, and generated files are recognized as what they are.
+(3) Typed Go call edges: an additive enrichment pass (go/packages +
+go/types) resolves the ambiguous-method residue into edges with kinds —
+direct, interface-dispatch (edge-set to implementers), unresolved —
+carried on core.Edge, never mutating the existing syntax-derived Calls
+contract; verify counts dispatch-sets honestly as "reached via any of N".
+(4) Tree-sitter (wazero/WASM, never CGO — coherence with ADR-020) becomes
+the extraction engine for new-language breadth, gated per language by the
+calibration corpus.
+
+**Why.** The index's authority is fathom's product. An index that
+line-counts a Mach-O binary as 423K lines of code, renders 14 of 24
+supported languages as "other", silently drops every Helm chart's
+templates, and refuses call edges for any method name two types share is
+not yet authoritative. Each correction removes a class of silent
+wrongness; none adds runtime machinery.
