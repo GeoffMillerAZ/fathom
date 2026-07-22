@@ -32,8 +32,12 @@ const (
 	KindK8sContainer      SourceKind = "K8sContainer"
 	KindCUEDefinition     SourceKind = "CUEDefinition"
 	KindCUEField          SourceKind = "CUEField"
-	KindDocChunk          SourceKind = "DocChunk"
-	KindModuleDep         SourceKind = "ModuleDep"
+	// KindCUEImport marks an import declaration captured as a reference
+	// observation (ADR-021 §1 / LT-4): the extractor emits one node per
+	// imported CUE package path so import edges are visible in the index.
+	KindCUEImport SourceKind = "CUEImport"
+	KindDocChunk  SourceKind = "DocChunk"
+	KindModuleDep SourceKind = "ModuleDep"
 
 	// Python
 	KindPyFunc  SourceKind = "PythonFunc"
@@ -187,6 +191,21 @@ type SourceFile struct {
 	Content []byte // raw file bytes
 	Lang    string // lowercase language tag: "go", "py", "js", "ts", "java", …
 }
+
+// LangBinary and LangUnclassified are the two well-known SourceFile.Lang
+// sentinel values that keep language reporting honest (ADR-021 §1):
+//
+//   - LangBinary marks content that fails connector.IsBinary's NUL-byte sniff.
+//     Binary files are excluded from extraction and line counting; cloc
+//     reports them in a files/bytes-only bucket, never as counted lines.
+//   - LangUnclassified marks a file whose path matches no entry in the
+//     connector's extension→language registry (no extractor is registered
+//     for it). It is always reported explicitly — never silently folded into
+//     an "other" bucket — so a gap in language coverage stays visible.
+const (
+	LangBinary       = "binary"
+	LangUnclassified = "unclassified"
+)
 
 // Observation is the atomic evidence record persisted in the store. One symbol,
 // fact, or chunk extracted from a source, tagged with provenance.

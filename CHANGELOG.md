@@ -5,6 +5,41 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — language truth: one registry, binary detection, honest CUE (ADR-021 §1, docs/plans/lang-truth.md)
+- **One ext→language registry.** `pkg/client.langFromPath` — a stale
+  10-language table maintained separately from the 24-extractor registry —
+  is deleted. `internal/connector.extClassMap` now pairs each registered
+  extension/basename with both its `SourceKind` and its language tag in one
+  place; `connector.LanguageForPath` is the single source of truth
+  `Client.Sources` consumes, and `internal/fusion`'s new
+  `TestLanguageRegistryParity` asserts a bijection against `fusion.New`'s
+  extractor registrations — a new extractor literally cannot be added
+  without also declaring its language (and vice versa). `cloc` now reports
+  all registered languages plus an explicit `unclassified` bucket for
+  anything with no registered extractor — never a silent `other`. (Three
+  lockfile heuristics with no extractor behind them — `go.sum`,
+  `Gemfile.lock`, `Cargo.lock`, `requirements.txt` — now honestly report
+  `unclassified` instead of a hand-guessed language;
+  `package-lock.json` still resolves via its registered `.json` extension.)
+- **Binary detection.** `connector.IsBinary` sniffs for a NUL byte in a
+  file's first 8000 bytes (precedent: agentic-kit's `constitution-lint`
+  `looksBinary`). Binary content is excluded from extraction (`fusion`'s
+  `extractAndStore`) and from cloc's line counts; the `cloc` MCP tool
+  reports binaries in a separate `binary: {files, bytes}` bucket. Fixes the
+  423K-line "other" bucket that was actually an untracked 103MB `fathom`
+  build binary at repo root; `.fathomignore` now also excludes `/fathom`.
+- **CUE extraction v2.** `internal/extractor/cueextract.go` now recurses
+  struct literals to emit nested fields with dotted names (e.g.
+  `#Layer.budgets.max_usd_per_run`, depth-capped at 6), reads `Package`
+  from the file's actual `package` clause (`ast.File.PackageName`, filename
+  fallback only when absent — fixing `internal/config/config_schema.cue`
+  and `schema/config/schema.cue`, both `package config`, previously landing
+  as two different wrong packages), and captures imports as
+  `core.KindCUEImport` reference observations. Golden-tested against the
+  real `schema/semantic/schema.cue` `#Layer` field tree.
+  `fusion.ExtractorEpoch` is bumped to `"3"` so every already-indexed `.cue`
+  file is re-extracted under the new semantics on next ingest.
+
 ### Added — build fathom without agentic-kit access (ADR-019, docs/distribution.md)
 - **`third_party/agentic-kit/`** is a committed, full mirror of the private
   `github.com/geoffmilleraz/agentic-kit` tree at exactly the commit

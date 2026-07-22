@@ -1,6 +1,8 @@
 package extractor_test
 
 import (
+	"os"
+	"sort"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -76,8 +78,205 @@ func TestCUEExtractor_Basic(t *testing.T) {
 		}
 	})
 
-	if len(nodes) != 3 {
-		t.Errorf("expected 3 nodes (#Service, #Deployment, someValue), got %d", len(nodes))
+	// LT-4: nested fields are now visible with dotted names — #Service and
+	// #Deployment each have two child fields, so the previously-invisible
+	// #Service.name / #Service.port / #Deployment.replicas /
+	// #Deployment.image are all present alongside the 3 top-level fields.
+	t.Run("nested_dotted_fields", func(t *testing.T) {
+		for _, want := range []string{"#Service.name", "#Service.port", "#Deployment.replicas", "#Deployment.image"} {
+			n, ok := byName[want]
+			if !ok {
+				t.Errorf("expected nested symbol %q", want)
+				continue
+			}
+			if n.Kind != core.KindCUEField {
+				t.Errorf("%s Kind: got %q, want KindCUEField", want, n.Kind)
+			}
+		}
+	})
+
+	// LT-1/ADR-021 §1: Package is read from the file's `package config`
+	// clause, not derived from the filename ("schema").
+	t.Run("package_from_clause", func(t *testing.T) {
+		if n, ok := byName["#Service"]; ok && n.Package != "config" {
+			t.Errorf("Package = %q, want %q (from the package clause)", n.Package, "config")
+		}
+	})
+
+	if len(nodes) != 7 {
+		t.Errorf("expected 7 nodes (3 top-level + 4 nested), got %d", len(nodes))
+	}
+}
+
+// TestCUEExtractor_DepthCap verifies that struct-literal recursion stops at
+// cueMaxDepth (6): a field 7 levels deep is never emitted, but the field at
+// exactly the cap (depth 6) is.
+func TestCUEExtractor_DepthCap(t *testing.T) {
+	const deepFixture = `package deep
+
+a: b: c: d: e: f: g: int
+`
+	x := extractor.NewCUEExtractor()
+	nodes, err := x.Extract("svc", "deep.cue", []byte(deepFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	byName := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = true
+	}
+
+	for _, want := range []string{"a", "a.b", "a.b.c", "a.b.c.d", "a.b.c.d.e", "a.b.c.d.e.f"} {
+		if !byName[want] {
+			t.Errorf("expected symbol %q within the depth cap, not found", want)
+		}
+	}
+	if byName["a.b.c.d.e.f.g"] {
+		t.Error("a.b.c.d.e.f.g exceeds cueMaxDepth (6) and must not be emitted")
+	}
+	if len(nodes) != 6 {
+		t.Errorf("expected exactly 6 nodes (depth 1..6), got %d: %v", len(nodes), nodes)
+	}
+}
+
+// TestCUEExtractor_Imports verifies that import declarations are captured as
+// KindCUEImport reference observations.
+func TestCUEExtractor_Imports(t *testing.T) {
+	const importFixture = `package withimports
+
+import (
+	"list"
+	"strings"
+)
+
+value: list.Contains([1, 2, 3], 1)
+`
+	x := extractor.NewCUEExtractor()
+	nodes, err := x.Extract("svc", "withimports.cue", []byte(importFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	var imports []core.SymbolNode
+	for _, n := range nodes {
+		if n.Kind == core.KindCUEImport {
+			imports = append(imports, n)
+		}
+	}
+	if len(imports) != 2 {
+		t.Fatalf("expected 2 import nodes, got %d: %v", len(imports), imports)
+	}
+	names := map[string]bool{}
+	for _, n := range imports {
+		names[n.Name] = true
+		if n.Tier != core.TierVerified {
+			t.Errorf("import %q Tier = %q, want TierVerified", n.Name, n.Tier)
+		}
+		if n.Package != "withimports" {
+			t.Errorf("import %q Package = %q, want %q", n.Name, n.Package, "withimports")
+		}
+	}
+	for _, want := range []string{"list", "strings"} {
+		if !names[want] {
+			t.Errorf("expected import %q, got %v", want, names)
+		}
+	}
+}
+
+// TestCUEExtractor_PackageFallback verifies that a file with NO package
+// clause falls back to the filename-derived package (pkgFromPath), preserving
+// the old behavior for package-less data fragments.
+func TestCUEExtractor_PackageFallback(t *testing.T) {
+	const noPackageFixture = `value: 42
+`
+	x := extractor.NewCUEExtractor()
+	nodes, err := x.Extract("svc", "fragment.cue", []byte(noPackageFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	if len(nodes) == 0 {
+		t.Fatal("expected at least one node")
+	}
+	if nodes[0].Package != "fragment" {
+		t.Errorf("Package = %q, want %q (filename fallback)", nodes[0].Package, "fragment")
+	}
+}
+
+// TestCUEExtractor_RealConfigSchemas_SamePackage is the exact regression the
+// grounding audit (wf_d0588a59) reproduced: internal/config/config_schema.cue
+// and schema/config/schema.cue both declare `package config` but have
+// different filenames. The old filename-derived heuristic reported two
+// different, both-wrong Package values ("config_schema" and "schema"); reading
+// the actual package clause reports "config" for both.
+func TestCUEExtractor_RealConfigSchemas_SamePackage(t *testing.T) {
+	paths := []string{
+		"../config/config_schema.cue",
+		"../../schema/config/schema.cue",
+	}
+	x := extractor.NewCUEExtractor()
+	for _, p := range paths {
+		src, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("ReadFile(%q): %v", p, err)
+		}
+		nodes, err := x.Extract("svc", p, src)
+		if err != nil {
+			t.Fatalf("Extract(%q): %v", p, err)
+		}
+		if len(nodes) == 0 {
+			t.Fatalf("Extract(%q): no nodes", p)
+		}
+		for _, n := range nodes {
+			if n.Package != "config" {
+				t.Errorf("%s: symbol %q Package = %q, want %q", p, n.Name, n.Package, "config")
+			}
+		}
+	}
+}
+
+// TestCUEExtractor_GoldenLayerSchema is the golden test against the REAL
+// schema/semantic/schema.cue (ADR-021 §1 / LT-4): a representative sample of
+// #Layer's nested field tree, sorted, must all be present now that struct
+// literals recurse.
+func TestCUEExtractor_GoldenLayerSchema(t *testing.T) {
+	const path = "../../schema/semantic/schema.cue"
+	src, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile(%q): %v", path, err)
+	}
+	x := extractor.NewCUEExtractor()
+	nodes, err := x.Extract("svc", path, src)
+	if err != nil {
+		t.Fatalf("Extract(%q): %v", path, err)
+	}
+
+	names := make([]string, 0, len(nodes))
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		names = append(names, n.Name)
+		byName[n.Name] = n
+	}
+	sort.Strings(names)
+
+	want := []string{
+		"#Layer",
+		"#Layer.budgets",
+		"#Layer.budgets.max_claims_per_file",
+		"#Layer.budgets.max_usd_per_run",
+		"#Layer.corpus",
+		"#Layer.corpus.include",
+		"#Layer.name",
+		"#Layer.serving",
+		"#Layer.serving.drift_tracked",
+		"#Layer.tier_profile",
+	}
+	for _, w := range want {
+		if _, ok := byName[w]; !ok {
+			t.Errorf("golden field tree: missing %q (got sorted names: %v)", w, names)
+		}
+	}
+	if n, ok := byName["#Layer"]; ok && n.Package != "semantic" {
+		t.Errorf("#Layer Package = %q, want %q", n.Package, "semantic")
 	}
 }
 

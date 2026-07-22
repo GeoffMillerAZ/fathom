@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/cloc"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
@@ -994,5 +995,85 @@ func TestClocTotalConsistency(t *testing.T) {
 	}
 	if typed.Total.Code != sumCode {
 		t.Errorf("total.code = %d, want sum-of-langs %d", typed.Total.Code, sumCode)
+	}
+}
+
+// TestCloc_BinaryBucket is the LT-3 regression: a NUL-bearing file
+// contributes zero code (or blank/comment) lines to cloc's output —
+// regardless of how many "lines" its raw bytes would otherwise split into —
+// and is instead reported as a files/bytes-only "binary" bucket, never
+// silently folded into by_lang or total.
+func TestCloc_BinaryBucket(t *testing.T) {
+	binaryContent := []byte("\x00\x01\x02\nnot real code\n\nmore garbage\n")
+	files := []core.SourceFile{
+		{Path: "foo/run.go", Content: []byte(goSrc), Lang: "go"},
+		{Path: "blob", Content: binaryContent, Lang: core.LangBinary},
+	}
+	srv := newSourcesSrv(files)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3200, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cloc",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, resp)
+
+	byLang, ok := p["by_lang"].(map[string]any)
+	if !ok {
+		t.Fatalf("cloc: by_lang missing: %v", p)
+	}
+	if _, ok := byLang[core.LangBinary]; ok {
+		t.Error("binary content must not appear as a by_lang entry")
+	}
+
+	binary, ok := p["binary"].(map[string]any)
+	if !ok {
+		t.Fatalf("cloc: binary bucket missing: %v", p)
+	}
+	if files, ok := binary["files"].(float64); !ok || files != 1 {
+		t.Errorf("binary.files = %v, want 1", binary["files"])
+	}
+	if bytesGot, ok := binary["bytes"].(float64); !ok || int(bytesGot) != len(binaryContent) {
+		t.Errorf("binary.bytes = %v, want %d", binary["bytes"], len(binaryContent))
+	}
+
+	// total must reflect only the non-binary (go) file's lines — the
+	// binary file's raw-byte "lines" never leak into total.code.
+	total, ok := p["total"].(map[string]any)
+	if !ok {
+		t.Fatalf("cloc: total missing: %v", p)
+	}
+	goStats := cloc.Count("go", goSrc)
+	if got := total["code"].(float64); int(got) != goStats.Code {
+		t.Errorf("total.code = %v, want %d (the go file's code lines only)", total["code"], goStats.Code)
+	}
+}
+
+// TestCloc_UnclassifiedBucket verifies that a file with no registered
+// extractor (an empty Lang, as a defensively-handled edge case) is reported
+// under the explicit core.LangUnclassified bucket rather than "other".
+func TestCloc_UnclassifiedBucket(t *testing.T) {
+	files := []core.SourceFile{
+		{Path: "notes.xyz", Content: []byte("some content\nmore content\n"), Lang: ""},
+	}
+	srv := newSourcesSrv(files)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3201, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "cloc",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := sourcesToolPayload(t, resp)
+	byLang, ok := p["by_lang"].(map[string]any)
+	if !ok {
+		t.Fatalf("cloc: by_lang missing: %v", p)
+	}
+	if _, ok := byLang[core.LangUnclassified]; !ok {
+		t.Errorf("expected %q entry in by_lang, got %v", core.LangUnclassified, byLang)
+	}
+	if _, ok := byLang["other"]; ok {
+		t.Error(`"other" bucket must never appear — unclassified files get an explicit label`)
 	}
 }

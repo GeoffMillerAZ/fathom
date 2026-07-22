@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
@@ -30,49 +29,6 @@ import (
 // SourceFile is a single fetched source file. It is a re-export of
 // core.SourceFile so callers never import internal packages.
 type SourceFile = core.SourceFile
-
-// langFromPath derives a lowercase language tag from a file's extension.
-// Returns "" for unrecognised extensions.
-func langFromPath(path string) string {
-	base := filepath.Base(path)
-	// Special basenames first.
-	switch base {
-	case "go.sum", "go.mod":
-		return "go"
-	case "Gemfile.lock":
-		return "ruby"
-	case "Cargo.lock":
-		return "rust"
-	case "requirements.txt":
-		return "py"
-	case "package-lock.json":
-		return "js"
-	}
-	ext := strings.ToLower(filepath.Ext(path))
-	switch ext {
-	case ".go":
-		return "go"
-	case ".py":
-		return "py"
-	case ".js", ".jsx":
-		return "js"
-	case ".ts", ".tsx":
-		return "ts"
-	case ".java":
-		return "java"
-	case ".rb":
-		return "ruby"
-	case ".rs":
-		return "rust"
-	case ".tf":
-		return "terraform"
-	case ".md":
-		return "md"
-	case ".yaml", ".yml":
-		return "yaml"
-	}
-	return ""
-}
 
 // Mode selects which connector the Client uses to acquire source.
 type Mode int
@@ -276,10 +232,21 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 			// Skip files that cannot be fetched (e.g. permission errors).
 			continue
 		}
+		// Language is live-computed on every call (ADR-021 §1 / LT-1): the
+		// shared connector registry is the single source of truth, so cloc
+		// and every other source-scanning tool see every registered
+		// language plus an explicit "unclassified" bucket instead of a
+		// silent "other". Binary detection is content-based and always wins
+		// over the extension-derived language (LT-2): a NUL-bearing file
+		// never contributes to line counts, regardless of its extension.
+		lang := connector.LanguageForPath(ref.Path)
+		if connector.IsBinary(data) {
+			lang = core.LangBinary
+		}
 		files = append(files, SourceFile{
 			Path:    ref.Path,
 			Content: data,
-			Lang:    langFromPath(ref.Path),
+			Lang:    lang,
 		})
 	}
 	return files, nil

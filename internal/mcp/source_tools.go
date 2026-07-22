@@ -315,10 +315,21 @@ func registerCloc(s *Server, backend QueryInterface) {
 			return nil, rpcErr
 		}
 		langMap := make(map[string][]cloc.Stats)
+		var binaryFiles, binaryBytes int
 		for _, f := range files {
+			// Binary files never contribute lines (ADR-021 §1 / LT-2): they
+			// are counted in their own files/bytes bucket, excluded from
+			// by_lang and from total entirely — a NUL-bearing file can never
+			// inflate the code-line count the way an un-detected build
+			// artifact used to.
+			if f.Lang == core.LangBinary {
+				binaryFiles++
+				binaryBytes += len(f.Content)
+				continue
+			}
 			lang := f.Lang
 			if lang == "" {
-				lang = "other"
+				lang = core.LangUnclassified
 			}
 			s := cloc.Count(lang, string(f.Content))
 			langMap[lang] = append(langMap[lang], s)
@@ -344,6 +355,10 @@ func registerCloc(s *Server, backend QueryInterface) {
 				"comment": total.Comment,
 				"code":    total.Code,
 				"total":   total.Total(),
+			},
+			"binary": map[string]any{
+				"files": binaryFiles,
+				"bytes": binaryBytes,
 			},
 		}, nil
 	})

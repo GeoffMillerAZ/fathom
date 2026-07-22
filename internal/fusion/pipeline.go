@@ -199,7 +199,14 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // callgraph/extractor fixes were invisible on the fleet store until forced).
 // Epoch 2 = the H1 extractor generation (aliased-selector canonicalization,
 // constructor-scoped receiver inference) + this salt's introduction.
-const ExtractorEpoch = "2"
+// Epoch 3 = the LT-4 CUE extractor v2 generation (docs/plans/lang-truth.md,
+// ADR-021 §1): nested-field recursion emitting dotted names
+// (#Layer.budgets.max_usd_per_run), package-clause attribution (was
+// filename-derived), and import capture. Every already-indexed .cue file's
+// stored observations were produced by the OLD top-level-only extractor, so
+// the salt bump forces re-extraction on the next ingest rather than leaving
+// them silently stale (the exact class dogfood O9 caught for epoch 2).
+const ExtractorEpoch = "3"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -642,6 +649,17 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 
 	// Process file-by-file in batch (input) order for determinism.
 	for _, pf := range batch {
+		// Binary content never carries extractable symbols, regardless of
+		// whether its path happens to match a registered extension (ADR-021
+		// §1 / LT-2). Record the fingerprint so it isn't re-sniffed on every
+		// ingest, but never hand binary bytes to an extractor.
+		if connector.IsBinary(pf.content) {
+			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+				return totalSymbols, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+			}
+			continue
+		}
+
 		// Resolve extractor: try full basename first (e.g. "go.mod"), then extension.
 		base := filepath.Base(pf.ref.Path)
 		ext := filepath.Ext(pf.ref.Path)

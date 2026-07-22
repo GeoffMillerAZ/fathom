@@ -85,6 +85,15 @@ Sensitive data directories (user content, case data, secrets) should always be
 excluded here — the index is queryable by any connected MCP client and is not
 behind an egress/DLP gate.
 
+Build artifacts (compiled binaries, generated bundles) belong in `bin/` or
+`workspace/` — both already ignored by convention above — never at the repo
+root, where they get walked like any other file. As defense in depth,
+connectors also detect binary content directly (a NUL byte in the first 8000
+bytes, ADR-021 §1): such files are excluded from extraction and from cloc's
+line counts, reported instead in a files/bytes-only bucket. `.fathomignore`
+should still name known build-artifact paths explicitly (e.g. `/fathom` for a
+stray `go build -o fathom` at repo root) so they never enter the walk at all.
+
 ---
 
 ## CLI subcommands

@@ -46,11 +46,17 @@ Design constraints (normative):
 
 ## Tasks
 
-- [ ] Shared ext→language mapping derived from the extractor registry; langFromPath deleted; Sources() consumes it; cloc shows all 24 languages + explicit unclassified bucket {id: LT-1, symbol: Sources, package: pkg/client}
-- [ ] Binary sniff at classification: excluded from extraction and line counts, reported as file-count/bytes bucket {id: LT-2, symbol: IsBinary, package: internal/connector}
-- [ ] Repo hygiene: /fathom in .fathomignore; regression test that a NUL-bearing root file contributes zero code lines {id: LT-3, symbol: IsBinary, package: internal/connector, skip_test: true, skip: "ignore-file line + the LT-2 tests are the coverage; no new symbol"}
-- [ ] CUE extractor v2: nested-field recursion with dotted names, package-clause attribution with filename fallback, import capture; golden test on the real #Layer manifest {id: LT-4, symbol: NewCUEExtractor, package: internal/extractor}
-- [ ] ExtractorEpoch bump (CUE semantics changed) with the epoch test extended {id: LT-5, symbol: FingerprintHash, package: internal/fusion}
+- [x] Shared ext→language mapping derived from the extractor registry; langFromPath deleted; Sources() consumes it; cloc shows all 24 languages + explicit unclassified bucket {id: LT-1, symbol: Sources, package: pkg/client}
+- [x] Binary sniff at classification: excluded from extraction and line counts, reported as file-count/bytes bucket {id: LT-2, symbol: IsBinary, package: internal/connector}
+- [x] Repo hygiene: /fathom in .fathomignore; regression test that a NUL-bearing root file contributes zero code lines {id: LT-3, symbol: IsBinary, package: internal/connector, skip_test: true, skip: "ignore-file line + the LT-2 tests are the coverage; no new symbol"}
+- [x] CUE extractor v2: nested-field recursion with dotted names, package-clause attribution with filename fallback, import capture; golden test on the real #Layer manifest {id: LT-4, symbol: NewCUEExtractor, package: internal/extractor}
+- [x] ExtractorEpoch bump (CUE semantics changed) with the epoch test extended {id: LT-5, symbol: FingerprintHash, package: internal/fusion}
+
+Checked honestly by the implementing worker against `MACOSX_DEPLOYMENT_TARGET=14.0
+CGO_ENABLED=1 task validate` (green) and the test suite described in the
+commit; this slice branch (`slice/lang-truth`) is not itself in the fleet
+index, so `verify_plan`/index-backed grounding of these boxes happens at
+coordinator merge time against the fleet's post-merge re-ingest, not here.
 
 ## Deferred
 
