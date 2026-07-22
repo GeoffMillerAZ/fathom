@@ -37,21 +37,30 @@ runtime accepts older-but-in-range grammar ABI versions; `ts_language_abi_versio
 is checked at `ts_parser_set_language` time). Using one recent, well-tested
 core across all four languages is intentional, not an oversight.
 
-## Blob sizes and checksums (this build, after `wasm-opt -Oz`)
+## Blob sizes and checksums (the committed blobs, after `wasm-opt -Oz`)
 
-| Blob | Size | sha256 |
+Exact values — verify with `shasum -a 256 *.wasm` and `stat -f%z *.wasm` in
+this directory; build.sh prints both at the end of a rebuild:
+
+| Blob | Size (bytes) | sha256 (64 hex chars) |
 |---|--:|---|
-| `javascript.wasm` | 458,000 bytes (458 KiB) | `86d894ae3f1a9aefd7ac0743aefdd85813d5bb7d42e1afadcf0ab9ee13ef8399` |
-| `typescript.wasm` | 2,000,000 bytes (2.0 MiB) | `5b124dd43cff8fcdcfc3092f8d95388d1365ffcd702e98e6bd2a3f9a44b2c46` |
-| `python.wasm` | 539,000 bytes (539 KiB) | `e9bd8e68f2d18dd12d5a7be8d77e153b1f6c93faed4eae7d60cd0984318b27d` |
-| `ruby.wasm` | 1,700,000 bytes (1.7 MiB) | `5750100352c63779282918a1af50537267bc54437182c1ac1a2c47ca04a9ddb` |
+| `javascript.wasm` | 458,741 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
+| `typescript.wasm` | 2,037,040 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
+| `python.wasm` | 539,848 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
+| `ruby.wasm` | 1,710,411 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
 
-(Sizes rounded to 3 significant figures for readability; run
-`shasum -a 256 *.wasm` in this directory for exact byte counts/digests —
-build.sh prints both at the end of a rebuild.) TypeScript is the largest
-blob because it statically links both the `typescript` and `tsx` grammars
-(each has its own large generated parse table) alongside the core; Ruby's
-grammar tables are large due to the language's syntactic ambiguity.
+(458,741 B ≈ 448 KiB; 2,037,040 B ≈ 1.94 MiB; 539,848 B ≈ 527 KiB;
+1,710,411 B ≈ 1.63 MiB.) TypeScript is the largest blob because it
+statically links both the `typescript` and `tsx` grammars (each has its own
+large generated parse table) alongside the core; Ruby's grammar tables are
+large due to the language's syntactic ambiguity.
+
+Each blob also compiles in `budget.c` (this directory, checked in — the only
+non-upstream C in the build): the deadline-bounded parse/query entry points
+(`fathom_parse_bounded`, `fathom_query_cursor_exec_bounded`,
+`fathom_take_cancelled`) and the scalar-argument node accessor
+(`fathom_node_end_byte`). See that file's header comments for why each
+exists.
 
 ## Build recipe (reproducible — `./build.sh`)
 
@@ -69,10 +78,11 @@ wasm-opt -Oz <lang>.wasm -o <lang>.wasm --enable-bulk-memory   # ~25-30% smaller
 target, so `malloc`/`free`/`memcpy`/etc. are real, working libc calls compiled
 in — no hand-written allocator, no CGO. `-mexec-model=reactor` builds a
 callable-library module (no `_start`/`main`), matching wazero's instantiate-
-then-call-exports usage. The output only imports the three `wasi_snapshot_
-preview1` functions (`fd_write`, `fd_seek`, `fd_close`) that libc's startup
-code references but never calls in practice — wazero's stock
-`imports/wasi_snapshot_preview1` package satisfies them with no custom shim.
+then-call-exports usage. The output only imports three `wasi_snapshot_preview1`
+functions — `fd_write`/`fd_close` (libc startup references, never called in
+practice) and `clock_time_get` (budget.c's CLOCK_MONOTONIC deadline checks)
+— wazero's stock `imports/wasi_snapshot_preview1` package satisfies all of
+them with no custom shim.
 
 Build-time tools (zig, wasm-opt) are **not** a runtime or `go build`
 dependency — the committed `.wasm` blobs are embedded via `go:embed` and
@@ -80,6 +90,51 @@ consumed purely by wazero (pure Go) at runtime. Re-running `build.sh` requires
 network access (to fetch pinned upstream source tarballs) and is meant to be
 run on demand to refresh a pin, exactly like `calibration/clone.sh` — never
 as part of `task validate`.
+
+**Toolchain that produced the committed blobs**: `zig 0.16.0` (Homebrew
+bottle, arm64 macOS) and `wasm-opt version 129` (binaryen). Byte-identical
+third-party reproduction is NOT achievable across toolchain versions — a
+different zig (different bundled clang/wasm-ld) or binaryen emits different
+(functionally equivalent) code, so a rebuild verifies provenance by matching
+the *source* pins above, not by matching these sha256s. The digests bind the
+committed bytes; the pins + recipe bind what those bytes were built from.
+
+## Runtime behavior note: the pathological-input bound (critic B1)
+
+On pathological input — `({[` repeated 50,000x (150KB, the shape of a
+truncated minified bundle) — the original unbounded engine ran **52.9s**
+(200,000x: 11+ minutes at 100% CPU) where the CGO incumbent finishes in
+~49ms. Root-cause attribution, established by direct measurement during the
+fix: the **parse** of this input completes in ~70ms — the time goes to the
+**query cursor's scan** of the resulting error tree (45s+ measured for the
+150KB input). The wedge risk is real either way: uncancellable wasm
+execution holding the extractor's mutex.
+
+Three mechanisms bound it now (each chosen against a measured alternative):
+
+1. **Guest-side budgets** (`fathom_parse_bounded` /
+   `fathom_query_cursor_exec_bounded` in `budget.c`): tree-sitter's own
+   progress-callback cancellation, one CLOCK_MONOTONIC read (WASI
+   clock_time_get) per ~100 operations. Cost ~2% corpus-wide. The rejected
+   alternative — wazero's `WithCloseOnContextDone` — compiles termination
+   checks into every loop back-edge and measured **~3x slower corpus-wide**.
+2. **Host-side hard backstop** (`tsengine.ParseHardBackstop`, default 2x the
+   10s budget): a goroutine+reaper harness abandons any guest operation the
+   budgets fail to stop (progress checks arrive at a slow real-time cadence
+   on exactly the pathological inputs — measured: a 16x-amortized clock
+   check let the full 45s scan run to completion), so the ingest thread is
+   ALWAYS released within a fixed bound; the runaway call burns out in the
+   background and its module is then closed, freeing everything.
+3. **Parser re-creation on any engine fault** (`TSExtractor.noteFault`):
+   faults are counted per-ingest on `fusion.Report.TSEngineFaults` with one
+   stderr line each; the affected file is fingerprinted (not retried until
+   its bytes or the ExtractorEpoch change); the next file of that language
+   gets a fresh parser. Recovery is never a fallback to the CGO incumbent
+   extractors (fallback doctrine — plan M2 ruling).
+
+The v0.26-vs-v0.25 core delta remains the suspected variable for WHY the
+error-tree scan explodes at all (unconfirmed upstream); the bounds above are
+version-independent by design.
 
 ## Path not taken: Emscripten/web-tree-sitter-shaped `.wasm`
 

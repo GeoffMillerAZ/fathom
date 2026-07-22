@@ -25,11 +25,63 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"github.com/tetratelabs/wazero/imports/wasi_snapshot_preview1"
 )
+
+// DefaultParseTimeout bounds each potentially-unbounded guest phase (the
+// parse, and the query match scan). Chosen far above any healthy corpus
+// file's cost, so it only ever fires on genuinely pathological input —
+// e.g. `({[` x 50,000 (150KB, a truncated minified bundle's shape), which
+// ran 52.9s unbounded on this engine (x200,000: 11+ minutes at 100% CPU;
+// the CGO incumbent finishes the same bytes in ~49ms — critic B1). Measured
+// attribution: the PARSE of that input completes in ~70ms; the 45s+ goes to
+// the QUERY CURSOR's scan of the resulting error tree (see grammars/
+// PROVENANCE.md's runtime-behavior note). Without a bound, one such file
+// wedges the daemon: uncancellable wasm execution holding the extractor's
+// mutex, serializing that language's extraction until restart.
+//
+// Enforcement is GUEST-side: the blobs export fathom_parse_bounded and
+// fathom_query_cursor_exec_bounded (grammars/budget.c), which run
+// tree-sitter's own progress-callback cancellation (one CLOCK_MONOTONIC
+// read per ~100 operations, via WASI clock_time_get; ~2% corpus cost). The
+// host-side alternative — wazero's WithCloseOnContextDone — was implemented
+// first and rejected: its termination checks on every loop back-edge
+// measured ~3x slower across the whole calibration corpus, busting the
+// plan's 1.5x ingest budget for a deadline that pathological files alone
+// need. ParseHardBackstop covers what the guest budgets structurally cannot.
+const DefaultParseTimeout = 10 * time.Second
+
+// ParseTimeout is the live parse deadline. A package-level variable (not a
+// constant) solely so tests can shrink it to exercise the timeout path
+// without a 10s wait; production code must not mutate it. Set it before any
+// parsing starts — it is read (unsynchronized) at each Parse.
+var ParseTimeout = DefaultParseTimeout
+
+// ParseHardBackstop is the wall-clock bound on each potentially-unbounded
+// guest operation (the parse call, and the whole query match loop),
+// enforced host-side by abandoning the in-flight wasm work (goroutine +
+// module reaper — see bounded). Zero means 2x ParseTimeout, computed at
+// each operation.
+//
+// Why a second bound exists on top of the guest budgets (measured, not
+// speculative): the guest budgets only fire when tree-sitter's progress
+// callbacks actually run, and their real-time cadence collapses on exactly
+// the pathological inputs — during the fix, a 16x-amortized clock check let
+// the full 45s pathological query scan run to completion because callbacks
+// arrived ~8s apart under load, and a phase whose work runs between checks
+// (or a future core whose cadence shifts) would make a guest-only budget
+// decorative. The guest budgets are the cheap, surgical first line; this
+// backstop guarantees the operation returns within a fixed bound regardless
+// of where the time goes. An abandoned call keeps burning one core in the
+// background until tree-sitter finishes (bounded by the 2MB extraction
+// cap's worst case), after which the reaper closes its module and frees
+// everything — degraded and counted, never a wedged daemon.
+var ParseHardBackstop time.Duration
 
 //go:embed grammars/javascript.wasm grammars/typescript.wasm grammars/python.wasm grammars/ruby.wasm
 var grammarFS embed.FS
@@ -64,9 +116,10 @@ var (
 )
 
 // ensureRuntime lazily creates the single process-wide wazero Runtime and
-// instantiates the WASI shim every grammar module imports (fd_write/fd_seek/
-// fd_close only — see PROVENANCE.md; nothing custom to implement). Safe to
-// call concurrently.
+// instantiates the WASI shim every grammar module imports (fd_write/
+// fd_close from libc startup, clock_time_get for budget.c's deadline checks
+// — see PROVENANCE.md; nothing custom to implement). Safe to call
+// concurrently.
 func ensureRuntime(ctx context.Context) (wazero.Runtime, error) {
 	runtimeOnce.Do(func() {
 		cfg := wazero.NewRuntimeConfig()
@@ -75,6 +128,11 @@ func ensureRuntime(ctx context.Context) (wazero.Runtime, error) {
 		} else {
 			cfg = wazero.NewRuntimeConfigInterpreter()
 		}
+		// Deliberately NO WithCloseOnContextDone: parse cancellation is
+		// enforced inside the guest (fathom_parse_bounded, grammars/
+		// budget.c) via tree-sitter's own progress callback, so wazero's
+		// loop-back-edge termination checks — measured ~3x slower corpus-
+		// wide when tried — are not needed. See DefaultParseTimeout's doc.
 		rt = wazero.NewRuntimeWithConfig(ctx, cfg)
 		if _, err := wasi_snapshot_preview1.Instantiate(ctx, rt); err != nil {
 			rtErr = fmt.Errorf("tsengine: instantiate WASI shim: %w", err)
@@ -136,13 +194,19 @@ func compile(ctx context.Context, name string) (wazero.CompiledModule, error) {
 // Parser is one instantiated grammar module (its own linear memory) bound to
 // one language entry point, plus a live TSParser. Not safe for concurrent
 // use from multiple goroutines — create one per goroutine.
+//
+// closed is atomic because abandonment (see bounded) is the one place two
+// goroutines interact: the caller marks the Parser closed while the
+// abandoned op goroutine may be about to make its next guest call — the
+// closed check in call makes that goroutine stop entering the module, after
+// which the reaper closes it. All OTHER use is single-goroutine.
 type Parser struct {
 	ctx       context.Context
 	mod       api.Module
 	fns       map[string]*api.Function
 	langPtr   uint32
 	parserPtr uint32
-	closed    bool
+	closed    atomic.Bool
 }
 
 // requiredExports is every C function build.sh exports and this package
@@ -152,9 +216,10 @@ type Parser struct {
 var requiredExports = []string{
 	"malloc", "free",
 	"ts_parser_new", "ts_parser_delete", "ts_parser_set_language",
-	"ts_parser_parse_string", "ts_parser_reset",
+	"fathom_parse_bounded", "fathom_query_cursor_exec_bounded",
+	"fathom_take_cancelled", "ts_parser_reset",
 	"ts_tree_root_node", "ts_tree_delete",
-	"ts_node_start_byte", "ts_node_end_byte", "ts_node_start_point",
+	"fathom_node_end_byte",
 	"ts_language_abi_version",
 	"ts_query_new", "ts_query_delete",
 	"ts_query_cursor_new", "ts_query_cursor_delete",
@@ -222,15 +287,24 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 }
 
 // Close releases the wazero module instance (and every allocation it made).
+// After an abandonment (see bounded) this is a no-op — the reaper owns the
+// close.
 func (p *Parser) Close() error {
-	if p.closed {
+	if p.closed.Swap(true) {
 		return nil
 	}
-	p.closed = true
 	return p.mod.Close(p.ctx)
 }
 
 func (p *Parser) call(name string, args ...uint64) ([]uint64, error) {
+	// The closed check makes an ABANDONED op goroutine (see bounded) stop
+	// entering the module as soon as its in-flight guest call returns, and
+	// turns the caller's deferred best-effort frees (Tree.Close, cursor
+	// delete, free) into no-op errors instead of concurrent calls into a
+	// module another goroutine is still executing in.
+	if p.closed.Load() {
+		return nil, fmt.Errorf("tsengine: call %s: parser closed", name)
+	}
 	fn, ok := p.fns[name]
 	if !ok {
 		return nil, fmt.Errorf("tsengine: internal error: export %q not resolved", name)
@@ -240,6 +314,51 @@ func (p *Parser) call(name string, args ...uint64) ([]uint64, error) {
 		return nil, fmt.Errorf("tsengine: call %s: %w", name, err)
 	}
 	return res, nil
+}
+
+// bounded runs op under the ParseHardBackstop wall-clock bound, abandoning
+// it (and this Parser) on expiry. op wraps the guest work whose runtime is
+// a function of untrusted input — the parse call, and the whole query match
+// loop (one bounded harness per file per phase, NOT per guest call: a
+// goroutine+timer per next_match measured ~2x user-CPU overhead corpus-
+// wide). On abandonment the op goroutine keeps running its in-flight guest
+// call; the closed flag stops it at its NEXT p.call, and the reaper closes
+// the module — releasing all its memory — once op returns. The op goroutine
+// only touches op-local state plus construction-time-immutable Parser
+// fields, so abandonment does not race with the caller.
+func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
+	backstop := ParseHardBackstop
+	if backstop <= 0 {
+		backstop = 2 * ParseTimeout
+	}
+
+	type opResult struct {
+		val any
+		err error
+	}
+	ch := make(chan opResult, 1)
+	go func() {
+		val, err := op()
+		ch <- opResult{val: val, err: err}
+	}()
+
+	timer := time.NewTimer(backstop)
+	defer timer.Stop()
+	select {
+	case r := <-ch:
+		return r.val, r.err
+	case <-timer.C:
+		// Hard backstop: the guest work is stuck past its budget in a
+		// progress-check-free phase. Abandon it — this Parser is dead to
+		// callers from here on; the reaper closes the module when the op
+		// goroutine finishes in the background.
+		p.closed.Store(true)
+		go func() {
+			<-ch
+			_ = p.mod.Close(context.Background())
+		}()
+		return nil, fmt.Errorf("tsengine: %s abandoned at %v hard backstop (guest %v budget did not fire — progress-check-free phase); parser must be re-created", what, backstop, ParseTimeout)
+	}
 }
 
 func (p *Parser) malloc(n uint32) (uint32, error) {
@@ -297,12 +416,23 @@ type Tree struct {
 // rare (tree-sitter's error-recovery grammar generation means almost any
 // byte string produces *some* tree, possibly full of ERROR nodes) but is
 // still surfaced as an error rather than a silent empty result.
+//
+// The parse runs under the ParseTimeout deadline (critic B1), enforced by
+// the guest-side fathom_parse_bounded (grammars/budget.c): tree-sitter's
+// progress callback checks CLOCK_MONOTONIC every ~100 parser operations and
+// cancels the parse when the budget expires, returning a null tree. The
+// Parser itself SURVIVES the abort (tree-sitter's documented cancellation
+// contract requires only a reset before the next parse — which this method
+// performs at entry anyway); the caller (internal/extractor.TSExtractor)
+// still treats any Parse error as an engine fault and re-creates the Parser
+// for uniformity with genuine traps.
 func (p *Parser) Parse(src []byte) (*Tree, error) {
 	// A Parser is reused across many files for the life of the process
 	// (see internal/extractor.TSExtractor) — reset defensively before every
 	// parse so a prior call that errored or was cancelled never leaks state
 	// into this one. Cheap: tree-sitter's own recommended usage pattern for
-	// a long-lived TSParser parsing many unrelated documents.
+	// a long-lived TSParser parsing many unrelated documents, and REQUIRED
+	// after a cancelled parse.
 	if _, err := p.call("ts_parser_reset", uint64(p.parserPtr)); err != nil {
 		return nil, err
 	}
@@ -313,13 +443,25 @@ func (p *Parser) Parse(src []byte) (*Tree, error) {
 	}
 	defer p.free(srcPtr)
 
-	res, err := p.call("ts_parser_parse_string", uint64(p.parserPtr), 0, uint64(srcPtr), uint64(len(src)))
+	budgetMS := ParseTimeout.Milliseconds()
+	if budgetMS < 1 {
+		budgetMS = 1
+	}
+
+	resAny, err := p.bounded("parse", func() (any, error) {
+		return p.call("fathom_parse_bounded", uint64(p.parserPtr), uint64(srcPtr), uint64(len(src)), uint64(budgetMS))
+	})
 	if err != nil {
 		return nil, err
 	}
+	res := resAny.([]uint64)
 	treePtr := uint32(res[0])
 	if treePtr == 0 {
-		return nil, fmt.Errorf("tsengine: parse failed (no tree produced)")
+		// fathom_parse_bounded returns null exactly when the progress
+		// callback cancelled the parse — the ParseTimeout budget expired
+		// during a checked phase. The Parser survives (Parse resets at
+		// entry).
+		return nil, fmt.Errorf("tsengine: parse aborted after %v budget (pathological input?)", ParseTimeout)
 	}
 	return &Tree{p: p, treePtr: treePtr, src: src}, nil
 }
@@ -381,36 +523,42 @@ func (n Node) Text(src []byte) string {
 	return string(src[n.StartByte:n.EndByte])
 }
 
-// readNode reads a 24-byte TSNode struct at ptr and calls the exported
-// accessors needed to build a Node snapshot, then frees no wasm memory
-// itself (caller-owned ptr).
-func (p *Parser) readNode(ptr uint32) (Node, error) {
-	startByteRes, err := p.call("ts_node_start_byte", uint64(ptr))
+// nodeFromBytes builds a Node snapshot from a TSNode struct's raw 24 bytes
+// with exactly ONE guest call. start_byte and start_point are literally
+// context[0..2] of the struct (node.c: ts_node_new / ts_node_start_byte),
+// so they decode host-side for free; only the end byte lives behind the
+// subtree pointer and needs the guest — fathom_node_end_byte takes the six
+// words as scalars, so no guest-memory allocation is involved at all. This
+// is THE hot path of extraction (once per query capture) — the previous
+// shape (malloc + write + 3 accessor calls + free per capture) measurably
+// busted the corpus ingest budget.
+func (p *Parser) nodeFromBytes(b []byte) (Node, error) {
+	c0 := binary.LittleEndian.Uint32(b[0:4])
+	c1 := binary.LittleEndian.Uint32(b[4:8])
+	c2 := binary.LittleEndian.Uint32(b[8:12])
+	c3 := binary.LittleEndian.Uint32(b[12:16])
+	id := binary.LittleEndian.Uint32(b[16:20])
+	tree := binary.LittleEndian.Uint32(b[20:24])
+	endRes, err := p.call("fathom_node_end_byte",
+		uint64(c0), uint64(c1), uint64(c2), uint64(c3), uint64(id), uint64(tree))
 	if err != nil {
 		return Node{}, err
 	}
-	endByteRes, err := p.call("ts_node_end_byte", uint64(ptr))
-	if err != nil {
-		return Node{}, err
-	}
-	pointSret, err := p.malloc(8)
-	if err != nil {
-		return Node{}, err
-	}
-	defer p.free(pointSret)
-	if _, err := p.call("ts_node_start_point", uint64(pointSret), uint64(ptr)); err != nil {
-		return Node{}, err
-	}
-	pointBytes, err := p.readBytes(pointSret, 8)
-	if err != nil {
-		return Node{}, err
-	}
-	row := binary.LittleEndian.Uint32(pointBytes[0:4])
 	return Node{
-		StartByte: uint32(startByteRes[0]),
-		EndByte:   uint32(endByteRes[0]),
-		StartRow:  row,
+		StartByte: c0,
+		EndByte:   uint32(endRes[0]),
+		StartRow:  c1,
 	}, nil
+}
+
+// readNode reads a 24-byte TSNode struct at ptr (guest memory) and builds a
+// Node snapshot. Frees no wasm memory itself (caller-owned ptr).
+func (p *Parser) readNode(ptr uint32) (Node, error) {
+	b, err := p.readBytes(ptr, nodeSize)
+	if err != nil {
+		return Node{}, err
+	}
+	return p.nodeFromBytes(b)
 }
 
 // Query is a compiled tree-sitter query (a .scm pattern set). Call Close
@@ -479,6 +627,15 @@ type Match struct {
 // tree-sitter's own (deterministic, document) order. This is the whole
 // symbol-finding pass: callers post-process the flat Match list (e.g.
 // containment-based qualification) — see internal/extractor.TSExtractor.
+//
+// The match iteration runs under the ParseTimeout budget (guest-side, via
+// fathom_query_cursor_exec_bounded's progress callback) plus the
+// ParseHardBackstop per next_match call — this is the load-bearing bound in
+// practice: on the pathological `({[` x 50,000 input the parse completes in
+// ~70ms but the query cursor's scan of the error tree runs 45s+ unbounded
+// (measured; see grammars/budget.c). A guest cancellation makes next_match
+// report exhaustion, so the cancelled flag is checked afterwards and
+// surfaces as an error — never a silently truncated match set.
 func (q *Query) Run(t *Tree) ([]Match, error) {
 	p := q.p
 	rootPtr, _, err := t.rootPtr()
@@ -494,7 +651,11 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	cursorPtr := uint32(cursorRes[0])
 	defer p.call("ts_query_cursor_delete", uint64(cursorPtr))
 
-	if _, err := p.call("ts_query_cursor_exec", uint64(cursorPtr), uint64(q.ptr), uint64(rootPtr)); err != nil {
+	budgetMS := ParseTimeout.Milliseconds()
+	if budgetMS < 1 {
+		budgetMS = 1
+	}
+	if _, err := p.call("fathom_query_cursor_exec_bounded", uint64(cursorPtr), uint64(q.ptr), uint64(rootPtr), uint64(budgetMS)); err != nil {
 		return nil, err
 	}
 
@@ -504,6 +665,24 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	}
 	defer p.free(matchBuf)
 
+	// The entire match iteration runs inside ONE bounded harness (not one
+	// per next_match — see bounded's doc): a single next_match over a
+	// pathological tree can burn 45s+, so the bound must cover in-flight
+	// guest work, and per-call harnesses measured ~2x user-CPU corpus-wide.
+	matchesAny, err := p.bounded("query match loop", func() (any, error) {
+		return q.collectMatches(cursorPtr, matchBuf)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return matchesAny.([]Match), nil
+}
+
+// collectMatches drains the executed cursor into a Match slice. Runs on the
+// bounded harness's op goroutine; touches only op-local state plus the
+// Parser's construction-time-immutable fields (via call/readBytes).
+func (q *Query) collectMatches(cursorPtr, matchBuf uint32) ([]Match, error) {
+	p := q.p
 	var matches []Match
 	// captureNames caches ts_query_capture_name_for_id lookups — the same
 	// small set of names (e.g. "definition.function", "name") repeats across
@@ -515,6 +694,15 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 			return nil, err
 		}
 		if res[0] == 0 {
+			// Exhaustion OR guest-side cancellation — the C API cannot tell
+			// them apart, so consult the cancelled flag.
+			cRes, cErr := p.call("fathom_take_cancelled")
+			if cErr != nil {
+				return nil, cErr
+			}
+			if cRes[0] != 0 {
+				return nil, fmt.Errorf("tsengine: query aborted after %v budget (pathological tree?)", ParseTimeout)
+			}
 			break
 		}
 		mb, err := p.readBytes(matchBuf, queryMatchSize)
@@ -526,34 +714,32 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 		capturesPtr := binary.LittleEndian.Uint32(mb[8:12])
 
 		match := Match{PatternIndex: patternIndex, Captures: make([]Capture, 0, captureCount)}
-		for i := uint16(0); i < captureCount; i++ {
-			capAddr := capturesPtr + uint32(i)*queryCaptureSize
-			capBytes, err := p.readBytes(capAddr, queryCaptureSize)
+		if captureCount > 0 {
+			// One bulk read of the whole capture array, then one guest call
+			// per capture (nodeFromBytes) — the hot path.
+			capBytes, err := p.readBytes(capturesPtr, uint32(captureCount)*queryCaptureSize)
 			if err != nil {
 				return nil, err
 			}
-			nodeBytes := capBytes[:nodeSize]
-			captureID := binary.LittleEndian.Uint32(capBytes[nodeSize : nodeSize+4])
+			for i := uint16(0); i < captureCount; i++ {
+				one := capBytes[uint32(i)*queryCaptureSize : uint32(i+1)*queryCaptureSize]
+				captureID := binary.LittleEndian.Uint32(one[nodeSize : nodeSize+4])
 
-			name, ok := captureNames[captureID]
-			if !ok {
-				name, err = q.captureName(captureID)
+				name, ok := captureNames[captureID]
+				if !ok {
+					name, err = q.captureName(captureID)
+					if err != nil {
+						return nil, err
+					}
+					captureNames[captureID] = name
+				}
+
+				node, err := p.nodeFromBytes(one[:nodeSize])
 				if err != nil {
 					return nil, err
 				}
-				captureNames[captureID] = name
+				match.Captures = append(match.Captures, Capture{Name: name, Node: node})
 			}
-
-			nPtr, err := p.writeBytes(nodeBytes)
-			if err != nil {
-				return nil, err
-			}
-			node, err := p.readNode(nPtr)
-			p.free(nPtr)
-			if err != nil {
-				return nil, err
-			}
-			match.Captures = append(match.Captures, Capture{Name: name, Node: node})
 		}
 		matches = append(matches, match)
 	}

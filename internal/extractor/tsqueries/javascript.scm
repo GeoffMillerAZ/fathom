@@ -15,8 +15,13 @@
 (generator_function_declaration
   name: (identifier) @name) @definition.function
 
+; The name alternation matters (critic B2): #private methods are
+; private_property_identifier and computed names ([Symbol.iterator]) are
+; computed_property_name — constraining to (property_identifier) alone
+; silently drops both, which the incumbent CGO extractor (raw field text,
+; kind-agnostic) never did.
 (method_definition
-  name: (property_identifier) @name) @definition.method
+  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name) @definition.method
 
 (variable_declarator
   name: (identifier) @name

@@ -18,6 +18,13 @@
 #   - wasm-opt (binaryen; optional but shrinks the blobs ~25-30%)
 #   - curl
 #
+# The COMMITTED blobs were produced with zig 0.16.0 (Homebrew, arm64 macOS)
+# and wasm-opt version 129 (binaryen). Byte-identical reproduction across
+# toolchain versions is NOT achievable — different zig/binaryen releases emit
+# different (functionally equivalent) code. Reproduction therefore verifies
+# the SOURCE pins (the tags/SHAs in PROVENANCE.md), not the output digests;
+# the sha256s in PROVENANCE.md bind the committed bytes as-committed.
+#
 # Usage: ./build.sh [outdir]   (defaults to this directory)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -53,7 +60,11 @@ echo "fetching tree-sitter-ruby $RB_TAG..."
 fetch tree-sitter/tree-sitter-ruby "$RB_TAG" "$WORK/ruby"
 
 CORE_INC=(-I "$WORK/core/lib/include" -I "$WORK/core/lib/src")
-CORE_SRC="$WORK/core/lib/src/lib.c"
+# budget.c (this directory, checked in) adds fathom_parse_bounded — the
+# deadline-bounded parse entry the Go engine calls (critic B1; see the
+# shim's header comment for why guest-side cancellation beats wazero's
+# WithCloseOnContextDone by ~3x corpus-wide).
+CORE_SRC=("$WORK/core/lib/src/lib.c" "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/budget.c")
 
 # The exported C API surface every extractor's marshaling layer calls
 # (internal/extractor/tsengine). Adding a capability = add its export here.
@@ -61,6 +72,10 @@ EXPORTS=(
   -Wl,--export=malloc -Wl,--export=free -Wl,--export=calloc -Wl,--export=realloc
   -Wl,--export=ts_parser_new -Wl,--export=ts_parser_delete -Wl,--export=ts_parser_set_language
   -Wl,--export=ts_parser_parse_string -Wl,--export=ts_parser_reset
+  -Wl,--export=fathom_parse_bounded
+  -Wl,--export=fathom_query_cursor_exec_bounded
+  -Wl,--export=fathom_take_cancelled
+  -Wl,--export=fathom_node_end_byte
   -Wl,--export=ts_tree_root_node -Wl,--export=ts_tree_delete
   -Wl,--export=ts_node_child_count -Wl,--export=ts_node_named_child_count
   -Wl,--export=ts_node_child -Wl,--export=ts_node_named_child
@@ -80,7 +95,7 @@ build() { # build <name> <srcdir...> -- <extra include dirs> -- <extra export fl
   local name="$1"; shift
   echo "=== $name ==="
   zig cc --target=wasm32-wasi-musl -mexec-model=reactor \
-    "${CORE_INC[@]}" "$CORE_SRC" "$@" \
+    "${CORE_INC[@]}" "${CORE_SRC[@]}" "$@" \
     -o "$WORK/$name.wasm" -Oz -Wl,--no-entry -Wl,--strip-debug \
     "${EXPORTS[@]}"
   if command -v wasm-opt >/dev/null 2>&1; then

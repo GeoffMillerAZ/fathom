@@ -27,7 +27,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -114,6 +116,17 @@ type Report struct {
 	TypedEdgesDirect        int
 	TypedEdgesIfaceDispatch int
 	TypedEdgesUnresolved    int
+
+	// TSEngineFaults is the number of files this ingest whose tree-sitter
+	// wasm extraction faulted (parse deadline on pathological input, wasm
+	// trap, or query-run failure — ADR-021 §4, extractor.ErrTSEngineFault).
+	// Each fault also emitted one stderr line, fingerprinted the file (not
+	// retried until its bytes or the ExtractorEpoch change), and re-created
+	// the language's parser — so a non-zero count here with later files
+	// still extracting is DEGRADED (some files unindexed), while a count
+	// that grows every ingest for the same content signals those files need
+	// a .fathomignore entry or a deeper engine fix.
+	TSEngineFaults int
 }
 
 // Pipeline is the source fusion pipeline.
@@ -695,6 +708,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Unclassified = stats.unclassified
 	report.Oversize = stats.oversize
 	report.ClassifiedZero = stats.classifiedZero
+	report.TSEngineFaults = stats.tsFaults
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
 	// never blocks ingest. See internal/fusion/typedcalls.go.
@@ -780,6 +794,7 @@ type extractStats struct {
 	unclassified   int
 	oversize       int
 	classifiedZero int
+	tsFaults       int // extract errors matching extractor.ErrTSEngineFault (critic M1)
 }
 
 // Stats returns the pipeline's process-lifetime unclassified/oversize counts
@@ -925,6 +940,15 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 			// out is a zero-symbol outcome too — count it (critic F5).
 			if toolKind != "" && toolKind != ToolUnclassified {
 				p.noteClassifiedZero(&stats, toolKind)
+			}
+			// Tree-sitter engine faults (critic M1) are counted per ingest
+			// on Report.TSEngineFaults and get one stderr line each — never
+			// a silent skip. The extractor has already dropped its poisoned
+			// parser; the next file of the language rebuilds it.
+			if errors.Is(extractErr, extractor.ErrTSEngineFault) {
+				stats.tsFaults++
+				fmt.Fprintf(os.Stderr, "fathom: fusion: tree-sitter engine fault on %s/%s (file fingerprinted, parser re-created): %v\n",
+					serviceID, pf.ref.Path, extractErr)
 			}
 			_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)
 			continue

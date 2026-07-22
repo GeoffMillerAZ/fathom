@@ -1,10 +1,179 @@
 package tsengine
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
+	"time"
 )
+
+// The critic-B1 regression pair. Pathological input: `({[` x 50,000 (150KB —
+// under the 2MB extraction cap, exactly a truncated minified bundle's shape)
+// wedged the original engine for 52.9s (x200,000 for 11+ minutes) where the
+// CGO incumbent finishes in ~49ms. Root cause, established by direct
+// measurement during the fix (updating the critic's initial parse-phase
+// attribution): the PARSE of this input completes in ~70ms — it is the
+// QUERY CURSOR's scan of the resulting error tree that runs 45s+ unbounded.
+// Both phases now carry a guest-side budget (grammars/budget.c progress
+// callbacks) plus the host-side hard backstop for any time spent between
+// progress checks (see ParseHardBackstop's doc).
+
+// TestParser_GuestBudgetBoundsPathologicalParse: a parse budget expiring
+// inside the parse's checked phase cancels via tree-sitter's own mechanism;
+// the Parser SURVIVES (a cancelled parse only requires the reset Parse
+// performs at entry). A 1ms budget guarantees the deadline is already
+// expired at the parse's first progress check regardless of machine speed.
+func TestParser_GuestBudgetBoundsPathologicalParse(t *testing.T) {
+	savedTimeout, savedBackstop := ParseTimeout, ParseHardBackstop
+	ParseTimeout = 1 * time.Millisecond
+	ParseHardBackstop = 10 * time.Minute // effectively disabled — isolate the guest path
+	defer func() { ParseTimeout, ParseHardBackstop = savedTimeout, savedBackstop }()
+
+	ctx := context.Background()
+	p, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
+	if err != nil {
+		t.Fatalf("NewParser: %v", err)
+	}
+	defer p.Close()
+
+	pathological := bytes.Repeat([]byte("({["), 50000) // 150KB
+
+	start := time.Now()
+	_, err = p.Parse(pathological)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Parse of pathological input returned no error — the guest budget did not fire")
+	}
+	if elapsed > 30*time.Second {
+		t.Fatalf("Parse took %v — the guest cancel did not bound the parse", elapsed)
+	}
+
+	// The SAME parser must recover after a guest-side cancel.
+	ParseTimeout = 10 * time.Second
+	tree, err := p.Parse([]byte("function ok() { return 1; }\n"))
+	if err != nil {
+		t.Fatalf("Parse on the same parser after guest cancel: %v", err)
+	}
+	tree.Close()
+}
+
+// TestQuery_GuestBudgetBoundsPathologicalQueryRun: the load-bearing bound —
+// the query scan over the pathological input's error tree is where the 45s+
+// actually went. The guest budget cancels it; cancellation surfaces as an
+// ERROR (never a silently truncated match set, since the C API reports
+// cancellation as ordinary exhaustion); the Parser survives.
+func TestQuery_GuestBudgetBoundsPathologicalQueryRun(t *testing.T) {
+	savedTimeout, savedBackstop := ParseTimeout, ParseHardBackstop
+	ParseTimeout = time.Hour // let the parse complete (it takes ~70ms)
+	ParseHardBackstop = 10 * time.Minute
+	defer func() { ParseTimeout, ParseHardBackstop = savedTimeout, savedBackstop }()
+
+	ctx := context.Background()
+	p, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
+	if err != nil {
+		t.Fatalf("NewParser: %v", err)
+	}
+	defer p.Close()
+
+	pathological := bytes.Repeat([]byte("({["), 50000)
+	tree, err := p.Parse(pathological)
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	defer tree.Close()
+
+	q, err := p.CompileQuery(`(function_declaration name: (identifier) @name) @definition.function
+(call_expression function: (_) @reference.call)`)
+	if err != nil {
+		t.Fatalf("CompileQuery: %v", err)
+	}
+	defer q.Close()
+
+	ParseTimeout = 300 * time.Millisecond
+	start := time.Now()
+	_, err = q.Run(tree)
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Run over the pathological tree returned no error — the query budget did not fire")
+	}
+	if elapsed > 30*time.Second {
+		t.Fatalf("Run took %v — the query cancel did not bound the scan", elapsed)
+	}
+
+	// The SAME parser must still work for a healthy file.
+	ParseTimeout = 10 * time.Second
+	tree2, err := p.Parse([]byte("function ok() { return 1; }\n"))
+	if err != nil {
+		t.Fatalf("Parse after query cancel: %v", err)
+	}
+	defer tree2.Close()
+	matches, err := q.Run(tree2)
+	if err != nil {
+		t.Fatalf("Run after query cancel: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("healthy file produced no matches after query cancel")
+	}
+}
+
+// TestEngine_HardBackstopAbandonsRunawayCall: when a guest budget can never
+// fire (simulated with an effectively-infinite ParseTimeout — the real-world
+// case is time spent between progress checks), the host-side backstop
+// abandons the runaway call within its bound. The abandoned Parser is dead;
+// a fresh one must work immediately while the runaway burns out in the
+// background (its reaper closes the module when tree-sitter finishes).
+func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
+	savedTimeout, savedBackstop := ParseTimeout, ParseHardBackstop
+	ParseTimeout = time.Hour // no guest budget will ever fire
+	ParseHardBackstop = 2 * time.Second
+	defer func() { ParseTimeout, ParseHardBackstop = savedTimeout, savedBackstop }()
+
+	ctx := context.Background()
+	p, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
+	if err != nil {
+		t.Fatalf("NewParser: %v", err)
+	}
+	defer p.Close()
+
+	pathological := bytes.Repeat([]byte("({["), 50000)
+	tree, err := p.Parse(pathological) // completes in ~70ms, under the backstop
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	defer tree.Close()
+
+	q, err := p.CompileQuery(`(call_expression function: (_) @reference.call)`)
+	if err != nil {
+		t.Fatalf("CompileQuery: %v", err)
+	}
+	defer q.Close()
+
+	start := time.Now()
+	_, err = q.Run(tree) // the 45s+ scan; guest budget disabled -> backstop must fire
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("Run returned no error — the hard backstop did not fire")
+	}
+	if elapsed > 30*time.Second {
+		t.Fatalf("Run took %v — the 2s hard backstop did not bound the call", elapsed)
+	}
+
+	// The abandoned parser is dead — a fresh Parser must work immediately.
+	p2, err := NewParser(ctx, "javascript", "tree_sitter_javascript")
+	if err != nil {
+		t.Fatalf("NewParser after abandonment: %v", err)
+	}
+	defer p2.Close()
+	tree2, err := p2.Parse([]byte("function ok2() { return 2; }\n"))
+	if err != nil {
+		t.Fatalf("Parse on fresh parser after abandonment: %v", err)
+	}
+	tree2.Close()
+}
 
 func TestNewParser_UnknownGrammar(t *testing.T) {
 	_, err := NewParser(context.Background(), "cobol", "tree_sitter_cobol")

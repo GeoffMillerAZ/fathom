@@ -3,10 +3,12 @@ package extractor
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
@@ -151,6 +153,44 @@ type TSExtractor struct {
 	mu        sync.Mutex
 	parsers   map[string]*tsengine.Parser // variant key -> live parser
 	tsQueries map[string]*tsengine.Query  // variant key -> compiled query bound to that parser
+
+	// faults counts engine faults (parse timeout, wasm trap, query-run
+	// failure) over this extractor's lifetime (critic M1). Every fault also
+	// drops the affected cached parser so the next Extract transparently
+	// re-creates it — recovery is ALWAYS parser re-creation, never a
+	// fallback to the CGO incumbent extractors (fallback doctrine, plan M2
+	// ruling: the incumbents are slated for deletion and must not be a
+	// load-bearing path). Surfaced per-ingest as fusion.Report.TSEngineFaults.
+	faults atomic.Int64
+}
+
+// ErrTSEngineFault marks an Extract error as a tree-sitter engine fault
+// (parse timeout on pathological input, a wasm trap, or a query-run
+// failure) as opposed to a configuration error. fusion's extract loop
+// counts errors matching this sentinel (errors.Is) on Report.TSEngineFaults;
+// the affected file is fingerprinted like any other extract error (not
+// retried until its content or the ExtractorEpoch changes), and the parser
+// has already been dropped for re-creation by the time the error returns.
+var ErrTSEngineFault = errors.New("tree-sitter engine fault")
+
+// EngineFaults returns the number of engine faults over this extractor's
+// lifetime. Zero on a healthy corpus; each fault corresponds to one file
+// whose parse or query run was aborted and one parser re-creation.
+func (e *TSExtractor) EngineFaults() int64 { return e.faults.Load() }
+
+// noteFault records an engine fault and drops the (possibly dead) cached
+// parser+query for variant so the next Extract rebuilds them. Caller must
+// hold e.mu.
+func (e *TSExtractor) noteFault(variant tsVariant) {
+	e.faults.Add(1)
+	key := variant.key()
+	if p, ok := e.parsers[key]; ok {
+		_ = p.Close() // best-effort; a timed-out module is already closed
+		delete(e.parsers, key)
+	}
+	// The query object lives inside the same (now dropped) module instance —
+	// no separate close possible or needed.
+	delete(e.tsQueries, key)
 }
 
 // variantKey identifies one (blob, entry point) pair for the parser/query
@@ -160,8 +200,11 @@ type TSExtractor struct {
 func (v tsVariant) key() string { return v.blob + "|" + v.entryPoint }
 
 // NewTSExtractor returns a TSExtractor for the named language ("javascript",
-// "python", or "ruby" — see tsRegistry). "javascript" covers .js/.jsx/.mjs/
-// .cjs/.ts/.tsx, mirroring the incumbent JSExtractor's combined scope.
+// "python", or "ruby" — see tsRegistry). "javascript" spans .js/.jsx/.ts/
+// .tsx (the extensions fusion registers — the incumbent JSExtractor's
+// combined scope); its variant table also maps .mjs/.cjs so the engine is
+// ready if the connector ever learns those extensions, but they are NOT
+// claimed as indexed today (see EngineProvenance).
 func NewTSExtractor(name string) (*TSExtractor, error) {
 	spec, ok := tsRegistry[name]
 	if !ok {
@@ -258,17 +301,21 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 
 	tree, err := p.Parse(src)
 	if err != nil {
-		// Mirrors the CGO path's leniency (treesitter.WithTree): a source
-		// file tree-sitter's error-recovery grammar cannot lex at all is
-		// vanishingly rare and best treated as a zero-symbol outcome, not a
-		// hard failure that stops re-extraction on a later ingest.
-		return nil, nil
+		// Engine fault (critic M1 — this was previously a silent nil,nil
+		// that fingerprinted the file AND kept reusing a possibly-dead
+		// parser): count it, drop the parser for re-creation, and surface a
+		// typed error the fusion pipeline counts per-ingest. The pipeline's
+		// existing non-fatal extract-error path fingerprints the file so it
+		// is not retried until its bytes or the ExtractorEpoch change.
+		e.noteFault(variant)
+		return nil, fmt.Errorf("tsextract[%s] %s: parse: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 	defer tree.Close()
 
 	matches, err := q.Run(tree)
 	if err != nil {
-		return nil, fmt.Errorf("tsextract[%s]: query %s: %w", e.spec.name, relPath, err)
+		e.noteFault(variant)
+		return nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
 
 	defs, calls := splitTSMatches(matches, e.spec.kinds, src)
@@ -493,14 +540,20 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite) {
 // extensions this plan migrated, not a full 24-language registry — Go
 // (go/parser), the config/IaC formats, and the languages still on their
 // original heuristic/CGO path are out of scope for this map.
+//
+// Only extensions the connector actually discovers AND fusion registers are
+// claimed (critic M3): .pyi/.mjs/.cjs are parseable by this engine (the
+// tsVariant table maps them) but the connector's ext->kind registry and
+// fusion.New's dispatch don't know them, so no such file ever reaches an
+// extractor — claiming them here would be provenance for an index entry
+// that cannot exist. Registering those extensions is a deliberate
+// scope-addition for a future slice (connector + fusion + tests together),
+// at which point they join this map.
 func EngineProvenance() map[string]string {
 	return map[string]string{
 		".py":  "tree-sitter-wasm",
-		".pyi": "tree-sitter-wasm",
 		".js":  "tree-sitter-wasm",
 		".jsx": "tree-sitter-wasm",
-		".mjs": "tree-sitter-wasm",
-		".cjs": "tree-sitter-wasm",
 		".ts":  "tree-sitter-wasm",
 		".tsx": "tree-sitter-wasm",
 		".rb":  "tree-sitter-wasm",

@@ -17,8 +17,9 @@
 (generator_function_declaration
   name: (identifier) @name) @definition.function
 
+; Name alternation per critic B2 — see javascript.scm's comment.
 (method_definition
-  name: (property_identifier) @name) @definition.method
+  name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name) @definition.method
 
 (variable_declarator
   name: (identifier) @name
