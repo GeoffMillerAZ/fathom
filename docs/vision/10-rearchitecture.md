@@ -63,6 +63,13 @@ TDD, adversarial critic, store-verified boxes, push through the gate.
 
 Kill criteria: store swap reverts if the contract suite or a fleet
 re-ingest shows semantic divergence DuckDB didn't have; typed callgraph
-ships only if full-repo typed load stays under ~2× current ingest time
-(cached thereafter); tree-sitter languages ship only on calibration-gate
-pass (same §4.6 discipline as layers).
+ships only if the pass's cost stays operationally bounded — AMENDED
+2026-07-22 (owner ruling on the honest re-measurement): the original
+"≤2× ingest time" ratio was authored against a contaminated ~5s
+baseline; the true syntax baseline is ~0.15–0.25s and the go-list
+driver alone costs ~2× that, so the ratio is structurally unreachable
+without a custom loader — machinery a sub-second absolute cost does not
+justify. Amended criterion: typed first run ≤ 1s absolute and ≤ 10×
+baseline on the self-hosted repo (measured warm: ~0.4–0.8s, comfortably
+inside), cached re-ingest delta-only. Tree-sitter languages ship only
+on calibration-gate pass (same §4.6 discipline as layers).

@@ -61,6 +61,11 @@ type Report = fusion.Report
 // re-export of core.SymbolNode.
 type SymbolNode = core.SymbolNode
 
+// Edge is a directed, kind-labeled call edge produced by the Go typed
+// enrichment pass (ADR-021 §3, internal/fusion.EnrichTypedEdges). It is a
+// re-export of core.Edge.
+type Edge = core.Edge
+
 // Client wraps the fathom pipeline and query engine so callers can ingest
 // services and query symbols without importing internal packages.
 //
@@ -183,6 +188,19 @@ func (c *Client) ListAllSymbols(ctx context.Context, serviceID string) ([]Symbol
 		nodes = append(nodes, o.ToSymbolNode())
 	}
 	return nodes, nil
+}
+
+// TypedEdges returns every typed Go call edge (ADR-021 §3) stored for
+// serviceID — direct, interface-dispatch (one row per implementer), and
+// unresolved. Empty/nil for a non-Go service, or a Go service whose typed
+// pass hasn't run yet (e.g. it predates ADR-021 §3, or its first ingest
+// under the new pass hasn't happened).
+func (c *Client) TypedEdges(ctx context.Context, serviceID string) ([]Edge, error) {
+	edges, err := c.st.TypedEdges(ctx, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("client.TypedEdges: %w", err)
+	}
+	return edges, nil
 }
 
 // Observations returns every stored observation for serviceID, with no

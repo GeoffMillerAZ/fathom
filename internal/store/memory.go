@@ -25,6 +25,15 @@ type MemoryStore struct {
 	claimLinks     map[string][]core.ClaimLink // claim_id → links (replace-semantic)
 	claimEvents    []core.ClaimEvent
 	compileRuns    []core.CompileRun
+	typedEdges     map[typedEdgeKey][]core.Edge // (serviceID, pkgPath) → edges (replace-semantic)
+	typedEdgeFPs   map[fpKey]string             // reuses fpKey{serviceID, pkgPath} shape
+}
+
+// typedEdgeKey scopes stored typed edges to (serviceID, pkgPath) — the
+// package-granularity replace unit PutTypedEdges implements.
+type typedEdgeKey struct {
+	serviceID string
+	pkgPath   string
 }
 
 type fpKey struct {
@@ -52,6 +61,8 @@ func NewMemoryStore() *MemoryStore {
 		commits:        make(map[string][]Commit),
 		claims:         make(map[claimKey]core.SemanticClaim),
 		claimLinks:     make(map[string][]core.ClaimLink),
+		typedEdges:     make(map[typedEdgeKey][]core.Edge),
+		typedEdgeFPs:   make(map[fpKey]string),
 	}
 }
 
@@ -120,8 +131,8 @@ func (m *MemoryStore) PurgeSource(_ context.Context, serviceID, sourceRef string
 }
 
 // PurgeService removes all content rows (observations, fingerprints, doc
-// summaries) for serviceID, keeping identity rows. Mirrors DuckStore for the
-// ADR-017 self-heal.
+// summaries, typed edges, typed-edge fingerprints) for serviceID, keeping
+// identity rows. Mirrors DuckStore/SQLiteStore for the ADR-017 self-heal.
 func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -141,6 +152,16 @@ func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
 	for k := range m.docSummaries {
 		if k.serviceID == serviceID {
 			delete(m.docSummaries, k)
+		}
+	}
+	for k := range m.typedEdges {
+		if k.serviceID == serviceID {
+			delete(m.typedEdges, k)
+		}
+	}
+	for k := range m.typedEdgeFPs {
+		if k.serviceID == serviceID {
+			delete(m.typedEdgeFPs, k)
 		}
 	}
 	return nil
@@ -503,6 +524,102 @@ func (m *MemoryStore) CompileRuns(_ context.Context, serviceID, layer string) ([
 		return result[i].RunID < result[j].RunID
 	})
 	return result, nil
+}
+
+// PutTypedEdges replaces all typed call edges for (serviceID, pkgPath). A
+// copy is stored so the caller's slice can be mutated/reused afterward.
+func (m *MemoryStore) PutTypedEdges(_ context.Context, serviceID, pkgPath string, edges []core.Edge) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := typedEdgeKey{serviceID, pkgPath}
+	if len(edges) == 0 {
+		delete(m.typedEdges, key)
+		return nil
+	}
+	cp := make([]core.Edge, len(edges))
+	copy(cp, edges)
+	m.typedEdges[key] = cp
+	return nil
+}
+
+// TypedEdges returns every typed call edge stored for serviceID, ordered by
+// (from_symbol, to_symbol, kind).
+func (m *MemoryStore) TypedEdges(_ context.Context, serviceID string) ([]core.Edge, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []core.Edge
+	for k, edges := range m.typedEdges {
+		if k.serviceID != serviceID {
+			continue
+		}
+		result = append(result, edges...)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].FromSymbol != result[j].FromSymbol {
+			return result[i].FromSymbol < result[j].FromSymbol
+		}
+		if result[i].ToSymbol != result[j].ToSymbol {
+			return result[i].ToSymbol < result[j].ToSymbol
+		}
+		return result[i].Kind < result[j].Kind
+	})
+	return result, nil
+}
+
+// TypedEdgePackageFingerprint returns the cached content-hash for
+// (serviceID, pkgPath). found is false when the package has never been
+// loaded.
+func (m *MemoryStore) TypedEdgePackageFingerprint(_ context.Context, serviceID, pkgPath string) (string, bool, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	h, ok := m.typedEdgeFPs[fpKey{serviceID, pkgPath}]
+	return h, ok, nil
+}
+
+// SetTypedEdgePackageFingerprint records or replaces the content-hash cache
+// entry for (serviceID, pkgPath).
+func (m *MemoryStore) SetTypedEdgePackageFingerprint(_ context.Context, serviceID, pkgPath, hash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.typedEdgeFPs[fpKey{serviceID, pkgPath}] = hash
+	return nil
+}
+
+// ListTypedEdgePackages returns the sorted distinct typed-edge package IDs
+// for serviceID (union of stored edges and fingerprints).
+func (m *MemoryStore) ListTypedEdgePackages(_ context.Context, serviceID string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := make(map[string]struct{})
+	for k := range m.typedEdges {
+		if k.serviceID == serviceID {
+			seen[k.pkgPath] = struct{}{}
+		}
+	}
+	for k := range m.typedEdgeFPs {
+		if k.serviceID == serviceID {
+			seen[k.sourceRef] = struct{}{} // fpKey reuse: sourceRef holds pkgPath here
+		}
+	}
+	if len(seen) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids, nil
+}
+
+// DeleteTypedEdgePackage removes all typed-edge rows and the fingerprint
+// entry for (serviceID, pkgPath). Missing rows are a no-op.
+func (m *MemoryStore) DeleteTypedEdgePackage(_ context.Context, serviceID, pkgPath string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.typedEdges, typedEdgeKey{serviceID, pkgPath})
+	delete(m.typedEdgeFPs, fpKey{serviceID, pkgPath})
+	return nil
 }
 
 // Close is a no-op for the in-memory store.

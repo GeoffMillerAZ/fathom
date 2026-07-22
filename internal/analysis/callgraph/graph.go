@@ -57,6 +57,22 @@ type Graph struct {
 	// "evidencesignature", which byPkgName can never match). Only populated
 	// when "dir-base.Name" is unambiguous across the whole node set.
 	byDirName map[string]string
+
+	// edgeKind records, for every (caller+"\x00"+callee) pair added by
+	// AddTypedEdges, the typed Kind it was added with (core.EdgeDirect or
+	// core.EdgeIfaceDispatch — core.EdgeUnresolved edges are never added,
+	// see AddTypedEdges). Absent for a syntax-only edge (Build's own pass).
+	// Consulted by TestImpactDetail (dispatch-modality detection) and by
+	// CallersDetail/CalleesDetail (kind-labeled MCP surfacing, ADR-021 §3
+	// CT-6). nil until AddTypedEdges is called at least once.
+	edgeKind map[string]core.EdgeKind
+
+	// dispatchOut counts, per caller key, how many EdgeIfaceDispatch edges
+	// originate from it — the "N implementers" reported in verify's verdict
+	// detail. If a caller has more than one distinct interface-dispatch call
+	// site, N is their union: core.Edge carries no call-site identifier, so
+	// this is a documented simplification (ADR-021 §3), not per-site precision.
+	dispatchOut map[string]int
 }
 
 // NodeCount returns the number of nodes in the graph.
@@ -432,6 +448,180 @@ func TestImpact(g *Graph, symbol string) []string {
 
 	sort.Strings(tests)
 	return tests
+}
+
+// ─── Typed edges (ADR-021 §3) ────────────────────────────────────────────────
+
+// AddTypedEdges augments g with typed call edges from the Go typed
+// enrichment pass (internal/fusion.EnrichTypedEdges), additive alongside the
+// syntax-derived edges Build already computed from SymbolNode.Calls.
+//
+// An edge whose endpoint isn't already a node in g (e.g. a stale typed-edge
+// row from before a symbol was renamed or removed, or an EdgeUnresolved
+// edge — its ToSymbol is a "<unresolved:N>" callsite marker, never a real
+// key) is silently skipped: AddTypedEdges never invents a graph vertex the
+// extraction pass didn't produce. A (caller, callee) pair already present
+// from the syntax pass is not duplicated in the adjacency lists.
+func AddTypedEdges(g *Graph, edges []core.Edge) {
+	if len(edges) == 0 {
+		return
+	}
+	if g.edgeKind == nil {
+		g.edgeKind = make(map[string]core.EdgeKind)
+	}
+	if g.dispatchOut == nil {
+		g.dispatchOut = make(map[string]int)
+	}
+	calleesTouched := make(map[string]bool)
+	callersTouched := make(map[string]bool)
+
+	for _, e := range edges {
+		if e.FromSymbol == "" || e.ToSymbol == "" {
+			continue
+		}
+		if _, ok := g.nodes[e.FromSymbol]; !ok {
+			continue
+		}
+		if _, ok := g.nodes[e.ToSymbol]; !ok {
+			continue
+		}
+		ek := e.FromSymbol + "\x00" + e.ToSymbol
+		if _, marked := g.edgeKind[ek]; !marked {
+			g.edgeKind[ek] = e.Kind
+			if e.Kind == core.EdgeIfaceDispatch {
+				g.dispatchOut[e.FromSymbol]++
+			}
+		}
+		if !containsStr(g.callees[e.FromSymbol], e.ToSymbol) {
+			g.callees[e.FromSymbol] = append(g.callees[e.FromSymbol], e.ToSymbol)
+			calleesTouched[e.FromSymbol] = true
+		}
+		if !containsStr(g.callers[e.ToSymbol], e.FromSymbol) {
+			g.callers[e.ToSymbol] = append(g.callers[e.ToSymbol], e.FromSymbol)
+			callersTouched[e.ToSymbol] = true
+		}
+	}
+	for k := range calleesTouched {
+		sort.Strings(g.callees[k])
+	}
+	for k := range callersTouched {
+		sort.Strings(g.callers[k])
+	}
+}
+
+// containsStr reports whether want is present in ss.
+func containsStr(ss []string, want string) bool {
+	for _, s := range ss {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
+// EdgeInfo is one caller or callee edge, labeled with its typed Kind when
+// known (ADR-021 §3 CT-6: find_callers / symbol_context surfacing). Kind is
+// "" for a syntax-only edge — one Build derived from SymbolNode.Calls that
+// AddTypedEdges never separately confirmed (either the typed pass hasn't
+// run, or the call site resolved to EdgeUnresolved and so was never added
+// as a graph edge at all).
+type EdgeInfo struct {
+	Key  string
+	Kind core.EdgeKind
+}
+
+// CallersDetail returns every caller of symbol (full key or bare name),
+// each labeled with its typed Kind when AddTypedEdges confirmed that
+// specific (caller, symbol) pair — sorted by Key. Returns nil when symbol
+// doesn't resolve.
+func CallersDetail(g *Graph, symbol string) []EdgeInfo {
+	key := g.canonicalize(symbol)
+	if key == "" {
+		return nil
+	}
+	callers := g.callers[key]
+	out := make([]EdgeInfo, len(callers))
+	for i, c := range callers {
+		out[i] = EdgeInfo{Key: c, Kind: g.edgeKind[c+"\x00"+key]}
+	}
+	return out
+}
+
+// CalleesDetail returns every callee of symbol (full key or bare name),
+// each labeled with its typed Kind when AddTypedEdges confirmed that
+// specific (symbol, callee) pair — sorted by Key. Returns nil when symbol
+// doesn't resolve.
+func CalleesDetail(g *Graph, symbol string) []EdgeInfo {
+	key := g.canonicalize(symbol)
+	if key == "" {
+		return nil
+	}
+	callees := g.callees[key]
+	out := make([]EdgeInfo, len(callees))
+	for i, c := range callees {
+		out[i] = EdgeInfo{Key: c, Kind: g.edgeKind[key+"\x00"+c]}
+	}
+	return out
+}
+
+// ReachDetail describes one Test* symbol that statically reaches a target,
+// and the MODALITY of that reach: whether the shortest reverse-BFS path
+// crossed a typed EdgeIfaceDispatch edge (ADR-021 §3), and if so how many
+// implementers were in scope at that crossing.
+type ReachDetail struct {
+	Key          string
+	ViaDispatch  bool
+	Implementers int // count of dispatch edges from the crossed caller; 0 when !ViaDispatch
+}
+
+// TestImpactDetail is TestImpact with typed-edge dispatch modality: for each
+// Test* function that statically reaches symbol (via any edge, syntax or
+// typed), reports whether the path crossed an EdgeIfaceDispatch edge.
+// Crossing such an edge now counts as reached — strictly better evidence
+// than the old blanket refusal for an ambiguous method name — but is
+// labeled distinctly so a reader sees the modality (see internal/verify's
+// test_reaches detail rendering).
+//
+// symbol may be a full key or bare name.
+func TestImpactDetail(g *Graph, symbol string) []ReachDetail {
+	key := g.canonicalize(symbol)
+	if key == "" {
+		return nil
+	}
+
+	visited := map[string]bool{key: true}
+	viaDispatch := map[string]bool{}
+	implementers := map[string]int{}
+	queue := []string{key}
+	var results []ReachDetail
+
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		for _, caller := range g.callers[cur] {
+			if visited[caller] {
+				continue
+			}
+			visited[caller] = true
+
+			crosses := viaDispatch[cur]
+			n := implementers[cur]
+			if !crosses && g.edgeKind[caller+"\x00"+cur] == core.EdgeIfaceDispatch {
+				crosses = true
+				n = g.dispatchOut[caller]
+			}
+			viaDispatch[caller] = crosses
+			implementers[caller] = n
+
+			if node := g.nodes[caller]; strings.HasPrefix(node.Name, "Test") {
+				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n})
+			}
+			queue = append(queue, caller)
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool { return results[i].Key < results[j].Key })
+	return results
 }
 
 // ─── DeadCode ────────────────────────────────────────────────────────────────

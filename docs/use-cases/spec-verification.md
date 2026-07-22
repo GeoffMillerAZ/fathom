@@ -35,6 +35,8 @@ The payoff: the agent cannot hallucinate completion. Verdicts are derived from t
 
 Fathom is a **static** engine. `test_reaches: true` means a test reaches the symbol via the recorded call graph — it does **not** mean the test passes at runtime. `runtime_pass` is always `"unknown"` until CI or coverage evidence is explicitly ingested. Auto-pass to the `verified` tier requires evidence at the `verified` tier; heuristic pre-scan results (non-Go extractors) produce `likely-unconfirmed`. Do not report a task as `verified` to a human unless `verify_plan` returns exactly that verdict.
 
+For Go services, `test_reaches` also consumes typed call edges (ADR-021 §3): a symbol reachable only through an interface method shared by several concrete implementations — e.g. two adapters both implementing `Complete`, or two backends both implementing a `Store` interface's `PutClaims` — used to be an unconditional refusal (the syntax-only graph can't disambiguate an overloaded method name across receivers), so the task verified `present-but-untested` even when a test genuinely exercised it through the interface. It now verifies, and the criterion's `detail` says so explicitly: `"2 test(s) statically reach it, e.g. TestRunAdapter (reached via interface dispatch, 2 implementer(s))"` — read "reached via interface dispatch" as strictly better evidence than a direct static reach, not worse; it means the compiler-level type resolver, not just AST pattern-matching, confirmed the call site.
+
 ## Worked example
 
 An agent finishes four tasks in `my-service` against plan `plan.cue`. Before reporting done it runs:

@@ -60,6 +60,20 @@ func symbolFile(nodes []core.SymbolNode) map[string]string {
 // changedFiles is matched against SymbolNode.FilePath by exact string equality;
 // callers should normalise paths before passing them in.
 func BlastRadius(nodes []core.SymbolNode, changedFiles []string) Result {
+	return blastRadius(nodes, changedFiles, nil)
+}
+
+// BlastRadiusWithTypedEdges is BlastRadius plus the Go typed call edges
+// (ADR-021 §3, internal/fusion.EnrichTypedEdges): the transitive-caller walk
+// additionally follows EdgeDirect/EdgeIfaceDispatch edges, so a caller
+// reachable only through an interface-dispatch edge (previously refused by
+// the syntax-only resolver for an ambiguous method name) is now included in
+// the blast radius. typed may be nil (identical to BlastRadius).
+func BlastRadiusWithTypedEdges(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) Result {
+	return blastRadius(nodes, changedFiles, typed)
+}
+
+func blastRadius(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) Result {
 	if len(nodes) == 0 || len(changedFiles) == 0 {
 		return Result{Symbols: []string{}, Tests: []string{}, Files: []string{}}
 	}
@@ -88,6 +102,9 @@ func BlastRadius(nodes []core.SymbolNode, changedFiles []string) Result {
 
 	// Build call graph once, then walk callers transitively from seed.
 	g := callgraph.Build(nodes)
+	if len(typed) > 0 {
+		callgraph.AddTypedEdges(g, typed)
+	}
 
 	// BFS over callers.
 	visited := make(map[string]bool, len(seed))
@@ -147,6 +164,11 @@ func BlastRadius(nodes []core.SymbolNode, changedFiles []string) Result {
 // workflows.  The semantics are identical.
 func DiffImpact(nodes []core.SymbolNode, changedFiles []string) Result {
 	return BlastRadius(nodes, changedFiles)
+}
+
+// DiffImpactWithTypedEdges is an alias for BlastRadiusWithTypedEdges (ADR-021 §3).
+func DiffImpactWithTypedEdges(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) Result {
+	return BlastRadiusWithTypedEdges(nodes, changedFiles, typed)
 }
 
 // Reachable reports whether any path exists in the call graph from any symbol

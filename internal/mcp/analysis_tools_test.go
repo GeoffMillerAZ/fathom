@@ -59,6 +59,10 @@ func (r *richFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.Commit
 	return nil, nil
 }
 
+func (r *richFakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return nil, nil
+}
+
 // compile-time: richFakeBackend must satisfy mcp.QueryInterface.
 var _ mcp.QueryInterface = (*richFakeBackend)(nil)
 

@@ -42,6 +42,8 @@ func (f *refreshFake) Sources(_ context.Context, _ string) ([]core.SourceFile, e
 
 func (f *refreshFake) ListCommits(_ context.Context, _ string) ([]CommitInfo, error) { return nil, nil }
 
+func (f *refreshFake) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) { return nil, nil }
+
 func newAR(fake QueryInterface, head string) *autoRefreshBackend {
 	return &autoRefreshBackend{
 		QueryInterface: fake,
@@ -61,8 +63,23 @@ func TestAutoRefresh_ReingestsOnDriftOnce(t *testing.T) {
 	ar.FindSymbol(ctx, "svc", "X")
 	ar.QuerySymbols(ctx, core.Query{ServiceID: "svc"})
 	ar.Sources(ctx, "svc")
+	ar.TypedEdges(ctx, "svc")
 	if fake.ingests != 1 {
 		t.Fatalf("ingests = %d, want 1 (debounced)", fake.ingests)
+	}
+}
+
+// TestAutoRefresh_TypedEdges_TriggersEnsure confirms TypedEdges is one of
+// the intercepted per-service reads (ADR-021 §3): a fresh wrapper (no prior
+// debounce) must refresh before answering, exactly like the other reads.
+func TestAutoRefresh_TypedEdges_TriggersEnsure(t *testing.T) {
+	fake := &refreshFake{path: "/repo", indexed: "oldsha"}
+	ar := newAR(fake, "newsha")
+	if _, err := ar.TypedEdges(context.Background(), "svc"); err != nil {
+		t.Fatalf("TypedEdges: %v", err)
+	}
+	if fake.ingests != 1 {
+		t.Fatalf("ingests = %d, want 1 (TypedEdges must trigger ensure)", fake.ingests)
 	}
 }
 

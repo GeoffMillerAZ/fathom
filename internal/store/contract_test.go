@@ -1365,6 +1365,227 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	// ------------------------------------------------------------------ //
+	// Typed edges (ADR-021 §3): package-granularity replace, service scoping,
+	// Kind round-trip, fingerprint cache, and PurgeService cleanup.
+	// ------------------------------------------------------------------ //
+	t.Run("typed_edges_roundtrip_and_replace", func(t *testing.T) {
+		svc := "svc-typed"
+		edgesA := []core.Edge{
+			{FromService: svc, FromFile: "pkg/a.go", FromSymbol: svc + "::pkg.Caller", ToSymbol: svc + "::pkg.Direct", Kind: core.EdgeDirect},
+			{FromService: svc, FromFile: "pkg/a.go", FromSymbol: svc + "::pkg.Caller", ToSymbol: svc + "::pkg.ImplA", Kind: core.EdgeIfaceDispatch},
+			{FromService: svc, FromFile: "pkg/a.go", FromSymbol: svc + "::pkg.Caller", ToSymbol: svc + "::pkg.ImplB", Kind: core.EdgeIfaceDispatch},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/pkg", edgesA); err != nil {
+			t.Fatalf("PutTypedEdges: %v", err)
+		}
+		// A second package's edges must coexist (service-wide TypedEdges
+		// returns the union) and must not be touched by a re-put of the
+		// first package.
+		edgesB := []core.Edge{
+			{FromService: svc, FromFile: "pkg2/b.go", FromSymbol: svc + "::pkg2.Other", ToSymbol: svc + "::pkg2.Callee", Kind: core.EdgeUnresolved},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/pkg2", edgesB); err != nil {
+			t.Fatalf("PutTypedEdges pkg2: %v", err)
+		}
+
+		got, err := s.TypedEdges(ctx, svc)
+		if err != nil {
+			t.Fatalf("TypedEdges: %v", err)
+		}
+		if len(got) != 4 {
+			t.Fatalf("TypedEdges count = %d, want 4: %+v", len(got), got)
+		}
+		// Deterministic order: (from_symbol, to_symbol, kind).
+		for i := 1; i < len(got); i++ {
+			if got[i-1].FromSymbol > got[i].FromSymbol {
+				t.Fatalf("TypedEdges not sorted by FromSymbol at %d: %+v", i, got)
+			}
+		}
+		var directCount, dispatchCount, unresolvedCount int
+		for _, e := range got {
+			switch e.Kind {
+			case core.EdgeDirect:
+				directCount++
+			case core.EdgeIfaceDispatch:
+				dispatchCount++
+			case core.EdgeUnresolved:
+				unresolvedCount++
+			default:
+				t.Errorf("unexpected Kind %q on edge %+v", e.Kind, e)
+			}
+		}
+		if directCount != 1 || dispatchCount != 2 || unresolvedCount != 1 {
+			t.Errorf("kind counts = direct:%d dispatch:%d unresolved:%d, want 1/2/1", directCount, dispatchCount, unresolvedCount)
+		}
+
+		// Replace semantics: re-putting pkg with a smaller edge set drops the
+		// old rows for THAT package only — pkg2's edges survive untouched.
+		edgesAReplaced := []core.Edge{
+			{FromService: svc, FromFile: "pkg/a.go", FromSymbol: svc + "::pkg.Caller", ToSymbol: svc + "::pkg.OnlyOne", Kind: core.EdgeDirect},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/pkg", edgesAReplaced); err != nil {
+			t.Fatalf("PutTypedEdges replace: %v", err)
+		}
+		got, err = s.TypedEdges(ctx, svc)
+		if err != nil {
+			t.Fatalf("TypedEdges after replace: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("TypedEdges after replace = %d, want 2 (1 replaced + pkg2's 1): %+v", len(got), got)
+		}
+
+		// Empty edges is a valid call that still clears the package's rows.
+		if err := s.PutTypedEdges(ctx, svc, "example.com/pkg", nil); err != nil {
+			t.Fatalf("PutTypedEdges empty: %v", err)
+		}
+		got, err = s.TypedEdges(ctx, svc)
+		if err != nil {
+			t.Fatalf("TypedEdges after empty replace: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("TypedEdges after clearing pkg = %d, want 1 (pkg2 only): %+v", len(got), got)
+		}
+		if got[0].FromSymbol != svc+"::pkg2.Other" {
+			t.Errorf("surviving edge = %+v, want pkg2's edge", got[0])
+		}
+
+		// A service with no typed edges at all returns nil, no error.
+		none, err := s.TypedEdges(ctx, "svc-typed-empty")
+		if err != nil {
+			t.Fatalf("TypedEdges empty service: %v", err)
+		}
+		if len(none) != 0 {
+			t.Errorf("TypedEdges(svc-typed-empty) = %d, want 0", len(none))
+		}
+	})
+
+	t.Run("typed_edge_package_fingerprint", func(t *testing.T) {
+		svc := "svc-typed-fp"
+		if _, found, err := s.TypedEdgePackageFingerprint(ctx, svc, "example.com/pkg"); err != nil || found {
+			t.Fatalf("TypedEdgePackageFingerprint before set = found:%v err:%v, want false/nil", found, err)
+		}
+		if err := s.SetTypedEdgePackageFingerprint(ctx, svc, "example.com/pkg", "hash-1"); err != nil {
+			t.Fatalf("SetTypedEdgePackageFingerprint: %v", err)
+		}
+		hash, found, err := s.TypedEdgePackageFingerprint(ctx, svc, "example.com/pkg")
+		if err != nil {
+			t.Fatalf("TypedEdgePackageFingerprint: %v", err)
+		}
+		if !found || hash != "hash-1" {
+			t.Errorf("TypedEdgePackageFingerprint = (%q, %v), want (hash-1, true)", hash, found)
+		}
+		// Replace semantics: setting again overwrites, does not duplicate.
+		if err := s.SetTypedEdgePackageFingerprint(ctx, svc, "example.com/pkg", "hash-2"); err != nil {
+			t.Fatalf("SetTypedEdgePackageFingerprint replace: %v", err)
+		}
+		hash, found, err = s.TypedEdgePackageFingerprint(ctx, svc, "example.com/pkg")
+		if err != nil || !found || hash != "hash-2" {
+			t.Errorf("TypedEdgePackageFingerprint after replace = (%q, %v, %v), want (hash-2, true, nil)", hash, found, err)
+		}
+	})
+
+	t.Run("typed_edge_package_listing_and_delete", func(t *testing.T) {
+		svc := "svc-typed-list"
+		edgesA := []core.Edge{
+			{FromService: svc, FromFile: "a/a.go", FromSymbol: svc + "::a.F", ToSymbol: svc + "::a.G", Kind: core.EdgeDirect},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/a", edgesA); err != nil {
+			t.Fatalf("PutTypedEdges a: %v", err)
+		}
+		if err := s.SetTypedEdgePackageFingerprint(ctx, svc, "example.com/a", "hash-a"); err != nil {
+			t.Fatalf("SetTypedEdgePackageFingerprint a: %v", err)
+		}
+		// b has ONLY a fingerprint (a load that emitted zero edges) — the
+		// listing must still surface it, or reconcile could never clear a
+		// deleted package that happened to have no edges.
+		if err := s.SetTypedEdgePackageFingerprint(ctx, svc, "example.com/b", "hash-b"); err != nil {
+			t.Fatalf("SetTypedEdgePackageFingerprint b: %v", err)
+		}
+		// c has ONLY edges (fingerprint write failed mid-run) — must also list.
+		edgesC := []core.Edge{
+			{FromService: svc, FromFile: "c/c.go", FromSymbol: svc + "::c.F", ToSymbol: svc + "::c.G", Kind: core.EdgeDirect},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/c", edgesC); err != nil {
+			t.Fatalf("PutTypedEdges c: %v", err)
+		}
+
+		got, err := s.ListTypedEdgePackages(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListTypedEdgePackages: %v", err)
+		}
+		want := []string{"example.com/a", "example.com/b", "example.com/c"}
+		if len(got) != len(want) {
+			t.Fatalf("ListTypedEdgePackages = %v, want %v", got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Fatalf("ListTypedEdgePackages = %v, want %v (sorted)", got, want)
+			}
+		}
+
+		// Delete a: its edges AND fingerprint go; b and c untouched.
+		if err := s.DeleteTypedEdgePackage(ctx, svc, "example.com/a"); err != nil {
+			t.Fatalf("DeleteTypedEdgePackage: %v", err)
+		}
+		if _, found, _ := s.TypedEdgePackageFingerprint(ctx, svc, "example.com/a"); found {
+			t.Error("fingerprint for deleted package survived")
+		}
+		edges, err := s.TypedEdges(ctx, svc)
+		if err != nil {
+			t.Fatalf("TypedEdges after delete: %v", err)
+		}
+		for _, e := range edges {
+			if e.FromSymbol == svc+"::a.F" {
+				t.Errorf("edge from deleted package survived: %+v", e)
+			}
+		}
+		got, err = s.ListTypedEdgePackages(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListTypedEdgePackages after delete: %v", err)
+		}
+		if len(got) != 2 || got[0] != "example.com/b" || got[1] != "example.com/c" {
+			t.Errorf("ListTypedEdgePackages after delete = %v, want [example.com/b example.com/c]", got)
+		}
+
+		// Deleting a missing package is a no-op, not an error.
+		if err := s.DeleteTypedEdgePackage(ctx, svc, "example.com/nope"); err != nil {
+			t.Errorf("DeleteTypedEdgePackage(missing) = %v, want nil", err)
+		}
+
+		// A service with no typed-edge rows lists nil, no error.
+		none, err := s.ListTypedEdgePackages(ctx, "svc-typed-list-empty")
+		if err != nil || len(none) != 0 {
+			t.Errorf("ListTypedEdgePackages(empty) = %v, %v; want nil, nil", none, err)
+		}
+	})
+
+	t.Run("purge_service_clears_typed_edges", func(t *testing.T) {
+		svc := "svc-typed-purge"
+		edges := []core.Edge{
+			{FromService: svc, FromFile: "pkg/a.go", FromSymbol: svc + "::pkg.Caller", ToSymbol: svc + "::pkg.Callee", Kind: core.EdgeDirect},
+		}
+		if err := s.PutTypedEdges(ctx, svc, "example.com/pkg", edges); err != nil {
+			t.Fatalf("PutTypedEdges: %v", err)
+		}
+		if err := s.SetTypedEdgePackageFingerprint(ctx, svc, "example.com/pkg", "hash-1"); err != nil {
+			t.Fatalf("SetTypedEdgePackageFingerprint: %v", err)
+		}
+		if err := s.PurgeService(ctx, svc); err != nil {
+			t.Fatalf("PurgeService: %v", err)
+		}
+		got, err := s.TypedEdges(ctx, svc)
+		if err != nil {
+			t.Fatalf("TypedEdges after PurgeService: %v", err)
+		}
+		if len(got) != 0 {
+			t.Errorf("TypedEdges after PurgeService = %d, want 0", len(got))
+		}
+		if _, found, _ := s.TypedEdgePackageFingerprint(ctx, svc, "example.com/pkg"); found {
+			t.Error("typed-edge package fingerprint survived PurgeService")
+		}
+	})
+
 	t.Run("claim_links_empty_ids", func(t *testing.T) {
 		got, err := s.ClaimLinks(ctx, "any-svc", nil)
 		if err != nil {

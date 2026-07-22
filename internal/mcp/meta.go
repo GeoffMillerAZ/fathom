@@ -93,13 +93,15 @@ type classifiedZeroBackend interface {
 func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
-		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files).",
+		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files). Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
 		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Optional service / repo identifier — adds typed_edges counts for it"},
+			},
 		},
 		group: GroupShared,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		uptime := time.Since(s.startTime)
 		result := map[string]any{
 			"uptime_seconds": uptime.Seconds(),
@@ -116,6 +118,44 @@ func registerServerStats(s *Server) {
 				result["classified_zero_files"] = m
 			}
 		}
+
+		var p struct {
+			Service string `json:"service"`
+		}
+		_ = json.Unmarshal(args, &p) // best-effort: absent/invalid args just skip the service block
+
+		// Typed Go call-edge counters (ADR-021 §3): a Go service whose typed
+		// pass never ran (predates ADR-021 §3, or hasn't been re-ingested
+		// since) reports all-zero counts here — the visible signal ExtractorEpoch
+		// intentionally does NOT force (typed edges are new observations, not
+		// a Calls-semantics change, see docs/plans/callgraph-types.md).
+		// Note dispatch counts skew high in Go services with many error
+		// types: universe/stdlib interface dispatch (error.Error) fans out
+		// to every first-party implementer (see internal/fusion/typedcalls.go).
+		if p.Service != "" && s.backend != nil {
+			edges, err := s.backend.TypedEdges(ctx, p.Service)
+			if err == nil {
+				counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
+				for _, e := range edges {
+					switch e.Kind {
+					case "direct":
+						counts["direct"]++
+					case "iface-dispatch":
+						counts["iface_dispatch"]++
+					case "unresolved":
+						counts["unresolved"]++
+					}
+				}
+				result["typed_edges"] = map[string]any{
+					"service":        p.Service,
+					"total":          len(edges),
+					"direct":         counts["direct"],
+					"iface_dispatch": counts["iface_dispatch"],
+					"unresolved":     counts["unresolved"],
+				}
+			}
+		}
+
 		return result, nil
 	})
 }

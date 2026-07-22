@@ -198,6 +198,33 @@ type Evidence interface {
 	SpecImplementors(specID string) []string
 }
 
+// ReachDetail describes one Test* symbol that statically reaches a target,
+// and the MODALITY of that reach (ADR-021 §3): whether the path crossed a
+// typed interface-dispatch edge, and if so how many implementers were in
+// scope. Mirrors internal/analysis/callgraph.ReachDetail — verify does not
+// import internal/analysis (it depends on internal/core and agentic-kit's
+// scoring foundation only), so DetailedEvidence implementations translate.
+type ReachDetail struct {
+	Key          string
+	ViaDispatch  bool
+	Implementers int // count of dispatch edges at the crossed caller; 0 when !ViaDispatch
+}
+
+// DetailedEvidence is an optional capability: an Evidence implementation
+// that can additionally report the modality of a test_reaches path — did it
+// cross a typed EdgeIfaceDispatch edge, and if so how many implementers
+// were in scope (ADR-021 §3, dissolving the O9 ambiguity-refusal residue).
+// VerifyPlan type-asserts for it and falls back to plain TestReaches when
+// absent, so existing Evidence fakes — and any real Evidence backed by a
+// store with no typed edges yet — keep working unchanged.
+type DetailedEvidence interface {
+	Evidence
+	// TestReachesDetail returns TestReaches's canonical keys PLUS the
+	// dispatch modality for each — same emptiness/ordering contract as
+	// TestReaches.
+	TestReachesDetail(symbol string) []ReachDetail
+}
+
 // VerifyPlan evaluates every task in plan against ev and returns a sorted,
 // deterministic report.
 func VerifyPlan(plan Plan, ev Evidence) Report {
@@ -294,10 +321,20 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 			}
 		}
 
-		// test_reaches (static)
+		// test_reaches (static). When ev additionally implements
+		// DetailedEvidence (ADR-021 §3), a path crossing a typed
+		// interface-dispatch edge counts as reached — strictly better
+		// evidence than the old blanket refusal for an ambiguous method
+		// name — and is labeled distinctly in the pass detail.
 		if !e.SkipTest {
 			if len(matches) == 0 {
 				na("test_reaches", "symbol absent")
+			} else if de, ok := ev.(DetailedEvidence); ok {
+				if details := de.TestReachesDetail(querySym); len(details) > 0 {
+					pass("test_reaches", testReachesDetail(details))
+				} else {
+					fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
+				}
 			} else if tests := ev.TestReaches(querySym); len(tests) > 0 {
 				pass("test_reaches", fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(tests), tests[0]))
 			} else {
@@ -358,6 +395,23 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 		v.Label = "no-contract"
 	}
 	return v
+}
+
+// testReachesDetail renders test_reaches's pass detail from a DetailedEvidence
+// result, surfacing the dispatch modality distinctly when the reaching path
+// used one (ADR-021 §3) — a reader sees "reached via interface dispatch" at
+// a glance instead of it reading identically to a direct static reach.
+// details is assumed non-empty and sorted by Key (callgraph.TestImpactDetail's
+// contract); the first dispatch-reaching entry is reported when one exists,
+// otherwise the first entry overall.
+func testReachesDetail(details []ReachDetail) string {
+	for _, d := range details {
+		if d.ViaDispatch {
+			return fmt.Sprintf("%d test(s) statically reach it, e.g. %s (reached via interface dispatch, %d implementer(s))",
+				len(details), d.Key, d.Implementers)
+		}
+	}
+	return fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(details), details[0].Key)
 }
 
 // underDir returns the nodes whose FilePath lies under the repo-relative

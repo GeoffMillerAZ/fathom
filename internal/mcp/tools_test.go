@@ -104,6 +104,10 @@ func (f *fakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo
 	return nil, nil
 }
 
+func (f *fakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return nil, nil
+}
+
 // ─── find_callers ────────────────────────────────────────────────────────────
 
 func TestFindCallers(t *testing.T) {

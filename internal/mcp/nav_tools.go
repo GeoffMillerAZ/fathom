@@ -191,13 +191,54 @@ func registerSymbolContext(s *Server, backend QueryInterface) {
 			}
 			defDTO = &d
 		}
-		return map[string]any{
+		result := map[string]any{
 			"def":           defDTO,
 			"callers":       stringsToAny(sctx.Callers),
 			"callees":       stringsToAny(sctx.Callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
-		}, nil
+		}
+
+		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees on a
+		// SEPARATE graph (never mutating g/sctx above, so the existing
+		// syntax-only "callers"/"callees" fields keep their exact contract).
+		// Best-effort — a non-Go service, or one with no typed edges yet,
+		// simply omits this field.
+		if typed, tErr := backend.TypedEdges(ctx, p.Service); tErr == nil && len(typed) > 0 {
+			tg := callgraph.Build(nodes)
+			callgraph.AddTypedEdges(tg, typed)
+			if edges := typedEdgeContext(tg, p.Symbol); edges != nil {
+				result["typed_edges"] = edges
+			}
+		}
+		return result, nil
 	})
+}
+
+// typedEdgeContext renders symbol's typed callers/callees (kind-labeled)
+// from a graph already augmented via callgraph.AddTypedEdges. Syntax-only
+// edges (Kind == "") are excluded — already covered by the plain
+// "callers"/"callees" fields. Returns nil when neither side has any typed
+// edges, so the caller can omit the field entirely.
+func typedEdgeContext(g *callgraph.Graph, symbol string) map[string]any {
+	callers := kindLabeledEdges(callgraph.CallersDetail(g, symbol))
+	callees := kindLabeledEdges(callgraph.CalleesDetail(g, symbol))
+	if len(callers) == 0 && len(callees) == 0 {
+		return nil
+	}
+	return map[string]any{"callers": callers, "callees": callees}
+}
+
+// kindLabeledEdges converts callgraph.EdgeInfo values with a non-empty
+// (typed) Kind into JSON-ready maps, dropping syntax-only ("") entries.
+func kindLabeledEdges(details []callgraph.EdgeInfo) []any {
+	var out []any
+	for _, d := range details {
+		if d.Kind == "" {
+			continue
+		}
+		out = append(out, map[string]any{"key": d.Key, "kind": string(d.Kind)})
+	}
+	return out
 }
 
 // ─── outline ─────────────────────────────────────────────────────────────────
