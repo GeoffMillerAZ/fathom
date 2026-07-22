@@ -14,9 +14,16 @@ All notable changes to sextant. Format loosely follows
   apply to every physical connection the driver opens, not just the first —
   verified live by `TestSQLite_WALActuallyEngages` (asserts `PRAGMA
   journal_mode` really reports `"wal"`, not just "no error"). The read pool is
-  deliberately left uncapped — DuckStore's `SetMaxOpenConns(1)` write-
-  serialization is DuckDB-specific and does NOT carry over; SQLite's own
-  single-writer lock already serializes writes.
+  deliberately left uncapped for file stores — DuckStore's
+  `SetMaxOpenConns(1)` write-serialization is DuckDB-specific and does NOT
+  carry over; SQLite's own single-writer lock already serializes writes. The
+  sole exception is the in-memory store (`path == ""`), whose pool is capped
+  at one connection: every physical modernc connection to `":memory:"` opens
+  its OWN private database, so an uncapped pool made concurrent readers fail
+  with "no such table" (`TestSQLiteStore_ParallelReaders` covers both modes:
+  memory proves serialized correctness, file proves true reader concurrency).
+  Fresh DDL also carries an `observations(service_id)` index — every
+  observations query filters on it.
 - **Cross-process concurrency proof** (`TestSQLite_ReaderDuringWriter`): two
   independent `*sql.DB` handles against the same on-disk file — the honest
   in-process approximation of two OS processes — prove a reader completes a
@@ -30,16 +37,31 @@ All notable changes to sextant. Format loosely follows
   `platform-ingest`). `PlatformStore` now loads a directory of mixed-backend
   store files (proven by `TestOpenPlatform_MixedBackends`) — a fleet mid-
   migration, one service moved to SQLite at a time, loads correctly
-  throughout.
-- **`fathom migrate-store --from X.duckdb --to Y.sqlite`** ports the six
+  throughout. Same-stem duplicates (svc.duckdb beside svc.sqlite — exactly
+  the state `migrate-store` leaves) resolve via `store.ResolveStoreFiles`:
+  the `.sqlite` file wins with a loud stderr warning naming both files,
+  never a silent name-order first-wins that would serve stale
+  pre-migration data; `gen-platform-manifest` dedupes identically (one
+  entry per service). Store-extension matching is case-insensitive.
+- **`fathom migrate-store --from X.duckdb --to Y.sqlite`** ports the eight
   non-derivable tables (`semantic_claims`, `claim_links`, `claim_events`,
-  `compile_runs`, `service_meta`, `commits`) store-direct into a freshly
-  created SQLite store, printing a per-table row count + deterministic
-  content spot-hash and the exact re-ingest command for the derived remainder
-  (`observations`, `fingerprints`, `knowledge_cards`, `doc_summaries`).
-  Refuses to write into an existing target that already has rows in any of
-  its (up to nine) tables; validates `--from` ends in `.duckdb` and `--to`
-  ends in `.sqlite` before touching either file.
+  `compile_runs`, `service_meta`, `commits`, `knowledge_cards`,
+  `doc_summaries`) store-direct into a freshly created SQLite store —
+  cards/summaries are LLM-derived enrichment a re-ingest does NOT rebuild
+  (enrichment is opt-in and unwired in production; `PurgeService`
+  deliberately retains cards for the same reason), so treating them as
+  derivable would have silently lost them. The source is opened READ-ONLY
+  (DuckDB `access_mode=read_only`, no schema DDL) and left byte-identical.
+  Prints a per-table row count + content spot-hash, each hash VERIFIED by
+  re-reading the ported rows from the target and comparing (mismatch fails
+  the migration), and the exact re-ingest command for the derived remainder
+  (`observations`, `fingerprints`). Orphan `claim_links` rows (claim_id
+  with no claim — unreachable by any query) are skipped with a counted
+  warning rather than ported as dead rows. Refuses to write into an
+  existing target that already has rows in any of its tables; validates
+  `--from` ends in `.duckdb` and `--to` ends in `.sqlite` before touching
+  either file. Operator runbook (stop daemon → migrate → repoint →
+  restart → re-ingest → delete old store): docs/configuration.md.
 - **Doc-comment truth fix**: `Store.PutObservations`'s comment implied
   DB-level dedup/upsert ("must not duplicate rows on repeated calls"). Neither
   backend has ever done this — it is a bare `INSERT`/append; the
@@ -56,9 +78,18 @@ All notable changes to sextant. Format loosely follows
   configuration.md`, `docs/architecture.md`, `docs/usage.md`, `docs/
   claude-code-integration.md`, `docs/distribution.md`, and `docs/why-duckdb.md`
   (marked superseded, kept as historical rationale) updated accordingly.
-  DuckDB stays compiled in for this slice — `migrate-store`'s source side
-  needs it — removed once the operator's fleet store has migrated (SS-8,
-  deferred, tracked in `docs/plans/store-sqlite.md`).
+  Repo tooling followed: `lefthook.yml`'s post-commit refresh,
+  `scripts/reingest-fleet.sh`, `scripts/ci.sh`'s verify scratch store,
+  `calibration/baseline.sh`, and `CLAUDE.md`'s store-path references all
+  moved off `.duckdb` paths so nothing keeps regenerating the same-stem
+  collision state. `docs/usage.md` gained a `migrate-store` catalog entry
+  and `docs/configuration.md` the full ADR-020 operator runbook (stop
+  daemon → migrate → repoint `[daemon].store`/plist → restart →
+  re-ingest → delete the old `.duckdb`), including the sibling-repo
+  post-commit-hook caveat. DuckDB stays compiled in for this slice —
+  `migrate-store`'s source side needs it — removed once the operator's
+  fleet store has migrated (SS-8, deferred, tracked in
+  `docs/plans/store-sqlite.md`).
 - Added dependency: `modernc.org/sqlite v1.52.0` (pure Go; pin matches
   throughline's known-good version). `go.mod`/`go.sum` updated; the
   `third_party/agentic-kit` cold-clone property (`GOWORK=off go build ./...`)

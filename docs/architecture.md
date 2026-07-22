@@ -263,7 +263,7 @@ Schema tables (identical across both backends — the DDL ports verbatim, ADR-02
 | `fingerprints` | SHA-256 hash-gate index (stored separately; cheap to clear independently) |
 | `knowledge_cards` | LLM-generated structured summaries per symbol (opt-in enrichment) |
 | `doc_summaries` | Document-level summaries for Markdown sources |
-| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs` | Identity/audit/semantic-layer tables — the six `fathom migrate-store` ports from an existing DuckDB store into a fresh SQLite one; everything else rebuilds by re-ingest |
+| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs`, plus `knowledge_cards`/`doc_summaries` above | The eight non-derivable tables `fathom migrate-store` ports from an existing DuckDB store into a fresh SQLite one (cards/summaries are LLM-derived enrichment a re-ingest does not rebuild); only `observations`/`fingerprints` rebuild by re-ingest |
 
 Default store path: `workspace/db/fathom.sqlite` (gitignored; all artifacts go under
 `workspace/` — see the workspace convention in [usage.md](usage.md)).

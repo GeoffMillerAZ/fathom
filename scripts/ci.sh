@@ -90,7 +90,7 @@ if [ ${#FATHOM_PLANS[@]} -gt 0 ]; then
         go build -o bin/fathom ./cmd/fathom
 
     FATHOM_TMPDIR=$(mktemp -d)
-    FATHOM_TMPSTORE="${FATHOM_TMPDIR}/verify.duckdb"
+    FATHOM_TMPSTORE="${FATHOM_TMPDIR}/verify.sqlite"
     echo "  ingesting into ${FATHOM_TMPSTORE} …"
     bin/fathom ingest --service fathom --path . --store "${FATHOM_TMPSTORE}"
 

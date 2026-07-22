@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -44,26 +45,42 @@ func OpenPlatform(storeDir string) (*PlatformStore, error) {
 }
 
 // load (re)scans storeDir and opens every recognized store file that is not
-// yet open. It must be called with mu held for writing, or before the store
-// is published.
+// yet open. Same-stem duplicates (svc.duckdb beside svc.sqlite — the exact
+// state migrate-store leaves an operator in mid-migration) resolve by
+// backend preference via ResolveStoreFiles: the .sqlite file wins, with a
+// loud stderr warning naming both files — never a silent first-name-wins
+// that would serve stale pre-migration data. It must be called with mu held
+// for writing, or before the store is published.
 func (ps *PlatformStore) load() error {
 	entries, err := os.ReadDir(ps.storeDir)
 	if err != nil {
 		return fmt.Errorf("OpenPlatform ReadDir %q: %w", ps.storeDir, err)
 	}
+	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		name := e.Name()
-		stem, ok := ServiceIDFromStoreFilename(name)
-		if !ok {
-			continue
-		}
+		names = append(names, e.Name())
+	}
+
+	winners, collisions := ResolveStoreFiles(names)
+	for _, c := range collisions {
+		fmt.Fprintf(os.Stderr,
+			"fathom: platform store %s: service %q has multiple store files — serving %s, ignoring %s; remove the stale file(s) once the migration is confirmed\n",
+			ps.storeDir, c.Stem, c.Winner, strings.Join(c.Losers, ", "))
+	}
+
+	stems := make([]string, 0, len(winners))
+	for stem := range winners {
+		stems = append(stems, stem)
+	}
+	sort.Strings(stems)
+	for _, stem := range stems {
 		if _, already := ps.services[stem]; already {
-			continue // already open; keep existing handle
+			continue // already open; keep existing handle (Reload never re-opens)
 		}
-		path := filepath.Join(ps.storeDir, name)
+		path := filepath.Join(ps.storeDir, winners[stem])
 		s, err := BackendForPath(path)
 		if err != nil {
 			return fmt.Errorf("OpenPlatform BackendForPath %q: %w", path, err)

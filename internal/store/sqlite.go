@@ -62,10 +62,21 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	if err != nil {
 		return nil, fmt.Errorf("store.NewSQLiteStore: %w", err)
 	}
-	// Uncapped read pool (ADR-020): the SetMaxOpenConns(1) DuckStore uses to
-	// serialise writes is DuckDB-specific and must NOT carry over — SQLite's
-	// own single-writer lock (busy_timeout-backed) already serialises writes,
-	// and capping the pool would throttle concurrent readers for no reason.
+	// File-backed stores: uncapped read pool (ADR-020) — the
+	// SetMaxOpenConns(1) DuckStore uses to serialise writes is
+	// DuckDB-specific and must NOT carry over; SQLite's own single-writer
+	// lock (busy_timeout-backed) already serialises writes, and capping the
+	// pool would throttle concurrent readers for no reason.
+	//
+	// In-memory stores are the one exception: every physical modernc
+	// connection to ":memory:" opens its OWN private database, so a second
+	// pool connection sees no tables at all — an uncapped pool made 15 of
+	// 16 concurrent readers fail with "no such table" (F1). One connection
+	// keeps the single shared database; an ephemeral test/session store
+	// needs no reader concurrency.
+	if path == "" {
+		db.SetMaxOpenConns(1)
+	}
 
 	s := &SQLiteStore{db: db}
 	if err := s.createSchema(); err != nil {
@@ -198,6 +209,13 @@ CREATE TABLE IF NOT EXISTS claim_events (
     note     TEXT   NOT NULL DEFAULT '',
     event_at BIGINT NOT NULL DEFAULT 0
 );
+
+-- Every observations query filters on service_id (usually with concern_id
+-- or a symbol filter on top); without an index each one is a full table
+-- scan over the store's largest table. Cheap to create at birth, a
+-- migration later — so it is part of the fresh DDL (F7).
+CREATE INDEX IF NOT EXISTS idx_observations_service_id
+    ON observations (service_id);
 `
 	_, err := s.db.Exec(ddl)
 	return err

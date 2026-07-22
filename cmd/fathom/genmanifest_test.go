@@ -90,6 +90,53 @@ func TestGenManifest_WithServices(t *testing.T) {
 	}
 }
 
+// TestGenManifest_SameStemDedupes is the F2 regression for the manifest:
+// a directory holding both svc.duckdb and svc.sqlite (the mid-migration
+// state migrate-store leaves) must yield ONE manifest entry pointing at the
+// .sqlite file, with a warning on stderr — not two entries per service.
+func TestGenManifest_SameStemDedupes(t *testing.T) {
+	storeDir := t.TempDir()
+	for _, name := range []string{"svc.duckdb", "svc.sqlite", "other.duckdb"} {
+		if err := os.WriteFile(filepath.Join(storeDir, name), []byte{}, 0o644); err != nil {
+			t.Fatalf("WriteFile: %v", err)
+		}
+	}
+	outputPath := filepath.Join(t.TempDir(), "manifest.yaml")
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"gen-platform-manifest",
+		"--store-dir", storeDir,
+		"--output", outputPath,
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("gen-platform-manifest exited %d\nstderr=%s", code, errBuf.String())
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("output file not found: %v", err)
+	}
+	content := string(data)
+
+	if got := strings.Count(content, `- id: "svc"`); got != 1 {
+		t.Errorf("manifest has %d entries for service svc, want exactly 1; content:\n%s", got, content)
+	}
+	if !strings.Contains(content, "svc.sqlite") {
+		t.Errorf("manifest must point at the migrated svc.sqlite; content:\n%s", content)
+	}
+	if strings.Contains(content, "svc.duckdb") {
+		t.Errorf("manifest must not reference the stale svc.duckdb; content:\n%s", content)
+	}
+	if !strings.Contains(errBuf.String(), "svc.duckdb") {
+		t.Errorf("stderr should warn about the same-stem collision naming the stale file; got %q", errBuf.String())
+	}
+	// Output must mention the totals with ONE svc entry (2 services total).
+	if !strings.Contains(out.String(), "2 services") {
+		t.Errorf("stdout should count 2 deduped services; got %q", out.String())
+	}
+}
+
 // TestGenManifest_DefaultOutput checks that the command uses workspace/artifacts
 // as the default output directory when --output is not supplied.  We redirect
 // to a temp path to avoid polluting the workspace.

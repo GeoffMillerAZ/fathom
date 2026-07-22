@@ -58,6 +58,30 @@ func OpenDuckDB(path string) (*DuckStore, error) {
 	return s, nil
 }
 
+// openDuckDBReadOnly opens an EXISTING DuckDB database at path read-only
+// (go-duckdb passes DSN query parameters straight to DuckDB's config, so
+// access_mode=read_only engages the engine's own read-only mode) and runs
+// NO schema creation or migration DDL. This is migrate-store's source-side
+// open (F4a): OpenDuckDB would execute ALTER TABLE migrations against the
+// very file the operator is trying to leave byte-identical. A store so old
+// it predates a column the readers SELECT will fail loudly here rather
+// than be silently altered — open it once read-write with fathom first to
+// migrate its schema, then retry.
+func openDuckDBReadOnly(path string) (*DuckStore, error) {
+	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	if err != nil {
+		return nil, fmt.Errorf("store.openDuckDBReadOnly: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	// sql.Open is lazy; force the actual file open now so a missing file or
+	// a held write lock surfaces here, not on the first table read.
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("store.openDuckDBReadOnly %q: %w", path, err)
+	}
+	return &DuckStore{db: db}, nil
+}
+
 // createSchema idempotently creates the required tables.
 func (s *DuckStore) createSchema() error {
 	const ddl = `
@@ -204,8 +228,10 @@ CREATE TABLE IF NOT EXISTS claim_events (
 	return err
 }
 
-// PutObservations inserts a batch of observations. Existing rows for the same
-// (service_id, source_ref, symbol) are replaced.
+// PutObservations inserts a batch of observations via a bare append — see
+// the Store interface doc comment: this does NOT dedupe or replace by key.
+// Callers that want replace semantics must call PurgeSource first (as
+// internal/fusion does).
 func (s *DuckStore) PutObservations(ctx context.Context, obs []core.Observation) error {
 	if len(obs) == 0 {
 		return nil

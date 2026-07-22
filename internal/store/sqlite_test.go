@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -35,6 +36,72 @@ func TestSQLiteStoreContract_OnDisk(t *testing.T) {
 // satisfies the Store interface.
 func TestSQLiteStoreImplementsStore(t *testing.T) {
 	var _ Store = (*SQLiteStore)(nil)
+}
+
+// TestSQLiteStore_ParallelReaders is the F1 regression: the Store contract
+// guarantees safety for concurrent reads, and modernc's ":memory:" gives
+// every physical pool connection its OWN private database — so an uncapped
+// pool on the in-memory store made 15 of 16 concurrent readers fail with
+// "no such table". The fix serializes the in-memory pool
+// (SetMaxOpenConns(1) — an ephemeral test/session store needs no reader
+// concurrency) while the file-backed pool stays uncapped; this test runs
+// both modes: memory proves serialized correctness, file proves genuinely
+// concurrent readers all see the data.
+func TestSQLiteStore_ParallelReaders(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		path func(t *testing.T) string
+	}{
+		{"memory", func(t *testing.T) string { return "" }},
+		{"file", func(t *testing.T) string { return filepath.Join(t.TempDir(), "par.sqlite") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, err := NewSQLiteStore(tc.path(t))
+			if err != nil {
+				t.Fatalf("NewSQLiteStore: %v", err)
+			}
+			t.Cleanup(func() { _ = s.Close() })
+
+			ctx := context.Background()
+			if err := s.PutObservations(ctx, []core.Observation{
+				{
+					ServiceID:    "svc-par",
+					SourceRef:    "pkg/p.go",
+					SourceKind:   core.KindGoFunc,
+					EvidenceTier: core.TierVerified,
+					Symbol:       "Par",
+					Claim:        "func Par()",
+					ContentHash:  "h",
+					IngestedAt:   time.Now().UTC(),
+				},
+			}); err != nil {
+				t.Fatalf("seed PutObservations: %v", err)
+			}
+
+			const readers = 16
+			var wg sync.WaitGroup
+			errs := make(chan error, readers)
+			for i := 0; i < readers; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					obs, err := s.QueryObservations(ctx, "svc-par", "")
+					if err != nil {
+						errs <- err
+						return
+					}
+					if len(obs) != 1 {
+						errs <- fmt.Errorf("reader saw %d observations, want 1", len(obs))
+					}
+				}()
+			}
+			wg.Wait()
+			close(errs)
+			for err := range errs {
+				t.Errorf("concurrent reader: %v", err)
+			}
+		})
+	}
 }
 
 // TestSQLite_WALActuallyEngages asserts PRAGMA journal_mode really reports
@@ -114,8 +181,9 @@ func TestSQLite_ReaderDuringWriter(t *testing.T) {
 	}
 	defer reader.Close()
 
-	// Writer: BEGIN IMMEDIATE (acquires the write lock now, not lazily on
-	// first write) and insert a row, but do NOT commit yet.
+	// Writer: start a (deferred) transaction and execute an INSERT inside
+	// it — the INSERT is what acquires SQLite's write lock — then leave the
+	// transaction open, uncommitted, across the reader's query below.
 	tx, err := writer.db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatalf("writer BeginTx: %v", err)

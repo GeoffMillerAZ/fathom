@@ -22,7 +22,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CORPUS="$ROOT/workspace/calibration"
 BIN="${BIN:-$ROOT/workspace/tmp/fathom}"
-STORE="$ROOT/workspace/tmp/calibration.duckdb"
+STORE="$ROOT/workspace/tmp/calibration.sqlite"
 OUT="$ROOT/workspace/calibration/baseline-report.md"
 
 [ -x "$BIN" ] || { echo "error: fathom binary not found at $BIN (set BIN= or run: CGO_ENABLED=1 go build -o workspace/tmp/fathom ./cmd/fathom)" >&2; exit 1; }

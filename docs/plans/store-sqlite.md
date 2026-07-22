@@ -27,10 +27,15 @@ Design constraints (normative):
   both backends and the fusion contract depends on purge-first).
 - `fathom migrate-store --from X.duckdb --to Y.sqlite`: ports ONLY the
   non-derivable tables — semantic_claims, claim_links, claim_events,
-  compile_runs, service_meta, commits — then prints the re-ingest command
-  for the derived remainder (observations, fingerprints, knowledge_cards,
-  doc_summaries). Refuses an existing non-empty target. Row-count +
-  spot-hash verification printed per table.
+  compile_runs, service_meta, commits, knowledge_cards, doc_summaries
+  (eight: cards and summaries are LLM-derived enrichment a re-ingest does
+  NOT rebuild — enrichment is opt-in and unwired in production, and
+  PurgeService deliberately retains cards for the same reason, so treating
+  them as derivable would silently lose them) — then prints the re-ingest
+  command for the derived remainder (observations, fingerprints). Opens
+  the source read-only (no schema DDL against it). Refuses an existing
+  non-empty target. Row-count + spot-hash verification printed per table,
+  with each hash verified by re-reading the ported rows from the target.
 - Defaults flip: CLI default store path, init scaffold, docs, daemon
   plist guidance in docs/configuration.md move to `fleet.sqlite`
   naming. DuckDB stays compiled-in this slice (migration needs it);

@@ -183,6 +183,47 @@ func TestOpenPlatform_NonDuckdbFilesIgnored(t *testing.T) {
 	}
 }
 
+// ─── mid-migration same-stem collision (F2) ──────────────────────────────────
+
+// TestOpenPlatform_SameStemPrefersSQLite is the F2 regression: after
+// `migrate-store` the directory holds BOTH svc.duckdb (stale) and svc.sqlite
+// (freshly migrated). ReadDir's name-sort yields the .duckdb first, and the
+// original first-wins load made the migrated store silently invisible.
+// The platform store must serve the .sqlite one.
+func TestOpenPlatform_SameStemPrefersSQLite(t *testing.T) {
+	dir := t.TempDir()
+	// Same service stem, different content per backend so we can prove WHICH
+	// file is actually being served, not just which type was opened.
+	seedServiceExt(t, dir, "svc", ".duckdb", []core.Observation{nowObs("svc", "StaleSymbol")})
+	seedServiceExt(t, dir, "svc", ".sqlite", []core.Observation{nowObs("svc", "MigratedSymbol")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 1 || ids[0] != "svc" {
+		t.Fatalf("ServiceIDs() = %v, want [svc] (one service, not one per file)", ids)
+	}
+
+	s, ok := ps.Get("svc")
+	if !ok {
+		t.Fatal("Get(svc) returned false")
+	}
+	if _, isSQLite := s.(*SQLiteStore); !isSQLite {
+		t.Fatalf("svc backend = %T, want *SQLiteStore (the migrated store must win)", s)
+	}
+	obs, err := s.QueryObservations(context.Background(), "svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	if len(obs) != 1 || obs[0].Symbol != "MigratedSymbol" {
+		t.Errorf("served observations = %+v, want the migrated store's MigratedSymbol", obs)
+	}
+}
+
 // ─── mixed-backend fleets (ADR-020, SS-4) ─────────────────────────────────────
 
 // TestOpenPlatform_MixedBackends proves PlatformStore loads a fleet directory

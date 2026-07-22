@@ -439,6 +439,40 @@ fathom gen-platform-manifest --store-dir workspace/db/platform
 
 ---
 
+### `migrate-store`
+
+Port an existing DuckDB store's eight non-derivable tables (`semantic_claims`,
+`claim_links`, `claim_events`, `compile_runs`, `service_meta`, `commits`,
+`knowledge_cards`, `doc_summaries`) into a freshly created SQLite store
+(ADR-020). The source is opened **read-only** and left byte-identical; every
+ported table is verified by re-reading it from the target and comparing
+content hashes (a mismatch fails the migration). Refuses an existing target
+that already has data. Only `observations` and `fingerprints` are left
+behind — they rebuild from source, and the command prints the exact
+re-ingest invocation per migrated service.
+
+```sh
+fathom migrate-store --from <path>.duckdb --to <path>.sqlite
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--from` | (required) | Source DuckDB store path (must end in `.duckdb`) |
+| `--to` | (required) | Target SQLite store path (must end in `.sqlite`; must be absent or empty) |
+
+```sh
+fathom migrate-store --from workspace/db/fleet.duckdb --to workspace/db/fleet.sqlite
+# migrated workspace/db/fleet.duckdb -> workspace/db/fleet.sqlite (source opened read-only, unmodified)
+# table            rows  spot-hash (source==target verified)
+# ...
+```
+
+The full operator sequence (stop daemon → migrate → repoint → restart →
+re-ingest → delete the old `.duckdb`) is the ADR-020 runbook in
+[configuration.md](configuration.md).
+
+---
+
 ### `version`
 
 Print version information.

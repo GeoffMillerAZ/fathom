@@ -284,3 +284,49 @@ fathom providers                              # confirm every lane's auth health
 fathom smoke --profile ci                     # confirm ci actually completes, small $
 fathom compile --service myrepo --profile gov-bedrock --dry-run=false
 ```
+
+## Migrating the store from DuckDB to SQLite (ADR-020 runbook)
+
+One-time, per machine, once this build is deployed. The daemon cannot be
+running during the migration — it holds the DuckDB store open, and
+`migrate-store` opens the source read-only (a held write lock fails the
+open with a message pointing back here).
+
+```sh
+# 1. Stop the daemon (launchd label may differ; see your plist).
+launchctl bootout gui/$(id -u)/com.geoffmilleraz.fathom-http
+
+# 2. Port the non-derivable tables (source is opened read-only and left
+#    byte-identical; every ported table is hash-verified against the target).
+bin/fathom migrate-store \
+  --from workspace/db/fleet.duckdb \
+  --to   workspace/db/fleet.sqlite
+
+# 3. Repoint the daemon at the new store: either [daemon].store in
+#    ~/.fathom/config.toml …
+#      [daemon]
+#      store = "workspace/db/fleet.sqlite"
+#    … or the --store argument in the launchd plist, whichever you use.
+
+# 4. Restart the daemon.
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.geoffmilleraz.fathom-http.plist
+
+# 5. Re-ingest each service to rebuild the derived tables (observations,
+#    fingerprints) — migrate-store printed the exact per-service commands;
+#    with the daemon up, the `ingest` MCP tool per service works too.
+
+# 6. Once everything is green (services listed, symbols resolve, verify
+#    passes), delete the old store — otherwise every store-directory scan
+#    (PlatformStore, gen-platform-manifest) will keep warning about the
+#    same-stem collision until you do.
+rm workspace/db/fleet.duckdb   # plus any stray .duckdb.wal sidecar
+```
+
+**Sibling-repo hooks:** any repo whose post-commit hook refreshes into this
+fathom store path (e.g. agentic-kit's) must be repointed to the new
+`fleet.sqlite` path at the same time, or it will fail (or worse, recreate a
+stale-path store) on its next commit.
+
+**Rollback:** the source `.duckdb` is untouched by the migration — repoint
+the daemon back at it and delete the `.sqlite` (and its `-wal`/`-shm`
+sidecars) to return to the pre-migration state.

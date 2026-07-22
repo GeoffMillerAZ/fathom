@@ -71,4 +71,4 @@ post-commit:
     fathom-refresh:
       run: |
         [ -x bin/fathom ] || exit 0
-        bin/fathom ingest --service fathom --path . --store workspace/db/fleet.duckdb >/dev/null 2>&1 || true
+        bin/fathom ingest --service fathom --path . --store workspace/db/fleet.sqlite >/dev/null 2>&1 || true

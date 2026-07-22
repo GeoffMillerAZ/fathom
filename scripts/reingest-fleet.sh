@@ -22,7 +22,7 @@ set -euo pipefail
 
 FATHOM_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BIN="$FATHOM_REPO/bin/fathom"
-STORE="$FATHOM_REPO/workspace/db/fleet.duckdb"
+STORE="$FATHOM_REPO/workspace/db/fleet.sqlite"
 FLEET_BASE="$(dirname "$FATHOM_REPO")"
 LABEL="com.geoffmilleraz.fathom-http"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"

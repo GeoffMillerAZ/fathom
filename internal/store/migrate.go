@@ -16,19 +16,21 @@ import (
 )
 
 // MigrateTableResult is the per-table outcome of a MigrateNonDerivable run:
-// how many rows crossed over, and a deterministic content hash an operator
-// can eyeball or diff against a second run without hand-comparing rows.
+// how many rows crossed over, and a deterministic content hash. The hash is
+// computed from the SOURCE rows and then verified by re-reading the ported
+// rows back from the TARGET and comparing — a mismatch fails the whole
+// migration, so a printed hash always means "this is what both sides hold".
 type MigrateTableResult struct {
 	Table    string
 	RowCount int
-	SpotHash string // sha256 (hex, first 16 chars) over a deterministic JSON encoding of the rows
+	SpotHash string // sha256 (hex, first 16 chars) over a deterministic JSON encoding of the rows; source==target verified
 }
 
 // MigrateReport is the full outcome of a MigrateNonDerivable run.
 type MigrateReport struct {
 	// Tables holds one entry per non-derivable table, in the fixed order
 	// semantic_claims, claim_links, claim_events, compile_runs, service_meta,
-	// commits (ADR-020's own listed order).
+	// commits, knowledge_cards, doc_summaries.
 	Tables []MigrateTableResult
 	// ServiceIDs is the sorted, distinct set of service IDs touched by any
 	// migrated row.
@@ -37,19 +39,33 @@ type MigrateReport struct {
 	// (from service_meta.path; "" when the service had no service_meta row,
 	// or the row's path was itself empty — e.g. a git-less ingest).
 	ServicePaths map[string]string
+	// OrphanLinksSkipped counts claim_links rows whose claim_id has no claim
+	// in semantic_claims. Such rows carry service_id '' (PutClaims cannot
+	// derive one) and would be unreachable by every ClaimLinks query, so
+	// they are skipped, not ported — loudly, via this count.
+	OrphanLinksSkipped int
 }
 
-// MigrateNonDerivable copies the six non-derivable tables — semantic_claims,
-// claim_links, claim_events, compile_runs, service_meta, commits — from a
-// DuckDB store at fromPath into a freshly created SQLite store at toPath
-// (ADR-020). It does NOT touch observations, fingerprints, knowledge_cards,
-// or doc_summaries: those are re-ingest-derivable, and the caller is expected
-// to print the re-ingest command using report.ServiceIDs / ServicePaths
-// rather than have this function fabricate an ingest run.
+// MigrateNonDerivable copies the eight non-derivable tables —
+// semantic_claims, claim_links, claim_events, compile_runs, service_meta,
+// commits, knowledge_cards, doc_summaries — from a DuckDB store at fromPath
+// into a freshly created SQLite store at toPath (ADR-020). knowledge_cards
+// and doc_summaries are LLM-derived enrichment that a re-ingest does NOT
+// rebuild (enrichment is opt-in and unwired in production; PurgeService
+// deliberately retains cards for the same reason), so treating them as
+// derivable would silently lose them. Only observations and fingerprints
+// are left behind: those genuinely rebuild from source, and the caller
+// prints the exact re-ingest command using report.ServiceIDs/ServicePaths.
+//
+// The source is opened READ-ONLY (DuckDB access_mode=read_only, no schema
+// DDL) and left byte-identical. After writing, every ported table is
+// re-read from the target and its content hash compared against the
+// source's — a mismatch fails the migration rather than printing an
+// unverified hash.
 //
 // Refuses to write into an existing target that already has rows in ANY of
-// its (up to nine) tables — a fresh, empty, or absent target is required;
-// nothing here ever merges into or overwrites populated data.
+// its tables — a fresh, empty, or absent target is required; nothing here
+// ever merges into or overwrites populated data.
 func MigrateNonDerivable(ctx context.Context, fromPath, toPath string) (MigrateReport, error) {
 	if ext := filepath.Ext(fromPath); ext != ".duckdb" {
 		return MigrateReport{}, fmt.Errorf("migrate-store: --from must be a .duckdb store, got %q (ext %q)", fromPath, ext)
@@ -63,12 +79,13 @@ func MigrateNonDerivable(ctx context.Context, fromPath, toPath string) (MigrateR
 		return MigrateReport{}, err
 	}
 	if !empty {
-		return MigrateReport{}, fmt.Errorf("migrate-store: target %q already has data — refusing to overwrite (remove it or pick a fresh path)", toPath)
+		base := filepath.Base(toPath)
+		return MigrateReport{}, fmt.Errorf("migrate-store: target %q already has data — refusing to overwrite (remove it, and any %s-wal/%s-shm siblings, or pick a fresh path)", toPath, base, base)
 	}
 
-	from, err := OpenDuckDB(fromPath)
+	from, err := openDuckDBReadOnly(fromPath)
 	if err != nil {
-		return MigrateReport{}, fmt.Errorf("migrate-store: opening source %q: %w", fromPath, err)
+		return MigrateReport{}, fmt.Errorf("migrate-store: opening source %q read-only: %w (if the fathom daemon is serving this store, stop it before migrating, then restart it on the new store afterwards)", fromPath, err)
 	}
 	defer from.Close()
 
@@ -92,6 +109,23 @@ func MigrateNonDerivable(ctx context.Context, fromPath, toPath string) (MigrateR
 	if err != nil {
 		return MigrateReport{}, fmt.Errorf("migrate-store: reading claim_links: %w", err)
 	}
+	// F4c: skip orphan links (a claim_id with no claim in semantic_claims) —
+	// ported, they would land with service_id '' and be unreachable by every
+	// ClaimLinks query. Filtering happens BEFORE the source hash is taken so
+	// the source/target hash comparison below covers exactly the ported set.
+	claimIDs := make(map[string]struct{}, len(claims))
+	for _, c := range claims {
+		claimIDs[c.ClaimID] = struct{}{}
+	}
+	keptLinks := links[:0]
+	for _, l := range links {
+		if _, ok := claimIDs[l.ClaimID]; ok {
+			keptLinks = append(keptLinks, l)
+		} else {
+			report.OrphanLinksSkipped++
+		}
+	}
+	links = keptLinks
 	if err := to.PutClaims(ctx, claims, links); err != nil {
 		return MigrateReport{}, fmt.Errorf("migrate-store: writing semantic_claims/claim_links: %w", err)
 	}
@@ -166,18 +200,96 @@ func MigrateNonDerivable(ctx context.Context, fromPath, toPath string) (MigrateR
 	}
 	report.Tables = append(report.Tables, MigrateTableResult{Table: "commits", RowCount: len(commits), SpotHash: spotHash(commits)})
 
+	// knowledge_cards (F3: LLM-derived enrichment — re-ingest does NOT
+	// rebuild these; PurgeService deliberately retains them for the same
+	// reason. Losing them here would be silent data loss).
+	cards, err := allKnowledgeCards(ctx, from.db)
+	if err != nil {
+		return MigrateReport{}, fmt.Errorf("migrate-store: reading knowledge_cards: %w", err)
+	}
+	if err := to.PutKnowledgeCards(ctx, cards); err != nil {
+		return MigrateReport{}, fmt.Errorf("migrate-store: writing knowledge_cards: %w", err)
+	}
+	for _, c := range cards {
+		touched[c.ServiceID] = struct{}{}
+	}
+	report.Tables = append(report.Tables, MigrateTableResult{Table: "knowledge_cards", RowCount: len(cards), SpotHash: spotHash(cards)})
+
+	// doc_summaries (F3: same — enrichment, not re-ingest-derivable).
+	sums, err := allDocSummaries(ctx, from.db)
+	if err != nil {
+		return MigrateReport{}, fmt.Errorf("migrate-store: reading doc_summaries: %w", err)
+	}
+	if err := to.PutDocSummaries(ctx, sums); err != nil {
+		return MigrateReport{}, fmt.Errorf("migrate-store: writing doc_summaries: %w", err)
+	}
+	for _, d := range sums {
+		touched[d.ServiceID] = struct{}{}
+	}
+	report.Tables = append(report.Tables, MigrateTableResult{Table: "doc_summaries", RowCount: len(sums), SpotHash: spotHash(sums)})
+
 	report.ServiceIDs = make([]string, 0, len(touched))
 	for svc := range touched {
 		report.ServiceIDs = append(report.ServiceIDs, svc)
 	}
 	sort.Strings(report.ServiceIDs)
 
+	// F4b: verification — re-read every ported table from the TARGET and
+	// compare content hashes against the source-side hashes recorded above.
+	// A printed source-only hash would be verification theater: it proves
+	// what was read, not what landed.
+	srcHash := make(map[string]string, len(report.Tables))
+	for _, tr := range report.Tables {
+		srcHash[tr.Table] = tr.SpotHash
+	}
+	verify := func(table string, rows any, readErr error) error {
+		if readErr != nil {
+			return fmt.Errorf("migrate-store: verification re-read of %s from target: %w", table, readErr)
+		}
+		if h := spotHash(rows); h != srcHash[table] {
+			return fmt.Errorf("migrate-store: VERIFICATION FAILED for %s — source hash %s != target hash %s; the target at %q is suspect, do not use it", table, srcHash[table], h, toPath)
+		}
+		return nil
+	}
+	tgtClaims, rerr := allSemanticClaims(ctx, to.db)
+	if err := verify("semantic_claims", tgtClaims, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtLinks, rerr := allClaimLinks(ctx, to.db)
+	if err := verify("claim_links", tgtLinks, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtEvents, rerr := allClaimEvents(ctx, to.db)
+	if err := verify("claim_events", tgtEvents, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtRuns, rerr := allCompileRuns(ctx, to.db)
+	if err := verify("compile_runs", tgtRuns, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtMetas, rerr := allServiceMeta(ctx, to.db)
+	if err := verify("service_meta", tgtMetas, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtCommits, rerr := allCommits(ctx, to.db)
+	if err := verify("commits", tgtCommits, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtCards, rerr := allKnowledgeCards(ctx, to.db)
+	if err := verify("knowledge_cards", tgtCards, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+	tgtSums, rerr := allDocSummaries(ctx, to.db)
+	if err := verify("doc_summaries", tgtSums, rerr); err != nil {
+		return MigrateReport{}, err
+	}
+
 	return report, nil
 }
 
 // targetIsEmptyOrAbsent reports whether path is safe to migrate into: either
-// it doesn't exist yet, or it exists but every one of its tables (all nine —
-// the six migrated here plus the three derivable ones, in case a stray
+// it doesn't exist yet, or it exists but every one of its tables (all ten —
+// the eight migrated here plus the two derivable ones, in case a stray
 // re-ingest already populated it) has zero rows.
 func targetIsEmptyOrAbsent(path string) (bool, error) {
 	if _, err := os.Stat(path); err != nil {
@@ -344,6 +456,52 @@ ORDER BY service_id
 			return nil, fmt.Errorf("allServiceMeta scan: %w", err)
 		}
 		result = append(result, m)
+	}
+	return result, rows.Err()
+}
+
+func allKnowledgeCards(ctx context.Context, db *sql.DB) ([]KnowledgeCard, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT service_id, symbol, file, summary, tags
+FROM knowledge_cards
+ORDER BY service_id, symbol
+`)
+	if err != nil {
+		return nil, fmt.Errorf("allKnowledgeCards query: %w", err)
+	}
+	defer rows.Close()
+	var result []KnowledgeCard
+	for rows.Next() {
+		var c KnowledgeCard
+		var tagsJSON string
+		if err := rows.Scan(&c.ServiceID, &c.Symbol, &c.File, &c.Summary, &tagsJSON); err != nil {
+			return nil, fmt.Errorf("allKnowledgeCards scan: %w", err)
+		}
+		if err := json.Unmarshal([]byte(tagsJSON), &c.Tags); err != nil {
+			return nil, fmt.Errorf("allKnowledgeCards unmarshal tags: %w", err)
+		}
+		result = append(result, c)
+	}
+	return result, rows.Err()
+}
+
+func allDocSummaries(ctx context.Context, db *sql.DB) ([]DocSummary, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT service_id, source_ref, title, summary
+FROM doc_summaries
+ORDER BY service_id, source_ref
+`)
+	if err != nil {
+		return nil, fmt.Errorf("allDocSummaries query: %w", err)
+	}
+	defer rows.Close()
+	var result []DocSummary
+	for rows.Next() {
+		var d DocSummary
+		if err := rows.Scan(&d.ServiceID, &d.SourceRef, &d.Title, &d.Summary); err != nil {
+			return nil, fmt.Errorf("allDocSummaries scan: %w", err)
+		}
+		result = append(result, d)
 	}
 	return result, rows.Err()
 }
