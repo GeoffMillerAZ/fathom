@@ -163,7 +163,10 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		result := impact.BlastRadius(nodes, p.ChangedFiles)
+		// Typed Go call edges (ADR-021 §3): additive on the transitive-caller
+		// walk — best-effort, a non-Go service contributes nothing.
+		typed, _ := backend.TypedEdges(ctx, p.Service)
+		result := impact.BlastRadiusWithTypedEdges(nodes, p.ChangedFiles, typed)
 		return map[string]any{
 			"symbols": stringsToAny(result.Symbols),
 			"tests":   stringsToAny(result.Tests),
@@ -208,7 +211,10 @@ func registerDiffImpact(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		result := impact.DiffImpact(nodes, p.ChangedFiles)
+		// Typed Go call edges (ADR-021 §3): additive on the transitive-caller
+		// walk — best-effort, a non-Go service contributes nothing.
+		typed, _ := backend.TypedEdges(ctx, p.Service)
+		result := impact.DiffImpactWithTypedEdges(nodes, p.ChangedFiles, typed)
 		return map[string]any{
 			"symbols": stringsToAny(result.Symbols),
 			"tests":   stringsToAny(result.Tests),

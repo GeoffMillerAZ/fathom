@@ -20,8 +20,9 @@ import (
 // Services method required by QueryInterface.
 
 type extendedFakeBackend struct {
-	nodes    []core.SymbolNode
-	services []string
+	nodes      []core.SymbolNode
+	services   []string
+	typedEdges []core.Edge
 }
 
 func (e *extendedFakeBackend) QuerySymbols(_ context.Context, _ core.Query) (core.QueryResult, error) {
@@ -58,6 +59,10 @@ func (e *extendedFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.Co
 	return nil, nil
 }
 
+func (e *extendedFakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return e.typedEdges, nil
+}
+
 // compile-time check.
 var _ mcp.QueryInterface = (*extendedFakeBackend)(nil)
 
@@ -77,6 +82,34 @@ func newExtSrv() *mcp.Server {
 	return mcp.NewServer(&extendedFakeBackend{
 		nodes:    extFixtureNodes(),
 		services: []string{"svc", "other-svc"},
+	})
+}
+
+// dispatchFixtureNodes mirrors the ADR-021 §3 O9 residue shape: RunAdapter
+// dispatches to Complete on two receivers (AdapterA, AdapterB) — an
+// ambiguous method name the syntax-only resolver refuses (no Calls entry at
+// all, matching graph.go:218-240's honesty rule), reachable ONLY through
+// typedEdges.
+func dispatchFixtureNodes() []core.SymbolNode {
+	return []core.SymbolNode{
+		{Service: "svc", Package: "pkg", Name: "RunAdapter", Kind: core.KindGoFunc, FilePath: "pkg/adapter.go", Line: 1},
+		{Service: "svc", Package: "AdapterA", Name: "AdapterA.Complete", Kind: core.KindGoMethod, FilePath: "pkg/adaptera.go", Line: 1},
+		{Service: "svc", Package: "AdapterB", Name: "AdapterB.Complete", Kind: core.KindGoMethod, FilePath: "pkg/adapterb.go", Line: 1},
+	}
+}
+
+func dispatchFixtureTypedEdges() []core.Edge {
+	return []core.Edge{
+		{FromService: "svc", FromSymbol: "svc::pkg.RunAdapter", ToSymbol: "svc::AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
+		{FromService: "svc", FromSymbol: "svc::pkg.RunAdapter", ToSymbol: "svc::AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
+	}
+}
+
+func newDispatchSrv() *mcp.Server {
+	return mcp.NewServer(&extendedFakeBackend{
+		nodes:      dispatchFixtureNodes(),
+		services:   []string{"svc"},
+		typedEdges: dispatchFixtureTypedEdges(),
 	})
 }
 
@@ -199,6 +232,69 @@ func TestSymbolContext_Basic(t *testing.T) {
 	p := extToolPayload(t, resp)
 	if p["callers"] == nil || p["callees"] == nil {
 		t.Fatalf("context missing callers/callees: %v", p)
+	}
+}
+
+// TestSymbolContext_TypedEdges_DispatchLabeled is the CT-6 proof for
+// symbol_context: the typed dispatch fan-out from RunAdapter surfaces as a
+// kind-labeled "typed_edges" block, distinct from (and never mixed into)
+// the existing syntax-only "callers"/"callees" fields.
+func TestSymbolContext_TypedEdges_DispatchLabeled(t *testing.T) {
+	srv := newDispatchSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 222, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "symbol_context",
+			"arguments": map[string]any{"service": "svc", "symbol": "RunAdapter"},
+		},
+	})
+	p := extToolPayload(t, resp)
+
+	// Plain syntax-only callees stay empty: RunAdapter has no Calls entry
+	// at all (the ambiguous-method refusal never even produces a raw string
+	// to point at).
+	if callees, ok := p["callees"].([]any); !ok || len(callees) != 0 {
+		t.Errorf("plain callees = %v, want empty", p["callees"])
+	}
+
+	typedEdges, ok := p["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("typed_edges missing or wrong shape: %v", p)
+	}
+	callees, ok := typedEdges["callees"].([]any)
+	if !ok || len(callees) != 2 {
+		t.Fatalf("typed_edges.callees = %v, want 2 entries", typedEdges["callees"])
+	}
+	seen := map[string]string{}
+	for _, c := range callees {
+		m := c.(map[string]any)
+		seen[m["key"].(string)] = m["kind"].(string)
+	}
+	if seen["svc::AdapterA.AdapterA.Complete"] != "iface-dispatch" || seen["svc::AdapterB.AdapterB.Complete"] != "iface-dispatch" {
+		t.Errorf("typed_edges.callees = %v, want both AdapterA/AdapterB Complete kind=iface-dispatch", seen)
+	}
+}
+
+// TestFindCallers_TypedEdges_DispatchLabeled is the CT-6 proof for
+// find_callers: AdapterA.Complete has no syntax-only caller at all, but a
+// typed dispatch edge from RunAdapter surfaces via "typed_callers".
+func TestFindCallers_TypedEdges_DispatchLabeled(t *testing.T) {
+	srv := newDispatchSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 223, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "find_callers",
+			"arguments": map[string]any{"service": "svc", "symbol": "AdapterA.Complete"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	typedCallers, ok := p["typed_callers"].([]any)
+	if !ok || len(typedCallers) != 1 {
+		t.Fatalf("typed_callers = %v, want 1 entry", p["typed_callers"])
+	}
+	m := typedCallers[0].(map[string]any)
+	if m["key"] != "svc::pkg.RunAdapter" || m["kind"] != "iface-dispatch" {
+		t.Errorf("typed_callers[0] = %v, want key=svc::pkg.RunAdapter kind=iface-dispatch", m)
 	}
 }
 
@@ -458,6 +554,63 @@ func TestServerStats_Basic(t *testing.T) {
 	}
 	if p["request_count"] == nil {
 		t.Fatalf("server_stats.request_count missing: %v", p)
+	}
+	// No service argument: typed_edges must be entirely absent (backward
+	// compatible with the pre-ADR-021-§3 shape).
+	if _, ok := p["typed_edges"]; ok {
+		t.Errorf("server_stats without a service should omit typed_edges, got %v", p["typed_edges"])
+	}
+}
+
+// TestServerStats_TypedEdges is CT-1's "counters in server_stats" proof
+// (ADR-021 §3): passing a service adds a typed_edges block with honest
+// kind counts — the visible signal for whether a store's typed pass has
+// run at all.
+func TestServerStats_TypedEdges(t *testing.T) {
+	srv := newDispatchSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 311, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "server_stats",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	typedEdges, ok := p["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("server_stats.typed_edges missing or wrong shape: %v", p)
+	}
+	if typedEdges["total"].(float64) != 2 {
+		t.Errorf("typed_edges.total = %v, want 2", typedEdges["total"])
+	}
+	if typedEdges["iface_dispatch"].(float64) != 2 {
+		t.Errorf("typed_edges.iface_dispatch = %v, want 2", typedEdges["iface_dispatch"])
+	}
+	if typedEdges["direct"].(float64) != 0 || typedEdges["unresolved"].(float64) != 0 {
+		t.Errorf("typed_edges direct/unresolved = %v/%v, want 0/0", typedEdges["direct"], typedEdges["unresolved"])
+	}
+}
+
+// TestServerStats_TypedEdges_ZeroForUntypedService confirms a service with
+// no typed edges yet (predates ADR-021 §3, or hasn't been re-ingested)
+// reports all-zero counts rather than omitting the block — the honest
+// "the pass hasn't run" signal.
+func TestServerStats_TypedEdges_ZeroForUntypedService(t *testing.T) {
+	srv := newExtSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 312, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "server_stats",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	typedEdges, ok := p["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("server_stats.typed_edges missing or wrong shape: %v", p)
+	}
+	if typedEdges["total"].(float64) != 0 {
+		t.Errorf("typed_edges.total = %v, want 0", typedEdges["total"])
 	}
 }
 

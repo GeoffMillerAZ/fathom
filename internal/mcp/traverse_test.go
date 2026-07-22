@@ -49,6 +49,10 @@ func (b *traverseFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.Co
 	return nil, nil
 }
 
+func (b *traverseFakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return nil, nil
+}
+
 func newTraverseSrv() *mcp.Server {
 	// A→B (calls), B→C (calls)
 	nodes := []core.SymbolNode{

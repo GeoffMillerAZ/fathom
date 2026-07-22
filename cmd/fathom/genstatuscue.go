@@ -134,6 +134,13 @@ func cmdGenStatusCue(args []string, stdout, stderr io.Writer) int {
 	}
 	graph := callgraph.Build(nodes)
 
+	// Typed Go call edges (ADR-021 §3): additive on top of the syntax graph
+	// — best-effort, a non-Go service or a store with no typed edges yet
+	// simply contributes nothing.
+	if typed, typedErr := c.TypedEdges(ctx, *service); typedErr == nil {
+		callgraph.AddTypedEdges(graph, typed)
+	}
+
 	// Contradictions — best-effort; scoped by concern when provided.
 	var contras []core.Contradiction
 	if res, qErr := c.QuerySymbols(ctx, core.Query{
@@ -315,6 +322,18 @@ func (e *cliEvidence) TestReaches(symbol string) []string {
 	return callgraph.TestImpact(e.graph, symbol)
 }
 
+// TestReachesDetail implements verify.DetailedEvidence (ADR-021 §3): a path
+// crossing a typed EdgeIfaceDispatch edge is surfaced distinctly in the
+// verdict detail rather than reading identically to a direct static reach.
+func (e *cliEvidence) TestReachesDetail(symbol string) []verify.ReachDetail {
+	details := callgraph.TestImpactDetail(e.graph, symbol)
+	out := make([]verify.ReachDetail, len(details))
+	for i, d := range details {
+		out[i] = verify.ReachDetail{Key: d.Key, ViaDispatch: d.ViaDispatch, Implementers: d.Implementers}
+	}
+	return out
+}
+
 func (e *cliEvidence) Reachable(from, to string) bool {
 	return callgraph.Reachable(e.graph, from, to)
 }
@@ -328,7 +347,10 @@ func (e *cliEvidence) SpecImplementors(specID string) []string {
 	return e.matrix.Coverage(specID)
 }
 
-var _ verify.Evidence = (*cliEvidence)(nil)
+var (
+	_ verify.Evidence         = (*cliEvidence)(nil)
+	_ verify.DetailedEvidence = (*cliEvidence)(nil)
+)
 
 // renderStatusCUE is exposed for tests that want to verify template output
 // without writing to disk.

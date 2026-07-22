@@ -48,6 +48,10 @@ func (b *historyFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.Com
 	return b.commits, nil
 }
 
+func (b *historyFakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return nil, nil
+}
+
 var _ mcp.QueryInterface = (*historyFakeBackend)(nil)
 
 func historyFixture() []mcp.CommitInfo {

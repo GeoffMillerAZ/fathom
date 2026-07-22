@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -125,7 +126,18 @@ func registerTools(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		return map[string]any{"callers": toNodeDTOs(nodes)}, nil
+		result := map[string]any{"callers": toNodeDTOs(nodes)}
+
+		// Typed Go call edges (ADR-021 §3): kind-labeled callers, including
+		// any reachable ONLY via typed dispatch — never visible in the
+		// syntax-only "callers" list above (an ambiguous method name across
+		// receivers, graph.go:218-240, has no Calls entry at all). Additive
+		// and best-effort: a non-Go service, or one with no typed edges yet,
+		// simply omits this field.
+		if typedCallers := typedCallersFor(ctx, backend, p.Service, p.Symbol); len(typedCallers) > 0 {
+			result["typed_callers"] = typedCallers
+		}
+		return result, nil
 	})
 
 	// find_symbol — locate a symbol definition.
@@ -263,4 +275,32 @@ func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {
 		}
 	}
 	return dtos
+}
+
+// typedCallersFor returns symbol's typed-edge callers (ADR-021 §3), each
+// kind-labeled ("direct" or "iface-dispatch"), as JSON-ready maps —
+// syntax-only edges (Kind == "") are excluded, since those are already
+// covered by the caller's own syntax-based result. Best-effort: any error
+// (unsupported backend, no typed edges yet) yields an empty/nil result, not
+// a tool-level error.
+func typedCallersFor(ctx context.Context, backend QueryInterface, service, symbol string) []any {
+	typed, err := backend.TypedEdges(ctx, service)
+	if err != nil || len(typed) == 0 {
+		return nil
+	}
+	nodes, err := backend.ListAllSymbols(ctx, service)
+	if err != nil || len(nodes) == 0 {
+		return nil
+	}
+	g := callgraph.Build(nodes)
+	callgraph.AddTypedEdges(g, typed)
+	details := callgraph.CallersDetail(g, symbol)
+	var out []any
+	for _, d := range details {
+		if d.Kind == "" {
+			continue
+		}
+		out = append(out, map[string]any{"key": d.Key, "kind": string(d.Kind)})
+	}
+	return out
 }

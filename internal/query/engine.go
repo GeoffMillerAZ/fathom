@@ -248,6 +248,14 @@ func (e *Engine) FindCallers(ctx context.Context, serviceID, symbol string) ([]c
 	return nodes, nil
 }
 
+// TypedEdges returns every typed Go call edge (ADR-021 §3) stored for
+// serviceID — direct, interface-dispatch (one row per implementer), and
+// unresolved. Nil for a non-Go service, or a Go service whose typed pass
+// hasn't run yet.
+func (e *Engine) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {
+	return e.store.TypedEdges(ctx, serviceID)
+}
+
 // FindSymbol returns all SymbolNodes for the given serviceID whose Symbol field
 // matches name exactly, or whose SymbolKey (SourceRef + "." + Symbol) has name
 // as a suffix.

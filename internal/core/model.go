@@ -240,12 +240,48 @@ type SymbolNode struct {
 	Complexity int // cyclomatic complexity (0 = not applicable / not computed)
 }
 
+// EdgeKind classifies HOW a typed call edge was resolved by the Go typed
+// enrichment pass (internal/fusion.EnrichTypedEdges, ADR-021 §3). It is the
+// empty string for edges that predate typed resolution — the ad hoc,
+// syntax-only edges internal/analysis/schemaexport, internal/analysis/
+// archconformance, and internal/mcp's DOT/arch-conformance handlers still
+// build directly from Observation.Calls never set it — so a reader can tell
+// typed (compiler-grade) evidence from raw syntax by checking Kind != "".
+type EdgeKind string
+
+const (
+	// EdgeDirect is a statically resolved call: a plain function call, or a
+	// method call whose receiver's concrete type is known at the call site
+	// (types.Selection resolves to exactly one method).
+	EdgeDirect EdgeKind = "direct"
+	// EdgeIfaceDispatch is one edge to ONE possible implementer of an
+	// interface-typed method call. A single call site with N implementers in
+	// scope emits N such edges (one per implementer), never a single
+	// ambiguous edge — sum the edges sharing a From to get "reached via any
+	// of N" (the honesty upgrade over the old refusal, ADR-021 §3).
+	EdgeIfaceDispatch EdgeKind = "iface-dispatch"
+	// EdgeUnresolved marks a call site the typed pass could not resolve to a
+	// concrete target: a func value, a higher-order call, or any call whose
+	// static type doesn't reduce to a single method-set member. Recorded
+	// explicitly — never silently dropped — so a missing edge always means
+	// "not a call", not "the resolver gave up quietly".
+	EdgeUnresolved EdgeKind = "unresolved"
+)
+
 // Edge is a directed call/reference edge between two symbols.
+//
+// FromSymbol/ToSymbol hold "pkg.Name"-style strings and Kind is "" for the
+// legacy syntax-only producers (schemaexport, archconformance, the mcp
+// ad hoc edges built straight from Observation.Calls). The Go typed pass
+// (internal/fusion.EnrichTypedEdges) populates FromSymbol/ToSymbol with full
+// canonical SymbolKeys ("service::pkg.Name") and Kind; these are the only
+// Edge values the store round-trips (store.PutTypedEdges / TypedEdges).
 type Edge struct {
 	FromService string
 	FromFile    string
 	FromSymbol  string
 	ToSymbol    string
+	Kind        EdgeKind // "" for legacy/syntax-only edges; set for typed edges
 }
 
 // CrossRepoEdge is the atomic unit of cross-repo knowledge (platform graph).

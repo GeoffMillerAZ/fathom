@@ -38,6 +38,7 @@ With fathom:
 2. **Test impact is automatic.** `test_impact` walks the call graph transitively; Claude Code gets an exact test list to run rather than guessing.
 3. **Rename safety is explicit.** `rename_impact` returns every call site as a list; Claude Code can iterate it, edit each site, and confirm the list shrinks to zero.
 4. **Path existence is a boolean gate.** `reachable` lets Claude Code answer "does this change propagate to the payment path?" without speculative reasoning — reducing plan drift.
+5. **Interface-dispatch callers are no longer invisible.** For Go services (ADR-021 §3), `find_callers`/`blast_radius`/`diff_impact`/`symbol_context` additionally consume typed call edges: a caller reachable only through an interface method shared by several concrete implementations — previously an unconditional refusal, since the syntax-only graph can't disambiguate an overloaded method name — now shows up, kind-labeled (`direct` / `iface-dispatch`) in `find_callers`'s `typed_callers` and `symbol_context`'s `typed_edges`, and folded directly into `blast_radius`/`diff_impact`'s symbol/test/file sets.
 
 The result: impact review that would take dozens of file reads and grep calls collapses to 3-5 structured tool calls, and Claude Code can cite specific files and line numbers from the evidence rather than hedging.
 

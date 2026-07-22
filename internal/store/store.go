@@ -97,9 +97,10 @@ type Store interface {
 	PurgeSource(ctx context.Context, serviceID, sourceRef string) error
 
 	// PurgeService removes every content row for serviceID — observations,
-	// fingerprints, and doc summaries. Identity rows (service_meta, commits,
-	// knowledge cards) are retained: the service survives, its content is
-	// rebuilt by the next ingest. Used by the ADR-017 anchor-style self-heal.
+	// fingerprints, doc summaries, typed edges, and typed-edge package
+	// fingerprints. Identity rows (service_meta, commits, knowledge cards)
+	// are retained: the service survives, its content is rebuilt by the next
+	// ingest. Used by the ADR-017 anchor-style self-heal.
 	PurgeService(ctx context.Context, serviceID string) error
 
 	// CountAbsoluteSourceRefs reports how many fingerprint rows for serviceID
@@ -185,6 +186,34 @@ type Store interface {
 	// RecordCompileRun appends a cost/audit ledger row for one compilation
 	// pass.
 	RecordCompileRun(ctx context.Context, run core.CompileRun) error
+
+	// PutTypedEdges replaces all typed call edges (ADR-021 §3,
+	// internal/fusion.EnrichTypedEdges) for (serviceID, pkgPath) —
+	// delete-then-insert, keyed at Go PACKAGE granularity so that reloading
+	// one changed package replaces exactly its own edges, leaving edges from
+	// unchanged (cache-hit) packages untouched. pkgPath is the enrichment
+	// pass's stable package identifier (its Go import path). An empty edges
+	// slice is a valid call and still clears any previously stored edges for
+	// that package (e.g. every call in it was removed).
+	PutTypedEdges(ctx context.Context, serviceID, pkgPath string, edges []core.Edge) error
+
+	// TypedEdges returns every typed call edge stored for serviceID, ordered
+	// by (from_symbol, to_symbol, kind) for determinism. A service with no
+	// typed edges (never enriched, or not a Go service) returns a nil slice
+	// with no error — this is the signal test_reaches and the MCP surfacing
+	// tools use to fall back to syntax-only edges.
+	TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error)
+
+	// TypedEdgePackageFingerprint returns the content-hash fingerprint
+	// recorded by the last successful typed-edge load of (serviceID,
+	// pkgPath) — the per-package cache EnrichTypedEdges consults to skip
+	// reloading unchanged packages. found is false when the package has
+	// never been (successfully) loaded.
+	TypedEdgePackageFingerprint(ctx context.Context, serviceID, pkgPath string) (hash string, found bool, err error)
+
+	// SetTypedEdgePackageFingerprint records or replaces the content-hash
+	// fingerprint for (serviceID, pkgPath).
+	SetTypedEdgePackageFingerprint(ctx context.Context, serviceID, pkgPath, hash string) error
 
 	// CompileRuns returns compile runs for serviceID, optionally filtered by
 	// layer (layer "" returns all layers), newest-first by RanAt then run_id.

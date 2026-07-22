@@ -2,6 +2,7 @@ package mcp_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -10,10 +11,15 @@ import (
 
 // verifyFakeBackend is a QueryInterface fake with a small fixture: a verified,
 // tested symbol (DoWork), an untested one (Untested), an entrypoint (Router)
-// that reaches DoWork, and a contradicted-but-tested symbol (Conflicted).
+// that reaches DoWork, a contradicted-but-tested symbol (Conflicted), and the
+// ADR-021 §3 O9 residue shape: RunAdapter dispatches to Complete on two
+// receivers (AdapterA, AdapterB) — an ambiguous method name the syntax-only
+// resolver refuses (no Calls edge is even attempted here), reachable ONLY
+// through typedEdges.
 type verifyFakeBackend struct {
-	nodes   []core.SymbolNode
-	contras []core.Contradiction
+	nodes      []core.SymbolNode
+	contras    []core.Contradiction
+	typedEdges []core.Edge
 }
 
 func newVerifyBackend() *verifyFakeBackend {
@@ -25,12 +31,20 @@ func newVerifyBackend() *verifyFakeBackend {
 			{Service: "svc", Package: "work", Name: "Untested", Kind: core.KindGoFunc, FilePath: "work/untested.go", Line: 1, Tier: core.TierVerified},
 			{Service: "svc", Package: "work", Name: "Conflicted", Kind: core.KindGoFunc, FilePath: "work/c.go", Line: 1, Tier: core.TierVerified},
 			{Service: "svc", Package: "work", Name: "TestConflicted", Kind: core.KindGoFunc, FilePath: "work/c_test.go", Line: 1, Calls: []string{"Conflicted"}, Tier: core.TierVerified},
+			{Service: "svc", Package: "work", Name: "RunAdapter", Kind: core.KindGoFunc, FilePath: "work/adapter.go", Line: 1, Tier: core.TierVerified},
+			{Service: "svc", Package: "work", Name: "TestRunAdapter", Kind: core.KindGoFunc, FilePath: "work/adapter_test.go", Line: 1, Calls: []string{"RunAdapter"}, Tier: core.TierVerified},
+			{Service: "svc", Package: "AdapterA", Name: "AdapterA.Complete", Kind: core.KindGoMethod, FilePath: "work/adaptera.go", Line: 1, Tier: core.TierVerified},
+			{Service: "svc", Package: "AdapterB", Name: "AdapterB.Complete", Kind: core.KindGoMethod, FilePath: "work/adapterb.go", Line: 1, Tier: core.TierVerified},
 		},
 		contras: []core.Contradiction{{
 			Symbol: "Conflicted",
 			A:      core.Observation{SourceRef: "work/c.go"},
 			B:      core.Observation{SourceRef: "docs/c.md"},
 		}},
+		typedEdges: []core.Edge{
+			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work.RunAdapter", ToSymbol: "svc::AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
+			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work.RunAdapter", ToSymbol: "svc::AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
+		},
 	}
 }
 
@@ -70,6 +84,10 @@ func (f *verifyFakeBackend) ServiceMeta(_ context.Context, _ string) (string, st
 
 func (f *verifyFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo, error) {
 	return nil, nil
+}
+
+func (f *verifyFakeBackend) TypedEdges(_ context.Context, _ string) ([]core.Edge, error) {
+	return f.typedEdges, nil
 }
 
 func TestVerifyPlan_Tool(t *testing.T) {
@@ -154,5 +172,59 @@ func TestVerifyPlan_Tool(t *testing.T) {
 	summary := p["summary"].(map[string]any)
 	if summary["total"].(float64) != 7 {
 		t.Errorf("summary.total = %v, want 7", summary["total"])
+	}
+}
+
+// TestVerifyPlan_Tool_TypedEdgeDispatch is the CT-4 residue-flip proof
+// (ADR-021 §3), exercised through the real verify_plan MCP tool end to end
+// (not just the internal/verify unit test): a claim on AdapterA.Complete —
+// reachable ONLY via a typed interface-dispatch edge, never via the
+// syntax-only graph (RunAdapter has no Calls entry naming "Complete" at
+// all, mirroring the ambiguous-method-name refusal graph.go:218-240 always
+// gave) — now verifies Pass, with the dispatch modality named in the detail.
+func TestVerifyPlan_Tool_TypedEdgeDispatch(t *testing.T) {
+	srv := mcp.NewServer(newVerifyBackend())
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3002, Method: "tools/call",
+		Params: map[string]any{
+			"name": "verify_plan",
+			"arguments": map[string]any{
+				"service": "svc",
+				"tasks": []any{
+					map[string]any{"id": "T-1", "title": "adapter residue", "symbol": "AdapterA.Complete", "claimed": true},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	tasks := p["tasks"].([]any)
+	if len(tasks) != 1 {
+		t.Fatalf("tasks = %d, want 1", len(tasks))
+	}
+	tm := tasks[0].(map[string]any)
+	if got := tm["status"].(string); got != "pass" {
+		t.Fatalf("status = %q, want pass: %+v", got, tm)
+	}
+	if got := tm["label"].(string); got != "verified" {
+		t.Errorf("label = %q, want verified", got)
+	}
+	var detail string
+	for _, ci := range tm["criteria"].([]any) {
+		c := ci.(map[string]any)
+		if c["name"] == "test_reaches" {
+			detail = c["detail"].(string)
+		}
+	}
+	if detail == "" {
+		t.Fatal("no test_reaches criterion in output")
+	}
+	if !strings.Contains(detail, "reached via interface dispatch") {
+		t.Errorf("test_reaches detail = %q, want it to mention interface dispatch", detail)
+	}
+	if !strings.Contains(detail, "2 implementer") {
+		t.Errorf("test_reaches detail = %q, want it to mention 2 implementers", detail)
+	}
+	if !strings.Contains(detail, "TestRunAdapter") {
+		t.Errorf("test_reaches detail = %q, want it to name the reaching test", detail)
 	}
 }

@@ -57,6 +57,11 @@ type QueryInterface interface {
 	// ListCommits returns commit history for serviceID newest-first.
 	// Implementations that do not support commits may return nil, nil.
 	ListCommits(ctx context.Context, serviceID string) ([]CommitInfo, error)
+	// TypedEdges returns every typed Go call edge (ADR-021 §3) stored for
+	// serviceID — direct, interface-dispatch (one row per implementer), and
+	// unresolved. Implementations that do not support typed edges (or a
+	// service with none yet) return nil, nil.
+	TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error)
 }
 
 // rpcRequest is a minimal representation of a JSON-RPC 2.0 request. The id

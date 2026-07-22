@@ -573,6 +573,10 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Extracted = len(pending)
 	report.Symbols = symbols
 
+	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
+	// never blocks ingest. See internal/fusion/typedcalls.go.
+	p.enrichTypedEdges(ctx, svc, refs)
+
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
 		return report, err

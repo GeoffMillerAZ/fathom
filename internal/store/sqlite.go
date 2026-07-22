@@ -210,6 +210,31 @@ CREATE TABLE IF NOT EXISTS claim_events (
     event_at BIGINT NOT NULL DEFAULT 0
 );
 
+-- Typed call edges (ADR-021 §3, internal/fusion.EnrichTypedEdges). Rows are
+-- replaced at PACKAGE granularity (pkg_path), never per-file — the typed
+-- pass's cache unit is a whole go/packages load, not a single source file.
+CREATE TABLE IF NOT EXISTS typed_edges (
+    service_id   TEXT NOT NULL,
+    pkg_path     TEXT NOT NULL DEFAULT '',
+    from_service TEXT NOT NULL DEFAULT '',
+    from_file    TEXT NOT NULL DEFAULT '',
+    from_symbol  TEXT NOT NULL DEFAULT '',
+    to_symbol    TEXT NOT NULL DEFAULT '',
+    kind         TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_typed_edges_service_id
+    ON typed_edges (service_id);
+
+-- Per-package content-hash cache: skip reloading a package via go/packages
+-- when its file-set hash is unchanged since the last successful load.
+CREATE TABLE IF NOT EXISTS typed_edge_fingerprints (
+    service_id   TEXT NOT NULL,
+    pkg_path     TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    PRIMARY KEY (service_id, pkg_path)
+);
+
 -- Every observations query filters on service_id (usually with concern_id
 -- or a symbol filter on top); without an index each one is a full table
 -- scan over the store's largest table. Cheap to create at birth, a
@@ -356,13 +381,16 @@ DELETE FROM observations WHERE service_id = ? AND source_ref = ?
 }
 
 // PurgeService removes all content rows (observations, fingerprints, doc
-// summaries) for serviceID, keeping identity rows (service_meta, commits,
-// knowledge cards). See the Store interface for the ADR-017 self-heal use.
+// summaries, typed edges, typed-edge fingerprints) for serviceID, keeping
+// identity rows (service_meta, commits, knowledge cards). See the Store
+// interface for the ADR-017 self-heal use.
 func (s *SQLiteStore) PurgeService(ctx context.Context, serviceID string) error {
 	for _, q := range []string{
 		`DELETE FROM observations WHERE service_id = ?`,
 		`DELETE FROM fingerprints WHERE service_id = ?`,
 		`DELETE FROM doc_summaries WHERE service_id = ?`,
+		`DELETE FROM typed_edges WHERE service_id = ?`,
+		`DELETE FROM typed_edge_fingerprints WHERE service_id = ?`,
 	} {
 		if _, err := s.db.ExecContext(ctx, q, serviceID); err != nil {
 			return fmt.Errorf("PurgeService: %w", err)
@@ -966,6 +994,105 @@ ORDER BY ran_at DESC, run_id
 		result = append(result, r)
 	}
 	return result, rows.Err()
+}
+
+// PutTypedEdges replaces all typed call edges for (serviceID, pkgPath) —
+// delete-then-insert, keyed at package granularity (see the Store interface
+// doc comment).
+func (s *SQLiteStore) PutTypedEdges(ctx context.Context, serviceID, pkgPath string, edges []core.Edge) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("PutTypedEdges begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.ExecContext(ctx,
+		`DELETE FROM typed_edges WHERE service_id = ? AND pkg_path = ?`,
+		serviceID, pkgPath); err != nil {
+		return fmt.Errorf("PutTypedEdges delete: %w", err)
+	}
+
+	if len(edges) > 0 {
+		stmt, err := tx.PrepareContext(ctx, `
+INSERT INTO typed_edges
+    (service_id, pkg_path, from_service, from_file, from_symbol, to_symbol, kind)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`)
+		if err != nil {
+			return fmt.Errorf("PutTypedEdges prepare: %w", err)
+		}
+		defer stmt.Close()
+		for _, e := range edges {
+			if _, err := stmt.ExecContext(ctx, serviceID, pkgPath,
+				e.FromService, e.FromFile, e.FromSymbol, e.ToSymbol, string(e.Kind)); err != nil {
+				return fmt.Errorf("PutTypedEdges exec: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("PutTypedEdges commit: %w", err)
+	}
+	return nil
+}
+
+// TypedEdges returns every typed call edge stored for serviceID, ordered by
+// (from_symbol, to_symbol, kind).
+func (s *SQLiteStore) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT from_service, from_file, from_symbol, to_symbol, kind
+FROM typed_edges
+WHERE service_id = ?
+ORDER BY from_symbol, to_symbol, kind
+`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("TypedEdges query: %w", err)
+	}
+	defer rows.Close()
+
+	var result []core.Edge
+	for rows.Next() {
+		var e core.Edge
+		var kind string
+		if err := rows.Scan(&e.FromService, &e.FromFile, &e.FromSymbol, &e.ToSymbol, &kind); err != nil {
+			return nil, fmt.Errorf("TypedEdges scan: %w", err)
+		}
+		e.Kind = core.EdgeKind(kind)
+		result = append(result, e)
+	}
+	return result, rows.Err()
+}
+
+// TypedEdgePackageFingerprint returns the cached content-hash for
+// (serviceID, pkgPath). found is false when the package has never been
+// loaded.
+func (s *SQLiteStore) TypedEdgePackageFingerprint(ctx context.Context, serviceID, pkgPath string) (string, bool, error) {
+	var hash string
+	err := s.db.QueryRowContext(ctx, `
+SELECT content_hash FROM typed_edge_fingerprints
+WHERE service_id = ? AND pkg_path = ?
+`, serviceID, pkgPath).Scan(&hash)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("TypedEdgePackageFingerprint query: %w", err)
+	}
+	return hash, true, nil
+}
+
+// SetTypedEdgePackageFingerprint records or replaces the content-hash cache
+// entry for (serviceID, pkgPath).
+func (s *SQLiteStore) SetTypedEdgePackageFingerprint(ctx context.Context, serviceID, pkgPath, hash string) error {
+	_, err := s.db.ExecContext(ctx, `
+INSERT INTO typed_edge_fingerprints (service_id, pkg_path, content_hash)
+VALUES (?, ?, ?)
+ON CONFLICT (service_id, pkg_path) DO UPDATE SET content_hash = excluded.content_hash
+`, serviceID, pkgPath, hash)
+	if err != nil {
+		return fmt.Errorf("SetTypedEdgePackageFingerprint: %w", err)
+	}
+	return nil
 }
 
 // Close releases the underlying database connection pool.

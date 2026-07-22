@@ -124,6 +124,11 @@ func (a *autoRefreshBackend) Sources(ctx context.Context, service string) ([]cor
 	return a.QueryInterface.Sources(ctx, service)
 }
 
+func (a *autoRefreshBackend) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {
+	a.ensure(ctx, serviceID)
+	return a.QueryInterface.TypedEdges(ctx, serviceID)
+}
+
 // ─── forwarded optional capabilities ─────────────────────────────────────────
 //
 // Optional-capability interfaces (semantic tools, claims summary) are detected

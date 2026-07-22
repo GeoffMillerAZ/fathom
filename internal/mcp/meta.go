@@ -40,7 +40,7 @@ func currentGitHead(path string) string {
 // registerMeta wires meta-tools, prompts, and resources into s.
 func registerMeta(s *Server, backend QueryInterface) {
 	registerCapabilities(s)
-	registerServerStats(s)
+	registerServerStats(s, backend)
 	registerStalenessReport(s, backend)
 	registerListSources(s, backend)
 	registerPromptsHandlers(s)
@@ -75,22 +75,60 @@ func registerCapabilities(s *Server) {
 
 // ─── server_stats ─────────────────────────────────────────────────────────────
 
-func registerServerStats(s *Server) {
+func registerServerStats(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
-		Description: "Return server uptime and total request count.",
+		Description: "Return server uptime and total request count. Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
 		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Optional service / repo identifier — adds typed_edges counts for it"},
+			},
 		},
 		group: GroupShared,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		uptime := time.Since(s.startTime)
-		return map[string]any{
+		result := map[string]any{
 			"uptime_seconds": uptime.Seconds(),
 			"request_count":  s.totalRequests(),
 			"started_at":     s.startTime.UTC().Format(time.RFC3339),
-		}, nil
+		}
+
+		var p struct {
+			Service string `json:"service"`
+		}
+		_ = json.Unmarshal(args, &p) // best-effort: absent/invalid args just skip the service block
+
+		// Typed Go call-edge counters (ADR-021 §3): a Go service whose typed
+		// pass never ran (predates ADR-021 §3, or hasn't been re-ingested
+		// since) reports all-zero counts here — the visible signal ExtractorEpoch
+		// intentionally does NOT force (typed edges are new observations, not
+		// a Calls-semantics change, see docs/plans/callgraph-types.md).
+		if p.Service != "" && backend != nil {
+			edges, err := backend.TypedEdges(ctx, p.Service)
+			if err == nil {
+				counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
+				for _, e := range edges {
+					switch e.Kind {
+					case "direct":
+						counts["direct"]++
+					case "iface-dispatch":
+						counts["iface_dispatch"]++
+					case "unresolved":
+						counts["unresolved"]++
+					}
+				}
+				result["typed_edges"] = map[string]any{
+					"service":        p.Service,
+					"total":          len(edges),
+					"direct":         counts["direct"],
+					"iface_dispatch": counts["iface_dispatch"],
+					"unresolved":     counts["unresolved"],
+				}
+			}
+		}
+
+		return result, nil
 	})
 }
 
