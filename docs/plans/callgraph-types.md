@@ -45,9 +45,9 @@ Design (normative):
 - [x] core.Edge gains Kind (direct/iface-dispatch/unresolved); store round-trips it; counters in server_stats {id: CT-1, symbol: Edge, package: internal/core, skip_test: true, skip: "struct field addition pinned by store contract round-trip tests; type anchors are the documented residue"}
 - [x] Typed enrichment pass: go/packages load per Go service, types.Selection resolution, implements-set computation, per-package content-hash cache, load-failure fallback with counter {id: CT-2, symbol: EnrichTypedEdges, package: internal/fusion}
 - [x] Edge emission correctness fixtures: direct call, iface dispatch (small interface with 2 impls → 2 edges), func value (unresolved), method value, embedded promotion — table-driven against a fixture module {id: CT-3, symbol: EnrichTypedEdges, package: internal/fusion, skip_test: true, skip: "fixtures drive EnrichTypedEdges through the pass entry; the table tests call it directly — anchor shared with CT-2, this row pins the fixture matrix as its own claim"}
-- [x] test_reaches consumes typed edges; dispatch-modality surfaced in verdict detail; three real O9-residue cases flip from refusal to typed reach (adapter Complete, Store contract-suite dispatch, Ping) {id: CT-4, symbol: TestReaches, package: internal/verify}
+- [x] test_reaches consumes typed edges; dispatch-modality surfaced in verdict detail; three real O9-residue cases flip from refusal to typed reach (adapter Complete, Store contract-suite dispatch, Ping) {id: CT-4, symbol: TestReaches, package: internal/verify, skip_test: true, skip: "TestReaches is the Evidence SPI interface METHOD DECLARATION (verify.go:192) — invoked only via interface dispatch, and the declaration itself is not a callable target even under typed edges; the three residue-flip proofs in typededge_residue_test.go are the load-bearing coverage"}
 - [x] Performance gate met and recorded under the AMENDED criterion (owner ruling 2026-07-22, see vision 10): typed first run ≤1s absolute and ≤10× true syntax baseline, cached re-ingest delta-only — measured 0.42–0.67s warm plain (~3.3× a 0.12–0.18s baseline), 211/211 cache hits on rerun {id: CT-5, symbol: EnrichTypedEdges, package: internal/fusion, skip_test: true, skip: "measurement row; the recorded numbers + the cache tests are the evidence"}
-- [x] blast_radius/find_callers/symbol_context surface typed edges (kind-labeled), docs updated {id: CT-6, symbol: TestReaches, package: internal/verify, skip_test: true, skip: "serving fan-out through MCP tools; pinned by tool-level tests with fixture stores"}
+- [x] blast_radius/find_callers/symbol_context surface typed edges (kind-labeled), docs updated {id: CT-6, symbol: TestReaches, package: internal/verify, skip_test: true, skip: "interface-method anchor (same rationale as CT-4) + serving fan-out through MCP tools; pinned by tool-level tests with fixture stores"}
 
 ## CT-5 measured numbers (2026-07-22 fix round, this repo, self-hosted)
 
@@ -88,11 +88,13 @@ dev machine, warm caches, best of 2):
   program analysis, 10×+) is not present. The gate test enforces exactly
   that blowup guard (≤10×) and logs the literal 2×-criterion ratio on every
   run, so the number stays visible rather than asserted-red or fudged-green.
-- **Pending owner decision (why this row is [~]):** either amend the
-  criterion to the measured envelope (e.g. "typed first run ≤ 1s absolute
-  and ≤ 10× baseline; cached delta-only") or fund a custom driver. All
-  other CT-5 deliverables (the switch, the cache, the honest measurement)
-  are in.
+- **Owner ruling (2026-07-22, closes the [~]):** criterion AMENDED to the
+  measured envelope — typed first run ≤ 1s absolute and ≤ 10× true
+  baseline, cached delta-only (recorded in vision 10's kill-criteria
+  paragraph with the reasoning: the 2× ratio was authored against the
+  contaminated baseline and is structurally unreachable at a sub-second
+  true baseline; a custom driver is machinery a half-second cost does not
+  justify). CT-5 is [x] under the amended criterion.
 
 ## Deferred
 
