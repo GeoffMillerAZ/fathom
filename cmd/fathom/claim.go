@@ -58,7 +58,7 @@ func printClaimUsage(w io.Writer) {
 // claim status (only appends the event).
 func cmdClaimVerdict(args []string, stdout, stderr io.Writer, verdict string, newStatus core.ClaimStatus) int {
 	fs := newFlagSet("claim "+verdict, stderr)
-	storePath := fs.String("store", "", "path to the DuckDB store (required)")
+	storePath := fs.String("store", "", "path to the store, .duckdb or .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
 	claimID := fs.String("claim", "", "claim ID (required)")
 	note := fs.String("note", "", "verdict rationale (required)")

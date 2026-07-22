@@ -22,29 +22,38 @@ type DuckStore struct {
 	db *sql.DB
 }
 
-// Open opens (or creates) a DuckDB database at path. Pass "" for an in-memory
-// database. The schema is created if it does not already exist.
-func Open(path string) (*DuckStore, error) {
+// OpenDuckDB opens (or creates) a DuckDB database at path. Pass "" for an
+// in-memory database. The schema is created if it does not already exist.
+//
+// Prefer store.Open (or store.BackendForPath) for callers that should honor
+// the ADR-020 extension dispatch; call OpenDuckDB directly only when the
+// DuckDB backend specifically is required (e.g. migrate-store's source side,
+// or this backend's own contract tests).
+func OpenDuckDB(path string) (*DuckStore, error) {
 	// Ensure the parent directory exists (e.g. the default workspace/db/);
 	// DuckDB cannot create a file in a non-existent directory. "" = in-memory.
 	if path != "" {
 		if dir := filepath.Dir(path); dir != "" && dir != "." {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, fmt.Errorf("store.Open mkdir %q: %w", dir, err)
+				return nil, fmt.Errorf("store.OpenDuckDB mkdir %q: %w", dir, err)
 			}
 		}
 	}
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
-		return nil, fmt.Errorf("store.Open: %w", err)
+		return nil, fmt.Errorf("store.OpenDuckDB: %w", err)
 	}
-	// Single writer prevents concurrent-write conflicts in DuckDB.
+	// Single writer prevents concurrent-write conflicts in DuckDB. This is a
+	// DuckDB-specific serialization requirement — SQLiteStore deliberately
+	// does NOT carry it over (ADR-020): SQLite's own single-writer lock
+	// already serialises writes, and capping its pool would throttle the
+	// concurrent readers that are the whole point of the swap.
 	db.SetMaxOpenConns(1)
 
 	s := &DuckStore{db: db}
 	if err := s.createSchema(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("store.Open schema: %w", err)
+		return nil, fmt.Errorf("store.OpenDuckDB schema: %w", err)
 	}
 	return s, nil
 }

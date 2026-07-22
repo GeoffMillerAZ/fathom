@@ -1,10 +1,21 @@
 # Why DuckDB?
 
-Fathom uses **DuckDB** (`github.com/marcboeker/go-duckdb/v2`) as its storage engine.
-This page explains the reasoning for engineers who wonder why an embedded analytical
-database is the right fit, and what the CGO trade-off means in practice.
+> **Superseded (ADR-020, 2026-07-22).** The default store backend is now pure-Go SQLite
+> in WAL mode — cross-process concurrent readers beside a live writer outweighed the
+> columnar-scan advantage this page describes, once the daemon/CLI wedge cost of
+> DuckDB's single-writer lock was counted honestly. DuckDB stays compiled in for this
+> migration slice (`migrate-store` needs it as the source backend) and is removed once
+> the operator's fleet store has migrated (ADR-020's SS-8, tracked in
+> `docs/plans/store-sqlite.md`). This page is kept as the historical rationale for why
+> DuckDB was chosen in the first place — read it as "why DuckDB, then", not current
+> guidance on which backend to pick.
 
-See [ADR-003](../ADR.md) for the formal decision record.
+Fathom used **DuckDB** (`github.com/marcboeker/go-duckdb/v2`) as its storage engine.
+This page explains the reasoning for engineers who wonder why an embedded analytical
+database was the right fit, and what the CGO trade-off meant in practice.
+
+See [ADR-003](../ADR.md) for the original decision record and [ADR-020](../ADR.md) for
+the reversal.
 
 ---
 

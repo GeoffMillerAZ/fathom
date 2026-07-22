@@ -5,6 +5,66 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — pure-Go SQLite (WAL) store backend replaces DuckDB as the default (ADR-020, docs/plans/store-sqlite.md)
+- **`internal/store/sqlite.go`**: `SQLiteStore` (`modernc.org/sqlite`, pure Go)
+  implements the full 26-method `Store` interface with a fresh, final-column
+  schema (no DuckDB-style `ALTER TABLE IF NOT EXISTS` migration cruft — every
+  SQLite store is created with the final columns from day one). Per-connection
+  DSN pragmas (`journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`)
+  apply to every physical connection the driver opens, not just the first —
+  verified live by `TestSQLite_WALActuallyEngages` (asserts `PRAGMA
+  journal_mode` really reports `"wal"`, not just "no error"). The read pool is
+  deliberately left uncapped — DuckStore's `SetMaxOpenConns(1)` write-
+  serialization is DuckDB-specific and does NOT carry over; SQLite's own
+  single-writer lock already serializes writes.
+- **Cross-process concurrency proof** (`TestSQLite_ReaderDuringWriter`): two
+  independent `*sql.DB` handles against the same on-disk file — the honest
+  in-process approximation of two OS processes — prove a reader completes a
+  `SELECT` while a separate connection holds an open, uncommitted write
+  transaction. This is the property DuckDB's cross-process single-writer lock
+  never gave fathom (daemon writes forced CLI `ingest`/`claim`/`report` to fail
+  with a lock error) and the reason for the swap.
+- **`store.BackendForPath(path)`** dispatches `.duckdb` → `DuckStore`,
+  `.sqlite`/`.db` → `SQLiteStore`, replacing four independent `.duckdb`
+  hardcodes (`store.Open`, `PlatformStore.load`, `gen-platform-manifest`,
+  `platform-ingest`). `PlatformStore` now loads a directory of mixed-backend
+  store files (proven by `TestOpenPlatform_MixedBackends`) — a fleet mid-
+  migration, one service moved to SQLite at a time, loads correctly
+  throughout.
+- **`fathom migrate-store --from X.duckdb --to Y.sqlite`** ports the six
+  non-derivable tables (`semantic_claims`, `claim_links`, `claim_events`,
+  `compile_runs`, `service_meta`, `commits`) store-direct into a freshly
+  created SQLite store, printing a per-table row count + deterministic
+  content spot-hash and the exact re-ingest command for the derived remainder
+  (`observations`, `fingerprints`, `knowledge_cards`, `doc_summaries`).
+  Refuses to write into an existing target that already has rows in any of
+  its (up to nine) tables; validates `--from` ends in `.duckdb` and `--to`
+  ends in `.sqlite` before touching either file.
+- **Doc-comment truth fix**: `Store.PutObservations`'s comment implied
+  DB-level dedup/upsert ("must not duplicate rows on repeated calls"). Neither
+  backend has ever done this — it is a bare `INSERT`/append; the
+  purge-then-insert replace semantics that make re-ingest idempotent are
+  enforced entirely by the caller (`internal/fusion` calls `PurgeSource`
+  immediately before `PutObservations` on every changed file). The comment now
+  states the real contract.
+- **Defaults flip to SQLite**: the CLI `--store` flag default across
+  `ingest`/`query`/`inspect`/`gen-claude-md`/`gen-status-cue`/`ingest-diff`/
+  `watch`/`platform-callers` moves from `workspace/db/fathom.duckdb` to
+  `workspace/db/fathom.sqlite`; `platform-ingest` now writes
+  `<service>.sqlite` per service; `fathom init`'s starter `config.toml`
+  scaffold and daemon-down manual instructions follow suit. `docs/
+  configuration.md`, `docs/architecture.md`, `docs/usage.md`, `docs/
+  claude-code-integration.md`, `docs/distribution.md`, and `docs/why-duckdb.md`
+  (marked superseded, kept as historical rationale) updated accordingly.
+  DuckDB stays compiled in for this slice — `migrate-store`'s source side
+  needs it — removed once the operator's fleet store has migrated (SS-8,
+  deferred, tracked in `docs/plans/store-sqlite.md`).
+- Added dependency: `modernc.org/sqlite v1.52.0` (pure Go; pin matches
+  throughline's known-good version). `go.mod`/`go.sum` updated; the
+  `third_party/agentic-kit` cold-clone property (`GOWORK=off go build ./...`)
+  and `task vendor-check` are unaffected (the kit mirror itself didn't
+  change).
+
 ### Added — build fathom without agentic-kit access (ADR-019, docs/distribution.md)
 - **`third_party/agentic-kit/`** is a committed, full mirror of the private
   `github.com/geoffmilleraz/agentic-kit` tree at exactly the commit

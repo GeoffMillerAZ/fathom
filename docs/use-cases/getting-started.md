@@ -16,12 +16,12 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 
 # 2. Index your repo
 ./bin/fathom ingest --service my-service --path . \
-  --store workspace/db/fleet.duckdb
+  --store workspace/db/fleet.sqlite
 
 # 3. Register with Claude Code (--scope user = all repos + subagents)
 claude mcp add --scope user fathom -- \
   /abs/path/bin/fathom serve-mcp \
-  --store /abs/path/workspace/db/fleet.duckdb
+  --store /abs/path/workspace/db/fleet.sqlite
 
 # 4. In Claude Code: set a profile, then query
 # (MCP tool calls — see Worked example below)
@@ -118,7 +118,7 @@ Matched directories are pruned from the walk; matched files are skipped. Exclude
 ./bin/fathom ingest \
   --service my-service \
   --path . \
-  --store workspace/db/fleet.duckdb
+  --store workspace/db/fleet.sqlite
 ```
 
 Output:
@@ -139,7 +139,7 @@ for svc in auth-service payment-service order-service; do
   ./bin/fathom ingest \
     --service "$svc" \
     --path "../$svc" \
-    --store workspace/db/fleet.duckdb
+    --store workspace/db/fleet.sqlite
 done
 ```
 
@@ -162,7 +162,7 @@ Use absolute paths — Claude Code launches the process from your home directory
 ```sh
 claude mcp add --scope user fathom -- \
   /abs/path/to/bin/fathom serve-mcp \
-  --store /abs/path/to/workspace/db/fleet.duckdb
+  --store /abs/path/to/workspace/db/fleet.sqlite
 ```
 
 `--scope user` makes this MCP server available in every Claude Code session and to all subagents spawned within those sessions, regardless of which repo is open.
@@ -177,7 +177,7 @@ Equivalent JSON (in `~/.claude/claude_desktop_config.json` or equivalent):
       "args": [
         "serve-mcp",
         "--store",
-        "/abs/path/to/workspace/db/fleet.duckdb"
+        "/abs/path/to/workspace/db/fleet.sqlite"
       ]
     }
   }
@@ -376,7 +376,7 @@ For AI agents that work better with a pre-loaded symbol reference rather than li
 ```sh
 ./bin/fathom gen-claude-md \
   --service my-service \
-  --store workspace/db/fleet.duckdb \
+  --store workspace/db/fleet.sqlite \
   --output workspace/artifacts/CLAUDE.md
 ```
 
@@ -388,9 +388,9 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 
 - **Absolute paths everywhere.** The `claude mcp add` command and the JSON config both require absolute paths — Claude Code launches the binary from the home directory, not the repo root.
 - **`--scope user` is recommended** over `--scope project`. User scope means subagents in any repo see the fathom tools; project scope limits it to one repo's sessions.
-- **One store, many services.** A single `fleet.duckdb` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.duckdb` files).
-- **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so DuckDB files and generated artifacts are never committed.
-- **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required for DuckDB's CGO build on macOS. On Linux this env var is ignored.
+- **One store, many services.** A single `fleet.sqlite` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.sqlite` files).
+- **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so store files and generated artifacts are never committed.
+- **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required this migration slice (ADR-020) because DuckDB's CGO build still compiles in alongside the SQLite default — needed as `migrate-store`'s source backend until DuckDB is removed (SS-8). On Linux this env var is ignored.
 - **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, `contradiction_scan`, and `propagate_concern` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
 - **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use fathom before Grep/Read," or an honest signal when the index doesn't cover the repo.
 

@@ -26,7 +26,7 @@ storage rationale; [mcp-tools.md](mcp-tools.md) for the MCP surface reference.
 │  3-pass: filter → parallel fetch → deterministic post-fetch       │
 │  hash-gate · budget-gate · lazy mode · parallel extraction        │
 └───────────────────────────┬───────────────────────────────────────┘
-                            │ []Observation (DuckDB)
+                            │ []Observation (store: SQLite default, DuckDB migration-era)
                             ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │  Layer 3 — Knowledge Query Layer                                  │
@@ -231,19 +231,31 @@ claims about the same symbol, using agentic-kit evidence semantics.
 
 ---
 
-## DuckDB store (ADR-003)
+## Store (ADR-003, ADR-020)
 
-`internal/store` — DuckDB-backed (`github.com/marcboeker/go-duckdb/v2`) behind a `Store`
-interface. See [why-duckdb.md](why-duckdb.md) for the full rationale.
+`internal/store` — pluggable behind a `Store` interface. **SQLite (pure-Go,
+`modernc.org/sqlite`, WAL mode) is the default backend as of ADR-020**; DuckDB
+(`github.com/marcboeker/go-duckdb/v2`) remains compiled in for this migration slice only
+(source side of `migrate-store`), removed once the operator's fleet store has migrated
+(SS-8). See [why-duckdb.md](why-duckdb.md) for the original DuckDB rationale (now
+historical) and the ADR-020 entry in `ADR.md` for why SQLite replaced it: cross-process
+concurrent readers beside a live writer — the property DuckDB's single-writer lock never
+gave the daemon — outweighed DuckDB's columnar-scan advantage for this workload.
 
-The `Store` interface is implemented by two types:
+The `Store` interface is implemented by three types:
 
 | Type | Use |
 |---|---|
-| `DuckStore` | Production — persists to a `.duckdb` file. Auto-creates parent directory. |
+| `SQLiteStore` | Default production backend — persists to a `.sqlite`/`.db` file, WAL mode, uncapped read pool. Auto-creates parent directory. |
+| `DuckStore` | Migration-era backend — persists to a `.duckdb` file. Auto-creates parent directory. Slated for removal (SS-8). |
 | `MemoryStore` | Tests — in-process fake; shares the contract via `contract_test.go`. |
 
-Schema tables in the DuckDB store:
+`store.Open` (and the lower-level `store.BackendForPath`) dispatch to `SQLiteStore` or
+`DuckStore` by file extension — `.sqlite`/`.db` → SQLite, `.duckdb` → DuckDB — so
+`PlatformStore`, `gen-platform-manifest`, and `platform-ingest` all treat a directory of
+mixed-backend store files identically.
+
+Schema tables (identical across both backends — the DDL ports verbatim, ADR-020):
 
 | Table | Contents |
 |---|---|
@@ -251,8 +263,9 @@ Schema tables in the DuckDB store:
 | `fingerprints` | SHA-256 hash-gate index (stored separately; cheap to clear independently) |
 | `knowledge_cards` | LLM-generated structured summaries per symbol (opt-in enrichment) |
 | `doc_summaries` | Document-level summaries for Markdown sources |
+| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs` | Identity/audit/semantic-layer tables — the six `fathom migrate-store` ports from an existing DuckDB store into a fresh SQLite one; everything else rebuilds by re-ingest |
 
-Default store path: `workspace/db/fathom.duckdb` (gitignored; all artifacts go under
+Default store path: `workspace/db/fathom.sqlite` (gitignored; all artifacts go under
 `workspace/` — see the workspace convention in [usage.md](usage.md)).
 
 ---
@@ -323,9 +336,10 @@ type CrossRepoEdge struct {
 The `platform-callers` CLI subcommand and the `cross_repo_callers` / `platform_callers`
 MCP tools use this graph to answer "which services call this symbol?"
 
-`PlatformStore` (`internal/store/platform_store.go`) loads many `*.duckdb` files, routes
-queries by service ID, and supports atomic `Reload()` — used by the HTTP server's
-`POST /reload` endpoint.
+`PlatformStore` (`internal/store/platform_store.go`) loads many store files (`*.duckdb`
+and/or `*.sqlite`/`*.db` — a fleet may be mid-migration and hold both), routes queries by
+service ID, and supports atomic `Reload()` — used by the HTTP server's `POST /reload`
+endpoint.
 
 ---
 

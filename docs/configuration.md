@@ -233,7 +233,7 @@ with zero plist env required.
 
 ```toml
 [daemon]
-store           = "workspace/db/fleet.duckdb"
+store           = "workspace/db/fleet.sqlite"
 addr            = "127.0.0.1:7575"
 auto_refresh    = true
 default_profile = "work"
@@ -274,7 +274,7 @@ region   = "us-gov-west-1"
 model    = "anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 [daemon]
-store           = "workspace/db/fleet.duckdb"
+store           = "workspace/db/fleet.sqlite"
 default_profile = "personal"
 ```
 

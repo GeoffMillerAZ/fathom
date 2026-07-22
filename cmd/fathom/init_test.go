@@ -372,7 +372,7 @@ func TestWriteStarterConfig_UncommentedProfilesAreValid(t *testing.T) {
 		{"[profiles.api]", "provider = \"anthropic\"", "api_key_env = \"ANTHROPIC_API_KEY\""},
 		{"[profiles.gov-bedrock]", "provider = \"bedrock\"", "region = \"us-gov-west-1\"", "model = \"anthropic.claude-3-5-sonnet-20241022-v2:0\""},
 		{"[profiles.gov-azure]", "provider = \"azure-openai\"", "endpoint = \"https://example-resource.openai.azure.us\"", "deployment = \"dep\"", "api_key_env = \"AZURE_OPENAI_API_KEY\""},
-		{"[daemon]", "store = \"workspace/db/fleet.duckdb\"", "addr = \"127.0.0.1:7575\"", "auto_refresh = true", "default_profile = \"personal\""},
+		{"[daemon]", "store = \"workspace/db/fleet.sqlite\"", "addr = \"127.0.0.1:7575\"", "auto_refresh = true", "default_profile = \"personal\""},
 	}
 	for i, lines := range blocks {
 		doc := strings.Join(lines, "\n") + "\n"

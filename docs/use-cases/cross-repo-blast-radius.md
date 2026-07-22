@@ -108,7 +108,7 @@ Returns `{ "reachable": true }`. The checkout → charge path exists, so this ch
 **CLI equivalent (from a terminal, outside a Claude Code session):**
 
 ```sh
-fathom platform-callers --store workspace/db/fleet.duckdb --symbol ValidateToken
+fathom platform-callers --store workspace/db/fleet.sqlite --symbol ValidateToken
 ```
 
 Produces the same cross-repo caller list. The `--repos` flag is a legacy Go-only filter; omit it to get language-agnostic results.

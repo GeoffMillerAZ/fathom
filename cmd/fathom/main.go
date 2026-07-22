@@ -69,6 +69,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdVerify(args[1:], stdout, stderr)
 	case "remap":
 		return cmdRemap(args[1:], stdout, stderr)
+	case "migrate-store":
+		return cmdMigrateStore(args[1:], stdout, stderr)
 	case "compile":
 		return cmdCompile(args[1:], stdout, stderr)
 	case "claim":
@@ -109,7 +111,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  watch                 Poll for file changes and re-ingest automatically")
 	fmt.Fprintln(w, "  gen-claude-md         Generate a CLAUDE.md from stored symbols")
 	fmt.Fprintln(w, "  gen-status-cue        Generate a CUE status file from a plan + evidence")
-	fmt.Fprintln(w, "  gen-platform-manifest Generate a platform manifest from *.duckdb store files")
+	fmt.Fprintln(w, "  gen-platform-manifest Generate a platform manifest from *.duckdb/*.sqlite store files")
 	fmt.Fprintln(w, "  inspect               List stored symbols for a service")
 	fmt.Fprintln(w, "  query                 Query symbols for a concern")
 	fmt.Fprintln(w, "  serve-mcp             Serve the MCP JSON-RPC protocol over stdio")
@@ -118,6 +120,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  platform-callers      Print cross-repo callers of a symbol")
 	fmt.Fprintln(w, "  verify                Verify plan files against the index (done-means-proven gate)")
 	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
+	fmt.Fprintln(w, "  migrate-store         Port a DuckDB store's non-derivable tables into a fresh SQLite store")
 	fmt.Fprintln(w, "  compile               Compile a semantic layer for a service (dry-run by default)")
 	fmt.Fprintln(w, "  claim                 Triage a compiled claim: refute or corroborate, with a note")
 	fmt.Fprintln(w, "  layers                List/show/install semantic-layer packs (embedded + project .fathom/layers/)")

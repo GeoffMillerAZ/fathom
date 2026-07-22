@@ -21,7 +21,7 @@ func cmdServeMCP(args []string, stdout, stderr io.Writer) int {
 // tests can feed finite byte streams without blocking.
 func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlagSet("serve-mcp", stderr)
-	storePath := fs.String("store", "", "DuckDB store path (required)")
+	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (required)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 

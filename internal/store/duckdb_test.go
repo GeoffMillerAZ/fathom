@@ -6,9 +6,9 @@ import (
 )
 
 func TestDuckStoreContract_InMemory(t *testing.T) {
-	s, err := Open("") // in-memory DuckDB
+	s, err := OpenDuckDB("") // in-memory DuckDB
 	if err != nil {
-		t.Fatalf("Open in-memory: %v", err)
+		t.Fatalf("OpenDuckDB in-memory: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
 	storeContract(t, s)
@@ -16,10 +16,10 @@ func TestDuckStoreContract_InMemory(t *testing.T) {
 
 func TestDuckStoreContract_OnDisk(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "test.db")
-	s, err := Open(path)
+	path := filepath.Join(dir, "test.duckdb")
+	s, err := OpenDuckDB(path)
 	if err != nil {
-		t.Fatalf("Open on-disk: %v", err)
+		t.Fatalf("OpenDuckDB on-disk: %v", err)
 	}
 	t.Cleanup(func() { _ = s.Close() })
 	storeContract(t, s)

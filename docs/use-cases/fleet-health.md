@@ -166,7 +166,7 @@ Highlights any symbol that exists in multiple services with conflicting kinds â€
 ```sh
 claude mcp add --scope user fathom -- \
   /abs/path/bin/fathom serve-mcp \
-  --store /abs/path/workspace/db/fleet.duckdb
+  --store /abs/path/workspace/db/fleet.sqlite
 ```
 
 **Ingesting a repo** (CLI, outside a session or before first use):
