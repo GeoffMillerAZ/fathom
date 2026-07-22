@@ -57,7 +57,7 @@ func TestEnrichTypedEdges_Resolution(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 
-	report, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir)
+	report, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil)
 	if err != nil {
 		t.Fatalf("EnrichTypedEdges: %v", err)
 	}
@@ -140,6 +140,24 @@ func TestEnrichTypedEdges_Resolution(t *testing.T) {
 		}
 	}
 
+	// --- Struct embedding an INTERFACE (F6): the promoted call fans out to
+	// the real implementers as dispatch — never an edge to the phantom
+	// "Adapter.Complete" interface-method key goextract never creates, and
+	// never Wrapper itself offered as an implementer.
+	wrapperDispatch := set[key("typedfixture", "UseWrapper")+"|"+string(core.EdgeIfaceDispatch)]
+	if !equalStrSlices(wrapperDispatch, wantAdapter) {
+		t.Errorf("UseWrapper dispatch edges = %v, want %v (the real implementers)", wrapperDispatch, wantAdapter)
+	}
+	phantom := key("Adapter", "Adapter.Complete")
+	for _, e := range edges {
+		if e.ToSymbol == phantom {
+			t.Errorf("edge to phantom interface-method key %q: %+v", phantom, e)
+		}
+		if e.ToSymbol == key("Wrapper", "Wrapper.Complete") {
+			t.Errorf("Wrapper offered as a dispatch implementer via its embedded interface: %+v", e)
+		}
+	}
+
 	// --- Test* callers reach through to typed edges too (CT-4 prerequisite):
 	// TestRunAdapter -EdgeDirect-> RunAdapter -EdgeIfaceDispatch-> {AdapterA,AdapterB}.Complete
 	testDirect := set[key("typedfixture", "TestRunAdapter")+"|"+string(core.EdgeDirect)]
@@ -157,7 +175,7 @@ func TestEnrichTypedEdges_Caching(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 
-	first, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir)
+	first, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil)
 	if err != nil {
 		t.Fatalf("first EnrichTypedEdges: %v", err)
 	}
@@ -169,7 +187,7 @@ func TestEnrichTypedEdges_Caching(t *testing.T) {
 		t.Fatalf("TypedEdges after first run: %v", err)
 	}
 
-	second, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir)
+	second, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil)
 	if err != nil {
 		t.Fatalf("second EnrichTypedEdges: %v", err)
 	}
@@ -202,7 +220,7 @@ func TestEnrichTypedEdges_Caching(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.WriteFile(target, orig, 0o644) })
 
-	third, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir)
+	third, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", dir, nil)
 	if err != nil {
 		t.Fatalf("third EnrichTypedEdges: %v", err)
 	}
@@ -233,7 +251,7 @@ func TestEnrichTypedEdges_LoadFailure(t *testing.T) {
 
 	ctx := context.Background()
 	st := store.NewMemoryStore()
-	report, err := fusion.EnrichTypedEdges(ctx, st, "broken-svc", dir)
+	report, err := fusion.EnrichTypedEdges(ctx, st, "broken-svc", dir, nil)
 	if err != nil {
 		t.Fatalf("EnrichTypedEdges returned an error for a broken package; want counted failure, not a returned error: %v", err)
 	}
@@ -264,7 +282,7 @@ func TestEnrichTypedEdges_NoGoModule(t *testing.T) {
 	st := store.NewMemoryStore()
 
 	start := time.Now()
-	report, err := fusion.EnrichTypedEdges(ctx, st, "empty-svc", dir)
+	report, err := fusion.EnrichTypedEdges(ctx, st, "empty-svc", dir, nil)
 	elapsed := time.Since(start)
 	if err != nil {
 		t.Fatalf("EnrichTypedEdges returned an error for an empty dir; want a counted failure, not an error: %v", err)

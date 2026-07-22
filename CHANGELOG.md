@@ -5,6 +5,51 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — typed Go call edges dissolve the O9 ambiguity residue (ADR-021 §3, docs/plans/callgraph-types.md)
+- **`internal/fusion/typedcalls.go`**: `EnrichTypedEdges`, an additive Go-only
+  pass (`golang.org/x/tools/go/packages`, promoted to a direct dependency)
+  that runs in `Ingest` after syntax extraction and resolves call sites via
+  `go/types`: `EdgeDirect` (statically resolved target — embedded-struct
+  promotion and generic instantiation resolve for free), `EdgeIfaceDispatch`
+  (one edge per in-scope implementer of an interface-typed call), and
+  `EdgeUnresolved` (func/method values — explicit, never silent). The
+  syntax-derived `Calls` contract is untouched. Scoped to the connector's
+  Discover set (`.fathomignore` respected — an ignored file's colliding
+  package/func names can never fabricate edges onto live symbol keys), with a
+  per-package content-hash cache, a post-load reconcile that purges rows for
+  deleted/moved packages (a `git mv`-ed package keeps its SymbolKeys, so a
+  stale row would otherwise persist as fabricated reachability evidence
+  forever), and per-package failure counters threaded into `fusion.Report`
+  (`TypedPackages`, `TypedPackagesFailed`, edge counts by kind) plus a stderr
+  line on failure — a daemon whose typed pass always fails (no `go` on PATH)
+  is distinguishable from a non-Go service. `Config.DisableTypedEdges` turns
+  the pass off (degraded environments; true syntax-only baseline measurement).
+  A struct that satisfies an interface only via an embedded interface field is
+  never offered as a dispatch implementer, and a promoted call through one
+  fans out to the real implementers — never to a phantom interface-method key
+  `goextract` doesn't create.
+- **`core.Edge` gains `Kind`**; new store surface (`PutTypedEdges`,
+  `TypedEdges`, `ListTypedEdgePackages`, `DeleteTypedEdgePackage`, per-package
+  fingerprints) round-trips it through SQLite, DuckDB, and the memory fake,
+  contract-tested; `PurgeService` clears typed-edge rows too.
+- **verify (CT-4)**: `test_reaches` consumes typed edges via
+  `verify.DetailedEvidence` — a path crossing an interface-dispatch edge (the
+  old unconditional refusal for a method name shared by multiple receivers)
+  now verifies, labeled `"reached via interface dispatch (N implementer(s))"`
+  in the criterion detail. Three real O9 residue shapes (adapter `Complete`,
+  Store contract-suite `PutClaims`, `Ping`) are proven end-to-end flipping
+  from refusal to typed reach against a real fixture module.
+- **Serving (CT-6)**: `blast_radius`/`diff_impact` traverse typed edges;
+  `find_callers` adds `typed_callers`, `symbol_context` adds `typed_edges`
+  (kind-labeled); `server_stats` takes an optional `service` and reports
+  per-kind typed-edge counts (all-zero = the pass hasn't run for that store).
+  Note: universe/stdlib interface dispatch (`error.Error`) fans out to every
+  first-party implementer and dominates dispatch counts by design.
+- **Performance gate (CT-5)**: first-run typed load measured against a TRUE
+  syntax-only baseline (`DisableTypedEdges`) on this repo — see
+  docs/plans/callgraph-types.md for the recorded numbers; cached re-ingest is
+  delta-only (only changed packages reload).
+
 ### Added — pure-Go SQLite (WAL) store backend replaces DuckDB as the default (ADR-020, docs/plans/store-sqlite.md)
 - **`internal/store/sqlite.go`**: `SQLiteStore` (`modernc.org/sqlite`, pure Go)
   implements the full 26-method `Store` interface with a fresh, final-column

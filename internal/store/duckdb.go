@@ -1166,6 +1166,44 @@ ON CONFLICT (service_id, pkg_path) DO UPDATE SET content_hash = excluded.content
 	return nil
 }
 
+// ListTypedEdgePackages returns the sorted distinct typed-edge package IDs
+// for serviceID (union of typed_edges and typed_edge_fingerprints).
+func (s *DuckStore) ListTypedEdgePackages(ctx context.Context, serviceID string) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT pkg_path FROM typed_edges WHERE service_id = ?
+UNION
+SELECT pkg_path FROM typed_edge_fingerprints WHERE service_id = ?
+ORDER BY pkg_path
+`, serviceID, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("ListTypedEdgePackages: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("ListTypedEdgePackages scan: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// DeleteTypedEdgePackage removes all typed-edge rows and the fingerprint
+// row for (serviceID, pkgPath). Missing rows are a no-op.
+func (s *DuckStore) DeleteTypedEdgePackage(ctx context.Context, serviceID, pkgPath string) error {
+	for _, q := range []string{
+		`DELETE FROM typed_edges WHERE service_id = ? AND pkg_path = ?`,
+		`DELETE FROM typed_edge_fingerprints WHERE service_id = ? AND pkg_path = ?`,
+	} {
+		if _, err := s.db.ExecContext(ctx, q, serviceID, pkgPath); err != nil {
+			return fmt.Errorf("DeleteTypedEdgePackage: %w", err)
+		}
+	}
+	return nil
+}
+
 // Close releases the underlying database connection pool.
 func (s *DuckStore) Close() error {
 	return s.db.Close()

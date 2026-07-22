@@ -40,7 +40,7 @@ func currentGitHead(path string) string {
 // registerMeta wires meta-tools, prompts, and resources into s.
 func registerMeta(s *Server, backend QueryInterface) {
 	registerCapabilities(s)
-	registerServerStats(s, backend)
+	registerServerStats(s)
 	registerStalenessReport(s, backend)
 	registerListSources(s, backend)
 	registerPromptsHandlers(s)
@@ -75,7 +75,7 @@ func registerCapabilities(s *Server) {
 
 // ─── server_stats ─────────────────────────────────────────────────────────────
 
-func registerServerStats(s *Server, backend QueryInterface) {
+func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
 		Description: "Return server uptime and total request count. Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
@@ -104,8 +104,11 @@ func registerServerStats(s *Server, backend QueryInterface) {
 		// since) reports all-zero counts here — the visible signal ExtractorEpoch
 		// intentionally does NOT force (typed edges are new observations, not
 		// a Calls-semantics change, see docs/plans/callgraph-types.md).
-		if p.Service != "" && backend != nil {
-			edges, err := backend.TypedEdges(ctx, p.Service)
+		// Note dispatch counts skew high in Go services with many error
+		// types: universe/stdlib interface dispatch (error.Error) fans out
+		// to every first-party implementer (see internal/fusion/typedcalls.go).
+		if p.Service != "" && s.backend != nil {
+			edges, err := s.backend.TypedEdges(ctx, p.Service)
 			if err == nil {
 				counts := map[string]int{"direct": 0, "iface_dispatch": 0, "unresolved": 0}
 				for _, e := range edges {

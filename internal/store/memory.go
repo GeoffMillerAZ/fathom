@@ -585,5 +585,42 @@ func (m *MemoryStore) SetTypedEdgePackageFingerprint(_ context.Context, serviceI
 	return nil
 }
 
+// ListTypedEdgePackages returns the sorted distinct typed-edge package IDs
+// for serviceID (union of stored edges and fingerprints).
+func (m *MemoryStore) ListTypedEdgePackages(_ context.Context, serviceID string) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := make(map[string]struct{})
+	for k := range m.typedEdges {
+		if k.serviceID == serviceID {
+			seen[k.pkgPath] = struct{}{}
+		}
+	}
+	for k := range m.typedEdgeFPs {
+		if k.serviceID == serviceID {
+			seen[k.sourceRef] = struct{}{} // fpKey reuse: sourceRef holds pkgPath here
+		}
+	}
+	if len(seen) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids, nil
+}
+
+// DeleteTypedEdgePackage removes all typed-edge rows and the fingerprint
+// entry for (serviceID, pkgPath). Missing rows are a no-op.
+func (m *MemoryStore) DeleteTypedEdgePackage(_ context.Context, serviceID, pkgPath string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.typedEdges, typedEdgeKey{serviceID, pkgPath})
+	delete(m.typedEdgeFPs, fpKey{serviceID, pkgPath})
+	return nil
+}
+
 // Close is a no-op for the in-memory store.
 func (m *MemoryStore) Close() error { return nil }

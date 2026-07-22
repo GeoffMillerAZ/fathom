@@ -215,6 +215,23 @@ type Store interface {
 	// fingerprint for (serviceID, pkgPath).
 	SetTypedEdgePackageFingerprint(ctx context.Context, serviceID, pkgPath, hash string) error
 
+	// ListTypedEdgePackages returns the sorted, distinct set of typed-edge
+	// package IDs known to the store for serviceID — the union of pkg_paths
+	// appearing in typed_edges and typed_edge_fingerprints (a package can be
+	// fingerprint-only when its load emitted zero edges, or edge-only when a
+	// fingerprint write failed mid-run). EnrichTypedEdges' post-load
+	// reconcile diffs this against the currently loaded package set to purge
+	// rows for packages that no longer exist (deleted or moved dirs) —
+	// without it, a stale edge row pointing at a still-live SymbolKey would
+	// survive re-ingest forever as fabricated reachability evidence. A
+	// service with no rows returns a nil slice with no error.
+	ListTypedEdgePackages(ctx context.Context, serviceID string) ([]string, error)
+
+	// DeleteTypedEdgePackage removes all typed-edge rows AND the
+	// package-fingerprint row for (serviceID, pkgPath). Deleting a missing
+	// package is a no-op, not an error.
+	DeleteTypedEdgePackage(ctx context.Context, serviceID, pkgPath string) error
+
 	// CompileRuns returns compile runs for serviceID, optionally filtered by
 	// layer (layer "" returns all layers), newest-first by RanAt then run_id.
 	CompileRuns(ctx context.Context, serviceID, layer string) ([]core.CompileRun, error)

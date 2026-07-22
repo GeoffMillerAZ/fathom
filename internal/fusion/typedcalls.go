@@ -50,12 +50,41 @@
 // cache hit skips the (expensive) resolve entirely for that package; its
 // previously stored typed edges are left untouched. A cache miss replaces
 // exactly that package's rows (store.PutTypedEdges), never the whole
-// service's.
+// service's. After the package loop, a RECONCILE pass diffs the store's
+// typed-edge package list against the packages this load produced and
+// purges rows for packages that no longer exist (deleted or `git mv`-ed
+// directories) — without it, a stale edge row whose From/To keys are still
+// live symbols (a moved package keeps its package NAME, hence its
+// SymbolKeys) would survive re-ingest forever as fabricated test_reaches /
+// blast_radius evidence. The reconcile is skipped only on wholesale failure
+// (every package failed to load — indistinguishable from a transient
+// toolchain breakage, so the fallback rows are retained).
+//
+// Connector scope: EnrichTypedEdges takes the connector's allowed-file set
+// (the Discover result the pipeline already holds). packages.Load("./...")
+// knows nothing about .fathomignore / connector exclusions, so without the
+// filter an ignored directory's Go file whose package/func names collide
+// with an indexed package would emit edges keyed onto LIVE symbols. A
+// package with zero allowed files is skipped entirely (and reconciled away
+// if previously stored); an edge is dropped when either its call-site file
+// or its target's declaring file is outside the set. A nil allowed set
+// disables filtering (whole-module scope, for direct callers/tests).
 //
 // Failure honesty: a package that fails to load or type-check is counted
 // (TypedEdgeReport.PackagesFailed) and its typed edges are left as whatever
 // was last successfully stored — never overwritten with partial/wrong data,
-// never blocking the rest of the service's ingest.
+// never blocking the rest of the service's ingest. The pipeline hook
+// surfaces the counters in fusion.Report and logs a stderr line when any
+// package failed, so a daemon whose typed pass always fails (e.g. `go` not
+// on the daemon's PATH) is distinguishable from a non-Go service.
+//
+// Universe/stdlib interfaces: a dispatch call through an interface that
+// stdlib or the universe scope defines (error.Error being the dominant
+// case) fans out to EVERY first-party implementer of that interface — every
+// custom error type in the service, for error. These edges are honest
+// ("could reach any of N at runtime" is exactly the method-set truth) but
+// they dominate iface-dispatch counts in server_stats, so read those
+// counters as an upper bound on dispatch precision, not a defect signal.
 package fusion
 
 import (
@@ -78,12 +107,15 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TypedEdgeReport summarises one EnrichTypedEdges run.
+// TypedEdgeReport summarises one EnrichTypedEdges run. Edge counts cover
+// edges WRITTEN this run (cache-hit packages' stored edges are not
+// recounted).
 type TypedEdgeReport struct {
 	PackagesTotal      int // packages returned by the go/packages load (all variants)
 	PackagesLoaded     int // packages actually re-resolved this run (cache miss)
 	PackagesCached     int // packages skipped: content hash unchanged since last run
 	PackagesFailed     int // packages that failed to load/typecheck/persist (fallback, never blocks)
+	PackagesSkipped    int // packages with zero connector-allowed files (ignored dirs; reconciled away)
 	EdgesDirect        int
 	EdgesIfaceDispatch int
 	EdgesUnresolved    int
@@ -115,14 +147,33 @@ func hasGoModule(repoPath string) bool {
 
 // enrichTypedEdges is the fusion.Pipeline.Ingest call-site hook (ADR-021
 // §3): invoked once per Ingest call for services whose just-discovered ref
-// set contains Go source and a go.mod. Best-effort — its outcome never
-// aborts or fails the surrounding Ingest; see EnrichTypedEdges's own failure
-// handling for why.
-func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) {
-	if !hasGoSource(refs) || !hasGoModule(svc.Path) {
-		return
+// set contains Go source and a go.mod (and Config.DisableTypedEdges is not
+// set). Best-effort — its outcome never aborts or fails the surrounding
+// Ingest, but the counters are returned for fusion.Report and a stderr line
+// flags per-package failures, so a daemon whose typed pass always fails is
+// distinguishable from a non-Go service.
+//
+// The connector's Discover result (refs) becomes the typed pass's
+// allowed-file set: only .go files the connector actually surfaced (i.e.
+// after .fathomignore and skip-dir filtering) may contribute edges.
+func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef) TypedEdgeReport {
+	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
+		return TypedEdgeReport{}
 	}
-	_, _ = EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path)
+	allowed := make(map[string]bool)
+	for _, r := range refs {
+		if strings.HasSuffix(r.Path, ".go") {
+			allowed[r.Path] = true
+		}
+	}
+	rep, err := EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
+	switch {
+	case err != nil:
+		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
+	case rep.PackagesFailed > 0:
+		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+	}
+	return rep
 }
 
 // EnrichTypedEdges loads every Go package under repoPath (pattern "./...",
@@ -132,12 +183,20 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 // package (the cache/replace granularity). See the package doc for the full
 // design.
 //
+// allowed is the connector-scope filter (repo-relative forward-slash .go
+// paths, as SourceRef.Path records them): a package with zero allowed
+// files is skipped; an edge is dropped when its call-site file OR its
+// target's declaring file is outside the set. nil disables filtering
+// (whole-module scope) — the pipeline always passes the real Discover set;
+// nil is for direct callers/tests that operate on self-contained fixture
+// modules.
+//
 // The returned error is non-nil only when NO package could even be
 // attempted (e.g. the go toolchain itself failed to run for repoPath); a
 // per-package failure is counted in the report, never returned as an error
 // — the caller (fusion's Ingest hook) treats both cases identically: never
 // block, never fail the ingest.
-func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath string) (TypedEdgeReport, error) {
+func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath string, allowed map[string]bool) (TypedEdgeReport, error) {
 	start := time.Now()
 	var report TypedEdgeReport
 
@@ -188,10 +247,29 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// package variant visits it first (plain sorts before its test-augmented
 	// forms — see isTestVariant) — this is what keeps Tests:true from
 	// double-emitting edges for every non-test file that a test-augmented
-	// variant re-compiles alongside its _test.go additions.
+	// variant re-compiles alongside its _test.go additions. A CACHE-HIT
+	// package must mark its files too: skipping the marking made a
+	// _test.go-only change re-resolve the (cache-hit) plain package's files
+	// under the test-variant ID — exact-duplicate rows.
 	processedFiles := make(map[string]bool)
 
+	// keep is the reconcile keep-set: every pkg.ID this load produced,
+	// EXCEPT connector-ignored packages (their stored rows must be purged).
+	// Failed packages ARE kept — fallback semantics retain their last
+	// successful rows.
+	keep := make(map[string]bool, len(pkgs))
+
 	for _, pkg := range pkgs {
+		// Connector scope (see the package doc): a package with zero
+		// allowed files contributes nothing — and is deliberately NOT in
+		// the keep set, so previously stored rows for a now-ignored
+		// package are reconciled away below.
+		if allowed != nil && !anyFileAllowed(repoPath, allowed, pkg.CompiledGoFiles) {
+			report.PackagesSkipped++
+			continue
+		}
+		keep[pkg.ID] = true
+
 		if len(pkg.Errors) > 0 {
 			report.PackagesFailed++
 			continue
@@ -207,6 +285,9 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		// PutTypedEdges silently wipe its plain sibling's just-stored rows).
 		if cached, found, cacheErr := st.TypedEdgePackageFingerprint(ctx, serviceID, pkg.ID); cacheErr == nil && found && cached == hash {
 			report.PackagesCached++
+			for _, f := range pkg.CompiledGoFiles {
+				processedFiles[f] = true
+			}
 			continue
 		}
 
@@ -226,8 +307,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 					continue
 				}
 				processedFiles[filename] = true
+				if allowed != nil && !allowed[repoRelSlash(repoPath, filename)] {
+					continue // ignored file within a partially allowed package
+				}
 			}
-			edges = append(edges, resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates)...)
+			edges = append(edges, resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates, allowed)...)
 		}
 		sortEdges(edges)
 
@@ -252,8 +336,39 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		}
 	}
 
+	// Reconcile (see the package doc): purge stored typed-edge packages that
+	// this load did not produce — deleted/moved directories, or packages the
+	// connector now ignores. Skipped only on wholesale failure (every
+	// attempted package failed): that is indistinguishable from a transient
+	// toolchain breakage, and deleting everything on it would destroy the
+	// documented fallback rows.
+	wholesaleFailure := report.PackagesFailed > 0 && report.PackagesLoaded+report.PackagesCached == 0
+	if !wholesaleFailure {
+		if stored, listErr := st.ListTypedEdgePackages(ctx, serviceID); listErr == nil {
+			for _, id := range stored {
+				if keep[id] {
+					continue
+				}
+				if delErr := st.DeleteTypedEdgePackage(ctx, serviceID, id); delErr != nil {
+					report.PackagesFailed++ // stale rows remain; next ingest retries
+				}
+			}
+		}
+	}
+
 	report.Duration = time.Since(start)
 	return report, nil
+}
+
+// anyFileAllowed reports whether at least one of files (absolute paths)
+// maps to a repo-relative path in the allowed set.
+func anyFileAllowed(repoPath string, allowed map[string]bool, files []string) bool {
+	for _, f := range files {
+		if allowed[repoRelSlash(repoPath, f)] {
+			return true
+		}
+	}
+	return false
 }
 
 // sortEdges sorts edges by (FromSymbol, ToSymbol, Kind) for deterministic
@@ -282,9 +397,25 @@ func resolveFileEdges(
 	pkg *packages.Package,
 	firstParty map[string]bool,
 	candidates []*types.Named,
+	allowed map[string]bool,
 ) []core.Edge {
 	var edges []core.Edge
 	info := pkg.TypesInfo
+
+	// targetAllowed applies the connector-scope filter to a resolved target:
+	// an edge may not point at a symbol whose declaring file the connector
+	// excluded (goextract never indexed it, and its package/receiver names
+	// could collide with a live symbol's key — the fabrication path).
+	targetAllowed := func(fn *types.Func) bool {
+		if allowed == nil {
+			return true
+		}
+		pos := fset.Position(fn.Pos())
+		if pos.Filename == "" {
+			return false // no declaring position → cannot prove it's in scope
+		}
+		return allowed[repoRelSlash(repoPath, pos.Filename)]
+	}
 
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -320,6 +451,9 @@ func resolveFileEdges(
 				if target.fn.Pkg() == nil || !firstParty[target.fn.Pkg().Path()] {
 					return true
 				}
+				if !targetAllowed(target.fn) {
+					return true
+				}
 				toKey, ok := symbolKeyForFunc(serviceID, target.fn)
 				if !ok {
 					return true
@@ -333,6 +467,9 @@ func resolveFileEdges(
 				for _, cand := range candidates {
 					implFn, ok := lookupImplementerMethod(cand, target.iface, target.fn.Name(), pkg.Types)
 					if !ok || implFn.Pkg() == nil || !firstParty[implFn.Pkg().Path()] {
+						continue
+					}
+					if !targetAllowed(implFn) {
 						continue
 					}
 					toKey, ok := symbolKeyForFunc(serviceID, implFn)
@@ -438,10 +575,39 @@ func classifySelection(sel *types.Selection) callTarget {
 	// sel.Obj() already resolves embedded-field promotion AND generic
 	// instantiation down to the underlying declaration for us — the direct
 	// case needs no further unwrapping (see the package doc).
-	if iface, ok := sel.Recv().Underlying().(*types.Interface); ok {
+	//
+	// Dispatch is detected on the RESOLVED METHOD's receiver, not on
+	// sel.Recv(): when a STRUCT embeds an interface, a promoted call
+	// (w.Complete() with w a struct) has a concrete sel.Recv() but resolves
+	// to the interface's own *types.Func — dynamic dispatch through the
+	// embedded interface value. Classifying by sel.Recv() alone emitted
+	// that as an EdgeDirect to a phantom "Iface.Iface.Method" key goextract
+	// never creates; classifying by the method's receiver treats it as the
+	// interface dispatch it really is (fan-out to real implementers). A
+	// plain interface-typed receiver call resolves to the same branch.
+	if iface, ok := receiverInterface(fn); ok {
 		return callTarget{kind: targetIfaceDispatch, fn: fn, iface: iface}
 	}
 	return callTarget{kind: targetDirect, fn: fn}
+}
+
+// receiverInterface returns the *types.Interface underlying fn's receiver
+// type when fn is an interface's own method declaration (an "interface
+// method"); ok is false for a concrete method or a plain function. An
+// interface method is never an emittable edge target: goextract creates no
+// method node for it (interfaces index as a single KindGoInterface symbol),
+// so a key built from it would be a phantom.
+func receiverInterface(fn *types.Func) (*types.Interface, bool) {
+	sig, ok := fn.Type().(*types.Signature)
+	if !ok {
+		return nil, false
+	}
+	recv := sig.Recv()
+	if recv == nil {
+		return nil, false
+	}
+	iface, ok := recv.Type().Underlying().(*types.Interface)
+	return iface, ok
 }
 
 // symbolKeyForFunc maps a *types.Func to the SAME canonical SymbolKey
@@ -520,24 +686,42 @@ func gatherCandidates(pkg *types.Package) []*types.Named {
 // lookupImplementerMethod reports whether named (or *named) implements
 // iface, and if so returns the concrete *types.Func satisfying methodName —
 // types.NewMethodSet handles embedded-field promotion for us, so a method
-// inherited from an embedded field resolves to its actual declaring type.
+// inherited from an embedded STRUCT field resolves to its actual declaring
+// type. A candidate satisfying iface only via an embedded INTERFACE field
+// resolves to the interface's own method (see receiverInterface) — a
+// phantom key, and the true runtime target (whatever the field holds) is
+// statically unknowable — so it is skipped, not emitted.
 func lookupImplementerMethod(named *types.Named, iface *types.Interface, methodName string, from *types.Package) (*types.Func, bool) {
 	if types.Implements(named, iface) {
-		if sel := types.NewMethodSet(named).Lookup(from, methodName); sel != nil {
-			if fn, ok := sel.Obj().(*types.Func); ok {
-				return fn, true
-			}
+		if fn, ok := concreteMethod(types.NewMethodSet(named), from, methodName); ok {
+			return fn, true
 		}
 	}
 	ptr := types.NewPointer(named)
 	if types.Implements(ptr, iface) {
-		if sel := types.NewMethodSet(ptr).Lookup(from, methodName); sel != nil {
-			if fn, ok := sel.Obj().(*types.Func); ok {
-				return fn, true
-			}
+		if fn, ok := concreteMethod(types.NewMethodSet(ptr), from, methodName); ok {
+			return fn, true
 		}
 	}
 	return nil, false
+}
+
+// concreteMethod looks methodName up in mset and returns it only when it is
+// a CONCRETE method — declared on (or struct-embedded into) the type, never
+// an interface's own method surfacing through an embedded interface field.
+func concreteMethod(mset *types.MethodSet, from *types.Package, methodName string) (*types.Func, bool) {
+	sel := mset.Lookup(from, methodName)
+	if sel == nil {
+		return nil, false
+	}
+	fn, ok := sel.Obj().(*types.Func)
+	if !ok {
+		return nil, false
+	}
+	if _, isIfaceMethod := receiverInterface(fn); isIfaceMethod {
+		return nil, false
+	}
+	return fn, true
 }
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +

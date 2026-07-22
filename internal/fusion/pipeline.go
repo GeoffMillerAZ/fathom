@@ -58,6 +58,11 @@ type Config struct {
 	// must also be wired via WithEnricher; if none is provided enrichment is
 	// silently skipped even when Enrich is true.
 	Enrich bool
+	// DisableTypedEdges turns off the Go typed call-edge pass (ADR-021 §3)
+	// entirely. Default false (the pass runs for Go services). For degraded
+	// environments (no go toolchain on PATH) and for measuring a true
+	// syntax-only ingest baseline (the CT-5 performance gate).
+	DisableTypedEdges bool
 }
 
 // Report summarises a completed Ingest run.
@@ -78,6 +83,21 @@ type Report struct {
 	// PurgedLegacyAnchors is true when this ingest found pre-ADR-017
 	// absolute-path anchors and rebuilt the service's content wholesale.
 	PurgedLegacyAnchors bool
+
+	// Typed Go call-edge pass counters (ADR-021 §3; zero for non-Go
+	// services, or when Config.DisableTypedEdges is set). TypedPackages is
+	// packages processed (loaded + cache-hit); TypedPackagesFailed is
+	// packages that failed typed loading and fell back to syntax-only edges
+	// — a Go service whose ingest ALWAYS reports failures here has a broken
+	// typed environment (e.g. no go toolchain on the daemon's PATH), which
+	// is a different situation from a non-Go service's all-zeros. Edge
+	// counts cover edges written this run (cache-hit packages' stored edges
+	// are not recounted).
+	TypedPackages           int
+	TypedPackagesFailed     int
+	TypedEdgesDirect        int
+	TypedEdgesIfaceDispatch int
+	TypedEdgesUnresolved    int
 }
 
 // Pipeline is the source fusion pipeline.
@@ -575,7 +595,12 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
 	// never blocks ingest. See internal/fusion/typedcalls.go.
-	p.enrichTypedEdges(ctx, svc, refs)
+	typedRep := p.enrichTypedEdges(ctx, svc, refs)
+	report.TypedPackages = typedRep.PackagesLoaded + typedRep.PackagesCached
+	report.TypedPackagesFailed = typedRep.PackagesFailed
+	report.TypedEdgesDirect = typedRep.EdgesDirect
+	report.TypedEdgesIfaceDispatch = typedRep.EdgesIfaceDispatch
+	report.TypedEdgesUnresolved = typedRep.EdgesUnresolved
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
