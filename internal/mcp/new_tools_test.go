@@ -535,6 +535,16 @@ func TestCapabilities_Basic(t *testing.T) {
 	if p["active_profile"] == nil {
 		t.Fatalf("capabilities.active_profile missing: %v", p)
 	}
+	// ADR-021 §4 / XT-5: per-language extraction engine provenance (tree-
+	// sitter-wasm vs the languages that kept their incumbent) is discoverable
+	// without reading source.
+	engines, ok := p["extraction_engines"].(map[string]any)
+	if !ok || len(engines) == 0 {
+		t.Fatalf("capabilities.extraction_engines missing/empty: %v", p)
+	}
+	if got := engines[".py"]; got != "tree-sitter-wasm" {
+		t.Errorf("extraction_engines[.py] = %v, want tree-sitter-wasm", got)
+	}
 }
 
 // ─── meta: server_stats ───────────────────────────────────────────────────────

@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // currentGitHead shells out to git to return HEAD for path.
@@ -65,10 +67,11 @@ func registerCapabilities(s *Server) {
 			names[i] = d.Name
 		}
 		return map[string]any{
-			"tools":          names,
-			"active_surface": s.effectiveSurface(ctx),
-			"active_profile": s.activeProfile(),
-			"tool_count":     len(descs),
+			"tools":              names,
+			"active_surface":     s.effectiveSurface(ctx),
+			"active_profile":     s.activeProfile(),
+			"tool_count":         len(descs),
+			"extraction_engines": extractor.EngineProvenance(),
 		}, nil
 	})
 }

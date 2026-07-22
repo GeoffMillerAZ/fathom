@@ -5,6 +5,55 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — tree-sitter extraction engine: wazero/WASM, no CGO (ADR-021 §4, docs/plans/extraction-treesitter.md)
+- **`internal/extractor/tsengine`**: a pure-Go tree-sitter execution engine —
+  tree-sitter's own C core runtime statically linked with one grammar's
+  `parser.c`/`scanner.c` per language, compiled to a self-contained
+  `wasm32-wasi` module (`zig cc --target=wasm32-wasi-musl -mexec-model=reactor`
+  + `wasm-opt -Oz`) and executed by `github.com/tetratelabs/wazero` (now a
+  direct dependency) — no CGO, no Docker at runtime, no Emscripten dynamic
+  linking. The grammar repos' own released `tree-sitter-<lang>.wasm` artifacts
+  (and the matching `web-tree-sitter` core) were evaluated first and found to
+  require reimplementing Emscripten's dylink relocation + a JS-runtime
+  callback shim to run under bare wazero — confirmed empirically, not just
+  cited from ADR-013; see `internal/extractor/tsengine/grammars/
+  PROVENANCE.md`'s "path not taken" for the concrete import/export dumps.
+  Blobs (JS 458 KiB, TS+TSX 2.0 MiB, Python 539 KiB, Ruby 1.7 MiB) are
+  reproducible via `grammars/build.sh`, provenance (upstream repo/version/sha,
+  sha256) recorded in `grammars/PROVENANCE.md`.
+- **`internal/extractor.NewTSExtractor`** (XT-1): one `TSExtractor` type
+  parameterized by (grammar, `.scm` query set) implements `extractor.
+  Extractor` for `"javascript"` (spans `.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/
+  `.tsx`), `"python"`, and `"ruby"`. Query files
+  (`internal/extractor/tsqueries/*.scm`) are real tree-sitter queries compiled
+  and matched via `ts_query_new`/cursor/`next_match` — not a hand-rolled tree
+  walk. Symbol qualification ("Class.method", Ruby's "Outer::Inner::Widget")
+  is one generic, language-agnostic containment algorithm over the flat match
+  list, parameterized by which capture kinds are containers/callables per
+  language — onboarding a language is data (blob + queries + a kind-map
+  table), not new Go logic. A Parser+Query is created once per (grammar,
+  entry point) and reused for the process's lifetime (mutex-guarded) rather
+  than per file — re-instantiating per file measured ~11x slower than the CGO
+  incumbent; reuse brought it to 1.41x, within the plan's 1.5x budget.
+- **Calibration (XT-2/XT-3/XT-4, `calibration/baseline.sh` before/after on the
+  12-repo corpus)**: recall never regressed on any repo; JavaScript/
+  TypeScript show the largest gains (lodash 0.41→1.26 recall; nest/typeorm/zod
+  all up). Python/Ruby were already tree-sitter-backed via CGO bindings
+  (ADR-013) — not "heuristic" as the plan's original framing assumed — so
+  they land within noise of their incumbent; the real win there is CGO
+  removal, not heuristic-vs-tree-sitter recall. Precision verified via
+  exhaustive exact-match unit tests (nested-scope suppression, module-var
+  gating, Ruby chaining, per-symbol call collection) plus manual spot-checks
+  of real corpus output. All three languages ship enabled; scores recorded in
+  `docs/plans/extraction-treesitter.md`.
+- **`fusion.ExtractorEpoch` bumped 4→5** (Python/JS/TS/JSX/TSX/Ruby now
+  produced by the new engine — every already-indexed file's stored
+  observations were produced by the CGO extractor, so re-extraction is
+  forced) with a new epoch-invalidation test seeded at the true prior epoch.
+- **`capabilities` MCP tool** gains `extraction_engines` (XT-5): per-extension
+  engine provenance (`"tree-sitter-wasm"` for the six extensions this
+  migration touched) via `extractor.EngineProvenance`.
+
 ### Added — typed Go call edges dissolve the O9 ambiguity residue (ADR-021 §3, docs/plans/callgraph-types.md)
 - **`internal/fusion/typedcalls.go`**: `EnrichTypedEdges`, an additive Go-only
   pass (`golang.org/x/tools/go/packages`, promoted to a direct dependency)

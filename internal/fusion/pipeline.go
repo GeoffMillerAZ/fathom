@@ -268,7 +268,17 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // top-level-only. Every already-indexed yaml/cue file's stored observations
 // were produced by the OLD path/extension-only dispatch, so the salt bump
 // forces re-extraction rather than leaving them silently stale.
-const ExtractorEpoch = "4"
+// Epoch 5 = the ADR-021 §4 tree-sitter engine migration
+// (docs/plans/extraction-treesitter.md): Python, JavaScript/TypeScript/JSX/
+// TSX, and Ruby now extract via internal/extractor.NewTSExtractor — tree-
+// sitter's own C runtime + grammar, compiled to a self-contained wasm32-wasi
+// module and executed by the pure-Go wazero runtime (internal/extractor/
+// tsengine) — instead of the CGO tree-sitter bindings (ADR-013). Symbol
+// naming/qualification is generic containment-based post-processing over
+// query captures rather than per-language hand-rolled tree walks; every
+// already-indexed .py/.js/.jsx/.ts/.tsx/.rb file's stored observations were
+// produced by the OLD CGO extractor, so the salt bump forces re-extraction.
+const ExtractorEpoch = "5"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -302,12 +312,21 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Go
 	p.exts[".go"] = extractor.NewGoExtractor()
 
-	// Python
-	py := extractor.NewPythonExtractor()
+	// Python — tree-sitter via wazero/WASM (ADR-021 §4), calibration-gated
+	// against the incumbent CGO extractor (docs/plans/extraction-treesitter.md
+	// XT-3); see PROVENANCE.md and the plan's recorded scores.
+	py, err := extractor.NewTSExtractor("python")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract python: %v", err))
+	}
 	p.exts[".py"] = py
 
-	// JavaScript / TypeScript / JSX / TSX
-	js := extractor.NewJSExtractor()
+	// JavaScript / TypeScript / JSX / TSX — tree-sitter via wazero/WASM
+	// (ADR-021 §4), calibration-gated (XT-2).
+	js, err := extractor.NewTSExtractor("javascript")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract javascript: %v", err))
+	}
 	p.exts[".js"] = js
 	p.exts[".jsx"] = js
 	p.exts[".ts"] = js
@@ -335,8 +354,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// C#
 	p.exts[".cs"] = extractor.NewCSharpExtractor()
 
-	// Ruby
-	p.exts[".rb"] = extractor.NewRubyExtractor()
+	// Ruby — tree-sitter via wazero/WASM (ADR-021 §4), calibration-gated (XT-4).
+	rb, err := extractor.NewTSExtractor("ruby")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract ruby: %v", err))
+	}
+	p.exts[".rb"] = rb
 
 	// Terraform HCL
 	p.exts[".tf"] = extractor.NewHCLExtractor()

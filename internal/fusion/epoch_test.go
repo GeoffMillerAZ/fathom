@@ -200,3 +200,53 @@ func TestIngest_ExtractorEpoch_ToolIdentityForcesReExtraction(t *testing.T) {
 		t.Errorf("kustomization.yaml re-extraction did not surface resource/image symbols (resource=%v image=%v) — tool-identity classifier not wired", sawResource, sawImage)
 	}
 }
+
+// TestIngest_ExtractorEpoch_TSEngineForcesReExtraction is XT-5: Python,
+// JavaScript/TypeScript/JSX/TSX, and Ruby now extract via the wazero
+// tree-sitter engine (internal/extractor.NewTSExtractor, ADR-021 §4)
+// instead of the CGO tree-sitter bindings (ADR-013), so ExtractorEpoch was
+// bumped "4"→"5". The seeded fingerprint below is salted with epoch "4" —
+// the TRUE prior epoch (the Wave-1/2 lesson, docs/plans/lang-truth.md): the
+// test must fail if the bump reverts, which seeding "3" or earlier would not
+// catch (either would already mismatch and re-extract regardless of whether
+// "5" ever existed).
+func TestIngest_ExtractorEpoch_TSEngineForcesReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	pySrc := []byte("def greet(name):\n    return name\n")
+	if err := os.WriteFile(filepath.Join(dir, "greet.py"), pySrc, 0o644); err != nil {
+		t.Fatalf("write greet.py: %v", err)
+	}
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "tsengine-epoch-svc", Path: dir}
+	ctx := context.Background()
+
+	oldSalted := sha256.Sum256(append(append([]byte{}, pySrc...), []byte("\x00fathom-extractor-epoch:4")...))
+	if err := st.SetFingerprint(ctx, svc.ID, "greet.py", hex.EncodeToString(oldSalted[:])); err != nil {
+		t.Fatalf("SetFingerprint: %v", err)
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatal("greet.py was skipped (a pre-epoch-5 fingerprint was honored) — ExtractorEpoch was not bumped for the tree-sitter engine migration")
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawFunc bool
+	for _, o := range obs {
+		if o.SourceKind == core.KindPyFunc && o.Symbol == "greet" {
+			sawFunc = true
+		}
+	}
+	if !sawFunc {
+		t.Error("greet.py re-extraction did not surface the greet() function — tsengine extractor not wired")
+	}
+}

@@ -89,21 +89,25 @@ Re-imposes input order to guarantee determinism despite parallel fetch, then for
 
 Pending files are bucketed by language and extracted.
 
-### Extraction (ADR-004)
+### Extraction (ADR-004, ADR-013, ADR-021 §4)
 
 | Language | Extractor |
 |---|---|
 | Go | Native `go/parser` / `go/ast` — fastest, most complete, extracts symbols + call edges + cyclomatic complexity |
-| Python, JS/TS, Java, Ruby | Deterministic heuristic extractors (tree-sitter/WASM is the documented future path) |
+| Python, JavaScript/TypeScript/JSX/TSX, Ruby | Tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, ADR-021 §4) — tree-sitter's own core C runtime + one grammar per language, compiled to a self-contained wasm32-wasi module, no CGO. Calibration-gated against the CGO incumbent per language (`docs/plans/extraction-treesitter.md`); query-driven (`.scm` files), not a hand-rolled walk. |
+| Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Tree-sitter via the official **CGO** Go bindings (ADR-013) — not yet migrated to the wazero engine |
 | HCL/Terraform | Native HCL parser → `TerraformResource` nodes |
 | Kubernetes YAML | Native k8s decoder → workload kind/name/namespace |
 | CUE | `cue/ast` → definitions and constraints |
 | Markdown | Overlapping 2000-char chunks with nearest-heading context |
 | `go.mod` | Module dependency versions |
 
-Even with CGO available for DuckDB, the extractor layer stays CGO-free and deterministic
-(ADR-004). Go AST is strictly better than tree-sitter for Go code, so no WASM cost is paid
-there.
+Go AST is strictly better than tree-sitter for Go code, so no WASM/CGO cost is paid
+there. The DuckDB *store* backend still requires CGO (superseded by a pure-Go SQLite
+backend, ADR-020) — extraction and store are independent CGO surfaces; migrating a
+language's extractor off CGO tree-sitter does not, by itself, make the whole `fathom`
+binary CGO-free (`internal/extractor/tsengine` itself builds and tests clean under
+`CGO_ENABLED=0` in isolation).
 
 ### Lazy mode
 
