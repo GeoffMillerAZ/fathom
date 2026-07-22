@@ -75,10 +75,18 @@ func registerCapabilities(s *Server) {
 
 // ─── server_stats ─────────────────────────────────────────────────────────────
 
+// statsBackend is the optional backend capability for the ADR-021 §2 / TI-6
+// process-lifetime unclassified/oversize counters (fusion.Pipeline.Stats,
+// via pkg/client.Client.IngestStats). Test fakes may omit it — server_stats
+// and the ingest tool simply omit those fields when it is absent.
+type statsBackend interface {
+	IngestStats() (unclassified, oversize int64)
+}
+
 func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
-		Description: "Return server uptime and total request count.",
+		Description: "Return server uptime, total request count, and (when the backend supports it) process-lifetime unclassified/oversize file counters.",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
@@ -86,11 +94,17 @@ func registerServerStats(s *Server) {
 		group: GroupShared,
 	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
 		uptime := time.Since(s.startTime)
-		return map[string]any{
+		result := map[string]any{
 			"uptime_seconds": uptime.Seconds(),
 			"request_count":  s.totalRequests(),
 			"started_at":     s.startTime.UTC().Format(time.RFC3339),
-		}, nil
+		}
+		if sb, ok := s.backend.(statsBackend); ok {
+			unclassified, oversize := sb.IngestStats()
+			result["unclassified_files"] = unclassified
+			result["oversize_files"] = oversize
+		}
+		return result, nil
 	})
 }
 

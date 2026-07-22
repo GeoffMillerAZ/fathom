@@ -138,3 +138,65 @@ func TestIngest_ExtractorEpoch_CUEDepthChangeForcesReExtraction(t *testing.T) {
 		t.Error("nested CUE field #Layer.budgets.max_usd_per_run not observed after forced re-extraction")
 	}
 }
+
+// TestIngest_ExtractorEpoch_ToolIdentityForcesReExtraction is TI-8: the
+// ADR-021 §2 tool-identity classifier generation changed yaml-family
+// extraction semantics, so ExtractorEpoch was bumped "3"→"4". The seeded
+// fingerprint below is salted with epoch "3" — the TRUE prior epoch —
+// deliberately (the Wave-1 lesson, docs/plans/lang-truth.md): the test must
+// fail if the bump reverts, which a seed of "2" or "1" would not catch
+// (either would already mismatch and re-extract regardless of whether "4"
+// ever existed).
+//
+// kustomization.yaml is the sharpest proof available: pre-classifier, it was
+// dispatched to the generic k8s extractor, which only emits a workload node
+// when BOTH kind and metadata.name are present — kustomization.yaml has no
+// metadata.name, so it produced exactly zero symbols (silently). Forced
+// re-extraction under the new KustomizeExtractor must surface real resource
+// and image symbols from the very same bytes.
+func TestIngest_ExtractorEpoch_ToolIdentityForcesReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	kustomizeSrc := []byte("apiVersion: kustomize.config.k8s.io/v1beta1\n" +
+		"kind: Kustomization\n" +
+		"resources:\n  - deployment.yaml\n  - service.yaml\n" +
+		"images:\n  - name: myapp\n    newTag: \"1.2.3\"\n")
+	if err := os.WriteFile(filepath.Join(dir, "kustomization.yaml"), kustomizeSrc, 0o644); err != nil {
+		t.Fatalf("write kustomization.yaml: %v", err)
+	}
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "kustomize-epoch-svc", Path: dir}
+	ctx := context.Background()
+
+	oldSalted := sha256.Sum256(append(append([]byte{}, kustomizeSrc...), []byte("\x00fathom-extractor-epoch:3")...))
+	if err := st.SetFingerprint(ctx, svc.ID, "kustomization.yaml", hex.EncodeToString(oldSalted[:])); err != nil {
+		t.Fatalf("SetFingerprint: %v", err)
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatal("kustomization.yaml was skipped (a pre-epoch-4 fingerprint was honored) — ExtractorEpoch was not bumped for the tool-identity change")
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawResource, sawImage bool
+	for _, o := range obs {
+		if o.SourceKind == core.KindKustomizeResource && o.Symbol == "deployment.yaml" {
+			sawResource = true
+		}
+		if o.SourceKind == core.KindKustomizeImage && o.Symbol == "myapp" {
+			sawImage = true
+		}
+	}
+	if !sawResource || !sawImage {
+		t.Errorf("kustomization.yaml re-extraction did not surface resource/image symbols (resource=%v image=%v) — tool-identity classifier not wired", sawResource, sawImage)
+	}
+}

@@ -56,14 +56,33 @@ Design (normative):
 
 ## Tasks
 
-- [ ] Pass-3 classifier + sibling index; extractors keyed by ToolKind; ext table demoted to candidate pre-filter {id: TI-1, symbol: Classify, package: internal/fusion}
-- [ ] Helm chart understanding: template placeholder-parse, Chart/values symbols, values-key references; a real minimal chart golden fixture {id: TI-2, symbol: Classify, package: internal/fusion, skip_test: true, skip: "helm extraction fans out through the classifier dispatch; behavior pinned by the golden fixture tests in internal/extractor which call the extractors directly"}
-- [ ] Compose/k8s/CRD/OpenAPI/kustomize content-signal routing + meaningful symbols per design; misroute regression fixtures (compose override file, non-k8s yaml, OpenAPI doc) {id: TI-3, symbol: NewYAMLExtractor, package: internal/extractor}
-- [ ] CUE module + timoni awareness (ancestor cue.mod/, timoni markers) layered on LT-4 packages {id: TI-4, symbol: NewCUEExtractor, package: internal/extractor}
-- [ ] Generated-file detection: marker on observations, cloc generated bucket, header-regex fixtures (protoc/mockgen/stringer) {id: TI-5, symbol: Classify, package: internal/fusion, skip_test: true, skip: "classifier-internal branch pinned by direct classifier tests; dispatch indirection is the documented residue"}
-- [ ] Unclassified/oversize visibility: per-ingest counters in ingest output + server_stats; 2MB extraction cap {id: TI-6, symbol: Ingest, package: internal/fusion, skip_test: true, skip: "Ingest is the long-lived pipeline entry reached via the full-pipeline tests; counter behavior pinned by direct assertions there"}
-- [ ] Cross-refs cheap tier: image↔Dockerfile, values↔usage as reference observations; queryable via references {id: TI-7, symbol: Classify, package: internal/fusion, skip_test: true, skip: "emitted as observations through the same dispatch; pinned by fixture-driven pipeline tests"}
-- [ ] ExtractorEpoch bump + docs (mcp-tools/cloc semantics, use-case doc Maintained lines if verbs change — none expected) {id: TI-8, symbol: FingerprintHash, package: internal/fusion, skip_test: true, skip: "epoch constant + docs; pinned by the existing epoch invalidation test"}
+- [x] Pass-3 classifier + sibling index; extractors keyed by ToolKind; ext table demoted to candidate pre-filter {id: TI-1, symbol: Classify, package: internal/fusion}
+- [x] Helm chart understanding: template placeholder-parse, Chart/values symbols, values-key references; a real minimal chart golden fixture {id: TI-2, symbol: Classify, package: internal/fusion, skip_test: true, skip: "helm extraction fans out through the classifier dispatch; behavior pinned by the golden fixture tests in internal/extractor which call the extractors directly"}
+- [x] Compose/k8s/CRD/OpenAPI/kustomize content-signal routing + meaningful symbols per design; misroute regression fixtures (compose override file, non-k8s yaml, OpenAPI doc) {id: TI-3, symbol: NewYAMLExtractor, package: internal/extractor}
+- [x] CUE module + timoni awareness (ancestor cue.mod/, timoni markers) layered on LT-4 packages {id: TI-4, symbol: NewCUEExtractor, package: internal/extractor}
+- [x] Generated-file detection: marker on observations, cloc generated bucket, header-regex fixtures (protoc/mockgen/stringer) {id: TI-5, symbol: Classify, package: internal/fusion, skip_test: true, skip: "classifier-internal branch pinned by direct classifier tests; dispatch indirection is the documented residue"}
+- [x] Unclassified/oversize visibility: per-ingest counters in ingest output + server_stats; 2MB extraction cap {id: TI-6, symbol: Ingest, package: internal/fusion, skip_test: true, skip: "Ingest is the long-lived pipeline entry reached via the full-pipeline tests; counter behavior pinned by direct assertions there"}
+- [x] Cross-refs cheap tier: image↔Dockerfile, values↔usage as reference observations; queryable via references {id: TI-7, symbol: Classify, package: internal/fusion, skip_test: true, skip: "emitted as observations through the same dispatch; pinned by fixture-driven pipeline tests"}
+- [x] ExtractorEpoch bump + docs (mcp-tools/cloc semantics, use-case doc Maintained lines if verbs change — none expected) {id: TI-8, symbol: FingerprintHash, package: internal/fusion, skip_test: true, skip: "epoch constant + docs; pinned by the existing epoch invalidation test"}
+
+Checked honestly by the implementing worker against `MACOSX_DEPLOYMENT_TARGET=14.0
+CGO_ENABLED=1 task validate` (green) and the fusion/extractor/mcp/client test
+suites described in the commit(s); this slice branch (`slice/toolident`) is
+not itself in the fleet index, so `verify_plan`/index-backed grounding of
+these boxes happens at coordinator merge time against the fleet's post-merge
+re-ingest, not here. Notable deviations from the letter of the design (all
+reasoned, none silent): TI-4's CUE module/timoni awareness is a
+classification TAG (`core.Observation.ToolKind`), not a new SourceKind —
+LT-4's existing CUE extractor already produces correct package-qualified
+defs, so no new extraction path was needed. TI-7's values-key↔template-usage
+cross-ref is satisfied by shared naming (both values.yaml's dotted keys and
+template `.Values.x.y` usage emit the same dotted Name), which the
+`references` tool's existing substring search already joins — no separate
+synthetic edge was built for that half of TI-7 (the image↔Dockerfile half IS
+a synthesized `KindImageDockerfileRef` node). No `ingest` MCP tool row exists
+in docs/mcp-tools.md to update (it was never documented there before this
+slice); `server_stats` and `cloc` rows were updated, matching TI-8's explicit
+"mcp-tools/cloc semantics" wording.
 
 ## Deferred
 

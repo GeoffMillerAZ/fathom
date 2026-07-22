@@ -5,6 +5,73 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Added — tool identity: files understood as what they are (ADR-021 §2, docs/plans/toolident.md)
+- **Pass-3 tool-identity classifier** (`internal/fusion/classify.go`,
+  `fusion.Classify`): between the hash-gate and extractor dispatch, yaml/cue
+  files whose extension is ambiguous are content-classified into a `ToolKind`
+  (k8s manifest, CRD, compose, helm-template-yaml, kustomize, openapi,
+  cue-module, timoni, or unclassified) instead of being dispatched purely by
+  path/extension. A per-ingest **sibling index** (`buildSiblingIndex`), built
+  once from the Discover list, answers "does an ancestor dir contain
+  Chart.yaml / cue.mod?" cheaply.
+- **Helm templates/*.yaml no longer a blind spot**: `HelmTemplateYAMLExtractor`
+  substitutes every `{{ ... }}` action span with a scalar placeholder
+  (balanced on the `{{`/`}}` delimiter pair) before YAML decode, recovering
+  the k8s document shape from the majority of a real chart's content that
+  previously failed yaml.v3 outright and silently emitted nothing. Templated
+  `metadata.name` falls back to the file stem with a `templated:true` marker;
+  `.Values.x.y` references are captured as `KindHelmValueRef` observations.
+  `HelmValuesExtractor` now recurses into nested values.yaml keys (dotted
+  names), giving values-key ↔ template-usage an exact join via the
+  `references` tool.
+- **Kustomization understood as what it is**: `KustomizeExtractor`
+  (`internal/extractor/kustomizeextract.go`) emits `KindKustomizeResource`/
+  `KindKustomizePatch`/`KindKustomizeImage` reference observations from
+  `resources:`/`patches:`/`images:` — previously parsed-then-discarded by the
+  generic k8s extractor, which only emits a workload node when
+  `metadata.name` is present (kustomization.yaml never has one, so it silently
+  produced zero symbols).
+- **Compose files recognized by content, any filename**: a top-level
+  `services:` mapping key now classifies as compose regardless of basename
+  (`docker-compose.override.yml` and friends), not just the four hardcoded
+  canonical names.
+- **OpenAPI/Swagger documents** (`internal/extractor/openapiextract.go`):
+  detected by a top-level `openapi:`/`swagger:` key, emitting
+  `KindOpenAPIOperation`/`KindOpenAPISchema` instead of falling through to the
+  k8s extractor for silent zero output. CRDs (`apiVersion:
+  apiextensions.k8s.io`) are now tagged distinctly from generic k8s manifests.
+- **CUE module / timoni awareness**: `.cue` files under a `cue.mod/` ancestor
+  or matching timoni's `bundle:`/`timoni.cue` markers are tagged
+  `cue-module`/`timoni` on their observations (`core.Observation.ToolKind`),
+  layered on the existing LT-4 CUE extractor without duplicating it.
+- **Generated-file detection** (`connector.IsGenerated`): the "Code generated
+  ... DO NOT EDIT" convention (Go's own, shared by protoc-gen-go/mockgen/
+  stringer) tags observations (`core.Observation.Generated`) and
+  `core.SourceFile.Generated`; `cloc` reports a `generated` files/bytes
+  bucket (same mechanics as the `binary` bucket), excluded from `by_lang`
+  and `total`.
+- **Unclassified/oversize visibility**: yaml/cue files whose content matches
+  no known tool are counted (`fusion.Report.Unclassified`), never silently
+  routed into the k8s extractor for a zero-symbol result. Files over 2MB
+  (`fusion.MaxExtractSize`) are skipped from extraction and counted
+  (`fusion.Report.Oversize`) rather than parsed. Both counters also
+  accumulate process-lifetime on the `Pipeline` (`Stats()` /
+  `Client.IngestStats()`) and surface via the `server_stats` tool and as a
+  per-call delta on the `ingest` tool, through the optional `statsBackend`
+  capability (forwarded through the auto-refresh wrapper).
+- **Cross-refs, cheap tier**: a k8s/compose container image whose base name
+  matches a Dockerfile found in the same ingest (by parent-directory name)
+  gets a synthesized `KindImageDockerfileRef` reference observation
+  (`TierPreScan` — a same-name match, not a resolved build dependency).
+  Selector↔Service and cross-repo image resolution remain deferred (TI-9).
+- **`fusion.ExtractorEpoch` bumped "3"→"4"**: the tool-identity classifier
+  changed yaml-family extraction semantics for every already-indexed
+  yaml/cue file, so the salt bump forces re-extraction rather than leaving
+  stale pre-classifier observations in place.
+- Deferred (see docs/plans/toolident.md): Selector↔Service and cross-repo
+  image resolution, Helm render-time evaluation (TI-9); jsonnet/.ipynb
+  extraction (TI-10) — no fleet corpus contains them yet.
+
 ### Added — pure-Go SQLite (WAL) store backend replaces DuckDB as the default (ADR-020, docs/plans/store-sqlite.md)
 - **`internal/store/sqlite.go`**: `SQLiteStore` (`modernc.org/sqlite`, pure Go)
   implements the full 26-method `Store` interface with a fresh, final-column

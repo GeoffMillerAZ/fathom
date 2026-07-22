@@ -150,6 +150,19 @@ func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path 
 	return ia.IngestServiceAt(ctx, service, path)
 }
 
+// IngestStats forwards the ADR-021 §2 / TI-6 process-lifetime
+// unclassified/oversize counters (see statsBackend in meta.go). Without this
+// explicit forward, wrapping the client in auto-refresh would silently hide
+// the counters from server_stats/ingest — the same class of bug ingestAtBackend
+// documents above (dogfood O7).
+func (a *autoRefreshBackend) IngestStats() (unclassified, oversize int64) {
+	sb, ok := a.QueryInterface.(statsBackend)
+	if !ok {
+		return 0, 0
+	}
+	return sb.IngestStats()
+}
+
 func (a *autoRefreshBackend) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
 	a.ensure(ctx, service)
 	ob, ok := a.QueryInterface.(obligationsBackend)

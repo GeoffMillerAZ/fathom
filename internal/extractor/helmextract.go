@@ -156,17 +156,34 @@ func (h *HelmChartExtractor) Extract(service, relPath string, src []byte) ([]cor
 // HelmValuesExtractor implements Extractor for Helm values.yaml files.
 //
 // Output:
-//   - KindHelmValue — one per top-level key in the YAML mapping; Name = key,
-//     Line = key node line number.
+//   - KindHelmValue — one per key in the YAML mapping, recursing into nested
+//     mappings and building dotted names (parent.child), same convention as
+//     the CUE extractor's nested-field recursion (ADR-021 §1 / LT-4). Name =
+//     dotted key path, e.g. "image.repository". Line = key node line number.
 //
-// Only top-level keys are emitted (no recursion). Tier = TierVerified.
+// Recursion is capped at helmValuesMaxDepth (see its doc comment) and only
+// descends into a genuine YAML mapping value — a scalar, sequence, or empty
+// mapping ("resources: {}") is a leaf. Tier = TierVerified throughout (real
+// YAML parse).
+//
+// Nested dotted names give the values-key ↔ template-usage cross-ref
+// (ADR-021 §2 / TI-7) an exact join: a template referencing `.Values.image.
+// repository` and this extractor's "image.repository" node share the same
+// Name, so both surface together via the `references` tool without any
+// explicit link at ingest time.
 type HelmValuesExtractor struct{}
 
 // NewHelmValuesExtractor returns a new HelmValuesExtractor.
 func NewHelmValuesExtractor() *HelmValuesExtractor { return &HelmValuesExtractor{} }
 
-// Extract parses a Helm values.yaml and returns SymbolNodes for each top-level key.
-// It never returns a non-nil error.
+// helmValuesMaxDepth caps nested-mapping recursion in values.yaml. Real
+// charts rarely nest beyond 3-4 levels; this bounds a pathological or
+// self-referential document the same way cueMaxDepth does for CUE.
+const helmValuesMaxDepth = 8
+
+// Extract parses a Helm values.yaml and returns SymbolNodes for every key,
+// recursing into nested mappings (dotted names). It never returns a non-nil
+// error.
 func (h *HelmValuesExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	pkg := pkgFromPath(relPath)
 
@@ -180,26 +197,7 @@ func (h *HelmValuesExtractor) Extract(service, relPath string, src []byte) ([]co
 	}
 
 	var nodes []core.SymbolNode
-	// Mapping nodes store key-value pairs as consecutive Content entries.
-	for i := 0; i+1 < len(root.Content); i += 2 {
-		kn := root.Content[i]
-		if kn.Value == "" {
-			continue
-		}
-		line := kn.Line
-		if line == 0 {
-			line = 1
-		}
-		nodes = append(nodes, core.SymbolNode{
-			Service:  service,
-			Package:  pkg,
-			Name:     kn.Value,
-			Kind:     core.KindHelmValue,
-			FilePath: relPath,
-			Line:     line,
-			Tier:     core.TierVerified,
-		})
-	}
+	walkHelmValuesMapping(root, service, pkg, relPath, "", 1, &nodes)
 
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i].Line != nodes[j].Line {
@@ -208,6 +206,43 @@ func (h *HelmValuesExtractor) Extract(service, relPath string, src []byte) ([]co
 		return nodes[i].Name < nodes[j].Name
 	})
 	return nodes, nil
+}
+
+// walkHelmValuesMapping emits one KindHelmValue node per key in mapping and
+// recurses into any value that is itself a non-empty mapping, building a
+// dotted name at each level. depth is 1 for a top-level key; recursion stops
+// once depth would exceed helmValuesMaxDepth.
+func walkHelmValuesMapping(mapping *yaml.Node, service, pkg, relPath, parent string, depth int, nodes *[]core.SymbolNode) {
+	if depth > helmValuesMaxDepth || mapping.Kind != yaml.MappingNode {
+		return
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		kn := mapping.Content[i]
+		vn := mapping.Content[i+1]
+		if kn.Value == "" {
+			continue
+		}
+		dotted := kn.Value
+		if parent != "" {
+			dotted = parent + "." + kn.Value
+		}
+		line := kn.Line
+		if line == 0 {
+			line = 1
+		}
+		*nodes = append(*nodes, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     dotted,
+			Kind:     core.KindHelmValue,
+			FilePath: relPath,
+			Line:     line,
+			Tier:     core.TierVerified,
+		})
+		if vn.Kind == yaml.MappingNode && len(vn.Content) > 0 {
+			walkHelmValuesMapping(vn, service, pkg, relPath, dotted, depth+1, nodes)
+		}
+	}
 }
 
 // ─── HelmTemplateExtractor ───────────────────────────────────────────────────

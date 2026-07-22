@@ -244,9 +244,10 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 			lang = core.LangBinary
 		}
 		files = append(files, SourceFile{
-			Path:    ref.Path,
-			Content: data,
-			Lang:    lang,
+			Path:      ref.Path,
+			Content:   data,
+			Lang:      lang,
+			Generated: connector.IsGenerated(data),
 		})
 	}
 	return files, nil
@@ -304,6 +305,15 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 		_, _ = c.SweepClaims(ctx, service)
 	}
 	return nil
+}
+
+// IngestStats returns the process-lifetime unclassified/oversize counters
+// (ADR-021 §2 / TI-6) accumulated across every Ingest this Client's pipeline
+// has run — see fusion.Pipeline.Stats. Consumed by the mcp server's
+// server_stats tool and (as a before/after delta around one call) the ingest
+// tool's own response, via the optional statsBackend capability.
+func (c *Client) IngestStats() (unclassified, oversize int64) {
+	return c.pipe.Stats()
 }
 
 // ServiceWatermark returns the connector's *current* freshness token for the

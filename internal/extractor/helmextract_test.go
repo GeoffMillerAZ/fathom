@@ -153,7 +153,10 @@ func TestHelmValuesExtractor_Basic(t *testing.T) {
 		byName[n.Name] = n
 	}
 
-	wantKeys := []string{"replicaCount", "image", "service", "ingress", "resources"}
+	wantKeys := []string{
+		"replicaCount", "image", "service", "ingress", "resources",
+		"image.repository", "image.tag", "service.type", "service.port", "ingress.enabled",
+	}
 	for _, k := range wantKeys {
 		n, ok := byName[k]
 		if !ok {
@@ -171,16 +174,19 @@ func TestHelmValuesExtractor_Basic(t *testing.T) {
 		}
 	}
 
-	t.Run("top-level only", func(t *testing.T) {
-		// "repository", "tag", "port" etc. are nested and must not appear.
-		for _, nested := range []string{"repository", "tag", "port", "type", "enabled"} {
-			if _, ok := byName[nested]; ok {
-				t.Errorf("nested key %q should not be emitted at top level", nested)
+	t.Run("dotted nested keys, no bare nested names", func(t *testing.T) {
+		// Nested keys are recursed into (ADR-021 §2 / TI-2) but only under
+		// their dotted parent name — the bare leaf name alone must not
+		// appear (it would collide across unrelated parents).
+		for _, bare := range []string{"repository", "tag", "port", "type", "enabled"} {
+			if _, ok := byName[bare]; ok {
+				t.Errorf("bare nested key %q should not be emitted (only its dotted form)", bare)
 			}
 		}
 	})
 
 	t.Run("count", func(t *testing.T) {
+		// 5 top-level + 5 nested (resources: {} has no children).
 		if len(nodes) != len(wantKeys) {
 			t.Errorf("node count: got %d, want %d; nodes: %v", len(nodes), len(wantKeys), helmNodeNames(nodes))
 		}

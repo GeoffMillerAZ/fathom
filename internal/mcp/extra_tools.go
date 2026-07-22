@@ -1599,6 +1599,19 @@ func registerIngest(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
 		}
 		svc := p.Service
+
+		// Snapshot the process-lifetime unclassified/oversize counters
+		// (ADR-021 §2 / TI-6) before the ingest, so the delta below reports
+		// THIS call's counts — IngestService/IngestServiceAt return only an
+		// error, so a before/after snapshot of the cumulative counters is
+		// how the tool surfaces per-ingest visibility without changing
+		// either method's signature.
+		var before struct{ unclassified, oversize int64 }
+		sb, hasStats := backend.(statsBackend)
+		if hasStats {
+			before.unclassified, before.oversize = sb.IngestStats()
+		}
+
 		if p.Path != "" {
 			ia, ok := backend.(ingestAtBackend)
 			if !ok {
@@ -1610,7 +1623,14 @@ func registerIngest(s *Server, backend QueryInterface) {
 		} else if err := backend.IngestService(ctx, svc); err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
 		}
-		return map[string]any{"service": svc, "ok": true}, nil
+
+		result := map[string]any{"service": svc, "ok": true}
+		if hasStats {
+			afterUnclassified, afterOversize := sb.IngestStats()
+			result["unclassified_files"] = afterUnclassified - before.unclassified
+			result["oversize_files"] = afterOversize - before.oversize
+		}
+		return result, nil
 	})
 }
 

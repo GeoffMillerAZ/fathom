@@ -104,6 +104,11 @@ var extClassMap = map[string]classification{
 	"values.yaml": {core.KindHelmValue, "yaml"},
 	".tpl":        {core.KindHelmTemplate, "yaml"},
 
+	// Kustomize (ADR-021 §2 / TI-3; YAML-family syntax, own basename keys —
+	// same precedent as Chart.yaml/values.yaml above)
+	"kustomization.yaml": {core.KindKustomizeResource, "yaml"},
+	"kustomization.yml":  {core.KindKustomizeResource, "yaml"},
+
 	// Docker
 	"Dockerfile":          {core.KindDockerStage, "dockerfile"},
 	".dockerfile":         {core.KindDockerStage, "dockerfile"},

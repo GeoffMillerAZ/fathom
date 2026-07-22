@@ -52,3 +52,27 @@ func TestIngestService_UsesAndPreservesStoredPath(t *testing.T) {
 		t.Fatalf("ServiceMeta.path was clobbered: got %q, want %q", path, dir)
 	}
 }
+
+// TestClient_IngestStats is the ADR-021 §2 / TI-6 counterpart: Client exposes
+// the pipeline's process-lifetime unclassified/oversize counters so the mcp
+// server_stats/ingest tools have something to surface (via the optional
+// statsBackend capability in internal/mcp).
+func TestClient_IngestStats(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	// Not k8s/compose/openapi-shaped — classifies as unclassified.
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("logging:\n  level: debug\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c := client.New(connector.NewLocalConnector(), store.NewMemoryStore())
+
+	before, _ := c.IngestStats()
+	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "statssvc", Path: dir}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	after, _ := c.IngestStats()
+	if after-before != 1 {
+		t.Errorf("IngestStats() unclassified delta = %d, want 1", after-before)
+	}
+}

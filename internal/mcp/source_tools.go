@@ -328,6 +328,7 @@ func registerCloc(s *Server, backend QueryInterface) {
 		}
 		langMap := make(map[string][]cloc.Stats)
 		var binaryFiles, binaryBytes int
+		var generatedFiles, generatedBytes int
 		for _, f := range files {
 			// Binary files never contribute lines (ADR-021 §1 / LT-2): they
 			// are counted in their own files/bytes bucket, excluded from
@@ -337,6 +338,15 @@ func registerCloc(s *Server, backend QueryInterface) {
 			if f.Lang == core.LangBinary {
 				binaryFiles++
 				binaryBytes += len(f.Content)
+				continue
+			}
+			// Generated files (ADR-021 §2 / TI-5) get their own bucket, same
+			// mechanics as the binary bucket above: excluded from by_lang and
+			// from total, so "Code generated ... DO NOT EDIT" output never
+			// inflates the code-you-write line count.
+			if f.Generated {
+				generatedFiles++
+				generatedBytes += len(f.Content)
 				continue
 			}
 			lang := f.Lang
@@ -371,6 +381,10 @@ func registerCloc(s *Server, backend QueryInterface) {
 			"binary": map[string]any{
 				"files": binaryFiles,
 				"bytes": binaryBytes,
+			},
+			"generated": map[string]any{
+				"files": generatedFiles,
+				"bytes": generatedBytes,
 			},
 		}, nil
 	})

@@ -72,5 +72,14 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "extracted:  %d\n", report.Extracted)
 	fmt.Fprintf(stdout, "skipped:    %d\n", report.Skipped)
 	fmt.Fprintf(stdout, "symbols:    %d\n", report.Symbols)
+	// Unclassified/oversize (ADR-021 §2 / TI-6): print only when non-zero so
+	// the common case stays as quiet as it always was — a clean chart/repo
+	// classifies everything and these counters are always 0.
+	if report.Unclassified > 0 {
+		fmt.Fprintf(stdout, "unclassified: %d\n", report.Unclassified)
+	}
+	if report.Oversize > 0 {
+		fmt.Fprintf(stdout, "oversize:   %d\n", report.Oversize)
+	}
 	return 0
 }

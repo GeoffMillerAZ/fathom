@@ -154,6 +154,35 @@ const (
 
 	// Lua
 	KindLuaFunction SourceKind = "LuaFunction"
+
+	// Kustomize (ADR-021 §2 / TI-3): entries under a kustomization.yaml's
+	// resources/patches/images lists, emitted as reference observations —
+	// previously parsed-then-discarded because the generic k8s extractor
+	// only emits a workload node when metadata.name is present, and
+	// kustomization.yaml never has one.
+	KindKustomizeResource SourceKind = "KustomizeResource"
+	KindKustomizePatch    SourceKind = "KustomizePatch"
+	KindKustomizeImage    SourceKind = "KustomizeImage"
+
+	// OpenAPI (ADR-021 §2 / TI-3): detected by a top-level openapi:/swagger:
+	// key (see the fusion pass-3 classifier), distinct from the generic k8s
+	// manifest shape.
+	KindOpenAPIOperation SourceKind = "OpenAPIOperation"
+	KindOpenAPISchema    SourceKind = "OpenAPISchema"
+
+	// KindHelmValueRef marks a `.Values.x.y` reference found inside a Helm
+	// template (ADR-021 §2 / TI-2) — distinct from KindHelmValue, which marks
+	// the key's declaration in values.yaml. Both are queryable via the
+	// `references` tool, giving a cheap values-key ↔ template-usage cross-ref
+	// without any explicit join at ingest time (TI-7).
+	KindHelmValueRef SourceKind = "HelmValueRef"
+
+	// KindImageDockerfileRef is a synthesized cross-reference (ADR-021 §2 /
+	// TI-7, cheap tier): a K8s/Compose container image whose base name
+	// matches a Dockerfile found in the same repo (by parent-directory
+	// name). Tier is always TierPreScan — a same-name match, not a resolved
+	// build dependency.
+	KindImageDockerfileRef SourceKind = "ImageDockerfileRef"
 )
 
 // EvidenceTier is the provenance/confidence tier of an observation. Values
@@ -187,9 +216,10 @@ type SourceRef struct {
 // language hint derived from the file extension.  It is the unit passed to
 // per-file analyzers in the source-scanning tools.
 type SourceFile struct {
-	Path    string // same as SourceRef.Path
-	Content []byte // raw file bytes
-	Lang    string // lowercase language tag: "go", "py", "js", "ts", "java", …
+	Path      string // same as SourceRef.Path
+	Content   []byte // raw file bytes
+	Lang      string // lowercase language tag: "go", "py", "js", "ts", "java", …
+	Generated bool   // true when the first lines match the "Code generated ... DO NOT EDIT" convention (ADR-021 §2 / TI-5) — see connector.IsGenerated
 }
 
 // LangBinary and LangUnclassified are the two well-known SourceFile.Lang
@@ -223,6 +253,19 @@ type Observation struct {
 	Complexity   int      // cyclomatic complexity (0 = not applicable / not computed)
 	Line         int      // 1-based line of the symbol's definition in SourceRef; 0 = unknown
 	IngestedAt   time.Time
+
+	// ToolKind is the pass-3 classifier's verdict on what tool the source
+	// file actually is (ADR-021 §2), e.g. "k8s", "k8s-crd", "compose",
+	// "helm-template-yaml", "cue-module", "timoni" — set for files that pass
+	// through the yaml/cue-family classifier; "" for every other language,
+	// which is unambiguous by extension and never needs classification.
+	ToolKind string `json:"tool_kind,omitempty"`
+	// Generated marks an observation extracted from a file whose header
+	// matches the "Code generated ... DO NOT EDIT" convention (ADR-021 §2 /
+	// TI-5). Generated files are still extracted normally; this flag lets
+	// consumers (cloc, review tooling) exclude them from "code you write"
+	// totals without a second content sniff.
+	Generated bool `json:"generated,omitempty"`
 }
 
 // SymbolNode is a symbol with its location and outgoing call edges — the unit

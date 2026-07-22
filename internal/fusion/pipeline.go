@@ -78,19 +78,37 @@ type Report struct {
 	// PurgedLegacyAnchors is true when this ingest found pre-ADR-017
 	// absolute-path anchors and rebuilt the service's content wholesale.
 	PurgedLegacyAnchors bool
+	// Unclassified is the number of yaml/cue-family files whose extension
+	// matched an extractor candidate but whose content/path matched no known
+	// tool (ADR-021 §2 / TI-6) — never handed to an extractor, but counted
+	// instead of silently producing zero symbols.
+	Unclassified int
+	// Oversize is the number of files skipped from extraction because their
+	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
+	// fingerprinted so they are not re-sniffed on every ingest.
+	Oversize int
 }
 
 // Pipeline is the source fusion pipeline.
 type Pipeline struct {
-	conn      connector.Connector
-	st        store.Store
-	exts      map[string]extractor.Extractor
-	cfg       Config
-	enricher  *llm.Enricher // nil → enrichment disabled
-	mu        sync.Mutex
-	queue     map[string][]pendingFile // serviceID → pending files (lazy mode)
-	gitHeadFn func(path string) string // injectable; default = realGitHead
-	gitLogFn  func(path string) string // injectable; default = realGitLog
+	conn       connector.Connector
+	st         store.Store
+	exts       map[string]extractor.Extractor
+	toolExts   map[ToolKind]extractor.Extractor // ADR-021 §2: yaml-family extractors keyed by classifier verdict
+	cfg        Config
+	enricher   *llm.Enricher // nil → enrichment disabled
+	mu         sync.Mutex
+	queue      map[string][]pendingFile // serviceID → pending files (lazy mode)
+	siblingIdx map[string]*siblingIndex // serviceID → this ingest's sibling index (ADR-021 §2 classifier context), guarded by mu
+	gitHeadFn  func(path string) string // injectable; default = realGitHead
+	gitLogFn   func(path string) string // injectable; default = realGitLog
+
+	// Process-lifetime counters (ADR-021 §2 / TI-6), surfaced via Stats() and
+	// (through pkg/client + the mcp server_stats/ingest tools) to operators —
+	// "silent zero-symbol extraction dies" applies to the whole process, not
+	// just one Report.
+	unclassifiedTotal int64 // atomic
+	oversizeTotal     int64 // atomic
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.
@@ -206,7 +224,17 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // stored observations were produced by the OLD top-level-only extractor, so
 // the salt bump forces re-extraction on the next ingest rather than leaving
 // them silently stale (the exact class dogfood O9 caught for epoch 2).
-const ExtractorEpoch = "3"
+// Epoch 4 = the ADR-021 §2 tool-identity classifier generation
+// (docs/plans/toolident.md): Helm templates/*.yaml now parse via
+// placeholder substitution instead of emitting nothing; kustomization.yaml
+// emits resource/patch/image symbols instead of nothing (no metadata.name);
+// arbitrary compose files and OpenAPI/CRD documents are content-classified
+// instead of silently zero-output through the k8s extractor;
+// HelmValuesExtractor recurses into nested keys (dotted names) instead of
+// top-level-only. Every already-indexed yaml/cue file's stored observations
+// were produced by the OLD path/extension-only dispatch, so the salt bump
+// forces re-extraction rather than leaving them silently stale.
+const ExtractorEpoch = "4"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -225,13 +253,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		cfg.Concurrency = 1
 	}
 	p := &Pipeline{
-		conn:      conn,
-		st:        st,
-		cfg:       cfg,
-		exts:      map[string]extractor.Extractor{},
-		queue:     map[string][]pendingFile{},
-		gitHeadFn: realGitHead,
-		gitLogFn:  realGitLog,
+		conn:       conn,
+		st:         st,
+		cfg:        cfg,
+		exts:       map[string]extractor.Extractor{},
+		toolExts:   map[ToolKind]extractor.Extractor{},
+		queue:      map[string][]pendingFile{},
+		siblingIdx: map[string]*siblingIndex{},
+		gitHeadFn:  realGitHead,
+		gitLogFn:   realGitLog,
 	}
 
 	// Go
@@ -310,6 +340,26 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["docker-compose.yaml"] = compose
 	p.exts["compose.yml"] = compose
 	p.exts["compose.yaml"] = compose
+
+	// Kustomize (full-basename keys take precedence over .yaml k8s extractor
+	// — ADR-021 §2 / TI-3: kustomization.yaml is valid k8s-shaped YAML but
+	// (almost) never has metadata.name, so the generic k8s extractor
+	// silently produced zero symbols for it)
+	kustomize := extractor.NewKustomizeExtractor()
+	p.exts["kustomization.yaml"] = kustomize
+	p.exts["kustomization.yml"] = kustomize
+
+	// ToolKind-keyed extractors (ADR-021 §2): dispatched via the pass-3
+	// classifier (classifyYAML) for .yaml/.yml files whose basename is NOT
+	// one of the special keys above and which are not under
+	// .github/workflows/ (GHA keeps its existing, unchanged dispatch via
+	// yamlExt). CRD and generic k8s manifests share the same extractor —
+	// the classifier only tags CRDs distinctly for visibility.
+	p.toolExts[ToolK8sManifest] = k8s
+	p.toolExts[ToolK8sCRD] = k8s
+	p.toolExts[ToolCompose] = compose
+	p.toolExts[ToolHelmTemplateYAML] = extractor.NewHelmTemplateYAMLExtractor()
+	p.toolExts[ToolOpenAPI] = extractor.NewOpenAPIExtractor()
 
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
@@ -407,6 +457,18 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	var report Report
 	report.Discovered = len(refs)
+
+	// Build this ingest's sibling index ONCE from the just-Discovered list
+	// (ADR-021 §2 / TI-1, option (b) from the grounding: O(files), not
+	// O(files²)) — it answers "does an ancestor dir contain Chart.yaml /
+	// cue.mod?" and "is there a Dockerfile named after this image?" for
+	// every file the classifier or cross-ref pass looks at below. Stored
+	// per-service so a later ExtractPending (lazy mode) sees the SAME index
+	// this Ingest computed, rather than an empty one.
+	idx := buildSiblingIndex(refs)
+	p.mu.Lock()
+	p.siblingIdx[svc.ID] = idx
+	p.mu.Unlock()
 
 	// ADR-017 self-heal: stores written before repo-relative anchors keyed
 	// fingerprints and observations by absolute path. Once the connector
@@ -566,12 +628,14 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return report, nil
 	}
 
-	symbols, err := p.extractAndStore(ctx, svc.ID, pending)
+	stats, err := p.extractAndStore(ctx, svc.ID, pending)
 	if err != nil {
 		return report, err
 	}
 	report.Extracted = len(pending)
-	report.Symbols = symbols
+	report.Symbols = stats.symbols
+	report.Unclassified = stats.unclassified
+	report.Oversize = stats.oversize
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
@@ -641,11 +705,44 @@ func (p *Pipeline) ExtractPending(ctx context.Context, serviceID string) error {
 	return err
 }
 
+// extractStats summarises one extractAndStore call — the per-call counterpart
+// of the Pipeline's cumulative unclassifiedTotal/oversizeTotal counters.
+type extractStats struct {
+	symbols      int
+	unclassified int
+	oversize     int
+}
+
+// Stats returns the pipeline's process-lifetime unclassified/oversize counts
+// (ADR-021 §2 / TI-6) — every classifier miss and every size-cap skip across
+// every Ingest this Pipeline has run, regardless of Lazy mode. Surfaced via
+// pkg/client and the mcp server_stats/ingest tools so "silent zero-symbol
+// extraction" has a durable, process-wide counter, not just a per-call one.
+func (p *Pipeline) Stats() (unclassified, oversize int64) {
+	return atomic.LoadInt64(&p.unclassifiedTotal), atomic.LoadInt64(&p.oversizeTotal)
+}
+
 // extractAndStore runs the extractor for each file in batch (in input order
 // for full determinism), converts resulting SymbolNodes to Observations, calls
-// PutObservations, and records fingerprints. It returns the total symbol count.
-func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch []pendingFile) (int, error) {
-	totalSymbols := 0
+// PutObservations, and records fingerprints. It returns per-call stats
+// (symbol count, unclassified count, oversize count).
+//
+// Dispatch (ADR-021 §2): binary and oversize content are excluded before any
+// extractor runs. For .yaml/.yml files not resolved unambiguously by
+// basename (Chart.yaml, values.yaml, kustomization.*, compose.*,
+// docker-compose.*) and not under .github/workflows/, the pass-3 classifier
+// (classifyYAML) decides the ToolKind and therefore the extractor; a
+// ToolUnclassified verdict skips extraction (counted) rather than falling
+// through to the k8s extractor for a silent zero-symbol result. .cue files
+// always use the same CUEExtractor; classifyCUE only decides the ToolKind
+// TAG recorded on the resulting observations. Every other extension keeps
+// the original basename-then-extension lookup, unchanged.
+func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch []pendingFile) (extractStats, error) {
+	var stats extractStats
+
+	p.mu.Lock()
+	idx := p.siblingIdx[serviceID]
+	p.mu.Unlock()
 
 	// Process file-by-file in batch (input) order for determinism.
 	for _, pf := range batch {
@@ -655,22 +752,76 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 		// ingest, but never hand binary bytes to an extractor.
 		if connector.IsBinary(pf.content) {
 			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-				return totalSymbols, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 			}
 			continue
 		}
 
-		// Resolve extractor: try full basename first (e.g. "go.mod"), then extension.
+		// Size cap (ADR-021 §2 / TI-6): huge/minified files are never handed
+		// to an extractor. Still fingerprinted and counted, never silent.
+		if len(pf.content) > MaxExtractSize {
+			stats.oversize++
+			atomic.AddInt64(&p.oversizeTotal, 1)
+			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+			}
+			continue
+		}
+
 		base := filepath.Base(pf.ref.Path)
 		ext := filepath.Ext(pf.ref.Path)
-		extExtractor, ok := p.exts[base]
-		if !ok {
+
+		var extExtractor extractor.Extractor
+		var toolKind ToolKind
+		ok := false
+
+		switch {
+		case ext == ".yaml" || ext == ".yml":
+			switch {
+			case strings.Contains(filepath.ToSlash(pf.ref.Path), ".github/workflows/"):
+				// GHA dispatch was never the grounded defect — keep the
+				// existing YAMLExtractor wrapper unchanged.
+				extExtractor, ok = p.exts[ext]
+				toolKind = ToolGHA
+			default:
+				if e, hit := p.exts[base]; hit {
+					// Already unambiguous by basename (Chart.yaml,
+					// values.yaml, kustomization.*, compose.*,
+					// docker-compose.*) — no content sniff needed.
+					extExtractor, ok = e, true
+					toolKind = toolKindForBasename(base)
+				} else {
+					kind := Classify(pf.ref.Path, pf.content, idx)
+					toolKind = kind
+					if kind == ToolUnclassified {
+						stats.unclassified++
+						atomic.AddInt64(&p.unclassifiedTotal, 1)
+						if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
+							return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+						}
+						continue
+					}
+					extExtractor, ok = p.toolExts[kind]
+				}
+			}
+		case ext == ".cue":
+			// Classify never changes which extractor runs for .cue files —
+			// only the ToolKind tag recorded on the resulting observations.
 			extExtractor, ok = p.exts[ext]
+			toolKind = Classify(pf.ref.Path, pf.content, idx)
+		default:
+			// Unchanged fast path: try full basename first (e.g. "go.mod"),
+			// then extension.
+			extExtractor, ok = p.exts[base]
+			if !ok {
+				extExtractor, ok = p.exts[ext]
+			}
 		}
+
 		if !ok {
-			// No extractor registered for this extension — write fingerprint only.
+			// No extractor registered/resolved — write fingerprint only.
 			if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-				return totalSymbols, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+				return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 			}
 			continue
 		}
@@ -683,7 +834,15 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 			continue
 		}
 
+		// Cross-refs, cheap tier (ADR-021 §2 / TI-7): safe to call
+		// unconditionally — a no-op when idx has no Dockerfiles or nodes
+		// carries no image-bearing kind.
 		if len(nodes) > 0 {
+			nodes = append(nodes, crossRefImageToDockerfile(serviceID, pf.ref.Path, nodes, idx)...)
+		}
+
+		if len(nodes) > 0 {
+			generated := connector.IsGenerated(pf.content)
 			obs := make([]core.Observation, 0, len(nodes))
 			now := time.Now().UTC()
 			for _, node := range nodes {
@@ -700,12 +859,14 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					Complexity:   node.Complexity,
 					Line:         node.Line,
 					IngestedAt:   now,
+					ToolKind:     string(toolKind),
+					Generated:    generated,
 				})
 			}
 			if err := p.st.PutObservations(ctx, obs); err != nil {
-				return totalSymbols, fmt.Errorf("fusion: put observations %q: %w", pf.ref.Path, err)
+				return stats, fmt.Errorf("fusion: put observations %q: %w", pf.ref.Path, err)
 			}
-			totalSymbols += len(nodes)
+			stats.symbols += len(nodes)
 
 			// Enrichment step: run only when enabled and an enricher is wired.
 			// Files reaching this point have already passed the hash-gate (they
@@ -713,17 +874,17 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 			// required here — the file-level hash is the gate.
 			if p.cfg.Enrich && p.enricher != nil {
 				if err := p.runEnrichment(ctx, serviceID, pf.ref.Path, nodes); err != nil {
-					return totalSymbols, err
+					return stats, err
 				}
 			}
 		}
 
 		if err := p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash); err != nil {
-			return totalSymbols, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
+			return stats, fmt.Errorf("fusion: set fingerprint %q: %w", pf.ref.Path, err)
 		}
 	}
 
-	return totalSymbols, nil
+	return stats, nil
 }
 
 // runEnrichment generates and stores KnowledgeCards for non-doc symbols and
