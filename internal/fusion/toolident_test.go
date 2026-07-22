@@ -234,6 +234,61 @@ spec:
 	}
 }
 
+// TestIngest_MultiDocFile_CRDTagAppliesPerDocument is critic probe P15: a
+// multi-document YAML stream containing a CRD *and* an ordinary Deployment
+// used to tag EVERY observation in the file "k8s-crd" (file-wide classifier
+// verdict). Tool identity is a per-document fact for k8s streams — the
+// Deployment's observations must carry "k8s", only the CRD's "k8s-crd".
+func TestIngest_MultiDocFile_CRDTagAppliesPerDocument(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "manifests/bundle.yaml", `apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.example.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: widget-controller
+spec:
+  template:
+    spec:
+      containers:
+        - name: controller
+          image: widget-controller:1.0
+`)
+
+	obs, _ := ingestDir(t, dir, "multidoc-crd-svc")
+	byName := make(map[string]core.Observation)
+	for _, o := range obs {
+		byName[o.Symbol] = o
+	}
+
+	crd, ok := byName["CustomResourceDefinition/widgets.example.com"]
+	if !ok {
+		t.Fatal("CRD observation missing")
+	}
+	if crd.ToolKind != string(fusion.ToolK8sCRD) {
+		t.Errorf("CRD doc ToolKind = %q, want %q", crd.ToolKind, fusion.ToolK8sCRD)
+	}
+
+	dep, ok := byName["Deployment/widget-controller"]
+	if !ok {
+		t.Fatal("Deployment observation missing")
+	}
+	if dep.ToolKind != string(fusion.ToolK8sManifest) {
+		t.Errorf("Deployment doc ToolKind = %q, want %q (not the file-wide CRD tag)", dep.ToolKind, fusion.ToolK8sManifest)
+	}
+
+	img, ok := byName["widget-controller:1.0"]
+	if !ok {
+		t.Fatal("container observation missing")
+	}
+	if img.ToolKind != string(fusion.ToolK8sManifest) {
+		t.Errorf("container (Deployment doc) ToolKind = %q, want %q", img.ToolKind, fusion.ToolK8sManifest)
+	}
+}
+
 // ─── TI-4: CUE module ancestor tagging ─────────────────────────────────────
 
 func TestIngest_CUEModuleAncestorTagged(t *testing.T) {
@@ -327,6 +382,98 @@ spec:
 	}
 }
 
+// TestIngest_CrossRef_RootDockerfileFallback is critic probe P12: the most
+// common layout of all — a single Dockerfile at the repo ROOT — used to key
+// the sibling index under "." and never match any image. When the repo has
+// exactly one Dockerfile and it sits at the root, an image ref falls back
+// to it.
+func TestIngest_CrossRef_RootDockerfileFallback(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "Dockerfile", "FROM golang:1.26 AS build\n")
+	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myapp:1.2.3
+`)
+
+	obs, _ := ingestDir(t, dir, "rootdf-svc")
+	refs := obsByKind(obs, core.KindImageDockerfileRef)
+	if len(refs) != 1 {
+		t.Fatalf("expected 1 ImageDockerfileRef via the lone-root fallback, got %d: %+v", len(refs), refs)
+	}
+	if !strings.Contains(refs[0].Claim, "Dockerfile") {
+		t.Errorf("cross-ref Claim = %q, want it to reference the root Dockerfile", refs[0].Claim)
+	}
+}
+
+// TestIngest_CrossRef_DotDockerfileKeyedByStemNotDir is critic probe P13:
+// build/myapp.dockerfile used to be keyed by its DIRECTORY name ("build"),
+// so an image literally named "build:2.0" got a FALSE reference while the
+// image the file actually builds ("myapp:1.0") got none. *.dockerfile files
+// key by their STEM.
+func TestIngest_CrossRef_DotDockerfileKeyedByStemNotDir(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "build/myapp.dockerfile", "FROM golang:1.26\n")
+	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: myapp:1.0
+        - name: oddly-named
+          image: build:2.0
+`)
+
+	obs, _ := ingestDir(t, dir, "stemdf-svc")
+	refs := obsByKind(obs, core.KindImageDockerfileRef)
+	if len(refs) != 1 {
+		t.Fatalf("expected exactly 1 ImageDockerfileRef (myapp via stem), got %d: %+v", len(refs), refs)
+	}
+	if refs[0].Symbol != "myapp" {
+		t.Errorf("cross-ref Symbol = %q, want %q (stem match)", refs[0].Symbol, "myapp")
+	}
+	for _, r := range refs {
+		if r.Symbol == "build" {
+			t.Error("image 'build' must NOT get a ref from build/myapp.dockerfile's directory name — that ref is a lie")
+		}
+	}
+}
+
+// TestIngest_CrossRef_NoFallbackWithMultipleDockerfiles: the lone-root
+// fallback must not fire when the repo has more than one Dockerfile — an
+// unmatched image stays unmatched rather than guessing.
+func TestIngest_CrossRef_NoFallbackWithMultipleDockerfiles(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "Dockerfile", "FROM golang:1.26\n")
+	writeFile(t, dir, "web/Dockerfile", "FROM node:22\n")
+	writeFile(t, dir, "k8s/deployment.yaml", `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: other
+spec:
+  template:
+    spec:
+      containers:
+        - name: app
+          image: unmatched-name:1.0
+`)
+
+	obs, _ := ingestDir(t, dir, "multidf-svc")
+	if refs := obsByKind(obs, core.KindImageDockerfileRef); len(refs) != 0 {
+		t.Errorf("expected 0 refs (ambiguous — two Dockerfiles, no name match), got %+v", refs)
+	}
+}
+
 // ─── TI-5: generated-file marker ────────────────────────────────────────────
 
 func TestIngest_GeneratedFileMarker(t *testing.T) {
@@ -381,6 +528,43 @@ images:
 	}
 	if report.Unclassified != 0 {
 		t.Errorf("Unclassified = %d, want 0", report.Unclassified)
+	}
+}
+
+// TestIngest_ClassifiedButZeroSymbolsCounted is critic F5's second half: a
+// GitLab-CI-shaped file has a top-level `services:` key holding a LIST, so
+// it classifies as compose — then the compose extractor (which needs a
+// mapping) emits zero symbols. Without a counter that zero-symbol outcome
+// was invisible: classified files bypassed the Unclassified counter and
+// produced nothing, silently. Every zero-symbol outcome must be visible
+// somewhere: classified-but-zero files get their own per-tool counter.
+func TestIngest_ClassifiedButZeroSymbolsCounted(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "ci-config.yml", `services:
+  - docker:dind
+stages:
+  - build
+`)
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "cizero-svc", Path: dir}
+	p := fusion.New(conn, st, fusion.Config{Concurrency: 1})
+	ctx := context.Background()
+
+	report, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if report.Unclassified != 0 {
+		t.Errorf("report.Unclassified = %d, want 0 (the file DID classify, as compose)", report.Unclassified)
+	}
+	if report.ClassifiedZero != 1 {
+		t.Errorf("report.ClassifiedZero = %d, want 1 — the classified-but-zero outcome must be counted", report.ClassifiedZero)
+	}
+	cz := p.ClassifiedZeroStats()
+	if cz[string(fusion.ToolCompose)] != 1 {
+		t.Errorf("ClassifiedZeroStats()[compose] = %d, want 1 (map: %v)", cz[string(fusion.ToolCompose)], cz)
 	}
 }
 

@@ -87,6 +87,13 @@ type Report struct {
 	// content exceeded MaxExtractSize (ADR-021 §2 / TI-6) — still
 	// fingerprinted so they are not re-sniffed on every ingest.
 	Oversize int
+	// ClassifiedZero is the number of files that DID classify as a known
+	// tool but whose extractor emitted zero symbols (ADR-021 §2, critic
+	// F5) — e.g. a CI config whose top-level `services:` list matches the
+	// compose signal but not the compose shape. Without this counter the
+	// silent-zero class survived through the classified path; per-tool
+	// detail is on Pipeline.ClassifiedZeroStats.
+	ClassifiedZero int
 }
 
 // Pipeline is the source fusion pipeline.
@@ -109,6 +116,13 @@ type Pipeline struct {
 	// just one Report.
 	unclassifiedTotal int64 // atomic
 	oversizeTotal     int64 // atomic
+
+	// classifiedZero counts, per ToolKind, files that classified as that
+	// tool but whose extractor emitted zero symbols (critic F5) — the
+	// remaining silent-zero class after the Unclassified counter. Guarded
+	// by czMu (a map, not an atomic).
+	czMu           sync.Mutex
+	classifiedZero map[string]int64
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.
@@ -253,15 +267,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		cfg.Concurrency = 1
 	}
 	p := &Pipeline{
-		conn:       conn,
-		st:         st,
-		cfg:        cfg,
-		exts:       map[string]extractor.Extractor{},
-		toolExts:   map[ToolKind]extractor.Extractor{},
-		queue:      map[string][]pendingFile{},
-		siblingIdx: map[string]*siblingIndex{},
-		gitHeadFn:  realGitHead,
-		gitLogFn:   realGitLog,
+		conn:           conn,
+		st:             st,
+		cfg:            cfg,
+		exts:           map[string]extractor.Extractor{},
+		toolExts:       map[ToolKind]extractor.Extractor{},
+		queue:          map[string][]pendingFile{},
+		siblingIdx:     map[string]*siblingIndex{},
+		classifiedZero: map[string]int64{},
+		gitHeadFn:      realGitHead,
+		gitLogFn:       realGitLog,
 	}
 
 	// Go
@@ -636,6 +651,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.Symbols = stats.symbols
 	report.Unclassified = stats.unclassified
 	report.Oversize = stats.oversize
+	report.ClassifiedZero = stats.classifiedZero
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
 	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
@@ -708,9 +724,10 @@ func (p *Pipeline) ExtractPending(ctx context.Context, serviceID string) error {
 // extractStats summarises one extractAndStore call — the per-call counterpart
 // of the Pipeline's cumulative unclassifiedTotal/oversizeTotal counters.
 type extractStats struct {
-	symbols      int
-	unclassified int
-	oversize     int
+	symbols        int
+	unclassified   int
+	oversize       int
+	classifiedZero int
 }
 
 // Stats returns the pipeline's process-lifetime unclassified/oversize counts
@@ -720,6 +737,29 @@ type extractStats struct {
 // extraction" has a durable, process-wide counter, not just a per-call one.
 func (p *Pipeline) Stats() (unclassified, oversize int64) {
 	return atomic.LoadInt64(&p.unclassifiedTotal), atomic.LoadInt64(&p.oversizeTotal)
+}
+
+// ClassifiedZeroStats returns a copy of the process-lifetime per-tool
+// classified-but-zero-symbols counters (critic F5): files that classified
+// as a known tool but whose extractor emitted zero symbols. Companion to
+// Stats(); surfaced via server_stats.
+func (p *Pipeline) ClassifiedZeroStats() map[string]int64 {
+	p.czMu.Lock()
+	defer p.czMu.Unlock()
+	out := make(map[string]int64, len(p.classifiedZero))
+	for k, v := range p.classifiedZero {
+		out[k] = v
+	}
+	return out
+}
+
+// noteClassifiedZero records one classified-but-zero-symbols outcome for
+// tool, on both the per-call stats and the process-lifetime map.
+func (p *Pipeline) noteClassifiedZero(stats *extractStats, tool ToolKind) {
+	stats.classifiedZero++
+	p.czMu.Lock()
+	p.classifiedZero[string(tool)]++
+	p.czMu.Unlock()
 }
 
 // extractAndStore runs the extractor for each file in batch (in input order
@@ -829,9 +869,21 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 		nodes, extractErr := extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
 		if extractErr != nil {
 			// Non-fatal: record the fingerprint so we don't retry on next ingest,
-			// but don't abort the whole pipeline.
+			// but don't abort the whole pipeline. A classified file erroring
+			// out is a zero-symbol outcome too — count it (critic F5).
+			if toolKind != "" && toolKind != ToolUnclassified {
+				p.noteClassifiedZero(&stats, toolKind)
+			}
 			_ = p.st.SetFingerprint(ctx, serviceID, pf.ref.Path, pf.hash)
 			continue
+		}
+
+		// Classified-but-zero visibility (critic F5): a file the classifier
+		// DID identify (e.g. a CI config whose top-level `services:` list
+		// matches the compose signal) whose extractor then emits nothing is
+		// the last surviving silent-zero path — count it per tool.
+		if len(nodes) == 0 && toolKind != "" && toolKind != ToolUnclassified {
+			p.noteClassifiedZero(&stats, toolKind)
 		}
 
 		// Cross-refs, cheap tier (ADR-021 §2 / TI-7): safe to call
@@ -842,10 +894,18 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 		}
 
 		if len(nodes) > 0 {
-			generated := connector.IsGenerated(pf.content)
+			generated := connector.IsGenerated(pf.ref.Path, pf.content)
 			obs := make([]core.Observation, 0, len(nodes))
 			now := time.Now().UTC()
 			for _, node := range nodes {
+				// Tool identity: an extractor's per-symbol verdict (set for
+				// multi-document formats where identity is per-document,
+				// e.g. a CRD beside a Deployment in one YAML stream —
+				// critic P15) overrides the classifier's per-file verdict.
+				nodeToolKind := string(toolKind)
+				if node.ToolKind != "" {
+					nodeToolKind = node.ToolKind
+				}
 				obs = append(obs, core.Observation{
 					ServiceID:    serviceID,
 					SourceRef:    pf.ref.Path,
@@ -859,7 +919,7 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					Complexity:   node.Complexity,
 					Line:         node.Line,
 					IngestedAt:   now,
-					ToolKind:     string(toolKind),
+					ToolKind:     nodeToolKind,
 					Generated:    generated,
 				})
 			}

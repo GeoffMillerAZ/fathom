@@ -102,6 +102,81 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// ToolKind + Generated round-trip (ADR-021 §2 / critic F1). These two
+	// fields were once write-only against the persistent backends: the
+	// memory fake (whole-struct append) round-tripped them while sqlite and
+	// duckdb dropped them at the column list — the exact fake-vs-real
+	// divergence class this shared contract suite exists to prevent, so the
+	// assertion lives HERE, not in a backend-specific test.
+	// ------------------------------------------------------------------ //
+	t.Run("tool_kind_and_generated_round_trip", func(t *testing.T) {
+		obs := []core.Observation{
+			{
+				ServiceID:    "svc-toolkind",
+				SourceRef:    "crds/widget.yaml",
+				SourceKind:   core.KindK8sWorkload,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "CustomResourceDefinition/widgets.example.com",
+				Claim:        "apiextensions.k8s.io/v1",
+				ToolKind:     "k8s-crd",
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+			{
+				ServiceID:    "svc-toolkind",
+				SourceRef:    "gen/foo.pb.go",
+				SourceKind:   core.KindGoFunc,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "GeneratedFunc",
+				Generated:    true,
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+			{
+				ServiceID:    "svc-toolkind",
+				SourceRef:    "main.go",
+				SourceKind:   core.KindGoFunc,
+				EvidenceTier: core.TierVerified,
+				Symbol:       "PlainFunc",
+				IngestedAt:   time.Now().UTC().Truncate(time.Second),
+			},
+		}
+		if err := s.PutObservations(ctx, obs); err != nil {
+			t.Fatalf("PutObservations: %v", err)
+		}
+		got, err := s.QueryObservations(ctx, "svc-toolkind", "")
+		if err != nil {
+			t.Fatalf("QueryObservations: %v", err)
+		}
+		bySymbol := make(map[string]core.Observation, len(got))
+		for _, o := range got {
+			bySymbol[o.Symbol] = o
+		}
+		crd, ok := bySymbol["CustomResourceDefinition/widgets.example.com"]
+		if !ok {
+			t.Fatal("CRD observation not returned")
+		}
+		if crd.ToolKind != "k8s-crd" {
+			t.Errorf("ToolKind not round-tripped: got %q, want %q", crd.ToolKind, "k8s-crd")
+		}
+		if crd.Generated {
+			t.Error("CRD observation Generated: got true, want false")
+		}
+		gen, ok := bySymbol["GeneratedFunc"]
+		if !ok {
+			t.Fatal("generated observation not returned")
+		}
+		if !gen.Generated {
+			t.Error("Generated not round-tripped: got false, want true")
+		}
+		plain, ok := bySymbol["PlainFunc"]
+		if !ok {
+			t.Fatal("plain observation not returned")
+		}
+		if plain.ToolKind != "" || plain.Generated {
+			t.Errorf("plain observation should have zero-value ToolKind/Generated, got (%q, %v)", plain.ToolKind, plain.Generated)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// Concern-scoped filtering
 	// ------------------------------------------------------------------ //
 	t.Run("concern_scoping", func(t *testing.T) {

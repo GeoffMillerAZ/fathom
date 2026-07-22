@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 func TestClassify_K8sManifest(t *testing.T) {
@@ -30,6 +31,19 @@ func TestClassify_Compose_AnyFilename(t *testing.T) {
 	content := []byte("services:\n  web:\n    image: nginx\n")
 	if got := Classify("any-name.yml", content, nil); got != ToolCompose {
 		t.Errorf("Classify = %q, want %q", got, ToolCompose)
+	}
+}
+
+func TestClassify_Compose_TrailingCommentAllowed(t *testing.T) {
+	// Critic F5: `services: # comment` is valid compose — the end-of-line
+	// anchor must tolerate trailing whitespace and comments.
+	content := []byte("services: # the app's services\n  web:\n    image: nginx\n")
+	if got := Classify("compose-ish.yml", content, nil); got != ToolCompose {
+		t.Errorf("Classify with trailing comment = %q, want %q", got, ToolCompose)
+	}
+	content2 := []byte("services:   \n  web:\n    image: nginx\n")
+	if got := Classify("compose-ish2.yml", content2, nil); got != ToolCompose {
+		t.Errorf("Classify with trailing whitespace = %q, want %q", got, ToolCompose)
 	}
 }
 
@@ -92,6 +106,8 @@ func TestBuildSiblingIndex_ChartAndDockerfileAndCueMod(t *testing.T) {
 		{Path: "mychart/Chart.yaml"},
 		{Path: "mychart/templates/deployment.yaml"},
 		{Path: "myapp/Dockerfile"},
+		{Path: "Dockerfile"},
+		{Path: "build/otherapp.dockerfile"},
 		{Path: "cue.mod/module.cue"},
 		{Path: "cue.mod/pkg/schema.cue"},
 	}
@@ -108,6 +124,24 @@ func TestBuildSiblingIndex_ChartAndDockerfileAndCueMod(t *testing.T) {
 	}
 	if got, ok := idx.dockerfileByDirName["myapp"]; !ok || got != "myapp/Dockerfile" {
 		t.Errorf("dockerfileByDirName[\"myapp\"] = %q, ok=%v; want \"myapp/Dockerfile\", true", got, ok)
+	}
+	// *.dockerfile keys by STEM, never by directory name (critic F3): the
+	// file names the image it builds.
+	if got, ok := idx.dockerfileByStem["otherapp"]; !ok || got != "build/otherapp.dockerfile" {
+		t.Errorf("dockerfileByStem[\"otherapp\"] = %q, ok=%v; want \"build/otherapp.dockerfile\", true", got, ok)
+	}
+	if _, ok := idx.dockerfileByDirName["build"]; ok {
+		t.Error("build/otherapp.dockerfile must not be keyed under its directory name")
+	}
+	// The root Dockerfile is recorded separately, never under ".".
+	if idx.rootDockerfile != "Dockerfile" {
+		t.Errorf("rootDockerfile = %q, want \"Dockerfile\"", idx.rootDockerfile)
+	}
+	if _, ok := idx.dockerfileByDirName["."]; ok {
+		t.Error("root Dockerfile must not be keyed under \".\"")
+	}
+	if idx.dockerfileCount != 3 {
+		t.Errorf("dockerfileCount = %d, want 3", idx.dockerfileCount)
 	}
 }
 
@@ -143,7 +177,7 @@ func TestImageBaseName(t *testing.T) {
 }
 
 func TestCrossRefImageToDockerfile_MatchAndNoMatch(t *testing.T) {
-	idx := &siblingIndex{dockerfileByDirName: map[string]string{"myapp": "myapp/Dockerfile"}}
+	idx := buildSiblingIndex([]core.SourceRef{{Path: "myapp/Dockerfile"}, {Path: "other/Dockerfile"}})
 	nodes := []core.SymbolNode{
 		{Name: "myapp:1.0", Kind: core.KindK8sContainer, Line: 5},
 		{Name: "unrelated:1.0", Kind: core.KindK8sContainer, Line: 6},
@@ -160,13 +194,43 @@ func TestCrossRefImageToDockerfile_MatchAndNoMatch(t *testing.T) {
 	}
 }
 
+func TestCrossRefImageToDockerfile_StemBeatsDirName(t *testing.T) {
+	// A *.dockerfile stem match wins over a bare Dockerfile's dir-name
+	// match for the same image name.
+	idx := buildSiblingIndex([]core.SourceRef{
+		{Path: "build/myapp.dockerfile"},
+		{Path: "myapp/Dockerfile"},
+	})
+	nodes := []core.SymbolNode{{Name: "myapp:1.0", Kind: core.KindK8sContainer, Line: 3}}
+	refs := crossRefImageToDockerfile("svc", "k8s/deploy.yaml", nodes, idx)
+	if len(refs) != 1 {
+		t.Fatalf("expected 1 cross-ref, got %d: %+v", len(refs), refs)
+	}
+	if refs[0].Signature != "dockerfile: build/myapp.dockerfile" {
+		t.Errorf("Signature = %q, want the stem-matched *.dockerfile to win", refs[0].Signature)
+	}
+}
+
 func TestCrossRefImageToDockerfile_ComposeBuildOnlySkipped(t *testing.T) {
-	idx := &siblingIndex{dockerfileByDirName: map[string]string{"web": "web/Dockerfile"}}
+	idx := buildSiblingIndex([]core.SourceRef{{Path: "web/Dockerfile"}})
 	nodes := []core.SymbolNode{
 		{Name: "web", Kind: core.KindComposeService, Signature: "build: ./web"},
 	}
 	if refs := crossRefImageToDockerfile("svc", "compose.yml", nodes, idx); len(refs) != 0 {
 		t.Errorf("a build-only compose service (no image:) should not cross-ref, got %+v", refs)
+	}
+}
+
+// TestK8sExtractorToolKindParity pins the string parity between fusion's
+// classifier constants and the extractor's per-document ToolKind values
+// (extractor cannot import fusion, so the shared values are duplicated
+// literals — this test is what keeps them from drifting apart).
+func TestK8sExtractorToolKindParity(t *testing.T) {
+	if string(ToolK8sManifest) != extractor.ToolKindK8sManifest {
+		t.Errorf("ToolK8sManifest %q != extractor.ToolKindK8sManifest %q", ToolK8sManifest, extractor.ToolKindK8sManifest)
+	}
+	if string(ToolK8sCRD) != extractor.ToolKindK8sCRD {
+		t.Errorf("ToolK8sCRD %q != extractor.ToolKindK8sCRD %q", ToolK8sCRD, extractor.ToolKindK8sCRD)
 	}
 }
 

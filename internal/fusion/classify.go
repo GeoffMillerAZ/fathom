@@ -72,7 +72,10 @@ var (
 	// servicesTopRe matches docker-compose's defining shape — a bare
 	// top-level `services:` mapping key — regardless of filename, so
 	// docker-compose.override.yml (or any other name) is recognized too.
-	servicesTopRe = regexp.MustCompile(`(?m)^services:\s*$`)
+	// Trailing whitespace and comments are valid YAML on that line
+	// (`services: # our services`) and must not defeat the signal (critic
+	// F5).
+	servicesTopRe = regexp.MustCompile(`(?m)^services:[ \t]*(#.*)?\r?$`)
 	openapiTopRe  = regexp.MustCompile(`(?m)^(openapi|swagger):\s*\S`)
 	// timoniBundleRe matches a timoni bundle's defining top-level `bundle:`
 	// struct field.
@@ -176,11 +179,20 @@ func toolKindForBasename(base string) ToolKind {
 // ─── sibling index (built once per Ingest from the Discover list) ─────────
 
 // siblingIndex answers "does an ancestor directory of this file contain a
-// Chart.yaml / cue.mod module root?" and "is there a Dockerfile whose parent
-// directory is named X?" — built once per Ingest (option (b) from the
-// grounding: O(files), not O(files²)) and threaded into extractAndStore, so
-// every classify call and cross-ref lookup is an O(depth) map walk rather
-// than a filesystem stat.
+// Chart.yaml / cue.mod module root?" and "is there a Dockerfile matching
+// image name X?" — built once per Ingest (option (b) from the grounding:
+// O(files), not O(files²)) and threaded into extractAndStore, so every
+// classify call and cross-ref lookup is an O(depth) map walk rather than a
+// filesystem stat.
+//
+// Dockerfile keying (critic F3): a `name.dockerfile` file names the image
+// it builds in its own STEM, so it is keyed by stem — keying it by
+// directory name made `build/myapp.dockerfile` match an image literally
+// named "build" (a lie) while missing "myapp". A bare `Dockerfile` carries
+// no name of its own, so it is keyed by its parent DIRECTORY name; the
+// repo-root Dockerfile (dir ".") has no usable name either way and is
+// reachable only through the lone-Dockerfile fallback (see
+// crossRefImageToDockerfile).
 //
 // A nil *siblingIndex is valid and behaves as empty (no ancestors, no
 // Dockerfiles) — defensive default for callers (e.g. ExtractPending before
@@ -188,7 +200,10 @@ func toolKindForBasename(base string) ToolKind {
 type siblingIndex struct {
 	chartDirs           map[string]struct{} // dirs directly containing Chart.yaml
 	cueModDirs          map[string]struct{} // dirs directly containing a cue.mod/ module root
-	dockerfileByDirName map[string]string   // Dockerfile's parent-dir basename → its repo-relative path
+	dockerfileByStem    map[string]string   // *.dockerfile stem → repo-relative path
+	dockerfileByDirName map[string]string   // bare Dockerfile's parent-dir basename → repo-relative path
+	rootDockerfile      string              // path of a bare Dockerfile at the repo root, "" when absent
+	dockerfileCount     int                 // total Dockerfile-class files seen in the ingest
 }
 
 // buildSiblingIndex scans refs once and records every Chart.yaml, cue.mod/
@@ -199,6 +214,7 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 	idx := &siblingIndex{
 		chartDirs:           map[string]struct{}{},
 		cueModDirs:          map[string]struct{}{},
+		dockerfileByStem:    map[string]string{},
 		dockerfileByDirName: map[string]string{},
 	}
 	for _, r := range refs {
@@ -209,10 +225,21 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 		switch {
 		case base == "Chart.yaml":
 			idx.chartDirs[dir] = struct{}{}
-		case base == "Dockerfile" || strings.HasSuffix(base, ".dockerfile"):
-			dn := path.Base(dir)
-			if _, exists := idx.dockerfileByDirName[dn]; !exists {
-				idx.dockerfileByDirName[dn] = slash
+		case strings.HasSuffix(base, ".dockerfile"):
+			idx.dockerfileCount++
+			stem := strings.TrimSuffix(base, ".dockerfile")
+			if _, exists := idx.dockerfileByStem[stem]; stem != "" && !exists {
+				idx.dockerfileByStem[stem] = slash
+			}
+		case base == "Dockerfile":
+			idx.dockerfileCount++
+			if dir == "." {
+				idx.rootDockerfile = slash
+			} else {
+				dn := path.Base(dir)
+				if _, exists := idx.dockerfileByDirName[dn]; !exists {
+					idx.dockerfileByDirName[dn] = slash
+				}
 			}
 		}
 
@@ -290,13 +317,25 @@ func imageBaseName(ref string) string {
 
 // crossRefImageToDockerfile appends a KindImageDockerfileRef reference node
 // for every K8sContainer/ComposeService node in nodes whose image name
-// matches a Dockerfile found anywhere in the same ingest, by parent-directory
-// basename (TI-7's cheap tier: a same-repo name match, no registry
-// resolution, no build-context evaluation — Tier is always TierPreScan).
+// matches a Dockerfile found anywhere in the same ingest (TI-7's cheap
+// tier: a same-repo name match, no registry resolution, no build-context
+// evaluation — Tier is always TierPreScan). Resolution order (critic F3):
+//
+//  1. *.dockerfile STEM match — the file names the image it builds.
+//  2. bare Dockerfile parent-DIRECTORY-name match (dir-per-image layout).
+//  3. Lone-root fallback: when the repo contains exactly ONE
+//     Dockerfile-class file and it is the bare root Dockerfile, any image
+//     ref resolves to it — the single-service-repo layout, where the root
+//     Dockerfile is the only build there is. This fallback trades a little
+//     precision for the most common layout of all (a public image like
+//     postgres referenced in the same repo also matches); TierPreScan and
+//     the "dockerfile:" signature keep the heuristic honest, and repos
+//     with 2+ Dockerfiles never guess.
+//
 // Safe to call unconditionally after any extraction: it is a no-op when idx
 // has no recorded Dockerfiles or nodes carries no image-bearing kind.
 func crossRefImageToDockerfile(service, relPath string, nodes []core.SymbolNode, idx *siblingIndex) []core.SymbolNode {
-	if idx == nil || len(idx.dockerfileByDirName) == 0 {
+	if idx == nil || idx.dockerfileCount == 0 {
 		return nil
 	}
 	var refs []core.SymbolNode
@@ -317,7 +356,13 @@ func crossRefImageToDockerfile(service, relPath string, nodes []core.SymbolNode,
 		if name == "" || seen[name] {
 			continue
 		}
-		dockerfile, ok := idx.dockerfileByDirName[name]
+		dockerfile, ok := idx.dockerfileByStem[name]
+		if !ok {
+			dockerfile, ok = idx.dockerfileByDirName[name]
+		}
+		if !ok && idx.dockerfileCount == 1 && idx.rootDockerfile != "" {
+			dockerfile, ok = idx.rootDockerfile, true
+		}
 		if !ok {
 			continue
 		}

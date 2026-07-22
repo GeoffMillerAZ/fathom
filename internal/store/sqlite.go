@@ -105,7 +105,9 @@ CREATE TABLE IF NOT EXISTS observations (
     calls         TEXT    NOT NULL DEFAULT '[]',
     complexity    INTEGER NOT NULL DEFAULT 0,
     line          INTEGER NOT NULL DEFAULT 0,
-    ingested_at   BIGINT  NOT NULL
+    ingested_at   BIGINT  NOT NULL,
+    tool_kind     TEXT    NOT NULL DEFAULT '',
+    generated     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS fingerprints (
@@ -217,8 +219,59 @@ CREATE TABLE IF NOT EXISTS claim_events (
 CREATE INDEX IF NOT EXISTS idx_observations_service_id
     ON observations (service_id);
 `
-	_, err := s.db.Exec(ddl)
-	return err
+	if _, err := s.db.Exec(ddl); err != nil {
+		return err
+	}
+
+	// Conditional migrations for SQLite stores created before a column
+	// existed. The "no ALTER cruft" stance above holds for the fleet store
+	// (freshly migrated), but scratch/workspace SQLite stores created by
+	// earlier slices already exist on disk, and SQLite has no
+	// ADD COLUMN IF NOT EXISTS — so missing columns are detected via
+	// PRAGMA table_info and added individually (ADR-021 §2 / critic F1).
+	migrations := []struct{ column, ddl string }{
+		{"tool_kind", `ALTER TABLE observations ADD COLUMN tool_kind TEXT NOT NULL DEFAULT ''`},
+		{"generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
+	}
+	existing, err := s.observationColumns()
+	if err != nil {
+		return err
+	}
+	for _, m := range migrations {
+		if existing[m.column] {
+			continue
+		}
+		if _, err := s.db.Exec(m.ddl); err != nil {
+			return fmt.Errorf("migrate observations.%s: %w", m.column, err)
+		}
+	}
+	return nil
+}
+
+// observationColumns returns the set of column names currently present on
+// the observations table, via PRAGMA table_info.
+func (s *SQLiteStore) observationColumns() (map[string]bool, error) {
+	rows, err := s.db.Query(`PRAGMA table_info(observations)`)
+	if err != nil {
+		return nil, fmt.Errorf("pragma table_info(observations): %w", err)
+	}
+	defer rows.Close()
+	cols := map[string]bool{}
+	for rows.Next() {
+		var (
+			cid     int
+			name    string
+			ctype   string
+			notNull int
+			dflt    sql.NullString
+			pk      int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
+			return nil, fmt.Errorf("pragma table_info scan: %w", err)
+		}
+		cols[name] = true
+	}
+	return cols, rows.Err()
 }
 
 // PutObservations inserts a batch of observations via a bare append — see the
@@ -238,8 +291,9 @@ func (s *SQLiteStore) PutObservations(ctx context.Context, obs []core.Observatio
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO observations
     (service_id, concern_id, source_ref, source_kind, evidence_tier,
-     symbol, package, claim, content_hash, calls, complexity, line, ingested_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+     tool_kind, generated)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutObservations prepare: %w", err)
@@ -270,6 +324,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			o.Complexity,
 			o.Line,
 			ingestedAt.UnixNano(),
+			o.ToolKind,
+			o.Generated,
 		)
 		if err != nil {
 			return fmt.Errorf("PutObservations exec: %w", err)
@@ -293,7 +349,8 @@ func (s *SQLiteStore) QueryObservations(ctx context.Context, serviceID, concernI
 	if concernID == "" {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       tool_kind, generated
 FROM observations
 WHERE service_id = ?
 ORDER BY ingested_at
@@ -301,7 +358,8 @@ ORDER BY ingested_at
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       tool_kind, generated
 FROM observations
 WHERE service_id = ? AND concern_id = ?
 ORDER BY ingested_at

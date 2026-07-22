@@ -263,8 +263,12 @@ type Observation struct {
 	// Generated marks an observation extracted from a file whose header
 	// matches the "Code generated ... DO NOT EDIT" convention (ADR-021 §2 /
 	// TI-5). Generated files are still extracted normally; this flag lets
-	// consumers (cloc, review tooling) exclude them from "code you write"
-	// totals without a second content sniff.
+	// INDEX-side consumers (symbol queries, review tooling reading
+	// observations) separate generated symbols without re-fetching source.
+	// Presentation-layer tools that already hold file content (cloc via
+	// Client.Sources) recompute the same signal live with
+	// connector.IsGenerated — the same live-computed pattern as
+	// SourceFile.Lang — rather than reading it from here.
 	Generated bool `json:"generated,omitempty"`
 }
 
@@ -281,6 +285,15 @@ type SymbolNode struct {
 	Calls      []string // callee keys (see SymbolKey)
 	Tier       EvidenceTier
 	Complexity int // cyclomatic complexity (0 = not applicable / not computed)
+
+	// ToolKind, when non-empty, is the extractor's PER-SYMBOL tool-identity
+	// verdict, overriding the fusion classifier's per-FILE verdict on the
+	// resulting Observation (ADR-021 §2). Tool identity is a per-document
+	// fact for multi-document YAML streams — a file holding a CRD and a
+	// Deployment is "k8s-crd" for one document and "k8s" for the other —
+	// so the k8s extractor, which sees document boundaries, tags each node;
+	// extractors that leave it empty inherit the file-level verdict.
+	ToolKind string
 }
 
 // Edge is a directed call/reference edge between two symbols.

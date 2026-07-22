@@ -98,7 +98,9 @@ CREATE TABLE IF NOT EXISTS observations (
     calls         TEXT    NOT NULL DEFAULT '[]',
     complexity    INTEGER NOT NULL DEFAULT 0,
     line          INTEGER NOT NULL DEFAULT 0,
-    ingested_at   BIGINT  NOT NULL
+    ingested_at   BIGINT  NOT NULL,
+    tool_kind     TEXT    NOT NULL DEFAULT '',
+    generated     BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS fingerprints (
@@ -224,7 +226,15 @@ CREATE TABLE IF NOT EXISTS claim_events (
 	if _, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS refusal_reason TEXT DEFAULT ''`); err != nil {
 		return err
 	}
-	_, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS budget_stopped BOOLEAN DEFAULT FALSE`)
+	if _, err := s.db.Exec(`ALTER TABLE compile_runs ADD COLUMN IF NOT EXISTS budget_stopped BOOLEAN DEFAULT FALSE`); err != nil {
+		return err
+	}
+	// ADR-021 §2 (critic F1): tool identity + generated marker on
+	// observations — legacy stores predate both columns.
+	if _, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS tool_kind TEXT DEFAULT ''`); err != nil {
+		return err
+	}
+	_, err := s.db.Exec(`ALTER TABLE observations ADD COLUMN IF NOT EXISTS generated BOOLEAN DEFAULT FALSE`)
 	return err
 }
 
@@ -245,8 +255,9 @@ func (s *DuckStore) PutObservations(ctx context.Context, obs []core.Observation)
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO observations
     (service_id, concern_id, source_ref, source_kind, evidence_tier,
-     symbol, package, claim, content_hash, calls, complexity, line, ingested_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+     tool_kind, generated)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutObservations prepare: %w", err)
@@ -277,6 +288,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			o.Complexity,
 			o.Line,
 			ingestedAt.UnixNano(),
+			o.ToolKind,
+			o.Generated,
 		)
 		if err != nil {
 			return fmt.Errorf("PutObservations exec: %w", err)
@@ -300,7 +313,8 @@ func (s *DuckStore) QueryObservations(ctx context.Context, serviceID, concernID 
 	if concernID == "" {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       tool_kind, generated
 FROM observations
 WHERE service_id = ?
 ORDER BY ingested_at
@@ -308,7 +322,8 @@ ORDER BY ingested_at
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at
+       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       tool_kind, generated
 FROM observations
 WHERE service_id = ? AND concern_id = ?
 ORDER BY ingested_at
@@ -344,6 +359,8 @@ func scanObservations(rows *sql.Rows) ([]core.Observation, error) {
 			&o.Complexity,
 			&o.Line,
 			&ingestedAt,
+			&o.ToolKind,
+			&o.Generated,
 		); err != nil {
 			return nil, fmt.Errorf("scanObservations scan: %w", err)
 		}

@@ -176,18 +176,33 @@ func helmValuesRefNodes(service, pkg, relPath string, src []byte) []core.SymbolN
 	return nodes
 }
 
-// substituteHelmActions replaces every {{ ... }} action span with
-// helmTemplatePlaceholder so the surrounding YAML decodes as ordinary
-// scalars. The span is found via a depth counter over the two-character
-// "{{"/"}}" delimiter PAIRS, not individual '{'/'}' runes: Sprig/Helm
-// expressions occasionally embed a literal brace inside a string argument
-// (e.g. `dict "a" 1`), and counting single braces would mis-close on those.
+// substituteHelmActions replaces every {{ ... }} action span so the
+// surrounding YAML decodes as ordinary scalars. Two substitution modes
+// (ADR-021 §2, critic F2):
+//
+//   - An action EMBEDDED in a line that also carries literal content
+//     ("image: {{ .Values.image }}") becomes helmTemplatePlaceholder — the
+//     line keeps its YAML shape with a scalar in the action's place.
+//   - A line whose non-whitespace content consists ENTIRELY of action spans
+//     ("{{- if .Values.ingress.enabled -}}", "  {{- end }}",
+//     "{{- if .x }}{{- end }}") is control flow, not data: its spans are
+//     DROPPED (replaced with nothing), leaving a blank line. Substituting a
+//     placeholder there produced a bare scalar above/inside the document
+//     mapping, which broke the whole decode — `helm create` wraps half its
+//     templates (ingress/serviceaccount/hpa) in exactly such a guard, so
+//     the old behavior zeroed out half of every standard chart.
+//
+// Spans are found via a depth counter over the two-character "{{"/"}}"
+// delimiter PAIRS, not individual '{'/'}' runes: Sprig/Helm expressions
+// occasionally embed a literal brace inside a string argument (e.g.
+// `dict "a" 1`), and counting single braces would mis-close on those.
 // Counting only delimiter pairs is conservative — it can only ever merge a
 // genuinely nested "{{ ... {{ ... }} ... }}" occurrence (rare, e.g.
 // `{{ tpl "{{ .Values.x }}" . }}`) into a single placeholder, and never
 // mis-closes on a lone brace from an unrelated expression.
 func substituteHelmActions(src []byte) []byte {
-	var out bytes.Buffer
+	type span struct{ start, end int }
+	var spans []span
 	i := 0
 	for i < len(src) {
 		if i+1 < len(src) && src[i] == '{' && src[i+1] == '{' {
@@ -205,15 +220,80 @@ func substituteHelmActions(src []byte) []byte {
 					j++
 				}
 			}
-			out.WriteString(helmTemplatePlaceholder)
+			spans = append(spans, span{start: i, end: j})
 			i = j
 			continue
 		}
-		out.WriteByte(src[i])
 		i++
 	}
+	if len(spans) == 0 {
+		return src
+	}
+
+	// Whole-line detection. Spans are sorted and non-overlapping, so the
+	// spans sharing span k's line region are contiguous around k — walk
+	// backwards/forwards from k rather than rescanning the whole list.
+	drop := make([]bool, len(spans))
+	decided := make([]bool, len(spans))
+	for k := range spans {
+		if decided[k] {
+			continue
+		}
+		// The line region: start of the span's first line to end of its
+		// last line (a multi-line span's region covers all its lines).
+		ls := bytes.LastIndexByte(src[:spans[k].start], '\n') + 1
+		le := len(src)
+		if idx := bytes.IndexByte(src[spans[k].end:], '\n'); idx >= 0 {
+			le = spans[k].end + idx
+		}
+		first := k
+		for first > 0 && spans[first-1].end > ls {
+			first--
+		}
+		last := k
+		for last+1 < len(spans) && spans[last+1].start < le {
+			last++
+		}
+		wholeLine := true
+		pos := ls
+		for m := first; m <= last; m++ {
+			for ; pos < spans[m].start; pos++ {
+				if !isHelmSpace(src[pos]) {
+					wholeLine = false
+				}
+			}
+			if spans[m].end > pos {
+				pos = spans[m].end
+			}
+		}
+		for ; pos < le; pos++ {
+			if !isHelmSpace(src[pos]) {
+				wholeLine = false
+			}
+		}
+		for m := first; m <= last; m++ {
+			decided[m] = true
+			drop[m] = wholeLine
+		}
+	}
+
+	var out bytes.Buffer
+	prev := 0
+	for k, s := range spans {
+		out.Write(src[prev:s.start])
+		if !drop[k] {
+			out.WriteString(helmTemplatePlaceholder)
+		}
+		prev = s.end
+	}
+	out.Write(src[prev:])
 	return out.Bytes()
 }
+
+// isHelmSpace reports whether b is intra-line whitespace (space, tab, CR) —
+// the byte class ignored when deciding whether a line consists solely of
+// template actions.
+func isHelmSpace(b byte) bool { return b == ' ' || b == '\t' || b == '\r' }
 
 // isFullyTemplated reports whether a substituted image string carries zero
 // literal content once every placeholder occurrence is removed — true for

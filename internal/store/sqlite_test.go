@@ -38,6 +38,92 @@ func TestSQLiteStoreImplementsStore(t *testing.T) {
 	var _ Store = (*SQLiteStore)(nil)
 }
 
+// TestSQLiteStore_LegacySchemaGainsToolIdentityColumns is the ADR-021 §2 /
+// critic-F1 migration guard: SQLite stores created by earlier slices exist
+// on disk WITHOUT tool_kind/generated, and SQLite has no ADD COLUMN IF NOT
+// EXISTS — createSchema must detect the missing columns via PRAGMA
+// table_info and add them, so reopening a pre-toolident store neither fails
+// on INSERT nor silently drops the fields.
+func TestSQLiteStore_LegacySchemaGainsToolIdentityColumns(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy.sqlite")
+
+	// Hand-create a store file with the PRE-toolident observations schema
+	// (no tool_kind, no generated).
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE observations (
+    service_id    TEXT    NOT NULL,
+    concern_id    TEXT    NOT NULL DEFAULT '',
+    source_ref    TEXT    NOT NULL,
+    source_kind   TEXT    NOT NULL,
+    evidence_tier TEXT    NOT NULL,
+    symbol        TEXT    NOT NULL DEFAULT '',
+    package       TEXT    NOT NULL DEFAULT '',
+    claim         TEXT    NOT NULL DEFAULT '',
+    content_hash  TEXT    NOT NULL DEFAULT '',
+    calls         TEXT    NOT NULL DEFAULT '[]',
+    complexity    INTEGER NOT NULL DEFAULT 0,
+    line          INTEGER NOT NULL DEFAULT 0,
+    ingested_at   BIGINT  NOT NULL
+)`); err != nil {
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO observations (service_id, source_ref, source_kind, evidence_tier, symbol, ingested_at)
+		 VALUES ('legacy-svc', 'a.go', 'GoFunc', 'verified', 'OldFunc', 1)`,
+	); err != nil {
+		t.Fatalf("insert legacy row: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	// Reopen through the real constructor — migration must fire.
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	// The pre-existing row reads back with zero-value fields.
+	got, err := s.QueryObservations(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations legacy row: %v", err)
+	}
+	if len(got) != 1 || got[0].ToolKind != "" || got[0].Generated {
+		t.Fatalf("legacy row: got %+v, want 1 row with zero-value ToolKind/Generated", got)
+	}
+	// New writes round-trip both fields.
+	if err := s.PutObservations(ctx, []core.Observation{{
+		ServiceID: "legacy-svc", SourceRef: "b.yaml", SourceKind: core.KindK8sWorkload,
+		EvidenceTier: core.TierVerified, Symbol: "Deployment/x",
+		ToolKind: "k8s", Generated: true, IngestedAt: time.Now().UTC(),
+	}}); err != nil {
+		t.Fatalf("PutObservations after migration: %v", err)
+	}
+	got, err = s.QueryObservations(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations after write: %v", err)
+	}
+	var found bool
+	for _, o := range got {
+		if o.Symbol == "Deployment/x" {
+			found = true
+			if o.ToolKind != "k8s" || !o.Generated {
+				t.Errorf("migrated store round-trip: got (%q, %v), want (\"k8s\", true)", o.ToolKind, o.Generated)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("new observation not returned after migration")
+	}
+}
+
 // TestSQLiteStore_ParallelReaders is the F1 regression: the Store contract
 // guarantees safety for concurrent reads, and modernc's ":memory:" gives
 // every physical pool connection its OWN private database — so an uncapped

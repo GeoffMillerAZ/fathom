@@ -29,6 +29,29 @@ type K8sExtractor struct{}
 // NewK8sExtractor returns a new K8sExtractor.
 func NewK8sExtractor() *K8sExtractor { return &K8sExtractor{} }
 
+// Per-document tool-identity values set on SymbolNode.ToolKind (ADR-021 §2,
+// critic P15): tool identity is a per-DOCUMENT fact in a multi-document YAML
+// stream (one file can hold a CRD and a Deployment), so the fusion
+// classifier's per-file verdict is refined here, where document boundaries
+// are visible. The string values mirror fusion's ToolK8sManifest/ToolK8sCRD
+// constants — extractor cannot import fusion (fusion imports extractor), so
+// the parity is pinned by a test in internal/fusion instead
+// (TestK8sExtractorToolKindParity).
+const (
+	ToolKindK8sManifest = "k8s"
+	ToolKindK8sCRD      = "k8s-crd"
+)
+
+// k8sDocToolKind returns the per-document tool identity for a decoded doc:
+// apiextensions.k8s.io apiVersions are CRDs, everything else is a plain
+// manifest.
+func k8sDocToolKind(apiVersion string) string {
+	if strings.HasPrefix(apiVersion, "apiextensions.k8s.io") {
+		return ToolKindK8sCRD
+	}
+	return ToolKindK8sManifest
+}
+
 // k8sDoc is the typed subset of a Kubernetes manifest we care about.
 type k8sDoc struct {
 	APIVersion string `yaml:"apiVersion"`
@@ -98,6 +121,8 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 			continue
 		}
 
+		docToolKind := k8sDocToolKind(doc.APIVersion)
+
 		// Emit workload node.
 		if doc.Kind != "" && doc.Metadata.Name != "" {
 			symName := doc.Kind + "/" + doc.Metadata.Name
@@ -113,6 +138,7 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Line:      docLine,
 				Signature: doc.APIVersion,
 				Tier:      core.TierVerified,
+				ToolKind:  docToolKind,
 			})
 		}
 
@@ -136,6 +162,7 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Line:      docLine,
 				Signature: c.Name,
 				Tier:      core.TierVerified,
+				ToolKind:  docToolKind,
 			})
 		}
 	}

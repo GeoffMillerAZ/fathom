@@ -247,7 +247,7 @@ func (c *Client) Sources(ctx context.Context, service string) ([]core.SourceFile
 			Path:      ref.Path,
 			Content:   data,
 			Lang:      lang,
-			Generated: connector.IsGenerated(data),
+			Generated: connector.IsGenerated(ref.Path, data),
 		})
 	}
 	return files, nil
@@ -314,6 +314,14 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 // tool's own response, via the optional statsBackend capability.
 func (c *Client) IngestStats() (unclassified, oversize int64) {
 	return c.pipe.Stats()
+}
+
+// ClassifiedZeroStats returns the process-lifetime per-tool
+// classified-but-zero-symbols counters (ADR-021 §2, critic F5) — see
+// fusion.Pipeline.ClassifiedZeroStats. Consumed by the mcp server_stats
+// tool via the optional classifiedZeroBackend capability.
+func (c *Client) ClassifiedZeroStats() map[string]int64 {
+	return c.pipe.ClassifiedZeroStats()
 }
 
 // ServiceWatermark returns the connector's *current* freshness token for the

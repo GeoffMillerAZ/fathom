@@ -163,6 +163,16 @@ func (a *autoRefreshBackend) IngestStats() (unclassified, oversize int64) {
 	return sb.IngestStats()
 }
 
+// ClassifiedZeroStats forwards the per-tool classified-but-zero counters
+// (see classifiedZeroBackend in meta.go) — same O7 forwarding class.
+func (a *autoRefreshBackend) ClassifiedZeroStats() map[string]int64 {
+	cz, ok := a.QueryInterface.(classifiedZeroBackend)
+	if !ok {
+		return nil
+	}
+	return cz.ClassifiedZeroStats()
+}
+
 func (a *autoRefreshBackend) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {
 	a.ensure(ctx, service)
 	ob, ok := a.QueryInterface.(obligationsBackend)

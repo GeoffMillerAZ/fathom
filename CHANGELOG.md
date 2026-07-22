@@ -5,6 +5,65 @@ All notable changes to sextant. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — tool identity critic round (ADR-021 §2, critic F1–F6 on e500b28)
+- **ToolKind/Generated now actually persist** (F1, HIGH): both fields were
+  write-only against the real stores — the sqlite and duckdb column lists
+  dropped them while the memory fake (whole-struct append) round-tripped
+  them, so every asserting test passed against a lie. Both columns now
+  exist in both backends (sqlite: fresh DDL + a PRAGMA table_info
+  conditional-ALTER for pre-existing scratch stores; duckdb: the existing
+  ALTER-IF-NOT-EXISTS legacy path), are written and scanned, and the
+  round-trip assertion lives in the shared store CONTRACT suite so the
+  memory fake and the real backends can never diverge on these fields
+  again.
+- **CRD tagging is per-document** (F1e/P15): a multi-doc YAML stream
+  holding a CRD and a Deployment tagged EVERY observation "k8s-crd"
+  (file-wide classifier verdict). `core.SymbolNode.ToolKind` lets the k8s
+  extractor — which sees document boundaries — tag each node; the pipeline
+  prefers the per-node verdict over the per-file one.
+- **Guard-wrapped Helm templates extract** (F2): `{{- if ... -}}` guards
+  and whole-line control flow became placeholder scalars that broke the
+  YAML decode — half of every `helm create` chart
+  (ingress/serviceaccount/hpa) still emitted zero symbols. Whole-line
+  actions are now dropped, not substituted. Measured on the 10-file demo
+  corpus (helm chart incl. a guard-wrapped ingress template + compose
+  override + kustomize + k8s + root-pattern Dockerfile + OpenAPI doc):
+  7 symbols at the pre-toolident baseline → 23 after this round; the
+  guard-wrapped ingress contributes its Ingress workload node, which the
+  pre-critic build could not decode at all (it saw only the values refs).
+- **image↔Dockerfile keying fixed** (F3): `build/myapp.dockerfile` was
+  keyed by DIRECTORY name, giving an image literally named "build" a false
+  reference and the actual "myapp" none — `*.dockerfile` files now key by
+  STEM. A repo-root `Dockerfile` (the most common layout) keyed "." and
+  never matched; when the repo has exactly one Dockerfile and it sits at
+  the root, image refs now fall back to it (repos with 2+ Dockerfiles
+  never guess). Documented residual: in a lone-root-Dockerfile repo a
+  public image (postgres) also matches the fallback — TierPreScan and the
+  `dockerfile:` signature flag it as the heuristic it is.
+- **IsGenerated honors the real conventions** (F4): for Go, the official
+  `// Code generated ... DO NOT EDIT.` line is now accepted anywhere
+  before the package clause (bounded 4KB) — the zz_generated ecosystem's
+  license-header-first files (marker at line ~17) were all missed by the
+  old 3-line window. For other languages the marker line must begin with
+  that language's comment token, so markdown or YAML values QUOTING the
+  marker no longer vanish from cloc's code counts (markdown's only honored
+  form is an HTML comment `<!-- Code generated ... -->`). Residual
+  documented in the func doc: unrecognized-language files use a permissive
+  token set and can still false-positive on a verbatim quote.
+- **Compose signal + classified-but-zero visibility** (F5):
+  `services: # comment` (valid compose) no longer defeats the top-level
+  signal. And a file that classifies but then extracts zero symbols (a
+  GitLab-CI config's top-level `services:` LIST matching the compose
+  signal) — the last surviving silent-zero path — is now counted: per-tool
+  `classified_zero_files` beside the unclassified/oversize counters in
+  `fusion.Report`, `Pipeline.ClassifiedZeroStats()`, CLI ingest output,
+  and `server_stats`.
+- **Docs** (F6): `server_stats` counters documented as EVENT counters
+  since process start (reset on daemon restart), not index properties; the
+  two distinct "unclassified" meanings (cloc's language bucket vs the
+  classifier's event counter) cross-referenced in both rows; the `.tpl`
+  values-ref scope-out stated in the helm paragraph below.
+
 ### Added — tool identity: files understood as what they are (ADR-021 §2, docs/plans/toolident.md)
 - **Pass-3 tool-identity classifier** (`internal/fusion/classify.go`,
   `fusion.Classify`): between the hash-gate and extractor dispatch, yaml/cue
@@ -18,12 +77,20 @@ All notable changes to sextant. Format loosely follows
   substitutes every `{{ ... }}` action span with a scalar placeholder
   (balanced on the `{{`/`}}` delimiter pair) before YAML decode, recovering
   the k8s document shape from the majority of a real chart's content that
-  previously failed yaml.v3 outright and silently emitted nothing. Templated
+  previously failed yaml.v3 outright and silently emitted nothing. Lines
+  consisting solely of template actions (guards and control flow —
+  `{{- if ... -}}` / `{{- range }}` / `{{- end }}`) are dropped rather than
+  placeholder-substituted, so the guard-wrapped templates `helm create`
+  emits (ingress/serviceaccount/hpa) decode too. Templated
   `metadata.name` falls back to the file stem with a `templated:true` marker;
   `.Values.x.y` references are captured as `KindHelmValueRef` observations.
   `HelmValuesExtractor` now recurses into nested values.yaml keys (dotted
   names), giving values-key ↔ template-usage an exact join via the
-  `references` tool.
+  `references` tool. Scope note: `.Values` references are extracted from
+  `templates/*.yaml`/`*.yml` only — usage inside `.tpl` partials
+  (`_helpers.tpl`) is NOT captured, so a values key referenced exclusively
+  from a partial is invisible to that join (the `.tpl` extractor still
+  emits the partial's named templates themselves).
 - **Kustomization understood as what it is**: `KustomizeExtractor`
   (`internal/extractor/kustomizeextract.go`) emits `KindKustomizeResource`/
   `KindKustomizePatch`/`KindKustomizeImage` reference observations from

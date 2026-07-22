@@ -83,10 +83,17 @@ type statsBackend interface {
 	IngestStats() (unclassified, oversize int64)
 }
 
+// classifiedZeroBackend is the optional backend capability for the per-tool
+// classified-but-zero-symbols counters (ADR-021 §2, critic F5) — files that
+// classified as a known tool but whose extractor emitted zero symbols.
+type classifiedZeroBackend interface {
+	ClassifiedZeroStats() map[string]int64
+}
+
 func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
-		Description: "Return server uptime, total request count, and (when the backend supports it) process-lifetime unclassified/oversize file counters.",
+		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files).",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
@@ -103,6 +110,11 @@ func registerServerStats(s *Server) {
 			unclassified, oversize := sb.IngestStats()
 			result["unclassified_files"] = unclassified
 			result["oversize_files"] = oversize
+		}
+		if cz, ok := s.backend.(classifiedZeroBackend); ok {
+			if m := cz.ClassifiedZeroStats(); len(m) > 0 {
+				result["classified_zero_files"] = m
+			}
 		}
 		return result, nil
 	})

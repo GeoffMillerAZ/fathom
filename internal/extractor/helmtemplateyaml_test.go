@@ -2,6 +2,7 @@ package extractor_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -182,6 +183,71 @@ data:
 	}
 	if workloads[0].Signature != "v1" {
 		t.Errorf("Signature: got %q, want plain apiVersion (no templated:true marker)", workloads[0].Signature)
+	}
+}
+
+// TestHelmTemplateYAMLExtractor_GuardWrappedTemplate is critic F2: `helm
+// create` wraps half its templates (ingress.yaml, serviceaccount.yaml,
+// hpa.yaml) in a whole-file guard — {{- if .Values.x.enabled -}} on the
+// first line, {{- end }} on the last, plus whole-line control-flow inside.
+// Placeholder-substituting those lines produced a bare scalar above the
+// document mapping, which breaks the YAML decode → zero workload symbols
+// for half of every standard chart. Whole-line actions must be DROPPED
+// (replaced with nothing), not placeholder-substituted.
+func TestHelmTemplateYAMLExtractor_GuardWrappedTemplate(t *testing.T) {
+	// The `helm create` ingress.yaml shape, abbreviated but structurally
+	// faithful: guard first line, range/if/end control-flow lines, inline
+	// value actions on kept lines, {{- end }} last line.
+	src := `{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "mychart.fullname" . }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+    {{- end }}
+{{- end }}
+`
+	x := extractor.NewHelmTemplateYAMLExtractor()
+	nodes, err := x.Extract("svc", "mychart/templates/ingress.yaml", []byte(src))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	var workloads []core.SymbolNode
+	for _, n := range nodes {
+		if n.Kind == core.KindK8sWorkload {
+			workloads = append(workloads, n)
+		}
+	}
+	if len(workloads) != 1 {
+		t.Fatalf("guard-wrapped template produced %d workload nodes, want 1 (Ingress): %v", len(workloads), helmTplYAMLNodeNames(nodes))
+	}
+	w := workloads[0]
+	// metadata.name is templated → stem fallback + templated:true.
+	if w.Name != "Ingress/ingress" {
+		t.Errorf("Name: got %q, want %q", w.Name, "Ingress/ingress")
+	}
+	if !strings.Contains(w.Signature, "templated:true") {
+		t.Errorf("Signature: got %q, want a templated:true marker", w.Signature)
+	}
+
+	// The .Values refs inside the guard lines are still captured.
+	var sawEnabled bool
+	for _, n := range nodes {
+		if n.Kind == core.KindHelmValueRef && n.Name == "ingress.enabled" {
+			sawEnabled = true
+		}
+	}
+	if !sawEnabled {
+		t.Error("expected values ref ingress.enabled from the guard line")
 	}
 }
 

@@ -84,6 +84,20 @@ in docs/mcp-tools.md to update (it was never documented there before this
 slice); `server_stats` and `cloc` rows were updated, matching TI-8's explicit
 "mcp-tools/cloc semantics" wording.
 
+Critic round (F1–F6 on e500b28), all fixed red-first: ToolKind/Generated now
+persist in BOTH real store backends with the round-trip assertion moved into
+the shared contract suite (F1 — they had been write-only outside the memory
+fake); CRD tags apply per-DOCUMENT via SymbolNode.ToolKind (P15); whole-line
+template actions are dropped, not placeholder-substituted, so guard-wrapped
+`helm create` templates decode (F2); Dockerfile cross-ref keying is
+stem-first with a lone-root fallback (F3 — the dir-name keying could emit a
+provably false ref); IsGenerated scans Go to the package clause and requires
+a comment token elsewhere (F4 — kills both the zz_generated miss and the
+markdown-quoting false positive); the compose signal tolerates trailing
+comments and classified-but-zero-symbols files get a per-tool counter (F5 —
+the last silent-zero path); counters documented as process-start event
+counters and the two "unclassified" meanings cross-referenced (F6).
+
 ## Deferred
 
 - [-] Selector↔Service, cross-repo image resolution, helm render-time evaluation {id: TI-9, disposition: deferred, reason: "cheap-tier refs prove the loop; render-time helm is a template engine dependency", trigger: "first consumer asking blast-radius questions across the k8s boundary"}
