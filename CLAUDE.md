@@ -21,7 +21,7 @@ for governed-evidence primitives: evidence tiers (`review/scoring`), `llmclient`
 `workspace/` at the repo root, which is gitignored.** Never write generated files
 elsewhere in the tree.
 
-- `workspace/db/`        — DuckDB stores (CLI default: `workspace/db/fathom.duckdb`)
+- `workspace/db/`        — store files (CLI default: `workspace/db/fathom.sqlite`; ADR-020)
 - `workspace/logs/`      — run/test logs
 - `workspace/artifacts/` — generated artifacts (gen-claude-md output, manifests, exports)
 - `workspace/tmp/`       — ephemeral scratch
@@ -111,7 +111,7 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 ## Dogfood: the fleet index
 
 Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
-it's added) into `workspace/db/fleet.duckdb`, served by a **single always-on
+it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
 at `http://localhost:7575/rpc`, registered user-scope as an **HTTP MCP**. Every
 session shares one index and one store, so there is no per-session server, no

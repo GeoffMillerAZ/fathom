@@ -32,7 +32,7 @@ import (
 func cmdPlatformCallers(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("platform-callers", stderr)
 	symbolFlag := fs.String("symbol", "", "bare symbol name to find cross-repo callers of (required)")
-	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path (language-agnostic source)")
+	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db; language-agnostic source)")
 	servicesFlag := fs.String("services", "", "comma-separated service IDs to include (default: all services in the store)")
 	reposFlag := fs.String("repos", "", "legacy Go-only mode: comma-separated id=path pairs; overrides --store when set")
 

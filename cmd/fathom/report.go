@@ -51,7 +51,7 @@ import (
 // every refresh.
 func cmdReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report", stderr)
-	storePath := fs.String("store", "", "path to the DuckDB store (required)")
+	storePath := fs.String("store", "", "path to the store, .duckdb or .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
 	analyzer := fs.String("analyzer", "security_rollup", "analyzer whose output to bridge (v0: security_rollup)")
 	out := fs.String("out", "findings", "output directory (created if missing)")

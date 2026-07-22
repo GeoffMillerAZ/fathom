@@ -23,7 +23,7 @@ runtime, no event bus, no embeddings pivot. The never-until list stands.
    WAL backend.
 
 2. **Language truth**: `pkg/client.langFromPath` is a stale 10-language
-   subset of the 24-extractor registry — cue, cs, c/cpp, templ, docker,
+   subset of the extractor registry (25 language tags across 45 registered keys) — cue, cs, c/cpp, templ, docker,
    proto, graphql, toml, sql, json, scala, php, sh, lua are all invisible
    ("other") to cloc and every lang-labeled surface. The reported 423K
    "other" lines were a stray 103MB build binary at the repo root:

@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // platformManifest holds the data written to the platform-manifest YAML.
@@ -25,7 +27,7 @@ type serviceManifestEntry struct {
 // cmdGenPlatformManifest implements the gen-platform-manifest subcommand.
 func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-platform-manifest", stderr)
-	storeDir := fs.String("store-dir", "", "directory containing *.duckdb files (required)")
+	storeDir := fs.String("store-dir", "", "directory containing *.duckdb/*.sqlite store files (required)")
 	output := fs.String("output", "workspace/artifacts/platform-manifest.yaml",
 		"output path for the manifest")
 
@@ -45,16 +47,26 @@ func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	var services []serviceManifestEntry
+	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
-		name := e.Name()
-		if !strings.HasSuffix(name, ".duckdb") {
-			continue
-		}
-		svcID := strings.TrimSuffix(name, ".duckdb")
+		names = append(names, e.Name())
+	}
+	// Same-stem duplicates (svc.duckdb beside svc.sqlite, the mid-migration
+	// state) resolve exactly as PlatformStore.load does: one entry per
+	// service, the .sqlite file wins, and the shadowed file is warned about
+	// — never two manifest entries for one service.
+	winners, collisions := store.ResolveStoreFiles(names)
+	for _, c := range collisions {
+		fmt.Fprintf(stderr,
+			"warning: service %q has multiple store files — using %s, ignoring %s; remove the stale file(s) once the migration is confirmed\n",
+			c.Stem, c.Winner, strings.Join(c.Losers, ", "))
+	}
+
+	services := make([]serviceManifestEntry, 0, len(winners))
+	for svcID, name := range winners {
 		services = append(services, serviceManifestEntry{
 			ID:        svcID,
 			StorePath: filepath.Join(*storeDir, name),

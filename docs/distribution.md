@@ -64,6 +64,20 @@ not commit it; regenerate it on whichever machine needs the air-gapped
 build. Only `third_party/agentic-kit` (716KB–13MB depending on kit history,
 see the note below) is committed — the full `vendor/` tree never is.
 
+**CGO / DuckDB note (ADR-020).** `modernc.org/sqlite` — the pure-Go, WAL-mode
+default store backend — added no CGO surface and no static libraries; the
+~565MB vendor footprint above is entirely DuckDB's static libs
+(`github.com/marcboeker/go-duckdb/v2` and its per-platform bindings
+packages), still compiled in only because `migrate-store` needs it as the
+source backend for the DuckDB→SQLite migration. `CGO_ENABLED=1` and
+`MACOSX_DEPLOYMENT_TARGET=14.0` stay required for `task validate` /
+`go build` for the same reason. Both the CGO requirement and the DuckDB
+dependency are **gone after SS-8** (`docs/plans/store-sqlite.md`'s deferred
+row) — once the operator's fleet store has migrated and the daemon has run a
+full day green on SQLite, the DuckDB driver, its bindings, and the
+CGO/deployment-target workarounds are deleted outright, and this vendor
+footprint drops accordingly.
+
 ## For fathom maintainers: keeping third_party/agentic-kit in sync
 
 Whenever `go.mod`'s `agentic-kit` pin moves (a normal kit-pin bump during

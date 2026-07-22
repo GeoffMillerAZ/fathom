@@ -25,7 +25,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("ingest", stderr)
 	service := fs.String("service", "", "logical service ID (required)")
 	path := fs.String("path", ".", "path to service source root (local mode)")
-	storePath := fs.String("store", "workspace/db/fathom.duckdb", "DuckDB store path")
+	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 
 	if err := fs.Parse(args); err != nil {

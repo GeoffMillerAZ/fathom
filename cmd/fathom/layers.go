@@ -72,7 +72,7 @@ func layersRoot(root string) (string, error) {
 func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("layers list", stderr)
 	root := fs.String("root", "", "project root to union with embedded packs (default: current directory)")
-	storePath := fs.String("store", "", "DuckDB store path (optional — adds compiled-claims counts)")
+	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (optional — adds compiled-claims counts)")
 	service := fs.String("service", "", "service ID (required with --store, for claims counts)")
 	if err := fs.Parse(args); err != nil {
 		return 1

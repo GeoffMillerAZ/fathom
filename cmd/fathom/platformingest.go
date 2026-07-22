@@ -14,12 +14,12 @@ import (
 //
 // It iterates over the immediate subdirectories of --root, treats each as a
 // service (using the directory name as the service ID), ingests it via a
-// per-service local-mode client into <store-dir>/<service>.duckdb, prints a
-// per-service summary, and finally prints totals.
+// per-service local-mode client into <store-dir>/<service>.sqlite (ADR-020's
+// SQLite default), prints a per-service summary, and finally prints totals.
 func cmdPlatformIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("platform-ingest", stderr)
 	root := fs.String("root", "", "directory containing service subdirs (required)")
-	storeDir := fs.String("store-dir", "", "output directory for per-service .duckdb files (required)")
+	storeDir := fs.String("store-dir", "", "output directory for per-service .sqlite files (required)")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -70,7 +70,7 @@ func cmdPlatformIngest(args []string, stdout, stderr io.Writer) int {
 
 	for _, svcID := range services {
 		svcPath := filepath.Join(*root, svcID)
-		storePath := filepath.Join(*storeDir, svcID+".duckdb")
+		storePath := filepath.Join(*storeDir, svcID+".sqlite")
 
 		c, openErr := client.NewConstantClient(client.ModeLocal, storePath)
 		if openErr != nil {

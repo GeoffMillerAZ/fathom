@@ -15,17 +15,25 @@ import (
 // The file is left on disk so OpenPlatform can pick it up.
 func seedService(t *testing.T, dir, id string, obs []core.Observation) {
 	t.Helper()
-	path := filepath.Join(dir, id+".duckdb")
-	ds, err := Open(path)
+	seedServiceExt(t, dir, id, ".duckdb", obs)
+}
+
+// seedServiceExt is seedService parameterized by extension, so tests can seed
+// a mixed-backend fleet (ADR-020: PlatformStore must load .duckdb and
+// .sqlite services from the same directory).
+func seedServiceExt(t *testing.T, dir, id, ext string, obs []core.Observation) {
+	t.Helper()
+	path := filepath.Join(dir, id+ext)
+	s, err := BackendForPath(path)
 	if err != nil {
-		t.Fatalf("seedService Open %q: %v", path, err)
+		t.Fatalf("seedServiceExt BackendForPath %q: %v", path, err)
 	}
-	if err := ds.PutObservations(context.Background(), obs); err != nil {
-		_ = ds.Close()
-		t.Fatalf("seedService PutObservations: %v", err)
+	if err := s.PutObservations(context.Background(), obs); err != nil {
+		_ = s.Close()
+		t.Fatalf("seedServiceExt PutObservations: %v", err)
 	}
-	if err := ds.Close(); err != nil {
-		t.Fatalf("seedService Close: %v", err)
+	if err := s.Close(); err != nil {
+		t.Fatalf("seedServiceExt Close: %v", err)
 	}
 }
 
@@ -157,7 +165,7 @@ func TestOpenPlatform_EmptyDir(t *testing.T) {
 
 func TestOpenPlatform_NonDuckdbFilesIgnored(t *testing.T) {
 	dir := t.TempDir()
-	// Plant a non-.duckdb file; it must be silently ignored.
+	// Plant a non-store file; it must be silently ignored.
 	if err := os.WriteFile(filepath.Join(dir, "README.txt"), []byte("hi"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -172,5 +180,97 @@ func TestOpenPlatform_NonDuckdbFilesIgnored(t *testing.T) {
 	ids := ps.ServiceIDs()
 	if len(ids) != 1 || ids[0] != "only" {
 		t.Errorf("ServiceIDs() = %v, want [only]", ids)
+	}
+}
+
+// ─── mid-migration same-stem collision (F2) ──────────────────────────────────
+
+// TestOpenPlatform_SameStemPrefersSQLite is the F2 regression: after
+// `migrate-store` the directory holds BOTH svc.duckdb (stale) and svc.sqlite
+// (freshly migrated). ReadDir's name-sort yields the .duckdb first, and the
+// original first-wins load made the migrated store silently invisible.
+// The platform store must serve the .sqlite one.
+func TestOpenPlatform_SameStemPrefersSQLite(t *testing.T) {
+	dir := t.TempDir()
+	// Same service stem, different content per backend so we can prove WHICH
+	// file is actually being served, not just which type was opened.
+	seedServiceExt(t, dir, "svc", ".duckdb", []core.Observation{nowObs("svc", "StaleSymbol")})
+	seedServiceExt(t, dir, "svc", ".sqlite", []core.Observation{nowObs("svc", "MigratedSymbol")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform: %v", err)
+	}
+	defer ps.Close()
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 1 || ids[0] != "svc" {
+		t.Fatalf("ServiceIDs() = %v, want [svc] (one service, not one per file)", ids)
+	}
+
+	s, ok := ps.Get("svc")
+	if !ok {
+		t.Fatal("Get(svc) returned false")
+	}
+	if _, isSQLite := s.(*SQLiteStore); !isSQLite {
+		t.Fatalf("svc backend = %T, want *SQLiteStore (the migrated store must win)", s)
+	}
+	obs, err := s.QueryObservations(context.Background(), "svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	if len(obs) != 1 || obs[0].Symbol != "MigratedSymbol" {
+		t.Errorf("served observations = %+v, want the migrated store's MigratedSymbol", obs)
+	}
+}
+
+// ─── mixed-backend fleets (ADR-020, SS-4) ─────────────────────────────────────
+
+// TestOpenPlatform_MixedBackends proves PlatformStore loads a fleet directory
+// containing BOTH a DuckDB service and a SQLite service — the shape a fleet
+// takes mid-migration, one service moved to SQLite at a time.
+func TestOpenPlatform_MixedBackends(t *testing.T) {
+	dir := t.TempDir()
+	seedServiceExt(t, dir, "duck-svc", ".duckdb", []core.Observation{nowObs("duck-svc", "Login")})
+	seedServiceExt(t, dir, "lite-svc", ".sqlite", []core.Observation{nowObs("lite-svc", "Charge")})
+
+	ps, err := OpenPlatform(dir)
+	if err != nil {
+		t.Fatalf("OpenPlatform mixed fleet: %v", err)
+	}
+	defer ps.Close()
+
+	ids := ps.ServiceIDs()
+	if len(ids) != 2 {
+		t.Fatalf("ServiceIDs() len = %d, want 2; got %v", len(ids), ids)
+	}
+	for i, want := range []string{"duck-svc", "lite-svc"} {
+		if ids[i] != want {
+			t.Errorf("ids[%d] = %q, want %q", i, ids[i], want)
+		}
+	}
+
+	duckStore, ok := ps.Get("duck-svc")
+	if !ok {
+		t.Fatal("Get(duck-svc) returned false")
+	}
+	if _, ok := duckStore.(*DuckStore); !ok {
+		t.Errorf("duck-svc backend = %T, want *DuckStore", duckStore)
+	}
+
+	liteStore, ok := ps.Get("lite-svc")
+	if !ok {
+		t.Fatal("Get(lite-svc) returned false")
+	}
+	if _, ok := liteStore.(*SQLiteStore); !ok {
+		t.Errorf("lite-svc backend = %T, want *SQLiteStore", liteStore)
+	}
+
+	all := ps.QueryAll(context.Background(), "")
+	if _, ok := all["duck-svc"]; !ok {
+		t.Error("QueryAll: duck-svc missing from mixed-fleet results")
+	}
+	if _, ok := all["lite-svc"]; !ok {
+		t.Error("QueryAll: lite-svc missing from mixed-fleet results")
 	}
 }

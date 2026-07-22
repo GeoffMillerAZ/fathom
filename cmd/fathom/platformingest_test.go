@@ -75,9 +75,10 @@ func TestPlatformIngestFauxtown(t *testing.T) {
 			code, out.String(), errBuf.String())
 	}
 
-	// Both service DuckDB files must exist.
+	// Both service store files must exist (ADR-020: platform-ingest now
+	// defaults to the SQLite backend).
 	for _, svc := range []string{"payment-service", "ledger-service"} {
-		dbPath := filepath.Join(storeDir, svc+".duckdb")
+		dbPath := filepath.Join(storeDir, svc+".sqlite")
 		if _, err := os.Stat(dbPath); err != nil {
 			t.Errorf("expected store file %s to exist: %v", dbPath, err)
 		}

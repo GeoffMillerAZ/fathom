@@ -22,31 +22,64 @@ type DuckStore struct {
 	db *sql.DB
 }
 
-// Open opens (or creates) a DuckDB database at path. Pass "" for an in-memory
-// database. The schema is created if it does not already exist.
-func Open(path string) (*DuckStore, error) {
+// OpenDuckDB opens (or creates) a DuckDB database at path. Pass "" for an
+// in-memory database. The schema is created if it does not already exist.
+//
+// Prefer store.Open (or store.BackendForPath) for callers that should honor
+// the ADR-020 extension dispatch; call OpenDuckDB directly only when the
+// DuckDB backend specifically is required (e.g. migrate-store's source side,
+// or this backend's own contract tests).
+func OpenDuckDB(path string) (*DuckStore, error) {
 	// Ensure the parent directory exists (e.g. the default workspace/db/);
 	// DuckDB cannot create a file in a non-existent directory. "" = in-memory.
 	if path != "" {
 		if dir := filepath.Dir(path); dir != "" && dir != "." {
 			if err := os.MkdirAll(dir, 0o755); err != nil {
-				return nil, fmt.Errorf("store.Open mkdir %q: %w", dir, err)
+				return nil, fmt.Errorf("store.OpenDuckDB mkdir %q: %w", dir, err)
 			}
 		}
 	}
 	db, err := sql.Open("duckdb", path)
 	if err != nil {
-		return nil, fmt.Errorf("store.Open: %w", err)
+		return nil, fmt.Errorf("store.OpenDuckDB: %w", err)
 	}
-	// Single writer prevents concurrent-write conflicts in DuckDB.
+	// Single writer prevents concurrent-write conflicts in DuckDB. This is a
+	// DuckDB-specific serialization requirement — SQLiteStore deliberately
+	// does NOT carry it over (ADR-020): SQLite's own single-writer lock
+	// already serialises writes, and capping its pool would throttle the
+	// concurrent readers that are the whole point of the swap.
 	db.SetMaxOpenConns(1)
 
 	s := &DuckStore{db: db}
 	if err := s.createSchema(); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("store.Open schema: %w", err)
+		return nil, fmt.Errorf("store.OpenDuckDB schema: %w", err)
 	}
 	return s, nil
+}
+
+// openDuckDBReadOnly opens an EXISTING DuckDB database at path read-only
+// (go-duckdb passes DSN query parameters straight to DuckDB's config, so
+// access_mode=read_only engages the engine's own read-only mode) and runs
+// NO schema creation or migration DDL. This is migrate-store's source-side
+// open (F4a): OpenDuckDB would execute ALTER TABLE migrations against the
+// very file the operator is trying to leave byte-identical. A store so old
+// it predates a column the readers SELECT will fail loudly here rather
+// than be silently altered — open it once read-write with fathom first to
+// migrate its schema, then retry.
+func openDuckDBReadOnly(path string) (*DuckStore, error) {
+	db, err := sql.Open("duckdb", path+"?access_mode=read_only")
+	if err != nil {
+		return nil, fmt.Errorf("store.openDuckDBReadOnly: %w", err)
+	}
+	db.SetMaxOpenConns(1)
+	// sql.Open is lazy; force the actual file open now so a missing file or
+	// a held write lock surfaces here, not on the first table read.
+	if err := db.Ping(); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("store.openDuckDBReadOnly %q: %w", path, err)
+	}
+	return &DuckStore{db: db}, nil
 }
 
 // createSchema idempotently creates the required tables.
@@ -195,8 +228,10 @@ CREATE TABLE IF NOT EXISTS claim_events (
 	return err
 }
 
-// PutObservations inserts a batch of observations. Existing rows for the same
-// (service_id, source_ref, symbol) are replaced.
+// PutObservations inserts a batch of observations via a bare append — see
+// the Store interface doc comment: this does NOT dedupe or replace by key.
+// Callers that want replace semantics must call PurgeSource first (as
+// internal/fusion does).
 func (s *DuckStore) PutObservations(ctx context.Context, obs []core.Observation) error {
 	if len(obs) == 0 {
 		return nil

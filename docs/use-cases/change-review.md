@@ -217,7 +217,7 @@ Over the shared HTTP daemon, `set_profile` is rejected — register against `POS
 **CLI alternative for CI.** When no MCP session is running, use the CLI to update the store before running queries:
 
 ```sh
-fathom ingest-diff --service payment-service --path /path/to/payment-service --base origin/main --store workspace/db/fleet.duckdb
+fathom ingest-diff --service payment-service --path /path/to/payment-service --base origin/main --store workspace/db/fleet.sqlite
 ```
 
 This runs `git diff --name-only origin/main`, ingests changed files, and exits. A subsequent MCP session will pick up the updated store.

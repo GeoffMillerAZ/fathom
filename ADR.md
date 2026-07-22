@@ -486,13 +486,18 @@ CONFLICT upserts port verbatim (SQLite ≥3.24 semantics).
 
 **Constraints.** Fresh final-column DDL for SQLite (no ALTER-IF-NOT-EXISTS
 emulation; only DuckDB carries legacy on-disk migration). Connection
-pragmas: journal_mode=WAL, busy_timeout, uncapped read pool (the
-SetMaxOpenConns(1) serialization is DuckDB-specific and must NOT carry
-over). PutObservations keeps its purge-then-insert contract — the doc
+pragmas: journal_mode=WAL, busy_timeout, uncapped read pool for file
+stores (the SetMaxOpenConns(1) serialization is DuckDB-specific and must
+NOT carry over; the sole exception is the in-memory store, whose pool is
+capped at one because each modernc ":memory:" connection is a private
+database). PutObservations keeps its purge-then-insert contract — the doc
 comment's implied DB-level idempotency is corrected, not "fixed" with a
-constraint. Migration ports only non-derivable tables (semantic_claims,
-claim_links, claim_events, compile_runs, service_meta, commits);
-observations/fingerprints/cards rebuild by re-ingest.
+constraint. Migration ports the eight non-derivable tables
+(semantic_claims, claim_links, claim_events, compile_runs, service_meta,
+commits, knowledge_cards, doc_summaries — the last two because they are
+LLM-derived enrichment a re-ingest does not rebuild in practice, so
+"derivable" would mean silently lost); only observations/fingerprints
+rebuild by re-ingest.
 
 ## ADR-021: Extraction v2 — language truth, tool identity, typed edges, tree-sitter (2026-07-22)
 

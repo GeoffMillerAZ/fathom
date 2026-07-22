@@ -2,7 +2,7 @@
 
 Grounded by wf_d0588a59, all three defects reproduced:
 - `pkg/client.langFromPath` (client.go:36-75) is a hand-maintained
-  10-language subset of the 24-extractor registry — cue, cs, c/cpp,
+  10-language subset of the extractor registry (25 language tags across 45 registered keys) — cue, cs, c/cpp,
   templ, dockerfile, proto, graphql, toml, sql, json, scala, php,
   sh/bash, lua all serve as `Lang:""` → cloc "other".
 - The owner-visible 423K-line "other" was the untracked 103MB `fathom`

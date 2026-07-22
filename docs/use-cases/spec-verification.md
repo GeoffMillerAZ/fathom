@@ -127,7 +127,7 @@ Then re-run `verify_plan`. All four tasks now return `verified`.
 fathom gen-status-cue \
   --plan plan.cue \
   --service my-service \
-  --store workspace/db/fleet.duckdb \
+  --store workspace/db/fleet.sqlite \
   --output workspace/artifacts/STATUS.cue
 ```
 
@@ -156,7 +156,7 @@ bin/fathom verify --service <service> --plan docs/plans/my-plan.md
 
 ```sh
 bin/fathom verify --strict --service <service> --plan docs/plans/my-plan.md \
-  --store workspace/db/fleet.duckdb   # or omit to use the HTTP daemon
+  --store workspace/db/fleet.sqlite   # or omit to use the HTTP daemon
 ```
 
 **HTTP-first, store fallback:** by default `fathom verify` queries `http://localhost:7575/rpc` (the shared daemon). Pass `--store <path>` to bypass the daemon and query a DuckDB file directly — useful in CI environments without a running daemon.

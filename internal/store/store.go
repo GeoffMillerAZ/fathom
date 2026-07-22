@@ -1,7 +1,12 @@
 // Package store defines the persistence interface for fathom observations and
-// the fingerprint (hash-gate) index. Two implementations are provided:
-// DuckStore (DuckDB-backed, for production use) and MemoryStore (in-process
-// fake, for fast unit tests and session-mode operation).
+// the fingerprint (hash-gate) index. Three implementations are provided:
+// SQLiteStore (pure-Go, WAL-mode SQLite via modernc.org/sqlite — the default,
+// ADR-020), DuckStore (DuckDB-backed, retained for migration until SS-8), and
+// MemoryStore (in-process fake, for fast unit tests and session-mode
+// operation). store.Open (or the lower-level store.BackendForPath) dispatches
+// to SQLiteStore or DuckStore by file extension; callers that need a specific
+// backend regardless of extension call store.NewSQLiteStore / store.OpenDuckDB
+// directly.
 package store
 
 import (
@@ -65,10 +70,13 @@ type CommitInfo struct {
 // Implementations must be safe for concurrent reads; writes are serialised by
 // the implementation (single writer pattern).
 type Store interface {
-	// PutObservations upserts a batch of observations. Implementations are
-	// free to replace existing rows that share the same (service_id,
-	// source_ref, symbol) triple, but at minimum they must not duplicate rows
-	// on repeated calls for the same content.
+	// PutObservations appends a batch of observations with a bare INSERT.
+	// This is NOT an upsert: neither backend deduplicates or replaces rows by
+	// (service_id, source_ref, symbol) — calling it twice with the same
+	// content produces duplicate rows. The purge-then-insert contract that
+	// makes re-ingest behave like a replace is enforced by the caller
+	// (internal/fusion calls PurgeSource immediately before PutObservations
+	// on every changed file); this method alone provides no idempotency.
 	PutObservations(ctx context.Context, obs []core.Observation) error
 
 	// QueryObservations returns all observations for a service. When concernID

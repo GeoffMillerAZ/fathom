@@ -21,7 +21,7 @@ CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom   # macOS: MACOSX_DEPLOYMENT_T
 
 # One store for the whole fleet — one service per repo:
 for repo in my-app my-lib; do
-  bin/fathom ingest --service $repo --path ../$repo --store workspace/db/fleet.duckdb
+  bin/fathom ingest --service $repo --path ../$repo --store workspace/db/fleet.sqlite
 done
 ```
 
@@ -61,7 +61,7 @@ User scope makes it available in every repo and to every subagent:
 
 ```sh
 claude mcp add --scope user fathom -- \
-  /abs/path/fathom/bin/fathom serve-mcp --store /abs/path/fathom/workspace/db/fleet.duckdb
+  /abs/path/fathom/bin/fathom serve-mcp --store /abs/path/fathom/workspace/db/fleet.sqlite
 claude mcp list   # expect: fathom … ✔ Connected
 ```
 
@@ -117,7 +117,7 @@ post-commit:
       run: |
         [ -x ../fathom/bin/fathom ] || exit 0
         ../fathom/bin/fathom ingest --service my-app --path . \
-          --store ../fathom/workspace/db/fleet.duckdb >/dev/null 2>&1 || true
+          --store ../fathom/workspace/db/fleet.sqlite >/dev/null 2>&1 || true
 ```
 
 No daemon/watcher needed: hash-gating makes on-demand refresh effectively
@@ -148,7 +148,7 @@ concurrency, one shared index, no contention.
   <key>ProgramArguments</key><array>
     <string>/abs/path/fathom/bin/fathom</string>
     <string>serve-http</string>
-    <string>--store</string><string>/abs/path/fathom/workspace/db/fleet.duckdb</string>
+    <string>--store</string><string>/abs/path/fathom/workspace/db/fleet.sqlite</string>
     <string>--addr</string><string>127.0.0.1:7575</string>
   </array>
   <key>RunAtLoad</key><true/>

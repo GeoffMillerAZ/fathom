@@ -18,7 +18,7 @@ import (
 // watermarks, and re-ingest resolve through the remapped path immediately.
 func cmdRemap(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("remap", stderr)
-	storePath := fs.String("store", "", "path to the DuckDB store (required)")
+	storePath := fs.String("store", "", "path to the store, .duckdb or .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID to remap (required)")
 	newPath := fs.String("path", "", "new corpus root directory (required)")
 	if err := fs.Parse(args); err != nil {

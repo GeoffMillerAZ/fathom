@@ -154,9 +154,13 @@ in-flight machinery; **none of them require new engines**:
 4. **Refresh:** watermark drift (git HEAD or manifest hash) → re-ingest →
    citation sweep → recompile only what drifted (cost scales with change size,
    never corpus size).
-5. **Ship:** copy the `.duckdb` file. The receiving side gets intact citations
+5. **Ship:** copy the store file. The receiving side gets intact citations
    + honest staleness with zero recompile (the ADR-017 round-trip test is the
-   contract).
+   contract). SQLite (ADR-020) caveat for LIVE stores: a WAL-mode store that
+   is open in a writer holds recent commits in a `-wal` sidecar — copy the
+   `.sqlite` file only after the writer closes (which checkpoints), or copy
+   all three files (`.sqlite`, `-wal`, `-shm`) together; a bare file copy of
+   an in-use store silently drops un-checkpointed writes.
 6. **Serve:** daemon (`serve-http`, path-scoped surfaces per audience) or
    embedded/CLI (`fathom query`). One module = one store = one writer (D-EM5).
 7. **Federate (H3):** read-only ATTACH of N module stores behind the platform
