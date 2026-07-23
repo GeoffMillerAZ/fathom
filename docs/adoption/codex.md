@@ -33,12 +33,48 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
 - stamped the fathom operating-contract stanza into **both** `CLAUDE.md` and
   `AGENTS.md` from one canonical source (`cmd/fathom/init.go`'s
   `fathomStanza`) — **Codex reads `AGENTS.md` automatically**, so there is
-  nothing further to do for the standing-doctrine piece.
+  nothing further to do for the standing-doctrine piece (markers, re-run
+  semantics, and the corruption-refusal case are documented once, in
+  [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
+  since the mechanism and the stanza text are identical for both files), and
+- if you passed `--skills=codex` (or `=all`), rendered the shipped
+  `fathom-plan`/`fathom-verify`/`fathom-onboard`/`fathom-feedback` prompts
+  into `~/.codex/prompts/` — §1.1 below.
 
 `init` does *not* register Codex's MCP client (that's a Codex-side,
 interactive step, same reason it doesn't call `claude mcp add` for you
 either) and does not touch `lefthook.yml` (hand-curated, printed as a manual
-step instead — §5).
+step instead — §4).
+
+### 1.1 Installing Codex prompts: `--skills=codex`
+
+```sh
+bin/fathom init --skills=codex
+```
+
+Renders the same four shipped skill sources
+(`dist/agents/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}/`)
+that the Claude Code guide installs as `SKILL.md` files
+([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills-fathom-plan--fathom-verify--fathom-onboard--fathom-feedback))
+into Codex's custom-prompts convention instead: each skill's
+`codex-prompt.md` variant is written to `~/.codex/prompts/<name>.md` —
+**user-global, not project-scoped**, since that's the only location Codex's
+custom-prompts convention documents (no per-repo variant). Invoke one with
+`/prompts:<name>`, e.g. `/prompts:fathom-feedback`. `--skills=all` installs
+both the Claude Code and Codex shapes in one call, useful if the same repo
+is worked from both clients.
+
+**Honest capability note.** These are plain Markdown prompt files, not
+Codex's newer native `SKILL.md`-based skills mechanism (`.agents/skills/`
+in some CLI versions) — if your Codex CLI has adopted that mechanism, each
+installed `codex-prompt.md`'s own header tells you to copy the sibling
+`SKILL.md` there instead of using the rendered prompt file; this repo has
+no Codex install to verify which mechanism your version supports (same
+version caveat as above). Re-running `--skills=codex` is idempotent the
+same way the Claude Code path is: every written file carries a
+`<!-- fathom:owned -->` marker, so a pre-existing, non-fathom-owned file
+with the same name is never clobbered — `init` refuses instead (exit `1`,
+naming the path).
 
 ---
 
@@ -180,6 +216,28 @@ equivalent of a PostToolUse or Stop hook today, so obligations
 injection and the done-means-proven session check (§6) don't reach a Codex
 session the way they reach a Claude Code one.
 
+### 5.1 The flywheel: `observe` / `instrument --adoption` / `fathom-feedback`
+
+The same local-only friction-capture loop the Claude Code guide documents
+([docs/adoption/claude-code.md §12](claude-code.md#12-the-flywheel-observe--instrument---adoption--fathom-feedback))
+works identically here — neither verb is a hook, so there is no
+Claude-Code-specific machinery to be missing in this one:
+
+```sh
+bin/fathom observe --symptom "…" --tool <tool> --expected "…" --actual "…" --repro "…"
+bin/fathom instrument --adoption
+```
+
+`fathom observe` appends a structured entry (symptom → evidence → root
+cause → fix → status → impact) to `.fathom/observations.md`; `fathom
+instrument --adoption` reports traffic/gate stats plus the open-observation
+count, run from either harness's shell. The `fathom-feedback` Codex prompt
+(§1.1 above, invoked as `/prompts:fathom-feedback`) carries the same
+discipline as its Claude Code `SKILL.md` sibling — file friction the
+moment you hit it, don't let it die unrecorded. Both verbs are plain
+CLI/file operations: nothing hosted, nothing phones home, nothing
+Codex-specific to configure.
+
 ---
 
 ## 6. Honest capability table
@@ -196,6 +254,8 @@ session the way they reach a Claude Code one.
 | CI `--strict` gate | Yes | Yes — identical |
 | Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
 | `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
+| Shipped agent skills (`fathom-plan`/`verify`/`onboard`/`feedback`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
+| Local friction flywheel (`observe`/`instrument --adoption`) | Yes — plain CLI, no hook dependency | Yes, identically — plain CLI, no hook dependency (§5.1) |
 
 **The practical upshot:** in Codex, fathom is a fully capable *pull* tool
 (every MCP tool works identically) plus two *gate* channels that are
@@ -229,16 +289,24 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 - [ ] `git push` in the repo runs lefthook's `pre-push` hooks and the
       `fathom-verify` command exits with the expected code (0 pass, 1 a
       real unproven claim, 2 only when the daemon/store is genuinely down).
+- [ ] `bin/fathom init --skills=codex` (or `=all`) populates
+      `~/.codex/prompts/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}.md`
+      (§1.1), and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
+      --adoption` (§5.1) both run cleanly from a Codex-driven shell — neither
+      is hook-dependent, so there's nothing Codex-specific to verify beyond
+      the CLI itself working.
 
 ---
 
 ## Maintained
 
-This doc covers: `fathom init` (AGENTS.md stanza), `serve-mcp`,
-`serve-http` (`/rpc`, `/rpc/agent`), the `codex-cli` provider lane
-(`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
-`fathom verify` / `--strict` (git-native gate, identical to Claude Code).
-Codex-specific `config.toml`/`codex mcp` syntax is sourced from Codex's own
-public docs, not this repo — re-verify those specifics against your
-installed Codex version when they change. Update this doc when the
-codex-cli lane's cost story, the Ping tripwire, or the verify gate change.
+This doc covers: `fathom init` (AGENTS.md stanza, `--skills=codex` prompt
+install into `~/.codex/prompts/`), `observe`, `instrument --adoption`,
+`serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`), the `codex-cli` provider
+lane (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping
+tripwire), `fathom verify` / `--strict` (git-native gate, identical to
+Claude Code). Codex-specific `config.toml`/`codex mcp` syntax is sourced
+from Codex's own public docs, not this repo — re-verify those specifics
+against your installed Codex version when they change. Update this doc
+when the codex-cli lane's cost story, the Ping tripwire, the skills/prompts
+install story, or the verify gate change.

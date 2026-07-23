@@ -159,8 +159,17 @@ real entrypoint the tool actually returned, not one remembered from a
 previous session (the index can drift — `staleness_report` before trusting
 a stale memory of the codebase, per the companion adoption guides).
 
+The `fathom-plan` agent skill (installed via `fathom init
+--skills[=claude|codex|all]`, see
+[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills-fathom-plan--fathom-verify--fathom-onboard--fathom-feedback))
+is the condensed, self-contained version of this section and §3 above — it
+inlines the grammar and this grounding discipline so an agent can scaffold
+a gate-ready plan even in a repo that has never seen fathom's own source.
+Reach for it as the plan-authoring path; this guide remains the full
+reference underneath it.
+
 Once the annotation cites real evidence, the round-trip CUE shadow
-(`fathom gen-plan-cue`, §10) is one way to sanity-check parsing before
+(`fathom gen-plan-cue`, §12) is one way to sanity-check parsing before
 committing the plan — it fails loudly (exit 2) on any structural loss.
 
 ---
@@ -325,51 +334,78 @@ through on a bad day.
 
 ---
 
-## 8. Computed progress: `plans status` / `plans next` *(landing this wave)*
+## 8. Computed progress: `plans status` / `plans next`
 
-E3 (`docs/plans/new-use-cases.md`) adds two read-only CLI verbs that turn
-the same evidence `verify` already computes into rollups, rather than
-hand-tracked progress notes:
+E3 (`docs/plans/new-use-cases.md`) adds two read-only, shipped CLI verbs
+that turn the same evidence `verify` already computes into rollups, rather
+than hand-tracked progress notes:
 
 - **`fathom plans status`** — a per-plan rollup of
-  `{proven, claimed-unproven, open, deferred-with-trigger}` counts, computed
-  by the existing verify engine, never asserted by hand.
-- **`fathom plans next`** — the ordered work frontier: open/unproven rows
-  with their `{symbol, package}` anchors, in a shape an agent can consume
-  directly to pick up the next task.
+  `{total, proven, claimed-unproven, open, deferred, other-skipped}` counts,
+  computed by the existing verify engine, never asserted by hand.
+- **`fathom plans next`** — the ordered work frontier: every open/
+  in-progress row plus any row the engine can't currently prove
+  (claimed-failing, claimed-unknown), each with its `{symbol, package}`
+  anchor, in document order — a shape an agent can consume directly to pick
+  up the next task.
 
-Both are CLI-only in v0 (no new MCP tools). **These verbs are not yet built
-in this worktree** — this section documents the committed design
-(`docs/plans/new-use-cases.md`'s E3 rows) so the shape is right when they
-land; treat the exact flags as provisional until `fathom plans status
---help` exists. Regression timelines (progress *over time*, not just current
-state) depend on a separate claim-events design landing first and are
-explicitly deferred past this wave.
+Both accept `--plan` (repeatable; defaults to every active
+`docs/plans/*.md` when omitted, so `fathom plans status` with no flags
+answers "where does this repo's SDD program stand" out of the box),
+`--store`/`--url` (same direct-vs-daemon choice as `verify`), and `--json`.
+CLI-only in v0 (no new MCP tools).
+
+Real output against this repo's own `docs/plans/activation.md`
+(§6's `verify` worked example covers the same plan):
+
+```sh
+$ bin/fathom plans status --service fathom --store workspace/db/fathom.sqlite --plan docs/plans/activation.md
+plan                                      total  proven  claimed-unproven  open  deferred  other-skipped
+activation.md                                 7       5                 0     2         0              0
+
+$ bin/fathom plans next --service fathom --store workspace/db/fathom.sqlite --plan docs/plans/activation.md
+docs/plans/activation.md [A2-3] (open) (op) Recompile fired across the fleet; stamp exists; post-compile: obligations claims fresh at HEAD for all 9 services, adr-rules + spec-bindings have >0 production claims on fathom {symbol: cmdCompile, package: cmd/fathom}
+docs/plans/activation.md [A3-1] (open) Expert-module portability proven: agentic-kit + app-kit obligations compiles required zero code changes beyond flags — else this row stays open and the portability defect is fixed first {symbol: CompileLayer, package: pkg/client}
+```
+
+`status`'s two open rows and `next`'s two frontier rows agree — both are
+computed from the same live verdicts, never a second source of truth.
+Regression timelines (progress *over time*, not just current state) depend
+on a separate claim-events design and stay out of scope for these two
+verbs.
 
 ---
 
-## 9. Archival lifecycle: `plans archive` / `plans restore` *(landing this wave)*
+## 9. Archival lifecycle: `plans archive` / `plans restore`
 
-E4 (`docs/plans/new-use-cases.md`) — also not yet built in this worktree,
-documented here for the same reason as §8:
+E4 (`docs/plans/new-use-cases.md`) — shipped, `cmd/fathom/plans_archive.go`:
 
 - **`fathom plans archive <plan>`** refuses unless (a) every row is proven
   or dispositioned, (b) the plan's task IDs appear in `CHANGELOG.md` or
-  `ADR.md` (a lexical absorption check — the work has to be recorded
-  somewhere durable before its plan file disappears from the gate's view),
-  and (c) every anchor still resolves. On success, the plan file moves to
-  `docs/plans/archive/`, a tombstone records the evidence, and the pre-push
-  gate scopes to active plans only — bounding the gate's cost as the number
-  of historical plans grows without bound.
-- **`fathom plans restore`** must exist before the first real archive runs
-  — an archive with no restore path is a one-way door, and E4's design
-  explicitly refuses to ship one without the other.
+  `ADR.md` (a lexical absorption check at a token boundary — "E3-10" must
+  not absorb "E3-1" — so the work has to be recorded somewhere durable
+  before its plan file disappears from the gate's view), and (c) every
+  claimed row verifies green right now (the engine is re-run fresh, never
+  trusting a prior result). On success, the plan file is `git mv`d to
+  `docs/plans/archive/`, a tombstone (date, HEAD sha, verify summary) is
+  written into its header, and the pre-push gate's active-plan glob no
+  longer sees it — bounding the gate's cost as the number of historical
+  plans grows without bound.
+- **`fathom plans restore <plan>`** is the inverse `git mv`, back out of
+  `docs/plans/archive/` — an archive with no restore path would be a
+  one-way door, and E4's design explicitly refuses to ship one without the
+  other.
+
+Known limitation, recorded rather than hidden: the absorption check is
+lexical, so it cannot distinguish the same ID used by two different plans
+— a CHANGELOG mention of one plan's `K-1` absolves any other plan's `K-1`
+too. Per-plan unique ID prefixes (this repo's own convention: `E3-*`,
+`B1-*`, `LC-*`, …) are what keep the check meaningful.
 
 Claims persistence beyond archival (a restored plan's claims still meaning
 something) depends on the compile idempotency work (A2,
-`docs/plans/activation.md`) already having produced production claims —
-already shipped in this worktree, so archival's own dependency is clear the
-moment `plans archive` lands.
+`docs/plans/activation.md`) having produced production claims — already
+shipped, so archival's own dependency is already satisfied.
 
 ---
 
@@ -508,6 +544,10 @@ ls docs/plans/*.md
       blocks the push locally, before CI even sees it.
 - [ ] `fathom gen-plan-cue --plan <file> --service <svc>` exits `0` (the
       round-trip check passed) rather than `2`.
+- [ ] `fathom plans status --service <svc>` (§8) prints a rollup row per
+      plan under `docs/plans/`, and `fathom plans next --service <svc>`
+      lists exactly the open/unproven rows `plans status` counted — both
+      computed from the same live verdicts `verify` uses.
 
 If every box above is checked, the full loop — author, implement, prove,
 gate — is live and honest.
@@ -518,14 +558,13 @@ gate — is live and honest.
 
 This doc covers: the `docs/plans/*.md` grammar (`{id, symbol, package,
 reachable_from, min_tier, skip_test, allow_contradiction, disposition,
-reason, trigger, skip}`), `fathom verify` (`--strict`/`--require-all`/
-`--store`/`--json`/`--quiet-pass`), the lefthook pre-push gate, the
-Stop hook (`fathom stop-hook`/`--block`), `fathom gen-plan-cue`, the
-`spec-bindings` layer pack, the oracle-class registry
-(`docs/design/sdd-reconciler.md` §5), and the MCP tools `spec_refs`/
-`spec_coverage`/`spec_status`/`traceability`/`pack_context`/`test_impact`/
-`verify_plan`. `fathom plans status`/`next`/`archive`/`restore` are
-documented from the committed E3/E4 design
-(`docs/plans/new-use-cases.md`) and marked landing-this-wave until they
-ship — update this doc's examples to real CLI output the moment they do,
+reason, trigger, skip}`), the `fathom-plan` agent skill as the
+plan-authoring path, `fathom verify` (`--strict`/`--require-all`/
+`--store`/`--json`/`--quiet-pass`), `fathom plans status`/`next`/`archive`/
+`restore` (E3/E4, `cmd/fathom/plans.go` + `plans_archive.go`, shipped), the
+lefthook pre-push gate, the Stop hook (`fathom stop-hook`/`--block`),
+`fathom gen-plan-cue`, the `spec-bindings` layer pack, the oracle-class
+registry (`docs/design/sdd-reconciler.md` §5), and the MCP tools
+`spec_refs`/`spec_coverage`/`spec_status`/`traceability`/`pack_context`/
+`test_impact`/`verify_plan`. Update this doc's examples to real CLI output
 and update this line whenever any of the above change.
