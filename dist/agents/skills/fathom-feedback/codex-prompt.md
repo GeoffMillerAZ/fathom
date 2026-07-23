@@ -26,8 +26,8 @@ fathom observe --symptom "$SYMPTOM" --tool "$TOOL" \
 
 This appends a structured entry to `.fathom/observations.md`: **symptom →
 evidence (real reproduction) → root cause → fix → status** — the same shape
-fathom's own team uses. `fathom instrument --adoption` surfaces the
-open-observation count.
+fathom's own team uses. `fathom instrument --adoption` (landing this wave —
+check `fathom help` for it) surfaces the open-observation count.
 
 **If `fathom observe` isn't in your build yet** (it may be landing alongside
 this prompt file — check `fathom help`), append the shape by hand to

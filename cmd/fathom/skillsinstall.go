@@ -41,22 +41,32 @@ func (f *optionalStringFlag) Set(v string) error {
 }
 func (f *optionalStringFlag) IsBoolFlag() bool { return true }
 
-// resolveSkillsMode normalizes --skills' raw flag value to "" (flag
+// resolveSkillsMode normalizes the --skills flag state to "" (flag
 // omitted — skip), "claude", "codex", or "all". A bare `--skills` reaches
-// here as "true" (optionalStringFlag.IsBoolFlag's default), which this maps
-// to "all" — the useful default when a caller doesn't know or care which
-// harness is in play, rather than pretending to detect an environment this
-// command has no reliable signal for.
-func resolveSkillsMode(raw string) (string, error) {
-	switch raw {
-	case "":
+// here as value "true" (optionalStringFlag.IsBoolFlag's default), which this
+// maps to "all" — the useful default when a caller doesn't know or care
+// which harness is in play, rather than pretending to detect an environment
+// this command has no reliable signal for.
+//
+// An explicit empty value (`--skills=`) is REFUSED, not treated as "all":
+// set distinguishes it from the flag being omitted entirely (both reach
+// here with value ""). Someone typing `--skills=` was mid-thought about
+// which harness to name — silently installing both is the same class of
+// surprise as the positional trap cmdInit guards against, so the ambiguity
+// errors loudly instead.
+func resolveSkillsMode(value string, set bool) (string, error) {
+	if !set {
 		return "", nil
+	}
+	switch value {
 	case "true":
 		return "all", nil
 	case "claude", "codex", "all":
-		return raw, nil
+		return value, nil
+	case "":
+		return "", fmt.Errorf("empty --skills= value (want --skills=claude, --skills=codex, --skills=all, or bare --skills for all)")
 	default:
-		return "", fmt.Errorf("invalid --skills value %q (want claude, codex, or all)", raw)
+		return "", fmt.Errorf("invalid --skills value %q (want claude, codex, or all)", value)
 	}
 }
 

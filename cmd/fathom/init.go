@@ -52,7 +52,18 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	skillsMode, err := resolveSkillsMode(skillsFlag.value)
+	// Refuse positionals loudly. init takes none — and because --skills is
+	// bool-shaped (bracket-optional), the natural spelling `--skills claude`
+	// parses bare --skills as "all", STOPS flag parsing at the positional,
+	// and would otherwise silently discard "claude" (and every later flag,
+	// e.g. a following --path — scaffolding the wrong directory). Erroring
+	// here, before any writes, turns that first-contact trap into an
+	// immediate, self-explaining refusal.
+	if fs.NArg() > 0 {
+		fmt.Fprintf(stderr, "error: unexpected argument %q — did you mean --skills=%s?\n", fs.Arg(0), fs.Arg(0))
+		return 1
+	}
+	skillsMode, err := resolveSkillsMode(skillsFlag.value, skillsFlag.set)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1

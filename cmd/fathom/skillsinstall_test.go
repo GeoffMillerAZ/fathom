@@ -12,30 +12,32 @@ import (
 
 func TestResolveSkillsMode(t *testing.T) {
 	cases := []struct {
-		raw     string
+		value   string
+		set     bool
 		want    string
 		wantErr bool
 	}{
-		{raw: "", want: ""},
-		{raw: "true", want: "all"}, // bare --skills (optionalStringFlag.IsBoolFlag)
-		{raw: "claude", want: "claude"},
-		{raw: "codex", want: "codex"},
-		{raw: "all", want: "all"},
-		{raw: "bogus", wantErr: true},
+		{value: "", set: false, want: ""},       // flag omitted entirely
+		{value: "true", set: true, want: "all"}, // bare --skills (optionalStringFlag.IsBoolFlag)
+		{value: "", set: true, wantErr: true},   // explicit --skills= — refused, never "all"
+		{value: "claude", set: true, want: "claude"},
+		{value: "codex", set: true, want: "codex"},
+		{value: "all", set: true, want: "all"},
+		{value: "bogus", set: true, wantErr: true},
 	}
 	for _, tc := range cases {
-		got, err := resolveSkillsMode(tc.raw)
+		got, err := resolveSkillsMode(tc.value, tc.set)
 		if tc.wantErr {
 			if err == nil {
-				t.Errorf("resolveSkillsMode(%q): expected error, got nil", tc.raw)
+				t.Errorf("resolveSkillsMode(%q, %t): expected error, got nil", tc.value, tc.set)
 			}
 			continue
 		}
 		if err != nil {
-			t.Errorf("resolveSkillsMode(%q): unexpected error: %v", tc.raw, err)
+			t.Errorf("resolveSkillsMode(%q, %t): unexpected error: %v", tc.value, tc.set, err)
 		}
 		if got != tc.want {
-			t.Errorf("resolveSkillsMode(%q) = %q, want %q", tc.raw, got, tc.want)
+			t.Errorf("resolveSkillsMode(%q, %t) = %q, want %q", tc.value, tc.set, got, tc.want)
 		}
 	}
 }
@@ -280,6 +282,97 @@ func TestCmdInit_SkillsFlagBare_MeansAll(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(home, ".codex", "prompts", "fathom-plan.md")); err != nil {
 		t.Errorf("codex prompt not installed by bare --skills: %v", err)
+	}
+}
+
+// dirEntryNames returns the names of dir's entries (empty slice for an
+// empty or absent dir) — for asserting a refused cmdInit wrote nothing.
+func dirEntryNames(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		t.Fatalf("reading %s: %v", dir, err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
+}
+
+// TestCmdInit_PositionalSkillsValue_Refused is the critic's first proven
+// trap (D1): the natural spelling `fathom init --skills claude` parses bare
+// --skills as "all" and leaves "claude" as a positional — before this
+// guard, init silently discarded it and installed BOTH harnesses. Now the
+// positional is refused loudly, with the fix spelled out, before any file
+// is written.
+func TestCmdInit_PositionalSkillsValue_Refused(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--skills", "claude"}, &out, &errBuf)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), `unexpected argument "claude"`) ||
+		!strings.Contains(errBuf.String(), "--skills=claude") {
+		t.Errorf("stderr missing the refusal + suggestion: %s", errBuf.String())
+	}
+	// Refused BEFORE any writes: the CWD (init's default --path) is untouched.
+	if names := dirEntryNames(t, cwd); len(names) != 0 {
+		t.Errorf("cwd was written to despite refusal: %v", names)
+	}
+}
+
+// TestCmdInit_PositionalStopsFlagParsing_Refused is the critic's worst-case
+// trap (D1): `--skills claude --path X` — flag parsing stops at the
+// positional "claude", so --path would be silently DROPPED and init would
+// scaffold .fathomignore/settings/CLAUDE.md/AGENTS.md into the CWD instead
+// of X. The positional guard refuses first: exit 1, X untouched, CWD
+// untouched.
+func TestCmdInit_PositionalStopsFlagParsing_Refused(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	cwd := t.TempDir()
+	t.Chdir(cwd)
+	target := t.TempDir()
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--skills", "claude", "--path", target}, &out, &errBuf)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), `unexpected argument "claude"`) {
+		t.Errorf("stderr missing the refusal: %s", errBuf.String())
+	}
+	if names := dirEntryNames(t, target); len(names) != 0 {
+		t.Errorf("target dir was written to despite refusal: %v", names)
+	}
+	if names := dirEntryNames(t, cwd); len(names) != 0 {
+		t.Errorf("cwd was written to despite refusal (the exact pre-fix failure): %v", names)
+	}
+}
+
+// TestCmdInit_SkillsEmptyValue_Refused: `--skills=` (explicit empty value)
+// is refused, never silently treated as "all" — the D1 minor.
+func TestCmdInit_SkillsEmptyValue_Refused(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	dir := t.TempDir()
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--path", dir, "--skills="}, &out, &errBuf)
+	if code != 1 {
+		t.Fatalf("exit = %d, want 1; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+	if !strings.Contains(errBuf.String(), "empty --skills=") {
+		t.Errorf("stderr missing the empty-value refusal: %s", errBuf.String())
+	}
+	if names := dirEntryNames(t, dir); len(names) != 0 {
+		t.Errorf("target dir was written to despite refusal: %v", names)
 	}
 }
 

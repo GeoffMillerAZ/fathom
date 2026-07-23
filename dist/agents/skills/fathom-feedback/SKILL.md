@@ -40,9 +40,10 @@ fathom observe \
 This appends a structured entry to `.fathom/observations.md` at the repo
 root, in the same shape fathom's own team uses internally: **symptom →
 evidence (a real reproduction, not a vague complaint) → root cause → fix →
-status**. `fathom instrument --adoption` surfaces the open-observation count
-alongside traffic/gate stats, so a repo's observation backlog is visible at
-a glance, not buried in a file nobody opens.
+status**. `fathom instrument --adoption` (landing this wave — check
+`fathom help` for it) surfaces the open-observation count alongside
+traffic/gate stats, so a repo's observation backlog is visible at a glance,
+not buried in a file nobody opens.
 
 **If `fathom observe` isn't available in your build yet** (this verb is
 landing alongside this skill — check `fathom help` for it), don't let the
