@@ -104,18 +104,20 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 // SurfaceTraffic returns a snapshot of process-lifetime per-surface call
 // counts and last-call timestamps (A1-1). The empty string "" is the
 // bare/unscoped surface — a stdio session, or an HTTP request to bare
-// /rpc — which is real traffic and reported like any named surface. Returns
-// nil for a nil receiver or a logger that has seen no calls yet, so callers
-// can omit the block entirely (server_stats' capability-block convention).
+// /rpc — which is real traffic and reported like any named surface.
+//
+// Nil-vs-empty is load-bearing (bounce finding 3 / K3's existence check):
+// a nil receiver (no logger wired — the instrument doesn't exist) returns
+// nil, and server_stats omits the block; a wired logger that has seen ZERO
+// calls returns a non-nil empty map, and server_stats emits an empty
+// block — a freshly restarted daemon truthfully reads as "instrument live,
+// zero traffic", never as "instrument missing".
 func (l *CallLogger) SurfaceTraffic() map[string]SurfaceStat {
 	if l == nil {
 		return nil
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if len(l.surfaceCalls) == 0 {
-		return nil
-	}
 	out := make(map[string]SurfaceStat, len(l.surfaceCalls))
 	for surface, calls := range l.surfaceCalls {
 		out[surface] = SurfaceStat{

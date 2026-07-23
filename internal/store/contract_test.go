@@ -1303,6 +1303,11 @@ func storeContract(t *testing.T, s Store) {
 				RanAt: t1,
 				// M1-7: a mid-run budget stop must round-trip too.
 				BudgetStopped: true, RefusalReason: "token total 700 exceeds layer \"obligations\" budget max_tokens_per_run=600",
+				// A2-1/D3-1: a guard-override audit note must round-trip on
+				// every backend — the fake matching the real stores here is
+				// exactly what the bounce's fake-vs-real divergence check
+				// exists for.
+				Escape: "force: idempotent recompile of run run-z (watermark=\"abc\", prompt=\"obligations/v1\")",
 			},
 			{
 				RunID: "run-a", ServiceID: svc, Layer: "obligations",
@@ -1354,6 +1359,13 @@ func storeContract(t *testing.T, s Store) {
 		}
 		if got[1].Refused {
 			t.Errorf("run-b Refused = true, want false")
+		}
+		// A2-1/D3-1: Escape round-trips (run-b set it, run-a did not).
+		if want := "force: idempotent recompile of run run-z (watermark=\"abc\", prompt=\"obligations/v1\")"; got[1].Escape != want {
+			t.Errorf("run-b Escape = %q, want %q", got[1].Escape, want)
+		}
+		if got[0].Escape != "" {
+			t.Errorf("run-a Escape = %q, want empty", got[0].Escape)
 		}
 		// Layer filter: "findings" returns none.
 		none, err := s.CompileRuns(ctx, svc, "findings")

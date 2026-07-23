@@ -149,9 +149,24 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 		// would falsely look "unchanged".
 		watermark, _ := c.ServiceWatermark(ctx, service)
 		if promptIdentity, ierr := semantic.PromptIdentity(layerDef); ierr == nil && watermark != "" {
-			if runs, rerr := st.CompileRuns(ctx, service, layer); rerr == nil && len(runs) > 0 {
+			runs, rerr := st.CompileRuns(ctx, service, layer)
+			if rerr != nil {
+				// Fail-open by design (a guard must not brick compiles on a
+				// store read hiccup) — but LOUDLY (bounce finding 1: on the
+				// pre-migration fleet store this error was the only signal
+				// the guard had been skipped, and it was swallowed).
+				fmt.Fprintf(stderr, "warning: idempotency guard skipped — could not read compile_runs for (%s, %s): %v\n", service, layer, rerr)
+			}
+			if rerr == nil && len(runs) > 0 {
 				latest := runs[0] // newest-first
-				if latest.CorpusWatermark == watermark && latest.PromptVersion == promptIdentity {
+				// Only a CLEANLY COMPLETED run makes a recompile idempotent.
+				// A refused, budget-stopped, or partially-failed run's own
+				// documented remedy is "re-run to resume" (the digest gate
+				// skips completed sections) — refusing those would force
+				// --force on the honest path and pollute the escape counts
+				// the kill criteria read (bounce finding 4).
+				completedClean := !latest.Refused && !latest.BudgetStopped && latest.SectionsFailed == 0
+				if completedClean && latest.CorpusWatermark == watermark && latest.PromptVersion == promptIdentity {
 					if !force {
 						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override; the override is logged into compile_runs.\n",
 							latest.RunID, service, layer, watermark, promptIdentity, latest.RanAt.UTC().Format(time.RFC3339))

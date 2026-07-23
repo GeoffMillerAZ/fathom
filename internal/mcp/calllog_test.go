@@ -16,8 +16,11 @@ func TestCallLogger_SurfaceTraffic_CountsAndLastTS(t *testing.T) {
 	var buf bytes.Buffer
 	l := NewCallLogger(&buf)
 
-	if got := l.SurfaceTraffic(); len(got) != 0 {
-		t.Fatalf("SurfaceTraffic() before any calls = %v, want empty", got)
+	// Zero calls on a WIRED logger is a non-nil empty map — "instrument
+	// live, zero traffic" — never nil, which is reserved for "no logger at
+	// all" (bounce finding 3 / K3's existence check).
+	if got := l.SurfaceTraffic(); got == nil || len(got) != 0 {
+		t.Fatalf("SurfaceTraffic() before any calls = %v, want non-nil empty map", got)
 	}
 
 	l.log("find_symbol", "fathom", "shared", "agent", "", "", false, time.Millisecond, nil)

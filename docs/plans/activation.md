@@ -19,6 +19,20 @@ Design (normative):
   corpus watermark AND same prompt identity — with `--force` as the logged
   escape. Prevents the flag-day from double-writing superseded claims (75%
   of stored claims are already superseded from same-watermark reruns).
+  Only a CLEANLY completed run (not refused, not budget-stopped, zero
+  failed sections) makes a rerun idempotent — a stopped/partial run's own
+  documented remedy is "re-run to resume", which the guard must not force
+  through `--force`. **Scoping note (shared with D3's eval-gate,
+  docs/plans/expert-depth.md):** both guards live in `cmd/fathom`'s direct
+  `--store` lane only — the lane the flag-day runbook
+  (`scripts/recompile-fleet.sh`) actually uses, with the local store
+  already open for the pre-flight reads. The HTTP/daemon `compile_layer`
+  path (`internal/mcp/semantic_tools.go`) is UNGUARDED today: guarding it
+  means teaching the daemon handler the same store pre-flight and an
+  escape-note plumb-through over JSON-RPC, deferred until a daemon-side
+  compile consumer exists (today's only spending caller is the operator
+  CLI). Passing `--force`/`--unsafe-skip-eval-gate` without `--store` is
+  refused loudly, never silently ignored.
 - **A2/A3 runbook.** `scripts/recompile-fleet.sh`: obligations × every fleet
   service + adr-rules × fathom + spec-bindings × fathom (11 service·packs,
   ≤$0.60 metered / $0 claude-cli lane), stamping

@@ -69,8 +69,8 @@ func TestServerStats_SurfaceTraffic_ReportsPerSurfaceCounts(t *testing.T) {
 }
 
 // TestServerStats_SurfaceTraffic_OmittedWithoutCallLogger: no call logger
-// wired in (mcp.NewServer, not NewServerWithLogger) means no per-surface
-// counters exist to report — the block must be omitted, not present-empty.
+// wired in (mcp.NewServer, not NewServerWithLogger) means the instrument
+// itself is absent — the block must be omitted, not present-empty.
 func TestServerStats_SurfaceTraffic_OmittedWithoutCallLogger(t *testing.T) {
 	srv := mcp.NewServer(&fakeBackend{})
 	resp := roundtrip(t, srv, request{
@@ -80,6 +80,30 @@ func TestServerStats_SurfaceTraffic_OmittedWithoutCallLogger(t *testing.T) {
 	p := extToolPayload(t, resp)
 	if _, ok := p["surface_traffic"]; ok {
 		t.Errorf("surface_traffic should be omitted with no call logger wired in, got %v", p)
+	}
+}
+
+// TestServerStats_SurfaceTraffic_ZeroCallsEmitsEmptyBlock (bounce finding
+// 3): a WIRED logger with zero completed calls must emit surface_traffic
+// as a present-but-empty object — a freshly restarted daemon reads as
+// "instrument live, zero traffic", distinguishable from "instrument
+// missing" (the omitted case above) by any existence check (doctrine 7).
+// The first-ever call being server_stats itself exercises exactly this:
+// its own log entry is written after the handler returns.
+func TestServerStats_SurfaceTraffic_ZeroCallsEmitsEmptyBlock(t *testing.T) {
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithLogger(&fakeBackend{}, mcp.NewCallLogger(&buf))
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{"name": "server_stats", "arguments": map[string]any{}},
+	})
+	p := extToolPayload(t, resp)
+	traffic, ok := p["surface_traffic"].(map[string]any)
+	if !ok {
+		t.Fatalf("surface_traffic must be PRESENT (as an empty object) when a logger is wired with zero calls, got %v", p)
+	}
+	if len(traffic) != 0 {
+		t.Errorf("surface_traffic at zero completed calls = %v, want empty object", traffic)
 	}
 }
 

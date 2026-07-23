@@ -121,7 +121,12 @@ func registerServerStats(s *Server) {
 				result["classified_zero_files"] = m
 			}
 		}
-		if traffic := s.callLogger.SurfaceTraffic(); len(traffic) > 0 {
+		// Emitted whenever a call logger is wired — an EMPTY block is the
+		// truthful "instrument live, zero traffic" state a freshly
+		// restarted daemon is in; omission means the instrument itself is
+		// absent (nil receiver returns nil). Doctrine 7: an existence
+		// check must be able to tell those apart.
+		if traffic := s.callLogger.SurfaceTraffic(); traffic != nil {
 			result["surface_traffic"] = traffic
 		}
 

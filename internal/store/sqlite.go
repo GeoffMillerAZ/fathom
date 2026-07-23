@@ -252,34 +252,46 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 	// Conditional migrations for SQLite stores created before a column
 	// existed. The "no ALTER cruft" stance above holds for the fleet store
 	// (freshly migrated), but scratch/workspace SQLite stores created by
-	// earlier slices already exist on disk, and SQLite has no
-	// ADD COLUMN IF NOT EXISTS — so missing columns are detected via
-	// PRAGMA table_info and added individually (ADR-021 §2 / critic F1).
-	migrations := []struct{ column, ddl string }{
-		{"tool_kind", `ALTER TABLE observations ADD COLUMN tool_kind TEXT NOT NULL DEFAULT ''`},
-		{"generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
+	// earlier slices already exist on disk — INCLUDING the live fleet store,
+	// which predates escape_note — and SQLite has no ADD COLUMN IF NOT
+	// EXISTS, so missing columns are detected via PRAGMA table_info and
+	// added individually, per table (ADR-021 §2 / critic F1; A2-1/D3-1
+	// bounce finding 1: adding escape_note only to the CREATE TABLE shape
+	// was a no-op on every pre-existing store — CompileRuns and
+	// RecordCompileRun both errored with "no such column").
+	migrations := []struct{ table, column, ddl string }{
+		{"observations", "tool_kind", `ALTER TABLE observations ADD COLUMN tool_kind TEXT NOT NULL DEFAULT ''`},
+		{"observations", "generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
+		{"compile_runs", "escape_note", `ALTER TABLE compile_runs ADD COLUMN escape_note TEXT NOT NULL DEFAULT ''`},
 	}
-	existing, err := s.observationColumns()
-	if err != nil {
-		return err
-	}
+	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
+		existing, ok := existingByTable[m.table]
+		if !ok {
+			var err error
+			existing, err = s.tableColumns(m.table)
+			if err != nil {
+				return err
+			}
+			existingByTable[m.table] = existing
+		}
 		if existing[m.column] {
 			continue
 		}
 		if _, err := s.db.Exec(m.ddl); err != nil {
-			return fmt.Errorf("migrate observations.%s: %w", m.column, err)
+			return fmt.Errorf("migrate %s.%s: %w", m.table, m.column, err)
 		}
 	}
 	return nil
 }
 
-// observationColumns returns the set of column names currently present on
-// the observations table, via PRAGMA table_info.
-func (s *SQLiteStore) observationColumns() (map[string]bool, error) {
-	rows, err := s.db.Query(`PRAGMA table_info(observations)`)
+// tableColumns returns the set of column names currently present on the
+// named table, via PRAGMA table_info. table must be a trusted literal from
+// this package (PRAGMA takes no bind parameters).
+func (s *SQLiteStore) tableColumns(table string) (map[string]bool, error) {
+	rows, err := s.db.Query(`PRAGMA table_info(` + table + `)`)
 	if err != nil {
-		return nil, fmt.Errorf("pragma table_info(observations): %w", err)
+		return nil, fmt.Errorf("pragma table_info(%s): %w", table, err)
 	}
 	defer rows.Close()
 	cols := map[string]bool{}

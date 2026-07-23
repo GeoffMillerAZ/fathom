@@ -20,8 +20,22 @@ Design (normative):
 - **D3 eval-gate enforcement.** `fathom compile` (non-dry-run) refuses any
   layer lacking a passing eval RESULTS record unless
   `--unsafe-skip-eval-gate` is passed; every use of the flag is logged into
-  compile_runs. Kill: flag used ≥3× in normal operation in 60 days → gate
-  ergonomics wrong, redesign.
+  compile_runs. "Passing eval RESULTS record" resolves per pack source:
+  embedded packs self-declare via the manifest's `evaled` field (their
+  eval/ is deliberately not compiled into the binary — the field is checked
+  against `eval/RESULTS.md` at pack-authoring time); a PROJECT pack's
+  declaration is additionally verified against its on-disk
+  `eval/RESULTS.md` at load time — `evaled: true` with no readable RESULTS
+  file loads as not-evaled, with a warning, so a one-line layer.cue lie
+  cannot walk through the gate. **Scoping note (shared with A2's
+  idempotency guard, docs/plans/activation.md):** the gate lives in
+  `cmd/fathom`'s direct `--store` lane only; the HTTP/daemon
+  `compile_layer` path (`internal/mcp/semantic_tools.go`) is UNGUARDED
+  today — guarding it is deferred until a daemon-side compile consumer
+  exists (today's only spending caller is the operator CLI), and
+  `--unsafe-skip-eval-gate` without `--store` is refused loudly. Kill:
+  flag used ≥3× in normal operation in 60 days → gate ergonomics wrong,
+  redesign.
 
 ## Tasks
 

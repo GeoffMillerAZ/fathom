@@ -63,9 +63,19 @@ tasks:
     desc: Integration tests (Faux-backed end-to-end)
     cmds: ["{{.GO}} test -race -run Integration ./..."]
 
+  scripts-check:
+    desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate)
+    cmds:
+      - |
+        rc=0
+        for f in scripts/*.sh; do
+          bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
+        done
+        exit $rc
+
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, test
-    deps: [fmt-check, vet, cue-vet, vendor-check]
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, scripts-check, test
+    deps: [fmt-check, vet, cue-vet, vendor-check, scripts-check]
     cmds: [{ task: test }]
 
   sync-kit:

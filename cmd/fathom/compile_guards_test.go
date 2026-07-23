@@ -21,8 +21,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -163,6 +166,58 @@ func TestCmdCompile_EvalGate_UnsafeSkipOverridesAndLogsEscape(t *testing.T) {
 	}
 }
 
+// TestCmdCompile_EvalGate_ProjectPackEvaledLieStillRefused replicates the
+// D3-1 bounce finding-2 executed attack END TO END through the CLI: a
+// project pack at <service root>/.fathom/layers/bogus/ declaring
+// `evaled: true` with NO eval/ directory used to compile with exit 0 and an
+// empty escape_note. The union loader now overrides the lie to
+// Evaled=false (internal/semantic/packs.go), so the compile eval-gate must
+// refuse exactly like any other un-evaled layer.
+func TestCmdCompile_EvalGate_ProjectPackEvaledLieStillRefused(t *testing.T) {
+	storePath, root := newGuardTestStore(t)
+	packDir := filepath.Join(root, ".fathom", "layers", "bogus")
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	layerCUE := `name:    "bogus"
+version: "v1"
+kind:    "bogus-kind"
+corpus: include: ["docs/**"]
+prompt_version: "bogus/fixture"
+prompt_file:    "bogus/prompt.md"
+tier:           "doc-claimed"
+evaled:         true
+budgets: {
+	max_tokens_per_run: 1000
+	max_usd_per_run:    0.1
+}
+`
+	if err := os.WriteFile(filepath.Join(packDir, "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(packDir, "prompt.md"), []byte("Emit {\"claims\": []}."), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// No eval/ directory at all — the critic's exact scenario.
+
+	t.Setenv("FATHOM_LLM_PROVIDER", "")
+	t.Setenv("ANTHROPIC_API_KEY", "")
+
+	var stdout, stderr bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", "svc", "--layer", "bogus", "--store", storePath, "--dry-run=false",
+	}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("exit code = %d, want 1 (a project pack's evaled lie must not pass the gate); stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "eval") {
+		t.Errorf("stderr should explain the eval-gate refusal, got %q", stderr.String())
+	}
+	if n := countCompileRuns(t, storePath, "svc", "bogus"); n != 0 {
+		t.Errorf("a refused compile must not write a compile_run row, got %d", n)
+	}
+}
+
 // ─── A2-1: idempotency guard ──────────────────────────────────────────────
 
 func TestCmdCompile_Idempotency_RefusesSameWatermarkAndPrompt(t *testing.T) {
@@ -229,6 +284,91 @@ func TestCmdCompile_Idempotency_ForceOverridesAndLogsEscape(t *testing.T) {
 	}
 	if !strings.Contains(escape, "force") {
 		t.Errorf("escape note = %q, want it to name force", escape)
+	}
+}
+
+// TestCmdCompile_Idempotency_AllowsResumeAfterBudgetStop is the bounce
+// finding-4 honesty fix: a BudgetStopped run's own documented remedy is
+// "re-run to resume; the digest gate skips completed sections" — the guard
+// must not refuse that resume (which would force --force on the honest path
+// and pollute the escape counts the kill criteria read). Pre-insert a
+// budget-stopped compile_run at the CURRENT watermark + prompt identity,
+// then prove a plain re-run proceeds without --force.
+func TestCmdCompile_Idempotency_AllowsResumeAfterBudgetStop(t *testing.T) {
+	storePath, root := newGuardTestStore(t)
+	t.Setenv("FATHOM_LLM_PROVIDER", "claude-cli")
+	t.Setenv("FATHOM_CLAUDE_BIN", newFakeClaudeCLIClaims(t))
+
+	// Compute the exact (watermark, prompt identity) the guard will compare
+	// against, then record a budget-stopped run carrying both.
+	ctx := context.Background()
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	c := client.New(connector.NewLocalConnector(), st)
+	watermark, err := c.ServiceWatermark(ctx, "svc")
+	if err != nil || watermark == "" {
+		t.Fatalf("ServiceWatermark: %q, %v (need a non-empty watermark for the guard to engage)", watermark, err)
+	}
+	layerDef, err := semantic.LoadLayerIn(root, "obligations")
+	if err != nil {
+		t.Fatalf("LoadLayerIn: %v", err)
+	}
+	promptIdentity, err := semantic.PromptIdentity(layerDef)
+	if err != nil {
+		t.Fatalf("PromptIdentity: %v", err)
+	}
+	if err := st.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "stopped-run", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: watermark, PromptVersion: promptIdentity,
+		RanAt:         time.Now().UTC(),
+		BudgetStopped: true, RefusalReason: "token total crossed max_tokens_per_run",
+	}); err != nil {
+		t.Fatalf("RecordCompileRun: %v", err)
+	}
+	c.Close()
+	st.Close()
+
+	var stdout, stderr bytes.Buffer
+	code := cmdCompile([]string{
+		"--service", "svc", "--layer", "obligations", "--store", storePath, "--dry-run=false",
+	}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("resume after a budget-stopped run: exit code = %d, want 0 (no --force needed); stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if strings.Contains(stderr.String(), "--force") {
+		t.Errorf("resume must not be told to use --force, stderr=%q", stderr.String())
+	}
+	// The resume ran and recorded its own row (2 total), with no escape.
+	if n := countCompileRuns(t, storePath, "svc", "obligations"); n != 2 {
+		t.Fatalf("expected 2 compile_run rows after the resume, got %d", n)
+	}
+	if escape := latestCompileRunEscape(t, storePath, "svc", "obligations"); escape != "" {
+		t.Errorf("a resume is the honest path — escape must be empty, got %q", escape)
+	}
+}
+
+// ─── HTTP mode refuses the guard flags outright ───────────────────────────
+
+// TestCmdCompile_GuardFlagsRefusedWithoutStore (bounce finding 6): the
+// guards exist only on the direct --store lane; passing either override
+// flag in HTTP mode must refuse loudly (naming --store) rather than
+// silently ignoring the flag — before any HTTP request is attempted.
+func TestCmdCompile_GuardFlagsRefusedWithoutStore(t *testing.T) {
+	for _, flag := range []string{"--force", "--unsafe-skip-eval-gate"} {
+		t.Run(flag, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			code := cmdCompile([]string{
+				"--service", "svc", "--layer", "obligations", flag,
+			}, &stdout, &stderr)
+			if code != 1 {
+				t.Fatalf("exit code = %d, want 1 (guard flags apply to --store mode only); stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
+			if !strings.Contains(stderr.String(), "--store") {
+				t.Errorf("stderr should name --store as the way out, got %q", stderr.String())
+			}
+		})
 	}
 }
 
