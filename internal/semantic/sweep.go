@@ -93,7 +93,7 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 	for _, cl := range served {
 		rep.ClaimsChecked++
 		next := core.ClaimFresh
-		deadCite := "" // the citation that killed the anchor, for the refute-event note
+		deadCite := "" // the citation that killed the anchor, for the contradicted-event note
 		for _, cite := range citesByClaim[cl.ClaimID] {
 			path, start, end, ok := core.ParseCiteRef(cite.TargetRef)
 			if !ok {

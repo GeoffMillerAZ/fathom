@@ -5,6 +5,21 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — serving-layer hygiene (Wave 3a P1-6/P1-9, 2026-07-23)
+- **`migration_targets` merge semantics (dogfood O11, closed):** a caller-
+  supplied `deprecated_pkgs` list now **merges with** the built-in default
+  list (deduplicated, deterministic order) instead of silently replacing it
+  — matching the tool's own parameter description ("default list is always
+  included"). Externally visible: callers passing a custom list now also
+  get default-list findings.
+- **Sweep event vocabulary:** the post-compile sweep's `claim_events`
+  verdict for anchor-dead claims is now `"contradicted"`, matching the
+  `ClaimContradicted` status it sets (previously wrote `"refuted"` — the
+  word reserved for deliberate human/agent judgment, which is never served
+  again; contradicted claims stay served WITH a label pending recompile).
+  The store contract test had encoded the old conflation as its own fixture
+  and now models the real contract.
+
 ### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
 - **`docs/adoption/spec-driven-development.md`**: the third and final definitive
   adoption guide (alongside `claude-code.md`/`codex.md`) — the full SDD loop
