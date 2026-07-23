@@ -94,8 +94,14 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 	}
 
 	var claimCounts map[string]int
+	var lastCompile map[string]string
 	if *storePath != "" {
 		claimCounts, err = layersClaimCounts(*storePath, *service)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		lastCompile, err = layersLastCompile(*storePath, *service)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
@@ -107,9 +113,14 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "(no layers found)")
 		return 0
 	}
-	header := "NAME                 SOURCE     KIND               TIER          DRIFT  CORPUS"
+	// A4-1 (docs/plans/activation.md): catalog de-theater — EVAL (schema
+	// data, LayerDef.Evaled) is always shown; PRODUCTION (CLAIMS +
+	// LAST_COMPILE, read live from the store) appears only with --store —
+	// two separate, honestly-sourced columns instead of one hand-maintained
+	// "gate result" blob.
+	header := "NAME                 SOURCE     KIND               TIER          EVAL       DRIFT  CORPUS"
 	if claimCounts != nil {
-		header += "  CLAIMS"
+		header += "  CLAIMS  LAST_COMPILE"
 	}
 	fmt.Fprintln(stdout, header)
 	var broken []semantic.LayerInfo
@@ -127,10 +138,18 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 		if info.Serving.DriftTracked {
 			drift = "yes"
 		}
-		line := fmt.Sprintf("%-20s %-10s %-18s %-13s %-6s %s",
-			info.Name, source, info.Kind, info.Tier, drift, strings.Join(info.CorpusInclude, ", "))
+		eval := "not-gated"
+		if info.Evaled {
+			eval = "pass"
+		}
+		line := fmt.Sprintf("%-20s %-10s %-18s %-13s %-10s %-6s %s",
+			info.Name, source, info.Kind, info.Tier, eval, drift, strings.Join(info.CorpusInclude, ", "))
 		if claimCounts != nil {
-			line += fmt.Sprintf("  %d", claimCounts[info.Name])
+			last := lastCompile[info.Name]
+			if last == "" {
+				last = "never"
+			}
+			line += fmt.Sprintf("  %d  %s", claimCounts[info.Name], last)
 		}
 		fmt.Fprintln(stdout, line)
 		if info.LoadError != "" {
@@ -196,6 +215,37 @@ func layersClaimCounts(storePath, service string) (map[string]int, error) {
 	return counts, nil
 }
 
+// layersLastCompile opens storePath directly and returns, per layer, the
+// most recent recorded compile_runs.ran_at for service (A4-1, docs/plans/
+// activation.md) — "production" truth's date half, read live from the
+// store, never hand-maintained. A layer with no compile_runs row for this
+// service is simply absent from the map (cmdLayersList renders "never").
+func layersLastCompile(storePath, service string) (map[string]string, error) {
+	st, err := store.Open(storePath)
+	if err != nil {
+		return nil, fmt.Errorf("open store %q: %w", storePath, err)
+	}
+	defer st.Close()
+	runs, err := st.CompileRuns(context.Background(), service, "")
+	if err != nil {
+		return nil, fmt.Errorf("load compile runs for %q: %w", service, err)
+	}
+	// CompileRuns is newest-first per (service, layer) — but layer "" spans
+	// every layer interleaved, so track the max explicitly rather than
+	// trusting the first hit per layer.
+	latest := map[string]int64{}
+	dates := map[string]string{}
+	for _, r := range runs {
+		nanos := r.RanAt.UnixNano()
+		if prev, ok := latest[r.Layer]; ok && prev >= nanos {
+			continue
+		}
+		latest[r.Layer] = nanos
+		dates[r.Layer] = r.RanAt.UTC().Format("2006-01-02")
+	}
+	return dates, nil
+}
+
 func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("layers show", stderr)
 	root := fs.String("root", "", "project root to union with embedded packs (default: current directory)")
@@ -255,6 +305,11 @@ func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "kind:              %s\n", found.Kind)
 	fmt.Fprintf(stdout, "source:            %s\n", source)
 	fmt.Fprintf(stdout, "tier:              %s (profile: %s)\n", found.Tier, found.TierProfile)
+	evalStatus := "not-gated (no passing eval/RESULTS.md on record — fathom compile refuses this layer without --unsafe-skip-eval-gate)"
+	if found.Evaled {
+		evalStatus = "pass (see eval/RESULTS.md)"
+	}
+	fmt.Fprintf(stdout, "eval:              %s\n", evalStatus)
 	fmt.Fprintf(stdout, "corpus include:    %s\n", strings.Join(found.CorpusInclude, ", "))
 	if len(found.CorpusExclude) > 0 {
 		fmt.Fprintf(stdout, "corpus exclude:    %s\n", strings.Join(found.CorpusExclude, ", "))
