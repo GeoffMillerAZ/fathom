@@ -38,3 +38,14 @@ package heartbeat
 	// within_seconds is the window measured back from the reference time.
 	within_seconds: int & >0
 }
+
+// #ExistenceExpectation asserts a single channel must carry traffic since a
+// recorded reference point: "channel was expected to fire since since; zero
+// beats observed is a loud failure" (doctrine law 7 — see heartbeat.go).
+#ExistenceExpectation: {
+	channel: string & !=""
+	// since is RFC3339 UTC — the recorded start of the channel's expected
+	// lifetime (an activation stamp, a registration time), not a rolling
+	// window.
+	since: string & !=""
+}

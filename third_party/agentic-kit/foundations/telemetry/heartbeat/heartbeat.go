@@ -8,11 +8,25 @@
 // call log recorded effects only — "no sessions ran" and "the hook died" were
 // indistinguishable.
 //
+// Two projections check two different failure shapes. CheckLiveness is a
+// paired check: "if activity channel A fired, effect channel B owed a beat
+// too" (a silent effect stage behind live activity). CheckExistence is a
+// single-channel check: "channel X was expected to carry traffic since t0;
+// it never has" — the doctrine-7 "is anything flowing?" instrument-existence
+// assertion (fathom vision/11-dial-to-eleven.md, law 7: "An adoption metric
+// whose traffic source can silently vanish (or never start) is theater.
+// Every measurement channel ships with a 'is anything flowing?' assertion"),
+// promoted here so a channel that never starts firing at all — not just one
+// that stops — gets a loud check instead of a silent, indistinguishable
+// zero. Use CheckLiveness when a second channel is the expected effect; use
+// CheckExistence when there is no paired channel, only a recorded start time
+// (a feature flip, a registration, an activation stamp per doctrine law 6).
+//
 // Shape contract: schema.cue is authoritative; the Go types mirror it.
 //
-// Honest scope: beats are SIGNALS and liveness alarms are advisory data.
-// CheckLiveness never exits a process, blocks a hook, or gates a push —
-// consumers decide what an alarm means.
+// Honest scope: beats are SIGNALS and both CheckLiveness/CheckExistence
+// alarms are advisory data. Neither ever exits a process, blocks a hook, or
+// gates a push — consumers decide what an alarm means.
 //
 // Concurrency: a *Log serializes its own writes with an internal mutex and is
 // safe for concurrent Beat calls; Load and the projections are pure functions
@@ -206,6 +220,57 @@ func CheckLiveness(beats []Beat, exps []Expectation, ref time.Time) []Alarm {
 				Detail: fmt.Sprintf("%s beat at %s but %s is silent in the %s window ending %s",
 					e.IfChannel, lastIf.UTC().Format(time.RFC3339), e.ThenChannel,
 					e.Within, ref.UTC().Format(time.RFC3339)),
+			})
+		}
+	}
+	return alarms
+}
+
+// ExistenceExpectation asserts that Channel must carry at least one beat at
+// or after Since — the doctrine-7 "is anything flowing?" instrument-existence
+// check for a single channel, as opposed to CheckLiveness's paired
+// if-channel/then-channel check. Since is a recorded reference point (an
+// activation stamp, a registration time), never "the last N of duration" —
+// existence is judged over the channel's entire expected lifetime so far.
+type ExistenceExpectation struct {
+	Channel string
+	Since   time.Time
+}
+
+// ExistenceAlarm reports one ExistenceExpectation with zero observed beats.
+type ExistenceAlarm struct {
+	Expectation ExistenceExpectation
+	Detail      string
+}
+
+// CheckExistence evaluates exps against beats at reference time ref: an
+// ExistenceExpectation alarms iff no beat for Channel lies in
+// [Since, ref]. Pure — ref is caller-supplied, never wall time. Alarms come
+// out in exps order. A malformed expectation (empty Channel, zero Since, or
+// a Since after ref) is skipped rather than alarmed — the same "don't alarm
+// on caller error" posture CheckLiveness takes for malformed Expectations.
+func CheckExistence(beats []Beat, exps []ExistenceExpectation, ref time.Time) []ExistenceAlarm {
+	var alarms []ExistenceAlarm
+	for _, e := range exps {
+		if e.Channel == "" || e.Since.IsZero() || e.Since.After(ref) {
+			continue // malformed expectations are skipped, not alarmed
+		}
+		found := false
+		for _, b := range beats {
+			if b.Channel != e.Channel {
+				continue
+			}
+			if b.At.Before(e.Since) || b.At.After(ref) {
+				continue
+			}
+			found = true
+			break
+		}
+		if !found {
+			alarms = append(alarms, ExistenceAlarm{
+				Expectation: e,
+				Detail: fmt.Sprintf("channel %q expected traffic since %s but observed zero beats through %s",
+					e.Channel, e.Since.UTC().Format(time.RFC3339), ref.UTC().Format(time.RFC3339)),
 			})
 		}
 	}

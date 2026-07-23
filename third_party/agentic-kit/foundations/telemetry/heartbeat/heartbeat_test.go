@@ -138,3 +138,61 @@ func TestCheckLiveness(t *testing.T) {
 		t.Error("CheckLiveness is not deterministic")
 	}
 }
+
+func TestCheckExistence(t *testing.T) {
+	ref := t0.Add(24 * time.Hour)
+	exps := []heartbeat.ExistenceExpectation{
+		{Channel: "surface.agent", Since: t0},
+	}
+
+	// Zero beats on the channel since t0 → alarm (the doctrine-7 case: a
+	// channel that never started firing, not just one that stopped).
+	if a := heartbeat.CheckExistence(nil, exps, ref); len(a) != 1 {
+		t.Fatalf("want 1 alarm for zero traffic, got %d", len(a))
+	} else if !strings.Contains(a[0].Detail, "surface.agent") || !strings.Contains(a[0].Detail, "zero beats") {
+		t.Errorf("alarm detail wrong: %+v", a[0])
+	}
+
+	// One beat in [Since, ref] → no alarm.
+	beats := []heartbeat.Beat{{Channel: "surface.agent", At: t0.Add(time.Hour)}}
+	if a := heartbeat.CheckExistence(beats, exps, ref); len(a) != 0 {
+		t.Errorf("observed traffic must not alarm: %+v", a)
+	}
+
+	// A beat on a different channel does not satisfy this channel's expectation.
+	other := []heartbeat.Beat{{Channel: "surface.other", At: t0.Add(time.Hour)}}
+	if a := heartbeat.CheckExistence(other, exps, ref); len(a) != 1 {
+		t.Errorf("want 1 alarm when only a different channel beats, got %d", len(a))
+	}
+
+	// A beat before Since (predates the recorded start) does not count.
+	early := []heartbeat.Beat{{Channel: "surface.agent", At: t0.Add(-time.Hour)}}
+	if a := heartbeat.CheckExistence(early, exps, ref); len(a) != 1 {
+		t.Errorf("want 1 alarm when the only beat predates Since, got %d", len(a))
+	}
+
+	// A beat after ref (outside the evaluation horizon) does not count.
+	late := []heartbeat.Beat{{Channel: "surface.agent", At: ref.Add(time.Hour)}}
+	if a := heartbeat.CheckExistence(late, exps, ref); len(a) != 1 {
+		t.Errorf("want 1 alarm when the only beat is after ref, got %d", len(a))
+	}
+
+	// Malformed expectations (empty channel, zero Since, Since after ref) are
+	// skipped, not alarmed — mirrors CheckLiveness's malformed-skip posture
+	// (CUE negatives bad4/bad5 in testdata/invalid.cue).
+	malformed := []heartbeat.ExistenceExpectation{
+		{Channel: "", Since: t0},
+		{Channel: "surface.agent", Since: time.Time{}},
+		{Channel: "surface.agent", Since: ref.Add(time.Hour)},
+	}
+	if a := heartbeat.CheckExistence(nil, malformed, ref); len(a) != 0 {
+		t.Errorf("malformed expectations must not alarm: %+v", a)
+	}
+
+	// Determinism.
+	a1 := heartbeat.CheckExistence(nil, exps, ref)
+	a2 := heartbeat.CheckExistence(nil, exps, ref)
+	if !reflect.DeepEqual(a1, a2) {
+		t.Error("CheckExistence is not deterministic")
+	}
+}

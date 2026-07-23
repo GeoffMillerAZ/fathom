@@ -10,3 +10,9 @@ package heartbeat
 
 // 3. non-positive window:
 // bad3: #Expectation & {if_channel: "a", then_channel: "b", within_seconds: 0}
+
+// 4. empty channel:
+// bad4: #ExistenceExpectation & {channel: "", since: "2026-07-16T08:00:00Z"}
+
+// 5. missing since:
+// bad5: #ExistenceExpectation & {channel: "surface.agent"}

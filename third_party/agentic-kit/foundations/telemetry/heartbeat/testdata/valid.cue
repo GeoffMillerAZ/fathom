@@ -18,3 +18,8 @@ exp1: #Expectation & {
 	then_channel:   "edit-hook.emitted"
 	within_seconds: 86400
 }
+
+exexp1: #ExistenceExpectation & {
+	channel: "surface.agent"
+	since:   "2026-07-16T08:00:00Z"
+}
