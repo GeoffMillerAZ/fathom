@@ -49,10 +49,18 @@ type Commit struct {
 	ServiceID string
 	Hash      string // full 40-char SHA
 	Author    string
-	Date      int64    // Unix nano
-	Message   string   // subject line
-	Files     []string // files touched
-	SpecIDs   []string // spec IDs extracted from message
+	Date      int64 // Unix nano
+	// Message is the FULL raw commit message — subject, body, and trailers
+	// (e.g. "Co-Authored-By:") — as captured by `git log --format=%B`
+	// (E2-1: widened from subject-only capture; a legacy row written before
+	// this change may still hold just a subject and backfills to the full
+	// body on the next ingest, since SetCommits replaces a service's whole
+	// commit set). The underlying store column is unbounded TEXT/VARCHAR in
+	// every backend, so no schema migration was needed to hold a multi-line
+	// value — only the git-log format and parser needed to widen.
+	Message string
+	Files   []string // files touched
+	SpecIDs []string // spec IDs extracted from the message (subject + body)
 }
 
 // CommitInfo is a presentation-layer view of a git commit for query/MCP results.

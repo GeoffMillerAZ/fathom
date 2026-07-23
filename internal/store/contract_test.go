@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -972,6 +973,36 @@ func storeContract(t *testing.T, s Store) {
 		}
 		if len(got) != 0 {
 			t.Errorf("expected empty for unknown service, got %d", len(got))
+		}
+	})
+
+	// E2-1: the commit message column must round-trip a FULL multi-line
+	// commit body (subject + blank line + prose + blank line + a
+	// Co-Authored-By trailer) byte-for-byte, in every backend — proving no
+	// backend silently truncates at the first newline (or the first NUL a
+	// naive C-string-shaped column would) now that parseGitLog widens
+	// Message beyond the subject line.
+	t.Run("commits_multiline_message_roundtrip", func(t *testing.T) {
+		svc := "svc-commits-multiline"
+		body := "Fix auth flow\n\nLonger explanation of the change,\nacross two lines.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+		commits := []Commit{
+			{ServiceID: svc, Hash: "full-body-1", Author: "Alice", Date: 100, Message: body, Files: []string{"pkg/auth/auth.go"}},
+		}
+		if err := s.SetCommits(ctx, svc, commits); err != nil {
+			t.Fatalf("SetCommits: %v", err)
+		}
+		got, err := s.ListCommits(ctx, svc)
+		if err != nil {
+			t.Fatalf("ListCommits: %v", err)
+		}
+		if len(got) != 1 {
+			t.Fatalf("expected 1 commit, got %d", len(got))
+		}
+		if got[0].Message != body {
+			t.Errorf("message round-trip mismatch:\n got:  %q\n want: %q", got[0].Message, body)
+		}
+		if !strings.Contains(got[0].Message, "\n") {
+			t.Error("round-tripped message lost its newlines")
 		}
 	})
 
