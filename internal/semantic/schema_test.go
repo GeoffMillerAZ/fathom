@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"testing"
 
+	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 )
 
@@ -58,6 +59,15 @@ bad: #Layer & {
 	tier: "ai-derived"
 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 }`},
+		{"stratum outside the two admitted pack-taxonomy values (ADR-024: dialect/provider have no #Layer instance)", `
+bad: #Layer & {
+	name: "x", version: "v1", kind: "x"
+	corpus: include: ["docs/**"]
+	prompt_version: "x/v1"
+	tier: "doc-claimed"
+	stratum: "provider"
+	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+}`},
 	}
 	cctx := cuecontext.New()
 
@@ -100,5 +110,56 @@ verifiedLayer: #Layer & {
 	}
 	if err := v.Validate(); err != nil {
 		t.Fatalf("tier %q should validate after the M1-8 widening: %v", "verified", err)
+	}
+}
+
+// TestLayerSchema_Stratum proves TX-2's additive #Layer.stratum field
+// (ADR-024, docs/design/pack-taxonomy.md): unset defaults to "concern"
+// (existing packs without the field keep validating), and "platform" is
+// admitted for an org's own pack.
+func TestLayerSchema_Stratum(t *testing.T) {
+	schema := schemaSource(t)
+	cctx := cuecontext.New()
+
+	noStratum := `
+noStratum: #Layer & {
+	name: "x", version: "v1", kind: "x"
+	corpus: include: ["docs/**"]
+	prompt_version: "x/v1"
+	tier: "doc-claimed"
+	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+}`
+	v := cctx.CompileString(schema + "\n" + noStratum)
+	if v.Err() != nil {
+		t.Fatalf("compile: %v", v.Err())
+	}
+	if err := v.Validate(); err != nil {
+		t.Fatalf("a #Layer instance with no stratum field should still validate (additive field): %v", err)
+	}
+	var got struct {
+		Stratum string `json:"stratum"`
+	}
+	if err := v.LookupPath(cue.ParsePath("noStratum")).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if got.Stratum != "concern" {
+		t.Errorf("unset stratum decoded to %q, want default \"concern\"", got.Stratum)
+	}
+
+	platform := `
+platformLayer: #Layer & {
+	name: "x", version: "v1", kind: "x"
+	corpus: include: ["docs/**"]
+	prompt_version: "x/v1"
+	tier: "doc-claimed"
+	stratum: "platform"
+	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+}`
+	v2 := cctx.CompileString(schema + "\n" + platform)
+	if v2.Err() != nil {
+		t.Fatalf("compile: %v", v2.Err())
+	}
+	if err := v2.Validate(); err != nil {
+		t.Fatalf("stratum \"platform\" should validate: %v", err)
 	}
 }

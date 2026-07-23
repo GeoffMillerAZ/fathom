@@ -220,3 +220,25 @@ func TestLoadLayer_SpecBindings(t *testing.T) {
 		t.Errorf("Tier = %q, want doc-claimed", def.Tier)
 	}
 }
+
+// TestLoadLayer_EmbeddedPacksAreConcernStratum is TX-2's own coverage
+// (docs/plans/pack-taxonomy-adoption.md, ADR-024): every pack fathom ships
+// embedded is fathom-authored and eval-gated-embedded, hence "concern"
+// stratum — including obligations, whose corpus is org-specific content but
+// whose pack (prompt/corpus-selector/eval) is not (see
+// docs/design/pack-taxonomy.md's "The obligations call" for the documented
+// reasoning). None of the four shipped packs' layer.cue relies on the CUE
+// default here — each explicitly declares stratum: "concern" — so this test
+// also proves decodePack actually threads the field through, not just that
+// the schema default happens to be right.
+func TestLoadLayer_EmbeddedPacksAreConcernStratum(t *testing.T) {
+	for _, name := range []string{"obligations", "findings", "adr-rules", "spec-bindings"} {
+		def, err := LoadLayer(name)
+		if err != nil {
+			t.Fatalf("LoadLayer(%s): %v", name, err)
+		}
+		if def.Stratum != "concern" {
+			t.Errorf("LoadLayer(%s).Stratum = %q, want \"concern\"", name, def.Stratum)
+		}
+	}
+}

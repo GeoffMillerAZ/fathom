@@ -123,6 +123,55 @@ func TestLoadLayerIn_ProjectPackAddsNewLayer(t *testing.T) {
 	if len(names) != want {
 		t.Fatalf("ListLayersIn = %d entries, want %d (embedded + 1 project): %+v", len(names), want, names)
 	}
+	// TX-2 (ADR-024, docs/design/pack-taxonomy.md): writeFixturePack's
+	// layer.cue sets no stratum field, so #Layer's CUE default applies — a
+	// project pack that doesn't declare its stratum is presumed "concern"
+	// until an org explicitly declares otherwise (see the platform-override
+	// case below).
+	if def.Stratum != "concern" {
+		t.Errorf("def.Stratum = %q, want \"concern\" (schema default, unset in the fixture)", def.Stratum)
+	}
+}
+
+// TestLoadLayerIn_ProjectPackDeclaresPlatformStratum proves an org's own
+// pack can declare itself "platform" stratum (ADR-024): the field is
+// per-instance data, not derived from Source — a project pack CAN declare
+// "concern" (the default, TestLoadLayerIn_ProjectPackAddsNewLayer above)
+// or explicitly "platform", and LoadLayerIn must thread through whichever
+// the pack author wrote.
+func TestLoadLayerIn_ProjectPackDeclaresPlatformStratum(t *testing.T) {
+	root := t.TempDir()
+	packDir := filepath.Join(root, ProjectLayersDir, "org-obligations")
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	layerCUE := `name:    "org-obligations"
+version: "v1"
+kind:    "obligation"
+corpus: include: ["docs/**"]
+prompt_version: "org-obligations/fixture"
+prompt_file:    "org-obligations/prompt.md"
+tier:           "doc-claimed"
+stratum:        "platform"
+budgets: {
+	max_tokens_per_run: 1000
+	max_usd_per_run:    0.1
+}
+`
+	if err := os.WriteFile(filepath.Join(packDir, "layer.cue"), []byte(layerCUE), 0o644); err != nil {
+		t.Fatalf("write layer.cue: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(packDir, "prompt.md"), []byte("An org's own obligations prompt."), 0o644); err != nil {
+		t.Fatalf("write prompt.md: %v", err)
+	}
+
+	def, err := LoadLayerIn(root, "org-obligations")
+	if err != nil {
+		t.Fatalf("LoadLayerIn(root, org-obligations): %v", err)
+	}
+	if def.Stratum != "platform" {
+		t.Errorf("def.Stratum = %q, want \"platform\" (explicitly declared)", def.Stratum)
+	}
 }
 
 func TestLoadLayerIn_ProjectPackOverridesEmbedded(t *testing.T) {

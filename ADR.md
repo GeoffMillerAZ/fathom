@@ -595,3 +595,68 @@ LLM-judged evaluation lane (e.g. grading LLM-enriched knowledge cards),
 *that* lane is the natural `qa-harness` adoption point — parked as a named
 ask with a second-consumer trigger (`agentic-kit/docs/plans/
 fathom-uplift-asks.md`, FA-12) rather than forced here.
+
+## ADR-024: Pack taxonomy adopted as vocabulary, not machinery (2026-07-23)
+
+**Decision.** Fathom's various pluggable, data-shaped things — extractors,
+the layer catalog, a project's own `.fathom/` content, and a still-hypothetical
+"explain this external technology" pack — are named as four **strata**, each
+with its own authorship and trust model, recorded in full in
+`docs/design/pack-taxonomy.md`:
+
+| Stratum | Fathom realization today | Authored by | Trusted via |
+|---|---|---|---|
+| dialect | extractors + tool identity (code, not packs) | fathom | golden tests, deterministic |
+| provider | does not exist — parked pack type | fathom or vendor | eval-gated, staleness vs. an UPSTREAM |
+| platform | `.fathom/` project packs (an org's own obligations/rules/bindings) | the org | compiled from an org corpus; on-disk eval evidence required (D3) |
+| concern | the layer catalog + rule packs + analyzers | fathom + org extensions | eval-gated embedded; entry-conditioned growth |
+
+This is **vocabulary layered onto mechanisms that already exist** — no new
+subsystem. `#Layer` (`schema/semantic/schema.cue`) gains one additive field,
+`stratum: "concern" | "platform" | *"concern"`, decoded by
+`internal/semantic.LoadLayerIn`/`ListLayersIn` exactly like every other
+manifest field; the four shipped packs (`obligations`, `findings`,
+`adr-rules`, `spec-bindings`) are all annotated `stratum: "concern"` —
+including `obligations`, whose corpus (`CLAUDE.md`, `ADR.md`,
+`docs/plans/README.md`) is as org-specific as content gets, but whose
+pack (prompt, corpus-selector pattern, eval fixtures) is authored and
+gated by fathom once and shipped identically to every adopting repo — see
+`docs/design/pack-taxonomy.md`'s "The obligations call" for the full
+reasoning distinguishing pack authorship from compiled-corpus content.
+`fathom layers list`/`show` and `docs/layers.md`'s catalog display the
+field; no enable/disable semantics change.
+
+**Two pack types are parked with named triggers, not built:**
+- **Provider pack type** (TX-3, `docs/plans/pack-taxonomy-adoption.md`) —
+  explaining an external technology's resource semantics, the first pack
+  type whose corpus would drift against an UPSTREAM rather than against
+  this repo's own churn (a genuinely new watermark kind). **Trigger:** a
+  named consumer plus one concrete provider whose resource semantics an
+  indexed service actually needs.
+- **Practice/concern pack library growth** beyond the shipped catalog
+  (TX-4, same plan) — e.g. a well-architected review pack, a compliance
+  pack. **Trigger, per pack:** a real consumer with a real corpus, eval
+  fixtures, and a kill criterion — the playbook pack's documented "≥15
+  findings" condition (ADR-016 §4.6's entry-conditioned-growth clause) is
+  the model every future concern pack's admission case should cite.
+
+**Why.** `adr-rules` and `spec-bindings` sat eval-perfect with zero
+production claims for weeks (`docs/dogfood-observations.md`) — a pack
+library, or a fourth pack type, built ahead of a named consumer is theater,
+not progress. Naming the taxonomy now — while deliberately building only
+the one-field schema addition it requires — lets every future pack-shaped
+design question ("what kind of pack is this, who's allowed to author it,
+how does it earn trust?") answer by lookup instead of re-derivation,
+without pre-building either parked type's machinery on spec.
+
+**Formalizes ADR-011.** The platform stratum is ADR-011's "organization-
+specific content is configuration, never product" given a stable name and
+the trust mechanism (`.fathom/` project packs, D3's live on-disk
+`eval/RESULTS.md` check) that already implements it.
+
+**Trade-off / reversibility.** Zero new machinery means zero new sunk cost
+if the vocabulary doesn't stick — the only artifact that outlives a
+taxonomy nobody uses is one additive, defaulted CUE field. Naming
+`provider`/further `concern` packs ahead of their triggers would invert
+this ADR's own reasoning, so both stay recorded-not-built until a named
+consumer arrives.

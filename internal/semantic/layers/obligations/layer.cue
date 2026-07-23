@@ -19,6 +19,12 @@ corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
 prompt_version: "obligations/content-addressed"
 prompt_file:    "schema/semantic/layers/obligations/prompt.md"
 tier:           "doc-claimed"
+// concern, not platform (ADR-024, docs/design/pack-taxonomy.md "The
+// obligations call"): the corpus (CLAUDE.md/ADR.md) is as org-specific as
+// content gets, but this pack's prompt/corpus-selector/eval fixtures are
+// authored and gated by fathom once, shipped identically to every adopting
+// repo — authorship, not compiled-corpus content, is what stratum names.
+stratum: "concern"
 // eval/RESULTS.md: original ADR-016 baseline gate pass (the admission
 // record); a later production-model re-check found recall unstable around
 // the 0.75 bar (0.71/0.86) and is escalated as a pre-OP-6 input, not a
