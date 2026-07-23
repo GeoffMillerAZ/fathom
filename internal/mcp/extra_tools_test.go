@@ -160,6 +160,17 @@ func TestSpecCoverage_Basic(t *testing.T) {
 	}
 }
 
+// TestSpecCoverage_MissingSpecIDs — DELIBERATE behavior change (P1-8,
+// docs/plans/pulled-tools-excellence.md): spec_coverage declares spec_ids
+// required in its InputSchema, but its handler never enforced that — a
+// spec_ids-less call used to run and return an empty coverage matrix (the
+// "orphan-listing" use the C4-5 audit classified as legitimate). Dispatch-
+// level required-field validation now makes the declared contract real:
+// the call refuses with ErrCodeParams. The old orphan-listing behavior was
+// an undocumented side effect of the handler's leniency, not a promised
+// contract; a caller who wants it back should get a schema change (spec_ids
+// optional, documented), not a validation hole. This test pins the
+// refusal so the change stays deliberate, never incidental.
 func TestSpecCoverage_MissingSpecIDs(t *testing.T) {
 	srv := newExtraSrv()
 	resp := roundtrip(t, srv, request{
@@ -169,15 +180,28 @@ func TestSpecCoverage_MissingSpecIDs(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	// missing spec_ids: JSON unmarshal succeeds but SpecIDs is nil → matrix will
-	// return an empty coverage.  It should NOT be an RPC error.
-	if resp["error"] != nil {
-		// Some implementations may return an error for missing array - check it's a params error.
-		errObj := resp["error"].(map[string]any)
-		code := errObj["code"].(float64)
-		if code != float64(mcp.ErrCodeParams) {
-			t.Errorf("expected params error code, got %v", code)
-		}
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v (spec_coverage declares spec_ids required)", code, mcp.ErrCodeParams)
+	}
+}
+
+// TestSpecStatus_MissingSpecIDs pins the same deliberate P1-8 change for
+// spec_status (the other spec tool whose handler never enforced its
+// declared spec_ids requirement — see TestSpecCoverage_MissingSpecIDs for
+// the full rationale).
+func TestSpecStatus_MissingSpecIDs(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1022, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_status",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v (spec_status declares spec_ids required)", code, mcp.ErrCodeParams)
 	}
 }
 

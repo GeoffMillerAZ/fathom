@@ -695,6 +695,13 @@ func (r *archResolver) resolve(raw string) (core.SymbolNode, bool) {
 	return core.SymbolNode{}, false
 }
 
+// uniqueSuffix scans every node per unresolved callee, making
+// archConformanceEdges O(edges×nodes) in the worst case — measured ~33s
+// for a two-service fleet store in-process (critic pass, Wave 3a). Fine
+// for the per-service arch_conformance call it serves today; if it ever
+// runs fleet-wide or in a hot path, precompute a suffix index (last-two-
+// segment map, like callgraph.Build's byName/byPkgName) instead of this
+// linear scan — tracked as follow-up in the P1-4 row's landing notes.
 func (r *archResolver) uniqueSuffix(suffix string) (core.SymbolNode, bool) {
 	var match core.SymbolNode
 	found := false
@@ -2215,6 +2222,18 @@ func registerBatch(s *Server) {
 					continue
 				}
 				subOff = true
+			}
+			// P1-8: batch sub-calls get the same dispatch-level required-field
+			// gate handleToolsCallWithCtx applies (validateRequired,
+			// dispatch.go) — without this, batch{calls:[...]} was a bypass
+			// route straight to the handler, keeping the exact
+			// previously-lenient-handler hole (license_policy et al.) open.
+			// A failing sub-call errors into ITS OWN batchResult (and is
+			// logged like any other sub-call error) — never the whole batch.
+			if valErr := validateRequired(te.desc, argsRaw); valErr != nil {
+				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, 0, valErr)
+				results[i] = batchResult{Name: call.Name, Error: valErr.Message}
+				continue
 			}
 			start := time.Now()
 			result, rpcErr := te.handler(ctx, argsRaw)

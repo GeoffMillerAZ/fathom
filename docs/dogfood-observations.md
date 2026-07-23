@@ -19,7 +19,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
-### O12 — context-bench B1-T09: the fathom arm lost 6.6× to grep on its own home question (cross-repo callers) — three compounding product gaps — FIXED (a)/(b)/(c)
+### O12 — context-bench B1-T09: the fathom arm lost 6.6× to grep on its own home question (cross-repo callers) — three compounding product gaps — improved (6.6×→4.2×), residual tracked
 
 - **Symptom:** in the first context-bench run (docs/plans/falsifiability.md
   B1-3, run-20260723T045809Z), task B1-T09 — "which agentic-kit heartbeat
@@ -87,20 +87,25 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   the P1-5 re-run (below) shows in the turn count.
 - **P1-5 re-run (scratch daemon on a spare port, NOT the live 7575 daemon;
   fresh fathom+agentic-kit ingest):** B1-T09 504,785→321,100 tokens (−36%),
-  20→9 turns (−55%) — sign flips substantially (6.6×→4.2× vs. grep)
-  without fully closing the gap, consistent with the live-probe nuance
-  above. B1-T10/T11 (the other two cross_repo_callers tasks) were already
-  near the cheap 3-turn floor pre-fix (they don't need cross-service
-  callee stitching) — an honest non-flip, ~1% token noise, not a
-  regression.
-- **Status:** fixed (a)/(b)/(c) — P1-1/P1-2/P1-3, this commit. P1-4
-  (arch_conformance's separate, C4-4-disclosed method-edge gap) and P1-5
-  (this re-run) landed alongside in the same plan wave.
+  20→9 turns (−55%) — improves 6.6×→4.2× vs. grep, which is **still 4.2×
+  more tokens than grep (321,100 vs 76,294): a non-flip on the ratio**,
+  consistent with the live-probe nuance above. B1-T10/T11 (the other two
+  cross_repo_callers tasks) were already near the cheap 3-turn floor
+  pre-fix (they don't need cross-service callee stitching) — also
+  non-flips, ~1% token noise, not a regression.
+- **Status:** fixes for (a)/(b)/(c) landed (P1-1/P1-2/P1-3; P1-4/P1-5
+  alongside in the same plan wave) — but the headline metric has NOT
+  flipped: grep still wins B1-T09 by 4.2× on tokens. Kept under Open for
+  the residual: the remaining gap is the session/tool-schema baseline plus
+  the extra hops fathom's symbol-precise answers need on delegating code
+  (`cmdInstrument`→`reportInstrument`); closing it likely needs either a
+  transitive cross-service callee view or a cheaper first-answer shape,
+  neither designed yet.
 - **Impact:** the exact query class the fleet index exists to win
   ("who calls this, anywhere?") was its worst measured case — 6.6× more
-  tokens than grep. Fixing (a) flips B1-T09's sign substantially (not
-  fully — see the live-probe nuance); (b) removes a tax that hit every
-  discovery session, not just cross-repo ones.
+  tokens than grep, now 4.2× — better, still losing. (b)'s alias fix
+  removes a tax that hit every discovery session, not just cross-repo
+  ones.
 
 ### O11 — `migration_targets`' `deprecated_pkgs` REPLACES the default list instead of adding to it, contradicting its own description
 

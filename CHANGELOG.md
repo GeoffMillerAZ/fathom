@@ -43,20 +43,32 @@ All notable changes to fathom. Format loosely follows
   tasks (B1-T09/T10/T11) against a freshly-ingested scratch fleet store
   (never the live daemon). B1-T09 (the O12 flagship case) went from
   504,785 tokens / 20 turns to 321,100 tokens / 9 turns (−36% / −55%) —
-  6.6× → 4.2× vs. grep's answer: the sign flips substantially, doesn't
-  fully close (a live probe found `cmdInstrument` delegates two of the
-  three heartbeat calls through `reportInstrument`, a real one-hop
-  indirection the original symptom's prose had collapsed). B1-T10/T11 were
-  already near the cheap 3-turn floor pre-fix and show ~1% token noise, an
-  honest non-flip, recorded as such. See dogfood O12 and the plan's P1-5
-  row for the full numbers.
+  improving 6.6×→4.2× vs. grep's answer, which is **still 4.2× more
+  tokens than grep: a non-flip on the ratio, residual tracked** in
+  dogfood O12 (kept under Open). Part of the residual is real code
+  structure: a live probe found `cmdInstrument` delegates two of the
+  three heartbeat calls through `reportInstrument`, a one-hop indirection
+  the original symptom's prose had collapsed. B1-T10/T11 were already
+  near the cheap 3-turn floor pre-fix and show ~1% token noise — also
+  non-flips, recorded as such. See dogfood O12 and the plan's P1-5 row
+  for the full numbers.
 - **P1-8 — dispatch now enforces declared `required` fields
   (`internal/mcp/dispatch.go`'s new `validateRequired`):** previously only
-  individual handlers enforced their own required parameters — C4-5's audit
-  had found `license_policy` declares `allowed` required but never checks
-  it. A P1-1 alias satisfies its primary's requirement at this layer too
+  individual handlers enforced their own required parameters. A P1-1 alias
+  satisfies its primary's requirement at this layer too
   (`toolDescriptor.aliases`), so an alias-only call is never rejected for
-  "missing" the native name.
+  "missing" the native name. Batch sub-calls get the same gate (the batch
+  loop previously invoked handlers directly, bypassing it); a failing
+  sub-call errors into its own result, never the whole batch. Three tools
+  change observable behavior — each declared a required field its handler
+  never checked, and each now refuses with `-32602` where it used to run:
+  - `license_policy` without `allowed` (C4-5's original find; it used to
+    report against an empty allowlist).
+  - `spec_coverage` without `spec_ids` (used to return an empty coverage
+    matrix — the "orphan-listing" use C4-5 classified as legitimate; the
+    declared contract now wins, and restoring orphan-listing would be a
+    schema change making `spec_ids` optional, not a validation hole).
+  - `spec_status` without `spec_ids` (same shape as spec_coverage).
 
 ### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
 - **`docs/adoption/spec-driven-development.md`**: the third and final definitive

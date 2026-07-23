@@ -4,6 +4,7 @@
 package mcp_test
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -203,6 +204,62 @@ func TestDispatch_MissingRequiredField_UnaliasedTool(t *testing.T) {
 	})
 	if code := rpcErrCode(t, resp); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v (find_callers requires \"symbol\")", code, mcp.ErrCodeParams)
+	}
+}
+
+// TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch closes
+// the batch bypass the critic pass found: batch sub-calls invoke
+// te.handler directly, skipping handleToolsCallWithCtx's validateRequired
+// gate — so batch{calls:[{name:"license_policy",arguments:{service}}]}
+// reached the exact previously-lenient handler P1-8 claims to close off.
+// The batch loop now validates each sub-call before its handler runs. The
+// failing sub-call errors into ITS OWN batchResult; sibling sub-calls
+// still run (per batch's own contract: per-call errors never abort the
+// batch).
+func TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 14, Method: "tools/call",
+		Params: map[string]any{
+			"name": "batch",
+			"arguments": map[string]any{
+				"calls": []map[string]any{
+					// Missing "allowed" (declared required, handler never checked it).
+					{"name": "license_policy", "arguments": map[string]any{"service": "svc"}},
+					// A valid sibling that must still run.
+					{"name": "outline", "arguments": map[string]any{"service": "svc", "file": "pkg/a.go"}},
+				},
+			},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("the batch itself must not fail on a sub-call validation error: %v", resp["error"])
+	}
+	content := resp["result"].(map[string]any)["content"].([]any)
+	text := content[0].(map[string]any)["text"].(string)
+	var payload struct {
+		Results []struct {
+			Name   string `json:"name"`
+			Result any    `json:"result"`
+			Error  string `json:"error"`
+		} `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("payload parse: %v (text=%q)", err, text)
+	}
+	if len(payload.Results) != 2 {
+		t.Fatalf("results = %d, want 2", len(payload.Results))
+	}
+	lp := payload.Results[0]
+	if lp.Name != "license_policy" || lp.Error == "" {
+		t.Errorf("license_policy sub-call should refuse (missing required \"allowed\"), got %+v", lp)
+	}
+	if lp.Error != "" && !containsAll(lp.Error, "allowed") {
+		t.Errorf("refusal should name the missing parameter, got %q", lp.Error)
+	}
+	sib := payload.Results[1]
+	if sib.Name != "outline" || sib.Error != "" || sib.Result == nil {
+		t.Errorf("sibling outline sub-call should still run and succeed, got %+v", sib)
 	}
 }
 
