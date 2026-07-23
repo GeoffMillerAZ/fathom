@@ -243,66 +243,20 @@ func registerCrossRepoCallers(s *Server, fleet FleetBackend, name, description s
 			return nil, &rpcError{Code: ErrCodeParams, Message: name + ": symbol required"}
 		}
 
-		type caller struct {
-			Service  string `json:"service"`
-			Symbol   string `json:"symbol"`
-			FilePath string `json:"file_path,omitempty"`
-		}
-		// SymbolsFor and ObservationsFor are two views over the same stored
-		// rows, so dedupe by (service, symbol) and prefer the symbol view,
-		// which carries FilePath.
-		var callers []caller
-		seen := make(map[string]bool)
-		for _, svc := range fleet.Services() {
-			for _, n := range fleet.SymbolsFor(svc) {
-				for _, callee := range n.Calls {
-					if matchesSymbol(callee, p.Symbol) {
-						callers = append(callers, caller{
-							Service:  svc,
-							Symbol:   n.Name,
-							FilePath: n.FilePath,
-						})
-						seen[svc+"\x00"+n.Name] = true
-						break
-					}
-				}
-			}
-		}
-		// Also search observation Calls for backends whose symbol view is
-		// narrower than their observation set.
-		for _, svc := range fleet.Services() {
-			for _, obs := range fleet.ObservationsFor(svc) {
-				if seen[svc+"\x00"+obs.Symbol] {
-					continue
-				}
-				for _, callee := range obs.Calls {
-					if matchesSymbol(callee, p.Symbol) {
-						callers = append(callers, caller{
-							Service: svc,
-							Symbol:  obs.Symbol,
-						})
-						seen[svc+"\x00"+obs.Symbol] = true
-						break
-					}
-				}
-			}
-		}
-		// Sort for determinism.
-		sort.Slice(callers, func(i, j int) bool {
-			if callers[i].Service != callers[j].Service {
-				return callers[i].Service < callers[j].Service
-			}
-			return callers[i].Symbol < callers[j].Symbol
-		})
-		result := make([]any, len(callers))
-		for i, c := range callers {
+		// fleetCallers (crossservice.go) is this tool's own matching logic,
+		// extracted so symbol_context/find_callers's cross-service
+		// stitching (P1-2) can reuse it verbatim instead of a second
+		// implementation drifting apart from this one.
+		hits := fleetCallers(fleet, p.Symbol)
+		result := make([]any, len(hits))
+		for i, h := range hits {
 			result[i] = map[string]any{
-				"service":   c.Service,
-				"symbol":    c.Symbol,
-				"file_path": c.FilePath,
+				"service":   h.Service,
+				"symbol":    h.Symbol,
+				"file_path": h.FilePath,
 			}
 		}
-		return map[string]any{"callers": result, "count": len(callers)}, nil
+		return map[string]any{"callers": result, "count": len(hits)}, nil
 	})
 }
 

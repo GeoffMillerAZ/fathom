@@ -589,6 +589,163 @@ const (
 	ruleSourceNone    = projectrules.SourceNone
 )
 
+// archTypePackages maps a Go TYPE's or INTERFACE's own Name to its
+// declaring package — used to resolve a METHOD node's real package,
+// since the Go extractor overrides SymbolNode.Package to the receiver
+// type name for methods (internal/extractor goextract.go funcNode: "pkg =
+// recv"), losing the declaring package on that node. A type/interface node
+// never gets this override (genDeclNodes keeps Package == the file's
+// declared package name), so it is always the correct source of truth.
+func archTypePackages(nodes []core.SymbolNode) map[string]string {
+	m := make(map[string]string, len(nodes))
+	for _, n := range nodes {
+		if (n.Kind == core.KindGoType || n.Kind == core.KindGoInterface) && n.Name != "" && n.Package != "" {
+			m[n.Name] = n.Package
+		}
+	}
+	return m
+}
+
+// archDeclPkg resolves n's declaring Go package: for a method, the
+// receiver type's OWN package via typePkg (falling back to n.Package,
+// the receiver type name, when the receiver type itself wasn't indexed —
+// e.g. an embedded/external receiver); for anything else, n.Package is
+// already the real declaring package, unchanged.
+func archDeclPkg(n core.SymbolNode, typePkg map[string]string) string {
+	if n.Kind == core.KindGoMethod {
+		if pkg, ok := typePkg[n.Package]; ok {
+			return pkg
+		}
+	}
+	return n.Package
+}
+
+// archBareName strips a method's "Receiver." prefix from n.Name (the Go
+// extractor names a method node "Receiver.MethodName") so the rebuilt edge
+// key is "declPkg.MethodName" — one dot, what archconformance.pkgOf's
+// "everything before the LAST dot" rule expects — never
+// "declPkg.Receiver.MethodName".
+func archBareName(n core.SymbolNode) string {
+	if n.Kind == core.KindGoMethod {
+		if rest, ok := strings.CutPrefix(n.Name, n.Package+"."); ok {
+			return rest
+		}
+	}
+	return n.Name
+}
+
+// archSymbolKey renders n's normalized (declaring-package, bare-name) edge
+// endpoint.
+func archSymbolKey(n core.SymbolNode, typePkg map[string]string) string {
+	return archDeclPkg(n, typePkg) + "." + archBareName(n)
+}
+
+// archResolver resolves a raw Calls() entry to the node it targets, so
+// archConformanceEdges can normalize the TARGET side too (a method call
+// recorded as "h.RunOnce" — a receiver VARIABLE, unresolvable to a package
+// by syntax alone; see internal/extractor goextract.go collectCalls — still
+// resolves when "RunOnce" uniquely identifies one node in the service).
+// Mirrors callgraph.Graph.resolve's matching order (internal/analysis/
+// callgraph/graph.go): exact canonical key, then a bare name that is
+// UNIQUE across the node set, then a dotted suffix that is UNIQUE — never
+// an ambiguous first-match guess.
+type archResolver struct {
+	byKey  map[string]core.SymbolNode
+	byName map[string]core.SymbolNode
+	nodes  []core.SymbolNode
+}
+
+func newArchResolver(nodes []core.SymbolNode) *archResolver {
+	r := &archResolver{
+		byKey:  make(map[string]core.SymbolNode, len(nodes)),
+		byName: make(map[string]core.SymbolNode, len(nodes)),
+		nodes:  nodes,
+	}
+	nameCounts := make(map[string]int, len(nodes))
+	for _, n := range nodes {
+		r.byKey[n.Key()] = n
+		nameCounts[n.Name]++
+	}
+	for _, n := range nodes {
+		if nameCounts[n.Name] == 1 {
+			r.byName[n.Name] = n
+		}
+	}
+	return r
+}
+
+// resolve returns the node raw targets, and whether it was found. Ambiguous
+// suffix matches (more than one node key ends with the same suffix) resolve
+// to nothing — genuine ambiguity is never first-match-wins.
+func (r *archResolver) resolve(raw string) (core.SymbolNode, bool) {
+	if n, ok := r.byKey[raw]; ok {
+		return n, true
+	}
+	if n, ok := r.byName[raw]; ok {
+		return n, true
+	}
+	if n, ok := r.uniqueSuffix("." + raw); ok {
+		return n, true
+	}
+	if i := strings.LastIndex(raw, "."); i > 0 && i < len(raw)-1 {
+		if n, ok := r.uniqueSuffix(raw[i:]); ok {
+			return n, true
+		}
+	}
+	return core.SymbolNode{}, false
+}
+
+func (r *archResolver) uniqueSuffix(suffix string) (core.SymbolNode, bool) {
+	var match core.SymbolNode
+	found := false
+	for _, n := range r.nodes {
+		if strings.HasSuffix(n.Key(), suffix) {
+			if found {
+				return core.SymbolNode{}, false // ambiguous
+			}
+			match = n
+			found = true
+		}
+	}
+	return match, found
+}
+
+// archConformanceEdges builds arch_conformance's checked edge set from
+// nodes' raw Calls lists, with BOTH endpoints normalized to declaring-
+// package symbol keys (P1-4, closes the C4-4 disclosed gap in schema/
+// rules/archconformance/schema.cue #Rule). Before this normalization, a
+// method-origin edge's FromSymbol carried the RECEIVER TYPE as its
+// "package" (e.g. "Handler.Handler.Serve", whose pkgOf-derived prefix is
+// "Handler.Handler" — never a real package name any rule names), and a
+// method-target edge's raw callee (often a receiver-VARIABLE-qualified
+// form like "h.Forbidden", never package-qualified at all) fared no
+// better — so package-named rules silently never matched either side of a
+// method call, guarding only function-to-function edges. Every callee
+// that DOESN'T resolve to a node in this service (external/stdlib calls,
+// or genuine ambiguity) keeps its raw form exactly as before — no
+// regression for the edges that already couldn't be resolved.
+func archConformanceEdges(nodes []core.SymbolNode) []core.Edge {
+	typePkg := archTypePackages(nodes)
+	resolver := newArchResolver(nodes)
+	var edges []core.Edge
+	for _, n := range nodes {
+		from := archSymbolKey(n, typePkg)
+		for _, callee := range n.Calls {
+			to := callee
+			if target, ok := resolver.resolve(callee); ok {
+				to = archSymbolKey(target, typePkg)
+			}
+			edges = append(edges, core.Edge{
+				FromService: n.Service,
+				FromFile:    n.FilePath,
+				FromSymbol:  from,
+				ToSymbol:    to,
+			})
+		}
+	}
+	return edges
+}
+
 func registerArchConformance(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "arch_conformance",
@@ -637,26 +794,16 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		// Build edges from Calls. Known limitation (disclosed in
-		// schema/rules/archconformance/schema.cue #Rule): for METHOD
-		// symbols n.Package is the receiver type, not the declaring Go
-		// package (goextract funcNode), and callee keys for methods are
-		// receiver-qualified — so package-named rules only match
-		// function-origin, function-target edges. Normalizing both sides
-		// to declaring packages (via a symbol-key→package resolution over
-		// nodes) is the tracked fix; until then rule packs guard top-level
-		// functions and receiver-NAMED rules.
-		var edges []core.Edge
-		for _, n := range nodes {
-			for _, callee := range n.Calls {
-				edges = append(edges, core.Edge{
-					FromService: n.Service,
-					FromFile:    n.FilePath,
-					FromSymbol:  n.Package + "." + n.Name,
-					ToSymbol:    callee,
-				})
-			}
-		}
+		// Build edges from Calls, both sides normalized to DECLARING
+		// packages (P1-4, closes the C4-4 disclosed gap — see schema/
+		// rules/archconformance/schema.cue #Rule, now updated to "closed").
+		// archconformance.Check derives a rule-matchable "package" as
+		// everything before an edge's LAST dot (pkgOf); archConformanceEdges
+		// resolves both FromSymbol and ToSymbol to "declPkg.BareName" so
+		// that holds for METHOD-origin and method-TARGET edges too, not
+		// only function-to-function ones — see archConformanceEdges' own
+		// doc comment for how.
+		edges := archConformanceEdges(nodes)
 
 		rules := make([]archconformance.Rule, len(p.Rules))
 		for i, r := range p.Rules {

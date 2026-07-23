@@ -23,20 +23,53 @@ const maxSubstringMatches = 20
 // maxSuggestions caps the ranked did_you_mean list on a full miss.
 const maxSuggestions = 5
 
-// caseFoldMatches returns nodes equal to name under the engine's matching
-// rules (exact, stored "Type.Method" vs bare query, qualified query vs bare
-// stored) with case folded. Sorted by name then file for determinism.
+// caseFoldMatches returns nodes matching name under the engine's matching
+// rules with case folded — the case-insensitive tier — affinity-ranked
+// rather than left in plain alphabetical order (P1-3, closing O12(c)).
+//
+// Group 0 is a NAME match (the original rule: exact, stored "Type.Method"
+// vs bare query, or qualified query vs bare stored). Group 1 is a PACKAGE
+// match: the query names an entire package (e.g. "heartbeat" for
+// foundations/telemetry/heartbeat), whose own exported symbols are never
+// literally named "heartbeat" — group 0 alone finds only a same-named TYPE
+// in an unrelated package (worker-heartbeat's `Heartbeat` GoType) and
+// hides the actual package's members from the caller. Reproduced bug:
+// find_symbol(agentic-kit, "heartbeat") returned ONLY the coincidentally
+// alphabetized worker-heartbeat GoType, steering the caller away from the
+// telemetry/heartbeat package it actually needed.
+//
+// Both groups are returned TOGETHER — multi-match, never first-hit
+// steering — sorted by group, then the pre-existing deterministic
+// (name, file, line, kind) order within each group. matched_via stays
+// "case_insensitive" for every result regardless of which group matched.
 func caseFoldMatches(all []core.SymbolNode, name string) []core.SymbolNode {
 	q := strings.ToLower(name)
-	var out []core.SymbolNode
+	type ranked struct {
+		node  core.SymbolNode
+		group int
+	}
+	var out []ranked
 	for _, n := range all {
 		stored := strings.ToLower(n.Name)
 		if stored == q || strings.HasSuffix(stored, "."+q) || strings.HasSuffix(q, "."+stored) {
-			out = append(out, n)
+			out = append(out, ranked{n, 0})
+			continue
+		}
+		if pkg := strings.ToLower(n.Package); pkg != "" && (pkg == q || strings.HasSuffix(pkg, "/"+q)) {
+			out = append(out, ranked{n, 1})
 		}
 	}
-	sortNodes(out)
-	return out
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].group != out[j].group {
+			return out[i].group < out[j].group
+		}
+		return nodeLess(out[i].node, out[j].node)
+	})
+	nodes := make([]core.SymbolNode, len(out))
+	for i, r := range out {
+		nodes[i] = r.node
+	}
+	return nodes
 }
 
 // substringMatches returns nodes whose name contains name case-insensitively,
@@ -74,11 +107,6 @@ func nodeLess(a, b core.SymbolNode) bool {
 		return a.Line < b.Line
 	}
 	return a.Kind < b.Kind
-}
-
-// sortNodes orders nodes deterministically (see nodeLess).
-func sortNodes(nodes []core.SymbolNode) {
-	sort.SliceStable(nodes, func(i, j int) bool { return nodeLess(nodes[i], nodes[j]) })
 }
 
 // nameTokens derives keyword hints from a symbol name for the ranked

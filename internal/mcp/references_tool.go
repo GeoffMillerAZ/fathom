@@ -23,7 +23,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 			"properties": map[string]any{
 				"query": map[string]any{
 					"type":        "string",
-					"description": "String to search for",
+					"description": "String to search for. Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+				},
+				"symbol": map[string]any{
+					"type":        "string",
+					"description": "Alias for \"query\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
 				},
 				"services": map[string]any{
 					"type":        "array",
@@ -49,7 +53,8 @@ func registerReferences(s *Server, backend QueryInterface) {
 			},
 			"required": []string{"query"},
 		},
-		group: GroupInvestigation,
+		group:   GroupInvestigation,
+		aliases: map[string]string{"symbol": "query"},
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		if backend == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -66,6 +71,15 @@ func registerReferences(s *Server, backend QueryInterface) {
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: invalid args"}
 		}
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "references: invalid args"}
+		}
+		query, aliasErr := resolveAliasedString(raw, "references", "query", "symbol")
+		if aliasErr != nil {
+			return nil, aliasErr
+		}
+		p.Query = query
 		if p.Query == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: query required"}
 		}

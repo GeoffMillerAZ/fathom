@@ -5,6 +5,59 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — Wave 3a pulled-tools excellence: O12's three product gaps + the C4-4 method-edge gap (docs/plans/pulled-tools-excellence.md P1-1/P1-2/P1-3/P1-4/P1-5/P1-8)
+- **P1-1 — parameter-name inconsistency (closes O12(b)):** `find_symbol`,
+  `query_symbols`, and `references` now additionally accept `symbol` as an
+  additive alias for their native argument (`name`/`concern`/`query`
+  respectively — `symbol_context` already used `symbol` natively). Native
+  name stays primary; a call supplying both only errors (`ErrCodeParams`,
+  naming both parameters) when the values disagree. New
+  `internal/mcp/paramalias.go`.
+- **P1-2 — cross-repo call edges missing (closes O12(a)):** `symbol_context`
+  and `find_callers` now consult the fleet backend for cross-service call
+  edges when one is wired (fleet stores) — new `cross_service_callers`/
+  `cross_service_callees` result fields, each entry scope-labeled
+  `"cross-service"`, additive and never merged into the existing
+  same-service `callers`/`callees` fields. Reuses `cross_repo_callers`'s
+  own fleet-wide matching (`fleetCallers`, extracted so both tools share
+  one implementation) plus a new symbol-precise cross-service callee
+  resolver (mirrors `internal/platformlink`'s qualified-match rule at
+  single-symbol granularity, since `CrossRepoEdge` tracks the calling FILE,
+  not the calling symbol). New `internal/mcp/crossservice.go`.
+- **P1-3 — case-insensitive tier steers to the wrong package (closes
+  O12(c)):** `find_symbol`'s case-insensitive tier now returns a
+  package-match group alongside the pre-existing name-match group, so a
+  query naming an entire package (e.g. "heartbeat") is no longer hidden
+  behind a same-named type/symbol in an unrelated package — both groups
+  return together, ranked, never first-hit steering. `matched_via` stays
+  `"case_insensitive"`. `caseFoldMatches` (internal/mcp/findsymbol.go).
+- **P1-4 — arch_conformance's disclosed method-edge gap, closed (C4-4):**
+  both edge endpoints are now normalized to their declaring Go package
+  before matching rules, so package-named rules catch method-origin AND
+  method-target edges, not only function-to-function ones. New
+  `archConformanceEdges`/`archResolver` (internal/mcp/extra_tools.go); the
+  "DISCLOSED GAP" comment in `schema/rules/archconformance/schema.cue`
+  (and its byte-identical embed,
+  `internal/projectrules/archconformance_schema.cue`) is now "CLOSED".
+- **P1-5 — the proof re-run:** re-ran the three cross_repo_callers bench
+  tasks (B1-T09/T10/T11) against a freshly-ingested scratch fleet store
+  (never the live daemon). B1-T09 (the O12 flagship case) went from
+  504,785 tokens / 20 turns to 321,100 tokens / 9 turns (−36% / −55%) —
+  6.6× → 4.2× vs. grep's answer: the sign flips substantially, doesn't
+  fully close (a live probe found `cmdInstrument` delegates two of the
+  three heartbeat calls through `reportInstrument`, a real one-hop
+  indirection the original symptom's prose had collapsed). B1-T10/T11 were
+  already near the cheap 3-turn floor pre-fix and show ~1% token noise, an
+  honest non-flip, recorded as such. See dogfood O12 and the plan's P1-5
+  row for the full numbers.
+- **P1-8 — dispatch now enforces declared `required` fields
+  (`internal/mcp/dispatch.go`'s new `validateRequired`):** previously only
+  individual handlers enforced their own required parameters — C4-5's audit
+  had found `license_policy` declares `allowed` required but never checks
+  it. A P1-1 alias satisfies its primary's requirement at this layer too
+  (`toolDescriptor.aliases`), so an alias-only call is never rejected for
+  "missing" the native name.
+
 ### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
 - **`docs/adoption/spec-driven-development.md`**: the third and final definitive
   adoption guide (alongside `claude-code.md`/`codex.md`) — the full SDD loop

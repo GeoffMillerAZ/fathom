@@ -21,11 +21,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 )
 
-// registerNavTools is called from registerTools (tools.go).
-func registerNavTools(s *Server, backend QueryInterface) {
+// registerNavTools is called from registerTools (tools.go). fleet may be
+// nil (non-fleet stdio serve-mcp); when set, registerSymbolContext
+// additionally consults it for cross-service call edges (P1-2).
+func registerNavTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerFindCallees(s, backend)
 	registerCallHierarchy(s, backend)
-	registerSymbolContext(s, backend)
+	registerSymbolContext(s, backend, fleet)
 	registerOutline(s, backend)
 	registerEntrypoints(s, backend)
 	registerComplexity(s, backend)
@@ -142,7 +144,7 @@ func treeToMap(t symbolnav.Tree) map[string]any {
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
 
-func registerSymbolContext(s *Server, backend QueryInterface) {
+func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
 		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, and related tests.",
@@ -209,6 +211,33 @@ func registerSymbolContext(s *Server, backend QueryInterface) {
 			if edges := typedEdgeContext(tg, p.Symbol); edges != nil {
 				result["typed_edges"] = edges
 			}
+		}
+
+		// Cross-service callers/callees (P1-2, closing O12(a)): g/sctx above
+		// are built from p.Service's own nodes only, so a call crossing a
+		// service boundary — e.g. fathom's cmdInstrument calling agentic-
+		// kit's heartbeat.Load/CheckLiveness/Rollup — never appears in
+		// "callees", and a caller living in another service never appears
+		// in "callers". When a fleet backend is wired (fleet stores),
+		// crossServiceCallees/crossServiceCallers fill that gap: callees
+		// resolve sctx.Def's own raw Calls entries against every OTHER
+		// service's exported symbols (mirroring platformlink.
+		// BuildFromSymbols' qualified-match rule, internal/platformlink/
+		// platformlink.go); callers reuse cross_repo_callers' own
+		// fleet-wide matching (platform_tools.go's fleetCallers) filtered
+		// to services other than p.Service. Both land in their OWN
+		// "cross_service_*" fields — "callers"/"callees" keep their exact
+		// existing (same-service, string-key) shape — so the two scopes
+		// are never silently merged; each cross-service hit also carries
+		// an explicit "scope":"cross-service" tag. nil fleet or no
+		// cross-service hits omit the fields entirely.
+		if sctx.Def.Name != "" {
+			if callees := crossServiceCallees(fleet, p.Service, sctx.Def); len(callees) > 0 {
+				result["cross_service_callees"] = callees
+			}
+		}
+		if callers := crossServiceCallers(fleet, p.Service, p.Symbol); len(callers) > 0 {
+			result["cross_service_callers"] = callers
 		}
 		return result, nil
 	})

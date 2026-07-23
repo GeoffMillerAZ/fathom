@@ -25,20 +25,28 @@ package archconformance
 // (everything before the LAST dot; see pkgOf). For a top-level FUNCTION
 // symbol that is the bare Go package-clause name recorded on
 // core.SymbolNode.Package (e.g. "connector", "query") — never an import
-// path. For a METHOD symbol the Go extractor records the RECEIVER TYPE as
-// the package (internal/extractor goextract.go funcNode: pkg = receiver
-// type name), so a method-origin edge's from-side prefix is e.g.
-// "LocalConnector", not "connector" — and a call INTO a method carries a
-// receiver-qualified to-side prefix (e.g. "mcp.Server" for
-// mcp.Server.registerTool), which a bare to_pkg like "mcp" never matches.
+// path.
 //
-// DISCLOSED GAP: package-named rules therefore guard FUNCTION-origin,
-// function-target edges only. Method-origin and method-target edges are
-// effectively invisible to package-named rules until edge package prefixes
-// are normalized to declaring packages (a both-sides symbol-key→package
-// resolution, tracked as future work in docs/plans/review-verb.md C4-4's
-// row text). A rule pack author who needs to guard a specific receiver
-// today can name the receiver type itself in from_pkg/to_pkg.
+// CLOSED (P1-4, docs/plans/pulled-tools-excellence.md): for a METHOD
+// symbol the Go extractor records the RECEIVER TYPE as SymbolNode.Package
+// (internal/extractor goextract.go funcNode: pkg = receiver type name),
+// which would leave a method-origin edge's from-side prefix as e.g.
+// "LocalConnector", not "connector" — and a raw call INTO a method is
+// often receiver-VARIABLE-qualified ("h.Method", never package-qualified
+// at all), which pkgOf can't turn into a real package prefix either. The
+// MCP arch_conformance handler (internal/mcp/extra_tools.go
+// archConformanceEdges) now normalizes BOTH sides before matching: a
+// method-origin edge's FromSymbol is rebuilt as "declaringPkg.MethodName"
+// (the receiver type's own package, resolved from its GoType/GoInterface
+// node — see archTypePackages/archDeclPkg), and a method-target edge's
+// raw callee is resolved to the node it targets (archResolver, mirroring
+// callgraph.Graph.resolve's matching order) and rebuilt the same way. A
+// callee that doesn't resolve to a node in the service (external/stdlib
+// calls, or genuine ambiguity) keeps its raw, unresolved form — exactly as
+// before. So package-named rules now guard method-origin and
+// method-target edges too, not only function-to-function ones; naming a
+// receiver type directly in from_pkg/to_pkg still works as a narrower,
+// receiver-scoped alternative.
 #Rule: {
 	from_pkg: string
 	to_pkg:   string
