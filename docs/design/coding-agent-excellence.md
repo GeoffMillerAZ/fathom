@@ -25,8 +25,14 @@ Fathom is excellent as a coding-agent companion when, in an indexed repo:
 4. **The index is never silently wrong** — data, binary, and claim staleness
    are each detected automatically and surfaced honestly at the moment they
    matter (§6).
-5. **The win is falsifiable** — context-bench shows equal-or-better task
-   success at ≤1/10th the discovery tokens vs grep/Read (H1.6).
+5. **The win is falsifiable** — context-bench, run for real (first run
+   2026-07-23, docs/plans/falsifiability.md B1-3), measured equal task
+   success (15/15 both arms) at 1.38× aggregate end-to-end token reduction
+   and 2.81× mean wall-time reduction vs grep-only. The original
+   "≤1/10th the discovery tokens" form of this sentence is **retracted**
+   (the pre-registered <5× criterion fired); the standing bar is
+   equal-or-better success at measurably lower tokens and wall time,
+   re-verified by re-running the bench (`scripts/context-bench.sh`).
 
 Every mechanism below exists to serve one of those five sentences; anything
 that serves none of them is out of scope for the companion.
@@ -70,8 +76,14 @@ facts worth restating because they drive every budget rule below:
 - **Payloads dominate.** The expensive failure mode is a discovery sweep:
   Grep → 4–6 Read calls at ~500–2,000 tokens each (5–20k tokens for one
   "where is this handled?"). The fathom counterfactual is one `symbol_context`
-  or tiered `find_symbol` call at ~300–800 tokens. This ×10 gap is the
-  context-bench claim, and it only holds if payload discipline holds.
+  or tiered `find_symbol` call at ~300–800 tokens. **Measured
+  (context-bench first run, 2026-07-23): that payload-level gap does not
+  survive end-to-end** — each subagent call carries a symmetric ~30–100k
+  session baseline that dominates totals, and the measured end-to-end
+  reduction was 1.38× aggregate / 1.79× mean per-task, not ×10. The ×10
+  form is retracted (docs/plans/falsifiability.md B1-3/B1-4); payload
+  discipline still matters, but its end-to-end effect must be stated at
+  the measured magnitude.
 - **Injection is cheap because silence is free.** Hook-injected context costs
   tokens only when emitted. The obligations payload is capped at ≤150 tokens,
   zero-output-on-clean; the session-hook line is ~80 tokens once per session.
@@ -99,7 +111,10 @@ fewer tokens in absolute terms while touching more of the codebase.
 
 ## 3. Power use cases for Claude Code (the effectiveness catalog)
 
-What the companion makes *possible or 10× cheaper* in Claude Code specifically:
+What the companion makes *possible or measurably cheaper* in Claude Code
+specifically (the "10× cheaper" phrasing is retracted — see §0.5 and
+docs/plans/falsifiability.md B1-3; measured: ~1.4–1.8× tokens, ~2.8× wall
+time, plus capabilities with no grep equivalent at all):
 
 - **Cold-start comprehension:** `repo_map` + `brief` give a new session the
   load-bearing shape of a repo in one call each — replacing the first-hour
@@ -291,7 +306,10 @@ From product-vision §3/§4, restated as this use case's release gate:
 5. The four recurring violation classes (`time.Now()` in query logic, unsorted
    outputs, org-specific names, non-`workspace/` outputs) trending to zero in
    review.
-6. Context-bench: equal-or-better task success at ≤1/10th discovery tokens.
+6. Context-bench: equal-or-better task success at lower cost. First run
+   (2026-07-23): equal success 15/15, 1.38× aggregate tokens, 2.81× mean
+   wall time — the "≤1/10th discovery tokens" form of this gate is
+   retracted (docs/plans/falsifiability.md B1-3/B1-4).
 
 Failing gates trigger the ADR-016 fallback ladder (fold obligations into
 `outline`/`symbol_context` as a capped rider; kill layers that miss precision),

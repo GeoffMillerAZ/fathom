@@ -5,6 +5,28 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Added — context-bench + the ×10 retraction (falsifiability B1/B2-1, 2026-07-23)
+- **context-bench built and run** (docs/plans/falsifiability.md B1-1/B1-2/B1-3):
+  15-task committed corpus (`testdata/contextbench/tasks.json`, ground truth
+  grep-derived at a recorded commit, three scoring rules), tested scorer
+  (`internal/contextbench`, 16 tests; `cmd/contextbenchscore` CLI, 7 tests),
+  two-arm `claude -p` runner (`scripts/context-bench.sh`: fathom-MCP-only arm
+  vs grep/find/cat-only arm, `--strict-mcp-config` isolation, honest
+  degradation when the daemon is unreachable).
+- **The ×10 tokenomics claim is RETRACTED** (B1-3/B1-4): first full run — all
+  30 arm-runs real — measured equal task success (15/15 both arms) at 1.38×
+  aggregate / 1.79× mean per-task end-to-end token reduction and 2.81× mean
+  wall-time reduction. The pre-registered "<5× → retract" criterion fired;
+  every doc stating ×10 / ≤1/10th as a claim now states the measured
+  magnitudes (coding-agent-excellence §0/§2/§3/§7, product-vision §3,
+  use-cases/coding-agents §5, vision 04 §1, vision 11 §3-B1).
+- **B2-1 existence-check wiring**: `scripts/check-surface-traffic_test.sh`
+  proves the three verdict classes (ok / zero-traffic / missing-dependency)
+  against a local fixture HTTP server, never the live daemon; the script
+  header now distinguishes per-surface `workspace/logs/<surface>.stamp` files
+  from the program-wide `workspace/logs/adoption-clock-t0.txt` (law-8 clock —
+  explicitly NOT started; the file does not exist).
+
 ### Fixed — relative corpus paths at the ingest boundary (dogfood O10, 2026-07-22)
 - **Typed edges silently absent for relative `--path`** (the CLI default
   `.`): the connector-scope filter rel-mapped absolute go/packages file

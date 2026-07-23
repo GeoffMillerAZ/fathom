@@ -137,8 +137,13 @@ call (~300–800 tokens) replaces a grep → 4–6 file reads sweep (5–20k
 tokens). The June 2026 integration assessment measured discovery agents
 eliminated outright, ~148→32 tool calls per comparable worker, and wave
 wall-clock roughly halved — with the honest caveat that per-wave worker
-token totals did not collapse, and the ×10 discovery claim awaits the
-context-bench before it's stated as fact.
+token totals did not collapse. The first context-bench run (2026-07-23,
+docs/plans/falsifiability.md B1-3) settled the ×10 discovery claim:
+**retracted**. Measured, 15 real tasks × 2 subagent arms: equal success
+(15/15 both arms), 1.38× aggregate / 1.79× mean per-task end-to-end token
+reduction, and a consistent 2.81× mean wall-time reduction. The honest
+pitch is "same answers, ~1.4–1.8× fewer tokens, ~2–3× faster, plus
+cross-repo questions grep can't answer at all" — not ×10.
 
 **What it costs.** Ingest: ~0.2s hash-gated refresh, cents of CPU. Serving:
 p95 ≤ ~90ms per hook call. Obligations compile: cents per repo *change*

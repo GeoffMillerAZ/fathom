@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "description": "context-bench task corpus (docs/plans/falsifiability.md B1-1). Committed form of the ×10 tokenomics falsifiability gate (coding-agent-excellence.md §0/§7 gate 6). Each task's ground_truth was derived by direct grep/read of the fathom and agentic-kit repos at the commit noted in `source` — reproducible by anyone, not by querying the live fathom daemon (see internal/contextbench/task.go doc comment for the full convention). Run artifacts (raw claude -p transcripts, scored results, summary tables) are NOT committed here — they land under workspace/artifacts/context-bench/ per scripts/context-bench.sh.",
+  "tasks": [
+    {
+      "id": "B1-T01",
+      "category": "find_callers",
+      "prompt": "In the fathom repo, which non-test Go files call verify.ParseMarkdownPlan (the plan-checklist parser)? List each file path, one per line.",
+      "ground_truth": [
+        "cmd/fathom/genplancue.go",
+        "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/stophook.go",
+        "cmd/fathom/verify.go",
+        "internal/mcp/verify_plan_tool.go"
+      ],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, grep -rn \"ParseMarkdownPlan(\" --include='*.go' . (excluding _test.go and the definition in internal/verify/markdown.go)"
+    },
+    {
+      "id": "B1-T02",
+      "category": "find_callers",
+      "prompt": "In the fathom repo, which single non-test Go file constructs the MCP call logger via mcp.NewCallLogger?",
+      "ground_truth": ["cmd/fathom/servehttp.go"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, grep -rn \"NewCallLogger(\" --include='*.go' . — every other call site is a _test.go file"
+    },
+    {
+      "id": "B1-T03",
+      "category": "find_callers",
+      "prompt": "In the fathom repo's internal/mcp package, registerServerStats has exactly one production caller. Which function, in which file, calls it?",
+      "ground_truth": ["internal/mcp/meta.go", "registerMeta"],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, internal/mcp/meta.go:45 (registerMeta calls registerServerStats at line 96's definition)"
+    },
+    {
+      "id": "B1-T04",
+      "category": "blast_radius",
+      "prompt": "If the verify.Plan struct's shape changed in the fathom repo, which non-test Go files reference verify.Plan directly? Include the file that defines it.",
+      "ground_truth": [
+        "cmd/fathom/genplancue.go",
+        "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/verify.go",
+        "internal/mcp/verify_plan_tool.go",
+        "internal/verify/markdown.go"
+      ],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, grep -rln \"verify\\.Plan\\b\" --include='*.go' . (non-test)"
+    },
+    {
+      "id": "B1-T05",
+      "category": "where_configured",
+      "prompt": "In the fathom repo, which environment variable selects the LLM provider for `fathom compile`, and which file's switch statement reads it via os.Getenv?",
+      "ground_truth": ["FATHOM_LLM_PROVIDER", "cmd/fathom/compile.go"],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, cmd/fathom/compile.go:293 (switch provider := os.Getenv(\"FATHOM_LLM_PROVIDER\"))"
+    },
+    {
+      "id": "B1-T06",
+      "category": "where_configured",
+      "prompt": "In the fathom repo, which file defines the ~/.fathom/config.toml profile loader that also reads FATHOM_LLM_PROVIDER as an env override (via a setEnv helper)?",
+      "ground_truth": ["internal/config/profile.go"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, internal/config/profile.go:91 (setEnv(&out.Provider, \"provider\", \"FATHOM_LLM_PROVIDER\"))"
+    },
+    {
+      "id": "B1-T07",
+      "category": "what_governs",
+      "prompt": "In the fathom repo's .fathomignore, which ADR is cited as the reason third_party/ (the in-tree vendored agentic-kit mirror) is excluded from indexing?",
+      "ground_truth": ["ADR-019"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, .fathomignore comment above the third_party/ entry"
+    },
+    {
+      "id": "B1-T08",
+      "category": "what_governs",
+      "prompt": "Per fathom's CLAUDE.md, which ADR documents the workspace/db/ default store path convention (workspace/db/fathom.sqlite)?",
+      "ground_truth": ["ADR-020"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, CLAUDE.md's workspace/ convention section; confirmed against ADR.md's \"ADR-020: Store backend\" heading"
+    },
+    {
+      "id": "B1-T09",
+      "category": "cross_repo_callers",
+      "prompt": "In the fathom repo's cmd/fathom/instrument.go, which three agentic-kit heartbeat package functions are called to load beats and evaluate liveness/rollup? Name the functions (package.Function).",
+      "ground_truth": ["heartbeat.Load", "heartbeat.CheckLiveness", "heartbeat.Rollup"],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, grep -n \"heartbeat\\.\" cmd/fathom/instrument.go (heartbeat.Expectation is a type reference, not a call, and is excluded)"
+    },
+    {
+      "id": "B1-T10",
+      "category": "cross_repo_callers",
+      "prompt": "Which single fathom file constructs a heartbeat log via agentic-kit's heartbeat.NewLog?",
+      "ground_truth": ["cmd/fathom/beats.go"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, cmd/fathom/beats.go:42 (heartbeat.NewLog(f, time.Now))"
+    },
+    {
+      "id": "B1-T11",
+      "category": "cross_repo_callers",
+      "prompt": "Which two fathom internal packages (by file) import agentic-kit's foundations/review/scoring package?",
+      "ground_truth": ["internal/query/engine.go", "internal/verify/verify.go"],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, grep -rln \"agentic-kit/foundations/review/scoring\" --include='*.go' . (excluding third_party/ and _test.go)"
+    },
+    {
+      "id": "B1-T12",
+      "category": "find_symbol",
+      "prompt": "In the fathom repo, which file defines the cmdVerify function (the `fathom verify` CLI subcommand entry point), and which file's switch statement in main dispatches the \"verify\" subcommand to it?",
+      "ground_truth": ["cmd/fathom/verify.go", "cmd/fathom/main.go"],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, cmd/fathom/verify.go:36 (func cmdVerify) and cmd/fathom/main.go:68-69 (case \"verify\": return cmdVerify(...))"
+    },
+    {
+      "id": "B1-T13",
+      "category": "references",
+      "prompt": "In the fathom repo's internal/mcp package, which single file calls CallLogger's SurfaceTraffic() method to populate server_stats' surface_traffic block?",
+      "ground_truth": ["internal/mcp/meta.go"],
+      "scoring_rule": "exact-match",
+      "source": "fathom @ 9f40934, internal/mcp/meta.go:129 (s.callLogger.SurfaceTraffic())"
+    },
+    {
+      "id": "B1-T14",
+      "category": "find_callers",
+      "prompt": "In the fathom repo, defaultFathomURL is defined in cmd/fathom/sessionhook.go. Which files call it (including sessionhook.go itself, if it also calls its own helper)? List each file path.",
+      "ground_truth": [
+        "cmd/fathom/stophook.go",
+        "cmd/fathom/edithook.go",
+        "cmd/fathom/init.go",
+        "cmd/fathom/verify.go",
+        "cmd/fathom/compile.go",
+        "cmd/fathom/sessionhook.go"
+      ],
+      "scoring_rule": "all-of",
+      "source": "fathom @ 9f40934, grep -rn \"defaultFathomURL(\" --include='*.go' . (non-test)"
+    },
+    {
+      "id": "B1-T15",
+      "category": "find_callers",
+      "prompt": "In the fathom repo, name at least one non-test Go file that calls verify.ParseMarkdownPlan.",
+      "ground_truth": [
+        "cmd/fathom/genplancue.go",
+        "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/stophook.go",
+        "cmd/fathom/verify.go",
+        "internal/mcp/verify_plan_tool.go"
+      ],
+      "scoring_rule": "any-of",
+      "source": "same source set as B1-T01; exercises the any-of scoring rule against the same ground-truth set"
+    }
+  ]
+}
