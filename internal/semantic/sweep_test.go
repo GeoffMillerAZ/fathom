@@ -51,7 +51,7 @@ func TestSweep_FlipsAndHeals(t *testing.T) {
 		return nil, false
 	}
 
-	rep, err := Sweep(ctx, st, "svc", fetch)
+	rep, err := Sweep(ctx, st, "svc", fetch, nil)
 	if err != nil {
 		t.Fatalf("Sweep: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestSweep_FlipsAndHeals(t *testing.T) {
 			return doc, true
 		}
 		return nil, false
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("second Sweep: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestSweep_OutOfRangeCitationContradicts(t *testing.T) {
 	seedClaim(t, st, "c-range", "d.md#a", core.ClaimFresh, "d.md", doc, 9, 10)
 
 	// Doc shrinks to 3 lines: the range no longer resolves.
-	rep, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return []byte("a\nb\nc"), true })
+	rep, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return []byte("a\nb\nc"), true }, nil)
 	if err != nil {
 		t.Fatalf("Sweep: %v", err)
 	}
@@ -110,6 +110,64 @@ func TestSweep_OutOfRangeCitationContradicts(t *testing.T) {
 	}
 	if s := statusByID(t, st)["c-range"]; s != core.ClaimContradicted {
 		t.Errorf("c-range = %s, want contradicted", s)
+	}
+}
+
+// TestSweep_ContradictedRecordsRefuteEvent is D2-2 (docs/plans/expert-depth.md):
+// an anchor-dead claim (citation file gone) must not just flip status
+// silently — it must ALSO append a ClaimEvent{Verdict:"refuted",
+// Author:"sweep"} so the refutation has an audit trail, exactly like a human
+// `fathom claim refute` would leave. A second sweep over the SAME dead
+// anchor (still contradicted, no transition) must NOT append a second event
+// — one event per verdict, not unbounded re-affirmation noise.
+func TestSweep_ContradictedRecordsRefuteEvent(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	seedClaim(t, st, "c-dead", "gone.md#a", core.ClaimFresh, "gone.md", []byte("x\n"), 1, 1)
+
+	fixed := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	clock := func() time.Time { return fixed }
+
+	rep, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return nil, false }, clock)
+	if err != nil {
+		t.Fatalf("Sweep: %v", err)
+	}
+	if rep.Contradicted != 1 || rep.Flipped != 1 {
+		t.Fatalf("report %+v, want contradicted=1 flipped=1", rep)
+	}
+	if s := statusByID(t, st)["c-dead"]; s != core.ClaimContradicted {
+		t.Fatalf("c-dead = %s, want contradicted", s)
+	}
+
+	events, err := st.ClaimEvents(ctx, "c-dead")
+	if err != nil {
+		t.Fatalf("ClaimEvents: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 refute event, got %d: %+v", len(events), events)
+	}
+	if events[0].Verdict != "refuted" || events[0].Author != "sweep" {
+		t.Errorf("event = %+v, want verdict=refuted author=sweep", events[0])
+	}
+	if !events[0].At.Equal(fixed) {
+		t.Errorf("event.At = %v, want injected clock value %v", events[0].At, fixed)
+	}
+
+	// Second sweep: still dead, no status transition — must not append a
+	// second event.
+	rep2, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return nil, false }, clock)
+	if err != nil {
+		t.Fatalf("second Sweep: %v", err)
+	}
+	if rep2.Flipped != 0 {
+		t.Errorf("second sweep flipped %d, want 0 (already contradicted)", rep2.Flipped)
+	}
+	events2, err := st.ClaimEvents(ctx, "c-dead")
+	if err != nil {
+		t.Fatalf("ClaimEvents after second sweep: %v", err)
+	}
+	if len(events2) != 1 {
+		t.Errorf("expected still 1 event after a no-op sweep, got %d: %+v", len(events2), events2)
 	}
 }
 

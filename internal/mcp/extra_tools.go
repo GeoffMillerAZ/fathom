@@ -52,6 +52,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // costTracker is a package-level cost tracker shared across all cost_report
@@ -1950,7 +1951,7 @@ func registerBatch(s *Server) {
 		sc := scopeFrom(ctx)
 		// Sub-calls are logged individually (via:"batch") so surface telemetry
 		// counts the tools a batch actually exercised, not just "batch".
-		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, latency time.Duration, rpcErr *rpcError) {
+		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, latency time.Duration, rpcErr *rpcError) {
 			if s.callLogger == nil {
 				return
 			}
@@ -1962,7 +1963,7 @@ func registerBatch(s *Server) {
 			if rpcErr != nil {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, latency, subErr)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, latency, subErr)
 		}
 		for i, call := range p.Calls {
 			argsRaw := call.Arguments
@@ -1978,7 +1979,7 @@ func registerBatch(s *Server) {
 			if sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
 				if s.strictSurfaces {
 					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
-					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, gateErr)
+					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, 0, gateErr)
 					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
 					continue
 				}
@@ -1986,7 +1987,7 @@ func registerBatch(s *Server) {
 			}
 			start := time.Now()
 			result, rpcErr := te.handler(ctx, argsRaw)
-			logSub(call.Name, string(te.desc.group), argsRaw, subOff, time.Since(start), rpcErr)
+			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), time.Since(start), rpcErr)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue
@@ -2291,6 +2292,20 @@ func registerBrief(s *Server, backend QueryInterface) {
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "## Pre-packed context (fathom brief · service %s · %s)\n", p.Service, stalenessNote)
 
+		// Distinct file paths resolved along the way — the join key D1
+		// (docs/plans/expert-depth.md) uses to attach governed claims below;
+		// collected here rather than re-resolving symbols/concern a second
+		// time.
+		var paths []string
+		pathSeen := map[string]bool{}
+		addPath := func(path string) {
+			if path == "" || pathSeen[path] {
+				return
+			}
+			pathSeen[path] = true
+			paths = append(paths, path)
+		}
+
 		// Symbols section.
 		if len(p.Symbols) > 0 {
 			fmt.Fprintf(&sb, "\n### Symbols\n")
@@ -2306,6 +2321,7 @@ func registerBrief(s *Server, backend QueryInterface) {
 					sig = string(n.Kind)
 				}
 				fmt.Fprintf(&sb, "- `%s` — `%s` — %s:%d\n", n.Name, sig, n.FilePath, n.Line)
+				addPath(n.FilePath)
 			}
 			if sb.Len() > charBudget {
 				return truncatedBriefResult(&sb, charBudget), nil
@@ -2330,6 +2346,7 @@ func registerBrief(s *Server, backend QueryInterface) {
 						sig = string(n.Kind)
 					}
 					fmt.Fprintf(&sb, "- `%s` — %s — %s:%d — %s\n", n.Name, string(n.Kind), n.FilePath, n.Line, sig)
+					addPath(n.FilePath)
 				}
 			}
 			if sb.Len() > charBudget {
@@ -2337,7 +2354,69 @@ func registerBrief(s *Server, backend QueryInterface) {
 			}
 		}
 
-		return map[string]any{"brief": sb.String()}, nil
+		// Governing claims section (D1, docs/plans/expert-depth.md): after
+		// the deterministic packing above, attach any served semantic claims
+		// (obligations layer and beyond) scoped to the paths this brief just
+		// resolved — verbatim rule text, citation, and tier, with the
+		// serving state labeled whenever it isn't fresh. Reuses
+		// obligationsBackend.Obligations (the SAME served-claim selection
+		// and scope-glob matching the obligations tool uses) rather than
+		// adding a new store surface or matching logic.
+		claimsAttached := 0
+		if cb, ok := backend.(obligationsBackend); ok && len(paths) > 0 {
+			type claimKey struct{ rule, src string }
+			seen := map[claimKey]bool{}
+			var rules []semantic.Obligation
+			for _, path := range paths {
+				obl, err := cb.Obligations(ctx, p.Service, path, 0)
+				if err != nil {
+					continue
+				}
+				for _, r := range obl.Rules {
+					k := claimKey{r.Rule, r.Src}
+					if seen[k] {
+						continue
+					}
+					seen[k] = true
+					rules = append(rules, r)
+				}
+			}
+			if len(rules) > 0 {
+				sort.Slice(rules, func(i, j int) bool {
+					if rules[i].Rule != rules[j].Rule {
+						return rules[i].Rule < rules[j].Rule
+					}
+					return rules[i].Src < rules[j].Src
+				})
+				fmt.Fprintf(&sb, "\n### Governing claims\n")
+				for _, r := range rules {
+					state := ""
+					if r.Status != "" {
+						state = " [" + r.Status + "]"
+					}
+					fmt.Fprintf(&sb, "- %s — src:%s tier:%s%s\n", r.Rule, r.Src, r.Tier, state)
+				}
+				claimsAttached = len(rules)
+				if sb.Len() > charBudget {
+					// The truncated shape must still carry the telemetry
+					// field: claims WERE attached (and partially served) —
+					// dropping the count here would log a claims-serving
+					// truncated brief as claims_attached:0 and silently
+					// poison D1's 30-day hit-rate kill clock.
+					result := truncatedBriefResult(&sb, charBudget)
+					result["claims_attached"] = claimsAttached
+					return result, nil
+				}
+			}
+		}
+
+		result := map[string]any{"brief": sb.String()}
+		if claimsAttached > 0 {
+			// D1-2: surfaced to the call log too (claimsAttachedFrom,
+			// calllog.go) so claims-block hit rate is visible per call.
+			result["claims_attached"] = claimsAttached
+		}
+		return result, nil
 	})
 }
 

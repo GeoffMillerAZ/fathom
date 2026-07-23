@@ -3,6 +3,7 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
@@ -1329,6 +1331,13 @@ type briefFakeBackend struct {
 	sourcesFakeBackend
 	symbolMap   map[string][]core.SymbolNode // name → nodes
 	queryResult core.QueryResult
+
+	// obligationsByFile is D1's (docs/plans/expert-depth.md) claims-attach
+	// fixture: keyed by the exact FilePath a resolved symbol/concern node
+	// carries, so a test can control which claims match which path without
+	// reimplementing scope-glob matching (that's obligationsBackend.
+	// Obligations' job — brief only reuses it).
+	obligationsByFile map[string]semantic.Obligations
 }
 
 func (b *briefFakeBackend) FindSymbol(_ context.Context, _ string, name string) ([]core.SymbolNode, error) {
@@ -1340,6 +1349,18 @@ func (b *briefFakeBackend) FindSymbol(_ context.Context, _ string, name string) 
 
 func (b *briefFakeBackend) QuerySymbols(_ context.Context, _ core.Query) (core.QueryResult, error) {
 	return b.queryResult, nil
+}
+
+// Obligations implements obligationsBackend (D1): brief reuses the exact
+// same served-claim shape (Rule/Src/Tier/Status) the obligations tool
+// serves, so a fake keyed only by file path is enough — no new matching
+// logic to fake.
+func (b *briefFakeBackend) Obligations(_ context.Context, _, file string, _ int) (semantic.Obligations, error) {
+	return b.obligationsByFile[file], nil
+}
+
+func (b *briefFakeBackend) ObligationsIndexStale(_ context.Context, _, _ string) bool {
+	return false
 }
 
 var _ mcp.QueryInterface = (*briefFakeBackend)(nil)
@@ -1380,6 +1401,256 @@ func TestBrief_SymbolsAndConcern(t *testing.T) {
 	}
 	if !strings.Contains(brief, "Middleware") {
 		t.Error("brief: expected concern hit Middleware in brief text")
+	}
+}
+
+// ─── D1: brief attaches governed semantic claims ───────────────────────────
+// (docs/plans/expert-depth.md D1-1/D1-2)
+
+// TestBrief_AttachesFreshClaims: a fresh claim scoped to a resolved symbol's
+// file is appended verbatim (citation + tier), with no state label (fresh is
+// the unflagged default), and claims_attached is set on the result.
+func TestBrief_AttachesFreshClaims(t *testing.T) {
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		obligationsByFile: map[string]semantic.Obligations{
+			"pkg/h.go": {
+				Service: "svc", File: "pkg/h.go",
+				Rules: []semantic.Obligation{
+					{Rule: "Sort all exported slice results.", Src: "CLAUDE.md#L12-L12", Tier: "doc-claimed"},
+				},
+			},
+		},
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1510, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "brief",
+			"arguments": map[string]any{"service": "svc", "symbols": []string{"Handler"}},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if !strings.Contains(brief, "Sort all exported slice results.") {
+		t.Errorf("brief: expected the fresh claim's rule text, got: %q", brief)
+	}
+	if !strings.Contains(brief, "CLAUDE.md#L12-L12") {
+		t.Errorf("brief: expected the claim's citation, got: %q", brief)
+	}
+	if !strings.Contains(brief, "doc-claimed") {
+		t.Errorf("brief: expected the claim's tier, got: %q", brief)
+	}
+	if strings.Contains(brief, "[stale]") || strings.Contains(brief, "[contradicted]") {
+		t.Errorf("brief: a fresh claim must not carry a state label, got: %q", brief)
+	}
+	if n, ok := p["claims_attached"].(float64); !ok || n != 1 {
+		t.Errorf("claims_attached = %v, want 1", p["claims_attached"])
+	}
+}
+
+// TestBrief_LabelsStaleClaims: a non-fresh claim is still served, but its
+// state must be visibly labeled — never a flagged claim served silently.
+func TestBrief_LabelsStaleClaims(t *testing.T) {
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		obligationsByFile: map[string]semantic.Obligations{
+			"pkg/h.go": {
+				Service: "svc", File: "pkg/h.go",
+				Rules: []semantic.Obligation{
+					{Rule: "Run tests before committing.", Src: "CLAUDE.md#L8-L8", Tier: "doc-claimed", Status: "stale"},
+				},
+			},
+		},
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1511, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "brief",
+			"arguments": map[string]any{"service": "svc", "symbols": []string{"Handler"}},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if !strings.Contains(brief, "Run tests before committing.") {
+		t.Errorf("brief: expected the stale claim's rule text, got: %q", brief)
+	}
+	if !strings.Contains(brief, "[stale]") {
+		t.Errorf("brief: expected the stale claim's state labeled, got: %q", brief)
+	}
+	if n, ok := p["claims_attached"].(float64); !ok || n != 1 {
+		t.Errorf("claims_attached = %v, want 1", p["claims_attached"])
+	}
+}
+
+// briefClaimsBackend builds the standard D1 fixture: one resolvable symbol
+// in pkg/h.go plus one governed claim scoped to it (rule text injectable so
+// the truncation case can blow the char budget).
+func briefClaimsBackend(rule string) *briefFakeBackend {
+	return &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		obligationsByFile: map[string]semantic.Obligations{
+			"pkg/h.go": {
+				Service: "svc", File: "pkg/h.go",
+				Rules: []semantic.Obligation{
+					{Rule: rule, Src: "CLAUDE.md#L12-L12", Tier: "doc-claimed"},
+				},
+			},
+		},
+	}
+}
+
+// callLogEntryFor parses the JSONL buffer and returns the first entry whose
+// tool and via match. Fails the test when absent.
+func callLogEntryFor(t *testing.T, buf *bytes.Buffer, tool, via string) map[string]any {
+	t.Helper()
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("call-log line not JSON: %v (line=%q)", err, line)
+		}
+		gotVia, _ := entry["via"].(string)
+		if entry["tool"] == tool && gotVia == via {
+			return entry
+		}
+	}
+	t.Fatalf("no call-log entry for tool=%q via=%q in: %s", tool, via, buf.String())
+	return nil
+}
+
+// TestBrief_ClaimsAttachedReachesCallLog is D1-2's real evidence
+// (docs/plans/expert-depth.md): the claims-block hit-rate instrument is the
+// JSONL call log, not the tool result — so the assertion must be on the
+// LOGGED row. Covers all three write paths: the top-level dispatch
+// (loggedToolsCall, which reads the field back out of the wrapped MCP
+// content envelope), the batch sub-call path (logSub, which reads the raw
+// handler result map), and the truncated-brief path (whose result shape
+// used to drop the field, logging a claims-serving truncated brief as
+// claims_attached:0 and silently poisoning D1's 30-day kill clock).
+func TestBrief_ClaimsAttachedReachesCallLog(t *testing.T) {
+	briefArgs := map[string]any{"service": "svc", "symbols": []string{"Handler"}}
+
+	t.Run("top_level", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend("Sort all exported slice results."), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1520, Method: "tools/call",
+			Params: map[string]any{"name": "brief", "arguments": briefArgs},
+		})
+		if _, ok := xtraPayload(t, resp)["claims_attached"].(float64); !ok {
+			t.Fatal("result payload missing claims_attached (fixture broken?)")
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
+
+	t.Run("via_batch", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend("Sort all exported slice results."), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1521, Method: "tools/call",
+			Params: map[string]any{
+				"name": "batch",
+				"arguments": map[string]any{
+					"calls": []map[string]any{{"name": "brief", "arguments": briefArgs}},
+				},
+			},
+		})
+		if resp["error"] != nil {
+			t.Fatalf("unexpected error: %v", resp["error"])
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "batch")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("batch sub-call logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
+
+	t.Run("truncated", func(t *testing.T) {
+		// A 500-char rule blows the budget INSIDE the claims section: the
+		// header + symbol line (~130 bytes) fit under charBudget (=budget*4
+		// = 200), the claims block does not — exercising the truncation
+		// return specifically, not an earlier-section truncation where zero
+		// claims were genuinely attached.
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend(strings.Repeat("x", 500)), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1522, Method: "tools/call",
+			Params: map[string]any{
+				"name":      "brief",
+				"arguments": map[string]any{"service": "svc", "symbols": []string{"Handler"}, "budget": 50},
+			},
+		})
+		p := xtraPayload(t, resp)
+		brief, _ := p["brief"].(string)
+		if !strings.Contains(brief, "truncated") {
+			t.Fatalf("expected a truncated brief (fixture sizing broke), got: %q", brief)
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("truncated brief logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
+}
+
+// TestBrief_NoClaims_Unchanged: a backend that serves obligations but has no
+// claims scoped to the resolved paths must leave the brief output IDENTICAL
+// to the pre-D1 shape — no empty "Governing claims" section, no
+// claims_attached field.
+func TestBrief_NoClaims_Unchanged(t *testing.T) {
+	be := &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		// obligationsByFile intentionally nil/empty: no claims for pkg/h.go.
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1512, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "brief",
+			"arguments": map[string]any{"service": "svc", "symbols": []string{"Handler"}},
+		},
+	})
+	p := xtraPayload(t, resp)
+	brief, ok := p["brief"].(string)
+	if !ok {
+		t.Fatalf("brief: field missing: %v", p)
+	}
+	if strings.Contains(brief, "Governing claims") {
+		t.Errorf("brief: expected no claims section when nothing matches, got: %q", brief)
+	}
+	if _, present := p["claims_attached"]; present {
+		t.Errorf("claims_attached should be absent when zero claims attached, got: %v", p["claims_attached"])
 	}
 }
 

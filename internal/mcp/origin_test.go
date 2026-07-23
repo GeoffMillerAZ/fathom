@@ -25,7 +25,7 @@ func TestWithOrigin_RoundTripAndLogEntry(t *testing.T) {
 	// The logger records origin in the JSONL entry (GI-6).
 	var buf bytes.Buffer
 	l := NewCallLogger(&buf)
-	l.log("obligations", "fathom", "shared", "companion", "", "edit-hook", false, 42*time.Millisecond, nil)
+	l.log("obligations", "fathom", "shared", "companion", "", "edit-hook", false, 0, 42*time.Millisecond, nil)
 	var entry map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &entry); err != nil {
 		t.Fatalf("entry not JSON: %v", err)
@@ -35,7 +35,7 @@ func TestWithOrigin_RoundTripAndLogEntry(t *testing.T) {
 	}
 	// Agent-choice calls omit the field entirely.
 	buf.Reset()
-	l.log("find_symbol", "fathom", "shared", "", "", "", false, time.Millisecond, nil)
+	l.log("find_symbol", "fathom", "shared", "", "", "", false, 0, time.Millisecond, nil)
 	if strings.Contains(buf.String(), "origin") {
 		t.Errorf("empty origin must be omitted: %s", buf.String())
 	}

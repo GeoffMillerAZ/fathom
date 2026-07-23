@@ -7,9 +7,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -168,5 +170,168 @@ func TestObligationsIndexStale(t *testing.T) {
 	}
 	if !c.ObligationsIndexStale(ctx, "svc", "CLAUDE.md") {
 		t.Error("expected stale after editing CLAUDE.md on disk without re-ingest")
+	}
+}
+
+// TestSweepClaims_AnchorDeadRecordsRefuteEvent is D2-2 (docs/plans/
+// expert-depth.md): SweepClaims used to flip an anchor-dead claim's status
+// to contradicted silently. It must now ALSO leave a ClaimEvent{Verdict:
+// "refuted", Author:"sweep"} — the audit trail refutation durability needs,
+// matching what a human `fathom claim refute` / the obligations tool's
+// feedback action (D2-1) would leave. Seeds the claim directly against the
+// store (kept in scope alongside the Client, mirroring internal/semantic/
+// sweep_test.go's seedClaim helper) rather than through a live LLM compile —
+// this is a targeted test of SweepClaims' new behavior, not an end-to-end
+// compile test (TestSemanticEndToEnd already covers that path).
+func TestSweepClaims_AnchorDeadRecordsRefuteEvent(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	st := store.NewMemoryStore()
+	conn := connector.NewLocalConnector()
+	c := client.New(conn, st)
+	defer c.Close()
+
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "svc", Path: dir}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+
+	docPath := filepath.Join(dir, "CLAUDE.md")
+	doc := []byte("# Rules\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(docPath, doc, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hash, ok := core.HashLines(doc, 3, 3)
+	if !ok {
+		t.Fatal("seed citation does not resolve")
+	}
+	claim := core.SemanticClaim{
+		ClaimID: "cl-anchor-dead", ServiceID: "svc",
+		Layer: "obligations", LayerVersion: "v1", Kind: "obligation",
+		Subject: "CLAUDE.md#s1", Rule: "Run tests before committing.",
+		Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+		Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+	}
+	links := []core.ClaimLink{{ClaimID: claim.ClaimID, Rel: core.RelCites, TargetRef: core.CiteRef("CLAUDE.md", 3, 3), TargetHash: hash}}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{claim}, links); err != nil {
+		t.Fatalf("PutClaims: %v", err)
+	}
+
+	// Anchor goes dead: the cited doc is deleted from disk.
+	if err := os.Remove(docPath); err != nil {
+		t.Fatal(err)
+	}
+
+	rep, err := c.SweepClaims(ctx, "svc")
+	if err != nil {
+		t.Fatalf("SweepClaims: %v", err)
+	}
+	if rep.Contradicted != 1 || rep.Flipped != 1 {
+		t.Fatalf("sweep report = %+v, want contradicted=1 flipped=1", rep)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", "")
+	if err != nil || len(claims) != 1 || claims[0].Status != core.ClaimContradicted {
+		t.Fatalf("claim status after sweep: err=%v claims=%+v, want 1 claim contradicted", err, claims)
+	}
+
+	events, err := st.ClaimEvents(ctx, claim.ClaimID)
+	if err != nil {
+		t.Fatalf("ClaimEvents: %v", err)
+	}
+	if len(events) != 1 {
+		t.Fatalf("expected 1 refute event, got %d: %+v", len(events), events)
+	}
+	if events[0].Verdict != "refuted" || events[0].Author != "sweep" {
+		t.Errorf("event = %+v, want verdict=refuted author=sweep", events[0])
+	}
+}
+
+// seedFeedbackClaim writes one minimal fresh claim directly against st, for
+// ClaimFeedback tests that don't need a real citation/scope.
+func seedFeedbackClaim(t *testing.T, st store.Store, service, claimID string) {
+	t.Helper()
+	claim := core.SemanticClaim{
+		ClaimID: claimID, ServiceID: service,
+		Layer: "obligations", LayerVersion: "v1", Kind: "obligation",
+		Subject: "CLAUDE.md#s1", Rule: "Run tests before committing.",
+		Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+		Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+	}
+	if err := st.PutClaims(context.Background(), []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatalf("seed PutClaims: %v", err)
+	}
+}
+
+// TestClaimFeedback_Refute is D2-1 (docs/plans/expert-depth.md): the
+// pkg/client write path behind the obligations tool's feedback action.
+// refute must append a ClaimEvent{Verdict:"refuted"} AND flip the claim's
+// status to core.ClaimRefuted — mirroring `fathom claim refute`
+// (cmd/fathom/claim.go) exactly.
+func TestClaimFeedback_Refute(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	seedFeedbackClaim(t, st, "svc", "cl-1")
+
+	if err := c.ClaimFeedback(ctx, "svc", "cl-1", "refute", "already fixed upstream", "alice"); err != nil {
+		t.Fatalf("ClaimFeedback: %v", err)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", "")
+	if err != nil || len(claims) != 1 || claims[0].Status != core.ClaimRefuted {
+		t.Fatalf("claims after refute: err=%v claims=%+v, want 1 claim refuted", err, claims)
+	}
+	events, err := st.ClaimEvents(ctx, "cl-1")
+	if err != nil || len(events) != 1 {
+		t.Fatalf("ClaimEvents: err=%v n=%d", err, len(events))
+	}
+	if events[0].Verdict != "refuted" || events[0].Author != "alice" || events[0].Note != "already fixed upstream" {
+		t.Errorf("event = %+v", events[0])
+	}
+}
+
+// TestClaimFeedback_CorroborateNeverPromotesStatus mirrors
+// cmd/fathom/claim.go's doctrine: corroboration is provenance, never
+// evidence-laundering — status and tier must be untouched.
+func TestClaimFeedback_CorroborateNeverPromotesStatus(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	seedFeedbackClaim(t, st, "svc", "cl-2")
+
+	if err := c.ClaimFeedback(ctx, "svc", "cl-2", "corroborate", "confirmed in review", ""); err != nil {
+		t.Fatalf("ClaimFeedback: %v", err)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", "")
+	if err != nil || len(claims) != 1 {
+		t.Fatalf("ClaimsForService: err=%v n=%d", err, len(claims))
+	}
+	if claims[0].Status != core.ClaimFresh {
+		t.Errorf("status = %q, want unchanged (fresh) — corroborate must never flip status", claims[0].Status)
+	}
+	if claims[0].Tier != core.TierDocClaimed {
+		t.Errorf("tier = %q, want unchanged", claims[0].Tier)
+	}
+	events, err := st.ClaimEvents(ctx, "cl-2")
+	if err != nil || len(events) != 1 || events[0].Verdict != "corroborated" {
+		t.Errorf("events = %+v, err=%v", events, err)
+	}
+}
+
+func TestClaimFeedback_Errors(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+	seedFeedbackClaim(t, st, "svc", "cl-3")
+
+	if err := c.ClaimFeedback(ctx, "svc", "cl-3", "delete", "x", ""); err == nil {
+		t.Error("unknown action: expected error")
+	}
+	if err := c.ClaimFeedback(ctx, "svc", "no-such-claim", "refute", "x", ""); err == nil {
+		t.Error("unknown claim: expected error")
 	}
 }

@@ -27,6 +27,20 @@ type semanticFakeBackend struct {
 	claimsSummary    map[string]any
 	claimsSummaryErr error
 	gotCompileLayer  string // records the layer name CompileLayer was called with
+
+	// ClaimFeedback (D2, docs/plans/expert-depth.md): records the call and
+	// returns feedbackErr.
+	feedbackErr        error
+	gotFeedbackService string
+	gotFeedbackClaimID string
+	gotFeedbackAction  string
+	gotFeedbackNote    string
+	gotFeedbackAuthor  string
+}
+
+func (s *semanticFakeBackend) ClaimFeedback(_ context.Context, service, claimID, action, note, author string) error {
+	s.gotFeedbackService, s.gotFeedbackClaimID, s.gotFeedbackAction, s.gotFeedbackNote, s.gotFeedbackAuthor = service, claimID, action, note, author
+	return s.feedbackErr
 }
 
 func (s *semanticFakeBackend) Obligations(_ context.Context, service, file string, _ int) (semantic.Obligations, error) {
@@ -131,6 +145,152 @@ func TestObligationsTool_BackendUnsupported(t *testing.T) {
 	}
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInvalid) {
 		t.Errorf("code = %v, want ErrCodeInvalid (%d)", code, mcp.ErrCodeInvalid)
+	}
+}
+
+// ─── obligations: feedback action (D2, docs/plans/expert-depth.md) ───────────
+// The obligations tool doubles as the refute/corroborate write path — the
+// already-hot channel, not a new tool.
+
+func TestObligationsFeedback_Refute(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 10, Method: "tools/call",
+		Params: map[string]any{
+			"name": "obligations",
+			"arguments": map[string]any{
+				"service": "svc", "action": "refute", "claim_id": "cl-1",
+				"note": "already fixed upstream", "author": "alice",
+			},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if payload["claim_id"] != "cl-1" || payload["action"] != "refute" {
+		t.Errorf("payload = %v", payload)
+	}
+	if fake.gotFeedbackService != "svc" || fake.gotFeedbackClaimID != "cl-1" ||
+		fake.gotFeedbackAction != "refute" || fake.gotFeedbackNote != "already fixed upstream" ||
+		fake.gotFeedbackAuthor != "alice" {
+		t.Errorf("backend not called with expected args: %+v", fake)
+	}
+}
+
+func TestObligationsFeedback_Corroborate(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 11, Method: "tools/call",
+		Params: map[string]any{
+			"name": "obligations",
+			"arguments": map[string]any{
+				"service": "svc", "action": "corroborate", "claim_id": "cl-2",
+				"note": "confirmed in review",
+			},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotFeedbackAction != "corroborate" {
+		t.Errorf("action = %q, want corroborate", fake.gotFeedbackAction)
+	}
+}
+
+func TestObligationsFeedback_InvalidAction(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 12, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "action": "delete", "claim_id": "cl-3", "note": "x"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want ErrCodeParams (%d)", code, mcp.ErrCodeParams)
+	}
+}
+
+func TestObligationsFeedback_MissingClaimID(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 13, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "action": "refute", "note": "x"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want ErrCodeParams (%d)", code, mcp.ErrCodeParams)
+	}
+}
+
+func TestObligationsFeedback_MissingNote(t *testing.T) {
+	fake := &semanticFakeBackend{}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 14, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "action": "refute", "claim_id": "cl-4"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want ErrCodeParams (%d)", code, mcp.ErrCodeParams)
+	}
+}
+
+func TestObligationsFeedback_BackendUnsupported(t *testing.T) {
+	srv := mcp.NewServer(&fakeBackend{})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 15, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "action": "refute", "claim_id": "cl-5", "note": "x"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInvalid) {
+		t.Errorf("code = %v, want ErrCodeInvalid (%d)", code, mcp.ErrCodeInvalid)
+	}
+}
+
+func TestObligationsFeedback_BackendError(t *testing.T) {
+	fake := &semanticFakeBackend{feedbackErr: fmt.Errorf("claim %q not found", "cl-6")}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 16, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc", "action": "refute", "claim_id": "cl-6", "note": "x"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInternal) {
+		t.Errorf("code = %v, want ErrCodeInternal (%d)", code, mcp.ErrCodeInternal)
 	}
 }
 
