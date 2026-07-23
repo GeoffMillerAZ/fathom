@@ -29,4 +29,4 @@ Design (normative):
 - [ ] claims-block hit-rate visible per call-log row (claims_attached count field) {id: D1-2, symbol: registerBrief, package: internal/mcp, skip_test: true, skip: "log-field addition exercised by D1-1's test fixtures; the log schema has no independent anchor"}
 - [ ] obligations tool feedback action writing claim_events; contract-suite round-trip for the event write across all store backends {id: D2-1, symbol: PutClaimEvent, package: internal/store}
 - [ ] Sweep records refute events (not just status flips) for anchor-dead claims; test proves event trail + refutation durability together {id: D2-2, symbol: SweepClaims, package: pkg/client}
-- [ ] compile refuses un-evaled layers; --unsafe-skip-eval-gate logged into compile_runs; tests cover refusal, override, and logging {id: D3-1, symbol: cmdCompile, package: cmd/fathom}
+- [x] compile refuses un-evaled layers; --unsafe-skip-eval-gate logged into compile_runs; tests cover refusal, override, and logging {id: D3-1, symbol: cmdCompile, package: cmd/fathom}
