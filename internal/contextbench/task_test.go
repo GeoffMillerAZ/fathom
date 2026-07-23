@@ -85,6 +85,19 @@ func TestTaskValidate(t *testing.T) {
 			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, ScoringRule: "sort-of"},
 			wantErr: true,
 		},
+		{
+			name: "absent class is valid (back-compat with the grep-native B1 corpus)",
+			task: Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, ScoringRule: AllOf},
+		},
+		{
+			name: "known class is valid",
+			task: Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, ScoringRule: AllOf, Class: ClassObligations},
+		},
+		{
+			name:    "unknown class is invalid",
+			task:    Task{ID: "T1", Prompt: "p", GroundTruth: []string{"a"}, ScoringRule: AllOf, Class: "not-a-real-class"},
+			wantErr: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

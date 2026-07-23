@@ -50,10 +50,30 @@ const (
 	AnyOf      ScoringRule = "any-of"
 )
 
+// TaskClass names the index-native capability a home-turf task exercises
+// (docs/plans/home-bench.md H1-1). It is optional and absent throughout the
+// original grep-native B1 corpus (testdata/contextbench/tasks.json, every
+// task there is by construction grep-answerable); the home-turf corpus
+// (testdata/contextbench/tasks-home.json) populates it on every task so the
+// mix across fathom's governance/enforcement surfaces is machine-checkable,
+// not just asserted in prose.
+type TaskClass string
+
+const (
+	ClassObligations     TaskClass = "obligations"
+	ClassVerify          TaskClass = "verify"
+	ClassBlastRadius     TaskClass = "blast_radius"
+	ClassClaimProvenance TaskClass = "claim_provenance"
+	ClassConcernSearch   TaskClass = "concern_search"
+	ClassContradiction   TaskClass = "contradiction"
+	ClassStaleness       TaskClass = "staleness"
+)
+
 // Task is one context-bench prompt: a question with a falsifiable answer.
 type Task struct {
 	ID          string      `json:"id"`
 	Category    string      `json:"category,omitempty"`
+	Class       TaskClass   `json:"class,omitempty"`
 	Prompt      string      `json:"prompt"`
 	GroundTruth []string    `json:"ground_truth"`
 	ScoringRule ScoringRule `json:"scoring_rule"`
@@ -89,6 +109,12 @@ func (t Task) Validate() error {
 		// any non-empty ground_truth list is valid
 	default:
 		return fmt.Errorf("task %s: unknown scoring_rule %q (want exact-match, all-of, or any-of)", t.ID, t.ScoringRule)
+	}
+	switch t.Class {
+	case "", ClassObligations, ClassVerify, ClassBlastRadius, ClassClaimProvenance, ClassConcernSearch, ClassContradiction, ClassStaleness:
+		// unset is valid (back-compat with the B1 corpus); a recognized class is valid
+	default:
+		return fmt.Errorf("task %s: unknown class %q (want one of obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness)", t.ID, t.Class)
 	}
 	return nil
 }
