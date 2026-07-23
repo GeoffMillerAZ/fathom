@@ -36,6 +36,38 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   solving the same lock problem for refreshes.
 - **Status:** open; documented v0 trade-off.
 
+### O10 — relative corpus paths at the ingest boundary: typed edges silently absent + a daemon cross-refresh hazard — FIXED
+
+- **Symptom:** rehearsing the ADR-020 store migration (2026-07-22), a CLI
+  `ingest --service fathom --path . --store <fresh>.sqlite` produced 4723
+  symbols and **0 typed edges — no error, no counter, no stderr** — while
+  `TestTypedEdges_PerformanceGate` over the same tree produced 9236.
+- **Root cause 1 (typed edges):** the connector-scope filter rel-maps
+  go/packages' absolute file positions against `repoPath`; `filepath.Rel`
+  errors on a relative base, so `repoRelSlash` fell back to the absolute
+  path, which never matches the repo-relative allowed set → every package
+  skipped. The CLI never printed the typed counters, so `PackagesTotal=215,
+  processed=0` was invisible (probe: the perf test passes an absolute
+  fixture root — the only difference).
+- **Root cause 2 (worse, latent):** `ServiceMeta.Path` was recorded verbatim,
+  so `--path .` (the CLI default AND both repos' post-commit hooks) records
+  `"."` — which the daemon resolves from **its own** working directory on
+  auto-refresh. The kit's hook would refresh the fathom corpus under the
+  `agentic-kit` service ID. Latent only because DuckDB's single-writer lock
+  made those hook ingests always fail while the daemon ran; ADR-020's WAL
+  store would have activated it on migration day.
+- **Fix (commit with this entry):** `EnrichTypedEdges` normalizes `repoPath`
+  to absolute at entry (`TestEnrichTypedEdges_RelativeRepoPath`); the
+  pipeline records `ServiceMeta.Path` absolute
+  (`TestIngest_ServiceMetaPathAbsolute`); a never-silent stderr guard fires
+  when go/packages sees packages but the scope filter excludes all of them;
+  `cmd/fathom ingest` prints the typed-edge counters; both repos' hooks pass
+  `--path "$PWD"`.
+- **Lesson:** a "best-effort, never blocks" pass still owes a *visible*
+  zero — the counters existed in `fusion.Report` and died unprinted at the
+  CLI boundary. And rehearse operator runbooks against real data: this was
+  found only because the migration was rehearsed on a scratch copy first.
+
 ### O9 — test_reaches recall residue after H1: aliased external-test calls and re-ambiguated methods
 
 - **Symptom:** first HTTP-mode run of the re-armed gate on the restarted daemon

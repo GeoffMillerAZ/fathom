@@ -674,3 +674,54 @@ func TestIngest_SelfHealsLegacyAbsoluteAnchors(t *testing.T) {
 		t.Error("second ingest purged again; self-heal must be one-shot")
 	}
 }
+
+// Regression (store-migration rehearsal, 2026-07-22): ServiceMeta.Path must
+// be recorded ABSOLUTE even when the caller passes a relative corpus root —
+// the CLI's --path "." default and sibling-repo post-commit hooks both do.
+// A relatively-recorded path is resolved against the DAEMON's working
+// directory on auto-refresh, so for any service ingested from a different
+// CWD it would re-ingest the wrong corpus under that service ID. (Latent
+// until ADR-020: under DuckDB's single-writer lock those hook ingests always
+// failed while the daemon was up; SQLite WAL lets them succeed.)
+func TestIngest_ServiceMetaPathAbsolute(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "svc.go"), "package svc\n\nfunc A() {}\n")
+	t.Chdir(root)
+
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "relative-svc", Path: "."}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	meta, found, err := st.GetServiceMeta(ctx, "relative-svc")
+	if err != nil || !found {
+		t.Fatalf("GetServiceMeta: found=%v err=%v", found, err)
+	}
+	if !filepath.IsAbs(meta.Path) {
+		t.Errorf("ServiceMeta.Path = %q, want an absolute path", meta.Path)
+	}
+}
+
+// The empty-path case must STAY empty (critic F3 on the absolute-path fix):
+// remote/faux services carry no local corpus root, and filepath.Abs("")
+// returns the ingesting process's CWD — recording that would point the
+// daemon's auto-refresh at an unrelated repo and report permanent drift.
+// Auto-refresh treats "" as "skip", which is the honest behavior.
+func TestIngest_ServiceMetaPathEmptyStaysEmpty(t *testing.T) {
+	conn := connector.NewFauxConnector()
+	st := store.NewMemoryStore()
+	p := fusion.New(conn, st, defaultCfg())
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "empty-path-svc", Path: ""}); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	meta, found, err := st.GetServiceMeta(ctx, "empty-path-svc")
+	if err != nil {
+		t.Fatalf("GetServiceMeta: %v", err)
+	}
+	if found && meta.Path != "" {
+		t.Errorf("ServiceMeta.Path = %q, want empty for a path-less service", meta.Path)
+	}
+}

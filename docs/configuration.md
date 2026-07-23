@@ -292,6 +292,11 @@ running during the migration — it holds the DuckDB store open, and
 `migrate-store` opens the source read-only (a held write lock fails the
 open with a message pointing back here).
 
+**Executable form:** `bash scripts/migrate-fleet-store.sh` runs every step
+below (plus the daemon-binary install to `~/.local/libexec/fathom/` and
+post-restart verification) from a real terminal in one shot. The manual
+steps remain the reference.
+
 ```sh
 # 1. Stop the daemon (launchd label may differ; see your plist).
 launchctl bootout gui/$(id -u)/com.geoffmilleraz.fathom-http

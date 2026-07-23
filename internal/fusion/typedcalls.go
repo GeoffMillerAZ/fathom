@@ -172,6 +172,13 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q failed to load: %v — syntax-only edges remain the baseline\n", svc.ID, err)
 	case rep.PackagesFailed > 0:
 		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal)
+	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
+		// Never-silent guard: go/packages saw packages but the connector-
+		// scope filter excluded every one of them. Legitimate only when the
+		// ignore rules really do exclude all Go source; otherwise it is a
+		// path-mapping bug of exactly the kind the relative-repoPath
+		// regression was (see TestEnrichTypedEdges_RelativeRepoPath).
+		fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
 	}
 	return rep
 }
@@ -199,6 +206,16 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath string, allowed map[string]bool) (TypedEdgeReport, error) {
 	start := time.Now()
 	var report TypedEdgeReport
+
+	// Normalize repoPath to absolute FIRST: allowed-set membership rel-maps
+	// go/packages' absolute file positions against repoPath, and
+	// filepath.Rel errors on a relative base — before this normalization a
+	// relative repoPath (the CLI's --path "." default, or a ServiceMeta
+	// path recorded as ".") made every package silently fail the filter:
+	// zero edges, zero failures, zero stderr.
+	if abs, absErr := filepath.Abs(repoPath); absErr == nil {
+		repoPath = abs
+	}
 
 	fset := token.NewFileSet()
 	cfg := &packages.Config{

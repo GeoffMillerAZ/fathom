@@ -569,9 +569,23 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 				commit = wm
 			}
 		}
+		// Record the corpus root ABSOLUTE: auto-refresh, staleness_report,
+		// and the ingest MCP tool all resolve this path from the DAEMON's
+		// working directory — a relative path recorded from some other CWD
+		// (CLI --path "." default, sibling-repo post-commit hooks) would
+		// make the daemon refresh the wrong corpus under this service ID.
+		// An EMPTY path stays empty: remote/faux services have no local
+		// corpus root, and Abs("") would record the ingesting process's
+		// CWD — auto-refresh treats "" as "skip", which is the truth.
+		metaPath := svc.Path
+		if metaPath != "" {
+			if abs, absErr := filepath.Abs(metaPath); absErr == nil {
+				metaPath = abs
+			}
+		}
 		meta := store.ServiceMeta{
 			ServiceID:     svc.ID,
-			Path:          svc.Path,
+			Path:          metaPath,
 			IndexedCommit: commit,
 			IndexedAt:     time.Now().UnixNano(),
 		}

@@ -56,19 +56,26 @@ pre-push:
 #  1. rebuild-binary — when a commit touched Go source, rebuild bin/fathom so the
 #     on-disk binary tracks HEAD. Without this, a query-engine fix is committed but
 #     bin/fathom stays stale for days and every consumer serves old logic (the
-#     2026-06 staleness finding — docs/dogfood-observations.md). A running serve-mcp
-#     process still needs a restart to load the new binary; this keeps the binary
-#     itself honest so the next start is current.
-#  2. fathom-refresh — re-index fathom into the fleet store with the fresh binary.
-#     Fails silently when a live MCP server holds the DuckDB write lock (sessions
-#     refresh via the MCP `ingest` tool instead).
+#     2026-06 staleness finding — docs/dogfood-observations.md). A failed rebuild
+#     is REPORTED, never silent: a silently-stale binary is exactly the failure
+#     this hook exists to prevent (2026-07-22: the rebuild failed silently for
+#     days on a full disk and nothing said so). Note the daemon runs an
+#     INSTALLED copy, not bin/fathom — deploying is a deliberate step (see
+#     docs/configuration.md).
+#  2. fathom-refresh — re-index fathom into the fleet store with the fresh
+#     binary. --path must be ABSOLUTE: the recorded ServiceMeta path is what
+#     the daemon resolves on auto-refresh. Concurrent daemon writes are fine
+#     on the SQLite WAL store (ADR-020); errors stay non-blocking.
 post-commit:
   commands:
     rebuild-binary:
       run: |
         git diff-tree --no-commit-id --name-only -r HEAD | grep -q '\.go$' || exit 0
-        go build -o bin/fathom ./cmd/fathom >/dev/null 2>&1 || true
+        if ! go build -o bin/fathom ./cmd/fathom >/dev/null 2>&1; then
+          echo "post-commit: bin/fathom rebuild FAILED — the binary is now STALE vs HEAD." >&2
+          echo "  disk-full class? retry with an external build tmp:  GOTMPDIR=<big-disk>/tmp/gobuild go build -o bin/fathom ./cmd/fathom" >&2
+        fi
     fathom-refresh:
       run: |
         [ -x bin/fathom ] || exit 0
-        bin/fathom ingest --service fathom --path . --store workspace/db/fleet.sqlite >/dev/null 2>&1 || true
+        bin/fathom ingest --service fathom --path "$PWD" --store workspace/db/fleet.sqlite >/dev/null 2>&1 || true

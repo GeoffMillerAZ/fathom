@@ -154,12 +154,16 @@ rest of the fleet):**
 - **Staleness — two kinds.** *Data* staleness is handled automatically:
   `serve-http` re-ingests a service on git-HEAD drift before answering
   (`--auto-refresh`, default on), and you can force it via the `ingest` MCP tool.
-  *Binary* staleness is the one to watch — the daemon runs a built binary, so a
-  committed Go fix doesn't reach it until `bin/fathom` is rebuilt **and** the
-  daemon restarted (`launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http`).
-  The `post-commit` hook rebuilds `bin/fathom` on Go changes; if a tool
-  misbehaves, compare `fathom version` to `git rev-parse HEAD` — a mismatch
-  means stale, not buggy.
+  *Binary* staleness is the one to watch — the daemon runs an **installed
+  copy** at `~/.local/libexec/fathom/fathom` (never `bin/fathom` directly, so
+  a post-commit rebuild can't swap the running daemon's binary out from under
+  launchd). A committed Go fix reaches the daemon only after a deliberate
+  deploy: `cp bin/fathom ~/.local/libexec/fathom/fathom && launchctl
+  kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http` — run from a real
+  terminal (a new binary has a new TCC code hash; answer the removable-volume
+  dialog with Allow if the start hangs). The `post-commit` hook rebuilds
+  `bin/fathom` on Go changes; if a tool misbehaves, compare `fathom version`
+  to `git rev-parse HEAD` — a mismatch means stale, not buggy.
 - **Rebuilding the fleet index.** If the index is stale despite auto-refresh,
   has duplicate/path-like services, or is bloated (originally ingested without
   `.fathomignore`), rebuild it cleanly with `scripts/reingest-fleet.sh` (run

@@ -84,5 +84,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if report.ClassifiedZero > 0 {
 		fmt.Fprintf(stdout, "classified-but-zero-symbols: %d\n", report.ClassifiedZero)
 	}
+	// Typed-edge counters (ADR-021 §3), non-zero-only like the above: their
+	// absence for a Go service is a signal (the silent relative-path no-op
+	// was invisible precisely because the CLI never printed these).
+	if report.TypedPackages > 0 || report.TypedPackagesFailed > 0 {
+		fmt.Fprintf(stdout, "typed-edges: %d pkg(s) (%d failed), %d direct / %d iface-dispatch / %d unresolved\n",
+			report.TypedPackages, report.TypedPackagesFailed,
+			report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
+	}
 	return 0
 }

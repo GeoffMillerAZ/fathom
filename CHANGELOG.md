@@ -1,9 +1,31 @@
 # Changelog
 
-All notable changes to sextant. Format loosely follows
+All notable changes to fathom. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); dates are ISO-8601.
 
 ## [Unreleased]
+
+### Fixed — relative corpus paths at the ingest boundary (dogfood O10, 2026-07-22)
+- **Typed edges silently absent for relative `--path`** (the CLI default
+  `.`): the connector-scope filter rel-mapped absolute go/packages file
+  positions against a relative `repoPath`, so every package was excluded —
+  zero edges, zero failures, zero output. `EnrichTypedEdges` now normalizes
+  `repoPath` to absolute at entry; a never-silent stderr guard reports the
+  "packages seen but all excluded" condition; `cmd/fathom ingest` prints the
+  typed-edge counters (their absence was invisible precisely because it
+  didn't).
+- **`ServiceMeta.Path` recorded verbatim-relative**: `--path .` from a
+  sibling repo's post-commit hook would be resolved from the DAEMON's
+  working directory on auto-refresh — refreshing the wrong corpus under that
+  service ID. The pipeline now records the corpus root absolute. Both repos'
+  post-commit hooks pass `--path "$PWD"` (agentic-kit 55ef7cf).
+- **Operational**: `scripts/migrate-fleet-store.sh` — the executable form of
+  the ADR-020 DuckDB→SQLite runbook (stop → quarantine the mismatched
+  same-stem file → migrate → full re-ingest → install the daemon binary to
+  `~/.local/libexec/fathom/` → repoint the plist, with `go` on the daemon
+  PATH for typed enrichment → restart → verify → stamp the SS-8/XT-6b bake
+  clocks). The daemon now runs an installed copy, decoupled from post-commit
+  rebuilds of `bin/fathom`.
 
 ### Added — tree-sitter extraction engine: wazero/WASM (ADR-021 §4, docs/plans/extraction-treesitter.md)
 - **`internal/extractor/tsengine`**: a pure-Go tree-sitter execution engine —

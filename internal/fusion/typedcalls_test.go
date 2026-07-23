@@ -324,3 +324,44 @@ func equalStrSlices(a, b []string) bool {
 	}
 	return true
 }
+
+// Regression (found rehearsing the ADR-020 store migration, 2026-07-22):
+// EnrichTypedEdges must work when repoPath is RELATIVE — the CLI's default
+// --path "." and a ServiceMeta path recorded as "." both reach the pass this
+// way. filepath.Rel with a relative base and an absolute target errors, so
+// repoRelSlash fell back to the ABSOLUTE file path, which never matches the
+// repo-relative allowed set — every package silently skipped: zero edges,
+// zero failures, zero stderr. The fix normalizes repoPath to absolute at
+// entry; this test pins it with the pipeline-shaped non-nil allowed set.
+func TestEnrichTypedEdges_RelativeRepoPath(t *testing.T) {
+	abs := typedFixtureDir(t)
+	t.Chdir(abs)
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// Repo-relative forward-slash .go paths, exactly as the pipeline builds
+	// them from the Discover set.
+	names, err := filepath.Glob(filepath.Join(abs, "*.go"))
+	if err != nil || len(names) == 0 {
+		t.Fatalf("globbing fixture .go files: %v (n=%d)", err, len(names))
+	}
+	allowed := make(map[string]bool, len(names))
+	for _, n := range names {
+		allowed[filepath.Base(n)] = true
+	}
+
+	report, err := fusion.EnrichTypedEdges(ctx, st, "typedfixture", ".", allowed)
+	if err != nil {
+		t.Fatalf("EnrichTypedEdges with relative repoPath: %v", err)
+	}
+	if report.PackagesLoaded == 0 {
+		t.Fatalf("PackagesLoaded = 0 with relative repoPath — allowed-set filter dropped every package (report: total=%d failed=%d)", report.PackagesTotal, report.PackagesFailed)
+	}
+	edges, err := st.TypedEdges(ctx, "typedfixture")
+	if err != nil {
+		t.Fatalf("TypedEdges: %v", err)
+	}
+	if len(edges) == 0 {
+		t.Fatal("TypedEdges returned no edges with relative repoPath")
+	}
+}

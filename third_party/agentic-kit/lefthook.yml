@@ -62,9 +62,12 @@ pre-push:
         done
         exit $rc
 
-# Best-effort fleet-index refresh (fathom, né sextant). Fails silently when
-# the fathom daemon holds the DuckDB write lock — sessions refresh through
-# the MCP `ingest` tool instead (see CLAUDE.md).
+# Best-effort fleet-index refresh (fathom, né sextant). Non-blocking on
+# error; concurrent daemon writes are fine on the SQLite WAL store (fathom
+# ADR-020). --path must be ABSOLUTE ("$PWD"): the recorded ServiceMeta path
+# is what the fathom DAEMON resolves from its own working directory on
+# auto-refresh — a relative "." recorded here would make the daemon refresh
+# the fathom repo under the agentic-kit service ID.
 #
 # Same rename-resilient resolution as fathom-verify above, plus the
 # older bin/sextant name as a last-resort fallback. The ingest store path is
@@ -83,4 +86,6 @@ post-commit:
         fi
         [ -x "$FATHOM" ] || exit 0
         DOWNSTREAM="${FATHOM%/bin/*}"
-        "$FATHOM" ingest --service agentic-kit --path . --store "$DOWNSTREAM/workspace/db/fleet.duckdb" >/dev/null 2>&1 || true
+        STORE="$DOWNSTREAM/workspace/db/fleet.sqlite"
+        [ -e "$STORE" ] || STORE="$DOWNSTREAM/workspace/db/fleet.duckdb"
+        "$FATHOM" ingest --service agentic-kit --path "$PWD" --store "$STORE" >/dev/null 2>&1 || true
