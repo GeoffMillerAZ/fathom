@@ -201,7 +201,8 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     ran_at             BIGINT  NOT NULL DEFAULT 0,
     refused            BOOLEAN NOT NULL DEFAULT FALSE,
     refusal_reason     TEXT    NOT NULL DEFAULT '',
-    budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE
+    budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE,
+    escape_note        TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
@@ -985,8 +986,8 @@ INSERT INTO compile_runs
     (run_id, service_id, layer, corpus_watermark, model, prompt_version,
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
      sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
-     refused, refusal_reason, budget_stopped)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     refused, refusal_reason, budget_stopped, escape_note)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
@@ -994,7 +995,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		run.SectionsTotal, run.SectionsCompiled, run.SectionsFailed,
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
-		run.Refused, run.RefusalReason, run.BudgetStopped,
+		run.Refused, run.RefusalReason, run.BudgetStopped, run.Escape,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: %w", err)
@@ -1008,7 +1009,7 @@ func (s *SQLiteStore) CompileRuns(ctx context.Context, serviceID, layer string) 
 	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
 	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
-	refused, refusal_reason, budget_stopped`
+	refused, refusal_reason, budget_stopped, escape_note`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1044,7 +1045,7 @@ ORDER BY ran_at DESC, run_id
 			&r.TokensIn, &r.TokensOut, &r.CostUSD, &r.DurationMS,
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
-			&r.Refused, &r.RefusalReason, &r.BudgetStopped,
+			&r.Refused, &r.RefusalReason, &r.BudgetStopped, &r.Escape,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)
 		}

@@ -19,6 +19,11 @@ corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
 prompt_version: "obligations/content-addressed"
 prompt_file:    "schema/semantic/layers/obligations/prompt.md"
 tier:           "doc-claimed"
+// eval/RESULTS.md: original ADR-016 baseline gate pass (the admission
+// record); a later production-model re-check found recall unstable around
+// the 0.75 bar (0.71/0.86) and is escalated as a pre-OP-6 input, not a
+// gate failure of this record — see eval/RESULTS.md's PRE-OP-6 SIGNAL entry.
+evaled: true
 budgets: {
 	max_tokens_per_run: 200000
 	max_usd_per_run:    1.0

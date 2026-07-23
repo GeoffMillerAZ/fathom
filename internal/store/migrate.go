@@ -411,7 +411,7 @@ func allCompileRuns(ctx context.Context, db *sql.DB) ([]core.CompileRun, error) 
 	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
 	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
-	refused, refusal_reason, budget_stopped`
+	refused, refusal_reason, budget_stopped, escape_note`
 	rows, err := db.QueryContext(ctx, `SELECT `+cols+` FROM compile_runs ORDER BY service_id, ran_at DESC, run_id`)
 	if err != nil {
 		return nil, fmt.Errorf("allCompileRuns query: %w", err)
@@ -429,7 +429,7 @@ func allCompileRuns(ctx context.Context, db *sql.DB) ([]core.CompileRun, error) 
 			&r.TokensIn, &r.TokensOut, &r.CostUSD, &r.DurationMS,
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
-			&r.Refused, &r.RefusalReason, &r.BudgetStopped,
+			&r.Refused, &r.RefusalReason, &r.BudgetStopped, &r.Escape,
 		); err != nil {
 			return nil, fmt.Errorf("allCompileRuns scan: %w", err)
 		}

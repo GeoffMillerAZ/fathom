@@ -84,6 +84,14 @@ type LayerDef struct {
 	Tier        string
 	TierProfile string
 
+	// Evaled declares whether this pack has a passing eval/RESULTS.md on
+	// record (schema.cue #Layer.evaled's doc comment) — self-declared data,
+	// since eval/ is deliberately excluded from the embedded pack mirror and
+	// so isn't runtime-inspectable for built-in packs. `fathom compile`
+	// refuses a non-dry-run compile of an evaled:false layer unless
+	// --unsafe-skip-eval-gate overrides it (D3-1, docs/plans/expert-depth.md).
+	Evaled bool
+
 	Budgets LayerBudgets
 	Serving LayerServing
 }
@@ -126,6 +134,7 @@ type cueLayer struct {
 	PromptFile    string `json:"prompt_file"`
 	Tier          string `json:"tier"`
 	TierProfile   string `json:"tier_profile"`
+	Evaled        bool   `json:"evaled"`
 	Budgets       struct {
 		MaxTokensPerRun  int     `json:"max_tokens_per_run"`
 		MaxUSDPerRun     float64 `json:"max_usd_per_run"`
@@ -284,6 +293,7 @@ func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, cuePath, d
 		PromptText:    promptText,
 		Tier:          cl.Tier,
 		TierProfile:   cl.TierProfile,
+		Evaled:        cl.Evaled,
 		Budgets: LayerBudgets{
 			MaxTokensPerRun:  cl.Budgets.MaxTokensPerRun,
 			MaxUSDPerRun:     cl.Budgets.MaxUSDPerRun,

@@ -74,6 +74,17 @@ func (c *Client) ObligationsIndexStale(ctx context.Context, service, file string
 // returns an error directing the caller to configure ANTHROPIC_API_KEY or run
 // with dry_run:true.
 func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dryRun bool) (core.CompileRun, error) {
+	return c.CompileLayerWithEscape(ctx, service, layerName, dryRun, "")
+}
+
+// CompileLayerWithEscape is CompileLayer with an audit note attached: when a
+// caller's own pre-flight guard (the idempotency guard's --force, A2-1, or
+// the eval-gate's --unsafe-skip-eval-gate, D3-1 — both cmd/fathom compile.go)
+// let a would-be-refused compile proceed anyway, escape names why. It flows
+// into the recorded CompileRun.Escape field — the durable "logged into
+// compile_runs" audit trail both flags' kill criteria count against. Pass ""
+// for a normal run (CompileLayer's contract, unchanged).
+func (c *Client) CompileLayerWithEscape(ctx context.Context, service, layerName string, dryRun bool, escape string) (core.CompileRun, error) {
 	if !dryRun && c.llm == nil {
 		return core.CompileRun{}, fmt.Errorf("client: no LLM configured for CompileLayer (set ANTHROPIC_API_KEY and call WithLLM, or use dry_run:true to estimate cost)")
 	}
@@ -138,6 +149,7 @@ func (c *Client) CompileLayer(ctx context.Context, service, layerName string, dr
 		IndexedFiles: indexedFiles,
 		Watermark:    watermark,
 		DryRun:       dryRun,
+		Escape:       escape,
 	})
 }
 
