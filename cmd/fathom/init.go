@@ -16,9 +16,11 @@ import (
 
 // cmdInit implements the "init" subcommand: one-command, idempotent,
 // additive-only wiring of a repo into fathom's coding-agent story —
-// .fathomignore, a daemon ingest, Claude Code project hooks, and the
-// CLAUDE.md/AGENTS.md operating-contract stanza. See
-// docs/plans/init-and-adoption.md IA-1/IA-2/IA-3 and
+// .fathomignore, a daemon ingest, Claude Code project hooks, the
+// CLAUDE.md/AGENTS.md operating-contract stanza, and (opt-in,
+// --skills[=claude|codex|all]) the shipped fathom-plan/verify/onboard/
+// feedback agent skills (AK-1/AK-2, docs/plans/pack-taxonomy-adoption.md).
+// See docs/plans/init-and-adoption.md IA-1/IA-2/IA-3 and
 // docs/design/coding-agent-excellence.md §5.5.
 //
 // Every mutation is create-if-absent or marker-replace, so re-running init
@@ -32,7 +34,12 @@ import (
 //	    the service still has no symbols (operational; mirrors verify's
 //	    fail-open §5.3 doctrine — init must never look "broken" for a reason
 //	    that has nothing to do with the files it wrote)
-//	1 — never returned for an operational reason; init blocks nothing
+//	1 — never returned for an operational reason EXCEPT a --skills marker
+//	    conflict: a file already exists at a skill's target path and is not
+//	    fathom-owned (no fathom:owned marker) — a real, non-operational
+//	    problem the caller must resolve (rename/remove the file, or pick a
+//	    different skill name), so init refuses loudly rather than fail-open
+//	    or silently clobbering a human-authored file.
 func cmdInit(args []string, stdout, stderr io.Writer) int {
 	rpcOrigin = "init"
 	fs := newFlagSet("init", stderr)
@@ -40,7 +47,25 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
+	var skillsFlag optionalStringFlag
+	fs.Var(&skillsFlag, "skills", "install shipped agent skills (fathom-plan/verify/onboard/feedback): claude | codex | all (bare --skills = all; omit to skip)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	// Refuse positionals loudly. init takes none — and because --skills is
+	// bool-shaped (bracket-optional), the natural spelling `--skills claude`
+	// parses bare --skills as "all", STOPS flag parsing at the positional,
+	// and would otherwise silently discard "claude" (and every later flag,
+	// e.g. a following --path — scaffolding the wrong directory). Erroring
+	// here, before any writes, turns that first-contact trap into an
+	// immediate, self-explaining refusal.
+	if fs.NArg() > 0 {
+		fmt.Fprintf(stderr, "error: unexpected argument %q — did you mean --skills=%s?\n", fs.Arg(0), fs.Arg(0))
+		return 1
+	}
+	skillsMode, err := resolveSkillsMode(skillsFlag.value, skillsFlag.set)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 
@@ -117,8 +142,20 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// f. manual steps init cannot do for you.
+	// f. shipped agent skills (AK-2, docs/plans/pack-taxonomy-adoption.md):
+	// --skills[=claude|codex|all] only — omitted by default, so a caller who
+	// never asked for skills sees no new files.
+	if err := installSkills(root, skillsMode, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: installing skills: %v\n", err)
+		return 1
+	}
+
+	// g. manual steps init cannot do for you.
 	printManualSteps(stdout, svc, *url)
+	if skillsMode == "" {
+		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (fathom-plan/verify/onboard/feedback):")
+		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|all]")
+	}
 
 	return exitCode
 }
@@ -439,9 +476,16 @@ func fathomStanza(service string) string {
 }
 
 // applyStanza inserts stanza into path if the file is absent, replaces the
-// content between the markers if present, or appends the marked block if the
-// file exists but has never been wired. All three are additive/idempotent:
-// a re-run whose stanza content is unchanged rewrites nothing.
+// content between the markers if present, appends the marked block if the
+// file exists but has never been wired, or — AK-3,
+// docs/plans/pack-taxonomy-adoption.md — refuses loudly if the markers are
+// present but corrupted (only one of the pair found, or END appears before
+// BEGIN, e.g. from a hand-edit that deleted or reordered a marker line).
+// The three normal paths are additive/idempotent: a re-run whose stanza
+// content is unchanged rewrites nothing. The corruption path changes
+// nothing either — silently appending a fresh block on top of a broken
+// pair would compound the corruption (two BEGINs, an orphaned END, or
+// worse) instead of surfacing it for a human to fix.
 func applyStanza(path, stanza string, stdout io.Writer) error {
 	name := filepath.Base(path)
 
@@ -462,9 +506,13 @@ func applyStanza(path, stanza string, stdout io.Writer) error {
 	endIdx := strings.Index(content, fathomStanzaEnd)
 
 	var newContent string
-	if beginIdx >= 0 && endIdx > beginIdx {
+	switch {
+	case beginIdx >= 0 && endIdx > beginIdx:
+		// Well-formed marker pair — replace the content between them.
 		newContent = content[:beginIdx] + stanza + content[endIdx+len(fathomStanzaEnd):]
-	} else {
+
+	case beginIdx < 0 && endIdx < 0:
+		// Never wired — append a fresh block.
 		sep := "\n\n"
 		if strings.HasSuffix(content, "\n\n") {
 			sep = ""
@@ -472,6 +520,12 @@ func applyStanza(path, stanza string, stdout io.Writer) error {
 			sep = "\n"
 		}
 		newContent = content + sep + stanza + "\n"
+
+	default:
+		// Corrupted: exactly one marker present, or END appears at/before
+		// BEGIN. Refuse rather than guess.
+		return fmt.Errorf("%s has a corrupted fathom marker pair (found %s=%t, %s=%t) — fix or remove the stray marker by hand, then re-run init",
+			name, fathomStanzaBegin, beginIdx >= 0, fathomStanzaEnd, endIdx >= 0)
 	}
 
 	if newContent == content {
