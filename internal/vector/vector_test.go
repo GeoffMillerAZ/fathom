@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	vectorstore "github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/vector"
 )
@@ -25,31 +26,32 @@ func embed1(t *testing.T, e *embeddingclient.MockEmbedder, text string) embeddin
 }
 
 // -------------------------------------------------------------------
-// MemoryVectorStore — Upsert + Search
+// MemoryVectorStore (kit foundations/embedding/vector-store) — Upsert +
+// Search, exercised through the same shape sextant hands it (Meta carrying
+// symbol/file), pinning the behavior vector.SymbolIndexer depends on.
 // -------------------------------------------------------------------
 
 func TestMemoryVectorStore_UpsertAndSearchReturnsNearest(t *testing.T) {
 	mock := newMock()
-	ctx := context.Background()
 
-	store := vector.NewMemoryVectorStore()
+	store := vectorstore.NewMemoryVectorStore()
 
 	// Build three deterministic vectors.
 	vA := embed1(t, mock, "alpha")
 	vB := embed1(t, mock, "beta")
 	vC := embed1(t, mock, "gamma")
 
-	entries := []vector.Entry{
-		{ID: "a", Vector: vA, Symbol: "Alpha", File: "alpha.go"},
-		{ID: "b", Vector: vB, Symbol: "Beta", File: "beta.go"},
-		{ID: "c", Vector: vC, Symbol: "Gamma", File: "gamma.go"},
+	entries := []vectorstore.Entry{
+		{ID: "a", Vector: vA, Meta: map[string]string{"symbol": "Alpha", "file": "alpha.go"}},
+		{ID: "b", Vector: vB, Meta: map[string]string{"symbol": "Beta", "file": "beta.go"}},
+		{ID: "c", Vector: vC, Meta: map[string]string{"symbol": "Gamma", "file": "gamma.go"}},
 	}
-	if err := store.Upsert(ctx, entries); err != nil {
+	if err := store.Upsert(entries...); err != nil {
 		t.Fatalf("Upsert: %v", err)
 	}
 
 	// Query with the exact vector for "alpha" — should rank entry "a" first.
-	hits, err := store.Search(ctx, vA, 3)
+	hits, err := store.Search(vA, 3)
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -67,20 +69,19 @@ func TestMemoryVectorStore_UpsertAndSearchReturnsNearest(t *testing.T) {
 
 func TestMemoryVectorStore_TopNTruncation(t *testing.T) {
 	mock := newMock()
-	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
+	store := vectorstore.NewMemoryVectorStore()
 
 	vA := embed1(t, mock, "alpha")
 	vB := embed1(t, mock, "beta")
 	vC := embed1(t, mock, "gamma")
 
-	_ = store.Upsert(ctx, []vector.Entry{
-		{ID: "a", Vector: vA, Symbol: "A", File: "a.go"},
-		{ID: "b", Vector: vB, Symbol: "B", File: "b.go"},
-		{ID: "c", Vector: vC, Symbol: "C", File: "c.go"},
-	})
+	_ = store.Upsert(
+		vectorstore.Entry{ID: "a", Vector: vA, Meta: map[string]string{"symbol": "A", "file": "a.go"}},
+		vectorstore.Entry{ID: "b", Vector: vB, Meta: map[string]string{"symbol": "B", "file": "b.go"}},
+		vectorstore.Entry{ID: "c", Vector: vC, Meta: map[string]string{"symbol": "C", "file": "c.go"}},
+	)
 
-	hits, err := store.Search(ctx, vA, 2)
+	hits, err := store.Search(vA, 2)
 	if err != nil {
 		t.Fatalf("Search: %v", err)
 	}
@@ -93,19 +94,18 @@ func TestMemoryVectorStore_Determinism(t *testing.T) {
 	// Two separate stores loaded with the same data must return hits in the
 	// same order, and repeated searches on the same store must also agree.
 	mock := newMock()
-	ctx := context.Background()
 
 	vA := embed1(t, mock, "alpha")
 	vB := embed1(t, mock, "beta")
 	vC := embed1(t, mock, "gamma")
 
-	makeStore := func() *vector.MemoryVectorStore {
-		s := vector.NewMemoryVectorStore()
-		_ = s.Upsert(ctx, []vector.Entry{
-			{ID: "a", Vector: vA, Symbol: "A", File: "a.go"},
-			{ID: "b", Vector: vB, Symbol: "B", File: "b.go"},
-			{ID: "c", Vector: vC, Symbol: "C", File: "c.go"},
-		})
+	makeStore := func() *vectorstore.MemoryVectorStore {
+		s := vectorstore.NewMemoryVectorStore()
+		_ = s.Upsert(
+			vectorstore.Entry{ID: "a", Vector: vA, Meta: map[string]string{"symbol": "A", "file": "a.go"}},
+			vectorstore.Entry{ID: "b", Vector: vB, Meta: map[string]string{"symbol": "B", "file": "b.go"}},
+			vectorstore.Entry{ID: "c", Vector: vC, Meta: map[string]string{"symbol": "C", "file": "c.go"}},
+		)
 		return s
 	}
 
@@ -115,9 +115,9 @@ func TestMemoryVectorStore_Determinism(t *testing.T) {
 	s1 := makeStore()
 	s2 := makeStore()
 
-	h1, _ := s1.Search(ctx, queryVec, 3)
-	h2, _ := s2.Search(ctx, queryVec, 3)
-	h3, _ := s1.Search(ctx, queryVec, 3) // second call same store
+	h1, _ := s1.Search(queryVec, 3)
+	h2, _ := s2.Search(queryVec, 3)
+	h3, _ := s1.Search(queryVec, 3) // second call same store
 
 	for i := range h1 {
 		if h1[i].ID != h2[i].ID || h1[i].ID != h3[i].ID {
@@ -130,16 +130,15 @@ func TestMemoryVectorStore_Determinism(t *testing.T) {
 func TestMemoryVectorStore_IDTiebreak(t *testing.T) {
 	// Inject two identical vectors to force a tie in score; the one with the
 	// lexicographically smaller ID must rank first.
-	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
+	store := vectorstore.NewMemoryVectorStore()
 
 	v := embeddingclient.Vector{0.6, 0.8} // arbitrary unit-ish vector
-	_ = store.Upsert(ctx, []vector.Entry{
-		{ID: "zzz", Vector: v, Symbol: "Z", File: "z.go"},
-		{ID: "aaa", Vector: v, Symbol: "A", File: "a.go"},
-	})
+	_ = store.Upsert(
+		vectorstore.Entry{ID: "zzz", Vector: v, Meta: map[string]string{"symbol": "Z", "file": "z.go"}},
+		vectorstore.Entry{ID: "aaa", Vector: v, Meta: map[string]string{"symbol": "A", "file": "a.go"}},
+	)
 
-	hits, _ := store.Search(ctx, v, 2)
+	hits, _ := store.Search(v, 2)
 	if hits[0].ID != "aaa" {
 		t.Errorf("want aaa first (ID tiebreak), got %q", hits[0].ID)
 	}
@@ -148,21 +147,20 @@ func TestMemoryVectorStore_IDTiebreak(t *testing.T) {
 func TestMemoryVectorStore_UpsertReplaces(t *testing.T) {
 	// Upserting with the same ID must replace the previous entry.
 	mock := newMock()
-	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
+	store := vectorstore.NewMemoryVectorStore()
 
 	vOld := embed1(t, mock, "old-text")
 	vNew := embed1(t, mock, "new-text")
 
-	_ = store.Upsert(ctx, []vector.Entry{{ID: "x", Vector: vOld, Symbol: "Old", File: "old.go"}})
-	_ = store.Upsert(ctx, []vector.Entry{{ID: "x", Vector: vNew, Symbol: "New", File: "new.go"}})
+	_ = store.Upsert(vectorstore.Entry{ID: "x", Vector: vOld, Meta: map[string]string{"symbol": "Old", "file": "old.go"}})
+	_ = store.Upsert(vectorstore.Entry{ID: "x", Vector: vNew, Meta: map[string]string{"symbol": "New", "file": "new.go"}})
 
-	hits, _ := store.Search(ctx, vNew, 1)
+	hits, _ := store.Search(vNew, 1)
 	if len(hits) != 1 {
 		t.Fatalf("want 1 hit, got %d", len(hits))
 	}
-	if hits[0].Symbol != "New" {
-		t.Errorf("want Symbol=New after upsert, got %q", hits[0].Symbol)
+	if hits[0].Meta["symbol"] != "New" {
+		t.Errorf("want symbol=New after upsert, got %q", hits[0].Meta["symbol"])
 	}
 	if hits[0].Score < 0.999 {
 		t.Errorf("want score ≈1.0 for replaced vector, got %.6f", hits[0].Score)
@@ -170,9 +168,8 @@ func TestMemoryVectorStore_UpsertReplaces(t *testing.T) {
 }
 
 func TestMemoryVectorStore_EmptySearch(t *testing.T) {
-	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	hits, err := store.Search(ctx, embeddingclient.Vector{1, 0}, 5)
+	store := vectorstore.NewMemoryVectorStore()
+	hits, err := store.Search(embeddingclient.Vector{1, 0}, 5)
 	if err != nil {
 		t.Fatalf("Search on empty store: %v", err)
 	}
@@ -182,14 +179,15 @@ func TestMemoryVectorStore_EmptySearch(t *testing.T) {
 }
 
 // -------------------------------------------------------------------
-// Indexer — Index + SearchText
+// SymbolIndexer — Index + SearchText (sextant's thin adapter over the kit's
+// vectorstore.Indexer)
 // -------------------------------------------------------------------
 
 func TestIndexer_SearchTextFindsMatchingSymbol(t *testing.T) {
 	mock := newMock()
 	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, store)
+	store := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, store)
 
 	nodes := []core.SymbolNode{
 		{Package: "auth", Name: "ValidateToken", Signature: "func(ctx context.Context, token string) error", FilePath: "auth/token.go"},
@@ -218,8 +216,8 @@ func TestIndexer_SearchTextFindsMatchingSymbol(t *testing.T) {
 func TestIndexer_IndexEmptyNodesIsNoop(t *testing.T) {
 	mock := newMock()
 	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, store)
+	store := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, store)
 
 	if err := idx.Index(ctx, nil); err != nil {
 		t.Fatalf("Index(nil): %v", err)
@@ -232,8 +230,8 @@ func TestIndexer_IndexEmptyNodesIsNoop(t *testing.T) {
 func TestIndexer_SearchTextTopNRespected(t *testing.T) {
 	mock := newMock()
 	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, store)
+	store := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, store)
 
 	nodes := []core.SymbolNode{
 		{Package: "p", Name: "A", FilePath: "a.go"},
@@ -256,8 +254,8 @@ func TestIndexer_EmbedderCallCounts(t *testing.T) {
 	// Index N nodes → EmbedBatch (N calls); SearchText → 1 Embed call.
 	mock := newMock()
 	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, store)
+	store := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, store)
 
 	nodes := []core.SymbolNode{
 		{Package: "p", Name: "X", FilePath: "x.go"},
@@ -276,8 +274,8 @@ func TestIndexer_SymbolWithoutSignature(t *testing.T) {
 	// Nodes without a Signature should embed just their Name without error.
 	mock := newMock()
 	ctx := context.Background()
-	store := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, store)
+	store := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, store)
 
 	nodes := []core.SymbolNode{
 		{Package: "util", Name: "Helper", FilePath: "util.go"},
@@ -307,9 +305,9 @@ func TestIndexer_Determinism(t *testing.T) {
 		{Package: "c", Name: "Baz", Signature: "func(s string) bool", FilePath: "baz.go"},
 	}
 
-	makeIdx := func() *vector.Indexer {
-		s := vector.NewMemoryVectorStore()
-		i := vector.NewIndexer(mock, s)
+	makeIdx := func() *vector.SymbolIndexer {
+		s := vectorstore.NewMemoryVectorStore()
+		i := vector.NewSymbolIndexer(mock, s)
 		_ = i.Index(ctx, nodes)
 		return i
 	}
@@ -324,8 +322,8 @@ func TestIndexer_Determinism(t *testing.T) {
 		t.Fatalf("lengths differ: %d vs %d", len(h1), len(h2))
 	}
 	for i := range h1 {
-		if h1[i].ID != h2[i].ID {
-			t.Errorf("position %d: %q vs %q", i, h1[i].ID, h2[i].ID)
+		if h1[i].Symbol != h2[i].Symbol {
+			t.Errorf("position %d: %q vs %q", i, h1[i].Symbol, h2[i].Symbol)
 		}
 	}
 }

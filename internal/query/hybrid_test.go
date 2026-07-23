@@ -5,22 +5,23 @@ import (
 	"testing"
 
 	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	vectorstore "github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/vector"
 )
 
-// buildHybridEngine creates an Engine with a vector.Indexer backed by
-// MockEmbedder and a pre-populated MemoryVectorStore.
+// buildHybridEngine creates an Engine with a vector.SymbolIndexer backed by
+// MockEmbedder and a pre-populated kit MemoryVectorStore.
 func buildHybridEngine(t *testing.T, obs []core.Observation, semanticWt float64) *query.Engine {
 	t.Helper()
 
 	ms := newStore(t, obs)
 
-	// Build a vector Indexer using a deterministic mock embedder.
+	// Build a vector SymbolIndexer using a deterministic mock embedder.
 	mock := embeddingclient.NewMockEmbedder(0) // DefaultMockDim=16
-	vs := vector.NewMemoryVectorStore()
-	idx := vector.NewIndexer(mock, vs)
+	vs := vectorstore.NewMemoryVectorStore()
+	idx := vector.NewSymbolIndexer(mock, vs)
 
 	// Index all observations as SymbolNodes.
 	nodes := make([]core.SymbolNode, 0, len(obs))

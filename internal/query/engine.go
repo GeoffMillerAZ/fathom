@@ -6,7 +6,7 @@
 // (ADR-007): a doc-claimed observation never outranks a verified one at equal
 // keyword overlap.
 //
-// Optional hybrid search: when a *vector.Indexer is wired in via WithVector and
+// Optional hybrid search: when a *vector.SymbolIndexer is wired in via WithVector and
 // Query.SemanticWt > 0, each result's final score blends keyword overlap and
 // cosine similarity: final = (1-SemanticWt)*keyword + SemanticWt*semantic.
 // When no Indexer is configured the engine behaves exactly as before (keyword-only).
@@ -35,7 +35,7 @@ type Engine struct {
 	store   store.Store
 	now     func() time.Time
 	maxAge  time.Duration
-	indexer *vector.Indexer // nil → keyword-only mode
+	indexer *vector.SymbolIndexer // nil → keyword-only mode
 }
 
 // Option configures an Engine.
@@ -51,10 +51,10 @@ func WithMaxAge(d time.Duration) Option {
 	return func(e *Engine) { e.maxAge = d }
 }
 
-// WithVector wires a vector.Indexer into the engine. When non-nil and
+// WithVector wires a vector.SymbolIndexer into the engine. When non-nil and
 // Query.SemanticWt > 0 the engine blends keyword and vector-similarity scores.
 // The caller is responsible for indexing symbols before querying.
-func WithVector(idx *vector.Indexer) Option {
+func WithVector(idx *vector.SymbolIndexer) Option {
 	return func(e *Engine) { e.indexer = idx }
 }
 
