@@ -117,9 +117,13 @@ the memory fake:
   token usage + USD from llmclient responses (not heuristics), duration, claim
   counts. `estimate_cost`-style dry-run is mandatory before any spending compile.
 - **`claim_events`** (minimal, append-only) — human/machine verdicts on claims
-  (`refuted`, `corroborated`, with author + note). This is the per-claim correction
-  channel the truth lens demanded; the full hash-chained lifecycle FSM in
-  agentic-kit is a non-destructive retrofit later because claim identity is stable.
+  (`refuted`, `corroborated`, `contradicted`, with author + note). This is the
+  per-claim correction channel the truth lens demanded; the full hash-chained
+  lifecycle FSM in agentic-kit is a non-destructive retrofit later because claim
+  identity is stable. `refuted` and `contradicted` are deliberately DIFFERENT
+  verdict strings for different judgments — see §4.3's callout — never merged
+  into one, even though both pair a `claim_events` row with a `semantic_claims`
+  status flip.
 
 Claims deliberately do NOT live in `observations`: re-ingest purges observations
 per (service, source_ref) destructively, and the naive contradiction scan would
@@ -141,11 +145,32 @@ revival evidence.
 
 - **Post-ingest sweep** (token-free, in the daemon): after every ingest/auto-refresh,
   re-hash each claim's cited lines; a mismatch flips status → `stale`
-  (`contradicted` if the citation no longer resolves at all). Statuses persist.
+  (`contradicted` if the citation no longer resolves at all). Statuses persist. A
+  transition into `contradicted` also appends a `claim_events` row with
+  `verdict:"contradicted", author:"sweep"` — the same append-only audit
+  mechanism a human refutation uses, so the anchor-dead judgment leaves a trail
+  too (D2-2, `docs/plans/expert-depth.md`).
 - **Query-time check**: every payload carries the claim's status and
   `compiled_at_commit` watermark; stale claims are shown *flagged*, never silently
   served, and never silently dropped (an agent that saw a rule yesterday should see
   "that rule is stale" today, not absence).
+
+**`contradicted` vs `refuted` — two words for two different judgments, never
+merged (P1-9, `docs/plans/pulled-tools-excellence.md`).** `contradicted` is
+this section's own machine-detected, anchor-dead state: a claim whose citation
+no longer resolves at all. It is `ClaimStatus.Served()`-true — the claim stays
+**served, flagged with its status**, because the underlying rule may still
+hold even though its evidence anchor broke; the next recompile is what heals
+or reconfirms it. `refuted` is a categorically different, *deliberate*
+judgment — a human via `fathom claim refute`, or the obligations tool's
+feedback action (§4.5) acting on a human's behalf — that sets status
+`ClaimRefuted`, which `Served()` excludes: a refuted claim is **never served
+again**. Both verdicts append a `claim_events` row through the same
+mechanism, which is exactly why the verdict *string* the row carries must
+never be shared between them: a `claim_events` row reading `verdict:"refuted"`
+for a claim that is, in fact, still being served (because sweep only ever
+produces the contradicted state) would make the audit log lie about whether
+the claim is live.
 
 Because v1 claims anchor to slow-churn governing docs and join to code by scope
 glob at query time, **code commits cost $0 in recompilation** — the economics that

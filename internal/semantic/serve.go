@@ -28,7 +28,26 @@ type Obligation struct {
 	// exact same payload shape as before this field existed.
 	Kind string `json:"kind,omitempty"`
 	// Status is present only when not fresh ("stale" / "contradicted") —
-	// drifted rules are served flagged, never silently dropped.
+	// drifted rules are served flagged, never silently dropped. A claim
+	// never reaches this payload with status "refuted" or "superseded" at
+	// all: ObligationsFor only walks claims where core.ClaimStatus.Served()
+	// is true, and refuted/superseded are the two statuses Served()
+	// excludes. This is the vocabulary the served/never-served line runs on
+	// (P1-9, docs/plans/pulled-tools-excellence.md; the founding design at
+	// docs/design/semantic-layers.md has the full claims-lifecycle
+	// picture): "contradicted" is semantic.Sweep's own machine-detected,
+	// anchor-dead judgment (a citation no longer resolves) — the strongest
+	// drift signal short of a human verdict, and it stays SERVED, flagged
+	// with this Status field, because the underlying rule may still be true
+	// even though its evidence anchor broke; a recompile is what heals or
+	// confirms it. "refuted" is a categorically different, deliberate
+	// judgment — a human via `fathom claim refute`, or the obligations
+	// tool's feedback action — and a refuted claim is NEVER served again,
+	// so it can never appear here with any Status value. The two verdicts
+	// share the append-only ClaimEvent audit mechanism (core.ClaimEvent.
+	// Verdict) but must never share a verdict STRING; conflating them would
+	// make the audit log claim a never-served verdict for a claim callers
+	// can still see served right here.
 	Status string `json:"status,omitempty"`
 	// CodeDrifted flags a finding-kind claim whose SCOPED CODE (not the
 	// cited finding document) has changed since compile — remediation drift

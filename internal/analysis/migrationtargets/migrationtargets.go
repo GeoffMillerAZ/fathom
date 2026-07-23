@@ -38,13 +38,16 @@ var DefaultDeprecatedPkgs = []string{
 // Find returns the sorted slice of Targets: symbols whose Package is (or
 // contains) any of the deprecated packages.
 //
-// If deprecatedPkgs is nil or empty, DefaultDeprecatedPkgs is used.
+// deprecatedPkgs is ADDITIVE: it is merged with DefaultDeprecatedPkgs (the
+// default list is always included), matching the parameter description
+// callers see at the MCP boundary ("Additional deprecated package paths
+// (default list is always included)"). A caller wanting to check only a
+// custom list still gets the built-in defaults checked too — this tool
+// never under-reports because a caller supplied a partial list.
 //
 // The Symbol field of each Target is the node's canonical SymbolKey.
 func Find(nodes []core.SymbolNode, deprecatedPkgs []string) []Target {
-	if len(deprecatedPkgs) == 0 {
-		deprecatedPkgs = DefaultDeprecatedPkgs
-	}
+	deprecatedPkgs = mergeDeprecatedPkgs(deprecatedPkgs)
 
 	var targets []Target
 	seen := make(map[string]bool)
@@ -81,4 +84,29 @@ func matchesPkg(nodePkg, depPkg string) bool {
 	return nodePkg == depPkg ||
 		strings.HasPrefix(nodePkg, depPkg+"/") ||
 		strings.Contains(nodePkg, depPkg)
+}
+
+// mergeDeprecatedPkgs returns DefaultDeprecatedPkgs merged with any
+// caller-supplied extras, deduplicated, in deterministic order: the
+// built-in defaults first (in their declared order), then any extra
+// entries not already present, in the order the caller gave them. Order
+// only matters for reproducibility of the intermediate list — Find's
+// output is sorted independent of input order — but a deterministic merge
+// keeps the function's behavior reproducible without relying on that.
+func mergeDeprecatedPkgs(extra []string) []string {
+	merged := make([]string, 0, len(DefaultDeprecatedPkgs)+len(extra))
+	seen := make(map[string]bool, len(DefaultDeprecatedPkgs)+len(extra))
+	for _, pkg := range DefaultDeprecatedPkgs {
+		if !seen[pkg] {
+			seen[pkg] = true
+			merged = append(merged, pkg)
+		}
+	}
+	for _, pkg := range extra {
+		if !seen[pkg] {
+			seen[pkg] = true
+			merged = append(merged, pkg)
+		}
+	}
+	return merged
 }

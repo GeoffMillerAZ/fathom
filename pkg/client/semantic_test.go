@@ -173,17 +173,23 @@ func TestObligationsIndexStale(t *testing.T) {
 	}
 }
 
-// TestSweepClaims_AnchorDeadRecordsRefuteEvent is D2-2 (docs/plans/
-// expert-depth.md): SweepClaims used to flip an anchor-dead claim's status
-// to contradicted silently. It must now ALSO leave a ClaimEvent{Verdict:
-// "refuted", Author:"sweep"} — the audit trail refutation durability needs,
-// matching what a human `fathom claim refute` / the obligations tool's
-// feedback action (D2-1) would leave. Seeds the claim directly against the
-// store (kept in scope alongside the Client, mirroring internal/semantic/
-// sweep_test.go's seedClaim helper) rather than through a live LLM compile —
-// this is a targeted test of SweepClaims' new behavior, not an end-to-end
-// compile test (TestSemanticEndToEnd already covers that path).
-func TestSweepClaims_AnchorDeadRecordsRefuteEvent(t *testing.T) {
+// TestSweepClaims_AnchorDeadRecordsContradictedEvent is D2-2 (docs/plans/
+// expert-depth.md) plus P1-9's vocabulary fix (docs/plans/
+// pulled-tools-excellence.md): SweepClaims used to flip an anchor-dead
+// claim's status to contradicted silently. It must now ALSO leave a
+// ClaimEvent{Verdict: "contradicted", Author:"sweep"} — the audit trail
+// durability needs, using the SAME mechanism a human `fathom claim refute` /
+// the obligations tool's feedback action (D2-1) uses for its own "refuted"
+// verdict, but a distinct verdict string: "refuted" names a deliberate,
+// terminal human judgment (never served again); "contradicted" names this
+// anchor-dead, machine-detected state, which stays served with the status
+// label attached. The two must never share a verdict string. Seeds the
+// claim directly against the store (kept in scope alongside the Client,
+// mirroring internal/semantic/sweep_test.go's seedClaim helper) rather than
+// through a live LLM compile — this is a targeted test of SweepClaims'
+// behavior, not an end-to-end compile test (TestSemanticEndToEnd already
+// covers that path).
+func TestSweepClaims_AnchorDeadRecordsContradictedEvent(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
 	st := store.NewMemoryStore()
@@ -239,10 +245,10 @@ func TestSweepClaims_AnchorDeadRecordsRefuteEvent(t *testing.T) {
 		t.Fatalf("ClaimEvents: %v", err)
 	}
 	if len(events) != 1 {
-		t.Fatalf("expected 1 refute event, got %d: %+v", len(events), events)
+		t.Fatalf("expected 1 contradicted event, got %d: %+v", len(events), events)
 	}
-	if events[0].Verdict != "refuted" || events[0].Author != "sweep" {
-		t.Errorf("event = %+v, want verdict=refuted author=sweep", events[0])
+	if events[0].Verdict != "contradicted" || events[0].Author != "sweep" {
+		t.Errorf("event = %+v, want verdict=contradicted author=sweep", events[0])
 	}
 }
 
