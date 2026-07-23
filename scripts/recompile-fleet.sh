@@ -59,8 +59,8 @@ echo "==> fathom flag-day recompile  (store: $STORE, lane: $FATHOM_LLM_PROVIDER)
 
 echo "==> stopping the daemon (releases the single-writer store lock)"
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
-for _ in $(seq 1 15); do pgrep -f "bin/fathom serve-http" >/dev/null || break; sleep 1; done
-if pgrep -f "bin/fathom serve-http" >/dev/null; then
+for _ in $(seq 1 15); do pgrep -f "fathom serve-http" >/dev/null || break; sleep 1; done
+if pgrep -f "fathom serve-http" >/dev/null; then
   echo "ERROR: a serve-http process is still holding the lock; reap it and retry."; exit 1
 fi
 
@@ -92,8 +92,31 @@ echo "==> adr-rules + spec-bindings x fathom (first-ever production compiles)"
 compile_one fathom adr-rules
 compile_one fathom spec-bindings
 
+echo "==> deploying the fresh binary to the daemon install path"
+INSTALL_DIR="$HOME/.local/libexec/fathom"
+mkdir -p "$INSTALL_DIR"
+cp -f "$BIN" "$INSTALL_DIR/fathom"
+
 echo "==> restarting the daemon"
-launchctl bootstrap "$DOMAIN" "$PLIST" 2>/dev/null || launchctl kickstart -k "$DOMAIN/$LABEL" 2>/dev/null || true
+echo "    (a newly deployed binary has a new TCC code hash — if the start"
+echo "     hangs >20s, answer the macOS removable-volume dialog with Allow)"
+# NO kickstart fallback: kickstart restarts the PREVIOUSLY LOADED job
+# definition (old binary); bootstrap the plist or fail loudly.
+booted=0
+for _ in 1 2 3 4 5; do
+  if launchctl bootstrap "$DOMAIN" "$PLIST" 2>/dev/null; then booted=1; break; fi
+  sleep 2
+done
+[ "$booted" = 1 ] || { echo "ERROR: launchctl bootstrap kept failing; try: launchctl bootout $DOMAIN/$LABEL ; launchctl bootstrap $DOMAIN $PLIST"; exit 1; }
+ok=0
+for _ in $(seq 1 60); do
+  if curl -s -m 2 http://localhost:7575/healthz 2>/dev/null | grep -q ok; then ok=1; break; fi
+  sleep 1
+done
+[ "$ok" = 1 ] || { echo "ERROR: daemon not up — check /tmp/fathom-http.err and the TCC note above."; exit 1; }
+pgrep -fl "fathom serve-http" | grep -q -- "$INSTALL_DIR/fathom" \
+  || { echo "ERROR: a daemon answered healthz but is NOT the installed binary:"; pgrep -fl "fathom serve-http" | sed 's/^/    /'; exit 1; }
+echo "    daemon healthy on the freshly deployed binary"
 
 {
   echo "recompile-fleet.sh run at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
