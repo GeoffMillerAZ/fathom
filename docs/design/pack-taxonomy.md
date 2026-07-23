@@ -133,12 +133,18 @@ packs are, not because of who typed the prompt.
 
 **How it's trusted.** Eval-gated before it enters the embedded set
 (`docs/layers.md` "The gate": precision ≥ 0.90, recall ≥ 0.75 against
-labeled fixtures with deliberate scope-traps, scored against a real model),
-then **entry-conditioned growth** after shipping — the 3-week
-generalize-or-kill telemetry window (ADR-016 §4.6), and for the catalog
-overall, the playbook pack's documented "≥15 findings" kill criterion is
-the model every future concern pack's admission should cite (see TX-4
-below).
+labeled fixtures with deliberate scope-traps, scored against a real model)
+— with one honest exception on the record: `findings` shipped embedded
+**not-gated** (no `eval/` yet; its `layer.cue` declares `evaled: false`,
+the catalog prints `not-gated`, and `fathom compile` refuses it without
+`--unsafe-skip-eval-gate`), admitted entry-conditioned on its own
+`KILL.md` kill criterion instead of an eval pass. So the precise trust
+statement is: an embedded concern pack is either eval-gated or visibly,
+mechanically marked as not — never silently presumed gated. After
+shipping, **entry-conditioned growth** — the 3-week generalize-or-kill
+telemetry window (ADR-016 §4.6), and for the catalog overall, the playbook
+pack's documented "≥15 findings" kill criterion is the model every future
+concern pack's admission should cite (see TX-4 below).
 
 ### The obligations call — a documented judgment, not a default
 

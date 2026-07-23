@@ -9,6 +9,7 @@ package main
 // network calls (risk register R1).
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -77,6 +78,11 @@ type AdoptionReport struct {
 	CallLogPath string `json:"call_log_path"`
 	CallLogRead bool   `json:"call_log_read"` // false: log absent/unreadable — every count below is honestly zero, not a guess
 	TotalCalls  int    `json:"total_calls"`
+	// SkippedMalformedLines counts call-log lines that failed to decode
+	// (torn writes, editing debris) and were skipped line-wise (H2) — when
+	// nonzero, the counts above are a floor over a partially readable log,
+	// and both output forms say so.
+	SkippedMalformedLines int `json:"skipped_malformed_lines"`
 
 	SurfaceTraffic []SurfaceTrafficRow `json:"surface_traffic"`
 	TopTools       []ToolCallRow       `json:"top_tools"`
@@ -122,7 +128,7 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		callLogPath = resolveCallLogPath()
 	}
 
-	entries, read, _ := readCallLog(callLogPath) // absent/unreadable log: honestly report zero, never fatal (advisory tool)
+	entries, skippedMalformed, read := readCallLog(callLogPath) // absent/unreadable log: honestly report zero, never fatal (advisory tool)
 
 	toolNames, toolErr := registeredToolNames(*storePath)
 	toolNote := ""
@@ -139,7 +145,7 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
 	}
 
-	report := buildAdoptionReport(callLogPath, read, entries, toolNames, toolNote, openObs, observationsPath(*root))
+	report := buildAdoptionReport(callLogPath, read, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root))
 
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
@@ -164,26 +170,41 @@ func resolveCallLogPath() string {
 	return firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath)
 }
 
-// readCallLog parses path as call-log JSONL. read is false when the file
-// doesn't exist or can't be opened — reported honestly by the caller
-// (zero calls is then a fact about "never observed", not "measured zero").
-// A malformed individual line is skipped, not fatal to the whole report.
-func readCallLog(path string) (entries []adoptionCallEntry, read bool, err error) {
+// readCallLog parses path as call-log JSONL, line-wise. read is false when
+// the file doesn't exist or can't be opened — reported honestly by the
+// caller (zero calls is then a fact about "never observed", not "measured
+// zero"). A malformed individual LINE is skipped and counted, never fatal
+// and never a reason to drop the rest of the file: the earlier
+// json.Decoder-over-the-stream version BROKE at the first bad token, so a
+// single torn mid-file line (a daemon killed mid-write before O_APPEND
+// atomicity applied, hand-editing debris) silently discarded every entry
+// after it (critic H2). skipped is surfaced in the report so a truncated
+// measurement is visible, not laundered.
+func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int, read bool) {
 	f, openErr := os.Open(path)
 	if openErr != nil {
-		return nil, false, nil
+		return nil, 0, false
 	}
 	defer f.Close()
 
-	dec := json.NewDecoder(f)
-	for dec.More() {
+	sc := bufio.NewScanner(f)
+	// Call-log lines carry error strings and tool payload metadata; give
+	// the scanner room well past bufio's 64KB default before a long line
+	// (which Scan would otherwise abort on) can truncate the report.
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue // blank separators are not entries and not malformed
+		}
 		var e adoptionCallEntry
-		if decErr := dec.Decode(&e); decErr != nil {
-			break // malformed tail: keep whatever decoded cleanly before it
+		if err := json.Unmarshal([]byte(line), &e); err != nil {
+			skippedMalformed++
+			continue
 		}
 		entries = append(entries, e)
 	}
-	return entries, true, nil
+	return entries, skippedMalformed, true
 }
 
 // registeredToolNames returns the sorted names of every tool the fathom
@@ -244,7 +265,7 @@ func registeredToolNames(storePath string) ([]string, error) {
 // buildAdoptionReport is pure over its inputs (deterministic given inputs,
 // per FW-1's own requirement) — cmdInstrumentAdoption does all the I/O,
 // this function does none.
-func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEntry, registeredTools []string, toolNote string, openObs *int, obsPath string) AdoptionReport {
+func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string) AdoptionReport {
 	surfaceCalls := map[string]int{}
 	surfaceLastTS := map[string]string{}
 	toolCalls := map[string]int{}
@@ -310,21 +331,22 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 		"verdict is invisible to it; this is a placeholder, not a measured zero."
 
 	return AdoptionReport{
-		CallLogPath:          callLogPath,
-		CallLogRead:          read,
-		TotalCalls:           len(entries),
-		SurfaceTraffic:       surfaceTraffic,
-		TopTools:             topTools,
-		RegisteredToolCount:  len(registeredTools),
-		ZeroCallTools:        zeroCall,
-		ToolRegistryNote:     toolNote,
-		BriefCalls:           briefCalls,
-		BriefCallsWithClaims: briefWithClaims,
-		ClaimsAttachHitRate:  hitRate,
-		VerifyGateCatchCount: nil,
-		VerifyGateNote:       verifyNote,
-		OpenObservationCount: openObs,
-		ObservationsPath:     obsPath,
+		CallLogPath:           callLogPath,
+		CallLogRead:           read,
+		TotalCalls:            len(entries),
+		SkippedMalformedLines: skippedMalformed,
+		SurfaceTraffic:        surfaceTraffic,
+		TopTools:              topTools,
+		RegisteredToolCount:   len(registeredTools),
+		ZeroCallTools:         zeroCall,
+		ToolRegistryNote:      toolNote,
+		BriefCalls:            briefCalls,
+		BriefCallsWithClaims:  briefWithClaims,
+		ClaimsAttachHitRate:   hitRate,
+		VerifyGateCatchCount:  nil,
+		VerifyGateNote:        verifyNote,
+		OpenObservationCount:  openObs,
+		ObservationsPath:      obsPath,
 	}
 }
 
@@ -336,6 +358,9 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 		fmt.Fprintf(w, "call log: %s (not found — 0 calls observed, not measured)\n", r.CallLogPath)
 	} else {
 		fmt.Fprintf(w, "call log: %s (%d calls)\n", r.CallLogPath, r.TotalCalls)
+	}
+	if r.SkippedMalformedLines > 0 {
+		fmt.Fprintf(w, "  ⚠ skipped %d malformed line(s) — counts are a floor over a partially readable log\n", r.SkippedMalformedLines)
 	}
 
 	fmt.Fprintln(w, "\nsurface traffic:")

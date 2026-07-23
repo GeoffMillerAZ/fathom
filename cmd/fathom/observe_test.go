@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -176,6 +177,56 @@ func TestObserve_RefusesMalformedExistingFile(t *testing.T) {
 	}
 	if string(after) != original {
 		t.Errorf("file was modified despite refusal.\nwant: %q\ngot:  %q", original, string(after))
+	}
+}
+
+// TestObserve_ConcurrentFirstCreationLosesNothing is B1's regression test
+// (critic blocker, proven 13/20 trials pre-fix): two observes racing
+// first-time creation in a repo with NO .fathom/observations.md yet. The
+// pre-fix os.WriteFile (O_TRUNC) path let both see existed=false, and the
+// second silently clobbered the first's entry — both exiting 0. With
+// O_CREATE|O_EXCL exactly one wins creation; the loser appends. Both
+// entries must be present, the header exactly once, both exits 0. Entry
+// IDs may collide under this race — documented as advisory (H1) — so the
+// test asserts entry COUNT and BOTH symptoms, never distinct ids.
+// Repeated a few times per run to actually exercise the racy window.
+func TestObserve_ConcurrentFirstCreationLosesNothing(t *testing.T) {
+	for trial := 0; trial < 5; trial++ {
+		root := t.TempDir() // fresh: no .fathom/observations.md — the exact B1 scenario
+		const n = 2
+		var wg sync.WaitGroup
+		codes := make([]int, n)
+		stderrs := make([]bytes.Buffer, n)
+		for i := 0; i < n; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				var stdout bytes.Buffer
+				codes[i] = cmdObserve([]string{"--root", root, "--symptom", fmt.Sprintf("trial %d concurrent issue %d", trial, i)}, &stdout, &stderrs[i])
+			}(i)
+		}
+		wg.Wait()
+
+		for i := 0; i < n; i++ {
+			if codes[i] != 0 {
+				t.Fatalf("trial %d: observe %d exit = %d, stderr: %s", trial, i, codes[i], stderrs[i].String())
+			}
+		}
+		content, existed, err := readObservations(root)
+		if err != nil || !existed {
+			t.Fatalf("trial %d: readObservations: existed=%v err=%v", trial, existed, err)
+		}
+		if got := strings.Count(content, observationsMarker); got != 1 {
+			t.Errorf("trial %d: marker appears %d times, want exactly 1 (no clobber, no double header)", trial, got)
+		}
+		for i := 0; i < n; i++ {
+			if !strings.Contains(content, fmt.Sprintf("trial %d concurrent issue %d", trial, i)) {
+				t.Errorf("trial %d: entry %d LOST — the B1 silent-data-loss bug:\n%s", trial, i, content)
+			}
+		}
+		if got := len(observationEntryHeader.FindAllString(content, -1)); got != n {
+			t.Errorf("trial %d: %d entry headers, want %d", trial, got, n)
+		}
 	}
 }
 

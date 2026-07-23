@@ -44,7 +44,7 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	registered := []string{"brief", "find_symbol", "verify_plan", "capabilities"}
 	openObs := 2
 
-	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, entries, registered, "", &openObs, ".fathom/observations.md")
+	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, entries, 0, registered, "", &openObs, ".fathom/observations.md")
 
 	if r.TotalCalls != 5 {
 		t.Errorf("TotalCalls = %d, want 5", r.TotalCalls)
@@ -112,7 +112,7 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 
 func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 	entries := []adoptionCallEntry{{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent"}}
-	r := buildAdoptionReport("x.jsonl", true, entries, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
+	r := buildAdoptionReport("x.jsonl", true, entries, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
 	if r.ClaimsAttachHitRate != nil {
 		t.Errorf("ClaimsAttachHitRate = %v, want nil when no brief calls occurred", r.ClaimsAttachHitRate)
 	}
@@ -122,7 +122,7 @@ func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 }
 
 func TestBuildAdoptionReport_EmptyLogIsHonestZero(t *testing.T) {
-	r := buildAdoptionReport("x.jsonl", true, nil, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
+	r := buildAdoptionReport("x.jsonl", true, nil, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
 	if r.TotalCalls != 0 {
 		t.Errorf("TotalCalls = %d, want 0", r.TotalCalls)
 	}
@@ -137,15 +137,15 @@ func TestBuildAdoptionReport_EmptyLogIsHonestZero(t *testing.T) {
 // ─── readCallLog ────────────────────────────────────────────────────────────
 
 func TestReadCallLog_MissingFileIsNotFatal(t *testing.T) {
-	entries, read, err := readCallLog(filepath.Join(t.TempDir(), "nope.jsonl"))
-	if err != nil {
-		t.Fatalf("readCallLog: %v", err)
-	}
+	entries, skipped, read := readCallLog(filepath.Join(t.TempDir(), "nope.jsonl"))
 	if read {
 		t.Error("read = true for a missing file, want false")
 	}
 	if entries != nil {
 		t.Errorf("entries = %v, want nil", entries)
+	}
+	if skipped != 0 {
+		t.Errorf("skipped = %d, want 0", skipped)
 	}
 }
 
@@ -158,15 +158,45 @@ not valid json at all
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	entries, read, err := readCallLog(path)
-	if err != nil {
-		t.Fatalf("readCallLog: %v", err)
-	}
+	entries, skipped, read := readCallLog(path)
 	if !read {
 		t.Error("read = false, want true (the file exists and opened fine)")
 	}
 	if len(entries) != 2 {
 		t.Fatalf("entries = %+v, want exactly the 2 well-formed lines", entries)
+	}
+	if skipped != 1 {
+		t.Errorf("skipped = %d, want 1 (the garbage tail line)", skipped)
+	}
+}
+
+// TestReadCallLog_SkipsMalformedMidFileLines is H2's regression test: a
+// torn line in the MIDDLE of the log (daemon killed mid-write,
+// hand-editing debris) must cost exactly that line — every entry after it
+// still counts. The pre-fix json.Decoder-over-the-stream version broke at
+// the first bad token and silently discarded the rest of the file.
+func TestReadCallLog_SkipsMalformedMidFileLines(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "calls.jsonl")
+	content := `{"ts":"2026-07-23T10:00:00Z","tool":"find_symbol"}
+{"ts":"2026-07-23T10:01:00Z","tool":"bri
+{"ts":"2026-07-23T10:02:00Z","tool":"brief","claims_attached":2}
+{"ts":"2026-07-23T10:03:00Z","tool":"verify_plan"}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	entries, skipped, read := readCallLog(path)
+	if !read {
+		t.Fatal("read = false, want true")
+	}
+	if len(entries) != 3 {
+		t.Fatalf("entries = %+v, want the 3 well-formed lines INCLUDING those after the torn one", entries)
+	}
+	if entries[1].Tool != "brief" || entries[1].ClaimsAttached != 2 || entries[2].Tool != "verify_plan" {
+		t.Errorf("post-torn-line entries wrong: %+v", entries)
+	}
+	if skipped != 1 {
+		t.Errorf("skipped = %d, want 1", skipped)
 	}
 }
 
@@ -281,6 +311,51 @@ func TestCmdInstrumentAdoption_JSONOutput(t *testing.T) {
 	}
 	if report.VerifyGateCatchCount != nil {
 		t.Errorf("VerifyGateCatchCount = %v, want nil in the JSON output too", report.VerifyGateCatchCount)
+	}
+}
+
+// TestCmdInstrumentAdoption_ReportsSkippedMalformedLines: when the log had
+// undecodable lines, both output forms must SAY so (H2) — a truncated
+// measurement rendered without a marker would launder a partial log into a
+// confident number.
+func TestCmdInstrumentAdoption_ReportsSkippedMalformedLines(t *testing.T) {
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl")
+	content := `{"ts":"2026-07-23T10:00:00Z","tool":"find_symbol"}
+torn line
+{"ts":"2026-07-23T10:02:00Z","tool":"brief"}
+`
+	if err := os.WriteFile(logPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := cmdInstrumentAdoption([]string{"--call-log", logPath, "--root", root}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "skipped 1 malformed line") {
+		t.Errorf("human output missing the skipped-lines note:\n%s", stdout.String())
+	}
+	if !strings.Contains(stdout.String(), "(2 calls)") {
+		t.Errorf("human output should still count both well-formed lines:\n%s", stdout.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = cmdInstrumentAdoption([]string{"--call-log", logPath, "--root", root, "--json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("--json exit = %d, stderr: %s", code, stderr.String())
+	}
+	var report AdoptionReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if report.SkippedMalformedLines != 1 {
+		t.Errorf("SkippedMalformedLines = %d, want 1", report.SkippedMalformedLines)
+	}
+	if report.TotalCalls != 2 {
+		t.Errorf("TotalCalls = %d, want 2", report.TotalCalls)
 	}
 }
 

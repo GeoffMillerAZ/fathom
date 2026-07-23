@@ -52,6 +52,12 @@ Append-only: ` + "`fathom observe`" + ` only ever adds a new entry at the end �
 correct an entry by hand (root cause / fix / status) once it's understood,
 never by re-running the command over it.
 
+Entry ids (O1, O2, …) are **advisory under concurrency**: two sessions
+filing at once can mint the same O<N> — no entry is ever lost, and file
+order is chronological (append-only), so disambiguate colliding ids by
+their order in this file (later entry = later filing) and renumber at
+triage if it matters.
+
 ## Open
 `
 
