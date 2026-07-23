@@ -183,13 +183,24 @@ func realGitHead(path string) string {
 
 // realGitLog shells out to git to get the last 500 commits for the given
 // directory path. Returns an empty string on any error (best-effort).
+//
+// Format: \x02<hash>\x1f<author>\x1f<date>\x1f<full raw body, %B>\x03,
+// followed by --name-only's file list and a blank line before the next
+// record's \x02. \x02 (STX) starts every record and \x03 (ETX) ends the
+// header+body: %B — not %s — captures the FULL commit message (subject +
+// blank line + body + trailers), so E2-1 widens commit ingestion beyond the
+// subject-only capture the old %s + blank-line-delimited format had (0/763
+// stored messages contained a newline before this). The old format split
+// records on a blank line, which a multi-paragraph body routinely contains
+// itself — %B could never have been parsed safely under that scheme, hence
+// the STX/ETX sentinel switch alongside it (see parseGitLog).
 func realGitLog(path string) string {
 	if path == "" {
 		return ""
 	}
 	var out bytes.Buffer
 	cmd := exec.Command("git", "-C", path, "log",
-		"--pretty=format:%H\x1f%an\x1f%aI\x1f%s",
+		"--pretty=format:%x02%H%x1f%an%x1f%aI%x1f%B%x03",
 		"--name-only",
 		"-n", "500")
 	cmd.Stdout = &out
@@ -201,26 +212,36 @@ func realGitLog(path string) string {
 
 // parseGitLog parses output of:
 //
-//	git log --pretty=format:%H%x1f%an%x1f%aI%x1f%s --name-only -n 500
+//	git log --pretty=format:%x02%H%x1f%an%x1f%aI%x1f%B%x03 --name-only -n 500
 //
-// Each commit block: one header line (%H\x1f%an\x1f%aI\x1f%s) + file lines + blank separator.
+// Each record starts at \x02 (STX) and its header+body run to \x03 (ETX);
+// everything after \x03 up to the next \x02 (or end of input) is
+// --name-only's file list. Splitting on \x02 first — rather than on blank
+// lines, the pre-E2-1 scheme — means a multi-paragraph commit body (which
+// routinely contains internal blank lines: subject / blank / body / blank /
+// trailers) can never be mistaken for a record boundary; only \x02 is one.
+// Commit.Message now carries the FULL raw commit message (subject, body,
+// and trailers) instead of just the subject line, so a downstream
+// deterministic pass (E2-2's authorship oracle) can find trailers such as
+// "Co-Authored-By:" wherever they fall in the body.
 func parseGitLog(serviceID, raw string) []store.Commit {
 	if raw == "" {
 		return nil
 	}
 	var commits []store.Commit
-	blocks := strings.Split(raw, "\n\n")
-	for _, block := range blocks {
-		block = strings.TrimSpace(block)
-		if block == "" {
+	for _, block := range strings.Split(raw, "\x02") {
+		if strings.TrimSpace(block) == "" {
 			continue
 		}
-		lines := strings.Split(block, "\n")
-		if len(lines) == 0 {
-			continue
+		etx := strings.IndexByte(block, '\x03')
+		if etx < 0 {
+			continue // truncated/malformed record: skip gracefully
 		}
-		// First line: hash\x1fauthor\x1fdate\x1fsubject
-		parts := strings.SplitN(lines[0], "\x1f", 4)
+		header := block[:etx]
+		rest := block[etx+1:] // "\n" + file list + trailing blank line
+
+		// header: hash\x1fauthor\x1fdate\x1fbody
+		parts := strings.SplitN(header, "\x1f", 4)
 		if len(parts) < 4 {
 			continue
 		}
@@ -228,6 +249,12 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 		if hash == "" {
 			continue
 		}
+		// git's pretty format appends its own trailing newline after %B; the
+		// body itself may or may not already end in one. Trim it so Message
+		// never carries a spurious trailing blank line, while any INTERNAL
+		// blank lines (paragraph breaks, the subject/body separator) survive.
+		message = strings.TrimRight(message, "\n")
+
 		var dateNano int64
 		if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
 			dateNano = t.UnixNano()
@@ -235,12 +262,15 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 			dateNano = t.UnixNano()
 		}
 		var files []string
-		for _, l := range lines[1:] {
+		for _, l := range strings.Split(rest, "\n") {
 			l = strings.TrimSpace(l)
 			if l != "" {
 				files = append(files, l)
 			}
 		}
+		// Scanning the full message (not just the subject) means a spec ID
+		// mentioned only in the body is now found too — a strict widening of
+		// the prior subject-only recall, never a narrowing.
 		specIDs, _ := sdd.ExtractRefsFromText(message, "")
 		commits = append(commits, store.Commit{
 			ServiceID: serviceID,

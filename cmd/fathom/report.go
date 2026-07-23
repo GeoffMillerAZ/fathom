@@ -53,7 +53,7 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report", stderr)
 	storePath := fs.String("store", "", "path to the store, .duckdb or .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
-	analyzer := fs.String("analyzer", "security_rollup", "analyzer whose output to bridge (v0: security_rollup)")
+	analyzer := fs.String("analyzer", "security_rollup", "analyzer whose output to bridge (security_rollup, authorship)")
 	out := fs.String("out", "findings", "output directory (created if missing)")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -63,8 +63,8 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	if *analyzer != "security_rollup" {
-		fmt.Fprintf(stderr, "error: unsupported --analyzer %q (v0 supports: security_rollup)\n", *analyzer)
+	if *analyzer != "security_rollup" && *analyzer != "authorship" {
+		fmt.Fprintf(stderr, "error: unsupported --analyzer %q (supports: security_rollup, authorship)\n", *analyzer)
 		return 1
 	}
 
@@ -79,21 +79,30 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 	defer c.Close()
 
 	ctx := context.Background()
-	files, err := c.Sources(ctx, *service)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: fetch sources for %q: %v\n", *service, err)
-		return 1
-	}
 
-	// Self-scan exclusion (see the command doc above): drop every source file
-	// under the resolved --out directory before scanning. Sources() paths are
-	// repo-relative (ADR-017), so resolve --out against the service root
-	// recorded at ingest and compare repo-relative prefixes.
-	if meta, found, merr := st.GetServiceMeta(ctx, *service); merr == nil && found && meta.Path != "" {
-		files = excludeUnderOut(files, meta.Path, *out)
+	var doc string
+	switch *analyzer {
+	case "authorship":
+		doc, err = runAuthorshipReport(ctx, st, *service)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+	default: // security_rollup
+		files, ferr := c.Sources(ctx, *service)
+		if ferr != nil {
+			fmt.Fprintf(stderr, "error: fetch sources for %q: %v\n", *service, ferr)
+			return 1
+		}
+		// Self-scan exclusion (see the command doc above): drop every source
+		// file under the resolved --out directory before scanning. Sources()
+		// paths are repo-relative (ADR-017), so resolve --out against the
+		// service root recorded at ingest and compare repo-relative prefixes.
+		if meta, found, merr := st.GetServiceMeta(ctx, *service); merr == nil && found && meta.Path != "" {
+			files = excludeUnderOut(files, meta.Path, *out)
+		}
+		doc = renderSecurityRollupFindings(*service, files)
 	}
-
-	doc := renderSecurityRollupFindings(*service, files)
 
 	if err := os.MkdirAll(*out, 0o755); err != nil {
 		fmt.Fprintf(stderr, "error: mkdir %q: %v\n", *out, err)
