@@ -113,14 +113,23 @@ func TestSweep_OutOfRangeCitationContradicts(t *testing.T) {
 	}
 }
 
-// TestSweep_ContradictedRecordsRefuteEvent is D2-2 (docs/plans/expert-depth.md):
-// an anchor-dead claim (citation file gone) must not just flip status
-// silently — it must ALSO append a ClaimEvent{Verdict:"refuted",
-// Author:"sweep"} so the refutation has an audit trail, exactly like a human
-// `fathom claim refute` would leave. A second sweep over the SAME dead
-// anchor (still contradicted, no transition) must NOT append a second event
-// — one event per verdict, not unbounded re-affirmation noise.
-func TestSweep_ContradictedRecordsRefuteEvent(t *testing.T) {
+// TestSweep_ContradictedRecordsContradictedEvent is D2-2 (docs/plans/
+// expert-depth.md) plus P1-9's vocabulary fix (docs/plans/
+// pulled-tools-excellence.md): an anchor-dead claim (citation file gone)
+// must not just flip status silently — it must ALSO append a
+// ClaimEvent{Verdict:"contradicted", Author:"sweep"} so the machine judgment
+// has the same append-only audit trail a human `fathom claim refute` would
+// leave for ITS verdict. The event's Verdict string is deliberately
+// "contradicted", not "refuted": refuted is a human/deliberate terminal
+// judgment (core.ClaimRefuted, never served again); contradicted is this
+// machine-detected, anchor-dead state, which stays served with the status
+// label attached (core.ClaimStatus.Served() includes ClaimContradicted) —
+// conflating the two vocabularies would make the event log claim a
+// never-served verdict for a claim callers can still see. A second sweep
+// over the SAME dead anchor (still contradicted, no transition) must NOT
+// append a second event — one event per verdict, not unbounded
+// re-affirmation noise.
+func TestSweep_ContradictedRecordsContradictedEvent(t *testing.T) {
 	ctx := context.Background()
 	st := store.NewMemoryStore()
 	seedClaim(t, st, "c-dead", "gone.md#a", core.ClaimFresh, "gone.md", []byte("x\n"), 1, 1)
@@ -144,10 +153,10 @@ func TestSweep_ContradictedRecordsRefuteEvent(t *testing.T) {
 		t.Fatalf("ClaimEvents: %v", err)
 	}
 	if len(events) != 1 {
-		t.Fatalf("expected 1 refute event, got %d: %+v", len(events), events)
+		t.Fatalf("expected 1 contradicted event, got %d: %+v", len(events), events)
 	}
-	if events[0].Verdict != "refuted" || events[0].Author != "sweep" {
-		t.Errorf("event = %+v, want verdict=refuted author=sweep", events[0])
+	if events[0].Verdict != "contradicted" || events[0].Author != "sweep" {
+		t.Errorf("event = %+v, want verdict=contradicted author=sweep", events[0])
 	}
 	if !events[0].At.Equal(fixed) {
 		t.Errorf("event.At = %v, want injected clock value %v", events[0].At, fixed)

@@ -1322,17 +1322,26 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
-	// D2 (docs/plans/expert-depth.md): the refute write path always pairs a
-	// status flip (SetClaimStatus) with an append-only audit row
-	// (AppendClaimEvent) — the obligations tool's feedback action does this
-	// for a human verdict, and the post-compile sweep does it automatically
-	// for anchor-dead claims (D2-2, pkg/client.SweepClaims). Both effects
-	// must round-trip TOGETHER through every backend, not just each in
-	// isolation (claim_events_append_and_order above already covers the
-	// event log alone; claims_status_flip above covers the status flip
-	// alone) — this is the combined contract those two callers depend on.
+	// D2 (docs/plans/expert-depth.md): the refute/contradict write path
+	// always pairs a status flip (SetClaimStatus) with an append-only audit
+	// row (AppendClaimEvent) — the obligations tool's feedback action does
+	// this for a human "refuted" verdict, and the post-compile sweep does it
+	// automatically for anchor-dead claims (D2-2, pkg/client.SweepClaims)
+	// with a "contradicted" verdict. Both effects must round-trip TOGETHER
+	// through every backend, not just each in isolation (
+	// claim_events_append_and_order above already covers the event log
+	// alone; claims_status_flip above covers the status flip alone) — this
+	// is the combined contract those two callers depend on. This subtest
+	// models the SWEEP variant specifically (author "sweep", the anchor-dead
+	// note text, status ClaimContradicted): P1-9 (docs/plans/
+	// pulled-tools-excellence.md) fixed this fixture from an earlier draft
+	// that paired sweep's own note/author with core.ClaimRefuted and
+	// Verdict:"refuted" — the exact status/verdict vocabulary mismatch this
+	// row now guards against. "refuted" (core.ClaimRefuted, never served
+	// again) and "contradicted" (served WITH the status label) are different
+	// claims about the world and must never share a verdict string.
 	// ------------------------------------------------------------------ //
-	t.Run("claim_feedback_refute_flips_status_and_appends_event", func(t *testing.T) {
+	t.Run("claim_sweep_contradicted_flips_status_and_appends_event", func(t *testing.T) {
 		svc := "svc-feedback"
 		claim := core.SemanticClaim{
 			ClaimID: "cl-feedback-1", ServiceID: svc,
@@ -1346,11 +1355,11 @@ func storeContract(t *testing.T, s Store) {
 		}
 
 		at := time.Unix(5000, 0).UTC()
-		ev := core.ClaimEvent{ClaimID: claim.ClaimID, Verdict: "refuted", Author: "sweep", Note: "citation anchor no longer resolves", At: at}
+		ev := core.ClaimEvent{ClaimID: claim.ClaimID, Verdict: "contradicted", Author: "sweep", Note: "citation anchor no longer resolves", At: at}
 		if err := s.AppendClaimEvent(ctx, ev); err != nil {
 			t.Fatalf("AppendClaimEvent: %v", err)
 		}
-		if err := s.SetClaimStatus(ctx, svc, claim.ClaimID, core.ClaimRefuted); err != nil {
+		if err := s.SetClaimStatus(ctx, svc, claim.ClaimID, core.ClaimContradicted); err != nil {
 			t.Fatalf("SetClaimStatus: %v", err)
 		}
 
@@ -1362,8 +1371,8 @@ func storeContract(t *testing.T, s Store) {
 		for _, c := range claims {
 			if c.ClaimID == claim.ClaimID {
 				found = true
-				if c.Status != core.ClaimRefuted {
-					t.Errorf("status = %q, want refuted", c.Status)
+				if c.Status != core.ClaimContradicted {
+					t.Errorf("status = %q, want contradicted", c.Status)
 				}
 			}
 		}
@@ -1378,7 +1387,7 @@ func storeContract(t *testing.T, s Store) {
 		if len(events) != 1 {
 			t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
 		}
-		if events[0].Verdict != "refuted" || events[0].Author != "sweep" || !events[0].At.Equal(at) {
+		if events[0].Verdict != "contradicted" || events[0].Author != "sweep" || !events[0].At.Equal(at) {
 			t.Errorf("event = %+v", events[0])
 		}
 	})

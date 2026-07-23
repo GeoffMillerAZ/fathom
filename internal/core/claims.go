@@ -211,7 +211,17 @@ type CompileRun struct {
 // channel the truth lens demanded — ADR-016 §4.1).
 type ClaimEvent struct {
 	ClaimID string
-	Verdict string // "refuted" | "corroborated"
+	// Verdict is "refuted" | "corroborated" | "contradicted". "refuted" and
+	// "contradicted" name DIFFERENT judgments and must never be conflated
+	// (P1-9, docs/plans/pulled-tools-excellence.md): "refuted" is a
+	// deliberate human (or human-equivalent) verdict via `fathom claim
+	// refute` / the obligations tool's feedback action — it pairs with
+	// status ClaimRefuted, which Served() excludes (never served again).
+	// "contradicted" is semantic.Sweep's machine-detected, anchor-dead
+	// verdict — it pairs with status ClaimContradicted, which Served()
+	// includes (served WITH the status label, pending a recompile that
+	// heals or confirms it). "corroborated" never changes status.
+	Verdict string
 	Author  string
 	Note    string
 	At      time.Time

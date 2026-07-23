@@ -30,15 +30,29 @@ type SweepReport struct {
 // Superseded/refuted claims are never touched — those are terminal verdicts,
 // not freshness states.
 //
+// P1-9 vocabulary (docs/plans/pulled-tools-excellence.md; see also
+// internal/semantic/serve.go and docs/design/semantic-layers.md): "contradicted"
+// and "refuted" name two DIFFERENT things and must never share a verdict
+// string. Contradicted is this function's own machine-detected, anchor-dead
+// state — a claim whose citation no longer resolves; it is served WITH the
+// status label (Served() includes ClaimContradicted) so a caller sees the
+// flagged answer, never silence, pending a recompile that either heals it or
+// confirms it. Refuted (core.ClaimRefuted) is a deliberate human — or
+// human-equivalent — judgment via `fathom claim refute` / the obligations
+// tool's feedback action (D2-1): a terminal verdict that is NEVER served
+// again. Sweep only ever produces the former.
+//
 // D2-2 (docs/plans/expert-depth.md): a transition INTO contradicted — an
 // anchor-dead claim, the strongest drift signal short of a human refutation —
-// also appends a ClaimEvent{Verdict:"refuted", Author:"sweep"} beside the
-// status flip, so the automated judgment leaves the same append-only audit
-// trail a human `fathom claim refute` / the obligations tool's feedback
-// action (D2-1) would. Only fired on the transition (next != cl.Status), not
-// on every sweep of an already-contradicted claim — durability needs one
-// event per verdict, not unbounded re-affirmation noise. now is the injected
-// clock (repo convention, mirrors Compiler.Now); nil uses time.Now.
+// also appends a ClaimEvent{Verdict:"contradicted", Author:"sweep"} beside
+// the status flip, so the automated judgment leaves the same append-only
+// audit trail a human `fathom claim refute` / the obligations tool's feedback
+// action (D2-1) would leave for its own "refuted" verdict — same mechanism,
+// distinct vocabulary, because they are distinct judgments. Only fired on the
+// transition (next != cl.Status), not on every sweep of an already-
+// contradicted claim — durability needs one event per verdict, not unbounded
+// re-affirmation noise. now is the injected clock (repo convention, mirrors
+// Compiler.Now); nil uses time.Now.
 func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(path string) ([]byte, bool), now func() time.Time) (SweepReport, error) {
 	clock := time.Now
 	if now != nil {
@@ -131,7 +145,7 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 				}
 				ev := core.ClaimEvent{
 					ClaimID: cl.ClaimID,
-					Verdict: "refuted",
+					Verdict: "contradicted",
 					Author:  "sweep",
 					Note:    note,
 					At:      clock(),
