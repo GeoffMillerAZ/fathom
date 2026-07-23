@@ -47,6 +47,63 @@ All notable changes to fathom. Format loosely follows
   this worktree, so it's not documented here — see the SDD guide above for
   its committed design.)
 
+||||||| 9f40934
+### Added — `fathom plans` (E3/E4, docs/plans/new-use-cases.md), reverse-drift report (E6-1), verify_plan latency SLO (B3-1, docs/plans/falsifiability.md)
+- **`fathom plans status`** (E3-1): a per-plan rollup — proven, claimed-
+  unproven, open, deferred-with-trigger, skipped-other — computed fresh by
+  running the existing verify engine over one or more plan files (or every
+  active `docs/plans/*.md` by default); never an asserted state. `--json` +
+  a human table; deterministic, sorted by plan file. `cmd/fathom/plans.go`.
+- **`fathom plans next`** (E3-2): the ordered work frontier for an agent —
+  open/in-progress rows plus claimed-but-unproven rows (verify Fail as
+  `claimed-failing`, verify Unknown as `claimed-unknown` — the same set CI's
+  `--strict` blocks on, so the frontier never reports "no open work" on a
+  plan CI rejects), each with its `{id, symbol, package}` anchors and
+  originating plan file. Ordering is (plan file, then DOCUMENT order) —
+  never TaskID-lexical order, since an author-owned `id:` need not sort the
+  way it was written.
+- **`fathom plans archive <plan>` / `fathom plans restore <plan>`** (E4-1):
+  the governed artifact lifecycle. Archive refuses unless (a) every row is
+  `[x]`-claimed-and-currently-verifying-Pass or `[-]` skipped, (b) every
+  row's task ID is lexically absorbed into CHANGELOG.md or ADR.md at a
+  token boundary — "E3-10" never absolves "E3-1" (this entry is that
+  absorption for E3-1, E3-2, E4-1, E4-2, E6-1, B3-1), (c) the engine is
+  re-run fresh, not trusted from a prior pass — and additionally preflights
+  that the plan file itself has no uncommitted changes, so the tombstone's
+  HEAD sha always names the exact content archived. On success the plan is
+  `git mv`d to `docs/plans/archive/` and a tombstone (date, HEAD sha,
+  verify summary) is written into its header and re-staged (a staging
+  failure is surfaced, never swallowed); `restore` reverses the move,
+  refusing if an active plan of the same name exists, and leaves the
+  tombstone in place as the historical record. `cmd/fathom/plans_archive.go`.
+- **Pre-push/CI gate scoped to active plans** (E4-2): both `lefthook.yml`'s
+  `verify` command and `scripts/ci.sh` already only walk the top level of
+  `docs/plans/` (a non-recursive glob / `find -maxdepth 1`), so
+  `docs/plans/archive/` was structurally out of gate scope the moment E4-1
+  introduced it — documented explicitly in both files and
+  `docs/plans/README.md` rather than left as an accident: each archived plan
+  now removes exactly one `fathom verify` invocation per push/CI run.
+- **`fathom report --analyzer reverse-drift`** (E6-1): public API surface
+  (`internal/analysis/apisurface`, unchanged; `_test.go` symbols excluded —
+  test helpers were 68% of the raw exported surface on the fleet index)
+  minus spec-bindings coverage (served `spec-bindings`-layer claims, matched
+  by file-path glob against each claim's `Scope` — the same mechanism
+  `internal/semantic/serve.go` already uses) = the ungoverned public
+  surface, per service. When zero spec-bindings claims are compiled the
+  report banners that the listing is the whole surface, not measured drift.
+  Read-only, one markdown doc, deterministic.
+  `cmd/fathom/report_reversedrift.go`.
+- **verify_plan p95 ≤ 5s SLO + Stop-hook fail-open timeout** (B3-1,
+  docs/plans/falsifiability.md): the measured p50 2.2s / p95 4.5s latency
+  and an explicit p95 ≤ 5s budget are now recorded in
+  `docs/design/coding-agent-excellence.md` §2's ledger. The Stop-hook's
+  verify caller (`cmd/fathom/stophook.go`) times each `verify_plan` call at
+  that same 5s ceiling (`stopHookVerifyTimeout`); a call that exceeds it
+  degrades to an advisory warning ("verify timed out — treat as
+  unconfirmed") for that plan and keeps checking the others, never a
+  blocked session end and never silent — a timeout stays advisory even under
+  `--block`, since it is an operational condition, not a proven-false claim.
+
 ### Fixed — relative corpus paths at the ingest boundary (dogfood O10, 2026-07-22)
 - **Typed edges silently absent for relative `--path`** (the CLI default
   `.`): the connector-scope filter rel-mapped absolute go/packages file

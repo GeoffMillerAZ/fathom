@@ -76,6 +76,11 @@ fi
 # ─── fathom verify (fail-closed, §5.3 docs/design/coding-agent-excellence.md) ─
 # Build bin/fathom, ingest the repo into a temp store, then for each
 # docs/plans/*.md run fathom verify --strict. Skip cleanly if no plan files.
+#
+# Scope (E4-2, docs/plans/new-use-cases.md): ACTIVE plans only. -maxdepth 1
+# never descends into docs/plans/archive/, so an archived plan (via `fathom
+# plans archive`) costs one fewer `fathom verify` invocation on every CI run,
+# with no separate exclusion needed.
 VERIFY_PASS=1
 FATHOM_PLANS=()
 while IFS= read -r -d $'\0' f; do

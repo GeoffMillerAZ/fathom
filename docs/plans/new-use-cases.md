@@ -15,9 +15,11 @@ Design (normative):
 - **E3 SDD computed progress.** `fathom plans status` — per-plan rollup
   {proven, claimed-unproven, open, deferred-with-trigger} computed by the
   existing verify engine, never asserted; `fathom plans next` — the ordered
-  work frontier (open/unproven rows with their {symbol, package} anchors)
-  for agents. CLI verbs only. Regression timelines depend on D2's
-  claim_events and are deferred to its landing.
+  work frontier (open/in-progress rows plus claimed-but-unproven rows —
+  verify Fail AND Unknown, the same set CI's `--strict` blocks on, so the
+  frontier and the gate never disagree about done — each with its {symbol,
+  package} anchors) for agents. CLI verbs only. Regression timelines depend
+  on D2's claim_events and are deferred to its landing.
 - **E4 artifact lifecycle.** `fathom plans archive <plan>`: refuses unless
   (a) every row proven or dispositioned, (b) plan ids appear in CHANGELOG
   or ADR (lexical absorption check), (c) anchors resolve. On success: file
@@ -34,11 +36,11 @@ Design (normative):
 - [x] Commit ingestion captures full message body; store round-trip in the contract suite; backfill on re-ingest proven {id: E2-1, symbol: parseGitLog, package: internal/fusion}
 - [x] Authorship trailer oracle → verified-tier claims; deterministic; golden-tested on fixture history {id: E2-2, symbol: CompileClaims, package: internal/authorship}
 - [x] authorship report joining share × staleness × complexity; fleet numbers recorded here on first run (see "Authorship report — fleet numbers" below) {id: E2-3, symbol: cmdReport, package: cmd/fathom}
-- [ ] plans status: computed rollup via the verify engine; golden-tested against a fixture plan set {id: E3-1, symbol: cmdPlans, package: cmd/fathom}
-- [ ] plans next: ordered unproven-row frontier with anchors; deterministic ordering test {id: E3-2, symbol: cmdPlans, package: cmd/fathom, skip_test: true, skip: "anchor shared with E3-1 (same new command family); frontier ordering has its own test"}
-- [ ] plans archive with the three refusal criteria + tombstone + restore; refusal cases golden-tested {id: E4-1, symbol: cmdPlans, package: cmd/fathom, skip_test: true, skip: "anchor shared with E3-1 pending the command family landing; archive/restore tests are the coverage"}
-- [ ] Pre-push verify gate scopes to active plans (archive/ excluded); gate-cost delta recorded {id: E4-2, symbol: cmdVerify, package: cmd/fathom}
-- [ ] Reverse-drift report: api_surface minus bindings coverage {id: E6-1, symbol: cmdReport, package: cmd/fathom, skip_test: true, skip: "report mode over two existing tested analyzers; anchored to the report command that hosts it"}
+- [x] plans status: computed rollup via the verify engine; golden-tested against a fixture plan set {id: E3-1, symbol: cmdPlans, package: cmd/fathom}
+- [x] plans next: ordered unproven-row frontier with anchors; deterministic ordering test {id: E3-2, symbol: cmdPlans, package: cmd/fathom, skip_test: true, skip: "anchor shared with E3-1 (same new command family); frontier ordering has its own test"}
+- [x] plans archive with the three refusal criteria + tombstone + restore; refusal cases golden-tested {id: E4-1, symbol: cmdPlans, package: cmd/fathom, skip_test: true, skip: "anchor shared with E3-1 pending the command family landing; archive/restore tests are the coverage"}
+- [x] Pre-push verify gate scopes to active plans (archive/ excluded); gate-cost delta recorded — archive/ is a subdirectory, so lefthook.yml's non-recursive glob and scripts/ci.sh's `find -maxdepth 1` already exclude it structurally; each archived plan removes exactly one `fathom verify` invocation from every push/CI run (23 active plans today → ~23 invocations at p50 2.2s each) {id: E4-2, symbol: cmdVerify, package: cmd/fathom}
+- [x] Reverse-drift report: api_surface minus bindings coverage {id: E6-1, symbol: cmdReport, package: cmd/fathom, skip_test: true, skip: "report mode over two existing tested analyzers; anchored to the report command that hosts it"}
 
 ### Authorship report — fleet numbers (2026-07-23; re-run after the F1–F4 critic fixes)
 

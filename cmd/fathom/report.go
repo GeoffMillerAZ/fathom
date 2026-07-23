@@ -25,13 +25,23 @@ import (
 // second persistence path for the Finding{File,Line,Rule,Severity} shape
 // every deterministic analyzer already returns.
 //
-// v0 supports exactly one analyzer — security_rollup — mirroring
-// internal/mcp/extra_tools.go's registerSecurityRollup (secret_scan +
-// shell_out + http_client_calls over the service's sources; license posture
-// is deliberately excluded here: it is not a file:line-anchored finding, so
-// it does not fit the Finding shape this bridge unifies).
+// v0 supports three analyzers:
 //
-//	fathom report --store DB --service S --analyzer security_rollup --out findings/
+//   - security_rollup (default) — mirrors internal/mcp/extra_tools.go's
+//     registerSecurityRollup (secret_scan + shell_out + http_client_calls
+//     over the service's sources; license posture is deliberately excluded
+//     here: it is not a file:line-anchored finding, so it does not fit the
+//     Finding shape this bridge unifies).
+//
+//   - authorship — E2-3 (docs/plans/new-use-cases.md): AI co-authorship
+//     share × staleness × complexity, and the only analyzer that also
+//     persists a claims ledger (see report_authorship.go).
+//
+//   - reverse-drift — E6-1 (docs/plans/new-use-cases.md): public API
+//     surface minus spec-bindings coverage = ungoverned surface, per
+//     service (see report_reversedrift.go). Read-only, like security_rollup.
+//
+//     fathom report --store DB --service S --analyzer security_rollup --out findings/
 //
 // Output is exactly ONE file, "<service>-<analyzer>.md", inside --out.
 // Generation is a pure function of the corpus working tree at run time
@@ -53,7 +63,7 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("report", stderr)
 	storePath := fs.String("store", "", "path to the store, .duckdb or .sqlite/.db (required)")
 	service := fs.String("service", "", "service ID (required)")
-	analyzer := fs.String("analyzer", "security_rollup", "analyzer whose output to bridge (security_rollup, authorship)")
+	analyzer := fs.String("analyzer", "security_rollup", "analyzer whose output to bridge (security_rollup, authorship, reverse-drift)")
 	out := fs.String("out", "findings", "output directory (created if missing)")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -63,8 +73,8 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	if *analyzer != "security_rollup" && *analyzer != "authorship" {
-		fmt.Fprintf(stderr, "error: unsupported --analyzer %q (supports: security_rollup, authorship)\n", *analyzer)
+	if *analyzer != "security_rollup" && *analyzer != "authorship" && *analyzer != "reverse-drift" {
+		fmt.Fprintf(stderr, "error: unsupported --analyzer %q (supports: security_rollup, authorship, reverse-drift)\n", *analyzer)
 		return 1
 	}
 
@@ -84,6 +94,12 @@ func cmdReport(args []string, stdout, stderr io.Writer) int {
 	switch *analyzer {
 	case "authorship":
 		doc, err = runAuthorshipReport(ctx, st, *service)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+	case "reverse-drift":
+		doc, err = runReverseDriftReport(ctx, st, *service)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1

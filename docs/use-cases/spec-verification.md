@@ -163,6 +163,54 @@ bin/fathom verify --strict --service <service> --plan docs/plans/my-plan.md \
 
 **HTTP-first, store fallback:** by default `fathom verify` queries `http://localhost:7575/rpc` (the shared daemon). Pass `--store <path>` to bypass the daemon and query a DuckDB file directly — useful in CI environments without a running daemon.
 
+## Computed progress and archival (`fathom plans`)
+
+`fathom plans` is the CLI verb family for SDD state that is **computed by
+the verify engine, never asserted** — the same honesty discipline as
+`fathom verify`, applied to "how much of this plan is actually done" instead
+of one checkbox at a time.
+
+**`fathom plans status`** — a per-plan rollup: `proven` (claimed and
+verifies), `claimed_unproven` (claimed but fails or unknown),
+`open` (`[ ]`/`[~]`, not yet claimed), `deferred_with_trigger` (`[-]` with
+`disposition: deferred`), `skipped_other` (any other `[-]`). Defaults to
+every active `docs/plans/*.md` file; pass `--plan` (repeatable) to scope it:
+
+```sh
+bin/fathom plans status --service <service> --store workspace/db/fleet.sqlite --json
+```
+
+**`fathom plans next`** — the ordered work frontier for an agent picking up
+where a plan left off: open/in-progress rows plus claimed-but-unproven rows
+(verify Fail as `claimed-failing`, verify Unknown — e.g. no-contract — as
+`claimed-unknown`; the same set CI's `--strict` blocks on, so the frontier
+never says "done" on a plan CI rejects), each with its `{id, symbol,
+package}` anchors and plan file.
+Ordering is (plan file, then the row's position in the file) — an
+author-owned `id:` need not sort alphabetically the way it was written, so
+this is never a re-sort by ID.
+
+```sh
+bin/fathom plans next --service <service> --store workspace/db/fleet.sqlite --json
+```
+
+**`fathom plans archive <plan>` / `fathom plans restore <plan>`** — the
+governed artifact lifecycle (bounds the gate's cost as the plan count
+grows). Archive refuses unless: every row is `[x]`-claimed-and-currently-
+verifying or `[-]` skipped; every row's task ID appears somewhere in
+CHANGELOG.md or ADR.md (the plan's claims must already be absorbed into the
+permanent record); and the engine is re-run fresh at archive time, never
+trusted from an earlier pass. On success the plan moves to
+`docs/plans/archive/` with a tombstone (date, HEAD sha, verify summary)
+written into its header; `restore` moves it back, leaving the tombstone in
+place. `docs/plans/archive/` is out of `fathom verify`'s gate scope by
+construction — see `docs/plans/README.md`.
+
+```sh
+bin/fathom plans archive docs/plans/my-plan.md --service <service> --store workspace/db/fleet.sqlite
+bin/fathom plans restore docs/plans/archive/my-plan.md --root .
+```
+
 ## Setup & notes
 
 **Profile:** Set `investigation` before running spec-verification workflows:
@@ -187,4 +235,4 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 ## Maintained
 
-This doc covers: `verify_plan`, `spec_coverage`, `spec_status`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`. Update it when these change.
+This doc covers: `verify_plan`, `spec_coverage`, `spec_status`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`, `fathom plans status`, `fathom plans next`, `fathom plans archive`, `fathom plans restore`. Update it when these change.

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -14,6 +17,16 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
+
+// stopHookVerifyTimeout bounds each verify_plan HTTP call the Stop hook
+// makes. It is sized to verify_plan's own p95 latency SLO
+// (docs/design/coding-agent-excellence.md §2: p95 ≤ 5s) rather than the
+// blanket 2s convention other, cheap hook calls use (§5.3) — verify_plan is
+// explicitly budgeted as the one expensive companion tool (B3,
+// docs/plans/falsifiability.md). A call that exceeds this degrades to an
+// advisory warning (fail-open, §5.3: hooks never block on infrastructure)
+// instead of stalling session end.
+const stopHookVerifyTimeout = 5 * time.Second
 
 // cmdStopHook implements "stop-hook": a Claude Code Stop hook that checks
 // whether any plan task was newly claimed ([x]) during this session without
@@ -56,7 +69,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	if projDir == "" {
 		projDir, _ = os.Getwd()
 	}
-	hc := &http.Client{Timeout: 5 * time.Second}
+	hc := &http.Client{Timeout: stopHookVerifyTimeout}
 	return runStopHook(projDir, hc, *url, *block, stdout)
 }
 
@@ -87,7 +100,7 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 		return 0 // unindexed project → silent
 	}
 
-	var complaints []string
+	var complaints, timedOutPlans []string
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.EqualFold(e.Name(), "README.md") {
 			continue
@@ -105,7 +118,14 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 		localPlan := verify.ParseMarkdownPlan(service, newMD)
 		rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan)
 		if err != nil {
-			return 0 // operational → silent
+			if isTimeoutErr(err) {
+				// B3-1: a slow verify degrades to a warning for THIS plan —
+				// fail open, never silent, never a stall — but other plan
+				// files still get a chance to verify.
+				timedOutPlans = append(timedOutPlans, rel)
+				continue
+			}
+			return 0 // other operational errors (daemon down, bad response) → silent
 		}
 		verdictByID := map[string]verify.TaskVerdict{}
 		for _, tv := range rep.Tasks {
@@ -126,16 +146,31 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 			complaints = append(complaints, fmt.Sprintf("%s [%s] %s — %s", rel, tv.TaskID, tv.Title, detail))
 		}
 	}
-	if len(complaints) == 0 {
+	if len(complaints) == 0 && len(timedOutPlans) == 0 {
 		return 0
 	}
 	sort.Strings(complaints)
-	msg := "⛔ done-means-proven: task(s) claimed [x] this session fail verification:\n• " +
-		strings.Join(complaints, "\n• ") +
-		"\nProve the claim (fix the code / contract) or uncheck it before ending the session."
+	sort.Strings(timedOutPlans)
+
+	var sections []string
+	if len(complaints) > 0 {
+		sections = append(sections, "⛔ done-means-proven: task(s) claimed [x] this session fail verification:\n• "+
+			strings.Join(complaints, "\n• ")+
+			"\nProve the claim (fix the code / contract) or uncheck it before ending the session.")
+	}
+	if len(timedOutPlans) > 0 {
+		sections = append(sections, fmt.Sprintf(
+			"⚠️ done-means-proven: verify timed out (>%s) for %s — newly claimed task(s) there could not be confirmed this session; treat them as unconfirmed until verify runs clean.",
+			stopHookVerifyTimeout, strings.Join(timedOutPlans, ", "),
+		))
+	}
+	msg := strings.Join(sections, "\n\n")
 
 	var out []byte
-	if block {
+	// A timeout is operational, never evidence of a false claim — it must
+	// stay advisory even when --block is set (§5.3: hooks never block on
+	// infrastructure). Only a proven-failing claim may block.
+	if block && len(complaints) > 0 {
 		out, _ = json.Marshal(map[string]any{"decision": "block", "reason": msg})
 	} else {
 		out, _ = json.Marshal(map[string]any{
@@ -147,6 +182,19 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 	}
 	fmt.Fprintln(stdout, string(out))
 	return 0
+}
+
+// isTimeoutErr reports whether err (possibly wrapped, e.g. by verifyViaHTTP's
+// fmt.Errorf("...: %w", err)) is a client-side timeout — either an
+// *http.Client deadline (surfaced as a net.Error with Timeout() true,
+// typically *url.Error wrapping context.DeadlineExceeded) or a bare
+// context.DeadlineExceeded from a canceled request context.
+func isTimeoutErr(err error) bool {
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return true
+	}
+	return errors.Is(err, context.DeadlineExceeded)
 }
 
 // newlyClaimedTasks returns the IDs of tasks that are claimed in newMD but
