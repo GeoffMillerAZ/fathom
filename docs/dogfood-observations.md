@@ -73,6 +73,28 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   6.6× more tokens than grep. Fixing (a) alone likely flips B1-T09's sign;
   (b) is a tax on every discovery session.
 
+||||||| 9f40934
+### O11 — `migration_targets`' `deprecated_pkgs` REPLACES the default list instead of adding to it, contradicting its own description
+
+- **Tool:** `migration_targets` (`internal/mcp/extra_tools.go` `registerMigrationTargets`).
+  **Severity:** low — a caller-supplied list under-reports, it never over-reports.
+- **Symptom:** the tool's own `deprecated_pkgs` parameter description reads "Additional
+  deprecated package paths (default list is always included)". The underlying
+  `migrationtargets.Find` does the opposite: `if len(deprecatedPkgs) == 0 { deprecatedPkgs
+  = DefaultDeprecatedPkgs }` — when the caller passes ANY non-empty list, `DefaultDeprecatedPkgs`
+  (`io/ioutil`, `golang.org/x/net/context`, `golang.org/x/oauth2/internal`,
+  `github.com/golang/protobuf`) is dropped entirely, not merged.
+- **Found during:** C4-5's empty-config honesty audit (docs/plans/review-verb.md). Not the
+  same bug class as `arch_conformance`'s confirmed instance — the *empty*-config case is
+  safe here (falls back to the real, non-empty default list, an honest check) — this is a
+  *non-empty*-config case where the tool's own promise doesn't hold.
+- **Candidate fix:** merge (`append(DefaultDeprecatedPkgs, deprecatedPkgs...)`, deduped)
+  instead of replacing, OR correct the parameter description to state replace semantics.
+  Left open rather than fixed inline: `migrationtargets.Find`'s existing tests
+  (`TestFind_DeprecatedIoutil` et al.) assert replace semantics, so a merge fix needs a
+  companion test update — out of scope for the C4-5 pass that found it.
+- **Status:** open; logged for a follow-up row.
+
 ### O10 — `fathom claim` triage is store-direct: fleet-store triage requires stopping the daemon
 
 - **Symptom (by design, not a bug):** `fathom claim refute|corroborate` (D3 findings

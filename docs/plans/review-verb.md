@@ -33,11 +33,87 @@ Design (normative):
 
 ## Tasks
 
-- [ ] archconformance rule-pack CUE schema + valid/invalid testdata, Go-test-asserted negatives {id: C4-1, symbol: Check, package: internal/analysis/archconformance}
-- [ ] internal/projectrules loader: .fathom/rules/ discovery, CUE validation, source attribution; unit-tested incl. malformed-file refusal {id: C4-2, symbol: Check, package: internal/analysis/archconformance, skip_test: true, skip: "loader is a new package whose consumer anchor is the analyzer it feeds; its own tests are the coverage — anchor shared with C4-1 pending the package landing"}
-- [ ] arch_conformance consumes project rules when args omit them; response reports rule source; fake-backend test covers all three source states {id: C4-3, symbol: registerArchConformance, package: internal/mcp}
-- [ ] Fathom's own .fathom/rules/archconformance.cue encoding the three-layer boundary; violation caught by test fixture {id: C4-4, symbol: Check, package: internal/analysis/archconformance, skip_test: true, skip: "config-as-data row; C4-3's tests exercise the load path against this file"}
-- [ ] Honesty audit across all deterministic analyzer tools: every empty-config case returns checked:false+reason or requires config by schema; table of findings recorded here {id: C4-5, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "audit row — per-tool fixes carry their own tests; the audit table is the deliverable"}
+- [x] archconformance rule-pack CUE schema + valid/invalid testdata, Go-test-asserted negatives {id: C4-1, symbol: Check, package: internal/analysis/archconformance}
+- [x] internal/projectrules loader: .fathom/rules/ discovery, CUE validation, source attribution, absolute-root guard; unit-tested incl. malformed-file and relative-root refusal {id: C4-2, symbol: Load, package: internal/projectrules}
+- [x] arch_conformance consumes project rules when args omit them; response reports rule source; fake-backend test covers all three source states {id: C4-3, symbol: registerArchConformance, package: internal/mcp}
+- [x] Fathom's own .fathom/rules/archconformance.cue encoding the three-layer boundary; violation caught by test fixture — guards function-origin edges only; method-origin edges carry receiver-typed packages (goextract funcNode) and are a disclosed gap until both-sides edge-package normalization lands {id: C4-4, symbol: Load, package: internal/projectrules, skip_test: true, skip: "config-as-data row; the pack file is the deliverable — TestLoad_RepoOwnRuleFile_CatchesFixtureViolation exercises it through Load"}
+- [x] Honesty audit across all deterministic analyzer tools: every empty-config case returns checked:false+reason or requires config by schema; table of findings recorded here {id: C4-5, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "audit row — per-tool fixes carry their own tests; the audit table is the deliverable"}
 - [ ] (op-gated: C3) Pre-push non-blocking review summary + review_change prompt rewrite {id: C3-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on operator channel acceptance; not built until then"}
 - [ ] (blocked on C3) review_diff composed verb + CLI mirror {id: C1-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on C3; anchor updated to the new package when built"}
 - [ ] (blocked on C3) findings-as-claims bridge via FT-7 {id: C2-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on C3"}
+
+## C4-5 audit
+
+Enumerated from `internal/mcp` registrations (`extra_tools.go`, `source_tools.go`,
+`analysis_tools.go`, `nav_tools.go`) cross-checked against `docs/mcp-tools.md` (which
+is itself missing most of `extra_tools.go`'s tools — a pre-existing catalog gap, not
+introduced here, and out of this row's scope to backfill). The audited class is
+specifically **operator-supplied policy/rules config that can legitimately be
+omitted** — not general "empty index returns empty results" (real absence of data is
+already honest; the bug class is a *config* absence dressed up as a clean scan).
+
+### Tools with a real config surface
+
+| Tool | Empty-config behavior before | Verdict | Fix applied |
+|---|---|---|---|
+| `arch_conformance` | `rules` optional; omitted/empty → `archconformance.Check(edges, nil)` → `{"violations":[],"count":0}`, structurally identical to a real clean scan. | **Bug (confirmed instance).** | C4-2/C4-3: falls back to the service's `.fathom/rules/archconformance.cue` project rule pack when no inline rules are passed; when neither inline nor project rules exist, response adds `rule_source:"none"` and `checked:false` + `reason` (never runs `Check` in that state, so `violations`/`count` can't be mistaken for a real scan). `rule_source` is `"inline"` \| `"project"` \| `"none"`. Tests: `internal/mcp/extra_tools_test.go` `TestArchConformance_RuleSource_*`. |
+| `license_policy` | `allowed` is `required` in InputSchema, but that is NOT what protects it: dispatch never enforces InputSchema `required` (see footnote), so an omitted `allowed` reaches the handler and the scan runs. What actually protects: `license.Policy(detected, nil)` **fails closed** — `ok:false` with reason `"no licenses are allowed"` (`internal/analysis/license/license.go:109`) — never a false permit. | **Already safe — but via the analyzer's fail-closed empty-list behavior, not schema enforcement.** (This table's earlier draft claimed `ErrCodeParams` before any scan; the critic disproved that live.) | none |
+| `security_rollup` | `allowed_licenses` optional; empty → `license.Policy(detected, nil)` **fails closed**: `license_ok:false` with explicit reason `"license %q is not permitted: no licenses are allowed"` (`internal/analysis/license/license.go:109`) — never a false "ok". `secrets`/`shell_outs`/`http_calls` are unconditional real scans with no config surface. | **Already safe** — fails closed with a stated reason instead of a clean-shaped answer. | none |
+| `migration_targets` | `deprecated_pkgs` optional; empty → `migrationtargets.DefaultDeprecatedPkgs` (a real, non-empty, hardcoded list) is used — never an unconfigured no-op. | **Safe for the empty-config case.** Separate finding: a *non-empty* caller-supplied list **replaces** rather than merges with the default list, contradicting the tool's own parameter description ("default list is always included") — a different bug class (under-report on custom config, not false-clean on absent config); fixing it requires updating `migrationtargets_test.go`'s existing replace-semantics assertions, out of scope for this pass. | none (logged as `docs/dogfood-observations.md` O11) |
+| `dead_code` | `entrypoints` optional; empty → BFS reachable-set seed is empty, so every symbol with zero callers is flagged "dead" (over-report: real entrypoints with no in-repo caller look dead too). | **Different failure mode — not this bug class.** Over-reporting, never a false-clean answer; not in scope for a "clean-shaped answer for work it didn't do" fix. | none |
+| `god_object` | `method_threshold`/`field_threshold` optional; `<=0` → `godobject.Config.methodMin`/`fieldMin` default to a real `10` (`internal/analysis/godobject/godobject.go:41-51`). | **Safe** — real non-empty default, a check still runs. | none |
+| `traceability` | `prefixes` optional; empty → `sdd.ExtractRefs` uses its own built-in non-empty default pattern (US/EP/FR/NFR etc.), not "match nothing". | **Safe** | none |
+| `spec_refs` | `pattern` optional; empty → built-in default regex covering `[US/EP/FR/NFR-N]`, `MN.N`, `doc N`. | **Safe** | none |
+| `get_go_symbols` | `kinds` optional; empty → no filter applied (all kinds returned) — "no filter requested" semantics, not a policy check that silently no-ops. | **N/A** — not a policy/rules config. | none |
+| `spec_coverage`, `spec_status` | `spec_ids` is `required` in InputSchema but NOT Go-checked in the handler (only `service` is; see footnote) — an omitted `spec_ids` runs the scan. Result is degenerate-but-visible, not false-clean: `spec_status` returns `statuses: {}` (an empty map, no verdict claimed); `spec_coverage` returns empty `coverage` with every found code ref listed under `orphans`. | **Safe in effect** — empty input yields an empty/degenerate answer, not a clean-shaped verdict. | none |
+| `propagate_concern` | `concern` + `seed` Go-enforced in the handler (`ErrCodeParams` before any work). | **Already safe** | none |
+| `contradiction_scan`, `pack_context` | `concern` Go-enforced in the handler. | **Already safe** | none |
+| `import_cycles` | `pkg_imports` Go-enforced in the handler. | **Already safe** | none |
+| `cross_repo_blast_radius` | `symbol` Go-enforced in the handler. | **Already safe** | none |
+
+**Footnote — InputSchema `required` is client-side-only across the MCP layer
+(real finding from the critic pass, recorded here for a future row, deliberately
+NOT fixed in this slice):** `internal/mcp`'s dispatch does not validate incoming
+`arguments` against a tool's declared `InputSchema` — `required` entries are
+advisory metadata for well-behaved MCP clients, nothing more. Every enforcement
+that actually exists is a hand-written Go check inside the individual handler
+(`p.Service == ""`, `p.Concern == ""`, …). Consequence for this audit: "the
+schema says required" is never, by itself, evidence of safety — each row above
+now states what the HANDLER enforces and what the analyzer does with the empty
+value instead. A future row should either add dispatch-level InputSchema
+validation or systematically align handler checks with declared `required`
+lists (`license_policy.allowed`, `spec_coverage.spec_ids`, `spec_status.spec_ids`
+are the currently-declared-but-unenforced cases found).
+
+### Tools with no config surface (data-driven only — N/A for this audit class)
+
+These take only `service` (or `service` + a required target like `symbol`/`file`/
+`changed_files`) and run a fixed, hardcoded check against whatever source/symbols are
+indexed. There is no operator-supplied policy parameter that can be silently absent, so
+"empty config reads as clean" does not apply; an empty result here honestly means "no
+data matched," not "no rules were checked." Listed for completeness per the audit's
+enumeration requirement:
+
+`naming`, `struct_tags`, `err_audit`, `sql_map`, `field_usage`, `clones`, `doc_coverage`,
+`stale_docs`, `api_diff`, `dep_drift`, `package_deps`, `hotspots`, `secret_scan`,
+`shell_out`, `http_client_calls`, `antipatterns`, `cognitive`, `cloc`, `deprecation`,
+`env_keys`, `markers`, `routes`, `dependencies`, `endpoint_inventory`, `complexity`,
+`api_surface`, `community`, `type_hierarchy`, `rename_impact`, `reachable`, `call_path`,
+`test_impact`, `proto_contract`, `proto_conformance` (hardcoded naming convention, no
+external policy), `schema_export`, `license` (detection only, no policy).
+
+### Summary
+
+One confirmed instance (`arch_conformance`), fixed with the `rule_source`/`checked`
+contract this row's design section specifies. `license_policy` and `security_rollup`
+are both safe via the SAME mechanism — `license.Policy`'s fail-closed empty-list
+behavior (`ok:false` + explicit reason), NOT schema enforcement; the design section's
+premise that `license_policy` demonstrates a "schema-required param" pattern turned
+out to be false on inspection (see the footnote: InputSchema `required` is
+client-side-only, dispatch never enforces it). The safe pattern worth copying for
+future config-bearing tools is therefore fail-closed-with-a-reason, plus a
+hand-written handler check where an empty value should be a parameter error. Two
+adjacent findings logged, not fixed in this pass: `migration_targets` replace-vs-merge
+(O11) and the layer-wide unenforced-`required` gap (footnote above). No other
+deterministic analyzer tool in the current registry carries an omittable policy/rules
+parameter.
