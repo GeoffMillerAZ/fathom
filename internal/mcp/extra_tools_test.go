@@ -3,6 +3,7 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strings"
@@ -1497,6 +1498,125 @@ func TestBrief_LabelsStaleClaims(t *testing.T) {
 	if n, ok := p["claims_attached"].(float64); !ok || n != 1 {
 		t.Errorf("claims_attached = %v, want 1", p["claims_attached"])
 	}
+}
+
+// briefClaimsBackend builds the standard D1 fixture: one resolvable symbol
+// in pkg/h.go plus one governed claim scoped to it (rule text injectable so
+// the truncation case can blow the char budget).
+func briefClaimsBackend(rule string) *briefFakeBackend {
+	return &briefFakeBackend{
+		sourcesFakeBackend: sourcesFakeBackend{
+			extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		},
+		symbolMap: map[string][]core.SymbolNode{
+			"Handler": {{Name: "Handler", Kind: core.KindGoFunc, FilePath: "pkg/h.go", Line: 10, Signature: "func Handler()"}},
+		},
+		obligationsByFile: map[string]semantic.Obligations{
+			"pkg/h.go": {
+				Service: "svc", File: "pkg/h.go",
+				Rules: []semantic.Obligation{
+					{Rule: rule, Src: "CLAUDE.md#L12-L12", Tier: "doc-claimed"},
+				},
+			},
+		},
+	}
+}
+
+// callLogEntryFor parses the JSONL buffer and returns the first entry whose
+// tool and via match. Fails the test when absent.
+func callLogEntryFor(t *testing.T, buf *bytes.Buffer, tool, via string) map[string]any {
+	t.Helper()
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var entry map[string]any
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("call-log line not JSON: %v (line=%q)", err, line)
+		}
+		gotVia, _ := entry["via"].(string)
+		if entry["tool"] == tool && gotVia == via {
+			return entry
+		}
+	}
+	t.Fatalf("no call-log entry for tool=%q via=%q in: %s", tool, via, buf.String())
+	return nil
+}
+
+// TestBrief_ClaimsAttachedReachesCallLog is D1-2's real evidence
+// (docs/plans/expert-depth.md): the claims-block hit-rate instrument is the
+// JSONL call log, not the tool result — so the assertion must be on the
+// LOGGED row. Covers all three write paths: the top-level dispatch
+// (loggedToolsCall, which reads the field back out of the wrapped MCP
+// content envelope), the batch sub-call path (logSub, which reads the raw
+// handler result map), and the truncated-brief path (whose result shape
+// used to drop the field, logging a claims-serving truncated brief as
+// claims_attached:0 and silently poisoning D1's 30-day kill clock).
+func TestBrief_ClaimsAttachedReachesCallLog(t *testing.T) {
+	briefArgs := map[string]any{"service": "svc", "symbols": []string{"Handler"}}
+
+	t.Run("top_level", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend("Sort all exported slice results."), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1520, Method: "tools/call",
+			Params: map[string]any{"name": "brief", "arguments": briefArgs},
+		})
+		if _, ok := xtraPayload(t, resp)["claims_attached"].(float64); !ok {
+			t.Fatal("result payload missing claims_attached (fixture broken?)")
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
+
+	t.Run("via_batch", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend("Sort all exported slice results."), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1521, Method: "tools/call",
+			Params: map[string]any{
+				"name": "batch",
+				"arguments": map[string]any{
+					"calls": []map[string]any{{"name": "brief", "arguments": briefArgs}},
+				},
+			},
+		})
+		if resp["error"] != nil {
+			t.Fatalf("unexpected error: %v", resp["error"])
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "batch")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("batch sub-call logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
+
+	t.Run("truncated", func(t *testing.T) {
+		// A 500-char rule blows the budget INSIDE the claims section: the
+		// header + symbol line (~130 bytes) fit under charBudget (=budget*4
+		// = 200), the claims block does not — exercising the truncation
+		// return specifically, not an earlier-section truncation where zero
+		// claims were genuinely attached.
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(briefClaimsBackend(strings.Repeat("x", 500)), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1522, Method: "tools/call",
+			Params: map[string]any{
+				"name":      "brief",
+				"arguments": map[string]any{"service": "svc", "symbols": []string{"Handler"}, "budget": 50},
+			},
+		})
+		p := xtraPayload(t, resp)
+		brief, _ := p["brief"].(string)
+		if !strings.Contains(brief, "truncated") {
+			t.Fatalf("expected a truncated brief (fixture sizing broke), got: %q", brief)
+		}
+		entry := callLogEntryFor(t, &buf, "brief", "")
+		if entry["claims_attached"] != float64(1) {
+			t.Errorf("truncated brief logged claims_attached = %v, want 1 (entry: %v)", entry["claims_attached"], entry)
+		}
+	})
 }
 
 // TestBrief_NoClaims_Unchanged: a backend that serves obligations but has no

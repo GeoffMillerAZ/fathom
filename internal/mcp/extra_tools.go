@@ -2398,7 +2398,14 @@ func registerBrief(s *Server, backend QueryInterface) {
 				}
 				claimsAttached = len(rules)
 				if sb.Len() > charBudget {
-					return truncatedBriefResult(&sb, charBudget), nil
+					// The truncated shape must still carry the telemetry
+					// field: claims WERE attached (and partially served) —
+					// dropping the count here would log a claims-serving
+					// truncated brief as claims_attached:0 and silently
+					// poison D1's 30-day hit-rate kill clock.
+					result := truncatedBriefResult(&sb, charBudget)
+					result["claims_attached"] = claimsAttached
+					return result, nil
 				}
 			}
 		}

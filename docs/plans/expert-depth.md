@@ -26,7 +26,7 @@ Design (normative):
 ## Tasks
 
 - [x] brief appends fresh scoped claims with citation/tier/state; fake-store test covers fresh, stale-labeled, and no-claims cases {id: D1-1, symbol: registerBrief, package: internal/mcp}
-- [x] claims-block hit-rate visible per call-log row (claims_attached count field) {id: D1-2, symbol: registerBrief, package: internal/mcp, skip_test: true, skip: "log-field addition exercised by D1-1's test fixtures; the log schema has no independent anchor"}
-- [x] obligations tool feedback action writing claim_events; contract-suite round-trip for the event write across all store backends {id: D2-1, symbol: PutClaimEvent, package: internal/store}
+- [x] claims-block hit-rate visible per call-log row (claims_attached count field) {id: D1-2, symbol: registerBrief, package: internal/mcp}
+- [x] obligations tool feedback action writing claim_events; contract-suite round-trip for the event write across all store backends {id: D2-1, symbol: ClaimFeedback, package: pkg/client}
 - [x] Sweep records refute events (not just status flips) for anchor-dead claims; test proves event trail + refutation durability together {id: D2-2, symbol: SweepClaims, package: pkg/client}
 - [ ] compile refuses un-evaled layers; --unsafe-skip-eval-gate logged into compile_runs; tests cover refusal, override, and logging {id: D3-1, symbol: cmdCompile, package: cmd/fathom}
