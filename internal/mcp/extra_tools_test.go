@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -339,6 +341,215 @@ func TestArchConformance_MissingService(t *testing.T) {
 		Params: map[string]any{
 			"name":      "arch_conformance",
 			"arguments": map[string]any{},
+		},
+	})
+	xtraError(t, resp)
+}
+
+// ─── arch_conformance: C4-3 rule_source / checked states ──────────────────────
+
+// TestArchConformance_RuleSource_Inline proves that when the caller passes
+// inline rules, rule_source is "inline" and checked is true — the existing
+// (pre-C4) contract, now made explicit.
+func TestArchConformance_RuleSource_Inline(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1082, Method: "tools/call",
+		Params: map[string]any{
+			"name": "arch_conformance",
+			"arguments": map[string]any{
+				"service": "svc",
+				"rules": []map[string]any{
+					{"from_pkg": "pkg", "to_pkg": "other", "allow": false},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["rule_source"] != "inline" {
+		t.Errorf("rule_source = %v, want %q", p["rule_source"], "inline")
+	}
+	if p["checked"] != true {
+		t.Errorf("checked = %v, want true", p["checked"])
+	}
+	if _, hasReason := p["reason"]; hasReason {
+		t.Errorf("reason should be absent when checked, got %v", p["reason"])
+	}
+}
+
+// TestArchConformance_RuleSource_Project proves that when the caller passes
+// no rules but the service's corpus root has a valid
+// .fathom/rules/archconformance.cue, arch_conformance loads and uses it,
+// reporting rule_source "project" and checked true — and that its
+// violations reflect the loaded rules, not an empty pass-through.
+func TestArchConformance_RuleSource_Project(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleFile := `
+rules: [
+	{from_pkg: "pkg", to_pkg: "other", allow: false},
+]
+`
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    extFixtureNodes(),
+		services: []string{"svc"},
+		svcPath:  corpusRoot,
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1083, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["rule_source"] != "project" {
+		t.Errorf("rule_source = %v, want %q", p["rule_source"], "project")
+	}
+	if p["checked"] != true {
+		t.Errorf("checked = %v, want true", p["checked"])
+	}
+	if _, hasReason := p["reason"]; hasReason {
+		t.Errorf("reason should be absent when checked, got %v", p["reason"])
+	}
+	// extFixtureNodes has A (pkg "pkg") calling B (pkg "pkg") — same
+	// package, so the loaded pkg->other deny rule does not fire; assert the
+	// tool actually ran the loaded rule (count is a number, not absent).
+	if _, ok := p["count"].(float64); !ok {
+		t.Errorf("count missing or wrong type: %v", p["count"])
+	}
+}
+
+// TestArchConformance_RuleSource_Project_CatchesViolation proves the loaded
+// project rules are actually enforced against real edges, not just present
+// in the response.
+func TestArchConformance_RuleSource_Project_CatchesViolation(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	// extFixtureNodes' A calls "svc::pkg.B" verbatim (Calls: []string{"svc::pkg.B"}).
+	// The tool builds edges as FromSymbol="pkg.A" (pkgOf -> "pkg") and
+	// ToSymbol="svc::pkg.B" (pkgOf -> "svc::pkg", everything before the
+	// last dot) — so the deny rule targets "svc::pkg", matching how this
+	// handler actually encodes callee package prefixes today.
+	ruleFile := `
+rules: [
+	{from_pkg: "pkg", to_pkg: "svc::pkg", allow: false},
+]
+`
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    extFixtureNodes(),
+		services: []string{"svc"},
+		svcPath:  corpusRoot,
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1084, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	count, ok := p["count"].(float64)
+	if !ok || count == 0 {
+		t.Fatalf("expected at least one violation from loaded project rules, got count=%v violations=%v", p["count"], p["violations"])
+	}
+}
+
+// TestArchConformance_RuleSource_None_NoInlineNoProject proves that when
+// the caller passes no rules and no project rule file exists,
+// arch_conformance reports rule_source "none", checked false, and a reason
+// — never a clean-shaped {violations:[],count:0} indistinguishable from a
+// real scan (the confirmed C4-5 honesty bug this row fixes).
+func TestArchConformance_RuleSource_None_NoInlineNoProject(t *testing.T) {
+	corpusRoot := t.TempDir() // no .fathom/rules/archconformance.cue written
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    extFixtureNodes(),
+		services: []string{"svc"},
+		svcPath:  corpusRoot,
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1085, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["rule_source"] != "none" {
+		t.Errorf("rule_source = %v, want %q", p["rule_source"], "none")
+	}
+	if p["checked"] != false {
+		t.Errorf("checked = %v, want false", p["checked"])
+	}
+	reason, _ := p["reason"].(string)
+	if reason == "" {
+		t.Errorf("reason should be a non-empty explanation when checked is false, got %v", p["reason"])
+	}
+	if count, ok := p["count"].(float64); !ok || count != 0 {
+		t.Errorf("count = %v, want 0", p["count"])
+	}
+}
+
+// TestArchConformance_RuleSource_None_NoServiceMeta proves the same "none"
+// honesty contract holds when the backend has no ServiceMeta path at all
+// (extendedFakeBackend's default zero value) — not just when a corpus root
+// exists but is empty of rules.
+func TestArchConformance_RuleSource_None_NoServiceMeta(t *testing.T) {
+	srv := newExtraSrv() // default extendedFakeBackend: svcPath == ""
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1086, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["rule_source"] != "none" {
+		t.Errorf("rule_source = %v, want %q", p["rule_source"], "none")
+	}
+	if p["checked"] != false {
+		t.Errorf("checked = %v, want false", p["checked"])
+	}
+}
+
+// TestArchConformance_MalformedProjectRules_LoudError proves a malformed
+// project rule file is a loud RPC error, never silently treated as "no
+// rules" (which would be indistinguishable from an intentionally absent
+// file).
+func TestArchConformance_MalformedProjectRules_LoudError(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte("not valid { cue :::"), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    extFixtureNodes(),
+		services: []string{"svc"},
+		svcPath:  corpusRoot,
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1087, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
 		},
 	})
 	xtraError(t, resp)

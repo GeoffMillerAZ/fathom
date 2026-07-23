@@ -23,6 +23,10 @@ type extendedFakeBackend struct {
 	nodes      []core.SymbolNode
 	services   []string
 	typedEdges []core.Edge
+	// svcPath, when non-empty, is returned as ServiceMeta's corpus-root path
+	// (arch_conformance's C4-3 project-rules lookup uses it to find
+	// .fathom/rules/archconformance.cue under a service's corpus root).
+	svcPath string
 }
 
 func (e *extendedFakeBackend) QuerySymbols(_ context.Context, _ core.Query) (core.QueryResult, error) {
@@ -52,7 +56,10 @@ func (e *extendedFakeBackend) Sources(_ context.Context, _ string) ([]core.Sourc
 func (e *extendedFakeBackend) IngestService(_ context.Context, _ string) error { return nil }
 
 func (e *extendedFakeBackend) ServiceMeta(_ context.Context, _ string) (string, string, bool, error) {
-	return "", "", false, nil
+	if e.svcPath == "" {
+		return "", "", false, nil
+	}
+	return e.svcPath, "", true, nil
 }
 
 func (e *extendedFakeBackend) ListCommits(_ context.Context, _ string) ([]mcp.CommitInfo, error) {

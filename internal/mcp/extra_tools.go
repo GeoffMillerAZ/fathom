@@ -51,6 +51,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/graph"
+	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -576,17 +577,28 @@ func registerContradictionScan(s *Server, backend QueryInterface) {
 
 // ─── coding: arch_conformance ─────────────────────────────────────────────────
 
+// ruleSourceInline/Project/None name arch_conformance's rule_source field —
+// which of three places its rules came from (C4-3, docs/plans/review-verb.md).
+// ruleSourceProject/ruleSourceNone intentionally share their values with
+// projectrules.SourceProject/SourceNone so the two vocabularies never drift
+// apart.
+const (
+	ruleSourceInline  = "inline"
+	ruleSourceProject = projectrules.SourceProject
+	ruleSourceNone    = projectrules.SourceNone
+)
+
 func registerArchConformance(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "arch_conformance",
-		Description: "Check the service call-graph edges against architectural layering rules and report violations.",
+		Description: "Check the service call-graph edges against architectural layering rules and report violations. When no inline rules are passed, falls back to the service's own .fathom/rules/archconformance.cue project rule pack; the response's rule_source names which source was used (\"inline\" | \"project\" | \"none\"), and checked is false (with a reason) when no rules were available from either source — never a clean-shaped zero-violation answer for a check that did not run.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"rules": map[string]any{
 					"type":        "array",
-					"description": "List of {from_pkg,to_pkg,allow} rules. Use \"*\" as wildcard.",
+					"description": "List of {from_pkg,to_pkg,allow} rules. Use \"*\" as wildcard. When omitted or empty, the service's .fathom/rules/archconformance.cue project rule pack is used if present.",
 					"items": map[string]any{
 						"type": "object",
 						"properties": map[string]any{
@@ -596,7 +608,7 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 						},
 					},
 				},
-				"deny_by_default": map[string]any{"type": "boolean", "description": "Deny edges not matched by any allow rule"},
+				"deny_by_default": map[string]any{"type": "boolean", "description": "Deny edges not matched by any allow rule. When project rules are used, this is OR'd with that rule pack's own deny_by_default."},
 			},
 			"required": []string{"service"},
 		},
@@ -636,15 +648,59 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 				})
 			}
 		}
+
 		rules := make([]archconformance.Rule, len(p.Rules))
 		for i, r := range p.Rules {
 			rules[i] = archconformance.Rule{FromPkg: r.FromPkg, ToPkg: r.ToPkg, Allow: r.Allow}
 		}
-		var opts []archconformance.Option
-		if p.DenyByDefault {
-			opts = append(opts, archconformance.DenyByDefault())
+		denyByDefault := p.DenyByDefault
+
+		// C4-2/C4-3: when the caller passes no inline rules, fall back to
+		// the service's own project rule pack — and report honestly
+		// (checked:false + reason) when neither source has anything to
+		// check, rather than the confirmed C4-5 bug of a clean-shaped
+		// {violations:[],count:0} indistinguishable from a real scan.
+		ruleSource := ruleSourceInline
+		checked := true
+		reason := ""
+		if len(rules) == 0 {
+			corpusRoot := ""
+			if path, _, found, metaErr := backend.ServiceMeta(ctx, p.Service); metaErr == nil && found {
+				corpusRoot = path
+			}
+			if corpusRoot == "" {
+				ruleSource = ruleSourceNone
+				checked = false
+				reason = "no rules configured: no inline rules were passed and the service's corpus root is unknown, so no .fathom/rules/archconformance.cue could be located"
+			} else {
+				result, loadErr := projectrules.Load(corpusRoot)
+				if loadErr != nil {
+					return nil, &rpcError{Code: ErrCodeInternal, Message: "arch_conformance: project rules: " + loadErr.Error()}
+				}
+				if !result.Found || len(result.Rules) == 0 {
+					ruleSource = ruleSourceNone
+					checked = false
+					if !result.Found {
+						reason = fmt.Sprintf("no rules configured: no inline rules were passed and no project rule pack exists at %s", result.Path)
+					} else {
+						reason = fmt.Sprintf("no rules configured: %s exists but declares zero rules", result.Path)
+					}
+				} else {
+					ruleSource = ruleSourceProject
+					rules = result.Rules
+					denyByDefault = denyByDefault || result.DenyByDefault
+				}
+			}
 		}
-		violations := archconformance.Check(edges, rules, opts...)
+
+		var violations []archconformance.Violation
+		if checked {
+			var opts []archconformance.Option
+			if denyByDefault {
+				opts = append(opts, archconformance.DenyByDefault())
+			}
+			violations = archconformance.Check(edges, rules, opts...)
+		}
 		result := make([]any, len(violations))
 		for i, v := range violations {
 			result[i] = map[string]any{
@@ -653,7 +709,16 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 				"reason": v.Reason,
 			}
 		}
-		return map[string]any{"violations": result, "count": len(violations)}, nil
+		resp := map[string]any{
+			"violations":  result,
+			"count":       len(violations),
+			"rule_source": ruleSource,
+			"checked":     checked,
+		}
+		if !checked {
+			resp["reason"] = reason
+		}
+		return resp, nil
 	})
 }
 
