@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Home-turf context-bench task corpus (docs/plans/home-bench.md H1-1) — the mirror of testdata/contextbench/tasks.json's grep-native B1 corpus. Where B1 measured grep's home turf (governance/enforcement questions are absent by construction there — see B1's corpus-mix disclosure in docs/plans/falsifiability.md), this corpus measures fathom's: obligations, verify, blast-radius, claim-provenance, concern-scoped search, contradiction, and staleness. Every ground_truth here was independently hand-verified against the fathom repo's actual files at the commit noted in each task's `source` field (never derived from the live daemon's opinion alone, per the plan's fairness rule 1) — most tasks additionally cite what the live daemon's obligations/blast-radius/call-hierarchy tools returned during authoring, purely as reconnaissance, with the hand-verification recorded alongside. See `pre_registered_criterion` below (H2-1) and `unmeasurable_by_comparison` for the fairness-rule-3 capabilities deliberately excluded from scoring.",
+  "description": "Home-turf context-bench task corpus (docs/plans/home-bench.md H1-1) — the mirror of testdata/contextbench/tasks.json's grep-native B1 corpus. Where B1 measured grep's home turf (governance/enforcement questions are absent by construction there — see B1's corpus-mix disclosure in docs/plans/falsifiability.md), this corpus measures fathom's: obligations, verify, blast-radius, claim-provenance, concern-scoped search, contradiction, and staleness. Every ground_truth here was independently hand-verified against the fathom repo's actual files at the commit noted in each task's `source` field (never derived from the live daemon's opinion alone, per the plan's fairness rule 1) — most tasks additionally cite what the live daemon's obligations/blast-radius/call-hierarchy tools returned during authoring, purely as reconnaissance, with the hand-verification recorded alongside. See `pre_registered_criterion` (H2-1), `post_recompile_rederivation` (mandatory pre-H3 step), and `unmeasurable_by_comparison` (the fairness-rule-3 capabilities deliberately excluded from scoring).",
   "pre_registered_criterion": {
     "id": "H2-1",
     "registered_before_any_run": true,
@@ -11,6 +11,12 @@
     "verdict_recording": "H3-1 (op-gated, docs/plans/home-bench.md) records the run's results artifact + verdict, honest either way, once run.",
     "caveats_carried_from_b1": "n=1 corpus, single machine, dollar-cost not pre-registered as a criterion (recorded for context only, per B1-3's precedent)."
   },
+  "post_recompile_rederivation": {
+    "mandatory_before_h3": true,
+    "rule": "H3's own gate mandates the operator recompile fires BEFORE the run — which re-cites obligations claims fresh at their new source lines and may re-scope rules. Every task listed below has a premise or ground truth pinned to the PRE-recompile store (compile watermark 538b9a8, 2026-07-08): before H3 fires, re-derive each exposed task against the post-recompile daemon AND re-hand-verify it against the repo at the run commit, updating prompt premises and ground truths in a committed corpus revision. H1-T12 in particular INVERTS: its 'verdict: stale' claim will be re-cited fresh by the recompile — re-anchor T12 to a claim that is drifted at run time, or, if the post-recompile sweep shows zero drifted claims, move T12 to unmeasurable_by_comparison for that run and score the remaining 12 tasks. Re-derivation updates premises and ground truths ONLY — the pre-registered criterion above is never touched by this step.",
+    "exposed_tasks": ["H1-T01", "H1-T02", "H1-T07", "H1-T12", "H1-T13"],
+    "note": "H1-T08 was recompile-exposed in its original form (it asked which rule the compiler scoped uniquely to a file — a compile-time LLM decision); its critic-round rework re-anchored it to on-disk CLAUDE.md text, removing the exposure."
+  },
   "tasks": [
     {
       "id": "H1-T01",
@@ -19,7 +25,8 @@
       "prompt": "Per fathom's compiled obligations layer, which CLAUDE.md convention governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
       "ground_truth": ["fusion.New", "golden-test"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool (compiled_at_watermark 538b9a8, layer last compiled 2026-07-08, service=fathom — the only production layer with compiled claims per docs/vision/11-dial-to-eleven.md §1) served for file internal/extractor/goextract.go: rule 'Implement extractor.Extractor, register by extension in fusion.New(), add ext→kind in connector, golden-test it.' cites CLAUDE.md#L89-L90, no `status` field (fresh). Hand-verified: CLAUDE.md lines 89-90 today read '- **Extractor**: implement `extractor.Extractor`, register by extension in / `fusion.New()`, add its ext→kind in `connector`, golden-test it.' — citation is exact and current despite the compile watermark being 112 commits behind HEAD (`git log --oneline 538b9a8..HEAD | wc -l` = 112 at authoring time)."
+      "source": "fathom @ d1ead30, obligations tool (compiled_at_watermark 538b9a8, layer last compiled 2026-07-08, service=fathom — the only production layer with compiled claims per docs/vision/11-dial-to-eleven.md §1) served for file internal/extractor/goextract.go: rule 'Implement extractor.Extractor, register by extension in fusion.New(), add ext→kind in connector, golden-test it.' cites CLAUDE.md#L89-L90, no `status` field (fresh). Hand-verified: CLAUDE.md lines 89-90 today read '- **Extractor**: implement `extractor.Extractor`, register by extension in / `fusion.New()`, add its ext→kind in `connector`, golden-test it.' — citation is exact and current despite the compile watermark being 112 commits behind HEAD (`git log --oneline 538b9a8..HEAD | wc -l` = 112 at authoring time).",
+      "notes": "RECOMPILE-EXPOSED: premise assumes the layer still serves this rule for this file post-recompile — see post_recompile_rederivation."
     },
     {
       "id": "H1-T02",
@@ -28,16 +35,34 @@
       "prompt": "Per fathom's compiled obligations layer, which CLAUDE.md rule governs internal/core/model.go regarding where shared domain model types must live, and which downstream package is named as the point that re-exports them for external consumers?",
       "ground_truth": ["internal/core", "pkg/client"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool served for file internal/core/model.go: rule 'Place shared domain model types in internal/core; extend additively; pkg/client re-exports for external consumers.' cites CLAUDE.md#L83-L84, no status field (fresh). Hand-verified: CLAUDE.md line 83 reads '- **The domain model is the keystone**: shared types live in `internal/core`; extend' and line 84 'it additively; `pkg/client` re-exports for external consumers.' — exact match at today's HEAD."
+      "source": "fathom @ d1ead30, obligations tool served for file internal/core/model.go: rule 'Place shared domain model types in internal/core; extend additively; pkg/client re-exports for external consumers.' cites CLAUDE.md#L83-L84, no status field (fresh). Hand-verified: CLAUDE.md line 83 reads '- **The domain model is the keystone**: shared types live in `internal/core`; extend' and line 84 'it additively; `pkg/client` re-exports for external consumers.' — exact match at today's HEAD.",
+      "notes": "RECOMPILE-EXPOSED: premise assumes the layer still serves this rule for this file post-recompile — see post_recompile_rederivation."
     },
     {
       "id": "H1-T03",
       "class": "verify",
       "category": "is_proven",
       "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function (in cmd/fathom/verify_test.go) that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
-      "ground_truth": ["TestCmdVerify_Store_Pass", "TestCmdVerify_InMainSwitch", "TestCmdVerify_HTTP_Pass", "TestCmdVerify_Store_Strict", "TestCmdVerify_Store_GateFail"],
+      "ground_truth": [
+        "TestCmdVerify_MissingPlan",
+        "TestCmdVerify_MissingService",
+        "TestCmdVerify_UnreadablePlan",
+        "TestCmdVerify_Store_Pass",
+        "TestCmdVerify_Store_GateFail",
+        "TestCmdVerify_Store_OpenTask_NoGate",
+        "TestCmdVerify_Store_Strict",
+        "TestCmdVerify_Store_JSON",
+        "TestCmdVerify_OperationalError_BadStore",
+        "TestCmdVerify_HTTP_ServiceNotIndexed",
+        "TestCmdVerify_Store_EmptyIndex",
+        "TestCmdVerify_HTTP_Pass",
+        "TestCmdVerify_HTTP_GateFail",
+        "TestCmdVerify_HTTP_FailNotGated_OpenTask",
+        "TestCmdVerify_HTTP_OperationalError",
+        "TestCmdVerify_InMainSwitch"
+      ],
       "scoring_rule": "any-of",
-      "source": "fathom @ d1ead30. Hand-verified directly (never via the live daemon): `grep -rn \"cmdVerify(\" --include='*_test.go' .` returns zero matches (only cmd/fathom/main.go:69 and verify.go:36, both non-test). `grep -n '\"verify\"' cmd/fathom/verify_test.go` shows ~17 Test* functions passing \"verify\" as run()'s first arg (e.g. TestCmdVerify_Store_Pass at line 76 calls run([]string{\"verify\",...}); cmd/fathom/main.go:68-69 `case \"verify\": return cmdVerify(...)` confirms the dispatch). docs/plans/falsifiability.md:42 for the B3-1 row text/contract; `bin/fathom verify --service fathom --store workspace/tmp/scratch.sqlite --plan docs/plans/falsifiability.md` confirms B3-1 verifies (0 failing) against a scratch store built by this task's author, never the live daemon."
+      "source": "fathom @ d1ead30. Hand-verified directly (never via the live daemon): `grep -rn \"cmdVerify(\" --include='*_test.go' .` returns zero matches (only cmd/fathom/main.go:69 and verify.go:36, both non-test). `grep -n '^func TestCmdVerify' cmd/fathom/verify_test.go` enumerates exactly 16 functions, and each passes \"verify\" as run()'s first arg (mapped line-by-line: MissingPlan:23, MissingService:35, UnreadablePlan:44, Store_Pass:76, Store_GateFail:103, Store_OpenTask_NoGate:137, Store_Strict:166+176, Store_JSON:203, OperationalError_BadStore:228, HTTP_ServiceNotIndexed:315, Store_EmptyIndex:336, HTTP_Pass:352, HTTP_GateFail:369, HTTP_FailNotGated_OpenTask:388, HTTP_OperationalError:402, InMainSwitch:417); cmd/fathom/main.go:68-69 `case \"verify\": return cmdVerify(...)` confirms the dispatch. All 16 are valid any-of answers (critic round D2 extended the list from an arbitrary 5-of-16 subset to the full set). docs/plans/falsifiability.md:42 for the B3-1 row text/contract; `bin/fathom verify --service fathom --store workspace/tmp/scratch.sqlite --plan docs/plans/falsifiability.md` confirms B3-1 verifies (0 failing) against a scratch store built by this task's author, never the live daemon."
     },
     {
       "id": "H1-T04",
@@ -73,16 +98,18 @@
       "prompt": "Per fathom's compiled obligations layer, the rules currently governing internal/store/duckdb.go are fed by exactly two governing documents in this repo. Name both (file names only).",
       "ground_truth": ["ADR.md", "CLAUDE.md"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool served for internal/store/duckdb.go: 6 rules, sources ADR.md#L46, ADR.md#L36, ADR.md#L231-L232, CLAUDE.md#L50-L52, ADR.md#L174-L175, ADR.md#L68-L68 — two distinct doc files. Hand-verified each citation directly: ADR.md:36 'Persist observations and derived tables in **DuckDB**...'; ADR.md:46 'the store package hides DuckDB behind an interface (`Store`)... swappable and unit-testable'; ADR.md:68 '...bucket pending by language and extract'; ADR.md:174-175 'extractor and query outputs are asserted with golden files'; ADR.md:231-232 'Claim identity is content-addressed (layer, kind, subject, aiprovenance repro_key)'; CLAUDE.md:50 'Always verify with the race detector' — all confirmed present and accurate at today's HEAD (d1ead30), all served without a `status` field (fresh) despite the 112-commit-stale compile watermark."
+      "source": "fathom @ d1ead30, obligations tool served for internal/store/duckdb.go: 6 rules, sources ADR.md#L46, ADR.md#L36, ADR.md#L231-L232, CLAUDE.md#L50-L52, ADR.md#L174-L175, ADR.md#L68-L68 — two distinct doc files. Hand-verified each citation directly: ADR.md:36 'Persist observations and derived tables in **DuckDB**...'; ADR.md:46 'the store package hides DuckDB behind an interface (`Store`)... swappable and unit-testable'; ADR.md:68 '...bucket pending by language and extract'; ADR.md:174-175 'extractor and query outputs are asserted with golden files'; ADR.md:231-232 'Claim identity is content-addressed (layer, kind, subject, aiprovenance repro_key)'; CLAUDE.md:50 'Always verify with the race detector' — all confirmed present and accurate at today's HEAD (d1ead30), all served without a `status` field (fresh) despite the 112-commit-stale compile watermark.",
+      "notes": "RECOMPILE-EXPOSED: the source-document set is a compile-time scope decision; re-derive post-recompile — see post_recompile_rederivation."
     },
     {
       "id": "H1-T08",
       "class": "claim_provenance",
-      "category": "scope_differentiation",
-      "prompt": "Per fathom's compiled obligations layer, internal/query/engine.go and internal/extractor/goextract.go are both governed by the same fleet-wide baseline rules (race detector, golden files, claim identity, hash-gate bucketing) PLUS one rule each that is unique to that file's own scope. Quote the rule text unique to internal/query/engine.go (the one goextract.go does NOT carry), and cite its CLAUDE.md source line.",
-      "ground_truth": ["CLAUDE.md#L29", "workspace/"],
+      "category": "what_governs",
+      "prompt": "In the fathom repo, which CLAUDE.md rule governs where code and commands that emit files must place their output by default? Quote the rule's key path convention and cite the CLAUDE.md line number where the rule's sentence begins.",
+      "ground_truth": ["workspace/", "29"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30. obligations tool served for internal/query/engine.go: 6 rules including 'Default output of code and commands that emit files under workspace/.' (CLAUDE.md#L29-L30, no status field). Same tool call for internal/extractor/goextract.go: 6 rules, the workspace/ rule is ABSENT, replaced by 'Implement extractor.Extractor, register by extension in fusion.New()...' (CLAUDE.md#L89-L90). Hand-verified: CLAUDE.md lines 29-30 read '`store.Open` auto-creates the parent dir. When adding code or commands that emit / files, default their output under `workspace/`.' — exact match at today's HEAD, confirming the scope difference is a real, non-arbitrary LLM scope-mapping decision (semantic-layers.md §4.2's 'scope mapping is the LLM-inferred part'), not a fixed per-directory rule."
+      "source": "fathom @ d1ead30. Hand-verified: CLAUDE.md lines 29-30 read '`store.Open` auto-creates the parent dir. When adding code or commands that emit / files, default their output under `workspace/`.' — the workspace/ convention. Both arms have a real path: grep reads CLAUDE.md directly; fathom's obligations layer serves the same rule verbatim ('Default output of code and commands that emit files under workspace/.', src CLAUDE.md#L29-L30, confirmed during authoring for internal/query/engine.go) with its citation attached.",
+      "notes": "Reworked in the critic round (D3): the original asked which rule the compiler scoped UNIQUELY to engine.go vs goextract.go — a compile-time LLM scope decision not derivable from any on-disk text (rigged for the fathom arm), and its ground truth used fathom's native citation format ('CLAUDE.md#L29') that a correct grep answer ('CLAUDE.md line 29') would fail. The rework anchors the question and both ground truths to on-disk text reachable by either arm, which also removes the task's recompile exposure."
     },
     {
       "id": "H1-T09",
@@ -108,26 +135,29 @@
       "category": "synthetic_diff",
       "prompt": "A teammate proposes adding this line to fathom's CLAUDE.md dogfood section: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's CLAUDE.md? If so, quote the key conflicting phrase from the existing text.",
       "ground_truth": ["single-writer", "lock error"],
-      "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30. Hand-verified directly: CLAUDE.md:143-145 (dogfood item 2, 'Refresh through the server, never the CLI') reads 'The daemon holds the / single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock / error.' — directly contradicts the proposed 'always safe... even while the daemon is running' addition. This is a constructed synthetic diff (per the plan's design section), scored against real, already-committed text rather than a store mutation: fathom's contradiction_scan tool operates over ingested symbol observations with differing kind/claim (internal/query/engine.go:447 detectContradictions), not prose-level doc contradictions, so no fathom tool call is expected to out-perform a careful read here — recorded honestly as a task where both arms have equal structural access (see unmeasurable_by_comparison for the genuinely index-only contradiction capability this task deliberately does NOT test)."
+      "scoring_rule": "any-of",
+      "source": "fathom @ d1ead30. Hand-verified directly: CLAUDE.md's dogfood item 2 ('Refresh through the server, never the CLI') reads 'The daemon holds the / single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock / error.' — directly contradicts the proposed 'always safe... even while the daemon is running' addition. This is a constructed synthetic diff (per the plan's design section), scored against real, already-committed text rather than a store mutation: fathom's contradiction_scan tool operates over ingested symbol observations with differing kind/claim (internal/query/engine.go:447 detectContradictions), not prose-level doc contradictions, so no fathom tool call is expected to out-perform a careful read here — recorded honestly as a task where both arms have equal structural access (see unmeasurable_by_comparison for the genuinely index-only contradiction capability this task deliberately does NOT test).",
+      "notes": "Scoring changed to any-of in the critic round (D4): the prompt asks for 'the key conflicting phrase' (singular), so a correct answer quoting only one of the two phrases must pass — all-of would have failed correct single-quote answers."
     },
     {
       "id": "H1-T12",
       "class": "staleness",
       "category": "citation_drift",
-      "prompt": "Per fathom's compiled obligations layer (last compiled at commit 538b9a8, 2026-07-08), a rule governing internal/query/engine.go — 'Call staleness_report before trusting results after heavy uncommitted edits' — is served with a `status` field, meaning its citation has drifted since compile. It was originally cited at CLAUDE.md#L140-L141. Is this claim currently fresh or stale? And under which numbered heading (bolded term) does the same rule text appear in CLAUDE.md today?",
-      "ground_truth": ["stale", "Honesty"],
+      "prompt": "Fathom's compiled obligations layer (last compiled at commit 538b9a8, 2026-07-08) serves a rule governing internal/query/engine.go that reads 'Call staleness_report before trusting results after heavy uncommitted edits', cited at compile time to CLAUDE.md#L140-L141. (a) Determine whether that compile-time citation still resolves to this rule's text at the current HEAD, and state the claim's serving status in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) Name the bolded term of the numbered CLAUDE.md list item under which the rule's text actually appears today.",
+      "ground_truth": ["verdict: stale", "Honesty"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool served for internal/query/engine.go: rule 'Call staleness_report before trusting results after heavy uncommitted edits.' src 'CLAUDE.md#L140-L141', status: 'stale' (internal/semantic/serve.go:30 — status field present only when NOT fresh). Hand-verified: CLAUDE.md lines 140-141 today hold unrelated text (part of the companion-surface paragraph, not this rule); `grep -n 'staleness_report.*before\\|Honesty.*After heavy' CLAUDE.md` -> line 148: '3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report` before' — the rule's content is unchanged and still true, but its cited location drifted from L140-141 to L148 (8 lines) because CLAUDE.md grew a new paragraph above it between the compile and HEAD (112 commits later) — the post-ingest sweep (internal/semantic/sweep.go) correctly flagged this, exactly the mechanism semantic-layers.md §4.3 describes."
+      "source": "fathom @ d1ead30, obligations tool served for internal/query/engine.go: rule 'Call staleness_report before trusting results after heavy uncommitted edits.' src 'CLAUDE.md#L140-L141', status: 'stale' (internal/semantic/serve.go:30 — status field present only when NOT fresh). Hand-verified: CLAUDE.md lines 140-141 today hold unrelated text (part of the companion-surface paragraph, not this rule); `grep -n 'staleness_report.*before' CLAUDE.md` -> line 148: '3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report` before' — the rule's content is unchanged and still true, but its cited location drifted from L140-141 to L148 because CLAUDE.md grew above it between the compile and HEAD (112 commits later) — the post-ingest sweep (internal/semantic/sweep.go) correctly flagged this, exactly the mechanism semantic-layers.md §4.3 describes. Both arms can derive the verdict: grep reads CLAUDE.md L140-141, finds the rule text absent there (present at L148) -> stale; fathom's obligations call returns the status directly.",
+      "notes": "RECOMPILE-EXPOSED (critic D1 — the corpus's sharpest case): this verdict INVERTS after the operator recompile H3 itself mandates (the claim gets re-cited fresh at the new line). Mandatory pre-run re-derivation per post_recompile_rederivation: re-anchor to a then-drifted claim or move this task to unmeasurable_by_comparison for the run. Ground-truth tokens reworked per critic D5: bare 'stale' is a substring of 'staleness_report' (a wrong 'fresh' answer quoting the rule name would false-positive) and 'fresh' is a substring of 'not fresh' — the required 'verdict: <word>' answer form makes the substring check bite only on the actual verdict."
     },
     {
       "id": "H1-T13",
       "class": "staleness",
       "category": "citation_still_fresh",
-      "prompt": "Per fathom's compiled obligations layer, the rule 'Hide DuckDB behind a Store interface to keep the engine swappable and unit-testable' governing internal/store/duckdb.go cites ADR.md#L46 and carries no staleness flag. At the current HEAD commit — 112 commits after the layer's last compile — is this citation still accurate? Quote a distinctive word from ADR.md's current line 46 that confirms your answer.",
-      "ground_truth": ["fresh", "swappable"],
+      "prompt": "Per fathom's compiled obligations layer, the rule 'Hide DuckDB behind a Store interface to keep the engine swappable and unit-testable' governing internal/store/duckdb.go cites ADR.md#L46 and carries no staleness flag. At the current HEAD commit — 112 commits after the layer's last compile — is this citation still accurate? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote a distinctive word from ADR.md's current line 46 that confirms your answer.",
+      "ground_truth": ["verdict: fresh", "swappable"],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool served for internal/store/duckdb.go: rule cites ADR.md#L46-L46, no status field (fresh, per internal/semantic/serve.go:30's convention: status omitted means fresh). Hand-verified: ADR.md line 46 today reads '**Consequences.** Tests and CI run with `CGO_ENABLED=1`. The store package hides / DuckDB behind an interface (`Store`) so the engine is swappable and unit-testable' — exact match, confirming the claim is genuinely fresh (not merely unflagged due to a sweep gap): `git log --oneline 538b9a8..HEAD -- ADR.md` shows ADR.md's relevant section has not moved since the compile."
+      "source": "fathom @ d1ead30, obligations tool served for internal/store/duckdb.go: rule cites ADR.md#L46-L46, no status field (fresh, per internal/semantic/serve.go:30's convention: status omitted means fresh). Hand-verified: ADR.md line 46 today reads '**Consequences.** Tests and CI run with `CGO_ENABLED=1`. The store package hides / DuckDB behind an interface (`Store`) so the engine is swappable and unit-testable' — exact match, confirming the claim is genuinely fresh (not merely unflagged due to a sweep gap): `git log --oneline 538b9a8..HEAD -- ADR.md` shows ADR.md's relevant section has not moved since the compile.",
+      "notes": "RECOMPILE-EXPOSED premise (the '112 commits after the last compile' framing and the watermark identity change post-recompile; the fresh verdict itself is expected to survive) — re-derive per post_recompile_rederivation. Ground-truth tokens use the same 'verdict: <word>' form as H1-T12 per critic D5 ('fresh' alone is a substring of 'not fresh')."
     }
   ],
   "unmeasurable_by_comparison": [

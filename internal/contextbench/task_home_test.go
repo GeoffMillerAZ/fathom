@@ -3,6 +3,8 @@ package contextbench
 import (
 	"encoding/json"
 	"os"
+	"slices"
+	"strings"
 	"testing"
 )
 
@@ -79,6 +81,11 @@ func TestLoadTasks_HomeCorpus_PreRegistration(t *testing.T) {
 			PrimaryMetric          string `json:"primary_metric"`
 			Criterion              string `json:"criterion"`
 		} `json:"pre_registered_criterion"`
+		PostRecompileRederivation struct {
+			MandatoryBeforeH3 bool     `json:"mandatory_before_h3"`
+			Rule              string   `json:"rule"`
+			ExposedTasks      []string `json:"exposed_tasks"`
+		} `json:"post_recompile_rederivation"`
 		UnmeasurableByComparison []struct {
 			Capability       string `json:"capability"`
 			WhyGrepHasNoPath string `json:"why_grep_has_no_path"`
@@ -101,8 +108,31 @@ func TestLoadTasks_HomeCorpus_PreRegistration(t *testing.T) {
 	if crit.PrimaryMetric != "task success" {
 		t.Errorf("pre_registered_criterion.primary_metric = %q, want %q per the plan's design section", crit.PrimaryMetric, "task success")
 	}
-	if crit.Criterion == "" {
-		t.Error("pre_registered_criterion.criterion must state the win condition")
+	// Pin the criterion's SUBSTANCE, not just its presence (critic D8): a
+	// later edit that softens "strictly greater" to "at least equal", or the
+	// token ceiling away from <= 1x, must fail this test — the registration
+	// is only worth anything if the registered bar can't drift silently.
+	if !strings.Contains(crit.Criterion, "STRICTLY GREATER") {
+		t.Errorf("pre_registered_criterion.criterion no longer pins strict-better success (want the literal phrase %q): %q", "STRICTLY GREATER", crit.Criterion)
+	}
+	if !strings.Contains(crit.Criterion, "<= 1x") {
+		t.Errorf("pre_registered_criterion.criterion no longer pins the token ceiling (want the literal phrase %q): %q", "<= 1x", crit.Criterion)
+	}
+
+	// The recompile re-derivation contract (critic D1): H3's gate mandates
+	// the operator recompile before the run, which invalidates ground truths
+	// pinned to the pre-recompile store (H1-T12's staleness verdict inverts
+	// outright). The corpus must carry the mandatory pre-run re-derivation
+	// step and name every exposed task.
+	rederive := doc.PostRecompileRederivation
+	if !rederive.MandatoryBeforeH3 {
+		t.Error("post_recompile_rederivation.mandatory_before_h3 must be true — recompile-exposed ground truths (H1-T12 above all) must be re-derived before H3 fires")
+	}
+	if rederive.Rule == "" {
+		t.Error("post_recompile_rederivation.rule must state the re-derivation procedure")
+	}
+	if !slices.Contains(rederive.ExposedTasks, "H1-T12") {
+		t.Errorf("post_recompile_rederivation.exposed_tasks must include H1-T12 (its staleness verdict inverts post-recompile), got %v", rederive.ExposedTasks)
 	}
 
 	if len(doc.UnmeasurableByComparison) == 0 {
