@@ -2,7 +2,8 @@
 *.out
 *.test
 coverage.*
-/dist/
+/dist/*
+!/dist/agents/
 /bin/
 
 # All build artifacts, logs, temp files, and local databases live under workspace/

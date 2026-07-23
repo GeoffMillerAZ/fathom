@@ -297,6 +297,101 @@ func TestFathomStanza_MarkerReplace(t *testing.T) {
 	}
 }
 
+// TestFathomStanza_AppendsToExistingFileWithoutMarkers is AK-3's
+// "append-to-existing" case: a repo's own CLAUDE.md that predates fathom
+// entirely (real content, no fathom:begin/end markers anywhere) must gain
+// the stanza appended, with every byte of the original content preserved.
+func TestFathomStanza_AppendsToExistingFileWithoutMarkers(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "CLAUDE.md")
+	original := "# My Project\n\nSome pre-existing operating notes, no fathom here yet.\n"
+	if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	stanza := fathomStanza("my-svc")
+	if err := applyStanza(path, stanza, &out); err != nil {
+		t.Fatalf("applyStanza: %v", err)
+	}
+
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotStr := string(got)
+	if !strings.Contains(gotStr, "Some pre-existing operating notes") {
+		t.Errorf("original content lost:\n%s", gotStr)
+	}
+	if !strings.Contains(gotStr, fathomStanzaBegin) || !strings.Contains(gotStr, fathomStanzaEnd) {
+		t.Errorf("stanza markers missing after append:\n%s", gotStr)
+	}
+	if !strings.Contains(gotStr, "my-svc") {
+		t.Errorf("stanza body missing after append:\n%s", gotStr)
+	}
+	if !strings.Contains(out.String(), "updated CLAUDE.md") {
+		t.Errorf("expected an 'updated' line, got: %s", out.String())
+	}
+
+	// Re-applying is a no-op once the markers exist (replace path, not append).
+	out.Reset()
+	if err := applyStanza(path, stanza, &out); err != nil {
+		t.Fatalf("second applyStanza: %v", err)
+	}
+	got2, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, got2) {
+		t.Error("second applyStanza changed file bytes")
+	}
+	if !strings.Contains(out.String(), "already present") {
+		t.Errorf("second applyStanza should report already present: %s", out.String())
+	}
+}
+
+// TestFathomStanza_CorruptedMarkers_Refuses is AK-3's "marker-corruption
+// refusal" case: a hand-edit that leaves only one marker (or reorders them)
+// must not be silently papered over by appending a second block — applyStanza
+// must return an error and leave the file byte-for-byte unchanged.
+func TestFathomStanza_CorruptedMarkers_Refuses(t *testing.T) {
+	cases := map[string]string{
+		"begin_only":       "# Project\n\n" + fathomStanzaBegin + "\nstuff, no closing marker\n\nmore content\n",
+		"end_only":         "# Project\n\nstuff\n" + fathomStanzaEnd + "\n\nmore content\n",
+		"end_before_begin": "# Project\n\n" + fathomStanzaEnd + "\nstuff\n" + fathomStanzaBegin + "\nmore\n",
+		"end_equals_begin": "# Project\n\n" + fathomStanzaEnd + fathomStanzaBegin + "\nmore\n",
+	}
+	for name, original := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "CLAUDE.md")
+			if err := os.WriteFile(path, []byte(original), 0o644); err != nil {
+				t.Fatal(err)
+			}
+
+			var out bytes.Buffer
+			err := applyStanza(path, fathomStanza("svc"), &out)
+			if err == nil {
+				t.Fatal("expected applyStanza to refuse on corrupted markers, got nil error")
+			}
+			if !strings.Contains(err.Error(), "corrupted") {
+				t.Errorf("error doesn't mention corruption: %v", err)
+			}
+
+			got, rerr := os.ReadFile(path)
+			if rerr != nil {
+				t.Fatal(rerr)
+			}
+			if string(got) != original {
+				t.Errorf("file was modified despite refusal:\nwant:\n%s\ngot:\n%s", original, got)
+			}
+			if out.String() != "" {
+				t.Errorf("expected no stdout on refusal, got: %s", out.String())
+			}
+		})
+	}
+}
+
 // ─── e. ~/.fathom/config.toml scaffold (CF-8) ─────────────────────────────
 
 func TestWriteStarterConfig_CreatesFile(t *testing.T) {
