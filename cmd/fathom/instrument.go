@@ -21,7 +21,25 @@ var standingExpectations = []heartbeat.Expectation{
 // hooks beat log — injection coverage (answered/seen), per-day rollup, and
 // liveness alarms. Advisory data only: exit 0 always (a broken instrument
 // must never gate anything — it reports, humans decide).
+//
+// --adoption switches to FW-1's flywheel-gauge report (docs/plans/
+// pack-taxonomy-adoption.md, instrument_adoption.go) instead: a different
+// log (the MCP tool-call log, not this hooks beat log) and a different flag
+// set (--call-log/--store/--root/--json, not --log/--window). It is peeled
+// off BEFORE this flagset parses so the two modes' flags never collide —
+// most visibly, "--log" means this report's hooks beat log, but the
+// adoption report's own log flag is named "--call-log" precisely to avoid
+// that collision.
 func cmdInstrument(args []string, stdout, stderr io.Writer) int {
+	for _, a := range args {
+		if a == "--adoption" || a == "-adoption" {
+			return cmdInstrumentAdoption(args, stdout, stderr)
+		}
+		if a == "--" {
+			break
+		}
+	}
+
 	fs := newFlagSet("instrument", stderr)
 	logPath := fs.String("log", beatLogPath(), "hooks beat log (JSONL)")
 	window := fs.Duration("window", 7*24*time.Hour, "coverage window, measured back from now")

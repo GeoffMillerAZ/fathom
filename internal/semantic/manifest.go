@@ -84,6 +84,15 @@ type LayerDef struct {
 	Tier        string
 	TierProfile string
 
+	// Stratum names this pack instance's place in the four-stratum pack
+	// taxonomy (ADR-024, docs/design/pack-taxonomy.md): "concern" (a
+	// fathom-authored, eval-gated-embedded pack — every pack this repo
+	// ships) or "platform" (an org's own pack, authored and eval-gated
+	// on-disk under a project's .fathom/layers/, the D3 trust seam).
+	// Vocabulary only — it never changes resolution order or the eval
+	// gate; see schema.cue's #Layer.stratum doc comment.
+	Stratum string
+
 	// Evaled declares whether this pack has a passing eval/RESULTS.md on
 	// record (schema.cue #Layer.evaled's doc comment) — self-declared data,
 	// since eval/ is deliberately excluded from the embedded pack mirror and
@@ -134,6 +143,7 @@ type cueLayer struct {
 	PromptFile    string `json:"prompt_file"`
 	Tier          string `json:"tier"`
 	TierProfile   string `json:"tier_profile"`
+	Stratum       string `json:"stratum"`
 	Evaled        bool   `json:"evaled"`
 	Budgets       struct {
 		MaxTokensPerRun  int     `json:"max_tokens_per_run"`
@@ -293,6 +303,7 @@ func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, cuePath, d
 		PromptText:    promptText,
 		Tier:          cl.Tier,
 		TierProfile:   cl.TierProfile,
+		Stratum:       cl.Stratum,
 		Evaled:        cl.Evaled,
 		Budgets: LayerBudgets{
 			MaxTokensPerRun:  cl.Budgets.MaxTokensPerRun,

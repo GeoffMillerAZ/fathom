@@ -61,12 +61,24 @@ would). `fathom compile` itself enforces the Eval column: a non-dry-run
 compile of an `evaled: false` layer refuses unless `--unsafe-skip-eval-gate`
 overrides it (D3-1, docs/plans/expert-depth.md).
 
-| Layer | Kind | Tier | Corpus | Drift-tracked | Eval | Production |
-|---|---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
-| `findings` | `finding` | `sme-stated` | `findings/**` | **yes** | **not-gated** — shipped without eval/ yet, see its `KILL.md`; `fathom compile` refuses this layer without `--unsafe-skip-eval-gate` | `fathom layers list --store PATH --service NAME` |
-| `adr-rules` | `adr-rule` | `doc-claimed` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
-| `spec-bindings` | `spec-binding` | `doc-claimed` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
+**Stratum** (ADR-024, `docs/design/pack-taxonomy.md`) names which of the
+four-stratum pack taxonomy's strata this pack instance belongs to — schema
+data (`#Layer.stratum`), not a trust or enable/disable mechanism. All four
+shipped packs are `concern`: fathom-authored, eval-gated before shipping,
+identical for every adopting repo — including `obligations`, whose corpus
+is org-specific content but whose pack (prompt, corpus selector, eval
+fixtures) is not (see the design doc's "The obligations call" for the full
+reasoning). `platform` is reserved for an org's own pack installed under
+`.fathom/layers/`, authored and eval-gated on-disk under the D3 trust seam
+(`internal/semantic/packs.go`'s `loadUnion`) — no shipped pack is platform
+stratum today.
+
+| Layer | Kind | Tier | Stratum | Corpus | Drift-tracked | Eval | Production |
+|---|---|---|---|---|---|---|---|
+| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
+| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — shipped without eval/ yet, see its `KILL.md`; `fathom compile` refuses this layer without `--unsafe-skip-eval-gate` | `fathom layers list --store PATH --service NAME` |
+| `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
+| `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 
 ### `obligations` — every edit
 
@@ -196,14 +208,16 @@ Store-direct, like `fathom claim`'s v0 convention — no daemon round-trip.
 with `<root>/.fathom/layers/`, marking an override with `*`, and always
 shows an **EVAL** column (`pass` / `not-gated`, from each pack's own
 `layer.cue` — schema data, never hand-maintained prose, see "The catalog"
-above). Add `--store`/`--service` for the **PRODUCTION** columns — CLAIMS
+above) and a **STRATUM** column (`concern` / `platform`, ADR-024 — see "The
+catalog" above and `docs/design/pack-taxonomy.md`). Add `--store`/`--service`
+for the **PRODUCTION** columns — CLAIMS
 (compiled-claims-per-layer) and LAST_COMPILE (the layer's newest
 `compile_runs.ran_at`, `never` if none) — both A4-1's live-from-the-store
 truth (docs/plans/activation.md), plus the orphaned-layers section (claims
 served from the store whose pack is gone — see the honesty notes above).
 Broken project packs are listed with their load error, never silently
-dropped. `show` prints the full resolved definition plus its eval status and
-prompt provenance (the content-addressed compile identity).
+dropped. `show` prints the full resolved definition plus its stratum, eval
+status, and prompt provenance (the content-addressed compile identity).
 `install` validates a candidate pack directory against `#Layer` (a missing
 `prompt.md` or empty/absent `eval/` is a warning, not a failure — the layer
 just hasn't cleared its gate yet), stages the copy, and atomically renames

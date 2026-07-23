@@ -72,6 +72,24 @@ package semantic
 	// tier_profile names the tier vocabulary (ADR-017: data now).
 	tier_profile: string | *"engineering"
 
+	// stratum names which of the four pack-taxonomy strata this pack
+	// instance belongs to (ADR-024, docs/design/pack-taxonomy.md) — a
+	// vocabulary field, not a trust mechanism: it does not change
+	// resolution order, enable/disable semantics, or the eval gate.
+	// "concern" is a fathom-authored, eval-gated-embedded pack (the shipped
+	// catalog); "platform" is an org's OWN pack authored and eval-gated
+	// on-disk under a project's .fathom/layers/ (the D3 trust seam already
+	// distinguishes these two cases mechanically — see
+	// internal/semantic/packs.go's loadUnion). Defaults "concern": an
+	// un-annotated pack (embedded or a project pack that doesn't set this)
+	// is presumed fathom-shaped until declared otherwise. "dialect" and
+	// "provider" are recorded strata (docs/design/pack-taxonomy.md) with no
+	// #Layer instance today — dialects are code, not packs; provider packs
+	// are a parked pack type (TX-3, docs/plans/pack-taxonomy-adoption.md) —
+	// so this enum admits only the two strata a #Layer instance can
+	// actually be.
+	stratum: "concern" | "platform" | *"concern"
+
 	// evaled declares whether this pack has a PASSING eval/RESULTS.md on
 	// record (docs/layers.md "The gate": precision >= 0.90, recall >= 0.75,
 	// scored by internal/semantic/eval_test.go's runLayerEval harness against

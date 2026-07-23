@@ -34,3 +34,16 @@ package semantic
 // 	tier: "ai-derived"
 // 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 // }
+//
+// 4. A stratum outside the two values a #Layer instance can carry (ADR-024,
+//    docs/design/pack-taxonomy.md): "dialect" and "provider" are recorded
+//    strata with no #Layer instance — dialects are code, provider packs are
+//    parked (TX-3) — so only "concern"/"platform" are admitted here.
+// bad4: #Layer & {
+// 	name: "x", version: "v1", kind: "x"
+// 	corpus: include: ["docs/**"]
+// 	prompt_version: "x/v1"
+// 	tier: "doc-claimed"
+// 	stratum: "provider"
+// 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
+// }

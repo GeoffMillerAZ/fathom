@@ -368,6 +368,62 @@ func TestLayers_List_WithStoreShowsLastCompileDate(t *testing.T) {
 	}
 }
 
+// ─── ADR-024 (docs/plans/pack-taxonomy-adoption.md TX-2): STRATUM column ──
+
+func TestLayers_List_ShowsStratumColumn(t *testing.T) {
+	root := t.TempDir()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "STRATUM") {
+		t.Fatalf("output missing STRATUM column header:\n%s", got)
+	}
+	for _, line := range strings.Split(got, "\n") {
+		switch {
+		case strings.HasPrefix(line, "obligations"), strings.HasPrefix(line, "findings"),
+			strings.HasPrefix(line, "adr-rules"), strings.HasPrefix(line, "spec-bindings"):
+			if !strings.Contains(line, "concern") {
+				t.Errorf("shipped pack row should show stratum concern: %q", line)
+			}
+		}
+	}
+}
+
+func TestLayers_List_ProjectPackDefaultsToConcernStratum(t *testing.T) {
+	root := t.TempDir()
+	writeTestPack(t, filepath.Join(root, ".fathom", "layers", "custom"), "custom")
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, "custom") {
+			if !strings.Contains(line, "concern") {
+				t.Errorf("project pack with no stratum field should default to concern: %q", line)
+			}
+		}
+	}
+}
+
+func TestLayers_Show_ShowsStratum(t *testing.T) {
+	root := t.TempDir()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "show", "--root", root, "obligations"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers show exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "stratum:") || !strings.Contains(got, "concern") {
+		t.Errorf("show output missing stratum:\n%s", got)
+	}
+}
+
 func TestLayers_NoVerb(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	code := run([]string{"layers"}, &out, &errBuf)

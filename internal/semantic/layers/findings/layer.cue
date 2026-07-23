@@ -18,6 +18,9 @@ corpus: include: ["findings/**"]
 prompt_version: "findings/content-addressed"
 prompt_file:    "schema/semantic/layers/findings/prompt.md"
 tier:           "sme-stated"
+// concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
+// for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
+stratum: "concern"
 budgets: {
 	max_tokens_per_run: 200000
 	max_usd_per_run:    1.0

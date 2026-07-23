@@ -118,7 +118,7 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 	// LAST_COMPILE, read live from the store) appears only with --store —
 	// two separate, honestly-sourced columns instead of one hand-maintained
 	// "gate result" blob.
-	header := "NAME                 SOURCE     KIND               TIER          EVAL       DRIFT  CORPUS"
+	header := "NAME                 SOURCE     KIND               TIER          STRATUM   EVAL       DRIFT  CORPUS"
 	if claimCounts != nil {
 		header += "  CLAIMS  LAST_COMPILE"
 	}
@@ -142,8 +142,15 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 		if info.Evaled {
 			eval = "pass"
 		}
-		line := fmt.Sprintf("%-20s %-10s %-18s %-13s %-10s %-6s %s",
-			info.Name, source, info.Kind, info.Tier, eval, drift, strings.Join(info.CorpusInclude, ", "))
+		// stratum (ADR-024, docs/design/pack-taxonomy.md): schema data
+		// (LayerDef.Stratum), defaulted "concern" by #Layer's CUE default —
+		// never empty for a successfully decoded pack.
+		stratum := info.Stratum
+		if stratum == "" {
+			stratum = "concern"
+		}
+		line := fmt.Sprintf("%-20s %-10s %-18s %-13s %-9s %-10s %-6s %s",
+			info.Name, source, info.Kind, info.Tier, stratum, eval, drift, strings.Join(info.CorpusInclude, ", "))
 		if claimCounts != nil {
 			last := lastCompile[info.Name]
 			if last == "" {
@@ -305,6 +312,11 @@ func cmdLayersShow(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "kind:              %s\n", found.Kind)
 	fmt.Fprintf(stdout, "source:            %s\n", source)
 	fmt.Fprintf(stdout, "tier:              %s (profile: %s)\n", found.Tier, found.TierProfile)
+	stratum := found.Stratum
+	if stratum == "" {
+		stratum = "concern"
+	}
+	fmt.Fprintf(stdout, "stratum:           %s (docs/design/pack-taxonomy.md)\n", stratum)
 	evalStatus := "not-gated (no passing eval/RESULTS.md on record — fathom compile refuses this layer without --unsafe-skip-eval-gate)"
 	if found.Evaled {
 		evalStatus = "pass (see eval/RESULTS.md)"
