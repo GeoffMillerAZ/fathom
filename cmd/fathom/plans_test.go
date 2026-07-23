@@ -217,3 +217,47 @@ func idsOf(rows []planNextRow) []string {
 	}
 	return ids
 }
+
+// TestCmdPlansNext_ClaimedUnknownSurfaces is critic finding 4: a plan whose
+// only row is claimed with no contract verifies Unknown — scripts/ci.sh's
+// `verify --strict` BLOCKS on exactly that row, so a frontier that answered
+// "no open work — every row is claimed-and-verified or skipped" would say
+// done while CI says blocked. Claimed-Unknown rows must surface in the
+// frontier as state "claimed-unknown".
+func TestCmdPlansNext_ClaimedUnknownSurfaces(t *testing.T) {
+	storePath := seedPlansFixtureStore(t)
+	pf := writeTempPlan(t, "# U\n\n- [x] Mystery work with no contract {id: U-1}\n")
+
+	// JSON: exactly one frontier row, state claimed-unknown.
+	var out, errBuf bytes.Buffer
+	code := run(planArgs("next", storePath, []string{pf}), &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("plans next exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var rows []planNextRow
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil {
+		t.Fatalf("plans next --json not valid JSON: %v\n%s", err, out.String())
+	}
+	if len(rows) != 1 {
+		t.Fatalf("frontier rows = %d, want 1 (the claimed-Unknown row): %+v", len(rows), rows)
+	}
+	if rows[0].ID != "U-1" || rows[0].State != "claimed-unknown" {
+		t.Errorf("row = {ID: %q, State: %q}, want {U-1, claimed-unknown}", rows[0].ID, rows[0].State)
+	}
+	if rows[0].Detail == "" {
+		t.Error("claimed-unknown row must carry a detail (e.g. no-contract) explaining why it is unproven")
+	}
+
+	// Human output must not declare the plan done.
+	args := []string{"plans", "next", "--service", "payment-service", "--store", storePath, "--plan", pf}
+	var human, humanErr bytes.Buffer
+	if code := run(args, &human, &humanErr); code != 0 {
+		t.Fatalf("plans next (human) exit = %d, stderr: %s", code, humanErr.String())
+	}
+	if bytes.Contains(human.Bytes(), []byte("no open work")) {
+		t.Errorf("frontier claims 'no open work' on a plan CI --strict would block:\n%s", human.String())
+	}
+	if !bytes.Contains(human.Bytes(), []byte("claimed-unknown")) {
+		t.Errorf("human output missing the claimed-unknown row:\n%s", human.String())
+	}
+}

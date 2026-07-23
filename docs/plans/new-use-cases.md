@@ -15,9 +15,11 @@ Design (normative):
 - **E3 SDD computed progress.** `fathom plans status` — per-plan rollup
   {proven, claimed-unproven, open, deferred-with-trigger} computed by the
   existing verify engine, never asserted; `fathom plans next` — the ordered
-  work frontier (open/unproven rows with their {symbol, package} anchors)
-  for agents. CLI verbs only. Regression timelines depend on D2's
-  claim_events and are deferred to its landing.
+  work frontier (open/in-progress rows plus claimed-but-unproven rows —
+  verify Fail AND Unknown, the same set CI's `--strict` blocks on, so the
+  frontier and the gate never disagree about done — each with its {symbol,
+  package} anchors) for agents. CLI verbs only. Regression timelines depend
+  on D2's claim_events and are deferred to its landing.
 - **E4 artifact lifecycle.** `fathom plans archive <plan>`: refuses unless
   (a) every row proven or dispositioned, (b) plan ids appear in CHANGELOG
   or ADR (lexical absorption check), (c) anchors resolve. On success: file

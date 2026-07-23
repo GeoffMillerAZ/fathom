@@ -237,7 +237,10 @@ over-eager gate, and it is treated as a design constraint:
 
 - **Hooks never block on infrastructure.** Session/edit hooks always exit 0;
   a down daemon degrades to an honest one-line notice (session) or silence
-  (edit), never an error, never a stall (2s HTTP timeouts).
+  (edit), never an error, never a stall (2s HTTP timeouts; the one recorded
+  exception is the Stop-hook's `verify_plan` call, budgeted at that tool's
+  p95 ≤ 5s SLO — §2 — because a 2s cut-off would fail-open on roughly half
+  of legitimate verifies at the measured 4.5s p95).
 - **Pre-push fails open on operational error, closed on evidence.**
   `fathom verify` distinguishes exit 1 (a claimed task FAILED verification —
   block the push) from exit 2 (daemon unreachable / service unindexed —

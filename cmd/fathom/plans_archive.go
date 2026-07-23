@@ -25,10 +25,17 @@ import (
 //     or in-progress ([~]) row always refuses.
 //  2. Every claimed row verifies GREEN RIGHT NOW — the engine is run fresh,
 //     never trusting a prior run.
-//  3. Lexical absorption: every row's task ID appears as a substring
-//     somewhere in CHANGELOG.md or ADR.md — the plan's claims must already
-//     be recorded in the permanent history before the working file that
-//     carried them disappears from the active set.
+//  3. Lexical absorption: every row's task ID appears somewhere in
+//     CHANGELOG.md or ADR.md at a token boundary (never a bare substring —
+//     "E3-10" must not absorb "E3-1"; see idAbsorbed) — the plan's claims
+//     must already be recorded in the permanent history before the working
+//     file that carried them disappears from the active set.
+//
+// Known limitation of the absorption check: it is lexical, so it cannot
+// distinguish the SAME id used by two different plans — a CHANGELOG mention
+// of one plan's "K-1" absolves any other plan's "K-1" too. Per-plan unique
+// ID prefixes (the repo's existing convention: E3-*, B1-*, LC-*, …) are
+// what keep the check meaningful; reusing a prefix across plans weakens it.
 //
 // On success the plan file is `git mv`d to docs/plans/archive/ and a
 // tombstone line (date, HEAD sha, verify summary) is written into its
@@ -68,6 +75,17 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 		return "", err
 	}
 	relPlan := filepath.ToSlash(mustRel(root, planPath))
+
+	// Preflight: the plan must be clean in git BEFORE anything else runs.
+	// Archiving a dirty plan would sweep uncommitted edits into the index
+	// via git mv and stamp the tombstone with a HEAD sha whose committed
+	// content never contained them — and the tombstone IS the evidence
+	// record (critic finding 5).
+	if dirty, derr := gitPathDirty(root, relPlan); derr != nil {
+		return "", fmt.Errorf("git status for %q: %w", relPlan, derr)
+	} else if dirty {
+		return "", fmt.Errorf("plan %q has uncommitted changes — commit them first so the tombstone's HEAD sha matches the archived content", relPlan)
+	}
 
 	rowSets, err := computePlanRows([]string{planPath}, service, storePath, urlStr)
 	if err != nil {
@@ -112,7 +130,7 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 	}
 	var unabsorbed []string
 	for _, row := range rows {
-		if row.Task.ID == "" || strings.Contains(absorbedText, row.Task.ID) {
+		if row.Task.ID == "" || idAbsorbed(absorbedText, row.Task.ID) {
 			continue
 		}
 		unabsorbed = append(unabsorbed, row.Task.ID)
@@ -143,7 +161,12 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 	if err := prependTombstone(newPath, "Archived", sha, summary); err != nil {
 		return "", fmt.Errorf("writing tombstone: %w", err)
 	}
-	_ = gitAdd(root, relNew) // best-effort re-stage the tombstone edit
+	// Re-stage the tombstone edit. A failure here leaves the move done but
+	// the tombstone unstaged — surface it, never swallow it (the caller must
+	// know the index and worktree disagree).
+	if err := gitAdd(root, relNew); err != nil {
+		return "", fmt.Errorf("staging tombstone edit for %q: %w", relNew, err)
+	}
 
 	return fmt.Sprintf("archived %s -> %s (%s)", relPlan, relNew, summary), nil
 }
@@ -225,6 +248,41 @@ func resolveArchivedPlanPath(root, planArg string) (string, error) {
 	return "", fmt.Errorf("archived plan %q not found under %q", planArg, filepath.Join(root, "docs", "plans", "archive"))
 }
 
+// idAbsorbed reports whether id occurs in text at a token boundary: the
+// match may not be immediately preceded or followed by an alphanumeric
+// character, so "E3-1" is not absorbed by "E3-10" (suffix collision) or
+// "XE3-1" (prefix collision). The fleet's active plans already hold
+// CF-1/CF-10, LC-1/LC-10, TI-1/TI-10 side by side — a bare
+// strings.Contains would let any "-10" row silently absolve its "-1"
+// sibling (critic finding 2).
+func idAbsorbed(text, id string) bool {
+	if id == "" {
+		return false
+	}
+	for from := 0; ; {
+		j := strings.Index(text[from:], id)
+		if j < 0 {
+			return false
+		}
+		start := from + j
+		end := start + len(id)
+		beforeOK := start == 0 || !isWordByte(text[start-1])
+		afterOK := end == len(text) || !isWordByte(text[end])
+		if beforeOK && afterOK {
+			return true
+		}
+		from = start + 1
+	}
+}
+
+// isWordByte reports whether c continues an identifier token ([0-9A-Za-z]).
+// '-' is deliberately NOT a word byte: task IDs contain it internally
+// ("E3-1"), so treating it as one would make an ID a non-boundary inside
+// itself.
+func isWordByte(c byte) bool {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
+}
+
 // readAbsorptionCorpus concatenates CHANGELOG.md and ADR.md's raw text
 // (missing files tolerated as empty — a repo without one yet just fails the
 // absorption check honestly rather than erroring operationally).
@@ -295,6 +353,16 @@ func mustRel(root, path string) string {
 		return path
 	}
 	return rel
+}
+
+// gitPathDirty reports whether rel has any uncommitted state (staged,
+// unstaged, or untracked — any `git status --porcelain` line at all).
+func gitPathDirty(root, rel string) (bool, error) {
+	out, err := exec.Command("git", "-C", root, "status", "--porcelain", "--", rel).Output()
+	if err != nil {
+		return false, err
+	}
+	return len(strings.TrimSpace(string(out))) > 0, nil
 }
 
 func gitHEAD(root string) (string, error) {

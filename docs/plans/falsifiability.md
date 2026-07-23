@@ -22,8 +22,10 @@ Design (normative):
 - **B3 verify latency SLO.** verify_plan p50 2.2s / p95 4.5s is the one
   expensive companion tool. Budget: explicit p95 ≤ 5s SLO recorded in
   coding-agent-excellence.md §2's ledger; the Stop-hook caller gets a
-  fail-open timeout consistent with the 2s hook convention (§5.3) so a slow
-  verify degrades to a warning, never a stall.
+  fail-open timeout at the p95 ≤ 5s SLO ceiling (NOT the 2s convention
+  cheap hook calls use — a 2s cut-off would fail-open on roughly half of
+  legitimate verifies at the measured 4.5s p95; §5.3 carries the recorded
+  exception) so a slow verify degrades to a warning, never a stall.
 
 ## Tasks
 

@@ -181,8 +181,11 @@ bin/fathom plans status --service <service> --store workspace/db/fleet.sqlite --
 ```
 
 **`fathom plans next`** — the ordered work frontier for an agent picking up
-where a plan left off: open/in-progress rows plus claimed-but-currently-
-failing rows, each with its `{id, symbol, package}` anchors and plan file.
+where a plan left off: open/in-progress rows plus claimed-but-unproven rows
+(verify Fail as `claimed-failing`, verify Unknown — e.g. no-contract — as
+`claimed-unknown`; the same set CI's `--strict` blocks on, so the frontier
+never says "done" on a plan CI rejects), each with its `{id, symbol,
+package}` anchors and plan file.
 Ordering is (plan file, then the row's position in the file) — an
 author-owned `id:` need not sort alphabetically the way it was written, so
 this is never a re-sort by ID.

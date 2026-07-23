@@ -248,20 +248,21 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 
 // ─── plans next (E3-2) ──────────────────────────────────────────────────────
 
-// frontierRow is one unit of the work frontier `plans next` reports: either
-// an open/in-progress row not yet claimed, or a claimed row that verifies
-// Fail right now. Claimed-but-Unknown ("no-contract" etc.) is deliberately
-// NOT frontier work — Gate's own non-strict semantics (verify.Gate) only
-// treat Fail as a gating failure, and an Unknown claim isn't necessarily
-// wrong, just unproven by a static check; surfacing every Unknown claim as
-// "next work" would bury the rows that actually need attention.
+// frontierRow is one unit of the work frontier `plans next` reports: an
+// open/in-progress row not yet claimed, or a claimed row the engine cannot
+// prove right now — verifying Fail ("claimed-failing") OR Unknown
+// ("claimed-unknown", e.g. no-contract). Claimed-Unknown rows are frontier
+// work because CI's `verify --strict` (scripts/ci.sh) blocks on them: a
+// frontier that omitted them would answer "no open work" on a plan CI
+// rejects — the frontier and the gate must never disagree about done
+// (critic finding 4).
 type frontierRow struct {
 	Plan    string `json:"plan"`
 	ID      string `json:"id"`
 	Title   string `json:"title"`
 	Symbol  string `json:"symbol,omitempty"`
 	Package string `json:"package,omitempty"`
-	State   string `json:"state"` // open | in-progress | claimed-failing
+	State   string `json:"state"` // open | in-progress | claimed-failing | claimed-unknown
 	Detail  string `json:"detail,omitempty"`
 }
 
@@ -286,7 +287,8 @@ func frontierForPlan(rows []planRow) []frontierRow {
 			})
 			continue
 		}
-		if v.Status == verify.Fail {
+		switch v.Status {
+		case verify.Fail:
 			detail := v.Label
 			for _, c := range v.Criteria {
 				if c.Status == verify.Fail {
@@ -298,6 +300,12 @@ func frontierForPlan(rows []planRow) []frontierRow {
 				Plan: row.PlanFile, ID: t.ID, Title: t.Title,
 				Symbol: t.Expect.Symbol, Package: t.Expect.Package,
 				State: "claimed-failing", Detail: detail,
+			})
+		case verify.Unknown:
+			out = append(out, frontierRow{
+				Plan: row.PlanFile, ID: t.ID, Title: t.Title,
+				Symbol: t.Expect.Symbol, Package: t.Expect.Package,
+				State: "claimed-unknown", Detail: v.Label,
 			})
 		}
 	}

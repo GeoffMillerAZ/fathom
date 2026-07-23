@@ -207,6 +207,126 @@ func TestCmdPlansArchive_SuccessTombstoneAndRestore(t *testing.T) {
 	}
 }
 
+// ─── critic round: absorption token boundary (finding 2) ───────────────────
+
+func TestIDAbsorbed(t *testing.T) {
+	cases := []struct {
+		text, id string
+		want     bool
+	}{
+		{"E3-10 shipped", "E3-1", false},         // the live collision class
+		{"E3-1 shipped", "E3-1", true},           // plain mention
+		{"(E3-1)", "E3-1", true},                 // punctuation is a boundary
+		{"rows E3-1, E3-2 landed", "E3-1", true}, // comma boundary
+		{"XE3-1", "E3-1", false},                 // prefix collision
+		{"E3-1", "E3-1", true},                   // whole-string match
+		{"CF-10 then CF-1.", "CF-1", true},       // finds the later true match
+		{"", "E3-1", false},
+		{"anything", "", false}, // empty ID is never absorbed by content
+	}
+	for _, tc := range cases {
+		if got := idAbsorbed(tc.text, tc.id); got != tc.want {
+			t.Errorf("idAbsorbed(%q, %q) = %v, want %v", tc.text, tc.id, got, tc.want)
+		}
+	}
+}
+
+// TestCmdPlansArchive_AbsorptionTokenBoundary: a CHANGELOG mentioning only
+// "E3-10" must NOT absolve row E3-1 (bare substring matching would); an
+// actual "E3-1" mention (in parentheses, exercising punctuation boundaries)
+// then satisfies the criterion.
+func TestCmdPlansArchive_AbsorptionTokenBoundary(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	planMD := "# Boundary\n\n" +
+		"- [x] Charge handler {id: E3-1, symbol: Charge, skip_test: true}\n"
+	gitFixtureForArchive(t, root, "boundary.md", planMD, "E3-10 shipped\n", "")
+
+	var out, errBuf bytes.Buffer
+	code := run(archiveArgs("archive", root, storePath, "boundary.md"), &out, &errBuf)
+	if code == 0 {
+		t.Fatalf("E3-10 must not absorb E3-1 — want refusal; stdout=%s", out.String())
+	}
+	if !strings.Contains(errBuf.String(), "E3-1") {
+		t.Errorf("refusal must name the unabsorbed row E3-1: %s", errBuf.String())
+	}
+
+	// A real, boundary-delimited mention satisfies the check. (CHANGELOG
+	// dirtiness is fine — only the PLAN must be clean; the absorption corpus
+	// is read from the working tree.)
+	f, err := os.OpenFile(filepath.Join(root, "CHANGELOG.md"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.WriteString("also (E3-1) landed\n"); err != nil {
+		t.Fatal(err)
+	}
+	f.Close()
+
+	var out2, errBuf2 bytes.Buffer
+	if code := run(archiveArgs("archive", root, storePath, "boundary.md"), &out2, &errBuf2); code != 0 {
+		t.Fatalf("archive after real absorption exit = %d, stderr: %s", code, errBuf2.String())
+	}
+}
+
+// ─── critic round: dirty-plan preflight + restore collision (finding 5) ────
+
+func TestCmdPlansArchive_RefusesDirtyPlan(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	planMD := "# Dirty\n\n" +
+		"- [x] Charge handler {id: D-1, symbol: Charge, skip_test: true}\n"
+	gitFixtureForArchive(t, root, "dirty.md", planMD, "D-1 shipped\n", "")
+
+	// Uncommitted edit to the plan — every archival criterion still holds,
+	// so the refusal below can only come from the dirty preflight.
+	planPath := filepath.Join(root, "docs", "plans", "dirty.md")
+	if err := os.WriteFile(planPath, []byte(planMD+"\nan uncommitted trailing note\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := run(archiveArgs("archive", root, storePath, "dirty.md"), &out, &errBuf)
+	if code == 0 {
+		t.Fatalf("dirty plan must refuse to archive; stdout=%s", out.String())
+	}
+	if !strings.Contains(errBuf.String(), "uncommitted") {
+		t.Errorf("refusal must say the plan has uncommitted changes: %s", errBuf.String())
+	}
+	if _, err := os.Stat(planPath); err != nil {
+		t.Error("refused archive must leave the plan file in place")
+	}
+}
+
+func TestCmdPlansRestore_RefusesWhenActivePlanExists(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "plans", "archive"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Both the archived copy and a live plan of the same name exist — the
+	// exists-check fires before any git operation, so no repo is needed.
+	if err := os.WriteFile(filepath.Join(root, "docs", "plans", "archive", "clash.md"), []byte("# archived\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "plans", "clash.md"), []byte("# active\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errBuf bytes.Buffer
+	code := run([]string{"plans", "restore", "--root", root, "clash.md"}, &out, &errBuf)
+	if code == 0 {
+		t.Fatal("restore must refuse when an active plan with the same name exists")
+	}
+	if !strings.Contains(errBuf.String(), "already exists") {
+		t.Errorf("refusal must explain the collision: %s", errBuf.String())
+	}
+}
+
 func TestCmdPlansArchive_MissingPlanArg(t *testing.T) {
 	var out, errBuf bytes.Buffer
 	code := run([]string{"plans", "archive", "--service", "svc"}, &out, &errBuf)

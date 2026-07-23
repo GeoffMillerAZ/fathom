@@ -41,6 +41,16 @@ func reverseDriftFixture(t *testing.T, st store.Store, service string) {
 			Claim: "func unexported()", EvidenceTier: core.TierVerified,
 			IngestedAt: time.Unix(0, 0),
 		},
+		{
+			// Exported but in a _test.go file: test helpers are not public
+			// API surface and must be excluded before the drift math — on
+			// the real fleet store 68% of the raw exported surface was
+			// _test.go symbols, drowning the headline (critic finding 1).
+			ServiceID: service, Symbol: "FixtureHelper", Package: "pkg/loose",
+			SourceKind: core.KindGoFunc, SourceRef: "pkg/loose/b_test.go", Line: 3,
+			Claim: "func FixtureHelper()", EvidenceTier: core.TierVerified,
+			IngestedAt: time.Unix(0, 0),
+		},
 	}
 	if err := st.PutObservations(ctx, obs); err != nil {
 		t.Fatalf("PutObservations: %v", err)
@@ -88,6 +98,12 @@ func TestRunReverseDriftReport(t *testing.T) {
 	if strings.Contains(doc, "unexported") {
 		t.Errorf("doc leaks an unexported symbol into the public surface: %s", doc)
 	}
+	if strings.Contains(doc, "b_test.go") || strings.Contains(doc, "FixtureHelper") {
+		t.Errorf("doc counts a _test.go symbol as public API surface: %s", doc)
+	}
+	if strings.Contains(doc, "No spec-bindings claims") {
+		t.Errorf("no-claims banner must not appear when served claims exist: %s", doc)
+	}
 
 	// Determinism: re-running against an unchanged store reproduces the
 	// identical bytes.
@@ -97,6 +113,42 @@ func TestRunReverseDriftReport(t *testing.T) {
 	}
 	if doc != doc2 {
 		t.Errorf("report is not byte-identical across runs:\nfirst:\n%s\nsecond:\n%s", doc, doc2)
+	}
+}
+
+// TestRunReverseDriftReport_NoClaimsBanner is critic finding 1 (the C4-5
+// honesty class): against a store with ZERO spec-bindings claims — today's
+// real fleet state — "coverage 0.0%" plus a full ungoverned listing reads
+// as measured drift when nothing was measured. The report must banner that
+// the layer has not been compiled and that the list is the whole surface.
+func TestRunReverseDriftReport_NoClaimsBanner(t *testing.T) {
+	st := store.NewMemoryStore()
+	ctx := context.Background()
+	if err := st.PutObservations(ctx, []core.Observation{{
+		ServiceID: "svc3", Symbol: "Lonely", Package: "pkg/x",
+		SourceKind: core.KindGoFunc, SourceRef: "pkg/x/a.go", Line: 5,
+		Claim: "func Lonely()", EvidenceTier: core.TierVerified,
+		IngestedAt: time.Unix(0, 0),
+	}}); err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	// No claims at all.
+	doc, err := runReverseDriftReport(ctx, st, "svc3")
+	if err != nil {
+		t.Fatalf("runReverseDriftReport: %v", err)
+	}
+	if !strings.Contains(doc, "No spec-bindings claims") {
+		t.Errorf("doc missing the no-claims banner: %s", doc)
+	}
+	if !strings.Contains(doc, "fathom compile --layer spec-bindings") {
+		t.Errorf("banner missing the remedy command: %s", doc)
+	}
+	if !strings.Contains(doc, "not measured drift") {
+		t.Errorf("banner missing the 'whole surface, not measured drift' honesty marker: %s", doc)
+	}
+	// The surface is still listed (it is real data) — only its framing changes.
+	if !strings.Contains(doc, "pkg/x.Lonely") {
+		t.Errorf("surface listing missing under the banner: %s", doc)
 	}
 }
 
