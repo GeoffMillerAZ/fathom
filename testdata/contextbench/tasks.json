@@ -35,16 +35,16 @@
     {
       "id": "B1-T04",
       "category": "blast_radius",
-      "prompt": "If the verify.Plan struct's shape changed in the fathom repo, which non-test Go files reference verify.Plan directly? Include the file that defines it.",
+      "prompt": "If the verify.Plan struct's shape changed in the fathom repo, which non-test Go files OUTSIDE the internal/verify package reference the type by its qualified name (verify.Plan)? List each file path.",
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
         "cmd/fathom/verify.go",
-        "internal/mcp/verify_plan_tool.go",
-        "internal/verify/markdown.go"
+        "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rln \"verify\\.Plan\\b\" --include='*.go' . (non-test)"
+      "source": "fathom @ 9f40934, grep -rn \"verify\\.Plan\\b\" --include='*.go' . (non-test, excluding internal/verify — inside the defining package the type is referenced unqualified as Plan; the definer is internal/verify/verify.go:32)",
+      "notes": "Corrected post-run (methodology critic, 2026-07-23): the original entry said 'include the file that defines it' but listed internal/verify/markdown.go — a comment-only textual match — instead of the true definer internal/verify/verify.go:32, which a bare grep for 'verify.Plan' cannot find (it declares 'type Plan struct'). run-20260723T045809Z scored BOTH arms against the original flawed entry symmetrically (both passed), so that run's scoring stands; the prompt is now scoped to qualified references outside the defining package so the ground truth is unambiguous for future runs."
     },
     {
       "id": "B1-T05",
@@ -76,7 +76,8 @@
       "prompt": "Per fathom's CLAUDE.md, which ADR documents the workspace/db/ default store path convention (workspace/db/fathom.sqlite)?",
       "ground_truth": ["ADR-020"],
       "scoring_rule": "exact-match",
-      "source": "fathom @ 9f40934, CLAUDE.md's workspace/ convention section; confirmed against ADR.md's \"ADR-020: Store backend\" heading"
+      "source": "fathom @ 9f40934, CLAUDE.md's workspace/ convention section; confirmed against ADR.md's \"ADR-020: Store backend\" heading",
+      "notes": "Degenerate for arm isolation (methodology critic, 2026-07-23): both bench arms run with the repo's CLAUDE.md loaded as session baseline, and CLAUDE.md itself cites ADR-020 beside the store path — in run-20260723T045809Z the fathom arm answered in 1 turn with ZERO tool calls. Kept as an honest floor case (it measures the shared-baseline floor, not tooling); do not add more baseline-answerable tasks."
     },
     {
       "id": "B1-T09",

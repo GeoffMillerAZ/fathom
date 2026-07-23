@@ -19,6 +19,60 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O12 — context-bench B1-T09: the fathom arm lost 6.6× to grep on its own home question (cross-repo callers) — three compounding product gaps
+
+- **Symptom:** in the first context-bench run (docs/plans/falsifiability.md
+  B1-3, run-20260723T045809Z), task B1-T09 — "which agentic-kit heartbeat
+  functions does cmd/fathom/instrument.go call?" — cost the fathom arm
+  504,785 tokens / 20 turns / 56.5s where the grep arm took 76,294 tokens /
+  2 turns / 11.1s. The fathom arm eventually PASSED, but only after burning
+  turns on three distinct product gaps. This was the bench's worst data
+  point and a driver of the ×10 retraction.
+- **Evidence (live reproductions, daemon @ fleet store, 2026-07-23):**
+  - **(a) Cross-repo call edges missing.** `symbol_context(fathom,
+    cmdInstrument)` returns `callees: [fathom::main.beatLogPath,
+    fathom::main.newFlagSet, fathom::main.reportInstrument]` — the
+    `heartbeat.Load` / `heartbeat.CheckLiveness` / `heartbeat.Rollup`
+    calls into agentic-kit (cmd/fathom/instrument.go:37,71,75) are absent.
+    The reverse direction agrees: `find_callers(agentic-kit,
+    CheckLiveness)` returns only the kit's own
+    `heartbeat_test.TestCheckLiveness` — never
+    `fathom::main.cmdInstrument`. Only `references`' text tier can save
+    the query; the graph tiers are blind to fleet-crossing edges.
+  - **(b) Parameter-name inconsistency across the hot quartet.** The
+    B1-T09 transcript burned ~5 error turns on `-32602` invalid-params
+    guess-rounds (three rounds observed in the critic's replay): the four
+    most-adjacent tools each name their primary argument differently —
+    `find_symbol` wants `name` (internal/mcp/tools.go:145), `references`
+    wants `query` (internal/mcp/references_tool.go:19), `query_symbols`
+    wants `concern` (internal/mcp/tools.go:22), `symbol_context` wants
+    `symbol` (internal/mcp/nav_tools.go:147). An agent that has just used
+    one tool reliably guesses the next one's parameter wrong.
+  - **(c) Case-insensitive tier steers to the wrong package.**
+    `find_symbol(agentic-kit, "heartbeat")` → `matched_via:
+    case_insensitive` → the `Heartbeat` GoType in
+    `foundations/coordination/worker-heartbeat/types.go` — not the
+    `foundations/telemetry/heartbeat` package the caller (and
+    instrument.go) actually uses. The honest `matched_via` marker is
+    present, but the steering still sent the bench agent down the wrong
+    package before it recovered.
+- **Root cause:** (a) call-edge extraction resolves callees within a
+  service; cross-service edges exist only in platformlink/text tiers, and
+  `symbol_context`/`find_callers` don't consult them. (b) tool schemas
+  were named per-tool, never normalized as a set. (c) the case-insensitive
+  tier ranks bare-name equality without package-affinity context.
+- **Candidate fixes (in leverage order):** normalize the primary-argument
+  name (accept `symbol` as an alias on all four; cheap, additive);
+  cross-repo callee/caller stitching via the platform graph for fleet
+  stores; package-affinity ranking (or a multi-match list) for the
+  case-insensitive tier.
+- **Status:** open — logged from the bench run + live reproductions above;
+  no fix landed with this entry.
+- **Impact:** the exact query class the fleet index exists to win
+  ("who calls this, anywhere?") is currently its worst measured case:
+  6.6× more tokens than grep. Fixing (a) alone likely flips B1-T09's sign;
+  (b) is a tax on every discovery session.
+
 ### O10 — `fathom claim` triage is store-direct: fleet-store triage requires stopping the daemon
 
 - **Symptom (by design, not a bug):** `fathom claim refute|corroborate` (D3 findings

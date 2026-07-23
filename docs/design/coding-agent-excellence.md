@@ -113,8 +113,10 @@ fewer tokens in absolute terms while touching more of the codebase.
 
 What the companion makes *possible or measurably cheaper* in Claude Code
 specifically (the "10× cheaper" phrasing is retracted — see §0.5 and
-docs/plans/falsifiability.md B1-3; measured: ~1.4–1.8× tokens, ~2.8× wall
-time, plus capabilities with no grep equivalent at all):
+docs/plans/falsifiability.md B1-3; measured: ~1.4–1.8× tokens, ~2.8× mean
+wall time, plus the governed capabilities — verify gate, obligations,
+staleness honesty — that have no grep equivalent and were not measured by
+that bench):
 
 - **Cold-start comprehension:** `repo_map` + `brief` give a new session the
   load-bearing shape of a repo in one call each — replacing the first-hour
