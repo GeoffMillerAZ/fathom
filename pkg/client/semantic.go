@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -169,7 +170,11 @@ func (c *Client) SweepClaims(ctx context.Context, service string) (semantic.Swee
 		return data, true
 	}
 
-	return semantic.Sweep(ctx, c.st, service, fetch)
+	// now: nil defers to Sweep's real-time.Now fallback — pkg/client wires no
+	// clock here (mirrors CompileLayer above, which also leaves Compiler.Now
+	// unset); the injected-clock knob exists for internal/semantic's own
+	// deterministic tests.
+	return semantic.Sweep(ctx, c.st, service, fetch, nil)
 }
 
 // ClaimsSummary returns per-layer claim counts by status for service, plus
@@ -219,4 +224,55 @@ func (c *Client) ClaimsSummary(ctx context.Context, service string) (map[string]
 	}
 
 	return layerMap, nil
+}
+
+// ClaimFeedback appends a human/machine verdict to claim_events for claimID
+// of service — the write path behind the obligations tool's feedback action
+// (D2, docs/plans/expert-depth.md): "the already-hot channel, NOT a new
+// tool." action is "refute" or "corroborate", mirroring `fathom claim
+// refute|corroborate` (cmd/fathom/claim.go) exactly: refute appends
+// ClaimEvent{Verdict:"refuted"} AND flips the claim's status to
+// core.ClaimRefuted — suppression is refutation with a note; corroborate
+// appends ClaimEvent{Verdict:"corroborated"} and NEVER changes status or
+// tier — corroboration is provenance, not evidence-laundering (the doctrine
+// core.ClaimRefuted's doc comment states). Returns an error for an unknown
+// action or a claim_id that does not exist for service — no dangling events
+// for a typo'd ID nothing ever serves.
+func (c *Client) ClaimFeedback(ctx context.Context, service, claimID, action, note, author string) error {
+	var verdict string
+	var newStatus core.ClaimStatus
+	switch action {
+	case "refute":
+		verdict, newStatus = "refuted", core.ClaimRefuted
+	case "corroborate":
+		verdict = "corroborated"
+	default:
+		return fmt.Errorf("client.ClaimFeedback: unknown action %q (want refute or corroborate)", action)
+	}
+
+	claims, err := c.st.ClaimsForService(ctx, service, "")
+	if err != nil {
+		return fmt.Errorf("client.ClaimFeedback: load claims: %w", err)
+	}
+	found := false
+	for _, cl := range claims {
+		if cl.ClaimID == claimID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("client.ClaimFeedback: claim %q not found for service %q", claimID, service)
+	}
+
+	ev := core.ClaimEvent{ClaimID: claimID, Verdict: verdict, Author: author, Note: note, At: time.Now().UTC()}
+	if err := c.st.AppendClaimEvent(ctx, ev); err != nil {
+		return fmt.Errorf("client.ClaimFeedback: append event: %w", err)
+	}
+	if newStatus != "" {
+		if err := c.st.SetClaimStatus(ctx, service, claimID, newStatus); err != nil {
+			return fmt.Errorf("client.ClaimFeedback: set status: %w", err)
+		}
+	}
+	return nil
 }

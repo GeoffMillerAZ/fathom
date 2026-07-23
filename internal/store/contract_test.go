@@ -1290,6 +1290,68 @@ func storeContract(t *testing.T, s Store) {
 		}
 	})
 
+	// ------------------------------------------------------------------ //
+	// D2 (docs/plans/expert-depth.md): the refute write path always pairs a
+	// status flip (SetClaimStatus) with an append-only audit row
+	// (AppendClaimEvent) — the obligations tool's feedback action does this
+	// for a human verdict, and the post-compile sweep does it automatically
+	// for anchor-dead claims (D2-2, pkg/client.SweepClaims). Both effects
+	// must round-trip TOGETHER through every backend, not just each in
+	// isolation (claim_events_append_and_order above already covers the
+	// event log alone; claims_status_flip above covers the status flip
+	// alone) — this is the combined contract those two callers depend on.
+	// ------------------------------------------------------------------ //
+	t.Run("claim_feedback_refute_flips_status_and_appends_event", func(t *testing.T) {
+		svc := "svc-feedback"
+		claim := core.SemanticClaim{
+			ClaimID: "cl-feedback-1", ServiceID: svc,
+			Layer: "obligations", LayerVersion: "v1", Kind: "obligation",
+			Subject: "CLAUDE.md#s1", Rule: "Run tests before committing.",
+			Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+			Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+		}
+		if err := s.PutClaims(ctx, []core.SemanticClaim{claim}, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+
+		at := time.Unix(5000, 0).UTC()
+		ev := core.ClaimEvent{ClaimID: claim.ClaimID, Verdict: "refuted", Author: "sweep", Note: "citation anchor no longer resolves", At: at}
+		if err := s.AppendClaimEvent(ctx, ev); err != nil {
+			t.Fatalf("AppendClaimEvent: %v", err)
+		}
+		if err := s.SetClaimStatus(ctx, svc, claim.ClaimID, core.ClaimRefuted); err != nil {
+			t.Fatalf("SetClaimStatus: %v", err)
+		}
+
+		claims, err := s.ClaimsForService(ctx, svc, "")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		found := false
+		for _, c := range claims {
+			if c.ClaimID == claim.ClaimID {
+				found = true
+				if c.Status != core.ClaimRefuted {
+					t.Errorf("status = %q, want refuted", c.Status)
+				}
+			}
+		}
+		if !found {
+			t.Fatalf("claim %q not found after feedback", claim.ClaimID)
+		}
+
+		events, err := s.ClaimEvents(ctx, claim.ClaimID)
+		if err != nil {
+			t.Fatalf("ClaimEvents: %v", err)
+		}
+		if len(events) != 1 {
+			t.Fatalf("expected 1 event, got %d: %+v", len(events), events)
+		}
+		if events[0].Verdict != "refuted" || events[0].Author != "sweep" || !events[0].At.Equal(at) {
+			t.Errorf("event = %+v", events[0])
+		}
+	})
+
 	t.Run("compile_runs_roundtrip_and_order", func(t *testing.T) {
 		svc := "svc-cr"
 		t1 := time.Unix(1000, 0).UTC()

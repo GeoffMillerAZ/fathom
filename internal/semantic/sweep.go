@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -28,7 +29,21 @@ type SweepReport struct {
 // resolves (file gone, range out of bounds) → contradicted (dominant).
 // Superseded/refuted claims are never touched — those are terminal verdicts,
 // not freshness states.
-func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(path string) ([]byte, bool)) (SweepReport, error) {
+//
+// D2-2 (docs/plans/expert-depth.md): a transition INTO contradicted — an
+// anchor-dead claim, the strongest drift signal short of a human refutation —
+// also appends a ClaimEvent{Verdict:"refuted", Author:"sweep"} beside the
+// status flip, so the automated judgment leaves the same append-only audit
+// trail a human `fathom claim refute` / the obligations tool's feedback
+// action (D2-1) would. Only fired on the transition (next != cl.Status), not
+// on every sweep of an already-contradicted claim — durability needs one
+// event per verdict, not unbounded re-affirmation noise. now is the injected
+// clock (repo convention, mirrors Compiler.Now); nil uses time.Now.
+func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(path string) ([]byte, bool), now func() time.Time) (SweepReport, error) {
+	clock := time.Now
+	if now != nil {
+		clock = now
+	}
 	var rep SweepReport
 	claims, err := st.ClaimsForService(ctx, serviceID, "")
 	if err != nil {
@@ -64,10 +79,12 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 	for _, cl := range served {
 		rep.ClaimsChecked++
 		next := core.ClaimFresh
+		deadCite := "" // the citation that killed the anchor, for the refute-event note
 		for _, cite := range citesByClaim[cl.ClaimID] {
 			path, start, end, ok := core.ParseCiteRef(cite.TargetRef)
 			if !ok {
 				next = core.ClaimContradicted
+				deadCite = cite.TargetRef
 				break
 			}
 			data, have := content[path]
@@ -81,11 +98,13 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 			}
 			if missing[path] {
 				next = core.ClaimContradicted
+				deadCite = cite.TargetRef
 				break
 			}
 			hash, ok := core.HashLines(data, start, end)
 			if !ok {
 				next = core.ClaimContradicted
+				deadCite = cite.TargetRef
 				break
 			}
 			if hash != cite.TargetHash {
@@ -105,6 +124,22 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 				return rep, fmt.Errorf("semantic: sweep flip %s: %w", cl.ClaimID, err)
 			}
 			rep.Flipped++
+			if next == core.ClaimContradicted {
+				note := "citation anchor no longer resolves"
+				if deadCite != "" {
+					note += ": " + deadCite
+				}
+				ev := core.ClaimEvent{
+					ClaimID: cl.ClaimID,
+					Verdict: "refuted",
+					Author:  "sweep",
+					Note:    note,
+					At:      clock(),
+				}
+				if err := st.AppendClaimEvent(ctx, ev); err != nil {
+					return rep, fmt.Errorf("semantic: sweep claim event %s: %w", cl.ClaimID, err)
+				}
+			}
 		}
 	}
 	return rep, nil

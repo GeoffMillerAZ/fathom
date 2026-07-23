@@ -149,7 +149,8 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 		// Construct a Go error-like message for the log entry without importing errors.
 		logErr = &rpcErrWrapper{rpcErr}
 	}
-	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, latency, logErr)
+	claimsAttached := claimsAttachedFrom(result)
+	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, latency, logErr)
 	return result, rpcErr
 }
 
