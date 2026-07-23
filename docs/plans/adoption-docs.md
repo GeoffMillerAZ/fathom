@@ -33,7 +33,7 @@ Design (normative):
 
 ## Tasks
 
-- [ ] docs/adoption/claude-code.md — complete zero-to-working guide + verification checklist {id: AD-1, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs row anchored to the served surface it documents; accuracy enforced by the critic pass against live config"}
-- [ ] docs/adoption/codex.md — Codex wiring + honest capability table {id: AD-2, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs row, same anchor rationale as AD-1"}
+- [x] docs/adoption/claude-code.md — complete zero-to-working guide + verification checklist {id: AD-1, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs row anchored to the served surface it documents; accuracy enforced by the critic pass against live config"}
+- [x] docs/adoption/codex.md — Codex wiring + honest capability table {id: AD-2, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs row, same anchor rationale as AD-1"}
 - [ ] docs/adoption/spec-driven-development.md — the SDD loop with this program as the worked example {id: AD-3, symbol: cmdVerify, package: cmd/fathom, skip_test: true, skip: "docs row anchored to the verify CLI at the loop's center"}
-- [ ] README + docs index route newcomers to adoption/ first; use-cases cross-linked {id: AD-4, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs routing row, same anchor rationale as AD-1"}
+- [x] README + docs index route newcomers to adoption/ first; use-cases cross-linked {id: AD-4, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs routing row, same anchor rationale as AD-1"}

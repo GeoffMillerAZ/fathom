@@ -1,0 +1,244 @@
+# Adopting fathom with Codex
+
+Fathom's index, MCP surface, and git-native gates are Claude-Code-agnostic —
+Codex is a first-class MCP client and gets full read access to the same
+index. What's genuinely different is the **enforcement stack**: Claude
+Code's hook-based context injection (SessionStart, PostToolUse, Stop) has no
+Codex equivalent today, so Codex adoption leans more heavily on the
+git-native gates and the standing `AGENTS.md` doctrine. This guide is honest
+about that gap rather than pretending symmetry — see §6.
+
+Build/index/daemon setup is identical to the Claude Code path — this guide
+does not repeat it. If you haven't built `bin/fathom` or stood up a
+`serve-http` daemon yet, do that first via
+[docs/adoption/claude-code.md §1–§5](claude-code.md) (or run `fathom init`,
+which wires the parts common to both clients), then come back here for the
+Codex-specific registration and honesty boundaries.
+
+> **Version caveat.** Codex's MCP configuration surface has moved fast and
+> differs by CLI version. Everything below reflects the documented `config.toml`
+> schema and `codex mcp add` CLI as of this writing; treat any flag or field
+> name here as **"verify against your Codex version"** (`codex --version`,
+> `codex mcp --help`) before depending on it — this repo has no Codex install
+> to test against.
+
+---
+
+## 1. What `fathom init` already did for you
+
+If you ran `fathom init` in the repo (per the Claude Code guide), it already:
+
+- wrote `.fathomignore`,
+- ingested the repo into the daemon,
+- stamped the fathom operating-contract stanza into **both** `CLAUDE.md` and
+  `AGENTS.md` from one canonical source (`cmd/fathom/init.go`'s
+  `fathomStanza`) — **Codex reads `AGENTS.md` automatically**, so there is
+  nothing further to do for the standing-doctrine piece.
+
+`init` does *not* register Codex's MCP client (that's a Codex-side,
+interactive step, same reason it doesn't call `claude mcp add` for you
+either) and does not touch `lefthook.yml` (hand-curated, printed as a manual
+step instead — §5).
+
+---
+
+## 2. Register fathom as an MCP server for Codex
+
+Codex reads MCP server definitions from `config.toml`:
+
+- Global: `~/.codex/config.toml` (applies to every session)
+- Project-scoped: `.codex/config.toml` in the repo (only honored for
+  **trusted** projects — set `trust_level = "trusted"` if you keep it there)
+
+The transport is selected by which keys are present: `command` means stdio,
+`url` means a remote (streamable HTTP) server.
+
+### Option A — stdio (`serve-mcp`), guaranteed-compatible
+
+The safest bet if you haven't verified HTTP negotiation (below). Same
+single-writer-lock caveat as the Claude Code stdio path applies: one
+`serve-mcp` process per concurrent Codex session will race for the store
+lock, so this is a single-session pattern.
+
+```toml
+[mcp_servers.fathom]
+command = "/abs/path/bin/fathom"
+args = ["serve-mcp", "--store", "/abs/path/workspace/db/fleet.sqlite"]
+```
+
+Or via the CLI helper:
+
+```sh
+codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite
+codex mcp list      # verify against your Codex version — exact output format varies
+```
+
+### Option B — the shared `serve-http` daemon (streamable HTTP)
+
+If you already run the shared daemon for Claude Code (recommended — one
+index, one lock-holder, §5 of the Claude Code guide), point Codex at it
+instead of spawning a second stdio process:
+
+```toml
+[mcp_servers.fathom]
+url = "http://127.0.0.1:7575/rpc/agent"
+```
+
+or:
+
+```sh
+codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
+```
+
+`/rpc/agent` is the same curated 15-tool surface Claude Code registers
+against (§10 of the Claude Code guide); the full registry is at `/rpc` if
+you want everything.
+
+**This path is unverified on this machine.** Claude Code's own `--transport
+http` client is confirmed working against fathom's `/rpc` endpoint (it's the
+dogfooded path), but that doesn't guarantee Codex's streamable-HTTP MCP
+client negotiates the same way — the official MCP streamable-HTTP transport
+has session-header and SSE-fallback semantics that fathom's `serve-http`
+implements as plain `POST /rpc` (JSON-RPC) + `GET /events` (SSE), not
+necessarily byte-for-byte the negotiation Codex's client expects. **Test it**
+(`codex mcp list`, then a real tool call) before relying on it; if it
+doesn't connect cleanly, fall back to Option A.
+
+---
+
+## 3. The codex-cli provider lane (for `fathom compile`)
+
+If you want fathom's semantic-layer compile step
+(`fathom compile --dry-run=false`, `serve-http`'s `compile_layer`) to ride
+your ChatGPT plan instead of a metered API key, `codex-cli` is one of six
+provider lanes (`cmd/fathom/llmprofile.go`):
+
+```toml
+# ~/.fathom/config.toml
+[profiles.codex]
+provider = "codex-cli"
+# bin = "/custom/path/to/codex"   # optional — overrides FATHOM_CODEX_BIN
+```
+
+or via env: `FATHOM_LLM_PROVIDER=codex-cli fathom compile --service <svc> --dry-run=false`.
+
+**The Ping tripwire.** Constructing this client doesn't just shell out — it
+Pings the installed `codex` CLI first
+(`agentic-kit/foundations/llmclient/codexcli`, ~300ms, zero tokens,
+local-only) and **fails construction loudly** if the CLI doesn't answer.
+This exists because the adapter depends on undocumented CLI behavior
+(system-prompt mapping, ambient-context suppression) that a Codex CLI
+upgrade could silently drop — fathom would rather refuse to compile than
+risk a silent quality regression from a degraded CLI. If `fathom compile
+--profile codex` fails at construction, that's the tripwire firing, not a
+bug — check `codex --version` and that you're logged in.
+
+**Cost — read this before you assume "subscription = free."** Unlike
+`claude-cli` (near-zero ambient overhead via `--safe-mode`), the `codex-cli`
+lane has a **real, non-trivial marginal cost against your plan's limits**:
+roughly **10k input tokens of ambient overhead per call** (~300k for a
+31-section full compile), around **60% cache-discounted at steady state**.
+It draws from ChatGPT plan limits rather than a metered key, so `cost_usd`
+in a `compile_layer` result is the same API-equivalent accounting every
+lane uses, not an actual dollar charge — but the token volume is real and
+materially heavier than the `claude-cli` lane's footprint. Budget
+accordingly, especially for a first full-repo compile.
+
+```sh
+fathom providers --profile codex   # health check, $0 (a Ping, not a completion)
+fathom smoke --profile codex       # one real tiny completion — confirms it actually works, small $
+```
+
+---
+
+## 4. Gates: plain git hooks, same as Claude Code
+
+The pre-push `fathom verify` gate is git-native — it runs on `git push`
+regardless of which agent produced the commits, Codex included. Nothing
+Codex-specific to configure — use the exact same lefthook block as the
+Claude Code guide, verbatim:
+[docs/adoption/claude-code.md §7.4](claude-code.md#74-pre-push--the-fathom-verify-gate-lefthook).
+
+In CI, `fathom verify --strict` (claimed-but-Unknown also blocks) with exit
+2 treated as a failure — CI builds its own store rather than trusting a
+live daemon, so this is identical regardless of which agent's commits are
+being checked. See `docs/plans/README.md` for the plan-checklist grammar
+(`{id, symbol, package, ...}` annotations) that `verify` gates against — it
+too has nothing Claude-Code-specific in it.
+
+---
+
+## 5. What `AGENTS.md` carries (and what it can't)
+
+`fathom init` writes the identical stanza fathom puts in `CLAUDE.md` into
+`AGENTS.md` — index-first tool discipline, the refresh contract, the
+`fathom verify` command. This is a **pull** channel: it's advisory text a
+capable agent reads and (hopefully) follows, not an injected or enforced
+one. It is the *only* fathom-adoption channel available to Codex beyond raw
+MCP tool availability and the git-native gates — there is no Codex
+equivalent of a PostToolUse or Stop hook today, so obligations
+injection and the done-means-proven session check (§6) don't reach a Codex
+session the way they reach a Claude Code one.
+
+---
+
+## 6. Honest capability table
+
+| Channel | Claude Code | Codex |
+|---|---|---|
+| MCP tool access (stdio or HTTP) | Yes | Yes |
+| Curated 15-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
+| SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No equivalent.** Codex has no session-start hook mechanism fathom can plug into |
+| PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool |
+| Stop-hook done-means-proven check | Yes — newly-claimed `[x]` tasks re-verified at session end, advisory or blocking | **No equivalent.** Nothing checks a session's claims at end-of-session; the pre-push gate (next row) is the backstop |
+| Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source, written by `fathom init` in one step |
+| Pre-push `fathom verify` gate (lefthook) | Yes | Yes — git-native, identical, harness-agnostic |
+| CI `--strict` gate | Yes | Yes — identical |
+| Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
+| `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
+
+**The practical upshot:** in Codex, fathom is a fully capable *pull* tool
+(every MCP tool works identically) plus two *gate* channels that are
+completely harness-agnostic (pre-push, CI). What's missing is the *inject*
+tier — the thing that made fathom's measured Claude Code impact come from
+configuration rather than agent habit (`docs/design/coding-agent-excellence.md`
+§5). Until Codex grows an equivalent hook surface, lean harder on `AGENTS.md`
+being genuinely followed, and treat the pre-push/CI gates as the honest
+backstop rather than a nice-to-have.
+
+---
+
+## 7. You know it works when…
+
+```sh
+# Daemon up (same as Claude Code path)
+curl -s http://127.0.0.1:7575/healthz   # → ok
+```
+
+- [ ] `codex mcp list` (or reading `~/.codex/config.toml`) shows a `fathom`
+      entry — **verify against your Codex version's exact output.**
+- [ ] Ask Codex to call `list_services` or `capabilities` and confirm a
+      real response comes back (not a connection error).
+- [ ] Ask Codex to call `find_symbol` for a symbol you know exists in the
+      repo and confirm it resolves.
+- [ ] `AGENTS.md` in the repo root contains the
+      `<!-- fathom:begin -->…<!-- fathom:end -->` stanza (from `fathom init`
+      — identical to the one in `CLAUDE.md`).
+- [ ] If using the `codex-cli` compile lane: `fathom providers --profile
+      codex` reports the lane healthy.
+- [ ] `git push` in the repo runs lefthook's `pre-push` hooks and the
+      `fathom-verify` command exits with the expected code (0 pass, 1 a
+      real unproven claim, 2 only when the daemon/store is genuinely down).
+
+---
+
+## Maintained
+
+This doc covers: `fathom init` (AGENTS.md stanza), `serve-mcp`,
+`serve-http` (`/rpc`, `/rpc/agent`), the `codex-cli` provider lane
+(`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
+`fathom verify` / `--strict` (git-native gate, identical to Claude Code).
+Codex-specific `config.toml`/`codex mcp` syntax is sourced from Codex's own
+public docs, not this repo — re-verify those specifics against your
+installed Codex version when they change. Update this doc when the
+codex-cli lane's cost story, the Ping tripwire, or the verify gate change.
