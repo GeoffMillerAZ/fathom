@@ -54,9 +54,23 @@ Fathom keeps building excellent machinery and then not turning it on:
   connected-client existence check per doctrine 7) before the kill clock
   judges the quadrant. CLAUDE.md still documents the old bare-`/rpc` URL.
 
+**Evidence-population caveat (owner, 2026-07-23 — load-bearing):** the call
+log covers one machine over ~16 days during which the owner deliberately
+paused all non-fathom work to strengthen fathom/agentic-kit first; most of
+his development happens on a work machine this log never sees. The only
+interactive sessions in the window were agent sessions building fathom
+itself. Therefore the pulled-channel zero-call findings prove **zero
+exposure, not zero demand** — the intended consumers (throughline, app-kit,
+work-machine sessions) have never seen these tools. The supply-side findings
+above (packs never compiled, levers never wired, verbs never composed) are
+untouched by this caveat: they are activation debt, not demand signals. The
+program's justification rests on the second class, and its adoption-based
+kill decisions are gated accordingly (law 8).
+
 **The program named by this finding: stop building new machinery until the
 built machinery is switched on, measured, and composed into verbs someone is
-forced to encounter.**
+forced to encounter — so that when the paused consumers return, the
+machinery is already on and the adoption evidence that arrives is clean.**
 
 ## 2. Doctrine (carried + two new laws)
 
@@ -79,6 +93,13 @@ forced to encounter.**
    traffic source can silently vanish (or never start) is theater. Every
    measurement channel ships with a "is anything flowing?" assertion
    (candidate for promotion into agentic-kit telemetry, K3).
+8. **NEW — Kill clocks require a consumer population.** Zero-call evidence
+   gathered while the intended consumers are deliberately paused proves
+   exposure-zero, not demand-zero. Every adoption-based kill carries a
+   recorded workload precondition — the clock starts only when qualifying
+   consumer traffic exists (sessions from non-fathom/kit repos appearing in
+   the call log, or the owner declaring consumer work resumed — stamped per
+   law 6). Until then the tool is *held as unmeasured*, never killed.
 
 ## 3. The program
 
@@ -101,7 +122,7 @@ owner-action items — everything else is agent-executable.
 | id | move | kill criterion |
 |---|---|---|
 | B1 | **context-bench**: 10–15 real fleet tasks, run twice by Sonnet subagents (fathom surface on vs off), measuring task success + tokens-to-completion; results in `workspace/artifacts/context-bench/` | fathom arm < 5× token reduction or worse success → retract the ×10 claim everywhere it appears |
-| B2 | 30-day adoption clock from A1's stamp (honoring 05-surfaces' original 30-day discipline; the earlier flip's clock is void for lack of a recorded t0), with a connected-client existence check so the measurement can't silently read zero; then fold-or-kill the orientation quadrant: fold a ~100-token repo-map-lite into the session hook (M1), kill the four tools if still zero-call | fold breaches M1's token budget → trim or drop |
+| B2 | 30-day adoption clock (honoring 05-surfaces' original 30-day discipline; the earlier flip's clock is void for lack of a recorded t0) — **the clock starts at law 8's workload precondition, not at A1's stamp** — with a connected-client existence check so the measurement can't silently read zero; then fold-or-kill the orientation quadrant: fold a ~100-token repo-map-lite into the session hook (M1), kill the four tools if still zero-call | fold breaches M1's token budget → trim or drop; clock never starts while consumers stay paused |
 | B3 | verify_plan latency SLO (p50 2.2s today): explicit p95 budget + fail-open timeout matching the 2s hook convention | origin-tagged Stop-hook verifies never breach 2s → non-issue, record and close |
 
 ### Phase C — The review verb (compose what exists)
@@ -112,7 +133,7 @@ so nothing is built spec-only.
 | id | move | kill criterion |
 |---|---|---|
 | C3 | **(op)** Accept the forced channel: non-blocking `fathom review --since origin/main` summary in the pre-push gate (warn-not-block, same fail-open pattern as the verify gate) + rewrite the review_change MCP prompt to call C1 | declined → C1/C2 are not built |
-| C1 | `review_diff`: one pure-Go composed verb (diff impact w/ typed edges + blast radius + obligations + arch conformance + spec coverage), one cited verdict; CLI mirror; **the program's one new MCP tool** | 30-day zero-call after C3's channel ships → kill per the surfaces admission rule |
+| C1 | `review_diff`: one pure-Go composed verb (diff impact w/ typed edges + blast radius + obligations + arch conformance + spec coverage), one cited verdict; CLI mirror; **the program's one new MCP tool** | 30-day zero-call after C3's channel ships, clock gated on law 8's workload precondition → kill per the surfaces admission rule |
 | C2 | Findings-as-claims bridge (FT-7's pre-armed trigger): review findings become content-addressed ClaimIDs — **a refuted finding stays refuted across re-reviews**, the property no LLM reviewer has | findings layer's own KILL.md; zero refute/corroborate calls in 30 days → keep claims, kill the ceremony |
 | C4 | `.fathom/rules/archconformance.cue` (CUE rule packs for deterministic analyzers — the per-project extensibility wedge) + the "empty-config reads as clean" honesty audit across all analyzer tools | zero fleet repos populate rules in 3 weeks → stop generalizing |
 
@@ -192,18 +213,26 @@ spine. Uplift means truth and discipline, not bulk adoption:
 
 1. ~~Run the store migration~~ — **done, stamped 2026-07-23T01:56Z**;
    fleet.sqlite is live and the SS-8/XT-6b bake clocks are running.
-2. A2's flag-day recompile (~5¢/service·pack, any provider lane) —
-   agent-preparable, operator-fired, stamped.
+2. A2's flag-day recompile — **11 service·packs total: obligations × 9
+   fleet services + adr-rules and spec-bindings × fathom. At ~5¢ per
+   service·pack that is ≤ $0.60 total on a metered API lane, or $0 marginal
+   on the claude-cli subscription lane** (the lane the eval gates already
+   run on). Agent-preparable, operator-fired, stamped.
 3. C3's channel acceptance (a pre-push hook change is an operator decision).
 4. Greenlight this program → each phase becomes a gated plan with the
    standard verify discipline.
 
 ## 6. Falsifiability of the program itself
 
-B1 (context-bench) is the keystone: if the measured advantage of the fathom
-surface is not decisive, the correct response is to retract the tokenomics
-claim and re-found the assistant pillar on the forced channels alone (which
-are proven). Every phase-E row carries its own kill in the table above. If
-Phase A's activations produce no measurable adoption or quality delta, the
-program's own thesis (activation was the ceiling) is refuted and the next
-doc should say so.
+B1 (context-bench) is the keystone — and under the evidence-population
+caveat it is the *only* honest measurement available until consumer work
+resumes: with organic demand evidence structurally absent (consumers
+paused), a benchmarked on/off comparison over real fleet tasks is
+workload-independent and decides the tokenomics claim now. If the measured
+advantage is not decisive, the correct response is to retract the claim and
+re-found the assistant pillar on the forced channels alone (which are
+proven). Every phase-E row carries its own kill in the table above, each
+adoption-based one gated on law 8. The program's justification deliberately
+rests on the caveat-immune evidence class (unactivated machinery,
+composition debt, unbuilt falsifiability) — if that class were somehow
+shown wrong too, the thesis is refuted and the next doc should say so.
