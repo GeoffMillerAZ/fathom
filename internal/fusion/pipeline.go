@@ -32,6 +32,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -184,23 +185,30 @@ func realGitHead(path string) string {
 // realGitLog shells out to git to get the last 500 commits for the given
 // directory path. Returns an empty string on any error (best-effort).
 //
-// Format: \x02<hash>\x1f<author>\x1f<date>\x1f<full raw body, %B>\x03,
-// followed by --name-only's file list and a blank line before the next
-// record's \x02. \x02 (STX) starts every record and \x03 (ETX) ends the
-// header+body: %B — not %s — captures the FULL commit message (subject +
-// blank line + body + trailers), so E2-1 widens commit ingestion beyond the
-// subject-only capture the old %s + blank-line-delimited format had (0/763
-// stored messages contained a newline before this). The old format split
-// records on a blank line, which a multi-paragraph body routinely contains
-// itself — %B could never have been parsed safely under that scheme, hence
-// the STX/ETX sentinel switch alongside it (see parseGitLog).
+// Format: \x00<hash>\x1f<author>\x1f<date>\x00<full raw body, %B>\x00,
+// followed by --name-only's file list before the next record's leading
+// \x00. %B — not %s — captures the FULL commit message (subject + blank
+// line + body + trailers), so E2-1 widens commit ingestion beyond the old
+// subject-only capture (0/763 stored messages contained a newline before
+// this).
+//
+// The framing byte is NUL (%x00) — the ONE byte git guarantees can never
+// appear in a commit message (git rejects NUL at commit time; every other
+// control byte, including \x02/\x03/\x1f, is preserved verbatim). An
+// earlier draft framed records with \x02/\x03 sentinels, which an attacker
+// could embed in a crafted commit message to inject a forged record — a
+// forged hash, forged author, and forged Co-Authored-By trailer that the
+// authorship oracle would then mint a TierVerified claim for. NUL framing
+// closes that: no message, author name, date, or filename can contain the
+// framing byte, so record boundaries are unforgeable (see parseGitLog,
+// which adds full-length hash validation as belt-and-braces).
 func realGitLog(path string) string {
 	if path == "" {
 		return ""
 	}
 	var out bytes.Buffer
 	cmd := exec.Command("git", "-C", path, "log",
-		"--pretty=format:%x02%H%x1f%an%x1f%aI%x1f%B%x03",
+		"--pretty=format:%x00%H%x1f%an%x1f%aI%x00%B%x00",
 		"--name-only",
 		"-n", "500")
 	cmd.Stdout = &out
@@ -210,50 +218,57 @@ func realGitLog(path string) string {
 	return out.String()
 }
 
+// commitHashPattern validates a full git object name: 40 hex chars (SHA-1)
+// or 64 (SHA-256 repos). %H always emits the full lowercase hash, so
+// anything else in the hash field means a corrupt/truncated record —
+// belt-and-braces on top of the unforgeable NUL framing (see realGitLog).
+var commitHashPattern = regexp.MustCompile(`^[0-9a-f]{40}(?:[0-9a-f]{24})?$`)
+
 // parseGitLog parses output of:
 //
-//	git log --pretty=format:%x02%H%x1f%an%x1f%aI%x1f%B%x03 --name-only -n 500
+//	git log --pretty=format:%x00%H%x1f%an%x1f%aI%x00%B%x00 --name-only -n 500
 //
-// Each record starts at \x02 (STX) and its header+body run to \x03 (ETX);
-// everything after \x03 up to the next \x02 (or end of input) is
-// --name-only's file list. Splitting on \x02 first — rather than on blank
-// lines, the pre-E2-1 scheme — means a multi-paragraph commit body (which
-// routinely contains internal blank lines: subject / blank / body / blank /
-// trailers) can never be mistaken for a record boundary; only \x02 is one.
-// Commit.Message now carries the FULL raw commit message (subject, body,
-// and trailers) instead of just the subject line, so a downstream
-// deterministic pass (E2-2's authorship oracle) can find trailers such as
-// "Co-Authored-By:" wherever they fall in the body.
+// Raw shape per record: a leading NUL, the header (hash\x1fauthor\x1fdate),
+// a NUL, the raw body (%B), a NUL, then --name-only's file list up to the
+// next record's leading NUL. Splitting the whole output on NUL therefore
+// yields one empty leading segment followed by positional TRIPLES of
+// (header, body, files-chunk) — and because git guarantees NUL can never
+// appear inside a commit message, author name, ISO date, or filename, no
+// crafted commit content can shift those boundaries: bytes like \x02/\x03/
+// \x1f inside a message are inert content here, not framing (the forged-
+// record injection class the earlier STX/ETX framing was vulnerable to;
+// TestParseGitLog_ForgedRecordInjection pins this closed). A record whose
+// hash field fails commitHashPattern is skipped; a tail-truncated final
+// record (fewer than three remaining segments) is dropped.
+//
+// Commit.Message carries the FULL raw commit message (subject, body, and
+// trailers) so a downstream deterministic pass (E2-2's authorship oracle)
+// can find trailers such as "Co-Authored-By:" wherever they fall.
 func parseGitLog(serviceID, raw string) []store.Commit {
 	if raw == "" {
 		return nil
 	}
+	segs := strings.Split(raw, "\x00")
 	var commits []store.Commit
-	for _, block := range strings.Split(raw, "\x02") {
-		if strings.TrimSpace(block) == "" {
-			continue
-		}
-		etx := strings.IndexByte(block, '\x03')
-		if etx < 0 {
-			continue // truncated/malformed record: skip gracefully
-		}
-		header := block[:etx]
-		rest := block[etx+1:] // "\n" + file list + trailing blank line
+	// segs[0] is whatever precedes the first record's leading NUL ("" in
+	// well-formed output); records are the positional triples after it.
+	for i := 1; i+2 < len(segs); i += 3 {
+		header, body, filesChunk := segs[i], segs[i+1], segs[i+2]
 
-		// header: hash\x1fauthor\x1fdate\x1fbody
-		parts := strings.SplitN(header, "\x1f", 4)
-		if len(parts) < 4 {
+		// header: hash\x1fauthor\x1fdate
+		parts := strings.SplitN(header, "\x1f", 3)
+		if len(parts) < 3 {
 			continue
 		}
-		hash, author, dateStr, message := parts[0], parts[1], parts[2], parts[3]
-		if hash == "" {
+		hash, author, dateStr := parts[0], parts[1], parts[2]
+		if !commitHashPattern.MatchString(hash) {
 			continue
 		}
 		// git's pretty format appends its own trailing newline after %B; the
 		// body itself may or may not already end in one. Trim it so Message
 		// never carries a spurious trailing blank line, while any INTERNAL
 		// blank lines (paragraph breaks, the subject/body separator) survive.
-		message = strings.TrimRight(message, "\n")
+		message := strings.TrimRight(body, "\n")
 
 		var dateNano int64
 		if t, err := time.Parse(time.RFC3339, dateStr); err == nil {
@@ -262,7 +277,7 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 			dateNano = t.UnixNano()
 		}
 		var files []string
-		for _, l := range strings.Split(rest, "\n") {
+		for _, l := range strings.Split(filesChunk, "\n") {
 			l = strings.TrimSpace(l)
 			if l != "" {
 				files = append(files, l)

@@ -122,6 +122,22 @@ func TestReport_Authorship_WritesJoinDocument(t *testing.T) {
 	if !bytes.Equal(body, body2) {
 		t.Errorf("report output not byte-identical across runs:\nfirst:\n%s\nsecond:\n%s", body, body2)
 	}
+
+	// F3 — idempotency of the ledger write: the second run must not have
+	// duplicated the persisted claim (content-addressed ClaimIDs upsert, not
+	// append). Exactly one co-authored fixture commit → exactly one row.
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer st.Close()
+	claims, err := st.ClaimsForService(context.Background(), "auth-svc", "authorship")
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != 1 {
+		t.Errorf("persisted claim count after double run = %d, want 1 (re-run must not duplicate)", len(claims))
+	}
 }
 
 // TestReport_Authorship_PersistsLedger asserts the claims ledger side

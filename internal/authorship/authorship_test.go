@@ -152,6 +152,31 @@ func TestCompileClaims_Deterministic(t *testing.T) {
 	}
 }
 
+// TestCompileClaims_DuplicateTrailerLinesDeduped is the F4 regression:
+// cherry-pick/squash tooling routinely leaves two byte-identical
+// Co-Authored-By lines in one commit. Both share a content-addressed
+// ClaimID, so the store would upsert them into a single row — CompileClaims
+// must mint ONE claim, keeping "claims emitted" equal to what persists.
+func TestCompileClaims_DuplicateTrailerLinesDeduped(t *testing.T) {
+	dup := []store.Commit{{
+		ServiceID: "svc",
+		Hash:      "ddd4444444444444444444444444444444444444",
+		Author:    "Alice",
+		Date:      400,
+		Message:   "Squash of two commits\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+	}}
+	claims, _ := authorship.CompileClaims("svc", dup, "wm", time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC))
+	if len(claims) != 1 {
+		t.Fatalf("expected 1 claim for duplicate identical trailer lines, got %d: %+v", len(claims), claims)
+	}
+	// A DIFFERENT trailer line in the same commit must still mint its own claim.
+	dup[0].Message += "\nCo-Authored-By: Erin Lee <erin@example.com>"
+	claims2, _ := authorship.CompileClaims("svc", dup, "wm", time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC))
+	if len(claims2) != 2 {
+		t.Fatalf("expected 2 claims (dedupe must not collapse distinct co-authors), got %d", len(claims2))
+	}
+}
+
 func TestCompileClaims_EmptyInput(t *testing.T) {
 	claims, links := authorship.CompileClaims("svc", nil, "wm", time.Now())
 	if len(claims) != 0 || len(links) != 0 {

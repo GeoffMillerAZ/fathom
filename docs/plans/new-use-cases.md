@@ -40,25 +40,27 @@ Design (normative):
 - [ ] Pre-push verify gate scopes to active plans (archive/ excluded); gate-cost delta recorded {id: E4-2, symbol: cmdVerify, package: cmd/fathom}
 - [ ] Reverse-drift report: api_surface minus bindings coverage {id: E6-1, symbol: cmdReport, package: cmd/fathom, skip_test: true, skip: "report mode over two existing tested analyzers; anchored to the report command that hosts it"}
 
-### Authorship report — fleet numbers (2026-07-23, first run)
+### Authorship report — fleet numbers (2026-07-23; re-run after the F1–F4 critic fixes)
 
 `fathom report --analyzer authorship` run against **this repo's own history**
-(153 commits, its full log — under the 500-commit `git log` cap), ingested
+(154 commits, its full log — under the 500-commit `git log` cap), ingested
 into a throwaway scratch store under `workspace/tmp/` (never the live fleet
-store or daemon):
+store or daemon). First run (pre-fix, 153 commits): 152 co-authored, 99.3%
+share — the NUL-reframe and trailer-dedupe fixes changed no count beyond the
+one new commit joining the history:
 
 | metric | value |
 |---|---|
-| commits (total) | 153 |
-| commits co-authored (AI trailer) | 152 |
-| co-authored share | 99.3% |
-| authorship claims emitted | 152 |
+| commits (total) | 154 |
+| commits co-authored (AI trailer) | 153 |
+| co-authored share | 99.4% |
+| authorship claims emitted | 153 |
 | sources (total) | 514 |
 | sources stale (>24h since watermark) | 0 |
-| avg cyclomatic complexity (func/method) | 4.78 |
+| avg cyclomatic complexity (func/method) | 4.79 |
 | max cyclomatic complexity | 328 (`internal/store/contract_test.go:16 storeContract`) |
 
-Reading: on this repo, the co-authored share is saturated (99.3%) — nearly
+Reading: on this repo, the co-authored share is saturated (99.4%) — nearly
 every commit already carries the fleet's `Co-Authored-By: Claude Fable 5
 <noreply@anthropic.com>` convention (CLAUDE.md's own documented practice), so
 a single-repo run cannot show variance between co-authored and

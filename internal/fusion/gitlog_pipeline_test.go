@@ -17,7 +17,7 @@ import (
 // truncated to the subject — via the ordinary Ingest → parseGitLog →
 // SetCommits path used by the real (non-test) realGitLog.
 func TestIngest_WithGitLog_FullBody(t *testing.T) {
-	const rawLog = "\x02deadbeef1234567890\x1fAlice\x1f2024-01-15T10:00:00Z\x1fFix auth flow\n\nLonger explanation of the change.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\x03\npkg/auth/auth.go\n\n"
+	const rawLog = "\x00deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\x1fAlice\x1f2024-01-15T10:00:00Z\x00Fix auth flow\n\nLonger explanation of the change.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\x00\npkg/auth/auth.go\n\n"
 
 	conn := connector.NewFauxConnector()
 	st := store.NewMemoryStore()
@@ -58,7 +58,7 @@ func TestIngest_WithGitLog_BackfillOnReingest(t *testing.T) {
 
 	// Seed a legacy, subject-only commit row directly (as if written by the
 	// pre-E2-1 pipeline).
-	const hash = "deadbeef1234567890"
+	const hash = "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
 	if err := st.SetCommits(ctx, paymentSvc.ID, []store.Commit{
 		{ServiceID: paymentSvc.ID, Hash: hash, Author: "Alice", Date: 1, Message: "Fix auth flow"},
 	}); err != nil {
@@ -73,7 +73,7 @@ func TestIngest_WithGitLog_BackfillOnReingest(t *testing.T) {
 	}
 
 	// Re-ingest with the new, full-body format for the SAME commit hash.
-	const rawLog = "\x02deadbeef1234567890\x1fAlice\x1f2024-01-15T10:00:00Z\x1fFix auth flow\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\x03\npkg/auth/auth.go\n\n"
+	const rawLog = "\x00" + hash + "\x1fAlice\x1f2024-01-15T10:00:00Z\x00Fix auth flow\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>\x00\npkg/auth/auth.go\n\n"
 	conn := connector.NewFauxConnector()
 	p := fusion.New(conn, st, defaultCfg())
 	p.WithGitLog(func(_ string) string { return rawLog })

@@ -94,7 +94,10 @@ func ParseTrailers(body string) []Trailer {
 }
 
 // CompileClaims is the deterministic, Model-empty oracle (ADR-018 lexical
-// class): for every commit's Co-Authored-By trailer, it emits one
+// class): for every commit's DISTINCT Co-Authored-By trailer line
+// (byte-identical duplicates within one commit are deduplicated — they
+// would share a ClaimID and upsert into one stored row anyway, and the
+// emitted count must equal the persisted count), it emits one
 // core.SemanticClaim at core.TierVerified, subject = the commit SHA,
 // Rule = the verbatim trailer line (the evidence — no ClaimLink citation is
 // needed since the fact is fully self-contained in the trailer text). Input
@@ -120,7 +123,18 @@ func CompileClaims(serviceID string, commits []store.Commit, watermark string, a
 		if len(trailers) == 0 {
 			continue
 		}
+		// Dedupe byte-identical trailer lines within one commit (cherry-pick
+		// and squash tooling routinely duplicates them): two identical lines
+		// share the same reproKey and hence the same content-addressed
+		// ClaimID, so the store would upsert them into ONE row — minting two
+		// claims here would make the report's "claims emitted" count disagree
+		// with what actually persists. Emitted must equal persisted.
+		seen := map[string]bool{}
 		for _, tr := range trailers {
+			if seen[tr.Line] {
+				continue
+			}
+			seen[tr.Line] = true
 			reproSum := sha256.Sum256([]byte(tr.Line))
 			reproKey := hex.EncodeToString(reproSum[:])
 			digestSum := sha256.Sum256([]byte(c.Message))
