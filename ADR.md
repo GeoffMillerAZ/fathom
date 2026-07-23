@@ -526,3 +526,72 @@ supported languages as "other", silently drops every Helm chart's
 templates, and refuses call edges for any method name two types share is
 not yet authoritative. Each correction removes a class of silent
 wrongness; none adds runtime machinery.
+
+## ADR-022: MCP server stays bespoke, not `kits/mcp-server` (2026-07-23)
+
+**Decision.** `internal/mcp.Server` (ADR-010) remains a from-scratch JSON-RPC
+2.0 dispatcher — its own `Handler` table, its own stdio `Serve` loop, its own
+`toolEntry`/group bookkeeping — rather than adopting agentic-kit's
+`kits/mcp-server` (`mcpserver.Server`, composed over
+`foundations/agent/tool-registry`). Records the deliberate non-adoption from
+Phase K (K4-1, `docs/plans/kit-uplift.md`).
+
+**Why (read both implementations, not assumed).** The kit's v1 is
+deliberately **tools-only**: `initialize`/`ping`/`tools/list`/`tools/call`
+only — `prompts/list`, `resources/list`, etc. return `-32601` by design
+(`kits/mcp-server/doc.go`), and it has no tool-group or surface concept at
+all — one flat `toolregistry.Registry`. Fathom needs exactly what the kit
+doesn't have and actively uses today: tool groups gated per-surface
+(ADR-014's scoped surfaces — the former `set_profile` RPC was retired in the
+surfaces redesign), plus canned `prompts/list`+`prompts/get` and
+`resources/list`+`resources/read` (`internal/mcp/meta.go`). Fathom's ~80+
+tool handlers are also directly coupled to its own `QueryInterface`
+(store/call-graph backed) with hand-maintained JSON schemas; porting them
+onto `toolregistry.Tool` wrappers would be a full-surface rewrite for zero
+behavioral gain — the kit's dispatch core (framing, batch-array rejection,
+oversized-message resync) is solid, but fathom would still have to build the
+surface/group/prompts/resources layer *on top of it*, so adoption relocates
+work rather than removing it. Fathom's call log also carries
+`service`+`group`+`surface`+`origin` dimensions (`internal/mcp/calllog.go`)
+that the adoption-measurement program depends on; the kit's call-log entry
+(`ts, method, tool, duration_ms, is_error`) carries none of them.
+
+**Honest trade-off.** Fathom forgoes, for free, engineering the kit has
+already hardened: DNS-rebinding `Origin` validation on Streamable HTTP, W3C
+`traceparent` propagation, a documented oversized-message resync policy, and
+JSON-RPC batch-array rejection. `internal/mcp`'s HTTP path and resync
+handling have not been audited to the same standard — accepted debt, not an
+oversight. If the kit grows surface/group/prompts/resources support,
+revisit; today adoption would cost a full rewrite to buy back functionality
+fathom already has.
+
+## ADR-023: Evaluation stays bespoke — `calibration/` + `internal/verify`, not `kits/eval-runner`/`qa-harness` (2026-07-23)
+
+**Decision.** Fathom's two evaluation instruments — `internal/verify` (the
+`fathom verify` static proof-gate: `Task`/`Criterion`/`Expect` checked
+against a code index — symbol presence, tier, test-reaches, contradiction,
+spec coverage; explicitly STATIC, never asserts `runtime_pass`) and
+`calibration/` (a bash harness measuring per-language extractor **symbol
+recall** against a golden/proxy-oracle corpus) — stay bespoke rather than
+adopting agentic-kit's `kits/eval-runner` / `foundations/quality/qa-harness`.
+Records the deliberate non-adoption from Phase K (K4-1).
+
+**Why (read both kit packages, not assumed).** The kit's eval unit of work
+is a **scenario scored by an LLM judge** against a cassette-replayed corpus,
+budget-guarded, with a regression gate against a committed baseline. That is
+evaluation of **agent/LLM output quality**. Fathom's two instruments
+evaluate neither: `internal/verify` mechanically checks whether claimed code
+facts are backed by index evidence — no judge, no scenario, no cassette, a
+deterministic pure function of `(Plan, Evidence)` — and `calibration/`
+mechanically counts extractor symbol recall against a proxy oracle. Bolting
+either onto the judge-scored scenario model would be a category error, not a
+reuse win — there is no LLM call to judge in either.
+
+**Honest trade-off.** `calibration/` is bash, not Go — no `-race`/`go test`
+coverage, no cassette replay, no committed-baseline regression gate the way
+`qa-harness` scenarios have; `internal/verify` has no budget-governed LLM
+lane because it makes no LLM calls to govern. If fathom later adds an
+LLM-judged evaluation lane (e.g. grading LLM-enriched knowledge cards),
+*that* lane is the natural `qa-harness` adoption point — parked as a named
+ask with a second-consumer trigger (`agentic-kit/docs/plans/
+fathom-uplift-asks.md`, FA-12) rather than forced here.
