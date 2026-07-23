@@ -137,8 +137,21 @@ call (~300–800 tokens) replaces a grep → 4–6 file reads sweep (5–20k
 tokens). The June 2026 integration assessment measured discovery agents
 eliminated outright, ~148→32 tool calls per comparable worker, and wave
 wall-clock roughly halved — with the honest caveat that per-wave worker
-token totals did not collapse, and the ×10 discovery claim awaits the
-context-bench before it's stated as fact.
+token totals did not collapse. The first context-bench run (2026-07-23,
+docs/plans/falsifiability.md B1-3) settled the ×10 discovery claim:
+**retracted**. Measured, 15 real tasks × 2 subagent arms: equal success
+(15/15 both arms), 1.38× aggregate / 1.79× mean per-task end-to-end token
+reduction, a 2.81× mean (2.23× median) wall-time reduction (fathom slower
+on 4/15 tasks), and **dollar parity** — claude-reported cost $2.43
+(fathom) vs $2.46 (grep), because the token win concentrates in
+0.1×-priced cache reads while fathom pays more 1h cache writes. The
+honest pitch is "same answers, ~1.4–1.8× fewer tokens at roughly equal
+dollars, ~2–3× faster on most tasks, plus the governed capabilities
+(verify_plan, obligations, staleness honesty) that have no grep
+equivalent and which this bench did not measure" — not ×10. (The bench's
+corpus is deliberately grep-native — every ground truth is grep-derivable
+— so it measured grep's home turf; grep answered even the cross-repo
+tasks.)
 
 **What it costs.** Ingest: ~0.2s hash-gated refresh, cents of CPU. Serving:
 p95 ≤ ~90ms per hook call. Obligations compile: cents per repo *change*

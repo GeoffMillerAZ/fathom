@@ -29,6 +29,21 @@
 # degrades to a pure ever-fired check (calls > 0) with a loud warning —
 # never a silent skip.
 #
+# workspace/logs/<surface>.stamp (above) is NOT the same file as
+# workspace/logs/adoption-clock-t0.txt (docs/plans/activation.md A1's design
+# section; docs/vision/11-dial-to-eleven.md law 8). The per-surface .stamp
+# files gate THIS script's per-surface existence check ("has surface X ever
+# fired since it went live"); adoption-clock-t0.txt is a single, separate,
+# program-wide file that starts the law-8 30-day fold-or-kill ADOPTION
+# clock — written by the operator, or by the first qualifying
+# non-fleet-repo session, once real (non-fathom/kit) consumer traffic
+# exists, never by this script and never silently by code. This script
+# does not read or write adoption-clock-t0.txt; it is consumed by whatever
+# performs the 30-day fold/kill judgment (docs/plans/falsifiability.md B2),
+# which must not run while the file is absent. As of docs/plans/
+# falsifiability.md B2-1, no such file exists in this repo — the law-8
+# clock is explicitly NOT started.
+#
 # Usage:
 #   scripts/check-surface-traffic.sh <surface> [<surface> ...]
 #   scripts/check-surface-traffic.sh agent          # checks /rpc/agent traffic
