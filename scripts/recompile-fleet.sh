@@ -70,7 +70,13 @@ declare -a OK_PACKS=()
 declare -a FAILED_PACKS=()
 
 compile_one() {
-  local svc="$1" layer="$2" label="$svc/$layer"
+  # Separate statements: bash word-expands ALL of a single `local` command's
+  # arguments BEFORE executing any assignment, so "$layer" in a combined
+  # statement is expanded while still unbound and set -u aborts (the exact
+  # 2026-07-23 operator failure; bash -n cannot catch it).
+  local svc="$1"
+  local layer="$2"
+  local label="$svc/$layer"
   echo "==> compiling $label"
   if out="$("$BIN" compile --service "$svc" --layer "$layer" --store "$STORE" --dry-run=false 2>&1)"; then
     echo "    - $label OK"
