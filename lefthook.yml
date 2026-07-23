@@ -31,6 +31,13 @@ pre-push:
     # gating only [x] claimed tasks in docs/plans/*.md.
     # exit 1 (claimed task unproven) → BLOCK push.
     # exit 2 (daemon down / plan unreadable) → warn and ALLOW push (fail-open).
+    #
+    # Scope (E4-2, docs/plans/new-use-cases.md): ACTIVE plans only. The glob
+    # "docs/plans/*.md" is intentionally non-recursive (no `shopt -s
+    # globstar`) — it never descends into docs/plans/archive/, so a plan
+    # `fathom plans archive`d there stops costing a verify invocation on
+    # every push without any extra exclusion logic. Do not switch this to a
+    # recursive glob without re-adding an explicit archive/ exclusion.
     verify:
       run: |
         [ -x bin/fathom ] || exit 0

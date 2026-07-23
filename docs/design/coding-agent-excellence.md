@@ -97,6 +97,17 @@ M2 `brief`/`pack_context` are the largest single payloads (1–3k) and exist to
 *replace* multi-file Read chains (5–30k). Net: fathom-first sessions spend
 fewer tokens in absolute terms while touching more of the codebase.
 
+`verify_plan` is the ledger's one latency-budgeted (not token-budgeted) line
+(B3, docs/plans/falsifiability.md): measured p50 2.2s / p95 4.5s, against an
+explicit **p95 ≤ 5s SLO**. It is the single expensive companion call — every
+other moment above is bounded in tokens because it answers from the index in
+one hop; `verify_plan` additionally walks the call graph and the contradiction
+index per claimed task, so its cost shows up in wall time, not payload size.
+The Stop-hook caller (§5.2, cmd/fathom `stophook.go`) budgets a client
+timeout at the same 5s ceiling: a `verify_plan` call that exceeds it degrades
+to an advisory warning ("verify timed out — treat as unconfirmed"), never a
+blocked session end (§5.3 — hooks never block on infrastructure).
+
 ## 3. Power use cases for Claude Code (the effectiveness catalog)
 
 What the companion makes *possible or 10× cheaper* in Claude Code specifically:

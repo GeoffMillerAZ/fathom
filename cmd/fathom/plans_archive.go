@@ -1,0 +1,322 @@
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
+)
+
+// cmdPlansArchive implements "plans archive <plan>" (E4-1,
+// docs/plans/new-use-cases.md Phase E §E4): the governed artifact lifecycle
+// — a plan may only be archived once its proof survives the cleanup. It
+// refuses unless ALL THREE hold, checked in this order (the first violated
+// criterion is the one reported):
+//
+//  1. Every row is either [x]-claimed-and-currently-verifying-Pass, or
+//     [-] skipped (any disposition, or none — "op-dispositioned" reads
+//     broadly: a human decided its fate one way or another). An open ([ ])
+//     or in-progress ([~]) row always refuses.
+//  2. Every claimed row verifies GREEN RIGHT NOW — the engine is run fresh,
+//     never trusting a prior run.
+//  3. Lexical absorption: every row's task ID appears as a substring
+//     somewhere in CHANGELOG.md or ADR.md — the plan's claims must already
+//     be recorded in the permanent history before the working file that
+//     carried them disappears from the active set.
+//
+// On success the plan file is `git mv`d to docs/plans/archive/ and a
+// tombstone line (date, HEAD sha, verify summary) is written into its
+// header, then re-staged.
+func cmdPlansArchive(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("plans archive", stderr)
+	root := fs.String("root", ".", "repo root (git mv + CHANGELOG.md/ADR.md checks run relative to this)")
+	service := fs.String("service", "", "service ID (required)")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
+	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "error: plans archive requires exactly one plan argument")
+		fs.Usage()
+		return 1
+	}
+	if *service == "" {
+		fmt.Fprintln(stderr, "error: --service is required")
+		fs.Usage()
+		return 1
+	}
+	msg, err := runPlansArchive(*root, fs.Arg(0), *service, *storePath, *url)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: refused to archive: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, msg)
+	return 0
+}
+
+// runPlansArchive is cmdPlansArchive's testable core.
+func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, error) {
+	planPath, err := resolveActivePlanPath(root, planArg)
+	if err != nil {
+		return "", err
+	}
+	relPlan := filepath.ToSlash(mustRel(root, planPath))
+
+	rowSets, err := computePlanRows([]string{planPath}, service, storePath, urlStr)
+	if err != nil {
+		return "", fmt.Errorf("verify: %w", err)
+	}
+	rows := rowSets[0]
+
+	// Criterion 1: every row claimed-and-verifying or skipped — an open or
+	// in-progress row always refuses.
+	var incomplete []string
+	for _, row := range rows {
+		if row.Task.Skipped || row.Task.Claimed {
+			continue
+		}
+		incomplete = append(incomplete, row.Task.ID)
+	}
+	if len(incomplete) > 0 {
+		sort.Strings(incomplete)
+		return "", fmt.Errorf("not every row is [x]-claimed or [-] skipped — open/in-progress: %s",
+			strings.Join(incomplete, ", "))
+	}
+
+	// Criterion 2: every claimed row verifies Pass right now.
+	var failing []string
+	for _, row := range rows {
+		if row.Task.Skipped || !row.Task.Claimed {
+			continue
+		}
+		if row.Verdict.Status != verify.Pass {
+			failing = append(failing, row.Task.ID)
+		}
+	}
+	if len(failing) > 0 {
+		sort.Strings(failing)
+		return "", fmt.Errorf("claimed row(s) do not verify green right now: %s", strings.Join(failing, ", "))
+	}
+
+	// Criterion 3: lexical absorption into CHANGELOG.md or ADR.md.
+	absorbedText, err := readAbsorptionCorpus(root)
+	if err != nil {
+		return "", fmt.Errorf("reading CHANGELOG.md/ADR.md: %w", err)
+	}
+	var unabsorbed []string
+	for _, row := range rows {
+		if row.Task.ID == "" || strings.Contains(absorbedText, row.Task.ID) {
+			continue
+		}
+		unabsorbed = append(unabsorbed, row.Task.ID)
+	}
+	if len(unabsorbed) > 0 {
+		sort.Strings(unabsorbed)
+		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md or ADR.md: %s",
+			strings.Join(unabsorbed, ", "))
+	}
+
+	// All three criteria hold — move the file and write the tombstone.
+	sha, shaErr := gitHEAD(root)
+	if shaErr != nil {
+		sha = "unknown"
+	}
+	summary := verifySummaryLine(rows)
+
+	archiveDir := filepath.Join(root, "docs", "plans", "archive")
+	if err := os.MkdirAll(archiveDir, 0o755); err != nil {
+		return "", fmt.Errorf("mkdir %q: %w", archiveDir, err)
+	}
+	newPath := filepath.Join(archiveDir, filepath.Base(planPath))
+	relNew := filepath.ToSlash(mustRel(root, newPath))
+
+	if err := gitMv(root, relPlan, relNew); err != nil {
+		return "", fmt.Errorf("git mv %q %q: %w", relPlan, relNew, err)
+	}
+	if err := prependTombstone(newPath, "Archived", sha, summary); err != nil {
+		return "", fmt.Errorf("writing tombstone: %w", err)
+	}
+	_ = gitAdd(root, relNew) // best-effort re-stage the tombstone edit
+
+	return fmt.Sprintf("archived %s -> %s (%s)", relPlan, relNew, summary), nil
+}
+
+// cmdPlansRestore implements "plans restore <plan>": the E4-1 round-trip —
+// moves an archived plan back to docs/plans/, unconditionally (restore is a
+// recovery/audit action; the tombstone stays in the file as the historical
+// record of the archival that is being reversed — vision 11's own E4 kill
+// criterion, "first restored-from-archive plan reveals a criterion
+// false-positive", depends on that evidence surviving the round trip).
+func cmdPlansRestore(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("plans restore", stderr)
+	root := fs.String("root", ".", "repo root (git mv runs relative to this)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Fprintln(stderr, "error: plans restore requires exactly one plan argument")
+		fs.Usage()
+		return 1
+	}
+	msg, err := runPlansRestore(*root, fs.Arg(0))
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, msg)
+	return 0
+}
+
+// runPlansRestore is cmdPlansRestore's testable core.
+func runPlansRestore(root, planArg string) (string, error) {
+	archivePath, err := resolveArchivedPlanPath(root, planArg)
+	if err != nil {
+		return "", err
+	}
+	relArchive := filepath.ToSlash(mustRel(root, archivePath))
+	dst := filepath.Join(root, "docs", "plans", filepath.Base(archivePath))
+	relDst := filepath.ToSlash(mustRel(root, dst))
+	if _, err := os.Stat(dst); err == nil {
+		return "", fmt.Errorf("restore target %q already exists", relDst)
+	}
+	if err := gitMv(root, relArchive, relDst); err != nil {
+		return "", fmt.Errorf("git mv %q %q: %w", relArchive, relDst, err)
+	}
+	return fmt.Sprintf("restored %s -> %s", relArchive, relDst), nil
+}
+
+// resolveActivePlanPath resolves a user-given plan argument (bare filename,
+// "docs/plans/x.md", or an absolute/CWD-relative path) against root's
+// docs/plans/ directory.
+func resolveActivePlanPath(root, planArg string) (string, error) {
+	for _, c := range []string{
+		planArg,
+		filepath.Join(root, planArg),
+		filepath.Join(root, "docs", "plans", planArg),
+		filepath.Join(root, "docs", "plans", filepath.Base(planArg)),
+	} {
+		if info, err := os.Stat(c); err == nil && !info.IsDir() {
+			return c, nil
+		}
+	}
+	return "", fmt.Errorf("plan %q not found under %q", planArg, filepath.Join(root, "docs", "plans"))
+}
+
+// resolveArchivedPlanPath is resolveActivePlanPath's counterpart for
+// docs/plans/archive/.
+func resolveArchivedPlanPath(root, planArg string) (string, error) {
+	for _, c := range []string{
+		planArg,
+		filepath.Join(root, planArg),
+		filepath.Join(root, "docs", "plans", "archive", planArg),
+		filepath.Join(root, "docs", "plans", "archive", filepath.Base(planArg)),
+	} {
+		if info, err := os.Stat(c); err == nil && !info.IsDir() {
+			return c, nil
+		}
+	}
+	return "", fmt.Errorf("archived plan %q not found under %q", planArg, filepath.Join(root, "docs", "plans", "archive"))
+}
+
+// readAbsorptionCorpus concatenates CHANGELOG.md and ADR.md's raw text
+// (missing files tolerated as empty — a repo without one yet just fails the
+// absorption check honestly rather than erroring operationally).
+func readAbsorptionCorpus(root string) (string, error) {
+	var b strings.Builder
+	for _, name := range []string{"CHANGELOG.md", "ADR.md"} {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return "", err
+		}
+		b.Write(data)
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
+}
+
+// verifySummaryLine renders the same shape of summary cmdVerify prints,
+// for the tombstone.
+func verifySummaryLine(rows []planRow) string {
+	total, claimed, passed, failed, skipped := len(rows), 0, 0, 0, 0
+	for _, row := range rows {
+		if row.Task.Skipped {
+			skipped++
+			continue
+		}
+		if row.Task.Claimed {
+			claimed++
+			if row.Verdict.Status == verify.Pass {
+				passed++
+			} else {
+				failed++
+			}
+		}
+	}
+	return fmt.Sprintf("%d tasks total; %d claimed (%d verified, %d failing); %d skipped",
+		total, claimed, passed, failed, skipped)
+}
+
+// prependTombstone inserts a tombstone line into path's header, directly
+// after its first line (conventionally the "# Title" heading — the parser
+// is line-based, so inserting a non-checklist line here never affects
+// verify's task count).
+func prependTombstone(path, label, sha, summary string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	parts := strings.SplitN(string(data), "\n", 2)
+	header := parts[0]
+	rest := ""
+	if len(parts) > 1 {
+		rest = parts[1]
+	}
+	tombstone := fmt.Sprintf("> **%s** %s · HEAD `%s` · %s",
+		label, time.Now().UTC().Format(time.RFC3339), sha, summary)
+	newContent := header + "\n\n" + tombstone + "\n" + rest
+	return os.WriteFile(path, []byte(newContent), 0o644)
+}
+
+// mustRel returns path relative to root, or path unchanged if it cannot be
+// made relative (never errors — a best-effort display/git-argument helper).
+func mustRel(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return path
+	}
+	return rel
+}
+
+func gitHEAD(root string) (string, error) {
+	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func gitMv(root, src, dst string) error {
+	out, err := exec.Command("git", "-C", root, "mv", src, dst).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+func gitAdd(root, path string) error {
+	out, err := exec.Command("git", "-C", root, "add", path).CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}

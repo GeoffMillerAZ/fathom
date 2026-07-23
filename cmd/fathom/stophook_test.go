@@ -156,3 +156,116 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 		t.Errorf("no-plans must be silent exit 0; got %d %q", code, out.String())
 	}
 }
+
+// slowStopDaemon serves list_services promptly (so service resolution
+// succeeds) but sleeps past the caller's client timeout on verify_plan —
+// simulating the p95-tail-latency backend B3-1 budgets for
+// (docs/design/coding-agent-excellence.md §2: verify_plan p95 ≤ 5s SLO).
+func slowStopDaemon(t *testing.T, service string, delay time.Duration) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Name string `json:"name"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.Params.Name == "verify_plan" {
+			time.Sleep(delay)
+		}
+		var inner string
+		switch req.Params.Name {
+		case "list_services":
+			inner = fmt.Sprintf(`{"services":[{"service":%q,"symbol_count":10}]}`, service)
+		default: // verify_plan, once it wakes up
+			inner = `{"service":"` + service + `","summary":{"total":1,"pass":1,"fail":0,"unknown":0},
+			  "tasks":[{"id":"T-1","title":"One","status":"pass","label":"verified","criteria":[]}]}`
+		}
+		env := map[string]any{"result": map[string]any{"content": []map[string]any{{"type": "text", "text": inner}}}}
+		_ = json.NewEncoder(w).Encode(env)
+	}))
+}
+
+// TestRunStopHook_SlowVerifyDegradesToWarning is B3-1: a verify_plan call
+// that exceeds the Stop-hook's client timeout must fail open — degrade to an
+// advisory warning, never a stall or a silent no-op that lets an unverified
+// claim through unremarked (docs/design/coding-agent-excellence.md §5.3:
+// "hooks never block on infrastructure", extended here to "and never go
+// silent about it either" for the one companion call expensive enough to
+// time out under normal load).
+func TestRunStopHook_SlowVerifyDegradesToWarning(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := t.TempDir()
+	svc := strings.ToLower(filepath.Base(dir))
+	plans := filepath.Join(dir, "docs", "plans")
+	if err := os.MkdirAll(plans, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	planPath := filepath.Join(plans, "p.md")
+
+	oldMD := "- [ ] One {id: T-1, symbol: Real}\n"
+	newMD := "- [x] One {id: T-1, symbol: Real}\n"
+	if err := os.WriteFile(planPath, []byte(oldMD), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"init", "-q"},
+		{"add", "."},
+		{"-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "init"},
+	} {
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	if err := os.WriteFile(planPath, []byte(newMD), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Client times out well before the server wakes up on verify_plan.
+	srv := slowStopDaemon(t, svc, 300*time.Millisecond)
+	defer srv.Close()
+	hc := &http.Client{Timeout: 50 * time.Millisecond}
+
+	start := time.Now()
+	var out bytes.Buffer
+	code := runStopHook(dir, hc, srv.URL, false, &out)
+	elapsed := time.Since(start)
+
+	if code != 0 {
+		t.Fatalf("slow verify must fail open, exit 0; got %d", code)
+	}
+	if elapsed >= 300*time.Millisecond {
+		t.Errorf("runStopHook blocked for %s waiting on a slow verify — must bail at the client timeout, never stall", elapsed)
+	}
+	if out.Len() == 0 {
+		t.Fatal("slow verify must degrade to an advisory warning, not go silent")
+	}
+	var adv struct {
+		HookSpecificOutput struct {
+			AdditionalContext string `json:"additionalContext"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &adv); err != nil {
+		t.Fatalf("advisory output not JSON: %v (%s)", err, out.String())
+	}
+	if !strings.Contains(adv.HookSpecificOutput.AdditionalContext, "timed out") {
+		t.Errorf("advisory message missing timeout notice: %s", adv.HookSpecificOutput.AdditionalContext)
+	}
+
+	// Even with --block requested, a timeout is operational, not an evidence
+	// failure — it must stay advisory, never flip to decision:block.
+	out.Reset()
+	if code := runStopHook(dir, hc, srv.URL, true, &out); code != 0 {
+		t.Fatalf("slow verify + --block must still fail open, exit 0; got %d", code)
+	}
+	var blk struct {
+		Decision string `json:"decision"`
+	}
+	_ = json.Unmarshal(out.Bytes(), &blk)
+	if blk.Decision == "block" {
+		t.Error("a verify timeout must never produce decision:block — that's for proven-false claims, not infrastructure")
+	}
+}

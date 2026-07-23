@@ -67,6 +67,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPlatformCallers(args[1:], stdout, stderr)
 	case "verify":
 		return cmdVerify(args[1:], stdout, stderr)
+	case "plans":
+		return cmdPlans(args[1:], stdout, stderr)
 	case "remap":
 		return cmdRemap(args[1:], stdout, stderr)
 	case "migrate-store":
@@ -119,6 +121,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  platform-ingest       Ingest all services under a root directory")
 	fmt.Fprintln(w, "  platform-callers      Print cross-repo callers of a symbol")
 	fmt.Fprintln(w, "  verify                Verify plan files against the index (done-means-proven gate)")
+	fmt.Fprintln(w, "  plans                 Computed SDD progress: status | next | archive | restore")
 	fmt.Fprintln(w, "  remap                 Point a service's recorded corpus root at a new location")
 	fmt.Fprintln(w, "  migrate-store         Port a DuckDB store's non-derivable tables into a fresh SQLite store")
 	fmt.Fprintln(w, "  compile               Compile a semantic layer for a service (dry-run by default)")

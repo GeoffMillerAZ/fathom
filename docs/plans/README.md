@@ -82,6 +82,25 @@ bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 bin/fathom verify --strict --store <tmpstore> --service <svc> --plan docs/plans/<slug>.md
 ```
 
+## Computed progress and archival (E3/E4, docs/plans/new-use-cases.md)
+
+`fathom plans status` computes a per-plan rollup {proven, claimed-unproven,
+open, deferred-with-trigger} by running the verify engine over every active
+plan — never an asserted state. `fathom plans next` lists the ordered work
+frontier (open rows plus claimed-but-failing rows) with their `{id, symbol,
+package}` anchors, for an agent picking up work.
+
+`fathom plans archive <plan>` moves a plan whose every row is proven or
+dispositioned, and whose row IDs are lexically absorbed into CHANGELOG.md or
+ADR.md, to `docs/plans/archive/` — writing a tombstone (date, HEAD sha, verify
+summary) into the archived file's header. `fathom plans restore <plan>` moves
+it back. **`docs/plans/archive/` is out of gate scope by construction**: both
+the pre-push `verify` command (`lefthook.yml`) and CI (`scripts/ci.sh`) walk
+only the top level of `docs/plans/` (a non-recursive glob / `find -maxdepth
+1`), so every archived plan removes exactly one `fathom verify` invocation
+from each push and CI run — the gate's cost is O(active plans), not
+O(all-plans-forever).
+
 ## Recorded demo (2026-07-07, first gated run)
 
 The very first run of the gate against `h1-coding-agent-excellence.md` caught
