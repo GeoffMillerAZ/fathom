@@ -196,6 +196,15 @@ type CompileRun struct {
 	// whatever it had already compiled. Sections not yet reached are
 	// untouched and resume via the digest gate on the next invocation.
 	BudgetStopped bool
+
+	// Escape is a free-text audit note recording that this run proceeded
+	// only because an explicit CLI override flag bypassed a compile guard
+	// that would otherwise have refused it — the idempotency guard's
+	// --force (A2-1) or the eval-gate's --unsafe-skip-eval-gate (D3-1), both
+	// docs/plans/activation.md / docs/plans/expert-depth.md. Empty for every
+	// normal run; non-empty is itself the durable "logged into compile_runs"
+	// audit trail the kill criteria for both flags count against.
+	Escape string
 }
 
 // ClaimEvent is one append-only human/machine verdict on a claim (the refute

@@ -195,6 +195,20 @@ func loadUnion(root string) (map[string]LayerInfo, error) {
 			}
 			continue
 		}
+		// Eval-gate honesty for PROJECT packs (D3-1 bounce finding 2): the
+		// self-declared `evaled: true` manifest field is a necessity only
+		// for EMBEDDED packs, whose eval/ is deliberately not compiled into
+		// the binary. A project pack's eval/ IS right here on disk — so a
+		// declaration with no readable eval/RESULTS.md behind it is
+		// overridden to false (with a once-per-process warning), or a
+		// one-line lie in layer.cue would walk straight through the compile
+		// eval-gate with a clean, empty escape_note.
+		if def.Evaled {
+			if _, rerr := fs.ReadFile(projFS, name+"/eval/RESULTS.md"); rerr != nil {
+				warnBrokenPackOnce(projectDir+"/"+name+"#evaled", "project layer pack %q at %s declares evaled: true but has no readable eval/RESULTS.md — treating it as NOT evaled (fathom compile will refuse it without --unsafe-skip-eval-gate)", name, projectDir)
+				def.Evaled = false
+			}
+		}
 		_, overrides := infos[name]
 		infos[name] = LayerInfo{LayerDef: def, Source: SourceProject, Overrides: overrides}
 	}

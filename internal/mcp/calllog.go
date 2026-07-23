@@ -36,11 +36,27 @@ type callLogEntry struct {
 	Error          string  `json:"error,omitempty"`
 }
 
+// SurfaceStat is one surface's process-lifetime traffic snapshot (A1-1,
+// docs/plans/activation.md): how many tools/call requests it has served
+// since this CallLogger was created, and when the most recent one landed.
+type SurfaceStat struct {
+	Calls  int64  `json:"calls"`
+	LastTS string `json:"last_ts"` // RFC3339Nano UTC
+}
+
 // CallLogger serialises callLogEntry records to an io.Writer as JSONL.
 // It is safe for concurrent use.
+//
+// It also accumulates process-lifetime per-surface call counts and last-call
+// timestamps in memory (A1-1): server_stats' surface_traffic block reads
+// these via SurfaceTraffic so "is anything flowing on /rpc/agent?" is
+// answerable from the daemon itself, without tailing the JSONL file.
 type CallLogger struct {
 	mu sync.Mutex
 	w  io.Writer
+
+	surfaceCalls  map[string]int64
+	surfaceLastTS map[string]time.Time
 }
 
 // NewCallLogger creates a CallLogger that writes to w.
@@ -49,17 +65,22 @@ func NewCallLogger(w io.Writer) *CallLogger {
 	if w == nil {
 		return nil
 	}
-	return &CallLogger{w: w}
+	return &CallLogger{
+		w:             w,
+		surfaceCalls:  make(map[string]int64),
+		surfaceLastTS: make(map[string]time.Time),
+	}
 }
 
-// log writes one JSONL entry.  It ignores marshal / write errors to avoid
-// disrupting tool call results.
+// log writes one JSONL entry and bumps the in-memory per-surface counters.
+// It ignores marshal / write errors to avoid disrupting tool call results.
 func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
+	now := time.Now().UTC()
 	entry := callLogEntry{
-		TS:             time.Now().UTC().Format(time.RFC3339Nano),
+		TS:             now.Format(time.RFC3339Nano),
 		Tool:           tool,
 		Service:        service,
 		Group:          group,
@@ -82,6 +103,8 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 	b = append(b, '\n')
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.surfaceCalls[surface]++
+	l.surfaceLastTS[surface] = now
 	_, _ = l.w.Write(b)
 }
 
@@ -127,4 +150,31 @@ func claimsAttachedFrom(result any) int {
 		return int(v)
 	}
 	return 0
+}
+
+// SurfaceTraffic returns a snapshot of process-lifetime per-surface call
+// counts and last-call timestamps (A1-1). The empty string "" is the
+// bare/unscoped surface — a stdio session, or an HTTP request to bare
+// /rpc — which is real traffic and reported like any named surface.
+//
+// Nil-vs-empty is load-bearing (bounce finding 3 / K3's existence check):
+// a nil receiver (no logger wired — the instrument doesn't exist) returns
+// nil, and server_stats omits the block; a wired logger that has seen ZERO
+// calls returns a non-nil empty map, and server_stats emits an empty
+// block — a freshly restarted daemon truthfully reads as "instrument live,
+// zero traffic", never as "instrument missing".
+func (l *CallLogger) SurfaceTraffic() map[string]SurfaceStat {
+	if l == nil {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := make(map[string]SurfaceStat, len(l.surfaceCalls))
+	for surface, calls := range l.surfaceCalls {
+		out[surface] = SurfaceStat{
+			Calls:  calls,
+			LastTS: l.surfaceLastTS[surface].Format(time.RFC3339Nano),
+		}
+	}
+	return out
 }

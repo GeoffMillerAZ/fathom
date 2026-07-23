@@ -48,12 +48,25 @@ Two honesty notes on that doctrine:
 
 ## The catalog
 
-| Layer | Kind | Tier | Corpus | Drift-tracked | Gate result (see each pack's `eval/RESULTS.md`) |
-|---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | ADR-016 baseline pass; on the production compile model, precision 1.00 but recall straddles the bar (0.71/0.86) — a recorded pre-OP-6 signal |
-| `findings` | `finding` | `sme-stated` | `findings/**` | **yes** | shipped without eval/ yet — see its `KILL.md` |
-| `adr-rules` | `adr-rule` | `doc-claimed` | `ADR.md`, `docs/design/*.md` | no | precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned |
-| `spec-bindings` | `spec-binding` | `doc-claimed` | `docs/plans/**` excl. `README.md` | no | precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned |
+**A4-1 (docs/plans/activation.md): two columns, two different truths.**
+**Eval** is a gate ADMISSION fact: hand-authored (each pack's `layer.cue`
+carries a self-declared `evaled: bool`, checked against that pack's own
+`eval/RESULTS.md` at authoring time — see "The gate" below) and static once
+recorded; it changes only when a pack is re-gated. **Production** is a LIVE
+store fact — claim count + last compile date — and is **never
+hand-maintained here**: run `fathom layers list --store PATH --service NAME`
+for the current numbers (the CLI reads them straight from `compile_runs`/
+`semantic_claims`, so this table can't drift stale the way a hardcoded count
+would). `fathom compile` itself enforces the Eval column: a non-dry-run
+compile of an `evaled: false` layer refuses unless `--unsafe-skip-eval-gate`
+overrides it (D3-1, docs/plans/expert-depth.md).
+
+| Layer | Kind | Tier | Corpus | Drift-tracked | Eval | Production |
+|---|---|---|---|---|---|---|
+| `obligations` | `obligation` | `doc-claimed` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
+| `findings` | `finding` | `sme-stated` | `findings/**` | **yes** | **not-gated** — shipped without eval/ yet, see its `KILL.md`; `fathom compile` refuses this layer without `--unsafe-skip-eval-gate` | `fathom layers list --store PATH --service NAME` |
+| `adr-rules` | `adr-rule` | `doc-claimed` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
+| `spec-bindings` | `spec-binding` | `doc-claimed` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 
 ### `obligations` — every edit
 
@@ -180,12 +193,17 @@ fathom layers install <dir>  [--root DIR] [--force]
 
 Store-direct, like `fathom claim`'s v0 convention — no daemon round-trip.
 `--root` defaults to the current directory. `list` unions embedded packs
-with `<root>/.fathom/layers/`, marking an override with `*`; add
-`--store`/`--service` for a compiled-claims-per-layer column plus the
-orphaned-layers section (claims served from the store whose pack is gone —
-see the honesty notes above). Broken project packs are listed with their
-load error, never silently dropped. `show` prints the full resolved
-definition plus prompt provenance (the content-addressed compile identity).
+with `<root>/.fathom/layers/`, marking an override with `*`, and always
+shows an **EVAL** column (`pass` / `not-gated`, from each pack's own
+`layer.cue` — schema data, never hand-maintained prose, see "The catalog"
+above). Add `--store`/`--service` for the **PRODUCTION** columns — CLAIMS
+(compiled-claims-per-layer) and LAST_COMPILE (the layer's newest
+`compile_runs.ran_at`, `never` if none) — both A4-1's live-from-the-store
+truth (docs/plans/activation.md), plus the orphaned-layers section (claims
+served from the store whose pack is gone — see the honesty notes above).
+Broken project packs are listed with their load error, never silently
+dropped. `show` prints the full resolved definition plus its eval status and
+prompt provenance (the content-addressed compile identity).
 `install` validates a candidate pack directory against `#Layer` (a missing
 `prompt.md` or empty/absent `eval/` is a warning, not a failure — the layer
 just hasn't cleared its gate yet), stages the copy, and atomically renames

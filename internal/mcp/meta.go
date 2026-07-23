@@ -96,7 +96,7 @@ type classifiedZeroBackend interface {
 func registerServerStats(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "server_stats",
-		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files). Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
+		Description: "Return server uptime and total request count. When the backend supports it, also reports ingest-event counters accumulated since this server process started (unclassified/oversize/classified-but-zero files). When a call logger is wired in, also reports surface_traffic: per-surface {calls, last_ts} since this process started (A1-1) — answers \"is anything flowing on /rpc/agent?\" from the daemon itself. Pass an optional service to also get its typed Go call-edge counts (ADR-021 §3) — direct/interface-dispatch/unresolved — the honest signal for whether a store's typed pass has run at all.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -120,6 +120,14 @@ func registerServerStats(s *Server) {
 			if m := cz.ClassifiedZeroStats(); len(m) > 0 {
 				result["classified_zero_files"] = m
 			}
+		}
+		// Emitted whenever a call logger is wired — an EMPTY block is the
+		// truthful "instrument live, zero traffic" state a freshly
+		// restarted daemon is in; omission means the instrument itself is
+		// absent (nil receiver returns nil). Doctrine 7: an existence
+		// check must be able to tell those apart.
+		if traffic := s.callLogger.SurfaceTraffic(); traffic != nil {
+			result["surface_traffic"] = traffic
 		}
 
 		var p struct {

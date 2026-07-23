@@ -19,6 +19,9 @@ corpus: {
 prompt_version: "spec-bindings/content-addressed"
 prompt_file:    "schema/semantic/layers/spec-bindings/prompt.md"
 tier:           "doc-claimed"
+// eval/RESULTS.md: 1.00 precision / 1.00 recall, 2 consecutive runs on the
+// production compile model. Result: PASS.
+evaled: true
 budgets: {
 	max_tokens_per_run: 200000
 	max_usd_per_run:    1.0

@@ -72,6 +72,22 @@ package semantic
 	// tier_profile names the tier vocabulary (ADR-017: data now).
 	tier_profile: string | *"engineering"
 
+	// evaled declares whether this pack has a PASSING eval/RESULTS.md on
+	// record (docs/layers.md "The gate": precision >= 0.90, recall >= 0.75,
+	// scored by internal/semantic/eval_test.go's runLayerEval harness against
+	// a real model) — self-declared DATA, not a live filesystem check,
+	// because eval/ is deliberately excluded from the embedded pack mirror
+	// (internal/semantic/manifest.go: "eval/ and KILL.md are dev-time/gate
+	// artifacts, never needed by the compiled binary"), so the compiled
+	// binary has no other way to know an embedded pack's gate status at
+	// runtime (D3-1, docs/plans/expert-depth.md). A pack author flips this to
+	// true only when eval/RESULTS.md records a passing run; `fathom compile`
+	// refuses a non-dry-run compile of an evaled:false layer unless
+	// --unsafe-skip-eval-gate overrides it (logged into compile_runs).
+	// Defaults false: an un-evaled pack (or one whose author forgot to flip
+	// this) fails closed, never silently passes the gate.
+	evaled: bool | *false
+
 	// budgets bound a compile run; the runner must refuse to exceed them.
 	budgets: {
 		max_tokens_per_run:  int & >0

@@ -174,11 +174,13 @@ func TestLayers_List_WithStoreShowsClaimCounts(t *testing.T) {
 	if !strings.Contains(got, "CLAIMS") {
 		t.Errorf("output missing CLAIMS column header:\n%s", got)
 	}
-	// obligations row should show a count of 1.
+	// obligations row should show a claim count of 1, followed by the
+	// LAST_COMPILE column (A4-1: "never", since no compile_runs exist here).
 	for _, line := range strings.Split(got, "\n") {
 		if strings.HasPrefix(line, "obligations") {
-			if !strings.HasSuffix(strings.TrimSpace(line), "1") {
-				t.Errorf("obligations row = %q, want a trailing claim count of 1", line)
+			fields := strings.Fields(line)
+			if len(fields) < 2 || fields[len(fields)-2] != "1" || fields[len(fields)-1] != "never" {
+				t.Errorf("obligations row = %q, want a claim count of 1 followed by LAST_COMPILE=never", line)
 			}
 		}
 	}
@@ -283,6 +285,86 @@ func TestLayers_List_StoreRequiresService(t *testing.T) {
 	code := run([]string{"layers", "list", "--root", root, "--store", "workspace/db/fathom.duckdb"}, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("layers list --store without --service: want non-zero exit")
+	}
+}
+
+// ─── A4-1 (docs/plans/activation.md): catalog de-theater ──────────────────
+//
+// The layers CLI verb gains an EVAL column (pass/not-gated, from
+// LayerDef.Evaled — schema data, never hand-maintained prose) and, with
+// --store/--service, a LAST_COMPILE column read live from compile_runs
+// (never hand-maintained) alongside the existing CLAIMS count — "production"
+// truth as the row's own claim count + last compile date, both read from the
+// store.
+
+func TestLayers_List_ShowsEvalColumnFromManifestData(t *testing.T) {
+	root := t.TempDir()
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "EVAL") {
+		t.Fatalf("output missing EVAL column header:\n%s", got)
+	}
+	for _, line := range strings.Split(got, "\n") {
+		switch {
+		case strings.HasPrefix(line, "obligations"), strings.HasPrefix(line, "adr-rules"), strings.HasPrefix(line, "spec-bindings"):
+			if !strings.Contains(line, "pass") {
+				t.Errorf("evaled layer row should show a passing eval status: %q", line)
+			}
+		case strings.HasPrefix(line, "findings"):
+			// findings ships without eval/ yet (docs/layers.md) — LayerDef.Evaled
+			// is false; the CLI must say so, not silently omit the column.
+			if !strings.Contains(line, "not-gated") {
+				t.Errorf("un-evaled findings row should say not-gated: %q", line)
+			}
+		}
+	}
+}
+
+func TestLayers_List_WithStoreShowsLastCompileDate(t *testing.T) {
+	root := t.TempDir()
+	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	ranAt := time.Date(2026, 7, 20, 12, 0, 0, 0, time.UTC)
+	run2 := core.CompileRun{
+		RunID: "run-1", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm1", PromptVersion: "obligations/abc123",
+		DryRun: false, RanAt: ranAt, ClaimsEmitted: 1,
+	}
+	if err := st.RecordCompileRun(context.Background(), run2); err != nil {
+		t.Fatalf("RecordCompileRun: %v", err)
+	}
+	st.Close()
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{"layers", "list", "--root", root, "--store", storePath, "--service", "svc"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("layers list --store exit = %d, stderr: %s", code, errBuf.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "LAST_COMPILE") {
+		t.Fatalf("output missing LAST_COMPILE column header:\n%s", got)
+	}
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, "obligations") {
+			if !strings.Contains(line, "2026-07-20") {
+				t.Errorf("obligations row should show the recorded compile date, got %q", line)
+			}
+		}
+		if strings.HasPrefix(line, "adr-rules") {
+			// adr-rules has claims/compiles for a DIFFERENT service in this
+			// test — its own row for "svc" must show "never", not a stale
+			// borrowed date.
+			if !strings.Contains(line, "never") {
+				t.Errorf("adr-rules row with no compile_runs should say never, got %q", line)
+			}
+		}
 	}
 }
 

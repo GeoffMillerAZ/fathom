@@ -113,11 +113,19 @@ documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind
 Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
-at `http://localhost:7575/rpc`, registered user-scope as an **HTTP MCP**. Every
-session shares one index and one store, so there is no per-session server, no
-single-writer lock contention, and no "Failed to connect." If a session doesn't
-see the fathom tools (`find_symbol`, `repo_map`, …), it started before the
-switch — restart it once.
+at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
+MCP**. `/rpc/agent` is the curated 15-tool companion surface (`/rpc/companion`
+is a compatible alias; bare `/rpc` is the full, unscoped registry — see
+`docs/mcp-tools.md`). Every session shares one index and one store, so there
+is no per-session server, no single-writer lock contention, and no "Failed to
+connect." **Restart caveat:** the registered URL is read once at session
+start, so a session started before either (a) the daemon first switched to
+`/rpc/agent` or (b) your own client's registration was pointed at it, never
+sees the surface change — check `~/.claude.json` for the registered URL, and
+if a session doesn't see the fathom tools (`find_symbol`, `repo_map`, …),
+restart it once. `server_stats`' `surface_traffic` block (A1-1,
+docs/plans/activation.md) answers "is anything flowing on `/rpc/agent`?"
+directly from the daemon, without tailing the call log.
 
 When working in this (or any fleet) repo:
 1. **Index first.** Resolve where / what / who-calls via fathom (`find_symbol`,

@@ -135,6 +135,11 @@ type CompileInput struct {
 	// DryRun estimates sections/tokens without calling the LLM or writing
 	// claims. Mandatory before any spending compile (ADR-016).
 	DryRun bool
+	// Escape carries forward into the recorded CompileRun's Escape field
+	// (core.CompileRun.Escape's doc comment) — the caller's audit note when
+	// an explicit override flag let this run proceed past a guard that would
+	// otherwise have refused it. Empty for every normal run.
+	Escape string
 }
 
 // docSections pairs one governing doc with its already-split sections, so
@@ -215,6 +220,7 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		PromptVersion:   promptVersion,
 		DryRun:          in.DryRun,
 		RanAt:           started.UTC(),
+		Escape:          in.Escape,
 	}
 	idSum := sha256.Sum256([]byte(in.ServiceID + "\x00" + layerName + "\x00" + in.Watermark + "\x00" + started.UTC().Format(time.RFC3339Nano)))
 	run.RunID = hex.EncodeToString(idSum[:])

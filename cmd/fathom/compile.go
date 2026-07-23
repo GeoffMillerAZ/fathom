@@ -36,6 +36,8 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	profile := fs.String("profile", "", "named LLM profile from ~/.fathom/config.toml or project .fathom/config.toml (direct --store mode only; HTTP mode uses the daemon's own configured profile — CF-3, docs/plans/config-experience.md); default: the config's default_profile, or the env-only lanes when no config file defines one")
+	force := fs.Bool("force", false, "A2-1 (docs/plans/activation.md): override the idempotency guard and recompile even when the store's latest compile_run for (service, layer) already ran at the same corpus watermark and prompt identity (direct --store mode only). Logged into the new compile_runs row.")
+	unsafeSkipEvalGate := fs.Bool("unsafe-skip-eval-gate", false, "D3-1 (docs/plans/expert-depth.md): override the eval-gate refusal and compile a layer with no passing eval/RESULTS.md record (direct --store mode only). Logged into the new compile_runs row.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -70,18 +72,37 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error: --profile applies to direct --store mode only; in HTTP mode the daemon compiles with its own configured profile ([daemon].default_profile in ~/.fathom/config.toml, restart-to-apply — see docs/configuration.md). Pass --store for a local compile under this profile, or configure the daemon.")
 		return 1
 	}
+	// A2-1/D3-1: both compile guards run against the local store the direct
+	// --store path already has open; HTTP mode has no guard plumbing into the
+	// daemon yet (docs/plans/activation.md scoping note). Silently ignoring
+	// an explicit override flag would be worse than refusing outright.
+	if (*force || *unsafeSkipEvalGate) && *storePath == "" {
+		fmt.Fprintln(stderr, "error: --force and --unsafe-skip-eval-gate apply to direct --store mode only (the A2-1/D3-1 compile guards reason about the local store). Pass --store, or omit these flags for an unguarded HTTP-mode compile.")
+		return 1
+	}
 
 	if *storePath != "" {
-		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, stdout, stderr)
+		return compileViaStore(*storePath, *service, *layer, *profile, *dryRun, *force, *unsafeSkipEvalGate, stdout, stderr)
 	}
 	return compileViaHTTP(*url, *service, *layer, *dryRun, stdout, stderr)
 }
 
-// compileViaStore runs CompileLayer in-process against a local DuckDB store.
+// compileViaStore runs CompileLayer in-process against a local store.
 // F7 (docs/plans/findings-tracer.md FT-1): this path used to always call
 // CompileObligations regardless of --layer, silently discarding a
 // non-default --layer flag even after LoadLayer had validated it above.
-func compileViaStore(storePath, service, layer, profileFlag string, dryRun bool, stdout, stderr io.Writer) int {
+//
+// A2-1/D3-1 (docs/plans/activation.md, docs/plans/expert-depth.md): before
+// spending anything, two pre-flight guards run in order — the eval-gate
+// (D3-1) refuses a layer with no passing eval/RESULTS.md record, then the
+// idempotency guard (A2-1) refuses an unchanged-since-last-time recompile.
+// Either can be overridden by its own flag; an override is recorded as a
+// free-text note on the run's CompileRun.Escape field — the durable,
+// queryable "logged into compile_runs" audit trail both flags' kill
+// criteria (docs/vision/11-dial-to-eleven.md Phase D) count against. Both
+// guards are pure pre-flight: a refusal never opens an LLM client and never
+// writes a compile_runs row.
+func compileViaStore(storePath, service, layer, profileFlag string, dryRun, force, unsafeSkipEvalGate bool, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -93,7 +114,75 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun bool,
 	c := client.New(conn, st)
 	defer c.Close()
 
+	ctx := context.Background()
+	escape := ""
+
 	if !dryRun {
+		// The service's actual ingested root (ServiceMeta) — the same
+		// authoritative source CompileLayer itself resolves against, unlike
+		// the CWD-only advisory check above.
+		root := ""
+		if meta, found, merr := st.GetServiceMeta(ctx, service); merr == nil && found {
+			root = meta.Path
+		}
+		layerDef, lerr := semantic.LoadLayerIn(root, layer)
+		if lerr != nil {
+			fmt.Fprintf(stderr, "error: resolve layer %q: %v\n", layer, lerr)
+			return 1
+		}
+
+		// D3-1: refuse a spending compile of an un-evaled layer.
+		if !layerDef.Evaled {
+			if !unsafeSkipEvalGate {
+				fmt.Fprintf(stderr, "error: layer %q has no passing eval/RESULTS.md record (LayerDef.Evaled is false) — refusing to compile (docs/layers.md \"The gate\"). Pass --unsafe-skip-eval-gate to override; the override is logged into compile_runs.\n", layer)
+				return 1
+			}
+			escape = fmt.Sprintf("unsafe-skip-eval-gate: layer %q has no passing eval/RESULTS.md record", layer)
+			fmt.Fprintf(stderr, "warning: --unsafe-skip-eval-gate: compiling layer %q despite no passing eval/RESULTS.md record\n", layer)
+		}
+
+		// A2-1: refuse an idempotent recompile — same (service, layer) at the
+		// same corpus watermark AND the same prompt identity as the latest
+		// recorded compile_run. An empty watermark means freshness is
+		// unknown (ServiceWatermark's contract) — never refuse on that, or
+		// two unrelated first-ever compiles of an unknown-freshness corpus
+		// would falsely look "unchanged".
+		watermark, _ := c.ServiceWatermark(ctx, service)
+		if promptIdentity, ierr := semantic.PromptIdentity(layerDef); ierr == nil && watermark != "" {
+			runs, rerr := st.CompileRuns(ctx, service, layer)
+			if rerr != nil {
+				// Fail-open by design (a guard must not brick compiles on a
+				// store read hiccup) — but LOUDLY (bounce finding 1: on the
+				// pre-migration fleet store this error was the only signal
+				// the guard had been skipped, and it was swallowed).
+				fmt.Fprintf(stderr, "warning: idempotency guard skipped — could not read compile_runs for (%s, %s): %v\n", service, layer, rerr)
+			}
+			if rerr == nil && len(runs) > 0 {
+				latest := runs[0] // newest-first
+				// Only a CLEANLY COMPLETED run makes a recompile idempotent.
+				// A refused, budget-stopped, or partially-failed run's own
+				// documented remedy is "re-run to resume" (the digest gate
+				// skips completed sections) — refusing those would force
+				// --force on the honest path and pollute the escape counts
+				// the kill criteria read (bounce finding 4).
+				completedClean := !latest.Refused && !latest.BudgetStopped && latest.SectionsFailed == 0
+				if completedClean && latest.CorpusWatermark == watermark && latest.PromptVersion == promptIdentity {
+					if !force {
+						fmt.Fprintf(stderr, "error: refusing idempotent recompile: compile_run %s for (%s, %s) already ran at corpus watermark %q and prompt identity %q (ran_at=%s) — nothing has changed since. Pass --force to override; the override is logged into compile_runs.\n",
+							latest.RunID, service, layer, watermark, promptIdentity, latest.RanAt.UTC().Format(time.RFC3339))
+						return 1
+					}
+					note := fmt.Sprintf("force: idempotent recompile of run %s (watermark=%q, prompt=%q)", latest.RunID, watermark, promptIdentity)
+					if escape != "" {
+						escape += "; " + note
+					} else {
+						escape = note
+					}
+					fmt.Fprintf(stderr, "warning: --force: recompiling despite an unchanged watermark/prompt identity (prior run %s)\n", latest.RunID)
+				}
+			}
+		}
+
 		p, _, profErr := resolveActiveProfile(profileFlag)
 		if profErr != nil {
 			fmt.Fprintf(stderr, "error: resolving --profile %q: %v\n", profileFlag, profErr)
@@ -107,8 +196,7 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun bool,
 		c.WithLLM(llmCl, compileModelForProfile(p), 0.001, 0.005)
 	}
 
-	ctx := context.Background()
-	run, compErr := c.CompileLayer(ctx, service, layer, dryRun)
+	run, compErr := c.CompileLayerWithEscape(ctx, service, layer, dryRun, escape)
 	if compErr != nil {
 		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, compErr)
 		return 1
@@ -387,6 +475,9 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	}
 	if run.Refused {
 		fmt.Fprintf(w, "refused:           true (%s)\n", run.RefusalReason)
+	}
+	if run.Escape != "" {
+		fmt.Fprintf(w, "escape:            %s\n", run.Escape)
 	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)

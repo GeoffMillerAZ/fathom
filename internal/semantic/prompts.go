@@ -58,6 +58,16 @@ func promptForLayer(def LayerDef) (systemPrompt, promptVersion string, err error
 	return def.PromptText, def.Name + "/" + tpl.TextHash()[:8], nil
 }
 
+// PromptIdentity returns a layer's current compile-time prompt identity
+// (the same value promptForLayer would use) WITHOUT running a compile. The
+// idempotency guard (A2-1, docs/plans/activation.md) uses this to compare
+// "what would this compile use" against the latest recorded compile_run's
+// PromptVersion before spending anything.
+func PromptIdentity(def LayerDef) (string, error) {
+	_, promptVersion, err := promptForLayer(def)
+	return promptVersion, err
+}
+
 // obligationsPromptVersion returns the built-in obligations layer's
 // content-addressed compile identity. Kept as a named helper (tests and
 // compile.go's no-Layer-configured default path both want the obligations

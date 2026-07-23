@@ -248,6 +248,65 @@ func TestLoadLayerIn_BrokenPackShadowingEmbeddedFallsBack(t *testing.T) {
 	}
 }
 
+// TestLoadLayerIn_ProjectPackEvaledLieIsOverridden replicates the D3-1
+// bounce finding-2 executed attack exactly: a project pack whose layer.cue
+// declares `evaled: true` but has NO eval/ directory at all walked straight
+// through the compile eval-gate (exit 0, empty escape_note). The
+// self-declared field is a necessity only for embedded packs (their eval/
+// is not compiled into the binary); a project pack's eval/ is on disk, so a
+// declaration with no readable eval/RESULTS.md behind it must load as
+// Evaled=false.
+func TestLoadLayerIn_ProjectPackEvaledLieIsOverridden(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ProjectLayersDir, "bogus")
+	writeFixturePack(t, dir, "bogus", true /* omitEval */)
+	// Append the lie.
+	f, err := os.OpenFile(filepath.Join(dir, "layer.cue"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("open layer.cue: %v", err)
+	}
+	if _, err := f.WriteString("evaled: true\n"); err != nil {
+		t.Fatalf("append evaled: %v", err)
+	}
+	f.Close()
+
+	def, err := LoadLayerIn(root, "bogus")
+	if err != nil {
+		t.Fatalf("LoadLayerIn(bogus): %v", err)
+	}
+	if def.Evaled {
+		t.Fatal("Evaled = true for a project pack with no eval/RESULTS.md — the compile eval-gate would pass a one-line lie")
+	}
+}
+
+// TestLoadLayerIn_ProjectPackEvaledWithResultsSurvives is the positive
+// control: a project pack that declares evaled: true AND ships an
+// eval/RESULTS.md keeps its declaration.
+func TestLoadLayerIn_ProjectPackEvaledWithResultsSurvives(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, ProjectLayersDir, "gated")
+	writeFixturePack(t, dir, "gated", false /* omitEval */)
+	if err := os.WriteFile(filepath.Join(dir, "eval", "RESULTS.md"), []byte("# gated — eval results\n\nPASS.\n"), 0o644); err != nil {
+		t.Fatalf("write RESULTS.md: %v", err)
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "layer.cue"), os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		t.Fatalf("open layer.cue: %v", err)
+	}
+	if _, err := f.WriteString("evaled: true\n"); err != nil {
+		t.Fatalf("append evaled: %v", err)
+	}
+	f.Close()
+
+	def, err := LoadLayerIn(root, "gated")
+	if err != nil {
+		t.Fatalf("LoadLayerIn(gated): %v", err)
+	}
+	if !def.Evaled {
+		t.Fatal("Evaled = false for a project pack WITH eval/RESULTS.md — the honesty override is over-firing")
+	}
+}
+
 func TestLoadLayerIn_UnknownLayerListsKnownNames(t *testing.T) {
 	root := t.TempDir()
 	writeFixturePack(t, filepath.Join(root, ProjectLayersDir, "custom-pack"), "custom-pack", false)

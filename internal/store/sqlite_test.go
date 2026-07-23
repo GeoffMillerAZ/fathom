@@ -124,6 +124,95 @@ CREATE TABLE observations (
 	}
 }
 
+// TestSQLiteStore_LegacySchemaGainsEscapeNoteColumn is the A2-1/D3-1 bounce
+// finding-1 regression: escape_note was added only to the CREATE TABLE IF
+// NOT EXISTS shape — a no-op on every pre-existing store, including the
+// live fleet store, where CompileRuns then errored with "no such column:
+// escape_note" (breaking `layers list --store`, silently fail-opening the
+// compile idempotency guard, and killing the final RecordCompileRun after
+// the LLM spend). The PRAGMA-based migration must add the column to
+// legacy-shape stores on open.
+func TestSQLiteStore_LegacySchemaGainsEscapeNoteColumn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy-runs.sqlite")
+
+	// Hand-create a store file with the PRE-escape_note compile_runs schema.
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE compile_runs (
+    run_id             TEXT    NOT NULL DEFAULT '',
+    service_id         TEXT    NOT NULL,
+    layer              TEXT    NOT NULL DEFAULT '',
+    corpus_watermark   TEXT    NOT NULL DEFAULT '',
+    model              TEXT    NOT NULL DEFAULT '',
+    prompt_version     TEXT    NOT NULL DEFAULT '',
+    dry_run            BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_in          INTEGER NOT NULL DEFAULT 0,
+    tokens_out         INTEGER NOT NULL DEFAULT 0,
+    cost_usd           DOUBLE  NOT NULL DEFAULT 0,
+    duration_ms        BIGINT  NOT NULL DEFAULT 0,
+    sections_total     INTEGER NOT NULL DEFAULT 0,
+    sections_compiled  INTEGER NOT NULL DEFAULT 0,
+    sections_failed    INTEGER NOT NULL DEFAULT 0,
+    claims_emitted     INTEGER NOT NULL DEFAULT 0,
+    claims_rejected    INTEGER NOT NULL DEFAULT 0,
+    ran_at             BIGINT  NOT NULL DEFAULT 0,
+    refused            BOOLEAN NOT NULL DEFAULT FALSE,
+    refusal_reason     TEXT    NOT NULL DEFAULT '',
+    budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE
+)`); err != nil {
+		t.Fatalf("create legacy compile_runs table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO compile_runs (run_id, service_id, layer, corpus_watermark, prompt_version, ran_at)
+		 VALUES ('legacy-run', 'legacy-svc', 'obligations', 'wm-old', 'obligations/old', 1)`,
+	); err != nil {
+		t.Fatalf("insert legacy run: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	// Reopen through the real constructor — the migration must fire.
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	// The pre-existing row reads back with a zero-value Escape.
+	got, err := s.CompileRuns(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns on migrated legacy store: %v", err)
+	}
+	if len(got) != 1 || got[0].RunID != "legacy-run" || got[0].Escape != "" {
+		t.Fatalf("legacy run: got %+v, want 1 row with empty Escape", got)
+	}
+	// New writes round-trip Escape.
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "new-run", ServiceID: "legacy-svc", Layer: "obligations",
+		CorpusWatermark: "wm-new", PromptVersion: "obligations/new",
+		RanAt:  time.Unix(2, 0).UTC(),
+		Escape: "force: idempotent recompile of run legacy-run",
+	}); err != nil {
+		t.Fatalf("RecordCompileRun after migration: %v", err)
+	}
+	got, err = s.CompileRuns(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns after write: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("expected 2 runs after write, got %d", len(got))
+	}
+	if got[0].RunID != "new-run" || got[0].Escape != "force: idempotent recompile of run legacy-run" {
+		t.Errorf("migrated store Escape round-trip: got (%q, %q)", got[0].RunID, got[0].Escape)
+	}
+}
+
 // TestSQLiteStore_ParallelReaders is the F1 regression: the Store contract
 // guarantees safety for concurrent reads, and modernc's ":memory:" gives
 // every physical pool connection its OWN private database — so an uncapped
