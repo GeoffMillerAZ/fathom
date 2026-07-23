@@ -17,10 +17,28 @@
 package archconformance
 
 // #Rule mirrors internal/analysis/archconformance.Rule: a single layering
-// constraint between two package-prefix patterns. from_pkg/to_pkg compare
-// against the bare Go package-clause name recorded on core.SymbolNode.Package
-// (e.g. "connector", "query", "mcp") — not an import path. "*" matches any
-// package on that side of the rule.
+// constraint between two package-prefix patterns. "*" matches any package
+// on that side of the rule.
+//
+// What from_pkg/to_pkg actually compare against: the package prefix
+// archconformance.Check derives from each edge's symbol-key text
+// (everything before the LAST dot; see pkgOf). For a top-level FUNCTION
+// symbol that is the bare Go package-clause name recorded on
+// core.SymbolNode.Package (e.g. "connector", "query") — never an import
+// path. For a METHOD symbol the Go extractor records the RECEIVER TYPE as
+// the package (internal/extractor goextract.go funcNode: pkg = receiver
+// type name), so a method-origin edge's from-side prefix is e.g.
+// "LocalConnector", not "connector" — and a call INTO a method carries a
+// receiver-qualified to-side prefix (e.g. "mcp.Server" for
+// mcp.Server.registerTool), which a bare to_pkg like "mcp" never matches.
+//
+// DISCLOSED GAP: package-named rules therefore guard FUNCTION-origin,
+// function-target edges only. Method-origin and method-target edges are
+// effectively invisible to package-named rules until edge package prefixes
+// are normalized to declaring packages (a both-sides symbol-key→package
+// resolution, tracked as future work in docs/plans/review-verb.md C4-4's
+// row text). A rule pack author who needs to guard a specific receiver
+// today can name the receiver type itself in from_pkg/to_pkg.
 #Rule: {
 	from_pkg: string
 	to_pkg:   string

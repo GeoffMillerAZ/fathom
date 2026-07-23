@@ -21,6 +21,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -636,7 +637,15 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		// Build edges from Calls.
+		// Build edges from Calls. Known limitation (disclosed in
+		// schema/rules/archconformance/schema.cue #Rule): for METHOD
+		// symbols n.Package is the receiver type, not the declaring Go
+		// package (goextract funcNode), and callee keys for methods are
+		// receiver-qualified — so package-named rules only match
+		// function-origin, function-target edges. Normalizing both sides
+		// to declaring packages (via a symbol-key→package resolution over
+		// nodes) is the tracked fix; until then rule packs guard top-level
+		// functions and receiver-NAMED rules.
 		var edges []core.Edge
 		for _, n := range nodes {
 			for _, callee := range n.Calls {
@@ -674,10 +683,20 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 				reason = "no rules configured: no inline rules were passed and the service's corpus root is unknown, so no .fathom/rules/archconformance.cue could be located"
 			} else {
 				result, loadErr := projectrules.Load(corpusRoot)
-				if loadErr != nil {
+				if errors.Is(loadErr, projectrules.ErrRelativeCorpusRoot) {
+					// A relative ServiceMeta path (pre-O10 meta) would
+					// resolve against the DAEMON's CWD — loading a foreign
+					// repo's rule pack and attributing it to this service.
+					// Refuse to check rather than answer from the wrong
+					// repo's rules; not an RPC error, because the config
+					// state is a data-staleness condition the caller can
+					// fix, not a malformed request.
+					ruleSource = ruleSourceNone
+					checked = false
+					reason = fmt.Sprintf("no rules configured: the service's corpus root %q is recorded relative (pre-O10 meta) and cannot be resolved safely — re-ingest the service so ServiceMeta records an absolute path", corpusRoot)
+				} else if loadErr != nil {
 					return nil, &rpcError{Code: ErrCodeInternal, Message: "arch_conformance: project rules: " + loadErr.Error()}
-				}
-				if !result.Found || len(result.Rules) == 0 {
+				} else if !result.Found || len(result.Rules) == 0 {
 					ruleSource = ruleSourceNone
 					checked = false
 					if !result.Found {

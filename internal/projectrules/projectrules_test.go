@@ -7,6 +7,7 @@ package projectrules_test
 // never silently empty).
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -135,6 +136,28 @@ rules: []
 	}
 	if len(result.Rules) != 0 {
 		t.Errorf("expected 0 rules, got %v", result.Rules)
+	}
+}
+
+// TestLoad_RelativeCorpusRoot_Refused proves Load refuses a non-absolute
+// corpus root with ErrRelativeCorpusRoot instead of resolving it against
+// the ambient process CWD. A relative ServiceMeta path (the pre-O10 meta
+// class, docs/dogfood-observations.md) resolved from a daemon's CWD would
+// load a FOREIGN repo's .fathom/rules/ pack and answer rule_source:
+// "project", checked:true for rules the target service never declared —
+// demonstrated live by the review critic. Never resolve, always refuse.
+func TestLoad_RelativeCorpusRoot_Refused(t *testing.T) {
+	for _, root := range []string{".", "sextant", "some/relative/dir"} {
+		result, err := projectrules.Load(root)
+		if err == nil {
+			t.Fatalf("Load(%q): expected ErrRelativeCorpusRoot, got result %+v", root, result)
+		}
+		if !errors.Is(err, projectrules.ErrRelativeCorpusRoot) {
+			t.Errorf("Load(%q): error should wrap ErrRelativeCorpusRoot, got: %v", root, err)
+		}
+		if !strings.Contains(err.Error(), root) {
+			t.Errorf("Load(%q): error should name the offending root, got: %v", root, err)
+		}
 	}
 }
 

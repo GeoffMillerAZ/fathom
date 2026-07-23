@@ -224,7 +224,7 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 **Staleness during long sessions.** A `serve-mcp` process holds an exclusive DuckDB write lock. CLI `ingest-diff` will fail while a session is active. Use the `ingest` MCP tool instead to refresh in-session. The `staleness_report` tool tells you whether a refresh is needed before you run impact queries.
 
-**`arch_conformance` rules are caller-supplied.** The tool does not read a config file; pass your layering rules as JSON in each call. If you want a persistent rule set, wrap the call in a project-level script or hook.
+**`arch_conformance` rules: inline or project rule pack.** Pass layering rules as JSON in the call (`rules: [{from_pkg, to_pkg, allow}]`), or pass none and the tool falls back to the service's own committed rule pack at `.fathom/rules/archconformance.cue` (validated against `schema/rules/archconformance/schema.cue`; loaded from the corpus root recorded at ingest). The response's `rule_source` field reports which source was used — `"inline"`, `"project"`, or `"none"` — and when no rules were available from either source the response carries `checked: false` plus a `reason` instead of a clean-shaped zero-violation answer. A malformed rule pack is a loud error, never silently treated as "no rules". Scope note: rules match function-origin call edges; method symbols carry receiver-typed package prefixes and are a disclosed gap (see the schema's `#Rule` doc).
 
 ---
 
@@ -247,4 +247,4 @@ Once compiled, findings scoped to the files under review surface through the sam
 
 ## Maintained
 
-This doc covers: `diff_impact`, `api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.
+This doc covers: `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.

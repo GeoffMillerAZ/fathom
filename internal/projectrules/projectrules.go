@@ -24,6 +24,7 @@ package projectrules
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -44,6 +45,15 @@ var archconformanceSchema []byte
 // RelPath is the fixed, repo-relative location of a service's own
 // architecture-conformance rule pack.
 const RelPath = ".fathom/rules/archconformance.cue"
+
+// ErrRelativeCorpusRoot is returned by Load for a non-absolute corpusRoot.
+// A relative root would resolve against the ambient process CWD — for the
+// serve-http daemon that means loading a FOREIGN repo's .fathom/rules/ pack
+// and attributing it to the requested service (the pre-O10 relative-
+// ServiceMeta-path class, docs/dogfood-observations.md O10). Load refuses
+// instead of resolving; arch_conformance maps this error to an honest
+// checked:false response rather than a foreign-rules "project" answer.
+var ErrRelativeCorpusRoot = errors.New("projectrules: corpus root is not absolute")
 
 // Source names where a Result's rules came from — the same vocabulary
 // arch_conformance's rule_source field uses (C4-3), plus the loader-internal
@@ -69,8 +79,10 @@ type Result struct {
 	DenyByDefault bool
 	// Source is SourceProject or SourceNone.
 	Source string
-	// Path is the absolute path that was checked (whether or not a file
-	// was actually found there).
+	// Path is the rule-pack path that was checked (whether or not a file
+	// was actually found there). It is always absolute: Load refuses a
+	// non-absolute corpusRoot (ErrRelativeCorpusRoot) before Path is ever
+	// derived, so a Result never carries a CWD-dependent path.
 	Path string
 	// Found reports whether a rule file existed at Path.
 	Found bool
@@ -79,13 +91,22 @@ type Result struct {
 // Load reads and CUE-validates .fathom/rules/archconformance.cue under
 // corpusRoot.
 //
+// corpusRoot must be absolute: a relative root is refused with
+// ErrRelativeCorpusRoot (wrapped, errors.Is-able) instead of being resolved
+// against the process CWD — resolving would let a stale/pre-O10 relative
+// ServiceMeta path silently load whatever repo the daemon happens to be
+// running in.
+//
 // A missing file is not an error: the returned Result has Found=false and
 // Source=SourceNone, explicitly attributed rather than treated as a
 // validated empty ruleset. A file that exists but fails to parse or does
 // not satisfy #RuleSet (including an unrecognized field — #Rule is closed)
 // returns a non-nil error naming corpusRoot's rule-pack path; Result is the
-// zero value in that case and must not be used.
+// zero value in every error case and must not be used.
 func Load(corpusRoot string) (Result, error) {
+	if !filepath.IsAbs(corpusRoot) {
+		return Result{}, fmt.Errorf("%w: %q (re-ingest the service so ServiceMeta records an absolute corpus root)", ErrRelativeCorpusRoot, corpusRoot)
+	}
 	path := filepath.Join(corpusRoot, RelPath)
 
 	data, err := os.ReadFile(path)

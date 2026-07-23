@@ -13,8 +13,18 @@
 // This file is plain data (no package clause, no "#RuleSet &" wrapper — the
 // schema/semantic layer.cue precedent): internal/projectrules.Load unifies
 // it against schema/rules/archconformance/schema.cue's #RuleSet directly.
-// from_pkg/to_pkg are bare Go package-clause names (core.SymbolNode.Package
-// — e.g. "connector", "mcp"), not import paths.
+//
+// SCOPE (disclosed gap — see schema.cue's #Rule doc for the full mechanics):
+// these package-named rules guard FUNCTION-origin, function-target call
+// edges only. The Go extractor records a METHOD's package as its RECEIVER
+// TYPE (goextract.go funcNode), so method-origin edges carry prefixes like
+// "LocalConnector" (never "connector") and calls into methods carry
+// receiver-qualified targets like "mcp.Server" (never bare "mcp") — neither
+// matches the package names below. Concretely: connector's Discover/Fetch/
+// Watermark METHOD bodies — the realistic violation sites — are not guarded
+// by this pack today; only top-level functions are. Closing the gap needs
+// both-sides symbol-key→declaring-package normalization at edge build
+// (docs/plans/review-verb.md C4-4 row text tracks it).
 //
 // analysisPkgs is every internal/analysis/* subpackage as of this file's
 // authoring (verified zero-violation against the real repo — see

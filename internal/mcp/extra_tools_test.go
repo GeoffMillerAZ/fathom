@@ -439,8 +439,13 @@ func TestArchConformance_RuleSource_Project_CatchesViolation(t *testing.T) {
 	// extFixtureNodes' A calls "svc::pkg.B" verbatim (Calls: []string{"svc::pkg.B"}).
 	// The tool builds edges as FromSymbol="pkg.A" (pkgOf -> "pkg") and
 	// ToSymbol="svc::pkg.B" (pkgOf -> "svc::pkg", everything before the
-	// last dot) — so the deny rule targets "svc::pkg", matching how this
-	// handler actually encodes callee package prefixes today.
+	// last dot) — so the deny rule must target "svc::pkg" to match. This is
+	// not a fixture quirk: it is the disclosed symbol-key-prefix matching
+	// gap (schema/rules/archconformance/schema.cue #Rule) — to-side
+	// prefixes carry key qualifiers, and method symbols carry receiver-typed
+	// packages, so bare package-named rules only match function-origin,
+	// unqualified-target edges. This test intentionally matches the real
+	// encoding rather than papering over it.
 	ruleFile := `
 rules: [
 	{from_pkg: "pkg", to_pkg: "svc::pkg", allow: false},
@@ -523,6 +528,45 @@ func TestArchConformance_RuleSource_None_NoServiceMeta(t *testing.T) {
 	}
 	if p["checked"] != false {
 		t.Errorf("checked = %v, want false", p["checked"])
+	}
+}
+
+// TestArchConformance_RelativeServiceMetaPath_NotChecked reproduces the
+// critic's live exploit of the pre-fix code: a service whose ServiceMeta
+// path is recorded RELATIVE (".", the pre-O10 meta class). Before the
+// filepath.IsAbs guard, projectrules.Load resolved that against the
+// daemon's CWD and loaded whatever repo the daemon happened to run in —
+// answering rule_source:"project", checked:true with a FOREIGN rule pack
+// (this very repo's own .fathom/rules/archconformance.cue, when the test
+// runs from the repo tree). The guard must turn that into an honest
+// rule_source:"none", checked:false + re-ingest reason — never a foreign
+// "project" answer and never an RPC error.
+func TestArchConformance_RelativeServiceMetaPath_NotChecked(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    extFixtureNodes(),
+		services: []string{"svc"},
+		svcPath:  ".", // relative — must never resolve against the process CWD
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1088, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "arch_conformance",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["rule_source"] != "none" {
+		t.Errorf("rule_source = %v, want %q (a relative corpus root must never load a project pack)", p["rule_source"], "none")
+	}
+	if p["checked"] != false {
+		t.Errorf("checked = %v, want false", p["checked"])
+	}
+	reason, _ := p["reason"].(string)
+	if !strings.Contains(reason, "re-ingest") {
+		t.Errorf("reason should tell the caller to re-ingest the service, got %q", reason)
+	}
+	if count, ok := p["count"].(float64); !ok || count != 0 {
+		t.Errorf("count = %v, want 0", p["count"])
 	}
 }
 
