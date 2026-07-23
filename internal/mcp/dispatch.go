@@ -28,6 +28,16 @@ type toolDescriptor struct {
 	Description string         `json:"description"`
 	InputSchema map[string]any `json:"inputSchema"`
 	group       ToolGroup      // unexported; not serialised
+
+	// aliases maps an additive alias parameter name to the primary/native
+	// parameter name it stands in for (P1-1: find_symbol's "symbol" alias
+	// for "name", references' for "query", query_symbols' for "concern").
+	// Unexported, not serialised — schemas document the alias in prose
+	// (InputSchema's property description), and this map exists purely so
+	// dispatch-level required-field validation (P1-8, see
+	// handleToolsCallWithCtx) knows an alias satisfies its primary's
+	// "required" entry. nil for tools with no alias.
+	aliases map[string]string
 }
 
 // toolEntry pairs a descriptor with its handler.
@@ -154,6 +164,46 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	return result, rpcErr
 }
 
+// validateRequired checks args against desc's declared InputSchema
+// "required" list (P1-8). A field is satisfied when it is present in args,
+// OR when an alias registered for it in desc.aliases is present (P1-1's
+// interaction — see the comment at the call site in
+// handleToolsCallWithCtx). Malformed args (not a JSON object) are reported
+// as ErrCodeParams here rather than deferred to the handler, so every tool
+// gets the same "invalid args" shape regardless of whether it declares any
+// required fields.
+func validateRequired(desc toolDescriptor, args json.RawMessage) *rpcError {
+	required, _ := desc.InputSchema["required"].([]string)
+	if len(required) == 0 {
+		return nil
+	}
+	present := map[string]json.RawMessage{}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &present); err != nil {
+			return &rpcError{Code: ErrCodeParams, Message: desc.Name + ": invalid args"}
+		}
+	}
+	for _, field := range required {
+		if _, ok := present[field]; ok {
+			continue
+		}
+		satisfied := false
+		for alias, primary := range desc.aliases {
+			if primary != field {
+				continue
+			}
+			if _, ok := present[alias]; ok {
+				satisfied = true
+				break
+			}
+		}
+		if !satisfied {
+			return &rpcError{Code: ErrCodeParams, Message: desc.Name + ": missing required parameter \"" + field + "\""}
+		}
+	}
+	return nil
+}
+
 // rpcErrWrapper adapts *rpcError to the error interface for logging.
 type rpcErrWrapper struct{ e *rpcError }
 
@@ -180,6 +230,25 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	// available behind strictSurfaces for any future multi-tenant shape.
 	if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) && s.strictSurfaces {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
+	}
+	// P1-8: enforce the declared InputSchema "required" fields before
+	// invoking the handler, so the served contract matches what tools/list
+	// advertises (previously only individually-written handler checks
+	// enforced anything — C4-5's audit found at least one tool,
+	// license_policy, that declared a field required and never checked it).
+	//
+	// Interaction with P1-1's parameter aliases: a handler may accept an
+	// ADDITIVE alias for its primary argument (e.g. find_symbol's "symbol"
+	// for "name"). validateRequired treats a present alias as satisfying
+	// its primary's requirement (te.desc.aliases, populated at
+	// registration) — so a call that only supplies the alias is NOT
+	// rejected here for "missing" the native name; the handler resolves
+	// which value wins (and errors loudly if both are given with different
+	// values) after this gate passes. Alias resolution therefore never
+	// needs to run before this check — it is encoded declaratively in
+	// aliases and consulted here, rather than mutating p.Arguments.
+	if rpcErr := validateRequired(te.desc, p.Arguments); rpcErr != nil {
+		return nil, rpcErr
 	}
 	result, rpcErr := te.handler(ctx, p.Arguments)
 	if rpcErr != nil {

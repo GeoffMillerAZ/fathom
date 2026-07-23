@@ -160,6 +160,17 @@ func TestSpecCoverage_Basic(t *testing.T) {
 	}
 }
 
+// TestSpecCoverage_MissingSpecIDs — DELIBERATE behavior change (P1-8,
+// docs/plans/pulled-tools-excellence.md): spec_coverage declares spec_ids
+// required in its InputSchema, but its handler never enforced that — a
+// spec_ids-less call used to run and return an empty coverage matrix (the
+// "orphan-listing" use the C4-5 audit classified as legitimate). Dispatch-
+// level required-field validation now makes the declared contract real:
+// the call refuses with ErrCodeParams. The old orphan-listing behavior was
+// an undocumented side effect of the handler's leniency, not a promised
+// contract; a caller who wants it back should get a schema change (spec_ids
+// optional, documented), not a validation hole. This test pins the
+// refusal so the change stays deliberate, never incidental.
 func TestSpecCoverage_MissingSpecIDs(t *testing.T) {
 	srv := newExtraSrv()
 	resp := roundtrip(t, srv, request{
@@ -169,15 +180,28 @@ func TestSpecCoverage_MissingSpecIDs(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	// missing spec_ids: JSON unmarshal succeeds but SpecIDs is nil → matrix will
-	// return an empty coverage.  It should NOT be an RPC error.
-	if resp["error"] != nil {
-		// Some implementations may return an error for missing array - check it's a params error.
-		errObj := resp["error"].(map[string]any)
-		code := errObj["code"].(float64)
-		if code != float64(mcp.ErrCodeParams) {
-			t.Errorf("expected params error code, got %v", code)
-		}
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v (spec_coverage declares spec_ids required)", code, mcp.ErrCodeParams)
+	}
+}
+
+// TestSpecStatus_MissingSpecIDs pins the same deliberate P1-8 change for
+// spec_status (the other spec tool whose handler never enforced its
+// declared spec_ids requirement — see TestSpecCoverage_MissingSpecIDs for
+// the full rationale).
+func TestSpecStatus_MissingSpecIDs(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1022, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "spec_status",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v (spec_status declares spec_ids required)", code, mcp.ErrCodeParams)
 	}
 }
 
@@ -437,18 +461,16 @@ func TestArchConformance_RuleSource_Project_CatchesViolation(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 	// extFixtureNodes' A calls "svc::pkg.B" verbatim (Calls: []string{"svc::pkg.B"}).
-	// The tool builds edges as FromSymbol="pkg.A" (pkgOf -> "pkg") and
-	// ToSymbol="svc::pkg.B" (pkgOf -> "svc::pkg", everything before the
-	// last dot) — so the deny rule must target "svc::pkg" to match. This is
-	// not a fixture quirk: it is the disclosed symbol-key-prefix matching
-	// gap (schema/rules/archconformance/schema.cue #Rule) — to-side
-	// prefixes carry key qualifiers, and method symbols carry receiver-typed
-	// packages, so bare package-named rules only match function-origin,
-	// unqualified-target edges. This test intentionally matches the real
-	// encoding rather than papering over it.
+	// Post-P1-4, archConformanceEdges resolves that already-service-
+	// resolved callee to node B and rebuilds BOTH sides as declaring-
+	// package keys — FromSymbol="pkg.A", ToSymbol="pkg.B" (not the raw,
+	// service-prefix-contaminated "svc::pkg.B" the pre-fix edge builder
+	// left unresolved, whose pkgOf-derived prefix was "svc::pkg", not a
+	// real package name any rule author would write) — so a plain
+	// same-package deny rule now matches this edge.
 	ruleFile := `
 rules: [
-	{from_pkg: "pkg", to_pkg: "svc::pkg", allow: false},
+	{from_pkg: "pkg", to_pkg: "pkg", allow: false},
 ]
 `
 	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
@@ -597,6 +619,115 @@ func TestArchConformance_MalformedProjectRules_LoudError(t *testing.T) {
 		},
 	})
 	xtraError(t, resp)
+}
+
+// ─── arch_conformance: P1-4 method-edge normalization (closes C4-4) ──────────
+
+// TestArchConformance_MethodEdgeNormalization_CatchesViolation proves the
+// disclosed gap in schema/rules/archconformance/schema.cue #Rule is closed:
+// a METHOD-origin edge whose target resolves through a receiver-VARIABLE-
+// qualified call (never package-qualified in the raw Calls text) is now
+// caught by a plain package-named deny rule.
+//
+// Fixture: package "internal" declares type Handler (Kind=GoType,
+// Package="internal") with method Handler.Serve (Kind=GoMethod,
+// Package="Handler" — the receiver type, per goextract's documented
+// override — Calls=["h.Forbidden"], the raw form the Go extractor records
+// for a call through a receiver variable typed as another package's
+// Client). Package "external" declares type Client (Package="external")
+// with method Client.Forbidden (Package="Client"). Pre-P1-4, the edge
+// builder produced FromSymbol="Handler.Handler.Serve" (pkgOf ->
+// "Handler.Handler", not a real package) and left ToSymbol="h.Forbidden"
+// unresolved (pkgOf -> "h") — so a rule naming the real packages
+// ("internal" -> "external") could never match. Post-P1-4,
+// archConformanceEdges resolves both sides to their declaring packages.
+func TestArchConformance_MethodEdgeNormalization_CatchesViolation(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "internal", Name: "Handler", Kind: core.KindGoType, FilePath: "internal/handler.go", Line: 1},
+		{
+			Service: "svc", Package: "Handler", Name: "Handler.Serve", Kind: core.KindGoMethod,
+			FilePath: "internal/handler.go", Line: 10, Calls: []string{"h.Forbidden"},
+		},
+		{Service: "svc", Package: "external", Name: "Client", Kind: core.KindGoType, FilePath: "external/client.go", Line: 1},
+		{
+			Service: "svc", Package: "Client", Name: "Client.Forbidden", Kind: core.KindGoMethod,
+			FilePath: "external/client.go", Line: 5,
+		},
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: nodes, services: []string{"svc"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1088, Method: "tools/call",
+		Params: map[string]any{
+			"name": "arch_conformance",
+			"arguments": map[string]any{
+				"service": "svc",
+				"rules": []map[string]any{
+					{"from_pkg": "internal", "to_pkg": "external", "allow": false},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	count, _ := p["count"].(float64)
+	if count == 0 {
+		t.Fatalf("expected the method-origin edge (internal -> external) to be caught, got count=%v violations=%v", p["count"], p["violations"])
+	}
+	violations, _ := p["violations"].([]any)
+	found := false
+	for _, raw := range violations {
+		v, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if v["from"] == "internal.Serve" && v["to"] == "external.Forbidden" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected a violation from=%q to=%q, got %v", "internal.Serve", "external.Forbidden", violations)
+	}
+}
+
+// TestArchConformance_MethodEdgeNormalization_UnresolvedCalleeStaysRaw
+// proves an external/unresolvable callee (never a node in this service) is
+// left exactly as before — no regression for edges that already couldn't
+// be resolved to a declaring package.
+func TestArchConformance_MethodEdgeNormalization_UnresolvedCalleeStaysRaw(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "internal", Name: "Handler", Kind: core.KindGoType, FilePath: "internal/handler.go", Line: 1},
+		{
+			Service: "svc", Package: "Handler", Name: "Handler.Serve", Kind: core.KindGoMethod,
+			FilePath: "internal/handler.go", Line: 10, Calls: []string{"fmt.Println"},
+		},
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: nodes, services: []string{"svc"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1089, Method: "tools/call",
+		Params: map[string]any{
+			"name": "arch_conformance",
+			"arguments": map[string]any{
+				"service": "svc",
+				"rules": []map[string]any{
+					{"from_pkg": "internal", "to_pkg": "fmt", "allow": false},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	violations, _ := p["violations"].([]any)
+	found := false
+	for _, raw := range violations {
+		v, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if v["from"] == "internal.Serve" && v["to"] == "fmt.Println" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("expected the unresolved stdlib callee fmt.Println (raw, unchanged) to match to_pkg %q, got %v", "fmt", violations)
+	}
 }
 
 // ─── doc_coverage ─────────────────────────────────────────────────────────────
@@ -1041,6 +1172,14 @@ Permission is hereby granted`
 	}
 }
 
+// TestLicensePolicy_MissingAllowed: license_policy declares "allowed"
+// required in its InputSchema but never checked it itself (C4-5's honesty
+// audit) — a call omitting it used to run anyway (a "previously-lenient
+// caller", P1-8's dispatch-level required-field gate; see
+// TestDispatch_PreviouslyLenientTool_NowRefuses for the same case asserted
+// directly against dispatch). Deliberately tightened here rather than left
+// straddling both possible outcomes: it must now ALWAYS be an
+// ErrCodeParams, never a lenient {ok:false} result.
 func TestLicensePolicy_MissingAllowed(t *testing.T) {
 	srv := newExtraSrv()
 	resp := roundtrip(t, srv, request{
@@ -1050,13 +1189,9 @@ func TestLicensePolicy_MissingAllowed(t *testing.T) {
 			"arguments": map[string]any{"service": "svc"},
 		},
 	})
-	// missing allowed: should be a params error
-	if resp["error"] == nil {
-		// Check that without the allowed field, the result has ok=false
-		p := xtraPayload(t, resp)
-		if p["ok"] == nil {
-			t.Error("license_policy: ok field missing")
-		}
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
 	}
 }
 

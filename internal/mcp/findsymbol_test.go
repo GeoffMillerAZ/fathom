@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -184,6 +185,80 @@ func TestFindSymbolRankedSuggestionsOnMiss(t *testing.T) {
 	}
 	if first["file_path"] == nil {
 		t.Error("suggestions should carry file_path")
+	}
+}
+
+// ─── P1-3: case-insensitive tier affinity ranking (closes O12(c)) ────────────
+
+// TestFindSymbolCaseInsensitive_PackageAffinity_HeartbeatReproduction is the
+// bench reproduction from docs/dogfood-observations.md O12(c):
+// find_symbol(agentic-kit, "heartbeat") returned ONLY the coincidentally
+// alphabetized worker-heartbeat GoType, hiding the telemetry/heartbeat
+// package's own exported functions (never literally named "heartbeat", so
+// the name-only tier could never surface them). The fixed tier returns
+// BOTH — a name match (the Heartbeat type) AND a package match (every
+// telemetry/heartbeat export) — group-ranked, name matches first.
+func TestFindSymbolCaseInsensitive_PackageAffinity_HeartbeatReproduction(t *testing.T) {
+	nodes := []core.SymbolNode{
+		// worker-heartbeat: a type literally named "Heartbeat" — matches by NAME.
+		{Service: "agentic-kit", Package: "worker-heartbeat", Name: "Heartbeat", Kind: core.KindGoType, FilePath: "foundations/coordination/worker-heartbeat/types.go"},
+		// telemetry/heartbeat: declares `package heartbeat` — its exports match
+		// by PACKAGE only; none of them is itself named "heartbeat".
+		{Service: "agentic-kit", Package: "heartbeat", Name: "Load", Kind: core.KindGoFunc, FilePath: "foundations/telemetry/heartbeat/heartbeat.go"},
+		{Service: "agentic-kit", Package: "heartbeat", Name: "CheckLiveness", Kind: core.KindGoFunc, FilePath: "foundations/telemetry/heartbeat/heartbeat.go"},
+		{Service: "agentic-kit", Package: "heartbeat", Name: "Rollup", Kind: core.KindGoFunc, FilePath: "foundations/telemetry/heartbeat/heartbeat.go"},
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{nodes: nodes, services: []string{"agentic-kit"}})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 41, Method: "tools/call",
+		Params: map[string]any{"name": "find_symbol", "arguments": map[string]any{"service": "agentic-kit", "name": "heartbeat"}},
+	})
+	payload := findSymbolPayload(t, resp)
+	if payload["matched_via"] != "case_insensitive" {
+		t.Fatalf("matched_via = %v, want case_insensitive", payload["matched_via"])
+	}
+	names := symbolNames(t, payload)
+	// Group 0 (name match) first: Heartbeat. Group 1 (package match) next,
+	// alphabetical: CheckLiveness, Load, Rollup.
+	want := []string{"Heartbeat", "CheckLiveness", "Load", "Rollup"}
+	if len(names) != len(want) {
+		t.Fatalf("symbols = %v, want %v", names, want)
+	}
+	for i := range want {
+		if names[i] != want[i] {
+			t.Errorf("symbols[%d] = %q, want %q", i, names[i], want[i])
+		}
+	}
+	// The specific regression: telemetry/heartbeat's CheckLiveness must be
+	// present, not hidden behind worker-heartbeat's same-named-query type.
+	found := false
+	for _, n := range names {
+		if n == "CheckLiveness" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("case-insensitive tier hid telemetry/heartbeat's CheckLiveness behind worker-heartbeat's Heartbeat type")
+	}
+}
+
+// TestFindSymbolCaseInsensitive_NameMatchOnly_Unaffected proves a plain
+// name-only case-insensitive match (no package with a matching name in the
+// node set) is unaffected by the package-match group: single result,
+// unchanged shape.
+func TestFindSymbolCaseInsensitive_NameMatchOnly_Unaffected(t *testing.T) {
+	srv := mcp.NewServer(&fakeBackend{
+		listAll: []fakeNode{
+			{name: "ValidateToken", kind: "GoFunc", file: "auth/token.go"},
+			{name: "TokenStore", kind: "GoType", file: "auth/store.go"},
+		},
+	})
+	payload := callFindSymbol(t, srv, "validatetoken")
+	if payload["matched_via"] != "case_insensitive" {
+		t.Errorf("matched_via = %v, want case_insensitive", payload["matched_via"])
+	}
+	if names := symbolNames(t, payload); len(names) != 1 || names[0] != "ValidateToken" {
+		t.Errorf("symbols = %v, want [ValidateToken]", names)
 	}
 }
 

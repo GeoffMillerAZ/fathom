@@ -15,8 +15,11 @@ import (
 )
 
 // registerTools registers all MCP tools into s. backend may be nil, in which
-// case query tools return ErrCodeInternal when called.
-func registerTools(s *Server, backend QueryInterface) {
+// case query tools return ErrCodeInternal when called. fleet may also be
+// nil (non-fleet stdio serve-mcp); when set, find_callers and
+// symbol_context (registerNavTools) additionally consult it for
+// cross-service call edges (P1-2).
+func registerTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	// query_symbols — concern-scoped symbol search.
 	s.registerTool(toolDescriptor{
 		Name:        "query_symbols",
@@ -30,7 +33,11 @@ func registerTools(s *Server, backend QueryInterface) {
 				},
 				"concern": map[string]any{
 					"type":        "string",
-					"description": "Concern ID to scope the query (e.g. \"authentication\")",
+					"description": "Concern ID to scope the query (e.g. \"authentication\"). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+				},
+				"symbol": map[string]any{
+					"type":        "string",
+					"description": "Alias for \"concern\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
 				},
 				"keywords": map[string]any{
 					"type":        "array",
@@ -44,7 +51,8 @@ func registerTools(s *Server, backend QueryInterface) {
 			},
 			"required": []string{"service", "concern"},
 		},
-		group: GroupCoding,
+		group:   GroupCoding,
+		aliases: map[string]string{"symbol": "concern"},
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		if backend == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -58,6 +66,15 @@ func registerTools(s *Server, backend QueryInterface) {
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "query_symbols: invalid args"}
 		}
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "query_symbols: invalid args"}
+		}
+		concern, aliasErr := resolveAliasedString(raw, "query_symbols", "concern", "symbol")
+		if aliasErr != nil {
+			return nil, aliasErr
+		}
+		p.Concern = concern
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "query_symbols: service required"}
 		}
@@ -137,6 +154,23 @@ func registerTools(s *Server, backend QueryInterface) {
 		if typedCallers := typedCallersFor(ctx, backend, p.Service, p.Symbol); len(typedCallers) > 0 {
 			result["typed_callers"] = typedCallers
 		}
+
+		// Cross-service callers (P1-2, closing O12(a)): the QueryInterface
+		// backend above only ever sees p.Service's own symbols, so a caller
+		// defined in a DIFFERENT fleet service — e.g. fathom::main.
+		// cmdInstrument calling agentic-kit's CheckLiveness — is invisible
+		// to it. When a fleet backend is wired (fleet stores; see
+		// NewServerWithFleet), crossServiceCallers reuses cross_repo_
+		// callers' own fleet-wide matching (platform_tools.go's
+		// fleetCallers/matchesSymbol) filtered to services other than
+		// p.Service, and every hit is placed in its OWN field — "callers"
+		// stays exactly the same-service shape it always was — so the two
+		// scopes are never silently merged; each cross-service entry also
+		// carries an explicit "scope":"cross-service" tag. nil fleet or no
+		// cross-service hits omit the field entirely.
+		if cross := crossServiceCallers(fleet, p.Service, p.Symbol); len(cross) > 0 {
+			result["cross_service_callers"] = cross
+		}
 		return result, nil
 	})
 
@@ -153,12 +187,17 @@ func registerTools(s *Server, backend QueryInterface) {
 				},
 				"name": map[string]any{
 					"type":        "string",
-					"description": "Symbol name (bare or fully-qualified; exact spelling not required)",
+					"description": "Symbol name (bare or fully-qualified; exact spelling not required). Alias: \"symbol\" (additive — same field, either name works; both may be given only if they agree).",
+				},
+				"symbol": map[string]any{
+					"type":        "string",
+					"description": "Alias for \"name\" (P1-1: the hot-tool quartet's primary argument is named differently per tool; this lets a caller reuse the same field name across all four).",
 				},
 			},
 			"required": []string{"service", "name"},
 		},
-		group: GroupShared,
+		group:   GroupShared,
+		aliases: map[string]string{"symbol": "name"},
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		if backend == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -170,6 +209,15 @@ func registerTools(s *Server, backend QueryInterface) {
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_symbol: invalid args"}
 		}
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "find_symbol: invalid args"}
+		}
+		name, aliasErr := resolveAliasedString(raw, "find_symbol", "name", "symbol")
+		if aliasErr != nil {
+			return nil, aliasErr
+		}
+		p.Name = name
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_symbol: service required"}
 		}
@@ -225,7 +273,7 @@ func registerTools(s *Server, backend QueryInterface) {
 	registerAnalysisTools(s, backend)
 
 	// Register navigation and structural analysis tools.
-	registerNavTools(s, backend)
+	registerNavTools(s, backend, fleet)
 
 	// Register source-scanning analyzer tools.
 	registerSourceTools(s, backend)

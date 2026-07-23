@@ -20,6 +20,71 @@ All notable changes to fathom. Format loosely follows
   The store contract test had encoded the old conflation as its own fixture
   and now models the real contract.
 
+### Fixed — Wave 3a pulled-tools excellence: O12's three product gaps + the C4-4 method-edge gap (docs/plans/pulled-tools-excellence.md P1-1/P1-2/P1-3/P1-4/P1-5/P1-8)
+- **P1-1 — parameter-name inconsistency (closes O12(b)):** `find_symbol`,
+  `query_symbols`, and `references` now additionally accept `symbol` as an
+  additive alias for their native argument (`name`/`concern`/`query`
+  respectively — `symbol_context` already used `symbol` natively). Native
+  name stays primary; a call supplying both only errors (`ErrCodeParams`,
+  naming both parameters) when the values disagree. New
+  `internal/mcp/paramalias.go`.
+- **P1-2 — cross-repo call edges missing (closes O12(a)):** `symbol_context`
+  and `find_callers` now consult the fleet backend for cross-service call
+  edges when one is wired (fleet stores) — new `cross_service_callers`/
+  `cross_service_callees` result fields, each entry scope-labeled
+  `"cross-service"`, additive and never merged into the existing
+  same-service `callers`/`callees` fields. Reuses `cross_repo_callers`'s
+  own fleet-wide matching (`fleetCallers`, extracted so both tools share
+  one implementation) plus a new symbol-precise cross-service callee
+  resolver (mirrors `internal/platformlink`'s qualified-match rule at
+  single-symbol granularity, since `CrossRepoEdge` tracks the calling FILE,
+  not the calling symbol). New `internal/mcp/crossservice.go`.
+- **P1-3 — case-insensitive tier steers to the wrong package (closes
+  O12(c)):** `find_symbol`'s case-insensitive tier now returns a
+  package-match group alongside the pre-existing name-match group, so a
+  query naming an entire package (e.g. "heartbeat") is no longer hidden
+  behind a same-named type/symbol in an unrelated package — both groups
+  return together, ranked, never first-hit steering. `matched_via` stays
+  `"case_insensitive"`. `caseFoldMatches` (internal/mcp/findsymbol.go).
+- **P1-4 — arch_conformance's disclosed method-edge gap, closed (C4-4):**
+  both edge endpoints are now normalized to their declaring Go package
+  before matching rules, so package-named rules catch method-origin AND
+  method-target edges, not only function-to-function ones. New
+  `archConformanceEdges`/`archResolver` (internal/mcp/extra_tools.go); the
+  "DISCLOSED GAP" comment in `schema/rules/archconformance/schema.cue`
+  (and its byte-identical embed,
+  `internal/projectrules/archconformance_schema.cue`) is now "CLOSED".
+- **P1-5 — the proof re-run:** re-ran the three cross_repo_callers bench
+  tasks (B1-T09/T10/T11) against a freshly-ingested scratch fleet store
+  (never the live daemon). B1-T09 (the O12 flagship case) went from
+  504,785 tokens / 20 turns to 321,100 tokens / 9 turns (−36% / −55%) —
+  improving 6.6×→4.2× vs. grep's answer, which is **still 4.2× more
+  tokens than grep: a non-flip on the ratio, residual tracked** in
+  dogfood O12 (kept under Open). Part of the residual is real code
+  structure: a live probe found `cmdInstrument` delegates two of the
+  three heartbeat calls through `reportInstrument`, a one-hop indirection
+  the original symptom's prose had collapsed. B1-T10/T11 were already
+  near the cheap 3-turn floor pre-fix and show ~1% token noise — also
+  non-flips, recorded as such. See dogfood O12 and the plan's P1-5 row
+  for the full numbers.
+- **P1-8 — dispatch now enforces declared `required` fields
+  (`internal/mcp/dispatch.go`'s new `validateRequired`):** previously only
+  individual handlers enforced their own required parameters. A P1-1 alias
+  satisfies its primary's requirement at this layer too
+  (`toolDescriptor.aliases`), so an alias-only call is never rejected for
+  "missing" the native name. Batch sub-calls get the same gate (the batch
+  loop previously invoked handlers directly, bypassing it); a failing
+  sub-call errors into its own result, never the whole batch. Three tools
+  change observable behavior — each declared a required field its handler
+  never checked, and each now refuses with `-32602` where it used to run:
+  - `license_policy` without `allowed` (C4-5's original find; it used to
+    report against an empty allowlist).
+  - `spec_coverage` without `spec_ids` (used to return an empty coverage
+    matrix — the "orphan-listing" use C4-5 classified as legitimate; the
+    declared contract now wins, and restoring orphan-listing would be a
+    schema change making `spec_ids` optional, not a validation hole).
+  - `spec_status` without `spec_ids` (same shape as spec_coverage).
+
 ### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
 - **`docs/adoption/spec-driven-development.md`**: the third and final definitive
   adoption guide (alongside `claude-code.md`/`codex.md`) — the full SDD loop
@@ -62,7 +127,6 @@ All notable changes to fathom. Format loosely follows
   this worktree, so it's not documented here — see the SDD guide above for
   its committed design.)
 
-||||||| 9f40934
 ### Added — `fathom plans` (E3/E4, docs/plans/new-use-cases.md), reverse-drift report (E6-1), verify_plan latency SLO (B3-1, docs/plans/falsifiability.md)
 - **`fathom plans status`** (E3-1): a per-plan rollup — proven, claimed-
   unproven, open, deferred-with-trigger, skipped-other — computed fresh by
@@ -119,7 +183,6 @@ All notable changes to fathom. Format loosely follows
   blocked session end and never silent — a timeout stays advisory even under
   `--block`, since it is an operational condition, not a proven-false claim.
 
-||||||| 9f40934
 ### Added — context-bench + the ×10 retraction (falsifiability B1/B2-1, 2026-07-23)
 - **context-bench built and run** (docs/plans/falsifiability.md B1-1/B1-2/B1-3):
   15-task committed corpus (`testdata/contextbench/tasks.json`, ground truth
@@ -1377,33 +1440,6 @@ sextant even where the index exists, because "index first" lived only in passive
   for schema-loading clients). `min_tier`'s valid values moved from prose into a proper
   JSON-schema `enum`. Behavior is unchanged; the full verdict reference lives in
   `docs/mcp-tools.md`.
-
-### Fixed
-- **Ingest no longer aborts on a symlink-to-directory (Nix/devbox trees).** `WalkDir`
-  does not follow symlinks, so a link like `.devbox/nix/profile/default-9-link`
-  surfaced as a non-dir entry; `Fetch`'s `os.ReadFile` then failed with "is a
-  directory", and because the fusion fetch pass treats the first fetch error as
-  fatal, **one stray link aborted the entire ingest**. `LocalConnector.Discover` now
-  emits only regular files (symlinks/devices/sockets/pipes skipped). Found
-  dogfooding `resume_as_code`, which went from a hard abort to 1,160 clean symbols
-  (the Nix store behind the link is correctly excluded, not indexed as noise).
-  Regression: `TestLocalConnector_Discover_SkipsSymlinkToDir`.
-- **`IngestService` re-ingests from the recorded path, not the service ID.** It used
-  `ServiceRef{ID: service, Path: service}` — re-walking the bare ID as a directory, which
-  ingested nothing and **clobbered `ServiceMeta.path` to empty**. Since auto-refresh,
-  `staleness_report`, and the `ingest` MCP tool all key off that path, every refresh
-  silently froze the shared daemon's index. Now it uses the stored `meta.Path` (mirroring
-  `Sources`), so refreshes preserve the path and actually pick up new commits. Regression:
-  `TestIngestService_UsesAndPreservesStoredPath`. Also serves `serve-http --auto-refresh`
-  (added so the always-on daemon self-refreshes) and `scripts/reingest-fleet.sh` (rebuild
-  the fleet index cleanly with path metadata + no malformed/bloated services).
-- **Reject path-like service IDs (fleet hygiene).** `ingest --service ../app-kit` had
-  polluted the fleet with duplicate, confusingly-named services. `core.ValidServiceID`
-  rejects path separators / `..` / whitespace at the `client.Ingest` chokepoint (CLI + the
-  ingest MCP tool), suggesting a clean name. Prevents recurrence.
-- **Bound list-tool output to a char budget.** A real `query_symbols` result hit ~57KB and
-  blew the caller's token budget. `query_symbols` and `references` now keep the longest
-  prefix of records that fits ~16KB and flag `truncated`, so one result can't blow context.
 
 ## [0.2.0] — 2026-06-16
 
