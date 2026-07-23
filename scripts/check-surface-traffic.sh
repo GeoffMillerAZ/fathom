@@ -15,9 +15,9 @@
 # Spec this codes against (server_stats' JSON result, "surface_traffic"
 # key): {"<surface>": {"calls": <int>, "last_ts": "<RFC3339>" | ""}}.
 #
-# DEPENDENCY NOTE (as of 2026-07-22): the surface_traffic block is being
-# added by a sibling Phase-K worker (A1/B2) and is NOT present in this
-# worktree's server_stats yet. Until it lands, every check below fails with
+# The surface_traffic block landed with activation A1-1 (always emitted
+# when a call logger is wired; empty {} at zero calls). A MISSING key
+# therefore means the daemon predates A1-1 — every check below fails with
 # the distinct "surface_traffic missing from server_stats" diagnostic —
 # never silently read as "zero calls" — so a missing dependency and a
 # genuine zero-traffic finding are never conflated (doctrine 3: never
@@ -41,6 +41,11 @@
 # missing-dependency case); 2 usage/transport error (daemon unreachable,
 # malformed response).
 set -euo pipefail
+
+# RFC3339Nano timestamps need python >= 3.11 (fromisoformat with more than
+# six fractional digits); fail loudly rather than misparse.
+python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)' \
+  || { echo "ERROR: python3 >= 3.11 required (RFC3339Nano parsing)"; exit 1; }
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASE_URL="${FATHOM_HTTP_URL:-http://localhost:7575}"
