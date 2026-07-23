@@ -46,10 +46,11 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom
 ```
 
-> **Don't use `task build` for this.** It exists as a fast inner-dev-loop
-> build and writes to `workspace/tmp/fathom`, not `bin/fathom` — fine for a
-> quick manual check, wrong for anything you intend to register with Claude
-> Code or a daemon. Build with the explicit `-o bin/fathom` command above.
+> `task build` (from fathom's own `Taskfile.yml`) runs the identical command
+> and is equivalent to the one above. The fast inner-dev-loop build used by
+> the calibration harness (`workspace/tmp/fathom`, not registrable with
+> Claude Code or a daemon) is `task build-dev` — a differently-named task,
+> so the two are never confused.
 
 Sanity-check the build:
 

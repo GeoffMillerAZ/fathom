@@ -524,6 +524,276 @@ The daemon URL can also be set with `FATHOM_HTTP`.
 
 ---
 
+### `edit-hook`
+
+Claude Code **PostToolUse** hook (`Edit`/`Write`/`MultiEdit`). Reads the hook JSON from
+stdin, resolves the edited file, calls the `obligations` MCP tool for it, and injects
+governing rules (≤150 tokens, ≤6 rules, each with a `src:` citation, evidence tier, and a
+`code drifted since compile` flag when applicable) plus budget-permitting spec-reference
+lines. Silent on a clean file and silent on any error (daemon down, file not indexed,
+layer never compiled) — it never blocks a write and always exits 0.
+
+```sh
+fathom edit-hook [--url http://localhost:7575]
+```
+
+Wire it under `hooks.PostToolUse` with matcher `Edit|Write|MultiEdit` (see
+[adoption/claude-code.md](adoption/claude-code.md) §7.2 for the full JSON snippet). The
+`obligations` layer must be compiled for the service at least once
+(`fathom compile --service <id> --dry-run=false`) before this hook has anything to inject.
+
+---
+
+### `stop-hook`
+
+Claude Code **Stop** hook (ADR-018 §4). Diffs which `docs/plans/*.md` tasks were newly
+claimed `[x]` **during this session** (working tree vs. the file's state at git HEAD) and
+re-verifies just those against the index. Silent (exit 0) on `stop_hook_active`, no git,
+no plans, or any operational failure. If any newly-claimed task fails verification, it
+emits advisory `additionalContext` by default, or `{"decision":"block"}` with `--block`.
+
+```sh
+fathom stop-hook [--url http://localhost:7575] [--block]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
+| `--block` | `false` | Block session end on a disproven claim instead of just surfacing it |
+
+---
+
+### `verify`
+
+The **done-means-proven gate** (ADR-018): re-parses one or more `docs/plans/*.md`
+checklists, queries the live index (HTTP daemon by default, or a local `--store` for
+CI/no-daemon), and returns per-task verdicts with file:line evidence. Exit `0` — every
+claimed task verifies; exit `1` — a claimed `[x]` task failed verification (block the
+push); exit `2` — operational error (daemon unreachable, service unindexed, empty index)
+— fail-open, never a false "all claims failed."
+
+```sh
+fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
+  [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
+  [--concern <id>] [--json] [--quiet-pass]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--plan` | (required, repeatable) | Markdown plan file(s) to verify |
+| `--service` | (required) | Service ID to verify against |
+| `--store` | `""` | store path (direct mode, bypasses the daemon; required for CI) |
+| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL (HTTP mode; ignored when `--store` is set) |
+| `--strict` | `false` | Treat claimed-but-Unknown tasks as failures too (recommended for CI) |
+| `--require-all` | `false` | Wave gate: additionally fail on any open/in-progress task (ADR-018 §2) |
+| `--concern` | `""` | Optional concern for contradiction scoping |
+| `--json` | `false` | Emit a JSON report + gate result instead of human text |
+| `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
+
+See [docs/plans/README.md](plans/README.md) for the plan grammar and
+[docs/adoption/spec-driven-development.md](adoption/spec-driven-development.md) for the
+full authoring-to-gate loop.
+
+---
+
+### `claim`
+
+Human-judgment triage on a compiled semantic-layer claim, store-direct only (v0):
+
+```sh
+fathom claim refute      --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
+fathom claim corroborate --store <path> --service <id> --claim <claim-id> --note "..." [--author <name>]
+```
+
+`refute` appends a `ClaimEvent{Verdict:"refuted"}` **and** flips the claim's status to
+refuted — suppression is refutation with a note. `corroborate` appends a
+`ClaimEvent{Verdict:"corroborated"}` and never changes status or tier — corroboration is
+provenance, not evidence-laundering. `--store`, `--service`, `--claim`, and `--note` are
+all required; `--author` is optional.
+
+---
+
+### `remap`
+
+Point a service's recorded corpus root at a new location (ADR-017). Because every anchor
+in the store is repo-relative, moving a corpus (or the whole store to another machine)
+needs exactly this one metadata update — queries, source fetching, freshness watermarks,
+and re-ingest all resolve through the remapped path immediately.
+
+```sh
+fathom remap --store <path> --service <id> --path <new-corpus-root>
+```
+
+`--store`, `--service`, and `--path` are all required; `--path` must be an existing
+directory.
+
+---
+
+### `layers`
+
+List, show, or install semantic-layer packs — the embedded catalog (`obligations`,
+`findings`, `adr-rules`, `spec-bindings`) unioned with a project's own `.fathom/layers/`.
+Presence of a pack **is** its enable state for compilation; there is deliberately no
+enable/disable verb.
+
+```sh
+fathom layers list    [--root <dir>] [--store <path> --service <id>]
+fathom layers show    <name> [--root <dir>]
+fathom layers install <dir>  [--root <dir>] [--force]
+```
+
+`list` prints every visible pack (name, source, kind, tier, eval status, drift, corpus,
+and — with `--store`/`--service` — compiled claim counts and last-compile date, so
+eval-vs-production is never conflated). `show <name>` prints one pack's full resolved
+definition and prompt provenance. `install <dir>` validates a directory against `#Layer`
+and copies it into `<root>/.fathom/layers/<name>/`; `--force` replaces an
+already-installed pack of the same name (whole-directory replace, never a merge). See
+[docs/layers.md](layers.md) for the catalog reference.
+
+---
+
+### `compile`
+
+Compile a semantic layer for a service — an LLM pass over the layer's corpus that emits
+governed claims (ADR-016). `dry_run` defaults to `true`: it estimates cost without
+calling the LLM or writing anything.
+
+```sh
+fathom compile --service <id> [--layer obligations] [--dry-run=false] \
+  [--store <path> [--profile <name>] [--force] [--unsafe-skip-eval-gate]] \
+  [--url http://localhost:7575]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--service` | (required) | Service ID |
+| `--layer` | `obligations` | Layer to compile (must be defined in the manifest; `fathom layers list` shows what's visible) |
+| `--dry-run` | `true` | Estimate cost without spending; `--dry-run=false` to actually compile |
+| `--store` | `""` | Direct mode — bypasses the daemon, compiles against a local store |
+| `--url` | `defaultFathomURL()` | HTTP mode base URL (used when `--store` is empty; the daemon compiles with its own configured profile) |
+| `--profile` | `""` | Named LLM profile from `~/.fathom/config.toml` (direct `--store` mode only) |
+| `--force` | `false` | Override the idempotency guard (same service/layer/watermark/prompt already compiled) — direct `--store` mode only |
+| `--unsafe-skip-eval-gate` | `false` | Override the refusal to compile a layer with no passing eval record — direct `--store` mode only |
+
+Both guard-override flags are logged into the resulting `compile_runs` row, never applied
+silently. See [docs/layers.md](layers.md) and [docs/configuration.md](configuration.md)
+for the provider-lane and layer-catalog references.
+
+---
+
+### `config`
+
+Print the effective configuration: user + project `.fathom/config.toml` layers merged,
+the active profile resolved (flag `>` env `>` project file `>` user file `>` built-in
+default), printed as human text or JSON.
+
+```sh
+fathom config [--profile <name>] [--explain] [--json]
+```
+
+`--explain` is the flagship flag — it annotates every resolved key with its provenance
+(which layer supplied it, and the exact source file or env var). Pure local file reads,
+no daemon dependency.
+
+---
+
+### `providers`
+
+Auth-health probe across configured LLM profiles — **health, not spend**: each
+selected profile's client runs one `Ping` (zero/near-zero tokens). Contrast with `smoke`,
+which spends real tokens on a real completion.
+
+```sh
+fathom providers [--profile <name>] [--json]
+```
+
+Exit `0` when every probeable lane is healthy; exit `1` if any probed lane failed or any
+profile could not even be constructed. A profile whose adapter doesn't implement `Ping`
+is listed as "not probeable," never silently dropped.
+
+---
+
+### `smoke`
+
+One tiny real completion per selected profile — reports model, latency, tokens, and cost.
+Because this spends real money, `--profile` or `--all` is **required**; there is no
+implicit "smoke everything" default.
+
+```sh
+fathom smoke --profile <name> [--json]
+fathom smoke --all [--json]
+```
+
+Cost is estimated at the same flat per-KTok rates `compile` uses, so a smoke run's
+reported cost is directly comparable to a compile run's `cost_usd`.
+
+---
+
+### `instrument`
+
+Channel-health report over the Claude Code hooks beat log: injection coverage
+(seen/answered), a per-day rollup, and liveness alarms (e.g. a session that fired
+`session-hook` but never saw an `edit-hook` within a week). Advisory only — exit 0
+always, even on a missing or empty log; a broken instrument must never gate anything.
+
+```sh
+fathom instrument [--log <path>] [--window 168h]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--log` | `beatLogPath()` | Hooks beat log (JSONL) |
+| `--window` | `168h` (7 days) | Coverage window, measured back from now |
+
+---
+
+### `report`
+
+Write an analyzer's output as a Markdown finding document — the deterministic bridge
+that lets analyzer results flow through the ordinary ingest → compile → claims pipeline
+(the `findings` layer) instead of a second persistence path.
+
+```sh
+fathom report --store <path> --service <id> [--analyzer security_rollup] [--out findings]
+```
+
+v0 supports exactly two analyzers: `security_rollup` (default; `secret_scan` +
+`shell_out` + `http_client_calls` over the service's sources) and `authorship` (the
+Co-Authored-By trailer ledger joined with staleness and complexity). Output is exactly
+one file, `<service>-<analyzer>.md`, inside `--out`; generation is a pure function of the
+corpus working tree, so re-running against an unchanged tree reproduces identical bytes.
+
+---
+
+### `init`
+
+One-command, idempotent, additive-only repo wiring (§5.5 of
+[coding-agent-excellence.md](design/coding-agent-excellence.md)): writes
+`.fathomignore` if absent, ingests the repo via the daemon and confirms it indexed,
+wires the SessionStart/PostToolUse/Stop hooks into `.claude/settings.json`, stamps the
+fathom operating-contract stanza into both `CLAUDE.md` and `AGENTS.md`, and
+write-if-absent scaffolds `~/.fathom/config.toml`.
+
+```sh
+fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--path` | cwd | Repo root to wire |
+| `--service` | resolved from `--path` | Service ID — the same identity the hooks use |
+| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
+| `--bin` | `os.Executable()`, symlink-resolved | fathom binary path baked into the hook commands |
+
+Exit `0` — fully wired and the daemon confirms the service is indexed; exit `2` — wiring
+is complete but the daemon is unreachable or the service still shows zero symbols
+(operational, mirrors `verify`'s fail-open doctrine); exit `1` is never returned for an
+operational reason. Prints the steps it deliberately does not do for you: interactive MCP
+registration and the lefthook pre-push snippet. See
+[docs/adoption/claude-code.md](adoption/claude-code.md) for the full walkthrough.
+
+---
+
 ## Go client (`pkg/client`)
 
 `pkg/client` exposes a thin `Client` that wires together the connector, fusion pipeline,

@@ -5,6 +5,48 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
+- **`docs/adoption/spec-driven-development.md`**: the third and final definitive
+  adoption guide (alongside `claude-code.md`/`codex.md`) — the full SDD loop
+  (author a plan in the `{id, symbol, package, ...}` grammar → implement →
+  `fathom verify` proves rows → the pre-push gate blocks over-claiming →
+  computed progress → archival lifecycle → `spec-bindings` layer binding →
+  oracle classes), written against this repo's own live adoption program
+  (`docs/plans/activation.md`, `docs/plans/adoption-docs.md`) as the worked
+  example, with real `fathom verify`/`gen-plan-cue` output captured from this
+  worktree's build. `fathom plans status`/`next`/`archive`/`restore` (E3/E4,
+  `docs/plans/new-use-cases.md`) are documented from the committed design and
+  marked "(landing this wave)" — not yet built in this worktree.
+
+### Fixed — Wave-1 adoption-friction findings (dogfood)
+- **`task build` silently diverged from every other build-path convention**:
+  it wrote to `workspace/tmp/fathom` while the post-commit rebuild hook,
+  `fathom init`'s baked-in hook commands, and the daemon-install pattern all
+  expect `bin/fathom` — `docs/adoption/claude-code.md` §1 had to warn
+  adopters away from the task runner's own default build target. `Taskfile.yml`'s
+  `build` task now emits `bin/fathom`; the fast inner-dev-loop variant the
+  calibration harness depends on (`calibration/baseline.sh`'s `BIN` default)
+  moved to a differently-named `build-dev` task, still emitting
+  `workspace/tmp/fathom`. Verified: `task build` → `bin/fathom` exists and
+  runs; `task build-dev` → `workspace/tmp/fathom` unaffected;
+  `task scripts-check` green.
+- **`docs/use-cases/getting-started.md` documented the removed `set_profile`
+  tool**: it narrated a stdio-only per-session profile switch (Step 5, the
+  Tools table, the "Profiles keep the tool surface focused" bullet, the
+  `serve-mcp`/`serve-http` table, and the `## Maintained` line) that ADR-014's
+  surfaces-week1 amendment retired entirely. Rewritten against
+  `docs/mcp-tools.md` (the truth source): path-scoped HTTP surfaces
+  (`/rpc/agent` aka `/rpc/companion`, group surfaces, bare `/rpc`),
+  execute-and-flag gate semantics (`off_surface:true`, never a hard reject),
+  and a real `capabilities` response shape (`active_surface`/`active_profile`).
+- **`docs/usage.md`'s CLI reference stopped at `session-hook`**: thirteen
+  shipped verbs had no reference entry — `init`, `compile`, `layers`,
+  `verify`, `config`, `providers`, `smoke`, `instrument`, `edit-hook`,
+  `stop-hook`, `claim`, `remap`, `report`. Added one section each, flags
+  verified against `cmd/fathom/*.go`. (`fathom plans` is not yet present in
+  this worktree, so it's not documented here — see the SDD guide above for
+  its committed design.)
+
 ### Fixed — relative corpus paths at the ingest boundary (dogfood O10, 2026-07-22)
 - **Typed edges silently absent for relative `--path`** (the CLI default
   `.`): the connector-scope filter rel-mapped absolute go/packages file
