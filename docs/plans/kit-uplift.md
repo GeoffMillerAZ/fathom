@@ -23,7 +23,7 @@ Design (normative):
 
 ## Tasks
 
-- [x] internal/vector deleted; consumers import the kit's vector-store; H4 Stage 4 acceptance checks pass; kit handoff plan checkboxes closed (fathom cherry-pick of 3b8fb8f; kit 519bbe6) {id: K1-1, symbol: HybridRank, package: internal/query}
-- [x] Two parked ask rows filed in agentic-kit/docs/plans with named-consumer triggers (FA-11 proof-gate kernel, FA-12 eval-harness kernel; kit 75e3c1b); kit gate green {id: K2-1, symbol: Verify, package: internal/verify, skip_test: true, skip: "cross-repo docs filing anchored to the package whose kernel is being offered; nothing is built"}
+- [x] internal/vector deleted; consumers import the kit's vector-store; H4 Stage 4 acceptance checks pass; kit handoff plan checkboxes closed (fathom cherry-pick of 3b8fb8f; kit 519bbe6) {id: K1-1, symbol: WithVector, package: internal/query}
+- [x] Two parked ask rows filed in agentic-kit/docs/plans with named-consumer triggers (FA-11 proof-gate kernel, FA-12 eval-harness kernel; kit 75e3c1b); kit gate green {id: K2-1, symbol: VerifyPlan, package: internal/verify, skip_test: true, skip: "cross-repo docs filing anchored to the package whose kernel is being offered; nothing is built"}
 - [x] Kit telemetry existence-check assertion (heartbeat.CheckExistence, kit eb24494) + fathom's check script consuming it (scripts/check-surface-traffic.sh, python>=3.11 guard; surface_traffic emission landed with A1-1) {id: K3-1, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "kit-side code carries kit-side tests; fathom-side is the thin consumer script over A1-1's tested block"}
 - [x] ADR paragraphs recording the two deliberate non-adoptions (ADR-022/ADR-023, renumbered + set_profile reference corrected at merge) {id: K4-1, symbol: registerServerStats, package: internal/mcp, skip_test: true, skip: "docs-only; anchored to the served component whose choice it documents"}
