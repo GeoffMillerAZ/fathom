@@ -98,7 +98,12 @@ tasks:
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 
   build:
-    desc: Build the fathom CLI to workspace/tmp/fathom
+    desc: Build the fathom CLI to bin/fathom — the path every wiring mechanism expects (post-commit rebuild hook, init's baked-in hook commands, the daemon-install pattern; see docs/adoption/claude-code.md §1)
+    cmds:
+      - "{{.GO}} build -o bin/fathom ./cmd/fathom"
+
+  build-dev:
+    desc: Fast inner-dev-loop build to workspace/tmp/fathom — used by the calibration harness; not for hooks/daemon/MCP registration (those want bin/fathom via `task build`)
     cmds:
       - "{{.GO}} build -o workspace/tmp/fathom ./cmd/fathom"
 
@@ -109,7 +114,7 @@ tasks:
 
   calibrate-baseline:
     desc: "Measure current extractors against the cloned corpus (optional LANG filter via -- )"
-    deps: [build]
+    deps: [build-dev]
     cmds:
       - bash calibration/baseline.sh {{.CLI_ARGS}}
 
