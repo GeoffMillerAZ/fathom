@@ -95,21 +95,64 @@ correct. It:
 4. stamps a marker-delimited fathom operating-contract stanza into
    **both** `CLAUDE.md` and `AGENTS.md` (one canonical source, so Codex —
    which reads `AGENTS.md` automatically — gets the same doctrine with zero
-   drift; see `docs/adoption/codex.md`),
-5. write-if-absent scaffolds `~/.fathom/config.toml` (§9), and
-6. prints the steps it deliberately does **not** do for you: MCP
+   drift; §3.1 below),
+5. write-if-absent scaffolds `~/.fathom/config.toml` (§9),
+6. installs the shipped agent skills (§11) into `.claude/skills/` and/or
+   `~/.codex/prompts/` — **only** when `--skills[=claude|codex|all]` is
+   passed; omitted entirely by default, so a caller who never asked for
+   skills sees no new files, and
+7. prints the steps it deliberately does **not** do for you: MCP
    registration (§6, requires an interactive `claude mcp add`) and the
    lefthook pre-push snippet (§7.4, `lefthook.yml` is hand-curated —
    `init` never edits it).
 
-Exit codes: `0` fully wired and indexed; `2` wiring is complete but the
-daemon is unreachable or the service still shows zero symbols (operational,
-not a failure of the files `init` wrote — re-run once the daemon is up);
-`1` is never returned for an operational reason.
+Exit codes: `0` fully wired and the daemon confirms the service is indexed;
+`2` wiring is complete but the daemon is unreachable, or reachable but the
+service still shows zero symbols (operational — mirrors `verify`'s
+fail-open doctrine, §7.4 below; never a failure of the files `init` wrote —
+re-run once the daemon is up); `1` is never returned for an operational
+reason **except** a `--skills` marker conflict (§11.1).
 
 The rest of this guide is the manual/reference version of what `init`
 automates, plus everything it doesn't (the daemon install, provider setup,
 the tool surface, troubleshooting).
+
+### 3.1 The `CLAUDE.md` / `AGENTS.md` stanza — markers, re-run semantics, corruption refusal
+
+One canonical stanza (`cmd/fathom/init.go`'s `fathomStanza`) is written
+verbatim into both files, wrapped in a marker pair:
+
+```
+<!-- fathom:begin -->
+## fathom code intelligence
+…
+<!-- fathom:end -->
+```
+
+`applyStanza` (the function behind step 4 above) has exactly three
+outcomes, chosen by what it finds at the target path:
+
+- **File absent** → created with the stanza as its entire content.
+- **File exists, never wired** (neither marker present) → the stanza is
+  **appended** to the end of the file — every byte already there is
+  preserved; your own `CLAUDE.md`/`AGENTS.md` content is never touched,
+  let alone overwritten.
+- **File exists, well-formed marker pair present** → only the content
+  *between* the markers is **replaced** with the current stanza; everything
+  outside the markers (your own sections, above or below) is untouched.
+  This is what makes a re-run idempotent: if the stanza text hasn't
+  changed, the file's bytes don't change either, and `init` prints `ok
+  CLAUDE.md (already present)` instead of `updated`.
+- **Corrupted marker pair** (only one of `fathom:begin`/`fathom:end` found,
+  or `end` appears at or before `begin` — e.g. a hand-edit that deleted or
+  reordered a marker line) → `init` **refuses loudly**, naming the file,
+  rather than guess: silently appending a fresh block on top of a broken
+  pair would compound the corruption (two `begin`s, an orphaned `end`, or
+  worse) instead of surfacing it for a human to fix. Fix or remove the
+  stray marker by hand, then re-run `init`.
+
+Re-running `init` after editing your own content elsewhere in either file
+is always safe — only the bytes between the markers are ever replaced.
 
 ---
 
@@ -211,7 +254,7 @@ launchctl kickstart -k gui/$(id -u)/com.example.fathom-http
 
 On macOS, a newly copied binary has a new code hash — if the restart hangs,
 look for a "fathom would like to access files on a removable volume" dialog
-and click **Allow**. This is also why §11's binary-vs-data staleness check
+and click **Allow**. This is also why §13's binary-vs-data staleness check
 matters: a committed fix does not reach the daemon until this step runs.
 
 ---
@@ -251,7 +294,7 @@ session start. A session that was already running when you ran `claude mcp
 add` — or across a daemon restart, or after `fathom init` just wired
 things — will not see the tools. **Restart the Claude Code session once**
 after registering. This is the single most common "the tools aren't there"
-report; see §11 before assuming anything is actually broken.
+report; see §13 before assuming anything is actually broken.
 
 ---
 
@@ -520,7 +563,104 @@ flagged `off_surface` in the call log), so nothing is actually locked out.
 
 ---
 
-## 11. Troubleshooting
+## 11. Agent skills: `fathom-plan` / `fathom-verify` / `fathom-onboard` / `fathom-feedback`
+
+`fathom init --skills[=claude|codex|all]` installs four shipped, versioned
+skill sources (`dist/agents/skills/`, embedded in the binary — no fathom
+source checkout needed at install time):
+
+```sh
+bin/fathom init --skills=claude
+```
+
+- **`fathom-plan`** — scaffold a gate-ready `docs/plans/<slug>.md` in plan
+  grammar v2 (stable IDs, `{symbol, package}` contracts grounded via the
+  fathom index, typed dispositions for skipped work) — the plan-authoring
+  path; see
+  [docs/adoption/spec-driven-development.md](spec-driven-development.md).
+- **`fathom-verify`** — run and interpret the `fathom verify` gate: exit
+  codes, `--strict`/`--require-all`, the fail-open convention, and computed
+  progress (`fathom plans status`/`next`).
+- **`fathom-onboard`** — wire a repo end-to-end into fathom (build, daemon,
+  ingest, MCP registration, the hook stack, `.fathom/`) — the condensed,
+  actionable version of this guide and `docs/adoption/codex.md`.
+- **`fathom-feedback`** — file friction with a fathom tool the moment it's
+  hit, via `fathom observe` — the flywheel's intake (§12 below).
+
+Each ships two rendered shapes from one authored source: `SKILL.md`
+(Claude Code's frontmatter + Markdown format, installed to
+`.claude/skills/<name>/SKILL.md`) and `codex-prompt.md` (a single Codex
+custom-prompt file — see `docs/adoption/codex.md` §2). `--skills=claude`
+installs only the former, `--skills=codex` only the latter (to
+`~/.codex/prompts/<name>.md`), `--skills=all` (or a bare `--skills`)
+installs both.
+
+### 11.1 Re-running / conflicts
+
+Every installed file carries a `<!-- fathom:owned -->` marker line
+(`cmd/fathom/skillsinstall.go`'s `skillMarker`) — the same ownership
+convention as the `CLAUDE.md`/`AGENTS.md` stanza's markers (§3.1), one
+level down: a whole skill file is fathom's or it isn't, so there's no
+partial section to replace. A re-run overwrites **only** a file that
+already carries the marker (or is byte-identical to what would be
+written — a true no-op, printed as `already current`). If a file already
+exists at a skill's target path **without** that marker — you already have
+your own skill or Codex prompt with that exact name — `fathom init
+--skills` refuses loudly (exit `1`, naming the path) instead of clobbering
+it; rename your file or pick a different skill name to resolve the
+conflict.
+
+---
+
+## 12. The flywheel: `observe` → `instrument --adoption` → `fathom-feedback`
+
+Fathom's own development runs on a deliberate loop — **observe →
+root-cause → fix → close** (`docs/dogfood-observations.md`) — and `fathom
+init --skills` wires the same loop into every adopting repo. It is
+**entirely local**: no hosted service, nothing phones home; both verbs are
+plain CLI/file operations against files inside the repo.
+
+**`fathom observe`** — structured friction capture, appended to
+`.fathom/observations.md`:
+
+```sh
+bin/fathom observe \
+  --symptom "find_symbol missed a method on an embedded interface" \
+  --tool find_symbol \
+  --expected "a hit for (*Thing).Method" \
+  --actual "no match; had to grep the file by hand" \
+  --repro 'find_symbol({"name":"Method"}) against service <svc>, commit <sha>'
+```
+
+Only `--symptom` is required. The entry lands in the dogfood-observations
+shape — symptom → evidence → root cause → fix → status → impact —
+append-only: first-time file creation is race-safe under concurrent agents
+(`O_CREATE|O_EXCL`), and a pre-existing file at that path without fathom's
+own marker is refused rather than silently reinterpreted.
+
+**`fathom instrument --adoption`** — the flywheel's gauge, a
+deterministic-given-inputs report over the MCP call log
+(`workspace/logs/mcp-calls.jsonl` by default) plus `.fathom/observations.md`:
+per-surface traffic, top/zero-call tools, the `brief` claims-attach hit
+rate, and the open-observation count:
+
+```sh
+bin/fathom instrument --adoption
+```
+
+**The `fathom-feedback` skill** (§11 above) teaches an agent to call
+`fathom observe` the moment it hits friction — mid-task, not "if I
+remember" — because agents are the primary users of fathom's tools, so
+agent-filed observations are the flywheel's intake. An observation
+graduates into a fix (and a `CHANGELOG.md` entry) or is closed with a
+recorded reason — the same discipline this repo's own
+`docs/dogfood-observations.md` runs, now productized for every adopting
+repo. Both verbs are local-only by design: no telemetry leaves the
+repo, and nothing here depends on a daemon being reachable.
+
+---
+
+## 13. Troubleshooting
 
 **Tools don't show up in a session.** Registration/schema discovery happens
 at session start (§6) — restart the session once. Confirm with
@@ -572,7 +712,7 @@ failed claims.
 
 ---
 
-## 12. You know it works when…
+## 14. You know it works when…
 
 ```sh
 # 1. Build is current
@@ -602,6 +742,11 @@ Then, inside a Claude Code session:
       you check one off the index can't back yet).
 - [ ] `git push` in the repo runs lefthook's pre-push hooks, including the
       `fathom-verify` command from §7.4.
+- [ ] `bin/fathom init --skills=claude` (or `=all`) populates
+      `.claude/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}/SKILL.md`
+      (§11), and `bin/fathom instrument --adoption` (§12) runs cleanly,
+      reporting `no .fathom/observations.md yet` until the first `fathom
+      observe` call, then a real open-observation count after.
 
 If every box above is checked, the full loop — index, serve, inject,
 gate — is live.
@@ -610,11 +755,13 @@ gate — is live.
 
 ## Maintained
 
-This doc covers: `fathom init`, `ingest`, `serve-mcp`, `serve-http`,
-`compile`, `layers` (`list`/`show`/`install`), `verify`
-(`--strict`/`--require-all`), `config`, `providers`, `smoke`,
-`session-hook`, `edit-hook`, `stop-hook`; the `/rpc`, `/rpc/agent`
-(`/rpc/companion`) HTTP surfaces; the 15-tool agent allowlist; the
-`SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the lefthook
-pre-push verify gate. Update this doc's examples and this line when any of
-these change.
+This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
+`CLAUDE.md`/`AGENTS.md` marker-delimited stanza), `ingest`, `serve-mcp`,
+`serve-http`, `compile`, `layers` (`list`/`show`/`install`), `verify`
+(`--strict`/`--require-all`), `observe`, `instrument --adoption`, `config`,
+`providers`, `smoke`, `session-hook`, `edit-hook`, `stop-hook`; the `/rpc`,
+`/rpc/agent` (`/rpc/companion`) HTTP surfaces; the 15-tool agent allowlist;
+the `SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the
+lefthook pre-push verify gate; the shipped `fathom-plan`/`fathom-verify`/
+`fathom-onboard`/`fathom-feedback` agent skills (`dist/agents/skills/`).
+Update this doc's examples and this line when any of these change.

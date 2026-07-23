@@ -4,6 +4,16 @@
 3-judge design workflow; every load-bearing claim below was verified against this
 codebase, agentic-kit, or external engineering writeups during that review.*
 
+*Vocabulary note (added post-ADR-024, 2026-07-23): this design predates the
+four-stratum pack taxonomy — see
+[docs/design/pack-taxonomy.md](pack-taxonomy.md) for the authorship/trust
+vocabulary ("dialect" / "provider" / "platform" / "concern") layered on top
+of the machinery below. Every layer this document describes and ships
+(`obligations`, `findings`, `adr-rules`, `spec-bindings`) is **concern**
+stratum; `kind` (below, §4.1 — `obligation`, `finding`, `adr-rule`,
+`spec-binding`) is an orthogonal axis (what a layer's claims are *about*),
+never a synonym for stratum (who authored and eval-gated the pack).*
+
 ## 1. The framing
 
 Fathom's deterministic index answers **what the code is** — symbols, call edges,

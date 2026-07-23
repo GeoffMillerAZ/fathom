@@ -49,6 +49,12 @@ not an afterthought bolted onto the quickstart below. Pick your client:
 Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
 covers what to *do* with fathom once it's wired in, one how-to per concern.
 
+The fast path in either guide is `fathom init --skills[=claude|codex|all]`:
+one command wires the repo (ingest, hooks, the `CLAUDE.md`/`AGENTS.md`
+operating-contract stanza) **and** installs the shipped `fathom-plan`/
+`fathom-verify`/`fathom-onboard`/`fathom-feedback` agent skills for your
+harness.
+
 ## Quickstart
 
 ```sh
