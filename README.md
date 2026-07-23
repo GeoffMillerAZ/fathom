@@ -28,10 +28,26 @@ Layer                concern-scoped · evidence-tiered · staleness-aware
 
 - **Go** is parsed natively (`go/parser`); other languages via tree-sitter
   grammars run in the pure-Go **wazero/WASM** runtime (ADR-004).
-- Storage is **DuckDB** (ADR-003).
+- Storage is pure-Go **SQLite** (WAL mode) by default (ADR-020); DuckDB
+  (ADR-003) remains temporarily as a migration-era backend, hence the CGO
+  build requirement below, until it's fully removed.
 - Evidence tiers (`verified` › `pre-scan` › `doc-claimed` › `sme-stated` ›
   `assumed`) come from **[agentic-kit](../agentic-kit)** — fathom builds on that
   governed-evidence platform (ADR-009).
+
+## Adopting fathom (start here)
+
+Wiring fathom into an AI coding assistant is a first-class, definitive path —
+not an afterthought bolted onto the quickstart below. Pick your client:
+
+| | |
+|---|---|
+| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the 15-tool agent surface, troubleshooting, and a verification checklist |
+| [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
+| [docs/adoption/spec-driven-development.md](docs/adoption/spec-driven-development.md) | **Spec-driven development** — the full markdown-spec → gated-plan → done-means-proven verify loop, using this repo as the worked example |
+
+Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
+covers what to *do* with fathom once it's wired in, one how-to per concern.
 
 ## Quickstart
 
@@ -70,15 +86,17 @@ fathom serve-mcp                       # stdio MCP server for editors/agents
 | | |
 |---|---|
 | [docs/what-is-fathom.html](docs/what-is-fathom.html) | **Start here** — visual explainer of what fathom is and how it works |
+| [docs/adoption/](docs/adoption/) | **Wire it in** — zero-to-working guides per AI coding assistant: [claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md), [spec-driven-development.md](docs/adoption/spec-driven-development.md) |
+| [docs/use-cases/](docs/use-cases/) | **Use it** — one how-to per concern once you're wired in: coding context, cross-repo blast radius, spec verification, incident investigation, change review, fleet health |
 | [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how fathom bends the curve, tool comparisons (observed vs speculative, labeled) |
-| [docs/claude-code-integration.md](docs/claude-code-integration.md) | **Wire fathom into Claude Code sessions** — setup playbook, operating contract, pre-packed briefs, pitfalls |
-| [docs/assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md) | Measured results of that integration (tokenomics, correctness, wall-clock) |
-| [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, DuckDB store, MCP surface |
-| [docs/usage.md](docs/usage.md) | Quickstart, all CLI subcommands, Go client API, connecting an MCP client |
+| [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, store, MCP surface |
+| [docs/usage.md](docs/usage.md) | Quickstart, CLI subcommand reference, Go client API, connecting an MCP client |
 | [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
+| [docs/layers.md](docs/layers.md) | Semantic-layer catalog — `obligations`, `findings`, `adr-rules`, `spec-bindings`, module-pack shape, the `fathom layers` verb |
 | [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: all tools, prompts, and resources |
 | [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
-| [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite and the CGO trade-off |
+| [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that — historical rationale |
+| [docs/claude-code-integration.md](docs/claude-code-integration.md) | Superseded for wiring by `docs/adoption/claude-code.md` — kept for its measured-assessment content ([assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md)) |
 
 ## Layout
 

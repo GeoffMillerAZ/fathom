@@ -1,8 +1,19 @@
-# Use-case guides for adopting fathom to enhance Claude Code
+# Use-case guides for putting fathom to work
 
-These guides show how to wire fathom into your AI coding workflows and get concrete value from each use case. Each doc covers the relevant MCP tools and CLI commands, a worked example, and setup notes.
+These guides show how to apply an already-wired-in fathom to concrete
+workflows. Each doc covers the relevant MCP tools and CLI commands, a worked
+example, and setup notes.
 
-Start with **getting-started.md** if this is your first time setting up fathom.
+**First time setting up fathom?** Go to
+**[docs/adoption/](../adoption/)** instead — the definitive zero-to-working
+guide per AI coding assistant
+([claude-code.md](../adoption/claude-code.md),
+[codex.md](../adoption/codex.md),
+[spec-driven-development.md](../adoption/spec-driven-development.md)). Come
+back here once fathom is indexed, registered, and returning results.
+[getting-started.md](getting-started.md) remains the from-source manual
+walkthrough behind `fathom init`, and [coding-agents.md](coding-agents.md)
+is the canonical short wiring summary the adoption guides expand on.
 
 ---
 
