@@ -802,10 +802,19 @@ fathom doctor [--harness claude|codex|auto] [--path <dir>] [--service <id>] [--u
 
 Eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
 binary's own build vs `git rev-parse HEAD` of the checked repo — the local proxy for
-daemon staleness; a mismatch inside a linked git worktree carries an explicit caveat),
-`hooks_installed`/`hooks_firing` (Claude Code only — Codex reports `skipped`, honestly,
-since it has no hook mechanism), `lefthook_gates` (harness-agnostic), `stanza_present`,
-`skills_installed`, `config_valid`, `obligations_served`, `surface_traffic`.
+daemon staleness; every pass states the daemon's installed copy is unverified, a dirty
+build surfaces `vcs.modified`, and both linked-worktree caveats — mismatch inside one,
+stamp-poisoning by ones nested under the checkout — are printed only when verified to
+apply), `hooks_installed` (any settings scope: project `settings.json`,
+`settings.local.json`, or user `~/.claude/settings.json`; when nothing readable wires
+them but the call log shows them firing, the verdict names that contradiction instead
+of a duplicate-installing remedy) / `hooks_firing` (both Claude Code only — Codex
+reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
+(harness-agnostic), `stanza_present`, `skills_installed`, `config_valid`,
+`obligations_served` (service resolved the way the hooks resolve it — every candidate
+identity intersected with the daemon's service list, with a distinct not-indexed
+verdict and drift-flagged rules counted into the reason), `surface_traffic`
+(process-lifetime counters — "since this daemon process started").
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the

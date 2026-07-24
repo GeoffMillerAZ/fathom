@@ -29,6 +29,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -102,14 +103,20 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	root = absRoot
 
-	svc := strings.ToLower(*service)
+	// svc here is display identity only (the table header). The
+	// obligations_served check does its own candidate resolution against
+	// the daemon's actual service list — the same all-candidates probing
+	// the hooks perform (edithook.go's candidate loop) — so the header's
+	// first-candidate guess can never silently misdirect a remedy.
+	explicitSvc := strings.ToLower(*service)
+	svc := explicitSvc
 	if svc == "" {
 		cands := serviceCandidates(root)
 		svc = strings.ToLower(cands[0].name)
 	}
 
 	harness := resolveDoctorHarness(*harnessFlag, root)
-	checks := runDoctorChecks(root, svc, harness, *url)
+	checks := runDoctorChecks(root, explicitSvc, harness, *url)
 
 	if *jsonOut {
 		printDoctorJSON(stdout, harness, svc, root, checks)
@@ -154,7 +161,7 @@ func fileExists(path string) bool {
 // injection/gate stack, then serving state) and returns every row —
 // doctor never short-circuits on an early failure, so one bad check never
 // hides the rest of the diagnosis.
-func runDoctorChecks(root, svc, harness, baseURL string) []doctorCheck {
+func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 	hc := &http.Client{Timeout: 5 * time.Second}
 
 	checks := []doctorCheck{
@@ -171,7 +178,7 @@ func runDoctorChecks(root, svc, harness, baseURL string) []doctorCheck {
 		checkStanzaPresent(root),
 		checkSkillsInstalled(root, harness),
 		checkConfigValid(root),
-		checkObligationsServed(hc, baseURL, svc, daemonUp),
+		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp),
 	)
 	return checks
@@ -317,12 +324,12 @@ func checkDaemonReachable(hc *http.Client, baseURL string) (bool, doctorCheck) {
 // ─── 3. binary freshness ────────────────────────────────────────────────────
 
 // doctorBinaryRevision returns the running `fathom doctor` binary's own
-// embedded VCS revision (version.go's vcsInfo, no ldflags needed). A
-// package var so tests can simulate a known build identity instead of
-// depending on `go test`'s own build info.
-var doctorBinaryRevision = func() (rev string, ok bool) {
-	r, _, _ := vcsInfo()
-	return r, r != ""
+// embedded VCS revision and dirty flag (version.go's vcsInfo, no ldflags
+// needed). A package var so tests can simulate a known build identity
+// instead of depending on `go test`'s own build info.
+var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
+	r, _, modified := vcsInfo()
+	return r, modified, r != ""
 }
 
 // checkBinaryFresh compares the currently-running binary's own build
@@ -330,15 +337,21 @@ var doctorBinaryRevision = func() (rev string, ok bool) {
 // one-line doctrine CLAUDE.md's "Dogfood" section and
 // docs/adoption/claude-code.md §13 both document by hand
 // (`fathom version` vs `git rev-parse HEAD`). This is a LOCAL check: it
-// says whether the binary you just ran doctor with is current, which is
-// the best available proxy since there is no remote "ask the daemon its
-// version" RPC today — see the worktree caveat below for the one case
-// this proxy can mislead.
+// says whether the binary you just ran doctor with is current — the best
+// available proxy since there is no remote "ask the daemon its version"
+// RPC today — and every PASS says so explicitly (the daemon's installed
+// copy stays unverified). A matching stamp is additionally NOT conclusive
+// in two verified-detectable cases, both annotated when present:
+// vcs.modified (a dirty build's stamp names the commit, not the code) and
+// enclosing-checkout stamp poisoning (a `go build` run inside a linked
+// worktree NESTED under this checkout embeds THIS checkout's HEAD, not the
+// worktree's — traced live: `go build -x` from such a worktree runs every
+// `git` command against the enclosing checkout's root).
 func checkBinaryFresh(root string) doctorCheck {
 	const name = "binary_fresh"
 	remedy := "cp bin/fathom ~/.local/libexec/fathom/fathom && launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http (deploy the rebuilt binary — docs/adoption/claude-code.md §5)"
 
-	rev, ok := doctorBinaryRevision()
+	rev, dirty, ok := doctorBinaryRevision()
 	if !ok {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "this binary carries no embedded VCS revision (built without -buildvcs, or outside a git checkout) — compare `fathom version` to `git rev-parse HEAD` by hand", Remedy: remedy}
 	}
@@ -349,7 +362,14 @@ func checkBinaryFresh(root string) doctorCheck {
 	}
 
 	if strings.HasPrefix(head, rev) || strings.HasPrefix(rev, head) {
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("binary @ %s matches HEAD %s", shortSHA(rev), shortSHA(head))}
+		reason := fmt.Sprintf("binary @ %s matches HEAD %s — local binary only, the daemon's installed copy is unverified", shortSHA(rev), shortSHA(head))
+		if dirty {
+			reason += "; vcs.modified=true (built from a locally modified tree — the stamp names the commit, not the exact code)"
+		}
+		if n := nestedLinkedWorktrees(root); n > 0 {
+			reason += fmt.Sprintf("; note: %d linked worktree(s) are nested under this checkout — a `go build` run inside one stamps THIS checkout's HEAD (enclosing-checkout resolution), so a matching stamp does not prove the binary was built from this tree's code", n)
+		}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
 	reason := fmt.Sprintf("binary @ %s does not match HEAD %s", shortSHA(rev), shortSHA(head))
@@ -385,6 +405,40 @@ func isGitWorktree(root string) bool {
 	return !info.IsDir()
 }
 
+// nestedLinkedWorktrees counts linked worktrees whose paths sit UNDER root
+// (e.g. .claude/worktrees/agent-*). These are the stamp-poisoning hazard
+// checkBinaryFresh's doc comment describes: `go build -buildvcs` from
+// inside such a worktree resolves the VCS root to the ENCLOSING checkout
+// and embeds its HEAD, so a binary carrying root's HEAD may actually have
+// been compiled from a nested worktree's different code. Best-effort: any
+// git failure reports zero (the note is additive, never load-bearing).
+func nestedLinkedWorktrees(root string) int {
+	out, err := exec.Command("git", "-C", root, "worktree", "list", "--porcelain").Output()
+	if err != nil {
+		return 0
+	}
+	self := root
+	if r, err := filepath.EvalSymlinks(root); err == nil {
+		self = r
+	}
+	sep := string(filepath.Separator)
+	n := 0
+	for _, line := range strings.Split(string(out), "\n") {
+		p, ok := strings.CutPrefix(line, "worktree ")
+		if !ok {
+			continue
+		}
+		rp := p
+		if r, err := filepath.EvalSymlinks(p); err == nil {
+			rp = r
+		}
+		if rp != self && strings.HasPrefix(rp, self+sep) {
+			n++
+		}
+	}
+	return n
+}
+
 func shortSHA(s string) string {
 	if len(s) > 12 {
 		return s[:12]
@@ -394,6 +448,14 @@ func shortSHA(s string) string {
 
 // ─── 4. hooks installed (Claude Code only) ─────────────────────────────────
 
+// checkHooksInstalled looks for the three fathom hooks across EVERY
+// settings scope Claude Code merges — project .claude/settings.json,
+// project .claude/settings.local.json, and user ~/.claude/settings.json —
+// because hooks wired at user scope (a perfectly good wiring) must never
+// read as a project-scope FAIL whose remedy would install duplicates
+// (every PostToolUse would then fire twice). When no readable scope wires
+// them but the call log proves they fire anyway, the verdict names that
+// contradiction instead of prescribing the duplicate-installing remedy.
 func checkHooksInstalled(root, harness string) doctorCheck {
 	const name = "hooks_installed"
 	if harness != "claude" {
@@ -401,27 +463,102 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	}
 	remedy := "fathom init --path " + root
 
-	p := filepath.Join(root, ".claude", "settings.json")
-	data, err := os.ReadFile(p)
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s: %v", p, err), Remedy: remedy}
+	type scopeFile struct{ label, path string }
+	scopes := []scopeFile{
+		{"project", filepath.Join(root, ".claude", "settings.json")},
+		{"project-local", filepath.Join(root, ".claude", "settings.local.json")},
 	}
-	var parsed map[string]any
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s did not parse as JSON: %v", p, err), Remedy: remedy}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		scopes = append(scopes, scopeFile{"user", filepath.Join(home, ".claude", "settings.json")})
 	}
-	hooksObj, _ := parsed["hooks"].(map[string]any)
 
-	var missing []string
-	for _, spec := range fathomHookSpecs {
-		if !hookMarkerPresent(hooksObj, spec) {
-			missing = append(missing, spec.sub)
+	wiredScopes := map[string][]string{} // spec.sub -> scope labels that wire it
+	var scopeNotes []string
+	for _, sc := range scopes {
+		data, err := os.ReadFile(sc.path)
+		if err != nil {
+			continue // an absent scope file is normal, not a finding
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(data, &parsed); err != nil {
+			scopeNotes = append(scopeNotes, fmt.Sprintf("%s scope %s did not parse as JSON (%v) — hooks wired there are invisible to this check", sc.label, sc.path, err))
+			continue
+		}
+		hooksObj, _ := parsed["hooks"].(map[string]any)
+		for _, spec := range fathomHookSpecs {
+			if hookMarkerPresent(hooksObj, spec) {
+				wiredScopes[spec.sub] = append(wiredScopes[spec.sub], sc.label)
+			}
 		}
 	}
-	if len(missing) > 0 {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s is missing hook(s): %s", p, strings.Join(missing, ", ")), Remedy: remedy}
+
+	var missing []string
+	labelSet := map[string]bool{}
+	var labels []string
+	for _, spec := range fathomHookSpecs {
+		found := wiredScopes[spec.sub]
+		if len(found) == 0 {
+			missing = append(missing, spec.sub)
+			continue
+		}
+		for _, l := range found {
+			if !labelSet[l] {
+				labelSet[l] = true
+				labels = append(labels, l)
+			}
+		}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s wires all %d fathom hooks", p, len(fathomHookSpecs))}
+
+	if len(missing) == 0 {
+		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(fathomHookSpecs), strings.Join(labels, " + "))
+		if len(scopeNotes) > 0 {
+			reason += "; " + strings.Join(scopeNotes, "; ")
+		}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
+	}
+
+	// Contradiction probe: the settings scopes doctor can read wire nothing
+	// (or not everything), yet the call log proves edit-hook traffic — the
+	// hooks ARE firing from a scope this check cannot see (managed
+	// settings, an unreadable file). In that state the normal remedy is
+	// actively harmful: `fathom init` would add a project-scope SECOND
+	// wiring and every hook would fire twice.
+	if n := editHookCallCount(root); n > 0 {
+		reason := fmt.Sprintf("no readable settings scope wires hook(s) %s (checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json), yet the call log records %d edit-hook call(s) — the hooks are evidently wired at a scope doctor cannot read. Running `fathom init` now would install project-scope DUPLICATES: every hook would fire twice.", strings.Join(missing, ", "), n)
+		if len(scopeNotes) > 0 {
+			reason += " " + strings.Join(scopeNotes, "; ")
+		}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: "find the scope that wires them (e.g. read ~/.claude/settings.json, or the harness's hook settings UI) before changing anything — do not run `fathom init` for this"}
+	}
+
+	reason := fmt.Sprintf("no readable settings scope wires hook(s): %s (checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json)", strings.Join(missing, ", "))
+	if len(scopeNotes) > 0 {
+		reason += "; " + strings.Join(scopeNotes, "; ")
+	}
+	return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: remedy}
+}
+
+// editHookCallCount reports how many call-log rows carry origin
+// "edit-hook" — the firing evidence checkHooksInstalled's contradiction
+// probe and checkHooksFiring both read (same resolveCallLogPath +
+// readCallLog pair, instrument_adoption.go). Zero on an absent/unreadable
+// log.
+func editHookCallCount(root string) int {
+	logPath := resolveCallLogPath()
+	if !filepath.IsAbs(logPath) {
+		logPath = filepath.Join(root, logPath)
+	}
+	entries, _, read := readCallLog(logPath)
+	if !read {
+		return 0
+	}
+	n := 0
+	for _, e := range entries {
+		if e.Origin == "edit-hook" {
+			n++
+		}
+	}
+	return n
 }
 
 // hookMarkerPresent is the read-only twin of init.go's ensureHookEntry: the
@@ -656,12 +793,78 @@ func checkConfigValid(root string) doctorCheck {
 // any compiled rule's scope"; doctor cannot tell those apart from one file).
 const doctorObligationsProbeFile = "CLAUDE.md"
 
-func checkObligationsServed(hc *http.Client, baseURL, svc string, daemonUp bool) doctorCheck {
+// checkObligationsServed resolves the service the same way the hooks do —
+// EVERY candidate identity (edithook.go's serviceCandidates loop), not a
+// blind first guess — intersected with the daemon's actual service list,
+// so its remedy can never name a service that is not in the index (a
+// `fathom compile --service <ghost>` would be a zero-section bogus run).
+// A repo whose candidates match NO indexed service gets the distinct
+// not-indexed verdict (that state also means the hooks cannot inject here
+// — dogfood-observations.md O15 is exactly this, live). An explicit
+// --service is honored but cross-checked against the hook candidates: a
+// service the hooks would never resolve gets a pass-with-note, because
+// obligations serving over MCP does not imply injection works.
+func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool) doctorCheck {
 	const name = "obligations_served"
-	remedy := fmt.Sprintf("fathom compile --service %s --dry-run=false", svc)
 
 	if !daemonUp {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot query obligations (see daemon_reachable)"}
+	}
+
+	// Hook-candidate identities, deduped, in hook preference order.
+	var candNames []string
+	seen := map[string]bool{}
+	for _, c := range serviceCandidates(root) {
+		n := strings.ToLower(c.name)
+		if !seen[n] {
+			seen[n] = true
+			candNames = append(candNames, n)
+		}
+	}
+
+	probeNames := candNames
+	if explicitSvc != "" {
+		probeNames = []string{explicitSvc}
+	}
+
+	svcs := fetchServices(hc, baseURL) // best-effort; empty map on any error
+	indexed := make([]string, 0, len(svcs))
+	for s := range svcs {
+		indexed = append(indexed, s)
+	}
+	sort.Strings(indexed)
+
+	svc := ""
+	for _, n := range probeNames {
+		if _, ok := svcs[n]; ok {
+			svc = n
+			break
+		}
+	}
+	if svc == "" {
+		return doctorCheck{
+			Name: name, Status: doctorFail,
+			Reason: fmt.Sprintf("no candidate service ID (%s) is in the daemon's index (indexed: %s) — the hooks resolve the same candidates, so obligations injection cannot fire for this repo either", strings.Join(probeNames, ", "), strings.Join(indexed, ", ")),
+			Remedy: fmt.Sprintf("ingest this repo under a matching name (fathom init --path %s), or re-run doctor with --service <id> if it is indexed under a different one", root),
+		}
+	}
+	remedy := fmt.Sprintf("fathom compile --service %s --dry-run=false", svc)
+
+	// Explicit-service honesty note: serving obligations for a service the
+	// hooks would never resolve proves the layer compiles, NOT that the
+	// edit-hook can inject it (O15's exact trap).
+	hookMismatchNote := ""
+	if explicitSvc != "" {
+		isCandidate := false
+		for _, n := range candNames {
+			if n == explicitSvc {
+				isCandidate = true
+				break
+			}
+		}
+		if !isCandidate {
+			hookMismatchNote = fmt.Sprintf(" — note: --service %s is NOT among the hook candidate IDs (%s), so the hooks will not resolve this service and obligations injection will not fire in sessions here even though serving works", explicitSvc, strings.Join(candNames, ", "))
+		}
 	}
 
 	reqBody, err := json.Marshal(map[string]any{
@@ -694,7 +897,9 @@ func checkObligationsServed(hc *http.Client, baseURL, svc string, daemonUp bool)
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("obligations(%s, %s): %v", svc, doctorObligationsProbeFile, err), Remedy: remedy}
 	}
 	var payload struct {
-		Rules      []any  `json:"rules"`
+		Rules []struct {
+			Status string `json:"status"`
+		} `json:"rules"`
 		Watermark  string `json:"compiled_at_watermark"`
 		IndexStale bool   `json:"index_stale"`
 	}
@@ -708,18 +913,36 @@ func checkObligationsServed(hc *http.Client, baseURL, svc string, daemonUp bool)
 			Remedy: remedy,
 		}
 	}
-	if payload.IndexStale {
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("obligations served for %s (watermark %s) — note: index_stale is true, the compiled index disagrees with the file on disk", doctorObligationsProbeFile, payload.Watermark)}
+
+	// Drift honesty (rules are served FLAGGED, never dropped — serve.go's
+	// Obligation.Status contract): a payload full of stale/contradicted
+	// rules must not read as an unqualified clean pass.
+	drifted := 0
+	for _, r := range payload.Rules {
+		if r.Status != "" {
+			drifted++
+		}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("obligations served for %s (%d rule(s), watermark %s)", doctorObligationsProbeFile, len(payload.Rules), payload.Watermark)}
+	reason := fmt.Sprintf("obligations served for service %s, file %s (%d rule(s), watermark %s)", svc, doctorObligationsProbeFile, len(payload.Rules), payload.Watermark)
+	if drifted > 0 {
+		reason += fmt.Sprintf(" — note: %d of %d rule(s) carry a drift status (stale/contradicted); served flagged, not dropped — recompile to refresh", drifted, len(payload.Rules))
+	}
+	if payload.IndexStale {
+		reason += " — note: index_stale is true, the compiled index disagrees with the file on disk"
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: reason + hookMismatchNote}
 }
 
 // ─── 11. surface_traffic flowing ────────────────────────────────────────────
 
 // checkSurfaceTraffic is the CLI-native twin of
 // scripts/check-surface-traffic.sh's existence-check semantics ("has this
-// surface ever fired", not "did it fire recently"), scoped to the "agent"
-// surface (the recommended registration target per §1).
+// surface fired", not "did it fire recently"), scoped to the "agent"
+// surface (the recommended registration target per §1). Scope caveat,
+// from server_stats' own tool description (internal/mcp/meta.go): the
+// surface_traffic counters are PROCESS-LIFETIME — "since this process
+// started", reset on every daemon restart — so a zero here means "no
+// calls since this daemon process started", never "no calls ever".
 func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool) doctorCheck {
 	const name = "surface_traffic"
 	remedy := "deploy a binary built after A1-1 (surface_traffic instrumentation) — docs/adoption/claude-code.md §5's deploy step"
@@ -759,9 +982,9 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool) doctorC
 	}
 	entry, ok := payload.SurfaceTraffic["agent"]
 	if !ok || entry.Calls == 0 {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: "surface_traffic is present but the \"agent\" surface (/rpc/agent) shows zero calls — an instrument with no existence check is theater", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: "surface_traffic is present but the \"agent\" surface (/rpc/agent) shows zero calls since this daemon process started (the counters are process-lifetime — they reset on restart)", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("agent surface: %d call(s), last at %s", entry.Calls, entry.LastTS)}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("agent surface: %d call(s) since this daemon process started, last at %s", entry.Calls, entry.LastTS)}
 }
 
 // ─── output ─────────────────────────────────────────────────────────────────

@@ -41,9 +41,9 @@ from becoming a fathom advertisement instead of a measurement:
    re-running the bench for real; the win is real but smaller than the
    first draft claimed). Quote measured numbers, not vibes.
 2. **State the predates-instrumentation split, every time it's nonzero.**
-   `VerifyGateCatchCount` (JSON) / the "gate catches" line (table) counts
-   only verify/review calls that carry a `verdict_outcome`.
-   `VerifyGatePredatesInstrumentation` counts calls from a binary built
+   `verify_gate_catch_count` (JSON) / the "gate catches" line (table)
+   counts only verify/review calls that carry a `verdict_outcome`.
+   `verify_gate_predates_instrumentation` counts calls from a binary built
    before that field existed — their outcome is genuinely unrecoverable
    from the log. **Never fold the second number into the first.** Say
    "N catches measured this window (plus M earlier calls whose outcome
@@ -53,7 +53,7 @@ from becoming a fathom advertisement instead of a measurement:
    attached more often — it does NOT mean those claims changed anyone's
    decision, and it is not evidence of time saved. Don't infer causation
    ("this caught a bug that would have shipped") the log cannot show.
-4. **`CallLogRead: false` means "never observed," not "measured zero."**
+4. **`call_log_read: false` means "never observed," not "measured zero."**
    An absent or unreadable call log is a distinct state from real,
    confirmed zero traffic — say so explicitly rather than reporting a flat
    0 that reads as a measurement.
@@ -63,7 +63,7 @@ from becoming a fathom advertisement instead of a measurement:
    the count shows.
 6. **Always end with the open frictions.** `instrument --adoption` reports
    only the open-observation *count*
-   (`OpenObservationCount`/`ObservationsPath`, JSON). To name them, read
+   (`open_observation_count`/`observations_path`, JSON). To name them, read
    `.fathom/observations.md` directly and list the `### O<N> — <title>`
    entries whose `- **Status:**` line still starts with "open" — oldest
    first. **Every impact narration ends with this list as the flywheel's
@@ -81,7 +81,7 @@ A complete narration touches, in this order:
 2. **Injection traffic** — per-surface `surface_traffic` totals, and the
    `brief` claims-attach hit rate (with `nil`/undefined stated plainly when
    there were zero `brief` calls in the window — never a fabricated 0%).
-3. **Gate catches** — `VerifyGateCatchCount` with the predates-split (rule 2).
+3. **Gate catches** — `verify_gate_catch_count` with the predates-split (rule 2).
 4. **Plan freshness** — `fathom plans status`'s proven / claimed-unproven /
    open / deferred / other-skipped rollup, per plan.
 5. **Zero-call tools** — the list, stated as a fact (rule 5).

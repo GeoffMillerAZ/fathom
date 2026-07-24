@@ -20,7 +20,7 @@ fathom doctor [--harness=claude|codex|auto] [--path <dir>] [--service <id>] [--u
 ```
 
 - `--harness` defaults to `auto` (detects claude vs codex from `.claude/settings.json`/`~/.claude.json` vs `.codex/config.toml`/`~/.codex/config.toml`; falls back to `claude` with no evidence either way). Pass it explicitly when you know which harness you're diagnosing.
-- `--path` defaults to cwd; `--service` defaults to the same identity `fathom init` resolves.
+- `--path` defaults to cwd; `--service` defaults to the same candidate identities the hooks probe (dir basename, then the git toplevel's), resolved against the daemon's actual service list — so a repo whose directory name doesn't match its indexed service is surfaced, not guessed over.
 - `--url` defaults to `http://localhost:7575` (or `$FATHOM_HTTP`) — the daemon doctor queries read-only.
 - `--json` for machine output; otherwise a human table.
 
@@ -40,15 +40,15 @@ The checklist doctor runs (so you know what each row means before you explain it
 |---|---|
 | `mcp_registration` | The harness's own MCP config points fathom at `/rpc/agent` (or `/rpc/companion`) |
 | `daemon_reachable` | `GET /healthz` answers |
-| `binary_fresh` | The binary you just ran `doctor` with matches `git rev-parse HEAD` of the checked repo — a LOCAL proxy (there's no remote "ask the daemon its version" call yet), so treat a mismatch inside a linked git worktree with the caveat doctor itself prints, not as an automatic "redeploy" verdict |
-| `hooks_installed` (claude only) | `.claude/settings.json` wires all three fathom hooks |
+| `binary_fresh` | The binary you just ran `doctor` with matches `git rev-parse HEAD` of the checked repo — a LOCAL proxy (there's no remote "ask the daemon its version" call yet); every pass says the daemon's installed copy is unverified, a dirty build surfaces `vcs.modified`, and both worktree caveats (a mismatch inside a linked worktree; a match in a checkout with nested worktrees, whose stamps can be poisoned) are printed only when doctor verifies they apply |
+| `hooks_installed` (claude only) | The three fathom hooks are wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
 | `lefthook_gates` | `lefthook.yml`'s pre-push has a `fathom verify` step (harness-agnostic — Codex uses the identical git-native gate) |
 | `hooks_firing` (claude only) | The call log has actually seen `edit-hook` traffic — configured is not the same as firing |
 | `stanza_present` | `CLAUDE.md`/`AGENTS.md` carry a well-formed fathom marker pair |
 | `skills_installed` | Every shipped skill is present, fathom-owned, and byte-current for the resolved harness |
 | `config_valid` | `.fathom/config.toml` (user + project) validates against the CUE schema |
-| `obligations_served` | The obligations layer has actually compiled claims reachable from `CLAUDE.md` |
-| `surface_traffic` | The `agent` surface has ever actually been called |
+| `obligations_served` | The service resolves the way the hooks resolve it (every candidate identity, intersected with the daemon's service list — a repo whose candidates match no indexed service gets a distinct not-indexed verdict, which also means injection cannot fire there) AND the obligations layer serves compiled claims for `CLAUDE.md`; drift-flagged (stale/contradicted) rules are counted into the reason, never hidden in a clean-shaped pass |
+| `surface_traffic` | The `agent` surface has been called since this daemon process started (the counters are process-lifetime — they reset on restart) |
 
 ## 3. Apply remedies — with operator approval, one at a time
 

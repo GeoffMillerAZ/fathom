@@ -45,11 +45,21 @@ func gitRepo(t *testing.T, dir string) string {
 	return head
 }
 
-// fakeDoctorDaemon serves healthz + obligations + server_stats. obligRules
-// controls the obligations response's rule count (0 => "never compiled"
-// shape); traffic controls the server_stats surface_traffic block for the
-// "agent" surface.
-func fakeDoctorDaemon(t *testing.T, obligRules int, watermark string, agentCalls int) *httptest.Server {
+// fakeDaemonCfg configures fakeDoctorDaemon: which services list_services
+// reports, the obligations response's rule count (0 => "never compiled"
+// shape), how many of those rules carry status:"stale", the compile
+// watermark, and the server_stats surface_traffic "agent" call count.
+type fakeDaemonCfg struct {
+	services   []string
+	obligRules int
+	obligStale int
+	watermark  string
+	agentCalls int
+}
+
+// fakeDoctorDaemon serves healthz + list_services + obligations +
+// server_stats shaped like the real MCP endpoint.
+func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -64,22 +74,32 @@ func fakeDoctorDaemon(t *testing.T, obligRules int, watermark string, agentCalls
 		_ = json.NewDecoder(r.Body).Decode(&req)
 		var inner string
 		switch req.Params.Name {
+		case "list_services":
+			rows := make([]string, len(cfg.services))
+			for i, s := range cfg.services {
+				rows[i] = fmt.Sprintf(`{"service":%q,"symbol_count":10,"languages":["go"]}`, s)
+			}
+			inner = `{"services":[` + strings.Join(rows, ",") + `]}`
 		case "obligations":
 			rules := "[]"
-			if obligRules > 0 {
-				rs := make([]string, obligRules)
+			if cfg.obligRules > 0 {
+				rs := make([]string, cfg.obligRules)
 				for i := range rs {
-					rs[i] = `{"rule":"r"}`
+					if i < cfg.obligStale {
+						rs[i] = `{"rule":"r","status":"stale"}`
+					} else {
+						rs[i] = `{"rule":"r"}`
+					}
 				}
 				rules = "[" + strings.Join(rs, ",") + "]"
 			}
 			wm := ""
-			if watermark != "" {
-				wm = fmt.Sprintf(`,"compiled_at_watermark":%q`, watermark)
+			if cfg.watermark != "" {
+				wm = fmt.Sprintf(`,"compiled_at_watermark":%q`, cfg.watermark)
 			}
 			inner = fmt.Sprintf(`{"service":"svc","file":"CLAUDE.md","rules":%s%s}`, rules, wm)
 		case "server_stats":
-			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, agentCalls)
+			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
 		default:
 			http.Error(w, "unknown tool", 400)
 			return
@@ -280,7 +300,7 @@ func TestCheckCodexMCPRegistration(t *testing.T) {
 
 func TestCheckDaemonReachable(t *testing.T) {
 	t.Run("dead daemon fails", func(t *testing.T) {
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {}))
 		deadURL := srv.URL
 		srv.Close() // now unreachable
 
@@ -294,7 +314,7 @@ func TestCheckDaemonReachable(t *testing.T) {
 	})
 
 	t.Run("live daemon passes", func(t *testing.T) {
-		srv := fakeDoctorDaemon(t, 1, "2026-01-01T00:00:00Z", 1)
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, obligRules: 1, watermark: "wm", agentCalls: 1})
 		defer srv.Close()
 		up, got := checkDaemonReachable(http.DefaultClient, srv.URL)
 		if !up || got.Status != doctorPass {
@@ -309,21 +329,63 @@ func TestCheckBinaryFresh(t *testing.T) {
 	old := doctorBinaryRevision
 	defer func() { doctorBinaryRevision = old }()
 
-	t.Run("matching revision passes", func(t *testing.T) {
+	t.Run("matching revision passes, stating the local-only limit", func(t *testing.T) {
 		dir := t.TempDir()
 		head := gitRepo(t, dir)
-		doctorBinaryRevision = func() (string, bool) { return head, true }
+		doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
 
 		got := checkBinaryFresh(dir)
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "daemon's installed copy is unverified") {
+			t.Errorf("pass must state the local-only limit: %s", got.Reason)
+		}
+		if strings.Contains(got.Reason, "vcs.modified") || strings.Contains(got.Reason, "nested") {
+			t.Errorf("clean build in a plain repo must carry neither the dirty nor the poisoning note: %s", got.Reason)
+		}
+	})
+
+	t.Run("dirty build passes with the vcs.modified note surfaced", func(t *testing.T) {
+		dir := t.TempDir()
+		head := gitRepo(t, dir)
+		doctorBinaryRevision = func() (string, bool, bool) { return head, true, true }
+
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "vcs.modified=true") {
+			t.Errorf("dirty build must surface vcs.modified in the reason: %s", got.Reason)
+		}
+	})
+
+	t.Run("nested linked worktrees add the stamp-poisoning note to a matching pass", func(t *testing.T) {
+		requireGit(t)
+		dir := t.TempDir()
+		head := gitRepo(t, dir)
+		nested := filepath.Join(dir, ".claude", "worktrees", "agent-x")
+		if err := os.MkdirAll(filepath.Dir(nested), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command("git", "-C", dir, "worktree", "add", "--detach", nested, "HEAD").CombinedOutput(); err != nil {
+			t.Fatalf("git worktree add: %v\n%s", err, out)
+		}
+		doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
+
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "linked worktree") || !strings.Contains(got.Reason, "does not prove") {
+			t.Errorf("matching stamp with nested worktrees must carry the poisoning note: %s", got.Reason)
 		}
 	})
 
 	t.Run("stale binary fails with a deploy remedy", func(t *testing.T) {
 		dir := t.TempDir()
 		gitRepo(t, dir)
-		doctorBinaryRevision = func() (string, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", true }
+		doctorBinaryRevision = func() (string, bool, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", false, true }
 
 		got := checkBinaryFresh(dir)
 		if got.Status != doctorFail || got.Remedy == "" {
@@ -337,7 +399,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 	t.Run("no embedded revision is skipped, never a guessed pass or fail", func(t *testing.T) {
 		dir := t.TempDir()
 		gitRepo(t, dir)
-		doctorBinaryRevision = func() (string, bool) { return "", false }
+		doctorBinaryRevision = func() (string, bool, bool) { return "", false, false }
 
 		got := checkBinaryFresh(dir)
 		if got.Status != doctorSkipped {
@@ -376,7 +438,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 			t.Fatalf("main repo %s must NOT be detected as a linked worktree", main)
 		}
 
-		doctorBinaryRevision = func() (string, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", true }
+		doctorBinaryRevision = func() (string, bool, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", false, true }
 		got := checkBinaryFresh(wt)
 		if got.Status != doctorFail {
 			t.Fatalf("got %+v, want fail", got)
@@ -390,6 +452,10 @@ func TestCheckBinaryFresh(t *testing.T) {
 // ─── hooks_installed / lefthook_gates / hooks_firing ────────────────────────
 
 func TestCheckHooksInstalled(t *testing.T) {
+	// Isolate from the developer's real user-scope ~/.claude/settings.json:
+	// the check now reads it by design, so every subtest pins HOME.
+	t.Setenv("HOME", t.TempDir())
+
 	t.Run("codex is skipped — no hook mechanism", func(t *testing.T) {
 		got := checkHooksInstalled(t.TempDir(), "codex")
 		if got.Status != doctorSkipped {
@@ -397,14 +463,17 @@ func TestCheckHooksInstalled(t *testing.T) {
 		}
 	})
 
-	t.Run("missing settings.json fails", func(t *testing.T) {
+	t.Run("no settings in any scope fails with the init remedy", func(t *testing.T) {
 		got := checkHooksInstalled(t.TempDir(), "claude")
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
+		if !strings.Contains(got.Remedy, "fathom init") {
+			t.Errorf("no-wiring-no-traffic case should carry the init remedy: %+v", got)
+		}
 	})
 
-	t.Run("fully wired settings.json passes", func(t *testing.T) {
+	t.Run("fully wired project settings.json passes", func(t *testing.T) {
 		dir := t.TempDir()
 		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
 		if err != nil {
@@ -414,6 +483,49 @@ func TestCheckHooksInstalled(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := os.WriteFile(filepath.Join(dir, ".claude", "settings.json"), merged, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := checkHooksInstalled(dir, "claude")
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "project") {
+			t.Errorf("pass should name the wiring scope: %s", got.Reason)
+		}
+	})
+
+	t.Run("user-scope wiring passes with a scope note — never a project-scope FAIL", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), merged, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := checkHooksInstalled(t.TempDir(), "claude") // project scope empty
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass (user-scope wiring is a valid wiring)", got)
+		}
+		if !strings.Contains(got.Reason, "user") {
+			t.Errorf("pass should name the user scope: %s", got.Reason)
+		}
+	})
+
+	t.Run("project-local settings.local.json wiring passes", func(t *testing.T) {
+		dir := t.TempDir()
+		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.MkdirAll(filepath.Join(dir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".claude", "settings.local.json"), merged, 0o644); err != nil {
 			t.Fatal(err)
 		}
 		got := checkHooksInstalled(dir, "claude")
@@ -434,6 +546,28 @@ func TestCheckHooksInstalled(t *testing.T) {
 		got := checkHooksInstalled(dir, "claude")
 		if got.Status != doctorFail || !strings.Contains(got.Reason, "edit-hook") {
 			t.Fatalf("got %+v, want fail naming edit-hook/stop-hook", got)
+		}
+	})
+
+	t.Run("no visible wiring but live edit-hook traffic names the contradiction, not the duplicate-installing remedy", func(t *testing.T) {
+		dir := t.TempDir()
+		logDir := filepath.Join(dir, "workspace", "logs")
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		line := `{"ts":"2026-01-01T00:00:00Z","tool":"obligations","origin":"edit-hook","latency_ms":1}` + "\n"
+		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(line), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		got := checkHooksInstalled(dir, "claude")
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail", got.Status)
+		}
+		if !strings.Contains(got.Reason, "DUPLICATES") {
+			t.Errorf("contradiction case must warn about duplicate installation: %s", got.Reason)
+		}
+		if strings.Contains(got.Remedy, "fathom init") && !strings.Contains(got.Remedy, "do not run") {
+			t.Errorf("contradiction case must not prescribe the duplicate-installing remedy: %s", got.Remedy)
 		}
 	})
 }
@@ -686,29 +820,114 @@ func TestCheckConfigValid(t *testing.T) {
 
 // ─── obligations_served / surface_traffic ──────────────────────────────────
 
+// namedDir creates <tmp>/<name> and returns it — a root whose
+// serviceCandidates first candidate is a KNOWN name, unlike t.TempDir()'s
+// random basename.
+func namedDir(t *testing.T, name string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), name)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func TestCheckObligationsServed(t *testing.T) {
 	t.Run("daemon down is skipped, not failed", func(t *testing.T) {
-		got := checkObligationsServed(http.DefaultClient, "http://127.0.0.1:1", "svc", false)
+		got := checkObligationsServed(http.DefaultClient, "http://127.0.0.1:1", t.TempDir(), "svc", false)
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}
 	})
 
-	t.Run("zero rules and no watermark fails with the compile remedy", func(t *testing.T) {
-		srv := fakeDoctorDaemon(t, 0, "", 0)
+	t.Run("service not in the index is the distinct not-indexed verdict, remedy never names a ghost compile", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"other"}})
 		defer srv.Close()
-		got := checkObligationsServed(http.DefaultClient, srv.URL, "svc", true)
-		if got.Status != doctorFail || !strings.Contains(got.Remedy, "fathom compile") {
-			t.Fatalf("got %+v, want fail with a compile remedy", got)
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail", got.Status)
+		}
+		if !strings.Contains(got.Reason, "alpha") || !strings.Contains(got.Reason, "other") {
+			t.Errorf("not-indexed reason must name the candidates and the indexed services: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "injection cannot fire") {
+			t.Errorf("not-indexed reason must state the hook consequence: %s", got.Reason)
+		}
+		if strings.Contains(got.Remedy, "fathom compile") {
+			t.Errorf("remedy must never be a compile for a service not in the index: %s", got.Remedy)
+		}
+		if !strings.Contains(got.Remedy, "--service") {
+			t.Errorf("remedy must offer the --service escape hatch: %s", got.Remedy)
+		}
+	})
+
+	t.Run("second candidate resolves like the hooks do", func(t *testing.T) {
+		requireGit(t)
+		repo := namedDir(t, "beta")
+		gitRepo(t, repo)
+		sub := filepath.Join(repo, "deploy")
+		if err := os.MkdirAll(sub, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// candidates for sub: [deploy, beta]; only beta is indexed.
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"beta"}, obligRules: 1, watermark: "wm"})
+		defer srv.Close()
+		got := checkObligationsServed(http.DefaultClient, srv.URL, sub, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass via the second candidate", got)
+		}
+		if !strings.Contains(got.Reason, "beta") {
+			t.Errorf("reason must name the resolved service: %s", got.Reason)
+		}
+	})
+
+	t.Run("zero rules and no watermark fails with the compile remedy naming the resolved service", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"alpha"}})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorFail || !strings.Contains(got.Remedy, "fathom compile --service alpha") {
+			t.Fatalf("got %+v, want fail with a compile remedy for the resolved service", got)
 		}
 	})
 
 	t.Run("served rules pass", func(t *testing.T) {
-		srv := fakeDoctorDaemon(t, 2, "2026-01-01T00:00:00Z", 0)
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"alpha"}, obligRules: 2, watermark: "2026-01-01T00:00:00Z"})
 		defer srv.Close()
-		got := checkObligationsServed(http.DefaultClient, srv.URL, "svc", true)
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
+		}
+		if strings.Contains(got.Reason, "drift status") {
+			t.Errorf("fresh rules must not carry the drift note: %s", got.Reason)
+		}
+	})
+
+	t.Run("stale-labeled rules pass with the drift count surfaced, never a clean-shaped pass", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"alpha"}, obligRules: 3, obligStale: 2, watermark: "wm"})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "2 of 3 rule(s) carry a drift status") {
+			t.Errorf("stale rules must be counted into the reason: %s", got.Reason)
+		}
+	})
+
+	t.Run("explicit --service outside the hook candidates passes with the injection-mismatch note", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"fathom"}, obligRules: 1, watermark: "wm"})
+		defer srv.Close()
+		root := namedDir(t, "sextant")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "fathom", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass", got)
+		}
+		if !strings.Contains(got.Reason, "NOT among the hook candidate IDs") {
+			t.Errorf("explicit service the hooks cannot resolve must carry the mismatch note: %s", got.Reason)
 		}
 	})
 }
@@ -721,17 +940,20 @@ func TestCheckSurfaceTraffic(t *testing.T) {
 		}
 	})
 
-	t.Run("zero calls fails — theater without an existence check", func(t *testing.T) {
-		srv := fakeDoctorDaemon(t, 1, "wm", 0)
+	t.Run("zero calls fails, scoped to this daemon process's lifetime", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
 		defer srv.Close()
 		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true)
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
+		if !strings.Contains(got.Reason, "since this daemon process started") {
+			t.Errorf("zero-calls reason must state the process-lifetime scope: %s", got.Reason)
+		}
 	})
 
 	t.Run("nonzero calls pass", func(t *testing.T) {
-		srv := fakeDoctorDaemon(t, 1, "wm", 3)
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 3})
 		defer srv.Close()
 		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true)
 		if got.Status != doctorPass {
@@ -812,13 +1034,13 @@ func TestCmdDoctor_AllPass(t *testing.T) {
 	svc := strings.ToLower(filepath.Base(dir))
 	head := writeAllPassFixture(t, dir, svc)
 
-	srv := fakeDoctorDaemon(t, 3, "2026-01-01T00:00:00Z", 5)
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{svc}, obligRules: 3, watermark: "2026-01-01T00:00:00Z", agentCalls: 5})
 	defer srv.Close()
 	writeClaudeRegistration(t, home, srv.URL)
 
 	old := doctorBinaryRevision
 	defer func() { doctorBinaryRevision = old }()
-	doctorBinaryRevision = func() (string, bool) { return head, true }
+	doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
 
 	var out, errOut bytes.Buffer
 	code := cmdDoctor([]string{"--path", dir, "--service", svc, "--url", srv.URL, "--harness", "claude"}, &out, &errOut)
@@ -840,14 +1062,14 @@ func TestCmdDoctor_DeadDaemon(t *testing.T) {
 
 	// Daemon that answers once (to get a URL) then is closed — dead by the
 	// time doctor queries it.
-	srv := fakeDoctorDaemon(t, 3, "2026-01-01T00:00:00Z", 5)
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{svc}})
 	deadURL := srv.URL
 	srv.Close()
 	writeClaudeRegistration(t, home, deadURL)
 
 	old := doctorBinaryRevision
 	defer func() { doctorBinaryRevision = old }()
-	doctorBinaryRevision = func() (string, bool) { return head, true }
+	doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
 
 	var out, errOut bytes.Buffer
 	code := cmdDoctor([]string{"--path", dir, "--service", svc, "--url", deadURL, "--harness", "claude"}, &out, &errOut)
@@ -866,13 +1088,13 @@ func TestCmdDoctor_JSON(t *testing.T) {
 	svc := strings.ToLower(filepath.Base(dir))
 	head := writeAllPassFixture(t, dir, svc)
 
-	srv := fakeDoctorDaemon(t, 3, "2026-01-01T00:00:00Z", 5)
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{svc}, obligRules: 3, watermark: "2026-01-01T00:00:00Z", agentCalls: 5})
 	defer srv.Close()
 	writeClaudeRegistration(t, home, srv.URL)
 
 	old := doctorBinaryRevision
 	defer func() { doctorBinaryRevision = old }()
-	doctorBinaryRevision = func() (string, bool) { return head, true }
+	doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
 
 	var out, errOut bytes.Buffer
 	code := cmdDoctor([]string{"--path", dir, "--service", svc, "--url", srv.URL, "--harness", "claude", "--json"}, &out, &errOut)
