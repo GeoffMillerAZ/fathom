@@ -11,7 +11,7 @@ for the full MCP tool reference.
 
 | Requirement | Notes |
 |---|---|
-| Go 1.26+ | CGO must be enabled (DuckDB) |
+| Go 1.26+ | CGO must be enabled — required by the tree-sitter extractor bindings (ADR-013), not the store (pure Go since SS-8/ADR-025) |
 | [CUE](https://cuelang.org) 0.16+ | Schema validation |
 | [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
 | [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |
@@ -22,7 +22,7 @@ Build and gate commands:
 ```sh
 task            # list available tasks
 task doctor     # toolchain + workspace health check
-task validate   # full gate: fmt-check + vet + cue-vet + go test -race (CGO/DuckDB)
+task validate   # full gate: fmt-check + vet + cue-vet + go test -race (CGO/tree-sitter)
 lefthook install
 ```
 
@@ -120,7 +120,7 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 |---|---|---|
 | `--service` | (required) | Logical service ID, e.g. `payment-service` |
 | `--path` | `.` | Source root directory (local mode) |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts.
@@ -153,7 +153,7 @@ fathom ingest-diff --service <id> [--path <dir>] [--base <git-ref>] [--store <pa
 | `--service` | (required) | Logical service ID |
 | `--path` | `.` | Source root directory |
 | `--base` | `""` | Git ref to diff against (e.g. `HEAD~1`, `main`). Empty = full ingest |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode |
 
 ```sh
@@ -180,7 +180,7 @@ fathom watch --service <id> --path <dir> [--interval <duration>] [--store <path>
 | `--service` | (required) | Logical service ID |
 | `--path` | (required) | Source root to watch |
 | `--interval` | `5s` | Polling interval, e.g. `5s`, `1m` |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode |
 
 `watch` uses mtime comparison. On any change it triggers a full `Ingest` for the service
@@ -206,7 +206,7 @@ fathom inspect --service <id> [--kind <SourceKind>] [--store <path>]
 |---|---|---|
 | `--service` | (required) | Service ID to inspect |
 | `--kind` | `""` | Filter by SourceKind (e.g. `GoFunc`, `GoType`, `K8sWorkload`) |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 
 ```sh
 fathom inspect --service my-service --kind GoFunc
@@ -234,7 +234,7 @@ fathom query --service <id> --concern <concern-id> [--keywords <kw,...>] [--top 
 | `--concern` | (required) | Concern ID to scope the query, e.g. `authentication`, `billing` |
 | `--keywords` | `""` | Comma-separated keywords for relevance scoring |
 | `--top` | `20` | Maximum results to return |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 
 When the concern-scoped query returns no results, the command falls back to a keyword
 substring search over all symbols for the service.
@@ -263,12 +263,13 @@ fathom serve-mcp --store <path> [--mode local|faux] [--auto-refresh]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--store` | (required) | store path (.duckdb or .sqlite/.db) |
+| `--store` | (required) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode |
 | `--auto-refresh` | `true` | Re-ingest a service when its git HEAD has drifted from the indexed commit, before answering the query (hash-gated, debounced per commit). Removes the manual staleness→ingest loop. Pass `--auto-refresh=false` to disable. |
 
-A second `serve-mcp` on the same store refuses with actionable guidance (DuckDB is
-single-writer). The process reads JSON-RPC 2.0 messages from stdin and writes responses to stdout. See
+If a second `serve-mcp` on the same store hits SQLite's busy/locked conflict (a write
+contending with another writer past `busy_timeout`, ADR-020), it refuses with actionable
+guidance rather than a bare driver error. The process reads JSON-RPC 2.0 messages from stdin and writes responses to stdout. See
 [Connecting an MCP client](#connecting-an-mcp-client) below and
 [mcp-tools.md](mcp-tools.md) for the full tool list.
 
@@ -284,7 +285,7 @@ fathom serve-http --store <path> [--addr <host:port>]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--store` | (required) | store path (.duckdb or .sqlite/.db) |
+| `--store` | (required) | store path (.sqlite/.db) |
 | `--addr` | `:7575` | Listen address |
 | `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
 | `--call-log` | `workspace/logs/mcp-calls.jsonl` | JSONL tool-call log, resolved against the daemon working directory; empty disables |
@@ -355,7 +356,7 @@ fathom platform-callers --store <path> --symbol <name> [--services a,b,c]
 | Flag | Default | Description |
 |---|---|---|
 | `--symbol` | (required) | Bare symbol name to find cross-repo callers of |
-| `--store` | `workspace/db/fathom.sqlite` | store path, .duckdb or .sqlite/.db (language-agnostic source) |
+| `--store` | `workspace/db/fathom.sqlite` | store path, .sqlite/.db (language-agnostic source) |
 | `--services` | (all in store) | Comma-separated service IDs to include |
 | `--repos` | — | Legacy Go-only mode: comma-separated `id=path` pairs; walks Go source on disk and overrides `--store` when set |
 
@@ -387,7 +388,7 @@ fathom gen-claude-md --service <id> [--store <path>] [--output <path>]
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--output` | `workspace/artifacts/CLAUDE.md` | Output file path |
 
 Output is deterministic: symbols are sorted by kind then name. The file includes a
@@ -417,7 +418,7 @@ fathom gen-status-cue --plan <file> --service <id> [--store <path>] [--output <p
 |---|---|---|
 | `--plan` | (required) | Path to a `.cue` or `.json` plan file |
 | `--service` | (required) | Service ID to verify against |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.duckdb or .sqlite/.db) |
+| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--output` | `workspace/artifacts/STATUS.cue` | Output CUE file path |
 | `--concern` | — | Optional concern to scope contradiction detection |
 
@@ -433,7 +434,9 @@ check never claims a test passes.
 
 ### `gen-platform-manifest`
 
-Generate a platform manifest YAML from `*.duckdb`/`*.sqlite` store files. The manifest lists service
+Generate a platform manifest YAML from `*.sqlite`/`*.db` store files (a stray `*.duckdb`
+file is still listed for visibility if it has no `.sqlite` sibling, but opening it will
+fail loudly — DuckDB stores are no longer supported, SS-8). The manifest lists service
 IDs and their store paths, suitable for feeding to `serve-http` platform mode.
 
 ```sh
@@ -442,7 +445,7 @@ fathom gen-platform-manifest --store-dir <dir> [--output <path>]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--store-dir` | (required) | Directory containing `*.duckdb`/`*.sqlite` files |
+| `--store-dir` | (required) | Directory containing `*.sqlite`/`*.db` files |
 | `--output` | `workspace/artifacts/platform-manifest.yaml` | Output YAML path |
 
 ```sh
@@ -452,37 +455,18 @@ fathom gen-platform-manifest --store-dir workspace/db/platform
 
 ---
 
-### `migrate-store`
+### `migrate-store` (removed, SS-8)
 
-Port an existing DuckDB store's eight non-derivable tables (`semantic_claims`,
-`claim_links`, `claim_events`, `compile_runs`, `service_meta`, `commits`,
-`knowledge_cards`, `doc_summaries`) into a freshly created SQLite store
-(ADR-020). The source is opened **read-only** and left byte-identical; every
-ported table is verified by re-reading it from the target and comparing
-content hashes (a mismatch fails the migration). Refuses an existing target
-that already has data. Only `observations` and `fingerprints` are left
-behind — they rebuild from source, and the command prints the exact
-re-ingest invocation per migrated service.
-
-```sh
-fathom migrate-store --from <path>.duckdb --to <path>.sqlite
-```
-
-| Flag | Default | Description |
-|---|---|---|
-| `--from` | (required) | Source DuckDB store path (must end in `.duckdb`) |
-| `--to` | (required) | Target SQLite store path (must end in `.sqlite`; must be absent or empty) |
-
-```sh
-fathom migrate-store --from workspace/db/fleet.duckdb --to workspace/db/fleet.sqlite
-# migrated workspace/db/fleet.duckdb -> workspace/db/fleet.sqlite (source opened read-only, unmodified)
-# table            rows  spot-hash (source==target verified)
-# ...
-```
-
-The full operator sequence (stop daemon → migrate → repoint → restart →
-re-ingest → delete the old `.duckdb`) is the ADR-020 runbook in
-[configuration.md](configuration.md).
+**No longer exists in this or any later build.** It ported an existing
+DuckDB store's eight non-derivable tables (`semantic_claims`, `claim_links`,
+`claim_events`, `compile_runs`, `service_meta`, `commits`, `knowledge_cards`,
+`doc_summaries`) into a freshly created SQLite store (ADR-020). Once the
+fleet had migrated and the daemon ran a full day green on SQLite, SS-8
+(`docs/plans/store-sqlite.md`; ADR-025) deleted the command along with the
+DuckDB driver it depended on — the trigger fired 2026-07-23. The historical
+runbook (what it did, in order) is kept as a historical note in
+[configuration.md](configuration.md); a genuine need to read an old
+`.duckdb` file requires a pre-SS-8 build of fathom.
 
 ---
 
@@ -802,7 +786,7 @@ query engine, and store. Import it without touching any `internal/` package.
 ```go
 import "github.com/geoffmilleraz/fathom/pkg/client"
 
-// Open (or create) a DuckDB store; wire a local-mode connector.
+// Open (or create) a SQLite store; wire a local-mode connector.
 c, err := client.NewConstantClient(client.ModeLocal, "workspace/db/fathom.sqlite")
 if err != nil { /* handle */ }
 defer c.Close()
@@ -852,7 +836,7 @@ Available modes:
 | `client.ModeFaux` | `FauxConnector` | Reads from `testdata/fauxtown/` fixture |
 | `client.ModeGitHub` | `GitHubConnector` | Reads via `gh` CLI (requires `gh`) |
 
-Pass `""` for `storePath` to use an in-memory DuckDB database (useful in tests).
+Pass `""` for `storePath` to use an in-memory SQLite database (useful in tests).
 
 ---
 

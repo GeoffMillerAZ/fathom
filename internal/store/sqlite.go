@@ -86,10 +86,11 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	return s, nil
 }
 
-// createSchema creates the fixed, final-column schema. Unlike DuckStore
-// there is no ALTER-TABLE migration cruft here: every SQLite store is
-// created fresh by this slice (migrate-store ports data from an existing
-// DuckDB store rather than upgrading an old SQLite one in place).
+// createSchema creates the fixed, final-column schema. Unlike the old
+// DuckStore backend (deleted in SS-8) there is no ALTER-TABLE migration
+// cruft here: every SQLite store was created fresh from this slice onward —
+// the now-removed `migrate-store` command ported data from an existing
+// DuckDB store rather than upgrading an old SQLite one in place.
 func (s *SQLiteStore) createSchema() error {
 	const ddl = `
 CREATE TABLE IF NOT EXISTS observations (
@@ -1207,4 +1208,79 @@ func (s *SQLiteStore) DeleteTypedEdgePackage(ctx context.Context, serviceID, pkg
 // Close releases the underlying database connection pool.
 func (s *SQLiteStore) Close() error {
 	return s.db.Close()
+}
+
+// scanObservations scans a full observations row-set (the shared column
+// order QueryObservations/ListSourceRefs' callers rely on). Backend-agnostic
+// (operates on *sql.Rows only) — kept here as SQLiteStore's sole consumer
+// since SS-8 deleted the DuckStore backend that used to share it.
+func scanObservations(rows *sql.Rows) ([]core.Observation, error) {
+	var result []core.Observation
+	for rows.Next() {
+		var (
+			o          core.Observation
+			callsJSON  string
+			ingestedAt int64
+		)
+		if err := rows.Scan(
+			&o.ServiceID,
+			&o.ConcernID,
+			&o.SourceRef,
+			(*string)(&o.SourceKind),
+			(*string)(&o.EvidenceTier),
+			&o.Symbol,
+			&o.Package,
+			&o.Claim,
+			&o.ContentHash,
+			&callsJSON,
+			&o.Complexity,
+			&o.Line,
+			&ingestedAt,
+			&o.ToolKind,
+			&o.Generated,
+		); err != nil {
+			return nil, fmt.Errorf("scanObservations scan: %w", err)
+		}
+		if err := json.Unmarshal([]byte(callsJSON), &o.Calls); err != nil {
+			return nil, fmt.Errorf("scanObservations unmarshal calls: %w", err)
+		}
+		o.IngestedAt = time.Unix(0, ingestedAt).UTC()
+		result = append(result, o)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scanObservations rows: %w", err)
+	}
+	return result, nil
+}
+
+// scanClaims scans a full semantic_claims row-set (the shared column order
+// ClaimsForService's callers rely on). Backend-agnostic — see scanObservations.
+func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
+	var result []core.SemanticClaim
+	for rows.Next() {
+		var (
+			c          core.SemanticClaim
+			scopeJSON  string
+			compiledAt int64
+		)
+		if err := rows.Scan(
+			&c.ServiceID, &c.ClaimID,
+			&c.Layer, &c.LayerVersion, &c.Kind, &c.Subject, &c.Rule, &scopeJSON,
+			(*string)(&c.Tier), &c.TierProfile,
+			(*string)(&c.Status),
+			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
+			&c.CompiledAtWatermark, &compiledAt,
+		); err != nil {
+			return nil, fmt.Errorf("scanClaims scan: %w", err)
+		}
+		if err := json.Unmarshal([]byte(scopeJSON), &c.Scope); err != nil {
+			return nil, fmt.Errorf("scanClaims unmarshal scope: %w", err)
+		}
+		c.CompiledAt = time.Unix(0, compiledAt).UTC()
+		result = append(result, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scanClaims rows: %w", err)
+	}
+	return result, nil
 }

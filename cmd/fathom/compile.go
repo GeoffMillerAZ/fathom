@@ -33,7 +33,7 @@ func cmdCompile(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	layer := fs.String("layer", "obligations", "layer to compile (must be defined in the semantic-layer manifest, schema/semantic/schema.cue; see ADR-016)")
 	dryRun := fs.Bool("dry-run", true, "estimate cost without calling the LLM (default true; use --dry-run=false to spend)")
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	profile := fs.String("profile", "", "named LLM profile from ~/.fathom/config.toml or project .fathom/config.toml (direct --store mode only; HTTP mode uses the daemon's own configured profile — CF-3, docs/plans/config-experience.md); default: the config's default_profile, or the env-only lanes when no config file defines one")
 	force := fs.Bool("force", false, "A2-1 (docs/plans/activation.md): override the idempotency guard and recompile even when the store's latest compile_run for (service, layer) already ran at the same corpus watermark and prompt identity (direct --store mode only). Logged into the new compile_runs row.")

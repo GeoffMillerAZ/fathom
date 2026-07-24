@@ -35,7 +35,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fs := newFlagSet("serve-http", stderr)
-	storePath := fs.String("store", loaded.Config.Daemon.Store, "store path, .duckdb or .sqlite/.db (required; [daemon].store in config.toml, or --store)")
+	storePath := fs.String("store", loaded.Config.Daemon.Store, "store path, .sqlite/.db (required; [daemon].store in config.toml, or --store)")
 	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
 	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, "workspace/logs/mcp-calls.jsonl"), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")

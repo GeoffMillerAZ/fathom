@@ -111,7 +111,7 @@ func cmdWatch(args []string, stdout, stderr io.Writer) int {
 	fs2 := newFlagSet("watch", stderr)
 	service := fs2.String("service", "", "logical service ID (required)")
 	path := fs2.String("path", "", "path to service source root (required)")
-	storePath := fs2.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db)")
+	storePath := fs2.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
 	interval := fs2.Duration("interval", 5*time.Second, "polling interval (e.g. 5s, 1m)")
 	mode := fs2.String("mode", "local", "connector mode: local or faux")
 

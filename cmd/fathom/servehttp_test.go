@@ -19,7 +19,7 @@ import (
 // a temp store, then wraps it in the HTTP handler under test.
 func newTestHandler(t *testing.T) http.Handler {
 	t.Helper()
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	c, err := client.NewConstantClient(client.ModeLocal, store)
 	if err != nil {
 		t.Fatalf("NewConstantClient: %v", err)
@@ -286,7 +286,7 @@ func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 // records the pass-through with off_surface:true. Hard gating (the
 // pre-amendment behavior) stays available behind Server.strictSurfaces.
 func TestServeHTTPOffSurfaceExecutesAndFlags(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	c, err := client.NewConstantClient(client.ModeLocal, store)
 	if err != nil {
 		t.Fatalf("NewConstantClient: %v", err)
@@ -365,7 +365,7 @@ func TestServeHTTPTrailingSlashDiagnostic(t *testing.T) {
 // generic tool-not-found error as any other unregistered name.
 
 func TestServeHTTPCallLogRecordsSurface(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	c, err := client.NewConstantClient(client.ModeLocal, store)
 	if err != nil {
 		t.Fatalf("NewConstantClient: %v", err)

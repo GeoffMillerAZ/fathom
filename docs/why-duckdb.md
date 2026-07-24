@@ -1,13 +1,19 @@
 # Why DuckDB?
 
-> **Superseded (ADR-020, 2026-07-22).** The default store backend is now pure-Go SQLite
-> in WAL mode — cross-process concurrent readers beside a live writer outweighed the
-> columnar-scan advantage this page describes, once the daemon/CLI wedge cost of
-> DuckDB's single-writer lock was counted honestly. DuckDB stays compiled in for this
-> migration slice (`migrate-store` needs it as the source backend) and is removed once
-> the operator's fleet store has migrated (ADR-020's SS-8, tracked in
-> `docs/plans/store-sqlite.md`). This page is kept as the historical rationale for why
-> DuckDB was chosen in the first place — read it as "why DuckDB, then", not current
+> **Superseded (ADR-020, 2026-07-22) and removed (ADR-025, SS-8, 2026-07-23).**
+> The store backend is pure-Go SQLite in WAL mode — cross-process concurrent
+> readers beside a live writer outweighed the columnar-scan advantage this
+> page describes, once the daemon/CLI wedge cost of DuckDB's single-writer
+> lock was counted honestly. DuckDB stayed compiled in only through the
+> migration slice (`migrate-store` needed it as the source backend); once the
+> fleet store had migrated and the daemon ran a full day green on SQLite
+> (`docs/plans/store-sqlite.md`'s SS-8 trigger), the DuckDB driver, its
+> bindings, `migrate-store` itself, and the CGO/deployment-target
+> requirements they carried were all deleted outright. There is no DuckDB
+> code left in this repo — a `.duckdb` store path now fails loudly
+> (`store.BackendForPath`) naming a pre-SS-8 build as the only way to read
+> one. This page is kept as the historical rationale for why DuckDB was
+> chosen in the first place — read it as "why DuckDB, then", not current
 > guidance on which backend to pick.
 
 Fathom used **DuckDB** (`github.com/marcboeker/go-duckdb/v2`) as its storage engine.

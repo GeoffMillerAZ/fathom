@@ -43,7 +43,7 @@ func TestStorePortability_RoundTrip(t *testing.T) {
 	writeCorpusFile(t, filepath.Join(rootA, "mod", "anchor.go"), portGoSrc)
 	writeCorpusFile(t, filepath.Join(rootA, "docs", "spec.md"), "# spec\nAnchor returns 42.\n")
 
-	storePath := filepath.Join(t.TempDir(), "module.duckdb")
+	storePath := filepath.Join(t.TempDir(), "module.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -76,8 +76,8 @@ func TestStorePortability_RoundTrip(t *testing.T) {
 	}
 
 	// "Move" the corpus: copy to location B, delete A, remap the store's
-	// service root. This simulates shipping the .duckdb + corpus to another
-	// machine.
+	// service root. This simulates shipping the .sqlite store + corpus to
+	// another machine.
 	rootB := t.TempDir()
 	if err := os.CopyFS(rootB, os.DirFS(rootA)); err != nil {
 		t.Fatalf("copy corpus: %v", err)

@@ -21,7 +21,7 @@ func TestGenClaudeMdMissingService(t *testing.T) {
 // verifying that the output file exists and contains expected sections.
 func TestGenClaudeMd_EndToEnd(t *testing.T) {
 	storeDir := t.TempDir()
-	store := filepath.Join(storeDir, "test.duckdb")
+	store := filepath.Join(storeDir, "test.sqlite")
 	outputDir := t.TempDir()
 	outputPath := filepath.Join(outputDir, "CLAUDE.md")
 	paymentPath := fauxPaymentPathForTest(t)
@@ -79,7 +79,7 @@ func TestGenClaudeMd_DefaultOutput(t *testing.T) {
 	// exist (empty store in a temp dir), the command should still exit 0 and
 	// create the file.
 	storeDir := t.TempDir()
-	store := filepath.Join(storeDir, "empty.duckdb")
+	store := filepath.Join(storeDir, "empty.sqlite")
 
 	// Create an empty store by opening / immediately closing a local client.
 	// (We can't call client.Open directly but cmdIngest will create it.)

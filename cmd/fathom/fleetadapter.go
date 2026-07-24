@@ -10,7 +10,7 @@ import (
 
 // fleetAdapter exposes a single multi-service store client as the
 // mcp.FleetBackend interface, so fleet tools (list_services,
-// query_cross_service, fleet_drift, cross_repo_callers) work when one DuckDB
+// query_cross_service, fleet_drift, cross_repo_callers) work when one SQLite
 // file holds many services — no per-service store directory required.
 //
 // The FleetBackend interface is synchronous and error-free by design; errors

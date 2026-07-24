@@ -1,12 +1,14 @@
 // Package store defines the persistence interface for fathom observations and
-// the fingerprint (hash-gate) index. Three implementations are provided:
-// SQLiteStore (pure-Go, WAL-mode SQLite via modernc.org/sqlite — the default,
-// ADR-020), DuckStore (DuckDB-backed, retained for migration until SS-8), and
-// MemoryStore (in-process fake, for fast unit tests and session-mode
-// operation). store.Open (or the lower-level store.BackendForPath) dispatches
-// to SQLiteStore or DuckStore by file extension; callers that need a specific
-// backend regardless of extension call store.NewSQLiteStore / store.OpenDuckDB
-// directly.
+// the fingerprint (hash-gate) index. Two implementations are provided:
+// SQLiteStore (pure-Go, WAL-mode SQLite via modernc.org/sqlite — the only
+// on-disk backend, ADR-020) and MemoryStore (in-process fake, for fast unit
+// tests and session-mode operation). The DuckDB backend that predated
+// SQLiteStore was deleted outright in SS-8 once the fleet finished migrating
+// (docs/plans/store-sqlite.md; ADR-025) — CGO is no longer a build
+// requirement anywhere in this package. store.Open (or the lower-level
+// store.BackendForPath) dispatches to SQLiteStore by file extension
+// (".sqlite"/".db"); callers that need the concrete type directly call
+// store.NewSQLiteStore.
 package store
 
 import (

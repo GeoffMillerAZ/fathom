@@ -1,11 +1,18 @@
 version: '3'
 
 # Uniform command runner for fathom. `task validate` is the full gate
-# (also run by lefthook pre-push). Tests run with CGO (DuckDB driver).
+# (also run by lefthook pre-push). Tests run with CGO — required by the
+# tree-sitter extractor bindings (ADR-013), NOT by the store: internal/store
+# is pure Go (modernc.org/sqlite, ADR-020) since SS-8 deleted the DuckDB
+# backend outright (ADR-025). CGO drops to zero once tree-sitter moves to
+# wazero/WASM (ADR-004's documented future path — XT-6b, a separate,
+# not-yet-triggered slice).
 
 env:
   CGO_ENABLED: '1'
-  # Match the prebuilt DuckDB static libs to silence ld version-mismatch warnings.
+  # Match the tree-sitter grammar packages' compiled objects to silence ld
+  # version-mismatch warnings (previously justified by DuckDB's prebuilt
+  # static libs, deleted in SS-8 — tree-sitter's CGO objects need this too).
   MACOSX_DEPLOYMENT_TARGET: '14.0'
 
 vars:
@@ -52,7 +59,7 @@ tasks:
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:
-    desc: Run all tests (race + CGO/DuckDB)
+    desc: Run all tests (race + CGO/tree-sitter)
     cmds: ["{{.GO}} test -race ./..."]
 
   test-unit:
@@ -93,7 +100,7 @@ tasks:
       - 'echo "cgo:       CGO_ENABLED=$CGO_ENABLED"'
       - 'echo "cue:       $(cue version 2>/dev/null | head -1 || echo missing)"'
       - 'echo "lefthook:  $(lefthook version 2>/dev/null || echo missing)"'
-      - 'echo "duckdb:    $({{.GO}} list -m github.com/marcboeker/go-duckdb/v2 2>/dev/null || echo not-required-yet)"'
+      - 'echo "tree-sitter: $({{.GO}} list -m github.com/tree-sitter/go-tree-sitter 2>/dev/null || echo missing)"  # the CGO reason post-SS-8; DuckDB (the old reason) was deleted outright'
       - 'echo "agentic-kit: $({{.GO}} list -m github.com/geoffmilleraz/agentic-kit 2>/dev/null || echo missing)"'
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 

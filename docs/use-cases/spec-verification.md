@@ -115,7 +115,7 @@ Result: `[US-103]` shows no implementing symbols (uncovered). The symbol was nev
 
 Result: no contradictions found. Good — the two unfinished tasks are gaps, not conflicts.
 
-**5. After fixing T-02 and T-03**, re-ingest via the MCP `ingest` tool (not the CLI, because the session holds the DuckDB lock):
+**5. After fixing T-02 and T-03**, re-ingest via the MCP `ingest` tool (not the CLI — a concurrent CLI write can contend with the session's own write and fail past `busy_timeout`, SQLite serializes writers per ADR-020):
 
 ```json
 { "service": "my-service" }
@@ -161,7 +161,7 @@ bin/fathom verify --strict --service <service> --plan docs/plans/my-plan.md \
   --store workspace/db/fleet.sqlite   # or omit to use the HTTP daemon
 ```
 
-**HTTP-first, store fallback:** by default `fathom verify` queries `http://localhost:7575/rpc` (the shared daemon). Pass `--store <path>` to bypass the daemon and query a DuckDB file directly — useful in CI environments without a running daemon.
+**HTTP-first, store fallback:** by default `fathom verify` queries `http://localhost:7575/rpc` (the shared daemon). Pass `--store <path>` to bypass the daemon and query a SQLite file directly — useful in CI environments without a running daemon.
 
 ## Computed progress and archival (`fathom plans`)
 
@@ -223,7 +223,7 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 **Concern is optional for `verify_plan` but strongly recommended.** Without a concern, the scan covers the full service index. With a concern it covers only the relevant slice, which is ~77% fewer tokens in practice.
 
-**Re-ingest during a session:** Call the `ingest` MCP tool in-session. Do not use `fathom ingest` from the CLI while a session holds the single-writer DuckDB lock — it will fail. The MCP route is the correct path.
+**Re-ingest during a session:** Call the `ingest` MCP tool in-session. A concurrent `fathom ingest` from the CLI can contend with the session's own write (SQLite serializes writers, ADR-020) and fail past `busy_timeout`. The MCP route is the correct path.
 
 **Staleness:** If `serve-mcp` has been running since before the last commit, results may be stale. Check with `staleness_report` or call `ingest` proactively at session start.
 

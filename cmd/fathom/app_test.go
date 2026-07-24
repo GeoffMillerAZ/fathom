@@ -118,7 +118,7 @@ func TestInspectMissingService(t *testing.T) {
 // the test hermetic.
 
 func TestIngestThenQuery(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	paymentPath := fauxPaymentPath()
 
 	// Step 1 — ingest using ModeFaux (--path is ignored by the faux connector but
@@ -164,7 +164,7 @@ func TestIngestThenQuery(t *testing.T) {
 // ─── ingest then inspect (end-to-end Faux fixture) ───────────────────────────
 
 func TestIngestThenInspect(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	paymentPath := fauxPaymentPath()
 
 	var ingestOut, ingestErr bytes.Buffer

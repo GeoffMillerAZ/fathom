@@ -148,7 +148,7 @@ func TestLayers_Install_RejectsInvalidPack(t *testing.T) {
 
 func TestLayers_List_WithStoreShowsClaimCounts(t *testing.T) {
 	root := t.TempDir()
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -193,7 +193,7 @@ func TestLayers_List_WithStoreShowsClaimCounts(t *testing.T) {
 // uninstall verb).
 func TestLayers_List_SurfacesOrphanedLayers(t *testing.T) {
 	root := t.TempDir() // no project packs
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -282,7 +282,7 @@ func TestLayers_Install_RefusesOverwriteWithoutForce(t *testing.T) {
 func TestLayers_List_StoreRequiresService(t *testing.T) {
 	root := t.TempDir()
 	var out, errBuf bytes.Buffer
-	code := run([]string{"layers", "list", "--root", root, "--store", "workspace/db/fathom.duckdb"}, &out, &errBuf)
+	code := run([]string{"layers", "list", "--root", root, "--store", "workspace/db/fathom.sqlite"}, &out, &errBuf)
 	if code == 0 {
 		t.Fatal("layers list --store without --service: want non-zero exit")
 	}
@@ -326,7 +326,7 @@ func TestLayers_List_ShowsEvalColumnFromManifestData(t *testing.T) {
 
 func TestLayers_List_WithStoreShowsLastCompileDate(t *testing.T) {
 	root := t.TempDir()
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

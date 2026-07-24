@@ -138,7 +138,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 
-**Re-ingest when stale**: `serve-mcp` is a long-running process; the index can fall behind after commits. Check `staleness_report` or inspect the `staleness` field on `query_symbols` results. To refresh in-session, call the `ingest` MCP tool — do not use the CLI `ingest` subcommand while the session holds the single-writer DuckDB lock.
+**Re-ingest when stale**: `serve-mcp` is a long-running process; the index can fall behind after commits. Check `staleness_report` or inspect the `staleness` field on `query_symbols` results. To refresh in-session, call the `ingest` MCP tool — a concurrent CLI `ingest` can contend with the session's own writes (SQLite serializes writers, ADR-020) and fail past `busy_timeout`.
 
 **Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom.
 

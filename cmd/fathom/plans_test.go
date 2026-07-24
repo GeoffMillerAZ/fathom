@@ -24,7 +24,7 @@ func plansFixtureFiles(t *testing.T) []string {
 // into a fresh store so the fixture plans' claimed symbols resolve.
 func seedPlansFixtureStore(t *testing.T) string {
 	t.Helper()
-	storePath := filepath.Join(t.TempDir(), "test.duckdb")
+	storePath := filepath.Join(t.TempDir(), "test.sqlite")
 	var ing bytes.Buffer
 	code := run([]string{
 		"ingest", "--service", "payment-service",

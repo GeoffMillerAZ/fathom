@@ -152,7 +152,7 @@ func TestParseAnnotation_TrailingBlockRule(t *testing.T) {
 		t.Errorf("title lost its code literal: %q", title)
 	}
 	// A prose example annotation earlier in the line stays prose.
-	m2, _ := parseAnnotation("Prove `{symbol: DuckStore.PurgeSource}` flips {id: X-1, symbol: Real}")
+	m2, _ := parseAnnotation("Prove `{symbol: SQLiteStore.PurgeSource}` flips {id: X-1, symbol: Real}")
 	if m2["symbol"] != "Real" || m2["id"] != "X-1" {
 		t.Errorf("prose example hijacked the contract: %v", m2)
 	}

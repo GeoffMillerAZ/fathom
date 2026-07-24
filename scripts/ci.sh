@@ -10,7 +10,9 @@
 #
 # Environment:
 #   TASK_FLAGS   Extra flags forwarded to the `task` invocation (default: empty).
-#   CGO_ENABLED  Defaults to 1 (required by the DuckDB driver).
+#   CGO_ENABLED  Defaults to 1 (required by the tree-sitter extractor bindings,
+#                ADR-013 — NOT by the store, which is pure Go since SS-8 deleted
+#                the DuckDB backend, ADR-025).
 
 set -euo pipefail
 

@@ -208,7 +208,7 @@ func TestReport_ReverseDrift_CLIWiring(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "loose.go"), []byte(looseSrc), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(t.TempDir(), "findings")
 
 	var ingestOut, ingestErr bytes.Buffer

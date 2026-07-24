@@ -28,9 +28,10 @@ Layer                concern-scoped · evidence-tiered · staleness-aware
 
 - **Go** is parsed natively (`go/parser`); other languages via tree-sitter
   grammars run in the pure-Go **wazero/WASM** runtime (ADR-004).
-- Storage is pure-Go **SQLite** (WAL mode) by default (ADR-020); DuckDB
-  (ADR-003) remains temporarily as a migration-era backend, hence the CGO
-  build requirement below, until it's fully removed.
+- Storage is pure-Go **SQLite** (WAL mode) — the only on-disk backend
+  (ADR-020); DuckDB (ADR-003) was deleted outright once the fleet migrated
+  (ADR-025, SS-8). The store needs no CGO at all; the CGO build requirement
+  below is entirely the tree-sitter extractor bindings (ADR-013).
 - Evidence tiers (`verified` › `pre-scan` › `doc-claimed` › `sme-stated` ›
   `assumed`) come from **[agentic-kit](../agentic-kit)** — fathom builds on that
   governed-evidence platform (ADR-009).
@@ -60,11 +61,12 @@ harness.
 ```sh
 task            # list tasks
 task doctor     # toolchain + workspace health
-task validate   # full gate: fmt-check + vet + cue-vet + go test -race (CGO/DuckDB)
+task validate   # full gate: fmt-check + vet + cue-vet + go test -race (CGO/tree-sitter)
 lefthook install
 ```
 
-Requires: Go 1.26+, **CGO enabled** (DuckDB), [CUE](https://cuelang.org) 0.16+,
+Requires: Go 1.26+, **CGO enabled** (tree-sitter extractor bindings, ADR-013 —
+not the store, which is pure Go), [CUE](https://cuelang.org) 0.16+,
 [go-task](https://taskfile.dev), [lefthook](https://github.com/evilmartians/lefthook).
 The sibling `../agentic-kit` module is wired via `go.work` + a `replace` for
 local dev. Don't have `../agentic-kit`? Nothing to do — `go.mod`'s `replace`
@@ -101,7 +103,7 @@ fathom serve-mcp                       # stdio MCP server for editors/agents
 | [docs/layers.md](docs/layers.md) | Semantic-layer catalog — `obligations`, `findings`, `adr-rules`, `spec-bindings`, module-pack shape, the `fathom layers` verb |
 | [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: all tools, prompts, and resources |
 | [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
-| [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that — historical rationale |
+| [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that and ADR-025/SS-8 removed DuckDB outright — historical rationale |
 | [docs/claude-code-integration.md](docs/claude-code-integration.md) | Superseded for wiring by `docs/adoption/claude-code.md` — kept for its measured-assessment content ([assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md)) |
 
 ## Layout

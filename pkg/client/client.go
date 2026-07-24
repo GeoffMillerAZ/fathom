@@ -91,9 +91,9 @@ func New(conn connector.Connector, st store.Store) *Client {
 	return &Client{pipe: pipe, engine: eng, st: st, conn: conn}
 }
 
-// NewConstantClient opens (or creates) a DuckDB store at storePath and
-// wires the connector selected by mode. Pass "" for storePath to use an
-// in-memory DuckDB database.
+// NewConstantClient opens (or creates) a store at storePath — SQLite for a
+// ".sqlite"/".db" path (ADR-020) — and wires the connector selected by mode.
+// Pass "" for storePath to use an in-memory SQLite database.
 //
 // For ModeFaux the storePath may be "" (memory) or any writable path; the
 // connector always reads from the in-repo testdata/fauxtown fixture.

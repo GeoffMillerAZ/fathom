@@ -32,7 +32,7 @@ func seedClaim(t *testing.T, storePath, service, claimID string) {
 }
 
 func TestClaim_Refute_FlipsStatusAndAppendsEvent(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	seedClaim(t, storePath, "wa-review", "cl-1")
 
 	var out, errBuf bytes.Buffer
@@ -73,7 +73,7 @@ func TestClaim_Refute_FlipsStatusAndAppendsEvent(t *testing.T) {
 }
 
 func TestClaim_Corroborate_NeverPromotesStatus(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	seedClaim(t, storePath, "wa-review", "cl-2")
 
 	var out, errBuf bytes.Buffer
@@ -116,7 +116,7 @@ func TestClaim_Corroborate_NeverPromotesStatus(t *testing.T) {
 }
 
 func TestClaim_Errors(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	seedClaim(t, storePath, "wa-review", "cl-3")
 
 	cases := []struct {

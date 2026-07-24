@@ -2,7 +2,7 @@ package client_test
 
 // expertmodule_test.go — the expert-module v1 contract
 // (docs/design/expert-modules.md §7): a NON-GIT findings corpus becomes a
-// standalone module — one .duckdb store carrying the index, compiled claims
+// standalone module — one .sqlite store carrying the index, compiled claims
 // with citations, honest non-git freshness (manifest watermark + sweep), and
 // portability (move corpus + remap → everything still answers). This test is
 // D-EM1 (corpus-agnostic core) and D-EM2 (the store IS the module) in code.
@@ -53,7 +53,7 @@ func TestExpertModule_NonGitCorpus_EndToEnd(t *testing.T) {
 	writeCorpusFile(t, filepath.Join(rootA, "mod", "pricing.go"), modPricingSrc)
 	writeCorpusFile(t, filepath.Join(rootA, "findings", "wa-001.md"), findingDoc)
 
-	storePath := filepath.Join(t.TempDir(), "wa-review.duckdb")
+	storePath := filepath.Join(t.TempDir(), "wa-review.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

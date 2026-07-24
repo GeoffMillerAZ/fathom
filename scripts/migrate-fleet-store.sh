@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 #
+# ⚠️ HISTORICAL — completed 2026-07-23; retained for reference only.
+#
+# This ran once, successfully (see workspace/logs/store-migration-stamp.txt
+# on the fleet checkout). SS-8 (docs/plans/store-sqlite.md; ADR-025) then
+# deleted the `migrate-store` CLI command and its DuckDB read path outright,
+# since the trigger for removal ("operator runs migrate-store on the fleet
+# DB and the daemon runs a full day green on sqlite") had fired. Step 4/8
+# below (`$BIN migrate-store ...`) can no longer succeed against any binary
+# built from this repo post-SS-8 — a re-run needs a pre-SS-8 build. Kept as
+# the executable record of exactly what the migration did.
+#
 # One-shot ADR-020 fleet-store migration: DuckDB -> SQLite, plus the daemon
 # binary move to ~/.local/libexec (decouples the running daemon from
 # post-commit rebuilds of bin/fathom, so a crash can never silently respawn

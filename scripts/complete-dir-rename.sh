@@ -36,7 +36,7 @@ UID_NUM="$(id -u)"
 say() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m! %s\033[0m\n' "$*"; }
 
-# 1. Stop the daemon so nothing holds the old path / DuckDB lock during the move.
+# 1. Stop the daemon so nothing holds the old path / store lock during the move.
 say "Stopping daemon ${LABEL} (ignore 'No such process' if already down)"
 launchctl bootout "gui/${UID_NUM}/${LABEL}" 2>/dev/null || true
 

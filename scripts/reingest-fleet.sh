@@ -38,7 +38,7 @@ declare -A SERVICE_PATHS=(
 echo "==> fathom fleet re-ingest  (store: $STORE)"
 [ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $FATHOM_REPO && go build -o bin/fathom ./cmd/fathom)"; exit 1; }
 
-echo "==> stopping the daemon (releases the single-writer DuckDB lock)"
+echo "==> stopping the daemon (releases the SQLite write lock)"
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 for _ in $(seq 1 15); do pgrep -f "bin/fathom serve-http" >/dev/null || break; sleep 1; done
 if pgrep -f "bin/fathom serve-http" >/dev/null; then

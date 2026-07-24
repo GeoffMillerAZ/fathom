@@ -24,7 +24,7 @@ fathom verify --service <svc> --plan docs/plans/<plan>.md
   one invocation.
 - Talks to the daemon over HTTP by default (`--url`, default
   `http://localhost:7575` or `$FATHOM_HTTP`). Pass `--store <path>` (a
-  `.sqlite`/`.db`/`.duckdb` file) to verify directly against a store,
+  `.sqlite`/`.db` file) to verify directly against a store,
   bypassing the daemon entirely — this is what CI should do (build its own
   store, never trust a live daemon).
 - `--strict`: claimed-but-`Unknown` tasks (e.g. no-contract lines, or a

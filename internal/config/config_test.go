@@ -278,7 +278,7 @@ func TestLoad_DaemonTable(t *testing.T) {
 	userPath := filepath.Join(dir, "user.toml")
 	writeTOML(t, userPath, `
 [daemon]
-store = "workspace/db/fleet.duckdb"
+store = "workspace/db/fleet.sqlite"
 addr = "127.0.0.1:7575"
 auto_refresh = false
 default_profile = "work"
@@ -288,7 +288,7 @@ default_profile = "work"
 		t.Fatalf("Load: %v", err)
 	}
 	d := loaded.Config.Daemon
-	if d.Store != "workspace/db/fleet.duckdb" || d.Addr != "127.0.0.1:7575" || d.DefaultProfile != "work" {
+	if d.Store != "workspace/db/fleet.sqlite" || d.Addr != "127.0.0.1:7575" || d.DefaultProfile != "work" {
 		t.Errorf("daemon = %+v", d)
 	}
 	if d.AutoRefresh == nil || *d.AutoRefresh != false {

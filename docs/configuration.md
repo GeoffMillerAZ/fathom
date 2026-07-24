@@ -285,17 +285,23 @@ fathom smoke --profile ci                     # confirm ci actually completes, s
 fathom compile --service myrepo --profile gov-bedrock --dry-run=false
 ```
 
-## Migrating the store from DuckDB to SQLite (ADR-020 runbook)
+## Migrating the store from DuckDB to SQLite (historical — ADR-020/ADR-025)
 
-One-time, per machine, once this build is deployed. The daemon cannot be
-running during the migration — it holds the DuckDB store open, and
-`migrate-store` opens the source read-only (a held write lock fails the
-open with a message pointing back here).
+**This runbook is historical.** The fleet migrated on 2026-07-23
+(`workspace/logs/store-migration-stamp.txt` on the fleet checkout records
+the exact binary + timestamp), the daemon ran a full day green on SQLite,
+and SS-8 (`docs/plans/store-sqlite.md`) then deleted the DuckDB backend, the
+`migrate-store` CLI command, and the CGO/deployment-target build
+requirements it needed — outright. There is no DuckDB source to migrate
+FROM in any build of fathom past that point; a `.duckdb` store path now
+fails loudly with a typed error (`store.BackendForPath`) naming a pre-SS-8
+build as the only way to read one. `scripts/migrate-fleet-store.sh` is kept,
+also marked historical, as the executable record of exactly what the
+migration ran.
 
-**Executable form:** `bash scripts/migrate-fleet-store.sh` runs every step
-below (plus the daemon-binary install to `~/.local/libexec/fathom/` and
-post-restart verification) from a real terminal in one shot. The manual
-steps remain the reference.
+The steps below are preserved for that historical record only — do not
+follow them against a current build; `bin/fathom migrate-store` no longer
+exists.
 
 ```sh
 # 1. Stop the daemon (launchd label may differ; see your plist).
@@ -332,6 +338,11 @@ fathom store path (e.g. agentic-kit's) must be repointed to the new
 `fleet.sqlite` path at the same time, or it will fail (or worse, recreate a
 stale-path store) on its next commit.
 
-**Rollback:** the source `.duckdb` is untouched by the migration — repoint
-the daemon back at it and delete the `.sqlite` (and its `-wal`/`-shm`
-sidecars) to return to the pre-migration state.
+**Rollback (historical):** the source `.duckdb` was left untouched by the
+migration; rolling back meant repointing the daemon at it and deleting the
+`.sqlite` (and its `-wal`/`-shm` sidecars). Post-SS-8 this is no longer a
+live option — the DuckDB backend that would open the `.duckdb` file is
+gone; a genuine rollback needs a pre-SS-8 build of fathom. The on-disk
+`workspace/db/fleet.duckdb` rollback file itself is left for the operator to
+delete manually once they're satisfied it's no longer needed — SS-8's
+removal work does not touch it.

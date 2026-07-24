@@ -148,7 +148,7 @@ Then switch back to `investigation` or `coding` when done. Over the shared HTTP 
 { "name": "ingest", "arguments": { "service": "auth-lib" } }
 ```
 
-After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `fathom ingest` will fail while a Claude Code session holds the single-writer DuckDB lock — use the MCP `ingest` tool instead.
+After ingest, verify the `Package` column and `Calls` edges are present by checking `find_callees` on a known symbol. CLI `fathom ingest` can contend with a concurrent Claude Code session's own write (SQLite serializes writers, ADR-020) and fail past `busy_timeout` — use the MCP `ingest` tool instead.
 
 **Staleness matters for impact analysis.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` before a blast-radius review. If `reingest_recommended` is `true`, call `ingest` before proceeding — stale call edges produce false negatives (missing callers).
 

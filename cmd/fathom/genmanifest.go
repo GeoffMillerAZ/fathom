@@ -54,10 +54,13 @@ func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 		}
 		names = append(names, e.Name())
 	}
-	// Same-stem duplicates (svc.duckdb beside svc.sqlite, the mid-migration
-	// state) resolve exactly as PlatformStore.load does: one entry per
-	// service, the .sqlite file wins, and the shadowed file is warned about
-	// — never two manifest entries for one service.
+	// Same-stem duplicates (svc.duckdb beside svc.sqlite — a leftover from
+	// before SS-8 deleted the DuckDB backend) resolve exactly as
+	// PlatformStore.load does: one entry per service, the .sqlite file wins,
+	// and the shadowed file is warned about — never two manifest entries for
+	// one service. A lone .duckdb file (no .sqlite sibling) still gets a
+	// manifest entry pointing at a path that will fail loudly if opened —
+	// this command only lists store files, it never opens them.
 	winners, collisions := store.ResolveStoreFiles(names)
 	for _, c := range collisions {
 		fmt.Fprintf(stderr,

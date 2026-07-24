@@ -62,7 +62,7 @@ func TestReport_Authorship_WritesJoinDocument(t *testing.T) {
 	root := t.TempDir()
 	gitFixtureAuthorship(t, root)
 
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(t.TempDir(), "findings")
 
 	var ingestOut, ingestErr bytes.Buffer
@@ -148,7 +148,7 @@ func TestReport_Authorship_PersistsLedger(t *testing.T) {
 	root := t.TempDir()
 	gitFixtureAuthorship(t, root)
 
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(t.TempDir(), "findings")
 
 	var ingestOut, ingestErr bytes.Buffer

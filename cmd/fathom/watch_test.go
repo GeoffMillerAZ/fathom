@@ -31,7 +31,7 @@ func TestWatchMissingPath(t *testing.T) {
 // have changed since the previous poll.
 func TestWatchOnce_NoChange(t *testing.T) {
 	paymentPath := fauxPaymentPathForTest(t)
-	store := filepath.Join(t.TempDir(), "watch.duckdb")
+	store := filepath.Join(t.TempDir(), "watch.sqlite")
 
 	// Record current mtimes so watchOnce sees no delta.
 	state := buildMtimeState(t, paymentPath)
@@ -56,7 +56,7 @@ func TestWatchOnce_NoChange(t *testing.T) {
 // file's mtime is newer than the recorded state.
 func TestWatchOnce_Changed(t *testing.T) {
 	paymentPath := fauxPaymentPathForTest(t)
-	store := filepath.Join(t.TempDir(), "watch.duckdb")
+	store := filepath.Join(t.TempDir(), "watch.sqlite")
 
 	// Build state with a zero time so every file appears newer.
 	zeroState := mtimeState{}
@@ -95,7 +95,7 @@ func TestWatchOnce_WrittenFile(t *testing.T) {
 		t.Fatalf("Chtimes: %v", err)
 	}
 
-	store := filepath.Join(t.TempDir(), "watch.duckdb")
+	store := filepath.Join(t.TempDir(), "watch.sqlite")
 
 	// Build state with the current (old) mtime.
 	state := buildMtimeState(t, dir)

@@ -39,7 +39,7 @@ func TestIngestDiffMissingService(t *testing.T) {
 // TestIngestDiffNoBase performs a full ingest (empty base) via the faux
 // connector to verify end-to-end wiring without real git.
 func TestIngestDiffNoBase(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "diff.duckdb")
+	store := filepath.Join(t.TempDir(), "diff.sqlite")
 	paymentPath := fauxPaymentPathForTest(t)
 
 	var out, errBuf bytes.Buffer
@@ -61,7 +61,7 @@ func TestIngestDiffNoBase(t *testing.T) {
 
 // TestIngestDiffWithBase verifies that a fake git runner drives per-file ingest.
 func TestIngestDiffWithBase(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "diff.duckdb")
+	store := filepath.Join(t.TempDir(), "diff.sqlite")
 	paymentPath := fauxPaymentPathForTest(t)
 
 	// Provide two changed files that actually exist in the fixture.
@@ -90,7 +90,7 @@ func TestIngestDiffWithBase(t *testing.T) {
 // TestIngestDiffWithBaseNoFiles verifies that an empty diff (no changed files)
 // prints a summary and exits 0.
 func TestIngestDiffWithBaseNoFiles(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "diff.duckdb")
+	store := filepath.Join(t.TempDir(), "diff.sqlite")
 	paymentPath := fauxPaymentPathForTest(t)
 
 	var out, errBuf bytes.Buffer

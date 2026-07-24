@@ -11,7 +11,7 @@ import (
 )
 
 // storeContract runs the full Store interface contract against the supplied
-// Store. It is called from both duckdb_test.go and memory_test.go so both
+// Store. It is called from both sqlite_test.go and memory_test.go so both
 // implementations are verified against the same expectations.
 func storeContract(t *testing.T, s Store) {
 	t.Helper()

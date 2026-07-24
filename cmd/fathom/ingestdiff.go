@@ -20,7 +20,7 @@ func runIngestDiff(
 	fs := newFlagSet("ingest-diff", stderr)
 	service := fs.String("service", "", "logical service ID (required)")
 	path := fs.String("path", ".", "path to service source root")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db)")
+	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
 	base := fs.String("base", "", "git ref to diff against (empty = full ingest)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 

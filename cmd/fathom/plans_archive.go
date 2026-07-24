@@ -45,7 +45,7 @@ func cmdPlansArchive(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", ".", "repo root (git mv + CHANGELOG.md/ADR.md checks run relative to this)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

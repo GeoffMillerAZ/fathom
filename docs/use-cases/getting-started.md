@@ -11,7 +11,7 @@ How to build, index, register, and start using fathom as a live code-intelligenc
 ## Quickstart (TL;DR)
 
 ```sh
-# 1. Build (macOS — DuckDB requires CGO)
+# 1. Build (macOS — the tree-sitter extractor bindings require CGO, ADR-013)
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 
 # 2. Index your repo
@@ -42,7 +42,7 @@ claude mcp add --scope user fathom -- \
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `ingest` | CLI | Index one service into the DuckDB store (sha256 hash-gated; re-ingest is near-free) |
+| `ingest` | CLI | Index one service into the SQLite store (sha256 hash-gated; re-ingest is near-free) |
 | `ingest-diff` | CLI | Ingest only files changed since a git ref |
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
 | `serve-mcp` | CLI | Stdio MCP server — one client (editor/agent session) |
@@ -71,7 +71,7 @@ Claude Code has no innate knowledge of your codebase structure. Without fathom, 
 
 ### Step 1 — Build
 
-If you are building from source (DuckDB requires CGO):
+If you are building from source (the tree-sitter extractor bindings require CGO, ADR-013):
 
 ```sh
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
@@ -339,15 +339,15 @@ If your repo has plan files in `docs/plans/*.md`, the `lefthook.yml` pre-push ho
 | Use case | One editor / Claude Code session | Multiple concurrent Claude Code sessions, CI, multi-agent platform |
 | Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped `tools/list`; off-surface `tools/call` still executes, flagged `off_surface:true` — see Step 5; surface ∈ `agent`/`companion`/`coding`/`investigation`/`shared`/`platform`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
 | Call log | — | `--call-log <path>` writes a JSONL tool-call log (default `workspace/logs/mcp-calls.jsonl` relative to daemon working dir; empty string disables) |
-| DuckDB lock | Holds the single-writer lock while running | Same |
+| Store writes | Serializes with any other writer (SQLite, ADR-020) | Same |
 
-For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session and DuckDB is single-writer, so only the first session to start connects and the rest report `✘ Failed to connect`; one shared `serve-http` daemon makes every session an HTTP client of a single lock-holder. Also use `serve-http` to call fathom from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
+For a **single** Claude Code session, `serve-mcp` registered with Claude Code is simplest. **Running more than one session at a time? Use `serve-http`.** The stdio model spawns one server per session, each opening its own connection to the same store; a shared `serve-http` daemon avoids N separate re-ingests and the write contention two sessions' own writes could otherwise hit. Also use `serve-http` to call fathom from CI without per-job MCP registration. Full multi-session setup (launchd + HTTP registration): see [claude-code-integration.md](../claude-code-integration.md).
 
 ---
 
-## Refresh discipline and the single-writer lock
+## Refresh discipline and the write lock
 
-DuckDB is single-writer. While `serve-mcp` (or `serve-http`) holds the lock, **CLI `ingest` will fail** with a lock error. This is expected.
+SQLite serializes writers (ADR-020). While `serve-mcp` (or `serve-http`) is mid-write, a concurrent CLI `ingest` can hit `busy_timeout` and fail with a lock error. This is expected.
 
 **To refresh the index during a live session**, call the `ingest` MCP tool instead of the CLI:
 
@@ -398,7 +398,7 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 - **`--scope user` is recommended** over `--scope project`. User scope means subagents in any repo see the fathom tools; project scope limits it to one repo's sessions.
 - **One store, many services.** A single `fleet.sqlite` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.sqlite` files).
 - **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so store files and generated artifacts are never committed.
-- **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required this migration slice (ADR-020) because DuckDB's CGO build still compiles in alongside the SQLite default — needed as `migrate-store`'s source backend until DuckDB is removed (SS-8). On Linux this env var is ignored.
+- **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required because the tree-sitter extractor bindings compile CGO objects that need it to link cleanly (ADR-013) — not because of the store, which is pure Go and needs neither CGO nor a deployment target (SS-8/ADR-025 deleted the DuckDB backend that used to be the reason). On Linux this env var is ignored.
 - **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, `contradiction_scan`, and `propagate_concern` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
 - **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use fathom before Grep/Read," or an honest signal when the index doesn't cover the repo.
 

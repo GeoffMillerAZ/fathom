@@ -13,7 +13,7 @@ func cmdInspect(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("inspect", stderr)
 	service := fs.String("service", "", "service ID to inspect (required)")
 	kind := fs.String("kind", "", "filter by SourceKind (e.g. GoFunc, GoType)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db)")
+	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

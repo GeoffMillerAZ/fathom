@@ -3,8 +3,8 @@ package typedfixture
 // Store mirrors the ADR-021 §3 Store-contract-suite residue case: a
 // PutClaims method implemented by more than one backend, exercised through
 // one shared contract-suite-style caller (RunContract) — the shape
-// internal/store's own contract_test.go uses against SQLiteStore/DuckStore/
-// MemoryStore in the real codebase.
+// internal/store's own contract_test.go uses against SQLiteStore/MemoryStore
+// in the real codebase.
 type Store interface {
 	PutClaims(claim string) error
 }

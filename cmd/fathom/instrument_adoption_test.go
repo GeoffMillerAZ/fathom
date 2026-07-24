@@ -223,7 +223,7 @@ func TestRegisteredToolNames_NilBackendMatchesKnownTools(t *testing.T) {
 }
 
 func TestRegisteredToolNames_WithStoreMatchesNilBackend(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	// store.Open creates the file fresh; registration doesn't depend on its
 	// contents, only on which tools the binary defines.
 	withStore, err := registeredToolNames(storePath)

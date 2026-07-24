@@ -75,7 +75,7 @@ func TestServeMCPMissingStore(t *testing.T) {
 }
 
 func TestServeMCPUnknownMode(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var out, errBuf bytes.Buffer
 	code := runServeMCP([]string{"--store", store, "--mode", "bogus"},
 		buildMCPInput(t), &out, &errBuf)
@@ -87,7 +87,7 @@ func TestServeMCPUnknownMode(t *testing.T) {
 // ─── serve-mcp: initialize response ─────────────────────────────────────────
 
 func TestServeMCPInitialize(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var out, errBuf bytes.Buffer
 	code := runServeMCP([]string{"--store", store},
 		buildMCPInput(t), &out, &errBuf)
@@ -121,7 +121,7 @@ func TestServeMCPInitialize(t *testing.T) {
 // ─── serve-mcp: tools/list contains rename_impact ───────────────────────────
 
 func TestServeMCPToolsList(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var out, errBuf bytes.Buffer
 	code := runServeMCP([]string{"--store", store},
 		buildMCPInput(t), &out, &errBuf)
@@ -178,7 +178,7 @@ func TestServeMCPToolsList(t *testing.T) {
 
 func TestRunServeMCPSubcommand(t *testing.T) {
 	// Verify that "serve-mcp" is dispatched through the main run() function.
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var out, errBuf bytes.Buffer
 	in := buildMCPInput(t)
 	code := runWithStdin([]string{"serve-mcp", "--store", store}, in, &out, &errBuf)
