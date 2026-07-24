@@ -27,7 +27,7 @@ type serviceManifestEntry struct {
 // cmdGenPlatformManifest implements the gen-platform-manifest subcommand.
 func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-platform-manifest", stderr)
-	storeDir := fs.String("store-dir", "", "directory containing *.duckdb/*.sqlite store files (required)")
+	storeDir := fs.String("store-dir", "", "directory containing *.sqlite/*.db store files (required; leftover pre-SS-8 *.duckdb files are listed with a warning and refuse to open)")
 	output := fs.String("output", "workspace/artifacts/platform-manifest.yaml",
 		"output path for the manifest")
 
@@ -62,6 +62,11 @@ func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 	// manifest entry pointing at a path that will fail loudly if opened —
 	// this command only lists store files, it never opens them.
 	winners, collisions := store.ResolveStoreFiles(names)
+	for _, w := range winners {
+		if strings.HasSuffix(w, ".duckdb") {
+			fmt.Fprintf(stderr, "warning: %s is a pre-SS-8 DuckDB store with no .sqlite sibling — listed here, but every open of it will fail loudly (ADR-025)\n", w)
+		}
+	}
 	for _, c := range collisions {
 		fmt.Fprintf(stderr,
 			"warning: service %q has multiple store files — using %s, ignoring %s; remove the stale file(s) once the migration is confirmed\n",

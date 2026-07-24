@@ -137,11 +137,11 @@ sessions can still contend and fail past `busy_timeout` (ADR-020) rather than qu
 model still doesn't fit a multi-session workflow well.
 
 The fix is built in: run **one** `serve-http` daemon (the documented shared fleet server) and register
-it over **HTTP**. Every session becomes an HTTP client of that single lock-holder — unlimited
+it over **HTTP**. Every session becomes an HTTP client of one always-on server — unlimited
 concurrency, one shared index, no contention.
 
 **1 — Run one always-on server.** A launchd agent keeps it up across logins/reboots and, via
-`KeepAlive`, grabs the store lock the instant it's free:
+`KeepAlive`, restarts it promptly if it ever exits:
 
 ```xml
 <!-- ~/Library/LaunchAgents/<reverse-dns>.fathom-http.plist  — adapt the absolute paths -->

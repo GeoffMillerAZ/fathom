@@ -17,8 +17,8 @@ import (
 )
 
 // SQLiteStore is a pure-Go, SQLite-backed (modernc.org/sqlite, WAL mode)
-// implementation of Store (ADR-020). Unlike DuckStore it does not cap the
-// connection pool: SQLite's own single-writer lock serialises writes, and
+// implementation of Store (ADR-020). Unlike the old DuckStore backend
+// (deleted in SS-8/ADR-025) it does not cap the connection pool: SQLite's own single-writer lock serialises writes, and
 // WAL mode lets any number of readers proceed concurrently with one writer —
 // the property DuckDB's cross-process single-writer lacked and the reason
 // for this backend's existence.
@@ -47,7 +47,7 @@ func sqlitePragmaDSN(path string) string {
 // "" for an in-memory database (no WAL applies to memory databases; SQLite
 // ignores the journal_mode pragma there). The schema is created fresh if it
 // does not already exist — there is no legacy on-disk migration path for
-// this backend (only DuckStore carries that, for stores that predate it).
+// this backend (the old DuckStore backend, deleted in SS-8, carried that).
 func NewSQLiteStore(path string) (*SQLiteStore, error) {
 	dsn := ":memory:"
 	if path != "" {
@@ -63,8 +63,8 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		return nil, fmt.Errorf("store.NewSQLiteStore: %w", err)
 	}
 	// File-backed stores: uncapped read pool (ADR-020) — the
-	// SetMaxOpenConns(1) DuckStore uses to serialise writes is
-	// DuckDB-specific and must NOT carry over; SQLite's own single-writer
+	// SetMaxOpenConns(1) the old DuckStore backend used to serialise
+	// writes was DuckDB-specific and must NOT carry over; SQLite's own single-writer
 	// lock (busy_timeout-backed) already serialises writes, and capping the
 	// pool would throttle concurrent readers for no reason.
 	//
