@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"testing"
@@ -227,4 +228,101 @@ func TestVerifyPlan_Tool_TypedEdgeDispatch(t *testing.T) {
 	if !strings.Contains(detail, "TestRunAdapter") {
 		t.Errorf("test_reaches detail = %q, want it to name the reaching test", detail)
 	}
+}
+
+// TestVerifyPlan_VerdictOutcomeReachesCallLog is T5-7's real evidence
+// (docs/plans/trust-and-tokenomics.md): the gate-catches instrument is the
+// JSONL call log, not just the tool result — mirrors D1-2's
+// TestBrief_ClaimsAttachedReachesCallLog (extra_tools_test.go) exactly,
+// generalized from a scalar (claims_attached) to named counts
+// (verdict_outcome). Covers both write paths: the top-level dispatch
+// (loggedToolsCall, reading the field back out of the wrapped MCP content
+// envelope) and the batch sub-call path (logSub, reading the raw handler
+// result map).
+func TestVerifyPlan_VerdictOutcomeReachesCallLog(t *testing.T) {
+	// T-1 claimed+verified, T-2 claimed+failing, T-3 unclaimed (must not
+	// count) — claimed:2 verified:1 failing:1 over exactly the tasks
+	// internal/verify.Gate itself would gate on.
+	tasks := []any{
+		map[string]any{"id": "T-1", "title": "do work", "symbol": "DoWork", "claimed": true},
+		map[string]any{"id": "T-2", "title": "untested", "symbol": "Untested", "claimed": true},
+		map[string]any{"id": "T-3", "title": "ghost", "symbol": "Ghost"},
+	}
+	args := map[string]any{"service": "svc", "tasks": tasks}
+
+	t.Run("top_level", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(newVerifyBackend(), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 3101, Method: "tools/call",
+			Params: map[string]any{"name": "verify_plan", "arguments": args},
+		})
+		p := xtraPayload(t, resp)
+		vo, ok := p["verdict_outcome"].(map[string]any)
+		if !ok {
+			t.Fatalf("result payload missing verdict_outcome (fixture broken?): %v", p)
+		}
+		if vo["claimed"] != float64(2) || vo["verified"] != float64(1) || vo["failing"] != float64(1) {
+			t.Fatalf("result verdict_outcome = %v, want claimed:2 verified:1 failing:1", vo)
+		}
+
+		entry := callLogEntryFor(t, &buf, "verify_plan", "")
+		logged, ok := entry["verdict_outcome"].(map[string]any)
+		if !ok {
+			t.Fatalf("logged entry missing verdict_outcome: %v", entry)
+		}
+		if logged["claimed"] != float64(2) || logged["verified"] != float64(1) || logged["failing"] != float64(1) {
+			t.Errorf("logged verdict_outcome = %v, want claimed:2 verified:1 failing:1", logged)
+		}
+	})
+
+	t.Run("via_batch", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(newVerifyBackend(), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 3102, Method: "tools/call",
+			Params: map[string]any{
+				"name": "batch",
+				"arguments": map[string]any{
+					"calls": []map[string]any{{"name": "verify_plan", "arguments": args}},
+				},
+			},
+		})
+		if resp["error"] != nil {
+			t.Fatalf("unexpected error: %v", resp["error"])
+		}
+		entry := callLogEntryFor(t, &buf, "verify_plan", "batch")
+		logged, ok := entry["verdict_outcome"].(map[string]any)
+		if !ok {
+			t.Fatalf("batch sub-call logged entry missing verdict_outcome: %v", entry)
+		}
+		if logged["claimed"] != float64(2) || logged["verified"] != float64(1) || logged["failing"] != float64(1) {
+			t.Errorf("batch logged verdict_outcome = %v, want claimed:2 verified:1 failing:1", logged)
+		}
+	})
+
+	t.Run("no_claimed_tasks_omits_field", func(t *testing.T) {
+		var buf bytes.Buffer
+		srv := mcp.NewServerWithLogger(newVerifyBackend(), mcp.NewCallLogger(&buf))
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 3103, Method: "tools/call",
+			Params: map[string]any{
+				"name": "verify_plan",
+				"arguments": map[string]any{
+					"service": "svc",
+					"tasks": []any{
+						map[string]any{"id": "T-1", "title": "unclaimed", "symbol": "DoWork"},
+					},
+				},
+			},
+		})
+		p := xtraPayload(t, resp)
+		if _, present := p["verdict_outcome"]; present {
+			t.Errorf("verdict_outcome should be absent with zero claimed tasks, got: %v", p["verdict_outcome"])
+		}
+		entry := callLogEntryFor(t, &buf, "verify_plan", "")
+		if _, present := entry["verdict_outcome"]; present {
+			t.Errorf("logged entry should have no verdict_outcome field, got: %v", entry)
+		}
+	})
 }

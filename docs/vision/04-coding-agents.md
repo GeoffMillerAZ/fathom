@@ -17,7 +17,7 @@ makes every other ambition credible.
 | **Retrieval latency** | p95 ≤200ms per companion call | **Met** — obligations p50 36ms / p95 90ms (max 745ms), staleness_report ≤17ms in the log |
 | **Fathom share of discovery** (vs Grep/Read) | ≥40% sustained 4 weeks | Baseline **0%** (0 fathom calls vs 193 greps) |
 | **New-repo adoption friction** | ≤10 min, one binary, one command | Manual multi-step recipe; `fathom init` not started |
-| **Context-bench** | equal-or-better task success at ≤1/10 discovery tokens | **Built and run 2026-07-23** (docs/plans/falsifiability.md B1): equal success 15/15, 1.38× aggregate tokens, 2.81× wall — the ×10 form is retracted; it was marketing |
+| **Context-bench** | equal-or-better task success at ≤1/10 discovery tokens | **Built and run 2026-07-23** (docs/plans/falsifiability.md B1): equal success 15/15, 1.38× aggregate tokens, 2.81× wall — the ×10 form is retracted; it was marketing. **2026-07-24 home-bench follow-up** (docs/plans/home-bench.md H3-1) re-ran the same criterion on fathom's own home turf (index-native tasks) and it also did NOT clear "strictly better success": 12/13 vs 12/13, equal, 1.071× token premium. Surviving pitch: equal answers, cheaper on 8/13, 2–3× faster, governance unmeasured by that bench. |
 | **Channel liveness** *(new)* | every forced channel proves it fired recently, or alarms | Does not exist — and it just failed silently (Gap 1) |
 
 ## 2. What works, what doesn't

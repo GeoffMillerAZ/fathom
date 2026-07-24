@@ -160,7 +160,8 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 		logErr = &rpcErrWrapper{rpcErr}
 	}
 	claimsAttached := claimsAttachedFrom(result)
-	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, latency, logErr)
+	verdictOutcome := verdictOutcomeFrom(result)
+	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, latency, logErr)
 	return result, rpcErr
 }
 

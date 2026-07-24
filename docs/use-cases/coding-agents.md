@@ -153,6 +153,18 @@ corpus is deliberately grep-native — every ground truth is grep-derivable
 — so it measured grep's home turf; grep answered even the cross-repo
 tasks.)
 
+**2026-07-24 update — fathom's own home turf, measured** (docs/plans/
+home-bench.md H3-1): the follow-up bench flipped the corpus to
+index-native tasks (obligations, verify, blast radius, claim provenance,
+concern search, staleness, contradictions) — fathom's home turf, not
+grep's. It did **not** win decisively: success 12/13 vs 12/13, equal, and
+tokens 1.071× (a premium, sensitive to one documented protocol call). The
+honest surviving pitch, unchanged in kind from above: equal answers,
+cheaper on 8/13 tasks (an outlier-driven aggregate premium on the rest),
+2–3× faster wall time — and the governance capabilities themselves
+(verify gate, obligations, staleness honesty) remain unmeasured by either
+bench.
+
 **What it costs.** Ingest: ~0.2s hash-gated refresh, cents of CPU. Serving:
 p95 ≤ ~90ms per hook call. Obligations compile: cents per repo *change*
 (digest-gated). Hooks: ≤150 injected tokens on governed edits, zero on

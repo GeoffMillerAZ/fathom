@@ -23,9 +23,9 @@ func TestCallLogger_SurfaceTraffic_CountsAndLastTS(t *testing.T) {
 		t.Fatalf("SurfaceTraffic() before any calls = %v, want non-nil empty map", got)
 	}
 
-	l.log("find_symbol", "fathom", "shared", "agent", "", "", false, 0, time.Millisecond, nil)
-	l.log("outline", "fathom", "shared", "agent", "", "", false, 0, time.Millisecond, nil)
-	l.log("secret_scan", "fathom", "shared", "", "", "", false, 0, time.Millisecond, nil)
+	l.log("find_symbol", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
+	l.log("outline", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
+	l.log("secret_scan", "fathom", "shared", "", "", "", false, 0, nil, time.Millisecond, nil)
 
 	traffic := l.SurfaceTraffic()
 	if len(traffic) != 2 {
@@ -53,7 +53,7 @@ func TestCallLogger_SurfaceTraffic_CountsAndLastTS(t *testing.T) {
 	// and increments Calls again.
 	before := traffic["agent"].LastTS
 	time.Sleep(2 * time.Millisecond)
-	l.log("repo_map", "fathom", "shared", "agent", "", "", false, 0, time.Millisecond, nil)
+	l.log("repo_map", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
 	after := l.SurfaceTraffic()["agent"]
 	if after.Calls != 3 {
 		t.Errorf("agent surface calls after 3rd call = %d, want 3", after.Calls)
