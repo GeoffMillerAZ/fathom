@@ -5,7 +5,35 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
-### Fixed — O15: hooks resolve service identity from the daemon's recorded paths (2026-07-24)
+### Measured — T5-8 second swing: fathom WINS its home turf; the lookup ×10 retraction stands (docs/plans/trust-and-tokenomics.md, 2026-07-24)
+- **Home bench (pre-registered H2-1 criterion, unchanged): PASS — both
+  halves met.** Success 13/13 vs grep 11/13 (strictly greater); tokens
+  1,594,762 vs 2,795,948 = 0.570× (≤1× required); turns 47 vs 72. First
+  swing (same corpus, 14-tool surface): 12/13 vs 12/13 at 1.071× — both
+  halves failed. The fix wave drove it: read_source (T5-4) collapsed
+  H1-T13 from 601,132 tokens/16 turns to 106,954/4; DocChunk `end_line`
+  (T5-5) flipped fathom's only home-turf failure (H1-T08) to a pass;
+  H1-T12 fell 299,830/8 → 108,046/4. Anomalies audited before scoring:
+  grep's two failures are legitimate misses (H1-T13's is the identical
+  miss as the first swing; H1-T08's is n=1 variance the verdict does not
+  rest on — granting it back still leaves 13 > 12), and the win survives
+  scoring against grep's better first-swing numbers (0.735×, 13 > 12).
+  Artifacts: `rerun-home-results-20260724T170152Z.json` + summary.
+- **Lookup bench (B1's unchanged <5× bar): the retraction STANDS,
+  recorded either way.** 15/15 vs 14/15 success (fathom strictly better
+  this run), tokens 0.511× = a 1.96× reduction (was 1.38×) — still under
+  the pre-registered 5× bar, so the ×10 claim stays retracted. B1-T09
+  (O12's 6.6× loss) collapsed 504,785/20 turns → 107,268/3 (0.21×).
+  Artifacts: `rerun-results-20260724T164907Z.json` + summary.
+- **Pre-run corpus revision committed FIRST (8a847d3, the registration
+  proof):** home corpus re-verified at HEAD bfb8010 (zero ground-truth
+  changes needed; one new sweep-missed +6-line citation drift on
+  backend.go's obligations recorded as a capability finding); lookup
+  corpus re-swept for three days of drift (B1-T01/T04/T14/T15 gained the
+  real new callers cmd/fathom/plans.go, plans_archive.go, doctor.go —
+  all-of tightenings); the bench runner's fathom-arm allowlist gained
+  `read_source` to match the live 16-tool `/rpc/agent` surface (ingest
+  still denied). Criteria untouched on both benches.
 - **`list_services` now returns each service's recorded corpus `path`**
   (additive; from ServiceMeta, absolute post-O10), and the session/edit/stop
   hooks resolve their service identity by matching the project directory
