@@ -65,7 +65,7 @@ set_profile { "profile": "coding" }
 
 Returns: `{ "profile": "coding", "ok": true }`
 
-Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 15-tool coding hot-loop) or `POST /rpc/coding` instead.
+Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 16-tool coding hot-loop) or `POST /rpc/coding` instead.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 

@@ -402,7 +402,10 @@ serves the full registry. The `companion` allowlist swaps membership to the
 `batch` and `brief`, plus `verify_plan` and `capabilities`, the top non-hook
 tool and the discovery escape hatch respectively) and is served at the new
 primary path `POST /rpc/agent`, with `POST /rpc/companion` kept as a
-compatible alias. The four ADR-010 group surfaces (`coding`/`investigation`/
+compatible alias. *(Amended 2026-07-24: `read_source` — the bounded raw-text
+read, T5-4, docs/plans/trust-and-tokenomics.md — joined the allowlist on
+measured H3-1 evidence; the surface is now 16 tools. docs/mcp-tools.md holds
+the live membership.)* The four ADR-010 group surfaces (`coding`/`investigation`/
 `shared`/`platform`) are unchanged and un-killed — zero observed traffic, kept
 for taxonomy completeness pending the 30-day post-flip log.
 

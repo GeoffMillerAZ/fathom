@@ -328,6 +328,93 @@ CREATE TABLE claim_links (
 	}
 }
 
+// TestSQLiteStore_LegacySchemaGainsEndLineColumn is T5-5's migration guard
+// (docs/plans/trust-and-tokenomics.md), the same PRAGMA-based-migration
+// class as TestSQLiteStore_LegacySchemaGainsToolIdentityColumns above: a
+// store created before end_line existed must gain the column on reopen
+// (never "no such column: end_line" on the next write), and the pre-existing
+// row must read back with EndLine's honest zero value rather than erroring.
+func TestSQLiteStore_LegacySchemaGainsEndLineColumn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy-endline.sqlite")
+
+	// Hand-create a store file with the PRE-end_line observations schema.
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE observations (
+    service_id    TEXT    NOT NULL,
+    concern_id    TEXT    NOT NULL DEFAULT '',
+    source_ref    TEXT    NOT NULL,
+    source_kind   TEXT    NOT NULL,
+    evidence_tier TEXT    NOT NULL,
+    symbol        TEXT    NOT NULL DEFAULT '',
+    package       TEXT    NOT NULL DEFAULT '',
+    claim         TEXT    NOT NULL DEFAULT '',
+    content_hash  TEXT    NOT NULL DEFAULT '',
+    calls         TEXT    NOT NULL DEFAULT '[]',
+    complexity    INTEGER NOT NULL DEFAULT 0,
+    line          INTEGER NOT NULL DEFAULT 0,
+    ingested_at   BIGINT  NOT NULL,
+    tool_kind     TEXT    NOT NULL DEFAULT '',
+    generated     INTEGER NOT NULL DEFAULT 0
+)`); err != nil {
+		t.Fatalf("create legacy table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO observations (service_id, source_ref, source_kind, evidence_tier, symbol, line, ingested_at)
+		 VALUES ('legacy-svc', 'README.md', 'DocChunk', 'doc-claimed', 'Old Heading', 5, 1)`,
+	); err != nil {
+		t.Fatalf("insert legacy row: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	// Reopen through the real constructor — migration must fire.
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	// The pre-existing row reads back with a zero-value EndLine, not an error.
+	got, err := s.QueryObservations(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations legacy row: %v", err)
+	}
+	if len(got) != 1 || got[0].Symbol != "Old Heading" || got[0].Line != 5 || got[0].EndLine != 0 {
+		t.Fatalf("legacy row: got %+v, want 1 row (Line=5, EndLine=0)", got)
+	}
+	// New writes round-trip EndLine.
+	if err := s.PutObservations(ctx, []core.Observation{{
+		ServiceID: "legacy-svc", SourceRef: "README.md", SourceKind: core.KindDocChunk,
+		EvidenceTier: core.TierDocClaimed, Symbol: "New Heading",
+		Line: 10, EndLine: 14, IngestedAt: time.Now().UTC(),
+	}}); err != nil {
+		t.Fatalf("PutObservations after migration: %v", err)
+	}
+	got, err = s.QueryObservations(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("QueryObservations after write: %v", err)
+	}
+	var found bool
+	for _, o := range got {
+		if o.Symbol == "New Heading" {
+			found = true
+			if o.Line != 10 || o.EndLine != 14 {
+				t.Errorf("migrated store round-trip: got (Line=%d, EndLine=%d), want (10, 14)", o.Line, o.EndLine)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("new observation not returned after migration")
+	}
+}
+
 // TestSQLiteStore_ParallelReaders is the F1 regression: the Store contract
 // guarantees safety for concurrent reads, and modernc's ":memory:" gives
 // every physical pool connection its OWN private database — so an uncapped

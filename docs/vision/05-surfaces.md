@@ -2,7 +2,9 @@
 
 **Verdict.** Collapse five named surfaces to **two** — one opinionated
 15-tool **agent** surface that the user-scope MCP registration actually
-points at, and the full expert registry one endpoint away — and change the
+points at (16 tools since 2026-07-24: `read_source` joined per T5-4,
+docs/plans/trust-and-tokenomics.md), and the full expert registry one
+endpoint away — and change the
 gate from reject-with-error to **execute-and-flag**. The call log already
 decided membership: only 16 of 87 tools were ever called; the curated
 companion list is almost exactly right but sits unused because the primary
@@ -40,7 +42,8 @@ client isn't registered against it; and the top non-hook tool
 
 ## 2. Target topology
 
-- **`POST /rpc/agent`** — the primary surface, 15 tools (§3). The
+- **`POST /rpc/agent`** — the primary surface, 15 tools at founding (§3;
+  16 since T5-4 added `read_source`). The
   user-scope HTTP MCP registration points here. Renaming companion→agent is
   optional; **re-pointing the registration is not — that one config line is
   the whole ballgame.** Companion failed for want of exactly this.
@@ -72,8 +75,12 @@ hard-gate assertions flip to flag assertions.
 
 ## 3. Keep / kill / merge
 
-**AGENT SURFACE — 15 tools** (companion 15, minus `batch` and `brief`,
-plus `verify_plan` and `capabilities` — the arithmetic is 15−2+2=15):
+**AGENT SURFACE — 15 tools at founding** (companion 15, minus `batch` and
+`brief`, plus `verify_plan` and `capabilities` — the arithmetic is
+15−2+2=15). *(Amended 2026-07-24: `read_source` joined per T5-4,
+docs/plans/trust-and-tokenomics.md — the program's second net-new tool,
+justified by the H3-1 home-bench evidence; the surface is now 16 tools.
+docs/mcp-tools.md holds the live membership.)*
 
 | Tool | Disposition | Rationale |
 |---|---|---|
@@ -112,7 +119,7 @@ agent surface, delete what's still at zero; expect the registry to land
 near 35–45. Membership stays a three-place contract change (surface.go +
 surface_test.go + docs/mcp-tools.md).
 
-## 4. Conventions — what makes 15 tools feel like 8
+## 4. Conventions — what makes a 15-to-16-tool surface feel like 8
 
 - **One argument vocabulary:** `service`, `symbol`, `file`, `plan`, plus
   tool-specific extras. `find_symbol.name` → `symbol`; decide whether

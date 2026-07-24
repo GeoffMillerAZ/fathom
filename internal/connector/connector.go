@@ -212,3 +212,11 @@ func skipDir(name string) bool {
 	}
 	return false
 }
+
+// IsSkippedDir reports whether a directory NAME is one the connector always
+// excludes from Discover walks (vendor, .git, testdata, generated,
+// node_modules, .idea, .vscode, .claude — the same set skipDir prunes).
+// Exported so corpus-reading consumers (internal/mcp's read_source) can
+// honor the exact same exclusions when deciding whether a path is part of
+// the indexed corpus, instead of maintaining a second list that drifts.
+func IsSkippedDir(name string) bool { return skipDir(name) }

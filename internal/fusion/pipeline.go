@@ -1053,6 +1053,7 @@ func (p *Pipeline) extractAndStore(ctx context.Context, serviceID string, batch 
 					Calls:        node.Calls,
 					Complexity:   node.Complexity,
 					Line:         node.Line,
+					EndLine:      node.EndLine,
 					IngestedAt:   now,
 					ToolKind:     nodeToolKind,
 					Generated:    generated,

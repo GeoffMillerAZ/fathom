@@ -14,7 +14,7 @@ and *measures* its own channels — so the agent spends tokens reasoning, not
 rediscovering, and "done" means proven, not asserted.
 
 ```
-index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 15 tools)
+index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 16 tools)
         ▲                              │
         │ auto-refresh on HEAD drift   ▼
 measure (instrument, call log) ◄── inject (edit-hook: obligations)
@@ -39,7 +39,7 @@ it will not do for you:
    ```sh
    claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
    ```
-   `/rpc/agent` is the curated 15-tool surface — the full ~80-tool registry
+   `/rpc/agent` is the curated 16-tool surface — the full ~80-tool registry
    stays one endpoint away at `/rpc`, and off-surface calls still execute
    (they're just logged `off_surface` so demand is measurable).
 2. **Arm the push gate** (per repo, if you use lefthook — printed snippet):
@@ -70,7 +70,7 @@ on git-HEAD drift.
 | Stop hook | tasks claimed `[x]` *this session* that fail verification surface at session end (`--block` to refuse ending) | advisory → blocking | Claude Code |
 | edit-hook | obligations governing the edited file injected ≤150 tokens, zero-output-on-clean | injected context | Claude Code |
 | session-hook | index status + "resolve via fathom before grep" primer | injected context | Claude Code |
-| MCP tools | the 15-tool agent surface | pull (agent choice) | any MCP client |
+| MCP tools | the 16-tool agent surface | pull (agent choice) | any MCP client |
 | CLAUDE.md / AGENTS.md stanza | standing doctrine | advisory | Claude Code / Codex |
 
 The ordering is the strategy: **configuration beats habit.** Fathom's own
@@ -234,5 +234,5 @@ CLI: `fathom init`, `ingest`, `compile`, `layers` (`list`/`show`/`install`
 — see `docs/layers.md`), `verify` (`--strict`, `--require-all`),
 `instrument`, `session-hook`, `edit-hook`, `stop-hook`, `gen-plan-cue`,
 `config`, `providers`, `smoke`. MCP: the `/rpc/agent` surface
-(15 tools — see `docs/mcp-tools.md`). When any of these change, update this
-doc's examples and this line.
+(16 tools, `read_source` included — see `docs/mcp-tools.md`). When any of
+these change, update this doc's examples and this line.

@@ -252,7 +252,17 @@ type Observation struct {
 	Calls        []string // callee symbol keys, for call-graph edges
 	Complexity   int      // cyclomatic complexity (0 = not applicable / not computed)
 	Line         int      // 1-based line of the symbol's definition in SourceRef; 0 = unknown
-	IngestedAt   time.Time
+	// EndLine is the 1-based last line covered by this observation in
+	// SourceRef; 0 = unknown/not computed (T5-5, docs/plans/trust-and-
+	// tokenomics.md — kills the T08 class where a DocChunk's single heading
+	// Line forced downstream arithmetic to GUESS a section's extent). Most
+	// extractors leave it 0 (a single-line definition has no separate
+	// extent worth recording); the Markdown extractor is the first to set
+	// it, per KindDocChunk node, as the line before the next heading (or
+	// EOF for the last heading) — so a doc-cited answer can pin the real
+	// line range of a section instead of a heading-relative guess.
+	EndLine    int `json:"end_line,omitempty"`
+	IngestedAt time.Time
 
 	// ToolKind is the pass-3 classifier's verdict on what tool the source
 	// file actually is (ADR-021 §2), e.g. "k8s", "k8s-crd", "compose",
@@ -275,12 +285,17 @@ type Observation struct {
 // SymbolNode is a symbol with its location and outgoing call edges — the unit
 // produced by extractors and returned by queries.
 type SymbolNode struct {
-	Service    string
-	Package    string
-	Name       string
-	Kind       SourceKind
-	FilePath   string
-	Line       int
+	Service  string
+	Package  string
+	Name     string
+	Kind     SourceKind
+	FilePath string
+	Line     int
+	// EndLine mirrors Observation.EndLine (T5-5): the 1-based last line
+	// covered by this node in FilePath; 0 = unknown/not computed. See
+	// Observation.EndLine's doc comment for why this exists and which
+	// extractors set it.
+	EndLine    int
 	Signature  string
 	Calls      []string // callee keys (see SymbolKey)
 	Tier       EvidenceTier

@@ -10,7 +10,7 @@ See also: [docs/use-cases/coding-agents.md](../use-cases/coding-agents.md)
 (the shorter canonical-wiring summary this guide expands on),
 [docs/configuration.md](../configuration.md) (the full provider-config
 reference), [docs/layers.md](../layers.md) (the semantic-layer catalog),
-[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 15-tool
+[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 16-tool
 surface covered here).
 
 ---
@@ -277,11 +277,11 @@ registered it from.
 path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
 full ~80-tool registry (unauthenticated, includes `ingest` and
 `compile_layer`); `/rpc/agent` (aliased `/rpc/companion`) is the curated
-15-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
+16-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
 `/rpc/agent` is still the better default because it's what's dogfooded, and
 because it makes off-surface tool use *measurable* (calls outside the
-15-tool set still execute — they're logged `off_surface:true`, never
+16-tool set still execute — they're logged `off_surface:true`, never
 silently rejected — see ADR-014's amendment in `docs/mcp-tools.md`). If you
 want the full registry too, register it under a second name:
 
@@ -533,7 +533,7 @@ and the daemon's own `[daemon]` config are in
 
 ---
 
-## 10. The 15-tool agent surface — when to use what
+## 10. The 16-tool agent surface — when to use what
 
 The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 
@@ -544,9 +544,10 @@ The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 | `query_symbols` | You have a *concern*, not a name — "auth", "checkout flow" — and want ranked, relevant symbols instead of a name-exact lookup |
 | `outline` | You've picked a file and want everything defined in it, in line order, before reading it |
 | `repo_map` | You're orienting in a repo you don't know yet — the birds-eye structural view |
-| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests in one call, instead of four |
+| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus an inline source snippet of the definition (capped 40 lines) — in one call, instead of four |
 | `find_callers` | You need every call site of a symbol — the structured alternative to grepping the repo |
 | `references` | Fleet-wide occurrence search for an identifier or string across every indexed service — replaces cross-repo grep |
+| `read_source` | You have a file and line range (from a citation, `find_symbol`, or a DocChunk's `line`/`end_line`) and want the exact current text, line-numbered — the surface's bounded `sed -n` |
 | `pack_context` | You're an architect/lead assembling a pre-packed, paste-ready brief for a worker or subagent — signatures, file paths, contract types in one shot |
 | `entrypoints` | You need to know where execution starts — `main`, HTTP handlers, CLI roots — e.g. before a blast-radius or dead-code question |
 | `obligations` | Before editing a file, to see governing rules explicitly (this is also what the PostToolUse hook calls automatically after the edit — calling it before is a preview) |
@@ -760,7 +761,7 @@ This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
 `serve-http`, `compile`, `layers` (`list`/`show`/`install`), `verify`
 (`--strict`/`--require-all`), `observe`, `instrument --adoption`, `config`,
 `providers`, `smoke`, `session-hook`, `edit-hook`, `stop-hook`; the `/rpc`,
-`/rpc/agent` (`/rpc/companion`) HTTP surfaces; the 15-tool agent allowlist;
+`/rpc/agent` (`/rpc/companion`) HTTP surfaces; the 16-tool agent allowlist;
 the `SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the
 lefthook pre-push verify gate; the shipped `fathom-plan`/`fathom-verify`/
 `fathom-onboard`/`fathom-feedback` agent skills (`dist/agents/skills/`).

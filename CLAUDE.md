@@ -119,7 +119,7 @@ Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
 at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
-MCP**. `/rpc/agent` is the curated 15-tool companion surface (`/rpc/companion`
+MCP**. `/rpc/agent` is the curated 16-tool companion surface (`/rpc/companion`
 is a compatible alias; bare `/rpc` is the full, unscoped registry — see
 `docs/mcp-tools.md`). Every session shares one index and one store, so there
 is no per-session server, no single-writer lock contention, and no "Failed to
@@ -137,10 +137,11 @@ When working in this (or any fleet) repo:
    `query_symbols`, `references`, `find_callers`, `symbol_context`, `outline`,
    `repo_map`, `pack_context`, `obligations`) before any Grep/Read sweep —
    `references` replaces fleet-wide grep, `symbol_context` gives
-   def+callers+callees+tests in one call, `obligations` surfaces governing rules
-   for a file before editing it.
+   def+callers+callees+tests in one call (plus an inline definition snippet),
+   `read_source` reads an exact line range from the indexed corpus,
+   `obligations` surfaces governing rules for a file before editing it.
    Read files to *edit* them, not to discover them. The index is fleet-wide, so
-   cross-repo questions are one query. (These are the core of the 15-tool
+   cross-repo questions are one query. (These are the core of the 16-tool
    `companion` surface, which the daemon also serves standalone at
    `POST /rpc/companion` — see docs/mcp-tools.md.)
    After the obligations layer is compiled, every Edit/Write gets governing rules

@@ -25,14 +25,19 @@ only) each request selects an immutable **surface** via the path:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend) |
-| `agent` | `POST /rpc/agent` | The primary 15-tool agent surface (see below) — the user-scope MCP registration points here |
-| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 15-tool allowlist |
+| `agent` | `POST /rpc/agent` | The primary agent surface (see below) — the user-scope MCP registration points here |
+| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical allowlist |
 | `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (internal taxonomy; zero observed traffic as of the surfaces-week1 review, kept for completeness) |
 
-**Agent/companion 15-tool allowlist:** `capabilities`, `entrypoints`, `find_callers`,
+**Agent/companion allowlist (16 tools):** `capabilities`, `entrypoints`, `find_callers`,
 `find_symbol`, `ingest`, `list_services`, `obligations`, `outline`, `pack_context`,
-`query_symbols`, `references`, `repo_map`, `staleness_report`, `symbol_context`,
-`verify_plan`.
+`query_symbols`, `read_source`, `references`, `repo_map`, `staleness_report`,
+`symbol_context`, `verify_plan`. `read_source` (T5-4, docs/plans/trust-and-tokenomics.md)
+is the program's second net-new tool added to this allowlist since its founding 15
+(surfaces-week1, ADR-014 amendment) — justified by measured evidence, not added
+speculatively: the home-bench H3-1 row found the surface had no raw-text read, costing
+16 turns / 601k tokens on a single task that a plain `sed -n` would have answered in one
+(docs/plans/home-bench.md).
 
 **Gate semantics: execute-and-flag, not hard-gate** (ADR-014 amendment, 2026-07-16,
 surfaces week-1). An off-surface `tools/call` — or `batch` sub-call — still **executes**;
@@ -57,7 +62,7 @@ capability.
 ## Shared tools (GroupShared)
 
 These tools are visible under every group profile and group surface. One exception: the
-`agent`/`companion` surface shows only its explicit 15-tool allowlist (see above) — other
+`agent`/`companion` surface shows only its explicit allowlist (see above) — other
 shared tools are still callable there, execute-and-flagged rather than hidden.
 
 | Tool | Arguments | Returns | Purpose |
@@ -98,9 +103,10 @@ Symbol navigation, structural analysis, and impact analysis for active coding ta
 | `query_symbols` | `service` (req), `concern` (req), `keywords` (opt), `top` (opt, default 20) | `{nodes: [SymbolNode], staleness, truncated}` | Concern-scoped symbol search. Returns ranked SymbolNodes. `concern` is mandatory (ADR-006). The `staleness` block is constant-size: `{sources: [≤3 oldest stale], stale_sources, total_sources, fresh_sources, oldest_ingested_at, reingest_recommended}` — the full source list and commit drift live in `staleness_report`. |
 | `find_callees` | `service` (req), `symbol` (req) | `{callees: [string]}` | Return direct callees (symbols called by) the named symbol |
 | `call_hierarchy` | `service` (req), `symbol` (req), `depth` (opt, default 2, max 5) | `{key, children: [Tree]}` | Bidirectional call-hierarchy tree rooted at symbol, expanding callers and callees |
-| `symbol_context` | `service` (req), `symbol` (req) | `{def, callers, callees, related_tests, typed_edges?}` | Neighbourhood context: definition, direct callers, direct callees, related test functions. `typed_edges` (ADR-021 §3, Go services only) is `{callers: [{key, kind}], callees: [{key, kind}]}` — kind-labeled (`direct` / `iface-dispatch`) typed edges NOT already covered by the plain `callers`/`callees` lists, e.g. an interface-dispatch fan-out invisible to the syntax-only graph. Omitted when the service has no typed edges. |
+| `symbol_context` | `service` (req), `symbol` (req), `snippet` (opt bool, default `true`) | `{def, callers, callees, related_tests, typed_edges?, snippet?, snippet_truncated?}` | Neighbourhood context: definition, direct callers, direct callees, related test functions. `typed_edges` (ADR-021 §3, Go services only) is `{callers: [{key, kind}], callees: [{key, kind}]}` — kind-labeled (`direct` / `iface-dispatch`) typed edges NOT already covered by the plain `callers`/`callees` lists, e.g. an interface-dispatch fan-out invisible to the syntax-only graph. Omitted when the service has no typed edges. `snippet` (T5-6, docs/plans/trust-and-tokenomics.md) is the definition's source, inline, line-numbered, capped at 40 lines — read via the same safe, bounded path as `read_source`, so a define-and-show answer completes in ONE turn; `snippet_truncated:true` marks a snippet that stopped at the cap with more file below it (a 100-line function must never LOOK 40 lines long — most defs carry `end_line` 0, so the flag is the only clipping signal). Pass `snippet:false` to omit the snippet entirely (smaller payload). Additive and honest: omitted (never faked) when the definition has no file/line or its source isn't retrievable (no `ServiceMeta` corpus root, file missing, binary, etc.) — `def`/`callers`/`callees` are unaffected either way. |
 | `outline` | `service` (req), `file` (req) | `{symbols: [SymbolNode]}` | List all symbols defined in a specific file, ordered by line number |
 | `entrypoints` | `service` (req) | `{entrypoints: [SymbolNode]}` | Return likely program entrypoints: `main` functions, HTTP handlers, CLI root commands |
+| `read_source` | `service` (req), `file` (req, repo-relative), `start_line` (opt), `end_line` (opt) | `{file, lines: [{line, text}], start_line, end_line, total_lines, clamped_eof, note?}` | Bounded, read-only raw-text read from the service's INDEXED corpus (T5-4, docs/plans/trust-and-tokenomics.md) — the agent surface's `sed -n` equivalent, line-numbered so results are pinnable as citations. No `start_line`/`end_line`: a capped whole-file view from line 1. Capped at 200 lines / 16000 bytes per call, whichever is hit first; `end_line == total_lines` in the response means EOF was reached; a single line longer than the byte cap comes back TRUNCATED to it with the note set — never whole (minified JS cannot void the cap). **Readable = what ingest walks, enforced:** refuses (RPC error) a `.fathomignore`'d path (the same compiled matcher `Discover` applies, file and ancestor dirs), the always-skipped directories (`vendor`, `.git`, `testdata`, `generated`, `node_modules`, `.idea`, `.vscode`, `.claude`), `.env`-pattern files (unconditional defense in depth — secrets-shaped files are never served even when a repo forgot to ignore them; other dot-paths like `.github/` stay readable since they ARE indexed), a file over the 2MB read ceiling (`os.Stat`-checked before any read; equals the indexer's own extraction cap, so such files aren't in the index either), a binary file (`connector.IsBinary`), an absolute `file`, path traversal, a symlink resolving outside the corpus root (`filepath.EvalSymlinks` containment on both the root and the candidate — a same-corpus symlink target reads fine), and an EXPLICIT range wider than the line cap (narrow it, or make repeated calls — never silently narrowed). An explicit `start_line`/`end_line` landing beyond EOF is clamped, not refused, and noted (`clamped_eof:true`); running past the line/byte cap is separately noted. An empty file reports `total_lines: 0`. The corpus root is resolved from `ServiceMeta` with the same absolute-path discipline as `arch_conformance`'s project-rule loader (O10/C4 class): a service with no recorded root, or a pre-O10 relative one, is refused with a re-ingest pointer rather than resolved against the daemon's ambient CWD. Also on the agent/companion surface. |
 
 ### Quality analysis
 
@@ -205,6 +211,7 @@ Queries and navigation tools return `SymbolNode` objects:
   "kind":      "GoFunc",
   "file_path": "internal/auth/token.go",
   "line":      42,
+  "end_line":  0,
   "signature": "func ValidateToken(ctx context.Context, tok string) error",
   "tier":      "verified"
 }
@@ -212,6 +219,14 @@ Queries and navigation tools return `SymbolNode` objects:
 
 `tier` is the evidence tier: `verified`, `pre-scan`, `doc-claimed`, `sme-stated`, or
 `assumed`. See [architecture.md](architecture.md#evidence-tiers-adr-007-adr-009).
+
+`end_line` (T5-5, docs/plans/trust-and-tokenomics.md) is the last line covered by this
+symbol, when its extractor computed a real extent — currently `DocChunk` headings only,
+set to the line before the next heading (or EOF for the last one). Omitted (zero) for
+every other kind: a single-line definition has no separate extent worth recording. Pair
+it with `read_source` (`start_line: line, end_line: end_line`) to pull a doc section's
+real, line-numbered text instead of guessing its extent by arithmetic off the heading
+line — the fix for the T08 class in `docs/plans/home-bench.md`'s H3-1 row.
 
 ---
 

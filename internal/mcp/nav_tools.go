@@ -144,15 +144,25 @@ func treeToMap(t symbolnav.Tree) map[string]any {
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
 
+// symbolContextSnippetMaxLines caps symbol_context's inline definition
+// snippet (T5-6, docs/plans/trust-and-tokenomics.md): small enough to stay
+// inside one response, generous enough to show a typical function body — so
+// a "what is X and show it to me" question completes in ONE turn instead of
+// a symbol_context call followed by a separate read. Read via the exact same
+// safe, bounded readSourceRange path read_source uses (readsource.go, T5-4),
+// so a snippet and a read_source citation of the same lines are identical.
+const symbolContextSnippetMaxLines = 40
+
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, and related tests.",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload).",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified SymbolKey)"},
+				"snippet": map[string]any{"type": "boolean", "description": "Include the inline definition source snippet (default true). Set false to omit it."},
 			},
 			"required": []string{"service", "symbol"},
 		},
@@ -164,6 +174,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		var p struct {
 			Service string `json:"service"`
 			Symbol  string `json:"symbol"`
+			Snippet *bool  `json:"snippet"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "symbol_context: invalid args"}
@@ -188,6 +199,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 				Kind:      string(sctx.Def.Kind),
 				FilePath:  sctx.Def.FilePath,
 				Line:      sctx.Def.Line,
+				EndLine:   sctx.Def.EndLine,
 				Signature: sctx.Def.Signature,
 				Tier:      string(sctx.Def.Tier),
 			}
@@ -198,6 +210,28 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callers":       stringsToAny(sctx.Callers),
 			"callees":       stringsToAny(sctx.Callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
+		}
+
+		// Inline definition snippet (T5-6): additive, honest-absence field —
+		// omitted (never faked) when the definition has no file/line, its
+		// source is not retrievable (no ServiceMeta corpus root, file
+		// missing, binary, etc.) via the same bounded read_source path, or
+		// the caller opted out with snippet:false. When the read stopped at
+		// the cap with more file below it, snippet_truncated:true says so —
+		// a 100-line function must never LOOK 40 lines long (most Go defs
+		// carry end_line 0, so the agent cannot infer clipping on its own).
+		wantSnippet := p.Snippet == nil || *p.Snippet
+		if wantSnippet && sctx.Def.Name != "" && sctx.Def.FilePath != "" && sctx.Def.Line > 0 {
+			if rng, snErr := readSourceRange(ctx, backend, p.Service, sctx.Def.FilePath, sctx.Def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes); snErr == nil && len(rng.Lines) > 0 {
+				snippet := make([]any, len(rng.Lines))
+				for i, ln := range rng.Lines {
+					snippet[i] = map[string]any{"line": ln.Line, "text": ln.Text}
+				}
+				result["snippet"] = snippet
+				if rng.Note != "" {
+					result["snippet_truncated"] = true
+				}
+			}
 		}
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees on a

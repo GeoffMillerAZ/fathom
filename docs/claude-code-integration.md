@@ -208,7 +208,7 @@ registry (see [mcp-tools.md](mcp-tools.md)):
 - `POST /rpc` — the full surface, every tool. **Register this for Claude Code**: it defers MCP tool
   schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
   session and every tool stays one on-demand load away.
-- `POST /rpc/companion` — the curated 15-tool coding-agent hot loop. Register this for MCP clients
+- `POST /rpc/companion` — the curated 16-tool coding-agent hot loop (includes `read_source`, the bounded raw-text read). Register this for MCP clients
   that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or anywhere you
   want a hard-bounded surface: it cuts the schema payload ~80% and off-surface calls are rejected,
   not silently misrouted.

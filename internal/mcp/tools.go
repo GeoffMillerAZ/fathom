@@ -278,6 +278,9 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	// Register source-scanning analyzer tools.
 	registerSourceTools(s, backend)
 
+	// Register the bounded raw-text read tool (T5-4).
+	registerReadSource(s, backend)
+
 	// Register meta-tools, prompts, and resources.
 	registerMeta(s, backend)
 
@@ -293,11 +296,15 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 // symbolNodeDTO is the JSON-serialisable representation of a SymbolNode
 // returned to MCP clients.
 type symbolNodeDTO struct {
-	Service   string `json:"service"`
-	Name      string `json:"name"`
-	Kind      string `json:"kind"`
-	FilePath  string `json:"file_path"`
-	Line      int    `json:"line,omitempty"`
+	Service  string `json:"service"`
+	Name     string `json:"name"`
+	Kind     string `json:"kind"`
+	FilePath string `json:"file_path"`
+	Line     int    `json:"line,omitempty"`
+	// EndLine mirrors core.SymbolNode.EndLine (T5-5): the last line covered
+	// by this symbol, when the extractor computed one (currently DocChunk
+	// headings only) — 0/omitted otherwise.
+	EndLine   int    `json:"end_line,omitempty"`
 	Signature string `json:"signature,omitempty"`
 	Tier      string `json:"tier,omitempty"`
 }
@@ -318,6 +325,7 @@ func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {
 			Kind:      string(n.Kind),
 			FilePath:  n.FilePath,
 			Line:      n.Line,
+			EndLine:   n.EndLine,
 			Signature: n.Signature,
 			Tier:      string(n.Tier),
 		}

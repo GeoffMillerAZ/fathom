@@ -106,7 +106,7 @@ service automatically when its git HEAD drifts, before answering a query.
 
 ## 5. Register the MCP server
 
-**Claude Code** (recommended surface — the curated 15-tool agent set):
+**Claude Code** (recommended surface — the curated 16-tool agent set):
 
 ```sh
 claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent

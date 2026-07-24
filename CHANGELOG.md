@@ -11,6 +11,56 @@ All notable changes to fathom. Format loosely follows
 - **Operator-visible UX event on activation (expected honesty, not a regression):** once the rebuilt daemon binary is deployed and a live sweep runs, ~73 fathom obligations that today serve unflagged begin serving `[stale]`-labeled fleet-wide in the edit-hook payload — the sweep finally telling the truth about citations that were already wrong, not new breakage. They clear via re-anchor/recompile as `AnchorText` populates.
 - Tests: `TestSweep_ReanchorsOnUpstreamLineShift` (internal/semantic, 6 subtests incl. heal-then-resweep idempotency and multi-line double-heal across successive shifts), `TestSweepClaims_ReanchorsOnUpstreamLineShift` (pkg/client), `claims_link_update_reanchors` + `TestSQLiteStore_LegacySchemaGainsAnchorTextColumn` (internal/store), `TestObligationsFor_DisplacedCountAndLayerLabels` (internal/semantic), `TestEditHookRendersDisplacedAndNonDefaultLayer` (cmd/fathom).
 
+### Added — read_source + DocChunk line offsets + symbol_context snippet (T5-4/T5-5/T5-6, docs/plans/trust-and-tokenomics.md, 2026-07-24)
+- **`read_source`**: a new bounded, line-numbered, read-only raw-text tool
+  (`{service, file, start_line?, end_line?}`, `internal/mcp/readsource.go`),
+  added to the agent/companion surface allowlist (now 16 tools — the
+  program's second net-new tool since the founding 15, docs/mcp-tools.md).
+  Capped at 200 lines / 16000 bytes per call; refuses an absolute path,
+  path traversal, a file outside the service corpus, a binary file, and an
+  explicit range wider than the cap; an out-of-range EOF boundary is
+  clamped and noted, never refused. Directly answers the H3-1 home-bench
+  finding: the agent surface had no raw-text read, so recovering current
+  text at a cited line cost 16 turns / 601k tokens (T13) where a plain
+  `sed -n` would do it in one.
+- **DocChunk line offsets**: `core.SymbolNode`/`core.Observation` gained an
+  additive `EndLine` field, threaded through `internal/fusion`'s
+  SymbolNode→Observation mapping, `internal/store`'s SQLite schema
+  (new `end_line` column + `ALTER TABLE` migration for pre-existing
+  stores, including the live fleet store), and every serving path via
+  `core.Observation.ToSymbolNode`. `internal/extractor/mdextract.go`'s
+  `MarkdownExtractor.Extract` now computes each heading's real section
+  extent (the line before the next heading, or EOF for the last one) —
+  closing the H3-1-identified T08 class, where a DocChunk's single heading
+  line forced downstream tools to GUESS a cited line by arithmetic (a
+  reported "line 20" whose real text was at line 29). Paired with
+  `read_source`, a doc-cited answer now pins the section's real lines.
+- **`symbol_context` inline snippet**: an additive `snippet` field carries
+  the definition's source, inline, line-numbered, capped at 40 lines, read
+  via the same safe path as `read_source` — a "what is X, show it to me"
+  question now completes in one turn instead of two. Honest-absence:
+  omitted (never faked) when the source isn't retrievable.
+  `snippet_truncated:true` marks a snippet that stopped at the cap with
+  more file below it (critic finding D — a 100-line function must never
+  silently look 40 lines long), and `snippet:false` opts out entirely.
+- **read_source hardening (critic round, three proven holes closed)**:
+  (A) symlink containment — the lexical-only path check let file and
+  directory symlinks inside a corpus read files OUTSIDE it on the shared
+  daemon; both the corpus root and the candidate are now
+  `filepath.EvalSymlinks`-resolved and the resolved path must sit inside
+  the resolved root (same-corpus symlink targets still read fine).
+  (B) a 2MB `os.Stat` hard ceiling refuses oversized files BEFORE any read
+  (pinned equal to `fusion.MaxExtractSize` — such files aren't in the
+  index either), and a single line longer than the 16000-byte cap comes
+  back truncated to it with a note, never whole (the minified-JS case).
+  (C) "indexed corpus" is enforced, not aspirational — `.fathomignore`'d
+  paths (the connector's own compiled matcher, file + ancestor dirs), the
+  always-skipped directories, and `.env`-pattern files all refuse with a
+  reason (indexed dot-paths like `.github/` stay readable). An empty file
+  now reports `total_lines: 0`. Every "15-tool" surface reference across
+  the living docs updated to 16 with `read_source` named; ADR-014's
+  amendment and docs/vision/05-surfaces.md carry dated amendment notes.
+
 ### Measured — home-turf bench run: fathom does NOT win its own ground (H3-1, docs/plans/home-bench.md, 2026-07-24)
 - **Product findings from the run filed as dogfood O13 (sweep-missed citation drift — claims served with silently wrong CLAUDE.md citations, confirmed live) and O14 (the top-6 serving cap silently evicts previously-served claims after a recompile)** — the bench's most valuable outputs beyond the verdict itself.
 - **The Wave-3b home-turf context-bench ran for real** (13 index-native

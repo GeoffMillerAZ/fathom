@@ -16,7 +16,7 @@
 // behind Server.strictSurfaces (see SetStrictSurfaces) for any future
 // multi-tenant shape.
 //
-// Surfaces: "agent" is the primary 15-tool allowlist for coding-agent
+// Surfaces: "agent" is the primary curated allowlist for coding-agent
 // sessions, served at POST /rpc/agent; "companion" is a compatible alias
 // (identical allowlist, POST /rpc/companion). "coding", "investigation",
 // "shared", "platform" mirror the group taxonomy (group + shared tools). The
@@ -31,7 +31,7 @@ import (
 // SurfaceCompanion is the curated coding-agent surface name.
 const SurfaceCompanion = "companion"
 
-// SurfaceAgent is the primary 15-tool agent surface (docs/vision/05, ADR-014
+// SurfaceAgent is the primary agent surface (docs/vision/05, ADR-014
 // amendment): the same allowlist as companion, at POST /rpc/agent — the path
 // the user-scope MCP registration points at.
 const SurfaceAgent = "agent"
@@ -52,6 +52,7 @@ var companionTools = map[string]bool{
 	"outline":          true,
 	"pack_context":     true,
 	"query_symbols":    true,
+	"read_source":      true,
 	"references":       true,
 	"repo_map":         true,
 	"staleness_report": true,
