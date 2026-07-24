@@ -63,14 +63,21 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   going silently or perpetually stale. The exact reproduction claim above
   ("Add new extractor ext→kind mapping in connector.") is now correctly
   flagged `stale` in the copy.
-- **Status:** fixed in code; fleet heal pending the coordinator's live run
-  (a real fleet recompile populates `AnchorText` for every claim going
-  forward — until then, the 73 already-affected fathom claims stay
-  correctly flagged stale rather than silently wrong, which is the
-  regression this row closes, but they do not yet self-heal).
+- **Status:** fixed in code; NOT yet live. The T5-1b run was against a
+  discarded COPY — the live fleet store, this minute, still has no
+  `anchor_text` column and still serves all 73 claims as unflagged fresh.
+  Two operator steps activate the fix: (1) deploy the rebuilt daemon
+  binary (`cp bin/fathom ~/.local/libexec/fathom/fathom` + launchctl
+  kickstart, per CLAUDE.md's binary-staleness runbook — the schema
+  migration fires on the daemon's next store open), then (2) a live
+  sweep/ingest pass, after which the 73 claims WILL BE flagged stale
+  rather than silently wrong. Healing (re-anchor instead of stale)
+  additionally needs a fleet recompile to populate `AnchorText`.
 - **Impact:** citation trust is the moat; a served claim pointing at the
-  wrong text is worse than no claim. Fleet-wide, no claim is now silently
-  mis-cited — worst case is an honestly-flagged stale rule, never silence.
+  wrong text is worse than no claim. Once the live daemon runs this code
+  and sweeps, no claim will be silently mis-cited — worst case an
+  honestly-flagged stale rule, never silence. Until that deploy, the live
+  index keeps serving the 73 wrong citations unflagged.
 
 ### O14 — the top-6 serving cap silently evicts previously-served claims after a recompile (eviction visibility fixed; scope-mapping precision filed for the next flag-day)
 

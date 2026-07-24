@@ -242,16 +242,24 @@ type CompileRun struct {
 // channel the truth lens demanded — ADR-016 §4.1).
 type ClaimEvent struct {
 	ClaimID string
-	// Verdict is "refuted" | "corroborated" | "contradicted". "refuted" and
-	// "contradicted" name DIFFERENT judgments and must never be conflated
-	// (P1-9, docs/plans/pulled-tools-excellence.md): "refuted" is a
-	// deliberate human (or human-equivalent) verdict via `fathom claim
-	// refute` / the obligations tool's feedback action — it pairs with
-	// status ClaimRefuted, which Served() excludes (never served again).
-	// "contradicted" is semantic.Sweep's machine-detected, anchor-dead
-	// verdict — it pairs with status ClaimContradicted, which Served()
-	// includes (served WITH the status label, pending a recompile that
-	// heals or confirms it). "corroborated" never changes status.
+	// Verdict is "refuted" | "corroborated" | "contradicted" |
+	// "re-anchored". "refuted" and "contradicted" name DIFFERENT judgments
+	// and must never be conflated (P1-9, docs/plans/
+	// pulled-tools-excellence.md): "refuted" is a deliberate human (or
+	// human-equivalent) verdict via `fathom claim refute` / the obligations
+	// tool's feedback action — it pairs with status ClaimRefuted, which
+	// Served() excludes (never served again). "contradicted" is
+	// semantic.Sweep's machine-detected, anchor-dead verdict — it pairs with
+	// status ClaimContradicted, which Served() includes (served WITH the
+	// status label, pending a recompile that heals or confirms it).
+	// "corroborated" never changes status. "re-anchored" (T5-1/O13,
+	// docs/plans/trust-and-tokenomics.md) is machine-authored and
+	// sweep-issued like "contradicted", but uniquely status-PRESERVING: it
+	// pairs with NO status change at all — it records that a drifted
+	// citation's stored AnchorText resolved unambiguously at a new location
+	// in the cited file and the sweep moved the citation there
+	// (store.UpdateClaimLink), old→new ref in the Note; the claim keeps
+	// serving fresh because its evidence was relocated, not weakened.
 	Verdict string
 	Author  string
 	Note    string

@@ -128,20 +128,28 @@ the memory fake:
   Superseded rows are kept (status flip), never deleted — audit history is cheap now
   and unrecoverable later.
 - **`claim_links`** — typed edges with an *open* `rel` vocabulary; v1 materializes
-  only `cites` (doc file + line range + `target_hash` of the cited lines) and
-  `scopes` (the code globs). `supports`/`contradicts`/`supersedes` are reserved and
-  added edge-kind by edge-kind as layers earn them.
+  only `cites` (doc file + line range + `target_hash` of the cited lines +
+  `anchor_text`, the literal cited snippet the sweep re-anchors from — T5-1/O13)
+  and `scopes` (the code globs). `supports`/`contradicts`/`supersedes` are
+  reserved and added edge-kind by edge-kind as layers earn them.
 - **`compile_runs`** — per-run ledger: layer, corpus fingerprint, model, **real**
   token usage + USD from llmclient responses (not heuristics), duration, claim
   counts. `estimate_cost`-style dry-run is mandatory before any spending compile.
 - **`claim_events`** (minimal, append-only) — human/machine verdicts on claims
-  (`refuted`, `corroborated`, `contradicted`, with author + note). This is the
-  per-claim correction channel the truth lens demanded; the full hash-chained
-  lifecycle FSM in agentic-kit is a non-destructive retrofit later because claim
-  identity is stable. `refuted` and `contradicted` are deliberately DIFFERENT
-  verdict strings for different judgments — see §4.3's callout — never merged
-  into one, even though both pair a `claim_events` row with a `semantic_claims`
-  status flip.
+  (`refuted`, `corroborated`, `contradicted`, `re-anchored`, with author +
+  note). This is the per-claim correction channel the truth lens demanded; the
+  full hash-chained lifecycle FSM in agentic-kit is a non-destructive retrofit
+  later because claim identity is stable. `refuted` and `contradicted` are
+  deliberately DIFFERENT verdict strings for different judgments — see §4.3's
+  callout — never merged into one, even though both pair a `claim_events` row
+  with a `semantic_claims` status flip. `re-anchored` (T5-1/O13,
+  docs/plans/trust-and-tokenomics.md) is the fourth verdict and the odd one
+  out: machine-authored and sweep-issued like `contradicted`, but
+  status-PRESERVING — it pairs with no status change at all, recording that a
+  drifted citation's stored anchor text resolved unambiguously at a new
+  location in the cited file and the sweep moved the citation there (old→new
+  ref in the note); the claim keeps serving fresh because its evidence was
+  relocated, not weakened.
 
 Claims deliberately do NOT live in `observations`: re-ingest purges observations
 per (service, source_ref) destructively, and the naive contradiction scan would

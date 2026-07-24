@@ -232,6 +232,124 @@ func TestSweep_ReanchorsOnUpstreamLineShift(t *testing.T) {
 			t.Fatalf("c-legacy = %s, want stale", status)
 		}
 	})
+
+	// Critic probe 1 (committed as coverage): a heal must be terminal for
+	// that drift — re-sweeping the SAME (unchanged) corpus right after a
+	// re-anchor must find the updated citation hash-matching at its new
+	// range: zero drift, zero additional heal, and — the audit-noise
+	// contract — no second re-anchored event.
+	t.Run("heal then resweep is idempotent", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		seedClaimAnchored(t, st, "c-idem", "CLAUDE.md#extractor", core.ClaimFresh, "CLAUDE.md", doc, ruleStart, ruleEnd)
+
+		fetch := func(string) ([]byte, bool) { return shifted, true }
+		rep1, err := Sweep(ctx, st, "svc", fetch, nil)
+		if err != nil {
+			t.Fatalf("first Sweep: %v", err)
+		}
+		if rep1.ReAnchored != 1 {
+			t.Fatalf("first sweep report %+v, want reanchored=1", rep1)
+		}
+
+		rep2, err := Sweep(ctx, st, "svc", fetch, nil)
+		if err != nil {
+			t.Fatalf("second Sweep: %v", err)
+		}
+		if rep2.DriftDetected != 0 || rep2.ReAnchored != 0 || rep2.Fresh != 1 || rep2.Flipped != 0 {
+			t.Fatalf("resweep report %+v, want drift=0 reanchored=0 fresh=1 flipped=0 (heal must be terminal)", rep2)
+		}
+		events, err := st.ClaimEvents(ctx, "c-idem")
+		if err != nil {
+			t.Fatalf("ClaimEvents: %v", err)
+		}
+		if len(events) != 1 {
+			t.Errorf("expected exactly 1 re-anchored event after heal+resweep, got %d: %+v", len(events), events)
+		}
+	})
+
+	// Critic probe 2 (committed as coverage): a MULTI-LINE anchor healed
+	// once must be healable AGAIN on a later, further shift — i.e. the
+	// re-anchor must retain AnchorText and store the fresh hash at the new
+	// range (stored hash == recomputed hash of the new location), or the
+	// second drift could never re-anchor.
+	t.Run("multi-line anchor double-heals across successive shifts", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		// A two-line citation: the extractor + analyzer bullets together.
+		seedClaimAnchored(t, st, "c-multi", "CLAUDE.md#adding", core.ClaimFresh, "CLAUDE.md", doc, 5, 6)
+
+		// First shift: one line inserted above → the pair moves to 6-7.
+		shift1 := []byte(strings.Join([]string{
+			"# CLAUDE.md",
+			"",
+			"## Conventions",
+			"",
+			"Inserted prose, round one.",
+			"- Extractor: implement extractor.Extractor, register by extension.",
+			"- Analyzer: a pure internal/analysis/<name> package, deterministic.",
+		}, "\n") + "\n")
+		rep1, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return shift1, true }, nil)
+		if err != nil {
+			t.Fatalf("first Sweep: %v", err)
+		}
+		if rep1.ReAnchored != 1 || rep1.Fresh != 1 {
+			t.Fatalf("first sweep report %+v, want reanchored=1 fresh=1", rep1)
+		}
+		links, err := st.ClaimLinks(ctx, "svc", []string{"c-multi"})
+		if err != nil || len(links) != 1 {
+			t.Fatalf("ClaimLinks after first heal: err=%v links=%+v", err, links)
+		}
+		if links[0].TargetRef != core.CiteRef("CLAUDE.md", 6, 7) {
+			t.Fatalf("first heal ref = %q, want CLAUDE.md#L6-L7", links[0].TargetRef)
+		}
+		if links[0].AnchorText == "" {
+			t.Fatal("first heal cleared AnchorText — the second drift below could never re-anchor")
+		}
+		wantHash1, _ := core.HashLines(shift1, 6, 7)
+		if links[0].TargetHash != wantHash1 {
+			t.Fatalf("first heal stored hash %q, want the fresh hash at the new range %q", links[0].TargetHash, wantHash1)
+		}
+
+		// Second shift: two MORE lines inserted above → the pair moves to 8-9.
+		shift2 := []byte(strings.Join([]string{
+			"# CLAUDE.md",
+			"",
+			"## Conventions",
+			"",
+			"Inserted prose, round one.",
+			"Inserted prose, round two.",
+			"And a third line.",
+			"- Extractor: implement extractor.Extractor, register by extension.",
+			"- Analyzer: a pure internal/analysis/<name> package, deterministic.",
+		}, "\n") + "\n")
+		rep2, err := Sweep(ctx, st, "svc", func(string) ([]byte, bool) { return shift2, true }, nil)
+		if err != nil {
+			t.Fatalf("second Sweep: %v", err)
+		}
+		if rep2.ReAnchored != 1 || rep2.Fresh != 1 || rep2.Stale != 0 {
+			t.Fatalf("second sweep report %+v, want reanchored=1 fresh=1 stale=0 (double-heal)", rep2)
+		}
+		links, err = st.ClaimLinks(ctx, "svc", []string{"c-multi"})
+		if err != nil || len(links) != 1 {
+			t.Fatalf("ClaimLinks after second heal: err=%v links=%+v", err, links)
+		}
+		if links[0].TargetRef != core.CiteRef("CLAUDE.md", 8, 9) {
+			t.Fatalf("second heal ref = %q, want CLAUDE.md#L8-L9", links[0].TargetRef)
+		}
+		wantHash2, _ := core.HashLines(shift2, 8, 9)
+		if links[0].TargetHash != wantHash2 {
+			t.Fatalf("second heal stored hash %q, want the fresh hash at the new range %q", links[0].TargetHash, wantHash2)
+		}
+		events, err := st.ClaimEvents(ctx, "c-multi")
+		if err != nil {
+			t.Fatalf("ClaimEvents: %v", err)
+		}
+		if len(events) != 2 {
+			t.Errorf("expected 2 re-anchored events (one per heal), got %d: %+v", len(events), events)
+		}
+		if status := statusByID(t, st)["c-multi"]; status != core.ClaimFresh {
+			t.Errorf("c-multi = %s, want fresh through both heals", status)
+		}
+	})
 }
 
 func TestSweep_FlipsAndHeals(t *testing.T) {
