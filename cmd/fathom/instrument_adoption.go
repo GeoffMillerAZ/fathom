@@ -58,7 +58,8 @@ type adoptionCallEntry struct {
 	// per-checked-dimension finding counts (via appendReviewCallLogEntry,
 	// review.go's CLI/hook forced-channel write). Nil for every row logged
 	// by a binary built before this field existed — buildAdoptionReport
-	// must count those separately as "predates instrumentation", never as a
+	// must count those separately as "uninstrumented" (a binary predating the
+	// field, OR a gate call with zero claimed tasks — indistinguishable), never as a
 	// fabricated zero catch.
 	VerdictOutcome map[string]int `json:"verdict_outcome,omitempty"`
 	LatencyMS      float64        `json:"latency_ms"`
@@ -116,7 +117,9 @@ type AdoptionReport struct {
 	// VerifyGateInstrumentedCalls is how many verify_plan/review rows
 	// carried a verdict_outcome and so contributed to VerifyGateCatchCount.
 	VerifyGateInstrumentedCalls int `json:"verify_gate_instrumented_calls"`
-	// VerifyGatePredatesInstrumentation counts verify_plan/review rows
+	// VerifyGatePredatesInstrumentation counts verify_plan/review rows without
+	// a verdict_outcome — logged by a pre-T5-7 binary OR a gate call with zero
+	// claimed tasks (the two cases are indistinguishable in the log);
 	// logged by a binary built before this field existed — no
 	// verdict_outcome, so their pass/fail verdict is unrecoverable from the
 	// log. Reported separately and NEVER folded into VerifyGateCatchCount
@@ -376,7 +379,8 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 // task, or an active review finding on a checked dimension — the count of
 // times the gate actually caught something. Rows of either tool logged
 // before this field existed (VerdictOutcome nil) carry no recoverable
-// verdict and are counted SEPARATELY as predates-instrumentation, never
+// verdict and are counted SEPARATELY as uninstrumented (predates the field,
+// or zero claimed tasks — indistinguishable), never
 // folded into the catch count as a fabricated zero (the honest-split
 // requirement). catchCount is nil only when there are zero instrumented
 // rows in this window — still literally not instrumented, over this
@@ -406,7 +410,7 @@ func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented,
 		note = "not instrumented — no verify_plan/review call in this window carries a " +
 			"verdict_outcome (older call-log rows predate the field; a placeholder, not a measured zero)"
 		if predates > 0 {
-			note += fmt.Sprintf("; %d row(s) predate instrumentation and are excluded", predates)
+			note += fmt.Sprintf("; %d row(s) are uninstrumented (predate the field, or zero claimed tasks) and are excluded", predates)
 		}
 		return nil, instrumented, predates, note
 	}
@@ -414,7 +418,7 @@ func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented,
 	n := catches
 	note = fmt.Sprintf("%d catch(es) across %d instrumented call(s) (verify_plan claimed-but-failing tasks + review active findings)", catches, instrumented)
 	if predates > 0 {
-		note += fmt.Sprintf("; %d row(s) predate instrumentation and are excluded (not counted as zero)", predates)
+		note += fmt.Sprintf("; %d row(s) are uninstrumented (predate the field, or zero claimed tasks) and are excluded (not counted as zero)", predates)
 	}
 	return &n, instrumented, predates, note
 }

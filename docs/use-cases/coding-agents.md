@@ -1,7 +1,9 @@
 # Fathom for coding agents — the canonical wiring guide
 
-How to make Claude Code (and Codex, and any MCP-speaking agent) measurably
-more effective and cheaper with fathom. This is the one document to follow;
+How to wire Claude Code (and Codex, and any MCP-speaking agent) into
+fathom: equal answers, 2–3× faster, cheaper on most tasks, plus the
+governed capabilities (verify, obligations, review) no grep loop has —
+see §5 for exactly what is and isn't measured. This is the one document to follow;
 older recipes (getting-started's manual steps, the June integration notes)
 defer to it.
 
