@@ -1,6 +1,20 @@
 {
   "version": 1,
-  "description": "context-bench task corpus (docs/plans/falsifiability.md B1-1). Committed form of the ×10 tokenomics falsifiability gate (coding-agent-excellence.md §0/§7 gate 6). Each task's ground_truth was derived by direct grep/read of the fathom and agentic-kit repos at the commit noted in `source` — reproducible by anyone, not by querying the live fathom daemon (see internal/contextbench/task.go doc comment for the full convention). Run artifacts (raw claude -p transcripts, scored results, summary tables) are NOT committed here — they land under workspace/artifacts/context-bench/ per scripts/context-bench.sh.",
+  "description": "context-bench task corpus (docs/plans/falsifiability.md B1-1). Committed form of the ×10 tokenomics falsifiability gate (coding-agent-excellence.md §0/§7 gate 6). Each task's ground_truth was derived by direct grep/read of the fathom and agentic-kit repos at the commit noted in `source` — reproducible by anyone, not by querying the live fathom daemon (see internal/contextbench/task.go doc comment for the full convention). Run artifacts (raw claude -p transcripts, scored results, summary tables) are NOT committed here — they land under workspace/artifacts/context-bench/ per scripts/context-bench.sh. See `lookup_corpus_sweep` for the T5-8 drift sweep applied before the second tokenomics swing.",
+  "lookup_corpus_sweep": {
+    "id": "T5-8-sweep",
+    "performed_at": "2026-07-24",
+    "performed_at_commit": "bfb80101d8b2ef07b81e668304fcf750b010e6ea",
+    "rule": "docs/plans/trust-and-tokenomics.md T5-8 requires sweeping this grep-native corpus for ground truths invalidated by heavy commit activity since authoring (9f40934) — symbol renames, moved files, new callers — verifying each ground truth still true at HEAD and fixing drift with provenance notes, the H2/B1 criteria themselves untouched.",
+    "method": "Direct grep/read of every task's cited symbol/file at worktree HEAD (never the live daemon) — re-ran each task's original `source` command verbatim and diffed the result against ground_truth.",
+    "findings": [
+      "B1-T01/B1-T15 (ParseMarkdownPlan callers): cmd/fathom/plans.go (new file, a7f5156, not present at 9f40934) gained a 6th call site (computePlanRows, plans.go:91) — added to both tasks' ground_truth.",
+      "B1-T04 (verify.Plan qualified references): the same new file, cmd/fathom/plans.go, also references `[]verify.Plan` at plans.go:87 — added to ground_truth.",
+      "B1-T14 (defaultFathomURL callers): three files new since 9f40934 (cmd/fathom/plans.go, cmd/fathom/plans_archive.go, cmd/fathom/doctor.go — all post-authoring feature additions) now also call defaultFathomURL() for their --url flag default — all three added to ground_truth (6 -> 9 required entries).",
+      "B1-T02, B1-T03, B1-T05, B1-T06, B1-T07, B1-T08, B1-T09, B1-T10, B1-T11, B1-T12, B1-T13: re-verified unchanged and still accurate at HEAD bfb8010 — no drift found."
+    ],
+    "note": "All three drifted tasks use scoring_rule all-of, so the fix makes them strictly HARDER (both arms must now find the additional real callers), not easier — an honest tightening, not a softening, and identically presented to both arms via the unchanged prompt text (which never enumerated a count)."
+  },
   "tasks": [
     {
       "id": "B1-T01",
@@ -9,12 +23,14 @@
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/plans.go",
         "cmd/fathom/stophook.go",
         "cmd/fathom/verify.go",
         "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rn \"ParseMarkdownPlan(\" --include='*.go' . (excluding _test.go and the definition in internal/verify/markdown.go)"
+      "source": "fathom @ 9f40934, grep -rn \"ParseMarkdownPlan(\" --include='*.go' . (excluding _test.go and the definition in internal/verify/markdown.go). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep per docs/plans/trust-and-tokenomics.md T5-8): `cmd/fathom/plans.go` is a genuinely new file (git show 9f40934:cmd/fathom/plans.go fails — introduced by a7f5156, 'feat(plans): computed SDD progress...') whose computePlanRows (plans.go:91) now also calls verify.ParseMarkdownPlan — a real 6th caller added by post-authoring feature work, not a corpus defect. Added to ground_truth (all-of, so both arms must now find it too — a fair increase in difficulty, identically presented to both arms).",
+      "notes": "RE-SWEPT 2026-07-24 (T5-8): ground_truth gained cmd/fathom/plans.go — see source for the drift."
     },
     {
       "id": "B1-T02",
@@ -39,12 +55,13 @@
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/plans.go",
         "cmd/fathom/verify.go",
         "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, grep -rn \"verify\\.Plan\\b\" --include='*.go' . (non-test, excluding internal/verify — inside the defining package the type is referenced unqualified as Plan; the definer is internal/verify/verify.go:32)",
-      "notes": "Corrected post-run (methodology critic, 2026-07-23): the original entry said 'include the file that defines it' but listed internal/verify/markdown.go — a comment-only textual match — instead of the true definer internal/verify/verify.go:32, which a bare grep for 'verify.Plan' cannot find (it declares 'type Plan struct'). run-20260723T045809Z scored BOTH arms against the original flawed entry symmetrically (both passed), so that run's scoring stands; the prompt is now scoped to qualified references outside the defining package so the ground truth is unambiguous for future runs."
+      "notes": "Corrected post-run (methodology critic, 2026-07-23): the original entry said 'include the file that defines it' but listed internal/verify/markdown.go — a comment-only textual match — instead of the true definer internal/verify/verify.go:32, which a bare grep for 'verify.Plan' cannot find (it declares 'type Plan struct'). run-20260723T045809Z scored BOTH arms against the original flawed entry symmetrically (both passed), so that run's scoring stands; the prompt is now scoped to qualified references outside the defining package so the ground truth is unambiguous for future runs. RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010): `cmd/fathom/plans.go` (new file, a7f5156, same drift as B1-T01) declares `localPlans := make([]verify.Plan, 0, len(planFiles))` at plans.go:87 — a genuine qualified reference outside internal/verify not present at the original authoring commit. Added to ground_truth."
     },
     {
       "id": "B1-T05",
@@ -129,10 +146,13 @@
         "cmd/fathom/init.go",
         "cmd/fathom/verify.go",
         "cmd/fathom/compile.go",
-        "cmd/fathom/sessionhook.go"
+        "cmd/fathom/sessionhook.go",
+        "cmd/fathom/plans.go",
+        "cmd/fathom/plans_archive.go",
+        "cmd/fathom/doctor.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rn \"defaultFathomURL(\" --include='*.go' . (non-test)"
+      "source": "fathom @ 9f40934, grep -rn \"defaultFathomURL(\" --include='*.go' . (non-test). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep): three files new since 9f40934 (git show 9f40934:<path> fails for all three) now also call defaultFathomURL() when building their --url flag default: cmd/fathom/plans.go (lines 200, 320), cmd/fathom/plans_archive.go (line 47), cmd/fathom/doctor.go (line 74) — real post-authoring feature growth (the plans/doctor subcommands), not a corpus defect. All three added to ground_truth (all-of now requires 9 files, not 6 — a fair increase in difficulty identical for both arms)."
     },
     {
       "id": "B1-T15",
@@ -141,12 +161,13 @@
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/plans.go",
         "cmd/fathom/stophook.go",
         "cmd/fathom/verify.go",
         "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "any-of",
-      "source": "same source set as B1-T01; exercises the any-of scoring rule against the same ground-truth set"
+      "source": "same source set as B1-T01; exercises the any-of scoring rule against the same ground-truth set. RE-SWEPT (T5-8, 2026-07-24): cmd/fathom/plans.go added alongside B1-T01's identical finding — any-of is unaffected in difficulty (any one of the six still passes), added for set consistency with B1-T01."
     }
   ]
 }

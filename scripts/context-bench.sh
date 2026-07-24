@@ -9,7 +9,10 @@
 #   - arm "fathom": may use ONLY the fathom MCP companion tools (find_symbol,
 #     find_callers, references, symbol_context, outline, repo_map,
 #     pack_context, entrypoints, query_symbols, capabilities, list_services,
-#     staleness_report, verify_plan, obligations) — never Bash/Read/Grep.
+#     staleness_report, verify_plan, obligations, read_source — the T5-4
+#     bounded raw-text read added to the 16-tool /rpc/agent surface since the
+#     prior H3-1 run) — never Bash/Read/Grep; mcp__fathom__ingest stays
+#     explicitly denied (read-only against the live daemon, per CLAUDE.md).
 #   - arm "grep":   may use ONLY grep/find/cat via Bash — never Read, never
 #     any MCP tool.
 # Both arms score real, non-fabricated runs when the fathom daemon is
@@ -130,7 +133,13 @@ print("context-bench: [{}/{}] {} tokens={} wall_ms={}".format(
     d["task_id"], d["arm"], status, d["total_tokens"], d["wall_time_ms"]))
 PY
 
-FATHOM_ALLOWED="mcp__fathom__find_symbol mcp__fathom__find_callers mcp__fathom__references mcp__fathom__symbol_context mcp__fathom__outline mcp__fathom__repo_map mcp__fathom__pack_context mcp__fathom__entrypoints mcp__fathom__query_symbols mcp__fathom__capabilities mcp__fathom__list_services mcp__fathom__staleness_report mcp__fathom__verify_plan mcp__fathom__obligations"
+# T5-8 (docs/plans/trust-and-tokenomics.md): read_source joined the 16-tool
+# companion allowlist (T5-4) since the previous H3-1 run — added here so the
+# fathom arm's allowed surface matches the live /rpc/agent registry exactly
+# (companionWant in internal/mcp/surface_test.go, minus ingest, which stays
+# explicitly denied below: this script never lets an arm mutate the shared
+# fleet store).
+FATHOM_ALLOWED="mcp__fathom__find_symbol mcp__fathom__find_callers mcp__fathom__references mcp__fathom__symbol_context mcp__fathom__outline mcp__fathom__repo_map mcp__fathom__pack_context mcp__fathom__entrypoints mcp__fathom__query_symbols mcp__fathom__capabilities mcp__fathom__list_services mcp__fathom__staleness_report mcp__fathom__verify_plan mcp__fathom__obligations mcp__fathom__read_source"
 FATHOM_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest"
 GREP_ALLOWED="Bash(grep:*) Bash(find:*) Bash(cat:*)"
 GREP_DISALLOWED="Read Grep Glob Task WebSearch WebFetch Write Edit NotebookEdit"
