@@ -564,9 +564,9 @@ flagged `off_surface` in the call log), so nothing is actually locked out.
 
 ---
 
-## 11. Agent skills: `fathom-plan` / `fathom-verify` / `fathom-onboard` / `fathom-feedback`
+## 11. Agent skills: `fathom-plan` / `fathom-verify` / `fathom-onboard` / `fathom-feedback` / `fathom-doctor` / `fathom-impact`
 
-`fathom init --skills[=claude|codex|all]` installs four shipped, versioned
+`fathom init --skills[=claude|codex|all]` installs six shipped, versioned
 skill sources (`dist/agents/skills/`, embedded in the binary — no fathom
 source checkout needed at install time):
 
@@ -587,6 +587,14 @@ bin/fathom init --skills=claude
   actionable version of this guide and `docs/adoption/codex.md`.
 - **`fathom-feedback`** — file friction with a fathom tool the moment it's
   hit, via `fathom observe` — the flywheel's intake (§12 below).
+- **`fathom-doctor`** — run and interpret `fathom doctor` (§13 below): the
+  deterministic wiring checklist, remedies applied only with operator
+  approval, plus the tie-in check (a live tool call, hook latency against
+  the budget ledger).
+- **`fathom-impact`** — narrate `fathom instrument --adoption` +
+  `fathom plans status` + the open-observation backlog honestly: what was
+  measured, the predates-instrumentation split, and the open frictions as
+  the flywheel's ask (§12 below).
 
 Each ships two rendered shapes from one authored source: `SKILL.md`
 (Claude Code's frontmatter + Markdown format, installed to
@@ -662,6 +670,24 @@ repo, and nothing here depends on a daemon being reachable.
 ---
 
 ## 13. Troubleshooting
+
+**Start here: `fathom doctor`.** Before working through the entries below by
+hand, run the deterministic wiring checklist — it covers MCP registration,
+daemon reachability, binary freshness, the hook stack (installed AND
+firing), the `CLAUDE.md`/`AGENTS.md` stanza, shipped skills, `.fathom/`
+config validity, obligations serving, and surface traffic in one command:
+
+```sh
+bin/fathom doctor [--harness=claude|codex|auto] [--json]
+```
+
+Each row is `{name, status, reason, remedy}` — `pass`/`fail`/`skipped`
+(never a guessed pass for an uncheckable state), with a one-command remedy
+on every failure. Exit `0` all-pass, `1` a real problem, `2` doctor itself
+couldn't run. See the `fathom-doctor` skill (§11) for interpretation and
+the remedy-approval discipline. The entries below are the manual/reference
+version of what `doctor` automates — useful when you want the "why," not
+just the "what to run."
 
 **Tools don't show up in a session.** Registration/schema discovery happens
 at session start (§6) — restart the session once. Confirm with
@@ -744,10 +770,12 @@ Then, inside a Claude Code session:
 - [ ] `git push` in the repo runs lefthook's pre-push hooks, including the
       `fathom-verify` command from §7.4.
 - [ ] `bin/fathom init --skills=claude` (or `=all`) populates
-      `.claude/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}/SKILL.md`
+      `.claude/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}/SKILL.md`
       (§11), and `bin/fathom instrument --adoption` (§12) runs cleanly,
       reporting `no .fathom/observations.md yet` until the first `fathom
       observe` call, then a real open-observation count after.
+- [ ] `bin/fathom doctor` (§13) reports every row `pass` — or, faster than
+      working through this checklist by hand, just run it first.
 
 If every box above is checked, the full loop — index, serve, inject,
 gate — is live.
@@ -759,10 +787,12 @@ gate — is live.
 This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
 `CLAUDE.md`/`AGENTS.md` marker-delimited stanza), `ingest`, `serve-mcp`,
 `serve-http`, `compile`, `layers` (`list`/`show`/`install`), `verify`
-(`--strict`/`--require-all`), `observe`, `instrument --adoption`, `config`,
-`providers`, `smoke`, `session-hook`, `edit-hook`, `stop-hook`; the `/rpc`,
-`/rpc/agent` (`/rpc/companion`) HTTP surfaces; the 16-tool agent allowlist;
-the `SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the
-lefthook pre-push verify gate; the shipped `fathom-plan`/`fathom-verify`/
-`fathom-onboard`/`fathom-feedback` agent skills (`dist/agents/skills/`).
-Update this doc's examples and this line when any of these change.
+(`--strict`/`--require-all`), `observe`, `instrument --adoption`, `doctor`
+(`--harness=claude|codex|auto`, `--json`), `config`, `providers`, `smoke`,
+`session-hook`, `edit-hook`, `stop-hook`; the `/rpc`, `/rpc/agent`
+(`/rpc/companion`) HTTP surfaces; the 16-tool agent allowlist (incl. read_source); the
+`SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the lefthook
+pre-push verify gate; the shipped `fathom-plan`/`fathom-verify`/
+`fathom-onboard`/`fathom-feedback`/`fathom-doctor`/`fathom-impact` agent
+skills (`dist/agents/skills/`). Update this doc's examples and this line
+when any of these change.

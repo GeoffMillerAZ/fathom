@@ -38,8 +38,9 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
   since the mechanism and the stanza text are identical for both files), and
 - if you passed `--skills=codex` (or `=all`), rendered the shipped
-  `fathom-plan`/`fathom-verify`/`fathom-onboard`/`fathom-feedback` prompts
-  into `~/.codex/prompts/` — §1.1 below.
+  `fathom-plan`/`fathom-verify`/`fathom-onboard`/`fathom-feedback`/
+  `fathom-doctor`/`fathom-impact` prompts into `~/.codex/prompts/` —
+  §1.1 below.
 
 `init` does *not* register Codex's MCP client (that's a Codex-side,
 interactive step, same reason it doesn't call `claude mcp add` for you
@@ -52,8 +53,8 @@ step instead — §4).
 bin/fathom init --skills=codex
 ```
 
-Renders the same four shipped skill sources
-(`dist/agents/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}/`)
+Renders the same six shipped skill sources
+(`dist/agents/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}/`)
 that the Claude Code guide installs as `SKILL.md` files
 ([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills-fathom-plan--fathom-verify--fathom-onboard--fathom-feedback))
 into Codex's custom-prompts convention instead: each skill's
@@ -254,8 +255,9 @@ Codex-specific to configure.
 | CI `--strict` gate | Yes | Yes — identical |
 | Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
 | `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
-| Shipped agent skills (`fathom-plan`/`verify`/`onboard`/`feedback`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
+| Shipped agent skills (`fathom-plan`/`verify`/`onboard`/`feedback`/`doctor`/`impact`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
 | Local friction flywheel (`observe`/`instrument --adoption`) | Yes — plain CLI, no hook dependency | Yes, identically — plain CLI, no hook dependency (§5.1) |
+| `fathom doctor` wiring diagnosis | Yes, all 11 checks (`--harness=claude`) | Yes (`--harness=codex`) — 9 of 11 checks apply identically; `hooks_installed`/`hooks_firing` report `skipped` honestly (no hook mechanism to check, §6 above) rather than a false pass or fail |
 
 **The practical upshot:** in Codex, fathom is a fully capable *pull* tool
 (every MCP tool works identically) plus two *gate* channels that are
@@ -269,6 +271,16 @@ backstop rather than a nice-to-have.
 ---
 
 ## 7. You know it works when…
+
+**Troubleshooting starts with `fathom doctor --harness=codex`** — the same
+deterministic wiring checklist the Claude Code guide leads its
+troubleshooting section with (`docs/adoption/claude-code.md` §13), reading
+`skipped` (never a guessed pass) for the two Claude-only hook checks per
+the capability table above:
+
+```sh
+bin/fathom doctor --harness=codex [--json]
+```
 
 ```sh
 # Daemon up (same as Claude Code path)
@@ -290,11 +302,14 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
       `fathom-verify` command exits with the expected code (0 pass, 1 a
       real unproven claim, 2 only when the daemon/store is genuinely down).
 - [ ] `bin/fathom init --skills=codex` (or `=all`) populates
-      `~/.codex/prompts/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback}.md`
+      `~/.codex/prompts/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}.md`
       (§1.1), and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
       --adoption` (§5.1) both run cleanly from a Codex-driven shell — neither
       is hook-dependent, so there's nothing Codex-specific to verify beyond
       the CLI itself working.
+- [ ] `bin/fathom doctor --harness=codex` reports every applicable row
+      `pass` (the two Claude-only hook rows `skipped`) — or, faster than
+      this checklist, just run it first.
 
 ---
 
@@ -302,11 +317,14 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 
 This doc covers: `fathom init` (AGENTS.md stanza, `--skills=codex` prompt
 install into `~/.codex/prompts/`), `observe`, `instrument --adoption`,
-`serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`), the `codex-cli` provider
-lane (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping
-tripwire), `fathom verify` / `--strict` (git-native gate, identical to
-Claude Code). Codex-specific `config.toml`/`codex mcp` syntax is sourced
-from Codex's own public docs, not this repo — re-verify those specifics
-against your installed Codex version when they change. Update this doc
-when the codex-cli lane's cost story, the Ping tripwire, the skills/prompts
-install story, or the verify gate change.
+`doctor` (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`,
+`/rpc/agent`), the `codex-cli` provider lane
+(`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
+`fathom verify` / `--strict` (git-native gate, identical to Claude Code),
+the shipped `fathom-plan`/`fathom-verify`/`fathom-onboard`/
+`fathom-feedback`/`fathom-doctor`/`fathom-impact` Codex prompts
+(`dist/agents/skills/`). Codex-specific `config.toml`/`codex mcp` syntax is
+sourced from Codex's own public docs, not this repo — re-verify those
+specifics against your installed Codex version when they change. Update
+this doc when the codex-cli lane's cost story, the Ping tripwire, the
+skills/prompts install story, or the verify gate change.

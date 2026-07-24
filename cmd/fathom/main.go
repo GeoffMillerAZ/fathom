@@ -99,6 +99,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdProviders(args[1:], stdout, stderr)
 	case "smoke":
 		return cmdSmoke(args[1:], stdout, stderr)
+	case "doctor":
+		return cmdDoctor(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)
@@ -138,6 +140,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  config                Print the effective configuration (--explain for per-key provenance)")
 	fmt.Fprintln(w, "  providers             Auth-health probe across configured LLM profiles (zero/near-zero tokens)")
 	fmt.Fprintln(w, "  smoke                 One tiny real completion per profile: model, latency, tokens, cost")
+	fmt.Fprintln(w, "  doctor                Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

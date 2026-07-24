@@ -778,6 +778,51 @@ registration and the lefthook pre-push snippet. See
 
 ---
 
+### `doctor`
+
+Deterministic wiring-diagnosis checklist for a fathom-adopting repo — the one-command
+answer to "is fathom actually wired here, end to end?" Every row is `{name, status,
+reason, remedy}`; `status` is `pass`, `fail`, or `skipped` (an uncheckable state, e.g. an
+unreadable config or an unreachable daemon, is always `skipped` with a reason — never a
+guessed `pass`). `remedy` is a single command, present on every `fail`. `doctor` is
+strictly read-only: it never writes a file, calls a mutating MCP tool, or restarts
+anything.
+
+```sh
+fathom doctor [--harness claude|codex|auto] [--path <dir>] [--service <id>] [--url <base>] [--json]
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--harness` | `auto` | `claude`, `codex`, or `auto` (detects from `.claude/settings.json`/`~/.claude.json` vs `.codex/config.toml`, defaulting to `claude` with no evidence either way) |
+| `--path` | cwd | Repo root to diagnose |
+| `--service` | resolved from `--path` | Service ID — the same identity `fathom init` resolves |
+| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
+| `--json` | off | Machine-readable report instead of the human table |
+
+Eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
+binary's own build vs `git rev-parse HEAD` of the checked repo — the local proxy for
+daemon staleness; every pass states the daemon's installed copy is unverified, a dirty
+build surfaces `vcs.modified`, and both linked-worktree caveats — mismatch inside one,
+stamp-poisoning by ones nested under the checkout — are printed only when verified to
+apply), `hooks_installed` (any settings scope: project `settings.json`,
+`settings.local.json`, or user `~/.claude/settings.json`; when nothing readable wires
+them but the call log shows them firing, the verdict names that contradiction instead
+of a duplicate-installing remedy) / `hooks_firing` (both Claude Code only — Codex
+reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
+(harness-agnostic), `stanza_present`, `skills_installed`, `config_valid`,
+`obligations_served` (service resolved the way the hooks resolve it — every candidate
+identity intersected with the daemon's service list, with a distinct not-indexed
+verdict and drift-flagged rules counted into the reason), `surface_traffic`
+(process-lifetime counters — "since this daemon process started").
+
+Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
+run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
+repo's wiring. See the `fathom-doctor` skill for interpretation, the remedy-approval
+discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
+
+---
+
 ## Go client (`pkg/client`)
 
 `pkg/client` exposes a thin `Client` that wires together the connector, fusion pipeline,

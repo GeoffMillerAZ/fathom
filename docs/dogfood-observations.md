@@ -19,6 +19,78 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O15 — obligations injection genuinely INERT on fathom's own repo since 2026-07-18: the back-compat purge orphaned the hooks' directory-derived service identity
+
+- **Symptom:** found while implementing `fathom doctor` (DI-1/DI-2,
+  docs/plans/doctor-and-impact.md, 2026-07-24): the live call log shows
+  1,035 `obligations` calls with origin `edit-hook` carrying service
+  **"sextant"** — which `list_services` proves is NOT an indexed service
+  (the fleet index has `fathom`, 5,419 symbols; no `sextant` at all). Every
+  such probe returns empty rules, so the hook stays silent: **the
+  PostToolUse obligations injection has not fired for fathom's own repo
+  since 2026-07-18T05:09Z**, while `hooks_firing`-style traffic evidence
+  makes the stack look perfectly healthy.
+- **Evidence (verbatim probes, 2026-07-24):**
+  - `list_services` (live daemon): `agentic-kit, app-kit, car-assistant,
+    crossplane-platform, fathom, geoffmiller-cloud, growing-gardens-bi,
+    resume_as_code, throughline` — no `sextant`.
+  - Call-log sample (`workspace/logs/mcp-calls.jsonl`, 7,630 rows):
+    edit-hook-origin `obligations` rows split `service=sextant n=1035
+    (first 2026-07-16T16:17:39Z, last 2026-07-24T06:08:27Z)` vs
+    `service=fathom n=363 (first 2026-07-16T16:17:39Z, LAST
+    2026-07-18T05:09:02Z)`. Until 07-18 the rows come in PAIRS ~100–250ms
+    apart (sextant miss, then fathom hit — injection worked via the second
+    probe, at one wasted probe per edit); after 2026-07-18T05:09Z the
+    fathom probes stop dead and only sextant probes remain. Also 165
+    edit-hook `spec_refs` rows, ALL service=sextant — OP-4 spec-line
+    injection has the same dead identity (it uses the first candidate that
+    relativizes, unconditionally).
+  - The cliff matches a commit to the second: **d6cb7b7** ("remove
+    (back-compat): purge the sextant back-compat surface (owner
+    override)"), authored 2026-07-17 22:09:20 -0700 =
+    **2026-07-18T05:09:20Z**, deleted `withNameAliases` — the shim that
+    expanded candidate "sextant" → ["sextant", "fathom"] in all three
+    hooks. Post-purge, `serviceCandidates` (cmd/fathom/serviceident.go)
+    derives identity purely from directory basenames: for this repo both
+    candidates are "sextant" (the dir is still named `sextant`; the git
+    toplevel is the same dir), so no candidate can ever reach the indexed
+    service "fathom".
+- **Root cause:** d6cb7b7's stated consequence ("stores ingested under
+  'sextant' are no longer recognized — the fleet's own store already uses
+  'fathom', so the dogfood machine is unaffected") checked the STORE side
+  but missed the HOOK side: the store is fine, and the *hooks' directory
+  basename* is the thing still saying "sextant". The alias shim was the
+  only bridge between the repo's directory name and its post-rename
+  service name; deleting it silently severed session-hook priming,
+  edit-hook obligations injection, and spec-line injection for the one
+  repo whose directory name predates the rename — fathom's own.
+  Not a doctor bug and not an index bug: a service-identity resolution gap
+  (directory-derived names have no fallback to the index's actual
+  services or `ServiceMeta` path matching).
+- **Reproduction:** `obligations({"service":"sextant","file":"CLAUDE.md"})`
+  → empty rules, no watermark; the known-good twin
+  `obligations({"service":"fathom","file":"CLAUDE.md"})` → 2 rules,
+  watermark `2d3055cc…`. Or: `bin/fathom doctor --path
+  /path/to/sextant-checkout` (no `--service`) → `obligations_served` FAIL
+  "no candidate service ID (sextant) is in the daemon's index".
+- **Fix direction (not landed here):** hooks need a rename-proof identity —
+  match the project dir against the daemon's `ServiceMeta.Path` (the
+  daemon already records it for auto-refresh) or honor a project-local
+  service pin (e.g. `.fathom/config.toml`), instead of trusting directory
+  basenames alone. Interim operator fix: rename the checkout dir to
+  `fathom`, or re-ingest under `sextant` (undesirable — two service IDs
+  for one repo).
+- **Detection landed (this commit):** `fathom doctor`'s
+  `obligations_served` resolves service the way the hooks do (all
+  candidates ∩ the daemon's service list) and fails with the distinct
+  not-indexed verdict when — as here — no candidate is indexed; an
+  explicit `--service` outside the hook candidates passes with an
+  injection-mismatch note instead of masking this state.
+- **Status:** open (root-caused; fix direction named; detection shipped in
+  `doctor`). **Impact:** high — M5 (informed edits) silently dead on the
+  dogfood repo for ~6 days; every "hooks are firing" signal in that window
+  was probes, not injections.
+
 ### O13 — the sweep misses citation drift from upstream line shifts: claims served with silently wrong citations, fleet-wide (fix landed; fleet heal pending)
 
 - **Symptom:** found during the home-bench re-derivation (2026-07-24) and
