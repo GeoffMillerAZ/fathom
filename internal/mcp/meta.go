@@ -350,31 +350,58 @@ var cannedPrompts = []promptDef{
 		},
 	},
 	{
+		// C3-1 (docs/plans/review-verb.md): rewritten to call review_diff,
+		// the composed verb, instead of narrating the 8-step manual
+		// sequence docs/use-cases/change-review.md used to document (that
+		// sequence is now the doc's appendix for tool-by-tool users).
 		Name:        "review_change",
-		Description: "Review a code change using fathom impact-analysis tools.",
+		Description: "Review a code change with fathom's composed review_diff verb: diff impact + obligations/findings + architecture conformance + spec coverage in one cited verdict.",
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier where the change was made", Required: true},
-			{Name: "change", Description: "Description of the change (e.g. 'added rate limiting to login endpoint')", Required: true},
+			{Name: "changed_files", Description: "Comma-separated repo-relative changed file paths (e.g. from `git diff --name-only origin/main`)", Required: true},
+			{Name: "change", Description: "Optional free-text description of the change, for the agent's own context", Required: false},
+			{Name: "concern", Description: "Optional concern token to pass through to review_diff", Required: false},
 		},
-		tools: []string{"rename_impact", "test_impact", "api_surface", "complexity", "call_path"},
+		tools: []string{"review_diff"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
+			changedFiles := a["changed_files"]
 			change := a["change"]
+			concern := a["concern"]
+
+			filesClause := fmt.Sprintf("changed_files: [%s]", changedFiles)
+			if changedFiles == "" {
+				filesClause = "changed_files: (not given — derive it first via `git diff --name-only <base>`, e.g. origin/main, and pass the resulting repo-relative paths)"
+			}
+			concernClause := ""
+			if concern != "" {
+				concernClause = fmt.Sprintf(", concern: %q", concern)
+			}
+			changeClause := ""
+			if change != "" {
+				changeClause = fmt.Sprintf(" (%s)", change)
+			}
+
 			return []map[string]any{
 				{
 					"role": "user",
 					"content": map[string]any{
 						"type": "text",
 						"text": fmt.Sprintf(
-							"Review this change in service %q: %s\n\n"+
-								"Steps:\n"+
-								"1. Use rename_impact(%[1]s, <changed_symbol>) to list affected call sites.\n"+
-								"2. Use test_impact(%[1]s, <symbol>) to identify tests that cover it.\n"+
-								"3. Use api_surface(%[1]s) to check if the public API changed.\n"+
-								"4. Use complexity(%[1]s) to see if complexity increased.\n"+
-								"5. Use call_path(%[1]s, <entry>, <changed>) to trace reachability.\n\n"+
-								"Is the change safe to ship?",
-							svc, change,
+							"Review this change in service %q%s.\n\n"+
+								"Call review_diff(service: %q, %s%s) — ONE call that composes diff impact "+
+								"(blast radius + typed call edges), obligations/findings scoped to the "+
+								"changed files, architecture conformance (the service's own .fathom/rules/ "+
+								"project rule pack), and spec coverage into a single cited verdict.\n\n"+
+								"Read verdict.summary first. A dimension with checked:false names what's "+
+								"missing in its reason (e.g. no rule pack configured) — that is a gap in "+
+								"review coverage, never a clean pass. For each active finding, check its "+
+								"citation before deciding whether it blocks the change. A finding you "+
+								"disagree with can be suppressed durably — via the obligations tool's "+
+								"feedback action (action:\"refute\", claim_id, note) or `fathom claim "+
+								"refute` — and stays refuted across every later re-review of the same "+
+								"diff.\n\nIs the change safe to ship?",
+							svc, changeClause, svc, filesClause, concernClause,
 						),
 					},
 				},

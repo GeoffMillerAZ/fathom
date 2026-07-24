@@ -57,6 +57,100 @@ All notable changes to fathom. Format loosely follows
   removal (deliberately — SS-8 never touches the live fleet store) and is
   the operator's to delete once satisfied it's no longer needed.
 
+### Added — the review verb: `review_diff` + `fathom review` (Phase C, 2026-07-23, docs/plans/review-verb.md C1-1/C2-1/C3-1)
+- **C1-1 — `review_diff`, the program's one new MCP tool:** a new pure-Go
+  `internal/analysis/review` package composes, in-process, diff impact
+  (blast radius + typed edges), obligations/findings scoped to the changed
+  files, architecture conformance (the service's own `.fathom/rules/
+  archconformance.cue` project rule pack — `review_diff` never accepts
+  inline rules), and spec coverage into ONE cited verdict
+  (`Verdict.Dimensions[].Findings[]`, each carrying an evidence citation).
+  Honesty rules apply per dimension: a dimension that cannot run reports
+  `checked:false` + `reason`, never a clean-shaped pass. New MCP tool
+  `review_diff` (`GroupInvestigation`, `internal/mcp/review_tool.go`); CLI
+  mirror `fathom review --store DB --service S --since <ref>`
+  (`cmd/fathom/review.go`, mirrors `cmdReport`'s store-direct structure —
+  resolves changed files via `git diff --name-only <ref>`, then runs the
+  identical engine). Refactor along the way: the arch-conformance edge
+  normalization logic (method-origin/method-target package resolution,
+  P1-4) moved from `internal/mcp/extra_tools.go`'s unexported
+  `archConformanceEdges`/`archResolver` into
+  `internal/analysis/archconformance.EdgesFromNodes` — one implementation
+  the standalone `arch_conformance` tool and `review_diff` both call, never
+  two that could drift. Likewise the inline/project rule-pack resolution
+  (C4-2/C4-3's honesty split) is now `internal/projectrules.ResolveRules`,
+  shared the same way.
+- **C2-1 — the findings bridge (fires FT-7's pre-armed trigger,
+  docs/plans/findings-tracer.md):** review findings are persisted as
+  content-addressed claims on the `findings` layer (`ClaimID` = sha256 of
+  layer+kind+subject+reproKey, tier `verified` — a deterministic pass, no
+  LLM) via `review.AttachClaims`. Durability rides the store's own
+  `PutClaims` upsert (the pre-existing "status stays refuted" CASE WHEN,
+  FT-4) — no re-derived logic in this row: an unchanged finding re-emitted
+  by a later review reproduces the identical `ClaimID`, so a finding
+  refuted via `fathom claim refute` / the `obligations` tool's feedback
+  action carries `status:"refuted"` (excluded from its dimension's active
+  `count`, but still listed — never silently dropped) across every later
+  re-review. Proven at three layers: `TestFindingsBridge_
+  RefutationDurability` (pure, `internal/analysis/review`),
+  `TestReviewDiff_FindingsBridge_RefutationSticksAcrossReReview` (MCP
+  wiring, fake claims backend), `TestReview_FindingsBridge_
+  RefutationDurability` (CLI, end-to-end through a real store).
+- **C2-1 write-path soundness (critic round — five proven defects fixed
+  before any release carried the bridge):**
+  1. *Sweep contract:* persisted cites links now carry the REAL cited-line
+     hash resolved at emit time, and a bare-path/unhashable citation gets
+     no cites link at all — previously hashless bare-path links made the
+     daemon's post-refresh `SweepClaims` flip EVERY review claim to
+     stale/contradicted with fabricated "anchor no longer resolves" events
+     (measured: 57 claims flipped, 26→77 lying events over two sweeps).
+     Arch findings now cite the violating symbol's real `file#Lline` (new
+     `archconformance.KeyIndex`); spec findings resolve their ref's line.
+     `TestReview_SweepZeroFlips` pins zero flips/zero events.
+  2. *Idempotency + serving purity:* only the deterministic-oracle
+     dimensions persist (`arch_conformance`, `spec_coverage`) — never
+     `obligations` (re-minting re-served claims as wrappers grew the store
+     57→82 on an IDENTICAL re-run and displaced real obligations from
+     `ObligationsFor`'s budget via exact-path scope ranking) and never
+     `impact` info-noise. `TestReview_Idempotent_DoubleRun`,
+     `TestReview_ObligationsForUnpolluted`.
+  3. *Deliberate persistence:* `fathom review --no-persist` added; the
+     pre-push hook uses it (a hook is never an undisclosed writer to the
+     shared store); persist behavior disclosed in the tool description,
+     change-review.md, and the plan. `TestReview_NoPersist_WritesNothing`.
+  4. *Reconcile (no claim rot):* a persisting run over changed-file set F
+     supersedes review-minted claims on files in F its CHECKED dimensions
+     no longer emit — absent = fixed; unchecked dimensions never supersede.
+     Every persisted claim also carries a scope-fp drift anchor (store
+     fingerprint, FT-6) so `DriftedFindings` works for review claims; a
+     finding whose file has no fingerprint is not persisted (upholding the
+     zero-links invariant, whose sweep.go comment now names this bridge as
+     the second legitimate writer). `review.BuildPersist` is the one
+     shared MCP/CLI write composition.
+     `TestReview_Reconcile_FixedFindingSuperseded`,
+     `TestStaleReviewClaims_*`, `TestAttachClaims_LinkSoundness`,
+     `TestAttachClaims_NoFingerprintMeansNoPersist`.
+  5. *Tier admission:* the findings layer.cue (both copies) now records
+     the verified-tier oracle admission (ADR-018 oracle classes / ADR-016
+     M1 — deterministic, Model-empty findings) beside its sme-stated
+     corpus tier; ADR.md's "no layer emits verified yet" updated;
+     `TestClaimsVocabularyMatchesSemanticLayer` pins tier and admission
+     text, not just kind.
+  Plus: the obligations dimension now carries a served claim's
+  stale/contradicted status label through to the verdict
+  (served-with-label, `TestRun_Obligations_ServedStatusLabelCarriedThrough`)
+  instead of mapping it away to severity only.
+- **C3-1 — the forced channel:** `lefthook.yml`'s pre-push gains a
+  non-blocking `fathom review --service fathom --since origin/main
+  --no-persist` summary step — always exits 0 regardless of `bin/fathom
+  review`'s own result, degrading operational errors to one line
+  (fail-open, same doctrine as the `verify` step's exit 2); measured ~12s
+  worst-case on a pathological 1777-file diff. The `review_change` MCP
+  prompt now calls `review_diff` instead of narrating an 8-step manual
+  tool sequence; that sequence is preserved as `docs/use-cases/
+  change-review.md`'s appendix for tool-by-tool users, whose worked example
+  now leads with the one-call form.
+
 ### Fixed — serving-layer hygiene (Wave 3a P1-6/P1-9, 2026-07-23)
 - **`migration_targets` merge semantics (dogfood O11, closed):** a caller-
   supplied `deprecated_pkgs` list now **merges with** the built-in default

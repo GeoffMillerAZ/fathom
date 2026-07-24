@@ -271,8 +271,11 @@ by a deterministic, Model-empty compile path — one of ADR-018's named
 **oracle classes** (`index`, `cmd`, `lexical`; docs/design/sdd-reconciler.md
 §5) rather than by LLM restatement (`doc-claimed`) or human corroboration
 (`sme-stated`) — may declare a manifest layer without inventing a fourth tier
-ad hoc. No layer emits `verified` claims yet; `ai-derived` stays deliberately
-unadmitted, still awaiting its own revival evidence (§4.2 above). This
+ad hoc. (Since 2026-07-23 the findings layer's deterministic review-verb
+bridge — `internal/analysis/review`, docs/plans/review-verb.md C2-1 — is the
+first `verified`-tier emitter; its `layer.cue` records the admission beside
+the LLM-compiled corpus's own `sme-stated` tier.) `ai-derived` stays
+deliberately unadmitted, still awaiting its own revival evidence (§4.2 above). This
 amendment also retires, for the manifest LOADER specifically, the "generic
 layer runtime … deferred with named revival evidence" clause above: M1
 (`internal/semantic.LoadLayer`, docs/plans/m1-manifest.md) makes

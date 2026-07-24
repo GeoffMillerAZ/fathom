@@ -79,6 +79,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdLayers(args[1:], stdout, stderr)
 	case "report":
 		return cmdReport(args[1:], stdout, stderr)
+	case "review":
+		return cmdReview(args[1:], stdout, stderr)
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
 	case "instrument":

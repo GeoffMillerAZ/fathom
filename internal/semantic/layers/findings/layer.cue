@@ -17,7 +17,19 @@ corpus: include: ["findings/**"]
 // real identity is content-addressed at runtime (internal/semantic/prompts.go).
 prompt_version: "findings/content-addressed"
 prompt_file:    "schema/semantic/layers/findings/prompt.md"
-tier:           "sme-stated"
+// tier of claims the LLM engine compiles from the findings/** corpus: a
+// human review conclusion restated by a model is sme-stated evidence.
+//
+// Verified-tier admission (ADR-016 M1 amendment / ADR-018 oracle classes):
+// this layer ALSO carries deterministic-oracle claims written by the
+// review-verb findings bridge (internal/analysis/review, PromptVersion
+// "review-verb/v1", Model empty) — those are stamped tier "verified" at the
+// source, because a deterministic analyzer's own output needs no human or
+// model restatement. Mixed tiers on this layer are therefore deliberate and
+// admitted here, not drift; TestClaimsVocabularyMatchesSemanticLayer
+// (internal/analysis/review) pins this admission text against the bridge's
+// constants.
+tier: "sme-stated"
 // concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
 // for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
 stratum: "concern"

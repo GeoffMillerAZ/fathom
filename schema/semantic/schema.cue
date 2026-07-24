@@ -65,8 +65,10 @@ package semantic
 	// restatements, hence doc-claimed; an LLM-inferred kind would need the
 	// ai-derived tier and its revival evidence first (ADR-016 §4.2).
 	// verified admits deterministic, Model-empty compile paths (ADR-018
-	// oracle classes — index/cmd/lexical; ADR-016 M1 amendment). No layer
-	// emits verified yet.
+	// oracle classes — index/cmd/lexical; ADR-016 M1 amendment). First
+	// verified-tier emitter: the findings layer's review-verb bridge
+	// (internal/analysis/review — its layer.cue records the admission; the
+	// manifest tier below stays the LLM-compiled corpus's tier).
 	tier: "doc-claimed" | "sme-stated" | "verified"
 
 	// tier_profile names the tier vocabulary (ADR-017: data now).

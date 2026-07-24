@@ -1,11 +1,12 @@
 # Phase C — The review verb (vision 11 §3.C)
 
-**C1/C2 are blocked on C3, an operator decision** (pre-push hook change):
-accept a non-blocking `fathom review --since origin/main` summary in the
-pre-push gate + rewrite the review_change MCP prompt to call the composed
-verb. Until C3 is accepted, C1/C2 rows stay `[ ]` and are not built —
-nothing ships spec-only (vision 11 anti-move discipline). C4 is NOT gated
-and proceeds now.
+**C3 accepted (owner: "yes", 2026-07-23) — C1/C2/C3 all built.** The
+operator gate that previously blocked C1/C2 (pre-push hook change: accept a
+non-blocking `fathom review --since origin/main` summary in the pre-push
+gate + rewrite the review_change MCP prompt to call the composed verb) is
+resolved; nothing here shipped spec-only (vision 11 anti-move discipline
+honored — C1/C2 stayed `[ ]` until this acceptance landed, then were built
+together with C3 in the same slice). C4 shipped first and is unaffected.
 
 Design (normative):
 - **C4 rule packs.** `schema/rules/archconformance/schema.cue` — #Rule
@@ -24,12 +25,64 @@ Design (normative):
   schema-required config param (license_policy's proven pattern) or an
   explicit `checked: false, reason: "no rules configured"` field in its
   response. No tool may return a clean-shaped answer for work it didn't do.
-- **C1 review_diff** (blocked): one pure-Go composed verb — diff impact
-  (typed edges) + blast radius + obligations + arch conformance + spec
-  coverage — one cited verdict, CLI mirror, the program's single new MCP
-  tool. **C2 findings bridge** (blocked): review findings become
-  content-addressed ClaimIDs via FT-7's pre-armed trigger; refuted findings
-  stay refuted across re-reviews.
+- **C1 review_diff.** One pure-Go composed verb (`internal/analysis/review`,
+  `Run(Input) Verdict`) — diff impact (typed edges via
+  `impact.DiffImpactWithTypedEdges`) + obligations/findings scoped to the
+  changed files + arch conformance (`archconformance.EdgesFromNodes` +
+  `internal/projectrules.ResolveRules`, shared with the standalone
+  `arch_conformance` tool so the two never drift) + spec coverage — one
+  cited verdict (`Verdict.Dimensions[].Findings[]`, each carrying a
+  `citation`). The program's single new MCP tool: `review_diff`
+  (`internal/mcp/review_tool.go`, `GroupInvestigation`). CLI mirror: `fathom
+  review --store DB --service S --since <ref>` (`cmd/fathom/review.go`,
+  mirrors `cmdReport`'s store-direct structure). **C2 findings bridge —
+  soundness contract (post-critic round; five proven write-path defects
+  fixed).** Review findings become content-addressed ClaimIDs
+  (`review.AttachClaims` → `ApplyClaimStatus` → `StaleReviewClaims`,
+  composed as `review.BuildPersist` so the MCP tool and CLI share ONE write
+  path). The write is DELIBERATE and disclosed: MCP `review_diff` and plain
+  `fathom review` persist; `fathom review --no-persist` is a pure report
+  and is what the C3 hook uses — a hook is never an undisclosed writer to
+  the shared store. What persists and how:
+  - **Oracle dimensions only.** `arch_conformance` + `spec_coverage`
+    persist; `obligations` NEVER does (it re-serves already-compiled
+    claims — re-minting them as wrappers grows the store unboundedly on
+    identical re-runs and displaces real obligations from ObligationsFor's
+    MaxObligations budget via exact-path scope ranking); `impact`
+    info-noise never does. Idempotent: identical re-run ⇒ identical claim
+    set (TestReview_Idempotent_DoubleRun,
+    TestReview_ObligationsForUnpolluted).
+  - **Substrate-sound anchors.** Every persisted cites link carries the
+    REAL cited-line hash resolved at emit time; a bare-path/unhashable
+    citation gets NO cites link (never a lying one) — so the daemon's
+    post-refresh `SweepClaims` produces zero flips and zero fabricated
+    "anchor no longer resolves" events over fresh review claims
+    (TestReview_SweepZeroFlips, TestAttachClaims_LinkSoundness). Every
+    persisted claim carries a scope-fp drift anchor (store fingerprint,
+    FT-6); a finding whose file has no fingerprint is not persisted at all
+    (TestAttachClaims_NoFingerprintMeansNoPersist — upholding
+    DriftedFindings' zero-links invariant, whose comment now names this
+    bridge as the second legitimate writer).
+  - **Reconcile, no rot.** A persisting run over changed-file set F
+    supersedes review-minted claims on files in F its checked dimensions no
+    longer emit — absent = fixed; unchecked dimensions never supersede
+    (TestReview_Reconcile_FixedFindingSuperseded,
+    TestStaleReviewClaims_UncheckedDimensionNeverSupersedes).
+  - **Tier admission.** Persisted claims carry tier `verified`
+    (deterministic oracle, Model empty — ADR-018 oracle classes / ADR-016
+    M1); the findings layer.cue records this admission beside its
+    sme-stated corpus tier, pinned by
+    TestClaimsVocabularyMatchesSemanticLayer.
+  - **Refutation durability** rides the store's own `PutClaims` upsert (no
+    re-derived logic) — TestFindingsBridge_RefutationDurability (pure),
+    TestReviewDiff_FindingsBridge_RefutationSticksAcrossReReview (MCP),
+    TestReview_FindingsBridge_RefutationDurability (CLI, real store).
+  **C3 forced channel.** lefthook.yml pre-push gains a non-blocking
+  `review` step — `--no-persist`, always exits 0, fail-open on operational
+  errors, ~12s worst-case measured on a pathological 1777-file diff; the
+  `review_change` MCP prompt now calls `review_diff` instead of narrating
+  an 8-step sequence (kept as `docs/use-cases/change-review.md`'s appendix
+  for tool-by-tool users).
 
 ## Tasks
 
@@ -38,9 +91,9 @@ Design (normative):
 - [x] arch_conformance consumes project rules when args omit them; response reports rule source; fake-backend test covers all three source states {id: C4-3, symbol: registerArchConformance, package: internal/mcp}
 - [x] Fathom's own .fathom/rules/archconformance.cue encoding the three-layer boundary; violation caught by test fixture — guards function-origin edges only; method-origin edges carry receiver-typed packages (goextract funcNode) and are a disclosed gap until both-sides edge-package normalization lands {id: C4-4, symbol: Load, package: internal/projectrules, skip_test: true, skip: "config-as-data row; the pack file is the deliverable — TestLoad_RepoOwnRuleFile_CatchesFixtureViolation exercises it through Load"}
 - [x] Honesty audit across all deterministic analyzer tools: every empty-config case returns checked:false+reason or requires config by schema; table of findings recorded here {id: C4-5, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "audit row — per-tool fixes carry their own tests; the audit table is the deliverable"}
-- [ ] (op-gated: C3) Pre-push non-blocking review summary + review_change prompt rewrite {id: C3-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on operator channel acceptance; not built until then"}
-- [ ] (blocked on C3) review_diff composed verb + CLI mirror {id: C1-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on C3; anchor updated to the new package when built"}
-- [ ] (blocked on C3) findings-as-claims bridge via FT-7 {id: C2-1, symbol: registerArchConformance, package: internal/mcp, skip_test: true, skip: "blocked on C3"}
+- [x] Pre-push non-blocking `fathom review --since origin/main --no-persist` summary step (a SUMMARY truthfully: never writes the shared store; always exit 0, fail-open on operational errors, ~12s worst-case on a 1777-file diff) + review_change MCP prompt rewritten to call review_diff instead of narrating the 8-step sequence (kept as change-review.md's appendix) {id: C3-1, symbol: registerPromptsHandlers, package: internal/mcp}
+- [x] review_diff composed verb (diff impact + obligations/findings + arch conformance + spec coverage, one cited verdict) as the program's one new MCP tool, plus the `fathom review --since <ref>` CLI mirror with --no-persist {id: C1-1, symbol: registerReviewDiff, package: internal/mcp}
+- [x] Findings-as-claims bridge via FT-7's pre-armed trigger, sound against the live claims substrate (see the C2 design block): oracle-dimensions-only persistence, hashed cites + scope-fp anchors (zero sweep flips), idempotent re-runs, fixed-findings reconcile (superseded), verified-tier manifest admission, refutation-durable via the store upsert {id: C2-1, symbol: AttachClaims, package: internal/analysis/review}
 
 ## C4-5 audit
 

@@ -288,3 +288,39 @@ func (c *Client) ClaimFeedback(ctx context.Context, service, claimID, action, no
 	}
 	return nil
 }
+
+// PutClaims upserts semantic claims and their links directly, bypassing
+// layer compilation — the review-verb findings bridge (C2-1, docs/plans/
+// review-verb.md; internal/analysis/review.AttachClaims builds the
+// content-addressed claims this persists) uses this to write review
+// findings onto the "findings" layer. Durability rides the store's own
+// upsert (PutClaims' "status = CASE WHEN ... = 'refuted' THEN ... ELSE
+// excluded.status END"): a claim already refuted stays refuted no matter
+// how many times an unchanged finding re-emits the same ClaimID.
+func (c *Client) PutClaims(ctx context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
+	return c.st.PutClaims(ctx, claims, links)
+}
+
+// ClaimsForService is a thin passthrough to the store's read path — for
+// callers (like review_diff's findings bridge) that need to read back
+// current claim status without going through a specific layer's serving
+// helper (e.g. semantic.ObligationsFor). layer "" returns every layer.
+func (c *Client) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
+	return c.st.ClaimsForService(ctx, serviceID, layer)
+}
+
+// SetClaimStatus is a thin passthrough to the store's status flip — the
+// review reconcile (review.StaleReviewClaims) uses it to supersede
+// review-minted claims whose findings a later run no longer emits.
+func (c *Client) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
+	return c.st.SetClaimStatus(ctx, serviceID, claimID, status)
+}
+
+// SourceFingerprint returns the store's current content fingerprint for
+// (service, repo-relative path) — the fusion hash-gate table
+// semantic.DriftedFindings reads. The review findings bridge records it as
+// each persisted claim's scope-fp drift anchor (FT-6), mirroring the
+// compiler's own verifyDraft.
+func (c *Client) SourceFingerprint(ctx context.Context, serviceID, path string) (hash string, found bool, err error) {
+	return c.st.Fingerprint(ctx, serviceID, path)
+}

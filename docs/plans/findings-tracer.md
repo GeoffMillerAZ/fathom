@@ -23,5 +23,5 @@ no hosted anything — the reserved slot gets its first real consumer.
 
 ## Deferred
 
-- [-] LLM-free compile path for deterministic findings (tier verified end-to-end) {id: FT-7, disposition: deferred, reason: "the report bridge + sme-stated tier proves the loop first", trigger: "first real review engagement wanting verified-tier persistence"}
+- [x] LLM-free compile path for deterministic findings (tier verified end-to-end) — trigger fired: the review-verb's C2-1 findings bridge (docs/plans/review-verb.md) is that first real review engagement, persisting review_diff findings directly as tier-`verified` claims (no LLM, no report/compile round trip) via `review.AttachClaims`, with refutation durability riding the store's existing PutClaims upsert {id: FT-7, symbol: AttachClaims, package: internal/analysis/review}
 - [-] /rpc/expert surface registration {id: FT-8, disposition: deferred, reason: "spec-only until a non-code module is served to someone", trigger: "first external consumer of a findings store"}
