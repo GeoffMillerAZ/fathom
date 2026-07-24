@@ -5,6 +5,19 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Fixed — O15: hooks resolve service identity from the daemon's recorded paths (2026-07-24)
+- **`list_services` now returns each service's recorded corpus `path`**
+  (additive; from ServiceMeta, absolute post-O10), and the session/edit/stop
+  hooks resolve their service identity by matching the project directory
+  (symlink-resolved) against those paths — the daemon's own repo↔service
+  mapping is authoritative, with the old basename guess as fallback and
+  fail-open on any error. Root cause of O15: the sextant→fathom rename left
+  this repo's dir basename naming a nonexistent service, and the back-compat
+  purge removed the alias shim — obligations injection was silently dead on
+  the dogfood repo for six days while probe traffic looked healthy. The
+  edit-hook fetches the resolution only after a candidate root contains the
+  edited file, preserving the out-of-repo total-silence invariant.
+
 ### Fixed — sweep re-anchors citation drift instead of only detecting it; obligations eviction is now visible (T5-1/T5-2, docs/plans/trust-and-tokenomics.md, 2026-07-24)
 - **O13 (citation drift, the home bench's top product finding) — fixed in code.** `core.ClaimLink.AnchorText` (the literal cited text, `core.LinesText`) is now persisted alongside the hash by both live "cites"-link writers (`internal/semantic/compile.go`'s `verifyDraft`, the review findings bridge's `AttachClaims`). `semantic.Sweep` re-anchors a drifted citation when its `AnchorText` resolves to exactly one new location in the cited file (`store.Store.UpdateClaimLink`, new — SQLite + memory, with a migration for pre-existing `claim_links` rows), appending a `ClaimEvent{Verdict:"re-anchored"}` audit entry (mirrors ADR-017's remap); zero or multiple matches still fall through to stale, unchanged. A claim compiled before this change has no stored `AnchorText` and can only ever go stale on drift, never heal — an honest degradation. **Fleet re-sweep (T5-1b), run against a read-only copy of the live store:** 340 claims checked, 73 wrong citations found (all fathom-service), 0 healed / 73 staled — every existing claim predates this fix (0/548 fathom `cites` links carry `AnchorText` yet), so healing activates on the NEXT fleet recompile. The exact O13 reproduction claim is now correctly flagged stale in the copy (previously served with no status flag at all).
 - **O14 (eviction visibility) — fixed in code.** `obligations` reports `displaced: N` when the `MaxObligations` cap drops served-eligible claims, and every served rule carries a `layer` label naming which manifest layer compiled it — surfaced on the MCP tool response and the edit-hook payload (one integer + short per-rule labels; the payload budget is unaffected). The scope-mapping half of O14 (a mis-scoped rule crowding out unrelated files) is a compile-prompt fix, filed — not compiled — as `schema/semantic/layers/obligations/prompt.PENDING-scope-precision.md`: `internal/semantic/prompts.go` content-addresses `PromptVersion` off `prompt.md`'s bytes, so editing the live prompt (even a marked-pending block) would silently trigger a flag-day as a side effect of this commit. Lands at the next deliberate flag-day alongside OP-6.

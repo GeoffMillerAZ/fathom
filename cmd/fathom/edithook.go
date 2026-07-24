@@ -111,7 +111,22 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		found       bool
 		resolved    bool
 	)
-	for _, cand := range serviceCandidates(projDir) {
+	// O8 addendum: an out-of-repo file must produce TOTAL silence — no
+	// daemon traffic at all — so the daemon-resolved identity (one
+	// list_services call, dogfood O15) is fetched only after a basename
+	// candidate root actually contains the file.
+	cands := serviceCandidates(projDir)
+	containsFile := false
+	for _, cand := range cands {
+		if _, ok := relativeToRoot(cand.root, filePath); ok {
+			containsFile = true
+			break
+		}
+	}
+	if containsFile {
+		cands = candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, *url, projDir)
+	}
+	for _, cand := range cands {
 		rel, ok := relativeToRoot(cand.root, filePath)
 		if !ok {
 			continue

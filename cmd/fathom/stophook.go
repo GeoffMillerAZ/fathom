@@ -85,7 +85,7 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 	// Resolve the service identity: first candidate the daemon has indexed
 	// wins — same discipline as the edit-hook.
 	service := ""
-	for _, cand := range serviceCandidates(projDir) {
+	for _, cand := range candidatesWithDaemon(hc, baseURL, projDir) {
 		name := strings.ToLower(cand.name)
 		ok, probeErr := daemonServiceIndexed(hc, baseURL, name)
 		if probeErr != nil {

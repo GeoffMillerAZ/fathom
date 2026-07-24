@@ -31,9 +31,13 @@ type FleetBackend interface {
 	ObservationsFor(service string) []core.Observation
 }
 
-// registerPlatformTools registers the five fleet-level tools into s.
-func registerPlatformTools(s *Server, fleet FleetBackend) {
-	registerListServices(s, fleet)
+// registerPlatformTools registers the five fleet-level tools into s. The
+// QueryInterface (may be nil) supplies each service's recorded corpus path
+// for list_services — the authoritative repo↔service identity the hooks
+// resolve against (dogfood O15: directory-basename guessing silently broke
+// injection when the dir name and service ID diverged).
+func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend) {
+	registerListServices(s, backend, fleet)
 	registerQueryCrossService(s, fleet)
 	registerFleetDrift(s, fleet)
 	registerCrossRepoCallers(s, fleet, "cross_repo_callers", "Find all callers of a symbol across every service in the fleet via stored call edges.")
@@ -41,16 +45,16 @@ func registerPlatformTools(s *Server, fleet FleetBackend) {
 
 // ─── list_services ────────────────────────────────────────────────────────────
 
-func registerListServices(s *Server, fleet FleetBackend) {
+func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "list_services",
-		Description: "List all services in the fleet with metadata: detected languages and symbol counts.",
+		Description: "List all services in the fleet with metadata: detected languages, symbol counts, and each service's recorded corpus path (the authoritative repo↔service mapping).",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
 		},
 		group: GroupPlatform,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
+	}, func(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
 		if fleet == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no fleet backend configured"}
 		}
@@ -59,11 +63,20 @@ func registerListServices(s *Server, fleet FleetBackend) {
 		for _, svc := range svcs {
 			nodes := fleet.SymbolsFor(svc)
 			langs := langSet(nodes)
-			entries = append(entries, map[string]any{
+			entry := map[string]any{
 				"service":      svc,
 				"symbol_count": len(nodes),
 				"languages":    langs,
-			})
+			}
+			// Recorded corpus path (ServiceMeta) — empty/omitted when the
+			// backend is absent or the service has no recorded root (e.g.
+			// remote corpora). Always absolute post-O10.
+			if backend != nil {
+				if path, _, found, err := backend.ServiceMeta(ctx, svc); err == nil && found && path != "" {
+					entry["path"] = path
+				}
+			}
+			entries = append(entries, entry)
 		}
 		return map[string]any{"services": entries, "count": len(svcs)}, nil
 	})

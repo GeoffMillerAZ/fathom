@@ -106,7 +106,7 @@ post-commit:
         git diff-tree --no-commit-id --name-only -r HEAD | grep -q '\.go$' || exit 0
         if ! go build -o bin/fathom ./cmd/fathom >/dev/null 2>&1; then
           echo "post-commit: bin/fathom rebuild FAILED — the binary is now STALE vs HEAD." >&2
-          echo "  disk-full class? retry with an external build tmp:  GOTMPDIR=<big-disk>/tmp/gobuild go build -o bin/fathom ./cmd/fathom" >&2
+          echo "  disk-full class? retry with an external build tmp:  GOTMPDIR=<big-disk>/tmp/gobuild TMPDIR=<big-disk>/tmp/gobuild go build -o bin/fathom ./cmd/fathom  (BOTH vars: the linker/dsymutil write to TMPDIR)" >&2
         fi
     fathom-refresh:
       run: |

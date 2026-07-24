@@ -475,3 +475,37 @@ func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 		t.Error("platform profile still lists platform_callers — alias should be gone")
 	}
 }
+
+// TestListServices_IncludesRecordedPath (dogfood O15): list_services carries
+// each service's recorded corpus path — the authoritative repo↔service
+// identity the hooks resolve against. A nil backend (the plain fleet server
+// above) simply omits the field, which TestListServices_Basic still covers.
+func TestListServices_IncludesRecordedPath(t *testing.T) {
+	fleet := fleetFixture()
+	srv := mcp.NewServerWithFleet(pathMetaBackend{}, fleet)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1001, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "list_services",
+			"arguments": map[string]any{},
+		},
+	})
+	p := platformToolPayload(t, resp)
+	svcs := p["services"].([]any)
+	for _, raw := range svcs {
+		entry := raw.(map[string]any)
+		svc := entry["service"].(string)
+		path, _ := entry["path"].(string)
+		if want := "/corpora/" + svc; path != want {
+			t.Errorf("service %q path = %q, want %q", svc, path, want)
+		}
+	}
+}
+
+// pathMetaBackend is a minimal QueryInterface whose only meaningful method is
+// ServiceMeta — every other call is an honest zero value.
+type pathMetaBackend struct{ mcp.QueryInterface }
+
+func (pathMetaBackend) ServiceMeta(_ context.Context, service string) (string, string, bool, error) {
+	return "/corpora/" + service, "deadbeef", true, nil
+}

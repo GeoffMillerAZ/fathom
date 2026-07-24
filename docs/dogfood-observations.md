@@ -86,65 +86,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   not-indexed verdict when — as here — no candidate is indexed; an
   explicit `--service` outside the hook candidates passes with an
   injection-mismatch note instead of masking this state.
-- **Status:** open (root-caused; fix direction named; detection shipped in
-  `doctor`). **Impact:** high — M5 (informed edits) silently dead on the
-  dogfood repo for ~6 days; every "hooks are firing" signal in that window
-  was probes, not injections.
-
-### O13 — the sweep misses citation drift from upstream line shifts: claims served with silently wrong citations, fleet-wide (fix landed; fleet heal pending)
-
-- **Symptom:** found during the home-bench re-derivation (2026-07-24) and
-  confirmed live by the audit: `obligations(internal/extractor/goextract.go)`
-  serves "Add new extractor ext→kind mapping…" cited `CLAUDE.md#L89-L90`
-  with NO status flag — but the extractor bullet now lives at L94 (L88-90
-  hold the keystone/CUE bullets after SS-8's prose insertions). The cited
-  lines contain different text; the claim reads as fresh.
-- **Root cause:** the sweep verifies the cited line's HASH against the
-  stored anchor — an upstream insertion SHIFTS the rule's text to a new
-  line while different text lands at the cited line; when the newly cited
-  content happens to hash-mismatch, the claim flips stale — but the drift
-  class where surrounding edits leave a plausible-but-wrong line hash
-  window, or where re-compiles re-cite before the sweep runs, serves wrong
-  citations unflagged. (Exact mechanics need one probe pass — this entry
-  records the confirmed symptom.)
-- **Reproduction:** `curl -s -X POST http://localhost:7575/rpc -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"obligations","arguments":{"service":"fathom","file":"internal/extractor/goextract.go"}}}'` → compare each cited CLAUDE.md range against the file.
-- **Fix (T5-1, docs/plans/trust-and-tokenomics.md):** the sweep now verifies
-  the claim's stored ANCHOR TEXT (`core.ClaimLink.AnchorText`, the literal
-  cited snippet, persisted alongside the hash at compile time by both live
-  "cites"-link writers), not just the line hash. On drift it searches the
-  cited FILE for that exact text: a single unambiguous match → RE-ANCHOR
-  (`store.UpdateClaimLink` rewrites the citation, a
-  `ClaimEvent{Verdict:"re-anchored"}` records the old→new move, mirroring
-  ADR-017's remap); zero or multiple matches → flip stale, unchanged from
-  before. A claim compiled before this landed has no stored `AnchorText`
-  (legacy hash-only) and can therefore only ever go stale on drift, never
-  heal — an honest degradation, not a silent one. Fixture:
-  `TestSweep_ReanchorsOnUpstreamLineShift` (internal/semantic) reproduces
-  the exact O13 shape (an upstream insertion above the rule) and proves
-  both the heal and the stale (rule-text-deleted) paths, plus ambiguous-
-  match and legacy-hash-only stale; `TestSweepClaims_ReanchorsOnUpstreamLineShift`
-  (pkg/client) proves the same through the public wrapper and a real
-  on-disk fetch.
-- **Operational pass (T5-1b):** re-ran the fixed sweep against a read-only
-  copy of `workspace/db/fleet.sqlite` (the live store was never opened for
-  writing). Fleet-wide: 340 claims checked, **73 wrong citations found —
-  all in service "fathom"; 0 healed, 73 staled.** Confirmed root cause
-  directly: 548/548 fathom `cites` links have empty `AnchorText` — every
-  existing claim predates this fix, so none carry the new field yet; the
-  74th-and-onward claims (i.e. every FUTURE compile) will heal instead of
-  going silently or perpetually stale. The exact reproduction claim above
-  ("Add new extractor ext→kind mapping in connector.") is now correctly
-  flagged `stale` in the copy.
-- **Status:** fixed in code; NOT yet live. The T5-1b run was against a
-  discarded COPY — the live fleet store, this minute, still has no
-  `anchor_text` column and still serves all 73 claims as unflagged fresh.
-  Two operator steps activate the fix: (1) deploy the rebuilt daemon
-  binary (`cp bin/fathom ~/.local/libexec/fathom/fathom` + launchctl
-  kickstart, per CLAUDE.md's binary-staleness runbook — the schema
-  migration fires on the daemon's next store open), then (2) a live
-  sweep/ingest pass, after which the 73 claims WILL BE flagged stale
-  rather than silently wrong. Healing (re-anchor instead of stale)
-  additionally needs a fleet recompile to populate `AnchorText`.
+- **Status:** FIXED IN CODE (2026-07-24): `list_services` now returns each service's recorded corpus path, and all three hooks resolve their identity through it (`resolveFromServices`/`candidatesWithDaemon`, cmd/fathom/serviceident.go) — the daemon's own repo↔service mapping is authoritative, basename guessing is the fallback. The edit-hook fetches the resolution only after a basename root contains the edited file, preserving the O8 out-of-repo total-silence invariant (`TestEditHookSilentWhenFileOutsideAllCandidateRoots`). Injection on this repo restores when the daemon next serves a binary with this change (deploy pending).
 - **Impact:** citation trust is the moat; a served claim pointing at the
   wrong text is worse than no claim. Once the live daemon runs this code
   and sweeps, no claim will be silently mis-cited — worst case an

@@ -67,6 +67,7 @@ func defaultFathomURL() string {
 type svcInfo struct {
 	symbols int
 	langs   string
+	path    string // recorded corpus root; "" when the daemon has none
 }
 
 // buildSessionContext returns the additionalContext line for the project at
@@ -85,7 +86,17 @@ func buildSessionContext(baseURL, projDir string) string {
 	resp.Body.Close()
 
 	svcs := fetchServices(hc, baseURL)
-	for _, cand := range serviceCandidates(projDir) {
+	cands := serviceCandidates(projDir)
+	if resolved, ok := resolveFromServices(svcs, projDir); ok {
+		deduped := []serviceCandidate{resolved}
+		for _, c := range cands {
+			if !strings.EqualFold(c.name, resolved.name) {
+				deduped = append(deduped, c)
+			}
+		}
+		cands = deduped
+	}
+	for _, cand := range cands {
 		lookup := strings.ToLower(cand.name)
 		info, ok := svcs[lookup]
 		if !ok {
@@ -150,7 +161,7 @@ func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
 		if err := core.ValidServiceID(s.Service); err != nil {
 			continue // skip malformed/path-like service IDs (e.g. "../app-kit")
 		}
-		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages)}
+		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
 	}
 	return out
 }
@@ -159,6 +170,7 @@ type rawSvc struct {
 	Service     string   `json:"service"`
 	SymbolCount int      `json:"symbol_count"`
 	Languages   []string `json:"languages"`
+	Path        string   `json:"path"` // recorded corpus root (authoritative repo↔service identity)
 }
 
 func joinLangs(l []string) string {
