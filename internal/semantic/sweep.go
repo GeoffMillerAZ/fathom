@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -17,6 +18,22 @@ type SweepReport struct {
 	Stale         int
 	Contradicted  int
 	Flipped       int // status changes written this sweep
+
+	// DriftDetected counts served claims where at least one citation's hash
+	// no longer matched its stored TargetHash this sweep — T5-1/O13's
+	// "wrong citations found", regardless of whether the drift was healed by
+	// re-anchoring or left stale. A superset of ReAnchored: every re-anchored
+	// claim also had drift detected; a claim can also drift and NOT heal
+	// (ambiguous/absent anchor match, or no stored anchor text at all).
+	DriftDetected int
+	// ReAnchored counts served claims healed this sweep by re-anchoring: a
+	// drifted citation's stored AnchorText resolved to exactly one new
+	// location in the same file, so the sweep rewrote the citation
+	// (store.UpdateClaimLink) and appended a ClaimEvent{Verdict:
+	// "re-anchored"} instead of flipping the claim stale. Claims with no
+	// stored AnchorText (legacy hash-only links, pre-T5-1) are never counted
+	// here — they can only ever go stale on drift, never heal.
+	ReAnchored int
 }
 
 // Sweep is the token-free post-ingest freshness pass (ADR-016 §4.3): for
@@ -25,10 +42,33 @@ type SweepReport struct {
 // current content by repo-relative path (ok=false when the file is gone).
 //
 // Status semantics: all citations hash-match → fresh (a stale claim heals if
-// the doc is restored); any mismatch → stale; any citation that no longer
-// resolves (file gone, range out of bounds) → contradicted (dominant).
-// Superseded/refuted claims are never touched — those are terminal verdicts,
-// not freshness states.
+// the doc is restored, or if a drifted citation RE-ANCHORS — see below); any
+// remaining mismatch → stale; any citation that no longer resolves (file
+// gone, range out of bounds) → contradicted (dominant). Superseded/refuted
+// claims are never touched — those are terminal verdicts, not freshness
+// states.
+//
+// T5-1/O13 (docs/dogfood-observations.md, docs/plans/trust-and-tokenomics.md):
+// a hash-only citation can only ever detect drift, never distinguish "the
+// rule's text moved" from "the rule's text was rewritten or deleted" — an
+// upstream insertion above the cited lines shifts the rule to a new line
+// range while different (or no) text lands at the OLD cited range, and a
+// pure hash check has no way back to the truth. When a citation's hash no
+// longer matches AND the link carries AnchorText (the literal cited text,
+// stored at compile time — empty for links written before this field
+// existed, "legacy hash-only" claims), the sweep searches the CITED FILE for
+// that exact text via findAnchorText:
+//   - exactly one match → RE-ANCHOR: store.UpdateClaimLink rewrites the
+//     citation to the new line range and hash, and a
+//     ClaimEvent{Verdict:"re-anchored"} records the old→new move (mirrors
+//     ADR-017's source-ref remap) — the claim reads FRESH again, never
+//     silently wrong.
+//   - zero or more-than-one match (ambiguous, indistinguishable from a real
+//     rewrite) → falls through to the stale path exactly as before T5-1.
+//
+// A link with no AnchorText skips the re-anchor attempt entirely and goes
+// straight to stale on drift — it can heal only the old way (the doc
+// reverting to its original text at the original range).
 //
 // P1-9 vocabulary (docs/plans/pulled-tools-excellence.md; see also
 // internal/semantic/serve.go and docs/design/semantic-layers.md): "contradicted"
@@ -94,6 +134,8 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 		rep.ClaimsChecked++
 		next := core.ClaimFresh
 		deadCite := "" // the citation that killed the anchor, for the contradicted-event note
+		claimDrifted := false
+		claimReanchored := false
 		for _, cite := range citesByClaim[cl.ClaimID] {
 			path, start, end, ok := core.ParseCiteRef(cite.TargetRef)
 			if !ok {
@@ -121,9 +163,43 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 				deadCite = cite.TargetRef
 				break
 			}
-			if hash != cite.TargetHash {
-				next = core.ClaimStale // keep scanning: a later broken cite still dominates
+			if hash == cite.TargetHash {
+				continue // this citation still resolves correctly
 			}
+			claimDrifted = true
+			// T5-1/O13: try to re-anchor before giving up to stale — only
+			// possible when this link carries the compile-time anchor text
+			// (legacy hash-only links cannot heal, by construction).
+			if cite.AnchorText != "" {
+				if newStart, newEnd, unambiguous := findAnchorText(data, cite.AnchorText); unambiguous {
+					newHash, hok := core.HashLines(data, newStart, newEnd)
+					if hok {
+						newRef := core.CiteRef(path, newStart, newEnd)
+						if err := st.UpdateClaimLink(ctx, serviceID, cl.ClaimID, core.RelCites, cite.TargetRef, newRef, newHash); err != nil {
+							return rep, fmt.Errorf("semantic: sweep reanchor %s: %w", cl.ClaimID, err)
+						}
+						ev := core.ClaimEvent{
+							ClaimID: cl.ClaimID,
+							Verdict: "re-anchored",
+							Author:  "sweep",
+							Note:    fmt.Sprintf("%s -> %s (citation text unchanged, line range shifted)", cite.TargetRef, newRef),
+							At:      clock(),
+						}
+						if err := st.AppendClaimEvent(ctx, ev); err != nil {
+							return rep, fmt.Errorf("semantic: sweep reanchor event %s: %w", cl.ClaimID, err)
+						}
+						claimReanchored = true
+						continue // healed: this citation no longer counts against next
+					}
+				}
+			}
+			next = core.ClaimStale // keep scanning: a later broken cite still dominates
+		}
+		if claimDrifted {
+			rep.DriftDetected++
+		}
+		if claimReanchored {
+			rep.ReAnchored++
 		}
 		switch next {
 		case core.ClaimFresh:
@@ -157,6 +233,45 @@ func Sweep(ctx context.Context, st store.Store, serviceID string, fetch func(pat
 		}
 	}
 	return rep, nil
+}
+
+// findAnchorText searches content — normalized the same way HashLines/
+// LinesText split lines (CRLF→LF, joined by "\n") — for a single unambiguous
+// occurrence of anchor, the exact (possibly multi-line) snippet
+// ClaimLink.AnchorText stored at compile time. Returns the 1-based inclusive
+// line range of the match. unambiguous is false when anchor resolves to
+// zero or more than one location in content: T5-1/O13 re-anchors ONLY on a
+// clean, unique match — an ambiguous or absent anchor is indistinguishable
+// from a genuine rewrite/deletion and must fall through to the sweep's
+// existing stale path rather than guess which occurrence is "the" rule.
+func findAnchorText(content []byte, anchor string) (start, end int, unambiguous bool) {
+	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
+	anchorLines := strings.Split(anchor, "\n")
+	n := len(anchorLines)
+	if n == 0 || n > len(lines) {
+		return 0, 0, false
+	}
+	found := -1
+	for i := 0; i+n <= len(lines); i++ {
+		match := true
+		for j := 0; j < n; j++ {
+			if lines[i+j] != anchorLines[j] {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		if found >= 0 {
+			return 0, 0, false // a second match: ambiguous
+		}
+		found = i
+	}
+	if found < 0 {
+		return 0, 0, false
+	}
+	return found + 1, found + n, true
 }
 
 // DriftedFindings computes remediation drift for drift-tracked-layer claims

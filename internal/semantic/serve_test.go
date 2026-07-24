@@ -3,6 +3,7 @@ package semantic
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -12,9 +13,17 @@ import (
 
 func seedServed(t *testing.T, st store.Store, id, rule string, scope []string, status core.ClaimStatus) {
 	t.Helper()
+	seedServedLayer(t, st, id, LayerObligations, rule, scope, status)
+}
+
+// seedServedLayer is seedServed with an explicit layer — T5-2/O14's eviction
+// test needs claims blended from multiple layers (obligations, adr-rules, …)
+// to prove each served rule carries the layer it actually came from.
+func seedServedLayer(t *testing.T, st store.Store, id, layer, rule string, scope []string, status core.ClaimStatus) {
+	t.Helper()
 	claim := core.SemanticClaim{
 		ClaimID: id, ServiceID: "svc",
-		Layer: LayerObligations, LayerVersion: "v1", Kind: KindObligation,
+		Layer: layer, LayerVersion: "v1", Kind: KindObligation,
 		Subject: "docs/g.md#s-" + id, Rule: rule, Scope: scope,
 		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: status,
 		PromptVersion: obligationsPromptVersion(), ReproKey: id, InputDigest: "d",
@@ -101,5 +110,63 @@ func TestObligationsFor_CapsAtMax(t *testing.T) {
 	}
 	if len(got.Rules) != MaxObligations {
 		t.Errorf("got %d rules, want cap %d", len(got.Rules), MaxObligations)
+	}
+	// T5-2/O14: 8 eligible, cap 6 → 2 displaced.
+	if got.Displaced != 2 {
+		t.Errorf("Displaced = %d, want 2 (8 eligible - cap 6)", got.Displaced)
+	}
+}
+
+// TestObligationsFor_DisplacedCountAndLayerLabels is T5-2/O14's eviction
+// test: a recompile that blends a new layer (adr-rules) into the served set
+// can silently push an older obligations-layer rule out past the cap — the
+// eviction itself (dropping the LOWEST-ranked matched claims) is unchanged
+// behavior; what T5-2 adds is making it VISIBLE — displaced:N plus a layer
+// label on every surviving rule, so an agent (or a human debugging "where
+// did my rule go") can tell which layer served what, and how many
+// eligible-but-unserved claims the cap silently cut this call.
+func TestObligationsFor_DisplacedCountAndLayerLabels(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// 7 served-eligible claims, same broad scope, blended from two layers —
+	// exactly O14's reproduction shape (adr-rules joining obligations).
+	seedServedLayer(t, st, "c-o1", LayerObligations, "Obligation rule 1.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-o2", LayerObligations, "Obligation rule 2.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-o3", LayerObligations, "Obligation rule 3.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-a1", "adr-rules", "ADR rule 1.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-a2", "adr-rules", "ADR rule 2.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-a3", "adr-rules", "ADR rule 3.", []string{"**"}, core.ClaimFresh)
+	seedServedLayer(t, st, "c-a4", "adr-rules", "ADR rule 4.", []string{"**"}, core.ClaimFresh)
+
+	got, err := ObligationsFor(ctx, st, "svc", "any.go", 0)
+	if err != nil {
+		t.Fatalf("ObligationsFor: %v", err)
+	}
+	if len(got.Rules) != MaxObligations {
+		t.Fatalf("got %d rules, want cap %d", len(got.Rules), MaxObligations)
+	}
+	if got.Displaced != 1 {
+		t.Fatalf("Displaced = %d, want 1 (7 eligible - cap 6)", got.Displaced)
+	}
+	for _, r := range got.Rules {
+		if r.Layer == "" {
+			t.Errorf("rule %q has no layer label", r.Rule)
+		}
+		if r.Layer != LayerObligations && r.Layer != "adr-rules" {
+			t.Errorf("rule %q layer = %q, want obligations or adr-rules", r.Rule, r.Layer)
+		}
+	}
+	// The JSON payload must actually carry displaced and per-rule layer, not
+	// just the Go struct — this is what crosses the MCP wire to the agent.
+	b, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if !strings.Contains(string(b), `"displaced":1`) {
+		t.Errorf("JSON payload missing displaced:1: %s", b)
+	}
+	if !strings.Contains(string(b), `"layer":`) {
+		t.Errorf("JSON payload missing per-rule layer label: %s", b)
 	}
 }

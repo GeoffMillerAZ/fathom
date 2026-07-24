@@ -213,6 +213,121 @@ CREATE TABLE compile_runs (
 	}
 }
 
+// TestSQLiteStore_LegacySchemaGainsAnchorTextColumn is T5-1/O13's migration
+// guard: claim_links rows written before AnchorText existed — INCLUDING the
+// live fleet store, the exact target of T5-1b's re-sweep — predate the
+// column entirely. Without a PRAGMA-driven migration, opening such a store
+// through the real constructor would fail every ClaimLinks/PutClaims call
+// with "no such column: anchor_text" the moment this slice's Go code touches
+// it, breaking the fleet's obligations serving outright rather than just
+// leaving legacy claims unable to heal (the documented, honest degradation).
+func TestSQLiteStore_LegacySchemaGainsAnchorTextColumn(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy-links.sqlite")
+
+	// Hand-create a store file with the PRE-anchor_text claim_links schema
+	// (and a minimal semantic_claims table, since ClaimsForService is read
+	// alongside ClaimLinks by every real caller).
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE semantic_claims (
+    service_id             TEXT   NOT NULL,
+    claim_id               TEXT   NOT NULL,
+    layer                  TEXT   NOT NULL DEFAULT '',
+    layer_version           TEXT   NOT NULL DEFAULT '',
+    kind                   TEXT   NOT NULL DEFAULT '',
+    subject                TEXT   NOT NULL DEFAULT '',
+    rule                   TEXT   NOT NULL DEFAULT '',
+    scope                  TEXT   NOT NULL DEFAULT '[]',
+    tier                   TEXT   NOT NULL DEFAULT '',
+    tier_profile           TEXT   NOT NULL DEFAULT '',
+    status                 TEXT   NOT NULL DEFAULT '',
+    model                  TEXT   NOT NULL DEFAULT '',
+    prompt_version         TEXT   NOT NULL DEFAULT '',
+    repro_key              TEXT   NOT NULL DEFAULT '',
+    input_digest           TEXT   NOT NULL DEFAULT '',
+    compiled_at_watermark  TEXT   NOT NULL DEFAULT '',
+    compiled_at            BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (service_id, claim_id)
+);
+CREATE TABLE claim_links (
+    service_id  TEXT NOT NULL DEFAULT '',
+    claim_id    TEXT NOT NULL DEFAULT '',
+    rel         TEXT NOT NULL DEFAULT '',
+    target_ref  TEXT NOT NULL DEFAULT '',
+    target_hash TEXT NOT NULL DEFAULT ''
+)`); err != nil {
+		t.Fatalf("create legacy claim_links table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO semantic_claims (service_id, claim_id, layer, kind, subject, rule, status, tier, compiled_at)
+		 VALUES ('legacy-svc', 'legacy-claim', 'obligations', 'obligation', 'S', 'R', 'fresh', 'doc-claimed', 1)`,
+	); err != nil {
+		t.Fatalf("insert legacy claim: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO claim_links (service_id, claim_id, rel, target_ref, target_hash)
+		 VALUES ('legacy-svc', 'legacy-claim', 'cites', 'CLAUDE.md#L1-L1', 'legacy-hash')`,
+	); err != nil {
+		t.Fatalf("insert legacy link: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	// Reopen through the real constructor — the migration must fire.
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	// The pre-existing legacy link reads back with an empty AnchorText —
+	// exactly the "cannot heal, only stale" state Sweep documents for it.
+	got, err := s.ClaimLinks(ctx, "legacy-svc", []string{"legacy-claim"})
+	if err != nil {
+		t.Fatalf("ClaimLinks on migrated legacy store: %v", err)
+	}
+	if len(got) != 1 || got[0].TargetRef != "CLAUDE.md#L1-L1" || got[0].AnchorText != "" {
+		t.Fatalf("legacy link: got %+v, want 1 link with empty AnchorText", got)
+	}
+
+	// New writes round-trip AnchorText, and UpdateClaimLink (the sweep's
+	// re-anchor primitive) works against the migrated table. PutClaims
+	// resolves each link's service_id from the claims slice of the SAME
+	// call, so the (unchanged) claim is re-supplied alongside the link, just
+	// as a real compile upsert would.
+	if err := s.PutClaims(ctx, []core.SemanticClaim{{
+		ClaimID: "legacy-claim", ServiceID: "legacy-svc", Layer: "obligations", Kind: "obligation",
+		Subject: "S", Rule: "R", Status: core.ClaimFresh, Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+	}}, []core.ClaimLink{
+		{ClaimID: "legacy-claim", Rel: core.RelCites, TargetRef: "CLAUDE.md#L1-L1", TargetHash: "legacy-hash", AnchorText: "the rule"},
+	}); err != nil {
+		t.Fatalf("PutClaims after migration: %v", err)
+	}
+	got, err = s.ClaimLinks(ctx, "legacy-svc", []string{"legacy-claim"})
+	if err != nil {
+		t.Fatalf("ClaimLinks after write: %v", err)
+	}
+	if len(got) != 1 || got[0].AnchorText != "the rule" {
+		t.Fatalf("migrated store AnchorText round-trip: got %+v", got)
+	}
+	if err := s.UpdateClaimLink(ctx, "legacy-svc", "legacy-claim", core.RelCites, "CLAUDE.md#L1-L1", "CLAUDE.md#L3-L3", "new-hash"); err != nil {
+		t.Fatalf("UpdateClaimLink on migrated store: %v", err)
+	}
+	got, err = s.ClaimLinks(ctx, "legacy-svc", []string{"legacy-claim"})
+	if err != nil {
+		t.Fatalf("ClaimLinks after UpdateClaimLink: %v", err)
+	}
+	if len(got) != 1 || got[0].TargetRef != "CLAUDE.md#L3-L3" || got[0].TargetHash != "new-hash" {
+		t.Fatalf("re-anchor on migrated store: got %+v", got)
+	}
+}
+
 // TestSQLiteStore_ParallelReaders is the F1 regression: the Store contract
 // guarantees safety for concurrent reads, and modernc's ":memory:" gives
 // every physical pool connection its OWN private database — so an uncapped

@@ -143,10 +143,17 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			// FT-2's last hop: non-obligation kinds ("finding") are labeled in
 			// the bracket, and remediation drift (FT-6) is surfaced — a
 			// serving annotation the agent must see, never a status flip
-			// (drifted code can mean the finding was fixed).
+			// (drifted code can mean the finding was fixed). T5-2/O14: a
+			// rule from a NON-default layer (e.g. "adr-rules" blended in by
+			// a recompile) is labeled too — the default "obligations" layer
+			// is elided here to keep the common case compact; the field
+			// itself is always present in the raw JSON payload.
 			extra := ""
 			if r.Kind != "" {
 				extra += ", " + r.Kind
+			}
+			if r.Layer != "" && r.Layer != semantic.LayerObligations {
+				extra += ", " + r.Layer
 			}
 			if r.Status != "" {
 				extra += ", " + r.Status
@@ -155,6 +162,14 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 				extra += ", code drifted since compile"
 			}
 			fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, extra)
+		}
+		// T5-2/O14: the cap can silently evict served-eligible rules on a
+		// recompile that blends in a new layer — surface the count (a
+		// single integer; never the evicted rules themselves, which would
+		// reopen the exact unbounded-growth risk spec-line injection above
+		// already guards against).
+		if obl.Displaced > 0 {
+			fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
 		}
 		if indexStale {
 			sb.WriteString("\n⚠️ index is behind your working tree for this file")
@@ -306,6 +321,7 @@ func fetchObligations(baseURL, service, file string) (semantic.Obligations, bool
 		Rules               []semantic.Obligation `json:"rules"`
 		CompiledAtWatermark string                `json:"compiled_at_watermark"`
 		IndexStale          bool                  `json:"index_stale"`
+		Displaced           int                   `json:"displaced"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		return semantic.Obligations{}, false, false
@@ -316,6 +332,7 @@ func fetchObligations(baseURL, service, file string) (semantic.Obligations, bool
 		File:      payload.File,
 		Rules:     payload.Rules,
 		Watermark: payload.CompiledAtWatermark,
+		Displaced: payload.Displaced,
 	}
 	return obl, payload.IndexStale, true
 }

@@ -455,6 +455,24 @@ func (m *MemoryStore) ClaimLinks(_ context.Context, _ string, claimIDs []string)
 	return result, nil
 }
 
+// UpdateClaimLink re-anchors a single link in place — see the Store interface
+// doc comment. AnchorText is left untouched (the text itself never changes on
+// a re-anchor, only where it points). A no-op when no link matches
+// (claim_id, rel, oldTargetRef).
+func (m *MemoryStore) UpdateClaimLink(_ context.Context, _, claimID, rel, oldTargetRef, newTargetRef, newTargetHash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	links := m.claimLinks[claimID]
+	for i, l := range links {
+		if l.Rel == rel && l.TargetRef == oldTargetRef {
+			links[i].TargetRef = newTargetRef
+			links[i].TargetHash = newTargetHash
+			return nil
+		}
+	}
+	return nil
+}
+
 // SetClaimStatus flips the status of a single claim. No-op when absent.
 func (m *MemoryStore) SetClaimStatus(_ context.Context, serviceID, claimID string, status core.ClaimStatus) error {
 	m.mu.Lock()

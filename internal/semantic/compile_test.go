@@ -117,6 +117,13 @@ func TestCompile_HappyPath(t *testing.T) {
 			if !ok || h != l.TargetHash {
 				t.Errorf("cite hash mismatch for %q", l.TargetRef)
 			}
+			// T5-1/O13: compile must persist the literal cited text
+			// alongside the hash, so a later drifted citation can be
+			// re-anchored by the sweep, not just flagged stale.
+			text, ok := core.LinesText([]byte(govDoc), s, e)
+			if !ok || text != l.AnchorText {
+				t.Errorf("AnchorText = %q, want the literal cited text %q", l.AnchorText, text)
+			}
 		case core.RelScopes:
 			scopes++
 		}

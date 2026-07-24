@@ -387,6 +387,16 @@ func TestAttachClaims_LinkSoundness(t *testing.T) {
 	if cites[0].TargetHash != wantHash {
 		t.Errorf("cites TargetHash = %q, want the real line hash %q", cites[0].TargetHash, wantHash)
 	}
+	// T5-1/O13: the findings bridge is the second live writer of cites
+	// links (compile.go is the first) — it must also persist AnchorText so
+	// a drifted finding citation can be re-anchored, not just staled.
+	wantText, ok := core.LinesText([]byte(content), 7, 7)
+	if !ok {
+		t.Fatal("LinesText failed on fixture content")
+	}
+	if cites[0].AnchorText != wantText {
+		t.Errorf("cites AnchorText = %q, want the real line text %q", cites[0].AnchorText, wantText)
+	}
 	if _, _, _, ok := core.ParseCiteRef(cites[0].TargetRef); !ok {
 		t.Errorf("persisted cites TargetRef %q is not parseable — sweep would flip the claim contradicted", cites[0].TargetRef)
 	}

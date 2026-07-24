@@ -179,7 +179,8 @@ CREATE TABLE IF NOT EXISTS claim_links (
     claim_id    TEXT NOT NULL DEFAULT '',
     rel         TEXT NOT NULL DEFAULT '',
     target_ref  TEXT NOT NULL DEFAULT '',
-    target_hash TEXT NOT NULL DEFAULT ''
+    target_hash TEXT NOT NULL DEFAULT '',
+    anchor_text TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS compile_runs (
@@ -264,6 +265,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		{"observations", "tool_kind", `ALTER TABLE observations ADD COLUMN tool_kind TEXT NOT NULL DEFAULT ''`},
 		{"observations", "generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
 		{"compile_runs", "escape_note", `ALTER TABLE compile_runs ADD COLUMN escape_note TEXT NOT NULL DEFAULT ''`},
+		// T5-1/O13: pre-existing claim_links rows (including the live fleet
+		// store) predate AnchorText — a re-anchor read/write over such a
+		// store must not fail with "no such column", it must simply see ''
+		// (Sweep's existing "empty AnchorText → cannot heal, only stale"
+		// leniency handles the legacy row honestly from there).
+		{"claim_links", "anchor_text", `ALTER TABLE claim_links ADD COLUMN anchor_text TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
@@ -854,15 +861,15 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 			svcOf[c.ClaimID] = c.ServiceID
 		}
 		lstmt, err := tx.PrepareContext(ctx, `
-INSERT INTO claim_links (service_id, claim_id, rel, target_ref, target_hash)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO claim_links (service_id, claim_id, rel, target_ref, target_hash, anchor_text)
+VALUES (?, ?, ?, ?, ?, ?)
 `)
 		if err != nil {
 			return fmt.Errorf("PutClaims prepare links: %w", err)
 		}
 		defer lstmt.Close()
 		for _, l := range links {
-			if _, err := lstmt.ExecContext(ctx, svcOf[l.ClaimID], l.ClaimID, l.Rel, l.TargetRef, l.TargetHash); err != nil {
+			if _, err := lstmt.ExecContext(ctx, svcOf[l.ClaimID], l.ClaimID, l.Rel, l.TargetRef, l.TargetHash, l.AnchorText); err != nil {
 				return fmt.Errorf("PutClaims exec link: %w", err)
 			}
 		}
@@ -920,7 +927,7 @@ func (s *SQLiteStore) ClaimLinks(ctx context.Context, serviceID string, claimIDs
 		args = append(args, id)
 	}
 	q := `
-SELECT claim_id, rel, target_ref, target_hash
+SELECT claim_id, rel, target_ref, target_hash, anchor_text
 FROM claim_links
 WHERE service_id = ? AND claim_id IN (` + strings.Join(placeholders, ", ") + `)
 ORDER BY claim_id, rel, target_ref
@@ -933,12 +940,28 @@ ORDER BY claim_id, rel, target_ref
 	var result []core.ClaimLink
 	for rows.Next() {
 		var l core.ClaimLink
-		if err := rows.Scan(&l.ClaimID, &l.Rel, &l.TargetRef, &l.TargetHash); err != nil {
+		if err := rows.Scan(&l.ClaimID, &l.Rel, &l.TargetRef, &l.TargetHash, &l.AnchorText); err != nil {
 			return nil, fmt.Errorf("ClaimLinks scan: %w", err)
 		}
 		result = append(result, l)
 	}
 	return result, rows.Err()
+}
+
+// UpdateClaimLink re-anchors a single claim_links row in place — see the
+// Store interface doc comment. AnchorText is left untouched: a re-anchor only
+// fires on an UNAMBIGUOUS match of the already-stored anchor text at its new
+// location, so the text itself never changes, only where it points.
+func (s *SQLiteStore) UpdateClaimLink(ctx context.Context, serviceID, claimID, rel, oldTargetRef, newTargetRef, newTargetHash string) error {
+	_, err := s.db.ExecContext(ctx, `
+UPDATE claim_links
+SET target_ref = ?, target_hash = ?
+WHERE service_id = ? AND claim_id = ? AND rel = ? AND target_ref = ?
+`, newTargetRef, newTargetHash, serviceID, claimID, rel, oldTargetRef)
+	if err != nil {
+		return fmt.Errorf("UpdateClaimLink: %w", err)
+	}
+	return nil
 }
 
 // SetClaimStatus updates the status of a single claim. No error when absent.

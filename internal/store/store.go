@@ -186,6 +186,20 @@ type Store interface {
 	// error) when (service_id, claim_id) is absent.
 	SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error
 
+	// UpdateClaimLink re-anchors a single link in place: it rewrites
+	// TargetRef/TargetHash for the row matching (service_id, claim_id, rel,
+	// target_ref=oldTargetRef) to (newTargetRef, newTargetHash), leaving
+	// AnchorText and every other link untouched. This is the sweep's
+	// citation-drift heal (T5-1, O13, docs/plans/trust-and-tokenomics.md):
+	// when an upstream edit shifts a cited line range but the claim's stored
+	// anchor text still resolves at exactly one new location in the same
+	// file, the sweep moves the citation instead of flipping the claim
+	// stale. A no-op (no error) when no row matches oldTargetRef — the
+	// sweep only calls this immediately after reading the link via
+	// ClaimLinks, so a miss here means a concurrent write raced it, not a
+	// normal path worth erroring over.
+	UpdateClaimLink(ctx context.Context, serviceID, claimID, rel, oldTargetRef, newTargetRef, newTargetHash string) error
+
 	// AppendClaimEvent appends one human/machine verdict to the claim's
 	// append-only event log.
 	AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error

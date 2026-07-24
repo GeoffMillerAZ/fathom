@@ -522,6 +522,16 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	if !ok {
 		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
 	}
+	// T5-1/O13: persist the cited lines' literal text alongside the hash —
+	// LinesText extracts with the exact same normalization HashLines just
+	// hashed, so the two are always consistent. The sweep uses AnchorText to
+	// re-anchor a drifted citation (search the file for this snippet) rather
+	// than merely detecting drift; a claim compiled without it can only ever
+	// stale, never heal.
+	anchorText, ok := core.LinesText(doc.Content, d.CiteStart, d.CiteEnd)
+	if !ok {
+		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
+	}
 	// Scope globs must be non-empty, each match >= 1 indexed file, and none
 	// may be over-broad (ADR-016 §4.4 scope-trap defense, extended by O8/
 	// OP-2): a glob matching more than half of the indexed corpus is a
@@ -582,7 +592,7 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 		CompiledAt:          at.UTC(),
 	}
 	links := []core.ClaimLink{
-		{ClaimID: claim.ClaimID, Rel: core.RelCites, TargetRef: core.CiteRef(doc.Path, d.CiteStart, d.CiteEnd), TargetHash: hash},
+		{ClaimID: claim.ClaimID, Rel: core.RelCites, TargetRef: core.CiteRef(doc.Path, d.CiteStart, d.CiteEnd), TargetHash: hash, AnchorText: anchorText},
 	}
 	for _, g := range scope {
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})

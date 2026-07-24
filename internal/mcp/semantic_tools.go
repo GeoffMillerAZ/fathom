@@ -50,7 +50,7 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
 		Name: "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. " +
+		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it); displaced:N (when present) is the count of served-eligible rules the cap dropped this call. " +
 			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier.",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -153,6 +153,14 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		}
 		if obl.Watermark != "" {
 			result["compiled_at_watermark"] = obl.Watermark
+		}
+		// T5-2/O14: surface how many served-eligible claims the
+		// MaxObligations cap dropped this call — a recompile that blends a
+		// new layer in can silently evict a rule an agent relied on
+		// yesterday; displaced turns that into a visible integer instead of
+		// silence.
+		if obl.Displaced > 0 {
+			result["displaced"] = obl.Displaced
 		}
 		if ob.ObligationsIndexStale(ctx, p.Service, p.File) {
 			result["index_stale"] = true
