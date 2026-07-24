@@ -10,6 +10,14 @@ version: '3'
 
 env:
   CGO_ENABLED: '1'
+  # Build/link scratch INSIDE the repo's gitignored workspace/ — the repo's
+  # own disk always has room for its own builds. The Go linker writes to
+  # TMPDIR (not GOTMPDIR), so BOTH must point there: a near-full internal
+  # disk otherwise kills link steps with "no space left on device" even
+  # when the repo lives on a roomy external volume (recurring 2026-07
+  # failure class; dies entirely only if the OS tmp dir has headroom).
+  GOTMPDIR: '{{.ROOT_DIR}}/workspace/tmp/gobuild'
+  TMPDIR: '{{.ROOT_DIR}}/workspace/tmp/gobuild'
   # Match the tree-sitter grammar packages' compiled objects to silence ld
   # version-mismatch warnings (previously justified by DuckDB's prebuilt
   # static libs, deleted in SS-8 — tree-sitter's CGO objects need this too).
