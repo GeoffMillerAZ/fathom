@@ -40,7 +40,7 @@ Design (normative):
 
 ## Tasks
 
-- [ ] fathom doctor: the deterministic checklist with remedies, --json + table, honest uncheckable states; tested per check incl. corrupted-stanza, stale-binary, dead-daemon, and all-pass fixtures {id: DI-1, symbol: cmdDoctor, package: cmd/fathom}
-- [ ] fathom-doctor skill (both renderings), shipped + installable; every command verified against the verb {id: DI-2, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "skill source verified by install tests + critic command-accuracy pass, the AK-1 pattern"}
-- [ ] fathom-impact skill (both renderings), shipped + installable; narration honesty rules stated in the skill itself {id: DI-3, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "skill source over the existing tested gauge; anchor shared with DI-1 (the command family this plan lands)"}
-- [ ] Adoption docs + catalog updated (claude-code.md, codex.md, usage.md, README routing); Maintained lines current {id: DI-4, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "docs rows anchored to the verb they document"}
+- [x] fathom doctor: the deterministic checklist with remedies, --json + table, honest uncheckable states; tested per check incl. corrupted-stanza, stale-binary, dead-daemon, and all-pass fixtures {id: DI-1, symbol: cmdDoctor, package: cmd/fathom}
+- [x] fathom-doctor skill (both renderings), shipped + installable; every command verified against the verb {id: DI-2, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "skill source verified by install tests + critic command-accuracy pass, the AK-1 pattern"}
+- [x] fathom-impact skill (both renderings), shipped + installable; narration honesty rules stated in the skill itself {id: DI-3, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "skill source over the existing tested gauge; anchor shared with DI-1 (the command family this plan lands)"}
+- [x] Adoption docs + catalog updated (claude-code.md, codex.md, usage.md, README routing); Maintained lines current {id: DI-4, symbol: cmdDoctor, package: cmd/fathom, skip_test: true, skip: "docs rows anchored to the verb they document"}

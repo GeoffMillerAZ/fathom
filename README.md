@@ -53,8 +53,12 @@ covers what to *do* with fathom once it's wired in, one how-to per concern.
 The fast path in either guide is `fathom init --skills[=claude|codex|all]`:
 one command wires the repo (ingest, hooks, the `CLAUDE.md`/`AGENTS.md`
 operating-contract stanza) **and** installs the shipped `fathom-plan`/
-`fathom-verify`/`fathom-onboard`/`fathom-feedback` agent skills for your
-harness.
+`fathom-verify`/`fathom-onboard`/`fathom-feedback`/`fathom-doctor`/
+`fathom-impact` agent skills for your harness. If anything about the wiring
+looks off afterward, `fathom doctor` (not the Taskfile's `task doctor`
+below — a different, CLI-native check) is the one-command diagnosis: MCP
+registration, daemon health, binary freshness, hooks, stanza, skills,
+config, obligations, and traffic, each with a one-command remedy.
 
 ## Quickstart
 
