@@ -106,6 +106,7 @@ CREATE TABLE IF NOT EXISTS observations (
     calls         TEXT    NOT NULL DEFAULT '[]',
     complexity    INTEGER NOT NULL DEFAULT 0,
     line          INTEGER NOT NULL DEFAULT 0,
+    end_line      INTEGER NOT NULL DEFAULT 0,
     ingested_at   BIGINT  NOT NULL,
     tool_kind     TEXT    NOT NULL DEFAULT '',
     generated     INTEGER NOT NULL DEFAULT 0
@@ -263,6 +264,7 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 	migrations := []struct{ table, column, ddl string }{
 		{"observations", "tool_kind", `ALTER TABLE observations ADD COLUMN tool_kind TEXT NOT NULL DEFAULT ''`},
 		{"observations", "generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
+		{"observations", "end_line", `ALTER TABLE observations ADD COLUMN end_line INTEGER NOT NULL DEFAULT 0`},
 		{"compile_runs", "escape_note", `ALTER TABLE compile_runs ADD COLUMN escape_note TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
@@ -330,9 +332,9 @@ func (s *SQLiteStore) PutObservations(ctx context.Context, obs []core.Observatio
 	stmt, err := tx.PrepareContext(ctx, `
 INSERT INTO observations
     (service_id, concern_id, source_ref, source_kind, evidence_tier,
-     symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+     symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
      tool_kind, generated)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 	if err != nil {
 		return fmt.Errorf("PutObservations prepare: %w", err)
@@ -362,6 +364,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			string(callsJSON),
 			o.Complexity,
 			o.Line,
+			o.EndLine,
 			ingestedAt.UnixNano(),
 			o.ToolKind,
 			o.Generated,
@@ -388,7 +391,7 @@ func (s *SQLiteStore) QueryObservations(ctx context.Context, serviceID, concernI
 	if concernID == "" {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
        tool_kind, generated
 FROM observations
 WHERE service_id = ?
@@ -397,7 +400,7 @@ ORDER BY ingested_at
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
 SELECT service_id, concern_id, source_ref, source_kind, evidence_tier,
-       symbol, package, claim, content_hash, calls, complexity, line, ingested_at,
+       symbol, package, claim, content_hash, calls, complexity, line, end_line, ingested_at,
        tool_kind, generated
 FROM observations
 WHERE service_id = ? AND concern_id = ?
@@ -1235,6 +1238,7 @@ func scanObservations(rows *sql.Rows) ([]core.Observation, error) {
 			&callsJSON,
 			&o.Complexity,
 			&o.Line,
+			&o.EndLine,
 			&ingestedAt,
 			&o.ToolKind,
 			&o.Generated,

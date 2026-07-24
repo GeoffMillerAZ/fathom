@@ -263,9 +263,10 @@ func postRPCPath(t *testing.T, handler http.Handler, path string, body io.Reader
 func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 	handler := newTestHandler(t)
 	// /rpc/agent is the primary surface; /rpc/companion is a compatible
-	// alias — both must serve the identical 15-tool list. Exact membership is
-	// pinned in internal/mcp; here pin the count so the HTTP path provably
-	// serves the slim surface, not the full registry.
+	// alias — both must serve the identical allowlist (16 tools since T5-4
+	// added read_source, docs/plans/trust-and-tokenomics.md). Exact
+	// membership is pinned in internal/mcp; here pin the count so the HTTP
+	// path provably serves the slim surface, not the full registry.
 	for _, path := range []string{"/rpc/agent", "/rpc/companion"} {
 		resp := postRPCPath(t, handler, path, rpcBody(t, map[string]any{
 			"jsonrpc": "2.0", "id": 20, "method": "tools/list", "params": map[string]any{},
@@ -274,8 +275,8 @@ func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 			t.Fatalf("tools/list error on %s: %v", path, resp["error"])
 		}
 		tools := resp["result"].(map[string]any)["tools"].([]any)
-		if len(tools) != 15 {
-			t.Fatalf("%s lists %d tools, want 15", path, len(tools))
+		if len(tools) != 16 {
+			t.Fatalf("%s lists %d tools, want 16", path, len(tools))
 		}
 	}
 }

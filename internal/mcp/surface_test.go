@@ -18,11 +18,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
-// companionWant is the curated 15-tool agent allowlist, pinned exactly
+// companionWant is the curated agent allowlist, pinned exactly
 // (docs/vision/05-surfaces.md §3: companion 15, minus batch and brief, plus
-// verify_plan and capabilities). Changing the surface is deliberate: update
-// this list and docs/mcp-tools.md together. Served identically at both
-// /rpc/agent (the primary path) and /rpc/companion (a compatible alias).
+// verify_plan and capabilities; T5-4, docs/plans/trust-and-tokenomics.md,
+// added read_source as the program's second net-new tool — 16 total).
+// Changing the surface is deliberate: update this list and docs/mcp-tools.md
+// together. Served identically at both /rpc/agent (the primary path) and
+// /rpc/companion (a compatible alias).
 var companionWant = []string{
 	"capabilities",
 	"entrypoints",
@@ -34,6 +36,7 @@ var companionWant = []string{
 	"outline",
 	"pack_context",
 	"query_symbols",
+	"read_source",
 	"references",
 	"repo_map",
 	"staleness_report",
@@ -90,7 +93,7 @@ func TestCompanionSurfaceToolsList(t *testing.T) {
 	sort.Strings(want)
 
 	// /rpc/agent is the primary surface; /rpc/companion is a compatible
-	// alias — both must serve the identical 15-tool list.
+	// alias — both must serve the identical allowlist.
 	for _, surface := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion} {
 		ctx := mcp.WithRequestScope(context.Background(), surface, true)
 		names := toolNames(t, scopedRoundtrip(t, srv, ctx, request{
@@ -220,7 +223,7 @@ func TestBatchGatedOnSurface(t *testing.T) {
 
 	// strictSurfaces restores the pre-amendment gate for batch sub-calls too.
 	// batch itself is GroupShared, which dropped off the companion allowlist
-	// in this slice (companionTools = 15, minus batch/brief); under strict
+	// in this slice (companionTools omits batch/brief); under strict
 	// mode a companion-scoped batch call would be rejected outright before
 	// even reaching its sub-calls. Use the "shared" surface instead, where
 	// batch stays on-surface (GroupShared is included on every group
@@ -301,8 +304,9 @@ func TestCapabilitiesReportsActiveSurface(t *testing.T) {
 	}
 
 	// capabilities was promoted onto the companion/agent allowlist
-	// (docs/vision/05-surfaces.md §3) — the discovery escape hatch a 15-tool
-	// surface needs — so it dispatches there too, on both surface names.
+	// (docs/vision/05-surfaces.md §3) — the discovery escape hatch a small,
+	// curated surface needs — so it dispatches there too, on both surface
+	// names.
 	for _, surface := range []string{mcp.SurfaceCompanion, mcp.SurfaceAgent} {
 		scCtx := mcp.WithRequestScope(context.Background(), surface, true)
 		got := scopedRoundtrip(t, srv, scCtx, request{

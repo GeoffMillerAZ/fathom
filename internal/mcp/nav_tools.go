@@ -144,10 +144,19 @@ func treeToMap(t symbolnav.Tree) map[string]any {
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
 
+// symbolContextSnippetMaxLines caps symbol_context's inline definition
+// snippet (T5-6, docs/plans/trust-and-tokenomics.md): small enough to stay
+// inside one response, generous enough to show a typical function body — so
+// a "what is X and show it to me" question completes in ONE turn instead of
+// a symbol_context call followed by a separate read. Read via the exact same
+// safe, bounded readSourceRange path read_source uses (readsource.go, T5-4),
+// so a snippet and a read_source citation of the same lines are identical.
+const symbolContextSnippetMaxLines = 40
+
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, and related tests.",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -188,6 +197,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 				Kind:      string(sctx.Def.Kind),
 				FilePath:  sctx.Def.FilePath,
 				Line:      sctx.Def.Line,
+				EndLine:   sctx.Def.EndLine,
 				Signature: sctx.Def.Signature,
 				Tier:      string(sctx.Def.Tier),
 			}
@@ -198,6 +208,20 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callers":       stringsToAny(sctx.Callers),
 			"callees":       stringsToAny(sctx.Callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
+		}
+
+		// Inline definition snippet (T5-6): additive, honest-absence field —
+		// omitted (never faked) when the definition has no file/line, or its
+		// source is not retrievable (no ServiceMeta corpus root, file
+		// missing, binary, etc.) via the same bounded read_source path.
+		if sctx.Def.Name != "" && sctx.Def.FilePath != "" && sctx.Def.Line > 0 {
+			if rng, snErr := readSourceRange(ctx, backend, p.Service, sctx.Def.FilePath, sctx.Def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes); snErr == nil && len(rng.Lines) > 0 {
+				snippet := make([]any, len(rng.Lines))
+				for i, ln := range rng.Lines {
+					snippet[i] = map[string]any{"line": ln.Line, "text": ln.Text}
+				}
+				result["snippet"] = snippet
+			}
 		}
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers/callees on a

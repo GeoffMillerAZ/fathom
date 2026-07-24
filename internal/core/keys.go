@@ -57,6 +57,7 @@ func (o Observation) ToSymbolNode() SymbolNode {
 		Kind:       o.SourceKind,
 		FilePath:   o.SourceRef,
 		Line:       o.Line,
+		EndLine:    o.EndLine,
 		Signature:  o.Claim,
 		Calls:      o.Calls,
 		Tier:       o.EvidenceTier,

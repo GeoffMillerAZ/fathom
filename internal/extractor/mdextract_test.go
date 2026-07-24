@@ -109,6 +109,65 @@ func TestMarkdownExtractor_LineNumbers(t *testing.T) {
 	}
 }
 
+// TestMarkdownExtractor_EndLine proves T5-5 (docs/plans/trust-and-
+// tokenomics.md): each heading's EndLine is the real line before its next
+// sibling heading (or EOF for the last one) — a section EXTENT, not just a
+// start line, so a downstream caller can pin the section's real lines
+// instead of guessing them by arithmetic off the heading (the T08 class).
+// mdFixture's real line numbers (1-based, counting the raw string literal):
+//
+//	1  # Introduction
+//	2  (blank)
+//	3  This is the intro paragraph.
+//	4  (blank)
+//	5  ## Installation
+//	6  (blank)
+//	7  Run the install command.
+//	8  (blank)
+//	9  ### Advanced Setup
+//	10 (blank)
+//	11 For advanced users.
+//	12 (blank)
+//	13 ## Usage
+//	14 (blank)
+//	15 Basic usage examples.
+func TestMarkdownExtractor_EndLine(t *testing.T) {
+	x := extractor.NewMarkdownExtractor()
+	nodes, err := x.Extract("svc", "README.md", []byte(mdFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	cases := []struct {
+		name        string
+		wantLine    int
+		wantEndLine int
+	}{
+		{"Introduction", 1, 4},
+		{"Installation", 5, 8},
+		{"Advanced Setup", 9, 12},
+		{"Usage", 13, 15}, // last heading: EndLine is EOF (total lines), not the next heading
+	}
+	for _, tc := range cases {
+		n, ok := byName[tc.name]
+		if !ok {
+			t.Errorf("heading %q not found", tc.name)
+			continue
+		}
+		if n.Line != tc.wantLine {
+			t.Errorf("heading %q Line: got %d, want %d", tc.name, n.Line, tc.wantLine)
+		}
+		if n.EndLine != tc.wantEndLine {
+			t.Errorf("heading %q EndLine: got %d, want %d", tc.name, n.EndLine, tc.wantEndLine)
+		}
+	}
+}
+
 // TestMarkdownExtractor_CodeFenceAwareness asserts that a "#" inside a fenced
 // code block is NOT extracted as a heading — the key correctness win over the
 // former regex-based approach.
