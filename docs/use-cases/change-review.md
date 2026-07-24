@@ -17,6 +17,7 @@ Review a diff or pull request with automated impact analysis and conformance gat
 
 | Name | Kind | What it gives you |
 |---|---|---|
+| `review_diff` | MCP tool (investigation) | **The composed verb** (C1-1, `docs/plans/review-verb.md`): diff impact + obligations/findings + architecture conformance + spec coverage in ONE cited verdict, over an explicit `changed_files` list |
 | `diff_impact` | MCP tool (investigation) | Blast radius of changed files: affected symbols, transitive callers, and related tests |
 | `api_diff` | MCP tool (coding) | Added, removed, and changed exported symbols between two services |
 | `arch_conformance` | MCP tool (coding) | Call-graph edges that violate declared layering rules |
@@ -24,9 +25,10 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
 | `doc_coverage` | MCP tool (coding) | Exported symbols with missing documentation |
 | `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
-| `review_change` | MCP prompt | Structured agent workflow for reviewing a code change: rename impact → test impact → API surface → complexity → call path |
+| `review_change` | MCP prompt | Calls `review_diff` for a structured, one-call review of a code change |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
 | `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
+| `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1) |
 | `fathom ingest-diff` | CLI | Ingest only files changed since a given git ref, then exit (pre-session or CI use) |
 
 ---
@@ -35,17 +37,17 @@ Review a diff or pull request with automated impact analysis and conformance gat
 
 Without fathom, an agent reviewing a PR must read changed files and mentally trace impact — it misses callers defined in files it did not read, cannot compare API surfaces across services, and has no conformance gate. With fathom:
 
-1. **Impact is grounded in the call graph.** `diff_impact` returns the exact set of symbols and tests that transitively depend on the changed files, so the agent knows what to re-test without guessing.
-2. **API breakage is explicit.** `api_diff` names every added, removed, and changed exported symbol between the baseline and the changed version. The agent can block the merge rather than let a silent breaking change through.
-3. **Layering and proto rules gate automatically.** `arch_conformance` and `proto_conformance` produce zero-output on a clean diff, so the agent only needs to act when there are findings.
-4. **Staleness is surfaced, not hidden.** If the MCP server has been running across commits, `staleness_report` flags it and the agent can call `ingest` before querying — avoiding stale answers.
-5. **Fewer tokens spent on context assembly.** A targeted `diff_impact` call returns exactly the affected nodes; the agent does not need to scan the whole repo to find them.
+1. **One call composes the whole review.** `review_diff` returns diff impact, obligations/findings scoped to the changed files, architecture conformance, and spec coverage as one cited verdict — the agent does not have to remember (or narrate) an 8-step tool sequence.
+2. **Impact is grounded in the call graph.** The verdict's `impact` dimension returns the exact set of symbols and tests that transitively depend on the changed files, so the agent knows what to re-test without guessing.
+3. **Layering rules gate automatically, honestly.** The `arch_conformance` dimension produces zero findings on a clean diff, and reports `checked:false` with a reason — never a clean-shaped pass — when no rule pack is configured, so the agent can tell "passed" from "wasn't checked."
+4. **Findings are durable.** A finding refuted once (`fathom claim refute` or the `obligations` tool's feedback action) stays refuted across every later re-review of the same diff — no re-litigating the same false positive on every push.
+5. **Fewer tokens spent on context assembly.** A single `review_diff` call returns exactly the affected nodes and findings; the agent does not need to scan the whole repo or issue five separate calls to find them.
 
 ---
 
 ## Worked example
 
-A PR modifies three files in `payment-service`. The agent works through the following sequence.
+A PR modifies `internal/api/handler.go` in `payment-service`, which now calls into `internal/store` directly — a layering violation the service's own `.fathom/rules/archconformance.cue` forbids.
 
 **1. Refresh the store for the changed service.**
 
@@ -55,15 +57,96 @@ A PR modifies three files in `payment-service`. The agent works through the foll
 
 Returns `{ "service": "payment-service", "ok": true }`. The store now reflects HEAD.
 
-**2. Check for staleness (optional guard).**
+**2. Call `review_diff` once with the changed files.**
 
 ```json
-{ "name": "staleness_report", "arguments": { "service": "payment-service" } }
+{
+  "name": "review_diff",
+  "arguments": {
+    "service": "payment-service",
+    "changed_files": ["internal/api/handler.go"]
+  }
+}
 ```
 
-Returns `{ "reingest_recommended": false, "indexed_commit": "a3f8c1d...", ... }`. Confirmed fresh.
+Returns one cited verdict:
 
-**3. Compute the blast radius of the diff.**
+```json
+{
+  "service": "payment-service",
+  "changed_files": ["internal/api/handler.go"],
+  "dimensions": [
+    {
+      "name": "impact",
+      "checked": true,
+      "count": 2,
+      "findings": [
+        { "kind": "impact", "symbol": "api.RouteHandler", "file": "internal/api/router.go", "message": "transitively depends on changed code", "citation": "internal/api/router.go#L12-L12", "severity": "info" },
+        { "kind": "impact", "symbol": "api.TestHandler_Charge", "file": "internal/api/handler_test.go", "message": "transitively depends on changed code", "citation": "internal/api/handler_test.go#L4-L4", "severity": "info" }
+      ],
+      "tests": ["api.TestHandler_Charge"],
+      "files": ["internal/api/handler.go", "internal/api/router.go", "internal/api/handler_test.go"]
+    },
+    { "name": "obligations", "checked": true, "count": 0, "findings": [] },
+    {
+      "name": "arch_conformance",
+      "checked": true,
+      "count": 1,
+      "findings": [
+        {
+          "kind": "arch_violation", "symbol": "api.Handler",
+          "file": "internal/api/handler.go",
+          "message": "api.Handler → store.Query: package \"api\" must not import \"store\" (deny rule)",
+          "citation": "internal/api/handler.go",
+          "severity": "error",
+          "claim_id": "3f9a…"
+        }
+      ]
+    },
+    { "name": "spec_coverage", "checked": true, "count": 0, "findings": [] }
+  ],
+  "summary": "service payment-service: 1 changed file(s); 4/4 dimensions checked; 3 active finding(s)",
+  "findings_persisted": true
+}
+```
+
+`arch_conformance` caught the layering violation — cited with its reason and rule-pack-derived source — and the two `impact` findings name exactly which caller and test are affected. Every finding was also persisted as a content-addressed claim (`findings_persisted:true`): if the PR author disputes the violation, `fathom claim refute --claim 3f9a… --note "..."` (or the `obligations` tool's `action:"refute"`) suppresses it durably — a second `review_diff` call after the fix would carry `status:"refuted"` on that finding instead of re-flagging it.
+
+Alternatively, invoke the `review_change` prompt to get the same call pre-structured:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "prompts/get",
+  "params": {
+    "name": "review_change",
+    "arguments": {
+      "service": "payment-service",
+      "changed_files": "internal/api/handler.go",
+      "change": "handler now calls store.Query directly"
+    }
+  }
+}
+```
+
+The returned prompt instructs the agent to call `review_diff` with those arguments and how to read the resulting verdict.
+
+**CLI equivalent** (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1):
+
+```sh
+fathom review --store workspace/db/fleet.sqlite --service payment-service --since origin/main
+```
+
+Resolves changed files via `git diff --name-only origin/main`, runs the identical engine, and prints a short human-readable summary (`--json` for the same payload shape as above).
+
+---
+
+### Appendix: manual tool-by-tool sequence
+
+Before `review_diff` existed, reviewing a change meant calling each analyzer separately. This sequence still works — useful when you want only one dimension, or when composing your own workflow — and every tool it calls remains independently available.
+
+**Compute the blast radius of the diff.**
 
 ```json
 {
@@ -89,11 +172,7 @@ Returns:
 }
 ```
 
-The agent now knows which four tests to run and sees that `internal/api/handler.go` is indirectly affected.
-
-**4. Check for public API breakage.**
-
-`api_diff` compares the exported symbol surface of two independently-indexed service snapshots. Here, `payment-service-base` is the pre-PR snapshot and `payment-service` is the current one.
+**Check for public API breakage.** `api_diff` compares the exported symbol surface of two independently-indexed service snapshots — here `payment-service-base` is the pre-PR snapshot and `payment-service` is the current one.
 
 ```json
 {
@@ -114,9 +193,9 @@ Returns:
 }
 ```
 
-`billing.Invoice` was removed — a breaking public API change. The agent flags this for the PR author.
+`billing.Invoice` was removed — a breaking public API change.
 
-**5. Check architectural layering.**
+**Check architectural layering.**
 
 ```json
 {
@@ -133,9 +212,9 @@ Returns:
 }
 ```
 
-Returns `{ "violations": [], "count": 0 }`. Layer rules pass.
+Returns `{ "violations": [], "count": 0 }` — layer rules pass (or a `rule_source`/`checked:false` honesty split when no rules were configured; see the `arch_conformance` row above).
 
-**6. Check proto naming conventions (if applicable).**
+**Check proto naming conventions (if applicable).**
 
 ```json
 { "name": "proto_conformance", "arguments": { "service": "payment-service" } }
@@ -143,7 +222,7 @@ Returns `{ "violations": [], "count": 0 }`. Layer rules pass.
 
 Returns `{ "issues": [], "count": 0 }`. No violations.
 
-**7. Check dependency version drift between services.**
+**Check dependency version drift between services.**
 
 ```json
 {
@@ -165,9 +244,9 @@ Returns:
 }
 ```
 
-`payment-service` is ahead on `golang.org/x/crypto`. The agent surfaces this for alignment.
+`payment-service` is ahead on `golang.org/x/crypto`.
 
-**8. Check doc and stale-docs coverage on changed files (optional).**
+**Check doc and stale-docs coverage on changed files (optional).**
 
 ```json
 { "name": "stale_docs", "arguments": { "service": "payment-service" } }
@@ -177,30 +256,11 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 ---
 
-Alternatively, invoke the `review_change` prompt to get a pre-structured agent workflow:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "prompts/get",
-  "params": {
-    "name": "review_change",
-    "arguments": {
-      "service": "payment-service",
-      "change": "refactored billing.Invoice → billing.InvoiceV2, updated store.RunTxn signature"
-    }
-  }
-}
-```
-
-The returned prompt guides the agent through rename impact, test impact, API surface, complexity, and call-path checks in a single structured sequence.
-
----
-
 ## Setup & notes
 
-**Profile.** Most tools in this workflow (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`) are in the `coding` group. `diff_impact` is in the `investigation` group. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: set `coding` profile for the main review pass, then switch to `investigation` for `diff_impact`.
+**`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
+
+**Profile.** `review_diff` and `diff_impact` are both in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`) are in `coding`. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: `investigation` profile for `review_diff`/`diff_impact`, `coding` for the appendix's per-dimension tools.
 
 On stdio `serve-mcp`:
 
@@ -228,9 +288,11 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 ---
 
-## The `fathom verify` gate as a pre-push complement
+## The `fathom verify` gate — and `fathom review`'s non-blocking summary
 
 Impact analysis answers *what is affected*; the `fathom verify` gate answers *what is proven done*. Before pushing, `lefthook` runs `fathom verify` over any plan files in `docs/plans/*.md`, checking each `[x]`-claimed task against the index. A claimed task that lacks code evidence blocks the push (exit 1); an operational error (daemon down) warns and allows (exit 2, fail-open). In CI, `scripts/ci.sh` adds `--strict` to treat exit 2 as a failure. Run `fathom verify` manually with `--plan <file> --service <id>` or pass `--store` to bypass the daemon. See [spec-verification.md](spec-verification.md) for the full gate reference.
+
+The same pre-push hook also runs `fathom review --service fathom --since origin/main` (C3-1, `docs/plans/review-verb.md`) — unlike `verify`, this step is **advisory, never blocking**: it always exits 0 and prints the verdict summary so review findings are visible on every push, even when nothing forces you to read them. An operational error there degrades to a single line (fail-open, same doctrine as `verify`'s exit 2), never a raw error dump.
 
 ---
 
@@ -248,4 +310,4 @@ Once compiled, findings scoped to the files under review surface through the sam
 
 ## Maintained
 
-This doc covers: `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`) and its `fathom review` CLI mirror, `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.

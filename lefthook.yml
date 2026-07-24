@@ -58,6 +58,27 @@ pre-push:
           fi
         done
         exit $rc
+    # fathom review — C3-1, the forced channel (docs/plans/review-verb.md):
+    # a NON-BLOCKING `fathom review --since origin/main` summary printed on
+    # every push. Unlike verify above, a review finding is advisory, not
+    # gating: this step ALWAYS exits 0, whatever bin/fathom review itself
+    # returns. Operational errors (no bin/fathom, unreachable ref, unindexed
+    # service, corrupt store) degrade silently to a single line — never a
+    # blocking failure and never a raw error dump (fail-open convention,
+    # docs/design/coding-agent-excellence.md §5.3). --store points at the
+    # same workspace/db/fleet.sqlite the post-commit fathom-refresh step
+    # below keeps current, so the summary reflects the just-committed state
+    # without a daemon round trip.
+    review:
+      run: |
+        [ -x bin/fathom ] || exit 0
+        out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite 2>&1)
+        if [ $? -ne 0 ]; then
+          echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+          exit 0
+        fi
+        echo "$out"
+        exit 0
 
 # Best-effort post-commit upkeep.
 #  1. rebuild-binary — when a commit touched Go source, rebuild bin/fathom so the

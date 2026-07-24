@@ -5,6 +5,55 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Added — the review verb: `review_diff` + `fathom review` (Phase C, 2026-07-23, docs/plans/review-verb.md C1-1/C2-1/C3-1)
+- **C1-1 — `review_diff`, the program's one new MCP tool:** a new pure-Go
+  `internal/analysis/review` package composes, in-process, diff impact
+  (blast radius + typed edges), obligations/findings scoped to the changed
+  files, architecture conformance (the service's own `.fathom/rules/
+  archconformance.cue` project rule pack — `review_diff` never accepts
+  inline rules), and spec coverage into ONE cited verdict
+  (`Verdict.Dimensions[].Findings[]`, each carrying an evidence citation).
+  Honesty rules apply per dimension: a dimension that cannot run reports
+  `checked:false` + `reason`, never a clean-shaped pass. New MCP tool
+  `review_diff` (`GroupInvestigation`, `internal/mcp/review_tool.go`); CLI
+  mirror `fathom review --store DB --service S --since <ref>`
+  (`cmd/fathom/review.go`, mirrors `cmdReport`'s store-direct structure —
+  resolves changed files via `git diff --name-only <ref>`, then runs the
+  identical engine). Refactor along the way: the arch-conformance edge
+  normalization logic (method-origin/method-target package resolution,
+  P1-4) moved from `internal/mcp/extra_tools.go`'s unexported
+  `archConformanceEdges`/`archResolver` into
+  `internal/analysis/archconformance.EdgesFromNodes` — one implementation
+  the standalone `arch_conformance` tool and `review_diff` both call, never
+  two that could drift. Likewise the inline/project rule-pack resolution
+  (C4-2/C4-3's honesty split) is now `internal/projectrules.ResolveRules`,
+  shared the same way.
+- **C2-1 — the findings bridge (fires FT-7's pre-armed trigger,
+  docs/plans/findings-tracer.md):** review findings are persisted as
+  content-addressed claims on the `findings` layer (`ClaimID` = sha256 of
+  layer+kind+subject+reproKey, tier `verified` — a deterministic pass, no
+  LLM) via `review.AttachClaims`. Durability rides the store's own
+  `PutClaims` upsert (the pre-existing "status stays refuted" CASE WHEN,
+  FT-4) — no re-derived logic in this row: an unchanged finding re-emitted
+  by a later review reproduces the identical `ClaimID`, so a finding
+  refuted via `fathom claim refute` / the `obligations` tool's feedback
+  action carries `status:"refuted"` (excluded from its dimension's active
+  `count`, but still listed — never silently dropped) across every later
+  re-review. Proven at three layers: `TestFindingsBridge_
+  RefutationDurability` (pure, `internal/analysis/review`),
+  `TestReviewDiff_FindingsBridge_RefutationSticksAcrossReReview` (MCP
+  wiring, fake claims backend), `TestReview_FindingsBridge_
+  RefutationDurability` (CLI, end-to-end through a real store).
+- **C3-1 — the forced channel:** `lefthook.yml`'s pre-push gains a
+  non-blocking `fathom review --service fathom --since origin/main`
+  summary step — always exits 0 regardless of `bin/fathom review`'s own
+  result, degrading operational errors to one line (fail-open, same
+  doctrine as the `verify` step's exit 2). The `review_change` MCP prompt
+  now calls `review_diff` instead of narrating an 8-step manual tool
+  sequence; that sequence is preserved as `docs/use-cases/
+  change-review.md`'s appendix for tool-by-tool users, whose worked example
+  now leads with the one-call form.
+
 ### Fixed — serving-layer hygiene (Wave 3a P1-6/P1-9, 2026-07-23)
 - **`migration_targets` merge semantics (dogfood O11, closed):** a caller-
   supplied `deprecated_pkgs` list now **merges with** the built-in default
