@@ -42,17 +42,27 @@ const maxTopTools = 10
 // in a different package has no business depending on mcp's unexported
 // struct even if it could.
 type adoptionCallEntry struct {
-	TS             string  `json:"ts"`
-	Tool           string  `json:"tool"`
-	Service        string  `json:"service,omitempty"`
-	Group          string  `json:"group,omitempty"`
-	Surface        string  `json:"surface,omitempty"`
-	Via            string  `json:"via,omitempty"`
-	Origin         string  `json:"origin,omitempty"`
-	OffSurface     bool    `json:"off_surface,omitempty"`
-	ClaimsAttached int     `json:"claims_attached,omitempty"`
-	LatencyMS      float64 `json:"latency_ms"`
-	Error          string  `json:"error,omitempty"`
+	TS             string `json:"ts"`
+	Tool           string `json:"tool"`
+	Service        string `json:"service,omitempty"`
+	Group          string `json:"group,omitempty"`
+	Surface        string `json:"surface,omitempty"`
+	Via            string `json:"via,omitempty"`
+	Origin         string `json:"origin,omitempty"`
+	OffSurface     bool   `json:"off_surface,omitempty"`
+	ClaimsAttached int    `json:"claims_attached,omitempty"`
+	// VerdictOutcome (T5-7, docs/plans/trust-and-tokenomics.md) mirrors
+	// internal/mcp.callLogEntry's own field of the same JSON name: a
+	// gate-shaped result summary a row may carry — verify_plan's
+	// {claimed,verified,failing} (via the MCP dispatch path) or review's
+	// per-checked-dimension finding counts (via appendReviewCallLogEntry,
+	// review.go's CLI/hook forced-channel write). Nil for every row logged
+	// by a binary built before this field existed — buildAdoptionReport
+	// must count those separately as "predates instrumentation", never as a
+	// fabricated zero catch.
+	VerdictOutcome map[string]int `json:"verdict_outcome,omitempty"`
+	LatencyMS      float64        `json:"latency_ms"`
+	Error          string         `json:"error,omitempty"`
 }
 
 // SurfaceTrafficRow is one surface's traffic in the adoption report — the
@@ -95,13 +105,24 @@ type AdoptionReport struct {
 	BriefCallsWithClaims int      `json:"brief_calls_with_claims"`
 	ClaimsAttachHitRate  *float64 `json:"claims_attach_hit_rate"` // nil: no brief calls in the window — undefined, not a fake 0
 
-	// VerifyGateCatchCount is always nil in v1: the call log
-	// (adoptionCallEntry above) never records a tool's result payload, only
-	// its dispatch metadata — a verify_plan call's pass/fail verdict is
-	// invisible to it. Recorded honestly as "not instrumented" rather than
-	// a fabricated zero (the plan's own explicit requirement).
-	VerifyGateCatchCount *int   `json:"verify_gate_catch_count"`
-	VerifyGateNote       string `json:"verify_gate_note"`
+	// VerifyGateCatchCount (T5-7, docs/plans/trust-and-tokenomics.md)
+	// replaces the v1 always-nil "not instrumented" placeholder with a real
+	// derived count: the sum, across every verify_plan/review call-log row
+	// carrying a verdict_outcome, of verify_plan's "failing" count (claimed
+	// tasks the gate would fail) plus review's per-checked-dimension active
+	// finding counts. Nil only when this window contains ZERO such rows —
+	// still literally not instrumented, over this window.
+	VerifyGateCatchCount *int `json:"verify_gate_catch_count"`
+	// VerifyGateInstrumentedCalls is how many verify_plan/review rows
+	// carried a verdict_outcome and so contributed to VerifyGateCatchCount.
+	VerifyGateInstrumentedCalls int `json:"verify_gate_instrumented_calls"`
+	// VerifyGatePredatesInstrumentation counts verify_plan/review rows
+	// logged by a binary built before this field existed — no
+	// verdict_outcome, so their pass/fail verdict is unrecoverable from the
+	// log. Reported separately and NEVER folded into VerifyGateCatchCount
+	// as a fabricated zero (the honest-split requirement).
+	VerifyGatePredatesInstrumentation int    `json:"verify_gate_predates_instrumentation"`
+	VerifyGateNote                    string `json:"verify_gate_note"`
 
 	// OpenObservationCount is nil when .fathom/observations.md doesn't
 	// exist yet (distinct from "0 open observations", a real state a
@@ -325,29 +346,77 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 		hitRate = &r
 	}
 
-	verifyNote := "not instrumented — the call log records dispatch metadata " +
-		"(tool/service/group/surface/via/origin/claims_attached/latency/error) " +
-		"but never a tool's result payload, so a verify_plan call's pass/fail " +
-		"verdict is invisible to it; this is a placeholder, not a measured zero."
+	gateCatchCount, instrumented, predates, verifyNote := gateCatchStats(entries)
 
 	return AdoptionReport{
-		CallLogPath:           callLogPath,
-		CallLogRead:           read,
-		TotalCalls:            len(entries),
-		SkippedMalformedLines: skippedMalformed,
-		SurfaceTraffic:        surfaceTraffic,
-		TopTools:              topTools,
-		RegisteredToolCount:   len(registeredTools),
-		ZeroCallTools:         zeroCall,
-		ToolRegistryNote:      toolNote,
-		BriefCalls:            briefCalls,
-		BriefCallsWithClaims:  briefWithClaims,
-		ClaimsAttachHitRate:   hitRate,
-		VerifyGateCatchCount:  nil,
-		VerifyGateNote:        verifyNote,
-		OpenObservationCount:  openObs,
-		ObservationsPath:      obsPath,
+		CallLogPath:                       callLogPath,
+		CallLogRead:                       read,
+		TotalCalls:                        len(entries),
+		SkippedMalformedLines:             skippedMalformed,
+		SurfaceTraffic:                    surfaceTraffic,
+		TopTools:                          topTools,
+		RegisteredToolCount:               len(registeredTools),
+		ZeroCallTools:                     zeroCall,
+		ToolRegistryNote:                  toolNote,
+		BriefCalls:                        briefCalls,
+		BriefCallsWithClaims:              briefWithClaims,
+		ClaimsAttachHitRate:               hitRate,
+		VerifyGateCatchCount:              gateCatchCount,
+		VerifyGateInstrumentedCalls:       instrumented,
+		VerifyGatePredatesInstrumentation: predates,
+		VerifyGateNote:                    verifyNote,
+		OpenObservationCount:              openObs,
+		ObservationsPath:                  obsPath,
 	}
+}
+
+// gateCatchStats derives the real "gate catches" accounting (T5-7,
+// docs/plans/trust-and-tokenomics.md) from every verify_plan/review row's
+// optional verdict_outcome: a "catch" is a claimed-but-failing verify_plan
+// task, or an active review finding on a checked dimension — the count of
+// times the gate actually caught something. Rows of either tool logged
+// before this field existed (VerdictOutcome nil) carry no recoverable
+// verdict and are counted SEPARATELY as predates-instrumentation, never
+// folded into the catch count as a fabricated zero (the honest-split
+// requirement). catchCount is nil only when there are zero instrumented
+// rows in this window — still literally not instrumented, over this
+// window.
+func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented, predates int, note string) {
+	catches := 0
+	for _, e := range entries {
+		if e.Tool != "verify_plan" && e.Tool != "review" {
+			continue
+		}
+		if e.VerdictOutcome == nil {
+			predates++
+			continue
+		}
+		instrumented++
+		switch e.Tool {
+		case "verify_plan":
+			catches += e.VerdictOutcome["failing"]
+		case "review":
+			for _, n := range e.VerdictOutcome {
+				catches += n
+			}
+		}
+	}
+
+	if instrumented == 0 {
+		note = "not instrumented — no verify_plan/review call in this window carries a " +
+			"verdict_outcome (older call-log rows predate the field; a placeholder, not a measured zero)"
+		if predates > 0 {
+			note += fmt.Sprintf("; %d row(s) predate instrumentation and are excluded", predates)
+		}
+		return nil, instrumented, predates, note
+	}
+
+	n := catches
+	note = fmt.Sprintf("%d catch(es) across %d instrumented call(s) (verify_plan claimed-but-failing tasks + review active findings)", catches, instrumented)
+	if predates > 0 {
+		note += fmt.Sprintf("; %d row(s) predate instrumentation and are excluded (not counted as zero)", predates)
+	}
+	return &n, instrumented, predates, note
 }
 
 // renderAdoptionReport writes the human-readable table form of report.

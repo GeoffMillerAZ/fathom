@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -81,7 +82,10 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 
 	var out, errBuf bytes.Buffer
 	code := runReview(
-		[]string{"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--json"},
+		[]string{
+			"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--json",
+			"--call-log", filepath.Join(t.TempDir(), "calls.jsonl"),
+		},
 		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
 	)
 	if code != 0 {
@@ -149,7 +153,10 @@ func TestReview_FindingsBridge_RefutationDurability(t *testing.T) {
 	runOnce := func() map[string]any {
 		var out, errBuf bytes.Buffer
 		code := runReview(
-			[]string{"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--json"},
+			[]string{
+				"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--json",
+				"--call-log", filepath.Join(t.TempDir(), "calls.jsonl"),
+			},
 			fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
 		)
 		if code != 0 {
@@ -236,11 +243,17 @@ func reviewIngestFixture(t *testing.T) (string, string) {
 	return root, storePath
 }
 
-// runReviewJSON runs a persisting review over pkg/a.go and returns the payload.
+// runReviewJSON runs a persisting review over pkg/a.go and returns the
+// payload. --call-log is pinned to a per-test temp path (T5-7 made review
+// append a call-log row on every reachable run) so these tests never write
+// into the package's own working directory via resolveCallLogPath's
+// relative default.
 func runReviewJSON(t *testing.T, storePath string, extraArgs ...string) map[string]any {
 	t.Helper()
+	callLogPath := filepath.Join(t.TempDir(), "calls.jsonl")
 	args := append([]string{
 		"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--json",
+		"--call-log", callLogPath,
 	}, extraArgs...)
 	var out, errBuf bytes.Buffer
 	code := runReview(args, fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf)
@@ -456,5 +469,95 @@ func TestReview_NoPersist_WritesNothing(t *testing.T) {
 	}
 	if claims := reviewSvcClaims(t, storePath); len(claims) != 0 {
 		t.Fatalf("--no-persist must write nothing, found %d claim(s)", len(claims))
+	}
+}
+
+// ─── T5-7: the forced-channel measurement (docs/plans/trust-and-tokenomics.md) ──
+
+// TestReview_AppendsCallLogVerdictOutcome is T5-7's real evidence for the
+// review CLI/hook path: C3-1's forced channel (`bin/fathom review
+// --no-persist`, run by lefthook's pre-push step) never touches the MCP
+// dispatch path, so before this feature its verdict was invisible to
+// `instrument --adoption`. A real ingest + review run must append a
+// call-log row carrying verdict_outcome keyed by exactly the CHECKED
+// dimensions (spec_coverage is checked and finds the seeded [US-777] gap;
+// impact and obligations are always checked by the CLI's direct-store
+// client, at 0 findings for this fixture; arch_conformance is unchecked —
+// no project rule pack configured — and must be ABSENT from the map, not
+// present at 0).
+func TestReview_AppendsCallLogVerdictOutcome(t *testing.T) {
+	_, storePath := reviewIngestFixture(t)
+	logPath := filepath.Join(t.TempDir(), "logs", "mcp-calls.jsonl")
+
+	var out, errBuf bytes.Buffer
+	code := runReview(
+		[]string{"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist", "--call-log", logPath},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("review exit = %d, stderr: %s", code, errBuf.String())
+	}
+	if errBuf.Len() != 0 {
+		t.Fatalf("unexpected stderr: %s", errBuf.String())
+	}
+
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("reading call log: %v", err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 1 {
+		t.Fatalf("expected exactly 1 call-log line, got %d: %q", len(lines), string(data))
+	}
+	var entry adoptionCallEntry
+	if err := json.Unmarshal([]byte(lines[0]), &entry); err != nil {
+		t.Fatalf("call-log line not JSON: %v (line=%q)", err, lines[0])
+	}
+	if entry.Tool != "review" {
+		t.Errorf("Tool = %q, want review", entry.Tool)
+	}
+	if entry.Service != "review-svc" {
+		t.Errorf("Service = %q, want review-svc", entry.Service)
+	}
+	if entry.Surface != "cli" {
+		t.Errorf("Surface = %q, want cli", entry.Surface)
+	}
+	if entry.VerdictOutcome == nil {
+		t.Fatal("VerdictOutcome is nil, want the per-checked-dimension counts")
+	}
+	if want := map[string]int{"impact": 0, "obligations": 0, "spec_coverage": 1}; !reflect.DeepEqual(entry.VerdictOutcome, want) {
+		t.Errorf("VerdictOutcome = %v, want %v (arch_conformance absent — unchecked, no rule pack)", entry.VerdictOutcome, want)
+	}
+}
+
+// TestReview_CallLogDefaultsFromConfig proves the CLI defaults its
+// call-log destination through resolveCallLogPath (the same config
+// resolution instrument --adoption itself uses), when --call-log is not
+// passed — so a repo that only ever configures [daemon].call_log gets its
+// review rows in the log the daemon (and instrument --adoption) actually
+// reads.
+func TestReview_CallLogDefaultsFromConfig(t *testing.T) {
+	_, storePath := reviewIngestFixture(t)
+	// reviewIngestFixture and storePath are resolved BEFORE the chdir below
+	// (withIsolatedConfigHome moves the working directory), so storePath
+	// stays a valid absolute-enough path either way — t.TempDir() returns
+	// absolute paths.
+	_, projectDir := withIsolatedConfigHome(t)
+	logPath := filepath.Join(projectDir, "custom", "review-calls.jsonl")
+	writeProjectConfig(t, projectDir, `
+[daemon]
+call_log = "`+filepath.ToSlash(logPath)+`"
+`)
+
+	var out, errBuf bytes.Buffer
+	code := runReview(
+		[]string{"--service", "review-svc", "--since", "HEAD~1", "--store", storePath, "--no-persist"},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("review exit = %d, stderr: %s", code, errBuf.String())
+	}
+	if _, err := os.Stat(logPath); err != nil {
+		t.Fatalf("expected a call-log entry at the configured default path %q: %v", logPath, err)
 	}
 }

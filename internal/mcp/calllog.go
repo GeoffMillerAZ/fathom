@@ -31,9 +31,20 @@ type callLogEntry struct {
 	// makes claims-block hit rate visible per call log row. Generic (any
 	// handler's result can opt in via claimsAttachedFrom), not brief-specific
 	// plumbing.
-	ClaimsAttached int     `json:"claims_attached,omitempty"`
-	LatencyMS      float64 `json:"latency_ms"`
-	Error          string  `json:"error,omitempty"`
+	ClaimsAttached int `json:"claims_attached,omitempty"`
+	// VerdictOutcome (T5-7, docs/plans/trust-and-tokenomics.md) is an
+	// optional gate-shaped result summary a tool handler's result may set —
+	// generalizes ClaimsAttached's opt-in pattern from a single scalar to
+	// named counts. verify_plan sets {claimed, verified, failing} (counts
+	// over claimed-and-not-skipped tasks, mirroring internal/verify.Gate's
+	// own semantics). Omitted (nil) for every non-gate-shaped call, and for
+	// a gate-shaped call with nothing to report (e.g. zero claimed tasks) —
+	// that omission is indistinguishable from "logged by a binary built
+	// before this field existed," which is fine: neither case has a real
+	// count to contribute to an aggregate.
+	VerdictOutcome map[string]int `json:"verdict_outcome,omitempty"`
+	LatencyMS      float64        `json:"latency_ms"`
+	Error          string         `json:"error,omitempty"`
 }
 
 // SurfaceStat is one surface's process-lifetime traffic snapshot (A1-1,
@@ -74,7 +85,7 @@ func NewCallLogger(w io.Writer) *CallLogger {
 
 // log writes one JSONL entry and bumps the in-memory per-surface counters.
 // It ignores marshal / write errors to avoid disrupting tool call results.
-func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, latency time.Duration, callErr error) {
+func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
@@ -89,6 +100,7 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		Origin:         origin,
 		OffSurface:     offSurface,
 		ClaimsAttached: claimsAttached,
+		VerdictOutcome: verdictOutcome,
 		LatencyMS:      float64(latency.Milliseconds()),
 	}
 	if callErr != nil {
@@ -150,6 +162,57 @@ func claimsAttachedFrom(result any) int {
 		return int(v)
 	}
 	return 0
+}
+
+// verdictOutcomeFrom extracts an optional "verdict_outcome" object a
+// gate-shaped tool handler's result may set (T5-7, docs/plans/
+// trust-and-tokenomics.md — currently only verify_plan). Mirrors
+// claimsAttachedFrom's two-result-shape handling exactly (raw handler
+// result for batch sub-calls, wrapped MCP content envelope for the
+// top-level dispatch) generalized from a scalar to a map. Returns nil when
+// absent, so a call with nothing gate-shaped to report logs no
+// verdict_outcome field at all (omitempty).
+func verdictOutcomeFrom(result any) map[string]int {
+	m, ok := result.(map[string]any)
+	if !ok {
+		return nil
+	}
+	if content, ok := m["content"].([]any); ok {
+		if len(content) == 0 {
+			return nil
+		}
+		first, ok := content[0].(map[string]any)
+		if !ok {
+			return nil
+		}
+		text, ok := first["text"].(string)
+		if !ok {
+			return nil
+		}
+		var probe struct {
+			VerdictOutcome map[string]int `json:"verdict_outcome"`
+		}
+		if err := json.Unmarshal([]byte(text), &probe); err != nil {
+			return nil
+		}
+		return probe.VerdictOutcome
+	}
+	switch v := m["verdict_outcome"].(type) {
+	case map[string]int:
+		return v
+	case map[string]any:
+		out := make(map[string]int, len(v))
+		for k, val := range v {
+			switch n := val.(type) {
+			case int:
+				out[k] = n
+			case float64:
+				out[k] = int(n)
+			}
+		}
+		return out
+	}
+	return nil
 }
 
 // SurfaceTraffic returns a snapshot of process-lifetime per-surface call

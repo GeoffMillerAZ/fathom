@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,6 +49,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
+	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -90,7 +93,22 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	reviewStart := time.Now()
 	v := review.Run(in)
+	reviewLatency := time.Since(reviewStart)
+
+	// T5-7 (docs/plans/trust-and-tokenomics.md), the forced-channel
+	// measurement: this CLI is C3-1's forced channel (lefthook.yml's
+	// pre-push review step, `bin/fathom review --no-persist`) — it never
+	// goes through the MCP dispatch path (internal/mcp/dispatch.go), so its
+	// verdict was otherwise invisible to `instrument --adoption`'s
+	// gate-catch accounting. Best-effort and silent on failure: a logging
+	// side effect must never fail a hook (§5.3, fail-open convention).
+	callLogPath := *callLogFlag
+	if callLogPath == "" {
+		callLogPath = resolveCallLogPath()
+	}
+	appendReviewCallLogEntry(callLogPath, *service, v.Dimensions, reviewLatency, stderr)
 
 	// C2-1 findings bridge, via review.BuildPersist — the one composition
 	// shared with the review_diff MCP tool: mint content-addressed claim
@@ -245,5 +263,73 @@ func printReviewSummary(w io.Writer, v review.Verdict) {
 			}
 			fmt.Fprintln(w)
 		}
+	}
+}
+
+// reviewVerdictOutcome computes review's gate-shaped result summary (T5-7,
+// docs/plans/trust-and-tokenomics.md): active-finding counts keyed by
+// dimension name, for CHECKED dimensions only — an unchecked dimension
+// (checked:false, e.g. no arch rule pack configured) never ran and has no
+// finding count to report, so it is omitted rather than reported as a
+// misleading 0. Returns nil when nothing was checked at all: nothing
+// gate-relevant to log.
+func reviewVerdictOutcome(dims []review.Dimension) map[string]int {
+	out := make(map[string]int, len(dims))
+	for _, d := range dims {
+		if !d.Checked {
+			continue
+		}
+		out[d.Name] = d.Count
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// appendReviewCallLogEntry appends one call-log-shaped JSONL row for this
+// CLI `fathom review` run (T5-7) — C3-1's forced channel (lefthook.yml's
+// pre-push review step, `bin/fathom review --no-persist`), which never goes
+// through the MCP dispatch path (internal/mcp/dispatch.go) and so was
+// otherwise invisible to `instrument --adoption`'s gate-catch accounting.
+// Uses the same JSONL wire shape internal/mcp/calllog.go's CallLogger
+// writes (adoptionCallEntry, instrument_adoption.go's own decoupled mirror
+// of that shape) so readCallLog reads CLI and MCP rows identically —
+// Surface "cli" distinguishes this forced channel from an MCP surface in
+// the adoption report's surface-traffic table. Best-effort and silent
+// on failure beyond a stderr warning: a logging side effect must never
+// fail the caller (§5.3's fail-open convention — the pre-push hook this
+// feeds always exits 0 regardless).
+func appendReviewCallLogEntry(path, service string, dims []review.Dimension, latency time.Duration, stderr io.Writer) {
+	outcome := reviewVerdictOutcome(dims)
+	if outcome == nil {
+		return
+	}
+	entry := adoptionCallEntry{
+		TS:             time.Now().UTC().Format(time.RFC3339Nano),
+		Tool:           "review",
+		Service:        service,
+		Surface:        "cli",
+		VerdictOutcome: outcome,
+		LatencyMS:      float64(latency.Milliseconds()),
+	}
+	b, err := json.Marshal(entry)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: encoding review call-log entry: %v\n", err)
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		fmt.Fprintf(stderr, "warning: review call-log dir %q: %v\n", filepath.Dir(path), err)
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		fmt.Fprintf(stderr, "warning: opening review call log %q: %v\n", path, err)
+		return
+	}
+	defer f.Close()
+	b = append(b, '\n')
+	if _, err := f.Write(b); err != nil {
+		fmt.Fprintf(stderr, "warning: writing review call log %q: %v\n", path, err)
 	}
 }

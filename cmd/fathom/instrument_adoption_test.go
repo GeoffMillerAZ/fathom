@@ -96,17 +96,98 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 		t.Errorf("ClaimsAttachHitRate = %v, want 0.5", r.ClaimsAttachHitRate)
 	}
 
-	// Verify-gate: always the honest "not instrumented" marker, never a
-	// fabricated zero.
+	// Verify-gate: the lone verify_plan row carries no verdict_outcome
+	// (predates T5-7 instrumentation) — honest "not instrumented" marker,
+	// never a fabricated zero, and the row is counted separately as
+	// predating instrumentation rather than silently ignored.
 	if r.VerifyGateCatchCount != nil {
 		t.Errorf("VerifyGateCatchCount = %v, want nil (not instrumented)", r.VerifyGateCatchCount)
 	}
 	if !strings.Contains(r.VerifyGateNote, "not instrumented") {
 		t.Errorf("VerifyGateNote = %q, want it to say not instrumented", r.VerifyGateNote)
 	}
+	if r.VerifyGateInstrumentedCalls != 0 {
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 0", r.VerifyGateInstrumentedCalls)
+	}
+	if r.VerifyGatePredatesInstrumentation != 1 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 1 (the pre-T5-7 verify_plan row)", r.VerifyGatePredatesInstrumentation)
+	}
 
 	if r.OpenObservationCount == nil || *r.OpenObservationCount != 2 {
 		t.Errorf("OpenObservationCount = %v, want 2", r.OpenObservationCount)
+	}
+}
+
+// ─── T5-7: gate catches, real counts (docs/plans/trust-and-tokenomics.md) ──
+
+// TestBuildAdoptionReport_GateCatchesRealCounts proves the "not
+// instrumented" marker is replaced with real derived counts once
+// verify_plan/review rows carry a verdict_outcome: 1 failing verify_plan
+// task + 2 active review findings (1 obligations + 1 arch_conformance,
+// spec_coverage checked-but-clean at 0) sum to 3 catches across 2
+// instrumented calls.
+func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
+	entries := []adoptionCallEntry{
+		{
+			TS: "2026-07-24T10:00:00Z", Tool: "verify_plan", Surface: "agent",
+			VerdictOutcome: map[string]int{"claimed": 2, "verified": 1, "failing": 1},
+		},
+		{
+			TS: "2026-07-24T10:01:00Z", Tool: "review", Surface: "cli",
+			VerdictOutcome: map[string]int{"impact": 0, "obligations": 1, "arch_conformance": 1, "spec_coverage": 0},
+		},
+	}
+	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
+
+	if r.VerifyGateCatchCount == nil || *r.VerifyGateCatchCount != 3 {
+		t.Fatalf("VerifyGateCatchCount = %v, want 3", r.VerifyGateCatchCount)
+	}
+	if r.VerifyGateInstrumentedCalls != 2 {
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", r.VerifyGateInstrumentedCalls)
+	}
+	if r.VerifyGatePredatesInstrumentation != 0 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 0", r.VerifyGatePredatesInstrumentation)
+	}
+	if strings.Contains(r.VerifyGateNote, "not instrumented") {
+		t.Errorf("VerifyGateNote = %q, should not say not instrumented when real data exists", r.VerifyGateNote)
+	}
+	if !strings.Contains(r.VerifyGateNote, "3 catch") {
+		t.Errorf("VerifyGateNote = %q, want it to state the 3 catches", r.VerifyGateNote)
+	}
+}
+
+// TestBuildAdoptionReport_GateCatchesHonestSplit is the "never zero" proof:
+// a mix of instrumented and pre-instrumentation verify_plan/review rows
+// must keep the two populations separate — the catch count derives ONLY
+// from the instrumented rows, and the predates-instrumentation rows are
+// reported as their own count, never silently treated as zero-catch
+// evidence.
+func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
+	entries := []adoptionCallEntry{
+		// Predates instrumentation: no verdict_outcome at all.
+		{TS: "2026-07-20T09:00:00Z", Tool: "verify_plan", Surface: ""},
+		{TS: "2026-07-21T09:00:00Z", Tool: "review", Surface: "cli"},
+		// Instrumented: real signal.
+		{
+			TS: "2026-07-24T10:00:00Z", Tool: "verify_plan", Surface: "agent",
+			VerdictOutcome: map[string]int{"claimed": 1, "verified": 0, "failing": 1},
+		},
+		// Unrelated tool: never counted either way.
+		{TS: "2026-07-24T10:05:00Z", Tool: "find_symbol", Surface: "agent"},
+	}
+	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
+
+	if r.VerifyGateCatchCount == nil || *r.VerifyGateCatchCount != 1 {
+		t.Fatalf("VerifyGateCatchCount = %v, want 1 (only the instrumented row's failing count)", r.VerifyGateCatchCount)
+	}
+	if r.VerifyGateInstrumentedCalls != 1 {
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 1", r.VerifyGateInstrumentedCalls)
+	}
+	if r.VerifyGatePredatesInstrumentation != 2 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 2 (the two pre-instrumentation rows)", r.VerifyGatePredatesInstrumentation)
+	}
+	if !strings.Contains(r.VerifyGateNote, "predate") {
+		t.Errorf("VerifyGateNote = %q, want it to disclose the predates-instrumentation rows", r.VerifyGateNote)
 	}
 }
 
@@ -284,6 +365,66 @@ func TestCmdInstrumentAdoption_EndToEnd(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+// TestCmdInstrumentAdoption_MixedEraGateCatches is T5-7's fixture-based
+// end-to-end proof: a log spanning both eras — pre-instrumentation
+// verify_plan/review rows (no verdict_outcome) and post-instrumentation
+// rows (real counts) — must report the real catch total, the instrumented
+// call count, and the predates-instrumentation count as three separate,
+// honest numbers, in both output forms.
+func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl")
+	writeCallLogFixture(t, logPath, []adoptionCallEntry{
+		// Pre-T5-7 era: dispatch metadata only, no verdict_outcome.
+		{TS: "2026-07-10T09:00:00Z", Tool: "verify_plan", Surface: "agent"},
+		{TS: "2026-07-11T09:00:00Z", Tool: "verify_plan", Surface: "agent"},
+		{TS: "2026-07-12T09:00:00Z", Tool: "review", Surface: "cli"},
+		// Post-T5-7 era: real verdict_outcome.
+		{
+			TS: "2026-07-24T09:00:00Z", Tool: "verify_plan", Surface: "agent",
+			VerdictOutcome: map[string]int{"claimed": 3, "verified": 1, "failing": 2},
+		},
+		{
+			TS: "2026-07-24T09:05:00Z", Tool: "review", Surface: "cli",
+			VerdictOutcome: map[string]int{"impact": 0, "obligations": 1, "spec_coverage": 0},
+		},
+	})
+
+	var stdout, stderr bytes.Buffer
+	code := cmdInstrumentAdoption([]string{"--call-log", logPath, "--root", root}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, stderr.String())
+	}
+	out := stdout.String()
+	// 2 failing (verify_plan) + 1 obligations finding (review) = 3 catches
+	// across the 2 instrumented calls; 3 rows predate instrumentation.
+	for _, want := range []string{"3 catch", "2 instrumented", "3 row"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("human output missing %q:\n%s", want, out)
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code = cmdInstrumentAdoption([]string{"--call-log", logPath, "--root", root, "--json"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("--json exit = %d, stderr: %s", code, stderr.String())
+	}
+	var report AdoptionReport
+	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if report.VerifyGateCatchCount == nil || *report.VerifyGateCatchCount != 3 {
+		t.Errorf("VerifyGateCatchCount = %v, want 3", report.VerifyGateCatchCount)
+	}
+	if report.VerifyGateInstrumentedCalls != 2 {
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", report.VerifyGateInstrumentedCalls)
+	}
+	if report.VerifyGatePredatesInstrumentation != 3 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 3", report.VerifyGatePredatesInstrumentation)
 	}
 }
 

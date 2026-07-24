@@ -129,6 +129,14 @@ wall time, plus the governed capabilities — verify gate, obligations,
 staleness honesty — that have no grep equivalent and were not measured by
 that bench):
 
+> **2026-07-24 home-bench refutation** (docs/plans/home-bench.md H3-1): the
+> governed capabilities named above WERE subsequently measured on their own
+> home turf (index-native tasks) and fathom did **not** win decisively —
+> success 12/13 vs 12/13, equal, not strictly greater. The honest surviving
+> pitch: equal answers, cheaper on 8/13 tasks (an outlier-driven aggregate
+> token premium on the rest), 2–3× faster wall time; governance itself
+> (verify gate / obligations / staleness) remains unmeasured by that bench.
+
 - **Cold-start comprehension:** `repo_map` + `brief` give a new session the
   load-bearing shape of a repo in one call each — replacing the first-hour
   Read/Grep spiral. Excellence bar: first-hour grep count <10 in a new repo.

@@ -252,7 +252,7 @@ func verifyReportToMap(rep verify.Report) map[string]any {
 		}
 		tasks = append(tasks, tm)
 	}
-	return map[string]any{
+	out := map[string]any{
 		"service": rep.Service,
 		"summary": map[string]any{
 			"total":   rep.Summary.Total,
@@ -262,4 +262,35 @@ func verifyReportToMap(rep verify.Report) map[string]any {
 		},
 		"tasks": tasks,
 	}
+	if vo := verdictOutcome(rep); vo != nil {
+		out["verdict_outcome"] = vo
+	}
+	return out
+}
+
+// verdictOutcome computes verify_plan's gate-shaped result summary (T5-7,
+// docs/plans/trust-and-tokenomics.md): claimed/verified/failing counts over
+// exactly the tasks internal/verify.Gate itself gates on (Claimed and not
+// Skipped) — the same population, so the count is directly "what the push/CI
+// gate would have caught here." Returns nil when no task is claimed: nothing
+// gate-relevant happened in this call, so there is nothing to log (mirrors
+// claimsAttachedFrom's own >0 opt-in gate for brief).
+func verdictOutcome(rep verify.Report) map[string]any {
+	claimed, verifiedN, failing := 0, 0, 0
+	for _, t := range rep.Tasks {
+		if !t.Claimed || t.Skipped {
+			continue
+		}
+		claimed++
+		switch t.Status {
+		case verify.Pass:
+			verifiedN++
+		case verify.Fail:
+			failing++
+		}
+	}
+	if claimed == 0 {
+		return nil
+	}
+	return map[string]any{"claimed": claimed, "verified": verifiedN, "failing": failing}
 }
