@@ -174,8 +174,8 @@ func AttachClaims(v *Verdict, in PersistInput) ([]core.SemanticClaim, []core.Cla
 				CompiledAtWatermark: in.Watermark,
 				CompiledAt:          compiledAt,
 			})
-			if hash, ok := citeHash(f.Citation, in.FileContent); ok {
-				links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelCites, TargetRef: f.Citation, TargetHash: hash})
+			if hash, text, ok := citeHash(f.Citation, in.FileContent); ok {
+				links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelCites, TargetRef: f.Citation, TargetHash: hash, AnchorText: text})
 			}
 			links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelScopes, TargetRef: f.File})
 			links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelScopeFP, TargetRef: f.File, TargetHash: fp})
@@ -192,23 +192,32 @@ func AttachClaims(v *Verdict, in PersistInput) ([]core.SemanticClaim, []core.Cla
 	return claims, links
 }
 
-// citeHash resolves a finding citation to its current cited-lines hash. ok
-// is false for a bare-path or malformed citation, unavailable content, or
-// an out-of-range line — every case where a persisted cites link would lie
-// to the sweep.
-func citeHash(citation string, fileContent func(path string) ([]byte, bool)) (string, bool) {
+// citeHash resolves a finding citation to its current cited-lines hash and
+// literal text (T5-1/O13: AnchorText lets the sweep re-anchor a drifted
+// finding citation, not just detect the drift). ok is false for a bare-path
+// or malformed citation, unavailable content, or an out-of-range line —
+// every case where a persisted cites link would lie to the sweep.
+func citeHash(citation string, fileContent func(path string) ([]byte, bool)) (hash, text string, ok bool) {
 	if citation == "" || fileContent == nil {
-		return "", false
+		return "", "", false
 	}
 	path, start, end, ok := core.ParseCiteRef(citation)
 	if !ok {
-		return "", false
+		return "", "", false
 	}
 	data, found := fileContent(path)
 	if !found {
-		return "", false
+		return "", "", false
 	}
-	return core.HashLines(data, start, end)
+	hash, ok = core.HashLines(data, start, end)
+	if !ok {
+		return "", "", false
+	}
+	text, ok = core.LinesText(data, start, end)
+	if !ok {
+		return "", "", false
+	}
+	return hash, text, true
 }
 
 // findingSubjectKey picks the most specific stable identifier available for

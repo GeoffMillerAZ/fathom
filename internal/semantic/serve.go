@@ -56,6 +56,16 @@ type Obligation struct {
 	// FIXED, not that the claim is wrong. Always absent for the obligations
 	// layer — no scope-fp links are ever recorded for it.
 	CodeDrifted bool `json:"code_drifted,omitempty"`
+	// Layer names the manifest layer this rule was compiled from (e.g.
+	// "obligations", "adr-rules", "spec-bindings", "findings") — T5-2/O14
+	// (docs/dogfood-observations.md, docs/plans/trust-and-tokenomics.md):
+	// once more than one layer blends into the same served set, an agent
+	// (or a human debugging an eviction) needs to know WHICH layer each
+	// surviving rule came from, not just its Kind (obligation/finding —
+	// a different taxonomy: what KIND of claim, not which manifest layer
+	// compiled it). Always populated — layer names are short, so this never
+	// meaningfully grows the payload the way an unbounded field would.
+	Layer string `json:"layer"`
 }
 
 // ObligationsPayload is the decision-moment payload. Zero rules means a
@@ -68,6 +78,13 @@ type Obligations struct {
 	// Watermark is the corpus watermark the newest contributing claim was
 	// compiled at — the honest "as of".
 	Watermark string `json:"compiled_at_watermark,omitempty"`
+	// Displaced is the count of served-ELIGIBLE claims (scope-matched,
+	// Served() status) dropped by the MaxObligations cap this call — T5-2/O14:
+	// a recompile that blends a new layer's exact-path claims can silently
+	// evict a rule an agent relied on yesterday (the cap is a serving-time
+	// slice of "matched", never a claim-lifecycle event — nothing about the
+	// evicted claim itself changes). Zero (omitted) when nothing was cut.
+	Displaced int `json:"displaced,omitempty"`
 }
 
 // ObligationsFor returns the claims governing file across EVERY compiled
@@ -140,6 +157,10 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 		return matched[i].cl.ClaimID < matched[j].cl.ClaimID
 	})
 	if len(matched) > max {
+		// T5-2/O14: record the cap's damage BEFORE slicing it away — this is
+		// the only point that knows how many served-eligible claims existed
+		// versus how many fit the budget.
+		out.Displaced = len(matched) - max
 		matched = matched[:max]
 	}
 
@@ -175,9 +196,10 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 
 	for _, m := range matched {
 		ob := Obligation{
-			Rule: m.cl.Rule,
-			Src:  primaryCite[m.cl.ClaimID],
-			Tier: string(m.cl.Tier),
+			Rule:  m.cl.Rule,
+			Src:   primaryCite[m.cl.ClaimID],
+			Tier:  string(m.cl.Tier),
+			Layer: m.cl.Layer,
 		}
 		if m.cl.Kind != KindObligation {
 			ob.Kind = m.cl.Kind

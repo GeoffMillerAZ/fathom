@@ -117,6 +117,23 @@ type ClaimLink struct {
 	// disagrees means the scoped code changed since compile. Empty for
 	// "scopes".
 	TargetHash string
+	// AnchorText is, for "cites" links only, the EXACT text of the cited
+	// line range at compile time (LinesText's output over the same range
+	// HashLines hashed into TargetHash — same normalization, so the two are
+	// always consistent). This is O13's fix (docs/dogfood-observations.md,
+	// docs/plans/trust-and-tokenomics.md T5-1): a hash alone can only ever
+	// detect drift, never heal it — once the cited lines no longer hash-
+	// match, there is no way back to "where did this text go?" without the
+	// text itself. With AnchorText stored, semantic.Sweep can search the
+	// cited file for the rule's exact snippet on drift: a single unambiguous
+	// match means an upstream edit merely SHIFTED the lines (e.g. a prose
+	// insertion above the rule) and the sweep re-anchors the citation in
+	// place instead of flipping the claim stale. Empty for links written
+	// before this field existed (legacy hash-only claims) and for every
+	// non-"cites" rel — those citations can only ever stale, never heal, and
+	// the sweep must treat an empty AnchorText as "cannot attempt re-anchor"
+	// rather than searching for an empty string.
+	AnchorText string
 }
 
 const (
@@ -151,15 +168,29 @@ func ParseCiteRef(ref string) (path string, start, end int, ok bool) {
 	return path, start, end, true
 }
 
-// HashLines returns the sha256 of the 1-based inclusive line range of content,
-// with lines joined by "\n" (line endings normalized). This is the citation
-// hash contract shared by the compiler and the sweep.
-func HashLines(content []byte, start, end int) (string, bool) {
+// LinesText returns the exact text of the 1-based inclusive line range of
+// content, with line endings normalized (CRLF→LF) and lines joined by "\n" —
+// the same extraction HashLines hashes. Exported so callers can persist the
+// literal snippet (ClaimLink.AnchorText, T5-1/O13) alongside its hash: the
+// hash alone can detect drift but never heal it, since there is no way back
+// from a hash to "what did this text used to say" without the text itself.
+func LinesText(content []byte, start, end int) (string, bool) {
 	lines := strings.Split(strings.ReplaceAll(string(content), "\r\n", "\n"), "\n")
 	if start < 1 || end < start || end > len(lines) {
 		return "", false
 	}
-	h := sha256.Sum256([]byte(strings.Join(lines[start-1:end], "\n")))
+	return strings.Join(lines[start-1:end], "\n"), true
+}
+
+// HashLines returns the sha256 of the 1-based inclusive line range of content,
+// with lines joined by "\n" (line endings normalized). This is the citation
+// hash contract shared by the compiler and the sweep.
+func HashLines(content []byte, start, end int) (string, bool) {
+	text, ok := LinesText(content, start, end)
+	if !ok {
+		return "", false
+	}
+	h := sha256.Sum256([]byte(text))
 	return hex.EncodeToString(h[:]), true
 }
 
@@ -211,16 +242,24 @@ type CompileRun struct {
 // channel the truth lens demanded — ADR-016 §4.1).
 type ClaimEvent struct {
 	ClaimID string
-	// Verdict is "refuted" | "corroborated" | "contradicted". "refuted" and
-	// "contradicted" name DIFFERENT judgments and must never be conflated
-	// (P1-9, docs/plans/pulled-tools-excellence.md): "refuted" is a
-	// deliberate human (or human-equivalent) verdict via `fathom claim
-	// refute` / the obligations tool's feedback action — it pairs with
-	// status ClaimRefuted, which Served() excludes (never served again).
-	// "contradicted" is semantic.Sweep's machine-detected, anchor-dead
-	// verdict — it pairs with status ClaimContradicted, which Served()
-	// includes (served WITH the status label, pending a recompile that
-	// heals or confirms it). "corroborated" never changes status.
+	// Verdict is "refuted" | "corroborated" | "contradicted" |
+	// "re-anchored". "refuted" and "contradicted" name DIFFERENT judgments
+	// and must never be conflated (P1-9, docs/plans/
+	// pulled-tools-excellence.md): "refuted" is a deliberate human (or
+	// human-equivalent) verdict via `fathom claim refute` / the obligations
+	// tool's feedback action — it pairs with status ClaimRefuted, which
+	// Served() excludes (never served again). "contradicted" is
+	// semantic.Sweep's machine-detected, anchor-dead verdict — it pairs with
+	// status ClaimContradicted, which Served() includes (served WITH the
+	// status label, pending a recompile that heals or confirms it).
+	// "corroborated" never changes status. "re-anchored" (T5-1/O13,
+	// docs/plans/trust-and-tokenomics.md) is machine-authored and
+	// sweep-issued like "contradicted", but uniquely status-PRESERVING: it
+	// pairs with NO status change at all — it records that a drifted
+	// citation's stored AnchorText resolved unambiguously at a new location
+	// in the cited file and the sweep moved the citation there
+	// (store.UpdateClaimLink), old→new ref in the Note; the claim keeps
+	// serving fresh because its evidence was relocated, not weakened.
 	Verdict string
 	Author  string
 	Note    string

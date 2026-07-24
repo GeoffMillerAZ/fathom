@@ -1033,7 +1033,7 @@ func storeContract(t *testing.T, s Store) {
 			},
 		}
 		links := []core.ClaimLink{
-			{ClaimID: "claim-rt", Rel: core.RelCites, TargetRef: "CLAUDE.md#L10-L20", TargetHash: "hash1"},
+			{ClaimID: "claim-rt", Rel: core.RelCites, TargetRef: "CLAUDE.md#L10-L20", TargetHash: "hash1", AnchorText: "line ten\nthrough line twenty"},
 			{ClaimID: "claim-rt", Rel: core.RelScopes, TargetRef: "internal/**", TargetHash: ""},
 		}
 		if err := s.PutClaims(ctx, claims, links); err != nil {
@@ -1091,6 +1091,77 @@ func storeContract(t *testing.T, s Store) {
 		}
 		if gotLinks[0].TargetHash != "hash1" {
 			t.Errorf("TargetHash = %q, want hash1", gotLinks[0].TargetHash)
+		}
+		// AnchorText round-trip (T5-1/O13): the literal cited text the sweep
+		// re-anchors from must survive the store, not just the hash.
+		if gotLinks[0].AnchorText != "line ten\nthrough line twenty" {
+			t.Errorf("AnchorText = %q, want the seeded snippet", gotLinks[0].AnchorText)
+		}
+		if gotLinks[1].AnchorText != "" {
+			t.Errorf("scopes link AnchorText = %q, want empty (cites-only field)", gotLinks[1].AnchorText)
+		}
+	})
+
+	// UpdateClaimLink: the sweep's citation re-anchor primitive (T5-1/O13) —
+	// rewrites TargetRef/TargetHash for one matching link in place, leaves
+	// AnchorText and every other link of the claim untouched, and is a
+	// harmless no-op when the old ref no longer matches.
+	t.Run("claims_link_update_reanchors", func(t *testing.T) {
+		svc := "svc-claims-reanchor"
+		claims := []core.SemanticClaim{
+			{
+				ClaimID: "c-ra", ServiceID: svc, Layer: "obligations", Kind: "obligation",
+				Subject: "S", Rule: "R", Status: core.ClaimFresh,
+				Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+			},
+		}
+		links := []core.ClaimLink{
+			{ClaimID: "c-ra", Rel: core.RelCites, TargetRef: "CLAUDE.md#L5-L5", TargetHash: "old-hash", AnchorText: "the rule text"},
+			{ClaimID: "c-ra", Rel: core.RelScopes, TargetRef: "internal/**"},
+		}
+		if err := s.PutClaims(ctx, claims, links); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+
+		if err := s.UpdateClaimLink(ctx, svc, "c-ra", core.RelCites, "CLAUDE.md#L5-L5", "CLAUDE.md#L7-L7", "new-hash"); err != nil {
+			t.Fatalf("UpdateClaimLink: %v", err)
+		}
+		got, err := s.ClaimLinks(ctx, svc, []string{"c-ra"})
+		if err != nil {
+			t.Fatalf("ClaimLinks after update: %v", err)
+		}
+		if len(got) != 2 {
+			t.Fatalf("expected 2 links after update (cites + scopes), got %d: %+v", len(got), got)
+		}
+		var cites core.ClaimLink
+		for _, l := range got {
+			if l.Rel == core.RelCites {
+				cites = l
+			}
+		}
+		if cites.TargetRef != "CLAUDE.md#L7-L7" {
+			t.Errorf("TargetRef after update = %q, want CLAUDE.md#L7-L7", cites.TargetRef)
+		}
+		if cites.TargetHash != "new-hash" {
+			t.Errorf("TargetHash after update = %q, want new-hash", cites.TargetHash)
+		}
+		if cites.AnchorText != "the rule text" {
+			t.Errorf("AnchorText after update = %q, want unchanged %q", cites.AnchorText, "the rule text")
+		}
+
+		// A no-op update (stale oldTargetRef) must not error and must not
+		// disturb the current link.
+		if err := s.UpdateClaimLink(ctx, svc, "c-ra", core.RelCites, "CLAUDE.md#L5-L5", "CLAUDE.md#L99-L99", "unused-hash"); err != nil {
+			t.Fatalf("UpdateClaimLink no-op: %v", err)
+		}
+		got2, err := s.ClaimLinks(ctx, svc, []string{"c-ra"})
+		if err != nil {
+			t.Fatalf("ClaimLinks after no-op update: %v", err)
+		}
+		for _, l := range got2 {
+			if l.Rel == core.RelCites && l.TargetRef != "CLAUDE.md#L7-L7" {
+				t.Errorf("no-op update disturbed the link: %+v", l)
+			}
 		}
 	})
 

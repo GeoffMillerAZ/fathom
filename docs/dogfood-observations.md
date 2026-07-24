@@ -19,7 +19,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
-### O13 — the sweep misses citation drift from upstream line shifts: claims served with silently wrong citations, fleet-wide
+### O13 — the sweep misses citation drift from upstream line shifts: claims served with silently wrong citations, fleet-wide (fix landed; fleet heal pending)
 
 - **Symptom:** found during the home-bench re-derivation (2026-07-24) and
   confirmed live by the audit: `obligations(internal/extractor/goextract.go)`
@@ -36,14 +36,50 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   citations unflagged. (Exact mechanics need one probe pass — this entry
   records the confirmed symptom.)
 - **Reproduction:** `curl -s -X POST http://localhost:7575/rpc -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"obligations","arguments":{"service":"fathom","file":"internal/extractor/goextract.go"}}}'` → compare each cited CLAUDE.md range against the file.
-- **Candidate fix:** sweep verifies the rule's ANCHOR TEXT (or a fuzzy
-  window), not just the line hash at the cited offset; or re-anchor on
-  drift like ADR-017's remap does for source refs.
-- **Status:** open — the home bench's most important product finding.
+- **Fix (T5-1, docs/plans/trust-and-tokenomics.md):** the sweep now verifies
+  the claim's stored ANCHOR TEXT (`core.ClaimLink.AnchorText`, the literal
+  cited snippet, persisted alongside the hash at compile time by both live
+  "cites"-link writers), not just the line hash. On drift it searches the
+  cited FILE for that exact text: a single unambiguous match → RE-ANCHOR
+  (`store.UpdateClaimLink` rewrites the citation, a
+  `ClaimEvent{Verdict:"re-anchored"}` records the old→new move, mirroring
+  ADR-017's remap); zero or multiple matches → flip stale, unchanged from
+  before. A claim compiled before this landed has no stored `AnchorText`
+  (legacy hash-only) and can therefore only ever go stale on drift, never
+  heal — an honest degradation, not a silent one. Fixture:
+  `TestSweep_ReanchorsOnUpstreamLineShift` (internal/semantic) reproduces
+  the exact O13 shape (an upstream insertion above the rule) and proves
+  both the heal and the stale (rule-text-deleted) paths, plus ambiguous-
+  match and legacy-hash-only stale; `TestSweepClaims_ReanchorsOnUpstreamLineShift`
+  (pkg/client) proves the same through the public wrapper and a real
+  on-disk fetch.
+- **Operational pass (T5-1b):** re-ran the fixed sweep against a read-only
+  copy of `workspace/db/fleet.sqlite` (the live store was never opened for
+  writing). Fleet-wide: 340 claims checked, **73 wrong citations found —
+  all in service "fathom"; 0 healed, 73 staled.** Confirmed root cause
+  directly: 548/548 fathom `cites` links have empty `AnchorText` — every
+  existing claim predates this fix, so none carry the new field yet; the
+  74th-and-onward claims (i.e. every FUTURE compile) will heal instead of
+  going silently or perpetually stale. The exact reproduction claim above
+  ("Add new extractor ext→kind mapping in connector.") is now correctly
+  flagged `stale` in the copy.
+- **Status:** fixed in code; NOT yet live. The T5-1b run was against a
+  discarded COPY — the live fleet store, this minute, still has no
+  `anchor_text` column and still serves all 73 claims as unflagged fresh.
+  Two operator steps activate the fix: (1) deploy the rebuilt daemon
+  binary (`cp bin/fathom ~/.local/libexec/fathom/fathom` + launchctl
+  kickstart, per CLAUDE.md's binary-staleness runbook — the schema
+  migration fires on the daemon's next store open), then (2) a live
+  sweep/ingest pass, after which the 73 claims WILL BE flagged stale
+  rather than silently wrong. Healing (re-anchor instead of stale)
+  additionally needs a fleet recompile to populate `AnchorText`.
 - **Impact:** citation trust is the moat; a served claim pointing at the
-  wrong text is worse than no claim.
+  wrong text is worse than no claim. Once the live daemon runs this code
+  and sweeps, no claim will be silently mis-cited — worst case an
+  honestly-flagged stale rule, never silence. Until that deploy, the live
+  index keeps serving the 73 wrong citations unflagged.
 
-### O14 — the top-6 serving cap silently evicts previously-served claims after a recompile
+### O14 — the top-6 serving cap silently evicts previously-served claims after a recompile (eviction visibility fixed; scope-mapping precision filed for the next flag-day)
 
 - **Symptom:** post-recompile (adr-rules + spec-bindings joining the
   blend), `obligations(internal/query/engine.go)` no longer serves the
@@ -58,13 +94,33 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   `internal/query/engine.go`; diff the served set against the
   pre-recompile serving (the home-bench corpus's T12 provenance records
   it).
-- **Candidate fix:** eviction visibility (a `displaced: N` field), per-layer
-  quota, or ranking that weighs rule breadth; plus the scope-mapping
-  precision pass the compile prompt owes (see also the ingest-specific-rule
-  gap noted at H1 re-derivation).
-- **Status:** open.
-- **Impact:** a recompile — the recommended freshness act — can silently
-  remove the exact rule an agent relied on yesterday.
+- **Fix — eviction visibility (T5-2, docs/plans/trust-and-tokenomics.md):**
+  `obligations` now reports `displaced: N` (served-eligible claims the cap
+  dropped this call) and every served rule carries a `layer` label (which
+  manifest layer compiled it — `obligations`/`adr-rules`/`spec-bindings`/
+  `findings`), on the MCP tool response and the edit-hook payload (a single
+  integer note; a non-default layer labeled inline). Test:
+  `TestObligationsFor_DisplacedCountAndLayerLabels` (internal/semantic).
+- **Fix — scope-mapping precision: FILED, not compiled.** The mis-scoped-
+  rule half is a compile-prompt fix, and `internal/semantic/prompts.go`
+  content-addresses `PromptVersion` off `prompt.md`'s exact bytes — editing
+  the live prompt, even to add a clearly-marked pending block, would
+  silently trigger the next flag-day as a side effect of this commit. The
+  concrete fix (a worked example: a rule naming several specific packages
+  must scope to the union of exactly those packages, never collapse to one
+  broad catch-all) is filed as an inert sibling proposal,
+  `schema/semantic/layers/obligations/prompt.PENDING-scope-precision.md`
+  (not referenced by `layer.cue`'s `prompt_file`) — see also the
+  ingest-specific-rule gap noted at H1 re-derivation. Lands at the next
+  deliberate flag-day alongside OP-6.
+- **Status:** eviction visibility fixed and tested; scope-mapping precision
+  filed (docs/plans/trust-and-tokenomics.md T5-2b), landing gated on the
+  next flag-day's prompt identity bump.
+- **Impact:** a recompile — the recommended freshness act — can still evict
+  a rule an agent relied on yesterday, but that eviction is now VISIBLE
+  (`displaced: N` plus per-rule layer labels) instead of silent; the
+  scope-mapping noise that compounded it remains until the filed prompt
+  change lands.
 
 ### O12 — context-bench B1-T09: the fathom arm lost 6.6× to grep on its own home question (cross-repo callers) — three compounding product gaps — improved (6.6×→4.2×), residual tracked
 

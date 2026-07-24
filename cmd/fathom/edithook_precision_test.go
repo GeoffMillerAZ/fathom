@@ -127,6 +127,69 @@ func TestEditHookAbsolutePathInsideCandidateRootStillResolves(t *testing.T) {
 	}
 }
 
+// TestEditHookRendersDisplacedAndNonDefaultLayer is T5-2/O14's edit-hook
+// coverage: the obligations payload's displaced count and each rule's layer
+// label must reach the injected context text — displaced as a single
+// integer note (never the evicted rules themselves, which would reopen the
+// unbounded-growth risk the ≤150-token spec-line budget above already
+// guards against), and a NON-default layer (here "adr-rules", blended in by
+// a recompile — the O14 reproduction shape) called out inline so an agent
+// sees which layer a rule came from without a second lookup.
+func TestEditHookRendersDisplacedAndNonDefaultLayer(t *testing.T) {
+	dir := t.TempDir()
+	absFile := filepath.Join(dir, "internal", "query", "engine.go")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Arguments struct {
+					File string `json:"file"`
+				} `json:"arguments"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		cannedPayload := map[string]any{
+			"service": strings.ToLower(filepath.Base(dir)),
+			"file":    req.Params.Arguments.File,
+			"rules": []any{
+				map[string]any{"rule": "Sort all outputs.", "src": "CLAUDE.md#L4-L4", "tier": "doc-claimed", "layer": "obligations"},
+				map[string]any{"rule": "ADR-021 §3: typed edges only.", "src": "ADR.md#L10-L10", "tier": "doc-claimed", "layer": "adr-rules"},
+			},
+			"displaced": 1,
+		}
+		resp := map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{
+				map[string]any{"type": "text", "text": mustJSON(cannedPayload)},
+			}},
+		}
+		json.NewEncoder(w).Encode(resp)
+	}))
+	defer srv.Close()
+
+	hookInput := fmt.Sprintf(`{"tool_input":{"file_path":%q},"cwd":%q}`, absFile, dir)
+	hookStdin(t, hookInput)
+
+	var out, errBuf bytes.Buffer
+	code := runWithStdin([]string{"edit-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("edit-hook exit = %d, want 0", code)
+	}
+	got := out.String()
+	if !strings.Contains(got, "Sort all outputs") {
+		t.Errorf("expected the obligations rule in output, got %q", got)
+	}
+	if strings.Contains(got, "obligations]") || strings.Contains(got, ", obligations,") {
+		t.Errorf("default-layer rule must NOT be labeled (elided for compactness), got %q", got)
+	}
+	if !strings.Contains(got, "adr-rules") {
+		t.Errorf("non-default-layer rule must carry its layer label, got %q", got)
+	}
+	if !strings.Contains(got, "1 more eligible rule") {
+		t.Errorf("expected the displaced count in output, got %q", got)
+	}
+}
+
 // TestEditHookResolvesThroughSymlinkedRoot: the root-refusal check must not
 // be purely lexical. gitToplevel returns the PHYSICAL work-tree path while a
 // session may address files through a symlink (~/code → /Volumes/…/code) —

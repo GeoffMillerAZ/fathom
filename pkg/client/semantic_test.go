@@ -252,6 +252,94 @@ func TestSweepClaims_AnchorDeadRecordsContradictedEvent(t *testing.T) {
 	}
 }
 
+// TestSweepClaims_ReanchorsOnUpstreamLineShift is T5-1/O13 (docs/dogfood-
+// observations.md, docs/plans/trust-and-tokenomics.md) exercised through the
+// PUBLIC pkg/client wrapper (the plan row's anchor: {symbol: SweepClaims,
+// package: pkg/client}) rather than internal/semantic.Sweep directly —
+// internal/semantic/sweep_test.go covers the algorithm exhaustively
+// (heal/stale/ambiguous/legacy); this proves the fix reaches real callers
+// through the same on-disk fetch path CompileLayer/SweepClaims use in
+// production (os.ReadFile against service_meta.Path), not just an injected
+// fetch func. An upstream insertion shifts the cited rule down two lines —
+// its own text unchanged — and the sweep must re-anchor the citation in
+// place with an audit event instead of flipping the claim stale.
+func TestSweepClaims_ReanchorsOnUpstreamLineShift(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	st := store.NewMemoryStore()
+	conn := connector.NewLocalConnector()
+	c := client.New(conn, st)
+	defer c.Close()
+
+	if err := st.SetServiceMeta(ctx, store.ServiceMeta{ServiceID: "svc", Path: dir}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
+
+	docPath := filepath.Join(dir, "CLAUDE.md")
+	original := []byte("# Rules\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(docPath, original, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hash, ok := core.HashLines(original, 3, 3)
+	if !ok {
+		t.Fatal("seed citation does not resolve")
+	}
+	text, ok := core.LinesText(original, 3, 3)
+	if !ok {
+		t.Fatal("seed citation text does not resolve")
+	}
+	claim := core.SemanticClaim{
+		ClaimID: "cl-shift", ServiceID: "svc",
+		Layer: "obligations", LayerVersion: "v1", Kind: "obligation",
+		Subject: "CLAUDE.md#s1", Rule: "Run tests before committing.",
+		Scope: []string{"**"}, Tier: core.TierDocClaimed, TierProfile: "engineering",
+		Status: core.ClaimFresh, CompiledAt: time.Unix(1, 0).UTC(),
+	}
+	links := []core.ClaimLink{{
+		ClaimID: claim.ClaimID, Rel: core.RelCites,
+		TargetRef: core.CiteRef("CLAUDE.md", 3, 3), TargetHash: hash, AnchorText: text,
+	}}
+	if err := st.PutClaims(ctx, []core.SemanticClaim{claim}, links); err != nil {
+		t.Fatalf("PutClaims: %v", err)
+	}
+
+	// Upstream insertion: two prose lines land above the rule on disk — the
+	// rule's own text is unchanged, just shifted down.
+	shifted := []byte("# Rules\n\nSome new prose inserted above the bullets.\nMore prose.\n\n- Run tests before committing.\n")
+	if err := os.WriteFile(docPath, shifted, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rep, err := c.SweepClaims(ctx, "svc")
+	if err != nil {
+		t.Fatalf("SweepClaims: %v", err)
+	}
+	if rep.ReAnchored != 1 || rep.Stale != 0 || rep.Fresh != 1 {
+		t.Fatalf("sweep report = %+v, want reanchored=1 stale=0 fresh=1", rep)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", "")
+	if err != nil || len(claims) != 1 || claims[0].Status != core.ClaimFresh {
+		t.Fatalf("claim status after sweep: err=%v claims=%+v, want 1 claim fresh (healed)", err, claims)
+	}
+
+	gotLinks, err := st.ClaimLinks(ctx, "svc", []string{claim.ClaimID})
+	if err != nil {
+		t.Fatalf("ClaimLinks: %v", err)
+	}
+	if len(gotLinks) != 1 || gotLinks[0].TargetRef != core.CiteRef("CLAUDE.md", 6, 6) {
+		t.Fatalf("citation not re-anchored: got %+v, want CLAUDE.md#L6-L6", gotLinks)
+	}
+
+	events, err := st.ClaimEvents(ctx, claim.ClaimID)
+	if err != nil {
+		t.Fatalf("ClaimEvents: %v", err)
+	}
+	if len(events) != 1 || events[0].Verdict != "re-anchored" || events[0].Author != "sweep" {
+		t.Fatalf("events = %+v, want 1 re-anchored/sweep event", events)
+	}
+}
+
 // seedFeedbackClaim writes one minimal fresh claim directly against st, for
 // ClaimFeedback tests that don't need a real citation/scope.
 func seedFeedbackClaim(t *testing.T, st store.Store, service, claimID string) {
