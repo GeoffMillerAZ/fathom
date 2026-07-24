@@ -5,6 +5,33 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Measured — home-turf bench run: fathom does NOT win its own ground (H3-1, docs/plans/home-bench.md, 2026-07-24)
+- **The Wave-3b home-turf context-bench ran for real** (13 index-native
+  tasks × 2 arms, all 26 `claude -p` runs live against the recompiled
+  daemon; artifacts `home-results-20260724T033131Z.json` +
+  `home-summary-20260724T033131Z.md` under
+  `workspace/artifacts/context-bench/`). Against the pre-registered H2-1
+  criterion, **both halves failed**: success 12/13 vs 12/13 (equal, not
+  strictly greater) and tokens 1.071× grep's (a 7% premium where ≤1× was
+  required). Per the plan's own consequence line, the pillar's pulled-tool
+  story is refuted on its own ground — recorded verbatim in the H3-1 row.
+  Failures offset: fathom alone failed H1-T08 (DocChunk granularity cannot
+  pin a sentence-start line number), grep alone failed H1-T13 (quoted an
+  ADR identifier from outside the required line range). Fathom was cheaper
+  on 9/13 tasks; the 4 expensive ones — exactly where the 14-tool read-only
+  surface lacks a direct evidence path (exact line numbers, current doc
+  text at a cited range) — erased the aggregate.
+- **Mandatory pre-run re-derivation executed and committed first**
+  (corpus revision 1d685a3, per `post_recompile_rederivation`): the
+  recompile's three-layer blend (obligations+adr-rules+spec-bindings)
+  silently drifted T01/T02's citations (sweep gap — content moved, no
+  `status` flag), crowded T12's target claim out of the served top-6
+  (the predicted fresh-re-cite inversion did NOT occur), and SS-8's
+  DuckDB deletion broke T06/T07/T13's targets outright; T11's
+  'single-writer' scoring token collided with new CLAUDE.md prose.
+  Ground truths hand-re-verified at the run commit; the H2-1 criterion
+  untouched.
+
 ### Removed — DuckDB backend + CGO deleted outright (ADR-025, SS-8, docs/plans/store-sqlite.md, 2026-07-23)
 - **SS-8's deferred trigger fired**: the operator ran `migrate-store` on the
   fleet DB and the daemon ran a full day green on SQLite
