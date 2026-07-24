@@ -6,6 +6,7 @@ All notable changes to fathom. Format loosely follows
 ## [Unreleased]
 
 ### Measured — home-turf bench run: fathom does NOT win its own ground (H3-1, docs/plans/home-bench.md, 2026-07-24)
+- **Product findings from the run filed as dogfood O13 (sweep-missed citation drift — claims served with silently wrong CLAUDE.md citations, confirmed live) and O14 (the top-6 serving cap silently evicts previously-served claims after a recompile)** — the bench's most valuable outputs beyond the verdict itself.
 - **The Wave-3b home-turf context-bench ran for real** (13 index-native
   tasks × 2 arms, all 26 `claude -p` runs live against the recompiled
   daemon; artifacts `home-results-20260724T033131Z.json` +
@@ -18,7 +19,7 @@ All notable changes to fathom. Format loosely follows
   Failures offset: fathom alone failed H1-T08 (DocChunk granularity cannot
   pin a sentence-start line number), grep alone failed H1-T13 (quoted an
   ADR identifier from outside the required line range). Fathom was cheaper
-  on 9/13 tasks; the 4 expensive ones — exactly where the 14-tool read-only
+  on 8/13 tasks; of the 5 expensive ones (incl. T06 1.91×, a plain lookup grep won on cost), 4 sit exactly where the 14-tool read-only
   surface lacks a direct evidence path (exact line numbers, current doc
   text at a cited range) — erased the aggregate.
 - **Mandatory pre-run re-derivation executed and committed first**

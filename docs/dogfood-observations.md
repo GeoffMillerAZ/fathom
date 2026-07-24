@@ -19,6 +19,53 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O13 — the sweep misses citation drift from upstream line shifts: claims served with silently wrong citations, fleet-wide
+
+- **Symptom:** found during the home-bench re-derivation (2026-07-24) and
+  confirmed live by the audit: `obligations(internal/extractor/goextract.go)`
+  serves "Add new extractor ext→kind mapping…" cited `CLAUDE.md#L89-L90`
+  with NO status flag — but the extractor bullet now lives at L94 (L88-90
+  hold the keystone/CUE bullets after SS-8's prose insertions). The cited
+  lines contain different text; the claim reads as fresh.
+- **Root cause:** the sweep verifies the cited line's HASH against the
+  stored anchor — an upstream insertion SHIFTS the rule's text to a new
+  line while different text lands at the cited line; when the newly cited
+  content happens to hash-mismatch, the claim flips stale — but the drift
+  class where surrounding edits leave a plausible-but-wrong line hash
+  window, or where re-compiles re-cite before the sweep runs, serves wrong
+  citations unflagged. (Exact mechanics need one probe pass — this entry
+  records the confirmed symptom.)
+- **Reproduction:** `curl -s -X POST http://localhost:7575/rpc -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"obligations","arguments":{"service":"fathom","file":"internal/extractor/goextract.go"}}}'` → compare each cited CLAUDE.md range against the file.
+- **Candidate fix:** sweep verifies the rule's ANCHOR TEXT (or a fuzzy
+  window), not just the line hash at the cited offset; or re-anchor on
+  drift like ADR-017's remap does for source refs.
+- **Status:** open — the home bench's most important product finding.
+- **Impact:** citation trust is the moat; a served claim pointing at the
+  wrong text is worse than no claim.
+
+### O14 — the top-6 serving cap silently evicts previously-served claims after a recompile
+
+- **Symptom:** post-recompile (adr-rules + spec-bindings joining the
+  blend), `obligations(internal/query/engine.go)` no longer serves the
+  staleness/Honesty rule at all — evicted by the cap, not retired; and the
+  blended set includes a mis-scoped rule ("Add new extractor ext→kind
+  mapping in connector" on the QUERY ENGINE file) — scope-mapping noise
+  compounding the eviction.
+- **Root cause:** MaxObligations=6 with specificity-ranked blending across
+  three layers; new layers' exact-path claims outrank older glob-scoped
+  rules; nothing logs or labels an eviction.
+- **Reproduction:** same curl shape as O13 against
+  `internal/query/engine.go`; diff the served set against the
+  pre-recompile serving (the home-bench corpus's T12 provenance records
+  it).
+- **Candidate fix:** eviction visibility (a `displaced: N` field), per-layer
+  quota, or ranking that weighs rule breadth; plus the scope-mapping
+  precision pass the compile prompt owes (see also the ingest-specific-rule
+  gap noted at H1 re-derivation).
+- **Status:** open.
+- **Impact:** a recompile — the recommended freshness act — can silently
+  remove the exact rule an agent relied on yesterday.
+
 ### O12 — context-bench B1-T09: the fathom arm lost 6.6× to grep on its own home question (cross-repo callers) — three compounding product gaps — improved (6.6×→4.2×), residual tracked
 
 - **Symptom:** in the first context-bench run (docs/plans/falsifiability.md
