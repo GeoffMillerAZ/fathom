@@ -811,10 +811,14 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot query obligations (see daemon_reachable)"}
 	}
 
-	// Hook-candidate identities, deduped, in hook preference order.
+	// Hook-candidate identities, deduped, in hook preference order — via
+	// candidatesWithDaemon, the EXACT resolution the hooks use post-O15:
+	// the daemon's recorded corpus paths are authoritative, so a repo whose
+	// dir basename names no service still resolves to the indexed service
+	// that records this root.
 	var candNames []string
 	seen := map[string]bool{}
-	for _, c := range serviceCandidates(root) {
+	for _, c := range candidatesWithDaemon(hc, baseURL, root) {
 		n := strings.ToLower(c.name)
 		if !seen[n] {
 			seen[n] = true
