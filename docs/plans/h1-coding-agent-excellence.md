@@ -16,7 +16,7 @@ index-provable contract, so it is recorded in CHANGELOG.md, not claimed here.)
 - [x] fathom verify CLI, HTTP-first with store fallback {symbol: cmdVerify, reachable_from: runWithStdin}
 - [x] Repo-relative anchors from the local connector [ADR-017] {symbol: LocalConnector.Discover, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}
 - [x] Watermark SPI — domain-neutral freshness [ADR-017] {symbol: LocalConnector.Watermark, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}
-- [x] Legacy-anchor self-heal on ingest [ADR-017] {symbol: DuckStore.PurgeService, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}
+- [x] Legacy-anchor self-heal on ingest [ADR-017] {symbol: SQLiteStore.PurgeService, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls; re-anchored from DuckStore.PurgeService when SS-8/ADR-025 deleted that backend"}
 - [x] Store root remap CLI [ADR-017] {symbol: cmdRemap, reachable_from: runWithStdin}
 - [x] Portability round-trip proven {symbol: TestStorePortability_RoundTrip, skip_test: true, skip: "the test IS the anchor; nothing reaches a test"}
 
@@ -27,7 +27,7 @@ the H1 handoff fix landed; the waivers are gone and the old note below is
 retained only for context — the test_reaches
 method-edge gap; the tests exist, the static edge doesn't yet.)
 
-- [x] Claims schema: semantic_claims/claim_links/compile_runs/claim_events [ADR-016] {symbol: DuckStore.PutClaims, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls"}
+- [x] Claims schema: semantic_claims/claim_links/compile_runs/claim_events [ADR-016] {symbol: SQLiteStore.PutClaims, skip_test: true, skip: "interface-dispatched in contract tests (SPI with multiple impls) — static resolution honestly refuses multi-impl method calls; re-anchored from DuckStore.PutClaims when SS-8/ADR-025 deleted that backend"}
 - [x] Obligations compiler with compile-time anchor + scope verification [ADR-016] {symbol: Compile}
 - [x] Post-ingest citation sweep flips stale claims [ADR-016] {symbol: Sweep}
 - [x] Obligations serving, zero-output-on-clean [ADR-016] {symbol: ObligationsFor}
