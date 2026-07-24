@@ -11,6 +11,17 @@
 // tool on the curated allowlist (surface.go's companionTools) — justified
 // here by the measured H3-1 evidence, not added speculatively.
 //
+// "Indexed corpus" is enforced, not aspirational: the readable set mirrors
+// what the connector's Discover walks — .fathomignore'd paths (the same
+// compiled matcher, connector.LoadIgnore), the always-skipped directories
+// (connector.IsSkippedDir), files over the indexer's extraction cap, and
+// binaries are all refused; .env-pattern files are refused outright as
+// defense in depth on the shared daemon (secrets-shaped files must never be
+// servable through an agent tool, even in a repo that forgot to ignore
+// them). Symlinks are followed but must RESOLVE inside the corpus root
+// (filepath.EvalSymlinks containment on both sides) — a symlink pointing
+// outside the corpus is refused, closing the lexical-only traversal hole.
+//
 // readSourceRange is the shared implementation: registerSymbolContext
 // (nav_tools.go, T5-6) reuses it to fetch the definition's inline source
 // snippet from the exact same safe-read path, so a citation produced by
@@ -39,6 +50,16 @@ const (
 	sourceReadMaxBytes = defaultCharBudget
 )
 
+// sourceReadMaxFileBytes is the hard per-file ceiling checked via os.Stat
+// BEFORE any read — a multi-GB corpus file must refuse cheaply, never be
+// loaded into the shared daemon's memory just to slice 200 lines out of it.
+// The value deliberately equals internal/fusion.MaxExtractSize (2MB, pinned
+// by TestReadSource_FileCeilingMatchesExtractCap so the two can never
+// silently drift): a file the indexer refuses to extract is not in the
+// index, so refusing to read it keeps the "indexed corpus" contract exact
+// rather than approximate.
+const sourceReadMaxFileBytes = 2 * 1024 * 1024
+
 // sourceLine is one line-numbered line of a bounded read, shared by
 // read_source's "lines" field and symbol_context's "snippet" field.
 type sourceLine struct {
@@ -52,7 +73,7 @@ type sourceRange struct {
 	StartLine  int // 1-based, first line actually returned (may exceed TotalLines when the request starts past EOF)
 	EndLine    int // 1-based, last line actually returned (StartLine-1 when Lines is empty)
 	TotalLines int
-	ClampedEOF bool   // the requested (or default) end ran past EOF
+	ClampedEOF bool   // an explicit caller boundary (start_line / end_line) ran past EOF
 	Note       string // human-readable clamp/truncation explanation, "" if none
 }
 
@@ -79,28 +100,113 @@ func resolveCorpusRoot(ctx context.Context, backend QueryInterface, service stri
 	return path, nil
 }
 
-// resolveSafePath joins corpusRoot and file — a caller-supplied,
-// expected-repo-relative path — refusing an absolute file argument or any
-// path that would escape corpusRoot via "..". Defense in depth: the
-// traversal check runs both on the raw (pre-Join) input and again on the
-// joined, cleaned result.
-func resolveSafePath(corpusRoot, file string) (string, error) {
+// validateRelPath is the LEXICAL half of the safe-path discipline: it
+// refuses an absolute file argument and ".."-traversal (checked both on the
+// raw input and on the joined, cleaned result), returning the cleaned
+// slash-form repo-relative path plus the joined absolute candidate. It does
+// not touch the filesystem — resolveRealPath is the physical half.
+func validateRelPath(corpusRoot, file string) (rel, full string, err error) {
 	if filepath.IsAbs(file) {
-		return "", fmt.Errorf("file must be repo-relative, not absolute: %q", file)
+		return "", "", fmt.Errorf("file must be repo-relative, not absolute: %q", file)
 	}
 	clean := filepath.Clean(filepath.FromSlash(file))
 	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("file path escapes the service corpus: %q", file)
+		return "", "", fmt.Errorf("file path escapes the service corpus: %q", file)
 	}
-	full := filepath.Join(corpusRoot, clean)
-	rootWithSep := corpusRoot
+	full = filepath.Join(corpusRoot, clean)
+	if !pathWithin(corpusRoot, full) {
+		return "", "", fmt.Errorf("file path escapes the service corpus: %q", file)
+	}
+	return filepath.ToSlash(clean), full, nil
+}
+
+// resolveRealPath is the PHYSICAL half: filepath.EvalSymlinks BOTH the
+// corpus root and the candidate path, requiring the RESOLVED path to sit
+// inside the RESOLVED root. os.ReadFile follows symlinks, so without this a
+// symlinked file (or a symlinked directory) inside the corpus could serve
+// content from anywhere on the daemon's disk while lexically "inside" the
+// root — defeating the cross-service isolation this tool documents. A
+// symlink whose target stays inside the corpus resolves and is allowed (the
+// connector doesn't index the link itself, but its target's content is
+// corpus content); one resolving outside is refused.
+//
+// The returned path is the RESOLVED real path — callers stat/read that, so
+// the containment verdict and the bytes served come from the same physical
+// file.
+func resolveRealPath(corpusRoot, full, file string) (string, error) {
+	realRoot, err := filepath.EvalSymlinks(corpusRoot)
+	if err != nil {
+		return "", fmt.Errorf("service corpus root %q cannot be resolved: %v — re-ingest the service", corpusRoot, err)
+	}
+	realFull, err := filepath.EvalSymlinks(full)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("file not found in service corpus: %q", file)
+		}
+		return "", fmt.Errorf("file path cannot be resolved: %q", file)
+	}
+	if !pathWithin(realRoot, realFull) {
+		return "", fmt.Errorf("file path escapes the service corpus (symlink resolves outside the corpus root): %q", file)
+	}
+	return realFull, nil
+}
+
+// pathWithin reports whether candidate is root itself or a descendant of
+// root, by cleaned-path prefix with a separator boundary (so "/a/bc" never
+// passes as inside "/a/b").
+func pathWithin(root, candidate string) bool {
+	if candidate == root {
+		return true
+	}
+	rootWithSep := root
 	if !strings.HasSuffix(rootWithSep, string(filepath.Separator)) {
 		rootWithSep += string(filepath.Separator)
 	}
-	if !strings.HasPrefix(full, rootWithSep) {
-		return "", fmt.Errorf("file path escapes the service corpus: %q", file)
+	return strings.HasPrefix(candidate, rootWithSep)
+}
+
+// notIndexedReason reports why relFile (slash-form, cleaned, repo-relative)
+// is outside the INDEXED corpus even though it may exist on disk — "" when
+// the path is readable. Three layers, mirroring what Discover excludes at
+// ingest plus one defense-in-depth rule:
+//
+//   - .env-pattern basenames (".env", ".env.local", "prod.env", …) are
+//     refused unconditionally: secrets-shaped files must never be servable
+//     through an agent tool on the shared daemon, even in a repo that
+//     forgot to .fathomignore them.
+//   - any path segment the connector always skips (connector.IsSkippedDir:
+//     vendor, .git, testdata, generated, node_modules, .idea, .vscode,
+//     .claude) — those trees are never walked, so they are not corpus.
+//     Other dot-paths (e.g. .github/workflows, .fathomignore itself) ARE
+//     walked and indexed, and stay readable.
+//   - any path the service's own .fathomignore excludes (the same compiled
+//     matcher Discover applies, connector.LoadIgnore) — checked against the
+//     file and every ancestor directory, mirroring the walk-time pruning.
+func notIndexedReason(corpusRoot, relFile string) string {
+	base := filepath.Base(filepath.FromSlash(relFile))
+	if base == ".env" || strings.HasPrefix(base, ".env.") || strings.HasSuffix(base, ".env") {
+		return fmt.Sprintf("refusing %q: .env-pattern files are never served (secrets-shaped; defense in depth)", relFile)
 	}
-	return full, nil
+	segs := strings.Split(strings.Trim(relFile, "/"), "/")
+	for _, seg := range segs[:len(segs)-1] {
+		if connector.IsSkippedDir(seg) {
+			return fmt.Sprintf("%q is not in the indexed corpus: directory %q is always excluded from ingest", relFile, seg)
+		}
+	}
+	if ignore := connector.LoadIgnore(corpusRoot); ignore != nil {
+		if ignore.Match(relFile) {
+			return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's %s", relFile, connector.IgnoreFileName)
+		}
+		// Ancestor directories, with the trailing slash Discover uses when
+		// pruning dirs mid-walk — a dir-only pattern ("workspace/") must
+		// exclude every file beneath it here exactly as it does at ingest.
+		for i := 1; i < len(segs); i++ {
+			if ignore.Match(strings.Join(segs[:i], "/") + "/") {
+				return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's %s", relFile, connector.IgnoreFileName)
+			}
+		}
+	}
+	return ""
 }
 
 // readSourceRange reads a bounded, line-numbered range of file (repo-relative
@@ -118,17 +224,41 @@ func resolveSafePath(corpusRoot, file string) (string, error) {
 // file's last line (the caller can always tell it reached EOF by comparing
 // the response's end_line to total_lines). Running past the line/byte cap
 // is a SEPARATE, independent condition, reported via Note regardless of
-// whether an explicit end_line was given.
+// whether an explicit end_line was given. The byte cap holds even when the
+// FIRST line alone exceeds it (the minified-JS case): that line comes back
+// truncated to the budget with the note set — never whole, which would
+// silently void the documented cap.
 func readSourceRange(ctx context.Context, backend QueryInterface, service, file string, startLine, endLine, maxLines, maxBytes int) (sourceRange, error) {
 	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
 		return sourceRange{}, err
 	}
-	full, err := resolveSafePath(corpusRoot, file)
+	// Order matters: lexical validation first (an absolute path or
+	// traversal gets ITS refusal, never a confusing corpus-membership one),
+	// then indexed-corpus membership, then physical symlink containment.
+	rel, full, err := validateRelPath(corpusRoot, file)
 	if err != nil {
 		return sourceRange{}, err
 	}
-	data, err := os.ReadFile(full) //nolint:gosec — full is corpus-root-confined by resolveSafePath above
+	if reason := notIndexedReason(corpusRoot, rel); reason != "" {
+		return sourceRange{}, fmt.Errorf("%s", reason)
+	}
+	full, err = resolveRealPath(corpusRoot, full, file)
+	if err != nil {
+		return sourceRange{}, err
+	}
+	// Hard per-file ceiling BEFORE reading: a stat is O(1); loading a
+	// multi-GB artifact into the shared daemon just to slice 200 lines out
+	// of it is an availability hole. Files this large aren't extracted into
+	// the index either (fusion.MaxExtractSize), so this is also honesty.
+	info, err := os.Stat(full)
+	if err != nil {
+		return sourceRange{}, fmt.Errorf("file not found in service corpus: %q", file)
+	}
+	if info.Size() > sourceReadMaxFileBytes {
+		return sourceRange{}, fmt.Errorf("file %q is %d bytes, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, info.Size(), sourceReadMaxFileBytes)
+	}
+	data, err := os.ReadFile(full) //nolint:gosec — full is the EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath
 	if err != nil {
 		return sourceRange{}, fmt.Errorf("file not found in service corpus: %q", file)
 	}
@@ -136,11 +266,14 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 		return sourceRange{}, fmt.Errorf("refusing to read binary file: %q", file)
 	}
 
-	allLines := strings.Split(string(data), "\n")
-	if n := len(allLines); n > 0 && allLines[n-1] == "" && strings.HasSuffix(string(data), "\n") {
-		allLines = allLines[:n-1] // trailing "\n" produces a bogus empty final element
+	var allLines []string
+	if len(data) > 0 {
+		allLines = strings.Split(string(data), "\n")
+		if n := len(allLines); n > 0 && allLines[n-1] == "" && data[len(data)-1] == '\n' {
+			allLines = allLines[:n-1] // trailing "\n" produces a bogus empty final element
+		}
 	}
-	total := len(allLines)
+	total := len(allLines) // 0 for an empty file, matching the extractor's countLines
 
 	start := startLine
 	if start <= 0 {
@@ -185,11 +318,19 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 	truncatedForBytes := false
 	for ln := start; ln <= end; ln++ {
 		text := allLines[ln-1]
-		byteCount += len(text) + 1
-		if byteCount > maxBytes && len(out) > 0 {
+		if byteCount+len(text)+1 > maxBytes {
+			if len(out) == 0 {
+				// The very first line alone exceeds the budget (minified
+				// JS, generated single-line JSON): return it TRUNCATED to
+				// the budget with the note set — never whole (silently
+				// voiding the documented cap), never empty (making the
+				// line unreadable at any budget).
+				out = append(out, sourceLine{Line: ln, Text: text[:maxBytes]})
+			}
 			truncatedForBytes = true
 			break
 		}
+		byteCount += len(text) + 1
 		out = append(out, sourceLine{Line: ln, Text: text})
 	}
 	actualEnd := start - 1
@@ -222,7 +363,7 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 func registerReadSource(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "read_source",
-		Description: "Read a line range (or a capped whole-file view) of one file from a service's indexed corpus. Read-only, line-numbered so results are pinnable as citations. Capped at 200 lines / 16000 bytes per call, whichever is hit first — narrow start_line/end_line for larger files or ranges; end_line == total_lines in the response means EOF was reached. Refuses an absolute file path, path traversal, a file outside the service corpus, a binary file, and an EXPLICIT range wider than the cap. An explicit start_line or end_line landing beyond EOF is clamped (not refused) and noted; running past the cap is also noted, on any request shape.",
+		Description: "Read a line range (or a capped whole-file view) of one file from a service's INDEXED corpus. Read-only, line-numbered so results are pinnable as citations. Capped at 200 lines / 16000 bytes per call, whichever is hit first — narrow start_line/end_line for larger files or ranges; end_line == total_lines in the response means EOF was reached; a single line longer than the byte cap comes back truncated to it, with a note. Readable = what ingest walks: refuses .fathomignore'd paths, always-skipped directories (vendor, .git, testdata, generated, node_modules, .idea, .vscode, .claude), .env-pattern files, files over the 2MB extraction cap, binary files, absolute paths, path traversal, symlinks resolving outside the corpus root, and an EXPLICIT range wider than the line cap. An explicit start_line or end_line landing beyond EOF is clamped (not refused) and noted.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

@@ -136,3 +136,10 @@ func loadIgnoreFile(root string) *filter.Matcher {
 	}
 	return filter.New(strings.Split(string(data), "\n"))
 }
+
+// LoadIgnore compiles root/.fathomignore into the exact Matcher Discover
+// applies during ingest (nil when the file is missing or unreadable — no
+// extra ignores). Exported so corpus-reading consumers (internal/mcp's
+// read_source) can honor the same repo-specific exclusions the index was
+// built with, instead of re-implementing the load and drifting.
+func LoadIgnore(root string) *filter.Matcher { return loadIgnoreFile(root) }

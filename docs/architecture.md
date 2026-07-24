@@ -301,7 +301,7 @@ Tools are grouped into four profiles. On stdio, clients call `set_profile` to fi
 visible surface (valid values: the four groups plus `companion`); over HTTP `set_profile`
 is rejected and each request selects an immutable surface via the path — `POST
 /rpc/{surface}` filters `tools/list` and hard-gates `tools/call` (`companion` is a curated
-15-tool coding hot loop; the group surfaces mirror the profiles):
+16-tool coding hot loop; the group surfaces mirror the profiles):
 
 | Profile | Tool group | Purpose |
 |---|---|---|

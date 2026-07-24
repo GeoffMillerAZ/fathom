@@ -133,7 +133,7 @@ linked docs carry the full argument for each.
       ([03](03-findings-and-experts.md)). → plan items.
 - [ ] **Hosted / chat:** contract-now-build-never-until-pulled
       ([03 §4](03-findings-and-experts.md)). → non-goals amendment.
-- [ ] **Surfaces:** two-surface topology, 15-tool agent surface,
+- [ ] **Surfaces:** two-surface topology, curated agent surface (15 at founding; 16 since T5-4's `read_source`),
       registration flip, execute-and-flag ([05](05-surfaces.md)).
       → ADR-014 amendment + H1 item 5 execution.
 - [ ] **Layer 2 = ADR/architecture-rules** (vs failure-mode playbook)

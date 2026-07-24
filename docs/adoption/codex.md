@@ -126,7 +126,7 @@ or:
 codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
 ```
 
-`/rpc/agent` is the same curated 15-tool surface Claude Code registers
+`/rpc/agent` is the same curated 16-tool surface Claude Code registers
 against (§10 of the Claude Code guide); the full registry is at `/rpc` if
 you want everything.
 
@@ -245,7 +245,7 @@ Codex-specific to configure.
 | Channel | Claude Code | Codex |
 |---|---|---|
 | MCP tool access (stdio or HTTP) | Yes | Yes |
-| Curated 15-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
+| Curated 16-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
 | SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No equivalent.** Codex has no session-start hook mechanism fathom can plug into |
 | PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool |
 | Stop-hook done-means-proven check | Yes — newly-claimed `[x]` tasks re-verified at session end, advisory or blocking | **No equivalent.** Nothing checks a session's claims at end-of-session; the pre-push gate (next row) is the backstop |

@@ -899,7 +899,7 @@ curl -s -X POST http://localhost:7575/rpc \
 
 The `set_profile` tool was retired (ADR-014 amendment, 2026-07-16): surfaces
 superseded profiles. Select a surface by path — `POST /rpc/agent` is the
-curated 15-tool coding surface (also served at `/rpc/companion` for
+curated 16-tool coding surface (also served at `/rpc/companion` for
 compatibility); bare `POST /rpc` is the full registry. Off-surface calls
 execute and are logged `off_surface` rather than rejected; hard gating is
 available via the server's strict-surfaces option.

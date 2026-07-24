@@ -49,7 +49,7 @@ context** > **pulled tool call** > **passive docs**.
 | M1 | Session start | What index exists? How do I work here? | service, symbol count, operating contract | SessionStart hook (injected) | **live** (since 2026-06-17) |
 | M2 | Task intake / planning | What's the shape of this codebase? What will this change touch? | `repo_map`, `brief`, `pack_context`, `blast_radius`, `test_impact` | pulled (companion surface) | live |
 | M3 | Plan authoring | How do I write a plan whose "done" is checkable? | contract grammar in plan markdown (§4) | convention + `verify_plan` | live parser; checkbox semantics **this session** |
-| M4 | Discovery hot loop | Where is X? Who calls it? What's its context? | `find_symbol` (tiered), `symbol_context`, `references`, `find_callers`, `outline` | pulled (15-tool companion surface) | live |
+| M4 | Discovery hot loop | Where is X? Who calls it? What's its context? | `find_symbol` (tiered), `symbol_context`, `references`, `find_callers`, `outline`, `read_source` | pulled (16-tool companion surface) | live |
 | M5 | About to edit | What is this file *obliged* to do? Is my view of it current? | obligations claims + staleness flag | **PostToolUse(Edit\|Write) hook (injected)** | **this session** (ADR-016 tracer bullet) |
 | M6 | Claiming done | Is `[x]` actually true? | `verify_plan` verdicts citing file:line | pulled + **Stop-hook option** | live tool; gate **this session** |
 | M7 | Commit | Does the binary/index track HEAD? | post-commit rebuild + re-ingest | lefthook post-commit | live |

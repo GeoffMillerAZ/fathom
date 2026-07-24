@@ -308,6 +308,205 @@ func TestReadSource_FileRequired(t *testing.T) {
 	}
 }
 
+// ─── read_source: symlink containment (critic finding A) ────────────────────
+
+// TestReadSource_FileSymlinkEscape_Refused: a symlink INSIDE the corpus
+// pointing at a file OUTSIDE it must refuse — os.ReadFile follows symlinks,
+// so a lexical-only check would serve foreign content as corpus content.
+func TestReadSource_FileSymlinkEscape_Refused(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	target := writeCorpusFile(t, outside, "secret.txt", "outside-the-corpus\n")
+	if err := os.Symlink(target, filepath.Join(root, "leak.txt")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": "leak.txt"})
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "escapes") {
+		t.Errorf("message = %q, want it to mention escapes (symlink target is outside the corpus)", msg)
+	}
+}
+
+// TestReadSource_DirSymlinkEscape_Refused: same hole via a symlinked
+// DIRECTORY — "linkdir/secret.txt" is lexically inside the corpus but
+// physically outside it.
+func TestReadSource_DirSymlinkEscape_Refused(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeCorpusFile(t, outside, "secret.txt", "outside-the-corpus\n")
+	if err := os.Symlink(outside, filepath.Join(root, "linkdir")); err != nil {
+		t.Fatalf("symlink dir: %v", err)
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": "linkdir/secret.txt"})
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "escapes") {
+		t.Errorf("message = %q, want it to mention escapes (dir symlink resolves outside the corpus)", msg)
+	}
+}
+
+// TestReadSource_SameCorpusSymlink_Allowed: a symlink whose target RESOLVES
+// inside the corpus root is legitimate corpus content and must read fine.
+func TestReadSource_SameCorpusSymlink_Allowed(t *testing.T) {
+	root := t.TempDir()
+	target := writeCorpusFile(t, root, "pkg/real.txt", "real content\n")
+	if err := os.Symlink(target, filepath.Join(root, "alias.txt")); err != nil {
+		t.Fatalf("symlink: %v", err)
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "alias.txt"})
+	texts := lineTexts(t, p)
+	if len(texts) != 1 || texts[0] != "real content" {
+		t.Errorf("lines = %v, want the symlink target's content", texts)
+	}
+}
+
+// ─── read_source: size ceilings and the byte cap (critic finding B) ─────────
+
+// TestReadSource_FileOverCeiling_Refused: a file over the 2MB read ceiling
+// refuses via os.Stat BEFORE any read — the shared daemon must never load a
+// huge artifact into memory just to slice lines out of it. (2MB matches the
+// indexer's own extraction cap — such a file isn't in the index either.)
+func TestReadSource_FileOverCeiling_Refused(t *testing.T) {
+	root := t.TempDir()
+	big := make([]byte, 2*1024*1024+1)
+	for i := range big {
+		big[i] = 'a'
+		if i%100 == 99 {
+			big[i] = '\n'
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "big.txt"), big, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": "big.txt"})
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "ceiling") {
+		t.Errorf("message = %q, want it to mention the read ceiling", msg)
+	}
+}
+
+// TestReadSource_FirstLineOverByteCap_Truncated: the minified-JS case — a
+// single line longer than the 16000-byte cap must come back TRUNCATED to
+// the cap with the note set, never whole (silently voiding the cap) and
+// never empty (unreadable at any budget).
+func TestReadSource_FirstLineOverByteCap_Truncated(t *testing.T) {
+	root := t.TempDir()
+	long := strings.Repeat("x", 200*1024) // 200KB, one line
+	writeCorpusFile(t, root, "minified.js", long+"\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "minified.js"})
+	raw, _ := p["lines"].([]any)
+	if len(raw) != 1 {
+		t.Fatalf("lines count = %d, want 1", len(raw))
+	}
+	text, _ := raw[0].(map[string]any)["text"].(string)
+	if len(text) != 16000 {
+		t.Errorf("first line length = %d, want exactly 16000 (truncated to the byte cap)", len(text))
+	}
+	note, _ := p["note"].(string)
+	if !strings.Contains(note, "byte cap") {
+		t.Errorf("note = %q, want it to mention the byte cap", note)
+	}
+}
+
+// ─── read_source: indexed-corpus membership (critic finding C) ──────────────
+
+// TestReadSource_FathomignoredPath_Refused: the tool serves the INDEXED
+// corpus — a path the service's own .fathomignore excludes (and which
+// Discover therefore never walked) must refuse with a reason, not leak.
+func TestReadSource_FathomignoredPath_Refused(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, ".fathomignore", "workspace/\n")
+	writeCorpusFile(t, root, "workspace/tmp/probe.txt", "should never be served\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": "workspace/tmp/probe.txt"})
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, ".fathomignore") {
+		t.Errorf("message = %q, want it to name .fathomignore", msg)
+	}
+}
+
+// TestReadSource_EnvFile_Refused: .env-pattern files refuse unconditionally
+// (defense in depth on the shared daemon) — even when no .fathomignore
+// exists to exclude them.
+func TestReadSource_EnvFile_Refused(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, "config/.env.probe", "API_KEY=fake-but-secret-shaped\n")
+	writeCorpusFile(t, root, ".env", "API_KEY=fake\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	for _, f := range []string{"config/.env.probe", ".env"} {
+		errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": f})
+		msg, _ := errObj["message"].(string)
+		if !strings.Contains(msg, ".env-pattern") {
+			t.Errorf("file %q: message = %q, want it to mention .env-pattern", f, msg)
+		}
+	}
+}
+
+// TestReadSource_SkippedDir_Refused: the connector's always-skipped
+// directories (vendor, .git, …) are never walked, so they are not corpus.
+func TestReadSource_SkippedDir_Refused(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, "vendor/lib/code.go", "package lib\n")
+	writeCorpusFile(t, root, ".git/config", "[core]\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	for _, f := range []string{"vendor/lib/code.go", ".git/config"} {
+		errObj := readSourceCallError(t, srv, map[string]any{"service": "svc", "file": f})
+		msg, _ := errObj["message"].(string)
+		if !strings.Contains(msg, "always excluded") {
+			t.Errorf("file %q: message = %q, want it to mention always excluded", f, msg)
+		}
+	}
+}
+
+// TestReadSource_DotGithubReadable pins the boundary of the dot-path rules:
+// .github IS walked and indexed (GitHub Actions extractor), so it must stay
+// readable — the refusals are the skip-list and .env patterns, not a
+// blanket dotfile ban.
+func TestReadSource_DotGithubReadable(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, ".github/workflows/ci.yml", "name: ci\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": ".github/workflows/ci.yml"})
+	texts := lineTexts(t, p)
+	if len(texts) != 1 || texts[0] != "name: ci" {
+		t.Errorf("lines = %v, want the workflow content", texts)
+	}
+}
+
+// ─── read_source: empty file (critic finding E2) ────────────────────────────
+
+func TestReadSource_EmptyFile_ZeroTotalLines(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, "empty.txt", "")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "empty.txt"})
+	if got := p["total_lines"]; got != float64(0) {
+		t.Errorf("total_lines = %v, want 0 (matching the extractor's countLines)", got)
+	}
+	raw, _ := p["lines"].([]any)
+	if len(raw) != 0 {
+		t.Errorf("lines = %v, want empty", raw)
+	}
+	note, _ := p["note"].(string)
+	if !strings.Contains(note, "0 lines") {
+		t.Errorf("note = %q, want it to state the file has 0 lines", note)
+	}
+}
+
 // ─── read_source: on the agent surface ───────────────────────────────────────
 
 func TestReadSource_OnAgentSurface(t *testing.T) {
@@ -362,6 +561,9 @@ func TestSymbolContext_Snippet_Present(t *testing.T) {
 	if first["text"] != "func Alpha() {" {
 		t.Errorf("snippet[0].text = %v, want %q", first["text"], "func Alpha() {")
 	}
+	if _, present := p["snippet_truncated"]; present {
+		t.Errorf("snippet_truncated should be absent for a short, complete snippet, got %v", p["snippet_truncated"])
+	}
 }
 
 func TestSymbolContext_Snippet_CappedAt40Lines(t *testing.T) {
@@ -398,6 +600,41 @@ func TestSymbolContext_Snippet_CappedAt40Lines(t *testing.T) {
 	first := raw[0].(map[string]any)
 	if int(first["line"].(float64)) != 3 {
 		t.Errorf("snippet[0].line = %v, want 3", first["line"])
+	}
+	// Critic finding D: a clipped snippet must SAY it is clipped — most Go
+	// defs carry end_line 0, so without the flag a 100-line function
+	// silently looks 40 lines long.
+	if p["snippet_truncated"] != true {
+		t.Errorf("snippet_truncated = %v, want true for a capped snippet", p["snippet_truncated"])
+	}
+}
+
+// TestSymbolContext_SnippetOptOut: snippet:false omits the snippet (and its
+// truncation flag) entirely — hot-path payload relief — while the rest of
+// the response is unaffected.
+func TestSymbolContext_SnippetOptOut(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFile(t, root, "pkg/alpha.go", "package pkg\n\nfunc Alpha() {\n\treturn\n}\n")
+
+	be := &extendedFakeBackend{
+		nodes: []core.SymbolNode{
+			{Service: "svc", Package: "pkg", Name: "Alpha", Kind: core.KindGoFunc, FilePath: "pkg/alpha.go", Line: 3, Signature: "func Alpha()"},
+		},
+		services: []string{"svc"},
+		svcPath:  root,
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3005, Method: "tools/call",
+		Params: map[string]any{"name": "symbol_context", "arguments": map[string]any{"service": "svc", "symbol": "Alpha", "snippet": false}},
+	})
+	p := xtraPayload(t, resp)
+	if _, present := p["snippet"]; present {
+		t.Errorf("snippet should be absent when the caller passes snippet:false, got %v", p["snippet"])
+	}
+	def, ok := p["def"].(map[string]any)
+	if !ok || def["name"] != "Alpha" {
+		t.Errorf("def should still be present and correct: %v", p["def"])
 	}
 }
 

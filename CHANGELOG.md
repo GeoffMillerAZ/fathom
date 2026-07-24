@@ -34,6 +34,26 @@ All notable changes to fathom. Format loosely follows
   via the same safe path as `read_source` — a "what is X, show it to me"
   question now completes in one turn instead of two. Honest-absence:
   omitted (never faked) when the source isn't retrievable.
+  `snippet_truncated:true` marks a snippet that stopped at the cap with
+  more file below it (critic finding D — a 100-line function must never
+  silently look 40 lines long), and `snippet:false` opts out entirely.
+- **read_source hardening (critic round, three proven holes closed)**:
+  (A) symlink containment — the lexical-only path check let file and
+  directory symlinks inside a corpus read files OUTSIDE it on the shared
+  daemon; both the corpus root and the candidate are now
+  `filepath.EvalSymlinks`-resolved and the resolved path must sit inside
+  the resolved root (same-corpus symlink targets still read fine).
+  (B) a 2MB `os.Stat` hard ceiling refuses oversized files BEFORE any read
+  (pinned equal to `fusion.MaxExtractSize` — such files aren't in the
+  index either), and a single line longer than the 16000-byte cap comes
+  back truncated to it with a note, never whole (the minified-JS case).
+  (C) "indexed corpus" is enforced, not aspirational — `.fathomignore`'d
+  paths (the connector's own compiled matcher, file + ancestor dirs), the
+  always-skipped directories, and `.env`-pattern files all refuse with a
+  reason (indexed dot-paths like `.github/` stay readable). An empty file
+  now reports `total_lines: 0`. Every "15-tool" surface reference across
+  the living docs updated to 16 with `read_source` named; ADR-014's
+  amendment and docs/vision/05-surfaces.md carry dated amendment notes.
 
 ### Measured — home-turf bench run: fathom does NOT win its own ground (H3-1, docs/plans/home-bench.md, 2026-07-24)
 - **Product findings from the run filed as dogfood O13 (sweep-missed citation drift — claims served with silently wrong CLAUDE.md citations, confirmed live) and O14 (the top-6 serving cap silently evicts previously-served claims after a recompile)** — the bench's most valuable outputs beyond the verdict itself.
