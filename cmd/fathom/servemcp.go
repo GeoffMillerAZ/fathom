@@ -21,7 +21,7 @@ func cmdServeMCP(args []string, stdout, stderr io.Writer) int {
 // tests can feed finite byte streams without blocking.
 func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlagSet("serve-mcp", stderr)
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (required)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (required)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 
@@ -46,8 +46,8 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		if isStoreLockConflict(err) {
 			fmt.Fprintf(stderr, "error: another fathom process already holds the store %q.\n", *storePath)
 			fmt.Fprintf(stderr, "  %v\n", err)
-			fmt.Fprintln(stderr, "  DuckDB is single-writer: only one serve-mcp can hold a store. Reap the other")
-			fmt.Fprintln(stderr, "  process (the lock error above names its PID), or point --store at a different file.")
+			fmt.Fprintln(stderr, "  SQLite serialises writers: a second serve-mcp waited past busy_timeout for the")
+			fmt.Fprintln(stderr, "  writer to release the store. Reap the other process, or point --store at a different file.")
 			return 1
 		}
 		fmt.Fprintf(stderr, "error: opening client: %v\n", err)
@@ -80,9 +80,11 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// isStoreLockConflict reports whether err is DuckDB's single-writer lock
-// conflict (another process already holds the store file).
+// isStoreLockConflict reports whether err is SQLite's busy/locked conflict —
+// another process held the write lock past busy_timeout (ADR-020; modernc.org/
+// sqlite reports this as a SQLITE_BUSY or SQLITE_LOCKED result code, rendered
+// into the error text as one of these substrings).
 func isStoreLockConflict(err error) bool {
 	s := err.Error()
-	return strings.Contains(s, "Conflicting lock") || strings.Contains(s, "Could not set lock")
+	return strings.Contains(s, "SQLITE_BUSY") || strings.Contains(s, "SQLITE_LOCKED") || strings.Contains(s, "database is locked")
 }

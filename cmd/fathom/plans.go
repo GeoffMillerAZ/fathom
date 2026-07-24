@@ -198,7 +198,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&plans, "plan", "plan file (repeatable; defaults to every active docs/plans/*.md)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -318,7 +318,7 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&plans, "plan", "plan file (repeatable; defaults to every active docs/plans/*.md)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human list")
 	if err := fs.Parse(args); err != nil {
 		return 1

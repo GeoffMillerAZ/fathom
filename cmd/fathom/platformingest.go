@@ -36,8 +36,10 @@ func cmdPlatformIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// Ensure the output directory exists before opening per-service stores
-	// (DuckDB cannot create a file in a non-existent directory).
+	// Ensure the output directory exists before opening per-service stores.
+	// NewSQLiteStore also MkdirAlls a store path's own parent, but doing it
+	// once here up front makes the --store-dir requirement explicit even
+	// when --root has zero service subdirectories to iterate.
 	if err := os.MkdirAll(*storeDir, 0o755); err != nil {
 		fmt.Fprintf(stderr, "error: creating --store-dir %q: %v\n", *storeDir, err)
 		return 1

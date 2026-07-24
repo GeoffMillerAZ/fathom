@@ -26,7 +26,7 @@ storage rationale; [mcp-tools.md](mcp-tools.md) for the MCP surface reference.
 │  3-pass: filter → parallel fetch → deterministic post-fetch       │
 │  hash-gate · budget-gate · lazy mode · parallel extraction        │
 └───────────────────────────┬───────────────────────────────────────┘
-                            │ []Observation (store: SQLite default, DuckDB migration-era)
+                            │ []Observation (store: SQLite — the only on-disk backend, ADR-025)
                             ▼
 ┌───────────────────────────────────────────────────────────────────┐
 │  Layer 3 — Knowledge Query Layer                                  │
@@ -103,11 +103,14 @@ Pending files are bucketed by language and extracted.
 | `go.mod` | Module dependency versions |
 
 Go AST is strictly better than tree-sitter for Go code, so no WASM/CGO cost is paid
-there. The DuckDB *store* backend still requires CGO (superseded by a pure-Go SQLite
-backend, ADR-020) — extraction and store are independent CGO surfaces; migrating a
-language's extractor off CGO tree-sitter does not, by itself, make the whole `fathom`
-binary CGO-free (`internal/extractor/tsengine` itself builds and tests clean under
-`CGO_ENABLED=0` in isolation).
+there. The *store* backend needs no CGO at all — it is pure-Go SQLite (ADR-020), the
+DuckDB backend having been deleted outright once the fleet migrated (ADR-025, SS-8,
+`docs/plans/store-sqlite.md`). Extraction and store are independent CGO surfaces, so
+today CGO is required for the full `fathom` binary solely by the Java/C/C++/C#/Rust/
+Scala/PHP/Bash/Lua row above — migrating a language's extractor off CGO tree-sitter
+onto the wazero engine does not, by itself, make the whole binary CGO-free until every
+row in that table has moved (`internal/extractor/tsengine` itself already builds and
+tests clean under `CGO_ENABLED=0` in isolation; `internal/store` now does too).
 
 ### Lazy mode
 
@@ -235,31 +238,37 @@ claims about the same symbol, using agentic-kit evidence semantics.
 
 ---
 
-## Store (ADR-003, ADR-020)
+## Store (ADR-003, ADR-020, ADR-025)
 
 `internal/store` — pluggable behind a `Store` interface. **SQLite (pure-Go,
-`modernc.org/sqlite`, WAL mode) is the default backend as of ADR-020**; DuckDB
-(`github.com/marcboeker/go-duckdb/v2`) remains compiled in for this migration slice only
-(source side of `migrate-store`), removed once the operator's fleet store has migrated
-(SS-8). See [why-duckdb.md](why-duckdb.md) for the original DuckDB rationale (now
-historical) and the ADR-020 entry in `ADR.md` for why SQLite replaced it: cross-process
-concurrent readers beside a live writer — the property DuckDB's single-writer lock never
-gave the daemon — outweighed DuckDB's columnar-scan advantage for this workload.
+`modernc.org/sqlite`, WAL mode) is the only on-disk backend** since ADR-020 made it the
+default and SS-8 (ADR-025, `docs/plans/store-sqlite.md`) then deleted the DuckDB backend
+(`github.com/marcboeker/go-duckdb/v2` and its bindings) outright — the trigger ("operator
+runs migrate-store on the fleet DB and the daemon runs a full day green on sqlite") fired
+2026-07-23. See [why-duckdb.md](why-duckdb.md) for the original DuckDB rationale (now
+historical) and the ADR-020/ADR-025 entries in `ADR.md` for why SQLite replaced it and
+why the removal was safe: cross-process concurrent readers beside a live writer — the
+property DuckDB's single-writer lock never gave the daemon — outweighed DuckDB's
+columnar-scan advantage for this workload, and once every store had migrated there was no
+remaining reason to keep the driver (or the CGO it required) compiled in.
 
-The `Store` interface is implemented by three types:
+The `Store` interface is implemented by two types:
 
 | Type | Use |
 |---|---|
-| `SQLiteStore` | Default production backend — persists to a `.sqlite`/`.db` file, WAL mode, uncapped read pool. Auto-creates parent directory. |
-| `DuckStore` | Migration-era backend — persists to a `.duckdb` file. Auto-creates parent directory. Slated for removal (SS-8). |
+| `SQLiteStore` | The only on-disk backend — persists to a `.sqlite`/`.db` file, WAL mode, uncapped read pool. Auto-creates parent directory. |
 | `MemoryStore` | Tests — in-process fake; shares the contract via `contract_test.go`. |
 
-`store.Open` (and the lower-level `store.BackendForPath`) dispatch to `SQLiteStore` or
-`DuckStore` by file extension — `.sqlite`/`.db` → SQLite, `.duckdb` → DuckDB — so
-`PlatformStore`, `gen-platform-manifest`, and `platform-ingest` all treat a directory of
-mixed-backend store files identically.
+`store.Open` (and the lower-level `store.BackendForPath`) dispatch to `SQLiteStore` by
+file extension (`.sqlite`/`.db`). A `.duckdb` path is still *recognized* — so a leftover
+pre-SS-8 file still participates in `PlatformStore`'s same-stem collision detection
+instead of silently vanishing — but `BackendForPath` refuses to ever open one: it returns
+a loud, typed error naming the file and pointing at a pre-SS-8 build, never a silent
+fallback. `PlatformStore`, `gen-platform-manifest`, and `platform-ingest` all share this
+dispatch, so a stale `.duckdb` sitting beside a `.sqlite` sibling loses the collision
+cleanly; a lone `.duckdb` with no sibling fails loudly the moment it would be the winner.
 
-Schema tables (identical across both backends — the DDL ports verbatim, ADR-020):
+Schema tables (SQLite-only now; the DDL no longer needs to port across backends):
 
 | Table | Contents |
 |---|---|
@@ -267,7 +276,7 @@ Schema tables (identical across both backends — the DDL ports verbatim, ADR-02
 | `fingerprints` | SHA-256 hash-gate index (stored separately; cheap to clear independently) |
 | `knowledge_cards` | LLM-generated structured summaries per symbol (opt-in enrichment) |
 | `doc_summaries` | Document-level summaries for Markdown sources |
-| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs`, plus `knowledge_cards`/`doc_summaries` above | The eight non-derivable tables `fathom migrate-store` ports from an existing DuckDB store into a fresh SQLite one (cards/summaries are LLM-derived enrichment a re-ingest does not rebuild); only `observations`/`fingerprints` rebuild by re-ingest |
+| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs`, plus `knowledge_cards`/`doc_summaries` above | The eight tables the now-removed `fathom migrate-store` command ported from DuckDB stores into SQLite ones during the migration (cards/summaries are LLM-derived enrichment a re-ingest does not rebuild); `observations`/`fingerprints` always rebuild by re-ingest |
 
 Default store path: `workspace/db/fathom.sqlite` (gitignored; all artifacts go under
 `workspace/` — see the workspace convention in [usage.md](usage.md)).
@@ -340,10 +349,11 @@ type CrossRepoEdge struct {
 The `platform-callers` CLI subcommand and the `cross_repo_callers` / `platform_callers`
 MCP tools use this graph to answer "which services call this symbol?"
 
-`PlatformStore` (`internal/store/platform_store.go`) loads many store files (`*.duckdb`
-and/or `*.sqlite`/`*.db` — a fleet may be mid-migration and hold both), routes queries by
-service ID, and supports atomic `Reload()` — used by the HTTP server's `POST /reload`
-endpoint.
+`PlatformStore` (`internal/store/platform_store.go`) loads many store files
+(`*.sqlite`/`*.db`, plus `*.duckdb` recognized only so a pre-SS-8 leftover can lose a
+same-stem collision rather than vanish silently — see the Store section above), routes
+queries by service ID, and supports atomic `Reload()` — used by the HTTP server's
+`POST /reload` endpoint.
 
 ---
 

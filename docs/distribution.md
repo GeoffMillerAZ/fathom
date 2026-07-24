@@ -57,26 +57,30 @@ require network+auth access (agentic-kit) resolves in-tree:
 go mod vendor
 ```
 
-This produces a local `vendor/` directory (~565MB, dominated by DuckDB's
-static libraries) that `go build -mod=vendor` can build from with zero
-network access. **`vendor/` is gitignored and is your local artifact** — do
-not commit it; regenerate it on whichever machine needs the air-gapped
-build. Only `third_party/agentic-kit` (716KB–13MB depending on kit history,
-see the note below) is committed — the full `vendor/` tree never is.
+This produces a local `vendor/` directory that `go build -mod=vendor` can
+build from with zero network access. **`vendor/` is gitignored and is your
+local artifact** — do not commit it; regenerate it on whichever machine
+needs the air-gapped build. Only `third_party/agentic-kit` (716KB–13MB
+depending on kit history, see the note below) is committed — the full
+`vendor/` tree never is.
 
-**CGO / DuckDB note (ADR-020).** `modernc.org/sqlite` — the pure-Go, WAL-mode
-default store backend — added no CGO surface and no static libraries; the
-~565MB vendor footprint above is entirely DuckDB's static libs
-(`github.com/marcboeker/go-duckdb/v2` and its per-platform bindings
-packages), still compiled in only because `migrate-store` needs it as the
-source backend for the DuckDB→SQLite migration. `CGO_ENABLED=1` and
-`MACOSX_DEPLOYMENT_TARGET=14.0` stay required for `task validate` /
-`go build` for the same reason. Both the CGO requirement and the DuckDB
-dependency are **gone after SS-8** (`docs/plans/store-sqlite.md`'s deferred
-row) — once the operator's fleet store has migrated and the daemon has run a
-full day green on SQLite, the DuckDB driver, its bindings, and the
-CGO/deployment-target workarounds are deleted outright, and this vendor
-footprint drops accordingly.
+**CGO note (ADR-013/ADR-020/ADR-025).** `modernc.org/sqlite` — the pure-Go,
+WAL-mode store backend (the only backend; ADR-020) — adds no CGO surface and
+no static libraries. SS-8 (`docs/plans/store-sqlite.md`) deleted the DuckDB
+backend, its driver (`github.com/marcboeker/go-duckdb/v2`), its per-platform
+bindings packages, and the ~565MB of static libs they contributed to the
+vendor footprint, outright — the trigger ("operator runs migrate-store on
+the fleet DB and the daemon runs a full day green on sqlite") fired
+2026-07-23. `internal/store` is now 100% pure Go: `go build`/`go test` pass
+with `CGO_ENABLED=0` for that package with zero workarounds.
+
+`CGO_ENABLED=1` and `MACOSX_DEPLOYMENT_TARGET=14.0` are still required for
+`task validate` / a full `go build ./...`, but for an unrelated reason now:
+the tree-sitter extractor bindings (`github.com/tree-sitter/go-tree-sitter`
+and the per-language grammar packages, ADR-013) are CGO and unconditionally
+imported by `internal/extractor`. Moving them to wazero/WASM is ADR-004's
+documented future path — a separate, not-yet-triggered slice (XT-6b) — so
+CGO is not yet zero for the whole binary, only for the store.
 
 ## For fathom maintainers: keeping third_party/agentic-kit in sync
 

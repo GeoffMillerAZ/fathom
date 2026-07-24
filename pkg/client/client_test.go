@@ -1,5 +1,5 @@
 // Package client_test contains end-to-end tests for the public fathom client.
-// Tests use FauxConnector + MemoryStore (or the DuckDB-backed path via
+// Tests use FauxConnector + MemoryStore (or the SQLite-backed path via
 // NewConstantClient) so they are network-free, secret-free, and deterministic.
 package client_test
 
@@ -425,9 +425,9 @@ func TestDeterminism(t *testing.T) {
 	}
 }
 
-// ─── NewConstantClient (DuckDB-backed) ───────────────────────────────────────
+// ─── NewConstantClient (SQLite-backed) ───────────────────────────────────────
 
-// TestNewConstantClient_FauxInMemory proves the DuckDB-backed path works
+// TestNewConstantClient_FauxInMemory proves the SQLite-backed path works
 // end-to-end using ModeFaux + in-memory store ("").
 func TestNewConstantClient_FauxInMemory(t *testing.T) {
 	ctx := context.Background()
@@ -453,7 +453,7 @@ func TestNewConstantClient_FauxInMemory(t *testing.T) {
 		t.Error("expected at least one symbol extracted")
 	}
 
-	// FindCallers must work end-to-end through DuckDB store.
+	// FindCallers must work end-to-end through the SQLite store.
 	callers, err := c.FindCallers(ctx, paymentSvc.ID, "validateCharge")
 	if err != nil {
 		t.Fatalf("FindCallers via NewConstantClient: %v", err)

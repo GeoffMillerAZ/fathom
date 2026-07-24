@@ -8,12 +8,19 @@ concretely: what a module is in code, the launch use cases with their query
 patterns and excellence bars, the lifecycle, and what v1 implements now versus
 what waits for named entry conditions.*
 
+*Engine-assumption note (added post-SS-8, 2026-07-23, ADR-025): the module
+store is SQLite (`.sqlite`), not DuckDB — DuckDB was deleted from this
+codebase outright once the fleet finished migrating (ADR-020). The
+entry-conditioned "DuckDB VSS" vector mention below (§ Entry-conditioned)
+predates the removal and needs a technical re-check against SQLite before
+it fires, not a silent port of the DuckDB-specific mechanism.*
+
 ## 1. What an expert module is (in code, not prose)
 
 An **expert module** is a fathom store compiled over a corpus:
 
 ```
-module = one .duckdb store containing
+module = one .sqlite store containing
            ├─ deterministic index         (observations: sources, symbols, refs, facts)
            ├─ semantic layers             (semantic_claims + claim_links: governed,
            │                               cited, tiered, staleness-tracked claims)

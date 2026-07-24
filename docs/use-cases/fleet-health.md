@@ -32,7 +32,7 @@ Use fathom to get an objective quality and security posture across an entire fle
 | `staleness_report` | MCP tool | Whether the index is in sync with HEAD; flags `reingest_recommended` |
 | `set_profile` | MCP tool | Switch the visible tool set |
 | `ingest` | MCP tool | Re-index a service in-session after commits |
-| `fathom ingest` | CLI | Index a repo into the fleet store (use when no session holds the DuckDB lock) |
+| `fathom ingest` | CLI | Index a repo into the fleet store (avoid while a session is writing the same store — SQLite serializes writers, ADR-020) |
 
 > **Security rollup:** `security_rollup` is a single MCP tool (GroupShared) that internally runs `secret_scan`, `shell_out`, and `http_client_calls` and returns an aggregated posture report including license findings. Use it for a one-call sweep; call the individual tools when you need granular control.
 
@@ -155,7 +155,7 @@ Highlights any symbol that exists in multiple services with conflicting kinds �
 
 **Concern argument:** The tools in this use case do **not** require a `concern` argument — they are structural/metric queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
 
-**Staleness:** A long-running `serve-mcp` session can outlive commits. Before a posture sweep, call `staleness_report` per service to check whether `reingest_recommended` is `true`. If it is, re-index with the `ingest` MCP tool (not the CLI — the CLI cannot acquire the DuckDB write lock while the server holds it):
+**Staleness:** A long-running `serve-mcp` session can outlive commits. Before a posture sweep, call `staleness_report` per service to check whether `reingest_recommended` is `true`. If it is, re-index with the `ingest` MCP tool (not the CLI — a concurrent CLI write can contend with the server's own write and fail past `busy_timeout`, SQLite serializes writers per ADR-020):
 
 ```json
 { "name": "ingest", "arguments": { "service": "payment-service" } }

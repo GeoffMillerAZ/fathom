@@ -13,12 +13,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestGenStatusCue_PassVerdict seeds a tiny DuckDB store with a verified
+// TestGenStatusCue_PassVerdict seeds a tiny SQLite store with a verified
 // symbol and a test that reaches it, then runs gen-status-cue and asserts
 // that the output STATUS.cue contains a "pass" verdict for the task.
 func TestGenStatusCue_PassVerdict(t *testing.T) {
 	dir := t.TempDir()
-	storePath := filepath.Join(dir, "test.duckdb")
+	storePath := filepath.Join(dir, "test.sqlite")
 
 	// Seed the store.  We open it directly (bypassing the client) so we can
 	// populate raw observations, then close it to release the single-writer

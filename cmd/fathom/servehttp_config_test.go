@@ -47,7 +47,7 @@ func TestDaemonAutoRefreshDefault(t *testing.T) {
 // not passed on the command line.
 func TestRunServeHTTP_DaemonConfig_FeedsFlagDefaults(t *testing.T) {
 	_, projectDir := withIsolatedConfigHome(t)
-	storePath := filepath.Join(projectDir, "daemon.duckdb")
+	storePath := filepath.Join(projectDir, "daemon.sqlite")
 	writeProjectConfig(t, projectDir, `
 [daemon]
 store = "`+escapeTOML(storePath)+`"
@@ -99,12 +99,12 @@ func TestRunServeHTTP_MalformedConfig_FailsToStart(t *testing.T) {
 // own error instead of silently using the configured path.
 func TestRunServeHTTP_FlagOverridesDaemonConfig(t *testing.T) {
 	_, projectDir := withIsolatedConfigHome(t)
-	configuredStore := filepath.Join(projectDir, "configured.duckdb")
+	configuredStore := filepath.Join(projectDir, "configured.sqlite")
 	writeProjectConfig(t, projectDir, `
 [daemon]
 store = "`+escapeTOML(configuredStore)+`"
 `)
-	flagStore := filepath.Join(projectDir, "flag-store", "sub", "dir", "flag.duckdb")
+	flagStore := filepath.Join(projectDir, "flag-store", "sub", "dir", "flag.sqlite")
 
 	var stdout, stderr bytes.Buffer
 	// A bad --addr keeps this from blocking on ListenAndServe once the store
@@ -114,7 +114,7 @@ store = "`+escapeTOML(configuredStore)+`"
 	if code == 0 {
 		t.Fatalf("expected nonzero exit from the invalid port; stdout=%s stderr=%s", stdout.String(), stderr.String())
 	}
-	if strings.Contains(stderr.String(), "configured.duckdb") {
+	if strings.Contains(stderr.String(), "configured.sqlite") {
 		t.Errorf("stderr = %s, must not reference the config-file store once --store is given", stderr.String())
 	}
 }

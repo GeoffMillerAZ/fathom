@@ -1,7 +1,9 @@
 package store
 
 import (
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -103,5 +105,39 @@ func TestResolveStoreFiles(t *testing.T) {
 				t.Errorf("collisions = %+v, want %+v", collisions, tc.wantCollisions)
 			}
 		})
+	}
+}
+
+// TestBackendForPath_DuckDBLoudlyRefused is the SS-8 regression: DuckDB was
+// deleted outright, so BackendForPath must never silently open (or silently
+// fall back away from) a ".duckdb" path — it must return a clear, typed
+// error naming the file and pointing at a pre-SS-8 build, every time.
+func TestBackendForPath_DuckDBLoudlyRefused(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "svc.duckdb")
+	s, err := BackendForPath(path)
+	if err == nil {
+		if s != nil {
+			_ = s.Close()
+		}
+		t.Fatal("BackendForPath(.duckdb) succeeded, want a loud error")
+	}
+	if s != nil {
+		t.Errorf("BackendForPath(.duckdb) returned a non-nil Store alongside an error: %v", s)
+	}
+	if !strings.Contains(err.Error(), "DuckDB") || !strings.Contains(err.Error(), path) {
+		t.Errorf("error = %q, want it to name DuckDB and the offending path %q", err.Error(), path)
+	}
+}
+
+// TestBackendForPath_EmptyPathIsSQLite proves the in-memory "" convention
+// now opens SQLiteStore, not DuckStore (SS-8 removed the latter entirely).
+func TestBackendForPath_EmptyPathIsSQLite(t *testing.T) {
+	s, err := BackendForPath("")
+	if err != nil {
+		t.Fatalf("BackendForPath(\"\"): %v", err)
+	}
+	defer s.Close()
+	if _, ok := s.(*SQLiteStore); !ok {
+		t.Errorf("BackendForPath(\"\") = %T, want *SQLiteStore", s)
 	}
 }

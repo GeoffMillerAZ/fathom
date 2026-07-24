@@ -1,5 +1,15 @@
 # Fathom excellence review — recommendations (2026-07-14)
 
+> **Engine-assumption note (2026-07-23, ADR-025).** SS-8 deleted the DuckDB
+> backend outright once the fleet finished migrating to pure-Go SQLite
+> (ADR-020) — there is no DuckDB compiled into fathom anywhere now. This
+> directory's DuckDB-specific mechanisms below (`.duckdb` store format,
+> `ATTACH`-based federation) were written when DuckDB was still the engine;
+> none has been accepted into a binding spec yet (see Status below), so
+> whichever one is accepted needs a technical re-check against the
+> SQLite-only reality first, not a port of the DuckDB-specific mechanism as
+> written.
+
 **Status: FOR REVIEW.** Nothing in this directory is binding. These are
 recommendations produced by the 2026-07 excellence review (a 13-agent
 survey + strategist panel over the repo, the call log, the design docs, and

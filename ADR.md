@@ -660,3 +660,67 @@ taxonomy nobody uses is one additive, defaulted CUE field. Naming
 `provider`/further `concern` packs ahead of their triggers would invert
 this ADR's own reasoning, so both stay recorded-not-built until a named
 consumer arrives.
+
+## ADR-025: DuckDB backend deleted outright — SS-8 executed (2026-07-23)
+
+**Decision.** ADR-020 made SQLite the default store backend but kept the
+DuckDB backend compiled in as `migrate-store`'s read source for the fleet
+migration, deferring its removal (SS-8, `docs/plans/store-sqlite.md`)
+behind an explicit trigger: *"the operator runs migrate-store on the fleet
+DB and the daemon runs a full day green on sqlite."* That trigger fired —
+the fleet store migrated 2026-07-23T01:56:17Z
+(`workspace/logs/store-migration-stamp.txt` on the fleet checkout) and the
+daemon ran green on SQLite through the day. This ADR records the execution:
+`internal/store/duckdb.go` (`DuckStore`, `github.com/marcboeker/
+go-duckdb/v2`), its test file, `internal/store/migrate.go`
+(`MigrateNonDerivable`), and `cmd/fathom/migratestore.go` (the
+`migrate-store` CLI verb) are all deleted outright, along with the DuckDB
+driver, its per-platform bindings, and every indirect dependency that
+existed only to support them (`go mod tidy` also dropped `apache/
+arrow-go`, `klauspost/compress`, `klauspost/cpuid/v2`, `pierrec/lz4/v4`,
+`zeebo/xxh3`, `google/flatbuffers`, `go-viper/mapstructure/v2`,
+`goccy/go-json`, `golang.org/x/exp`, `golang.org/x/telemetry`,
+`golang.org/x/xerrors` — none of these served anything but DuckDB/Arrow).
+
+**`migrate-store`'s fate, decided explicitly.** The plan's own text ties
+CGO's continued presence entirely to `migrate-store` needing the DuckDB
+driver as its read source (`docs/distribution.md`'s pre-SS-8 CGO note:
+"still compiled in only because `migrate-store` needs it as the source
+backend for the DuckDB→SQLite migration"). Once the fleet migrated, keeping
+`migrate-store` — and therefore the DuckDB driver, and therefore CGO for
+the store — would have defeated SS-8's entire point for a tool with no
+remaining live purpose: a straggler store that still needs migrating can be
+migrated with a pre-SS-8 build of fathom, which remains available via git
+history/tags. The command is removed, not deprecated-in-place.
+
+**`store.BackendForPath` stays loud, never silent.** `.duckdb` remains a
+*recognized* extension in `storeExtensions` — so `ResolveStoreFiles` still
+detects a same-stem collision between a leftover pre-SS-8 file and a
+`.sqlite` sibling, and the `.sqlite` file still wins with a warning, exactly
+as before — but `BackendForPath` now refuses to ever open a `.duckdb` path,
+returning a typed error naming the file and pointing at a pre-SS-8 build.
+`PlatformStore.load` therefore fails loudly (not silently, not by ignoring
+the file) if a *lone* `.duckdb` file with no `.sqlite` sibling would win a
+stem — the correct behavior for a store extension whose backend no longer
+exists. The `""` in-memory convention (`store.Open("")`,
+`BackendForPath("")`) now opens an in-memory `SQLiteStore` rather than an
+in-memory `DuckStore` — a behavior change ModeFaux/session-mode callers do
+not observe (both are process-local, discarded on `Close`).
+
+**Consequence: fathom is pure Go except tree-sitter.** `internal/store`
+builds and passes `go test -race` under `CGO_ENABLED=0` with zero
+workarounds — proven, not asserted, as part of this change. `CGO_ENABLED=1`
+and `MACOSX_DEPLOYMENT_TARGET=14.0` remain required for the full `fathom`
+binary and `task validate`, but the reason has changed: it is now solely
+the tree-sitter extractor bindings (ADR-013,
+`internal/extractor/treesitter`, unconditionally imported by nine
+language extractors) that need CGO. Moving those to the wazero/WASM engine
+(ADR-004's documented future path, already how Python/JS/TS/Ruby extract
+via `internal/extractor/tsengine`, ADR-021 §4) is XT-6b's separate,
+not-yet-triggered slice — this ADR does not touch tree-sitter.
+
+**Not touched.** The live fleet store, the always-on `serve-http` daemon,
+and `workspace/db/fleet.duckdb` (the on-disk rollback file from the
+migration) are all outside this change's scope by design — SS-8 is a
+source-tree removal, not a fleet operation. `fleet.duckdb`'s deletion is
+the operator's manual step to take once satisfied it is no longer needed.

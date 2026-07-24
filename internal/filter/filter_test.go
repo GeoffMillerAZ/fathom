@@ -322,7 +322,7 @@ func TestMatch_RootAnchoredMultiSegment(t *testing.T) {
 // TestMatch_RootAnchoredDirOnly: "/workspace/" — root-anchored AND dir-only.
 func TestMatch_RootAnchoredDirOnly(t *testing.T) {
 	m := filter.New([]string{"/workspace/"})
-	if !m.Match("workspace/db/fleet.duckdb") {
+	if !m.Match("workspace/db/fleet.sqlite") {
 		t.Error("/workspace/ should match files under root workspace/")
 	}
 	if m.Match("a/workspace/x") {

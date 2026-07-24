@@ -11,7 +11,7 @@ import (
 )
 
 func TestRemap_UpdatesServicePath(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	oldRoot, newRoot := t.TempDir(), t.TempDir()
 
 	st, err := store.Open(storePath)
@@ -53,7 +53,7 @@ func TestRemap_UpdatesServicePath(t *testing.T) {
 }
 
 func TestRemap_Errors(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	dir := t.TempDir()
 	st, err := store.Open(storePath)
 	if err != nil {

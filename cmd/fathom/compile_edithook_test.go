@@ -34,7 +34,7 @@ func TestCompileRequiresService(t *testing.T) {
 // false-negatives project packs of OTHER repos' services. --store makes the
 // test hermetic (the pass-through would otherwise hit the daemon URL).
 func TestCompileUnknownLayer(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	var out, errBuf bytes.Buffer
 	code := run([]string{"compile", "--service=svc", "--layer=hypotheses", "--store=" + storePath}, &out, &errBuf)
 	if code == 0 {
@@ -78,7 +78,7 @@ budgets: {
 		t.Fatalf("write prompt.md: %v", err)
 	}
 
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -138,7 +138,7 @@ budgets: {
 	}
 
 	t.Chdir(root)
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 
 	// The REAL compile step (pkg/client.CompileLayer) resolves the layer's
 	// root from the SERVICE's own ingested path (service_meta), not CWD —

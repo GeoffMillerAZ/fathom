@@ -16,7 +16,7 @@ import (
 // Two data sources are supported:
 //
 //   - Store (default, language-agnostic): reads the symbols and call edges
-//     already ingested into the DuckDB store, so callers are found for EVERY
+//     already ingested into the SQLite store, so callers are found for EVERY
 //     language whose extractor populated them (Python, TS, Java, Rust, …), not
 //     just Go. Use --store [--services a,b,c]; with no --services, all services
 //     in the store are considered.
@@ -27,12 +27,12 @@ import (
 // Examples:
 //
 //	fathom platform-callers --symbol ProcessPayment
-//	fathom platform-callers --store workspace/db/fleet.duckdb --symbol Greet
+//	fathom platform-callers --store workspace/db/fleet.sqlite --symbol Greet
 //	fathom platform-callers --repos svc-a=/src/a,svc-b=/src/b --symbol Greet
 func cmdPlatformCallers(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("platform-callers", stderr)
 	symbolFlag := fs.String("symbol", "", "bare symbol name to find cross-repo callers of (required)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.duckdb or .sqlite/.db; language-agnostic source)")
+	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db; language-agnostic source)")
 	servicesFlag := fs.String("services", "", "comma-separated service IDs to include (default: all services in the store)")
 	reposFlag := fs.String("repos", "", "legacy Go-only mode: comma-separated id=path pairs; overrides --store when set")
 

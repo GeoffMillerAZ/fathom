@@ -14,6 +14,14 @@ stratum; `kind` (below, §4.1 — `obligation`, `finding`, `adr-rule`,
 `spec-binding`) is an orthogonal axis (what a layer's claims are *about*),
 never a synonym for stratum (who authored and eval-gated the pack).*
 
+*Engine-assumption note (added post-SS-8, 2026-07-23, ADR-025): DuckDB was
+deleted from this codebase outright once the fleet finished migrating to
+pure-Go SQLite (ADR-020) — the store is SQLite-only now. This document's
+"DuckDB VSS" / "in DuckDB (single file, embedded OLAP)" mentions below
+describe an entry-conditioned future capability that hasn't fired and
+predate the removal; they need a technical re-check against SQLite before
+anyone executes them, not a silent port of the DuckDB-specific mechanism.*
+
 ## 1. The framing
 
 Fathom's deterministic index answers **what the code is** — symbols, call edges,

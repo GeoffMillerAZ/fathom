@@ -5,6 +5,58 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### Removed — DuckDB backend + CGO deleted outright (ADR-025, SS-8, docs/plans/store-sqlite.md, 2026-07-23)
+- **SS-8's deferred trigger fired**: the operator ran `migrate-store` on the
+  fleet DB and the daemon ran a full day green on SQLite
+  (`workspace/logs/store-migration-stamp.txt`: `2026-07-23T01:56:17Z`). With
+  that, `internal/store/duckdb.go` (`DuckStore`, `github.com/marcboeker/
+  go-duckdb/v2`) and its test file are deleted outright — no DuckDB code
+  remains anywhere in this repo.
+- **`migrate-store` removed** (`internal/store/migrate.go` +
+  `cmd/fathom/migratestore.go`), not kept: it existed solely to read DuckDB
+  as a migration source, so keeping it would have kept a CGO island alive
+  for no live purpose — the fleet migrated, and reading a pre-SS-8 store
+  now needs a pre-SS-8 build of fathom. `scanObservations`/`scanClaims`
+  (shared, backend-agnostic row scanners `migrate.go` and `duckdb.go` both
+  used) moved into `sqlite.go`, their sole remaining consumer.
+- **`store.BackendForPath` now refuses `.duckdb` loudly**: the extension is
+  still *recognized* (so a leftover pre-SS-8 file still participates in
+  `PlatformStore`'s same-stem collision detection instead of vanishing
+  silently) but opening one returns a typed error naming the file and
+  pointing at a pre-SS-8 build — never a silent fallback. The empty-path
+  in-memory convention (`""`) now opens an in-memory `SQLiteStore` instead
+  of an in-memory `DuckStore`.
+- **`go.mod`/`go.sum` cleaned by `go mod tidy`**: `github.com/marcboeker/
+  go-duckdb/v2` and its bindings, plus every indirect dependency that
+  existed only to support DuckDB/Arrow (`apache/arrow-go`, `klauspost/
+  compress`, `klauspost/cpuid/v2`, `pierrec/lz4/v4`, `zeebo/xxh3`,
+  `google/flatbuffers`, `go-viper/mapstructure/v2`, `goccy/go-json`,
+  `golang.org/x/exp`, `golang.org/x/telemetry`, `golang.org/x/xerrors`),
+  are gone.
+- **`internal/store` is now pure Go**: `go build`/`go test -race` pass with
+  `CGO_ENABLED=0` for the store package with zero workarounds — proven, not
+  asserted. `CGO_ENABLED=1`/`MACOSX_DEPLOYMENT_TARGET=14.0` remain required
+  for the full `fathom` binary, but now solely because of the tree-sitter
+  extractor bindings (ADR-013) — a separate, not-yet-triggered removal
+  (XT-6b). Taskfile/CLAUDE.md/scripts/docs updated to state the CGO
+  requirement's real, current reason instead of the retired one.
+- **Docs**: `docs/configuration.md`'s DuckDB→SQLite runbook is now marked
+  historical; `docs/usage.md`'s `migrate-store` section is now a removal
+  notice; `docs/why-duckdb.md`'s superseded banner now also records the
+  removal; `docs/architecture.md`/`docs/distribution.md`/README.md updated
+  to the SQLite-only, tree-sitter-is-the-CGO-reason reality;
+  `scripts/migrate-fleet-store.sh` is marked historical (completed
+  2026-07-23, retained for reference; step 4/8 can no longer run against a
+  post-SS-8 binary); `scripts/reingest-fleet.sh` no longer calls the store
+  lock "DuckDB's". Vision/design docs describing future DuckDB-specific
+  mechanisms (VSS vectors, `ATTACH` federation) got engine-assumption notes
+  flagging a technical re-check is needed before any of them fire — not a
+  redesign of the mechanisms themselves.
+- **Remaining manual step**: the on-disk rollback file
+  `workspace/db/fleet.duckdb` on the fleet checkout is untouched by this
+  removal (deliberately — SS-8 never touches the live fleet store) and is
+  the operator's to delete once satisfied it's no longer needed.
+
 ### Fixed — serving-layer hygiene (Wave 3a P1-6/P1-9, 2026-07-23)
 - **`migration_targets` merge semantics (dogfood O11, closed):** a caller-
   supplied `deprecated_pkgs` list now **merges with** the built-in default

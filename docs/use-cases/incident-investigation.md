@@ -156,7 +156,7 @@ At this point you have: the failing entry point, the blast radius of the deploy,
 
 **`contradiction_scan` requires `concern`.** This is not optional. Pass the narrow concern that matches the symptom (e.g. `"checkout"`, `"payment"`, `"auth"`). A missing concern is a hard error.
 
-**Staleness.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` first. If `reingest_recommended` is `true`, refresh by calling the `ingest` MCP tool in-session — do not use the CLI `ingest` while the session holds the DuckDB write lock.
+**Staleness.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` first. If `reingest_recommended` is `true`, refresh by calling the `ingest` MCP tool in-session — a concurrent CLI `ingest` can contend with the session's own write (SQLite serializes writers, ADR-020) and fail past `busy_timeout`.
 
 ```json
 { "name": "ingest", "arguments": { "service": "checkout-service" } }

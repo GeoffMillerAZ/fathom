@@ -21,7 +21,7 @@ func TestReport_SecurityRollup_WritesFindingDocument(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "infra.go"), []byte(reportFixtureSrc), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(t.TempDir(), "findings")
 
 	var ingestOut, ingestErr bytes.Buffer
@@ -94,7 +94,7 @@ func TestReport_SecurityRollup_InsideCorpus_NoSelfScanFeedback(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "tools.py"), []byte(pySrc), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(root, "findings") // INSIDE the corpus root
 
 	var ingestOut, ingestErr bytes.Buffer
@@ -148,7 +148,7 @@ func TestReport_SecurityRollup_RedactsSecretValues(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "config.py"), []byte(pySrc), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	outDir := filepath.Join(t.TempDir(), "findings")
 
 	var ingestOut, ingestErr bytes.Buffer
@@ -177,7 +177,7 @@ func TestReport_SecurityRollup_RedactsSecretValues(t *testing.T) {
 }
 
 func TestReport_Errors(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "s.duckdb")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 
 	cases := []struct {
 		name string

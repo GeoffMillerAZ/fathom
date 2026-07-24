@@ -42,7 +42,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required; .md checklist)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
-	storePath := fs.String("store", "", "store path, .duckdb or .sqlite/.db (direct mode; bypasses daemon)")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	strict := fs.Bool("strict", false, "treat claimed+unknown tasks as gate failures (recommended for CI)")
 	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks (ADR-018 §2)")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")

@@ -5,22 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-// seedService creates <dir>/<id>.duckdb and writes obs into it, then closes it.
+// seedService creates <dir>/<id>.sqlite and writes obs into it, then closes it.
 // The file is left on disk so OpenPlatform can pick it up.
 func seedService(t *testing.T, dir, id string, obs []core.Observation) {
 	t.Helper()
-	seedServiceExt(t, dir, id, ".duckdb", obs)
+	seedServiceExt(t, dir, id, ".sqlite", obs)
 }
 
 // seedServiceExt is seedService parameterized by extension, so tests can seed
-// a mixed-backend fleet (ADR-020: PlatformStore must load .duckdb and
-// .sqlite services from the same directory).
+// stores under a non-default recognized extension (e.g. ".db").
 func seedServiceExt(t *testing.T, dir, id, ext string, obs []core.Observation) {
 	t.Helper()
 	path := filepath.Join(dir, id+ext)
@@ -163,7 +163,7 @@ func TestOpenPlatform_EmptyDir(t *testing.T) {
 	}
 }
 
-func TestOpenPlatform_NonDuckdbFilesIgnored(t *testing.T) {
+func TestOpenPlatform_UnrecognizedFilesIgnored(t *testing.T) {
 	dir := t.TempDir()
 	// Plant a non-store file; it must be silently ignored.
 	if err := os.WriteFile(filepath.Join(dir, "README.txt"), []byte("hi"), 0o644); err != nil {
@@ -183,18 +183,24 @@ func TestOpenPlatform_NonDuckdbFilesIgnored(t *testing.T) {
 	}
 }
 
-// ─── mid-migration same-stem collision (F2) ──────────────────────────────────
+// ─── stale pre-SS-8 .duckdb leftovers ──────────────────────────────────────
 
-// TestOpenPlatform_SameStemPrefersSQLite is the F2 regression: after
-// `migrate-store` the directory holds BOTH svc.duckdb (stale) and svc.sqlite
-// (freshly migrated). ReadDir's name-sort yields the .duckdb first, and the
-// original first-wins load made the migrated store silently invisible.
-// The platform store must serve the .sqlite one.
-func TestOpenPlatform_SameStemPrefersSQLite(t *testing.T) {
+// TestOpenPlatform_StaleDuckDBSiblingIgnored is the SS-8 shape of the F2
+// regression: a directory holding BOTH svc.duckdb (a leftover from before
+// SS-8 deleted the DuckDB backend) and svc.sqlite. ReadDir's name-sort yields
+// the .duckdb first, and the original first-wins load made the migrated
+// store silently invisible. The platform store must serve the .sqlite one
+// WITHOUT ever calling BackendForPath on the stale .duckdb file (which would
+// now fail loudly) — the collision resolution must short-circuit to the
+// winner before opening anything.
+func TestOpenPlatform_StaleDuckDBSiblingIgnored(t *testing.T) {
 	dir := t.TempDir()
-	// Same service stem, different content per backend so we can prove WHICH
-	// file is actually being served, not just which type was opened.
-	seedServiceExt(t, dir, "svc", ".duckdb", []core.Observation{nowObs("svc", "StaleSymbol")})
+	// The stale .duckdb is a placeholder file written directly — it can no
+	// longer be opened as a store at all (SS-8), so it is planted as raw
+	// bytes rather than through seedServiceExt/BackendForPath.
+	if err := os.WriteFile(filepath.Join(dir, "svc.duckdb"), []byte("stale pre-SS-8 store"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	seedServiceExt(t, dir, "svc", ".sqlite", []core.Observation{nowObs("svc", "MigratedSymbol")})
 
 	ps, err := OpenPlatform(dir)
@@ -213,64 +219,32 @@ func TestOpenPlatform_SameStemPrefersSQLite(t *testing.T) {
 		t.Fatal("Get(svc) returned false")
 	}
 	if _, isSQLite := s.(*SQLiteStore); !isSQLite {
-		t.Fatalf("svc backend = %T, want *SQLiteStore (the migrated store must win)", s)
+		t.Fatalf("svc backend = %T, want *SQLiteStore (the surviving store must win)", s)
 	}
 	obs, err := s.QueryObservations(context.Background(), "svc", "")
 	if err != nil {
 		t.Fatalf("QueryObservations: %v", err)
 	}
 	if len(obs) != 1 || obs[0].Symbol != "MigratedSymbol" {
-		t.Errorf("served observations = %+v, want the migrated store's MigratedSymbol", obs)
+		t.Errorf("served observations = %+v, want the sqlite store's MigratedSymbol", obs)
 	}
 }
 
-// ─── mixed-backend fleets (ADR-020, SS-4) ─────────────────────────────────────
-
-// TestOpenPlatform_MixedBackends proves PlatformStore loads a fleet directory
-// containing BOTH a DuckDB service and a SQLite service — the shape a fleet
-// takes mid-migration, one service moved to SQLite at a time.
-func TestOpenPlatform_MixedBackends(t *testing.T) {
+// TestOpenPlatform_LoneDuckDBFileErrorsLoud proves that a lone stale .duckdb
+// file — no .sqlite sibling to win the collision — makes OpenPlatform fail
+// loudly (naming DuckDB) rather than silently skip the service or silently
+// open it as if DuckDB still worked (SS-8 removed the backend outright).
+func TestOpenPlatform_LoneDuckDBFileErrorsLoud(t *testing.T) {
 	dir := t.TempDir()
-	seedServiceExt(t, dir, "duck-svc", ".duckdb", []core.Observation{nowObs("duck-svc", "Login")})
-	seedServiceExt(t, dir, "lite-svc", ".sqlite", []core.Observation{nowObs("lite-svc", "Charge")})
-
-	ps, err := OpenPlatform(dir)
-	if err != nil {
-		t.Fatalf("OpenPlatform mixed fleet: %v", err)
-	}
-	defer ps.Close()
-
-	ids := ps.ServiceIDs()
-	if len(ids) != 2 {
-		t.Fatalf("ServiceIDs() len = %d, want 2; got %v", len(ids), ids)
-	}
-	for i, want := range []string{"duck-svc", "lite-svc"} {
-		if ids[i] != want {
-			t.Errorf("ids[%d] = %q, want %q", i, ids[i], want)
-		}
+	if err := os.WriteFile(filepath.Join(dir, "orphan.duckdb"), []byte("stale pre-SS-8 store"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
-	duckStore, ok := ps.Get("duck-svc")
-	if !ok {
-		t.Fatal("Get(duck-svc) returned false")
+	_, err := OpenPlatform(dir)
+	if err == nil {
+		t.Fatal("OpenPlatform with a lone .duckdb file succeeded, want a loud error")
 	}
-	if _, ok := duckStore.(*DuckStore); !ok {
-		t.Errorf("duck-svc backend = %T, want *DuckStore", duckStore)
-	}
-
-	liteStore, ok := ps.Get("lite-svc")
-	if !ok {
-		t.Fatal("Get(lite-svc) returned false")
-	}
-	if _, ok := liteStore.(*SQLiteStore); !ok {
-		t.Errorf("lite-svc backend = %T, want *SQLiteStore", liteStore)
-	}
-
-	all := ps.QueryAll(context.Background(), "")
-	if _, ok := all["duck-svc"]; !ok {
-		t.Error("QueryAll: duck-svc missing from mixed-fleet results")
-	}
-	if _, ok := all["lite-svc"]; !ok {
-		t.Error("QueryAll: lite-svc missing from mixed-fleet results")
+	if !strings.Contains(err.Error(), "DuckDB") {
+		t.Errorf("error = %q, want it to name DuckDB", err.Error())
 	}
 }

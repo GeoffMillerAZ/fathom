@@ -24,7 +24,7 @@ wire fathom *into* (§2 onward). If you already have a `fathom` binary
 
 | Requirement | Notes |
 |---|---|
-| Go 1.26+ | CGO must be enabled — the store backend defaulted to pure-Go SQLite in ADR-020, but DuckDB is still compiled in temporarily as the migration-era source backend, so CGO stays required until DuckDB is fully removed |
+| Go 1.26+ | CGO must be enabled — required by the tree-sitter extractor bindings (ADR-013). The store itself is pure Go (`modernc.org/sqlite`, ADR-020): SS-8 deleted the DuckDB backend outright once the fleet migrated (ADR-025), so the store no longer needs CGO at all |
 | `../agentic-kit` | Sibling module via `go.work` + `replace`; absent, `go.mod`'s replace falls back to the in-tree `third_party/agentic-kit` mirror automatically (see `docs/distribution.md`) — adopters who only want the binary don't need to understand this, just build once |
 
 Building fathom's own tests/schema-vet additionally wants

@@ -54,8 +54,10 @@ indexed → 222 after).
 
 > **Run more than one Claude Code session at a time?** Skip the per-session stdio registration below
 > and use the shared HTTP server instead (see **Multiple concurrent sessions** further down). Each
-> stdio `serve-mcp` holds the single-writer DuckDB lock, so with concurrent sessions only the first
-> connects and the rest report `✘ Failed to connect`.
+> stdio `serve-mcp` opens its own connection to the store, and a *write* from one session (`ingest`)
+> can contend with a write from another (SQLite serializes writers, ADR-020) and fail past
+> `busy_timeout` — the shared HTTP daemon avoids that entirely by being the one process that ever
+> writes, and gives every session one consistent index instead of N separately-refreshed ones.
 
 User scope makes it available in every repo and to every subagent:
 
@@ -100,9 +102,11 @@ that matters is in the prompt, not the server.
 
 ## 5. Refresh discipline (single-writer constraint)
 
-DuckDB allows ONE writing process. While any Claude Code session is open,
-its MCP server holds the store lock and **CLI ingest fails** — measured,
-not theoretical. Therefore:
+SQLite serializes writers (ADR-020): while any Claude Code session's MCP
+server is mid-write, a concurrent `fathom ingest` from the CLI (or another
+session) can hit `busy_timeout` and fail rather than queue indefinitely —
+measured, not theoretical, on a fleet with more than one active writer.
+Therefore:
 
 - **Primary**: refresh through the live server's `ingest` MCP tool
   (session start + after each commit). Encode it in CLAUDE.md so the agent
@@ -125,12 +129,12 @@ free, and `staleness_report` makes drift visible instead of silent.
 
 ## Multiple concurrent sessions: the shared HTTP server
 
-The stdio `serve-mcp` registration in §3 starts **one server per Claude Code session**, and DuckDB is
-**single-writer**. Run two sessions at once and only the first to open the store gets the lock; every
-other session — and every `claude mcp list` health check — reports **`✘ Failed to connect`**. Killing
-the lock-holder doesn't help: it's a *live* server owned by one of your other sessions, so you'd just
-break that one. Restarts don't help either — the next session loses the same race. The per-session
-model simply doesn't fit a multi-session workflow.
+The stdio `serve-mcp` registration in §3 starts **one server per Claude Code session**, each opening
+its own connection to the same SQLite store file. Reads no longer exclude each other the way they did
+under DuckDB's single-process file lock, but every session refreshing its own copy of the index is
+still wasteful (N re-ingests of the same repo instead of one) and a genuinely concurrent write from two
+sessions can still contend and fail past `busy_timeout` (ADR-020) rather than queue. The per-session
+model still doesn't fit a multi-session workflow well.
 
 The fix is built in: run **one** `serve-http` daemon (the documented shared fleet server) and register
 it over **HTTP**. Every session becomes an HTTP client of that single lock-holder — unlimited

@@ -1,11 +1,13 @@
 // Package store — PlatformStore opens many per-service stores from a
 // directory and provides fleet-wide query helpers.
 //
-// Each recognized store file (*.duckdb, *.sqlite, *.db) in the directory is
-// loaded as a service whose ID is the filename stem (e.g.
-// "payment-service.sqlite" → service "payment-service"). A single storeDir
-// may hold a mix of backends — a fleet migrating from DuckDB to SQLite one
-// service at a time (ADR-020) loads correctly throughout the transition.
+// Each recognized store file (*.sqlite, *.db, plus *.duckdb for same-stem
+// collision detection only — see BackendForPath) in the directory is loaded
+// as a service whose ID is the filename stem (e.g. "payment-service.sqlite"
+// → service "payment-service"). A stale *.duckdb left over from before SS-8
+// removed the DuckDB backend is tolerated as long as a *.sqlite sibling
+// exists for the same stem (it loses the collision and is never opened); a
+// *.duckdb with no sibling fails loudly the moment it would be the winner.
 package store
 
 import (
@@ -29,10 +31,13 @@ type PlatformStore struct {
 	services map[string]Store // keyed by service ID
 }
 
-// OpenPlatform scans storeDir for recognized store files (*.duckdb, *.sqlite,
-// *.db) and opens each one as the Store for the service whose ID is the
-// filename stem. It returns an error when storeDir cannot be read or any
-// individual store fails to open.
+// OpenPlatform scans storeDir for recognized store files (*.sqlite, *.db,
+// and *.duckdb — the last recognized only so it can lose a same-stem
+// collision, never opened directly) and opens each one as the Store for the
+// service whose ID is the filename stem. It returns an error when storeDir
+// cannot be read or any individual store fails to open — including a lone
+// *.duckdb file with no *.sqlite sibling, which BackendForPath refuses
+// loudly (SS-8 removed the DuckDB backend outright).
 func OpenPlatform(storeDir string) (*PlatformStore, error) {
 	ps := &PlatformStore{
 		storeDir: storeDir,
@@ -45,12 +50,12 @@ func OpenPlatform(storeDir string) (*PlatformStore, error) {
 }
 
 // load (re)scans storeDir and opens every recognized store file that is not
-// yet open. Same-stem duplicates (svc.duckdb beside svc.sqlite — the exact
-// state migrate-store leaves an operator in mid-migration) resolve by
-// backend preference via ResolveStoreFiles: the .sqlite file wins, with a
-// loud stderr warning naming both files — never a silent first-name-wins
-// that would serve stale pre-migration data. It must be called with mu held
-// for writing, or before the store is published.
+// yet open. Same-stem duplicates (svc.duckdb beside svc.sqlite — the shape a
+// pre-SS-8 `migrate-store` run, now removed, left an operator in
+// mid-migration) resolve by backend preference via ResolveStoreFiles: the
+// .sqlite file wins, with a loud stderr warning naming both files — never a
+// silent first-name-wins that would serve stale pre-migration data. It must
+// be called with mu held for writing, or before the store is published.
 func (ps *PlatformStore) load() error {
 	entries, err := os.ReadDir(ps.storeDir)
 	if err != nil {

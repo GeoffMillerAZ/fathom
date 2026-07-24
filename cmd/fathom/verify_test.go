@@ -43,7 +43,7 @@ func TestCmdVerify_UnreadablePlan(t *testing.T) {
 	code := run([]string{
 		"verify", "--service", "svc",
 		"--plan", "/no/such/plan.md",
-		"--store", filepath.Join(t.TempDir(), "test.duckdb"),
+		"--store", filepath.Join(t.TempDir(), "test.sqlite"),
 	}, &out, &errBuf)
 	if code != 2 {
 		t.Fatalf("want exit 2 for unreadable plan, got %d; stderr=%q", code, errBuf.String())
@@ -55,7 +55,7 @@ func TestCmdVerify_UnreadablePlan(t *testing.T) {
 // TestCmdVerify_Store_Pass: ingest payment-service, verify a symbol that
 // exists (Charge, skip_test) → gate passes, exit 0.
 func TestCmdVerify_Store_Pass(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	// Ingest the faux payment-service fixture.
 	var ing bytes.Buffer
 	code := run([]string{
@@ -83,7 +83,7 @@ func TestCmdVerify_Store_Pass(t *testing.T) {
 
 // TestCmdVerify_Store_GateFail: a claimed task for a missing symbol → exit 1.
 func TestCmdVerify_Store_GateFail(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var ing bytes.Buffer
 	code := run([]string{
 		"ingest", "--service", "payment-service",
@@ -117,7 +117,7 @@ func TestCmdVerify_Store_GateFail(t *testing.T) {
 // TestCmdVerify_Store_OpenTask_NoGate: open [ ] task that fails verification
 // never gates (exit 0 from gate perspective).
 func TestCmdVerify_Store_OpenTask_NoGate(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var ing bytes.Buffer
 	code := run([]string{
 		"ingest", "--service", "payment-service",
@@ -145,7 +145,7 @@ func TestCmdVerify_Store_OpenTask_NoGate(t *testing.T) {
 
 // TestCmdVerify_Store_Strict: --strict gates on Unknown (no-contract) tasks.
 func TestCmdVerify_Store_Strict(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var ing bytes.Buffer
 	code := run([]string{
 		"ingest", "--service", "payment-service",
@@ -184,7 +184,7 @@ func TestCmdVerify_Store_Strict(t *testing.T) {
 
 // TestCmdVerify_Store_JSON: --json emits a parseable JSON report with gate key.
 func TestCmdVerify_Store_JSON(t *testing.T) {
-	store := filepath.Join(t.TempDir(), "test.duckdb")
+	store := filepath.Join(t.TempDir(), "test.sqlite")
 	var ing bytes.Buffer
 	code := run([]string{
 		"ingest", "--service", "payment-service",
@@ -227,7 +227,7 @@ func TestCmdVerify_OperationalError_BadStore(t *testing.T) {
 	code := run([]string{
 		"verify", "--service", "svc",
 		"--plan", pf,
-		"--store", "/no-such-dir/deep/path/verify.duckdb",
+		"--store", "/no-such-dir/deep/path/verify.sqlite",
 	}, &out, &errBuf)
 	if code != 2 {
 		t.Fatalf("want exit 2 for bad store, got %d; stderr=%q stdout=%q",
@@ -323,7 +323,7 @@ func TestCmdVerify_HTTP_ServiceNotIndexed(t *testing.T) {
 
 // TestCmdVerify_Store_EmptyIndex: same principle in store mode.
 func TestCmdVerify_Store_EmptyIndex(t *testing.T) {
-	storePath := filepath.Join(t.TempDir(), "empty.duckdb")
+	storePath := filepath.Join(t.TempDir(), "empty.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -433,7 +433,7 @@ func writeTempPlan(t *testing.T, content string) string {
 
 // ─── package: grammar e2e suite ────────────────────────────────────────────
 
-// seedPackageGrammarStore seeds a DuckDB store with a bare symbol name ("New")
+// seedPackageGrammarStore seeds a SQLite store with a bare symbol name ("New")
 // that is genuinely ambiguous across two packages, plus a test that reaches
 // exactly one of them via its canonical key. This is the shape the `package:`
 // plan annotation exists to disambiguate: without it, the bare name resolves
@@ -441,7 +441,7 @@ func writeTempPlan(t *testing.T, content string) string {
 func seedPackageGrammarStore(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
-	storePath := filepath.Join(dir, "test.duckdb")
+	storePath := filepath.Join(dir, "test.sqlite")
 
 	st, err := store.Open(storePath)
 	if err != nil {

@@ -132,7 +132,7 @@ func (m *MemoryStore) PurgeSource(_ context.Context, serviceID, sourceRef string
 
 // PurgeService removes all content rows (observations, fingerprints, doc
 // summaries, typed edges, typed-edge fingerprints) for serviceID, keeping
-// identity rows. Mirrors DuckStore/SQLiteStore for the ADR-017 self-heal.
+// identity rows. Mirrors SQLiteStore for the ADR-017 self-heal.
 func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

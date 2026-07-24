@@ -113,7 +113,7 @@ func TestPlatformIngestEmptyRoot(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("platform-ingest on empty root exited %d; stderr=%q", code, errBuf.String())
 	}
-	// No DuckDB files should have been created.
+	// No store files should have been created.
 	entries, err := os.ReadDir(storeDir)
 	if err != nil {
 		t.Fatalf("ReadDir: %v", err)

@@ -24,7 +24,7 @@ fathom verify --service $SERVICE --plan $PLAN
 - `--service` required; `--plan` repeatable.
 - HTTP mode by default (`--url`, default `http://localhost:7575` or
   `$FATHOM_HTTP`); pass `--store <path>` for direct mode against a
-  `.sqlite`/`.db`/`.duckdb` file, bypassing the daemon — what CI should do.
+  `.sqlite`/`.db` file, bypassing the daemon — what CI should do.
 - `--strict`: claimed-but-`Unknown` tasks also fail. Always use in CI.
 - `--require-all`: the wave gate — additionally fails on any open/
   in-progress task.

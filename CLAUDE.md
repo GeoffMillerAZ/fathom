@@ -38,7 +38,7 @@ design-doc conversion: `tmp/design_inspiration/files/` + `tmp/TRACKING.md`).
 Everything must stay green:
 
 ```sh
-task validate   # fmt-check + vet + cue-vet + go test -race  (CGO/DuckDB)
+task validate   # fmt-check + vet + cue-vet + go test -race  (CGO/tree-sitter)
 task test-unit  # -short
 task doctor     # toolchain + workspace health
 lefthook install
@@ -46,7 +46,11 @@ lefthook install
 
 - **lefthook**: pre-commit = gofmt + cue-vet on staged files; pre-push = `task validate`.
 - **go-task**: `Taskfile.yml` is the only command runner. Tests run with `CGO_ENABLED=1`
-  (DuckDB) and `MACOSX_DEPLOYMENT_TARGET=14.0`.
+  and `MACOSX_DEPLOYMENT_TARGET=14.0` — required by the tree-sitter extractor bindings
+  (ADR-013), NOT by the store: `internal/store` is pure Go (`modernc.org/sqlite`, ADR-020)
+  since SS-8 deleted the DuckDB backend outright (ADR-025). Tree-sitter's move to
+  wazero/WASM (ADR-004's documented future path) is XT-6b's separate, not-yet-triggered
+  slice — until then CGO stays required for the full binary.
 - **Always verify with the race detector** (`go test -race ./...`) — the gate uses it;
   several test bugs only surface under `-race` (e.g. reading a server's output buffer
   while a `Serve` goroutine writes it — run `Serve` synchronously against finite input).
@@ -64,9 +68,10 @@ internal/query       concern-scoped lookup, evidence-tier ranking (agentic-kit),
 ```
 
 Supporting: `internal/extractor` (Go via `go/parser`; Python/JS/Java/Ruby/HCL/k8s/
-CUE/Markdown/go.mod via deterministic heuristics — tree-sitter/WASM is the
-documented future path, ADR-004), `internal/store` (DuckDB + memory fake, behind a
-`Store` interface), `internal/mcp` (JSON-RPC server, tool groups/profiles),
+CUE/Markdown/go.mod via deterministic heuristics plus tree-sitter CGO bindings for
+extra languages, ADR-013 — wazero/WASM is the documented future path, ADR-004),
+`internal/store` (SQLite + memory fake, behind a `Store` interface; pure Go, ADR-020/
+ADR-025), `internal/mcp` (JSON-RPC server, tool groups/profiles),
 `internal/analysis/*` (callgraph, complexity, apisurface, archconformance),
 `internal/platformlink` + `pkg/platform` (cross-repo graph), `internal/depgraph`,
 `internal/{adr,ownership,sdd}`, `internal/{llm,llmsec,vector}` (agentic-kit enrichment).
@@ -140,11 +145,12 @@ When working in this (or any fleet) repo:
    `POST /rpc/companion` — see docs/mcp-tools.md.)
    After the obligations layer is compiled, every Edit/Write gets governing rules
    injected via the PostToolUse edit-hook (docs/design/coding-agent-excellence.md §5.2).
-2. **Refresh through the server, never the CLI.** The daemon holds the
-   single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock
-   error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at session
-   start and after each commit (hash-gated, ~0.2s when clean). Because the store
-   is shared, your refresh updates the index for *every* session.
+2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows many
+   concurrent readers, but writes still serialize — a shell `fathom ingest`
+   racing the daemon's own writes can hit its busy_timeout and fail with a
+   lock error. Call the `ingest` MCP tool (`{"service":"<this-repo>"}`) at
+   session start and after each commit (hash-gated, ~0.2s when clean). Because
+   the store is shared, your refresh updates the index for *every* session.
 3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report` before
    trusting results, or just read the file you're about to change.
 4. **Scope.** Only fleet repos are indexed. A repo that isn't a fathom service

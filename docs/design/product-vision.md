@@ -5,6 +5,17 @@ Produced by a 3-strategist / 2-judge adversarial panel over the owner's thesis;
 verified facts below were checked against this repo, its telemetry, and external
 category history during that review.*
 
+> **Engine-assumption note (2026-07-23, ADR-025).** SS-8 deleted the DuckDB
+> backend outright once the fleet finished migrating to pure-Go SQLite
+> (ADR-020) — the store engine is SQLite-only now, with no DuckDB compiled in
+> anywhere. This doc's entry-conditioned H3/vector mentions below (`.duckdb`
+> spec, `ATTACH`-based federation, DuckDB VSS) were written when DuckDB was
+> still the store engine and describe mechanisms that assumed it; none of
+> them have fired their entry conditions yet, so nothing here needed to
+> change on short notice, but whichever one fires first needs a technical
+> re-check against the SQLite-only reality before being executed — not a
+> silent port of the DuckDB-specific mechanism.
+
 ## 1. What fathom is, can be, and should be
 
 **Is:** a code-intelligence + governed-evidence engine — deterministic index,

@@ -33,7 +33,7 @@ func fleetRoot(t *testing.T) string {
 // language-agnostic source) and, when empty, reports no callers and exits 0. We
 // point --store at a temp path so the test never touches the real workspace.
 func TestPlatformCallers_StoreDefaultEmpty(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "empty.duckdb")
+	dbPath := filepath.Join(t.TempDir(), "empty.sqlite")
 	var out, errBuf bytes.Buffer
 	code := run([]string{
 		"platform-callers",
@@ -52,7 +52,7 @@ func TestPlatformCallers_StoreDefaultEmpty(t *testing.T) {
 // store with a cross-service Python pair (snake_case, no Go AST), then resolve
 // the caller via --store.
 func TestPlatformCallers_StorePath(t *testing.T) {
-	dbPath := filepath.Join(t.TempDir(), "fleet.duckdb")
+	dbPath := filepath.Join(t.TempDir(), "fleet.sqlite")
 	st, err := store.Open(dbPath)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

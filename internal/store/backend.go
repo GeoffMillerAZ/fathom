@@ -8,17 +8,24 @@ import (
 )
 
 // storeExtensions lists the recognized on-disk store file extensions, in the
-// order BackendForPath checks them. ".duckdb" opens DuckStore; ".sqlite" and
-// ".db" both open SQLiteStore (".db" is accepted so a bare, unadorned store
-// filename still dispatches, matching the historical on-disk test fixtures
-// that predate this backend split).
+// order BackendForPath checks them. ".sqlite" and ".db" both open
+// SQLiteStore (".db" is accepted so a bare, unadorned store filename still
+// dispatches, matching the historical on-disk test fixtures that predate
+// this backend split). ".duckdb" is still RECOGNIZED here — so a leftover
+// pre-SS-8 store file still participates in same-stem collision detection
+// instead of silently vanishing from ResolveStoreFiles — but BackendForPath
+// refuses to ever OPEN one: the DuckDB backend itself was deleted in SS-8
+// (docs/plans/store-sqlite.md; ADR-020/ADR-025), so a lone ".duckdb" file is
+// a loud error, never a silent fallback.
 var storeExtensions = []string{".duckdb", ".sqlite", ".db"}
 
 // storeExtensionRank orders extensions by preference when one service stem
-// has multiple store files — the mid-migration state migrate-store leaves
-// (svc.duckdb beside svc.sqlite). Lower wins. The SQLite backend is
-// preferred because it is the migration TARGET: serving the .duckdb file in
-// that state means serving stale, pre-migration data silently.
+// has multiple store files — the shape a pre-SS-8 `migrate-store` run (now
+// removed) left an operator in mid-migration, or any other stale leftover
+// takes. Lower wins. The SQLite backend is preferred unconditionally: post
+// SS-8 ".duckdb" can never be opened at all, so preferring it over a
+// perfectly good ".sqlite" sibling would turn a harmless leftover file into
+// a hard failure.
 var storeExtensionRank = map[string]int{".sqlite": 0, ".db": 1, ".duckdb": 2}
 
 // ServiceIDFromStoreFilename returns the service ID (filename stem) for a
@@ -27,7 +34,7 @@ var storeExtensionRank = map[string]int{".sqlite": 0, ".db": 1, ".duckdb": 2}
 // ToLower on the extension); the stem keeps its original case. Used by
 // PlatformStore.load, gen-platform-manifest, and platform-ingest so all
 // three treat ".duckdb"/".sqlite"/".db" identically instead of each
-// hardcoding its own ".duckdb"-only suffix check (ADR-020).
+// hardcoding its own suffix check (ADR-020).
 func ServiceIDFromStoreFilename(name string) (string, bool) {
 	lower := strings.ToLower(name)
 	for _, ext := range storeExtensions {
@@ -98,26 +105,39 @@ func extensionRank(name string) int {
 	return len(storeExtensionRank)
 }
 
+// errDuckDBRemoved is returned (wrapped with the offending path) whenever a
+// caller tries to actually OPEN a ".duckdb" store. The DuckDB backend — and
+// CGO along with it — was deleted outright in SS-8 once the fleet finished
+// migrating to SQLite (docs/plans/store-sqlite.md; ADR-020/ADR-025). This is
+// deliberately loud: a silent fallback here would mean silently serving (or
+// silently failing to serve) whatever stale pre-migration data the file
+// still holds.
+func errDuckDBRemoved(path string) error {
+	return fmt.Errorf("store: %q is a DuckDB store; DuckDB stores are no longer supported (removed in SS-8) — re-open it with a pre-SS-8 build of fathom to read it, or migrate-store it to .sqlite with that build first", path)
+}
+
 // BackendForPath opens the Store backend appropriate for path's extension:
-// ".duckdb" opens a DuckStore, ".sqlite" or ".db" opens a SQLiteStore. An
-// empty path opens an in-memory DuckStore — the longstanding behavior for
-// ModeFaux/session-mode callers that pass "" for an ephemeral store, kept
-// unchanged rather than silently reinterpreted under the SQLite-default flip
-// (ADR-020's "defaults flip" governs on-disk CLI/init defaults, not the
-// existing in-memory convention). An unrecognized extension is a typed
-// error naming both options, never a silent fallback.
+// ".sqlite" or ".db" opens a SQLiteStore; ".duckdb" is recognized (so
+// same-stem collision detection still sees it) but always refused with
+// errDuckDBRemoved rather than opened. An empty path opens an in-memory
+// SQLiteStore — pre-SS-8 this was an in-memory DuckDB database; the
+// ModeFaux/session-mode callers that pass "" for an ephemeral store see no
+// behavioral difference (both are process-local and discarded on Close), so
+// this is not treated as a breaking change to the "" convention itself. An
+// unrecognized extension is a typed error naming the supported option, never
+// a silent fallback.
 func BackendForPath(path string) (Store, error) {
 	if path == "" {
-		return OpenDuckDB("")
+		return NewSQLiteStore("")
 	}
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
 	case ".duckdb":
-		return OpenDuckDB(path)
+		return nil, errDuckDBRemoved(path)
 	case ".sqlite", ".db":
 		return NewSQLiteStore(path)
 	default:
-		return nil, fmt.Errorf("store: unrecognized store extension %q for %q (expected .duckdb or .sqlite/.db)", ext, path)
+		return nil, fmt.Errorf("store: unrecognized store extension %q for %q (expected .sqlite or .db)", ext, path)
 	}
 }
 
