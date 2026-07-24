@@ -132,6 +132,26 @@ func (r *edgeResolver) uniqueSuffix(suffix string) (core.SymbolNode, bool) {
 	return match, found
 }
 
+// KeyIndex maps each node's NORMALIZED symbol key — the same
+// declaring-package "declPkg.BareName" form EdgesFromNodes renders edge
+// endpoints (and therefore Violation.From/.To) in — back to the node itself,
+// so a Violation consumer can recover the violating symbol's real file and
+// line (review_diff cites them; a bare-path citation must never be persisted
+// on a claim — docs/plans/review-verb.md C2-1). When two nodes normalize to
+// the same key (rare: same package + same bare name), the first in nodes
+// order wins deterministically.
+func KeyIndex(nodes []core.SymbolNode) map[string]core.SymbolNode {
+	typePkg := typePackages(nodes)
+	m := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		key := symbolKey(n, typePkg)
+		if _, ok := m[key]; !ok {
+			m[key] = n
+		}
+	}
+	return m
+}
+
 // EdgesFromNodes builds a service's checked call-edge set from nodes' raw
 // Calls lists, with BOTH endpoints normalized to declaring-package symbol
 // keys (P1-4). Before this normalization, a method-origin edge's FromSymbol

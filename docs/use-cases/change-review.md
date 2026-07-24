@@ -95,9 +95,9 @@ Returns one cited verdict:
       "findings": [
         {
           "kind": "arch_violation", "symbol": "api.Handler",
-          "file": "internal/api/handler.go",
+          "file": "internal/api/handler.go", "line": 42,
           "message": "api.Handler → store.Query: package \"api\" must not import \"store\" (deny rule)",
-          "citation": "internal/api/handler.go",
+          "citation": "internal/api/handler.go#L42-L42",
           "severity": "error",
           "claim_id": "3f9a…"
         }
@@ -110,7 +110,9 @@ Returns one cited verdict:
 }
 ```
 
-`arch_conformance` caught the layering violation — cited with its reason and rule-pack-derived source — and the two `impact` findings name exactly which caller and test are affected. Every finding was also persisted as a content-addressed claim (`findings_persisted:true`): if the PR author disputes the violation, `fathom claim refute --claim 3f9a… --note "..."` (or the `obligations` tool's `action:"refute"`) suppresses it durably — a second `review_diff` call after the fix would carry `status:"refuted"` on that finding instead of re-flagging it.
+`arch_conformance` caught the layering violation — cited with its reason and rule-pack-derived source — and the two `impact` findings name exactly which caller and test are affected.
+
+**`review_diff` writes to the claims store — deliberately, and only the oracle dimensions.** `findings_persisted:true` reports that the `arch_conformance` and `spec_coverage` findings (the deterministic-oracle dimensions — never `obligations`, which re-serves already-compiled claims, and never `impact` context noise) were persisted as content-addressed claims on the `findings` layer, each anchored with a hashed line citation and a scope fingerprint so the daemon's post-refresh citation sweep and remediation-drift pass verify them instead of falsifying them. The write is idempotent (an identical re-run upserts identical rows) and self-reconciling: a review-minted claim whose finding a later run over the same files no longer emits is flipped to `superseded` — absent = fixed. If the PR author disputes the violation, `fathom claim refute --claim 3f9a… --note "..."` (or the `obligations` tool's `action:"refute"`) suppresses it durably — a later `review_diff` call re-emitting the identical finding carries `status:"refuted"` (excluded from `count`, still listed) instead of re-flagging it.
 
 Alternatively, invoke the `review_change` prompt to get the same call pre-structured:
 
@@ -132,13 +134,13 @@ Alternatively, invoke the `review_change` prompt to get the same call pre-struct
 
 The returned prompt instructs the agent to call `review_diff` with those arguments and how to read the resulting verdict.
 
-**CLI equivalent** (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1):
+**CLI equivalent:**
 
 ```sh
 fathom review --store workspace/db/fleet.sqlite --service payment-service --since origin/main
 ```
 
-Resolves changed files via `git diff --name-only origin/main`, runs the identical engine, and prints a short human-readable summary (`--json` for the same payload shape as above).
+Resolves changed files via `git diff --name-only origin/main`, runs the identical engine, and prints a short human-readable summary (`--json` for the same payload shape as above). Like the MCP tool, a plain `fathom review` run **persists** its oracle-dimension findings to the claims store; pass `--no-persist` for a pure report with no store write of any kind — that is what the non-blocking pre-push summary (`docs/plans/review-verb.md` C3-1) uses, because a hook must never be an undisclosed writer to the shared store.
 
 ---
 
@@ -292,7 +294,7 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 Impact analysis answers *what is affected*; the `fathom verify` gate answers *what is proven done*. Before pushing, `lefthook` runs `fathom verify` over any plan files in `docs/plans/*.md`, checking each `[x]`-claimed task against the index. A claimed task that lacks code evidence blocks the push (exit 1); an operational error (daemon down) warns and allows (exit 2, fail-open). In CI, `scripts/ci.sh` adds `--strict` to treat exit 2 as a failure. Run `fathom verify` manually with `--plan <file> --service <id>` or pass `--store` to bypass the daemon. See [spec-verification.md](spec-verification.md) for the full gate reference.
 
-The same pre-push hook also runs `fathom review --service fathom --since origin/main` (C3-1, `docs/plans/review-verb.md`) — unlike `verify`, this step is **advisory, never blocking**: it always exits 0 and prints the verdict summary so review findings are visible on every push, even when nothing forces you to read them. An operational error there degrades to a single line (fail-open, same doctrine as `verify`'s exit 2), never a raw error dump.
+The same pre-push hook also runs `fathom review --service fathom --since origin/main --no-persist` (C3-1, `docs/plans/review-verb.md`) — unlike `verify`, this step is **advisory, never blocking**: it always exits 0 and prints the verdict summary so review findings are visible on every push, even when nothing forces you to read them. It is truthfully a *summary*: `--no-persist` means the hook never writes to the shared claims store (persisting findings is a deliberate CLI/MCP act, not a hook side effect). An operational error there degrades to a single line (fail-open, same doctrine as `verify`'s exit 2), never a raw error dump. Latency: measured ~12s on a pathological 1777-file diff; a normal `--since` diff is far smaller.
 
 ---
 

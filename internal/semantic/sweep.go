@@ -276,9 +276,14 @@ func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map
 		// scopes matching no indexed file are rejected at compile time, and
 		// a fingerprint read failure aborts the whole compile loudly
 		// (errDriftAnchor, compile.go) instead of silently omitting links.
-		// Zero links therefore only occurs for claims that never went
-		// through this compiler (e.g. hand-seeded test data), never as a
-		// degraded state of a real compile.
+		// The review-verb findings bridge (internal/analysis/review
+		// .AttachClaims, C2-1) is the SECOND legitimate writer of
+		// drift-tracked-layer claims and holds the same invariant its own
+		// way: a finding whose scoped file has no stored fingerprint is not
+		// persisted at all, so every bridge-written claim also carries
+		// exactly one scope-fp link. Zero links therefore only occurs for
+		// claims that went through neither writer (e.g. hand-seeded test
+		// data), never as a degraded state of a real compile or review.
 		for _, l := range scopeFPByClaim[id] {
 			cur, ok := cache[l.TargetRef]
 			if !ok {

@@ -17,20 +17,24 @@ import (
 
 // reviewClaimsBackend is the optional backend capability review_diff's
 // findings bridge (C2-1, FT-7's pre-armed trigger) uses to persist review
-// findings as content-addressed claims and read back a prior verdict's
-// status. pkg/client.Client implements it via PutClaims/ClaimsForService
-// (thin store passthroughs). Test fakes may omit it: review_diff still
-// returns a full verdict, with findings_persisted:false and no claim IDs
-// attached — the composed analysis never depends on this capability.
+// findings as content-addressed claims, read back prior verdict status,
+// reconcile fixed findings (SetClaimStatus → superseded), and anchor each
+// claim's scope-fp drift link (SourceFingerprint). pkg/client.Client
+// implements all four as thin store passthroughs. Test fakes may omit it:
+// review_diff still returns a full verdict, with findings_persisted:false
+// and no claim IDs attached — the composed analysis never depends on this
+// capability.
 type reviewClaimsBackend interface {
 	PutClaims(ctx context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error
 	ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error)
+	SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error
+	SourceFingerprint(ctx context.Context, serviceID, path string) (hash string, found bool, err error)
 }
 
 func registerReviewDiff(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "review_diff",
-		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage into ONE cited verdict for a set of changed files. Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured). When the backend supports claim persistence, findings are written as content-addressed claims on the \"findings\" layer: a finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, but still listed) across every later re-review that re-emits the identical finding.",
+		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage into ONE cited verdict for a set of changed files. Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured). WRITES TO THE CLAIMS STORE when the backend supports persistence (findings_persisted reports it): arch_conformance and spec_coverage findings — the deterministic-oracle dimensions only, never obligations (which re-serves existing claims) or impact context — are persisted as content-addressed claims on the \"findings\" layer with hashed citation + scope-fingerprint anchors, and review-minted claims whose finding this run no longer emits are superseded (absent = fixed). A finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, still listed) across every later re-review that re-emits the identical finding. For a report-only run without the store write, use the CLI mirror: fathom review --since <ref> --no-persist.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -60,12 +64,12 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "review_diff: changed_files required"}
 		}
 
-		in, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern)
+		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
 		v := review.Run(in)
-		persisted := applyAndPersistFindings(ctx, backend, &v)
+		persisted := applyAndPersistFindings(ctx, backend, &v, sources)
 
 		return v.Payload(persisted), nil
 	})
@@ -77,11 +81,13 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 // for arch_conformance (review_diff never accepts inline arch rules — it
 // always resolves through the service's own project rule pack, or reports
 // checked:false), and the changed files' own source content for
-// spec_coverage.
-func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern string) (review.Input, *rpcError) {
+// spec_coverage. The full source list is also returned: the persist step
+// needs it to hash cited lines (semantic.Sweep's contract), including arch
+// citations on files OUTSIDE the changed set.
+func buildReviewInput(ctx context.Context, backend QueryInterface, service string, changedFiles []string, concern string) (review.Input, []core.SourceFile, *rpcError) {
 	nodes, err := backend.ListAllSymbols(ctx, service)
 	if err != nil {
-		return review.Input{}, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 	}
 	typed, _ := backend.TypedEdges(ctx, service)
 
@@ -115,7 +121,7 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	}
 	rules, source, deny, checked, reason, resolveErr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if resolveErr != nil {
-		return review.Input{}, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}
+		return review.Input{}, nil, &rpcError{Code: ErrCodeInternal, Message: "review_diff: project rules: " + resolveErr.Error()}
 	}
 	in.ArchRules = rules
 	in.ArchRuleSource = source
@@ -123,31 +129,33 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	in.ArchChecked = checked
 	in.ArchReason = reason
 
-	if files, serr := backend.Sources(ctx, service); serr == nil {
+	sources, serr := backend.Sources(ctx, service)
+	if serr == nil {
 		changedSet := make(map[string]bool, len(changedFiles))
 		for _, f := range changedFiles {
 			changedSet[f] = true
 		}
-		for _, f := range files {
+		for _, f := range sources {
 			if changedSet[f.Path] {
 				in.ChangedSources = append(in.ChangedSources, f)
 			}
 		}
 	}
 
-	return in, nil
+	return in, sources, nil
 }
 
 // applyAndPersistFindings runs the C2-1 findings bridge when the backend
-// supports it: read the service's existing findings-layer claims, attach
-// content-addressed claim IDs to v's findings, label any that are already
-// refuted (excluding them from their dimension's active Count without
-// dropping them from Findings), then persist this run's claims — relying
-// on the store's own refutation-durability upsert, never re-deriving that
-// logic here. Returns whether persistence happened; false (with v's
-// findings left ClaimID-less) when the backend does not implement
-// reviewClaimsBackend at all.
-func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict) bool {
+// supports it, via review.BuildPersist (the one composition shared with the
+// CLI): read the service's existing findings-layer claims, attach
+// content-addressed claim IDs (hashed cites + scope-fp anchors, so the
+// daemon's post-refresh sweep and drift passes verify rather than falsify
+// them), label already-refuted findings, persist this run's claims (the
+// store's refutation-durability upsert, never re-derived here), and
+// supersede review-minted claims this run no longer emits (absent = fixed).
+// Returns whether persistence fully happened; false when the backend does
+// not implement reviewClaimsBackend, or any write failed.
+func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, sources []core.SourceFile) bool {
 	rcb, ok := backend.(reviewClaimsBackend)
 	if !ok {
 		return false
@@ -158,11 +166,33 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
 		watermark = indexedCommit
 	}
-	claims, links := review.AttachClaims(v, time.Now, watermark)
-	review.ApplyClaimStatus(v, existing)
-
-	if len(claims) == 0 {
-		return true // nothing to persist is not a failure
+	content := make(map[string][]byte, len(sources))
+	for _, f := range sources {
+		content[f.Path] = f.Content
 	}
-	return rcb.PutClaims(ctx, claims, links) == nil
+	claims, links, supersede := review.BuildPersist(v, existing, review.PersistInput{
+		Now:       time.Now,
+		Watermark: watermark,
+		FileContent: func(path string) ([]byte, bool) {
+			data, ok := content[path]
+			return data, ok
+		},
+		ScopeFingerprint: func(path string) (string, bool) {
+			hash, found, ferr := rcb.SourceFingerprint(ctx, v.Service, path)
+			return hash, ferr == nil && found
+		},
+	})
+
+	okAll := true
+	if len(claims) > 0 {
+		if err := rcb.PutClaims(ctx, claims, links); err != nil {
+			okAll = false
+		}
+	}
+	for _, id := range supersede {
+		if err := rcb.SetClaimStatus(ctx, v.Service, id, core.ClaimSuperseded); err != nil {
+			okAll = false
+		}
+	}
+	return okAll
 }

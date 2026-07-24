@@ -17,14 +17,15 @@ import (
 // a minimal in-memory claims store that mirrors the real store's
 // refutation-durability upsert (internal/store's PutClaims "status = CASE
 // WHEN ... = 'refuted' THEN ... ELSE excluded.status END") — enough to
-// prove review_diff's WIRING (attach → read-back → label) without a real
-// store.Store; the SQL-level durability guarantee itself is covered by the
-// store's own contract tests (FT-4).
+// prove review_diff's WIRING (attach → read-back → label → reconcile)
+// without a real store.Store; the SQL-level durability guarantee itself is
+// covered by the store's own contract tests (FT-4).
 
 type reviewFakeBackend struct {
 	extendedFakeBackend
 	obligations map[string]semantic.Obligations // keyed by file
 	claims      map[string]core.SemanticClaim   // keyed by claim ID
+	links       map[string][]core.ClaimLink     // keyed by claim ID
 	putErr      error
 }
 
@@ -34,18 +35,30 @@ func (r *reviewFakeBackend) Obligations(_ context.Context, _, file string, _ int
 
 func (r *reviewFakeBackend) ObligationsIndexStale(_ context.Context, _, _ string) bool { return false }
 
-func (r *reviewFakeBackend) PutClaims(_ context.Context, claims []core.SemanticClaim, _ []core.ClaimLink) error {
+func (r *reviewFakeBackend) PutClaims(_ context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
 	if r.putErr != nil {
 		return r.putErr
 	}
 	if r.claims == nil {
 		r.claims = map[string]core.SemanticClaim{}
 	}
+	if r.links == nil {
+		r.links = map[string][]core.ClaimLink{}
+	}
 	for _, c := range claims {
 		if existing, ok := r.claims[c.ClaimID]; ok && existing.Status == core.ClaimRefuted {
 			c.Status = core.ClaimRefuted // mirror the store's refutation-durability upsert
 		}
 		r.claims[c.ClaimID] = c
+	}
+	// Mirror the store's delete-then-insert link replacement per claim ID.
+	replaced := map[string]bool{}
+	for _, l := range links {
+		if !replaced[l.ClaimID] {
+			r.links[l.ClaimID] = nil
+			replaced[l.ClaimID] = true
+		}
+		r.links[l.ClaimID] = append(r.links[l.ClaimID], l)
 	}
 	return nil
 }
@@ -58,6 +71,18 @@ func (r *reviewFakeBackend) ClaimsForService(_ context.Context, _, layer string)
 		}
 	}
 	return out, nil
+}
+
+func (r *reviewFakeBackend) SetClaimStatus(_ context.Context, _, claimID string, status core.ClaimStatus) error {
+	if c, ok := r.claims[claimID]; ok {
+		c.Status = status
+		r.claims[claimID] = c
+	}
+	return nil
+}
+
+func (r *reviewFakeBackend) SourceFingerprint(_ context.Context, _, path string) (string, bool, error) {
+	return "fp-" + path, true, nil
 }
 
 var _ mcp.QueryInterface = (*reviewFakeBackend)(nil)
@@ -307,5 +332,75 @@ rules: [
 	}
 	if d2["count"].(float64) != 0 {
 		t.Errorf("count = %v, want 0 (the only finding is refuted)", d2["count"])
+	}
+}
+
+// TestReviewDiff_ReconcileSupersedesFixedFinding proves the MCP wiring of
+// the fixed-findings reconcile: a review-minted claim whose finding a later
+// run (same changed files, violation now fixed) no longer emits is flipped
+// to superseded — absent = fixed, never rot.
+func TestReviewDiff_ReconcileSupersedesFixedFinding(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleFile := `
+rules: [
+	{from_pkg: "api", to_pkg: "store", allow: false},
+]
+`
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+	violating := []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7, Calls: []string{"svc::store.Query"}},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: violating, services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	call := func(id int) map[string]any {
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: id, Method: "tools/call",
+			Params: map[string]any{
+				"name":      "review_diff",
+				"arguments": map[string]any{"service": "svc", "changed_files": []string{"api/handler.go"}},
+			},
+		})
+		return extToolPayload(t, resp)
+	}
+
+	// Run 1: violation emitted + persisted fresh.
+	call(20)
+	if len(fake.claims) != 1 {
+		t.Fatalf("expected 1 persisted claim after run 1, got %d", len(fake.claims))
+	}
+	var claimID string
+	for id := range fake.claims {
+		claimID = id
+	}
+	if fake.claims[claimID].Status != core.ClaimFresh {
+		t.Fatalf("claim status after run 1 = %q, want fresh", fake.claims[claimID].Status)
+	}
+
+	// Fix the violation: the call edge is removed.
+	fake.nodes = []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+
+	// Run 2: same changed files, arch checked and clean → the prior claim
+	// is superseded, not left served.
+	p2 := call(21)
+	if fake.claims[claimID].Status != core.ClaimSuperseded {
+		t.Errorf("claim status after fixed re-review = %q, want superseded", fake.claims[claimID].Status)
+	}
+	for _, raw := range p2["dimensions"].([]any) {
+		d := raw.(map[string]any)
+		if d["name"] == "arch_conformance" && d["count"].(float64) != 0 {
+			t.Errorf("arch count after fix = %v, want 0", d["count"])
+		}
 	}
 }

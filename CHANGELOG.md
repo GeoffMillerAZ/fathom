@@ -44,13 +44,58 @@ All notable changes to fathom. Format loosely follows
   `TestReviewDiff_FindingsBridge_RefutationSticksAcrossReReview` (MCP
   wiring, fake claims backend), `TestReview_FindingsBridge_
   RefutationDurability` (CLI, end-to-end through a real store).
+- **C2-1 write-path soundness (critic round — five proven defects fixed
+  before any release carried the bridge):**
+  1. *Sweep contract:* persisted cites links now carry the REAL cited-line
+     hash resolved at emit time, and a bare-path/unhashable citation gets
+     no cites link at all — previously hashless bare-path links made the
+     daemon's post-refresh `SweepClaims` flip EVERY review claim to
+     stale/contradicted with fabricated "anchor no longer resolves" events
+     (measured: 57 claims flipped, 26→77 lying events over two sweeps).
+     Arch findings now cite the violating symbol's real `file#Lline` (new
+     `archconformance.KeyIndex`); spec findings resolve their ref's line.
+     `TestReview_SweepZeroFlips` pins zero flips/zero events.
+  2. *Idempotency + serving purity:* only the deterministic-oracle
+     dimensions persist (`arch_conformance`, `spec_coverage`) — never
+     `obligations` (re-minting re-served claims as wrappers grew the store
+     57→82 on an IDENTICAL re-run and displaced real obligations from
+     `ObligationsFor`'s budget via exact-path scope ranking) and never
+     `impact` info-noise. `TestReview_Idempotent_DoubleRun`,
+     `TestReview_ObligationsForUnpolluted`.
+  3. *Deliberate persistence:* `fathom review --no-persist` added; the
+     pre-push hook uses it (a hook is never an undisclosed writer to the
+     shared store); persist behavior disclosed in the tool description,
+     change-review.md, and the plan. `TestReview_NoPersist_WritesNothing`.
+  4. *Reconcile (no claim rot):* a persisting run over changed-file set F
+     supersedes review-minted claims on files in F its CHECKED dimensions
+     no longer emit — absent = fixed; unchecked dimensions never supersede.
+     Every persisted claim also carries a scope-fp drift anchor (store
+     fingerprint, FT-6) so `DriftedFindings` works for review claims; a
+     finding whose file has no fingerprint is not persisted (upholding the
+     zero-links invariant, whose sweep.go comment now names this bridge as
+     the second legitimate writer). `review.BuildPersist` is the one
+     shared MCP/CLI write composition.
+     `TestReview_Reconcile_FixedFindingSuperseded`,
+     `TestStaleReviewClaims_*`, `TestAttachClaims_LinkSoundness`,
+     `TestAttachClaims_NoFingerprintMeansNoPersist`.
+  5. *Tier admission:* the findings layer.cue (both copies) now records
+     the verified-tier oracle admission (ADR-018 oracle classes / ADR-016
+     M1 — deterministic, Model-empty findings) beside its sme-stated
+     corpus tier; ADR.md's "no layer emits verified yet" updated;
+     `TestClaimsVocabularyMatchesSemanticLayer` pins tier and admission
+     text, not just kind.
+  Plus: the obligations dimension now carries a served claim's
+  stale/contradicted status label through to the verdict
+  (served-with-label, `TestRun_Obligations_ServedStatusLabelCarriedThrough`)
+  instead of mapping it away to severity only.
 - **C3-1 — the forced channel:** `lefthook.yml`'s pre-push gains a
-  non-blocking `fathom review --service fathom --since origin/main`
-  summary step — always exits 0 regardless of `bin/fathom review`'s own
-  result, degrading operational errors to one line (fail-open, same
-  doctrine as the `verify` step's exit 2). The `review_change` MCP prompt
-  now calls `review_diff` instead of narrating an 8-step manual tool
-  sequence; that sequence is preserved as `docs/use-cases/
+  non-blocking `fathom review --service fathom --since origin/main
+  --no-persist` summary step — always exits 0 regardless of `bin/fathom
+  review`'s own result, degrading operational errors to one line
+  (fail-open, same doctrine as the `verify` step's exit 2); measured ~12s
+  worst-case on a pathological 1777-file diff. The `review_change` MCP
+  prompt now calls `review_diff` instead of narrating an 8-step manual
+  tool sequence; that sequence is preserved as `docs/use-cases/
   change-review.md`'s appendix for tool-by-tool users, whose worked example
   now leads with the one-call form.
 

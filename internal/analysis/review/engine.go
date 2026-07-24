@@ -274,6 +274,10 @@ func runObligations(in Input) Dimension {
 				Message:  r.Rule,
 				Citation: r.Src,
 				Severity: sev,
+				// Served-with-label discipline (internal/semantic/serve.go):
+				// a stale/contradicted served claim carries its status label
+				// through to the verdict, never mapped away to severity only.
+				Status: r.Status,
 			})
 		}
 	}
@@ -311,6 +315,12 @@ func runArch(in Input) Dimension {
 			fileByFrom[e.FromSymbol] = e.FromFile
 		}
 	}
+	// Normalized-key → node index: recovers the violating symbol's real
+	// file AND line so the finding's citation is a parseable, hashable
+	// "path#Lstart-Lend" — a bare-path citation must never reach a persisted
+	// claim (it would read as anchor-dead to semantic.Sweep's ParseCiteRef
+	// and flip the claim contradicted on the very next sweep).
+	keyIdx := archconformance.KeyIndex(in.Nodes)
 
 	var opts []archconformance.Option
 	if in.ArchDenyByDefault {
@@ -319,12 +329,18 @@ func runArch(in Input) Dimension {
 	violations := archconformance.Check(edges, in.ArchRules, opts...)
 	for _, v := range violations {
 		f := fileByFrom[v.From]
+		line := 0
+		if n, ok := keyIdx[v.From]; ok {
+			f = n.FilePath
+			line = n.Line
+		}
 		d.Findings = append(d.Findings, Finding{
 			Kind:     "arch_violation",
 			Symbol:   v.From,
 			File:     f,
+			Line:     line,
 			Message:  fmt.Sprintf("%s → %s: %s", v.From, v.To, v.Reason),
-			Citation: citeOf(f, 0),
+			Citation: citeOf(f, line),
 			Severity: "error",
 		})
 	}
@@ -368,7 +384,16 @@ func runSpecCoverage(in Input) Dimension {
 		if !changedSet[sf.Path] {
 			continue
 		}
-		addRefs(sdd.ExtractRefs(string(sf.Content)), sf.Path, 0)
+		content := string(sf.Content)
+		for _, id := range sdd.ExtractRefs(content) {
+			// Resolve the ref back to its first occurrence line so the
+			// finding's citation is parseable/hashable (line 0 would mean a
+			// bare-path citation, which AttachClaims refuses to persist a
+			// cites link for). A normalized ref whose raw text can't be found
+			// (e.g. "doc N" forms) stays line 0 — honest, and safe: no cites
+			// link is written for it.
+			addRefs([]string{id}, sf.Path, lineOfRef(content, id))
+		}
 	}
 	for _, n := range in.Nodes {
 		if !changedSet[n.FilePath] {
@@ -423,7 +448,9 @@ func toSet(ss []string) map[string]bool {
 
 // citeOf renders an evidence citation for (file, line): core.CiteRef's
 // "path#Lstart-Lend" form when line is known (>=1), a bare path when it
-// isn't, "" when even the file is unknown.
+// isn't, "" when even the file is unknown. A bare-path citation is a
+// VERDICT-only convenience — AttachClaims never persists a cites link for
+// one (claims.go).
 func citeOf(file string, line int) string {
 	if file == "" {
 		return ""
@@ -432,4 +459,16 @@ func citeOf(file string, line int) string {
 		return file
 	}
 	return core.CiteRef(file, line, line)
+}
+
+// lineOfRef returns the 1-based line of the first occurrence of ref in
+// content (line endings normalized), or 0 when ref's exact text does not
+// appear (e.g. a ref the extractor normalized away from its raw form).
+func lineOfRef(content, ref string) int {
+	for i, line := range strings.Split(strings.ReplaceAll(content, "\r\n", "\n"), "\n") {
+		if strings.Contains(line, ref) {
+			return i + 1
+		}
+	}
+	return 0
 }

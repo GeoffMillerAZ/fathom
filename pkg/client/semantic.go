@@ -308,3 +308,19 @@ func (c *Client) PutClaims(ctx context.Context, claims []core.SemanticClaim, lin
 func (c *Client) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
 	return c.st.ClaimsForService(ctx, serviceID, layer)
 }
+
+// SetClaimStatus is a thin passthrough to the store's status flip — the
+// review reconcile (review.StaleReviewClaims) uses it to supersede
+// review-minted claims whose findings a later run no longer emits.
+func (c *Client) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
+	return c.st.SetClaimStatus(ctx, serviceID, claimID, status)
+}
+
+// SourceFingerprint returns the store's current content fingerprint for
+// (service, repo-relative path) — the fusion hash-gate table
+// semantic.DriftedFindings reads. The review findings bridge records it as
+// each persisted claim's scope-fp drift anchor (FT-6), mirroring the
+// compiler's own verifyDraft.
+func (c *Client) SourceFingerprint(ctx context.Context, serviceID, path string) (hash string, found bool, err error) {
+	return c.st.Fingerprint(ctx, serviceID, path)
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -18,7 +19,7 @@ import (
 // cmdReview implements the "review" subcommand — the CLI mirror of the
 // review_diff MCP tool (C1-1, docs/plans/review-verb.md):
 //
-//	fathom review --store DB --service S --since origin/main
+//	fathom review --store DB --service S --since origin/main [--no-persist]
 //
 // Store-direct only, mirroring cmdReport's structure (cmd/fathom/report.go):
 // opens --store directly rather than talking to the shared daemon, so it
@@ -27,7 +28,14 @@ import (
 // <ref>` (gitRunner injected for testability, mirroring
 // cmd/fathom/ingestdiff.go's runIngestDiff), then runs the SAME
 // internal/analysis/review engine the MCP tool uses — same dimensions, same
-// honesty rules, same C2-1 findings-bridge persistence.
+// honesty rules, same C2-1 findings-bridge write path (review.BuildPersist).
+//
+// Persistence is DELIBERATE and disclosed: by default a run writes its
+// arch_conformance/spec_coverage findings to the claims store (and
+// supersedes review-minted claims it no longer emits). --no-persist makes
+// the run a pure report — no store write of any kind — which is what the
+// non-blocking pre-push summary uses: a hook must never be an undisclosed
+// writer to the shared store.
 func cmdReview(args []string, stdout, stderr io.Writer) int {
 	return runReview(args, defaultGitRunner, stdout, stderr)
 }
@@ -38,6 +46,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	service := fs.String("service", "", "service ID (required)")
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
+	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -76,29 +85,53 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 
 	ctx := context.Background()
 
-	in, err := buildReviewInputFromClient(ctx, c, *service, changedFiles)
+	in, sources, err := buildReviewInputFromClient(ctx, c, *service, changedFiles)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	v := review.Run(in)
 
-	// C2-1 findings bridge: read existing findings-layer claims, attach
-	// this run's content-addressed claim IDs, label any already-refuted
-	// findings, then persist — relying on the store's own
-	// refutation-durability upsert (never re-derived here).
+	// C2-1 findings bridge, via review.BuildPersist — the one composition
+	// shared with the review_diff MCP tool: mint content-addressed claim
+	// IDs (hashed cites + scope-fp anchors), label already-refuted
+	// findings, and compute the fixed-findings reconcile. With --no-persist
+	// the same computation runs for the labels but nothing is written.
 	existing, _ := c.ClaimsForService(ctx, *service, review.ClaimsLayer)
 	watermark := ""
 	if _, indexedCommit, found, merr := c.ServiceMeta(ctx, *service); merr == nil && found {
 		watermark = indexedCommit
 	}
-	claims, links := review.AttachClaims(&v, time.Now, watermark)
-	review.ApplyClaimStatus(&v, existing)
-	persisted := true
-	if len(claims) > 0 {
-		if perr := c.PutClaims(ctx, claims, links); perr != nil {
-			persisted = false
-			fmt.Fprintf(stderr, "warning: persisting review findings failed: %v\n", perr)
+	content := make(map[string][]byte, len(sources))
+	for _, f := range sources {
+		content[f.Path] = f.Content
+	}
+	claims, links, supersede := review.BuildPersist(&v, existing, review.PersistInput{
+		Now:       time.Now,
+		Watermark: watermark,
+		FileContent: func(path string) ([]byte, bool) {
+			data, ok := content[path]
+			return data, ok
+		},
+		ScopeFingerprint: func(path string) (string, bool) {
+			hash, found, ferr := c.SourceFingerprint(ctx, *service, path)
+			return hash, ferr == nil && found
+		},
+	})
+	persisted := false
+	if !*noPersist {
+		persisted = true
+		if len(claims) > 0 {
+			if perr := c.PutClaims(ctx, claims, links); perr != nil {
+				persisted = false
+				fmt.Fprintf(stderr, "warning: persisting review findings failed: %v\n", perr)
+			}
+		}
+		for _, id := range supersede {
+			if serr := c.SetClaimStatus(ctx, *service, id, core.ClaimSuperseded); serr != nil {
+				persisted = false
+				fmt.Fprintf(stderr, "warning: superseding fixed finding %s failed: %v\n", id, serr)
+			}
 		}
 	}
 
@@ -119,11 +152,13 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 // buildReviewInputFromClient does every I/O review.Run itself never
 // performs, using pkg/client.Client — mirrors internal/mcp/review_tool.go's
 // buildReviewInput exactly, over the CLI's direct-store client instead of
-// the MCP QueryInterface abstraction.
-func buildReviewInputFromClient(ctx context.Context, c *client.Client, service string, changedFiles []string) (review.Input, error) {
+// the MCP QueryInterface abstraction. The full source list is also
+// returned: the persist step needs it to hash cited lines (semantic.Sweep's
+// contract), including arch citations on files OUTSIDE the changed set.
+func buildReviewInputFromClient(ctx context.Context, c *client.Client, service string, changedFiles []string) (review.Input, []core.SourceFile, error) {
 	nodes, err := c.ListAllSymbols(ctx, service)
 	if err != nil {
-		return review.Input{}, fmt.Errorf("list symbols: %w", err)
+		return review.Input{}, nil, fmt.Errorf("list symbols: %w", err)
 	}
 	typed, _ := c.TypedEdges(ctx, service)
 
@@ -153,7 +188,7 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, service s
 	}
 	rules, source, deny, checked, reason, rerr := projectrules.ResolveRules(corpusRoot, nil, false)
 	if rerr != nil {
-		return review.Input{}, fmt.Errorf("project rules: %w", rerr)
+		return review.Input{}, nil, fmt.Errorf("project rules: %w", rerr)
 	}
 	in.ArchRules = rules
 	in.ArchRuleSource = source
@@ -161,19 +196,20 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, service s
 	in.ArchChecked = checked
 	in.ArchReason = reason
 
-	if files, serr := c.Sources(ctx, service); serr == nil {
+	sources, serr := c.Sources(ctx, service)
+	if serr == nil {
 		changedSet := make(map[string]bool, len(changedFiles))
 		for _, f := range changedFiles {
 			changedSet[f] = true
 		}
-		for _, f := range files {
+		for _, f := range sources {
 			if changedSet[f.Path] {
 				in.ChangedSources = append(in.ChangedSources, f)
 			}
 		}
 	}
 
-	return in, nil
+	return in, sources, nil
 }
 
 // printReviewSummary renders v as a short, human-readable report — the form
