@@ -9,7 +9,7 @@
     "method": "Direct grep/read of every task's cited symbol/file at worktree HEAD (never the live daemon) — re-ran each task's original `source` command verbatim and diffed the result against ground_truth.",
     "findings": [
       "B1-T01/B1-T15 (ParseMarkdownPlan callers): cmd/fathom/plans.go (new file, a7f5156, not present at 9f40934) gained a 6th call site (computePlanRows, plans.go:91) — added to both tasks' ground_truth.",
-      "B1-T04 (verify.Plan qualified references): the same new file, cmd/fathom/plans.go, also references `[]verify.Plan` at plans.go:87 — added to ground_truth.",
+      "B1-T04 (verify.Plan qualified references): the same new file, cmd/fathom/plans.go, also references `[]verify.Plan` at plans.go:84 — added to ground_truth.",
       "B1-T14 (defaultFathomURL callers): three files new since 9f40934 (cmd/fathom/plans.go, cmd/fathom/plans_archive.go, cmd/fathom/doctor.go — all post-authoring feature additions) now also call defaultFathomURL() for their --url flag default — all three added to ground_truth (6 -> 9 required entries).",
       "B1-T02, B1-T03, B1-T05, B1-T06, B1-T07, B1-T08, B1-T09, B1-T10, B1-T11, B1-T12, B1-T13: re-verified unchanged and still accurate at HEAD bfb8010 — no drift found."
     ],
@@ -61,7 +61,7 @@
       ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, grep -rn \"verify\\.Plan\\b\" --include='*.go' . (non-test, excluding internal/verify — inside the defining package the type is referenced unqualified as Plan; the definer is internal/verify/verify.go:32)",
-      "notes": "Corrected post-run (methodology critic, 2026-07-23): the original entry said 'include the file that defines it' but listed internal/verify/markdown.go — a comment-only textual match — instead of the true definer internal/verify/verify.go:32, which a bare grep for 'verify.Plan' cannot find (it declares 'type Plan struct'). run-20260723T045809Z scored BOTH arms against the original flawed entry symmetrically (both passed), so that run's scoring stands; the prompt is now scoped to qualified references outside the defining package so the ground truth is unambiguous for future runs. RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010): `cmd/fathom/plans.go` (new file, a7f5156, same drift as B1-T01) declares `localPlans := make([]verify.Plan, 0, len(planFiles))` at plans.go:87 — a genuine qualified reference outside internal/verify not present at the original authoring commit. Added to ground_truth."
+      "notes": "Corrected post-run (methodology critic, 2026-07-23): the original entry said 'include the file that defines it' but listed internal/verify/markdown.go — a comment-only textual match — instead of the true definer internal/verify/verify.go:32, which a bare grep for 'verify.Plan' cannot find (it declares 'type Plan struct'). run-20260723T045809Z scored BOTH arms against the original flawed entry symmetrically (both passed), so that run's scoring stands; the prompt is now scoped to qualified references outside the defining package so the ground truth is unambiguous for future runs. RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010): `cmd/fathom/plans.go` (new file, a7f5156, same drift as B1-T01) declares `localPlans := make([]verify.Plan, 0, len(planFiles))` at plans.go:84 — a genuine qualified reference outside internal/verify not present at the original authoring commit. Added to ground_truth."
     },
     {
       "id": "B1-T05",
