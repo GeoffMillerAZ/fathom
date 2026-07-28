@@ -87,7 +87,12 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 
 	svc := strings.ToLower(*service)
 	if svc == "" {
-		cands := serviceCandidates(root)
+		// The daemon's recorded corpus paths are the authoritative
+		// repo↔service identity (dogfood O15: the dir-basename guess wrote
+		// a stanza naming a nonexistent service on the very repo that
+		// builds fathom). Fail-open to the basename when the daemon is
+		// unreachable or records no match.
+		cands := candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, *url, root)
 		svc = strings.ToLower(cands[0].name)
 	}
 
