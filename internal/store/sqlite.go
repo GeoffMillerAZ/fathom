@@ -26,6 +26,14 @@ type SQLiteStore struct {
 	db *sql.DB
 }
 
+// storeFormatVersion is the format_version marker docs/spec/store-format-v0.md
+// §2 requires every conforming store to carry, via SQLite's built-in PRAGMA
+// user_version. 0 for this spec (v0). Bump only alongside a new spec
+// version (v1+) that documents what changed — the marker exists so a future
+// reader can identify which spec version wrote a store without guessing
+// from column presence.
+const storeFormatVersion = 0
+
 // sqlitePragmaDSN appends the per-connection pragmas this backend requires
 // (journal_mode=WAL, busy_timeout, synchronous=NORMAL) to path as DSN query
 // parameters. modernc.org/sqlite applies "_pragma" query parameters to every
@@ -291,6 +299,28 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		if _, err := s.db.Exec(m.ddl); err != nil {
 			return fmt.Errorf("migrate %s.%s: %w", m.table, m.column, err)
 		}
+	}
+	return s.stampFormatVersion()
+}
+
+// stampFormatVersion writes the docs/spec/store-format-v0.md §2
+// format_version marker via PRAGMA user_version, additively: it never
+// decreases an existing value (a store already stamped at or above
+// storeFormatVersion — e.g. by a future v1+ writer — is left untouched, so
+// an older binary opening a newer store cannot regress the marker a newer
+// reader depends on). PRAGMA does not accept bind parameters; the value
+// interpolated here is the package-internal storeFormatVersion constant,
+// never caller input.
+func (s *SQLiteStore) stampFormatVersion() error {
+	var current int
+	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&current); err != nil {
+		return fmt.Errorf("read user_version: %w", err)
+	}
+	if current >= storeFormatVersion {
+		return nil
+	}
+	if _, err := s.db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, storeFormatVersion)); err != nil {
+		return fmt.Errorf("set user_version: %w", err)
 	}
 	return nil
 }
