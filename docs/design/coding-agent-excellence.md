@@ -136,6 +136,13 @@ that bench):
 > pitch: equal answers, cheaper on 8/13 tasks (an outlier-driven aggregate
 > token premium on the rest), 2–3× faster wall time; governance itself
 > (verify gate / obligations / staleness) remains unmeasured by that bench.
+>
+> **SUPERSEDED 2026-07-24 (second swing, docs/plans/trust-and-tokenomics.md
+> T5-8, win-audited):** after the causal fixes (read_source, line anchors,
+> the O12 trio) the same unchanged criteria **PASSED — 13/13 vs 11/13
+> success at 0.570× tokens** on home turf; the lookup bench improved to
+> 1.96× (the ×10 retraction still stands, <5×). Honest pitch now: strictly
+> better answers at ~2× fewer tokens, 2–3× faster.
 
 - **Cold-start comprehension:** `repo_map` + `brief` give a new session the
   load-bearing shape of a repo in one call each — replacing the first-hour
