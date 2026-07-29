@@ -772,6 +772,30 @@ SELECT DISTINCT service_id FROM observations ORDER BY service_id
 	return ids, nil
 }
 
+// ClaimServiceIDs returns the sorted distinct service IDs stored in the
+// semantic_claims table — see the Store interface doc comment.
+func (s *SQLiteStore) ClaimServiceIDs(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT DISTINCT service_id FROM semantic_claims ORDER BY service_id
+`)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimServiceIDs: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("ClaimServiceIDs scan: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("ClaimServiceIDs rows: %w", err)
+	}
+	return ids, nil
+}
+
 // SetServiceMeta upserts the ingest metadata for meta.ServiceID.
 func (s *SQLiteStore) SetServiceMeta(ctx context.Context, meta ServiceMeta) error {
 	_, err := s.db.ExecContext(ctx, `

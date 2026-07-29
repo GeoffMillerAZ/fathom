@@ -25,6 +25,7 @@ type fakeModuleBackend struct {
 	modules     []modulehost.ModuleInfo
 	obligations []modulehost.FederatedObligation
 	obligErr    error
+	queryResult []modulehost.FederatedQueryEntry
 	staleness   map[string][]modulehost.ModuleStaleness
 }
 
@@ -48,6 +49,19 @@ func (f *fakeModuleBackend) FederatedObligations(_ context.Context, module, _ st
 	return out, nil
 }
 
+func (f *fakeModuleBackend) FederatedQuery(_ context.Context, module, _ string, _ int) ([]modulehost.FederatedQueryEntry, error) {
+	if module == "" {
+		return f.queryResult, nil
+	}
+	var out []modulehost.FederatedQueryEntry
+	for _, e := range f.queryResult {
+		if e.Module == module {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
 func (f *fakeModuleBackend) ModuleStaleness(_ context.Context, module string) ([]modulehost.ModuleStaleness, bool, error) {
 	report, ok := f.staleness[module]
 	return report, ok, nil
@@ -63,6 +77,9 @@ func newModuleTestServer() (*mcp.Server, *fakeModuleBackend) {
 				Service: "svc-a", File: "x.go",
 				Rules: []semantic.Obligation{{Rule: "do the thing", Src: "RULES.md#L1-L1", Tier: "doc-claimed", Layer: "obligations"}},
 			}},
+		},
+		queryResult: []modulehost.FederatedQueryEntry{
+			{Module: "alpha", Service: "svc-a", Claims: []semantic.Obligation{{Rule: "matched rule", Src: "RULES.md#L1-L1", Tier: "doc-claimed", Layer: "obligations"}}},
 		},
 		staleness: map[string][]modulehost.ModuleStaleness{
 			"alpha": {{Module: "alpha", Service: "svc-a", IndexedCommit: "deadbeef", Status: modulehost.StatusUnknownDetached}},
@@ -126,6 +143,49 @@ func TestModuleTools_ModuleObligations(t *testing.T) {
 	}
 }
 
+func TestModuleTools_ModuleQuery(t *testing.T) {
+	srv, _ := newModuleTestServer()
+	resp := scopedRoundtrip(t, srv, context.Background(), request{
+		JSONRPC: "2.0", ID: 20, Method: "tools/call",
+		Params: map[string]any{"name": "module_query", "arguments": map[string]any{"text": "matched"}},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("module_query: %v", resp["error"])
+	}
+	text := resp["result"].(map[string]any)["content"].([]any)[0].(map[string]any)["text"].(string)
+	var payload struct {
+		Results []modulehost.FederatedQueryEntry `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(text), &payload); err != nil {
+		t.Fatalf("decode: %v (text=%q)", err, text)
+	}
+	if len(payload.Results) != 1 || payload.Results[0].Module != "alpha" {
+		t.Fatalf("module_query = %+v, want exactly one alpha result", payload.Results)
+	}
+	if len(payload.Results[0].Claims) != 1 || payload.Results[0].Claims[0].Src == "" {
+		t.Errorf("module_query claim missing citation: %+v", payload.Results[0].Claims)
+	}
+
+	// The "concern" alias (P1-1 pattern, query_symbols' own field name)
+	// works identically to "text".
+	viaAlias := scopedRoundtrip(t, srv, context.Background(), request{
+		JSONRPC: "2.0", ID: 21, Method: "tools/call",
+		Params: map[string]any{"name": "module_query", "arguments": map[string]any{"concern": "matched"}},
+	})
+	if viaAlias["error"] != nil {
+		t.Fatalf("module_query via concern alias: %v", viaAlias["error"])
+	}
+
+	// Missing both "text" and "concern" is a params error.
+	missing := scopedRoundtrip(t, srv, context.Background(), request{
+		JSONRPC: "2.0", ID: 22, Method: "tools/call",
+		Params: map[string]any{"name": "module_query", "arguments": map[string]any{}},
+	})
+	if missing["error"] == nil {
+		t.Fatal("module_query without text/concern: want a params error")
+	}
+}
+
 func TestModuleTools_ModuleStaleness(t *testing.T) {
 	srv, _ := newModuleTestServer()
 	resp := scopedRoundtrip(t, srv, context.Background(), request{
@@ -165,7 +225,7 @@ func TestModuleTools_ModuleStaleness(t *testing.T) {
 
 func TestModuleTools_VisibleOnModulesSurfaceAndBareRPC(t *testing.T) {
 	srv, _ := newModuleTestServer()
-	want := []string{"list_modules", "module_obligations", "module_staleness"}
+	want := []string{"list_modules", "module_obligations", "module_query", "module_staleness"}
 	sort.Strings(want)
 
 	for _, surface := range []string{mcp.SurfaceModules, ""} {
@@ -209,7 +269,7 @@ func TestModuleTools_AbsentWithoutModuleBackend(t *testing.T) {
 		JSONRPC: "2.0", ID: 8, Method: "tools/list", Params: map[string]any{},
 	}))
 	for _, n := range names {
-		if n == "list_modules" || n == "module_obligations" || n == "module_staleness" {
+		if n == "list_modules" || n == "module_obligations" || n == "module_query" || n == "module_staleness" {
 			t.Errorf("module tool %q present on a server with no module backend wired in", n)
 		}
 	}

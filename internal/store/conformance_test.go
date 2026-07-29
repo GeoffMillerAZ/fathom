@@ -160,6 +160,21 @@ func TestMountReadOnly_RefusesUnversioned(t *testing.T) {
 	assertConformanceReason(t, err, ReasonUnversioned)
 }
 
+// TestMountReadOnly_AcceptsNewerFormatVersion proves store-format-v0.md
+// §2's reader contract holds at the mount layer too: a store stamped by a
+// hypothetical future v1+ writer (user_version > 1) is never an error —
+// "read with caution," never refused — as long as the v0-required subset
+// is still present (checkMarkers' doc comment).
+func TestMountReadOnly_AcceptsNewerFormatVersion(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "module.sqlite")
+	writeBareStore(t, path, allL0Tables, storeApplicationID, 7)
+	st, err := MountReadOnly(path, LevelL0)
+	if err != nil {
+		t.Fatalf("MountReadOnly on a user_version=7 store: %v, want success (v0 tolerates a newer-versioned store)", err)
+	}
+	st.Close()
+}
+
 func TestMountReadOnly_RefusesMissingTable(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "module.sqlite")
 	// Omit claim_links entirely — an L0-required table.

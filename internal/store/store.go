@@ -151,6 +151,16 @@ type Store interface {
 	// the observations table.  An empty store returns a nil slice with no error.
 	ListServiceIDs(ctx context.Context) ([]string, error)
 
+	// ClaimServiceIDs returns the sorted, distinct set of service IDs present
+	// in the semantic_claims table — the claims-only counterpart to
+	// ListServiceIDs (which scans observations only). A claims-only corpus (a
+	// findings-style expert module with claims but no code observations at
+	// all — docs/design/expert-modules.md) is otherwise invisible to a caller
+	// that discovers services purely via ListServiceIDs (docs/plans/
+	// gke-module-host.md's module-host federation layer is exactly such a
+	// caller). An empty store returns a nil slice with no error.
+	ClaimServiceIDs(ctx context.Context) ([]string, error)
+
 	// SetServiceMeta upserts the ingest metadata for serviceID. Implementations
 	// must be idempotent: repeated calls for the same serviceID replace the row.
 	SetServiceMeta(ctx context.Context, meta ServiceMeta) error

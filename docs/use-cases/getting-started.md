@@ -46,7 +46,7 @@ claude mcp add --scope user fathom -- \
 | `ingest-diff` | CLI | Ingest only files changed since a git ref |
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
 | `serve-mcp` | CLI | Stdio MCP server — one client (editor/agent session) |
-| `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `POST /rpc`, `POST /rpc/{surface}`, `GET /healthz`, `GET /events`, `GET /metrics`; `--call-log` flag for JSONL tool-call logging |
+| `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `POST /rpc`, `POST /rpc/{surface}`, `GET /healthz`, `GET /events`, `GET /metrics`; `--call-log` flag for JSONL tool-call logging; `--module <path>` (repeatable) mounts a conforming expert-module store read-only onto `/rpc/modules`; `--modules-token-env <NAME>` gates that surface behind a bearer token for hosted deployments |
 | `gen-claude-md` | CLI | Generate a static `CLAUDE.md` symbol guide from the store |
 | `version` | CLI | Print binary version (use to detect staleness vs git HEAD) |
 | `capabilities` | MCP tool | List all currently visible tools and the active surface/profile (see Step 5) |
@@ -203,6 +203,7 @@ profile switch. Scoping now depends entirely on transport:
 | `agent` | `POST /rpc/agent` | The curated 16-tool coding hot loop — the recommended registration |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 16-tool allowlist |
 | `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | Internal taxonomy group surfaces (zero observed traffic as of the surfaces-week1 review; kept for completeness) |
+| `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
 
 Register the daemon against the curated surface:
 
@@ -215,7 +216,10 @@ surface is never hard-rejected — it runs normally, and the daemon's call
 log (`--call-log`) records it with `off_surface:true` so real demand for a
 wider surface is measurable instead of argued. Surfaces are ergonomics and
 measurement, never a security boundary — bare `/rpc` already serves the
-full, unauthenticated registry (see [mcp-tools.md](../mcp-tools.md)).
+full, unauthenticated registry (see [mcp-tools.md](../mcp-tools.md)). The
+one exception is `/rpc/modules` in hosted mode (`--modules-token-env`
+configured): there, off-allowlist calls hard-gate and the module tools
+become unreachable from every other path — see mcp-tools.md.
 
 Then call `capabilities` to confirm what's visible on this request:
 
@@ -337,7 +341,7 @@ If your repo has plan files in `docs/plans/*.md`, the `lefthook.yml` pre-push ho
 | Transport | stdio (no port) | HTTP on `--addr` (default `:7575`) |
 | Clients | One — the process that launched it | Many concurrent |
 | Use case | One editor / Claude Code session | Multiple concurrent Claude Code sessions, CI, multi-agent platform |
-| Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped `tools/list`; off-surface `tools/call` still executes, flagged `off_surface:true` — see Step 5; surface ∈ `agent`/`companion`/`coding`/`investigation`/`shared`/`platform`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
+| Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped `tools/list`; off-surface `tools/call` still executes, flagged `off_surface:true` — see Step 5; surface ∈ `agent`/`companion`/`coding`/`investigation`/`shared`/`platform`/`modules`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
 | Call log | — | `--call-log <path>` writes a JSONL tool-call log (default `workspace/logs/mcp-calls.jsonl` relative to daemon working dir; empty string disables) |
 | Store writes | Serializes with any other writer (SQLite, ADR-020) | Same |
 
@@ -419,4 +423,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `ingest`, `ingest-diff`, `watch`, `serve-mcp`, `serve-http`, `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`) path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. Update it when these change.
+This doc covers: `ingest`, `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. Update it when these change.

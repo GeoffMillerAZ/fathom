@@ -22,6 +22,7 @@ import (
 type moduleBackend interface {
 	ListModules(ctx context.Context) ([]modulehost.ModuleInfo, error)
 	FederatedObligations(ctx context.Context, module, file string, max int) ([]modulehost.FederatedObligation, error)
+	FederatedQuery(ctx context.Context, module, text string, max int) ([]modulehost.FederatedQueryEntry, error)
 	ModuleStaleness(ctx context.Context, module string) ([]modulehost.ModuleStaleness, bool, error)
 }
 
@@ -74,6 +75,49 @@ func registerModuleTools(s *Server, mb moduleBackend) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "module_obligations: file required"}
 		}
 		results, err := mb.FederatedObligations(ctx, p.Module, p.File, p.Max)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		}
+		return map[string]any{"results": results}, nil
+	})
+
+	s.registerTool(toolDescriptor{
+		Name:        "module_query",
+		Description: "Free-text query (critic finding on the module host's original launch: module_obligations alone requires a scope-glob \"file\" arg and cannot answer a free-text question) over one or every mounted module. Fans out the concern-scoped symbol engine (query_symbols' own internal/query.Engine) AND a claim-text match per (module, service) pair — a module answers via ranked code symbols, matched claims (each still carrying citation/tier/status), both, or neither. Every result names its own module and service, same as module_obligations.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"module":  map[string]any{"type": "string", "description": "Optional: scope to one mounted module by name. Omit to fan out across every mounted module."},
+				"text":    map[string]any{"type": "string", "description": "Free-text query. Alias: \"concern\" (same field, either name works; both may be given only if they agree)."},
+				"concern": map[string]any{"type": "string", "description": "Alias for \"text\" — lets a caller reuse query_symbols' own field name."},
+				"max":     map[string]any{"type": "integer", "description": "Maximum results per (module, service) pair"},
+			},
+			"required": []string{"text"},
+		},
+		group:   GroupModules,
+		aliases: map[string]string{"concern": "text"},
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		var p struct {
+			Module string `json:"module"`
+			Text   string `json:"text"`
+			Max    int    `json:"max"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "module_query: invalid args"}
+		}
+		var raw map[string]json.RawMessage
+		if err := json.Unmarshal(args, &raw); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "module_query: invalid args"}
+		}
+		text, aliasErr := resolveAliasedString(raw, "module_query", "text", "concern")
+		if aliasErr != nil {
+			return nil, aliasErr
+		}
+		p.Text = text
+		if p.Text == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "module_query: text required"}
+		}
+		results, err := mb.FederatedQuery(ctx, p.Module, p.Text, p.Max)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}

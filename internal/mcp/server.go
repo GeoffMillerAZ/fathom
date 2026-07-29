@@ -111,6 +111,17 @@ type Server struct {
 	// future multi-tenant shape.
 	strictSurfaces bool
 
+	// hostedModules is the module host's hosted-deployment mode (docs/plans/
+	// gke-module-host.md GKE-MH-7, critic finding 2): cmd/fathom's serve-http
+	// sets this via SetHostedModules exactly when --modules-token-env names a
+	// configured token. Unlike strictSurfaces, this DOES make /rpc/modules an
+	// actual security boundary (surface.go's hostedModulesTools/
+	// hostedModuleBlocked) — the local, loopback-only, unauthenticated daemon
+	// is unaffected (default false). Set once, before Serve/ListenAndServe
+	// begins accepting concurrent requests — same single-set-before-serving
+	// convention as strictSurfaces; no separate mutex.
+	hostedModules bool
+
 	// Stats for server_stats meta-tool.
 	startTime  time.Time
 	reqCount   int64
@@ -321,6 +332,22 @@ func (s *Server) totalRequests() int64 {
 // Exposed for tests and for any future multi-tenant deployment shape.
 func (s *Server) SetStrictSurfaces(v bool) {
 	s.strictSurfaces = v
+}
+
+// SetHostedModules toggles hosted-module-host mode (docs/plans/
+// gke-module-host.md, critic finding 2): when true, GroupModules tools are
+// reachable ONLY via the /rpc/modules-scoped path — /rpc/modules itself
+// serves a curated allowlist (hostedModulesTools) instead of the full
+// GroupShared set, off-surface calls on /rpc/modules are hard-gated (never
+// execute-and-flag, see strictFor), and GroupModules tools are hidden from
+// bare /rpc's tools/list AND refused outright if invoked there or via any
+// batch sub-call (hostedModuleBlocked). cmd/fathom's serve-http calls this
+// exactly when --modules-token-env names a configured token; the local,
+// loopback-only, unauthenticated daemon is unaffected (default false).
+// Call before Serve/ListenAndServe begins accepting requests — same
+// convention as SetStrictSurfaces.
+func (s *Server) SetHostedModules(v bool) {
+	s.hostedModules = v
 }
 
 // setProfile updates the active profile (must be a known surface name or "").

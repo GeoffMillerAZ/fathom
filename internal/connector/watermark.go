@@ -17,6 +17,12 @@ import (
 // recorded IndexedCommit before the Watermark SPI existed.
 const manifestWatermarkPrefix = "manifest:"
 
+// ManifestWatermarkPrefix exports manifestWatermarkPrefix for callers that
+// must recognize a stored manifest: watermark (e.g. to decide it must never
+// be compared against a live git HEAD — see ManifestWatermark's doc
+// comment) without needing their own copy of the literal.
+const ManifestWatermarkPrefix = manifestWatermarkPrefix
+
 // gitHead returns the HEAD commit for dir, or "" when dir is not inside a git
 // work tree (or git is unavailable).
 func gitHead(dir string) string {
@@ -49,4 +55,24 @@ func manifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (s
 		fmt.Fprintf(h, "%s\x00%s\n", ref.Path, hex.EncodeToString(fh[:]))
 	}
 	return manifestWatermarkPrefix + hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// ManifestWatermark exports manifestWatermark for callers that must
+// recompute a corpus's CONTENT-ADDRESSED watermark specifically —
+// regardless of whether svc.Path happens to sit inside a git work tree.
+// A bare Connector.Watermark call (LocalConnector's own implementation)
+// checks git FIRST and only falls back to the manifest algorithm when no
+// git repo is found; that is the wrong choice for a caller re-checking a
+// corpus whose STORED watermark already carries the manifest: prefix (it
+// was compiled as non-git) but is now served from a location that happens
+// to be nested inside an unrelated ENCLOSING git repository (e.g. a docs
+// folder inside a checkout, or a module store expanded into a repo-internal
+// temp dir) — LocalConnector.Watermark would silently switch to that
+// enclosing repo's HEAD, comparing an apples-to-oranges value against the
+// manifest watermark forever (docs/plans/gke-module-host.md's module-host
+// staleness layer, GKE-MH-6 critic finding 3). Callers that know a
+// watermark was recorded with the manifest: prefix should call this
+// directly instead of Connector.Watermark.
+func ManifestWatermark(ctx context.Context, c Connector, svc core.ServiceRef) (string, error) {
+	return manifestWatermark(ctx, c, svc)
 }

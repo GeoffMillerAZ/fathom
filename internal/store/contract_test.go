@@ -805,6 +805,53 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// ClaimServiceIDs returns distinct, sorted service IDs from
+	// semantic_claims — the claims-only counterpart to ListServiceIDs
+	// (docs/plans/gke-module-host.md's module-host federation layer,
+	// critic finding 4: a claims-only, findings-style corpus with NO
+	// observations rows at all must still be discoverable).
+	// ------------------------------------------------------------------ //
+	t.Run("claim_service_ids", func(t *testing.T) {
+		claims := []core.SemanticClaim{
+			{ClaimID: "claim-svc-ids-1", ServiceID: "svc-claimonly-a", Layer: "obligations", Kind: "obligation", Rule: "rule a", Status: core.ClaimFresh},
+			{ClaimID: "claim-svc-ids-2", ServiceID: "svc-claimonly-b", Layer: "obligations", Kind: "obligation", Rule: "rule b", Status: core.ClaimFresh},
+		}
+		if err := s.PutClaims(ctx, claims, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		ids, err := s.ClaimServiceIDs(ctx)
+		if err != nil {
+			t.Fatalf("ClaimServiceIDs: %v", err)
+		}
+		idSet := make(map[string]bool, len(ids))
+		for _, id := range ids {
+			idSet[id] = true
+		}
+		if !idSet["svc-claimonly-a"] {
+			t.Error("svc-claimonly-a missing from ClaimServiceIDs")
+		}
+		if !idSet["svc-claimonly-b"] {
+			t.Error("svc-claimonly-b missing from ClaimServiceIDs")
+		}
+		// svc-claimonly-a/b never appear in ListServiceIDs (no observations
+		// were ever written for them) — the whole point of this method.
+		obsIDs, err := s.ListServiceIDs(ctx)
+		if err != nil {
+			t.Fatalf("ListServiceIDs: %v", err)
+		}
+		for _, id := range obsIDs {
+			if id == "svc-claimonly-a" || id == "svc-claimonly-b" {
+				t.Errorf("claims-only service %q unexpectedly present in ListServiceIDs (observations-derived)", id)
+			}
+		}
+		for i := 1; i < len(ids); i++ {
+			if ids[i] < ids[i-1] {
+				t.Errorf("ClaimServiceIDs not sorted at index %d: %q > %q", i, ids[i-1], ids[i])
+			}
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// ServiceMeta round-trip + upsert
 	// ------------------------------------------------------------------ //
 	t.Run("service_meta_roundtrip", func(t *testing.T) {

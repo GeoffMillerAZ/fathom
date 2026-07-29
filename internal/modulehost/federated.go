@@ -11,17 +11,18 @@ package modulehost
 // core.SymbolNode); it carries no claim, citation, tier, or status
 // semantics at all, so it cannot be the vehicle for an obligations-shaped
 // scope lookup. The federated query layer below instead composes
-// internal/semantic.ObligationsFor (the SAME function the existing
-// single-store `obligations` MCP tool already uses, doctrine 4's "reuse
-// existing tool implementations... consolidate, don't grow") once per
-// mounted module's store.Store, which already satisfies every requirement
-// the design section actually describes: per-module identity (FederatedObligation.Module),
-// per-claim tier+status (semantic.Obligation.Tier/Status, unchanged), and
-// never-merged attribution (one slice entry per (module, service) pair,
-// never flattened). pkg/platform's Build/BuildFromStore precedent remains
-// the correct citation for the DESIGN RATIONALE ("a multi-store query layer
+// internal/semantic.ObligationsFor and internal/query.Engine (the SAME
+// functions the existing single-store `obligations`/`query_symbols` MCP
+// tools already use, doctrine 4's "reuse existing tool implementations...
+// consolidate, don't grow") once per mounted module's store.Store, which
+// already satisfies every requirement the design section actually
+// describes: per-module identity (Module/Service fields), per-claim tier+
+// status (semantic.Obligation.Tier/Status, unchanged), and never-merged
+// attribution (one slice entry per (module, service) pair, never
+// flattened). pkg/platform's Build/BuildFromStore precedent remains the
+// correct citation for the DESIGN RATIONALE ("a multi-store query layer
 // ... ATTACH-shaped in spirit") — it just isn't the literal implementation
-// symbol; the plan rows below have been re-pointed at the functions that
+// symbol; the plan rows have been re-pointed at the functions that
 // actually carry this contract.
 
 import (
@@ -32,8 +33,47 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
+
+// discoverServiceIDs returns the sorted, deduped UNION of st.ListServiceIDs
+// (observations-derived) and st.ClaimServiceIDs (semantic_claims-derived) —
+// every module-host discovery call site uses this, not ListServiceIDs
+// alone, so a claims-only, findings-style module (docs/design/
+// expert-modules.md — a corpus with claims compiled over it but no code
+// observations at all) is never silently invisible (critic finding 4). A
+// service present in only one of the two source tables still appears
+// exactly once.
+func discoverServiceIDs(ctx context.Context, st store.Store) ([]string, error) {
+	obsIDs, err := st.ListServiceIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ListServiceIDs: %w", err)
+	}
+	claimIDs, err := st.ClaimServiceIDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ClaimServiceIDs: %w", err)
+	}
+	if len(obsIDs) == 0 && len(claimIDs) == 0 {
+		return nil, nil
+	}
+	seen := make(map[string]struct{}, len(obsIDs)+len(claimIDs))
+	for _, id := range obsIDs {
+		seen[id] = struct{}{}
+	}
+	for _, id := range claimIDs {
+		seen[id] = struct{}{}
+	}
+	out := make([]string, 0, len(seen))
+	for id := range seen {
+		out = append(out, id)
+	}
+	sort.Strings(out)
+	return out, nil
+}
 
 // ModuleInfo is one (module, corpus/service) row — GKE-MH-5's list_modules
 // floor requirement (expert-module-v0.md §4.1: "Enumerate — list the
@@ -42,25 +82,32 @@ import (
 type ModuleInfo struct {
 	Module        string `json:"module"`
 	Path          string `json:"path"`
-	Service       string `json:"service"`
+	Service       string `json:"service,omitempty"`
 	IndexedCommit string `json:"indexed_commit,omitempty"`
 	IndexedAt     int64  `json:"indexed_at,omitempty"`
+	// Error is set when THIS module's own discovery failed — every other
+	// mounted module is still listed rather than aborting the whole call
+	// (critic finding 6: ListModules now degrades per-module, mirroring
+	// FederatedObligations/FederatedQuery's own degradation contract).
+	Error string `json:"error,omitempty"`
 }
 
 // ListModules returns one row per (module, service) pair across every
-// mounted module, sorted by (module, service).
+// mounted module, sorted by (module, service). A module whose own
+// discovery fails contributes a single Error-carrying row instead of
+// aborting the entire call.
 func (h *Host) ListModules(ctx context.Context) ([]ModuleInfo, error) {
 	var out []ModuleInfo
 	for _, m := range h.snapshot() {
-		ids, err := m.Store.ListServiceIDs(ctx)
+		ids, err := discoverServiceIDs(ctx, m.Store)
 		if err != nil {
-			return nil, fmt.Errorf("modulehost: list services for module %q: %w", m.Name, err)
+			out = append(out, ModuleInfo{Module: m.Name, Path: m.Path, Error: err.Error()})
+			continue
 		}
 		if len(ids) == 0 {
-			// A module with no observations rows (e.g. a claims-only,
-			// findings-style corpus) never appears via ListServiceIDs
-			// (which scans DISTINCT service_id FROM observations) — still
-			// list it as a bare module row so it's not silently invisible.
+			// A genuinely empty module (mounted, conforming, but nothing
+			// ingested into it yet) — still list it so it's not silently
+			// invisible.
 			out = append(out, ModuleInfo{Module: m.Name, Path: m.Path})
 			continue
 		}
@@ -101,6 +148,22 @@ type FederatedObligation struct {
 	Error string `json:"error,omitempty"`
 }
 
+// modulesInScope resolves the modules a federated call should fan out
+// across: every mounted module, or — when moduleName is non-empty —
+// exactly that one (an error when it isn't mounted at all).
+func (h *Host) modulesInScope(moduleName string) ([]*Module, error) {
+	modules := h.snapshot()
+	if moduleName == "" {
+		return modules, nil
+	}
+	for _, m := range modules {
+		if m.Name == moduleName {
+			return []*Module{m}, nil
+		}
+	}
+	return nil, fmt.Errorf("modulehost: module %q is not mounted", moduleName)
+}
+
 // FederatedObligations answers the obligations-shaped scope-lookup query
 // (expert-module-v0.md §4.2) across every mounted module, or — when
 // moduleName is non-empty — scoped to exactly that one module. A module (or
@@ -108,23 +171,14 @@ type FederatedObligation struct {
 // result (semantic.ObligationsFor's own "zero rules -> zero output"
 // contract, generalized to N modules).
 func (h *Host) FederatedObligations(ctx context.Context, moduleName, file string, max int) ([]FederatedObligation, error) {
-	modules := h.snapshot()
-	if moduleName != "" {
-		var only []*Module
-		for _, m := range modules {
-			if m.Name == moduleName {
-				only = append(only, m)
-			}
-		}
-		if len(only) == 0 {
-			return nil, fmt.Errorf("modulehost: module %q is not mounted", moduleName)
-		}
-		modules = only
+	modules, err := h.modulesInScope(moduleName)
+	if err != nil {
+		return nil, err
 	}
 
 	var out []FederatedObligation
 	for _, m := range modules {
-		ids, err := m.Store.ListServiceIDs(ctx)
+		ids, err := discoverServiceIDs(ctx, m.Store)
 		if err != nil {
 			out = append(out, FederatedObligation{Module: m.Name, Error: err.Error()})
 			continue
@@ -147,6 +201,154 @@ func (h *Host) FederatedObligations(ctx context.Context, moduleName, file string
 		}
 		return out[i].Service < out[j].Service
 	})
+	return out, nil
+}
+
+// FederatedQueryEntry is one module's contribution to a federated free-text
+// query (module_query — critic finding 1: the surface's only pre-existing
+// scope-lookup tool, module_obligations, required a scope-glob `file` arg,
+// which cannot answer a free-text question at all). Nodes are ranked by the
+// SAME concern-scoped engine query_symbols already wraps (internal/query.
+// Engine); Claims are served claims whose rule/subject text matched,
+// reusing the exact citation/tier/status contract FederatedObligation
+// already carries (semantic.Obligation). Both are optional and independent
+// — a module may answer via symbols, via claims, via both, or (if it
+// errors) via neither.
+type FederatedQueryEntry struct {
+	Module    string                `json:"module"`
+	Service   string                `json:"service"`
+	Nodes     []core.SymbolNode     `json:"nodes,omitempty"`
+	Staleness core.StalenessReport  `json:"staleness"`
+	Claims    []semantic.Obligation `json:"claims,omitempty"`
+	// Error is set when THIS (module, service) pair's own lookup failed —
+	// every other module/service pair's answer is still returned (mirrors
+	// FederatedObligations' per-module degradation).
+	Error string `json:"error,omitempty"`
+}
+
+// FederatedQuery answers a free-text query (module_query, critic finding 1)
+// across every mounted module, or — when moduleName is non-empty — scoped
+// to exactly that one. For each (module, service) pair it runs BOTH the
+// concern-scoped symbol engine (internal/query.New(m.Store).Query) and a
+// cheap substring match over served claims (matchClaimsByText); a pair
+// that answers via neither is omitted from the result (mirrors
+// FederatedObligations' "zero rules -> zero output" contract). text is
+// required — an empty query has no meaningful answer to fan out.
+func (h *Host) FederatedQuery(ctx context.Context, moduleName, text string, max int) ([]FederatedQueryEntry, error) {
+	if strings.TrimSpace(text) == "" {
+		return nil, fmt.Errorf("modulehost: query text is required")
+	}
+	modules, err := h.modulesInScope(moduleName)
+	if err != nil {
+		return nil, err
+	}
+	keywords := strings.Fields(text)
+
+	var out []FederatedQueryEntry
+	for _, m := range modules {
+		ids, err := discoverServiceIDs(ctx, m.Store)
+		if err != nil {
+			out = append(out, FederatedQueryEntry{Module: m.Name, Error: err.Error()})
+			continue
+		}
+		eng := query.New(m.Store)
+		for _, svc := range ids {
+			entry := FederatedQueryEntry{Module: m.Name, Service: svc}
+
+			result, qErr := eng.Query(ctx, core.Query{ServiceID: svc, ConcernID: text, Keywords: keywords, TopN: max})
+			if qErr != nil {
+				entry.Error = qErr.Error()
+			} else {
+				entry.Nodes = result.Nodes
+				entry.Staleness = result.Staleness
+			}
+
+			claims, cErr := matchClaimsByText(ctx, m.Store, svc, text, max)
+			if cErr != nil {
+				if entry.Error == "" {
+					entry.Error = cErr.Error()
+				}
+			} else {
+				entry.Claims = claims
+			}
+
+			if len(entry.Nodes) == 0 && len(entry.Claims) == 0 && entry.Error == "" {
+				continue // nothing this (module, service) can answer — omit, don't pad
+			}
+			out = append(out, entry)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Module != out[j].Module {
+			return out[i].Module < out[j].Module
+		}
+		return out[i].Service < out[j].Service
+	})
+	return out, nil
+}
+
+// matchClaimsByText returns served claims (semantic.Obligation shape,
+// reusing FederatedObligation's own citation/tier/status contract) whose
+// Rule or Subject contains text (case-insensitive substring — a
+// deliberately simple, cheap match per the critic's own framing: module_
+// query's floor is "don't refuse a free-text query outright," not a ranked
+// full-text search engine), capped at max and sorted for determinism.
+func matchClaimsByText(ctx context.Context, st store.Store, serviceID, text string, max int) ([]semantic.Obligation, error) {
+	if max <= 0 || max > semantic.MaxObligations {
+		max = semantic.MaxObligations
+	}
+	claims, err := st.ClaimsForService(ctx, serviceID, "")
+	if err != nil {
+		return nil, err
+	}
+	needle := strings.ToLower(text)
+	var served []core.SemanticClaim
+	var ids []string
+	for _, cl := range claims {
+		if !cl.Status.Served() {
+			continue
+		}
+		if !strings.Contains(strings.ToLower(cl.Rule), needle) && !strings.Contains(strings.ToLower(cl.Subject), needle) {
+			continue
+		}
+		served = append(served, cl)
+		ids = append(ids, cl.ClaimID)
+	}
+	if len(served) == 0 {
+		return nil, nil
+	}
+	links, err := st.ClaimLinks(ctx, serviceID, ids)
+	if err != nil {
+		return nil, err
+	}
+	primaryCite := map[string]string{}
+	for _, l := range links {
+		if l.Rel == core.RelCites {
+			if _, ok := primaryCite[l.ClaimID]; !ok {
+				primaryCite[l.ClaimID] = l.TargetRef
+			}
+		}
+	}
+	sort.Slice(served, func(i, j int) bool {
+		if served[i].Rule != served[j].Rule {
+			return served[i].Rule < served[j].Rule
+		}
+		return served[i].ClaimID < served[j].ClaimID
+	})
+	if len(served) > max {
+		served = served[:max]
+	}
+	out := make([]semantic.Obligation, 0, len(served))
+	for _, cl := range served {
+		ob := semantic.Obligation{Rule: cl.Rule, Src: primaryCite[cl.ClaimID], Tier: string(cl.Tier), Layer: cl.Layer}
+		if cl.Kind != semantic.KindObligation {
+			ob.Kind = cl.Kind
+		}
+		if cl.Status != core.ClaimFresh {
+			ob.Status = string(cl.Status)
+		}
+		out = append(out, ob)
+	}
 	return out, nil
 }
 
@@ -183,9 +385,9 @@ func (h *Host) ModuleStaleness(ctx context.Context, moduleName string) ([]Module
 	if !ok {
 		return nil, false, nil
 	}
-	ids, err := m.Store.ListServiceIDs(ctx)
+	ids, err := discoverServiceIDs(ctx, m.Store)
 	if err != nil {
-		return nil, true, fmt.Errorf("modulehost: list services for module %q: %w", m.Name, err)
+		return nil, true, fmt.Errorf("modulehost: discover services for module %q: %w", m.Name, err)
 	}
 	if len(ids) == 0 {
 		return []ModuleStaleness{{Module: m.Name, Status: StatusUnknownDetached}}, true, nil
@@ -196,29 +398,59 @@ func (h *Host) ModuleStaleness(ctx context.Context, moduleName string) ([]Module
 		meta, found, mErr := m.Store.GetServiceMeta(ctx, svc)
 		if mErr == nil && found {
 			st.IndexedCommit = meta.IndexedCommit
-			// Only a git-backed corpus is opportunistically re-checkable
-			// this way (store-format-v0.md §6's manifest: watermark would
-			// require re-walking the whole corpus, which this floor
-			// implementation deliberately does not attempt — the honest-
-			// refusal default the mission's pitfalls note calls for when
-			// the spec is silent on a case).
-			if head := localGitHead(meta.Path); head != "" {
-				st.CurrentCommit = head
-				switch {
-				case st.IndexedCommit == "":
-					// No stored watermark to compare against — still
-					// "unknown", not silently "fresh".
-				case head == st.IndexedCommit:
-					st.Status = StatusFresh
-				default:
-					st.Status = StatusDrifted
-				}
-			}
+			st.CurrentCommit, st.Status = recheckWatermark(ctx, meta.Path, meta.IndexedCommit)
 		}
 		out = append(out, st)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Service < out[j].Service })
 	return out, true, nil
+}
+
+// recheckWatermark opportunistically recomputes the CURRENT watermark for a
+// module's corpus at path and compares it against indexedCommit, returning
+// (current, status). Critic finding 3 — the load-bearing rule this
+// function exists to enforce: a manifest-prefixed indexedCommit (a corpus
+// compiled as non-git) MUST NEVER be compared against a live git HEAD. A
+// path that happens to be nested inside SOME enclosing git work tree (a
+// docs folder inside a checkout; a module expanded into a repo-internal
+// temp dir) would otherwise resolve to that ENCLOSING repo's HEAD — which
+// can never equal a manifest: watermark — producing a permanent, false
+// "drifted" verdict for a module that never drifted at all. So:
+//   - indexedCommit has the manifest: prefix -> recompute via the SAME
+//     content-addressed algorithm (connector.ManifestWatermark), never
+//     git — "" (unknown-detached, no recompute attempted) when path is
+//     absent or the recompute itself fails.
+//   - otherwise (a bare git SHA, or "") -> the existing git-HEAD recheck,
+//     itself gated on path being locally present and a git work tree.
+func recheckWatermark(ctx context.Context, path, indexedCommit string) (current, status string) {
+	if strings.HasPrefix(indexedCommit, connector.ManifestWatermarkPrefix) {
+		if fi, err := os.Stat(path); err != nil || !fi.IsDir() {
+			return "", StatusUnknownDetached
+		}
+		got, err := connector.ManifestWatermark(ctx, connector.NewLocalConnector(), core.ServiceRef{Path: path})
+		if err != nil {
+			return "", StatusUnknownDetached
+		}
+		if got == indexedCommit {
+			return got, StatusFresh
+		}
+		return got, StatusDrifted
+	}
+
+	// Only a git-backed corpus is opportunistically re-checkable this way.
+	head := localGitHead(path)
+	if head == "" {
+		return "", StatusUnknownDetached
+	}
+	if indexedCommit == "" {
+		// No stored watermark to compare against — still "unknown", not
+		// silently "fresh".
+		return head, StatusUnknownDetached
+	}
+	if head == indexedCommit {
+		return head, StatusFresh
+	}
+	return head, StatusDrifted
 }
 
 // localGitHead returns path's current git HEAD when path exists locally and

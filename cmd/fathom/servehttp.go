@@ -160,6 +160,16 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
 	}
+	// GKE-MH-7 (critic finding 2): a configured modules token means this is
+	// a hosted, network-reachable deployment — /rpc/modules must serve ONLY
+	// its own curated allowlist (never GroupShared's fleet-backend reads or
+	// write/spend tools), off-surface calls there must hard-gate (never
+	// execute-and-flag), and module tools must be unreachable via any other
+	// path (bare /rpc, another surface, a batch sub-call). Set BEFORE
+	// ListenAndServe — never toggled while serving.
+	if modulesToken != "" {
+		srv.SetHostedModules(true)
+	}
 	handler := newHTTPHandlerWithAuth(srv, modulesToken)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)

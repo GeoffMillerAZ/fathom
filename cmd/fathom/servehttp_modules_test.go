@@ -96,6 +96,11 @@ func newModulesTestHandler(t *testing.T, modulesToken string) http.Handler {
 	}
 
 	srv := mcp.NewServerWithModules(c, nil, nil, h)
+	// Mirrors runServeHTTP's own wiring exactly (servehttp.go): a
+	// configured token means hosted mode.
+	if modulesToken != "" {
+		srv.SetHostedModules(true)
+	}
 	return newHTTPHandlerWithAuth(srv, modulesToken)
 }
 
@@ -179,6 +184,72 @@ func TestServeHTTPModulesAuth_OnlyGatesModulesPath(t *testing.T) {
 		if rr.Code != http.StatusOK {
 			t.Errorf("POST %s with modules auth configured: status = %d, want 200 (unauthenticated, untouched)", path, rr.Code)
 		}
+	}
+}
+
+// TestServeHTTPModulesAuth_HostedModeRestrictsToolset is the end-to-end
+// proof the critic's finding-2 fix demands: an AUTHENTICATED caller on
+// /rpc/modules (correct bearer token) still cannot reach a GroupShared
+// write/fleet-backend tool, and an UNAUTHENTICATED caller on bare /rpc
+// (which carries no token check at all) cannot reach module data either —
+// wiring both the HTTP auth middleware (modulesAuthMiddleware) and the
+// RPC-layer hosted-mode restriction (Server.SetHostedModules) exactly as
+// runServeHTTP does.
+func TestServeHTTPModulesAuth_HostedModeRestrictsToolset(t *testing.T) {
+	const token = "s3cr3t"
+	handler := newModulesTestHandler(t, token)
+
+	// Authenticated on /rpc/modules: "ingest" (GroupShared, a store write)
+	// is refused — the curated allowlist, not GroupShared, governs here.
+	authed := httptest.NewRequest(http.MethodPost, "/rpc/modules", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 10, "method": "tools/call",
+		"params": map[string]any{"name": "ingest", "arguments": map[string]any{"service": "svc"}},
+	}))
+	authed.Header.Set("Authorization", "Bearer "+token)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, authed)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("authenticated ingest call: HTTP status = %d, want 200 (JSON-RPC carries its own error)", rr.Code)
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["error"] == nil {
+		t.Fatal("authenticated \"ingest\" call on /rpc/modules succeeded; want a refusal (not on the hosted allowlist)")
+	}
+
+	// list_modules (a real module tool) IS reachable, authenticated.
+	authedOK := httptest.NewRequest(http.MethodPost, "/rpc/modules", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 11, "method": "tools/call",
+		"params": map[string]any{"name": "list_modules", "arguments": map[string]any{}},
+	}))
+	authedOK.Header.Set("Authorization", "Bearer "+token)
+	rr2 := httptest.NewRecorder()
+	handler.ServeHTTP(rr2, authedOK)
+	var resp2 map[string]any
+	if err := json.Unmarshal(rr2.Body.Bytes(), &resp2); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp2["error"] != nil {
+		t.Fatalf("authenticated list_modules call: %v", resp2["error"])
+	}
+
+	// Bare /rpc carries no auth check at all — but with hosted mode active,
+	// module data must still be unreachable there (the RPC-layer gate, not
+	// the HTTP one).
+	bare := httptest.NewRequest(http.MethodPost, "/rpc", rpcBody(t, map[string]any{
+		"jsonrpc": "2.0", "id": 12, "method": "tools/call",
+		"params": map[string]any{"name": "list_modules", "arguments": map[string]any{}},
+	}))
+	rr3 := httptest.NewRecorder()
+	handler.ServeHTTP(rr3, bare)
+	var resp3 map[string]any
+	if err := json.Unmarshal(rr3.Body.Bytes(), &resp3); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp3["error"] == nil {
+		t.Fatal("unauthenticated list_modules call on bare /rpc succeeded while hosted mode is active; want a refusal — no unauthenticated path to module data may exist")
 	}
 }
 

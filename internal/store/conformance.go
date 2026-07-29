@@ -162,8 +162,8 @@ func (e *ConformanceError) Error() string {
 }
 
 // sqliteReadOnlyDSN builds a DSN that opens path GENUINELY read-only at the
-// SQLite/VFS layer (proven by TestMountReadOnly_WriteThroughHandleFails: an
-// INSERT through the returned *SQLiteStore fails with SQLITE_READONLY, not
+// SQLite/VFS layer (proven by TestMountReadOnly_SucceedsAndIsGenuinelyReadOnly:
+// an INSERT through the returned *SQLiteStore fails with SQLITE_READONLY, not
 // merely "discouraged by this package's own code paths").
 //
 // The "file:" prefix is REQUIRED for modernc.org/sqlite's newConn (conn.go)
@@ -249,6 +249,17 @@ func checkMarkers(db *sql.DB, path string) error {
 	if version < 1 {
 		return &ConformanceError{Path: path, Reason: ReasonUnversioned, Detail: fmt.Sprintf("user_version = %d, want >= 1 (unstamped by a marker-aware fathom writer)", version)}
 	}
+	// version > 1 (a store stamped by a hypothetical future v1+ writer) is
+	// deliberately NOT an error and carries no Detail note here — this is
+	// store-format-v0.md §2's own reader contract: "a reader MUST treat a
+	// user_version higher than the highest version it implements as 'read
+	// with caution, expect unknown tables/columns,' never as an error." A
+	// mount under v0 rules against such a store still runs the FULL v0
+	// required-schema check below (unknown ADDITIONAL tables/columns a v1+
+	// writer might have added are simply invisible to this reader, per
+	// README.md's "additive within v0" compatibility rule) — so mounting
+	// succeeds exactly when the v0-required subset is present, silently
+	// tolerant of anything newer, by design rather than by omission.
 	return nil
 }
 
