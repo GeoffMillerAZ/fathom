@@ -45,6 +45,16 @@ func hookStdin(t *testing.T, hookInput string) {
 // candidate loop fell back to the raw path and still fired an obligations
 // lookup for a file outside every indexed repo.
 func TestEditHookSilentWhenFileOutsideAllCandidateRoots(t *testing.T) {
+	// The premise "no repo above these paths" must hold even when TMPDIR
+	// points inside a git work tree (the Taskfile routes TMPDIR to
+	// workspace/tmp/gobuild): pin git's upward discovery at the temp root so
+	// serviceCandidates' rev-parse can never resolve the enclosing repo.
+	ceil := os.TempDir()
+	if resolved, err := filepath.EvalSymlinks(ceil); err == nil {
+		ceil = resolved
+	}
+	t.Setenv("GIT_CEILING_DIRECTORIES", ceil)
+
 	dir := t.TempDir() // no .git here: serviceCandidates yields exactly {name: base(dir), root: dir}
 
 	var calls int32
