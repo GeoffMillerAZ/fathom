@@ -18,6 +18,23 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
+// gitProofTempDir returns t.TempDir() after pinning GIT_CEILING_DIRECTORIES
+// to its parent, so git's upward discovery can never escape into an enclosing
+// repository. The "non-git corpus" premise must hold even when TMPDIR points
+// inside a git work tree (the Taskfile routes TMPDIR to workspace/tmp/gobuild,
+// which lives inside this repo — without the ceiling, gitHead resolves the
+// repo's own HEAD and the manifest-watermark path is never exercised).
+func gitProofTempDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	parent := filepath.Dir(dir)
+	if resolved, err := filepath.EvalSymlinks(parent); err == nil {
+		parent = resolved
+	}
+	t.Setenv("GIT_CEILING_DIRECTORIES", parent)
+	return dir
+}
+
 func writeCorpusFile(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -39,7 +56,7 @@ func TestStorePortability_RoundTrip(t *testing.T) {
 
 	// Build the store against corpus location A (a non-git corpus: the
 	// manifest watermark path is exercised too).
-	rootA := t.TempDir()
+	rootA := gitProofTempDir(t)
 	writeCorpusFile(t, filepath.Join(rootA, "mod", "anchor.go"), portGoSrc)
 	writeCorpusFile(t, filepath.Join(rootA, "docs", "spec.md"), "# spec\nAnchor returns 42.\n")
 

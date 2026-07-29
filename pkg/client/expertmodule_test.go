@@ -49,7 +49,7 @@ func TestExpertModule_NonGitCorpus_EndToEnd(t *testing.T) {
 	ctx := context.Background()
 
 	// ── Create: a non-git corpus at location A ─────────────────────────────
-	rootA := t.TempDir()
+	rootA := gitProofTempDir(t)
 	writeCorpusFile(t, filepath.Join(rootA, "mod", "pricing.go"), modPricingSrc)
 	writeCorpusFile(t, filepath.Join(rootA, "findings", "wa-001.md"), findingDoc)
 
