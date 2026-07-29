@@ -21,6 +21,7 @@ fleet health).
 | [layers.md](layers.md) | Semantic-layer catalog (`obligations`, `findings`, `adr-rules`, `spec-bindings`), module-pack shape, the `fathom layers` verb |
 | [mcp-tools.md](mcp-tools.md) | Full reference table of all MCP tools grouped by profile, plus prompts and resources |
 | [why-duckdb.md](why-duckdb.md) | Why DuckDB replaced SQLite originally, and why ADR-020 reversed that — DuckDB itself was then deleted outright in SS-8/ADR-025 (superseded and removed — historical rationale) |
+| [spec/](spec/) | The publishable Governed Store Format v0 + Expert Module v0 specs (product-vision.md §4 H2) — normative, falsifiability-indexed, separate from this directory's engineer-facing how-tos |
 
 The authoritative decision log is [ADR.md](../ADR.md).
 The implementation roadmap and status live in [tmp/TRACKING.md](../tmp/TRACKING.md) (gitignored).

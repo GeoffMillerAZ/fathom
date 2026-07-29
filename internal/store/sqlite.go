@@ -26,6 +26,40 @@ type SQLiteStore struct {
 	db *sql.DB
 }
 
+// storeFormatVersion is the format_version marker docs/spec/store-format-v0.md
+// §2 requires every conforming store to carry, via SQLite's built-in PRAGMA
+// user_version. 1 for this spec (v0's marker value). Bump only alongside a
+// new spec version (v1+) that documents what changed — the marker exists so
+// a future reader can identify which spec version wrote a store without
+// guessing from column presence.
+//
+// Deliberately NOT 0: PRAGMA user_version defaults to 0 on every SQLite
+// database ever created, including one this binary never touched — mapping
+// spec v0 to marker 0 would make the marker vacuous (a reader could never
+// distinguish a conforming store from an arbitrary SQLite file, and the
+// stampFormatMarkers write-if-lower guard below would be structurally
+// unreachable, since user_version is never negative in normal use). 0 is
+// reserved to mean "pre-spec/unversioned" (see storeFormatVersionUnversioned)
+// — a reader that sees 0 MUST fall back to schema introspection rather than
+// trusting the marker.
+const storeFormatVersion = 1
+
+// storeFormatVersionUnversioned is SQLite's own default PRAGMA user_version.
+// Documented as a named constant (rather than a bare 0) so its meaning —
+// "no fathom writer has stamped this store yet" — is legible at every call
+// site that compares against it.
+const storeFormatVersionUnversioned = 0
+
+// storeApplicationID is SQLite's PRAGMA application_id (docs/spec/
+// store-format-v0.md §2): the file-TYPE identifier SQLite's own format
+// reserves for exactly this purpose, distinct from user_version (which
+// identifies WHICH VERSION of that type a given file is). Value: the ASCII
+// bytes "FATH" read big-endian (0x46='F', 0x41='A', 0x54='T', 0x48='H') —
+// a stable, human-verifiable mnemonic rather than an opaque hash. Fixed
+// forever once published: changing it would break every existing reader's
+// "is this a fathom store?" check.
+const storeApplicationID = 0x46415448
+
 // sqlitePragmaDSN appends the per-connection pragmas this backend requires
 // (journal_mode=WAL, busy_timeout, synchronous=NORMAL) to path as DSN query
 // parameters. modernc.org/sqlite applies "_pragma" query parameters to every
@@ -290,6 +324,51 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		}
 		if _, err := s.db.Exec(m.ddl); err != nil {
 			return fmt.Errorf("migrate %s.%s: %w", m.table, m.column, err)
+		}
+	}
+	return s.stampFormatMarkers()
+}
+
+// stampFormatMarkers writes the two SQLite pragmas docs/spec/
+// store-format-v0.md §2 documents as a conforming store's self-identifying
+// header: PRAGMA application_id (WHOSE file this is — storeApplicationID,
+// fathom's stable magic number) and PRAGMA user_version (WHICH spec version
+// wrote it — storeFormatVersion). Both writes are additive-safe:
+//
+//   - application_id is stamped only when it currently reads the SQLite
+//     default (0, meaning "never set") — never overwriting a non-zero,
+//     foreign application_id some other tool may already have stamped on
+//     this file (BackendForPath dispatches on file extension alone, so a
+//     ".sqlite" file that is not actually a fathom store is a real,
+//     if pathological, possibility; refusing to relabel it is the safe
+//     default).
+//   - user_version is bumped only when it is strictly lower than
+//     storeFormatVersion, never decreased — a store already stamped at or
+//     above storeFormatVersion (e.g. by a future v1+ writer) is left
+//     untouched, so an older binary opening a newer store cannot regress
+//     the marker a newer reader depends on. A fresh or legacy store reads
+//     storeFormatVersionUnversioned (0) here and is correctly bumped to 1.
+//
+// PRAGMA accepts no bind parameters; the interpolated values are the
+// package-internal constants above, never caller input.
+func (s *SQLiteStore) stampFormatMarkers() error {
+	var appID int
+	if err := s.db.QueryRow(`PRAGMA application_id`).Scan(&appID); err != nil {
+		return fmt.Errorf("read application_id: %w", err)
+	}
+	if appID == 0 {
+		if _, err := s.db.Exec(fmt.Sprintf(`PRAGMA application_id = %d`, storeApplicationID)); err != nil {
+			return fmt.Errorf("set application_id: %w", err)
+		}
+	}
+
+	var version int
+	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return fmt.Errorf("read user_version: %w", err)
+	}
+	if version < storeFormatVersion {
+		if _, err := s.db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, storeFormatVersion)); err != nil {
+			return fmt.Errorf("set user_version: %w", err)
 		}
 	}
 	return nil
