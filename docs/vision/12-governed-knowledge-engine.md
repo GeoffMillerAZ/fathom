@@ -147,7 +147,7 @@ model turn, `foundations/review/scoring` for the same evidence-tier
 vocabulary the store format already closes over, `foundations/retrieval`
 for the module-host query step, and `foundations/telemetry` for the
 existence-check instrumentation law 7 already names). Its contract, stated
-now so the kit plan (`docs/plans/gke-expertchat.md`) does not have to
+now so the kit plan (`agentic-kit the kit's docs/plans/gke-expertchat.md (moved 2026-07-28: a repo:agentic-kit plan verifies under the kit's own gate, not fathom's)`) does not have to
 invent it later: **retrieve via the module host, then answer MUST cite
 every claim with tier + staleness, and MUST refuse rather than answer when
 retrieval returns no evidence.** This is D-EM4
@@ -162,7 +162,7 @@ terminal MCP client with no UI at all is an equally conforming consumer.
 **Hosted = hardened `serve-http`.** Not a new deployment target. The
 existing daemon, given auth and a read-only mode (law 9), is the hosted
 surface — `docs/plans/gke-module-host.md` carries the hardening rows,
-`docs/plans/gke-expertchat.md` carries a thin hosted-chat-service example
+`the kit's docs/plans/gke-expertchat.md` carries a thin hosted-chat-service example
 that is a consumer of the hardened surface, not a new server.
 
 ## 4. The program
@@ -195,7 +195,7 @@ Full row-level evidence: `docs/plans/gke-wave1.md`.
 
 | id | move | kill / terminal state |
 |---|---|---|
-| H1 | `expertchat` package: governed answer composition over the module-host MCP surface | `docs/plans/gke-expertchat.md`; verified against the kit's own index once built, per-repo verify discipline (agentic-kit's `task validate`, not fathom's gate) |
+| H1 | `expertchat` package: governed answer composition over the module-host MCP surface | `the kit's docs/plans/gke-expertchat.md`; verified against the kit's own index once built, per-repo verify discipline (agentic-kit's `task validate`, not fathom's gate) |
 | H2 | Citation-mandatory response type — a response with an unsourced claim is a type error, not a runtime check | same as H1 |
 | H3 | Refusal-without-evidence behavior — zero retrieved evidence MUST refuse, never answer from model prior | kill: any code path that answers without a retrieval hit found in review → blocks merge, not a 30-day clock (this is a law-1/law-3 violation, not an adoption question) |
 | H4 | Tier/staleness rendering contract — every citation surfaces its evidence tier and non-fresh status, mirroring `store-format-v0.md` §3 Server conformance at the chat layer | same as H1 |
