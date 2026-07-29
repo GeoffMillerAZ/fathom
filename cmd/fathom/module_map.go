@@ -37,6 +37,15 @@ const (
 	GapZeroClaimDensity  = "zero_claim_density"
 	GapLegacyEmptyAnchor = "legacy_empty_anchor"
 	GapAnchorDrifted     = "anchor_drifted"
+	// GapNoCitations fires when a layer HAS compiled claims but ZERO of
+	// their links are "cites" relations (Phase J critic finding 10): a
+	// hand-built or foreign store can carry claims with no citation links
+	// at all, and the anchor loop below simply never iterates over
+	// anything — silently reporting "0 broken anchors" in that case would
+	// be a vacuous pass, not an honest one. Packaging (`module pack`)
+	// invites exactly this: a store from anywhere, not only ones this
+	// phase's own `module compile` produced.
+	GapNoCitations = "no_citations"
 )
 
 // Gap is one deterministic finding `module map` reports.
@@ -121,37 +130,50 @@ func computeMap(ctx context.Context, root, storePath, service string, m modspec.
 		})
 	}
 
-	// 2. Watermark drift vs. the current corpus (moduleWatermark, not the
-	// raw whole-directory connector.Watermark — see its doc comment: a
-	// module's own manifest/eval/pack artifacts sharing root with the
-	// corpus must never count as corpus drift).
-	current, wErr := moduleWatermark(ctx, root, m)
-	switch {
-	case wErr != nil:
-		report.Gaps = append(report.Gaps, Gap{
-			Code: GapWatermarkDrift,
-			Line: fmt.Sprintf("could not recompute a watermark for %s to compare against the manifest's %q: %v", root, m.Watermark, wErr),
-		})
-	case current != m.Watermark:
-		report.Gaps = append(report.Gaps, Gap{
-			Code: GapWatermarkDrift,
-			Line: fmt.Sprintf("manifest watermark %q does not match the corpus's current watermark %q — the corpus has changed since this manifest was compiled", m.Watermark, current),
-		})
-	}
+	// The corpus's CURRENT watermark, in the two styles that matter here
+	// (Phase J critic finding 3). moduleWatermark (corpus-scoped) is what
+	// `module init` embeds into module.cue's own watermark field — scoped
+	// specifically to avoid module.cue's own bytes invalidating themselves
+	// (the fix for the self-reference bug this phase's cold run originally
+	// caught). connector.Watermark (whole-directory) is what
+	// pkg/client.CompileLayerWithEscape's OWN, unmodified ServiceWatermark
+	// call actually records into compile_runs — frozen, shared machinery
+	// this phase does not fork (docs/plans/expert-suite-j.md's design
+	// section). These two are DIFFERENT ALGORITHMS measuring different
+	// scopes of the same directory; they are never expected to produce the
+	// same number for a module whose root holds anything besides its own
+	// declared corpus (module.cue itself, .fathom/layers/, eval fixtures —
+	// which is the common case). Comparing them to EACH OTHER, or comparing
+	// manifest.Watermark directly against the store's recorded
+	// whole-directory watermark, would therefore be comparing incomparable
+	// values — not a freshness check at all. Instead, each side of the
+	// freshness question is checked against ITS OWN algorithm's current
+	// value, below.
+	currentModuleWM, moduleWMErr := moduleWatermark(ctx, root, m)
+	currentWholeWM, wholeWMErr := connector.NewLocalConnector().Watermark(ctx, core.ServiceRef{ID: m.Name, Path: root})
 
-	// 3. Store-dependent gaps: claim density and anchor health. Absent
-	// --store is an explicit, honest note — never a fake zero.
+	// 2. Store-dependent gaps: claim density, the full watermark
+	// cross-check, and anchor health. Absent --store, or a layer with no
+	// compiled claims yet, only the store-INDEPENDENT two-way check
+	// (manifest vs. current corpus) is possible — reported honestly as
+	// such, never silently upgraded to the stronger three-way proof.
 	if storePath == "" {
 		report.Gaps = append(report.Gaps, Gap{
 			Code: GapStoreNotProvided,
 			Line: "no --store given — claim-density and anchor-health checks skipped (not compiled yet)",
 		})
+		appendTwoWayWatermarkGap(&report, m, currentModuleWM, moduleWMErr)
 		return report, nil
 	}
 
-	st, err := store.Open(storePath)
+	// Phase J critic finding 5: MountReadOnly, never store.Open — Open runs
+	// MkdirAll + CREATE TABLE, which would stamp fathom's own schema onto a
+	// third-party artifact that merely happens to not exist yet, or add a
+	// -wal/-shm sidecar beside a pristine copy. The handle is closed before
+	// every return path below.
+	st, err := store.MountReadOnly(storePath, store.LevelL0)
 	if err != nil {
-		return MapReport{}, fmt.Errorf("open store %q: %w", storePath, err)
+		return MapReport{}, fmt.Errorf("mount store %q read-only: %w", storePath, err)
 	}
 	defer st.Close()
 
@@ -164,7 +186,75 @@ func computeMap(ctx context.Context, root, storePath, service string, m modspec.
 			Code: GapLayerNotCompiled,
 			Line: fmt.Sprintf("no claims compiled for layer %q on service %q yet (not compiled yet)", m.Name, service),
 		})
+		appendTwoWayWatermarkGap(&report, m, currentModuleWM, moduleWMErr)
 		return report, nil
+	}
+
+	// The watermark-laundering fix (finding 3): two INDEPENDENT checks,
+	// together covering all three quantities (manifest, store, corpus):
+	//
+	//   (a) COMPILE FRESHNESS — does not read manifest.Watermark at all, so
+	//       hand-editing module.cue cannot launder past it: the store's own
+	//       immutable compile_runs record must still match the corpus's
+	//       CURRENT watermark, checked in WHICHEVER style actually produced
+	//       it. A real (non-mock) compile records the whole-directory style
+	//       (pkg/client.CompileLayerWithEscape's frozen, unmodified
+	//       ServiceWatermark call — this phase does not fork it); the mock
+	//       lane records the module-scoped style (scopedWatermarkConnector,
+	//       module_compileeval.go — deliberately, so a mock-compiled
+	//       module's freshness check is immune to sibling-file noise like
+	//       editing module.cue's own eval_evidence afterward). storeWM is
+	//       compared against BOTH current recomputations and passes if it
+	//       matches EITHER — never both required, since a given compile run
+	//       only ever used one algorithm. A mismatch against both means the
+	//       corpus changed since the last REAL compile, regardless of what
+	//       module.cue currently claims about itself.
+	//   (b) MANIFEST HONESTY — module.cue's OWN declared watermark
+	//       (module-scoped, `module init`'s convention) must match the
+	//       corpus's CURRENT module-scoped watermark. A mismatch means the
+	//       manifest's freshness claim about ITSELF no longer holds (hand-
+	//       edited to a stale/fabricated value, or the declared corpus
+	//       changed since module.cue was last written).
+	//
+	// A module that passes BOTH is fresh in every sense that matters.
+	runs, runsErr := st.CompileRuns(ctx, service, m.Name)
+	switch {
+	case runsErr != nil:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: fmt.Sprintf("claims exist but compile_runs could not be read to cross-check the watermark: %v", runsErr),
+		})
+	case len(runs) == 0:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: "claims are compiled but no compile_runs record exists to cross-check the watermark against (an unusually old or hand-built store?)",
+		})
+	default:
+		storeWM := runs[0].CorpusWatermark // CompileRuns is newest-first
+		switch {
+		case moduleWMErr != nil && wholeWMErr != nil:
+			report.Gaps = append(report.Gaps, Gap{
+				Code: GapWatermarkDrift,
+				Line: fmt.Sprintf("could not recompute the corpus's current watermark (either style) to confirm the last compile (%q) is still fresh: %v / %v", storeWM, moduleWMErr, wholeWMErr),
+			})
+		case storeWM != currentModuleWM && storeWM != currentWholeWM:
+			report.Gaps = append(report.Gaps, Gap{
+				Code: GapWatermarkDrift,
+				Line: fmt.Sprintf("the corpus has changed since the last compile: compile_runs recorded watermark %q, the corpus's current watermark is now %q (module-scoped) / %q (whole-directory)", storeWM, currentModuleWM, currentWholeWM),
+			})
+		}
+	}
+	switch {
+	case moduleWMErr != nil:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: fmt.Sprintf("could not recompute the corpus's current module-scoped watermark to confirm the manifest's declared watermark %q still holds: %v", m.Watermark, moduleWMErr),
+		})
+	case m.Watermark != currentModuleWM:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: fmt.Sprintf("manifest declares watermark %q but the corpus's current module-scoped watermark is %q — module.cue's own freshness claim about itself no longer holds (hand-editing this field is not the same as recompiling)", m.Watermark, currentModuleWM),
+		})
 	}
 
 	// Zero claim density per declared corpus selector: does at least one
@@ -194,8 +284,9 @@ func computeMap(ctx context.Context, root, storePath, service string, m modspec.
 		}
 	}
 
-	// Anchor health: legacy-empty AnchorText, and citations that no longer
-	// hash-match the corpus at root (drifted).
+	// Anchor health: legacy-empty AnchorText, citations that no longer
+	// hash-match the corpus at root (drifted), and the vacuous case (finding
+	// 10) — claims present but zero citation links to check at all.
 	ids := make([]string, 0, len(claims))
 	for _, cl := range claims {
 		ids = append(ids, cl.ClaimID)
@@ -216,10 +307,12 @@ func computeMap(ctx context.Context, root, storePath, service string, m modspec.
 	}
 	fileCache := map[string][]byte{}
 	sort.Slice(links, func(i, j int) bool { return links[i].ClaimID < links[j].ClaimID })
+	citesSeen := 0
 	for _, l := range links {
 		if l.Rel != core.RelCites {
 			continue
 		}
+		citesSeen++
 		if l.AnchorText == "" {
 			report.Gaps = append(report.Gaps, Gap{
 				Code:    GapLegacyEmptyAnchor,
@@ -259,6 +352,31 @@ func computeMap(ctx context.Context, root, storePath, service string, m modspec.
 			})
 		}
 	}
+	if citesSeen == 0 {
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapNoCitations,
+			Line: fmt.Sprintf("%d claim(s) compiled but ZERO citation links found — anchors cannot be verified (a hand-built or foreign store?)", len(claims)),
+		})
+	}
 
 	return report, nil
+}
+
+// appendTwoWayWatermarkGap is the store-independent fallback: manifest vs.
+// the corpus's current watermark only, used when no --store is given or
+// the layer has no compiled claims yet (there is no store-recorded
+// watermark to cross-check against in either case).
+func appendTwoWayWatermarkGap(report *MapReport, m modspec.Manifest, current string, err error) {
+	switch {
+	case err != nil:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: fmt.Sprintf("could not recompute a watermark for %s to compare against the manifest's %q: %v", report.Root, m.Watermark, err),
+		})
+	case current != m.Watermark:
+		report.Gaps = append(report.Gaps, Gap{
+			Code: GapWatermarkDrift,
+			Line: fmt.Sprintf("manifest watermark %q does not match the corpus's current watermark %q (no compiled store available to cross-check the compile-time record against)", m.Watermark, current),
+		})
+	}
 }

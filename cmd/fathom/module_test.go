@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/modspec"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -440,17 +441,34 @@ func TestModuleEval_RequiresProfileOrMock(t *testing.T) {
 
 // ─── doctor ─────────────────────────────────────────────────────────────
 
+// TestModuleDoctor_LadderProgression is the real, store-backed progression
+// (Phase J critic round: doctor's criteria are checked against the STORE,
+// never author-typed text) — draft, then eval-passed via a genuine
+// EvalArtifact cross-checked against the store's own compiled
+// prompt_version, then servable via a real (mock-lane) compile whose
+// recorded watermark is directly comparable to module.cue's own (both
+// module-scoped, via scopedWatermarkConnector — see module_compileeval.go).
+// It also proves the mock lane, having reached servable honestly, is
+// EXPLICITLY refused at published (finding 2) — the ladder never silently
+// launders a scripted/dev compile into a production verdict.
 func TestModuleDoctor_LadderProgression(t *testing.T) {
 	root := t.TempDir()
-	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
+	doc := "## Sorting\n\nAlways sort output before returning it.\n"
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte(doc), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	wm := testWatermark(t, root, "RULES.md")
+	writeTestLayerPack(t, root, "doctor-module", []string{"RULES.md"})
 	manifestPath := filepath.Join(root, "module.cue")
 
-	// Stage 1: draft only (no eval evidence, no store, default license).
-	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("doctor-module", []string{"RULES.md"}, wm)), 0o644); err != nil {
-		t.Fatal(err)
+	// Stage 1: draft only (module init scaffolds a real, scoped-watermark
+	// manifest; no store, no eval evidence, default license).
+	_, stderr, rc := runModule(
+		t, "init",
+		"--dir", root, "--name", "doctor-module", "--description", "d",
+		"--include", "RULES.md", "--license", "Apache-2.0",
+	)
+	if rc != 0 {
+		t.Fatalf("init rc=%d stderr=%s", rc, stderr)
 	}
 	stdout, _, rc := runModule(t, "doctor", "--manifest", manifestPath, "--json")
 	if rc != 0 {
@@ -464,36 +482,83 @@ func TestModuleDoctor_LadderProgression(t *testing.T) {
 		t.Errorf("verdict = %q, want %q; criteria=%+v", report.Verdict, LevelDraft, report.Criteria)
 	}
 
-	// Stage 2: eval-passed (evidence file exists on disk, evaled:true).
-	if err := os.WriteFile(filepath.Join(root, "RESULTS.md"), []byte("precision 1.0\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	evalManifest := strings.Replace(testManifestCUE("doctor-module", []string{"RULES.md"}, wm), "eval_evidence: evaled: false", "eval_evidence: {\n\tevaled: true\n\tpath: \"RESULTS.md\"\n}", 1)
-	if err := os.WriteFile(manifestPath, []byte(evalManifest), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	stdout, _, rc = runModule(t, "doctor", "--manifest", manifestPath, "--json")
-	if rc != 0 {
-		t.Fatalf("doctor rc=%d stdout=%s", rc, stdout)
-	}
-	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
-		t.Fatal(err)
-	}
-	if report.Verdict != LevelEvalPassed {
-		t.Errorf("verdict = %q, want %q; criteria=%+v", report.Verdict, LevelEvalPassed, report.Criteria)
-	}
-
-	// Stage 3: servable (a conforming, fresh-watermark store; empty claims
-	// for this layer is fine — computeMap reports "layer not compiled yet"
-	// as a store-note, which zeroBrokenAnchors treats as NOT servable, so
-	// we must actually have zero broken anchors AND no store-note — i.e.
-	// verify the "no claims at all" case does NOT falsely claim servable).
+	// Stage 2/3 setup: a real mock-lane compile — scopedWatermarkConnector
+	// makes its recorded compile_runs.CorpusWatermark module-scoped, the
+	// SAME algorithm module.cue's own watermark field uses, so they stay
+	// comparable even after module.cue is edited again below (finding 3's
+	// fix; RULES.md's scoped hash never depends on module.cue's own bytes).
 	storePath := filepath.Join(t.TempDir(), "module.sqlite")
 	st, err := store.Open(storePath)
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A real ingest (not just a hand-seeded ServiceMeta row): the layer-pack
+	// resolution inside CompileLayerWithEscape reads the service's root from
+	// ServiceMeta, and the scope-verification pass needs RULES.md to appear
+	// as an indexed file (see TestModuleCompile_MockLaneSpends's identical
+	// note above).
+	seedClient := client.New(connector.NewLocalConnector(), st)
+	if err := seedClient.IngestServiceAt(context.Background(), "doctor-module", root); err != nil {
+		t.Fatalf("IngestServiceAt: %v", err)
+	}
+	seedClient.Close()
 	st.Close()
+	compileEntries := filepath.Join(t.TempDir(), "compile-entries.json")
+	if err := os.WriteFile(compileEntries, []byte(`["{\"claims\":[{\"rule\":\"Always sort output before returning it.\",\"scope\":[\"RULES.md\"],\"cite_start\":3,\"cite_end\":3}]}"]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, rc = runModule(
+		t, "compile",
+		"--manifest", manifestPath, "--store", storePath,
+		"--dry-run=false", "--mock", "--mock-entries-file", compileEntries,
+	)
+	if rc != 0 {
+		t.Fatalf("compile rc=%d stderr=%s", rc, stderr)
+	}
+
+	// Eval, --record'ing a real EvalArtifact — its prompt_version comes
+	// from RunEval's own compile of the SAME layer pack, so it matches the
+	// store's compiled claims' PromptVersion exactly.
+	evalDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(evalDir, "doc.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	labels := `{"docs":["doc.md"],"probes":["a.go","b.go"],"rules":[{"key":"sort","cite_substr":"Always sort output","governs":["a.go","b.go"]}]}`
+	if err := os.WriteFile(filepath.Join(evalDir, "labels.json"), []byte(labels), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	evalEntries := filepath.Join(t.TempDir(), "eval-entries.json")
+	if err := os.WriteFile(evalEntries, []byte(`["{\"claims\":[{\"rule\":\"Always sort output before returning it.\",\"scope\":[\"a.go\",\"b.go\"],\"cite_start\":3,\"cite_end\":3}]}"]`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	artifactPath := filepath.Join(t.TempDir(), "eval-artifact.json")
+	_, stderr, rc = runModule(
+		t, "eval",
+		"--manifest", manifestPath, "--fixtures", evalDir,
+		"--mock", "--mock-entries-file", evalEntries,
+		"--record", artifactPath,
+	)
+	if rc != 0 {
+		t.Fatalf("eval rc=%d stderr=%s", rc, stderr)
+	}
+
+	// Point eval_evidence at the external artifact (outside root, so it
+	// never perturbs RULES.md's scoped watermark) — this IS the documented
+	// hand-edit workflow (docs/plans/expert-suite-j.md's deferred-items
+	// note: no verb writes eval_evidence back automatically).
+	manifestSrc, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := strings.Replace(string(manifestSrc), "eval_evidence: evaled: false", "eval_evidence: {\n\tevaled: true\n\tpath: \""+artifactPath+"\"\n}", 1)
+	if edited == string(manifestSrc) {
+		t.Fatal("eval_evidence replacement did not match — Template's output shape changed?")
+	}
+	if err := os.WriteFile(manifestPath, []byte(edited), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Stage 2: eval-passed.
 	stdout, _, rc = runModule(t, "doctor", "--manifest", manifestPath, "--store", storePath, "--json")
 	if rc != 0 {
 		t.Fatalf("doctor rc=%d stdout=%s", rc, stdout)
@@ -501,9 +566,52 @@ func TestModuleDoctor_LadderProgression(t *testing.T) {
 	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
 		t.Fatal(err)
 	}
-	if report.Verdict != LevelEvalPassed {
-		t.Errorf("verdict = %q, want %q (an empty store has no compiled claims yet, so servable's anchor criterion must NOT pass); criteria=%+v", report.Verdict, LevelEvalPassed, report.Criteria)
+	evalCriterion := findCriterion(report, LevelEvalPassed, "eval evidence present, gate-passing, and prompt_version-fresh (store-checked)")
+	if evalCriterion == nil || !evalCriterion.Pass {
+		t.Fatalf("eval-passed criterion did not pass: %+v; full report=%+v", evalCriterion, report)
 	}
+
+	// Stage 3: servable — the mock compile's scoped watermark matches
+	// module.cue's own, and RULES.md's citation is intact.
+	if report.Verdict != LevelServable {
+		t.Errorf("verdict = %q, want %q; criteria=%+v", report.Verdict, LevelServable, report.Criteria)
+	}
+
+	// Stage 4: published is explicitly REFUSED — the store's claims were
+	// compiled under mockModelName, and init's default provenance.compiled_by
+	// is "unspecified"; either alone would refuse, and both fire.
+	packDir := filepath.Join(t.TempDir(), "packed")
+	_, stderr, rc = runModule(t, "pack", "--manifest", manifestPath, "--store", storePath, "--out", packDir)
+	if rc != 0 {
+		t.Fatalf("pack rc=%d stderr=%s", rc, stderr)
+	}
+	stdout, _, rc = runModule(t, "doctor", "--manifest", manifestPath, "--store", storePath, "--pack-dir", packDir, "--json")
+	if rc != 0 {
+		t.Fatalf("doctor rc=%d stdout=%s", rc, stdout)
+	}
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	if report.Verdict != LevelServable {
+		t.Errorf("verdict = %q, want %q (a mock-lane compile must never reach published); criteria=%+v", report.Verdict, LevelServable, report.Criteria)
+	}
+	laneCriterion := findCriterion(report, LevelPublished, "compile lane is real (not mock/dev) and matches provenance.compiled_by")
+	if laneCriterion == nil || laneCriterion.Pass {
+		t.Fatalf("compile-lane criterion should FAIL for a mock compile: %+v", laneCriterion)
+	}
+	if !strings.Contains(laneCriterion.Evidence, mockModelName) {
+		t.Errorf("compile-lane evidence = %q, want it to name %q", laneCriterion.Evidence, mockModelName)
+	}
+}
+
+// findCriterion returns the first matching Criterion, or nil.
+func findCriterion(report DoctorReport, level, name string) *Criterion {
+	for i := range report.Criteria {
+		if report.Criteria[i].Level == level && report.Criteria[i].Name == name {
+			return &report.Criteria[i]
+		}
+	}
+	return nil
 }
 
 func TestModuleDoctor_ManifestDoesNotLoad(t *testing.T) {
@@ -605,6 +713,237 @@ func TestModulePack_RefusesNonEmptyOutWithoutForce(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "--force") {
 		t.Errorf("stderr = %q", stderr)
+	}
+}
+
+// TestModulePack_NoWALSidecars proves the VACUUM INTO fix (finding 6): the
+// packed copy carries no -wal/-shm sidecar files — the exact artifact the
+// old checkpoint+copy implementation could leak, both from a busy
+// checkpoint (frames silently dropped, not reproducible here without a
+// concurrent writer) and from the LevelWriter conformance probe's leaked
+// handle (fully reproducible: MountReadOnly opens in WAL-capable mode, and
+// a real leaked handle leaves its own -wal/-shm behind).
+func TestModulePack_NoWALSidecars(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "module.cue")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("pack-nowal", []string{"RULES.md"}, testWatermark(t, root, "RULES.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(t.TempDir(), "module.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.Close()
+
+	outDir := filepath.Join(t.TempDir(), "packed")
+	_, stderr, rc := runModule(t, "pack", "--manifest", manifestPath, "--store", storePath, "--out", outDir)
+	if rc != 0 {
+		t.Fatalf("rc=%d stderr=%s", rc, stderr)
+	}
+	for _, sidecar := range []string{"module.sqlite-wal", "module.sqlite-shm"} {
+		if _, err := os.Stat(filepath.Join(outDir, sidecar)); err == nil {
+			t.Errorf("packed artifact carries a %s sidecar — VACUUM INTO should never produce one", sidecar)
+		}
+	}
+}
+
+// TestModuleDoctor_PackTamperingRefused proves finding 4: `module doctor`'s
+// pack criterion is a real conformance + identity + claim-set check, not
+// two filename Stats. A packed copy whose module.cue was hand-edited after
+// packing (a different watermark than the manifest under review) is
+// refused, even though both files still exist and the store still mounts.
+func TestModuleDoctor_PackTamperingRefused(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "module.cue")
+	wm := testWatermark(t, root, "RULES.md")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("pack-tamper", []string{"RULES.md"}, wm)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	storePath := filepath.Join(t.TempDir(), "module.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st.Close()
+
+	packDir := filepath.Join(t.TempDir(), "packed")
+	_, stderr, rc := runModule(t, "pack", "--manifest", manifestPath, "--store", storePath, "--out", packDir)
+	if rc != 0 {
+		t.Fatalf("pack rc=%d stderr=%s", rc, stderr)
+	}
+
+	// Tamper: rewrite the PACKED module.cue with a different watermark —
+	// two Stats would still see both files present; the real check must
+	// catch the identity mismatch.
+	packedManifestPath := filepath.Join(packDir, "module.cue")
+	tampered := strings.Replace(testManifestCUE("pack-tamper", []string{"RULES.md"}, wm), wm, "manifest:1111111111111111111111111111111111111111111111111111111111111111", 1)
+	if err := os.WriteFile(packedManifestPath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout, _, rc := runModule(t, "doctor", "--manifest", manifestPath, "--pack-dir", packDir, "--json")
+	if rc != 0 {
+		t.Fatalf("doctor rc=%d stdout=%s", rc, stdout)
+	}
+	var report DoctorReport
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatal(err)
+	}
+	packCriterion := findCriterion(report, LevelPublished, "pack artifact conforms and matches this manifest")
+	if packCriterion == nil || packCriterion.Pass {
+		t.Fatalf("expected the pack criterion to FAIL on a tampered packed manifest: %+v", packCriterion)
+	}
+	if !strings.Contains(packCriterion.Evidence, "does not match") {
+		t.Errorf("evidence = %q, want it to name the mismatch", packCriterion.Evidence)
+	}
+}
+
+// TestModuleDoctor_RequireLevel proves finding 9: doctor's exit code is
+// meaningful when --require-level is given, instead of always 0.
+func TestModuleDoctor_RequireLevel(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(dir, "module.cue")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("require-level-module", []string{"README.md"}, testWatermark(t, dir, "README.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// draft is reached: --require-level draft passes.
+	_, _, rc := runModule(t, "doctor", "--manifest", manifestPath, "--require-level", "draft")
+	if rc != 0 {
+		t.Errorf("--require-level draft: rc=%d, want 0 (draft is reached)", rc)
+	}
+
+	// servable is NOT reached (no store, no eval): --require-level servable fails.
+	_, stderr, rc := runModule(t, "doctor", "--manifest", manifestPath, "--require-level", "servable")
+	if rc == 0 {
+		t.Error("--require-level servable: rc=0, want non-zero (servable is not reached)")
+	}
+	if !strings.Contains(stderr, "servable") {
+		t.Errorf("stderr = %q, want it to name the required level", stderr)
+	}
+
+	// An unknown level is a usage error, not silently accepted.
+	_, _, rc = runModule(t, "doctor", "--manifest", manifestPath, "--require-level", "not-a-level")
+	if rc == 0 {
+		t.Error("expected --require-level not-a-level to be refused")
+	}
+}
+
+// TestModuleMap_ClaimsWithNoCitationsIsNotAVacuousPass proves finding 10:
+// a store with compiled claims but ZERO "cites" links must NOT report "0
+// broken anchors" — that would be a vacuous pass on exactly the
+// hand-built/foreign-store case packaging invites.
+func TestModuleMap_ClaimsWithNoCitationsIsNotAVacuousPass(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "module.cue")
+	wm := testWatermark(t, root, "RULES.md")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("no-citations-module", []string{"RULES.md"}, wm)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	storePath := filepath.Join(t.TempDir(), "module.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Hand-build a claim with NO links at all — a store this phase's own
+	// `module compile` would never produce (verifyDraft always attaches a
+	// cites link), but exactly the shape an arbitrary hand-built or foreign
+	// store could carry.
+	claim := core.SemanticClaim{
+		ClaimID:     "deadbeef",
+		ServiceID:   "no-citations-module",
+		Layer:       "no-citations-module",
+		Kind:        "obligation",
+		Subject:     "RULES.md#r",
+		Rule:        "A rule with no citation.",
+		Scope:       []string{"RULES.md"},
+		Status:      core.ClaimFresh,
+		ReproKey:    "x",
+		InputDigest: "x",
+	}
+	if err := st.PutClaims(context.Background(), []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatal(err)
+	}
+	st.Close()
+
+	stdout, _, rc := runModule(t, "map", "--manifest", manifestPath, "--store", storePath, "--json")
+	if rc != 1 {
+		t.Fatalf("rc=%d, want 1 (a no-citations claim must be a gap); stdout=%s", rc, stdout)
+	}
+	var report MapReport
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatalf("parse: %v\n%s", err, stdout)
+	}
+	found := false
+	for _, g := range report.Gaps {
+		if g.Code == GapNoCitations {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("Gaps = %+v, want a %s gap", report.Gaps, GapNoCitations)
+	}
+}
+
+// TestModuleMap_NeverWritesToStore proves finding 5: `module map` (and by
+// extension `module doctor`, which delegates to the same computeMap)
+// mounts the store READ-ONLY — MountReadOnly refuses a path that does not
+// exist rather than creating one, unlike store.Open (which would run
+// CREATE TABLE and silently "succeed" against an empty file it just
+// stamped fathom's own schema onto).
+func TestModuleMap_NeverWritesToStore(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "module.cue")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("readonly-module", []string{"RULES.md"}, testWatermark(t, root, "RULES.md"))), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	nonexistent := filepath.Join(t.TempDir(), "does-not-exist.sqlite")
+	_, stderr, rc := runModule(t, "map", "--manifest", manifestPath, "--store", nonexistent)
+	if rc == 0 {
+		t.Fatal("expected `module map` against a nonexistent store to error, not silently create one")
+	}
+	if _, err := os.Stat(nonexistent); err == nil {
+		t.Error("`module map` created a store file at a path that did not exist — store.Open's CREATE TABLE path was used, not MountReadOnly")
+	}
+	_ = stderr
+}
+
+// TestModuleInit_WarnsOnSelectorMatchingModuleCue proves finding 7's
+// warning half: a selector broad enough to catch module.cue itself gets an
+// explicit warning naming the moving-target risk.
+func TestModuleInit_WarnsOnSelectorMatchingModuleCue(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "RULES.md"), []byte("hi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, rc := runModule(
+		t, "init",
+		"--dir", dir, "--name", "broad-selector-module", "--description", "d",
+		"--include", "*",
+	)
+	if rc != 0 {
+		t.Fatalf("rc=%d stderr=%s", rc, stderr)
+	}
+	if !strings.Contains(stderr, "moving target") {
+		t.Errorf("stderr = %q, want a moving-target warning for a selector matching module.cue itself", stderr)
 	}
 }
 

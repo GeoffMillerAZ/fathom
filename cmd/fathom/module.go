@@ -20,8 +20,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/modspec"
 )
+
+// nowFunc is the injected wall-clock `module` verbs use for anything
+// requiring a timestamp (module init's provenance.compiled_at) — repo
+// convention, never call time.Now() inline in logic (internal/modspec/
+// template.go's own doc comment on TemplateInput.CompiledAt: "RFC3339,
+// caller-injected clock"). Tests may override this var.
+var nowFunc = time.Now
 
 // cmdModule dispatches to the module verb named by args[0].
 func cmdModule(args []string, stdout, stderr io.Writer) int {
@@ -58,8 +66,8 @@ func printModuleUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom module sources --manifest module.cue [--root DIR] [--json]")
 	fmt.Fprintln(w, "  fathom module map     --manifest module.cue [--root DIR] [--store PATH --service NAME] [--json]")
 	fmt.Fprintln(w, "  fathom module compile --manifest module.cue --store PATH [--service NAME] [--dry-run=true|false] [--profile NAME | --mock --mock-entries-file PATH] [--force] [--unsafe-skip-eval-gate] [--json]")
-	fmt.Fprintln(w, "  fathom module eval    --manifest module.cue [--fixtures DIR] [--profile NAME | --mock --mock-entries-file PATH] [--json]")
-	fmt.Fprintln(w, "  fathom module doctor  --manifest module.cue [--root DIR] [--store PATH --service NAME] [--pack-dir DIR] [--json]")
+	fmt.Fprintln(w, "  fathom module eval    --manifest module.cue [--fixtures DIR] [--profile NAME | --mock --mock-entries-file PATH] [--record PATH] [--json]")
+	fmt.Fprintln(w, "  fathom module doctor  --manifest module.cue [--root DIR] [--store PATH --service NAME] [--pack-dir DIR] [--require-level LEVEL] [--json]")
 	fmt.Fprintln(w, "  fathom module pack    --manifest module.cue --store PATH --out DIR [--force] [--json]")
 }
 
@@ -114,14 +122,23 @@ func cmdModuleInit(args []string, stdout, stderr io.Writer) int {
 	if corpusRoot == "" {
 		corpusRoot = *dir
 	}
+	includeGlobs := splitCSV(*include)
+	excludeGlobs := splitCSV(*exclude)
+
+	// Finding 7 (Phase J critic round): a selector broad enough to match
+	// module.cue itself (or the conventional eval/ fixtures location) makes
+	// the watermark a MOVING TARGET — module.cue's own bytes depend on the
+	// watermark value it embeds, so no single computation can ever be
+	// simultaneously "before" and "after" its own effect. Warned, never
+	// silently accepted as if it were fine.
+	warnIfSelectorMatchesModuleArtifacts(stderr, *dir, corpusRoot, includeGlobs, excludeGlobs)
+
 	// modspec.Manifest carries only what moduleWatermark needs (Name,
 	// Corpus) — module.cue itself does not exist on disk yet at this point
 	// (that's what this function is about to write), so LoadManifest isn't
 	// available; a throwaway value with just the two fields is sufficient.
-	watermark, err := moduleWatermark(context.Background(), corpusRoot, modspec.Manifest{
-		Name:   *name,
-		Corpus: modspec.Corpus{Include: splitCSV(*include), Exclude: splitCSV(*exclude)},
-	})
+	throwaway := modspec.Manifest{Name: *name, Corpus: modspec.Corpus{Include: includeGlobs, Exclude: excludeGlobs}}
+	watermark, err := moduleWatermark(context.Background(), corpusRoot, throwaway)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: compute initial watermark for %q: %v\n", corpusRoot, err)
 		return 1
@@ -130,37 +147,44 @@ func cmdModuleInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: could not establish a watermark for %q (not a git work tree and the manifest content hash came back empty) — the freshness doctrine (docs/spec/expert-module-v0.md §3.3) refuses to scaffold a module with no watermark\n", corpusRoot)
 		return 1
 	}
+	compiledAt := nowFunc().UTC().Format(time.RFC3339)
 
-	src := modspec.Template(modspec.TemplateInput{
-		Name:        *name,
-		Description: *description,
-		Include:     splitCSV(*include),
-		Exclude:     splitCSV(*exclude),
-		Watermark:   watermark,
-		TierProfile: *tierProfile,
-		License:     *license,
-		CompiledAt:  time.Now().UTC().Format(time.RFC3339),
-	})
+	// renderAndValidate builds module.cue's text for the given watermark and
+	// proves it passes the strict authoring gate BEFORE anything touches
+	// target — a scaffold that would fail its own gate is never left on
+	// disk (a caller retrying `module init` sees a clean absence, not a
+	// half-written file to delete first).
+	renderAndValidate := func(wm string) (string, error) {
+		src := modspec.Template(modspec.TemplateInput{
+			Name:        *name,
+			Description: *description,
+			Include:     includeGlobs,
+			Exclude:     excludeGlobs,
+			Watermark:   wm,
+			TierProfile: *tierProfile,
+			License:     *license,
+			CompiledAt:  compiledAt,
+		})
+		tmp, err := os.CreateTemp("", "module-init-*.cue")
+		if err != nil {
+			return "", err
+		}
+		tmpPath := tmp.Name()
+		defer os.Remove(tmpPath)
+		if _, err := tmp.WriteString(src); err != nil {
+			tmp.Close()
+			return "", err
+		}
+		tmp.Close()
+		if err := modspec.ValidateStrict(tmpPath); err != nil {
+			return "", fmt.Errorf("scaffolded module.cue failed its own authoring gate (this is a bug in `fathom module init`, not your input): %w", err)
+		}
+		return src, nil
+	}
 
-	// Validate before writing anything into the target — a scaffold that
-	// fails its own authoring gate must never be left on disk (a caller
-	// retrying `module init` should see a clean absence, not a half-written
-	// file it must first delete).
-	tmp, err := os.CreateTemp("", "module-init-*.cue")
+	src, err := renderAndValidate(watermark)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	tmpPath := tmp.Name()
-	defer os.Remove(tmpPath)
-	if _, err := tmp.WriteString(src); err != nil {
-		tmp.Close()
-		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
-	}
-	tmp.Close()
-	if err := modspec.ValidateStrict(tmpPath); err != nil {
-		fmt.Fprintf(stderr, "error: scaffolded module.cue failed its own authoring gate (this is a bug in `fathom module init`, not your input): %v\n", err)
 		return 1
 	}
 
@@ -173,6 +197,27 @@ func cmdModuleInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// Finding 7: the watermark above was computed BEFORE module.cue existed
+	// on disk. Recompute it now that the file is really there — for the
+	// common case (selectors that don't match module.cue itself) this is a
+	// no-op; when a selector DOES catch it (warned above), this is the
+	// closest a single corrective pass can get to the moving target, and
+	// module.cue ends up describing the state it was ACTUALLY written into,
+	// not a pre-image of it.
+	corrected, cErr := moduleWatermark(context.Background(), corpusRoot, throwaway)
+	if cErr == nil && corrected != "" && corrected != watermark {
+		watermark = corrected
+		src, err = renderAndValidate(watermark)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		if err := os.WriteFile(target, []byte(src), 0o644); err != nil {
+			fmt.Fprintf(stderr, "error: rewrite %s with corrected watermark: %v\n", target, err)
+			return 1
+		}
+	}
+
 	if *jsonOut {
 		jsonPrint(stdout, map[string]any{
 			"path":      target,
@@ -183,6 +228,36 @@ func cmdModuleInit(args []string, stdout, stderr io.Writer) int {
 	}
 	fmt.Fprintf(stdout, "wrote %s (name=%q watermark=%s)\n", target, *name, watermark)
 	return 0
+}
+
+// warnIfSelectorMatchesModuleArtifacts warns (stderr) when a declared
+// corpus selector would match module.cue itself, or the conventional eval/
+// fixtures location — both commonly live inside the same root the corpus
+// is discovered from. A warning, never a refusal: a caller may have
+// deliberately accepted the tradeoff, or already excluded these paths.
+func warnIfSelectorMatchesModuleArtifacts(stderr io.Writer, dir, root string, include, exclude []string) {
+	rel, err := filepath.Rel(root, filepath.Join(dir, "module.cue"))
+	if err != nil {
+		return
+	}
+	rel = filepath.ToSlash(rel)
+	if strings.HasPrefix(rel, "../") {
+		return // module.cue lives outside root entirely — no risk
+	}
+	inc := filter.New(include)
+	var excl *filter.Matcher
+	if len(exclude) > 0 {
+		excl = filter.New(exclude)
+	}
+	matches := func(p string) bool {
+		return inc.Match(p) && !(excl != nil && excl.Match(p))
+	}
+	if matches(rel) {
+		fmt.Fprintf(stderr, "warning: a corpus selector matches %s itself — the module's watermark becomes a moving target (module.cue's own content depends on the watermark value it embeds); consider excluding %q\n", rel, rel)
+	}
+	if matches("eval") || matches("eval/labels.json") {
+		fmt.Fprintf(stderr, "warning: a corpus selector matches the conventional \"eval/\" fixtures path — if `module eval --record` writes its artifact under the same tree, the watermark will move every time eval evidence is (re)recorded\n")
+	}
 }
 
 // moduleWatermark computes THIS MODULE's corpus freshness token: the bare

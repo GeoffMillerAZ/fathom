@@ -30,11 +30,53 @@ import (
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/modspec"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
+
+// scopedWatermarkConnector wraps a connector.Connector, delegating Discover
+// and Fetch unchanged but overriding Watermark to the MODULE-SCOPED
+// algorithm (moduleWatermark, module.go) instead of the wrapped connector's
+// own whole-directory default. pkg/client.Client.CompileLayerWithEscape
+// resolves a service's compile-time watermark via c.ServiceWatermark, which
+// simply calls the injected Connector's own Watermark method — so wrapping
+// the connector at construction time is a legitimate, additive way to
+// change WHICH watermark a compile records, without touching
+// CompileLayerWithEscape/compileViaStore's own frozen logic (shared with
+// the top-level `fathom compile` command for every non-module layer).
+//
+// Used ONLY by the mock compile lane (moduleCompileMock, moduleCompileDry
+// RunJSON) — the lane every test and scripts/module-cold-run.sh actually
+// exercises. Phase J critic finding 3 ("compile records connector.Watermark
+// (whole-directory) while doctor computes moduleWatermark (corpus-scoped) —
+// incomparable even if you tried") is closed for this lane by construction:
+// a mock-compiled module's compile_runs.CorpusWatermark is the SAME
+// algorithm module.cue's own watermark field uses, so module_map.go's
+// "compile freshness" check can compare them directly without noise from
+// sibling files (module.cue itself, eval artifacts) sharing the corpus
+// root.
+//
+// KNOWN LIMITATION, documented rather than silently assumed away: the REAL
+// (non-mock) `module compile` path calls compileViaStore directly —
+// unmodified, on purpose, since it is the exact same function the
+// top-level `fathom compile` command uses for every ordinary layer, and
+// this phase does not fork it. A real module compile therefore still
+// records the whole-directory watermark, which IS sensitive to unrelated
+// sibling-file edits (e.g. hand-editing module.cue's eval_evidence after a
+// passing eval) in a way the mock lane is not. See docs/plans/expert-
+// suite-j.md's critic-round design note.
+type scopedWatermarkConnector struct {
+	connector.Connector
+	root     string
+	manifest modspec.Manifest
+}
+
+func (c *scopedWatermarkConnector) Watermark(ctx context.Context, _ core.ServiceRef) (string, error) {
+	return moduleWatermark(ctx, c.root, c.manifest)
+}
 
 // ─── compile ────────────────────────────────────────────────────────────
 
@@ -85,7 +127,7 @@ func cmdModuleCompile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *mock {
-		return moduleCompileMock(*storePath, svc, m.Name, *mockEntriesFile, *dryRun, *jsonOut, stdout, stderr)
+		return moduleCompileMock(*storePath, svc, root, m, *mockEntriesFile, *dryRun, *jsonOut, stdout, stderr)
 	}
 
 	// A dry run is never recorded to compile_runs (internal/semantic.
@@ -98,7 +140,7 @@ func cmdModuleCompile(args []string, stdout, stderr io.Writer) int {
 	// entirely inside its `if !dryRun` branch), so this is not a second
 	// copy of any decision logic, only of the plumbing to call it.
 	if *dryRun && *jsonOut {
-		return moduleCompileDryRunJSON(*storePath, svc, m.Name, stdout, stderr)
+		return moduleCompileDryRunJSON(*storePath, svc, root, m, stdout, stderr)
 	}
 
 	outW := stdout
@@ -139,7 +181,7 @@ func cmdModuleCompile(args []string, stdout, stderr io.Writer) int {
 // NOT run compileViaStore's D3-1/A2-1 CLI guards (those reason about a real
 // shipping decision — an eval-gate and an idempotency check — which have no
 // meaning for a scripted, throwaway cold-run compile).
-func moduleCompileMock(storePath, service, layer, entriesFile string, dryRun, jsonOut bool, stdout, stderr io.Writer) int {
+func moduleCompileMock(storePath, service, root string, m modspec.Manifest, entriesFile string, dryRun, jsonOut bool, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -147,7 +189,7 @@ func moduleCompileMock(storePath, service, layer, entriesFile string, dryRun, js
 	}
 	defer st.Close()
 
-	conn := connector.NewLocalConnector()
+	conn := &scopedWatermarkConnector{Connector: connector.NewLocalConnector(), root: root, manifest: m}
 	c := client.New(conn, st)
 	defer c.Close()
 
@@ -157,12 +199,12 @@ func moduleCompileMock(storePath, service, layer, entriesFile string, dryRun, js
 			fmt.Fprintf(stderr, "error: %v\n", merr)
 			return 1
 		}
-		c.WithLLM(llmclient.NewMockClient(entries...), "mock-model", 0, 0)
+		c.WithLLM(llmclient.NewMockClient(entries...), mockModelName, 0, 0)
 	}
 
-	run, cerr := c.CompileLayerWithEscape(context.Background(), service, layer, dryRun, "mock lane (scripts/module-cold-run.sh or --mock)")
+	run, cerr := c.CompileLayerWithEscape(context.Background(), service, m.Name, dryRun, "mock lane (scripts/module-cold-run.sh or --mock)")
 	if cerr != nil {
-		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, cerr)
+		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", m.Name, cerr)
 		return 1
 	}
 	if jsonOut {
@@ -177,8 +219,12 @@ func moduleCompileMock(storePath, service, layer, entriesFile string, dryRun, js
 // persisted to compile_runs (see the call site's comment), so the estimate
 // must be captured in-memory via the same CompileLayerWithEscape entry
 // point compileViaStore itself calls, rather than re-read from the store
-// afterward.
-func moduleCompileDryRunJSON(storePath, service, layer string, stdout, stderr io.Writer) int {
+// afterward. Nothing is written to compile_runs either way, so the choice
+// of connector here has no effect on doctor's watermark checks — the
+// scoped wrapper is used anyway, for parity with moduleCompileMock and
+// because it's simply the more correct value to REPORT in the printed
+// estimate's CorpusWatermark field.
+func moduleCompileDryRunJSON(storePath, service, root string, m modspec.Manifest, stdout, stderr io.Writer) int {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: open store %q: %v\n", storePath, err)
@@ -186,13 +232,13 @@ func moduleCompileDryRunJSON(storePath, service, layer string, stdout, stderr io
 	}
 	defer st.Close()
 
-	conn := connector.NewLocalConnector()
+	conn := &scopedWatermarkConnector{Connector: connector.NewLocalConnector(), root: root, manifest: m}
 	c := client.New(conn, st)
 	defer c.Close()
 
-	run, err := c.CompileLayerWithEscape(context.Background(), service, layer, true, "")
+	run, err := c.CompileLayerWithEscape(context.Background(), service, m.Name, true, "")
 	if err != nil {
-		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", layer, err)
+		fmt.Fprintf(stderr, "error: compile layer %q: %v\n", m.Name, err)
 		return 1
 	}
 	jsonPrint(stdout, run)
@@ -217,6 +263,34 @@ func sameCorpus(a, b []string) bool {
 
 // ─── eval ───────────────────────────────────────────────────────────────
 
+// EvalArtifact is the structured evidence `module eval --record <path>`
+// writes — replaces free-text, author-typed "evidence" (Phase J critic
+// finding 1: a bare os.Stat on arbitrary text let a directory, an empty
+// file, or permanently-stale prose pass as "eval evidence" forever).
+// `module doctor`'s eval-passed criterion parses this JSON and
+// cross-checks PromptVersion against the store's own compiled claims —
+// evidence recorded under a DIFFERENT prompt identity than what's
+// currently compiled is stale, regardless of how recently the file was
+// written.
+type EvalArtifact struct {
+	Module          string  `json:"module"`
+	Layer           string  `json:"layer"`
+	PromptVersion   string  `json:"prompt_version"`
+	CorpusWatermark string  `json:"corpus_watermark,omitempty"`
+	Precision       float64 `json:"precision"`
+	Recall          float64 `json:"recall"`
+	PassesGate      bool    `json:"passes_gate"`
+	// Lane is "real" (a genuine --profile run) or "mock" (a scripted
+	// --mock run), stamped honestly by the run that produced this
+	// artifact — never inferred or asserted by a caller. `module doctor`'s
+	// eval-passed criterion does NOT gate on Lane (a scripted/CI eval can
+	// still prove the scoring machinery works without spending real
+	// tokens); the PUBLISHED level's own "eval lane is real" criterion is
+	// where a mock lane is refused — see docs/plans/expert-suite-j.md's
+	// critic-round design note for why the gate sits there, not here.
+	Lane string `json:"lane"`
+}
+
 func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("module eval", stderr)
 	manifestPath := fs.String("manifest", "", "path to module.cue (required)")
@@ -225,6 +299,7 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 	profile := fs.String("profile", "", "named LLM profile for a real (spending) eval")
 	mock := fs.Bool("mock", false, "use a scripted MockClient instead of a real LLM (--mock-entries-file required) — never spends, never needs a key")
 	mockEntriesFile := fs.String("mock-entries-file", "", "path to a JSON array of scripted response strings, consumed in order (--mock only)")
+	record := fs.String("record", "", "write a structured EvalArtifact (JSON) to this path — the ONLY evidence `module doctor`'s eval-passed criterion accepts via eval_evidence.path")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of human text")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -270,6 +345,7 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 
 	var llm llmclient.LLMClient
 	model := ""
+	lane := "real"
 	if *mock {
 		entries, merr := loadMockEntries(*mockEntriesFile)
 		if merr != nil {
@@ -277,7 +353,8 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		llm = llmclient.NewMockClient(entries...)
-		model = "mock-model"
+		model = mockModelName
+		lane = "mock"
 	} else {
 		p, _, perr := resolveActiveProfile(*profile)
 		if perr != nil {
@@ -299,6 +376,34 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	recordedPath := ""
+	if *record != "" {
+		// corpus_watermark is informational only (module doctor's
+		// eval-passed criterion never gates on it) — best-effort, never
+		// fatal to the eval itself.
+		corpusWM, _ := moduleWatermark(context.Background(), layerRoot, m)
+		artifact := EvalArtifact{
+			Module:          m.Name,
+			Layer:           m.Name,
+			PromptVersion:   result.Run.PromptVersion,
+			CorpusWatermark: corpusWM,
+			Precision:       result.Precision,
+			Recall:          result.Recall,
+			PassesGate:      result.PassesGate(),
+			Lane:            lane,
+		}
+		raw, jerr := json.MarshalIndent(artifact, "", "  ")
+		if jerr != nil {
+			fmt.Fprintf(stderr, "error: marshal eval artifact: %v\n", jerr)
+			return 1
+		}
+		if err := os.WriteFile(*record, raw, 0o644); err != nil {
+			fmt.Fprintf(stderr, "error: write --record %s: %v\n", *record, err)
+			return 1
+		}
+		recordedPath = *record
+	}
+
 	if *jsonOut {
 		jsonPrint(stdout, map[string]any{
 			"module":           m.Name,
@@ -311,17 +416,24 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 			"missed_rule_keys": result.MissedRuleKeys,
 			"passes_gate":      result.PassesGate(),
 			"claims_emitted":   result.Run.ClaimsEmitted,
+			"lane":             lane,
+			"prompt_version":   result.Run.PromptVersion,
+			"recorded":         recordedPath,
 		})
 		return 0
 	}
 	fmt.Fprintf(stdout, "module:      %s\n", m.Name)
 	fmt.Fprintf(stdout, "fixtures:    %s\n", fixturesDir)
+	fmt.Fprintf(stdout, "lane:        %s\n", lane)
 	fmt.Fprintf(stdout, "precision:   %.2f (tp=%d fp=%d)\n", result.Precision, result.TP, result.FP)
 	fmt.Fprintf(stdout, "recall:      %.2f (fn=%d)\n", result.Recall, result.FN)
 	if len(result.MissedRuleKeys) > 0 {
 		fmt.Fprintf(stdout, "missed:      %v\n", result.MissedRuleKeys)
 	}
 	fmt.Fprintf(stdout, "passes_gate: %v (>= 0.90 precision, >= 0.75 recall)\n", result.PassesGate())
+	if recordedPath != "" {
+		fmt.Fprintf(stdout, "recorded:    %s\n", recordedPath)
+	}
 	return 0
 }
 

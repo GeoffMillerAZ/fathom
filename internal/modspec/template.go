@@ -21,8 +21,16 @@ type TemplateInput struct {
 	Watermark   string
 	TierProfile string // "" -> field omitted, schema default "engineering" applies
 	License     string // "" -> field omitted, schema default "unspecified" applies
-	CompiledBy  string // "" -> "deterministic" (module init never calls an LLM)
-	CompiledAt  string // RFC3339, caller-injected clock (repo convention: never time.Now() inline)
+	// CompiledBy: "" -> "unspecified" (Phase J critic finding 2: "deterministic"
+	// is store-format-v0 §7's oracle-class, HIGH-TRUST provenance value —
+	// stamping it on a module `init` never compiled anything for would be a
+	// tier-upgrading lie, the same class of dishonesty the "unspecified"
+	// license default already refuses to commit for an un-set license.
+	// `fathom module doctor`'s published-level "compile lane" criterion is
+	// what actually earns a real value here, by cross-checking against the
+	// STORE's own compiled claims — never by trusting what this field says).
+	CompiledBy string
+	CompiledAt string // RFC3339, caller-injected clock (repo convention: never time.Now() inline)
 }
 
 // Template renders a well-formed module.cue instance from in — every field
@@ -43,7 +51,7 @@ func Template(in TemplateInput) string {
 	}
 	compiledBy := in.CompiledBy
 	if compiledBy == "" {
-		compiledBy = "deterministic"
+		compiledBy = "unspecified"
 	}
 
 	var b strings.Builder

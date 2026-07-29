@@ -293,8 +293,12 @@ func TestTemplate_RoundTripsThroughLoadAndValidateStrict(t *testing.T) {
 	if m.License != "unspecified" {
 		t.Errorf("License = %q", m.License)
 	}
-	if m.Provenance.CompiledBy != "deterministic" {
-		t.Errorf("Provenance.CompiledBy = %q", m.Provenance.CompiledBy)
+	// Phase J critic finding 2: "deterministic" is store-format-v0 §7's
+	// oracle-class, HIGH-TRUST provenance value — a freshly scaffolded
+	// module that has never been compiled must not claim it by default,
+	// the same honest-default discipline License already follows.
+	if m.Provenance.CompiledBy != "unspecified" {
+		t.Errorf("Provenance.CompiledBy = %q, want the honest default \"unspecified\"", m.Provenance.CompiledBy)
 	}
 	if m.Recompile.Allowed {
 		t.Error("Template must scaffold recompile.allowed: false — a freshly scaffolded module has no prompt identity to name yet")
