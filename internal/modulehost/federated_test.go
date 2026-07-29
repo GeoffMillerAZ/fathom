@@ -422,7 +422,10 @@ func buildClaimsOnlyModuleStore(t *testing.T, dir, name, serviceID, rule string)
 		Subject: "FINDING.md#" + serviceID, Rule: rule, Scope: []string{"**"},
 		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: core.ClaimFresh,
 	}
-	link := core.ClaimLink{ClaimID: claimID, Rel: core.RelCites, TargetRef: "FINDING.md#L1-L1", TargetHash: "irrelevant-for-this-test"}
+	// AnchorText set (unlike buildModuleStoreWithClaim's fixture above) so
+	// this helper doubles as the fixture for QueryClaim.Anchor propagation
+	// (the wire contract's anchor field — critic follow-up round).
+	link := core.ClaimLink{ClaimID: claimID, Rel: core.RelCites, TargetRef: "FINDING.md#L1-L1", TargetHash: "irrelevant-for-this-test", AnchorText: "the literal cited anchor text"}
 	if err := st.PutClaims(ctx, []core.SemanticClaim{claim}, []core.ClaimLink{link}); err != nil {
 		t.Fatalf("PutClaims: %v", err)
 	}
@@ -487,6 +490,9 @@ func TestFederatedQuery_SymbolsAndClaimsPerModule(t *testing.T) {
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+	if err := codeStore.SetServiceMeta(context.Background(), store.ServiceMeta{ServiceID: "svc-code", IndexedCommit: "codebeef"}); err != nil {
+		t.Fatalf("SetServiceMeta: %v", err)
+	}
 	if err := codeStore.PutObservations(context.Background(), []core.Observation{{
 		ServiceID: "svc-code", SourceRef: "auth/token.go", SourceKind: core.KindGoFunc,
 		EvidenceTier: core.TierVerified, Symbol: "ValidateToken", Claim: "func ValidateToken(...) error",
@@ -527,6 +533,27 @@ func TestFederatedQuery_SymbolsAndClaimsPerModule(t *testing.T) {
 	}
 	if len(results[1].Claims) != 1 || results[1].Claims[0].Src == "" {
 		t.Fatalf("findings module's claim match = %+v, want exactly one cited claim", results[1].Claims)
+	}
+	// Durable claim identity + anchor text (the follow-up wire-contract
+	// round: expertchat's cite tokens are Module#ClaimID).
+	wantClaimID := core.ClaimID("obligations", "obligation", "FINDING.md#svc-findings", "v1")
+	gotClaim := results[1].Claims[0]
+	if gotClaim.ClaimID != wantClaimID {
+		t.Errorf("Claims[0].ClaimID = %q, want %q", gotClaim.ClaimID, wantClaimID)
+	}
+	if gotClaim.Text != "always validate the auth token before use" {
+		t.Errorf("Claims[0].Text = %q", gotClaim.Text)
+	}
+	if gotClaim.Anchor != "the literal cited anchor text" {
+		t.Errorf("Claims[0].Anchor = %q, want the fixture's AnchorText", gotClaim.Anchor)
+	}
+	// Watermark rides on every entry (ServiceMeta.IndexedCommit), regardless
+	// of whether the pair answered via nodes, claims, or both.
+	if results[0].Watermark != "codebeef" {
+		t.Errorf("results[0].Watermark = %q, want %q", results[0].Watermark, "codebeef")
+	}
+	if results[1].Watermark != "deadbeef" {
+		t.Errorf("results[1].Watermark = %q, want %q", results[1].Watermark, "deadbeef")
 	}
 
 	// Scoping to one module returns only that module's entry.
