@@ -53,6 +53,25 @@ func vcsInfo() (revision, time string, modified bool) {
 	return revision, time, modified
 }
 
+// shortRevision returns the embedded VCS revision truncated to 12 chars (BuildRevision's
+// own truncation length), or "" when no VCS info is embedded — used by
+// `fathom research bundle` to identify the fathom BINARY, never the
+// adopting repo's own commit.
+func shortRevision() string {
+	rev, _, _ := vcsInfo()
+	if len(rev) > 12 {
+		rev = rev[:12]
+	}
+	return rev
+}
+
+// revisionDirty reports whether the embedded VCS state was modified
+// (uncommitted changes) at build time.
+func revisionDirty() bool {
+	_, _, dirty := vcsInfo()
+	return dirty
+}
+
 func cmdVersion(_ []string, stdout, _ io.Writer) int {
 	fmt.Fprintln(stdout, BuildRevision())
 	return 0

@@ -15,9 +15,23 @@ description: >
 ## 1. Run the instruments
 
 ```sh
+fathom research report --since 168h [--service <svc>] [--json]
 fathom instrument --adoption [--json]
 fathom plans status --service <svc>
 ```
+
+`fathom research report` (docs/design/research-flywheel.md) is the
+flywheel's single-command aggregate: everything `instrument --adoption`
+covers (call log + `.fathom/observations.md`) PLUS injection coverage and
+obligations-served counts from the hooks beat log, and context-bench
+token/turn deltas when a bench artifact exists — one report, written to
+`workspace/artifacts/research/report.{md,json}` as well as printed. Prefer
+it over ad-hoc log tailing or re-running `instrument --adoption` alone; fall
+back to `instrument --adoption` directly only if you need its exact legacy
+field names or don't need the beat-log/bench sections. Neither replaces
+`plans status` (still the only source for plan-freshness) or a direct read
+of `.fathom/observations.md` (still the only way to list *which* frictions
+are open — both report only counts).
 
 `instrument --adoption` is a deterministic-given-inputs report over the MCP
 call log (`workspace/logs/mcp-calls.jsonl` by default) plus

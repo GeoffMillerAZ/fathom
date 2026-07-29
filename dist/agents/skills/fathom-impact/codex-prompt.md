@@ -8,9 +8,18 @@ argument-hint: [SERVICE=<service-id>]
 ## 1. Run the instruments
 
 ```sh
+fathom research report --since 168h --json
 fathom instrument --adoption --json
 fathom plans status --service $SERVICE
 ```
+
+`fathom research report` is the single-command aggregate — everything
+`instrument --adoption` covers PLUS hooks-beat-log injection
+coverage/obligations-served and context-bench token/turn deltas when a
+bench artifact exists. Prefer it; fall back to `instrument --adoption`
+alone only if you specifically need its legacy field names. Neither
+replaces `plans status` or a direct read of `.fathom/observations.md` for
+naming which frictions are open.
 
 `instrument --adoption` is a snapshot of one window over the MCP call log
 plus `.fathom/observations.md` — never a trend unless you diff two runs
