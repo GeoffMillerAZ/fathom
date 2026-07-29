@@ -42,17 +42,20 @@ command:
 
 1. writes `.fathomignore` (create-if-absent),
 2. ingests the repo into the daemon (if reachable) and confirms it indexed,
-3. wires `SessionStart`/`PostToolUse`/`Stop` hooks into
-   `.claude/settings.json` (§5 below),
-4. stamps a marker-delimited fathom operating-contract stanza into **both**
+3. wires `SessionStart`/`PostToolUse`/`PreToolUse`/`Stop` hooks into
+   `.claude/settings.json` (§6 below — `PreToolUse` is guarded edits,
+   silent unless `.fathom/guard.cue` names the file/command),
+4. scaffolds `.fathom/guard.cue` and `.fathom/modules.cue`, both
+   **commented out** — nothing guarded or bound by default (§7),
+5. stamps a marker-delimited fathom operating-contract stanza into **both**
    `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
    `AGENTS.md` automatically, zero drift between the two),
-5. installs this skill set (`fathom-plan`, `fathom-verify`,
+6. installs this skill set (`fathom-plan`, `fathom-verify`,
    `fathom-onboard`, `fathom-feedback`) into `.claude/skills/` — `--skills`
    bare installs both harnesses; `--skills=claude` or `--skills=codex`
    selects one,
-6. write-if-absent scaffolds `~/.fathom/config.toml` (§8), and
-7. prints the steps it deliberately does **not** do for you (MCP
+7. write-if-absent scaffolds `~/.fathom/config.toml` (§8), and
+8. prints the steps it deliberately does **not** do for you (MCP
    registration, the lefthook pre-push snippet — see §4 and §6).
 
 Exit codes: `0` fully wired and indexed; `2` wiring is complete but the
@@ -144,16 +147,19 @@ session start. A session already running when you register — or across a
 daemon restart, or right after `init` just wired things — won't see the new
 tools. **Restart the session once.**
 
-## 6. The hook stack (Claude Code only — `init` wires all three)
+## 6. The hook stack (Claude Code only — `init` wires all four)
 
 | Hook | Event/matcher | Command | What it does |
 |---|---|---|---|
 | `session-hook` | `SessionStart`, `startup\|resume\|clear\|compact` | `fathom session-hook` | Pings the daemon, injects "this repo is service X" or an honest daemon-down/not-indexed signal. Always exits 0. |
 | `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. |
+| `edit-hook --pre` (guarded edits) | `PreToolUse`, `Edit\|Write\|MultiEdit` and `Bash` | `fathom edit-hook --pre` | Silent unless `.fathom/guard.cue` names the file/command (a local check, zero daemon calls on a miss); when it matches, injects the guard's note plus obligations BEFORE the edit/command runs. See §7 and `docs/use-cases/platform-modules.md`. |
 | `stop-hook` | `Stop` | `fathom stop-hook` | Re-verifies plan tasks newly claimed `[x]` this session; advisory by default, add `--block` to the command to make it a real gate. |
 
 `edit-hook` has nothing to inject until the `obligations` layer is compiled
-at least once: `fathom compile --service <svc> --dry-run=false`.
+at least once: `fathom compile --service <svc> --dry-run=false`. Same for
+`edit-hook --pre` — plus it has nothing to inject at all until you
+uncomment a guard in `.fathom/guard.cue`.
 
 The pre-push `fathom verify` gate is **not** a Claude Code hook — it's
 git-native (lefthook), and `init` never touches `lefthook.yml` (hand-curated)
@@ -179,6 +185,14 @@ gate's exit codes.
   the `arch_conformance` tool/analyzer (layering allow-rules,
   `{from_pkg, to_pkg, allow}`); when present it's the default rule source
   for calls that don't pass inline rules.
+- `.fathom/guard.cue` — guarded edits (phase O): scopes/commands where the
+  PreToolUse hook (§6) injects rules BEFORE the edit/command, not just
+  after. Scaffolded commented; inert until a `guards: [...]` entry is
+  uncommitted and committed.
+- `.fathom/modules.cue` — platform-module bindings (phase O): opts this
+  repo's `obligations` serving into a mounted platform module's rules
+  (module-tagged, staleness-flagged). Scaffolded commented; also inert
+  until committed. See `docs/use-cases/platform-modules.md`.
 
 ## 8. Pick a provider (only needed for `fathom compile`)
 

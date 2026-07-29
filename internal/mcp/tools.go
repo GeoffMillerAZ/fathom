@@ -18,8 +18,11 @@ import (
 // case query tools return ErrCodeInternal when called. fleet may also be
 // nil (non-fleet stdio serve-mcp); when set, find_callers and
 // symbol_context (registerNavTools) additionally consult it for
-// cross-service call edges (P1-2).
-func registerTools(s *Server, backend QueryInterface, fleet FleetBackend) {
+// cross-service call edges (P1-2). modules may be nil (no --module store
+// mounted); when set, the obligations tool (registerSemanticTools) additionally
+// unions in rules from every platform module a service's own
+// .fathom/modules.cue binds (docs/design/platform-modules.md §3.3).
+func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, modules moduleBackend) {
 	// query_symbols — concern-scoped symbol search.
 	s.registerTool(toolDescriptor{
 		Name:        "query_symbols",
@@ -288,7 +291,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerExtraTools(s, backend)
 
 	// Register semantic-layer tools (obligations, compile_layer).
-	registerSemanticTools(s, backend)
+	registerSemanticTools(s, backend, modules)
 }
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────

@@ -82,11 +82,55 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 		testBinPath + " session-hook",
 		testBinPath + " edit-hook",
 		testBinPath + " stop-hook",
+		testBinPath + " edit-hook --pre",
 		"startup|resume|clear|compact",
 		"Edit|Write|MultiEdit",
 	} {
 		if !strings.Contains(settingsStr, want) {
 			t.Errorf("settings.json missing %q:\n%s", want, settingsStr)
+		}
+	}
+
+	// Guarded edits (docs/design/guarded-edits.md): PreToolUse wires TWO
+	// matcher groups (Edit|Write|MultiEdit and Bash) with the SAME command —
+	// both must actually be present, not just the marker substring once.
+	var settingsTree map[string]any
+	if err := json.Unmarshal(settingsRaw, &settingsTree); err != nil {
+		t.Fatalf("settings.json not valid JSON: %v", err)
+	}
+	hooksObj, _ := settingsTree["hooks"].(map[string]any)
+	preArr, _ := hooksObj["PreToolUse"].([]any)
+	if len(preArr) != 2 {
+		t.Fatalf("PreToolUse groups = %d, want 2 (Edit|Write|MultiEdit + Bash): %v", len(preArr), preArr)
+	}
+	gotMatchers := map[string]bool{}
+	for _, g := range preArr {
+		gm, _ := g.(map[string]any)
+		matcher, _ := gm["matcher"].(string)
+		gotMatchers[matcher] = true
+		hs, _ := gm["hooks"].([]any)
+		if len(hs) != 1 {
+			t.Errorf("PreToolUse matcher %q hooks = %d, want 1: %v", matcher, len(hs), hs)
+		}
+	}
+	if !gotMatchers["Edit|Write|MultiEdit"] || !gotMatchers["Bash"] {
+		t.Errorf("PreToolUse matchers = %v, want both Edit|Write|MultiEdit and Bash", gotMatchers)
+	}
+
+	// .fathom/guard.cue + modules.cue: scaffolded, commented (inert).
+	for _, name := range []string{"guard.cue", "modules.cue"} {
+		raw, err := os.ReadFile(filepath.Join(dir, ".fathom", name))
+		if err != nil {
+			t.Fatalf("reading .fathom/%s: %v", name, err)
+		}
+		s := string(raw)
+		for _, line := range strings.Split(strings.TrimSpace(s), "\n") {
+			if line == "" {
+				continue
+			}
+			if !strings.HasPrefix(strings.TrimSpace(line), "//") {
+				t.Errorf(".fathom/%s has an active (non-comment) line: %q\nfull:\n%s", name, line, s)
+			}
 		}
 	}
 
@@ -133,7 +177,7 @@ func TestCmdInit_Idempotent(t *testing.T) {
 		t.Fatalf("first run exit = %d; stdout=%s stderr=%s", code, out1.String(), err1.String())
 	}
 
-	files := []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md"}
+	files := []string{".fathomignore", filepath.Join(".claude", "settings.json"), "CLAUDE.md", "AGENTS.md", filepath.Join(".fathom", "guard.cue"), filepath.Join(".fathom", "modules.cue")}
 	before := map[string][]byte{}
 	for _, f := range files {
 		raw, err := os.ReadFile(filepath.Join(dir, f))
@@ -164,6 +208,8 @@ func TestCmdInit_Idempotent(t *testing.T) {
 		"ok .claude/settings.json (already present)",
 		"ok CLAUDE.md (already present)",
 		"ok AGENTS.md (already present)",
+		"ok .fathom/guard.cue (already present)",
+		"ok .fathom/modules.cue (already present)",
 	} {
 		if !strings.Contains(out2Str, want) {
 			t.Errorf("second run stdout missing %q:\n%s", want, out2Str)

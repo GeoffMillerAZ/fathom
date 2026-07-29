@@ -26,4 +26,4 @@ number. Composes agentic-kit v0.7.0 `telemetry/heartbeat`.
 
 ## Deferred
 
-- [-] PreToolUse grep-hint revival {id: GI-8, disposition: deferred, reason: "rejected pending evidence", trigger: "grep-miss taxonomy shows an index-answerable share at or above 30 percent"}
+- [-] PreToolUse grep-hint revival {id: GI-8, disposition: refused, reason: "closed by a sharper PreToolUse mechanism, not implemented as originally proposed — docs/design/guarded-edits.md (phase O, owner-commissioned 2026-07-29) ships the PreToolUse channel GI-8 asked for, but scoped to configured critical scopes/commands (.fathom/guard.cue) with governing-rule injection, not an evidence-gated grep-hint suggestion. The grep-miss-taxonomy evidence gate this row's trigger named was never reached and is superseded by guarded-edits.md's own §2.4 doctor/instrumentation loop (dead-guard warnings, guarded-edit coverage in `fathom research report`) as the ongoing falsifiability check for this channel."}

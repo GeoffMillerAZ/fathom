@@ -88,6 +88,7 @@ exit 2 also a failure.
 |---|---|---|
 | SessionStart injection | Yes | **No equivalent** |
 | PostToolUse obligations injection | Yes, after every edit | **No equivalent** — call the `obligations` MCP tool explicitly instead |
+| PreToolUse guarded-edit injection (phase O) | Yes — `.fathom/guard.cue` scopes/commands get rules injected BEFORE the edit/command | **No equivalent** — a bound platform module's rules still reach you via `obligations`/`pack_context`, just not pre-edit |
 | Stop-hook done-means-proven check | Yes | **No equivalent** — the pre-push gate is the backstop |
 | Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source |
 | Pre-push `fathom verify` gate | Yes | Yes — identical |

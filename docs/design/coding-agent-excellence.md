@@ -51,6 +51,7 @@ context** > **pulled tool call** > **passive docs**.
 | M3 | Plan authoring | How do I write a plan whose "done" is checkable? | contract grammar in plan markdown (§4) | convention + `verify_plan` | live parser; checkbox semantics **this session** |
 | M4 | Discovery hot loop | Where is X? Who calls it? What's its context? | `find_symbol` (tiered), `symbol_context`, `references`, `find_callers`, `outline`, `read_source` | pulled (16-tool companion surface) | live |
 | M5 | About to edit | What is this file *obliged* to do? Is my view of it current? | obligations claims + staleness flag | **PostToolUse(Edit\|Write) hook (injected)** | **this session** (ADR-016 tracer bullet) |
+| M5b | About to edit a *guarded* scope, or run a *guarded* command | This file/command is one where the first mistake is expensive — what does the org/module already know? | guard note + obligations (module-tagged when bound), served BEFORE the edit/command | **PreToolUse(Edit\|Write\|Bash) hook (injected, silent on every non-guarded file/command)** | **live** (phase O, docs/design/guarded-edits.md) |
 | M6 | Claiming done | Is `[x]` actually true? | `verify_plan` verdicts citing file:line | pulled + **Stop-hook option** | live tool; gate **this session** |
 | M7 | Commit | Does the binary/index track HEAD? | post-commit rebuild + re-ingest | lefthook post-commit | live |
 | M8 | Push / CI | Do all claimed-done tasks verify? | `fathom verify` exit code | **lefthook pre-push + CI (blocking)** | **this session** |
@@ -260,6 +261,19 @@ enforcement stack, strongest first:
   feedback so the session cannot *end* on an unproven claim. Off by default
   (repos opt in when their plans carry contracts); this is the strongest
   in-session form of "done means proven".
+- **PreToolUse(Edit|Write|MultiEdit|Bash)** (new, phase O, docs/design/
+  guarded-edits.md): the SAME `fathom edit-hook --pre` binary/code path,
+  registered as a PreToolUse hook. Silent-by-default: a local
+  `.fathom/guard.cue` glob/pattern check runs BEFORE any daemon call, so a
+  non-guarded file or command costs one file-pattern test and nothing else.
+  A matching guard injects its `note` plus obligations (module-tagged when
+  the repo binds a platform module, docs/design/platform-modules.md)
+  BEFORE the edit/command runs — for the minority of scopes where the
+  first mistake is already the incident (store DDL, migrations,
+  security-sensitive paths, infra commands). Inject-only, never blocking —
+  blocking stays L1's job. Dedups against the PostToolUse render for the
+  same edit (a short-lived local stamp; never repeats what was already
+  shown pre-edit).
 
 ### 5.3 Failure policy (the trust-fatal rule)
 

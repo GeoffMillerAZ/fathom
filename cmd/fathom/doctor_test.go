@@ -55,6 +55,18 @@ type fakeDaemonCfg struct {
 	obligStale int
 	watermark  string
 	agentCalls int
+
+	// Phase O additions (doctor_phaseo_test.go): modules is list_modules'
+	// {module, path} rows; sources is list_sources' file list. Zero value
+	// (both nil) preserves every pre-existing test's behavior exactly —
+	// list_modules/list_sources simply weren't callable before these
+	// checks existed, so no prior test exercises them.
+	modules []fakeModuleRow
+	sources []string
+}
+
+type fakeModuleRow struct {
+	module, path string
 }
 
 // fakeDoctorDaemon serves healthz + list_services + obligations +
@@ -100,6 +112,18 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 			inner = fmt.Sprintf(`{"service":"svc","file":"CLAUDE.md","rules":%s%s}`, rules, wm)
 		case "server_stats":
 			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
+		case "list_modules":
+			rows := make([]string, len(cfg.modules))
+			for i, m := range cfg.modules {
+				rows[i] = fmt.Sprintf(`{"module":%q,"path":%q}`, m.module, m.path)
+			}
+			inner = `{"modules":[` + strings.Join(rows, ",") + `]}`
+		case "list_sources":
+			rows := make([]string, len(cfg.sources))
+			for i, s := range cfg.sources {
+				rows[i] = fmt.Sprintf("%q", s)
+			}
+			inner = `{"sources":[` + strings.Join(rows, ",") + `]}`
 		default:
 			http.Error(w, "unknown tool", 400)
 			return

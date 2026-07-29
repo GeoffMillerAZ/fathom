@@ -73,6 +73,30 @@ type ResearchReport struct {
 	ObligationsServed      int    `json:"obligations_served"`
 	ObligationsEvictedNote string `json:"obligations_evicted_note"`
 
+	// Guarded-edits coverage (docs/design/guarded-edits.md §2.4 / phase-O
+	// instrumentation): pre|post split of the SAME edit-hook seen/answered
+	// beats above. GuardPreSeen/GuardPreServed are 0 whenever the --pre
+	// hook has never fired in this window (not installed, or `fathom
+	// init` predates guarded edits) — GuardCoverageNote names that
+	// explicitly rather than presenting a silent zero as "no guards fire."
+	// GuardDedupSuppressed counts guardstamp.go's post-hook collapses
+	// (design §2.3's "no double-billing").
+	GuardPreSeen         int    `json:"guard_pre_seen"`
+	GuardPreServed       int    `json:"guard_pre_served"`
+	GuardPostSeen        int    `json:"guard_post_seen"`
+	GuardPostServed      int    `json:"guard_post_served"`
+	GuardDedupSuppressed int    `json:"guard_dedup_suppressed"`
+	GuardCoverageNote    string `json:"guard_coverage_note"`
+
+	// Module-tagged serving (docs/design/platform-modules.md §3.5): rules
+	// served per bound module, from the edit-hook's "module-served" beats
+	// (both pre and post phases combined — a bound module either serves or
+	// it doesn't, independent of which hook moment carried it). Empty map
+	// is the pre-phase-O default (no bindings configured anywhere this
+	// window observed) and ModuleServingNote names that explicitly.
+	ModuleRulesServed map[string]int `json:"module_rules_served,omitempty"`
+	ModuleServingNote string         `json:"module_serving_note"`
+
 	VerifyClaimed                 int    `json:"verify_claimed"`
 	VerifyVerified                int    `json:"verify_verified"`
 	VerifyFailing                 int    `json:"verify_failing"`
@@ -417,18 +441,48 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 	}
 
 	// ─── hooks beat log: injection coverage + obligations served ───
+	// Phase-O addition: every edit-hook beat now carries a "phase" meta
+	// key ("pre" or "post" — edithook.go/edithook_pre.go). A beat logged
+	// before this feature existed (or any beat this package itself never
+	// tags) carries no phase at all: treated as "post" here, since every
+	// pre-phase-O edit-hook invocation WAS the post/default hook — this
+	// keeps InjectionSeen/InjectionAnswered/ObligationsServed exactly
+	// backward-compatible (they still count both phases combined) while
+	// GuardPreSeen/GuardPostSeen give the new split.
 	seen, answered, servedEmitted := 0, 0, 0
+	preSeen, preServed, postSeen, postServed, dedupSuppressed := 0, 0, 0, 0, 0
+	moduleServed := map[string]int{}
 	for _, b := range in.beats {
 		if b.Channel != "edit-hook" || b.At.Before(in.since) || b.At.After(in.until) {
 			continue
 		}
+		phase := b.Meta["phase"]
+		if phase == "" {
+			phase = "post"
+		}
 		switch b.Kind {
 		case "seen":
 			seen++
+			if phase == "pre" {
+				preSeen++
+			} else {
+				postSeen++
+			}
 		case "answered":
 			answered++
 			if b.Meta["emitted"] == "true" {
 				servedEmitted++
+				if phase == "pre" {
+					preServed++
+				} else {
+					postServed++
+				}
+			}
+		case "dedup-suppressed":
+			dedupSuppressed++
+		case "module-served":
+			if m := b.Meta["module"]; m != "" {
+				moduleServed[m]++
 			}
 		}
 	}
@@ -436,6 +490,22 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 	if seen > 0 {
 		rate := float64(answered) / float64(seen)
 		r.InjectionCoverageRate = &rate
+	}
+
+	r.GuardPreSeen, r.GuardPreServed, r.GuardPostSeen, r.GuardPostServed, r.GuardDedupSuppressed = preSeen, preServed, postSeen, postServed, dedupSuppressed
+	switch {
+	case preSeen == 0:
+		r.GuardCoverageNote = "not measurable: no PreToolUse edit-hook (--pre) invocations observed in window — the guard hook is not installed (fathom init predates guarded edits), or no PreToolUse event fired at all"
+	case preServed == 0:
+		r.GuardCoverageNote = fmt.Sprintf("--pre fired %d time(s) but served 0 — no configured guard (.fathom/guard.cue) matched any edited file/command in window", preSeen)
+	default:
+		r.GuardCoverageNote = fmt.Sprintf("--pre fired %d time(s), served %d; %d post-hook render(s) suppressed as already-served (dedup)", preSeen, preServed, dedupSuppressed)
+	}
+
+	if len(moduleServed) > 0 {
+		r.ModuleRulesServed = moduleServed
+	} else {
+		r.ModuleServingNote = "not measurable: no module-tagged rule was served in window — no .fathom/modules.cue binding is configured anywhere observed, or no bound module is mounted on the daemon"
 	}
 
 	// ─── observations.md: totals + by-tool breakdown ───

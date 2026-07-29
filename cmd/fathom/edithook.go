@@ -45,32 +45,44 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	rpcOrigin = "edit-hook"
 	fs := newFlagSet("edit-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	pre := fs.Bool("pre", false, "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook")
 	if err := fs.Parse(args); err != nil {
 		// On flag error: silent exit 0 (hook contract).
 		return 0
 	}
 
-	// Read PostToolUse JSON from stdin.
+	// Read the hook JSON from stdin — the same envelope shape for
+	// PostToolUse and PreToolUse (Claude Code's generic hook contract);
+	// tool_name/tool_input.command are populated only for the PreToolUse
+	// path (--pre), session_id is read defensively (guardstamp.go's
+	// leakage-bound documents why "" is a safe, honest fallback).
 	raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 	if err != nil {
 		return 0 // silent
 	}
 
 	var hook struct {
+		ToolName  string `json:"tool_name"`
 		ToolInput struct {
 			FilePath string `json:"file_path"`
+			Command  string `json:"command"`
 		} `json:"tool_input"`
-		CWD string `json:"cwd"`
+		CWD       string `json:"cwd"`
+		SessionID string `json:"session_id"`
 	}
 	if err := json.Unmarshal(raw, &hook); err != nil {
 		return 0 // silent
+	}
+
+	if *pre {
+		return cmdEditHookPre(hook.ToolName, hook.ToolInput.FilePath, hook.ToolInput.Command, hook.CWD, hook.SessionID, *url, stdout)
 	}
 
 	filePath := hook.ToolInput.FilePath
 	if filePath == "" {
 		return 0
 	}
-	emitBeat("edit-hook", "seen", nil) // GI-1: the coverage denominator
+	emitBeat("edit-hook", "seen", map[string]string{"phase": "post"}) // GI-1: the coverage denominator
 
 	// Determine project dir.
 	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
@@ -135,9 +147,9 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok := fetchObligations(*url, name, rel)
+		o, stale, ok := fetchObligations(*url, name, rel, 0)
 		if !ok {
-			emitBeat("edit-hook", "error", nil)
+			emitBeat("edit-hook", "error", map[string]string{"phase": "post"})
 			return 0 // daemon down or error → silent
 		}
 		if len(o.Rules) > 0 || stale {
@@ -146,49 +158,68 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !resolved {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false"})
+		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "post"})
 		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
+	}
+
+	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
+	// --pre hook already served rules for this exact (session, service,
+	// file) within guardStampTTL, render only the DELTA here — rules newly
+	// matched since the pre-hook fired, plus any staleness change —
+	// otherwise collapse to a one-line "already served pre-edit" marker.
+	// No stamp found (the overwhelmingly common case: no guard matched
+	// this file, or the --pre hook isn't installed/didn't fire) renders
+	// the full answer exactly as before this feature existed.
+	renderRules := obl.Rules
+	suppressedByStamp := 0
+	staleChangedSincePre := false
+	stampConsulted := false
+	if stamp, ok := readGuardStamp(hook.SessionID, svcName, repoRelFile, time.Now()); ok {
+		stampConsulted = true
+		dedup := dedupAgainstStamp(stamp, toObligationLike(obl.Rules), indexStale)
+		renderRules = fromObligationLike(dedup.DeltaRules, obl.Rules)
+		suppressedByStamp = dedup.SuppressedCount
+		staleChangedSincePre = dedup.StaleChanged
+		if suppressedByStamp > 0 && len(renderRules) == 0 && !staleChangedSincePre {
+			emitBeat("edit-hook", "dedup-suppressed", map[string]string{"phase": "post"})
+		}
 	}
 
 	// Build compact text.
 	var sb strings.Builder
 	if found {
-		fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
-		for _, r := range obl.Rules {
-			// FT-2's last hop: non-obligation kinds ("finding") are labeled in
-			// the bracket, and remediation drift (FT-6) is surfaced — a
-			// serving annotation the agent must see, never a status flip
-			// (drifted code can mean the finding was fixed). T5-2/O14: a
-			// rule from a NON-default layer (e.g. "adr-rules" blended in by
-			// a recompile) is labeled too — the default "obligations" layer
-			// is elided here to keep the common case compact; the field
-			// itself is always present in the raw JSON payload.
-			extra := ""
-			if r.Kind != "" {
-				extra += ", " + r.Kind
+		if stampConsulted && suppressedByStamp > 0 && len(renderRules) == 0 && !staleChangedSincePre {
+			// Never silent (design §2.3): the marker line always names the
+			// suppression, even when there is nothing else to say.
+			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s: guarded — %d rule(s) already served pre-edit, unchanged", repoRelFile, suppressedByStamp)
+		} else {
+			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
+			for _, r := range renderRules {
+				writeRuleBullet(&sb, r)
 			}
-			if r.Layer != "" && r.Layer != semantic.LayerObligations {
-				extra += ", " + r.Layer
+			if suppressedByStamp > 0 {
+				fmt.Fprintf(&sb, "\nguarded: %d rule(s) already served pre-edit, not repeated", suppressedByStamp)
 			}
-			if r.Status != "" {
-				extra += ", " + r.Status
+			// T5-2/O14: the cap can silently evict served-eligible rules on a
+			// recompile that blends in a new layer — surface the count (a
+			// single integer; never the evicted rules themselves, which would
+			// reopen the exact unbounded-growth risk spec-line injection above
+			// already guards against).
+			if obl.Displaced > 0 {
+				fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
 			}
-			if r.CodeDrifted {
-				extra += ", code drifted since compile"
+			if indexStale {
+				sb.WriteString("\n⚠️ index is behind your working tree for this file")
 			}
-			fmt.Fprintf(&sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, extra)
 		}
-		// T5-2/O14: the cap can silently evict served-eligible rules on a
-		// recompile that blends in a new layer — surface the count (a
-		// single integer; never the evicted rules themselves, which would
-		// reopen the exact unbounded-growth risk spec-line injection above
-		// already guards against).
-		if obl.Displaced > 0 {
-			fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
+		// Platform-modules.md §3.3: a bound-but-unmounted module is an
+		// explicit note, never silence — surfaced on the post channel
+		// unconditionally (independent of any guard's include_modules,
+		// which only affects the --pre preview's rendering).
+		for _, n := range obl.ModuleNotes {
+			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
-		if indexStale {
-			sb.WriteString("\n⚠️ index is behind your working tree for this file")
-		}
+		reportModuleBeats(renderRules, "post")
 	}
 
 	// OP-4 (spec-line injection, docs/vision/04 §4 item 3): when the edited
@@ -234,7 +265,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false"})
+		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "post"})
 		return 0 // clean file (or unindexed project), no spec IDs → silent
 	}
 
@@ -244,9 +275,96 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			"additionalContext": sb.String(),
 		},
 	})
-	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true"})
+	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "post"})
 	fmt.Fprintln(stdout, string(out))
 	return 0
+}
+
+// writeRuleBullet appends one rendered rule bullet to sb, in the exact
+// compact format the edit-hook has always used — factored out so the
+// --pre (guard) path and the --post delta-rendering path (guardstamp.go's
+// dedup) share one rendering rule rather than two copies drifting apart.
+// A module-tagged rule (r.Module != "", federated in from a bound platform
+// module — docs/design/platform-modules.md §3.3) renders its module name
+// as a leading bracket, exactly like the module-host federation surface
+// already does; a repo-local rule (the overwhelmingly common case, and
+// the ENTIRE case before phase O) is byte-identical to the pre-existing
+// rendering.
+func writeRuleBullet(sb *strings.Builder, r semantic.Obligation) {
+	// FT-2's last hop: non-obligation kinds ("finding") are labeled in
+	// the bracket, and remediation drift (FT-6) is surfaced — a
+	// serving annotation the agent must see, never a status flip
+	// (drifted code can mean the finding was fixed). T5-2/O14: a
+	// rule from a NON-default layer (e.g. "adr-rules" blended in by
+	// a recompile) is labeled too — the default "obligations" layer
+	// is elided here to keep the common case compact; the field
+	// itself is always present in the raw JSON payload.
+	extra := ""
+	if r.Kind != "" {
+		extra += ", " + r.Kind
+	}
+	if r.Layer != "" && r.Layer != semantic.LayerObligations {
+		extra += ", " + r.Layer
+	}
+	if r.Status != "" {
+		extra += ", " + r.Status
+	}
+	if r.CodeDrifted {
+		extra += ", code drifted since compile"
+	}
+	if r.Module != "" {
+		fmt.Fprintf(sb, "\n• [%s] %s [%s, %s%s]", r.Module, r.Rule, r.Src, r.Tier, extra)
+	} else {
+		fmt.Fprintf(sb, "\n• %s [%s, %s%s]", r.Rule, r.Src, r.Tier, extra)
+	}
+}
+
+// toObligationLike/fromObligationLike bridge semantic.Obligation and
+// guardstamp.go's minimal semanticObligationLike (which intentionally does
+// not import internal/semantic — see its doc comment). fromObligationLike
+// re-resolves each delta entry back to its FULL semantic.Obligation (for
+// every field writeRuleBullet needs, not just Rule/Src/Module) by matching
+// on ruleKey against the original full-fidelity slice.
+func toObligationLike(rules []semantic.Obligation) []semanticObligationLike {
+	out := make([]semanticObligationLike, len(rules))
+	for i, r := range rules {
+		out[i] = semanticObligationLike{Rule: r.Rule, Src: r.Src, Module: r.Module}
+	}
+	return out
+}
+
+func fromObligationLike(delta []semanticObligationLike, full []semantic.Obligation) []semantic.Obligation {
+	if len(delta) == 0 {
+		return nil
+	}
+	byKey := make(map[string]semantic.Obligation, len(full))
+	for _, r := range full {
+		byKey[ruleKey(r.Rule, r.Src, r.Module)] = r
+	}
+	out := make([]semantic.Obligation, 0, len(delta))
+	for _, d := range delta {
+		if r, ok := byKey[ruleKey(d.Rule, d.Src, d.Module)]; ok {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// reportModuleBeats emits one "module-served" beat per DISTINCT module
+// name present in rendered — the per-module instrumentation dimension
+// (docs/design/platform-modules.md §3.5 / guarded-edits.md §2.4): cheap
+// (bounded by MaxObligations, at most a handful of distinct modules per
+// call) and never fired at all when no module-tagged rule was rendered
+// (the pre-phase-O default).
+func reportModuleBeats(rendered []semantic.Obligation, phase string) {
+	seen := map[string]bool{}
+	for _, r := range rendered {
+		if r.Module == "" || seen[r.Module] {
+			continue
+		}
+		seen[r.Module] = true
+		emitBeat("edit-hook", "module-served", map[string]string{"module": r.Module, "phase": phase})
+	}
 }
 
 // relativeToRoot relativizes an absolute file path under a candidate root.
@@ -290,19 +408,27 @@ func resolveSymlinks(p string) string {
 	return p
 }
 
-// fetchObligations calls the obligations MCP tool over HTTP. Returns the
-// Obligations payload, the index_stale flag, and ok=false on any error.
-func fetchObligations(baseURL, service, file string) (semantic.Obligations, bool, bool) {
+// fetchObligations calls the obligations MCP tool over HTTP. maxRules is
+// forwarded as the tool's max_rules argument when > 0 (the guard --pre
+// path passes a guard's own max_rules cap; the default post path passes 0,
+// letting the server apply its own default — identical to this function's
+// pre-phase-O behavior). Returns the Obligations payload, the index_stale
+// flag, and ok=false on any error.
+func fetchObligations(baseURL, service, file string, maxRules int) (semantic.Obligations, bool, bool) {
+	args := map[string]any{
+		"service": service,
+		"file":    file,
+	}
+	if maxRules > 0 {
+		args["max_rules"] = maxRules
+	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "obligations",
-			"arguments": map[string]any{
-				"service": service,
-				"file":    file,
-			},
+			"name":      "obligations",
+			"arguments": args,
 		},
 	})
 	if err != nil {
@@ -337,17 +463,23 @@ func fetchObligations(baseURL, service, file string) (semantic.Obligations, bool
 		CompiledAtWatermark string                `json:"compiled_at_watermark"`
 		IndexStale          bool                  `json:"index_stale"`
 		Displaced           int                   `json:"displaced"`
+		DisplacedRepo       int                   `json:"displaced_repo"`
+		DisplacedModule     int                   `json:"displaced_module"`
+		ModuleNotes         []semantic.ModuleNote `json:"module_notes"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		return semantic.Obligations{}, false, false
 	}
 
 	obl := semantic.Obligations{
-		Service:   payload.Service,
-		File:      payload.File,
-		Rules:     payload.Rules,
-		Watermark: payload.CompiledAtWatermark,
-		Displaced: payload.Displaced,
+		Service:         payload.Service,
+		File:            payload.File,
+		Rules:           payload.Rules,
+		Watermark:       payload.CompiledAtWatermark,
+		Displaced:       payload.Displaced,
+		DisplacedRepo:   payload.DisplacedRepo,
+		DisplacedModule: payload.DisplacedModule,
+		ModuleNotes:     payload.ModuleNotes,
 	}
 	return obl, payload.IndexStale, true
 }

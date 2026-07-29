@@ -45,6 +45,15 @@ const (
 	doctorPass    doctorStatus = "pass"
 	doctorFail    doctorStatus = "fail"
 	doctorSkipped doctorStatus = "skipped"
+	// doctorWarn is phase O's addition (docs/design/platform-modules.md
+	// §4 deliverable 4 / guarded-edits.md §2.4): a real, observable
+	// condition worth a human's attention (a dead guard, a sub-servable
+	// bound module) that must NEVER fail the gate — a config-quality
+	// signal, not a wiring-broken verdict. doctorExitCode treats it
+	// exactly like doctorPass for exit-code purposes; it is visually and
+	// machine-distinguishable (statusLabel/JSON) so it is never silently
+	// indistinguishable from a real pass either.
+	doctorWarn doctorStatus = "warn"
 )
 
 // doctorCheck is one row of the checklist: {name, status, reason, remedy}
@@ -180,6 +189,14 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp),
+		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
+		// §2.4): config-validity first, then the checks that need it.
+		checkBindingFile(root),
+		checkGuardFile(root),
+		checkBindingModulesMounted(hc, baseURL, root, daemonUp),
+		checkBindingModuleReadiness(hc, baseURL, root, daemonUp),
+		checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp),
+		checkGuardIncludeModulesUnbound(root),
 	)
 	return checks
 }
@@ -1003,8 +1020,12 @@ func printDoctorTable(w io.Writer, harness, svc, root string, checks []doctorChe
 		}
 	}
 
-	pass, fail, skipped := tallyDoctorChecks(checks)
-	fmt.Fprintf(w, "\n%d checks: %d pass, %d fail, %d skipped\n", len(checks), pass, fail, skipped)
+	pass, warn, fail, skipped := tallyDoctorChecks(checks)
+	if warn > 0 {
+		fmt.Fprintf(w, "\n%d checks: %d pass, %d warn, %d fail, %d skipped\n", len(checks), pass, warn, fail, skipped)
+	} else {
+		fmt.Fprintf(w, "\n%d checks: %d pass, %d fail, %d skipped\n", len(checks), pass, fail, skipped)
+	}
 }
 
 func statusLabel(s doctorStatus) string {
@@ -1013,33 +1034,40 @@ func statusLabel(s doctorStatus) string {
 		return "PASS"
 	case doctorFail:
 		return "FAIL"
+	case doctorWarn:
+		return "WARN"
 	default:
 		return "SKIP"
 	}
 }
 
-func tallyDoctorChecks(checks []doctorCheck) (pass, fail, skipped int) {
+func tallyDoctorChecks(checks []doctorCheck) (pass, warn, fail, skipped int) {
 	for _, c := range checks {
 		switch c.Status {
 		case doctorPass:
 			pass++
+		case doctorWarn:
+			warn++
 		case doctorFail:
 			fail++
 		case doctorSkipped:
 			skipped++
 		}
 	}
-	return pass, fail, skipped
+	return pass, warn, fail, skipped
 }
 
 func printDoctorJSON(w io.Writer, harness, svc, root string, checks []doctorCheck) {
-	pass, fail, skipped := tallyDoctorChecks(checks)
+	pass, warn, fail, skipped := tallyDoctorChecks(checks)
 	out := map[string]any{
 		"service": svc,
 		"harness": harness,
 		"root":    root,
 		"checks":  checks,
-		"summary": map[string]any{"total": len(checks), "pass": pass, "fail": fail, "skipped": skipped},
+		// warn is additive to the pre-existing summary shape (never
+		// renamed/removed) — an older consumer reading only pass/fail/
+		// skipped still sees the same numbers those fields always meant.
+		"summary": map[string]any{"total": len(checks), "pass": pass, "warn": warn, "fail": fail, "skipped": skipped},
 	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

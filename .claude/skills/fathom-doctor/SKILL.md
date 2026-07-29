@@ -28,10 +28,11 @@ Exit codes: `0` every check passed; `1` at least one check failed (a real, fixab
 
 ## 2. Read the report honestly
 
-Every row is `{name, status, reason, remedy}`. Three statuses, and they mean different things — do not collapse them when you summarize for the operator:
+Every row is `{name, status, reason, remedy}`. Four statuses, and they mean different things — do not collapse them when you summarize for the operator:
 
 - **pass** — verified true, with the evidence in `reason`.
 - **fail** — a real, observable problem. `remedy` is always one command.
+- **warn** — a real, observable condition worth attention (phase O: a dead guard, a bound module below `servable`) that **never fails the exit code** — it is a config-quality signal, not a wiring-broken verdict. Report it as its own bucket, not folded into pass or fail.
 - **skipped** — doctor could not check it (unreadable config, unresolvable home directory, daemon unreachable so a dependent check can't run). **Skipped is not failed, and it is never a guessed pass either.** Report it as "could not verify: <reason>", not as either extreme.
 
 The checklist doctor runs (so you know what each row means before you explain it):
@@ -41,7 +42,7 @@ The checklist doctor runs (so you know what each row means before you explain it
 | `mcp_registration` | The harness's own MCP config points fathom at `/rpc/agent` (or `/rpc/companion`) |
 | `daemon_reachable` | `GET /healthz` answers |
 | `binary_fresh` | The binary you just ran `doctor` with matches `git rev-parse HEAD` of the checked repo — a LOCAL proxy (there's no remote "ask the daemon its version" call yet); every pass says the daemon's installed copy is unverified, a dirty build surfaces `vcs.modified`, and both worktree caveats (a mismatch inside a linked worktree; a match in a checkout with nested worktrees, whose stamps can be poisoned) are printed only when doctor verifies they apply |
-| `hooks_installed` (claude only) | The three fathom hooks are wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
+| `hooks_installed` (claude only) | The four fathom hooks (session/edit/guard-pre/stop) are wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
 | `lefthook_gates` | `lefthook.yml`'s pre-push has a `fathom verify` step (harness-agnostic — Codex uses the identical git-native gate) |
 | `hooks_firing` (claude only) | The call log has actually seen `edit-hook` traffic — configured is not the same as firing |
 | `stanza_present` | `CLAUDE.md`/`AGENTS.md` carry a well-formed fathom marker pair |
@@ -49,6 +50,11 @@ The checklist doctor runs (so you know what each row means before you explain it
 | `config_valid` | `.fathom/config.toml` (user + project) validates against the CUE schema |
 | `obligations_served` | The service resolves the way the hooks resolve it (every candidate identity, intersected with the daemon's service list — a repo whose candidates match no indexed service gets a distinct not-indexed verdict, which also means injection cannot fire there) AND the obligations layer serves compiled claims for `CLAUDE.md`; drift-flagged (stale/contradicted) rules are counted into the reason, never hidden in a clean-shaped pass |
 | `surface_traffic` | The `agent` surface has been called since this daemon process started (the counters are process-lifetime — they reset on restart) |
+| `binding_file` / `guard_file` (phase O) | `.fathom/modules.cue`/`.fathom/guard.cue`, when present, parse and validate — **fail** (loud) on a malformed file; absence is reported `pass` ("no bindings/guards configured"), never skipped |
+| `binding_modules_mounted` (phase O) | Every module a binding names is actually mounted on this daemon (`list_modules`) — **fail** (loud) on an unmounted bound module: its rules can never reach an edit |
+| `binding_module_readiness` (phase O) | Each bound module's phase-J readiness ladder verdict, checked via the module's own local manifest **when resolvable on this machine** — **warn** if below `servable`; honestly `skipped: not checkable: module not local` otherwise (never a guessed verdict) |
+| `guard_dead_scopes` (phase O) | Each file-scoped guard's globs match at least one indexed file (`list_sources`) — **warn** on a guard matching zero (a prune candidate, never auto-removed); command-scoped guards are noted as not checkable this way, not silently skipped |
+| `guard_include_modules_unbound` (phase O) | A guard with `include_modules:true` has at least one binding to actually include — **warn** if none |
 
 ## 3. Apply remedies — with operator approval, one at a time
 

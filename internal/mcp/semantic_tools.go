@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/modserve"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -45,12 +46,16 @@ type claimFeedbackBackend interface {
 // ─── registerSemanticTools ───────────────────────────────────────────────────
 
 // registerSemanticTools wires the obligations and compile_layer MCP tools.
-func registerSemanticTools(s *Server, backend QueryInterface) {
+// modules may be nil (no --module store mounted on this daemon); when set,
+// the obligations handler additionally consults the service's
+// .fathom/modules.cue (docs/design/platform-modules.md §3.3) via
+// internal/modserve.Bind.
+func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBackend) {
 	// obligations: return the compiled rules governing a file at decision time.
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
 		Name: "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it); displaced:N (when present) is the count of served-eligible rules the cap dropped this call. " +
+		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules the shared cap dropped this call; displaced_repo/displaced_module split it once a binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. " +
 			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier.",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -142,6 +147,22 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 
+		// Platform-modules.md §3.3: union in rules from every module this
+		// service binds via its own .fathom/modules.cue, when this daemon
+		// has any --module store mounted at all. modules is nil on a
+		// daemon started with no --module flags -- modserve.Bind itself
+		// also no-ops on a nil host, so this call is a pure
+		// backward-compatible no-op for every pre-phase-O deployment.
+		if modules != nil {
+			max := p.MaxRules
+			if max <= 0 || max > semantic.MaxObligations {
+				max = semantic.MaxObligations
+			}
+			if path, _, found, serr := backend.ServiceMeta(ctx, p.Service); serr == nil && found && path != "" {
+				obl = modserve.Bind(ctx, modules, path, p.File, max, obl)
+			}
+		}
+
 		// Build response: always include obligations payload; append index_stale
 		// when true. Serialise as map so index_stale is a first-class field.
 		result := map[string]any{
@@ -158,9 +179,20 @@ func registerSemanticTools(s *Server, backend QueryInterface) {
 		// MaxObligations cap dropped this call — a recompile that blends a
 		// new layer in can silently evict a rule an agent relied on
 		// yesterday; displaced turns that into a visible integer instead of
-		// silence.
+		// silence. O14 split (platform-modules.md §3.3 deliverable 2):
+		// displaced stays the TOTAL (back-compat superset); displaced_repo/
+		// displaced_module appear only once a binding actually contributed.
 		if obl.Displaced > 0 {
 			result["displaced"] = obl.Displaced
+		}
+		if obl.DisplacedRepo > 0 {
+			result["displaced_repo"] = obl.DisplacedRepo
+		}
+		if obl.DisplacedModule > 0 {
+			result["displaced_module"] = obl.DisplacedModule
+		}
+		if len(obl.ModuleNotes) > 0 {
+			result["module_notes"] = obl.ModuleNotes
 		}
 		if ob.ObligationsIndexStale(ctx, p.Service, p.File) {
 			result["index_stale"] = true

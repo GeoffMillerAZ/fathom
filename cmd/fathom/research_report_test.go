@@ -49,6 +49,83 @@ func TestPercentile_SmallN(t *testing.T) {
 	}
 }
 
+// TestBuildResearchReport_GuardedEditsAndModules is phase O's instrumentation
+// coverage (docs/design/guarded-edits.md §2.4 / platform-modules.md §3.5):
+// pre|post split, dedup-suppressed count, and per-module serving tally, all
+// derived purely from emitBeat's existing JSONL shape (new meta keys only).
+func TestBuildResearchReport_GuardedEditsAndModules(t *testing.T) {
+	since := mustParseTime(t, "2026-07-21T00:00:00Z")
+	until := mustParseTime(t, "2026-07-28T00:00:00Z")
+
+	beats := []heartbeat.Beat{
+		{Channel: "edit-hook", Kind: "seen", At: mustParseTime(t, "2026-07-23T10:00:00Z"), Meta: map[string]string{"phase": "pre", "target": "file"}},
+		{Channel: "edit-hook", Kind: "answered", At: mustParseTime(t, "2026-07-23T10:00:01Z"), Meta: map[string]string{"emitted": "true", "phase": "pre", "target": "file"}},
+		{Channel: "edit-hook", Kind: "module-served", At: mustParseTime(t, "2026-07-23T10:00:01Z"), Meta: map[string]string{"module": "platform-standards", "phase": "pre"}},
+		{Channel: "edit-hook", Kind: "seen", At: mustParseTime(t, "2026-07-23T10:00:02Z"), Meta: map[string]string{"phase": "post"}},
+		{Channel: "edit-hook", Kind: "answered", At: mustParseTime(t, "2026-07-23T10:00:03Z"), Meta: map[string]string{"emitted": "true", "phase": "post"}},
+		{Channel: "edit-hook", Kind: "dedup-suppressed", At: mustParseTime(t, "2026-07-23T10:00:03Z"), Meta: map[string]string{"phase": "post"}},
+		{Channel: "edit-hook", Kind: "module-served", At: mustParseTime(t, "2026-07-23T10:00:03Z"), Meta: map[string]string{"module": "platform-standards", "phase": "post"}},
+	}
+
+	r := buildResearchReport(researchReportInputs{
+		service: "fathom", since: since, until: until, now: until,
+		hooksLogPath: "/home/x/.fathom/hooks.jsonl", hooksLogRead: true, beats: beats,
+	})
+
+	if r.GuardPreSeen != 1 || r.GuardPreServed != 1 {
+		t.Errorf("pre seen/served = %d/%d, want 1/1", r.GuardPreSeen, r.GuardPreServed)
+	}
+	if r.GuardPostSeen != 1 || r.GuardPostServed != 1 {
+		t.Errorf("post seen/served = %d/%d, want 1/1", r.GuardPostSeen, r.GuardPostServed)
+	}
+	if r.GuardDedupSuppressed != 1 {
+		t.Errorf("GuardDedupSuppressed = %d, want 1", r.GuardDedupSuppressed)
+	}
+	if r.GuardCoverageNote == "" || strings.Contains(r.GuardCoverageNote, "not measurable") {
+		t.Errorf("GuardCoverageNote = %q, want a measured note (pre fired)", r.GuardCoverageNote)
+	}
+	if r.ModuleRulesServed["platform-standards"] != 2 {
+		t.Errorf("ModuleRulesServed[platform-standards] = %d, want 2 (one pre beat + one post beat)", r.ModuleRulesServed["platform-standards"])
+	}
+	if r.ModuleServingNote != "" {
+		t.Errorf("ModuleServingNote = %q, want empty (modules WERE served)", r.ModuleServingNote)
+	}
+
+	// Backward compatibility: the pre-existing combined counters still sum
+	// both phases exactly as before this feature existed.
+	if r.InjectionSeen != 2 || r.InjectionAnswered != 2 || r.ObligationsServed != 2 {
+		t.Errorf("combined seen/answered/served = %d/%d/%d, want 2/2/2", r.InjectionSeen, r.InjectionAnswered, r.ObligationsServed)
+	}
+}
+
+// TestBuildResearchReport_GuardedEditsNeverFired proves the honest-absence
+// note when the --pre hook has never fired in the window (the DEFAULT
+// state for every repo before `fathom init` re-runs with guarded edits).
+func TestBuildResearchReport_GuardedEditsNeverFired(t *testing.T) {
+	since := mustParseTime(t, "2026-07-21T00:00:00Z")
+	until := mustParseTime(t, "2026-07-28T00:00:00Z")
+	beats := []heartbeat.Beat{
+		{Channel: "edit-hook", Kind: "seen", At: mustParseTime(t, "2026-07-23T10:00:00Z")}, // no phase meta -> treated as post
+		{Channel: "edit-hook", Kind: "answered", At: mustParseTime(t, "2026-07-23T10:00:01Z"), Meta: map[string]string{"emitted": "true"}},
+	}
+	r := buildResearchReport(researchReportInputs{
+		service: "fathom", since: since, until: until, now: until,
+		hooksLogPath: "/home/x/.fathom/hooks.jsonl", hooksLogRead: true, beats: beats,
+	})
+	if r.GuardPreSeen != 0 {
+		t.Errorf("GuardPreSeen = %d, want 0", r.GuardPreSeen)
+	}
+	if !strings.Contains(r.GuardCoverageNote, "not measurable") {
+		t.Errorf("GuardCoverageNote = %q, want the honest not-measurable note", r.GuardCoverageNote)
+	}
+	if r.GuardPostSeen != 1 {
+		t.Errorf("GuardPostSeen = %d, want 1 (a phase-less beat is a pre-phase-O post beat)", r.GuardPostSeen)
+	}
+	if len(r.ModuleRulesServed) != 0 || !strings.Contains(r.ModuleServingNote, "not measurable") {
+		t.Errorf("ModuleRulesServed=%v ModuleServingNote=%q, want empty map + honest note", r.ModuleRulesServed, r.ModuleServingNote)
+	}
+}
+
 // ─── buildResearchReport: the pure, deterministic core ─────────────────────
 
 func TestBuildResearchReport_Golden(t *testing.T) {

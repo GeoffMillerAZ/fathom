@@ -68,6 +68,25 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 	fmt.Fprintf(w, "  note: %s\n", r.InjectionScopeNote)
 	fmt.Fprintf(w, "  obligations evicted: %s\n", r.ObligationsEvictedNote)
 
+	fmt.Fprintln(w, "\nguarded-edit coverage (pre|post, docs/design/guarded-edits.md):")
+	fmt.Fprintf(w, "  pre: seen=%d served=%d   post: seen=%d served=%d   dedup_suppressed=%d\n",
+		r.GuardPreSeen, r.GuardPreServed, r.GuardPostSeen, r.GuardPostServed, r.GuardDedupSuppressed)
+	fmt.Fprintf(w, "  %s\n", r.GuardCoverageNote)
+
+	fmt.Fprintln(w, "\nplatform-module serving (docs/design/platform-modules.md):")
+	if len(r.ModuleRulesServed) == 0 {
+		fmt.Fprintf(w, "  %s\n", r.ModuleServingNote)
+	} else {
+		modules := make([]string, 0, len(r.ModuleRulesServed))
+		for m := range r.ModuleRulesServed {
+			modules = append(modules, m)
+		}
+		sort.Strings(modules)
+		for _, m := range modules {
+			fmt.Fprintf(w, "  %-24s %d\n", m, r.ModuleRulesServed[m])
+		}
+	}
+
 	fmt.Fprintln(w, "\nverify gate:")
 	fmt.Fprintf(w, "  claimed=%d verified=%d failing=%d review_active_findings=%d\n", r.VerifyClaimed, r.VerifyVerified, r.VerifyFailing, r.ReviewActiveFindings)
 	fmt.Fprintf(w, "  %s\n", r.VerifyNote)
