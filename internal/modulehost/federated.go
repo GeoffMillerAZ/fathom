@@ -204,22 +204,49 @@ func (h *Host) FederatedObligations(ctx context.Context, moduleName, file string
 	return out, nil
 }
 
+// QueryClaim is module_query's claim-match wire shape — deliberately NOT
+// semantic.Obligation (module_obligations' own type, untouched by this
+// row): expertchat's cite tokens are `Module#ClaimID` and its refusal/
+// feedback path needs durable claim identity, which semantic.Obligation
+// never carried (it identifies a claim only by its Rule text). ClaimID is
+// the same content-addressed core.SemanticClaim.ClaimID every other claim
+// surface (claim_events, claim refute, ClaimsForService) keys on; Anchor is
+// the literal cited text from claim_links (store-format-v0.md §5.4 —
+// "" for a legacy hash-only link that predates AnchorText, never a guess).
+type QueryClaim struct {
+	ClaimID string `json:"claim_id"`
+	Text    string `json:"text"`
+	Src     string `json:"src,omitempty"`
+	Anchor  string `json:"anchor,omitempty"`
+	Tier    string `json:"tier"`
+	// Status is "" for a fresh claim (never the literal "fresh") — the same
+	// zero-output-on-clean convention semantic.Obligation.Status already
+	// uses, preserved here rather than reinvented.
+	Status string `json:"status,omitempty"`
+	Kind   string `json:"kind,omitempty"`
+}
+
 // FederatedQueryEntry is one module's contribution to a federated free-text
 // query (module_query — critic finding 1: the surface's only pre-existing
 // scope-lookup tool, module_obligations, required a scope-glob `file` arg,
 // which cannot answer a free-text question at all). Nodes are ranked by the
 // SAME concern-scoped engine query_symbols already wraps (internal/query.
 // Engine); Claims are served claims whose rule/subject text matched,
-// reusing the exact citation/tier/status contract FederatedObligation
-// already carries (semantic.Obligation). Both are optional and independent
-// — a module may answer via symbols, via claims, via both, or (if it
-// errors) via neither.
+// carrying durable claim identity (QueryClaim, distinct from
+// module_obligations' semantic.Obligation — see QueryClaim's doc comment).
+// Both Nodes and Claims are optional and independent — a module may answer
+// via symbols, via claims, via both, or (if it errors) via neither.
+// Watermark is this (module, service) pair's compile-time watermark
+// (ServiceMeta.IndexedCommit) — present on every entry regardless of
+// whether it answered, so a caller can attach freshness context to
+// whatever it DID get back without a second round-trip to module_staleness.
 type FederatedQueryEntry struct {
-	Module    string                `json:"module"`
-	Service   string                `json:"service"`
-	Nodes     []core.SymbolNode     `json:"nodes,omitempty"`
-	Staleness core.StalenessReport  `json:"staleness"`
-	Claims    []semantic.Obligation `json:"claims,omitempty"`
+	Module    string               `json:"module"`
+	Service   string               `json:"service"`
+	Watermark string               `json:"watermark"`
+	Nodes     []core.SymbolNode    `json:"nodes,omitempty"`
+	Staleness core.StalenessReport `json:"staleness"`
+	Claims    []QueryClaim         `json:"claims,omitempty"`
 	// Error is set when THIS (module, service) pair's own lookup failed —
 	// every other module/service pair's answer is still returned (mirrors
 	// FederatedObligations' per-module degradation).
@@ -254,6 +281,9 @@ func (h *Host) FederatedQuery(ctx context.Context, moduleName, text string, max 
 		eng := query.New(m.Store)
 		for _, svc := range ids {
 			entry := FederatedQueryEntry{Module: m.Name, Service: svc}
+			if meta, found, mErr := m.Store.GetServiceMeta(ctx, svc); mErr == nil && found {
+				entry.Watermark = meta.IndexedCommit
+			}
 
 			result, qErr := eng.Query(ctx, core.Query{ServiceID: svc, ConcernID: text, Keywords: keywords, TopN: max})
 			if qErr != nil {
@@ -287,13 +317,17 @@ func (h *Host) FederatedQuery(ctx context.Context, moduleName, text string, max 
 	return out, nil
 }
 
-// matchClaimsByText returns served claims (semantic.Obligation shape,
-// reusing FederatedObligation's own citation/tier/status contract) whose
-// Rule or Subject contains text (case-insensitive substring — a
-// deliberately simple, cheap match per the critic's own framing: module_
-// query's floor is "don't refuse a free-text query outright," not a ranked
-// full-text search engine), capped at max and sorted for determinism.
-func matchClaimsByText(ctx context.Context, st store.Store, serviceID, text string, max int) ([]semantic.Obligation, error) {
+// matchClaimsByText returns served claims (QueryClaim shape — durable
+// claim_id + anchor text, see QueryClaim's doc comment) whose Rule or
+// Subject contains text (case-insensitive substring — a deliberately
+// simple, cheap match per the critic's own framing: module_query's floor
+// is "don't refuse a free-text query outright," not a ranked full-text
+// search engine), capped at max and sorted for determinism. Built directly
+// from ClaimsForService + ClaimLinks (not routed through
+// semantic.ObligationsFor, which has no scope-glob to match a free-text
+// query against and would drop ClaimID on the way out) — this path has
+// every field the wire contract needs in hand already.
+func matchClaimsByText(ctx context.Context, st store.Store, serviceID, text string, max int) ([]QueryClaim, error) {
 	if max <= 0 || max > semantic.MaxObligations {
 		max = semantic.MaxObligations
 	}
@@ -322,10 +356,12 @@ func matchClaimsByText(ctx context.Context, st store.Store, serviceID, text stri
 		return nil, err
 	}
 	primaryCite := map[string]string{}
+	primaryAnchor := map[string]string{}
 	for _, l := range links {
 		if l.Rel == core.RelCites {
 			if _, ok := primaryCite[l.ClaimID]; !ok {
 				primaryCite[l.ClaimID] = l.TargetRef
+				primaryAnchor[l.ClaimID] = l.AnchorText
 			}
 		}
 	}
@@ -338,16 +374,22 @@ func matchClaimsByText(ctx context.Context, st store.Store, serviceID, text stri
 	if len(served) > max {
 		served = served[:max]
 	}
-	out := make([]semantic.Obligation, 0, len(served))
+	out := make([]QueryClaim, 0, len(served))
 	for _, cl := range served {
-		ob := semantic.Obligation{Rule: cl.Rule, Src: primaryCite[cl.ClaimID], Tier: string(cl.Tier), Layer: cl.Layer}
+		qc := QueryClaim{
+			ClaimID: cl.ClaimID,
+			Text:    cl.Rule,
+			Src:     primaryCite[cl.ClaimID],
+			Anchor:  primaryAnchor[cl.ClaimID],
+			Tier:    string(cl.Tier),
+		}
 		if cl.Kind != semantic.KindObligation {
-			ob.Kind = cl.Kind
+			qc.Kind = cl.Kind
 		}
 		if cl.Status != core.ClaimFresh {
-			ob.Status = string(cl.Status)
+			qc.Status = string(cl.Status)
 		}
-		out = append(out, ob)
+		out = append(out, qc)
 	}
 	return out, nil
 }

@@ -79,7 +79,9 @@ func newModuleTestServer() (*mcp.Server, *fakeModuleBackend) {
 			}},
 		},
 		queryResult: []modulehost.FederatedQueryEntry{
-			{Module: "alpha", Service: "svc-a", Claims: []semantic.Obligation{{Rule: "matched rule", Src: "RULES.md#L1-L1", Tier: "doc-claimed", Layer: "obligations"}}},
+			{Module: "alpha", Service: "svc-a", Watermark: "deadbeef", Claims: []modulehost.QueryClaim{
+				{ClaimID: "claim-abc123", Text: "matched rule", Src: "RULES.md#L1-L1", Anchor: "the cited text", Tier: "doc-claimed"},
+			}},
 		},
 		staleness: map[string][]modulehost.ModuleStaleness{
 			"alpha": {{Module: "alpha", Service: "svc-a", IndexedCommit: "deadbeef", Status: modulehost.StatusUnknownDetached}},
@@ -164,6 +166,61 @@ func TestModuleTools_ModuleQuery(t *testing.T) {
 	}
 	if len(payload.Results[0].Claims) != 1 || payload.Results[0].Claims[0].Src == "" {
 		t.Errorf("module_query claim missing citation: %+v", payload.Results[0].Claims)
+	}
+	if payload.Results[0].Watermark != "deadbeef" {
+		t.Errorf("module_query watermark = %q, want %q", payload.Results[0].Watermark, "deadbeef")
+	}
+	if payload.Results[0].Claims[0].ClaimID != "claim-abc123" {
+		t.Errorf("module_query claim_id = %q, want %q", payload.Results[0].Claims[0].ClaimID, "claim-abc123")
+	}
+	if payload.Results[0].Claims[0].Anchor != "the cited text" {
+		t.Errorf("module_query anchor = %q, want %q", payload.Results[0].Claims[0].Anchor, "the cited text")
+	}
+
+	// Raw-key pin (CONTRACT module_query v0): decode into a bare
+	// map[string]any so this test fails if the WIRE field names ever drift
+	// from what the kit consumer decodes against, independent of whatever
+	// Go struct tags this package happens to declare — claim_id/text/src/
+	// anchor/tier/status/kind on each claim, watermark/nodes/staleness/
+	// error alongside module/service on each result entry.
+	var raw struct {
+		Results []map[string]any `json:"results"`
+	}
+	if err := json.Unmarshal([]byte(text), &raw); err != nil {
+		t.Fatalf("raw decode: %v", err)
+	}
+	if len(raw.Results) != 1 {
+		t.Fatalf("raw results = %d, want 1", len(raw.Results))
+	}
+	entry := raw.Results[0]
+	for _, key := range []string{"module", "service", "watermark", "claims", "staleness"} {
+		if _, ok := entry[key]; !ok {
+			t.Errorf("module_query result entry missing wire key %q: %v", key, entry)
+		}
+	}
+	claims, ok := entry["claims"].([]any)
+	if !ok || len(claims) != 1 {
+		t.Fatalf("raw claims = %v, want exactly 1 entry", entry["claims"])
+	}
+	claim, ok := claims[0].(map[string]any)
+	if !ok {
+		t.Fatalf("raw claim entry is not an object: %v", claims[0])
+	}
+	for _, key := range []string{"claim_id", "text", "src", "anchor", "tier"} {
+		if _, ok := claim[key]; !ok {
+			t.Errorf("module_query claim entry missing wire key %q: %v", key, claim)
+		}
+	}
+	// status/kind are omitempty (fresh/default "obligation" both omit) —
+	// this fixture's claim is fresh with no non-default kind, so their
+	// ABSENCE here is itself the pinned, correct behavior; presence is
+	// exercised by TestFederatedQuery_SymbolsAndClaimsPerModule's stale/
+	// non-default-kind cases at the modulehost layer (internal/modulehost).
+	if _, ok := claim["status"]; ok {
+		t.Errorf("fresh claim's \"status\" key should be omitted (zero-output-on-clean), got %v", claim["status"])
+	}
+	if claim["claim_id"] != "claim-abc123" {
+		t.Errorf("raw claim_id = %v, want %q", claim["claim_id"], "claim-abc123")
 	}
 
 	// The "concern" alias (P1-1 pattern, query_symbols' own field name)
