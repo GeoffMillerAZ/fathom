@@ -21,17 +21,36 @@ target — `internal/store/backend.go`'s `BackendForPath` recognizes a
    `.db`; `.duckdb` **MUST** be refused, not silently opened
    (`internal/store/backend.go`'s `BackendForPath`).
 2. **MUST** be opened in WAL mode by a writer (`journal_mode(WAL)`,
-   `internal/store/sqlite.go`'s `sqlitePragmaDSN`). A consequence for anyone
-   shipping a *live* store, not a normative requirement of the file itself:
-   a WAL-mode store open in a writer keeps recent commits in a `-wal`
-   sidecar. Copy the `.sqlite` file only after the writer closes (which
-   checkpoints), or copy `.sqlite` + `-wal` + `-shm` together — a bare copy
-   of an in-use store silently drops un-checkpointed writes
-   (`docs/design/expert-modules.md` §5, step 5).
+   `internal/store/sqlite.go`'s `sqlitePragmaDSN`). This is the normative
+   requirement; the copying discipline it implies for anyone shipping a
+   *live* store is a separate, descriptive concern — see 2a below, kept
+   apart deliberately so a MUST and an operational SHOULD are never
+   conflated under one bullet.
+   - **2a (SHOULD, operational, UNENFORCED).** A WAL-mode store open in a
+     writer keeps recent commits in a `-wal` sidecar. A store copied while a
+     writer holds it open SHOULD be copied only after the writer closes
+     (which checkpoints), or as the `.sqlite` + `-wal` + `-shm` triple
+     together — a bare copy of an in-use store risks silently dropping
+     un-checkpointed writes (`docs/design/expert-modules.md` §5, step 5).
+     This is prose discipline, not a file-format property: nothing in the
+     format itself is violated by an operator who copies mid-write, only
+     the copy's completeness.
 3. **MUST NOT** require a running server to read. A conforming reader opens
    the file directly (embedded) or through the daemon — both are the same
    engine (`docs/design/expert-modules.md` §1: "there is no second engine,
    no second schema").
+   - **Honest tension with the reference implementation.** The reference
+     implementation does not actually offer a pure-read code path today:
+     `store.Open`/`NewSQLiteStore` always runs `createSchema` (idempotent
+     `CREATE TABLE IF NOT EXISTS` DDL, plus the format-marker pragma writes
+     in §2) on every open, including one whose caller only intends to read —
+     so opening a conforming store with THIS binary currently assumes
+     writable media. A store on read-only media (a mounted read-only
+     filesystem, or a DSN opened `?mode=ro`) is legal per this spec's file
+     container but is not yet openable by `internal/store`'s own
+     implementation. Closing this gap is a reference-implementation
+     improvement (a genuinely read-only open path), not a spec change —
+     tracked here rather than silently assumed away.
 4. A conforming reader **MUST tolerate unknown tables and unknown columns**
    (README.md's compatibility rules). This is what makes "additive within
    v0" a real guarantee instead of a documentation promise.
@@ -39,34 +58,76 @@ target — `internal/store/backend.go`'s `BackendForPath` recognizes a
 **Enforcement:** file-container properties 1 and 3 are exercised end-to-end
 by `TestStorePortability_RoundTrip` (`pkg/client/portability_test.go`) — it
 builds a store, closes nothing but the corpus root, and reads it back
-through the public `pkg/client` API with no daemon involved. Property 2 (WAL
+through the public `pkg/client` API with no daemon involved. 2a (the WAL
 copy caveat) is **UNENFORCED** — it is an operational discipline documented
 in `docs/design/expert-modules.md`, not a property a Go test can assert
-against a single process's own connection pool.
+against a single process's own connection pool. The read/write-open tension
+noted under 3 is likewise **UNENFORCED**: there is no test asserting a
+read-only open path, because no such path exists yet to test.
 
-## 2. Format version marker
+## 2. File-identity and format-version markers
 
-Every conforming store **MUST** carry a `format_version` marker so a future
-reader can identify which spec version wrote the file without guessing from
-column presence. The marker is SQLite's built-in `PRAGMA user_version`,
-stamped by `internal/store.SQLiteStore`'s schema setup (`sqlite.go`,
-`stampFormatVersion`, called from `createSchema`): value `0` for this spec.
+A conforming store **MUST** carry two SQLite-native pragma markers, stamped
+by `internal/store.SQLiteStore`'s schema setup (`sqlite.go`,
+`stampFormatMarkers`, called from `createSchema`) — SQLite's own format
+reserves exactly these two pragmas for exactly this purpose, WHOSE file
+(`application_id`) and WHICH VERSION of that file type (`user_version`):
 
-- A writer **MUST NOT** decrease `PRAGMA user_version` on open — opening an
-  old store with a build that only knows v0 leaves the marker exactly as
-  found if it is already `>= 0` (trivially true for v0; the guard exists so
-  a future v1 writer opening an already-v1 store does not stamp it back down
-  to a value an older reader would misread as "safe to read with v0
-  assumptions").
-- A reader **MUST** treat a `format_version` higher than the highest version
+- **`PRAGMA application_id` MUST equal `0x46415448`** ("FATH" — the ASCII
+  bytes F/A/T/H read big-endian, a stable, human-verifiable mnemonic rather
+  than an opaque hash). This is the "is this even a fathom store?" check —
+  fixed forever once published: changing it would break every existing
+  reader's identification of a conforming store.
+- **`PRAGMA user_version` MUST equal `1`** for this spec (v0's marker
+  value). **Deliberately not `0`:** `user_version` defaults to `0` on every
+  SQLite database ever created, including one no fathom writer has ever
+  touched — mapping spec v0 to marker `0` would make the marker vacuous (a
+  reader could never distinguish a conforming v0 store from an arbitrary
+  SQLite file that merely happens to share the `.sqlite` extension). **`0`
+  is reserved to mean "pre-spec/unversioned"** — a reader that sees
+  `application_id = 0x46415448` but `user_version = 0` has found a fathom
+  store written before this marker existed (or, in principle, one a future
+  spec revision deliberately left unstamped) and **MUST** fall back to
+  schema introspection (§3's required-table/column check) rather than
+  trusting the version number.
+
+**Write policy (both pragmas, additive-safe):**
+
+- `application_id` is stamped only when it currently reads `0` (SQLite's own
+  "never set" default) — a writer **MUST NOT** overwrite a non-zero, foreign
+  `application_id` some other tool may already have stamped on a `.sqlite`
+  file that merely happens to share fathom's store extension (§1's
+  `BackendForPath` dispatches on extension alone, so this is a real
+  possibility, not a theoretical one).
+- `user_version` is bumped only when it is strictly lower than the writer's
+  own `storeFormatVersion` — a writer **MUST NOT** decrease it. A store
+  already stamped at or above the writer's own version (e.g. by a future
+  v1+ writer) is left untouched, so an older binary opening a newer store
+  cannot regress the marker a newer reader depends on. A fresh store, and a
+  legacy store created before this marker existed, both read `0`
+  (unversioned) and are correctly bumped to `1` on first open by a marker-
+  aware writer — this bump is itself harmless: it asserts nothing the store
+  didn't already structurally satisfy (§3's required tables/columns are
+  unconditional on every SQLiteStore-created store regardless of marker
+  presence), it only makes that fact legible without introspection.
+- A reader **MUST** treat a `user_version` higher than the highest version
   it implements as "read with caution, expect unknown tables/columns," never
   as an error — the whole point of "additive within v0" is that new fields
   don't break old readers by design.
 
 **Enforcement:** `TestStoreFormatV0_RequiredSchema`
 (`internal/store/format_v0_test.go`) asserts a freshly-opened store's
-`PRAGMA user_version` reads back as `0`, and that reopening an
-already-stamped store never regresses it.
+`PRAGMA user_version` reads back as `1` and `PRAGMA application_id` reads
+back as `0x46415448`. `TestStoreFormatV0_StampsUnversionedStore` (same file)
+is the live-write-path proof this marker design depends on: it creates a
+bare SQLite file with neither pragma set (both read `0`, verified as a
+precondition), opens it via `store.Open`, and asserts both markers are
+stamped on that first open — the scenario that would have nothing to assert
+if the marker were mapped to `0` instead of `1`.
+`TestStoreFormatV0_FormatVersionNeverRegresses` (same file) proves the
+non-regression guarantee: a store pre-stamped at `user_version = 7`
+(simulating a future v1+ writer) keeps reading `7` after being reopened by
+this (v0-only) binary, never reset down to `1`.
 
 ## 3. Required tables and columns per conformance level
 
@@ -75,10 +136,13 @@ contain at least these tables with at least these columns (additional
 tables/columns are always legal; column order and additional NOT
 NULL/DEFAULT decoration are implementation detail, not part of the
 contract). Transcribed from, and kept in lockstep with,
-`internal/store/sqlite.go`'s `createSchema` DDL — `TestStoreFormatV0_
-RequiredSchema` checks this exact table against the live schema by
-introspecting `sqlite_master`/`PRAGMA table_info`, so a drift here is a
-failing test, not a stale doc.
+`internal/store/sqlite.go`'s `createSchema` DDL —
+`TestStoreFormatV0_RequiredSchema` checks this exact table against the live
+schema by introspecting `sqlite_master`/`PRAGMA table_info`, and
+`TestStoreFormatV0_DocMatchesGoSource` (both `internal/store/format_v0_test.go`)
+scrapes the L0 and Writer markdown tables below directly out of this file and
+diffs them against the same Go-side map, so a drift on either side — the DDL
+or this doc — is a failing test, never a silently stale doc.
 
 ### L0 — minimum readable store
 

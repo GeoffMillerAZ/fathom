@@ -25,8 +25,15 @@ package modspec
 	// mirroring #Layer.name's convention (schema/semantic/schema.cue).
 	name: string & =~"^[a-z][a-z0-9-]*$"
 
-	// version of the MANIFEST SHAPE this instance was authored against —
-	// not a version of the corpus content or the compiled claims.
+	// version of THIS MODULE DEFINITION itself — mirroring #Layer.version's
+	// exact precedent (schema/semantic/schema.cue: "version of the layer
+	// definition; part of every claim's provenance"), bumped when the
+	// module's own corpus selection, prompt, or compile identity changes
+	// meaningfully. NOT a version of the #Module CUE schema's own shape —
+	// there is no separate field for that in v0 (matching #Layer, which
+	// likewise has no schema-shape-version field of its own). See
+	// docs/spec/expert-module-v0.md §3.1 for the explicit worked-example
+	// note this choice depends on.
 	version: string & =~"^v[0-9]+$"
 
 	// description is a human-readable summary; no format constraint.

@@ -20,8 +20,12 @@ package store
 
 import (
 	"database/sql"
+	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -117,7 +121,8 @@ func TestStoreFormatV0_RequiredSchema(t *testing.T) {
 		}
 	}
 
-	// docs/spec/store-format-v0.md §2: the format_version marker.
+	// docs/spec/store-format-v0.md §2: the format_version + application_id
+	// markers a freshly-created store must carry.
 	var userVersion int
 	if err := db.QueryRow(`PRAGMA user_version`).Scan(&userVersion); err != nil {
 		t.Fatalf("PRAGMA user_version: %v", err)
@@ -125,9 +130,81 @@ func TestStoreFormatV0_RequiredSchema(t *testing.T) {
 	if userVersion != storeFormatVersion {
 		t.Errorf("PRAGMA user_version = %d, want %d (storeFormatVersion)", userVersion, storeFormatVersion)
 	}
+	var appID int
+	if err := db.QueryRow(`PRAGMA application_id`).Scan(&appID); err != nil {
+		t.Fatalf("PRAGMA application_id: %v", err)
+	}
+	if appID != storeApplicationID {
+		t.Errorf("PRAGMA application_id = %d, want %d (storeApplicationID)", appID, storeApplicationID)
+	}
 }
 
-// TestStoreFormatV0_FormatVersionNeverRegresses proves stampFormatVersion's
+// TestStoreFormatV0_StampsUnversionedStore proves the live write path
+// docs/spec/store-format-v0.md §2 depends on: a raw SQLite file that has
+// never been touched by fathom (application_id and user_version both at
+// SQLite's own default, 0 — storeFormatVersionUnversioned) gets BOTH
+// markers stamped the first time store.Open opens it, not merely left as
+// "already conforming." This is what makes storeFormatVersion=1 (not 0)
+// load-bearing: with the marker mapped to 0, this exact scenario would have
+// nothing to assert, since 0 is indistinguishable from "never stamped."
+func TestStoreFormatV0_StampsUnversionedStore(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "format-v0-unversioned.sqlite")
+
+	// Create a bare SQLite file with no fathom schema at all — application_id
+	// and user_version both read back as 0 (SQLite's own defaults) until
+	// something stamps them.
+	raw, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("raw sql.Open: %v", err)
+	}
+	if _, err := raw.Exec(`CREATE TABLE probe (id INTEGER)`); err != nil {
+		t.Fatalf("seed a table so the file is materialized on disk: %v", err)
+	}
+	var preAppID, preVersion int
+	if err := raw.QueryRow(`PRAGMA application_id`).Scan(&preAppID); err != nil {
+		t.Fatalf("PRAGMA application_id (pre): %v", err)
+	}
+	if err := raw.QueryRow(`PRAGMA user_version`).Scan(&preVersion); err != nil {
+		t.Fatalf("PRAGMA user_version (pre): %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw db: %v", err)
+	}
+	if preAppID != storeFormatVersionUnversioned || preVersion != storeFormatVersionUnversioned {
+		t.Fatalf("precondition failed: application_id=%d user_version=%d, want both %d (unversioned)", preAppID, preVersion, storeFormatVersionUnversioned)
+	}
+
+	// store.Open runs createSchema (idempotent CREATE TABLE IF NOT EXISTS
+	// over the existing file) and, as part of it, stampFormatMarkers.
+	st, err := Open(path)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := st.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	verify, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatalf("raw sql.Open (verify): %v", err)
+	}
+	defer verify.Close()
+	var gotAppID, gotVersion int
+	if err := verify.QueryRow(`PRAGMA application_id`).Scan(&gotAppID); err != nil {
+		t.Fatalf("PRAGMA application_id (post): %v", err)
+	}
+	if err := verify.QueryRow(`PRAGMA user_version`).Scan(&gotVersion); err != nil {
+		t.Fatalf("PRAGMA user_version (post): %v", err)
+	}
+	if gotVersion != storeFormatVersion {
+		t.Errorf("user_version after Open = %d, want %d (storeFormatVersion) — the live write path never fired", gotVersion, storeFormatVersion)
+	}
+	if gotAppID != storeApplicationID {
+		t.Errorf("application_id after Open = %d, want %d (storeApplicationID)", gotAppID, storeApplicationID)
+	}
+}
+
+// TestStoreFormatV0_FormatVersionNeverRegresses proves stampFormatMarkers's
 // additive guarantee (docs/spec/store-format-v0.md §2: a writer MUST NOT
 // decrease PRAGMA user_version on open): re-opening an already-stamped store
 // leaves the marker unchanged, never reset.
@@ -175,6 +252,109 @@ func TestStoreFormatV0_FormatVersionNeverRegresses(t *testing.T) {
 	}
 	if got != 7 {
 		t.Errorf("PRAGMA user_version = %d after reopen, want 7 (must not regress)", got)
+	}
+}
+
+// docSections names the docs/spec/store-format-v0.md §3 headings whose
+// required-schema tables TestStoreFormatV0_DocMatchesGoSource scrapes and
+// diffs against requiredSchemaV0. Both this list and requiredSchemaV0 exist
+// so editing either the markdown table or the Go map ALONE — without the
+// other — fails a test: the doc is the fixture, not just documentation.
+var docSections = []string{
+	"### L0 — minimum readable store",
+	"### Writer — append-only lineage discipline",
+}
+
+// tableRowPattern matches one required-schema markdown table ROW (never the
+// header row "| Table | Required columns |", which has no backtick, and
+// never the separator row "|---|---|"): a line of the shape
+// "| `table_name` | `col1`, `col2`, ... |".
+var tableRowPattern = regexp.MustCompile("^\\| `([a-z_]+)` \\| (.+) \\|\\s*$")
+
+// backtickIdentPattern extracts every backtick-quoted identifier from a
+// table row's second cell (the required-columns list).
+var backtickIdentPattern = regexp.MustCompile("`([a-zA-Z0-9_]+)`")
+
+// parseRequiredSchemaFromDoc scrapes docs/spec/store-format-v0.md's §3
+// (L0) and Writer required-schema markdown tables into the same shape as
+// requiredSchemaV0 (table name -> ordered required column names), scoped to
+// the named section headings so §7's evidence-tier table (whose rows ALSO
+// start with "| `verified`" et al.) and any other backtick-led table in the
+// document can never be mistaken for a required-schema table.
+func parseRequiredSchemaFromDoc(t *testing.T, docPath string) map[string][]string {
+	t.Helper()
+	data, err := os.ReadFile(docPath)
+	if err != nil {
+		t.Fatalf("read %s: %v", docPath, err)
+	}
+	doc := string(data)
+
+	got := map[string][]string{}
+	for _, heading := range docSections {
+		start := strings.Index(doc, heading)
+		if start < 0 {
+			t.Fatalf("heading %q not found in %s — docSections is out of sync with the doc's actual headings", heading, docPath)
+		}
+		rest := doc[start+len(heading):]
+		// Bound the section at the next heading of any level ("\n#"), or EOF.
+		end := len(rest)
+		if next := strings.Index(rest, "\n#"); next >= 0 {
+			end = next
+		}
+		section := rest[:end]
+
+		for _, line := range strings.Split(section, "\n") {
+			m := tableRowPattern.FindStringSubmatch(line)
+			if m == nil {
+				continue
+			}
+			table := m[1]
+			cols := backtickIdentPattern.FindAllStringSubmatch(m[2], -1)
+			colNames := make([]string, 0, len(cols))
+			for _, c := range cols {
+				colNames = append(colNames, c[1])
+			}
+			if len(colNames) == 0 {
+				t.Fatalf("table row for %q in section %q parsed zero columns from %q", table, heading, m[2])
+			}
+			if _, dup := got[table]; dup {
+				t.Fatalf("table %q scraped twice from %s — duplicate row or heading scoping bug", table, docPath)
+			}
+			got[table] = colNames
+		}
+	}
+	return got
+}
+
+// TestStoreFormatV0_DocMatchesGoSource is Finding 2's fix: the L0 and
+// Writer required-schema tables in docs/spec/store-format-v0.md §3 are
+// scraped and diffed against requiredSchemaV0 (the same map
+// TestStoreFormatV0_RequiredSchema checks against the live DDL). Editing
+// the markdown table without updating requiredSchemaV0 — or vice versa —
+// fails here, closing the manual-sync gap §3's own "a drift here is a
+// failing test, not a stale doc" claim depended on.
+func TestStoreFormatV0_DocMatchesGoSource(t *testing.T) {
+	docPath := filepath.Join("..", "..", "docs", "spec", "store-format-v0.md")
+	docSchema := parseRequiredSchemaFromDoc(t, docPath)
+
+	docTables := make([]string, 0, len(docSchema))
+	for table := range docSchema {
+		docTables = append(docTables, table)
+	}
+	sort.Strings(docTables)
+	goTables := make([]string, 0, len(requiredSchemaV0))
+	for table := range requiredSchemaV0 {
+		goTables = append(goTables, table)
+	}
+	sort.Strings(goTables)
+
+	if !reflect.DeepEqual(docTables, goTables) {
+		t.Fatalf("table set drifted between doc and Go source:\n  doc:    %v\n  go:     %v", docTables, goTables)
+	}
+	for _, table := range goTables {
+		if !reflect.DeepEqual(docSchema[table], requiredSchemaV0[table]) {
+			t.Errorf("table %q columns drifted between doc and Go source:\n  doc: %v\n  go:  %v", table, docSchema[table], requiredSchemaV0[table])
+		}
 	}
 }
 

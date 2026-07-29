@@ -65,12 +65,29 @@ valid.cue`; negatives: `schema/module/testdata/invalid.cue`, asserted live by
 the Go test per this repo's schema convention — CLAUDE.md "New CUE
 schemas").
 
+**Closedness is an authoring gate, not a reader-conformance instrument.**
+`#Module` is a CUE *closed* struct — a manifest instance with an unrecognized
+field name fails validation against it, which is deliberate: it catches a
+typo'd or misspelled field at authoring time, the same way `#Layer` already
+does for layer packs. That authoring-time strictness does **not** relax
+`README.md`'s additive-within-v0 rule ("fields may be added without a
+version bump"). To reconcile the two: **a conforming manifest READER MUST
+ignore unknown fields it encounters in a manifest** — closedness is enforced
+by the schema an AUTHOR validates a new manifest against (this repo's own
+`#Module`, or a future v0.x revision of it with more fields added), never by
+a downstream reader parsing an already-authored manifest. A third-party
+module compiled under a slightly newer `#Module` revision than a given
+reader knows about therefore still parses: the reader sees, and must
+tolerate, fields it doesn't recognize — the same discipline
+`store-format-v0.md` §1.4 already states for unknown store tables/columns,
+restated here for the manifest.
+
 ### 3.1 Module identity
 
 | Field | Type | Requirement |
 |---|---|---|
 | `name` | `string`, `^[a-z][a-z0-9-]*$` | **MUST** — stable identifier, mirrors `#Layer.name`'s convention (`schema/semantic/schema.cue`) |
-| `version` | `string`, `^v[0-9]+$` | **MUST** — the MANIFEST SHAPE's version (which fields this instance was authored against), not the corpus content's version |
+| `version` | `string`, `^v[0-9]+$` | **MUST** — mirrors `#Layer.version`'s exact precedent: THIS MODULE DEFINITION's own version, part of its provenance (`schema/semantic/schema.cue`'s comment: "version of the layer definition; part of every claim's provenance") — bumped when the module's own corpus selection, prompt, or compile identity changes meaningfully. **Not** the `#Module` CUE schema's own shape version (there is no separate field for that in v0, matching `#Layer`, which likewise carries no schema-shape-version field of its own). Both `schema/module/testdata/valid.cue` examples set `version: "v1"` as each module's own first version — a third-party author copying either example starts their own module at `"v1"` too, not at whatever `#Module`'s current CUE-schema revision happens to be. |
 | `description` | `string` | **MUST** — human-readable, no format constraint |
 
 ### 3.2 Corpus selectors

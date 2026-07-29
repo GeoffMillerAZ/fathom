@@ -1,12 +1,7 @@
-// Package modspec is the Go-side companion to schema/module/schema.cue —
-// the expert-module manifest shape (docs/spec/expert-module-v0.md §3). No
-// runtime loader lives here yet (the honest gap documented in
-// docs/spec/expert-module-v0.md §7: unlike internal/semantic's #Layer,
-// #Module is validated but not yet decoded/executed by any Go code in this
-// repo). This file exists solely to assert the CUE negatives documented,
-// commented out, in schema/module/testdata/invalid.cue — the repo
-// convention (CLAUDE.md "New CUE schemas": "negatives are asserted by Go
-// tests, not live-vetted").
+// schema_test.go — asserts the schema/module CUE negatives documented,
+// commented out, in schema/module/testdata/invalid.cue (repo convention,
+// CLAUDE.md "New CUE schemas": "negatives are asserted by Go tests, not
+// live-vetted"). See doc.go for the package-level doc comment.
 package modspec
 
 import (
@@ -79,11 +74,20 @@ func TestModuleSchema_ValidInstancesConcrete(t *testing.T) {
 // precedent for the same distinction) — and Concrete(true) is a strict
 // superset of the plain Validate() the other cases would also fail under,
 // so using it uniformly keeps every case exercised the same way.
+//
+// Each case also asserts wantErrSubstr appears in the actual CUE error text
+// (compile-time or validate-time, whichever fires) — not just that SOME
+// error occurred. A bare "expected an error, got none" check can't tell a
+// case failing for the right reason (the field this case is actually
+// probing) from one failing for the wrong one (e.g. a typo elsewhere in the
+// snippet that happens to also be invalid); asserting the offending field's
+// path in the message closes that gap.
 func TestModuleSchema_Negatives(t *testing.T) {
 	schema := schemaSource(t)
 	cases := []struct {
-		name string
-		bad  string
+		name          string
+		bad           string
+		wantErrSubstr string
 	}{
 		{"empty corpus include", `
 bad1: #Module & {
@@ -93,7 +97,7 @@ bad1: #Module & {
 	eval_evidence: evaled: false
 	recompile: allowed: false
 	provenance: {compiled_by: "deterministic", compiled_at: "2026-07-28T00:00:00Z"}
-}`},
+}`, "include"},
 		{"missing watermark (the freshness doctrine: a module without a watermark is invalid)", `
 bad2: #Module & {
 	name: "x", version: "v1", description: "x"
@@ -101,7 +105,7 @@ bad2: #Module & {
 	eval_evidence: evaled: false
 	recompile: allowed: false
 	provenance: {compiled_by: "deterministic", compiled_at: "2026-07-28T00:00:00Z"}
-}`},
+}`, "watermark"},
 		{"malformed watermark (neither git SHA nor manifest: content hash)", `
 bad3: #Module & {
 	name: "x", version: "v1", description: "x"
@@ -110,7 +114,7 @@ bad3: #Module & {
 	eval_evidence: evaled: false
 	recompile: allowed: false
 	provenance: {compiled_by: "deterministic", compiled_at: "2026-07-28T00:00:00Z"}
-}`},
+}`, "watermark"},
 		{"evaled:true with no eval_evidence.path (D3 trust seam)", `
 bad4: #Module & {
 	name: "x", version: "v1", description: "x"
@@ -119,7 +123,7 @@ bad4: #Module & {
 	eval_evidence: evaled: true
 	recompile: allowed: false
 	provenance: {compiled_by: "deterministic", compiled_at: "2026-07-28T00:00:00Z"}
-}`},
+}`, "eval_evidence.path"},
 		{"recompile.allowed:true with no prompt_identity", `
 bad5: #Module & {
 	name: "x", version: "v1", description: "x"
@@ -128,7 +132,7 @@ bad5: #Module & {
 	eval_evidence: evaled: false
 	recompile: allowed: true
 	provenance: {compiled_by: "deterministic", compiled_at: "2026-07-28T00:00:00Z"}
-}`},
+}`, "prompt_identity"},
 		{"malformed provenance.compiled_at (not RFC3339-shaped)", `
 bad6: #Module & {
 	name: "x", version: "v1", description: "x"
@@ -137,7 +141,7 @@ bad6: #Module & {
 	eval_evidence: evaled: false
 	recompile: allowed: false
 	provenance: {compiled_by: "deterministic", compiled_at: "not-a-date"}
-}`},
+}`, "compiled_at"},
 	}
 	cctx := cuecontext.New()
 
@@ -149,11 +153,16 @@ bad6: #Module & {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			v := cctx.CompileString(schema + "\n" + tc.bad)
+			var errText string
 			if v.Err() != nil {
-				return // compile-time rejection is a pass
+				errText = v.Err().Error() // compile-time rejection
+			} else if err := v.Validate(cue.Concrete(true)); err != nil {
+				errText = err.Error() // validate-time rejection
+			} else {
+				t.Fatal("expected a validation failure, got none")
 			}
-			if err := v.Validate(cue.Concrete(true)); err == nil {
-				t.Errorf("expected validation failure, got none")
+			if !strings.Contains(errText, tc.wantErrSubstr) {
+				t.Errorf("error %q does not mention %q — this case may be failing for the wrong reason", errText, tc.wantErrSubstr)
 			}
 		})
 	}

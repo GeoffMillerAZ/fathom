@@ -99,11 +99,15 @@ not a design doc to re-litigate.
   an exact column set.)
 - A conforming writer **MUST NOT** remove or retype a column or table this
   spec documents as required, within v0. Adding one is always legal.
-- The store carries a **`format_version` marker** (SQLite's built-in
-  `PRAGMA user_version`, currently `0`) precisely so a future v1 reader can
-  tell, without guessing from column presence, which spec version wrote a
-  given store file. `store-format-v0.md`'s "File container and format
-  version" section is normative on the exact mechanism.
+- The store carries two identity/version markers: **`PRAGMA
+  application_id`** (a fixed magic number identifying the file as a fathom
+  store at all) and **`PRAGMA user_version`** (currently `1` for this spec —
+  `0` is deliberately reserved to mean "pre-spec/unversioned," so the marker
+  can't be confused with an arbitrary `.sqlite` file that never went through
+  a fathom writer) — precisely so a future v1 reader can tell, without
+  guessing from column presence, both whether a file is a fathom store and
+  which spec version wrote it. `store-format-v0.md`'s "File-identity and
+  format-version markers" section is normative on the exact mechanism.
 
 ## Out of scope for the index (see each doc's own Non-goals)
 
