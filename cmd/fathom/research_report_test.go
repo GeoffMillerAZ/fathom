@@ -18,6 +18,37 @@ func mustParseTime(t *testing.T, s string) time.Time {
 	return tm
 }
 
+// TestPercentile_SmallN is critic Finding 5's own regression test: the
+// prior floor-index formula (int(p*float64(n-1))) returned sorted[0] — the
+// MINIMUM, not the 95th percentile — for any 2-element slice at p=0.95, a
+// flattering bias in a credibility artifact. Nearest-rank
+// (ceil(p*n)-1, clamped) must return the maximum here.
+func TestPercentile_SmallN(t *testing.T) {
+	two := []float64{10, 20}
+	if got := percentile(two, 0.95); got != 20 {
+		t.Errorf("percentile({10,20}, 0.95) = %v, want 20 (the prior floor-index bug returned 10, the minimum)", got)
+	}
+	if got := percentile(two, 0.50); got != 10 {
+		t.Errorf("percentile({10,20}, 0.50) = %v, want 10 (nearest-rank: rank=ceil(0.5*2)=1, 1-indexed)", got)
+	}
+
+	one := []float64{42}
+	if got := percentile(one, 0.50); got != 42 {
+		t.Errorf("percentile({42}, 0.50) = %v, want 42", got)
+	}
+	if got := percentile(one, 0.95); got != 42 {
+		t.Errorf("percentile({42}, 0.95) = %v, want 42", got)
+	}
+
+	ten := []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+	if got := percentile(ten, 0.50); got != 5 {
+		t.Errorf("percentile(1..10, 0.50) = %v, want 5 (rank=ceil(5)=5, 1-indexed -> value 5)", got)
+	}
+	if got := percentile(ten, 0.95); got != 10 {
+		t.Errorf("percentile(1..10, 0.95) = %v, want 10 (rank=ceil(9.5)=10, 1-indexed -> value 10)", got)
+	}
+}
+
 // ─── buildResearchReport: the pure, deterministic core ─────────────────────
 
 func TestBuildResearchReport_Golden(t *testing.T) {

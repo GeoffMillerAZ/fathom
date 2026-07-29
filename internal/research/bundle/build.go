@@ -13,6 +13,13 @@ import (
 // shaped like one (the one apparent exception, ServicePlaintextCalls, is
 // consumed and discarded inside Build — see its own doc comment).
 //
+// Tool/Surface/Arm string values are the caller's responsibility to
+// constrain to labelPattern (or empty, for Surface) BEFORE they land in
+// this struct — see cmd/fathom/research_bundle.go's sanitizeLabel and its
+// own doc comment for why (critic Finding 1: these are client-controlled
+// strings, not fathom-controlled ones, despite being typed as plain Go
+// strings here).
+//
 // Callers (cmd/fathom/research_bundle.go) are responsible for aggregating
 // raw local evidence down to this shape BEFORE calling Build; Build itself
 // never reads a file, a log, or a store.
@@ -23,11 +30,22 @@ type Input struct {
 	CommitSHA     string
 	CommitDirty   bool
 
-	TotalCalls     int
-	SurfaceTraffic []SurfaceCount
-	ToolCalls      []ToolCount
+	// CallLogRead/HooksLogRead gate whether the CallTraffic+VerifyGate and
+	// Injection groups are emitted at all (critic Finding 3): Build must
+	// never synthesize an all-zero group for an instrument that was never
+	// actually read — that reads as "measured zero" to a recipient who
+	// cannot tell the difference. false means "instrument absent," and the
+	// corresponding scalar fields below are ignored entirely regardless of
+	// their value.
+	CallLogRead  bool
+	HooksLogRead bool
 
-	LatencyP50MS, LatencyP95MS *float64
+	TotalCalls           int
+	SurfaceTraffic       []SurfaceCount
+	ToolCalls            []ToolCount
+	LatencyP50MS         *float64
+	LatencyP95MS         *float64
+	StalenessReportCalls int
 
 	InjectionSeen, InjectionAnswered int
 	InjectionCoverageRate            *float64
@@ -36,8 +54,6 @@ type Input struct {
 	VerifyClaimed, VerifyVerified, VerifyFailing           int
 	VerifyInstrumentedCalls, VerifyPredatesInstrumentation int
 	ReviewActiveFindings                                   int
-
-	StalenessReportCalls int
 
 	TotalObservations, OpenObservations *int
 
@@ -75,31 +91,45 @@ func Build(in Input) Bundle {
 		GOOS:          runtime.GOOS,
 		GOARCH:        runtime.GOARCH,
 
-		TotalCalls:     in.TotalCalls,
-		SurfaceTraffic: append([]SurfaceCount(nil), in.SurfaceTraffic...),
-		ToolCalls:      append([]ToolCount(nil), in.ToolCalls...),
-
-		LatencyP50MS: in.LatencyP50MS,
-		LatencyP95MS: in.LatencyP95MS,
-
-		InjectionSeen:         in.InjectionSeen,
-		InjectionAnswered:     in.InjectionAnswered,
-		InjectionCoverageRate: in.InjectionCoverageRate,
-		ObligationsServed:     in.ObligationsServed,
-
-		VerifyClaimed:                 in.VerifyClaimed,
-		VerifyVerified:                in.VerifyVerified,
-		VerifyFailing:                 in.VerifyFailing,
-		VerifyInstrumentedCalls:       in.VerifyInstrumentedCalls,
-		VerifyPredatesInstrumentation: in.VerifyPredatesInstrumentation,
-		ReviewActiveFindings:          in.ReviewActiveFindings,
-
-		StalenessReportCalls: in.StalenessReportCalls,
-
 		TotalObservations: in.TotalObservations,
 		OpenObservations:  in.OpenObservations,
 
 		BenchArms: append([]BenchArmCount(nil), in.BenchArms...),
+	}
+
+	if in.CallLogRead {
+		b.CallTraffic = &CallTrafficStats{
+			TotalCalls:           in.TotalCalls,
+			SurfaceTraffic:       append([]SurfaceCount(nil), in.SurfaceTraffic...),
+			ToolCalls:            append([]ToolCount(nil), in.ToolCalls...),
+			LatencyP50MS:         in.LatencyP50MS,
+			LatencyP95MS:         in.LatencyP95MS,
+			StalenessReportCalls: in.StalenessReportCalls,
+		}
+		sort.Slice(b.CallTraffic.SurfaceTraffic, func(i, j int) bool {
+			return b.CallTraffic.SurfaceTraffic[i].Surface < b.CallTraffic.SurfaceTraffic[j].Surface
+		})
+		sort.Slice(b.CallTraffic.ToolCalls, func(i, j int) bool {
+			return b.CallTraffic.ToolCalls[i].Tool < b.CallTraffic.ToolCalls[j].Tool
+		})
+
+		b.VerifyGate = &VerifyGateStats{
+			Claimed:                 in.VerifyClaimed,
+			Verified:                in.VerifyVerified,
+			Failing:                 in.VerifyFailing,
+			InstrumentedCalls:       in.VerifyInstrumentedCalls,
+			PredatesInstrumentation: in.VerifyPredatesInstrumentation,
+			ReviewActiveFindings:    in.ReviewActiveFindings,
+		}
+	}
+
+	if in.HooksLogRead {
+		b.Injection = &InjectionStats{
+			Seen:              in.InjectionSeen,
+			Answered:          in.InjectionAnswered,
+			CoverageRate:      in.InjectionCoverageRate,
+			ObligationsServed: in.ObligationsServed,
+		}
 	}
 
 	if len(in.ServicePlaintextCalls) > 0 {
@@ -111,8 +141,6 @@ func Build(in Input) Bundle {
 		b.ServiceActivity = rows
 	}
 
-	sort.Slice(b.SurfaceTraffic, func(i, j int) bool { return b.SurfaceTraffic[i].Surface < b.SurfaceTraffic[j].Surface })
-	sort.Slice(b.ToolCalls, func(i, j int) bool { return b.ToolCalls[i].Tool < b.ToolCalls[j].Tool })
 	sort.Slice(b.BenchArms, func(i, j int) bool { return b.BenchArms[i].Arm < b.BenchArms[j].Arm })
 
 	return b

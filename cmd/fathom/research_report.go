@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -469,12 +470,22 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 }
 
 // percentile returns the nearest-rank percentile p (0..1) of a SORTED,
-// non-empty slice.
+// non-empty slice: rank = ceil(p*n), 1-indexed into sorted, clamped to
+// [0, n-1]. Critic Finding 5 (2026-07-28): the prior floor-index formula
+// (int(p*float64(n-1))) is NOT nearest-rank despite the doc comment above
+// claiming it was — for n=2 it returns sorted[int(p)], which for p95 gives
+// int(0.95)=0, the MINIMUM, not the maximum; a flattering bias baked into a
+// credibility artifact. This formula matches the doc comment for every n,
+// including small n (verified: percentile({10,20}, 0.95) == 20).
 func percentile(sorted []float64, p float64) float64 {
-	if len(sorted) == 1 {
-		return sorted[0]
+	n := len(sorted)
+	idx := int(math.Ceil(p*float64(n))) - 1
+	if idx < 0 {
+		idx = 0
 	}
-	idx := int(p * float64(len(sorted)-1))
+	if idx >= n {
+		idx = n - 1
+	}
 	return sorted[idx]
 }
 

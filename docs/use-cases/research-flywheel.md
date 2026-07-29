@@ -128,18 +128,29 @@ fathom research bundle --service my-service --since 168h
 ```
 
 ```
-wrote workspace/artifacts/research/bundle.json
-wrote workspace/artifacts/research/bundle.md
+wrote workspace/artifacts/research/bundle/bundle.json
+wrote workspace/artifacts/research/bundle/bundle.md
 
 These are plain local files. Nothing was transmitted anywhere — fathom
 never phones home. Review them yourself before sharing; sharing is
 entirely your own manual choice (email, paste, upload — whatever you pick).
+
+Share only these two files (or this bundle/ subdirectory in isolation) —
+never the parent workspace/artifacts/research/ directory, which also
+contains report.md (that file is NOT sanitized: it carries plaintext
+service names and the local hooks-log path).
 ```
 
 `bundle.json` carries the same injection-coverage rate and gate-catch counts
-as the report, plus fathom's own version/commit and coarse platform — but
-`my-service` never appears in it; only a salted hash of it does. You choose
-how (or whether) to send `bundle.md`/`bundle.json` onward.
+as the report — under a `call_traffic`/`injection`/`verify_gate` grouping
+that's absent entirely when its underlying log was never read (never a
+fabricated zero) — plus fathom's own version/commit and coarse platform. But
+`my-service` never appears in it; only a salted hash of it does, and every
+tool/surface/bench-arm name in it is checked against fathom's own
+`^[a-z0-9_]{1,64}$` label shape (anything else lands in an `"unrecognized"`
+bucket instead). You choose how (or whether) to send the two files in
+`workspace/artifacts/research/bundle/` onward — but never the parent
+directory.
 
 ---
 
@@ -169,11 +180,21 @@ one is used, with its own `generated_at` surfaced so you can judge
 staleness against your report window yourself.
 
 **The salt:** the first `fathom research bundle` run in a repo generates
-`workspace/artifacts/research/.salt` (gitignored, `0o600`) and reuses it on
+`workspace/state/research.salt` (gitignored, `0o600`, **outside** the
+shareable `workspace/artifacts/research/` tree on purpose) and reuses it on
 every later run — this is what keeps a given service's hash stable across
 bundles (so repeated counts of the same service are recognizable as the
 same service without naming it). Deleting the salt file just starts a new,
-uncorrelated hash lineage; it does not leak anything.
+uncorrelated hash lineage; it does not leak anything. An existing repo's
+salt from before this location changed is migrated automatically (value
+preserved, old file removed) the next time you run `fathom research bundle`.
+
+**Sharing discipline:** share the two files under
+`workspace/artifacts/research/bundle/` (or that subdirectory as a whole) —
+**never** the parent `workspace/artifacts/research/` directory. The parent
+also holds `report.md`, which is deliberately unsanitized (plaintext service
+names, the local hooks-log path). The CLI repeats this warning after every
+non-`--dry-run` write.
 
 **No MCP tool, no scheduling:** run these from a terminal, by hand or from
 your own script/cron if you want a recurring snapshot — fathom itself never

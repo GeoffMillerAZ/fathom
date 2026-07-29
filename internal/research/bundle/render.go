@@ -19,46 +19,61 @@ func RenderMarkdown(b Bundle) string {
 		b.GeneratedAt, b.WindowSince, b.WindowUntil,
 		b.FathomVersion, shortOrUnknown(b.CommitSHA), dirtyTag(b.CommitDirty), b.GOOS, b.GOARCH)
 
-	fmt.Fprintf(&s, "## Traffic\n\nTotal calls: %d\n\n", b.TotalCalls)
-	if len(b.SurfaceTraffic) > 0 {
-		s.WriteString("| surface | calls |\n|---|---|\n")
-		for _, r := range b.SurfaceTraffic {
-			surface := r.Surface
-			if surface == "" {
-				surface = "(bare)"
+	s.WriteString("## Call traffic\n\n")
+	if b.CallTraffic == nil {
+		s.WriteString("not instrumented: the MCP call log was absent/unreadable over this window\n\n")
+	} else {
+		ct := b.CallTraffic
+		fmt.Fprintf(&s, "Total calls: %d\n\n", ct.TotalCalls)
+		if len(ct.SurfaceTraffic) > 0 {
+			s.WriteString("| surface | calls |\n|---|---|\n")
+			for _, r := range ct.SurfaceTraffic {
+				surface := r.Surface
+				if surface == "" {
+					surface = "(bare)"
+				}
+				fmt.Fprintf(&s, "| %s | %d |\n", surface, r.Calls)
 			}
-			fmt.Fprintf(&s, "| %s | %d |\n", surface, r.Calls)
+			s.WriteString("\n")
 		}
-		s.WriteString("\n")
-	}
-	if len(b.ToolCalls) > 0 {
-		s.WriteString("| tool | calls |\n|---|---|\n")
-		for _, r := range b.ToolCalls {
-			fmt.Fprintf(&s, "| %s | %d |\n", r.Tool, r.Calls)
+		if len(ct.ToolCalls) > 0 {
+			s.WriteString("| tool | calls |\n|---|---|\n")
+			for _, r := range ct.ToolCalls {
+				fmt.Fprintf(&s, "| %s | %d |\n", r.Tool, r.Calls)
+			}
+			s.WriteString("\n")
 		}
-		s.WriteString("\n")
+		if ct.LatencyP50MS != nil {
+			fmt.Fprintf(&s, "Latency: p50=%.1fms", *ct.LatencyP50MS)
+			if ct.LatencyP95MS != nil {
+				fmt.Fprintf(&s, " p95=%.1fms", *ct.LatencyP95MS)
+			}
+			s.WriteString("\n\n")
+		}
+		fmt.Fprintf(&s, "staleness_report calls: %d\n\n", ct.StalenessReportCalls)
 	}
-	if b.LatencyP50MS != nil {
-		fmt.Fprintf(&s, "Latency: p50=%.1fms", *b.LatencyP50MS)
-		if b.LatencyP95MS != nil {
-			fmt.Fprintf(&s, " p95=%.1fms", *b.LatencyP95MS)
+
+	s.WriteString("## Injection coverage\n\n")
+	if b.Injection == nil {
+		s.WriteString("not instrumented: the hooks beat log was absent/unreadable over this window\n\n")
+	} else {
+		inj := b.Injection
+		fmt.Fprintf(&s, "seen=%d answered=%d obligations_served=%d", inj.Seen, inj.Answered, inj.ObligationsServed)
+		if inj.CoverageRate != nil {
+			fmt.Fprintf(&s, " rate=%.0f%%", *inj.CoverageRate*100)
 		}
 		s.WriteString("\n\n")
 	}
 
-	fmt.Fprintf(&s, "## Injection coverage\n\nseen=%d answered=%d obligations_served=%d",
-		b.InjectionSeen, b.InjectionAnswered, b.ObligationsServed)
-	if b.InjectionCoverageRate != nil {
-		fmt.Fprintf(&s, " rate=%.0f%%", *b.InjectionCoverageRate*100)
+	s.WriteString("## Verify gate\n\n")
+	if b.VerifyGate == nil {
+		s.WriteString("not instrumented: the MCP call log was absent/unreadable over this window\n\n")
+	} else {
+		vg := b.VerifyGate
+		fmt.Fprintf(&s, "claimed=%d verified=%d failing=%d instrumented_calls=%d "+
+			"predates_instrumentation=%d review_active_findings=%d\n\n",
+			vg.Claimed, vg.Verified, vg.Failing, vg.InstrumentedCalls, vg.PredatesInstrumentation, vg.ReviewActiveFindings)
 	}
-	s.WriteString("\n\n")
-
-	fmt.Fprintf(&s, "## Verify gate\n\nclaimed=%d verified=%d failing=%d instrumented_calls=%d "+
-		"predates_instrumentation=%d review_active_findings=%d\n\n",
-		b.VerifyClaimed, b.VerifyVerified, b.VerifyFailing,
-		b.VerifyInstrumentedCalls, b.VerifyPredatesInstrumentation, b.ReviewActiveFindings)
-
-	fmt.Fprintf(&s, "## Staleness\n\nstaleness_report_calls=%d\n\n", b.StalenessReportCalls)
 
 	s.WriteString("## Observations\n\n")
 	if b.TotalObservations != nil {

@@ -7,6 +7,15 @@
 // path into the output type.
 package bundle
 
+// SchemaVersionCurrent bumped v1 -> v2 (critic Finding 3, 2026-07-28): the
+// call-traffic/injection/verify-gate fields moved from bare top-level
+// scalars to three optional pointer groups (CallTraffic/Injection/
+// VerifyGate below) so a recipient can tell "this instrument was never
+// read" (group absent) apart from "this instrument was read and genuinely
+// measured zero" (group present with 0 values) — the same never-a-
+// fabricated-zero doctrine the local (unsanitized) report already honors,
+// now also on the artifact third parties actually read.
+
 // Bundle is the sanitized, shareable research-flywheel artifact. Every
 // field here is safe to hand to a third party: aggregate counts, rates,
 // percentiles, durations, fathom's own tool-name frequencies, verdict
@@ -37,26 +46,18 @@ type Bundle struct {
 	GOOS   string `json:"goos"`
 	GOARCH string `json:"goarch"`
 
-	TotalCalls     int            `json:"total_calls"`
-	SurfaceTraffic []SurfaceCount `json:"surface_traffic,omitempty"`
-	ToolCalls      []ToolCount    `json:"tool_calls,omitempty"`
-
-	LatencyP50MS *float64 `json:"latency_p50_ms,omitempty"`
-	LatencyP95MS *float64 `json:"latency_p95_ms,omitempty"`
-
-	InjectionSeen         int      `json:"injection_seen"`
-	InjectionAnswered     int      `json:"injection_answered"`
-	InjectionCoverageRate *float64 `json:"injection_coverage_rate,omitempty"`
-	ObligationsServed     int      `json:"obligations_served"`
-
-	VerifyClaimed                 int `json:"verify_claimed"`
-	VerifyVerified                int `json:"verify_verified"`
-	VerifyFailing                 int `json:"verify_failing"`
-	VerifyInstrumentedCalls       int `json:"verify_instrumented_calls"`
-	VerifyPredatesInstrumentation int `json:"verify_predates_instrumentation"`
-	ReviewActiveFindings          int `json:"review_active_findings"`
-
-	StalenessReportCalls int `json:"staleness_report_calls"`
+	// CallTraffic is nil when the MCP call log was absent/unreadable over
+	// this window — "not instrumented," never a fabricated all-zero group
+	// (critic Finding 3). Present (non-nil) whenever the log WAS read, even
+	// if it held zero rows in the window: that is a real, measured zero.
+	CallTraffic *CallTrafficStats `json:"call_traffic,omitempty"`
+	// Injection is nil when the hooks beat log was absent/unreadable — same
+	// not-instrumented-vs-real-zero discipline, a separate instrument from
+	// CallTraffic (the beat log is a different file).
+	Injection *InjectionStats `json:"injection,omitempty"`
+	// VerifyGate is nil under the same condition as CallTraffic — verify
+	// stats are call-log-derived, the same instrument.
+	VerifyGate *VerifyGateStats `json:"verify_gate,omitempty"`
 
 	TotalObservations *int `json:"total_observations,omitempty"`
 	OpenObservations  *int `json:"open_observations,omitempty"`
@@ -69,16 +70,64 @@ type Bundle struct {
 	BenchArms []BenchArmCount `json:"bench_arms,omitempty"`
 }
 
+// CallTrafficStats is the MCP call log's aggregate view over the report
+// window: total calls, per-surface/per-tool breakdowns, and latency
+// percentiles. Present in Bundle only when the call log was actually read
+// (Build/aggregateBundleInput's CallLogRead gate) — see Bundle.CallTraffic.
+type CallTrafficStats struct {
+	TotalCalls           int            `json:"total_calls"`
+	SurfaceTraffic       []SurfaceCount `json:"surface_traffic,omitempty"`
+	ToolCalls            []ToolCount    `json:"tool_calls,omitempty"`
+	LatencyP50MS         *float64       `json:"latency_p50_ms,omitempty"`
+	LatencyP95MS         *float64       `json:"latency_p95_ms,omitempty"`
+	StalenessReportCalls int            `json:"staleness_report_calls"`
+}
+
+// InjectionStats is the hooks beat log's aggregate view: how many
+// edit/write events the edit-hook saw, how many it answered, and how many
+// of those answers actually emitted an obligations payload. Present in
+// Bundle only when the hooks beat log was actually read — see
+// Bundle.Injection.
+type InjectionStats struct {
+	Seen              int      `json:"seen"`
+	Answered          int      `json:"answered"`
+	CoverageRate      *float64 `json:"coverage_rate,omitempty"`
+	ObligationsServed int      `json:"obligations_served"`
+}
+
+// VerifyGateStats is the call log's verify_plan/review aggregate: claimed/
+// verified/failing task counts, how many calls carried a recoverable
+// verdict_outcome versus predated that field, and review's active-finding
+// total. Present in Bundle only when the call log was actually read — see
+// Bundle.VerifyGate.
+type VerifyGateStats struct {
+	Claimed                 int `json:"claimed"`
+	Verified                int `json:"verified"`
+	Failing                 int `json:"failing"`
+	InstrumentedCalls       int `json:"instrumented_calls"`
+	PredatesInstrumentation int `json:"predates_instrumentation"`
+	ReviewActiveFindings    int `json:"review_active_findings"`
+}
+
 // SurfaceCount is one fathom surface's call count in the window. Surface is
 // fathom's own surface label ("agent", "hook", "companion", or "" for
-// bare/unscoped) — never a repo or service name.
+// bare/unscoped) — never a repo or service name. Constrained to
+// labelPattern (or empty) by sanitizeLabel before it ever reaches here
+// (critic Finding 1): a surface value is caller-declared on every request
+// (the X-Fathom-Origin/path selection) and the daemon that logs it is
+// always-on and unauthenticated by design, so it must never be trusted
+// verbatim just because the Go field is typed string.
 type SurfaceCount struct {
 	Surface string `json:"surface"`
 	Calls   int    `json:"calls"`
 }
 
 // ToolCount is one fathom tool's call count in the window. Tool is one of
-// fathom's own registered MCP/CLI tool names.
+// fathom's own registered MCP/CLI tool names, or the sanitizeLabel sentinel
+// "unrecognized" — internal/mcp/dispatch.go logs the raw REQUESTED tool
+// name to the call log even when it fails to resolve to a real tool, so an
+// unvalidated Tool string is client-controlled, not fathom-controlled
+// (critic Finding 1, proven end-to-end against the pre-fix code).
 type ToolCount struct {
 	Tool  string `json:"tool"`
 	Calls int    `json:"calls"`
@@ -93,7 +142,9 @@ type ServiceHashCount struct {
 }
 
 // BenchArmCount is one context-bench arm's aggregate outcome. Arm is a bench
-// arm label ("fathom", "grep", …), never a repo name.
+// arm label ("fathom", "grep", …), sanitizeLabel-constrained like Tool
+// (critic Finding 1/4) — never a repo name and never raw enough to break
+// out of a Markdown table cell (Finding 6).
 type BenchArmCount struct {
 	Arm          string  `json:"arm"`
 	TaskCount    int     `json:"task_count"`

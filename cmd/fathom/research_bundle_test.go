@@ -22,7 +22,7 @@ func TestAggregateBundleInput_HashesServiceNames(t *testing.T) {
 		{TS: "2026-07-23T10:01:00Z", Tool: "find_symbol", Surface: "agent", Service: "acme-internal-repo", LatencyMS: 20},
 	}
 
-	in := aggregateBundleInput("", since, until, entries, nil, "", false, nil, "salt-value")
+	in := aggregateBundleInput("", since, until, entries, true, nil, false, "", false, nil, "salt-value")
 
 	if len(in.ServicePlaintextCalls) != 1 || in.ServicePlaintextCalls["acme-internal-repo"] != 2 {
 		t.Fatalf("ServicePlaintextCalls = %+v, want {acme-internal-repo: 2}", in.ServicePlaintextCalls)
@@ -39,7 +39,63 @@ func TestAggregateBundleInput_HashesServiceNames(t *testing.T) {
 	}
 }
 
+// TestAggregateBundleInput_SanitizesHostileToolSurfaceArm is critic Finding
+// 1's own regression test at the aggregation layer: a call-log row whose
+// Tool/Surface is a hostile, non-#Label-shaped string (proven reachable via
+// internal/mcp/dispatch.go logging the raw requested tool name even for an
+// unresolved tool, over an always-on, unauthenticated daemon) must be
+// bucketed into "unrecognized," never passed through verbatim.
+func TestAggregateBundleInput_SanitizesHostileToolSurfaceArm(t *testing.T) {
+	since := mustParseTime(t, "2026-07-21T00:00:00Z")
+	until := mustParseTime(t, "2026-07-28T00:00:00Z")
+
+	hostileTool := "/Users/jdoe/code/acme-internal-payments/internal/billing.go"
+	hostileSurface := "agent | injected\ntable-break"
+	entries := []adoptionCallEntry{
+		{TS: "2026-07-23T10:00:00Z", Tool: hostileTool, Surface: hostileSurface, LatencyMS: 1},
+		{TS: "2026-07-23T10:01:00Z", Tool: "find_symbol", Surface: "agent", LatencyMS: 1},
+	}
+
+	in := aggregateBundleInput("", since, until, entries, true, nil, false, "", false, nil, "salt-value")
+
+	toolNames := map[string]bool{}
+	for _, tc := range in.ToolCalls {
+		toolNames[tc.Tool] = true
+	}
+	if toolNames[hostileTool] {
+		t.Fatalf("hostile tool value reached Input.ToolCalls verbatim: %+v", in.ToolCalls)
+	}
+	if !toolNames["unrecognized"] {
+		t.Errorf("ToolCalls = %+v, want the hostile tool bucketed as %q", in.ToolCalls, "unrecognized")
+	}
+	if !toolNames["find_symbol"] {
+		t.Errorf("ToolCalls = %+v, want the well-formed %q to pass through unchanged", in.ToolCalls, "find_symbol")
+	}
+
+	surfaceNames := map[string]bool{}
+	for _, sc := range in.SurfaceTraffic {
+		surfaceNames[sc.Surface] = true
+	}
+	if surfaceNames[hostileSurface] {
+		t.Fatalf("hostile surface value reached Input.SurfaceTraffic verbatim: %+v", in.SurfaceTraffic)
+	}
+	if !surfaceNames["unrecognized"] {
+		t.Errorf("SurfaceTraffic = %+v, want the hostile surface bucketed as %q", in.SurfaceTraffic, "unrecognized")
+	}
+
+	b := bundle.Build(in)
+	if err := bundle.Validate(b); err != nil {
+		t.Errorf("Validate(sanitized bundle) = %v, want nil", err)
+	}
+}
+
 // ─── cmdResearchBundle: end-to-end CLI, --dry-run and file-writing paths ───
+
+// bundleOutDir mirrors cmdResearchBundle's own default --out resolution
+// (defaultResearchBundleOutDir) so tests don't hardcode the path twice.
+func bundleOutDir(root string) string {
+	return filepath.Join(root, filepath.FromSlash(defaultResearchBundleOutDir))
+}
 
 func TestCmdResearchBundle_DryRun_NoFilesWritten(t *testing.T) {
 	dir := t.TempDir()
@@ -54,7 +110,7 @@ func TestCmdResearchBundle_DryRun_NoFilesWritten(t *testing.T) {
 	if !strings.Contains(stderr.String(), "nothing written, nothing transmitted") {
 		t.Errorf("stderr missing the review-first disclosure: %s", stderr.String())
 	}
-	if _, err := os.Stat(filepath.Join(dir, "workspace", "artifacts", "research", "bundle.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(bundleOutDir(dir), "bundle.json")); !os.IsNotExist(err) {
 		t.Errorf("--dry-run must not write bundle.json, stat err = %v", err)
 	}
 }
@@ -67,8 +123,8 @@ func TestCmdResearchBundle_WritesLocalFilesOnly(t *testing.T) {
 		t.Fatalf("exit = %d, stderr = %s", code, stderr.String())
 	}
 
-	jsonPath := filepath.Join(dir, "workspace", "artifacts", "research", "bundle.json")
-	mdPath := filepath.Join(dir, "workspace", "artifacts", "research", "bundle.md")
+	jsonPath := filepath.Join(bundleOutDir(dir), "bundle.json")
+	mdPath := filepath.Join(bundleOutDir(dir), "bundle.md")
 	jsonData, err := os.ReadFile(jsonPath)
 	if err != nil {
 		t.Fatalf("bundle.json not written: %v", err)
@@ -91,23 +147,45 @@ func TestCmdResearchBundle_WritesLocalFilesOnly(t *testing.T) {
 	if !strings.Contains(stdout.String(), "Nothing was transmitted anywhere") {
 		t.Errorf("stdout missing the local-file/no-transmission disclosure: %s", stdout.String())
 	}
+	if !strings.Contains(stdout.String(), "never the parent") {
+		t.Errorf("stdout missing the never-share-the-parent-directory warning (critic Finding 2c): %s", stdout.String())
+	}
 
-	// The salt file must exist and must never appear inside the bundle.
+	// The salt file must exist at its NEW location (outside
+	// workspace/artifacts/research/ entirely — critic Finding 2) and must
+	// never appear inside the bundle.
 	saltPath := bundle.SaltPath(dir)
+	if strings.Contains(saltPath, filepath.Join("artifacts", "research")) {
+		t.Fatalf("salt path %q still resolves inside the shareable artifacts tree", saltPath)
+	}
 	salt, err := os.ReadFile(saltPath)
 	if err != nil {
-		t.Fatalf("salt file not created: %v", err)
+		t.Fatalf("salt file not created at %s: %v", saltPath, err)
 	}
 	if strings.Contains(string(jsonData), strings.TrimSpace(string(salt))) {
 		t.Errorf("bundle.json leaks the salt")
+	}
+
+	// The bundle/ subdirectory must contain ONLY the two shareable files —
+	// no salt, no report.md alongside it (critic Finding 2b).
+	entries, err := os.ReadDir(bundleOutDir(dir))
+	if err != nil {
+		t.Fatalf("read bundle dir: %v", err)
+	}
+	names := map[string]bool{}
+	for _, e := range entries {
+		names[e.Name()] = true
+	}
+	if len(names) != 2 || !names["bundle.json"] || !names["bundle.md"] {
+		t.Errorf("bundle output dir contains %v, want exactly {bundle.json, bundle.md}", names)
 	}
 }
 
 // TestCmdResearchBundle_Adversarial_SecretsNeverLeak is the mission-required
 // adversarial test: seed secret-shaped strings into EVERY consumed source
-// (a call-log error field, a call-log service name, an observations.md
-// symptom/tool/expected/actual/repro) and assert byte-level that none of
-// them appear in either bundle output file.
+// (a call-log error field, a call-log service name, a call-log tool/surface
+// field, an observations.md symptom/tool/expected/actual/repro) and assert
+// byte-level that none of them appear in either bundle output file.
 func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 	dir := t.TempDir()
 
@@ -119,13 +197,19 @@ func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 		"AKIAFAKEACCESSKEYFAKE01",
 	}
 
-	// 1. Call log: a secret-shaped error string AND a secret-shaped service
-	// name on different rows.
+	// 1. Call log: a secret-shaped error string, a secret-shaped service
+	// name, AND (critic Finding 1) a hostile Tool value and a hostile
+	// Surface value straight from the wire.
 	callLogPath := filepath.Join(dir, "workspace", "logs", "mcp-calls.jsonl")
 	entries := []adoptionCallEntry{
 		{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent", Service: "svc-" + secrets[1], Error: secrets[0]},
 		{TS: "2026-07-23T10:01:00Z", Tool: "verify_plan", Surface: "", Service: "svc-two", Error: "auth failed for " + secrets[2] + " on host " + secrets[3]},
 		{TS: "2026-07-23T10:02:00Z", Tool: "brief", Surface: "agent", Service: secrets[4]},
+		// Hostile Tool/Surface rows (Finding 1): what internal/mcp/dispatch.go
+		// logs verbatim for an unresolved tool name or an unrecognized
+		// surface selection.
+		{TS: "2026-07-23T10:03:00Z", Tool: secrets[1], Surface: "agent"},
+		{TS: "2026-07-23T10:04:00Z", Tool: "find_symbol", Surface: "agent | " + secrets[0]},
 	}
 	writeCallLogFixture(t, callLogPath, entries)
 
@@ -146,11 +230,11 @@ func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 		t.Fatalf("exit = %d, stderr = %s", code, stderr.String())
 	}
 
-	jsonData, err := os.ReadFile(filepath.Join(dir, "workspace", "artifacts", "research", "bundle.json"))
+	jsonData, err := os.ReadFile(filepath.Join(bundleOutDir(dir), "bundle.json"))
 	if err != nil {
 		t.Fatalf("bundle.json not written: %v", err)
 	}
-	mdData, err := os.ReadFile(filepath.Join(dir, "workspace", "artifacts", "research", "bundle.md"))
+	mdData, err := os.ReadFile(filepath.Join(bundleOutDir(dir), "bundle.md"))
 	if err != nil {
 		t.Fatalf("bundle.md not written: %v", err)
 	}
@@ -170,14 +254,37 @@ func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 	if err := json.Unmarshal(jsonData, &b); err != nil {
 		t.Fatalf("parse bundle.json: %v", err)
 	}
-	if b.TotalCalls != 3 {
-		t.Fatalf("TotalCalls = %d, want 3 (the fixture rows were not actually aggregated)", b.TotalCalls)
+	if b.CallTraffic == nil {
+		t.Fatal("CallTraffic is nil — the call log was not read")
+	}
+	if b.CallTraffic.TotalCalls != 5 {
+		t.Fatalf("CallTraffic.TotalCalls = %d, want 5 (the fixture rows were not actually aggregated)", b.CallTraffic.TotalCalls)
 	}
 	if b.TotalObservations == nil || *b.TotalObservations != 1 {
 		t.Fatalf("TotalObservations = %v, want 1", b.TotalObservations)
 	}
 	if len(b.ServiceActivity) == 0 {
 		t.Fatal("ServiceActivity is empty — the service-name aggregation path was not exercised")
+	}
+	// The hostile tool/surface rows must have landed in the "unrecognized"
+	// bucket, not silently dropped — proves the sanitize-then-count path
+	// actually ran rather than the rows being skipped for some other reason.
+	foundUnrecognizedTool, foundUnrecognizedSurface := false, false
+	for _, tc := range b.CallTraffic.ToolCalls {
+		if tc.Tool == "unrecognized" {
+			foundUnrecognizedTool = true
+		}
+	}
+	for _, sc := range b.CallTraffic.SurfaceTraffic {
+		if sc.Surface == "unrecognized" {
+			foundUnrecognizedSurface = true
+		}
+	}
+	if !foundUnrecognizedTool {
+		t.Error("expected an \"unrecognized\" tool bucket from the hostile Tool row, found none")
+	}
+	if !foundUnrecognizedSurface {
+		t.Error("expected an \"unrecognized\" surface bucket from the hostile Surface row, found none")
 	}
 }
 
@@ -194,7 +301,7 @@ func TestCmdResearchBundle_WrittenFileAlwaysValidates(t *testing.T) {
 	if code := cmdResearchBundle([]string{"--root", dir, "--hooks-log", filepath.Join(dir, "no-hooks.jsonl")}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit = %d, stderr = %s", code, stderr.String())
 	}
-	data, err := os.ReadFile(filepath.Join(dir, "workspace", "artifacts", "research", "bundle.json"))
+	data, err := os.ReadFile(filepath.Join(bundleOutDir(dir), "bundle.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,5 +311,37 @@ func TestCmdResearchBundle_WrittenFileAlwaysValidates(t *testing.T) {
 	}
 	if err := bundle.Validate(b); err != nil {
 		t.Errorf("Validate(written bundle) = %v, want nil", err)
+	}
+}
+
+// TestCmdResearchBundle_MigratesLegacySalt proves an existing repo's
+// pre-Finding-2 salt (at the old workspace/artifacts/research/.salt
+// location) is picked up and migrated rather than silently replaced with a
+// fresh one — an existing bundle's hash lineage must survive the fix.
+func TestCmdResearchBundle_MigratesLegacySalt(t *testing.T) {
+	dir := t.TempDir()
+	oldPath := filepath.Join(dir, "workspace", "artifacts", "research", ".salt")
+	if err := os.MkdirAll(filepath.Dir(oldPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	const legacySalt = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcd"
+	if err := os.WriteFile(oldPath, []byte(legacySalt+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := cmdResearchBundle([]string{"--root", dir, "--hooks-log", filepath.Join(dir, "no-hooks.jsonl")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit = %d, stderr = %s", code, stderr.String())
+	}
+
+	newSalt, err := os.ReadFile(bundle.SaltPath(dir))
+	if err != nil {
+		t.Fatalf("new salt file not written: %v", err)
+	}
+	if strings.TrimSpace(string(newSalt)) != legacySalt {
+		t.Errorf("salt after migration = %q, want the preserved legacy value %q", newSalt, legacySalt)
+	}
+	if _, err := os.Stat(oldPath); !os.IsNotExist(err) {
+		t.Errorf("legacy salt file should have been removed after migration, stat err = %v", err)
 	}
 }

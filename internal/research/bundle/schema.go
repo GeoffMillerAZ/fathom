@@ -12,7 +12,13 @@ import (
 // SchemaVersionCurrent is the bundle schema version stamped into every
 // Bundle (Bundle.SchemaVersion) — a recipient can tell which shape they are
 // looking at without guessing or trusting the sender's binary version.
-const SchemaVersionCurrent = "v1"
+//
+// v1 -> v2 (critic Finding 3, 2026-07-28): call-traffic/injection/
+// verify-gate moved from bare top-level scalars to three optional pointer
+// groups (types.go) so "instrument never read" (group absent) is
+// distinguishable from "instrument read, genuinely zero" (group present,
+// zero values) — a real shape change, not just an added field.
+const SchemaVersionCurrent = "v2"
 
 // researchBundleSchema is byte-identical to
 // schema/research-bundle/schema.cue — kept in sync by

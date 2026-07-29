@@ -8,7 +8,7 @@ package researchbundle
 //    (a stray repo/file path, here) is a hard validation error, not a
 //    silently-ignored extra key:
 // bad1: #Bundle & {
-// 	schema_version: "v1"
+// 	schema_version: "v2"
 // 	window_since:   "2026-07-21T00:00:00Z"
 // 	window_until:   "2026-07-28T00:00:00Z"
 // 	generated_at:   "2026-07-28T00:00:00Z"
@@ -16,24 +16,13 @@ package researchbundle
 // 	commit_dirty:   false
 // 	goos:           "darwin"
 // 	goarch:         "arm64"
-// 	total_calls:    1
-// 	injection_seen:            0
-// 	injection_answered:        0
-// 	obligations_served:        0
-// 	verify_claimed:                  0
-// 	verify_verified:                 0
-// 	verify_failing:                  0
-// 	verify_instrumented_calls:       0
-// 	verify_predates_instrumentation: 0
-// 	review_active_findings:          0
-// 	staleness_report_calls: 0
-// 	file_path: "/Users/someone/repo/secret.go"
+// 	file_path:      "/Users/someone/repo/secret.go"
 // }
 //
 // 2. A service_hash that is not a 64-hex-char sha256 digest (i.e. looks like
 //    it could be a plaintext name instead of a hash):
 // bad2: #Bundle & {
-// 	schema_version: "v1"
+// 	schema_version: "v2"
 // 	window_since:   "2026-07-21T00:00:00Z"
 // 	window_until:   "2026-07-28T00:00:00Z"
 // 	generated_at:   "2026-07-28T00:00:00Z"
@@ -41,23 +30,12 @@ package researchbundle
 // 	commit_dirty:   false
 // 	goos:           "darwin"
 // 	goarch:         "arm64"
-// 	total_calls:    1
-// 	injection_seen:            0
-// 	injection_answered:        0
-// 	obligations_served:        0
-// 	verify_claimed:                  0
-// 	verify_verified:                 0
-// 	verify_failing:                  0
-// 	verify_instrumented_calls:       0
-// 	verify_predates_instrumentation: 0
-// 	review_active_findings:          0
-// 	staleness_report_calls: 0
 // 	service_activity: [{service_hash: "my-secret-service-name", calls: 3}]
 // }
 //
-// 3. A negative call count:
+// 3. A negative call count inside call_traffic:
 // bad3: #Bundle & {
-// 	schema_version: "v1"
+// 	schema_version: "v2"
 // 	window_since:   "2026-07-21T00:00:00Z"
 // 	window_until:   "2026-07-28T00:00:00Z"
 // 	generated_at:   "2026-07-28T00:00:00Z"
@@ -65,22 +43,28 @@ package researchbundle
 // 	commit_dirty:   false
 // 	goos:           "darwin"
 // 	goarch:         "arm64"
-// 	total_calls:    -1
-// 	injection_seen:            0
-// 	injection_answered:        0
-// 	obligations_served:        0
-// 	verify_claimed:                  0
-// 	verify_verified:                 0
-// 	verify_failing:                  0
-// 	verify_instrumented_calls:       0
-// 	verify_predates_instrumentation: 0
-// 	review_active_findings:          0
-// 	staleness_report_calls: 0
+// 	call_traffic: {
+// 		total_calls:             -1
+// 		staleness_report_calls: 0
+// 	}
 // }
 //
-// 4. A required field missing entirely (total_calls omitted):
+// 4. A required field missing entirely (goarch omitted):
 // bad4: #Bundle & {
-// 	schema_version: "v1"
+// 	schema_version: "v2"
+// 	window_since:   "2026-07-21T00:00:00Z"
+// 	window_until:   "2026-07-28T00:00:00Z"
+// 	generated_at:   "2026-07-28T00:00:00Z"
+// 	fathom_version: "fathom v0.1.0"
+// 	commit_dirty:   false
+// 	goos:           "darwin"
+// }
+//
+// 5. A tool name outside #Label's shape (critic Finding 1: a call-log Tool
+//    value is client-controlled, not fathom-controlled — a path-shaped or
+//    otherwise hostile string must never validate):
+// bad5: #Bundle & {
+// 	schema_version: "v2"
 // 	window_since:   "2026-07-21T00:00:00Z"
 // 	window_until:   "2026-07-28T00:00:00Z"
 // 	generated_at:   "2026-07-28T00:00:00Z"
@@ -88,14 +72,40 @@ package researchbundle
 // 	commit_dirty:   false
 // 	goos:           "darwin"
 // 	goarch:         "arm64"
-// 	injection_seen:            0
-// 	injection_answered:        0
-// 	obligations_served:        0
-// 	verify_claimed:                  0
-// 	verify_verified:                 0
-// 	verify_failing:                  0
-// 	verify_instrumented_calls:       0
-// 	verify_predates_instrumentation: 0
-// 	review_active_findings:          0
-// 	staleness_report_calls: 0
+// 	call_traffic: {
+// 		total_calls:             1
+// 		tool_calls: [{tool: "/Users/someone/repo/secret.go", calls: 1}]
+// 		staleness_report_calls: 0
+// 	}
+// }
+//
+// 6. A surface value outside #Label's shape (or empty) — e.g. one carrying
+//    a Markdown table-breaking character:
+// bad6: #Bundle & {
+// 	schema_version: "v2"
+// 	window_since:   "2026-07-21T00:00:00Z"
+// 	window_until:   "2026-07-28T00:00:00Z"
+// 	generated_at:   "2026-07-28T00:00:00Z"
+// 	fathom_version: "fathom v0.1.0"
+// 	commit_dirty:   false
+// 	goos:           "darwin"
+// 	goarch:         "arm64"
+// 	call_traffic: {
+// 		total_calls:             1
+// 		surface_traffic: [{surface: "agent | injected", calls: 1}]
+// 		staleness_report_calls: 0
+// 	}
+// }
+//
+// 7. A bench arm label outside #Label's shape:
+// bad7: #Bundle & {
+// 	schema_version: "v2"
+// 	window_since:   "2026-07-21T00:00:00Z"
+// 	window_until:   "2026-07-28T00:00:00Z"
+// 	generated_at:   "2026-07-28T00:00:00Z"
+// 	fathom_version: "fathom v0.1.0"
+// 	commit_dirty:   false
+// 	goos:           "darwin"
+// 	goarch:         "arm64"
+// 	bench_arms: [{arm: "fathom\nEVIL", task_count: 1, success_count: 1, success_rate: 1.0, mean_tokens: 0, mean_wall_ms: 0}]
 // }

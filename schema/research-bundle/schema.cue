@@ -14,16 +14,30 @@
 // before writing.
 package researchbundle
 
+// #Label is fathom's own tool/surface/bench-arm name shape: lowercase ASCII
+// letters, digits, underscore, 1-64 chars — or the literal "unrecognized"
+// sentinel (itself already matching this pattern, so no alternation is
+// needed for it). Critic Finding 1 (2026-07-28, proven end-to-end): a
+// call-log Tool/Surface value is logged verbatim even for an unresolved
+// tool name or an unrecognized surface — client-controlled strings, not
+// fathom-controlled ones, despite the Go field being typed string. This is
+// the CUE-side half of the fix (internal/research/bundle's sanitizeLabel is
+// the Go-side half): a bundle carrying a value outside this shape fails
+// validation here even if the binary that produced it had a bug.
+#Label: =~"^[a-z0-9_]{1,64}$"
+
 #SurfaceCount: close({
 	// surface is fathom's own surface label (e.g. "agent", "hook",
-	// "companion", or "" for bare/unscoped) — never a repo or service name.
-	surface: string
+	// "companion") or "" for bare/unscoped — never a repo or service name,
+	// and never anything outside #Label's shape (or empty).
+	surface: "" | #Label
 	calls:   int & >=0
 })
 
 #ToolCount: close({
-	// tool is one of fathom's own registered MCP/CLI tool names.
-	tool:  string
+	// tool is one of fathom's own registered MCP/CLI tool names, or the
+	// "unrecognized" sentinel for anything that didn't match #Label.
+	tool:  #Label
 	calls: int & >=0
 })
 
@@ -37,13 +51,46 @@ package researchbundle
 
 #BenchArmCount: close({
 	// arm is a context-bench arm label ("fathom", "grep", …) — not a repo
-	// name.
-	arm:           string
+	// name, and constrained to #Label like tool/surface.
+	arm:           #Label
 	task_count:    int & >=0
 	success_count: int & >=0
 	success_rate:  number & >=0 & <=1
 	mean_tokens:   number & >=0
 	mean_wall_ms:  number & >=0
+})
+
+// #CallTraffic is the MCP call log's aggregate view. Present in #Bundle
+// only when the call log was actually read over the report window (critic
+// Finding 3): its absence means "not instrumented," never a fabricated
+// all-zero group.
+#CallTraffic: close({
+	total_calls: int & >=0
+	surface_traffic?: [...#SurfaceCount]
+	tool_calls?: [...#ToolCount]
+	latency_p50_ms?:        number & >=0
+	latency_p95_ms?:        number & >=0
+	staleness_report_calls: int & >=0
+})
+
+// #Injection is the hooks beat log's aggregate view. Present only when that
+// (separate) log was actually read.
+#Injection: close({
+	seen:                int & >=0
+	answered:            int & >=0
+	coverage_rate?:      number & >=0 & <=1
+	obligations_served:  int & >=0
+})
+
+// #VerifyGate is the call log's verify_plan/review aggregate. Present under
+// the same condition as #CallTraffic (same underlying instrument).
+#VerifyGate: close({
+	claimed:                  int & >=0
+	verified:                 int & >=0
+	failing:                  int & >=0
+	instrumented_calls:       int & >=0
+	predates_instrumentation: int & >=0
+	review_active_findings:   int & >=0
 })
 
 // #Bundle is the closed top-level shape — the allowlist itself. Any field
@@ -67,26 +114,9 @@ package researchbundle
 	goos:   string
 	goarch: string
 
-	total_calls: int & >=0
-	surface_traffic?: [...#SurfaceCount]
-	tool_calls?: [...#ToolCount]
-
-	latency_p50_ms?: number & >=0
-	latency_p95_ms?: number & >=0
-
-	injection_seen:           int & >=0
-	injection_answered:       int & >=0
-	injection_coverage_rate?: number & >=0 & <=1
-	obligations_served:       int & >=0
-
-	verify_claimed:                  int & >=0
-	verify_verified:                 int & >=0
-	verify_failing:                  int & >=0
-	verify_instrumented_calls:       int & >=0
-	verify_predates_instrumentation: int & >=0
-	review_active_findings:          int & >=0
-
-	staleness_report_calls: int & >=0
+	call_traffic?: #CallTraffic
+	injection?:    #Injection
+	verify_gate?:  #VerifyGate
 
 	total_observations?: int & >=0
 	open_observations?:  int & >=0

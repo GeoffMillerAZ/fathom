@@ -1,7 +1,17 @@
 # Research flywheel: fathom proving its own impact
 
-**Status:** shipped v1. **Owns:** `fathom research report`, `fathom research
-bundle`, `internal/research/bundle`, `schema/research-bundle/`.
+**Status:** shipped, bundle schema v2. **Owns:** `fathom research report`,
+`fathom research bundle`, `internal/research/bundle`,
+`schema/research-bundle/`.
+
+**Critic review (2026-07-28) — six findings, all fixed in this pass** (see
+§5's per-guarantee mechanism and §4's data layout for the concrete changes):
+Finding 1/4/6 (client-controlled Tool/Surface/bench-Arm strings reached the
+bundle verbatim — proven end-to-end), Finding 2 (the salt lived inside the
+shareable artifacts directory, next to the unsanitized report), Finding 3
+(the bundle fabricated all-zero groups for instruments it never actually
+read), Finding 5 (the latency percentile was floor-index, not nearest-rank,
+biasing p95 low on small samples).
 
 **The owner's ask, verbatim:** "get the research data we need to prove it's
 working well... can fathom self collect this?... make an excellent
@@ -96,14 +106,17 @@ convention), split by scope:
 | `~/.fathom/hooks.jsonl` | **per-user**, cross-repo | the edit-hook (pre-existing) | Read-only input; see §2's coverage caveat |
 | `.fathom/observations.md` | repo | `fathom observe` (pre-existing) | Read-only input |
 | `workspace/artifacts/context-bench/results-*.json` | repo | `scripts/context-bench.sh` (pre-existing) | Read-only input |
-| `workspace/artifacts/research/report.md` + `report.json` | repo | `fathom research report` | **New.** Overwritten each run — a snapshot, not an accumulating log. Markdown and JSON carry identical data. |
-| `workspace/artifacts/research/bundle.json` + `bundle.md` | repo | `fathom research bundle` | **New.** Same overwrite discipline. |
-| `workspace/artifacts/research/.salt` | repo | `fathom research bundle` (first run) | **New.** A 32-byte random value, generated once, `0o600`, never read by any other command, never included in a bundle. Deleting it silently starts a new hash lineage — old and new bundles from the same repo become uncorrelated by service identity, which is safe (just less useful for trend-tracking) rather than unsafe. |
+| `workspace/artifacts/research/report.md` + `report.json` | repo | `fathom research report` | **New.** Overwritten each run — a snapshot, not an accumulating log. Markdown and JSON carry identical data. **Deliberately unsanitized**: carries plaintext service names, the hooks-log path (which embeds the local username on a default `~/.fathom/hooks.jsonl`), and other repo-identifying detail. Never share this file or its parent directory. |
+| `workspace/artifacts/research/bundle/bundle.json` + `bundle.md` | repo | `fathom research bundle` | **New.** Same overwrite discipline. Lives in its own `bundle/` subdirectory (critic Finding 2) containing **only** these two files — so sharing that subdirectory in isolation is safe, but the *parent* `workspace/artifacts/research/` directory (which also holds `report.md`) must never be shared as a whole. The CLI prints this distinction after every write. |
+| `workspace/state/research.salt` | repo | `fathom research bundle` (first run) | **New. Relocated in this pass (critic Finding 2)** — previously lived at `workspace/artifacts/research/.salt`, inside the same tree as the unsanitized report and the shareable bundle, where a naive "share the research folder" tar/zip/Finder copy would silently include it (an invisible dotfile) and make every service hash ever shared reversible by dictionary attack. `LoadOrCreateSalt` migrates an existing repo's legacy salt to the new path (preserving its value, so the hash lineage survives) and deletes the old file. A 32-byte random value, generated once, `0o600`, never read by any other command, never included in a bundle. Deleting it silently starts a new hash lineage — old and new bundles from the same repo become uncorrelated by service identity, which is safe (just less useful for trend-tracking) rather than unsafe. |
 
 Nothing here is centralized or fleet-wide by design choice — the salt, the
 report, and the bundle are all repo-scoped so that one repo's evidence never
 mixes with another's, even though the hooks beat log itself (§2) is
-unavoidably per-user today.
+unavoidably per-user today. The salt now also sits in a structurally
+different subtree (`workspace/state/`) from anything meant to be shared
+(`workspace/artifacts/research/`), so "share this directory" and "share the
+salt" can no longer be the same mistake.
 
 ## 5. The privacy model (bundle only; the report is never shared automatically)
 
@@ -132,6 +145,31 @@ guarantees, and the mechanism that enforces each one:
      the schema) fails `Validate` at build time, before the file is ever
      written. `cmdResearchBundle` calls `Validate` and refuses to write (or
      print, on `--dry-run`) anything that fails it.
+   - **Value shape, not just field shape (critic Finding 1, fixed).** Being
+     typed `string` in Go is not the same as being fathom-controlled: a
+     call-log `Tool`/`Surface` value is *client-controlled* —
+     `internal/mcp/dispatch.go` logs the raw *requested* tool name even when
+     it fails to resolve to a real tool, and the daemon that logs it is
+     always-on and unauthenticated by design (bare `/rpc` serves the full
+     registry to any local process). The critic proved this end-to-end: a
+     fake path string placed in a call-log row's `tool` field reached a
+     written, schema-*passing* bundle. Fixed at three independent layers:
+     (a) `cmd/fathom/research_bundle.go`'s `sanitizeLabel` constrains every
+     Tool/Surface/bench-Arm value to `^[a-z0-9_]{1,64}$` (Surface also
+     allows `""`, its legitimate bare/unscoped value) before it ever reaches
+     `Input`, bucketing anything else into the sentinel `"unrecognized"`;
+     (b) `schema/research-bundle/schema.cue`'s `#Label` definition enforces
+     the identical pattern, so a recipient's own independent validation
+     catches a hostile value even if (a) had a bug; (c) adversarial fixtures
+     (`TestBuild_HostileToolSurfaceArm_RejectedByValidate`,
+     `TestAggregateBundleInput_SanitizesHostileToolSurfaceArm`,
+     `TestCmdResearchBundle_Adversarial_SecretsNeverLeak`) seed hostile
+     Tool/Surface/Arm rows — including a `|`-and-newline-carrying string
+     that would otherwise break out of a rendered Markdown table cell
+     (Finding 6) — and assert they never survive. Because every surviving
+     value now matches `#Label`, it structurally cannot contain a
+     table-breaking character, closing Finding 6 as a consequence rather
+     than a separate fix.
 2. **Never included:** file paths, repo/service names, symbol names, source
    code, commit SHAs of the *user's* repos, free-text observation notes,
    environment variables, usernames, hostnames. (Fathom's own version/commit
@@ -141,10 +179,14 @@ guarantees, and the mechanism that enforces each one:
    call-log traffic in the window is never named in the bundle — it appears
    only as `sha256(salt + "\x00" + name)`, hex-encoded
    (`internal/research/bundle/hash.go`). The salt is generated once per
-   repo (`workspace/artifacts/research/.salt`, `0o600`), reused across runs
-   (so the *same* service hashes the *same* way, keeping per-service counts
-   comparable across bundles), and is itself never a `Bundle` field — there
-   is no code path by which it could appear in output.
+   repo (`workspace/state/research.salt`, `0o600` — **relocated outside the
+   shareable artifacts tree in this pass, critic Finding 2**; see §4),
+   reused across runs (so the *same* service hashes the *same* way, keeping
+   per-service counts comparable across bundles), and is itself never a
+   `Bundle` field — there is no code path by which it could appear in
+   output. The hash construction itself (`sha256(salt + "\x00" + service)`,
+   a 32-byte random salt, `0o600`) was judged sound by the critic and is
+   unchanged; only its storage location moved.
 4. **CUE schema ships with the binary and the repo**, so a recipient can
    validate a shared `bundle.json` independently, without trusting the
    sender's fathom binary:
@@ -154,25 +196,47 @@ guarantees, and the mechanism that enforces each one:
    Go-asserted-negatives convention, never live-vetted).
 5. **Review-first, no network I/O, ever.** `--dry-run` prints the exact
    bytes that would be written and exits — nothing is written, nothing is
-   transmitted. The non-dry-run path writes two plain local files and prints
-   "these are plain local files... nothing was transmitted anywhere...
-   sharing is entirely your own manual choice." `fathom research bundle`
-   contains zero HTTP client code, zero socket code — there is nothing in
-   this feature capable of phoning home even if someone wanted it to.
-6. **Adversarial tests, byte-level.** Both `internal/research/bundle`'s and
+   transmitted. The non-dry-run path writes two plain local files, into
+   their own `bundle/` subdirectory (§4), and prints "these are plain local
+   files... nothing was transmitted anywhere... sharing is entirely your own
+   manual choice" **plus an explicit warning to share only the two bundle
+   files (or the `bundle/` subdirectory in isolation) and never the parent
+   `workspace/artifacts/research/` directory, which also holds the
+   deliberately unsanitized `report.md`** (critic Finding 2c). The same
+   warning is in `docs/use-cases/research-flywheel.md`. `fathom research
+   bundle` contains zero HTTP client code, zero socket code — there is
+   nothing in this feature capable of phoning home even if someone wanted
+   it to.
+6. **Never a fabricated zero, on the shared artifact too (critic Finding 3,
+   fixed).** The local report already distinguished "not measurable" from a
+   real zero (§2); the bundle did not — with no hooks log, it carried
+   `injection_seen:0`/`injection_answered:0`/`obligations_served:0` as bare
+   integers, indistinguishable from "measured zero coverage." Fixed by
+   restructuring the call-traffic/injection/verify-gate fields from
+   top-level scalars into three optional pointer groups
+   (`Bundle.CallTraffic`/`Bundle.Injection`/`Bundle.VerifyGate`, bundle
+   schema bumped `v1`→`v2`): a group is `nil` — self-describing, no separate
+   `*_read` boolean needed — when its instrument was never actually read,
+   and present (even with every value at zero) when it was. `Build` gates
+   emission on `Input.CallLogRead`/`Input.HooksLogRead`, set by
+   `cmd/fathom/research_bundle.go` from the same `readCallLog`/
+   `readBeatLog` return values the local report already uses honestly.
+7. **Adversarial tests, byte-level.** Both `internal/research/bundle`'s and
    `cmd/fathom`'s test suites seed fake-but-realistic secret-shaped strings
    (an API-key shape, an absolute path, an email, a hostname, an AWS-style
-   access key) into *every* consumed source — a call-log `error` field, a
-   call-log `service` field, and every free-text field of an
+   access key) — and, per Finding 1, hostile Tool/Surface/bench-Arm values —
+   into *every* consumed source — a call-log `error` field, a call-log
+   `service`/`tool`/`surface` field, and every free-text field of an
    `.fathom/observations.md` entry — run the real aggregation + `Build` +
    render pipeline, and assert byte-for-byte that none of the seeded strings
    appear in either output file
    (`cmd/fathom/research_bundle_test.go`'s
    `TestCmdResearchBundle_Adversarial_SecretsNeverLeak`,
    `internal/research/bundle/adversarial_test.go`). A positive control
-   (the hashed hash *does* appear, the real counts *are* nonzero) rules out
-   a vacuous pass. Salt stability and non-leakage are covered separately in
-   `hash_test.go`.
+   (the hash *does* appear, the real counts *are* nonzero, an
+   `"unrecognized"` tool/surface bucket *does* appear) rules out a vacuous
+   pass. Salt stability, non-leakage, and legacy-path migration are covered
+   separately in `hash_test.go`.
 
 ## 6. The flywheel loop
 
@@ -199,7 +263,7 @@ guarantees, and the mechanism that enforces each one:
                                      ▼
                  fathom research bundle [--dry-run]
                                      │
-              workspace/artifacts/research/bundle.{md,json}
+           workspace/artifacts/research/bundle/{bundle.md,bundle.json}
                                      │
                     a human reviews it, then — and only
                     then — chooses whether to share it
@@ -236,7 +300,7 @@ fathom research report [--service NAME] [--since 168h] [--root .]
 fathom research bundle [--service NAME] [--since 168h] [--root .]
                         [--call-log PATH] [--hooks-log PATH] [--bench-dir DIR]
                         [--out DIR] [--dry-run]
-# -> workspace/artifacts/research/bundle.md, bundle.json (or stdout, --dry-run)
+# -> workspace/artifacts/research/bundle/bundle.md, bundle/bundle.json (or stdout, --dry-run)
 ```
 
 `--since` uses Go's `flag.Duration` (matches `instrument.go`'s existing

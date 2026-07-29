@@ -55,9 +55,10 @@ func schemaSourceText(t *testing.T) string {
 
 // commonFields is the minimal set of required-field values every negative
 // case below needs, so each test case only has to add or corrupt the one
-// field it is testing.
+// field it is testing. Every field here is required at #Bundle's top level
+// even after Finding 3's optional pointer-groups (schema v2).
 const commonFields = `
-	schema_version: "v1"
+	schema_version: "v2"
 	window_since:   "2026-07-21T00:00:00Z"
 	window_until:   "2026-07-28T00:00:00Z"
 	generated_at:   "2026-07-28T00:00:00Z"
@@ -65,21 +66,10 @@ const commonFields = `
 	commit_dirty:   false
 	goos:           "darwin"
 	goarch:         "arm64"
-	total_calls:    1
-	injection_seen:                   0
-	injection_answered:               0
-	obligations_served:               0
-	verify_claimed:                   0
-	verify_verified:                  0
-	verify_failing:                   0
-	verify_instrumented_calls:        0
-	verify_predates_instrumentation:  0
-	review_active_findings:           0
-	staleness_report_calls:           0
 `
 
 // TestResearchBundleSchema_Negatives mirrors
-// schema/research-bundle/testdata/invalid.cue's four commented cases —
+// schema/research-bundle/testdata/invalid.cue's seven commented cases —
 // asserted here in Go so `cue vet ./...` stays green (repo convention:
 // negatives are Go-asserted, never live-vetted).
 func TestResearchBundleSchema_Negatives(t *testing.T) {
@@ -96,48 +86,42 @@ bad1: #Bundle & {` + commonFields + `
 bad2: #Bundle & {` + commonFields + `
 	service_activity: [{service_hash: "my-secret-service-name", calls: 3}]
 }`},
-		{"negative total_calls", `
-bad3: #Bundle & {
-	schema_version: "v1"
-	window_since:   "2026-07-21T00:00:00Z"
-	window_until:   "2026-07-28T00:00:00Z"
-	generated_at:   "2026-07-28T00:00:00Z"
-	fathom_version: "fathom v0.1.0"
-	commit_dirty:   false
-	goos:           "darwin"
-	goarch:         "arm64"
-	total_calls:    -1
-	injection_seen:                   0
-	injection_answered:               0
-	obligations_served:               0
-	verify_claimed:                   0
-	verify_verified:                  0
-	verify_failing:                   0
-	verify_instrumented_calls:        0
-	verify_predates_instrumentation:  0
-	review_active_findings:           0
-	staleness_report_calls:           0
+		{"negative total_calls inside call_traffic", `
+bad3: #Bundle & {` + commonFields + `
+	call_traffic: {
+		total_calls:             -1
+		staleness_report_calls: 0
+	}
 }`},
-		{"required field total_calls missing entirely", `
+		{"required field goarch missing entirely", `
 bad4: #Bundle & {
-	schema_version: "v1"
+	schema_version: "v2"
 	window_since:   "2026-07-21T00:00:00Z"
 	window_until:   "2026-07-28T00:00:00Z"
 	generated_at:   "2026-07-28T00:00:00Z"
 	fathom_version: "fathom v0.1.0"
 	commit_dirty:   false
 	goos:           "darwin"
-	goarch:         "arm64"
-	injection_seen:                   0
-	injection_answered:               0
-	obligations_served:               0
-	verify_claimed:                   0
-	verify_verified:                  0
-	verify_failing:                   0
-	verify_instrumented_calls:        0
-	verify_predates_instrumentation:  0
-	review_active_findings:           0
-	staleness_report_calls:           0
+}`},
+		{"tool name outside #Label's shape (critic Finding 1: client-controlled string)", `
+bad5: #Bundle & {` + commonFields + `
+	call_traffic: {
+		total_calls: 1
+		tool_calls: [{tool: "/Users/someone/repo/secret.go", calls: 1}]
+		staleness_report_calls: 0
+	}
+}`},
+		{"surface value outside #Label's shape (Markdown-table-breaking char)", `
+bad6: #Bundle & {` + commonFields + `
+	call_traffic: {
+		total_calls: 1
+		surface_traffic: [{surface: "agent | injected", calls: 1}]
+		staleness_report_calls: 0
+	}
+}`},
+		{"bench arm label outside #Label's shape", `
+bad7: #Bundle & {` + commonFields + `
+	bench_arms: [{arm: "fathom\nEVIL", task_count: 1, success_count: 1, success_rate: 1.0, mean_tokens: 0, mean_wall_ms: 0}]
 }`},
 	}
 
@@ -160,28 +144,56 @@ bad4: #Bundle & {
 }
 
 // TestValidate_ValidBundle proves Validate accepts a well-formed Bundle
-// (the Go-side happy path over the same schema the CUE negatives exercise).
+// (the Go-side happy path over the same schema the CUE negatives exercise),
+// including the not-instrumented case (nil groups) and the fully-populated
+// case.
 func TestValidate_ValidBundle(t *testing.T) {
 	p50, p95, rate := 12.5, 88.0, 0.9
 	obs := 6
 	open := 2
 	b := Bundle{
-		SchemaVersion:         SchemaVersionCurrent,
-		WindowSince:           "2026-07-21T00:00:00Z",
-		WindowUntil:           "2026-07-28T00:00:00Z",
-		GeneratedAt:           "2026-07-28T00:00:00Z",
-		FathomVersion:         "fathom v0.1.0",
-		CommitSHA:             "abc1234def5",
-		GOOS:                  "darwin",
-		GOARCH:                "arm64",
-		TotalCalls:            42,
-		LatencyP50MS:          &p50,
-		LatencyP95MS:          &p95,
-		InjectionCoverageRate: &rate,
-		TotalObservations:     &obs,
-		OpenObservations:      &open,
+		SchemaVersion:     SchemaVersionCurrent,
+		WindowSince:       "2026-07-21T00:00:00Z",
+		WindowUntil:       "2026-07-28T00:00:00Z",
+		GeneratedAt:       "2026-07-28T00:00:00Z",
+		FathomVersion:     "fathom v0.1.0",
+		CommitSHA:         "abc1234def5",
+		GOOS:              "darwin",
+		GOARCH:            "arm64",
+		TotalObservations: &obs,
+		OpenObservations:  &open,
+		CallTraffic: &CallTrafficStats{
+			TotalCalls:   42,
+			LatencyP50MS: &p50,
+			LatencyP95MS: &p95,
+		},
+		Injection: &InjectionStats{
+			Seen:         10,
+			Answered:     9,
+			CoverageRate: &rate,
+		},
+		VerifyGate: &VerifyGateStats{},
 	}
 	if err := Validate(b); err != nil {
 		t.Fatalf("Validate(valid bundle) = %v, want nil", err)
+	}
+}
+
+// TestValidate_NotInstrumentedBundle proves the minimal, "nothing was
+// readable" bundle (critic Finding 3: no CallTraffic/Injection/VerifyGate
+// groups at all) still validates — absence of a group is a legitimate,
+// schema-conforming state, not an error.
+func TestValidate_NotInstrumentedBundle(t *testing.T) {
+	b := Bundle{
+		SchemaVersion: SchemaVersionCurrent,
+		WindowSince:   "2026-07-21T00:00:00Z",
+		WindowUntil:   "2026-07-28T00:00:00Z",
+		GeneratedAt:   "2026-07-28T00:00:00Z",
+		FathomVersion: "fathom v0.1.0",
+		GOOS:          "darwin",
+		GOARCH:        "arm64",
+	}
+	if err := Validate(b); err != nil {
+		t.Fatalf("Validate(not-instrumented bundle) = %v, want nil", err)
 	}
 }
