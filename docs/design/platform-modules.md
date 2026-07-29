@@ -88,6 +88,10 @@ by evidence, not speculation.
   standards-conformance dimension is deferred with a named trigger: first
   documented case of a module rule that review served but a reviewer
   needed machine-checked (not just cited) enforcement for.
+- **Session brief:** the SessionStart payload names each bound module
+  with its rule count and staleness verdict ("binds platform-standards:
+  fresh, 34 rules") — bindings must be visible; invisible channels die
+  (the program's own measured lesson, twice).
 - **Staleness honesty end-to-end:** a bound module whose staleness verdict
   is not fresh serves its rules **flagged** (same never-silent contract as
   repo claims); `unknown-detached` is stated, not hidden.

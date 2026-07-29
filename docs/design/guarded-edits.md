@@ -81,6 +81,16 @@ suppression.
   fires across a qualifying window is a prune candidate, reported not
   auto-removed.
 
+### 2.5 Guarded commands (same shape, same slice)
+
+`guards[].command_scopes?: ["terraform apply*", "kubectl *", "*/migrate *"]`
+extends the same mechanism to PreToolUse(Bash): a command matching a
+guard's pattern gets the guard's `note` + rules injected before it runs.
+Identical budget, dedup, and inject-only doctrine — this complements the
+permission system (which decides IF a command may run) with governance
+context (what the org knows about running it). Doctor warns on dead
+command guards like dead file guards.
+
 ## 3. Non-goals (v1)
 
 No auto-derived guards (an LLM proposing "this file looks important" is
