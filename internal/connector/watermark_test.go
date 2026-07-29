@@ -17,11 +17,26 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
+// gitProofTempDir returns t.TempDir() after pinning GIT_CEILING_DIRECTORIES to
+// its parent, so git's upward discovery can never escape into an enclosing
+// repository — the non-git premise must hold even when TMPDIR points inside a
+// git work tree (the Taskfile routes TMPDIR to workspace/tmp/gobuild).
+func gitProofTempDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	parent := filepath.Dir(dir)
+	if resolved, err := filepath.EvalSymlinks(parent); err == nil {
+		parent = resolved
+	}
+	t.Setenv("GIT_CEILING_DIRECTORIES", parent)
+	return dir
+}
+
 func TestLocalConnector_Watermark_ManifestStableAcrossMove(t *testing.T) {
 	ctx := context.Background()
 	lc := connector.NewLocalConnector()
 
-	rootA := t.TempDir()
+	rootA := gitProofTempDir(t)
 	writeFile(t, filepath.Join(rootA, "runbook.md"), "# restart the daemon\n")
 	writeFile(t, filepath.Join(rootA, "findings", "f1.md"), "severity: high\n")
 
