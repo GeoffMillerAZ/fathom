@@ -228,6 +228,8 @@ the next. **(op)** = owner action. Kill/terminal criteria per law 5.
 | **M — Web studio + web chat** | app-kit path A app in `fathom-studio`: server-rendered studio + chat with the evidence rail | terminal: feature parity with TUI proven by the shared headless state tests; entry: K shipped (the state machine must exist before its second renderer) |
 | **N — Hosted, published, measured** | hardened hosted chat (phase I grown up), module `published` level live, the suite's own falsifiability bench: pre-registered time-to-servable + refusal-to-fix latency + answer-trust audit | entry: ≥1 real module authored by someone who isn't me (op); recorded either way, per the house record |
 
+| **O — Platform modules in the coding loop** | binding schema (`.fathom/modules.cue`), binding-aware obligations serving (repo claims ∪ bound module rules, split displacement accounting), module-tagged edit-hook rendering, doctor binding checks — the platform stratum's proper delivery vehicle (design: `docs/design/platform-modules.md`, adopted 2026-07-29) | entry: phase J merged (readiness ladder gates what may be bound: `servable`+); terminal: a bound module's rule injects module-tagged into an edit in a consumer repo, staleness-flagged when not fresh; kill: law 8 applies per module — zero served rules across a qualifying window in every bound repo → unbind candidate |
+
 **Standing entry-condition honesty:** external-adoption gates from
 product-vision H3 remain unmet and unclaimed; this program, like the chat
 pull-forward, is an owner decision to build the capability that *generates*
