@@ -10,8 +10,8 @@ See [architecture.md](architecture.md) for how the tool groups map to the three-
 
 ## Tool groups, profiles, and surfaces
 
-Tools are divided into four groups (`GroupShared`, `GroupCoding`, `GroupInvestigation`,
-`GroupPlatform`) that describe fathom's internal taxonomy. `set_profile` — the old,
+Tools are divided into five groups (`GroupShared`, `GroupCoding`, `GroupInvestigation`,
+`GroupPlatform`, `GroupModules`) that describe fathom's internal taxonomy. `set_profile` — the old,
 process-global way to filter `tools/list` on stdio — was **removed entirely**
 (docs/plans/surfaces-week1.md SW-2; amends ADR-014's stdio clause): no production caller
 reaches it any more, so a **stdio** session always sees the full registry. Scoping now
@@ -24,10 +24,11 @@ only) each request selects an immutable **surface** via the path:
 
 | Surface | Endpoint | Contents |
 |---|---|---|
-| *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend) |
+| *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend). Hides the four module tools instead when the daemon is in hosted-modules mode (see below) |
 | `agent` | `POST /rpc/agent` | The primary agent surface (see below) — the user-scope MCP registration points here |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical allowlist |
 | `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (internal taxonomy; zero observed traffic as of the surfaces-week1 review, kept for completeness) |
+| `modules` | `POST /rpc/modules` | The module host's floor tool set (docs/plans/gke-module-host.md) — see "Module host tools" below for the tool list and the hosted-mode restriction |
 
 **Agent/companion allowlist (16 tools):** `capabilities`, `entrypoints`, `find_callers`,
 `find_symbol`, `ingest`, `list_services`, `obligations`, `outline`, `pack_context`,
@@ -197,6 +198,50 @@ Fleet-wide operations across all ingested services.
 | `fleet_drift` | — | `{drift: [{key, service, value, majority}], count}` | Report version/kind drift: symbols that appear in multiple services with conflicting kinds |
 | `cross_repo_callers` | `symbol` (req) | `{callers: [{service, symbol, file_path}], count}` | Find all callers of a symbol across every service via stored call edges (formerly aliased as `platform_callers`, deleted as zero-call structural redundancy — surfaces week-1, SW-1) |
 | `cross_repo_blast_radius` | `symbol` (req) | `{hits: [{service, symbol, file}], count}` | Blast radius of a symbol across all services: the symbol in each service plus its cross-service callers |
+
+---
+
+## Module host tools (GroupModules)
+
+The GKE **module host** (docs/plans/gke-module-host.md; docs/spec/store-format-v0.md;
+docs/spec/expert-module-v0.md) mounts N conforming expert-module stores **READ-ONLY**
+beside the main fleet store, via `serve-http --module <path>` (repeatable). Every
+result carries per-module provenance — never merged into an ambiguous unattributed
+set — and every claim keeps its citation, evidence tier, and non-fresh status
+(store-format-v0.md §3 Server conformance, generalized to N stores).
+
+| Tool | Arguments | Returns | Purpose |
+|---|---|---|---|
+| `list_modules` | — | `{modules: [{module, path, service?, indexed_commit?, indexed_at?, error?}]}` | Enumerate every mounted module's (module, corpus/service) pairs and the ingest-time watermark each was compiled at (expert-module-v0.md §4.1). A module whose own discovery failed contributes one `error`-carrying row rather than aborting the whole call. |
+| `module_obligations` | `module` (opt — omit to fan out across every mounted module), `file` (req), `max` (opt) | `{results: [{module, service, obligations, error?}]}` | Scope-lookup query (expert-module-v0.md §4.2, the `obligations`-shaped pattern): claims governing `file`, each still carrying citation/tier/status, tagged with the module and service that served it. |
+| `module_query` | `module` (opt), `text` (req; alias `concern`), `max` (opt) | `{results: [{module, service, nodes?, staleness, claims?, error?}]}` | Free-text query — `module_obligations` alone requires a scope-glob `file` and cannot answer a free-text question. Fans out the concern-scoped symbol engine (`query_symbols`' own engine) AND a claim-text substring match per (module, service) pair; a pair answers via ranked symbols, matched claims, both, or neither (omitted when neither). |
+| `module_staleness` | `module` (req) | `{module, corpora: [{module, service, indexed_commit?, current_commit?, status}]}` | Per-(module, service) staleness (expert-module-v0.md §4.3). A mounted module is a **detached corpus** by default: `status` reads `"unknown-detached"` unless the module's `service_meta.path` is present and re-checkable on THIS machine — `"fresh"`/`"drifted"` only then. A `manifest:`-watermarked module is re-checked via the same content-addressed algorithm it was compiled under, **never** a live git HEAD (a corpus nested inside some unrelated enclosing git checkout would otherwise false-drift permanently). |
+
+**Mount conformance (`--module <path>`, repeatable):** checked at mount time against
+store-format-v0.md §2's markers (`application_id == 0x46415448` AND `user_version >= 1`)
+and the required-schema tables for the level the host requires (`L0` by default). A
+non-conforming or unreadable store **aborts serve-http startup loudly** — never a
+partial mount. Every mount opens the store file genuinely read-only at the SQLite/VFS
+layer (`file:<path>?mode=ro`) — there is no write path to a mounted module, structurally
+(docs/vision/12-governed-knowledge-engine.md law 9).
+
+**Hosted mode (`--modules-token-env <NAME>`):** names an environment variable holding a
+bearer token required on `POST /rpc/modules` (constant-time compare; the token itself is
+never a flag/config value, never logged). **Default off** — the local, loopback-only,
+unauthenticated daemon is unaffected. When a token IS configured, hosted mode is a
+strictly narrower surface, not merely an auth check bolted onto the existing one:
+
+- `/rpc/modules` serves **only** `list_modules`, `module_obligations`, `module_query`,
+  `module_staleness`, `capabilities`, `server_stats` — never the rest of `GroupShared`
+  (no `ingest`, no `compile_layer`, no `batch`, no fleet-backed reads like `repo_map` /
+  `find_symbol` / `staleness_report` that a modules-token holder could otherwise pivot
+  through to read the fleet's own indexed services).
+- Off-allowlist calls on `/rpc/modules` are **hard-gated** (a named error), never
+  execute-and-flag — the one surface in this server where that ADR-014 ergonomics
+  choice is deliberately overridden.
+- The four module tools become unreachable from **every other path** — bare `/rpc`,
+  any other named surface, or a `batch` sub-call — so there is never an unauthenticated
+  route to module data once a token is configured.
 
 ---
 

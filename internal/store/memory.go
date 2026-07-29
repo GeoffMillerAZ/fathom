@@ -311,6 +311,26 @@ func (m *MemoryStore) ListServiceIDs(_ context.Context) ([]string, error) {
 	return ids, nil
 }
 
+// ClaimServiceIDs returns the sorted distinct set of service IDs present in
+// m.claims — see the Store interface doc comment.
+func (m *MemoryStore) ClaimServiceIDs(_ context.Context) ([]string, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	seen := make(map[string]struct{}, 4)
+	for k := range m.claims {
+		seen[k.serviceID] = struct{}{}
+	}
+	if len(seen) == 0 {
+		return nil, nil
+	}
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return ids, nil
+}
+
 // SetServiceMeta upserts the ingest metadata for meta.ServiceID.
 func (m *MemoryStore) SetServiceMeta(_ context.Context, meta ServiceMeta) error {
 	m.mu.Lock()

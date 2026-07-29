@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,8 +14,21 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/modulehost"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
+
+// stringSliceFlag is a flag.Value collecting one or more occurrences of a
+// repeatable flag (e.g. --module path1 --module path2) into a slice, in
+// the order given.
+type stringSliceFlag []string
+
+func (f *stringSliceFlag) String() string { return strings.Join(*f, ",") }
+func (f *stringSliceFlag) Set(v string) error {
+	*f = append(*f, v)
+	return nil
+}
 
 // runServeHTTP is the testable entry point for the "serve-http" subcommand.
 //
@@ -39,6 +53,9 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
 	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
 	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, "workspace/logs/mcp-calls.jsonl"), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
+	var modulePaths stringSliceFlag
+	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY on POST /rpc/modules; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
+	modulesTokenEnv := fs.String("modules-token-env", "", "name of an environment variable holding the bearer token required for POST /rpc/modules (GKE-MH-7); unset = auth disabled (default — matches the loopback-only daemon's existing unauthenticated trust boundary). The token itself is never a flag or config value, only this env var's NAME.")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -48,6 +65,19 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "error: --store is required")
 		fs.Usage()
 		return 1
+	}
+
+	// GKE-MH-7: resolve the modules bearer token BEFORE opening anything —
+	// a --modules-token-env naming an empty/unset environment variable is a
+	// misconfiguration that must fail loudly, never silently leave auth
+	// disabled on what the operator believes is a protected path.
+	modulesToken := ""
+	if *modulesTokenEnv != "" {
+		modulesToken = os.Getenv(*modulesTokenEnv)
+		if modulesToken == "" {
+			fmt.Fprintf(stderr, "error: --modules-token-env=%s is set but that environment variable is empty or unset\n", *modulesTokenEnv)
+			return 1
+		}
 	}
 
 	c, err := client.NewConstantClient(client.ModeLocal, *storePath)
@@ -106,8 +136,41 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	srv := mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
-	handler := newHTTPHandler(srv)
+	// GKE-MH-1: mount every --module store read-only, conformance-checked
+	// against LevelL0 (the module host's floor — sufficient for
+	// internal/semantic.ObligationsFor and the staleness-report shape; see
+	// store.ConformanceLevel's doc for why Server conformance itself has no
+	// separate schema footprint to check). A refusal aborts startup loudly
+	// — never a partial mount, never a silently-degraded module.
+	var moduleHost *modulehost.Host
+	if len(modulePaths) > 0 {
+		moduleHost = modulehost.NewHost(store.LevelL0)
+		for _, p := range modulePaths {
+			if _, mErr := moduleHost.Mount(p, ""); mErr != nil {
+				fmt.Fprintf(stderr, "error: mounting module %s: %v\n", p, mErr)
+				return 1
+			}
+			fmt.Fprintf(stderr, "serve-http: mounted module %s (%s)\n", p, modulehost.ModuleNameFromPath(p))
+		}
+	}
+
+	var srv *mcp.Server
+	if moduleHost != nil {
+		srv = mcp.NewServerWithModules(backend, &fleetAdapter{c: c, stderr: stderr}, logger, moduleHost)
+	} else {
+		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
+	}
+	// GKE-MH-7 (critic finding 2): a configured modules token means this is
+	// a hosted, network-reachable deployment — /rpc/modules must serve ONLY
+	// its own curated allowlist (never GroupShared's fleet-backend reads or
+	// write/spend tools), off-surface calls there must hard-gate (never
+	// execute-and-flag), and module tools must be unreachable via any other
+	// path (bare /rpc, another surface, a batch sub-call). Set BEFORE
+	// ListenAndServe — never toggled while serving.
+	if modulesToken != "" {
+		srv.SetHostedModules(true)
+	}
+	handler := newHTTPHandlerWithAuth(srv, modulesToken)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
@@ -171,6 +234,51 @@ func openCallLog(path string) (*os.File, error) {
 //	GET  /events        — SSE stream stub (hello event, keep-alive)
 //	GET  /metrics       — simple text exposition: uptime and request count
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
+//
+// newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules bearer-
+// token gate (GKE-MH-7). modulesToken == "" (the default) disables the
+// check entirely — identical behavior to newHTTPHandler(srv), so every
+// existing call site/test unaffected by this row keeps working unchanged.
+func newHTTPHandlerWithAuth(srv *mcp.Server, modulesToken string) http.Handler {
+	return modulesAuthMiddleware(newHTTPHandler(srv), modulesToken)
+}
+
+// modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
+// sub-paths) behind a bearer token — every other route (including bare
+// /rpc and every other named surface) is untouched: the loopback-only
+// daemon's existing unauthenticated trust boundary (docs/mcp-tools.md)
+// stays exactly as it is. token == "" disables the check (default OFF —
+// auth is a launch requirement for a NETWORK-reachable deployment, which
+// does not exist until an operator opts in via --modules-token-env,
+// docs/plans/gke-module-host.md's design section).
+//
+// Comparison is constant-time (crypto/subtle.ConstantTimeCompare) so a
+// byte-by-byte mismatch never leaks timing information about how much of
+// the token matched. The configured token is never logged or echoed back —
+// only a boolean authorized/denied is observable from this middleware, and
+// the 401 body never repeats the caller-supplied credential.
+func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
+	if token == "" {
+		return next
+	}
+	const prefix = "Bearer "
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rpc/modules" && !strings.HasPrefix(r.URL.Path, "/rpc/modules/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		got := r.Header.Get("Authorization")
+		authorized := strings.HasPrefix(got, prefix) &&
+			subtle.ConstantTimeCompare([]byte(strings.TrimPrefix(got, prefix)), []byte(token)) == 1
+		if !authorized {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="fathom-modules"`)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func newHTTPHandler(srv *mcp.Server) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()

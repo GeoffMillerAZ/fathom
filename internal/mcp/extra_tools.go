@@ -2007,9 +2007,23 @@ func registerBatch(s *Server) {
 				results[i] = batchResult{Name: call.Name, Error: "tool not found: " + call.Name}
 				continue
 			}
+			// Hosted-modules security gate (GKE-MH-7, critic finding 2):
+			// batch is itself GroupShared, not GroupModules, so it is
+			// excluded from hostedModulesTools' allowlist and cannot even
+			// be CALLED on the modules surface while hosted (strictFor
+			// makes that a hard gate) — but a batch invoked from bare
+			// /rpc, or any other named surface, must still be refused
+			// from smuggling a GroupModules sub-call through, exactly
+			// like handleToolsCallWithCtx's own check (dispatch.go).
+			if s.hostedModuleBlocked(sc, te.desc) {
+				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
+				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, 0, gateErr)
+				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
+				continue
+			}
 			subOff := false
-			if sc.enforced() && !toolOnSurface(sc.surface, te.desc) {
-				if s.strictSurfaces {
+			if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) {
+				if s.strictFor(sc.surface) {
 					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
 					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, 0, gateErr)
 					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}

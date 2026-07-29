@@ -400,7 +400,7 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"agent", "companion", "coding", "investigation", "shared", "platform"} {
+	for _, name := range []string{"agent", "companion", "coding", "investigation", "shared", "platform", "modules"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
 		}
@@ -411,8 +411,8 @@ func TestValidSurface(t *testing.T) {
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 6 {
-		t.Fatalf("SurfaceNames() = %v, want 6 entries", names)
+	if len(names) != 7 {
+		t.Fatalf("SurfaceNames() = %v, want 7 entries", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)

@@ -29,40 +29,11 @@ import (
 	"testing"
 )
 
-// requiredSchemaV0 is docs/spec/store-format-v0.md §3's L0 + Writer
-// required-schema table, transcribed verbatim (table name -> required
-// column names). Keep this literally in sync with the markdown table; a
-// change to one without the other is the exact drift this test exists to
-// catch.
-var requiredSchemaV0 = map[string][]string{
-	// L0 — minimum readable store.
-	"service_meta": {"service_id", "path", "indexed_commit", "indexed_at"},
-	"observations": {
-		"service_id", "concern_id", "source_ref", "source_kind",
-		"evidence_tier", "symbol", "package", "claim", "content_hash",
-		"calls", "complexity", "line", "end_line", "ingested_at",
-		"tool_kind", "generated",
-	},
-	"semantic_claims": {
-		"service_id", "claim_id", "layer", "layer_version", "kind",
-		"subject", "rule", "scope", "tier", "tier_profile", "status",
-		"model", "prompt_version", "repro_key", "input_digest",
-		"compiled_at_watermark", "compiled_at",
-	},
-	"claim_links": {
-		"service_id", "claim_id", "rel", "target_ref", "target_hash", "anchor_text",
-	},
-
-	// Writer — additionally required for append-only lineage discipline.
-	"claim_events": {"claim_id", "verdict", "author", "note", "event_at"},
-	"compile_runs": {
-		"run_id", "service_id", "layer", "corpus_watermark", "model",
-		"prompt_version", "dry_run", "tokens_in", "tokens_out",
-		"cost_usd", "duration_ms", "sections_total", "sections_compiled",
-		"sections_failed", "claims_emitted", "claims_rejected", "ran_at",
-		"refused", "refusal_reason", "budget_stopped", "escape_note",
-	},
-}
+// requiredSchemaV0, existingTables, existingColumns, and sortedKeys now
+// live in conformance.go (non-test): MountReadOnly's mount-time schema
+// check (docs/plans/gke-module-host.md) reuses the exact same map and
+// introspection helpers this test exercises, rather than a second
+// transcription of docs/spec/store-format-v0.md §3 drifting from this one.
 
 func TestStoreFormatV0_RequiredSchema(t *testing.T) {
 	// Ephemeral scratch path (t.TempDir(): auto-cleaned, process-local,
@@ -358,56 +329,6 @@ func TestStoreFormatV0_DocMatchesGoSource(t *testing.T) {
 	}
 }
 
-// existingTables returns every table name in sqlite_master for db.
-func existingTables(db *sql.DB) ([]string, error) {
-	rows, err := db.Query(`SELECT name FROM sqlite_master WHERE type = 'table'`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var names []string
-	for rows.Next() {
-		var name string
-		if err := rows.Scan(&name); err != nil {
-			return nil, err
-		}
-		names = append(names, name)
-	}
-	return names, rows.Err()
-}
-
-// existingColumns returns the set of column names on table, via PRAGMA
-// table_info. table must be a trusted literal (this file's own
-// requiredSchemaV0 keys) — PRAGMA takes no bind parameters.
-func existingColumns(db *sql.DB, table string) (map[string]bool, error) {
-	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	cols := map[string]bool{}
-	for rows.Next() {
-		var (
-			cid     int
-			name    string
-			ctype   string
-			notNull int
-			dflt    sql.NullString
-			pk      int
-		)
-		if err := rows.Scan(&cid, &name, &ctype, &notNull, &dflt, &pk); err != nil {
-			return nil, err
-		}
-		cols[name] = true
-	}
-	return cols, rows.Err()
-}
-
-func sortedKeys(m map[string]bool) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
+// existingTables, existingColumns, and sortedKeys are defined in
+// conformance.go (package-level, non-test) — this file's tests call the
+// same functions MountReadOnly's schema check uses.

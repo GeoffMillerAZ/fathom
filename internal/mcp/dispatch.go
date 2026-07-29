@@ -20,6 +20,13 @@ const (
 	GroupInvestigation ToolGroup = "investigation"
 	GroupShared        ToolGroup = "shared"
 	GroupPlatform      ToolGroup = "platform"
+	// GroupModules is the module-host floor tool set (docs/plans/
+	// gke-module-host.md GKE-MH-5): list_modules, module_obligations,
+	// module_staleness. Visible on bare /rpc (the full registry, same as
+	// every other group) and on the named "modules" surface
+	// (POST /rpc/modules) — never added to companionTools (/rpc/agent's
+	// allowlist stays untouched, doctrine 4).
+	GroupModules ToolGroup = "modules"
 )
 
 // toolDescriptor is the MCP tool schema entry returned in tools/list.
@@ -149,7 +156,7 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	offSurface := false
 	if te, ok := s.findTool(toolName); ok {
 		group = string(te.desc.group)
-		if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) && !s.strictSurfaces {
+		if sc := scopeFrom(ctx); sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) && !s.strictFor(sc.surface) {
 			offSurface = true
 		}
 	}
@@ -225,11 +232,23 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	if !ok {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool not found: " + p.Name}
 	}
+	sc := scopeFrom(ctx)
+	// Hosted-modules security gate (GKE-MH-7, critic finding 2): checked
+	// BEFORE — and independent of — sc.enforced(), because bare /rpc
+	// deliberately has enforced()==false (it is the full, unauthenticated
+	// registry by design) and would otherwise dispatch a GroupModules tool
+	// with no gate at all. hostedModuleBlocked only ever fires when hosted
+	// mode is active (a --modules-token-env was configured); the local,
+	// loopback-only daemon never reaches this branch.
+	if s.hostedModuleBlocked(sc, te.desc) {
+		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
+	}
 	// Execute-and-flag (ADR-014 amendment): an off-surface call runs and is
 	// LOGGED as off_surface — an error teaches agents to abandon the surface,
 	// which looks identical to no-demand in the log. Hard gating stays
-	// available behind strictSurfaces for any future multi-tenant shape.
-	if sc := scopeFrom(ctx); sc.enforced() && !toolOnSurface(sc.surface, te.desc) && s.strictSurfaces {
+	// available behind strictSurfaces for any future multi-tenant shape (and
+	// is ALWAYS on for the modules surface while hosted — strictFor).
+	if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) && s.strictFor(sc.surface) {
 		return nil, &rpcError{Code: ErrCodeNotFound, Message: "tool " + p.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
 	}
 	// P1-8: enforce the declared InputSchema "required" fields before

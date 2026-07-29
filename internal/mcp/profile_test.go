@@ -84,7 +84,7 @@ func TestSetProfileDirect(t *testing.T) {
 	if !ok {
 		t.Fatal("find_callers not registered")
 	}
-	if scopeFrom(stdioCtx).enforced() && !toolOnSurface(SurfaceCompanion, te.desc) {
+	if scopeFrom(stdioCtx).enforced() && !srv.toolOnSurface(SurfaceCompanion, te.desc) {
 		t.Fatal("find_callers would be gated on stdio, which must never happen")
 	}
 }
