@@ -129,7 +129,12 @@ green internally, do not release — re-examine the wedge.
   portability test already passes. The spec names the category — *governed
   knowledge engine* — and requires conforming modules to carry corpus selectors,
   watermarks, and recompile rights (the freshness-doctrine answer to detached
-  knowledge). The pack CLI, when it comes, is a thin serializer.
+  knowledge). The pack CLI, when it comes, is a thin serializer. **2026-07-28
+  update:** the v0 spec landed (`docs/spec/store-format-v0.md`,
+  `docs/spec/expert-module-v0.md`) — see `docs/vision/
+  12-governed-knowledge-engine.md` for what it unlocks next and the owner
+  decision to pull the module-host/chat capability forward from H3 ahead of
+  this section's external-adoption entry condition, which remains unmet.
 - **Layer 2 = failure-mode playbook**, entry-conditioned (obligations gate passed
   AND corpus ≥15–20 findings), compiled from a non-git folder corpus so
   watermarks/portability/tier-profiles get a real consumer. The generic layer
