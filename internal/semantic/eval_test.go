@@ -19,21 +19,16 @@ package semantic
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
-	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/filter"
-	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // repoRootForTest resolves the repo root from this test file's own location
@@ -46,22 +41,6 @@ func repoRootForTest(t *testing.T) (string, error) {
 		return "", fmt.Errorf("runtime.Caller failed")
 	}
 	return filepath.Join(filepath.Dir(file), "..", ".."), nil
-}
-
-type evalLabels struct {
-	// Docs is the EXPLICIT fixture-document list (file names relative to the
-	// pack's eval/ dir, compiled in this order). Explicit, never a glob: an
-	// eval/ dir also holds RESULTS.md (and potentially other non-fixture
-	// notes), and a glob would silently sweep those into the corpus,
-	// polluting every metric with claims from a results table.
-	Docs   []string `json:"docs"`
-	Probes []string `json:"probes"`
-	Rules  []struct {
-		Key               string   `json:"key"`
-		CiteSubstr        string   `json:"cite_substr"`
-		Governs           []string `json:"governs"`
-		TrapMustNotGovern []string `json:"trap_must_not_govern"`
-	} `json:"rules"`
 }
 
 // evalLLM constructs the eval's LLM client per FATHOM_LLM_PROVIDER — unset
@@ -115,21 +94,15 @@ func packEvalDir(t *testing.T, pack string) string {
 	return filepath.Join(root, "schema", "semantic", "layers", pack, "eval")
 }
 
-// evalResult is one layer's eval outcome, returned for the caller to gate
-// and/or log to the pack's eval/RESULTS.md.
-type evalResult struct {
-	Precision      float64
-	Recall         float64
-	TP, FP, FN     int
-	MissedRuleKeys []string
-	Run            core.CompileRun
-}
-
 // runLayerEval compiles layerName's eval fixtures (the labels.json "docs"
 // list — explicit, never a glob, so RESULTS.md and other non-fixture files
 // in eval/ are never swept into the corpus) through a real model and scores
-// (claim, probe) applications against eval/labels.json.
-func runLayerEval(t *testing.T, layerName string) evalResult {
+// (claim, probe) applications against eval/labels.json. The scoring
+// machinery itself lives in RunEval (eval.go) — this wrapper only resolves
+// the pack's fixtures dir/layer, gates on FATHOM_EVAL_LLM, and logs a
+// human-readable summary the exported RunEval (a non-test function with no
+// *testing.T to log through) cannot.
+func runLayerEval(t *testing.T, layerName string) EvalResult {
 	t.Helper()
 	if os.Getenv("FATHOM_EVAL_LLM") != "1" {
 		t.Skip("set FATHOM_EVAL_LLM=1 (and ANTHROPIC_API_KEY, or FATHOM_LLM_PROVIDER=claude-cli) to run the spending eval")
@@ -141,153 +114,27 @@ func runLayerEval(t *testing.T, layerName string) evalResult {
 	}
 	t.Logf("eval lane=%q model=%q", lane, model)
 
-	dir := packEvalDir(t, layerName)
-	var labels evalLabels
-	lb, err := os.ReadFile(filepath.Join(dir, "labels.json"))
-	if err != nil {
-		t.Fatalf("read labels: %v", err)
-	}
-	if err := json.Unmarshal(lb, &labels); err != nil {
-		t.Fatalf("parse labels: %v", err)
-	}
-	if len(labels.Docs) == 0 {
-		t.Fatalf("labels.json in %s must list its fixture docs explicitly (\"docs\": [...]) — a glob would sweep RESULTS.md and other non-fixture files into the corpus", dir)
-	}
-
-	var docs []core.SourceFile
-	docContent := map[string][]byte{}
-	for _, name := range labels.Docs {
-		data, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			t.Fatalf("read fixture doc %s: %v", name, err)
-		}
-		docs = append(docs, core.SourceFile{Path: name, Content: data})
-		docContent[name] = data
-	}
-
 	layer, err := LoadLayer(layerName)
 	if err != nil {
 		t.Fatalf("LoadLayer(%s): %v", layerName, err)
 	}
 
-	st := store.NewMemoryStore()
-	c := &Compiler{
-		St: st, LLM: llm, Model: model, Layer: layer,
-		Now: func() time.Time { return time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC) },
-	}
-	run, err := c.Compile(context.Background(), CompileInput{
-		ServiceID:    "eval",
-		Docs:         docs,
-		IndexedFiles: labels.Probes,
-		Watermark:    "eval",
-	})
+	dir := packEvalDir(t, layerName)
+	fixedNow := func() time.Time { return time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC) }
+	result, err := RunEval(context.Background(), llm, model, layer, dir, fixedNow)
 	if err != nil {
-		t.Fatalf("Compile: %v", err)
+		t.Fatalf("RunEval: %v", err)
 	}
 	t.Logf("compile run: %d claims emitted, %d rejected, %d in / %d out tokens",
-		run.ClaimsEmitted, run.ClaimsRejected, run.TokensIn, run.TokensOut)
-
-	claims, err := st.ClaimsForService(context.Background(), "eval", layerName)
-	if err != nil {
-		t.Fatalf("ClaimsForService: %v", err)
-	}
-	ids := make([]string, 0, len(claims))
-	for _, cl := range claims {
-		ids = append(ids, cl.ClaimID)
-	}
-	links, err := st.ClaimLinks(context.Background(), "eval", ids)
-	if err != nil {
-		t.Fatalf("ClaimLinks: %v", err)
-	}
-	citedText := map[string]string{} // claimID -> cited lines
-	for _, l := range links {
-		if l.Rel != core.RelCites {
-			continue
-		}
-		path, s, e, ok := core.ParseCiteRef(l.TargetRef)
-		if !ok {
-			continue
-		}
-		lines := strings.Split(strings.ReplaceAll(string(docContent[path]), "\r\n", "\n"), "\n")
-		if e <= len(lines) {
-			citedText[l.ClaimID] = strings.Join(lines[s-1:e], "\n")
-		}
-	}
-
-	applies := func(cl core.SemanticClaim, probe string) bool {
-		for _, g := range cl.Scope {
-			if filter.New([]string{g}).Match(probe) {
-				return true
-			}
-		}
-		return false
-	}
-
-	var tp, fp, fn int
-	matchedRule := map[string]bool{}
-	for _, cl := range claims {
-		// Match the claim to a labeled rule by citation content.
-		ruleIdx := -1
-		for i, r := range labels.Rules {
-			if strings.Contains(citedText[cl.ClaimID], r.CiteSubstr) || strings.Contains(cl.Rule, r.CiteSubstr) {
-				ruleIdx = i
-				break
-			}
-		}
-		if ruleIdx < 0 {
-			// An invented/unlabeled rule: every application is a false positive.
-			for _, probe := range labels.Probes {
-				if applies(cl, probe) {
-					fp++
-					t.Logf("UNLABELED claim %q applies to %s (scope %v)", cl.Rule, probe, cl.Scope)
-				}
-			}
-			continue
-		}
-		r := labels.Rules[ruleIdx]
-		matchedRule[r.Key] = true
-		governed := map[string]bool{}
-		for _, g := range r.Governs {
-			governed[g] = true
-		}
-		for _, probe := range labels.Probes {
-			got := applies(cl, probe)
-			want := governed[probe]
-			switch {
-			case got && want:
-				tp++
-			case got && !want:
-				fp++
-				t.Logf("FP [%s]: claim %q wrongly governs %s (scope %v)", r.Key, cl.Rule, probe, cl.Scope)
-			case !got && want:
-				fn++
-				t.Logf("FN [%s]: claim %q misses %s (scope %v)", r.Key, cl.Rule, probe, cl.Scope)
-			}
-		}
-	}
-
-	var missed []string
-	for _, r := range labels.Rules {
-		if !matchedRule[r.Key] {
-			missed = append(missed, r.Key)
-		}
-	}
-	precision := 1.0
-	if tp+fp > 0 {
-		precision = float64(tp) / float64(tp+fp)
-	}
-	recall := 1.0
-	if len(labels.Rules) > 0 {
-		recall = float64(len(matchedRule)) / float64(len(labels.Rules))
-	}
+		result.Run.ClaimsEmitted, result.Run.ClaimsRejected, result.Run.TokensIn, result.Run.TokensOut)
 	t.Logf("precision=%.2f (tp=%d fp=%d fn=%d) rule-recall=%.2f missed=%v",
-		precision, tp, fp, fn, recall, missed)
+		result.Precision, result.TP, result.FP, result.FN, result.Recall, result.MissedRuleKeys)
 
-	return evalResult{Precision: precision, Recall: recall, TP: tp, FP: fp, FN: fn, MissedRuleKeys: missed, Run: run}
+	return result
 }
 
-// assertGate applies the §4.6 admission bar to an evalResult.
-func assertGate(t *testing.T, r evalResult) {
+// assertGate applies the §4.6 admission bar to an EvalResult.
+func assertGate(t *testing.T, r EvalResult) {
 	t.Helper()
 	if r.Precision < 0.90 {
 		t.Errorf("precision %.2f < 0.90 — the layer does NOT pass its shipping gate (docs/design/semantic-layers.md §4.6)", r.Precision)
