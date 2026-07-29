@@ -124,29 +124,40 @@ type Server struct {
 // can still serve initialize / ping / tools/list / set_profile; tool calls
 // that require the backend will return ErrCodeInternal.
 func NewServer(backend QueryInterface) *Server {
-	return newServer(backend, nil, nil)
+	return newServer(backend, nil, nil, nil)
 }
 
 // NewServerWithLogger constructs a Server that writes JSONL call-log entries to
 // the provided CallLogger.  Pass nil for logger to disable logging (same as
 // NewServer).
 func NewServerWithLogger(backend QueryInterface, logger *CallLogger) *Server {
-	return newServer(backend, nil, logger)
+	return newServer(backend, nil, logger, nil)
 }
 
 // NewServerWithFleet constructs a Server wired to both a per-service
 // QueryInterface backend and a fleet-wide FleetBackend.  Either may be nil.
 func NewServerWithFleet(backend QueryInterface, fleet FleetBackend) *Server {
-	return newServer(backend, fleet, nil)
+	return newServer(backend, fleet, nil, nil)
 }
 
 // NewServerWithFleetAndLogger constructs a Server wired to a per-service
 // backend, a fleet backend, and a JSONL call logger.  Any may be nil.
 func NewServerWithFleetAndLogger(backend QueryInterface, fleet FleetBackend, logger *CallLogger) *Server {
-	return newServer(backend, fleet, logger)
+	return newServer(backend, fleet, logger, nil)
 }
 
-func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger) *Server {
+// NewServerWithModules constructs a Server wired to a per-service backend, a
+// fleet backend, a JSONL call logger, and the module host (docs/plans/
+// gke-module-host.md GKE-MH-5). modules registers the /rpc/modules-scoped
+// tool set (list_modules, module_obligations, module_staleness) — pass nil
+// (equivalent to NewServerWithFleetAndLogger) when no --module store was
+// mounted; a genuinely non-nil *modulehost.Host registers the tools. Any
+// other parameter may also be nil.
+func NewServerWithModules(backend QueryInterface, fleet FleetBackend, logger *CallLogger, modules moduleBackend) *Server {
+	return newServer(backend, fleet, logger, modules)
+}
+
+func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, modules moduleBackend) *Server {
 	s := &Server{
 		handlers:   make(map[string]Handler),
 		backend:    backend,
@@ -156,6 +167,9 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger) *
 	registerBuiltins(s)
 	registerTools(s, backend, fleet)
 	registerPlatformTools(s, backend, fleet)
+	if modules != nil {
+		registerModuleTools(s, modules)
+	}
 	return s
 }
 
@@ -312,7 +326,7 @@ func (s *Server) SetStrictSurfaces(v bool) {
 // setProfile updates the active profile (must be a known surface name or "").
 func (s *Server) setProfile(p string) *rpcError {
 	if p != "" && !ValidSurface(p) {
-		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: companion, coding, investigation, shared, platform", p)}
+		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: companion, coding, investigation, shared, platform, modules", p)}
 	}
 	s.profileMu.Lock()
 	defer s.profileMu.Unlock()

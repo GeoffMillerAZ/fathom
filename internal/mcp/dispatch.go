@@ -20,6 +20,13 @@ const (
 	GroupInvestigation ToolGroup = "investigation"
 	GroupShared        ToolGroup = "shared"
 	GroupPlatform      ToolGroup = "platform"
+	// GroupModules is the module-host floor tool set (docs/plans/
+	// gke-module-host.md GKE-MH-5): list_modules, module_obligations,
+	// module_staleness. Visible on bare /rpc (the full registry, same as
+	// every other group) and on the named "modules" surface
+	// (POST /rpc/modules) — never added to companionTools (/rpc/agent's
+	// allowlist stays untouched, doctrine 4).
+	GroupModules ToolGroup = "modules"
 )
 
 // toolDescriptor is the MCP tool schema entry returned in tools/list.

@@ -36,6 +36,15 @@ const SurfaceCompanion = "companion"
 // the user-scope MCP registration points at.
 const SurfaceAgent = "agent"
 
+// SurfaceModules is the module-host scoped surface (docs/plans/
+// gke-module-host.md GKE-MH-5), served at POST /rpc/modules: the
+// GroupModules floor tool set (list_modules, module_obligations,
+// module_staleness) plus GroupShared, exactly like every other group
+// surface (platform/coding/investigation) — a new scoping boundary, not a
+// new capability contract (the plan's design section's doctrine-4
+// argument).
+const SurfaceModules = "modules"
+
 // companionTools is the coding-companion allowlist: the navigation /
 // context / freshness hot loop an agentic coding session needs, and nothing
 // else. Kept deliberately small; the full registry stays one endpoint away
@@ -114,7 +123,7 @@ func (sc requestScope) enforced() bool {
 // bare /rpc endpoint is the full surface.
 func ValidSurface(name string) bool {
 	switch name {
-	case SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform":
+	case SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform", SurfaceModules:
 		return true
 	}
 	return false
@@ -122,7 +131,7 @@ func ValidSurface(name string) bool {
 
 // SurfaceNames returns the valid named surfaces, sorted.
 func SurfaceNames() []string {
-	names := []string{SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform"}
+	names := []string{SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform", SurfaceModules}
 	sort.Strings(names)
 	return names
 }
