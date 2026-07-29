@@ -103,6 +103,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdDoctor(args[1:], stdout, stderr)
 	case "research":
 		return cmdResearch(args[1:], stdout, stderr)
+	case "module":
+		return cmdModule(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)
@@ -144,6 +146,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  smoke                 One tiny real completion per profile: model, latency, tokens, cost")
 	fmt.Fprintln(w, "  doctor                Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic")
 	fmt.Fprintln(w, "  research              The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)")
+	fmt.Fprintln(w, "  module                Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

@@ -279,20 +279,37 @@ conformance checkpoints rather than a howto):
 **Honest gaps (v0 documents the right shape; the reference implementation
 has not caught up on these):**
 
-- **No manifest loader ships in this repo.** `schema/module/schema.cue`'s
-  `#Module` is validated by `internal/modspec/schema_test.go` (CUE-level:
-  the shape is enforceable), but there is no `fathom module` CLI verb or Go
-  package that reads a manifest at runtime and acts on it — unlike
-  `#Layer`, which `internal/semantic.LoadLayer` actually decodes and
-  executes against. **UNENFORCED** beyond CUE-shape validation; tracked
-  here rather than silently assumed to exist. This mirrors
-  `docs/design/expert-modules.md` §7's own scoping: "the pack CLI, when it
-  comes, is a thin serializer" is explicitly H2/entry-conditioned work, not
-  v0.
+- ~~**No manifest loader ships in this repo.**~~ **CLOSED (Phase J,
+  `docs/vision/13-expert-suite.md` §4/§9 row J, `docs/plans/expert-suite-j.md`).**
+  `internal/modspec.LoadManifest(path)` is the runtime reader:
+  parses + validates a `module.cue` into a typed `Manifest`, with typed
+  `FieldError`/`LoadError` values naming file+field, and — per §3's own
+  "a conforming manifest READER MUST ignore unknown fields" contract —
+  decodes only the fields this package knows via presence-checked
+  `cue.Value.LookupPath` calls rather than unifying against the closed
+  `#Module` schema. `internal/modspec.ValidateStrict(path)` is the
+  SEPARATE, stricter authoring-gate function (unifies against the
+  embedded closed `#Module`, `cue.Concrete(true)`) that `fathom module
+  init` runs against what it just wrote — closedness stays an authoring
+  check, never applied to a foreign manifest by the reader, exactly as
+  this section's own reconciliation above states. `fathom module`'s full
+  verb family (`init`/`sources`/`map`/`compile`/`eval`/`doctor`/`pack`)
+  consumes it; see `docs/plans/expert-suite-j.md` for the acceptance
+  evidence, including `TestLoadManifest_UnknownFieldIgnored`, which proves
+  the reader-vs-authoring-gate distinction on one input against both
+  functions.
 - **No packaging format for "manifest + store as one shippable artifact."**
-  §1 deliberately leaves this open; `fathom pack` (`product-vision.md` §4
-  H2) is the future thin serializer this spec anticipates but does not
-  specify.
+  §1 deliberately leaves this open no longer: `fathom module pack`
+  (`docs/plans/expert-suite-j.md` J-8, `cmd/fathom/module_pack.go`) is now
+  the thin serializer `product-vision.md` §4 H2 anticipated — a portable
+  module directory (`module.sqlite`, `module.cue`, eval evidence,
+  `README.md` stub), assembled via a WAL-checkpoint safe copy (§1's 2a)
+  and verified against the copy's own conformance markers post-copy via
+  `store.MountReadOnly`. It defines a DIRECTORY convention, not a new
+  single-file container format — §1's "this document does not specify
+  where the manifest is persisted relative to the store file" freedom is
+  otherwise unchanged; a third-party packager MAY still choose a different
+  layout (embedded row, sidecar file elsewhere) and remain v0-conforming.
 
 **Entry-conditioned, NOT v0 (named triggers, from `docs/design/
 product-vision.md` §4 H3 and `docs/design/expert-modules.md` §7):**
