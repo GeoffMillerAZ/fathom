@@ -41,19 +41,58 @@ var ladderRank = map[string]int{
 	LevelPublished:  4,
 }
 
-// Criterion is one named, machine-checked doctor check.
+// Criterion is one named, machine-checked doctor check. Facts carries
+// optional STRUCTURED values alongside Evidence's free-text prose (e.g.
+// eval precision/recall, compile lane, model, watermark) — additive only,
+// never a replacement for the prose: a consumer that only reads Evidence
+// (every consumer before this field existed) is unaffected, and a
+// verb-JSON-only consumer that needs to render a value (not parse a
+// sentence) reads Facts instead. Populated only for criteria whose
+// computation already has strongly-typed values on hand; nil (omitted)
+// everywhere else, never a fabricated/parsed-out-of-prose value.
 type Criterion struct {
-	Level    string `json:"level"`
-	Name     string `json:"name"`
-	Pass     bool   `json:"pass"`
-	Evidence string `json:"evidence"`
+	Level    string            `json:"level"`
+	Name     string            `json:"name"`
+	Pass     bool              `json:"pass"`
+	Evidence string            `json:"evidence"`
+	Facts    map[string]string `json:"facts,omitempty"`
 }
 
-// DoctorReport is `module doctor`'s full verdict.
+// ManifestSummary is the human-relevant subset of a loaded module.cue
+// manifest, surfaced on DoctorReport so a verb-JSON-only consumer (e.g.
+// fathom-studio, law 10: it may only consume verb JSON, never reach into
+// module.cue's CUE internals itself) can render a module's identity
+// without a manifest dump verb of its own. `module doctor --json` is the
+// ONE place this lives (docs/mcp-tools.md's verb catalog is CLI-verb-only
+// and unaffected; see module.go's doc comment) — chosen over a separate
+// `module show --json` because doctor already loads the manifest on every
+// invocation, so this is a zero-extra-read addition, not a new code path.
+type ManifestSummary struct {
+	Name        string `json:"name"`
+	Version     string `json:"version,omitempty"`
+	Description string `json:"description,omitempty"`
+	License     string `json:"license,omitempty"`
+	TierProfile string `json:"tier_profile,omitempty"`
+	// ProvenanceCompiledBy is provenance.compiled_by exactly as authored in
+	// module.cue — the manifest's OWN claim, not the store-cross-checked
+	// identity the "compile lane" published criterion verifies (see that
+	// criterion's Facts for the store-verified value).
+	ProvenanceCompiledBy string `json:"provenance_compiled_by,omitempty"`
+	ProvenanceCompiledAt string `json:"provenance_compiled_at,omitempty"`
+	// CorpusSelectorCount is len(include)+len(exclude) — the total glob
+	// count declared in the manifest's corpus block.
+	CorpusSelectorCount int    `json:"corpus_selector_count"`
+	Watermark           string `json:"watermark,omitempty"`
+}
+
+// DoctorReport is `module doctor`'s full verdict. Manifest is nil when the
+// manifest itself fails to load (the "manifest loads" draft criterion
+// already reports that failure; there is nothing to summarize).
 type DoctorReport struct {
-	Module   string      `json:"module"`
-	Verdict  string      `json:"verdict"`
-	Criteria []Criterion `json:"criteria"`
+	Module   string           `json:"module"`
+	Verdict  string           `json:"verdict"`
+	Criteria []Criterion      `json:"criteria"`
+	Manifest *ManifestSummary `json:"manifest,omitempty"`
 }
 
 func cmdModuleDoctor(args []string, stdout, stderr io.Writer) int {
@@ -154,6 +193,12 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	add := func(level, name string, pass bool, evidence string) {
 		criteria = append(criteria, Criterion{Level: level, Name: name, Pass: pass, Evidence: evidence})
 	}
+	// addFacts is add's twin for criteria whose computation already has
+	// strongly-typed values on hand (Criterion.Facts's doc comment) — the
+	// prose in evidence is unchanged, facts is purely additive.
+	addFacts := func(level, name string, pass bool, evidence string, facts map[string]string) {
+		criteria = append(criteria, Criterion{Level: level, Name: name, Pass: pass, Evidence: evidence, Facts: facts})
+	}
 
 	// ── draft ──
 	m, err := modspec.LoadManifest(manifestPath)
@@ -165,6 +210,17 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	}
 	add(LevelDraft, "manifest loads", true, manifestPath)
 	report.Module = m.Name
+	report.Manifest = &ManifestSummary{
+		Name:                 m.Name,
+		Version:              m.Version,
+		Description:          m.Description,
+		License:              m.License,
+		TierProfile:          m.TierProfile,
+		ProvenanceCompiledBy: m.Provenance.CompiledBy,
+		ProvenanceCompiledAt: m.Provenance.CompiledAt,
+		CorpusSelectorCount:  len(m.Corpus.Include) + len(m.Corpus.Exclude),
+		Watermark:            m.Watermark,
+	}
 
 	corpusRoot := moduleServiceRoot(manifestPath, root)
 	inv, invErr := resolveSourceInventory(context.Background(), corpusRoot, m)
@@ -195,6 +251,7 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	// prove the scoring machinery works without spending real tokens.
 	evalPassed := false
 	evalEvidence := "eval_evidence.evaled is false"
+	var evalFacts map[string]string // typed twin of evalEvidence's prose (precision/recall/lane/prompt_version), set only once an artifact actually parses
 	if m.EvalEvidence.Evaled {
 		p := m.EvalEvidence.Path
 		if !filepath.IsAbs(p) {
@@ -209,6 +266,12 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 			if jsonErr := json.Unmarshal(raw, &artifact); jsonErr != nil {
 				evalEvidence = fmt.Sprintf("eval_evidence.path %q is not a valid eval artifact (author-typed text is not accepted as evidence — record one via `module eval --record`): %v", m.EvalEvidence.Path, jsonErr)
 			} else {
+				evalFacts = map[string]string{
+					"precision":      fmt.Sprintf("%.4f", artifact.Precision),
+					"recall":         fmt.Sprintf("%.4f", artifact.Recall),
+					"lane":           artifact.Lane,
+					"prompt_version": artifact.PromptVersion,
+				}
 				switch {
 				case !artifact.PassesGate:
 					evalEvidence = fmt.Sprintf("eval artifact reports passes_gate=false (precision=%.2f recall=%.2f, lane=%s)", artifact.Precision, artifact.Recall, artifact.Lane)
@@ -225,7 +288,7 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 			}
 		}
 	}
-	add(LevelEvalPassed, "eval evidence present, gate-passing, and prompt_version-fresh (store-checked)", evalPassed, evalEvidence)
+	addFacts(LevelEvalPassed, "eval evidence present, gate-passing, and prompt_version-fresh (store-checked)", evalPassed, evalEvidence, evalFacts)
 
 	// ── servable ──
 	// Anchor health + the full three-way watermark check both live in
@@ -278,7 +341,7 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	}
 	add(LevelServable, "store conforms (store.MountReadOnly, L0)", ss.conforms, ss.conformsEvid)
 	add(LevelServable, "zero broken anchors", zeroBrokenAnchors, anchorsEvidence)
-	add(LevelServable, "watermark fresh: manifest == store's recorded compile == current corpus", watermarkFresh, watermarkEvidence)
+	addFacts(LevelServable, "watermark fresh: manifest == store's recorded compile == current corpus", watermarkFresh, watermarkEvidence, map[string]string{"manifest_watermark": m.Watermark})
 
 	// ── published ──
 	licenseReal := m.License != "" && m.License != "unspecified"
@@ -286,10 +349,11 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	if !licenseReal {
 		licenseEvidence = "license is the honest default \"unspecified\" — a published module must name a real license"
 	}
-	add(LevelPublished, "license is a real, non-default value", licenseReal, licenseEvidence)
+	addFacts(LevelPublished, "license is a real, non-default value", licenseReal, licenseEvidence, map[string]string{"license": m.License})
 
 	provenanceComplete := m.Provenance.CompiledBy != "" && m.Provenance.CompiledAt != ""
-	add(LevelPublished, "provenance complete", provenanceComplete, fmt.Sprintf("compiled_by=%q compiled_at=%q", m.Provenance.CompiledBy, m.Provenance.CompiledAt))
+	addFacts(LevelPublished, "provenance complete", provenanceComplete, fmt.Sprintf("compiled_by=%q compiled_at=%q", m.Provenance.CompiledBy, m.Provenance.CompiledAt),
+		map[string]string{"compiled_by": m.Provenance.CompiledBy, "compiled_at": m.Provenance.CompiledAt})
 
 	// Finding 2: the store's OWN claims — never what the manifest merely
 	// claims about itself — decide whether this was a real compile. A
@@ -299,10 +363,12 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 	// a real compile stamps something else).
 	laneOK := false
 	laneEvidence := "no --store given"
+	var laneFacts map[string]string
 	if ss.claimsErr != nil {
 		laneEvidence = ss.claimsErr.Error()
 	} else {
 		lane := classifyCompileLane(ss.claims)
+		laneFacts = map[string]string{"lane": lane.Lane, "model": lane.Model}
 		switch lane.Lane {
 		case "none":
 			laneEvidence = "no claims compiled yet"
@@ -320,7 +386,7 @@ func runDoctor(manifestPath, root, storePath, service, packDir string) DoctorRep
 			}
 		}
 	}
-	add(LevelPublished, "compile lane is real (not mock/dev) and matches provenance.compiled_by", laneOK, laneEvidence)
+	addFacts(LevelPublished, "compile lane is real (not mock/dev) and matches provenance.compiled_by", laneOK, laneEvidence, laneFacts)
 
 	// Finding 1 (the published-level half): the eval evidence itself must
 	// also be a REAL run, not the scripted/mock lane — eval-passed above

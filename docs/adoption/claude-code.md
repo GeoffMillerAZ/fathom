@@ -300,10 +300,25 @@ report; see §13 before assuming anything is actually broken.
 
 ## 7. The hook stack
 
-`fathom init` (§3) wires all three of these for you, idempotently. This
-section is both the manual recipe and the reference for what gets written,
-pulled verbatim from `cmd/fathom/init.go`'s hook specs and this repo's own
+`fathom init` (§3) wires all of these for you, idempotently. This section is
+both the manual recipe and the reference for what gets written, pulled
+verbatim from `cmd/fathom/init.go`'s hook specs and this repo's own
 `lefthook.yml`.
+
+**User-scope dedup.** Before writing any hook at PROJECT scope
+(`.claude/settings.json`), `init` first reads Claude Code's USER scope
+(`~/.claude/settings.json` — the same file, and only that file, `fathom
+doctor`'s `hooks_installed` check reads) and skips any fathom hook already
+wired there, printing an explicit `skip … — already wired at user scope`
+line per skip. This matters if you (or an earlier `fathom init` run in
+another repo) already wired these hooks globally: Claude Code applies BOTH
+scopes, so writing an identical project-scope entry on top of an existing
+user-scope one would make that hook fire twice per event. A hook wired at
+user scope under a *different* command (not fathom's) doesn't count as
+wired — fathom's own still installs alongside it. Re-running `init` after a
+skip is a no-op for that hook (it stays skipped, not later re-added) unless
+the user-scope wiring is removed, in which case the next `init` run installs
+it at project scope as normal.
 
 ### 7.1 SessionStart — `session-hook`
 

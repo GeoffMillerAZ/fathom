@@ -374,7 +374,13 @@ var fathomHookSpecs = []hookSpec{
 }
 
 // wireHooks JSON-merges the fathom hook entries into <root>/.claude/settings.json,
-// creating the file if absent.
+// creating the file if absent. Any fathom hook already wired at Claude
+// Code's USER scope (~/.claude/settings.json — the same scope doctor's
+// checkHooksInstalled reads) is skipped here rather than duplicated at
+// project scope: Claude Code applies both scopes, so writing the same hook
+// to both would make it fire twice (the bug this guards against — a
+// project `fathom init` duplicating a global wiring the user already has).
+// Every skip is printed explicitly, never silent.
 func wireHooks(root, binPath string, stdout io.Writer) error {
 	dir := filepath.Join(root, ".claude")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -388,12 +394,20 @@ func wireHooks(root, binPath string, stdout io.Writer) error {
 		return err
 	}
 
-	merged, changed, err := mergeHookSettings(existing, binPath)
+	merged, changed, skipped, err := mergeHookSettings(existing, binPath)
 	if err != nil {
 		return err
 	}
+	for _, label := range skipped {
+		fmt.Fprintf(stdout, "skip %s — already wired at user scope (~/.claude/settings.json); not duplicating at project scope\n", label)
+	}
 
 	switch {
+	case !existed && !changed:
+		// Nothing left to write: project settings.json never existed and
+		// every fathom hook is already covered at user scope — creating an
+		// empty file would be pure noise.
+		fmt.Fprintln(stdout, "ok .claude/settings.json (not created — every fathom hook already wired at user scope)")
 	case !existed:
 		if err := os.WriteFile(p, merged, 0o644); err != nil {
 			return err
@@ -410,17 +424,52 @@ func wireHooks(root, binPath string, stdout io.Writer) error {
 	return nil
 }
 
+// userScopeHookKeys reads Claude Code's USER-scope settings
+// (~/.claude/settings.json — doctor's checkHooksInstalled checks this same
+// file and no other user-scope variant, so init mirrors that scope list
+// exactly) and returns the (event, matcher) keys of every fathomHookSpecs
+// entry already wired there. ok is false when the file is absent or
+// unreadable/unparsable — normal, not a finding; the caller then wires
+// everything at project scope exactly as before this function existed.
+func userScopeHookKeys() (map[hookSpecKey]bool, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return nil, false
+	}
+	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil {
+		return nil, false
+	}
+	var parsed map[string]any
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		return nil, false
+	}
+	hooksObj, _ := parsed["hooks"].(map[string]any)
+	out := map[hookSpecKey]bool{}
+	for _, spec := range fathomHookSpecs {
+		if hookMarkerPresent(hooksObj, spec) {
+			out[hookSpecKeyOf(spec)] = true
+		}
+	}
+	return out, true
+}
+
 // mergeHookSettings JSON-merges the fathom SessionStart/PostToolUse/Stop hook
 // entries into an existing (possibly empty/absent) Claude Code project
 // settings.json, preserving every unrelated top-level key, hook event, and
 // hook entry. Detection is by command substring ("fathom session-hook"
 // etc.), so re-running never duplicates an entry regardless of the exact
-// binary path baked in. changed reports whether anything was actually added.
-func mergeHookSettings(existing []byte, binPath string) ([]byte, bool, error) {
+// binary path baked in. changed reports whether anything was actually
+// added; skipped names (via specLabel) every spec that was NOT written
+// because it is already wired at user scope (userScopeHookKeys) — a spec
+// wired there under a DIFFERENT command (someone else's hook on the same
+// event/matcher) does not count as wired and still installs fathom's own,
+// since hookMarkerPresent only matches fathom's own marker substring.
+func mergeHookSettings(existing []byte, binPath string) (out []byte, changed bool, skipped []string, err error) {
 	root := map[string]any{}
 	if len(bytes.TrimSpace(existing)) > 0 {
 		if err := json.Unmarshal(existing, &root); err != nil {
-			return nil, false, fmt.Errorf("parsing existing settings.json: %w", err)
+			return nil, false, nil, fmt.Errorf("parsing existing settings.json: %w", err)
 		}
 	}
 
@@ -429,8 +478,12 @@ func mergeHookSettings(existing []byte, binPath string) ([]byte, bool, error) {
 		hooksObj = map[string]any{}
 	}
 
-	changed := false
+	userWired, userReadable := userScopeHookKeys()
 	for _, spec := range fathomHookSpecs {
+		if userReadable && userWired[hookSpecKeyOf(spec)] {
+			skipped = append(skipped, specLabel(spec))
+			continue
+		}
 		command := binPath + " " + spec.sub
 		if ensureHookEntry(hooksObj, spec, command) {
 			changed = true
@@ -438,12 +491,12 @@ func mergeHookSettings(existing []byte, binPath string) ([]byte, bool, error) {
 	}
 	root["hooks"] = hooksObj
 
-	out, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
-		return nil, false, fmt.Errorf("marshaling settings.json: %w", err)
+	marshaled, merr := json.MarshalIndent(root, "", "  ")
+	if merr != nil {
+		return nil, false, nil, fmt.Errorf("marshaling settings.json: %w", merr)
 	}
-	out = append(out, '\n')
-	return out, changed, nil
+	marshaled = append(marshaled, '\n')
+	return marshaled, changed, skipped, nil
 }
 
 // ensureHookEntry adds spec's hook command to hooksObj[spec.event] if no

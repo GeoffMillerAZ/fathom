@@ -147,7 +147,7 @@ func writeAllPassFixture(t *testing.T, root, svc string) string {
 		t.Fatal(err)
 	}
 
-	merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+	merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,7 +499,7 @@ func TestCheckHooksInstalled(t *testing.T) {
 
 	t.Run("fully wired project settings.json passes", func(t *testing.T) {
 		dir := t.TempDir()
-		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -521,7 +521,7 @@ func TestCheckHooksInstalled(t *testing.T) {
 	t.Run("user-scope wiring passes with a scope note — never a project-scope FAIL", func(t *testing.T) {
 		home := t.TempDir()
 		t.Setenv("HOME", home)
-		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -542,7 +542,7 @@ func TestCheckHooksInstalled(t *testing.T) {
 
 	t.Run("project-local settings.local.json wiring passes", func(t *testing.T) {
 		dir := t.TempDir()
-		merged, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -573,25 +573,159 @@ func TestCheckHooksInstalled(t *testing.T) {
 		}
 	})
 
-	t.Run("no visible wiring but live edit-hook traffic names the contradiction, not the duplicate-installing remedy", func(t *testing.T) {
+	// Regression for the live dogfood bug (2026-07): only the two phase-O
+	// PreToolUse "edit-hook --pre" groups were genuinely missing; the
+	// PostToolUse edit-hook was wired and firing (4596 logged calls). The
+	// old check used that POST traffic (origin "edit-hook" in the call
+	// log) as "evidence" for the MISSING pre-hooks too, because pre and
+	// post share the same call-log origin — and told the operator not to
+	// run `fathom init`, when running it was exactly the fix. The call log
+	// alone can never distinguish pre from post; only the beat log's phase
+	// meta can (see hookVariantSeenEvidence).
+	t.Run("post-channel call-log traffic is never mistaken for --pre evidence", func(t *testing.T) {
 		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		// The pre-phase-O three are wired; both PreToolUse guard groups are
+		// genuinely absent.
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(merged, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		hooksObj := parsed["hooks"].(map[string]any)
+		delete(hooksObj, "PreToolUse")
+		partial, err := json.Marshal(parsed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".claude", "settings.json"), partial, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		// Heavy POST-channel call-log traffic — exactly what the live repro
+		// showed (thousands of obligations calls with origin "edit-hook").
 		logDir := filepath.Join(dir, "workspace", "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
 		}
 		line := `{"ts":"2026-01-01T00:00:00Z","tool":"obligations","origin":"edit-hook","latency_ms":1}` + "\n"
-		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(line), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(strings.Repeat(line, 10)), 0o644); err != nil {
 			t.Fatal(err)
 		}
+
+		got := checkHooksInstalled(dir, "claude")
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail (the two --pre groups are genuinely missing)", got.Status)
+		}
+		if strings.Contains(got.Reason, "DUPLICATES") {
+			t.Errorf("post-channel traffic must never be read as evidence for the missing --pre hooks: %s", got.Reason)
+		}
+		if !strings.Contains(got.Remedy, "fathom init") {
+			t.Errorf("genuinely-missing --pre hooks must carry the init remedy, not a duplicate-avoidance warning: %s", got.Remedy)
+		}
+		if strings.Contains(got.Remedy, "do not run") {
+			t.Errorf("must not tell the operator not to run init when the missing hooks have zero firing evidence: %s", got.Remedy)
+		}
+	})
+
+	// The mirror case: the beat log DOES carry phase=pre evidence for the
+	// missing --pre hooks (wired at a scope doctor cannot read, e.g.
+	// managed settings) — this must still block the duplicate-installing
+	// remedy, exactly as before, just sourced from the beat log now.
+	t.Run("beat-log pre-phase evidence still blocks the duplicate-installing remedy", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(merged, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		hooksObj := parsed["hooks"].(map[string]any)
+		delete(hooksObj, "PreToolUse")
+		partial, err := json.Marshal(parsed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".claude", "settings.json"), partial, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		beatsPath := filepath.Join(t.TempDir(), "hooks.jsonl")
+		t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
+		beat := `{"channel":"edit-hook","kind":"seen","at":"2026-01-01T00:00:00Z","meta":{"phase":"pre","target":"file"}}` + "\n" +
+			`{"channel":"edit-hook","kind":"seen","at":"2026-01-01T00:00:01Z","meta":{"phase":"pre","target":"command"}}` + "\n"
+		if err := os.WriteFile(beatsPath, []byte(beat), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
 		got := checkHooksInstalled(dir, "claude")
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
 		if !strings.Contains(got.Reason, "DUPLICATES") {
-			t.Errorf("contradiction case must warn about duplicate installation: %s", got.Reason)
+			t.Errorf("beat-log evidence for BOTH --pre groups should read as a pure contradiction case: %s", got.Reason)
 		}
 		if strings.Contains(got.Remedy, "fathom init") && !strings.Contains(got.Remedy, "do not run") {
 			t.Errorf("contradiction case must not prescribe the duplicate-installing remedy: %s", got.Remedy)
+		}
+	})
+
+	// Only ONE of the two PreToolUse matcher groups has beat-log evidence —
+	// the fix for defect (b): the two groups must be tracked and reported
+	// independently, never conflated into a single "edit-hook --pre" verdict.
+	t.Run("the two PreToolUse matcher groups are evidenced independently", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(dir, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var parsed map[string]any
+		if err := json.Unmarshal(merged, &parsed); err != nil {
+			t.Fatal(err)
+		}
+		hooksObj := parsed["hooks"].(map[string]any)
+		delete(hooksObj, "PreToolUse")
+		partial, err := json.Marshal(parsed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, ".claude", "settings.json"), partial, 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		beatsPath := filepath.Join(t.TempDir(), "hooks.jsonl")
+		t.Setenv("FATHOM_HOOKS_LOG", beatsPath)
+		// ONLY the file-target (Edit|Write|MultiEdit) group has evidence;
+		// the command-target (Bash) group has none.
+		beat := `{"channel":"edit-hook","kind":"seen","at":"2026-01-01T00:00:00Z","meta":{"phase":"pre","target":"file"}}` + "\n"
+		if err := os.WriteFile(beatsPath, []byte(beat), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		got := checkHooksInstalled(dir, "claude")
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail", got.Status)
+		}
+		// Mixed case: one group evidenced (do-not-duplicate), the other
+		// genuinely missing (init is safe/correct for it).
+		if !strings.Contains(got.Reason, "matcher Bash") || !strings.Contains(got.Reason, "matcher Edit|Write|MultiEdit") {
+			t.Errorf("reason must name BOTH matcher groups distinctly, not conflate them: %s", got.Reason)
+		}
+		if !strings.Contains(got.Remedy, "fathom init") {
+			t.Errorf("mixed case must still offer the init remedy for the genuinely-missing group: %s", got.Remedy)
 		}
 	})
 }
