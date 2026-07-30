@@ -515,6 +515,12 @@ before it runs — inject-only, never blocking (blocking is §7.4's job).
         "hooks": [
           { "type": "command", "command": "/abs/path/bin/fathom edit-hook --pre", "timeout": 5 }
         ]
+      },
+      {
+        "matcher": "Grep|Glob|Read",
+        "hooks": [
+          { "type": "command", "command": "/abs/path/bin/fathom edit-hook --pre", "timeout": 5 }
+        ]
       }
     ]
   }
@@ -526,6 +532,32 @@ to a one-line "already served pre-edit" marker rather than repeating the
 rules — a short-lived local stamp (never a repo file, never committed)
 tracks what the pre-hook already showed, scoped to the session when the
 hook JSON carries `session_id`.
+
+### 7.6 The discovery observer (phase P, production tokenomics) and the kill switch
+
+The THIRD `PreToolUse` matcher group above (`Grep|Glob|Read`) is the SAME
+`edit-hook --pre` binary again, routed to a **counting-only** path
+(`discovery.go`) when Claude Code calls `Grep`, `Glob`, or `Read` —
+docs/design/production-tokenomics.md §4's discovery-share denominator. It
+injects nothing, never blocks, and makes **zero daemon calls** — it emits
+one local beat per call with a coarse kind (`grep`/`glob`/`read`) and
+returns instantly. `Bash` invocations get the same treatment alongside the
+existing command-guard check: a command whose first token is
+`grep`/`rg`/`find`/`ag`/`ack` emits a `shell-search` beat. `read` is
+always its own bucket, never folded into `grep` (reading a file you
+already located is dual-use, not necessarily discovery) —
+`fathom research report`'s "discovery share" section reports the result,
+labeled correlational.
+
+**`FATHOM_CHANNELS=off`** is the kill switch for all of this at once:
+session brief, both edit-hook phases (including the discovery observer
+above), and the Stop hook all exit in total silence the instant this env
+var is set to exactly `off`. It exists for the pre-registered A/B protocol
+(`docs/plans/expert-suite-p.md` §5's OFF arm) and for debugging a hook
+without noise. It is never silent about itself: `fathom doctor`'s
+`channels_env` check reports a loud `warn` whenever it finds hooks
+disabled by environment — a silent kill switch would repeat the exact O15
+failure class this program has already been burned by once.
 
 ---
 

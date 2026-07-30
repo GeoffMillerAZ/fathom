@@ -92,11 +92,18 @@ number or a named reason it can't be computed — read both kinds:
   verify gate caught something this week, that's a fact you can put in a
   PR description or a standup update with a committed artifact behind it.
 - **A `"not measurable: <reason>"` line is not a bug to work around** — it
-  names a genuine gap in what fathom can see about itself today (e.g.
-  fathom's call log has zero visibility into your own Bash/Read/Grep calls
-  in the same session, so "fathom-share of discovery actions" is
-  structurally unmeasurable, not just unmeasured). Don't paper over it with
-  a claim the report itself refuses to make.
+  names a genuine gap in what fathom can see about itself today. Don't
+  paper over it with a claim the report itself refuses to make.
+- **"discovery_share_percent" is real but CORRELATIONAL, never causal.**
+  Phase P's counting-only PreToolUse observer gives fathom-vs-grep/glob/
+  read/shell-search a real denominator for the first time
+  (`docs/design/production-tokenomics.md` §4) — but a rising share is not
+  proof fathom is being *chosen over* the alternative until the
+  pre-registered A/B protocol (design §5) actually runs. Say "correlated
+  with," never "caused," until then.
+- **"what fathom SPENT" is a cost figure, never a savings figure** (law
+  12). Cite the per-channel token *estimate* if you want, but never phrase
+  it as money or tokens saved — that claim needs the same A/B.
 - **No context-bench artifact found is a real, common, honest state** — it
   means a tokenomics claim ("fathom saves N% tokens") isn't backed by *this
   repo's own evidence* yet, even if it's true elsewhere. Say so if you're

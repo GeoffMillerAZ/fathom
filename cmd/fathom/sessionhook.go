@@ -28,7 +28,10 @@ import (
 // It prints the SessionStart hook JSON to stdout and always exits 0 (a context
 // hook must never block session start). HTTP calls use a short timeout so a slow
 // or down daemon can't stall startup.
-func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
+func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	if fathomChannelsDisabled() {
+		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
+	}
 	rpcOrigin = "session-hook"
 	emitBeat("session-hook", "fired", nil)
 	fs := newFlagSet("session-hook", stderr)
@@ -36,6 +39,22 @@ func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
 	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+
+	// session_id (docs/design/production-tokenomics.md §6): read
+	// best-effort from the SessionStart hook JSON — the same envelope
+	// shape edit-hook/stop-hook already read. Absent/unreadable/malformed
+	// stdin degrades to sessionID="" (no session-scoped tagging), never a
+	// failure of the session brief itself.
+	var sessionID string
+	if stdin != nil {
+		raw, _ := io.ReadAll(io.LimitReader(stdin, 1<<16))
+		var hook struct {
+			SessionID string `json:"session_id"`
+		}
+		if json.Unmarshal(raw, &hook) == nil {
+			sessionID = hook.SessionID
+		}
 	}
 
 	projDir := *dir
@@ -47,6 +66,7 @@ func cmdSessionHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	ctx := buildSessionContext(*url, projDir)
+	emitPayloadCost("session-brief", ctx, 0, "", sessionID)
 
 	_ = json.NewEncoder(stdout).Encode(map[string]any{
 		"hookSpecificOutput": map[string]any{

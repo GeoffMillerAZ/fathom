@@ -22,6 +22,21 @@ func beatLogPath() string {
 	return filepath.Join(home, ".fathom", "hooks.jsonl")
 }
 
+// beatLogRotateBytes bounds the beat log's on-disk size — critic finding
+// F7 (phase-P fix round): phase P's own discovery observer adds a
+// highest-tool-call-frequency beat source (one per Grep/Glob/Read/
+// shell-search) with no offsetting rotation, so the pre-existing
+// unbounded-growth log now grows materially faster than before this
+// phase. rotateBeatLogIfNeeded keeps ONE prior generation
+// (hooks.jsonl.1) as a bounded backstop — not a full multi-generation
+// archive — so worst-case on-disk cost is ~2x this cap, never unbounded.
+// Trade-off, stated honestly: a report or session-ledger read that spans
+// beats older than one rotation back will not see them; this is a real
+// cost of bounding growth at all, not something rotation avoids for free.
+// A package var (not a const) so tests can shrink it rather than writing
+// a real 64MB fixture file.
+var beatLogRotateBytes int64 = 64 << 20
+
 // emitBeat appends one channel beat to the hooks beat log. It is the
 // activity/effect denominator for forced channels (docs/vision/04 Gap 1).
 // ALL failures are swallowed: hooks never block, and instrumentation must
@@ -34,6 +49,7 @@ func emitBeat(channel, kind string, meta map[string]string) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
 	}
+	rotateBeatLogIfNeeded(path)
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return
@@ -44,4 +60,17 @@ func emitBeat(channel, kind string, meta map[string]string) {
 		return
 	}
 	_ = l.Beat(channel, kind, meta)
+}
+
+// rotateBeatLogIfNeeded renames path to path+".1" (overwriting any prior
+// backup) when it exceeds beatLogRotateBytes, so the NEXT append starts a
+// fresh file. Best-effort: any failure (including "no file yet," the
+// overwhelmingly common case) is silent, exactly like every other beat-log
+// operation.
+func rotateBeatLogIfNeeded(path string) {
+	fi, err := os.Stat(path)
+	if err != nil || fi.Size() < beatLogRotateBytes {
+		return
+	}
+	_ = os.Rename(path, path+".1")
 }

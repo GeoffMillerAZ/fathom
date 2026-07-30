@@ -285,6 +285,99 @@ fathom smoke --profile ci                     # confirm ci actually completes, s
 fathom compile --service myrepo --profile gov-bedrock --dry-run=false
 ```
 
+## Scoped config: `~/.fathom/ignore` and `~/.fathom/guard.cue`
+
+A second, separate `~/.fathom/` config surface — unrelated to LLM
+provider profiles above — governs what fathom indexes and what an agent
+sees before an edit. Design source: `docs/design/scoped-config.md`
+(law 13: "user scope may add defaults; only project scope may govern").
+
+### `~/.fathom/ignore` — additive-only, machine-wide excludes
+
+Every repo's own `.fathomignore` (project scope) is UNIONed with
+`~/.fathom/ignore` (user scope) when fathom resolves what to index —
+`internal/connector.LoadIgnoreScoped` is the merge point, consulted by
+both `Discover` (ingest) and every corpus-reading MCP tool (`read_source`).
+This exists so machine-wide junk (`.DS_Store`, `*.wasm`, editor state) is
+written once per machine, not re-derived by hand in every repo's own
+`.fathomignore`.
+
+**Additive only — this is the one rule that makes it safe.** A user-scope
+pattern may only ever *exclude*; a gitignore-style re-include
+(`!pattern`) at user scope is refused **loudly**:
+
+```
+connector: /Users/you/.fathom/ignore:2: "!keep-this.log" is a re-include
+pattern (leading '!') — user-scope ignore files may only ADD exclusions,
+never re-include (docs/design/scoped-config.md law 13); remove this line
+or move it to the project's own .fathomignore
+```
+
+`Discover` (and therefore `fathom ingest`/`fathom module sources`) refuses
+outright on a violating file — ingest simply does not proceed until it's
+fixed. The read-time convenience `connector.LoadIgnore` (used by
+`read_source`) degrades gracefully instead — a violating user-scope file
+is dropped entirely (project-scope-only fallback) rather than breaking a
+hot serving path; `fathom doctor`'s `user_scope_ignore` check is the loud
+surface for that condition outside of ingest, and also warns when a
+user-scope pattern (not a project one) is specifically what's hiding an
+otherwise-indexable file — the "why can't fathom see my code" failure
+mode, pre-empted.
+
+Where both scopes exclude/re-include the same path, **project always
+wins** (patterns are unioned user-then-project; the matcher is
+last-match-wins) — a project's own `!pattern` can always override a
+user-scope default.
+
+Seed it with the machine-junk defaults (`.DS_Store`, `*.wasm`,
+`.playwright-mcp/`, editor/tool state) via `fathom init`'s opt-in flag —
+never written silently:
+
+```sh
+fathom init --seed-user-ignore   # prints exactly what it writes; write-if-absent
+```
+
+Disclosure: `fathom ingest` and `fathom module sources` print
+`excluded: N pattern(s) (P project, U user-scope ~/.fathom/ignore)`
+whenever either scope contributes a pattern.
+
+### `~/.fathom/guard.cue` — notes and commands only, never governance
+
+`~/.fathom/guard.cue` is the SAME `#Guards` CUE shape a project's own
+`.fathom/guard.cue` uses (`docs/design/guarded-edits.md`), but loaded by a
+separate, restricted reader — `guardspec.LoadUserGuards` — that permits
+**only** `note` and `command_scopes`. Any governance field
+(`scopes`, `max_rules`, `include_modules`, and — checked defensively even
+though no such `#Guard` field exists today — `min_tier`) present on a
+user-scope guard is a **strict validation error** naming the field:
+
+```cue
+guards: [
+	{
+		note: "confirm before an apply — this is MY danger list, not the repo's"
+		command_scopes: ["terraform apply*", "kubectl apply*"]
+	},
+]
+```
+
+A user-scope guard can therefore only ever be a **command** guard
+(`scopes` — file globs — is forbidden), matching the design's framing:
+"the operator's own danger list," never a repo-governance surface. It is
+consulted by the PreToolUse guard hook (`edit-hook --pre`) only when NO
+project guard already matched the same command — project scope always
+wins. Every rendered user-scope note is tagged `[user]` at load time
+(`guardspec.LoadUserGuards` prefixes it), so the injected text is visibly
+distinguishable from a project-authored rule. `fathom doctor`'s
+`user_scope_guard` check names the file and is loud on a governance-field
+violation.
+
+`~/.fathom/modules.cue` (platform-module bindings) has **no** user-scope
+variant, by design — binding is the trust boundary ("no org rule reaches
+a repo that did not bind it"); a global binding would be the exact
+inversion of that. It stays project-scope-only, always.
+
+---
+
 ## Migrating the store from DuckDB to SQLite (historical — ADR-020/ADR-025)
 
 **This runbook is historical.** The fleet migrated on 2026-07-23

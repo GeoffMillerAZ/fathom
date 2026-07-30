@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -85,6 +86,14 @@ func (a *autoRefreshBackend) ensure(ctx context.Context, service string) {
 	if err := a.QueryInterface.IngestService(ctx, service); err != nil && a.log != nil {
 		fmt.Fprintf(a.log, "auto-refresh: %s ingest failed: %v\n", service, err)
 	}
+	// Critic finding F2 (BLOCKING, phase-P fix round): bust the CLI's
+	// service-identity cache (cmd/fathom/identcache.go) on every
+	// auto-refresh re-ingest too — a git-HEAD-drift re-ingest changes the
+	// same answer a stale cache entry could otherwise keep serving for
+	// up to the cache's TTL. Best-effort regardless of whether the
+	// ingest above succeeded or failed (a failed ingest may still have
+	// changed on-disk state worth invalidating against).
+	hookcache.BustIdent()
 }
 
 func shortSHA(s string) string {

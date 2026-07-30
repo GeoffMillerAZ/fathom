@@ -27,12 +27,20 @@ import (
 
 // cmdEditHookPre implements the --pre branch of cmdEditHook. toolName
 // selects file-guard matching (Edit/Write/MultiEdit — anything that isn't
-// literally "Bash") vs command-guard matching (Bash, design §2.5).
+// literally "Bash", "Grep", "Glob", or "Read") vs command-guard matching
+// (Bash, design §2.5) vs the counting-only discovery observer (Grep/Glob/
+// Read, and Bash argv starting with a search binary —
+// docs/design/production-tokenomics.md §4, instrument B).
 func cmdEditHookPre(toolName, filePath, command, cwd, sessionID, url string, stdout io.Writer) int {
-	if toolName == "Bash" {
-		return cmdEditHookPreCommand(command, cwd, url, stdout)
+	switch toolName {
+	case "Bash":
+		emitDiscoveryBeatIfShellSearch(command, sessionID)
+		return cmdEditHookPreCommand(command, cwd, sessionID, url, stdout)
+	case "Grep", "Glob", "Read":
+		return cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID)
+	default:
+		return cmdEditHookPreFile(filePath, cwd, sessionID, url, stdout)
 	}
-	return cmdEditHookPreFile(filePath, cwd, sessionID, url, stdout)
 }
 
 // ─── file guards (Edit/Write/MultiEdit) ──────────────────────────────────
@@ -174,13 +182,14 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "file"})
 		return 0 // guard matched but had nothing to say (no note, no rules, not stale)
 	}
+	emitPayloadCost("pre-edit-guard", sb.String(), len(displayed), "pre", sessionID)
 
 	// Stamp what was ACTUALLY displayed — a rule hidden by
 	// include_modules:false must remain visible to the post-hook, not be
 	// silently suppressed forever (design §2.3's dedup is "already shown
 	// to the agent," never "already computed by the daemon").
 	writeGuardStamp(sessionID, svcName, repoRelFile, ruleKeysOf(displayed), indexStale, time.Now())
-	reportModuleBeats(displayed, "pre")
+	reportModuleBeats(displayed, "pre", sessionID)
 
 	out, _ := json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -195,7 +204,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 
 // ─── command guards (Bash, design §2.5) ──────────────────────────────────
 
-func cmdEditHookPreCommand(command, cwd, url string, stdout io.Writer) int {
+func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer) int {
 	if command == "" {
 		return 0
 	}
@@ -214,6 +223,20 @@ func cmdEditHookPreCommand(command, cwd, url string, stdout io.Writer) int {
 			break
 		}
 	}
+	// Scoped config (docs/design/scoped-config.md deliverable 2): a
+	// user-scope guard (~/.fathom/guard.cue, note+command_scopes only) is
+	// consulted when no PROJECT guard matched — project scope always wins
+	// on conflict (law 13), so the user-scope operator's own danger list
+	// only ever ADDS coverage, never overrides a project's own command
+	// guard for the same pattern. Its Note already carries the "[user] "
+	// tag (guardspec.LoadUserGuards) — no separate rendering branch needed.
+	if !matched {
+		if ugs, uok := loadUserGuardSet(); uok {
+			if g, gmatched := matchingCommandGuard(ugs, command); gmatched {
+				note, matched = g.Note, true
+			}
+		}
+	}
 	if !matched || note == "" {
 		// Command guards serve only their note (design decision: there is
 		// no per-file obligations lookup for a command — no daemon call at
@@ -223,6 +246,7 @@ func cmdEditHookPreCommand(command, cwd, url string, stdout io.Writer) int {
 	}
 
 	sb := fmt.Sprintf("⚖️ fathom guard — command: %s", note)
+	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID)
 	out, _ := json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     "PreToolUse",

@@ -48,12 +48,20 @@ func NewLocalConnector() *LocalConnector { return &LocalConnector{} }
 // at svc.Path, its patterns are applied to paths relative to svc.Path
 // (matched dirs are pruned from the walk; matched files are dropped).
 func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]core.SourceRef, error) {
-	ignore := loadIgnoreFile(svc.Path)
+	// Scoped config (docs/design/scoped-config.md deliverable 1): union the
+	// project's .fathomignore with the user-scope ~/.fathom/ignore. This is
+	// the enforcement point for law 13's additive-only rule — a violating
+	// user-scope re-include ("!pattern") fails Discover outright (loud, per
+	// the design's own requirement), never silently dropped or applied.
+	ignore, _, err := LoadIgnoreScoped(svc.Path)
+	if err != nil {
+		return nil, err
+	}
 	c.roots.Store(svc.ID, svc.Path)
 
 	var refs []core.SourceRef
 
-	err := filepath.WalkDir(svc.Path, func(path string, d fs.DirEntry, err error) error {
+	err = filepath.WalkDir(svc.Path, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -137,9 +145,25 @@ func loadIgnoreFile(root string) *filter.Matcher {
 	return filter.New(strings.Split(string(data), "\n"))
 }
 
-// LoadIgnore compiles root/.fathomignore into the exact Matcher Discover
-// applies during ingest (nil when the file is missing or unreadable — no
-// extra ignores). Exported so corpus-reading consumers (internal/mcp's
-// read_source) can honor the same repo-specific exclusions the index was
-// built with, instead of re-implementing the load and drifting.
-func LoadIgnore(root string) *filter.Matcher { return loadIgnoreFile(root) }
+// LoadIgnore compiles root/.fathomignore UNIONED with the user-scope
+// ~/.fathom/ignore (docs/design/scoped-config.md deliverable 1) into the
+// same Matcher Discover applies during ingest (nil when neither
+// contributes a pattern). Exported so corpus-reading consumers
+// (internal/mcp's read_source) honor the same repo-specific exclusions the
+// index was built with, instead of re-implementing the load and drifting.
+//
+// Unlike Discover (which REFUSES a violating user-scope re-include
+// outright, blocking ingest until fixed — the loud enforcement point),
+// this read-time convenience degrades gracefully on a violation: the
+// user-scope file is dropped entirely, falling back to project-scope
+// only, rather than erroring a hot serving path with no direct way to
+// surface a config-fix instruction mid-read. `fathom doctor`'s
+// user_scope_ignore check is the loud surface for that condition outside
+// of ingest.
+func LoadIgnore(root string) *filter.Matcher {
+	m, _, err := LoadIgnoreScoped(root)
+	if err != nil {
+		return loadIgnoreFile(root) // project-scope only — safe degrade, never wider than before
+	}
+	return m
+}

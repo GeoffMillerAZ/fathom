@@ -224,12 +224,20 @@ func TestBuildResearchReport_Golden(t *testing.T) {
 	for name, note := range map[string]string{
 		"ObligationsEvictedNote": r.ObligationsEvictedNote,
 		"ReAnchorNote":           r.ReAnchorNote,
-		"DiscoveryShareNote":     r.DiscoveryShareNote,
 		"ObservationsWindowNote": r.ObservationsWindowNote,
 	} {
 		if !strings.HasPrefix(note, "not measurable") && !strings.Contains(note, "not windowed") {
 			t.Errorf("%s = %q, want an honest not-measurable/not-windowed note", name, note)
 		}
+	}
+	// DiscoveryShareNote (instrument B, docs/design/production-tokenomics.md
+	// §4) is now REAL and measurable — its honesty discipline is
+	// "correlational, not causal," not "not measurable."
+	if r.DiscoveryShareNote == "" {
+		t.Error("DiscoveryShareNote must always be present")
+	}
+	if !strings.Contains(r.DiscoveryShareNote, "CORRELATIONAL") {
+		t.Errorf("DiscoveryShareNote = %q, want it to label the share correlational", r.DiscoveryShareNote)
 	}
 
 	if r.TotalObservations == nil || *r.TotalObservations != 2 {

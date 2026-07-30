@@ -51,6 +51,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/graph"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -1662,6 +1663,13 @@ func registerIngest(s *Server, backend QueryInterface) {
 		} else if err := backend.IngestService(ctx, svc); err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
 		}
+		// Critic finding F2 (BLOCKING, phase-P fix round): bust the
+		// CLI's service-identity cache (cmd/fathom/identcache.go) on
+		// every successful ingest via this MCP tool too — a hook
+		// re-resolving identity through a daemon this ingest just ran
+		// against must never see a cached pre-ingest answer for up to
+		// the cache's TTL (the O15 class).
+		hookcache.BustIdent()
 
 		result := map[string]any{"service": svc, "ok": true}
 		if hasStats {

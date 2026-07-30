@@ -43,6 +43,9 @@ const maxSpecIDsPerEdit = 3
 //   - No rules + index not stale → print nothing, exit 0.
 //   - Otherwise → print hookSpecificOutput JSON with compact obligations text.
 func cmdEditHook(args []string, stdout, stderr io.Writer) int {
+	if fathomChannelsDisabled() {
+		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
+	}
 	rpcOrigin = "edit-hook"
 	fs := newFlagSet("edit-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -163,6 +166,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
+	// Instrument B's edit-set exclusion (docs/design/production-
+	// tokenomics.md §4, editset.go): mark this file as just-edited by
+	// this session, regardless of whether there are obligations to
+	// render — a subsequent same-session Read of it is verification, not
+	// discovery, and must not inflate the discovery-share denominator.
+	markFileEdited(hook.SessionID, repoRelFile, time.Now())
+
 	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
 	// --pre hook already served rules for this exact (session, service,
 	// file) within guardStampTTL, render only the DELTA here — rules newly
@@ -229,7 +239,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		for _, n := range obl.ModuleNotes {
 			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
-		reportModuleBeats(renderRules, "post")
+		reportModuleBeats(renderRules, "post", hook.SessionID)
 	}
 
 	// OP-4 (spec-line injection, docs/vision/04 §4 item 3): when the edited
@@ -278,6 +288,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "post"})
 		return 0 // clean file (or unindexed project), no spec IDs → silent
 	}
+	emitPayloadCost("post-edit", sb.String(), len(renderRules), "post", hook.SessionID)
 
 	out, _ := json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -370,9 +381,11 @@ func fromObligationLike(delta []semanticObligationLike, full []semantic.Obligati
 // beat carries the module's rule count from THIS call in its "rules" meta
 // (research_report.go sums it), rather than one beat implicitly meaning
 // "one rule."
-func reportModuleBeats(rendered []semantic.Obligation, phase string) {
+func reportModuleBeats(rendered []semantic.Obligation, phase, sessionID string) {
 	counts := map[string]int{}
 	var order []string
+	var moduleSB strings.Builder
+	moduleRuleCount := 0
 	for _, r := range rendered {
 		if r.Module == "" {
 			continue
@@ -381,10 +394,19 @@ func reportModuleBeats(rendered []semantic.Obligation, phase string) {
 			order = append(order, r.Module)
 		}
 		counts[r.Module]++
+		// Instrument A (docs/design/production-tokenomics.md §3): the
+		// "module rules" payload-cost channel is the bytes specifically
+		// attributable to module-tagged bullets within whichever payload
+		// (pre or post) rendered them — re-rendering via the SAME
+		// writeRuleBullet the real payload used keeps this byte-identical
+		// to what was actually injected, never an approximation.
+		writeRuleBullet(&moduleSB, r)
+		moduleRuleCount++
 	}
 	for _, m := range order {
 		emitBeat("edit-hook", "module-served", map[string]string{"module": m, "phase": phase, "rules": strconv.Itoa(counts[m])})
 	}
+	emitPayloadCost("module-rules", moduleSB.String(), moduleRuleCount, phase, sessionID)
 }
 
 // relativeToRoot relativizes an absolute file path under a candidate root.

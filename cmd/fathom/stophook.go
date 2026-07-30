@@ -41,6 +41,9 @@ const stopHookVerifyTimeout = 5 * time.Second
 //   - Newly claimed tasks FAIL verification → advisory additionalContext by
 //     default; {"decision":"block"} with --block.
 func cmdStopHook(args []string, stdout, stderr io.Writer) int {
+	if fathomChannelsDisabled() {
+		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
+	}
 	rpcOrigin = "stop-hook"
 	fs := newFlagSet("stop-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -55,6 +58,8 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	var hook struct {
 		StopHookActive bool   `json:"stop_hook_active"`
 		CWD            string `json:"cwd"`
+		SessionID      string `json:"session_id"`
+		TranscriptPath string `json:"transcript_path"`
 	}
 	if err := json.Unmarshal(raw, &hook); err != nil {
 		return 0
@@ -69,8 +74,37 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	if projDir == "" {
 		projDir, _ = os.Getwd()
 	}
+
+	// Instrument D (docs/design/production-tokenomics.md §6): append one
+	// session-ledger line. Read-only w.r.t. everything else this hook
+	// does — appendSessionLedger swallows every failure internally,
+	// exactly like emitBeat, so a ledger problem can never affect the
+	// plan-verification flow below.
+	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now())
+
 	hc := &http.Client{Timeout: stopHookVerifyTimeout}
 	return runStopHook(projDir, hc, *url, *block, stdout)
+}
+
+// sessionLedgerBeatTailBytes bounds how much of the beat log
+// recordSessionLedgerEntry reads — critic finding F7 (phase-P fix round):
+// THIS session's beats (sumSessionBeats filters by session_id) are, by
+// definition, among the most recently written ones, so a full-file
+// heartbeat.Load on every session end is unbounded cost for a bounded
+// need. 4MB comfortably covers a very active session's own beats.
+const sessionLedgerBeatTailBytes = 4 << 20
+
+// recordSessionLedgerEntry resolves a local (daemon-free) repo label,
+// summarizes the session transcript (best-effort), sums this session's
+// instrument A/B beats, and appends the resulting row.
+func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now time.Time) {
+	repo := ""
+	if cands := serviceCandidates(projDir); len(cands) > 0 {
+		repo = strings.ToLower(cands[0].name)
+	}
+	ts := transcriptSummaryFrom(transcriptPath)
+	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
+	appendSessionLedger(buildSessionLedgerEntry(sessionID, repo, ts, beats, now))
 }
 
 // runStopHook is the testable core of cmdStopHook: everything after stdin

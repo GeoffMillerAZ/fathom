@@ -32,7 +32,7 @@ CI-adjacent script, not from an agent session's tool calls.
 
 | Command | Kind | What it gives you |
 |---|---|---|
-| `fathom research report` | CLI | A deterministic, honest aggregate of local evidence over a `--since` window: call-log traffic, injection coverage, verify-gate catches, staleness signal, observation counts, and bench-artifact token/turn deltas when one exists. Every metric it cannot compute prints `"not measurable: <reason>"` instead of a fabricated zero. |
+| `fathom research report` | CLI | A deterministic, honest aggregate of local evidence over a `--since` window: call-log traffic, injection coverage, verify-gate catches, staleness signal, observation counts, bench-artifact token/turn deltas, and (phase P, `docs/design/production-tokenomics.md`) a payload **cost** ledger ("what fathom SPENT"), a discovery-share estimate, and a service-identity cache hit rate. Every metric it cannot compute prints `"not measurable: <reason>"` instead of a fabricated zero. |
 | `fathom research bundle` | CLI | The sanitized, shareable twin: aggregate counts, rates, tool-name frequencies, and verdict distributions only — never file paths, repo/service names, symbol names, source code, or free text. Service identities appear only as salted hashes. `--dry-run` previews the exact bundle without writing or transmitting anything. |
 
 > Both commands are local-file-only: they read `workspace/logs/mcp-calls.jsonl`,
@@ -51,9 +51,13 @@ and eyeballing a bench artifact, if you remember one exists. `fathom
 research report` does the same aggregation once, deterministically, and adds
 signals `instrument --adoption` doesn't cover on its own — the hooks beat
 log (injection coverage, obligations served) and bench-artifact token/turn
-deltas — while being explicit about the one thing it structurally *can't*
-see: an agent's own grep/read tool calls happening alongside fathom's, which
-have no fathom-visible trace.
+deltas. Phase P (`docs/design/production-tokenomics.md`) closed the one gap
+this doc used to describe as structurally unmeasurable: a counting-only
+PreToolUse observer now DOES see an agent's own `Grep`/`Glob`/`Read` calls
+and grep-like `Bash` invocations (never their content, one coarse-kind beat
+per call), giving `discovery_share_percent` a real denominator for the
+first time. It is reported CORRELATIONAL, not causal — see "Production
+tokenomics" below.
 
 `fathom research bundle` turns "prove it's working" from a screenshot of
 raw logs (which might leak a repo name or a symptom's free text) into a
@@ -151,6 +155,48 @@ tool/surface/bench-arm name in it is checked against fathom's own
 bucket instead). You choose how (or whether) to send the two files in
 `workspace/artifacts/research/bundle/` onward — but never the parent
 directory.
+
+---
+
+## Production tokenomics (phase P)
+
+`docs/design/production-tokenomics.md` closed the gap between "fathom is
+firing" (the coverage numbers above) and "what did that actually cost, and
+is it being chosen over the alternative" — three new report sections, plus
+a per-session ledger and a kill switch for the one causal instrument that
+answers the second question.
+
+- **"what fathom SPENT"** — a **COST** ledger, never a savings ledger (law
+  12: no saving is claimed without a counterfactual). Every injected
+  payload (session brief, post-edit, pre-edit guard, module-tagged rules)
+  records its rendered bytes and an explicit token **estimate**
+  (`bytes/4`, always labeled "estimate" — never "measured"), summed
+  per-channel plus a per-edit p50/p95 in the report.
+- **Discovery share** — `fathom research report` now states, from real
+  local evidence, fathom's own index-tool calls against a counting-only
+  PreToolUse observer's `grep`/`glob`/`read`/`shell-search` beats. `read`
+  is always its own bucket (dual-use — reading a file you already located
+  isn't necessarily discovery) and the whole section is labeled
+  **correlational**: a rising share is not proof of substitution until the
+  pre-registered A/B protocol (design §5) runs.
+- **Service-identity cache hit rate** — a **latency/load** signal
+  (`identcache.go`), never a token figure; reported separately so it can
+  never be summed into a cost total by mistake.
+- **Session ledger** — the Stop hook now appends one line per session to
+  `~/.fathom/session-ledger.jsonl` (override: `$FATHOM_SESSION_LEDGER`):
+  session id, repo, duration/turn-count/token-totals **if the transcript
+  exposes them** (an honest `unavailable` note otherwise — never a
+  fabricated zero), plus that session's payload-cost and discovery-action
+  totals. `session_id` is the join key across all three instruments.
+- **`FATHOM_CHANNELS=off`** — one env var that silences every fathom hook
+  (session brief, both edit-hook phases, the discovery observer, the Stop
+  hook) completely: the OFF arm of the pre-registered A/B. `fathom doctor`
+  reports loudly (`channels_env`, `warn`) whenever it finds this set — a
+  silent kill switch would repeat the exact O15 failure class.
+
+None of this licenses a production savings claim on its own — that is
+what the pre-registered A/B protocol (design §5) exists to test, not this
+report.
 
 ---
 

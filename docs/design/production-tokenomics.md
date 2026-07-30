@@ -130,10 +130,39 @@ This is a latency and load win, not a token win — label it as such.
 
 ## 8. Non-goals
 
-No harness-internal transcript parsing (fragile, version-coupled); no
-per-token billing reconstruction; no claim that correlation is causation
-before §5 runs; no telemetry leaving the machine (the research-bundle
-allowlist governs anything shared, unchanged).
+No per-token billing reconstruction; no claim that correlation is
+causation before §5 runs; no telemetry leaving the machine (the
+research-bundle allowlist governs anything shared, unchanged).
+
+**Amended 2026-07-30 (phase-P critic round, narrowly — the same pattern
+`docs/design/scoped-config.md` used to amend `docs/design/guarded-edits.md`
+§3):** the original text here read "no harness-internal transcript parsing
+(fragile, version-coupled)." §6's session ledger needs harness-reported
+token totals to exist at all, and the only place Claude Code exposes them
+today is its own transcript JSONL — so the non-goal is narrowed, not
+dropped: transcript reads are permitted **only** for usage TOTALS (turn
+count, summed `message.usage.*` fields, first/last timestamp), **never**
+for message content, and only under three guards, all implemented:
+
+1. **The ledger discloses the coupling.** Every session-ledger entry with
+   at least one transcript-derived field carries
+   `transcript_schema_note`, stating plainly that the figures are
+   schema-coupled and may silently degrade.
+2. **Schema-defensive parsing.** A missing/renamed field yields
+   `unavailable` for that field alone — never a wrong number, never an
+   aborted read (`summarizeTranscriptBytes` skips any line it can't
+   parse as the expected shape and keeps going).
+3. **A doctor check that WARNS on silent degradation.** `fathom doctor`'s
+   `session_ledger_tokens` check reads recent ledger lines and warns when
+   N consecutive sessions all report `tokens: unavailable` — the schema
+   drifting out from under this instrument would otherwise die quietly,
+   which is the real risk a "fragile, version-coupled" parser poses to
+   the A/B protocol's own causal instrument (§5 depends on §6's token
+   totals existing).
+
+The read itself is also bounded and hardened (16MB cap, `O_NOFOLLOW`,
+regular-file-only) — see `cmd/fathom/sessionledger.go`'s
+`transcriptSummaryFrom`.
 
 ## 9. Deliverables (phase-P plan rows derive from here)
 

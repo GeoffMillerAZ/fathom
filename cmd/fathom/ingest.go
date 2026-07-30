@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -66,6 +68,11 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: ingest failed: %v\n", err)
 		return 1
 	}
+	// Critic finding F2 (BLOCKING, phase-P fix round): bust the
+	// service-identity cache (identcache.go) on every successful ingest
+	// — a stale cached identity must never outlive the ingest that
+	// changed the answer, regardless of TTL (the O15 class).
+	hookcache.BustIdent()
 
 	fmt.Fprintf(stdout, "service:    %s\n", *service)
 	fmt.Fprintf(stdout, "discovered: %d\n", report.Discovered)
@@ -91,6 +98,15 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "typed-edges: %d pkg(s) (%d failed), %d direct / %d iface-dispatch / %d unresolved\n",
 			report.TypedPackages, report.TypedPackagesFailed,
 			report.TypedEdgesDirect, report.TypedEdgesIfaceDispatch, report.TypedEdgesUnresolved)
+	}
+	// Scoped config (docs/design/scoped-config.md §4 disclosure): report the
+	// project/user pattern-count split that governed this ingest. Ingest has
+	// already succeeded above (Discover already ran LoadIgnoreScoped as its
+	// own enforcement point — a violating user-scope file would have failed
+	// the ingest itself, never reached this line), so a second, cheap read
+	// here is purely for display and cannot itself fail loudly.
+	if _, counts, ierr := connector.LoadIgnoreScoped(svcPath); ierr == nil && (counts.Project > 0 || counts.User > 0) {
+		fmt.Fprintf(stdout, "excluded: %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore)\n", counts.Project+counts.User, counts.Project, counts.User)
 	}
 	return 0
 }
