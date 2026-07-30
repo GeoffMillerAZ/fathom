@@ -208,6 +208,13 @@ Laws 1–9 carry. New:
     first; TUI and web render state and dispatch verbs. A surface-only
     capability is a defect. (Corollary: every studio screen is testable
     headless.)
+12. **No saving is claimed without a counterfactual.** A token number is a
+    COST until something establishes what would have happened otherwise
+    (`docs/design/production-tokenomics.md` §2). Payload cost is directly
+    measurable; savings need substitution evidence or a pre-registered A/B.
+    Reporting cost as saving is the dishonesty this program retracted a ×10
+    claim over.
+
 11. **The advisor recommends; the gate decides.** Agentic judgment
     (gap proposals, readiness advice) is served with tier + citation and
     is eval-gated like any layer — and it can never promote a module's
@@ -229,6 +236,8 @@ the next. **(op)** = owner action. Kill/terminal criteria per law 5.
 | **N — Hosted, published, measured** | hardened hosted chat (phase I grown up), module `published` level live, the suite's own falsifiability bench: pre-registered time-to-servable + refusal-to-fix latency + answer-trust audit | entry: ≥1 real module authored by someone who isn't me (op); recorded either way, per the house record |
 
 | **O — Platform modules in the coding loop** | binding schema (`.fathom/modules.cue`), binding-aware obligations serving (repo claims ∪ bound module rules, split displacement accounting), module-tagged edit-hook rendering, doctor binding checks — the platform stratum's proper delivery vehicle (design: `docs/design/platform-modules.md`) plus guarded edits — pre-edit guidance for configured critical files (`docs/design/guarded-edits.md`) — both adopted 2026-07-29 | entry: phase J merged (readiness ladder gates what may be bound: `servable`+); terminal: a bound module's rule injects module-tagged into an edit in a consumer repo, staleness-flagged when not fresh; kill: law 8 applies per module — zero served rules across a qualifying window in every bound repo → unbind candidate |
+
+| **P — Production tokenomics** | payload cost accounting ("what fathom SPENT"), the counting-only discovery-share observer (the denominator the program has asserted blind since product-vision §2), session token ledger, `FATHOM_CHANNELS=off`, service-identity caching (3,624 `list_services` calls/week are hook plumbing), and the pre-registered A/B protocol — design: `docs/design/production-tokenomics.md` | entry: phase O merged (the PreToolUse observer channel exists); terminal for A–D: the report states cost-per-edit and discovery share from real traffic, both labeled correlational; **kill (law 12): if the A/B shows ON no better after 40 sessions, every production savings claim is retracted where it appears** |
 
 **Standing entry-condition honesty:** external-adoption gates from
 product-vision H3 remain unmet and unclaimed; this program, like the chat
