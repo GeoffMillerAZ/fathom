@@ -453,6 +453,65 @@ it, no unresolved contradictions) — never proof the test *passes*
 (`test_reaches` is static reachability; `runtime_pass` stays Unknown until
 CI evidence is ingested as its own tier).
 
+### 7.5 PreToolUse — `edit-hook --pre` (guarded edits, phase O)
+
+Fires BEFORE `Edit`, `Write`, `MultiEdit`, or `Bash` runs — the same
+`edit-hook` binary/code path as §7.2, one flag apart. Silent-by-default for
+every file/command: it checks `.fathom/guard.cue` locally (a glob/pattern
+test, zero HTTP calls) before doing anything else, so an ungoverned edit
+costs one comparison and nothing more (docs/design/guarded-edits.md).
+
+`fathom init` scaffolds `.fathom/guard.cue` **commented out** — nothing is
+guarded until you uncomment and commit a scope:
+
+```cue
+guards: [{
+    scopes:          ["internal/store/**", "**/migrations/**"]
+    note:            "Store schema is spec-governed; read docs/spec first."
+    max_rules:       4    // OPTIONAL: pre-edit payload cap (default 4)
+    include_modules: true // OPTIONAL: also serve bound platform-module rules (docs/use-cases/platform-modules.md)
+}]
+```
+
+Every field except `scopes` here is optional — omit a line entirely to
+leave it unset. Never write a trailing `?` on a field name in a file like
+this one: `?:` is CUE's optional-field marker, meaningful in the SCHEMA
+(`schema/guard/schema.cue`'s `#Guard`), but in this INSTANCE it silently
+declares the field absent instead of setting it — `scopes?: [...]` would
+leave the guard's scope unset entirely rather than restricting it.
+
+A file matching a guard's `scopes` gets its `note` plus obligations
+injected BEFORE the edit; a command matching `command_scopes` (e.g.
+`["terraform apply*", "kubectl *"]`) gets the guard's `note` injected
+before it runs — inject-only, never blocking (blocking is §7.4's job).
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "/abs/path/bin/fathom edit-hook --pre", "timeout": 5 }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "/abs/path/bin/fathom edit-hook --pre", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}
+```
+
+If a guard matched, the §7.2 PostToolUse render for the SAME edit collapses
+to a one-line "already served pre-edit" marker rather than repeating the
+rules — a short-lived local stamp (never a repo file, never committed)
+tracks what the pre-hook already showed, scoped to the session when the
+hook JSON carries `session_id`.
+
 ---
 
 ## 8. Per-project `.fathom/`

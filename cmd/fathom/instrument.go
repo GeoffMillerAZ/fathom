@@ -71,6 +71,23 @@ func reportInstrument(w io.Writer, beats []heartbeat.Beat, ref time.Time, window
 		if b.At.Before(since) || b.At.After(ref) || b.Channel != "edit-hook" {
 			continue
 		}
+		// Critic finding 3 (phase-O merge): guarded edits (docs/design/
+		// guarded-edits.md) added a "phase":"pre"|"post" meta key to every
+		// edit-hook beat — a --pre invocation now fires for every
+		// Edit|Write|MultiEdit AND every Bash call once a repo re-runs
+		// `fathom init`, which would silently rebase this gauge's
+		// denominator (and its >=90% gate) the moment that happens,
+		// making every phase-O-era number incomparable to every
+		// pre-phase-O number in docs/plans/activation.md. This coverage
+		// gauge stays scoped to exactly what it always measured: the
+		// POST channel (phase != "pre" — a beat with no phase key at all
+		// predates this feature and IS a post beat). The new pre-hook's
+		// own coverage is a distinct, separately-reported metric
+		// (`research report`'s GuardPreSeen/GuardPreServed), never
+		// blended into this one.
+		if b.Meta["phase"] == "pre" {
+			continue
+		}
 		switch b.Kind {
 		case "seen":
 			seen++

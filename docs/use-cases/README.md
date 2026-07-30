@@ -29,6 +29,7 @@ is the canonical short wiring summary the adoption guides expand on.
 | [incident-investigation.md](incident-investigation.md) | Triage a production symptom using pre-computed call graphs, complexity hotspots, and commit history |
 | [change-review.md](change-review.md) | Gate a PR on blast radius, API breakage, architectural conformance, and dependency drift |
 | [fleet-health.md](fleet-health.md) | Surface security posture, complexity hotspots, dead code, and dependency inventory across all services |
+| [platform-modules.md](platform-modules.md) | Bind a compiled-once platform module into a repo's edit-time obligations, and guard critical scopes for pre-edit guidance |
 | [research-flywheel.md](research-flywheel.md) | Aggregate fathom's own local instrumentation into an honest report, and produce a sanitized, review-first bundle you may choose to share |
 
 ---

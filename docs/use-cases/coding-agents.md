@@ -29,11 +29,14 @@ fathom init            # from the repo root
 ```
 
 Idempotent and additive. It creates `.fathomignore`, ingests the repo into
-the daemon, wires the three hooks into the project's `.claude/settings.json`
+the daemon, wires the hooks into the project's `.claude/settings.json`
 (SessionStart → `session-hook`, PostToolUse Edit|Write → `edit-hook`,
-Stop → `stop-hook`), and stamps the same fathom stanza into `CLAUDE.md`
-**and** `AGENTS.md` (Codex reads the latter). It then prints the two steps
-it will not do for you:
+PreToolUse Edit|Write|Bash → `edit-hook --pre` — silent unless
+`.fathom/guard.cue` names the file/command, see §2 — Stop → `stop-hook`),
+scaffolds `.fathom/guard.cue` and `.fathom/modules.cue` **commented out**
+(nothing guarded or bound by default), and stamps the same fathom stanza
+into `CLAUDE.md` **and** `AGENTS.md` (Codex reads the latter). It then
+prints the two steps it will not do for you:
 
 1. **Register the MCP surface** (once per machine, user scope):
    ```sh
@@ -69,6 +72,7 @@ on git-HEAD drift.
 | `verify --require-all` | wave gate: everything claimed-and-verified or explicitly skipped | blocking, on demand | **any** |
 | Stop hook | tasks claimed `[x]` *this session* that fail verification surface at session end (`--block` to refuse ending) | advisory → blocking | Claude Code |
 | edit-hook | obligations governing the edited file injected ≤150 tokens, zero-output-on-clean | injected context | Claude Code |
+| edit-hook --pre (guarded edits, phase O) | for scopes/commands named in `.fathom/guard.cue`, the SAME injection served BEFORE the edit/command — silent for everything else, zero daemon calls on a miss | injected context | Claude Code |
 | session-hook | index status + "resolve via fathom before grep" primer | injected context | Claude Code |
 | MCP tools | the 16-tool agent surface | pull (agent choice) | any MCP client |
 | CLAUDE.md / AGENTS.md stanza | standing doctrine | advisory | Claude Code / Codex |
@@ -232,7 +236,9 @@ numbers and tool-kill decisions run on clean data.
 
 CLI: `fathom init`, `ingest`, `compile`, `layers` (`list`/`show`/`install`
 — see `docs/layers.md`), `verify` (`--strict`, `--require-all`),
-`instrument`, `session-hook`, `edit-hook`, `stop-hook`, `gen-plan-cue`,
-`config`, `providers`, `smoke`. MCP: the `/rpc/agent` surface
-(16 tools, `read_source` included — see `docs/mcp-tools.md`). When any of
-these change, update this doc's examples and this line.
+`instrument`, `session-hook`, `edit-hook` (`--pre`), `stop-hook`, `doctor`,
+`gen-plan-cue`, `config`, `providers`, `smoke`. MCP: the `/rpc/agent`
+surface (16 tools, `read_source` included — see `docs/mcp-tools.md`).
+Phase O (`.fathom/guard.cue`, `.fathom/modules.cue`) is covered in
+[platform-modules.md](platform-modules.md). When any of these change,
+update this doc's examples and this line.

@@ -66,6 +66,23 @@ type Obligation struct {
 	// compiled it). Always populated — layer names are short, so this never
 	// meaningfully grows the payload the way an unbounded field would.
 	Layer string `json:"layer"`
+	// Module names the bound platform module this rule was federated in
+	// from (docs/design/platform-modules.md §3.3) — omitted for every
+	// repo-local rule (the pre-phase-O default; existing consumers see
+	// exactly the same payload shape they always have). Set by
+	// internal/modserve.Bind, never by ObligationsFor itself, which knows
+	// nothing about modules or bindings.
+	Module string `json:"module,omitempty"`
+}
+
+// ModuleNote is an explicit, never-silent note attached to an Obligations
+// payload about a bound platform module — most commonly "this repo binds a
+// module the daemon does not have mounted" (docs/design/platform-modules.md
+// §3.3's doctrine: "Unmounted-but-bound module = an explicit note in the
+// payload, never silence"). Populated by internal/modserve.Bind.
+type ModuleNote struct {
+	Module string `json:"module"`
+	Note   string `json:"note"`
 }
 
 // ObligationsPayload is the decision-moment payload. Zero rules means a
@@ -84,7 +101,29 @@ type Obligations struct {
 	// evict a rule an agent relied on yesterday (the cap is a serving-time
 	// slice of "matched", never a claim-lifecycle event — nothing about the
 	// evicted claim itself changes). Zero (omitted) when nothing was cut.
+	//
+	// O14 split (docs/design/platform-modules.md §3.3 deliverable 2): once
+	// module rules can blend into the same served set, Displaced is the
+	// TOTAL (DisplacedRepo + DisplacedModule) — a compatible superset of
+	// its pre-phase-O meaning (when no module ever contributes,
+	// DisplacedModule is always 0 and Displaced == DisplacedRepo exactly as
+	// before this field existed). Existing consumers reading only
+	// "displaced" keep seeing a meaningful number; a phase-O-aware consumer
+	// reads the two named fields for the split.
 	Displaced int `json:"displaced,omitempty"`
+	// DisplacedRepo is the count ObligationsFor itself cut from this
+	// service's own claims (identical to the pre-phase-O Displaced value).
+	// Always 0 (omitted) before internal/modserve.Bind runs.
+	DisplacedRepo int `json:"displaced_repo,omitempty"`
+	// DisplacedModule is the count of bound-module rules that were
+	// eligible (scope- and tier-matched under the binding) but did not fit
+	// the shared budget — set only by internal/modserve.Bind, never by
+	// ObligationsFor itself.
+	DisplacedModule int `json:"displaced_module,omitempty"`
+	// ModuleNotes carries explicit, never-silent notes about this service's
+	// bound platform modules (e.g. bound but not mounted on this daemon) —
+	// set only by internal/modserve.Bind.
+	ModuleNotes []ModuleNote `json:"module_notes,omitempty"`
 }
 
 // ObligationsFor returns the claims governing file across EVERY compiled

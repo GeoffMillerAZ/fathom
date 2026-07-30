@@ -249,6 +249,7 @@ Codex-specific to configure.
 | Curated 16-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
 | SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No equivalent.** Codex has no session-start hook mechanism fathom can plug into |
 | PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool |
+| PreToolUse guarded-edit injection (`edit-hook --pre`, phase O) | Yes — `.fathom/guard.cue`-configured scopes/commands get rules injected BEFORE the edit/command runs, silent-by-default (local glob check, zero daemon calls on a miss) | **No equivalent.** Codex has no PreToolUse hook mechanism; a bound module's rules still reach Codex via `obligations`/`pack_context`, just not pre-edit |
 | Stop-hook done-means-proven check | Yes — newly-claimed `[x]` tasks re-verified at session end, advisory or blocking | **No equivalent.** Nothing checks a session's claims at end-of-session; the pre-push gate (next row) is the backstop |
 | Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source, written by `fathom init` in one step |
 | Pre-push `fathom verify` gate (lefthook) | Yes | Yes — git-native, identical, harness-agnostic |

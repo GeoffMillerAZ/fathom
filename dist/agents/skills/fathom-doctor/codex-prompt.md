@@ -9,9 +9,16 @@ argument-hint: [HARNESS=claude|codex|auto] [DIR=<repo-root>] [SERVICE=<service-i
 > git-native/CLI check identical whether Codex or Claude Code runs it. Two
 > of its rows are Claude-Code-specific by design and read `skipped` under
 > `--harness=codex`, honestly: `hooks_installed` and `hooks_firing`, because
-> Codex has no `SessionStart`/`PostToolUse`/`Stop` hook mechanism
-> (`docs/adoption/codex.md` §6). `lefthook_gates` still applies — the
-> pre-push `fathom verify` gate is identical for both harnesses.
+> Codex has no `SessionStart`/`PostToolUse`/`PreToolUse`/`Stop` hook
+> mechanism (`docs/adoption/codex.md` §6). `lefthook_gates` still applies —
+> the pre-push `fathom verify` gate is identical for both harnesses. The
+> six phase-O checks (`binding_file`, `guard_file`,
+> `binding_modules_mounted`, `binding_module_readiness`,
+> `guard_dead_scopes`, `guard_include_modules_unbound`) are ALSO
+> harness-agnostic — they read `.fathom/modules.cue`/`.fathom/guard.cue`
+> and query the daemon, independent of which harness's hooks would consume
+> them; a Codex-side binding/guard is still config-checkable even though
+> its PreToolUse channel has no equivalent to fire on.
 
 ## 1. Run it
 
@@ -31,15 +38,21 @@ could not run (bad flags / unresolvable path) — not a verdict on the repo.
 Each row is `{name, status, reason, remedy}`. `skipped` is NOT `fail` and
 NOT a guessed `pass` — it means doctor could not check that condition
 (unreadable config, unreachable daemon, unresolvable home directory).
-Report it as "could not verify: `<reason>`," never collapsed into either
-extreme.
+`warn` (phase O) is a real, observable condition worth attention (a dead
+guard, a bound module below `servable`) that **never fails the exit
+code** — report it as its own bucket, not folded into `pass` or `fail`.
+Report `skipped` as "could not verify: `<reason>`," never collapsed into
+either extreme.
 
-Eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh`
+Seventeen checks: `mcp_registration`, `daemon_reachable`, `binary_fresh`
 (a LOCAL proxy — the running binary's own build vs `git rev-parse HEAD`;
 mind the linked-worktree caveat doctor prints when it applies),
 `hooks_installed`/`hooks_firing` (Claude Code only), `lefthook_gates`
 (both harnesses), `stanza_present`, `skills_installed`, `config_valid`,
-`obligations_served`, `surface_traffic`.
+`obligations_served`, `surface_traffic`, and phase O's `binding_file`,
+`guard_file`, `binding_modules_mounted`, `binding_module_readiness`,
+`guard_dead_scopes`, `guard_include_modules_unbound` (all harness-agnostic
+— see the capability note above).
 
 ## 3. Apply remedies — with explicit approval, one at a time
 

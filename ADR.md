@@ -671,6 +671,21 @@ taxonomy nobody uses is one additive, defaulted CUE field. Naming
 this ADR's own reasoning, so both stay recorded-not-built until a named
 consumer arrives.
 
+**Amendment (phase O, 2026-07-29, `docs/design/platform-modules.md`).**
+The platform stratum's only realization above (`.fathom/` project packs)
+had a finding: N repos meant N copies of the same org knowledge, N
+compiles, N independent drift clocks, zero shared freshness story. Phase O
+adds the platform stratum's actual DISTRIBUTION vehicle — a platform
+module (compiled once, centrally, portable, eval-gated) that a consumer
+repo *binds* via `.fathom/modules.cue` (schema `schema/binding/`), served
+through the same forced channels (edit-hook, `obligations` tool) the
+excellence benches already proved, module-tagged and never silent on an
+unmounted binding. `.fathom/` project packs remain correct for genuinely
+repo-specific rule authoring; copying org-wide content into them is now
+the anti-pattern this amendment steers away from. See
+`docs/design/platform-modules.md` for the full design and
+`docs/use-cases/platform-modules.md` for the adoption path.
+
 ## ADR-025: DuckDB backend deleted outright — SS-8 executed (2026-07-23)
 
 **Decision.** ADR-020 made SQLite the default store backend but kept the

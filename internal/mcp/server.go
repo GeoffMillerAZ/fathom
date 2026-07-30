@@ -176,7 +176,7 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 		callLogger: logger,
 	}
 	registerBuiltins(s)
-	registerTools(s, backend, fleet)
+	registerTools(s, backend, fleet, modules)
 	registerPlatformTools(s, backend, fleet)
 	if modules != nil {
 		registerModuleTools(s, modules)

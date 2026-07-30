@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/bindspec"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
 // cmdInit implements the "init" subcommand: one-command, idempotent,
@@ -129,6 +131,16 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// c2. .fathom/ commented scaffolds for phase-O config surfaces (guard.cue,
+	// modules.cue) — write-if-absent, ALWAYS commented (no active config by
+	// default): binding a module or guarding a scope is an explicit,
+	// reviewed opt-in, never something `fathom init` activates on a repo's
+	// behalf (docs/design/platform-modules.md / guarded-edits.md deliverable 1).
+	if err := writeFathomConfigScaffolds(root, stdout); err != nil {
+		fmt.Fprintf(stderr, "error: writing .fathom/ scaffolds: %v\n", err)
+		return 1
+	}
+
 	// d. CLAUDE.md + AGENTS.md stanza — one canonical source, two files.
 	stanza := fathomStanza(svc)
 	if err := applyStanza(filepath.Join(root, "CLAUDE.md"), stanza, stdout); err != nil {
@@ -214,6 +226,45 @@ func writeFathomIgnore(root string, stdout io.Writer) error {
 		return err
 	}
 	fmt.Fprintln(stdout, "created .fathomignore")
+	return nil
+}
+
+// ─── c2. .fathom/ config scaffolds (guard.cue, modules.cue) ───────────────
+
+// writeFathomConfigScaffolds creates <root>/.fathom/guard.cue and
+// <root>/.fathom/modules.cue with commented, inert example templates if
+// absent — mirroring writeFathomIgnore's write-if-absent, never-overwrite
+// discipline. Both files are valid, EMPTY CUE as scaffolded (guardspec/
+// bindspec's ExampleTemplate — every worked example is a comment block), so
+// `fathom doctor` sees no active guard/binding until a human uncomments and
+// commits one.
+func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
+	dir := filepath.Join(root, ".fathom")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	if err := writeIfAbsent(filepath.Join(dir, "guard.cue"), guardspec.ExampleTemplate(), "guard.cue", stdout); err != nil {
+		return err
+	}
+	if err := writeIfAbsent(filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {
+		return err
+	}
+	return nil
+}
+
+// writeIfAbsent writes content to p only when p does not already exist,
+// printing an "ok"/"created" line matching writeFathomIgnore's convention.
+func writeIfAbsent(p, content, label string, stdout io.Writer) error {
+	if _, err := os.Stat(p); err == nil {
+		fmt.Fprintf(stdout, "ok .fathom/%s (already present)\n", label)
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintf(stdout, "created .fathom/%s (commented example; no active config)\n", label)
 	return nil
 }
 
@@ -308,6 +359,17 @@ type hookSpec struct {
 var fathomHookSpecs = []hookSpec{
 	{event: "SessionStart", matcher: "startup|resume|clear|compact", marker: "fathom session-hook", sub: "session-hook", timeout: 10},
 	{event: "PostToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
+	// Guarded edits (docs/design/guarded-edits.md §2.2/§2.5): the SAME
+	// "edit-hook --pre" binary/code path, registered under PreToolUse.
+	// Silent-by-default on any non-guarded file/command (a local glob
+	// check before any daemon call — GI-8's closure, docs/plans/
+	// gap1-instrumentation.md). Two matcher groups, one command each,
+	// because Claude Code's PreToolUse matcher selects by tool name and a
+	// guard can fire on either files (Edit|Write|MultiEdit) or commands
+	// (Bash) — ensureHookEntry's marker check is scoped per matcher group
+	// so both wire independently.
+	{event: "PreToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
+	{event: "PreToolUse", matcher: "Bash", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
 	{event: "Stop", matcher: "", marker: "fathom stop-hook", sub: "stop-hook", timeout: 10},
 }
 
@@ -392,9 +454,22 @@ func mergeHookSettings(existing []byte, binPath string) ([]byte, bool, error) {
 func ensureHookEntry(hooksObj map[string]any, spec hookSpec, command string) bool {
 	arr, _ := hooksObj[spec.event].([]any)
 
+	// "Already wired" is scoped to spec's OWN matcher group, not the whole
+	// event array: guarded-edits (docs/design/guarded-edits.md) registers
+	// the SAME "fathom edit-hook --pre" command under TWO PreToolUse
+	// matcher groups (Edit|Write|MultiEdit and Bash) — a global,
+	// event-wide substring search would see the first group's command and
+	// wrongly skip wiring the second. Every pre-existing hookSpec has
+	// exactly one entry per event, so this scoping is a strict
+	// generalization: identical behavior when only one spec targets an
+	// event, correct behavior when more than one shares it.
 	for _, g := range arr {
 		gm, ok := g.(map[string]any)
 		if !ok {
+			continue
+		}
+		gMatcher, _ := gm["matcher"].(string)
+		if gMatcher != spec.matcher {
 			continue
 		}
 		hs, _ := gm["hooks"].([]any)
@@ -651,4 +726,9 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
 	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
+	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue and .fathom/modules.cue were scaffolded commented (inert) — uncomment")
+	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
+	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
+	fmt.Fprintln(stdout, "MANUAL: Codex has no PreToolUse hook mechanism — guard.cue's pre-edit channel is Claude-Code-only;")
+	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
 }
