@@ -205,6 +205,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkUserScopeIgnore(root),
 		checkUserScopeGuard(),
 		checkSessionLedgerTokens(),
+		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
+		checkMetricsTier(),
 	)
 	return checks
 }

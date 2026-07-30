@@ -316,6 +316,26 @@ func (c *Client) SetClaimStatus(ctx context.Context, serviceID, claimID string, 
 	return c.st.SetClaimStatus(ctx, serviceID, claimID, status)
 }
 
+// CompileRunsFor (Q-25, docs/plans/expert-suite-q.md) is a thin passthrough
+// to the store's compile_runs read, newest-first — used by `/statusz`
+// (cmd/fathom/statusz.go) to report the last compile per layer per
+// service, and available to any other caller needing a service's full
+// compile history without ClaimsSummary's single-most-recent-run
+// shortcut.
+func (c *Client) CompileRunsFor(ctx context.Context, service string) ([]core.CompileRun, error) {
+	return c.st.CompileRuns(ctx, service, "")
+}
+
+// AppendClaimEvent (Q-5, docs/plans/expert-suite-q.md) is a thin passthrough
+// to the store's append-only claim-event log — ClaimFeedback already uses
+// c.st.AppendClaimEvent internally for the refute/corroborate actions; this
+// exported wrapper lets a CLI command (fathom review's fixed-finding
+// reconcile, recordReviewSupersedeEvents) record a verdict too, without
+// going through ClaimFeedback's action-string dispatch.
+func (c *Client) AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error {
+	return c.st.AppendClaimEvent(ctx, ev)
+}
+
 // SourceFingerprint returns the store's current content fingerprint for
 // (service, repo-relative path) — the fusion hash-gate table
 // semantic.DriftedFindings reads. The review findings bridge records it as

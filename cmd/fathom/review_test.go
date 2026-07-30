@@ -4,15 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
 // reviewFixtureSrc is a tiny Go file whose func A has an in-body comment
@@ -454,6 +458,31 @@ func TestReview_Reconcile_FixedFindingSuperseded(t *testing.T) {
 	if claims2[0].Status.Served() {
 		t.Error("superseded claim must not be served")
 	}
+
+	// Q-7 (docs/plans/expert-suite-q.md): the reconcile must also leave a
+	// durable "superseded" claim_event — the real mechanism Interventions
+	// row 2 (docs/design/observability-surfaces.md §1) reads.
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	events, err := st.ClaimEvents(context.Background(), claimID)
+	if err != nil {
+		t.Fatalf("ClaimEvents: %v", err)
+	}
+	var supersededEvents int
+	for _, ev := range events {
+		if ev.Verdict == "superseded" {
+			supersededEvents++
+			if ev.Author != "review" {
+				t.Errorf("superseded event author = %q, want %q", ev.Author, "review")
+			}
+		}
+	}
+	if supersededEvents != 1 {
+		t.Fatalf("superseded claim_events for %s = %d, want 1; events=%+v", claimID, supersededEvents, events)
+	}
 }
 
 // TestReview_NoPersist_WritesNothing is defect 3's regression test: the
@@ -559,5 +588,107 @@ call_log = "`+filepath.ToSlash(logPath)+`"
 	}
 	if _, err := os.Stat(logPath); err != nil {
 		t.Fatalf("expected a call-log entry at the configured default path %q: %v", logPath, err)
+	}
+}
+
+// ─── Q-7: review-finding supersede events (docs/plans/expert-suite-q.md) ───
+
+// TestReview_NoPersist_NeverRecordsSupersedeEvents: --no-persist's whole
+// point is "no store write of any kind" — a fixed-finding reconcile run
+// under --no-persist must record ZERO superseded claim_events, not just
+// leave the claim's status untouched.
+func TestReview_NoPersist_NeverRecordsSupersedeEvents(t *testing.T) {
+	root, storePath := reviewIngestFixture(t)
+	runReviewJSON(t, storePath)
+	claims1 := reviewSvcClaims(t, storePath)
+	if len(claims1) != 1 {
+		t.Fatalf("expected exactly 1 claim after run 1, got %+v", claims1)
+	}
+	claimID := claims1[0].ClaimID
+
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte("package pkg\n\nfunc A() {}\n"), 0o644); err != nil {
+		t.Fatalf("rewrite fixture: %v", err)
+	}
+	var ingestOut, ingestErr bytes.Buffer
+	if code := run([]string{"ingest", "--service", "review-svc", "--path", root, "--store", storePath}, &ingestOut, &ingestErr); code != 0 {
+		t.Fatalf("re-ingest exit = %d, stderr: %s", code, ingestErr.String())
+	}
+
+	runReviewJSON(t, storePath, "--no-persist")
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer st.Close()
+	events, err := st.ClaimEvents(context.Background(), claimID)
+	if err != nil {
+		t.Fatalf("ClaimEvents: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("--no-persist must record zero claim_events, got %+v", events)
+	}
+}
+
+// failingAppendEventStore wraps a real store.Store, delegating everything
+// except AppendClaimEvent (which always fails) — a minimal test double for
+// TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal.
+type failingAppendEventStore struct{ store.Store }
+
+func (failingAppendEventStore) AppendClaimEvent(context.Context, core.ClaimEvent) error {
+	return errors.New("simulated AppendClaimEvent failure")
+}
+
+// TestRecordReviewSupersedeEvents_WritesOneEventPerID.
+func TestRecordReviewSupersedeEvents_WritesOneEventPerID(t *testing.T) {
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	fixedNow := func() time.Time { return time.Unix(1700000000, 0).UTC() }
+	var stderr bytes.Buffer
+	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, fixedNow, &stderr)
+	if n != 2 {
+		t.Fatalf("recorded = %d, want 2", n)
+	}
+	for _, id := range []string{"cl-1", "cl-2"} {
+		events, err := st.ClaimEvents(context.Background(), id)
+		if err != nil || len(events) != 1 || events[0].Verdict != "superseded" || events[0].Author != "review" {
+			t.Errorf("events for %s = %+v, err=%v", id, events, err)
+		}
+	}
+	if stderr.Len() != 0 {
+		t.Errorf("stderr = %q, want empty on success", stderr.String())
+	}
+}
+
+// TestRecordReviewSupersedeEvents_NoIDs_NoOp.
+func TestRecordReviewSupersedeEvents_NoIDs_NoOp(t *testing.T) {
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	var stderr bytes.Buffer
+	n := recordReviewSupersedeEvents(context.Background(), c, nil, time.Now, &stderr)
+	if n != 0 {
+		t.Fatalf("recorded = %d, want 0", n)
+	}
+}
+
+// TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal: a write
+// failure is logged to stderr and skipped, never panics, never aborts the
+// remaining IDs.
+func TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal(t *testing.T) {
+	st := failingAppendEventStore{store.NewMemoryStore()}
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	var stderr bytes.Buffer
+	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, time.Now, &stderr)
+	if n != 0 {
+		t.Fatalf("recorded = %d, want 0 (every write fails)", n)
+	}
+	if !strings.Contains(stderr.String(), "cl-1") || !strings.Contains(stderr.String(), "cl-2") {
+		t.Errorf("stderr = %q, want both failed IDs named", stderr.String())
 	}
 }

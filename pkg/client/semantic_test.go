@@ -429,3 +429,27 @@ func TestClaimFeedback_Errors(t *testing.T) {
 		t.Error("unknown claim: expected error")
 	}
 }
+
+// TestClient_AppendClaimEvent_RoundTrips (Q-5, docs/plans/expert-suite-q.md).
+func TestClient_AppendClaimEvent_RoundTrips(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	ev := core.ClaimEvent{
+		ClaimID: "cl-4", Verdict: "superseded", Author: "review",
+		Note: "finding fixed — no longer emitted by review run",
+		At:   time.Unix(1700000000, 0).UTC(),
+	}
+	if err := c.AppendClaimEvent(ctx, ev); err != nil {
+		t.Fatalf("AppendClaimEvent: %v", err)
+	}
+	events, err := st.ClaimEvents(ctx, "cl-4")
+	if err != nil || len(events) != 1 {
+		t.Fatalf("ClaimEvents: err=%v n=%d", err, len(events))
+	}
+	if events[0].Verdict != "superseded" || events[0].Author != "review" || events[0].Note != ev.Note {
+		t.Errorf("event = %+v, want %+v", events[0], ev)
+	}
+}

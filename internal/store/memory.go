@@ -532,6 +532,28 @@ func (m *MemoryStore) ClaimEvents(_ context.Context, claimID string) ([]core.Cla
 	return result, nil
 }
 
+// ClaimEventsSince (Q-6) returns every event in [since, until] across every
+// claim, ordered by (At, Verdict) — see the Store interface's own doc
+// comment for the store-wide-not-service-scoped caveat.
+func (m *MemoryStore) ClaimEventsSince(_ context.Context, since, until time.Time) ([]core.ClaimEvent, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []core.ClaimEvent
+	for _, ev := range m.claimEvents {
+		if ev.At.Before(since) || ev.At.After(until) {
+			continue
+		}
+		result = append(result, ev)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if !result[i].At.Equal(result[j].At) {
+			return result[i].At.Before(result[j].At)
+		}
+		return result[i].Verdict < result[j].Verdict
+	})
+	return result, nil
+}
+
 // RecordCompileRun appends a cost/audit ledger row for one compilation pass.
 func (m *MemoryStore) RecordCompileRun(_ context.Context, run core.CompileRun) error {
 	m.mu.Lock()

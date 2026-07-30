@@ -13,6 +13,7 @@ package store
 
 import (
 	"context"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
@@ -216,6 +217,19 @@ type Store interface {
 
 	// ClaimEvents returns all events for claimID ordered by (at, verdict).
 	ClaimEvents(ctx context.Context, claimID string) ([]core.ClaimEvent, error)
+
+	// ClaimEventsSince (Q-6, docs/plans/expert-suite-q.md) returns every
+	// event with At in [since, until], ordered by (At, Verdict) — the same
+	// deterministic order ClaimEvents already uses. Unlike ClaimEvents,
+	// this is a BULK, time-windowed read across every claim, not one
+	// claim's history — added for `fathom metrics interventions` (Q-12),
+	// which needs "how many findings were superseded this window" without
+	// enumerating every claim ID first. claim_events carries no
+	// service_id column (see the CREATE TABLE shape), so this read is
+	// honestly store-wide, never service-scoped — a caller needing
+	// per-service isolation must filter claimEvents.ClaimID against its
+	// own service's claim set separately.
+	ClaimEventsSince(ctx context.Context, since, until time.Time) ([]core.ClaimEvent, error)
 
 	// RecordCompileRun appends a cost/audit ledger row for one compilation
 	// pass.

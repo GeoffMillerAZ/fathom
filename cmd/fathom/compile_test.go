@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"net/http"
@@ -9,9 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // fakeClaudeCLIScript is a hermetic stand-in for the `claude` binary — no
@@ -367,5 +370,50 @@ func TestBuildCodexCLIClient_BinNotFound(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "construct Codex CLI client") {
 		t.Errorf("err = %v, want it to be wrapped with \"construct Codex CLI client\"", err)
+	}
+}
+
+// TestPrintCompileRunCore_NoRejections_OutputUnchanged (Q-4) pins the exact
+// pre-Q-4 output for a zero-rejection run — the non-regression proof that
+// this row's addition is additive-only.
+func TestPrintCompileRunCore_NoRejections_OutputUnchanged(t *testing.T) {
+	var buf bytes.Buffer
+	printCompileRunCore(&buf, core.CompileRun{
+		ServiceID: "svc", Layer: "obligations",
+		SectionsTotal: 3, SectionsCompiled: 3,
+		ClaimsEmitted: 2, ClaimsRejected: 0,
+		TokensIn: 100, TokensOut: 50, CostUSD: 0.01,
+		Model: "mock-model", RanAt: time.Unix(1700000000, 0).UTC(),
+	})
+	if strings.Contains(buf.String(), "rejection_reasons:") {
+		t.Errorf("output for a zero-rejection run must not mention rejection_reasons:\n%s", buf.String())
+	}
+}
+
+// TestPrintCompileRunCore_RejectionReasons_Rendered (Q-4).
+func TestPrintCompileRunCore_RejectionReasons_Rendered(t *testing.T) {
+	var buf bytes.Buffer
+	printCompileRunCore(&buf, core.CompileRun{
+		ServiceID: "svc", Layer: "obligations",
+		SectionsTotal: 3, SectionsCompiled: 3,
+		ClaimsEmitted: 1, ClaimsRejected: 2,
+		RejectionReasons: []core.RejectionBreakdown{
+			{Cause: "anchor-missing", Count: 1, Samples: []string{"docs/a.md#x: citation range does not resolve"}},
+			{Cause: "malformed", Count: 1, Samples: []string{"docs/a.md#y: empty rule"}},
+		},
+		TokensIn: 100, TokensOut: 50, CostUSD: 0.01,
+		Model: "mock-model", RanAt: time.Unix(1700000000, 0).UTC(),
+	})
+	out := buf.String()
+	for _, want := range []string{
+		"rejection_reasons:",
+		"anchor-missing:",
+		"malformed:",
+		"docs/a.md#x: citation range does not resolve",
+		"docs/a.md#y: empty rule",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("output missing %q; got:\n%s", want, out)
+		}
 	}
 }

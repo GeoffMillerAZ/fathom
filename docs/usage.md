@@ -299,6 +299,7 @@ HTTP endpoints:
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | SSE stream — sends `hello` event then stays open |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total` |
+| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer — JSON via `Accept: application/json`/`?format=json`, HTML otherwise (`docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
 
 ```sh

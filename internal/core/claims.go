@@ -236,6 +236,27 @@ type CompileRun struct {
 	// normal run; non-empty is itself the durable "logged into compile_runs"
 	// audit trail the kill criteria for both flags count against.
 	Escape string
+
+	// RejectionReasons is O19's fix (docs/dogfood-observations.md O19,
+	// docs/design/observability-surfaces.md §8 item 5): before this field
+	// existed, a rejected draft's WHY was discarded the moment
+	// ClaimsRejected was incremented — only the count survived. Populated
+	// only on a real (non-dry) run — verifyDraft never runs during a dry
+	// run, so the field stays nil there, never a fabricated empty
+	// breakdown. Sorted deterministically by Cause (internal/semantic's
+	// buildRejectionReasons).
+	RejectionReasons []RejectionBreakdown
+}
+
+// RejectionBreakdown is one compile run's rejection-cause bucket (O19's
+// fix): a count plus up to a handful of example messages so an author can
+// act on the WHY, not just see a number. Cause is one of "malformed",
+// "anchor-missing", "scope-unverifiable", "over-broad"
+// (internal/semantic's classifyRejectionCause).
+type RejectionBreakdown struct {
+	Cause   string   `json:"cause"`
+	Count   int      `json:"count"`
+	Samples []string `json:"samples,omitempty"`
 }
 
 // ClaimEvent is one append-only human/machine verdict on a claim (the refute
@@ -243,7 +264,7 @@ type CompileRun struct {
 type ClaimEvent struct {
 	ClaimID string
 	// Verdict is "refuted" | "corroborated" | "contradicted" |
-	// "re-anchored". "refuted" and "contradicted" name DIFFERENT judgments
+	// "re-anchored" | "superseded". "refuted" and "contradicted" name DIFFERENT judgments
 	// and must never be conflated (P1-9, docs/plans/
 	// pulled-tools-excellence.md): "refuted" is a deliberate human (or
 	// human-equivalent) verdict via `fathom claim refute` / the obligations
@@ -260,6 +281,14 @@ type ClaimEvent struct {
 	// in the cited file and the sweep moved the citation there
 	// (store.UpdateClaimLink), old→new ref in the Note; the claim keeps
 	// serving fresh because its evidence was relocated, not weakened.
+	// "superseded" (docs/design/observability-surfaces.md §1's Interventions
+	// table, phase Q) is machine-authored by `fathom review`'s persist path
+	// (recordReviewSupersedeEvents, cmd/fathom/review.go) — it pairs with
+	// status ClaimSuperseded on a review-minted finding that is no longer
+	// emitted by a later review run (the finding was fixed), recorded
+	// alongside the pre-existing SetClaimStatus call so "a finding was
+	// raised, then reconciled as fixed" becomes a durable, queryable event
+	// instead of only an instantaneous status flip.
 	Verdict string
 	Author  string
 	Note    string
