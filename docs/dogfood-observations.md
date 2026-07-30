@@ -19,6 +19,61 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O17 — `module compile` and its own warning disagree about where a module's layer pack lives; `--root` is undocumented and rejected
+
+- **Symptom (found 2026-07-30 building the first REAL platform module, from
+  platform-engineering's 39 ADRs):** the compile wrapper warns that it
+  "expects a project-local layer pack named X (a `<module-dir>/.fathom/
+  layers/X/` directory, LC-3)" — but after moving the pack exactly there,
+  compile fails `error: resolve layer "X": semantic: unknown layer` while
+  `fathom layers list` run from the module dir shows the pack loaded
+  (`SOURCE project`, `STRATUM platform`). The underlying engine
+  (`compileViaStore`) resolves the pack from the ingested SERVICE's root,
+  not the module directory. Placing the pack at the service root compiles.
+- **Second defect:** `module compile`'s flag set has no `-root`, yet
+  `module eval`/`doctor` do (`cmd/fathom/module_compileeval.go:298`), and
+  compile's own warning text implies a module-dir-relative resolution that
+  only a `-root` could express. Passing `--root` to compile dies with
+  "flag provided but not defined" AFTER the operator has already reasoned
+  about roots — the usage line also omits `-root` for the verbs that DO
+  accept it.
+- **Why it matters:** this is the first-run experience for the exact
+  workflow phase O exists to serve (an org compiling its standards into a
+  bindable module). Three failed compiles before a human-obvious layout
+  worked, and the tool's own guidance pointed at the wrong directory.
+- **Fix direction (not yet implemented):** make one root story true — either
+  the wrapper resolves the pack relative to the module dir and PASSES that
+  root into the engine, or the warning names the service root. Add `-root`
+  to compile's flag set (or reject it with a message naming the correct
+  layout), and list `-root` in the usage line for every verb that has it.
+- **Status:** open; filed as the first row of the next module-verbs slice.
+
+### O18 — the eval gate makes first-time module authoring a chicken-and-egg
+
+- **Symptom:** a fresh project layer pack honestly declares `evaled: false`
+  (no eval evidence exists yet), and `module compile` correctly refuses:
+  "layer X has no passing eval/RESULTS.md record — refusing to compile".
+  But an author cannot write meaningful eval fixtures for a corpus they
+  have never seen compiled — the fixtures encode "what good claims look
+  like for THIS corpus". The only ways forward are
+  `--unsafe-skip-eval-gate` (correctly logged into `compile_runs`) or the
+  `--mock` dev lane, neither of which is a documented authoring path.
+- **Why it matters:** the gate is RIGHT (an ungated pack must never serve),
+  but the product currently offers no honest ramp from "I have a corpus" to
+  "I have eval evidence". This is exactly the gap
+  `docs/vision/13-expert-suite.md` §4 assigns to the studio (guided
+  readiness) and phase L (the advisor proposing fixtures) — this
+  observation is the concrete first-run evidence for both.
+- **Fix direction:** a documented `draft compile` lane — compile behind an
+  explicit draft flag that (a) marks every emitted claim's compile run as
+  draft-lane in `compile_runs`, (b) is refused for anything a consumer repo
+  could bind (the readiness ladder already holds such a module at `draft`),
+  and (c) is the input the studio/advisor reads to PROPOSE eval fixtures.
+  Then the honest loop is: draft-compile → read claims → author fixtures →
+  eval → real compile.
+- **Status:** open; recorded as the design input for phase L's advisor and
+  the studio's Prove step.
+
 ### O16 — a compiled obligation over-generalized its scope: ADR-018's "CUE is output, never authored" served on every `schema/**/*.cue` edit
 
 - **Symptom:** while implementing phase O (2026-07-29), the edit-hook injected
