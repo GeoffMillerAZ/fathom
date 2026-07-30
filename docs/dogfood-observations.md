@@ -19,6 +19,43 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O20 — two research-report figures need verification before anyone quotes them: a module-served tally with no binding, and 251,783 "active" review findings
+
+Found 2026-07-30 by running `fathom research report --since 168h` on this
+machine ~30 minutes after phase O's channels went live. Both are
+instrument-trust issues, filed BEFORE being used in any claim.
+
+1. **`platform-module serving: platform-standards 15` with zero bindings.**
+   `~/.fathom/hooks.jsonl` genuinely contains 15 `module-served` beats
+   (`{"kind":"module-served","meta":{"module":"platform-standards",
+   "phase":"pre","rules":"1"}}`), yet **no repo on this machine has a
+   `.fathom/modules.cue`** — `fathom doctor` reports "no platform-module
+   bindings configured" — and `internal/modserve.Bind` is the only writer of
+   `Obligation.Module`. Hypothesis to check first: the pre-hook's beat is
+   labeling by the rule's **Layer** (a project layer pack named
+   `platform-standards` was created at a repo root today) rather than by a
+   bound **module** — i.e. a layer-vs-module labeling confusion in
+   `reportModuleBeats`/the pre-hook render path. If so, the metric
+   over-reports module adoption, which is exactly the class of dishonesty
+   the flywheel exists to avoid. Verify by asserting the beat is emitted
+   ONLY when a binding produced the rule.
+2. **`review_active_findings=251783`** in the verify-gate block is
+   implausible on a repo with ~250 real findings — three orders of
+   magnitude off. Likely counting every findings row ever recorded (or
+   re-counting per call) rather than currently-active ones. Until checked,
+   the whole verify-gate line should be treated as unquotable.
+
+**Genuinely trustworthy in the same report** (stated for contrast, and
+because these are the numbers that matter): injection coverage
+seen=4106 / answered=3753 / **rate=91%** with its per-user caveat printed;
+guarded-edit coverage pre seen=280 / served=96, dedup_suppressed=15 (the
+phase-O channel firing within the hour); surface traffic bare=7234 /
+agent=196 / cli=36; latency p50=130ms p95=1540ms; and the honest
+"not measurable: no eviction event is logged anywhere in fathom today".
+
+**Status:** open, assigned to the next fathom slice; nothing from the
+verify-gate or module-serving lines may be cited until both are settled.
+
 ### O19 — a copied prompt does not transfer across corpora: 202 of 219 claims rejected on the first real platform pack (7.8% acceptance)
 
 - **What was run (2026-07-30):** the first REAL platform module —
