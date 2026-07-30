@@ -6,11 +6,18 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
+
+// syscallMkfifo creates a FIFO at path for TestTranscriptSummaryFrom_NonRegularFile_Refused.
+func syscallMkfifo(path string) error {
+	return syscall.Mkfifo(path, 0o600)
+}
 
 func withTempSessionLedger(t *testing.T) string {
 	t.Helper()
@@ -225,5 +232,137 @@ func TestStopHook_ChannelsOff_NoSessionLedgerEntry(t *testing.T) {
 
 	if _, err := os.Stat(ledgerPath); err == nil {
 		t.Fatal("expected no ledger file when FATHOM_CHANNELS=off")
+	}
+}
+
+// ─── critic finding F3 (BLOCKING): no raw OS error text ever reaches the ledger ───
+
+// TestTranscriptSummaryFrom_UnreadablePath_NeverLeaksErrorText proves the
+// unreadable-file note is a FIXED string, never err.Error() (which on a
+// real machine embeds the full $HOME, username, and repo layout — exactly
+// the class of leak this ledger, written 0600 but still a plain file,
+// must never carry).
+func TestTranscriptSummaryFrom_UnreadablePath_NeverLeaksErrorText(t *testing.T) {
+	secretPath := filepath.Join(t.TempDir(), "Users", "jdoe", "secret-project", "does-not-exist.jsonl")
+	ts := transcriptSummaryFrom(secretPath)
+	for _, note := range []string{ts.DurationNote, ts.TurnNote, ts.TokensNote} {
+		if strings.Contains(note, "jdoe") || strings.Contains(note, "secret-project") || strings.Contains(note, secretPath) {
+			t.Fatalf("note leaks the path: %q", note)
+		}
+	}
+}
+
+// TestAppendSessionLedger_FilePermissions and
+// TestAppendSessionLedger_DirPermissions prove the ledger gets the SAME
+// hardening guardstamp.go/identcache.go use — 0600 file in a 0700 dir,
+// not the original 0644/0755.
+func TestAppendSessionLedger_FilePermissions(t *testing.T) {
+	// A nested, not-yet-existing subdirectory: os.MkdirAll only sets the
+	// mode on directories it actually CREATES, so the dir-permission
+	// assertion below is only meaningful against a fresh path — not one
+	// t.TempDir() (0755-ish by default) already created for us.
+	path := filepath.Join(t.TempDir(), "fresh-home", ".fathom", "session-ledger.jsonl")
+	t.Setenv("FATHOM_SESSION_LEDGER", path)
+	appendSessionLedger(buildSessionLedgerEntry("sess-1", "fathom", transcriptSummary{TokensNote: "unavailable"}, nil, time.Now()))
+
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := fi.Mode().Perm(); perm != 0o600 {
+		t.Errorf("ledger file perm = %o, want 0600", perm)
+	}
+	dfi, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if perm := dfi.Mode().Perm(); perm != 0o700 {
+		t.Errorf("ledger dir perm = %o, want 0700", perm)
+	}
+}
+
+// ─── critic finding F5 (BLOCKING): safe transcript reads ───────────────────
+
+func TestTranscriptSummaryFrom_SymlinkRefused(t *testing.T) {
+	dir := t.TempDir()
+	real := filepath.Join(dir, "real.jsonl")
+	if err := os.WriteFile(real, []byte(`{"type":"assistant","timestamp":"2026-07-29T12:00:00Z"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link.jsonl")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unsupported here: %v", err)
+	}
+
+	ts := transcriptSummaryFrom(link)
+	if ts.TurnCount != nil {
+		t.Fatal("expected a symlinked transcript_path to be refused, not followed")
+	}
+	if !strings.Contains(ts.TurnNote, "unavailable") {
+		t.Errorf("TurnNote = %q, want an unavailable note", ts.TurnNote)
+	}
+}
+
+func TestTranscriptSummaryFrom_NonRegularFile_Refused(t *testing.T) {
+	dir := t.TempDir()
+	fifoPath := filepath.Join(dir, "fifo")
+	if err := syscallMkfifo(fifoPath); err != nil {
+		t.Skipf("mkfifo unsupported here: %v", err)
+	}
+
+	done := make(chan transcriptSummary, 1)
+	go func() { done <- transcriptSummaryFrom(fifoPath) }()
+
+	select {
+	case ts := <-done:
+		if ts.TurnCount != nil {
+			t.Fatal("expected a FIFO to be refused as non-regular, not read")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("transcriptSummaryFrom hung reading a FIFO — the IsRegular guard did not fire")
+	}
+}
+
+func TestTranscriptSummaryFrom_OversizeFile_TruncatedNotHung(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "huge.jsonl")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line := []byte(`{"type":"assistant","timestamp":"2026-07-29T12:00:00Z"}` + "\n")
+	target := int64(transcriptReadMaxBytes) + int64(len(line))*2
+	for written := int64(0); written < target; written += int64(len(line)) {
+		if _, err := f.Write(line); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.Close()
+
+	ts := transcriptSummaryFrom(path)
+	if !ts.Truncated {
+		t.Error("expected Truncated=true for a file over the read cap")
+	}
+	if ts.TurnCount == nil || *ts.TurnCount == 0 {
+		t.Error("expected a real (nonzero) TurnCount from the truncated-but-still-parsed portion")
+	}
+}
+
+func TestBuildSessionLedgerEntry_TranscriptSchemaNote(t *testing.T) {
+	now := time.Now()
+	tc := 3
+	ts := transcriptSummary{TurnCount: &tc, DurationNote: "unavailable: x", TokensNote: "unavailable: x"}
+	entry := buildSessionLedgerEntry("sess-1", "fathom", ts, nil, now)
+	if entry.TranscriptSchemaNote == "" {
+		t.Error("expected a TranscriptSchemaNote whenever any transcript field resolved to a real value")
+	}
+}
+
+func TestBuildSessionLedgerEntry_NoTranscript_NoSchemaNote(t *testing.T) {
+	now := time.Now()
+	ts := transcriptSummary{DurationNote: "unavailable: x", TurnNote: "unavailable: x", TokensNote: "unavailable: x"}
+	entry := buildSessionLedgerEntry("sess-1", "fathom", ts, nil, now)
+	if entry.TranscriptSchemaNote != "" {
+		t.Errorf("TranscriptSchemaNote = %q, want empty when no transcript field resolved at all", entry.TranscriptSchemaNote)
 	}
 }

@@ -37,7 +37,7 @@ func cmdEditHookPre(toolName, filePath, command, cwd, sessionID, url string, std
 		emitDiscoveryBeatIfShellSearch(command, sessionID)
 		return cmdEditHookPreCommand(command, cwd, sessionID, url, stdout)
 	case "Grep", "Glob", "Read":
-		return cmdEditHookPreDiscovery(toolName, sessionID)
+		return cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID)
 	default:
 		return cmdEditHookPreFile(filePath, cwd, sessionID, url, stdout)
 	}

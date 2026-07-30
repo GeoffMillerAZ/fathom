@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -67,6 +68,11 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: ingest failed: %v\n", err)
 		return 1
 	}
+	// Critic finding F2 (BLOCKING, phase-P fix round): bust the
+	// service-identity cache (identcache.go) on every successful ingest
+	// — a stale cached identity must never outlive the ingest that
+	// changed the answer, regardless of TTL (the O15 class).
+	hookcache.BustIdent()
 
 	fmt.Fprintf(stdout, "service:    %s\n", *service)
 	fmt.Fprintf(stdout, "discovered: %d\n", report.Discovered)

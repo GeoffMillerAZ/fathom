@@ -118,13 +118,15 @@ type ResearchReport struct {
 	// a savings ledger — PayloadCostNote (and every render line built from
 	// this block) says so explicitly. Per-channel totals from every
 	// payload-cost beat in window (session-brief/post-edit/pre-edit-guard/
-	// module-rules — payloadcost.go); per-edit p50/p95 is computed over
-	// the post-edit + pre-edit-guard channels only (each beat there
-	// represents one edit's injected governance).
-	PayloadCostByChannel          map[string]PayloadCostChannelStat `json:"payload_cost_by_channel,omitempty"`
-	PayloadCostPerEditP50Estimate *float64                          `json:"payload_cost_per_edit_p50_estimate"`
-	PayloadCostPerEditP95Estimate *float64                          `json:"payload_cost_per_edit_p95_estimate"`
-	PayloadCostNote               string                            `json:"payload_cost_note"`
+	// module-rules — payloadcost.go); per-payload p50/p95 (critic finding
+	// F8c, phase-P fix round: renamed from "per-edit" — a single guarded
+	// edit can yield TWO payload-cost beats, pre-edit-guard AND post-edit,
+	// so "per-edit" overstated the unit) is computed over the post-edit +
+	// pre-edit-guard channels only.
+	PayloadCostByChannel             map[string]PayloadCostChannelStat `json:"payload_cost_by_channel,omitempty"`
+	PayloadCostPerPayloadP50Estimate *float64                          `json:"payload_cost_per_payload_p50_estimate"`
+	PayloadCostPerPayloadP95Estimate *float64                          `json:"payload_cost_per_payload_p95_estimate"`
+	PayloadCostNote                  string                            `json:"payload_cost_note"`
 
 	// Instrument B — the discovery-share denominator (docs/design/
 	// production-tokenomics.md §4): fathom's own index-tool calls (from
@@ -136,9 +138,18 @@ type ResearchReport struct {
 	DiscoveryActionsByKind  map[string]int `json:"discovery_actions_by_kind,omitempty"`
 	DiscoveryIndexToolCalls int            `json:"discovery_index_tool_calls"`
 	DiscoverySharePercent   *float64       `json:"discovery_share_percent"`
+	// DiscoveryShareDenominatorNote (critic finding F1, phase-P fix
+	// round) is set ONLY when DiscoverySharePercent is nil because the
+	// observer contributed zero beats — distinct from DiscoveryShareNote
+	// (the always-present correlational-labeling note below), so a
+	// renderer can tell "no share computed, here's why" from "share
+	// computed, here's the caveat."
+	DiscoveryShareDenominatorNote string `json:"discovery_share_denominator_note,omitempty"`
 
-	// Instrument E — service-identity cache hit rate (docs/design/
-	// production-tokenomics.md §7): a LATENCY/LOAD signal, never a token
+	// The service-identity cache hit rate (docs/design/production-
+	// tokenomics.md §7 — an efficiency finding, not a lettered instrument
+	// in the design; critic finding F11 removed the invented "instrument
+	// E" label): a LATENCY/LOAD signal, never a token
 	// figure — IdentCacheNote says so explicitly, and this block is kept
 	// physically separate from PayloadCostByChannel so it can never be
 	// summed into a token total by mistake.
@@ -311,6 +322,41 @@ func readBeatLog(path string) (beats []heartbeat.Beat, read bool) {
 	return beats, true
 }
 
+// readBeatLogTail is readBeatLog's bounded sibling — critic finding F7
+// (phase-P fix round): the beat log grows at discovery-tool rate (the
+// highest-frequency tools this program instruments) with no upper bound,
+// and the Stop hook only ever needs THIS session's most recent beats
+// (sumSessionBeats filters by session_id, and a session's beats are, by
+// definition, recent — the session just ended). Loading the entire
+// history every session end is unbounded cost for a bounded need. Seeks
+// to the last maxBytes of the file and parses from there — a possibly
+// truncated first line at the seek point is dropped by heartbeat.Load's
+// own acceptPartial handling, exactly like a torn tail write already is.
+func readBeatLogTail(path string, maxBytes int64) (beats []heartbeat.Beat, read bool) {
+	if path == "" {
+		return nil, false
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, false
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, false
+	}
+	if fi.Size() > maxBytes {
+		if _, err := f.Seek(-maxBytes, io.SeekEnd); err != nil {
+			return nil, false
+		}
+	}
+	beats, err = heartbeat.Load(f, true) // acceptPartial: a mid-line seek looks identical to a torn tail write
+	if err != nil {
+		return nil, false
+	}
+	return beats, true
+}
+
 // readLatestBenchResults finds the most recently-named results-*.json under
 // dir (context-bench's own filename convention, scripts/context-bench.sh)
 // and parses it as internal/contextbench.RunResults. A missing directory or
@@ -398,8 +444,14 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 			"§4) is the real denominator: fathom's own index-tool calls against the counting-only " +
 			"PreToolUse observer's grep/glob/read/shell-search beats. Read is its own bucket, never " +
 			"folded into grep — reading a file you already located is dual-use, not necessarily " +
-			"discovery. CORRELATIONAL ONLY: a rise in fathom's share is not proof of substitution until " +
-			"the pre-registered A/B (§5) runs.",
+			"discovery, and a Read of a file THIS session just edited is excluded entirely (verification, " +
+			"not discovery — docs/design/production-tokenomics.md §4). POPULATION CAVEAT (critic finding " +
+			"F8a): the numerator (fathom index-tool calls) is daemon call-log traffic — every client/" +
+			"repo/session that hit this daemon, not just this machine's hooks — while the denominator " +
+			"addend (discovery-observer beats) is THIS machine's hooks beat log only; the two are not the " +
+			"same population, and the share is directional evidence, not an exact ratio. CORRELATIONAL " +
+			"ONLY regardless: a rise in fathom's share is not proof of substitution until the " +
+			"pre-registered A/B (§5) runs.",
 
 		ObservationsPath: in.observationsPath,
 		ObservationsRead: in.obsRead,
@@ -644,7 +696,7 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 
 // buildPayloadCostSection is instrument A's aggregator (docs/design/
 // production-tokenomics.md §3): per-channel totals from every
-// payload-cost beat in [since, until], plus per-edit p50/p95 over the
+// payload-cost beat in [since, until], plus per-payload p50/p95 over the
 // post-edit + pre-edit-guard channels (each beat there IS one edit's
 // injected governance payload). Empty in window → an honest note, never
 // a fabricated zero row.
@@ -694,7 +746,7 @@ func buildPayloadCostSection(r *ResearchReport, beats []heartbeat.Beat, since, u
 		sort.Float64s(perEditEstimates)
 		p50 := percentile(perEditEstimates, 0.50)
 		p95 := percentile(perEditEstimates, 0.95)
-		r.PayloadCostPerEditP50Estimate, r.PayloadCostPerEditP95Estimate = &p50, &p95
+		r.PayloadCostPerPayloadP50Estimate, r.PayloadCostPerPayloadP95Estimate = &p50, &p95
 	}
 	r.PayloadCostNote = "what fathom SPENT — a COST ledger (law 12, docs/design/production-tokenomics.md §2): every figure here is bytes/4, labeled ESTIMATE; none of it implies a saving"
 }
@@ -728,13 +780,26 @@ func buildDiscoverySection(r *ResearchReport, beats []heartbeat.Beat, toolCalls 
 	if len(byKind) > 0 {
 		r.DiscoveryActionsByKind = byKind
 	}
+	// Critic finding F1 (BLOCKING, phase-P fix round): a share is
+	// reportable ONLY when the discovery observer itself contributed at
+	// least one beat in window — total==0 with indexCalls>0 must NEVER
+	// compute 100%, which would announce "fathom share: 100%" for a
+	// program whose measured reality is ~1.7% (the exact document class
+	// that got a ×10 claim retracted). No observer beats means no
+	// denominator, full stop, regardless of how many index-tool calls
+	// were made.
+	if total == 0 {
+		r.DiscoverySharePercent = nil
+		r.DiscoveryShareDenominatorNote = "not measurable: the discovery observer emitted no beats in window — no denominator (the observer may not be wired for this window: predates the third PreToolUse group, an unwired repo, or a FATHOM_CHANNELS=off window)"
+		return
+	}
 	if denom := total + indexCalls; denom > 0 {
 		share := float64(indexCalls) / float64(denom) * 100
 		r.DiscoverySharePercent = &share
 	}
 }
 
-// buildIdentCacheSection is instrument E's aggregator (docs/design/
+// buildIdentCacheSection is the service-identity cache's aggregator (docs/design/
 // production-tokenomics.md §7): hit/miss counts from the "ident-cache"
 // beat channel (identcache.go) — a latency/load signal, reported with its
 // own note so it is never mistaken for a token figure.

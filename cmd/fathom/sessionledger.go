@@ -1,6 +1,6 @@
 package main
 
-// sessionledger.go — instrument C, the session token ledger
+// sessionledger.go — instrument D, the session token ledger
 // (docs/design/production-tokenomics.md §6): the Stop hook already runs
 // once per session; this extends it to append one line per session to a
 // local ledger, read-only with respect to everything else the Stop hook
@@ -23,9 +23,11 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
@@ -65,6 +67,18 @@ type sessionLedgerEntry struct {
 	TokensTotal *int   `json:"tokens_total,omitempty"`
 	TokensNote  string `json:"tokens_note"` // ALWAYS present — law 12: never a silent absence either
 
+	// TranscriptSchemaNote (critic finding F4, docs/design/production-
+	// tokenomics.md §8's amended non-goal) is ALWAYS present when a
+	// transcript was read at all (duration/turn_count/tokens_total came
+	// from parsing it): states plainly that these figures are coupled to
+	// Claude Code's own transcript JSONL shape and may silently degrade
+	// to "unavailable" (never a wrong number — schema-defensive parsing,
+	// summarizeTranscriptBytes) if that shape changes. TranscriptTruncated
+	// is set when the read hit transcriptReadMaxBytes (critic finding F5)
+	// — independent of which fields still got a real value.
+	TranscriptSchemaNote string `json:"transcript_schema_note,omitempty"`
+	TranscriptTruncated  bool   `json:"transcript_truncated,omitempty"`
+
 	// PayloadCostEstimateTotal / DiscoveryActionsTotal are instrument A/B's
 	// counts for THIS session_id, summed from the beat log — the join in
 	// action, computed once here rather than left for a separate query.
@@ -77,19 +91,27 @@ type sessionLedgerEntry struct {
 // JSON line. Best-effort: every failure is swallowed, exactly like
 // emitBeat — a ledger write must never be the reason the Stop hook breaks
 // its own silent/advisory contract (§5.3).
+//
+// Critic finding F3 (BLOCKING, phase-P fix round): the ledger can carry
+// duration/turn/tokens NOTES (never raw transcript content, but see
+// transcriptSummaryFrom's fixed-reason-string fix below) and a repo
+// label — sensitive enough that it gets the SAME hardening
+// guardstamp.go/identcache.go use for less sensitive data: 0700 dir,
+// 0600 file. Previously 0755/0644, the weakest permissions of any
+// cache-adjacent file this phase added.
 func appendSessionLedger(entry sessionLedgerEntry) {
 	path := sessionLedgerPath()
 	if path == "" {
 		return
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return
 	}
 	data, err := json.Marshal(entry)
 	if err != nil {
 		return
 	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
 	}
@@ -124,6 +146,16 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	} else {
 		e.TokensNote = ts.TokensNote
 	}
+	// A transcript was actually read (as opposed to absent/unreadable)
+	// whenever ANY of the three fields resolved to a real value — the
+	// schema-coupling disclosure applies the moment parsing happened at
+	// all, regardless of which individual fields it could fill in.
+	if ts.DurationMS != nil || ts.TurnCount != nil || ts.TokensTotal != nil {
+		e.TranscriptSchemaNote = "figures above are parsed from Claude Code's own transcript JSONL " +
+			"(transcript_path) — schema-coupled and may silently degrade to \"unavailable\" (never a " +
+			"wrong number) if that format changes; docs/design/production-tokenomics.md §8"
+	}
+	e.TranscriptTruncated = ts.Truncated
 
 	if sessionID == "" {
 		e.JoinNote = "unavailable: no session_id on this Stop hook invocation — instrument A/B beats cannot be attributed to this session"
@@ -167,6 +199,9 @@ func atoiSafe(s string) int {
 }
 
 // transcriptSummary is transcriptSummaryFrom's honest-or-absent output.
+// Truncated is independent of the per-field value/note pattern (it can be
+// true alongside a REAL value — a read that hit the byte cap partway
+// through can still summarize everything read up to that point).
 type transcriptSummary struct {
 	DurationMS   *int64
 	DurationNote string
@@ -174,6 +209,7 @@ type transcriptSummary struct {
 	TurnNote     string
 	TokensTotal  *int
 	TokensNote   string
+	Truncated    bool
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL
@@ -194,24 +230,72 @@ type transcriptLine struct {
 	} `json:"message"`
 }
 
+// transcriptReadMaxBytes bounds how much of a transcript file this
+// instrument will ever read — critic finding F5 (BLOCKING, phase-P fix
+// round): an unbounded os.ReadFile on a stdin-supplied path could hang the
+// Stop hook (a FIFO, /dev/zero) to its full timeout, or exhaust memory on
+// a pathological file. 16MB comfortably covers a real multi-hour session
+// transcript while staying far under the Stop hook's own timeout budget.
+const transcriptReadMaxBytes = 16 << 20
+
 // transcriptSummaryFrom reads path (Claude Code's transcript_path Stop
 // hook field) and summarizes it: turn count (lines with type=="assistant"),
 // harness-reported token totals (summed "message.usage" fields across
 // every line that carries one), and duration (last minus first parseable
 // timestamp). Any field this process cannot determine is left nil with an
-// honest note — an absent/unreadable file degrades every field, not just
-// some.
+// honest, FIXED-STRING note — an absent/unreadable file degrades every
+// field, not just some.
+//
+// Critic finding F3 (BLOCKING, phase-P fix round): notes here NEVER embed
+// err.Error() — a raw os.ReadFile error on a user-supplied path can
+// contain the full $HOME, username, and repo layout, which would then sit
+// in a 0600 file forever (this ledger, appendSessionLedger). Every note is
+// a fixed reason string naming the CLASS of problem, never OS-level detail.
+//
+// Critic finding F5 (BLOCKING, phase-P fix round): the file is opened
+// O_RDONLY|O_NOFOLLOW (a symlinked transcript_path is refused, not
+// followed — mirrors guardstamp.go/identcache.go's own read hardening),
+// Stat-checked IsRegular BEFORE any read (a FIFO or device node is
+// refused outright, closing the "/dev/zero or a FIFO hangs the hook"
+// risk), and capped at transcriptReadMaxBytes via io.LimitReader — a
+// truncated read still summarizes what was read, with the note saying so.
 func transcriptSummaryFrom(path string) transcriptSummary {
 	const unavailableNoPath = "unavailable: no transcript_path on this Stop hook invocation"
+	const unavailableUnreadable = "unavailable: transcript_path unreadable or not a regular file"
 	if path == "" {
 		return transcriptSummary{DurationNote: unavailableNoPath, TurnNote: unavailableNoPath, TokensNote: unavailableNoPath}
 	}
-	data, err := os.ReadFile(path)
+	// O_NONBLOCK is the load-bearing part of this open: opening a FIFO
+	// for O_RDONLY WITHOUT it blocks at the open() syscall itself — before
+	// Stat/IsRegular ever runs — until a writer connects, which is
+	// exactly the hang critic finding F5 named (a FIFO parked at
+	// transcript_path would block the Stop hook to its own timeout, not
+	// this function's IsRegular check). O_NONBLOCK makes the open return
+	// immediately regardless of file type; the IsRegular check below then
+	// refuses the FIFO outright rather than reading from it.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
-		note := "unavailable: transcript_path unreadable: " + err.Error()
-		return transcriptSummary{DurationNote: note, TurnNote: note, TokensNote: note}
+		return transcriptSummary{DurationNote: unavailableUnreadable, TurnNote: unavailableUnreadable, TokensNote: unavailableUnreadable}
 	}
-	return summarizeTranscriptBytes(data)
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil || !fi.Mode().IsRegular() {
+		return transcriptSummary{DurationNote: unavailableUnreadable, TurnNote: unavailableUnreadable, TokensNote: unavailableUnreadable}
+	}
+	data, err := io.ReadAll(io.LimitReader(f, transcriptReadMaxBytes+1))
+	if err != nil {
+		return transcriptSummary{DurationNote: unavailableUnreadable, TurnNote: unavailableUnreadable, TokensNote: unavailableUnreadable}
+	}
+	out := transcriptSummary{}
+	if int64(len(data)) > transcriptReadMaxBytes {
+		data = data[:transcriptReadMaxBytes]
+		out.Truncated = true
+	}
+	rest := summarizeTranscriptBytes(data)
+	out.DurationMS, out.DurationNote = rest.DurationMS, rest.DurationNote
+	out.TurnCount, out.TurnNote = rest.TurnCount, rest.TurnNote
+	out.TokensTotal, out.TokensNote = rest.TokensTotal, rest.TokensNote
+	return out
 }
 
 func summarizeTranscriptBytes(data []byte) transcriptSummary {

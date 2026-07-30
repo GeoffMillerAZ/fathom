@@ -75,7 +75,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
-	// Instrument C (docs/design/production-tokenomics.md §6): append one
+	// Instrument D (docs/design/production-tokenomics.md §6): append one
 	// session-ledger line. Read-only w.r.t. everything else this hook
 	// does — appendSessionLedger swallows every failure internally,
 	// exactly like emitBeat, so a ledger problem can never affect the
@@ -86,6 +86,14 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	return runStopHook(projDir, hc, *url, *block, stdout)
 }
 
+// sessionLedgerBeatTailBytes bounds how much of the beat log
+// recordSessionLedgerEntry reads — critic finding F7 (phase-P fix round):
+// THIS session's beats (sumSessionBeats filters by session_id) are, by
+// definition, among the most recently written ones, so a full-file
+// heartbeat.Load on every session end is unbounded cost for a bounded
+// need. 4MB comfortably covers a very active session's own beats.
+const sessionLedgerBeatTailBytes = 4 << 20
+
 // recordSessionLedgerEntry resolves a local (daemon-free) repo label,
 // summarizes the session transcript (best-effort), sums this session's
 // instrument A/B beats, and appends the resulting row.
@@ -95,7 +103,7 @@ func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now tim
 		repo = strings.ToLower(cands[0].name)
 	}
 	ts := transcriptSummaryFrom(transcriptPath)
-	beats, _ := readBeatLog(beatLogPath())
+	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	appendSessionLedger(buildSessionLedgerEntry(sessionID, repo, ts, beats, now))
 }
 

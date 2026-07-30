@@ -351,7 +351,7 @@ separate, restricted reader — `guardspec.LoadUserGuards` — that permits
 though no such `#Guard` field exists today — `min_tier`) present on a
 user-scope guard is a **strict validation error** naming the field:
 
-```toml
+```cue
 guards: [
 	{
 		note: "confirm before an apply — this is MY danger list, not the repo's"

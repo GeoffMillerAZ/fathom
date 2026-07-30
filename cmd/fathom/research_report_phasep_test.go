@@ -1,8 +1,9 @@
 package main
 
-// research_report_phasep_test.go — instruments A (payload cost), B
-// (discovery share), and E (ident-cache hit rate) in `fathom research
-// report` (docs/design/production-tokenomics.md).
+// research_report_phasep_test.go — instruments A (payload cost) and B
+// (discovery share), plus the service-identity cache hit rate (§7, not a
+// lettered instrument in the design) in `fathom research report`
+// (docs/design/production-tokenomics.md).
 
 import (
 	"strings"
@@ -50,7 +51,7 @@ func TestBuildResearchReport_PayloadCost_PerChannelTotals(t *testing.T) {
 	if got := r.PayloadCostByChannel["module-rules"]; got.Beats != 1 || got.TotalTokensEstimate != 15 {
 		t.Errorf("module-rules = %+v", got)
 	}
-	if r.PayloadCostPerEditP50Estimate == nil || r.PayloadCostPerEditP95Estimate == nil {
+	if r.PayloadCostPerPayloadP50Estimate == nil || r.PayloadCostPerPayloadP95Estimate == nil {
 		t.Fatal("expected per-edit p50/p95 to be computed from post-edit + pre-edit-guard beats")
 	}
 	if !strings.Contains(r.PayloadCostNote, "what fathom SPENT") {
@@ -150,7 +151,36 @@ func TestBuildResearchReport_DiscoveryShareNote_AlwaysCorrelational(t *testing.T
 	}
 }
 
-// ─── instrument E: ident-cache hit rate ────────────────────────────────────
+// TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent
+// is critic finding F1's own proof (BLOCKING, phase-P fix round): with
+// index-tool calls present but ZERO discovery-observer beats, the share
+// must be nil with an honest note — NEVER a fabricated 100%. This is the
+// exact case TestBuildResearchReport_DiscoveryShareNote_AlwaysCorrelational
+// missed (it passes fully empty inputs, so indexCalls is also 0 there).
+func TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent(t *testing.T) {
+	since := mustTime(t, "2026-07-21T00:00:00Z")
+	until := mustTime(t, "2026-07-28T00:00:00Z")
+	entries := []adoptionCallEntry{
+		{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent"},
+		{TS: "2026-07-23T10:01:00Z", Tool: "references", Surface: "agent"},
+	}
+	r := buildResearchReport(researchReportInputs{since: since, until: until, now: until, entries: entries, callLogRead: true})
+
+	if r.DiscoveryIndexToolCalls != 2 {
+		t.Fatalf("DiscoveryIndexToolCalls = %d, want 2", r.DiscoveryIndexToolCalls)
+	}
+	if r.DiscoveryActionsTotal != 0 {
+		t.Fatalf("DiscoveryActionsTotal = %d, want 0", r.DiscoveryActionsTotal)
+	}
+	if r.DiscoverySharePercent != nil {
+		t.Fatalf("DiscoverySharePercent = %v, want nil — the observer emitted zero beats, so there is no denominator (a fabricated 100%% here is the exact ×10-class dishonesty this program retracted once already)", *r.DiscoverySharePercent)
+	}
+	if !strings.Contains(r.DiscoveryShareDenominatorNote, "not measurable") {
+		t.Fatalf("DiscoveryShareDenominatorNote = %q, want an honest not-measurable note", r.DiscoveryShareDenominatorNote)
+	}
+}
+
+// ─── the service-identity cache hit rate (§7, not a lettered instrument) ──
 
 func TestBuildResearchReport_IdentCacheHitRate(t *testing.T) {
 	since := mustTime(t, "2026-07-21T00:00:00Z")

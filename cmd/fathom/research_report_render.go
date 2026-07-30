@@ -112,8 +112,8 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 			s := r.PayloadCostByChannel[c]
 			fmt.Fprintf(w, "  %-16s beats=%-6d bytes=%-8d tokens_estimate=%d\n", c, s.Beats, s.TotalBytes, s.TotalTokensEstimate)
 		}
-		if r.PayloadCostPerEditP50Estimate != nil && r.PayloadCostPerEditP95Estimate != nil {
-			fmt.Fprintf(w, "  per-edit tokens_estimate: p50=%.0f p95=%.0f\n", *r.PayloadCostPerEditP50Estimate, *r.PayloadCostPerEditP95Estimate)
+		if r.PayloadCostPerPayloadP50Estimate != nil && r.PayloadCostPerPayloadP95Estimate != nil {
+			fmt.Fprintf(w, "  per-payload tokens_estimate: p50=%.0f p95=%.0f\n", *r.PayloadCostPerPayloadP50Estimate, *r.PayloadCostPerPayloadP95Estimate)
 		}
 		fmt.Fprintf(w, "  %s\n", r.PayloadCostNote)
 	}
@@ -137,6 +137,8 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 	}
 	if r.DiscoverySharePercent != nil {
 		fmt.Fprintf(w, "  fathom share: %.0f%% (CORRELATIONAL — not causal until the pre-registered A/B runs)\n", *r.DiscoverySharePercent)
+	} else if r.DiscoveryShareDenominatorNote != "" {
+		fmt.Fprintf(w, "  %s\n", r.DiscoveryShareDenominatorNote)
 	}
 	fmt.Fprintf(w, "  %s\n", r.DiscoveryShareNote)
 

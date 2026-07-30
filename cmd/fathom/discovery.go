@@ -21,8 +21,19 @@ import "strings"
 // a single beat, zero daemon calls, zero stdout (Claude Code hooks treat
 // empty stdout as "nothing to inject"). sessionID, when non-empty, tags
 // the beat — the same join key instrument A's payload-cost beats and
-// instrument C's session ledger use (docs/design/production-tokenomics.md §6).
-func cmdEditHookPreDiscovery(toolName, sessionID string) int {
+// instrument D's session ledger use (docs/design/production-tokenomics.md §6).
+//
+// A Read whose target is in sessionID's recent edit set (editset.go,
+// design §4: "Read when the target is outside the current edit set") is
+// NOT counted — critic finding F8b (phase-P fix round): a verification
+// read of a file this session just edited is not discovery, and counting
+// it inflates the denominator. filePath/cwd resolution is local-only
+// (serviceCandidates + relativeToRoot, mirroring cmdEditHookPreFile) —
+// zero daemon calls either way.
+func cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID string) int {
+	if toolName == "Read" && fileInEditSet(filePath, cwd, sessionID) {
+		return 0 // verification read of a just-edited file — excluded, not discovery
+	}
 	meta := map[string]string{"phase": "pre"}
 	if sessionID != "" {
 		meta["session"] = sessionID

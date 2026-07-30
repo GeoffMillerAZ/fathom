@@ -8,6 +8,8 @@ package main
 // wiring failure is `warn`, never `fail`.
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,23 +19,29 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
-// checkChannelsEnv reports whether FATHOM_CHANNELS=off is set in doctor's
-// own environment — the honesty half of the kill switch (channels.go):
-// a silent kill switch nobody can detect repeats the O15 failure mode, so
-// doctor names it loudly whenever it finds hooks disabled by environment.
-// doctor itself is never silenced by FATHOM_CHANNELS — it is a diagnostic,
-// not a hook.
+// checkChannelsEnv reports whether FATHOM_CHANNELS=off is set in DOCTOR's
+// OWN process environment — the honesty half of the kill switch
+// (channels.go): a silent kill switch nobody can detect repeats the O15
+// failure mode, so doctor names it loudly whenever IT finds hooks
+// disabled by environment. doctor itself is never silenced by
+// FATHOM_CHANNELS — it is a diagnostic, not a hook.
+//
+// Critic finding F10 (phase-P fix round): the original wording ("hooks
+// run normally") overclaimed — hooks run in the HARNESS's own environment
+// (Claude Code's settings.json `env` block, a launchd plist's environment
+// for the daemon), which doctor cannot see and may differ from doctor's
+// own shell. The pass case now says exactly what was checked, no more.
 func checkChannelsEnv() doctorCheck {
 	const name = "channels_env"
 	if fathomChannelsDisabled() {
 		return doctorCheck{
 			Name:   name,
 			Status: doctorWarn,
-			Reason: "FATHOM_CHANNELS=off is set in this environment — every fathom hook (session-hook, edit-hook pre/post, the discovery observer, stop-hook) exits in total silence",
-			Remedy: `unset FATHOM_CHANNELS (or set it to anything other than "off") to restore fathom's coding-agent channels`,
+			Reason: "FATHOM_CHANNELS=off is set in doctor's own environment — every fathom hook (session-hook, edit-hook pre/post, the discovery observer, stop-hook) exits in total silence WHEN RUN WITH THIS SAME ENVIRONMENT. Hooks run in the harness's own environment (Claude Code's settings.json, a launchd plist), which may differ from doctor's — check there too if hooks seem live despite this warning.",
+			Remedy: `unset FATHOM_CHANNELS (or set it to anything other than "off") in doctor's environment; also check the harness's own hook environment (settings.json / plist), which doctor cannot see`,
 		}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: `FATHOM_CHANNELS is not "off" — hooks run normally`}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: `FATHOM_CHANNELS is not "off" in doctor's own environment (hooks run in the harness's own environment, which doctor cannot see and may differ)`}
 }
 
 // checkIdentCacheEnv is checkChannelsEnv's twin for the --no-cache escape
@@ -170,4 +178,68 @@ func checkUserScopeGuard() doctorCheck {
 		}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("~/.fathom/guard.cue in effect — %d command guard(s)", len(gs.Guards))}
+}
+
+// sessionLedgerConsecutiveUnavailableThreshold is how many consecutive
+// recent sessions all reporting tokens:unavailable trips checkSessionLedgerTokens's
+// warn — docs/design/production-tokenomics.md §8's amended non-goal, guard
+// 3: the transcript-schema-coupled instrument (§6) must degrade LOUDLY,
+// not silently, since the A/B protocol (§5) depends on it.
+const sessionLedgerConsecutiveUnavailableThreshold = 5
+
+// checkSessionLedgerTokens is docs/design/production-tokenomics.md §8's
+// amended non-goal, guard 3 (critic finding F4, phase-P fix round): reads
+// the tail of the session ledger and warns when the most recent
+// sessionLedgerConsecutiveUnavailableThreshold consecutive sessions ALL
+// report tokens:unavailable — a sign Claude Code's transcript schema has
+// drifted out from under transcriptSummaryFrom's parsing, which would
+// otherwise silently starve the A/B protocol's causal instrument.
+// Absence/too-few-entries is honestly `pass` (nothing wrong observed yet),
+// never a guessed warn.
+func checkSessionLedgerTokens() doctorCheck {
+	const name = "session_ledger_tokens"
+	path := sessionLedgerPath()
+	if path == "" {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: "no resolvable $HOME — no session ledger to check"}
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: "no session ledger yet (no Stop hook has fired)"}
+	}
+	defer f.Close()
+
+	var entries []sessionLedgerEntry
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var e sessionLedgerEntry
+		if err := json.Unmarshal(line, &e); err != nil {
+			continue // a torn/malformed line must not abort the check
+		}
+		entries = append(entries, e)
+	}
+	if len(entries) < sessionLedgerConsecutiveUnavailableThreshold {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("only %d session(s) logged — not enough to judge (threshold %d)", len(entries), sessionLedgerConsecutiveUnavailableThreshold)}
+	}
+
+	recent := entries[len(entries)-sessionLedgerConsecutiveUnavailableThreshold:]
+	allUnavailable := true
+	for _, e := range recent {
+		if e.TokensTotal != nil {
+			allUnavailable = false
+			break
+		}
+	}
+	if allUnavailable {
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("the last %d session(s) all report tokens:unavailable — the transcript-parsing instrument (docs/design/production-tokenomics.md §6/§8) may have silently degraded (a Claude Code transcript schema change is the likely cause)", sessionLedgerConsecutiveUnavailableThreshold),
+			Remedy: "inspect a recent transcript_path file directly against transcriptSummaryFrom's expected shape (cmd/fathom/sessionledger.go) — this instrument feeds the A/B protocol (§5) and must not degrade quietly",
+		}
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("recent sessions include real token totals (checked last %d)", sessionLedgerConsecutiveUnavailableThreshold)}
 }

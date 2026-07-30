@@ -204,6 +204,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkIdentCacheEnv(),
 		checkUserScopeIgnore(root),
 		checkUserScopeGuard(),
+		checkSessionLedgerTokens(),
 	)
 	return checks
 }

@@ -151,6 +151,83 @@ func TestCheckUserScopeGuard_Valid_Pass(t *testing.T) {
 	}
 }
 
+// ─── session_ledger_tokens (critic finding F4, phase-P fix round) ─────────
+
+func TestCheckSessionLedgerTokens_NoLedger_Pass(t *testing.T) {
+	t.Setenv("FATHOM_SESSION_LEDGER", filepath.Join(t.TempDir(), "session-ledger.jsonl"))
+	got := checkSessionLedgerTokens()
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q", got.Status, got.Reason)
+	}
+}
+
+func TestCheckSessionLedgerTokens_TooFewEntries_Pass(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "session-ledger.jsonl")
+	t.Setenv("FATHOM_SESSION_LEDGER", path)
+	writeLedgerLines(t, path, unavailableLedgerLine("sess-1"), unavailableLedgerLine("sess-2"))
+
+	got := checkSessionLedgerTokens()
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass (below threshold)", got.Status, got.Reason)
+	}
+}
+
+func TestCheckSessionLedgerTokens_ConsecutiveUnavailable_Warn(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "session-ledger.jsonl")
+	t.Setenv("FATHOM_SESSION_LEDGER", path)
+	var lines []string
+	for i := 0; i < sessionLedgerConsecutiveUnavailableThreshold; i++ {
+		lines = append(lines, unavailableLedgerLine("sess"))
+	}
+	writeLedgerLines(t, path, lines...)
+
+	got := checkSessionLedgerTokens()
+	if got.Status != doctorWarn {
+		t.Fatalf("Status = %v, Reason = %q, want warn", got.Status, got.Reason)
+	}
+	if got.Remedy == "" {
+		t.Error("expected a remedy")
+	}
+}
+
+func TestCheckSessionLedgerTokens_MixedAvailability_Pass(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "session-ledger.jsonl")
+	t.Setenv("FATHOM_SESSION_LEDGER", path)
+	var lines []string
+	for i := 0; i < sessionLedgerConsecutiveUnavailableThreshold-1; i++ {
+		lines = append(lines, unavailableLedgerLine("sess"))
+	}
+	lines = append(lines, availableLedgerLine("sess-real"))
+	writeLedgerLines(t, path, lines...)
+
+	got := checkSessionLedgerTokens()
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass — one recent session has real tokens", got.Status, got.Reason)
+	}
+}
+
+func writeLedgerLines(t *testing.T, path string, lines ...string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := ""
+	for _, l := range lines {
+		content += l + "\n"
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func unavailableLedgerLine(sessionID string) string {
+	return `{"session_id":"` + sessionID + `","at":"2026-07-30T00:00:00Z","tokens_note":"unavailable: transcript_path unreadable or not a regular file"}`
+}
+
+func availableLedgerLine(sessionID string) string {
+	return `{"session_id":"` + sessionID + `","at":"2026-07-30T00:00:00Z","tokens_total":1234,"tokens_note":""}`
+}
+
 func TestCheckUserScopeGuard_Invalid_Warn(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

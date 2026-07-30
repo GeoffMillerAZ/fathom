@@ -28,6 +28,36 @@ package main
 // counter would be nearly meaningless; the beat log lets research_report.go
 // aggregate a real hit rate across sessions and time, exactly like every
 // other hook instrument in this program.
+//
+// Invalidation (critic finding F2, BLOCKING, phase-P fix round — the O15
+// class: silent injection death on rename/reingest). The original design
+// keyed ONLY on (repo root, daemon base URL), which is constant across a
+// daemon restart, an index rebuild, or a re-ingest, so a stale entry could
+// outlive the very event that invalidated it, for up to identCacheTTL —
+// and because a NEGATIVE resolution (repo not indexed) was cached too, a
+// freshly-onboarded repo could see its own first obligations silently
+// starved for that whole window while doctor (reading through the same
+// cache) reported healthy. Fixed two ways: (1) negative resolutions get a
+// much shorter TTL (identCacheNegativeTTL) than positive ones — a repo
+// that WAS unindexed a few seconds ago is re-checked promptly rather than
+// trusted for the full 5 minutes; (2) every ingest — CLI `fathom ingest`
+// (this file's caller in ingest.go), the MCP `ingest` tool, and
+// auto-refresh's own re-ingest (internal/mcp/autorefresh.go,
+// internal/mcp/extra_tools.go) — busts the ENTIRE cache via
+// internal/hookcache.BustIdent(), so a stale entry can never survive the
+// event that changed the answer, regardless of TTL.
+//
+// Folding a daemon boot-id/PID into the key itself (the design's other
+// stated option) was assessed and NOT implemented: server_stats does
+// expose started_at, but reading it to validate a key requires the exact
+// daemon round trip this cache exists to avoid — checking it on every
+// call (hit or miss) would erase most of the "~3,600 round trips -> tens"
+// win the design measures success by. The bust-on-ingest mechanism above
+// covers the concrete failure the critic named (a rename/reingest making
+// a cached answer wrong) without that cost; a cheap LOCAL signal (e.g. a
+// daemon-written pidfile a hook could stat without a network call) would
+// close the remaining restart-without-reingest gap and is filed as a
+// follow-up, not silently dropped.
 
 import (
 	"crypto/sha256"
@@ -39,17 +69,29 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
-// identCacheTTL bounds how long a cached resolution is honored — short
-// enough that a service rename or a fresh ingest is discovered within one
-// window, long enough to collapse the "one daemon round trip per edit"
-// pattern this cache exists to fix.
+// identCacheTTL bounds how long a POSITIVE cached resolution is honored —
+// short enough that a service rename or a fresh ingest is discovered
+// within one window, long enough to collapse the "one daemon round trip
+// per edit" pattern this cache exists to fix.
 const identCacheTTL = 5 * time.Minute
+
+// identCacheNegativeTTL bounds a NEGATIVE resolution (repo not yet
+// indexed) — critic finding F2: caching "not found" for the full positive
+// TTL meant a repo's first few minutes after `fathom init`/first ingest
+// could see obligations silently starved. Short enough that a same-session
+// ingest is picked up within seconds, not minutes.
+const identCacheNegativeTTL = 15 * time.Second
 
 // identCacheDir is os.TempDir()/fathom-ident-cache — a package var (not a
 // const) so tests can point it at a t.TempDir(), mirroring guardStampDir.
-var identCacheDir = filepath.Join(os.TempDir(), "fathom-ident-cache")
+// Initialized from internal/hookcache.IdentDir so cross-process busting
+// (internal/mcp's auto-refresh / ingest tool) targets the SAME default
+// path without the two packages importing each other.
+var identCacheDir = hookcache.IdentDir
 
 // identCacheDisabled reports the --no-cache escape (see package doc).
 func identCacheDisabled() bool {
@@ -57,10 +99,6 @@ func identCacheDisabled() bool {
 }
 
 // identCacheEntry is one cached (repo root, daemon base URL) resolution.
-// Found=false is cached too (a repo not yet indexed) so a hook on an
-// unindexed project doesn't re-probe the daemon on every single edit
-// either — it simply retries after identCacheTTL, which is short enough
-// that a same-session `fathom init`/ingest is picked up promptly.
 type identCacheEntry struct {
 	Name      string `json:"name"`
 	Root      string `json:"root"`
@@ -75,9 +113,12 @@ func identCacheKey(projDir, baseURL string) string {
 }
 
 // readIdentCache returns the cached candidate for (projDir, baseURL),
-// hit=false on any absence/corruption/expiry/ownership mismatch — mirrors
-// readGuardStamp's exact hardening (see guardstamp.go's doc comment for the
-// full TOCTOU reasoning; identical here).
+// hit=false on any absence/corruption/ownership mismatch, or expiry —
+// Found=true entries expire after identCacheTTL, Found=false entries
+// after the much shorter identCacheNegativeTTL (see package doc, critic
+// finding F2). Mirrors readGuardStamp's exact hardening otherwise (see
+// guardstamp.go's doc comment for the full TOCTOU reasoning; identical
+// here).
 func readIdentCache(projDir, baseURL string, now time.Time) (cand serviceCandidate, found, hit bool) {
 	path := identCacheKey(projDir, baseURL)
 	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
@@ -106,7 +147,14 @@ func readIdentCache(projDir, baseURL string, now time.Time) (cand serviceCandida
 		return serviceCandidate{}, false, false
 	}
 	writtenAt, err := time.Parse(time.RFC3339, e.WrittenAt)
-	if err != nil || now.Sub(writtenAt) > identCacheTTL {
+	if err != nil {
+		return serviceCandidate{}, false, false
+	}
+	ttl := identCacheTTL
+	if !e.Found {
+		ttl = identCacheNegativeTTL
+	}
+	if now.Sub(writtenAt) > ttl {
 		return serviceCandidate{}, false, false
 	}
 	return serviceCandidate{name: e.Name, root: e.Root}, e.Found, true

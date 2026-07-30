@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
 func withTempIdentCacheDir(t *testing.T) {
@@ -35,12 +39,38 @@ func TestIdentCache_NotFoundCachedToo(t *testing.T) {
 	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{}, false, now)
 
-	_, found, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(1*time.Minute))
+	_, found, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(5*time.Second))
 	if !hit {
-		t.Fatal("expected a cache hit for a cached negative resolution")
+		t.Fatal("expected a cache hit for a cached negative resolution within the negative TTL")
 	}
 	if found {
 		t.Error("expected found=false to be preserved")
+	}
+}
+
+// TestIdentCache_NegativeTTLShorterThanPositive is critic finding F2's own
+// proof (BLOCKING, phase-P fix round): a NEGATIVE resolution (repo not yet
+// indexed) must expire far sooner than a positive one — caching "not
+// found" for the full positive TTL was the O15-class bug (a freshly
+// ingested repo's first obligations silently starved for minutes).
+func TestIdentCache_NegativeTTLShorterThanPositive(t *testing.T) {
+	withTempIdentCacheDir(t)
+	now := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
+	writeIdentCache("/repo", "http://localhost:7575", serviceCandidate{}, false, now)
+
+	if _, _, hit := readIdentCache("/repo", "http://localhost:7575", now.Add(identCacheNegativeTTL+time.Second)); hit {
+		t.Fatal("expected a negative resolution to expire shortly after identCacheNegativeTTL")
+	}
+	if identCacheNegativeTTL >= identCacheTTL {
+		t.Fatalf("identCacheNegativeTTL (%s) must be shorter than identCacheTTL (%s)", identCacheNegativeTTL, identCacheTTL)
+	}
+
+	// A POSITIVE resolution written at the same instant must still be
+	// live at that same elapsed time — the two TTLs are genuinely
+	// independent, not one shared clock.
+	writeIdentCache("/repo2", "http://localhost:7575", serviceCandidate{name: "svc", root: "/repo2"}, true, now)
+	if _, found, hit := readIdentCache("/repo2", "http://localhost:7575", now.Add(identCacheNegativeTTL+time.Second)); !hit || !found {
+		t.Fatal("expected the positive resolution to still be live past the negative TTL")
 	}
 }
 
@@ -136,5 +166,39 @@ func TestCandidatesWithDaemon_NoCacheEscape(t *testing.T) {
 
 	if n := *calls; n != 2 {
 		t.Fatalf("daemon queried %d time(s) with FATHOM_IDENT_NO_CACHE set, want exactly 2 (cache must be fully bypassed)", n)
+	}
+}
+
+// TestCmdIngest_BustsIdentCache is critic finding F2's end-to-end proof
+// (BLOCKING, phase-P fix round): `fathom ingest` must remove every cached
+// service-identity resolution, never letting a hook see a pre-ingest
+// answer past the cache's TTL. identCacheDir (cmd/fathom's own package
+// var) and hookcache.IdentDir (the cross-process bust target) are pointed
+// at the SAME temp directory so this test can observe both the write
+// path and the bust path operating on one location, exactly as they do
+// in production (both default to the same os.TempDir() path).
+func TestCmdIngest_BustsIdentCache(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "fathom-ident-cache")
+	origIdentCacheDir, origHookcacheDir := identCacheDir, hookcache.IdentDir
+	identCacheDir, hookcache.IdentDir = dir, dir
+	t.Cleanup(func() { identCacheDir, hookcache.IdentDir = origIdentCacheDir, origHookcacheDir })
+
+	writeIdentCache("/some/repo", "http://localhost:7575", serviceCandidate{name: "svc", root: "/some/repo"}, true, time.Now())
+	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7575", time.Now()); !hit {
+		t.Fatal("setup: expected the seeded cache entry to be readable before ingest")
+	}
+
+	storePath := filepath.Join(t.TempDir(), "fathom.sqlite")
+	var out, errBuf bytes.Buffer
+	code := cmdIngest([]string{"--service", "payment-service", "--mode", "faux", "--store", storePath}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("cmdIngest exit = %d, stderr = %s", code, errBuf.String())
+	}
+
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("expected the ident cache directory to be removed by ingest, stat err = %v", err)
+	}
+	if _, _, hit := readIdentCache("/some/repo", "http://localhost:7575", time.Now()); hit {
+		t.Fatal("expected the seeded cache entry to be gone after ingest busts the cache")
 	}
 }

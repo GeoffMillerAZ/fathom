@@ -3,20 +3,32 @@ package main
 // testmain_test.go — a package-wide safety net for user-scope config
 // (docs/design/scoped-config.md) and session-instrument (production-
 // tokenomics.md) code paths that default to $HOME (connector.UserIgnorePath,
-// guard.go's loadUserGuardSet, sessionledger.go's sessionLedgerPath). Both
-// families default to real $HOME/~/.fathom/* when no override is present —
-// exactly the repo-wide "tests must not write to the real $HOME" rule.
+// guard.go's loadUserGuardSet, sessionledger.go's sessionLedgerPath) OR to
+// os.TempDir() (identcache.go's identCacheDir, editset.go's editSetDir,
+// guardstamp.go's guardStampDir) — exactly the repo-wide "tests must not
+// write to the real $HOME or the real machine temp dir" rule.
 //
 // Rather than require every test in this large, pre-existing package to
-// individually t.Setenv("HOME", t.TempDir()), TestMain sets one hermetic
-// HOME for the whole binary before any test runs. A test that needs its
-// OWN fresh $HOME still calls t.Setenv("HOME", t.TempDir()) exactly as
-// before — t.Setenv saves/restores relative to whatever HOME already is
-// (this hermetic one, never the real one), so per-test overrides remain
-// fully correct and this change is purely additive safety.
+// individually override each of these, TestMain sets one hermetic HOME and
+// one hermetic cache root for the whole binary before any test runs. A
+// test that needs its OWN fresh override still calls t.Setenv/direct
+// package-var reassignment exactly as before — both patterns save/restore
+// relative to whatever TestMain already set (this hermetic baseline, never
+// the real one), so per-test overrides remain fully correct and this
+// change is purely additive safety.
+//
+// Critic finding F6 (BLOCKING, phase-P fix round): identCacheDir/
+// editSetDir/hookcache.IdentDir all defaulted to os.TempDir() — safe only
+// when TMPDIR is externally redirected (this repo's Taskfile does that for
+// `task test`/`task validate`, but a bare `go test` does not), so a stray
+// stamp could land in the REAL machine temp dir on any invocation outside
+// that wrapper. Redirecting them here closes that gap unconditionally.
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/hookcache"
 )
 
 func TestMain(m *testing.M) {
@@ -24,9 +36,21 @@ func TestMain(m *testing.M) {
 	if err == nil {
 		os.Setenv("HOME", home)
 	}
+
+	cacheRoot, cerr := os.MkdirTemp("", "fathom-cmd-test-cache-")
+	if cerr == nil {
+		identCacheDir = filepath.Join(cacheRoot, "ident-cache")
+		hookcache.IdentDir = identCacheDir
+		editSetDir = filepath.Join(cacheRoot, "edit-set")
+		guardStampDir = filepath.Join(cacheRoot, "guard-stamps")
+	}
+
 	code := m.Run() // os.Exit below would skip a deferred cleanup, so run it inline first
 	if home != "" {
 		os.RemoveAll(home)
+	}
+	if cacheRoot != "" {
+		os.RemoveAll(cacheRoot)
 	}
 	os.Exit(code)
 }

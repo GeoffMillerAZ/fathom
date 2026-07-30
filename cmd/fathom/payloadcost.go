@@ -26,7 +26,7 @@ import (
 // paths already have their own beat; this would only double-count an
 // empty string as a real cost line). sessionID, when non-empty, tags the
 // beat with the SAME "session" meta key the discovery observer uses
-// (discovery.go) — the join key instrument C's session ledger uses to
+// (discovery.go) — the join key instrument D's session ledger uses to
 // attribute this session's A (payload cost) and B (discovery) activity
 // (docs/design/production-tokenomics.md §6).
 func emitPayloadCost(channel, payload string, ruleCount int, phase, sessionID string) {

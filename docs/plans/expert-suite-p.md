@@ -52,9 +52,15 @@ implements):
   this wires independently of the other two groups.
 - **The join key.** Instrument A's `emitPayloadCost` and instrument B's
   discovery beats both carry a `"session"` meta key when a session id is
-  available; instrument C's session ledger (`sessionledger.go`) sums
+  available; instrument D's session ledger (`sessionledger.go`) sums
   exactly those beats for its own `session_id` (`sumSessionBeats`). Three
   independent instruments, one join key, per design §6's own framing.
+  (Critic finding F11, fix round: this plan originally mislabeled the
+  session ledger "instrument C" and the ident cache "instrument E" — the
+  design's own lettering is A=payload cost (§3), B=discovery (§4),
+  C=the A/B protocol (§5), D=session ledger (§6); the kill switch and the
+  ident cache are unlettered deliverables (§9.4 item 4, §7). Fixed
+  throughout code comments, this plan, and the phase-O-style prose below.)
 - **Where `session_id` had to be threaded from.** `cmdEditHookPreCommand`
   and `cmdEditHookPreDiscovery`/`emitDiscoveryBeatIfShellSearch` gained a
   `sessionID` parameter (previously command guards never needed one — no
@@ -78,7 +84,7 @@ implements):
   check (`doctor_phasep.go`) is the loud, independent surface that
   detects the switch being set — doctor is never itself silenced by the
   var it's reporting on.
-- **Instrument E's cache is per-(repo root, daemon URL), not per-PID.**
+- **The service-identity cache (§7, unlettered) is per-(repo root, daemon URL), not per-PID.**
   `identcache.go`'s `resolveIndexedCandidateCached` wraps the existing
   `resolveIndexedCandidate` daemon round trip with a `guardstamp.go`-style
   hardened local stamp (0700 dir, 0600 file, `O_EXCL|O_NOFOLLOW` write,
@@ -110,6 +116,150 @@ implements):
   (`cmdEditHookPreCommand`'s command-guard path) already prints `Note`
   verbatim, so tagging happens for free without touching render code or
   widening `guardspec.Guard`'s shape with a provenance field.
+
+## Critic round (MERGE-WITH-FIXES) — findings and fixes
+
+Verdict on the first pass: strong on the parts that held (discovery beats
+structurally coarse — never content; the bundle allowlist untouched by
+these new report fields; law 12 honored in the renderer; the kill switch
+checked first in every hook entrypoint; the zero-daemon-call proof exact;
+law 13's directionality proven). Findings F1–F11 below were raised and are
+ALL fixed in this commit; F12 was a merge-base artifact requiring no code
+action (this branch predates a sibling design doc landing on main — merged,
+not rebased, so both survive).
+
+1. **F1 — BLOCKING.** `buildDiscoverySection` computed `discovery_share_percent`
+   as `indexCalls / (indexCalls + 0)` = 100% whenever the discovery
+   observer had emitted zero beats in window — a real risk on the FIRST
+   real run (any window predating the third `PreToolUse` group, an
+   unwired repo, a `FATHOM_CHANNELS=off` window), announcing 100% for a
+   program whose measured reality is 1.7%. Fixed: `total == 0` now leaves
+   `DiscoverySharePercent` nil with an explicit
+   `DiscoveryShareDenominatorNote`; the renderer suppresses the share
+   line and prints the note instead. Test:
+   `TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent`
+   (indexCalls>0, beats==0 — the exact case the original
+   always-correlational test missed because it passed fully empty
+   inputs).
+2. **F2 — BLOCKING.** The service-identity cache keyed only on (repo root,
+   daemon base URL) — constant across a restart, a rename, or a
+   re-ingest — so a stale entry (including a cached NEGATIVE — "not
+   indexed") could silently starve obligations injection for up to the
+   TTL, the O15 failure class, with `fathom doctor` reporting healthy
+   because it reads through the same cache. Fixed: negative resolutions
+   now expire after `identCacheNegativeTTL` (15s, not the 5-minute
+   positive TTL); every ingest — CLI `fathom ingest`, the MCP `ingest`
+   tool, and auto-refresh's own re-ingest — busts the entire cache via
+   the new `internal/hookcache` package (`BustIdent`), which both
+   `cmd/fathom` and `internal/mcp` can call without importing each other.
+   Folding a daemon boot-id into the key itself was assessed and
+   deliberately NOT implemented (validating it would require the exact
+   round trip the cache exists to avoid); the trade-off is documented in
+   identcache.go's own doc comment. Tests:
+   `TestIdentCache_NegativeTTLShorterThanPositive`,
+   `TestCmdIngest_BustsIdentCache`,
+   `internal/hookcache`'s `TestBustIdent_RemovesDirectory`.
+3. **F3 — BLOCKING (privacy).** `transcriptSummaryFrom` embedded raw
+   `err.Error()` (which can carry the full `$HOME`, username, and repo
+   layout on a real machine) into `duration_note`/`turn_note`/
+   `tokens_note` — the last field has no `omitempty`, so it ALWAYS
+   emitted — appended to a 0644 file in a 0755 dir, the weakest
+   permissions of any cache-adjacent file this phase added. Fixed: every
+   unreadable-transcript note is now a FIXED string, never OS error text;
+   the ledger file/dir now match guardstamp.go/identcache.go's own
+   hardening (0600/0700). Tests:
+   `TestTranscriptSummaryFrom_UnreadablePath_NeverLeaksErrorText`,
+   `TestAppendSessionLedger_FilePermissions`.
+4. **F4 — BLOCKING (decision).** The design's own §8 non-goal ("no
+   harness-internal transcript parsing") conflicted with §6's session
+   ledger, which needs transcript-derived token totals to exist at all.
+   Resolved by narrowly amending the non-goal (the SAME pattern
+   `docs/design/scoped-config.md` used on `docs/design/guarded-edits.md`
+   §3) — transcript reads permitted ONLY for usage totals, under three
+   guards: (1) `transcript_schema_note` discloses the coupling on every
+   ledger entry with a transcript-derived field; (2) schema-defensive
+   parsing was already in place (kept, not weakened); (3) a NEW doctor
+   check, `checkSessionLedgerTokens` (`session_ledger_tokens`), warns
+   when the last `sessionLedgerConsecutiveUnavailableThreshold` (5)
+   consecutive sessions all report `tokens:unavailable` — silent schema
+   drift becomes a loud warning instead of a quietly dying causal
+   instrument. Tests:
+   `TestCheckSessionLedgerTokens_ConsecutiveUnavailable_Warn`,
+   `_MixedAvailability_Pass`, `_TooFewEntries_Pass`.
+5. **F5 — BLOCKING.** `transcriptSummaryFrom`'s `os.ReadFile` on a
+   stdin-supplied `transcript_path` had no size limit, no `O_NOFOLLOW`,
+   no regular-file check — a symlink was followed, and `/dev/zero` or a
+   FIFO could hang the Stop hook to its own timeout (worse: opening a
+   FIFO for plain `O_RDONLY` blocks at the `open()` syscall itself,
+   before any `Stat` check could even run). Fixed: the open now uses
+   `O_RDONLY|O_NOFOLLOW|O_NONBLOCK` (the `O_NONBLOCK` is load-bearing —
+   it is what makes a FIFO open return immediately instead of blocking
+   for a writer), followed by an `IsRegular` check on the open FD before
+   any read, then `io.LimitReader` at `transcriptReadMaxBytes` (16MB)
+   with a `Truncated` flag surfaced honestly when hit. Tests:
+   `TestTranscriptSummaryFrom_SymlinkRefused`,
+   `_NonRegularFile_Refused` (a real FIFO, proven not to hang via a
+   3-second test timeout), `_OversizeFile_TruncatedNotHung`.
+6. **F6 — BLOCKING (test hermeticity).** `internal/connector` had NO
+   `TestMain`, and only `userignore_test.go`'s own cases set `$HOME` —
+   every other Discover-exercising fixture (local_test.go, faux_test.go,
+   watermark_test.go) read the REAL machine's `~/.fathom/ignore`, which
+   `fathom init --seed-user-ignore` (this SAME phase's own feature) could
+   populate, silently losing fixture files or erroring the whole suite on
+   a `!` line. Fixed: `internal/connector/testmain_test.go` and
+   `internal/mcp/testmain_test.go` (read_source reaches `LoadIgnore` too)
+   mirror `cmd/fathom/testmain_test.go`'s hermetic-`$HOME` pattern;
+   `cmd/fathom`'s own `TestMain` extended to also redirect
+   `identCacheDir`/`editSetDir`/`guardStampDir`/`hookcache.IdentDir` so
+   stray stamps stop landing in the real machine temp dir on a bare
+   `go test` invocation (previously safe only under the Taskfile's
+   `TMPDIR` redirection).
+7. **F7.** The beat log grows at discovery-tool rate (the highest-frequency
+   tools this program instruments) with no rotation, and the Stop hook
+   `heartbeat.Load`ed the ENTIRE file every session just to sum one
+   session's beats — unbounded cost for a bounded need, growing faster
+   post-phase-P than before it. Fixed: `emitBeat` rotates the log (one
+   prior generation kept as `hooks.jsonl.1`) once it exceeds
+   `beatLogRotateBytes` (64MB); `recordSessionLedgerEntry` now reads only
+   `readBeatLogTail`'s bounded window (4MB) instead of the full history.
+   Trade-off stated honestly in code: a report/ledger read spanning
+   beats older than one rotation back will not see them — this is a real
+   cost of bounding growth at all. Tests: `TestEmitBeat_RotatesBeforeAppending`,
+   `TestReadBeatLogTail_LargeFile_ReadsOnlyRecentTail`.
+8. **F8 — measurement-validity (this phase's whole point).** (a) The
+   discovery share mixed populations — the numerator (fathom index-tool
+   calls) is daemon-wide call-log traffic across every client/repo/
+   session, while the denominator addend (observer beats) is THIS
+   machine's hooks log only. Fixed: `DiscoveryShareNote` now states this
+   explicitly ("POPULATION CAVEAT"). (b) Design §4 scopes `Read` to
+   "outside the current edit set"; the original implementation counted
+   EVERY `Read`. Fixed: a new local, session-scoped, TTL-bounded
+   "edit-set" stamp (`editset.go`, `markFileEdited`/`fileInEditSet`,
+   guardstamp.go's own hardening pattern) — the post-edit hook marks a
+   file as just-edited, and a same-session `Read` of that file is
+   excluded from the discovery beat entirely (never counted, not
+   miscounted). (c) `buildPayloadCostSection` samples one value per
+   post-edit AND per pre-edit-guard beat, so one guarded edit yields TWO
+   samples while the field was named "per-edit." Fixed: renamed
+   `PayloadCostPerEditP50/P95Estimate` → `PayloadCostPerPayloadP50/P95Estimate`
+   (JSON tags too) throughout code, tests, and the renderer.
+9. **F10.** `checkChannelsEnv`'s pass/warn text claimed "hooks run
+   normally," but doctor can only see ITS OWN process environment, not
+   the harness's (Claude Code's `settings.json` `env` block, a launchd
+   plist) — an overclaim. Fixed: both messages now scope the claim to
+   "doctor's own environment" explicitly and name where hooks actually
+   run.
+10. **F11.** Code comments and this plan mislabeled the session ledger
+    "instrument C" (design: C = the A/B protocol, §5) and the
+    service-identity cache "instrument E" (unlettered in the design — an
+    efficiency finding, §7, not one of the four lettered instruments).
+    Fixed throughout `payloadcost.go`, `discovery.go`, `sessionledger.go`,
+    `stophook.go`, `research_report.go`,
+    `research_report_phasep_test.go`, and this plan's own "Key
+    engineering decisions" section — the session ledger is instrument D
+    (§6); the ident cache carries no letter. `docs/configuration.md`'s
+    CUE guard.cue example, fenced ```` ```toml ````, is now fenced
+    ```` ```cue ````.
 
 ## §5 — the A/B protocol, pre-registered (PLAN TEXT ONLY — NOT RUN by this plan)
 
@@ -419,9 +569,41 @@ follows for every falsifiable claim.**
     load-bearing proof: a full `fathom init` run with NO flag leaves
     `~/.fathom/ignore` absent), `_WritesWhenFlagged`.
 
+### Critic round — new anchored rows (fixes substantial enough for their own evidence)
+
+- [x] `internal/hookcache.BustIdent` — the cross-process service-identity cache invalidation primitive; every ingest path (CLI, MCP tool, auto-refresh) busts the cache so a stale entry can never outlive the ingest that changed the answer (critic finding F2) {id: P-18, symbol: BustIdent, package: internal/hookcache}
+  - Tests: `internal/hookcache/hookcache_test.go`'s `TestBustIdent_RemovesDirectory`,
+    `TestBustIdent_AbsentDirectory_NoError`; `cmd/fathom/identcache_test.go`'s
+    `TestCmdIngest_BustsIdentCache` (end-to-end through the real `cmdIngest`).
+
+- [x] `editset.go`'s `fileInEditSet` — the discovery observer's Read exclusion: a same-session Read of a file this session just edited is verification, not discovery, and is never counted (design §4's own scope; critic finding F8b) {id: P-19, symbol: fileInEditSet, package: cmd/fathom}
+  - `markFileEdited` (called from the post edit-hook, unconditionally,
+    regardless of whether there are obligations to render) writes a
+    guardstamp.go-hardened, session-scoped, TTL-bounded local stamp;
+    `fileInEditSet` (consulted by `cmdEditHookPreDiscovery`'s `Read`
+    branch) resolves the local repo-relative path the same daemon-free
+    way `cmdEditHookPreFile` already does and checks it.
+  - No dedicated unit test beyond the mechanism's own hardening (mirrors
+    guardstamp.go's/identcache.go's proven pattern exactly) — exercised
+    transitively by the existing discovery-observer suite
+    (`cmd/fathom/discovery_test.go`), which still passes with the
+    exclusion wired in.
+
+- [x] `checkSessionLedgerTokens` — the doctor check that warns when N consecutive sessions all report tokens:unavailable, closing docs/design/production-tokenomics.md §8's amended non-goal guard 3 (critic finding F4) {id: P-20, symbol: checkSessionLedgerTokens, package: cmd/fathom}
+  - Tests (`cmd/fathom/doctor_phasep_test.go`): `TestCheckSessionLedgerTokens_NoLedger_Pass`,
+    `_TooFewEntries_Pass`, `_ConsecutiveUnavailable_Warn`, `_MixedAvailability_Pass`.
+
+- [x] `rotateBeatLogIfNeeded` — beat log size-bounded rotation (one prior generation kept), and `readBeatLogTail` — the Stop hook's bounded-window beat read, closing the unbounded-growth/unbounded-read pair critic finding F7 named {id: P-21, symbol: rotateBeatLogIfNeeded, package: cmd/fathom}
+  - Tests (`cmd/fathom/beats_test.go`): `TestRotateBeatLogIfNeeded_NoFile_NoOp`,
+    `_UnderCap_NotRotated`, `_OverCap_Rotated`, `TestEmitBeat_RotatesBeforeAppending`
+    (the end-to-end proof — `emitBeat` itself rotates before appending);
+    `TestReadBeatLogTail_SmallFile_ReadsEverything`,
+    `_LargeFile_ReadsOnlyRecentTail` (the load-bearing bound proof),
+    `_AbsentFile`.
+
 ### Test hygiene (package-wide, cuts across every row above)
 
-- [x] `cmd/fathom` package gains a `TestMain` hermetic-$HOME safety net — required once user-scope code paths started defaulting to the real `$HOME` {id: P-12, symbol: fathomChannelsDisabled, package: cmd/fathom, skip_test: true, skip: "the safety net itself (cmd/fathom/testmain_test.go's TestMain) is test-harness infrastructure, not a callable production symbol — anchored to P-6's own symbol since fathomChannelsDisabled's tests are among the many that now depend on this hermetic HOME being in place; verified directly by re-running the full cmd/fathom suite with -race after adding it (zero failures, zero writes to the real machine $HOME confirmed by inspection of the TestMain-set path)"}
+- [x] `cmd/fathom`, `internal/connector`, and `internal/mcp` each gain a `TestMain` hermetic-$HOME safety net (`internal/connector`/`internal/mcp` added in the critic-fix round, finding F6, once LoadIgnore's real-$HOME dependency was traced into both); `cmd/fathom`'s `TestMain` also redirects `identCacheDir`/`editSetDir`/`guardStampDir`/`hookcache.IdentDir` away from the real machine temp dir {id: P-12, symbol: fathomChannelsDisabled, package: cmd/fathom, skip_test: true, skip: "the safety nets themselves (testmain_test.go's TestMain in all three packages) are test-harness infrastructure, not callable production symbols — anchored to P-6's own symbol since fathomChannelsDisabled's tests are among the many that depend on the cmd/fathom one being in place; verified directly by re-running each package's full suite with -race after adding/extending them (zero failures, zero writes to the real machine $HOME or temp dir confirmed by inspection of the TestMain-set paths)"}
 
 ## Docs
 

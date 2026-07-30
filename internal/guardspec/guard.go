@@ -200,7 +200,8 @@ func LoadUserGuards(path string) (GuardSet, error) {
 		if len(forbidden) > 0 {
 			for _, f := range forbidden {
 				errs = append(errs, fieldErr(path, prefix+"."+f, fmt.Errorf(
-					"%q is a governance field and may not be set in a user-scope guard file (~/.fathom/guard.cue is restricted to note/command_scopes — docs/design/scoped-config.md law 13); move this guard to the project's own .fathom/guard.cue", f)))
+					"%q is a governance field and may not be set in a user-scope guard file (~/.fathom/guard.cue is restricted to note/command_scopes — docs/design/scoped-config.md law 13); move this guard to the project's own .fathom/guard.cue", f,
+				)))
 			}
 			continue
 		}
@@ -329,7 +330,8 @@ func checkNoOptionalFields(path, prefix string, gv cue.Value) []*FieldError {
 		}
 		name := iter.Selector().String()
 		errs = append(errs, fieldErr(path, prefix+"."+name, fmt.Errorf(
-			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/guard/schema.cue's #Guard for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name)))
+			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/guard/schema.cue's #Guard for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name,
+		)))
 	}
 	return errs
 }

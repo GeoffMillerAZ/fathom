@@ -166,6 +166,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
+	// Instrument B's edit-set exclusion (docs/design/production-
+	// tokenomics.md §4, editset.go): mark this file as just-edited by
+	// this session, regardless of whether there are obligations to
+	// render — a subsequent same-session Read of it is verification, not
+	// discovery, and must not inflate the discovery-share denominator.
+	markFileEdited(hook.SessionID, repoRelFile, time.Now())
+
 	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
 	// --pre hook already served rules for this exact (session, service,
 	// file) within guardStampTTL, render only the DELTA here — rules newly
