@@ -34,7 +34,7 @@ var nowFunc = time.Now
 // cmdModule dispatches to the module verb named by args[0].
 func cmdModule(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: module requires a verb: init | sources | map | compile | eval | doctor | pack")
+		fmt.Fprintln(stderr, "error: module requires a verb: init | sources | map | compile | eval | doctor | pack | runs")
 		printModuleUsage(stderr)
 		return 1
 	}
@@ -53,8 +53,10 @@ func cmdModule(args []string, stdout, stderr io.Writer) int {
 		return cmdModuleDoctor(args[1:], stdout, stderr)
 	case "pack":
 		return cmdModulePack(args[1:], stdout, stderr)
+	case "runs":
+		return cmdModuleRuns(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown module verb %q (want init | sources | map | compile | eval | doctor | pack)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown module verb %q (want init | sources | map | compile | eval | doctor | pack | runs)\n", args[0])
 		printModuleUsage(stderr)
 		return 1
 	}
@@ -69,6 +71,7 @@ func printModuleUsage(w io.Writer) {
 	fmt.Fprintln(w, "  fathom module eval    --manifest module.cue [--fixtures DIR] [--profile NAME | --mock --mock-entries-file PATH] [--record PATH] [--json]")
 	fmt.Fprintln(w, "  fathom module doctor  --manifest module.cue [--root DIR] [--store PATH --service NAME] [--pack-dir DIR] [--require-level LEVEL] [--json]")
 	fmt.Fprintln(w, "  fathom module pack    --manifest module.cue --store PATH --out DIR [--force] [--json]")
+	fmt.Fprintln(w, "  fathom module runs    --manifest module.cue --store PATH [--service NAME] [--limit N] [--json]")
 }
 
 // moduleServiceRoot resolves the corpus root a module's manifest.cue is

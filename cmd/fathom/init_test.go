@@ -218,6 +218,7 @@ func TestCmdInit_Idempotent(t *testing.T) {
 }
 
 func TestMergeHookSettings_PreservesExisting(t *testing.T) {
+	t.Setenv("HOME", t.TempDir()) // mergeHookSettings now reads user-scope ~/.claude/settings.json — must not see the real one
 	existing := []byte(`{
   "customTopLevelKey": "keep-me",
   "hooks": {
@@ -232,7 +233,7 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
   }
 }`)
 
-	merged, changed, err := mergeHookSettings(existing, testBinPath)
+	merged, changed, _, err := mergeHookSettings(existing, testBinPath)
 	if err != nil {
 		t.Fatalf("mergeHookSettings: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 	}
 
 	// Re-running against the merged output is a byte-identical no-op.
-	merged2, changed2, err := mergeHookSettings(merged, testBinPath)
+	merged2, changed2, _, err := mergeHookSettings(merged, testBinPath)
 	if err != nil {
 		t.Fatalf("second mergeHookSettings: %v", err)
 	}
@@ -287,6 +288,148 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 	if !bytes.Equal(merged, merged2) {
 		t.Errorf("second merge produced different bytes:\n--- first ---\n%s\n--- second ---\n%s", merged, merged2)
 	}
+}
+
+// TestMergeHookSettings_SkipsUserScopeWiring covers the fix for the live
+// dogfood bug: `fathom init` wrote project-scope SessionStart/PostToolUse/
+// Stop hooks that DUPLICATED identical ones already wired globally at user
+// scope (~/.claude/settings.json), so the post-hook fired twice per edit
+// (4596 logged calls in the reproduction). mergeHookSettings now reads user
+// scope first and skips any fathom hook already wired there.
+func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
+	t.Run("user scope has the pre-phase-O three — project gets only the PreToolUse guard groups", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		userSettings := `{"hooks":{
+			"SessionStart":[{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"` + testBinPath + ` session-hook","timeout":10}]}],
+			"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"` + testBinPath + ` edit-hook","timeout":5}]}],
+			"Stop":[{"hooks":[{"type":"command","command":"` + testBinPath + ` stop-hook","timeout":10}]}]
+		}}`
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(userSettings), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		merged, changed, skipped, err := mergeHookSettings(nil, testBinPath)
+		if err != nil {
+			t.Fatalf("mergeHookSettings: %v", err)
+		}
+		if !changed {
+			t.Fatal("expected changed=true — the two PreToolUse guard groups are still genuinely missing")
+		}
+		if len(skipped) != 3 {
+			t.Fatalf("skipped = %v, want 3 (session-hook, edit-hook post, stop-hook)", skipped)
+		}
+
+		var got map[string]any
+		if err := json.Unmarshal(merged, &got); err != nil {
+			t.Fatalf("merged output not valid JSON: %v\n%s", err, merged)
+		}
+		hooksObj, _ := got["hooks"].(map[string]any)
+		if _, ok := hooksObj["SessionStart"]; ok {
+			t.Errorf("SessionStart must not be written at project scope — already wired at user scope: %v", hooksObj)
+		}
+		if _, ok := hooksObj["Stop"]; ok {
+			t.Errorf("Stop must not be written at project scope — already wired at user scope: %v", hooksObj)
+		}
+		if ptu, ok := hooksObj["PostToolUse"]; ok && len(ptu.([]any)) != 0 {
+			t.Errorf("PostToolUse (the post edit-hook) must not be written at project scope — already wired at user scope: %v", ptu)
+		}
+		pre, _ := hooksObj["PreToolUse"].([]any)
+		if len(pre) != 2 {
+			t.Fatalf("PreToolUse groups = %d, want 2 (both guard groups, genuinely missing)", len(pre))
+		}
+		mergedStr := string(merged)
+		if !strings.Contains(mergedStr, testBinPath+" edit-hook --pre") {
+			t.Errorf("PreToolUse guard hooks missing from merged output:\n%s", mergedStr)
+		}
+	})
+
+	t.Run("user scope empty — project gets everything", func(t *testing.T) {
+		t.Setenv("HOME", t.TempDir()) // fresh HOME, no ~/.claude/settings.json at all
+		merged, changed, skipped, err := mergeHookSettings(nil, testBinPath)
+		if err != nil {
+			t.Fatalf("mergeHookSettings: %v", err)
+		}
+		if !changed {
+			t.Fatal("expected changed=true")
+		}
+		if len(skipped) != 0 {
+			t.Fatalf("skipped = %v, want none (no user-scope wiring exists)", skipped)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(merged, &got); err != nil {
+			t.Fatalf("merged output not valid JSON: %v\n%s", err, merged)
+		}
+		hooksObj, _ := got["hooks"].(map[string]any)
+		for _, event := range []string{"SessionStart", "PostToolUse", "PreToolUse", "Stop"} {
+			if _, ok := hooksObj[event]; !ok {
+				t.Errorf("%s missing from project settings — user scope is empty, everything should install", event)
+			}
+		}
+	})
+
+	t.Run("user scope wires a DIFFERENT command for the same event — fathom's own still installs", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		userSettings := `{"hooks":{"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"/some/other/lint.sh","timeout":30}]}]}}`
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(userSettings), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		merged, changed, skipped, err := mergeHookSettings(nil, testBinPath)
+		if err != nil {
+			t.Fatalf("mergeHookSettings: %v", err)
+		}
+		if !changed {
+			t.Fatal("expected changed=true — fathom's own edit-hook must still install")
+		}
+		if len(skipped) != 0 {
+			t.Fatalf("skipped = %v, want none — the user-scope hook on this event/matcher is someone else's, not fathom's", skipped)
+		}
+		mergedStr := string(merged)
+		if !strings.Contains(mergedStr, testBinPath+" edit-hook") {
+			t.Errorf("fathom's own edit-hook must still be installed at project scope:\n%s", mergedStr)
+		}
+	})
+
+	t.Run("re-running after a skip stays idempotent — never adds the skipped hook later", func(t *testing.T) {
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		userSettings := `{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"` + testBinPath + ` stop-hook","timeout":10}]}]}}`
+		if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(userSettings), 0o644); err != nil {
+			t.Fatal(err)
+		}
+
+		merged, _, skipped, err := mergeHookSettings(nil, testBinPath)
+		if err != nil {
+			t.Fatalf("mergeHookSettings: %v", err)
+		}
+		if len(skipped) != 1 {
+			t.Fatalf("skipped = %v, want 1 (stop-hook)", skipped)
+		}
+		merged2, changed2, skipped2, err := mergeHookSettings(merged, testBinPath)
+		if err != nil {
+			t.Fatalf("second mergeHookSettings: %v", err)
+		}
+		if changed2 {
+			t.Error("second merge reported changed=true — stop-hook must stay skipped, not get added on re-run")
+		}
+		if len(skipped2) != 1 {
+			t.Fatalf("second run skipped = %v, want 1 (stop-hook still skipped)", skipped2)
+		}
+		if !bytes.Equal(merged, merged2) {
+			t.Errorf("second merge produced different bytes:\n--- first ---\n%s\n--- second ---\n%s", merged, merged2)
+		}
+	})
 }
 
 func TestFathomStanza_MarkerReplace(t *testing.T) {

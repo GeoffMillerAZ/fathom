@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -379,6 +380,115 @@ func TestModuleCompile_MockLaneSpends(t *testing.T) {
 	}
 }
 
+// TestModuleRuns_ListsCompileHistory pins the fix for dogfood gap (c): only
+// the just-triggered `module compile` result was visible to a verb-JSON-only
+// consumer before this verb existed — every EARLIER compile_runs row was
+// invisible outside a direct SQLite query. `module runs --json` reuses the
+// same store read module doctor's loadStoreState already makes
+// (Store.CompileRuns), which is already newest-first and deterministic.
+func TestModuleRuns_ListsCompileHistory(t *testing.T) {
+	root := t.TempDir()
+	doc := "## Sorting\n\nAlways sort output before returning it.\n"
+	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte(doc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	writeTestLayerPack(t, root, "runs-module", []string{"RULES.md"})
+
+	manifestPath := filepath.Join(root, "module.cue")
+	wm := testWatermark(t, root, "RULES.md")
+	if err := os.WriteFile(manifestPath, []byte(testManifestCUE("runs-module", []string{"RULES.md"}, wm)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	storePath := filepath.Join(t.TempDir(), "module.sqlite")
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cl := client.New(connector.NewLocalConnector(), st)
+	if err := cl.IngestServiceAt(context.Background(), "runs-module", root); err != nil {
+		t.Fatalf("IngestServiceAt: %v", err)
+	}
+	cl.Close()
+	st.Close()
+
+	// Before any compile: an empty, non-error runs report.
+	stdout, stderr, rc := runModule(t, "runs", "--manifest", manifestPath, "--store", storePath, "--json")
+	if rc != 0 {
+		t.Fatalf("runs (pre-compile) rc=%d stderr=%s stdout=%s", rc, stderr, stdout)
+	}
+	var pre RunsReport
+	if err := json.Unmarshal([]byte(stdout), &pre); err != nil {
+		t.Fatalf("parse: %v\n%s", err, stdout)
+	}
+	if len(pre.Runs) != 0 {
+		t.Errorf("pre-compile Runs = %+v, want none", pre.Runs)
+	}
+	if pre.Module != "runs-module" || pre.Layer != "runs-module" {
+		t.Errorf("Module/Layer = %q/%q, want runs-module/runs-module", pre.Module, pre.Layer)
+	}
+
+	entriesPath := filepath.Join(t.TempDir(), "mock-entries.json")
+	entriesJSON := `["{\"claims\":[{\"rule\":\"Always sort output before returning it.\",\"scope\":[\"RULES.md\"],\"cite_start\":3,\"cite_end\":3}]}"]`
+	if err := os.WriteFile(entriesPath, []byte(entriesJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, stderr, rc = runModule(
+		t, "compile",
+		"--manifest", manifestPath, "--store", storePath,
+		"--dry-run=false", "--mock", "--mock-entries-file", entriesPath,
+	)
+	if rc != 0 {
+		t.Fatalf("compile rc=%d stderr=%s", rc, stderr)
+	}
+
+	stdout, stderr, rc = runModule(t, "runs", "--manifest", manifestPath, "--store", storePath, "--json")
+	if rc != 0 {
+		t.Fatalf("runs rc=%d stderr=%s stdout=%s", rc, stderr, stdout)
+	}
+	var report RunsReport
+	if err := json.Unmarshal([]byte(stdout), &report); err != nil {
+		t.Fatalf("parse: %v\n%s", err, stdout)
+	}
+	if len(report.Runs) != 1 {
+		t.Fatalf("Runs = %+v, want exactly 1", report.Runs)
+	}
+	run := report.Runs[0]
+	if run.ID == "" {
+		t.Error("run.ID is empty")
+	}
+	if run.StartedAt == "" {
+		t.Error("run.StartedAt is empty")
+	}
+	if run.Lane != "mock" {
+		t.Errorf("run.Lane = %q, want %q (a --mock compile)", run.Lane, "mock")
+	}
+	if run.Model != mockModelName {
+		t.Errorf("run.Model = %q, want %q", run.Model, mockModelName)
+	}
+	if run.Watermark != wm {
+		t.Errorf("run.Watermark = %q, want %q (the manifest's own watermark — the mock compile's corpus was untouched)", run.Watermark, wm)
+	}
+	if run.ClaimsEmitted != 1 {
+		t.Errorf("run.ClaimsEmitted = %d, want 1", run.ClaimsEmitted)
+	}
+
+	// --limit truncates without disturbing newest-first ordering (a single
+	// run here, so this just proves --limit 0 still returns it and doesn't
+	// error).
+	stdout, stderr, rc = runModule(t, "runs", "--manifest", manifestPath, "--store", storePath, "--limit", "0", "--json")
+	if rc != 0 {
+		t.Fatalf("runs --limit 0 rc=%d stderr=%s stdout=%s", rc, stderr, stdout)
+	}
+	var unlimited RunsReport
+	if err := json.Unmarshal([]byte(stdout), &unlimited); err != nil {
+		t.Fatalf("parse: %v\n%s", err, stdout)
+	}
+	if len(unlimited.Runs) != 1 {
+		t.Errorf("--limit 0 Runs = %+v, want exactly 1 (unlimited, not zero)", unlimited.Runs)
+	}
+}
+
 func TestModuleEval_MockLane(t *testing.T) {
 	root := t.TempDir()
 	writeTestLayerPack(t, root, "eval-test-module", []string{"doc.md"})
@@ -481,6 +591,25 @@ func TestModuleDoctor_LadderProgression(t *testing.T) {
 	if report.Verdict != LevelDraft {
 		t.Errorf("verdict = %q, want %q; criteria=%+v", report.Verdict, LevelDraft, report.Criteria)
 	}
+	// Dogfood gap (a): the manifest summary — name/version/description/
+	// license/tier_profile/provenance/corpus selector count/watermark — is
+	// on DoctorReport so a verb-JSON-only consumer never needs a separate
+	// manifest dump.
+	if report.Manifest == nil {
+		t.Fatal("Manifest is nil, want a summary once the manifest loads")
+	}
+	if report.Manifest.Name != "doctor-module" {
+		t.Errorf("Manifest.Name = %q, want %q", report.Manifest.Name, "doctor-module")
+	}
+	if report.Manifest.License != "Apache-2.0" {
+		t.Errorf("Manifest.License = %q, want %q", report.Manifest.License, "Apache-2.0")
+	}
+	if report.Manifest.CorpusSelectorCount != 1 {
+		t.Errorf("Manifest.CorpusSelectorCount = %d, want 1 (one --include glob, no --exclude)", report.Manifest.CorpusSelectorCount)
+	}
+	if report.Manifest.Watermark == "" {
+		t.Error("Manifest.Watermark is empty")
+	}
 
 	// Stage 2/3 setup: a real mock-lane compile — scopedWatermarkConnector
 	// makes its recorded compile_runs.CorpusWatermark module-scoped, the
@@ -570,6 +699,25 @@ func TestModuleDoctor_LadderProgression(t *testing.T) {
 	if evalCriterion == nil || !evalCriterion.Pass {
 		t.Fatalf("eval-passed criterion did not pass: %+v; full report=%+v", evalCriterion, report)
 	}
+	// Dogfood gap (b): typed facts alongside the prose — precision/recall/
+	// lane/prompt_version were previously readable only by parsing
+	// Evidence's sentence.
+	if evalCriterion.Facts == nil {
+		t.Fatal("eval-passed criterion has no Facts, want precision/recall/lane/prompt_version")
+	}
+	if evalCriterion.Facts["lane"] != "mock" {
+		t.Errorf("eval Facts[lane] = %q, want %q (a --mock eval)", evalCriterion.Facts["lane"], "mock")
+	}
+	if evalCriterion.Facts["prompt_version"] == "" {
+		t.Error("eval Facts[prompt_version] is empty")
+	}
+	if _, err := strconv.ParseFloat(evalCriterion.Facts["precision"], 64); err != nil {
+		t.Errorf("eval Facts[precision] = %q is not a float: %v", evalCriterion.Facts["precision"], err)
+	}
+	watermarkCriterion := findCriterion(report, LevelServable, "watermark fresh: manifest == store's recorded compile == current corpus")
+	if watermarkCriterion == nil || watermarkCriterion.Facts["manifest_watermark"] == "" {
+		t.Errorf("watermark criterion Facts[manifest_watermark] missing: %+v", watermarkCriterion)
+	}
 
 	// Stage 3: servable — the mock compile's scoped watermark matches
 	// module.cue's own, and RULES.md's citation is intact.
@@ -601,6 +749,9 @@ func TestModuleDoctor_LadderProgression(t *testing.T) {
 	}
 	if !strings.Contains(laneCriterion.Evidence, mockModelName) {
 		t.Errorf("compile-lane evidence = %q, want it to name %q", laneCriterion.Evidence, mockModelName)
+	}
+	if laneCriterion.Facts["lane"] != "mock" || laneCriterion.Facts["model"] != mockModelName {
+		t.Errorf("compile-lane Facts = %+v, want lane=mock model=%q", laneCriterion.Facts, mockModelName)
 	}
 }
 

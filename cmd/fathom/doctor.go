@@ -33,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	toml "github.com/pelletier/go-toml/v2"
@@ -465,20 +466,35 @@ func shortSHA(s string) string {
 
 // ─── 4. hooks installed (Claude Code only) ─────────────────────────────────
 
-// checkHooksInstalled looks for the three fathom hooks across EVERY
-// settings scope Claude Code merges — project .claude/settings.json,
-// project .claude/settings.local.json, and user ~/.claude/settings.json —
-// because hooks wired at user scope (a perfectly good wiring) must never
-// read as a project-scope FAIL whose remedy would install duplicates
-// (every PostToolUse would then fire twice). When no readable scope wires
-// them but the call log proves they fire anyway, the verdict names that
-// contradiction instead of prescribing the duplicate-installing remedy.
+// checkHooksInstalled looks for the fathom hooks across EVERY settings
+// scope Claude Code merges — project .claude/settings.json, project
+// .claude/settings.local.json, and user ~/.claude/settings.json — because
+// hooks wired at user scope (a perfectly good wiring) must never read as a
+// project-scope FAIL whose remedy would install duplicates (every
+// PostToolUse would then fire twice).
+//
+// When a hook is missing from every readable scope, the contradiction
+// probe asks whether that SPECIFIC hook variant has firing evidence
+// somewhere doctor cannot see — using whichever log can actually
+// distinguish it from its siblings. edit-hook's PostToolUse invocation and
+// its two PreToolUse ("--pre") matcher groups all share one CLI and one
+// call-log origin ("edit-hook"), so call-log traffic from one can never be
+// treated as evidence for another — only the hooks beat log's phase/target
+// dimension (edithook.go/edithook_pre.go) tells them apart. session-hook
+// and stop-hook are each their own CLI with no ambiguous sibling, so their
+// call-log origin IS variant-specific evidence on its own.
+//
+// A missing hook with no evidence anywhere is genuinely missing —
+// `fathom init` (idempotent, and — since it now also reads user scope
+// before writing — safe even when some OTHER hook is wired there) is the
+// correct remedy. A missing hook WITH evidence is wired at a scope doctor
+// cannot read (managed settings, e.g.); prescribing `fathom init` for that
+// one would install a project-scope duplicate.
 func checkHooksInstalled(root, harness string) doctorCheck {
 	const name = "hooks_installed"
 	if harness != "claude" {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "Codex has no SessionStart/PostToolUse/Stop hook mechanism (docs/adoption/codex.md §6) — nothing to check"}
 	}
-	remedy := "fathom init --path " + root
 
 	type scopeFile struct{ label, path string }
 	scopes := []scopeFile{
@@ -489,7 +505,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		scopes = append(scopes, scopeFile{"user", filepath.Join(home, ".claude", "settings.json")})
 	}
 
-	wiredScopes := map[string][]string{} // spec.sub -> scope labels that wire it
+	wiredScopes := map[hookSpecKey][]string{} // spec key (event+matcher) -> scope labels that wire it
 	var scopeNotes []string
 	for _, sc := range scopes {
 		data, err := os.ReadFile(sc.path)
@@ -504,18 +520,19 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		hooksObj, _ := parsed["hooks"].(map[string]any)
 		for _, spec := range fathomHookSpecs {
 			if hookMarkerPresent(hooksObj, spec) {
-				wiredScopes[spec.sub] = append(wiredScopes[spec.sub], sc.label)
+				k := hookSpecKeyOf(spec)
+				wiredScopes[k] = append(wiredScopes[k], sc.label)
 			}
 		}
 	}
 
-	var missing []string
+	var missing []hookSpec
 	labelSet := map[string]bool{}
 	var labels []string
 	for _, spec := range fathomHookSpecs {
-		found := wiredScopes[spec.sub]
+		found := wiredScopes[hookSpecKeyOf(spec)]
 		if len(found) == 0 {
-			missing = append(missing, spec.sub)
+			missing = append(missing, spec)
 			continue
 		}
 		for _, l := range found {
@@ -534,33 +551,154 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
-	// Contradiction probe: the settings scopes doctor can read wire nothing
-	// (or not everything), yet the call log proves edit-hook traffic — the
-	// hooks ARE firing from a scope this check cannot see (managed
-	// settings, an unreadable file). In that state the normal remedy is
-	// actively harmful: `fathom init` would add a project-scope SECOND
-	// wiring and every hook would fire twice.
-	if n := editHookCallCount(root); n > 0 {
-		reason := fmt.Sprintf("no readable settings scope wires hook(s) %s (checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json), yet the call log records %d edit-hook call(s) — the hooks are evidently wired at a scope doctor cannot read. Running `fathom init` now would install project-scope DUPLICATES: every hook would fire twice.", strings.Join(missing, ", "), n)
+	checked := "checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json"
+
+	var missingLabels []string
+	var evidenced []string // "<label> (evidenced by <source>: N call(s))"
+	var trulyMissing []string
+	for _, spec := range missing {
+		label := specLabel(spec)
+		missingLabels = append(missingLabels, label)
+		if n, source := hookVariantSeenEvidence(root, spec); n > 0 {
+			evidenced = append(evidenced, fmt.Sprintf("%s (evidenced by %s: %d call(s))", label, source, n))
+		} else {
+			trulyMissing = append(trulyMissing, label)
+		}
+	}
+
+	switch {
+	case len(evidenced) > 0 && len(trulyMissing) == 0:
+		// Every missing hook has firing evidence elsewhere — wired at a
+		// scope doctor cannot read. Never prescribe init: it would install
+		// project-scope duplicates for hooks that already fire.
+		reason := fmt.Sprintf("no readable settings scope wires hook(s) %s (%s), yet: %s — evidently wired at a scope doctor cannot read. Running `fathom init` now would install project-scope DUPLICATES for these: every hook would fire twice.",
+			strings.Join(missingLabels, ", "), checked, strings.Join(evidenced, "; "))
 		if len(scopeNotes) > 0 {
 			reason += " " + strings.Join(scopeNotes, "; ")
 		}
 		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: "find the scope that wires them (e.g. read ~/.claude/settings.json, or the harness's hook settings UI) before changing anything — do not run `fathom init` for this"}
-	}
 
-	reason := fmt.Sprintf("no readable settings scope wires hook(s): %s (checked project .claude/settings.json, .claude/settings.local.json, user ~/.claude/settings.json)", strings.Join(missing, ", "))
-	if len(scopeNotes) > 0 {
-		reason += "; " + strings.Join(scopeNotes, "; ")
+	case len(evidenced) > 0 && len(trulyMissing) > 0:
+		// Mixed: some missing hooks have contradiction evidence, others
+		// have none. `fathom init` is now safe to run for the genuinely
+		// missing ones — it reads user scope first and skips anything
+		// already wired there — but the evidenced ones need a human to
+		// find the scope that wires them (possibly one even init cannot
+		// read, e.g. managed settings).
+		reason := fmt.Sprintf("no readable settings scope wires hook(s) %s (%s). %s show no firing evidence anywhere doctor can see — genuinely missing. %s — evidently wired at a scope doctor cannot read.",
+			strings.Join(missingLabels, ", "), checked, strings.Join(trulyMissing, ", "), strings.Join(evidenced, "; "))
+		if len(scopeNotes) > 0 {
+			reason += " " + strings.Join(scopeNotes, "; ")
+		}
+		remedy := fmt.Sprintf("fathom init --path %s installs the genuinely-missing hook(s) (%s) safely — it now skips anything already wired at user scope; if the evidenced hook(s) still aren't wired afterward, find the scope that wires them by hand (do not assume `fathom init` covers those)", root, strings.Join(trulyMissing, ", "))
+		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: remedy}
+
+	default:
+		// Nothing missing has any firing evidence anywhere — genuinely
+		// missing, install is the correct and safe remedy.
+		reason := fmt.Sprintf("no readable settings scope wires hook(s): %s (%s)", strings.Join(missingLabels, ", "), checked)
+		if len(scopeNotes) > 0 {
+			reason += "; " + strings.Join(scopeNotes, "; ")
+		}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: "fathom init --path " + root}
 	}
-	return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: remedy}
 }
 
-// editHookCallCount reports how many call-log rows carry origin
-// "edit-hook" — the firing evidence checkHooksInstalled's contradiction
-// probe and checkHooksFiring both read (same resolveCallLogPath +
-// readCallLog pair, instrument_adoption.go). Zero on an absent/unreadable
-// log.
-func editHookCallCount(root string) int {
+// hookSpecKey identifies one hookSpec's (event, matcher) group — the same
+// granularity ensureHookEntry (init.go) and hookMarkerPresent scope their
+// own marker checks to. fathomHookSpecs has TWO entries sharing the same
+// sub/marker ("edit-hook --pre", one per PreToolUse matcher group), so
+// grouping by spec.sub alone would conflate them; grouping by (event,
+// matcher) keeps every matcher group independently trackable.
+type hookSpecKey struct{ event, matcher string }
+
+func hookSpecKeyOf(spec hookSpec) hookSpecKey {
+	return hookSpecKey{event: spec.event, matcher: spec.matcher}
+}
+
+// specLabel names one hookSpec including its matcher group, so two specs
+// that share a sub (the two PreToolUse "edit-hook --pre" groups) render as
+// two distinguishable entries instead of one duplicated string.
+func specLabel(spec hookSpec) string {
+	if spec.matcher == "" {
+		return fmt.Sprintf("%s [%s]", spec.sub, spec.event)
+	}
+	return fmt.Sprintf("%s [%s, matcher %s]", spec.sub, spec.event, spec.matcher)
+}
+
+// hookVariantSeenEvidence reports how many times spec's SPECIFIC hook
+// variant has fired, and which log the evidence came from — see
+// checkHooksInstalled's doc comment for why the evidence source differs
+// per hook (edit-hook's pre/post/matcher variants need the beat log's
+// phase+target dimension; session-hook/stop-hook are unambiguous in the
+// call log already). n is 0 with source "" for a spec this function has no
+// distinguishing signal for (never a guessed pass).
+func hookVariantSeenEvidence(root string, spec hookSpec) (n int, source string) {
+	switch spec.sub {
+	case "edit-hook":
+		return editHookBeatCount("post", ""), "hooks beat log (edit-hook, phase=post)"
+	case "edit-hook --pre":
+		target := "file"
+		if spec.matcher == "Bash" {
+			target = "command"
+		}
+		return editHookBeatCount("pre", target), fmt.Sprintf("hooks beat log (edit-hook, phase=pre, target=%s)", target)
+	case "session-hook", "stop-hook":
+		return originCallCount(root, spec.sub), fmt.Sprintf("call log (origin=%s)", spec.sub)
+	default:
+		return 0, ""
+	}
+}
+
+// editHookBeatCount counts "seen" beats on the "edit-hook" channel
+// (beats.go's per-user hooks.jsonl) matching phase ("pre" or "post" — a
+// beat with no phase meta predates phase-O and is treated as "post", the
+// only variant that existed then) and, when target is non-empty, matching
+// target too ("file" for the Edit|Write|MultiEdit PreToolUse group,
+// "command" for the Bash one — edithook_pre.go). This is the ONE signal
+// that can tell edit-hook's PostToolUse invocation apart from its two
+// PreToolUse matcher groups; the call log cannot (all three share rpcOrigin
+// "edit-hook", set unconditionally in cmdEditHook before the --pre branch).
+func editHookBeatCount(phase, target string) int {
+	path := beatLogPath()
+	if path == "" {
+		return 0
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+	beats, err := heartbeat.Load(f, true) // acceptPartial: a torn tail write must not blank the whole history
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, b := range beats {
+		if b.Channel != "edit-hook" || b.Kind != "seen" {
+			continue
+		}
+		p := b.Meta["phase"]
+		if p == "" {
+			p = "post"
+		}
+		if p != phase {
+			continue
+		}
+		if target != "" && b.Meta["target"] != target {
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// originCallCount reports how many call-log rows carry the given origin —
+// checkHooksFiring's own pattern (readCallLog/resolveCallLogPath,
+// instrument_adoption.go), generalized from "edit-hook" to any origin so
+// session-hook/stop-hook (each unambiguous in the call log, unlike
+// edit-hook's pre/post variants) can reuse it directly.
+func originCallCount(root, origin string) int {
 	logPath := resolveCallLogPath()
 	if !filepath.IsAbs(logPath) {
 		logPath = filepath.Join(root, logPath)
@@ -571,7 +709,7 @@ func editHookCallCount(root string) int {
 	}
 	n := 0
 	for _, e := range entries {
-		if e.Origin == "edit-hook" {
+		if e.Origin == origin {
 			n++
 		}
 	}
@@ -579,12 +717,20 @@ func editHookCallCount(root string) int {
 }
 
 // hookMarkerPresent is the read-only twin of init.go's ensureHookEntry: the
-// same marker-substring detection, without the insert-if-absent half.
+// same marker-substring detection, scoped to spec's OWN (event, matcher)
+// group exactly like ensureHookEntry's own write path — otherwise the two
+// PreToolUse groups (Edit|Write|MultiEdit and Bash), which share the
+// identical "fathom edit-hook --pre" marker, would be indistinguishable: a
+// marker found in EITHER group would wrongly read as both being wired.
 func hookMarkerPresent(hooksObj map[string]any, spec hookSpec) bool {
 	arr, _ := hooksObj[spec.event].([]any)
 	for _, g := range arr {
 		gm, ok := g.(map[string]any)
 		if !ok {
+			continue
+		}
+		gMatcher, _ := gm["matcher"].(string)
+		if gMatcher != spec.matcher {
 			continue
 		}
 		hs, _ := gm["hooks"].([]any)
