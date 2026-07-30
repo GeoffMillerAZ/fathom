@@ -46,6 +46,13 @@ type claimDraft struct {
 	Scope     []string `json:"scope"`
 	CiteStart int      `json:"cite_start"` // 1-based document line
 	CiteEnd   int      `json:"cite_end"`   // inclusive
+	// Class (docs/design/findings-as-evidence.md §3.2, §6 item 2) is the
+	// finding-kind reviewer's closed-vocabulary failure class
+	// (core.FindingClass). Present in the schema for every layer (a single
+	// shared claimDraftSchema serves all layers), but ENFORCED only for
+	// kind==KindFinding — see verifyDraft. Empty/omitted for every other
+	// layer's drafts, which never populate it.
+	Class string `json:"class,omitempty"`
 }
 
 // claimDraftEnvelope is the object-rooted decode target for a section's
@@ -76,7 +83,8 @@ var claimDraftSchema = json.RawMessage(`{
 					"rule": {"type": "string"},
 					"scope": {"type": "array", "items": {"type": "string"}},
 					"cite_start": {"type": "integer"},
-					"cite_end": {"type": "integer"}
+					"cite_end": {"type": "integer"},
+					"class": {"type": "string"}
 				},
 				"required": ["rule", "scope", "cite_start", "cite_end"],
 				"additionalProperties": false
@@ -582,6 +590,21 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 		}
 	}
 
+	// Findings-as-evidence typed failure class (docs/design/findings-as-
+	// evidence.md §3.2, §6 item 2): the reviewer assigns `class` at emit
+	// time for kind==KindFinding drafts ONLY — an empty or unrecognized
+	// class is a compile-time rejection, mirroring O19's four causes
+	// above, never a silent "other" bucket. Every other layer's drafts
+	// never carry a class and are unaffected.
+	class := core.FindingClass(d.Class)
+	if kind == KindFinding {
+		if !class.Valid() {
+			return core.SemanticClaim{}, nil, rejectErr(causeInvalidClass, "class %q is not a member of the closed finding-class vocabulary", d.Class)
+		}
+	} else {
+		class = ""
+	}
+
 	reproSum := sha256.Sum256([]byte(sec.Digest + "\x00" + rule + "\x00" + strings.Join(scope, ",")))
 	reproKey := hex.EncodeToString(reproSum[:])
 	claim := core.SemanticClaim{
@@ -602,6 +625,7 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 		InputDigest:         sec.Digest,
 		CompiledAtWatermark: watermark,
 		CompiledAt:          at.UTC(),
+		Class:               class,
 	}
 	links := []core.ClaimLink{
 		{ClaimID: claim.ClaimID, Rel: core.RelCites, TargetRef: core.CiteRef(doc.Path, d.CiteStart, d.CiteEnd), TargetHash: hash, AnchorText: anchorText},
@@ -684,6 +708,13 @@ const (
 	// causeOverBroad: a scope glob matched more than half the indexed
 	// corpus and is not an exempt single-file-class extension glob.
 	causeOverBroad rejectionCause = "over-broad"
+	// causeInvalidClass (docs/design/findings-as-evidence.md §3.2, §6 item
+	// 2): a kind==KindFinding draft's class is empty or not a member of
+	// core.ValidFindingClasses — mirrors O19's four causes above, added as
+	// a fifth for the findings-layer reviewer's own emit-time contract.
+	// Never applies to a non-finding-kind draft (class is not required
+	// there at all).
+	causeInvalidClass rejectionCause = "invalid-class"
 )
 
 // claimRejectionError wraps a verifyDraft rejection with its classified

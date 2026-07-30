@@ -865,7 +865,7 @@ func newFindingsCompiler(t *testing.T, st store.Store) *Compiler {
 	return &Compiler{
 		St: st,
 		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
-			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4,"class":"error-handling"}]}`,
 		}}),
 		Model: "mock-model",
 		Layer: layer,
@@ -972,6 +972,127 @@ func TestCompile_FindingDriftAnchor_Written(t *testing.T) {
 	}
 }
 
+// ─── findings-as-evidence: the closed class vocabulary (§3.2, §6 item 2) ────
+
+// findingsCompilerWithClass builds a findings-layer Compiler whose mock LLM
+// emits the given class string verbatim (or omits the field entirely when
+// class == "" via omitClassField) — used to exercise verifyDraft's
+// class-validation path directly through a real Compile call.
+func findingsCompilerWithClass(t *testing.T, st store.Store, class string, omitClassField bool) *Compiler {
+	t.Helper()
+	layer, err := LoadLayer(LayerFindings)
+	if err != nil {
+		t.Fatalf("LoadLayer(findings): %v", err)
+	}
+	classField := fmt.Sprintf(`,"class":%q`, class)
+	if omitClassField {
+		classField = ""
+	}
+	text := fmt.Sprintf(`{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4%s}]}`, classField)
+	return &Compiler{
+		St:    st,
+		LLM:   llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{Text: text}}),
+		Model: "mock-model",
+		Layer: layer,
+		Now:   fixedNow,
+	}
+}
+
+// TestCompile_FindingClass_Valid_Persisted proves a valid class round-trips
+// onto the persisted claim.
+func TestCompile_FindingClass_Valid_Persisted(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	c := findingsCompilerWithClass(t, st, "error-handling", false)
+	run, err := c.Compile(ctx, findingsInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 || run.ClaimsRejected != 0 {
+		t.Fatalf("emitted=%d rejected=%d, want 1/0", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerFindings)
+	if len(claims) != 1 {
+		t.Fatalf("claims = %d, want 1", len(claims))
+	}
+	if claims[0].Class != core.FindingClassErrorHandling {
+		t.Errorf("Class = %q, want %q", claims[0].Class, core.FindingClassErrorHandling)
+	}
+}
+
+// TestCompile_FindingClass_Unknown_Rejected proves an unrecognized class
+// (a reviewer-invented value, or a typo) is rejected at compile time —
+// never silently accepted or bucketed as "other" (docs/design/findings-as-
+// evidence.md §3.2).
+func TestCompile_FindingClass_Unknown_Rejected(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	c := findingsCompilerWithClass(t, st, "other", false)
+	run, err := c.Compile(ctx, findingsInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 0 || run.ClaimsRejected != 1 {
+		t.Fatalf("emitted=%d rejected=%d, want 0/1", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	if len(run.RejectionReasons) != 1 || run.RejectionReasons[0].Cause != string(causeInvalidClass) {
+		t.Fatalf("RejectionReasons = %+v, want one entry with cause %q", run.RejectionReasons, causeInvalidClass)
+	}
+	claims, _ := st.ClaimsForService(ctx, "svc", LayerFindings)
+	if len(claims) != 0 {
+		t.Fatalf("claims = %d, want 0 (rejected draft must not persist)", len(claims))
+	}
+}
+
+// TestCompile_FindingClass_Empty_Rejected proves an omitted/empty class is
+// rejected exactly like an unknown one — the vocabulary is mandatory for
+// kind==KindFinding, not merely validated-if-present.
+func TestCompile_FindingClass_Empty_Rejected(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	for _, f := range indexedFiles {
+		if err := st.SetFingerprint(ctx, "svc", f, "fp-"+f); err != nil {
+			t.Fatalf("SetFingerprint: %v", err)
+		}
+	}
+	c := findingsCompilerWithClass(t, st, "", true)
+	run, err := c.Compile(ctx, findingsInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 0 || run.ClaimsRejected != 1 {
+		t.Fatalf("emitted=%d rejected=%d, want 0/1", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+}
+
+// TestCompile_FindingClass_NotEnforcedForNonFindingKind proves the
+// vocabulary is scoped to kind==KindFinding only: an obligations-layer
+// draft (which never emits "class" at all) is unaffected.
+func TestCompile_FindingClass_NotEnforcedForNonFindingKind(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Sort all outputs.","scope":["internal/mcp/**"],"cite_start":4,"cite_end":4}]}`,
+	}})
+	run, err := c.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 || run.ClaimsRejected != 0 {
+		t.Fatalf("emitted=%d rejected=%d, want 1/0 (class must not be enforced on a non-finding-kind draft)", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+}
+
 // ─── LC-2: serving.drift_tracked replaces the kind=="finding" hardcode ──────
 
 // TestCompile_ScopeFPGatedByDriftTrackedNotKind proves the LC-2 decoupling
@@ -1000,7 +1121,7 @@ func TestCompile_ScopeFPGatedByDriftTrackedNotKind(t *testing.T) {
 	c1 := &Compiler{
 		St: st1,
 		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
-			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4,"class":"error-handling"}]}`,
 		}}),
 		Model: "mock-model",
 		Layer: layer1,
@@ -1041,7 +1162,7 @@ func TestCompile_ScopeFPGatedByDriftTrackedNotKind(t *testing.T) {
 	c2 := &Compiler{
 		St: st2,
 		LLM: llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
-			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4}]}`,
+			Text: `{"claims":[{"rule":"Add retry to the query engine's outbound calls.","scope":["internal/query/**"],"cite_start":3,"cite_end":4,"class":"error-handling"}]}`,
 		}}),
 		Model: "mock-model",
 		Layer: layer2,

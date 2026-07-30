@@ -478,6 +478,16 @@ func TestReview_Reconcile_FixedFindingSuperseded(t *testing.T) {
 			if ev.Author != "review" {
 				t.Errorf("superseded event author = %q, want %q", ev.Author, "review")
 			}
+			// docs/design/findings-as-evidence.md §3.4, §6 item 4: the
+			// scoped file (pkg/a.go) still exists — it was EDITED, not
+			// deleted — so this is a code-change resolution, with a
+			// non-empty ResolutionCommit naming the fix's watermark.
+			if ev.ResolutionKind != core.ResolutionCodeChange {
+				t.Errorf("superseded event ResolutionKind = %q, want %q", ev.ResolutionKind, core.ResolutionCodeChange)
+			}
+			if ev.ResolutionCommit == "" {
+				t.Error("superseded event ResolutionCommit is empty, want the fix's watermark")
+			}
 		}
 	}
 	if supersededEvents != 1 {
@@ -647,7 +657,8 @@ func TestRecordReviewSupersedeEvents_WritesOneEventPerID(t *testing.T) {
 
 	fixedNow := func() time.Time { return time.Unix(1700000000, 0).UTC() }
 	var stderr bytes.Buffer
-	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, fixedNow, &stderr)
+	resolve := func(claimID string) (string, string) { return core.ResolutionCodeChange, "abc123" }
+	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, resolve, fixedNow, &stderr)
 	if n != 2 {
 		t.Fatalf("recorded = %d, want 2", n)
 	}
@@ -656,9 +667,35 @@ func TestRecordReviewSupersedeEvents_WritesOneEventPerID(t *testing.T) {
 		if err != nil || len(events) != 1 || events[0].Verdict != "superseded" || events[0].Author != "review" {
 			t.Errorf("events for %s = %+v, err=%v", id, events, err)
 		}
+		if events[0].ResolutionKind != core.ResolutionCodeChange || events[0].ResolutionCommit != "abc123" {
+			t.Errorf("events[0] resolution = %+v, want kind=%q commit=%q", events[0], core.ResolutionCodeChange, "abc123")
+		}
 	}
 	if stderr.Len() != 0 {
 		t.Errorf("stderr = %q, want empty on success", stderr.String())
+	}
+}
+
+// TestRecordReviewSupersedeEvents_NilResolve_EmptyResolutionFields proves
+// resolve is optional: a nil resolve func writes events with empty
+// ResolutionKind/ResolutionCommit rather than panicking.
+func TestRecordReviewSupersedeEvents_NilResolve_EmptyResolutionFields(t *testing.T) {
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	fixedNow := func() time.Time { return time.Unix(1700000000, 0).UTC() }
+	var stderr bytes.Buffer
+	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1"}, nil, fixedNow, &stderr)
+	if n != 1 {
+		t.Fatalf("recorded = %d, want 1", n)
+	}
+	events, err := st.ClaimEvents(context.Background(), "cl-1")
+	if err != nil || len(events) != 1 {
+		t.Fatalf("events = %+v, err=%v", events, err)
+	}
+	if events[0].ResolutionKind != "" || events[0].ResolutionCommit != "" {
+		t.Errorf("events[0] = %+v, want empty resolution fields with nil resolve", events[0])
 	}
 }
 
@@ -669,7 +706,7 @@ func TestRecordReviewSupersedeEvents_NoIDs_NoOp(t *testing.T) {
 	defer c.Close()
 
 	var stderr bytes.Buffer
-	n := recordReviewSupersedeEvents(context.Background(), c, nil, time.Now, &stderr)
+	n := recordReviewSupersedeEvents(context.Background(), c, nil, nil, time.Now, &stderr)
 	if n != 0 {
 		t.Fatalf("recorded = %d, want 0", n)
 	}
@@ -684,7 +721,7 @@ func TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal(t *testing.T
 	defer c.Close()
 
 	var stderr bytes.Buffer
-	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, time.Now, &stderr)
+	n := recordReviewSupersedeEvents(context.Background(), c, []string{"cl-1", "cl-2"}, nil, time.Now, &stderr)
 	if n != 0 {
 		t.Fatalf("recorded = %d, want 0 (every write fails)", n)
 	}

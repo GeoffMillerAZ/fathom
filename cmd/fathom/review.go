@@ -160,7 +160,26 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		// (docs/design/observability-surfaces.md §1). Best-effort: a
 		// logging failure here never flips persisted/the exit code, only
 		// SetClaimStatus's own success above does.
-		recordReviewSupersedeEvents(ctx, c, supersededOK, time.Now, stderr)
+		//
+		// Resolution classification (docs/design/findings-as-evidence.md
+		// §3.4, §6 item 4): resolve looks up the PRE-run claim's own Scope
+		// (from `existing`, loaded before this run superseded anything)
+		// and classifies via review.ClassifyResolution against the
+		// current source set — code-change-in-scope when every scoped
+		// file still exists, scope-disappearance when one was deleted.
+		existingByID := make(map[string]core.SemanticClaim, len(existing))
+		for _, cl := range existing {
+			existingByID[cl.ClaimID] = cl
+		}
+		fileExists := func(path string) bool { _, ok := content[path]; return ok }
+		resolve := func(claimID string) (kind, commit string) {
+			cl, ok := existingByID[claimID]
+			if !ok {
+				return "", ""
+			}
+			return review.ClassifyResolution(cl.Scope, fileExists), watermark
+		}
+		recordReviewSupersedeEvents(ctx, c, supersededOK, resolve, time.Now, stderr)
 	}
 
 	if *jsonOut {
@@ -344,25 +363,36 @@ func appendReviewCallLogEntry(path, service string, dims []review.Dimension, lat
 	}
 }
 
-// recordReviewSupersedeEvents (Q-7, docs/plans/expert-suite-q.md) records
-// one "superseded" claim_event per ID in supersededIDs — findings runReview
-// just reconciled as fixed (SetClaimStatus already succeeded for every ID
-// passed here; this is the durable "raised, then reconciled" evidence
-// docs/design/observability-surfaces.md §1's Interventions row 2 names as
-// its mechanism). Best-effort, mirroring appendReviewCallLogEntry's own
-// discipline: a write failure is logged and never returned as an error —
-// the review run's exit code depends only on SetClaimStatus's own success,
-// never on this instrumentation. Returns the count actually recorded, for
-// tests.
-func recordReviewSupersedeEvents(ctx context.Context, c *client.Client, supersededIDs []string, now func() time.Time, stderr io.Writer) int {
+// recordReviewSupersedeEvents (Q-7, docs/plans/expert-suite-q.md; resolution
+// classification added by docs/design/findings-as-evidence.md §3.4, §6 item
+// 4) records one "superseded" claim_event per ID in supersededIDs —
+// findings runReview just reconciled as fixed (SetClaimStatus already
+// succeeded for every ID passed here; this is the durable "raised, then
+// reconciled" evidence docs/design/observability-surfaces.md §1's
+// Interventions row 2 names as its mechanism). resolve (nil-safe) resolves a
+// claim ID to its ResolutionKind/ResolutionCommit — the caller
+// (runReview) builds it from review.ClassifyResolution over the pre-run
+// claim's own Scope plus the current source set, so recordReviewSupersedeEvents
+// itself stays a thin, injectable write path. Best-effort, mirroring
+// appendReviewCallLogEntry's own discipline: a write failure is logged and
+// never returned as an error — the review run's exit code depends only on
+// SetClaimStatus's own success, never on this instrumentation. Returns the
+// count actually recorded, for tests.
+func recordReviewSupersedeEvents(ctx context.Context, c *client.Client, supersededIDs []string, resolve func(claimID string) (kind, commit string), now func() time.Time, stderr io.Writer) int {
 	recorded := 0
 	for _, id := range supersededIDs {
+		var kind, commit string
+		if resolve != nil {
+			kind, commit = resolve(id)
+		}
 		ev := core.ClaimEvent{
-			ClaimID: id,
-			Verdict: "superseded",
-			Author:  "review",
-			Note:    "finding fixed — no longer emitted by a review run (fathom review's fixed-finding reconcile)",
-			At:      now().UTC(),
+			ClaimID:          id,
+			Verdict:          "superseded",
+			Author:           "review",
+			Note:             "finding fixed — no longer emitted by a review run (fathom review's fixed-finding reconcile)",
+			At:               now().UTC(),
+			ResolutionKind:   kind,
+			ResolutionCommit: commit,
 		}
 		if err := c.AppendClaimEvent(ctx, ev); err != nil {
 			fmt.Fprintf(stderr, "warning: recording superseded claim_event for %s failed: %v\n", id, err)

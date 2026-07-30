@@ -206,6 +206,7 @@ CREATE TABLE IF NOT EXISTS semantic_claims (
     input_digest           TEXT   NOT NULL DEFAULT '',
     compiled_at_watermark  TEXT   NOT NULL DEFAULT '',
     compiled_at            BIGINT NOT NULL DEFAULT 0,
+    class                  TEXT   NOT NULL DEFAULT '',
     PRIMARY KEY (service_id, claim_id)
 );
 
@@ -244,11 +245,13 @@ CREATE TABLE IF NOT EXISTS compile_runs (
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
-    claim_id TEXT   NOT NULL DEFAULT '',
-    verdict  TEXT   NOT NULL DEFAULT '',
-    author   TEXT   NOT NULL DEFAULT '',
-    note     TEXT   NOT NULL DEFAULT '',
-    event_at BIGINT NOT NULL DEFAULT 0
+    claim_id          TEXT   NOT NULL DEFAULT '',
+    verdict           TEXT   NOT NULL DEFAULT '',
+    author            TEXT   NOT NULL DEFAULT '',
+    note              TEXT   NOT NULL DEFAULT '',
+    event_at          BIGINT NOT NULL DEFAULT 0,
+    resolution_kind   TEXT   NOT NULL DEFAULT '',
+    resolution_commit TEXT   NOT NULL DEFAULT ''
 );
 
 -- Typed call edges (ADR-021 §3, internal/fusion.EnrichTypedEdges). Rows are
@@ -314,6 +317,20 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		// (Sweep's existing "empty AnchorText → cannot heal, only stale"
 		// leniency handles the legacy row honestly from there).
 		{"claim_links", "anchor_text", `ALTER TABLE claim_links ADD COLUMN anchor_text TEXT NOT NULL DEFAULT ''`},
+		// Findings-as-evidence (docs/design/findings-as-evidence.md §3.2,
+		// §6 item 2): a pre-existing store (including the live fleet
+		// store) predates the typed finding-class vocabulary —
+		// PutClaims/ClaimsForService must not fail with "no such column"
+		// on it; a legacy claim simply reads back with Class=="" (additive
+		// migration, same "no such column" bounce class escape_note/
+		// rejection_reasons_json/anchor_text already hit and fixed).
+		{"semantic_claims", "class", `ALTER TABLE semantic_claims ADD COLUMN class TEXT NOT NULL DEFAULT ''`},
+		// Findings-as-evidence resolution outcomes (§3.4, §6 item 4): a
+		// pre-existing store predates ResolutionKind/ResolutionCommit —
+		// AppendClaimEvent/ClaimEvents(Since) must not fail on it; a legacy
+		// event simply reads back with both fields "".
+		{"claim_events", "resolution_kind", `ALTER TABLE claim_events ADD COLUMN resolution_kind TEXT NOT NULL DEFAULT ''`},
+		{"claim_events", "resolution_commit", `ALTER TABLE claim_events ADD COLUMN resolution_commit TEXT NOT NULL DEFAULT ''`},
 	}
 	existingByTable := map[string]map[string]bool{}
 	for _, m := range migrations {
@@ -908,8 +925,8 @@ func (s *SQLiteStore) PutClaims(ctx context.Context, claims []core.SemanticClaim
 INSERT INTO semantic_claims
     (service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
      tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-     compiled_at_watermark, compiled_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     compiled_at_watermark, compiled_at, class)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (service_id, claim_id) DO UPDATE SET
     layer                 = excluded.layer,
     layer_version         = excluded.layer_version,
@@ -930,7 +947,8 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
     repro_key             = excluded.repro_key,
     input_digest          = excluded.input_digest,
     compiled_at_watermark = excluded.compiled_at_watermark,
-    compiled_at           = excluded.compiled_at
+    compiled_at           = excluded.compiled_at,
+    class                 = excluded.class
 `)
 		if err != nil {
 			return fmt.Errorf("PutClaims prepare claims: %w", err)
@@ -949,7 +967,7 @@ ON CONFLICT (service_id, claim_id) DO UPDATE SET
 				string(c.Tier), c.TierProfile,
 				string(c.Status),
 				c.Model, c.PromptVersion, c.ReproKey, c.InputDigest,
-				c.CompiledAtWatermark, c.CompiledAt.UnixNano(),
+				c.CompiledAtWatermark, c.CompiledAt.UnixNano(), string(c.Class),
 			)
 			if err != nil {
 				return fmt.Errorf("PutClaims exec claim: %w", err)
@@ -999,7 +1017,7 @@ VALUES (?, ?, ?, ?, ?, ?)
 func (s *SQLiteStore) ClaimsForService(ctx context.Context, serviceID, layer string) ([]core.SemanticClaim, error) {
 	const cols = `service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
 	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
-	compiled_at_watermark, compiled_at`
+	compiled_at_watermark, compiled_at, class`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1091,9 +1109,9 @@ UPDATE semantic_claims SET status = ? WHERE service_id = ? AND claim_id = ?
 // AppendClaimEvent inserts one verdict row into the append-only event log.
 func (s *SQLiteStore) AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO claim_events (claim_id, verdict, author, note, event_at)
-VALUES (?, ?, ?, ?, ?)
-`, ev.ClaimID, ev.Verdict, ev.Author, ev.Note, ev.At.UnixNano())
+INSERT INTO claim_events (claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`, ev.ClaimID, ev.Verdict, ev.Author, ev.Note, ev.At.UnixNano(), ev.ResolutionKind, ev.ResolutionCommit)
 	if err != nil {
 		return fmt.Errorf("AppendClaimEvent: %w", err)
 	}
@@ -1103,7 +1121,7 @@ VALUES (?, ?, ?, ?, ?)
 // ClaimEvents returns all events for claimID ordered by (event_at, verdict).
 func (s *SQLiteStore) ClaimEvents(ctx context.Context, claimID string) ([]core.ClaimEvent, error) {
 	rows, err := s.db.QueryContext(ctx, `
-SELECT claim_id, verdict, author, note, event_at
+SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit
 FROM claim_events
 WHERE claim_id = ?
 ORDER BY event_at, verdict
@@ -1118,7 +1136,7 @@ ORDER BY event_at, verdict
 			ev core.ClaimEvent
 			at int64
 		)
-		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at); err != nil {
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit); err != nil {
 			return nil, fmt.Errorf("ClaimEvents scan: %w", err)
 		}
 		ev.At = time.Unix(0, at).UTC()
@@ -1142,7 +1160,7 @@ func (s *SQLiteStore) ClaimEventsSince(ctx context.Context, since, until time.Ti
 // definition.
 func queryClaimEventsSince(ctx context.Context, db *sql.DB, since, until time.Time) ([]core.ClaimEvent, error) {
 	rows, err := db.QueryContext(ctx, `
-SELECT claim_id, verdict, author, note, event_at
+SELECT claim_id, verdict, author, note, event_at, resolution_kind, resolution_commit
 FROM claim_events
 WHERE event_at >= ? AND event_at <= ?
 ORDER BY event_at, verdict
@@ -1157,7 +1175,7 @@ ORDER BY event_at, verdict
 			ev core.ClaimEvent
 			at int64
 		)
-		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at); err != nil {
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at, &ev.ResolutionKind, &ev.ResolutionCommit); err != nil {
 			return nil, fmt.Errorf("ClaimEventsSince scan: %w", err)
 		}
 		ev.At = time.Unix(0, at).UTC()
@@ -1496,7 +1514,7 @@ func scanClaims(rows *sql.Rows) ([]core.SemanticClaim, error) {
 			(*string)(&c.Tier), &c.TierProfile,
 			(*string)(&c.Status),
 			&c.Model, &c.PromptVersion, &c.ReproKey, &c.InputDigest,
-			&c.CompiledAtWatermark, &compiledAt,
+			&c.CompiledAtWatermark, &compiledAt, (*string)(&c.Class),
 		); err != nil {
 			return nil, fmt.Errorf("scanClaims scan: %w", err)
 		}

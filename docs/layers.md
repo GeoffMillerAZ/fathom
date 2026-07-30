@@ -76,7 +76,7 @@ stratum today.
 | Layer | Kind | Tier | Stratum | Corpus | Drift-tracked | Eval | Production |
 |---|---|---|---|---|---|---|---|
 | `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
-| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — shipped without eval/ yet, see its `KILL.md`; `fathom compile` refuses this layer without `--unsafe-skip-eval-gate` | `fathom layers list --store PATH --service NAME` |
+| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — `eval/{labels.json,corpus.md}` now exist (docs/design/findings-as-evidence.md §6 item 5: 6 labeled findings across 6 classes + 2 traps), but `TestFindingsEval_Precision` has not yet been run against a real model (see `eval/RESULTS.md`); `fathom compile` still refuses this layer without `--unsafe-skip-eval-gate`, and no derived pattern (`internal/analysis/findings.PromoteTier`) may serve at a promoted tier until it does | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 
@@ -108,6 +108,22 @@ since compile, a live serving annotation never a status flip
 
 **Triage:** `fathom claim refute|corroborate` — see
 `docs/use-cases/change-review.md`.
+
+**Findings as evidence (docs/design/findings-as-evidence.md):** every
+finding-kind claim carries a closed-vocabulary `class` (correctness,
+contract-violation, resource-leak, error-handling, concurrency, security,
+config-drift, test-gap, performance, conformance) assigned at emit time —
+by the reviewer prompt for the LLM-compiled corpus, deterministically by
+`internal/analysis/review`'s dimension functions for the review-verb bridge
+(`arch_conformance` always `conformance`, `spec_coverage` always
+`test-gap`). `internal/analysis/findings.DerivePatterns` groups findings
+sharing (class, normalized rule shape) across ≥2 sites into a computed,
+never-persisted **pattern**; a pattern with ≥3 members carrying independent,
+recorded code-change resolutions may rise exactly one tier
+(`PromoteTier`) — but ONLY once this layer passes its eval gate (still not
+today; see the catalog row above). `fathom findings near <symbol|file>` and
+`fathom findings status` are the read-side verbs — see
+`docs/use-cases/incident-investigation.md`.
 
 ### `adr-rules` — architectural constraints (the layer-2 proof)
 

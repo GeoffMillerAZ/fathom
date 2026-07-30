@@ -336,6 +336,18 @@ func (c *Client) AppendClaimEvent(ctx context.Context, ev core.ClaimEvent) error
 	return c.st.AppendClaimEvent(ctx, ev)
 }
 
+// ClaimEventsSince (docs/design/findings-as-evidence.md §3.3/§3.7, §6 items
+// 3/7) is a thin passthrough to the store's bulk, time-windowed
+// claim_events read (Q-6's ClaimEventsSince) — findings pattern derivation
+// and the `fathom findings status`/`near` verbs need the whole
+// claim_events population (or a wide window of it) to resolve each
+// finding-claim's own resolution outcome, the same store-wide-not-service-
+// scoped caveat Store.ClaimEventsSince's own doc comment states (claim_events
+// carries no service_id column).
+func (c *Client) ClaimEventsSince(ctx context.Context, since, until time.Time) ([]core.ClaimEvent, error) {
+	return c.st.ClaimEventsSince(ctx, since, until)
+}
+
 // SourceFingerprint returns the store's current content fingerprint for
 // (service, repo-relative path) — the fusion hash-gate table
 // semantic.DriftedFindings reads. The review findings bridge records it as

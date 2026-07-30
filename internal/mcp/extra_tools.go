@@ -77,6 +77,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerReferences(s, backend)
 	registerVerifyPlan(s, backend)
 	registerReviewDiff(s, backend)
+	registerFindingsNear(s, backend)
 
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)

@@ -41,7 +41,7 @@ The pricing module must add retry with exponential backoff to all
 outbound quote calls before the next production deploy.
 `
 
-const findingsMockClaim = `{"claims":[{"rule":"Add retry with exponential backoff to all outbound pricing quote calls.","scope":["mod/**"],"cite_start":4,"cite_end":5}]}`
+const findingsMockClaim = `{"claims":[{"rule":"Add retry with exponential backoff to all outbound pricing quote calls.","scope":["mod/**"],"cite_start":4,"cite_end":5,"class":"error-handling"}]}`
 
 func findingsMockLLM() llmclient.LLMClient {
 	return llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{Text: findingsMockClaim}})

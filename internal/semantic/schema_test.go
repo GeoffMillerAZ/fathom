@@ -8,10 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"testing"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 func schemaSource(t *testing.T) string {
@@ -161,5 +164,76 @@ platformLayer: #Layer & {
 	}
 	if err := v2.Validate(); err != nil {
 		t.Fatalf("stratum \"platform\" should validate: %v", err)
+	}
+}
+
+// findingClassSchemaSource reads schema/semantic/findingclass.cue (the
+// findings-as-evidence closed vocabulary, docs/design/findings-as-
+// evidence.md §3.2) the same way schemaSource reads schema.cue.
+func findingClassSchemaSource(t *testing.T) string {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	path := filepath.Join(filepath.Dir(file), "..", "..", "schema", "semantic", "findingclass.cue")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read findingclass.cue: %v", err)
+	}
+	return string(data)
+}
+
+// TestFindingClassVocabularyMatchesSchema cross-checks
+// internal/core.ValidFindingClasses (the Go runtime enforcement point —
+// compile/persist-time rejection of an unknown class) against
+// schema/semantic/findingclass.cue's FindingClasses list, so the two
+// vocabularies can never drift apart — mirrors internal/analysis/review's
+// own TestClaimsVocabularyMatchesSemanticLayer precedent.
+func TestFindingClassVocabularyMatchesSchema(t *testing.T) {
+	cueSrc := findingClassSchemaSource(t)
+	cctx := cuecontext.New()
+	v := cctx.CompileString(cueSrc)
+	if v.Err() != nil {
+		t.Fatalf("compile findingclass.cue: %v", v.Err())
+	}
+	var cueClasses []string
+	if err := v.LookupPath(cue.ParsePath("FindingClasses")).Decode(&cueClasses); err != nil {
+		t.Fatalf("decode FindingClasses: %v", err)
+	}
+
+	var goClasses []string
+	for _, c := range core.ValidFindingClasses {
+		goClasses = append(goClasses, string(c))
+	}
+
+	sortedCue := append([]string(nil), cueClasses...)
+	sortedGo := append([]string(nil), goClasses...)
+	sort.Strings(sortedCue)
+	sort.Strings(sortedGo)
+	if len(sortedCue) != len(sortedGo) {
+		t.Fatalf("vocabulary size mismatch: CUE has %d, Go has %d\nCUE: %v\nGo:  %v", len(sortedCue), len(sortedGo), sortedCue, sortedGo)
+	}
+	for i := range sortedCue {
+		if sortedCue[i] != sortedGo[i] {
+			t.Fatalf("vocabulary mismatch at sorted index %d: CUE=%q Go=%q\nCUE: %v\nGo:  %v", i, sortedCue[i], sortedGo[i], sortedCue, sortedGo)
+		}
+	}
+}
+
+// TestFindingClassSchema_UnknownClassRejected proves the closed vocabulary
+// actually rejects an unrecognized class at CUE unification — the
+// compile-time half of "an unknown class is REJECTED... never silently
+// bucketed as other" (§3.2). The persist-time half (Go, internal/semantic's
+// verifyDraft) has its own test in compile_test.go.
+func TestFindingClassSchema_UnknownClassRejected(t *testing.T) {
+	cueSrc := findingClassSchemaSource(t)
+	cctx := cuecontext.New()
+	bad := cctx.CompileString(cueSrc + "\nbad: #FindingClass & \"other\"")
+	if bad.Err() != nil {
+		return // compile-time rejection is a pass
+	}
+	if err := bad.LookupPath(cue.ParsePath("bad")).Validate(); err == nil {
+		t.Error("expected \"other\" to be rejected by the closed #FindingClass vocabulary, got no error")
 	}
 }

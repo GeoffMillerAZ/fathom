@@ -258,6 +258,12 @@ func TestRun_Arch_ReportsViolationsWithLineCitation(t *testing.T) {
 	if f.Severity != "error" {
 		t.Errorf("Severity = %q, want error", f.Severity)
 	}
+	// Findings-as-evidence (docs/design/findings-as-evidence.md §3.2): a
+	// broken layering rule is always core.FindingClassConformance,
+	// deterministically — never the reviewer's guess.
+	if f.Class != core.FindingClassConformance {
+		t.Errorf("Class = %q, want %q", f.Class, core.FindingClassConformance)
+	}
 }
 
 // ─── spec_coverage dimension ────────────────────────────────────────────────
@@ -280,6 +286,12 @@ func TestRun_SpecCoverage_FlagsUncoveredRefWithLineCitation(t *testing.T) {
 	// The ref appears on line 1: the citation must resolve to it, parseable.
 	if d.Findings[0].Citation != "pkg/a.go#L1-L1" {
 		t.Errorf("Citation = %q, want %q", d.Findings[0].Citation, "pkg/a.go#L1-L1")
+	}
+	// A referenced-but-uncovered spec is a verification gap —
+	// core.FindingClassTestGap, deterministically (docs/design/findings-
+	// as-evidence.md §3.2).
+	if d.Findings[0].Class != core.FindingClassTestGap {
+		t.Errorf("Class = %q, want %q", d.Findings[0].Class, core.FindingClassTestGap)
 	}
 }
 
@@ -322,6 +334,31 @@ func TestRun_Deterministic(t *testing.T) {
 	}
 }
 
+// ─── resolution outcomes (docs/design/findings-as-evidence.md §3.4, §6 item 4) ─
+
+func TestClassifyResolution_AllScopedFilesExist_CodeChange(t *testing.T) {
+	exists := map[string]bool{"api/handler.go": true, "api/router.go": true}
+	got := review.ClassifyResolution([]string{"api/handler.go", "api/router.go"}, func(p string) bool { return exists[p] })
+	if got != core.ResolutionCodeChange {
+		t.Errorf("got %q, want %q", got, core.ResolutionCodeChange)
+	}
+}
+
+func TestClassifyResolution_ScopedFileDeleted_ScopeDisappearance(t *testing.T) {
+	exists := map[string]bool{"api/handler.go": true} // api/router.go deleted
+	got := review.ClassifyResolution([]string{"api/handler.go", "api/router.go"}, func(p string) bool { return exists[p] })
+	if got != core.ResolutionScopeDisappearance {
+		t.Errorf("got %q, want %q", got, core.ResolutionScopeDisappearance)
+	}
+}
+
+func TestClassifyResolution_NilFileExists_ConservativelyScopeDisappearance(t *testing.T) {
+	got := review.ClassifyResolution([]string{"api/handler.go"}, nil)
+	if got != core.ResolutionScopeDisappearance {
+		t.Errorf("got %q, want %q (honest default when the caller can't check)", got, core.ResolutionScopeDisappearance)
+	}
+}
+
 // ─── C2-1: findings bridge (AttachClaims / ApplyClaimStatus) ────────────────
 
 // TestAttachClaims_OnlyOracleDimensionsPersist proves the persistence
@@ -342,6 +379,12 @@ func TestAttachClaims_OnlyOracleDimensionsPersist(t *testing.T) {
 	}
 	if !strings.HasPrefix(claims[0].Subject, review.DimArch+"#") {
 		t.Errorf("claim subject = %q, want %s#... prefix", claims[0].Subject, review.DimArch)
+	}
+	// Findings-as-evidence (docs/design/findings-as-evidence.md §3.2): the
+	// finding's deterministically-assigned Class carries onto the
+	// persisted claim, never re-derived or dropped by AttachClaims.
+	if claims[0].Class != core.FindingClassConformance {
+		t.Errorf("claim Class = %q, want %q", claims[0].Class, core.FindingClassConformance)
 	}
 	for _, name := range []string{review.DimImpact, review.DimObligations} {
 		for _, f := range dimension(t, v, name).Findings {

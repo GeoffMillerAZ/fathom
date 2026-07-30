@@ -90,6 +90,14 @@ type SemanticClaim struct {
 	// (git HEAD or manifest hash — the honest "as of" every payload carries).
 	CompiledAtWatermark string
 	CompiledAt          time.Time
+
+	// Class (docs/design/findings-as-evidence.md §3.2, §6 item 2) is the
+	// closed-vocabulary failure class (FindingClass) a finding-kind claim
+	// carries — assigned by the reviewer at emit time, validated at
+	// compile/persist. "" for every non-finding claim, and for a
+	// finding-kind claim compiled before this field existed (additive
+	// migration — internal/store's conditional column add).
+	Class FindingClass
 }
 
 // ClaimID computes the content-addressed identity for a claim.
@@ -293,7 +301,42 @@ type ClaimEvent struct {
 	Author  string
 	Note    string
 	At      time.Time
+
+	// ResolutionKind and ResolutionCommit (docs/design/findings-as-
+	// evidence.md §3.4, §6 item 4) distinguish WHAT resolved a superseded
+	// finding — set ONLY on "superseded" events, by
+	// internal/analysis/review.ClassifyResolution at the moment
+	// recordReviewSupersedeEvents (cmd/fathom/review.go) writes the event:
+	//
+	//   - ResolutionCodeChange ("code-change"): the finding's scoped file(s)
+	//     still exist in the corpus — the underlying code changed and the
+	//     issue no longer reproduces. ResolutionCommit names the review
+	//     run's watermark (the commit the fix landed by).
+	//   - ResolutionScopeDisappearance ("scope-disappearance"): the scoped
+	//     file no longer exists at all (deleted) — the finding's subject is
+	//     gone, not fixed in place.
+	//
+	// A THIRD case, refutation ("a human said it was wrong"), needs no new
+	// field here: it is already fully recorded by a DIFFERENT event —
+	// Verdict=="refuted" (pkg/client.ClaimFeedback's "refute" action) — so
+	// resolution-outcome classification (internal/analysis/findings)
+	// treats a claim's refuted event as its own, third, self-describing
+	// outcome and never expects ResolutionKind on it. Both fields are ""
+	// for every event that isn't a classified supersede — additive, never
+	// required.
+	ResolutionKind   string
+	ResolutionCommit string
 }
+
+// Resolution outcome kinds (docs/design/findings-as-evidence.md §3.4): the
+// two ClaimEvent.ResolutionKind values a "superseded" event may carry.
+// "refutation" is deliberately NOT a ResolutionKind constant — it is
+// recognized by Verdict=="refuted" directly (see ClaimEvent.ResolutionKind's
+// doc comment).
+const (
+	ResolutionCodeChange         = "code-change"
+	ResolutionScopeDisappearance = "scope-disappearance"
+)
 
 func itoa(n int) string { return strconv.Itoa(n) }
 

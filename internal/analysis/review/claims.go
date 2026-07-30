@@ -173,6 +173,11 @@ func AttachClaims(v *Verdict, in PersistInput) ([]core.SemanticClaim, []core.Cla
 				InputDigest:         reproKey,
 				CompiledAtWatermark: in.Watermark,
 				CompiledAt:          compiledAt,
+				// Class (docs/design/findings-as-evidence.md §3.2): the
+				// dimension already assigned this deterministically
+				// (runArch/runSpecCoverage, engine.go) — carried straight
+				// through, never re-derived here.
+				Class: f.Class,
 			})
 			if hash, text, ok := citeHash(f.Citation, in.FileContent); ok {
 				links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelCites, TargetRef: f.Citation, TargetHash: hash, AnchorText: text})
@@ -341,6 +346,35 @@ func StaleReviewClaims(v Verdict, existing []core.SemanticClaim) []string {
 	}
 	sort.Strings(stale)
 	return stale
+}
+
+// ClassifyResolution reports which of the two review-reconcile resolution
+// outcomes (docs/design/findings-as-evidence.md §3.4, §6 item 4) explains
+// why a StaleReviewClaims-superseded claim's finding is no longer emitted:
+//
+//   - core.ResolutionCodeChange: every one of the claim's scoped files
+//     still exists in the corpus (fileExists reports true) — the
+//     underlying code changed IN PLACE and the issue no longer reproduces.
+//   - core.ResolutionScopeDisappearance: at least one scoped file no
+//     longer exists at all — the finding's subject is gone, not fixed.
+//
+// A THIRD case, refutation, is deliberately NOT this function's concern —
+// it is a distinct human-verdict path (core.ClaimRefuted via
+// pkg/client.ClaimFeedback) that never flows through StaleReviewClaims at
+// all; see core.ClaimEvent.ResolutionKind's doc comment for the full
+// three-case account. fileExists nil is treated as "nothing exists"
+// (ResolutionScopeDisappearance) — the conservative, honest default when a
+// caller cannot check.
+func ClassifyResolution(scope []string, fileExists func(path string) bool) string {
+	if fileExists == nil {
+		return core.ResolutionScopeDisappearance
+	}
+	for _, s := range scope {
+		if !fileExists(s) {
+			return core.ResolutionScopeDisappearance
+		}
+	}
+	return core.ResolutionCodeChange
 }
 
 // BuildPersist is the one shared write-path composition both callers (the

@@ -71,6 +71,16 @@ type Finding struct {
 	// review's persisted verdict on this exact finding overrides it.
 	ClaimID string
 	Status  string
+
+	// Class (docs/design/findings-as-evidence.md §3.2, §6 item 2) is the
+	// closed-vocabulary failure class this finding belongs to — assigned
+	// DETERMINISTICALLY by the dimension that produced it (runArch always
+	// emits FindingClassConformance; runSpecCoverage always emits
+	// FindingClassTestGap), never by an LLM in this bridge. "" for
+	// dimensions that never persist (impact, obligations — see
+	// persistableDim in claims.go), since Class only matters for a
+	// persisted claim.
+	Class core.FindingClass
 }
 
 // Dimension is one axis of the review.
@@ -342,6 +352,9 @@ func runArch(in Input) Dimension {
 			Message:  fmt.Sprintf("%s → %s: %s", v.From, v.To, v.Reason),
 			Citation: citeOf(f, line),
 			Severity: "error",
+			// A layering rule broken is exactly core.FindingClassConformance's
+			// own definition (docs/design/findings-as-evidence.md §3.2).
+			Class: core.FindingClassConformance,
 		})
 	}
 	// archconformance.Check already sorts by (From, To); Findings preserves
@@ -429,6 +442,10 @@ func runSpecCoverage(in Input) Dimension {
 			Message:  fmt.Sprintf("spec %s is referenced in this diff but has no covering symbol", id),
 			Citation: citeOf(l.file, l.line),
 			Severity: "warn",
+			// A referenced spec with no covering symbol is a verification
+			// gap — core.FindingClassTestGap (docs/design/findings-as-
+			// evidence.md §3.2).
+			Class: core.FindingClassTestGap,
 		})
 	}
 	sort.Slice(d.Findings, func(i, j int) bool { return d.Findings[i].Message < d.Findings[j].Message })

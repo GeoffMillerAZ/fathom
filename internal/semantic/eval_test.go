@@ -163,3 +163,14 @@ func TestADRRulesEval_Precision(t *testing.T) {
 func TestSpecBindingsEval_Precision(t *testing.T) {
 	assertGate(t, runLayerEval(t, "spec-bindings"))
 }
+
+// TestFindingsEval_Precision gates the findings layer (docs/design/
+// findings-as-evidence.md §6 item 5): same admission bar as adr-rules — on
+// a PASS, record the run in schema/semantic/layers/findings/eval/RESULTS.md
+// (which currently records "not yet run" — no model was available when the
+// fixtures were authored) and flip layer.cue's `evaled` to true in the same
+// change, per that file's own instructions. Until that happens this stays
+// "not-gated" in docs/layers.md, exactly as it is today.
+func TestFindingsEval_Precision(t *testing.T) {
+	assertGate(t, runLayerEval(t, LayerFindings))
+}

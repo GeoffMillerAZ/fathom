@@ -47,3 +47,8 @@ package semantic
 // 	stratum: "provider"
 // 	budgets: {max_tokens_per_run: 1, max_usd_per_run: 0}
 // }
+//
+// 5. An unknown finding class (docs/design/findings-as-evidence.md §3.2):
+//    the vocabulary is CLOSED — a reviewer-invented class like "other" or a
+//    typo must be rejected, never silently accepted.
+// bad5: #FindingClass & "other"
