@@ -88,9 +88,16 @@ func resolveFromServices(svcs map[string]svcInfo, projDir string) (serviceCandid
 // daemon-resolved identity (when one exists) PREPENDED and deduplicated —
 // the shared resolution every hook uses so injection cannot silently die on
 // a dir-name/service-ID mismatch again.
+//
+// The daemon round trip (resolveIndexedCandidate) is the fleet's single
+// most-called operation (list_services, 3,624 calls/week measured
+// 2026-07-30 — docs/design/production-tokenomics.md §7): identcache.go
+// caches it per (projDir, baseURL) with a short TTL, so the overwhelming
+// majority of calls in a session resolve locally instead of round-tripping
+// the daemon again.
 func candidatesWithDaemon(hc *http.Client, baseURL, projDir string) []serviceCandidate {
 	base := serviceCandidates(projDir)
-	resolved, ok := resolveIndexedCandidate(hc, baseURL, projDir)
+	resolved, ok := resolveIndexedCandidateCached(hc, baseURL, projDir)
 	if !ok {
 		return base
 	}

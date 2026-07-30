@@ -144,6 +144,12 @@ func cmdModuleSources(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "total files:   %d (discovered)\n", inv.TotalFiles)
 	fmt.Fprintf(stdout, "matched files: %d\n", inv.TotalMatched)
 	fmt.Fprintf(stdout, "total bytes:   %d\n", inv.TotalBytes)
+	// Scoped config disclosure (docs/design/scoped-config.md §4): resolveSourceInventory's
+	// own Discover call already applied the union; this is a cheap,
+	// display-only re-read of the same counts LoadIgnoreScoped exposes.
+	if _, counts, ierr := connector.LoadIgnoreScoped(corpusRoot); ierr == nil && (counts.Project > 0 || counts.User > 0) {
+		fmt.Fprintf(stdout, "excluded:      %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore)\n", counts.Project+counts.User, counts.Project, counts.User)
+	}
 	fmt.Fprintln(stdout, "\nby class:")
 	printSortedCounts(stdout, inv.ByClass)
 	fmt.Fprintln(stdout, "\nby language:")

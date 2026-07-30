@@ -91,17 +91,19 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 		}
 	}
 
-	// Guarded edits (docs/design/guarded-edits.md): PreToolUse wires TWO
-	// matcher groups (Edit|Write|MultiEdit and Bash) with the SAME command —
-	// both must actually be present, not just the marker substring once.
+	// Guarded edits (docs/design/guarded-edits.md) + the discovery observer
+	// (docs/design/production-tokenomics.md §4): PreToolUse wires THREE
+	// matcher groups (Edit|Write|MultiEdit, Bash, and Grep|Glob|Read) with
+	// the SAME command — all three must actually be present, not just the
+	// marker substring once.
 	var settingsTree map[string]any
 	if err := json.Unmarshal(settingsRaw, &settingsTree); err != nil {
 		t.Fatalf("settings.json not valid JSON: %v", err)
 	}
 	hooksObj, _ := settingsTree["hooks"].(map[string]any)
 	preArr, _ := hooksObj["PreToolUse"].([]any)
-	if len(preArr) != 2 {
-		t.Fatalf("PreToolUse groups = %d, want 2 (Edit|Write|MultiEdit + Bash): %v", len(preArr), preArr)
+	if len(preArr) != 3 {
+		t.Fatalf("PreToolUse groups = %d, want 3 (Edit|Write|MultiEdit + Bash + Grep|Glob|Read): %v", len(preArr), preArr)
 	}
 	gotMatchers := map[string]bool{}
 	for _, g := range preArr {
@@ -317,7 +319,7 @@ func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
 			t.Fatalf("mergeHookSettings: %v", err)
 		}
 		if !changed {
-			t.Fatal("expected changed=true — the two PreToolUse guard groups are still genuinely missing")
+			t.Fatal("expected changed=true — the PreToolUse guard groups are still genuinely missing")
 		}
 		if len(skipped) != 3 {
 			t.Fatalf("skipped = %v, want 3 (session-hook, edit-hook post, stop-hook)", skipped)
@@ -338,8 +340,8 @@ func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
 			t.Errorf("PostToolUse (the post edit-hook) must not be written at project scope — already wired at user scope: %v", ptu)
 		}
 		pre, _ := hooksObj["PreToolUse"].([]any)
-		if len(pre) != 2 {
-			t.Fatalf("PreToolUse groups = %d, want 2 (both guard groups, genuinely missing)", len(pre))
+		if len(pre) != 3 {
+			t.Fatalf("PreToolUse groups = %d, want 3 (all three guard/discovery groups, genuinely missing)", len(pre))
 		}
 		mergedStr := string(merged)
 		if !strings.Contains(mergedStr, testBinPath+" edit-hook --pre") {

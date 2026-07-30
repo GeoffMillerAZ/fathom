@@ -113,6 +113,40 @@ type ResearchReport struct {
 	AgentSurfaceCalls  int    `json:"agent_surface_calls"`
 	DiscoveryShareNote string `json:"discovery_share_note"`
 
+	// Instrument A — payload cost accounting (docs/design/production-
+	// tokenomics.md §3, law 12): "what fathom SPENT." A COST ledger, never
+	// a savings ledger — PayloadCostNote (and every render line built from
+	// this block) says so explicitly. Per-channel totals from every
+	// payload-cost beat in window (session-brief/post-edit/pre-edit-guard/
+	// module-rules — payloadcost.go); per-edit p50/p95 is computed over
+	// the post-edit + pre-edit-guard channels only (each beat there
+	// represents one edit's injected governance).
+	PayloadCostByChannel          map[string]PayloadCostChannelStat `json:"payload_cost_by_channel,omitempty"`
+	PayloadCostPerEditP50Estimate *float64                          `json:"payload_cost_per_edit_p50_estimate"`
+	PayloadCostPerEditP95Estimate *float64                          `json:"payload_cost_per_edit_p95_estimate"`
+	PayloadCostNote               string                            `json:"payload_cost_note"`
+
+	// Instrument B — the discovery-share denominator (docs/design/
+	// production-tokenomics.md §4): fathom's own index-tool calls (from
+	// the call log — the explicit set discoveryIndexTools names) against
+	// the counting-only observer's grep/glob/read/shell-search beats
+	// (discovery.go). Correlational only — substitution is not proven
+	// until the pre-registered A/B (§5) runs; DiscoveryShareNote says so.
+	DiscoveryActionsTotal   int            `json:"discovery_actions_total"`
+	DiscoveryActionsByKind  map[string]int `json:"discovery_actions_by_kind,omitempty"`
+	DiscoveryIndexToolCalls int            `json:"discovery_index_tool_calls"`
+	DiscoverySharePercent   *float64       `json:"discovery_share_percent"`
+
+	// Instrument E — service-identity cache hit rate (docs/design/
+	// production-tokenomics.md §7): a LATENCY/LOAD signal, never a token
+	// figure — IdentCacheNote says so explicitly, and this block is kept
+	// physically separate from PayloadCostByChannel so it can never be
+	// summed into a token total by mistake.
+	IdentCacheHits    int      `json:"ident_cache_hits"`
+	IdentCacheMisses  int      `json:"ident_cache_misses"`
+	IdentCacheHitRate *float64 `json:"ident_cache_hit_rate"`
+	IdentCacheNote    string   `json:"ident_cache_note"`
+
 	ObservationsPath       string         `json:"observations_path"`
 	ObservationsRead       bool           `json:"observations_read"`
 	TotalObservations      *int           `json:"total_observations"`
@@ -124,6 +158,34 @@ type ResearchReport struct {
 	BenchGeneratedAt string            `json:"bench_generated_at,omitempty"`
 	BenchArms        []BenchArmSummary `json:"bench_arms,omitempty"`
 	BenchNote        string            `json:"bench_note"`
+}
+
+// PayloadCostChannelStat is instrument A's per-channel roll-up (session-
+// brief/post-edit/pre-edit-guard/module-rules) — a COST figure, never a
+// saving (law 12).
+type PayloadCostChannelStat struct {
+	Beats               int `json:"beats"`
+	TotalBytes          int `json:"total_bytes"`
+	TotalTokensEstimate int `json:"total_tokens_estimate"`
+}
+
+// discoveryIndexTools is instrument B's numerator: the companion surface's
+// GENUINE index/navigation tools — deliberately excludes plumbing
+// (capabilities, ingest, list_services, obligations, staleness_report,
+// verify_plan) per docs/design/production-tokenomics.md §4's own
+// instruction, so a hook-identity round trip or a governance/proof call
+// never inflates the "agent chose to look something up" numerator.
+var discoveryIndexTools = map[string]bool{
+	"find_symbol":    true,
+	"query_symbols":  true,
+	"references":     true,
+	"find_callers":   true,
+	"symbol_context": true,
+	"outline":        true,
+	"repo_map":       true,
+	"pack_context":   true,
+	"read_source":    true,
+	"entrypoints":    true,
 }
 
 // BenchArmSummary is one context-bench arm's aggregate outcome, carried
@@ -331,9 +393,13 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 		ObligationsEvictedNote: "not measurable: no eviction event is logged anywhere in fathom today " +
 			"(the edit-hook beat log records seen/answered/error only)",
 		ReAnchorNote: "not measurable: no re-anchor event instrumentation exists in fathom today",
-		DiscoveryShareNote: "not measurable: fathom cannot observe an agent's non-fathom tool calls " +
-			"(grep, read, …) inside its own transcript locally, so a fathom-vs-grep discovery share has " +
-			"no denominator; agent_surface_calls below is the numerator alone, informational only",
+		DiscoveryShareNote: "agent_surface_calls below remains the raw numerator (fathom calls on the " +
+			"agent surface). discovery_share_percent (instrument B, docs/design/production-tokenomics.md " +
+			"§4) is the real denominator: fathom's own index-tool calls against the counting-only " +
+			"PreToolUse observer's grep/glob/read/shell-search beats. Read is its own bucket, never " +
+			"folded into grep — reading a file you already located is dual-use, not necessarily " +
+			"discovery. CORRELATIONAL ONLY: a rise in fathom's share is not proof of substitution until " +
+			"the pre-registered A/B (§5) runs.",
 
 		ObservationsPath: in.observationsPath,
 		ObservationsRead: in.obsRead,
@@ -540,6 +606,11 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 		r.ModuleServingNote = "not measurable: no module-tagged rule was served in window — no .fathom/modules.cue binding is configured anywhere observed, or no bound module is mounted on the daemon"
 	}
 
+	// ─── phase P: payload cost (A), discovery observer (B), ident cache (E) ───
+	buildPayloadCostSection(&r, in.beats, in.since, in.until)
+	buildDiscoverySection(&r, in.beats, toolCalls, in.since, in.until)
+	buildIdentCacheSection(&r, in.beats, in.since, in.until)
+
 	// ─── observations.md: totals + by-tool breakdown ───
 	if in.obsRead {
 		total := nextObservationID(in.obsContent) - 1
@@ -569,6 +640,125 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 	}
 
 	return r
+}
+
+// buildPayloadCostSection is instrument A's aggregator (docs/design/
+// production-tokenomics.md §3): per-channel totals from every
+// payload-cost beat in [since, until], plus per-edit p50/p95 over the
+// post-edit + pre-edit-guard channels (each beat there IS one edit's
+// injected governance payload). Empty in window → an honest note, never
+// a fabricated zero row.
+func buildPayloadCostSection(r *ResearchReport, beats []heartbeat.Beat, since, until time.Time) {
+	byChannel := map[string]*PayloadCostChannelStat{}
+	var perEditEstimates []float64
+	for _, b := range beats {
+		if b.Channel != "payload-cost" || b.At.Before(since) || b.At.After(until) {
+			continue
+		}
+		channel := b.Kind
+		if channel == "" {
+			continue
+		}
+		stat, ok := byChannel[channel]
+		if !ok {
+			stat = &PayloadCostChannelStat{}
+			byChannel[channel] = stat
+		}
+		stat.Beats++
+		if bs := b.Meta["bytes"]; bs != "" {
+			if n, err := strconv.Atoi(bs); err == nil {
+				stat.TotalBytes += n
+			}
+		}
+		tokensEst := 0
+		if ts := b.Meta["tokens_estimate"]; ts != "" {
+			if n, err := strconv.Atoi(ts); err == nil {
+				tokensEst = n
+				stat.TotalTokensEstimate += n
+			}
+		}
+		if channel == "post-edit" || channel == "pre-edit-guard" {
+			perEditEstimates = append(perEditEstimates, float64(tokensEst))
+		}
+	}
+	if len(byChannel) == 0 {
+		r.PayloadCostNote = "not measurable: no payload-cost beats observed in window (instrument A predates this hook build, or no channel has fired yet)"
+		return
+	}
+	out := make(map[string]PayloadCostChannelStat, len(byChannel))
+	for k, v := range byChannel {
+		out[k] = *v
+	}
+	r.PayloadCostByChannel = out
+	if len(perEditEstimates) > 0 {
+		sort.Float64s(perEditEstimates)
+		p50 := percentile(perEditEstimates, 0.50)
+		p95 := percentile(perEditEstimates, 0.95)
+		r.PayloadCostPerEditP50Estimate, r.PayloadCostPerEditP95Estimate = &p50, &p95
+	}
+	r.PayloadCostNote = "what fathom SPENT — a COST ledger (law 12, docs/design/production-tokenomics.md §2): every figure here is bytes/4, labeled ESTIMATE; none of it implies a saving"
+}
+
+// buildDiscoverySection is instrument B's aggregator (docs/design/
+// production-tokenomics.md §4): counts discovery beats by coarse kind,
+// sums fathom's own index-tool calls (discoveryIndexTools) from the SAME
+// call-log tool-count map buildResearchReport already computed, and
+// states the share as a percentage — always labeled correlational.
+func buildDiscoverySection(r *ResearchReport, beats []heartbeat.Beat, toolCalls map[string]int, since, until time.Time) {
+	byKind := map[string]int{}
+	total := 0
+	for _, b := range beats {
+		if b.Channel != "discovery" || b.At.Before(since) || b.At.After(until) {
+			continue
+		}
+		if b.Kind == "" {
+			continue
+		}
+		byKind[b.Kind]++
+		total++
+	}
+	indexCalls := 0
+	for tool, n := range toolCalls {
+		if discoveryIndexTools[tool] {
+			indexCalls += n
+		}
+	}
+	r.DiscoveryActionsTotal = total
+	r.DiscoveryIndexToolCalls = indexCalls
+	if len(byKind) > 0 {
+		r.DiscoveryActionsByKind = byKind
+	}
+	if denom := total + indexCalls; denom > 0 {
+		share := float64(indexCalls) / float64(denom) * 100
+		r.DiscoverySharePercent = &share
+	}
+}
+
+// buildIdentCacheSection is instrument E's aggregator (docs/design/
+// production-tokenomics.md §7): hit/miss counts from the "ident-cache"
+// beat channel (identcache.go) — a latency/load signal, reported with its
+// own note so it is never mistaken for a token figure.
+func buildIdentCacheSection(r *ResearchReport, beats []heartbeat.Beat, since, until time.Time) {
+	hits, misses := 0, 0
+	for _, b := range beats {
+		if b.Channel != "ident-cache" || b.At.Before(since) || b.At.After(until) {
+			continue
+		}
+		switch b.Kind {
+		case "hit":
+			hits++
+		case "miss":
+			misses++
+		}
+	}
+	r.IdentCacheHits, r.IdentCacheMisses = hits, misses
+	if total := hits + misses; total > 0 {
+		rate := float64(hits) / float64(total)
+		r.IdentCacheHitRate = &rate
+		r.IdentCacheNote = "latency/load signal only (docs/design/production-tokenomics.md §7) — never a token figure"
+	} else {
+		r.IdentCacheNote = "not measurable: no ident-cache beats observed in window"
+	}
 }
 
 // percentile returns the nearest-rank percentile p (0..1) of a SORTED,

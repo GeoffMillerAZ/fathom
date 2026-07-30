@@ -99,9 +99,54 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 	}
 	fmt.Fprintf(w, "  re-anchor events: %s\n", r.ReAnchorNote)
 
-	fmt.Fprintln(w, "\ndiscovery share (fathom vs grep/read):")
+	fmt.Fprintln(w, "\nwhat fathom SPENT:")
+	if r.PayloadCostNote != "" && len(r.PayloadCostByChannel) == 0 {
+		fmt.Fprintf(w, "  %s\n", r.PayloadCostNote)
+	} else {
+		channels := make([]string, 0, len(r.PayloadCostByChannel))
+		for c := range r.PayloadCostByChannel {
+			channels = append(channels, c)
+		}
+		sort.Strings(channels)
+		for _, c := range channels {
+			s := r.PayloadCostByChannel[c]
+			fmt.Fprintf(w, "  %-16s beats=%-6d bytes=%-8d tokens_estimate=%d\n", c, s.Beats, s.TotalBytes, s.TotalTokensEstimate)
+		}
+		if r.PayloadCostPerEditP50Estimate != nil && r.PayloadCostPerEditP95Estimate != nil {
+			fmt.Fprintf(w, "  per-edit tokens_estimate: p50=%.0f p95=%.0f\n", *r.PayloadCostPerEditP50Estimate, *r.PayloadCostPerEditP95Estimate)
+		}
+		fmt.Fprintf(w, "  %s\n", r.PayloadCostNote)
+	}
+
+	fmt.Fprintln(w, "\ndiscovery share (fathom index tools vs grep/glob/read/shell-search):")
 	fmt.Fprintf(w, "  agent-surface fathom calls in window: %d\n", r.AgentSurfaceCalls)
+	fmt.Fprintf(w, "  fathom index-tool calls: %d   discovery actions observed: %d\n", r.DiscoveryIndexToolCalls, r.DiscoveryActionsTotal)
+	if len(r.DiscoveryActionsByKind) > 0 {
+		kinds := make([]string, 0, len(r.DiscoveryActionsByKind))
+		for k := range r.DiscoveryActionsByKind {
+			kinds = append(kinds, k)
+		}
+		sort.Strings(kinds)
+		for _, k := range kinds {
+			label := k
+			if k == "read" {
+				label = "read (dual-use — reading a file you already located is not necessarily discovery)"
+			}
+			fmt.Fprintf(w, "    %-60s %d\n", label, r.DiscoveryActionsByKind[k])
+		}
+	}
+	if r.DiscoverySharePercent != nil {
+		fmt.Fprintf(w, "  fathom share: %.0f%% (CORRELATIONAL — not causal until the pre-registered A/B runs)\n", *r.DiscoverySharePercent)
+	}
 	fmt.Fprintf(w, "  %s\n", r.DiscoveryShareNote)
+
+	fmt.Fprintln(w, "\nservice-identity cache (latency/load, not a token signal):")
+	fmt.Fprintf(w, "  hits=%d misses=%d", r.IdentCacheHits, r.IdentCacheMisses)
+	if r.IdentCacheHitRate != nil {
+		fmt.Fprintf(w, " hit_rate=%.0f%%", *r.IdentCacheHitRate*100)
+	}
+	fmt.Fprintln(w)
+	fmt.Fprintf(w, "  %s\n", r.IdentCacheNote)
 
 	fmt.Fprintln(w, "\nobservations:")
 	if !r.ObservationsRead {

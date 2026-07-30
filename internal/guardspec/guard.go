@@ -137,6 +137,98 @@ func LoadGuards(path string) (GuardSet, error) {
 	return out, nil
 }
 
+// userScopeForbiddenFields are the governance fields a user-scope
+// `~/.fathom/guard.cue` may NEVER set (docs/design/scoped-config.md §3/
+// deliverable 2, law 13): these shape what governance a guard SERVES
+// (project business), not the operator's own notes/commands. "min_tier"
+// is checked defensively even though no #Guard field of that name exists
+// today — LoadGuards' lenient reader would otherwise silently ignore it
+// as an unknown field, which is exactly the silent-widening risk law 13
+// exists to prevent.
+var userScopeForbiddenFields = []string{"scopes", "max_rules", "include_modules", "min_tier"}
+
+// LoadUserGuards reads and decodes a USER-SCOPE guard file
+// (~/.fathom/guard.cue, docs/design/scoped-config.md deliverable 2):
+// the same #Guards shape LoadGuards reads, but restricted to `note` and
+// `command_scopes` only. Any governance field
+// (scopes/max_rules/include_modules/min_tier) present on any guard entry
+// is a STRICT validation error naming the field — never silently ignored,
+// never silently honored. A user-scope guard can therefore only ever be a
+// COMMAND guard (scopes is forbidden, so it never matches a file edit) —
+// consistent with the design's framing of this file as "the operator's
+// own danger list" for commands, not a file-governance surface.
+//
+// Every decoded guard's Note is prefixed "[user] " (when non-empty) at
+// load time — this is the ONE field a user-scope guard is allowed to
+// render, and tagging it here (rather than threading a separate "source"
+// flag through every caller) keeps every downstream renderer correct by
+// construction: it already prints Note verbatim.
+func LoadUserGuards(path string) (GuardSet, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return GuardSet{}, fmt.Errorf("guardspec: read %s: %w", path, err)
+	}
+	cctx := cuecontext.New()
+	v := cctx.CompileBytes(data, cue.Filename(path))
+	if v.Err() != nil {
+		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "<parse>", v.Err())}}
+	}
+
+	list := v.LookupPath(cue.ParsePath("guards"))
+	if !list.Exists() {
+		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "guards", fmt.Errorf("required, MUST be present"))}}
+	}
+	iter, err := list.List()
+	if err != nil {
+		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "guards", err)}}
+	}
+
+	var errs []*FieldError
+	var out GuardSet
+	idx := 0
+	for iter.Next() {
+		gv := iter.Value()
+		prefix := fmt.Sprintf("guards[%d]", idx)
+		idx++
+
+		var forbidden []string
+		for _, f := range userScopeForbiddenFields {
+			if gv.LookupPath(cue.ParsePath(f)).Exists() {
+				forbidden = append(forbidden, f)
+			}
+		}
+		if len(forbidden) > 0 {
+			for _, f := range forbidden {
+				errs = append(errs, fieldErr(path, prefix+"."+f, fmt.Errorf(
+					"%q is a governance field and may not be set in a user-scope guard file (~/.fathom/guard.cue is restricted to note/command_scopes — docs/design/scoped-config.md law 13); move this guard to the project's own .fathom/guard.cue", f)))
+			}
+			continue
+		}
+
+		note := lookupString(gv, "note")
+		cmdScopes := lookupStrings(gv, "command_scopes")
+		if len(cmdScopes) == 0 {
+			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set command_scopes — a user-scope guard governs nothing without it (scopes is forbidden at user scope)")))
+			continue
+		}
+		if note != "" {
+			note = "[user] " + note
+		}
+		out.Guards = append(out.Guards, Guard{
+			Note:          note,
+			CommandScopes: cmdScopes,
+			MaxRules:      DefaultMaxRules,
+		})
+	}
+	if idx == 0 {
+		errs = append(errs, fieldErr(path, "guards", fmt.Errorf("must be non-empty")))
+	}
+	if len(errs) > 0 {
+		return GuardSet{}, &LoadError{Path: path, Fields: errs}
+	}
+	return out, nil
+}
+
 // ValidateStrict is the AUTHORING gate: it unifies the guard.cue instance
 // at path against the embedded, CLOSED #Guards definition and requires
 // full concreteness.

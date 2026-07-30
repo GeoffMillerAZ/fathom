@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/research/bundle"
 )
@@ -200,16 +201,25 @@ func TestCmdResearchBundle_Adversarial_SecretsNeverLeak(t *testing.T) {
 	// 1. Call log: a secret-shaped error string, a secret-shaped service
 	// name, AND (critic Finding 1) a hostile Tool value and a hostile
 	// Surface value straight from the wire.
+	//
+	// Timestamps are relative to time.Now() (never a hardcoded calendar
+	// date): cmdResearchBundle defaults to a 168h (7-day) window with no
+	// injected clock, so a fixed date silently ages out of the window
+	// once real wall-clock time passes it — exactly the failure this
+	// test hit once "now" crossed the fixture's original date by more
+	// than 7 days.
+	now := time.Now().UTC()
+	ts := func(offset time.Duration) string { return now.Add(offset).Format(time.RFC3339) }
 	callLogPath := filepath.Join(dir, "workspace", "logs", "mcp-calls.jsonl")
 	entries := []adoptionCallEntry{
-		{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent", Service: "svc-" + secrets[1], Error: secrets[0]},
-		{TS: "2026-07-23T10:01:00Z", Tool: "verify_plan", Surface: "", Service: "svc-two", Error: "auth failed for " + secrets[2] + " on host " + secrets[3]},
-		{TS: "2026-07-23T10:02:00Z", Tool: "brief", Surface: "agent", Service: secrets[4]},
+		{TS: ts(-50 * time.Minute), Tool: "find_symbol", Surface: "agent", Service: "svc-" + secrets[1], Error: secrets[0]},
+		{TS: ts(-49 * time.Minute), Tool: "verify_plan", Surface: "", Service: "svc-two", Error: "auth failed for " + secrets[2] + " on host " + secrets[3]},
+		{TS: ts(-48 * time.Minute), Tool: "brief", Surface: "agent", Service: secrets[4]},
 		// Hostile Tool/Surface rows (Finding 1): what internal/mcp/dispatch.go
 		// logs verbatim for an unresolved tool name or an unrecognized
 		// surface selection.
-		{TS: "2026-07-23T10:03:00Z", Tool: secrets[1], Surface: "agent"},
-		{TS: "2026-07-23T10:04:00Z", Tool: "find_symbol", Surface: "agent | " + secrets[0]},
+		{TS: ts(-47 * time.Minute), Tool: secrets[1], Surface: "agent"},
+		{TS: ts(-46 * time.Minute), Tool: "find_symbol", Surface: "agent | " + secrets[0]},
 	}
 	writeCallLogFixture(t, callLogPath, entries)
 

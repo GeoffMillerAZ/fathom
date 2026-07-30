@@ -198,6 +198,12 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkBindingModuleReadiness(hc, baseURL, root, daemonUp),
 		checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp),
 		checkGuardIncludeModulesUnbound(root),
+		// Phase P (docs/design/production-tokenomics.md / scoped-config.md):
+		// env-driven honesty checks first, then scoped-config disclosure.
+		checkChannelsEnv(),
+		checkIdentCacheEnv(),
+		checkUserScopeIgnore(root),
+		checkUserScopeGuard(),
 	)
 	return checks
 }

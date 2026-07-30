@@ -35,6 +35,28 @@ func loadGuardSet(root string) (guardspec.GuardSet, bool) {
 	return gs, true
 }
 
+// loadUserGuardSet reads ~/.fathom/guard.cue (docs/design/scoped-config.md
+// deliverable 2) via guardspec.LoadUserGuards — the restricted, note+
+// command_scopes-only loader. ok is false when $HOME cannot be resolved,
+// the file is absent (the overwhelmingly common case), or malformed — the
+// same fail-open discipline loadGuardSet uses; `fathom doctor`'s
+// user_scope_guard check is the loud surface for a malformed file.
+func loadUserGuardSet() (guardspec.GuardSet, bool) {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return guardspec.GuardSet{}, false
+	}
+	path := filepath.Join(home, ".fathom", "guard.cue")
+	if _, err := os.Stat(path); err != nil {
+		return guardspec.GuardSet{}, false
+	}
+	gs, err := guardspec.LoadUserGuards(path)
+	if err != nil {
+		return guardspec.GuardSet{}, false
+	}
+	return gs, true
+}
+
 // matchingFileGuard returns the first guard (file order — deterministic)
 // whose scopes match repoRelFile, ok=false when none does. A guard with no
 // scopes configured (command-only) is skipped here, not an error.
