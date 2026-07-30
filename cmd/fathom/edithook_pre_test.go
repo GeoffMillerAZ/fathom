@@ -98,6 +98,15 @@ func TestEditHookPre_GuardFileButNoMatch_ZeroDaemonCalls(t *testing.T) {
 // a guard matches -> exactly the daemon round-trip fires, note-first
 // rendering, PreToolUse envelope.
 func TestEditHookPre_MatchedGuard_FetchesAndRenders(t *testing.T) {
+	// Critic finding 10 (phase-O merge): this test supplies a real
+	// session_id, so a matched guard WILL attempt to write a stamp
+	// (writeGuardStamp is a no-op only when session_id == "") — without
+	// this override it would write to the real machine temp dir,
+	// against CLAUDE.md's workspace/ convention.
+	orig := guardStampDir
+	guardStampDir = filepath.Join(t.TempDir(), "fathom-guard-stamps")
+	t.Cleanup(func() { guardStampDir = orig })
+
 	dir := t.TempDir()
 	writeGuardCue(t, dir, `guards: [{scopes: ["internal/store/**"], note: "Store schema is spec-governed.", max_rules: 4}]`)
 	file := filepath.Join(dir, "internal", "store", "db.go")
@@ -162,6 +171,15 @@ func TestEditHookPre_MatchedGuard_FetchesAndRenders(t *testing.T) {
 // include_modules field gates DISPLAY of module-tagged rules in the
 // pre-edit preview.
 func TestEditHookPre_ModuleTaggedRule_IncludeModulesToggle(t *testing.T) {
+	// Critic finding 10 (phase-O merge): defensive override — neither
+	// subtest currently supplies a session_id (so writeGuardStamp is
+	// already a no-op per finding 4), but this keeps the test immune to
+	// that detail changing later, matching the pattern used everywhere
+	// else a matched guard is exercised.
+	orig := guardStampDir
+	guardStampDir = filepath.Join(t.TempDir(), "fathom-guard-stamps")
+	t.Cleanup(func() { guardStampDir = orig })
+
 	dir := t.TempDir()
 	file := filepath.Join(dir, "infra", "main.tf")
 
@@ -185,18 +203,25 @@ func TestEditHookPre_ModuleTaggedRule_IncludeModulesToggle(t *testing.T) {
 		}))
 	}
 
-	t.Run("include_modules false hides the module rule", func(t *testing.T) {
+	t.Run("include_modules false hides the module rule but names the count", func(t *testing.T) {
 		writeGuardCue(t, dir, `guards: [{scopes: ["infra/**"], note: "infra"}]`) // include_modules defaults false
 		srv := newServer()
 		defer srv.Close()
 		hookStdin(t, fmt.Sprintf(`{"tool_name":"Edit","tool_input":{"file_path":%q},"cwd":%q}`, file, dir))
 		var out, errBuf bytes.Buffer
 		runWithStdin([]string{"edit-hook", "--pre", "--url=" + srv.URL}, nil, &out, &errBuf)
-		if strings.Contains(out.String(), "module rule") {
-			t.Errorf("module rule should be hidden with include_modules unset (default false): %s", out.String())
+		outStr := out.String()
+		if strings.Contains(outStr, "[platform-standards] module rule") {
+			t.Errorf("the module-tagged rule bullet itself should be hidden with include_modules unset (default false): %s", outStr)
 		}
-		if !strings.Contains(out.String(), "repo rule") {
-			t.Errorf("repo rule should still render: %s", out.String())
+		if !strings.Contains(outStr, "repo rule") {
+			t.Errorf("repo rule should still render: %s", outStr)
+		}
+		// Critic finding 7 (phase-O merge): include_modules:false must
+		// never be a SILENT suppression — the count of hidden module
+		// rules is named on its own line.
+		if !strings.Contains(outStr, "1 module rule(s) hidden (include_modules:false)") {
+			t.Errorf("expected the never-silent hidden-count line, got %s", outStr)
 		}
 	})
 

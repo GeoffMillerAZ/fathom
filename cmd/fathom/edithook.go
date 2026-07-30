@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -147,7 +148,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok := fetchObligations(*url, name, rel, 0)
+		o, stale, ok := fetchObligations(*url, name, rel, 0, 2*time.Second)
 		if !ok {
 			emitBeat("edit-hook", "error", map[string]string{"phase": "post"})
 			return 0 // daemon down or error → silent
@@ -180,9 +181,18 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		renderRules = fromObligationLike(dedup.DeltaRules, obl.Rules)
 		suppressedByStamp = dedup.SuppressedCount
 		staleChangedSincePre = dedup.StaleChanged
-		if suppressedByStamp > 0 && len(renderRules) == 0 && !staleChangedSincePre {
-			emitBeat("edit-hook", "dedup-suppressed", map[string]string{"phase": "post"})
+		// Critic finding 6 (phase-O merge): count actual suppressed RULES,
+		// not just invocations, and cover the PARTIAL-dedup case too (some
+		// rules delta-rendered, some already-served) — not only full
+		// suppression. The count travels in beat meta; research_report.go
+		// sums it.
+		if suppressedByStamp > 0 {
+			emitBeat("edit-hook", "dedup-suppressed", map[string]string{"phase": "post", "count": strconv.Itoa(suppressedByStamp)})
 		}
+		// Critic finding 9: a stamp is single-use — once consulted for
+		// this render, delete it so it can never be replayed for a
+		// second, unrelated edit of the same file.
+		deleteGuardStamp(hook.SessionID, svcName, repoRelFile)
 	}
 
 	// Build compact text.
@@ -355,15 +365,25 @@ func fromObligationLike(delta []semanticObligationLike, full []semantic.Obligati
 // (docs/design/platform-modules.md §3.5 / guarded-edits.md §2.4): cheap
 // (bounded by MaxObligations, at most a handful of distinct modules per
 // call) and never fired at all when no module-tagged rule was rendered
-// (the pre-phase-O default).
+// (the pre-phase-O default). Critic finding 6 (phase-O merge): the design
+// asks for RULES served per module, not serve-invocation counts — each
+// beat carries the module's rule count from THIS call in its "rules" meta
+// (research_report.go sums it), rather than one beat implicitly meaning
+// "one rule."
 func reportModuleBeats(rendered []semantic.Obligation, phase string) {
-	seen := map[string]bool{}
+	counts := map[string]int{}
+	var order []string
 	for _, r := range rendered {
-		if r.Module == "" || seen[r.Module] {
+		if r.Module == "" {
 			continue
 		}
-		seen[r.Module] = true
-		emitBeat("edit-hook", "module-served", map[string]string{"module": r.Module, "phase": phase})
+		if _, seen := counts[r.Module]; !seen {
+			order = append(order, r.Module)
+		}
+		counts[r.Module]++
+	}
+	for _, m := range order {
+		emitBeat("edit-hook", "module-served", map[string]string{"module": m, "phase": phase, "rules": strconv.Itoa(counts[m])})
 	}
 }
 
@@ -412,9 +432,17 @@ func resolveSymlinks(p string) string {
 // forwarded as the tool's max_rules argument when > 0 (the guard --pre
 // path passes a guard's own max_rules cap; the default post path passes 0,
 // letting the server apply its own default — identical to this function's
-// pre-phase-O behavior). Returns the Obligations payload, the index_stale
+// pre-phase-O behavior). timeout is this call's own HTTP client timeout —
+// critic finding 5 (phase-O merge): the --pre path makes this call SECOND,
+// after resolveServiceAndRel's own request, so a hardcoded 2s here on top
+// of that call's own 2s could double the guard hook's worst-case latency
+// past the design's stated <=2s budget; edithook_pre.go now passes the
+// REMAINING share of one shared 2s budget instead of a fresh 2s. The post
+// path (edithook.go) is unaffected — it always passes its own pre-existing
+// 2*time.Second, byte-identical to this function's behavior before this
+// parameter existed. Returns the Obligations payload, the index_stale
 // flag, and ok=false on any error.
-func fetchObligations(baseURL, service, file string, maxRules int) (semantic.Obligations, bool, bool) {
+func fetchObligations(baseURL, service, file string, maxRules int, timeout time.Duration) (semantic.Obligations, bool, bool) {
 	args := map[string]any{
 		"service": service,
 		"file":    file,
@@ -435,7 +463,7 @@ func fetchObligations(baseURL, service, file string, maxRules int) (semantic.Obl
 		return semantic.Obligations{}, false, false
 	}
 
-	hc := &http.Client{Timeout: 2 * time.Second}
+	hc := &http.Client{Timeout: timeout}
 	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
 	if err != nil {
 		return semantic.Obligations{}, false, false

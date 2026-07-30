@@ -80,12 +80,22 @@ daemon — `serve-http --module <path>`, an operator step). Uncomment
 
 ```cue
 bindings: [{
-    module:  "platform-standards"
-    scopes?: ["infra/**", "**/*.go"]
-    max_rules?: 2
-    min_tier?:  "doc-claimed"
+    module:    "platform-standards"
+    scopes:    ["infra/**", "**/*.go"] // OPTIONAL: restrict further than
+                                        // the module's own scopes
+    max_rules: 2                       // OPTIONAL: default 2
+    min_tier:  "doc-claimed"           // OPTIONAL: no floor if omitted
 }]
 ```
+
+Every field except `module` is optional — omit a line entirely to leave it
+unset. Never write a trailing `?` on a field name here: `?:` is CUE's
+optional-field marker, meaningful in the SCHEMA (`schema/binding/
+schema.cue`'s `#Binding`), but in this INSTANCE it silently declares the
+field ABSENT instead of setting it — `scopes?: [...]` would leave the
+binding's scope unrestricted (the module's own scopes apply everywhere)
+rather than the intended restriction, the exact inverse of "intersects,
+never widens."
 
 Commit it. The next `obligations` call for a matching file now unions in
 the module's rules:
@@ -114,12 +124,15 @@ own rule keeps the first slot.
 
 ```cue
 guards: [{
-    scopes: ["internal/store/**", "**/migrations/**"]
-    note?:     "Store schema is spec-governed; read docs/spec first."
-    max_rules?: 4
-    include_modules?: true
+    scopes:          ["internal/store/**", "**/migrations/**"]
+    note:            "Store schema is spec-governed; read docs/spec first."
+    max_rules:       4    // OPTIONAL: default 4
+    include_modules: true // OPTIONAL: default false
 }]
 ```
+
+(Same rule as above: every field except `scopes` is optional — omit it to
+leave it unset, never write it with a trailing `?`.)
 
 Commit it. The next time Claude Code is about to `Edit` a file under
 `internal/store/`, the PreToolUse hook injects the note plus the same
@@ -132,7 +145,7 @@ pre-edit" marker instead of repeating the rules.
 ```cue
 guards: [{
     command_scopes: ["terraform apply*", "kubectl *"]
-    note?: "Infra commands are guarded; check the runbook first."
+    note:           "Infra commands are guarded; check the runbook first."
 }]
 ```
 

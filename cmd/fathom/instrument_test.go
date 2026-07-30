@@ -45,6 +45,34 @@ func TestReportInstrument_CoverageAndAlarms(t *testing.T) {
 	}
 }
 
+// TestReportInstrument_PreBeatDoesNotMoveCoverage is critic finding 3's
+// regression test for THIS aggregator (phase-O merge, BLOCKING) — the
+// SEPARATE `research report` aggregator has its own equivalent test
+// (TestBuildResearchReport_GuardedEditsAndModules,
+// research_report_test.go). A phase:"pre" beat (guarded edits registers
+// --pre on Bash too) must never move this gauge's seen/answered
+// denominator or its >=90% gate — the moment a repo re-runs `fathom init`,
+// this coverage number would otherwise silently rebase and become
+// incomparable to every pre-phase-O reading.
+func TestReportInstrument_PreBeatDoesNotMoveCoverage(t *testing.T) {
+	beats := []heartbeat.Beat{
+		// One legitimate post-channel edit: seen + answered.
+		{Channel: "edit-hook", Kind: "seen", At: instT0, Meta: map[string]string{"phase": "post"}},
+		{Channel: "edit-hook", Kind: "answered", At: instT0.Add(time.Second), Meta: map[string]string{"phase": "post"}},
+		// A flood of --pre beats (e.g. Bash commands, which fire --pre
+		// but never --post) that must NOT inflate the denominator.
+		{Channel: "edit-hook", Kind: "seen", At: instT0.Add(2 * time.Second), Meta: map[string]string{"phase": "pre"}},
+		{Channel: "edit-hook", Kind: "seen", At: instT0.Add(3 * time.Second), Meta: map[string]string{"phase": "pre"}},
+		{Channel: "edit-hook", Kind: "answered", At: instT0.Add(4 * time.Second), Meta: map[string]string{"phase": "pre", "emitted": "false"}},
+	}
+	var buf bytes.Buffer
+	reportInstrument(&buf, beats, instT0.Add(time.Hour), 7*24*time.Hour)
+	out := buf.String()
+	if !strings.Contains(out, "1/1 = 100%") {
+		t.Errorf("coverage line = %q, want 1/1 = 100%% (the three pre beats must not appear in the denominator)", out)
+	}
+}
+
 func TestCmdInstrument_EndToEnd(t *testing.T) {
 	// emitBeat → cmdInstrument round-trip through FATHOM_HOOKS_LOG (GI-1/GI-3).
 	dir := t.TempDir()

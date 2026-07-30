@@ -164,6 +164,107 @@ func TestLoadBindings_Negatives(t *testing.T) {
 	}
 }
 
+// TestLoadBindings_OptionalFieldSyntaxRejected is critic finding 1's
+// regression test (phase-O merge, BLOCKING): a trailing '?' on a field
+// name in an INSTANCE (not the #Binding schema) silently declares that
+// field ABSENT rather than setting it — a `scopes?: [...]` typo would
+// otherwise widen the binding to every file instead of the author's
+// intended restriction, the exact inverse of design §3.2's "intersects,
+// never widens" doctrine. LoadBindings must refuse this loudly, naming
+// the offending field.
+func TestLoadBindings_OptionalFieldSyntaxRejected(t *testing.T) {
+	cases := []struct {
+		name      string
+		cue       string
+		wantField string
+	}{
+		{"scopes written optional", `bindings: [{module: "platform-standards", scopes?: ["infra/**"]}]`, "scopes"},
+		{"max_rules written optional", `bindings: [{module: "platform-standards", max_rules?: 3}]`, "max_rules"},
+		{"min_tier written optional", `bindings: [{module: "platform-standards", min_tier?: "doc-claimed"}]`, "min_tier"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writeBindings(t, tc.cue)
+			_, err := LoadBindings(path)
+			if err == nil {
+				t.Fatal("expected an error for a field written with a trailing '?', got none")
+			}
+			le, ok := err.(*LoadError)
+			if !ok {
+				t.Fatalf("expected *LoadError, got %T: %v", err, err)
+			}
+			found := false
+			for _, f := range le.Fields {
+				if strings.Contains(f.Field, tc.wantField) && strings.Contains(f.Err.Error(), "'?'") {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("LoadError.Fields = %v, want a field naming %q and mentioning '?'", le.Fields, tc.wantField)
+			}
+		})
+	}
+}
+
+// TestExampleTemplate_UncommentedRoundTrips proves the scaffold's fix
+// directly: uncommenting ExampleTemplate()'s worked example (stripping the
+// leading "// " a human would delete) produces a binding LoadBindings
+// accepts with the concrete values actually set — not one that silently
+// loads with scopes/max_rules/min_tier all absent.
+func TestExampleTemplate_UncommentedRoundTrips(t *testing.T) {
+	uncommented := uncommentCUEExample(t, ExampleTemplate())
+	path := writeBindings(t, uncommented)
+	set, err := LoadBindings(path)
+	if err != nil {
+		t.Fatalf("LoadBindings(uncommented scaffold): %v\n---\n%s", err, uncommented)
+	}
+	if len(set.Bindings) != 1 {
+		t.Fatalf("Bindings = %v", set.Bindings)
+	}
+	b := set.Bindings[0]
+	if b.Module != "platform-standards" {
+		t.Errorf("Module = %q", b.Module)
+	}
+	if len(b.Scopes) != 2 {
+		t.Errorf("Scopes = %v, want the scaffold's two globs actually set (not absent)", b.Scopes)
+	}
+	if b.MaxRules != 2 {
+		t.Errorf("MaxRules = %d, want 2 actually set", b.MaxRules)
+	}
+	if b.MinTier != "doc-claimed" {
+		t.Errorf("MinTier = %q, want \"doc-claimed\" actually set", b.MinTier)
+	}
+}
+
+// uncommentCUEExample extracts the "// bindings: [{ ... }]" block from a
+// commented scaffold and strips each line's leading "// " (or "//" on a
+// blank comment line) — mirroring exactly what a human does by hand.
+func uncommentCUEExample(t *testing.T, scaffold string) string {
+	t.Helper()
+	var out strings.Builder
+	inBlock := false
+	for _, line := range strings.Split(scaffold, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "// bindings: [{") {
+			inBlock = true
+		}
+		if !inBlock {
+			continue
+		}
+		content := strings.TrimPrefix(trimmed, "//")
+		content = strings.TrimPrefix(content, " ")
+		out.WriteString(content)
+		out.WriteString("\n")
+		if trimmed == "// }]" {
+			break
+		}
+	}
+	if out.Len() == 0 {
+		t.Fatal("uncommentCUEExample found no \"bindings: [{\" block in the scaffold")
+	}
+	return out.String()
+}
+
 func TestLoadBindings_MissingFile(t *testing.T) {
 	if _, err := LoadBindings(filepath.Join(t.TempDir(), "nope.cue")); err == nil {
 		t.Fatal("expected an error for a missing file")

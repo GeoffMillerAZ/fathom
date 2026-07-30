@@ -18,6 +18,13 @@ type fakeFederator struct {
 	byModule map[string][]modulehost.FederatedObligation
 	errs     map[string]error
 	calls    []string // records every (module) FederatedObligations was called with, in order
+
+	// staleness (finding 2a) is keyed by module name, mirroring
+	// modulehost.Host.ModuleStaleness's own per-module report shape.
+	// staleErr, when non-nil, simulates a staleness-lookup failure (which
+	// must never block the obligations payload itself).
+	staleness map[string][]modulehost.ModuleStaleness
+	staleErr  error
 }
 
 func (f *fakeFederator) FederatedObligations(ctx context.Context, moduleName, file string, max int) ([]modulehost.FederatedObligation, error) {
@@ -26,6 +33,17 @@ func (f *fakeFederator) FederatedObligations(ctx context.Context, moduleName, fi
 		return nil, err
 	}
 	return f.byModule[moduleName], nil
+}
+
+func (f *fakeFederator) ModuleStaleness(ctx context.Context, moduleName string) ([]modulehost.ModuleStaleness, bool, error) {
+	if f.staleErr != nil {
+		return nil, false, f.staleErr
+	}
+	reports, ok := f.staleness[moduleName]
+	if !ok {
+		return nil, false, nil
+	}
+	return reports, true, nil
 }
 
 func writeBindingsFile(t *testing.T, root, content string) {
@@ -197,6 +215,119 @@ bindings: [
 	// Binding file order: alpha before beta.
 	if out1.Rules[0].Module != "alpha-standards" || out1.Rules[1].Module != "beta-standards" {
 		t.Errorf("Rules = %+v, want alpha before beta (binding file order)", out1.Rules)
+	}
+}
+
+// ─── finding 2a (critic, phase-O merge, BLOCKING): staleness threading ────
+
+func TestBind_DriftedModule_FlagsRules(t *testing.T) {
+	root := t.TempDir()
+	writeBindingsFile(t, root, `bindings: [{module: "platform-standards"}]`)
+	base := semantic.Obligations{}
+	fed := &fakeFederator{
+		byModule: map[string][]modulehost.FederatedObligation{
+			"platform-standards": {{
+				Module: "platform-standards", Service: "standards-corpus",
+				Obligations: semantic.Obligations{Rules: []semantic.Obligation{{Rule: "mod-rule"}}},
+			}},
+		},
+		staleness: map[string][]modulehost.ModuleStaleness{
+			"platform-standards": {{Module: "platform-standards", Service: "standards-corpus", Status: modulehost.StatusDrifted}},
+		},
+	}
+	out := Bind(context.Background(), fed, root, "a.go", 6, base)
+	if len(out.Rules) != 1 || out.Rules[0].Status != modulehost.StatusDrifted {
+		t.Fatalf("Rules = %+v, want the module rule flagged %q", out.Rules, modulehost.StatusDrifted)
+	}
+}
+
+func TestBind_UnknownDetachedModule_FlagsRules(t *testing.T) {
+	root := t.TempDir()
+	writeBindingsFile(t, root, `bindings: [{module: "platform-standards"}]`)
+	base := semantic.Obligations{}
+	fed := &fakeFederator{
+		byModule: map[string][]modulehost.FederatedObligation{
+			"platform-standards": {{
+				Module: "platform-standards", Service: "standards-corpus",
+				Obligations: semantic.Obligations{Rules: []semantic.Obligation{{Rule: "mod-rule"}}},
+			}},
+		},
+		staleness: map[string][]modulehost.ModuleStaleness{
+			"platform-standards": {{Module: "platform-standards", Service: "standards-corpus", Status: modulehost.StatusUnknownDetached}},
+		},
+	}
+	out := Bind(context.Background(), fed, root, "a.go", 6, base)
+	if len(out.Rules) != 1 || out.Rules[0].Status != modulehost.StatusUnknownDetached {
+		t.Fatalf("Rules = %+v, want the module rule flagged %q (stated, not hidden)", out.Rules, modulehost.StatusUnknownDetached)
+	}
+}
+
+func TestBind_FreshModule_NotFlagged(t *testing.T) {
+	root := t.TempDir()
+	writeBindingsFile(t, root, `bindings: [{module: "platform-standards"}]`)
+	base := semantic.Obligations{}
+	fed := &fakeFederator{
+		byModule: map[string][]modulehost.FederatedObligation{
+			"platform-standards": {{
+				Module: "platform-standards", Service: "standards-corpus",
+				Obligations: semantic.Obligations{Rules: []semantic.Obligation{{Rule: "mod-rule"}}},
+			}},
+		},
+		staleness: map[string][]modulehost.ModuleStaleness{
+			"platform-standards": {{Module: "platform-standards", Service: "standards-corpus", Status: modulehost.StatusFresh}},
+		},
+	}
+	out := Bind(context.Background(), fed, root, "a.go", 6, base)
+	if len(out.Rules) != 1 || out.Rules[0].Status != "" {
+		t.Fatalf("Rules = %+v, want the module rule UNFLAGGED (fresh)", out.Rules)
+	}
+}
+
+// TestBind_StalenessNeverClobbersExistingStatus proves the module-staleness
+// flag only FILLS an empty Status — it must never overwrite a status the
+// module's own store already computed (e.g. a contradicted claim), which
+// would silently downgrade a stronger, more specific drift signal to a
+// weaker corpus-level one.
+func TestBind_StalenessNeverClobbersExistingStatus(t *testing.T) {
+	root := t.TempDir()
+	writeBindingsFile(t, root, `bindings: [{module: "platform-standards"}]`)
+	base := semantic.Obligations{}
+	fed := &fakeFederator{
+		byModule: map[string][]modulehost.FederatedObligation{
+			"platform-standards": {{
+				Module: "platform-standards", Service: "standards-corpus",
+				Obligations: semantic.Obligations{Rules: []semantic.Obligation{{Rule: "mod-rule", Status: "contradicted"}}},
+			}},
+		},
+		staleness: map[string][]modulehost.ModuleStaleness{
+			"platform-standards": {{Module: "platform-standards", Service: "standards-corpus", Status: modulehost.StatusDrifted}},
+		},
+	}
+	out := Bind(context.Background(), fed, root, "a.go", 6, base)
+	if len(out.Rules) != 1 || out.Rules[0].Status != "contradicted" {
+		t.Fatalf("Rules = %+v, want the module store's own \"contradicted\" status preserved, not overwritten", out.Rules)
+	}
+}
+
+// TestBind_StalenessLookupFailure_FailsOpen proves a staleness-lookup
+// failure never blocks (or errors) the obligations payload itself — the
+// rule is served unflagged rather than the whole call degrading.
+func TestBind_StalenessLookupFailure_FailsOpen(t *testing.T) {
+	root := t.TempDir()
+	writeBindingsFile(t, root, `bindings: [{module: "platform-standards"}]`)
+	base := semantic.Obligations{}
+	fed := &fakeFederator{
+		byModule: map[string][]modulehost.FederatedObligation{
+			"platform-standards": {{
+				Module: "platform-standards", Service: "standards-corpus",
+				Obligations: semantic.Obligations{Rules: []semantic.Obligation{{Rule: "mod-rule"}}},
+			}},
+		},
+		staleErr: errors.New("staleness lookup exploded"),
+	}
+	out := Bind(context.Background(), fed, root, "a.go", 6, base)
+	if len(out.Rules) != 1 || out.Rules[0].Status != "" {
+		t.Fatalf("Rules = %+v, want the module rule served unflagged despite the staleness-lookup failure", out.Rules)
 	}
 }
 

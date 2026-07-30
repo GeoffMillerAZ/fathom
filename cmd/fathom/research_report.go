@@ -25,6 +25,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -445,10 +446,19 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 	// key ("pre" or "post" — edithook.go/edithook_pre.go). A beat logged
 	// before this feature existed (or any beat this package itself never
 	// tags) carries no phase at all: treated as "post" here, since every
-	// pre-phase-O edit-hook invocation WAS the post/default hook — this
-	// keeps InjectionSeen/InjectionAnswered/ObligationsServed exactly
-	// backward-compatible (they still count both phases combined) while
-	// GuardPreSeen/GuardPostSeen give the new split.
+	// pre-phase-O edit-hook invocation WAS the post/default hook.
+	//
+	// Critic finding 3 (phase-O merge, BLOCKING): the legacy InjectionSeen/
+	// InjectionAnswered/ObligationsServed counters (and their downstream
+	// >=90% gate/comparisons in docs/plans/activation.md) MUST count only
+	// the post/default channel — NOT phase:"pre" beats. `fathom init`
+	// registers PreToolUse for BOTH Edit|Write|MultiEdit AND Bash, so a
+	// repo re-running init would otherwise see edit-hook.seen absorb every
+	// Bash invocation too, silently rebasing the historical denominator
+	// and making every phase-O-era number incomparable to every
+	// pre-phase-O one. GuardPreSeen/GuardPreServed report the pre-channel
+	// separately; the legacy fields stay byte-for-byte what they always
+	// measured.
 	seen, answered, servedEmitted := 0, 0, 0
 	preSeen, preServed, postSeen, postServed, dedupSuppressed := 0, 0, 0, 0, 0
 	moduleServed := map[string]int{}
@@ -462,27 +472,49 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 		}
 		switch b.Kind {
 		case "seen":
-			seen++
 			if phase == "pre" {
 				preSeen++
-			} else {
-				postSeen++
+				continue
 			}
+			seen++
+			postSeen++
 		case "answered":
+			if phase == "pre" {
+				if b.Meta["emitted"] == "true" {
+					preServed++
+				}
+				continue
+			}
 			answered++
 			if b.Meta["emitted"] == "true" {
 				servedEmitted++
-				if phase == "pre" {
-					preServed++
-				} else {
-					postServed++
-				}
+				postServed++
 			}
 		case "dedup-suppressed":
-			dedupSuppressed++
+			// Finding 6 (critic): count actual SUPPRESSED RULES, not
+			// invocations — a partial dedup (some rules delta-rendered,
+			// some already-served) carries its count in meta too, not
+			// only the full-suppression case.
+			n := 1
+			if cs := b.Meta["count"]; cs != "" {
+				if parsed, err := strconv.Atoi(cs); err == nil && parsed > 0 {
+					n = parsed
+				}
+			}
+			dedupSuppressed += n
 		case "module-served":
+			// Finding 6 (critic): this field is documented (and named)
+			// as RULES served per module, not invocation counts — sum
+			// the per-beat rule count carried in meta rather than
+			// incrementing once per (module, call).
 			if m := b.Meta["module"]; m != "" {
-				moduleServed[m]++
+				n := 1
+				if rs := b.Meta["rules"]; rs != "" {
+					if parsed, err := strconv.Atoi(rs); err == nil && parsed > 0 {
+						n = parsed
+					}
+				}
+				moduleServed[m] += n
 			}
 		}
 	}

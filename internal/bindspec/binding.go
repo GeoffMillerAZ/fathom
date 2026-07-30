@@ -147,6 +147,7 @@ func LoadBindings(path string) (BindingSet, error) {
 		if scopesField.Exists() && len(b.Scopes) == 0 {
 			errs = append(errs, fieldErr(path, prefix+".scopes", fmt.Errorf("must be non-empty when present")))
 		}
+		errs = append(errs, checkNoOptionalFields(path, prefix, bv)...)
 		out.Bindings = append(out.Bindings, b)
 	}
 	if idx == 0 {
@@ -229,4 +230,33 @@ func lookupStrings(v cue.Value, p string) []string {
 		return nil
 	}
 	return out
+}
+
+// checkNoOptionalFields returns a FieldError for every field WRITTEN on bv
+// with a trailing '?' (CUE's optional-field marker) — critic finding 1
+// (phase-O merge, BLOCKING): '?' is meaningful in the SCHEMA (#Binding),
+// never in a plain instance a human authors by hand; written there, it
+// silently declares the field optional-and-therefore-ABSENT rather than
+// setting it — the one misconfiguration LookupPath's "field simply wasn't
+// written" path can never distinguish from genuine absence on its own.
+// bv.Fields(cue.Optional(true)) is the one CUE API that CAN see the
+// difference: it iterates every field actually present in the source,
+// including optional-marked ones, and Iterator.IsOptional() reports which
+// (a field never written at all does not appear in this iteration either
+// way, so this never flags genuine absence).
+func checkNoOptionalFields(path, prefix string, bv cue.Value) []*FieldError {
+	iter, err := bv.Fields(cue.Optional(true))
+	if err != nil {
+		return nil
+	}
+	var errs []*FieldError
+	for iter.Next() {
+		if !iter.IsOptional() {
+			continue
+		}
+		name := iter.Selector().String()
+		errs = append(errs, fieldErr(path, prefix+"."+name, fmt.Errorf(
+			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/binding/schema.cue's #Binding for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name)))
+	}
+	return errs
 }

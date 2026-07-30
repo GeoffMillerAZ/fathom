@@ -12,24 +12,29 @@ package main
 // ONE edit within ONE session, not a repo artifact — os.TempDir() also
 // keeps it outside any repo tree entirely, so it can never be accidentally
 // committed or picked up by the index. "Must not leak across sessions":
-// enforced two ways —
-//  1. When the PreToolUse/PostToolUse hook JSON carries "session_id"
-//     (Claude Code's own hook contract), it is folded into the stamp key,
-//     so two different sessions editing the same file never share a stamp
-//     at all.
-//  2. Regardless of (1) — Codex has no session_id and even Claude Code's
-//     field is read defensively, never assumed present — every stamp
-//     additionally carries a write timestamp and is treated as absent once
-//     older than guardStampTTL. This bounds the worst case (no session_id
-//     available) to "two sessions on the same file within the TTL might
-//     dedup once," never an unbounded cross-session leak.
+// dedup is SKIPPED ENTIRELY when no session_id is available (see
+// writeGuardStamp/readGuardStamp) — critic finding 4 (phase-O merge):
+// os.TempDir() is world-writable shared state (e.g. Linux/CI /tmp), and
+// with no session_id the stamp key sha256(""+service+relfile) is fully
+// predictable, letting anyone who can write to the temp dir forge a stamp
+// and make the post-hook silently suppress rules that were never actually
+// served pre-edit ("denial of guidance"). Since the dedup is a pure token
+// optimization (losing it costs a few repeated bytes, never correctness —
+// the full payload is still safe to render), the fix is simply: no
+// session_id, no dedup, ever. When a session_id IS present, the stamp is
+// additionally hardened against a planted file (O_EXCL|O_NOFOLLOW on
+// write, ownership/permission/regular-file checks on read — see below)
+// and guardStampTTL remains a sane backstop against an unbounded-lifetime
+// stamp if the post-hook never consumes (and deletes, finding 9) it.
 import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"syscall"
 	"time"
 )
 
@@ -78,11 +83,17 @@ func guardStampPath(sessionID, service, repoRelFile string) string {
 }
 
 // writeGuardStamp persists a guard stamp for the pre-hook's rendered rule
-// set. Failures are swallowed (hook doctrine: instrumentation/bookkeeping
-// must never be the reason a hook breaks its own silent-exit contract) —
-// worst case, the post-hook simply finds no stamp and renders the full
-// payload, which is correct, just not maximally token-efficient.
+// set. sessionID == "" is a no-op (critic finding 4: no session scoping
+// available means no predictable-key forgery surface either — the dedup
+// optimization is simply skipped, never a correctness risk). Failures are
+// otherwise swallowed (hook doctrine: instrumentation/bookkeeping must
+// never be the reason a hook breaks its own silent-exit contract) — worst
+// case, the post-hook simply finds no stamp and renders the full payload,
+// which is correct, just not maximally token-efficient.
 func writeGuardStamp(sessionID, service, repoRelFile string, ruleKeys []string, indexStale bool, now time.Time) {
+	if sessionID == "" {
+		return
+	}
 	if err := os.MkdirAll(guardStampDir, 0o700); err != nil {
 		return
 	}
@@ -92,13 +103,63 @@ func writeGuardStamp(sessionID, service, repoRelFile string, ruleKeys []string, 
 	if err != nil {
 		return
 	}
-	_ = os.WriteFile(guardStampPath(sessionID, service, repoRelFile), data, 0o600)
+	path := guardStampPath(sessionID, service, repoRelFile)
+	// Critic finding 4: never write through a pre-existing path entry —
+	// os.Remove does not follow symlinks (it unlinks the entry itself), so
+	// this clears a stale stamp from a prior (undeleted, pre-finding-9)
+	// run OR a planted symlink/file without ever reading through it.
+	// O_EXCL then refuses to proceed if something reappears at path
+	// between the Remove and this Open (POSIX: O_CREAT|O_EXCL fails with
+	// EEXIST even when the existing entry is a symlink, never following
+	// it); O_NOFOLLOW is defense in depth for the same case. Best-effort:
+	// any failure here is silent, per this function's own doc comment.
+	_ = os.Remove(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY|syscall.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.Write(data)
 }
 
 // readGuardStamp returns the stamp for (sessionID, service, repoRelFile),
-// ok=false when absent, unreadable, malformed, or expired (guardStampTTL).
+// ok=false when absent, unreadable, malformed, expired (guardStampTTL), or
+// — critic finding 4 — when sessionID is "" (dedup is skipped entirely
+// without a session to scope the key to; see writeGuardStamp) or the file
+// on disk fails an ownership/permission/regular-file check (a forged
+// stamp: a planted symlink, a file this process doesn't own, or one
+// writable by anyone other than its owner).
 func readGuardStamp(sessionID, service, repoRelFile string, now time.Time) (guardStamp, bool) {
-	data, err := os.ReadFile(guardStampPath(sessionID, service, repoRelFile))
+	if sessionID == "" {
+		return guardStamp{}, false
+	}
+	path := guardStampPath(sessionID, service, repoRelFile)
+	// O_NOFOLLOW: a symlink at path fails to open at all (ELOOP) rather
+	// than transparently reading through it — closes the read-side of the
+	// same forged-stamp surface writeGuardStamp guards on write.
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return guardStamp{}, false
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil || !fi.Mode().IsRegular() {
+		return guardStamp{}, false
+	}
+	// Ownership + world/group-writability check on the OPEN FD (not a
+	// separate Lstat call) so there is no TOCTOU gap between the check and
+	// the read: an attacker-owned or group/world-writable file at this
+	// path is refused rather than trusted, even though it passed the
+	// O_NOFOLLOW open.
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		if int(st.Uid) != os.Getuid() {
+			return guardStamp{}, false
+		}
+	}
+	if fi.Mode().Perm()&0o022 != 0 {
+		return guardStamp{}, false
+	}
+	data, err := io.ReadAll(io.LimitReader(f, 1<<20))
 	if err != nil {
 		return guardStamp{}, false
 	}
@@ -111,6 +172,20 @@ func readGuardStamp(sessionID, service, repoRelFile string, now time.Time) (guar
 		return guardStamp{}, false
 	}
 	return st, true
+}
+
+// deleteGuardStamp removes the stamp for (sessionID, service, repoRelFile)
+// — critic finding 9: a stamp is single-use. Once the post-hook has
+// consulted it for a render, it is deleted so it can never be replayed for
+// a second, unrelated edit of the same file and does not linger past its
+// usefulness. sessionID == "" is a no-op (nothing was ever written for an
+// empty session — see writeGuardStamp). Best-effort: a failed remove is
+// silent, exactly like every other stamp operation's failure mode.
+func deleteGuardStamp(sessionID, service, repoRelFile string) {
+	if sessionID == "" {
+		return
+	}
+	_ = os.Remove(guardStampPath(sessionID, service, repoRelFile))
 }
 
 // guardDedupResult is what the post-hook actually renders once a valid

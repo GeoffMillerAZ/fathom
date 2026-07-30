@@ -91,10 +91,18 @@ func TestBuildResearchReport_GuardedEditsAndModules(t *testing.T) {
 		t.Errorf("ModuleServingNote = %q, want empty (modules WERE served)", r.ModuleServingNote)
 	}
 
-	// Backward compatibility: the pre-existing combined counters still sum
-	// both phases exactly as before this feature existed.
-	if r.InjectionSeen != 2 || r.InjectionAnswered != 2 || r.ObligationsServed != 2 {
-		t.Errorf("combined seen/answered/served = %d/%d/%d, want 2/2/2", r.InjectionSeen, r.InjectionAnswered, r.ObligationsServed)
+	// Critic finding 3 (phase-O merge, BLOCKING): the legacy
+	// InjectionSeen/InjectionAnswered/ObligationsServed gauge must count
+	// ONLY the post/default channel — a phase:"pre" beat (this fixture
+	// has one seen + one answered+emitted) must NOT move it, or a repo
+	// re-running `fathom init` (which registers --pre on Bash too) would
+	// silently rebase the flywheel's own headline coverage gauge and its
+	// >=90% gate the moment it does. With one post-seen and one
+	// post-answered+emitted beat in this fixture, the legacy counters
+	// must read exactly 1, not 2 (2 was the pre-fix, WRONG, both-phases-
+	// combined value).
+	if r.InjectionSeen != 1 || r.InjectionAnswered != 1 || r.ObligationsServed != 1 {
+		t.Errorf("combined seen/answered/served = %d/%d/%d, want 1/1/1 (post-only — the pre beat must not move this)", r.InjectionSeen, r.InjectionAnswered, r.ObligationsServed)
 	}
 }
 

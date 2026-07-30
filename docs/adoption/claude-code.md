@@ -466,12 +466,19 @@ guarded until you uncomment and commit a scope:
 
 ```cue
 guards: [{
-    scopes: ["internal/store/**", "**/migrations/**"]
-    note?:     "Store schema is spec-governed; read docs/spec first."
-    max_rules?: 4          // pre-edit payload cap (default 4)
-    include_modules?: true // also serve bound platform-module rules (docs/use-cases/platform-modules.md)
+    scopes:          ["internal/store/**", "**/migrations/**"]
+    note:            "Store schema is spec-governed; read docs/spec first."
+    max_rules:       4    // OPTIONAL: pre-edit payload cap (default 4)
+    include_modules: true // OPTIONAL: also serve bound platform-module rules (docs/use-cases/platform-modules.md)
 }]
 ```
+
+Every field except `scopes` here is optional — omit a line entirely to
+leave it unset. Never write a trailing `?` on a field name in a file like
+this one: `?:` is CUE's optional-field marker, meaningful in the SCHEMA
+(`schema/guard/schema.cue`'s `#Guard`), but in this INSTANCE it silently
+declares the field absent instead of setting it — `scopes?: [...]` would
+leave the guard's scope unset entirely rather than restricting it.
 
 A file matching a guard's `scopes` gets its `note` plus obligations
 injected BEFORE the edit; a command matching `command_scopes` (e.g.

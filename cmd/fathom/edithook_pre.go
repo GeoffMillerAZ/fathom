@@ -80,15 +80,46 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	// A guard matched: NOW resolve authoritative service identity (the
 	// one HTTP call this path ever makes on a hit) and fetch obligations,
 	// capped at the guard's own budget.
-	hc := &http.Client{Timeout: 2 * time.Second}
+	//
+	// Critic finding 5 (phase-O merge, cheap): resolveServiceAndRel and
+	// fetchObligations are two SEQUENTIAL HTTP calls; each previously
+	// carried its own independent 2s client timeout, so a slow daemon
+	// could push this path's worst case to ~4s against the design's
+	// stated <=2s pre-edit budget (docs/design/guarded-edits.md §2.2:
+	// "Same <=2 s hook budget"). preHookBudget is split across both calls
+	// instead: the second call gets whatever remains of the shared
+	// budget (floored so a fast first call still leaves the second a
+	// meaningful attempt, rather than a guaranteed-to-fail sliver).
+	const preHookBudget = 2 * time.Second
+	const minSecondCallBudget = 200 * time.Millisecond
+	callStart := time.Now()
+	hc := &http.Client{Timeout: preHookBudget}
 	svcName, resolvedRel, ok := resolveServiceAndRel(hc, url, projDir, filePath)
 	if !ok {
 		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "file"})
 		return 0
 	}
+	// Critic finding 8 (phase-O merge, note-only unless trivial): the
+	// LOCAL fast-path loop above already matched a guard against
+	// serviceCandidates' (daemon-unaware) root guess; this daemon-aware
+	// pass is the AUTHORITATIVE identity resolution and can in principle
+	// disagree with it (e.g. a dogfood-O15-style rename where the
+	// indexed service's recorded path differs from every basename
+	// candidate). When they agree (the overwhelmingly common case),
+	// repoRelFile is unchanged; when they disagree, the daemon-resolved
+	// value below is used for the actual obligations lookup regardless —
+	// the guard already matched against a real root under the SAME
+	// project directory, so serving against the authoritative root is
+	// correct, just worth noting as a real, if rare, edge case rather
+	// than silently assuming the two resolutions always name the same
+	// root.
 	repoRelFile = resolvedRel
 
-	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules)
+	remaining := preHookBudget - time.Since(callStart)
+	if remaining < minSecondCallBudget {
+		remaining = minSecondCallBudget
+	}
+	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining)
 	if !ok {
 		emitBeat("edit-hook", "error", map[string]string{"phase": "pre", "target": "file"})
 		return 0
@@ -98,27 +129,44 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	// the daemon already computed module rules whenever a binding exists;
 	// this guard's config decides whether the PRE-edit preview shows them.
 	displayed := obl.Rules
+	hiddenModuleRules := 0
 	if !guard.IncludeModules {
 		displayed = filterOutModuleRules(obl.Rules)
+		hiddenModuleRules = len(obl.Rules) - len(displayed)
 	}
 
 	var sb strings.Builder
+	writeHeaderIfNeeded := func() {
+		if sb.Len() == 0 {
+			fmt.Fprintf(&sb, "⚖️ fathom guard — %s:", repoRelFile)
+		}
+	}
 	if guard.Note != "" {
 		fmt.Fprintf(&sb, "⚖️ fathom guard — %s: %s", repoRelFile, guard.Note)
 	}
 	for _, r := range displayed {
-		if sb.Len() == 0 {
-			fmt.Fprintf(&sb, "⚖️ fathom guard — %s:", repoRelFile)
-		}
+		writeHeaderIfNeeded()
 		writeRuleBullet(&sb, r)
 	}
+	// Critic finding 7 (phase-O merge): include_modules:false was the
+	// design's one SILENT suppression — module rules are fetched
+	// (consuming the shared server-side budget) then dropped with no
+	// line at all. Never silent, per the program's own doctrine: name
+	// the count.
+	if hiddenModuleRules > 0 {
+		writeHeaderIfNeeded()
+		fmt.Fprintf(&sb, "\n⚠️ %d module rule(s) hidden (include_modules:false)", hiddenModuleRules)
+	}
 	if obl.Displaced > 0 {
+		writeHeaderIfNeeded()
 		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", obl.Displaced)
 	}
 	if indexStale {
+		writeHeaderIfNeeded()
 		sb.WriteString("\n⚠️ index is behind your working tree for this file")
 	}
 	for _, n := range obl.ModuleNotes {
+		writeHeaderIfNeeded()
 		fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 	}
 

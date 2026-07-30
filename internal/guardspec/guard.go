@@ -125,6 +125,7 @@ func LoadGuards(path string) (GuardSet, error) {
 		if len(g.Scopes) == 0 && len(g.CommandScopes) == 0 {
 			errs = append(errs, fieldErr(path, prefix, fmt.Errorf("must set at least one of scopes/command_scopes — a guard governing nothing is dead by construction")))
 		}
+		errs = append(errs, checkNoOptionalFields(path, prefix, gv)...)
 		out.Guards = append(out.Guards, g)
 	}
 	if idx == 0 {
@@ -218,4 +219,25 @@ func lookupStrings(v cue.Value, p string) []string {
 		return nil
 	}
 	return out
+}
+
+// checkNoOptionalFields mirrors internal/bindspec's identical helper (see
+// its doc comment for the full CUE-instance-vs-schema reasoning) — critic
+// finding 1 (phase-O merge, BLOCKING): a field written with a trailing '?'
+// in an INSTANCE silently declares it absent instead of setting it.
+func checkNoOptionalFields(path, prefix string, gv cue.Value) []*FieldError {
+	iter, err := gv.Fields(cue.Optional(true))
+	if err != nil {
+		return nil
+	}
+	var errs []*FieldError
+	for iter.Next() {
+		if !iter.IsOptional() {
+			continue
+		}
+		name := iter.Selector().String()
+		errs = append(errs, fieldErr(path, prefix+"."+name, fmt.Errorf(
+			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/guard/schema.cue's #Guard for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name)))
+	}
+	return errs
 }

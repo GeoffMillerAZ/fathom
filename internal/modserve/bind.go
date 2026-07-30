@@ -12,12 +12,18 @@ import (
 )
 
 // ModuleFederator is the minimal capability Bind needs from a module host —
-// satisfied structurally by *modulehost.Host (its FederatedObligations
-// method already has this exact signature) or a fake for testing. Kept
-// narrow (mirrors internal/mcp's own moduleBackend interface pattern)
-// rather than depending on the whole of modulehost.Host's surface.
+// satisfied structurally by *modulehost.Host (its FederatedObligations and
+// ModuleStaleness methods already have these exact signatures) or a fake
+// for testing. Kept narrow (mirrors internal/mcp's own moduleBackend
+// interface pattern) rather than depending on the whole of
+// modulehost.Host's surface. ModuleStaleness closes critic finding 2a
+// (phase-O merge, BLOCKING): design §3.3's "staleness honesty end-to-end"
+// requirement — a bound module whose corpus is not fresh must serve its
+// rules FLAGGED, never identically to a fresh module's — was previously
+// unimplemented; Bind now threads it through.
 type ModuleFederator interface {
 	FederatedObligations(ctx context.Context, moduleName, file string, max int) ([]modulehost.FederatedObligation, error)
+	ModuleStaleness(ctx context.Context, moduleName string) ([]modulehost.ModuleStaleness, bool, error)
 }
 
 // tierRank mirrors internal/core.EvidenceTier's documented ceilings
@@ -100,17 +106,44 @@ func Bind(ctx context.Context, host ModuleFederator, root, file string, max int,
 			notes = append(notes, semantic.ModuleNote{Module: b.Module, Note: "bound but not mounted on this daemon"})
 			continue
 		}
+		if len(results) == 0 {
+			continue // mounted, nothing matched this file -- not note-worthy
+		}
+		// Finding 2a: per-(module,service) staleness, fetched once per
+		// binding (never per rule) and best-effort — a staleness lookup
+		// failure never blocks the obligations payload itself, matching
+		// this whole function's fail-open hot-path doctrine; it just
+		// means the flag is honestly absent rather than fabricated.
+		staleByService := map[string]string{}
+		if reports, found, serr := host.ModuleStaleness(ctx, b.Module); serr == nil && found {
+			for _, sr := range reports {
+				staleByService[sr.Service] = sr.Status
+			}
+		}
 		for _, res := range results {
 			if res.Error != "" {
 				notes = append(notes, semantic.ModuleNote{Module: b.Module, Note: "module lookup error: " + res.Error})
 				continue
 			}
 			displacedModule += res.Obligations.Displaced
+			// design §3.3: "a bound module whose staleness verdict is not
+			// fresh serves its rules FLAGGED... unknown-detached is
+			// stated, not hidden" — reuse the SAME Status field/rendering
+			// repo claims already use (writeRuleBullet already prints
+			// r.Status when non-empty) rather than inventing a parallel
+			// mechanism. Never clobbers a Status the module's OWN store
+			// already set (e.g. a contradicted claim) — only fills it in
+			// when otherwise empty.
+			moduleStatus := staleByService[res.Service]
+			flagStale := moduleStatus != "" && moduleStatus != modulehost.StatusFresh
 			for _, r := range res.Obligations.Rules {
 				if !tierAllows(b.MinTier, r.Tier) {
 					continue // below this binding's configured floor -- not a budget eviction
 				}
 				r.Module = b.Module
+				if flagStale && r.Status == "" {
+					r.Status = moduleStatus
+				}
 				if remaining <= 0 {
 					displacedModule++
 					continue
