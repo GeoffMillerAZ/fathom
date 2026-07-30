@@ -208,6 +208,12 @@ Laws 1–9 carry. New:
     first; TUI and web render state and dispatch verbs. A surface-only
     capability is a defect. (Corollary: every studio screen is testable
     headless.)
+13. **User scope may add defaults; only project scope may govern**
+    (`docs/design/scoped-config.md`). A user-scope file contributes additive
+    machine-level defaults and the operator's own notes; it never narrows,
+    weakens, or widens committed governance, and every contribution is
+    disclosed at the point of use.
+
 12. **No saving is claimed without a counterfactual.** A token number is a
     COST until something establishes what would have happened otherwise
     (`docs/design/production-tokenomics.md` §2). Payload cost is directly

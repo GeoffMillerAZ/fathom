@@ -95,8 +95,9 @@ command guards like dead file guards.
 
 No auto-derived guards (an LLM proposing "this file looks important" is
 phase-L advisor territory, eval-gated, and lands only as a *suggested*
-`guard.cue` diff); no blocking; no per-user guards (committed config
-only); no new MCP tools.
+`guard.cue` diff); no blocking; per-user guards ONLY as narrowly amended by
+`docs/design/scoped-config.md` law 13 (notes and command scopes at user
+scope; every governance field stays project-committed); no new MCP tools.
 
 ## 4. Deliverables (rows land in the phase-O plan)
 
