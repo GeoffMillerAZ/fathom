@@ -1,36 +1,23 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "PreToolUse": [
       {
+        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook",
-            "timeout": 5,
-            "type": "command"
+            "type": "command",
+            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook --pre",
+            "timeout": 5
           }
-        ],
-        "matcher": "Edit|Write|MultiEdit"
-      }
-    ],
-    "SessionStart": [
+        ]
+      },
       {
+        "matcher": "Bash",
         "hooks": [
           {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook",
-            "timeout": 10,
-            "type": "command"
-          }
-        ],
-        "matcher": "startup|resume|clear|compact"
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom stop-hook",
-            "timeout": 10,
-            "type": "command"
+            "type": "command",
+            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook --pre",
+            "timeout": 5
           }
         ]
       }
