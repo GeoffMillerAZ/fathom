@@ -19,7 +19,7 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
-### O20 — two research-report figures need verification before anyone quotes them: a module-served tally with no binding, and 251,783 "active" review findings
+### O20 (PART 2 CLOSED 2026-07-30) — two research-report figures needed verification; the 251,783 count is root-caused and fixed, the module tally still open
 
 Found 2026-07-30 by running `fathom research report --since 168h` on this
 machine ~30 minutes after phase O's channels went live. Both are
@@ -39,11 +39,20 @@ instrument-trust issues, filed BEFORE being used in any claim.
    over-reports module adoption, which is exactly the class of dishonesty
    the flywheel exists to avoid. Verify by asserting the beat is emitted
    ONLY when a binding produced the rule.
-2. **`review_active_findings=251783`** in the verify-gate block is
-   implausible on a repo with ~250 real findings — three orders of
-   magnitude off. Likely counting every findings row ever recorded (or
-   re-counting per call) rather than currently-active ones. Until checked,
-   the whole verify-gate line should be treated as unquotable.
+2. **`review_active_findings=251783`** — **ROOT-CAUSED AND FIXED
+   2026-07-30 (phase R).** The hypothesis in this observation's own text
+   ("re-counting per call") was correct. A `review` call-log row's
+   `verdict_outcome` is a SNAPSHOT — the active findings as of that single
+   review run (`review.reviewVerdictOutcome`). The aggregator summed that
+   snapshot across every review call in the window instead of reading the
+   latest one, and since `fathom review` fires on every push, a busy week
+   stacked many near-identical ~250-finding snapshots into 251,783. Fix:
+   `internal/metrics.LatestReviewActiveFindings` reports the most recent
+   call's snapshot only, plus a `review_active_findings_note` disclosing
+   which call it is "as of". Pinned by a 50-call fixture asserting BOTH the
+   pre-fix sum (12,650) and the post-fix value (253), so the bug cannot
+   silently return. Notably no store was ever involved — `research report`
+   opens none by design; the defect was purely in call-log aggregation.
 
 **Genuinely trustworthy in the same report** (stated for contrast, and
 because these are the numbers that matter): injection coverage
@@ -53,8 +62,11 @@ phase-O channel firing within the hour); surface traffic bare=7234 /
 agent=196 / cli=36; latency p50=130ms p95=1540ms; and the honest
 "not measurable: no eviction event is logged anywhere in fathom today".
 
-**Status:** open, assigned to the next fathom slice; nothing from the
-verify-gate or module-serving lines may be cited until both are settled.
+**Status:** PART 2 CLOSED (the count is fixed and fixture-pinned, and the
+verify-gate line is quotable again with its as-of note). **PART 1 REMAINS
+OPEN** — the module-served tally naming `platform-standards` with no
+binding on this machine is still unexplained; the layer-vs-module labeling
+hypothesis has not been tested, and that line stays uncitable until it is.
 
 ### O19 — a copied prompt does not transfer across corpora: 202 of 219 claims rejected on the first real platform pack (7.8% acceptance)
 
