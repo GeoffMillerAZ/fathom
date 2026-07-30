@@ -20,3 +20,17 @@ bin/
 # content (NUL-byte sniff, ADR-021 §1 / LT-2) as defense in depth, but this
 # entry keeps the artifact out of the walk (and out of memory) entirely.
 /fathom
+# Playwright MCP screenshots — 4.5 MB of PNGs. Same tool-state class as
+# .claude/ (which connector.skipDir prunes in code). Worth excluding by path
+# rather than leaning on the NUL-byte sniff: connector/local.go os.ReadFile's
+# the bytes BEFORE binary detection, and analysis/references has no IsBinary
+# guard at all — it strings.Split's whatever it is gotten on every call.
+.playwright-mcp/
+# Prebuilt tree-sitter grammars: 4.5 MB of wasm, zero extractable symbols.
+*.wasm
+# Captured red/green go-test transcripts — evidence artifacts, not knowledge.
+# Scoped to *.txt ON PURPOSE: docs/dogfood/h1-red-first/README.md and
+# docs/dogfood-observations.md are real knowledge docs and must stay indexed.
+# A careless `docs/dogfood/` here silently drops 21 real DocChunks.
+docs/dogfood/h1-red-first/*.txt
+.DS_Store

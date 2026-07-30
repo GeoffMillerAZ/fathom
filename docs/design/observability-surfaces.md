@@ -112,7 +112,19 @@ driven by `list_services`, and four boards: **Spend**, **Traffic**,
 and phase K's precedent.
 
 **Web app** (app-kit path A, Go server-rendered, no Node): the richer
-surface the owner asked for —
+surface the owner asked for. **The licensed corpora are the source here, not
+hand-written CSS** — query the `appkit` MCP before writing markup (fleet
+convention), pull the pattern, strip hardcoded colors, map to kit role
+utilities via `get_kit_theming`, render through app-kit's pure-Go
+`appkit/ui/*`. Grounding search already done, real corpus entries to start
+from: `Application UI > Layout > List containers > Separate cards` and
+`Application UI > Lists > Grid Lists > Logos cards with description list`
+for the per-service/per-layer boards, `Marketing > Page Sections > Stats >
+With description` for the headline figures, MatDash shells for the
+sidebar/topbar/widget-grid frame. Charts stay app-kit `ui/viz` SVG —
+neither corpus ships charting.
+
+The surfaces it adds beyond the TUI —
 - the same four boards with real charts (`appkit/ui/viz` SVG, MatDash shell
   patterns re-themed through kit tokens; TailwindPlus/MatDash consulted via
   the appkit MCP for the shell and card patterns);
@@ -122,7 +134,14 @@ surface the owner asked for —
 - **embedded docs**: `docs/**` rendered in-app with search, so the guides sit
   beside the metrics they explain (the docs are already in-repo; this is a
   markdown renderer plus an index, not a docs site build);
-- a **status board** at `/statusz` on the existing `serve-http` listener —
+- a **status board** at `/statusz` on the existing `serve-http` listener
+  (**deliberately NOT corpus-styled**: `/statusz` is served by the fathom
+  daemon binary, whose doctrine is one pure-Go binary with no asset
+  pipeline — adopting TailwindPlus there would mean an app-kit dependency
+  plus a Tailwind build step inside the daemon to style a read-only
+  diagnostic whose real contract is its JSON. It carries ~40 inline CSS
+  lines and a comment saying exactly this; the corpus earns its keep in
+  this web app, which supersedes it as the dashboard) —
   daemon health, index freshness per service, channel liveness, last compile
   per layer — loopback-only, read-only, and subject to law 9 (read-only
   before writable) and the hosted-mode allowlist if a token is configured.

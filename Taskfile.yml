@@ -117,6 +117,30 @@ tasks:
     cmds:
       - "{{.GO}} build -o bin/fathom ./cmd/fathom"
 
+  deploy:
+    desc: "Build, install to ~/.local/libexec/fathom/fathom, restart the launchd daemon, then ASSERT the running process is the freshly built binary — the missing link between 'committed a daemon fix' and 'agents actually get it'"
+    deps: [build]
+    cmds:
+      # The daemon must run an INSTALLED copy, never bin/fathom directly: a
+      # post-commit rebuild would otherwise swap the binary out from under
+      # launchd's KeepAlive. Write to a temp path and rename — `cp` over a
+      # running executable truncates in place, which on macOS can fault the
+      # live process's text pages.
+      - mkdir -p "$HOME/.local/libexec/fathom"
+      - cp -f bin/fathom "$HOME/.local/libexec/fathom/fathom.new"
+      - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
+      - launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http
+      - curl -s --retry 30 --retry-delay 1 --retry-connrefused --retry-all-errors --max-time 60 http://localhost:7575/healthz | grep -q ok
+      # Prove the deploy TOOK. Without these two asserts "I ran the deploy" and
+      # "the daemon is serving new code" are different claims — which is exactly
+      # how the daemon served 5-day-old code while doctor reported 11/11 PASS.
+      - pgrep -fl 'fathom serve-http' | grep -q -- "$HOME/.local/libexec/fathom/fathom"
+      - |
+        got="$("$HOME/.local/libexec/fathom/fathom" version | sed -n 's/.*@ \([0-9a-f]*\).*/\1/p')"
+        want="$(git rev-parse --short=12 HEAD)"
+        [ "$got" = "$want" ] || { echo "deploy assert FAILED: daemon binary @ $got, HEAD $want" >&2; exit 1; }
+        echo "✔ daemon is serving $got"
+
   build-dev:
     desc: Fast inner-dev-loop build to workspace/tmp/fathom — used by the calibration harness; not for hooks/daemon/MCP registration (those want bin/fathom via `task build`)
     cmds:

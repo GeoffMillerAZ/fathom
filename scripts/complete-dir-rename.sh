@@ -5,8 +5,10 @@
 # Everything else is done: module path, binary, launchd label
 # (com.geoffmilleraz.fathom-http), MCP registration ("fathom" → localhost:7575),
 # code, and docs. The only surviving "sextant" is the on-disk DIRECTORY NAME and
-# the absolute paths that point at it (the launchd plist and two Claude Code
-# hooks). This script finishes that rename atomically.
+# the absolute paths that point at it (the launchd plist, the THREE Claude Code
+# hooks — session-hook, edit-hook, stop-hook — at BOTH user and project scope,
+# and the index's own recorded corpus root in service_meta.path).
+# This script finishes that rename atomically.
 #
 # ⚠️ RUN THIS FROM A REAL TERMINAL, NOT VIA AN AGENT/Bash-tool.
 #   Two reasons an agent cannot do this safely:
@@ -51,16 +53,36 @@ else
   exit 1
 fi
 
+# 2b. Repoint the index's OWN recorded corpus root.
+#
+# Without this the rename silently guts the index: ServiceMeta.path still names
+# the old directory, so autorefresh's git-HEAD probe resolves nothing and
+# ensure() no-ops FOREVER (the index freezes at the pre-rename commit and never
+# says so), and pkg/client.Sources breaks — taking `references`, `read_source`
+# and cloc down with it. `remap` is surgical and free; the daemon is already
+# stopped above, so the write lock is free.
+say "Remapping the index's recorded corpus root to $NEW"
+"$NEW/bin/fathom" remap --store "$NEW/workspace/db/fleet.sqlite" \
+  --service fathom --path "$NEW" \
+  || warn "remap failed — fix before trusting the index (check: fathom staleness_report --service fathom)"
+
 # 3. Repoint the launchd plist (binary, --store, --call-log, WorkingDirectory).
 say "Repointing plist paths to /fathom: $PLIST"
 /usr/bin/sed -i '' 's#geoffmilleraz/sextant#geoffmilleraz/fathom#g' "$PLIST"
 
-# 4. Repoint the two Claude Code hook command paths (session-hook, edit-hook).
-if [[ -f "$SETTINGS" ]]; then
-  say "Repointing Claude Code hook paths in $SETTINGS (backup: ${SETTINGS}.bak)"
-  /usr/bin/sed -i '.bak' 's#geoffmilleraz/sextant/bin/fathom#geoffmilleraz/fathom/bin/fathom#g' "$SETTINGS"
-else
-  warn "No $SETTINGS found — skipping hook repoint (adjust manually if you use hooks)."
+# 4. Repoint the THREE Claude Code hook command paths (session-hook, edit-hook,
+#    stop-hook) at BOTH scopes. The project-scope copy is the one that actually
+#    ships with this repo — omitting it left every hook pointing at a binary
+#    under the old directory, i.e. obligations injection, the session brief and
+#    the stop gate all dead, silently, with no error surfaced anywhere.
+for f in "$SETTINGS" "$NEW/.claude/settings.json" "$NEW/.claude/settings.local.json"; do
+  if [[ -f "$f" ]]; then
+    say "Repointing Claude Code hook paths in $f (backup: ${f}.bak)"
+    /usr/bin/sed -i '.bak' 's#geoffmilleraz/sextant/bin/fathom#geoffmilleraz/fathom/bin/fathom#g' "$f"
+  fi
+done
+if [[ ! -f "$SETTINGS" && ! -f "$NEW/.claude/settings.json" ]]; then
+  warn "No Claude Code settings found at either scope — adjust hook paths manually if you use hooks."
 fi
 
 # 5. Reload the daemon from the corrected plist.
@@ -78,8 +100,13 @@ done
 
 if [[ -n "$ok" ]]; then
   printf '\n\033[1;32m✔ fathom daemon is up on 127.0.0.1:7575 from the renamed directory.\033[0m\n'
-  echo "  Migration complete. Rebuild the fleet index if you want clean paths:"
-  echo "    $NEW/scripts/reingest-fleet.sh"
+  echo "  Migration complete. Paths are already remapped (step 2b) — NO re-ingest is needed."
+  echo
+  echo "  Do NOT run scripts/reingest-fleet.sh to 'clean up paths'. It rebuilds the"
+  echo "  store from ingest alone, which DESTROYS every compiled artifact in it"
+  echo "  (semantic_claims, claim_links, compile_runs) — obligations injection goes"
+  echo "  dead until you pay for a full scripts/recompile-fleet.sh. Verify instead:"
+  echo "    $NEW/bin/fathom doctor"
 else
   warn "Daemon did NOT come up within 15s."
   warn "This is almost certainly the path-keyed TCC RemovableVolumes grant:"

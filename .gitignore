@@ -25,6 +25,11 @@ coverage.*
 # by this rule.
 /vendor/
 
+# Playwright MCP screenshots — tool state, not source. Left untracked these
+# stamp every `go build` as vcs.modified=true, which degrades `doctor`'s
+# binary_fresh verdict and makes scripts/migrate-fleet-store.sh refuse to run.
+.playwright-mcp/
+
 # OS
 .DS_Store
 

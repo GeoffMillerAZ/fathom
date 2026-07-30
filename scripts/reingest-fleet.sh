@@ -14,7 +14,19 @@
 #
 # Run this in YOUR terminal — it stops/starts the launchd daemon via launchctl,
 # which must run in your login session (it wedges when issued from a sandboxed
-# tool). It is safe + idempotent: the old store is backed up, not deleted.
+# tool). The old store file is backed up, not deleted.
+#
+# ⚠️ NOT non-destructive, despite the backup. This rebuilds the index from
+#   `ingest` alone, which regenerates ONLY observations/fingerprints/commits.
+#   Everything produced by the compile and enrichment passes is LOST from the
+#   live store — today that is 628 semantic_claims, 1293 claim_links and 14
+#   compile_runs for the fathom service alone. `ingest` cannot regenerate them;
+#   only `scripts/recompile-fleet.sh` can, and that costs LLM calls.
+#   Reach for this script ONLY to rebuild from scratch (malformed/duplicate
+#   service IDs, missing ServiceMeta.path). To fix paths after a directory
+#   move, use `fathom remap` instead — it is surgical and free.
+#   After running this, run scripts/recompile-fleet.sh or obligations
+#   injection stays dead.
 #
 #   bash scripts/reingest-fleet.sh
 #
@@ -40,8 +52,14 @@ echo "==> fathom fleet re-ingest  (store: $STORE)"
 
 echo "==> stopping the daemon (releases the SQLite write lock)"
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
-for _ in $(seq 1 15); do pgrep -f "bin/fathom serve-http" >/dev/null || break; sleep 1; done
-if pgrep -f "bin/fathom serve-http" >/dev/null; then
+# NOTE the pattern: the daemon runs the INSTALLED copy
+# (~/.local/libexec/fathom/fathom serve-http), so the substring "bin/fathom"
+# never appears in its command line — this guard matched nothing for as long as
+# the install-to-a-stable-path convention has existed, silently clearing the way
+# to `mv` a live store. Match on "fathom serve-http", exactly as
+# recompile-fleet.sh:62 and migrate-fleet-store.sh:104 already do.
+for _ in $(seq 1 15); do pgrep -f "fathom serve-http" >/dev/null || break; sleep 1; done
+if pgrep -f "fathom serve-http" >/dev/null; then
   echo "ERROR: a serve-http process is still holding the lock; reap it and retry."; exit 1
 fi
 
@@ -49,7 +67,11 @@ echo "==> backing up + removing the old store (drops malformed duplicate service
 if [ -f "$STORE" ]; then
   ts="$(date +%Y%m%d-%H%M%S)"
   mv "$STORE" "$STORE.bak-$ts"
-  [ -f "$STORE.wal" ] && mv "$STORE.wal" "$STORE.wal.bak-$ts" || true
+  # SQLite names the sidecars with a HYPHEN (fleet.sqlite-wal / -shm), not a
+  # dot — the old "$STORE.wal" test never matched, so a non-empty WAL was left
+  # beside the fresh database.
+  [ -f "$STORE-wal" ] && mv "$STORE-wal" "$STORE-wal.bak-$ts" || true
+  [ -f "$STORE-shm" ] && mv "$STORE-shm" "$STORE-shm.bak-$ts" || true
   echo "    backup: $STORE.bak-$ts  (delete once you've confirmed the new index)"
 fi
 
