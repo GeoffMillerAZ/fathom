@@ -256,7 +256,8 @@ func checkNoOptionalFields(path, prefix string, bv cue.Value) []*FieldError {
 		}
 		name := iter.Selector().String()
 		errs = append(errs, fieldErr(path, prefix+"."+name, fmt.Errorf(
-			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/binding/schema.cue's #Binding for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name)))
+			"field %q is written with a trailing '?' — that syntax marks a field OPTIONAL IN A SCHEMA, but in this instance it silently declares %q ABSENT instead of setting it (see schema/binding/schema.cue's #Binding for where '?' actually belongs); remove the '?' to set a concrete value, or delete the line entirely to omit it", name, name,
+		)))
 	}
 	return errs
 }

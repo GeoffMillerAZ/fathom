@@ -164,6 +164,57 @@ only if what it surfaces actually gets acted on, not just reported.
 
 ---
 
+## Step 7 — Observability surfaces (phase Q): spend, traffic, channels, interventions
+
+`fathom research report`/`bundle` (Steps 3-5) are the narrative snapshot;
+`fathom metrics {spend,traffic,channels,interventions,series}`
+(`docs/design/observability-surfaces.md`) is the queryable substrate
+underneath it — grouped, time-ranged, and JSON-able for a dashboard or
+script rather than a one-shot report. Neither duplicates the other's
+logic: `research report` and the `metrics` verbs share the same underlying
+aggregators (`internal/metrics`).
+
+```sh
+fathom metrics spend --store workspace/db/fathom.sqlite --service <svc> --since 168h --by layer
+fathom metrics traffic --by tool --since 24h
+fathom metrics channels --since 24h
+fathom metrics interventions --store workspace/db/fathom.sqlite --since 168h
+```
+
+See [`docs/use-cases/metrics-surfaces.md`](../use-cases/metrics-surfaces.md)
+for the full verb reference, `--json` shapes, and worked examples.
+
+**Turning `FATHOM_METRICS=full` on for a tuning window, then off again.**
+The default tier, `basic`, already captures everything phase P specifies
+plus O19's compile rejection-reason capture — no code in this phase yet
+branches on `full` specifically (payload sampling and per-section
+diagnostics beyond what's already unconditional are deferred, named with a
+trigger, in `docs/plans/expert-suite-q.md`'s Deferred section). If you do
+turn `full` on for a deliberate tuning window:
+
+```sh
+export FATHOM_METRICS=full
+# ... work normally for the tuning window ...
+fathom doctor   # metrics_tier check confirms the tier that was actually active
+unset FATHOM_METRICS   # or: export FATHOM_METRICS=basic
+```
+
+**No tier of this design spends model tokens to measure model tokens**
+(design §3) — `full` costs disk and (once payload sampling ships) privacy
+surface, never LLM spend. Turn it off once the tuning window is over; there
+is no reason to run `full` continuously today.
+
+**`/statusz`'s hosted-mode gating.** If you run `serve-http
+--modules-token-env <VAR>` (a network-reachable, hosted deployment —
+`docs/plans/gke-module-host.md`), `GET /statusz` sits **inside** the same
+bearer-token allowlist that already gates `/rpc/modules` — it is not a
+separate, unauthenticated leak of index/service detail. On the default
+loopback-only daemon (no `--modules-token-env` configured), `/statusz`
+stays fully open, exactly like every other route (`/healthz`, `/metrics`,
+`/events`).
+
+---
+
 ## Recap: the whole sequence
 
 ```sh
@@ -180,9 +231,12 @@ fathom observe                           # Step 6 — close the loop
 ## Maintained
 
 This doc covers the adoption sequence for `fathom research report` /
-`fathom research bundle`. It intentionally does not duplicate what each
-command measures or how the sanitization guarantees work — see
+`fathom research bundle`, and (Step 7) the `fathom metrics` verb family's
+tiering/`/statusz`-gating adoption notes. It intentionally does not
+duplicate what each command measures or how the sanitization/honesty
+guarantees work — see
 [`docs/use-cases/research-flywheel.md`](../use-cases/research-flywheel.md)
+and [`docs/use-cases/metrics-surfaces.md`](../use-cases/metrics-surfaces.md)
 for that. Update this doc when the sequence itself changes (a new step, a
-reordered one, a changed flag); update the use-case doc when a command's
-flags, output shape, or sanitization guarantees change.
+reordered one, a changed flag); update the use-case docs when a command's
+flags, output shape, or sanitization/honesty guarantees change.

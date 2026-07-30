@@ -481,6 +481,18 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	}
 	fmt.Fprintf(w, "claims_emitted:    %d\n", run.ClaimsEmitted)
 	fmt.Fprintf(w, "claims_rejected:   %d\n", run.ClaimsRejected)
+	// Q-4 (docs/plans/expert-suite-q.md, O19's fix): a run with zero
+	// rejections prints nothing new here — byte-for-byte identical to
+	// before this row.
+	if len(run.RejectionReasons) > 0 {
+		fmt.Fprintf(w, "rejection_reasons:\n")
+		for _, rb := range run.RejectionReasons {
+			fmt.Fprintf(w, "  %-20s %d\n", rb.Cause+":", rb.Count)
+			for _, sample := range rb.Samples {
+				fmt.Fprintf(w, "    - %s\n", sample)
+			}
+		}
+	}
 	fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
 	fmt.Fprintf(w, "tokens_out:        %d\n", run.TokensOut)
 	fmt.Fprintf(w, "cost_usd:          %.6f\n", run.CostUSD)

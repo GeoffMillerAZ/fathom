@@ -293,7 +293,7 @@ the full tool reference.
 | Mode | Command | Transport | Use case |
 |---|---|---|---|
 | stdio | `serve-mcp` | JSON-RPC 2.0 on stdin/stdout | Editor / agent clients (Claude Code, etc.) — zero ports |
-| HTTP | `serve-http` | POST `/rpc` (full surface), POST `/rpc/{surface}` (scoped), GET `/events` SSE, GET `/healthz`, GET `/metrics`, POST `/reload` | Multi-client, platform / CI use |
+| HTTP | `serve-http` | POST `/rpc` (full surface), POST `/rpc/{surface}` (scoped), GET `/events` SSE, GET `/healthz`, GET `/metrics`, GET `/statusz`, POST `/reload` | Multi-client, platform / CI use |
 
 ### Tool groups, profiles, and surfaces
 

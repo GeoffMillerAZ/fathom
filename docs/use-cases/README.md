@@ -31,6 +31,7 @@ is the canonical short wiring summary the adoption guides expand on.
 | [fleet-health.md](fleet-health.md) | Surface security posture, complexity hotspots, dead code, and dependency inventory across all services |
 | [platform-modules.md](platform-modules.md) | Bind a compiled-once platform module into a repo's edit-time obligations, and guard critical scopes for pre-edit guidance |
 | [research-flywheel.md](research-flywheel.md) | Aggregate fathom's own local instrumentation into an honest report, and produce a sanitized, review-first bundle you may choose to share |
+| [metrics-surfaces.md](metrics-surfaces.md) | Query spend, traffic, channel liveness, and mechanism-labeled interventions over a time range; daily rollups and time series; a daemon status page at `/statusz` |
 
 ---
 

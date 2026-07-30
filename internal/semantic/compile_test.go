@@ -158,6 +158,77 @@ func TestCompile_RejectsBadAnchorsAndScopes(t *testing.T) {
 	if run.ClaimsEmitted != 1 || run.ClaimsRejected != 3 {
 		t.Fatalf("emitted=%d rejected=%d, want 1 emitted / 3 rejected (bad cite, dead scope, over-budget rule)", run.ClaimsEmitted, run.ClaimsRejected)
 	}
+
+	// Q-2 (docs/plans/expert-suite-q.md, O19's fix): this run trips three
+	// DISTINCT causes in one pass — anchor-missing (bad cite), scope-
+	// unverifiable (dead scope), malformed (over-budget rule) — the
+	// deterministic grouped breakdown must record all three.
+	if len(run.RejectionReasons) != 3 {
+		t.Fatalf("RejectionReasons = %+v, want 3 distinct causes", run.RejectionReasons)
+	}
+	wantCauses := map[string]int{"anchor-missing": 1, "malformed": 1, "scope-unverifiable": 1}
+	for _, rb := range run.RejectionReasons {
+		if wantCauses[rb.Cause] != rb.Count {
+			t.Errorf("cause %q count = %d, want %d", rb.Cause, rb.Count, wantCauses[rb.Cause])
+		}
+		if len(rb.Samples) == 0 {
+			t.Errorf("cause %q has no samples", rb.Cause)
+		}
+	}
+	// Alphabetical order: anchor-missing, malformed, scope-unverifiable.
+	if run.RejectionReasons[0].Cause != "anchor-missing" || run.RejectionReasons[1].Cause != "malformed" || run.RejectionReasons[2].Cause != "scope-unverifiable" {
+		t.Errorf("RejectionReasons not in deterministic alphabetical order: %+v", run.RejectionReasons)
+	}
+}
+
+// TestCompile_RejectionReasons_SamplesCapped (Q-2): a run with many
+// same-cause rejections must cap the persisted example messages at
+// maxRejectionSamplesPerCause, never persist one string per rejection.
+func TestCompile_RejectionReasons_SamplesCapped(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	var claims []string
+	for i := 0; i < maxRejectionSamplesPerCause+3; i++ {
+		claims = append(claims, fmt.Sprintf(`{"rule":"Scope matches nothing %d.","scope":["nonexistent/dir/%d/**"],"cite_start":3,"cite_end":3}`, i, i))
+	}
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[` + strings.Join(claims, ",") + `]}`,
+	}})
+
+	run, err := c.Compile(ctx, compileInput(false))
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsRejected != maxRejectionSamplesPerCause+3 {
+		t.Fatalf("ClaimsRejected = %d, want %d", run.ClaimsRejected, maxRejectionSamplesPerCause+3)
+	}
+	if len(run.RejectionReasons) != 1 {
+		t.Fatalf("RejectionReasons = %+v, want exactly 1 cause bucket", run.RejectionReasons)
+	}
+	rb := run.RejectionReasons[0]
+	if rb.Cause != "scope-unverifiable" || rb.Count != maxRejectionSamplesPerCause+3 {
+		t.Fatalf("bucket = %+v, want cause=scope-unverifiable count=%d", rb, maxRejectionSamplesPerCause+3)
+	}
+	if len(rb.Samples) != maxRejectionSamplesPerCause {
+		t.Fatalf("samples = %d, want capped at %d", len(rb.Samples), maxRejectionSamplesPerCause)
+	}
+}
+
+// TestCompile_DryRun_NeverPopulatesRejectionReasons (Q-2): verifyDraft never
+// runs during a dry run, so RejectionReasons must stay nil, not a
+// zero-valued breakdown.
+func TestCompile_DryRun_NeverPopulatesRejectionReasons(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st)
+
+	run, err := c.Compile(ctx, compileInput(true))
+	if err != nil {
+		t.Fatalf("Compile (dry run): %v", err)
+	}
+	if run.RejectionReasons != nil {
+		t.Errorf("RejectionReasons = %+v, want nil on a dry run", run.RejectionReasons)
+	}
 }
 
 // TestCompile_RejectsOverBroadScope (O8/OP-2): a scope glob matching more

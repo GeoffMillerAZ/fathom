@@ -170,7 +170,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	handler := newHTTPHandlerWithAuth(srv, modulesToken)
+	handler := newHTTPHandlerWithAuth(srv, c, modulesToken)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
@@ -233,14 +233,21 @@ func openCallLog(path string) (*os.File, error) {
 //	GET  /healthz       — liveness probe, returns "ok"
 //	GET  /events        — SSE stream stub (hello event, keep-alive)
 //	GET  /metrics       — simple text exposition: uptime and request count
+//	GET  /statusz       — daemon health, per-service freshness, channel
+//	                      liveness, last compile per layer (Q-25/Q-26,
+//	                      docs/design/observability-surfaces.md §8 item 6);
+//	                      JSON via Accept: application/json or ?format=json,
+//	                      HTML otherwise; gated inside the /rpc/modules
+//	                      bearer-token allowlist when hosted (modulesAuthMiddleware)
 //	POST /reload        — 200 OK stub; would reload a PlatformStore in production
 //
-// newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules bearer-
-// token gate (GKE-MH-7). modulesToken == "" (the default) disables the
-// check entirely — identical behavior to newHTTPHandler(srv), so every
-// existing call site/test unaffected by this row keeps working unchanged.
-func newHTTPHandlerWithAuth(srv *mcp.Server, modulesToken string) http.Handler {
-	return modulesAuthMiddleware(newHTTPHandler(srv), modulesToken)
+// newHTTPHandlerWithAuth wraps newHTTPHandler with the /rpc/modules (AND,
+// Q-26, /statusz) bearer-token gate (GKE-MH-7). modulesToken == "" (the
+// default) disables the check entirely — identical behavior to
+// newHTTPHandler(srv, c), so every existing call site/test unaffected by
+// this row keeps working unchanged.
+func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken string) http.Handler {
+	return modulesAuthMiddleware(newHTTPHandler(srv, c), modulesToken)
 }
 
 // modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
@@ -263,7 +270,13 @@ func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
 	}
 	const prefix = "Bearer "
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/rpc/modules" && !strings.HasPrefix(r.URL.Path, "/rpc/modules/") {
+		// Q-26 (docs/plans/expert-suite-q.md): /statusz sits INSIDE this
+		// same allowlist gate, not outside it — the phase-O critic finding
+		// #2 class (GKE-MH-7): a hosted, network-reachable deployment must
+		// not leak index/service detail through a route the modules-token
+		// gate doesn't cover. Loopback-only default (token == "" above)
+		// leaves /statusz fully open, exactly like every other route.
+		if r.URL.Path != "/rpc/modules" && !strings.HasPrefix(r.URL.Path, "/rpc/modules/") && r.URL.Path != "/statusz" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -279,9 +292,16 @@ func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
 	})
 }
 
-func newHTTPHandler(srv *mcp.Server) http.Handler {
+func newHTTPHandler(srv *mcp.Server, c *client.Client) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()
+
+	// GET /statusz (Q-25/Q-26): daemon health, per-service index
+	// freshness, channel liveness, last compile per layer. Registered
+	// unconditionally here — modulesAuthMiddleware (servehttp.go, wrapped
+	// around this handler by newHTTPHandlerWithAuth) is what gates it
+	// under hosted mode; this function itself has no notion of a token.
+	mux.Handle("/statusz", statuszHandler(c, state.startTime))
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {

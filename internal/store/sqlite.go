@@ -239,7 +239,8 @@ CREATE TABLE IF NOT EXISTS compile_runs (
     refused            BOOLEAN NOT NULL DEFAULT FALSE,
     refusal_reason     TEXT    NOT NULL DEFAULT '',
     budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE,
-    escape_note        TEXT    NOT NULL DEFAULT ''
+    escape_note        TEXT    NOT NULL DEFAULT '',
+    rejection_reasons_json TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE IF NOT EXISTS claim_events (
@@ -301,6 +302,12 @@ CREATE INDEX IF NOT EXISTS idx_observations_service_id
 		{"observations", "generated", `ALTER TABLE observations ADD COLUMN generated INTEGER NOT NULL DEFAULT 0`},
 		{"observations", "end_line", `ALTER TABLE observations ADD COLUMN end_line INTEGER NOT NULL DEFAULT 0`},
 		{"compile_runs", "escape_note", `ALTER TABLE compile_runs ADD COLUMN escape_note TEXT NOT NULL DEFAULT ''`},
+		// Q-3 (docs/plans/expert-suite-q.md, O19's fix): a pre-existing
+		// store (including the live fleet store) predates rejection-reason
+		// capture — RecordCompileRun/CompileRuns would otherwise error with
+		// "no such column" exactly like escape_note's own migration bounce
+		// finding above.
+		{"compile_runs", "rejection_reasons_json", `ALTER TABLE compile_runs ADD COLUMN rejection_reasons_json TEXT NOT NULL DEFAULT '[]'`},
 		// T5-1/O13: pre-existing claim_links rows (including the live fleet
 		// store) predate AnchorText — a re-anchor read/write over such a
 		// store must not fail with "no such column", it must simply see ''
@@ -1120,16 +1127,96 @@ ORDER BY event_at, verdict
 	return result, rows.Err()
 }
 
+// ClaimEventsSince (Q-6) returns every event in [since, until] across every
+// claim, ordered by (event_at, verdict) — see the Store interface's own doc
+// comment for the store-wide-not-service-scoped caveat (claim_events has no
+// service_id column).
+func (s *SQLiteStore) ClaimEventsSince(ctx context.Context, since, until time.Time) ([]core.ClaimEvent, error) {
+	return queryClaimEventsSince(ctx, s.db, since, until)
+}
+
+// queryClaimEventsSince is SQLiteStore.ClaimEventsSince's query body,
+// factored into its own free function — a name unique to this file (unlike
+// the ClaimEventsSince method name, which SQLiteStore and MemoryStore both
+// implement) so a symbol-based tool can anchor to a single, unambiguous
+// definition.
+func queryClaimEventsSince(ctx context.Context, db *sql.DB, since, until time.Time) ([]core.ClaimEvent, error) {
+	rows, err := db.QueryContext(ctx, `
+SELECT claim_id, verdict, author, note, event_at
+FROM claim_events
+WHERE event_at >= ? AND event_at <= ?
+ORDER BY event_at, verdict
+`, since.UnixNano(), until.UnixNano())
+	if err != nil {
+		return nil, fmt.Errorf("ClaimEventsSince query: %w", err)
+	}
+	defer rows.Close()
+	var result []core.ClaimEvent
+	for rows.Next() {
+		var (
+			ev core.ClaimEvent
+			at int64
+		)
+		if err := rows.Scan(&ev.ClaimID, &ev.Verdict, &ev.Author, &ev.Note, &at); err != nil {
+			return nil, fmt.Errorf("ClaimEventsSince scan: %w", err)
+		}
+		ev.At = time.Unix(0, at).UTC()
+		result = append(result, ev)
+	}
+	return result, rows.Err()
+}
+
+// marshalRejectionReasons (Q-3, docs/plans/expert-suite-q.md, O19's fix) is
+// RecordCompileRun's JSON-encode step, factored into its own free function —
+// a name unique to this file, unlike the RecordCompileRun method name
+// (both SQLiteStore and MemoryStore implement it), so a symbol-based tool
+// can anchor to a single, unambiguous definition. RejectionReasons is nil
+// on the overwhelming majority of runs (a clean compile with zero
+// rejections, or a dry run) — marshal nil as "[]" explicitly rather than
+// writing a NULL, so unmarshalRejectionReasons never has to special-case
+// NULL vs "[]" vs a real array.
+func marshalRejectionReasons(rr []core.RejectionBreakdown) (string, error) {
+	if len(rr) == 0 {
+		// json.Marshal(nil []T) encodes "null", not "[]" — normalize
+		// explicitly so the column always holds a valid JSON array.
+		return "[]", nil
+	}
+	data, err := json.Marshal(rr)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+// unmarshalRejectionReasons is CompileRuns' JSON-decode step, the sibling
+// of marshalRejectionReasons: a legacy row (empty string — the migration
+// default, or a row written before this column existed at all) degrades to
+// nil, never an error; a malformed value degrades the same lenient way
+// every other JSON column in this file already does, rather than aborting
+// the whole CompileRuns call.
+func unmarshalRejectionReasons(s string) []core.RejectionBreakdown {
+	if s == "" || s == "[]" {
+		return nil
+	}
+	var rr []core.RejectionBreakdown
+	_ = json.Unmarshal([]byte(s), &rr)
+	return rr
+}
+
 // RecordCompileRun appends a cost/audit ledger row for one compilation pass.
 func (s *SQLiteStore) RecordCompileRun(ctx context.Context, run core.CompileRun) error {
-	_, err := s.db.ExecContext(
+	rejectionJSON, err := marshalRejectionReasons(run.RejectionReasons)
+	if err != nil {
+		return fmt.Errorf("RecordCompileRun: marshal rejection_reasons_json: %w", err)
+	}
+	_, err = s.db.ExecContext(
 		ctx, `
 INSERT INTO compile_runs
     (run_id, service_id, layer, corpus_watermark, model, prompt_version,
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
      sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
-     refused, refusal_reason, budget_stopped, escape_note)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
@@ -1138,6 +1225,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
 		run.Refused, run.RefusalReason, run.BudgetStopped, run.Escape,
+		rejectionJSON,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: %w", err)
@@ -1151,7 +1239,7 @@ func (s *SQLiteStore) CompileRuns(ctx context.Context, serviceID, layer string) 
 	const cols = `run_id, service_id, layer, corpus_watermark, model, prompt_version,
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
 	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
-	refused, refusal_reason, budget_stopped, escape_note`
+	refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json`
 	var (
 		rows *sql.Rows
 		err  error
@@ -1178,8 +1266,9 @@ ORDER BY ran_at DESC, run_id
 	var result []core.CompileRun
 	for rows.Next() {
 		var (
-			r     core.CompileRun
-			ranAt int64
+			r             core.CompileRun
+			ranAt         int64
+			rejectionJSON string
 		)
 		if err := rows.Scan(
 			&r.RunID, &r.ServiceID, &r.Layer, &r.CorpusWatermark,
@@ -1188,10 +1277,18 @@ ORDER BY ran_at DESC, run_id
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
 			&r.Refused, &r.RefusalReason, &r.BudgetStopped, &r.Escape,
+			&rejectionJSON,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)
 		}
 		r.RanAt = time.Unix(0, ranAt).UTC()
+		// Q-3: a legacy row (empty string — the pre-existing-store
+		// migration default, or a row written before this column existed
+		// at all) degrades to nil, never an error; a malformed value
+		// (should not happen, but this is a lenient read like every other
+		// JSON column in this file) degrades the same way rather than
+		// aborting the whole CompileRuns call.
+		r.RejectionReasons = unmarshalRejectionReasons(rejectionJSON)
 		result = append(result, r)
 	}
 	return result, rows.Err()

@@ -297,6 +297,12 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		newLinks           []core.ClaimLink
 		recompiledSubjects []string
 	)
+	// O19's fix (docs/design/observability-surfaces.md §8 item 5):
+	// accumulated across the whole run, turned into run.RejectionReasons
+	// once via buildRejectionReasons — never populated on a DryRun (the
+	// section loop below skips verifyDraft entirely in that branch).
+	rejectionCounts := map[rejectionCause]int{}
+	rejectionSamples := map[rejectionCause][]string{}
 
 sectionLoop:
 	for _, ds := range all {
@@ -342,6 +348,11 @@ sectionLoop:
 						return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
 					}
 					run.ClaimsRejected++
+					cause := classifyRejectionCause(verr)
+					rejectionCounts[cause]++
+					if len(rejectionSamples[cause]) < maxRejectionSamplesPerCause {
+						rejectionSamples[cause] = append(rejectionSamples[cause], fmt.Sprintf("%s: %v", sec.Subject, verr))
+					}
 					continue
 				}
 				newClaims = append(newClaims, claim)
@@ -361,6 +372,7 @@ sectionLoop:
 		}
 	}
 	run.ClaimsEmitted = len(newClaims)
+	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)
 	run.DurationMS = now().Sub(started).Milliseconds()
 
@@ -509,18 +521,18 @@ func buildSectionPrompt(sec Section) string {
 func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDraft, sec Section, doc core.SourceFile, indexedFiles []string, watermark string, at time.Time, layerName, layerVersion, kind string, tier core.EvidenceTier, tierProfile, promptVersion string, driftTracked bool) (core.SemanticClaim, []core.ClaimLink, error) {
 	rule := strings.TrimSpace(d.Rule)
 	if rule == "" {
-		return core.SemanticClaim{}, nil, fmt.Errorf("empty rule")
+		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "empty rule")
 	}
 	if n, max := len(strings.Fields(rule)), c.maxRuleWords(); n > max {
-		return core.SemanticClaim{}, nil, fmt.Errorf("rule exceeds %d-word budget (%d)", max, n)
+		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "rule exceeds %d-word budget (%d)", max, n)
 	}
 	// Citation must lie within this section's document range and hash.
 	if d.CiteStart < sec.StartLine || d.CiteEnd > sec.EndLine || d.CiteEnd < d.CiteStart {
-		return core.SemanticClaim{}, nil, fmt.Errorf("citation outside section range")
+		return core.SemanticClaim{}, nil, rejectErr(causeAnchorMissing, "citation outside section range")
 	}
 	hash, ok := core.HashLines(doc.Content, d.CiteStart, d.CiteEnd)
 	if !ok {
-		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
+		return core.SemanticClaim{}, nil, rejectErr(causeAnchorMissing, "citation range does not resolve")
 	}
 	// T5-1/O13: persist the cited lines' literal text alongside the hash —
 	// LinesText extracts with the exact same normalization HashLines just
@@ -530,7 +542,7 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	// stale, never heal.
 	anchorText, ok := core.LinesText(doc.Content, d.CiteStart, d.CiteEnd)
 	if !ok {
-		return core.SemanticClaim{}, nil, fmt.Errorf("citation range does not resolve")
+		return core.SemanticClaim{}, nil, rejectErr(causeAnchorMissing, "citation range does not resolve")
 	}
 	// Scope globs must be non-empty, each match >= 1 indexed file, and none
 	// may be over-broad (ADR-016 §4.4 scope-trap defense, extended by O8/
@@ -550,7 +562,7 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	scope := append([]string(nil), d.Scope...)
 	sort.Strings(scope)
 	if len(scope) == 0 {
-		return core.SemanticClaim{}, nil, fmt.Errorf("empty scope")
+		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "empty scope")
 	}
 	scopeFiles := map[string]bool{}
 	for _, g := range scope {
@@ -563,10 +575,10 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 			}
 		}
 		if matched == 0 {
-			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q matches no indexed file", g)
+			return core.SemanticClaim{}, nil, rejectErr(causeScopeUnverifiable, "scope %q matches no indexed file", g)
 		}
 		if matched*2 > len(indexedFiles) && !isFileClassGlob(g) {
-			return core.SemanticClaim{}, nil, fmt.Errorf("scope %q is over-broad: matches %d/%d indexed files (>50%%) and is not a single-file-class extension glob, rejected as a catch-all scope", g, matched, len(indexedFiles))
+			return core.SemanticClaim{}, nil, rejectErr(causeOverBroad, "scope %q is over-broad: matches %d/%d indexed files (>50%%) and is not a single-file-class extension glob, rejected as a catch-all scope", g, matched, len(indexedFiles))
 		}
 	}
 
@@ -644,6 +656,98 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 // only the one draft (ClaimsRejected++) — this one is infrastructure, not a
 // bad draft, and the compile loop aborts the whole run on it.
 var errDriftAnchor = errors.New("semantic: finding drift anchor")
+
+// ─── O19's fix: compile rejection-reason capture ───────────────────────────
+//
+// docs/dogfood-observations.md O19 (the first real platform module: 202 of
+// 219 claims rejected, only a COUNT survived — the WHY was discarded the
+// moment ClaimsRejected was incremented). The four causes below are the
+// taxonomy docs/design/observability-surfaces.md §8 item 5 names; every one
+// of verifyDraft's seven rejection sites is classified, so the compile loop
+// can group counts AND keep a few example messages per cause without
+// changing which drafts get rejected or why (behavior-preserving — only the
+// bookkeeping is new).
+
+// rejectionCause is one of the four O19 taxonomy buckets.
+type rejectionCause string
+
+const (
+	// causeMalformed: the draft itself is shape-invalid (empty rule, a
+	// rule over the word budget, an empty scope list) — nothing about the
+	// corpus was even consulted yet.
+	causeMalformed rejectionCause = "malformed"
+	// causeAnchorMissing: the citation does not resolve inside the cited
+	// document (out of range, or the hash/line-text extraction failed).
+	causeAnchorMissing rejectionCause = "anchor-missing"
+	// causeScopeUnverifiable: a scope glob matched zero indexed files.
+	causeScopeUnverifiable rejectionCause = "scope-unverifiable"
+	// causeOverBroad: a scope glob matched more than half the indexed
+	// corpus and is not an exempt single-file-class extension glob.
+	causeOverBroad rejectionCause = "over-broad"
+)
+
+// claimRejectionError wraps a verifyDraft rejection with its classified
+// cause; Unwrap makes it transparent to errors.Is/errors.As (in particular
+// errors.Is(err, errDriftAnchor) at the compile loop's own call site, which
+// must keep working unchanged — errDriftAnchor is never wrapped this way,
+// since it is infrastructure, not a rejection).
+type claimRejectionError struct {
+	cause rejectionCause
+	err   error
+}
+
+func (e *claimRejectionError) Error() string { return e.err.Error() }
+func (e *claimRejectionError) Unwrap() error { return e.err }
+
+// rejectErr builds a classified rejection error — every verifyDraft
+// rejection site (never errDriftAnchor) returns through this.
+func rejectErr(cause rejectionCause, format string, args ...any) error {
+	return &claimRejectionError{cause: cause, err: fmt.Errorf(format, args...)}
+}
+
+// classifyRejectionCause recovers the cause a rejectErr call recorded.
+// An error that was never built via rejectErr (defensive — every current
+// verifyDraft rejection site goes through it, but a future site might not)
+// defaults to causeMalformed rather than being silently dropped from the
+// breakdown: an uncategorized rejection is still counted, just under the
+// most conservative bucket.
+func classifyRejectionCause(err error) rejectionCause {
+	var rej *claimRejectionError
+	if errors.As(err, &rej) {
+		return rej.cause
+	}
+	return causeMalformed
+}
+
+// maxRejectionSamplesPerCause caps how many example rejection messages
+// buildRejectionReasons keeps per cause — enough for an author to act on,
+// never the full corpus (a 202-rejection run must not persist 202 strings).
+const maxRejectionSamplesPerCause = 3
+
+// buildRejectionReasons turns one compile run's accumulated cause→count and
+// cause→samples maps into a deterministic, sorted breakdown (core.CompileRun.
+// RejectionReasons). Pure: no I/O, no clock — callers accumulate the maps
+// while looping and call this once, exactly like ClaimsEmitted is set once
+// after the loop.
+func buildRejectionReasons(counts map[rejectionCause]int, samples map[rejectionCause][]string) []core.RejectionBreakdown {
+	if len(counts) == 0 {
+		return nil
+	}
+	causes := make([]string, 0, len(counts))
+	for c := range counts {
+		causes = append(causes, string(c))
+	}
+	sort.Strings(causes)
+	out := make([]core.RejectionBreakdown, 0, len(causes))
+	for _, c := range causes {
+		out = append(out, core.RejectionBreakdown{
+			Cause:   c,
+			Count:   counts[rejectionCause(c)],
+			Samples: samples[rejectionCause(c)],
+		})
+	}
+	return out
+}
 
 // isFileClassGlob reports whether g is a single-file-class extension glob:
 // its final path segment is "*.<ext>" with exactly one literal extension and

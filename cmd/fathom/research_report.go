@@ -31,6 +31,7 @@ import (
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
+	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
 // defaultResearchOutDir is where `fathom research report`/`bundle` write
@@ -180,24 +181,12 @@ type PayloadCostChannelStat struct {
 	TotalTokensEstimate int `json:"total_tokens_estimate"`
 }
 
-// discoveryIndexTools is instrument B's numerator: the companion surface's
-// GENUINE index/navigation tools — deliberately excludes plumbing
-// (capabilities, ingest, list_services, obligations, staleness_report,
-// verify_plan) per docs/design/production-tokenomics.md §4's own
-// instruction, so a hook-identity round trip or a governance/proof call
-// never inflates the "agent chose to look something up" numerator.
-var discoveryIndexTools = map[string]bool{
-	"find_symbol":    true,
-	"query_symbols":  true,
-	"references":     true,
-	"find_callers":   true,
-	"symbol_context": true,
-	"outline":        true,
-	"repo_map":       true,
-	"pack_context":   true,
-	"read_source":    true,
-	"entrypoints":    true,
-}
+// Instrument B's numerator (docs/design/production-tokenomics.md §4) now
+// lives in internal/metrics.DiscoveryIndexTools (Q-8, docs/plans/
+// expert-suite-q.md — "reusing phase P's discoveryIndexTools set — import
+// it, don't redefine, a second definition WILL drift"). buildDiscoverySection
+// below calls metrics.IsDiscoveryIndexTool directly; this package keeps no
+// local copy of the set.
 
 // BenchArmSummary is one context-bench arm's aggregate outcome, carried
 // straight from internal/contextbench.Aggregate.
@@ -771,7 +760,7 @@ func buildDiscoverySection(r *ResearchReport, beats []heartbeat.Beat, toolCalls 
 	}
 	indexCalls := 0
 	for tool, n := range toolCalls {
-		if discoveryIndexTools[tool] {
+		if metrics.IsDiscoveryIndexTool(tool) {
 			indexCalls += n
 		}
 	}

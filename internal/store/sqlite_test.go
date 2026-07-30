@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -210,6 +211,192 @@ CREATE TABLE compile_runs (
 	}
 	if got[0].RunID != "new-run" || got[0].Escape != "force: idempotent recompile of run legacy-run" {
 		t.Errorf("migrated store Escape round-trip: got (%q, %q)", got[0].RunID, got[0].Escape)
+	}
+}
+
+// TestSQLiteStore_RecordCompileRun_PersistsRejectionReasons (Q-3, O19's
+// fix): a run's rejection-cause breakdown round-trips through
+// RecordCompileRun/CompileRuns unchanged.
+func TestSQLiteStore_RecordCompileRun_PersistsRejectionReasons(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	want := []core.RejectionBreakdown{
+		{Cause: "anchor-missing", Count: 1, Samples: []string{"docs/a.md#x: citation range does not resolve"}},
+		{Cause: "malformed", Count: 2, Samples: []string{"docs/a.md#y: empty rule"}},
+	}
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-1", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(1, 0).UTC(), RejectionReasons: want,
+	}); err != nil {
+		t.Fatalf("RecordCompileRun: %v", err)
+	}
+	got, err := s.CompileRuns(ctx, "svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d runs, want 1", len(got))
+	}
+	if len(got[0].RejectionReasons) != 2 {
+		t.Fatalf("RejectionReasons = %+v, want 2 rows", got[0].RejectionReasons)
+	}
+	for i, rb := range want {
+		if !reflect.DeepEqual(got[0].RejectionReasons[i], rb) {
+			t.Errorf("RejectionReasons[%d] = %+v, want %+v", i, got[0].RejectionReasons[i], rb)
+		}
+	}
+}
+
+// TestSQLiteStore_RecordCompileRun_EmptyRejectionReasons_RoundTripsAsEmptySlice
+// (Q-3): a run with zero rejections (the common case) round-trips with a
+// nil RejectionReasons — never a fabricated non-nil empty slice, and never
+// an error.
+func TestSQLiteStore_RecordCompileRun_EmptyRejectionReasons_RoundTripsAsEmptySlice(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	if err := s.RecordCompileRun(ctx, core.CompileRun{
+		RunID: "run-clean", ServiceID: "svc", Layer: "obligations",
+		CorpusWatermark: "wm-1", PromptVersion: "obligations/v1",
+		RanAt: time.Unix(1, 0).UTC(),
+	}); err != nil {
+		t.Fatalf("RecordCompileRun: %v", err)
+	}
+	got, err := s.CompileRuns(ctx, "svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns: %v", err)
+	}
+	if len(got) != 1 || got[0].RejectionReasons != nil {
+		t.Fatalf("got %+v, want 1 run with nil RejectionReasons", got)
+	}
+}
+
+// TestSQLiteStore_CompileRuns_LegacyRowMissingColumn_DegradesToNil (Q-3):
+// a store created before rejection_reasons_json existed — the migration
+// adds the column, and the pre-existing row (which has no value for it,
+// hence SQLite's own column DEFAULT '[]') reads back with a nil
+// RejectionReasons, never an error and never a fabricated non-nil value.
+func TestSQLiteStore_CompileRuns_LegacyRowMissingColumn_DegradesToNil(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy-rejection.sqlite")
+
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE compile_runs (
+    run_id             TEXT    NOT NULL DEFAULT '',
+    service_id         TEXT    NOT NULL,
+    layer              TEXT    NOT NULL DEFAULT '',
+    corpus_watermark   TEXT    NOT NULL DEFAULT '',
+    model              TEXT    NOT NULL DEFAULT '',
+    prompt_version     TEXT    NOT NULL DEFAULT '',
+    dry_run            BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_in          INTEGER NOT NULL DEFAULT 0,
+    tokens_out         INTEGER NOT NULL DEFAULT 0,
+    cost_usd           DOUBLE  NOT NULL DEFAULT 0,
+    duration_ms        BIGINT  NOT NULL DEFAULT 0,
+    sections_total     INTEGER NOT NULL DEFAULT 0,
+    sections_compiled  INTEGER NOT NULL DEFAULT 0,
+    sections_failed    INTEGER NOT NULL DEFAULT 0,
+    claims_emitted     INTEGER NOT NULL DEFAULT 0,
+    claims_rejected    INTEGER NOT NULL DEFAULT 0,
+    ran_at             BIGINT  NOT NULL DEFAULT 0,
+    refused            BOOLEAN NOT NULL DEFAULT FALSE,
+    refusal_reason     TEXT    NOT NULL DEFAULT '',
+    budget_stopped     BOOLEAN NOT NULL DEFAULT FALSE,
+    escape_note        TEXT    NOT NULL DEFAULT ''
+)`); err != nil {
+		t.Fatalf("create legacy compile_runs table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO compile_runs (run_id, service_id, layer, corpus_watermark, prompt_version, ran_at)
+		 VALUES ('legacy-run', 'legacy-svc', 'obligations', 'wm-old', 'obligations/old', 1)`,
+	); err != nil {
+		t.Fatalf("insert legacy run: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	got, err := s.CompileRuns(ctx, "legacy-svc", "")
+	if err != nil {
+		t.Fatalf("CompileRuns on migrated legacy store: %v", err)
+	}
+	if len(got) != 1 || got[0].RunID != "legacy-run" || got[0].RejectionReasons != nil {
+		t.Fatalf("legacy run: got %+v, want 1 row with nil RejectionReasons", got)
+	}
+}
+
+// TestSQLiteStore_ClaimEventsSince_FiltersByWindow (Q-6).
+func TestSQLiteStore_ClaimEventsSince_FiltersByWindow(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	events := []core.ClaimEvent{
+		{ClaimID: "c1", Verdict: "superseded", Author: "review", At: time.Unix(10, 0).UTC()},
+		{ClaimID: "c2", Verdict: "refuted", Author: "human", At: time.Unix(20, 0).UTC()},
+		{ClaimID: "c3", Verdict: "superseded", Author: "review", At: time.Unix(30, 0).UTC()},
+	}
+	for _, ev := range events {
+		if err := s.AppendClaimEvent(ctx, ev); err != nil {
+			t.Fatalf("AppendClaimEvent: %v", err)
+		}
+	}
+	got, err := s.ClaimEventsSince(ctx, time.Unix(15, 0).UTC(), time.Unix(25, 0).UTC())
+	if err != nil {
+		t.Fatalf("ClaimEventsSince: %v", err)
+	}
+	if len(got) != 1 || got[0].ClaimID != "c2" {
+		t.Fatalf("got %+v, want only c2 (in [15,25])", got)
+	}
+
+	all, err := s.ClaimEventsSince(ctx, time.Unix(0, 0).UTC(), time.Unix(100, 0).UTC())
+	if err != nil {
+		t.Fatalf("ClaimEventsSince (full window): %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("got %d events, want 3", len(all))
+	}
+}
+
+// TestSQLiteStore_ClaimEventsSince_EmptyStore_EmptySlice (Q-6).
+func TestSQLiteStore_ClaimEventsSince_EmptyStore_EmptySlice(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	got, err := s.ClaimEventsSince(ctx, time.Unix(0, 0).UTC(), time.Unix(100, 0).UTC())
+	if err != nil {
+		t.Fatalf("ClaimEventsSince: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %d events, want 0", len(got))
 	}
 }
 
@@ -596,5 +783,75 @@ func TestSQLite_ReaderDuringWriter(t *testing.T) {
 	// Clean up: roll back the writer's uncommitted transaction.
 	if err := tx.Rollback(); err != nil {
 		t.Fatalf("writer Rollback: %v", err)
+	}
+}
+
+// ─── Q-3: marshalRejectionReasons / unmarshalRejectionReasons ──────────────
+
+func TestMarshalRejectionReasons_NilRoundTripsAsEmptyArray(t *testing.T) {
+	got, err := marshalRejectionReasons(nil)
+	if err != nil {
+		t.Fatalf("marshalRejectionReasons(nil): %v", err)
+	}
+	if got != "[]" {
+		t.Fatalf("marshalRejectionReasons(nil) = %q, want \"[]\"", got)
+	}
+	if back := unmarshalRejectionReasons(got); back != nil {
+		t.Fatalf("unmarshalRejectionReasons(%q) = %+v, want nil", got, back)
+	}
+}
+
+func TestMarshalRejectionReasons_RoundTripsRealData(t *testing.T) {
+	want := []core.RejectionBreakdown{
+		{Cause: "malformed", Count: 2, Samples: []string{"a: empty rule"}},
+		{Cause: "over-broad", Count: 1},
+	}
+	encoded, err := marshalRejectionReasons(want)
+	if err != nil {
+		t.Fatalf("marshalRejectionReasons: %v", err)
+	}
+	got := unmarshalRejectionReasons(encoded)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("round-trip = %+v, want %+v", got, want)
+	}
+}
+
+func TestUnmarshalRejectionReasons_LegacyEmptyString_Nil(t *testing.T) {
+	if got := unmarshalRejectionReasons(""); got != nil {
+		t.Fatalf("unmarshalRejectionReasons(\"\") = %+v, want nil (legacy pre-migration row)", got)
+	}
+}
+
+func TestUnmarshalRejectionReasons_Malformed_DegradesToNilNotError(t *testing.T) {
+	if got := unmarshalRejectionReasons("not valid json"); got != nil {
+		t.Fatalf("unmarshalRejectionReasons(malformed) = %+v, want nil (lenient degrade, never a panic/error)", got)
+	}
+}
+
+// ─── Q-6: queryClaimEventsSince ─────────────────────────────────────────────
+
+func TestQueryClaimEventsSince_FiltersByWindow(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+	ctx := context.Background()
+
+	events := []core.ClaimEvent{
+		{ClaimID: "c1", Verdict: "superseded", Author: "review", At: time.Unix(10, 0).UTC()},
+		{ClaimID: "c2", Verdict: "refuted", Author: "human", At: time.Unix(20, 0).UTC()},
+	}
+	for _, ev := range events {
+		if err := s.AppendClaimEvent(ctx, ev); err != nil {
+			t.Fatalf("AppendClaimEvent: %v", err)
+		}
+	}
+	got, err := queryClaimEventsSince(ctx, s.db, time.Unix(15, 0).UTC(), time.Unix(25, 0).UTC())
+	if err != nil {
+		t.Fatalf("queryClaimEventsSince: %v", err)
+	}
+	if len(got) != 1 || got[0].ClaimID != "c2" {
+		t.Fatalf("got %+v, want only c2", got)
 	}
 }

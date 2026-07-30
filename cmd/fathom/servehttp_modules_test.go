@@ -101,7 +101,7 @@ func newModulesTestHandler(t *testing.T, modulesToken string) http.Handler {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	return newHTTPHandlerWithAuth(srv, modulesToken)
+	return newHTTPHandlerWithAuth(srv, c, modulesToken)
 }
 
 func TestServeHTTPModulesSurface_ListsMountedModule(t *testing.T) {
