@@ -99,13 +99,21 @@ type ResearchReport struct {
 	ModuleRulesServed map[string]int `json:"module_rules_served,omitempty"`
 	ModuleServingNote string         `json:"module_serving_note"`
 
-	VerifyClaimed                 int    `json:"verify_claimed"`
-	VerifyVerified                int    `json:"verify_verified"`
-	VerifyFailing                 int    `json:"verify_failing"`
-	VerifyInstrumentedCalls       int    `json:"verify_instrumented_calls"`
-	VerifyPredatesInstrumentation int    `json:"verify_predates_instrumentation"`
-	ReviewActiveFindings          int    `json:"review_active_findings"`
-	VerifyNote                    string `json:"verify_note"`
+	VerifyClaimed                 int `json:"verify_claimed"`
+	VerifyVerified                int `json:"verify_verified"`
+	VerifyFailing                 int `json:"verify_failing"`
+	VerifyInstrumentedCalls       int `json:"verify_instrumented_calls"`
+	VerifyPredatesInstrumentation int `json:"verify_predates_instrumentation"`
+	// ReviewActiveFindings (O20's fix, docs/dogfood-observations.md) is a
+	// SNAPSHOT — the active-finding count as of the most recent "review"
+	// call in the window — never a sum across every review call seen
+	// (that was the bug: a window with many pushes summed many identical
+	// snapshots into an implausible total). ReviewActiveFindingsNote
+	// always explains which call the number is "as of", or why there is
+	// none.
+	ReviewActiveFindings     int    `json:"review_active_findings"`
+	ReviewActiveFindingsNote string `json:"review_active_findings_note"`
+	VerifyNote               string `json:"verify_note"`
 
 	StalenessReportCalls int    `json:"staleness_report_calls"`
 	StalenessNote        string `json:"staleness_note,omitempty"`
@@ -457,7 +465,8 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 	toolCalls := map[string]int{}
 	staleness := 0
 	agentSurface := 0
-	var verifyClaimed, verifyVerified, verifyFailing, verifyInstrumented, verifyPredates, reviewActive int
+	var verifyClaimed, verifyVerified, verifyFailing, verifyInstrumented, verifyPredates int
+	var reviewSnapshots []metrics.ReviewCallSnapshot
 
 	for _, e := range in.entries {
 		ts, ok := parseCallLogTS(e.TS)
@@ -488,9 +497,13 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 					verifyVerified += e.VerdictOutcome["verified"]
 					verifyFailing += e.VerdictOutcome["failing"]
 				case "review":
-					for _, n := range e.VerdictOutcome {
-						reviewActive += n
-					}
+					// O20's fix (docs/dogfood-observations.md): a "review"
+					// call's verdict_outcome is a SNAPSHOT of active
+					// findings as of THAT run, not an event to sum across
+					// every call in the window — see
+					// metrics.LatestReviewActiveFindings's own doc comment
+					// for the full root-cause account.
+					reviewSnapshots = append(reviewSnapshots, metrics.ReviewCallSnapshot{At: ts, Outcome: e.VerdictOutcome})
 				}
 			}
 		}
@@ -502,8 +515,15 @@ func buildResearchReport(in researchReportInputs) ResearchReport {
 		r.StalenessNote = "not measurable: call log absent/unreadable at " + in.callLogPath
 	}
 
+	reviewActive, reviewCalls, reviewOK := metrics.LatestReviewActiveFindings(reviewSnapshots)
 	r.VerifyClaimed, r.VerifyVerified, r.VerifyFailing = verifyClaimed, verifyVerified, verifyFailing
-	r.VerifyInstrumentedCalls, r.VerifyPredatesInstrumentation, r.ReviewActiveFindings = verifyInstrumented, verifyPredates, reviewActive
+	r.VerifyInstrumentedCalls, r.VerifyPredatesInstrumentation = verifyInstrumented, verifyPredates
+	if reviewOK {
+		r.ReviewActiveFindings = reviewActive
+		r.ReviewActiveFindingsNote = fmt.Sprintf("as of the most recent of %d \"review\" call(s) in this window — a snapshot, not a sum across calls", reviewCalls)
+	} else {
+		r.ReviewActiveFindingsNote = "not measurable: no \"review\" calls with a verdict_outcome in this window"
+	}
 	switch {
 	case verifyInstrumented == 0 && verifyPredates == 0:
 		r.VerifyNote = "no verify_plan/review calls in this window"

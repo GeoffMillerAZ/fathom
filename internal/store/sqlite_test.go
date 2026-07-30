@@ -346,6 +346,111 @@ CREATE TABLE compile_runs (
 	}
 }
 
+// TestSQLiteStore_ClaimsForService_LegacyRowMissingClassColumn_DegradesToEmpty
+// (docs/design/findings-as-evidence.md §3.2/§6 item 2): a store created
+// before the `class` column existed on semantic_claims — the migration adds
+// it, and the pre-existing row reads back with Class=="" (SQLite's own
+// column DEFAULT ”), never an error.
+func TestSQLiteStore_ClaimsForService_LegacyRowMissingClassColumn_DegradesToEmpty(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "legacy-class.sqlite")
+
+	raw, err := sql.Open("sqlite", "file:"+path)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	if _, err := raw.Exec(`
+CREATE TABLE semantic_claims (
+    service_id             TEXT   NOT NULL,
+    claim_id               TEXT   NOT NULL,
+    layer                  TEXT   NOT NULL DEFAULT '',
+    layer_version          TEXT   NOT NULL DEFAULT '',
+    kind                   TEXT   NOT NULL DEFAULT '',
+    subject                TEXT   NOT NULL DEFAULT '',
+    rule                   TEXT   NOT NULL DEFAULT '',
+    scope                  TEXT   NOT NULL DEFAULT '[]',
+    tier                   TEXT   NOT NULL DEFAULT '',
+    tier_profile           TEXT   NOT NULL DEFAULT '',
+    status                 TEXT   NOT NULL DEFAULT '',
+    model                  TEXT   NOT NULL DEFAULT '',
+    prompt_version         TEXT   NOT NULL DEFAULT '',
+    repro_key              TEXT   NOT NULL DEFAULT '',
+    input_digest           TEXT   NOT NULL DEFAULT '',
+    compiled_at_watermark  TEXT   NOT NULL DEFAULT '',
+    compiled_at            BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (service_id, claim_id)
+)`); err != nil {
+		t.Fatalf("create legacy semantic_claims table: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO semantic_claims (service_id, claim_id, layer, kind, subject, rule, status)
+		 VALUES ('legacy-svc', 'legacy-claim', 'findings', 'finding', 'subj', 'rule text', 'fresh')`,
+	); err != nil {
+		t.Fatalf("insert legacy claim: %v", err)
+	}
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+
+	s, err := NewSQLiteStore(path)
+	if err != nil {
+		t.Fatalf("NewSQLiteStore on legacy file: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	ctx := context.Background()
+	got, err := s.ClaimsForService(ctx, "legacy-svc", "findings")
+	if err != nil {
+		t.Fatalf("ClaimsForService on migrated legacy store: %v", err)
+	}
+	if len(got) != 1 || got[0].ClaimID != "legacy-claim" || got[0].Class != "" {
+		t.Fatalf("legacy claim: got %+v, want 1 row with empty Class", got)
+	}
+}
+
+// TestScanClaims_RoundTripsClass calls scanClaims DIRECTLY against a real
+// *sql.Rows (docs/plans/expert-suite-r.md R-6) — mirroring Q-3's own
+// discovery, verify's test_reaches cannot resolve a hop through
+// ClaimsForService (implemented by both SQLiteStore and MemoryStore, an
+// AMBIGUOUS bare method name at the syntax-only resolver's byName index)
+// even though scanClaims itself is a unique, unambiguous free function; a
+// test that calls scanClaims by name directly is the fix, not a weaker
+// claim.
+func TestScanClaims_RoundTripsClass(t *testing.T) {
+	s, err := NewSQLiteStore("")
+	if err != nil {
+		t.Fatalf("NewSQLiteStore: %v", err)
+	}
+	t.Cleanup(func() { _ = s.Close() })
+
+	claim := core.SemanticClaim{
+		ClaimID: "scan-claims-direct", ServiceID: "svc", Layer: "findings", Kind: "finding",
+		Subject: "site#1", Rule: "rule text", Status: core.ClaimFresh, Class: core.FindingClassSecurity,
+	}
+	if err := s.PutClaims(context.Background(), []core.SemanticClaim{claim}, nil); err != nil {
+		t.Fatalf("PutClaims: %v", err)
+	}
+
+	rows, err := s.db.QueryContext(context.Background(), `
+SELECT service_id, claim_id, layer, layer_version, kind, subject, rule, scope,
+	tier, tier_profile, status, model, prompt_version, repro_key, input_digest,
+	compiled_at_watermark, compiled_at, class
+FROM semantic_claims WHERE claim_id = ?
+`, "scan-claims-direct")
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+
+	got, err := scanClaims(rows)
+	if err != nil {
+		t.Fatalf("scanClaims: %v", err)
+	}
+	if len(got) != 1 || got[0].Class != core.FindingClassSecurity {
+		t.Fatalf("scanClaims = %+v, want 1 claim with Class=%q", got, core.FindingClassSecurity)
+	}
+}
+
 // TestSQLiteStore_ClaimEventsSince_FiltersByWindow (Q-6).
 func TestSQLiteStore_ClaimEventsSince_FiltersByWindow(t *testing.T) {
 	s, err := NewSQLiteStore("")

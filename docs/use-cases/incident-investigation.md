@@ -26,6 +26,7 @@ Triage a production symptom fast using pre-computed call graphs, complexity hots
 | `evidence_summary` | MCP tool | Per-tier observation counts (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) — signals how much to trust the index |
 | `community` | MCP tool | Related symbols: callers, callees, and co-located symbols in the same package or file |
 | `traverse` | MCP tool | BFS over typed edges (calls, imports, spec-refs, routes, env-keys) from a starting symbol or route |
+| `findings_near` | MCP tool | Prior review/audit findings whose scope lies within N call-graph hops of a symbol or file, ranked by proximity then recency — "has anyone seen this before?" (docs/design/findings-as-evidence.md) |
 | `staleness_report` | MCP tool | Whether the index has fallen behind HEAD; `reingest_recommended: true` means results may be stale |
 
 ---
@@ -144,11 +145,19 @@ Returns: `{ "members": ["HandleCheckout", "CartService", "ErrInvalidCart", "Test
 
 At this point you have: the failing entry point, the blast radius of the deploy, the regressing commit, a contradiction that explains the runtime confusion, and a tight symbol community to read. That is enough to open the right files with full context.
 
+**9. Check whether this failure class has shown up here before.**
+
+```json
+{ "name": "findings_near", "arguments": { "service": "checkout-service", "subject": "ValidateCart", "hops": 2 } }
+```
+
+Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-handling", "rule": "Propagate the cart-validation error instead of swallowing it.", "scope": ["internal/cart/validate.go"], "status": "fresh", "hops": 0, "superseded": false }] }` — a **live** `error-handling` finding scoped directly to the file the refactor just touched: this failure class was already flagged here, unresolved. Pass `include_superseded: true` to also see PRECEDENT — findings already fixed nearby, each labeled `superseded: true` so it never reads as still live. This is the query only fathom can answer: it already has the call graph and the review history in the same store.
+
 ---
 
 ## Setup & notes
 
-**Profile.** Set `investigation` before running these tools. It activates the investigation group (which includes `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`) plus the shared group. Some tools (`entrypoints`, `staleness_report`) are available in any profile. (`set_profile` is available on stdio `serve-mcp` only; over the shared HTTP daemon, register against `POST /rpc/investigation` instead.)
+**Profile.** Set `investigation` before running these tools. It activates the investigation group (which includes `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`) plus the shared group. Some tools (`entrypoints`, `staleness_report`) are available in any profile. (`set_profile` is available on stdio `serve-mcp` only; over the shared HTTP daemon, register against `POST /rpc/investigation` instead.)
 
 ```json
 { "name": "set_profile", "arguments": { "profile": "investigation" } }
@@ -172,4 +181,4 @@ At this point you have: the failing entry point, the blast radius of the deploy,
 
 ## Maintained
 
-This doc covers: `investigate_incident`, `entrypoints`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `staleness_report`, `set_profile`, `ingest`. Update it when these change.
+This doc covers: `investigate_incident`, `entrypoints`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `staleness_report`, `set_profile`, `ingest`. Update it when these change.

@@ -134,6 +134,65 @@ func TestBuildResearchReport_GuardedEditsNeverFired(t *testing.T) {
 	}
 }
 
+// TestBuildResearchReport_ReviewActiveFindings_O20Fix is O20's fixture-
+// pinned regression test at the buildResearchReport level (docs/dogfood-
+// observations.md O20: review_active_findings=251783 on a repo with ~250
+// real findings). The fixture is a KNOWN size: 40 "review" call-log rows
+// (one per push over the window) each reporting the SAME 253 active
+// findings across two dimensions — the pre-fix formula (sum every call's
+// verdict_outcome) would report 40*253=10120; the fix must report the most
+// recent call's own 253.
+func TestBuildResearchReport_ReviewActiveFindings_O20Fix(t *testing.T) {
+	since := mustParseTime(t, "2026-07-01T00:00:00Z")
+	until := mustParseTime(t, "2026-07-30T00:00:00Z")
+
+	var entries []adoptionCallEntry
+	for i := 0; i < 40; i++ {
+		ts := since.Add(time.Duration(i) * 12 * time.Hour)
+		entries = append(entries, adoptionCallEntry{
+			TS: ts.Format(time.RFC3339), Tool: "review", Surface: "cli", Service: "fathom", LatencyMS: 50,
+			VerdictOutcome: map[string]int{"arch_conformance": 200, "spec_coverage": 53},
+		})
+	}
+
+	r := buildResearchReport(researchReportInputs{
+		service: "fathom", since: since, until: until, now: until,
+		callLogPath: "workspace/logs/mcp-calls.jsonl", callLogRead: true, entries: entries,
+	})
+
+	const want = 253
+	if r.ReviewActiveFindings != want {
+		t.Errorf("ReviewActiveFindings = %d, want %d (the latest review call's own snapshot)", r.ReviewActiveFindings, want)
+	}
+	const buggySum = 40 * 253
+	if r.ReviewActiveFindings == buggySum {
+		t.Fatalf("ReviewActiveFindings reproduces the pre-fix O20 bug: summed across all 40 calls = %d", buggySum)
+	}
+	if r.ReviewActiveFindingsNote == "" || strings.Contains(r.ReviewActiveFindingsNote, "not measurable") {
+		t.Errorf("ReviewActiveFindingsNote = %q, want a measured-snapshot note (review calls were present)", r.ReviewActiveFindingsNote)
+	}
+}
+
+// TestBuildResearchReport_ReviewActiveFindings_NoReviewCalls_HonestNote
+// proves the absent-instrument path never renders a fabricated zero.
+func TestBuildResearchReport_ReviewActiveFindings_NoReviewCalls_HonestNote(t *testing.T) {
+	since := mustParseTime(t, "2026-07-21T00:00:00Z")
+	until := mustParseTime(t, "2026-07-28T00:00:00Z")
+	r := buildResearchReport(researchReportInputs{
+		service: "fathom", since: since, until: until, now: until,
+		callLogPath: "workspace/logs/mcp-calls.jsonl", callLogRead: true,
+		entries: []adoptionCallEntry{
+			{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent", Service: "fathom", LatencyMS: 10},
+		},
+	})
+	if r.ReviewActiveFindings != 0 {
+		t.Errorf("ReviewActiveFindings = %d, want 0 (no review calls in window)", r.ReviewActiveFindings)
+	}
+	if !strings.Contains(r.ReviewActiveFindingsNote, "not measurable") {
+		t.Errorf("ReviewActiveFindingsNote = %q, want the honest not-measurable note", r.ReviewActiveFindingsNote)
+	}
+}
+
 // ─── buildResearchReport: the pure, deterministic core ─────────────────────
 
 func TestBuildResearchReport_Golden(t *testing.T) {

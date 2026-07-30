@@ -1,0 +1,47 @@
+{
+  "docs": ["corpus.md"],
+  "probes": [
+    "internal/store/pool.go",
+    "internal/query/engine.go",
+    "internal/cache/lru.go",
+    "internal/auth/token.go",
+    "internal/mcp/dispatch.go",
+    "internal/httpapi/handler.go",
+    "docs/design/notes.md"
+  ],
+  "rules": [
+    {
+      "key": "pool-leak-resource-leak",
+      "cite_substr": "Close the pooled connection on every error return",
+      "governs": ["internal/store/pool.go"],
+      "trap_must_not_govern": ["docs/design/notes.md"]
+    },
+    {
+      "key": "ignored-write-error-error-handling",
+      "cite_substr": "propagate the error returned by the flush call",
+      "governs": ["internal/query/engine.go"]
+    },
+    {
+      "key": "cache-map-race-concurrency",
+      "cite_substr": "Guard internal/cache/lru.go's Get/Set pair with the existing mutex",
+      "governs": ["internal/cache/lru.go"],
+      "trap_must_not_govern": ["internal/store/pool.go"]
+    },
+    {
+      "key": "token-compare-security",
+      "cite_substr": "constant-time comparison",
+      "governs": ["internal/auth/token.go"]
+    },
+    {
+      "key": "dispatch-rebuild-performance",
+      "cite_substr": "Cache the routing table in internal/mcp/dispatch.go's Route",
+      "governs": ["internal/mcp/dispatch.go"]
+    },
+    {
+      "key": "handler-contract-violation",
+      "cite_substr": "documented error envelope shape",
+      "governs": ["internal/httpapi/handler.go"],
+      "trap_must_not_govern": ["docs/design/notes.md"]
+    }
+  ]
+}

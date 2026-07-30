@@ -453,3 +453,24 @@ func TestClient_AppendClaimEvent_RoundTrips(t *testing.T) {
 		t.Errorf("event = %+v, want %+v", events[0], ev)
 	}
 }
+
+// TestClient_ClaimEventsSince_RoundTrips (docs/design/findings-as-
+// evidence.md §6 items 3/7).
+func TestClient_ClaimEventsSince_RoundTrips(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := client.New(connector.NewLocalConnector(), st)
+	defer c.Close()
+
+	in := core.ClaimEvent{ClaimID: "cl-5", Verdict: "superseded", At: time.Unix(1700000100, 0).UTC(), ResolutionKind: core.ResolutionCodeChange, ResolutionCommit: "abc"}
+	if err := c.AppendClaimEvent(ctx, in); err != nil {
+		t.Fatalf("AppendClaimEvent: %v", err)
+	}
+	got, err := c.ClaimEventsSince(ctx, time.Unix(1700000000, 0).UTC(), time.Unix(1700000200, 0).UTC())
+	if err != nil {
+		t.Fatalf("ClaimEventsSince: %v", err)
+	}
+	if len(got) != 1 || got[0].ClaimID != "cl-5" || got[0].ResolutionKind != core.ResolutionCodeChange {
+		t.Fatalf("got %+v, want 1 event for cl-5 with ResolutionKind=%q", got, core.ResolutionCodeChange)
+	}
+}

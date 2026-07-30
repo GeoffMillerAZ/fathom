@@ -1440,6 +1440,80 @@ func storeContract(t *testing.T, s Store) {
 	})
 
 	// ------------------------------------------------------------------ //
+	// Findings-as-evidence (docs/design/findings-as-evidence.md §3.2/§3.4,
+	// §6 items 2/4): a finding-kind claim's Class round-trips through
+	// PutClaims/ClaimsForService, and a "superseded" claim_event's
+	// ResolutionKind/ResolutionCommit round-trip through
+	// AppendClaimEvent/ClaimEvents — both fields additive on every backend.
+	// ------------------------------------------------------------------ //
+	t.Run("finding_class_round_trips", func(t *testing.T) {
+		claim := core.SemanticClaim{
+			ClaimID: "finding-class-1", ServiceID: "svc-findingclass", Layer: "findings", Kind: "finding",
+			Subject: "arch_conformance#pkg.Foo", Rule: "no import cycle", Status: core.ClaimFresh,
+			Class: core.FindingClassConformance,
+		}
+		if err := s.PutClaims(ctx, []core.SemanticClaim{claim}, nil); err != nil {
+			t.Fatalf("PutClaims: %v", err)
+		}
+		got, err := s.ClaimsForService(ctx, "svc-findingclass", "findings")
+		if err != nil {
+			t.Fatalf("ClaimsForService: %v", err)
+		}
+		if len(got) != 1 || got[0].Class != core.FindingClassConformance {
+			t.Fatalf("got %+v, want 1 claim with Class=%q", got, core.FindingClassConformance)
+		}
+
+		// A non-finding claim with no Class set round-trips as "".
+		plain := core.SemanticClaim{
+			ClaimID: "finding-class-2", ServiceID: "svc-findingclass", Layer: "obligations", Kind: "obligation",
+			Subject: "x", Rule: "y", Status: core.ClaimFresh,
+		}
+		if err := s.PutClaims(ctx, []core.SemanticClaim{plain}, nil); err != nil {
+			t.Fatalf("PutClaims plain: %v", err)
+		}
+		got2, err := s.ClaimsForService(ctx, "svc-findingclass", "obligations")
+		if err != nil {
+			t.Fatalf("ClaimsForService obligations: %v", err)
+		}
+		if len(got2) != 1 || got2[0].Class != "" {
+			t.Fatalf("got %+v, want 1 claim with empty Class", got2)
+		}
+	})
+
+	t.Run("claim_event_resolution_kind_round_trips", func(t *testing.T) {
+		ev := core.ClaimEvent{
+			ClaimID: "resolution-evt-1", Verdict: "superseded", Author: "review",
+			Note: "finding fixed", At: time.Unix(5000, 0).UTC(),
+			ResolutionKind: core.ResolutionCodeChange, ResolutionCommit: "abc123",
+		}
+		if err := s.AppendClaimEvent(ctx, ev); err != nil {
+			t.Fatalf("AppendClaimEvent: %v", err)
+		}
+		got, err := s.ClaimEvents(ctx, "resolution-evt-1")
+		if err != nil {
+			t.Fatalf("ClaimEvents: %v", err)
+		}
+		if len(got) != 1 || got[0].ResolutionKind != core.ResolutionCodeChange || got[0].ResolutionCommit != "abc123" {
+			t.Fatalf("got %+v, want ResolutionKind=%q ResolutionCommit=%q", got, core.ResolutionCodeChange, "abc123")
+		}
+
+		// A refuted event never sets ResolutionKind (it's a separate,
+		// self-describing outcome — see ClaimEvent.ResolutionKind's doc
+		// comment) — round-trips as empty.
+		refuted := core.ClaimEvent{ClaimID: "resolution-evt-2", Verdict: "refuted", Author: "human", At: time.Unix(6000, 0).UTC()}
+		if err := s.AppendClaimEvent(ctx, refuted); err != nil {
+			t.Fatalf("AppendClaimEvent refuted: %v", err)
+		}
+		gotRefuted, err := s.ClaimEvents(ctx, "resolution-evt-2")
+		if err != nil {
+			t.Fatalf("ClaimEvents refuted: %v", err)
+		}
+		if len(gotRefuted) != 1 || gotRefuted[0].ResolutionKind != "" || gotRefuted[0].ResolutionCommit != "" {
+			t.Fatalf("got %+v, want empty ResolutionKind/ResolutionCommit", gotRefuted)
+		}
+	})
+
+	// ------------------------------------------------------------------ //
 	// D2 (docs/plans/expert-depth.md): the refute/contradict write path
 	// always pairs a status flip (SetClaimStatus) with an append-only audit
 	// row (AppendClaimEvent) — the obligations tool's feedback action does

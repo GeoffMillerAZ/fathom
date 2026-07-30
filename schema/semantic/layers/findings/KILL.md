@@ -11,10 +11,14 @@ in production via `fathom report` + `fathom claim`
 (`ClaimsSummary`), and human refute/corroborate call volume (`fathom claim`)
 — tracked via the store, not this file.
 
-**Revival/kill trigger:** none scheduled. `eval/` fixtures for this layer are
-not yet seeded (findings corpora vary per project — the built-in prompt has
-not yet needed the same fixture-driven precision gate obligations required,
-since findings restate a human's own review conclusion rather than infer
-scope from open-ended prose); a future contributor adding
-`eval/{labels.json,*.md}` here would let `TestObligationsEval`-style gating
-extend to this layer too.
+**Revival/kill trigger:** none scheduled. `eval/{labels.json,corpus.md}`
+were seeded by docs/design/findings-as-evidence.md's own §6 item 5 (the
+promotion rule behind the findings layer's eval gate, `fathom findings
+status`'s entry-condition work) — 6 labeled findings across 6 distinct
+classes plus 2 traps (a resolved finding, a background-context section)
+that must produce no claim, mirroring adr-rules' own fixture shape
+(`eval/RESULTS.md`). The gate has NOT yet been run against a real model
+(`TestFindingsEval_Precision`, `internal/semantic/eval_test.go`, skipped
+without `FATHOM_EVAL_LLM=1` — see `eval/RESULTS.md` for the exact command
+and its current "not yet run" status); `layer.cue`'s `evaled` stays
+unflipped (defaults false) until a real run passes.

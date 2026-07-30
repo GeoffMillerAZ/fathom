@@ -90,6 +90,7 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 	fmt.Fprintln(w, "\nverify gate:")
 	fmt.Fprintf(w, "  claimed=%d verified=%d failing=%d review_active_findings=%d\n", r.VerifyClaimed, r.VerifyVerified, r.VerifyFailing, r.ReviewActiveFindings)
 	fmt.Fprintf(w, "  %s\n", r.VerifyNote)
+	fmt.Fprintf(w, "  %s\n", r.ReviewActiveFindingsNote)
 
 	fmt.Fprintln(w, "\nstaleness:")
 	if r.StalenessNote != "" {

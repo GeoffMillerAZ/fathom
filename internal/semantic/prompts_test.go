@@ -97,9 +97,13 @@ func TestObligationsPromptVersion_Pinned(t *testing.T) {
 }
 
 // TestFindingsPromptVersion_Pinned mirrors the obligations pin for the
-// findings layer's prompt, extracted the same way.
+// findings layer's prompt, extracted the same way. Bumped by the
+// findings-as-evidence class-vocabulary prompt edit (docs/design/findings-
+// as-evidence.md §3.2, §6 item 2) — the prompt now instructs the reviewer
+// to emit a "class" field, which is exactly the kind of change this pin
+// exists to make loud rather than silent.
 func TestFindingsPromptVersion_Pinned(t *testing.T) {
-	const want = "findings/c350ff1a"
+	const want = "findings/6400b14f"
 	if got := findingsPromptVersion(); got != want {
 		t.Fatalf("findingsPromptVersion() = %q, want %q (LC-1 must not rotate the findings compile identity)", got, want)
 	}

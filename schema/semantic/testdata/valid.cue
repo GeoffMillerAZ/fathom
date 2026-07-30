@@ -14,3 +14,17 @@ failureMode: #Layer & {
 		max_usd_per_run:    0.5
 	}
 }
+
+// Every #FindingClass value validates (docs/design/findings-as-evidence.md
+// §3.2, §6 item 2) — a positive instance per vocabulary member, kept in
+// findingclass.cue's own declared order.
+findingClassCorrectness:        #FindingClass & "correctness"
+findingClassContractViolation:  #FindingClass & "contract-violation"
+findingClassResourceLeak:       #FindingClass & "resource-leak"
+findingClassErrorHandling:      #FindingClass & "error-handling"
+findingClassConcurrency:        #FindingClass & "concurrency"
+findingClassSecurity:           #FindingClass & "security"
+findingClassConfigDrift:        #FindingClass & "config-drift"
+findingClassTestGap:            #FindingClass & "test-gap"
+findingClassPerformance:        #FindingClass & "performance"
+findingClassConformance:        #FindingClass & "conformance"

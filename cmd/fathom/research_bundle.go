@@ -22,6 +22,7 @@ import (
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
+	"github.com/geoffmilleraz/fathom/internal/metrics"
 	"github.com/geoffmilleraz/fathom/internal/research/bundle"
 )
 
@@ -207,7 +208,8 @@ func aggregateBundleInput(
 	serviceCalls := map[string]int{}
 	var latencies []float64
 	total := 0
-	var verifyClaimed, verifyVerified, verifyFailing, verifyInstrumented, verifyPredates, reviewActive int
+	var verifyClaimed, verifyVerified, verifyFailing, verifyInstrumented, verifyPredates int
+	var reviewSnapshots []metrics.ReviewCallSnapshot
 	staleness := 0
 
 	for _, e := range entries {
@@ -244,13 +246,15 @@ func aggregateBundleInput(
 					verifyVerified += e.VerdictOutcome["verified"]
 					verifyFailing += e.VerdictOutcome["failing"]
 				case "review":
-					for _, n := range e.VerdictOutcome {
-						reviewActive += n
-					}
+					// O20's fix — see metrics.LatestReviewActiveFindings's
+					// doc comment: a "review" call's verdict_outcome is a
+					// snapshot, never an event to sum across the window.
+					reviewSnapshots = append(reviewSnapshots, metrics.ReviewCallSnapshot{At: ts, Outcome: e.VerdictOutcome})
 				}
 			}
 		}
 	}
+	reviewActive, _, _ := metrics.LatestReviewActiveFindings(reviewSnapshots)
 
 	in := bundle.Input{
 		WindowSince:   since.Format(time.RFC3339),
