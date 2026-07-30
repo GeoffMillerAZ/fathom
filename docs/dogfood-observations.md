@@ -19,6 +19,49 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O19 — a copied prompt does not transfer across corpora: 202 of 219 claims rejected on the first real platform pack (7.8% acceptance)
+
+- **What was run (2026-07-30):** the first REAL platform module —
+  `platform-standards`, compiled from a platform repo's 39 `docs/adr/*.md`
+  plus its `CLAUDE.md`/`AGENTS.md` (41 DocChunks, 210 sections) — using a
+  BYTE COPY of fathom's shipped `adr-rules` prompt (which is eval-gated at
+  1.00/1.00 on *fathom's own* ADR corpus). Result: **17 claims emitted,
+  202 rejected**, budget-stopped at 171/210 sections, $0.256, haiku.
+- **Where the survivors came from (the diagnosis):** 9 from `CLAUDE.md`,
+  6 from `AGENTS.md`, and only **2 from the 39 ADRs** — i.e. the prompt
+  transferred for the *rule-shaped* docs (a CLAUDE.md sentence already reads
+  as an obligation with an implied code scope) and essentially failed for
+  *decision-record prose* (an ADR narrates context/decision/consequences;
+  the emitted scopes did not verify against the corpus, so the compiler's
+  anchor/scope verification correctly rejected them).
+- **Why this matters (it is the taxonomy's own claim, now measured):**
+  ADR-024 says a platform-stratum pack is trusted via *its own* corpus
+  compilation plus *its own* on-disk eval evidence. This run is the first
+  quantitative evidence for WHY: the same prompt at 1.00 precision on one
+  ADR corpus lands at ~8% acceptance on another org's ADR corpus. A
+  platform pack needs a prompt tuned to how ITS corpus expresses
+  obligations, and the eval gate is the instrument that would have caught
+  this before anything served (it did refuse — the compile only ran under
+  `--unsafe-skip-eval-gate`, logged).
+- **Everything downstream behaved correctly, which is the good news:**
+  `module doctor` returned verdict **draft** and refused every promotion
+  with named reasons — eval evidence absent, 3 broken anchors, the
+  three-way watermark check disagreeing, and (the phase-J fix earning its
+  keep) `provenance.compiled_by="unspecified"` caught as not matching the
+  store's actual compile identity `claude-haiku-4-5-20251001`. A module
+  built this way is structurally unbindable, exactly as designed.
+- **Fix direction:** (1) phase L's advisor gets its first concrete job —
+  propose prompt/eval-fixture starting points FROM a draft compile's
+  rejection pattern (the rejections are the signal, and today they are
+  discarded: only a count is reported, no per-section reason is surfaced or
+  stored); (2) `module compile` should report rejection REASONS grouped by
+  cause (scope-unverifiable / anchor-missing / over-broad / malformed) —
+  without them an author cannot act, and the studio cannot render the gap;
+  (3) document that a platform pack starts from a corpus-shaped prompt, not
+  a copied one.
+- **Status:** open. The artifact stays at `draft` on disk as the honest
+  reference case; it is NOT bound by any repo.
+
 ### O17 — `module compile` and its own warning disagree about where a module's layer pack lives; `--root` is undocumented and rejected
 
 - **Symptom (found 2026-07-30 building the first REAL platform module, from
