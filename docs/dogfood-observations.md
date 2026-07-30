@@ -19,6 +19,33 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O21 — the findings layer cannot be eval-gated with the fixture convention every other layer uses
+
+- **Symptom (2026-07-30, first real run of the findings gate):**
+  `FATHOM_EVAL_LLM=1 go test -run TestFindingsEval_Precision` aborts before
+  scoring: `finding drift anchor: indexed file internal/store/pool.go has
+  no stored fingerprint`. No precision/recall number was produced.
+- **Root cause:** the findings layer is the only layer that records
+  **scope-fp links** — the `code_drifted` remediation-drift mechanism
+  (FT-6, docs/vision/03-findings-and-experts.md §2) — so compiling a
+  finding requires every file in its `scope` to already carry a stored
+  fingerprint. `adr-rules`/`obligations` fixtures have no such requirement,
+  and the findings fixtures were authored to that (insufficient) shape.
+  This is a real asymmetry in the layer contract that the fixture
+  convention does not express.
+- **Why it matters:** phase R's tier-promotion path is gated on this eval
+  (`docs/design/findings-as-evidence.md` §3.5). Until the gate can run,
+  patterns cannot be promoted — correctly, since `PromoteTier` refuses
+  structurally when `!layerEvaled`, so the failure is safe, just blocking.
+- **Fix direction:** either the shared eval harness seeds the scratch store
+  with fingerprints for the fixture's scoped files (preferred — keeps
+  fixtures free to scope realistically), or the fixtures scope only to
+  files the harness already indexes (cheaper, less faithful). Whichever is
+  chosen, `docs/layers.md` should record that findings has an extra fixture
+  requirement so the next layer author does not rediscover this.
+- **Status:** open, first row of the next findings slice. Nothing about
+  findings precision may be claimed until the gate scores.
+
 ### O20 (PART 2 CLOSED 2026-07-30) — two research-report figures needed verification; the 251,783 count is root-caused and fixed, the module tally still open
 
 Found 2026-07-30 by running `fathom research report --since 168h` on this

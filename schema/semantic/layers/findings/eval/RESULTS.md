@@ -5,7 +5,31 @@ application pairs, recall ≥ 0.75 on labeled rules. Run via the shared harness
 (`internal/semantic/eval_test.go`'s `runLayerEval`,
 `TestFindingsEval_Precision`).
 
-## Status: NOT YET RUN
+## Status: RUN ATTEMPTED 2026-07-30 — BLOCKED BEFORE SCORING (not a precision failure)
+
+    FATHOM_EVAL_LLM=1 go test -run TestFindingsEval_Precision ./internal/semantic/
+    eval lane="anthropic" model="claude-sonnet-4-6"
+    RunEval: semantic: eval compile: semantic: compile
+      corpus.md#wa-101-connection-pool-leak-on-error-path:
+      semantic: finding drift anchor: indexed file internal/store/pool.go
+      has no stored fingerprint
+    --- FAIL (6.42s)
+
+**The gate did not score.** The compile aborted before emitting claims, so
+no precision/recall number exists and none may be quoted. The cause is a
+fixture-shape gap, not model quality: the **findings layer requires
+scope-fp links** (the `code_drifted` remediation-drift mechanism, FT-6) and
+therefore requires every scoped file to carry a stored fingerprint in the
+eval store. `adr-rules` and `obligations` — whose fixture shape these
+fixtures were modeled on — have no such requirement, so the convention that
+was copied is insufficient for this layer.
+
+Fix direction (one focused slice, see O21): the eval harness must seed the
+scratch store with the fixture's scoped files (or the fixtures must scope
+only to files the harness already indexes). Until then `layer.cue` keeps
+`evaled: false`, and `PromoteTier` structurally refuses promotion whenever
+`!layerEvaled` — so nothing serves on an unproven gate regardless of caller
+discipline.
 
 `eval/{labels.json,corpus.md}` were authored by docs/design/findings-as-
 evidence.md's §6 item 5 (2026-07-30): 6 labeled findings, one per class
