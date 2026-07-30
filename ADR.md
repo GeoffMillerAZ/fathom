@@ -358,7 +358,11 @@ the evidence layer can finally carry process weight.
    a wave advances only when every task is claimed-and-verified or
    explicitly skipped. The recorded exit-0 run is the transition record.
 3. **CUE shadow:** `fathom gen-plan-cue` emits a generated-only `#Plan`
-   document and proves lossless round-trip. CUE is output, never authored.
+   document and proves lossless round-trip. **Plan** CUE is output, never
+   authored — this constrains generated `#Plan` documents only, NOT the
+   hand-authored `schema/**` packages every schema in this repo is written
+   as (see CLAUDE.md's "New CUE schemas" convention, which mandates
+   hand-authoring them with valid/invalid testdata).
 4. **Stop hook:** `fathom stop-hook` — newly-claimed-this-session tasks that
    fail verification surface at session end; advisory by default,
    `--block` opt-in; silent on any operational failure.

@@ -19,6 +19,34 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O16 — a compiled obligation over-generalized its scope: ADR-018's "CUE is output, never authored" served on every `schema/**/*.cue` edit
+
+- **Symptom:** while implementing phase O (2026-07-29), the edit-hook injected
+  "Do not hand-author CUE; generate code only via `fathom gen-plan-cue`" on
+  every new `schema/binding/schema.cue` / `schema/guard/schema.cue` edit —
+  files this repo's own CLAUDE.md convention *mandates* hand-authoring
+  (with valid/invalid testdata). Reported by the phase-O worker.
+- **Root cause (source-side, not serving-side):** ADR-018 §3's sentence
+  "CUE is output, never authored" is scoped in prose to the generated `#Plan`
+  shadow, but read standalone it is a universal claim — so the compiler
+  produced a correctly-cited claim whose *scope glob* legitimately covers all
+  CUE. This is the O14 scope-precision class (mis-scoped, not mis-cited):
+  the anchor is right, the blast radius is too wide.
+- **Fix applied:** narrowed the SOURCE (ADR.md §3, this commit) to say
+  explicitly that it constrains generated `#Plan` documents only and NOT the
+  hand-authored `schema/**` packages, pointing at the CLAUDE.md convention.
+  The next compile of `adr-rules` for this service re-derives the claim from
+  the narrowed text; until then the old claim serves with its citation
+  intact (anchor-text healing keeps it honest, O13).
+- **Standing lesson (third instance):** a rule's *prose scope* is invisible
+  to a compiler reading one section — when a binding doc states a universal
+  and means a specific, the claim inherits the universal. Prefer writing the
+  exception into the source sentence over post-hoc claim refutation, since
+  refutation kills the claim where it IS correct (here: plan CUE).
+- **Status:** source narrowed; re-compile pending the next `adr-rules`
+  compile cycle for service `fathom` (no flag-day needed — prompt identity
+  unchanged, only corpus text).
+
 ### O15 — obligations injection genuinely INERT on fathom's own repo since 2026-07-18: the back-compat purge orphaned the hooks' directory-derived service identity
 
 - **Symptom:** found while implementing `fathom doctor` (DI-1/DI-2,
