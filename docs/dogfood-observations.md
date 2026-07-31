@@ -19,6 +19,37 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O22 — `fathom init`'s own scaffolds fail `fathom doctor` on every fresh adoption
+
+- **Symptom (2026-07-31, wiring a real new repo):** `fathom init` writes
+  `.fathom/guard.cue` and `.fathom/modules.cue` as fully-commented, inert
+  templates — correct and deliberate (nothing should apply until the author
+  uncomments and commits). But the loaders require the top-level field, so a
+  fully-commented file is *invalid*, not *empty*:
+  `binding_file FAIL … field "bindings": required, MUST be present` and the
+  same for `guards`. Four dependent checks then SKIP. **Every repo that runs
+  `fathom init` gets two immediate FAILs plus four skips from files fathom
+  itself just wrote.**
+- **Why it matters:** this is the third defect in a row on the *onboarding*
+  path (after init's hook duplication and the scaffold's `?:` optional-field
+  inversion). A first-run experience where the tool's own output fails the
+  tool's own health check is the single most corrosive kind of bug — it
+  teaches a new adopter that doctor's FAILs are noise, which is exactly the
+  opposite of what the never-silent doctrine needs them to believe.
+- **Correct semantics (the fix):** three states, not two.
+  *absent* → "no config" (already PASS);
+  *present but declaring nothing* (all-commented / empty) → "scaffolded,
+  nothing configured yet" → PASS with that note;
+  *present and malformed or wrongly typed* → FAIL loudly, unchanged.
+  The loaders should treat a missing top-level field as an empty config, and
+  doctor should report the scaffolded state distinctly from both "unconfigured"
+  and "broken".
+- **Test that pins it (mirroring the `?:` precedent):** load the ACTUAL
+  `ExampleTemplate()` bytes — the exact scaffold `init` writes — and assert
+  they load clean and doctor-pass. The current tests validate hand-written
+  fixtures, which is why the real scaffold's shape was never exercised.
+- **Status:** open, first row of the next adoption slice.
+
 ### O21 — the findings layer cannot be eval-gated with the fixture convention every other layer uses
 
 - **Symptom (2026-07-30, first real run of the findings gate):**
