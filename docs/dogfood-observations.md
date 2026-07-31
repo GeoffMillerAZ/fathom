@@ -19,6 +19,47 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O23 — `fathom doctor` cries wolf in every repo that is not fathom: three repo-relative assumptions that only hold at home
+
+- **Symptom (2026-07-31, first `doctor` run inside a freshly-adopted repo):**
+  after O22's scaffold fix, `doctor` in a normal adopter repo still reports
+  three FAILs that are all doctor's own bugs, not the repo's:
+  1. `binary_fresh FAIL — binary @ a0b74df3 does not match HEAD 061afdba`.
+     `061afdba` is the ADOPTER's HEAD. The binary is fathom's, built from
+     fathom's tree; comparing it to the doctored repo's HEAD is meaningless
+     and fails in literally every repo except fathom.
+  2. `hooks_firing FAIL — call log <adopter>/workspace/logs/mcp-calls.jsonl
+     not found — no hook has ever written to it`. The call log lives with
+     the DAEMON (fathom's workspace, or the configured `[daemon].call_log`),
+     not under the repo being doctored. Hooks were in fact firing.
+  3. `obligations_served FAIL` because it probes `CLAUDE.md` specifically,
+     and this repo's compiled rules are code-scoped (`**/*.go`). Verified
+     directly: the same service serves **6 rules on `cmd/conjure/main.go`**.
+     The message is honest about the ambiguity ("or CLAUDE.md specifically
+     is not in any compiled rule's scope"), but as a *check* it reports FAIL
+     for a correctly-working install.
+- **Root cause (one sentence):** `doctor` was written and exercised inside
+  fathom's own repo, where "the repo I am doctoring" and "the repo the
+  binary and daemon came from" are the same directory. They are different in
+  every adopter, and nothing tested that case.
+- **Why it matters now:** this is the **fourth** onboarding-path defect in a
+  row (init hook duplication → the `?:` scaffold inversion → O22's invalid
+  scaffold → this). The owner is adopting fathom across a fleet right now,
+  and a health check that shows 4 red rows on a correctly-wired repo trains
+  people to ignore it — the precise failure O22 already warned about.
+- **Fix direction:** (1) compare `binary_fresh` against the FATHOM source
+  tree the binary reports, not the cwd repo — or skip with a note when the
+  doctored repo is not fathom itself; (2) resolve the call log the same way
+  the daemon does (`[daemon].call_log`, else the daemon's workspace), never
+  relative to the doctored repo; (3) probe `obligations_served` with a file
+  that is actually likely governed — try several candidates (a source file
+  from the service's dominant language, then CLAUDE.md) and report which one
+  answered, or report "no rule scopes match any probe" distinctly from "never
+  compiled". **Test the multi-repo case explicitly:** run doctor against a
+  scratch adopter dir that is NOT the fathom tree and assert zero false FAILs.
+- **Status:** open, next adoption slice. Until fixed, read doctor's output in
+  a non-fathom repo with these three rows discounted.
+
 ### O22 — `fathom init`'s own scaffolds fail `fathom doctor` on every fresh adoption
 
 - **Symptom (2026-07-31, wiring a real new repo):** `fathom init` writes
