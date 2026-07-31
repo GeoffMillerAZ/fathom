@@ -109,6 +109,29 @@ func TestLoadUserGuards_MissingFile(t *testing.T) {
 	}
 }
 
+// TestLoadUserGuards_TopLevelFieldAbsent_IsEmptyNotError is O22's
+// user-scope check (mission: "the user-scope guard loader may have the
+// same shape and should be checked"): it does — LoadUserGuards had the
+// identical !list.Exists() => "required, MUST be present" bug as LoadGuards
+// for a ~/.fathom/guard.cue with no top-level "guards" field (e.g. a
+// hand-copied, all-commented scaffold). A field genuinely absent is an
+// empty config, not an error; an explicit `guards: []` is unchanged.
+func TestLoadUserGuards_TopLevelFieldAbsent_IsEmptyNotError(t *testing.T) {
+	for _, content := range []string{
+		"",
+		"// nothing but a comment\n",
+	} {
+		path := writeGuards(t, content)
+		set, err := LoadUserGuards(path)
+		if err != nil {
+			t.Fatalf("LoadUserGuards(%q) = %v, want a clean empty load", content, err)
+		}
+		if len(set.Guards) != 0 {
+			t.Errorf("LoadUserGuards(%q) Guards = %v, want none", content, set.Guards)
+		}
+	}
+}
+
 func assertLoadUserGuardsForbidsField(t *testing.T, err error, field string) {
 	t.Helper()
 	if err == nil {

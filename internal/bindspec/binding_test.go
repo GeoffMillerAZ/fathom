@@ -285,26 +285,49 @@ func TestValidateStrict_EmptyBindingsFails(t *testing.T) {
 	}
 }
 
-// TestExampleTemplate_IsCommentedNoOp proves the fathom-init scaffold is
-// valid, empty CUE (nothing to bind) — the design's "no active config by
-// default" deliverable enforced structurally, not just by convention.
+// TestExampleTemplate_IsCommentedNoOp pins O22 (docs/dogfood-observations.md):
+// the ACTUAL bytes ExampleTemplate() renders — the exact scaffold `fathom
+// init` writes to .fathom/modules.cue — must load CLEAN as an empty,
+// scaffolded config, not fail with "bindings: required, MUST be present".
+// Before the O22 fix, every fresh `fathom init` failed `doctor`'s
+// binding_file check on a file fathom itself had just written; the
+// fully-commented scaffold has no top-level "bindings" field at all
+// (LookupPath sees it as absent, exactly like an entirely blank file),
+// which is EMPTY, not invalid — only a field that IS present can be
+// malformed. The design's "no active config by default" deliverable is
+// still enforced structurally: LoadBindings reports zero bindings.
 func TestExampleTemplate_IsCommentedNoOp(t *testing.T) {
 	path := writeBindings(t, ExampleTemplate())
-	if _, err := LoadBindings(path); err == nil {
-		t.Fatal("expected an error: a commented-only template has no `bindings` field, which is required")
+	set, err := LoadBindings(path)
+	if err != nil {
+		t.Fatalf("LoadBindings(ExampleTemplate()) = %v, want a clean load (O22: an all-commented scaffold is EMPTY, not invalid)", err)
 	}
-	// But it must still be syntactically valid CUE (cue vet must accept an
-	// empty file) — LoadBindings failing on the REQUIRED bindings field is
-	// the expected, honest failure mode, not a parse error.
-	le, ok := func() (*LoadError, bool) {
-		_, err := LoadBindings(path)
-		e, ok := err.(*LoadError)
-		return e, ok
-	}()
-	if !ok {
-		t.Fatal("expected a *LoadError (missing required field), not a parse failure")
+	if len(set.Bindings) != 0 {
+		t.Errorf("Bindings = %v, want none — the scaffold is fully commented", set.Bindings)
 	}
-	if len(le.Fields) != 1 || le.Fields[0].Field != "bindings" {
-		t.Errorf("LoadError.Fields = %v, want exactly one \"bindings\" field error", le.Fields)
+}
+
+// TestLoadBindings_TopLevelFieldAbsent_IsEmptyNotError is the narrower unit
+// test behind TestExampleTemplate_IsCommentedNoOp: a file with no
+// "bindings" field at all loads as an empty BindingSet, never an error.
+// This is the ONLY way LoadBindings returns a zero-binding result without
+// an error: an explicit `bindings: []` (present but declaring nothing via
+// an empty list) is unchanged and still rejected (TestLoadBindings_Negatives'
+// "empty bindings list" case), so len(set.Bindings)==0 + err==nil
+// unambiguously means "field omitted" — no separate Scaffolded/Empty flag
+// on BindingSet is needed.
+func TestLoadBindings_TopLevelFieldAbsent_IsEmptyNotError(t *testing.T) {
+	for _, content := range []string{
+		"",
+		"// nothing but a comment\n",
+	} {
+		path := writeBindings(t, content)
+		set, err := LoadBindings(path)
+		if err != nil {
+			t.Fatalf("LoadBindings(%q) = %v, want a clean empty load", content, err)
+		}
+		if len(set.Bindings) != 0 {
+			t.Errorf("LoadBindings(%q) Bindings = %v, want none", content, set.Bindings)
+		}
 	}
 }

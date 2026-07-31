@@ -7,6 +7,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/bindspec"
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
 // writeTestBindings mirrors writeGuardCue (edithook_pre_test.go) for
@@ -68,6 +71,38 @@ func TestCheckGuardFile_Invalid_Loud(t *testing.T) {
 	}
 }
 
+// ─── O22: the fathom-init scaffold itself must PASS, not FAIL ─────────────
+//
+// docs/dogfood-observations.md O22: every fresh `fathom init` wrote
+// .fathom/guard.cue and .fathom/modules.cue as fully-commented scaffolds
+// that then failed their own doctor checks. These pin the fix at the
+// doctor layer using the ACTUAL ExampleTemplate() bytes init writes —
+// mirroring guardspec/bindspec's own pinning tests one layer up.
+
+func TestCheckBindingFile_ScaffoldEmpty_Pass(t *testing.T) {
+	root := t.TempDir()
+	writeTestBindings(t, root, bindspec.ExampleTemplate())
+	got := checkBindingFile(root)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass for init's own scaffold", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "scaffold") {
+		t.Errorf("Reason = %q, want it to name the scaffolded-empty state (not just look identical to the plain valid-with-N-bindings pass)", got.Reason)
+	}
+}
+
+func TestCheckGuardFile_ScaffoldEmpty_Pass(t *testing.T) {
+	root := t.TempDir()
+	writeGuardCue(t, root, guardspec.ExampleTemplate())
+	got := checkGuardFile(root)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass for init's own scaffold", got.Status, got.Reason)
+	}
+	if !strings.Contains(got.Reason, "scaffold") {
+		t.Errorf("Reason = %q, want it to name the scaffolded-empty state", got.Reason)
+	}
+}
+
 // ─── binding_modules_mounted ────────────────────────────────────────────────
 
 func TestCheckBindingModulesMounted_NoBindings_Pass(t *testing.T) {
@@ -115,6 +150,22 @@ func TestCheckBindingModulesMounted_Unmounted_Loud(t *testing.T) {
 	}
 }
 
+// TestCheckBindingModulesMounted_ScaffoldEmpty_PassNotSkip is O22's
+// dependent-check assertion: the init scaffold (0 bindings, loaded clean
+// per the loader fix) must let this check run normally against an empty
+// set and pass trivially — never SKIP as "binding_file is invalid".
+func TestCheckBindingModulesMounted_ScaffoldEmpty_PassNotSkip(t *testing.T) {
+	root := t.TempDir()
+	writeTestBindings(t, root, bindspec.ExampleTemplate())
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{})
+	defer srv.Close()
+	hc := &http.Client{Timeout: 2 * time.Second}
+	got := checkBindingModulesMounted(hc, srv.URL, root, true)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass (trivially true over zero bindings), not skipped", got.Status, got.Reason)
+	}
+}
+
 // ─── binding_module_readiness ──────────────────────────────────────────────
 
 func TestCheckBindingModuleReadiness_NotLocal_Skipped(t *testing.T) {
@@ -154,6 +205,22 @@ func TestCheckBindingModuleReadiness_LocalBelowServable_Warn(t *testing.T) {
 	}
 	if !strings.Contains(got.Reason, "draft-module") {
 		t.Errorf("Reason = %q, should name the module", got.Reason)
+	}
+}
+
+// TestCheckBindingModuleReadiness_ScaffoldEmpty_Pass is O22's
+// dependent-check assertion for binding_module_readiness: the init
+// scaffold (0 bindings) must pass trivially, not SKIP as "binding_file is
+// invalid".
+func TestCheckBindingModuleReadiness_ScaffoldEmpty_Pass(t *testing.T) {
+	root := t.TempDir()
+	writeTestBindings(t, root, bindspec.ExampleTemplate())
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{})
+	defer srv.Close()
+	hc := &http.Client{Timeout: 2 * time.Second}
+	got := checkBindingModuleReadiness(hc, srv.URL, root, true)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass, not skipped", got.Status, got.Reason)
 	}
 }
 
@@ -206,6 +273,21 @@ func TestCheckGuardDeadScopes_CommandOnlyGuard_NotedNotFailed(t *testing.T) {
 	}
 }
 
+// TestCheckGuardDeadScopes_ScaffoldEmpty_Pass is O22's dependent-check
+// assertion for guard_dead_scopes: the init scaffold (0 guards) must pass
+// trivially, not SKIP as "guard_file is invalid".
+func TestCheckGuardDeadScopes_ScaffoldEmpty_Pass(t *testing.T) {
+	root := t.TempDir()
+	writeGuardCue(t, root, guardspec.ExampleTemplate())
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{sources: []string{"cmd/main.go"}})
+	defer srv.Close()
+	hc := &http.Client{Timeout: 2 * time.Second}
+	got := checkGuardDeadScopes(hc, srv.URL, root, "svc", true)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass, not skipped", got.Status, got.Reason)
+	}
+}
+
 // ─── guard_include_modules_unbound ─────────────────────────────────────────
 
 func TestCheckGuardIncludeModulesUnbound_NoIncludeModules_Pass(t *testing.T) {
@@ -233,6 +315,57 @@ func TestCheckGuardIncludeModulesUnbound_NoBindings_Warn(t *testing.T) {
 	got := checkGuardIncludeModulesUnbound(root)
 	if got.Status != doctorWarn {
 		t.Errorf("Status = %v, Reason = %q, want warn (include_modules with nothing bound)", got.Status, got.Reason)
+	}
+}
+
+// TestCheckGuardIncludeModulesUnbound_ScaffoldEmpty_Pass is O22's
+// dependent-check assertion for guard_include_modules_unbound: the init
+// scaffold (0 guards) must pass trivially ("no guard sets include_modules"),
+// not SKIP as "guard_file is invalid".
+func TestCheckGuardIncludeModulesUnbound_ScaffoldEmpty_Pass(t *testing.T) {
+	root := t.TempDir()
+	writeGuardCue(t, root, guardspec.ExampleTemplate())
+	got := checkGuardIncludeModulesUnbound(root)
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass, not skipped", got.Status, got.Reason)
+	}
+}
+
+// ─── O22 end-to-end: a real `fathom init` scaffold must clear the whole
+// phase-O checklist with zero FAILs ─────────────────────────────────────
+//
+// This is the deliverable the mission called out as most important: not a
+// hand-authored fixture, but writeFathomConfigScaffolds — the exact
+// function `fathom init` calls (init.go) — writing to a scratch root, then
+// every phase-O check run against that root exactly as `fathom doctor`
+// would. Before the O22 fix this produced two FAILs (binding_file,
+// guard_file) and four SKIPs; after it, every one of the six checks PASSes.
+func TestPhaseOChecks_RealInitScaffold_ZeroFails(t *testing.T) {
+	root := t.TempDir()
+	var stdout strings.Builder
+	if err := writeFathomConfigScaffolds(root, &stdout); err != nil {
+		t.Fatalf("writeFathomConfigScaffolds: %v", err)
+	}
+
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{sources: []string{"cmd/main.go"}})
+	defer srv.Close()
+	hc := &http.Client{Timeout: 2 * time.Second}
+
+	checks := []doctorCheck{
+		checkBindingFile(root),
+		checkGuardFile(root),
+		checkBindingModulesMounted(hc, srv.URL, root, true),
+		checkBindingModuleReadiness(hc, srv.URL, root, true),
+		checkGuardDeadScopes(hc, srv.URL, root, "svc", true),
+		checkGuardIncludeModulesUnbound(root),
+	}
+	for _, c := range checks {
+		if c.Status == doctorFail {
+			t.Errorf("%s: Status = fail, Reason = %q — a repo that just ran `fathom init` must never fail its own doctor check", c.Name, c.Reason)
+		}
+		if c.Status == doctorSkipped {
+			t.Errorf("%s: Status = skipped, Reason = %q — an empty-but-valid scaffold should run each check normally (trivially passing), not skip it", c.Name, c.Reason)
+		}
 	}
 }
 

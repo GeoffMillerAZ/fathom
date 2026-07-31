@@ -177,6 +177,13 @@ func checkUserScopeGuard() doctorCheck {
 			Remedy: "fix the reported field — user scope is restricted to note/command_scopes (docs/design/scoped-config.md law 13)",
 		}
 	}
+	if len(gs.Guards) == 0 {
+		// Present but declares nothing (O22, mirrors checkGuardFile's
+		// project-scope twin): a hand-copied, all-commented guard.cue
+		// loads clean with zero guards — distinct from both "no file"
+		// above and "invalid" below.
+		return doctorCheck{Name: name, Status: doctorPass, Reason: "~/.fathom/guard.cue present but declares no guards yet — scaffold awaiting opt-in"}
+	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("~/.fathom/guard.cue in effect — %d command guard(s)", len(gs.Guards))}
 }
 

@@ -268,14 +268,48 @@ func TestValidateStrict_EmptyGuardsFails(t *testing.T) {
 	}
 }
 
+// TestExampleTemplate_IsCommentedNoOp pins O22 (docs/dogfood-observations.md):
+// the ACTUAL bytes ExampleTemplate() renders — the exact scaffold `fathom
+// init` writes to .fathom/guard.cue — must load CLEAN as an empty,
+// scaffolded config, not fail with "guards: required, MUST be present".
+// Before the O22 fix, every fresh `fathom init` failed `doctor`'s guard_file
+// check on a file fathom itself had just written; the fully-commented
+// scaffold has no top-level "guards" field at all (LookupPath sees it as
+// absent, exactly like an entirely blank file), which is EMPTY, not
+// invalid — only a field that IS present can be malformed.
 func TestExampleTemplate_IsCommentedNoOp(t *testing.T) {
 	path := writeGuards(t, ExampleTemplate())
-	_, err := LoadGuards(path)
-	le, ok := err.(*LoadError)
-	if !ok {
-		t.Fatalf("expected a *LoadError (missing required field), not a parse failure; got %T: %v", err, err)
+	set, err := LoadGuards(path)
+	if err != nil {
+		t.Fatalf("LoadGuards(ExampleTemplate()) = %v, want a clean load (O22: an all-commented scaffold is EMPTY, not invalid)", err)
 	}
-	if len(le.Fields) != 1 || le.Fields[0].Field != "guards" {
-		t.Errorf("LoadError.Fields = %v, want exactly one \"guards\" field error", le.Fields)
+	if len(set.Guards) != 0 {
+		t.Errorf("Guards = %v, want none — the scaffold is fully commented", set.Guards)
+	}
+}
+
+// TestLoadGuards_TopLevelFieldAbsent_IsEmptyNotError is the narrower unit
+// test behind TestExampleTemplate_IsCommentedNoOp: a file with no "guards"
+// field at all — whether because every line is commented out or the file
+// genuinely has nothing else in it — loads as an empty GuardSet. This is
+// the ONLY way LoadGuards returns a zero-guard result without an error: an
+// explicit `guards: []` (present but declaring nothing via an empty list)
+// is unchanged and still rejected (TestLoadGuards_Negatives' "empty guards
+// list" case), so a caller can tell "field omitted" from "field present"
+// unambiguously from len(set.Guards)==0 + err==nil alone — no separate
+// Scaffolded/Empty flag on GuardSet is needed.
+func TestLoadGuards_TopLevelFieldAbsent_IsEmptyNotError(t *testing.T) {
+	for _, content := range []string{
+		"",
+		"// nothing but a comment\n",
+	} {
+		path := writeGuards(t, content)
+		set, err := LoadGuards(path)
+		if err != nil {
+			t.Fatalf("LoadGuards(%q) = %v, want a clean empty load", content, err)
+		}
+		if len(set.Guards) != 0 {
+			t.Errorf("LoadGuards(%q) Guards = %v, want none", content, set.Guards)
+		}
 	}
 }

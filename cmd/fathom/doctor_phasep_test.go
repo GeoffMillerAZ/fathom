@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
 // ─── channels_env / ident_cache_env ────────────────────────────────────────
@@ -226,6 +228,21 @@ func unavailableLedgerLine(sessionID string) string {
 
 func availableLedgerLine(sessionID string) string {
 	return `{"session_id":"` + sessionID + `","at":"2026-07-30T00:00:00Z","tokens_total":1234,"tokens_note":""}`
+}
+
+// TestCheckUserScopeGuard_ScaffoldEmpty_Pass is O22's user-scope check
+// (mission: "the user-scope guard loader may have the same shape and
+// should be checked" — it did): an all-commented ~/.fathom/guard.cue (e.g.
+// hand-copied from the project scaffold) must load clean and PASS with a
+// note naming the scaffolded state, not WARN as invalid.
+func TestCheckUserScopeGuard_ScaffoldEmpty_Pass(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeUserGuardCue(t, home, guardspec.ExampleTemplate())
+	got := checkUserScopeGuard()
+	if got.Status != doctorPass {
+		t.Errorf("Status = %v, Reason = %q, want pass for a scaffolded, empty user-scope guard file", got.Status, got.Reason)
+	}
 }
 
 func TestCheckUserScopeGuard_Invalid_Warn(t *testing.T) {
