@@ -518,6 +518,61 @@ Scaffolded/Empty flag was added to `GuardSet`/`BindingSet`.
     this reproduced O22 exactly (two FAILs, four SKIPs); after, all six
     checks PASS.
 
+## O23 fix — doctor no longer conflates "the repo being doctored" with "the repo the binary/daemon came from"
+
+O23 (docs/dogfood-observations.md): three `cmd/fathom/doctor*.go` checks
+were written and exercised only inside fathom's own repo, where those two
+repos happen to be the same directory — they differ in every adopter, and
+nothing tested that case. `binary_fresh` compared the running binary's
+embedded revision against the DOCTORED repo's `git HEAD`, guaranteed
+meaningless outside fathom itself (live: `binary @ a0b74df3 does not match
+HEAD 061afdba`, the ADOPTER's HEAD). `hooks_firing` looked for the call log
+at `<doctored repo>/workspace/logs/mcp-calls.jsonl`, but the log belongs to
+the DAEMON, not the doctored repo — hooks were in fact firing live when
+this reported FAIL. `obligations_served` probed `CLAUDE.md` only, so a
+service whose compiled rules are code-scoped (`**/*.go`) reported FAIL
+despite serving real rules elsewhere (live: 6 rules on
+`cmd/conjure/main.go`, zero on `CLAUDE.md`).
+
+- [x] `cmd/fathom/doctor.go`: `checkBinaryFresh` gains the `isFathomSourceTree` gate (root's `go.mod` must declare `github.com/geoffmilleraz/fathom`) — every other repo now SKIPs with an explanatory note instead of a guaranteed-wrong FAIL; the pre-existing git-revision-comparison logic (dirty-build note, nested/linked-worktree stamp-poisoning caveats) is unchanged and still runs, now gated behind the self-hosting check {id: O-34, symbol: checkBinaryFresh, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type checkBinaryFresh` or
+    `type isFathomSourceTree` anywhere; both are unique funcs.
+  - Tests: `TestCheckBinaryFresh/not_the_fathom_source_tree_is_skipped,_never_a_guessed_fail_(O23)`,
+    `.../a_different_repo's_go.mod_is_skipped_too,_even_if_its_HEAD_happens_to_match`
+    (a coincidentally-matching HEAD in an unrelated module must still SKIP,
+    not PASS) — every pre-existing subtest in the same test now marks its
+    tempdir as the fathom tree (`writeFathomGoMod`) so the git-comparison
+    logic itself stays exercised exactly as before this gate existed.
+
+- [x] `cmd/fathom/doctor.go`: `checkHooksFiring` (signature now `(hc *http.Client, baseURL string, daemonUp bool, root, harness string)`) resolves the call log via `resolveCallLogCandidates` — an explicit absolute `[daemon].call_log` wins outright; a relative path is joined against `root` only when `isFathomSourceTree(root)`, and separately against the daemon's own recorded `"fathom"` service path (`fathomServicePath`, via `list_services`) when reachable — trying every candidate before concluding anything is missing, and reporting `skipped` (never a guessed `fail`) only when zero candidates are determinable at all. `originCallCount` (the secondary contradiction-evidence signal inside `checkHooksInstalled`) gets the narrower fix: its relative-path join is now gated on `isFathomSourceTree(root)` too, without the daemon-service lookup (deliberately scoped down — see this row's own commit message / final report for the reasoning) {id: O-35, symbol: checkHooksFiring, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type checkHooksFiring`,
+    `type resolveCallLogCandidates`, or `type fathomServicePath` anywhere;
+    all three are unique funcs.
+  - Tests: `TestCheckHooksFiring/not_the_fathom_tree_and_daemon_down:_skipped,_never_a_guessed_fail_(O23)`,
+    `.../O23:_adopter_repo_resolves_the_daemon's_own_call_log_via_the_fathom_service_path`
+    (a scratch adopter root with NO call log of its own PASSes by finding
+    the real one at a separate "fathom tree" stand-in directory, indexed
+    under service `"fathom"`) — every pre-existing subtest updated to mark
+    its tempdir as the fathom source tree (`writeFathomGoMod`) so the
+    call-log-comparison logic itself stays exercised exactly as before.
+
+- [x] `cmd/fathom/doctor.go`: `checkObligationsServed` now probes SEVERAL candidate files (`obligationsProbeCandidates`) — a real indexed source file in the service's most common extension first (`dominantLanguageProbeFile`, via `list_sources`), then the `CLAUDE.md`/`AGENTS.md` fallbacks — trying each until one actually serves rules. When every probe comes back empty, `obligationsLayerCompiled` (via `staleness_report`'s per-layer claim-status counts, independent of any single probe file's scope match) distinguishes "never compiled" (unchanged `fail`, compile remedy) from "compiled, but none of the probed files fall in any rule's scope" (a new, distinct `warn` — never conflated with the fail case, never silently upgraded to a clean pass) {id: O-36, symbol: checkObligationsServed, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type checkObligationsServed`,
+    `type obligationsProbeCandidates`, `type dominantLanguageProbeFile`, or
+    `type obligationsLayerCompiled` anywhere; all four are unique funcs.
+  - Tests: `TestCheckObligationsServed/O23:_dominant-language_source-file_probe_passes_when_CLAUDE.md_alone_would_fail`,
+    `.../O23:_compiled_but_no_probe_matches_scope_is_a_distinct_warn,_not_a_never-compiled_fail`,
+    `.../O23:_never_compiled_(proven_via_staleness_report)_still_fails,_distinct_from_the_warn_case`
+    — every pre-existing subtest in the same test still passes unchanged
+    (the new probe list falls back to the identical `CLAUDE.md`-only
+    behavior when `list_sources` has nothing to offer).
+
+- [x] `cmd/fathom/doctor_test.go`: the primary O23 regression test — a scratch adopter repo (`t.TempDir`, git-init'd, no `go.mod` at all) doctored against a fake daemon standing in for the real one (a SEPARATE "fathom tree" directory, its own HEAD, its own call log, indexed as service `"fathom"`) with the running binary's embedded revision pinned to that OTHER tree's HEAD — reproducing the exact self-hosting/adopter split every prior doctor test collapsed into one directory. Confirmed live: with the O23 gates surgically disabled (binary_fresh's `isFathomSourceTree` check short-circuited, `checkHooksFiring` reverted to a single root-joined candidate, `checkObligationsServed` reverted to a single `CLAUDE.md` probe), this test fails with exactly the three named FAILs (`binary_fresh`, `hooks_firing`, `obligations_served`); with O-34..O-36 in place, it asserts zero FAILs and pins `hooks_firing`/`obligations_served` to PASS by name (not just an aggregate count) {id: O-37, symbol: cmdDoctor, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type cmdDoctor` anywhere;
+    `func cmdDoctor` is unique (already anchoring DI-1,
+    `docs/plans/doctor-and-impact.md`).
+  - Test: `TestCmdDoctor_AdopterRepoIsNotFathom`.
+
 ## Deferred (named triggers, not silently dropped — both designs' own §4/§3)
 
 - **SessionStart brief line naming each bound module** (design §3.3's

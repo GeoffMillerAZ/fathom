@@ -21,7 +21,6 @@ package main
 // skillMarker from init.go/skillsinstall.go (read-only reuse of their
 // detection conventions, never their write paths).
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -36,6 +35,7 @@ import (
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -184,7 +184,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkBinaryFresh(root),
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
-		checkHooksFiring(root, harness),
+		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkStanzaPresent(root),
 		checkSkillsInstalled(root, harness),
 		checkConfigValid(root),
@@ -350,6 +350,36 @@ func checkDaemonReachable(hc *http.Client, baseURL string) (bool, doctorCheck) {
 
 // ─── 3. binary freshness ────────────────────────────────────────────────────
 
+// fathomModulePath is fathom's own go.mod module path — the one signal
+// isFathomSourceTree needs to tell "this IS the fathom checkout" apart from
+// every other repo doctor might be pointed at.
+const fathomModulePath = "github.com/geoffmilleraz/fathom"
+
+// isFathomSourceTree reports whether root is the fathom checkout itself
+// (its go.mod declares fathomModulePath), never a guess: it is the ONLY
+// repo where comparing a fathom binary's embedded revision, or resolving a
+// daemon-relative call-log path, against root is meaningful. O23
+// (docs/dogfood-observations.md): doctor was written and exercised only
+// inside fathom's own repo, where "the repo being doctored" and "the repo
+// the binary/daemon came from" happen to be the same directory — checked
+// here so binary_fresh (this section) and the call-log resolution
+// (checkHooksFiring, below) never again conflate the two in an adopter
+// repo. A missing or unreadable go.mod is treated as "not fathom" (the
+// overwhelmingly common case for anything that is not this repo), never a
+// guessed match.
+func isFathomSourceTree(root string) bool {
+	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return false
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if mod, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+			return strings.TrimSpace(mod) == fathomModulePath
+		}
+	}
+	return false
+}
+
 // doctorBinaryRevision returns the running `fathom doctor` binary's own
 // embedded VCS revision and dirty flag (version.go's vcsInfo, no ldflags
 // needed). A package var so tests can simulate a known build identity
@@ -374,9 +404,25 @@ var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
 // worktree NESTED under this checkout embeds THIS checkout's HEAD, not the
 // worktree's — traced live: `go build -x` from such a worktree runs every
 // `git` command against the enclosing checkout's root).
+//
+// O23 (docs/dogfood-observations.md): the binary is fathom's own build
+// artifact, so "is it fresh" is a question about the FATHOM source tree's
+// HEAD — meaningless anywhere else. Live failure this fixes: "binary @
+// a0b74df3 does not match HEAD 061afdba", where 061afdba was an ADOPTER
+// repo's HEAD, not fathom's — comparing fathom's build revision to a
+// different project's commit history can never be meaningful, so this
+// check now only runs when root IS the fathom checkout; every other repo
+// gets an honest SKIP instead of a guaranteed-wrong FAIL.
 func checkBinaryFresh(root string) doctorCheck {
 	const name = "binary_fresh"
 	remedy := "cp bin/fathom ~/.local/libexec/fathom/fathom && launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http (deploy the rebuilt binary — docs/adoption/claude-code.md §5)"
+
+	if !isFathomSourceTree(root) {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: fmt.Sprintf("binary freshness is only checkable from the fathom source tree (%s's go.mod does not declare %s) — compare `fathom version` to the daemon's deployed commit by hand, or run doctor --path against a fathom checkout", root, fathomModulePath),
+		}
+	}
 
 	rev, dirty, ok := doctorBinaryRevision()
 	if !ok {
@@ -706,10 +752,23 @@ func editHookBeatCount(phase, target string) int {
 // checkHooksFiring's own pattern (readCallLog/resolveCallLogPath,
 // instrument_adoption.go), generalized from "edit-hook" to any origin so
 // session-hook/stop-hook (each unambiguous in the call log, unlike
-// edit-hook's pre/post variants) can reuse it directly.
+// edit-hook's pre/post variants) can reuse it directly. This is only ever
+// used for a SECONDARY signal (checkHooksInstalled's contradiction-evidence
+// probe, never the primary pass/fail verdict), so — unlike
+// resolveCallLogCandidates above — it deliberately does not query the
+// daemon for its own "fathom" service path; it only trusts a relative
+// call-log path joined against root when root actually IS the fathom
+// source tree (O23: the same repo-relative assumption checkHooksFiring
+// had, scoped down here rather than plumbing hc/baseURL through
+// checkHooksInstalled for a check this minor). Outside the fathom tree
+// this honestly returns 0 (no evidence) rather than checking the wrong
+// repo and reporting a false negative as if it were conclusive.
 func originCallCount(root, origin string) int {
 	logPath := resolveCallLogPath()
 	if !filepath.IsAbs(logPath) {
+		if !isFathomSourceTree(root) {
+			return 0
+		}
 		logPath = filepath.Join(root, logPath)
 	}
 	entries, _, read := readCallLog(logPath)
@@ -788,43 +847,136 @@ func checkLefthookGates(root string) doctorCheck {
 
 // ─── 6. hooks firing (Claude Code only) ─────────────────────────────────────
 
+// fathomServicePath asks the daemon for the "fathom" service's recorded
+// corpus root — the fleet-dogfood convention (CLAUDE.md's "Dogfood: the
+// fleet index") is that a fathom daemon indexes its OWN source tree under
+// exactly that service name. Combined with the launchd WorkingDirectory
+// convention (docs/adoption/claude-code.md §5: "anchors the relative
+// --call-log default … without it launchd starts the daemon at / and call
+// logging is disabled"), that recorded path IS the daemon's own working
+// directory in the overwhelmingly common deployment. Best-effort: ("",
+// false) on any error, an absent/unnamed "fathom" service, or a relative
+// (pre-O10) recorded path — never a guessed location.
+func fathomServicePath(hc *http.Client, baseURL string) (string, bool) {
+	svcs := fetchServices(hc, baseURL)
+	info, ok := svcs["fathom"]
+	if !ok || info.path == "" || !filepath.IsAbs(info.path) {
+		return "", false
+	}
+	return info.path, true
+}
+
+// resolveCallLogCandidates returns the plausible absolute filesystem
+// locations for the daemon's call log, in priority order, deduplicated.
+// O23 (docs/dogfood-observations.md): the call log belongs to the DAEMON,
+// never the repo being doctored — resolveCallLogPath (instrument_adoption.go)
+// mirrors the daemon's own [daemon].call_log / literal-default resolution
+// (reused here verbatim, never re-derived), but its relative fallback is
+// only safe to join against a root actually known to BE the daemon's
+// working directory:
+//
+//  1. An explicit ABSOLUTE [daemon].call_log always wins outright — it
+//     names its own location unambiguously, independent of any repo.
+//  2. A relative path is joined against root ONLY when root is itself the
+//     fathom checkout (isFathomSourceTree) — the one case where "the repo
+//     being doctored" and "the daemon's working directory" are actually
+//     the same directory, by the launchd WorkingDirectory convention.
+//  3. A relative path is also joined against the daemon's own recorded
+//     "fathom" service path (fathomServicePath) when reachable — the
+//     candidate that actually matches production in every adopter repo
+//     that is not fathom itself, since the daemon indexes its own source
+//     tree under that name (CLAUDE.md's fleet-dogfood convention).
+//
+// Zero candidates means neither is determinable — the caller reports that
+// honestly (skipped), never guesses a third location.
+func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, root string) []string {
+	logPath := resolveCallLogPath()
+	if filepath.IsAbs(logPath) {
+		return []string{logPath}
+	}
+
+	var out []string
+	seen := map[string]bool{}
+	add := func(base string) {
+		if base == "" {
+			return
+		}
+		p := filepath.Join(base, logPath)
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	if isFathomSourceTree(root) {
+		add(root)
+	}
+	if daemonUp {
+		if p, ok := fathomServicePath(hc, baseURL); ok {
+			add(p)
+		}
+	}
+	return out
+}
+
 // checkHooksFiring answers "has the hook stack ever actually run", not just
 // "is it configured" — an EXISTENCE check over the call log (mirrors
 // scripts/check-surface-traffic.sh's own existence-vs-liveness-window
 // distinction), via resolveCallLogPath/readCallLog (instrument_adoption.go,
 // same package — no import needed, no logic duplicated).
-func checkHooksFiring(root, harness string) doctorCheck {
+//
+// O23 (docs/dogfood-observations.md): the call log lives with the DAEMON,
+// not the doctored repo — live failure this fixes: "call log
+// <adopter>/workspace/logs/mcp-calls.jsonl not found — no hook has ever
+// written to it" reported FAIL in a repo where hooks were in fact firing,
+// because the log was joined against the wrong root. checkHooksFiring now
+// tries every candidate resolveCallLogCandidates offers (self-hosting root,
+// then the daemon's own recorded "fathom" service path) before concluding
+// anything is missing, and reports SKIPPED — never a guessed FAIL — when no
+// candidate is determinable at all.
+func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harness string) doctorCheck {
 	const name = "hooks_firing"
 	if harness != "claude" {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "Codex has no PostToolUse hook to fire; the lefthook_gates check covers its git-native equivalent"}
 	}
 
-	logPath := resolveCallLogPath()
-	if !filepath.IsAbs(logPath) {
-		logPath = filepath.Join(root, logPath)
-	}
-	entries, _, read := readCallLog(logPath)
-	if !read {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("call log %s not found — no hook has ever written to it", logPath), Remedy: "edit a file in this repo under Claude Code (fires edit-hook), then re-run doctor"}
+	candidates := resolveCallLogCandidates(hc, baseURL, daemonUp, root)
+	if len(candidates) == 0 {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: fmt.Sprintf("call log path %q is relative, this repo is not the fathom source tree, and the daemon does not index a service named \"fathom\" to locate its own workspace — cannot determine where the daemon's call log lives (the log belongs to the daemon, not this repo)", resolveCallLogPath()),
+			Remedy: "set [daemon].call_log to an absolute path in ~/.fathom/config.toml, or check the daemon's own workspace by hand (docs/adoption/claude-code.md §5)",
+		}
 	}
 
-	editHookCalls, verifyCalls := 0, 0
-	for _, e := range entries {
-		switch e.Origin {
-		case "edit-hook":
-			editHookCalls++
-		case "verify-cli":
-			verifyCalls++
+	for _, logPath := range candidates {
+		entries, _, read := readCallLog(logPath)
+		if !read {
+			continue
 		}
-	}
-	if editHookCalls == 0 {
-		return doctorCheck{
-			Name: name, Status: doctorFail,
-			Reason: fmt.Sprintf("%s has %d entries but none with origin edit-hook — the PostToolUse hook has never fired", logPath, len(entries)),
-			Remedy: "edit a file in this repo under Claude Code, then re-run doctor; if still silent, confirm obligations is compiled: fathom compile --service <svc> --dry-run=false",
+		editHookCalls, verifyCalls := 0, 0
+		for _, e := range entries {
+			switch e.Origin {
+			case "edit-hook":
+				editHookCalls++
+			case "verify-cli":
+				verifyCalls++
+			}
 		}
+		if editHookCalls == 0 {
+			return doctorCheck{
+				Name: name, Status: doctorFail,
+				Reason: fmt.Sprintf("%s has %d entries but none with origin edit-hook — the PostToolUse hook has never fired", logPath, len(entries)),
+				Remedy: "edit a file in this repo under Claude Code, then re-run doctor; if still silent, confirm obligations is compiled: fathom compile --service <svc> --dry-run=false",
+			}
+		}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s: %d edit-hook call(s), %d verify-cli call(s)", logPath, editHookCalls, verifyCalls)}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s: %d edit-hook call(s), %d verify-cli call(s)", logPath, editHookCalls, verifyCalls)}
+
+	return doctorCheck{
+		Name: name, Status: doctorFail,
+		Reason: fmt.Sprintf("checked %d candidate call-log location(s) (%s) — none exist; no hook has ever written to any of them", len(candidates), strings.Join(candidates, ", ")),
+		Remedy: "edit a file in this repo under Claude Code (fires edit-hook), then re-run doctor",
+	}
 }
 
 // ─── 7. CLAUDE.md / AGENTS.md stanza ────────────────────────────────────────
@@ -957,13 +1109,146 @@ func checkConfigValid(root string) doctorCheck {
 
 // ─── 10. obligations served ─────────────────────────────────────────────────
 
-// doctorObligationsProbeFile is the "governed file" doctor queries
-// obligations for. CLAUDE.md is chosen because `fathom init` writes it into
-// every wired repo, so the check is meaningful without repo-specific
-// configuration — see the reason text below for the honest limit this
-// implies (a zero result can mean "never compiled" OR "this file isn't in
-// any compiled rule's scope"; doctor cannot tell those apart from one file).
+// doctorObligationsProbeFile is the CLAUDE.md fallback probe: `fathom init`
+// writes it into every wired repo, so it is meaningful without
+// repo-specific configuration. O23 (docs/dogfood-observations.md): a
+// service whose compiled obligations are code-scoped (e.g. "**/*.go") can
+// serve real rules while CLAUDE.md alone answers zero — live evidence: the
+// same daemon served 6 rules on cmd/conjure/main.go while probing CLAUDE.md
+// alone found none. checkObligationsServed now probes a real INDEXED
+// source file (obligationsProbeCandidates) ahead of this fallback, so a
+// code-scoped-only install reports the real PASS it deserves instead of a
+// false FAIL.
 const doctorObligationsProbeFile = "CLAUDE.md"
+
+// obligationsProbeCandidates returns the ordered, deduplicated list of
+// repo-relative files checkObligationsServed probes obligations with: a
+// real indexed source file in the service's most common extension first
+// (dominantLanguageProbeFile — "" when undeterminable, e.g. list_sources
+// unavailable or the service is empty), then the CLAUDE.md/AGENTS.md
+// fallbacks every `fathom init`-wired repo carries. Each candidate is tried
+// in turn (checkObligationsServed) and the first that actually serves rules
+// answers the check — never just the first one, which is what let a
+// code-scoped-only install FAIL under CLAUDE.md alone (O23).
+func obligationsProbeCandidates(hc *http.Client, baseURL, svc string) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(f string) {
+		if f != "" && !seen[f] {
+			seen[f] = true
+			out = append(out, f)
+		}
+	}
+	add(dominantLanguageProbeFile(hc, baseURL, svc))
+	add(doctorObligationsProbeFile)
+	add("AGENTS.md")
+	return out
+}
+
+// dominantLanguageProbeFile picks a real, indexed, repo-relative file to
+// probe obligations with, biased toward the service's most common source
+// extension — best-effort via list_sources (listSourcesForDoctor,
+// doctor_phaseo.go; reused, not re-derived). Returns "" when list_sources
+// has nothing to offer (RPC failure, empty service, no extensioned files),
+// never a guessed path.
+func dominantLanguageProbeFile(hc *http.Client, baseURL, svc string) string {
+	sources, err := listSourcesForDoctor(hc, baseURL, svc)
+	if err != nil || len(sources) == 0 {
+		return ""
+	}
+	counts := map[string]int{}
+	for _, s := range sources {
+		if ext := strings.ToLower(filepath.Ext(s)); ext != "" {
+			counts[ext]++
+		}
+	}
+	if len(counts) == 0 {
+		return ""
+	}
+	exts := make([]string, 0, len(counts))
+	for e := range counts {
+		exts = append(exts, e)
+	}
+	sort.Strings(exts) // deterministic tie-break
+	bestExt, bestN := "", -1
+	for _, e := range exts {
+		if counts[e] > bestN {
+			bestExt, bestN = e, counts[e]
+		}
+	}
+	for _, s := range sources {
+		if strings.ToLower(filepath.Ext(s)) == bestExt {
+			return s
+		}
+	}
+	return ""
+}
+
+// obligationsProbeResult is one probe file's obligations() answer.
+type obligationsProbeResult struct {
+	file  string
+	rules []struct {
+		Status string `json:"status"`
+	}
+	watermark  string
+	indexStale bool
+}
+
+// fetchObligationsProbe calls the obligations MCP tool for one
+// (service, file) pair via callMCPTool (doctor_phaseo.go; reused, not
+// re-derived).
+func fetchObligationsProbe(hc *http.Client, baseURL, svc, file string) (obligationsProbeResult, error) {
+	inner, err := callMCPTool(hc, baseURL, "obligations", map[string]any{"service": svc, "file": file})
+	if err != nil {
+		return obligationsProbeResult{}, err
+	}
+	var payload struct {
+		Rules []struct {
+			Status string `json:"status"`
+		} `json:"rules"`
+		Watermark  string `json:"compiled_at_watermark"`
+		IndexStale bool   `json:"index_stale"`
+	}
+	if err := json.Unmarshal(inner, &payload); err != nil {
+		return obligationsProbeResult{}, err
+	}
+	return obligationsProbeResult{file: file, rules: payload.Rules, watermark: payload.Watermark, indexStale: payload.IndexStale}, nil
+}
+
+// obligationsLayerCompiled reports whether the "obligations" semantic layer
+// has EVER been compiled for svc, via staleness_report's optional `layers`
+// block (pkg/client.ClaimsSummary's per-layer claim-status counts) — a
+// signal independent of any single probe FILE's scope match. This is what
+// lets checkObligationsServed tell "never compiled" (this returns false)
+// apart from "compiled, but none of the probed files fall in any rule's
+// scope" (this returns true even though every probe served zero rules) —
+// the third, honest outcome O23 asks for, distinct from both.
+func obligationsLayerCompiled(hc *http.Client, baseURL, svc string) (bool, error) {
+	inner, err := callMCPTool(hc, baseURL, "staleness_report", map[string]any{"service": svc})
+	if err != nil {
+		return false, err
+	}
+	var payload struct {
+		Layers map[string]json.RawMessage `json:"layers"`
+	}
+	if err := json.Unmarshal(inner, &payload); err != nil {
+		return false, err
+	}
+	raw, ok := payload.Layers[semantic.LayerObligations]
+	if !ok {
+		return false, nil
+	}
+	var statusCounts map[string]int
+	if err := json.Unmarshal(raw, &statusCounts); err != nil {
+		return false, nil // unexpected shape — no evidence either way, not an error
+	}
+	for _, n := range statusCounts {
+		if n > 0 {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 
 // checkObligationsServed resolves the service the same way the hooks do —
 // EVERY candidate identity (edithook.go's serviceCandidates loop), not a
@@ -976,6 +1261,15 @@ const doctorObligationsProbeFile = "CLAUDE.md"
 // --service is honored but cross-checked against the hook candidates: a
 // service the hooks would never resolve gets a pass-with-note, because
 // obligations serving over MCP does not imply injection works.
+//
+// O23 (docs/dogfood-observations.md): probing CLAUDE.md alone reports FAIL
+// for a genuinely healthy, code-scoped-only install (live: 6 rules served
+// on cmd/conjure/main.go, zero on CLAUDE.md). This now probes SEVERAL
+// candidates (obligationsProbeCandidates: a real indexed source file first,
+// then CLAUDE.md/AGENTS.md) and, only when every probe comes back empty,
+// distinguishes "never compiled" (FAIL, remedy = compile) from "compiled,
+// but none of the probed files matched any rule's scope" (obligationsLayer
+// Compiled — a distinct WARN, never conflated with the FAIL case).
 func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, daemonUp bool) doctorCheck {
 	const name = "obligations_served"
 
@@ -1043,70 +1337,68 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 		}
 	}
 
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name":      "obligations",
-			"arguments": map[string]any{"service": svc, "file": doctorObligationsProbeFile},
-		},
-	})
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: err.Error()}
-	}
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: err.Error()}
-	}
-	resp, err := hc.Do(req)
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("POST %s/rpc: %v", baseURL, err)}
-	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: err.Error()}
-	}
-	inner, err := unwrapRPCResult(raw)
-	if err != nil {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("obligations(%s, %s): %v", svc, doctorObligationsProbeFile, err), Remedy: remedy}
-	}
-	var payload struct {
-		Rules []struct {
-			Status string `json:"status"`
-		} `json:"rules"`
-		Watermark  string `json:"compiled_at_watermark"`
-		IndexStale bool   `json:"index_stale"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("parsing obligations response: %v", err)}
-	}
-	if len(payload.Rules) == 0 && payload.Watermark == "" {
-		return doctorCheck{
-			Name: name, Status: doctorFail,
-			Reason: fmt.Sprintf("obligations(%s, %s) served zero rules and no compile watermark — either the obligations layer has never been compiled for %q, or %s specifically is not in any compiled rule's scope", svc, doctorObligationsProbeFile, svc, doctorObligationsProbeFile),
-			Remedy: remedy,
+	probes := obligationsProbeCandidates(hc, baseURL, svc)
+
+	var tried []string
+	var lastRPCErr error
+	for _, file := range probes {
+		res, err := fetchObligationsProbe(hc, baseURL, svc, file)
+		if err != nil {
+			lastRPCErr = err
+			continue
 		}
+		tried = append(tried, file)
+		if len(res.rules) == 0 && res.watermark == "" {
+			continue // this probe answered zero — try the next candidate before giving up
+		}
+
+		// Drift honesty (rules are served FLAGGED, never dropped — serve.go's
+		// Obligation.Status contract): a payload full of stale/contradicted
+		// rules must not read as an unqualified clean pass.
+		drifted := 0
+		for _, r := range res.rules {
+			if r.Status != "" {
+				drifted++
+			}
+		}
+		reason := fmt.Sprintf("obligations served for service %s, file %s (%d rule(s), watermark %s)", svc, res.file, len(res.rules), res.watermark)
+		if drifted > 0 {
+			reason += fmt.Sprintf(" — note: %d of %d rule(s) carry a drift status (stale/contradicted); served flagged, not dropped — recompile to refresh", drifted, len(res.rules))
+		}
+		if res.indexStale {
+			reason += " — note: index_stale is true, the compiled index disagrees with the file on disk"
+		}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: reason + hookMismatchNote}
 	}
 
-	// Drift honesty (rules are served FLAGGED, never dropped — serve.go's
-	// Obligation.Status contract): a payload full of stale/contradicted
-	// rules must not read as an unqualified clean pass.
-	drifted := 0
-	for _, r := range payload.Rules {
-		if r.Status != "" {
-			drifted++
+	if len(tried) == 0 && lastRPCErr != nil {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: lastRPCErr.Error()}
+	}
+
+	// Every probe served zero rules and no watermark. O23's third outcome:
+	// distinguish "never compiled" from "compiled, but none of the probed
+	// files fall in any rule's scope" via obligationsLayerCompiled — a
+	// signal independent of any single probe file.
+	compiled, compErr := obligationsLayerCompiled(hc, baseURL, svc)
+	switch {
+	case compErr != nil:
+		return doctorCheck{
+			Name: name, Status: doctorFail,
+			Reason: fmt.Sprintf("obligations(%s, ...) served zero rules and no compile watermark for every probed file (%s) — either the obligations layer has never been compiled for %q, or none of these specific files is in any compiled rule's scope (could not confirm which via staleness_report: %v)", svc, strings.Join(tried, ", "), svc, compErr),
+			Remedy: remedy,
+		}
+	case !compiled:
+		return doctorCheck{
+			Name: name, Status: doctorFail,
+			Reason: fmt.Sprintf("the obligations layer has never been compiled for service %q (probed %s, all served zero rules and no watermark)", svc, strings.Join(tried, ", ")),
+			Remedy: remedy,
+		}
+	default:
+		return doctorCheck{
+			Name: name, Status: doctorWarn,
+			Reason: fmt.Sprintf("the obligations layer IS compiled for service %q, but none of the probed files (%s) fall within any compiled rule's scope — this may be correct (rules scoped narrower than these probes) rather than broken; verify with obligations(service:%q, file:<a file you actually edit>)", svc, strings.Join(tried, ", "), svc),
 		}
 	}
-	reason := fmt.Sprintf("obligations served for service %s, file %s (%d rule(s), watermark %s)", svc, doctorObligationsProbeFile, len(payload.Rules), payload.Watermark)
-	if drifted > 0 {
-		reason += fmt.Sprintf(" — note: %d of %d rule(s) carry a drift status (stale/contradicted); served flagged, not dropped — recompile to refresh", drifted, len(payload.Rules))
-	}
-	if payload.IndexStale {
-		reason += " — note: index_stale is true, the compiled index disagrees with the file on disk"
-	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: reason + hookMismatchNote}
 }
 
 // ─── 11. surface_traffic flowing ────────────────────────────────────────────
