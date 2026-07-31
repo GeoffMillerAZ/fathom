@@ -63,6 +63,20 @@ type fakeDaemonCfg struct {
 	// checks existed, so no prior test exercises them.
 	modules []fakeModuleRow
 	sources []string
+
+	// O23 additions (doctor_test.go): servicePaths is list_services' optional
+	// "path" per service — checkHooksFiring's daemon-side call-log
+	// resolution needs a real "fathom" service path to join against.
+	// obligFileRules, when non-nil, overrides obligations' rule count PER
+	// REQUESTED FILE (files absent from the map serve zero, matching a
+	// scope miss) — nil (the zero value) preserves every pre-existing
+	// test's file-blind obligRules/obligStale/watermark behavior exactly.
+	// obligLayerCompiled controls staleness_report's layers["obligations"]
+	// presence — checkObligationsServed's "compiled but no probe matches"
+	// distinction (default false: "never compiled").
+	servicePaths       map[string]string
+	obligFileRules     map[string]int
+	obligLayerCompiled bool
 }
 
 type fakeModuleRow struct {
@@ -80,7 +94,8 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Params struct {
-				Name string `json:"name"`
+				Name      string         `json:"name"`
+				Arguments map[string]any `json:"arguments"`
 			} `json:"params"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
@@ -89,13 +104,25 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 		case "list_services":
 			rows := make([]string, len(cfg.services))
 			for i, s := range cfg.services {
-				rows[i] = fmt.Sprintf(`{"service":%q,"symbol_count":10,"languages":["go"]}`, s)
+				pathField := ""
+				if p := cfg.servicePaths[s]; p != "" {
+					pathField = fmt.Sprintf(`,"path":%q`, p)
+				}
+				rows[i] = fmt.Sprintf(`{"service":%q,"symbol_count":10,"languages":["go"]%s}`, s, pathField)
 			}
 			inner = `{"services":[` + strings.Join(rows, ",") + `]}`
 		case "obligations":
+			file, _ := req.Params.Arguments["file"].(string)
+			n, wm := cfg.obligRules, cfg.watermark
+			if cfg.obligFileRules != nil {
+				n = cfg.obligFileRules[file] // absent file: 0, matching a scope miss
+				if n == 0 {
+					wm = ""
+				}
+			}
 			rules := "[]"
-			if cfg.obligRules > 0 {
-				rs := make([]string, cfg.obligRules)
+			if n > 0 {
+				rs := make([]string, n)
 				for i := range rs {
 					if i < cfg.obligStale {
 						rs[i] = `{"rule":"r","status":"stale"}`
@@ -105,11 +132,11 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 				}
 				rules = "[" + strings.Join(rs, ",") + "]"
 			}
-			wm := ""
-			if cfg.watermark != "" {
-				wm = fmt.Sprintf(`,"compiled_at_watermark":%q`, cfg.watermark)
+			wmField := ""
+			if wm != "" {
+				wmField = fmt.Sprintf(`,"compiled_at_watermark":%q`, wm)
 			}
-			inner = fmt.Sprintf(`{"service":"svc","file":"CLAUDE.md","rules":%s%s}`, rules, wm)
+			inner = fmt.Sprintf(`{"service":"svc","file":%q,"rules":%s%s}`, file, rules, wmField)
 		case "server_stats":
 			inner = fmt.Sprintf(`{"uptime_seconds":1,"surface_traffic":{"agent":{"calls":%d,"last_ts":"2026-01-01T00:00:00Z"}}}`, cfg.agentCalls)
 		case "list_modules":
@@ -124,6 +151,12 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 				rows[i] = fmt.Sprintf("%q", s)
 			}
 			inner = `{"sources":[` + strings.Join(rows, ",") + `]}`
+		case "staleness_report":
+			layers := "{}"
+			if cfg.obligLayerCompiled {
+				layers = `{"obligations":{"fresh":1}}`
+			}
+			inner = fmt.Sprintf(`{"layers":%s}`, layers)
 		default:
 			http.Error(w, "unknown tool", 400)
 			return
@@ -132,6 +165,18 @@ func fakeDoctorDaemon(t *testing.T, cfg fakeDaemonCfg) *httptest.Server {
 		_ = json.NewEncoder(w).Encode(env)
 	})
 	return httptest.NewServer(mux)
+}
+
+// writeFathomGoMod writes a go.mod declaring the fathom module at dir —
+// the O23 self-hosting gate (isFathomSourceTree) requires this before
+// gitRepo commits it, so binary_fresh's/hooks_firing's git- and
+// call-log-comparison logic can still be exercised against a plain tempdir
+// exactly as before that gate existed.
+func writeFathomGoMod(t *testing.T, dir string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module "+fathomModulePath+"\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // writeAllPassFixture builds a fully-wired repo at root: CLAUDE.md/AGENTS.md
@@ -353,8 +398,42 @@ func TestCheckBinaryFresh(t *testing.T) {
 	old := doctorBinaryRevision
 	defer func() { doctorBinaryRevision = old }()
 
+	// O23 (docs/dogfood-observations.md): binary_fresh is only meaningful
+	// from the fathom source tree itself — every subtest below marks its
+	// tempdir as that tree (writeFathomGoMod) so the pre-existing
+	// git-comparison logic still gets exercised exactly as before; this
+	// first subtest is the NEW gate itself, on a repo that is NOT fathom.
+	t.Run("not the fathom source tree is skipped, never a guessed fail (O23)", func(t *testing.T) {
+		dir := t.TempDir()
+		gitRepo(t, dir) // a plain repo, no go.mod at all
+		doctorBinaryRevision = func() (string, bool, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", false, true }
+
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorSkipped {
+			t.Fatalf("got %+v, want skipped — this repo's HEAD has nothing to do with the fathom binary", got)
+		}
+		if !strings.Contains(got.Reason, "fathom source tree") {
+			t.Errorf("skip reason must explain the limit: %s", got.Reason)
+		}
+	})
+
+	t.Run("a different repo's go.mod is skipped too, even if its HEAD happens to match", func(t *testing.T) {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module github.com/someone/else\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		head := gitRepo(t, dir)
+		doctorBinaryRevision = func() (string, bool, bool) { return head, false, true } // would PASS under the old logic
+
+		got := checkBinaryFresh(dir)
+		if got.Status != doctorSkipped {
+			t.Fatalf("got %+v, want skipped — a coincidentally-matching HEAD in an unrelated module proves nothing", got)
+		}
+	})
+
 	t.Run("matching revision passes, stating the local-only limit", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		head := gitRepo(t, dir)
 		doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
 
@@ -372,6 +451,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 
 	t.Run("dirty build passes with the vcs.modified note surfaced", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		head := gitRepo(t, dir)
 		doctorBinaryRevision = func() (string, bool, bool) { return head, true, true }
 
@@ -387,6 +467,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 	t.Run("nested linked worktrees add the stamp-poisoning note to a matching pass", func(t *testing.T) {
 		requireGit(t)
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		head := gitRepo(t, dir)
 		nested := filepath.Join(dir, ".claude", "worktrees", "agent-x")
 		if err := os.MkdirAll(filepath.Dir(nested), 0o755); err != nil {
@@ -408,6 +489,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 
 	t.Run("stale binary fails with a deploy remedy", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		gitRepo(t, dir)
 		doctorBinaryRevision = func() (string, bool, bool) { return "deadbeefcafe0000deadbeefcafe0000deadbeef", false, true }
 
@@ -422,6 +504,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 
 	t.Run("no embedded revision is skipped, never a guessed pass or fail", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		gitRepo(t, dir)
 		doctorBinaryRevision = func() (string, bool, bool) { return "", false, false }
 
@@ -434,6 +517,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 	t.Run("stale binary in a linked worktree carries the caveat, only when verified", func(t *testing.T) {
 		requireGit(t)
 		main := t.TempDir()
+		writeFathomGoMod(t, main)
 		gitRepo(t, main)
 
 		wt := filepath.Join(t.TempDir(), "linked-wt")
@@ -764,15 +848,30 @@ func TestCheckLefthookGates(t *testing.T) {
 func TestCheckHooksFiring(t *testing.T) {
 	t.Setenv("HOME", t.TempDir()) // resolveCallLogPath reads config.toml; keep it isolated
 
+	// deadHC/deadURL: a daemon that is unreachable — these subtests exercise
+	// the self-hosting candidate (root IS the fathom tree) without needing a
+	// live daemon for the "fathom" service-path candidate too.
+	deadHC := http.DefaultClient
+	const deadURL = "http://127.0.0.1:1"
+
 	t.Run("codex is skipped", func(t *testing.T) {
-		got := checkHooksFiring(t.TempDir(), "codex")
+		got := checkHooksFiring(deadHC, deadURL, false, t.TempDir(), "codex")
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}
 	})
 
-	t.Run("no call log fails — configured is not the same as firing", func(t *testing.T) {
-		got := checkHooksFiring(t.TempDir(), "claude")
+	t.Run("not the fathom tree and daemon down: skipped, never a guessed fail (O23)", func(t *testing.T) {
+		got := checkHooksFiring(deadHC, deadURL, false, t.TempDir(), "claude")
+		if got.Status != doctorSkipped {
+			t.Fatalf("status = %v, want skipped — this repo is not the fathom source tree and the daemon cannot be asked for one", got.Status)
+		}
+	})
+
+	t.Run("fathom source tree, no call log fails — configured is not the same as firing", func(t *testing.T) {
+		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
+		got := checkHooksFiring(deadHC, deadURL, false, dir, "claude")
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
@@ -780,6 +879,7 @@ func TestCheckHooksFiring(t *testing.T) {
 
 	t.Run("call log with no edit-hook origin still fails", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		logDir := filepath.Join(dir, "workspace", "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
@@ -788,7 +888,7 @@ func TestCheckHooksFiring(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(line), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := checkHooksFiring(dir, "claude")
+		got := checkHooksFiring(deadHC, deadURL, false, dir, "claude")
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
@@ -796,6 +896,7 @@ func TestCheckHooksFiring(t *testing.T) {
 
 	t.Run("edit-hook traffic passes", func(t *testing.T) {
 		dir := t.TempDir()
+		writeFathomGoMod(t, dir)
 		logDir := filepath.Join(dir, "workspace", "logs")
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			t.Fatal(err)
@@ -804,9 +905,38 @@ func TestCheckHooksFiring(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(line), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got := checkHooksFiring(dir, "claude")
+		got := checkHooksFiring(deadHC, deadURL, false, dir, "claude")
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
+		}
+	})
+
+	// O23's own reproduction: root is a normal adopter repo (NOT the fathom
+	// tree), the call log genuinely lives at the DAEMON's own workspace
+	// (here, a different tempdir standing in for the fathom checkout the
+	// daemon was launched from), and the daemon indexes itself as service
+	// "fathom" (the fleet-dogfood convention) — checkHooksFiring must find
+	// it there and PASS, never FAIL against the adopter root.
+	t.Run("O23: adopter repo resolves the daemon's own call log via the fathom service path", func(t *testing.T) {
+		adopter := t.TempDir()
+		fathomTree := t.TempDir()
+		logDir := filepath.Join(fathomTree, "workspace", "logs")
+		if err := os.MkdirAll(logDir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		line := `{"ts":"2026-01-01T00:00:00Z","tool":"obligations","origin":"edit-hook","latency_ms":1}` + "\n"
+		if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(line), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"adopter", "fathom"}, servicePaths: map[string]string{"fathom": fathomTree}})
+		defer srv.Close()
+
+		got := checkHooksFiring(http.DefaultClient, srv.URL, true, adopter, "claude")
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass — the call log lives at the daemon's own \"fathom\" service path, not the adopter root", got)
+		}
+		if !strings.Contains(got.Reason, fathomTree) {
+			t.Errorf("reason should name the actual (daemon-side) call-log path: %s", got.Reason)
 		}
 	})
 }
@@ -1088,6 +1218,81 @@ func TestCheckObligationsServed(t *testing.T) {
 			t.Errorf("explicit service the hooks cannot resolve must carry the mismatch note: %s", got.Reason)
 		}
 	})
+
+	// O23's own reproduction: CLAUDE.md alone answers zero because this
+	// service's compiled rules are code-scoped, but the SAME daemon serves
+	// real rules on a real indexed Go source file — checkObligationsServed
+	// must probe that file and PASS naming it, never FAIL for CLAUDE.md
+	// specifically. Live evidence: 6 rules served on cmd/conjure/main.go.
+	t.Run("O23: dominant-language source-file probe passes when CLAUDE.md alone would fail", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services:       []string{"alpha"},
+			sources:        []string{"cmd/conjure/main.go"},
+			obligFileRules: map[string]int{"cmd/conjure/main.go": 6},
+			watermark:      "wm",
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorPass {
+			t.Fatalf("got %+v, want pass via the source-file probe", got)
+		}
+		if !strings.Contains(got.Reason, "cmd/conjure/main.go") {
+			t.Errorf("pass must name the probe that actually answered: %s", got.Reason)
+		}
+		if strings.Contains(got.Reason, "file CLAUDE.md") {
+			t.Errorf("must not claim CLAUDE.md answered when the source-file probe is what served: %s", got.Reason)
+		}
+	})
+
+	// The third outcome O23 asks for: every probe (source file + CLAUDE.md +
+	// AGENTS.md) serves zero rules, but the obligations layer HAS been
+	// compiled for this service (staleness_report's layers block proves
+	// it) — a distinct, honest WARN, never conflated with "never compiled".
+	t.Run("O23: compiled but no probe matches scope is a distinct warn, not a never-compiled fail", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services:           []string{"alpha"},
+			sources:            []string{"cmd/conjure/main.go"},
+			obligFileRules:     map[string]int{}, // every probed file serves zero
+			obligLayerCompiled: true,
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorWarn {
+			t.Fatalf("got %+v, want warn (compiled, but no probe in scope) — never fail or a silent pass", got)
+		}
+		if !strings.Contains(got.Reason, "IS compiled") {
+			t.Errorf("warn reason must say the layer IS compiled: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "cmd/conjure/main.go") || !strings.Contains(got.Reason, "CLAUDE.md") || !strings.Contains(got.Reason, "AGENTS.md") {
+			t.Errorf("warn reason must name every probe tried: %s", got.Reason)
+		}
+	})
+
+	// Genuinely never compiled, now proven independently of any single
+	// probe file via obligationsLayerCompiled (not just "CLAUDE.md served
+	// zero") — still a real FAIL, the never-silent discipline preserved.
+	t.Run("O23: never compiled (proven via staleness_report) still fails, distinct from the warn case", func(t *testing.T) {
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+			services: []string{"alpha"},
+			sources:  []string{"cmd/conjure/main.go"},
+			// obligFileRules unset (nil): falls back to the file-blind
+			// obligRules/watermark, both zero by default — "never compiled".
+		})
+		defer srv.Close()
+		root := namedDir(t, "alpha")
+		got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+		if got.Status != doctorFail {
+			t.Fatalf("got %+v, want fail", got)
+		}
+		if !strings.Contains(got.Remedy, "fathom compile --service alpha") {
+			t.Errorf("never-compiled fail must carry the compile remedy: %s", got.Remedy)
+		}
+		if !strings.Contains(got.Reason, "never been compiled") {
+			t.Errorf("reason must say never compiled, not the ambiguous old wording: %s", got.Reason)
+		}
+	})
 }
 
 func TestCheckSurfaceTraffic(t *testing.T) {
@@ -1275,6 +1480,155 @@ func TestCmdDoctor_JSON(t *testing.T) {
 	}
 	if report.Summary.Fail != 0 || len(report.Checks) == 0 {
 		t.Errorf("summary = %+v, checks = %d", report.Summary, len(report.Checks))
+	}
+}
+
+// TestCmdDoctor_AdopterRepoIsNotFathom is O23's primary regression test
+// (docs/dogfood-observations.md): doctor was written and exercised only
+// inside fathom's own repo, where "the repo being doctored" and "the repo
+// the binary/daemon came from" happen to be the SAME directory. Every prior
+// doctor test (including TestCmdDoctor_AllPass above) makes that same
+// mistake — its fixture puts the call log inside the doctored root and
+// pins the fake binary revision to that root's OWN HEAD, which is exactly
+// the self-hosting shape that let three bugs ship unnoticed. This test
+// deliberately makes the two directories DIFFERENT: a scratch adopter repo
+// (t.TempDir, git-init'd, no go.mod at all — nothing fathom about it) is
+// doctored against a daemon that — like the real one — is fathom's own
+// source tree, indexed under service "fathom" (CLAUDE.md's fleet-dogfood
+// convention), with the running binary's embedded revision set to that
+// OTHER tree's HEAD. Before the O23 fix this reproduced all three named
+// bugs: binary_fresh FAILed comparing the binary to the adopter's HEAD;
+// hooks_firing FAILed looking for the call log under the adopter root
+// instead of the daemon's own workspace; obligations_served FAILed
+// probing CLAUDE.md alone when this service's compiled rules are
+// code-scoped. The assertion: a correctly-wired adopter reports ZERO
+// FAILs, and each of the three checks individually is never the FAIL.
+func TestCmdDoctor_AdopterRepoIsNotFathom(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	adopter := t.TempDir()
+	svc := strings.ToLower(filepath.Base(adopter))
+	gitRepo(t, adopter) // a plain repo — no go.mod, nothing fathom about it
+
+	// Wire the adopter like a real `fathom init` would: stanza, hooks,
+	// lefthook, skills — everything EXCEPT a call log at its own root (O23:
+	// that belongs to the daemon, never the doctored repo).
+	if err := os.WriteFile(filepath.Join(adopter, "CLAUDE.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adopter, "AGENTS.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(adopter, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(adopter, ".claude", "settings.json"), merged, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lefthook := "pre-push:\n  commands:\n    verify:\n      run: bin/fathom verify --service " + svc + "\n"
+	if err := os.WriteFile(filepath.Join(adopter, "lefthook.yml"), []byte(lefthook), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, skillName := range skillsdist.Names {
+		content, err := skillsdist.FS.ReadFile(skillName + "/SKILL.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		dest := filepath.Join(adopter, ".claude", "skills", skillName, "SKILL.md")
+		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(dest, content, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The fathom tree stand-in: a DIFFERENT directory — the one the daemon
+	// (and the doctor binary) actually came from — with its own HEAD and
+	// the REAL call log carrying edit-hook traffic.
+	fathomTree := t.TempDir()
+	writeFathomGoMod(t, fathomTree)
+	fathomHead := gitRepo(t, fathomTree)
+	logDir := filepath.Join(fathomTree, "workspace", "logs")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	logLines := `{"ts":"2026-01-01T00:00:00Z","tool":"obligations","origin":"edit-hook","latency_ms":1}` + "\n"
+	if err := os.WriteFile(filepath.Join(logDir, "mcp-calls.jsonl"), []byte(logLines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// The daemon indexes BOTH the adopter and itself (service "fathom",
+	// path = fathomTree). This adopter's compiled obligations are
+	// code-scoped: a real Go source file serves rules, CLAUDE.md alone
+	// serves none — the live O23 repro (6 rules on cmd/conjure/main.go,
+	// zero on CLAUDE.md).
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{
+		services:       []string{svc, "fathom"},
+		servicePaths:   map[string]string{"fathom": fathomTree},
+		sources:        []string{"cmd/adopter/main.go"},
+		obligFileRules: map[string]int{"cmd/adopter/main.go": 4},
+		watermark:      "2026-01-01T00:00:00Z",
+		agentCalls:     3,
+	})
+	defer srv.Close()
+	writeClaudeRegistration(t, home, srv.URL)
+
+	// The RUNNING binary's own revision is the FATHOM tree's HEAD, not the
+	// adopter's — exactly the real deployment shape, and exactly what made
+	// the pre-fix binary_fresh FAIL comparing it to the adopter's HEAD.
+	old := doctorBinaryRevision
+	defer func() { doctorBinaryRevision = old }()
+	doctorBinaryRevision = func() (string, bool, bool) { return fathomHead, false, true }
+
+	var out, errOut bytes.Buffer
+	code := cmdDoctor([]string{"--path", adopter, "--service", svc, "--url", srv.URL, "--harness", "claude", "--json"}, &out, &errOut)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0 (zero false FAILs)\nstdout:\n%s\nstderr:\n%s", code, out.String(), errOut.String())
+	}
+
+	var report struct {
+		Checks  []doctorCheck `json:"checks"`
+		Summary struct {
+			Fail int `json:"fail"`
+		} `json:"summary"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &report); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, out.String())
+	}
+	if report.Summary.Fail != 0 {
+		var failing []string
+		for _, c := range report.Checks {
+			if c.Status == doctorFail {
+				failing = append(failing, fmt.Sprintf("%s: %s", c.Name, c.Reason))
+			}
+		}
+		t.Fatalf("a correctly-wired adopter repo must show ZERO fails, got %d: %s", report.Summary.Fail, strings.Join(failing, " | "))
+	}
+
+	// Pin each of the three named bugs individually, by name — a future
+	// regression in exactly one of them must still be caught here even if
+	// some other check happens to also go red and the aggregate count
+	// still reads oddly.
+	byName := map[string]doctorCheck{}
+	for _, c := range report.Checks {
+		byName[c.Name] = c
+	}
+	if c, ok := byName["binary_fresh"]; ok && c.Status == doctorFail {
+		t.Errorf("binary_fresh must never FAIL comparing the binary to a DIFFERENT repo's HEAD: %+v", c)
+	}
+	if c, ok := byName["hooks_firing"]; !ok || c.Status != doctorPass {
+		t.Errorf("hooks_firing must PASS by finding the daemon's real call log via the \"fathom\" service path, not FAIL against the adopter root: %+v", c)
+	}
+	if c, ok := byName["obligations_served"]; !ok || c.Status != doctorPass {
+		t.Errorf("obligations_served must PASS by probing the real code-scoped source file, not FAIL on CLAUDE.md alone: %+v", c)
+	} else if !strings.Contains(c.Reason, "cmd/adopter/main.go") {
+		t.Errorf("obligations_served pass must name the source-file probe that actually answered: %s", c.Reason)
 	}
 }
 
