@@ -76,6 +76,19 @@ func fieldErr(path, field string, err error) *FieldError {
 // construction, and the CUE schema alone cannot express that
 // either/or cleanly (same class of decision as bindspec's Go-enforced
 // duplicate-module check).
+//
+// Three states, not two (O22, docs/dogfood-observations.md): the top-level
+// "guards" field being ABSENT — an all-commented scaffold (exactly what
+// ExampleTemplate/`fathom init` write) or a genuinely blank file — is an
+// EMPTY config, returned with no error and zero Guards. It is NOT the same
+// as an explicit `guards: []`, which is present-but-declaring-nothing and
+// stays a loud error below (a human writing that literal is closer to a
+// mistake than an intentional omission). A PRESENT guards list that is
+// malformed (bad field, dead guard, etc.) still fails loudly, unchanged.
+// Because only the absent-field path can produce a zero-error, zero-Guards
+// result, callers can tell "nothing configured" from "configured with zero
+// entries" from len(GuardSet.Guards)==0 + err==nil alone — no separate
+// Scaffolded/Empty flag is needed.
 func LoadGuards(path string) (GuardSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -89,7 +102,8 @@ func LoadGuards(path string) (GuardSet, error) {
 
 	list := v.LookupPath(cue.ParsePath("guards"))
 	if !list.Exists() {
-		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "guards", fmt.Errorf("required, MUST be present"))}}
+		// Absent, not malformed — see the doc comment above.
+		return GuardSet{}, nil
 	}
 	iter, err := list.List()
 	if err != nil {
@@ -163,6 +177,11 @@ var userScopeForbiddenFields = []string{"scopes", "max_rules", "include_modules"
 // render, and tagging it here (rather than threading a separate "source"
 // flag through every caller) keeps every downstream renderer correct by
 // construction: it already prints Note verbatim.
+//
+// Same three-state, absent-vs-malformed treatment as LoadGuards (O22, see
+// its doc comment): a ~/.fathom/guard.cue with no top-level "guards" field
+// (e.g. a hand-copied, all-commented scaffold) loads as an empty GuardSet
+// with no error, not a "required, MUST be present" failure.
 func LoadUserGuards(path string) (GuardSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -176,7 +195,8 @@ func LoadUserGuards(path string) (GuardSet, error) {
 
 	list := v.LookupPath(cue.ParsePath("guards"))
 	if !list.Exists() {
-		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "guards", fmt.Errorf("required, MUST be present"))}}
+		// Absent, not malformed — see the doc comment above.
+		return GuardSet{}, nil
 	}
 	iter, err := list.List()
 	if err != nil {

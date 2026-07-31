@@ -450,6 +450,74 @@ the relayed review and not independently actioned.
 
 - [x] `docs/plans/gap1-instrumentation.md`: GI-8 ("PreToolUse grep-hint revival") closed — `disposition: refused`, reason pointing at `docs/design/guarded-edits.md` as the sharper mechanism that actually ships the PreToolUse channel GI-8 asked for (a different, narrower shape: configured critical scopes, not an evidence-gated grep-hint) {id: O-28, symbol: LoadGuards, package: internal/guardspec, skip_test: true, skip: "documentation-only row; the closed disposition line is the acceptance evidence itself"}
 
+## O22 fix — the fathom-init scaffold now clears its own doctor checks
+
+O22 (docs/dogfood-observations.md): every fresh `fathom init` wrote
+`.fathom/guard.cue`/`.fathom/modules.cue` as fully-commented scaffolds
+(O-14's `writeFathomConfigScaffolds`, correct and deliberate), but
+`LoadGuards`/`LoadUserGuards`/`LoadBindings` treated the missing top-level
+`guards`/`bindings` field as `required, MUST be present` — an all-commented
+file is *empty*, not *invalid*. Every fresh adoption therefore hit two
+immediate doctor FAILs (`binding_file`, `guard_file`) plus four dependent
+SKIPs, from files fathom itself had just written. Fixed by making the
+absent-top-level-field case a clean empty-config load (zero entries, no
+error) in all three loaders — an explicit `guards: []`/`bindings: []`
+(present but declaring nothing via a literal empty list) is a materially
+different, still-rejected case, unchanged. `len(set.Guards)==0`/
+`len(set.Bindings)==0` on a successful load is now unambiguous evidence of
+"field omitted" (the only path that produces it), so no separate
+Scaffolded/Empty flag was added to `GuardSet`/`BindingSet`.
+
+- [x] `internal/guardspec`: `LoadGuards`/`LoadUserGuards` — a `.fathom/guard.cue` (or `~/.fathom/guard.cue`) with no top-level `guards` field (all-commented scaffold, or a genuinely blank file) loads as an empty `GuardSet` with no error; a present-but-malformed guard entry still fails loudly, unchanged {id: O-29, symbol: LoadGuards, package: internal/guardspec}
+  - Checked for symbol/type collisions before anchoring: no `type LoadGuards`
+    anywhere in `internal/`/`cmd/` — `func LoadGuards` is unique.
+  - Tests: `TestExampleTemplate_IsCommentedNoOp` (rewritten — pins the
+    ACTUAL `ExampleTemplate()` bytes `fathom init` writes: loads clean,
+    zero guards, where it previously asserted the bug's exact error),
+    `TestLoadGuards_TopLevelFieldAbsent_IsEmptyNotError` (the narrower
+    unit case: `""` and an all-comment string both load empty),
+    `TestLoadUserGuards_TopLevelFieldAbsent_IsEmptyNotError` (same fix,
+    user-scope entry point — the mission's own "check the user-scope
+    loader too" turned up the identical bug shape there). Pre-existing
+    `TestLoadGuards_Negatives`'s "empty guards list" case (`guards: []`)
+    stays a rejected error, proving the two cases are distinguished, not
+    merged.
+
+- [x] `internal/bindspec`: `LoadBindings` — same absent-vs-malformed fix as O-29, for `.fathom/modules.cue`'s top-level `bindings` field {id: O-30, symbol: LoadBindings, package: internal/bindspec}
+  - Checked for symbol/type collisions: no `type LoadBindings` anywhere;
+    `func LoadBindings` is unique.
+  - Tests: `TestExampleTemplate_IsCommentedNoOp` (rewritten, same shape as
+    O-29's), `TestLoadBindings_TopLevelFieldAbsent_IsEmptyNotError`.
+    Pre-existing `TestLoadBindings_Negatives`'s "empty bindings list" case
+    (`bindings: []`) stays a rejected error, unchanged.
+
+- [x] `cmd/fathom/doctor_phaseo.go`: `checkBindingFile`/`checkGuardFile` gain the third state — present-but-declaring-nothing now reports `pass` with a note naming it a scaffold awaiting opt-in, distinct from both "no file" (absence) and "invalid" (malformed, unchanged fail); `binding_modules_mounted`/`binding_module_readiness`/`guard_dead_scopes`/`guard_include_modules_unbound` (O-17..O-20) all gate on `loadBindingSetForDoctor`/`loadGuardSetForDoctor`'s `ok` flag, which O-29/O-30's loader fix now sets `true` for the scaffold — so they run normally over an empty set and pass trivially instead of skipping as "binding_file/guard_file is invalid" {id: O-31, symbol: checkGuardFile, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type checkGuardFile` anywhere;
+    `func checkGuardFile` is unique (also verified for `checkBindingFile`,
+    already anchoring O-16).
+  - Tests: `TestCheckBindingFile_ScaffoldEmpty_Pass`,
+    `TestCheckGuardFile_ScaffoldEmpty_Pass` (both assert the reason names
+    "scaffold"), `TestCheckBindingModulesMounted_ScaffoldEmpty_PassNotSkip`,
+    `TestCheckBindingModuleReadiness_ScaffoldEmpty_Pass`,
+    `TestCheckGuardDeadScopes_ScaffoldEmpty_Pass`,
+    `TestCheckGuardIncludeModulesUnbound_ScaffoldEmpty_Pass` — each
+    dependent check exercised against the real `bindspec`/
+    `guardspec.ExampleTemplate()` bytes with a live fake daemon, asserting
+    `pass`, never `skipped`.
+
+- [x] `cmd/fathom/doctor_phasep.go`: `checkUserScopeGuard` gains the identical third state for `~/.fathom/guard.cue` — a hand-copied, all-commented user-scope guard file now passes with a scaffold note instead of warning as invalid {id: O-32, symbol: checkUserScopeGuard, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type checkUserScopeGuard`
+    anywhere; `func checkUserScopeGuard` is unique.
+  - Test: `TestCheckUserScopeGuard_ScaffoldEmpty_Pass`.
+
+- [x] `cmd/fathom/doctor_phaseo_test.go`: an end-to-end pinning test — mirroring the `?:`-optional-field critic precedent (finding 1, above) — that runs `writeFathomConfigScaffolds` (O-14, the exact function `fathom init` calls) into a scratch root, then every phase-O check (`checkBindingFile`, `checkGuardFile`, `checkBindingModulesMounted`, `checkBindingModuleReadiness`, `checkGuardDeadScopes`, `checkGuardIncludeModulesUnbound`) against it exactly as `fathom doctor` would, and asserts zero FAILs and zero SKIPs across all six {id: O-33, symbol: writeFathomConfigScaffolds, package: cmd/fathom}
+  - Checked for symbol/type collisions: no `type writeFathomConfigScaffolds`
+    anywhere; `func writeFathomConfigScaffolds` is unique (already
+    anchoring O-14).
+  - Test: `TestPhaseOChecks_RealInitScaffold_ZeroFails` — before O-29..O-32
+    this reproduced O22 exactly (two FAILs, four SKIPs); after, all six
+    checks PASS.
+
 ## Deferred (named triggers, not silently dropped — both designs' own §4/§3)
 
 - **SessionStart brief line naming each bound module** (design §3.3's

@@ -95,6 +95,19 @@ const DefaultMaxRules = 2
 // (the CUE schema cannot express list-element uniqueness cleanly, so this
 // reader enforces it directly, same class of decision as modspec's
 // Go-enforced regex/required-ness checks).
+//
+// Three states, not two (O22, docs/dogfood-observations.md): the top-level
+// "bindings" field being ABSENT — an all-commented scaffold (exactly what
+// ExampleTemplate/`fathom init` write) or a genuinely blank file — is an
+// EMPTY config, returned with no error and zero Bindings. It is NOT the
+// same as an explicit `bindings: []`, which is present-but-declaring-nothing
+// and stays a loud error below (a human writing that literal is closer to
+// a mistake than an intentional omission). A PRESENT bindings list that is
+// malformed (bad field, duplicate module, etc.) still fails loudly,
+// unchanged. Because only the absent-field path can produce a zero-error,
+// zero-Bindings result, callers can tell "nothing configured" from
+// "configured with zero entries" from len(BindingSet.Bindings)==0 +
+// err==nil alone — no separate Scaffolded/Empty flag is needed.
 func LoadBindings(path string) (BindingSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -108,7 +121,8 @@ func LoadBindings(path string) (BindingSet, error) {
 
 	list := v.LookupPath(cue.ParsePath("bindings"))
 	if !list.Exists() {
-		return BindingSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "bindings", fmt.Errorf("required, MUST be present"))}}
+		// Absent, not malformed — see the doc comment above.
+		return BindingSet{}, nil
 	}
 	iter, err := list.List()
 	if err != nil {

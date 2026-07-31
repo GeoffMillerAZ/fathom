@@ -14,6 +14,18 @@ package main
 // case (phase O ships with NEITHER active by default — the fathom-init
 // scaffold is commented) and is reported `pass`, not `skipped` — there is
 // nothing uncertain about "no bindings/guards configured."
+//
+// Three states, not two (O22, docs/dogfood-observations.md): binding_file/
+// guard_file distinguish ABSENT ("no ... configured", above) from PRESENT-
+// BUT-DECLARING-NOTHING (the fathom-init scaffold itself — a valid, empty
+// load, PASS with a note naming it a scaffold awaiting opt-in) from
+// PRESENT-AND-MALFORMED (loud FAIL, unchanged). The scaffold state loads
+// via bindspec.LoadBindings/guardspec.LoadGuards with zero entries and no
+// error (the loaders' own absent-top-level-field fix), so
+// binding_modules_mounted/binding_module_readiness/guard_dead_scopes/
+// guard_include_modules_unbound — which all gate on loadBindingSetForDoctor/
+// loadGuardSetForDoctor's ok=true — run normally against an empty set and
+// pass trivially, rather than SKIP.
 
 import (
 	"bytes"
@@ -81,6 +93,12 @@ func checkBindingFile(root string) doctorCheck {
 			Remedy: "fix the reported field(s), or see docs/design/platform-modules.md §3.1 for the binding shape",
 		}
 	}
+	if len(set.Bindings) == 0 {
+		// Present but declares nothing (O22, docs/dogfood-observations.md):
+		// the fully-commented `fathom init` scaffold loads clean with zero
+		// bindings — distinct from both "no file" above and "invalid" below.
+		return doctorCheck{Name: name, Status: doctorPass, Reason: ".fathom/modules.cue present but declares no bindings yet — scaffold awaiting opt-in (uncomment an example to activate)"}
+	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf(".fathom/modules.cue valid — %d binding(s)", len(set.Bindings))}
 }
 
@@ -98,6 +116,12 @@ func checkGuardFile(root string) doctorCheck {
 			Reason: fmt.Sprintf(".fathom/guard.cue is invalid: %v", err),
 			Remedy: "fix the reported field(s), or see docs/design/guarded-edits.md §2.1 for the guard shape",
 		}
+	}
+	if len(set.Guards) == 0 {
+		// Present but declares nothing (O22, docs/dogfood-observations.md):
+		// the fully-commented `fathom init` scaffold loads clean with zero
+		// guards — distinct from both "no file" above and "invalid" below.
+		return doctorCheck{Name: name, Status: doctorPass, Reason: ".fathom/guard.cue present but declares no guards yet — scaffold awaiting opt-in (uncomment an example to activate)"}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf(".fathom/guard.cue valid — %d guard(s)", len(set.Guards))}
 }
