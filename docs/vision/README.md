@@ -75,6 +75,7 @@ measured) before laying stones no one is standing on.
 13. **[13-expert-suite.md](13-expert-suite.md)** — the expert-module suite; laws 10–12 (verb-first, advisor-vs-gate, no saving without a counterfactual).
 14. **[14-impact-observatory.md](14-impact-observatory.md)** *(added 2026-08-07)* — the impact observatory: the counterfactual tokenomics program, version-stamped telemetry, the fleet fold, sharing-is-a-human-verb, narrate mode, auto-wire/reconcile, and the observatory web surface (candidate laws 13–15).
 15. **[15-reach.md](15-reach.md)** *(added 2026-08-07)* — reach: obligation packs as shippable products (the ui-appkit pack and the contribute-back loop), the language-pack contract and tier list (C++/Conan named), and the dependency-plane decision (shared depgraph+hash library born in ci-kit; Bazel as reference semantics and REAPI reuse, never a dependency).
+16. **[16-skills-pack.md](16-skills-pack.md)** *(added 2026-08-07)* — the skills pack: adoption as one install — the `/fathom:xyz` Claude Code plugin (skills+hooks+MCP, marketplace updates as the reconcile channel), the open-standard `.agents/skills` rendering (Codex+Gemini shared path), the pinned rendering, and kit-shipped packs (app-kit + agentic-kit fathom-packs).
 
 ## How this review was grounded
 
