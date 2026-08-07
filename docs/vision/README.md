@@ -69,6 +69,11 @@ measured) before laying stones no one is standing on.
 7. **[07-questions-and-risks.md](07-questions-and-risks.md)** — red team: risks rated, the questions you're not asking, three decisions.
 8. **[08-roadmap.md](08-roadmap.md)** — the consolidated sequence and your decision checklist. **Start your review here or at 01.**
 9. **[09-deterministic-sdd.md](09-deterministic-sdd.md)** *(added 2026-07-15)* — deterministic SDD: the reconciler reframe, where CUE goes and never goes, the handoff-program pilot, and the dial-to-11 trajectory.
+10. **[10-rearchitecture.md](10-rearchitecture.md)** — the rearchitecture pass (complete; superseded in emphasis by 11).
+11. **[11-dial-to-eleven.md](11-dial-to-eleven.md)** — the founding activation program; doctrine laws 1–8.
+12. **[12-governed-knowledge-engine.md](12-governed-knowledge-engine.md)** — the governed knowledge engine; law 9 (hosted read-only before writable).
+13. **[13-expert-suite.md](13-expert-suite.md)** — the expert-module suite; laws 10–12 (verb-first, advisor-vs-gate, no saving without a counterfactual).
+14. **[14-impact-observatory.md](14-impact-observatory.md)** *(added 2026-08-07)* — the impact observatory: the counterfactual tokenomics program, version-stamped telemetry, the fleet fold, sharing-is-a-human-verb, narrate mode, auto-wire/reconcile, and the observatory web surface (candidate laws 13–15).
 
 ## How this review was grounded
 
