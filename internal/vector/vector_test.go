@@ -27,7 +27,7 @@ func embed1(t *testing.T, e *embeddingclient.MockEmbedder, text string) embeddin
 
 // -------------------------------------------------------------------
 // MemoryVectorStore (kit foundations/embedding/vector-store) — Upsert +
-// Search, exercised through the same shape sextant hands it (Meta carrying
+// Search, exercised through the same shape fathom hands it (Meta carrying
 // symbol/file), pinning the behavior vector.SymbolIndexer depends on.
 // -------------------------------------------------------------------
 
@@ -179,7 +179,7 @@ func TestMemoryVectorStore_EmptySearch(t *testing.T) {
 }
 
 // -------------------------------------------------------------------
-// SymbolIndexer — Index + SearchText (sextant's thin adapter over the kit's
+// SymbolIndexer — Index + SearchText (fathom's thin adapter over the kit's
 // vectorstore.Indexer)
 // -------------------------------------------------------------------
 

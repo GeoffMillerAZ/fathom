@@ -1,6 +1,6 @@
-// Package vector adapts sextant's SymbolNode domain type onto agentic-kit's
+// Package vector adapts fathom's SymbolNode domain type onto agentic-kit's
 // generalized vector-store foundation
-// (foundations/embedding/vector-store), for sextant's optional semantic
+// (foundations/embedding/vector-store), for fathom's optional semantic
 // search layer. When a SymbolIndexer is wired into the query engine, Search
 // calls embed the query text and retrieve the nearest symbols by cosine
 // similarity.
@@ -11,7 +11,7 @@
 // github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store —
 // that package was lifted FROM this one and generalized (ctx-less
 // Upsert/Search, an opaque Meta map instead of Symbol/File fields). Do not
-// reintroduce a duplicate store implementation here; the only thing sextant
+// reintroduce a duplicate store implementation here; the only thing fathom
 // owns is the SymbolNode <-> vectorstore.Document/Scored mapping below.
 //
 // Concurrency: SymbolIndexer is safe for concurrent use whenever the
@@ -45,7 +45,7 @@ type Hit struct {
 
 // SymbolIndexer embeds core.SymbolNode symbols and stores them in a kit
 // vectorstore.VectorStore, and provides text-based semantic search over the
-// stored vectors — translating between sextant's SymbolNode/Hit and the
+// stored vectors — translating between fathom's SymbolNode/Hit and the
 // kit's Document/Scored types so callers never handle vectorstore.Entry
 // directly.
 type SymbolIndexer struct {
@@ -78,7 +78,7 @@ func (idx *SymbolIndexer) Index(ctx context.Context, nodes []core.SymbolNode) er
 }
 
 // SearchText embeds query and returns the topN nearest entries from the
-// VectorStore by cosine similarity, mapped onto sextant Hits.
+// VectorStore by cosine similarity, mapped onto fathom Hits.
 func (idx *SymbolIndexer) SearchText(ctx context.Context, text string, topN int) ([]Hit, error) {
 	scored, err := idx.inner.SearchText(ctx, text, topN)
 	if err != nil {
