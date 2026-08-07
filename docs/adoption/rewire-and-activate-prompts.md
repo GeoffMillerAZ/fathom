@@ -112,3 +112,32 @@ prompts then remain useful as the AUDIT edition (reconcile explains, the
 prompt verifies by demonstration). Keep them versioned here so the template
 in Prompt 1 is updated in the same commit that changes the init template —
 a drifted prompt is the same bug class as a drifted hook.
+
+## Authoring guards responsibly
+
+Guards spend attention as well as tokens; the discipline that keeps them
+net-positive:
+
+1. **The bar**: a guard exists because the mistake *already happened* —
+   the note cites the incident or the decision. Speculative guards are the
+   failure mode: fatigue teaches agents to skim the channel, which is
+   worse than having no channel.
+2. **Scope hygiene**: globs as narrow as the law allows; consumers narrow
+   the shipped globs further on install. A guard firing on files it does
+   not govern is spam with a citation.
+3. **Budgets**: `max_rules` ≤ 4 per entry, notes under ~150 words. The
+   injection channel is token-capped and deduped (repeat edits to the same
+   file do not re-inject), but attention is not capped — write for the
+   agent that has seen this note before.
+4. **Staleness is worse than silence**: every note cites its source, packs
+   version with their kit, and `/fathom:activate` re-syncs by provenance
+   marker — a lagging pack is drift, and a wrong injected rule actively
+   misleads.
+5. **Measure or retire**: the hook beats record fire rates; reviews record
+   catches. A guard that fires often and catches nothing in a quarter is
+   folded into docs or killed — the KILL.md discipline applies to guards
+   as much as layers.
+6. **Guards warn; gates refuse**: hooks fail open by design (a down daemon
+   must never block an edit), so anything that must *hold* belongs in a
+   blocking gate (lefthook/CI/verify) — the guard is the warning at the
+   moment of the edit, not the enforcement.
