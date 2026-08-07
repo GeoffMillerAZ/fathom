@@ -74,6 +74,7 @@ measured) before laying stones no one is standing on.
 12. **[12-governed-knowledge-engine.md](12-governed-knowledge-engine.md)** — the governed knowledge engine; law 9 (hosted read-only before writable).
 13. **[13-expert-suite.md](13-expert-suite.md)** — the expert-module suite; laws 10–12 (verb-first, advisor-vs-gate, no saving without a counterfactual).
 14. **[14-impact-observatory.md](14-impact-observatory.md)** *(added 2026-08-07)* — the impact observatory: the counterfactual tokenomics program, version-stamped telemetry, the fleet fold, sharing-is-a-human-verb, narrate mode, auto-wire/reconcile, and the observatory web surface (candidate laws 13–15).
+15. **[15-reach.md](15-reach.md)** *(added 2026-08-07)* — reach: obligation packs as shippable products (the ui-appkit pack and the contribute-back loop), the language-pack contract and tier list (C++/Conan named), and the dependency-plane decision (shared depgraph+hash library born in ci-kit; Bazel as reference semantics and REAPI reuse, never a dependency).
 
 ## How this review was grounded
 
