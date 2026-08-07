@@ -178,6 +178,32 @@ continuously what the audit did by hand:
 Law 15 candidate: **wiring is reconciled, not scaffolded — a drifted hook
 stack is a diff to apply, never a refusal to touch.**
 
+**Self-identification, then self-healing (the no-stopping property).** The
+owner's operational ask is that wiring problems surface and fix themselves
+instead of being discovered by audits. Mechanism, in three tiers of consent:
+
+- **Tier 0 — every hook self-describes.** Hooks stamp their beats with the
+  template version they were installed from and the binary version they
+  invoked; skew between installed-template, current-template, and deployed
+  binary becomes a computable fact per repo, not an investigation.
+- **Tier 1 — the session-hook is the tripwire.** It already runs at every
+  session start and prints one context line; it gains a wiring self-check
+  (template skew, shim-vs-stale-path, stanza staleness, unindexed cwd) and
+  prints the *exact* remedy — `fathom fleet reconcile --apply` or the
+  rewire prompt — so every drifted session opens by telling its agent how
+  to fix it. Detection is free and universal; nothing mutates.
+- **Tier 2 — consented auto-apply.** A config flag (`reconcile.auto = true`,
+  per-user or per-repo) lets the session-hook apply the *safe* subset
+  (hook-command path repointing to the shim, additive matcher upgrades,
+  stanza regeneration) at session start, logging a beat for each applied
+  diff. Structural changes (scope moves, removals) always stay behind the
+  explicit verb. Hooks never rewrite hooks mid-session — application
+  happens at session boundaries, where the harness re-reads them.
+
+The upgrade treadmill inverts: advancing fathom no longer means re-wiring
+consumers by hand; it means the next session in each repo notices, says
+so, and — where consented — fixes itself.
+
 ## 8. The observatory — the dashboard, sequenced honestly
 
 Law 10 (verb-first) orders the build: every screen below is a rendering
