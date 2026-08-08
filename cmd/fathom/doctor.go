@@ -209,6 +209,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkSessionLedgerTokens(),
 		// Phase Q (docs/design/observability-surfaces.md §8 item 3).
 		checkMetricsTier(),
+		// Phase R (docs/plans/cpp-toolchain.md CT-7).
+		checkCppToolchain(root),
 	)
 	return checks
 }

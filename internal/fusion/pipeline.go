@@ -336,7 +336,12 @@ func parseGitLog(serviceID, raw string) []store.Commit {
 // query captures rather than per-language hand-rolled tree walks; every
 // already-indexed .py/.js/.jsx/.ts/.tsx/.rb file's stored observations were
 // produced by the OLD CGO extractor, so the salt bump forces re-extraction.
-const ExtractorEpoch = "5"
+// Epoch 6 (docs/plans/cpp-toolchain.md): C++ names normalize "::" to "."
+// (CT-1), .h headers route through the C/C++ sniffing router (CT-3), and
+// CMake files extract (CT-4) — stored observations for every .h/.cc/.cpp/
+// .cxx/.hpp/.hh file predate all three, so the salt bump forces
+// re-extraction.
+const ExtractorEpoch = "6"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
@@ -396,10 +401,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// Rust
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
-	// C
+	// C (.h is polyglot: the header router sniffs C++ signals and picks the
+	// grammar per file — docs/plans/cpp-toolchain.md CT-3)
 	c := extractor.NewCExtractor()
 	p.exts[".c"] = c
-	p.exts[".h"] = c
+	p.exts[".h"] = extractor.NewCHeaderExtractor()
 
 	// C++
 	cpp := extractor.NewCppExtractor()
@@ -408,6 +414,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".cxx"] = cpp
 	p.exts[".hpp"] = cpp
 	p.exts[".hh"] = cpp
+	p.exts[".hxx"] = cpp
+
+	// CMake (full-basename key for CMakeLists.txt, extension for modules;
+	// docs/plans/cpp-toolchain.md CT-4/CT-5)
+	cmake := extractor.NewCMakeExtractor()
+	p.exts["CMakeLists.txt"] = cmake
+	p.exts[".cmake"] = cmake
 
 	// C#
 	p.exts[".cs"] = extractor.NewCSharpExtractor()

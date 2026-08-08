@@ -222,6 +222,12 @@ var defaultFathomIgnore = []string{
 	".claude/",
 	"node_modules/",
 	"vendor/",
+	// C-family build trees (docs/plans/cpp-toolchain.md CT-8): a configured
+	// CMake/Ninja build directory holds copied headers and generated
+	// sources that would double-index every symbol.
+	"build/",
+	"out/",
+	"cmake-build-*/",
 }
 
 // writeFathomIgnore creates <root>/.fathomignore with sensible defaults if

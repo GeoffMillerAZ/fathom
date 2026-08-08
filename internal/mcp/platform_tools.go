@@ -350,6 +350,22 @@ func kindToLang(k core.SourceKind) string {
 		return "terraform"
 	case strings.HasPrefix(string(k), "K8s"):
 		return "kubernetes"
+	// C-family and friends (docs/plans/cpp-toolchain.md CT-6). Order
+	// matters: every multi-letter C* prefix must match before the bare-C
+	// kinds, and those are matched exactly — a HasPrefix "C" would swallow
+	// CSharp, CMake, CUE and Compose alike.
+	case strings.HasPrefix(string(k), "Cpp"):
+		return "cpp"
+	case strings.HasPrefix(string(k), "CSharp"):
+		return "csharp"
+	case strings.HasPrefix(string(k), "CMake"):
+		return "cmake"
+	case strings.HasPrefix(string(k), "CUE"):
+		return "cue"
+	case strings.HasPrefix(string(k), "Rust"):
+		return "rust"
+	case k == core.KindCFunc, k == core.KindCStruct, k == core.KindCEnum, k == core.KindCTypedef:
+		return "c"
 	default:
 		return ""
 	}

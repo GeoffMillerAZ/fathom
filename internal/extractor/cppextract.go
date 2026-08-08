@@ -2,6 +2,7 @@ package extractor
 
 import (
 	"sort"
+	"strings"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
 	tscpp "github.com/tree-sitter/tree-sitter-cpp/bindings/go"
@@ -74,8 +75,9 @@ func walkCpp(
 
 	switch n.Kind() {
 	case "namespace_definition":
-		// "name" field → namespace_identifier
-		name := treesitter.FieldText(n, "name", src)
+		// "name" field → namespace_identifier (or a nested_namespace_specifier
+		// for C++17 "namespace a::b", which normalizes to "a.b").
+		name := cppCanonicalName(treesitter.FieldText(n, "name", src))
 		if name != "" {
 			*out = append(*out, core.SymbolNode{
 				Service:  service,
@@ -178,7 +180,7 @@ func walkCpp(
 		// Out-of-class definitions (e.g. "void MyClass::method() { }") already
 		// carry the class name via a qualified_identifier returned by cDeclName,
 		// so we only prepend the scope when there is no "::" in the raw name.
-		symName := raw
+		symName := cppCanonicalName(raw)
 		if len(scopeStack) > 0 && !containsScope(raw) {
 			symName = scopeStack[len(scopeStack)-1] + "." + raw
 		}
@@ -190,7 +192,7 @@ func walkCpp(
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
 			Tier:     core.TierVerified,
-			Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
+			Calls:    cppCanonicalCalls(treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"})),
 		})
 		// Do not recurse into function bodies.
 		return
@@ -223,4 +225,28 @@ func containsScope(name string) bool {
 		}
 	}
 	return false
+}
+
+// cppCanonicalName normalizes C++ scope qualification ("::") to the graph's
+// one true separator (".") so a symbol has exactly one spelling regardless of
+// where it was defined: an inline method extracts as "Widget.render" via the
+// scope stack, and the out-of-class "void Widget::render()" must land on the
+// same key (docs/plans/cpp-toolchain.md CT-1). Callee references normalize
+// identically so edges join.
+func cppCanonicalName(name string) string {
+	return strings.ReplaceAll(name, "::", ".")
+}
+
+// cppCanonicalCalls normalizes every collected callee and re-sorts: "::"
+// (0x3A) and "." (0x2E) order differently, and Calls is contractually sorted.
+func cppCanonicalCalls(calls []string) []string {
+	if len(calls) == 0 {
+		return calls
+	}
+	out := make([]string, len(calls))
+	for i, c := range calls {
+		out[i] = cppCanonicalName(c)
+	}
+	sort.Strings(out)
+	return out
 }

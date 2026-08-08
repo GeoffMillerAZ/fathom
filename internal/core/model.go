@@ -93,6 +93,17 @@ const (
 	KindCppEnum      SourceKind = "CppEnum"
 	KindCppNamespace SourceKind = "CppNamespace"
 
+	// CMake symbols (docs/plans/cpp-toolchain.md CT-4). CMakeLists.txt and
+	// *.cmake modules are intent, not artifacts: targets carry
+	// target_link_libraries edges in Calls, so "who links core?" is a graph
+	// question. build.ninja is generated FROM these and is never indexed
+	// (CT-9 refusal).
+	KindCMakeProject    SourceKind = "CMakeProject"
+	KindCMakeTarget     SourceKind = "CMakeTarget"
+	KindCMakeFunction   SourceKind = "CMakeFunction"
+	KindCMakeOption     SourceKind = "CMakeOption"
+	KindCMakeDependency SourceKind = "CMakeDependency"
+
 	// Templates
 	KindTemplComponent SourceKind = "TemplComponent"
 

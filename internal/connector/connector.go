@@ -95,6 +95,12 @@ var extClassMap = map[string]classification{
 	".cxx": {core.KindCppFunc, "cpp"},
 	".hpp": {core.KindCppFunc, "cpp"},
 	".hh":  {core.KindCppFunc, "cpp"},
+	".hxx": {core.KindCppFunc, "cpp"},
+
+	// CMake (docs/plans/cpp-toolchain.md CT-5; the intent layer of a C++
+	// build — build.ninja is its generated output and is never indexed)
+	"CMakeLists.txt": {core.KindCMakeTarget, "cmake"},
+	".cmake":         {core.KindCMakeTarget, "cmake"},
 
 	// Templates
 	".templ": {core.KindTemplComponent, "templ"},

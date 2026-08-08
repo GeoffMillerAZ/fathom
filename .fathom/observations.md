@@ -459,3 +459,13 @@ triage if it matters.
 - **Fix:** TODO — default the CLI call log to an absolute path (service workspace root or ~/.fathom), never cwd-relative.
 - **Status:** open
 - **Impact:** cosmetic here (deleted), but a cwd-relative log means CLI surface traffic silently fragments across directories and undercounts in the adoption gauge.
+
+
+### O12 — ingest CLI -store default is cwd-relative: running from any directory silently creates a junk workspace/db/ store there
+
+- **Symptom:** `fathom ingest --service calib-fmt` run from a corpus checkout printed a full success summary while writing to `<cwd>/workspace/db/fathom.sqlite` — a store nothing will ever read — and FATHOM_HTTP was silently ignored (ingest is store-direct, not daemon-routed).
+- **Evidence (2026-08-08):** the CT-10 calibration first-run: scratch daemon's store stayed at 0 services while ingest reported 5,470 symbols; the data was in a fresh `workspace/db/` inside the clone.
+- **Root cause:** the `-store` flag defaults to the relative path "workspace/db/fathom.sqlite" (same class as O11's cwd-relative call log); nothing warns when the default resolves outside any known service root.
+- **Fix:** TODO — resolve the default against the repo/service root (or ~/.fathom), print the absolute store path in the summary line, and say loudly when a fresh store file is being created.
+- **Status:** open
+- **Impact:** a successful-looking ingest that indexes into the void; cost one calibration re-run here, would cost a new adopter their first hour.

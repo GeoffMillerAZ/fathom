@@ -5,6 +5,35 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — full C++/CMake/clang/LLVM/Ninja support (docs/plans/cpp-toolchain.md, IO-27's trigger fired)
+
+C++ extraction closes its correctness gaps: symbols get ONE spelling —
+out-of-class definitions ("Widget::render") and collected callees
+normalize "::" to "." so call edges join the inline-method spelling the
+scope stack already produced (CT-1); templates, operator overloads,
+destructors and C++17 nested namespaces are pinned by tests (CT-2); and
+the polyglot .h extension routes per-file through a C++-signal sniffer
+— LLVM-style codebases (every header .h) keep their classes,
+namespaces and methods instead of being flattened by the C grammar
+(CT-3). CMake becomes a dialect: CMakeLists.txt and *.cmake extract
+projects, targets, functions, options and find_package dependencies,
+with target_link_libraries as target→target call edges (CT-4/5), all
+TierPreScan (hand scanner, not CMake's evaluator — variable
+indirection is dropped, never guessed). The languages field stops
+lying for C-family services (CT-6: cpp/c/cmake/rust/csharp/cue).
+Toolchain awareness: doctor's cpp_toolchain check warns (never fails)
+when a CMake repo lacks compile_commands.json and names the exact
+Ninja+clang export command (CT-7); init's .fathomignore excludes
+build/, out/, cmake-build-*/ (CT-8). build.ninja is refused as
+indexable input — it is generated FROM the CMake intent we already
+index (CT-9). ExtractorEpoch 5→6 forces re-extraction of every stored
+C/C++ observation. Calibrated live against fmtlib/fmt: 5,470 symbols
+(424 classes + 181 namespaces from .h headers), 24 CMake targets with
+normalized link edges, zero "::" contamination (CT-10; record in the
+plan). Precise clang mode, the WASM engine migration, and Conan stay
+deferred with named triggers (CT-11/12/13). O12 filed en route: the
+ingest CLI's cwd-relative -store default indexes into the void.
+
 ### 2026-08-08 — the activation plan closes: exit proofs run live, the sweep verifies (plan IO-30/31/32 + final verify)
 
 The three exit-proof rows are skip_test with transcript obligations;
