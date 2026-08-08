@@ -24,9 +24,9 @@ func TestCallLogger_SurfaceTraffic_CountsAndLastTS(t *testing.T) {
 		t.Fatalf("SurfaceTraffic() before any calls = %v, want non-nil empty map", got)
 	}
 
-	l.log("find_symbol", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
-	l.log("outline", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
-	l.log("secret_scan", "fathom", "shared", "", "", "", false, 0, nil, time.Millisecond, nil)
+	l.log("find_symbol", "fathom", "shared", "agent", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
+	l.log("outline", "fathom", "shared", "agent", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
+	l.log("secret_scan", "fathom", "shared", "", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
 
 	traffic := l.SurfaceTraffic()
 	if len(traffic) != 2 {
@@ -54,7 +54,7 @@ func TestCallLogger_SurfaceTraffic_CountsAndLastTS(t *testing.T) {
 	// and increments Calls again.
 	before := traffic["agent"].LastTS
 	time.Sleep(2 * time.Millisecond)
-	l.log("repo_map", "fathom", "shared", "agent", "", "", false, 0, nil, time.Millisecond, nil)
+	l.log("repo_map", "fathom", "shared", "agent", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
 	after := l.SurfaceTraffic()["agent"]
 	if after.Calls != 3 {
 		t.Errorf("agent surface calls after 3rd call = %d, want 3", after.Calls)
@@ -81,7 +81,7 @@ func TestCallLogger_SurfaceTraffic_NilLoggerIsEmpty(t *testing.T) {
 func TestCallLogVersionStamp(t *testing.T) {
 	var buf bytes.Buffer
 	l := NewCallLogger(&buf)
-	l.log("find_symbol", "svc", "nav", "agent", "", "", false, 0, nil, time.Millisecond, nil)
+	l.log("find_symbol", "svc", "nav", "agent", "", "", false, 0, nil, callOutcome{}, time.Millisecond, nil)
 	var row map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &row); err != nil {
 		t.Fatalf("unmarshal: %v (%q)", err, buf.String())
@@ -91,5 +91,55 @@ func TestCallLogVersionStamp(t *testing.T) {
 	}
 	if v, _ := row["fathom_version"].(string); v == "" {
 		t.Error("fathom_version must never be empty — 'unknown' is the floor")
+	}
+}
+
+// TestCallLogOutcomes pins IQ-1 (docs/plans/impact-questions.md): logged
+// calls carry result_count and matched_via so hits, did_you_mean
+// consolations and empty misses are distinguishable fleet-wide.
+func TestCallLogOutcomes(t *testing.T) {
+	mkResult := func(text string) any {
+		return map[string]any{"content": []any{map[string]any{"type": "text", "text": text}}}
+	}
+	cases := []struct {
+		name      string
+		result    any
+		wantCount int
+		hasCount  bool
+		wantVia   string
+	}{
+		{"hit with symbols", mkResult(`{"symbols":[{"name":"a"},{"name":"b"}]}`), 2, true, "hit"},
+		{"result's own matched_via wins", mkResult(`{"symbols":[{"name":"a"}],"matched_via":"exact"}`), 1, true, "exact"},
+		{"did_you_mean consolation", mkResult(`{"symbols":[],"did_you_mean":[{"name":"x"}],"matched_via":"none"}`), 0, true, "did_you_mean"},
+		{"empty miss", mkResult(`{"symbols":[]}`), 0, true, "miss"},
+		{"nodes list counts", mkResult(`{"nodes":[{"n":1},{"n":2},{"n":3}]}`), 3, true, "hit"},
+		{"no recognizable list", mkResult(`{"ok":true}`), 0, false, ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			count, via := outcomeFrom(c.result)
+			if c.hasCount {
+				if count == nil || *count != c.wantCount {
+					t.Fatalf("result_count = %v, want %d", count, c.wantCount)
+				}
+			} else if count != nil {
+				t.Fatalf("result_count = %v, want nil (not extractable)", *count)
+			}
+			if via != c.wantVia {
+				t.Errorf("matched_via = %q, want %q", via, c.wantVia)
+			}
+		})
+	}
+
+	var buf bytes.Buffer
+	l := NewCallLogger(&buf)
+	n := 2
+	l.log("find_symbol", "svc", "nav", "agent", "", "", false, 0, nil, callOutcome{ResultCount: &n, MatchedVia: "hit"}, 0, nil)
+	var entry map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &entry); err != nil {
+		t.Fatal(err)
+	}
+	if entry["result_count"] != float64(2) || entry["matched_via"] != "hit" {
+		t.Errorf("logged entry missing outcomes: %v", entry)
 	}
 }

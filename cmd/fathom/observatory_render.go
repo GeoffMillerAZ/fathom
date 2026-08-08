@@ -111,11 +111,11 @@ func remedy(cmd string) string {
 
 func obsPage(title, active string, body string, m observatoryModel) string {
 	var b strings.Builder
-	b.WriteString(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>` + html.EscapeString(title) + `</title><link rel="stylesheet" href="/assets/app.css"></head>`)
+	b.WriteString(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>` + html.EscapeString(title) + `</title><link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔱</text></svg>"><link rel="stylesheet" href="/assets/app.css"></head>`)
 	b.WriteString(`<body class="min-h-screen bg-surface p-5 font-sans text-sm text-ink">`)
 	b.WriteString(`<h1 class="text-lg font-semibold">fathom observatory</h1>`)
 	b.WriteString(`<nav class="mb-4 mt-1 flex gap-4">`)
-	for _, p := range [][2]string{{"/", "home"}, {"/observatory", "fleet"}, {"/observatory/impact", "impact"}, {"/statusz", "statusz"}} {
+	for _, p := range [][2]string{{"/", "home"}, {"/observatory", "fleet"}, {"/observatory/impact", "impact"}, {"/observatory/story", "story"}, {"/statusz", "statusz"}} {
 		cls := "text-accent no-underline"
 		if p[1] == active {
 			cls += " font-semibold"
@@ -201,18 +201,41 @@ func renderObsFleet(m observatoryModel) string {
 		body.WriteString(kv("freshness", fr))
 		body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+fmtThousands(s.CallsAgent)+` agent)</span>`))
 		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
+		if len(s.TrafficDays) > 0 && s.CallsTotal > 0 {
+			spark := make([]float64, len(s.TrafficDays))
+			for i, c := range s.TrafficDays {
+				spark[i] = float64(c)
+			}
+			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
+		}
 		if s.FreshnessRemedy != "" {
 			body.WriteString(remedy(s.FreshnessRemedy))
 		}
 		if s.WiringRemedy != "" {
 			body.WriteString(remedy(s.WiringRemedy))
 		}
+		gradeRole := map[string]string{"A": "positive", "B": "positive", "C": "caution", "D": "caution", "F": "danger"}[s.Grade]
+		gradeChip := `<span class="mr-2 inline-block rounded-full bg-` + gradeRole + `-soft px-2 py-0.5 text-xs font-semibold text-` + gradeRole + `" title="wiring grade — the continuous rewire audit">` + html.EscapeString(s.Grade) + `</span>`
 		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
 			Title:  s.Service,
-			Action: template.HTML(`<a class="text-accent" href="/observatory/service?id=` + html.EscapeString(s.Service) + `">detail →</a>`),
+			Action: template.HTML(gradeChip + `<a class="text-accent" href="/observatory/service?id=` + html.EscapeString(s.Service) + `">detail →</a>`),
 			Body:   template.HTML(body.String()),
 		}))
 	}
+	if len(m.Misses) > 0 {
+		bars := make([]viz.Bar, 0, 8)
+		for i, r := range m.Misses {
+			if i == 8 {
+				break
+			}
+			bars = append(bars, viz.Bar{Label: r.Tool, Value: float64(r.Calls)})
+		}
+		b.WriteString(sectionHeading("which tools carry the load (call log, all time)"))
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{
+			Body: template.HTML(viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, AriaLabel: "calls per tool"})),
+		}))
+	}
+
 	b.WriteString(sectionHeading("fleet (" + plural(len(m.Services), "service") + ")"))
 	b.WriteString(dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "fleet services"}))
 	return b.String()
@@ -270,24 +293,52 @@ func impactStat(label string, v *int, note string) stat.Stat {
 func renderObsImpact(m observatoryModel) string {
 	imp := m.Impact
 	var b strings.Builder
-	b.WriteString(sectionHeading("impact — every number carries its instrument"))
-	sessions := imp.LedgerSessions
+
+	// Q2 — Prevented.
+	b.WriteString(sectionHeading("Q2 · what did fathom prevent?"))
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		impactStat("verify catches", imp.VerifyCatchesTotal, imp.VerifyCatchesNote),
-		impactStat("discovery actions", imp.DiscoveryTotal, imp.DiscoveryNote),
-		{Label: "ledger sessions", Value: fmtThousands(sessions), Sub: imp.DateRange},
-	}, stat.BandOptions{AriaLabel: "impact metrics"}))
+		{Label: "obligations served (calls)", Value: fmtThousands(imp.ObligationCalls), Sub: "rules injected before edits; conformity checking is IQ-13"},
+		{Label: "ledger sessions", Value: fmtThousands(imp.LedgerSessions), Sub: imp.DateRange},
+	}, stat.BandOptions{AriaLabel: "prevented"}))
 
-	b.WriteString(sectionHeading("counterfactual pilot (law 12: a savings figure exists only as an arm range)"))
+	// Q1 — Saved (law 12: arms or darkness).
+	b.WriteString(sectionHeading("Q1 · what did the agent not have to do? (law 12: a savings figure exists only as an arm range)"))
 	var card strings.Builder
 	card.WriteString(kv("state", `<span class="font-semibold">`+html.EscapeString(imp.PilotState)+`</span>`))
 	card.WriteString(kv("ON arm", plural(imp.TokensOnSessions, "session")+` · median tokens `+metricCell(imp.TokensOnMedian, "no token totals", "")))
 	card.WriteString(kv("OFF arm", plural(imp.TokensOffSessions, "session")+` · median tokens `+metricCell(imp.TokensOffMedian, "no token totals", "")))
+	card.WriteString(kv("discovery actions (with fathom)", metricCell(imp.DiscoveryTotal, imp.DiscoveryNote, imp.DiscoveryNote)))
 	card.WriteString(`<div class="mt-2 text-ink-muted">` + html.EscapeString(imp.PilotDetail) + `</div>`)
 	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(card.String())}))
 
+	// Q3 — Friction (the flywheel's fuel).
+	b.WriteString(sectionHeading("Q3 · where does the agent still flounder? (misses are the roadmap)"))
+	if len(m.Misses) > 0 {
+		var tbl strings.Builder
+		tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th class="px-2 py-1 font-medium text-ink-muted">tool</th><th class="px-2 py-1 font-medium text-ink-muted">calls</th><th class="px-2 py-1 font-medium text-ink-muted">hits</th><th class="px-2 py-1 font-medium text-ink-muted">misses</th><th class="px-2 py-1 font-medium text-ink-muted">did-you-mean</th><th class="px-2 py-1 font-medium text-ink-muted">outcome not recorded</th></tr>`)
+		for i, r := range m.Misses {
+			if i == 10 {
+				break
+			}
+			tbl.WriteString(`<tr class="border-b border-line"><td class="px-2 py-1 font-mono text-xs">` + html.EscapeString(r.Tool) + `</td><td class="px-2 py-1 tabular-nums">` + fmtThousands(r.Calls) + `</td><td class="px-2 py-1 tabular-nums text-positive">` + fmtThousands(r.Hits) + `</td><td class="px-2 py-1 tabular-nums text-danger">` + fmtThousands(r.Misses) + `</td><td class="px-2 py-1 tabular-nums text-caution">` + fmtThousands(r.DidYouMean) + `</td><td class="px-2 py-1 tabular-nums text-ink-faint">` + fmtThousands(r.NotRecorded) + `</td></tr>`)
+		}
+		tbl.WriteString(`</table></div><div class="mt-2 text-xs text-ink-muted">rows logged before the outcome instrument (IQ-1) count as not-recorded, never as hits. Query text stays out of the log by design — it is user-global and metadata-only.</div>`)
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "per-tool outcomes", Body: template.HTML(tbl.String())}))
+	} else {
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">no call-log rows readable from here</span>`)}))
+	}
+	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "friction filed by hand", Body: template.HTML(kv("open observations across the fleet", fmtThousands(fleetOpenObservations(m))+` <span class="text-ink-muted">(each is a bug spec with a repro — the backlog that improves fathom)</span>`))}))
+
+	// Q4 — Compounding.
+	b.WriteString(sectionHeading("Q4 · is the knowledge compounding?"))
+	b.WriteString(stat.RenderBand([]stat.Stat{
+		impactStat("median warm-up (turns to first edit)", imp.FirstEditMedian, imp.FirstEditNote),
+		{Label: "obligations served", Value: fmtThousands(imp.ObligationCalls), Sub: "growth curve arrives with weekly rollups"},
+	}, stat.BandOptions{AriaLabel: "compounding"}))
+
 	b.WriteString(sectionHeading("stories"))
-	b.WriteString(`<div class="rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">narrative is a lens, never evidence (law 14). ` + html.EscapeString(imp.StoriesNote) + `</div>`)
+	b.WriteString(`<div class="rounded-md border border-dashed border-caution px-3 py-2 text-ink-muted">narrative is a lens, never evidence (law 14). ` + html.EscapeString(imp.StoriesNote) + ` <a class="text-accent" href="/observatory/story">the week →</a></div>`)
 	if imp.LedgerNote != "" {
 		b.WriteString(`<div class="mt-2 rounded-md border border-caution bg-caution-soft px-3 py-2">` + html.EscapeString(imp.LedgerNote) + `</div>`)
 	}
@@ -380,11 +431,33 @@ func landingHandler(baseURL string) http.HandlerFunc {
 			return
 		}
 		m := cachedObservatoryModel(baseURL, time.Now())
+		imp := m.Impact
+		totalCalls := 0
+		for _, svc := range m.Services {
+			totalCalls += svc.CallsTotal
+		}
+		saved := "dark until OFF-arm sessions exist"
+		if imp.TokensOffSessions > 0 {
+			saved = plural(imp.TokensOffSessions, "OFF-arm session") + " recorded"
+		}
+		q := func(n, question, answer, sub, href string) string {
+			return dashboard.RenderWidget(dashboard.Widget{
+				Title: n + " · " + question,
+				Body:  template.HTML(`<div class="text-xl font-semibold text-ink">` + html.EscapeString(answer) + `</div><div class="mt-1 text-ink-muted">` + html.EscapeString(sub) + `</div><div class="mt-2"><a class="text-accent" href="` + href + `">see the evidence →</a></div>`),
+			})
+		}
+		questions := []string{
+			q("Q1", "what did the agent not have to do?", saved, "a savings figure exists only as a counterfactual arm range (law 12)", "/observatory/impact"),
+			q("Q2", "what did fathom prevent?", fmtThousands(intOrZero(imp.VerifyCatchesTotal))+" verify catches", imp.VerifyCatchesNote, "/observatory/impact"),
+			q("Q3", "where does the agent still flounder?", fmtThousands(fleetOpenObservations(m))+" open observations", "plus per-tool miss rates from "+fmtThousands(totalCalls)+" logged calls", "/observatory/impact"),
+			q("Q4", "is the knowledge compounding?", firstEditAnswer(imp), "warm-up turns before the first edit, per session", "/observatory/story"),
+		}
 		type entry struct{ href, name, desc string }
 		var widgets []string
 		for _, e := range []entry{
-			{"/observatory", "observatory", "fleet tiles: wiring, freshness, traffic, open observations — every warning names its remedy"},
-			{"/observatory/impact", "impact", "verify catches and discovery with denominators; the counterfactual pilot state machine (law 12)"},
+			{"/observatory", "observatory", "fleet tiles: wiring grades, freshness, traffic sparklines — every warning names its remedy"},
+			{"/observatory/impact", "impact", "the four questions with their instruments; the counterfactual pilot state machine (law 12)"},
+			{"/observatory/story", "the week", "the trailing 7 days composed from the instruments, with session replays"},
 			{"/statusz", "statusz", "daemon health: uptime, per-service index freshness, channel liveness, last compile per layer"},
 			{"/metrics", "metrics", "machine-readable counters"},
 			{"/healthz", "healthz", "liveness probe (plain ok)"},
@@ -398,7 +471,9 @@ func landingHandler(baseURL string) http.HandlerFunc {
 		mach.WriteString(kv("MCP over HTTP", `<code class="font-mono text-xs">/rpc/agent</code> · <code class="font-mono text-xs">/rpc/companion</code> · <code class="font-mono text-xs">/rpc</code>`))
 		mach.WriteString(kv("services indexed", fmtThousands(len(m.Services))))
 		mach.WriteString(kv("shareable brief", `<code class="font-mono text-xs">fathom brief</code> — writes a local file; sharing is a human verb (law 13)`))
-		body := sectionHeading("surfaces") +
+		body := sectionHeading("the four questions") +
+			dashboard.RenderWidgetGrid(questions, dashboard.WidgetGridOptions{Cols: 4, AriaLabel: "the four questions"}) +
+			sectionHeading("surfaces") +
 			dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 3, AriaLabel: "surfaces"}) +
 			sectionHeading("machine surfaces") +
 			dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(mach.String())})
@@ -418,4 +493,21 @@ func writeObsJSON(w http.ResponseWriter, v any) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(v)
+}
+
+// intOrZero is a display helper for landing-page counts (the sibling note
+// carries the honesty; the headline needs a number-shaped string).
+func intOrZero(v *int) int {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+// firstEditAnswer renders Q4's landing headline.
+func firstEditAnswer(imp obsImpact) string {
+	if imp.FirstEditMedian != nil {
+		return fmtThousands(*imp.FirstEditMedian) + "-turn median warm-up"
+	}
+	return "not yet measured"
 }

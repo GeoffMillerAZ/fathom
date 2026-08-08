@@ -311,6 +311,8 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	mux.Handle("/observatory", observatoryHandler(selfURL))
 	mux.Handle("/observatory/service", observatoryServicePage(selfURL))
 	mux.Handle("/observatory/impact", observatoryImpactPage(selfURL))
+	mux.Handle("/observatory/session", observatorySessionPage(selfURL))
+	mux.Handle("/observatory/story", observatoryStoryPage(selfURL))
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {

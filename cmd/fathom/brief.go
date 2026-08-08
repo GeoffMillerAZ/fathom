@@ -82,7 +82,7 @@ func renderBriefMD(m observatoryModel) string {
 		fmt.Fprintf(&b, "- %d recorded tool calls in the current call log (%d via the agent surface)\n", totalCalls, agentCalls)
 	}
 
-	b.WriteString("\n## Impact (instrumented)\n\n")
+	b.WriteString("\n## Q2 — What did fathom prevent?\n\n")
 	fmt.Fprintf(&b, "- ledger sessions: %d", imp.LedgerSessions)
 	if imp.DateRange != "" {
 		fmt.Fprintf(&b, " (%s)", imp.DateRange)
@@ -95,7 +95,9 @@ func renderBriefMD(m observatoryModel) string {
 		fmt.Fprintf(&b, "- discovery actions: %d — %s\n", *imp.DiscoveryTotal, imp.DiscoveryNote)
 	}
 
-	b.WriteString("\n## Counterfactual (law 12: savings exist only as an arm range)\n\n")
+	fmt.Fprintf(&b, "- obligations served (calls): %d — rules injected before edits\n", imp.ObligationCalls)
+
+	b.WriteString("\n## Q1 — What did the agent not have to do? (law 12: savings exist only as an arm range)\n\n")
 	fmt.Fprintf(&b, "- pilot state: %s — %s\n", imp.PilotState, imp.PilotDetail)
 	fmt.Fprintf(&b, "- ON arm: %d sessions", imp.TokensOnSessions)
 	if imp.TokensOnMedian != nil {
@@ -107,6 +109,17 @@ func renderBriefMD(m observatoryModel) string {
 		fmt.Fprintf(&b, ", median tokens %s", strconv.Itoa(*imp.TokensOffMedian))
 	}
 	b.WriteString("\n")
+
+	b.WriteString("\n## Q3 — Where does the agent still flounder?\n\n")
+	fmt.Fprintf(&b, "- open observations across the fleet: %d (each a bug spec with a repro)\n", briefOpenObservations(m))
+	b.WriteString("- per-tool miss rates live on /observatory/impact (query text never logged)\n")
+
+	b.WriteString("\n## Q4 — Is the knowledge compounding?\n\n")
+	if imp.FirstEditMedian != nil {
+		fmt.Fprintf(&b, "- median warm-up: %d turns to first edit — %s\n", *imp.FirstEditMedian, imp.FirstEditNote)
+	} else {
+		fmt.Fprintf(&b, "- warm-up (turns to first edit): %s\n", imp.FirstEditNote)
+	}
 
 	b.WriteString("\n## Not measured (named, per law 3)\n\n")
 	absent := 0
@@ -131,4 +144,15 @@ func renderBriefMD(m observatoryModel) string {
 	}
 	b.WriteString("\n---\nnarrative story rows, when present, are a lens over mechanism-labeled\nevents and are deliberately NOT quoted as evidence here (law 14).\n")
 	return b.String()
+}
+
+// briefOpenObservations mirrors fleetOpenObservations for the brief.
+func briefOpenObservations(m observatoryModel) int {
+	total := 0
+	for _, s := range m.Services {
+		if s.OpenObservations != nil {
+			total += *s.OpenObservations
+		}
+	}
+	return total
 }

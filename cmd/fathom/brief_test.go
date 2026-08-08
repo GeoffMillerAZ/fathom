@@ -25,7 +25,7 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 			t.Fatalf("exit %d, stderr: %s", code, errb.String())
 		}
 		md := out.String()
-		for _, want := range []string{"## Fleet", "## Impact", "## Counterfactual", "## Not measured", "law 12", "law 14"} {
+		for _, want := range []string{"## Fleet", "## Q1", "## Q2", "## Q3", "## Q4", "## Not measured", "law 12", "law 14"} {
 			if !strings.Contains(md, want) {
 				t.Errorf("brief missing %q", want)
 			}

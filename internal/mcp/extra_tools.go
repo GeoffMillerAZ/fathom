@@ -2115,7 +2115,7 @@ func registerBatch(s *Server) {
 		sc := scopeFrom(ctx)
 		// Sub-calls are logged individually (via:"batch") so surface telemetry
 		// counts the tools a batch actually exercised, not just "batch".
-		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, verdictOutcome map[string]int, latency time.Duration, rpcErr *rpcError) {
+		logSub := func(name, group string, argsRaw json.RawMessage, offSurface bool, claimsAttached int, verdictOutcome map[string]int, subResult any, latency time.Duration, rpcErr *rpcError) {
 			if s.callLogger == nil {
 				return
 			}
@@ -2127,7 +2127,8 @@ func registerBatch(s *Server) {
 			if rpcErr != nil {
 				subErr = &rpcErrWrapper{rpcErr}
 			}
-			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, latency, subErr)
+			subCount, subVia := outcomeFrom(subResult)
+			s.callLogger.log(name, sa.Service, group, s.effectiveSurface(ctx), "batch", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, callOutcome{ResultCount: subCount, MatchedVia: subVia}, latency, subErr)
 		}
 		for i, call := range p.Calls {
 			argsRaw := call.Arguments
@@ -2149,7 +2150,7 @@ func registerBatch(s *Server) {
 			// like handleToolsCallWithCtx's own check (dispatch.go).
 			if s.hostedModuleBlocked(sc, te.desc) {
 				gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " requires the " + SurfaceModules + " surface (hosted mode is active)"}
-				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, 0, gateErr)
+				logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr)
 				results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
 				continue
 			}
@@ -2157,7 +2158,7 @@ func registerBatch(s *Server) {
 			if sc.enforced() && !s.toolOnSurface(sc.surface, te.desc) {
 				if s.strictFor(sc.surface) {
 					gateErr := &rpcError{Code: ErrCodeNotFound, Message: "tool " + call.Name + " is not on the " + sc.surface + " surface; POST /rpc serves the full surface"}
-					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, 0, gateErr)
+					logSub(call.Name, string(te.desc.group), argsRaw, false, 0, nil, nil, 0, gateErr)
 					results[i] = batchResult{Name: call.Name, Error: gateErr.Message}
 					continue
 				}
@@ -2171,13 +2172,13 @@ func registerBatch(s *Server) {
 			// A failing sub-call errors into ITS OWN batchResult (and is
 			// logged like any other sub-call error) — never the whole batch.
 			if valErr := validateRequired(te.desc, argsRaw); valErr != nil {
-				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, 0, valErr)
+				logSub(call.Name, string(te.desc.group), argsRaw, subOff, 0, nil, nil, 0, valErr)
 				results[i] = batchResult{Name: call.Name, Error: valErr.Message}
 				continue
 			}
 			start := time.Now()
 			result, rpcErr := te.handler(ctx, argsRaw)
-			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), time.Since(start), rpcErr)
+			logSub(call.Name, string(te.desc.group), argsRaw, subOff, claimsAttachedFrom(result), verdictOutcomeFrom(result), result, time.Since(start), rpcErr)
 			if rpcErr != nil {
 				results[i] = batchResult{Name: call.Name, Error: rpcErr.Message}
 				continue

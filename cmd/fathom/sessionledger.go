@@ -81,6 +81,11 @@ type sessionLedgerEntry struct {
 	TurnCount *int   `json:"turn_count,omitempty"`
 	TurnNote  string `json:"turn_note,omitempty"`
 
+	// FirstEditTurn (IQ-2): the 1-based assistant turn of the first
+	// file-changing tool call — the session's warm-up length.
+	FirstEditTurn *int   `json:"first_edit_turn,omitempty"`
+	FirstEditNote string `json:"first_edit_note,omitempty"`
+
 	TokensTotal *int   `json:"tokens_total,omitempty"`
 	TokensNote  string `json:"tokens_note"` // ALWAYS present — law 12: never a silent absence either
 
@@ -166,6 +171,11 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	} else {
 		e.TokensNote = ts.TokensNote
 	}
+	if ts.FirstEditTurn != nil {
+		e.FirstEditTurn = ts.FirstEditTurn
+	} else {
+		e.FirstEditNote = ts.FirstEditNote
+	}
 	// A transcript was actually read (as opposed to absent/unreadable)
 	// whenever ANY of the three fields resolved to a real value — the
 	// schema-coupling disclosure applies the moment parsing happened at
@@ -229,7 +239,13 @@ type transcriptSummary struct {
 	TurnNote     string
 	TokensTotal  *int
 	TokensNote   string
-	Truncated    bool
+	// FirstEditTurn (IQ-2): the assistant turn index (1-based) of the first
+	// file-changing tool_use (Edit/Write/MultiEdit/NotebookEdit) — the
+	// session's warm-up length. nil with FirstEditNote when the session
+	// never edited (or the transcript carries no content blocks).
+	FirstEditTurn *int
+	FirstEditNote string
+	Truncated     bool
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL
@@ -247,6 +263,10 @@ type transcriptLine struct {
 			CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
 			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 		} `json:"usage"`
+		Content []struct {
+			Type string `json:"type"`
+			Name string `json:"name"`
+		} `json:"content"`
 	} `json:"message"`
 }
 
@@ -326,6 +346,7 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 	sawUsage := false
 	var timestamps []time.Time
 
+	var firstEditTurn *int
 	for _, l := range lines {
 		if len(l) == 0 {
 			continue
@@ -336,6 +357,15 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		}
 		if tl.Type == "assistant" {
 			turnCount++
+			if firstEditTurn == nil && tl.Message != nil {
+				for _, c := range tl.Message.Content {
+					if c.Type == "tool_use" && isEditTool(c.Name) {
+						t := turnCount
+						firstEditTurn = &t
+						break
+					}
+				}
+			}
 		}
 		if tl.Message != nil && tl.Message.Usage != nil {
 			u := tl.Message.Usage
@@ -361,6 +391,13 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		out.TokensTotal = &tt
 	} else {
 		out.TokensNote = "unavailable: no usage data found in transcript"
+	}
+	if firstEditTurn != nil {
+		out.FirstEditTurn = firstEditTurn
+	} else if turnCount > 0 {
+		out.FirstEditNote = "no file-changing tool call in this transcript"
+	} else {
+		out.FirstEditNote = "unavailable: no assistant turns parsed"
 	}
 	if len(timestamps) >= 2 {
 		sort.Slice(timestamps, func(i, j int) bool { return timestamps[i].Before(timestamps[j]) })
@@ -388,4 +425,14 @@ func splitLines(data []byte) [][]byte {
 		out = append(out, data[start:])
 	}
 	return out
+}
+
+// isEditTool reports whether a tool_use name changes files — the boundary
+// that ends a session's warm-up phase (IQ-2).
+func isEditTool(name string) bool {
+	switch name {
+	case "Edit", "Write", "MultiEdit", "NotebookEdit":
+		return true
+	}
+	return false
 }

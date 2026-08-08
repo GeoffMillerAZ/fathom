@@ -131,34 +131,33 @@ func cmdNarrate(args []string, stdout, stderr io.Writer) int {
 	case "on":
 		fs := flag.NewFlagSet("narrate on", flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		forDur := fs.Duration("for", 0, "wall-clock expiry (e.g. 336h for 2w)")
+		forStr := fs.String("for", "", "wall-clock expiry (e.g. 14d, 2w, 336h)")
 		sessions := fs.Int("sessions", 0, "session budget")
 		note := fs.String("note", "", "why (lands in the state file)")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 1
 		}
-		if *forDur <= 0 && *sessions <= 0 {
+		var forDur time.Duration
+		if *forStr != "" {
+			var derr error
+			forDur, derr = parseHumaneDuration(*forStr)
+			if derr != nil {
+				fmt.Fprintf(stderr, "error: %v\n", derr)
+				return 1
+			}
+		}
+		if forDur <= 0 && *sessions <= 0 {
 			fmt.Fprintln(stderr, "error: narrate needs a bound — pass --for and/or --sessions (auto-expiry is the design, vision 14 §6)")
 			return 1
 		}
 		st := narrateState{SchemaVersion: narrateSchemaVersion, FathomVersion: buildinfo.Version(), On: "story-rows", SetAt: time.Now().UTC().Format(time.RFC3339), Note: *note}
-		if *forDur > 0 {
-			st.Until = time.Now().UTC().Add(*forDur).Format(time.RFC3339)
+		if forDur > 0 {
+			st.Until = time.Now().UTC().Add(forDur).Format(time.RFC3339)
 		}
 		if *sessions > 0 {
 			st.SessionsRemaining = sessions
 		}
-		data, _ := json.MarshalIndent(st, "", "  ")
-		path := narrateStatePath()
-		if path == "" {
-			fmt.Fprintln(stderr, "error: no home directory")
-			return 1
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-			fmt.Fprintf(stderr, "error: %v\n", err)
-			return 1
-		}
-		if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
+		if err := saveNarrateState(st); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -174,4 +173,20 @@ func cmdNarrate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "usage: fathom narrate [on --for D --sessions N [--note ...] | off]\n")
 		return 1
 	}
+}
+
+// saveNarrateState persists st to narrateStatePath (0600, dir 0700).
+func saveNarrateState(st narrateState) error {
+	path := narrateStatePath()
+	if path == "" {
+		return fmt.Errorf("no home directory")
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, append(data, '\n'), 0o600)
 }

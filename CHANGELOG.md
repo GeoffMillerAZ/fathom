@@ -5,6 +5,42 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the four questions: observatory v2 (vision 18, plan IQ-1..11 + IQ-15)
+
+Activity is not impact. The observatory reframes around the four
+questions an engineering leader actually asks, and lands the
+instruments v1 lacked. **Q1 (what did the agent not have to do?):**
+stays DARK until OFF-arm sessions exist — law 12 rendered as product.
+**Q2 (what did fathom prevent?):** verify catches with denominators
+plus a number v1 could not see — 6,985 obligations served, live from
+the call log; conformity checking is IQ-13's named next wave.
+**Q3 (where does the agent still flounder?):** call-log rows now carry
+result_count and matched_via (IQ-1), so hits, misses and did_you_mean
+consolations are distinguishable per tool forever — the per-tool
+outcome table is the auto-written roadmap, historical rows honestly
+"outcome not recorded", and query text stays OUT of the log by design
+(user-global, metadata-only). **Q4 (is the knowledge compounding?):**
+the ledger learns first_edit_turn (IQ-2) — the session warm-up fathom
+promises to collapse — surfaced as a median once post-IQ-2 sessions
+accumulate.
+
+The story layer: /observatory/session?id=S replays ONE session as a
+viz.Timeline of its beats with the ledger verdict card (IQ-4);
+/observatory/story composes the trailing week with session-replay
+links (IQ-5); both wear the law-14 lens banner. The landing page leads
+with the four questions and their live numbers (IQ-6). Fleet tiles
+gain per-service 14-day sparklines, a top-tools bar chart, activity
+ordering, and a WIRING GRADE chip (A–F from hooks/stanza/freshness/
+traffic with the one command that raises it — the continuous form of
+the doctor/rewire audit, owner ask). The brief reorganizes to the same
+four questions (IQ-11). The tool improves itself: --for 14d parses
+(IQ-9), and fathom init auto-arms a 10-session narrate window so an
+adoption's first sessions are captured (IQ-10) — bounded, announced,
+self-expiring. Narrate is ON fleet-wide until 2026-08-22 for this
+wave. Deferred with named triggers: the session-start context pack
+(IQ-12, needs IQ-2 baselines), obligation conformity (IQ-13), the LLM
+weekly (IQ-14).
+
 ### 2026-08-08 — the observatory: value realization at a glance, built on app-kit (vision 17, plan OB-1..12)
 
 The daemon grows a front door and a value UI, all loopback, all honest:

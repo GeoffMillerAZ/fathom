@@ -54,8 +54,18 @@ type callLogEntry struct {
 	// before this field existed," which is fine: neither case has a real
 	// count to contribute to an aggregate.
 	VerdictOutcome map[string]int `json:"verdict_outcome,omitempty"`
-	LatencyMS      float64        `json:"latency_ms"`
-	Error          string         `json:"error,omitempty"`
+	// ResultCount / MatchedVia (IQ-1, docs/plans/impact-questions.md): the
+	// call's OUTCOME — how many things the tool actually returned, and how
+	// the match landed ("hit", the result's own matched_via, "did_you_mean"
+	// for a consolation, "miss" for a recognized-but-empty list). nil/""
+	// when the result shape carries no recognizable list — which is also
+	// what rows logged by older binaries look like, and both honestly mean
+	// "outcome not recorded", never zero.
+	ResultCount *int   `json:"result_count,omitempty"`
+	MatchedVia  string `json:"matched_via,omitempty"`
+
+	LatencyMS float64 `json:"latency_ms"`
+	Error     string  `json:"error,omitempty"`
 }
 
 // SurfaceStat is one surface's process-lifetime traffic snapshot (A1-1,
@@ -96,7 +106,13 @@ func NewCallLogger(w io.Writer) *CallLogger {
 
 // log writes one JSONL entry and bumps the in-memory per-surface counters.
 // It ignores marshal / write errors to avoid disrupting tool call results.
-func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, latency time.Duration, callErr error) {
+// callOutcome carries IQ-1's per-call outcome extraction to the logger.
+type callOutcome struct {
+	ResultCount *int
+	MatchedVia  string
+}
+
+func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, outcome callOutcome, latency time.Duration, callErr error) {
 	if l == nil {
 		return
 	}
@@ -114,6 +130,8 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		OffSurface:     offSurface,
 		ClaimsAttached: claimsAttached,
 		VerdictOutcome: verdictOutcome,
+		ResultCount:    outcome.ResultCount,
+		MatchedVia:     outcome.MatchedVia,
 		LatencyMS:      float64(latency.Milliseconds()),
 	}
 	if callErr != nil {
@@ -253,4 +271,53 @@ func (l *CallLogger) SurfaceTraffic() map[string]SurfaceStat {
 		}
 	}
 	return out
+}
+
+// outcomeListKeys are the result-payload list keys outcomeFrom recognizes,
+// in priority order (first present wins). Deliberately short: a key here
+// means "this list IS the answer" — adding one is a semantic decision.
+var outcomeListKeys = []string{"symbols", "nodes", "callers", "references", "results", "chunks", "entrypoints", "services"}
+
+// outcomeFrom extracts IQ-1's call outcome from a tools/call result: the
+// answer-list length and how the match landed. (nil, "") when no
+// recognizable list is present — "outcome not recorded", never zero.
+func outcomeFrom(result any) (*int, string) {
+	m, ok := result.(map[string]any)
+	if !ok {
+		return nil, ""
+	}
+	content, ok := m["content"].([]any)
+	if !ok || len(content) == 0 {
+		return nil, ""
+	}
+	first, ok := content[0].(map[string]any)
+	if !ok {
+		return nil, ""
+	}
+	text, ok := first["text"].(string)
+	if !ok {
+		return nil, ""
+	}
+	var payload map[string]any
+	if json.Unmarshal([]byte(text), &payload) != nil {
+		return nil, ""
+	}
+	for _, key := range outcomeListKeys {
+		list, ok := payload[key].([]any)
+		if !ok {
+			continue
+		}
+		n := len(list)
+		via := "hit"
+		if n == 0 {
+			via = "miss"
+			if dym, ok := payload["did_you_mean"].([]any); ok && len(dym) > 0 {
+				via = "did_you_mean"
+			}
+		} else if mv, ok := payload["matched_via"].(string); ok && mv != "" && mv != "none" {
+			via = mv
+		}
+		return &n, via
+	}
+	return nil, ""
 }

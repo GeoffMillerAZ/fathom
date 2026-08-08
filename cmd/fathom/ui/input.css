@@ -9,6 +9,7 @@
 /* fathom's own render files */
 @source "../observatory_render.go";
 @source "../observatory.go";
+@source "../observatory_story.go";
 
 /* kit packages whose emitted classes we render */
 @source "../../../../app-kit/appkit/ui/stat/*.go";

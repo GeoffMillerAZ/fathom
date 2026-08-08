@@ -29,6 +29,13 @@ type obsServiceRow struct {
 	fleetServiceRow
 	FreshnessRemedy string `json:"freshness_remedy,omitempty"`
 	WiringRemedy    string `json:"wiring_remedy,omitempty"`
+	// Grade / GradeRaise (IQ-15): the wiring grade and the one command
+	// that raises it.
+	Grade      string `json:"grade,omitempty"`
+	GradeRaise string `json:"grade_raise,omitempty"`
+	// TrafficDays (IQ-8): this service's last-14-day call counts, oldest
+	// first, aligned with the model's TrafficDays dates.
+	TrafficDays []int `json:"traffic_days,omitempty"`
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -59,6 +66,11 @@ type obsImpact struct {
 
 	Stories     []string `json:"stories,omitempty"`
 	StoriesNote string   `json:"stories_note"`
+
+	// Compounding (Q4, IQ-7): warm-up length and rules-served proxy.
+	FirstEditMedian *int   `json:"first_edit_median_turns,omitempty"`
+	FirstEditNote   string `json:"first_edit_note"`
+	ObligationCalls int    `json:"obligation_calls"`
 }
 
 type observatoryModel struct {
@@ -77,6 +89,9 @@ type observatoryModel struct {
 	// the same log the adoption gauge reads), oldest first. Empty when the
 	// log is unreadable — never fabricated.
 	TrafficDays []obsTrafficDay `json:"traffic_days,omitempty"`
+
+	// Misses (IQ-3): per-tool outcome profile from the call log.
+	Misses []obsMissRow `json:"misses,omitempty"`
 
 	Impact obsImpact `json:"impact"`
 }
@@ -129,10 +144,23 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			}
 		}
 		entries, _, _ := readCallLog(callLogPath)
+		m.Misses = buildMissModel(entries)
+		obligationCalls := 0
 		byDay := map[string]int{}
+		svcByDay := map[string]map[string]int{}
 		for _, e := range entries {
+			if e.Tool == "obligations" {
+				obligationCalls++
+			}
 			if len(e.TS) >= 10 {
 				byDay[e.TS[:10]]++
+				if e.Service != "" {
+					k := strings.ToLower(e.Service)
+					if svcByDay[k] == nil {
+						svcByDay[k] = map[string]int{}
+					}
+					svcByDay[k][e.TS[:10]]++
+				}
 			}
 			if e.Service == "" {
 				continue
@@ -180,12 +208,29 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			if tr := perSvc[name]; tr != nil {
 				row.CallsTotal, row.CallsAgent, row.LastCallTS = tr.total, tr.agent, tr.last
 			}
+			if days := svcByDay[name]; days != nil {
+				for i := 13; i >= 0; i-- {
+					d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
+					row.TrafficDays = append(row.TrafficDays, days[d])
+				}
+			}
+			row.Grade, row.GradeRaise = wiringGrade(row)
 			m.Services = append(m.Services, row)
 		}
 		for i := 13; i >= 0; i-- {
 			d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
 			m.TrafficDays = append(m.TrafficDays, obsTrafficDay{Date: d, Calls: byDay[d]})
 		}
+		// IQ-8: most active first; name breaks ties so the order is stable.
+		sort.SliceStable(m.Services, func(i, j int) bool {
+			if m.Services[i].CallsTotal != m.Services[j].CallsTotal {
+				return m.Services[i].CallsTotal > m.Services[j].CallsTotal
+			}
+			return m.Services[i].Service < m.Services[j].Service
+		})
+		m.Impact = buildImpactModel(now)
+		m.Impact.ObligationCalls = obligationCalls
+		return m
 	}
 
 	m.Impact = buildImpactModel(now)
@@ -215,6 +260,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		onTokens, offTokens        []int
 		onSessions, offSessions    int
 		firstAt, lastAt            string
+		firstEditTurns             []int
 	)
 	for _, line := range strings.Split(string(data), "\n") {
 		if line == "" {
@@ -240,6 +286,9 @@ func buildImpactModel(now time.Time) obsImpact {
 		if e.DiscoveryActionsTotal != nil {
 			discoveryRan++
 			discoverySum += *e.DiscoveryActionsTotal
+		}
+		if e.FirstEditTurn != nil {
+			firstEditTurns = append(firstEditTurns, *e.FirstEditTurn)
 		}
 		switch e.Arm {
 		case "off":
@@ -286,6 +335,12 @@ func buildImpactModel(now time.Time) obsImpact {
 	default:
 		imp.PilotState = "collecting"
 		imp.PilotDetail = "medians shown per arm with session counts; publish a RANGE with denominators once the pre-registered N per arm is met"
+	}
+	if v, ok := medianInt(firstEditTurns); ok {
+		imp.FirstEditMedian = &v
+		imp.FirstEditNote = "median across " + itoa(len(firstEditTurns)) + " sessions with a recorded first edit"
+	} else {
+		imp.FirstEditNote = "no sessions carry first_edit_turn yet (rows predate IQ-2) — unknown, not zero"
 	}
 	imp.StoriesNote = "no story rows quoted here; narrate captures them per-repo while the dial is on"
 	return imp
@@ -348,4 +403,90 @@ func cachedObservatoryModel(baseURL string, now time.Time) observatoryModel {
 	m := buildObservatoryModel(baseURL, now)
 	obsCache.model, obsCache.at = m, now
 	return m
+}
+
+// ─── IQ-3: the miss fold ─────────────────────────────────────────────────
+
+// obsMissRow is one tool's outcome profile from the call log.
+type obsMissRow struct {
+	Tool        string `json:"tool"`
+	Calls       int    `json:"calls"`
+	Hits        int    `json:"hits"`
+	Misses      int    `json:"misses"`
+	DidYouMean  int    `json:"did_you_mean"`
+	NotRecorded int    `json:"not_recorded"`
+}
+
+// buildMissModel folds call outcomes per tool, most-called first. Rows
+// logged before IQ-1 count as NotRecorded — never as hits (law 3).
+func buildMissModel(entries []adoptionCallEntry) []obsMissRow {
+	byTool := map[string]*obsMissRow{}
+	for _, e := range entries {
+		if e.Tool == "" {
+			continue
+		}
+		r := byTool[e.Tool]
+		if r == nil {
+			r = &obsMissRow{Tool: e.Tool}
+			byTool[e.Tool] = r
+		}
+		r.Calls++
+		switch {
+		case e.ResultCount == nil:
+			r.NotRecorded++
+		case e.MatchedVia == "did_you_mean":
+			r.DidYouMean++
+		case *e.ResultCount == 0:
+			r.Misses++
+		default:
+			r.Hits++
+		}
+	}
+	rows := make([]obsMissRow, 0, len(byTool))
+	for _, r := range byTool {
+		rows = append(rows, *r)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].Calls != rows[j].Calls {
+			return rows[i].Calls > rows[j].Calls
+		}
+		return rows[i].Tool < rows[j].Tool
+	})
+	return rows
+}
+
+// ─── IQ-15: the wiring grade ─────────────────────────────────────────────
+
+// wiringGrade folds a service row's doctor-class signals to one letter and
+// the ONE command that raises it — the continuous form of the rewire audit.
+// Signals: hooks referenced in project settings, a CLAUDE.md stanza, a
+// fresh index, and any recorded traffic.
+func wiringGrade(s obsServiceRow) (grade, raise string) {
+	score := 0
+	hooksOK := strings.Contains(s.HooksNote, "hook reference")
+	if hooksOK {
+		score++
+	}
+	stanzaOK := s.StanzaNote == "present"
+	if stanzaOK {
+		score++
+	}
+	freshOK := s.Freshness == "fresh"
+	if freshOK {
+		score++
+	}
+	trafficOK := s.CallsTotal > 0
+	if trafficOK {
+		score++
+	}
+	grade = [5]string{"F", "D", "C", "B", "A"}[score]
+	switch {
+	case !hooksOK || !stanzaOK:
+		raise = "fathom fleet reconcile --apply (or: cd " + s.Path + " && fathom init)"
+	case !freshOK:
+		raise = "cd " + s.Path + " && fathom ingest --service " + s.Service
+	case !trafficOK:
+		raise = "wired but unused — open a session in " + s.Path + " and ask a where/who-calls question"
+	}
+	return grade, raise
 }

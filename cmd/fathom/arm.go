@@ -150,19 +150,28 @@ func cmdArm(args []string, stdout, stderr io.Writer) int {
 	case "off":
 		fs := flag.NewFlagSet("arm off", flag.ContinueOnError)
 		fs.SetOutput(stderr)
-		forDur := fs.Duration("for", 0, "wall-clock expiry (e.g. 48h) — the arm turns itself off")
+		forStr := fs.String("for", "", "wall-clock expiry (e.g. 14d or 48h) — the arm turns itself off")
 		sessions := fs.Int("sessions", 0, "session budget — the session hook counts it down")
 		note := fs.String("note", "", "why this arm exists (lands in the state file)")
 		if err := fs.Parse(args[1:]); err != nil {
 			return 1
 		}
-		if *forDur <= 0 && *sessions <= 0 {
+		var forDur time.Duration
+		if *forStr != "" {
+			var derr error
+			forDur, derr = parseHumaneDuration(*forStr)
+			if derr != nil {
+				fmt.Fprintf(stderr, "error: %v\n", derr)
+				return 1
+			}
+		}
+		if forDur <= 0 && *sessions <= 0 {
 			fmt.Fprintln(stderr, "error: an OFF arm needs a bound — pass --for and/or --sessions (an indefinite kill switch is FATHOM_CHANNELS=off, deliberately less comfortable)")
 			return 1
 		}
 		st := armState{SchemaVersion: armSchemaVersion, FathomVersion: buildinfo.Version(), Arm: "off", SetAt: time.Now().UTC().Format(time.RFC3339), Note: *note}
-		if *forDur > 0 {
-			st.Until = time.Now().UTC().Add(*forDur).Format(time.RFC3339)
+		if forDur > 0 {
+			st.Until = time.Now().UTC().Add(forDur).Format(time.RFC3339)
 		}
 		if *sessions > 0 {
 			st.SessionsRemaining = sessions

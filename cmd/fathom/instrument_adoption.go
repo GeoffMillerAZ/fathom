@@ -53,6 +53,10 @@ type adoptionCallEntry struct {
 	Origin         string `json:"origin,omitempty"`
 	OffSurface     bool   `json:"off_surface,omitempty"`
 	ClaimsAttached int    `json:"claims_attached,omitempty"`
+	// ResultCount / MatchedVia mirror internal/mcp.callLogEntry's IQ-1
+	// outcome fields; nil/"" on rows logged before they existed.
+	ResultCount *int   `json:"result_count,omitempty"`
+	MatchedVia  string `json:"matched_via,omitempty"`
 	// VerdictOutcome (T5-7, docs/plans/trust-and-tokenomics.md) mirrors
 	// internal/mcp.callLogEntry's own field of the same JSON name: a
 	// gate-shaped result summary a row may carry — verify_plan's

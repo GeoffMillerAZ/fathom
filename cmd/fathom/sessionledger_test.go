@@ -409,3 +409,46 @@ func TestLedgerAttribution(t *testing.T) {
 		}
 	})
 }
+
+// TestFirstEditTurn pins IQ-2 (docs/plans/impact-questions.md): the ledger
+// learns how many assistant turns a session spent before its first
+// file-changing tool call — the warm-up fathom promises to collapse.
+// nil-with-note when the transcript has no edit (or no transcript at all).
+func TestFirstEditTurn(t *testing.T) {
+	mk := func(lines ...string) []byte { return []byte(strings.Join(lines, "\n")) }
+
+	t.Run("edit on turn 3", func(t *testing.T) {
+		data := mk(
+			`{"type":"assistant","message":{"content":[{"type":"text"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Edit"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}`,
+		)
+		s := summarizeTranscriptBytes(data)
+		if s.FirstEditTurn == nil || *s.FirstEditTurn != 3 {
+			t.Fatalf("FirstEditTurn = %v, want 3", s.FirstEditTurn)
+		}
+	})
+
+	t.Run("Write and NotebookEdit count as edits", func(t *testing.T) {
+		data := mk(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write"}]}}`)
+		s := summarizeTranscriptBytes(data)
+		if s.FirstEditTurn == nil || *s.FirstEditTurn != 1 {
+			t.Fatalf("Write: FirstEditTurn = %v, want 1", s.FirstEditTurn)
+		}
+	})
+
+	t.Run("no edit is nil with a note, never zero", func(t *testing.T) {
+		data := mk(
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"text"}]}}`,
+		)
+		s := summarizeTranscriptBytes(data)
+		if s.FirstEditTurn != nil {
+			t.Fatalf("FirstEditTurn = %v, want nil", *s.FirstEditTurn)
+		}
+		if s.FirstEditNote == "" {
+			t.Fatal("nil FirstEditTurn must carry a note")
+		}
+	})
+}
