@@ -62,7 +62,7 @@
 ## H — Reach (deferred with triggers, vision 15)
 
 - [-] C++ language pack with the Conan dependency adapter, behind a calibration-corpus gate {id: IO-27, disposition: deferred, reason: "trigger FIRED 2026-08-08 by owner directive - superseded by docs/plans/cpp-toolchain.md (CT-1..CT-13), which implements the C++ tier with a CMake/clang/Ninja redirect; Conan stays deferred there as CT-13", trigger: "fired - see cpp-toolchain.md"}
-- [-] the observatory web app (rung 2) {id: IO-28, disposition: deferred, reason: "verb-first: screens only after their verbs have data", trigger: "IO-16 and IO-21 landed with real artifacts"}
+- [-] the observatory web app (rung 2) {id: IO-28, disposition: deferred, reason: "trigger FIRED 2026-08-08 - superseded by docs/plans/observatory.md (OB-1..12) and impact-questions.md (IQ rows) which built the web surfaces once IO-16/IO-21 had data", trigger: "fired - see observatory.md"}
 - [-] SCIP emission spike {id: IO-29, disposition: deferred, reason: "evaluate-not-commit per vision 15", trigger: "one free week after IO-25"}
 
 ## Exit — proofs, not demos
