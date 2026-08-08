@@ -44,6 +44,9 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	if fathomChannelsDisabled() {
 		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
 	}
+	// NOT assistiveChannelsDisabled: under an OFF arm this hook must still
+	// reach recordSessionLedgerEntry below. The ledger row IS the
+	// counterfactual data — skipping it made the OFF arm collect nothing.
 	rpcOrigin = "stop-hook"
 	fs := newFlagSet("stop-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -80,6 +83,21 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	// "unknown", never a fabricated zero). The ledger append itself still
 	// swallows every failure internally, exactly like emitBeat, so a
 	// ledger problem can never affect the verification flow.
+	if armOffActive() {
+		// Control group: measure, do not assist. The ledger row is derived
+		// entirely from the transcript, so it still carries this session's
+		// raw-discovery counts — exactly the comparison data the arm
+		// exists to collect — while verify (an assistive gate whose daemon
+		// calls would also pollute the call log with fathom activity
+		// during an unaided session) is skipped.
+		//
+		// verifyCatches is nil, not 0: verify did not run, so its result
+		// is UNKNOWN. A fabricated zero here would read as "the gate found
+		// nothing", which is a different and false claim (law 3).
+		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		return 0
+	}
+
 	hc := newStopHookClient()
 	exit, catches := runStopHook(projDir, hc, *url, *block, stdout)
 	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)

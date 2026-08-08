@@ -33,6 +33,10 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	if fathomChannelsDisabled() {
 		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
 	}
+	// NOT assistiveChannelsDisabled: under an OFF arm this hook must still
+	// run, because it owns the loud arm announcement AND the session
+	// decrement (see the arm branch below). Exiting here was the bug that
+	// let an OFF arm run indefinitely without ever spending its budget.
 	rpcOrigin = "session-hook"
 	emitBeat("session-hook", "fired", nil)
 	fs := newFlagSet("session-hook", stderr)

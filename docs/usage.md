@@ -841,6 +841,42 @@ The daemon serves a value-realization UI (vision 17) next to `/statusz`:
   local markdown brief, with an explicit "Not measured" section.
   Sharing is a human verb (law 13): the verb writes a file and stops.
 
+## Capabilities — what is on here, and why anything is off
+
+`fathom capabilities` answers the most common adoption question in one
+place. A capability is reported **on only when it is observably
+operating** — a config file saying `guards: on` with no rules compiled
+reports off, with the reason (law 3 applied to configuration).
+
+```sh
+fathom capabilities                     # table: state, evidence, and the reason for every gap
+fathom capabilities --cost              # what each one costs when on
+fathom capabilities --json              # the model doctor and the observatory render
+fathom capabilities explain guards      # what it does, what it costs, what evidence it produces
+fathom capabilities set narrate on      # writes .fathom/capabilities.cue
+fathom capabilities set narrate on --scope user
+```
+
+Two scopes, resolved built-in → user → project, with the winning scope
+shown beside every value (law 13):
+
+| File | May do |
+|---|---|
+| `~/.fathom/capabilities.cue` | set a **default** for repositories that have not spoken |
+| `<repo>/.fathom/capabilities.cue` | **govern** — the final word for that repository |
+
+A user-scope file that tries to set a project-only capability (a gate, a
+guard) is **refused with the key named**, never silently ignored. An
+unknown id is refused with the nearest known id suggested. `on?: false`
+— which in CUE declares the field may exist rather than setting it, so
+the line does nothing — is refused with the fix in the message.
+
+`fathom doctor` carries one `capabilities` row. It fails **only** when a
+capability is switched on and something is failing to deliver it (rules
+compiled but no hook fires; an index behind HEAD). A capability whose
+inputs are simply absent here — no module bound, no layer pack installed
+— is not a failure and does not red-mark the row.
+
 ## Go client (`pkg/client`)
 
 `pkg/client` exposes a thin `Client` that wires together the connector, fusion pipeline,

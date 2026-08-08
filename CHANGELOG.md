@@ -5,6 +5,55 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — URGENT: the OFF arm was silencing its own measurement
+
+**The bug.** `fathomChannelsDisabled()` returned
+`env == "off" || armOffActive()`, and every hook calls it *first*, before
+any other work. So while an OFF arm was active:
+
+- the session hook exited before reaching its own arm branch, so the loud
+  🔬 announcement never printed and `decrementArmSessions` never ran
+- the stop hook exited before `recordSessionLedgerEntry`, so OFF-arm
+  sessions left **zero** ledger rows
+
+The arm burned its session budget collecting nothing.
+`TokensOffSessions` could never rise, so the counterfactual pilot could
+never leave "collecting" — the one instrument that can license a savings
+claim (law 12) was structurally incapable of ever producing one.
+
+**Measured cost.** An arm set 2026-08-08T07:11:47Z produced no ledger rows
+for the rest of that coding day, with `sessions_remaining` still reading
+10 of 10 because the decrement never ran either.
+
+`arm.go`'s own header states the contract that was being violated: *"the
+session ledger stamps every row with the arm it ran under, which is what
+makes paired comparison possible at all."*
+
+**The fix** (vision 14 §2 semantics): the arm silences **assistance**,
+never **measurement**.
+
+- `fathomChannelsDisabled()` is now the env kill switch alone — total
+  silence, unchanged historical semantics.
+- new `assistiveChannelsDisabled()` = env **or** an active OFF arm; the
+  edit hooks (obligations, guards, the pre-edit channel) use it and stay
+  fully silent under the arm, so the control group is genuinely unaided.
+- the session hook uses the env gate, so its existing arm branch finally
+  reaches its announcement and its decrement.
+- the stop hook uses the env gate, records the ledger row from the
+  transcript, then returns **before** the verify pass — verify is an
+  assistive gate, and its daemon calls would have registered as fathom
+  activity during a supposedly unaided session. `verify_catches` is nil,
+  not 0: the gate did not run, so its result is unknown, and a fabricated
+  zero would read as "the gate found nothing" (law 3).
+
+**A test asserted the bug.** `TestArmStamping/channels_kill_switch_honors_the_arm`
+required that an OFF arm disable channels "exactly like
+FATHOM_CHANNELS=off" — which is what made the conflation look deliberate
+for weeks. It is corrected, and `armmeasurement_test.go` now pins the real
+contract from both sides. All three new tests were confirmed to go RED
+against the old gate before being accepted.
+
+
 ### 2026-08-08 — phase T: the capability registry (CR-1..6)
 
 Fathom grew four extension seams with four unrelated on/off mechanisms.

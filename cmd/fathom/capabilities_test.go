@@ -222,3 +222,44 @@ func TestCapabilityConfigErrorIsLoud(t *testing.T) {
 		t.Errorf("the failure must name the offending capability: %s", got.Reason)
 	}
 }
+
+// TestInitScaffoldsCapabilities pins the O22 contract for the new file:
+// `fathom init` writes it commented, and the ACTUAL bytes it writes load
+// as an empty configuration rather than as a parse error.
+func TestInitScaffoldsCapabilities(t *testing.T) {
+	root := t.TempDir()
+	var out bytes.Buffer
+	if err := writeFathomConfigScaffolds(root, &out); err != nil {
+		t.Fatalf("scaffolding failed: %v", err)
+	}
+	p := filepath.Join(root, ".fathom", "capabilities.cue")
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		t.Fatalf("init must write %s: %v", p, err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		if t2 := strings.TrimSpace(line); t2 != "" && !strings.HasPrefix(t2, "//") {
+			t.Fatalf("the scaffold must be entirely commented so it changes nothing; found: %q", line)
+		}
+	}
+	got, lerr := capability.Default().LoadSettings(p, capability.ScopeProject)
+	if lerr != nil {
+		t.Fatalf("what init writes must load: %v", lerr)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %+v, want no settings from a commented scaffold", got)
+	}
+
+	// Write-if-absent: a second init must not clobber a real config.
+	if err := os.WriteFile(p, []byte("capabilities: {\n\tnarrate: on: true\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := writeFathomConfigScaffolds(root, &out); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := capability.Default().LoadSettings(p, capability.ScopeProject)
+	if !after["narrate"] {
+		t.Error("a second init overwrote a real configuration")
+	}
+}

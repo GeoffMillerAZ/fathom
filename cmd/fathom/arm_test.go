@@ -76,13 +76,26 @@ func TestArmStamping(t *testing.T) {
 		}
 	})
 
-	t.Run("channels_kill_switch_honors_the_arm", func(t *testing.T) {
+	// CORRECTED 2026-08-08. This subtest used to assert that an active OFF
+	// arm disabled channels "exactly like FATHOM_CHANNELS=off", and that
+	// assertion is what made the conflation look deliberate for weeks. It
+	// was the bug: every hook checks the total-silence gate before any
+	// other work, so treating the arm as an env kill switch silenced the
+	// session ledger and the arm's own decrement along with the
+	// assistance — an OFF arm that burned its budget collecting nothing.
+	//
+	// The corrected contract (vision 14 §2): the arm silences ASSISTANCE,
+	// never MEASUREMENT. See armmeasurement_test.go for the full pinning.
+	t.Run("the_arm_gates_assistance_not_total_silence", func(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		if code := cmdArm([]string{"off", "--for", "1h"}, &stdout, &stderr); code != 0 {
 			t.Fatal(stderr.String())
 		}
-		if !fathomChannelsDisabled() {
-			t.Fatal("an active OFF arm must disable channels exactly like FATHOM_CHANNELS=off")
+		if fathomChannelsDisabled() {
+			t.Error("an OFF arm must NOT trip the total-silence gate — measurement has to keep running or the control group collects nothing")
+		}
+		if !assistiveChannelsDisabled() {
+			t.Error("an OFF arm must trip the assistive gate — the session has to be genuinely unaided")
 		}
 		cmdArm([]string{"on"}, &stdout, &stderr)
 	})

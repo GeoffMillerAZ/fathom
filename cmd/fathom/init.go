@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/bindspec"
+	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
@@ -307,10 +308,11 @@ func seedUserIgnoreFile(stdout io.Writer) error {
 	return nil
 }
 
-// ─── c2. .fathom/ config scaffolds (guard.cue, modules.cue) ───────────────
+// ─── c2. .fathom/ config scaffolds (guard.cue, modules.cue, capabilities.cue) ──
 
-// writeFathomConfigScaffolds creates <root>/.fathom/guard.cue and
-// <root>/.fathom/modules.cue with commented, inert example templates if
+// writeFathomConfigScaffolds creates <root>/.fathom/guard.cue,
+// <root>/.fathom/modules.cue and <root>/.fathom/capabilities.cue
+// with commented, inert example templates if
 // absent — mirroring writeFathomIgnore's write-if-absent, never-overwrite
 // discipline. Both files are valid, EMPTY CUE as scaffolded (guardspec/
 // bindspec's ExampleTemplate — every worked example is a comment block), so
@@ -325,6 +327,14 @@ func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 		return err
 	}
 	if err := writeIfAbsent(filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {
+		return err
+	}
+	// Phase T: the scaffold teaches the vocabulary without changing any
+	// behaviour — every line is a comment, so the file loads as an empty
+	// configuration (internal/capability.LoadSettings' absent-field path,
+	// the O22 contract).
+	caps := string(capability.ExampleTemplate(capability.Default()))
+	if err := writeIfAbsent(filepath.Join(dir, "capabilities.cue"), caps, "capabilities.cue", stdout); err != nil {
 		return err
 	}
 	return nil
@@ -865,7 +875,8 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
 	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
-	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue and .fathom/modules.cue were scaffolded commented (inert) — uncomment")
+	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue, .fathom/modules.cue and .fathom/capabilities.cue were scaffolded")
+	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
 	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
 	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
 	fmt.Fprintln(stdout, "MANUAL: Codex has no PreToolUse hook mechanism — guard.cue's pre-edit channel is Claude-Code-only;")

@@ -43,7 +43,7 @@ const maxSpecIDsPerEdit = 3
 //   - No rules + index not stale → print nothing, exit 0.
 //   - Otherwise → print hookSpecificOutput JSON with compact obligations text.
 func cmdEditHook(args []string, stdout, stderr io.Writer) int {
-	if fathomChannelsDisabled() {
+	if assistiveChannelsDisabled() {
 		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
 	}
 	rpcOrigin = "edit-hook"
