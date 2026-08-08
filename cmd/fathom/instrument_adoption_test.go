@@ -606,3 +606,62 @@ func TestResolveCallLogPath_FallsBackWithNoConfig(t *testing.T) {
 		t.Errorf("resolveCallLogPath() = %q, want the literal default %q", got, defaultCallLogPath)
 	}
 }
+
+// TestAdoptionServiceScoped pins IO-10 (O6 + the fleet audit's cwd-coupling
+// defect): the adoption gauge answers "is fathom helping in repo X" FROM
+// repo X — --service filters the call log (excluded unattributed rows are
+// counted, never silently dropped), and the zero-call list is scoped to the
+// agent surface so "use more tools" and "expose more tools" stop looking
+// like the same remedy.
+func TestAdoptionServiceScoped(t *testing.T) {
+	t.Run("filter_counts_unattributed", func(t *testing.T) {
+		entries := []adoptionCallEntry{
+			{Tool: "find_symbol", Service: "app-kit"},
+			{Tool: "read_source", Service: "planning"},
+			{Tool: "obligations", Service: ""},
+		}
+		kept, unattributed := filterEntriesByService(entries, "app-kit")
+		if len(kept) != 1 || kept[0].Tool != "find_symbol" {
+			t.Fatalf("kept = %+v, want the one app-kit row", kept)
+		}
+		if unattributed != 1 {
+			t.Errorf("unattributed = %d, want 1 (counted, never silently dropped)", unattributed)
+		}
+	})
+
+	t.Run("zero_call_list_partitions_by_surface", func(t *testing.T) {
+		registered := []string{"find_symbol", "outline", "god_object", "license"}
+		agent := []string{"find_symbol", "outline"}
+		counts := map[string]int{"find_symbol": 5}
+		zeroAgent, notExposed := partitionZeroCalls(registered, agent, counts)
+		if len(zeroAgent) != 1 || zeroAgent[0] != "outline" {
+			t.Fatalf("zeroAgent = %v, want [outline]", zeroAgent)
+		}
+		if notExposed != 2 {
+			t.Errorf("notExposed = %d, want 2 (god_object, license are registry-only)", notExposed)
+		}
+	})
+
+	t.Run("cmd_scopes_report_to_service", func(t *testing.T) {
+		dir := t.TempDir()
+		logPath := filepath.Join(dir, "calls.jsonl")
+		lines := `{"ts":"2026-08-07T01:02:03Z","tool":"find_symbol","service":"app-kit","surface":"agent"}
+{"ts":"2026-08-07T01:02:04Z","tool":"read_source","service":"planning","surface":"agent"}
+`
+		if err := os.WriteFile(logPath, []byte(lines), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		var stdout, stderr bytes.Buffer
+		code := cmdInstrumentAdoption([]string{"--call-log", logPath, "--service", "app-kit", "--root", dir}, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("exit %d: %s", code, stderr.String())
+		}
+		out := stdout.String()
+		if !strings.Contains(out, "app-kit") {
+			t.Errorf("report does not name the scoped service:\n%s", out)
+		}
+		if !strings.Contains(out, "1 call") && !strings.Contains(out, "calls observed: 1") && !strings.Contains(out, "(1 ") {
+			t.Errorf("report should reflect the filtered single call:\n%s", out)
+		}
+	})
+}

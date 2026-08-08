@@ -270,3 +270,17 @@ func (s *Server) promptOnScope(ctx context.Context, def *promptDef) bool {
 	}
 	return true
 }
+
+// AgentSurfaceTools returns the agent/companion surface's tool allowlist,
+// sorted — the set an agent session can actually reach. Consumers (the
+// adoption gauge, IO-10/O6) partition zero-call evidence with it so
+// "unused on this surface" and "not exposed on this surface" stop reading
+// as the same remedy.
+func AgentSurfaceTools() []string {
+	out := make([]string, 0, len(companionTools))
+	for name := range companionTools {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
+}

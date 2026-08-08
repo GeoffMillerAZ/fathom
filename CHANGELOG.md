@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — the adoption gauge answers from any repo, scoped to what an agent can reach (O6 + audit, plan IO-10)
+
+`instrument --adoption` gains `--service` (rows filtered case-
+insensitively; unattributed rows are excluded AND counted beside the
+filter — never silently dropped) and cwd-independence: when the relative
+default log is absent, the gauge reuses doctor's call-log resolution
+(absolute config → the fathom checkout → the daemon's recorded service
+root) instead of measuring nothing from every repo but the daemon's own.
+O6's headline defect closes: the zero-call list is partitioned by the
+agent surface — "zero-call AGENT-surface tools (the actionable list)"
+vs "registered but not exposed (expose or prune — a different remedy)".
+New mcp.AgentSurfaceTools() exports the allowlist the partition scopes
+against. Pinned by TestAdoptionServiceScoped.
+
 ### 2026-08-07 — compile --dry-run: cost prints as an honest range, never a confident zero (O8, plan IO-8)
 
 The dry run once reported input-only tokens and `cost_usd: 0.000000` for

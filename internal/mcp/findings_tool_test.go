@@ -61,12 +61,18 @@ func TestFindingsNear_RanksByProximityAndLabelsSuperseded(t *testing.T) {
 	fake := &reviewFakeBackend{
 		extendedFakeBackend: extendedFakeBackend{nodes: findingsNodes(), services: []string{"svc"}},
 		claims: map[string]core.SemanticClaim{
-			"near": {ClaimID: "near", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
-				Subject: "site#b", Rule: "near finding", Scope: []string{"pkg/b.go"}, Status: core.ClaimFresh, CompiledAt: t0},
-			"far": {ClaimID: "far", Layer: "findings", Kind: "finding", Class: core.FindingClassTestGap,
-				Subject: "site#c", Rule: "far finding", Scope: []string{"pkg/c.go"}, Status: core.ClaimFresh, CompiledAt: t0},
-			"fixed": {ClaimID: "fixed", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
-				Subject: "site#a", Rule: "old finding", Scope: []string{"pkg/a.go"}, Status: core.ClaimSuperseded, CompiledAt: t0},
+			"near": {
+				ClaimID: "near", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
+				Subject: "site#b", Rule: "near finding", Scope: []string{"pkg/b.go"}, Status: core.ClaimFresh, CompiledAt: t0,
+			},
+			"far": {
+				ClaimID: "far", Layer: "findings", Kind: "finding", Class: core.FindingClassTestGap,
+				Subject: "site#c", Rule: "far finding", Scope: []string{"pkg/c.go"}, Status: core.ClaimFresh, CompiledAt: t0,
+			},
+			"fixed": {
+				ClaimID: "fixed", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
+				Subject: "site#a", Rule: "old finding", Scope: []string{"pkg/a.go"}, Status: core.ClaimSuperseded, CompiledAt: t0,
+			},
 		},
 	}
 	srv := mcp.NewServer(fake)

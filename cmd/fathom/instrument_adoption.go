@@ -14,9 +14,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
@@ -100,7 +102,17 @@ type AdoptionReport struct {
 
 	RegisteredToolCount int      `json:"registered_tool_count"`
 	ZeroCallTools       []string `json:"zero_call_tools"`
-	ToolRegistryNote    string   `json:"tool_registry_note,omitempty"`
+
+	// IO-10 (O6): the surface-scoped partition — the agent surface's own
+	// zero-call list (actionable: "use these") vs the count of registered
+	// tools the surface never exposed (actionable: "expose or prune").
+	ZeroCallAgentTools   []string `json:"zero_call_agent_tools"`
+	RegisteredNotOnAgent int      `json:"registered_not_on_agent"`
+	// Service scoping (IO-10): non-empty when --service filtered the log;
+	// rows without a service field are excluded AND counted, never silent.
+	ServiceFilter        string `json:"service_filter,omitempty"`
+	UnattributedExcluded int    `json:"unattributed_excluded,omitempty"`
+	ToolRegistryNote     string `json:"tool_registry_note,omitempty"`
 
 	BriefCalls           int      `json:"brief_calls"`
 	BriefCallsWithClaims int      `json:"brief_calls_with_claims"`
@@ -142,6 +154,7 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
 	storePath := fs.String("store", "", "optional store path — builds the registered-tool list the same way serve-http constructs its server; omit to use a backend-independent registry (tool registration never depends on the backend, see registeredToolNames)")
 	root := fs.String("root", ".", "project root for .fathom/observations.md")
+	serviceFlag := fs.String("service", "", "scope the report to one service's call-log rows (unattributed rows are excluded and counted) — answers \"is fathom helping in repo X\" from anywhere (IO-10)")
 	jsonOut := fs.Bool("json", false, "machine-readable JSON output")
 	if err := fs.Parse(args); err != nil {
 		return 0
@@ -151,8 +164,28 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	if callLogPath == "" {
 		callLogPath = resolveCallLogPath()
 	}
+	if _, statErr := os.Stat(callLogPath); statErr != nil && *callLogFlag == "" {
+		// cwd-independence (IO-10, the audit's coupling defect): from any
+		// repo but the daemon's own checkout, the relative default resolves
+		// to a file that does not exist and the gauge measured nothing.
+		// Reuse doctor's call-log resolution (absolute config wins; else
+		// the fathom checkout; else the daemon's recorded service root) —
+		// the same logic, never re-derived.
+		hc := &http.Client{Timeout: 2 * time.Second}
+		for _, cand := range resolveCallLogCandidates(hc, defaultFathomURL(), true, *root) {
+			if _, err := os.Stat(cand); err == nil {
+				callLogPath = cand
+				break
+			}
+		}
+	}
 
 	entries, skippedMalformed, read := readCallLog(callLogPath) // absent/unreadable log: honestly report zero, never fatal (advisory tool)
+
+	unattributedExcluded := 0
+	if *serviceFlag != "" {
+		entries, unattributedExcluded = filterEntriesByService(entries, *serviceFlag)
+	}
 
 	toolNames, toolErr := registeredToolNames(*storePath)
 	toolNote := ""
@@ -170,6 +203,9 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	}
 
 	report := buildAdoptionReport(callLogPath, read, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root))
+	report.ServiceFilter = *serviceFlag
+	report.UnattributedExcluded = unattributedExcluded
+	report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
 
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
@@ -467,6 +503,13 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 		}
 	}
 
+	if r.ServiceFilter != "" {
+		fmt.Fprintf(w, "\nscoped to service: %s (%d call(s) after filtering; %d unattributed row(s) excluded)\n", r.ServiceFilter, r.TotalCalls, r.UnattributedExcluded)
+	}
+	if len(r.ZeroCallAgentTools) > 0 || r.RegisteredNotOnAgent > 0 {
+		fmt.Fprintf(w, "\nzero-call AGENT-surface tools (%d of %d on the surface — the actionable list):\n  %s\n", len(r.ZeroCallAgentTools), len(r.ZeroCallTools)+0, strings.Join(r.ZeroCallAgentTools, ", "))
+		fmt.Fprintf(w, "registered but not exposed on the agent surface: %d (expose or prune — a different remedy than \"use more tools\")\n", r.RegisteredNotOnAgent)
+	}
 	fmt.Fprintf(w, "\nzero-call registered tools (%d of %d registered):\n", len(r.ZeroCallTools), r.RegisteredToolCount)
 	if r.ToolRegistryNote != "" {
 		fmt.Fprintf(w, "  (%s)\n", r.ToolRegistryNote)
@@ -492,4 +535,54 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 	} else {
 		fmt.Fprintf(w, "  %d open (%s)\n", *r.OpenObservationCount, r.ObservationsPath)
 	}
+}
+
+// filterEntriesByService keeps rows whose service matches (case-insensitive)
+// and counts rows carrying NO service field — excluded from a scoped report
+// but never silently: the count renders beside the filter (IO-10, law 3).
+func filterEntriesByService(entries []adoptionCallEntry, service string) ([]adoptionCallEntry, int) {
+	var kept []adoptionCallEntry
+	unattributed := 0
+	for _, e := range entries {
+		switch {
+		case e.Service == "":
+			unattributed++
+		case strings.EqualFold(e.Service, service):
+			kept = append(kept, e)
+		}
+	}
+	return kept, unattributed
+}
+
+// partitionZeroCalls splits zero-call evidence by the agent surface (O6):
+// registry tools the surface exposes but nothing called (the actionable
+// "use these" list) vs registry tools the surface never exposed at all
+// (an exposure/pruning question, not an adoption one).
+func partitionZeroCalls(registered, agentTools []string, counts map[string]int) ([]string, int) {
+	agent := map[string]bool{}
+	for _, name := range agentTools {
+		agent[name] = true
+	}
+	var zeroAgent []string
+	notExposed := 0
+	for _, name := range registered {
+		if !agent[name] {
+			notExposed++
+			continue
+		}
+		if counts[name] == 0 {
+			zeroAgent = append(zeroAgent, name)
+		}
+	}
+	sort.Strings(zeroAgent)
+	return zeroAgent, notExposed
+}
+
+// adoptionToolCounts folds entries into per-tool call counts.
+func adoptionToolCounts(entries []adoptionCallEntry) map[string]int {
+	out := map[string]int{}
+	for _, e := range entries {
+		out[e.Tool]++
+	}
+	return out
 }
