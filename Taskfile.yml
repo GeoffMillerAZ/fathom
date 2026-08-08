@@ -134,6 +134,13 @@ tasks:
       # live process's text pages.
       - mkdir -p "$HOME/.local/libexec/fathom"
       - cp -f bin/fathom "$HOME/.local/libexec/fathom/fathom.new"
+      # Sign with the stable "fathom-dev" identity when it exists (O10 reopened
+      # 2026-08-08): an AD-HOC binary's TCC/FDA grant pins the cdhash recorded
+      # at grant time, so every rebuild silently voids it and the launchd
+      # daemon hangs in an unpromptable tccd consult. A persistent identity
+      # makes the code requirement identity-based — grant once, keep forever.
+      # No identity → no-op (the || true), and the grant stays per-hash.
+      - security find-identity -p codesigning -v | grep -q fathom-dev && codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom.new" || true
       - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
       - launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http
       - curl -s --retry 30 --retry-delay 1 --retry-connrefused --retry-all-errors --max-time 60 http://localhost:7575/healthz | grep -q ok
