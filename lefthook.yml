@@ -71,13 +71,17 @@ pre-push:
     # docs/design/coding-agent-excellence.md §5.3). --store points at the
     # same workspace/db/fleet.sqlite the post-commit fathom-refresh step
     # below keeps current, so the summary reflects the just-committed state
-    # without a daemon round trip. Latency budget: measured ~12s on a
-    # pathological 1777-file diff vs origin/main; a normal pre-push --since
-    # diff is far smaller and the step is fail-open either way.
+    # without a daemon round trip. Latency: measured 22.6s on a SIX-file
+    # diff (2026-08-07, O9) — and lefthook buffers step output, so an
+    # unbounded slow review is indistinguishable from a hang to whoever is
+    # watching the push (scripted pushes were killed at 60-90s caps for
+    # exactly this). --budget-seconds 20 bounds it: on excess the step
+    # prints a named advisory skip and exits 0. This BOUNDS the advisory
+    # channel; it does not weaken a gate — review always exited 0 here.
     review:
       run: |
         [ -x bin/fathom ] || exit 0
-        out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist 2>&1)
+        out=$(bin/fathom review --service fathom --since origin/main --store workspace/db/fleet.sqlite --no-persist --budget-seconds 20 2>&1)
         if [ $? -ne 0 ]; then
           echo "fathom review: operational error — skipped (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
           exit 0

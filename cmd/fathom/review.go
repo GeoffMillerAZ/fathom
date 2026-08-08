@@ -49,6 +49,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
+	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
 	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -58,6 +59,38 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 		fs.Usage()
 		return 1
 	}
+	if *budgetSeconds > 0 && !*noPersist {
+		fmt.Fprintln(stderr, "error: --budget-seconds requires --no-persist — a budget-bounded run can be cut off mid-flight, and a run that can be cut off must never be a store writer")
+		return 1
+	}
+
+	body := func() int {
+		return runReviewBody(gitRunner, *storePath, *service, *since, *jsonOut, *noPersist, *callLogFlag, stdout, stderr)
+	}
+	if *budgetSeconds > 0 {
+		// The whole body races the budget. On excess the process prints a
+		// named advisory skip and exits 0 — the pre-push hook's lefthook
+		// output is buffered, so an unbounded slow review is
+		// indistinguishable from a hang to whoever is watching the push
+		// (O9's actual root cause: a 22s+ review plus buffering read as a
+		// stall and got killed). The abandoned goroutine dies with the
+		// process; it holds no store write path (--no-persist enforced
+		// above).
+		done := make(chan int, 1)
+		go func() { done <- body() }()
+		select {
+		case rc := <-done:
+			return rc
+		case <-time.After(time.Duration(*budgetSeconds) * time.Second):
+			fmt.Fprintf(stdout, "review: budget exceeded (%ds) — summary skipped this push (advisory, fail-open; run `fathom review --service %s --since %s --no-persist` directly for the full report)\n", *budgetSeconds, *service, *since)
+			return 0
+		}
+	}
+	return body()
+}
+
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV string, jsonOutV, noPersistV bool, callLogFlagV string, stdout, stderr io.Writer) int {
+	storePath, service, since, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &jsonOutV, &noPersistV, &callLogFlagV
 
 	out, err := gitRunner("diff", "--name-only", *since)
 	if err != nil {

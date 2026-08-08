@@ -5,6 +5,21 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — review: --budget-seconds bounds the advisory channel (O9 root-caused, plan IO-9)
+
+O9's root cause corrected: nothing prompts and nothing hangs — a six-file
+pre-push review measured 22.6s, the verify loop adds more, and lefthook
+buffers each step's output until completion, so scripted pushes read the
+silence as a stall and killed it at their caps. `fathom review` gains
+`--budget-seconds N`: the whole body races the deadline and on excess
+prints a named advisory skip and exits 0. The flag REQUIRES --no-persist
+— a run that can be cut off mid-flight must never be a store writer —
+and the pre-push step now passes --budget-seconds 20 (bounding the
+advisory channel, not weakening a gate: that step always exited 0).
+Pinned by TestReviewNonInteractive (budget bounds elapsed time; the
+no-persist guard refuses; fast runs unaffected). Follow-up filed in O9's
+fix note: why a six-file review costs 22.6s at all.
+
 ### 2026-08-07 — doctor: lefthook gates recognized through variable indirection (plan IO-5)
 
 `checkLefthookGates` no longer requires the literal substring "fathom

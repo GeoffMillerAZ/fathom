@@ -431,7 +431,7 @@ triage if it matters.
   - **Expected:** pre-push review completes and the push proceeds (or blocks with a named verdict) in a non-interactive shell
   - **Actual:** review prints 4/4 dimensions checked, 8 active findings all info/warn none blocking, then stalls at a review-prompt line; three scripted pushes hung until killed; git count-objects rules out transfer size
   - **Repro:** non-interactive git push origin HEAD from feat/mcp-scoped-surfaces, 2026-08-07; workaround once: LEFTHOOK=0 push after review had already reported non-blocking; fix: review must detect non-TTY and never prompt
-- **Root cause:** TODO
+- **Root cause:** CORRECTED 2026-08-07 — nothing prompts and nothing hangs: `review` took 22.6s on a six-file diff, the verify loop adds more, and lefthook buffers each step's output until completion, so the push looked stalled and scripted wrappers killed it at their 60–90s caps. The `review >` line was lefthook's section header, not a prompt.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO

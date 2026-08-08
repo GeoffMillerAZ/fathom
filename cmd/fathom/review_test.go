@@ -729,3 +729,51 @@ func TestRecordReviewSupersedeEvents_StoreWriteFails_LoggedNotFatal(t *testing.T
 		t.Errorf("stderr = %q, want both failed IDs named", stderr.String())
 	}
 }
+
+// TestReviewNonInteractive pins IO-9 (observation O9, root cause corrected):
+// the pre-push review never hangs a non-interactive push — with a budget set,
+// a slow run prints a named advisory skip and exits 0 within the budget,
+// instead of leaving lefthook's buffered output looking like a stall until
+// an impatient wrapper kills the push.
+func TestReviewNonInteractive(t *testing.T) {
+	t.Run("budget_exceeded_names_the_skip_and_exits_zero", func(t *testing.T) {
+		slowGit := func(args ...string) ([]byte, error) {
+			time.Sleep(3 * time.Second) // deterministic slowness inside the budgeted body
+			return []byte("a.go\n"), nil
+		}
+		var stdout, stderr bytes.Buffer
+		start := time.Now()
+		code := runReview([]string{"--service", "svc", "--since", "origin/main", "--no-persist", "--budget-seconds", "1", "--store", filepath.Join(t.TempDir(), "s.sqlite")}, slowGit, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("exit = %d, want 0 (advisory is fail-open): %s", code, stderr.String())
+		}
+		if elapsed := time.Since(start); elapsed > 2500*time.Millisecond {
+			t.Errorf("budget did not bound the run: %s", elapsed)
+		}
+		if !strings.Contains(stdout.String(), "budget exceeded") {
+			t.Errorf("skip must be named, got: %q", stdout.String())
+		}
+	})
+
+	t.Run("budget_requires_no_persist", func(t *testing.T) {
+		var stdout, stderr bytes.Buffer
+		code := runReview([]string{"--service", "svc", "--since", "origin/main", "--budget-seconds", "5"}, func(args ...string) ([]byte, error) { return nil, nil }, &stdout, &stderr)
+		if code == 0 {
+			t.Fatal("budget without --no-persist must refuse: a bounded run must never be a store writer")
+		}
+		if !strings.Contains(stderr.String(), "no-persist") {
+			t.Errorf("refusal should name the rule, got: %q", stderr.String())
+		}
+	})
+
+	t.Run("fast_run_unaffected_by_budget", func(t *testing.T) {
+		var stdout, stderr bytes.Buffer
+		code := runReview([]string{"--service", "svc", "--since", "origin/main", "--no-persist", "--budget-seconds", "30"}, func(args ...string) ([]byte, error) { return []byte(""), nil }, &stdout, &stderr)
+		if code != 0 {
+			t.Fatalf("exit = %d: %s", code, stderr.String())
+		}
+		if !strings.Contains(stdout.String(), "no changed files") {
+			t.Errorf("normal path should complete, got: %q", stdout.String())
+		}
+	})
+}
