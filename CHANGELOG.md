@@ -5,6 +5,19 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — doctor: lefthook gates recognized through variable indirection (plan IO-5)
+
+`checkLefthookGates` no longer requires the literal substring "fathom
+verify": `lefthookInvokes` matches any per-line spelling of the binary —
+literal, path-suffixed, or a shell variable (`"$FATHOM" verify`,
+`${FATHOM} verify`) — closing the audit's live false negative where a
+correctly-gated repo (platform-engineering's pre-push loop) was told to
+add the gate it already had. Honest note: the audit's other two doctor
+findings (binary_fresh comparing the adopter's HEAD, hooks_firing reading
+a repo-relative call log) were ALREADY fixed at HEAD by the O23 wave —
+the audit ran the stale repo binary, which is the deploy-skew lesson the
+reconcile design exists to close.
+
 ### 2026-08-07 — plan grammar: braces in quoted values no longer void the row; unparseable blocks are loud (O4, plan IO-6)
 
 `parseAnnotation`'s brace pairing is now quote-aware: a quoted value

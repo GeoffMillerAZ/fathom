@@ -28,6 +28,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -818,6 +819,23 @@ func hookMarkerPresent(hooksObj map[string]any, spec hookSpec) bool {
 
 // ─── 5. lefthook gates (harness-agnostic — git-native) ─────────────────────
 
+// lefthookInvokes reports whether any line of a lefthook config invokes the
+// given fathom subcommand — through ANY spelling of the binary: a literal
+// "fathom", an absolute/relative path ending in it, or a shell variable
+// named for it ($FATHOM, "${FATHOM}"). The audit's live false negative: a
+// pre-push spelled FATHOM=/path/bin/fathom; "$FATHOM" verify … was reported
+// as "no fathom verify step" by the literal-substring check, telling a
+// correctly-gated repo to add what it had (O5-adjacent, plan IO-5).
+func lefthookInvokes(content, subcmd string) bool {
+	re := regexp.MustCompile(`(?i)fathom\}?"?'?\s+` + subcmd + `\b`)
+	for _, line := range strings.Split(content, "\n") {
+		if re.MatchString(line) {
+			return true
+		}
+	}
+	return false
+}
+
 func checkLefthookGates(root string) doctorCheck {
 	const name = "lefthook_gates"
 	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push — docs/adoption/claude-code.md §7.4"
@@ -833,8 +851,8 @@ func checkLefthookGates(root string) doctorCheck {
 		p = alt
 	}
 	content := string(data)
-	hasVerify := strings.Contains(content, "fathom verify")
-	hasReview := strings.Contains(content, "fathom review")
+	hasVerify := lefthookInvokes(content, "verify")
+	hasReview := lefthookInvokes(content, "review")
 	switch {
 	case hasVerify && hasReview:
 		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has both a fathom verify and a fathom review step", p)}

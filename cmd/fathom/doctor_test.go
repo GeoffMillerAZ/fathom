@@ -1639,3 +1639,35 @@ func TestCmdDoctor_BadHarnessFlag(t *testing.T) {
 		t.Fatalf("exit = %d, want 2 for an invalid --harness", code)
 	}
 }
+
+// TestLefthookGates_VariableIndirection pins the audit defect: a pre-push
+// step spelled FATHOM=/path/bin/fathom; "$FATHOM" verify ... is a real
+// fathom-verify gate, and the literal-substring check called it absent —
+// a false negative that told a correctly-gated repo to add what it had.
+func TestLefthookGates_VariableIndirection(t *testing.T) {
+	cases := []struct {
+		name, yml string
+		wantPass  bool
+	}{
+		{"dollar_var_quoted", "pre-push:\n  commands:\n    fathom-verify:\n      run: |\n        FATHOM=/Volumes/x/sextant/bin/fathom\n        \"$FATHOM\" verify --service s --plan docs/plans/p.md\n", true},
+		{"dollar_var_bare", "pre-push:\n  commands:\n    gate:\n      run: $FATHOM verify --service s\n", true},
+		{"braced_var", "pre-push:\n  commands:\n    gate:\n      run: ${FATHOM} verify --service s\n", true},
+		{"absolute_path", "pre-push:\n  commands:\n    gate:\n      run: /usr/local/bin/fathom verify --service s\n", true},
+		{"literal_still_works", "pre-push:\n  commands:\n    gate:\n      run: bin/fathom verify --service s\n", true},
+		{"no_gate_at_all", "pre-push:\n  commands:\n    lint:\n      run: golangci-lint run\n", false},
+		{"verify_without_fathom", "pre-push:\n  commands:\n    gate:\n      run: npm run verify\n", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.WriteFile(filepath.Join(root, "lefthook.yml"), []byte(tc.yml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			got := checkLefthookGates(root)
+			gotPass := got.Status == doctorPass
+			if gotPass != tc.wantPass {
+				t.Errorf("status=%s reason=%q, wantPass=%v", got.Status, got.Reason, tc.wantPass)
+			}
+		})
+	}
+}
