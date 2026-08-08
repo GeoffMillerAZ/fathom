@@ -162,6 +162,14 @@ type docSections struct {
 // verification → transactional store, then supersedes claims of recompiled
 // subjects that were not re-emitted. The returned CompileRun has already
 // been recorded to the store (unless DryRun).
+// Dry-run output-band ratios (O8): the honest bracket for estimated output
+// tokens as a multiple of estimated input. Observed: the obligations layer
+// ran ~6.7x. Revisable data, not doctrine.
+const (
+	dryRunOutRatioLow  = 2
+	dryRunOutRatioHigh = 8
+)
+
 func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRun, error) {
 	if c.St == nil {
 		return core.CompileRun{}, fmt.Errorf("semantic: Compiler.St is required")
@@ -385,6 +393,16 @@ sectionLoop:
 	run.DurationMS = now().Sub(started).Milliseconds()
 
 	if in.DryRun {
+		// O8: the dry run once reported input-only tokens and cost_usd
+		// 0.000000 for a run whose real cost was 25x the token estimate.
+		// Output is a RANGE: the observed obligations-layer ratio was
+		// ~6.7x input; the band [2x, 8x] brackets the layer classes seen
+		// so far and is data to revise, not a promise.
+		run.EstTokensOutLow = run.TokensIn * dryRunOutRatioLow
+		run.EstTokensOutHigh = run.TokensIn * dryRunOutRatioHigh
+		inCost := cost.PriceUSD(run.TokensIn, c.InRatePerKTok)
+		run.EstCostLowUSD = inCost + cost.PriceUSD(run.EstTokensOutLow, c.OutRatePerKTok)
+		run.EstCostHighUSD = inCost + cost.PriceUSD(run.EstTokensOutHigh, c.OutRatePerKTok)
 		return run, nil
 	}
 

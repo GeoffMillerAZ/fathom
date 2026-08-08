@@ -205,15 +205,24 @@ func HashLines(content []byte, start, end int) (string, bool) {
 // CompileRun is the per-run cost/audit ledger row (real usage, never
 // heuristics — ADR-016 §4.1).
 type CompileRun struct {
-	RunID            string // sha256 of (service, layer, corpus watermark, started-at)
-	ServiceID        string
-	Layer            string
-	CorpusWatermark  string
-	Model            string
-	PromptVersion    string
-	DryRun           bool
-	TokensIn         int
-	TokensOut        int
+	RunID           string // sha256 of (service, layer, corpus watermark, started-at)
+	ServiceID       string
+	Layer           string
+	CorpusWatermark string
+	Model           string
+	PromptVersion   string
+	DryRun          bool
+	TokensIn        int
+	TokensOut       int
+
+	// Dry-run estimate band (O8, plan IO-8): output tokens are unknowable
+	// before a run — a dry run carries this honest RANGE instead of the
+	// confident zero that once preceded a $0.64, 21-minute compile. Zero on
+	// real runs; not persisted (compile_runs has no columns for these).
+	EstTokensOutLow  int     `json:"est_tokens_out_low,omitempty"`
+	EstTokensOutHigh int     `json:"est_tokens_out_high,omitempty"`
+	EstCostLowUSD    float64 `json:"est_cost_low_usd,omitempty"`
+	EstCostHighUSD   float64 `json:"est_cost_high_usd,omitempty"`
 	CostUSD          float64
 	DurationMS       int64
 	SectionsTotal    int // sections in the corpus

@@ -5,6 +5,19 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — compile --dry-run: cost prints as an honest range, never a confident zero (O8, plan IO-8)
+
+The dry run once reported input-only tokens and `cost_usd: 0.000000` for
+a run whose real cost was $0.64 and 21 minutes (output was 87% of the
+tokens). A dry run now carries an estimate band on the run
+(EstTokensOutLow/High = input × [2, 8] — the observed obligations layer
+ran ~6.7×; the ratios are revisable data) and the human rendering prints
+tokens-in flagged as the bytes/4 heuristic it is, output as
+unknown-with-a-band, cost as a range labeled "never a point — O8", and a
+duration band at the observed ~100 output tok/s. Real runs print exactly
+as before. Pinned by TestDryRunEstimateRange (positive ascending cost
+band, no LLM configured — a dry run must never need one).
+
 ### 2026-08-07 — one vocabulary for "none configured": explicit-empty bindings/guards are valid (O7 completed, plan IO-7)
 
 O22's fix accepted the ABSENT field but kept `bindings: []` a loud error

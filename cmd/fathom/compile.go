@@ -493,10 +493,20 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 			}
 		}
 	}
-	fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
-	fmt.Fprintf(w, "tokens_out:        %d\n", run.TokensOut)
-	fmt.Fprintf(w, "cost_usd:          %.6f\n", run.CostUSD)
-	fmt.Fprintf(w, "duration_ms:       %d\n", run.DurationMS)
+	if run.DryRun && run.EstTokensOutHigh > 0 {
+		// O8: never a confident point before a run — input is a bytes/4
+		// heuristic (observed running ~3x low), output is a bracketed
+		// range, and cost/duration print as ranges or not at all.
+		fmt.Fprintf(w, "tokens_in:         ~%d (estimate: bytes/4 heuristic — real usage has run ~3x higher)\n", run.TokensIn)
+		fmt.Fprintf(w, "tokens_out:        unknown before a run — est. %d-%d (input x2-x8, layer-dependent)\n", run.EstTokensOutLow, run.EstTokensOutHigh)
+		fmt.Fprintf(w, "cost_usd:          est. %.2f-%.2f (a range, never a point — O8)\n", run.EstCostLowUSD, run.EstCostHighUSD)
+		fmt.Fprintf(w, "duration:          est. %.0f-%.0f min (at ~100 output tok/s observed)\n", float64(run.EstTokensOutLow)/6000.0, float64(run.EstTokensOutHigh)/6000.0)
+	} else {
+		fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
+		fmt.Fprintf(w, "tokens_out:        %d\n", run.TokensOut)
+		fmt.Fprintf(w, "cost_usd:          %.6f\n", run.CostUSD)
+		fmt.Fprintf(w, "duration_ms:       %d\n", run.DurationMS)
+	}
 	if run.Model != "" {
 		fmt.Fprintf(w, "model:             %s\n", run.Model)
 	}

@@ -1189,3 +1189,25 @@ func TestCompile_ScopeFPGatedByDriftTrackedNotKind(t *testing.T) {
 		t.Errorf("layer with drift_tracked=true, kind=custom-kind: scope-fp links = %+v, want 1", scopeFP2)
 	}
 }
+
+// TestDryRunEstimateRange pins O8 (plan IO-8): a dry run reports output
+// tokens and cost as an honest RANGE, never input-only tokens with a
+// confident zero cost — the shape that once preceded a $0.64, 21-minute
+// "effectively free" compile.
+func TestDryRunEstimateRange(t *testing.T) {
+	st := store.NewMemoryStore()
+	c := &Compiler{St: st, Now: fixedNow, InRatePerKTok: 0.001, OutRatePerKTok: 0.005} // no LLM: a dry run must not need one
+	run, err := c.Compile(context.Background(), compileInput(true))
+	if err != nil {
+		t.Fatalf("dry-run compile: %v", err)
+	}
+	if run.TokensIn <= 0 {
+		t.Fatalf("dry run estimated no input tokens; corpus empty? TokensIn=%d", run.TokensIn)
+	}
+	if run.EstTokensOutLow != run.TokensIn*2 || run.EstTokensOutHigh != run.TokensIn*8 {
+		t.Errorf("output band = [%d, %d], want [%d, %d]", run.EstTokensOutLow, run.EstTokensOutHigh, run.TokensIn*2, run.TokensIn*8)
+	}
+	if !(run.EstCostLowUSD > 0 && run.EstCostHighUSD > run.EstCostLowUSD) {
+		t.Errorf("cost band = [%f, %f], want a positive ascending range — never a confident zero", run.EstCostLowUSD, run.EstCostHighUSD)
+	}
+}
