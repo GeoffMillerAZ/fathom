@@ -28,6 +28,13 @@
 - [x] GET / is a landing page: every browsable and machine surface linked from the root; unknown paths still 404 {id: OB-11, symbol: landingHandler, package: cmd/fathom, reachable_from: TestLandingPage}
 - [x] the observatory is an app-kit app end to end: dashboard/stat/viz components, kit tokens via task ui:css (pinned binary, no Node), the UI doctrine in CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, the ui-appkit dialect pack installed, and the honest-absence tile promoted UP into the kit as stat.Absent {id: OB-12, skip_test: true, skip: "wiring row - proven by the committed input.css/@source chain, the guard file, the installed layer dir, and app-kit commit af47262; the render tests anchor the components"}
 
+## C3 — The brief reads as a story (owner ask, 2026-08-08)
+
+- [x] the brief opens with a plain-language short version — what fathom is, its scale, what it demonstrably did, what it has NOT shown, and the single highest-value configuration change — then five numbered questions each closing with an explicit **Reading:** line that says whether the number is evidence of help, of no help, or of nothing yet {id: BR-1, symbol: renderBriefMD, package: cmd/fathom, reachable_from: TestCmdBrief_HonestSections}
+- [x] every count in the brief carries thousands separators through the observatory's existing formatter — no duplicate helper was added {id: BR-2, symbol: fmtThousands, package: cmd/fathom, reachable_from: TestFmtThousands}
+- [x] the closing section is a work order derived from live state only: each entry names what is switched off, what switching it on would let a future brief say, and either the exact command or a note explaining why there is none; a fully configured fleet yields no entries rather than invented advice {id: BR-3, symbol: briefTuning, package: cmd/fathom, reachable_from: TestBriefTuningIsGroundedInState}
+- [x] the brief PAGE renders the same emphasis the markdown carries — bold, emphasis and code spans — with escaping applied before tag emission so no instrument note can inject markup {id: BR-4, symbol: mdInline, package: cmd/fathom, reachable_from: TestMdInlineEscapesBeforeEmitting}
+
 ## D — Deferred with triggers
 
 - [-] live-updating pages (JS/websockets) {id: OB-9, disposition: deferred, reason: "a fresh GET is enough until someone leaves the page open on a wall", trigger: "first wall-display or long-poll use case"}

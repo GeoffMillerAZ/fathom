@@ -250,7 +250,14 @@ func TestBriefFourQuestions(t *testing.T) {
 	m.Impact.PilotState = "idle"
 	m.Impact.PilotDetail = "no OFF-arm sessions recorded"
 	md := renderBriefMD(m)
-	for _, want := range []string{"## Q1", "## Q2", "## Q3", "## Q4", "## Not measured", "law 12", "law 14"} {
+	for _, want := range []string{
+		"## 1 — How much is fathom being used?",
+		"## 2 — What did fathom prevent?",
+		"## 3 — Did it save tokens?",
+		"## 4 — Where does the agent still flounder?",
+		"## 5 — Is the knowledge compounding?",
+		"## Not measured", "law 12", "law 14",
+	} {
 		if !strings.Contains(md, want) {
 			t.Errorf("brief missing %q", want)
 		}

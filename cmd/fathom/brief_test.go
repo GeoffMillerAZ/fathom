@@ -8,10 +8,11 @@ import (
 	"testing"
 )
 
-// TestCmdBrief_HonestSections pins OB-7: the brief always carries its four
-// sections, absences are NAMED under "Not measured", and with real ledger
-// rows the counts carry denominators. Nothing is sent anywhere: --print
-// writes only to stdout, the default writes only a local file.
+// TestCmdBrief_HonestSections pins OB-7 and BR-1: the brief always carries
+// its four questions plus the plain-language opener and the work order,
+// absences are NAMED under "Not measured", and with real ledger rows the
+// counts carry denominators. Nothing is sent anywhere: --print writes only
+// to stdout, the default writes only a local file.
 func TestCmdBrief_HonestSections(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("FATHOM_ARM_STATE", filepath.Join(dir, "arm.json"))
@@ -25,13 +26,29 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 			t.Fatalf("exit %d, stderr: %s", code, errb.String())
 		}
 		md := out.String()
-		for _, want := range []string{"## Fleet", "## Q1", "## Q2", "## Q3", "## Q4", "## Not measured", "law 12", "law 14"} {
+		for _, want := range []string{
+			"## The short version",
+			"## 1 — How much is fathom being used?",
+			"## 2 — What did fathom prevent?",
+			"## 3 — Did it save tokens?",
+			"## 4 — Where does the agent still flounder?",
+			"## 5 — Is the knowledge compounding?",
+			"## Could fathom help more if it were configured differently?",
+			"## Not measured",
+			"law 12", "law 14",
+		} {
 			if !strings.Contains(md, want) {
 				t.Errorf("brief missing %q", want)
 			}
 		}
 		if !strings.Contains(md, "unknown") && !strings.Contains(md, "not readable") {
 			t.Error("empty-state brief must name its absent instruments")
+		}
+		// BR-1: the work order is never an empty gesture — with no OFF-arm
+		// sessions recorded there is always at least the counterfactual
+		// pilot to offer, and it must arrive with its command.
+		if !strings.Contains(md, "fathom arm off --sessions") {
+			t.Error("the work order must name the pilot command when no OFF arm exists")
 		}
 	})
 
@@ -45,7 +62,7 @@ func TestCmdBrief_HonestSections(t *testing.T) {
 			t.Fatalf("exit %d", code)
 		}
 		md := out.String()
-		if !strings.Contains(md, "verify catches: 2") || !strings.Contains(md, "1 of 1") {
+		if !strings.Contains(md, "caught before they were believed: 2") || !strings.Contains(md, "1 of 1") {
 			t.Errorf("brief must carry the count WITH its denominator; got:\n%s", md)
 		}
 	})

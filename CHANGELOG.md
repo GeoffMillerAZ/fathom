@@ -5,6 +5,40 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the value brief reads as a story (BR-1..4)
+
+The brief was a correct instrument dump: `17727`, `## Q2`, a bare
+"pilot state: idle". Every figure was honest and almost none of it was
+legible to anyone who had not built the thing. It now opens with a
+plain-language **short version** — what fathom is, its scale, what it
+demonstrably did, what it has **not** shown, and the single
+highest-value configuration change — followed by five numbered
+questions, each closing with an explicit **Reading:** line that says
+whether the number is evidence fathom helped, evidence it did not, or
+evidence of nothing yet.
+
+Three specific corrections:
+
+- **Counts are readable.** Every number routes through the
+  observatory's existing `fmtThousands` — `17,727`, not `17727`. No
+  duplicate helper was added; the first draft of this change shipped
+  one and it was deleted in favour of the incumbent.
+- **The closing section is a work order, not a disclaimer.** Each entry
+  names what is switched off, what switching it on would let a *future*
+  brief say, and either the exact command or a note explaining why
+  there is nothing to run. It is derived from live model state only — a
+  fully configured fleet produces zero entries rather than invented
+  advice.
+- **Exposure is not outcome.** The prevention section now says outright
+  that 6,992 rule injections and 17,727 discovery actions are counts of
+  things fathom *did*, not mistakes avoided, because nobody re-ran the
+  same work without it.
+
+The brief page renders the same emphasis the markdown carries (bold,
+emphasis, code), with escaping applied before tag emission so an
+instrument note can never inject markup.
+
+
 ### 2026-08-08 — observatory: the readable pass — spend-shaped arm medians, visible chart values, index-only honesty, learn-affordances
 
 **The 596M-token finding:** `tokens_total` summed ALL flow, including cache
