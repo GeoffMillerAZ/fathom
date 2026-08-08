@@ -138,7 +138,14 @@ func buildSessionContext(baseURL, projDir string) string {
 		if info.langs != "" {
 			langs = ", " + info.langs
 		}
-		return fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
+		ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
+		// The wiring tripwire (vision 14 §7 tier-1, IO-19): every drifted
+		// session opens by telling its agent the exact remedy — detection
+		// is free and universal; nothing mutates here.
+		if d := analyzeWiring(projDir); len(d.Missing) > 0 || len(d.StaleCmds) > 0 {
+			ctxLine += fmt.Sprintf(" ⚠️ wiring drift: %d missing hook template entr(ies), %d stale binary path(s) — run `fathom fleet reconcile --apply` (or /fathom:rewire) to reconcile in place.", len(d.Missing), len(d.StaleCmds))
+		}
+		return ctxLine
 	}
 
 	repo := filepath.Base(strings.TrimRight(projDir, "/"))

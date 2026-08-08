@@ -5,6 +5,22 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — fleet reconcile + the session tripwire: wiring is a diff, not an audit (vision 14 §7, plan IO-17/18/19)
+
+`fathom fleet reconcile` diffs every repo's installed hooks against the
+canonical template (fathomHookSpecs — the same table init writes from):
+dry-run names missing entries, stale absolute binary paths, pre-rename
+stanza branding, per repo; `--apply` executes the SAFE subset only —
+repointing stale commands to the shim-stable `fathom` in the project
+file (user scope is reported, never edited) and merging missing entries
+through init's own idempotent machinery (one scope, never both).
+Structural surgery stays human. And the session hook is now the
+tripwire: a drifted repo's session OPENS by naming the drift and the
+exact remedy — the audit that found five wiring shapes across the fleet
+becomes a line every drifted session prints about itself. Pinned by
+TestReconcileDiff / TestReconcileApply (drift → apply → clean) and
+TestSessionTripwire.
+
 ### 2026-08-08 — the PATH shim: hooks spell `fathom`, never a checkout path (plan IO-20)
 
 `fathom init` now installs ~/.local/bin/fathom → the deployed libexec

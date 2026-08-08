@@ -3,6 +3,8 @@ package main
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -101,5 +103,35 @@ func TestSessionHookZeroServices(t *testing.T) {
 	}
 	if !strings.Contains(got, "none yet") {
 		t.Errorf("zero-service state should say so plainly, got:\n%s", got)
+	}
+}
+
+// TestSessionTripwire pins IO-19 (vision 14 §7 tier-1): a drifted repo's
+// session opens by naming the drift and the exact remedy.
+func TestSessionTripwire(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	repo := t.TempDir()
+	os.MkdirAll(filepath.Join(repo, ".claude"), 0o755)
+	os.WriteFile(filepath.Join(repo, ".claude", "settings.json"), []byte(`{
+  "hooks": {"PostToolUse": [{"matcher": "Edit|Write|MultiEdit", "hooks": [{"type": "command", "command": "/stale/bin/fathom edit-hook", "timeout": 5}]}]}
+}`), 0o644)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			w.Write([]byte("ok"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"services":[{"service":"` + filepath.Base(repo) + `","symbol_count":1,"languages":["go"],"path":"` + repo + `"}]}}`))
+	}))
+	defer srv.Close()
+
+	got := buildSessionContext(srv.URL, repo)
+	if !strings.Contains(got, "wiring drift") {
+		t.Fatalf("drifted repo's session line must name the drift:\n%s", got)
+	}
+	if !strings.Contains(got, "fleet reconcile") {
+		t.Errorf("the remedy must be named:\n%s", got)
 	}
 }

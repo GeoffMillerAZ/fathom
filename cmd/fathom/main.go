@@ -93,7 +93,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "report" {
 			return cmdFleetReport(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom fleet report [--url U] [--out DIR] [--json]")
+		if len(args) > 1 && args[1] == "reconcile" {
+			return cmdFleetReconcile(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile [flags]")
 		return 1
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)
