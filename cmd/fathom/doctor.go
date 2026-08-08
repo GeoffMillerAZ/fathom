@@ -211,6 +211,10 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkMetricsTier(),
 		// Phase R (docs/plans/cpp-toolchain.md CT-7).
 		checkCppToolchain(root),
+		// Phase T (docs/design/capability-registry.md): the one row that
+		// answers "why isn't X happening here?" — last, because it reads
+		// every fact the rows above diagnose individually.
+		checkCapabilities(baseURL, root, explicitSvc),
 	)
 	return checks
 }

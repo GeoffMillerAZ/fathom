@@ -5,6 +5,51 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — phase T: the capability registry (CR-1..6)
+
+Fathom grew four extension seams with four unrelated on/off mechanisms.
+The cost was not inconsistency for its own sake: nothing could answer
+"why isn't X happening here?", the most common adoption question, because
+nothing knew the full set of X's. Every onboarding defect of the last
+fortnight — the hook duplication, the CUE `?:` trust inversion, O22, O23 —
+was that question going unanswered.
+
+`internal/capability` is one typed registry over the four seams, and
+`fathom capabilities` is the verb. Three properties do the work:
+
+- **Detection is observation, never configuration.** A capability is on
+  when it is observably working. `guards: on` with no rules compiled
+  reports OFF, with the reason — law 3 applied to config.
+- **Every entry can say why it is off**, enforced by a test that iterates
+  the registry against a ZERO probe, so a capability cannot be added
+  without a reason and a remedy.
+- **Absence and breakage are different.** No module bound is normal. Rules
+  compiled with no hook to deliver them is a defect. Only the second may
+  fail doctor — a diagnostic that red-marks nine "you could also enable
+  this" rows teaches people to ignore it.
+
+Law 13 is enforced loudly rather than by silent drop: a user-scope file
+setting a project-only key is refused **with the key named**, an unknown
+id is refused with the nearest match suggested, and resolution carries the
+scope that supplied each value so "off (your user default)" and "off (this
+repo)" are distinguishable.
+
+Three defects the tests caught while building it, each worth recording:
+
+- the doctor row initially failed on an unbound module — absence read as
+  breakage
+- it then duplicated `daemon_reachable`'s diagnosis, so one root cause
+  produced two red marks
+- index freshness is THREE states, not two: `unknown` (nobody could tell)
+  was being treated as `stale` (a defect), which would fail every
+  repository whose daemon is merely unreachable
+
+The plan gate also rejected two of my own contracts: `Validate` was an
+ambiguous anchor shared across the tree (renamed `ValidateSettings`), and
+one `reachable_from` named a test that did not actually reach its symbol.
+Both were my errors, caught before the box stayed checked.
+
+
 ### 2026-08-08 — the value brief reads as a story (BR-1..4)
 
 The brief was a correct instrument dump: `17727`, `## Q2`, a bare
