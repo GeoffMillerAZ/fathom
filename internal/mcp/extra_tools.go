@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -1640,6 +1641,53 @@ func registerIngest(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
 		}
 		svc := p.Service
+
+		// Registration hygiene (plan IO-2; O1 fix d). Enforced HERE, in the
+		// daemon's handler — client-side ValidServiceID checks let the
+		// ../geoffmiller-cloud twin be re-fed for seven weeks because the
+		// daemon accepted whatever arrived.
+		if err := core.ValidServiceID(svc); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: a service id is a logical name, never a path (" + err.Error() + ") — pass the repo root separately via path"}
+		}
+		if p.Path != "" {
+			if !filepath.IsAbs(p.Path) {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: path must be absolute — a relative root resolves against the daemon's working directory, not yours"}
+			}
+			canonical, cerr := filepath.EvalSymlinks(p.Path)
+			if cerr != nil {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: path must exist and resolve: " + cerr.Error()}
+			}
+			// Duplicate/nested corpus-root refusal: one root, one service.
+			// A second service on the same root made resolution a coin flip
+			// (O1: 36% of edits silently lost obligations); a nested root
+			// double-indexes every symbol underneath it (the
+			// crossplane-platform accident).
+			if services, serr := backend.Services(ctx); serr == nil {
+				sep := string(filepath.Separator)
+				for _, other := range services {
+					if strings.EqualFold(other, svc) {
+						continue
+					}
+					otherPath, _, found, merr := backend.ServiceMeta(ctx, other)
+					if merr != nil || !found || otherPath == "" {
+						continue
+					}
+					otherCanon, oerr := filepath.EvalSymlinks(otherPath)
+					if oerr != nil {
+						otherCanon = otherPath
+					}
+					switch {
+					case otherCanon == canonical:
+						return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: corpus root already claimed by service \"" + other + "\" — one root, one service; rename or remove that service first (rename_service / remove_service)"}
+					case strings.HasPrefix(canonical, otherCanon+sep):
+						return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: root is nested inside service \"" + other + "\" (" + otherCanon + ") — a nested corpus double-indexes every symbol under it; index the parent once"}
+					case strings.HasPrefix(otherCanon, canonical+sep):
+						return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: root encloses service \"" + other + "\" (" + otherCanon + ") — remove the nested service first (remove_service) or index the subtree only"}
+					}
+				}
+			}
+			p.Path = canonical
+		}
 
 		// Snapshot the process-lifetime unclassified/oversize counters
 		// (ADR-021 §2 / TI-6) before the ingest, so the delta below reports

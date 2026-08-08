@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -615,18 +616,26 @@ func (f *ingestAtFake) IngestServiceAt(_ context.Context, service, path string) 
 func TestIngestTool_WithPath_ThroughWrapper(t *testing.T) {
 	fake := &ingestAtFake{}
 	srv := mcp.NewServer(mcp.NewAutoRefresh(fake, nil))
+	// IO-2: onboarding paths must exist and are canonicalized at the door,
+	// so the fixture is a real directory (resolved through macOS's
+	// /var→/private/var symlink to match what the handler forwards).
+	dir := t.TempDir()
+	canonical, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
 		Params: map[string]any{
 			"name":      "ingest",
-			"arguments": map[string]any{"service": "newrepo", "path": "/abs/corpus"},
+			"arguments": map[string]any{"service": "newrepo", "path": dir},
 		},
 	})
 	if resp["error"] != nil {
 		t.Fatalf("ingest with path through wrapper: %v", resp["error"])
 	}
-	if fake.gotService != "newrepo" || fake.gotPath != "/abs/corpus" {
-		t.Errorf("backend got (%q, %q), want (newrepo, /abs/corpus)", fake.gotService, fake.gotPath)
+	if fake.gotService != "newrepo" || fake.gotPath != canonical {
+		t.Errorf("backend got (%q, %q), want (newrepo, %q)", fake.gotService, fake.gotPath, canonical)
 	}
 }
 

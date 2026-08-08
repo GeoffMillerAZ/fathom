@@ -2117,3 +2117,123 @@ func TestBrief_MissingService(t *testing.T) {
 	})
 	xtraError(t, resp)
 }
+
+// ─── ingest hygiene (IO-2 / O1 fix d) ────────────────────────────────────────
+
+// hygieneFakeBackend implements ingest-by-path with per-service recorded
+// roots, so the hygiene tests can seed a registry shaped like the live
+// incidents (the ../geoffmiller-cloud twin, the crossplane-platform nested
+// root) and prove the daemon now refuses them at the door.
+type hygieneFakeBackend struct {
+	extendedFakeBackend
+	paths      map[string]string // service → recorded corpus root
+	ingestedAt map[string]string // service → path IngestServiceAt received
+}
+
+func (h *hygieneFakeBackend) ServiceMeta(_ context.Context, serviceID string) (string, string, bool, error) {
+	p, ok := h.paths[serviceID]
+	return p, "", ok, nil
+}
+
+func (h *hygieneFakeBackend) IngestServiceAt(_ context.Context, serviceID, path string) error {
+	if h.ingestedAt == nil {
+		h.ingestedAt = map[string]string{}
+	}
+	h.ingestedAt[serviceID] = path
+	return nil
+}
+
+func TestIngestHygiene(t *testing.T) {
+	mustDir := func(t *testing.T, parts ...string) string {
+		t.Helper()
+		p := filepath.Join(parts...)
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	canon := func(t *testing.T, p string) string {
+		t.Helper()
+		r, err := filepath.EvalSymlinks(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	newSrv := func(paths map[string]string, services []string) (*mcp.Server, *hygieneFakeBackend) {
+		h := &hygieneFakeBackend{paths: paths}
+		h.services = services
+		return mcp.NewServer(h), h
+	}
+	errMsg := func(t *testing.T, resp map[string]any) string {
+		t.Helper()
+		e := xtraError(t, resp)
+		msg, _ := e["message"].(string)
+		return msg
+	}
+	call := func(t *testing.T, srv *mcp.Server, args map[string]any) map[string]any {
+		t.Helper()
+		return roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1290, Method: "tools/call",
+			Params: map[string]any{"name": "ingest", "arguments": args},
+		})
+	}
+
+	t.Run("path_like_service_id_refused_even_for_refresh", func(t *testing.T) {
+		srv, _ := newSrv(nil, nil)
+		resp := call(t, srv, map[string]any{"service": "../geoffmiller-cloud"})
+		if e := errMsg(t, resp); !strings.Contains(e, "logical name") {
+			t.Errorf("refusal should teach the rule, got %q", e)
+		}
+	})
+
+	t.Run("relative_onboarding_path_refused", func(t *testing.T) {
+		srv, _ := newSrv(nil, nil)
+		resp := call(t, srv, map[string]any{"service": "newsvc", "path": "relative/root"})
+		if e := errMsg(t, resp); !strings.Contains(e, "absolute") {
+			t.Errorf("refusal should name absoluteness, got %q", e)
+		}
+	})
+
+	t.Run("duplicate_root_refused_naming_claimant", func(t *testing.T) {
+		root := t.TempDir()
+		dirA := mustDir(t, root, "repo-a")
+		srv, _ := newSrv(map[string]string{"claimant": dirA}, []string{"claimant"})
+		resp := call(t, srv, map[string]any{"service": "twin", "path": dirA})
+		if e := errMsg(t, resp); !strings.Contains(e, "claimant") {
+			t.Errorf("refusal must name the claiming service, got %q", e)
+		}
+	})
+
+	t.Run("nested_root_refused_both_directions", func(t *testing.T) {
+		root := t.TempDir()
+		parent := mustDir(t, root, "parent")
+		child := mustDir(t, root, "parent", "sub", "module")
+		srv, _ := newSrv(map[string]string{"parent-svc": parent}, []string{"parent-svc"})
+		if e := errMsg(t, call(t, srv, map[string]any{"service": "child-svc", "path": child})); !strings.Contains(e, "parent-svc") {
+			t.Errorf("child-inside-parent refusal must name the enclosing service, got %q", e)
+		}
+		srv2, _ := newSrv(map[string]string{"child-svc": child}, []string{"child-svc"})
+		if e := errMsg(t, call(t, srv2, map[string]any{"service": "parent-svc", "path": parent})); !strings.Contains(e, "child-svc") {
+			t.Errorf("parent-over-child refusal must name the nested service, got %q", e)
+		}
+	})
+
+	t.Run("clean_onboard_canonicalizes", func(t *testing.T) {
+		root := t.TempDir()
+		real := mustDir(t, root, "real-repo")
+		link := filepath.Join(root, "link-repo")
+		if err := os.Symlink(real, link); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		srv, h := newSrv(nil, nil)
+		resp := call(t, srv, map[string]any{"service": "fresh", "path": link})
+		p := xtraPayload(t, resp)
+		if p["ok"] != true {
+			t.Fatalf("clean onboard refused: %v", p)
+		}
+		if got, want := h.ingestedAt["fresh"], canon(t, real); got != want {
+			t.Errorf("IngestServiceAt received %q, want the canonicalized root %q (the /Users-symlink registration class)", got, want)
+		}
+	})
+}
