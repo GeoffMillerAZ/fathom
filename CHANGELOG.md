@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — observe: the initial read now waits out a concurrent creator's write window
+
+`fathom observe`'s foreign-file refusal fired on a file that was simply
+mid-creation: the initial `readObservations` can land in a concurrent
+winner's O_EXCL-create→header-write window and see a markerless file —
+indistinguishable, at that instant, from a foreign file — so the loser
+refused and the entry was lost (exit 1). The refusal path now waits the
+same 200ms `reReadAfterLostCreateRace` window the lost-O_EXCL path already
+used before concluding the file is genuinely foreign.
+`TestObserve_ConcurrentFirstCreationLosesNothing` was failing
+deterministically in the full suite; now green at `-count=10 -race`.
+Found by the impact-observatory activation gate run (plan §A), not by a
+user losing an observation — which is the order these should be found in.
+
 ### 2026-08-07 — deterministic service resolution; dedup never collapses (O1 a–c, plan IO-1)
 
 `resolveFromServices` no longer resolves duplicate-corpus-root conflicts by

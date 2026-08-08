@@ -66,11 +66,21 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 	// that doesn't carry fathom's own marker is not ours to append into —
 	// refusing here (before any write) is what "never clobber" means in
 	// practice, not just in a doc comment.
+	//
+	// BUT a markerless read can also be a concurrent winner's create→write
+	// window (B1): O_CREATE|O_EXCL makes the path visible before the single
+	// header write lands, so this initial read races it exactly like a lost
+	// O_EXCL create does. Wait that window out before refusing — only a file
+	// whose marker never appears is genuinely foreign.
 	if existed && !strings.Contains(content, observationsMarker) {
-		fmt.Fprintf(stderr,
-			"error: %s already exists but is not a fathom-observations file (missing the %q marker) — refusing to append; move it aside first if it should become one\n",
-			path, observationsMarker)
-		return 1
+		reread, rerr := reReadAfterLostCreateRace(*root)
+		if rerr != nil {
+			fmt.Fprintf(stderr,
+				"error: %s already exists but is not a fathom-observations file (missing the %q marker) — refusing to append; move it aside first if it should become one\n",
+				path, observationsMarker)
+			return 1
+		}
+		content = reread
 	}
 
 	if !existed {
