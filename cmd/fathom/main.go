@@ -89,6 +89,12 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdObserve(args[1:], stdout, stderr)
 	case "arm":
 		return cmdArm(args[1:], stdout, stderr)
+	case "fleet":
+		if len(args) > 1 && args[1] == "report" {
+			return cmdFleetReport(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom fleet report [--url U] [--out DIR] [--json]")
+		return 1
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)
 	case "gen-plan-cue":

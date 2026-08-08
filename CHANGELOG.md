@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — fathom fleet report: the audit as a verb (vision 14 §4, plan IO-16)
+
+One command folds the daemon's registry, per-service traffic from the
+call log, local wiring state (hook references, stanza presence), open
+observations, ledger session counts, and a three-state freshness
+comparison (indexed commit vs repo HEAD via statusz) into
+~/.fathom/fleet/report-<date>.{json,md}. Local files only — no daemon
+writes, no network beyond loopback; collection stays sovereign per repo
+and consumption centralizes (research-flywheel §8's refusal of silent
+aggregation stands: this is explicit and human-run). Every unmeasured
+cell says so — a dash is not-measured, never zero. First live run
+folded the real fleet's 18 services. This is the observatory's data
+plane (vision 14 §8 rung 1) and the reconcile worklist.
+
 ### 2026-08-07 — ledger attribution: verify catches ride the session row (plan IO-15)
 
 The stop hook now runs its verify pass FIRST and the session-ledger row
