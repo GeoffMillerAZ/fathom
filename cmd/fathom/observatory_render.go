@@ -104,6 +104,13 @@ func kv(k, v string) string {
 	return `<div class="flex justify-between gap-2 py-0.5"><span class="text-ink-muted">` + html.EscapeString(k) + `</span><span class="text-right">` + v + `</span></div>`
 }
 
+// agentCallsTip wraps an "N agent" fragment with a learn-affordance
+// (dotted underline + title): a first-time reader has no way to know what
+// "agent calls" means versus fathom's own plumbing without it.
+func agentCallsTip(n int) string {
+	return `<span class="cursor-help underline decoration-dotted decoration-line underline-offset-2" title="agent calls = queries an AI agent chose to make (find_symbol, read_source, ...). The rest is fathom's own plumbing: hooks checking in, gates verifying plans.">` + fmtThousands(n) + ` agent</span>`
+}
+
 // remedy renders the exact command that fixes a warning — the page is a
 // to-do list, not a mood board.
 func remedy(cmd string) string {
@@ -120,7 +127,7 @@ type obsLead struct {
 
 var obsLeads = map[string]obsLead{
 	"home":   {"fathom is a code index your AI coding agents query instead of re-reading the codebase. This page answers: is it wired, is it used, and is it paying off?", "Agents normally rediscover a codebase every session by reading files and grepping — that costs tokens and time, and every subagent repeats it. fathom indexes the code once and answers where/what/who-calls questions directly. The four cards summarize what that is worth; each links to its evidence."},
-	"fleet":  {"Every repo fathom indexes, how well each is wired, and the exact command that fixes anything amber.", "Each tile is one repository. The letter is a wiring grade over the signals visible from the repo itself (hook wiring, docs stanza, index freshness, recorded traffic — signals that cannot be checked from here are excluded rather than counted against it). Sparklines show two weeks of query traffic. Amber monospace lines are copy-paste remedies."},
+	"fleet":  {"Every repo fathom indexes, how well each is wired, and the exact command that fixes anything amber.", "Each tile is one repository. The letter is a wiring grade over the signals visible from the repo itself (hook wiring, docs stanza, index freshness, recorded traffic — signals that cannot be checked from here are excluded rather than counted against it). Sparklines show two weeks of query traffic. Amber monospace lines are copy-paste remedies. Grades: A = fully wired (hooks + stanza + fresh index + real traffic) · B = one signal missing · C/D = mostly unwired · index-only = a remote corpus other repos query (no sessions run here, so wiring is not expected)."},
 	"impact": {"What fathom saved, prevented, and where it still falls short — every number names its instrument and its denominator.", "The exploration story compares what a discovery question costs when answered by raw file reading versus the index, measured inside the same sessions with the same estimator. 'Verify catches' are pieces of work an agent claimed finished that the verification gate proved were not. 'Obligations served' are project rules injected right before an agent edits a governed file. A dash with a note means the instrument has not reported — this dashboard never renders a number it did not measure."},
 	"story":  {"The last 7 days composed from the instruments, with per-session replays.", "Every session an agent runs leaves a ledger row; this page folds the recent ones and links each session's replay timeline. Narrative here is a lens for humans — the evidence lives in the instruments."},
 	"brief":  {"The shareable summary — same numbers, framed for someone who has never heard of fathom.", "This is the page to show your manager. It is generated from the live instruments, states what is NOT measured, and can be downloaded as markdown. Nothing on it is ever sent anywhere by fathom — sharing is a human decision."},
@@ -222,7 +229,7 @@ func renderObsFleet(m observatoryModel) string {
 			fr = `<span class="italic text-ink-faint">` + html.EscapeString(s.Freshness) + `</span>`
 		}
 		body.WriteString(kv("freshness", fr))
-		body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+fmtThousands(s.CallsAgent)+` agent)</span>`))
+		body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+`)</span>`))
 		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
 		if len(s.TrafficDays) > 0 && s.CallsTotal > 0 {
 			spark := make([]float64, len(s.TrafficDays))
@@ -231,14 +238,39 @@ func renderObsFleet(m observatoryModel) string {
 			}
 			body.WriteString(`<div class="mt-2">` + viz.Sparkline(spark, viz.SparklineOptions{W: 220, H: 24, FillRole: "accent-soft", AriaLabel: s.Service + " 14-day traffic"}) + `</div>`)
 		}
-		if s.FreshnessRemedy != "" {
-			body.WriteString(remedy(s.FreshnessRemedy))
+		// indexOnly (owner ask 2026-08-08): a C/D grade with zero ledger
+		// sessions AND zero agent-originated calls is a remote corpus other
+		// repos query, not a failure — the letter grade only applies to
+		// repos where coding sessions actually run, so the remedy (which
+		// would say "open a session here") is moot and gets suppressed too.
+		indexOnly := (s.Grade == "C" || s.Grade == "D") && s.SessionCount != nil && *s.SessionCount == 0 && s.CallsAgent == 0
+		if !indexOnly {
+			remedyShown := false
+			if s.FreshnessRemedy != "" {
+				body.WriteString(remedy(s.FreshnessRemedy))
+				remedyShown = true
+			}
+			if s.WiringRemedy != "" {
+				body.WriteString(remedy(s.WiringRemedy))
+				remedyShown = true
+			}
+			// Fallback (the fix): FreshnessRemedy/WiringRemedy only cover
+			// the stale-index and missing-hooks/stanza cases. A C-grade
+			// card whose only unmet signal is traffic ("wired but unused")
+			// matched neither condition and rendered NO remedy at all —
+			// wiringGrade's own GradeRaise is the general case; use it
+			// whenever the specific fields above didn't already cover it.
+			if !remedyShown && s.Grade != "A" && s.GradeRaise != "" {
+				body.WriteString(remedy(s.GradeRaise))
+			}
 		}
-		if s.WiringRemedy != "" {
-			body.WriteString(remedy(s.WiringRemedy))
+		var gradeChip string
+		if indexOnly {
+			gradeChip = `<span class="mr-2 inline-block rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-semibold text-ink-muted" title="This repo is indexed and queried from other repos&#39; sessions, but no one runs coding sessions inside it — wiring hooks here would add nothing. The grade letters apply to repos where sessions run.">index-only</span>`
+		} else {
+			gradeRole := map[string]string{"A": "positive", "B": "positive", "C": "caution", "D": "caution", "F": "danger"}[s.Grade]
+			gradeChip = `<span class="mr-2 inline-block rounded-full bg-` + gradeRole + `-soft px-2 py-0.5 text-xs font-semibold text-` + gradeRole + `" title="wiring grade — the continuous rewire audit">` + html.EscapeString(s.Grade) + `</span>`
 		}
-		gradeRole := map[string]string{"A": "positive", "B": "positive", "C": "caution", "D": "caution", "F": "danger"}[s.Grade]
-		gradeChip := `<span class="mr-2 inline-block rounded-full bg-` + gradeRole + `-soft px-2 py-0.5 text-xs font-semibold text-` + gradeRole + `" title="wiring grade — the continuous rewire audit">` + html.EscapeString(s.Grade) + `</span>`
 		widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{
 			Title:  s.Service,
 			Action: template.HTML(gradeChip + `<a class="text-accent" href="/observatory/service?id=` + html.EscapeString(s.Service) + `">detail →</a>`),
@@ -255,7 +287,7 @@ func renderObsFleet(m observatoryModel) string {
 		}
 		b.WriteString(sectionHeading("which tools carry the load (call log, all time)"))
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{
-			Body: template.HTML(viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, AriaLabel: "calls per tool"})),
+			Body: template.HTML(viz.Bars(bars, viz.BarsOptions{W: 560, LabelW: 160, ShowValue: true, AriaLabel: "calls per tool"})),
 		}))
 	}
 
@@ -277,7 +309,7 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 		body.WriteString(kv("repo HEAD", `<span class="font-mono text-xs">`+html.EscapeString(s.RepoHead)+`</span>`))
 		body.WriteString(kv("hooks", html.EscapeString(s.HooksNote)))
 		body.WriteString(kv("stanza", html.EscapeString(s.StanzaNote)))
-		body.WriteString(kv("traffic", plural(s.CallsTotal, "call")+` <span class="text-ink-muted">(`+fmtThousands(s.CallsAgent)+` agent · `+fmtThousands(s.CallsAgent)+`/`+fmtThousands(s.CallsTotal)+`)</span>`))
+		body.WriteString(kv("traffic", plural(s.CallsTotal, "call")+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+` · `+fmtThousands(s.CallsAgent)+`/`+fmtThousands(s.CallsTotal)+`)</span>`))
 		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
 		if s.FreshnessRemedy != "" {
 			body.WriteString(remedy(s.FreshnessRemedy))
@@ -375,8 +407,15 @@ func renderObsImpact(m observatoryModel) string {
 	b.WriteString(sectionHeading("Q1 · what did the agent not have to do? (law 12: a savings figure exists only as an arm range)"))
 	var card strings.Builder
 	card.WriteString(kv("state", `<span class="font-semibold">`+html.EscapeString(imp.PilotState)+`</span>`))
-	card.WriteString(kv("ON arm", plural(imp.TokensOnSessions, "session")+` · median tokens `+metricCell(imp.TokensOnMedian, "no token totals", "")))
-	card.WriteString(kv("OFF arm", plural(imp.TokensOffSessions, "session")+` · median tokens `+metricCell(imp.TokensOffMedian, "no token totals", "")))
+	armTip := `<span title="Real model tokens the session spent: input + output. Cache reads are excluded — they are re-served context, not new spend, and once inflated this median 3,000x." class="cursor-help underline decoration-dotted decoration-line underline-offset-2">median real tokens</span>`
+	card.WriteString(kv("ON arm", plural(imp.TokensOnSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOnMedian, "—", "")))
+	card.WriteString(kv("OFF arm", plural(imp.TokensOffSessions, "session")+` · `+armTip+` `+metricCell(imp.TokensOffMedian, "—", "")))
+	if imp.TokensPreSplitRows != nil {
+		card.WriteString(kv("pre-split rows", fmtThousands(*imp.TokensPreSplitRows)+` <span class="text-ink-muted">sessions recorded before the in/out split — their totals conflated cache reads, so they count as unknown, never as data</span>`))
+	}
+	if imp.CacheReadMedianCtx != nil {
+		card.WriteString(kv("cache reads (context)", fmtThousands(*imp.CacheReadMedianCtx)+` <span class="text-ink-muted">avg per session — re-served context, shown for scale, never in the arm math</span>`))
+	}
 	card.WriteString(kv("discovery actions (with fathom)", metricCell(imp.DiscoveryTotal, imp.DiscoveryNote, imp.DiscoveryNote)))
 	card.WriteString(`<div class="mt-2 text-ink-muted">` + html.EscapeString(imp.PilotDetail) + `</div>`)
 	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(card.String())}))

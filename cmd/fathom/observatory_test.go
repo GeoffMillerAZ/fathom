@@ -101,7 +101,7 @@ func TestObservatoryFleetPage(t *testing.T) {
 	hermeticObsEnv(t)
 
 	body := renderObsFleet(syntheticModel())
-	for _, want := range []string{"alpha", "123", "fathom ingest --service alpha", "open observations"} {
+	for _, want := range []string{"alpha", "123", "fathom ingest --service alpha", "open observations", "cursor-help underline decoration-dotted", "agent calls = queries an AI agent chose to make"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("fleet page missing %q", want)
 		}
@@ -119,6 +119,9 @@ func TestObservatoryFleetPage(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "fathom observatory") {
 		t.Error("page shell missing")
 	}
+	if !strings.Contains(rec.Body.String(), "index-only = a remote corpus") {
+		t.Error("fleet expander must carry the grade legend, including the index-only line")
+	}
 
 	resetObsCache()
 	rec = httptest.NewRecorder()
@@ -128,6 +131,97 @@ func TestObservatoryFleetPage(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"schema_version"`) {
 		t.Error("json body missing schema_version")
+	}
+}
+
+// gradedFleetModel builds a fleet with one row per grade case the
+// 2026-08-08 readable pass distinguishes: A (no remedy needed), B (one
+// signal missing, remedy shown), C-with-traffic (remedy shown, not
+// index-only — someone queries it, they just haven't fixed the signal),
+// and C-zero-everything (index-only: a remote corpus, not a failure).
+func gradedFleetModel() observatoryModel {
+	m := observatoryModel{
+		SchemaVersion: observatorySchemaVersion,
+		FathomVersion: "test",
+		GeneratedAt:   "2026-08-08T12:00:00Z",
+		Arm:           obsArmBanner{Detail: "no measurement arm active"},
+		Narrate:       obsArmBanner{Detail: "narrate off (default)"},
+	}
+	zero := 0
+	one := 1
+
+	full := obsServiceRow{}
+	full.Service = "fully-wired"
+	full.Grade = "A"
+	full.CallsTotal, full.CallsAgent = 5, 5
+	full.SessionCount = &one
+	m.Services = append(m.Services, full)
+
+	partial := obsServiceRow{}
+	partial.Service = "one-gap"
+	partial.Grade = "B"
+	partial.GradeRaise = "cd /tmp/one-gap && fathom ingest --service one-gap"
+	partial.CallsTotal, partial.CallsAgent = 3, 2
+	partial.SessionCount = &one
+	m.Services = append(m.Services, partial)
+
+	queriedButUnwired := obsServiceRow{}
+	queriedButUnwired.Service = "queried-c"
+	queriedButUnwired.Grade = "C"
+	queriedButUnwired.GradeRaise = "fathom fleet reconcile --apply (or: cd /tmp/queried-c && fathom init)"
+	queriedButUnwired.CallsTotal, queriedButUnwired.CallsAgent = 9, 4
+	queriedButUnwired.SessionCount = &zero
+	m.Services = append(m.Services, queriedButUnwired)
+
+	remote := obsServiceRow{}
+	remote.Service = "remote-corpus"
+	remote.Grade = "C"
+	remote.GradeRaise = "fathom fleet reconcile --apply (or: cd /tmp/remote-corpus && fathom init)"
+	remote.CallsTotal, remote.CallsAgent = 12, 0
+	remote.SessionCount = &zero
+	m.Services = append(m.Services, remote)
+
+	m.Misses = []obsMissRow{
+		{Tool: "find_symbol", Calls: 1234, Hits: 1200, Misses: 34},
+	}
+	return m
+}
+
+// TestObservatoryFleet_GradeRemedyAndIndexOnly pins the 2026-08-08 pass:
+// every non-A card renders its ONE remedy (wiringGrade's own contract),
+// EXCEPT a C/D grade with zero ledger sessions AND zero agent calls, which
+// renders "index-only" instead of an amber letter and suppresses the
+// (moot) remedy — a remote corpus is not a wiring failure.
+func TestObservatoryFleet_GradeRemedyAndIndexOnly(t *testing.T) {
+	body := renderObsFleet(gradedFleetModel())
+
+	// remedy() HTML-escapes its command (&& becomes &amp;&amp;), so these
+	// assertions match either side of the ampersand rather than the raw
+	// shell string.
+	if !strings.Contains(body, "fathom ingest --service one-gap") {
+		t.Error("B-grade card must render its remedy")
+	}
+	if !strings.Contains(body, "fathom fleet reconcile --apply") || !strings.Contains(body, "cd /tmp/queried-c") {
+		t.Error("C-grade card WITH traffic must render its remedy — it is not index-only")
+	}
+	if !strings.Contains(body, "index-only") {
+		t.Error("C-grade card with zero sessions and zero agent calls must render the index-only chip")
+	}
+	// The index-only service's own remedy command must not appear (it would
+	// be suppressed for that specific card, even though the SAME command
+	// string is legitimately present for queried-c above) — assert by
+	// counting occurrences of the remote-corpus path fragment.
+	if strings.Count(body, "cd /tmp/remote-corpus && fathom init") != 0 {
+		t.Error("index-only card must not render a remedy line")
+	}
+}
+
+// TestObservatoryFleet_BarsShowValues pins the tool-load chart carrying
+// visible, comma-grouped value labels (ShowValue), not just bar widths.
+func TestObservatoryFleet_BarsShowValues(t *testing.T) {
+	body := renderObsFleet(gradedFleetModel())
+	if !strings.Contains(body, "1,234") {
+		t.Errorf("tool-load bars must render the comma-grouped value label; body missing %q", "1,234")
 	}
 }
 
@@ -161,30 +255,43 @@ func TestObservatoryServicePage(t *testing.T) {
 func TestObservatoryImpactPage(t *testing.T) {
 	dir := hermeticObsEnv(t)
 	ledger := filepath.Join(dir, "ledger.jsonl")
+	// Rows a/b carry the in/out split (spend-shaped: in+out feeds the
+	// median); row d predates the split — its inflated tokens_total must
+	// count as pre-split, never as data (the 596M-median finding).
 	lines := []string{
-		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-01T10:00:00Z","tokens_total":100,"tokens_note":"","verify_catches":3}`,
-		`{"schema_version":2,"session_id":"b","arm":"on","at":"2026-08-02T10:00:00Z","tokens_total":200,"tokens_note":""}`,
-		`{"schema_version":2,"session_id":"c","arm":"off","at":"2026-08-03T10:00:00Z","tokens_total":150,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-01T10:00:00Z","tokens_total":50100,"tokens_in":60,"tokens_out":40,"tokens_cache_read":50000,"tokens_note":"","verify_catches":3}`,
+		`{"schema_version":2,"session_id":"b","arm":"on","at":"2026-08-02T10:00:00Z","tokens_total":900200,"tokens_in":120,"tokens_out":80,"tokens_cache_read":900000,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"c","arm":"off","at":"2026-08-03T10:00:00Z","tokens_total":150,"tokens_in":90,"tokens_out":60,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"d","arm":"on","at":"2026-08-04T10:00:00Z","tokens_total":596931950,"tokens_note":""}`,
 	}
 	if err := os.WriteFile(ledger, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	imp := buildImpactModel(time.Now())
-	if imp.LedgerSessions != 3 {
-		t.Fatalf("sessions = %d, want 3", imp.LedgerSessions)
+	if imp.LedgerSessions != 4 {
+		t.Fatalf("sessions = %d, want 4", imp.LedgerSessions)
 	}
 	if imp.VerifyCatchesTotal == nil || *imp.VerifyCatchesTotal != 3 {
 		t.Errorf("catches = %v, want 3", imp.VerifyCatchesTotal)
 	}
-	if !strings.Contains(imp.VerifyCatchesNote, "1 of 3") {
+	if !strings.Contains(imp.VerifyCatchesNote, "1 of 4") {
 		t.Errorf("catches note must carry the denominator, got %q", imp.VerifyCatchesNote)
 	}
 	if imp.PilotState != "collecting" {
 		t.Errorf("pilot state = %q, want collecting", imp.PilotState)
 	}
 	if imp.TokensOnMedian == nil || *imp.TokensOnMedian != 200 {
-		t.Errorf("on median = %v, want 200", imp.TokensOnMedian)
+		t.Errorf("on median = %v, want 200 (upper-middle of in+out {100, 200}; the 596M pre-split row must NOT be in the sample)", imp.TokensOnMedian)
+	}
+	if imp.TokensOffMedian == nil || *imp.TokensOffMedian != 150 {
+		t.Errorf("off median = %v, want 150 (in+out of row c)", imp.TokensOffMedian)
+	}
+	if imp.TokensPreSplitRows == nil || *imp.TokensPreSplitRows != 1 {
+		t.Errorf("pre-split rows = %v, want 1 (row d is unknown, never data)", imp.TokensPreSplitRows)
+	}
+	if imp.CacheReadMedianCtx == nil || *imp.CacheReadMedianCtx == 0 {
+		t.Errorf("cache-read context = %v, want a positive average for scale", imp.CacheReadMedianCtx)
 	}
 	if imp.TokensOffSessions != 1 {
 		t.Errorf("off sessions = %d, want 1", imp.TokensOffSessions)
@@ -192,7 +299,7 @@ func TestObservatoryImpactPage(t *testing.T) {
 
 	m := observatoryModel{Impact: imp}
 	body := renderObsImpact(m)
-	for _, want := range []string{"law 12", "lens", "1 of 3", "state"} {
+	for _, want := range []string{"law 12", "lens", "1 of 4", "state", "median real tokens", "pre-split", "cache reads"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("impact page missing %q", want)
 		}
@@ -206,7 +313,7 @@ func TestObservatoryImpactPage(t *testing.T) {
 	if rec.Code != 200 {
 		t.Fatalf("GET /observatory/impact = %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "1 of 3") {
+	if !strings.Contains(rec.Body.String(), "1 of 4") {
 		t.Error("handler response must carry the denominator")
 	}
 	resetObsCache()

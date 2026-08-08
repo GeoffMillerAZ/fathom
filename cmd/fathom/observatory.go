@@ -62,12 +62,16 @@ type obsImpact struct {
 	DiscoveryTotal *int   `json:"discovery_actions_total,omitempty"`
 	DiscoveryNote  string `json:"discovery_note"`
 
-	TokensOnSessions  int    `json:"tokens_on_sessions"`
-	TokensOffSessions int    `json:"tokens_off_sessions"`
-	TokensOnMedian    *int   `json:"tokens_on_median,omitempty"`
-	TokensOffMedian   *int   `json:"tokens_off_median,omitempty"`
-	PilotState        string `json:"pilot_state"`
-	PilotDetail       string `json:"pilot_detail,omitempty"`
+	TokensOnSessions  int  `json:"tokens_on_sessions"`
+	TokensOffSessions int  `json:"tokens_off_sessions"`
+	TokensOnMedian    *int `json:"tokens_on_median,omitempty"`
+	TokensOffMedian   *int `json:"tokens_off_median,omitempty"`
+	// Spend-shaped medians are in+out only (cache reads excluded — the
+	// 2026-08-08 inflation finding); these two carry the disclosure.
+	TokensPreSplitRows *int   `json:"tokens_pre_split_rows,omitempty"`
+	CacheReadMedianCtx *int   `json:"cache_read_median_ctx,omitempty"`
+	PilotState         string `json:"pilot_state"`
+	PilotDetail        string `json:"pilot_detail,omitempty"`
 
 	Stories     []string `json:"stories,omitempty"`
 	StoriesNote string   `json:"stories_note"`
@@ -169,6 +173,29 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		}
 		entries, _, _ := readCallLog(callLogPath)
 		m.Misses = buildMissModel(entries)
+
+		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
+		// index-only distinction needs to know whether ANYONE runs coding
+		// sessions in a service's repo, separately from whether it is
+		// queried (CallsTotal) — a remote corpus can be queried with zero
+		// sessions of its own.
+		sessionsByRepo := map[string]int{}
+		ledgerReadable := false
+		if data, lerr := os.ReadFile(sessionLedgerPath()); lerr == nil {
+			ledgerReadable = true
+			for _, line := range strings.Split(string(data), "\n") {
+				if line == "" {
+					continue
+				}
+				var row struct {
+					Repo string `json:"repo"`
+				}
+				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
+					sessionsByRepo[strings.ToLower(row.Repo)]++
+				}
+			}
+		}
+
 		obligationsBySvc := map[string]int{}
 		compileBySvc := fetchCompileStates(hc, baseURL)
 		obligationCalls := 0
@@ -237,6 +264,10 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			if tr := perSvc[name]; tr != nil {
 				row.CallsTotal, row.CallsAgent, row.LastCallTS = tr.total, tr.agent, tr.last
 			}
+			if ledgerReadable {
+				n := sessionsByRepo[name]
+				row.SessionCount = &n
+			}
 			if days := svcByDay[name]; days != nil {
 				for i := 13; i >= 0; i-- {
 					d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
@@ -292,13 +323,15 @@ func buildImpactModel(now time.Time) obsImpact {
 	}
 
 	var (
-		catchesSum, catchesRan     int
-		discoverySum, discoveryRan int
-		onTokens, offTokens        []int
-		onSessions, offSessions    int
-		firstAt, lastAt            string
-		firstEditTurns             []int
-		expRatios                  []int
+		catchesSum, catchesRan      int
+		discoverySum, discoveryRan  int
+		onTokens, offTokens         []int
+		preSplitRows                int
+		cacheReadSum, cacheReadRows int
+		onSessions, offSessions     int
+		firstAt, lastAt             string
+		firstEditTurns              []int
+		expRatios                   []int
 	)
 	for _, line := range strings.Split(string(data), "\n") {
 		if line == "" {
@@ -351,16 +384,34 @@ func buildImpactModel(now time.Time) obsImpact {
 				}
 			}
 		}
+		// Spend-shaped tokens only (2026-08-08 finding): TokensTotal sums
+		// ALL flow including cache reads, which dominate cached sessions by
+		// orders of magnitude — a 596M-token "median session" was cache
+		// reads. Arms compare in+out; rows predating the split are counted
+		// as pre-split (unknown), never fed to the median as their inflated
+		// totals.
+		spend := -1
+		if e.TokensIn != nil && e.TokensOut != nil {
+			spend = *e.TokensIn + *e.TokensOut
+		}
+		if e.TokensCacheRead != nil {
+			cacheReadSum += *e.TokensCacheRead
+			cacheReadRows++
+		}
 		switch e.Arm {
 		case "off":
 			offSessions++
-			if e.TokensTotal != nil {
-				offTokens = append(offTokens, *e.TokensTotal)
+			if spend >= 0 {
+				offTokens = append(offTokens, spend)
+			} else if e.TokensTotal != nil {
+				preSplitRows++
 			}
 		default:
 			onSessions++
-			if e.TokensTotal != nil {
-				onTokens = append(onTokens, *e.TokensTotal)
+			if spend >= 0 {
+				onTokens = append(onTokens, spend)
+			} else if e.TokensTotal != nil {
+				preSplitRows++
 			}
 		}
 	}
@@ -385,6 +436,13 @@ func buildImpactModel(now time.Time) obsImpact {
 	}
 	if v, ok := medianInt(offTokens); ok {
 		imp.TokensOffMedian = &v
+	}
+	if preSplitRows > 0 {
+		imp.TokensPreSplitRows = &preSplitRows
+	}
+	if cacheReadRows > 0 {
+		avg := cacheReadSum / cacheReadRows
+		imp.CacheReadMedianCtx = &avg
 	}
 	switch {
 	case offSessions == 0:

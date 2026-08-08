@@ -5,6 +5,56 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — observatory: the readable pass — spend-shaped arm medians, visible chart values, index-only honesty, learn-affordances
+
+**The 596M-token finding:** `tokens_total` summed ALL flow, including cache
+reads — which dominate a cached session by orders of magnitude, so a single
+row could inflate the "median session" to 596M tokens. The ledger now
+splits in/out/cache at the instrument (transcript parsing), the model
+(arms compare in+out only), and the render (a labeled learn-tooltip on
+"median real tokens"); rows that predate the split count as unknown,
+never fed to the median as their inflated total, and the OFF arm's dash
+now reads "median real tokens —" instead of the old "no token totals"
+phrasing.
+
+**Visible values, not just bar widths:** the "which tools carry the load"
+chart now renders comma-grouped value labels (`ShowValue: true`) instead
+of leaving the reader to eyeball bar length.
+
+**Every non-A card shows its remedy — the actual bug:** `wiringGrade`'s
+`raise` (the one command that fixes a card) was only reachable through
+`FreshnessRemedy`/`WiringRemedy`, which cover the stale-index and
+missing-hooks/stanza cases but not "wired but unused" — a C-grade card
+whose only unmet signal was traffic rendered no remedy at all. Fixed with
+a fallback to `GradeRaise` whenever the specific fields didn't already
+cover it. **Index-only honesty:** a C/D-graded service with zero ledger
+sessions AND zero agent-originated calls is a remote corpus other repos
+query, not a wiring failure — it now renders a neutral "index-only" chip
+with an explaining tooltip instead of a scary amber letter, and its
+(moot) remedy is suppressed. Services with real sessions keep their
+letter and remedy as before.
+
+**Learn-affordances:** "(N agent)" traffic figures — fleet tiles and the
+service detail page — carry a dotted-underline tooltip explaining agent
+calls vs. fathom's own plumbing; the fleet page's expander gained a
+one-line grade legend (A/B/C-D/index-only).
+
+<details><summary>cmd/fathom/observatory.go, observatory_render.go, sessionledger.go</summary>
+
+- `sessionledger.go`: `TokensIn`/`TokensOut`/`TokensCacheRead`/`TokensCacheCreate`
+  split alongside the legacy `TokensTotal`.
+- `observatory.go`: `buildImpactModel` computes spend-shaped (in+out)
+  medians per arm, tracks pre-split rows and average cache-read context
+  separately; `buildObservatoryModel` folds a per-repo `sessionsByRepo`
+  map from the session ledger (mirrors `fleetreport.go`'s own fold) into
+  each service row's `SessionCount`.
+- `observatory_render.go`: `viz.BarsOptions{ShowValue: true}` on the tool
+  chart; fleet card remedy fallback to `GradeRaise`; `index-only` grade
+  chip; `agentCallsTip` helper wraps every "(N agent)" fragment; the
+  fleet `obsLead.Explain` carries the grade legend.
+
+</details>
+
 ### 2026-08-08 — the exploration ledger: the 90x measured, the dashboard readable, the field report answered (vision 19, plan EX/FR/TD)
 
 **The instrument the owner asked for:** every session transcript records

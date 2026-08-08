@@ -101,6 +101,17 @@ type sessionLedgerEntry struct {
 	TokensTotal *int   `json:"tokens_total,omitempty"`
 	TokensNote  string `json:"tokens_note"` // ALWAYS present — law 12: never a silent absence either
 
+	// The in/out/cache split (impact-page finding, 2026-08-08): TokensTotal
+	// sums ALL flow including cache reads, which dominate cached sessions by
+	// orders of magnitude (a 596M-token "median session" was cache reads).
+	// The spend-shaped, arm-comparable figure is TokensIn+TokensOut; rows
+	// without the split (pre-split binaries) render as unknown, never as
+	// their inflated total.
+	TokensIn          *int `json:"tokens_in,omitempty"`
+	TokensOut         *int `json:"tokens_out,omitempty"`
+	TokensCacheRead   *int `json:"tokens_cache_read,omitempty"`
+	TokensCacheCreate *int `json:"tokens_cache_create,omitempty"`
+
 	// TranscriptSchemaNote (critic finding F4, docs/design/production-
 	// tokenomics.md §8's amended non-goal) is ALWAYS present when a
 	// transcript was read at all (duration/turn_count/tokens_total came
@@ -162,7 +173,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	e := sessionLedgerEntry{
 		SchemaVersion: sessionLedgerSchemaVersion,
 		FathomVersion: buildinfo.Version(),
-		Arm:           currentArmLabel(time.Now()),
+		Arm:           currentArmLabel(now),
 		SessionID:     sessionID,
 		Repo:          repo,
 		At:            now.UTC().Format(time.RFC3339),
@@ -180,6 +191,8 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	}
 	if ts.TokensTotal != nil {
 		e.TokensTotal = ts.TokensTotal
+		e.TokensIn, e.TokensOut = ts.TokensIn, ts.TokensOut
+		e.TokensCacheRead, e.TokensCacheCreate = ts.TokensCacheRead, ts.TokensCacheCreate
 	} else {
 		e.TokensNote = ts.TokensNote
 	}
@@ -259,6 +272,12 @@ type transcriptSummary struct {
 	TurnNote     string
 	TokensTotal  *int
 	TokensNote   string
+	// The in/out/cache split — see sessionLedgerEntry's field of the same
+	// names. TokensTotal keeps its historical meaning (ALL flow).
+	TokensIn          *int
+	TokensOut         *int
+	TokensCacheRead   *int
+	TokensCacheCreate *int
 	// FirstEditTurn (IQ-2): the assistant turn index (1-based) of the first
 	// file-changing tool_use (Edit/Write/MultiEdit/NotebookEdit) — the
 	// session's warm-up length. nil with FirstEditNote when the session
@@ -381,6 +400,7 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 
 	turnCount := 0
 	tokensTotal := 0
+	tokensIn, tokensOut, tokensCacheRead, tokensCacheCreate := 0, 0, 0, 0
 	sawUsage := false
 	var timestamps []time.Time
 
@@ -470,6 +490,10 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		if tl.Message != nil && tl.Message.Usage != nil {
 			u := tl.Message.Usage
 			tokensTotal += u.InputTokens + u.OutputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
+			tokensIn += u.InputTokens
+			tokensOut += u.OutputTokens
+			tokensCacheRead += u.CacheReadInputTokens
+			tokensCacheCreate += u.CacheCreationInputTokens
 			sawUsage = true
 		}
 		if tl.Timestamp != "" {
@@ -489,6 +513,9 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 	if sawUsage {
 		tt := tokensTotal
 		out.TokensTotal = &tt
+		ti, to, tcr, tcc := tokensIn, tokensOut, tokensCacheRead, tokensCacheCreate
+		out.TokensIn, out.TokensOut = &ti, &to
+		out.TokensCacheRead, out.TokensCacheCreate = &tcr, &tcc
 	} else {
 		out.TokensNote = "unavailable: no usage data found in transcript"
 	}

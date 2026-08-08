@@ -2,24 +2,24 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
         "hooks": [
           {
-            "type": "command",
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook --pre",
-            "timeout": 5
+            "command": "fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       },
       {
-        "matcher": "Bash",
         "hooks": [
           {
-            "type": "command",
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom edit-hook --pre",
-            "timeout": 5
+            "command": "fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "Bash"
       }
     ]
   }
