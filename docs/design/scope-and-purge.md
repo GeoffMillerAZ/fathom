@@ -6,7 +6,11 @@
 > turn off, and there should also be a purge option in case something gets
 > indexed that shouldn't be."*
 >
-> **Status:** design. Builds on the existing `Store` primitives
+> **Status:** design, REVISED 2026-08-08 after adversarial review found
+> three ways the "provable purge" guarantee was false as first written
+> (§3.5, §3.2's physical row, §3.3's two corrections).
+>
+> Builds on the existing `Store` primitives
 > (`PurgeSource`, `PurgeService`, `RemoveService`, `DeleteFingerprint`,
 > `ListSourceRefs` in `internal/store/store.go`) and `.fathomignore`.
 
@@ -134,6 +138,21 @@ commit that creates the table:
 | call log | tool name, service, outcome | retain — query text is never logged, so no content is present |
 | session ledger | counts only | retain — no content |
 | `~/.fathom/briefs/*.md` | rendered aggregates | retain — counts only, no content |
+| **SQLite free pages and the `-wal`** | the deleted rows' raw bytes | `secure_delete=ON` for the deleting connection, then `wal_checkpoint(TRUNCATE)` and `VACUUM` (or `VACUUM INTO` a replacement — the pattern `module_pack.go:190` already uses) |
+
+The last row was missing from the first draft and is the one that matters
+most for §3.4's own named use case. The store is WAL-mode SQLite with no
+`secure_delete`, no checkpoint and no VACUUM (`store/sqlite.go:70-78`).
+Reproduced against this repo's own store during review: after
+`PurgeSource` the query count is zero **while the canary bytes remain** in
+`fleet.sqlite` (store closed) and in `fleet.sqlite-wal` (store held open —
+the live daemon case). A purge of a leaked credential would report
+VERIFIED while `strings fleet.sqlite` still returned the key, and the
+residue would propagate into every backup taken afterwards.
+
+The correct standard already exists in-program — agentic-kit's handoff-h3
+sets `secure_delete` plus a post-migration `VACUUM` with a raw-bytes
+assertion — and simply was not applied here.
 
 The result cache row is the one that would have been missed. A purge that
 leaves a cached answer containing the purged content is a purge that
@@ -146,15 +165,38 @@ answer: flush it.
 has four phases and the third is not optional:
 
 ```
-1. resolve   → expand the pattern against ListSourceRefs; show the exact
-               file list and per-table row counts; require confirmation
+1. resolve   → expand the pattern against EACH LOCATION'S OWN path column,
+               not a single ref list; show the exact file list and
+               per-table row counts; require confirmation
 2. execute   → delete across every location in §3.2, in one transaction
-               where the storage allows it
-3. verify    → re-query every location for the resolved refs and for a
-               content probe; count must be zero everywhere
+               where the storage allows it, on a secure_delete connection
+3. verify    → a scan DERIVED INDEPENDENTLY of step 1, plus a raw-bytes
+               probe of the store file; every count must be zero
 4. report    → per-location before/after counts, and the verification
                result, written to ~/.fathom/purges.jsonl
 ```
+
+Two corrections from review, both about proof that cannot falsify itself:
+
+**Resolution must not come from one ref list.** `ListSourceRefs` returns
+observations ∪ fingerprints only (`store/store.go:184-189`). Any row
+anchored by a different key is never resolved, never deleted, and never
+checked — `knowledge_cards` has no `source_ref` at all (and no per-source
+delete exists; only `RemoveService`'s whole-service loop), and
+`claim_links.target_ref` uses the `path#Lstart-Lend` grammar while
+`anchor_text` stores verbatim cited source. Purging a service whose
+`secrets/` had previously been `.fathomignore`'d would resolve zero refs,
+delete nothing, and write "verified" over a knowledge card holding an LLM
+summary of the file. So resolution reads `observations.source_ref`,
+`fingerprints.source_ref`, `doc_summaries.source_ref`,
+`knowledge_cards.file`, `typed_edges.from_file`, and `ParseCiteRef` over
+`claim_links.target_ref`.
+
+**Verification must not be derived from the deletion.** Re-querying "the
+resolved refs" can only confirm the deletion it was derived from (law 14).
+Step 3 re-derives its scan from each table's own path column and adds a
+raw-bytes probe of the store file, so it can detect residue a SQL
+re-query structurally cannot see.
 
 If verify finds a survivor, the run **fails loudly** and names the table.
 It does not retry and it does not report partial success — a partial purge
@@ -175,13 +217,39 @@ given, and states in the report that claim history integrity is now broken
 for the affected claims. Someone purging a leaked credential needs this
 door to exist; nobody should walk through it by accident.
 
-### 3.5 Purge implies suppression
+### 3.5 Purge writes an INGEST-time exclusion, not just a suppression
 
-A purge automatically writes a suppression for the same pattern, reason
-`"purged <date>"`. Otherwise the next ingest re-indexes exactly what was
-just deleted, which is the most predictable possible way for this feature
-to betray someone. The suppression is visible and removable like any other
-— the point is that the default is safe.
+The first draft of this section said purge writes a suppression "otherwise
+the next ingest re-indexes exactly what was just deleted". **That is
+unreachable by its own mechanism**, and adversarial review of this document
+caught it before anything was built:
+
+- §2.2 fixes the suppression filter at the **query layer** and explicitly
+  forbids a second site.
+- §3.2 deletes the `fingerprints` row, which *re-arms* extraction — the
+  hash gate no longer knows the file was seen.
+- `autorefresh.ensure` re-ingests on git-HEAD drift with no human action,
+  and CLAUDE.md instructs every session to call `ingest`.
+
+So the bytes come back within one commit, while `purge history` and the §4
+panel keep reporting "verified" against a store where the rows have
+returned. A query-layer filter can hide them; it cannot stop them being
+written.
+
+**The correction: purge appends the pattern to `~/.fathom/ignore`**, which
+`connector.LoadIgnoreScoped` already unions at `Discover` — user-scope,
+local, additive-only (law 13), and applied at *write* time.
+
+**§2.2 is therefore restated as two chokepoints, not one:**
+
+| Chokepoint | Applies at | Prevents |
+|---|---|---|
+| `Discover` (`~/.fathom/ignore`) | ingest / write | content entering the store |
+| the query layer | read | content leaving the store |
+
+Suppression alone still uses only the read chokepoint — it is reversible
+and must not change what gets indexed. Purge uses both, because a removal
+that a background refresh undoes is not a removal.
 
 ### 3.6 Verbs
 
@@ -267,3 +335,8 @@ POST, registry-resolved service ids, no ambient authority.
   directions, and being wrong about deletion is unrecoverable.
 - No undo for purge. That is what suppression is for; if you might want it
   back, do not purge.
+- **No promise of erasure beyond fathom's own store.** On a copy-on-write
+  filesystem, with Time Machine or any snapshotting backup in play, older
+  copies of the store file may survive a purge. §3.1's guarantee is scoped
+  to the live store and its derived indexes; the report says so rather
+  than implying more.

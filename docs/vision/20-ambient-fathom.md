@@ -231,10 +231,15 @@ that should never have been there.
 
 Tomorrow: **suppression** (reversible, instant, optionally time-boxed,
 query-time) and **purge** (irreversible, provable, storage-level) are
-separate verbs, both available from the CLI and the UI, both audited. Purge
-is not complete until a verification query proves zero remaining hits
-across every store that could hold a copy — rows, full-text index, vector
-index, and result cache.
+separate verbs, both available from the CLI and the UI, both audited.
+
+Purge writes an **ingest-time exclusion** as well as deleting, because a
+removal that the next auto-refresh undoes is not a removal — and it is not
+complete until a proof *independent of the deletion* shows zero remaining:
+a per-location scan derived from each table's own path column, plus a
+raw-bytes probe of the store file. Both corrections came from adversarial
+review of the design (2026-08-08), which reproduced the residue against
+this repo's own store.
 
 ### 5.3 Self-expiring (knowledge stops rotting)
 
@@ -320,7 +325,7 @@ kill condition, per house style.
 |---|---|---|---|
 | **T — Capability registry** | one typed registry of the four seams, global + project toggles, `fathom capabilities`, doctor integration | `doctor` can state why any capability is off, in one line, in a repository that has never been opened before | a capability that cannot be toggled, or a fifth seam added without proving the four don't fit |
 | **U — Self-healing fleet** | law 15 merge engine, receipts, `fathom fleet undo`, UI apply-with-diff | a below-A repository is raised to A from the browser, with a visible diff, and undone cleanly | any reconciliation that resolves a conflict instead of stopping |
-| **V — Scope and purge** | suppression (reversible, time-boxable) and purge (irreversible, proven) across store, FTS, vector, cache; UI for both | a deliberately-indexed secret is purged and a verification query proves zero hits in all four stores | purge that reports success without a verification query |
+| **V — Scope and purge** | suppression (reversible, time-boxable) and purge (irreversible, proven) across store, vector, cache **and the store file's own free pages and WAL**; UI for both | a deliberately-indexed secret is purged, and **after a forced full re-ingest** the verification still proves zero — including a raw-bytes probe of the store file | purge that reports success without a proof **independent of the deletion**: a re-query cannot see freed pages, the WAL, or rows anchored outside the resolved ref set |
 | **W — Anchored memory** | anchor types, drift → fresh/suspect/orphaned, review queue, surfacing through obligations, law 14 ceilings | a memory about a renamed function is automatically marked suspect and says why | a memory accepted without an anchor or without evidence |
 | **X — Budgeted answers** | per-tool budgets, explicit elision, per-tool cost/value ratio on the dashboard | every agent-surface tool respects a budget and states what it elided | any tool that truncates silently |
 | **Y — Realization grade** | grade extended from wiring to wired/fresh/queried/preventing/gating; per-project depth | the fleet page ranks repositories by value realized against value available | a grade that rewards configuration rather than outcome |
