@@ -57,3 +57,82 @@ func TestResolveFromServices(t *testing.T) {
 		}
 	})
 }
+
+// TestResolveFromServicesDeterministic pins the O1 fix: when two indexed
+// services record the SAME corpus root (the duplicate-corpus-root class that
+// silently zeroed obligations on 36% of edits), resolution must be
+// deterministic — richer service first, then basename affinity, then
+// lexicographic — never Go map iteration order.
+func TestResolveFromServicesDeterministic(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "sextant")
+	if err := os.MkdirAll(repo, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("richer_service_wins_every_time", func(t *testing.T) {
+		svcs := map[string]svcInfo{
+			"sextant": {symbols: 0, path: repo},    // the stale shadow
+			"fathom":  {symbols: 6956, path: repo}, // the real service
+		}
+		for i := 0; i < 200; i++ {
+			cand, ok := resolveFromServices(svcs, repo)
+			if !ok || cand.name != "fathom" {
+				t.Fatalf("iteration %d: resolved %q ok=%v, want fathom every time", i, cand.name, ok)
+			}
+		}
+	})
+
+	t.Run("symbol_tie_breaks_to_basename_affinity", func(t *testing.T) {
+		svcs := map[string]svcInfo{
+			"zzz-twin": {symbols: 10, path: repo},
+			"sextant":  {symbols: 10, path: repo}, // matches the dir basename
+		}
+		for i := 0; i < 200; i++ {
+			cand, ok := resolveFromServices(svcs, repo)
+			if !ok || cand.name != "sextant" {
+				t.Fatalf("iteration %d: resolved %q ok=%v, want basename-affine sextant", i, cand.name, ok)
+			}
+		}
+	})
+
+	t.Run("full_tie_breaks_lexicographically", func(t *testing.T) {
+		svcs := map[string]svcInfo{
+			"bbb": {symbols: 10, path: repo},
+			"aaa": {symbols: 10, path: repo},
+		}
+		for i := 0; i < 200; i++ {
+			cand, ok := resolveFromServices(svcs, repo)
+			if !ok || cand.name != "aaa" {
+				t.Fatalf("iteration %d: resolved %q ok=%v, want lexicographic aaa", i, cand.name, ok)
+			}
+		}
+	})
+}
+
+// TestMergeCandidatesNeverCollapses pins O1 fix (c): the daemon-resolved
+// identity is PREPENDED and exact duplicates dropped, but dedup must never
+// shrink the fallback list — a name-equal candidate with a DIFFERENT root
+// survives, so a wrong daemon answer degrades instead of totalling the list.
+func TestMergeCandidatesNeverCollapses(t *testing.T) {
+	resolved := serviceCandidate{name: "sextant", root: "/idx/sextant-shadow"}
+	base := []serviceCandidate{
+		{name: "sextant", root: "/real/sextant"},
+		{name: "fathom", root: "/real/fathom"},
+	}
+	out := mergeCandidates(resolved, base)
+	if len(out) != 3 {
+		t.Fatalf("got %d candidates %v, want 3 (resolved + both base entries)", len(out), out)
+	}
+	if out[0] != resolved {
+		t.Errorf("resolved candidate must be first, got %v", out[0])
+	}
+
+	t.Run("exact_duplicate_is_dropped", func(t *testing.T) {
+		dup := serviceCandidate{name: "fathom", root: "/real/fathom"}
+		out := mergeCandidates(dup, base)
+		if len(out) != 2 {
+			t.Fatalf("got %d candidates %v, want 2 (exact dup dropped)", len(out), out)
+		}
+	})
+}

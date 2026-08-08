@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — deterministic service resolution; dedup never collapses (O1 a–c, plan IO-1)
+
+`resolveFromServices` no longer resolves duplicate-corpus-root conflicts by
+Go map iteration order (the coin flip that zeroed obligations on 18/50
+measured edits): all matches are collected and the winner is chosen by
+richness (symbol count), then basename affinity, then lexicographic order —
+pinned by `TestResolveFromServicesDeterministic` (200-iteration determinism
+asserts per case). `candidatesWithDaemon`'s dedup is extracted to
+`mergeCandidates`, which drops only exact name+root duplicates — a
+name-equal candidate at a different root now survives, so a wrong daemon
+answer degrades instead of totalling the fallback list
+(`TestMergeCandidatesNeverCollapses`). O1 fix (d) — daemon-side duplicate
+refusal — lands with plan row IO-2.
+
 ### Measured — T5-8 second swing: fathom WINS its home turf; the lookup ×10 retraction stands (docs/plans/trust-and-tokenomics.md, 2026-07-24)
 - **Home bench (pre-registered H2-1 criterion, unchanged): PASS — both
   halves met.** Success 13/13 vs grep 11/13 (strictly greater); tokens
