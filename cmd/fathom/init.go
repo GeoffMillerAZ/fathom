@@ -180,6 +180,15 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// g. manual steps init cannot do for you.
+	// IO-20: the PATH shim — hooks and stanzas spell `fathom`, never a
+	// checkout path; a gate that cannot be invoked must fail loudly, not
+	// pass silently (the 2026-07-31 journal case).
+	if msg, err := installShim(); err != nil {
+		fmt.Fprintf(stdout, "shim: NOT installed — %v (hooks written by this init still work via PATH once you install one)\n", err)
+	} else {
+		fmt.Fprintf(stdout, "%s\n", msg)
+	}
+
 	printManualSteps(stdout, svc, *url)
 	if skillsMode == "" {
 		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (fathom-plan/verify/onboard/feedback):")

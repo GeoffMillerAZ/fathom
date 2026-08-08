@@ -202,6 +202,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// Phase P (docs/design/production-tokenomics.md / scoped-config.md):
 		// env-driven honesty checks first, then scoped-config disclosure.
 		checkChannelsEnv(),
+		checkBinaryOnPath(),
 		checkIdentCacheEnv(),
 		checkUserScopeIgnore(root),
 		checkUserScopeGuard(),

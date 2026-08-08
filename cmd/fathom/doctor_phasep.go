@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -273,4 +274,23 @@ func noteSuffix(note string) string {
 		return ""
 	}
 	return ", note: " + note
+}
+
+// checkBinaryOnPath (IO-20): `fathom` must resolve from a NON-interactive
+// shell — the 2026-07-31 journal case: `fathom verify …` printed
+// command-not-found as one token and the pipeline still exited 0, a
+// verification failure wearing a pass. Doctor checks resolvability in its
+// own environment and says exactly what that does and does not prove.
+func checkBinaryOnPath() doctorCheck {
+	const name = "binary_on_path"
+	p, err := exec.LookPath("fathom")
+	if err != nil {
+		return doctorCheck{
+			Name:   name,
+			Status: doctorFail,
+			Reason: "`fathom` does not resolve on doctor's own PATH — every stanza command and fail-open gate that spells `fathom` is silently dead in shells with this PATH",
+			Remedy: "run `fathom init` (installs the ~/.local/bin/fathom shim → deployed binary), or add the shim by hand: ln -s ~/.local/libexec/fathom/fathom ~/.local/bin/fathom",
+		}
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: "`fathom` resolves to " + p + " (doctor's own PATH; non-interactive shells inherit their own — the shim in ~/.local/bin covers standard PATHs)"}
 }

@@ -5,6 +5,16 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the PATH shim: hooks spell `fathom`, never a checkout path (plan IO-20)
+
+`fathom init` now installs ~/.local/bin/fathom → the deployed libexec
+binary (falling back to the running executable; refusing to clobber a
+foreign real file; idempotent), and doctor gains `binary_on_path` — the
+2026-07-31 journal case made the stakes plain: `fathom verify …` printed
+command-not-found as one token and the pipeline exited 0, a verification
+failure wearing a pass. One stable name on PATH ends the class where
+hook behavior depends on when a checkout was last rebuilt.
+
 ### 2026-08-08 — fathom fleet report: the audit as a verb (vision 14 §4, plan IO-16)
 
 One command folds the daemon's registry, per-service traffic from the
