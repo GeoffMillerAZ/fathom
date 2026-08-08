@@ -10,6 +10,7 @@ package main
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -36,6 +37,10 @@ type obsServiceRow struct {
 	// TrafficDays (IQ-8): this service's last-14-day call counts, oldest
 	// first, aligned with the model's TrafficDays dates.
 	TrafficDays []int `json:"traffic_days,omitempty"`
+	// Config (EX-7/FR-5): the .fathom configuration state, including the
+	// obligations-compile condition.
+	Config      *obsConfigPanel `json:"config,omitempty"`
+	CompileNote string          `json:"compile_note,omitempty"`
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -71,6 +76,20 @@ type obsImpact struct {
 	FirstEditMedian *int   `json:"first_edit_median_turns,omitempty"`
 	FirstEditNote   string `json:"first_edit_note"`
 	ObligationCalls int    `json:"obligation_calls"`
+
+	// The exploration story (EX-3): folded across sessions carrying the
+	// exploration ledger. Per-question = tokens / calls, per mode; the
+	// ratio is OBSERVATIONAL (labeled) — the arm pilot carries causality.
+	ExpSessions       int    `json:"exp_sessions"`
+	ExpRawCalls       int    `json:"exp_raw_calls"`
+	ExpRawTokens      int    `json:"exp_raw_tokens_est"`
+	ExpFathomCalls    int    `json:"exp_fathom_calls"`
+	ExpFathomTokens   int    `json:"exp_fathom_tokens_est"`
+	ExpRatioMedianX10 *int   `json:"exp_ratio_median_x10,omitempty"` // per-question raw/indexed ×10
+	ExpRepeatFiles    int    `json:"exp_repeat_files"`
+	ExpRepeatTokens   int    `json:"exp_repeat_tokens_est"`
+	ExpSidechainShare int    `json:"exp_sidechain_results"`
+	ExpNote           string `json:"exp_note"`
 }
 
 type observatoryModel struct {
@@ -92,6 +111,11 @@ type observatoryModel struct {
 
 	// Misses (IQ-3): per-tool outcome profile from the call log.
 	Misses []obsMissRow `json:"misses,omitempty"`
+
+	// SurfaceTax (TD-1): the standing context cost of the agent surface —
+	// schema bytes every MCP-connected session carries before any work.
+	AgentSurfaceTools int `json:"agent_surface_tools"`
+	AgentSchemaBytes  int `json:"agent_schema_bytes"`
 
 	Impact obsImpact `json:"impact"`
 }
@@ -145,12 +169,17 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		}
 		entries, _, _ := readCallLog(callLogPath)
 		m.Misses = buildMissModel(entries)
+		obligationsBySvc := map[string]int{}
+		compileBySvc := fetchCompileStates(hc, baseURL)
 		obligationCalls := 0
 		byDay := map[string]int{}
 		svcByDay := map[string]map[string]int{}
 		for _, e := range entries {
 			if e.Tool == "obligations" {
 				obligationCalls++
+				if e.Service != "" {
+					obligationsBySvc[strings.ToLower(e.Service)]++
+				}
 			}
 			if len(e.TS) >= 10 {
 				byDay[e.TS[:10]]++
@@ -215,6 +244,13 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				}
 			}
 			row.Grade, row.GradeRaise = wiringGrade(row)
+			cp := buildConfigPanel(info.path, obligationsBySvc[name])
+			row.Config = &cp
+			if note, ok := compileBySvc[name]; ok && note != "" {
+				row.CompileNote = note
+			} else {
+				row.CompileNote = "no compile recorded for this service — if every service shows this, the daemon has no LLM key configured (obligations then serve staleness warnings, not compiled rules)"
+			}
 			m.Services = append(m.Services, row)
 		}
 		for i := 13; i >= 0; i-- {
@@ -228,6 +264,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			}
 			return m.Services[i].Service < m.Services[j].Service
 		})
+		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
 		m.Impact.ObligationCalls = obligationCalls
 		return m
@@ -261,6 +298,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		onSessions, offSessions    int
 		firstAt, lastAt            string
 		firstEditTurns             []int
+		expRatios                  []int
 	)
 	for _, line := range strings.Split(string(data), "\n") {
 		if line == "" {
@@ -289,6 +327,29 @@ func buildImpactModel(now time.Time) obsImpact {
 		}
 		if e.FirstEditTurn != nil {
 			firstEditTurns = append(firstEditTurns, *e.FirstEditTurn)
+		}
+		if e.RawDiscoveryTokensEst != nil || e.FathomTokensEst != nil {
+			imp.ExpSessions++
+			imp.ExpRawCalls += e.RawDiscoveryCalls
+			imp.ExpFathomCalls += e.FathomCalls
+			if e.RawDiscoveryTokensEst != nil {
+				imp.ExpRawTokens += *e.RawDiscoveryTokensEst
+			}
+			if e.FathomTokensEst != nil {
+				imp.ExpFathomTokens += *e.FathomTokensEst
+			}
+			imp.ExpRepeatFiles += e.RepeatedReadFiles
+			if e.RepeatedReadTokensEst != nil {
+				imp.ExpRepeatTokens += *e.RepeatedReadTokensEst
+			}
+			imp.ExpSidechainShare += e.SidechainToolResults
+			if e.RawDiscoveryCalls > 0 && e.FathomCalls > 0 && e.RawDiscoveryTokensEst != nil && e.FathomTokensEst != nil && *e.FathomTokensEst > 0 {
+				rawPerQ := float64(*e.RawDiscoveryTokensEst) / float64(e.RawDiscoveryCalls)
+				idxPerQ := float64(*e.FathomTokensEst) / float64(e.FathomCalls)
+				if idxPerQ > 0 {
+					expRatios = append(expRatios, int(rawPerQ/idxPerQ*10))
+				}
+			}
 		}
 		switch e.Arm {
 		case "off":
@@ -335,6 +396,14 @@ func buildImpactModel(now time.Time) obsImpact {
 	default:
 		imp.PilotState = "collecting"
 		imp.PilotDetail = "medians shown per arm with session counts; publish a RANGE with denominators once the pre-registered N per arm is met"
+	}
+	if v, ok := medianInt(expRatios); ok {
+		imp.ExpRatioMedianX10 = &v
+		imp.ExpNote = "OBSERVATIONAL: per-question token cost, raw exploration vs indexed discovery, same estimator, " + itoa(len(expRatios)) + " sessions with both modes; the counterfactual arm carries causality (law 12)"
+	} else if imp.ExpSessions > 0 {
+		imp.ExpNote = "exploration measured in " + itoa(imp.ExpSessions) + " sessions, but no session used both modes yet - the ratio needs both"
+	} else {
+		imp.ExpNote = "no sessions carry the exploration ledger yet (rows predate EX-1) - unknown, not zero"
 	}
 	if v, ok := medianInt(firstEditTurns); ok {
 		imp.FirstEditMedian = &v
@@ -462,26 +531,45 @@ func buildMissModel(entries []adoptionCallEntry) []obsMissRow {
 // Signals: hooks referenced in project settings, a CLAUDE.md stanza, a
 // fresh index, and any recorded traffic.
 func wiringGrade(s obsServiceRow) (grade, raise string) {
-	score := 0
+	score, visible := 0, 0
+	hooksVisible := !strings.Contains(s.HooksNote, "user-scope or plugin wiring not visible") && !strings.Contains(s.HooksNote, "not checkable")
 	hooksOK := strings.Contains(s.HooksNote, "hook reference")
-	if hooksOK {
-		score++
+	if hooksVisible {
+		visible++
+		if hooksOK {
+			score++
+		}
 	}
 	stanzaOK := s.StanzaNote == "present"
+	visible++
 	if stanzaOK {
 		score++
 	}
 	freshOK := s.Freshness == "fresh"
+	visible++
 	if freshOK {
 		score++
 	}
 	trafficOK := s.CallsTotal > 0
+	visible++
 	if trafficOK {
 		score++
 	}
-	grade = [5]string{"F", "D", "C", "B", "A"}[score]
+	frac := float64(score) / float64(visible)
 	switch {
-	case !hooksOK || !stanzaOK:
+	case frac >= 1:
+		grade = "A"
+	case frac >= 0.75:
+		grade = "B"
+	case frac >= 0.5:
+		grade = "C"
+	case frac >= 0.25:
+		grade = "D"
+	default:
+		grade = "F"
+	}
+	switch {
+	case (hooksVisible && !hooksOK) || !stanzaOK:
 		raise = "fathom fleet reconcile --apply (or: cd " + s.Path + " && fathom init)"
 	case !freshOK:
 		raise = "cd " + s.Path + " && fathom ingest --service " + s.Service
@@ -489,4 +577,75 @@ func wiringGrade(s obsServiceRow) (grade, raise string) {
 		raise = "wired but unused — open a session in " + s.Path + " and ask a where/who-calls question"
 	}
 	return grade, raise
+}
+
+// surfaceSchemaTax measures the agent surface's standing context cost
+// (TD-1, docs/plans/exploration-ledger.md): tool count and serialized
+// schema bytes from POST /rpc/agent tools/list — the bytes every
+// MCP-connected session carries before any work happens. Zeros on any
+// failure; the renderer names the absence (law 3), never charts a zero.
+func surfaceSchemaTax(hc *http.Client, baseURL string) (int, int) {
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}`))
+	if err != nil {
+		return 0, 0
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := hc.Do(req)
+	if err != nil {
+		return 0, 0
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return 0, 0
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<22))
+	if err != nil {
+		return 0, 0
+	}
+	var env struct {
+		Result struct {
+			Tools json.RawMessage `json:"tools"`
+		} `json:"result"`
+	}
+	if json.Unmarshal(raw, &env) != nil || len(env.Result.Tools) == 0 {
+		return 0, 0
+	}
+	var tools []json.RawMessage
+	if json.Unmarshal(env.Result.Tools, &tools) != nil {
+		return 0, 0
+	}
+	return len(tools), len(env.Result.Tools)
+}
+
+// fetchCompileStates maps service → a one-line summary of its most recent
+// compile per layer, from the daemon's own statusz JSON. Empty map when
+// unreachable — the caller renders the honest default.
+func fetchCompileStates(hc *http.Client, baseURL string) map[string]string {
+	out := map[string]string{}
+	resp, err := hc.Get(baseURL + "/statusz?format=json")
+	if err != nil {
+		return out
+	}
+	defer resp.Body.Close()
+	var rep struct {
+		Services []struct {
+			Service             string            `json:"service"`
+			LastCompilePerLayer map[string]string `json:"last_compile_per_layer"`
+		} `json:"services"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&rep) != nil {
+		return out
+	}
+	for _, s := range rep.Services {
+		if len(s.LastCompilePerLayer) == 0 {
+			continue
+		}
+		parts := make([]string, 0, len(s.LastCompilePerLayer))
+		for layer, sum := range s.LastCompilePerLayer {
+			parts = append(parts, layer+": "+sum)
+		}
+		sort.Strings(parts)
+		out[strings.ToLower(s.Service)] = strings.Join(parts, " · ")
+	}
+	return out
 }

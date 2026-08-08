@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -253,5 +254,206 @@ func TestBriefFourQuestions(t *testing.T) {
 		if !strings.Contains(md, want) {
 			t.Errorf("brief missing %q", want)
 		}
+	}
+}
+
+// TestImpactExplorationFold pins EX-3: the fold computes per-question costs
+// and the labeled observational ratio; rows without the ledger are honest.
+func TestImpactExplorationFold(t *testing.T) {
+	dir := hermeticObsEnv(t)
+	rows := []string{
+		// raw: 9000 est over 3 calls (3000/q); fathom: 100 over 5 (20/q) → ratio 150.0 → x10 = 1500
+		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-08T10:00:00Z","tokens_note":"","raw_discovery_calls":3,"raw_discovery_tokens_est":9000,"fathom_calls":5,"fathom_tokens_est":100,"repeated_read_files":2,"repeated_read_tokens_est":4000,"sidechain_tool_results":6}`,
+		`{"schema_version":2,"session_id":"old","arm":"on","at":"2026-08-01T10:00:00Z","tokens_note":""}`,
+	}
+	if err := os.WriteFile(filepath.Join(dir, "ledger.jsonl"), []byte(strings.Join(rows, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	imp := buildImpactModel(time.Now())
+	if imp.ExpSessions != 1 {
+		t.Fatalf("ExpSessions = %d, want 1", imp.ExpSessions)
+	}
+	if imp.ExpRatioMedianX10 == nil || *imp.ExpRatioMedianX10 != 1500 {
+		t.Fatalf("ExpRatioMedianX10 = %v, want 1500 (150.0x)", imp.ExpRatioMedianX10)
+	}
+	if !strings.Contains(imp.ExpNote, "OBSERVATIONAL") {
+		t.Errorf("the ratio must be labeled observational: %q", imp.ExpNote)
+	}
+	if imp.ExpRepeatFiles != 2 || imp.ExpRepeatTokens != 4000 || imp.ExpSidechainShare != 6 {
+		t.Errorf("duplication fold = %+v", imp)
+	}
+}
+
+// TestConfigPanel pins EX-7/FR-5: layers with eval state, guard counts,
+// binding presence, and named absences with install commands.
+func TestConfigPanel(t *testing.T) {
+	root := t.TempDir()
+	mk := func(rel, content string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk(".fathom/layers/ui-appkit/layer.cue", "name: \"ui-appkit\"\n")
+	mk(".fathom/layers/evaled-pack/layer.cue", "name: \"evaled-pack\"\n")
+	mk(".fathom/layers/evaled-pack/eval/results.json", "{}")
+	mk(".fathom/guard.cue", "guards: [{note: \"a\"}, {note: \"b\"}]\n")
+
+	p := buildConfigPanel(root, 42)
+	if len(p.Layers) != 2 {
+		t.Fatalf("layers = %d, want 2", len(p.Layers))
+	}
+	byName := map[string]bool{}
+	for _, l := range p.Layers {
+		byName[l.Name] = l.Evaled
+	}
+	if byName["ui-appkit"] || !byName["evaled-pack"] {
+		t.Errorf("eval detection wrong: %+v", p.Layers)
+	}
+	if p.GuardCount != 2 {
+		t.Errorf("guards = %d, want 2", p.GuardCount)
+	}
+	if !strings.Contains(p.BindingNote, "no bindings file") {
+		t.Errorf("binding absence must be named: %q", p.BindingNote)
+	}
+	if p.ObligationServes != 42 {
+		t.Errorf("serves = %d", p.ObligationServes)
+	}
+
+	empty := buildConfigPanel(t.TempDir(), 0)
+	if !strings.Contains(empty.LayersNote, "fathom layers install") {
+		t.Errorf("unconfigured repo must see the install command: %q", empty.LayersNote)
+	}
+}
+
+// TestImpactExplorationStory pins EX-4: the impact page LEADS with the
+// exploration story — per-question raw vs indexed cost, the observed ratio
+// labeled OBSERVATIONAL (the arm pilot carries causality), and the
+// subagent duplication number.
+func TestImpactExplorationStory(t *testing.T) {
+	m := syntheticModel()
+	ratio := 300
+	m.Impact = obsImpact{
+		ExpSessions:       2,
+		ExpRawCalls:       10,
+		ExpRawTokens:      30000,
+		ExpFathomCalls:    5,
+		ExpFathomTokens:   500,
+		ExpRatioMedianX10: &ratio,
+		ExpRepeatFiles:    3,
+		ExpRepeatTokens:   9000,
+		ExpNote:           "OBSERVATIONAL: per-question token cost, raw exploration vs indexed discovery",
+		VerifyCatchesNote: "verify never ran in any ledger session — unknown, not zero",
+		DiscoveryNote:     "discovery instrument absent",
+		FirstEditNote:     "no sessions carry first_edit_turn yet",
+		PilotState:        "idle",
+		PilotDetail:       "no OFF-arm sessions recorded",
+		StoriesNote:       "no story rows quoted here",
+	}
+	body := renderObsImpact(m)
+	for _, want := range []string{"the exploration story", "per question", "30.0×", "re-read", "OBSERVATIONAL"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("impact page missing %q", want)
+		}
+	}
+}
+
+// TestPlainEnglishLayer pins EX-5: every observatory page opens with a
+// plain-English lead and carries a no-JS explainer a reader who has never
+// heard of fathom can follow.
+func TestPlainEnglishLayer(t *testing.T) {
+	m := observatoryModel{GeneratedAt: "2026-08-08T12:00:00Z", FathomVersion: "test"}
+	body := obsPage("t", "impact", "<div>x</div>", m)
+	if !strings.Contains(body, "what am I looking at?") {
+		t.Error("explainer summary missing")
+	}
+	if !strings.Contains(body, "every number names its instrument") {
+		t.Error("impact lead missing")
+	}
+	if !strings.Contains(body, "<details") {
+		t.Error("no-JS explainer must be a details element")
+	}
+	if home := obsPage("t", "home", "<div>x</div>", m); !strings.Contains(home, "code index") {
+		t.Error("home lead must explain fathom as a code index")
+	}
+}
+
+// TestObservatoryBriefPage pins EX-6: GET /observatory/brief renders the
+// management-ready brief as a page (markdown headings become h2 elements)
+// and ?format=md downloads the same markdown.
+func TestObservatoryBriefPage(t *testing.T) {
+	hermeticObsEnv(t)
+	h := observatoryBriefPage("http://127.0.0.1:1")
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest("GET", "/observatory/brief", nil))
+	if rec.Code != 200 {
+		t.Fatalf("GET /observatory/brief = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "download as markdown") {
+		t.Error("page must link the markdown download")
+	}
+	if !strings.Contains(body, "<h2") {
+		t.Error("brief headings must render as h2 elements")
+	}
+
+	rec = httptest.NewRecorder()
+	h(rec, httptest.NewRequest("GET", "/observatory/brief?format=md", nil))
+	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "text/markdown") {
+		t.Errorf("Content-Type = %q, want text/markdown", ct)
+	}
+	if !strings.Contains(rec.Body.String(), "# fathom value brief") {
+		t.Error("markdown download must carry the brief")
+	}
+}
+
+// TestSurfaceSchemaTax pins TD-1 (docs/plans/exploration-ledger.md): the
+// standing context cost of the agent surface is MEASURED — tool count and
+// serialized schema bytes — and an unreachable surface yields zeros, which
+// the renderer names rather than charts (law 3).
+func TestSurfaceSchemaTax(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"find_symbol","inputSchema":{"type":"object"}},{"name":"outline","inputSchema":{"type":"object"}}]}}`))
+	}))
+	defer srv.Close()
+	hc := &http.Client{}
+	tools, schemaBytes := surfaceSchemaTax(hc, srv.URL)
+	if tools != 2 {
+		t.Errorf("tools = %d, want 2", tools)
+	}
+	if schemaBytes <= 0 {
+		t.Errorf("schema bytes = %d, want > 0", schemaBytes)
+	}
+	if tools, schemaBytes := surfaceSchemaTax(hc, "http://127.0.0.1:1"); tools != 0 || schemaBytes != 0 {
+		t.Errorf("unreachable surface = %d/%d, want zeros", tools, schemaBytes)
+	}
+	if v := contextTaxValue(0, 0); !strings.Contains(v, "not measured") {
+		t.Errorf("zero tax must be named unmeasured: %q", v)
+	}
+	if v := contextTaxValue(16, 12600); !strings.Contains(v, "16 tools") || !strings.Contains(v, "KB") {
+		t.Errorf("tax line = %q", v)
+	}
+}
+
+// TestWiringGradeUnknowns pins EX-8 (law 3): a signal invisible from the
+// repo walk (user-scope hook wiring) leaves the DENOMINATOR — it must never
+// grade as absent.
+func TestWiringGradeUnknowns(t *testing.T) {
+	row := obsServiceRow{}
+	row.Service = "svc"
+	row.Path = "/tmp/svc"
+	row.HooksNote = "no project settings.json (user-scope or plugin wiring not visible from here)"
+	row.StanzaNote = "present"
+	row.Freshness = "fresh"
+	row.CallsTotal = 9
+	g, raise := wiringGrade(row)
+	if g != "A" {
+		t.Errorf("grade = %q, want A — 3 of 3 VISIBLE signals pass; the invisible one must not count against", g)
+	}
+	if strings.Contains(raise, "reconcile") {
+		t.Errorf("invisible hooks must not trigger the reconcile remedy: %q", raise)
 	}
 }

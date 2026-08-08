@@ -129,9 +129,16 @@ type AdoptionReport struct {
 	// tasks the gate would fail) plus review's per-checked-dimension active
 	// finding counts. Nil only when this window contains ZERO such rows —
 	// still literally not instrumented, over this window.
-	VerifyGateCatchCount *int `json:"verify_gate_catch_count"`
+	// Renamed 2026-08-08 (FR-2, docs/plans/exploration-ledger.md): the old
+	// cumulative catch SUM re-counted the same standing failures on every
+	// gate call (the 264,487-catches artifact) and is retired as
+	// unrecoverable from this data. A refusal is one call whose verdict
+	// carried failing>0 — an event. Per-session NEW catches live in the
+	// stop hook's ledger verify_catches, which remains the true catch
+	// instrument.
+	VerifyGateRefusals *int `json:"verify_gate_refusals"`
 	// VerifyGateInstrumentedCalls is how many verify_plan/review rows
-	// carried a verdict_outcome and so contributed to VerifyGateCatchCount.
+	// carried a verdict_outcome and so contributed to VerifyGateRefusals.
 	VerifyGateInstrumentedCalls int `json:"verify_gate_instrumented_calls"`
 	// VerifyGatePredatesInstrumentation counts verify_plan/review rows without
 	// a verdict_outcome — logged by a pre-T5-7 binary OR a gate call with zero
@@ -404,7 +411,7 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 		BriefCalls:                        briefCalls,
 		BriefCallsWithClaims:              briefWithClaims,
 		ClaimsAttachHitRate:               hitRate,
-		VerifyGateCatchCount:              gateCatchCount,
+		VerifyGateRefusals:                gateCatchCount,
 		VerifyGateInstrumentedCalls:       instrumented,
 		VerifyGatePredatesInstrumentation: predates,
 		VerifyGateNote:                    verifyNote,
@@ -438,10 +445,15 @@ func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented,
 		instrumented++
 		switch e.Tool {
 		case "verify_plan":
-			catches += e.VerdictOutcome["failing"]
+			if e.VerdictOutcome["failing"] > 0 {
+				catches++ // one refusal EVENT, however many rows were failing
+			}
 		case "review":
 			for _, n := range e.VerdictOutcome {
-				catches += n
+				if n > 0 {
+					catches++
+					break
+				}
 			}
 		}
 	}
@@ -456,7 +468,7 @@ func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented,
 	}
 
 	n := catches
-	note = fmt.Sprintf("%d catch(es) across %d instrumented call(s) (verify_plan claimed-but-failing tasks + review active findings)", catches, instrumented)
+	note = fmt.Sprintf("%d gate refusal(s) across %d instrumented call(s) — calls whose verdict carried failures; per-session NEW catches live in the ledger's verify_catches", catches, instrumented)
 	if predates > 0 {
 		note += fmt.Sprintf("; %d row(s) are uninstrumented (predate the field, or zero claimed tasks) and are excluded (not counted as zero)", predates)
 	}

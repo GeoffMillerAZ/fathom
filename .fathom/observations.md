@@ -471,3 +471,13 @@ triage if it matters.
 - **Fix:** TODO — resolve the default against the repo/service root (or ~/.fathom), print the absolute store path in the summary line, and say loudly when a fresh store file is being created.
 - **Status:** open
 - **Impact:** a successful-looking ingest that indexes into the void; cost one calibration re-run here, would cost a new adopter their first hour.
+
+
+### O13 — CompileLayer ignores the provider registry: `fathom providers` says ok while compile refuses with "no LLM configured"
+
+- **Symptom:** `fathom providers` reports profile personal/claude-cli ok, but `fathom compile --service X --dry-run=false` errors "no LLM configured for CompileLayer (set ANTHROPIC_API_KEY…)" — the two surfaces disagree about whether an LLM exists.
+- **Evidence (2026-08-08):** three compiles refused in a row; meanwhile 6,985 obligations calls served staleness warnings instead of compiled rules (the resume_as_code field report's top finding).
+- **Root cause:** CompileLayer is wired only to a direct Anthropic key (WithLLM), not to the provider profiles the rest of the CLI resolves.
+- **Fix:** bridge CompileLayer to the provider registry so claude-cli profiles compile too; until then the unblock is an ANTHROPIC_API_KEY in the daemon's launchd EnvironmentVariables.
+- **Status:** open
+- **Impact:** the second-busiest tool in the fleet serves warnings, not rules, on every wired repo.

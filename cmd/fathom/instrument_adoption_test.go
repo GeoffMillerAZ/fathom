@@ -100,8 +100,8 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	// (predates T5-7 instrumentation) — honest "not instrumented" marker,
 	// never a fabricated zero, and the row is counted separately as
 	// predating instrumentation rather than silently ignored.
-	if r.VerifyGateCatchCount != nil {
-		t.Errorf("VerifyGateCatchCount = %v, want nil (not instrumented)", r.VerifyGateCatchCount)
+	if r.VerifyGateRefusals != nil {
+		t.Errorf("VerifyGateRefusals = %v, want nil (not instrumented)", r.VerifyGateRefusals)
 	}
 	if !strings.Contains(r.VerifyGateNote, "not instrumented") {
 		t.Errorf("VerifyGateNote = %q, want it to say not instrumented", r.VerifyGateNote)
@@ -122,10 +122,12 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 
 // TestBuildAdoptionReport_GateCatchesRealCounts proves the "not
 // instrumented" marker is replaced with real derived counts once
-// verify_plan/review rows carry a verdict_outcome: 1 failing verify_plan
-// task + 2 active review findings (1 obligations + 1 arch_conformance,
-// spec_coverage checked-but-clean at 0) sum to 3 catches across 2
-// instrumented calls.
+// verify_plan/review rows carry a verdict_outcome — counted as refusal
+// EVENTS (FR-2, docs/plans/exploration-ledger.md: gate-shaped folds count
+// events, never cumulative sums — summing per-row failures re-counted the
+// same standing failures every call, the 264,487-catches artifact): one
+// failing verify_plan call + one review call with active findings = 2
+// refusals across 2 instrumented calls, however many rows each carried.
 func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 	entries := []adoptionCallEntry{
 		{
@@ -139,8 +141,8 @@ func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 	}
 	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
 
-	if r.VerifyGateCatchCount == nil || *r.VerifyGateCatchCount != 3 {
-		t.Fatalf("VerifyGateCatchCount = %v, want 3", r.VerifyGateCatchCount)
+	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 2 {
+		t.Fatalf("VerifyGateRefusals = %v, want 2 refusal events", r.VerifyGateRefusals)
 	}
 	if r.VerifyGateInstrumentedCalls != 2 {
 		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", r.VerifyGateInstrumentedCalls)
@@ -151,8 +153,8 @@ func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 	if strings.Contains(r.VerifyGateNote, "not instrumented") {
 		t.Errorf("VerifyGateNote = %q, should not say not instrumented when real data exists", r.VerifyGateNote)
 	}
-	if !strings.Contains(r.VerifyGateNote, "3 catch") {
-		t.Errorf("VerifyGateNote = %q, want it to state the 3 catches", r.VerifyGateNote)
+	if !strings.Contains(r.VerifyGateNote, "2 gate refusal") {
+		t.Errorf("VerifyGateNote = %q, want it to state the 2 refusals", r.VerifyGateNote)
 	}
 }
 
@@ -177,8 +179,8 @@ func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
 	}
 	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
 
-	if r.VerifyGateCatchCount == nil || *r.VerifyGateCatchCount != 1 {
-		t.Fatalf("VerifyGateCatchCount = %v, want 1 (only the instrumented row's failing count)", r.VerifyGateCatchCount)
+	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 1 {
+		t.Fatalf("VerifyGateRefusals = %v, want 1 (only the instrumented row's failing count)", r.VerifyGateRefusals)
 	}
 	if r.VerifyGateInstrumentedCalls != 1 {
 		t.Errorf("VerifyGateInstrumentedCalls = %d, want 1", r.VerifyGateInstrumentedCalls)
@@ -399,9 +401,10 @@ func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
 		t.Fatalf("exit = %d, stderr: %s", code, stderr.String())
 	}
 	out := stdout.String()
-	// 2 failing (verify_plan) + 1 obligations finding (review) = 3 catches
-	// across the 2 instrumented calls; 3 rows predate instrumentation.
-	for _, want := range []string{"3 catch", "2 instrumented", "3 row"} {
+	// One failing verify_plan call + one review call with an active finding
+	// = 2 refusal EVENTS (FR-2: never a sum of standing failures) across
+	// the 2 instrumented calls; 3 rows predate instrumentation.
+	for _, want := range []string{"2 gate refusal", "2 instrumented", "3 row"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("human output missing %q:\n%s", want, out)
 		}
@@ -417,8 +420,8 @@ func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if report.VerifyGateCatchCount == nil || *report.VerifyGateCatchCount != 3 {
-		t.Errorf("VerifyGateCatchCount = %v, want 3", report.VerifyGateCatchCount)
+	if report.VerifyGateRefusals == nil || *report.VerifyGateRefusals != 2 {
+		t.Errorf("VerifyGateRefusals = %v, want 2 refusal events", report.VerifyGateRefusals)
 	}
 	if report.VerifyGateInstrumentedCalls != 2 {
 		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", report.VerifyGateInstrumentedCalls)
@@ -450,8 +453,8 @@ func TestCmdInstrumentAdoption_JSONOutput(t *testing.T) {
 	if report.CallLogPath != logPath {
 		t.Errorf("CallLogPath = %q, want %q", report.CallLogPath, logPath)
 	}
-	if report.VerifyGateCatchCount != nil {
-		t.Errorf("VerifyGateCatchCount = %v, want nil in the JSON output too", report.VerifyGateCatchCount)
+	if report.VerifyGateRefusals != nil {
+		t.Errorf("VerifyGateRefusals = %v, want nil in the JSON output too", report.VerifyGateRefusals)
 	}
 }
 
@@ -664,4 +667,27 @@ func TestAdoptionServiceScoped(t *testing.T) {
 			t.Errorf("report should reflect the filtered single call:\n%s", out)
 		}
 	})
+}
+
+// TestAdoptionCatchesNotCumulative pins FR-2 (docs/plans/exploration-ledger.md):
+// the same standing failure re-read by many gate calls is ONE refusal per
+// call maximum, and the aggregate counts refusal events — never the
+// per-call failing-row sums that produced the 264,487-catches artifact.
+func TestAdoptionCatchesNotCumulative(t *testing.T) {
+	entries := []adoptionCallEntry{
+		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 10, "failing": 40}},
+		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 10, "failing": 40}},
+		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 50, "failing": 0}},
+		{Tool: "review", VerdictOutcome: map[string]int{"obligations": 8, "spec_coverage": 3}},
+	}
+	count, instrumented, _, note := gateCatchStats(entries)
+	if count == nil || *count != 3 {
+		t.Fatalf("refusals = %v, want 3 (two failing verifies + one review with findings; NEVER 91)", count)
+	}
+	if instrumented != 4 {
+		t.Errorf("instrumented = %d, want 4", instrumented)
+	}
+	if !strings.Contains(note, "refusal") {
+		t.Errorf("note must speak in refusal events: %q", note)
+	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -139,6 +140,13 @@ func buildSessionContext(baseURL, projDir string) string {
 			langs = ", " + info.langs
 		}
 		ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%d symbols%s). Resolve where / what / who-calls via fathom BEFORE any Grep/Read sweep: find_symbol, query_symbols, find_callers, outline, repo_map, references. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.symbols, langs, lookup)
+		// FR-4 (docs/plans/exploration-ledger.md): teach the FIRST query
+		// with a LIVE symbol from this repo's own index — the first-query
+		// experience decides adoption; one miss loses the session to grep.
+		// Degraded-branch discipline holds: any failure omits the line.
+		if ex := liveExampleLine(hc, baseURL, lookup); ex != "" {
+			ctxLine += " " + ex
+		}
 		// The wiring tripwire (vision 14 §7 tier-1, IO-19): every drifted
 		// session opens by telling its agent the exact remedy — detection
 		// is free and universal; nothing mutates here.
@@ -226,6 +234,58 @@ func fetchServicesOnce(hc *http.Client, baseURL string) (map[string]svcInfo, err
 		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
 	}
 	return out, nil
+}
+
+// liveExampleLine returns the "first query to try" teaching line (FR-4,
+// docs/plans/exploration-ledger.md): one REAL symbol fetched from the
+// service's own index over the agent surface, so the session's first
+// fathom call cannot miss. "" on ANY failure — the hook must never break
+// or slow session start, so this degrades silently (the same discipline
+// as every other branch in this file), with its own 2s ceiling on top of
+// whatever the caller's client allows.
+func liveExampleLine(hc *http.Client, baseURL, service string) string {
+	body := fmt.Sprintf(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"query_symbols","arguments":{"service":%q,"concern":"main","top":1}}}`, service)
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/rpc/agent", strings.NewReader(body))
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if rpcOrigin != "" {
+		req.Header.Set(originHeaderName, rpcOrigin)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	resp, err := hc.Do(req.WithContext(ctx))
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return ""
+	}
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return ""
+	}
+	var env struct {
+		Result struct {
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"result"`
+	}
+	if json.Unmarshal(raw, &env) != nil || len(env.Result.Content) == 0 {
+		return ""
+	}
+	var inner struct {
+		Nodes []struct {
+			Name string `json:"name"`
+		} `json:"nodes"`
+	}
+	if json.Unmarshal([]byte(env.Result.Content[0].Text), &inner) != nil || len(inner.Nodes) == 0 || inner.Nodes[0].Name == "" {
+		return ""
+	}
+	return fmt.Sprintf("first query to try: find_symbol {\"service\": %q, \"name\": %q} — the index answers where/what/who-calls without reading files.", service, inner.Nodes[0].Name)
 }
 
 type rawSvc struct {

@@ -5,6 +5,46 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the exploration ledger: the 90x measured, the dashboard readable, the field report answered (vision 19, plan EX/FR/TD)
+
+**The instrument the owner asked for:** every session transcript records
+BOTH discovery modes — raw exploration (Grep/Glob/Read results and their
+sizes) and indexed discovery (fathom answers and theirs) — so the
+per-question token cost of each, their observed ratio (labeled
+OBSERVATIONAL; the counterfactual arm keeps causality, law 12), and the
+subagent multiplier (files re-read across sidechains = duplicated
+exploration a shared index pays once) are measured per session and folded
+fleet-wide (EX-1/2/3). The impact page LEADS with this story (EX-4).
+
+**A dashboard a stranger can read (EX-5/6):** every page opens with a
+plain-English lead and a no-JS "what am I looking at?" explainer;
+/observatory/brief renders the management-ready summary with a markdown
+download. **Configuration observability (EX-7/FR-5):** the service page
+shows layers (eval-gated or not), guards, bindings, rules served, and —
+loudly — the obligations-compile condition, so 6,985 staleness-warning
+serves can never hide again.
+
+**The resume_as_code field report, answered row by row:** plans
+status/next discover plans in the SERVICE's repo, never blindly the cwd
+(FR-1 — the cross-repo wrong-verdict bug); the 264,487-catches artifact
+is retired — gate refusals are counted as EVENTS, and per-session NEW
+catches remain the ledger's verify_catches (FR-2); fleet reconcile
+detects and --apply installs missing shipped skills (the Unknown-skill
+failure, FR-3); the session hook now teaches the FIRST query with a live
+symbol from the repo's own index — one early miss loses a whole session
+to grep, so the first query must land (FR-4). O13 filed: CompileLayer
+ignores the provider registry (claude-cli ok, compile refuses) — the
+ANTHROPIC_API_KEY plist workaround unblocks it; FR-6 defers the bridge.
+
+**The tool diet (TD):** the context tax is measured and shown on the
+landing page (agent surface: 16 tools, ~12.3 KB schemas ≈ ~3.1k tokens
+per connected session) and the agent surface is PINNED at ≤16 by test —
+every schema taxes every session; the 88-tool count that alarmed the
+field report is the full /rpc surface, which agents never load. Wiring
+grades stop reading invisible-from-here as absent (EX-8, law 3).
+Fleet-wide: reconcile applied (0 drifted across 17 repos), stale
+indexes refreshed daemon-side.
+
 ### 2026-08-08 — the four questions: observatory v2 (vision 18, plan IQ-1..11 + IQ-15)
 
 Activity is not impact. The observatory reframes around the four

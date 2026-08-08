@@ -27,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"syscall"
 	"time"
 
@@ -85,6 +86,17 @@ type sessionLedgerEntry struct {
 	// file-changing tool call — the session's warm-up length.
 	FirstEditTurn *int   `json:"first_edit_turn,omitempty"`
 	FirstEditNote string `json:"first_edit_note,omitempty"`
+
+	// The exploration ledger (EX-2): both discovery modes measured from
+	// this session's transcript with the same estimator.
+	RawDiscoveryCalls     int    `json:"raw_discovery_calls,omitempty"`
+	RawDiscoveryTokensEst *int   `json:"raw_discovery_tokens_est,omitempty"`
+	FathomCalls           int    `json:"fathom_calls,omitempty"`
+	FathomTokensEst       *int   `json:"fathom_tokens_est,omitempty"`
+	RepeatedReadFiles     int    `json:"repeated_read_files,omitempty"`
+	RepeatedReadTokensEst *int   `json:"repeated_read_tokens_est,omitempty"`
+	SidechainToolResults  int    `json:"sidechain_tool_results,omitempty"`
+	ExplorationNote       string `json:"exploration_note,omitempty"`
 
 	TokensTotal *int   `json:"tokens_total,omitempty"`
 	TokensNote  string `json:"tokens_note"` // ALWAYS present — law 12: never a silent absence either
@@ -176,6 +188,14 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	} else {
 		e.FirstEditNote = ts.FirstEditNote
 	}
+	e.RawDiscoveryCalls = ts.RawDiscoveryCalls
+	e.RawDiscoveryTokensEst = ts.RawDiscoveryTokensEst
+	e.FathomCalls = ts.FathomCalls
+	e.FathomTokensEst = ts.FathomTokensEst
+	e.RepeatedReadFiles = ts.RepeatedReadFiles
+	e.RepeatedReadTokensEst = ts.RepeatedReadTokensEst
+	e.SidechainToolResults = ts.SidechainToolResults
+	e.ExplorationNote = ts.ExplorationNote
 	// A transcript was actually read (as opposed to absent/unreadable)
 	// whenever ANY of the three fields resolved to a real value — the
 	// schema-coupling disclosure applies the moment parsing happened at
@@ -245,7 +265,18 @@ type transcriptSummary struct {
 	// never edited (or the transcript carries no content blocks).
 	FirstEditTurn *int
 	FirstEditNote string
-	Truncated     bool
+	// The exploration ledger (EX-1, docs/plans/exploration-ledger.md):
+	// both discovery modes measured from the SAME transcript with the same
+	// estimator (result bytes / 4 ≈ tokens; an estimate, labeled so).
+	RawDiscoveryCalls     int    // Grep / Glob / Read tool calls
+	RawDiscoveryTokensEst *int   // estimated tokens their results injected
+	FathomCalls           int    // mcp__fathom__* tool calls
+	FathomTokensEst       *int   // estimated tokens their results injected
+	RepeatedReadFiles     int    // files Read 2+ times (the shared index answers once)
+	RepeatedReadTokensEst *int   // estimated tokens spent on 2nd+ reads
+	SidechainToolResults  int    // tool results inside sidechains (subagents)
+	ExplorationNote       string // the estimator disclosure, or the absence reason
+	Truncated             bool
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL
@@ -254,9 +285,10 @@ type transcriptSummary struct {
 // construction) — a line that doesn't even parse as this shape is simply
 // skipped, never treated as an error for the whole file.
 type transcriptLine struct {
-	Type      string `json:"type"`
-	Timestamp string `json:"timestamp"`
-	Message   *struct {
+	Type        string `json:"type"`
+	Timestamp   string `json:"timestamp"`
+	IsSidechain bool   `json:"isSidechain"`
+	Message     *struct {
 		Usage *struct {
 			InputTokens              int `json:"input_tokens"`
 			OutputTokens             int `json:"output_tokens"`
@@ -264,8 +296,14 @@ type transcriptLine struct {
 			CacheReadInputTokens     int `json:"cache_read_input_tokens"`
 		} `json:"usage"`
 		Content []struct {
-			Type string `json:"type"`
-			Name string `json:"name"`
+			Type      string `json:"type"`
+			Name      string `json:"name"`
+			ID        string `json:"id"`
+			ToolUseID string `json:"tool_use_id"`
+			Input     *struct {
+				FilePath string `json:"file_path"`
+			} `json:"input"`
+			Content json.RawMessage `json:"content"`
 		} `json:"content"`
 	} `json:"message"`
 }
@@ -347,6 +385,20 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 	var timestamps []time.Time
 
 	var firstEditTurn *int
+	// EX-1 pairing state: tool_use id → its class, and Read file paths.
+	type useInfo struct {
+		class    string // "raw" | "fathom" | ""
+		filePath string
+	}
+	uses := map[string]useInfo{}
+	resultsSeen := map[string]int{}
+	var (
+		rawCalls, fathomCalls     int
+		rawTokens, fathomTokens   int
+		sawResult                 bool
+		repeatFiles, repeatTokens int
+		sidechainResults          int
+	)
 	for _, l := range lines {
 		if len(l) == 0 {
 			continue
@@ -357,13 +409,61 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		}
 		if tl.Type == "assistant" {
 			turnCount++
-			if firstEditTurn == nil && tl.Message != nil {
+			if tl.Message != nil {
 				for _, c := range tl.Message.Content {
-					if c.Type == "tool_use" && isEditTool(c.Name) {
+					if c.Type != "tool_use" {
+						continue
+					}
+					if firstEditTurn == nil && isEditTool(c.Name) {
 						t := turnCount
 						firstEditTurn = &t
-						break
 					}
+					u := useInfo{}
+					switch {
+					case c.Name == "Read" || c.Name == "Grep" || c.Name == "Glob":
+						u.class = "raw"
+						rawCalls++
+						if c.Name == "Read" && c.Input != nil && c.Input.FilePath != "" {
+							u.filePath = c.Input.FilePath
+						}
+					case strings.HasPrefix(c.Name, "mcp__fathom__"):
+						u.class = "fathom"
+						fathomCalls++
+					}
+					if c.ID != "" && u.class != "" {
+						uses[c.ID] = u
+					}
+				}
+			}
+		}
+		if tl.Type == "user" && tl.Message != nil {
+			for _, c := range tl.Message.Content {
+				if c.Type != "tool_result" || c.ToolUseID == "" {
+					continue
+				}
+				u, ok := uses[c.ToolUseID]
+				if !ok {
+					continue
+				}
+				if tl.IsSidechain {
+					sidechainResults++
+				}
+				est := len(c.Content) / 4
+				sawResult = true
+				switch u.class {
+				case "raw":
+					rawTokens += est
+					if u.filePath != "" {
+						resultsSeen[u.filePath]++
+						if n := resultsSeen[u.filePath]; n >= 2 {
+							repeatTokens += est
+							if n == 2 {
+								repeatFiles++
+							}
+						}
+					}
+				case "fathom":
+					fathomTokens += est
 				}
 			}
 		}
@@ -398,6 +498,19 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		out.FirstEditNote = "no file-changing tool call in this transcript"
 	} else {
 		out.FirstEditNote = "unavailable: no assistant turns parsed"
+	}
+	out.RawDiscoveryCalls = rawCalls
+	out.FathomCalls = fathomCalls
+	out.RepeatedReadFiles = repeatFiles
+	out.SidechainToolResults = sidechainResults
+	if sawResult {
+		rt, ft, rp := rawTokens, fathomTokens, repeatTokens
+		out.RawDiscoveryTokensEst = &rt
+		out.FathomTokensEst = &ft
+		out.RepeatedReadTokensEst = &rp
+		out.ExplorationNote = "token figures are an estimate (result bytes / 4), same estimator for both modes"
+	} else {
+		out.ExplorationNote = "no tool results parsed - exploration not measured"
 	}
 	if len(timestamps) >= 2 {
 		sort.Slice(timestamps, func(i, j int) bool { return timestamps[i].Before(timestamps[j]) })

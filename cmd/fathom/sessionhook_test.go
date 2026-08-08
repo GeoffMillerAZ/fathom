@@ -106,6 +106,32 @@ func TestSessionHookZeroServices(t *testing.T) {
 	}
 }
 
+// TestSessionHookLiveExample pins FR-4 (docs/plans/exploration-ledger.md):
+// the session brief teaches the first query with a LIVE symbol from the
+// repo's own index, and omits the line entirely — never an error, never a
+// stall — when the surface cannot answer.
+func TestSessionHookLiveExample(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"{\"nodes\":[{\"name\":\"BuildModel\"}]}"}]}}`))
+	}))
+	defer srv.Close()
+	hc := &http.Client{}
+	line := liveExampleLine(hc, srv.URL, "svc")
+	for _, want := range []string{"find_symbol", "BuildModel"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("live example missing %q: %q", want, line)
+		}
+	}
+
+	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer broken.Close()
+	if got := liveExampleLine(hc, broken.URL, "svc"); got != "" {
+		t.Errorf("failure must omit the line silently, got %q", got)
+	}
+}
+
 // TestSessionTripwire pins IO-19 (vision 14 §7 tier-1): a drifted repo's
 // session opens by naming the drift and the exact remedy.
 func TestSessionTripwire(t *testing.T) {

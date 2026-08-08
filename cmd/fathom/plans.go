@@ -132,19 +132,39 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 	return out, nil
 }
 
-// planFlagsOrDiscover resolves the plan file list for a plans sub-verb: the
-// repeatable --plan flag when given, else every active plan under CWD's
-// docs/plans/ (activePlanFiles) — so `fathom plans status` with no flags
-// answers "where does MY repo's SDD program stand" out of the box.
-func planFlagsOrDiscover(given planFlags) ([]string, error) {
-	if len(given) > 0 {
-		return append([]string(nil), given...), nil
+// discoverPlansForService resolves plan files for a --service (FR-1,
+// docs/plans/exploration-ledger.md): explicit --plan flags win; otherwise
+// discovery runs in the SERVICE's registered corpus path — never blindly in
+// the cwd, which silently verified one repo's plans against another repo's
+// index (the resume_as_code field report, 2026-08-08). The note names the
+// directory actually scanned, so a wrong resolution is loud. Discovery
+// scope stays activePlanFiles' (non-recursive, README excluded — READMEs
+// describe, plans claim).
+func discoverPlansForService(explicit planFlags, service, baseURL string) (files []string, note string, err error) {
+	if len(explicit) > 0 {
+		return explicit, "", nil
 	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("resolving cwd: %w", err)
+	root := ""
+	hc := &http.Client{Timeout: 4 * time.Second}
+	if svcs, ferr := fetchServices(hc, baseURL); ferr == nil {
+		if info, ok := svcs[strings.ToLower(service)]; ok {
+			root = info.path
+		}
 	}
-	return activePlanFiles(cwd)
+	if root == "" {
+		if cwd, cerr := os.Getwd(); cerr == nil {
+			root = cwd
+			note = fmt.Sprintf("plans: service %q has no registered path reachable from here — scanning the current directory's docs/plans", service)
+		}
+	}
+	matches, gerr := activePlanFiles(root)
+	if gerr != nil {
+		return nil, "", gerr
+	}
+	if note == "" {
+		note = fmt.Sprintf("plans: scanning %s", filepath.Join(root, "docs", "plans"))
+	}
+	return matches, note, nil
 }
 
 // ─── plans status (E3-1) ────────────────────────────────────────────────────
@@ -208,14 +228,17 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	files, err := planFlagsOrDiscover(plans)
+	files, scanNote, err := discoverPlansForService(plans, *service, *url)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	if scanNote != "" {
+		fmt.Fprintln(stderr, scanNote)
+	}
 	sort.Strings(files)
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no plan files given and none found under docs/plans/")
+		fmt.Fprintf(stderr, "error: no plan files given and none found under docs/plans/ (searched service %q's registered repo, else the cwd)\n", *service)
 		return 1
 	}
 
@@ -328,14 +351,17 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		fs.Usage()
 		return 1
 	}
-	files, err := planFlagsOrDiscover(plans)
+	files, scanNote, err := discoverPlansForService(plans, *service, *url)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	if scanNote != "" {
+		fmt.Fprintln(stderr, scanNote)
+	}
 	sort.Strings(files)
 	if len(files) == 0 {
-		fmt.Fprintln(stderr, "error: no plan files given and none found under docs/plans/")
+		fmt.Fprintf(stderr, "error: no plan files given and none found under docs/plans/ (searched service %q's registered repo, else the cwd)\n", *service)
 		return 1
 	}
 
