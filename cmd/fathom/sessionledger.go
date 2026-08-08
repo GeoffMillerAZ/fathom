@@ -67,9 +67,13 @@ type sessionLedgerEntry struct {
 	// Arm records which measurement arm this session ran under ("on" =
 	// channels live, "off" = the counterfactual OFF arm) — the field that
 	// makes paired comparison possible (vision 14 §2, IO-14/15).
-	Arm  string `json:"arm"`
-	Repo string `json:"repo,omitempty"`
-	At   string `json:"at"` // RFC3339, when this line was appended
+	Arm string `json:"arm"`
+	// VerifyCatches is the stop-hook verify pass's proven-failing count for
+	// newly-claimed tasks this session — nil (omitted) when verify never
+	// ran, which is UNKNOWN, never a fabricated zero (IO-15, law 3).
+	VerifyCatches *int   `json:"verify_catches,omitempty"`
+	Repo          string `json:"repo,omitempty"`
+	At            string `json:"at"` // RFC3339, when this line was appended
 
 	DurationMS   *int64 `json:"duration_ms,omitempty"`
 	DurationNote string `json:"duration_note,omitempty"`

@@ -5,6 +5,18 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — ledger attribution: verify catches ride the session row (plan IO-15)
+
+The stop hook now runs its verify pass FIRST and the session-ledger row
+carries `verify_catches` — the proven-failing count for newly-claimed
+tasks — as a nullable field: nil when verify never ran (no plans,
+unindexed, daemon down), which is UNKNOWN, never a fabricated zero.
+Together with `arm` (IO-14) the ledger now holds the counterfactual
+program's join keys per session. Honest scope note: the vision's other
+two attribution fields (injected_rules_used, discovery_substitutions)
+need obligation-file tracking and call-log/beat correlation that do not
+exist yet — deferred with the narrate wave, not silently dropped.
+
 ### 2026-08-07 — the measurement arm: FATHOM_CHANNELS=off with a memory (vision 14 §2, plan IO-14)
 
 `fathom arm off --for D --sessions N [--note]` is the counterfactual

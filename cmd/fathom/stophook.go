@@ -75,15 +75,15 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
-	// Instrument D (docs/design/production-tokenomics.md §6): append one
-	// session-ledger line. Read-only w.r.t. everything else this hook
-	// does — appendSessionLedger swallows every failure internally,
-	// exactly like emitBeat, so a ledger problem can never affect the
-	// plan-verification flow below.
-	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now())
-
-	hc := &http.Client{Timeout: stopHookVerifyTimeout}
-	return runStopHook(projDir, hc, *url, *block, stdout)
+	// The verify pass runs FIRST so the ledger row can carry its outcome
+	// (IO-15: verify_catches — nil when verify never ran, which is
+	// "unknown", never a fabricated zero). The ledger append itself still
+	// swallows every failure internally, exactly like emitBeat, so a
+	// ledger problem can never affect the verification flow.
+	hc := newStopHookClient()
+	exit, catches := runStopHook(projDir, hc, *url, *block, stdout)
+	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
+	return exit
 }
 
 // sessionLedgerBeatTailBytes bounds how much of the beat log
@@ -97,23 +97,34 @@ const sessionLedgerBeatTailBytes = 4 << 20
 // recordSessionLedgerEntry resolves a local (daemon-free) repo label,
 // summarizes the session transcript (best-effort), sums this session's
 // instrument A/B beats, and appends the resulting row.
-func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now time.Time) {
+func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now time.Time, verifyCatches *int) {
 	repo := ""
 	if cands := serviceCandidates(projDir); len(cands) > 0 {
 		repo = strings.ToLower(cands[0].name)
 	}
 	ts := transcriptSummaryFrom(transcriptPath)
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
-	appendSessionLedger(buildSessionLedgerEntry(sessionID, repo, ts, beats, now))
+	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
+	e.VerifyCatches = verifyCatches
+	appendSessionLedger(e)
 }
 
 // runStopHook is the testable core of cmdStopHook: everything after stdin
 // parsing and project-dir resolution.
-func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) int {
+// newStopHookClient builds the verify-sized HTTP client (stopHookVerifyTimeout,
+// sized to verify_plan's own p95 SLO).
+func newStopHookClient() *http.Client {
+	return &http.Client{Timeout: stopHookVerifyTimeout}
+}
+
+// runStopHook returns its hook exit code and, when the verify pass actually
+// ran against at least one plan, the number of proven-failing newly-claimed
+// tasks it caught (nil = verify never ran — unknown, not zero; IO-15).
+func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
 	plansDir := filepath.Join(projDir, "docs", "plans")
 	entries, err := os.ReadDir(plansDir)
 	if err != nil {
-		return 0 // no plans → nothing to prove
+		return 0, nil // no plans → nothing to prove
 	}
 
 	// Resolve the service identity: first candidate the daemon has indexed
@@ -123,7 +134,7 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 		name := strings.ToLower(cand.name)
 		ok, probeErr := daemonServiceIndexed(hc, baseURL, name)
 		if probeErr != nil {
-			return 0 // daemon down → silent
+			return 0, nil // daemon down → silent
 		}
 		if ok {
 			service = name
@@ -131,10 +142,11 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 		}
 	}
 	if service == "" {
-		return 0 // unindexed project → silent
+		return 0, nil // unindexed project → silent
 	}
 
 	var complaints, timedOutPlans []string
+	verifiedAny := false
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || strings.EqualFold(e.Name(), "README.md") {
 			continue
@@ -159,8 +171,9 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 				timedOutPlans = append(timedOutPlans, rel)
 				continue
 			}
-			return 0 // other operational errors (daemon down, bad response) → silent
+			return 0, nil // other operational errors (daemon down, bad response) → silent
 		}
+		verifiedAny = true
 		verdictByID := map[string]verify.TaskVerdict{}
 		for _, tv := range rep.Tasks {
 			verdictByID[tv.TaskID] = tv
@@ -180,8 +193,13 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 			complaints = append(complaints, fmt.Sprintf("%s [%s] %s — %s", rel, tv.TaskID, tv.Title, detail))
 		}
 	}
+	var catches *int
+	if verifiedAny {
+		n := len(complaints)
+		catches = &n
+	}
 	if len(complaints) == 0 && len(timedOutPlans) == 0 {
-		return 0
+		return 0, catches
 	}
 	sort.Strings(complaints)
 	sort.Strings(timedOutPlans)
@@ -215,7 +233,7 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 		})
 	}
 	fmt.Fprintln(stdout, string(out))
-	return 0
+	return 0, catches
 }
 
 // isTimeoutErr reports whether err (possibly wrapped, e.g. by verifyViaHTTP's

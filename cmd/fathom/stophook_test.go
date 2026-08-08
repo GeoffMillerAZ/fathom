@@ -111,7 +111,7 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 
 	// Advisory mode: additionalContext, exit 0.
 	var out bytes.Buffer
-	if code := runStopHook(dir, hc, srv.URL, false, &out); code != 0 {
+	if code, _ := runStopHook(dir, hc, srv.URL, false, &out); code != 0 {
 		t.Fatalf("advisory exit = %d, want 0", code)
 	}
 	var adv struct {
@@ -134,7 +134,7 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 
 	// Block mode: decision:block.
 	out.Reset()
-	if code := runStopHook(dir, hc, srv.URL, true, &out); code != 0 {
+	if code, _ := runStopHook(dir, hc, srv.URL, true, &out); code != 0 {
 		t.Fatalf("block exit = %d, want 0", code)
 	}
 	var blk struct {
@@ -147,12 +147,12 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 
 	// Silent paths: daemon down → exit 0, no output.
 	out.Reset()
-	if code := runStopHook(dir, hc, "http://127.0.0.1:1", false, &out); code != 0 || out.Len() != 0 {
+	if code, _ := runStopHook(dir, hc, "http://127.0.0.1:1", false, &out); code != 0 || out.Len() != 0 {
 		t.Errorf("daemon-down must be silent exit 0; got %d %q", code, out.String())
 	}
 	// No plans dir → silent.
 	out.Reset()
-	if code := runStopHook(t.TempDir(), hc, srv.URL, false, &out); code != 0 || out.Len() != 0 {
+	if code, _ := runStopHook(t.TempDir(), hc, srv.URL, false, &out); code != 0 || out.Len() != 0 {
 		t.Errorf("no-plans must be silent exit 0; got %d %q", code, out.String())
 	}
 }
@@ -231,7 +231,7 @@ func TestRunStopHook_SlowVerifyDegradesToWarning(t *testing.T) {
 
 	start := time.Now()
 	var out bytes.Buffer
-	code := runStopHook(dir, hc, srv.URL, false, &out)
+	code, _ := runStopHook(dir, hc, srv.URL, false, &out)
 	elapsed := time.Since(start)
 
 	if code != 0 {
@@ -258,7 +258,7 @@ func TestRunStopHook_SlowVerifyDegradesToWarning(t *testing.T) {
 	// Even with --block requested, a timeout is operational, not an evidence
 	// failure — it must stay advisory, never flip to decision:block.
 	out.Reset()
-	if code := runStopHook(dir, hc, srv.URL, true, &out); code != 0 {
+	if code, _ := runStopHook(dir, hc, srv.URL, true, &out); code != 0 {
 		t.Fatalf("slow verify + --block must still fail open, exit 0; got %d", code)
 	}
 	var blk struct {

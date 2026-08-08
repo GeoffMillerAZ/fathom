@@ -366,3 +366,46 @@ func TestBuildSessionLedgerEntry_NoTranscript_NoSchemaNote(t *testing.T) {
 		t.Errorf("TranscriptSchemaNote = %q, want empty when no transcript field resolved at all", entry.TranscriptSchemaNote)
 	}
 }
+
+// TestLedgerAttribution pins IO-15: the ledger row carries the arm it ran
+// under and the verify pass's catch count — nil catches means verify never
+// ran (unknown), never a fabricated zero.
+func TestLedgerAttribution(t *testing.T) {
+	ledger := filepath.Join(t.TempDir(), "ledger.jsonl")
+	t.Setenv("FATHOM_SESSION_LEDGER", ledger)
+	t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "arm.json"))
+
+	two := 2
+	recordSessionLedgerEntry("sess-1", "", t.TempDir(), time.Now(), &two)
+	data, err := os.ReadFile(ledger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var row map[string]any
+	if err := json.Unmarshal(data, &row); err != nil {
+		t.Fatal(err)
+	}
+	if row["verify_catches"] != float64(2) {
+		t.Errorf("verify_catches = %v, want 2", row["verify_catches"])
+	}
+	if row["arm"] != "on" {
+		t.Errorf("arm = %v, want on (no arm active)", row["arm"])
+	}
+	if row["schema_version"] != float64(2) || row["fathom_version"] == "" {
+		t.Errorf("stamps missing: %v", row)
+	}
+
+	t.Run("nil_catches_is_absent_not_zero", func(t *testing.T) {
+		ledger2 := filepath.Join(t.TempDir(), "l2.jsonl")
+		t.Setenv("FATHOM_SESSION_LEDGER", ledger2)
+		recordSessionLedgerEntry("sess-2", "", t.TempDir(), time.Now(), nil)
+		data, _ := os.ReadFile(ledger2)
+		var row map[string]any
+		if err := json.Unmarshal(data, &row); err != nil {
+			t.Fatal(err)
+		}
+		if _, present := row["verify_catches"]; present {
+			t.Error("verify_catches must be ABSENT when verify never ran")
+		}
+	})
+}
