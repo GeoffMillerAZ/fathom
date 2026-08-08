@@ -20,5 +20,8 @@ import "os"
 // FATHOM_CHANNELS — it is a diagnostic, not a hook, and the whole point of
 // the doctor check is to make the kill switch's own state visible.
 func fathomChannelsDisabled() bool {
-	return os.Getenv("FATHOM_CHANNELS") == "off"
+	// Two OFF switches, one contract: the env var (immediate, unstamped —
+	// doctor WARNs on it) and the measurement arm (stamped, bounded,
+	// announced — vision 14 §2 / IO-14). Hooks treat them identically.
+	return os.Getenv("FATHOM_CHANNELS") == "off" || armOffActive()
 }

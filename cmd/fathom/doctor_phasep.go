@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/filter"
@@ -33,6 +34,21 @@ import (
 // own shell. The pass case now says exactly what was checked, no more.
 func checkChannelsEnv() doctorCheck {
 	const name = "channels_env"
+	if st, active := loadArmState(time.Now()); active {
+		// The measurement arm (IO-14) — deliberately loud, and named as an
+		// ARM, not as the env kill switch: the whole point of the stateful
+		// form is that doctor can say who set it, its bound, and the undo.
+		bound := st.Until
+		if st.SessionsRemaining != nil {
+			bound += fmt.Sprintf(" / %d session(s) remaining", *st.SessionsRemaining)
+		}
+		return doctorCheck{
+			Name:   name,
+			Status: doctorWarn,
+			Reason: fmt.Sprintf("measurement OFF arm ACTIVE (set %s by fathom %s%s): every channel is silent by design — this is counterfactual data collection (vision 14 §2). Bound: %s.", st.SetAt, st.FathomVersion, noteSuffix(st.Note), bound),
+			Remedy: "let it expire, or end it early with `fathom arm on`",
+		}
+	}
 	if fathomChannelsDisabled() {
 		return doctorCheck{
 			Name:   name,
@@ -249,4 +265,12 @@ func checkSessionLedgerTokens() doctorCheck {
 		}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("recent sessions include real token totals (checked last %d)", sessionLedgerConsecutiveUnavailableThreshold)}
+}
+
+// noteSuffix renders an arm's note for inline display.
+func noteSuffix(note string) string {
+	if note == "" {
+		return ""
+	}
+	return ", note: " + note
 }

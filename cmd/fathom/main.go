@@ -87,6 +87,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdInstrument(args[1:], stdout, stderr)
 	case "observe":
 		return cmdObserve(args[1:], stdout, stderr)
+	case "arm":
+		return cmdArm(args[1:], stdout, stderr)
 	case "stop-hook":
 		return cmdStopHook(args[1:], stdout, stderr)
 	case "gen-plan-cue":

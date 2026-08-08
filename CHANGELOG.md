@@ -5,6 +5,22 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — the measurement arm: FATHOM_CHANNELS=off with a memory (vision 14 §2, plan IO-14)
+
+`fathom arm off --for D --sessions N [--note]` is the counterfactual
+program's OFF switch done right (the O15 lesson: a silent kill switch is
+a measurement bug): STAMPED (schema+fathom version, set-at, note),
+BOUNDED (an unbounded OFF arm refuses — indefinite is the env var's job,
+deliberately less comfortable), ANNOUNCED (doctor's channels_env names
+an active arm as an ARM with its bound and undo; the session hook opens
+the session by declaring it and decrements the session budget), and
+RECORDED (every session-ledger row now carries `arm: on|off` — the field
+that makes paired comparison possible). `fathomChannelsDisabled()`
+composes both switches; hooks treat them identically. State at
+~/.fathom/arm.json (0600), `fathom arm on` ends it early. Pinned by
+TestArmStamping (bound refusal, session countdown to expiry, wall-clock
+expiry, clear, kill-switch composition).
+
 ### 2026-08-07 — version-stamped telemetry: every record names its producer (vision 14 §3, plan IO-11/12/13)
 
 The research bundle carried its producing binary's identity from birth;

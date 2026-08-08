@@ -105,6 +105,17 @@ func buildSessionContext(baseURL, projDir string) string {
 	}
 	resp.Body.Close()
 
+	if st, active := loadArmState(time.Now()); active {
+		// An active OFF arm must be LOUD (the O15 lesson): the session
+		// opens by naming it, its bound, and the undo.
+		bound := st.Until
+		if st.SessionsRemaining != nil {
+			bound += fmt.Sprintf(" / %d session(s) left", *st.SessionsRemaining)
+		}
+		defer decrementArmSessions()
+		return fmt.Sprintf("🔬 fathom OFF arm active (measurement, vision 14 §2): channels are silent this session — no obligations, no guards, no verify gate. Bound: %s. This is deliberate counterfactual data collection; end it early with `fathom arm on`.", bound)
+	}
+
 	svcs, svcErr := fetchServices(hc, baseURL)
 	if svcErr != nil {
 		// O2: enumeration failure is NOT "not indexed". The daemon is healthy

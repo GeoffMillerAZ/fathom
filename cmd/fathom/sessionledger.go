@@ -64,8 +64,12 @@ type sessionLedgerEntry struct {
 	FathomVersion string `json:"fathom_version"`
 
 	SessionID string `json:"session_id"`
-	Repo      string `json:"repo,omitempty"`
-	At        string `json:"at"` // RFC3339, when this line was appended
+	// Arm records which measurement arm this session ran under ("on" =
+	// channels live, "off" = the counterfactual OFF arm) — the field that
+	// makes paired comparison possible (vision 14 §2, IO-14/15).
+	Arm  string `json:"arm"`
+	Repo string `json:"repo,omitempty"`
+	At   string `json:"at"` // RFC3339, when this line was appended
 
 	DurationMS   *int64 `json:"duration_ms,omitempty"`
 	DurationNote string `json:"duration_note,omitempty"`
@@ -137,6 +141,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	e := sessionLedgerEntry{
 		SchemaVersion: sessionLedgerSchemaVersion,
 		FathomVersion: buildinfo.Version(),
+		Arm:           currentArmLabel(time.Now()),
 		SessionID:     sessionID,
 		Repo:          repo,
 		At:            now.UTC().Format(time.RFC3339),
