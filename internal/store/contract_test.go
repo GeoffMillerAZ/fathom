@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"testing"
@@ -1901,11 +1902,300 @@ func storeContract(t *testing.T, s Store) {
 			t.Errorf("expected empty for nil claimIDs, got %d", len(got))
 		}
 	})
+
+	// ------------------------------------------------------------------ //
+	// RemoveService: registry surgery — EVERY row for the service goes
+	// (PurgeService's content set PLUS identity rows, the semantic layer,
+	// and the claim_id-keyed claim_events), a sibling service survives
+	// untouched, and a second call is an idempotent removed=false no-op.
+	// ------------------------------------------------------------------ //
+	t.Run("remove_service_removes_every_row", func(t *testing.T) {
+		svc, sibling := "svc-remove", "svc-remove-sibling"
+		claimID, siblingClaimID := "claim-remove-1", "claim-remove-sibling-1"
+		seedServiceEverywhere(ctx, t, s, svc, claimID)
+		seedServiceEverywhere(ctx, t, s, sibling, siblingClaimID)
+
+		removed, err := s.RemoveService(ctx, svc)
+		if err != nil {
+			t.Fatalf("RemoveService: %v", err)
+		}
+		if !removed {
+			t.Error("RemoveService on a fully seeded service: removed = false, want true")
+		}
+
+		assertServiceAbsent(ctx, t, s, svc)
+
+		// The removed service's claim events go with its claims...
+		evs, err := s.ClaimEvents(ctx, claimID)
+		if err != nil {
+			t.Fatalf("ClaimEvents after remove: %v", err)
+		}
+		if len(evs) != 0 {
+			t.Errorf("claim events survived RemoveService: %+v", evs)
+		}
+		// ...and so do its claim links.
+		links, err := s.ClaimLinks(ctx, svc, []string{claimID})
+		if err != nil {
+			t.Fatalf("ClaimLinks after remove: %v", err)
+		}
+		if len(links) != 0 {
+			t.Errorf("claim links survived RemoveService: %+v", links)
+		}
+
+		// The sibling's rows survive in every table class.
+		assertServicePresent(ctx, t, s, sibling, siblingClaimID)
+
+		// Idempotent: a second call finds nothing and reports removed=false
+		// with no error.
+		removed, err = s.RemoveService(ctx, svc)
+		if err != nil {
+			t.Fatalf("RemoveService second call: %v", err)
+		}
+		if removed {
+			t.Error("RemoveService second call: removed = true, want false")
+		}
+	})
+
+	t.Run("remove_service_unknown_is_noop", func(t *testing.T) {
+		removed, err := s.RemoveService(ctx, "svc-remove-never-existed-xyz")
+		if err != nil {
+			t.Fatalf("RemoveService unknown: %v", err)
+		}
+		if removed {
+			t.Error("RemoveService unknown service: removed = true, want false")
+		}
+	})
+
+	// ------------------------------------------------------------------ //
+	// RenameService: every service_id-scoped row moves to the new ID in one
+	// step; claim_events stay put and claim IDs keep their minted values
+	// (they are historical evidence — the event log they anchor must keep
+	// resolving).
+	// ------------------------------------------------------------------ //
+	t.Run("rename_service_moves_every_row", func(t *testing.T) {
+		oldID, newID := "svc-rename-old", "svc-rename-new"
+		claimID := "claim-rename-1"
+		seedServiceEverywhere(ctx, t, s, oldID, claimID)
+
+		if err := s.RenameService(ctx, oldID, newID); err != nil {
+			t.Fatalf("RenameService: %v", err)
+		}
+
+		// Every read path serves the seeded data under the NEW id...
+		assertServicePresent(ctx, t, s, newID, claimID)
+		// ...and the row payloads carry the new id where service identity is
+		// a stored column, not just where it is the query key.
+		if got, err := s.QueryObservations(ctx, newID, ""); err != nil || len(got) == 0 || got[0].ServiceID != newID {
+			t.Errorf("observations after rename: got %d rows (err %v), want ServiceID %q on each", len(got), err, newID)
+		}
+		if meta, found, err := s.GetServiceMeta(ctx, newID); err != nil || !found || meta.ServiceID != newID || meta.Path != "/code/"+oldID {
+			t.Errorf("service meta after rename = (%+v, %v, %v), want ServiceID %q with the old path preserved", meta, found, err, newID)
+		}
+		if claims, err := s.ClaimsForService(ctx, newID, ""); err != nil || len(claims) != 1 || claims[0].ServiceID != newID || claims[0].ClaimID != claimID {
+			t.Errorf("claims after rename = (%+v, %v), want the seeded claim under %q with its MINTED id %q", claims, err, newID, claimID)
+		}
+
+		// The old id reads empty everywhere.
+		assertServiceAbsent(ctx, t, s, oldID)
+
+		// claim_events are untouched by a rename: the event log still
+		// resolves by the claim's minted id.
+		evs, err := s.ClaimEvents(ctx, claimID)
+		if err != nil {
+			t.Fatalf("ClaimEvents after rename: %v", err)
+		}
+		if len(evs) != 1 || evs[0].ClaimID != claimID {
+			t.Errorf("claim events after rename = %+v, want the seeded event under the minted claim id %q", evs, claimID)
+		}
+	})
+
+	t.Run("rename_service_refuses_existing_target", func(t *testing.T) {
+		src, dst := "svc-rename-src", "svc-rename-taken"
+		seedServiceEverywhere(ctx, t, s, src, "claim-rename-src-1")
+		// The target only needs ANY row — service_meta alone suffices.
+		if err := s.SetServiceMeta(ctx, ServiceMeta{ServiceID: dst, Path: "/code/" + dst}); err != nil {
+			t.Fatalf("SetServiceMeta target: %v", err)
+		}
+
+		err := s.RenameService(ctx, src, dst)
+		if err == nil {
+			t.Fatal("RenameService onto an existing service: expected error, got nil")
+		}
+		var exists *ServiceExistsError
+		if !errors.As(err, &exists) {
+			t.Fatalf("RenameService onto existing = %v (%T), want *ServiceExistsError", err, err)
+		}
+		if exists.ServiceID != dst {
+			t.Errorf("ServiceExistsError.ServiceID = %q, want %q", exists.ServiceID, dst)
+		}
+		// The refusal must not have moved anything.
+		assertServicePresent(ctx, t, s, src, "claim-rename-src-1")
+	})
+
+	t.Run("rename_service_refuses_missing_source", func(t *testing.T) {
+		err := s.RenameService(ctx, "svc-rename-missing-xyz", "svc-rename-target-xyz")
+		if err == nil {
+			t.Fatal("RenameService of a missing service: expected error, got nil")
+		}
+		var notFound *ServiceNotFoundError
+		if !errors.As(err, &notFound) {
+			t.Fatalf("RenameService missing = %v (%T), want *ServiceNotFoundError", err, err)
+		}
+		if notFound.ServiceID != "svc-rename-missing-xyz" {
+			t.Errorf("ServiceNotFoundError.ServiceID = %q, want the missing source id", notFound.ServiceID)
+		}
+	})
 }
 
 // -------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------
+
+// seedServiceEverywhere seeds serviceID with at least one row in every table
+// class the store persists — observations, fingerprints, knowledge cards,
+// doc summaries, service meta, commits, semantic claims + links, claim
+// events, compile runs, typed edges and typed-edge fingerprints — the
+// full-footprint fixture the RemoveService/RenameService subtests assert
+// over. claimID names the seeded claim (and its link + event rows) so
+// callers can follow the claim_id-keyed tables across a remove or rename.
+func seedServiceEverywhere(ctx context.Context, t *testing.T, s Store, serviceID, claimID string) {
+	t.Helper()
+	if err := s.PutObservations(ctx, []core.Observation{makeObs(serviceID, "c1", "pkg/seed.go", "SeededFunc")}); err != nil {
+		t.Fatalf("seed PutObservations: %v", err)
+	}
+	if err := s.SetFingerprint(ctx, serviceID, "pkg/seed.go", "seed-hash"); err != nil {
+		t.Fatalf("seed SetFingerprint: %v", err)
+	}
+	if err := s.PutKnowledgeCards(ctx, []KnowledgeCard{
+		{ServiceID: serviceID, Symbol: "SeededFunc", File: "pkg/seed.go", Summary: "seeded card", Tags: []string{"seed"}},
+	}); err != nil {
+		t.Fatalf("seed PutKnowledgeCards: %v", err)
+	}
+	if err := s.PutDocSummaries(ctx, []DocSummary{
+		{ServiceID: serviceID, SourceRef: "docs/seed.md", Title: "Seed", Summary: "seeded summary"},
+	}); err != nil {
+		t.Fatalf("seed PutDocSummaries: %v", err)
+	}
+	if err := s.SetServiceMeta(ctx, ServiceMeta{ServiceID: serviceID, Path: "/code/" + serviceID, IndexedCommit: "abc1234", IndexedAt: 1}); err != nil {
+		t.Fatalf("seed SetServiceMeta: %v", err)
+	}
+	if err := s.SetCommits(ctx, serviceID, []Commit{
+		{ServiceID: serviceID, Hash: "seed-" + serviceID, Author: "Seeder", Date: 1, Message: "seed commit", Files: []string{"pkg/seed.go"}},
+	}); err != nil {
+		t.Fatalf("seed SetCommits: %v", err)
+	}
+	claims := []core.SemanticClaim{{
+		ClaimID: claimID, ServiceID: serviceID, Layer: "obligations", Kind: "obligation",
+		Subject: "docs/seed.md#rule", Rule: "Seeded rule.", Status: core.ClaimFresh,
+		Tier: core.TierDocClaimed, CompiledAt: time.Unix(1, 0).UTC(),
+	}}
+	links := []core.ClaimLink{
+		{ClaimID: claimID, Rel: core.RelCites, TargetRef: "docs/seed.md#L1-L2", TargetHash: "seed-link-hash", AnchorText: "seeded anchor"},
+	}
+	if err := s.PutClaims(ctx, claims, links); err != nil {
+		t.Fatalf("seed PutClaims: %v", err)
+	}
+	if err := s.AppendClaimEvent(ctx, core.ClaimEvent{ClaimID: claimID, Verdict: "corroborated", Author: "seed", Note: "seeded event", At: time.Unix(100, 0).UTC()}); err != nil {
+		t.Fatalf("seed AppendClaimEvent: %v", err)
+	}
+	if err := s.RecordCompileRun(ctx, core.CompileRun{RunID: "run-" + serviceID, ServiceID: serviceID, Layer: "obligations", RanAt: time.Unix(1, 0).UTC()}); err != nil {
+		t.Fatalf("seed RecordCompileRun: %v", err)
+	}
+	if err := s.PutTypedEdges(ctx, serviceID, "example.com/seed", []core.Edge{
+		{FromService: serviceID, FromFile: "pkg/seed.go", FromSymbol: serviceID + "::pkg.SeededFunc", ToSymbol: serviceID + "::pkg.Callee", Kind: core.EdgeDirect},
+	}); err != nil {
+		t.Fatalf("seed PutTypedEdges: %v", err)
+	}
+	if err := s.SetTypedEdgePackageFingerprint(ctx, serviceID, "example.com/seed", "seed-edge-fp"); err != nil {
+		t.Fatalf("seed SetTypedEdgePackageFingerprint: %v", err)
+	}
+}
+
+// assertServicePresent asserts every read path still serves the rows
+// seedServiceEverywhere planted for serviceID.
+func assertServicePresent(ctx context.Context, t *testing.T, s Store, serviceID, claimID string) {
+	t.Helper()
+	if got, err := s.QueryObservations(ctx, serviceID, ""); err != nil || len(got) == 0 {
+		t.Errorf("%s observations = %d rows, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.Fingerprint(ctx, serviceID, "pkg/seed.go"); err != nil || !found {
+		t.Errorf("%s fingerprint = found:%v, %v; want true, nil", serviceID, found, err)
+	}
+	if got, err := s.KnowledgeCards(ctx, serviceID); err != nil || len(got) == 0 {
+		t.Errorf("%s knowledge cards = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.DocSummaries(ctx, serviceID); err != nil || len(got) == 0 {
+		t.Errorf("%s doc summaries = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.GetServiceMeta(ctx, serviceID); err != nil || !found {
+		t.Errorf("%s service meta = found:%v, %v; want true, nil", serviceID, found, err)
+	}
+	if got, err := s.ListCommits(ctx, serviceID); err != nil || len(got) == 0 {
+		t.Errorf("%s commits = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.ClaimsForService(ctx, serviceID, ""); err != nil || len(got) == 0 {
+		t.Errorf("%s claims = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.ClaimLinks(ctx, serviceID, []string{claimID}); err != nil || len(got) == 0 {
+		t.Errorf("%s claim links = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.ClaimEvents(ctx, claimID); err != nil || len(got) == 0 {
+		t.Errorf("%s claim events = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.CompileRuns(ctx, serviceID, ""); err != nil || len(got) == 0 {
+		t.Errorf("%s compile runs = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.TypedEdges(ctx, serviceID); err != nil || len(got) == 0 {
+		t.Errorf("%s typed edges = %d, %v; want >0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.TypedEdgePackageFingerprint(ctx, serviceID, "example.com/seed"); err != nil || !found {
+		t.Errorf("%s typed-edge fingerprint = found:%v, %v; want true, nil", serviceID, found, err)
+	}
+}
+
+// assertServiceAbsent asserts every read path returns empty/not-found for
+// serviceID — the post-RemoveService (and old-id post-RenameService) shape.
+// claim_events are asserted by the callers themselves: a remove clears them
+// via the service's claims, while a rename deliberately leaves them alone.
+func assertServiceAbsent(ctx context.Context, t *testing.T, s Store, serviceID string) {
+	t.Helper()
+	if got, err := s.QueryObservations(ctx, serviceID, ""); err != nil || len(got) != 0 {
+		t.Errorf("%s observations = %d rows, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.Fingerprint(ctx, serviceID, "pkg/seed.go"); err != nil || found {
+		t.Errorf("%s fingerprint = found:%v, %v; want false, nil", serviceID, found, err)
+	}
+	if got, err := s.KnowledgeCards(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s knowledge cards = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.DocSummaries(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s doc summaries = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.GetServiceMeta(ctx, serviceID); err != nil || found {
+		t.Errorf("%s service meta = found:%v, %v; want false, nil", serviceID, found, err)
+	}
+	if got, err := s.ListCommits(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s commits = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.ClaimsForService(ctx, serviceID, ""); err != nil || len(got) != 0 {
+		t.Errorf("%s claims = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.CompileRuns(ctx, serviceID, ""); err != nil || len(got) != 0 {
+		t.Errorf("%s compile runs = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if got, err := s.TypedEdges(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s typed edges = %d, %v; want 0, nil", serviceID, len(got), err)
+	}
+	if _, found, err := s.TypedEdgePackageFingerprint(ctx, serviceID, "example.com/seed"); err != nil || found {
+		t.Errorf("%s typed-edge fingerprint = found:%v, %v; want false, nil", serviceID, found, err)
+	}
+	if got, err := s.ListTypedEdgePackages(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s typed-edge packages = %v, %v; want none, nil", serviceID, got, err)
+	}
+	if got, err := s.ListSourceRefs(ctx, serviceID); err != nil || len(got) != 0 {
+		t.Errorf("%s source refs = %v, %v; want none, nil", serviceID, got, err)
+	}
+}
 
 func makeObs(serviceID, concernID, sourceRef, symbol string) core.Observation {
 	return core.Observation{

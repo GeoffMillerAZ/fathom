@@ -584,6 +584,108 @@ func (s *SQLiteStore) PurgeService(ctx context.Context, serviceID string) error 
 	return nil
 }
 
+// serviceIDTables is every table carrying a service_id column, in the order
+// RemoveService deletes and RenameService updates them. claim_events is
+// deliberately absent: it is claim_id-keyed (no service_id column — see
+// ClaimEventsSince), so RemoveService reaches it through a semantic_claims
+// subquery and RenameService leaves it alone entirely.
+var serviceIDTables = []string{
+	"observations",
+	"fingerprints",
+	"knowledge_cards",
+	"doc_summaries",
+	"service_meta",
+	"commits",
+	"semantic_claims",
+	"claim_links",
+	"compile_runs",
+	"typed_edges",
+	"typed_edge_fingerprints",
+}
+
+// RemoveService deletes every row for serviceID in one transaction — see the
+// Store interface doc comment for the registry-surgery motivation. The
+// claim_events delete runs FIRST, while the service's semantic_claims rows
+// still exist to resolve the claim_id membership subquery.
+func (s *SQLiteStore) RemoveService(ctx context.Context, serviceID string) (bool, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return false, fmt.Errorf("RemoveService begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	removed := false
+	res, err := tx.ExecContext(ctx, `
+DELETE FROM claim_events
+WHERE claim_id IN (SELECT claim_id FROM semantic_claims WHERE service_id = ?)
+`, serviceID)
+	if err != nil {
+		return false, fmt.Errorf("RemoveService delete claim_events: %w", err)
+	}
+	if n, err := res.RowsAffected(); err == nil && n > 0 {
+		removed = true
+	}
+
+	for _, table := range serviceIDTables {
+		res, err := tx.ExecContext(ctx, `DELETE FROM `+table+` WHERE service_id = ?`, serviceID)
+		if err != nil {
+			return false, fmt.Errorf("RemoveService delete %s: %w", table, err)
+		}
+		if n, err := res.RowsAffected(); err == nil && n > 0 {
+			removed = true
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return false, fmt.Errorf("RemoveService commit: %w", err)
+	}
+	return removed, nil
+}
+
+// RenameService moves every service_id-scoped row from oldID to newID in one
+// transaction — see the Store interface doc comment for the claim-ID
+// stability contract. Both presence checks run inside the same transaction
+// as the updates, so a concurrent writer cannot slip a newID row in between
+// check and rename.
+func (s *SQLiteStore) RenameService(ctx context.Context, oldID, newID string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("RenameService begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	const presenceQ = `
+SELECT EXISTS(SELECT 1 FROM service_meta    WHERE service_id = ?)
+    OR EXISTS(SELECT 1 FROM observations    WHERE service_id = ?)
+    OR EXISTS(SELECT 1 FROM semantic_claims WHERE service_id = ?)
+`
+	var oldExists bool
+	if err := tx.QueryRowContext(ctx, presenceQ, oldID, oldID, oldID).Scan(&oldExists); err != nil {
+		return fmt.Errorf("RenameService check %q: %w", oldID, err)
+	}
+	if !oldExists {
+		return &ServiceNotFoundError{ServiceID: oldID}
+	}
+	var newExists bool
+	if err := tx.QueryRowContext(ctx, presenceQ, newID, newID, newID).Scan(&newExists); err != nil {
+		return fmt.Errorf("RenameService check %q: %w", newID, err)
+	}
+	if newExists {
+		return &ServiceExistsError{ServiceID: newID}
+	}
+
+	for _, table := range serviceIDTables {
+		if _, err := tx.ExecContext(ctx, `UPDATE `+table+` SET service_id = ? WHERE service_id = ?`, newID, oldID); err != nil {
+			return fmt.Errorf("RenameService update %s: %w", table, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("RenameService commit: %w", err)
+	}
+	return nil
+}
+
 // CountAbsoluteSourceRefs counts fingerprint rows whose source_ref is an
 // absolute path (the pre-ADR-017 anchor style). POSIX-rooted refs only —
 // the stores this migration concerns were written on macOS/Linux hosts.

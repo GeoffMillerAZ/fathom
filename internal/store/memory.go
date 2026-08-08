@@ -167,6 +167,207 @@ func (m *MemoryStore) PurgeService(_ context.Context, serviceID string) error {
 	return nil
 }
 
+// RemoveService deletes every row for serviceID — see the Store interface
+// doc comment for the registry-surgery motivation. The service's claim IDs
+// are collected FIRST (claim events and links are claim_id-keyed), then
+// every table class is cleared. Mirrors SQLiteStore's single-transaction
+// delete under this store's one write lock.
+func (m *MemoryStore) RemoveService(_ context.Context, serviceID string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	removed := false
+
+	// Claim membership first, while the claims are still present.
+	claimIDs := make(map[string]struct{})
+	for k := range m.claims {
+		if k.serviceID == serviceID {
+			claimIDs[k.claimID] = struct{}{}
+		}
+	}
+	if len(claimIDs) > 0 {
+		keptEvents := m.claimEvents[:0]
+		for _, ev := range m.claimEvents {
+			if _, ours := claimIDs[ev.ClaimID]; ours {
+				removed = true
+				continue
+			}
+			keptEvents = append(keptEvents, ev)
+		}
+		m.claimEvents = keptEvents
+		for id := range claimIDs {
+			if _, ok := m.claimLinks[id]; ok {
+				removed = true
+				delete(m.claimLinks, id)
+			}
+		}
+		for k := range m.claims {
+			if k.serviceID == serviceID {
+				removed = true
+				delete(m.claims, k)
+			}
+		}
+	}
+
+	keptObs := m.observations[:0]
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID {
+			removed = true
+			continue
+		}
+		keptObs = append(keptObs, o)
+	}
+	m.observations = keptObs
+	for k := range m.fingerprints {
+		if k.serviceID == serviceID {
+			removed = true
+			delete(m.fingerprints, k)
+		}
+	}
+	for k := range m.knowledgeCards {
+		if k.serviceID == serviceID {
+			removed = true
+			delete(m.knowledgeCards, k)
+		}
+	}
+	for k := range m.docSummaries {
+		if k.serviceID == serviceID {
+			removed = true
+			delete(m.docSummaries, k)
+		}
+	}
+	if _, ok := m.serviceMeta[serviceID]; ok {
+		removed = true
+		delete(m.serviceMeta, serviceID)
+	}
+	if _, ok := m.commits[serviceID]; ok {
+		removed = true
+		delete(m.commits, serviceID)
+	}
+	keptRuns := m.compileRuns[:0]
+	for _, r := range m.compileRuns {
+		if r.ServiceID == serviceID {
+			removed = true
+			continue
+		}
+		keptRuns = append(keptRuns, r)
+	}
+	m.compileRuns = keptRuns
+	for k := range m.typedEdges {
+		if k.serviceID == serviceID {
+			removed = true
+			delete(m.typedEdges, k)
+		}
+	}
+	for k := range m.typedEdgeFPs {
+		if k.serviceID == serviceID {
+			removed = true
+			delete(m.typedEdgeFPs, k)
+		}
+	}
+	return removed, nil
+}
+
+// RenameService moves every service_id-scoped row from oldID to newID — see
+// the Store interface doc comment for the claim-ID stability contract.
+// claimEvents (and the claim_id-keyed claimLinks map) are untouched: claim
+// IDs keep their minted values, so both keep resolving after the rename.
+func (m *MemoryStore) RenameService(_ context.Context, oldID, newID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if !m.serviceHasRowsLocked(oldID) {
+		return &ServiceNotFoundError{ServiceID: oldID}
+	}
+	if m.serviceHasRowsLocked(newID) {
+		return &ServiceExistsError{ServiceID: newID}
+	}
+
+	for i := range m.observations {
+		if m.observations[i].ServiceID == oldID {
+			m.observations[i].ServiceID = newID
+		}
+	}
+	rekeyFP(m.fingerprints, oldID, newID)
+	for k, c := range m.knowledgeCards {
+		if k.serviceID == oldID {
+			c.ServiceID = newID
+			delete(m.knowledgeCards, k)
+			m.knowledgeCards[kcKey{newID, k.symbol}] = c
+		}
+	}
+	for k, d := range m.docSummaries {
+		if k.serviceID == oldID {
+			d.ServiceID = newID
+			delete(m.docSummaries, k)
+			m.docSummaries[fpKey{newID, k.sourceRef}] = d
+		}
+	}
+	if meta, ok := m.serviceMeta[oldID]; ok {
+		meta.ServiceID = newID
+		delete(m.serviceMeta, oldID)
+		m.serviceMeta[newID] = meta
+	}
+	if commits, ok := m.commits[oldID]; ok {
+		for i := range commits {
+			commits[i].ServiceID = newID
+		}
+		delete(m.commits, oldID)
+		m.commits[newID] = commits
+	}
+	for k, c := range m.claims {
+		if k.serviceID == oldID {
+			c.ServiceID = newID
+			delete(m.claims, k)
+			m.claims[claimKey{newID, k.claimID}] = c
+		}
+	}
+	for i := range m.compileRuns {
+		if m.compileRuns[i].ServiceID == oldID {
+			m.compileRuns[i].ServiceID = newID
+		}
+	}
+	for k, edges := range m.typedEdges {
+		if k.serviceID == oldID {
+			delete(m.typedEdges, k)
+			m.typedEdges[typedEdgeKey{newID, k.pkgPath}] = edges
+		}
+	}
+	rekeyFP(m.typedEdgeFPs, oldID, newID)
+	return nil
+}
+
+// serviceHasRowsLocked reports whether serviceID holds any row, judged
+// against the same three presence tables SQLiteStore.RenameService checks
+// (service_meta, observations, semantic_claims). Callers must hold m.mu.
+func (m *MemoryStore) serviceHasRowsLocked(serviceID string) bool {
+	if _, ok := m.serviceMeta[serviceID]; ok {
+		return true
+	}
+	for _, o := range m.observations {
+		if o.ServiceID == serviceID {
+			return true
+		}
+	}
+	for k := range m.claims {
+		if k.serviceID == serviceID {
+			return true
+		}
+	}
+	return false
+}
+
+// rekeyFP moves every fpKey-shaped entry for oldID to newID in place —
+// shared by the fingerprints and typed-edge-fingerprint maps (both reuse
+// the fpKey shape).
+func rekeyFP(mm map[fpKey]string, oldID, newID string) {
+	for k, v := range mm {
+		if k.serviceID == oldID {
+			delete(mm, k)
+			mm[fpKey{newID, k.sourceRef}] = v
+		}
+	}
+}
+
 // CountAbsoluteSourceRefs counts fingerprint rows whose source_ref is an
 // absolute path (the pre-ADR-017 anchor style).
 func (m *MemoryStore) CountAbsoluteSourceRefs(_ context.Context, serviceID string) (int, error) {

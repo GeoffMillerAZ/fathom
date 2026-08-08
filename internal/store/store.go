@@ -13,10 +13,35 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
+
+// ServiceNotFoundError is RenameService's refusal when the source serviceID
+// has no rows anywhere in the store (judged against service_meta,
+// observations and semantic_claims) — a typed error a caller switches on
+// with errors.As, never a prose string to substring-match (the same
+// named-refusal stance as ConformanceError).
+type ServiceNotFoundError struct {
+	ServiceID string
+}
+
+func (e *ServiceNotFoundError) Error() string {
+	return fmt.Sprintf("store: service %q has no rows (nothing to rename)", e.ServiceID)
+}
+
+// ServiceExistsError is RenameService's refusal when the target serviceID
+// already holds ANY row — renaming onto a live service would silently merge
+// two corpora, so the collision is refused loudly instead.
+type ServiceExistsError struct {
+	ServiceID string
+}
+
+func (e *ServiceExistsError) Error() string {
+	return fmt.Sprintf("store: service %q already has rows (refusing to rename onto it)", e.ServiceID)
+}
 
 // KnowledgeCard is an enrichment row produced for a single symbol. It mirrors
 // the fields from internal/llm.KnowledgeCard but is defined here to avoid an
@@ -113,6 +138,37 @@ type Store interface {
 	// are retained: the service survives, its content is rebuilt by the next
 	// ingest. Used by the ADR-017 anchor-style self-heal.
 	PurgeService(ctx context.Context, serviceID string) error
+
+	// RemoveService deletes EVERY row for serviceID: the PurgeService content
+	// set PLUS the identity rows PurgeService deliberately keeps
+	// (service_meta, commits, knowledge cards), the semantic layer
+	// (semantic_claims, claim_links, compile_runs), and the claim_events
+	// rows whose claim_id belongs to the service's semantic_claims —
+	// claim_events carries no service_id column (see ClaimEventsSince), so
+	// membership is resolved through the claims table before the claims
+	// themselves are deleted. removed is false, with no error, when the
+	// service had no rows anywhere — the call is idempotent. This is
+	// registry surgery for duplicate/malformed service rows — the
+	// `../geoffmiller-cloud` twin (USAGE_JOURNAL 2026-06-16) and the O1
+	// shadow-service repair (.fathom/observations.md, fix (d) context) both
+	// previously required hand-run sqlite against the store file under the
+	// daemon lock.
+	RemoveService(ctx context.Context, serviceID string) (removed bool, err error)
+
+	// RenameService moves every service_id-scoped row from oldID to newID
+	// across all eleven service_id-carrying tables (observations,
+	// fingerprints, knowledge_cards, doc_summaries, service_meta, commits,
+	// semantic_claims, claim_links, compile_runs, typed_edges,
+	// typed_edge_fingerprints) in one atomic step. It refuses with a typed
+	// error — *ServiceNotFoundError when oldID has no rows,
+	// *ServiceExistsError when newID already holds ANY row — leaving the
+	// store untouched; presence for both checks is judged against
+	// service_meta, observations and semantic_claims. claim_events rows are
+	// UNTOUCHED and claim IDs keep their minted values: a claim ID is
+	// historical evidence, content-addressed at compile time under the old
+	// name, and rewriting it would orphan the append-only event log it
+	// anchors. New compiles simply mint fresh IDs under the new name.
+	RenameService(ctx context.Context, oldID, newID string) error
 
 	// CountAbsoluteSourceRefs reports how many fingerprint rows for serviceID
 	// carry an absolute source_ref — the pre-ADR-017 anchor style. A non-zero
