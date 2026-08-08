@@ -142,9 +142,6 @@ func LoadGuards(path string) (GuardSet, error) {
 		errs = append(errs, checkNoOptionalFields(path, prefix, gv)...)
 		out.Guards = append(out.Guards, g)
 	}
-	if idx == 0 {
-		errs = append(errs, fieldErr(path, "guards", fmt.Errorf("must be non-empty")))
-	}
 	if len(errs) > 0 {
 		return GuardSet{}, &LoadError{Path: path, Fields: errs}
 	}
@@ -240,9 +237,6 @@ func LoadUserGuards(path string) (GuardSet, error) {
 			CommandScopes: cmdScopes,
 			MaxRules:      DefaultMaxRules,
 		})
-	}
-	if idx == 0 {
-		errs = append(errs, fieldErr(path, "guards", fmt.Errorf("must be non-empty")))
 	}
 	if len(errs) > 0 {
 		return GuardSet{}, &LoadError{Path: path, Fields: errs}

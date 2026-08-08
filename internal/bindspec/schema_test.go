@@ -61,10 +61,6 @@ func TestBindingSchema_Negatives(t *testing.T) {
 		bad           string
 		wantErrSubstr string
 	}{
-		{"empty bindings list", `
-bad1: #Bindings & {
-	bindings: []
-}`, "bindings"},
 		{"bad module name shape", `
 bad2: #Bindings & {
 	bindings: [{module: "Not_Valid"}]

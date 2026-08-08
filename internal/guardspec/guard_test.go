@@ -123,7 +123,6 @@ func TestLoadGuards_Negatives(t *testing.T) {
 		cue       string
 		wantField string
 	}{
-		{"empty guards list", `guards: []`, "guards"},
 		{"max_rules zero", `guards: [{scopes: ["**/*.go"], max_rules: 0}]`, "max_rules"},
 		{"empty scopes list", `guards: [{scopes: []}]`, "scopes"},
 		{"empty command_scopes list", `guards: [{command_scopes: []}]`, "command_scopes"},
@@ -261,10 +260,20 @@ func TestValidateStrict_ValidPasses(t *testing.T) {
 	}
 }
 
-func TestValidateStrict_EmptyGuardsFails(t *testing.T) {
+// TestExplicitEmptyGuards pins IO-7's one-vocabulary rule (twin of
+// bindspec's TestExplicitEmptyBindings): `guards: []` is the sanctioned
+// inert literal — loader and strict authoring gate both accept it.
+func TestExplicitEmptyGuards(t *testing.T) {
 	path := writeGuards(t, `guards: []`)
-	if err := ValidateStrict(path); err == nil {
-		t.Fatal("expected ValidateStrict to reject an empty guards list")
+	set, err := LoadGuards(path)
+	if err != nil {
+		t.Fatalf("LoadGuards(guards: []) = %v, want valid inert config", err)
+	}
+	if len(set.Guards) != 0 {
+		t.Errorf("want zero guards, got %d", len(set.Guards))
+	}
+	if err := ValidateStrict(path); err != nil {
+		t.Fatalf("ValidateStrict(guards: []) = %v, want accept", err)
 	}
 }
 

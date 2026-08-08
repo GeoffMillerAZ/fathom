@@ -19,11 +19,14 @@
 package binding
 
 // #Bindings is the top-level shape of a `.fathom/modules.cue` file: a
-// non-empty list of module bindings. An empty file has nothing to scaffold
+// list of module bindings. An empty file has nothing to scaffold
 // as valid — `fathom init`'s commented example template is the honest way
-// to ship "no bindings configured yet" (never an empty bindings: []).
+// to ship "no bindings configured yet"; an explicit `bindings: []` is the
+// SANCTIONED inert form (one vocabulary with the activate skill and the
+// kit packs' install steps — plan IO-7): present, declaring nothing,
+// valid. Only a malformed entry is an error.
 #Bindings: {
-	bindings: [...#Binding] & [_, ...]
+	bindings: [...#Binding]
 }
 
 // #Binding is one repo's opt-in to one mounted platform module.

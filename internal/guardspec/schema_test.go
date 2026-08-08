@@ -59,10 +59,6 @@ func TestGuardSchema_Negatives(t *testing.T) {
 		bad           string
 		wantErrSubstr string
 	}{
-		{"empty guards list", `
-bad1: #Guards & {
-	guards: []
-}`, "guards"},
 		{"max_rules must be positive", `
 bad2: #Guards & {
 	guards: [{scopes: ["**/*.go"], max_rules: 0}]

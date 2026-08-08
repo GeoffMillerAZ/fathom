@@ -96,18 +96,17 @@ const DefaultMaxRules = 2
 // reader enforces it directly, same class of decision as modspec's
 // Go-enforced regex/required-ness checks).
 //
-// Three states, not two (O22, docs/dogfood-observations.md): the top-level
-// "bindings" field being ABSENT — an all-commented scaffold (exactly what
-// ExampleTemplate/`fathom init` write) or a genuinely blank file — is an
-// EMPTY config, returned with no error and zero Bindings. It is NOT the
-// same as an explicit `bindings: []`, which is present-but-declaring-nothing
-// and stays a loud error below (a human writing that literal is closer to
-// a mistake than an intentional omission). A PRESENT bindings list that is
-// malformed (bad field, duplicate module, etc.) still fails loudly,
-// unchanged. Because only the absent-field path can produce a zero-error,
-// zero-Bindings result, callers can tell "nothing configured" from
-// "configured with zero entries" from len(BindingSet.Bindings)==0 +
-// err==nil alone — no separate Scaffolded/Empty flag is needed.
+// Three states (O22 as revised by plan IO-7): the top-level "bindings"
+// field being ABSENT — an all-commented scaffold (exactly what
+// ExampleTemplate/`fathom init` write) or a blank file — is an EMPTY
+// config, no error, zero Bindings. An explicit `bindings: []` is the
+// SAME valid, inert state: it is the sanctioned none-configured literal
+// the activate skill and the kit packs standardize, and O22's earlier
+// sub-choice to reject it put two sanctioned vocabularies in the fleet —
+// the fix-pass wrote the literal into an adopter repo and doctor FAILed a
+// file the tooling itself prescribes. One vocabulary now: absent and
+// explicit-empty both load clean; only a PRESENT-and-malformed entry
+// (bad field, duplicate module, empty scopes) fails, loudly.
 func LoadBindings(path string) (BindingSet, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -163,9 +162,6 @@ func LoadBindings(path string) (BindingSet, error) {
 		}
 		errs = append(errs, checkNoOptionalFields(path, prefix, bv)...)
 		out.Bindings = append(out.Bindings, b)
-	}
-	if idx == 0 {
-		errs = append(errs, fieldErr(path, "bindings", fmt.Errorf("must be non-empty")))
 	}
 	if len(errs) > 0 {
 		return BindingSet{}, &LoadError{Path: path, Fields: errs}

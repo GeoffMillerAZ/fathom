@@ -16,7 +16,7 @@ package guard
 
 // #Guards is the top-level shape of a `.fathom/guard.cue` file.
 #Guards: {
-	guards: [...#Guard] & [_, ...]
+	guards: [...#Guard] // explicit `guards: []` is the sanctioned inert form (IO-7, one vocabulary with bindings)
 }
 
 // #Guard names one critical scope: a set of file globs and/or command

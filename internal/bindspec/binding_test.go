@@ -133,7 +133,6 @@ func TestLoadBindings_Negatives(t *testing.T) {
 		cue       string
 		wantField string
 	}{
-		{"empty bindings list", `bindings: []`, "bindings"},
 		{"bad module name", `bindings: [{module: "Not_Valid"}]`, "module"},
 		{"max_rules zero", `bindings: [{module: "platform-standards", max_rules: 0}]`, "max_rules"},
 		{"bad min_tier", `bindings: [{module: "platform-standards", min_tier: "gold"}]`, "min_tier"},
@@ -278,10 +277,21 @@ func TestValidateStrict_ValidPasses(t *testing.T) {
 	}
 }
 
-func TestValidateStrict_EmptyBindingsFails(t *testing.T) {
+// TestExplicitEmptyBindings pins IO-7's one-vocabulary rule: `bindings: []`
+// is the sanctioned inert literal (the activate skill and the kit packs
+// write it), so BOTH the loader and the strict authoring gate accept it —
+// rejecting it made doctor FAIL a file fathom's own tooling prescribes.
+func TestExplicitEmptyBindings(t *testing.T) {
 	path := writeBindings(t, `bindings: []`)
-	if err := ValidateStrict(path); err == nil {
-		t.Fatal("expected ValidateStrict to reject an empty bindings list")
+	set, err := LoadBindings(path)
+	if err != nil {
+		t.Fatalf("LoadBindings(bindings: []) = %v, want valid inert config", err)
+	}
+	if len(set.Bindings) != 0 {
+		t.Errorf("want zero bindings, got %d", len(set.Bindings))
+	}
+	if err := ValidateStrict(path); err != nil {
+		t.Fatalf("ValidateStrict(bindings: []) = %v, want accept", err)
 	}
 }
 

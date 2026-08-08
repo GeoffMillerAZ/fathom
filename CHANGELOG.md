@@ -5,6 +5,23 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — one vocabulary for "none configured": explicit-empty bindings/guards are valid (O7 completed, plan IO-7)
+
+O22's fix accepted the ABSENT field but kept `bindings: []` a loud error
+("closer to a mistake than an intentional omission") — and the fleet
+promptly proved the opposite: the activate skill, the kit packs, and the
+review fix-pass all standardize the explicit literal, so doctor FAILed an
+adopter file fathom's own tooling prescribes. Two sanctioned vocabularies
+is the drift bug class. Now one: `bindings: []` and `guards: []` load
+clean and pass ValidateStrict (schema `[_, ...]` constraints dropped in
+schema/binding + schema/guard, embedded mirrors re-synced); only a
+present-and-malformed entry fails. Doctor's existing scaffold-awaiting-
+opt-in PASS wording covers both forms. Live proof: platform-engineering's
+standing `binding_file FAIL` (its modules.cue carries the prescribed
+`bindings: []`) is now PASS. Pinned by TestExplicitEmptyBindings /
+TestExplicitEmptyGuards; the schema/loader negatives that asserted the
+rejection are inverted.
+
 ### 2026-08-07 — review: --budget-seconds bounds the advisory channel (O9 root-caused, plan IO-9)
 
 O9's root cause corrected: nothing prompts and nothing hangs — a six-file
