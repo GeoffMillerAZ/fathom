@@ -1,0 +1,72 @@
+# impact-observatory-activation — visions 14/15/16 promoted to code
+
+> Governing sources: docs/vision/14-impact-observatory.md, 15-reach.md,
+> 16-skills-pack.md (non-binding visions — THIS plan is their binding
+> promotion, row by row) and the filed observations O1–O9 (.fathom/
+> observations.md — each a bug spec with a repro). Owner directive
+> 2026-08-07: "implement everything until fully implemented."
+>
+> **Covenant (ADR-0070 class, applies here):** tests assert behavior,
+> never a stub's own constants; completion claims exist only as verified
+> boxes; a diff weakening a gate file is its own justified commit.
+> Discipline: TDD, `task validate` green before every commit, dated
+> CHANGELOG entry per landed change.
+
+## A — The correctness floor (the trust under every metric)
+
+- [ ] resolveFromServices is deterministic: sorted candidates, richer-on-tie, dedup never collapses the list to one (O1 fixes a–c) {id: IO-1, symbol: resolveFromServices, package: cmd/fathom, reachable_from: TestResolveFromServicesDeterministic}
+- [ ] Daemon-side ingest hygiene: ValidServiceID enforced in the handler, corpus roots canonicalized via EvalSymlinks, duplicate and nested roots refused naming the claimant (O1 fix d + fleet-audit anomalies 1–3) {id: IO-2, symbol: registerIngest, package: internal/mcp, reachable_from: TestIngestHygiene}
+- [ ] remove_service and rename_service ship over MCP (asked 2026-06-16; both registry surgeries this quarter were sqlite archaeology) {id: IO-3, symbol: registerRemoveService, package: internal/mcp, reachable_from: TestRemoveRenameService}
+- [ ] session-hook degraded branch: fetchServices returns an error; enumeration failure renders degraded guidance, never a false not-indexed instruction (O2) {id: IO-4, symbol: fetchServices, package: cmd/fathom, reachable_from: TestSessionHookDegraded}
+- [ ] doctor stops lying about other repos: binary_fresh compares fathom's own source, hooks_firing reads the daemon's call-log path, lefthook_gates survives variable indirection (O5 + audit defect A) {id: IO-5, symbol: checkLefthookGates, package: cmd/fathom, reachable_from: TestDoctorWrongRepoFixes}
+- [ ] LintPlan is loud: quote-aware brace tokenizer, an unparseable annotation block is a named lint error never a silent md-NNN downgrade (O4) {id: IO-6, symbol: LintPlan, package: internal/verify, reachable_from: TestLintPlanBraceTokenizer}
+- [ ] init's own scaffolds load clean: three-state loader (absent = none configured, inert-commented = pass with note, malformed = fail), proven against the actual template bytes init writes (O7) {id: IO-7, symbol: ExampleTemplate, package: cmd/fathom, reachable_from: TestInitScaffoldsLoadClean}
+- [ ] compile --dry-run prints an output-token and cost RANGE plus expected duration, never a confident zero (O8) {id: IO-8, symbol: cmdCompile, package: cmd/fathom, reachable_from: TestDryRunEstimateRange}
+- [ ] the review verb never prompts in a non-TTY: pre-push completes or exits with a named verdict (O9) {id: IO-9, symbol: cmdReview, package: cmd/fathom, reachable_from: TestReviewNonInteractive}
+- [ ] the adoption gauge is service-scoped and cwd-independent: --service plus daemon-side call-log resolution; zero-call list scoped to the measured surface (O6 + audit) {id: IO-10, symbol: buildAdoptionReport, package: cmd/fathom, reachable_from: TestAdoptionServiceScoped}
+
+## B — Version-stamped telemetry (vision 14 §3)
+
+- [ ] call-log entries carry schema_version + fathom_version {id: IO-11, symbol: CallLogger, package: internal/mcp, reachable_from: TestCallLogVersionStamp}
+- [ ] hook beats carry schema_version + fathom_version + hook template_version and a service field (audit: beats are user-global, unattributable) {id: IO-12, symbol: emitBeat, package: cmd/fathom, reachable_from: TestBeatVersionStamp}
+- [ ] session ledger and daily rollups stamped; unstamped old rows read version unknown, never backfilled {id: IO-13, symbol: DailyRollup, package: internal/metrics, reachable_from: TestRollupVersionStamp}
+
+## C — Arms and attribution (vision 14 §2)
+
+- [ ] fathom arm off|on --sessions N stamps ledger rows with the arm; doctor announces an active arm loudly {id: IO-14, symbol: cmdArm, package: cmd/fathom, reachable_from: TestArmStamping}
+- [ ] ledger attribution fields land: verify_catches, discovery_substitutions, injected_rules_used {id: IO-15, symbol: recordSessionLedgerEntry, package: cmd/fathom, reachable_from: TestLedgerAttribution}
+
+## D — The fleet fold (vision 14 §4)
+
+- [ ] fathom fleet report folds per-service report.json + user-central beats/ledger into one local artifact with per-service wiring/freshness/coverage/spend rows {id: IO-16, symbol: cmdFleetReport, package: cmd/fathom, reachable_from: TestFleetReport}
+
+## E — Reconcile and self-heal (vision 14 §7)
+
+- [ ] fleet reconcile dry-run: per-repo, per-scope diff of installed hooks vs the current template, stale-binary paths, stanza staleness, third-party wiring lint {id: IO-17, symbol: cmdFleetReconcile, package: cmd/fathom, reachable_from: TestReconcileDiff}
+- [ ] reconcile --apply applies the safe subset in place (shim repoint, additive matchers, dedupe) at exactly one scope, never both {id: IO-18, symbol: applyReconcile, package: cmd/fathom, reachable_from: TestReconcileApply}
+- [ ] the session-hook tripwire: wiring self-check in the session line names the exact remedy on skew {id: IO-19, symbol: buildSessionContext, package: cmd/fathom, reachable_from: TestSessionTripwire}
+- [ ] init installs the PATH shim (~/.local/bin/fathom → deployed libexec binary) and doctor checks resolvability from a NON-interactive shell {id: IO-20, symbol: installShim, package: cmd/fathom, reachable_from: TestInstallShim}
+
+## F — Narrate v0 (vision 14 §6; story rows only, no LLM weekly yet)
+
+- [ ] narrate on --for D|--sessions N with stamped auto-expiry; off is default; doctor shows the active dial {id: IO-21, symbol: cmdNarrate, package: cmd/fathom, reachable_from: TestNarrateExpiry}
+- [ ] story rows: per-intervention JSONL (rule served + following tool calls; verify catch + claimed diff; discovery substitution) written only while active, version-stamped, never bundled {id: IO-22, symbol: recordStoryRow, package: cmd/fathom, reachable_from: TestStoryRows}
+
+## G — The skills pack (vision 16)
+
+- [ ] fathom-rewire and fathom-activate join the embedded pack in both renderings, bodies sourced from docs/adoption/rewire-and-activate-prompts.md {id: IO-23, symbol: installSkills, package: cmd/fathom, reachable_from: TestSkillsPackEight}
+- [ ] --skills=agents renders the pack spec-conformant to the shared .agents/skills path (Codex + Gemini discovery) {id: IO-24, symbol: resolveSkillsMode, package: cmd/fathom, reachable_from: TestSkillsAgentsRendering}
+- [ ] fathom plugin render generates the Claude Code plugin dir (skills + hooks.json + .mcp.json) and marketplace.json from the embedded sources; never hand-maintained {id: IO-25, symbol: cmdPluginRender, package: cmd/fathom, reachable_from: TestPluginRender}
+- [ ] kit packs verified end-to-end: fathom layers install run against app-kit and agentic-kit fathom-pack dirs, guards demonstrated firing {id: IO-26, skip_test: true, skip: "integration proof: both installs + one demonstrated guard injection recorded as a dated CHANGELOG entry"}
+
+## H — Reach (deferred with triggers, vision 15)
+
+- [-] C++ language pack with the Conan dependency adapter, behind a calibration-corpus gate {id: IO-27, disposition: deferred, reason: "needs the tree-sitter extraction core wave and a design-partner corpus", trigger: "external C++ corpus available or first paying C++ consumer"}
+- [-] the observatory web app (rung 2) {id: IO-28, disposition: deferred, reason: "verb-first: screens only after their verbs have data", trigger: "IO-16 and IO-21 landed with real artifacts"}
+- [-] SCIP emission spike {id: IO-29, disposition: deferred, reason: "evaluate-not-commit per vision 15", trigger: "one free week after IO-25"}
+
+## Exit — proofs, not demos
+
+- [ ] the adoption question answers from a consumer repo: instrument --adoption --service run from app-kit reports that repo honestly {id: IO-30, skip_test: true, skip: "recorded run transcript in a dated CHANGELOG entry"}
+- [ ] doctor produces zero known-false FAILs on a consumer repo {id: IO-31, skip_test: true, skip: "app-kit doctor transcript recorded; every FAIL maps to a real defect or a real absence"}
+- [ ] the first counterfactual pilot is pre-registered: criteria + arms filed before the first OFF session {id: IO-32, skip_test: true, skip: "pre-registration artifact under workspace/artifacts/research with its generation timestamp; published range whatever it says"}
