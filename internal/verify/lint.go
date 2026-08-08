@@ -33,6 +33,9 @@ func LintPlan(p Plan) []string {
 		if t.Expect.SkipTest && t.Expect.SkipReason == "" {
 			out = append(out, fmt.Sprintf("%s: skip_test without a skip: justification", t.ID))
 		}
+		if t.AnnotationSuspect != "" {
+			out = append(out, fmt.Sprintf("%s: annotation block could not be parsed (%q) — the row's contract and author-owned id are VOID; check braces and quoting (O4)", t.ID, t.AnnotationSuspect))
+		}
 	}
 	return out
 }

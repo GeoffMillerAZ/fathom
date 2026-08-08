@@ -5,6 +5,21 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — plan grammar: braces in quoted values no longer void the row; unparseable blocks are loud (O4, plan IO-6)
+
+`parseAnnotation`'s brace pairing is now quote-aware: a quoted value
+containing the notation's own vocabulary — the exact string
+`{symbol, package}` an author writes when *explaining the grammar* — no
+longer terminates the block, so the row keeps its author-owned id and its
+whole contract (`TestParseAnnotation_BracesInQuotedValues` pins both the
+id and every key). GI-7's trailing-block rule is preserved: pairing runs
+over outside-quote braces only and the block whose close is last wins
+(the existing prose-example and Beat-literal tests stay green). Second
+half of O4: a brace block that parses to zero keys but contains contract
+keywords surfaces as `Task.AnnotationSuspect`, and `LintPlan` says so by
+name — "the row's contract and author-owned id are VOID" — instead of the
+silent md-NNN downgrade (`TestLintPlan_UnparseableAnnotationIsLoud`).
+
 ### 2026-08-07 — session-hook: enumeration failure is not "not indexed" (O2, plan IO-4)
 
 `fetchServices` now returns an error alongside the map, with one retry on

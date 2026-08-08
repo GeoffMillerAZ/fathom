@@ -1,6 +1,7 @@
 package verify_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -113,5 +114,56 @@ func TestParseMarkdownPlan_EndToEnd(t *testing.T) {
 	}
 	if byID["md-002"].Label != "claimed-but-absent" {
 		t.Fatalf("md-002 = %s", byID["md-002"].Label)
+	}
+}
+
+// TestParseAnnotation_BracesInQuotedValues pins the O4 fix: the feature's own
+// vocabulary is the landmine — an author explaining the notation writes
+// "{symbol, package}" inside a quoted skip: value, and the brace-blind
+// scanner used to hand the row's whole contract (id included) to the void.
+func TestParseAnnotation_BracesInQuotedValues(t *testing.T) {
+	md := []byte("# p\n\n" +
+		"- [ ] Never write braces in values {id: T-1, symbol: Foo, package: pkg/foo, skip_test: true, skip: \"an inner {symbol, package} block silently voids the row\"}\n" +
+		"- [ ] Close-brace inside a value {id: T-2, skip_test: true, skip: \"see the {a, b} rule\"}\n")
+	p := verify.ParseMarkdownPlan("svc", md)
+	if len(p.Tasks) != 2 {
+		t.Fatalf("got %d tasks, want 2", len(p.Tasks))
+	}
+	t1 := p.Tasks[0]
+	if t1.ID != "T-1" {
+		t.Fatalf("T-1 lost its author-owned id (got %q) — the O4 md-NNN downgrade", t1.ID)
+	}
+	if t1.Expect.Symbol != "Foo" || t1.Expect.Package != "pkg/foo" {
+		t.Errorf("T-1 contract keys lost: symbol=%q pkg=%q", t1.Expect.Symbol, t1.Expect.Package)
+	}
+	if !t1.Expect.SkipTest || !strings.Contains(t1.Expect.SkipReason, "{symbol, package}") {
+		t.Errorf("T-1 skip contract mangled: skipTest=%v reason=%q", t1.Expect.SkipTest, t1.Expect.SkipReason)
+	}
+	if strings.Contains(t1.Title, "{") || strings.Contains(t1.Title, "skip") {
+		t.Errorf("T-1 annotation leaked into the title: %q", t1.Title)
+	}
+	if p.Tasks[1].ID != "T-2" {
+		t.Errorf("T-2 lost its id (got %q)", p.Tasks[1].ID)
+	}
+}
+
+// TestLintPlan_UnparseableAnnotationIsLoud pins the second half of O4: a
+// trailing brace block that parses to zero keys is a named lint warning,
+// never a silent no-contract downgrade.
+func TestLintPlan_UnparseableAnnotationIsLoud(t *testing.T) {
+	md := []byte("# p\n\n- [ ] Broken block {id T-9 symbol Foo}\n")
+	p := verify.ParseMarkdownPlan("svc", md)
+	if len(p.Tasks) != 1 {
+		t.Fatalf("got %d tasks", len(p.Tasks))
+	}
+	warns := verify.LintPlan(p)
+	found := false
+	for _, w := range warns {
+		if strings.Contains(w, "annotation") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("no annotation warning in %v — the silent-void failure mode survives", warns)
 	}
 }

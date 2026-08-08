@@ -41,7 +41,7 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		}
 		check := m[1] // ' ', 'x', 'X', '~', or '-'
 		raw := m[2]
-		ann, title := parseAnnotation(raw)
+		ann, title, suspect := parseAnnotation(raw)
 		n++
 		t := Task{
 			ID:         fmt.Sprintf("md-%03d", n),
@@ -50,6 +50,8 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			Claimed:    check == "x" || check == "X",
 			Skipped:    check == "-",
 			InProgress: check == "~",
+
+			AnnotationSuspect: suspect,
 		}
 		if ann != nil {
 			if id := ann["id"]; id != "" {
@@ -74,31 +76,58 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 }
 
 // parseAnnotation splits a "{key: value, …}" block out of s, returning the
-// parsed key→value map (nil when there is no block) and s with the block
-// removed and trimmed.
+// parsed key→value map (nil when there is no block), s with the block
+// removed and trimmed, and a non-empty suspect string when a brace block
+// LOOKED like an annotation but yielded no keys — the O4 silent-void class,
+// surfaced so LintPlan can be loud instead of the row quietly degrading to
+// a positional md-NNN id with no contract.
 //
-// Values may be double-quoted; a quoted value may contain commas and its
-// surrounding quotes are stripped ({reason: "kit-side done, donor NOT
-// deleted"}). Unquoted values must not contain commas.
-func parseAnnotation(s string) (map[string]string, string) {
+// Values may be double-quoted; a quoted value may contain commas AND braces
+// — the notation's own vocabulary ("never write {symbol, package} in a
+// value") is exactly what authors quote, and it must never terminate the
+// block (O4). Unquoted values must not contain commas or braces.
+func parseAnnotation(s string) (map[string]string, string, string) {
 	// The annotation is the TRAILING brace block: earlier braces in the
 	// title (code literals like Beat{...}, prose examples of annotations)
-	// stay title text. The first non-vacuous gate run over the fleet's
-	// plans caught the old first-brace rule hijacking contracts (GI-7).
-	j := strings.LastIndexByte(s, '}')
-	i := -1
-	if j >= 0 {
-		i = strings.LastIndexByte(s[:j], '{')
+	// stay title text (GI-7). Brace pairing is QUOTE-AWARE: braces inside
+	// double-quoted spans are value content, never delimiters.
+	type pair struct{ open, close int }
+	var (
+		pairs   []pair
+		stack   []int
+		inQuote bool
+	)
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"':
+			inQuote = !inQuote
+		case '{':
+			if !inQuote {
+				stack = append(stack, i)
+			}
+		case '}':
+			if !inQuote && len(stack) > 0 {
+				pairs = append(pairs, pair{open: stack[len(stack)-1], close: i})
+				stack = stack[:len(stack)-1]
+			}
+		}
 	}
-	if i < 0 || j < i {
-		return nil, strings.TrimSpace(s)
+	if len(pairs) == 0 {
+		return nil, strings.TrimSpace(s), ""
 	}
+	// The block whose close brace is last is the trailing annotation.
+	best := pairs[0]
+	for _, p := range pairs[1:] {
+		if p.close > best.close {
+			best = p
+		}
+	}
+	i, j := best.open, best.close
 	block := s[i+1 : j]
 	title := strings.TrimSpace(strings.TrimSpace(s[:i]) + " " + strings.TrimSpace(s[j+1:]))
-	title = strings.TrimSpace(title)
 	m := map[string]string{}
-	for _, pair := range splitPairs(block) {
-		kv := strings.SplitN(pair, ":", 2)
+	for _, kvPair := range splitPairs(block) {
+		kv := strings.SplitN(kvPair, ":", 2)
 		if len(kv) != 2 {
 			continue
 		}
@@ -108,7 +137,31 @@ func parseAnnotation(s string) (map[string]string, string) {
 			m[k] = v
 		}
 	}
-	return m, title
+	if len(m) == 0 {
+		if suspectAnnotation(block) {
+			return nil, title, block
+		}
+		return nil, title, ""
+	}
+	return m, title, ""
+}
+
+// suspectAnnotation reports whether a zero-key brace block was PROBABLY a
+// mangled annotation rather than innocent title text (Beat{stuck}): it
+// contains a known contract key as a whole word. Loudness over silence for
+// exactly these — a lost contract is the gate's biggest honesty risk (O4).
+func suspectAnnotation(block string) bool {
+	keys := []string{"id", "symbol", "package", "skip_test", "skip", "reachable_from", "min_tier", "disposition", "reason", "trigger", "allow_contradiction"}
+	for _, f := range strings.FieldsFunc(block, func(r rune) bool {
+		return r == ' ' || r == ',' || r == ':' || r == '\t'
+	}) {
+		for _, k := range keys {
+			if f == k {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // splitPairs splits an annotation block on commas, treating commas inside

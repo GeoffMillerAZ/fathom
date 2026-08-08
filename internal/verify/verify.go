@@ -53,6 +53,12 @@ type Task struct {
 	// Trigger is the condition under which a deferred task revives. Recorded
 	// and surfaced only — never machine-evaluated in v0 (ADR-018).
 	Trigger string
+
+	// AnnotationSuspect holds the raw brace block when the line carried
+	// something annotation-shaped that parsed to zero keys (O4): the row has
+	// silently lost its contract and its author-owned id, and LintPlan is
+	// loud about it. Empty on healthy rows.
+	AnnotationSuspect string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
