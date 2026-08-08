@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — narrate v0: the enhanced-understanding dial, story rows only (vision 14 §6, plan IO-21/22)
+
+`fathom narrate on --for D|--sessions N` — bounded, auto-expiring, off
+by default (an unbounded narrate refuses; the dial is for pioneering,
+never a standing tax). While active the hooks append version-stamped
+STORY ROWS per intervention — obligation-served (file, rule count,
+session), verify-catch (plan, task, detail), guard-served (file/command
+previews) — to <repo>/workspace/artifacts/narrate/story-<date>.jsonl:
+per-repo, local, never bundled, and a LENS over mechanism-labeled
+events, never a source of truth (law 14 candidate — nothing downstream
+may consume them as evidence). The LLM weekly narrative and the
+surrounding-context correlation are the next wave, stated. Pinned by
+TestNarrateExpiry and TestStoryRows (inactive narrate writes nothing).
+
 ### 2026-08-08 — fleet reconcile + the session tripwire: wiring is a diff, not an audit (vision 14 §7, plan IO-17/18/19)
 
 `fathom fleet reconcile` diffs every repo's installed hooks against the

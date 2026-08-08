@@ -297,6 +297,9 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		},
 	})
 	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "post"})
+	recordStoryRow(projDir, "obligation-served", map[string]any{
+		"file": repoRelFile, "rules": len(renderRules), "session": hook.SessionID,
+	})
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }

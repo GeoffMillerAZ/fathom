@@ -191,6 +191,9 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 				}
 			}
 			complaints = append(complaints, fmt.Sprintf("%s [%s] %s — %s", rel, tv.TaskID, tv.Title, detail))
+			recordStoryRow(projDir, "verify-catch", map[string]any{
+				"plan": rel, "task": tv.TaskID, "title": tv.Title, "detail": detail,
+			})
 		}
 	}
 	var catches *int

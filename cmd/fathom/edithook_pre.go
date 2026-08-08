@@ -198,6 +198,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 		},
 	})
 	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "pre", "target": "file"})
+	recordStoryRow(projDir, "guard-served-file", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
@@ -254,6 +255,7 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer
 		},
 	})
 	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "pre", "target": "command"})
+	recordStoryRow(projDir, "guard-served-command", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
