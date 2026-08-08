@@ -858,7 +858,7 @@ func checkLefthookGates(root string) doctorCheck {
 // false) on any error, an absent/unnamed "fathom" service, or a relative
 // (pre-O10) recorded path — never a guessed location.
 func fathomServicePath(hc *http.Client, baseURL string) (string, bool) {
-	svcs := fetchServices(hc, baseURL)
+	svcs, _ := fetchServices(hc, baseURL)
 	info, ok := svcs["fathom"]
 	if !ok || info.path == "" || !filepath.IsAbs(info.path) {
 		return "", false
@@ -1297,7 +1297,7 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 		probeNames = []string{explicitSvc}
 	}
 
-	svcs := fetchServices(hc, baseURL) // best-effort; empty map on any error
+	svcs, _ := fetchServices(hc, baseURL) // best-effort; empty map on any error
 	indexed := make([]string, 0, len(svcs))
 	for s := range svcs {
 		indexed = append(indexed, s)

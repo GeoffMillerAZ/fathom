@@ -54,7 +54,8 @@ func gitToplevel(dir string) string {
 // the basename candidates exactly as before. Symlinks are resolved on both
 // sides so /var vs /private/var style aliases cannot defeat the match.
 func resolveIndexedCandidate(hc *http.Client, baseURL, projDir string) (serviceCandidate, bool) {
-	return resolveFromServices(fetchServices(hc, baseURL), projDir)
+	svcs, _ := fetchServices(hc, baseURL) // fail-open: resolution has its own fallbacks
+	return resolveFromServices(svcs, projDir)
 }
 
 // resolveFromServices is resolveIndexedCandidate over an already-fetched

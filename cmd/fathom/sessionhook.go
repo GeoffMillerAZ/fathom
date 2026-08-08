@@ -105,16 +105,17 @@ func buildSessionContext(baseURL, projDir string) string {
 	}
 	resp.Body.Close()
 
-	svcs := fetchServices(hc, baseURL)
+	svcs, svcErr := fetchServices(hc, baseURL)
+	if svcErr != nil {
+		// O2: enumeration failure is NOT "not indexed". The daemon is healthy
+		// (healthz just passed) but list_services failed — saying "this repo
+		// is not an indexed service" here would be a confident false
+		// instruction the agent has no reason to disprove. Degrade honestly.
+		return fmt.Sprintf("⚠️ fathom daemon is healthy but service enumeration failed (%v) — index state is unknown this session; the MCP tools may still work, so try them before falling back to Grep/Read. If this repeats, check GET %s/statusz.", svcErr, baseURL)
+	}
 	cands := serviceCandidates(projDir)
 	if resolved, ok := resolveFromServices(svcs, projDir); ok {
-		deduped := []serviceCandidate{resolved}
-		for _, c := range cands {
-			if !strings.EqualFold(c.name, resolved.name) {
-				deduped = append(deduped, c)
-			}
-		}
-		cands = deduped
+		cands = mergeCandidates(resolved, cands)
 	}
 	for _, cand := range cands {
 		lookup := strings.ToLower(cand.name)
@@ -135,26 +136,49 @@ func buildSessionContext(baseURL, projDir string) string {
 		known = append(known, k)
 	}
 	sort.Strings(known)
-	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, strings.Join(known, ", "))
+	indexed := strings.Join(known, ", ")
+	if len(known) == 0 {
+		indexed = "none yet"
+	}
+	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, indexed)
 }
 
 // fetchServices calls the list_services MCP tool over HTTP and returns a map
-// keyed by lower-cased service ID. Best-effort: returns an empty map on any error.
-func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
+// keyed by lower-cased service ID, plus an error when ENUMERATION failed —
+// callers must distinguish "failed to enumerate" from "zero services" (O2:
+// collapsing them once rendered a confident false not-indexed instruction
+// for an indexed repo). One retry with its own timeout, decoupled from the
+// caller's healthz-sized client.
+func fetchServices(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
+	m, err := fetchServicesOnce(hc, baseURL)
+	if err == nil {
+		return m, nil
+	}
+	retryClient := &http.Client{Timeout: 4 * time.Second}
+	if hc != nil && hc.Transport != nil {
+		retryClient.Transport = hc.Transport
+	}
+	return fetchServicesOnce(retryClient, baseURL)
+}
+
+func fetchServicesOnce(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
 	out := map[string]svcInfo{}
 	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`)
 	req, err := originHeader(baseURL, body)
 	if err != nil {
-		return out
+		return out, err
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return out
+		return out, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return out, fmt.Errorf("list_services: HTTP %d", resp.StatusCode)
+	}
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return out
+		return out, err
 	}
 	// Unwrap: {"result":{"content":[{"text":"<json>"}]}} or {"result":{services:...}}
 	var env struct {
@@ -166,7 +190,7 @@ func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
 		} `json:"result"`
 	}
 	if err := json.Unmarshal(raw, &env); err != nil {
-		return out
+		return out, fmt.Errorf("list_services: %w", err)
 	}
 	svcs := env.Result.Services
 	if len(svcs) == 0 && len(env.Result.Content) > 0 {
@@ -183,7 +207,7 @@ func fetchServices(hc *http.Client, baseURL string) map[string]svcInfo {
 		}
 		out[strings.ToLower(s.Service)] = svcInfo{symbols: s.SymbolCount, langs: joinLangs(s.Languages), path: s.Path}
 	}
-	return out
+	return out, nil
 }
 
 type rawSvc struct {

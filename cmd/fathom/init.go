@@ -379,7 +379,7 @@ func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
 		return false, nil
 	}
 
-	svcs := fetchServices(hc, baseURL)
+	svcs, _ := fetchServices(hc, baseURL)
 	info := svcs[svc]
 	langs := ""
 	if info.langs != "" {

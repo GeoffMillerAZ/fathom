@@ -55,3 +55,51 @@ func TestSessionContext_DaemonDown(t *testing.T) {
 		t.Fatalf("want daemon-down message, got:\n%s", ctx)
 	}
 }
+
+// TestSessionHookDegraded pins the O2 fix: a healthy daemon whose service
+// enumeration FAILS must render a degraded notice — never the confident
+// "not an indexed service" instruction that teaches the agent to abandon
+// index-first discovery for a repo that IS indexed.
+func TestSessionHookDegraded(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError) // list_services always fails
+	}))
+	defer srv.Close()
+
+	got := buildSessionContext(srv.URL, t.TempDir())
+	if strings.Contains(got, "not an indexed service") {
+		t.Fatalf("enumeration failure rendered the false not-indexed instruction:\n%s", got)
+	}
+	if !strings.Contains(got, "enumeration") {
+		t.Errorf("degraded branch should name the enumeration failure, got:\n%s", got)
+	}
+}
+
+// TestSessionHookZeroServices pins O2 fix (d): a healthy daemon with a
+// genuinely empty index must not render the dangling "Indexed services: ."
+// artifact (strings.Join(nil) + trailing period).
+func TestSessionHookZeroServices(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"jsonrpc":"2.0","id":1,"result":{"services":[]}}`))
+	}))
+	defer srv.Close()
+
+	got := buildSessionContext(srv.URL, t.TempDir())
+	if strings.Contains(got, "Indexed services: .") {
+		t.Fatalf("dangling empty-list artifact rendered:\n%s", got)
+	}
+	if !strings.Contains(got, "none yet") {
+		t.Errorf("zero-service state should say so plainly, got:\n%s", got)
+	}
+}

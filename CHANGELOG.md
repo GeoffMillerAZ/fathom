@@ -5,6 +5,21 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — session-hook: enumeration failure is not "not indexed" (O2, plan IO-4)
+
+`fetchServices` now returns an error alongside the map, with one retry on
+its own 4s timeout, and every failure mode (transport, non-2xx,
+unmarshal) is an error instead of an indistinguishable empty map. The
+session hook grew the third branch O2 asked for: a healthy daemon whose
+list_services fails renders a degraded notice naming the failure — never
+the confident false "this repo is not an indexed service" instruction
+that taught agents to abandon index-first discovery for indexed repos.
+A genuinely empty index now says "none yet" instead of the dangling
+"Indexed services: ." join artifact, and the hook's inline candidate
+dedup now uses mergeCandidates (the O1-c fix), closing the last copy of
+the collapsing dedup. Pinned by TestSessionHookDegraded and
+TestSessionHookZeroServices.
+
 ### 2026-08-07 — observe: the initial read now waits out a concurrent creator's write window
 
 `fathom observe`'s foreign-file refusal fired on a file that was simply

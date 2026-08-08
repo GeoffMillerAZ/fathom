@@ -57,10 +57,14 @@ func findingsFixtureObs() []core.Observation {
 
 func TestCmdFindingsNear_JSON_RanksByProximity(t *testing.T) {
 	claims := []core.SemanticClaim{
-		{ClaimID: "near", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
-			Subject: "arch_conformance#pkg.B", Rule: "near finding", Scope: []string{"pkg/b.go"}, Status: core.ClaimFresh, CompiledAt: time.Now()},
-		{ClaimID: "far", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassTestGap,
-			Subject: "spec_coverage#pkg.C", Rule: "far finding", Scope: []string{"pkg/c.go"}, Status: core.ClaimFresh, CompiledAt: time.Now()},
+		{
+			ClaimID: "near", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
+			Subject: "arch_conformance#pkg.B", Rule: "near finding", Scope: []string{"pkg/b.go"}, Status: core.ClaimFresh, CompiledAt: time.Now(),
+		},
+		{
+			ClaimID: "far", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassTestGap,
+			Subject: "spec_coverage#pkg.C", Rule: "far finding", Scope: []string{"pkg/c.go"}, Status: core.ClaimFresh, CompiledAt: time.Now(),
+		},
 	}
 	storePath := seedFindingsStore(t, findingsFixtureObs(), claims, nil)
 
@@ -89,8 +93,10 @@ func TestCmdFindingsNear_JSON_RanksByProximity(t *testing.T) {
 
 func TestCmdFindingsNear_SupersededExcludedUnlessAsked(t *testing.T) {
 	claims := []core.SemanticClaim{
-		{ClaimID: "fixed", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
-			Subject: "arch_conformance#pkg.A", Rule: "old finding", Scope: []string{"pkg/a.go"}, Status: core.ClaimSuperseded, CompiledAt: time.Now()},
+		{
+			ClaimID: "fixed", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassConformance,
+			Subject: "arch_conformance#pkg.A", Rule: "old finding", Scope: []string{"pkg/a.go"}, Status: core.ClaimSuperseded, CompiledAt: time.Now(),
+		},
 	}
 	storePath := seedFindingsStore(t, findingsFixtureObs(), claims, nil)
 
@@ -142,10 +148,14 @@ func TestCmdFindingsNear_MissingFlags_ErrorExit(t *testing.T) {
 func TestCmdFindingsStatus_JSON(t *testing.T) {
 	t0 := time.Now()
 	claims := []core.SemanticClaim{
-		{ClaimID: "r1", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity,
-			Subject: "site#1", Rule: "shared", Status: core.ClaimSuperseded, CompiledAt: t0},
-		{ClaimID: "r2", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity,
-			Subject: "site#2", Rule: "shared", Status: core.ClaimSuperseded, CompiledAt: t0},
+		{
+			ClaimID: "r1", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity,
+			Subject: "site#1", Rule: "shared", Status: core.ClaimSuperseded, CompiledAt: t0,
+		},
+		{
+			ClaimID: "r2", ServiceID: "svc", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity,
+			Subject: "site#2", Rule: "shared", Status: core.ClaimSuperseded, CompiledAt: t0,
+		},
 	}
 	events := []core.ClaimEvent{
 		{ClaimID: "r1", Verdict: "superseded", At: t0, ResolutionKind: core.ResolutionCodeChange, ResolutionCommit: "c1"},
