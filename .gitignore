@@ -37,3 +37,4 @@ coverage.*
 /fathom
 .claude/worktrees/
 .claude/settings.local.json
+cmd/fathom/workspace/
