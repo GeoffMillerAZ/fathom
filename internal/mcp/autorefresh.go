@@ -164,6 +164,31 @@ func (a *autoRefreshBackend) IngestServiceAt(ctx context.Context, service, path 
 	return ia.IngestServiceAt(ctx, service, path)
 }
 
+// registrySurgeryBackend is the optional capability behind the
+// remove_service / rename_service verbs (IO-3): both were asked for
+// verbatim on 2026-06-16 and every interim surgery was hand-run sqlite
+// under the daemon lock.
+type registrySurgeryBackend interface {
+	RemoveService(ctx context.Context, serviceID string) (bool, error)
+	RenameService(ctx context.Context, oldID, newID string) error
+}
+
+func (a *autoRefreshBackend) RemoveService(ctx context.Context, serviceID string) (bool, error) {
+	rs, ok := a.QueryInterface.(registrySurgeryBackend)
+	if !ok {
+		return false, fmt.Errorf("backend does not support registry surgery")
+	}
+	return rs.RemoveService(ctx, serviceID)
+}
+
+func (a *autoRefreshBackend) RenameService(ctx context.Context, oldID, newID string) error {
+	rs, ok := a.QueryInterface.(registrySurgeryBackend)
+	if !ok {
+		return fmt.Errorf("backend does not support registry surgery")
+	}
+	return rs.RenameService(ctx, oldID, newID)
+}
+
 // IngestStats forwards the ADR-021 §2 / TI-6 process-lifetime
 // unclassified/oversize counters (see statsBackend in meta.go). Without this
 // explicit forward, wrapping the client in auto-refresh would silently hide

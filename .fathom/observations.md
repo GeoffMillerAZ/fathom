@@ -63,7 +63,7 @@ triage if it matters.
   (d) reject an ingest that would record a corpus root already claimed by a
       different service, the same way the ingest guard already rejects path-like
       service IDs — that is what would have prevented this outright.
-- **Status:** open — data repaired; code fixes (a)-(c) landed 2026-08-07 (CHANGELOG, plan IO-1); (d) daemon-side refusal lands with IO-2
+- **Status:** closed 2026-08-07 — all fixes (a)-(d) landed (plan IO-1 + IO-2/IO-3): deterministic resolution, never-collapsing dedup, daemon-side one-root-one-service refusal, and remove_service/rename_service for the surviving twins
 - **Impact:** Highest-severity class fathom has: silent, nondeterministic loss of
   its single most valuable agentic feature. ~36% of edits in this repo received no
   governing rules, and the affected edits also saw an empty typed-edge callgraph

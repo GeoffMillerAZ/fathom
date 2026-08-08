@@ -5,6 +5,24 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — registry surgery becomes two verbs; the ingest door enforces one-root-one-service (O1 completed, plan IO-2/IO-3)
+
+Asked for verbatim on 2026-06-16, shipped today: `remove_service`
+(idempotent every-row deletion — claim_events cascaded through the
+claims table; deliberately accepts path-like historical ids, since
+excising exactly those is its first job) and `rename_service` (atomic
+re-key across the eleven service_id tables; typed refusals; claim ids
+stay minted as historical evidence). Both delegate store → client →
+AutoRefresh → tool via the ingestAtBackend precedent and bust the
+identity cache on success. The ingest handler now enforces what
+client-side checks could not: ValidServiceID at the daemon (the
+../geoffmiller-cloud twin was re-fed for seven weeks past the client
+fix), absolute-and-existing onboarding paths canonicalized via
+EvalSymlinks (the /Users-symlink registration class), duplicate roots
+refused naming the claimant, nested roots refused in both directions
+(the crossplane-platform accident). With IO-1's deterministic
+resolution, every O1 fix (a)–(d) is now landed.
+
 ### 2026-08-07 — the adoption gauge answers from any repo, scoped to what an agent can reach (O6 + audit, plan IO-10)
 
 `instrument --adoption` gains `--service` (rows filtered case-

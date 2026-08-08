@@ -102,6 +102,8 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerLicensePolicy(s, backend)
 	registerSecurityRollup(s, backend)
 	registerIngest(s, backend)
+	registerRemoveService(s, backend)
+	registerRenameService(s, backend)
 
 	// ── platform ─────────────────────────────────────────────────────────────
 	registerCrossRepoBlastRadius(s, backend)
@@ -1611,6 +1613,79 @@ func registerSecurityRollup(s *Server, backend QueryInterface) {
 			"shell_out_count": len(shellOuts),
 			"http_call_count": len(httpCalls),
 		}, nil
+	})
+}
+
+// ─── shared: registry surgery ────────────────────────────────────────────────
+
+func registerRemoveService(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name:        "remove_service",
+		Description: "Delete EVERY stored row for a service — registry surgery for duplicate/malformed rows (e.g. a path-like twin). Idempotent: removing an unknown service returns removed=false.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"service": map[string]any{"type": "string", "description": "Service to remove, exactly as registered (path-like historical ids are accepted here so they can be excised)"},
+			},
+			"required": []string{"service"},
+		},
+		group: GroupShared,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		rs, ok := backend.(registrySurgeryBackend)
+		if !ok {
+			return nil, &rpcError{Code: ErrCodeInvalid, Message: "remove_service: this backend does not support registry surgery"}
+		}
+		var p struct {
+			Service string `json:"service"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil || p.Service == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "remove_service: service required"}
+		}
+		// NOTE: no ValidServiceID here, deliberately — the verb's first job
+		// is excising rows whose ids are exactly the malformed kind the
+		// ingest door now refuses ("../geoffmiller-cloud").
+		removed, err := rs.RemoveService(ctx, p.Service)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "remove_service: " + err.Error()}
+		}
+		hookcache.BustIdent()
+		return map[string]any{"service": p.Service, "removed": removed}, nil
+	})
+}
+
+func registerRenameService(s *Server, backend QueryInterface) {
+	s.registerTool(toolDescriptor{
+		Name:        "rename_service",
+		Description: "Atomically re-key every stored row from one service id to another. Refuses when the source has no rows or the target already exists. Claim ids keep their minted values (historical evidence); new compiles mint fresh ids.",
+		InputSchema: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"from": map[string]any{"type": "string", "description": "Current service id (path-like historical ids accepted)"},
+				"to":   map[string]any{"type": "string", "description": "New service id — a valid logical name"},
+			},
+			"required": []string{"from", "to"},
+		},
+		group: GroupShared,
+	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+		rs, ok := backend.(registrySurgeryBackend)
+		if !ok {
+			return nil, &rpcError{Code: ErrCodeInvalid, Message: "rename_service: this backend does not support registry surgery"}
+		}
+		var p struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		}
+		if err := json.Unmarshal(args, &p); err != nil || p.From == "" || p.To == "" {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_service: from and to required"}
+		}
+		if err := core.ValidServiceID(p.To); err != nil {
+			return nil, &rpcError{Code: ErrCodeParams, Message: "rename_service: the target must be a valid logical name (" + err.Error() + ")"}
+		}
+		if err := rs.RenameService(ctx, p.From, p.To); err != nil {
+			return nil, &rpcError{Code: ErrCodeInvalid, Message: "rename_service: " + err.Error()}
+		}
+		hookcache.BustIdent()
+		return map[string]any{"from": p.From, "to": p.To, "ok": true}, nil
 	})
 }
 

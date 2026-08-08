@@ -325,6 +325,20 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 	return nil
 }
 
+// RemoveService deletes every stored row for serviceID — registry surgery
+// (store.Store.RemoveService). Exposed on the client so the daemon's
+// remove_service verb reaches it through the same delegation chain every
+// other capability uses.
+func (c *Client) RemoveService(ctx context.Context, serviceID string) (bool, error) {
+	return c.st.RemoveService(ctx, serviceID)
+}
+
+// RenameService atomically re-keys every service_id-scoped row
+// (store.Store.RenameService) — typed refusals pass through verbatim.
+func (c *Client) RenameService(ctx context.Context, oldID, newID string) error {
+	return c.st.RenameService(ctx, oldID, newID)
+}
+
 // IngestStats returns the process-lifetime unclassified/oversize counters
 // (ADR-021 §2 / TI-6) accumulated across every Ingest this Client's pipeline
 // has run — see fusion.Pipeline.Stats. Consumed by the mcp server's

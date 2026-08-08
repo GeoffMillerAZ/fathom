@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -2234,6 +2235,96 @@ func TestIngestHygiene(t *testing.T) {
 		}
 		if got, want := h.ingestedAt["fresh"], canon(t, real); got != want {
 			t.Errorf("IngestServiceAt received %q, want the canonicalized root %q (the /Users-symlink registration class)", got, want)
+		}
+	})
+}
+
+// ─── remove_service / rename_service (IO-3) ──────────────────────────────────
+
+// surgeryFakeBackend adds the registry-surgery capability over the hygiene
+// fake, recording calls so the tests assert delegation, not just plumbing.
+type surgeryFakeBackend struct {
+	hygieneFakeBackend
+	removed   []string
+	renamed   [][2]string
+	renameErr error
+}
+
+func (s *surgeryFakeBackend) RemoveService(_ context.Context, serviceID string) (bool, error) {
+	s.removed = append(s.removed, serviceID)
+	_, existed := s.paths[serviceID]
+	return existed, nil
+}
+
+func (s *surgeryFakeBackend) RenameService(_ context.Context, oldID, newID string) error {
+	if s.renameErr != nil {
+		return s.renameErr
+	}
+	s.renamed = append(s.renamed, [2]string{oldID, newID})
+	return nil
+}
+
+func TestRemoveRenameService(t *testing.T) {
+	newSrv := func(paths map[string]string) (*mcp.Server, *surgeryFakeBackend) {
+		b := &surgeryFakeBackend{}
+		b.paths = paths
+		return mcp.NewServer(b), b
+	}
+	call := func(t *testing.T, srv *mcp.Server, tool string, args map[string]any) map[string]any {
+		t.Helper()
+		return roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 1300, Method: "tools/call",
+			Params: map[string]any{"name": tool, "arguments": args},
+		})
+	}
+
+	t.Run("remove_accepts_malformed_historical_ids", func(t *testing.T) {
+		srv, b := newSrv(map[string]string{"../geoffmiller-cloud": "/idx/gmc"})
+		p := xtraPayload(t, call(t, srv, "remove_service", map[string]any{"service": "../geoffmiller-cloud"}))
+		if p["removed"] != true {
+			t.Fatalf("want removed=true for the twin, got %v", p)
+		}
+		if len(b.removed) != 1 || b.removed[0] != "../geoffmiller-cloud" {
+			t.Errorf("delegation mismatch: %v", b.removed)
+		}
+	})
+
+	t.Run("remove_unknown_is_idempotent", func(t *testing.T) {
+		srv, _ := newSrv(nil)
+		p := xtraPayload(t, call(t, srv, "remove_service", map[string]any{"service": "ghost"}))
+		if p["removed"] != false {
+			t.Fatalf("want removed=false, got %v", p)
+		}
+	})
+
+	t.Run("rename_requires_valid_target", func(t *testing.T) {
+		srv, _ := newSrv(nil)
+		resp := call(t, srv, "rename_service", map[string]any{"from": "../geoffmiller-cloud", "to": "../still-bad"})
+		e := xtraError(t, resp)
+		msg, _ := e["message"].(string)
+		if !strings.Contains(msg, "logical name") && !strings.Contains(msg, "valid") {
+			t.Errorf("target validation should teach the rule, got %q", msg)
+		}
+	})
+
+	t.Run("rename_surfaces_typed_store_refusals", func(t *testing.T) {
+		srv, b := newSrv(nil)
+		b.renameErr = fmt.Errorf("service %q already has rows", "taken")
+		resp := call(t, srv, "rename_service", map[string]any{"from": "old", "to": "taken"})
+		e := xtraError(t, resp)
+		if msg, _ := e["message"].(string); !strings.Contains(msg, "taken") {
+			t.Errorf("store refusal should pass through, got %q", msg)
+		}
+	})
+
+	t.Run("rename_happy_path_delegates", func(t *testing.T) {
+		srv, b := newSrv(map[string]string{"../geoffmiller-cloud": "/idx/gmc"})
+		p := xtraPayload(t, call(t, srv, "rename_service", map[string]any{"from": "../geoffmiller-cloud", "to": "geoffmiller-cloud-x"}))
+		if p["ok"] != true {
+			t.Fatalf("want ok=true, got %v", p)
+		}
+		if len(b.renamed) != 1 || b.renamed[0] != [2]string{"../geoffmiller-cloud", "geoffmiller-cloud-x"} {
+			t.Errorf("delegation mismatch: %v", b.renamed)
 		}
 	})
 }
