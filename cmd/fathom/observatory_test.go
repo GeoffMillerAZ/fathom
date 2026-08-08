@@ -197,6 +197,24 @@ func TestObservatoryImpactPage(t *testing.T) {
 			t.Errorf("impact page missing %q", want)
 		}
 	}
+
+	// The handler serves the same content over HTTP (and JSON on request).
+	resetObsCache()
+	h := observatoryImpactPage("http://127.0.0.1:1")
+	rec := httptest.NewRecorder()
+	h(rec, httptest.NewRequest("GET", "/observatory/impact", nil))
+	if rec.Code != 200 {
+		t.Fatalf("GET /observatory/impact = %d", rec.Code)
+	}
+	if !strings.Contains(rec.Body.String(), "1 of 3") {
+		t.Error("handler response must carry the denominator")
+	}
+	resetObsCache()
+	rec = httptest.NewRecorder()
+	h(rec, httptest.NewRequest("GET", "/observatory/impact?format=json", nil))
+	if !strings.Contains(rec.Body.String(), `"verify_catches_total"`) {
+		t.Error("json mode must serve the impact model")
+	}
 }
 
 // TestLandingPage pins the front door: GET / links every surface; unknown
