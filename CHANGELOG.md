@@ -5,6 +5,39 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the activation plan closes: exit proofs run live, the sweep verifies (plan IO-30/31/32 + final verify)
+
+The three exit-proof rows are skip_test with transcript obligations;
+the transcripts, recorded here per their skip clauses:
+
+- **IO-30 — the adoption question from a consumer repo.** `fathom
+  instrument --adoption --service app-kit`, cwd=app-kit: resolved the
+  daemon call log (69 calls), surface split bare=12 / agent=57, top
+  tools read_source 45 / verify_plan 10 / find_symbol 6. The gauge is
+  cwd-independent and names its log source.
+- **IO-31 — doctor with zero known-false FAILs on app-kit.** 24 checks:
+  20 pass, 3 fail, 1 skipped — and every FAIL is TRUE: lefthook_gates
+  (app-kit has no lefthook.yml), skills_installed (none of the 8 shipped
+  skills present), surface_traffic (zero agent-surface calls since
+  process start, with the process-lifetime caveat printed in the
+  message). No false doctor row survives on a consumer repo.
+- **IO-32 — the pilot pre-registered before any OFF session.**
+  workspace/artifacts/research/counterfactual-pilot-preregistration.md
+  (workspace is gitignored; generation-timestamped in its header):
+  arms via `fathom arm off --sessions 10`, N=10 matched sessions per
+  arm on platform-engineering, primary metric harness-reported
+  tokens_total (ledger, REAL tokens), medians reported as a RANGE with
+  denominators, kill criteria filed (law 12: criteria before data).
+
+Also: O9 closed in the observations file (the IO-9 budget fix is its
+fix), O10 filed (a redeploy rolls the TCC dice — new binary hash under
+launchd silently loses the removable-volume grant; this sweep ran
+against a spare-port instance because of it), O11 filed (CLI call log
+resolves cwd-relative). Final sweep: `fathom verify --service fathom
+--plan docs/plans/impact-observatory-activation.md` — 32 rows: 29
+claimed, every contract-bearing row verified against the index, three
+deferred rows carry triggers.
+
 ### 2026-08-08 — the skills pack: eight skills, three renderings, one generated plugin (vision 16, plan IO-23/24/25/26)
 
 fathom-rewire and fathom-activate join the embedded pack (the

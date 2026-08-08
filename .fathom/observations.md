@@ -432,6 +432,30 @@ triage if it matters.
   - **Actual:** review prints 4/4 dimensions checked, 8 active findings all info/warn none blocking, then stalls at a review-prompt line; three scripted pushes hung until killed; git count-objects rules out transfer size
   - **Repro:** non-interactive git push origin HEAD from feat/mcp-scoped-surfaces, 2026-08-07; workaround once: LEFTHOOK=0 push after review had already reported non-blocking; fix: review must detect non-TTY and never prompt
 - **Root cause:** CORRECTED 2026-08-07 — nothing prompts and nothing hangs: `review` took 22.6s on a six-file diff, the verify loop adds more, and lefthook buffers each step's output until completion, so the push looked stalled and scripted wrappers killed it at their 60–90s caps. The `review >` line was lefthook's section header, not a prompt.
-- **Fix:** TODO
+- **Fix:** IO-9 (2026-08-08): `review --budget-seconds N` (requires `--no-persist`) races the
+  review body against a deadline and exits with a NAMED verdict
+  (`review: budget exhausted after Ns — advisory, not blocking`) instead of
+  silently running long; the lefthook review step passes `--budget-seconds 20`,
+  so a pre-push now completes inside scripted wrappers' caps. Pinned by
+  TestReviewNonInteractive.
+- **Status:** closed 2026-08-08
+- **Impact:** scripted/agent pushes completed with hooks live from IO-9 onward;
+  the two LEFTHOOK=0 pushes that preceded the fix are the measure of the cost.
+
+
+### O10 — every redeploy rolls the TCC dice: a new binary hash under launchd silently loses the volume grant and the daemon crash-loops
+
+- **Symptom:** `task deploy` build+install+kickstart succeed, healthz assert fails; `launchctl list` shows last-exit -9 with a fresh near-zero-CPU process (KeepAlive crash-loop); the same binary run from an interactive shell serves fine on a spare port.
+- **Evidence (2026-08-08):** deployed fathom @ 1030ad4085b3 matched HEAD; 127.0.0.1:7575 connection-refused across two kickstarts; the identical invocation from the user session answered `ok` on :7576 in 15s. Store and corpus live on /Volumes/m2ext (macOS 26 removable-volume TCC class); the PRIOR binary hash served for days under the same plist.
+- **Root cause:** the TCC removable-volumes grant is per-code-identity; an ad-hoc-signed Go binary changes cdhash every build, and a launchd job can never present the consent prompt — so first volume access after a redeploy is a silent kernel deny and the store open dies.
+- **Fix:** needs a durable, hash-independent grant for `~/.local/libexec/fathom/fathom` (Full Disk Access is the known-good class — Ghostty's access flows through it across updates). Candidate hardening: `task deploy` should end by asserting healthz THROUGH launchd (it does) and, on refusal, print this diagnosis instead of a bare exit 1.
+- **Status:** open — grant requires the operator's hands (System Settings), then re-test a redeploy.
+- **Impact:** every deploy is a coin flip on daemon availability; this session's final verify sweep ran against a self-hosted spare-port instance because of it.
+
+### O11 — CLI runs write a relative `workspace/logs/mcp-calls.jsonl` under whatever cwd they run in
+
+- **Symptom:** a stray `cmd/fathom/workspace/logs/mcp-calls.jsonl` appeared in the repo after `review` ran with cwd=cmd/fathom (budget-race test runs, 2026-08-08); content was review verdict rows.
+- **Root cause (suspected):** the call-log default path resolves relative to cwd instead of the repo/service root or an absolute user-scope path.
+- **Fix:** TODO — default the CLI call log to an absolute path (service workspace root or ~/.fathom), never cwd-relative.
 - **Status:** open
-- **Impact:** TODO
+- **Impact:** cosmetic here (deleted), but a cwd-relative log means CLI surface traffic silently fragments across directories and undercounts in the adoption gauge.

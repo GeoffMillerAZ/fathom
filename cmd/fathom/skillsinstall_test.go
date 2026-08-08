@@ -431,3 +431,14 @@ func TestSkillsAgentsRendering(t *testing.T) {
 		t.Error("marker missing — re-render safety depends on it")
 	}
 }
+
+// TestResolveSkillsModeAgents pins IO-24's mode plumbing.
+func TestResolveSkillsModeAgents(t *testing.T) {
+	got, err := resolveSkillsMode("agents", true)
+	if err != nil || got != "agents" {
+		t.Fatalf("resolveSkillsMode(agents) = %q, %v", got, err)
+	}
+	if _, err := resolveSkillsMode("bogus", true); err == nil {
+		t.Fatal("invalid mode must refuse")
+	}
+}

@@ -36,3 +36,4 @@ coverage.*
 # Built binary at repo root (module name)
 /fathom
 .claude/worktrees/
+.claude/settings.local.json
