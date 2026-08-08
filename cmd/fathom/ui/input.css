@@ -1,0 +1,16 @@
+/* fathom observatory CSS entry (vision 17; app-kit L3b consumption).
+   Built by the checksum-pinned Tailwind binary via `task ui:css` — no Node.
+   The @source globs are the load-bearing part: Tailwind only emits
+   utilities it can SEE, so every file that renders kit role utilities must
+   be covered (the single most common kit-adoption failure). */
+@import "tailwindcss";
+@import "./tokens/theme.css";
+
+/* fathom's own render files */
+@source "../observatory_render.go";
+@source "../observatory.go";
+
+/* kit packages whose emitted classes we render */
+@source "../../../../app-kit/appkit/ui/stat/*.go";
+@source "../../../../app-kit/appkit/ui/dashboard/*.go";
+@source "../../../../app-kit/appkit/ui/chrome/*.go";

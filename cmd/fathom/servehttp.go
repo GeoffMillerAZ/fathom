@@ -170,7 +170,7 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	if modulesToken != "" {
 		srv.SetHostedModules(true)
 	}
-	handler := newHTTPHandlerWithAuth(srv, c, modulesToken)
+	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr)
 
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
@@ -246,8 +246,8 @@ func openCallLog(path string) (*os.File, error) {
 // default) disables the check entirely — identical behavior to
 // newHTTPHandler(srv, c), so every existing call site/test unaffected by
 // this row keeps working unchanged.
-func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken string) http.Handler {
-	return modulesAuthMiddleware(newHTTPHandler(srv, c), modulesToken)
+func newHTTPHandlerWithAuth(srv *mcp.Server, c *client.Client, modulesToken, selfAddr string) http.Handler {
+	return modulesAuthMiddleware(newHTTPHandler(srv, c, selfAddr), modulesToken)
 }
 
 // modulesAuthMiddleware gates ONLY the /rpc/modules path (and its
@@ -292,7 +292,7 @@ func modulesAuthMiddleware(next http.Handler, token string) http.Handler {
 	})
 }
 
-func newHTTPHandler(srv *mcp.Server, c *client.Client) http.Handler {
+func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Handler {
 	state := &httpServerState{startTime: time.Now()}
 	mux := http.NewServeMux()
 
@@ -302,6 +302,15 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client) http.Handler {
 	// around this handler by newHTTPHandlerWithAuth) is what gates it
 	// under hosted mode; this function itself has no notion of a token.
 	mux.Handle("/statusz", statuszHandler(c, state.startTime))
+	// Observatory (vision 17 / docs/plans/observatory.md OB-4/5/6):
+	// loopback value-realization pages over the same primitives the fleet
+	// report reads. selfURL lets the model reuse the HTTP-shaped helpers.
+	selfURL := "http://" + selfAddr
+	mux.Handle("/", landingHandler(selfURL))
+	mux.Handle("/assets/app.css", assetsHandler())
+	mux.Handle("/observatory", observatoryHandler(selfURL))
+	mux.Handle("/observatory/service", observatoryServicePage(selfURL))
+	mux.Handle("/observatory/impact", observatoryImpactPage(selfURL))
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {

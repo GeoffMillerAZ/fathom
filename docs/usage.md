@@ -824,6 +824,23 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 
 ---
 
+## The observatory and the brief
+
+The daemon serves a value-realization UI (vision 17) next to `/statusz`:
+
+- `GET /observatory` — fleet tiles: wiring, freshness, traffic, open
+  observations; every warning names its remedy command. `?format=json`
+  returns the model.
+- `GET /observatory/service?id=S` — one repo's adoption gauge, hook
+  wiring, freshness with the exact re-ingest command.
+- `GET /observatory/impact` — verify catches and discovery actions with
+  their denominators, and the counterfactual pilot as a state machine
+  (a savings figure exists only as an arm range — law 12). Story rows
+  render under an explicit lens banner (law 14).
+- `fathom brief [--print|--out DIR]` — the same impact model as a dated
+  local markdown brief, with an explicit "Not measured" section.
+  Sharing is a human verb (law 13): the verb writes a file and stops.
+
 ## Go client (`pkg/client`)
 
 `pkg/client` exposes a thin `Client` that wires together the connector, fusion pipeline,

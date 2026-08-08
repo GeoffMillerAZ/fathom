@@ -101,3 +101,14 @@ A complete narration touches, in this order:
 5. **Zero-call tools** — the list, stated as a fact (rule 5).
 6. **Open frictions** — the flywheel's ask (rule 6). Non-negotiable, even
    when everything else in the report is good news.
+
+
+## The observatory and the brief
+
+For the at-a-glance version of everything above, open the daemon's
+observatory: `http://127.0.0.1:7575/observatory` (fleet wiring/freshness/
+traffic with remedy commands), `/observatory/impact` (catches and
+discovery with denominators; the counterfactual pilot state machine).
+`fathom brief --print` renders the same model as a shareable markdown
+value brief with an explicit "Not measured" section — write it, read it,
+and let a HUMAN decide where it goes (law 13).

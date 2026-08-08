@@ -88,6 +88,12 @@ tasks:
         done
         exit $rc
 
+  ui:css:
+    desc: Rebuild the observatory CSS via app-kit's pinned Tailwind binary (no Node)
+    cmds:
+      - go run github.com/geoffmilleraz/app-kit/cmd/appkit gen -tokens ../app-kit/cue/tokens/kit.cue -css cmd/fathom/ui/tokens/theme.css -dtcg "" -go ""
+      - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
+
   validate:
     desc: Full gate — fmt-check, vet, cue-vet, vendor-check, scripts-check, test
     deps: [fmt-check, vet, cue-vet, vendor-check, scripts-check]

@@ -449,8 +449,8 @@ triage if it matters.
 - **Evidence (2026-08-08):** deployed fathom @ 1030ad4085b3 matched HEAD; 127.0.0.1:7575 connection-refused across two kickstarts; the identical invocation from the user session answered `ok` on :7576 in 15s. Store and corpus live on /Volumes/m2ext (macOS 26 removable-volume TCC class); the PRIOR binary hash served for days under the same plist.
 - **Root cause:** the TCC removable-volumes grant is per-code-identity; an ad-hoc-signed Go binary changes cdhash every build, and a launchd job can never present the consent prompt — so first volume access after a redeploy is a silent kernel deny and the store open dies.
 - **Fix:** needs a durable, hash-independent grant for `~/.local/libexec/fathom/fathom` (Full Disk Access is the known-good class — Ghostty's access flows through it across updates). Candidate hardening: `task deploy` should end by asserting healthz THROUGH launchd (it does) and, on refusal, print this diagnosis instead of a bare exit 1.
-- **Status:** open — grant requires the operator's hands (System Settings), then re-test a redeploy.
-- **Impact:** every deploy is a coin flip on daemon availability; this session's final verify sweep ran against a self-hosted spare-port instance because of it.
+- **Status:** closed 2026-08-08 — the operator added ~/.local/libexec/fathom/fathom to Full Disk Access; the daemon came up immediately, and the NEXT redeploy (aa66a1f, a different binary hash) served healthz on the first try. The FDA grant is path-identified and hash-independent: the failure class is dead.
+- **Impact:** every deploy was a coin flip on daemon availability until the grant; one sweep ran against a spare-port instance because of it.
 
 ### O11 — CLI runs write a relative `workspace/logs/mcp-calls.jsonl` under whatever cwd they run in
 

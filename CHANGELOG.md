@@ -5,6 +5,37 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the observatory: value realization at a glance, built on app-kit (vision 17, plan OB-1..12)
+
+The daemon grows a front door and a value UI, all loopback, all honest:
+GET / (landing: every surface linked), /observatory (fleet tiles with a
+stat-band of totals, a 14-day traffic sparkline from the REAL call log,
+per-service freshness/traffic/observations, and the exact remedy command
+on every warning), /observatory/service?id=S (detail + an agent-surface
+share gauge), /observatory/impact (verify catches and discovery actions
+with their denominators BESIDE the numbers; the counterfactual pilot as
+a state machine — a savings figure exists only as an arm range, law 12;
+story rows only under the lens banner, law 14). ?format=json everywhere
+from the same model. `fathom brief` renders the impact model to a dated
+LOCAL markdown value brief with an explicit "Not measured" section —
+sharing stays a human verb (law 13).
+
+Built on app-kit (owner directive): dashboard.RenderWidget/Grid,
+stat.RenderBand, viz.Sparkline/Gauge — the hand-rolled tiles and SVG
+primitives written earlier the same day were DELETED for the kit's
+(D13); the honest-absence tile was promoted UP into the kit as
+stat.Absent (app-kit af47262), and stat.Render now honors Sub/ValueRole.
+CSS builds via `task ui:css` (the kit's checksum-pinned Tailwind binary,
+no Node) from cmd/fathom/ui/input.css — the @source globs are
+load-bearing and documented. Durable wiring: the UI doctrine is in
+CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, and the
+ui-appkit dialect pack is installed (honestly warning it is not yet
+eval-gated). Every page verified by LOOKING: Playwright screenshots in
+both themes; findings the tests could not see (an absence-note rendered
+beside a present value, missing thousands separators, a duplicated
+law-14 line, wrapping commit hashes) were fixed and the metricCell
+contract now separates absent-notes from present-notes.
+
 ### 2026-08-08 — full C++/CMake/clang/LLVM/Ninja support (docs/plans/cpp-toolchain.md, IO-27's trigger fired)
 
 C++ extraction closes its correctness gaps: symbols get ONE spelling —

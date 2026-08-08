@@ -111,7 +111,7 @@ func newStatuszTestHandler(t *testing.T, modulesToken string) http.Handler {
 	}
 	t.Cleanup(func() { c.Close() })
 	srv := mcp.NewServer(c)
-	return newHTTPHandlerWithAuth(srv, c, modulesToken)
+	return newHTTPHandlerWithAuth(srv, c, modulesToken, "127.0.0.1:0")
 }
 
 func TestStatusz_JSON_Loopback_NoAuthRequired(t *testing.T) {

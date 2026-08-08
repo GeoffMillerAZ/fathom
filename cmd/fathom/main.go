@@ -97,6 +97,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		}
 		fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]")
 		return 1
+	case "brief":
+		return cmdBrief(args[1:], stdout, stderr)
 	case "fleet":
 		if len(args) > 1 && args[1] == "report" {
 			return cmdFleetReport(args[2:], stdout, stderr)
