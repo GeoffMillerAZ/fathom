@@ -5,6 +5,53 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the capability registry reported switches it did not exercise (CR-7)
+
+Found by adversarial review of `docs/design/capability-registry.md`, hours
+after phase T shipped, and it is the defect the package exists to prevent.
+
+`internal/capability`'s resolution was read by exactly two surfaces — the
+`capabilities` verb and the doctor row — and by nothing else. So
+`fathom capabilities set guards off` wrote a config file, the table then
+reported **"switched off by this repository"** as a statement of fact, and
+guards kept firing on every edit. One `doctor` run could emit that line
+beside its own `guard_file PASS … 1 guard(s)` row. A config read rendered
+as a behavioural fact — law 14, violated inside the thing built to enforce
+it.
+
+Root cause: §2's rule ("detect is a function, not a flag") was written
+only in the ON direction. The implementation took the unstated OFF
+direction.
+
+**The fix is a distinction, not a patch.** `Capability.Switchable` says
+whether an enforcement site actually reads the resolution:
+
+- **Switchable** (`obligations`, `guards`, `verify-gate`) — gated in
+  `edithook.go`, `edithook_pre.go` and `stophook.go`, each *before* any
+  daemon traffic, so off means silent rather than merely quieter.
+  `verify-gate` off still records the ledger row: switching off an
+  assistive gate is not a reason to stop measuring, and `verify_catches`
+  stays nil rather than a fabricated zero.
+- **Status** (`index`, `layers`, `modules`, `agent-surface`,
+  `session-ledger`, `narrate`) — `set` **refuses** them, naming the real
+  control ("narration is a bounded window… `fathom narrate on --for 7d`"),
+  and the renderer no longer prints provenance beside them, because
+  provenance implies a switch.
+
+`session-ledger` is deliberately status: measurement must not be silently
+disableable from a config file (law 3). `FATHOM_CHANNELS=off` remains the
+documented, doctor-visible kill switch.
+
+Enforcement **fails open** — a config file that does not load never
+disarms a safety feature. It is reported loudly by the verb and failed
+loudly by doctor instead.
+
+`TestEverySwitchableCapabilityHasAnEnforcementCase` makes the gap
+unreachable: marking a capability switchable without a test proving
+observed behaviour changes now fails the build. All enforcement tests were
+confirmed RED against the shipped defect before being accepted.
+
+
 ### 2026-08-08 — URGENT: the OFF arm was silencing its own measurement
 
 **The bug.** `fathomChannelsDisabled()` returned

@@ -59,6 +59,13 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	projDir := resolveProjDir(cwd)
 	emitBeat("edit-hook", "seen", map[string]string{"phase": "pre", "target": "file"})
 
+	// Capability enforcement (capabilityenforce.go): `capabilities set
+	// guards off` must actually stop guards firing. Before the local fast
+	// path, so an off capability reads no guard file either.
+	if capabilityOffForFile(projDir, filePath, "guards") {
+		return 0
+	}
+
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
 	// path math; loadGuardSet reads one local file per candidate.
 	var (

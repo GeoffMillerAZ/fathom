@@ -83,6 +83,16 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	// "unknown", never a fabricated zero). The ledger append itself still
 	// swallows every failure internally, exactly like emitBeat, so a
 	// ledger problem can never affect the verification flow.
+	// Capability enforcement (capabilityenforce.go): `capabilities set
+	// verify-gate off` skips the gate but STILL records the ledger row —
+	// switching off an assistive gate is not a reason to stop measuring.
+	// verifyCatches stays nil: the gate did not run, so its result is
+	// unknown, never a fabricated zero (law 3).
+	if capabilityOffAt(projDir, "verify-gate") {
+		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		return 0
+	}
+
 	if armOffActive() {
 		// Control group: measure, do not assist. The ledger row is derived
 		// entirely from the transcript, so it still carries this session's

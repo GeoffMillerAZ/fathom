@@ -33,7 +33,8 @@ func TestBuildStatus_ResolvedFindingCount_OnlyCodeChangeResolutionsCount(t *test
 	claims, events := buildResolvedClaims(3, core.FindingClassSecurity)
 	// Add a refuted claim and a scope-disappearance-resolved claim —
 	// neither should count as "resolved" precedent.
-	claims = append(claims,
+	claims = append(
+		claims,
 		core.SemanticClaim{ClaimID: "refuted-1", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Status: core.ClaimRefuted},
 		core.SemanticClaim{ClaimID: "gone-1", Layer: "findings", Kind: "finding", Class: core.FindingClassSecurity, Status: core.ClaimSuperseded},
 	)

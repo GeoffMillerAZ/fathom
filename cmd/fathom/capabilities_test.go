@@ -116,7 +116,7 @@ func TestCmdCapabilitiesSet(t *testing.T) {
 
 	t.Run("project scope writes a file that loads back", func(t *testing.T) {
 		var out, errb bytes.Buffer
-		if code := cmdCapabilities([]string{"set", "--repo", repo, "narrate", "on"}, &out, &errb); code != 0 {
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code != 0 {
 			t.Fatalf("exit %d: %s", code, errb.String())
 		}
 		reg := capability.Default()
@@ -124,19 +124,19 @@ func TestCmdCapabilitiesSet(t *testing.T) {
 		if err != nil {
 			t.Fatalf("what set wrote must load: %v", err)
 		}
-		if v, ok := got["narrate"]; !ok || !v {
-			t.Errorf("got %+v, want narrate=true", got)
+		if v, ok := got["guards"]; !ok || !v {
+			t.Errorf("got %+v, want guards=true", got)
 		}
 	})
 
 	t.Run("a second set preserves the first", func(t *testing.T) {
 		var out, errb bytes.Buffer
-		if code := cmdCapabilities([]string{"set", "--repo", repo, "modules", "off"}, &out, &errb); code != 0 {
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "obligations", "off"}, &out, &errb); code != 0 {
 			t.Fatalf("exit %d: %s", code, errb.String())
 		}
 		reg := capability.Default()
 		got, _ := reg.LoadSettings(filepath.Join(repo, ".fathom", "capabilities.cue"), capability.ScopeProject)
-		if len(got) != 2 || !got["narrate"] || got["modules"] {
+		if len(got) != 2 || !got["guards"] || got["obligations"] {
 			t.Errorf("got %+v, want both settings retained", got)
 		}
 	})

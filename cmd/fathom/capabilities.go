@@ -110,7 +110,10 @@ func cmdCapabilitiesList(args []string, stdout, stderr io.Writer) int {
 // facts and a reader debugging their setup needs both.
 func capabilityLine(r capability.Report) string {
 	if r.State.Operating {
-		if r.Scope != capability.ScopeBuiltIn {
+		// Provenance is only meaningful for a real switch; printing
+		// "[on: project]" beside a status entry implies a control that
+		// does not exist.
+		if r.Capability.Switchable && r.Scope != capability.ScopeBuiltIn {
 			return r.State.Detail + "  [on: " + string(r.Scope) + "]"
 		}
 		return r.State.Detail
@@ -149,7 +152,12 @@ func cmdCapabilitiesExplain(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "  %s\n\n", wrapAt(c.Summary, 72, "  "))
 	fmt.Fprintf(stdout, "  Costs when on:  %s\n", c.Cost)
 	fmt.Fprintf(stdout, "  Default:        %s\n", onOff(c.Default))
-	fmt.Fprintf(stdout, "  Settable by:    %s\n", scopeRuleText(c.Scopes))
+	if c.Switchable {
+		fmt.Fprintf(stdout, "  Settable by:    %s\n", scopeRuleText(c.Scopes))
+	} else {
+		fmt.Fprintf(stdout, "  Settable by:    nothing — this reports status rather than offering a switch.\n")
+		fmt.Fprintf(stdout, "                  %s\n", wrapAt(c.NotSwitchableBecause, 60, "                  "))
+	}
 	fmt.Fprintf(stdout, "  Currently:      %s (from %s)\n", onOff(setting.On), setting.Scope)
 
 	st := c.Detect(probe)
@@ -220,6 +228,14 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 	}
 
 	reg := capability.Default()
+	// A status-only capability has no switch to write. Accepting the
+	// setting and then reporting "switched off" while nothing changed is
+	// the exact defect this field was added to remove.
+	if c, ok := reg.Get(id); ok && !c.Switchable {
+		fmt.Fprintf(stderr, "error: %q is not a switch — %s\n", id, c.NotSwitchableBecause)
+		fmt.Fprintf(stderr, "       run `fathom capabilities explain %s` for what does control it\n", id)
+		return 1
+	}
 	target := capability.ScopeProject
 	if *scope == "user" {
 		target = capability.ScopeUser
@@ -323,17 +339,19 @@ func loadCapabilityConfig(reg capability.Registry, root string) (capability.Reso
 // capabilityJSON is the model the observatory and doctor render. Law 10:
 // one shape, many surfaces.
 type capabilityRow struct {
-	ID        string `json:"id"`
-	Seam      string `json:"seam"`
-	Summary   string `json:"summary"`
-	Cost      string `json:"cost"`
-	Enabled   bool   `json:"enabled"`
-	Scope     string `json:"scope"`
-	Operating bool   `json:"operating"`
-	Detail    string `json:"detail,omitempty"`
-	Reason    string `json:"reason,omitempty"`
-	Cmd       string `json:"remedy_cmd,omitempty"`
-	Note      string `json:"remedy_note,omitempty"`
+	ID          string `json:"id"`
+	Seam        string `json:"seam"`
+	Summary     string `json:"summary"`
+	Cost        string `json:"cost"`
+	Switchable  bool   `json:"switchable"`
+	WhyNoSwitch string `json:"why_no_switch,omitempty"`
+	Enabled     bool   `json:"enabled"`
+	Scope       string `json:"scope"`
+	Operating   bool   `json:"operating"`
+	Detail      string `json:"detail,omitempty"`
+	Reason      string `json:"reason,omitempty"`
+	Cmd         string `json:"remedy_cmd,omitempty"`
+	Note        string `json:"remedy_note,omitempty"`
 }
 
 type capabilityModel struct {
@@ -351,17 +369,19 @@ func capabilityJSON(p capability.Probe, reports []capability.Report) capabilityM
 			m.Operating++
 		}
 		m.Capabilities = append(m.Capabilities, capabilityRow{
-			ID:        r.Capability.ID,
-			Seam:      string(r.Capability.Seam),
-			Summary:   r.Capability.Summary,
-			Cost:      r.Capability.Cost,
-			Enabled:   r.Enabled,
-			Scope:     string(r.Scope),
-			Operating: r.State.Operating,
-			Detail:    r.State.Detail,
-			Reason:    r.State.Reason,
-			Cmd:       r.Remedy.Cmd,
-			Note:      r.Remedy.Note,
+			ID:          r.Capability.ID,
+			Seam:        string(r.Capability.Seam),
+			Summary:     r.Capability.Summary,
+			Cost:        r.Capability.Cost,
+			Switchable:  r.Capability.Switchable,
+			WhyNoSwitch: r.Capability.NotSwitchableBecause,
+			Enabled:     r.Enabled,
+			Scope:       string(r.Scope),
+			Operating:   r.State.Operating,
+			Detail:      r.State.Detail,
+			Reason:      r.State.Reason,
+			Cmd:         r.Remedy.Cmd,
+			Note:        r.Remedy.Note,
 		})
 	}
 	return m

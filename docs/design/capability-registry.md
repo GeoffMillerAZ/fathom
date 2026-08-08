@@ -4,7 +4,10 @@
 > "excellent global and per project configuration to turn on and off
 > features" and gates the ask for "a plugin system" (vision 20 §4, R2).
 >
-> **Status:** design. Nothing here is built.
+> **Status:** BUILT (`internal/capability`, `cmd/fathom/capabilities.go`,
+> `cmd/fathom/capabilityenforce.go`, `cmd/fathom/doctor_capabilities.go`).
+> §2's `switchable` rule was added after adversarial review caught the
+> first implementation reporting switches it did not exercise.
 
 ---
 
@@ -54,9 +57,38 @@ This is the same discipline as the observatory's value-or-named-reason
 primitive (law 3), applied to configuration.
 
 **`why_off` is required.** A capability that can be off without being able
-to say why is not registrable. This single requirement is what makes
-`doctor` able to answer the adoption question, and it is why the registry
-is worth building at all.
+to say why is not registrable.
+
+**`switchable` is required, and it is the rule the first implementation
+broke.** §2's observation rule was written only in the ON direction
+("configured on but not working is off"), and the implementation took the
+unstated OFF direction: resolution was read by the two *reporting*
+surfaces and by nothing else. So `fathom capabilities set guards off`
+wrote a file, the table reported "switched off by this repository", and
+guards kept firing on every edit — a config read rendered as a
+behavioural fact, shipped inside the package built to prevent exactly
+that (found by adversarial review of this document, 2026-08-08).
+
+The rule, in both directions now:
+
+> A capability may be marked `switchable` **only** if some enforcement
+> site reads the resolution and acts on it. Marking it switchable obliges
+> you to add a case to `TestSwitchableCapabilitiesAreEnforced`, which
+> proves that flipping the setting changes *observed behaviour*, not just
+> reported state. Everything else is **status**: it reports what is
+> happening, `set` refuses it naming what the real control is, and the
+> renderer never prints provenance beside it (provenance implies a switch).
+
+Today three are switchable — `obligations`, `guards`, `verify-gate` —
+enforced in `edithook.go`, `edithook_pre.go` and `stophook.go`
+respectively, each gated *before* any daemon traffic so that off means
+silent rather than merely quieter. Enforcement **fails open**: a config
+file that does not load never disarms a safety feature; it is reported
+loudly by the verb and failed loudly by doctor instead.
+
+Together, `why_off` and `switchable` are what make `doctor` able to answer
+the adoption question truthfully, and they are why the registry is worth
+building at all.
 
 ---
 

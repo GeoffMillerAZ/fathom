@@ -131,6 +131,14 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// daemon traffic at all — so the daemon-resolved identity (one
 	// list_services call, dogfood O15) is fetched only after a basename
 	// candidate root actually contains the file.
+	// Capability enforcement (capabilityenforce.go): `capabilities set
+	// obligations off` must actually stop injection, not merely record
+	// intent. Placed BEFORE any daemon traffic so an off capability is
+	// genuinely silent, not silently-still-querying.
+	if capabilityOffForFile(projDir, filePath, "obligations") {
+		return 0
+	}
+
 	cands := serviceCandidates(projDir)
 	containsFile := false
 	for _, cand := range cands {

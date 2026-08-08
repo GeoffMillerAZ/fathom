@@ -131,6 +131,26 @@ type Capability struct {
 	// about — "nothing", "one hook round-trip per edit (~15 ms local)",
 	// "11,839 bytes of tool schema per session".
 	Cost string
+	// Switchable is whether a configuration setting actually changes
+	// behaviour — that is, whether some enforcement site reads the
+	// resolution and acts on it.
+	//
+	// This field exists because the first cut of this package shipped
+	// without it, and the omission produced precisely the defect the
+	// package was built to prevent: `capabilities set guards off` wrote a
+	// file, the table then reported "switched off by this repository", and
+	// guards kept firing on every edit. A config read was being rendered
+	// as a behavioural fact (law 14).
+	//
+	// A capability with Switchable false is STATUS, not a switch: it
+	// reports what is happening and `set` refuses it, naming what to run
+	// instead. Setting Switchable true obliges you to add an enforcement
+	// site AND a case to TestSwitchableCapabilitiesAreEnforced, which
+	// proves that flipping the setting changes observed behaviour.
+	Switchable bool
+	// NotSwitchableBecause is required when Switchable is false: what this
+	// entry reports, and what the real control is.
+	NotSwitchableBecause string
 	// Detect is pure over the probe.
 	Detect func(Probe) State
 	// Remedy is consulted only when Detect reports off.
@@ -201,7 +221,7 @@ func (r Registry) DetectAll(p Probe, cfg Resolution) []Report {
 		setting := cfg.For(c)
 		rep := Report{Capability: c, Enabled: setting.On, Scope: setting.Scope}
 		switch {
-		case !setting.On:
+		case !setting.On && c.Switchable:
 			rep.State = State{Reason: "switched off by " + setting.Scope.describe()}
 			rep.Remedy = Remedy{Cmd: "fathom capabilities set " + c.ID + " on"}
 		default:
