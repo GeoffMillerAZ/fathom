@@ -402,3 +402,32 @@ func TestCmdInit_SkillsFlag_ConflictReturnsExit1(t *testing.T) {
 		t.Errorf("stderr missing skills-install context: %s", errBuf.String())
 	}
 }
+
+// TestSkillsAgentsRendering pins IO-24 (vision 16 R2): --skills=agents
+// writes the spec-conformant SKILL.md set to the shared .agents/skills
+// discovery path Codex and Gemini both walk — and the pack now counts
+// eight (rewire + activate joined, IO-23).
+func TestSkillsAgentsRendering(t *testing.T) {
+	root := t.TempDir()
+	var out strings.Builder
+	if err := installSkills(root, "agents", &out); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(filepath.Join(root, ".agents", "skills"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 8 {
+		t.Fatalf("got %d skills, want 8 (the pack including rewire+activate)", len(entries))
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".agents", "skills", "fathom-rewire", "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "name: fathom-rewire") {
+		t.Error("frontmatter name must match the dir (agentskills.io conformance)")
+	}
+	if !strings.Contains(string(data), "fathom:owned") {
+		t.Error("marker missing — re-render safety depends on it")
+	}
+}

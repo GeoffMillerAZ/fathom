@@ -5,6 +5,25 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the skills pack: eight skills, three renderings, one generated plugin (vision 16, plan IO-23/24/25/26)
+
+fathom-rewire and fathom-activate join the embedded pack (the
+rewire/activate prompts promoted to skills — the reconcile pass with
+doctor's false signals named, and the activation catalog with the
+authoring discipline inline). `--skills=agents` renders the same
+SKILL.md set to the shared `.agents/skills` path Codex and Gemini CLI
+both walk natively — one spec-conformant write, multiple harnesses.
+`fathom plugin render` generates the Claude Code plugin from the SAME
+embedded sources: plugin.json (v0.1.0, fathom build in metadata), all
+eight skills (→ /fathom:rewire etc.), hooks/hooks.json carrying the
+full template spelled via the shim-stable `fathom` (never a checkout
+path — pinned by test), .mcp.json, and optionally the marketplace
+manifest. A hand-edited plugin is the schema-copy bug class: the output
+dir belongs to the generator. IO-26 integration proof, run live: both
+kit packs (app-kit ui-appkit, agentic-kit agentic-kit-standards)
+install via `fathom layers install` and list with honest
+not-yet-eval-gated warnings.
+
 ### 2026-08-08 — narrate v0: the enhanced-understanding dial, story rows only (vision 14 §6, plan IO-21/22)
 
 `fathom narrate on --for D|--sessions N` — bounded, auto-expiring, off

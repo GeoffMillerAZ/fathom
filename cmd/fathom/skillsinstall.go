@@ -61,12 +61,12 @@ func resolveSkillsMode(value string, set bool) (string, error) {
 	switch value {
 	case "true":
 		return "all", nil
-	case "claude", "codex", "all":
+	case "claude", "codex", "agents", "all":
 		return value, nil
 	case "":
-		return "", fmt.Errorf("empty --skills= value (want --skills=claude, --skills=codex, --skills=all, or bare --skills for all)")
+		return "", fmt.Errorf("empty --skills= value (want --skills=claude, --skills=codex, --skills=agents, --skills=all, or bare --skills for all)")
 	default:
-		return "", fmt.Errorf("invalid --skills value %q (want claude, codex, or all)", value)
+		return "", fmt.Errorf("invalid --skills value %q (want claude, codex, agents, or all)", value)
 	}
 }
 
@@ -90,6 +90,24 @@ func installSkills(root, mode string, stdout io.Writer) error {
 				return fmt.Errorf("reading embedded skill %q: %w", name, err)
 			}
 			dest := filepath.Join(root, ".claude", "skills", name, "SKILL.md")
+			if err := installSkillFile(dest, content, stdout); err != nil {
+				return err
+			}
+		}
+	}
+	if mode == "agents" || mode == "all" {
+		// The open-standard rendering (vision 16 R2, plan IO-24): Agent
+		// Skills' shared repo-scope discovery path — Codex and Gemini CLI
+		// both walk <repo>/.agents/skills natively, so one spec-conformant
+		// write reaches every adopting harness. Same SKILL.md source as
+		// the Claude shape (the format IS the open standard); per-harness
+		// discovery remains a calibration row, not an assumption.
+		for _, name := range skillsdist.Names {
+			content, err := skillsdist.FS.ReadFile(name + "/SKILL.md")
+			if err != nil {
+				return fmt.Errorf("reading embedded skill %q: %w", name, err)
+			}
+			dest := filepath.Join(root, ".agents", "skills", name, "SKILL.md")
 			if err := installSkillFile(dest, content, stdout); err != nil {
 				return err
 			}
