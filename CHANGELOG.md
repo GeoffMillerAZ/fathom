@@ -5,6 +5,20 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-07 — version-stamped telemetry: every record names its producer (vision 14 §3, plan IO-11/12/13)
+
+The research bundle carried its producing binary's identity from birth;
+now everything does. New internal/buildinfo package (VCS revision +
+-dirty, "unknown" floor, never empty) stamps: call-log rows
+(schema_version 2 + fathom_version), hook-beat meta (plus project_dir —
+the per-repo attribution the user-global beat log lacked, the reason
+doctor once cited one repo's beats as evidence about another; caller
+keys win on collision, caller maps never mutated), session-ledger rows,
+and daily rollups. Legacy rows without the fields read as
+version-unknown — never backfilled, never guessed. The
+251,834-catch-headline class of cross-semantics aggregation becomes a
+filterable query instead of an investigation.
+
 ### 2026-08-07 — registry surgery becomes two verbs; the ingest door enforces one-root-one-service (O1 completed, plan IO-2/IO-3)
 
 Asked for verbatim on 2026-06-16, shipped today: `remove_service`

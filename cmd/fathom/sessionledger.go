@@ -30,6 +30,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -53,7 +55,14 @@ func sessionLedgerPath() string {
 // non-empty exactly when the pointer is nil, and empty exactly when the
 // pointer carries a real value — so a reader never has to guess whether a
 // zero is real.
+// sessionLedgerSchemaVersion: 2 adds the telemetry stamps (vision 14 §3,
+// IO-13); rows without the field are the v1 legacy shape.
+const sessionLedgerSchemaVersion = 2
+
 type sessionLedgerEntry struct {
+	SchemaVersion int    `json:"schema_version"`
+	FathomVersion string `json:"fathom_version"`
+
 	SessionID string `json:"session_id"`
 	Repo      string `json:"repo,omitempty"`
 	At        string `json:"at"` // RFC3339, when this line was appended
@@ -126,9 +135,11 @@ func appendSessionLedger(entry sessionLedgerEntry) {
 // time.Now() here) per the repo's determinism convention.
 func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats []heartbeat.Beat, now time.Time) sessionLedgerEntry {
 	e := sessionLedgerEntry{
-		SessionID: sessionID,
-		Repo:      repo,
-		At:        now.UTC().Format(time.RFC3339),
+		SchemaVersion: sessionLedgerSchemaVersion,
+		FathomVersion: buildinfo.Version(),
+		SessionID:     sessionID,
+		Repo:          repo,
+		At:            now.UTC().Format(time.RFC3339),
 	}
 
 	if ts.DurationMS != nil {

@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
 
@@ -59,8 +61,33 @@ func emitBeat(channel, kind string, meta map[string]string) {
 	if err != nil {
 		return
 	}
-	_ = l.Beat(channel, kind, meta)
+	_ = l.Beat(channel, kind, stampBeatMeta(meta))
 }
+
+// stampBeatMeta returns a copy of meta carrying the telemetry stamps every
+// persistent record now shares (vision 14 §3, plan IO-12): schema_version,
+// fathom_version, and project_dir — the per-repo attribution the beat log
+// lacked (doctor once cited one repo's beats as evidence about another,
+// because ~/.fathom/hooks.jsonl is user-global and rows carried nothing to
+// scope them by). The caller's map is never mutated; caller-provided keys
+// win on collision.
+func stampBeatMeta(meta map[string]string) map[string]string {
+	out := make(map[string]string, len(meta)+3)
+	out["schema_version"] = beatSchemaVersion
+	out["fathom_version"] = buildinfo.Version()
+	if cwd, err := os.Getwd(); err == nil {
+		out["project_dir"] = cwd
+	}
+	for k, v := range meta {
+		out[k] = v
+	}
+	return out
+}
+
+// beatSchemaVersion identifies the beat meta contract: "2" adds the stamps
+// above; rows without the key are the v1 legacy shape, read as
+// version-unknown, never backfilled.
+const beatSchemaVersion = "2"
 
 // rotateBeatLogIfNeeded renames path to path+".1" (overwriting any prior
 // backup) when it exceeds beatLogRotateBytes, so the NEXT append starts a

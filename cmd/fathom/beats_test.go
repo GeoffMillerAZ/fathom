@@ -148,3 +148,34 @@ func TestReadBeatLogTail_AbsentFile(t *testing.T) {
 		t.Fatal("expected ok=false for an absent file")
 	}
 }
+
+// TestBeatVersionStamp pins IO-12 (vision 14 §3): every beat's meta carries
+// schema_version + fathom_version + project_dir, so the user-global beat
+// log becomes filterable by producer semantics and attributable per repo —
+// caller keys always win on collision, and the caller's map is not mutated.
+func TestBeatVersionStamp(t *testing.T) {
+	caller := map[string]string{"phase": "post"}
+	got := stampBeatMeta(caller)
+	if got["schema_version"] != beatSchemaVersion {
+		t.Errorf("schema_version = %q, want %q", got["schema_version"], beatSchemaVersion)
+	}
+	if got["fathom_version"] == "" {
+		t.Error("fathom_version must never be empty")
+	}
+	if got["project_dir"] == "" {
+		t.Error("project_dir should carry the hook's cwd")
+	}
+	if got["phase"] != "post" {
+		t.Error("caller keys must survive")
+	}
+	if len(caller) != 1 {
+		t.Error("caller map must not be mutated")
+	}
+
+	t.Run("caller_wins_on_collision", func(t *testing.T) {
+		got := stampBeatMeta(map[string]string{"project_dir": "/explicit"})
+		if got["project_dir"] != "/explicit" {
+			t.Errorf("caller-provided project_dir overridden: %q", got["project_dir"])
+		}
+	})
+}

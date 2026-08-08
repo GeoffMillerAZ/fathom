@@ -118,3 +118,16 @@ func TestReadDailyRollups_EmptyDir_NoError(t *testing.T) {
 		t.Fatalf("got %+v, want empty", got)
 	}
 }
+
+// TestRollupVersionStamp pins IO-13 (vision 14 §3): rollups carry the
+// producing binary + schema version like every other persistent record.
+func TestRollupVersionStamp(t *testing.T) {
+	day := time.Date(2026, 8, 7, 0, 0, 0, 0, time.UTC)
+	r := BuildDailyRollup(day, SpendReport{}, TrafficReport{}, ChannelsReport{}, InterventionsReport{}, day)
+	if r.SchemaVersion != RollupSchemaVersion {
+		t.Errorf("SchemaVersion = %d, want %d", r.SchemaVersion, RollupSchemaVersion)
+	}
+	if r.FathomVersion == "" {
+		t.Error("FathomVersion must never be empty")
+	}
+}

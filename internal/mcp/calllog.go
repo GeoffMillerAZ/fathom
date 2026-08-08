@@ -14,10 +14,21 @@ import (
 	"io"
 	"sync"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 )
+
+// callLogSchemaVersion identifies this record type's field semantics.
+// v1 = the unstamped legacy shape (rows without the field); v2 adds the
+// version stamps (vision 14 §3 / plan IO-11). Bump on any semantic change
+// to an existing field — additive fields alone do not require a bump.
+const callLogSchemaVersion = 2
 
 // callLogEntry is the JSONL record written per tools/call invocation.
 type callLogEntry struct {
+	SchemaVersion int    `json:"schema_version"`
+	FathomVersion string `json:"fathom_version"`
+
 	TS         string `json:"ts"`
 	Tool       string `json:"tool"`
 	Service    string `json:"service,omitempty"`
@@ -91,6 +102,8 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 	}
 	now := time.Now().UTC()
 	entry := callLogEntry{
+		SchemaVersion:  callLogSchemaVersion,
+		FathomVersion:  buildinfo.Version(),
 		TS:             now.Format(time.RFC3339Nano),
 		Tool:           tool,
 		Service:        service,

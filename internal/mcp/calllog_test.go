@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 	"time"
 )
@@ -70,5 +71,25 @@ func TestCallLogger_SurfaceTraffic_NilLoggerIsEmpty(t *testing.T) {
 	var l *CallLogger
 	if got := l.SurfaceTraffic(); got != nil {
 		t.Errorf("nil CallLogger SurfaceTraffic() = %v, want nil", got)
+	}
+}
+
+// TestCallLogVersionStamp pins IO-11 (vision 14 §3): every call-log row
+// carries the schema version and the producing binary's version, so a
+// trend fold can filter by the semantics that wrote each row instead of
+// re-living the 251,834-catch class of cross-semantics aggregation error.
+func TestCallLogVersionStamp(t *testing.T) {
+	var buf bytes.Buffer
+	l := NewCallLogger(&buf)
+	l.log("find_symbol", "svc", "nav", "agent", "", "", false, 0, nil, time.Millisecond, nil)
+	var row map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &row); err != nil {
+		t.Fatalf("unmarshal: %v (%q)", err, buf.String())
+	}
+	if row["schema_version"] != float64(2) {
+		t.Errorf("schema_version = %v, want 2", row["schema_version"])
+	}
+	if v, _ := row["fathom_version"].(string); v == "" {
+		t.Error("fathom_version must never be empty — 'unknown' is the floor")
 	}
 }

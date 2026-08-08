@@ -15,11 +15,20 @@ import (
 	"path/filepath"
 	"sort"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 )
 
 // DailyRollup is one date's flattened aggregate summary — the fields
 // `fathom metrics series <metric>` (cmd/fathom) looks up by name.
+// RollupSchemaVersion: 2 adds the telemetry stamps (vision 14 §3, IO-13);
+// files without the field are the v1 legacy shape, read as version-unknown.
+const RollupSchemaVersion = 2
+
 type DailyRollup struct {
+	SchemaVersion int    `json:"schema_version"`
+	FathomVersion string `json:"fathom_version"`
+
 	Date        string `json:"date"` // YYYY-MM-DD, UTC
 	GeneratedAt string `json:"generated_at"`
 
@@ -40,6 +49,8 @@ type DailyRollup struct {
 // DailyRollup — pure, no I/O, no clock beyond the injected now.
 func BuildDailyRollup(date time.Time, spend SpendReport, traffic TrafficReport, channels ChannelsReport, interventions InterventionsReport, now time.Time) DailyRollup {
 	r := DailyRollup{
+		SchemaVersion:                 RollupSchemaVersion,
+		FathomVersion:                 buildinfo.Version(),
 		Date:                          date.UTC().Format("2006-01-02"),
 		GeneratedAt:                   now.UTC().Format(time.RFC3339),
 		SpendTotalUSD:                 spend.TotalCostUSD,
