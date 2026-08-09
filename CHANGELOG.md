@@ -223,6 +223,73 @@ already treated nil as "no client supplied"; now the single-shot path
 agrees. A segfault where the honest answer is a timed-out request.
 
 
+||||||| parent of f9109a9 (feat(memory): anchored memory — the refusal is the product (AM-1..AM-5, AM-7))
+### 2026-08-08 — anchored memory: the refusal is the product (AM-1..AM-5, AM-7)
+
+Phase W of `docs/plans/ambient-fathom.md`, from
+`docs/design/anchored-memory.md`. Every memory system in common use is
+append-only and rots silently; its worst failure is not forgetting but
+confidently recalling something that stopped being true. Fathom already
+owned every primitive needed to fix that — content hashes, commit drift,
+evidence tiers, a governed injection path — so the gap was a schema and a
+drift evaluator.
+
+**A memory with no anchor is refused.** Not stored at a low tier: refused,
+with the reason and the destination — *"this is a preference, not a memory
+about this codebase; put it in CLAUDE.md."* That refusal is what keeps the
+store from becoming the junk drawer every other memory system becomes, and
+the test asserts the store is still empty afterwards, because a "refusal"
+that quietly writes a row is the failure mode itself.
+
+**The tier is derived structurally, never asserted.** Evidence carries a
+closed structural kind (machine-check, index, doc, human, model) and the
+kind — not the caller — picks the tier. `WriteMemory` routes the caller's
+claimed confidence through agentic-kit's `scoring.ApplyCeiling` plus
+`TierCeiling`, which is that function's **first caller anywhere in fathom**;
+phase S specified it, anchored memory is its first real consumer. Proven
+with a lying caller: claim `verified`/5 over a single model inference and
+the memory lands at `assumed`/1 with the cap and its reason recorded and
+the claim retained for audit. (`ApplyCeiling` alone is not enough — it
+leaves verified and pre-scan uncapped by design — so both bounds are
+applied.)
+
+**Drift is evaluated at read time, cached per index generation.** No sweep,
+no timer: it cannot be missed while the daemon is down, it costs one hash
+comparison per anchor on a path that already loads them, and a memory is
+never wrong merely because a job had not run yet. Forty surfacings of one
+memory hash its anchors once; a generation change drops that service's
+probes wholesale.
+
+**The lifecycle.** `fresh` → `suspect` when an anchor's content changes:
+still surfaces, but labeled with what changed and when, and with its tier
+dropped one step (a `verified` memory whose code moved is not verified any
+more — the check that verified it ran against different code). `suspect` →
+`orphaned` when an anchor disappears: stops surfacing, is never deleted.
+`fathom memory review` resolves a queued memory as still-true /
+no-longer-true / rewrite, and the tier consequence of *who* resolved it is
+automatic — a model confirming changed code is an inference, a human is an
+expert statement — so model-confirmed lands strictly below human-confirmed
+without anyone stating a tier. A retired memory never surfaces again and
+stays retrievable by id.
+
+**Honest granularity.** Fathom stores one content hash per file, so a
+symbol anchor's drift signal is really "the file holding it changed", and
+every probe carries a `Covers` phrase saying exactly that. Noisy in the
+safe direction, and never a label claiming a precision that does not exist.
+`docs/design/anchored-memory.md` §7 pre-registered this as the thing to
+re-examine if the suspect queue turns out to be too loud.
+
+New: `internal/memory` (model, refusals, tier derivation, read-time
+evaluator, JSONL project-scoped store, `MemoryFromFinding`) and
+`fathom memory add|list|review|show`. Memories live in
+`<root>/.fathom/memories.jsonl` — project scope, loopback only (law 13).
+
+Not in this slice, deliberately: AM-6 (obligations injection) and AM-8
+(the `memory_search` tool). Both are small follow-ups — `EvaluateAll`,
+`SortEvaluations`, `Surfacing` and `Evaluation.Line()` already produce the
+deterministic, always-labeled payload they need — and both touch files a
+concurrent change is editing.
+
 ### 2026-08-08 — `fathom flywheel`: are the feedback loops actually closed? (FW-1..3)
 
 Owner ask: *"periodically check in on our flywheel and feedback loops to

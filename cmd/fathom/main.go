@@ -145,6 +145,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdMetrics(args[1:], stdout, stderr)
 	case "findings":
 		return cmdFindings(args[1:], stdout, stderr)
+	case "memory":
+		return cmdMemory(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)
@@ -192,6 +194,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  module                Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack")
 	fmt.Fprintln(w, "  metrics               Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate")
 	fmt.Fprintln(w, "  findings              Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)")
+	fmt.Fprintln(w, "  memory                Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }
