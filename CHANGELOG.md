@@ -5,6 +5,52 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — the arm label was outrunning what it measured
+
+Hours after the OFF-arm measurement fix landed, the ledger produced its
+first two OFF rows. Both were **corrupt**, and neither said so.
+
+Their transcripts began **ten days** before the arm was set (`duration_ms`
+243h and 256h), so their token, turn and discovery totals were
+overwhelmingly *assisted* activity — yet the rows were stamped
+`arm: "off"`. One carried `tokens_total: 933,232,702`.
+
+Fed to a paired comparison, rows like these drag the OFF arm toward the ON
+arm and manufacture a false null result: **"fathom saves nothing"** — the
+single conclusion that would end the program, on evidence that is merely
+mislabelled. It would have been the most expensive possible way to be
+wrong, and nothing in the instrument would have flagged it.
+
+**Producer side.** `sessionLedgerEntry` gains `arm_coverage` (+ note),
+computed by `armCoverage` from the transcript's first timestamp, which the
+duration fold already sorted for:
+
+- `full` — the session began at or after the arm was set. The only value
+  admissible to a paired comparison.
+- `partial` — the transcript predates the arm. Retained and readable, but
+  not control data, and the note states the boundary in words.
+- `unknown` — no timestamped line, so coverage could not be determined.
+  **Not assumed clean** (law 3).
+- `""` — no arm active; the question does not arise.
+
+**Consumer side.** `buildImpactModel` excludes `partial` and `unknown`
+rows from both arms and **names the count** rather than silently dropping
+them — the brief now prints "Excluded from the comparison: 2" with the
+reason. A row stamped `off` with **no** coverage field is treated as
+unknown, because it was written by a binary that never checked; this is
+asymmetric on purpose, since `on` is ordinary operation with no bounded
+window to fall outside of.
+
+Also corrected: the brief promised "compare the two medians above" whenever
+both arms had sessions, even when neither median existed. Sessions on both
+sides is not the same as tokens on both sides, and promising a comparison
+that is not on the page is the small lie that makes a reader distrust the
+honest figures beside it.
+
+Every new test was confirmed RED against the ungated fold first — without
+it, the 933M row leaks into the OFF median.
+
+
 ### 2026-08-08 — the capability registry reported switches it did not exercise (CR-7)
 
 Found by adversarial review of `docs/design/capability-registry.md`, hours

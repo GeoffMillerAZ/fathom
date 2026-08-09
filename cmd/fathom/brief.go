@@ -356,9 +356,19 @@ func renderBriefMD(m observatoryModel) string {
 		b.WriteString(" " + imp.ExpNote + "\n")
 	}
 
-	if imp.TokensOffSessions == 0 {
+	if imp.UncleanArmRows > 0 {
+		fmt.Fprintf(&b, "- **Excluded from the comparison: %s** — %s\n", fmtThousands(imp.UncleanArmRows), imp.UncleanArmNote)
+	}
+
+	switch {
+	case imp.TokensOffSessions == 0:
 		b.WriteString("\n**Reading:** unknown, and deliberately left unknown. Anyone quoting a fathom savings percentage today would be quoting an estimate, not a measurement.\n")
-	} else {
+	case imp.TokensOnMedian == nil || imp.TokensOffMedian == nil:
+		// Sessions on both sides is not the same as tokens on both sides;
+		// promising a comparison that is not on the page is the small lie
+		// that makes a reader distrust the honest figures beside it.
+		b.WriteString("\n**Reading:** still unknown. Both arms now have sessions, but at least one side has no usable token total yet, so there is no difference to state.\n")
+	default:
 		b.WriteString("\n**Reading:** compare the two medians above; the difference is the only savings figure this brief will stand behind.\n")
 	}
 

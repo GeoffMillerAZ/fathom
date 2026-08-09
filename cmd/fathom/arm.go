@@ -125,6 +125,38 @@ func currentArmLabel(now time.Time) string {
 	return "on"
 }
 
+// armCoverage reports whether a session whose measured window began at
+// sessionStart lies ENTIRELY inside the currently-active arm window.
+//
+// The Arm label alone is a lie of omission, and it corrupted real data on
+// 2026-08-08: two sessions whose transcripts began ten days before the arm
+// was set were stamped arm="off" while carrying token and discovery totals
+// that were overwhelmingly ASSISTED activity. Rows like that make the OFF
+// arm look identical to the ON arm, manufacturing the one conclusion
+// ("fathom saves nothing") that would end the program — on evidence that
+// is merely mislabelled.
+//
+// Returns ("", "") when no arm is active: the question does not arise.
+func armCoverage(sessionStart *time.Time, now time.Time) (coverage, note string) {
+	st, active := loadArmState(now)
+	if !active {
+		return "", ""
+	}
+	setAt, err := time.Parse(time.RFC3339, st.SetAt)
+	if err != nil {
+		return "unknown", "the arm's set_at is unparseable (" + st.SetAt + "), so coverage could not be determined — not assumed clean (law 3)"
+	}
+	if sessionStart == nil {
+		return "unknown", "no timestamped transcript line, so the session's start is unknown and coverage could not be determined — not assumed clean (law 3)"
+	}
+	if sessionStart.Before(setAt) {
+		return "partial", "this session began " + sessionStart.UTC().Format(time.RFC3339) +
+			", BEFORE the arm was set at " + setAt.UTC().Format(time.RFC3339) +
+			" — its totals include assisted activity, so it is not control data and must be excluded from paired comparison"
+	}
+	return "full", ""
+}
+
 func cmdArm(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		st, active := loadArmState(time.Now())

@@ -62,10 +62,14 @@ type obsImpact struct {
 	DiscoveryTotal *int   `json:"discovery_actions_total,omitempty"`
 	DiscoveryNote  string `json:"discovery_note"`
 
-	TokensOnSessions  int  `json:"tokens_on_sessions"`
-	TokensOffSessions int  `json:"tokens_off_sessions"`
-	TokensOnMedian    *int `json:"tokens_on_median,omitempty"`
-	TokensOffMedian   *int `json:"tokens_off_median,omitempty"`
+	TokensOnSessions  int `json:"tokens_on_sessions"`
+	TokensOffSessions int `json:"tokens_off_sessions"`
+	// UncleanArmRows counts ledger rows excluded from the paired
+	// comparison because their session predates the arm they wear.
+	UncleanArmRows  int    `json:"unclean_arm_rows,omitempty"`
+	UncleanArmNote  string `json:"unclean_arm_note,omitempty"`
+	TokensOnMedian  *int   `json:"tokens_on_median,omitempty"`
+	TokensOffMedian *int   `json:"tokens_off_median,omitempty"`
 	// Spend-shaped medians are in+out only (cache reads excluded — the
 	// 2026-08-08 inflation finding); these two carry the disclosure.
 	TokensPreSplitRows *int   `json:"tokens_pre_split_rows,omitempty"`
@@ -329,6 +333,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		preSplitRows                int
 		cacheReadSum, cacheReadRows int
 		onSessions, offSessions     int
+		uncleanArmRows              int
 		firstAt, lastAt             string
 		firstEditTurns              []int
 		expRatios                   []int
@@ -398,6 +403,27 @@ func buildImpactModel(now time.Time) obsImpact {
 			cacheReadSum += *e.TokensCacheRead
 			cacheReadRows++
 		}
+		// Arm coverage gate (2026-08-08 corruption finding): a row whose
+		// transcript BEGAN before the arm was set carries mostly assisted
+		// activity while wearing an "off" label. Admitting it to the
+		// paired comparison drags the OFF arm toward the ON arm and
+		// manufactures a false null result — the one conclusion that would
+		// end the program, on mislabelled evidence. Such rows are counted
+		// and NAMED, never silently dropped and never silently used.
+		if e.ArmCoverage == "partial" || e.ArmCoverage == "unknown" {
+			uncleanArmRows++
+			continue
+		}
+		// A row stamped "off" with NO coverage field was written by a
+		// binary that never checked — so its coverage is unknown, and
+		// unknown is not clean (law 3). This is asymmetric on purpose:
+		// "off" names a bounded window a session can fall outside of,
+		// while "on" is ordinary operation with no window to be inside,
+		// so an on-row needs no stamp.
+		if e.Arm == "off" && e.ArmCoverage == "" {
+			uncleanArmRows++
+			continue
+		}
 		switch e.Arm {
 		case "off":
 			offSessions++
@@ -431,6 +457,12 @@ func buildImpactModel(now time.Time) obsImpact {
 		imp.DiscoveryNote = "discovery instrument absent from every ledger session — unknown, not zero"
 	}
 	imp.TokensOnSessions, imp.TokensOffSessions = onSessions, offSessions
+	imp.UncleanArmRows = uncleanArmRows
+	if uncleanArmRows > 0 {
+		imp.UncleanArmNote = itoa(uncleanArmRows) + " OFF-arm session(s) excluded from the comparison: each either began " +
+			"before the arm was set (so its totals include assisted activity) or predates coverage stamping (so its " +
+			"coverage is unknown, which is not the same as clean). Counted here, never silently dropped."
+	}
 	if v, ok := medianInt(onTokens); ok {
 		imp.TokensOnMedian = &v
 	}

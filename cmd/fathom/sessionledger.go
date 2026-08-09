@@ -69,6 +69,30 @@ type sessionLedgerEntry struct {
 	// channels live, "off" = the counterfactual OFF arm) — the field that
 	// makes paired comparison possible (vision 14 §2, IO-14/15).
 	Arm string `json:"arm"`
+	// ArmCoverage says whether this session's MEASURED WINDOW lies entirely
+	// inside the arm window it is stamped with.
+	//
+	// Without it the Arm field is a lie of omission, and it produced real
+	// corrupt data on 2026-08-08: two sessions whose transcripts began TEN
+	// DAYS before the arm was set were stamped arm="off", carrying token
+	// and discovery totals that were overwhelmingly ASSISTED activity. Fed
+	// to a paired comparison, rows like those make the OFF arm look
+	// identical to the ON arm — manufacturing the single conclusion
+	// ("fathom saves nothing") that would end the program, on evidence
+	// that is simply mislabelled.
+	//
+	//   "full"    — the transcript begins at or after the arm was set;
+	//               the whole measured window ran under this arm. The only
+	//               value admissible to a paired comparison.
+	//   "partial" — the transcript predates the arm. The row is retained
+	//               and readable, but it is NOT control data.
+	//   "unknown" — no timestamped transcript line, so coverage could not
+	//               be determined. Not assumed clean (law 3).
+	//   ""        — no arm was active; the question does not arise.
+	ArmCoverage string `json:"arm_coverage,omitempty"`
+	// ArmCoverageNote states the boundary in words when coverage is not
+	// full, so a reader never has to reconstruct it from timestamps.
+	ArmCoverageNote string `json:"arm_coverage_note,omitempty"`
 	// VerifyCatches is the stop-hook verify pass's proven-failing count for
 	// newly-claimed tasks this session — nil (omitted) when verify never
 	// ran, which is UNKNOWN, never a fabricated zero (IO-15, law 3).
@@ -178,6 +202,8 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 		Repo:          repo,
 		At:            now.UTC().Format(time.RFC3339),
 	}
+
+	e.ArmCoverage, e.ArmCoverageNote = armCoverage(ts.FirstTS, now)
 
 	if ts.DurationMS != nil {
 		e.DurationMS = ts.DurationMS
@@ -296,6 +322,11 @@ type transcriptSummary struct {
 	SidechainToolResults  int    // tool results inside sidechains (subagents)
 	ExplorationNote       string // the estimator disclosure, or the absence reason
 	Truncated             bool
+	// FirstTS is the earliest timestamped line in the transcript — when
+	// this session's measured window actually BEGAN. The duration
+	// computation already sorts for it; keeping it is what lets the arm
+	// stamp be honest about coverage (see armCoverage).
+	FirstTS *time.Time
 }
 
 // transcriptLine is the subset of Claude Code's session-transcript JSONL
@@ -543,6 +574,12 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		sort.Slice(timestamps, func(i, j int) bool { return timestamps[i].Before(timestamps[j]) })
 		dur := timestamps[len(timestamps)-1].Sub(timestamps[0]).Milliseconds()
 		out.DurationMS = &dur
+		first := timestamps[0]
+		out.FirstTS = &first
+	} else if len(timestamps) == 1 {
+		first := timestamps[0]
+		out.FirstTS = &first
+		out.DurationNote = "unavailable: fewer than two timestamped transcript lines"
 	} else {
 		out.DurationNote = "unavailable: fewer than two timestamped transcript lines"
 	}

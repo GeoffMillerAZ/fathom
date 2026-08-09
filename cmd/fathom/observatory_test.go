@@ -261,7 +261,7 @@ func TestObservatoryImpactPage(t *testing.T) {
 	lines := []string{
 		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-01T10:00:00Z","tokens_total":50100,"tokens_in":60,"tokens_out":40,"tokens_cache_read":50000,"tokens_note":"","verify_catches":3}`,
 		`{"schema_version":2,"session_id":"b","arm":"on","at":"2026-08-02T10:00:00Z","tokens_total":900200,"tokens_in":120,"tokens_out":80,"tokens_cache_read":900000,"tokens_note":""}`,
-		`{"schema_version":2,"session_id":"c","arm":"off","at":"2026-08-03T10:00:00Z","tokens_total":150,"tokens_in":90,"tokens_out":60,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"c","arm":"off","arm_coverage":"full","at":"2026-08-03T10:00:00Z","tokens_total":150,"tokens_in":90,"tokens_out":60,"tokens_note":""}`,
 		`{"schema_version":2,"session_id":"d","arm":"on","at":"2026-08-04T10:00:00Z","tokens_total":596931950,"tokens_note":""}`,
 	}
 	if err := os.WriteFile(ledger, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
@@ -295,6 +295,9 @@ func TestObservatoryImpactPage(t *testing.T) {
 	}
 	if imp.TokensOffSessions != 1 {
 		t.Errorf("off sessions = %d, want 1", imp.TokensOffSessions)
+	}
+	if imp.UncleanArmRows != 0 {
+		t.Errorf("unclean rows = %d, want 0 — every off row here carries full coverage", imp.UncleanArmRows)
 	}
 
 	m := observatoryModel{Impact: imp}
