@@ -38,3 +38,10 @@ coverage.*
 .claude/worktrees/
 .claude/settings.local.json
 cmd/fathom/workspace/
+
+# Phase U (internal/wiring): per-repository wiring state. Receipts carry the
+# FULL prior content of every file fathom rewrote, so they are local-only by
+# construction (law 13) and must never be committed; owned.json is this
+# checkout's ownership map, not a shared fact about the project.
+.fathom/receipts.jsonl
+.fathom/owned.json

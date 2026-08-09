@@ -42,6 +42,70 @@ outranks a tiny one failing three, because the gap is worth more. Ties
 break on sessions then name, so the order is stable.
 
 
+||||||| parent of 60feb50 (self-healing fleet, the engine: fathom edits repositories, law 15 bounds it (SH-1..SH-6))
+### 2026-08-08 — self-healing fleet, the engine: fathom edits repositories, and law 15 bounds it (SH-1..SH-6)
+
+The observatory has correctly printed `fathom fleet reconcile --apply`
+beside nine of seventeen repositories for weeks. Nobody ran it. That is not
+a discipline problem — advice that requires a human to switch context, find
+a terminal and type a command is advice that does not happen. The fix is a
+button, and all the design work is in making the button safe.
+
+`internal/wiring` is that safety. Three tiers of ownership, and fathom's
+authority differs at each:
+
+- **Marker format v3** (`<!-- fathom:begin v3 sha256:… -->`) carries the
+  template version AND the digest of the region body *as fathom last wrote
+  it*. Re-hashing on read makes a hand edit inside fathom's own region
+  detectable with no history, no daemon and no network. A pre-v3 marker
+  records no digest, so its provenance is **unknown** — named separately
+  from drift, because the two demand different responses (law 3).
+- **`.fathom/owned.json`** records the keys fathom added to structured
+  files it does not own (lefthook.yml, `.claude/settings.json`). A key
+  carrying fathom's own name that the ledger does not record is somebody
+  else's and is invisible. Losing the ledger causes fathom to consider
+  itself the owner of nothing — a no-op, never a duplicate.
+- **Plan → apply → receipt.** The plan is *always* computed before any
+  mutation; there is no code path that writes a byte without first
+  producing the diff. Apply executes only `apply` items, and **one BLOCKED
+  item does not block the others in the same run**.
+
+Law 15 is enforced one-sidedly, and the asymmetry is the argument: a false
+stop costs a human one diff, a false merge silently destroys a hand-tuned
+configuration across seventeen repositories and is discovered weeks later.
+So a drifted region is **never** merged — the item reports BLOCKED with
+both versions attached and the file on disk is byte-identical afterwards.
+
+Proven, not asserted: content outside fathom's regions survives
+byte-for-byte including CRLF line endings; three foreign lefthook commands
+keep their order across an apply that adds one; another tool's
+`settings.json` hook and unrelated top-level keys survive; and applying
+twice adds fathom's entries exactly once — including with the ownership
+ledger deleted between the runs. That last one is the `fathom init`
+hook-duplication regression, structurally fixed rather than patched.
+
+New verbs:
+
+    fathom fleet receipts               what fathom has written here, newest first
+    fathom fleet undo --last            restore the most recent apply
+    fathom fleet undo <receipt-id>      restore that one
+
+Undo is a *restore from receipt*, not an inverse operation — the receipt
+carries the full prior content of every file and region touched, so undo
+never reasons about what a change meant. It refuses, writing nothing at
+all, when any file in the receipt has changed since; and the undo is itself
+receipted, so it is reversible in turn. Receipts are append-only, local,
+never leave the machine (law 13), and are pruned by count rather than age
+so an undo is always available for the last N applies.
+
+Also fixed, found by this phase's full-suite run: `fetchServicesOnce`
+dereferenced a nil `*http.Client`, so `fathom flywheel` **panicked
+outright** on any machine whose local call log is absent
+(`resolveCallLogCandidates(nil, …)`). `fetchServices`' own retry path
+already treated nil as "no client supplied"; now the single-shot path
+agrees. A segfault where the honest answer is a timed-out request.
+
+
 ### 2026-08-08 — `fathom flywheel`: are the feedback loops actually closed? (FW-1..3)
 
 Owner ask: *"periodically check in on our flywheel and feedback loops to
