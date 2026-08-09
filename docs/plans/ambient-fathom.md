@@ -92,10 +92,10 @@
 
 ## Y — Realization grade (`docs/design/realization-grade.md`)
 
-- [ ] the grade folds five dimensions — wired, fresh, queried, preventing, gating — each yes/no/not-applicable with not-applicable leaving the denominator; queried counts calls IN THE WINDOW, not calls ever {id: RG-1, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestRealizationGradeDimensions}
-- [ ] the letter carries the first broken rung in ladder order, and a repository with no sessions in the window grades idle rather than F {id: RG-2, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestIdleIsNotFailure}
-- [ ] grade computation is pure over a service row plus a window with an injected clock — same inputs, same letter {id: RG-3, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestGradeIsPure}
-- [ ] the fleet page ranks by unrealized value (dimensions unrealized × sessions in window), deterministic and stable under equal keys, replacing the sort by call count {id: RG-4, symbol: rankByUnrealized, package: cmd/fathom, reachable_from: TestRankByUnrealizedValue}
+- [x] the grade folds five dimensions — wired, fresh, queried, preventing, gating — each yes/no/not-applicable with not-applicable leaving the denominator; queried counts calls IN THE WINDOW, not calls ever {id: RG-1, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestRealizationGradeDimensions}
+- [x] the letter carries the first broken rung in ladder order, and a repository with no sessions in the window grades idle rather than F {id: RG-2, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestIdleIsNotFailure}
+- [x] grade computation is pure over a service row plus a window with an injected clock — same inputs, same letter {id: RG-3, symbol: realizationGrade, package: cmd/fathom, reachable_from: TestGradeIsPure}
+- [x] the fleet page ranks by unrealized value (dimensions unrealized × sessions in window), deterministic and stable under equal keys, replacing the sort by call count {id: RG-4, symbol: rankByUnrealized, package: cmd/fathom, reachable_from: TestRankByUnrealizedValue}
 - [ ] the service page renders the realization ladder with evidence inline and the first broken rung carrying its remedy — a button after phase U {id: RG-5, symbol: observatoryServicePage, package: cmd/fathom, reachable_from: TestServicePageRealizationLadder}
 - [ ] per-dimension 30-day series built from real call-log rows, rendering `stat.Absent` with a reason for days with no data — never an interpolated line, never a zero-height bar for an unmeasured dimension {id: RG-6, symbol: dimensionSeries, package: cmd/fathom, reachable_from: TestDimensionSeriesAbsenceIsNamed}
 - [ ] the fleet page's grade distribution over 30 days — the honest scoreboard for phase U: if this does not improve, the buttons did not work {id: RG-7, symbol: gradeDistributionSeries, package: cmd/fathom, reachable_from: TestGradeDistributionSeries}

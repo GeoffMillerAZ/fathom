@@ -5,6 +5,43 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — phase Y core: the grade measures realization, not configuration (RG-1..4)
+
+`wiringGrade` folds four signals, three of which are "a file says the
+right thing" and one of which is "at least one call happened, **ever**".
+That is the wrong ceiling: a repository can score A and deliver nothing —
+wired perfectly, one call in July, no obligations firing, no gate running.
+Grading configuration rewards the act of configuring, which is precisely
+the behaviour a tool should not optimize for.
+
+`realizationGrade` folds five dimensions as a **ladder**, each a
+precondition for the next: **wired → fresh → queried → preventing →
+gating**. Three consequences:
+
+- **"Queried" counts calls in the WINDOW, not calls ever.** The incumbent
+  test can never go down, which makes it useless as a health signal.
+- **"Preventing" and "gating" are new, and they are the point** — the only
+  two dimensions that measure fathom *doing* something rather than being
+  available. Both fold from data already collected.
+- **The letter names the first broken rung** (`B — not preventing`). A
+  bare letter was never actionable.
+
+Two absences are handled as absences, not failures. A repository with no
+plans has nothing for the gate to check, so *gating* is not-applicable and
+leaves the denominator. A repository with **no sessions in the window**
+grades **idle**, never F — an indexed reference corpus nobody codes in is
+working exactly as intended, and nine false alarms teach a reader to skim
+past the real one. Freshness that could not be determined is likewise
+not-applicable rather than failed.
+
+The fleet page now orders by **unrealized value** — unmet rungs weighted
+by sessions — replacing the sort by call count. Sorting by traffic answers
+"who is busy", which nobody needs to be told; this answers "where should I
+spend the next ten minutes". A large busy repository failing two rungs
+outranks a tiny one failing three, because the gap is worth more. Ties
+break on sessions then name, so the order is stable.
+
+
 ### 2026-08-08 — `fathom flywheel`: are the feedback loops actually closed? (FW-1..3)
 
 Owner ask: *"periodically check in on our flywheel and feedback loops to

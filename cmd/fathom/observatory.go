@@ -41,6 +41,10 @@ type obsServiceRow struct {
 	// obligations-compile condition.
 	Config      *obsConfigPanel `json:"config,omitempty"`
 	CompileNote string          `json:"compile_note,omitempty"`
+	// Realization (phase Y): the five-rung ladder — wired, fresh, queried,
+	// preventing, gating — that grades what fathom is DOING here rather
+	// than how it is configured.
+	Realization *realizationReport `json:"realization,omitempty"`
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -184,6 +188,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		// queried (CallsTotal) — a remote corpus can be queried with zero
 		// sessions of its own.
 		sessionsByRepo := map[string]int{}
+		verifyRunsByRepo := map[string]int{}
 		ledgerReadable := false
 		if data, lerr := os.ReadFile(sessionLedgerPath()); lerr == nil {
 			ledgerReadable = true
@@ -192,10 +197,18 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 					continue
 				}
 				var row struct {
-					Repo string `json:"repo"`
+					Repo          string `json:"repo"`
+					VerifyCatches *int   `json:"verify_catches"`
 				}
 				if json.Unmarshal([]byte(line), &row) == nil && row.Repo != "" {
 					sessionsByRepo[strings.ToLower(row.Repo)]++
+					// verify_catches is nil when the gate never RAN, so a
+					// non-nil value (including 0) is a run. Counting a nil
+					// as a run would report a gate that never fired as
+					// gating (law 3).
+					if row.VerifyCatches != nil {
+						verifyRunsByRepo[strings.ToLower(row.Repo)]++
+					}
 				}
 			}
 		}
@@ -279,6 +292,20 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				}
 			}
 			row.Grade, row.GradeRaise = wiringGrade(row)
+			// Phase Y: the REALIZATION ladder alongside the wiring grade.
+			// The window is the same 14 days the traffic sparkline uses,
+			// so the letter and the chart can never disagree.
+			win := realizationWindow{
+				Calls:            sumInts(row.TrafficDays),
+				ObligationServes: obligationsBySvc[name],
+				VerifyRuns:       verifyRunsByRepo[name],
+				HasPlans:         repoHasPlans(info.path),
+			}
+			if row.SessionCount != nil {
+				win.Sessions = *row.SessionCount
+			}
+			rr := realizationGrade(row, win)
+			row.Realization = &rr
 			cp := buildConfigPanel(info.path, obligationsBySvc[name])
 			row.Config = &cp
 			if note, ok := compileBySvc[name]; ok && note != "" {
@@ -292,12 +319,22 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
 			m.TrafficDays = append(m.TrafficDays, obsTrafficDay{Date: d, Calls: byDay[d]})
 		}
-		// IQ-8: most active first; name breaks ties so the order is stable.
+		// RG-4: ordered by UNREALIZED VALUE, not by traffic. Sorting by
+		// call count answers "who is busy", which nobody needs to be told;
+		// this answers "where should I spend the next ten minutes". Ties
+		// break on sessions then name, so the order is stable (house
+		// contract). A row whose ladder could not be built falls back to
+		// the traffic key rather than being dropped.
 		sort.SliceStable(m.Services, func(i, j int) bool {
-			if m.Services[i].CallsTotal != m.Services[j].CallsTotal {
-				return m.Services[i].CallsTotal > m.Services[j].CallsTotal
+			a, b := m.Services[i], m.Services[j]
+			ua, ub := unrealizedScore(a), unrealizedScore(b)
+			if ua != ub {
+				return ua > ub
 			}
-			return m.Services[i].Service < m.Services[j].Service
+			if a.CallsTotal != b.CallsTotal {
+				return a.CallsTotal > b.CallsTotal
+			}
+			return a.Service < b.Service
 		})
 		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
