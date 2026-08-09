@@ -25,6 +25,12 @@
 - [x] a capability is `switchable` ONLY when an enforcement site reads the resolution and acts on it: `obligations`, `guards` and `verify-gate` are gated before any daemon traffic, every other entry is status and `set` refuses it naming the real control; enforcement fails OPEN so a malformed config never disarms a safety feature {id: CR-7, symbol: capabilityOffAt, package: cmd/fathom, reachable_from: TestSwitchOffStopsGuards}
 - [x] doctor gains a capabilities section where every off entry carries a reason and either a command or an explicit nothing-to-run; it produces zero known-false failures in a repository with no fathom configuration at all (the O23 class) {id: CR-6, symbol: checkCapabilities, package: cmd/fathom, reachable_from: TestDoctorCapabilitiesOnVirginRepo}
 
+## T2 — The flywheel checks itself (owner ask, 2026-08-08)
+
+- [x] `fathom flywheel` reports every feedback loop as CLOSED / OPEN / IDLE with its evidence and, when not closed, a remedy; a loop is CLOSED only when data is produced, arrives AND is consumed, so a producer that nobody reads is OPEN rather than healthy-looking {id: FW-1, symbol: runFlywheelChecks, package: cmd/fathom, reachable_from: TestFlywheelEveryCheckCarriesEvidence}
+- [x] the arm loop detects BOTH 2026-08-08 failure signatures: armed-but-recording-nothing, and rows-arriving-none-admissible — the second is the subtle one, because the producing side looks alive {id: FW-2, symbol: checkLoopArm, package: cmd/fathom, reachable_from: TestFlywheelSeesRowsArrivingButInadmissible}
+- [x] IDLE never fails the exit code and OPEN always does: a loop with nothing to measure yet is not a defect, and failing on it teaches people to ignore the check {id: FW-3, symbol: flywheelExit, package: cmd/fathom, reachable_from: TestFlywheelIdleIsNotFailure}
+
 ---
 
 ## U — Self-healing fleet (`docs/design/self-healing-fleet.md`, law 15)

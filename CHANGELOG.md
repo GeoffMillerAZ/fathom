@@ -5,6 +5,46 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-08 — `fathom flywheel`: are the feedback loops actually closed? (FW-1..3)
+
+Owner ask: *"periodically check in on our flywheel and feedback loops to
+make sure they are working as expected."* The durable answer to "check
+periodically" is not a habit, it is a verb.
+
+Two measurement failures in one day argued for it, and **both were
+silent**: the OFF arm burned fourteen hours of budget recording nothing,
+and then — once fixed — produced rows that were all inadmissible. Every
+dashboard looked fine throughout, because every surface asked *what do the
+numbers say?* and none asked *is the pipe connected?*
+
+`fathom flywheel` checks seven loops — session ledger, counterfactual arm,
+call log, obligations, verify gate, exploration ledger, observations — and
+reports each as:
+
+- **CLOSED** — produced, arriving, **and consumed**. A producer nobody
+  reads is OPEN, not healthy; that asymmetry is the whole point.
+- **OPEN** — a defect. Exit code 1.
+- **IDLE** — honestly nothing to measure yet. Never fails the exit code,
+  because a check that cries wolf gets ignored.
+
+Every verdict carries its numbers, and every non-closed loop carries a
+remedy or an explicit "nothing to run".
+
+The arm loop is checked hardest, since it failed twice: it separates
+*armed but recording nothing* from *rows arriving, none admissible* —
+the second being the subtle one, because the producing side looks alive.
+
+**It caught a bug in itself on first run.** The obligations loop read
+`ObligationCalls` off the impact model, where it is always zero — the
+figure is folded from the call log by `buildObservatoryModel`. It reported
+IDLE on a loop carrying 6,994 injections. Fixed by reading the same source
+the surface it mirrors reads, which is now stated as the rule for every
+check.
+
+Live result on the fleet at time of writing: 4 closed, 1 open
+(counterfactual arm — rows arriving, none admissible), 2 idle.
+
+
 ### 2026-08-08 — the arm label was outrunning what it measured
 
 Hours after the OFF-arm measurement fix landed, the ledger produced its
