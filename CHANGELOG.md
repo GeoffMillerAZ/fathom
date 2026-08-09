@@ -5,6 +5,46 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-09 — "188 sessions" was 8 sessions (MI-1..3)
+
+Setting up the A/B run surfaced the largest measurement defect in the
+program. Asked "what counts as a session?", the ledger answered
+**200 rows / 8 distinct session ids**.
+
+Claude Code's `Stop` event fires at every **turn** boundary, not at session
+close, so a long session appends a row each time the assistant finishes
+speaking. One resume_as_code session wrote **74** of them, several with
+identical turn counts.
+
+Consequences, all silent until now:
+
+- every "of 188 sessions" denominator was inflated roughly **25×**
+- `discovery_actions_total` is a per-session **cumulative**, so summing
+  rows counted the same session once per turn: **17,727 → 1,038**
+- the pre-registered "≥20 sessions per arm" floor would have been
+  satisfied by about **one** real session
+
+Fixed by deduping at read time, keeping the LAST row per session id (the
+final stop has seen the most of the transcript). The raw stop count is
+still reported beside the session count, so the correction is auditable
+rather than a quiet restatement.
+
+**`fathom rate <1-5> [--note]`** closes the other half of the criterion.
+The registered text is *"lower median tokens-per-session AT
+EQUAL-OR-BETTER self-rated outcome"* — tokens and turns were
+instrumented, the outcome never was. Without it a token drop cannot be
+told apart from an unaided session giving up sooner, which would be the
+most misleading thing this program could report. A Stop hook cannot prompt
+a human, so ratings live in their own log and join to the ledger by
+session id at read time; a rating that cannot be joined is refused rather
+than stored.
+
+`evaluateABCriterion` now states in words whether the criterion is
+evaluable and names **every** unmet part. Today: *"the OFF arm has 0 of
+the 20 sessions registered as the minimum; the ON arm has 5 of 20; …
+self-rated outcomes are missing."*
+
+
 ### 2026-08-08 — phase Y core: the grade measures realization, not configuration (RG-1..4)
 
 `wiringGrade` folds four signals, three of which are "a file says the

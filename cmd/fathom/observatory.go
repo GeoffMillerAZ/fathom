@@ -56,9 +56,15 @@ type obsArmBanner struct {
 // obsImpact is the wins model: every count carries its denominator and its
 // note; a nil pointer with a note is an absent instrument, never a zero.
 type obsImpact struct {
-	LedgerSessions int    `json:"ledger_sessions"`
-	LedgerNote     string `json:"ledger_note,omitempty"`
-	DateRange      string `json:"date_range,omitempty"`
+	LedgerSessions int `json:"ledger_sessions"`
+	// LedgerStops is the raw row count. It is reported alongside the
+	// session count so the gap between them is visible rather than
+	// silently corrected: 200 stops across 8 sessions is a fact about how
+	// the harness fires its hook, and hiding it would make the correction
+	// unauditable.
+	LedgerStops int    `json:"ledger_stops,omitempty"`
+	LedgerNote  string `json:"ledger_note,omitempty"`
+	DateRange   string `json:"date_range,omitempty"`
 
 	VerifyCatchesTotal *int   `json:"verify_catches_total,omitempty"`
 	VerifyCatchesNote  string `json:"verify_catches_note"`
@@ -68,6 +74,17 @@ type obsImpact struct {
 
 	TokensOnSessions  int `json:"tokens_on_sessions"`
 	TokensOffSessions int `json:"tokens_off_sessions"`
+	// RatedOn / RatedOff and their medians are the OUTCOME half of the
+	// pre-registered criterion (production-tokenomics.md §5): "lower median
+	// tokens AT EQUAL-OR-BETTER self-rated outcome". Without them a token
+	// drop cannot be told apart from an unaided session giving up sooner.
+	RatedOn      int  `json:"rated_on_sessions"`
+	RatedOff     int  `json:"rated_off_sessions"`
+	RatingOnMed  *int `json:"rating_on_median,omitempty"`
+	RatingOffMed *int `json:"rating_off_median,omitempty"`
+	// CriterionNote states, in words, whether the registered criterion can
+	// be evaluated yet and what is missing — never a silent absence.
+	CriterionNote string `json:"criterion_note"`
 	// UncleanArmRows counts ledger rows excluded from the paired
 	// comparison because their session predates the arm they wear.
 	UncleanArmRows  int    `json:"unclean_arm_rows,omitempty"`
@@ -375,6 +392,24 @@ func buildImpactModel(now time.Time) obsImpact {
 		firstEditTurns              []int
 		expRatios                   []int
 	)
+	// ONE ROW PER SESSION, not one per stop (2026-08-09 finding).
+	//
+	// Claude Code's Stop event fires at every TURN boundary, not at session
+	// close, so a single long session appends a row each time the assistant
+	// finishes speaking. Measured on the live ledger: 200 rows, 8 distinct
+	// sessions — one resume_as_code session alone wrote 74 of them, several
+	// with identical turn counts. Counting rows inflated every denominator
+	// roughly 25x ("of 188 sessions" was of 8), and would have let the
+	// pre-registered "≥20 sessions per arm" criterion be satisfied by about
+	// one real session.
+	//
+	// Dedupe at READ time, keeping the LAST row per session id: the final
+	// stop has seen the most of the transcript, so its turn/token figures
+	// are the complete ones. Read-time rather than a rewrite, because the
+	// ledger is append-only evidence and the superseded rows are history,
+	// not garbage.
+	latest := map[string]sessionLedgerEntry{}
+	var order []string
 	for _, line := range strings.Split(string(data), "\n") {
 		if line == "" {
 			continue
@@ -383,6 +418,22 @@ func buildImpactModel(now time.Time) obsImpact {
 		if json.Unmarshal([]byte(line), &e) != nil {
 			continue
 		}
+		key := e.SessionID
+		if key == "" {
+			// A row with no session id cannot be deduped, so it counts once
+			// on its own terms rather than being dropped or merged with
+			// every other anonymous row.
+			key = "\x00anon:" + e.At + ":" + e.Repo
+		}
+		if _, seen := latest[key]; !seen {
+			order = append(order, key)
+		}
+		latest[key] = e
+	}
+	imp.LedgerStops = len(strings.Split(strings.TrimRight(string(data), "\n"), "\n"))
+
+	for _, key := range order {
+		e := latest[key]
 		imp.LedgerSessions++
 		if e.At != "" {
 			if firstAt == "" || e.At < firstAt {
@@ -493,6 +544,29 @@ func buildImpactModel(now time.Time) obsImpact {
 	} else {
 		imp.DiscoveryNote = "discovery instrument absent from every ledger session — unknown, not zero"
 	}
+	// Join the self-ratings by session id (rate.go). Join-at-read, so a
+	// rating given after a session ended still counts.
+	ratings := loadRatings(ratingsPath())
+	var onR, offR []int
+	for _, key := range order {
+		e := latest[key]
+		r, ok := ratings[e.SessionID]
+		if !ok || e.SessionID == "" {
+			continue
+		}
+		if e.Arm == "off" {
+			offR = append(offR, r.Rating)
+		} else {
+			onR = append(onR, r.Rating)
+		}
+	}
+	imp.RatedOn, imp.RatedOff = len(onR), len(offR)
+	if v, ok := medianInt(onR); ok {
+		imp.RatingOnMed = &v
+	}
+	if v, ok := medianInt(offR); ok {
+		imp.RatingOffMed = &v
+	}
 	imp.TokensOnSessions, imp.TokensOffSessions = onSessions, offSessions
 	imp.UncleanArmRows = uncleanArmRows
 	if uncleanArmRows > 0 {
@@ -506,6 +580,9 @@ func buildImpactModel(now time.Time) obsImpact {
 	if v, ok := medianInt(offTokens); ok {
 		imp.TokensOffMedian = &v
 	}
+	// LAST: the criterion reads the session counts and both medians, so it
+	// must run after every one of them is assigned.
+	imp.CriterionNote = evaluateABCriterion(imp)
 	if preSplitRows > 0 {
 		imp.TokensPreSplitRows = &preSplitRows
 	}

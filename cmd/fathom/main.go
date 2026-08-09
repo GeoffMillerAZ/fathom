@@ -103,6 +103,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdCapabilities(args[1:], stdout, stderr)
 	case "flywheel":
 		return cmdFlywheel(args[1:], stdout, stderr)
+	case "rate":
+		return cmdRate(args[1:], stdout, stderr)
 	case "fleet":
 		if len(args) > 1 && args[1] == "report" {
 			return cmdFleetReport(args[2:], stdout, stderr)
@@ -185,6 +187,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  doctor                Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic")
 	fmt.Fprintln(w, "  capabilities          What is switched on here and WHY anything is off: list | explain <id> | set <id> on|off")
 	fmt.Fprintln(w, "  flywheel              Are the feedback loops closed? Each loop CLOSED/OPEN/IDLE with its evidence and remedy")
+	fmt.Fprintln(w, "  rate                  Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)")
 	fmt.Fprintln(w, "  research              The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)")
 	fmt.Fprintln(w, "  module                Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack")
 	fmt.Fprintln(w, "  metrics               Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate")

@@ -33,6 +33,14 @@
 
 ---
 
+## M — Measurement integrity (found while setting up the A/B run, 2026-08-09)
+
+- [x] the ledger counts SESSIONS, not stops: Claude Code's Stop event fires at every turn boundary, so 200 rows were 8 sessions; deduped at read time keeping the last row per session id, with the raw stop count still reported so the correction is auditable {id: MI-1, symbol: buildImpactModel, package: cmd/fathom, reachable_from: TestLedgerCountsSessionsNotStops}
+- [x] `fathom rate <1-5>` records the self-rated outcome — the half of the pre-registered criterion that was never instrumented; joined to the ledger by session id at read time so a late rating still counts, and refused outright when it cannot be joined {id: MI-2, symbol: cmdRate, package: cmd/fathom, reachable_from: TestRateRecordsAndRerating}
+- [x] the registered criterion is evaluated in words and names every unmet part — session floor per arm, missing medians, missing ratings — rather than reporting a bare "not yet" {id: MI-3, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestLedgerCountsSessionsNotStops}
+
+---
+
 ## U — Self-healing fleet (`docs/design/self-healing-fleet.md`, law 15)
 
 - [x] marker format v3 carries the template version and the sha256 of the region body as fathom last wrote it; a body whose digest does not match is drift {id: SH-1, symbol: parseOwnedRegion, package: internal/wiring, reachable_from: TestOwnedRegionDigestDetectsHandEdit}

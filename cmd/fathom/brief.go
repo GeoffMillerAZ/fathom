@@ -310,6 +310,9 @@ func renderBriefMD(m observatoryModel) string {
 	// ---- 2. Prevention ----
 	b.WriteString("\n## 2 — What did fathom prevent?\n\n")
 	fmt.Fprintf(&b, "Measured over %s recorded coding sessions", fmtThousands(imp.LedgerSessions))
+	if imp.LedgerStops > imp.LedgerSessions {
+		fmt.Fprintf(&b, " (from %s recorded stops — the harness fires its end-of-turn hook many times per session, and each session is counted once)", fmtThousands(imp.LedgerStops))
+	}
 	if imp.DateRange != "" {
 		fmt.Fprintf(&b, " (%s)", imp.DateRange)
 	}
@@ -356,6 +359,20 @@ func renderBriefMD(m observatoryModel) string {
 		b.WriteString(" " + imp.ExpNote + "\n")
 	}
 
+	if imp.RatedOn > 0 || imp.RatedOff > 0 {
+		fmt.Fprintf(&b, "- **Self-rated outcome:** %s ON session(s) rated", fmtThousands(imp.RatedOn))
+		if imp.RatingOnMed != nil {
+			fmt.Fprintf(&b, " (median %d/5)", *imp.RatingOnMed)
+		}
+		fmt.Fprintf(&b, ", %s OFF", fmtThousands(imp.RatedOff))
+		if imp.RatingOffMed != nil {
+			fmt.Fprintf(&b, " (median %d/5)", *imp.RatingOffMed)
+		}
+		b.WriteString("\n")
+	}
+	if imp.CriterionNote != "" {
+		fmt.Fprintf(&b, "- **Registered criterion:** %s\n", imp.CriterionNote)
+	}
 	if imp.UncleanArmRows > 0 {
 		fmt.Fprintf(&b, "- **Excluded from the comparison: %s** — %s\n", fmtThousands(imp.UncleanArmRows), imp.UncleanArmNote)
 	}
