@@ -582,3 +582,56 @@ func TestReceiptCarriesPriorContent(t *testing.T) {
 		t.Errorf("receipt time = %q — the clock is not injected", loaded[0].Time)
 	}
 }
+
+// TestTornApplyStillWritesAReceipt pins U1, found in review: an apply that
+// fails partway used to discard the receipt entirely, leaving files already
+// rewritten with no way to reverse them — while `fathom fleet receipts`
+// stated, falsely, that fathom had written nothing there.
+//
+// That is this phase's own covenant failing on an ordinary error. The undo
+// path is the entire justification for letting fathom edit a repository
+// (law 15), so it must survive the failure that makes it necessary.
+func TestTornApplyStillWritesAReceipt(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a read-only file would still be writable")
+	}
+	root := t.TempDir()
+
+	// CLAUDE.md is writable and sorts before lefthook.yml; lefthook.yml is
+	// read-only, so the loop rewrites the first and then fails on the
+	// second — the ordinary torn-apply shape.
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("# repo\n\nhand-written.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "lefthook.yml"), []byte("pre-push:\n  commands:\n    mine:\n      run: echo hi\n"), 0o444); err != nil {
+		t.Fatal(err)
+	}
+
+	// The region (CLAUDE.md) and one key (lefthook.yml) together, so the
+	// loop touches the writable file before hitting the read-only one.
+	spec := Spec{Regions: demoSpec().Regions, Keys: demoSpec().Keys[:1]}
+	_, err := ApplyWiring(root, spec, ApplyOptions{Now: fixedClock()})
+	if err == nil {
+		t.Fatal("expected the read-only file to fail the apply")
+	}
+
+	receipts, lerr := LoadReceipts(root)
+	if lerr != nil {
+		t.Fatalf("loading receipts: %v", lerr)
+	}
+	if len(receipts) == 0 {
+		t.Fatal("a torn apply wrote files and NO receipt — undo is impossible and `fleet receipts` would report nothing was written")
+	}
+	var sawClaude bool
+	for _, f := range receipts[0].Files {
+		if f.Path == "CLAUDE.md" {
+			sawClaude = true
+			if f.Before == "" {
+				t.Error("the receipt must carry the file's prior content, or undo cannot restore it")
+			}
+		}
+	}
+	if !sawClaude {
+		t.Errorf("the receipt must name the file that WAS written; got %+v", receipts[0].Files)
+	}
+}

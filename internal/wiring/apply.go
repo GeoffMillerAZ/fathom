@@ -60,12 +60,12 @@ type Result struct {
 // It returns an error only when the CALL is wrong (bad spec, stale plan
 // digest, an unwritable file). A drifted repository is not an error: it is
 // a Result whose Blocked list says what fathom refused to touch.
-func ApplyWiring(root string, spec Spec, opt ApplyOptions) (Result, error) {
+func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err error) {
 	plan, err := PlanWiring(root, spec)
 	if err != nil {
 		return Result{}, err
 	}
-	res := Result{Plan: plan, Blocked: plan.Blocked(), Skipped: plan.Skipped()}
+	res = Result{Plan: plan, Blocked: plan.Blocked(), Skipped: plan.Skipped()}
 
 	if opt.ExpectDigest != "" && opt.ExpectDigest != plan.Digest {
 		return res, fmt.Errorf("the repository changed since the plan was previewed (previewed %s, now %s) — re-run the preview and look at the new diff",
@@ -110,6 +110,38 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (Result, error) {
 	}
 
 	keysRecorded := false
+
+	// A TORN apply must still be undoable. Every write below can fail
+	// mid-loop — a read-only lefthook.yml is enough — and returning at
+	// that point used to discard the receipt entirely, leaving files
+	// already rewritten with no way to reverse them and `fathom fleet
+	// receipts` stating, falsely, that fathom had written nothing here.
+	//
+	// That is this phase's own covenant failing on an ordinary error: the
+	// undo path is the entire justification for letting fathom edit a
+	// repository at all (law 15). So the receipt is flushed on EVERY exit
+	// once any file has been touched, success or not.
+	defer func() {
+		if len(receipt.Files) == 0 {
+			return
+		}
+		if keysRecorded {
+			if lerr := flushLedger(root, ledger, &receipt); lerr != nil && err == nil {
+				err = lerr
+			}
+		}
+		sort.Slice(receipt.Files, func(i, j int) bool { return receipt.Files[i].Path < receipt.Files[j].Path })
+		written, aerr := AppendReceipt(root, receipt, opt.MaxReceipts)
+		if aerr != nil {
+			// Losing the receipt is worse than the original failure, so it
+			// wins the error slot when nothing else claimed it.
+			if err == nil {
+				err = fmt.Errorf("files were written but the receipt could not be saved (undo is unavailable): %w", aerr)
+			}
+			return
+		}
+		res.Receipt = &written
+	}()
 	for _, file := range files {
 		path := filepath.Join(root, filepath.FromSlash(file))
 		before, existed, rerr := readFileIfPresent(path)
@@ -177,46 +209,40 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (Result, error) {
 		receipt.Files = append(receipt.Files, rf)
 	}
 
-	if len(receipt.Files) == 0 {
-		return res, nil
-	}
-
-	// The ownership ledger is part of the same write, so it belongs in the
-	// same receipt: an undo that restored the files but left the ledger
-	// claiming keys that are no longer there would leave the repository
-	// reading as DRIFTED — a false stop manufactured by the undo itself.
-	if keysRecorded {
-		lp := filepath.Join(root, filepath.FromSlash(ledgerRelPath))
-		lBefore, lExisted, lrerr := readFileIfPresent(lp)
-		if lrerr != nil {
-			return res, lrerr
-		}
-		if err := SaveLedger(root, ledger); err != nil {
-			return res, err
-		}
-		lAfter, _, lrerr := readFileIfPresent(lp)
-		if lrerr != nil {
-			return res, lrerr
-		}
-		if lAfter != lBefore {
-			receipt.Files = append(receipt.Files, ReceiptFile{
-				Path:         ledgerRelPath,
-				Existed:      lExisted,
-				Before:       lBefore,
-				BeforeDigest: digest(lBefore),
-				AfterExists:  true,
-				AfterDigest:  digest(lAfter),
-			})
-		}
-	}
-	sort.Slice(receipt.Files, func(i, j int) bool { return receipt.Files[i].Path < receipt.Files[j].Path })
-
-	written, err := AppendReceipt(root, receipt, opt.MaxReceipts)
-	if err != nil {
-		return res, err
-	}
-	res.Receipt = &written
 	return res, nil
+}
+
+// flushLedger saves the ownership ledger and records it in the receipt.
+//
+// The ledger is part of the same write, so it belongs in the same receipt:
+// an undo that restored the files but left the ledger claiming keys that
+// are no longer there would leave the repository reading as DRIFTED — a
+// false stop manufactured by the undo itself.
+func flushLedger(root string, ledger Ledger, receipt *Receipt) error {
+	lp := filepath.Join(root, filepath.FromSlash(ledgerRelPath))
+	lBefore, lExisted, err := readFileIfPresent(lp)
+	if err != nil {
+		return err
+	}
+	if err := SaveLedger(root, ledger); err != nil {
+		return err
+	}
+	lAfter, _, err := readFileIfPresent(lp)
+	if err != nil {
+		return err
+	}
+	if lAfter == lBefore {
+		return nil
+	}
+	receipt.Files = append(receipt.Files, ReceiptFile{
+		Path:         ledgerRelPath,
+		Existed:      lExisted,
+		Before:       lBefore,
+		BeforeDigest: digest(lBefore),
+		AfterExists:  true,
+		AfterDigest:  digest(lAfter),
+	})
+	return nil
 }
 
 // placeRegion splices fathom's region into content. The three shapes are

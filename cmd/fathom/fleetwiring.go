@@ -72,14 +72,23 @@ func cmdFleetReceipts(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	if *limit > 0 && len(receipts) > *limit {
+	// Law 3 applied to a COUNT: the number rendered must be the number
+	// measured. Truncating and then printing the truncated length told a
+	// reader fathom had written twice where it wrote five times, and hid
+	// that three still-undoable receipts existed.
+	total := len(receipts)
+	if *limit > 0 && total > *limit {
 		receipts = receipts[:*limit]
 	}
+	hidden := total - len(receipts)
 
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(map[string]any{"root": root, "receipts": receipts}); err != nil {
+		if err := enc.Encode(map[string]any{
+			"root": root, "receipts": receipts,
+			"total": total, "shown": len(receipts), "hidden_by_limit": hidden,
+		}); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -91,7 +100,12 @@ func cmdFleetReceipts(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "no receipts in %s — fathom has written nothing here\n", root)
 		return 0
 	}
-	fmt.Fprintf(stdout, "%s — %d receipt(s), newest first\n", root, len(receipts))
+	if hidden > 0 {
+		fmt.Fprintf(stdout, "%s — %d receipt(s) total, showing the newest %d (%d hidden by --limit, all still undoable)\n",
+			root, total, len(receipts), hidden)
+	} else {
+		fmt.Fprintf(stdout, "%s — %d receipt(s), newest first\n", root, total)
+	}
 	for _, r := range receipts {
 		fmt.Fprintf(stdout, "  %s\n", r.Summary())
 		for _, f := range r.Files {

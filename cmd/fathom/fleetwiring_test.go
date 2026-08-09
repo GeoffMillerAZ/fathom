@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -139,4 +140,70 @@ func TestUndoRestoresOrRefuses(t *testing.T) {
 	if code := cmdFleetUndo([]string{"--repo", root, "deadbeefdead"}, &out, &errBuf); code == 0 {
 		t.Error("undo accepted an unknown receipt id")
 	}
+}
+
+// TestReceiptsLimitDisclosesWhatItHid pins U2, found in review: --limit
+// truncated the list and then printed the TRUNCATED length as the total.
+// Law 3 applied to a count — the number rendered must be the number
+// measured. A reader concluded fathom had written twice where it wrote
+// five times, and never learned three still-undoable receipts existed, in
+// the verb whose only job is to tell the truth about what fathom changed.
+func TestReceiptsLimitDisclosesWhatItHid(t *testing.T) {
+	root := t.TempDir()
+	at := time.Date(2026, 8, 8, 12, 0, 0, 0, time.UTC)
+	for i := range 5 {
+		r := wiring.Receipt{
+			Time: at.Add(time.Duration(i) * time.Minute).UTC().Format(time.RFC3339),
+			Root: root,
+			Files: []wiring.ReceiptFile{{
+				Path: "CLAUDE.md", Existed: true, Before: "before", AfterExists: true,
+			}},
+		}
+		if _, err := wiring.AppendReceipt(root, r, 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var out, errb bytes.Buffer
+	if code := cmdFleetReceipts([]string{"--repo", root, "--limit", "2"}, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	got := out.String()
+	if !strings.Contains(got, "5 receipt(s) total") {
+		t.Errorf("the TOTAL must be stated, not the truncated length:\n%s", got)
+	}
+	if !strings.Contains(got, "3 hidden by --limit") {
+		t.Errorf("what the limit hid must be disclosed:\n%s", got)
+	}
+	if !strings.Contains(got, "still undoable") {
+		t.Errorf("a reader must learn the hidden receipts are still actionable:\n%s", got)
+	}
+
+	t.Run("json carries the same three numbers", func(t *testing.T) {
+		var jout, jerr bytes.Buffer
+		if code := cmdFleetReceipts([]string{"--repo", root, "--limit", "2", "--json"}, &jout, &jerr); code != 0 {
+			t.Fatalf("exit %d: %s", code, jerr.String())
+		}
+		var m struct {
+			Total  int `json:"total"`
+			Shown  int `json:"shown"`
+			Hidden int `json:"hidden_by_limit"`
+		}
+		if err := json.Unmarshal(jout.Bytes(), &m); err != nil {
+			t.Fatalf("bad json: %v", err)
+		}
+		if m.Total != 5 || m.Shown != 2 || m.Hidden != 3 {
+			t.Errorf("got total=%d shown=%d hidden=%d, want 5/2/3", m.Total, m.Shown, m.Hidden)
+		}
+	})
+
+	t.Run("no limit reports the plain total", func(t *testing.T) {
+		var o, e bytes.Buffer
+		if code := cmdFleetReceipts([]string{"--repo", root}, &o, &e); code != 0 {
+			t.Fatalf("exit %d: %s", code, e.String())
+		}
+		if !strings.Contains(o.String(), "5 receipt(s), newest first") {
+			t.Errorf("an untruncated list keeps its plain phrasing:\n%s", o.String())
+		}
+	})
 }
