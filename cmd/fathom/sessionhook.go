@@ -193,6 +193,16 @@ func fetchServices(hc *http.Client, baseURL string) (map[string]svcInfo, error) 
 
 func fetchServicesOnce(hc *http.Client, baseURL string) (map[string]svcInfo, error) {
 	out := map[string]svcInfo{}
+	// A nil client is a caller bug, but the caller is often a diagnostic
+	// (doctor, flywheel) whose whole job is to run when things are broken —
+	// so crashing here turns "one check could not resolve a path" into a
+	// SIGSEGV that aborts the entire process. Worse in a test binary: a
+	// panic aborts the WHOLE package run, so every test file sorting after
+	// the panicking one never executes, and the gate reports on work it
+	// never exercised. Default rather than dereference.
+	if hc == nil {
+		hc = &http.Client{Timeout: 4 * time.Second}
+	}
 	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_services","arguments":{}}}`)
 	req, err := originHeader(baseURL, body)
 	if err != nil {

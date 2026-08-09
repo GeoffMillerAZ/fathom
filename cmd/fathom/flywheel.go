@@ -31,6 +31,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -275,7 +276,11 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 func flywheelCallLog(baseURL string) []adoptionCallEntry {
 	path := resolveCallLogPath()
 	if _, err := os.Stat(path); err != nil {
-		for _, cand := range resolveCallLogCandidates(nil, baseURL, true, ".") {
+		// A real client: resolveCallLogCandidates asks the daemon where its
+		// own log lives, and passing nil made that a nil dereference on any
+		// machine lacking a local call log — which is every clean checkout.
+		hc := &http.Client{Timeout: 4 * time.Second}
+		for _, cand := range resolveCallLogCandidates(hc, baseURL, true, ".") {
 			if _, e := os.Stat(cand); e == nil {
 				path = cand
 				break

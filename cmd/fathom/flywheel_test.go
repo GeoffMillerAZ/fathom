@@ -7,6 +7,7 @@ package main
 // tests fail if `fathom flywheel` ever loses the ability to see either one.
 
 import (
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -122,5 +123,63 @@ func TestFlywheelSessionLedgerStall(t *testing.T) {
 	fresh := []ledgerRow{{At: now.Add(-time.Hour).Format(time.RFC3339)}}
 	if got := checkLoopSessionLedger(fresh, now); got.Status != loopClosed {
 		t.Errorf("status = %q, want CLOSED", got.Status)
+	}
+}
+
+// TestFathomServicePathToleratesNilClient is the regression guard for a
+// SIGSEGV that reached main and was invisible here for hours.
+//
+// `fathom flywheel` passed a nil *http.Client into
+// resolveCallLogCandidates. On any machine WITHOUT a local
+// cmd/fathom/workspace/logs/mcp-calls.jsonl — i.e. every clean checkout —
+// that reached fetchServicesOnce and dereferenced nil. The author's own
+// gate stayed green only because that gitignored artifact happened to
+// exist locally.
+//
+// The second-order damage is the reason this test asserts at the boundary
+// rather than through the flywheel: a panic aborts the WHOLE package test
+// binary, so every test file sorting after the panicking one never runs.
+// The gate does not merely go red — it goes BLIND, and reports on work it
+// never exercised.
+//
+// This test does not depend on any artifact, so it cannot be masked the
+// same way.
+func TestFathomServicePathToleratesNilClient(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("a nil client must not panic — a diagnostic runs precisely when things are broken: %v", r)
+		}
+	}()
+	// 127.0.0.1:1 refuses instantly; the point is reaching the request at
+	// all without dereferencing nil.
+	if _, ok := fathomServicePath(nil, "http://127.0.0.1:1"); ok {
+		t.Error("no daemon is listening; ok must be false")
+	}
+}
+
+// TestFlywheelSurvivesWithoutALocalCallLog pins the end-to-end shape: the
+// verb must produce a report on a machine that has never run the daemon.
+func TestFlywheelSurvivesWithoutALocalCallLog(t *testing.T) {
+	hermeticObsEnv(t)
+	// Run from a directory with no workspace/logs at all — the clean-
+	// checkout condition that the author's machine could not reproduce.
+	dir := t.TempDir()
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
+
+	checks := runFlywheelChecks("http://127.0.0.1:1", time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC))
+	if len(checks) == 0 {
+		t.Fatal("the flywheel must still report every loop with no local state")
+	}
+	for _, c := range checks {
+		if strings.TrimSpace(c.Evidence) == "" {
+			t.Errorf("%q has no evidence even in the degraded case (law 3)", c.Loop)
+		}
 	}
 }
