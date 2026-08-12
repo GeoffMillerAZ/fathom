@@ -5,6 +5,49 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-12 — four instruments were wired and their output thrown away (MI-4)
+
+Three sessions into a 20-session counterfactual run, the honest answer to
+"are we getting good data?" was **no: zero admissible sessions**.
+
+`transcriptSummaryFrom` copied three field pairs out of the parser by
+hand:
+
+```go
+rest := summarizeTranscriptBytes(data)
+out.DurationMS, out.DurationNote = rest.DurationMS, rest.DurationNote
+out.TurnCount,  out.TurnNote     = rest.TurnCount,  rest.TurnNote
+out.TokensTotal, out.TokensNote  = rest.TokensTotal, rest.TokensNote
+```
+
+Every field added to `transcriptSummary` afterwards was computed by the
+parser and dropped three lines later. Twelve fields, four instruments:
+
+| Dropped | Consequence |
+|---|---|
+| `FirstTS` | `arm_coverage` read `unknown`, so **not one** OFF-arm session was admissible — the run collected nothing |
+| in/out/cache split | every row counted "pre-split"; neither arm could ever have a spend-shaped median |
+| `FirstEditTurn` | warm-up (IQ-2) reported "rows predate the instrument", forever |
+| exploration ledger | per-question cost (EX-1) never filled in |
+
+Each of those absences was reported as *"rows predate the instrument"* —
+a plausible, self-consistent explanation that was wrong. The instruments
+were live. Nothing downstream could tell the difference between "not
+implemented yet" and "implemented and discarded", which is precisely why
+it survived weeks of dashboards.
+
+The fix is whole-struct assignment, so a new field is carried **by
+construction** rather than by remembering. `TestTranscriptSummaryCarriesEveryField`
+asserts over the struct by reflection rather than a hand-listed set, so it
+cannot drift out of date the same way the copy did — reverting the fix
+makes it name all twelve.
+
+Also fixed: `TestFlywheelSurvivesWithoutALocalCallLog` called `os.Chdir`,
+a process-global mutation, which broke every later test in the package
+that resolved a relative path (the report and remap suites) and reported
+the failure against *them*. Replaced with a `FATHOM_CALL_LOG` override.
+
+
 ### 2026-08-09 — "188 sessions" was 8 sessions (MI-1..3)
 
 Setting up the A/B run surfaced the largest measurement defect in the

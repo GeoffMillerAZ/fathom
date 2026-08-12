@@ -419,10 +419,24 @@ func transcriptSummaryFrom(path string) transcriptSummary {
 		data = data[:transcriptReadMaxBytes]
 		out.Truncated = true
 	}
-	rest := summarizeTranscriptBytes(data)
-	out.DurationMS, out.DurationNote = rest.DurationMS, rest.DurationNote
-	out.TurnCount, out.TurnNote = rest.TurnCount, rest.TurnNote
-	out.TokensTotal, out.TokensNote = rest.TokensTotal, rest.TokensNote
+	// Take the WHOLE summary, then re-apply the only thing this function
+	// knows that the parser does not.
+	//
+	// This used to copy three field pairs by hand, and every field added to
+	// transcriptSummary afterwards was computed by the parser and then
+	// silently dropped here. Measured 2026-08-12: FirstTS (so arm_coverage
+	// read "unknown" and NO OFF-arm session was admissible), the
+	// in/out/cache token split (so every row counted as "pre-split" and no
+	// arm could have a spend-shaped median), FirstEditTurn, and the entire
+	// exploration ledger. Four instruments reported "rows predate the
+	// instrument" when the instrument was wired and its output was being
+	// thrown away three lines later.
+	//
+	// Whole-struct assignment is what makes that class impossible: a new
+	// field is carried by construction rather than by remembering.
+	truncated := out.Truncated
+	out = summarizeTranscriptBytes(data)
+	out.Truncated = truncated
 	return out
 }
 

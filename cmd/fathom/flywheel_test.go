@@ -7,7 +7,7 @@ package main
 // tests fail if `fathom flywheel` ever loses the ability to see either one.
 
 import (
-	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -161,17 +161,16 @@ func TestFathomServicePathToleratesNilClient(t *testing.T) {
 // verb must produce a report on a machine that has never run the daemon.
 func TestFlywheelSurvivesWithoutALocalCallLog(t *testing.T) {
 	hermeticObsEnv(t)
-	// Run from a directory with no workspace/logs at all — the clean-
-	// checkout condition that the author's machine could not reproduce.
-	dir := t.TempDir()
-	orig, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chdir(dir); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chdir(orig) })
+	// Point the call log at a path that does not exist, rather than
+	// chdir-ing into an empty directory.
+	//
+	// The first version of this test called os.Chdir. That is a
+	// PROCESS-GLOBAL mutation, and Go runs a package's tests in one
+	// process — so every later test resolving a relative path (the report
+	// and remap suites) broke, and the failures pointed at them rather
+	// than here. A test that changes the working directory is a landmine
+	// for every test after it.
+	t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "absent", "mcp-calls.jsonl"))
 
 	checks := runFlywheelChecks("http://127.0.0.1:1", time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC))
 	if len(checks) == 0 {

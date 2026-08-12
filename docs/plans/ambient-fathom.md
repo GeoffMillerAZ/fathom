@@ -37,6 +37,7 @@
 
 - [x] the ledger counts SESSIONS, not stops: Claude Code's Stop event fires at every turn boundary, so 200 rows were 8 sessions; deduped at read time keeping the last row per session id, with the raw stop count still reported so the correction is auditable {id: MI-1, symbol: buildImpactModel, package: cmd/fathom, reachable_from: TestLedgerCountsSessionsNotStops}
 - [x] `fathom rate <1-5>` records the self-rated outcome — the half of the pre-registered criterion that was never instrumented; joined to the ledger by session id at read time so a late rating still counts, and refused outright when it cannot be joined {id: MI-2, symbol: cmdRate, package: cmd/fathom, reachable_from: TestRateRecordsAndRerating}
+- [x] every field the transcript parser computes reaches the ledger row, asserted over the STRUCT rather than a hand-listed set — the hand-copy it replaces silently disabled four instruments (arm coverage, the in/out token split, warm-up, the exploration ledger), each of which reported "rows predate the instrument" while the instrument was wired and its output discarded three lines later {id: MI-4, symbol: transcriptSummaryFrom, package: cmd/fathom, reachable_from: TestTranscriptSummaryCarriesEveryField}
 - [x] the registered criterion is evaluated in words and names every unmet part — session floor per arm, missing medians, missing ratings — rather than reporting a bare "not yet" {id: MI-3, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestLedgerCountsSessionsNotStops}
 
 ---

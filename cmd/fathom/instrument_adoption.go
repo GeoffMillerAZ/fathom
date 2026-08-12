@@ -234,6 +234,12 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 // so a repo that never customized either place gets the log the daemon is
 // actually writing, not a guess.
 func resolveCallLogPath() string {
+	// An explicit override, so a test can exercise the no-call-log path
+	// without chdir-ing the whole process — which broke every later test
+	// that resolved a relative path (2026-08-12).
+	if p := os.Getenv("FATHOM_CALL_LOG"); p != "" {
+		return p
+	}
 	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if err != nil {
 		return defaultCallLogPath
