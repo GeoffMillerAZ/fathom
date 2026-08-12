@@ -173,10 +173,20 @@ rest of the fleet):**
   copy** at `~/.local/libexec/fathom/fathom` (never `bin/fathom` directly, so
   a post-commit rebuild can't swap the running daemon's binary out from under
   launchd). A committed Go fix reaches the daemon only after a deliberate
-  deploy: `cp bin/fathom ~/.local/libexec/fathom/fathom && launchctl
-  kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http` — run from a real
-  terminal (a new binary has a new TCC code hash; answer the removable-volume
-  dialog with Allow if the start hangs). The `post-commit` hook rebuilds
+  deploy: **`task deploy`** — run from a real terminal.
+
+  **Do NOT use a raw `cp` for this** (the instruction that used to live
+  here). It is unsafe twice over, and both bit on 2026-08-12 (O25):
+  an unsigned binary is refused outright by macOS
+  (`last exit reason = OS_REASON_CODESIGNING`, daemon down fleet-wide until
+  noticed), and `cp` over a RUNNING executable truncates in place, which
+  can fault the live process's text pages. `task deploy` signs with the
+  persistent `fathom-dev` identity (O10 — an ad-hoc binary's TCC grant pins
+  the cdhash, so every rebuild silently voids it), writes via a temp path
+  and renames, and then ASSERTS that the running process is the freshly
+  built binary. That last step is the difference between "I ran the deploy"
+  and "the daemon is serving new code" — the two diverged once and the
+  daemon served 5-day-old code while doctor reported 11/11 PASS. The `post-commit` hook rebuilds
   `bin/fathom` on Go changes; if a tool misbehaves, compare `fathom version`
   to `git rev-parse HEAD` — a mismatch means stale, not buggy.
 - **Rebuilding the fleet index.** If the index is stale despite auto-refresh,

@@ -19,6 +19,81 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O24 — the transcript reader hand-copied three fields, silently killing four instruments for weeks
+
+- **Symptom (2026-08-12, three sessions into a 20-session counterfactual
+  run):** asked "are we getting good data?", the answer was **zero
+  admissible OFF-arm sessions**. `arm_coverage` read `unknown` on every
+  row, `tokens_in`/`tokens_out` were absent, `first_edit_turn` was absent,
+  and the exploration ledger was empty.
+- **Root cause:** `transcriptSummaryFrom` copied three field pairs out of
+  `summarizeTranscriptBytes` by hand. Every field added to
+  `transcriptSummary` afterwards was computed by the parser and dropped
+  three lines later — twelve fields in total.
+- **Why it survived weeks of dashboards:** each absence surfaced as
+  *"rows predate the instrument"* — plausible, self-consistent, and wrong.
+  Nothing downstream could distinguish "not implemented yet" from
+  "implemented and discarded". The brief, the observatory and the flywheel
+  all reported the same false-but-coherent story.
+- **Fix:** whole-struct assignment, so a new field is carried BY
+  CONSTRUCTION. `TestTranscriptSummaryCarriesEveryField` asserts over the
+  struct by reflection rather than a hand-listed set, so it cannot drift
+  the way the copy did. Reverting the fix makes it name all twelve.
+- **Status: FIXED** (`ac46e4f`, MI-4).
+- **Generalization worth keeping:** any place that copies fields between
+  two shapes of the same data is this bug waiting to happen. Prefer whole
+  -struct assignment; where a subset is genuinely required, assert the
+  carry structurally rather than by listing fields.
+
+### O25 — the documented deploy command produces a binary macOS refuses to run
+
+- **Symptom (2026-08-12):** the owner ran the deploy command quoted from
+  `CLAUDE.md` (`cp bin/fathom ~/.local/libexec/fathom/fathom && launchctl
+  kickstart -k …`). The copy succeeded (76 MB, correct timestamp) and the
+  daemon then stayed down. `launchctl print` showed
+  `last exit reason = OS_REASON_CODESIGNING`; the binary would not execute
+  at all. Every fathom tool was unavailable fleet-wide until it was
+  noticed.
+- **Root cause:** `task deploy` (O10, 2026-08-08) signs the installed copy
+  with the persistent `fathom-dev` identity, writes via a temp path +
+  rename (a `cp` over a RUNNING executable truncates in place and can
+  fault the live process), and then ASSERTS the running process is the
+  freshly built binary. `CLAUDE.md` still documents the older raw-`cp`
+  sequence, which does none of that.
+- **Aggravating factor:** the stale instruction was repeated confidently
+  by an agent (me) several times across one session, because CLAUDE.md is
+  treated as authoritative and was never re-checked against the Taskfile.
+- **Fix required:** update `CLAUDE.md`'s deploy stanza to `task deploy`,
+  and state plainly that the raw `cp` is unsafe (unsigned + in-place
+  truncation of a running binary).
+- **Status: OPEN** — doc fix pending.
+
+### O26 — long-lived resumed sessions break BOTH session instruments at once
+
+- **Symptom (2026-08-12):** no OFF-arm session could ever be admissible,
+  independently of O24. The owner's working style is one Claude Code
+  session resumed across days; the live transcripts are 17–120 MB and one
+  had been running since ~2026-08-02.
+- **Two independent failures:**
+  1. **Coverage is permanently `partial`.** `armCoverage` compares the
+     transcript's first timestamp to the arm's `set_at`. A session that
+     began before the arm carries assisted work, so it is correctly
+     refused — but a resumed session NEVER starts after the arm, so it is
+     refused forever.
+  2. **Totals are permanently truncated.** `transcriptReadMaxBytes` is
+     16 MB. The live transcripts were read at 14%, 35%, 88% and 99%. The
+     row discloses `transcript_truncated: true`, but `Truncated` is not
+     referenced anywhere in the impact fold — so a 14% parse yields a
+     `tokens_total` consumed as if it were the session's total.
+- **The deeper question this raises:** "per session" may simply be the
+  wrong denominator for how this fleet is actually worked. Per-day or
+  per-turn-window would measure something that exists. That is a design
+  decision, not a bug fix, and belongs to the owner.
+- **Status: OPEN.** Immediate remediations: honour `Truncated` (never feed
+  a partial total to a median — law 3), raise or remove the cap, and
+  decide the unit.
+
+
 ### O23 — `fathom doctor` cries wolf in every repo that is not fathom: three repo-relative assumptions that only hold at home
 
 - **Symptom (2026-07-31, first `doctor` run inside a freshly-adopted repo):**
