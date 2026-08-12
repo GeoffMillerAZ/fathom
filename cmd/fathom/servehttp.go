@@ -172,6 +172,18 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	}
 	handler := newHTTPHandlerWithAuth(srv, c, modulesToken, *addr)
 
+	// Adopt a new binary without a human (selfrestart.go). launchd's
+	// KeepAlive is true for this job, so exiting IS a restart — which is
+	// what lets an agent complete a deploy end to end, rather than
+	// building a fix and then waiting for someone to run `launchctl`.
+	if selfRestartDisabled() {
+		fmt.Fprintln(stdout, "self-restart: OFF (FATHOM_SELF_RESTART=off) — a deploy will need a manual restart")
+	} else if exe, exeErr := os.Executable(); exeErr != nil {
+		fmt.Fprintf(stdout, "self-restart: disabled — cannot resolve this process's own path (%v)\n", exeErr)
+	} else {
+		go watchOwnBinary(exe, stdout, selfRestartPoll, selfRestartCooldown, os.Exit)
+	}
+
 	fmt.Fprintf(stdout, "serve-http: listening on %s\n", *addr)
 	if err := http.ListenAndServe(*addr, handler); err != nil {
 		fmt.Fprintf(stderr, "error: http serve: %v\n", err)

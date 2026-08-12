@@ -5,6 +5,40 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-12 — the daemon adopts a new binary on its own (AU-1..3)
+
+Owner ask: *"I want you empowered to do this sort of stuff in the future.
+I shouldn't be needed and let my projects suffer if I'm afk."*
+
+The blocker was narrow. An agent can build, sign and install a binary; it
+cannot run `launchctl kickstart` (that wedges the session — a standing
+constraint here). So every committed daemon fix waited for a human, and
+this session priced it exactly: a measurement bug reached main, was fixed
+within the hour, and then sat undeployed while three counterfactual
+sessions collected nothing.
+
+launchd's `KeepAlive` is already true for this job, so **the daemon
+exiting IS a restart**. It now watches its own executable and steps aside
+when a verified newer binary is in place. Four safety properties, because
+a self-restarting daemon that gets this wrong is a fleet-wide outage:
+
+1. **Verify before yielding.** The candidate must execute and report a
+   version. This is not hypothetical: hours earlier an unsigned binary was
+   installed over the daemon's path and macOS refused to run it
+   (`OS_REASON_CODESIGNING`). Exiting on "the file changed" alone would
+   have produced an unbounded restart loop against a binary that could
+   never start.
+2. **Settle.** The same new bytes across two consecutive polls, so a
+   half-written file is never adopted mid-copy.
+3. **Rate limit.** At most one adoption per cooldown.
+4. **Loud.** Every adoption and every refusal is logged with its reason —
+   a daemon that restarts itself silently is indistinguishable from one
+   that is crashing.
+
+`FATHOM_SELF_RESTART=off` pins the binary, and the choice is announced
+rather than silently honoured.
+
+
 ### 2026-08-12 — four instruments were wired and their output thrown away (MI-4)
 
 Three sessions into a 20-session counterfactual run, the honest answer to

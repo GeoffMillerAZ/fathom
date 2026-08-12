@@ -40,6 +40,12 @@
 - [x] every field the transcript parser computes reaches the ledger row, asserted over the STRUCT rather than a hand-listed set — the hand-copy it replaces silently disabled four instruments (arm coverage, the in/out token split, warm-up, the exploration ledger), each of which reported "rows predate the instrument" while the instrument was wired and its output discarded three lines later {id: MI-4, symbol: transcriptSummaryFrom, package: cmd/fathom, reachable_from: TestTranscriptSummaryCarriesEveryField}
 - [x] the registered criterion is evaluated in words and names every unmet part — session floor per arm, missing medians, missing ratings — rather than reporting a bare "not yet" {id: MI-3, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestLedgerCountsSessionsNotStops}
 
+## AU — Autonomy: the deploy stops needing hands (owner ask, 2026-08-12)
+
+- [x] the daemon watches its own executable and, when the bytes change, VERIFIES the replacement runs before exiting so launchd's KeepAlive restarts it on the new code — an agent can build, sign and install, but cannot run `launchctl`, so every committed daemon fix used to wait for a human {id: AU-1, symbol: watchOwnBinary, package: cmd/fathom, reachable_from: TestSelfRestartAdoptsAVerifiedBinary}
+- [x] a candidate that cannot execute is REFUSED and named, never adopted — the 2026-08-12 unsigned-binary failure (OS_REASON_CODESIGNING) would otherwise have become an unbounded restart loop against a binary that could never start {id: AU-2, symbol: binaryReports, package: cmd/fathom, reachable_from: TestSelfRestartRefusesABinaryThatCannotRun}
+- [x] the bytes must settle across two consecutive polls, so a file still being written is never adopted half-copied; adoption is rate-limited and can be pinned off with FATHOM_SELF_RESTART=off {id: AU-3, symbol: selfRestartDisabled, package: cmd/fathom, reachable_from: TestSelfRestartDisabledByEnv}
+
 ---
 
 ## U — Self-healing fleet (`docs/design/self-healing-fleet.md`, law 15)

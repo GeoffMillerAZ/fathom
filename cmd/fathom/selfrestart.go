@@ -1,0 +1,191 @@
+package main
+
+// selfrestart.go — the daemon adopts a new binary on its own.
+//
+// Owner ask, 2026-08-12: *"I want to make it so you're empowered to do this
+// sort of stuff in the future. I shouldn't be needed and let my projects
+// suffer if I'm afk."*
+//
+// The blocker was narrow and specific. An agent can build, sign and install
+// a binary; it cannot run `launchctl kickstart` (that wedges the session —
+// a standing constraint in this program). So every committed daemon fix
+// waited for a human, and this session proved the cost: a measurement bug
+// reached main, was fixed within the hour, and then sat undeployed while
+// three counterfactual sessions collected nothing. The fix existed. The
+// daemon kept running the old code because one command needed hands.
+//
+// launchd's KeepAlive is already true for this job, so the daemon exiting
+// IS a restart. It therefore watches its own executable and, when the bytes
+// on disk change, verifies the replacement and steps aside.
+//
+// Four safety properties, because a self-restarting daemon that gets this
+// wrong is a crash loop that takes the whole fleet's tooling down:
+//
+//  1. VERIFY BEFORE YIELDING. The candidate must execute and report a
+//     parseable version. A binary that cannot run is ignored and NAMED —
+//     exactly the failure of 2026-08-12 (an unsigned copy,
+//     OS_REASON_CODESIGNING), where exiting would have produced a restart
+//     loop against a binary that could never start.
+//  2. RATE LIMIT. At most one adoption per cooldown, so a flapping file
+//     cannot become a restart storm.
+//  3. SETTLE. The bytes must be unchanged across two consecutive polls, so
+//     a half-written file is never adopted mid-copy.
+//  4. LOUD. Every adoption and every refusal is logged with its reason. A
+//     daemon that restarts itself silently is indistinguishable from one
+//     that is crashing.
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+	"io"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+)
+
+const (
+	// selfRestartPoll is deliberately unhurried: a deploy that takes effect
+	// within a minute is indistinguishable from instant to every consumer,
+	// and the poll costs one hash of an already-cached file.
+	selfRestartPoll = 20 * time.Second
+	// selfRestartCooldown bounds how often the daemon may step aside.
+	selfRestartCooldown = 2 * time.Minute
+)
+
+// selfRestartDisabled lets an operator switch the behaviour off without a
+// rebuild. Off is a legitimate choice — some deployments want the binary
+// pinned until a human says otherwise — so it is honoured and announced,
+// never silently ignored.
+func selfRestartDisabled() bool {
+	return strings.EqualFold(os.Getenv("FATHOM_SELF_RESTART"), "off")
+}
+
+// watchOwnBinary polls the daemon's own executable and exits when a
+// verified newer binary is in place.
+//
+// exit is injected so the loop is testable without ending the test
+// process; production passes os.Exit.
+func watchOwnBinary(path string, out io.Writer, poll, cooldown time.Duration, exit func(int)) {
+	start, err := hashFile(path)
+	if err != nil {
+		// No baseline means every later comparison is a guess. Say so once
+		// and stop, rather than restarting on noise.
+		fmt.Fprintf(out, "self-restart: disabled — cannot hash %s (%v); a deploy will need a manual restart\n", path, err)
+		return
+	}
+	fmt.Fprintf(out, "self-restart: watching %s (%s); a verified new binary is adopted within ~%s\n",
+		path, shortHash(start), poll*2)
+
+	var (
+		pending     string
+		pendingSeen int
+		last        time.Time
+	)
+	for {
+		time.Sleep(poll)
+
+		cur, herr := hashFile(path)
+		if herr != nil || cur == start {
+			pending, pendingSeen = "", 0
+			continue
+		}
+
+		// (3) Settle: the same new bytes twice before acting, so a file
+		// still being written is never adopted half-copied.
+		if cur != pending {
+			pending, pendingSeen = cur, 1
+			continue
+		}
+		pendingSeen++
+		if pendingSeen < 2 {
+			continue
+		}
+
+		// (2) Rate limit.
+		if !last.IsZero() && time.Since(last) < cooldown {
+			continue
+		}
+
+		// (1) Verify before yielding.
+		ver, verr := binaryReports(path)
+		if verr != nil {
+			fmt.Fprintf(out, "self-restart: REFUSED — %s changed but will not run (%v). "+
+				"Keeping this process, so the fleet stays served by working code. "+
+				"An unsigned binary fails exactly this way; `task deploy` signs.\n", path, verr)
+			// start is deliberately NOT updated: if the operator repairs
+			// the binary in place, the next poll sees a new hash and
+			// re-verifies rather than treating the bad one as the baseline.
+			pending, pendingSeen = "", 0
+			last = time.Now()
+			continue
+		}
+
+		fmt.Fprintf(out, "self-restart: adopting %s (%s → %s) — exiting so launchd restarts on the new code\n",
+			ver, shortHash(start), shortHash(cur))
+		exit(0)
+		return
+	}
+}
+
+// binaryReports runs the candidate's own `version` and requires a
+// non-empty answer. This is what separates "a new binary is present" from
+// "a new binary WORKS" — the distinction that turns a self-restart into a
+// crash loop when it is skipped.
+func binaryReports(path string) (string, error) {
+	cmd := exec.Command(path, "version")
+	done := make(chan struct{})
+	var (
+		outBytes []byte
+		runErr   error
+	)
+	go func() {
+		outBytes, runErr = cmd.Output()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(10 * time.Second):
+		// A hung candidate must not hang the watcher.
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
+		}
+		return "", fmt.Errorf("timed out reporting its version")
+	}
+	if runErr != nil {
+		return "", runErr
+	}
+	v := strings.TrimSpace(string(outBytes))
+	if v == "" {
+		return "", fmt.Errorf("reported an empty version")
+	}
+	return firstLine(v), nil
+}
+
+func hashFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func shortHash(s string) string {
+	if len(s) > 12 {
+		return s[:12]
+	}
+	return s
+}
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
