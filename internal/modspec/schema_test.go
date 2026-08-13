@@ -1,6 +1,6 @@
 // schema_test.go — asserts the schema/module CUE negatives documented,
 // commented out, in schema/module/testdata/invalid.cue (repo convention,
-// CLAUDE.md "New CUE schemas": "negatives are asserted by Go tests, not
+// schema/CLAUDE.md: "negatives are asserted by Go tests, not
 // live-vetted"). See doc.go for the package-level doc comment.
 package modspec
 
