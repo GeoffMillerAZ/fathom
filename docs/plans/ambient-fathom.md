@@ -143,10 +143,10 @@
 ## Deferred with triggers
 
 - [-] fleet-wide one-click apply across all repositories at once {id: DF-1, disposition: deferred, reason: "per-repository apply bounds the blast radius of a bad reconciliation to one repository and keeps undo per-repository", trigger: "per-repository apply has run 50 times with zero BLOCKED-then-regretted outcomes"}
-- [-] automatic or scheduled reconciliation {id: DF-2, disposition: rejected, reason: "vision 20 X1 — a background process that edits repositories it was not invited into is indistinguishable from malware; the button is the consent"}
-- [-] content-based purge matching (purge anything that looks like a secret) {id: DF-3, disposition: rejected, reason: "a heuristic that decides what is secret will be wrong in both directions, and being wrong about deletion is unrecoverable; paths only"}
-- [-] transcript mining into memories {id: DF-4, disposition: rejected, reason: "produces plausible, unfalsifiable, unanchored claims at a volume that would drown the four trusted sources; anchored-memory.md §5"}
-- [-] agent prose compression (the caveman ask, literal form) {id: DF-5, disposition: rejected, reason: "prose style is a skill and skills already do it; fathom owns the size of what fathom emits, which is phase X"}
+- [-] automatic or scheduled reconciliation {id: DF-2, disposition: refused, reason: "vision 20 X1 — a background process that edits repositories it was not invited into is indistinguishable from malware; the button is the consent"}
+- [-] content-based purge matching (purge anything that looks like a secret) {id: DF-3, disposition: refused, reason: "a heuristic that decides what is secret will be wrong in both directions, and being wrong about deletion is unrecoverable; paths only"}
+- [-] transcript mining into memories {id: DF-4, disposition: refused, reason: "produces plausible, unfalsifiable, unanchored claims at a volume that would drown the four trusted sources; anchored-memory.md §5"}
+- [-] agent prose compression (the caveman ask, literal form) {id: DF-5, disposition: refused, reason: "prose style is a skill and skills already do it; fathom owns the size of what fathom emits, which is phase X"}
 - [-] a fifth extension seam {id: DF-6, disposition: deferred, reason: "four typed seams exist; widening one is nearly always cheaper than adding another", trigger: "a proposal that writes down, per seam, why that seam does not fit"}
 
 ---
