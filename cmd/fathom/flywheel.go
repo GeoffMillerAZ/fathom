@@ -142,7 +142,52 @@ func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
 		checkLoopVerifyGate(imp),
 		checkLoopExploration(imp),
 		checkLoopObservations(),
+		checkLoopContinuity(),
 	}
+}
+
+// checkLoopContinuity — vision 21's conveyor. CLOSED needs the loop to
+// actually MOVE: deposits landing AND briefs being injected. Briefs
+// injected against a store nobody deposits to is a conveyor carrying
+// nothing — OPEN, not healthy-looking; that asymmetry is the flywheel's
+// founding rule.
+func checkLoopContinuity() flywheelCheck {
+	c := flywheelCheck{
+		Loop:    "continuity",
+		Purpose: "threads carry intent across /clear and compaction; the bet: fresh sessions get as good as resumed, cheaper",
+	}
+	items := loadThreadItems(threadsPath())
+	rows := dedupedLedgerRows()
+	bet := threadBetCheck(rows)
+
+	deposited, briefed := len(items) > 0, false
+	for _, r := range rows {
+		if r.BriefInjected {
+			briefed = true
+			break
+		}
+	}
+	switch {
+	case !deposited && !briefed:
+		c.Status = loopIdle
+		c.Evidence = "no thread items and no briefs yet — the feature is present but nothing has flowed"
+		c.Remedy = "file one: `fathom thread note` — or just /clear a session with work in flight (the hook deposits mechanically)"
+	case briefed && !deposited:
+		c.Status = loopOpen
+		c.Evidence = "briefs are being injected but NOTHING has ever been deposited — the conveyor is moving empty"
+		c.Remedy = "check the SessionEnd/PreCompact hooks are registered (fathom doctor) — an injection with no deposits spends tokens on nothing"
+	default:
+		c.Status = loopClosed
+		open := 0
+		for _, it := range items {
+			if it.ClosedAt == "" {
+				open++
+			}
+		}
+		c.Evidence = fmt.Sprintf("%s item(s), %s open; bet %s — %s",
+			fmtThousands(len(items)), fmtThousands(open), bet.Verdict, bet.Detail)
+	}
+	return c
 }
 
 // ledgerRow is the subset the flywheel reads. It parses defensively: a row

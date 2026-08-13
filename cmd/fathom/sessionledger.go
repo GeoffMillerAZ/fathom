@@ -137,6 +137,16 @@ type sessionLedgerEntry struct {
 	TokensCacheRead   *int `json:"tokens_cache_read,omitempty"`
 	TokensCacheCreate *int `json:"tokens_cache_create,omitempty"`
 
+	// SessionSource / BriefInjected / BriefBytes label the row's COHORT
+	// for the vision-21 bet: fresh-with-brief (startup|clear + brief)
+	// versus resumed. Joined from the SessionStart stamp at write time; a
+	// missing stamp yields "" — unknown, never guessed (law 3). BriefBytes
+	// is the feature's own measured cost, so "how many tokens does this
+	// take" is a ledger sum, not an estimate.
+	SessionSource string `json:"session_source,omitempty"`
+	BriefInjected bool   `json:"brief_injected,omitempty"`
+	BriefBytes    int    `json:"brief_bytes,omitempty"`
+
 	// ArmWindow carries the ARM-COVERED span of a session that began
 	// before the arm was set (arm_coverage: partial) — the amended unit of
 	// comparison (production-tokenomics.md §5, 2026-08-12). Whole-session
@@ -214,6 +224,9 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	}
 
 	e.ArmCoverage, e.ArmCoverageNote = armCoverage(ts.FirstTS, now)
+
+	st := readSessionStamp(sessionID)
+	e.SessionSource, e.BriefInjected, e.BriefBytes = st.Source, st.BriefInjected, st.BriefBytes
 
 	if ts.DurationMS != nil {
 		e.DurationMS = ts.DurationMS

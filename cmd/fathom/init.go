@@ -446,6 +446,13 @@ type hookSpec struct {
 
 var fathomHookSpecs = []hookSpec{
 	{event: "SessionStart", matcher: "startup|resume|clear|compact", marker: "fathom session-hook", sub: "session-hook", timeout: 10},
+	// Continuity threads (vision 21 / docs/design/continuity-threads.md §3):
+	// SessionEnd deposits ONE mechanical item at the moments context is
+	// lost (/clear, logout); PreCompact files a pointer before compaction —
+	// the exact moment in-flight state dies today. Both write to disk and
+	// inject NOTHING, so their context cost is zero by construction.
+	{event: "SessionEnd", matcher: "", marker: "fathom session-end-hook", sub: "session-end-hook", timeout: 10},
+	{event: "PreCompact", matcher: "manual|auto", marker: "fathom pre-compact-hook", sub: "pre-compact-hook", timeout: 10},
 	{event: "PostToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
 	// Guarded edits (docs/design/guarded-edits.md §2.2/§2.5): the SAME
 	// "edit-hook --pre" binary/code path, registered under PreToolUse.

@@ -5,6 +5,42 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — continuity threads live: TH-1..4 (vision 21)
+
+The thread — one strand of intent spanning sessions — is now a first-class
+object. `fathom thread brief|note|point|list|close`; a user-central
+append-only store; items that CLOSE THEMSELVES when the artifact they wait
+on materializes (`plan_row_checked` / `file_exists`, attributed
+`closed_by: condition`).
+
+The hooks are the conveyor, and their context cost is zero by
+construction: SessionEnd (fires on `/clear`) deposits ONE mechanical item
+and only when something is actually in flight — uncommitted files,
+stashes, claimed-unproven plan rows; a clean session deposits nothing.
+PreCompact files a pointer before the exact moment in-flight context dies
+today. Neither reads transcript content — the mining refusal is
+structural.
+
+The brief is the one surface that costs anything: ≤2,400 bytes (~600
+tokens), hard-bounded with the cut disclosed, injected ONLY on
+startup/clear — `resume` and `compact` print nothing, because their
+context survives. Both properties confirmed RED under mutation.
+
+The measurement loop (the owner's org-evidence ask): every ledger row now
+carries its cohort label (`session_source`, `brief_injected`,
+`brief_bytes` — the feature's own cost is a ledger SUM, not an estimate),
+`threadBetCheck` evaluates the registered bet (fresh-with-brief vs
+resumed: warm-up and all-in per-turn cost, cache reads named as the 10%
+pricing assumption), the flywheel gains a continuity loop whose OPEN state
+is "briefs injected but nothing ever deposited — a conveyor moving
+empty", and the value brief gains section 6 with the verdict and
+denominators. The registered kill rides IN the verdict text: at n≥20 and
+a failed band, it says the injection is to be removed.
+
+TH-5 (thread promote / handoff, the Codex AGENTS.md stanza) is the next
+slice.
+
+
 ### 2026-08-12 — the unit bends to the work: arm-covered windows count (MI-5)
 
 Asked to start forty fresh sessions for a baseline, the owner pushed back

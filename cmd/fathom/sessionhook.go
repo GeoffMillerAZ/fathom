@@ -51,14 +51,16 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// shape edit-hook/stop-hook already read. Absent/unreadable/malformed
 	// stdin degrades to sessionID="" (no session-scoped tagging), never a
 	// failure of the session brief itself.
-	var sessionID string
+	var sessionID, startSource string
 	if stdin != nil {
 		raw, _ := io.ReadAll(io.LimitReader(stdin, 1<<16))
 		var hook struct {
 			SessionID string `json:"session_id"`
+			Source    string `json:"source"`
 		}
 		if json.Unmarshal(raw, &hook) == nil {
 			sessionID = hook.SessionID
+			startSource = hook.Source
 		}
 	}
 
@@ -71,6 +73,29 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	}
 
 	ctx := buildSessionContext(*url, projDir)
+
+	// Continuity (vision 21, TH-3): the thread brief joins the session
+	// context ONLY where context was actually lost — startup and clear.
+	// resume/compact keep their context; injecting there is the schema-tax
+	// mistake in a new costume. The stamp records the cohort label and the
+	// brief's measured cost either way, which is what makes the
+	// pre-registered bet evaluable (fresh-with-brief vs resumed).
+	briefBytes := 0
+	if startSource == "startup" || startSource == "clear" || startSource == "" {
+		if tb := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, time.Now()); tb != "" {
+			ctx += "\n" + tb
+			briefBytes = len(tb)
+		}
+	}
+	writeSessionStamp(sessionStamp{
+		SchemaVersion: 1,
+		SessionID:     sessionID,
+		Source:        startSource,
+		BriefInjected: briefBytes > 0,
+		BriefBytes:    briefBytes,
+		At:            time.Now().UTC().Format(time.RFC3339),
+	})
+
 	emitPayloadCost("session-brief", ctx, 0, "", sessionID)
 
 	_ = json.NewEncoder(stdout).Encode(map[string]any{

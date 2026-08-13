@@ -415,6 +415,23 @@ func renderBriefMD(m observatoryModel) string {
 	}
 	fmt.Fprintf(&b, "- **Rules served: %s** — the proxy for accumulated, reusable knowledge about this codebase\n", fmtThousands(imp.ObligationCalls))
 
+	// ---- Continuity (vision 21) ----
+	bet := threadBetCheck(dedupedLedgerRows())
+	b.WriteString("\n## 6 — Is continuity making sessions disposable?\n\n")
+	b.WriteString("Threads carry open work across `/clear` and compaction, so a session can end without its intent dying. The registered bet: a fresh session opened with a thread brief warms up as fast as a resumed one, at lower all-in cost.\n\n")
+	fmt.Fprintf(&b, "- **Fresh-with-brief units: %s** of the %s the registered floor requires; **resumed baseline units: %s**\n",
+		fmtThousands(bet.FreshUnits), fmtThousands(threadBetMinFreshUnits), fmtThousands(bet.ResumedUnits))
+	if bet.FreshWarmupMed != nil && bet.ResumedWarmupMed != nil {
+		fmt.Fprintf(&b, "- **Warm-up:** %s vs %s median turns to first edit (fresh vs resumed)\n",
+			fmtThousands(*bet.FreshWarmupMed), fmtThousands(*bet.ResumedWarmupMed))
+	}
+	if bet.FreshAllInMed != nil && bet.ResumedAllInMed != nil {
+		fmt.Fprintf(&b, "- **All-in cost:** %s vs %s tokens per turn (in + out + cache reads weighted at the 10%% pricing assumption)\n",
+			fmtThousands(*bet.FreshAllInMed), fmtThousands(*bet.ResumedAllInMed))
+	}
+	fmt.Fprintf(&b, "- **What continuity itself has spent:** %s brief bytes across all sessions — a ledger sum, not an estimate\n", fmtThousands(bet.BriefBytesTotal))
+	fmt.Fprintf(&b, "- **Verdict: %s** — %s\n", bet.Verdict, bet.Detail)
+
 	// ---- Work order ----
 	b.WriteString("\n## Could fathom help more if it were configured differently?\n\n")
 	if len(acts) == 0 {
