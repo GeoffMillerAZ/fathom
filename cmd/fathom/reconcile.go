@@ -26,10 +26,12 @@ import (
 // wiringDiff is one repo's drift against the current template.
 type wiringDiff struct {
 	Repo          string   `json:"repo"`
+	Service       string   `json:"service,omitempty"`        // the registry's id, when known
 	Missing       []string `json:"missing,omitempty"`        // template entries absent at every readable scope
 	StaleCmds     []string `json:"stale_cmds,omitempty"`     // commands spelling an absolute fathom path
 	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skills absent from .claude/skills (FR-3)
 	StanzaNote    string   `json:"stanza_note,omitempty"`    // pre-rename branding etc.
+	StaleStanzas  []string `json:"stale_stanzas,omitempty"`  // marker-owned regions whose content != the current template
 	SettingsNote  string   `json:"settings_note,omitempty"`  // unreadable / absent
 }
 
@@ -41,8 +43,12 @@ var staleFathomPath = regexp.MustCompile(`(^|[\s"'=])(/[^\s"']*/fathom)([\s"']|$
 // analyzeWiring diffs one repo's installed hooks against fathomHookSpecs.
 // User-scope entries count as present (they serve every repo), but stale
 // paths are reported wherever they appear.
-func analyzeWiring(root string) wiringDiff {
-	d := wiringDiff{Repo: root}
+func analyzeWiring(root string) wiringDiff { return analyzeWiringFor(root, "") }
+
+// analyzeWiringFor is analyzeWiring with the registry's service id, which
+// the stanza comparison must use.
+func analyzeWiringFor(root, service string) wiringDiff {
+	d := wiringDiff{Repo: root, Service: service}
 	scopes := [][2]string{{"project", filepath.Join(root, ".claude", "settings.json")}}
 	if home, err := os.UserHomeDir(); err == nil {
 		scopes = append(scopes, [2]string{"user", filepath.Join(home, ".claude", "settings.json")})
@@ -124,7 +130,48 @@ func analyzeWiring(root string) wiringDiff {
 			d.StanzaNote = "CLAUDE.md carries pre-rename branding (sextant) — regenerate with fathom gen-claude-md"
 		}
 	}
+
+	// Stanza CONTENT drift (found 2026-08-13): the template gained the
+	// continuity/Codex line and reconcile reported "wiring current" for
+	// every repo — it checked stanza PRESENCE, never content against the
+	// current template. A template change that no reconcile can deliver is
+	// a template change that never ships. Compared per-file (CLAUDE.md and
+	// AGENTS.md independently), rendered with the REGISTRY's service id
+	// (dirname only as a daemon-unreachable fallback) so a repo that chose
+	// a different id is neither falsely flagged nor rewritten wrongly.
+	d.StaleStanzas = staleStanzaFiles(root, d.Service)
 	return d
+}
+
+// staleStanzaFiles reports which of the repo's stanza-carrying files hold a
+// fathom-owned region whose content differs from the current template.
+// Files without markers are NOT reported — wiring a never-wired repo is
+// init's job; reconcile only refreshes what fathom already owns (law 15's
+// boundary: presence of the markers IS the ownership claim).
+func staleStanzaFiles(root, service string) []string {
+	if service == "" {
+		service = strings.ToLower(filepath.Base(root))
+	}
+	want := strings.TrimSpace(fathomStanza(service))
+	var out []string
+	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
+		data, err := os.ReadFile(filepath.Join(root, name))
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		b := strings.Index(content, fathomStanzaBegin)
+		e := strings.Index(content, fathomStanzaEnd)
+		if b < 0 || e < 0 || e < b {
+			continue // unwired or corrupted — not reconcile's to touch
+		}
+		got := strings.TrimSpace(content[b : e+len(fathomStanzaEnd)])
+		if got != want {
+			out = append(out, name)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // repointStaleCommands rewrites absolute fathom paths to the bare `fathom`
@@ -184,6 +231,10 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	roots := []string(repos)
+	// svcByRoot carries the REGISTRY's service id per root. Rendering the
+	// stanza with an inferred dirname would rewrite a repo that chose a
+	// different id with the WRONG name — the registry knows, so ask it.
+	svcByRoot := map[string]string{}
 	if len(roots) == 0 {
 		hc := &http.Client{Timeout: 4 * time.Second}
 		svcs, err := fetchServices(hc, *url)
@@ -191,10 +242,11 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "error: no --repo given and service discovery failed: %v\n", err)
 			return 1
 		}
-		for _, info := range svcs {
+		for name, info := range svcs {
 			if info.path != "" {
 				if _, serr := os.Stat(info.path); serr == nil {
 					roots = append(roots, info.path)
+					svcByRoot[info.path] = strings.ToLower(name)
 				}
 			}
 		}
@@ -213,8 +265,8 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 
 	drifted := 0
 	for _, root := range roots {
-		d := analyzeWiring(root)
-		if len(d.Missing) == 0 && len(d.StaleCmds) == 0 && len(d.MissingSkills) == 0 && d.StanzaNote == "" && d.SettingsNote == "" {
+		d := analyzeWiringFor(root, svcByRoot[root])
+		if len(d.Missing) == 0 && len(d.StaleCmds) == 0 && len(d.MissingSkills) == 0 && d.StanzaNote == "" && d.SettingsNote == "" && len(d.StaleStanzas) == 0 {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
 		}
@@ -231,6 +283,9 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		}
 		if d.StanzaNote != "" {
 			fmt.Fprintf(stdout, "  stanza:  %s\n", d.StanzaNote)
+		}
+		if len(d.StaleStanzas) > 0 {
+			fmt.Fprintf(stdout, "  stanza:  %s behind the current template (the owned region refreshes on --apply)\n", strings.Join(d.StaleStanzas, ", "))
 		}
 		if d.SettingsNote != "" {
 			fmt.Fprintf(stdout, "  note:    %s\n", d.SettingsNote)
@@ -256,6 +311,24 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  apply failed (hooks): %v\n", err)
 			} else {
 				fmt.Fprintf(stdout, "  applied: missing template entries merged (project scope, deferring to user scope)\n")
+			}
+		}
+		// Stanza refresh: applyStanza replaces ONLY the content between the
+		// markers fathom owns, is idempotent, and refuses a corrupted
+		// marker pair rather than compounding it — the law-15 boundary in
+		// the mechanism itself.
+		if len(d.StaleStanzas) > 0 {
+			svc := d.Service
+			if svc == "" {
+				svc = strings.ToLower(filepath.Base(root))
+			}
+			stanza := fathomStanza(svc)
+			for _, name := range d.StaleStanzas {
+				if err := applyStanza(filepath.Join(root, name), stanza, stdout); err != nil {
+					fmt.Fprintf(stdout, "  apply failed (stanza %s): %v\n", name, err)
+				} else {
+					fmt.Fprintf(stdout, "  applied: %s stanza refreshed to the current template\n", name)
+				}
 			}
 		}
 		// FR-3: missing shipped skills install through init's own

@@ -5,6 +5,28 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — reconcile learns to see stanza-CONTENT drift (and the fleet is refreshed)
+
+The stanza template gained the continuity line and `fathom fleet
+reconcile` reported "wiring current" for all 17 repos — it checked stanza
+PRESENCE, never content against the current template. **A template change
+no reconcile can deliver is a template change that never ships.**
+
+`staleStanzaFiles` now compares each marker-owned region (CLAUDE.md and
+AGENTS.md independently) against the template rendered with the
+**registry's** service id — dirname only as a daemon-unreachable
+fallback. The distinction promptly proved itself: the first apply used the
+dirname and mis-rendered exactly one repo — sextant, whose registry id is
+`fathom` — and the corrected binary flagged and repaired its own mistake.
+Files without markers are never touched: wiring a never-wired repo is
+init's job; reconcile refreshes only what fathom already owns (law 15's
+boundary — the markers ARE the ownership claim).
+
+Applied fleet-wide: 17 repos, 0 drifted, every stanza now carrying the
+continuity instructions (including the Codex/hook-less path). The edits
+live in each repo's working tree for its owner to commit.
+
+
 ### 2026-08-13 — phase V lands: scope hides, purge proves — plus the two defects its verifier caught
 
 The rebuilt phase V merged with **all six rework defects re-reproduced
