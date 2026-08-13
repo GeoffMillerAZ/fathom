@@ -12,9 +12,22 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 func main() {
+	// Arm the suppression read filter for the REAL binary: the store's
+	// per-call gate reads state exclusively through $FATHOM_SUPPRESSIONS
+	// (scope.EnvVar), and defaulting it HERE — never in a package init —
+	// is what keeps `go test ./...` hermetic on every machine while the
+	// CLI and the daemon always filter (the V6 rework: no init()-armed
+	// globals, no gate result that depends on the developer's ~/.fathom).
+	if os.Getenv(scope.EnvVar) == "" {
+		if p := scope.DefaultUserPath(); p != "" {
+			_ = os.Setenv(scope.EnvVar, p)
+		}
+	}
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
@@ -151,6 +164,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdMetrics(args[1:], stdout, stderr)
 	case "findings":
 		return cmdFindings(args[1:], stdout, stderr)
+	case "scope":
+		return cmdScope(args[1:], stdout, stderr)
+	case "purge":
+		return cmdPurge(args[1:], stdout, stderr)
 	case "memory":
 		return cmdMemory(args[1:], stdout, stderr)
 	default:
@@ -202,6 +219,8 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  metrics               Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate")
 	fmt.Fprintln(w, "  findings              Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)")
 	fmt.Fprintln(w, "  memory                Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it")
+	fmt.Fprintln(w, "  scope                 Reversible suppression: list | suppress <glob> --reason R | unsuppress <id> | preview <glob>")
+	fmt.Fprintln(w, "  purge                 IRREVERSIBLE removal: purge <glob> --service S --reason R [--dry-run|--yes] | history (exit 2 = SQL zero but bytes unchecked)")
 	fmt.Fprintln(w, "  version               Print version information")
 	fmt.Fprintln(w, "  help                  Show this help message")
 }

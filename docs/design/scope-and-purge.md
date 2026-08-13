@@ -8,7 +8,14 @@
 >
 > **Status:** design, REVISED 2026-08-08 after adversarial review found
 > three ways the "provable purge" guarantee was false as first written
-> (§3.5, §3.2's physical row, §3.3's two corrections).
+> (§3.5, §3.2's physical row, §3.3's two corrections). REVISED AGAIN
+> 2026-08-13 after the first BUILD was held for rework over six verified
+> defects (V1-V6): the verdict is a tri-state carrying the raw-bytes
+> probe's outcome (§3.3), the ingest-time exclusion is SERVICE-SCOPED by
+> construction (§3.5), the read chokepoint is the store's own per-call
+> gate rather than an open-time decorator (§2.2), and suppression state
+> resolves through an injectable path ($FATHOM_SUPPRESSIONS) with no
+> init()-armed globals, so the validate gate is machine-independent.
 >
 > Builds on the existing `Store` primitives
 > (`PurgeSource`, `PurgeService`, `RemoveService`, `DeleteFingerprint`,
@@ -66,10 +73,23 @@ about *this machine's* index, not a policy about the code.
 
 ### 2.2 Where the filter applies
 
-At **one** place: the query layer, immediately before results are returned,
-applied to every surface uniformly — MCP tools, CLI, HTTP, and the
-observatory's own counts. One chokepoint is the only way to be sure there
-is no bypass, and it is testable by enumerating the surfaces.
+At **one** place: the query layer — concretely, INSIDE the store
+backends' own content-bearing read methods, which every surface (MCP
+tools, CLI, HTTP, the observatory's counts, the cross-repo platform
+store) funnels through. Two properties are load-bearing, both from the
+2026-08-13 rework:
+
+- **Per-call state.** The gate re-reads the suppression file on every
+  read (stat + reload on mtime/size change), because the daemon opens
+  its store once and holds it for the process lifetime — a filter
+  installed at open time is inert in the only deployment that exists
+  (V5). A suppression written after open filters the very next query.
+- **No constructor can opt out.** The filter is part of the read
+  methods, not a decorator a constructor installs, so every exported
+  store constructor returns a filtering store; an audit test derives the
+  constructor list from the store package's own source and fails a new
+  constructor by default (V3 — the hand-listed audit missed
+  MountReadOnly and eleven surfaces bypassed the filter).
 
 Suppressed content is filtered, and **the fact of filtering is disclosed**:
 
@@ -204,6 +224,23 @@ It does not retry and it does not report partial success — a partial purge
 that reports success is worse than a failed one, because the user stops
 looking.
 
+**The verdict is a tri-state, and the probe's outcome is part of the type
+(V1, 2026-08-13).** The first build printed VERIFIED whenever the SQL
+re-scan was clean — even when the raw-bytes probe never ran (every needle
+skipped as still-live under another service, an empty needle set, a read
+error falling through). The rebuilt run has exactly three outcomes,
+computed in one function with no boolean to shortcut through:
+
+| Verdict | Meaning | CLI exit |
+|---|---|---|
+| `verified` | SQL zero everywhere AND the probe ran clean | 0 |
+| `sql-zero-bytes-unchecked` | SQL zero, but the probe did not run — named reason | 2 |
+| `failed` | a survivor, raw residue, or a wired derived store erroring | 1 |
+
+`RawProbe.Ran` is earned, never assumed: needles > 0, at least one file
+scanned, no read error. "Bytes unchecked" is not success and the report
+says so in words.
+
 ### 3.4 `claim_events` — the one deliberate retention
 
 `claim_events` is an append-only evidence log; deleting from it breaks the
@@ -237,9 +274,18 @@ panel keep reporting "verified" against a store where the rows have
 returned. A query-layer filter can hide them; it cannot stop them being
 written.
 
-**The correction: purge appends the pattern to `~/.fathom/ignore`**, which
-`connector.LoadIgnoreScoped` already unions at `Discover` — user-scope,
-local, additive-only (law 13), and applied at *write* time.
+**The correction, as revised 2026-08-13: purge appends the pattern to
+`~/.fathom/ignore.d/<service>`** (override the directory with
+`$FATHOM_IGNORE_D`), which `connector.LoadIgnoreScopedFor` unions at
+`Discover` FOR THAT SERVICE ALONE — user-scope, local, additive-only
+(law 13), applied at *write* time, and SERVICE-SCOPED BY CONSTRUCTION.
+The first build wrote the bare pattern into the shared `~/.fathom/ignore`,
+which unions into EVERY repo: `purge --service S --all` put a bare `**`
+there and destroyed the whole fleet index on the next refresh, and even a
+narrow glob silently stopped that path indexing everywhere (V2, V4). A
+pattern in a per-service file cannot reach another service; the writer
+(`connector.AppendServiceIgnore`) refuses a fleet-wide request loudly;
+and the purge report DISCLOSES the exclusion's scope in words.
 
 **§2.2 is therefore restated as two chokepoints, not one:**
 

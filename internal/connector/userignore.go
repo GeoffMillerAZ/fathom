@@ -55,6 +55,10 @@ func (e *ErrUserScopeReinclude) Error() string {
 type IgnoreCounts struct {
 	Project int
 	User    int
+	// Service counts patterns from the SERVICE-SCOPED file
+	// ~/.fathom/ignore.d/<service> (serviceignore.go) — purge's write-side
+	// chokepoint. Zero whenever the load had no service in hand.
+	Service int
 }
 
 // ignoreLines returns path's raw lines (nil when absent/unreadable) and the
@@ -108,25 +112,7 @@ func checkNoReinclude(path string, lines []string) error {
 // user-scope exclusion on conflict — law 13's "where both scopes speak,
 // the project wins."
 func LoadIgnoreScoped(root string) (*filter.Matcher, IgnoreCounts, error) {
-	projectLines, projectN := ignoreLines(filepath.Join(root, IgnoreFileName))
-
-	userPath := UserIgnorePath()
-	var userLines []string
-	var userN int
-	if userPath != "" {
-		userLines, userN = ignoreLines(userPath)
-		if err := checkNoReinclude(userPath, userLines); err != nil {
-			return nil, IgnoreCounts{}, err
-		}
-	}
-
-	if projectN == 0 && userN == 0 {
-		return nil, IgnoreCounts{}, nil
-	}
-	combined := make([]string, 0, len(userLines)+len(projectLines))
-	combined = append(combined, userLines...)
-	combined = append(combined, projectLines...)
-	return filter.New(combined), IgnoreCounts{Project: projectN, User: userN}, nil
+	return LoadIgnoreScopedFor(root, "")
 }
 
 // ProjectOnlyIgnore compiles root/.fathomignore alone (no user-scope

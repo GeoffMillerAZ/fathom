@@ -105,8 +105,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// own enforcement point — a violating user-scope file would have failed
 	// the ingest itself, never reached this line), so a second, cheap read
 	// here is purely for display and cannot itself fail loudly.
-	if _, counts, ierr := connector.LoadIgnoreScoped(svcPath); ierr == nil && (counts.Project > 0 || counts.User > 0) {
-		fmt.Fprintf(stdout, "excluded: %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore)\n", counts.Project+counts.User, counts.Project, counts.User)
+	if _, counts, ierr := connector.LoadIgnoreScopedFor(svcPath, *service); ierr == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
+		fmt.Fprintf(stdout, "excluded: %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore, %d service-scoped ignore.d/%s)\n",
+			counts.Project+counts.User+counts.Service, counts.Project, counts.User, counts.Service, *service)
 	}
 	return 0
 }

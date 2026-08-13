@@ -228,7 +228,7 @@ func MountReadOnly(path string, level ConformanceLevel) (*SQLiteStore, error) {
 		return nil, cerr
 	}
 
-	return &SQLiteStore{db: db}, nil
+	return &SQLiteStore{db: db, path: path, gate: newScopeGate()}, nil
 }
 
 // checkMarkers verifies the two format-identity pragmas (store-format-v0.md

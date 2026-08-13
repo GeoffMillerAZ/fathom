@@ -53,7 +53,11 @@ func (c *LocalConnector) Discover(_ context.Context, svc core.ServiceRef) ([]cor
 	// the enforcement point for law 13's additive-only rule — a violating
 	// user-scope re-include ("!pattern") fails Discover outright (loud, per
 	// the design's own requirement), never silently dropped or applied.
-	ignore, _, err := LoadIgnoreScoped(svc.Path)
+	// The load is service-aware: svc.ID's own scoped exclusions
+	// (~/.fathom/ignore.d/<id>, purge's write-side chokepoint) union in
+	// here and ONLY here — a pattern recorded for one service can never
+	// reach another service's Discover (V2).
+	ignore, _, err := LoadIgnoreScopedFor(svc.Path, svc.ID)
 	if err != nil {
 		return nil, err
 	}

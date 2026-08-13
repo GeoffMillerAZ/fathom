@@ -181,4 +181,4 @@ fathom ingest --service payment-service --path /path/to/payment-service
 
 ## Maintained
 
-This doc covers: `list_services`, `fleet_drift`, `query_cross_service`, `complexity`, `hotspots`, `god_object`, `security_rollup`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `dependencies`, `deps`, `staleness_report`, `set_profile`, `ingest`, `fathom ingest`. Update it when these change.
+This doc covers: `list_services`, `fleet_drift`, `query_cross_service`, `complexity`, `hotspots`, `god_object`, `security_rollup`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `dependencies`, `deps`, `staleness_report`, `set_profile`, `ingest`, `fathom ingest`, `fathom scope` (reversible suppression: list/suppress/unsuppress/preview), `fathom purge` (irreversible, verified removal + history). Update it when these change.

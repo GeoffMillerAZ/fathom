@@ -31,6 +31,76 @@ Also: note/point/close accept the natural `"text" --flags` order (the
 rate-verb lesson, applied before it bit anyone else).
 
 
+||||||| parent of 62dd947 (phase V rebuilt: scope hides, purge proves — the six rework defects made structural (SP-1..SP-9, SP-11, SP-12))
+### 2026-08-13 — phase V rebuilt: scope hides, purge proves, and the six rework defects are structural now
+
+`fathom scope list|suppress|unsuppress|preview` (reversible, disclosed
+suppression) and `fathom purge … | history` (irreversible, verified
+removal), rebuilt from the held branch's review. Each of the six verified
+defects (V1–V6) is now impossible by construction, not patched:
+
+- **V1 — the probe's outcome is part of the verdict TYPE.** `PurgeReport`
+  carries a tri-state `PurgeVerdict` computed in exactly one place
+  (`purgeVerdict`): only "SQL zero + raw-bytes probe ran clean" is
+  `verified`; "SQL zero, bytes unchecked" (probe skipped, nothing
+  scannable, or a read error) is its own named state that the CLI maps to
+  exit 2 and can never print VERIFIED; survivors/residue/derived-store
+  failures are `failed` (exit 1). `RawProbe.Ran` is earned — needles > 0,
+  ≥1 file scanned, no read error — never assumed.
+  (TestPurgeVerdictTable, TestPurgeBytesUncheckedIsNotVerified,
+  TestPurgeBytesUncheckedExitsDistinct.)
+- **V2/V4 — ingest-time exclusions are SERVICE-SCOPED by construction.**
+  Purge writes to `~/.fathom/ignore.d/<service>` ($FATHOM_IGNORE_D),
+  which `Discover` unions only for that service
+  (`connector.LoadIgnoreScopedFor`); a pattern in it cannot reach another
+  service, `AppendServiceIgnore` refuses a fleet-wide write loudly, and
+  the purge report DISCLOSES the exclusion's scope in words. `--all` now
+  scopes its `**` to the purged service alone.
+  (TestServiceScopedIgnoreAppliesOnlyToItsService,
+  TestPurgeAllIsServiceScoped, TestPurgeDisclosesExclusionScope.)
+- **V3 — the chokepoint audit derives the constructor list from the store
+  package's own source.** The suppression filter lives inside the
+  backends' read methods, so EVERY constructor — Open, BackendForPath,
+  NewSQLiteStore, NewMemoryStore, MountReadOnly (the one the old audit
+  missed), OpenPlatform — returns a filtering store, and
+  TestEveryStoreConstructorIsScoped parses the package, behaviorally
+  proves each discovered constructor, and fails a new one by default.
+- **V5 — suppression applies at the QUERY layer, re-read per call.** A
+  `scope.Source` stat()s the suppression file on every read and reloads
+  on (mtime, size) change, so the daemon's long-lived handle sees a new
+  suppression on the NEXT query — proven by a test that suppresses AFTER
+  open (TestSuppressionAppliesToAlreadyOpenHandle).
+- **V6 — no init()-armed globals; the gate is hermetic.** Suppression
+  state resolves only through $FATHOM_SUPPRESSIONS (the
+  FATHOM_SESSION_LEDGER pattern); the fathom binary's main() defaults it
+  to ~/.fathom/suppressions.jsonl; pkg/client carries no blank import;
+  internal/scope has no init (TestScopePackageHasNoInit), so `task
+  validate` never reads the developer's real ~/.fathom.
+
+Everything the design's §3.2 table enumerates is deleted and proven per
+location — the eight SQL tables, claim_events (retained-and-disclosed by
+default, deleted only under `--include-history --force`), the result
+cache and vector index (named absences when unwired, verdict-failing when
+wired and erroring), physical residue (secure_delete pinned connection +
+wal_checkpoint(TRUNCATE) + VACUUM + independent raw-bytes probe), and —
+new, closing AM-12 — `<repo>/.fathom/memories.jsonl`, since a memory may
+QUOTE purged content (memory.FileStore.PurgeMatching,
+TestPurgeTakesQuotingMemories).
+
+Suppression is disclosed at the chokepoint: every filtered read yields a
+Disclosure (count, reasons naming pattern and expiry, suppression ids)
+recorded into a per-request context collector
+(TestSuppressionIsDisclosed, TestSuppressedReadDisclosesViaCollector);
+expiry is judged at read time with no sweep
+(TestSuppressionExpiryAtReadTime); preview counts come from the same
+per-location resolver purge plans with, so preview, filter and purge
+cannot disagree (TestCmdScopePreviewMatchesEffect).
+
+Design doc revised in step (scope-and-purge.md: §2.2 chokepoint restated
+as per-call store-gate, §3.3 verdict trichotomy, §3.5 service-scoped
+exclusion). SP-10 (the observatory Scope panel) stays open by
+instruction.
+
 ### 2026-08-13 — continuity threads live: TH-1..4 (vision 21)
 
 The thread — one strand of intent spanning sessions — is now a first-class

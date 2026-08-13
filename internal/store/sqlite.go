@@ -24,6 +24,17 @@ import (
 // for this backend's existence.
 type SQLiteStore struct {
 	db *sql.DB
+	// path is the store file this handle was opened against ("" for an
+	// in-memory database). Recorded because the physical half of a purge
+	// (docs/design/scope-and-purge.md §3.2's last row) cannot be done
+	// through the SQL handle alone: VACUUM needs a file to compact and the
+	// raw-bytes probe needs one to read.
+	path string
+	// gate is the per-call suppression filter (scoped.go). Every
+	// constructor initialises it via newScopeGate; the audit test
+	// TestEveryStoreConstructorIsScoped fails any constructor that does
+	// not.
+	gate scopeGate
 }
 
 // storeFormatVersion is the format_version marker docs/spec/store-format-v0.md
@@ -112,7 +123,7 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		db.SetMaxOpenConns(1)
 	}
 
-	s := &SQLiteStore{db: db}
+	s := &SQLiteStore{db: db, path: path, gate: newScopeGate()}
 	if err := s.createSchema(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("store.NewSQLiteStore schema: %w", err)
@@ -493,7 +504,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 // QueryObservations returns observations for serviceID. When concernID is
 // non-empty the result is filtered to rows whose concern_id matches; when
 // concernID is "" all rows for the service are returned.
-func (s *SQLiteStore) QueryObservations(ctx context.Context, serviceID, concernID string) ([]core.Observation, error) {
+func (s *SQLiteStore) queryObservationsRaw(ctx context.Context, serviceID, concernID string) ([]core.Observation, error) {
 	var (
 		rows *sql.Rows
 		err  error
@@ -714,7 +725,7 @@ DELETE FROM fingerprints WHERE service_id = ? AND source_ref = ?
 
 // ListSourceRefs returns the sorted distinct source_refs for serviceID across
 // the observations and fingerprints tables.
-func (s *SQLiteStore) ListSourceRefs(ctx context.Context, serviceID string) ([]string, error) {
+func (s *SQLiteStore) listSourceRefsRaw(ctx context.Context, serviceID string) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT source_ref FROM observations WHERE service_id = ?
 UNION
@@ -781,7 +792,7 @@ ON CONFLICT (service_id, symbol) DO UPDATE SET
 }
 
 // KnowledgeCards returns all knowledge cards for serviceID ordered by symbol.
-func (s *SQLiteStore) KnowledgeCards(ctx context.Context, serviceID string) ([]KnowledgeCard, error) {
+func (s *SQLiteStore) knowledgeCardsRaw(ctx context.Context, serviceID string) ([]KnowledgeCard, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT service_id, symbol, file, summary, tags
 FROM knowledge_cards
@@ -848,7 +859,7 @@ ON CONFLICT (service_id, source_ref) DO UPDATE SET
 }
 
 // DocSummaries returns all doc summaries for serviceID ordered by source_ref.
-func (s *SQLiteStore) DocSummaries(ctx context.Context, serviceID string) ([]DocSummary, error) {
+func (s *SQLiteStore) docSummariesRaw(ctx context.Context, serviceID string) ([]DocSummary, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT service_id, source_ref, title, summary
 FROM doc_summaries
@@ -1148,7 +1159,7 @@ ORDER BY layer, subject, claim_id
 
 // ClaimLinks returns links for the given claim IDs within serviceID, ordered
 // by (claim_id, rel, target_ref). Returns nil with no error for empty claimIDs.
-func (s *SQLiteStore) ClaimLinks(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error) {
+func (s *SQLiteStore) claimLinksRaw(ctx context.Context, serviceID string, claimIDs []string) ([]core.ClaimLink, error) {
 	if len(claimIDs) == 0 {
 		return nil, nil
 	}
@@ -1456,7 +1467,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 
 // TypedEdges returns every typed call edge stored for serviceID, ordered by
 // (from_symbol, to_symbol, kind).
-func (s *SQLiteStore) TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error) {
+func (s *SQLiteStore) typedEdgesRaw(ctx context.Context, serviceID string) ([]core.Edge, error) {
 	rows, err := s.db.QueryContext(ctx, `
 SELECT from_service, from_file, from_symbol, to_symbol, kind
 FROM typed_edges

@@ -27,6 +27,10 @@ type MemoryStore struct {
 	compileRuns    []core.CompileRun
 	typedEdges     map[typedEdgeKey][]core.Edge // (serviceID, pkgPath) → edges (replace-semantic)
 	typedEdgeFPs   map[fpKey]string             // reuses fpKey{serviceID, pkgPath} shape
+
+	// gate is the per-call suppression filter (scoped.go); initialised by
+	// NewMemoryStore and exercised by the constructor audit.
+	gate scopeGate
 }
 
 // typedEdgeKey scopes stored typed edges to (serviceID, pkgPath) — the
@@ -54,6 +58,7 @@ type claimKey struct {
 // NewMemoryStore returns an empty MemoryStore.
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
+		gate:           newScopeGate(),
 		fingerprints:   make(map[fpKey]string),
 		knowledgeCards: make(map[kcKey]KnowledgeCard),
 		docSummaries:   make(map[fpKey]DocSummary),
@@ -83,7 +88,7 @@ func (m *MemoryStore) PutObservations(_ context.Context, obs []core.Observation)
 
 // QueryObservations returns observations matching serviceID and, when
 // concernID is non-empty, also matching concernID.
-func (m *MemoryStore) QueryObservations(_ context.Context, serviceID, concernID string) ([]core.Observation, error) {
+func (m *MemoryStore) queryObservationsRaw(_ context.Context, serviceID, concernID string) ([]core.Observation, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	var result []core.Observation
@@ -393,7 +398,7 @@ func (m *MemoryStore) DeleteFingerprint(_ context.Context, serviceID, sourceRef 
 
 // ListSourceRefs returns the sorted distinct source_refs for serviceID across
 // observations and fingerprints.
-func (m *MemoryStore) ListSourceRefs(_ context.Context, serviceID string) ([]string, error) {
+func (m *MemoryStore) listSourceRefsRaw(_ context.Context, serviceID string) ([]string, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	seen := make(map[string]struct{})
@@ -441,7 +446,7 @@ func (m *MemoryStore) PutKnowledgeCards(_ context.Context, cards []KnowledgeCard
 }
 
 // KnowledgeCards returns all knowledge cards for serviceID ordered by symbol.
-func (m *MemoryStore) KnowledgeCards(_ context.Context, serviceID string) ([]KnowledgeCard, error) {
+func (m *MemoryStore) knowledgeCardsRaw(_ context.Context, serviceID string) ([]KnowledgeCard, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	var result []KnowledgeCard
@@ -478,7 +483,7 @@ func (m *MemoryStore) PutDocSummaries(_ context.Context, summaries []DocSummary)
 }
 
 // DocSummaries returns all doc summaries for serviceID ordered by source_ref.
-func (m *MemoryStore) DocSummaries(_ context.Context, serviceID string) ([]DocSummary, error) {
+func (m *MemoryStore) docSummariesRaw(_ context.Context, serviceID string) ([]DocSummary, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	var result []DocSummary
@@ -647,7 +652,7 @@ func (m *MemoryStore) ClaimsForService(_ context.Context, serviceID, layer strin
 // rel, target_ref). The serviceID parameter is accepted for interface
 // conformance; claim_id is content-addressed and globally unique, so
 // service-level filtering is not required in the in-process store.
-func (m *MemoryStore) ClaimLinks(_ context.Context, _ string, claimIDs []string) ([]core.ClaimLink, error) {
+func (m *MemoryStore) claimLinksRaw(_ context.Context, _ string, claimIDs []string) ([]core.ClaimLink, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if len(claimIDs) == 0 {
@@ -805,7 +810,7 @@ func (m *MemoryStore) PutTypedEdges(_ context.Context, serviceID, pkgPath string
 
 // TypedEdges returns every typed call edge stored for serviceID, ordered by
 // (from_symbol, to_symbol, kind).
-func (m *MemoryStore) TypedEdges(_ context.Context, serviceID string) ([]core.Edge, error) {
+func (m *MemoryStore) typedEdgesRaw(_ context.Context, serviceID string) ([]core.Edge, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	var result []core.Edge
