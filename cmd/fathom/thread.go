@@ -242,6 +242,14 @@ func newThreadID(now time.Time, text string) string {
 }
 
 func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
+	// `thread note "text" --flag v` is the natural form, and Go's
+	// flag package stops at the first positional — so the leading argument
+	// is lifted before parsing (the rate-verb lesson, applied here before
+	// it bites).
+	var lead string
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		lead, args = args[0], args[1:]
+	}
 	fs := newFlagSet("thread note", stderr)
 	thread := fs.String("thread", "general", "thread name")
 	kind := fs.String("kind", "handoff-note", "item kind: "+strings.Join(threadKinds, "|"))
@@ -250,7 +258,10 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if fs.NArg() != 1 || strings.TrimSpace(fs.Arg(0)) == "" {
+	if lead == "" && fs.NArg() == 1 {
+		lead = fs.Arg(0)
+	}
+	if strings.TrimSpace(lead) == "" {
 		fmt.Fprintln(stderr, "usage: fathom thread note \"text\" [--thread T] [--kind K] [--completes-when …]")
 		return 1
 	}
@@ -267,10 +278,10 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	root, _ := filepath.Abs(*repo)
 	it := threadItem{
 		SchemaVersion: threadSchemaVersion,
-		ID:            newThreadID(now, fs.Arg(0)),
+		ID:            newThreadID(now, lead),
 		Thread:        *thread,
 		Kind:          *kind,
-		Text:          strings.TrimSpace(fs.Arg(0)),
+		Text:          strings.TrimSpace(lead),
 		Pointers:      map[string]string{"repo": strings.ToLower(filepath.Base(root))},
 		FiledAt:       now.UTC().Format(time.RFC3339),
 		FiledBy:       threadFiler(),
@@ -288,6 +299,14 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 }
 
 func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
+	// `thread point "text" --flag v` is the natural form, and Go's
+	// flag package stops at the first positional — so the leading argument
+	// is lifted before parsing (the rate-verb lesson, applied here before
+	// it bites).
+	var lead string
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		lead, args = args[0], args[1:]
+	}
 	fs := newFlagSet("thread point", stderr)
 	thread := fs.String("thread", "general", "thread name")
 	session := fs.String("session", "", "session id the detail lives in (default: this session)")
@@ -295,7 +314,10 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if fs.NArg() != 1 {
+	if lead == "" && fs.NArg() == 1 {
+		lead = fs.Arg(0)
+	}
+	if lead == "" {
 		fmt.Fprintln(stderr, "usage: fathom thread point \"what happened\" [--session S]")
 		return 1
 	}
@@ -313,10 +335,10 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 	root, _ := filepath.Abs(*repo)
 	it := threadItem{
 		SchemaVersion: threadSchemaVersion,
-		ID:            newThreadID(now, fs.Arg(0)),
+		ID:            newThreadID(now, lead),
 		Thread:        *thread,
 		Kind:          "side-task",
-		Text:          strings.TrimSpace(fs.Arg(0)),
+		Text:          strings.TrimSpace(lead),
 		Pointers:      map[string]string{"session_id": sid, "repo": strings.ToLower(filepath.Base(root))},
 		FiledAt:       now.UTC().Format(time.RFC3339),
 		FiledBy:       threadFiler(),
@@ -374,16 +396,27 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 }
 
 func cmdThreadClose(args []string, stdout, stderr io.Writer) int {
+	// `thread close "text" --flag v` is the natural form, and Go's
+	// flag package stops at the first positional — so the leading argument
+	// is lifted before parsing (the rate-verb lesson, applied here before
+	// it bites).
+	var lead string
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		lead, args = args[0], args[1:]
+	}
 	fs := newFlagSet("thread close", stderr)
 	why := fs.String("why", "", "one line on the outcome")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
-	if fs.NArg() != 1 {
+	if lead == "" && fs.NArg() == 1 {
+		lead = fs.Arg(0)
+	}
+	if lead == "" {
 		fmt.Fprintln(stderr, "usage: fathom thread close <id> [--why …]")
 		return 1
 	}
-	id := fs.Arg(0)
+	id := lead
 	items := loadThreadItems(threadsPath())
 	var found bool
 	for _, it := range items {
