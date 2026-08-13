@@ -130,6 +130,16 @@
 
 ---
 
+## TH — Continuity threads (vision 21; specced 2026-08-12, unbuilt)
+
+- [ ] the thread store and verbs: user-central JSONL, `fathom thread brief|note|point|list|close`, derived-state composition (plans next + claimed-unproven + git WIP), `completes_when` self-closing on artifact existence; every deposit path is mechanical — an LLM call anywhere in the loop is the kill {id: TH-1, symbol: cmdThread, package: cmd/fathom, reachable_from: TestThreadBriefComposesDerivedAndDeposited}
+- [ ] SessionEnd (fires on /clear, reason attached) and PreCompact deposit the mechanical SDD delta and in-flight pointers at exactly the moments context dies; the Stop hook adds session pointers incrementally {id: TH-2, symbol: cmdSessionEndHook, package: cmd/fathom, reachable_from: TestSessionEndDepositsOnClear}
+- [ ] SessionStart injection is source-aware and budget-bounded: a ≤600-token brief on startup/clear, NOTHING on resume/compact (their context survives) — the byte bound enforced by test {id: TH-3, symbol: threadBrief, package: cmd/fathom, reachable_from: TestBriefBudgetAndSourceGating}
+- [ ] the §2 pre-registered bet is measurable: fresh-with-brief units labeled in the ledger, warm-up (first_edit_turn) and all-in per-turn cost (in+out+cache×0.1) compared against resumed baselines in the flywheel/brief; the registered kill (band unmet after 20 units → the injection is removed) is wired as a named check, not a memory {id: TH-4, symbol: threadBetCheck, package: cmd/fathom, reachable_from: TestThreadBetEvaluation}
+- [ ] `fathom thread promote` scaffolds a gate-ready plan (fathom-plan grammar) from a thread's items; `fathom thread handoff` renders the brief as a harness-neutral handoff artifact; AGENTS.md carries the Codex instruction {id: TH-5, symbol: cmdThreadPromote, package: cmd/fathom, reachable_from: TestThreadPromoteScaffoldsGateReadyPlan}
+
+---
+
 ## Deferred with triggers
 
 - [-] fleet-wide one-click apply across all repositories at once {id: DF-1, disposition: deferred, reason: "per-repository apply bounds the blast radius of a bad reconciliation to one repository and keeps undo per-repository", trigger: "per-repository apply has run 50 times with zero BLOCKED-then-regretted outcomes"}
