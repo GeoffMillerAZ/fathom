@@ -89,13 +89,13 @@ func TestUncleanArmRowsAreExcludedAndNamed(t *testing.T) {
 	dir := hermeticObsEnv(t)
 	rows := []string{
 		// Clean OFF row: begins inside the window, carries a split.
-		`{"schema_version":2,"session_id":"clean","arm":"off","arm_coverage":"full","at":"2026-08-08T20:00:00Z","tokens_note":"","tokens_total":300,"tokens_in":100,"tokens_out":200}`,
+		`{"schema_version":2,"session_id":"clean","arm":"off","arm_coverage":"full","at":"2026-08-08T20:00:00Z","tokens_note":"","tokens_total":300,"turn_count":15,"tokens_in":1500,"tokens_out":1500}`,
 		// Contaminated: began before the arm. The real 2026-08-08 shape.
 		`{"schema_version":2,"session_id":"spans","arm":"off","arm_coverage":"partial","arm_coverage_note":"began before the arm","at":"2026-08-08T22:53:15Z","tokens_note":"","tokens_total":933232702,"tokens_in":900000000,"tokens_out":33232702}`,
 		// Legacy: written by a binary that never stamped coverage.
 		`{"schema_version":2,"session_id":"legacy","arm":"off","at":"2026-08-07T10:00:00Z","tokens_note":"","tokens_total":500,"tokens_in":200,"tokens_out":300}`,
 		// An ON row needs no stamp: "on" is not a bounded window.
-		`{"schema_version":2,"session_id":"onrow","arm":"on","at":"2026-08-08T21:00:00Z","tokens_note":"","tokens_total":150,"tokens_in":50,"tokens_out":100}`,
+		`{"schema_version":2,"session_id":"onrow","arm":"on","at":"2026-08-08T21:00:00Z","tokens_note":"","tokens_total":150,"turn_count":15,"tokens_in":50,"tokens_out":100}`,
 	}
 	if err := os.WriteFile(filepath.Join(dir, "ledger.jsonl"), []byte(strings.Join(rows, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -120,8 +120,9 @@ func TestUncleanArmRowsAreExcludedAndNamed(t *testing.T) {
 	if imp.TokensOffMedian == nil {
 		t.Fatal("the clean row should still produce a median")
 	}
-	if *imp.TokensOffMedian != 300 {
-		t.Errorf("TokensOffMedian = %d, want 300 — a contaminated row leaked into the comparison", *imp.TokensOffMedian)
+	// Per the 2026-08-12 unit amendment the median is PER-TURN: (1500+1500)/15.
+	if *imp.TokensOffMedian != 200 {
+		t.Errorf("TokensOffMedian = %d, want 200/turn — a contaminated row leaked into the comparison", *imp.TokensOffMedian)
 	}
 }
 

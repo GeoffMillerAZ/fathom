@@ -134,6 +134,22 @@ func recordSessionLedgerEntry(sessionID, transcriptPath, projDir string, now tim
 	beats, _ := readBeatLogTail(beatLogPath(), sessionLedgerBeatTailBytes)
 	e := buildSessionLedgerEntry(sessionID, repo, ts, beats, now)
 	e.VerifyCatches = verifyCatches
+
+	// The amended unit (production-tokenomics.md §5, 2026-08-12): a session
+	// that began BEFORE the arm still contributes its arm-covered WINDOW,
+	// measured from the same transcript with the same estimators but
+	// restricted to lines after the arm's set_at. The owner's practice is
+	// one session resumed across days; a unit that only fresh sessions
+	// could satisfy produced a control arm that could never admit anything.
+	if e.ArmCoverage == "partial" {
+		if st, active := loadArmState(now); active {
+			if since, perr := time.Parse(time.RFC3339, st.SetAt); perr == nil {
+				if wsum, wtrunc, werr := windowSummaryFrom(transcriptPath, since, transcriptReadMaxBytes); werr == nil {
+					e.ArmWindow = buildArmWindow(wsum, since, wtrunc)
+				}
+			}
+		}
+	}
 	appendSessionLedger(e)
 }
 

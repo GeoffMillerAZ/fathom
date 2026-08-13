@@ -49,8 +49,8 @@ func TestFlywheelSeesRowsArrivingButInadmissible(t *testing.T) {
 	if !strings.Contains(got.Evidence, "NONE are admissible") {
 		t.Errorf("the evidence must distinguish 'arriving' from 'usable': %q", got.Evidence)
 	}
-	if !strings.Contains(got.Remedy, "FRESH session") {
-		t.Errorf("the remedy must say what actually fixes it: %q", got.Remedy)
+	if !strings.Contains(got.Remedy, "ARM-COVERED WINDOW") {
+		t.Errorf("the remedy must teach the amended unit — a resumed session's window counts once it clears the floor: %q", got.Remedy)
 	}
 }
 

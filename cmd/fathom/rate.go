@@ -251,11 +251,11 @@ const abMinSessionsPerArm = 20
 func evaluateABCriterion(imp obsImpact) string {
 	var missing []string
 	if imp.TokensOffSessions < abMinSessionsPerArm {
-		missing = append(missing, fmt.Sprintf("the OFF arm has %d of the %d sessions registered as the minimum",
+		missing = append(missing, fmt.Sprintf("the OFF arm has %d of the %d units registered as the minimum (a unit is a fully-covered session, or the arm-covered window of a resumed one — §5 amendment 2026-08-12)",
 			imp.TokensOffSessions, abMinSessionsPerArm))
 	}
 	if imp.TokensOnSessions < abMinSessionsPerArm {
-		missing = append(missing, fmt.Sprintf("the ON arm has %d of %d", imp.TokensOnSessions, abMinSessionsPerArm))
+		missing = append(missing, fmt.Sprintf("the ON arm has %d of %d units", imp.TokensOnSessions, abMinSessionsPerArm))
 	}
 	if imp.TokensOnMedian == nil || imp.TokensOffMedian == nil {
 		missing = append(missing, "at least one arm has no usable token median")
@@ -273,10 +273,10 @@ func evaluateABCriterion(imp obsImpact) string {
 	notWorse := *imp.RatingOnMed >= *imp.RatingOffMed
 	switch {
 	case cheaper && notWorse:
-		return fmt.Sprintf("MET: fathom-on is cheaper (%d vs %d median tokens) at equal-or-better outcome (%d vs %d of 5)",
+		return fmt.Sprintf("MET: fathom-on is cheaper (%d vs %d median real tokens PER TURN) at equal-or-better outcome (%d vs %d of 5)",
 			*imp.TokensOnMedian, *imp.TokensOffMedian, *imp.RatingOnMed, *imp.RatingOffMed)
 	case !cheaper:
-		return fmt.Sprintf("NOT MET: fathom-on is not cheaper (%d vs %d median tokens) — per the registered kill, "+
+		return fmt.Sprintf("NOT MET: fathom-on is not cheaper (%d vs %d median real tokens per turn) — per the registered kill, "+
 			"the production tokenomics claim is retracted wherever it appears",
 			*imp.TokensOnMedian, *imp.TokensOffMedian)
 	default:

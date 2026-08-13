@@ -259,9 +259,9 @@ func TestObservatoryImpactPage(t *testing.T) {
 	// median); row d predates the split — its inflated tokens_total must
 	// count as pre-split, never as data (the 596M-median finding).
 	lines := []string{
-		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-01T10:00:00Z","tokens_total":50100,"tokens_in":60,"tokens_out":40,"tokens_cache_read":50000,"tokens_note":"","verify_catches":3}`,
-		`{"schema_version":2,"session_id":"b","arm":"on","at":"2026-08-02T10:00:00Z","tokens_total":900200,"tokens_in":120,"tokens_out":80,"tokens_cache_read":900000,"tokens_note":""}`,
-		`{"schema_version":2,"session_id":"c","arm":"off","arm_coverage":"full","at":"2026-08-03T10:00:00Z","tokens_total":150,"tokens_in":90,"tokens_out":60,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"a","arm":"on","at":"2026-08-01T10:00:00Z","tokens_total":50100,"turn_count":10,"tokens_in":60,"tokens_out":40,"tokens_cache_read":50000,"tokens_note":"","verify_catches":3}`,
+		`{"schema_version":2,"session_id":"b","arm":"on","at":"2026-08-02T10:00:00Z","tokens_total":900200,"turn_count":10,"tokens_in":120,"tokens_out":80,"tokens_cache_read":900000,"tokens_note":""}`,
+		`{"schema_version":2,"session_id":"c","arm":"off","arm_coverage":"full","at":"2026-08-03T10:00:00Z","tokens_total":150,"turn_count":10,"tokens_in":90,"tokens_out":60,"tokens_note":""}`,
 		`{"schema_version":2,"session_id":"d","arm":"on","at":"2026-08-04T10:00:00Z","tokens_total":596931950,"tokens_note":""}`,
 	}
 	if err := os.WriteFile(ledger, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
@@ -281,11 +281,12 @@ func TestObservatoryImpactPage(t *testing.T) {
 	if imp.PilotState != "collecting" {
 		t.Errorf("pilot state = %q, want collecting", imp.PilotState)
 	}
-	if imp.TokensOnMedian == nil || *imp.TokensOnMedian != 200 {
-		t.Errorf("on median = %v, want 200 (upper-middle of in+out {100, 200}; the 596M pre-split row must NOT be in the sample)", imp.TokensOnMedian)
+	// Per-turn since the 2026-08-12 unit amendment: a=(100)/10=10, b=(200)/10=20.
+	if imp.TokensOnMedian == nil || *imp.TokensOnMedian != 20 {
+		t.Errorf("on median = %v, want 20/turn (upper-middle of {10, 20}; the 596M pre-split row must NOT be in the sample)", imp.TokensOnMedian)
 	}
-	if imp.TokensOffMedian == nil || *imp.TokensOffMedian != 150 {
-		t.Errorf("off median = %v, want 150 (in+out of row c)", imp.TokensOffMedian)
+	if imp.TokensOffMedian == nil || *imp.TokensOffMedian != 15 {
+		t.Errorf("off median = %v, want 15/turn (row c: 150/10)", imp.TokensOffMedian)
 	}
 	if imp.TokensPreSplitRows == nil || *imp.TokensPreSplitRows != 1 {
 		t.Errorf("pre-split rows = %v, want 1 (row d is unknown, never data)", imp.TokensPreSplitRows)

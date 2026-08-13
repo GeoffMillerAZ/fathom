@@ -23,6 +23,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -135,6 +136,15 @@ type sessionLedgerEntry struct {
 	TokensOut         *int `json:"tokens_out,omitempty"`
 	TokensCacheRead   *int `json:"tokens_cache_read,omitempty"`
 	TokensCacheCreate *int `json:"tokens_cache_create,omitempty"`
+
+	// ArmWindow carries the ARM-COVERED span of a session that began
+	// before the arm was set (arm_coverage: partial) — the amended unit of
+	// comparison (production-tokenomics.md §5, 2026-08-12). Whole-session
+	// figures above stay exactly as they were; the window is measured from
+	// the same transcript with the same estimators, restricted to lines
+	// timestamped at or after the arm's set_at, so the comparison never
+	// mixes assisted and unassisted activity.
+	ArmWindow *armWindowSummary `json:"arm_window,omitempty"`
 
 	// TranscriptSchemaNote (critic finding F4, docs/design/production-
 	// tokenomics.md §8's amended non-goal) is ALWAYS present when a
@@ -441,6 +451,26 @@ func transcriptSummaryFrom(path string) transcriptSummary {
 }
 
 func summarizeTranscriptBytes(data []byte) transcriptSummary {
+	return summarizeTranscriptWindow(data, nil)
+}
+
+// summarizeTranscriptWindow is the same fold restricted to lines whose
+// timestamp is at or after `since` (nil = no restriction — the whole
+// transcript).
+//
+// This is what makes an ARM-COVERED WINDOW of a resumed session measurable
+// (production-tokenomics.md §5, amended 2026-08-12). The owner's practice
+// is one session resumed across days, so a session-level unit produced a
+// control arm that could never admit anything; the unit had to bend to the
+// work rather than the work to the unit.
+//
+// Two conservative choices, both in the noisy-not-silent direction:
+//   - a line with NO parseable timestamp is EXCLUDED when since is set —
+//     unattributable activity must not leak into an arm's figures;
+//   - a tool_use before the boundary whose result lands after it is
+//     excluded too (the use was never registered), so boundary-straddling
+//     pairs count in neither window.
+func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary {
 	lines := splitLines(data)
 
 	turnCount := 0
@@ -471,6 +501,12 @@ func summarizeTranscriptBytes(data []byte) transcriptSummary {
 		var tl transcriptLine
 		if err := json.Unmarshal(l, &tl); err != nil {
 			continue // not this shape — skip, never abort the whole file
+		}
+		if since != nil {
+			t, terr := time.Parse(time.RFC3339, tl.Timestamp)
+			if terr != nil || t.Before(*since) {
+				continue
+			}
 		}
 		if tl.Type == "assistant" {
 			turnCount++
@@ -626,4 +662,129 @@ func isEditTool(name string) bool {
 		return true
 	}
 	return false
+}
+
+// armWindowSummary is the arm-covered span's own fold — the amended unit
+// of comparison (production-tokenomics.md §5, 2026-08-12). Numerator and
+// denominator always come from the same parsed span, so a bounded read
+// yields a coherent per-turn RATE even when it cannot yield a total.
+type armWindowSummary struct {
+	Since string `json:"since"` // the arm's set_at (RFC3339)
+	Turns *int   `json:"turns,omitempty"`
+
+	TokensIn        *int `json:"tokens_in,omitempty"`
+	TokensOut       *int `json:"tokens_out,omitempty"`
+	TokensCacheRead *int `json:"tokens_cache_read,omitempty"`
+
+	RawDiscoveryCalls     int  `json:"raw_discovery_calls,omitempty"`
+	RawDiscoveryTokensEst *int `json:"raw_discovery_tokens_est,omitempty"`
+	FathomCalls           int  `json:"fathom_calls,omitempty"`
+	FathomTokensEst       *int `json:"fathom_tokens_est,omitempty"`
+
+	// Truncated: the tail-bounded read did not reach back to the arm
+	// boundary, so the window's OLDEST activity is missing. Such a window
+	// is disclosed and EXCLUDED from the paired comparison — a partial
+	// window admitted as a unit would be the truncation bug all over
+	// again, one level down.
+	Truncated bool   `json:"truncated,omitempty"`
+	Note      string `json:"note,omitempty"`
+}
+
+// windowSummaryFrom computes the arm-covered window: it reads the TAIL of
+// the transcript (the window is by definition the newest span — the head
+// read the whole-session summary uses would be exactly backwards here),
+// aligns to a line boundary, and folds only lines at or after since.
+//
+// The bool is windowTruncated: the tail did not reach back to the arm
+// boundary, so the window is incomplete at its old end.
+func windowSummaryFrom(path string, since time.Time, capBytes int64) (transcriptSummary, bool, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return transcriptSummary{}, false, err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return transcriptSummary{}, false, err
+	}
+
+	off := int64(0)
+	tailBounded := false
+	if st.Size() > capBytes {
+		off = st.Size() - capBytes
+		tailBounded = true
+	}
+	if _, err := f.Seek(off, io.SeekStart); err != nil {
+		return transcriptSummary{}, false, err
+	}
+	data, err := io.ReadAll(io.LimitReader(f, capBytes))
+	if err != nil {
+		return transcriptSummary{}, false, err
+	}
+	if off > 0 {
+		// Drop the partial first line the seek landed inside.
+		if i := bytesIndexByte(data, '\n'); i >= 0 {
+			data = data[i+1:]
+		} else {
+			return transcriptSummary{}, false, fmt.Errorf("no line boundary in the tail read")
+		}
+	}
+
+	sum := summarizeTranscriptWindow(data, &since)
+
+	// The window is only COMPLETE if the tail reaches back to (or past)
+	// the boundary. The filtered FirstTS is >= since by construction, so
+	// probe the tail's own first parseable timestamp instead.
+	windowTruncated := false
+	if tailBounded {
+		windowTruncated = true // pessimistic until proven otherwise
+		for _, l := range splitLines(data) {
+			if len(l) == 0 {
+				continue
+			}
+			var tl transcriptLine
+			if json.Unmarshal(l, &tl) != nil {
+				continue
+			}
+			if t, terr := time.Parse(time.RFC3339, tl.Timestamp); terr == nil {
+				windowTruncated = t.After(since)
+				break
+			}
+		}
+	}
+	return sum, windowTruncated, nil
+}
+
+func bytesIndexByte(b []byte, c byte) int {
+	for i, x := range b {
+		if x == c {
+			return i
+		}
+	}
+	return -1
+}
+
+// buildArmWindow converts the window fold into the row's arm_window field.
+// A window with zero turns yields nil — nothing was measured, so nothing
+// is claimed (law 3).
+func buildArmWindow(sum transcriptSummary, since time.Time, truncated bool) *armWindowSummary {
+	if sum.TurnCount == nil || *sum.TurnCount == 0 {
+		return nil
+	}
+	w := &armWindowSummary{
+		Since:                 since.UTC().Format(time.RFC3339),
+		Turns:                 sum.TurnCount,
+		TokensIn:              sum.TokensIn,
+		TokensOut:             sum.TokensOut,
+		TokensCacheRead:       sum.TokensCacheRead,
+		RawDiscoveryCalls:     sum.RawDiscoveryCalls,
+		RawDiscoveryTokensEst: sum.RawDiscoveryTokensEst,
+		FathomCalls:           sum.FathomCalls,
+		FathomTokensEst:       sum.FathomTokensEst,
+		Truncated:             truncated,
+	}
+	if truncated {
+		w.Note = "the tail-bounded transcript read did not reach back to the arm boundary — the window's oldest activity is missing, so this window is excluded from the paired comparison"
+	}
+	return w
 }

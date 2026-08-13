@@ -31,7 +31,7 @@ func TestLedgerCountsSessionsNotStops(t *testing.T) {
 		`{"schema_version":2,"session_id":"s1","arm":"on","at":"2026-08-08T11:00:00Z","tokens_note":"","turn_count":40,"discovery_actions_total":400,"tokens_in":40,"tokens_out":40}`,
 		`{"schema_version":2,"session_id":"s1","arm":"on","at":"2026-08-08T12:00:00Z","tokens_note":"","turn_count":90,"discovery_actions_total":900,"tokens_in":90,"tokens_out":90}`,
 		// A genuinely separate session.
-		`{"schema_version":2,"session_id":"s2","arm":"on","at":"2026-08-08T13:00:00Z","tokens_note":"","turn_count":5,"discovery_actions_total":50,"tokens_in":5,"tokens_out":5}`,
+		`{"schema_version":2,"session_id":"s2","arm":"on","at":"2026-08-08T13:00:00Z","tokens_note":"","turn_count":12,"discovery_actions_total":50,"tokens_in":60,"tokens_out":60}`,
 	}
 	if err := os.WriteFile(filepath.Join(dir, "ledger.jsonl"), []byte(strings.Join(rows, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -58,8 +58,12 @@ func TestLedgerCountsSessionsNotStops(t *testing.T) {
 	if imp.TokensOnSessions != 2 {
 		t.Errorf("TokensOnSessions = %d, want 2", imp.TokensOnSessions)
 	}
-	if imp.TokensOnMedian == nil || *imp.TokensOnMedian != 180 {
-		t.Errorf("on median = %v, want 180 (s1's FINAL 90+90, not an earlier partial)", imp.TokensOnMedian)
+	// Per-turn since the 2026-08-12 amendment: s1 final = (90+90)/90 = 2,
+	// s2 = (60+60)/12 = 10; upper-middle of {2,10} = 10. The load-bearing
+	// half is unchanged: s1 contributes its FINAL row, not an earlier
+	// partial.
+	if imp.TokensOnMedian == nil || *imp.TokensOnMedian != 10 {
+		t.Errorf("on median = %v, want 10/turn", imp.TokensOnMedian)
 	}
 }
 

@@ -5,6 +5,45 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-12 — the unit bends to the work: arm-covered windows count (MI-5)
+
+Asked to start forty fresh sessions for a baseline, the owner pushed back
+— correctly. His practice is one session resumed across days, so the
+session-level unit produced a control arm that could never admit anything,
+and forcing fresh starts would have measured unrepresentative behaviour: a
+fresh-start baseline for a practice that has no fresh starts.
+
+**The amendment is registered in the protocol before any data existed
+under it** (production-tokenomics.md §5): the unit becomes an
+*arm-homogeneous unit* — a fully-covered session, or the **arm-covered
+window** of a longer one, measured from the same transcript with the same
+estimators, restricted to lines timestamped after the arm's `set_at`. The
+compared quantity becomes **median real tokens per assistant turn**
+(per-session totals are length-confounded once units are windows), with a
+≥10-turn floor per unit and ≥20 units per arm.
+
+Mechanics that keep it honest:
+
+- the window read is TAIL-bounded (the window is by definition the newest
+  span — the head read the whole-session summary uses would be exactly
+  backwards), aligned to a line boundary;
+- a tail that cannot reach back to the arm boundary marks the window
+  **truncated**, and a truncated window is excluded and named — a partial
+  window admitted as a unit would be the truncation bug one level down;
+- a line with no parseable timestamp is excluded from any window:
+  unattributable activity must not leak into an arm's figures;
+- a contaminated session's whole-session figures still never enter the
+  comparison; only its window speaks for it.
+
+Both leak paths were confirmed RED under mutation (the since-filter
+removed; whole-session figures admitted). Four older tests encoding the
+superseded per-session unit were updated to the registered one.
+
+The flywheel's arm loop now admits windowed units, and its remedy teaches
+the new rule: keep working past ten turns under the arm and the window
+counts — no fresh session required.
+
+
 ### 2026-08-12 — the daemon adopts a new binary on its own (AU-1..3)
 
 Owner ask: *"I want you empowered to do this sort of stuff in the future.

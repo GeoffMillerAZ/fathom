@@ -109,6 +109,39 @@ savings claim:
 - **Kill:** if ON is not better after 40 sessions, the production tokenomics
   claim is retracted in every doc that makes it (same mechanism as B1-4).
 
+**Amended 2026-08-12 — the unit of comparison (registered BEFORE any
+admissible data existed; zero rows had qualified under the old unit when
+this was written):**
+
+The original unit, "a working session", assumed sessions begin and end.
+The owner's actual practice is one session resumed across days (O26), so a
+session-level unit produced a control arm that could never admit anything:
+a resumed session always predates the arm and is correctly refused as
+contaminated. Forcing forty fresh session starts would both distort the
+owner's workflow and measure unrepresentative behaviour — a fresh-start
+baseline for a practice that has no fresh starts.
+
+The amended unit is an **arm-homogeneous unit**:
+
+- a session whose measured span lies entirely inside one arm
+  (`arm_coverage: full`), or
+- an **arm-covered window** of a longer session — the span from the arm's
+  `set_at` to the row's stop, measured from the same transcript with the
+  same estimators (`arm_window` on the ledger row).
+
+A unit is admissible only with **≥ 10 assistant turns** (a smaller window
+is noise) and an untruncated window read.
+
+The compared quantity becomes **median real tokens per assistant turn**
+(in+out; cache reads excluded) rather than per session — per-session
+totals are length-confounded once units are windows. Numerator and
+denominator always come from the same parsed span, so a bounded transcript
+read yields a coherent rate rather than an undercounted total.
+
+The floor stays ≥ 20 units per arm; the outcome clause (equal-or-better
+median self-rating) is unchanged, with the rating attaching to the
+session that contains the unit.
+
 ## 6. Instrument D — session token ledger
 
 The Stop hook already runs. Extend it to append one line per session:

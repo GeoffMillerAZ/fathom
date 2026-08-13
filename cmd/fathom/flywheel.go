@@ -152,11 +152,23 @@ type ledgerRow struct {
 	At          string `json:"at"`
 	Arm         string `json:"arm"`
 	ArmCoverage string `json:"arm_coverage"`
+	// ArmWindow: only presence and cleanliness matter to the flywheel.
+	ArmWindow *struct {
+		Turns     *int `json:"turns"`
+		Truncated bool `json:"truncated"`
+	} `json:"arm_window"`
 	Repo        string `json:"repo"`
 	TokensIn    *int   `json:"tokens_in"`
 	TokensOut   *int   `json:"tokens_out"`
 	FathomCalls int    `json:"fathom_calls"`
 	RawCalls    int    `json:"raw_discovery_calls"`
+}
+
+// HasCleanWindow reports whether the row carries an admissible arm-covered
+// window (the amended unit): present, untruncated, ≥ the turns floor.
+func (r ledgerRow) HasCleanWindow() bool {
+	return r.ArmWindow != nil && !r.ArmWindow.Truncated &&
+		r.ArmWindow.Turns != nil && *r.ArmWindow.Turns >= abMinTurnsPerUnit
 }
 
 func readLedgerRows(path string) []ledgerRow {
@@ -236,7 +248,7 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 			continue
 		}
 		since++
-		if r.Arm == "off" && r.ArmCoverage == "full" {
+		if r.Arm == "off" && (r.ArmCoverage == "full" || r.HasCleanWindow()) {
 			clean++
 		} else if r.Arm == "off" {
 			unclean++
@@ -260,7 +272,7 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 		// The second failure: rows arrive but none are admissible.
 		c.Status = loopOpen
 		c.Evidence += " — rows are arriving but NONE are admissible; the comparison still has no data"
-		c.Remedy = "start a FRESH session under the arm: a session whose transcript predates the arm carries assisted activity and cannot be control data"
+		c.Remedy = "keep the session running past " + itoa(abMinTurnsPerUnit) + " turns under the arm — a resumed session's ARM-COVERED WINDOW counts once it clears the floor (§5 amendment); a fresh session also works"
 	case clean == 0:
 		c.Status = loopIdle
 		c.Evidence += " — no admissible session has finished yet"

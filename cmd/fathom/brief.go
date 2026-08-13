@@ -338,14 +338,15 @@ func renderBriefMD(m observatoryModel) string {
 	// ---- 3. Tokens ----
 	b.WriteString("\n## 3 — Did it save tokens? (the honest answer)\n\n")
 	b.WriteString("A saving is a difference between two worlds: the same work done with fathom, and done without it. One number on its own cannot be a saving, so this brief refuses to print one until both worlds have been recorded (law 12).\n\n")
-	fmt.Fprintf(&b, "- **Sessions with fathom on: %s**", fmtThousands(imp.TokensOnSessions))
+	b.WriteString("A unit is a session fully inside one arm, or the arm-covered window of a longer one (§5 amendment, 2026-08-12) — so working in long resumed sessions still produces control data.\n\n")
+	fmt.Fprintf(&b, "- **Units with fathom on: %s**", fmtThousands(imp.TokensOnSessions))
 	if imp.TokensOnMedian != nil {
-		fmt.Fprintf(&b, " — median %s tokens (input + output; cache reads excluded, because counting them inflates the figure)", fmtThousands(*imp.TokensOnMedian))
+		fmt.Fprintf(&b, " — median %s real tokens per turn (input + output; cache reads excluded, because counting them inflates the figure)", fmtThousands(*imp.TokensOnMedian))
 	}
 	b.WriteString("\n")
-	fmt.Fprintf(&b, "- **Sessions with fathom off: %s**", fmtThousands(imp.TokensOffSessions))
+	fmt.Fprintf(&b, "- **Units with fathom off: %s**", fmtThousands(imp.TokensOffSessions))
 	if imp.TokensOffMedian != nil {
-		fmt.Fprintf(&b, " — median %s tokens", fmtThousands(*imp.TokensOffMedian))
+		fmt.Fprintf(&b, " — median %s real tokens per turn", fmtThousands(*imp.TokensOffMedian))
 	}
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "- **Experiment state: %s** — %s\n", imp.PilotState, imp.PilotDetail)

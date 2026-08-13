@@ -483,48 +483,33 @@ func buildImpactModel(now time.Time) obsImpact {
 		// reads. Arms compare in+out; rows predating the split are counted
 		// as pre-split (unknown), never fed to the median as their inflated
 		// totals.
-		spend := -1
-		if e.TokensIn != nil && e.TokensOut != nil {
-			spend = *e.TokensIn + *e.TokensOut
-		}
 		if e.TokensCacheRead != nil {
 			cacheReadSum += *e.TokensCacheRead
 			cacheReadRows++
 		}
-		// Arm coverage gate (2026-08-08 corruption finding): a row whose
-		// transcript BEGAN before the arm was set carries mostly assisted
-		// activity while wearing an "off" label. Admitting it to the
-		// paired comparison drags the OFF arm toward the ON arm and
-		// manufactures a false null result — the one conclusion that would
-		// end the program, on mislabelled evidence. Such rows are counted
-		// and NAMED, never silently dropped and never silently used.
-		if e.ArmCoverage == "partial" || e.ArmCoverage == "unknown" {
-			uncleanArmRows++
-			continue
-		}
-		// A row stamped "off" with NO coverage field was written by a
-		// binary that never checked — so its coverage is unknown, and
-		// unknown is not clean (law 3). This is asymmetric on purpose:
-		// "off" names a bounded window a session can fall outside of,
-		// while "on" is ordinary operation with no window to be inside,
-		// so an on-row needs no stamp.
-		if e.Arm == "off" && e.ArmCoverage == "" {
-			uncleanArmRows++
-			continue
-		}
-		switch e.Arm {
-		case "off":
+		// Arm coverage gate (2026-08-08 corruption finding) + the amended
+		// unit (production-tokenomics.md §5, 2026-08-12). A row whose
+		// transcript began before the arm carries assisted activity under
+		// an "off" label; admitting its WHOLE-SESSION figures manufactures
+		// a false null. But such a session's ARM-COVERED WINDOW is clean
+		// by construction, so a partial row with an untruncated window of
+		// ≥ abMinTurnsPerUnit turns is admitted AS ITS WINDOW, at a
+		// per-turn rate. Everything else stays excluded and NAMED.
+		unit, ok := armUnitFor(e)
+		switch {
+		case ok && e.Arm == "off":
 			offSessions++
-			if spend >= 0 {
-				offTokens = append(offTokens, spend)
-			} else if e.TokensTotal != nil {
-				preSplitRows++
-			}
-		default:
+			offTokens = append(offTokens, unit)
+		case ok:
 			onSessions++
-			if spend >= 0 {
-				onTokens = append(onTokens, spend)
-			} else if e.TokensTotal != nil {
+			onTokens = append(onTokens, unit)
+		case e.Arm == "off" || e.ArmCoverage == "partial" || e.ArmCoverage == "unknown":
+			// An off-row (or contaminated row) that yielded no unit:
+			// counted, never silently dropped and never silently used.
+			uncleanArmRows++
+		default:
+			// An on-row with no usable token figures.
+			if e.TokensTotal != nil && (e.TokensIn == nil || e.TokensOut == nil) {
 				preSplitRows++
 			}
 		}
@@ -574,6 +559,10 @@ func buildImpactModel(now time.Time) obsImpact {
 			"before the arm was set (so its totals include assisted activity) or predates coverage stamping (so its " +
 			"coverage is unknown, which is not the same as clean). Counted here, never silently dropped."
 	}
+	// Since the 2026-08-12 unit amendment these medians are PER-TURN real
+	// tokens (in+out over assistant turns of the same parsed span), not
+	// per-session totals — per-session is length-confounded once units can
+	// be windows of very different sizes.
 	if v, ok := medianInt(onTokens); ok {
 		imp.TokensOnMedian = &v
 	}
@@ -852,4 +841,40 @@ func fetchCompileStates(hc *http.Client, baseURL string) map[string]string {
 		out[strings.ToLower(s.Service)] = strings.Join(parts, " · ")
 	}
 	return out
+}
+
+// abMinTurnsPerUnit is the amended admissibility floor (production-
+// tokenomics.md §5, 2026-08-12): an arm-homogeneous unit below this many
+// assistant turns is noise, not a sample.
+const abMinTurnsPerUnit = 10
+
+// armUnitFor extracts one arm-homogeneous unit from a ledger row as a
+// PER-TURN real-token rate, or reports that the row yields none.
+//
+//   - full coverage (or an on-row, which has no window to fall outside):
+//     the whole session is the unit — (in+out)/turns over the same parsed
+//     span, so head-truncation yields a coherent rate rather than an
+//     undercounted total;
+//   - partial coverage with an untruncated arm window: the WINDOW is the
+//     unit, same rate over the window's own span;
+//   - anything else: no unit. The caller counts it, named, per law 3.
+func armUnitFor(e sessionLedgerEntry) (int, bool) {
+	rate := func(in, out, turns *int) (int, bool) {
+		if in == nil || out == nil || turns == nil || *turns < abMinTurnsPerUnit {
+			return 0, false
+		}
+		return (*in + *out) / *turns, true
+	}
+	if e.Arm != "off" || e.ArmCoverage == "full" {
+		if e.Arm == "off" && e.ArmCoverage != "full" {
+			return 0, false
+		}
+		return rate(e.TokensIn, e.TokensOut, e.TurnCount)
+	}
+	// off + not-full: only a clean window can speak for this row.
+	w := e.ArmWindow
+	if w == nil || w.Truncated {
+		return 0, false
+	}
+	return rate(w.TokensIn, w.TokensOut, w.Turns)
 }
