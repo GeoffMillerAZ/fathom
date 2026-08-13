@@ -136,7 +136,7 @@
 - [x] SessionEnd (fires on /clear, reason attached) and PreCompact deposit the mechanical SDD delta and in-flight pointers at exactly the moments context dies; the Stop hook adds session pointers incrementally {id: TH-2, symbol: cmdSessionEndHook, package: cmd/fathom, reachable_from: TestSessionEndDepositsOnClear}
 - [x] SessionStart injection is source-aware and budget-bounded: a ≤600-token brief on startup/clear, NOTHING on resume/compact (their context survives) — the byte bound enforced by test {id: TH-3, symbol: renderThreadBrief, package: cmd/fathom, reachable_from: TestBriefBudgetAndSourceGating}
 - [x] the §2 pre-registered bet is measurable: fresh-with-brief units labeled in the ledger, warm-up (first_edit_turn) and all-in per-turn cost (in+out+cache×0.1) compared against resumed baselines in the flywheel/brief; the registered kill (band unmet after 20 units → the injection is removed) is wired as a named check, not a memory {id: TH-4, symbol: threadBetCheck, package: cmd/fathom, reachable_from: TestThreadBetEvaluation}
-- [ ] `fathom thread promote` scaffolds a gate-ready plan (fathom-plan grammar) from a thread's items; `fathom thread handoff` renders the brief as a harness-neutral handoff artifact; AGENTS.md carries the Codex instruction {id: TH-5, symbol: cmdThreadPromote, package: cmd/fathom, reachable_from: TestThreadPromoteScaffoldsGateReadyPlan}
+- [x] `fathom thread promote` scaffolds a gate-ready plan (fathom-plan grammar) from a thread's items; `fathom thread handoff` renders the brief as a harness-neutral handoff artifact; AGENTS.md carries the Codex instruction {id: TH-5, symbol: cmdThreadPromote, package: cmd/fathom, reachable_from: TestThreadPromoteScaffoldsGateReadyPlan}
 
 ---
 

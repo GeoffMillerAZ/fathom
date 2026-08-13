@@ -5,6 +5,32 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — TH-5: intent graduates, and the handoff is free
+
+`fathom thread promote <thread>` scaffolds a gate-ready plan from a
+thread's open items: stable uppercase ids, origin session pointers riding
+along, **no row born checked and no contracts claimed** — the scaffold
+says plainly that grounding each `{symbol, package, reachable_from}` comes
+before any claim. The promoted items gain `plan_row_checked` conditions on
+their own rows, so **checking a row closes its source item** — the
+conveyor advancing with no ceremony. Promote refuses to overwrite an
+existing plan: it is a birth certificate, not an update mechanism.
+
+`fathom thread handoff` renders the open work as a harness-neutral
+markdown artifact — full session ids (a foreign agent cannot expand a
+prefix), grouped by thread, unbudgeted because its reader has no other
+context. The multi-agent story costs nothing extra, because continuity
+never lived in a context window to begin with.
+
+The stanza template gains the Codex path: harnesses without a
+SessionStart hook are instructed to run `fathom thread brief` at start.
+Repos pick the new stanza up through the normal reconcile path (law 15 —
+the owned region changes via its template, never by hand).
+
+Also: note/point/close accept the natural `"text" --flags` order (the
+rate-verb lesson, applied before it bit anyone else).
+
+
 ### 2026-08-13 — continuity threads live: TH-1..4 (vision 21)
 
 The thread — one strand of intent spanning sessions — is now a first-class

@@ -231,8 +231,12 @@ func cmdThread(args []string, stdout, stderr io.Writer) int {
 		return cmdThreadList(args[1:], stdout, stderr)
 	case "close":
 		return cmdThreadClose(args[1:], stdout, stderr)
+	case "promote":
+		return cmdThreadPromote(args[1:], stdout, stderr)
+	case "handoff":
+		return cmdThreadHandoff(args[1:], stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "unknown thread verb %q (brief|note|point|list|close)\n", args[0])
+	fmt.Fprintf(stderr, "unknown thread verb %q (brief|note|point|list|close|promote|handoff)\n", args[0])
 	return 1
 }
 

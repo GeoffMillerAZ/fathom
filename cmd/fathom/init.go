@@ -697,6 +697,10 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
 	"as binding, not advisory.\n" +
 	"\n" +
+	"Continuity: run `fathom thread brief` at session start if your harness has\n" +
+	"no SessionStart hook (Codex does not) — it prints the open threads, or\n" +
+	"nothing. File what the next session must know: `fathom thread note \"…\"`.\n" +
+	"\n" +
 	"Done means proven: a plan task is only \"done\" when the index proves it, not\n" +
 	"when it is claimed. Before checking off a `docs/plans/*.md` item, run:\n" +
 	"\n" +
