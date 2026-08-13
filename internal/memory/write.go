@@ -194,6 +194,17 @@ func WriteMemory(ctx context.Context, ms Store, idx Index, now func() time.Time,
 		if err != nil {
 			return Memory{}, fmt.Errorf("probe anchor %s: %w", a.Key(), err)
 		}
+		if len(p.Ambiguous) > 0 {
+			// W1 (review): binding a bare name that matches several
+			// packages would record a baseline for whichever candidate an
+			// unordered store fold happened to surface — two stores with
+			// identical content resolved the same anchor differently, and
+			// a per-file re-ingest could flip the winner and fabricate
+			// drift naming a file the memory was never about. Refuse, and
+			// name the qualified keys the author actually meant one of.
+			return Memory{}, refuse(RefusalAnchorUnresolved,
+				"anchor %s is ambiguous — %s", a.Key(), p.Covers)
+		}
 		if !p.Exists {
 			return Memory{}, refuse(RefusalAnchorUnresolved,
 				"anchor %s does not resolve in the index (%s) — an anchor fathom cannot watch can never expire",

@@ -94,6 +94,15 @@
 
 ---
 
+## W2 — Anchored memory, review round (found by the build wave's adversarial reviewer, 2026-08-12)
+
+- [x] a bare symbol name that collides across packages REFUSES to bind, naming the qualified candidates — the store's row order tracks ingestion, not code, so first-wins resolution bound the same anchor differently on identical stores and a per-file re-ingest could flip the winner, fabricating drift about a file the memory never named {id: AM-9, symbol: WriteMemory, package: internal/memory, reachable_from: TestAmbiguousAnchorIsRefusedAtWrite}
+- [x] drift that cannot be judged is never fresh: an anchor gone ambiguous, or one with no recorded baseline, lands SUSPECT — surfaced, labeled, tier-penalised — because fresh's contract is "every anchor's hash MATCHES its last confirmation" and neither case compared anything (law 3 on the four fields injection and search sort by) {id: AM-10, symbol: EvaluateState, package: internal/memory, reachable_from: TestNoBaselineIsNeverFresh}
+- [x] the TierCeiling half of the confidence clamp is pinned for every tier — the reviewer deleted it and the package stayed green, in the branch whose thesis is law 14; the untested branch was exactly the one covering verified and pre-scan, the two tiers a lying caller would claim {id: AM-11, symbol: capConfidence, package: internal/memory, reachable_from: TestCapConfidenceBoundsEveryTier}
+- [x] `.fathom/memories.jsonl` is gitignored (`.fathom/` is a git-TRACKED directory, so a per-developer file with free-form claim text sat one `git add .` from being published — law 13 makes sharing a human verb, not an accident) and phase V's binding purge enumeration gains the location, since a memory may QUOTE purged content {id: AM-12, skip_test: true, skip: "a .gitignore line and a design-table row; git check-ignore proves the first, and SP-5's per-table proof will cover the second when V lands"}
+
+---
+
 ## X — Budgeted answers (`docs/design/budgeted-answers.md`)
 
 - [ ] every tool that can truncate emits an `elided` block naming count, total, ordering and how to get more — enforced by a registry-iteration test so a new tool cannot skip it; silent truncation is a defect {id: BA-1, symbol: elisionFor, package: internal/mcp, reachable_from: TestEveryTruncatingToolDiscloses}

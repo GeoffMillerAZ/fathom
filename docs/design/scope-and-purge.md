@@ -138,6 +138,7 @@ commit that creates the table:
 | call log | tool name, service, outcome | retain — query text is never logged, so no content is present |
 | session ledger | counts only | retain — no content |
 | `~/.fathom/briefs/*.md` | rendered aggregates | retain — counts only, no content |
+| `<repo>/.fathom/memories.jsonl` | anchored memories: free-form claim text that may QUOTE the purged content | delete memories whose anchors match the pattern; disclose the count (added with phase W — review finding W4: a purge that leaves a memory quoting the purged secret has not purged it) |
 | **SQLite free pages and the `-wal`** | the deleted rows' raw bytes | `secure_delete=ON` for the deleting connection, then `wal_checkpoint(TRUNCATE)` and `VACUUM` (or `VACUUM INTO` a replacement — the pattern `module_pack.go:190` already uses) |
 
 The last row was missing from the first draft and is the one that matters

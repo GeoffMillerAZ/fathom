@@ -35,6 +35,16 @@ type AnchorProbe struct {
 	// changed", and the label must say so rather than claiming to have
 	// diffed a function body.
 	Covers string
+	// Ambiguous carries the sorted fully-qualified candidates when a BARE
+	// symbol name matches more than one package. The first implementation
+	// picked "the first row in the store's deterministic order" — but
+	// QueryObservations orders only by ingested_at, which a whole ingest
+	// run shares, so the winner tracked INSERT order: two stores seeded
+	// with the same observations resolved the same anchor differently,
+	// and a per-file re-ingest could flip the winner and fabricate drift
+	// naming a file the memory was never about. An ambiguous anchor now
+	// refuses to bind rather than guessing (review finding W1).
+	Ambiguous []string
 }
 
 // Index resolves anchors and reports the index generation they were resolved
@@ -67,7 +77,15 @@ type StoreIndex struct {
 
 	mu   sync.Mutex
 	gen  map[string]string
-	snap map[string]map[string]symbolFacts // service -> symbol name/key -> facts
+	snap map[string]symbolSnapshot // service -> resolved snapshot
+}
+
+// symbolSnapshot is one service's resolved symbol table: exact facts per
+// name/key, plus the bare names that CANNOT bind because they collide
+// across packages.
+type symbolSnapshot struct {
+	facts     map[string]symbolFacts
+	ambiguous map[string][]string // bare name -> sorted qualified keys
 }
 
 type symbolFacts struct {
@@ -78,7 +96,7 @@ type symbolFacts struct {
 
 // NewStoreIndex returns an Index backed by r.
 func NewStoreIndex(r Reader) *StoreIndex {
-	return &StoreIndex{r: r, gen: map[string]string{}, snap: map[string]map[string]symbolFacts{}}
+	return &StoreIndex{r: r, gen: map[string]string{}, snap: map[string]symbolSnapshot{}}
 }
 
 // Generation returns the service's indexed commit, falling back to the
@@ -146,7 +164,19 @@ func (s *StoreIndex) probeSymbol(ctx context.Context, service, ref string) (Anch
 	if err != nil {
 		return AnchorProbe{}, err
 	}
-	f, ok := snap[ref]
+	if cands, amb := snap.ambiguous[ref]; amb {
+		shown := cands
+		if len(shown) > 4 {
+			shown = append(append([]string{}, cands[:4]...), "…")
+		}
+		return AnchorProbe{
+			Exists:    true,
+			Ambiguous: cands,
+			Covers: "the bare name " + ref + " matches " + strconv.Itoa(len(cands)) +
+				" symbols (" + strings.Join(shown, ", ") + ") — it cannot bind; use a qualified key",
+		}, nil
+	}
+	f, ok := snap.facts[ref]
 	if !ok {
 		return AnchorProbe{Exists: false, Covers: "no symbol by that name in the index"}, nil
 	}
@@ -225,10 +255,10 @@ func (s *StoreIndex) probeClaim(ctx context.Context, service, claimID string) (A
 // symbols loads (and caches per generation) the service's symbol facts,
 // indexed by both bare symbol name and fully-qualified SymbolKey so an anchor
 // written either way resolves.
-func (s *StoreIndex) symbols(ctx context.Context, service string) (map[string]symbolFacts, error) {
+func (s *StoreIndex) symbols(ctx context.Context, service string) (symbolSnapshot, error) {
 	gen, err := s.Generation(ctx, service)
 	if err != nil {
-		return nil, err
+		return symbolSnapshot{}, err
 	}
 	s.mu.Lock()
 	if s.gen[service] == gen {
@@ -241,22 +271,50 @@ func (s *StoreIndex) symbols(ctx context.Context, service string) (map[string]sy
 
 	obs, err := s.r.QueryObservations(ctx, service, "")
 	if err != nil {
-		return nil, err
+		return symbolSnapshot{}, err
 	}
-	snap := make(map[string]symbolFacts, len(obs)*2)
+	snap := symbolSnapshot{
+		facts:     make(map[string]symbolFacts, len(obs)*2),
+		ambiguous: map[string][]string{},
+	}
+	// candidates: bare name -> qualified key set. Built first, decided
+	// after, so the outcome cannot depend on the order rows arrive in —
+	// QueryObservations orders only by ingested_at, which a whole ingest
+	// run shares, so row order tracks insert order and is NOT a total
+	// order (review finding W1: two stores with identical content resolved
+	// the same bare anchor differently).
+	candidates := map[string]map[string]symbolFacts{}
 	for _, o := range obs {
 		if o.Symbol == "" {
 			continue
 		}
 		f := symbolFacts{sourceRef: o.SourceRef, contentHash: o.ContentHash, signature: o.Claim}
 		key := core.SymbolKey(o.ServiceID, o.Package, o.Symbol)
-		// A bare name can be ambiguous across packages; the first row in
-		// the store's deterministic order wins, and the fully-qualified
-		// key always resolves exactly.
-		if _, exists := snap[o.Symbol]; !exists {
-			snap[o.Symbol] = f
+		snap.facts[key] = f
+		if candidates[o.Symbol] == nil {
+			candidates[o.Symbol] = map[string]symbolFacts{}
 		}
-		snap[key] = f
+		candidates[o.Symbol][key] = f
+	}
+	for bare, byKey := range candidates {
+		if _, taken := snap.facts[bare]; taken {
+			// The bare string IS a qualified key for some symbol —
+			// vanishingly unlikely, but the qualified meaning wins and
+			// the bare form is not additionally bound.
+			continue
+		}
+		if len(byKey) == 1 {
+			for _, f := range byKey {
+				snap.facts[bare] = f
+			}
+			continue
+		}
+		keys := make([]string, 0, len(byKey))
+		for k := range byKey {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		snap.ambiguous[bare] = keys
 	}
 
 	s.mu.Lock()

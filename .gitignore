@@ -45,3 +45,8 @@ cmd/fathom/workspace/
 # checkout's ownership map, not a shared fact about the project.
 .fathom/receipts.jsonl
 .fathom/owned.json
+# memories.jsonl: per-developer anchored memories with free-form claim text.
+# .fathom/ is a git-TRACKED directory, so without this line every adopter's
+# memories sit one `git add .` from being published — law 13 makes sharing
+# a human verb, and that would make it an accident (review finding W4).
+.fathom/memories.jsonl

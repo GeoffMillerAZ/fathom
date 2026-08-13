@@ -214,7 +214,7 @@ func EvaluateState(ctx context.Context, idx Index, cache *DriftCache, now func()
 	}
 	ev.Generation = generation
 
-	anyMissing, anyChanged := false, false
+	anyMissing, anyChanged, anyUnknown := false, false, false
 	for _, a := range m.Anchors {
 		var p AnchorProbe
 		if cache != nil {
@@ -228,6 +228,15 @@ func EvaluateState(ctx context.Context, idx Index, cache *DriftCache, now func()
 
 		d := AnchorDrift{Anchor: a, Was: m.AnchorHashes[a.Key()], Now: p.Hash, Covers: p.Covers}
 		switch {
+		case len(p.Ambiguous) > 0:
+			// W1 (review): a bare name that now collides across packages
+			// cannot be watched. It is not missing (the symbols exist) and
+			// not unchanged (nothing was compared) — its drift is UNKNOWN,
+			// and unknown is not fresh.
+			anyUnknown = true
+			d.Status = DriftUnknown
+			d.Now = ""
+			d.Detail = fmt.Sprintf("%s is ambiguous — %s; re-anchor with a fully-qualified key", a.Key(), p.Covers)
 		case !p.Exists:
 			anyMissing = true
 			d.Status = DriftMissing
@@ -235,6 +244,12 @@ func EvaluateState(ctx context.Context, idx Index, cache *DriftCache, now func()
 			d.Detail = fmt.Sprintf("%s no longer exists in the index (%s); last confirmed %s",
 				a.Key(), p.Covers, confirmedPhrase(m))
 		case d.Was == "":
+			// W2 (review): a measurement that was never made must not fall
+			// through to fresh. The first implementation set DriftUnknown
+			// here and then reported State: fresh, Surfaces: true and an
+			// unpenalised tier — a fabricated verification (law 3), on the
+			// exact fields AM-6's injection and AM-8's search sort by.
+			anyUnknown = true
 			d.Status = DriftUnknown
 			d.Detail = fmt.Sprintf("%s has no recorded baseline hash, so drift cannot be judged for it", a.Key())
 		case d.Was != d.Now:
@@ -253,11 +268,18 @@ func EvaluateState(ctx context.Context, idx Index, cache *DriftCache, now func()
 	case anyMissing:
 		ev.State = StateOrphaned
 		ev.Surfaces = false
-	case anyChanged:
+	case anyChanged, anyUnknown:
+		// Changed and unknown land in the same place for the same reason:
+		// neither can honestly claim "every anchor's hash matches what it
+		// was at the last confirmation", which is StateFresh's documented
+		// contract. Unknown surfaces LABELED and penalised (the noisy
+		// direction), never silently unpenalised (the direction the first
+		// implementation took — review finding W2).
 		ev.State = StateSuspect
 		ev.Surfaces = true
 		// Law 14 while suspect: the machine check that verified this ran
-		// against different code, so it is not verified any more.
+		// against different code (or could not run at all), so it is not
+		// verified any more.
 		ev.Tier = dropOne(m.Tier)
 		ev.Confidence = capConfidence(m.Confidence, ev.Tier)
 	default:

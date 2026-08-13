@@ -19,12 +19,15 @@ type fakeIndex struct {
 	mu     sync.Mutex
 	gen    string
 	hashes map[string]string // anchor key → current hash; absent = deleted
-	probes int
-	gens   int
+	// ambiguous: anchor key → the qualified candidates a bare name
+	// collides across (review finding W1).
+	ambiguous map[string][]string
+	probes    int
+	gens      int
 }
 
 func newFakeIndex(gen string) *fakeIndex {
-	return &fakeIndex{gen: gen, hashes: map[string]string{}}
+	return &fakeIndex{gen: gen, hashes: map[string]string{}, ambiguous: map[string][]string{}}
 }
 
 func (f *fakeIndex) set(anchorKey, hash string) {
@@ -58,10 +61,22 @@ func (f *fakeIndex) Generation(_ context.Context, _ string) (string, error) {
 	return f.gen, nil
 }
 
+func (f *fakeIndex) setAmbiguous(anchorKey string, candidates ...string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.ambiguous[anchorKey] = candidates
+}
+
 func (f *fakeIndex) Probe(_ context.Context, _ string, a Anchor) (AnchorProbe, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.probes++
+	if cands, amb := f.ambiguous[a.Key()]; amb {
+		return AnchorProbe{
+			Exists: true, Ambiguous: cands,
+			Covers: "the bare name matches " + cands[0] + " and others in the fake index",
+		}, nil
+	}
 	h, ok := f.hashes[a.Key()]
 	if !ok {
 		return AnchorProbe{Exists: false, Covers: "not in the fake index"}, nil
