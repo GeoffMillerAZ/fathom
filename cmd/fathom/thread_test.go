@@ -290,3 +290,89 @@ func TestThreadBetEvaluation(t *testing.T) {
 		}
 	})
 }
+
+// TestSessionEndSupersedesPerRepo pins the field-report fix: "the last
+// session here left work in flight" is ONE fact per repo, not a growing
+// pile — the first real brief was 100% accumulated telemetry.
+func TestSessionEndSupersedesPerRepo(t *testing.T) {
+	threadEnv(t)
+	t.Setenv("FATHOM_CHANNELS", "")
+	root := t.TempDir()
+	for _, args := range [][]string{{"init", "-q"}, {"commit", "-q", "--allow-empty", "-m", "x"}} {
+		if err := exec.Command("git", append([]string{"-C", root, "-c", "user.email=t@t", "-c", "user.name=t"}, args...)...).Run(); err != nil {
+			t.Skipf("git unavailable: %v", err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(root, "wip.go"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clear := func(sid string) {
+		in, _ := json.Marshal(map[string]any{"session_id": sid, "cwd": root, "reason": "clear"})
+		defer pipeStdin(t, string(in))()
+		var out, errb bytes.Buffer
+		if code := cmdSessionEndHook(nil, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+	}
+	clear("sess-1")
+	clear("sess-2")
+
+	items := loadThreadItems(threadsPath())
+	if len(items) != 1 {
+		t.Fatalf("two clears in one repo must yield ONE fact, not a pile: %d items", len(items))
+	}
+	if items[0].Pointers["session_id"] != "sess-2" {
+		t.Errorf("the LATEST session's pointer wins: %+v", items[0].Pointers)
+	}
+
+	t.Run("and it closes itself when the tree comes clean", func(t *testing.T) {
+		if err := os.Remove(filepath.Join(root, "wip.go")); err != nil {
+			t.Fatal(err)
+		}
+		out := evaluateThreadConditions(loadThreadItems(threadsPath()), root, time.Now())
+		if out[0].ClosedAt == "" || out[0].ClosedBy != "condition" {
+			t.Fatalf("a clean tree retires the stale in-flight fact: %+v", out[0])
+		}
+	})
+}
+
+// TestBriefLeadsWithTheSpecPlane pins the field-report reorder: the reader
+// said the durable spec plane restored their context while the brief led
+// with other repos' telemetry. Plans first, this repo's items next,
+// foreign telemetry one line, and a thin brief teaches.
+func TestBriefLeadsWithTheSpecPlane(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	plan := filepath.Join(root, "docs", "plans", "p.md")
+	if err := os.MkdirAll(filepath.Dir(plan), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(plan, []byte("- [x] a {id: P-1}\n- [ ] b {id: P-2}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// Foreign telemetry from two other repos.
+	for _, r := range []string{"otherA", "otherB"} {
+		seedItem(t, "se-"+r, "session-end", "session ended with 9 uncommitted file(s)", func(it *threadItem) {
+			it.Thread = r
+			it.Pointers = map[string]string{"repo": r}
+		})
+	}
+
+	out := renderThreadBrief(loadThreadItems(threadsPath()), root, threadBriefBudgetBytes, time.Now())
+
+	if !strings.Contains(out, "1 plan(s), 2 gated row(s): 1 checked, 1 open") {
+		t.Fatalf("the spec plane leads — it is what demonstrably restores context:\n%s", out)
+	}
+	if strings.Count(out, "session ended") != 0 {
+		t.Fatalf("foreign telemetry must collapse to a count, never a list:\n%s", out)
+	}
+	if !strings.Contains(out, "2 other repo(s) left sessions with work in flight") {
+		t.Errorf("the collapsed line names the count:\n%s", out)
+	}
+	if !strings.Contains(out, "no handoff notes were filed") || !strings.Contains(out, "fathom thread note") {
+		t.Errorf("a thin brief must teach the write side, not present telemetry as a handoff:\n%s", out)
+	}
+	if !strings.Contains(out, "claimed from PROVEN") {
+		t.Errorf("checked must never be conflated with proven:\n%s", out)
+	}
+}

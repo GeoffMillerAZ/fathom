@@ -185,6 +185,12 @@ func threadConditionHolds(c threadCondition, repoRoot string) bool {
 		}
 		_, err := os.Stat(filepath.Join(base, c.Path))
 		return err == nil
+	case "repo_clean":
+		if c.Repo == "" {
+			return false
+		}
+		out, err := exec.Command("git", "-C", c.Repo, "status", "--porcelain").Output()
+		return err == nil && strings.TrimSpace(string(out)) == ""
 	case "plan_row_checked":
 		if c.Path == "" || c.Row == "" {
 			return false
@@ -209,6 +215,8 @@ func describeCondition(c threadCondition) string {
 		return c.Path + " exists"
 	case "plan_row_checked":
 		return c.Path + "#" + c.Row + " is checked"
+	case "repo_clean":
+		return "the repository tree is clean again"
 	}
 	return c.Kind
 }
@@ -520,47 +528,96 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 }
 
 // renderThreadBrief is the pure, budget-enforced core (TH-3's test surface).
+//
+// Composition order after the first field report (2026-08-13, the
+// idp-and-warrants session): the reader said, verbatim, that "the durable
+// spec plane — git log, the plan files, and fathom verify printing which
+// rows are claimed vs proven — is doing the real continuity work", while
+// the v1 brief led with other repos' dirty-file telemetry. So the brief
+// now LEADS with the current repo's derived spec state (the thing that
+// demonstrably restored context), then this repo's deposited items, then
+// one collapsed line for everything foreign — and when no substantive
+// handoff exists, it says how to make the next one better instead of
+// presenting telemetry as a handoff.
 func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now time.Time) string {
 	items = evaluateThreadConditions(items, repoRoot, now)
+	repo := strings.ToLower(filepath.Base(repoRoot))
 
-	// Rank: open, non-dormant, newest touch first; handoff notes and
-	// pending decisions ahead of pointers (value-per-byte order).
 	kindRank := map[string]int{
 		"handoff-note": 0, "decision-pending": 1, "in-flight": 2,
 		"spec-unbuilt": 3, "side-task": 4, "session-end": 5, "pre-compact": 6,
 	}
-	var open []threadItem
+	mechanical := func(k string) bool { return k == "session-end" || k == "pre-compact" }
+
+	var local, foreign []threadItem
+	foreignMech := 0
 	for _, it := range items {
-		if it.ClosedAt == "" && !threadDormant(it, now) {
-			open = append(open, it)
+		if it.ClosedAt != "" || threadDormant(it, now) {
+			continue
+		}
+		switch {
+		case it.Pointers["repo"] == repo || it.Thread == repo:
+			local = append(local, it)
+		case mechanical(it.Kind):
+			foreignMech++ // another repo's telemetry is ONE line, never a list
+		default:
+			foreign = append(foreign, it)
 		}
 	}
-	sort.SliceStable(open, func(i, j int) bool {
-		if kindRank[open[i].Kind] != kindRank[open[j].Kind] {
-			return kindRank[open[i].Kind] < kindRank[open[j].Kind]
-		}
-		if open[i].FiledAt != open[j].FiledAt {
-			return open[i].FiledAt > open[j].FiledAt
-		}
-		return open[i].ID < open[j].ID
-	})
+	rank := func(xs []threadItem) {
+		sort.SliceStable(xs, func(i, j int) bool {
+			if kindRank[xs[i].Kind] != kindRank[xs[j].Kind] {
+				return kindRank[xs[i].Kind] < kindRank[xs[j].Kind]
+			}
+			if xs[i].FiledAt != xs[j].FiledAt {
+				return xs[i].FiledAt > xs[j].FiledAt
+			}
+			return xs[i].ID < xs[j].ID
+		})
+	}
+	rank(local)
+	rank(foreign)
 
 	var lines []string
-	if len(open) > 0 {
-		lines = append(lines, "🧵 fathom continuity — open threads (the work, not the session):")
-	}
-	for _, it := range open {
+	add := func(it threadItem) {
 		ptr := ""
 		if sid := it.Pointers["session_id"]; sid != "" {
 			ptr = " [session " + sid[:min(8, len(sid))] + "]"
 		}
 		lines = append(lines, fmt.Sprintf("  • (%s/%s) %s%s", it.Thread, it.Kind, it.Text, ptr))
 	}
+
+	lines = append(lines, "🧵 fathom continuity — the work, not the session:")
+	// 1) The durable spec plane first: what demonstrably restores context.
+	if ps := derivedPlansSummary(repoRoot); ps != "" {
+		lines = append(lines, "  • (plans) "+ps)
+	}
 	if wip := derivedInFlight(repoRoot); wip != "" {
 		lines = append(lines, "  • (derived) "+wip)
 	}
-	if len(lines) == 0 {
+	// 2) This repo's deposited items, substantive kinds first.
+	substantive := false
+	for _, it := range local {
+		if !mechanical(it.Kind) {
+			substantive = true
+		}
+		add(it)
+	}
+	// 3) Foreign substantive items ride along (threads span repos)…
+	for _, it := range foreign {
+		add(it)
+	}
+	// …but foreign telemetry collapses to one line, total.
+	if foreignMech > 0 {
+		lines = append(lines, fmt.Sprintf("  • %d other repo(s) left sessions with work in flight: fathom thread list --all", foreignMech))
+	}
+	if len(lines) == 1 {
 		return "" // nothing to say costs nothing — the budget's best case
+	}
+	// 4) A thin brief teaches instead of pretending: telemetry is not a
+	// handoff, and the next session deserves better than this one got.
+	if !substantive {
+		lines = append(lines, "  no handoff notes were filed for this repo — before /clear, leave one: fathom thread note \"where the work stands\"")
 	}
 	lines = append(lines, "  open plan work: fathom plans next --service <svc> · detail: fathom thread list")
 
@@ -578,8 +635,6 @@ func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now
 		if len(fits(lines, dropped)) <= budgetBytes {
 			return fits(lines, dropped)
 		}
-		// Drop the last content bullet (keep the header and the closing
-		// pointer line, which is what makes the truncation honest).
 		cut := len(lines) - 2
 		if cut <= 0 {
 			break
@@ -592,6 +647,51 @@ func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now
 		return "" // pathological budget: silence beats an over-budget brief
 	}
 	return out
+}
+
+// derivedPlansSummary reads docs/plans/*.md locally: how much of this
+// repo's spec plane is claimed vs still open. It cannot know PROVEN (that
+// is the gate's, and needs the daemon) — and says so rather than implying
+// checked means proven.
+func derivedPlansSummary(root string) string {
+	entries, err := os.ReadDir(filepath.Join(root, "docs", "plans"))
+	if err != nil {
+		return ""
+	}
+	plans, rows, checked := 0, 0, 0
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || e.Name() == "README.md" {
+			continue
+		}
+		data, rerr := os.ReadFile(filepath.Join(root, "docs", "plans", e.Name()))
+		if rerr != nil {
+			continue
+		}
+		counted := false
+		for _, line := range strings.Split(string(data), "\n") {
+			t := strings.TrimSpace(line)
+			if !strings.Contains(t, "{id: ") {
+				continue
+			}
+			switch {
+			case strings.HasPrefix(t, "- [x]"):
+				rows++
+				checked++
+				counted = true
+			case strings.HasPrefix(t, "- [ ]"):
+				rows++
+				counted = true
+			}
+		}
+		if counted {
+			plans++
+		}
+	}
+	if rows == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d plan(s), %d gated row(s): %d checked, %d open — `fathom verify` distinguishes claimed from PROVEN",
+		plans, rows, checked, rows-checked)
 }
 
 // derivedInFlight reads git for the mechanical in-flight facts: stashes,

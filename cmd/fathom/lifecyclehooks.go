@@ -131,13 +131,24 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 	now := time.Now()
 	_ = appendThreadItem(threadItem{
 		SchemaVersion: threadSchemaVersion,
-		ID:            newThreadID(now, in.SessionID+facts),
-		Thread:        repo,
-		Kind:          "session-end",
-		Text:          fmt.Sprintf("session ended (%s) with %s", in.Reason, facts),
-		Pointers:      map[string]string{"session_id": in.SessionID, "repo": repo},
-		FiledAt:       now.UTC().Format(time.RFC3339),
-		FiledBy:       "hook",
+		// STABLE id per repo: the latest session-end SUPERSEDES the
+		// previous one (latest-row-wins), because "the last session here
+		// left work in flight" is one fact per repo, not a growing pile —
+		// the first field report's brief was 100% accumulated telemetry.
+		ID:     "se-" + repo,
+		Thread: repo,
+		Kind:   "session-end",
+		Text:   fmt.Sprintf("session ended (%s) with %s", in.Reason, facts),
+		Pointers: map[string]string{
+			"session_id": in.SessionID, "repo": repo,
+			"root": root,
+		},
+		FiledAt: now.UTC().Format(time.RFC3339),
+		FiledBy: "hook",
+		// Self-closing: once that repo's tree is clean again, the fact is
+		// stale and the item retires itself — the same artifact-keyed
+		// expiry every other item gets.
+		CompletesWhen: &threadCondition{Kind: "repo_clean", Repo: root},
 	})
 	return 0
 }
@@ -166,7 +177,7 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 	now := time.Now()
 	_ = appendThreadItem(threadItem{
 		SchemaVersion: threadSchemaVersion,
-		ID:            newThreadID(now, "precompact"+in.SessionID),
+		ID:            "pc-" + repo, // latest compaction pointer per repo supersedes
 		Thread:        repo,
 		Kind:          "pre-compact",
 		Text:          fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z")),

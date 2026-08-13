@@ -5,6 +5,32 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — the brief learns from its first reader (O28)
+
+First real-world contact: a fresh session reported the brief was *"just
+'session ended with N dirty files', no substantive handoff"* — and that
+*"the durable spec plane… fathom verify printing which rows are claimed
+vs. proven is doing the real continuity work."* The reader independently
+validated the design's own "derived beats deposited" doctrine against a
+v1 that had not fully honored it.
+
+- **Deposits supersede per repo** (stable `se-<repo>` id): "the last
+  session here left work in flight" is one fact, not a pile — and the
+  fact **closes itself when the tree comes clean** (`repo_clean`).
+- **The brief leads with the spec plane**: the local plans summary
+  (checked vs open, with "verify distinguishes claimed from PROVEN" said
+  outright), then this repo's items, then foreign telemetry collapsed to
+  one counted line — cross-repo dirty-file counts no longer outrank the
+  repo being opened.
+- **A thin brief teaches**: when no handoff notes exist for the repo, it
+  says exactly what to run before `/clear` instead of presenting
+  telemetry as a handoff.
+
+Supersede confirmed RED under mutation. On the token question the honest
+answer stands: the fresh cohort has zero ledger rows so far, so no saving
+is claimed — the instrument says "collecting", not a number.
+
+
 ### 2026-08-13 — reconcile learns to see stanza-CONTENT drift (and the fleet is refreshed)
 
 The stanza template gained the continuity line and `fathom fleet

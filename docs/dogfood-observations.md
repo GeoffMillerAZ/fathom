@@ -19,6 +19,38 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O28 — the first real brief was telemetry pretending to be a handoff (FIXED same day)
+
+- **Field report (2026-08-13, the idp-and-warrants session, verbatim):**
+  *"Continuity threads are thin — just 'session ended with N dirty files',
+  no substantive handoff… What actually restored my context was the
+  durable spec plane: git log, the two plan files, and fathom verify
+  printing exactly which rows are claimed vs. proven. That last one is
+  doing the real continuity work."*
+- **Diagnosis — one cold-start fact and three v1 defects:**
+  1. (Cold start, not a bug) No prior session ever filed a
+     `fathom thread note`; the write side needs the departing agent, and
+     the instruction only reached the fleet's stanzas hours earlier.
+  2. Session-end deposits ACCUMULATED (unique id per /clear) — the pile
+     was destined to be 100% of every brief within a week.
+  3. The brief led with OTHER repos' dirty-file telemetry — cross-repo
+     noise ranked above anything about the repo being opened.
+  4. The brief pointed AT the derived spec state instead of CARRYING it —
+     while the reader proved the spec plane is what restores context.
+- **Fixes (same day):** deposits supersede per repo (stable id) and close
+  themselves when the tree comes clean (`repo_clean` condition); the brief
+  leads with the local plans summary (checked-vs-open, with "verify
+  distinguishes claimed from PROVEN" said explicitly), foreign telemetry
+  collapses to one counted line, and a thin brief TEACHES the write side
+  instead of presenting telemetry as a handoff.
+- **The validating part:** the reader independently confirmed the design's
+  own core doctrine — "derived beats deposited" — against the v1
+  implementation that had not honored it. First-contact feedback caught in
+  under an hour by exactly the flywheel this program exists to run.
+- **Status: FIXED** (this commit); the cold-start half resolves through
+  use.
+
+
 ### O27 — capabilities and doctor disagree about the same facts (fleet sweep, 2026-08-13)
 
 - **Symptom:** the 16-repo verification sweep found four cross-check
