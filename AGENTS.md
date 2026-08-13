@@ -25,26 +25,21 @@ fix the code or uncheck the box. Exit 2 = operational (daemon down / index
 stale) — fail-open, not a verification failure.
 <!-- fathom:end -->
 
-## UI: the observatory is an app-kit app (never hand-write markup)
+## Repo rules (one line each — the pointer carries the full instructions)
 
-The web surfaces (`/`, `/observatory*`, served by serve-http) are built on
-**app-kit** (Path A, Go server-rendered): `appkit/ui/dashboard` for layout,
-`ui/stat` for KPIs (`stat.Absent` for uninstrumented metrics — law 3),
-`ui/viz` for charts (Sparkline, Gauge, Bars). The doctrine, binding:
-
-1. **Search before writing.** Query the `appkit` MCP (`search_components`,
-   TailwindPlus + MatDash) and the kit packages before authoring ANY
-   markup — hand-writing a component the corpus or kit already has is the
-   named failure mode, and this repo already deleted one hand-rolled tile
-   set the same day it was written (2026-08-08).
-2. **Role utilities only** (`bg-surface-raised`, `text-ink-muted`,
-   `text-caution`…): never a palette color, never an inline color, never
-   `dark:` color variants — the kit tokens carry light/dark.
-3. **CSS via `task ui:css`** — the checksum-pinned Tailwind binary; no
-   Node, no package.json, ever. The build reads `cmd/fathom/ui/input.css`
-   whose **@source globs are load-bearing**: any new file that renders kit
-   utilities must be listed there or its classes silently never render.
-4. **A 200 is not a rendering.** Open the pages in a browser (or
-   Playwright-screenshot both themes) before claiming UI work done.
-5. **Promote upward (D13).** A generalizable piece moves into app-kit with
-   a rationale — `stat.Absent` (the honest-absence tile) is the precedent.
+- **workspace/**: ALL build artifacts, logs, temp files, local DBs go under
+  gitignored `workspace/`, never elsewhere — `docs/usage.md` §workspace/ convention.
+- **Gate**: `task validate` stays green; `lefthook install` once —
+  `Taskfile.yml`, `lefthook.yml`.
+- **Deploy = `task deploy`, NEVER a raw `cp`**: cp truncates a running
+  executable and an unsigned binary loses the daemon's TCC grant —
+  `Taskfile.yml` deploy, `.fathom/observations.md` O10.
+- **Index-first**: fathom MCP tools before any Grep/Read sweep; refresh via
+  the `ingest` MCP tool, never a shell `fathom ingest` against the shared
+  store — `docs/guides/fleet-index.md`.
+- **UI = app-kit doctrine**: never hand-write observatory markup —
+  `cmd/fathom/CLAUDE.md`.
+- **Org-agnostic (ADR-011)**: zero org-specific names/hosts/catalogs in code,
+  docs, tests, fixtures — `ADR.md`.
+- **Plan grammar + docs upkeep**: `docs/CLAUDE.md`, `docs/plans/README.md`.
+- Full agent guidance (conventions, source-of-truth map): `CLAUDE.md`.

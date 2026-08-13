@@ -831,7 +831,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
   contending for the lock (no more "reap duplicates" chore). **Only *binary* staleness
   remains a manual step**: a code change still needs the daemon's binary rebuilt and the
   daemon restarted (it can't hot-swap itself); `sextant version` vs `git rev-parse HEAD` is
-  still the one-line check. See CLAUDE.md "Dogfood: the fleet index" for the daemon model.
+  still the one-line check. See `docs/guides/fleet-index.md` for the daemon model.
 
 ### O4 — the shared daemon's index was "frozen": every refresh clobbered the service path — FIXED
 - **Tool:** `ingest` / `staleness_report` / auto-refresh on the `serve-http` daemon.
