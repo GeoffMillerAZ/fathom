@@ -49,7 +49,7 @@ refuses other values rather than silently scanning nothing).
 | `forbidden_pattern` | `pattern` (Go regexp), `where` | no line of any agent-config file matches | `file:line` per match |
 | `command_documented_and_exists` | `command` | the command string appears in ≥1 agent-config file AND it exists (`task X` → an `X:` target in `Taskfile.yml`; else `$PATH` lookup of argv[0]) | which half failed, named |
 | `max_lines` | `file`, `lines` | the file exists and has ≤ `lines` lines | `<file> is N lines (max M)`; absence is a violation (`absent — the concern expects it`) |
-| `pointers_resolve` | `where` | every relative markdown-link target in every agent-config file resolves (fragment stripped; http/mailto/absolute/`#` targets skipped) | `file:line → target` per dead pointer |
+| `pointers_resolve` | `where` | every relative markdown-link target (file-relative, fragment stripped; http/mailto/absolute/`#` skipped) AND every backtick repo-path (this house style's pointer form — ≥2 path-charset segments, no globs; runtime dirs workspace/tmp/ref/bin skipped; `../` escapes skipped; a token whose first segment is not a directory the repo even has is a foreign name — Go module, kit package — not a pointer; root-relative or file-relative resolution both accepted) resolves | `file:line → target` per dead pointer |
 
 An invalid regexp or unreadable input is `unable-to-check (reason)` —
 never a silent skip, never a fake pass (law 3).
@@ -57,10 +57,13 @@ never a silent skip, never a fake pass (law 3).
 **Agent-config discovery:** `git ls-files --cached --others
 --exclude-standard` over `CLAUDE.md`, `*/CLAUDE.md`, `AGENTS.md`,
 `*/AGENTS.md` — git's ignore rules are the authority on what is part of
-the repo (keeping `ref/` clones and `workspace/` out). Outside a git work
-tree: a sorted walk with a fixed skip list (`.git`, `node_modules`,
-`vendor`, `workspace`, `ref`, `tmp`, `bin`, `testdata`, `.idea`,
-`.vscode`). Deterministic either way; the file list is sorted.
+the repo (keeping `ref/` clones and `workspace/` out) — then vendored
+trees (`third_party/`, `vendor/`, `node_modules/`) filtered out even when
+tracked: a vendored snapshot's CLAUDE.md is that project's instruction
+surface, not this repo's, and auditing it produces violations nobody here
+can fix. Outside a git work tree: a sorted walk with a fixed skip list
+(the same dirs plus `.git`, `workspace`, `ref`, `tmp`, `bin`, `testdata`,
+`.idea`, `.vscode`). Deterministic either way; the file list is sorted.
 
 ## 3. Surfaces
 

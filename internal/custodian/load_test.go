@@ -137,10 +137,14 @@ func TestLoadParsesFullConcernSortedWithDefaults(t *testing.T) {
 // user entry wholesale, and `off: true` disables an inherited concern
 // while keeping it visible (a disabled contract is a fact, not a hole).
 func TestProjectScopeGoverns(t *testing.T) {
-	user := []Concern{{ID: "router_thin", Want: "user says 120", Scope: ScopeUser,
-		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 120}}}
-	proj := []Concern{{ID: "router_thin", Want: "repo says 200", Scope: ScopeProject,
-		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 200}}}
+	user := []Concern{{
+		ID: "router_thin", Want: "user says 120", Scope: ScopeUser,
+		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 120},
+	}}
+	proj := []Concern{{
+		ID: "router_thin", Want: "repo says 200", Scope: ScopeProject,
+		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 200},
+	}}
 
 	got := Merge(user, proj)
 	if len(got) != 1 || got[0].Want != "repo says 200" || got[0].Check.Lines != 200 {
@@ -154,8 +158,10 @@ func TestProjectScopeGoverns(t *testing.T) {
 	}
 
 	// Distinct IDs union, sorted.
-	other := []Concern{{ID: "deploy_safety", Want: "w", Scope: ScopeProject,
-		Check: Check{Kind: KindPointersResolve}}}
+	other := []Concern{{
+		ID: "deploy_safety", Want: "w", Scope: ScopeProject,
+		Check: Check{Kind: KindPointersResolve},
+	}}
 	got = Merge(user, other)
 	if len(got) != 2 || got[0].ID != "deploy_safety" || got[1].ID != "router_thin" {
 		t.Fatalf("union not sorted by ID: %+v", got)

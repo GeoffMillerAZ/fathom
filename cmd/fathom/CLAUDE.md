@@ -2,8 +2,8 @@
 
 The web surfaces (`/`, `/observatory*`, served by serve-http) are rendered
 by Go files here (`observatory_*.go`, `brief.go`, `statusz.go`) on
-**app-kit** (Path A, Go server-rendered): `appkit/ui/dashboard` for layout, `ui/stat` for KPIs
-(`stat.Absent` for uninstrumented metrics — law 3), `ui/viz` for charts
+**app-kit** (Path A, Go server-rendered): `appkit/ui/dashboard` for layout, `appkit/ui/stat` for KPIs
+(`stat.Absent` for uninstrumented metrics — law 3), `appkit/ui/viz` for charts
 (Sparkline, Gauge, Bars). The doctrine, binding:
 
 1. **Search before writing.** Query the `appkit` MCP (`search_components`,

@@ -10,8 +10,10 @@ func TestForbiddenPatternViolatesWithEvidence(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "CLAUDE.md"),
 		"# deploy\ncp bin/fathom ~/.local/libexec/fathom/fathom\n")
-	c := Concern{ID: "deploy_safety", Want: "no raw-cp deploy",
-		Check: Check{Kind: KindForbiddenPattern, Pattern: `cp .*libexec/fathom`, Where: "agent-config"}}
+	c := Concern{
+		ID: "deploy_safety", Want: "no raw-cp deploy",
+		Check: Check{Kind: KindForbiddenPattern, Pattern: `cp .*libexec/fathom`, Where: "agent-config"},
+	}
 
 	fs := Audit(root, []Concern{c})
 	if len(fs) != 1 || fs[0].Status != StatusViolated {
@@ -33,8 +35,10 @@ func TestForbiddenPatternViolatesWithEvidence(t *testing.T) {
 
 func TestMaxLines(t *testing.T) {
 	root := t.TempDir()
-	c := Concern{ID: "router_thin", Want: "router stays thin",
-		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 2}}
+	c := Concern{
+		ID: "router_thin", Want: "router stays thin",
+		Check: Check{Kind: KindMaxLines, File: "CLAUDE.md", Lines: 2},
+	}
 
 	// Absent: the concern expects the file — a named violation, not a skip.
 	fs := Audit(root, []Concern{c})
@@ -59,8 +63,10 @@ func TestCommandDocumentedAndExists(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "Taskfile.yml"),
 		"version: '3'\n\ntasks:\n  validate:\n    cmds:\n      - echo ok\n")
-	c := Concern{ID: "gate_documented", Want: "the gate is named and real",
-		Check: Check{Kind: KindCommandDocumentedAndExists, Command: "task validate"}}
+	c := Concern{
+		ID: "gate_documented", Want: "the gate is named and real",
+		Check: Check{Kind: KindCommandDocumentedAndExists, Command: "task validate"},
+	}
 
 	// Not documented anywhere.
 	writeTestFile(t, filepath.Join(root, "CLAUDE.md"), "# nothing about gates\n")
@@ -91,8 +97,10 @@ func TestPointersResolve(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "docs", "real.md"), "here\n")
 	writeTestFile(t, filepath.Join(root, "CLAUDE.md"),
 		"See [real](docs/real.md), [ext](https://example.com), and [dead](docs/gone.md).\n")
-	c := Concern{ID: "pointers_hold", Want: "every relative pointer resolves",
-		Check: Check{Kind: KindPointersResolve}}
+	c := Concern{
+		ID: "pointers_hold", Want: "every relative pointer resolves",
+		Check: Check{Kind: KindPointersResolve},
+	}
 
 	fs := Audit(root, []Concern{c})
 	if fs[0].Status != StatusViolated {
@@ -107,6 +115,44 @@ func TestPointersResolve(t *testing.T) {
 	fs = Audit(root, []Concern{c})
 	if fs[0].Status != StatusHolds {
 		t.Fatalf("resolving pointers must hold: %+v", fs[0])
+	}
+}
+
+// This house style points with backtick paths, not markdown links — a
+// pointer check blind to them holds vacuously (found live on this repo's
+// own router the day the audit shipped). Backtick tokens count as
+// pointers only under tight guards: ≥2 path segments, path charset, no
+// globs, runtime dirs (workspace/tmp/ref/bin) skipped — a false violation
+// teaches people to ignore the custodian.
+func TestPointersResolveBacktickPaths(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "docs", "usage.md"), "here\n")
+	c := Concern{
+		ID: "pointers_hold", Want: "pointers resolve",
+		Check: Check{Kind: KindPointersResolve},
+	}
+
+	writeTestFile(t, filepath.Join(root, "CLAUDE.md"),
+		"Live in `docs/usage.md`; dead in `docs/gone.md`.\n"+
+			"Skipped: `db/` (one segment), `docs/plans/*.md` (glob), `workspace/db/fleet.sqlite` (runtime), `find_symbol` (no slash).\n"+
+			"Foreign names, not pointers: `appkit/ui/dashboard`, `modernc.org/sqlite`, `github.com/x/y` (no such first dir here), `../other-repo` (escape).\n")
+	fs := Audit(root, []Concern{c})
+	if fs[0].Status != StatusViolated {
+		t.Fatalf("dead backtick path must violate: %+v", fs[0])
+	}
+	if len(fs[0].Evidence) != 1 || fs[0].Evidence[0] != "CLAUDE.md:1 → docs/gone.md" {
+		t.Fatalf("exactly the dead path, nothing from the guarded skips: %v", fs[0].Evidence)
+	}
+
+	// Root-relative resolution: a nested file citing `docs/usage.md` (the
+	// house style cites from the repo root, wherever the citing file
+	// lives) must resolve.
+	writeTestFile(t, filepath.Join(root, "CLAUDE.md"), "clean\n")
+	writeTestFile(t, filepath.Join(root, "internal", "CLAUDE.md"),
+		"Rules live in `docs/usage.md`.\n")
+	fs = Audit(root, []Concern{c})
+	if fs[0].Status != StatusHolds {
+		t.Fatalf("root-relative backtick path from a nested file must hold: %+v", fs[0])
 	}
 }
 
@@ -133,6 +179,8 @@ func TestAgentConfigDiscoveryWalkSkips(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "sub", "AGENTS.md"), "sub\n")
 	writeTestFile(t, filepath.Join(root, "workspace", "CLAUDE.md"), "junk\n")
 	writeTestFile(t, filepath.Join(root, "ref", "clone", "CLAUDE.md"), "junk\n")
+	// Vendored trees carry OTHER projects' instruction surfaces.
+	writeTestFile(t, filepath.Join(root, "third_party", "kit", "CLAUDE.md"), "junk\n")
 
 	files, err := AgentConfigFiles(root)
 	if err != nil {

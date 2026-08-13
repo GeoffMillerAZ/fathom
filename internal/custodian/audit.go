@@ -186,11 +186,29 @@ func checkMaxLines(root string, c Concern) Finding {
 	return f
 }
 
-// markdownLinkRe captures relative markdown-link targets. Deliberately
-// conservative: only `[text](target)` links — backtick paths and bare
-// mentions are too noisy to police without false positives, and a false
-// violation teaches people to ignore the custodian.
+// markdownLinkRe captures relative markdown-link targets; backtick
+// pointer coverage lives beside it (backtickTokenRe + repoPathRe) because
+// this house style points with `docs/foo.md`, not links — a check blind
+// to that holds vacuously, which the audit's own first live run
+// demonstrated. Bare mentions stay unpoliced: a false violation teaches
+// people to ignore the custodian.
 var markdownLinkRe = regexp.MustCompile(`\[[^\]]*\]\(([^)\s]+)\)`)
+
+// backtickTokenRe finds inline-code tokens; repoPathRe then decides which
+// look like repo paths worth holding to existence: ≥2 non-empty segments
+// of path-safe characters (globs, spaces, shell fragments, and prose
+// ellipses all fail the charset).
+var (
+	backtickTokenRe = regexp.MustCompile("`([^`]+)`")
+	repoPathRe      = regexp.MustCompile(`^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)+/?$`)
+)
+
+// pointerRuntimeDirs are first segments whose contents are runtime or
+// vendored state, not documentation contracts — a gitignored artifact
+// path is allowed to not exist yet.
+var pointerRuntimeDirs = map[string]struct{}{
+	"workspace": {}, "tmp": {}, "ref": {}, "bin": {},
+}
 
 func checkPointersResolve(root string, files []string, c Concern) Finding {
 	f := Finding{Concern: c}
@@ -214,12 +232,53 @@ func checkPointersResolve(root string, files []string, c Concern) Finding {
 				if target == "" {
 					continue
 				}
+				// Markdown links resolve file-relative (the markdown
+				// contract).
 				abs := filepath.Join(root, filepath.Dir(filepath.FromSlash(rel)), filepath.FromSlash(target))
 				if _, err := os.Stat(abs); err != nil {
 					f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d → %s", rel, i+1, target))
 				} else {
 					resolved++
 				}
+			}
+			for _, m := range backtickTokenRe.FindAllStringSubmatch(ln, -1) {
+				target := m[1]
+				if !repoPathRe.MatchString(target) {
+					continue
+				}
+				first := target[:strings.IndexByte(target, '/')]
+				if first == "." || first == ".." {
+					continue // out-of-repo escapes are not this repo's pointers to hold
+				}
+				if _, runtime := pointerRuntimeDirs[first]; runtime {
+					continue
+				}
+				// A token whose FIRST segment is not a directory this repo
+				// (or the citing file's dir) even has is a foreign name — a
+				// Go module path, a kit package — not a pointer into this
+				// repo. Policing those would flood the audit with false
+				// violations, and a false violation teaches people to
+				// ignore the custodian.
+				fileBase := filepath.Dir(filepath.FromSlash(rel))
+				rootFirst := dirExists(filepath.Join(root, first))
+				fileFirst := dirExists(filepath.Join(root, fileBase, first))
+				if !rootFirst && !fileFirst {
+					continue
+				}
+				// Backtick paths cite from the repo root in this style;
+				// accept a file-relative resolution too, so either
+				// convention passes and neither is falsely flagged.
+				fromRoot := filepath.Join(root, filepath.FromSlash(target))
+				fromFile := filepath.Join(root, fileBase, filepath.FromSlash(target))
+				if _, err := os.Stat(fromRoot); err == nil {
+					resolved++
+					continue
+				}
+				if _, err := os.Stat(fromFile); err == nil {
+					resolved++
+					continue
+				}
+				f.Evidence = append(f.Evidence, fmt.Sprintf("%s:%d → %s", rel, i+1, target))
 			}
 		}
 	}
@@ -278,6 +337,9 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 		if ln == "" {
 			continue
 		}
+		if vendoredPath(ln) {
+			continue
+		}
 		if _, dup := seen[ln]; dup {
 			continue
 		}
@@ -288,12 +350,33 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 	return out, nil
 }
 
+// vendoredPath excludes tracked-but-vendored trees from the corpus: a
+// third-party snapshot's CLAUDE.md is that project's instruction surface,
+// not this repo's — auditing it produces violations nobody here can fix.
+func vendoredPath(rel string) bool {
+	first := rel
+	if i := strings.IndexByte(rel, '/'); i >= 0 {
+		first = rel[:i]
+	}
+	switch first {
+	case "third_party", "vendor", "node_modules":
+		return true
+	}
+	return false
+}
+
+func dirExists(p string) bool {
+	fi, err := os.Stat(p)
+	return err == nil && fi.IsDir()
+}
+
 // walkSkipDirs is the non-git fallback's junk list — the conventional
 // build/clone/scratch dirs whose CLAUDE.md files belong to OTHER repos or
 // to generated trees, not to this one's agent configuration.
 var walkSkipDirs = map[string]struct{}{
-	".git": {}, "node_modules": {}, "vendor": {}, "workspace": {},
-	"ref": {}, "tmp": {}, "bin": {}, "testdata": {}, ".idea": {}, ".vscode": {},
+	".git": {}, "node_modules": {}, "vendor": {}, "third_party": {},
+	"workspace": {}, "ref": {}, "tmp": {}, "bin": {}, "testdata": {},
+	".idea": {}, ".vscode": {},
 }
 
 func walkAgentConfigFiles(root string) ([]string, error) {
