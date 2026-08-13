@@ -215,6 +215,9 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.
 		checkCapabilities(baseURL, root, explicitSvc),
+		// CC-6 (docs/plans/custodian.md): the config custodian — are this
+		// repo's registered config contracts still true?
+		checkConcerns(root),
 	)
 	return checks
 }

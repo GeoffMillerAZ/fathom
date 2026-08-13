@@ -5,6 +5,28 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — the config custodian ships its audit (vision 22, CC-0..7)
+
+"Instructed means true": agent configuration joins the evidence plane.
+`internal/custodian` (named to leave `internal/concern`, the concern-scoped
+query engine, untouched) loads falsifiable wants from CUE at two law-13
+scopes (~/.fathom/concerns.cue as user defaults, .fathom/concerns.cue
+governing; `off: true` disables an inherited concern and the audit still
+names it) with the capability loader's refusals — `?:` fields, unknown
+fields, and unknown check KINDS refused by name: an uncheckable concern is
+a wish. Four mechanical check kinds (forbidden_pattern,
+command_documented_and_exists, max_lines, pointers_resolve) run from file
+reads only — no daemon, no LLM. Surfaces: `fathom config audit`
+(text/JSON, exit 1 iff violated, zero concerns exits 0 with the absence
+named), a doctor row on the capability-row discipline, and a session-brief
+attention line that exists only while violations exist. Fathom is the
+instrument, never the hand (vision 22 §3b): every surface reports; the
+session decides what to edit. Falsification runs: project-governs and
+file:line-evidence mutations both confirmed red. Vision 23 (the doctrine
+plane) and vision 22 §7 (corpora + packs: lefthook/taskfile as honesty
+checks on the deterministic gate chain, shipped as data) land as specs
+with plan rows CC-8..13, DP-1..4, SD-1..4 open.
+
 ### 2026-08-13 — the brief learns from its first reader (O28)
 
 First real-world contact: a fresh session reported the brief was *"just

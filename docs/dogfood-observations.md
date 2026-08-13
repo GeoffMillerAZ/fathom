@@ -19,6 +19,30 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O29 — `fathom plans status` takes 2m35s: a status command priced like a full audit (2026-08-13)
+
+- **Reproduction (verbatim):** `time fathom plans status --service fathom`
+  → `0% cpu 2:35.45 total` against the healthy always-on daemon; ~40
+  active plans, each verified serially over HTTP (`computePlanRows` calls
+  `verifyViaHTTP` per plan with a 10s-timeout client; near-zero CPU
+  locally = the whole elapsed time is round-trip waiting). The command
+  produced correct output — this is latency, not wrongness.
+- **Why it matters beyond annoyance:** SD-2 (docs/plans/custodian.md)
+  commits the observatory's SDD panel to computing at render via this
+  same engine. A 155s render is a non-starter, so the panel's design
+  inherits this observation as a prerequisite: parallelize the per-plan
+  verify calls (they are independent), or add a daemon-side plans-status
+  endpoint that runs the engine in-process against its own store, or
+  both. Also worth checking: whether each `verifyViaHTTP` re-triggers
+  auto-refresh work that the first call already paid for.
+- **Fix direction (concrete):** daemon-side `plans_status` (engine
+  in-process, one HTTP call total) is the right shape — the CLI and the
+  panel both render what the daemon computes (law 10). Parallel fan-out
+  in the CLI is the cheap interim.
+- **Status: OPEN** — filed the day SD-1..4 were planned; must close
+  before SD-2 ships.
+
+
 ### O28 — the first real brief was telemetry pretending to be a handoff (FIXED same day)
 
 - **Field report (2026-08-13, the idp-and-warrants session, verbatim):**

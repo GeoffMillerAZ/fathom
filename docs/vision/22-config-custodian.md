@@ -77,6 +77,23 @@ this exists to remove). The audit output is per-concern
 value-or-named-reason: `holds` / `violated (file:line, evidence)` /
 `unable-to-check (reason)` — never a silent skip.
 
+## 3b. The delivery loop — an instrument, not a hand
+
+Owner-confirmed 2026-08-13: *"instead of editing files like CLAUDE.md
+directly, fathom would just provide the feedback to the code editing
+session to take action on it."* Exactly — and this is the design's load-
+bearing asymmetry, stated once so nothing later softens it:
+
+**Fathom is the instrument; the session is the hand.** A violation is
+delivered as feedback — the session-brief attention line, the doctor row,
+the audit output — to an agent that has conversational context and a human
+present. That agent edits the prose it is entitled to edit; fathom's own
+writes stay inside its markers (law 15). The division is not a limitation
+to work around later; it is why the custodian can run continuously without
+ever being the thing that destroyed someone's config: the component with
+standing access has no write authority, and the component with write
+authority acts only inside a session where a human can see it.
+
 ## 4. Surfaces
 
 - `fathom config audit [--repo R]` — the verb; JSON for the observatory.
@@ -100,6 +117,47 @@ value-or-named-reason: `holds` / `violated (file:line, evidence)` /
   govern the *config* itself). Not per-edit hooks. Not shared or hosted
   (law 13). Not built until its plan rows exist — this document is the
   vision; the design doc and rows come with the build slice.
+
+## 7. Corpora and packs (owner follow-up, same day)
+
+> *"Should we make it extensible to other config types — lefthook,
+> Taskfiles? Ship generic packs for the coding agents, or build the agent
+> custodians in and allow extensible configs too? Lefthook has an
+> excellent agentic story: it pushes deterministic validation."*
+
+**Accepted — and it sharpens the architecture rather than widening it.**
+
+- **The engine is corpus-generic already.** Every v1 check kind operates
+  on "a named set of files plus the repo"; `where:` is the seam. New
+  corpora (`lefthook`, `taskfile`, `ci`) are new resolvers behind the same
+  engine — never a parallel system, never a per-tool custodian (CC-11).
+- **Knowledge ships as packs, not built-ins.** A pack is a curated,
+  versioned set of concerns — the layer-pack precedent, reapplied. Fathom
+  ships packs (claude-code, codex, lefthook, taskfile); a repo enables
+  them; `.fathom/concerns.cue` overrides or disables per entry (law 13
+  unchanged). Hardcoding agent custodians into Go would make fathom's
+  releases the bottleneck for what is plainly data (CC-12).
+- **The lefthook story is real and it is OURS, precisely because it is not
+  linting.** Other tools validate a config's *syntax*; the custodian
+  validates its *honesty* — cross-artifact truth: the pre-push hook still
+  runs the gate the docs promise, the Taskfile target the hook names still
+  exists, the chain from CLAUDE.md → lefthook → Taskfile → scripts is
+  unbroken. Deterministic validation is the spine of agentic coding; the
+  custodian's job is to notice when the spine quietly disconnects — the
+  O25 failure class, which was exactly a documented command outliving
+  reality.
+- **The convergence this buys (O27's structural resolution):** several of
+  doctor's bespoke checks — stanza present, lefthook gates, binary on
+  path — are concerns in Go clothing. As packs mature, doctor's rows
+  render what the concern audit knows instead of re-deriving it (law 10:
+  one evaluation engine, many surfaces). Direction, not a rewrite mandate:
+  each check migrates only when the pack expresses it fully.
+- **Refused:** re-implementing yamllint/shellcheck/schema validation for
+  third-party tools; a "custodian for all configs" ambition with no
+  failure class behind it. A corpus earns admission with a pack of
+  falsifiable concerns that catch a real, named failure — lefthook and
+  taskfile qualify today because the deterministic gate chain is what
+  agentic coding stands on; the next corpus must make the same case.
 
 ## 6. Falsification, pre-registered
 

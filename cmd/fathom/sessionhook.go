@@ -86,6 +86,14 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			ctx += "\n" + tb
 			briefBytes = len(tb)
 		}
+		// CC-7 (docs/plans/custodian.md): the custodian's attention line —
+		// present only while a registered concern is violated in this repo.
+		// Mechanical file reads; adds nothing on clean or unconfigured
+		// repos. Same startup/clear gate as the thread brief: resumed
+		// sessions kept their context.
+		if cl := concernAttentionLine(projDir); cl != "" {
+			ctx += "\n" + cl
+		}
 	}
 	writeSessionStamp(sessionStamp{
 		SchemaVersion: 1,

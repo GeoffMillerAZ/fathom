@@ -21,6 +21,11 @@ import (
 // alone), and print it — human text by default, --json for machine
 // consumption, --explain to annotate every key with its source.
 func cmdConfig(args []string, stdout, stderr io.Writer) int {
+	// The config custodian's verb (vision 22, docs/plans/custodian.md CC-5)
+	// hangs off the config namespace: `fathom config audit`.
+	if len(args) > 0 && args[0] == "audit" {
+		return cmdConfigAudit(args[1:], stdout, stderr)
+	}
 	fs := newFlagSet("config", stderr)
 	profileFlag := fs.String("profile", "", "show this named profile instead of the resolved default")
 	explain := fs.Bool("explain", false, "annotate every key with its provenance (flag/env/project/user/default) and source file/env-var")
