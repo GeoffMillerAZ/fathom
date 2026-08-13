@@ -42,7 +42,7 @@ The checklist doctor runs (so you know what each row means before you explain it
 | `mcp_registration` | The harness's own MCP config points fathom at `/rpc/agent` (or `/rpc/companion`) |
 | `daemon_reachable` | `GET /healthz` answers |
 | `binary_fresh` | The binary you just ran `doctor` with matches `git rev-parse HEAD` of the checked repo — a LOCAL proxy (there's no remote "ask the daemon its version" call yet); every pass says the daemon's installed copy is unverified, a dirty build surfaces `vcs.modified`, and both worktree caveats (a mismatch inside a linked worktree; a match in a checkout with nested worktrees, whose stamps can be poisoned) are printed only when doctor verifies they apply |
-| `hooks_installed` (claude only) | The four fathom hooks (session/edit/guard-pre/stop) are wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
+| `hooks_installed` (claude only) | The full fathom hook stack (session-start, session-end + pre-compact continuity deposits, edit, guard-pre, stop) is wired in SOME settings scope — project `.claude/settings.json`, `.claude/settings.local.json`, or user `~/.claude/settings.json`; user-scope wiring passes with a scope note. If no readable scope wires them but the call log shows them firing, doctor names that contradiction instead of the init remedy — re-running init there would install duplicates |
 | `lefthook_gates` | `lefthook.yml`'s pre-push has a `fathom verify` step (harness-agnostic — Codex uses the identical git-native gate) |
 | `hooks_firing` (claude only) | The call log has actually seen `edit-hook` traffic — configured is not the same as firing |
 | `stanza_present` | `CLAUDE.md`/`AGENTS.md` carry a well-formed fathom marker pair |
@@ -55,6 +55,8 @@ The checklist doctor runs (so you know what each row means before you explain it
 | `binding_module_readiness` (phase O) | Each bound module's phase-J readiness ladder verdict, checked via the module's own local manifest **when resolvable on this machine** — **warn** if below `servable`; honestly `skipped: not checkable: module not local` otherwise (never a guessed verdict) |
 | `guard_dead_scopes` (phase O) | Each file-scoped guard's globs match at least one indexed file (`list_sources`) — **warn** on a guard matching zero (a prune candidate, never auto-removed); command-scoped guards are noted as not checkable this way, not silently skipped |
 | `guard_include_modules_unbound` (phase O) | A guard with `include_modules:true` has at least one binding to actually include — **warn** if none |
+| `capabilities` (phase T) | ONE row for the whole registry: **fail** only when a capability is switched ON yet not operating (config-says-yes, reality-says-no); off-by-choice is listed in the reason, never failed. `fathom capabilities` has the detail |
+| `concerns` (config custodian, vision 22) | The registered config contracts still hold: **fail** on a concerns.cue that does not load or a violated concern (an instruction in the config that is no longer true — remedy: `fathom config audit` for evidence; fathom reports, the operator edits); zero concerns registered is a passing row that names the absence |
 
 ## 3. Apply remedies — with operator approval, one at a time
 

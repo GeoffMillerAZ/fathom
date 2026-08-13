@@ -58,6 +58,15 @@ workflows, so they stay hidden rather than execute-and-flag), while `resources/r
 (manifest, per-service summaries) stays available everywhere — it is data, not
 capability.
 
+**Suppression disclosure (phase V, `fathom scope`).** When a service has
+active scope suppressions, any tool response whose results were narrowed by
+them carries a `suppressed` block in its envelope — count, reason, and the
+`fathom scope` command to inspect or reverse. Hidden is disclosed, never
+silent (law 3): a reader can always tell "no results" from "results
+withheld by a suppression someone registered". `read_source` refuses
+suppressed and service-ignored paths by name, with the unsuppress command
+in the refusal.
+
 ---
 
 ## Shared tools (GroupShared)

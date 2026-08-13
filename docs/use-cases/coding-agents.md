@@ -236,9 +236,12 @@ numbers and tool-kill decisions run on clean data.
 
 CLI: `fathom init`, `ingest`, `compile`, `layers` (`list`/`show`/`install`
 — see `docs/layers.md`), `verify` (`--strict`, `--require-all`),
-`instrument`, `session-hook`, `edit-hook` (`--pre`), `stop-hook`, `doctor`,
-`gen-plan-cue`, `config`, `providers`, `smoke`. MCP: the `/rpc/agent`
-surface (16 tools, `read_source` included — see `docs/mcp-tools.md`).
+`instrument`, `session-hook`, `session-end-hook`, `pre-compact-hook`,
+`edit-hook` (`--pre`), `stop-hook`, `doctor`, `gen-plan-cue`, `config`
+(incl. `config audit`), `capabilities`, `thread`
+(`brief`/`note`/`point`/`list`/`close`), `rate`, `providers`, `smoke`.
+MCP: the `/rpc/agent` surface (16 tools, `read_source` included — see
+`docs/mcp-tools.md`).
 Phase O (`.fathom/guard.cue`, `.fathom/modules.cue`) is covered in
 [platform-modules.md](platform-modules.md). When any of these change,
 update this doc's examples and this line.

@@ -822,6 +822,95 @@ run (bad flags, unresolvable `--path`) — an operational error, not a verdict o
 repo's wiring. See the `fathom-doctor` skill for interpretation, the remedy-approval
 discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 
+### `plans` — computed SDD progress and archival
+
+```sh
+fathom plans status --service <svc>          # per-plan rollup: total/proven/claimed-unproven/open/deferred/other-skipped
+fathom plans next   --service <svc>          # the ordered work frontier, with {id, symbol, package} anchors
+fathom plans archive <plan> | restore <plan> # retire a fully-proven plan to docs/plans/archive/ (out of gate scope), or bring it back
+```
+
+State is always derived from the index by the verify engine, never asserted.
+Both read verbs accept `--plan` (repeatable), `--store` (direct mode),
+`--url`, `--json`. Heads-up: `plans status` currently verifies every active
+plan serially over HTTP (minutes on a large plan set — O29 in
+`docs/dogfood-observations.md` tracks the fix).
+
+### `thread` — continuity across sessions (vision 21)
+
+```sh
+fathom thread brief   [--budget-bytes 2400]    # what a fresh session gets injected (startup/clear only; resume/compact get nothing)
+fathom thread note    "text" [--thread T] [--kind K] [--completes-when …]   # file a handoff BEFORE /clear
+fathom thread point   "what happened" [--session S]                          # side-task pointer
+fathom thread list    [--all]                  # open items; --all includes closed
+fathom thread close   <id> [--why …]
+fathom thread promote <thread> [--out path]    # render a thread's history to a durable doc
+```
+
+Store: `~/.fathom/threads.jsonl` — user-central, append-only,
+latest-row-wins; never shared (law 13). Deposits from the lifecycle hooks
+(`session-end-hook`, `pre-compact-hook` — wired by `fathom init`) are
+mechanical facts only. Items with `completes_when`
+(`file_exists` / `plan_row_checked` / `repo_clean`) close themselves when
+reality catches up. The brief is byte-budgeted and enforced; overflow is
+named (`and N more`), never silently dropped.
+
+### `config audit` — the config custodian (vision 22, "instructed means true")
+
+```sh
+fathom config audit [--repo .] [--json]
+```
+
+Audits registered concerns (`~/.fathom/concerns.cue` user defaults;
+`.fathom/concerns.cue` repo scope, governs) against the repo: per-concern
+`holds` / `violated (file:line evidence)` / `unable-to-check (reason)` /
+`off (named)`. Exit `1` iff violated; zero concerns exits `0` with the
+absence named. Check kinds v1: `forbidden_pattern`,
+`command_documented_and_exists`, `max_lines`, `pointers_resolve`. Fathom
+reports and never edits your prose — the session applies fixes. Full
+model: `docs/design/config-custodian.md`.
+
+### `scope` / `purge` — reversible suppression and verified removal
+
+```sh
+fathom scope list | suppress '<glob>' --reason R [--until 7d] | unsuppress <id> | preview '<glob>'
+fathom purge '<glob>' --service S --reason '<why>' [--dry-run] [--yes]
+```
+
+`scope suppress` hides matching paths from query results (reversible,
+reason-carrying, disclosed in every MCP envelope's `suppressed` block);
+`purge` removes matching content from the store irreversibly, appends a
+service-scoped ignore so re-ingest cannot resurrect it, and its verdict
+includes a post-purge probe. See `docs/use-cases/fleet-health.md`.
+
+### `rate` — the session outcome, in one number
+
+```sh
+fathom rate <1-5> [--note "..."]
+```
+
+Appends to the local ratings log — the outcome half of the measurement
+loop (`observe` files the specific friction; `rate` files the verdict).
+
+### `brief` / `flywheel` — the value story and the pipes it rides on
+
+```sh
+fathom brief --print     # the shareable markdown value brief, honesty covenant included ("Not measured" is a section, not a gap)
+fathom flywheel          # every feedback loop: CLOSED / OPEN / IDLE — exit 1 if any loop is OPEN
+```
+
+Run `flywheel` before quoting any number `brief` renders: a figure
+downstream of an OPEN loop is not evidence. `fathom capabilities` (below)
+explains why any surface reads zero.
+
+### `fleet` — reconcile, receipts, undo
+
+```sh
+fathom fleet report                          # wiring/freshness across every indexed repo
+fathom fleet reconcile [--repo R] [--apply]  # dry-run then apply: hooks vs template, stale binary paths → shim, stanza CONTENT drift
+fathom fleet receipts | undo <receipt-id>    # every write fathom makes in a repo is receipted and reversible
+```
+
 ---
 
 ## The observatory and the brief

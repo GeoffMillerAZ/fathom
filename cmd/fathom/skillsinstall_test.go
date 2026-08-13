@@ -417,8 +417,8 @@ func TestSkillsAgentsRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(entries) != 8 {
-		t.Fatalf("got %d skills, want 8 (the pack including rewire+activate)", len(entries))
+	if len(entries) != 9 {
+		t.Fatalf("got %d skills, want 9 (the pack including rewire+activate+custodian)", len(entries))
 	}
 	data, err := os.ReadFile(filepath.Join(root, ".agents", "skills", "fathom-rewire", "SKILL.md"))
 	if err != nil {

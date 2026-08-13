@@ -24,14 +24,22 @@ description: >
    KILL.md with a real metric and kill criterion).
 3. **Bindings** (`.fathom/modules.cue`): bind modules actually mounted on
    the daemon; else the explicit `bindings: []`.
-4. **Skills**: the eight fathom skills installed (`fathom init
+4. **Concerns** (`.fathom/concerns.cue`, the config custodian — see the
+   `fathom-custodian` skill): register 2–4 falsifiable wants about this
+   repo's agent config, each with a `why` naming the failure it prevents
+   (the bar is the same as guards: a mistake that already happened —
+   e.g. a documented command that no longer exists). `fathom config
+   audit` must run clean or its violations must be triaged before you
+   call this step done.
+5. **Skills**: the nine fathom skills installed (`fathom init
    --skills`); **gates**: lefthook pre-push verify via plain `fathom`,
    LOUD on a missing binary (`command -v fathom || { echo "fathom
    missing — gate NOT run"; exit 1; }`) — a gate that cannot run must
    fail, not pass.
-5. **Prove by demonstration**: trip one guard deliberately (expect the
+6. **Prove by demonstration**: trip one guard deliberately (expect the
    note), touch one rule-scoped file (expect the injection or its beat),
-   run one `fathom verify` if plans exist. Guard budgets: `max_rules` ≤ 4,
-   notes ≤ ~150 words — the channel is token-capped and deduped; attention
-   is not.
-6. `fathom observe` any friction; report activations + demonstrations.
+   run one `fathom verify` if plans exist, and run `fathom config audit`
+   (expect per-concern holds/violated with evidence — never a silent
+   skip). Guard budgets: `max_rules` ≤ 4, notes ≤ ~150 words — the
+   channel is token-capped and deduped; attention is not.
+7. `fathom observe` any friction; report activations + demonstrations.

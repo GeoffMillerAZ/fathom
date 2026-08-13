@@ -256,7 +256,9 @@ Codex-specific to configure.
 | CI `--strict` gate | Yes | Yes — identical |
 | Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
 | `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
-| Shipped agent skills (`fathom-plan`/`verify`/`onboard`/`feedback`/`doctor`/`impact`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
+| Shipped agent skills (nine: `fathom-plan`/`verify`/`onboard`/`feedback`/`doctor`/`impact`/`rewire`/`activate`/`custodian`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
+| Continuity threads (vision 21) | Full loop: SessionEnd/PreCompact hooks deposit mechanical facts; the SessionStart brief injects on `startup`/`clear` only (≤2,400 bytes, budget-enforced) | **Half the loop.** No lifecycle hooks, so nothing deposits or injects automatically — but the store and verbs are identical: `AGENTS.md` instructs running `fathom thread brief` at session start, and `fathom thread note` before ending a session is the same discipline. The store never knows which harness wrote to it |
+| Config custodian (`fathom config audit`, vision 22) | Audit verb + doctor `concerns` row + a session-start attention line while a concern is violated | Audit verb + doctor row work identically (plain CLI); no attention line — run `fathom config audit` yourself, same as the thread brief |
 | Local friction flywheel (`observe`/`instrument --adoption`) | Yes — plain CLI, no hook dependency | Yes, identically — plain CLI, no hook dependency (§5.1) |
 | `fathom doctor` wiring diagnosis | Yes, all 11 checks (`--harness=claude`) | Yes (`--harness=codex`) — 9 of 11 checks apply identically; `hooks_installed`/`hooks_firing` report `skipped` honestly (no hook mechanism to check, §6 above) rather than a false pass or fail |
 

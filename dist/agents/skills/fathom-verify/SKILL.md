@@ -83,6 +83,10 @@ fathom plans next   --service <svc>   # the ordered work frontier
   actually pass.
 - Both accept `--store <path>` for direct mode or `--url` for a
   non-default daemon, and `--json` for machine output.
+- `fathom plans archive <plan>` retires a fully-proven-or-dispositioned
+  plan to `docs/plans/archive/` (out of gate scope by construction — each
+  archival removes one verify invocation from every push and CI run);
+  `fathom plans restore <plan>` brings it back.
 
 ## Reading a failing task
 

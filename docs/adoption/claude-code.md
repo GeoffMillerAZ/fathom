@@ -328,6 +328,15 @@ service X, use fathom before Grep/Read" — or an honest "daemon down" /
 "repo not indexed" signal. Always exits 0; a 2-second HTTP timeout means a
 dead daemon can't stall session start.
 
+On `startup` and `clear` **only** — the two sources where context was
+actually lost — it additionally injects the **continuity thread brief**
+(§7.7: local plans summary first, then filed handoff notes; ≤2,400 bytes,
+budget-enforced, overflow named as `and N more`) and, when a registered
+config concern is violated, one **custodian attention line** (§8's
+`concerns.cue`: `config: N instruction(s) may no longer be true — fathom
+config audit`). `resume` and `compact` keep their context, so those
+sources inject neither — adding bytes there is pure tax.
+
 ```json
 {
   "hooks": {
@@ -561,6 +570,37 @@ failure class this program has already been burned by once.
 
 ---
 
+### 7.7 SessionEnd + PreCompact — continuity threads
+
+Two disk-only hooks (they inject **nothing**; their context cost is zero
+by construction) close the loop the brief in §7.1 reads from:
+
+- **`session-end-hook`** (SessionEnd): on `/clear`/logout, deposits ONE
+  mechanical fact per repo — dirty files, stashes, claimed-unproven plan
+  rows. Latest deposit supersedes (no pile-up), and it **closes itself**
+  once the tree comes clean. An empty session deposits nothing.
+- **`pre-compact-hook`** (PreCompact, `manual|auto`): files a pointer
+  (session id + repo) before compaction so the pre-summary span stays
+  findable. It never reads transcript *content* — deposits are mechanical
+  facts only, structurally.
+
+The write side that matters most is yours, not the hooks': before a
+`/clear`, file what the next session must know —
+
+```sh
+fathom thread note "purge suppression moved to the query layer — SP-1 next" \
+  [--thread T] [--completes-when plan_row_checked:docs/plans/x.md:SP-1]
+fathom thread list          # open items (deposits + notes), per repo
+fathom thread close <id>    # or let a completes_when condition close it
+fathom thread brief         # what the next fresh session will be shown
+```
+
+Notes with a `completes_when` condition (`file_exists`,
+`plan_row_checked`, `repo_clean`) close themselves when reality catches
+up, attributed `closed_by: condition`. The derived spec plane (plans +
+`fathom verify`) always outranks deposits in the brief — a note earns its
+bytes by saying what the index cannot.
+
 ## 8. Per-project `.fathom/`
 
 Two config layers, both optional, both TOML, both validated against a CUE
@@ -594,6 +634,22 @@ fathom layers list                 # embedded + project packs, source-labeled, o
 fathom layers show adr-rules       # full resolved definition + prompt provenance
 fathom layers install ./my-pack    # validates against #Layer, copies into .fathom/layers/<name>/
 ```
+
+Two more CUE files live here, both law-13-scoped (a user-scope default in
+`~/.fathom/`, the repo file **governs**):
+
+- **`.fathom/capabilities.cue`** — which fathom features are on in this
+  repo. `fathom capabilities` lists every capability with what it costs,
+  whether it is operating, and WHY anything is off; `fathom capabilities
+  set <id> on|off [--scope user|project]` writes the file.
+- **`.fathom/concerns.cue`** — the config custodian's contracts (vision
+  22, "instructed means true"): falsifiable wants about this repo's agent
+  config — a forbidden pattern, a documented command that must exist, a
+  line budget, pointers that must resolve. `fathom config audit` reports
+  per-concern holds/violated/unable **with `file:line` evidence**, the
+  doctor gains a `concerns` row, and §7.1's attention line fires while a
+  violation exists. Fathom never edits your prose — it reports; the
+  session decides (the `fathom-custodian` skill carries the loop).
 
 ---
 
@@ -670,9 +726,9 @@ flagged `off_surface` in the call log), so nothing is actually locked out.
 
 ---
 
-## 11. Agent skills: `fathom-plan` / `fathom-verify` / `fathom-onboard` / `fathom-feedback` / `fathom-doctor` / `fathom-impact`
+## 11. Agent skills — the nine shipped with the binary
 
-`fathom init --skills[=claude|codex|all]` installs six shipped, versioned
+`fathom init --skills[=claude|codex|all]` installs nine shipped, versioned
 skill sources (`dist/agents/skills/`, embedded in the binary — no fathom
 source checkout needed at install time):
 
@@ -701,6 +757,17 @@ bin/fathom init --skills=claude
   `fathom plans status` + the open-observation backlog honestly: what was
   measured, the predates-instrumentation split, and the open frictions as
   the flywheel's ask (§12 below).
+- **`fathom-rewire`** — reconcile a repo's wiring in place (`fathom fleet
+  reconcile --apply`: hooks vs the current template, stale binary paths →
+  the PATH shim, stanza content regenerated), with doctor's known false
+  signals annotated so drift-chasing doesn't fix the wrong repo.
+- **`fathom-activate`** — turn on the delivered-configuration features in
+  a wired repo (guards, layer packs, bindings, concerns, loud gates),
+  each proven by demonstration, never by assertion.
+- **`fathom-custodian`** — the "instructed means true" loop: register
+  falsifiable concerns about the agent config, read `fathom config
+  audit`'s evidence, and apply fixes as the session — fathom reports, the
+  session edits (§8).
 
 Each ships two rendered shapes from one authored source: `SKILL.md`
 (Claude Code's frontmatter + Markdown format, installed to
@@ -894,11 +961,13 @@ This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
 `CLAUDE.md`/`AGENTS.md` marker-delimited stanza), `ingest`, `serve-mcp`,
 `serve-http`, `compile`, `layers` (`list`/`show`/`install`), `verify`
 (`--strict`/`--require-all`), `observe`, `instrument --adoption`, `doctor`
-(`--harness=claude|codex|auto`, `--json`), `config`, `providers`, `smoke`,
-`session-hook`, `edit-hook`, `stop-hook`; the `/rpc`, `/rpc/agent`
+(`--harness=claude|codex|auto`, `--json`), `config` (incl. `config audit`),
+`capabilities` (incl. `set`), `providers`, `smoke`, `session-hook`,
+`session-end-hook`, `pre-compact-hook`, `edit-hook`, `stop-hook`,
+`thread` (`brief`/`note`/`point`/`list`/`close`); the `/rpc`, `/rpc/agent`
 (`/rpc/companion`) HTTP surfaces; the 16-tool agent allowlist (incl. read_source); the
-`SessionStart`/`PostToolUse`/`Stop` Claude Code hook wiring; the lefthook
-pre-push verify gate; the shipped `fathom-plan`/`fathom-verify`/
-`fathom-onboard`/`fathom-feedback`/`fathom-doctor`/`fathom-impact` agent
-skills (`dist/agents/skills/`). Update this doc's examples and this line
-when any of these change.
+`SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
+Claude Code hook wiring; the lefthook pre-push verify gate; the nine
+shipped agent skills (`dist/agents/skills/` — plan, verify, onboard,
+feedback, doctor, impact, rewire, activate, custodian). Update this doc's
+examples and this line when any of these change.

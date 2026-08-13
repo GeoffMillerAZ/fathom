@@ -5,6 +5,28 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — the adoption surfaces catch up to the shipped fathom
+
+The last two waves (continuity threads, lifecycle hooks, the capability
+registry, scope/purge, the config custodian, plans status/next/archive)
+all landed after the adoption surfaces were written. Refreshed in one
+pass, every claim checked against the binary: the shipped skills (onboard
+now teaches the full hook stack incl. SessionEnd/PreCompact and the nine-
+skill set; doctor's row table gains capabilities + concerns; activate
+gains a concerns step; rewire's template gains the lifecycle hooks;
+verify gains plans archive; impact gains config audit; feedback gains
+`fathom rate`), a NEW ninth skill `fathom-custodian` (the instructed-
+means-true loop — fathom reports, the session edits), the Claude Code
+guide (§7.1 brief+attention injection, new §7.7 continuity threads, §8
+concerns.cue + capabilities.cue, §11 nine skills, Maintained line), the
+Codex guide (capability table gains continuity-half-loop and custodian
+rows), usage.md (plans/thread/config audit/scope/purge/rate/brief/
+flywheel/fleet entries — the catalog had stopped at doctor), mcp-tools.md
+(the phase-V `suppressed` envelope disclosure), and the coding-agents
+Maintained line. The install demo caught a real defect before commit:
+skillsdist.Names is the canonical list and the embed directive alone
+does not ship a skill — nine now proven installed by demonstration.
+
 ### 2026-08-13 — the config custodian ships its audit (vision 22, CC-0..7)
 
 "Instructed means true": agent configuration joins the evidence plane.

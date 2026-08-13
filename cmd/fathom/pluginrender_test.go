@@ -33,8 +33,8 @@ func TestPluginRender(t *testing.T) {
 	}
 
 	skills, err := os.ReadDir(filepath.Join(out, "skills"))
-	if err != nil || len(skills) != 8 {
-		t.Fatalf("skills = %v (%v), want 8", skills, err)
+	if err != nil || len(skills) != 9 {
+		t.Fatalf("skills = %v (%v), want 9 (the pack including custodian)", skills, err)
 	}
 
 	var hooks struct {
