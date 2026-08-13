@@ -43,6 +43,7 @@ fathom research report --since 168h [--service <svc>] [--json]
 fathom instrument --adoption [--json]
 fathom plans status --service <svc>
 fathom capabilities [--service <svc>]   # what is on here, and WHY anything is off
+fathom config audit                     # are this repo's config instructions still true?
 ```
 
 `fathom capabilities` matters to an impact report because a capability that

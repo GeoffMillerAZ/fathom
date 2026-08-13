@@ -46,6 +46,18 @@ a glance, not buried in a file nobody opens.
 
 ## Why this matters more than it looks like it does
 
+There is also a one-number companion verb for the SESSION as a whole:
+
+```sh
+fathom rate <1-5> [--note "..."]
+```
+
+It records how the session went into the local ratings log — the outcome
+half of fathom's own measurement loop. `observe` files a specific,
+reproducible friction; `rate` files the overall verdict. Use both: a 2/5
+with no observation is a mystery, and an observation with no rating never
+moves the aggregate.
+
 An unrecorded friction point is invisible to the flywheel — it just makes
 *this* session slightly worse and teaches the tool nothing. A recorded one
 is a candidate fix: fathom's own `docs/dogfood-observations.md` shows the

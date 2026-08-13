@@ -33,11 +33,14 @@ Structural changes (scope moves, removals) are yours, not the verb's.
    `bindings: []` means a stale binary — explicit-empty is valid.
 2. Read `.claude/settings.json` at project AND user scope. The current
    template: SessionStart(startup|resume|clear|compact)→`fathom
-   session-hook` t10; PostToolUse(Edit|Write|MultiEdit)→`fathom
-   edit-hook` t5; PreToolUse ×3 t5 — (Edit|Write|MultiEdit), (Bash),
-   (Grep|Glob|Read) — all →`fathom edit-hook --pre`; Stop→`fathom
-   stop-hook` t10. Reconcile in place at whichever ONE scope already has
-   fathom hooks; rewrite absolute `/…/fathom` commands to plain `fathom`.
+   session-hook` t10; SessionEnd→`fathom session-end-hook` t10 and
+   PreCompact(manual|auto)→`fathom pre-compact-hook` t10 (continuity
+   deposits — disk-only, inject nothing); PostToolUse(Edit|Write|
+   MultiEdit)→`fathom edit-hook` t5; PreToolUse ×3 t5 — (Edit|Write|
+   MultiEdit), (Bash), (Grep|Glob|Read) — all →`fathom edit-hook --pre`;
+   Stop→`fathom stop-hook` t10. Reconcile in place at whichever ONE scope
+   already has fathom hooks; rewrite absolute `/…/fathom` commands to
+   plain `fathom`.
 3. `.fathomignore` covers secrets/data/vendored/build — BEFORE any first
    ingest.
 4. `fathom gen-claude-md` and merge — the stanza must say fathom (never a

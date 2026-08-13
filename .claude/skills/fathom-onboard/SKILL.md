@@ -42,18 +42,21 @@ command:
 
 1. writes `.fathomignore` (create-if-absent),
 2. ingests the repo into the daemon (if reachable) and confirms it indexed,
-3. wires `SessionStart`/`PostToolUse`/`PreToolUse`/`Stop` hooks into
-   `.claude/settings.json` (§6 below — `PreToolUse` is guarded edits,
-   silent unless `.fathom/guard.cue` names the file/command),
+3. wires the full hook stack into `.claude/settings.json` —
+   `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
+   (§6 below — `PreToolUse` is guarded edits, silent unless
+   `.fathom/guard.cue` names the file/command; `SessionEnd`/`PreCompact`
+   are continuity deposits that write to disk and inject nothing),
 4. scaffolds `.fathom/guard.cue` and `.fathom/modules.cue`, both
    **commented out** — nothing guarded or bound by default (§7),
 5. stamps a marker-delimited fathom operating-contract stanza into **both**
    `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
    `AGENTS.md` automatically, zero drift between the two),
-6. installs this skill set (`fathom-plan`, `fathom-verify`,
-   `fathom-onboard`, `fathom-feedback`) into `.claude/skills/` — `--skills`
-   bare installs both harnesses; `--skills=claude` or `--skills=codex`
-   selects one,
+6. installs the shipped skill set (`fathom-plan`, `fathom-verify`,
+   `fathom-onboard`, `fathom-feedback`, `fathom-doctor`, `fathom-impact`,
+   `fathom-rewire`, `fathom-activate`, `fathom-custodian`) into
+   `.claude/skills/` — `--skills` bare installs both harnesses;
+   `--skills=claude` or `--skills=codex` selects one,
 7. write-if-absent scaffolds `~/.fathom/config.toml` (§8), and
 8. prints the steps it deliberately does **not** do for you (MCP
    registration, the lefthook pre-push snippet — see §4 and §6).
@@ -147,11 +150,13 @@ session start. A session already running when you register — or across a
 daemon restart, or right after `init` just wired things — won't see the new
 tools. **Restart the session once.**
 
-## 6. The hook stack (Claude Code only — `init` wires all four)
+## 6. The hook stack (Claude Code only — `init` wires all of it)
 
 | Hook | Event/matcher | Command | What it does |
 |---|---|---|---|
-| `session-hook` | `SessionStart`, `startup\|resume\|clear\|compact` | `fathom session-hook` | Pings the daemon, injects "this repo is service X" or an honest daemon-down/not-indexed signal. Always exits 0. |
+| `session-hook` | `SessionStart`, `startup\|resume\|clear\|compact` | `fathom session-hook` | Pings the daemon, injects "this repo is service X" or an honest daemon-down/not-indexed signal — plus, on `startup`/`clear` only (where context was actually lost), the continuity thread brief (≤2,400 bytes, budget-enforced) and a config-custodian attention line when a registered concern is violated. `resume`/`compact` inject nothing extra. Always exits 0. |
+| `session-end-hook` | `SessionEnd` | `fathom session-end-hook` | Continuity deposit: on `/clear`/logout, ONE mechanical fact per repo (dirty files, stashes, claimed-unproven rows — latest supersedes, self-closes when the tree comes clean). Writes to disk, injects nothing. |
+| `pre-compact-hook` | `PreCompact`, `manual\|auto` | `fathom pre-compact-hook` | Files a pointer (session id + repo) before compaction so the pre-summary span stays findable. Never reads transcript content; injects nothing. |
 | `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. |
 | `edit-hook --pre` (guarded edits) | `PreToolUse`, `Edit\|Write\|MultiEdit` and `Bash` | `fathom edit-hook --pre` | Silent unless `.fathom/guard.cue` names the file/command (a local check, zero daemon calls on a miss); when it matches, injects the guard's note plus obligations BEFORE the edit/command runs. See §7 and `docs/use-cases/platform-modules.md`. |
 | `stop-hook` | `Stop` | `fathom stop-hook` | Re-verifies plan tasks newly claimed `[x]` this session; advisory by default, add `--block` to the command to make it a real gate. |
@@ -193,6 +198,15 @@ gate's exit codes.
   repo's `obligations` serving into a mounted platform module's rules
   (module-tagged, staleness-flagged). Scaffolded commented; also inert
   until committed. See `docs/use-cases/platform-modules.md`.
+- `.fathom/concerns.cue` — the config custodian's contracts (vision 22,
+  "instructed means true"): falsifiable wants about this repo's agent
+  config, audited by `fathom config audit` (hand-written today — not yet
+  scaffolded by `init`). Project scope governs over
+  `~/.fathom/concerns.cue`. See the `fathom-custodian` skill.
+- `.fathom/capabilities.cue` — which fathom features are on in this repo
+  (project scope governs). `fathom capabilities` shows what is operating
+  and WHY anything is off; `fathom capabilities set <id> on|off` writes
+  this file.
 
 ## 8. Pick a provider (only needed for `fathom compile`)
 
@@ -230,5 +244,12 @@ claude mcp get fathom                  # → Type: http · Status: ✔ Connected
       on a clean plan (see the `fathom-verify` skill).
 - [ ] `git push` runs lefthook's pre-push hooks, including the
       `fathom-verify` command (§6's manual snippet).
+- [ ] After a `/clear` with uncommitted work, the NEXT fresh session's
+      start context carries a continuity brief (plans summary + any filed
+      `fathom thread note` handoffs) — and `fathom thread list` shows the
+      session-end deposit.
+- [ ] `fathom config audit` runs (exits 0 with "no concerns registered"
+      until you write `.fathom/concerns.cue` — a named absence, not a
+      failure).
 - [ ] If friction shows up anywhere in this checklist, file it immediately —
       see the `fathom-feedback` skill; don't let it die unrecorded.
