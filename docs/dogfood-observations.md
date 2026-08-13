@@ -19,6 +19,30 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
 
 ## Open
 
+### O27 — capabilities and doctor disagree about the same facts (fleet sweep, 2026-08-13)
+
+- **Symptom:** the 16-repo verification sweep found four cross-check
+  inconsistencies between `fathom capabilities` and `fathom doctor` run
+  against the SAME repo at the same moment:
+  1. workstation_as_code: capabilities reports obligation rules absent
+     while doctor's `obligations_served` PASSes.
+  2. app-kit: doctor's summary says "4 capabilities operating" while the
+     capabilities verb says 3 of 9.
+  3. platform-engineering: capabilities shows guards ✗ while doctor's
+     `guard_file` finds 7 rules.
+  4. hooks_firing may PASS against sextant's own call log for ANY repo —
+     a false-positive direction worth auditing.
+- **Why it matters:** two surfaces answering the same question differently
+  is worse than either being wrong alone — a reader cannot tell which to
+  trust, which re-opens the exact "why isn't X happening here" gap the
+  registry was built to close. Likely causes: the probe and doctor read
+  different sources for the same fact (the O24 class), or count different
+  things under one name.
+- **Status: OPEN** — reconcile each pair to a single source of truth;
+  capability detection should CONSUME doctor's checks (or vice versa),
+  never re-derive them.
+
+
 ### O24 — the transcript reader hand-copied three fields, silently killing four instruments for weeks
 
 - **Symptom (2026-08-12, three sessions into a 20-session counterfactual
