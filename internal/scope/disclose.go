@@ -84,3 +84,28 @@ func (c *Collector) Services() []string {
 	sort.Strings(out)
 	return out
 }
+
+// Render folds the collector into the response-envelope shape: service →
+// {count, reasons, ids}, or nil when nothing was hidden anywhere — so an
+// unfiltered response carries no block at all rather than an empty one.
+func (c *Collector) Render() map[string]any {
+	if c == nil {
+		return nil
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(c.byService) == 0 {
+		return nil
+	}
+	out := map[string]any{}
+	for svc, d := range c.byService {
+		if d == nil || d.Count == 0 {
+			continue
+		}
+		out[svc] = map[string]any{"count": d.Count, "reasons": d.Reasons, "ids": d.IDs}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}

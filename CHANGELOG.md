@@ -5,6 +5,37 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-13 — phase V lands: scope hides, purge proves — plus the two defects its verifier caught
+
+The rebuilt phase V merged with **all six rework defects re-reproduced
+against the new code and confirmed dead** (fleet-wipe purge, inert
+suppression on the daemon's long-lived handle, VERIFIED-without-probe,
+the constructor-blind audit, fleet-wide exclusions, the home-reading
+gate). The verifier then earned its keep twice more:
+
+**`read_source` served purged content.** After a purge that printed
+VERIFIED (probe clean, exit 0), one MCP call returned the leaked
+credential verbatim — from DISK. The store chokepoint was sound; a
+disk-reading tool bypassed the store entirely, and the surface audit
+passed on the false premise that every surface reads through the store.
+Fixed: `read_source` (and `symbol_context`'s snippet path, same function)
+now loads the SERVICE-SCOPED exclusions Discover uses — an error loading
+them refuses rather than serves — and consults suppressions per call,
+refusing with the suppression named and the undo attached. A behavioral
+audit (`TestDiskReadingToolsHonorSuppression`) pins disk-reading surfaces
+specifically; all three subtests confirmed RED against the shipped code.
+
+**The disclosure channel was inert in deployment** — the V5 failure class
+one layer up. `ApplySuppressions` produced disclosures and no shipped
+surface ever attached a collector, so every filtered response in
+production was silent while SP-3 sat checked on internal-object tests.
+Fixed at the one layer every response passes through: the MCP dispatch
+wraps each call's ctx with the collector and renders a `suppressed`
+block into the envelope — and an UNFILTERED response carries no block at
+all, because disclosing filtering that never happened is law 3's mirror
+image.
+
+
 ### 2026-08-13 — TH-5: intent graduates, and the handoff is free
 
 `fathom thread promote <thread>` scaffolds a gate-ready plan from a

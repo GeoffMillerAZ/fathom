@@ -9,6 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 // ToolGroup classifies a tool so the active profile filter can include/exclude
@@ -271,6 +273,17 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	if rpcErr := validateRequired(te.desc, p.Arguments); rpcErr != nil {
 		return nil, rpcErr
 	}
+
+	// SP-3, made real at the only layer every response passes through: the
+	// collector rides the ctx into the handler, and whatever the filters
+	// dropped is rendered into the envelope. The V-review found the
+	// collector channel INERT in deployment — ApplySuppressions produced
+	// disclosures and no shipped surface ever listened, so every filtered
+	// response in production was silent: "a silent filter is
+	// indistinguishable from a recall bug", the exact condition the row
+	// forbids, while the row sat checked on internal-object tests.
+	ctx, collector := scope.WithCollector(ctx)
+
 	result, rpcErr := te.handler(ctx, p.Arguments)
 	if rpcErr != nil {
 		return nil, rpcErr
@@ -280,9 +293,13 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "marshal result: " + err.Error()}
 	}
-	return map[string]any{
+	envelope := map[string]any{
 		"content": []any{
 			map[string]any{"type": "text", "text": string(b)},
 		},
-	}, nil
+	}
+	if suppressed := collector.Render(); suppressed != nil {
+		envelope["suppressed"] = suppressed
+	}
+	return envelope, nil
 }

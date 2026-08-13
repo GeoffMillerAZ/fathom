@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
 // sourceReadMaxLines and sourceReadMaxBytes bound a single read_source call:
@@ -182,7 +183,7 @@ func pathWithin(root, candidate string) bool {
 //   - any path the service's own .fathomignore excludes (the same compiled
 //     matcher Discover applies, connector.LoadIgnore) — checked against the
 //     file and every ancestor directory, mirroring the walk-time pruning.
-func notIndexedReason(corpusRoot, relFile string) string {
+func notIndexedReason(ctx context.Context, corpusRoot, service, relFile string) string {
 	base := filepath.Base(filepath.FromSlash(relFile))
 	if base == ".env" || strings.HasPrefix(base, ".env.") || strings.HasSuffix(base, ".env") {
 		return fmt.Sprintf("refusing %q: .env-pattern files are never served (secrets-shaped; defense in depth)", relFile)
@@ -193,17 +194,44 @@ func notIndexedReason(corpusRoot, relFile string) string {
 			return fmt.Sprintf("%q is not in the indexed corpus: directory %q is always excluded from ingest", relFile, seg)
 		}
 	}
-	if ignore := connector.LoadIgnore(corpusRoot); ignore != nil {
+	// SERVICE-SCOPED exclusions (the V-review's read_source finding): the
+	// mirror this function claims — "the readable set mirrors what
+	// Discover walks" — was enforced with the service-BLIND loader, so for
+	// exactly a purged service the mirror silently diverged: Discover
+	// excluded secrets/**, read_source served it, and one MCP call
+	// returned a purged credential verbatim after a purge printed
+	// VERIFIED. The scoped loader is the SAME one Discover now uses; an
+	// error loading it REFUSES rather than serving — a broken exclusion
+	// mechanism must not fail toward disclosure of purged content.
+	ignore, _, ierr := connector.LoadIgnoreScopedFor(corpusRoot, service)
+	if ierr != nil {
+		return fmt.Sprintf("refusing %q: the service's exclusions could not be loaded (%v) — serving without them could disclose purged content", relFile, ierr)
+	}
+	if ignore != nil {
 		if ignore.Match(relFile) {
-			return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's %s", relFile, connector.IgnoreFileName)
+			return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's ignore rules (%s or a scoped exclusion)", relFile, connector.IgnoreFileName)
 		}
 		// Ancestor directories, with the trailing slash Discover uses when
 		// pruning dirs mid-walk — a dir-only pattern ("workspace/") must
 		// exclude every file beneath it here exactly as it does at ingest.
 		for i := 1; i < len(segs); i++ {
 			if ignore.Match(strings.Join(segs[:i], "/") + "/") {
-				return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's %s", relFile, connector.IgnoreFileName)
+				return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's ignore rules (%s or a scoped exclusion)", relFile, connector.IgnoreFileName)
 			}
+		}
+	}
+
+	// SUPPRESSIONS apply to disk reads exactly as to store reads — a
+	// query-layer filter that a disk-reading tool bypasses is the V3
+	// defect one abstraction up. The refusal names the suppression (its
+	// own disclosure), and the collector is fed for the envelope's block.
+	if set, now := scope.NewSource(scope.PathFromEnv(), nil).Snapshot(); !set.Empty() {
+		if sup, hit := set.Match(service, relFile, now); hit {
+			scope.Record(ctx, service, &scope.Disclosure{
+				Count:   1,
+				Reasons: []string{sup.Reason}, IDs: []string{sup.ID},
+			})
+			return fmt.Sprintf("%q is suppressed for this service (%s: %s) — fathom scope unsuppress %s restores it", relFile, sup.ID, sup.Reason, sup.ID)
 		}
 	}
 	return ""
@@ -240,7 +268,7 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 	if err != nil {
 		return sourceRange{}, err
 	}
-	if reason := notIndexedReason(corpusRoot, rel); reason != "" {
+	if reason := notIndexedReason(ctx, corpusRoot, service, rel); reason != "" {
 		return sourceRange{}, fmt.Errorf("%s", reason)
 	}
 	full, err = resolveRealPath(corpusRoot, full, file)
