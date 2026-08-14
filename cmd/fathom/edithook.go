@@ -86,7 +86,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if filePath == "" {
 		return 0
 	}
-	emitBeat("edit-hook", "seen", map[string]string{"phase": "post"}) // GI-1: the coverage denominator
+	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "post"}, hook.SessionID, filePath)) // GI-1: the coverage denominator
 
 	// Determine project dir.
 	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
@@ -161,7 +161,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		name := strings.ToLower(cand.name)
 		o, stale, ok := fetchObligations(*url, name, rel, 0, 2*time.Second)
 		if !ok {
-			emitBeat("edit-hook", "error", map[string]string{"phase": "post"})
+			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post"}, hook.SessionID, filePath))
 			return 0 // daemon down or error → silent
 		}
 		if len(o.Rules) > 0 || stale {
@@ -170,7 +170,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !resolved {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "post"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
 		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
@@ -293,7 +293,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "post"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
 		return 0 // clean file (or unindexed project), no spec IDs → silent
 	}
 	emitPayloadCost("post-edit", sb.String(), len(renderRules), "post", hook.SessionID)
@@ -304,7 +304,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			"additionalContext": sb.String(),
 		},
 	})
-	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "post"})
+	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "post"}, hook.SessionID, filePath))
 	recordStoryRow(projDir, "obligation-served", map[string]any{
 		"file": repoRelFile, "rules": len(renderRules), "session": hook.SessionID,
 	})

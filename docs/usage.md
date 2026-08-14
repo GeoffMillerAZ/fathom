@@ -883,6 +883,22 @@ reason-carrying, disclosed in every MCP envelope's `suppressed` block);
 service-scoped ignore so re-ingest cannot resurrect it, and its verdict
 includes a post-purge probe. See `docs/use-cases/fleet-health.md`.
 
+### `retro` — did the firings actually help? (mechanical, free)
+
+```sh
+fathom retro [--session S | (latest stamped)] [--project DIR] [--json] [--write]
+```
+
+Joins a session's intervention firings (guard fires, obligation
+injections, custodian attention) against what is on disk afterward:
+committed / modified-uncommitted / untouched per fired file, concern
+remediation now-state, silent-on-clean counts. Unjoinable (pre-stamp)
+firings are counted and named; OFF-arm windows say channels were silent
+by design. Outcome-shaped evidence, never causality (the arm carries
+that — law 12). `--write` lands the retro under
+`workspace/artifacts/retros/`. The priced judgment lane is `assess`
+(IR-3, not yet built). Design: `docs/design/intervention-outcomes.md`.
+
 ### `rate` — the session outcome, in one number
 
 ```sh

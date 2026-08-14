@@ -64,6 +64,23 @@ func emitBeat(channel, kind string, meta map[string]string) {
 	_ = l.Beat(channel, kind, stampBeatMeta(meta))
 }
 
+// firingMeta adds the join keys the intervention retro needs (IR-1,
+// docs/design/intervention-outcomes.md): which session a firing belonged
+// to and which file it was about. Absent values are omitted — an
+// unrecorded fact must not look recorded as an empty string.
+func firingMeta(meta map[string]string, sessionID, file string) map[string]string {
+	if meta == nil {
+		meta = map[string]string{}
+	}
+	if sessionID != "" {
+		meta["session"] = sessionID
+	}
+	if file != "" {
+		meta["file"] = file
+	}
+	return meta
+}
+
 // stampBeatMeta returns a copy of meta carrying the telemetry stamps every
 // persistent record now shares (vision 14 §3, plan IO-12): schema_version,
 // fathom_version, and project_dir — the per-repo attribution the beat log

@@ -93,6 +93,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		// sessions kept their context.
 		if cl := concernAttentionLine(projDir); cl != "" {
 			ctx += "\n" + cl
+			emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
 		}
 	}
 	writeSessionStamp(sessionStamp{

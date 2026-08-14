@@ -57,7 +57,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 		filePath = a
 	}
 	projDir := resolveProjDir(cwd)
-	emitBeat("edit-hook", "seen", map[string]string{"phase": "pre", "target": "file"})
+	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
 
 	// Capability enforcement (capabilityenforce.go): `capabilities set
 	// guards off` must actually stop guards firing. Before the local fast
@@ -88,7 +88,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 		}
 	}
 	if !matched {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "file"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return 0 // no guard names this file (or it's out-of-repo entirely) — zero daemon calls
 	}
 
@@ -111,7 +111,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	hc := &http.Client{Timeout: preHookBudget}
 	svcName, resolvedRel, ok := resolveServiceAndRel(hc, url, projDir, filePath)
 	if !ok {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "file"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return 0
 	}
 	// Critic finding 8 (phase-O merge, note-only unless trivial): the
@@ -136,7 +136,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	}
 	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining)
 	if !ok {
-		emitBeat("edit-hook", "error", map[string]string{"phase": "pre", "target": "file"})
+		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
 		return 0
 	}
 
@@ -186,7 +186,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "file"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return 0 // guard matched but had nothing to say (no note, no rules, not stale)
 	}
 	emitPayloadCost("pre-edit-guard", sb.String(), len(displayed), "pre", sessionID)
@@ -204,7 +204,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 			"additionalContext": sb.String(),
 		},
 	})
-	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "pre", "target": "file"})
+	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, sessionID, filePath))
 	recordStoryRow(projDir, "guard-served-file", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0
@@ -217,7 +217,7 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer
 		return 0
 	}
 	projDir := resolveProjDir(cwd)
-	emitBeat("edit-hook", "seen", map[string]string{"phase": "pre", "target": "command"})
+	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
 
 	var note string
 	matched := false
@@ -249,7 +249,7 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer
 		// Command guards serve only their note (design decision: there is
 		// no per-file obligations lookup for a command — no daemon call at
 		// all on this path). "matched but no note" has nothing to inject.
-		emitBeat("edit-hook", "answered", map[string]string{"emitted": "false", "phase": "pre", "target": "command"})
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, ""))
 		return 0
 	}
 
@@ -261,7 +261,7 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer
 			"additionalContext": sb,
 		},
 	})
-	emitBeat("edit-hook", "answered", map[string]string{"emitted": "true", "phase": "pre", "target": "command"})
+	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "command"}, sessionID, ""))
 	recordStoryRow(projDir, "guard-served-command", nil)
 	fmt.Fprintln(stdout, string(out))
 	return 0

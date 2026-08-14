@@ -165,3 +165,11 @@ above. Listed here so they are not lost.
 - [ ] DO-2 Arm comparison + thread bet consume the derived outcome (outcome-comparable units) instead of requiring self-ratings; brief/flywheel copy stops asking for `fathom rate` as a precondition {id: DO-2}
 - [ ] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported {id: DO-3}
 - [ ] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4}
+
+## Phase IR — intervention outcomes (docs/design/intervention-outcomes.md; owner ask 2026-08-14)
+
+- [x] IR-1 Firing beats carry session + file (edit-hook pre/post, all kinds; custodian attention beat) — absent values omitted, never "" {id: IR-1, symbol: firingMeta, package: cmd/fathom}
+- [x] IR-2 `fathom retro` — mechanical session retro: firings joined to on-disk aftermath (committed / modified / untouched; concern remediation now-state; discovery counts), unjoinable and silent-by-design absences NAMED {id: IR-2, symbol: cmdRetro, package: cmd/fathom}
+- [ ] IR-3 `fathom assess --interventions` — LLM lane judging undecidable rows from on-disk artifacts only (never transcripts); per-run cost in output; capability-gated, default off {id: IR-3}
+- [ ] IR-4 Spend isolation: retro/assess metering excluded from arm and bet unit totals, pre-registered before the first assess run {id: IR-4}
+- [ ] IR-5 Retro corpus under workspace/artifacts/retros/ feeds the research flywheel (sanitized, opt-in bundle path) {id: IR-5}
