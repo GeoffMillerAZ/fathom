@@ -158,3 +158,10 @@ above. Listed here so they are not lost.
 
 - [ ] (op) the counterfactual pilot is run: `fathom arm off --sessions 20` after pre-registering criteria — the only instrument that can license a savings claim (law 12) {id: OP-1, skip_test: true, skip: "operator action; expert-suite-p.md carries the pre-registered protocol"}
 - [ ] (op) the deployed daemon binary matches HEAD before any of the above is judged live — a committed fix reaches the daemon only after a deliberate deploy {id: OP-2, skip_test: true, skip: "operator action; CLAUDE.md documents the deploy sequence"}
+
+## Phase DO — outcomes derived, not self-reported (docs/design/continuity-threads.md §4.1, owner field report 2026-08-14)
+
+- [ ] DO-1 Derived outcome per measured unit — commits in window, plan rows flipped-and-PROVEN, gate outcomes, pushes — computed mechanically from artifacts the window already touches {id: DO-1}
+- [ ] DO-2 Arm comparison + thread bet consume the derived outcome (outcome-comparable units) instead of requiring self-ratings; brief/flywheel copy stops asking for `fathom rate` as a precondition {id: DO-2}
+- [ ] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported {id: DO-3}
+- [ ] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4}

@@ -51,7 +51,7 @@ export FATHOM_LLM_PROVIDER="${FATHOM_LLM_PROVIDER:-claude-cli}"
 
 # Fleet services — same list as scripts/reingest-fleet.sh (obligations
 # compiles fleet-wide, OP-6).
-SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant crossplane-platform)
+SERVICES=(fathom agentic-kit app-kit throughline geoffmiller-cloud resume_as_code growing-gardens-bi car-assistant conjure cue-wasm iam_horcrux imbue planning platform-engineering pulumi-eks pulumi_eks_component workstation_as_code)
 
 echo "==> fathom flag-day recompile  (store: $STORE, lane: $FATHOM_LLM_PROVIDER)"
 [ -x "$BIN" ] || { echo "ERROR: build the binary first:  (cd $FATHOM_REPO && go build -o bin/fathom ./cmd/fathom)"; exit 1; }

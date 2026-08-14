@@ -112,6 +112,37 @@ session start; the store never knows which harness wrote to it (TH-5).
   output: on `not-met` at n≥20 the verdict text says the injection is to
   be removed — the instrument carries its own consequence.
 
+### §4.1 Outcomes are DERIVED, not self-reported (owner field report, 2026-08-14)
+
+The original design required `fathom rate <1-5>` as the outcome half of
+every comparison — and the owner reported the honest killer: *"I feel
+unlikely to do that."* An instrument its user won't feed is a broken
+instrument (the O28 lesson, one loop up), and fathom's own doctrine
+already names the fix: **derived beats deposited.** A session's outcome
+is not a feeling; it is on disk.
+
+- **Standing lane (mechanical, zero cost): the derived outcome.** Per
+  measured unit, computed from artifacts the window already touches:
+  commits landed in the window, plan rows flipped AND proven (`verify`,
+  not claimed), gate outcomes recorded, pushes. A unit that landed proven
+  work and a unit that spun are now distinguishable without asking
+  anyone. Comparisons condition on outcome-comparable units.
+- **Benchmark lane (LLM, priced, occasional): `assess`.** Owner-authorized
+  same day: *"it's ok to spend tokens for benchmarking… I won't be
+  constantly benchmarking."* An explicitly-invoked assessment judges the
+  unit's **work products on disk** — diffs, plan deltas, gate results —
+  and NEVER transcripts (the transcript-mining refusal is not softened
+  for evaluation; what shipped is also simply more honest than what was
+  said). Runs only when invoked or inside a declared bench window; each
+  run reports its own token cost.
+- **`fathom rate` demotes to an optional human override** — kept for the
+  case where the human disagrees with the derived read, never again a
+  precondition for a verdict. Surfaces that today say "self-rated
+  outcomes are missing" change to report the derived outcome, with the
+  override named when present.
+
+Rows: DO-1..4 in `docs/plans/ambient-fathom.md`.
+
 **Where it surfaces:**
 
 - `fathom flywheel` gains a **continuity** loop: CLOSED = deposits are

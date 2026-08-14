@@ -481,3 +481,29 @@ triage if it matters.
 - **Fix:** bridge CompileLayer to the provider registry so claude-cli profiles compile too; until then the unblock is an ANTHROPIC_API_KEY in the daemon's launchd EnvironmentVariables.
 - **Status:** open
 - **Impact:** the second-busiest tool in the fleet serves warnings, not rules, on every wired repo.
+
+### O14 — flywheel verify-gate loop reads IDLE ('gate has never run in a recorded session') while lefthook pre-push runs bin/fathom verify on every push in this repo
+
+- **Symptom:** flywheel verify-gate loop reads IDLE ('gate has never run in a recorded session') while lefthook pre-push runs bin/fathom verify on every push in this repo
+- **Evidence:**
+  - **Tool:** flywheel
+  - **Expected:** verify-gate loop CLOSED, or a reason naming why pre-push runs are invisible to it
+  - **Actual:** IDLE with remedy suggesting a lefthook step that already exists
+  - **Repro:** fathom flywheel in sextant @ HEAD; lefthook.yml pre-push has the verify step; multiple pushes today
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O15 — realization 'wired' rung fails geoffmiller-cloud for a project settings.json without fathom hooks, while the hooks ARE wired at user scope (init's user-scope dedup put them there on purpose)
+
+- **Symptom:** realization 'wired' rung fails geoffmiller-cloud for a project settings.json without fathom hooks, while the hooks ARE wired at user scope (init's user-scope dedup put them there on purpose)
+- **Evidence:**
+  - **Tool:** fleet report
+  - **Expected:** wired MET with a scope note, or a distinct partial-visibility verdict
+  - **Actual:** grade B — not wired, remedy suggests reconcile, which correctly refuses to double-wire
+  - **Repro:** fathom fleet report; geoffmiller-cloud hooks_note='settings.json present, no fathom hook references'; ~/.claude/settings.json carries the fathom hooks
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
