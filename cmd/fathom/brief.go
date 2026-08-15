@@ -371,6 +371,17 @@ func renderBriefMD(m observatoryModel) string {
 		}
 		b.WriteString("\n")
 	}
+	if imp.DerivedOnUnits > 0 || imp.DerivedOffUnits > 0 {
+		fmt.Fprintf(&b, "- **Derived outcome (from disk, §4.1):** %s ON unit(s)", fmtThousands(imp.DerivedOnUnits))
+		if imp.DerivedOnMed != nil {
+			fmt.Fprintf(&b, " (median %d commit(s))", *imp.DerivedOnMed)
+		}
+		fmt.Fprintf(&b, ", %s OFF", fmtThousands(imp.DerivedOffUnits))
+		if imp.DerivedOffMed != nil {
+			fmt.Fprintf(&b, " (median %d commit(s))", *imp.DerivedOffMed)
+		}
+		b.WriteString(" — a rating, when given, overrides (DO-4)\n")
+	}
 	if imp.CriterionNote != "" {
 		fmt.Fprintf(&b, "- **Registered criterion:** %s\n", imp.CriterionNote)
 	}

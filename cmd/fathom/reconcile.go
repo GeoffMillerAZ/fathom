@@ -346,6 +346,18 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	if *apply {
 		mode = "applied the safe subset"
 	}
+	// CC-10 (docs/plans/custodian.md): concern coverage is INFORMATIONAL,
+	// never drift — a repo with no config contracts is normal; reconcile
+	// just refuses to let the absence be invisible.
+	uncovered := 0
+	for _, root := range roots {
+		if _, err := os.Stat(filepath.Join(root, ".fathom", "concerns.cue")); err != nil {
+			uncovered++
+		}
+	}
+	if uncovered > 0 {
+		fmt.Fprintf(stdout, "concern coverage: %d repo(s) carry no .fathom/concerns.cue (fathom init scaffolds a commented template; not drift)\n", uncovered)
+	}
 	fmt.Fprintf(stdout, "reconcile: %d repo(s), %d drifted (%s)\n", len(roots), drifted, mode)
 	return 0
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
@@ -324,6 +325,9 @@ func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
 		return err
 	}
 	if err := writeIfAbsent(filepath.Join(dir, "guard.cue"), guardspec.ExampleTemplate(), "guard.cue", stdout); err != nil {
+		return err
+	}
+	if err := writeIfAbsent(filepath.Join(dir, "concerns.cue"), string(custodian.ExampleTemplate()), "concerns.cue", stdout); err != nil {
 		return err
 	}
 	if err := writeIfAbsent(filepath.Join(dir, "modules.cue"), bindspec.ExampleTemplate(), "modules.cue", stdout); err != nil {

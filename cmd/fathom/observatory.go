@@ -78,10 +78,16 @@ type obsImpact struct {
 	// pre-registered criterion (production-tokenomics.md §5): "lower median
 	// tokens AT EQUAL-OR-BETTER self-rated outcome". Without them a token
 	// drop cannot be told apart from an unaided session giving up sooner.
-	RatedOn      int  `json:"rated_on_sessions"`
-	RatedOff     int  `json:"rated_off_sessions"`
-	RatingOnMed  *int `json:"rating_on_median,omitempty"`
-	RatingOffMed *int `json:"rating_off_median,omitempty"`
+	RatedOn     int  `json:"rated_on_sessions"`
+	RatedOff    int  `json:"rated_off_sessions"`
+	RatingOnMed *int `json:"rating_on_median,omitempty"`
+	// DO-1/DO-2 (docs/design/continuity-threads.md §4.1): the derived
+	// outcome — commits landed in each admissible unit's beat-window.
+	DerivedOnUnits  int  `json:"derived_on_units"`
+	DerivedOffUnits int  `json:"derived_off_units"`
+	DerivedOnMed    *int `json:"derived_on_median,omitempty"`
+	DerivedOffMed   *int `json:"derived_off_median,omitempty"`
+	RatingOffMed    *int `json:"rating_off_median,omitempty"`
 	// CriterionNote states, in words, whether the registered criterion can
 	// be evaluated yet and what is missing — never a silent absence.
 	CriterionNote string `json:"criterion_note"`
@@ -569,6 +575,38 @@ func buildImpactModel(now time.Time) obsImpact {
 	if v, ok := medianInt(offTokens); ok {
 		imp.TokensOffMedian = &v
 	}
+	// DO-1/DO-2 (§4.1): the outcome half derives from disk — commits
+	// landed in each unit's own beat-window. Same admissibility rule as
+	// the token medians; ratings, when present, remain the human override
+	// (DO-4).
+	doBeats, _ := readRetroBeats(beatLogPath())
+	var onC, offC []int
+	for _, key := range order {
+		e := latest[key]
+		if e.SessionID == "" || e.Repo == "" {
+			continue
+		}
+		if _, ok := armUnitFor(e); !ok {
+			continue
+		}
+		c, ok := derivedCommitsForSession(doBeats, e.SessionID, e.Repo)
+		if !ok {
+			continue
+		}
+		if e.Arm == "off" {
+			offC = append(offC, c)
+		} else {
+			onC = append(onC, c)
+		}
+	}
+	imp.DerivedOnUnits, imp.DerivedOffUnits = len(onC), len(offC)
+	if v, ok := medianInt(onC); ok {
+		imp.DerivedOnMed = &v
+	}
+	if v, ok := medianInt(offC); ok {
+		imp.DerivedOffMed = &v
+	}
+
 	// LAST: the criterion reads the session counts and both medians, so it
 	// must run after every one of them is assigned.
 	imp.CriterionNote = evaluateABCriterion(imp)

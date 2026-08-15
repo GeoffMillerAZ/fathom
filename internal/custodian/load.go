@@ -293,3 +293,35 @@ func Merge(user, project []Concern) []Concern {
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out
 }
+
+// ExampleTemplate is what `fathom init` scaffolds (CC-10): entirely
+// commented, so the file exists, teaches the four v1 check kinds, and
+// loads as zero concerns (the three-state loader's scaffold path).
+func ExampleTemplate() []byte {
+	return []byte(`// .fathom/concerns.cue — the config custodian's contracts for this repo
+// (vision 22, "instructed means true"). This file GOVERNS: an entry here
+// beats ~/.fathom/concerns.cue (law 13).
+//
+// A concern is a FALSIFIABLE WANT about this repo's agent config
+// (CLAUDE.md / AGENTS.md). Run ` + "`fathom config audit`" + ` for evidence;
+// fathom reports and never edits your prose — you decide.
+//
+// Uncomment and adapt. Check kinds: forbidden_pattern,
+// command_documented_and_exists, max_lines, pointers_resolve.
+//
+// concerns: {
+// 	gate_documented: {
+// 		want:  "the deterministic gate is named in agent config and its target exists"
+// 		check: {kind: "command_documented_and_exists", command: "task validate"}
+// 	}
+// 	router_thin: {
+// 		want:  "the root CLAUDE.md stays a router"
+// 		check: {kind: "max_lines", file: "CLAUDE.md", lines: 120}
+// 	}
+// 	pointers_hold: {
+// 		want:  "every pointer in agent config resolves"
+// 		check: {kind: "pointers_resolve"}
+// 	}
+// }
+`)
+}

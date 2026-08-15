@@ -5,6 +5,26 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-14 — the completion pass: every recommendation either shipped or has a dated row
+
+O29 interim fix: `plans status` fans its per-plan verifies out 8-wide
+(was serial at ~4s x ~40 plans = 2m35s measured). SD-1: the verify
+ledger — every gate run appends per-plan rows to
+~/.fathom/verify-ledger.jsonl, which is also what closed O14/O30 (the
+flywheel verify-gate loop read only session-scoped runs; a repo gating
+on every push read "never ran" — now CLOSED by demonstration after one
+gated run). CC-8: the custodian flywheel loop (IDLE named / OPEN =
+violations accumulating unread / CLOSED = being consumed), fed by a new
+custodian audit beat. CC-10: `fathom init` scaffolds a commented
+concerns.cue (loads as zero concerns, test-pinned) and fleet reconcile
+reports zero-coverage repos informationally. DO-1/2/4: the outcome half
+of the A/B criterion now derives from disk (median commits per unit
+beat-window, stated as the narrow v1 everywhere it renders); `fathom
+rate` demoted to optional human override. DP-1: the doctrine catalog
+design doc (one registry compiling to existing enforcement surfaces —
+never a fourth). Spillover, named: SP-10, SH-7..9, AM-6, AM-8 (the
+UI/MCP wave), IR-3..5, DO-3, CC-9/11/12/13, SD-2..4, DP-2..4.
+
 ### 2026-08-13 — the adoption surfaces catch up to the shipped fathom
 
 The last two waves (continuity threads, lifecycle hooks, the capability

@@ -45,6 +45,16 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	findings := custodian.Audit(root, concerns)
+	violatedForBeat := 0
+	for _, f := range findings {
+		if f.Status == custodian.StatusViolated {
+			violatedForBeat++
+		}
+	}
+	// CC-8: the audit records that it LOOKED — the custodian flywheel
+	// loop distinguishes "violations being consumed" from "accumulating
+	// unread" by exactly this beat.
+	emitBeat("custodian", "audit", map[string]string{"violated": fmt.Sprintf("%d", violatedForBeat)})
 
 	if *asJSON {
 		enc := json.NewEncoder(stdout)

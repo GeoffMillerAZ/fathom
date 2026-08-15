@@ -490,9 +490,9 @@ triage if it matters.
   - **Expected:** verify-gate loop CLOSED, or a reason naming why pre-push runs are invisible to it
   - **Actual:** IDLE with remedy suggesting a lefthook step that already exists
   - **Repro:** fathom flywheel in sextant @ HEAD; lefthook.yml pre-push has the verify step; multiple pushes today
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
+- **Root cause:** the loop read only session-scoped instrumentation (stop-hook verify outcomes); git-native pre-push runs never enter that path, so a repo gating on every push still read "never ran".
+- **Fix:** SD-1's verify ledger — every `fathom verify` run appends per-plan rows to ~/.fathom/verify-ledger.jsonl, and the loop reads it before declaring idle. Proven by demonstration same day: one gated run flipped the loop to CLOSED.
+- **Status:** resolved (2026-08-14)
 - **Impact:** TODO
 
 ### O15 — realization 'wired' rung fails geoffmiller-cloud for a project settings.json without fathom hooks, while the hooks ARE wired at user scope (init's user-scope dedup put them there on purpose)

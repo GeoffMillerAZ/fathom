@@ -15,23 +15,23 @@
 - [x] CC-5 `fathom config audit` verb — text + `--json`, exit 1 iff violated, zero concerns exits 0 with the absence named {id: CC-5, symbol: cmdConfigAudit, package: cmd/fathom}
 - [x] CC-6 Doctor row `concerns` — red only on load error or violation; zero concerns is a passing row naming the absence {id: CC-6, symbol: checkConcerns, package: cmd/fathom}
 - [x] CC-7 Session-brief attention line on startup/clear when violations exist, bytes on the payload-cost account {id: CC-7, symbol: concernAttentionLine, package: cmd/fathom}
-- [ ] CC-8 Flywheel custodian loop: CLOSED = audits running AND violations consumed (attended-within-N-days record designed here); OPEN = accumulating unread; IDLE = no concerns {id: CC-8}
+- [x] CC-8 Flywheel custodian loop: CLOSED = audits running AND violations consumed (the custodian audit beat is the attended record); OPEN = accumulating unread; IDLE = no concerns {id: CC-8, symbol: checkLoopCustodian, package: cmd/fathom}
 - [ ] CC-9 `fathom config propose` — the diff-offering verb (session applies; fathom never does) {id: CC-9}
-- [ ] CC-10 `fathom init` scaffolds a commented concerns.cue; fleet reconcile reports repos with zero concern coverage {id: CC-10}
+- [x] CC-10 `fathom init` scaffolds a commented concerns.cue; fleet reconcile reports repos with zero concern coverage {id: CC-10, symbol: ExampleTemplate, package: internal/custodian}
 - [ ] CC-11 Corpus registry seam: `where:` resolves named corpora (agent-config | lefthook | taskfile | ci) behind the one engine — never a per-tool custodian (vision 22 §7) {id: CC-11}
 - [ ] CC-12 Deterministic-validation packs: curated concern sets shipped as data (claude-code, codex, lefthook, taskfile), repo-enabled, entry-overridable (law 13); chain checks for docs → lefthook → Taskfile → scripts {id: CC-12}
 - [ ] CC-13 Doctor convergence (O27): bespoke doctor checks re-expressed via the concern engine where a pack fully covers them — doctor renders what the audit knows {id: CC-13}
 
 ## Phase DP — the doctrine plane (vision 23; spec-first, no code before its design doc)
 
-- [ ] DP-1 Doctrine catalog design doc: one CUE catalog, entries declaring their enforcement surface(s) (obligation | concern | conformance); laws + runbooks as entries; ENGINEERING_PRACTICES.md as render/audited view, never parallel truth {id: DP-1, skip_test: true, skip: "design doc — acceptance is docs/design/doctrine-catalog.md reviewed against vision 23 §2"}
+- [x] DP-1 Doctrine catalog design doc: one CUE catalog, entries declaring their enforcement surface(s) (obligation | concern | conformance); laws + runbooks as entries; ENGINEERING_PRACTICES.md as render/audited view, never parallel truth {id: DP-1, skip_test: true, skip: "design doc — acceptance is docs/design/doctrine-catalog.md reviewed against vision 23 §2"}
 - [ ] DP-2 ADR assertions: accepted ADRs may carry machine-checkable claims; `fathom adr audit` reports decided-but-violated with evidence; assertion-refusal rate measured (vision 23 §6 falsification) {id: DP-2}
 - [ ] DP-3 Vision promotion pipeline, computed: every vision names status/trigger or plan rows; links resolve; staleness dated; surfaced per vision {id: DP-3}
 - [ ] DP-4 Goals as pre-registered bets only: instrument + threshold + review date or refused at load; existing bets (arm bench, thread bet) enumerated by the same surface {id: DP-4}
 
 ## Phase SD — the SDD surface (vision 23 §4; the UI earns its place)
 
-- [ ] SD-1 Verify ledger: every `fathom verify` run appends {plan, counts, commit, at} under workspace/; read side tolerates absence (named, law 3) {id: SD-1}
+- [x] SD-1 Verify ledger: every `fathom verify` run appends per-plan rows (at, repo, service, counts, commit) to ~/.fathom/verify-ledger.jsonl — user-central like the session ledger; read side tolerates absence (named, law 3); also the recorded-run signal that closed O30 {id: SD-1, symbol: appendVerifyLedger, package: cmd/fathom}
 - [ ] SD-2 Observatory SDD panel, fleet + per-repo: computed at render via the plans-status engine; headline is the claimed-vs-proven gap; app-kit doctrine binding (search corpus first, role utilities, `task ui:css`, screenshot both themes before done) {id: SD-2}
 - [ ] SD-3 Trend chart gated on ledger data — `stat.Absent` with reason until the ledger has ≥14 days of rows {id: SD-3}
 - [ ] SD-4 Panel traffic counted (surface_traffic precedent) so vision 23 §6's remove-if-unvisited falsification is evaluable {id: SD-4}

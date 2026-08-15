@@ -35,6 +35,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 )
 
 // flywheelStatus is deliberately three-valued. "Broken" and "nothing has
@@ -143,6 +145,7 @@ func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
 		checkLoopExploration(imp),
 		checkLoopObservations(),
 		checkLoopContinuity(),
+		checkLoopCustodian(now),
 	}
 }
 
@@ -408,7 +411,17 @@ func checkLoopVerifyGate(imp obsImpact) flywheelCheck {
 		Purpose: "plan claims re-checked against code — the clearest single number for what fathom stopped",
 	}
 	ran := verifyRanSessions(imp.VerifyCatchesNote)
+	// O30: git-native pre-push runs never enter the session-scoped
+	// instrumentation this loop originally read, so a repo gating on
+	// every push still read "never ran". The verify ledger (SD-1) is the
+	// recorded-run signal that sees them.
+	ledgered := readVerifyLedger()
 	switch {
+	case (imp.VerifyCatchesTotal == nil || ran <= 0) && len(ledgered) > 0:
+		last := ledgered[len(ledgered)-1]
+		c.Status = loopClosed
+		c.Evidence = fmt.Sprintf("%s ledger'd gate run(s), most recent %s (git-native pre-push; per-session catch attribution still needs a session-scoped run)",
+			fmtThousands(len(ledgered)), last.At)
 	case imp.VerifyCatchesTotal == nil || ran <= 0:
 		c.Status = loopIdle
 		c.Evidence = "the gate has never run in a recorded session, so catches are unknown — not zero"
@@ -487,4 +500,64 @@ func describeAge(d time.Duration) string {
 	default:
 		return fmt.Sprintf("%dd ago", int(d.Hours()/24))
 	}
+}
+
+// checkLoopCustodian — CC-8 (docs/plans/custodian.md): the config
+// custodian's conveyor. IDLE = no concerns registered (normal, named).
+// OPEN = violations exist AND no audit has looked in 7 days — violations
+// accumulating unread are a conveyor moving nothing. CLOSED = audits are
+// running and either the config is clean or its violations are being
+// looked at (the looking is what this loop can observe; the fixing shows
+// up as the violation count going to zero).
+func checkLoopCustodian(now time.Time) flywheelCheck {
+	c := flywheelCheck{
+		Loop:    "custodian",
+		Purpose: "config contracts audited and violations consumed — instructed means true",
+	}
+	root, _ := os.Getwd()
+	concerns, loadErrs := loadConcernsBoth(root)
+	if len(loadErrs) > 0 {
+		c.Status = loopOpen
+		c.Evidence = "a concerns.cue failed to load — the contracts themselves are unreadable"
+		c.Remedy = "fathom config audit  (names every problem)"
+		return c
+	}
+	if len(concerns) == 0 {
+		c.Status = loopIdle
+		c.Evidence = "no concerns registered — nothing for the custodian to hold this repo to"
+		c.Remedy = "write .fathom/concerns.cue (fathom init scaffolds a commented template)"
+		return c
+	}
+	violated := 0
+	for _, f := range custodian.Audit(root, concerns) {
+		if f.Status == custodian.StatusViolated {
+			violated++
+		}
+	}
+	var lastAudit time.Time
+	for _, b := range readBeatsForLoop() {
+		if b.Channel == "custodian" && (b.Kind == "audit" || b.Kind == "attention") && b.Meta["project_dir"] == root && b.At.After(lastAudit) {
+			lastAudit = b.At
+		}
+	}
+	switch {
+	case violated > 0 && (lastAudit.IsZero() || now.Sub(lastAudit) > 7*24*time.Hour):
+		c.Status = loopOpen
+		c.Evidence = fmt.Sprintf("%d violation(s) standing and no audit has looked in over a week — accumulating unread", violated)
+		c.Remedy = "fathom config audit — then fix the config (fathom reports; you decide)"
+	case violated > 0:
+		c.Status = loopClosed
+		c.Evidence = fmt.Sprintf("%d violation(s) standing, last looked at %s — being consumed, not ignored", violated, lastAudit.UTC().Format(time.RFC3339))
+	default:
+		c.Status = loopClosed
+		c.Evidence = fmt.Sprintf("%d concern(s) audited clean", len(concerns))
+	}
+	return c
+}
+
+// readBeatsForLoop is the flywheel's tolerant beat read — absent log,
+// zero rows.
+func readBeatsForLoop() []retroBeat {
+	rows, _ := readRetroBeats(beatLogPath())
+	return rows
 }

@@ -39,8 +39,10 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   in-process, one HTTP call total) is the right shape — the CLI and the
   panel both render what the daemon computes (law 10). Parallel fan-out
   in the CLI is the cheap interim.
-- **Status: OPEN** — filed the day SD-1..4 were planned; must close
-  before SD-2 ships.
+- **Status: RESOLVED (interim, 2026-08-14)** — the per-plan verifies now
+  fan out (bounded 8-way) in `computePlanRows`; measured after deploy in
+  this repo. The daemon-side single-call `plans_status` remains the right
+  end shape for SD-2's render path and stays on that row.
 
 
 ### O28 — the first real brief was telemetry pretending to be a handoff (FIXED same day)

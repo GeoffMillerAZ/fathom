@@ -45,15 +45,19 @@ func TestRetroJoinsFiringsToAftermath(t *testing.T) {
 	lines := []string{
 		retroBeatLine(start, "edit-hook", "answered", map[string]string{
 			"emitted": "true", "phase": "pre", "target": "file",
-			"session": "sess-1", "file": filepath.Join(root, "a.go"), "project_dir": root}),
+			"session": "sess-1", "file": filepath.Join(root, "a.go"), "project_dir": root,
+		}),
 		retroBeatLine(start.Add(10*time.Second), "edit-hook", "answered", map[string]string{
 			"emitted": "true", "phase": "post",
-			"session": "sess-1", "file": filepath.Join(root, "b.go"), "project_dir": root}),
+			"session": "sess-1", "file": filepath.Join(root, "b.go"), "project_dir": root,
+		}),
 		retroBeatLine(start.Add(20*time.Second), "edit-hook", "answered", map[string]string{
-			"emitted": "true", "phase": "post", "project_dir": root}), // pre-IR-1: no stamps
+			"emitted": "true", "phase": "post", "project_dir": root,
+		}), // pre-IR-1: no stamps
 		retroBeatLine(start.Add(30*time.Second), "edit-hook", "answered", map[string]string{
 			"emitted": "false", "phase": "post",
-			"session": "sess-1", "file": filepath.Join(root, "a.go"), "project_dir": root}),
+			"session": "sess-1", "file": filepath.Join(root, "a.go"), "project_dir": root,
+		}),
 	}
 	if err := os.WriteFile(log, []byte(strings.Join(lines, "\n")+"\n"), 0o644); err != nil {
 		t.Fatal(err)

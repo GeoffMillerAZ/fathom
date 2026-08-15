@@ -119,6 +119,13 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// SD-1 (docs/plans/custodian.md): every verify run leaves a ledger
+	// row per plan — the history that lets a trend be a measurement
+	// instead of a guess, and the signal the flywheel's verify-gate loop
+	// reads (O30: lefthook pre-push runs were invisible to it). Best
+	// effort, never part of the gate.
+	appendVerifyLedger(plans, *service, reports)
+
 	// Compute gate locally over all reports.
 	var allFail []string
 	for _, rep := range reports {

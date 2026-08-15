@@ -161,10 +161,10 @@ above. Listed here so they are not lost.
 
 ## Phase DO — outcomes derived, not self-reported (docs/design/continuity-threads.md §4.1, owner field report 2026-08-14)
 
-- [ ] DO-1 Derived outcome per measured unit — commits in window, plan rows flipped-and-PROVEN, gate outcomes, pushes — computed mechanically from artifacts the window already touches {id: DO-1}
-- [ ] DO-2 Arm comparison + thread bet consume the derived outcome (outcome-comparable units) instead of requiring self-ratings; brief/flywheel copy stops asking for `fathom rate` as a precondition {id: DO-2}
+- [x] DO-1 Derived outcome per measured unit — v1: commits landed in the unit beat-window (stated as narrow everywhere it renders; proven-row deltas follow the verify ledger) {id: DO-1, symbol: derivedCommitsForSession, package: cmd/fathom}
+- [x] DO-2 Arm criterion consumes the derived outcome instead of requiring self-ratings; copy stops asking for `fathom rate` as a precondition {id: DO-2, symbol: evaluateABCriterion, package: cmd/fathom}
 - [ ] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported {id: DO-3}
-- [ ] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4}
+- [x] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4, skip_test: true, skip: "copy-level demotion — acceptance is evaluateABCriterion treating ratings as override (DO-2 test-covered) and the rate verb hint text"}
 
 ## Phase IR — intervention outcomes (docs/design/intervention-outcomes.md; owner ask 2026-08-14)
 

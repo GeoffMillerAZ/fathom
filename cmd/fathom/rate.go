@@ -104,7 +104,7 @@ func cmdRate(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "usage: fathom rate <1-5> [--note \"...\"]")
 		fmt.Fprintln(stderr)
 		fmt.Fprintln(stderr, "  Rate whether you got where you wanted this session. This is the OUTCOME")
-		fmt.Fprintln(stderr, "  half of the A/B criterion: without it, fewer tokens cannot be told apart")
+		fmt.Fprintln(stderr, "  optional human override of the derived outcome (§4.1) — welcome, never required")
 		fmt.Fprintln(stderr, "  from giving up sooner.")
 		fmt.Fprintln(stderr)
 		fmt.Fprintln(stderr, "    5  got exactly where I wanted")
@@ -260,28 +260,39 @@ func evaluateABCriterion(imp obsImpact) string {
 	if imp.TokensOnMedian == nil || imp.TokensOffMedian == nil {
 		missing = append(missing, "at least one arm has no usable token median")
 	}
-	if imp.RatingOnMed == nil || imp.RatingOffMed == nil {
-		missing = append(missing, fmt.Sprintf("self-rated outcomes are missing (%d ON, %d OFF rated) — "+
-			"without them, fewer tokens cannot be told apart from getting less done; run `fathom rate <1-5>` at session end",
-			imp.RatedOn, imp.RatedOff))
+	// DO-2/DO-4 (docs/design/continuity-threads.md §4.1, owner-approved
+	// re-registration 2026-08-14): the outcome half derives from disk;
+	// a self-rating, when present on both arms, is the human OVERRIDE —
+	// never again a precondition.
+	outcomeOn, outcomeOff := imp.RatingOnMed, imp.RatingOffMed
+	outcomeKind := "self-rated override, %d vs %d of 5"
+	if outcomeOn == nil || outcomeOff == nil {
+		outcomeOn, outcomeOff = imp.DerivedOnMed, imp.DerivedOffMed
+		outcomeKind = "derived from disk: median %d vs %d commit(s) landed per unit (§4.1; richer derivation follows the verify ledger)"
+	}
+	if outcomeOn == nil || outcomeOff == nil {
+		missing = append(missing, fmt.Sprintf("the outcome half is missing on at least one arm (%d ON, %d OFF derived unit(s), no rating override) — "+
+			"outcomes derive from session-stamped beats (§4.1), so units predating the IR-1 stamps cannot supply one",
+			imp.DerivedOnUnits, imp.DerivedOffUnits))
 	}
 	if len(missing) > 0 {
 		return "NOT YET EVALUABLE — " + strings.Join(missing, "; ")
 	}
 
 	cheaper := *imp.TokensOnMedian < *imp.TokensOffMedian
-	notWorse := *imp.RatingOnMed >= *imp.RatingOffMed
+	notWorse := *outcomeOn >= *outcomeOff
+	outcomeText := fmt.Sprintf(outcomeKind, *outcomeOn, *outcomeOff)
 	switch {
 	case cheaper && notWorse:
-		return fmt.Sprintf("MET: fathom-on is cheaper (%d vs %d median real tokens PER TURN) at equal-or-better outcome (%d vs %d of 5)",
-			*imp.TokensOnMedian, *imp.TokensOffMedian, *imp.RatingOnMed, *imp.RatingOffMed)
+		return fmt.Sprintf("MET: fathom-on is cheaper (%d vs %d median real tokens PER TURN) at equal-or-better outcome (%s)",
+			*imp.TokensOnMedian, *imp.TokensOffMedian, outcomeText)
 	case !cheaper:
 		return fmt.Sprintf("NOT MET: fathom-on is not cheaper (%d vs %d median real tokens per turn) — per the registered kill, "+
 			"the production tokenomics claim is retracted wherever it appears",
 			*imp.TokensOnMedian, *imp.TokensOffMedian)
 	default:
-		return fmt.Sprintf("NOT MET: fathom-on is cheaper (%d vs %d) but outcomes are WORSE (%d vs %d of 5) — "+
+		return fmt.Sprintf("NOT MET: fathom-on is cheaper (%d vs %d) but outcomes are WORSE (%s) — "+
 			"the criterion requires equal-or-better, and cheaper-but-worse is not a saving",
-			*imp.TokensOnMedian, *imp.TokensOffMedian, *imp.RatingOnMed, *imp.RatingOffMed)
+			*imp.TokensOnMedian, *imp.TokensOffMedian, outcomeText)
 	}
 }

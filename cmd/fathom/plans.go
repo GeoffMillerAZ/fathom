@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -108,12 +109,28 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		if !indexed {
 			return nil, fmt.Errorf("service %q is not indexed on the daemon at %s — ingest it and retry", service, urlStr)
 		}
-		for i, lp := range localPlans {
-			rep, err := verifyViaHTTP(hc, urlStr, service, "", raws[i], lp)
-			if err != nil {
-				return nil, err
+		// O29 (docs/dogfood-observations.md): the per-plan verifies are
+		// independent daemon calls; running them serially made this verb
+		// scale at seconds x plans (2m35s measured over this fleet's ~40
+		// active plans). Bounded fan-out; order rebuilt by index below.
+		reports = make([]verify.Report, len(localPlans))
+		verifyErrs := make([]error, len(localPlans))
+		sem := make(chan struct{}, 8)
+		var wg sync.WaitGroup
+		for i := range localPlans {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				reports[i], verifyErrs[i] = verifyViaHTTP(hc, urlStr, service, "", raws[i], localPlans[i])
+			}(i)
+		}
+		wg.Wait()
+		for _, e := range verifyErrs {
+			if e != nil {
+				return nil, e
 			}
-			reports = append(reports, rep)
 		}
 	}
 
