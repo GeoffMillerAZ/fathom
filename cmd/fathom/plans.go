@@ -101,7 +101,11 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		}
 		reports = reps
 	} else {
-		hc := &http.Client{Timeout: 10 * time.Second}
+		// 60s, not the old 10s: concurrent verifies contend on the daemon
+		// (and the FIRST call may pay an auto-refresh), so the per-call
+		// ceiling must absorb queueing that the serial loop never saw —
+		// with 10s the fan-out timed out where slow-but-serial survived.
+		hc := &http.Client{Timeout: 60 * time.Second}
 		indexed, err := daemonServiceIndexed(hc, urlStr, service)
 		if err != nil {
 			return nil, fmt.Errorf("probing daemon for service %q: %w", service, err)
@@ -115,7 +119,7 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		// active plans). Bounded fan-out; order rebuilt by index below.
 		reports = make([]verify.Report, len(localPlans))
 		verifyErrs := make([]error, len(localPlans))
-		sem := make(chan struct{}, 8)
+		sem := make(chan struct{}, 4)
 		var wg sync.WaitGroup
 		for i := range localPlans {
 			wg.Add(1)

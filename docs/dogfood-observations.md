@@ -40,8 +40,10 @@ Entry shape: **symptom → evidence (verbatim probe) → root cause → fix → 
   panel both render what the daemon computes (law 10). Parallel fan-out
   in the CLI is the cheap interim.
 - **Status: RESOLVED (interim, 2026-08-14)** — the per-plan verifies now
-  fan out (bounded 8-way) in `computePlanRows`; measured after deploy in
-  this repo. The daemon-side single-call `plans_status` remains the right
+  fan out (bounded 4-way, 60s ceiling — 8-way at the old 10s timeout made
+  it WORSE: concurrent verifies contend on the daemon and all hit the
+  deadline where slow-but-serial survived) in `computePlanRows`; measured:
+  2m35s -> 59s on this repo's ~40 plans. The daemon-side single-call `plans_status` remains the right
   end shape for SD-2's render path and stays on that row.
 
 
