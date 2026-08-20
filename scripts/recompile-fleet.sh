@@ -101,7 +101,14 @@ compile_one fathom spec-bindings
 echo "==> deploying the fresh binary to the daemon install path"
 INSTALL_DIR="$HOME/.local/libexec/fathom"
 mkdir -p "$INSTALL_DIR"
-cp -f "$BIN" "$INSTALL_DIR/fathom"
+# Deploy SIGNED, via temp+rename (O25/O10: a raw cp of an adhoc-signed
+# binary over the installed path loses the daemon's TCC grant — the grant
+# follows the fathom-dev cert — and truncates a running executable. This
+# script shipped exactly that failure on 2026-08-20; the restart then hung
+# on a TCC dialog nobody was present to click.)
+cp -f "$BIN" "$INSTALL_DIR/fathom.new"
+codesign -f -s fathom-dev "$INSTALL_DIR/fathom.new"
+mv -f "$INSTALL_DIR/fathom.new" "$INSTALL_DIR/fathom"
 
 echo "==> restarting the daemon"
 echo "    (a newly deployed binary has a new TCC code hash — if the start"
