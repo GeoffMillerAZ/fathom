@@ -507,3 +507,16 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O16 — a wedged reader produces a plausible empty index: ingest wrote 0 symbols / 0 typed edges while printing '188 pkg(s) (0 failed)' and exit 0 — the fourth false-signal shape of the TCC EPERM wedge
+
+- **Symptom:** a wedged reader produces a plausible empty index: ingest wrote 0 symbols / 0 typed edges while printing '188 pkg(s) (0 failed)' and exit 0 — the fourth false-signal shape of the TCC EPERM wedge
+- **Evidence:**
+  - **Tool:** ingest / extractor read-error handling
+  - **Expected:** a file or package the extractor cannot READ is counted in the failed column and named; an empty result from read errors must be loud, never a clean-looking zero
+  - **Actual:** five consecutive 'bin/fathom ingest --service fathom' runs under the recurring wedge each wrote a zero-symbol index reporting '(0 failed)'; the empty index then made 'fathom verify' refute all 24 freshly-proven plan rows via symbol_present-not-found. Daemon-side MCP ingest (its own TCC grant) produced 8703 symbols from the same tree seconds later
+  - **Repro:** with the ghostty process tree wedged (recurs on /Volumes/m2ext), run bin/fathom ingest --service fathom → symbols: 0, typed-edges (0 failed), exit 0; heal via daemon-side mcp ingest tool
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
