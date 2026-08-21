@@ -124,8 +124,22 @@ func AggregateChannels(beats []heartbeat.Beat, since, until time.Time) ChannelsR
 		r.InjectionCoverageRate = &rate
 	}
 
+	// IT-2: preSeen==0 and an empty moduleServed both have an innocent
+	// explanation an OFF measurement arm covering this window supplies —
+	// hook channels are silent BY DESIGN under the arm, not because a
+	// guard hook or module binding is missing. Check once and reuse: a
+	// wrong "guard hook is not installed" note under an active arm is
+	// itself a false-defect report, exactly the failure mode this note
+	// exists to avoid in the first place.
+	armNote := ""
+	if st, active := ArmStateForWindow("", since, until); active {
+		armNote = st.Note()
+	}
+
 	r.GuardPreSeen, r.GuardPreServed, r.GuardPostSeen, r.GuardPostServed, r.GuardDedupSuppressed = preSeen, preServed, postSeen, postServed, dedupSuppressed
 	switch {
+	case preSeen == 0 && armNote != "":
+		r.GuardCoverageNote = armNote
 	case preSeen == 0:
 		r.GuardCoverageNote = "not measurable: no PreToolUse edit-hook (--pre) invocations observed in window — the guard hook is not installed, or no PreToolUse event fired at all"
 	case preServed == 0:
@@ -136,6 +150,8 @@ func AggregateChannels(beats []heartbeat.Beat, since, until time.Time) ChannelsR
 
 	if len(moduleServed) > 0 {
 		r.ModuleRulesServed = moduleServed
+	} else if armNote != "" {
+		r.ModuleServingNote = armNote
 	} else {
 		r.ModuleServingNote = "not measurable: no module-tagged rule was served in window — no .fathom/modules.cue binding is configured anywhere observed, or no bound module is mounted on the daemon"
 	}

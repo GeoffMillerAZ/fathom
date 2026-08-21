@@ -99,10 +99,21 @@ type obsImpact struct {
 	TokensOffMedian *int   `json:"tokens_off_median,omitempty"`
 	// Spend-shaped medians are in+out only (cache reads excluded — the
 	// 2026-08-08 inflation finding); these two carry the disclosure.
-	TokensPreSplitRows *int   `json:"tokens_pre_split_rows,omitempty"`
-	CacheReadMedianCtx *int   `json:"cache_read_median_ctx,omitempty"`
-	PilotState         string `json:"pilot_state"`
-	PilotDetail        string `json:"pilot_detail,omitempty"`
+	TokensPreSplitRows *int `json:"tokens_pre_split_rows,omitempty"`
+	CacheReadMedianCtx *int `json:"cache_read_median_ctx,omitempty"`
+	// CacheReadFrozenExcluded (IT-12) counts ledger rows excluded from
+	// CacheReadMedianCtx's sum because transcript_truncated was true: the
+	// 16MB LimitReader (sessionledger.go, transcriptReadMaxBytes) freezes
+	// EVERY harness-usage field it was still accumulating — including
+	// tokens_cache_read — at whatever partial value had been summed when
+	// the cap hit, not the session's true total. Summing that frozen
+	// partial alongside real totals silently skews the average; excluding
+	// it and naming the count (never a silent drop) is what a truncated
+	// row's whole-session figure being unusable actually looks like in the
+	// rendered output.
+	CacheReadFrozenExcluded *int   `json:"cache_read_frozen_excluded,omitempty"`
+	PilotState              string `json:"pilot_state"`
+	PilotDetail             string `json:"pilot_detail,omitempty"`
 
 	Stories     []string `json:"stories,omitempty"`
 	StoriesNote string   `json:"stories_note"`
@@ -392,6 +403,7 @@ func buildImpactModel(now time.Time) obsImpact {
 		onTokens, offTokens         []int
 		preSplitRows                int
 		cacheReadSum, cacheReadRows int
+		cacheReadTruncatedExcluded  int
 		onSessions, offSessions     int
 		uncleanArmRows              int
 		firstAt, lastAt             string
@@ -489,7 +501,18 @@ func buildImpactModel(now time.Time) obsImpact {
 		// reads. Arms compare in+out; rows predating the split are counted
 		// as pre-split (unknown), never fed to the median as their inflated
 		// totals.
-		if e.TokensCacheRead != nil {
+		//
+		// IT-12: a row whose transcript_truncated is true had its
+		// tokens_cache_read frozen mid-parse by the 16MB LimitReader
+		// (sessionledger.go) — a partial figure, not the session's true
+		// cache-read total. Summing it alongside real totals would skew
+		// this average silently; exclude it and count the exclusion.
+		switch {
+		case e.TokensCacheRead == nil:
+			// no figure at all — neither summed nor excluded
+		case e.TranscriptTruncated:
+			cacheReadTruncatedExcluded++
+		default:
 			cacheReadSum += *e.TokensCacheRead
 			cacheReadRows++
 		}
@@ -616,6 +639,9 @@ func buildImpactModel(now time.Time) obsImpact {
 	if cacheReadRows > 0 {
 		avg := cacheReadSum / cacheReadRows
 		imp.CacheReadMedianCtx = &avg
+	}
+	if cacheReadTruncatedExcluded > 0 {
+		imp.CacheReadFrozenExcluded = &cacheReadTruncatedExcluded
 	}
 	switch {
 	case offSessions == 0:

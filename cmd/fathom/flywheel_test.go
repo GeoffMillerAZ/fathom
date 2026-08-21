@@ -7,6 +7,7 @@ package main
 // tests fail if `fathom flywheel` ever loses the ability to see either one.
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -180,5 +181,90 @@ func TestFlywheelSurvivesWithoutALocalCallLog(t *testing.T) {
 		if strings.TrimSpace(c.Evidence) == "" {
 			t.Errorf("%q has no evidence even in the degraded case (law 3)", c.Loop)
 		}
+	}
+}
+
+// TestFlywheelReadErrorIsOpenNeverIdle pins the fix for the collapsed
+// readCallLog error: a call log that STATS fine but fails to READ (the
+// external-volume TCC-wedge signature the CLAUDE.md playbook names, or any
+// other permission problem) is a real defect and must report OPEN, never
+// the honest-nothing-yet IDLE a genuinely missing file gets.
+func TestFlywheelReadErrorIsOpenNeverIdle(t *testing.T) {
+	now := time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC)
+
+	t.Run("unreadable file is OPEN and names the error", func(t *testing.T) {
+		dir := t.TempDir()
+		path := filepath.Join(dir, "calls.jsonl")
+		if err := os.WriteFile(path, []byte(`{"ts":"2026-08-08T21:00:00Z"}`+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(path, 0o644) }) // let TempDir cleanup remove it
+		t.Setenv("FATHOM_CALL_LOG", path)
+
+		entries, err := flywheelCallLog("http://127.0.0.1:1")
+		if err == nil {
+			t.Fatalf("want an error reading an unreadable file, got nil (entries=%v)", entries)
+		}
+		got := checkLoopCallLogEntries(entries, err, now)
+		if got.Status != loopOpen {
+			t.Fatalf("status = %q, want OPEN for a read error — stat succeeding but read failing is a defect, not silence", got.Status)
+		}
+		if !strings.Contains(got.Evidence, "permission") {
+			t.Errorf("evidence must name the errno verbatim: %q", got.Evidence)
+		}
+	})
+
+	t.Run("missing file stays IDLE", func(t *testing.T) {
+		t.Setenv("FATHOM_CALL_LOG", filepath.Join(t.TempDir(), "does-not-exist.jsonl"))
+
+		entries, err := flywheelCallLog("http://127.0.0.1:1")
+		got := checkLoopCallLogEntries(entries, err, now)
+		if got.Status != loopIdle {
+			t.Fatalf("status = %q, want IDLE for a genuinely missing file", got.Status)
+		}
+	})
+}
+
+// TestFlywheelCallLogStalenessIsArmAware pins IT-2(a): call-log staleness
+// (no traffic in the last 24h) must not flip OPEN when an OFF measurement
+// arm actively covers that window — hook channels are silent BY DESIGN
+// under the arm, and reporting that as a defect is itself a false-defect
+// report. Without an arm on file, staleness still reports OPEN as before.
+func TestFlywheelCallLogStalenessIsArmAware(t *testing.T) {
+	now := time.Date(2026, 8, 8, 22, 0, 0, 0, time.UTC)
+	staleEntries := []adoptionCallEntry{{TS: now.Add(-48 * time.Hour).Format(time.RFC3339)}}
+
+	t.Run("stale with an OFF arm covering the window is not OPEN", func(t *testing.T) {
+		armSetAt(t, now.Add(-2*time.Hour))
+		got := checkLoopCallLogEntries(staleEntries, nil, now)
+		if got.Status == loopOpen {
+			t.Fatalf("status = %q, want not-OPEN — an OFF arm covering the window explains the silence", got.Status)
+		}
+		if !strings.Contains(got.Evidence, "OFF measurement arm active") {
+			t.Errorf("evidence must name the arm: %q", got.Evidence)
+		}
+	})
+
+	t.Run("stale with no arm on file stays OPEN", func(t *testing.T) {
+		t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "absent-arm.json"))
+		got := checkLoopCallLogEntries(staleEntries, nil, now)
+		if got.Status != loopOpen {
+			t.Fatalf("status = %q, want OPEN — no arm explains 48h of silence", got.Status)
+		}
+	})
+}
+
+// TestFlywheelReadErrorNamesTCCWedgeOnVolumes pins the /Volumes/ hint: the
+// exact remedy CLAUDE.md's own playbook gives for the wedged-TCC-verdict
+// class of read failure.
+func TestFlywheelReadErrorNamesTCCWedgeOnVolumes(t *testing.T) {
+	if got := tccWedgeHint("/Volumes/m2ext/code/some-repo/workspace/logs/mcp-calls.jsonl"); !strings.Contains(got, "tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty") {
+		t.Errorf("hint for a /Volumes/ path must name the exact remedy, got %q", got)
+	}
+	if got := tccWedgeHint("/Users/geoff/.fathom/workspace/logs/mcp-calls.jsonl"); got != "" {
+		t.Errorf("a non-/Volumes/ path must carry no TCC hint, got %q", got)
 	}
 }

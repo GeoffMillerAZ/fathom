@@ -19,15 +19,15 @@ package main
 //     The pre-fix os.WriteFile (O_TRUNC) here let a concurrent second
 //     observe clobber the first's entry with both exiting 0 — silent data
 //     loss, proven 13/20 trials.
-//   - Entry IDs are ADVISORY under concurrency, by documented choice
-//     (H1's accepted alternative to a lock): the O<N> id is scanned from
-//     the file at write time without a lock, so two concurrent observes
-//     can both mint the same O<N>. Nothing is lost — both entries land in
-//     full — and because the file is append-only, FILE ORDER is
-//     chronological: disambiguate colliding ids by their order in the
-//     file (later entry = later filing). A human renumbers at triage time
-//     if it matters; a cross-process flock is the upgrade path if
-//     advisory ids ever prove insufficient.
+//   - Entry IDs are minted under a cross-process flock (IT-10 — the upgrade
+//     path this file's own prior comment pre-approved): the O<N> id scan
+//     and its append both happen inside one LOCK_EX/UNLOCK critical
+//     section, re-reading the file's true current content under the lock
+//     rather than trusting whatever was read before it was acquired — so
+//     two concurrent observes cannot mint the same O<N> (leases.go took
+//     the same upgrade for .fathom/leases.jsonl, for the identical
+//     reason: an id/row that must never collide is exactly what O_APPEND
+//     alone does not guarantee).
 
 import (
 	"fmt"
@@ -35,6 +35,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -123,24 +124,52 @@ func cmdObserve(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	id := nextObservationID(content)
-	entry := formatObservationEntry(id, *symptom, *tool, *expected, *actual, *repro)
-
-	// O_APPEND, never O_TRUNC/O_RDWR-with-seek: existing bytes are never
-	// touched, only ever added to — the append-only contract.
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		fmt.Fprintf(stderr, "error: opening %s: %v\n", path, err)
-		return 1
-	}
-	defer f.Close()
-	if _, err := f.WriteString("\n" + entry); err != nil {
-		fmt.Fprintf(stderr, "error: appending to %s: %v\n", path, err)
+	id, mErr := mintAndAppendObservation(path, *symptom, *tool, *expected, *actual, *repro)
+	if mErr != nil {
+		fmt.Fprintf(stderr, "error: appending to %s: %v\n", path, mErr)
 		return 1
 	}
 
 	fmt.Fprintf(stdout, "recorded O%d in %s\n", id, path)
 	return 0
+}
+
+// mintAndAppendObservation mints the next O<N> id and appends its entry
+// inside a single cross-process flock critical section (IT-10): the id
+// scan re-reads the file's CURRENT content under the lock — never the
+// possibly-stale content the caller read before acquiring it — so two
+// concurrent observe processes racing this call cannot both mint the same
+// id. The lock is held on the observations file itself, matching
+// leases.go's own flock-per-target-file idiom; O_RDWR|O_CREATE (never
+// O_TRUNC) leaves existing bytes untouched, only ever adding to them.
+func mintAndAppendObservation(path, symptom, tool, expected, actual, repro string) (int, error) {
+	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o644)
+	if err != nil {
+		return 0, fmt.Errorf("opening %s: %w", path, err)
+	}
+	defer f.Close()
+
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return 0, fmt.Errorf("locking %s: %w", path, err)
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+
+	raw, err := io.ReadAll(f)
+	if err != nil {
+		return 0, fmt.Errorf("reading %s: %w", path, err)
+	}
+	id := nextObservationID(string(raw))
+	entry := formatObservationEntry(id, symptom, tool, expected, actual, repro)
+
+	// ReadAll above already left the fd positioned at EOF; Seek is
+	// belt-and-suspenders explicitness, not load-bearing.
+	if _, err := f.Seek(0, io.SeekEnd); err != nil {
+		return 0, fmt.Errorf("seeking %s: %w", path, err)
+	}
+	if _, err := f.WriteString("\n" + entry); err != nil {
+		return 0, fmt.Errorf("writing %s: %w", path, err)
+	}
+	return id, nil
 }
 
 // reReadAfterLostCreateRace re-reads the observations file after this

@@ -129,27 +129,20 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 	}
 	repo := strings.ToLower(filepath.Base(root))
 	now := time.Now()
-	_ = appendThreadItem(threadItem{
-		SchemaVersion: threadSchemaVersion,
+	_ = threadAutoNote(
 		// STABLE id per repo: the latest session-end SUPERSEDES the
 		// previous one (latest-row-wins), because "the last session here
 		// left work in flight" is one fact per repo, not a growing pile —
 		// the first field report's brief was 100% accumulated telemetry.
-		ID:     "se-" + repo,
-		Thread: repo,
-		Kind:   "session-end",
-		Text:   fmt.Sprintf("session ended (%s) with %s", in.Reason, facts),
-		Pointers: map[string]string{
-			"session_id": in.SessionID, "repo": repo,
-			"root": root,
-		},
-		FiledAt: now.UTC().Format(time.RFC3339),
-		FiledBy: "hook",
+		"se-"+repo, repo, "session-end",
+		fmt.Sprintf("session ended (%s) with %s", in.Reason, facts),
+		map[string]string{"session_id": in.SessionID, "repo": repo, "root": root},
 		// Self-closing: once that repo's tree is clean again, the fact is
 		// stale and the item retires itself — the same artifact-keyed
-		// expiry every other item gets.
-		CompletesWhen: &threadCondition{Kind: "repo_clean", Repo: root},
-	})
+		// expiry every other item gets (IT-9).
+		&threadCondition{Kind: "repo_clean", Repo: root},
+		now,
+	)
 	return 0
 }
 
@@ -175,17 +168,37 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 	}
 	repo := strings.ToLower(filepath.Base(root))
 	now := time.Now()
-	_ = appendThreadItem(threadItem{
+	_ = threadAutoNote(
+		"pc-"+repo, // latest compaction pointer per repo supersedes
+		repo, "pre-compact",
+		fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z")),
+		map[string]string{"session_id": in.SessionID, "repo": repo},
+		// IT-9: closes once a session-end note for this SAME session
+		// exists — the pointer's own session having ended is what makes
+		// the pre-summary detail it names no longer in-flight context.
+		&threadCondition{Kind: "session_ended", Repo: root, SessionID: in.SessionID},
+		now,
+	)
+	return 0
+}
+
+// threadAutoNote builds and appends one machine-minted thread item —
+// session-end and pre-compact notes both go through here — applying a
+// close condition AT MINT (IT-9) so evaluateThreadConditions can retire it
+// instead of leaving it to rot in the open set forever (lifetime closure
+// before this: 0/2 pre-compact, 5/8 hook auto-notes).
+func threadAutoNote(id, thread, kind, text string, pointers map[string]string, completesWhen *threadCondition, now time.Time) error {
+	return appendThreadItem(threadItem{
 		SchemaVersion: threadSchemaVersion,
-		ID:            "pc-" + repo, // latest compaction pointer per repo supersedes
-		Thread:        repo,
-		Kind:          "pre-compact",
-		Text:          fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z")),
-		Pointers:      map[string]string{"session_id": in.SessionID, "repo": repo},
+		ID:            id,
+		Thread:        thread,
+		Kind:          kind,
+		Text:          text,
+		Pointers:      pointers,
 		FiledAt:       now.UTC().Format(time.RFC3339),
 		FiledBy:       "hook",
+		CompletesWhen: completesWhen,
 	})
-	return 0
 }
 
 // mechanicalSessionFacts summarizes what a departing session leaves in

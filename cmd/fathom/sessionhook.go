@@ -82,7 +82,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// pre-registered bet evaluable (fresh-with-brief vs resumed).
 	briefBytes := 0
 	if startSource == "startup" || startSource == "clear" || startSource == "" {
-		if tb := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, time.Now()); tb != "" {
+		tb, cl := composeContinuityAndCustodian(projDir)
+		if tb != "" {
 			ctx += "\n" + tb
 			briefBytes = len(tb)
 		}
@@ -91,7 +92,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		// Mechanical file reads; adds nothing on clean or unconfigured
 		// repos. Same startup/clear gate as the thread brief: resumed
 		// sessions kept their context.
-		if cl := concernAttentionLine(projDir); cl != "" {
+		if cl != "" {
 			ctx += "\n" + cl
 			emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
 		}
@@ -113,6 +114,56 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 			"additionalContext": ctx,
 		},
 	})
+	return 0
+}
+
+// composeContinuityAndCustodian renders the continuity thread brief and the
+// custodian attention line for projDir — the two sections layered on top
+// of buildSessionContext's identity/freshness line to form a full session
+// primer. Shared by cmdSessionHook (gated to startup/clear/"" sources) and
+// `fathom prime` (WF-8, docs/plans/work-frontier.md — always-on pull) so
+// neither duplicates the other's string-building.
+func composeContinuityAndCustodian(projDir string) (threadBrief, custodianLine string) {
+	threadBrief = renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, time.Now())
+	custodianLine = concernAttentionLine(projDir)
+	return
+}
+
+// cmdPrime implements the "prime" subcommand (WF-8): prints the full
+// session primer — the exact content the SessionStart hook composes into
+// its additionalContext — as plain text to stdout, with no hook-JSON
+// envelope. This is the pull-tier equivalent for a harness with no
+// SessionStart hook (Codex): one command gets what Claude Code gets
+// pushed. Always exits 0, even when the daemon is unreachable —
+// buildSessionContext already degrades to an honest status line rather
+// than an error, and priming must never fail a session open.
+func cmdPrime(args []string, stdout, stderr io.Writer) int {
+	rpcOrigin = "prime"
+	fs := newFlagSet("prime", stderr)
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	projDir := *dir
+	if projDir == "" {
+		projDir = os.Getenv("CLAUDE_PROJECT_DIR")
+	}
+	if projDir == "" {
+		projDir, _ = os.Getwd()
+	}
+
+	ctx := buildSessionContext(*url, projDir)
+	tb, cl := composeContinuityAndCustodian(projDir)
+	if tb != "" {
+		ctx += "\n" + tb
+	}
+	if cl != "" {
+		ctx += "\n" + cl
+	}
+
+	fmt.Fprintln(stdout, ctx)
 	return 0
 }
 

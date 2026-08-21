@@ -53,10 +53,11 @@ type threadItem struct {
 }
 
 type threadCondition struct {
-	Kind string `json:"kind"` // file_exists | plan_row_checked
-	Repo string `json:"repo,omitempty"`
-	Path string `json:"path,omitempty"` // file_exists: the file; plan_row_checked: the plan
-	Row  string `json:"row,omitempty"`  // plan_row_checked: the {id: …} to look for
+	Kind      string `json:"kind"` // file_exists | plan_row_checked | repo_clean | session_ended
+	Repo      string `json:"repo,omitempty"`
+	Path      string `json:"path,omitempty"`       // file_exists: the file; plan_row_checked: the plan
+	Row       string `json:"row,omitempty"`        // plan_row_checked: the {id: …} to look for
+	SessionID string `json:"session_id,omitempty"` // session_ended: the session to watch for
 }
 
 var threadKinds = []string{
@@ -159,7 +160,7 @@ func loadThreadItems(path string) []threadItem {
 func evaluateThreadConditions(items []threadItem, repoRoot string, now time.Time) []threadItem {
 	out := make([]threadItem, 0, len(items))
 	for _, it := range items {
-		if it.ClosedAt == "" && it.CompletesWhen != nil && threadConditionHolds(*it.CompletesWhen, repoRoot) {
+		if it.ClosedAt == "" && it.CompletesWhen != nil && threadConditionHolds(*it.CompletesWhen, repoRoot, items) {
 			it.ClosedAt = now.UTC().Format(time.RFC3339)
 			it.ClosedBy = "condition"
 			it.ClosedWhy = describeCondition(*it.CompletesWhen) + " now holds"
@@ -173,7 +174,7 @@ func evaluateThreadConditions(items []threadItem, repoRoot string, now time.Time
 	return out
 }
 
-func threadConditionHolds(c threadCondition, repoRoot string) bool {
+func threadConditionHolds(c threadCondition, repoRoot string, items []threadItem) bool {
 	base := c.Repo
 	if base == "" {
 		base = repoRoot
@@ -205,6 +206,20 @@ func threadConditionHolds(c threadCondition, repoRoot string) bool {
 			}
 		}
 		return false
+	case "session_ended":
+		// IT-9: a pre-compact pointer's session survives until a
+		// session-end note for that SAME session_id lands in the log —
+		// never any session-end note (that would close a compaction
+		// pointer from an entirely different, still-open session).
+		if c.SessionID == "" {
+			return false
+		}
+		for _, it := range items {
+			if it.Kind == "session-end" && it.Pointers["session_id"] == c.SessionID {
+				return true
+			}
+		}
+		return false
 	}
 	return false
 }
@@ -217,6 +232,8 @@ func describeCondition(c threadCondition) string {
 		return c.Path + "#" + c.Row + " is checked"
 	case "repo_clean":
 		return "the repository tree is clean again"
+	case "session_ended":
+		return "a session-end note for the same session"
 	}
 	return c.Kind
 }

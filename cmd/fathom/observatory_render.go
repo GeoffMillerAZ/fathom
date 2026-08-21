@@ -414,7 +414,13 @@ func renderObsImpact(m observatoryModel) string {
 		card.WriteString(kv("pre-split rows", fmtThousands(*imp.TokensPreSplitRows)+` <span class="text-ink-muted">sessions recorded before the in/out split — their totals conflated cache reads, so they count as unknown, never as data</span>`))
 	}
 	if imp.CacheReadMedianCtx != nil {
-		card.WriteString(kv("cache reads (context)", fmtThousands(*imp.CacheReadMedianCtx)+` <span class="text-ink-muted">avg per session — re-served context, shown for scale, never in the arm math</span>`))
+		note := `avg per session — re-served context, shown for scale, never in the arm math`
+		// IT-12: name the exclusion — never let a truncated row's frozen
+		// partial total silently vanish from the count without a trace.
+		if imp.CacheReadFrozenExcluded != nil {
+			note += fmt.Sprintf("; %d session(s) excluded: totals frozen by the transcript read cap", *imp.CacheReadFrozenExcluded)
+		}
+		card.WriteString(kv("cache reads (context)", fmtThousands(*imp.CacheReadMedianCtx)+` <span class="text-ink-muted">`+html.EscapeString(note)+`</span>`))
 	}
 	card.WriteString(kv("discovery actions (with fathom)", metricCell(imp.DiscoveryTotal, imp.DiscoveryNote, imp.DiscoveryNote)))
 	card.WriteString(`<div class="mt-2 text-ink-muted">` + html.EscapeString(imp.PilotDetail) + `</div>`)

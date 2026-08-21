@@ -122,31 +122,31 @@ type AdoptionReport struct {
 	BriefCallsWithClaims int      `json:"brief_calls_with_claims"`
 	ClaimsAttachHitRate  *float64 `json:"claims_attach_hit_rate"` // nil: no brief calls in the window — undefined, not a fake 0
 
-	// VerifyGateCatchCount (T5-7, docs/plans/trust-and-tokenomics.md)
-	// replaces the v1 always-nil "not instrumented" placeholder with a real
-	// derived count: the sum, across every verify_plan/review call-log row
-	// carrying a verdict_outcome, of verify_plan's "failing" count (claimed
-	// tasks the gate would fail) plus review's per-checked-dimension active
-	// finding counts. Nil only when this window contains ZERO such rows —
-	// still literally not instrumented, over this window.
-	// Renamed 2026-08-08 (FR-2, docs/plans/exploration-ledger.md): the old
-	// cumulative catch SUM re-counted the same standing failures on every
-	// gate call (the 264,487-catches artifact) and is retired as
-	// unrecoverable from this data. A refusal is one call whose verdict
-	// carried failing>0 — an event. Per-session NEW catches live in the
-	// stop hook's ledger verify_catches, which remains the true catch
-	// instrument.
+	// VerifyGateCatchCount (T5-7, docs/plans/trust-and-tokenomics.md;
+	// re-sourced 2026-08-21, IT-11) derives from the verify ledger
+	// (~/.fathom/verify-ledger.jsonl, verifyledger.go — FATHOM_VERIFY_LEDGER
+	// injectable) rather than the call log: the call-log-derived figure
+	// double-counted (the 215/4940-family; O6/DQ-5) — an MCP verify_plan/
+	// review TOOL call is a different, overlapping population from the
+	// `fathom verify` CLI/pre-push runs the ledger records, and the two were
+	// never reconciled before being folded into one number. The ledger
+	// records exactly one row per (plan, run) — a refusal is one ledger row
+	// whose Failing count is > 0 — an EVENT, never a sum of standing
+	// failures across rows (FR-2, docs/plans/exploration-ledger.md — the
+	// 264,487-catches artifact this discipline already guarded against, now
+	// carried forward onto the ledger source). Nil only when the ledger has
+	// zero rows — still literally not instrumented, never a fabricated
+	// zero.
 	VerifyGateRefusals *int `json:"verify_gate_refusals"`
-	// VerifyGateInstrumentedCalls is how many verify_plan/review rows
-	// carried a verdict_outcome and so contributed to VerifyGateRefusals.
+	// VerifyGateInstrumentedCalls is the verify-ledger row count — the
+	// denominator VerifyGateNote names in its own sentence (IT-11).
 	VerifyGateInstrumentedCalls int `json:"verify_gate_instrumented_calls"`
-	// VerifyGatePredatesInstrumentation counts verify_plan/review rows without
-	// a verdict_outcome — logged by a pre-T5-7 binary OR a gate call with zero
-	// claimed tasks (the two cases are indistinguishable in the log);
-	// logged by a binary built before this field existed — no
-	// verdict_outcome, so their pass/fail verdict is unrecoverable from the
-	// log. Reported separately and NEVER folded into VerifyGateCatchCount
-	// as a fabricated zero (the honest-split requirement).
+	// VerifyGatePredatesInstrumentation is always 0 now that the
+	// verify-gate figure is ledger-sourced (IT-11): every verify-ledger row
+	// has always carried Total/Claimed/Verified/Failing (schema v1,
+	// verifyledger.go) — there is no pre-instrumentation era to split out,
+	// unlike the call-log verdict_outcome field this replaced. Kept, rather
+	// than removed, so the JSON contract stays stable for existing readers.
 	VerifyGatePredatesInstrumentation int    `json:"verify_gate_predates_instrumentation"`
 	VerifyGateNote                    string `json:"verify_gate_note"`
 
@@ -213,7 +213,10 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
 	}
 
-	report := buildAdoptionReport(callLogPath, read, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root))
+	// IT-11: the verify-gate figure sources from the verify ledger, never
+	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
+	// (verifyledger.go), the "path injectable" this row asks for.
+	report := buildAdoptionReport(callLogPath, read, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root), readVerifyLedger())
 	report.ServiceFilter = *serviceFlag
 	report.UnattributedExcluded = unattributedExcluded
 	report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
@@ -342,7 +345,7 @@ func registeredToolNames(storePath string) ([]string, error) {
 // buildAdoptionReport is pure over its inputs (deterministic given inputs,
 // per FW-1's own requirement) — cmdInstrumentAdoption does all the I/O,
 // this function does none.
-func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string) AdoptionReport {
+func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
 	surfaceCalls := map[string]int{}
 	surfaceLastTS := map[string]string{}
 	toolCalls := map[string]int{}
@@ -402,7 +405,8 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 		hitRate = &r
 	}
 
-	gateCatchCount, instrumented, predates, verifyNote := gateCatchStats(entries)
+	gateCatchCount, instrumented, verifyNote := gateCatchStatsFromLedger(ledgerRows)
+	predates := 0
 
 	return AdoptionReport{
 		CallLogPath:                       callLogPath,
@@ -426,59 +430,36 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 	}
 }
 
-// gateCatchStats derives the real "gate catches" accounting (T5-7,
-// docs/plans/trust-and-tokenomics.md) from every verify_plan/review row's
-// optional verdict_outcome: a "catch" is a claimed-but-failing verify_plan
-// task, or an active review finding on a checked dimension — the count of
-// times the gate actually caught something. Rows of either tool logged
-// before this field existed (VerdictOutcome nil) carry no recoverable
-// verdict and are counted SEPARATELY as uninstrumented (predates the field,
-// or zero claimed tasks — indistinguishable), never
-// folded into the catch count as a fabricated zero (the honest-split
-// requirement). catchCount is nil only when there are zero instrumented
-// rows in this window — still literally not instrumented, over this
-// window.
-func gateCatchStats(entries []adoptionCallEntry) (catchCount *int, instrumented, predates int, note string) {
+// gateCatchStatsFromLedger derives the verify-gate figure from the verify
+// ledger (~/.fathom/verify-ledger.jsonl, FATHOM_VERIFY_LEDGER-injectable —
+// verifyLedgerPath in verifyledger.go), replacing the call-log-derived
+// computation that double-counted (IT-11, the 215/4940-family; O6/DQ-5): an
+// MCP verify_plan/review TOOL call (the call log) and a `fathom verify`
+// CLI/pre-push run (the ledger) are two overlapping, unreconciled
+// populations of the same underlying fact. The ledger records exactly one
+// row per (plan, run) — a "gate refusal" is one ledger row whose Failing
+// count is > 0, an EVENT, never a sum of standing failures across rows
+// (FR-2, docs/plans/exploration-ledger.md — the same 264,487-catches
+// discipline, carried forward onto the new source). catchCount is nil only
+// when the ledger has zero rows — still literally not instrumented, never a
+// fabricated zero; instrumented (the row count) is the denominator the
+// returned note names explicitly.
+func gateCatchStatsFromLedger(rows []verifyLedgerRow) (catchCount *int, instrumented int, note string) {
 	catches := 0
-	for _, e := range entries {
-		if e.Tool != "verify_plan" && e.Tool != "review" {
-			continue
-		}
-		if e.VerdictOutcome == nil {
-			predates++
-			continue
-		}
-		instrumented++
-		switch e.Tool {
-		case "verify_plan":
-			if e.VerdictOutcome["failing"] > 0 {
-				catches++ // one refusal EVENT, however many rows were failing
-			}
-		case "review":
-			for _, n := range e.VerdictOutcome {
-				if n > 0 {
-					catches++
-					break
-				}
-			}
+	for _, r := range rows {
+		if r.Failing > 0 {
+			catches++ // one refusal EVENT per run, however many rows were failing
 		}
 	}
+	instrumented = len(rows)
 
 	if instrumented == 0 {
-		note = "not instrumented — no verify_plan/review call in this window carries a " +
-			"verdict_outcome (older call-log rows predate the field; a placeholder, not a measured zero)"
-		if predates > 0 {
-			note += fmt.Sprintf("; %d row(s) are uninstrumented (predate the field, or zero claimed tasks) and are excluded", predates)
-		}
-		return nil, instrumented, predates, note
+		return nil, 0, "not instrumented — the verify ledger (~/.fathom/verify-ledger.jsonl) has no recorded `fathom verify` run yet (a placeholder, not a measured zero)"
 	}
 
 	n := catches
-	note = fmt.Sprintf("%d gate refusal(s) across %d instrumented call(s) — calls whose verdict carried failures; per-session NEW catches live in the ledger's verify_catches", catches, instrumented)
-	if predates > 0 {
-		note += fmt.Sprintf("; %d row(s) are uninstrumented (predate the field, or zero claimed tasks) and are excluded (not counted as zero)", predates)
-	}
-	return &n, instrumented, predates, note
+	note = fmt.Sprintf("%d gate refusal(s) across %d verify-ledger run(s) (~/.fathom/verify-ledger.jsonl) — one run's verdict carried at least one failing claimed row", catches, instrumented)
+	return &n, instrumented, note
 }
 
 // renderAdoptionReport writes the human-readable table form of report.

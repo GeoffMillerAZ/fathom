@@ -81,6 +81,20 @@ func firingMeta(meta map[string]string, sessionID, file string) map[string]strin
 	return meta
 }
 
+// firingMetaArm is firingMeta plus IT-3's OFF-arm stamp: when armOff is
+// true the returned meta carries "arm":"off", so a beat recorded during an
+// active kill switch / measurement arm is distinguishable from one
+// recorded normally — never silently indistinguishable from "the hook
+// never ran at all" (the false-IDLE failure class flywheel.go guards
+// elsewhere).
+func firingMetaArm(meta map[string]string, sessionID, file string, armOff bool) map[string]string {
+	meta = firingMeta(meta, sessionID, file)
+	if armOff {
+		meta["arm"] = "off"
+	}
+	return meta
+}
+
 // stampBeatMeta returns a copy of meta carrying the telemetry stamps every
 // persistent record now shares (vision 14 §3, plan IO-12): schema_version,
 // fathom_version, and project_dir — the per-repo attribution the beat log

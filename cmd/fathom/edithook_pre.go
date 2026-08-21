@@ -31,21 +31,27 @@ import (
 // (Bash, design §2.5) vs the counting-only discovery observer (Grep/Glob/
 // Read, and Bash argv starting with a search binary —
 // docs/design/production-tokenomics.md §4, instrument B).
-func cmdEditHookPre(toolName, filePath, command, cwd, sessionID, url string, stdout io.Writer) int {
+// armOff (IT-3: env kill switch OR an active OFF arm) silences the
+// injection/output every branch below can produce, but never the
+// counting-only beats — cmdEditHookPreDiscovery in particular is ALREADY
+// counting-only (zero daemon calls, zero stdout, always), so it runs
+// unconditionally regardless of armOff; every other branch checks armOff
+// itself, right after its own "seen" beat, and stops there.
+func cmdEditHookPre(toolName, filePath, command, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
 	switch toolName {
 	case "Bash":
-		emitDiscoveryBeatIfShellSearch(command, sessionID)
-		return cmdEditHookPreCommand(command, cwd, sessionID, url, stdout)
+		emitDiscoveryBeatIfShellSearch(command, sessionID, armOff)
+		return cmdEditHookPreCommand(command, cwd, sessionID, url, armOff, stdout)
 	case "Grep", "Glob", "Read":
-		return cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID)
+		return cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID, armOff)
 	default:
-		return cmdEditHookPreFile(filePath, cwd, sessionID, url, stdout)
+		return cmdEditHookPreFile(filePath, cwd, sessionID, url, armOff, stdout)
 	}
 }
 
 // ─── file guards (Edit/Write/MultiEdit) ──────────────────────────────────
 
-func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) int {
+func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
 	if filePath == "" {
 		return 0
 	}
@@ -57,7 +63,11 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 		filePath = a
 	}
 	projDir := resolveProjDir(cwd)
-	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
+	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath, armOff))
+	if armOff {
+		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath, armOff))
+		return 0 // OFF: no guard matching, no daemon call, no stdout
+	}
 
 	// Capability enforcement (capabilityenforce.go): `capabilities set
 	// guards off` must actually stop guards firing. Before the local fast
@@ -212,12 +222,16 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, stdout io.Writer) 
 
 // ─── command guards (Bash, design §2.5) ──────────────────────────────────
 
-func cmdEditHookPreCommand(command, cwd, sessionID, url string, stdout io.Writer) int {
+func cmdEditHookPreCommand(command, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
 	if command == "" {
 		return 0
 	}
 	projDir := resolveProjDir(cwd)
-	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "pre", "target": "command"}, sessionID, ""))
+	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "command"}, sessionID, "", armOff))
+	if armOff {
+		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, "", armOff))
+		return 0 // OFF: no guard matching, no daemon call, no stdout
+	}
 
 	var note string
 	matched := false

@@ -66,7 +66,7 @@ func TestFirstCommandToken(t *testing.T) {
 func TestEmitDiscoveryBeatIfShellSearch(t *testing.T) {
 	t.Run("grep-like command emits a beat", func(t *testing.T) {
 		withTempBeatLog(t)
-		emitDiscoveryBeatIfShellSearch("grep -rn foo .", "")
+		emitDiscoveryBeatIfShellSearch("grep -rn foo .", "", false)
 		beats := readBeatsForTest(t)
 		if len(beats) != 1 || beats[0].Channel != "discovery" || beats[0].Kind != "shell-search" {
 			t.Fatalf("beats = %+v", beats)
@@ -74,7 +74,7 @@ func TestEmitDiscoveryBeatIfShellSearch(t *testing.T) {
 	})
 	t.Run("non-search command emits nothing", func(t *testing.T) {
 		withTempBeatLog(t)
-		emitDiscoveryBeatIfShellSearch("go test ./...", "")
+		emitDiscoveryBeatIfShellSearch("go test ./...", "", false)
 		if beats := readBeatsForTest(t); len(beats) != 0 {
 			t.Fatalf("beats = %+v, want none", beats)
 		}

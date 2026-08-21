@@ -69,6 +69,20 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			t.Expect.SkipTest = truthy(ann["skip_test"])
 			t.Expect.SkipReason = ann["skip"]
 			t.Expect.AllowContradiction = truthy(ann["allow_contradiction"])
+			if v, ok := ann["ctx"]; ok {
+				if v == "" {
+					t.CtxMalformed = true
+				} else {
+					t.Ctx = strings.Fields(v)
+				}
+			}
+			if v, ok := ann["needs"]; ok {
+				for _, id := range strings.Split(v, ",") {
+					if id = strings.TrimSpace(id); id != "" {
+						t.Needs = append(t.Needs, id)
+					}
+				}
+			}
 		}
 		plan.Tasks = append(plan.Tasks, t)
 	}
@@ -151,7 +165,7 @@ func parseAnnotation(s string) (map[string]string, string, string) {
 // contains a known contract key as a whole word. Loudness over silence for
 // exactly these — a lost contract is the gate's biggest honesty risk (O4).
 func suspectAnnotation(block string) bool {
-	keys := []string{"id", "symbol", "package", "skip_test", "skip", "reachable_from", "min_tier", "disposition", "reason", "trigger", "allow_contradiction"}
+	keys := []string{"id", "symbol", "package", "skip_test", "skip", "reachable_from", "min_tier", "disposition", "reason", "trigger", "allow_contradiction", "ctx", "needs"}
 	for _, f := range strings.FieldsFunc(block, func(r rune) bool {
 		return r == ' ' || r == ',' || r == ':' || r == '\t'
 	}) {

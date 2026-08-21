@@ -693,6 +693,12 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"`pack_context`, `verify_plan`. Read files to *edit* them, not to discover\n" +
 	"them — the index replaces exploratory grep.\n" +
 	"\n" +
+	"Opening moves by task shape (first 2-3 calls, then edit):\n" +
+	"- debug/trace: find_symbol -> find_callers/references -> symbol_context\n" +
+	"- feature/change: repo_map -> pack_context(concern) -> references\n" +
+	"- review/verify: verify_plan -> obligations -> references on changed symbols\n" +
+	"- refactor: references -> outline -> symbol_context\n" +
+	"\n" +
 	"Refresh the index via the `ingest` MCP tool (`{\"service\":\"{{SERVICE}}\"}`) at\n" +
 	"session start and after each commit; it is hash-gated, so a clean repo\n" +
 	"refreshes in well under a second.\n" +
@@ -701,9 +707,11 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
 	"as binding, not advisory.\n" +
 	"\n" +
-	"Continuity: run `fathom thread brief` at session start if your harness has\n" +
-	"no SessionStart hook (Codex does not) — it prints the open threads, or\n" +
-	"nothing. File what the next session must know: `fathom thread note \"…\"`.\n" +
+	"Continuity: run `fathom prime` at session start if your harness has no\n" +
+	"SessionStart hook (Codex does not) — it prints the same identity,\n" +
+	"freshness, live-example, thread-brief, and custodian primer this hook\n" +
+	"injects on Claude Code. File what the next session must know:\n" +
+	"`fathom thread note \"…\"`.\n" +
 	"\n" +
 	"Done means proven: a plan task is only \"done\" when the index proves it, not\n" +
 	"when it is claimed. Before checking off a `docs/plans/*.md` item, run:\n" +
@@ -880,7 +888,11 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL: register the fathom MCP server with Claude Code (one-time, user scope):")
 	fmt.Fprintf(stdout, "MANUAL:   claude mcp add --transport http --scope user fathom %s/rpc/agent\n", url)
 	fmt.Fprintln(stdout, "MANUAL: Codex reads AGENTS.md automatically for the operating contract (already written above);")
-	fmt.Fprintln(stdout, "MANUAL: wire its MCP registration separately, per Codex's own MCP config.")
+	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too (docs/adoption/codex.md §2):")
+	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above — test with `codex mcp list`, unverified negotiation per-version):")
+	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom --url %s/rpc/agent\n", url)
+	fmt.Fprintln(stdout, "MANUAL:   or stdio fallback (guaranteed-compatible, single Codex session):")
+	fmt.Fprintln(stdout, "MANUAL:     codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite")
 	fmt.Fprintln(stdout, "MANUAL: add the verify gate to lefthook.yml's pre-push (fathom does not edit lefthook.yml):")
 	fmt.Fprintln(stdout, "MANUAL:   pre-push:")
 	fmt.Fprintln(stdout, "MANUAL:     commands:")

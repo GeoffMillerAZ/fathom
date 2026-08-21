@@ -82,6 +82,36 @@ func TestSessionHookDegraded(t *testing.T) {
 	}
 }
 
+// TestSessionHookNamesFetchFailureNotUnindexed is IT-5's covenant test: it
+// is TestSessionHookDegraded's own assertion by another name, pinned under
+// the exact identifier the brief specifies, so a future regression on this
+// exact contract (a transient fetchServices failure must never collapse
+// into the confident "not an indexed service" claim, and must instead name
+// the transient cause) is caught under a name that says so directly. No
+// source change was needed for this item: fetchServices already returns
+// (services, error) and buildSessionContext already branches on the error
+// before ever reaching the not-indexed render (sessionhook.go's own O2
+// comment, "enumeration failure is NOT 'not indexed'").
+func TestSessionHookNamesFetchFailureNotUnindexed(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/healthz" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("ok"))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError) // list_services (fetchServices) fails
+	}))
+	defer srv.Close()
+
+	got := buildSessionContext(srv.URL, t.TempDir())
+	if strings.Contains(got, "not an indexed service") {
+		t.Fatalf("a fetch failure must never be reported as \"not an indexed service\":\n%s", got)
+	}
+	if !strings.Contains(got, "enumeration failed") {
+		t.Errorf("the brief line must name the transient failure, got:\n%s", got)
+	}
+}
+
 // TestSessionHookZeroServices pins O2 fix (d): a healthy daemon with a
 // genuinely empty index must not render the dangling "Indexed services: ."
 // artifact (strings.Join(nil) + trailing period).

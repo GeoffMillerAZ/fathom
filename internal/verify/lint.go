@@ -1,12 +1,16 @@
 package verify
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // LintPlan reports plan-grammar-v2 convention violations (ADR-018 §1). Lint
 // findings are warnings: they never change gate exit codes in v0, but they
 // surface the honesty conventions — stable IDs, reasoned dispositions,
-// justified skips — that keep gated plans machine-legible. Deterministic:
-// findings come out in task order, one pass, no I/O.
+// justified skips, a well-formed needs: DAG — that keep gated plans
+// machine-legible. Deterministic: findings come out in task order (needs:
+// findings appended last, also in task order), one pass, no I/O.
 func LintPlan(p Plan) []string {
 	var out []string
 	seen := map[string]string{}
@@ -35,6 +39,67 @@ func LintPlan(p Plan) []string {
 		}
 		if t.AnnotationSuspect != "" {
 			out = append(out, fmt.Sprintf("%s: annotation block could not be parsed (%q) — the row's contract and author-owned id are VOID; check braces and quoting (O4)", t.ID, t.AnnotationSuspect))
+		}
+		if t.CtxMalformed {
+			out = append(out, fmt.Sprintf("%s: empty ctx: value (want space-separated pointers)", t.ID))
+		}
+	}
+	out = append(out, lintNeeds(p)...)
+	return out
+}
+
+// lintNeeds validates the needs: eligibility DAG (WF-3): an unknown id, a
+// self-reference, or a dependency cycle. Unknown-id and self-reference are a
+// direct per-edge scan; cycles come from a standard white/gray/black DFS
+// over row ids, walked in task order for determinism. A cycle is reported
+// once, from the edge whose target closes the loop back onto a row still on
+// the current path.
+func lintNeeds(p Plan) []string {
+	var out []string
+	ids := map[string]bool{}
+	byID := map[string]Task{}
+	for _, t := range p.Tasks {
+		ids[t.ID] = true
+		byID[t.ID] = t
+	}
+	for _, t := range p.Tasks {
+		for _, dep := range t.Needs {
+			switch {
+			case dep == t.ID:
+				out = append(out, fmt.Sprintf("%s: needs self-reference", t.ID))
+			case !ids[dep]:
+				out = append(out, fmt.Sprintf("%s: needs unknown id %q", t.ID, dep))
+			}
+		}
+	}
+
+	const (
+		white = iota
+		gray
+		black
+	)
+	state := map[string]int{}
+	var visit func(id string, path []string)
+	visit = func(id string, path []string) {
+		state[id] = gray
+		path = append(path, id)
+		for _, dep := range byID[id].Needs {
+			if dep == id || !ids[dep] {
+				continue // self-reference / unknown id already reported above
+			}
+			switch state[dep] {
+			case white:
+				visit(dep, path)
+			case gray:
+				cycle := append(append([]string{}, path...), dep)
+				out = append(out, fmt.Sprintf("%s: needs cycle (%s)", id, strings.Join(cycle, " -> ")))
+			}
+		}
+		state[id] = black
+	}
+	for _, t := range p.Tasks {
+		if state[t.ID] == white {
+			visit(t.ID, nil)
 		}
 	}
 	return out

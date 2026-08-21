@@ -90,6 +90,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	// unknown, never a fabricated zero (law 3).
 	if capabilityOffAt(projDir, "verify-gate") {
 		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		runStopHookRetro(projDir, hook.SessionID)
 		return 0
 	}
 
@@ -105,13 +106,43 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 		// is UNKNOWN. A fabricated zero here would read as "the gate found
 		// nothing", which is a different and false claim (law 3).
 		recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), nil)
+		// IT-13: retro is counting/artifact work, not assistance — it
+		// writes a local file and injects nothing into the session, so
+		// the OFF arm (which silences assistance, never measurement) must
+		// not silence it either. The env kill switch above already
+		// returned before this line runs at all, which is the ONLY case
+		// that skips it.
+		runStopHookRetro(projDir, hook.SessionID)
 		return 0
 	}
 
 	hc := newStopHookClient()
 	exit, catches := runStopHook(projDir, hc, *url, *block, stdout)
 	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
+	runStopHookRetro(projDir, hook.SessionID)
 	return exit
+}
+
+// runStopHookRetro mechanically lands one retro artifact per session
+// (IT-13, docs/design/intervention-outcomes.md IR-2): `fathom retro
+// --write`, in-process (cmdRetro is a same-package function call, not a
+// subprocess), scoped to THIS session id explicitly rather than retro's
+// own "most recent stamped session" default — the hook already knows the
+// exact session that just ended, so there is no ambiguity to resolve.
+// LLM-free, zero tokens: this is disk + git only.
+//
+// Non-fatal by construction: any failure (nothing to retro, an unreadable
+// beat log, a git error) is exactly what cmdRetro already reports as an
+// advisory line on the writer it's given — swallowed here (io.Discard)
+// because a failed retro must never break the Stop hook's own silent-exit
+// contract, and cmdRetro's own return code is never propagated to the
+// hook's exit code.
+func runStopHookRetro(projDir, sessionID string) {
+	args := []string{"--project", projDir, "--write"}
+	if sessionID != "" {
+		args = append(args, "--session", sessionID)
+	}
+	_ = cmdRetro(args, io.Discard, io.Discard)
 }
 
 // sessionLedgerBeatTailBytes bounds how much of the beat log

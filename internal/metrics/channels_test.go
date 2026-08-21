@@ -1,11 +1,34 @@
 package metrics
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 )
+
+// writeArmStateForTest points FATHOM_ARM_STATE at a fresh OFF-arm ledger
+// set at setAt with sessionsRemaining left, cleaned up automatically.
+func writeArmStateForTest(t *testing.T, setAt time.Time, sessionsRemaining int) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "arm.json")
+	raw, err := json.Marshal(map[string]any{
+		"arm":                "off",
+		"set_at":             setAt.UTC().Format(time.RFC3339),
+		"sessions_remaining": sessionsRemaining,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_ARM_STATE", path)
+}
 
 func channelsWindow() (time.Time, time.Time) {
 	return time.Unix(0, 0).UTC(), time.Unix(1<<32, 0).UTC()
@@ -126,4 +149,43 @@ func TestAggregateChannels_OtherChannelsIgnored(t *testing.T) {
 	if report.InjectionSeen != 0 || report.ObligationsServed != 0 {
 		t.Fatalf("report = %+v, want zero (non-edit-hook channels ignored)", report)
 	}
+}
+
+// TestAbsenceNotesAreArmAware pins IT-2: a "not measurable" note whose
+// cause could be an OFF measurement arm silencing hook channels must name
+// the arm — never the misleading "guard hook is not installed" wording a
+// genuinely absent hook gets — whenever an OFF arm actually covers the
+// window. Without an arm on file, wording is unchanged.
+func TestAbsenceNotesAreArmAware(t *testing.T) {
+	since, until := channelsWindow()
+
+	t.Run("with an OFF arm covering the window, notes name the arm", func(t *testing.T) {
+		writeArmStateForTest(t, since.Add(time.Hour), 4)
+
+		report := AggregateChannels(nil, since, until)
+		if !strings.Contains(report.GuardCoverageNote, "OFF measurement arm active") {
+			t.Errorf("GuardCoverageNote = %q, want it to name the arm, not a missing hook", report.GuardCoverageNote)
+		}
+		if strings.Contains(report.GuardCoverageNote, "guard hook is not installed") {
+			t.Errorf("GuardCoverageNote still blames a missing hook under an active arm: %q", report.GuardCoverageNote)
+		}
+		if !strings.Contains(report.GuardCoverageNote, "4 session(s) remaining") {
+			t.Errorf("GuardCoverageNote must name the session budget: %q", report.GuardCoverageNote)
+		}
+		if !strings.Contains(report.ModuleServingNote, "OFF measurement arm active") {
+			t.Errorf("ModuleServingNote = %q, want it to name the arm", report.ModuleServingNote)
+		}
+	})
+
+	t.Run("without an arm on file, wording is unchanged", func(t *testing.T) {
+		t.Setenv("FATHOM_ARM_STATE", filepath.Join(t.TempDir(), "absent-arm.json"))
+
+		report := AggregateChannels(nil, since, until)
+		if !strings.Contains(report.GuardCoverageNote, "guard hook is not installed") {
+			t.Errorf("GuardCoverageNote = %q, want the original missing-hook wording with no arm on file", report.GuardCoverageNote)
+		}
+		if strings.Contains(report.GuardCoverageNote, "OFF measurement arm") {
+			t.Errorf("GuardCoverageNote must not claim an arm that isn't there: %q", report.GuardCoverageNote)
+		}
+	})
 }

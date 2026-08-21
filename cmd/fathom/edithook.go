@@ -43,9 +43,22 @@ const maxSpecIDsPerEdit = 3
 //   - No rules + index not stale → print nothing, exit 0.
 //   - Otherwise → print hookSpecificOutput JSON with compact obligations text.
 func cmdEditHook(args []string, stdout, stderr io.Writer) int {
-	if assistiveChannelsDisabled() {
-		return 0 // FATHOM_CHANNELS=off (channels.go): total silence, before any other work
+	// IT-3: the total-silence gate used to be assistiveChannelsDisabled(),
+	// which is ALSO true under an active OFF arm — so an armed session
+	// exited here before emitting a single beat, deleting the counting-only
+	// baseline (seen / observer beats) the arm needs to prove it ran at
+	// all. fathomChannelsDisabled() alone (the raw env kill switch) is the
+	// only condition that must skip beat emission too — matching
+	// session-hook and stop-hook's own "NOT assistiveChannelsDisabled"
+	// gates at this exact position.
+	if fathomChannelsDisabled() {
+		return 0 // raw kill switch: total silence, no beat, no ledger row
 	}
+	// armOff (env kill switch OR an active OFF arm) silences INJECTION and
+	// OUTPUT only, from here down: stdout must stay byte-identical to a
+	// fully-disabled run (empty), and no daemon call may be made, but the
+	// counting-only beats below still fire, stamped "arm":"off".
+	armOff := assistiveChannelsDisabled()
 	rpcOrigin = "edit-hook"
 	fs := newFlagSet("edit-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -79,14 +92,20 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if *pre {
-		return cmdEditHookPre(hook.ToolName, hook.ToolInput.FilePath, hook.ToolInput.Command, hook.CWD, hook.SessionID, *url, stdout)
+		return cmdEditHookPre(hook.ToolName, hook.ToolInput.FilePath, hook.ToolInput.Command, hook.CWD, hook.SessionID, *url, armOff, stdout)
 	}
 
 	filePath := hook.ToolInput.FilePath
 	if filePath == "" {
 		return 0
 	}
-	emitBeat("edit-hook", "seen", firingMeta(map[string]string{"phase": "post"}, hook.SessionID, filePath)) // GI-1: the coverage denominator
+	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post"}, hook.SessionID, filePath, armOff)) // GI-1: the coverage denominator
+	if armOff {
+		// Counting-only baseline stops here: no daemon call, no stdout —
+		// injection/output stays fully silenced under OFF (IT-3).
+		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath, armOff))
+		return 0
+	}
 
 	// Determine project dir.
 	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
@@ -304,7 +323,15 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			"additionalContext": sb.String(),
 		},
 	})
-	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "post"}, hook.SessionID, filePath))
+	answeredMeta := map[string]string{"emitted": "true", "phase": "post"}
+	// IT-6: the cap-pressure count already rendered into the payload above
+	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
+	// evicted rules themselves — so obligations-cap pressure becomes a
+	// trendable number rather than a fact visible only in one hook's stdout.
+	if obl.Displaced > 0 {
+		answeredMeta["displaced"] = strconv.Itoa(obl.Displaced)
+	}
+	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, hook.SessionID, filePath))
 	recordStoryRow(projDir, "obligation-served", map[string]any{
 		"file": repoRelFile, "rules": len(renderRules), "session": hook.SessionID,
 	})

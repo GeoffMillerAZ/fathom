@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // writeCallLogFixture writes entries as JSONL at path (creating parent dirs).
@@ -31,6 +33,16 @@ func writeCallLogFixture(t *testing.T, path string, entries []adoptionCallEntry)
 	}
 }
 
+// isolateVerifyLedger points FATHOM_VERIFY_LEDGER at a fresh, empty path for
+// the duration of the test (IT-11: the verify-gate figure now reads
+// ~/.fathom/verify-ledger.jsonl by default, and this repo's own is a live,
+// growing file from real `fathom verify` runs — every test that exercises
+// cmdInstrumentAdoption must not silently pick up ambient rows).
+func isolateVerifyLedger(t *testing.T) {
+	t.Helper()
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(t.TempDir(), "verify-ledger.jsonl"))
+}
+
 // ─── buildAdoptionReport: the pure, deterministic core ─────────────────────
 
 func TestBuildAdoptionReport_Golden(t *testing.T) {
@@ -44,7 +56,7 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	registered := []string{"brief", "find_symbol", "verify_plan", "capabilities"}
 	openObs := 2
 
-	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, entries, 0, registered, "", &openObs, ".fathom/observations.md")
+	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, entries, 0, registered, "", &openObs, ".fathom/observations.md", nil)
 
 	if r.TotalCalls != 5 {
 		t.Errorf("TotalCalls = %d, want 5", r.TotalCalls)
@@ -96,10 +108,10 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 		t.Errorf("ClaimsAttachHitRate = %v, want 0.5", r.ClaimsAttachHitRate)
 	}
 
-	// Verify-gate: the lone verify_plan row carries no verdict_outcome
-	// (predates T5-7 instrumentation) — honest "not instrumented" marker,
-	// never a fabricated zero, and the row is counted separately as
-	// predating instrumentation rather than silently ignored.
+	// Verify-gate (IT-11): sourced from the verify ledger, never the call
+	// log — the verify_plan row above (with or without a verdict_outcome)
+	// no longer has any bearing on this figure. No ledger rows given here,
+	// so: honest "not instrumented" marker, never a fabricated zero.
 	if r.VerifyGateRefusals != nil {
 		t.Errorf("VerifyGateRefusals = %v, want nil (not instrumented)", r.VerifyGateRefusals)
 	}
@@ -109,8 +121,8 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	if r.VerifyGateInstrumentedCalls != 0 {
 		t.Errorf("VerifyGateInstrumentedCalls = %d, want 0", r.VerifyGateInstrumentedCalls)
 	}
-	if r.VerifyGatePredatesInstrumentation != 1 {
-		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 1 (the pre-T5-7 verify_plan row)", r.VerifyGatePredatesInstrumentation)
+	if r.VerifyGatePredatesInstrumentation != 0 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 0 (retired: ledger rows never predate instrumentation)", r.VerifyGatePredatesInstrumentation)
 	}
 
 	if r.OpenObservationCount == nil || *r.OpenObservationCount != 2 {
@@ -118,17 +130,19 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	}
 }
 
-// ─── T5-7: gate catches, real counts (docs/plans/trust-and-tokenomics.md) ──
+// ─── IT-11: verify-gate figure, ledger-sourced ─────────────────────────────
 
-// TestBuildAdoptionReport_GateCatchesRealCounts proves the "not
-// instrumented" marker is replaced with real derived counts once
-// verify_plan/review rows carry a verdict_outcome — counted as refusal
-// EVENTS (FR-2, docs/plans/exploration-ledger.md: gate-shaped folds count
-// events, never cumulative sums — summing per-row failures re-counted the
-// same standing failures every call, the 264,487-catches artifact): one
-// failing verify_plan call + one review call with active findings = 2
-// refusals across 2 instrumented calls, however many rows each carried.
+// TestBuildAdoptionReport_GateCatchesRealCounts proves the verify-gate
+// figure derives from the verify ledger, never the call log (IT-11, the
+// 215/4940-family double-count this replaces): call-log verify_plan/review
+// rows carrying a verdict_outcome are included here specifically to prove
+// they no longer move this figure — if the retired call-log-derived path
+// were still live, the refusal count below would be 2, not 1.
 func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
+	ledgerRows := []verifyLedgerRow{
+		{Plan: "docs/plans/a.md", Total: 2, Claimed: 2, Verified: 1, Failing: 1},
+		{Plan: "docs/plans/b.md", Total: 3, Claimed: 3, Verified: 3, Failing: 0},
+	}
 	entries := []adoptionCallEntry{
 		{
 			TS: "2026-07-24T10:00:00Z", Tool: "verify_plan", Surface: "agent",
@@ -139,63 +153,64 @@ func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 			VerdictOutcome: map[string]int{"impact": 0, "obligations": 1, "arch_conformance": 1, "spec_coverage": 0},
 		},
 	}
-	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
+	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
 
-	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 2 {
-		t.Fatalf("VerifyGateRefusals = %v, want 2 refusal events", r.VerifyGateRefusals)
+	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 1 {
+		t.Fatalf("VerifyGateRefusals = %v, want 1 refusal event (one ledger row had Failing>0; the call log's own 2 must not leak in)", r.VerifyGateRefusals)
 	}
 	if r.VerifyGateInstrumentedCalls != 2 {
-		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", r.VerifyGateInstrumentedCalls)
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2 (the ledger ROW count, not the call-log entry count)", r.VerifyGateInstrumentedCalls)
 	}
 	if r.VerifyGatePredatesInstrumentation != 0 {
 		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 0", r.VerifyGatePredatesInstrumentation)
 	}
 	if strings.Contains(r.VerifyGateNote, "not instrumented") {
-		t.Errorf("VerifyGateNote = %q, should not say not instrumented when real data exists", r.VerifyGateNote)
+		t.Errorf("VerifyGateNote = %q, should not say not instrumented when the ledger has rows", r.VerifyGateNote)
 	}
-	if !strings.Contains(r.VerifyGateNote, "2 gate refusal") {
-		t.Errorf("VerifyGateNote = %q, want it to state the 2 refusals", r.VerifyGateNote)
+	if !strings.Contains(r.VerifyGateNote, "1 gate refusal") {
+		t.Errorf("VerifyGateNote = %q, want it to state the 1 refusal", r.VerifyGateNote)
+	}
+	if !strings.Contains(r.VerifyGateNote, "2 verify-ledger run") {
+		t.Errorf("VerifyGateNote = %q, want it to name the ledger-row denominator", r.VerifyGateNote)
 	}
 }
 
-// TestBuildAdoptionReport_GateCatchesHonestSplit is the "never zero" proof:
-// a mix of instrumented and pre-instrumentation verify_plan/review rows
-// must keep the two populations separate — the catch count derives ONLY
-// from the instrumented rows, and the predates-instrumentation rows are
-// reported as their own count, never silently treated as zero-catch
-// evidence.
+// TestBuildAdoptionReport_GateCatchesHonestSplit is the "never a fabricated
+// zero" proof, re-pointed at the ledger source (IT-11): a ledger that has
+// never run reports nil; a ledger that HAS run, entirely cleanly, reports a
+// real, non-nil 0 — the two must never look the same.
 func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
-	entries := []adoptionCallEntry{
-		// Predates instrumentation: no verdict_outcome at all.
-		{TS: "2026-07-20T09:00:00Z", Tool: "verify_plan", Surface: ""},
-		{TS: "2026-07-21T09:00:00Z", Tool: "review", Surface: "cli"},
-		// Instrumented: real signal.
-		{
-			TS: "2026-07-24T10:00:00Z", Tool: "verify_plan", Surface: "agent",
-			VerdictOutcome: map[string]int{"claimed": 1, "verified": 0, "failing": 1},
-		},
-		// Unrelated tool: never counted either way.
-		{TS: "2026-07-24T10:05:00Z", Tool: "find_symbol", Surface: "agent"},
-	}
-	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md")
+	t.Run("no ledger rows: nil, never a fabricated zero", func(t *testing.T) {
+		r := buildAdoptionReport("x.jsonl", true, nil, 0, nil, "", nil, ".fathom/observations.md", nil)
+		if r.VerifyGateRefusals != nil {
+			t.Errorf("VerifyGateRefusals = %v, want nil (the ledger has never run)", r.VerifyGateRefusals)
+		}
+		if !strings.Contains(r.VerifyGateNote, "not instrumented") {
+			t.Errorf("VerifyGateNote = %q, want it to say not instrumented", r.VerifyGateNote)
+		}
+	})
 
-	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 1 {
-		t.Fatalf("VerifyGateRefusals = %v, want 1 (only the instrumented row's failing count)", r.VerifyGateRefusals)
-	}
-	if r.VerifyGateInstrumentedCalls != 1 {
-		t.Errorf("VerifyGateInstrumentedCalls = %d, want 1", r.VerifyGateInstrumentedCalls)
-	}
-	if r.VerifyGatePredatesInstrumentation != 2 {
-		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 2 (the two pre-instrumentation rows)", r.VerifyGatePredatesInstrumentation)
-	}
-	if !strings.Contains(r.VerifyGateNote, "predate") {
-		t.Errorf("VerifyGateNote = %q, want it to disclose the predates-instrumentation rows", r.VerifyGateNote)
-	}
+	t.Run("ledger ran, entirely clean: a real 0", func(t *testing.T) {
+		ledgerRows := []verifyLedgerRow{
+			{Plan: "docs/plans/a.md", Total: 2, Claimed: 2, Verified: 2, Failing: 0},
+			{Plan: "docs/plans/b.md", Total: 1, Claimed: 1, Verified: 1, Failing: 0},
+		}
+		r := buildAdoptionReport("x.jsonl", true, nil, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
+		if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 0 {
+			t.Fatalf("VerifyGateRefusals = %v, want a real 0 (the ledger ran twice, both clean)", r.VerifyGateRefusals)
+		}
+		if r.VerifyGateInstrumentedCalls != 2 {
+			t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", r.VerifyGateInstrumentedCalls)
+		}
+		if strings.Contains(r.VerifyGateNote, "not instrumented") {
+			t.Errorf("VerifyGateNote = %q, must not say not instrumented — the ledger genuinely ran", r.VerifyGateNote)
+		}
+	})
 }
 
 func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 	entries := []adoptionCallEntry{{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent"}}
-	r := buildAdoptionReport("x.jsonl", true, entries, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
+	r := buildAdoptionReport("x.jsonl", true, entries, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
 	if r.ClaimsAttachHitRate != nil {
 		t.Errorf("ClaimsAttachHitRate = %v, want nil when no brief calls occurred", r.ClaimsAttachHitRate)
 	}
@@ -205,7 +220,7 @@ func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 }
 
 func TestBuildAdoptionReport_EmptyLogIsHonestZero(t *testing.T) {
-	r := buildAdoptionReport("x.jsonl", true, nil, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md")
+	r := buildAdoptionReport("x.jsonl", true, nil, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
 	if r.TotalCalls != 0 {
 		t.Errorf("TotalCalls = %d, want 0", r.TotalCalls)
 	}
@@ -339,6 +354,7 @@ func sortedStrings(ss []string) bool {
 // ─── cmdInstrumentAdoption: end-to-end CLI ─────────────────────────────────
 
 func TestCmdInstrumentAdoption_EndToEnd(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "workspace", "logs", "mcp-calls.jsonl")
 	writeCallLogFixture(t, logPath, []adoptionCallEntry{
@@ -370,29 +386,39 @@ func TestCmdInstrumentAdoption_EndToEnd(t *testing.T) {
 	}
 }
 
-// TestCmdInstrumentAdoption_MixedEraGateCatches is T5-7's fixture-based
-// end-to-end proof: a log spanning both eras — pre-instrumentation
-// verify_plan/review rows (no verdict_outcome) and post-instrumentation
-// rows (real counts) — must report the real catch total, the instrumented
-// call count, and the predates-instrumentation count as three separate,
-// honest numbers, in both output forms.
-func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
+// TestAdoptionVerifyFigureMatchesLedger pins IT-11: `fathom instrument
+// --adoption`'s verify-gate figure derives from the verify ledger
+// (~/.fathom/verify-ledger.jsonl, FATHOM_VERIFY_LEDGER-injectable —
+// verifyLedgerPath), never the call log — proven by seeding a call log
+// whose OWN verify_plan/review verdict_outcome entries would produce a
+// DIFFERENT count under the retired call-log-derived computation (the
+// 215/4940-family double-count, O6/DQ-5), and asserting the report
+// reflects ONLY the ledger's numbers, with the ledger-row count named as
+// the denominator in the rendered sentence.
+func TestAdoptionVerifyFigureMatchesLedger(t *testing.T) {
 	root := t.TempDir()
+	ledgerPath := filepath.Join(root, "verify-ledger.jsonl")
+	t.Setenv("FATHOM_VERIFY_LEDGER", ledgerPath)
+
+	// Three ledger runs: two failing, one clean.
+	appendVerifyLedger([]string{"docs/plans/a.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
+		{TaskID: "T-1", Claimed: true, Status: verify.Fail},
+	}}})
+	appendVerifyLedger([]string{"docs/plans/b.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
+		{TaskID: "T-2", Claimed: true, Status: verify.Pass},
+	}}})
+	appendVerifyLedger([]string{"docs/plans/c.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
+		{TaskID: "T-3", Claimed: true, Status: verify.Fail},
+	}}})
+
 	logPath := filepath.Join(root, "calls.jsonl")
+	// A call log carrying its OWN, LARGER verdict_outcome population — if
+	// this still drove the figure, the report would show a different
+	// count than the ledger's 2-of-3.
 	writeCallLogFixture(t, logPath, []adoptionCallEntry{
-		// Pre-T5-7 era: dispatch metadata only, no verdict_outcome.
-		{TS: "2026-07-10T09:00:00Z", Tool: "verify_plan", Surface: "agent"},
-		{TS: "2026-07-11T09:00:00Z", Tool: "verify_plan", Surface: "agent"},
-		{TS: "2026-07-12T09:00:00Z", Tool: "review", Surface: "cli"},
-		// Post-T5-7 era: real verdict_outcome.
-		{
-			TS: "2026-07-24T09:00:00Z", Tool: "verify_plan", Surface: "agent",
-			VerdictOutcome: map[string]int{"claimed": 3, "verified": 1, "failing": 2},
-		},
-		{
-			TS: "2026-07-24T09:05:00Z", Tool: "review", Surface: "cli",
-			VerdictOutcome: map[string]int{"impact": 0, "obligations": 1, "spec_coverage": 0},
-		},
+		{TS: "2026-07-10T09:00:00Z", Tool: "verify_plan", Surface: "agent", VerdictOutcome: map[string]int{"claimed": 3, "verified": 0, "failing": 3}},
+		{TS: "2026-07-11T09:00:00Z", Tool: "verify_plan", Surface: "agent", VerdictOutcome: map[string]int{"claimed": 3, "verified": 0, "failing": 3}},
+		{TS: "2026-07-12T09:00:00Z", Tool: "review", Surface: "cli", VerdictOutcome: map[string]int{"obligations": 1}},
 	})
 
 	var stdout, stderr bytes.Buffer
@@ -401,10 +427,7 @@ func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
 		t.Fatalf("exit = %d, stderr: %s", code, stderr.String())
 	}
 	out := stdout.String()
-	// One failing verify_plan call + one review call with an active finding
-	// = 2 refusal EVENTS (FR-2: never a sum of standing failures) across
-	// the 2 instrumented calls; 3 rows predate instrumentation.
-	for _, want := range []string{"2 gate refusal", "2 instrumented", "3 row"} {
+	for _, want := range []string{"2 gate refusal", "3 verify-ledger run", "verify-ledger.jsonl"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("human output missing %q:\n%s", want, out)
 		}
@@ -421,17 +444,18 @@ func TestCmdInstrumentAdoption_MixedEraGateCatches(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if report.VerifyGateRefusals == nil || *report.VerifyGateRefusals != 2 {
-		t.Errorf("VerifyGateRefusals = %v, want 2 refusal events", report.VerifyGateRefusals)
+		t.Errorf("VerifyGateRefusals = %v, want 2 (the ledger's own count, not the call log's)", report.VerifyGateRefusals)
 	}
-	if report.VerifyGateInstrumentedCalls != 2 {
-		t.Errorf("VerifyGateInstrumentedCalls = %d, want 2", report.VerifyGateInstrumentedCalls)
+	if report.VerifyGateInstrumentedCalls != 3 {
+		t.Errorf("VerifyGateInstrumentedCalls = %d, want 3 (the ledger row count)", report.VerifyGateInstrumentedCalls)
 	}
-	if report.VerifyGatePredatesInstrumentation != 3 {
-		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 3", report.VerifyGatePredatesInstrumentation)
+	if report.VerifyGatePredatesInstrumentation != 0 {
+		t.Errorf("VerifyGatePredatesInstrumentation = %d, want 0 (retired: every ledger row has always carried verdict counts)", report.VerifyGatePredatesInstrumentation)
 	}
 }
 
 func TestCmdInstrumentAdoption_JSONOutput(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "calls.jsonl")
 	writeCallLogFixture(t, logPath, []adoptionCallEntry{
@@ -463,6 +487,7 @@ func TestCmdInstrumentAdoption_JSONOutput(t *testing.T) {
 // measurement rendered without a marker would launder a partial log into a
 // confident number.
 func TestCmdInstrumentAdoption_ReportsSkippedMalformedLines(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "calls.jsonl")
 	content := `{"ts":"2026-07-23T10:00:00Z","tool":"find_symbol"}
@@ -504,6 +529,7 @@ torn line
 }
 
 func TestCmdInstrumentAdoption_MissingCallLogIsHonestZero(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	var stdout, stderr bytes.Buffer
 	code := cmdInstrumentAdoption([]string{"--call-log", filepath.Join(root, "nope.jsonl"), "--root", root}, &stdout, &stderr)
@@ -516,6 +542,7 @@ func TestCmdInstrumentAdoption_MissingCallLogIsHonestZero(t *testing.T) {
 }
 
 func TestCmdInstrumentAdoption_ZeroCallToolsListsUncalledRegisteredTool(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "calls.jsonl")
 	writeCallLogFixture(t, logPath, []adoptionCallEntry{
@@ -533,6 +560,7 @@ func TestCmdInstrumentAdoption_ZeroCallToolsListsUncalledRegisteredTool(t *testi
 }
 
 func TestCmdInstrumentAdoption_NoObservationsFileIsHonestlyUnknown(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "calls.jsonl")
 	writeCallLogFixture(t, logPath, nil)
@@ -551,6 +579,7 @@ func TestCmdInstrumentAdoption_NoObservationsFileIsHonestlyUnknown(t *testing.T)
 // cmdInstrumentAdoption through the real "fathom instrument" entrypoint,
 // not just when called directly.
 func TestInstrument_AdoptionFlagDispatchesViaTopLevelRun(t *testing.T) {
+	isolateVerifyLedger(t)
 	root := t.TempDir()
 	logPath := filepath.Join(root, "calls.jsonl")
 	writeCallLogFixture(t, logPath, []adoptionCallEntry{
@@ -646,6 +675,7 @@ func TestAdoptionServiceScoped(t *testing.T) {
 	})
 
 	t.Run("cmd_scopes_report_to_service", func(t *testing.T) {
+		isolateVerifyLedger(t)
 		dir := t.TempDir()
 		logPath := filepath.Join(dir, "calls.jsonl")
 		lines := `{"ts":"2026-08-07T01:02:03Z","tool":"find_symbol","service":"app-kit","surface":"agent"}
@@ -669,20 +699,21 @@ func TestAdoptionServiceScoped(t *testing.T) {
 	})
 }
 
-// TestAdoptionCatchesNotCumulative pins FR-2 (docs/plans/exploration-ledger.md):
-// the same standing failure re-read by many gate calls is ONE refusal per
-// call maximum, and the aggregate counts refusal events — never the
-// per-call failing-row sums that produced the 264,487-catches artifact.
+// TestAdoptionCatchesNotCumulative pins FR-2 (docs/plans/exploration-ledger.md),
+// re-pointed at the ledger source (IT-11): the same standing failure
+// re-verified by many runs is ONE refusal per run maximum, and the
+// aggregate counts refusal EVENTS — never the per-row Failing sums that
+// produced the 264,487-catches artifact.
 func TestAdoptionCatchesNotCumulative(t *testing.T) {
-	entries := []adoptionCallEntry{
-		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 10, "failing": 40}},
-		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 10, "failing": 40}},
-		{Tool: "verify_plan", VerdictOutcome: map[string]int{"claimed": 50, "verified": 50, "failing": 0}},
-		{Tool: "review", VerdictOutcome: map[string]int{"obligations": 8, "spec_coverage": 3}},
+	ledgerRows := []verifyLedgerRow{
+		{Plan: "a.md", Total: 50, Claimed: 50, Verified: 10, Failing: 40},
+		{Plan: "a.md", Total: 50, Claimed: 50, Verified: 10, Failing: 40}, // same plan, re-verified, still failing
+		{Plan: "b.md", Total: 50, Claimed: 50, Verified: 50, Failing: 0},
+		{Plan: "c.md", Total: 11, Claimed: 11, Verified: 3, Failing: 8},
 	}
-	count, instrumented, _, note := gateCatchStats(entries)
+	count, instrumented, note := gateCatchStatsFromLedger(ledgerRows)
 	if count == nil || *count != 3 {
-		t.Fatalf("refusals = %v, want 3 (two failing verifies + one review with findings; NEVER 91)", count)
+		t.Fatalf("refusals = %v, want 3 (three runs each carried at least one failing row; NEVER 88 — a sum of the Failing counts)", count)
 	}
 	if instrumented != 4 {
 		t.Errorf("instrumented = %d, want 4", instrumented)

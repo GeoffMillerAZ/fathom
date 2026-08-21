@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 )
@@ -1297,7 +1298,7 @@ func TestCheckObligationsServed(t *testing.T) {
 
 func TestCheckSurfaceTraffic(t *testing.T) {
 	t.Run("daemon down is skipped", func(t *testing.T) {
-		got := checkSurfaceTraffic(http.DefaultClient, "http://127.0.0.1:1", false)
+		got := checkSurfaceTraffic(http.DefaultClient, "http://127.0.0.1:1", false, t.TempDir())
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}
@@ -1306,7 +1307,7 @@ func TestCheckSurfaceTraffic(t *testing.T) {
 	t.Run("zero calls fails, scoped to this daemon process's lifetime", func(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
 		defer srv.Close()
-		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true)
+		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
 		if got.Status != doctorFail {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
@@ -1318,9 +1319,54 @@ func TestCheckSurfaceTraffic(t *testing.T) {
 	t.Run("nonzero calls pass", func(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 3})
 		defer srv.Close()
-		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true)
+		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
+		}
+	})
+}
+
+// TestSurfaceTrafficFallsBackToPersistentLog pins IT-4: server_stats'
+// surface_traffic counter is PROCESS-LIFETIME (resets on every daemon
+// restart, doctor.go's own documented caveat), so a zero there is not
+// proof nothing ever happened — checkSurfaceTraffic must consult the
+// persistent call log (the same path resolution hooks_firing uses) before
+// failing, and only fail when THAT shows no agent-surface row either.
+func TestSurfaceTrafficFallsBackToPersistentLog(t *testing.T) {
+	t.Run("live counter zero, but a recent agent row in the persistent log passes", func(t *testing.T) {
+		logPath := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
+		row := fmt.Sprintf(`{"ts":%q,"tool":"find_symbol","surface":"agent"}`, time.Now().UTC().Format(time.RFC3339))
+		if err := os.WriteFile(logPath, []byte(row+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("FATHOM_CALL_LOG", logPath)
+
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
+		defer srv.Close()
+		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
+		if got.Status != doctorPass {
+			t.Fatalf("status = %v, want pass — the persistent log shows a recent agent call: %+v", got.Status, got)
+		}
+		if !strings.Contains(got.Reason, "live counter reset by restart") {
+			t.Errorf("reason must explain the fallback: %s", got.Reason)
+		}
+		if !strings.Contains(got.Reason, "1 agent call") {
+			t.Errorf("reason must name the count: %s", got.Reason)
+		}
+	})
+
+	t.Run("live counter zero and no agent row ever still fails", func(t *testing.T) {
+		logPath := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
+		if err := os.WriteFile(logPath, []byte(`{"ts":"2020-01-01T00:00:00Z","tool":"find_symbol","surface":"cli"}`+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("FATHOM_CALL_LOG", logPath)
+
+		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
+		defer srv.Close()
+		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail — no agent-surface row exists anywhere", got.Status)
 		}
 	})
 }

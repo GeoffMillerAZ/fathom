@@ -5,6 +5,46 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-21 — the evidence audit, the work frontier, and instrument truth
+
+A 12-agent audit of every feedback channel produced the first full
+evidence verdict (vision 24 §7, and the shareable evidence-ledger
+artifact): verify gate PROVEN (436 gate runs/5d, 180 caught
+claimed>verified), thread bet COLLECTING at 4/20 per threadBetCheck,
+A/B NOT ADMISSIBLE (ON arm: 0 admissible units), and — the sharpest
+finding — the instruments themselves lied under the TCC wedge (flywheel
+IDLE at exit 0 on EPERM) and under the OFF arm (beats gated before
+emit, "hook not installed" printed about a PASSing hook).
+
+Two plans landed whole, 24/24 rows gate-verified. instrument-truth
+(IT-1..13): flywheel read-errors are OPEN never IDLE with the wedge
+hint; ArmStateForWindow makes every absence note arm-aware; counting
+beats survive FATHOM_CHANNELS=off (arm-stamped); doctor surface_traffic
+falls back to the persistent call log; a session-hook fetch failure is
+never "not indexed" (O2); answered beats carry the displaced count;
+review emits verdict_outcome; metrics interventions defaults --store;
+machine thread notes carry close conditions at mint (new session_ended
+condition); observation ids mint under flock (O-id collisions now
+impossible); the adoption verify figure derives from the verify ledger
+with its denominator named (retires the 215/4940 double-count, O6);
+frozen 16MB-cap totals are excluded from aggregates and named; the Stop
+hook lands a mechanical retro per session. work-frontier (WF-1..11):
+ctx: pointers + `plans context` materializer; needs: + derived
+eligible/blocked_on + --eligible-only; TTL-only advisory leases
+(.fathom/leases.jsonl, flock, overlap counting — heartbeats refused);
+`fathom prime` (Codex pull-tier primer); opening-moves stanza table;
+init prints the codex mcp add lines; codex.md names the measurement
+boundary. Dispatch boundary registered in vision 24: fathom serves
+facts about work; the loop belongs to the harness, forever.
+
+Found while shipping: a wedged ingest writes a zero-symbol/zero-edge
+index while reporting "0 failed" — a fourth false-signal shape; the
+daemon-side ingest tool (its own preserved TCC grant) is the honest
+workaround, and the extractor's swallowed read errors are follow-up
+work. The measurement arm flips ON now that IT-1..5 are live — the OFF
+floor was exceeded 5×, the ON arm is the bottleneck, and every further
+OFF session was redundant evidence.
+
 ### 2026-08-14 — the completion pass: every recommendation either shipped or has a dated row
 
 O29 interim fix: `plans status` fans its per-plan verifies out 8-wide

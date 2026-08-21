@@ -1,6 +1,7 @@
 package mcp_test
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -27,6 +28,23 @@ type reviewFakeBackend struct {
 	claims      map[string]core.SemanticClaim   // keyed by claim ID
 	links       map[string][]core.ClaimLink     // keyed by claim ID
 	putErr      error
+	// sources, when non-nil, overrides extendedFakeBackend's always-nil
+	// Sources() — needed so applyAndPersistFindings' fileExists check (IT-7,
+	// docs/plans/instrument-truth.md) can see a scoped file as still present
+	// (review.ClassifyResolution's code-change branch) rather than every
+	// superseded claim defaulting to scope-disappearance.
+	sources map[string][]byte // keyed by repo-relative path
+}
+
+func (r *reviewFakeBackend) Sources(_ context.Context, _ string) ([]core.SourceFile, error) {
+	if r.sources == nil {
+		return nil, nil
+	}
+	out := make([]core.SourceFile, 0, len(r.sources))
+	for path, content := range r.sources {
+		out = append(out, core.SourceFile{Path: path, Content: content})
+	}
+	return out, nil
 }
 
 func (r *reviewFakeBackend) Obligations(_ context.Context, _, file string, _ int) (semantic.Obligations, error) {
@@ -402,5 +420,89 @@ rules: [
 		if d["name"] == "arch_conformance" && d["count"].(float64) != 0 {
 			t.Errorf("arch count after fix = %v, want 0", d["count"])
 		}
+	}
+}
+
+// TestReviewEmitsVerdictOutcome is IT-7's real evidence (docs/plans/
+// instrument-truth.md): review_diff's result payload must carry a
+// verdict_outcome map (active/fixed/superseded finding counts) mirroring
+// verify_plan's own pattern (verify_plan_tool_test.go's
+// TestVerifyPlan_VerdictOutcomeReachesCallLog), so the call logger's
+// existing extraction (calllog.go's verdictOutcomeFrom) picks review_diff
+// calls up with zero logger changes. Run 1 emits+persists an active arch
+// violation (active:1, nothing yet reconciled); run 2 fixes it IN PLACE
+// (the violating call edge removed, the scoped file still present in the
+// fake's Sources()) so the prior claim reconciles as a code-change
+// resolution (active:0, fixed:1, superseded:0) rather than the
+// scope-disappearance branch.
+func TestReviewEmitsVerdictOutcome(t *testing.T) {
+	corpusRoot := t.TempDir()
+	rulesDir := filepath.Join(corpusRoot, ".fathom", "rules")
+	if err := os.MkdirAll(rulesDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	ruleFile := `
+rules: [
+	{from_pkg: "api", to_pkg: "store", allow: false},
+]
+`
+	if err := os.WriteFile(filepath.Join(rulesDir, "archconformance.cue"), []byte(ruleFile), 0o644); err != nil {
+		t.Fatalf("write rule file: %v", err)
+	}
+	violating := []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7, Calls: []string{"svc::store.Query"}},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: violating, services: []string{"svc"}, svcPath: corpusRoot},
+		sources: map[string][]byte{
+			"api/handler.go": []byte("package api\n"),
+			"store/query.go": []byte("package store\n"),
+		},
+	}
+	var buf bytes.Buffer
+	srv := mcp.NewServerWithLogger(fake, mcp.NewCallLogger(&buf))
+	args := map[string]any{"service": "svc", "changed_files": []string{"api/handler.go"}}
+	call := func(id int) map[string]any {
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: id, Method: "tools/call",
+			Params: map[string]any{"name": "review_diff", "arguments": args},
+		})
+		return extToolPayload(t, resp)
+	}
+
+	// Run 1: violation emitted + persisted fresh.
+	p1 := call(40)
+	vo1, ok := p1["verdict_outcome"].(map[string]any)
+	if !ok {
+		t.Fatalf("result payload missing verdict_outcome (fixture broken?): %v", p1)
+	}
+	if vo1["active"] != float64(1) || vo1["fixed"] != float64(0) || vo1["superseded"] != float64(0) {
+		t.Fatalf("run1 verdict_outcome = %v, want active:1 fixed:0 superseded:0", vo1)
+	}
+	entry1 := callLogEntryFor(t, &buf, "review_diff", "")
+	logged1, ok := entry1["verdict_outcome"].(map[string]any)
+	if !ok {
+		t.Fatalf("logged entry missing verdict_outcome: %v", entry1)
+	}
+	if logged1["active"] != float64(1) || logged1["fixed"] != float64(0) || logged1["superseded"] != float64(0) {
+		t.Errorf("logged verdict_outcome = %v, want active:1 fixed:0 superseded:0", logged1)
+	}
+
+	// Fix the violation in place: the call edge is removed, both scoped
+	// files remain present in Sources().
+	fake.nodes = []core.SymbolNode{
+		{Service: "svc", Package: "api", Name: "Handler", Kind: core.KindGoFunc, FilePath: "api/handler.go", Line: 7},
+		{Service: "svc", Package: "store", Name: "Query", Kind: core.KindGoFunc, FilePath: "store/query.go", Line: 3},
+	}
+
+	// Run 2: the prior claim reconciles as fixed (code-change resolution).
+	p2 := call(41)
+	vo2, ok := p2["verdict_outcome"].(map[string]any)
+	if !ok {
+		t.Fatalf("run2 result payload missing verdict_outcome: %v", p2)
+	}
+	if vo2["active"] != float64(0) || vo2["fixed"] != float64(1) || vo2["superseded"] != float64(0) {
+		t.Fatalf("run2 verdict_outcome = %v, want active:0 fixed:1 superseded:0", vo2)
 	}
 }

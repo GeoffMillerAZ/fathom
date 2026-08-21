@@ -30,14 +30,16 @@ import "strings"
 // it inflates the denominator. filePath/cwd resolution is local-only
 // (serviceCandidates + relativeToRoot, mirroring cmdEditHookPreFile) —
 // zero daemon calls either way.
-func cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID string) int {
+// armOff (IT-3) never gates this function — it is ALREADY counting-only
+// (zero daemon calls, zero stdout, always) and is exactly the baseline an
+// active OFF arm most needs to keep: silencing it too would delete the one
+// signal that proves the arm's sessions are doing anything at all. armOff
+// only decides whether the beat is stamped "arm":"off".
+func cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID string, armOff bool) int {
 	if toolName == "Read" && fileInEditSet(filePath, cwd, sessionID) {
 		return 0 // verification read of a just-edited file — excluded, not discovery
 	}
-	meta := map[string]string{"phase": "pre"}
-	if sessionID != "" {
-		meta["session"] = sessionID
-	}
+	meta := firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff)
 	emitBeat("discovery", strings.ToLower(toolName), meta)
 	return 0
 }
@@ -59,13 +61,9 @@ var shellSearchBinaries = map[string]bool{
 // Best-effort and deliberately conservative: it is a coarse classifier for
 // a denominator, not a shell parser — commands it can't confidently
 // classify are simply not counted, never mis-counted.
-func emitDiscoveryBeatIfShellSearch(command, sessionID string) {
+func emitDiscoveryBeatIfShellSearch(command, sessionID string, armOff bool) {
 	if bin := firstCommandToken(command); bin != "" && shellSearchBinaries[bin] {
-		meta := map[string]string{"phase": "pre"}
-		if sessionID != "" {
-			meta["session"] = sessionID
-		}
-		emitBeat("discovery", "shell-search", meta)
+		emitBeat("discovery", "shell-search", firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff))
 	}
 }
 

@@ -190,7 +190,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkSkillsInstalled(root, harness),
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
-		checkSurfaceTraffic(hc, baseURL, daemonUp),
+		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
 		// Phase O (docs/design/platform-modules.md §4 / guarded-edits.md
 		// §2.4): config-validity first, then the checks that need it.
 		checkBindingFile(root),
@@ -1439,7 +1439,7 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 // surface_traffic counters are PROCESS-LIFETIME — "since this process
 // started", reset on every daemon restart — so a zero here means "no
 // calls since this daemon process started", never "no calls ever".
-func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool) doctorCheck {
+func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root string) doctorCheck {
 	const name = "surface_traffic"
 	remedy := "deploy a binary built after A1-1 (surface_traffic instrumentation) — docs/adoption/claude-code.md §5's deploy step"
 
@@ -1477,10 +1477,47 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool) doctorC
 		return doctorCheck{Name: name, Status: doctorFail, Reason: "server_stats has no surface_traffic block — the daemon predates A1-1 call-log instrumentation, or no call logger is wired (--call-log)", Remedy: remedy}
 	}
 	entry, ok := payload.SurfaceTraffic["agent"]
-	if !ok || entry.Calls == 0 {
-		return doctorCheck{Name: name, Status: doctorFail, Reason: "surface_traffic is present but the \"agent\" surface (/rpc/agent) shows zero calls since this daemon process started (the counters are process-lifetime — they reset on restart)", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
+	if ok && entry.Calls > 0 {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("agent surface: %d call(s) since this daemon process started, last at %s", entry.Calls, entry.LastTS)}
 	}
-	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("agent surface: %d call(s) since this daemon process started, last at %s", entry.Calls, entry.LastTS)}
+
+	// IT-4: the live counter is process-lifetime and reads zero after every
+	// daemon restart (comment above) — that alone is not proof nothing ever
+	// happened. Fall back to the persistent call log, resolved the same way
+	// hooks_firing resolves it, before reporting a fail.
+	if n, lastTS, found := recentAgentCallsInPersistentLog(hc, baseURL, daemonUp, root, 7*24*time.Hour); found {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("live counter reset by restart; persistent log shows %d agent call(s), last %s", n, lastTS)}
+	}
+	return doctorCheck{Name: name, Status: doctorFail, Reason: "surface_traffic is present but the \"agent\" surface (/rpc/agent) shows zero calls since this daemon process started (the counters are process-lifetime — they reset on restart), and the persistent call log shows no agent-surface call in the last 7 days either", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
+}
+
+// recentAgentCallsInPersistentLog scans the persistent call log — every
+// candidate resolveCallLogCandidates offers, the same resolution
+// checkHooksFiring uses — for rows whose surface names "agent" and whose
+// timestamp falls within `within` of now. found is false when no candidate
+// log carries such a row, including when no candidate is even resolvable.
+func recentAgentCallsInPersistentLog(hc *http.Client, baseURL string, daemonUp bool, root string, within time.Duration) (count int, lastTS string, found bool) {
+	cutoff := time.Now().Add(-within)
+	for _, logPath := range resolveCallLogCandidates(hc, baseURL, daemonUp, root) {
+		entries, _, read := readCallLog(logPath)
+		if !read {
+			continue
+		}
+		for _, e := range entries {
+			if !strings.Contains(e.Surface, "agent") {
+				continue
+			}
+			ts, err := time.Parse(time.RFC3339, e.TS)
+			if err != nil || ts.Before(cutoff) {
+				continue
+			}
+			count++
+			if e.TS > lastTS {
+				lastTS = e.TS
+			}
+		}
+	}
+	return count, lastTS, count > 0
 }
 
 // ─── output ─────────────────────────────────────────────────────────────────

@@ -37,6 +37,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
 // flywheelStatus is deliberately three-valued. "Broken" and "nothing has
@@ -129,7 +130,7 @@ func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
 	// here produced a false IDLE on a loop carrying 6,992 injections, which
 	// is precisely the class of error this verb exists to catch. Every
 	// check must read the same source the surface it mirrors reads.
-	entries := flywheelCallLog(baseURL)
+	entries, callLogErr := flywheelCallLog(baseURL)
 	obligationCalls := 0
 	for _, e := range entries {
 		if e.Tool == "obligations" {
@@ -139,7 +140,7 @@ func runFlywheelChecks(baseURL string, now time.Time) []flywheelCheck {
 	return []flywheelCheck{
 		checkLoopSessionLedger(ledger, now),
 		checkLoopArm(ledger, imp, now),
-		checkLoopCallLogEntries(entries, now),
+		checkLoopCallLogEntries(entries, callLogErr, now),
 		checkLoopObligations(obligationCalls),
 		checkLoopVerifyGate(imp),
 		checkLoopExploration(imp),
@@ -332,8 +333,14 @@ func checkLoopArm(rows []ledgerRow, imp obsImpact, now time.Time) flywheelCheck 
 }
 
 // flywheelCallLog locates and reads the daemon's call log once, so every
-// check that needs it reads the SAME rows.
-func flywheelCallLog(baseURL string) []adoptionCallEntry {
+// check that needs it reads the SAME rows. The returned error is nil on a
+// clean read; readCallLog itself only reports a bool (O24: it swallows the
+// real os error), so a failed read re-opens the path directly to recover
+// it — the caller (checkLoopCallLogEntries) must be able to tell "no log
+// yet" (ENOENT — honestly IDLE) from "the log is there but unreadable"
+// (any other error — a real defect, OPEN), which the collapsed bool could
+// not distinguish.
+func flywheelCallLog(baseURL string) ([]adoptionCallEntry, error) {
 	path := resolveCallLogPath()
 	if _, err := os.Stat(path); err != nil {
 		// A real client: resolveCallLogCandidates asks the daemon where its
@@ -348,17 +355,57 @@ func flywheelCallLog(baseURL string) []adoptionCallEntry {
 		}
 	}
 	entries, _, read := readCallLog(path)
-	if !read {
-		return nil
+	if read {
+		return entries, nil
 	}
-	return entries
+	_, openErr := os.Open(path)
+	if openErr == nil {
+		// readCallLog just failed and a fresh Open didn't (a race, or a
+		// permission state that changed between the two calls) — report
+		// generically rather than claim success with zero entries.
+		return nil, fmt.Errorf("call log at %s: unreadable", path)
+	}
+	if os.IsNotExist(openErr) {
+		return nil, openErr // honest "no log yet" — the caller renders IDLE
+	}
+	// Any other error (EPERM is the common one): the log is right there and
+	// unreadable, a real defect — the hint travels WITH the error so the
+	// caller never needs to re-derive which path actually failed.
+	return nil, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+}
+
+// tccWedgeHint appends the exact remedy for the failure signature CLAUDE.md's
+// own external-volume playbook names: stat succeeds (the file is right
+// there) but read fails — a wedged macOS TCC verdict, not a real
+// permissions problem, fixed by re-running one command. "" for any path not
+// under /Volumes/, where this specific cause cannot apply.
+func tccWedgeHint(path string) string {
+	if strings.HasPrefix(path, "/Volumes/") {
+		return " — stat succeeds but read fails on an external volume = macOS TCC wedge; run: tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty"
+	}
+	return ""
 }
 
 // checkLoopCallLogEntries — traffic reaching the daemon at all.
-func checkLoopCallLogEntries(entries []adoptionCallEntry, now time.Time) flywheelCheck {
+// checkLoopCallLogEntries — traffic reaching the daemon at all. callLogErr
+// is flywheelCallLog's read error (nil on a clean read): an absent file
+// (ENOENT) is the honest "no log yet" case, IDLE like always, but any OTHER
+// error — permission denied is the common one, exactly the external-volume
+// TCC-wedge signature CLAUDE.md's own playbook names — is a real defect
+// (the log is right there and unreadable) and must report OPEN, never the
+// silent-nothing-to-see IDLE a missing file gets (O24: the previous
+// collapsed bool could not tell the two apart, so an EPERM read rendered
+// exactly like a clean checkout that had simply never run a call).
+func checkLoopCallLogEntries(entries []adoptionCallEntry, callLogErr error, now time.Time) flywheelCheck {
 	c := flywheelCheck{
 		Loop:    "call-log",
 		Purpose: "every tool call recorded, so adoption and per-tool cost are measurable",
+	}
+	if callLogErr != nil && !os.IsNotExist(callLogErr) {
+		c.Status = loopOpen
+		c.Evidence = fmt.Sprintf("call log unreadable: %v", callLogErr)
+		c.Remedy = "fathom doctor (the hooks_firing check locates the daemon's own log)"
+		return c
 	}
 	if len(entries) == 0 {
 		c.Status = loopIdle
@@ -380,6 +427,15 @@ func checkLoopCallLogEntries(entries []adoptionCallEntry, now time.Time) flywhee
 	c.Evidence = fmt.Sprintf("%s calls, %s via the agent surface, most recent %s",
 		fmtThousands(len(entries)), fmtThousands(agentCalls), describeAge(age))
 	if age > 24*time.Hour {
+		// IT-2(a): silence over the stale window can be the OFF arm doing
+		// exactly what it is for — hook channels quiet BY DESIGN — not a
+		// broken pipe. Check before flipping OPEN, or this check itself
+		// becomes a false-defect report against a working experiment.
+		if st, active := metrics.ArmStateForWindow("", now.Add(-24*time.Hour), now); active {
+			c.Status = loopIdle
+			c.Evidence += "; " + st.Note()
+			return c
+		}
 		c.Status = loopOpen
 		c.Evidence += " — no traffic in over a day"
 		c.Remedy = "fathom doctor (daemon reachability and MCP registration)"

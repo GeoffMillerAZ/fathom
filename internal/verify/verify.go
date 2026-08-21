@@ -59,6 +59,20 @@ type Task struct {
 	// silently lost its contract and its author-owned id, and LintPlan is
 	// loud about it. Empty on healthy rows.
 	AnnotationSuspect string
+
+	// Ctx carries discovery-pack pointers (symbol IDs, file paths, concern
+	// IDs, thread IDs) parsed from a space-separated ctx: value. Non-gating
+	// by construction: VerifyPlan never reads it. A pack renderer resolves
+	// the pointers against the live index at read time.
+	Ctx []string
+	// CtxMalformed is true when the row carried an explicit but empty ctx:
+	// value. LintPlan warns — never errors; ctx stays non-gating either way.
+	CtxMalformed bool
+
+	// Needs lists the ids (another row's id:) this row depends on — the
+	// eligibility DAG. Non-gating in verify; LintPlan errors on an unknown
+	// id, a self-reference, or a cycle.
+	Needs []string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST

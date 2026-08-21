@@ -69,10 +69,58 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			return nil, rpcErr
 		}
 		v := review.Run(in)
-		persisted := applyAndPersistFindings(ctx, backend, &v, sources)
+		persisted, resolutions := applyAndPersistFindings(ctx, backend, &v, sources)
 
-		return v.Payload(persisted), nil
+		payload := v.Payload(persisted)
+		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
+			payload["verdict_outcome"] = vo
+		}
+		return payload, nil
 	})
+}
+
+// reviewVerdictOutcome computes review_diff's gate-shaped result summary
+// (IT-7, docs/plans/instrument-truth.md), mirroring verify_plan's own
+// verdict_outcome pattern (verify_plan_tool.go's verdictOutcome) so the
+// call logger's existing extraction (calllog.go's verdictOutcomeFrom) picks
+// review_diff calls up with zero logger changes:
+//
+//   - active: the sum of Count (active, non-refuted findings) across every
+//     CHECKED dimension — exactly Verdict.Summary's own "active finding(s)"
+//     figure.
+//   - fixed / superseded: this run's reconciled claims (resolutions, from
+//     applyAndPersistFindings — a supersededClaimID→ResolutionKind map)
+//     split by review.ClassifyResolution's two outcomes: fixed is a
+//     code-change resolution (the scoped file still exists — the issue was
+//     actually fixed in place); superseded is a scope-disappearance
+//     resolution (the scoped file is gone — reconciled, but not provably
+//     fixed).
+//
+// Returns nil when no dimension ran at all: nothing gate-relevant happened
+// in this call, so there is nothing to log (mirrors verdictOutcome's own
+// >0-claimed opt-in gate for verify_plan).
+func reviewVerdictOutcome(v review.Verdict, resolutions map[string]string) map[string]any {
+	checked := false
+	active := 0
+	for _, d := range v.Dimensions {
+		if d.Checked {
+			checked = true
+			active += d.Count
+		}
+	}
+	if !checked {
+		return nil
+	}
+	fixed, superseded := 0, 0
+	for _, kind := range resolutions {
+		switch kind {
+		case core.ResolutionCodeChange:
+			fixed++
+		case core.ResolutionScopeDisappearance:
+			superseded++
+		}
+	}
+	return map[string]any{"active": active, "fixed": fixed, "superseded": superseded}
 }
 
 // buildReviewInput does every I/O review.Run itself never performs:
@@ -153,14 +201,24 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 // them), label already-refuted findings, persist this run's claims (the
 // store's refutation-durability upsert, never re-derived here), and
 // supersede review-minted claims this run no longer emits (absent = fixed).
-// Returns whether persistence fully happened; false when the backend does
-// not implement reviewClaimsBackend, or any write failed.
-func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, sources []core.SourceFile) bool {
+// Returns whether persistence fully happened (false when the backend does
+// not implement reviewClaimsBackend, or any write failed), plus a
+// supersededClaimID→review.ClassifyResolution-kind map for every claim this
+// run reconciled as fixed (IT-7's verdict_outcome fixed/superseded split,
+// reviewVerdictOutcome) — classified against the PRE-run existing claims'
+// own Scope and whether each scoped file is still present in sources (the
+// full corpus source list, not just the changed files), mirroring
+// cmd/fathom/review.go's runReview resolve closure exactly.
+func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *review.Verdict, sources []core.SourceFile) (bool, map[string]string) {
 	rcb, ok := backend.(reviewClaimsBackend)
 	if !ok {
-		return false
+		return false, nil
 	}
 	existing, _ := rcb.ClaimsForService(ctx, v.Service, review.ClaimsLayer)
+	existingByID := make(map[string]core.SemanticClaim, len(existing))
+	for _, cl := range existing {
+		existingByID[cl.ClaimID] = cl
+	}
 
 	watermark := ""
 	if _, indexedCommit, found, err := backend.ServiceMeta(ctx, v.Service); err == nil && found {
@@ -189,10 +247,15 @@ func applyAndPersistFindings(ctx context.Context, backend QueryInterface, v *rev
 			okAll = false
 		}
 	}
+	fileExists := func(path string) bool { _, ok := content[path]; return ok }
+	resolutions := make(map[string]string, len(supersede))
 	for _, id := range supersede {
+		if cl, ok := existingByID[id]; ok {
+			resolutions[id] = review.ClassifyResolution(cl.Scope, fileExists)
+		}
 		if err := rcb.SetClaimStatus(ctx, v.Service, id, core.ClaimSuperseded); err != nil {
 			okAll = false
 		}
 	}
-	return okAll
+	return okAll, resolutions
 }

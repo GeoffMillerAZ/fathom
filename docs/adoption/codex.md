@@ -271,6 +271,16 @@ configuration rather than agent habit (`docs/design/coding-agent-excellence.md`
 being genuinely followed, and treat the pre-push/CI gates as the honest
 backstop rather than a nice-to-have.
 
+**The measurement boundary (honesty, not a gap to close).** Codex sessions
+are outside the impact observatory's instrumentation: the session ledger and
+the arm (ON/OFF) data are Claude-transcript/hook-fed, and Codex has neither.
+Adoption on Codex is **unmeasured by design**, not merely unmeasured yet —
+and law 12 (`docs/design/production-tokenomics.md` §2: no savings claim
+without a counterfactual arm) forbids extrapolating Claude-arm numbers to
+Codex. Whatever the Claude-side A/B eventually shows, it says nothing about
+Codex sessions; a separate instrument would be required to say anything
+measured about this harness at all.
+
 ---
 
 ## 7. You know it works when…

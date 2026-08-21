@@ -34,12 +34,18 @@ func cmdPlans(args []string, stdout, stderr io.Writer) int {
 		return cmdPlansStatus(args[1:], stdout, stderr)
 	case "next":
 		return cmdPlansNext(args[1:], stdout, stderr)
+	case "context":
+		return cmdPlansContext(args[1:], stdout, stderr)
+	case "lease":
+		return cmdPlansLease(args[1:], stdout, stderr)
+	case "leases":
+		return cmdPlansLeases(args[1:], stdout, stderr)
 	case "archive":
 		return cmdPlansArchive(args[1:], stdout, stderr)
 	case "restore":
 		return cmdPlansRestore(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, archive, restore)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown plans subcommand %q (want status, next, context, lease, leases, archive, restore)\n", args[0])
 		return 1
 	}
 }
@@ -308,52 +314,201 @@ type frontierRow struct {
 	Package string `json:"package,omitempty"`
 	State   string `json:"state"` // open | in-progress | claimed-failing | claimed-unknown
 	Detail  string `json:"detail,omitempty"`
+
+	// Eligible/BlockedOn (WF-4, vision 24 §3): pure derived eligibility —
+	// a function of (plan, evidence) computed at query time, nothing
+	// stored. A row with no needs: is eligible by definition; a row whose
+	// every needs-target is claimed-and-verified or skipped-with-
+	// disposition is eligible too.
+	Eligible  bool         `json:"eligible"`
+	BlockedOn []blockedDep `json:"blocked_on,omitempty"`
+
+	// Leased/LeaseHolder/LeaseExpires (WF-6, vision 24 §4): decoration
+	// from a fresh (non-released, unexpired) lease on this row, derived
+	// from .fathom/leases.jsonl at render time — never stored on the row,
+	// and an expired or released lease makes the row reappear undecorated.
+	Leased       bool   `json:"leased,omitempty"`
+	LeaseHolder  string `json:"lease_holder,omitempty"`
+	LeaseExpires string `json:"lease_expires,omitempty"`
+}
+
+// blockedDep is one unmet needs-target on a frontier row: its id and its
+// current state (mirrors frontierRow.State's vocabulary, plus "missing"
+// for a needs: id that resolves to no row in the plan).
+type blockedDep struct {
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+// rowByID indexes rows by their id — the lookup table needs: targets
+// resolve against, scoped to the SAME plan's rows (needs: ids are
+// authored per-plan, mirroring LintPlan's own unknown-id/cycle scope).
+func rowByID(rows []planRow) map[string]planRow {
+	m := make(map[string]planRow, len(rows))
+	for _, r := range rows {
+		m[r.Task.ID] = r
+	}
+	return m
+}
+
+// depSatisfied reports whether row counts as a satisfied needs-target:
+// claimed-and-verified, or skipped-with-disposition (WF-4's exact
+// eligibility predicate).
+func depSatisfied(row planRow) bool {
+	t := row.Task
+	if t.Skipped {
+		return t.Disposition != ""
+	}
+	return t.Claimed && row.Verdict.Status == verify.Pass
+}
+
+// depState names an unmet needs-target's current state for blocked_on,
+// reusing frontierRow's own state vocabulary.
+func depState(row planRow) string {
+	t := row.Task
+	switch {
+	case t.Skipped:
+		return "skipped-other" // skipped with no disposition — still unmet
+	case t.Claimed:
+		if row.Verdict.Status == verify.Fail {
+			return "claimed-failing"
+		}
+		return "claimed-unknown"
+	case t.InProgress:
+		return "in-progress"
+	default:
+		return "open"
+	}
+}
+
+// rowEligibility computes eligible + blocked_on for one task's needs:
+// list against byID (WF-4, vision 24 §3).
+func rowEligibility(t verify.Task, byID map[string]planRow) (bool, []blockedDep) {
+	if len(t.Needs) == 0 {
+		return true, nil
+	}
+	var blocked []blockedDep
+	for _, id := range t.Needs {
+		dep, ok := byID[id]
+		if !ok {
+			blocked = append(blocked, blockedDep{ID: id, State: "missing"})
+			continue
+		}
+		if !depSatisfied(dep) {
+			blocked = append(blocked, blockedDep{ID: id, State: depState(dep)})
+		}
+	}
+	return len(blocked) == 0, blocked
+}
+
+// freshLeasesByRow indexes leases' currently-fresh events by
+// filepath.Base(plan)+"|"+row_id — basename-keyed because a lease's --plan
+// string and a frontier row's discovered PlanFile need not share the same
+// relative/absolute form; the filename is the stable join key (docs/plans/
+// is a flat, non-recursive scope, so basenames don't collide).
+func freshLeasesByRow(leases []leaseRow, now time.Time) map[string][]leaseRow {
+	out := map[string][]leaseRow{}
+	for _, l := range activeLeases(leases, now) {
+		key := filepath.Base(l.Plan) + "|" + l.RowID
+		out[key] = append(out[key], l)
+	}
+	return out
+}
+
+// pickDisplayLease chooses which fresh lease to surface when more than
+// one holder is simultaneously fresh on a row (an overlap — WF-7 is what
+// counts those; decoration just needs one deterministic answer): the
+// earliest-filed claim.
+func pickDisplayLease(fresh []leaseRow) leaseRow {
+	best := fresh[0]
+	for _, l := range fresh[1:] {
+		if l.Filed.Before(best.Filed) {
+			best = l
+		}
+	}
+	return best
 }
 
 // frontierForPlan returns rows in DOCUMENT order (the order they were
 // authored in the plan file) — never TaskID order, which an author-assigned
 // `id:` need not sort lexically the same way (E3-2's ordering contract).
-func frontierForPlan(rows []planRow) []frontierRow {
+// leases decorates rows holding a fresh lease as of now (WF-6); pass nil
+// leases for no decoration.
+func frontierForPlan(rows []planRow, leases []leaseRow, now time.Time) []frontierRow {
+	byID := rowByID(rows)
+	freshByRow := freshLeasesByRow(leases, now)
+
 	var out []frontierRow
 	for _, row := range rows {
 		t, v := row.Task, row.Verdict
 		if t.Skipped {
 			continue
 		}
+		var fr frontierRow
 		if !t.Claimed {
 			state := "open"
 			if t.InProgress {
 				state = "in-progress"
 			}
-			out = append(out, frontierRow{
+			fr = frontierRow{
 				Plan: row.PlanFile, ID: t.ID, Title: t.Title,
 				Symbol: t.Expect.Symbol, Package: t.Expect.Package, State: state,
-			})
-			continue
-		}
-		switch v.Status {
-		case verify.Fail:
-			detail := v.Label
-			for _, c := range v.Criteria {
-				if c.Status == verify.Fail {
-					detail = fmt.Sprintf("%s: %s", c.Name, c.Detail)
-					break
-				}
 			}
-			out = append(out, frontierRow{
-				Plan: row.PlanFile, ID: t.ID, Title: t.Title,
-				Symbol: t.Expect.Symbol, Package: t.Expect.Package,
-				State: "claimed-failing", Detail: detail,
-			})
-		case verify.Unknown:
-			out = append(out, frontierRow{
-				Plan: row.PlanFile, ID: t.ID, Title: t.Title,
-				Symbol: t.Expect.Symbol, Package: t.Expect.Package,
-				State: "claimed-unknown", Detail: v.Label,
-			})
+		} else {
+			switch v.Status {
+			case verify.Fail:
+				detail := v.Label
+				for _, c := range v.Criteria {
+					if c.Status == verify.Fail {
+						detail = fmt.Sprintf("%s: %s", c.Name, c.Detail)
+						break
+					}
+				}
+				fr = frontierRow{
+					Plan: row.PlanFile, ID: t.ID, Title: t.Title,
+					Symbol: t.Expect.Symbol, Package: t.Expect.Package,
+					State: "claimed-failing", Detail: detail,
+				}
+			case verify.Unknown:
+				fr = frontierRow{
+					Plan: row.PlanFile, ID: t.ID, Title: t.Title,
+					Symbol: t.Expect.Symbol, Package: t.Expect.Package,
+					State: "claimed-unknown", Detail: v.Label,
+				}
+			default:
+				continue // Pass + Claimed + not Skipped never reaches the frontier
+			}
 		}
+
+		fr.Eligible, fr.BlockedOn = rowEligibility(t, byID)
+
+		if fresh := freshByRow[filepath.Base(row.PlanFile)+"|"+t.ID]; len(fresh) > 0 {
+			lease := pickDisplayLease(fresh)
+			fr.Leased = true
+			fr.LeaseHolder = lease.Holder
+			fr.LeaseExpires = lease.Expires.UTC().Format(time.RFC3339)
+		}
+
+		out = append(out, fr)
 	}
 	return out
+}
+
+// formatRemaining renders a duration the way `plans next`'s human output
+// names a lease's remaining time ("43m", "1h5m"). Negative/zero renders
+// "0m" — frontierForPlan never surfaces an expired lease, so this only
+// ever formats a genuinely-fresh remainder, but stays defined for 0.
+func formatRemaining(d time.Duration) string {
+	d = d.Round(time.Minute)
+	if d <= 0 {
+		return "0m"
+	}
+	h := d / time.Hour
+	m := (d % time.Hour) / time.Minute
+	if h > 0 {
+		return fmt.Sprintf("%dh%dm", h, m)
+	}
+	return fmt.Sprintf("%dm", m)
 }
 
 func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
@@ -363,7 +518,10 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
+	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human list")
+	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target (WF-4)")
+	free := fs.Bool("free", false, "hide rows holding a fresh lease (WF-6)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -392,9 +550,20 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// Lease decoration is best-effort and never fatal to the frontier: a
+	// missing/unreadable leases.jsonl just means no rows decorate.
+	leases, _ := readLeases(*root)
+	now := nowFunc()
+
 	var frontier []frontierRow
 	for _, rows := range rowSets {
-		frontier = append(frontier, frontierForPlan(rows)...)
+		frontier = append(frontier, frontierForPlan(rows, leases, now)...)
+	}
+	if *eligibleOnly {
+		frontier = filterFrontier(frontier, func(r frontierRow) bool { return r.Eligible })
+	}
+	if *free {
+		frontier = filterFrontier(frontier, func(r frontierRow) bool { return !r.Leased })
 	}
 
 	if *jsonOut {
@@ -421,7 +590,33 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		if r.Detail != "" {
 			line += " — " + r.Detail
 		}
+		if !r.Eligible && len(r.BlockedOn) > 0 {
+			ids := make([]string, len(r.BlockedOn))
+			for i, b := range r.BlockedOn {
+				ids[i] = b.ID
+			}
+			line += fmt.Sprintf(" (blocked on %s)", strings.Join(ids, ", "))
+		}
+		if r.Leased {
+			remaining := "0m"
+			if exp, err := time.Parse(time.RFC3339, r.LeaseExpires); err == nil {
+				remaining = formatRemaining(exp.Sub(now))
+			}
+			line += fmt.Sprintf(" — leased (%s, %s left)", r.LeaseHolder, remaining)
+		}
 		fmt.Fprintln(stdout, line)
 	}
 	return 0
+}
+
+// filterFrontier returns the rows of frontier for which keep reports true,
+// preserving order.
+func filterFrontier(frontier []frontierRow, keep func(frontierRow) bool) []frontierRow {
+	out := make([]frontierRow, 0, len(frontier))
+	for _, r := range frontier {
+		if keep(r) {
+			out = append(out, r)
+		}
+	}
+	return out
 }
