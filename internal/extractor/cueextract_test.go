@@ -352,3 +352,172 @@ func TestCUEExtractor_Determinism(t *testing.T) {
 		}
 	}
 }
+
+// cueRefFixture (VS-3) exercises unification, field type references, and
+// list element types all within one package.
+const cueRefFixture = `package kit
+
+#Block: {
+	name: string
+}
+
+#Profile: {
+	kind: string
+}
+
+// unification: #Kit -> #Block
+#Kit: #Block & {
+	extra: string
+}
+
+// field type reference: profile -> #Profile
+profile: #Profile
+
+// list element type: uses -> #Block
+uses: [...#Block]
+`
+
+// cueRefCrossPkgFixture (VS-3d) exercises a cross-package selector
+// reference: #Wrapper -> kit.#Block.
+const cueRefCrossPkgFixture = `package other
+
+import "example.com/kit"
+
+#Wrapper: kit.#Block & {
+	label: string
+}
+`
+
+// TestCUEReferenceEdgesEmitted is VS-3's row test (docs/plans/verify-spine.md):
+// the CUE extractor must emit reference edges for all four reference forms
+// instead of discarding them, landing in SymbolNode.Calls exactly like
+// goextract.go's collectCalls — so find_callers/references work for CUE.
+func TestCUEReferenceEdgesEmitted(t *testing.T) {
+	x := extractor.NewCUEExtractor()
+
+	nodes, err := x.Extract("svc", "kit/kit.cue", []byte(cueRefFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	hasCall := func(t *testing.T, n core.SymbolNode, want string) {
+		t.Helper()
+		for _, c := range n.Calls {
+			if c == want {
+				return
+			}
+		}
+		t.Errorf("%s.Calls: want %q in %v", n.Name, want, n.Calls)
+	}
+
+	t.Run("unification", func(t *testing.T) {
+		n, ok := byName["#Kit"]
+		if !ok {
+			t.Fatal("expected symbol #Kit")
+		}
+		hasCall(t, n, core.SymbolKey("svc", "kit", "#Block"))
+	})
+
+	t.Run("field_type_reference", func(t *testing.T) {
+		n, ok := byName["profile"]
+		if !ok {
+			t.Fatal("expected symbol profile")
+		}
+		hasCall(t, n, core.SymbolKey("svc", "kit", "#Profile"))
+	})
+
+	t.Run("list_element_type", func(t *testing.T) {
+		n, ok := byName["uses"]
+		if !ok {
+			t.Fatal("expected symbol uses")
+		}
+		hasCall(t, n, core.SymbolKey("svc", "kit", "#Block"))
+	})
+
+	t.Run("cross_package_import", func(t *testing.T) {
+		nodes, err := x.Extract("svc", "other/other.cue", []byte(cueRefCrossPkgFixture))
+		if err != nil {
+			t.Fatalf("Extract: %v", err)
+		}
+		var wrapper core.SymbolNode
+		found := false
+		for _, n := range nodes {
+			if n.Name == "#Wrapper" {
+				wrapper = n
+				found = true
+			}
+		}
+		if !found {
+			t.Fatal("expected symbol #Wrapper")
+		}
+		hasCall(t, wrapper, "kit.#Block")
+	})
+}
+
+// cueTestdataFixture references #Kit (defined elsewhere in the "kit"
+// package) from a testdata/*.cue path.
+const cueTestdataFixture = `package kit
+
+myKit: #Kit & {
+	extra: "value"
+}
+`
+
+// TestCUETestdataUnificationCountsAsReaches is VS-4's row test: a
+// testdata/*.cue fixture that unifies/references a definition must produce
+// an edge of the SAME KIND (a Test-prefixed caller in Calls-derived edges)
+// that internal/analysis/callgraph.TestImpact's reverse walk already
+// recognizes for Go tests — so reachable_from/test_reaches is satisfiable for
+// a CUE plan row with no new grammar, and with NO change to the reaches
+// machinery itself.
+func TestCUETestdataUnificationCountsAsReaches(t *testing.T) {
+	x := extractor.NewCUEExtractor()
+
+	t.Run("testdata_path_synthesizes_Test_caller", func(t *testing.T) {
+		nodes, err := x.Extract("svc", "kit/testdata/fixture.cue", []byte(cueTestdataFixture))
+		if err != nil {
+			t.Fatalf("Extract: %v", err)
+		}
+		var synth core.SymbolNode
+		found := false
+		for _, n := range nodes {
+			if n.Name == "TestmyKit" {
+				synth = n
+				found = true
+			}
+		}
+		if !found {
+			var names []string
+			for _, n := range nodes {
+				names = append(names, n.Name)
+			}
+			t.Fatalf("expected synthesized symbol %q (got %v)", "TestmyKit", names)
+		}
+		wantCall := "#Kit"
+		callFound := false
+		for _, c := range synth.Calls {
+			if c == wantCall {
+				callFound = true
+			}
+		}
+		if !callFound {
+			t.Errorf("TestmyKit.Calls: want %q in %v", wantCall, synth.Calls)
+		}
+	})
+
+	t.Run("non_testdata_path_synthesizes_nothing", func(t *testing.T) {
+		nodes, err := x.Extract("svc", "kit/fixture.cue", []byte(cueTestdataFixture))
+		if err != nil {
+			t.Fatalf("Extract: %v", err)
+		}
+		for _, n := range nodes {
+			if n.Name == "TestmyKit" {
+				t.Errorf("non-testdata path must not synthesize a Test-prefixed caller: %+v", n)
+			}
+		}
+	})
+}

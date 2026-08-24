@@ -15,7 +15,6 @@ Stop trusting "done!" — verify each task against actual code evidence before a
 |---|---|---|
 | `verify_plan` | MCP tool | Per-task verdict (`verified`, `claimed-but-absent`, `present-but-untested`, `edge-not-wired`, `contradicted`, `likely-unconfirmed`, `spec-uncovered`) with cited evidence; accepts `service`, optional `concern`, and `tasks[]` |
 | `spec_coverage` | MCP tool | Coverage map: which spec IDs are addressed by evidence observations and at what tier |
-| `spec_status` | MCP tool | High-level pass/fail/unknown rollup per spec ID or plan section |
 | `traceability` | MCP tool | Traces a spec ID forward to symbols and backward to observations, showing the evidence chain |
 | `spec_refs` | MCP tool | Lists every observation that cites a given spec ID, with tier and staleness |
 | `contradiction_scan` | MCP tool | Finds observations that conflict with each other or with the spec within a concern scope |
@@ -27,7 +26,7 @@ Without fathom, an agent finishes a task and self-reports "done" based on what i
 
 1. `verify_plan` walks each task's declared symbol through the index. It checks whether the symbol exists (`claimed-but-absent` if not), whether a test reaches it via the call graph (`present-but-untested` if not), whether the edge specified by `reachable_from` is wired, and whether any observation contradicts the spec.
 2. `contradiction_scan` with a `concern` argument surfaces conflicting evidence before the agent writes its summary — catching cases where two observations disagree about behavior.
-3. `spec_coverage` and `spec_status` give the agent a compact rollup it can include in a PR description or status comment without reading every file again.
+3. `spec_coverage` gives the agent a compact rollup it can include in a PR description or status comment without reading every file again.
 
 The payoff: the agent cannot hallucinate completion. Verdicts are derived from the index, not from the agent's recollection of what it wrote. The concern-scoping argument reduces token cost by ~77% by focusing the scan.
 
@@ -235,4 +234,4 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 ## Maintained
 
-This doc covers: `verify_plan`, `spec_coverage`, `spec_status`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`, `fathom plans status`, `fathom plans next`, `fathom plans archive`, `fathom plans restore`. Update it when these change.
+This doc covers: `verify_plan`, `spec_coverage`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`, `fathom plans status`, `fathom plans next`, `fathom plans archive`, `fathom plans restore`. Update it when these change.

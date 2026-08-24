@@ -19,7 +19,6 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `diff_impact` | MCP tool (investigation) | Alias of `blast_radius`, framed for diff/PR review |
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
-| `call_path` | MCP tool (coding) | Shortest directed call path between two symbols (BFS) |
 | `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges |
 | `platform_callers` | MCP tool (platform) | Alias for `cross_repo_callers` — identical result |
 | `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
@@ -156,8 +155,8 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 **`--repos` flag is Go-only (legacy).** When using the CLI, omit `--repos` to get language-agnostic results. The flag filters to a subset of repos using Go module paths and does not apply to Python, TypeScript, Java, or other languages.
 
-**`concern` is not required for impact tools.** `find_callers`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, and `test_impact` take `symbol` as their scope — no `concern` argument needed. (`query_symbols` and `pack_context` do require `concern`; they are for a different pattern.)
+**`concern` is not required for impact tools.** `find_callers`, `rename_impact`, `reachable`, `cross_repo_callers`, and `test_impact` take `symbol` as their scope — no `concern` argument needed. (`query_symbols` and `pack_context` do require `concern`; they are for a different pattern.)
 
 ## Maintained
 
-This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `call_path`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `fathom platform-callers`. Update it when these change.

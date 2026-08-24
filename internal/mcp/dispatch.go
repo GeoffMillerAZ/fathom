@@ -171,7 +171,17 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 	claimsAttached := claimsAttachedFrom(result)
 	verdictOutcome := verdictOutcomeFrom(result)
 	resultCount, matchedVia := outcomeFrom(result)
-	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome, callOutcome{ResultCount: resultCount, MatchedVia: matchedVia}, latency, logErr)
+	// BA-6: response size is measured from the exact bytes the wrapped MCP
+	// envelope would marshal to — a second, tolerant marshal (result is
+	// already a plain map by this point) rather than threading the
+	// dispatch-time []byte through the return path.
+	responseBytes := 0
+	if b, err := json.Marshal(result); err == nil {
+		responseBytes = len(b)
+	}
+	elidedCount := elidedCountFrom(result)
+	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
+		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount}, latency, logErr)
 	return result, rpcErr
 }
 

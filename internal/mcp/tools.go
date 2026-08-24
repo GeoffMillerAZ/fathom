@@ -98,11 +98,14 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		nodes := toNodeDTOs(result.Nodes)
-		nodes, budgetTrunc := fitToBudget(nodes, 0)
+		nodes, el := applyBudget(nodes, budgetDefaults("query_symbols", budgetSettings{}),
+			"relevance score, descending",
+			"re-call with a larger budget, or narrow concern/keywords")
 		return symbolQueryResult{
 			Nodes:     nodes,
 			Staleness: result.Staleness,
-			Truncated: budgetTrunc || len(result.Nodes) >= topN,
+			Truncated: el != nil || len(result.Nodes) >= topN,
+			Elided:    el,
 		}, nil
 	})
 
@@ -243,10 +246,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			if ci := caseFoldMatches(all, p.Name); len(ci) > 0 {
 				return map[string]any{"symbols": toNodeDTOs(ci), "matched_via": "case_insensitive"}, nil
 			}
-			if sub, truncated := substringMatches(all, p.Name); len(sub) > 0 {
+			if sub, total := substringMatches(all, p.Name); len(sub) > 0 {
 				resp := map[string]any{"symbols": toNodeDTOs(sub), "matched_via": "substring"}
-				if truncated {
+				if el := elisionFor(len(sub), total, "shortest name first, then name/file/line/kind", "narrow the query, or ask for the exact/qualified name"); el != nil {
 					resp["truncated"] = true
+					resp["elided"] = el
 				}
 				return resp, nil
 			}
@@ -317,6 +321,9 @@ type symbolQueryResult struct {
 	Nodes     []symbolNodeDTO      `json:"nodes"`
 	Staleness core.StalenessReport `json:"staleness"`
 	Truncated bool                 `json:"truncated"`
+	// Elided (BA-1) discloses what applyBudget cut, when it cut anything —
+	// nil (omitted) for a complete answer.
+	Elided *elided `json:"elided,omitempty"`
 }
 
 func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {

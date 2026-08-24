@@ -23,7 +23,6 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `arch_conformance` | MCP tool (coding) | Call-graph edges that violate declared layering rules |
 | `dep_drift` | MCP tool (coding) | Dependency version mismatches between two services' lockfiles |
 | `proto_conformance` | MCP tool (coding) | Naming convention violations in `.proto` files |
-| `doc_coverage` | MCP tool (coding) | Exported symbols with missing documentation |
 | `stale_docs` | MCP tool (coding) | Markdown files with inline-code or link references that no longer match known symbols or files |
 | `review_change` | MCP prompt | Calls `review_diff` for a structured, one-call review of a code change |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
@@ -262,7 +261,7 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 **`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
 
-**Profile.** `review_diff` and `diff_impact` are both in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`) are in `coding`. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: `investigation` profile for `review_diff`/`diff_impact`, `coding` for the appendix's per-dimension tools.
+**Profile.** `review_diff` and `diff_impact` are both in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `stale_docs`) are in `coding`. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: `investigation` profile for `review_diff`/`diff_impact`, `coding` for the appendix's per-dimension tools.
 
 On stdio `serve-mcp`:
 
@@ -312,4 +311,4 @@ Once compiled, findings scoped to the files under review surface through the sam
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`) and its `fathom review` CLI mirror, `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `doc_coverage`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`) and its `fathom review` CLI mirror, `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.

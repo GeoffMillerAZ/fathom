@@ -1,7 +1,7 @@
 // Package mcp_test — analysis tool tests (TDD, fake backend, no DuckDB).
 //
-// Tests cover: rename_impact, reachable, call_path, test_impact, dead_code,
-// import_cycles.  Each test builds a richFakeBackend (defined below) with a
+// Tests cover: rename_impact, reachable, test_impact, dead_code.  Each test
+// builds a richFakeBackend (defined below) with a
 // small call graph fixture and drives the MCP server exactly like the existing
 // tools_test.go tests — synchronous Serve call over a finite in-memory buffer.
 package mcp_test
@@ -250,65 +250,6 @@ func TestReachable_MissingParams(t *testing.T) {
 	}
 }
 
-// ─── call_path ────────────────────────────────────────────────────────────────
-
-func TestCallPath_Found(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 120, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_path",
-			"arguments": map[string]any{"service": "svc", "from": "A", "to": "C"},
-		},
-	})
-	payload := toolPayload(t, resp)
-	path, ok := payload["path"].([]any)
-	if !ok {
-		t.Fatalf("payload.path missing or wrong type: %v", payload)
-	}
-	if len(path) == 0 {
-		t.Error("call_path(A,C): expected non-empty path")
-	}
-	// Should be A → B → C (3 hops).
-	if len(path) != 3 {
-		t.Errorf("call_path(A,C) len = %d, want 3; path = %v", len(path), path)
-	}
-}
-
-func TestCallPath_NoPath(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 121, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_path",
-			"arguments": map[string]any{"service": "svc", "from": "C", "to": "A"},
-		},
-	})
-	payload := toolPayload(t, resp)
-	// No path: path key should be present but null/nil or empty.
-	if found, ok := payload["found"].(bool); ok && found {
-		t.Error("call_path(C,A): found should be false")
-	}
-}
-
-func TestCallPath_MissingParams(t *testing.T) {
-	srv := newAnalysisSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 122, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_path",
-			"arguments": map[string]any{"service": "svc", "from": "A"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error for missing 'to', got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── test_impact ──────────────────────────────────────────────────────────────
 
 func TestTestImpact_ReachesTestFoo(t *testing.T) {
@@ -442,74 +383,6 @@ func TestDeadCode_MissingService(t *testing.T) {
 	}
 }
 
-// ─── import_cycles ────────────────────────────────────────────────────────────
-
-func TestImportCycles_NoCycle(t *testing.T) {
-	srv := mcp.NewServer(nil) // import_cycles does not need a backend
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 150, Method: "tools/call",
-		Params: map[string]any{
-			"name": "import_cycles",
-			"arguments": map[string]any{
-				"pkg_imports": map[string]any{
-					"a": []any{"b"},
-					"b": []any{"c"},
-				},
-			},
-		},
-	})
-	payload := toolPayload(t, resp)
-	cycles, ok := payload["cycles"].([]any)
-	if !ok {
-		t.Fatalf("payload.cycles missing or wrong type: %v", payload)
-	}
-	if len(cycles) != 0 {
-		t.Errorf("import_cycles(acyclic): expected no cycles, got %v", cycles)
-	}
-}
-
-func TestImportCycles_WithCycle(t *testing.T) {
-	srv := mcp.NewServer(nil)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 151, Method: "tools/call",
-		Params: map[string]any{
-			"name": "import_cycles",
-			"arguments": map[string]any{
-				"pkg_imports": map[string]any{
-					"a": []any{"b"},
-					"b": []any{"a"}, // a ↔ b cycle
-				},
-			},
-		},
-	})
-	payload := toolPayload(t, resp)
-	cycles, ok := payload["cycles"].([]any)
-	if !ok {
-		t.Fatalf("payload.cycles missing or wrong type: %v", payload)
-	}
-	if len(cycles) == 0 {
-		t.Error("import_cycles(a↔b): expected at least one cycle")
-	}
-}
-
-func TestImportCycles_MissingParam(t *testing.T) {
-	srv := mcp.NewServer(nil)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 152, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "import_cycles",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error for missing pkg_imports, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── profile membership ───────────────────────────────────────────────────────
 
 func TestAnalysisToolsInCorrectProfile(t *testing.T) {
@@ -536,7 +409,7 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 	}
 
 	codingTools := toolsInProfile("coding")
-	for _, name := range []string{"rename_impact", "reachable", "call_path", "dead_code"} {
+	for _, name := range []string{"rename_impact", "reachable", "dead_code"} {
 		if !codingTools[name] {
 			t.Errorf("coding profile missing tool %q", name)
 		}
@@ -545,10 +418,5 @@ func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 	investigationTools := toolsInProfile("investigation")
 	if !investigationTools["test_impact"] {
 		t.Error("investigation profile missing tool test_impact")
-	}
-
-	sharedTools := toolsInProfile("shared")
-	if !sharedTools["import_cycles"] {
-		t.Error("shared profile missing tool import_cycles")
 	}
 }

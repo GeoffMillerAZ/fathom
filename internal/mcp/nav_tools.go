@@ -1,20 +1,18 @@
 // Package mcp — navigation and analysis tool registrations backed by the
-// symbolnav, complexity, godobject, and apisurface analysis packages.
+// symbolnav, complexity, and godobject analysis packages.
 //
 // registerNavTools wires the coding-group tools:
-//   - find_callees, call_hierarchy, symbol_context, outline, entrypoints
-//   - complexity, god_object, api_surface
+//   - find_callees, symbol_context, outline, entrypoints
+//   - complexity, god_object
 //
 // and the investigation-group tools:
-//   - community, type_hierarchy
+//   - community
 package mcp
 
 import (
 	"context"
 	"encoding/json"
-	"sort"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
 	"github.com/geoffmilleraz/fathom/internal/analysis/godobject"
@@ -26,15 +24,12 @@ import (
 // additionally consults it for cross-service call edges (P1-2).
 func registerNavTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerFindCallees(s, backend)
-	registerCallHierarchy(s, backend)
 	registerSymbolContext(s, backend, fleet)
 	registerOutline(s, backend)
 	registerEntrypoints(s, backend)
 	registerComplexity(s, backend)
 	registerGodObject(s, backend)
-	registerAPISurface(s, backend)
 	registerCommunity(s, backend)
-	registerTypeHierarchy(s, backend)
 }
 
 // ─── find_callees ─────────────────────────────────────────────────────────────
@@ -77,69 +72,6 @@ func registerFindCallees(s *Server, backend QueryInterface) {
 		callees := symbolnav.Callees(g, nodes, p.Symbol)
 		return map[string]any{"callees": stringsToAny(callees)}, nil
 	})
-}
-
-// ─── call_hierarchy ───────────────────────────────────────────────────────────
-
-func registerCallHierarchy(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "call_hierarchy",
-		Description: "Return a call-hierarchy tree rooted at symbol, expanding both callers and callees up to depth hops.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"symbol":  map[string]any{"type": "string", "description": "Symbol name (bare or fully-qualified SymbolKey)"},
-				"depth":   map[string]any{"type": "integer", "description": "Expansion depth (default 2, max 5)"},
-			},
-			"required": []string{"service", "symbol"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Symbol  string `json:"symbol"`
-			Depth   int    `json:"depth"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "call_hierarchy: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "call_hierarchy: service required"}
-		}
-		if p.Symbol == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "call_hierarchy: symbol required"}
-		}
-		depth := p.Depth
-		if depth <= 0 {
-			depth = 2
-		}
-		if depth > 5 {
-			depth = 5
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		g := callgraph.Build(nodes)
-		tree := symbolnav.CallHierarchy(g, nodes, p.Symbol, depth)
-		return treeToMap(tree), nil
-	})
-}
-
-// treeToMap converts a symbolnav.Tree into a JSON-serialisable map recursively.
-func treeToMap(t symbolnav.Tree) map[string]any {
-	children := make([]any, len(t.Children))
-	for i, c := range t.Children {
-		children[i] = treeToMap(c)
-	}
-	return map[string]any{
-		"key":      t.Key,
-		"children": children,
-	}
 }
 
 // ─── symbol_context ───────────────────────────────────────────────────────────
@@ -488,42 +420,6 @@ func registerGodObject(s *Server, backend QueryInterface) {
 	})
 }
 
-// ─── api_surface ──────────────────────────────────────────────────────────────
-
-func registerAPISurface(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "api_surface",
-		Description: "Return the exported public API surface of the service (exported funcs, methods, types, interfaces, consts, vars).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_surface: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "api_surface: service required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		surface := apisurface.Surface(nodes)
-		return map[string]any{"symbols": toNodeDTOs(surface)}, nil
-	})
-}
-
 // ─── community ────────────────────────────────────────────────────────────────
 
 func registerCommunity(s *Server, backend QueryInterface) {
@@ -563,49 +459,5 @@ func registerCommunity(s *Server, backend QueryInterface) {
 		g := callgraph.Build(nodes)
 		members := symbolnav.Community(g, nodes, p.Symbol)
 		return map[string]any{"members": stringsToAny(members)}, nil
-	})
-}
-
-// ─── type_hierarchy ───────────────────────────────────────────────────────────
-
-func registerTypeHierarchy(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "type_hierarchy",
-		Description: "Return a map from interface name to the list of types that implement it, across the entire service.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "type_hierarchy: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "type_hierarchy: service required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		hier := symbolnav.TypeHierarchy(nodes)
-		// Sort implementors within each interface for determinism, then marshal.
-		result := make(map[string]any, len(hier))
-		for iface, impls := range hier {
-			sorted := make([]string, len(impls))
-			copy(sorted, impls)
-			sort.Strings(sorted)
-			result[iface] = stringsToAny(sorted)
-		}
-		return map[string]any{"hierarchy": result}, nil
 	})
 }

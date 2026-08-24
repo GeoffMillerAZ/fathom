@@ -520,3 +520,16 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O17 — instrument --adoption under a wedged call-log read reports 'zero-call registered tools (88 of 88)' — every tool falsely zero — instead of naming the read error; the IT-1 read-error classification landed in flywheel but not here
+
+- **Symptom:** instrument --adoption under a wedged call-log read reports 'zero-call registered tools (88 of 88)' — every tool falsely zero — instead of naming the read error; the IT-1 read-error classification landed in flywheel but not here
+- **Evidence:**
+  - **Tool:** instrument --adoption / readCallLog consumer
+  - **Expected:** an unreadable call log is reported as a read error (errno named, TCC hint for external volumes), never rendered as universal zero adoption
+  - **Actual:** with the TCC wedge active, the command printed 'zero-call registered tools (88 of 88 registered)' listing every tool including find_symbol/verify_plan which have thousands of calls; after tccutil reset the same command reads 31034 calls
+  - **Repro:** wedge the process tree, run fathom instrument --adoption, observe 88/88 zero; reset and re-run to see the true counts
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** fixed (2026-08-23) — SP-B3, docs/plans/surface-prune.md: classifyCallLogRead in instrument_adoption.go renders READ ERROR + NOT COMPUTED, never universal zero
+- **Impact:** TODO

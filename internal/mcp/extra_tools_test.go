@@ -187,45 +187,6 @@ func TestSpecCoverage_MissingSpecIDs(t *testing.T) {
 	}
 }
 
-// TestSpecStatus_MissingSpecIDs pins the same deliberate P1-8 change for
-// spec_status (the other spec tool whose handler never enforced its
-// declared spec_ids requirement — see TestSpecCoverage_MissingSpecIDs for
-// the full rationale).
-func TestSpecStatus_MissingSpecIDs(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1022, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "spec_status",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	errObj := xtraError(t, resp)
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v (spec_status declares spec_ids required)", code, mcp.ErrCodeParams)
-	}
-}
-
-// ─── spec_status ─────────────────────────────────────────────────────────────
-
-func TestSpecStatus_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1030, Method: "tools/call",
-		Params: map[string]any{
-			"name": "spec_status",
-			"arguments": map[string]any{
-				"service":  "svc",
-				"spec_ids": []string{"[US-001]"},
-			},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["statuses"] == nil {
-		t.Error("spec_status: statuses missing")
-	}
-}
-
 // ─── traceability ─────────────────────────────────────────────────────────────
 
 func TestTraceability_Basic(t *testing.T) {
@@ -257,35 +218,6 @@ func TestTraceability_MissingService(t *testing.T) {
 		Params: map[string]any{
 			"name":      "traceability",
 			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── propagate_concern ────────────────────────────────────────────────────────
-
-func TestPropagateConcern_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1050, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "propagate_concern",
-			"arguments": map[string]any{"service": "svc", "concern": "Alpha", "seed": "svc::pkg.Alpha"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["symbols"] == nil {
-		t.Error("propagate_concern: symbols missing")
-	}
-}
-
-func TestPropagateConcern_MissingConcern(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1051, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "propagate_concern",
-			"arguments": map[string]any{"service": "svc", "seed": "Alpha"},
 		},
 	})
 	xtraError(t, resp)
@@ -731,23 +663,6 @@ func TestArchConformance_MethodEdgeNormalization_UnresolvedCalleeStaysRaw(t *tes
 	}
 }
 
-// ─── doc_coverage ─────────────────────────────────────────────────────────────
-
-func TestDocCoverage_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1090, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "doc_coverage",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["pct"] == nil {
-		t.Error("doc_coverage: pct missing")
-	}
-}
-
 // ─── stale_docs ───────────────────────────────────────────────────────────────
 
 func TestStaleDocs_Basic(t *testing.T) {
@@ -770,224 +685,6 @@ func TestStaleDocs_Basic(t *testing.T) {
 	}
 	if p["count"] == nil {
 		t.Error("stale_docs: count missing")
-	}
-}
-
-// ─── naming ───────────────────────────────────────────────────────────────────
-
-func TestNaming_Basic(t *testing.T) {
-	srv := mcp.NewServer(&extendedFakeBackend{
-		nodes: []core.SymbolNode{
-			{Service: "svc", Package: "pkg", Name: "bad_name", Kind: core.KindGoFunc},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1110, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "naming",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["issues"] == nil {
-		t.Error("naming: issues missing")
-	}
-}
-
-// ─── struct_tags ──────────────────────────────────────────────────────────────
-
-func TestStructTags_Basic(t *testing.T) {
-	src := `package pkg
-type Req struct {
-    Name string
-}`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "Req"}}},
-		sources:             []core.SourceFile{{Path: "pkg/req.go", Content: []byte(src), Lang: "go"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1120, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "struct_tags",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["issues"] == nil {
-		t.Error("struct_tags: issues missing")
-	}
-}
-
-// ─── err_audit ────────────────────────────────────────────────────────────────
-
-func TestErrAudit_Basic(t *testing.T) {
-	src := `package pkg
-import "errors"
-func F() error {
-    err := errors.New("oops")
-    _ = err
-    return nil
-}`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "F"}}},
-		sources:             []core.SourceFile{{Path: "pkg/f.go", Content: []byte(src), Lang: "go"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1130, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "err_audit",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["findings"] == nil {
-		t.Error("err_audit: findings missing")
-	}
-}
-
-// ─── sql_map ──────────────────────────────────────────────────────────────────
-
-func TestSQLMap_Basic(t *testing.T) {
-	src := `SELECT * FROM users WHERE id = $1`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "F"}}},
-		sources:             []core.SourceFile{{Path: "pkg/q.go", Content: []byte(src), Lang: "go"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1140, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "sql_map",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["tables"] == nil {
-		t.Error("sql_map: tables missing")
-	}
-}
-
-// ─── field_usage ──────────────────────────────────────────────────────────────
-
-func TestFieldUsage_Basic(t *testing.T) {
-	src := `package pkg
-type MyStruct struct {
-    Foo string
-    Bar int
-}
-func Use(m MyStruct) string {
-    return m.Foo
-}`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "MyStruct", Kind: core.KindGoType}}},
-		sources:             []core.SourceFile{{Path: "pkg/my.go", Content: []byte(src), Lang: "go"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1150, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "field_usage",
-			"arguments": map[string]any{"service": "svc", "struct_name": "MyStruct"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["fields"] == nil {
-		t.Error("field_usage: fields missing")
-	}
-}
-
-func TestFieldUsage_MissingStructName(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1151, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "field_usage",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── clones ───────────────────────────────────────────────────────────────────
-
-func TestClones_Basic(t *testing.T) {
-	dup := `package pkg
-func dup() int { return 42 }`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{nodes: []core.SymbolNode{{Service: "svc", Name: "dup"}}},
-		sources: []core.SourceFile{
-			{Path: "pkg/a.go", Content: []byte(dup), Lang: "go"},
-			{Path: "pkg/b.go", Content: []byte(dup), Lang: "go"},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1160, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "clones",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["groups"] == nil {
-		t.Error("clones: groups missing")
-	}
-}
-
-// ─── migration_targets ────────────────────────────────────────────────────────
-
-func TestMigrationTargets_Basic(t *testing.T) {
-	srv := mcp.NewServer(&extendedFakeBackend{
-		nodes: []core.SymbolNode{
-			{Service: "svc", Package: "io/ioutil", Name: "ReadFile", Kind: core.KindGoFunc},
-		},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1170, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "migration_targets",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["targets"] == nil {
-		t.Error("migration_targets: targets missing")
-	}
-}
-
-// ─── get_go_symbols ───────────────────────────────────────────────────────────
-
-func TestGetGoSymbols_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1180, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "get_go_symbols",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["symbols"] == nil {
-		t.Error("get_go_symbols: symbols missing")
-	}
-}
-
-func TestGetGoSymbols_KindFilter(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1181, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "get_go_symbols",
-			"arguments": map[string]any{"service": "svc", "kinds": []string{"GoType"}},
-		},
-	})
-	p := xtraPayload(t, resp)
-	syms, ok := p["symbols"].([]any)
-	if !ok {
-		t.Fatal("symbols not an array")
-	}
-	for _, s := range syms {
-		sm := s.(map[string]any)
-		if sm["kind"] != "GoType" {
-			t.Errorf("got non-GoType symbol with kind=%v", sm["kind"])
-		}
 	}
 }
 
@@ -1056,170 +753,6 @@ func TestDepDrift_MissingServiceB(t *testing.T) {
 		},
 	})
 	xtraError(t, resp)
-}
-
-// ─── package_deps ─────────────────────────────────────────────────────────────
-
-func TestPackageDeps_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1210, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "package_deps",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["package_deps"] == nil {
-		t.Error("package_deps: package_deps missing")
-	}
-}
-
-// ─── hotspots ─────────────────────────────────────────────────────────────────
-
-func TestHotspots_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1220, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "hotspots",
-			"arguments": map[string]any{"service": "svc", "top_n": 3},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["hotspots"] == nil {
-		t.Error("hotspots: hotspots missing")
-	}
-	hs, ok := p["hotspots"].([]any)
-	if !ok {
-		t.Fatal("hotspots is not array")
-	}
-	if len(hs) > 3 {
-		t.Errorf("expected at most 3 hotspots, got %d", len(hs))
-	}
-}
-
-func TestHotspots_MissingService(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1221, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "hotspots",
-			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── license ──────────────────────────────────────────────────────────────────
-
-func TestLicense_MIT(t *testing.T) {
-	mitText := `MIT License
-
-Copyright (c) 2024 Example
-
-Permission is hereby granted, free of charge, to any person obtaining a copy...`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{},
-		sources:             []core.SourceFile{{Path: "LICENSE", Content: []byte(mitText), Lang: ""}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1230, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "license",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["spdx"] == nil {
-		t.Error("license: spdx missing")
-	}
-}
-
-func TestLicense_NoFile(t *testing.T) {
-	srv := newExtraSrv() // no LICENSE file in extendedFakeBackend (Sources returns nil)
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1231, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "license",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["spdx"] != "UNKNOWN" {
-		t.Errorf("expected UNKNOWN, got %v", p["spdx"])
-	}
-}
-
-// ─── license_policy ───────────────────────────────────────────────────────────
-
-func TestLicensePolicy_Allowed(t *testing.T) {
-	mitText := `MIT License
-Permission is hereby granted`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{},
-		sources:             []core.SourceFile{{Path: "LICENSE", Content: []byte(mitText), Lang: ""}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1240, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "license_policy",
-			"arguments": map[string]any{"service": "svc", "allowed": []string{"MIT", "Apache-2.0"}},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["ok"] == nil {
-		t.Error("license_policy: ok missing")
-	}
-}
-
-// TestLicensePolicy_MissingAllowed: license_policy declares "allowed"
-// required in its InputSchema but never checked it itself (C4-5's honesty
-// audit) — a call omitting it used to run anyway (a "previously-lenient
-// caller", P1-8's dispatch-level required-field gate; see
-// TestDispatch_PreviouslyLenientTool_NowRefuses for the same case asserted
-// directly against dispatch). Deliberately tightened here rather than left
-// straddling both possible outcomes: it must now ALWAYS be an
-// ErrCodeParams, never a lenient {ok:false} result.
-func TestLicensePolicy_MissingAllowed(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1241, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "license_policy",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	errObj := xtraError(t, resp)
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
-// ─── security_rollup ──────────────────────────────────────────────────────────
-
-func TestSecurityRollup_Basic(t *testing.T) {
-	src := `package pkg
-const token = "ghp_abc123faketoken"
-`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{},
-		sources:             []core.SourceFile{{Path: "pkg/creds.go", Content: []byte(src), Lang: "go"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1250, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "security_rollup",
-			"arguments": map[string]any{"service": "svc", "allowed_licenses": []string{"MIT"}},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["secrets"] == nil {
-		t.Error("security_rollup: secrets missing")
-	}
-	if p["license"] == nil {
-		t.Error("security_rollup: license missing")
-	}
 }
 
 // ─── ingest ───────────────────────────────────────────────────────────────────
@@ -1314,58 +847,6 @@ func TestPackContext_Basic(t *testing.T) {
 	}
 }
 
-// ─── estimate_cost ────────────────────────────────────────────────────────────
-
-func TestEstimateCost_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1300, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "estimate_cost",
-			"arguments": map[string]any{"text": "hello world this is a test"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["tokens"] == nil {
-		t.Error("estimate_cost: tokens missing")
-	}
-	if p["usd"] == nil {
-		t.Error("estimate_cost: usd missing")
-	}
-}
-
-func TestEstimateCost_MissingText(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1301, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "estimate_cost",
-			"arguments": map[string]any{},
-		},
-	})
-	xtraError(t, resp)
-}
-
-// ─── cost_report ──────────────────────────────────────────────────────────────
-
-func TestCostReport_Basic(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1310, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "cost_report",
-			"arguments": map[string]any{},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["tools"] == nil {
-		t.Error("cost_report: tools missing")
-	}
-	if p["total_tokens"] == nil {
-		t.Error("cost_report: total_tokens missing")
-	}
-}
-
 // ─── batch ────────────────────────────────────────────────────────────────────
 
 func TestBatch_Basic(t *testing.T) {
@@ -1376,8 +857,8 @@ func TestBatch_Basic(t *testing.T) {
 			"name": "batch",
 			"arguments": map[string]any{
 				"calls": []map[string]any{
-					{"name": "hotspots", "arguments": map[string]any{"service": "svc", "top_n": 5}},
-					{"name": "doc_coverage", "arguments": map[string]any{"service": "svc"}},
+					{"name": "complexity", "arguments": map[string]any{"service": "svc", "top_n": 5}},
+					{"name": "evidence_summary", "arguments": map[string]any{"service": "svc"}},
 				},
 			},
 		},
@@ -1425,38 +906,6 @@ func TestBatch_MissingCalls(t *testing.T) {
 	xtraError(t, resp)
 }
 
-// ─── proto_contract ───────────────────────────────────────────────────────────
-
-func TestProtoContract_Basic(t *testing.T) {
-	protoSrc := `syntax = "proto3";
-package hello;
-service Greeter {
-  rpc SayHello (HelloRequest) returns (HelloReply);
-}
-message HelloRequest { string name = 1; }
-message HelloReply { string message = 1; }
-`
-	srv := mcp.NewServer(&sourcesFakeBackend{
-		extendedFakeBackend: extendedFakeBackend{},
-		sources:             []core.SourceFile{{Path: "proto/hello.proto", Content: []byte(protoSrc), Lang: "proto"}},
-	})
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1330, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "proto_contract",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	contracts, ok := p["contracts"].([]any)
-	if !ok {
-		t.Fatalf("proto_contract: contracts missing or not array")
-	}
-	if len(contracts) == 0 {
-		t.Error("proto_contract: expected at least one contract")
-	}
-}
-
 // ─── proto_conformance ────────────────────────────────────────────────────────
 
 func TestProtoConformance_Basic(t *testing.T) {
@@ -1485,64 +934,6 @@ message hello_reply { string Message = 2; }
 	}
 }
 
-// ─── schema_export ────────────────────────────────────────────────────────────
-
-func TestSchemaExport_JSON(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1350, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "schema_export",
-			"arguments": map[string]any{"service": "svc", "format": "json"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	if p["output"] == nil {
-		t.Error("schema_export(json): output missing")
-	}
-	// Verify output is valid JSON.
-	out, ok := p["output"].(string)
-	if !ok {
-		t.Fatal("output is not string")
-	}
-	var js any
-	if err := json.Unmarshal([]byte(out), &js); err != nil {
-		t.Errorf("schema_export JSON output is not valid JSON: %v", err)
-	}
-}
-
-func TestSchemaExport_DOT(t *testing.T) {
-	srv := newExtraSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1351, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "schema_export",
-			"arguments": map[string]any{"service": "svc", "format": "dot"},
-		},
-	})
-	p := xtraPayload(t, resp)
-	out, ok := p["output"].(string)
-	if !ok {
-		t.Fatal("schema_export(dot): output not string")
-	}
-	if !containsStr(out, "digraph") {
-		t.Errorf("DOT output does not contain 'digraph': %q", out)
-	}
-}
-
-func containsStr(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || stringContains(s, substr))
-}
-
-func stringContains(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // ─── tools list coverage ──────────────────────────────────────────────────────
 
 // TestExtraToolsInList verifies that a representative set of the new tools
@@ -1563,18 +954,14 @@ func TestExtraToolsInList(t *testing.T) {
 	}
 
 	want := []string{
-		"blast_radius", "diff_impact", "spec_coverage", "spec_status",
-		"traceability", "propagate_concern", "evidence_summary", "contradiction_scan",
-		"arch_conformance", "doc_coverage", "stale_docs", "naming",
-		"struct_tags", "err_audit", "sql_map", "field_usage",
-		"clones", "migration_targets", "get_go_symbols", "api_diff",
-		"dep_drift", "package_deps", "hotspots",
-		"license", "license_policy", "security_rollup", "ingest",
+		"blast_radius", "diff_impact", "spec_coverage",
+		"traceability", "evidence_summary", "contradiction_scan",
+		"arch_conformance", "stale_docs", "api_diff",
+		"dep_drift", "ingest",
 		"cross_repo_blast_radius",
 		"repo_map", "pack_context",
-		"estimate_cost", "cost_report", "batch",
-		"proto_contract", "proto_conformance",
-		"schema_export",
+		"batch",
+		"proto_conformance",
 		"spec_refs", "brief",
 	}
 	for _, name := range want {

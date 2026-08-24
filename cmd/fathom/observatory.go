@@ -164,6 +164,12 @@ type observatoryModel struct {
 	AgentSchemaBytes  int `json:"agent_schema_bytes"`
 
 	Impact obsImpact `json:"impact"`
+
+	// Cost (BA-8, docs/plans/ambient-fathom.md): what fathom itself put
+	// into agent contexts, by tool — the denominator half of the impact
+	// story, folded from the same call-log entries the Q3 misses table
+	// already reads.
+	Cost costPanel `json:"cost"`
 }
 
 // obsTrafficDay is one day of call-log traffic.
@@ -373,6 +379,7 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 		m.AgentSurfaceTools, m.AgentSchemaBytes = surfaceSchemaTax(hc, baseURL)
 		m.Impact = buildImpactModel(now)
 		m.Impact.ObligationCalls = obligationCalls
+		m.Cost = observatoryCostPanel(entries, m.AgentSurfaceTools, m.AgentSchemaBytes, m.Impact.DiscoveryTotal)
 		return m
 	}
 

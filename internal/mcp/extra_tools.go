@@ -4,18 +4,15 @@
 // registerExtraTools is called from registerTools (tools.go) and adds tools in
 // the following groups:
 //
-//	investigation: blast_radius, diff_impact, spec_coverage, spec_status,
-//	               traceability, propagate_concern, evidence_summary,
+//	investigation: blast_radius, diff_impact, spec_coverage,
+//	               traceability, evidence_summary,
 //	               contradiction_scan, review_diff
-//	coding:        arch_conformance, doc_coverage, stale_docs, naming,
-//	               struct_tags, err_audit, sql_map, field_usage, clones,
-//	               migration_targets, get_go_symbols, api_diff, dep_drift,
-//	               package_deps, hotspots
-//	shared:        license, license_policy, security_rollup, ingest
+//	coding:        arch_conformance, stale_docs, api_diff, dep_drift
+//	shared:        ingest
 //	platform:      cross_repo_blast_radius
 //	context:       repo_map, pack_context
-//	ops/meta:      estimate_cost, cost_report, batch
-//	proto:         proto_contract, proto_conformance
+//	ops/meta:      batch
+//	proto:         proto_conformance
 package mcp
 
 import (
@@ -29,38 +26,21 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/apisurface"
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
-	"github.com/geoffmilleraz/fathom/internal/analysis/clone"
-	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
 	"github.com/geoffmilleraz/fathom/internal/analysis/deps"
-	"github.com/geoffmilleraz/fathom/internal/analysis/doccoverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
-	"github.com/geoffmilleraz/fathom/internal/analysis/erraudit"
-	"github.com/geoffmilleraz/fathom/internal/analysis/fieldusage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
-	"github.com/geoffmilleraz/fathom/internal/analysis/license"
-	"github.com/geoffmilleraz/fathom/internal/analysis/migrationtargets"
-	"github.com/geoffmilleraz/fathom/internal/analysis/naming"
 	"github.com/geoffmilleraz/fathom/internal/analysis/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
-	"github.com/geoffmilleraz/fathom/internal/analysis/schemaexport"
-	"github.com/geoffmilleraz/fathom/internal/analysis/security"
-	"github.com/geoffmilleraz/fathom/internal/analysis/sqlmap"
-	"github.com/geoffmilleraz/fathom/internal/analysis/structtags"
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
-
-// costTracker is a package-level cost tracker shared across all cost_report
-// calls.  It is safe for concurrent use.
-var costTracker = cost.NewTracker()
 
 // registerExtraTools is the single entry-point that wires every new tool.
 // It is called from registerTools immediately after all existing groups are
@@ -70,9 +50,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerBlastRadius(s, backend)
 	registerDiffImpact(s, backend)
 	registerSpecCoverage(s, backend)
-	registerSpecStatus(s, backend)
 	registerTraceability(s, backend)
-	registerPropagateConcern(s, backend)
 	registerEvidenceSummary(s, backend)
 	registerContradictionScan(s, backend)
 	registerReferences(s, backend)
@@ -82,25 +60,11 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 
 	// ── coding ───────────────────────────────────────────────────────────────
 	registerArchConformance(s, backend)
-	registerDocCoverage(s, backend)
 	registerStaleDocs(s, backend)
-	registerNaming(s, backend)
-	registerStructTags(s, backend)
-	registerErrAudit(s, backend)
-	registerSQLMap(s, backend)
-	registerFieldUsage(s, backend)
-	registerClones(s, backend)
-	registerMigrationTargets(s, backend)
-	registerGetGoSymbols(s, backend)
 	registerAPIDiff(s, backend)
 	registerDepDrift(s, backend)
-	registerPackageDeps(s, backend)
-	registerHotspots(s, backend)
 
 	// ── shared / security ────────────────────────────────────────────────────
-	registerLicense(s, backend)
-	registerLicensePolicy(s, backend)
-	registerSecurityRollup(s, backend)
 	registerIngest(s, backend)
 	registerRemoveService(s, backend)
 	registerRenameService(s, backend)
@@ -113,16 +77,10 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerPackContext(s, backend)
 
 	// ── ops / meta ───────────────────────────────────────────────────────────
-	registerEstimateCost(s)
-	registerCostReport(s)
 	registerBatch(s)
 
 	// ── proto ────────────────────────────────────────────────────────────────
-	registerProtoContract(s, backend)
 	registerProtoConformance(s, backend)
-
-	// ── schema ───────────────────────────────────────────────────────────────
-	registerSchemaExport(s, backend)
 
 	// ── spec / context ───────────────────────────────────────────────────────
 	registerSpecRefs(s, backend)
@@ -315,55 +273,6 @@ func registerSpecCoverage(s *Server, backend QueryInterface) {
 	})
 }
 
-// ─── investigation: spec_status ──────────────────────────────────────────────
-
-func registerSpecStatus(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "spec_status",
-		Description: "Return the coverage status (\"covered\" or \"uncovered\") for each spec ID in the list.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":  map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"spec_ids": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Spec IDs to check"},
-			},
-			"required": []string{"service", "spec_ids"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string   `json:"service"`
-			SpecIDs []string `json:"spec_ids"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_status: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "spec_status: service required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		codeRefs := make(map[string][]string)
-		for _, n := range nodes {
-			refs := sdd.ExtractRefs(n.Signature + " " + n.Name)
-			if len(refs) > 0 {
-				codeRefs[n.Name] = refs
-			}
-		}
-		matrix := sdd.BuildMatrix(p.SpecIDs, codeRefs)
-		statuses := make(map[string]any, len(p.SpecIDs))
-		for _, id := range p.SpecIDs {
-			statuses[id] = sdd.SpecStatus(matrix, id)
-		}
-		return map[string]any{"statuses": statuses}, nil
-	})
-}
-
 // ─── investigation: traceability ─────────────────────────────────────────────
 
 func registerTraceability(s *Server, backend QueryInterface) {
@@ -407,52 +316,6 @@ func registerTraceability(s *Server, backend QueryInterface) {
 			}
 		}
 		return map[string]any{"refs": refs}, nil
-	})
-}
-
-// ─── investigation: propagate_concern ────────────────────────────────────────
-
-func registerPropagateConcern(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "propagate_concern",
-		Description: "Walk the call graph backward from a seed symbol collecting all symbols whose name/package contains the concern token, plus their transitive callers.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"concern": map[string]any{"type": "string", "description": "Concern token (case-insensitive substring match on package.name)"},
-				"seed":    map[string]any{"type": "string", "description": "Seed symbol key (package.Name) to start from"},
-			},
-			"required": []string{"service", "concern", "seed"},
-		},
-		group: GroupInvestigation,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Concern string `json:"concern"`
-			Seed    string `json:"seed"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "propagate_concern: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "propagate_concern: service required"}
-		}
-		if p.Concern == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "propagate_concern: concern required"}
-		}
-		if p.Seed == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "propagate_concern: seed required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		related := concern.PropagateConcern(nodes, p.Concern, p.Seed)
-		return map[string]any{"symbols": stringsToAny(related)}, nil
 	})
 }
 
@@ -694,49 +557,6 @@ func registerArchConformance(s *Server, backend QueryInterface) {
 	})
 }
 
-// ─── coding: doc_coverage ─────────────────────────────────────────────────────
-
-func registerDocCoverage(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "doc_coverage",
-		Description: "Report documentation coverage of exported symbols: which are documented, which are not, and the overall percentage.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "doc_coverage")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		nodes, err := backend.ListAllSymbols(ctx, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Determine documented: a symbol is documented when its Signature field is
-		// non-empty (the extractor stores the doc comment / signature there).
-		documented := make(map[string]bool, len(nodes))
-		for _, n := range nodes {
-			if strings.TrimSpace(n.Signature) != "" {
-				documented[n.Name] = true
-			}
-		}
-		report := doccoverage.Coverage(nodes, documented)
-		return map[string]any{
-			"covered":   stringsToAny(report.Covered),
-			"uncovered": stringsToAny(report.Uncovered),
-			"pct":       report.Pct,
-		}, nil
-	})
-}
-
 // ─── coding: stale_docs ───────────────────────────────────────────────────────
 
 func registerStaleDocs(s *Server, backend QueryInterface) {
@@ -801,401 +621,6 @@ func registerStaleDocs(s *Server, backend QueryInterface) {
 			}
 		}
 		return map[string]any{"drifts": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: naming ───────────────────────────────────────────────────────────
-
-func registerNaming(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "naming",
-		Description: "Check Go symbol naming conventions (exported PascalCase, no underscores, correct acronym caps, interface -er suffix).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "naming")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		nodes, err := backend.ListAllSymbols(ctx, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		issues := naming.Check(nodes)
-		result := make([]any, len(issues))
-		for i, iss := range issues {
-			result[i] = map[string]any{
-				"symbol":  iss.Symbol,
-				"rule":    iss.Rule,
-				"message": iss.Message,
-			}
-		}
-		return map[string]any{"issues": result, "count": len(issues)}, nil
-	})
-}
-
-// ─── coding: struct_tags ──────────────────────────────────────────────────────
-
-func registerStructTags(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "struct_tags",
-		Description: "Audit Go struct tags in source files: missing json tags on exported fields, malformed tag syntax.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "struct_tags")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var allIssues []structtags.Issue
-		for _, f := range files {
-			if f.Lang != "go" {
-				continue
-			}
-			allIssues = append(allIssues, structtags.Scan(f.Path, string(f.Content))...)
-		}
-		sort.Slice(allIssues, func(i, j int) bool {
-			if allIssues[i].File != allIssues[j].File {
-				return allIssues[i].File < allIssues[j].File
-			}
-			return allIssues[i].Line < allIssues[j].Line
-		})
-		result := make([]any, len(allIssues))
-		for i, iss := range allIssues {
-			result[i] = map[string]any{
-				"file":    iss.File,
-				"line":    iss.Line,
-				"field":   iss.Field,
-				"message": iss.Message,
-			}
-		}
-		return map[string]any{"issues": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: err_audit ────────────────────────────────────────────────────────
-
-func registerErrAudit(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "err_audit",
-		Description: "Audit Go error-handling patterns: ignored errors, log-only handlers, naked error returns.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "err_audit")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var allFindings []erraudit.Finding
-		for _, f := range files {
-			if f.Lang != "go" {
-				continue
-			}
-			allFindings = append(allFindings, erraudit.Scan(f.Path, string(f.Content))...)
-		}
-		sort.Slice(allFindings, func(i, j int) bool {
-			if allFindings[i].File != allFindings[j].File {
-				return allFindings[i].File < allFindings[j].File
-			}
-			return allFindings[i].Line < allFindings[j].Line
-		})
-		result := make([]any, len(allFindings))
-		for i, f := range allFindings {
-			result[i] = map[string]any{
-				"file":    f.File,
-				"line":    f.Line,
-				"message": f.Message,
-			}
-		}
-		return map[string]any{"findings": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: sql_map ──────────────────────────────────────────────────────────
-
-func registerSQLMap(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "sql_map",
-		Description: "Extract SQL table references from source files (FROM/JOIN/INTO/UPDATE patterns).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "sql_map")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var allTables []sqlmap.Table
-		for _, f := range files {
-			allTables = append(allTables, sqlmap.Extract(f.Path, string(f.Content))...)
-		}
-		sort.Slice(allTables, func(i, j int) bool {
-			if allTables[i].File != allTables[j].File {
-				return allTables[i].File < allTables[j].File
-			}
-			if allTables[i].Line != allTables[j].Line {
-				return allTables[i].Line < allTables[j].Line
-			}
-			return allTables[i].Name < allTables[j].Name
-		})
-		result := make([]any, len(allTables))
-		for i, t := range allTables {
-			result[i] = map[string]any{
-				"name": t.Name,
-				"file": t.File,
-				"line": t.Line,
-			}
-		}
-		return map[string]any{"tables": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: field_usage ──────────────────────────────────────────────────────
-
-func registerFieldUsage(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "field_usage",
-		Description: "Report which fields of a named Go struct are used vs unused within its source file.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":     map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"struct_name": map[string]any{"type": "string", "description": "Go struct type name"},
-			},
-			"required": []string{"service", "struct_name"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service    string `json:"service"`
-			StructName string `json:"struct_name"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "field_usage: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "field_usage: service required"}
-		}
-		if p.StructName == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "field_usage: struct_name required"}
-		}
-		files, rpcErr := fetchSources(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var allUsage []fieldusage.FieldUse
-		for _, f := range files {
-			if f.Lang != "go" {
-				continue
-			}
-			usages := fieldusage.Scan(f.Path, string(f.Content), p.StructName)
-			allUsage = append(allUsage, usages...)
-		}
-		result := make([]any, len(allUsage))
-		for i, u := range allUsage {
-			result[i] = map[string]any{
-				"field": u.Field,
-				"used":  u.Used,
-			}
-		}
-		return map[string]any{"fields": result, "struct": p.StructName}, nil
-	})
-}
-
-// ─── coding: clones ───────────────────────────────────────────────────────────
-
-func registerClones(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "clones",
-		Description: "Detect structurally duplicate code (clone groups) across source files using content-normalised hashing.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "clones")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		fileMap := make(map[string]string, len(files))
-		for _, f := range files {
-			fileMap[f.Path] = string(f.Content)
-		}
-		groups := clone.Detect(fileMap)
-		result := make([]any, len(groups))
-		for i, g := range groups {
-			result[i] = map[string]any{
-				"hash":  g.Hash,
-				"files": stringsToAny(g.Files),
-			}
-		}
-		return map[string]any{"groups": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: migration_targets ────────────────────────────────────────────────
-
-func registerMigrationTargets(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "migration_targets",
-		Description: "Identify symbols that depend on deprecated packages (io/ioutil, golang.org/x/net/context, etc.) and should be migrated.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":         map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"deprecated_pkgs": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Additional deprecated package paths (default list is always included)"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service        string   `json:"service"`
-			DeprecatedPkgs []string `json:"deprecated_pkgs"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "migration_targets: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "migration_targets: service required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		targets := migrationtargets.Find(nodes, p.DeprecatedPkgs)
-		result := make([]any, len(targets))
-		for i, t := range targets {
-			result[i] = map[string]any{
-				"symbol": t.Symbol,
-				"reason": t.Reason,
-			}
-		}
-		return map[string]any{"targets": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: get_go_symbols ───────────────────────────────────────────────────
-
-func registerGetGoSymbols(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "get_go_symbols",
-		Description: "Return all Go-kind symbols (GoFunc, GoMethod, GoType, GoInterface, GoConst, GoVar) for the service, optionally filtered by kind.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"kinds":   map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Optional kind filter (e.g. [\"GoFunc\",\"GoMethod\"])"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string   `json:"service"`
-			Kinds   []string `json:"kinds"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "get_go_symbols: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "get_go_symbols: service required"}
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		goKinds := map[core.SourceKind]bool{
-			core.KindGoFunc:      true,
-			core.KindGoMethod:    true,
-			core.KindGoType:      true,
-			core.KindGoInterface: true,
-			core.KindGoConst:     true,
-			core.KindGoVar:       true,
-		}
-		// Build kind filter if specified.
-		wantKinds := make(map[core.SourceKind]bool, len(p.Kinds))
-		for _, k := range p.Kinds {
-			wantKinds[core.SourceKind(k)] = true
-		}
-		var filtered []core.SymbolNode
-		for _, n := range nodes {
-			if !goKinds[n.Kind] {
-				continue
-			}
-			if len(wantKinds) > 0 && !wantKinds[n.Kind] {
-				continue
-			}
-			filtered = append(filtered, n)
-		}
-		return map[string]any{"symbols": toNodeDTOs(filtered), "count": len(filtered)}, nil
 	})
 }
 
@@ -1327,292 +752,6 @@ func registerDepDrift(s *Server, backend QueryInterface) {
 			}
 		}
 		return map[string]any{"drift": result, "count": len(result)}, nil
-	})
-}
-
-// ─── coding: package_deps ─────────────────────────────────────────────────────
-
-func registerPackageDeps(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "package_deps",
-		Description: "Build a package-level dependency graph from symbol packages and their Calls edges.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "package_deps")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		nodes, err := backend.ListAllSymbols(ctx, svc)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// Build package dep graph: fromPkg → set of toPkg.
-		pkgDeps := make(map[string]map[string]bool)
-		for _, n := range nodes {
-			fromPkg := n.Package
-			if fromPkg == "" {
-				continue
-			}
-			if _, ok := pkgDeps[fromPkg]; !ok {
-				pkgDeps[fromPkg] = make(map[string]bool)
-			}
-			for _, callee := range n.Calls {
-				// callee format: "service::pkg.Name" or "pkg.Name" or "Name"
-				toPkg := calleePackage(callee)
-				if toPkg != "" && toPkg != fromPkg {
-					pkgDeps[fromPkg][toPkg] = true
-				}
-			}
-		}
-		// Convert to JSON-serialisable map[string][]string.
-		result := make(map[string]any, len(pkgDeps))
-		for pkg, deps := range pkgDeps {
-			targets := make([]string, 0, len(deps))
-			for t := range deps {
-				targets = append(targets, t)
-			}
-			sort.Strings(targets)
-			result[pkg] = stringsToAny(targets)
-		}
-		return map[string]any{"package_deps": result}, nil
-	})
-}
-
-// calleePackage extracts the package portion of a callee key.
-// Formats: "service::pkg.Name", "pkg.Name", "Name".
-func calleePackage(callee string) string {
-	// Strip service prefix.
-	if idx := strings.Index(callee, "::"); idx >= 0 {
-		callee = callee[idx+2:]
-	}
-	// The package is everything before the last dot.
-	if idx := strings.LastIndex(callee, "."); idx >= 0 {
-		return callee[:idx]
-	}
-	return ""
-}
-
-// ─── coding: hotspots ─────────────────────────────────────────────────────────
-//
-// NOTE: complexity-based hotspots are derived from SymbolNode.Complexity.
-// Git-churn-based hotspots require direct git repository access; that path is
-// intentionally left as a TODO comment below.
-
-func registerHotspots(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "hotspots",
-		Description: "Return top-N complexity-based hotspots (symbols with highest cyclomatic complexity). Git-churn hotspots require repo git access and are not available here.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"top_n":   map[string]any{"type": "integer", "description": "Number of hotspots to return (default 20)"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			TopN    int    `json:"top_n"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "hotspots: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "hotspots: service required"}
-		}
-		topN := p.TopN
-		if topN <= 0 {
-			topN = 20
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		// TODO: add git-churn hotspots when a git repo accessor is wired to the backend.
-		hotspots := complexity.Hotspots(nodes, topN)
-		hs := make([]any, len(hotspots))
-		for i, h := range hotspots {
-			hs[i] = map[string]any{
-				"name":       h.Name,
-				"file":       h.FilePath,
-				"line":       h.Line,
-				"complexity": h.Complexity,
-			}
-		}
-		return map[string]any{"hotspots": hs}, nil
-	})
-}
-
-// ─── shared: license ──────────────────────────────────────────────────────────
-
-func registerLicense(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "license",
-		Description: "Detect the SPDX license identifier from the service's LICENSE source file.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "license")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		detected := "UNKNOWN"
-		for _, f := range files {
-			base := f.Path
-			if idx := strings.LastIndex(base, "/"); idx >= 0 {
-				base = base[idx+1:]
-			}
-			if base == "LICENSE" || base == "LICENSE.txt" || base == "LICENSE.md" || base == "LICENCE" {
-				detected = license.Detect(f.Content)
-				break
-			}
-		}
-		return map[string]any{"spdx": detected}, nil
-	})
-}
-
-// ─── shared: license_policy ───────────────────────────────────────────────────
-
-func registerLicensePolicy(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "license_policy",
-		Description: "Evaluate the detected license against an allowed list and report whether it is permitted.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"allowed": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Allowed SPDX identifiers (e.g. [\"MIT\",\"Apache-2.0\"])"},
-			},
-			"required": []string{"service", "allowed"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string   `json:"service"`
-			Allowed []string `json:"allowed"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "license_policy: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "license_policy: service required"}
-		}
-		files, rpcErr := fetchSources(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		detected := "UNKNOWN"
-		for _, f := range files {
-			base := f.Path
-			if idx := strings.LastIndex(base, "/"); idx >= 0 {
-				base = base[idx+1:]
-			}
-			if base == "LICENSE" || base == "LICENSE.txt" || base == "LICENSE.md" || base == "LICENCE" {
-				detected = license.Detect(f.Content)
-				break
-			}
-		}
-		ok, reason := license.Policy(detected, p.Allowed)
-		return map[string]any{
-			"spdx":    detected,
-			"ok":      ok,
-			"reason":  reason,
-			"allowed": stringsToAny(p.Allowed),
-		}, nil
-	})
-}
-
-// ─── shared: security_rollup ──────────────────────────────────────────────────
-
-func registerSecurityRollup(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "security_rollup",
-		Description: "Aggregate security posture: secret_scan + shell_out + http_client_calls findings plus detected license, returned as one posture report.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service":          map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"allowed_licenses": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Allowed SPDX license identifiers"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupShared,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service         string   `json:"service"`
-			AllowedLicenses []string `json:"allowed_licenses"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "security_rollup: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "security_rollup: service required"}
-		}
-		files, rpcErr := fetchSources(ctx, backend, p.Service)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var secrets, shellOuts, httpCalls []security.Finding
-		detectedLicense := "UNKNOWN"
-		for _, f := range files {
-			secrets = append(secrets, security.SecretScan(f.Path, f.Content)...)
-			shellOuts = append(shellOuts, security.ShellOut(f.Path, f.Content)...)
-			httpCalls = append(httpCalls, security.HTTPClientCalls(f.Path, f.Content)...)
-			// Check LICENSE files.
-			base := f.Path
-			if idx := strings.LastIndex(base, "/"); idx >= 0 {
-				base = base[idx+1:]
-			}
-			if base == "LICENSE" || base == "LICENSE.txt" || base == "LICENSE.md" {
-				detectedLicense = license.Detect(f.Content)
-			}
-		}
-		licenseOK, licenseReason := license.Policy(detectedLicense, p.AllowedLicenses)
-		return map[string]any{
-			"secrets":         securityFindingsToAny(secrets),
-			"shell_outs":      securityFindingsToAny(shellOuts),
-			"http_calls":      securityFindingsToAny(httpCalls),
-			"license":         detectedLicense,
-			"license_ok":      licenseOK,
-			"license_reason":  licenseReason,
-			"secret_count":    len(secrets),
-			"shell_out_count": len(shellOuts),
-			"http_call_count": len(httpCalls),
-		}, nil
 	})
 }
 
@@ -1908,14 +1047,22 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		}
 		budget := p.Budget
 		if budget <= 0 {
-			budget = 4000
+			budget, _ = budgetDefaultTokens("repo_map", budgetSettings{}) // BA-5: measured default (design §3 "map")
 		}
 		nodes, err := backend.ListAllSymbols(ctx, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		mapStr := packer.RepoMap(nodes, budget)
-		return map[string]any{"map": mapStr, "budget": budget}, nil
+		// packer.RepoMap reports only the packed string, so the included
+		// count is recovered from its own one-line-per-symbol output rather
+		// than widening that package's signature (out of this row's scope).
+		included := strings.Count(mapStr, "\n")
+		resp := map[string]any{"map": mapStr, "budget": budget}
+		if el := elisionFor(included, len(nodes), "outbound call-edge count, most-connected first, ties by package+name", "re-call with a larger budget"); el != nil {
+			resp["elided"] = el
+		}
+		return resp, nil
 	})
 }
 
@@ -1955,7 +1102,7 @@ func registerPackContext(s *Server, backend QueryInterface) {
 		}
 		budget := p.Budget
 		if budget <= 0 {
-			budget = 4000
+			budget, _ = budgetDefaultTokens("pack_context", budgetSettings{}) // BA-5: measured default (design §3 "composite")
 		}
 		result, err := backend.QuerySymbols(ctx, core.Query{
 			ServiceID: p.Service,
@@ -1984,83 +1131,16 @@ func registerPackContext(s *Server, backend QueryInterface) {
 				"score": ev.Score,
 			}
 		}
-		return map[string]any{
+		resp := map[string]any{
 			"included": included,
 			"tokens":   packed.Tokens,
 			"dropped":  packed.Dropped,
 			"budget":   budget,
-		}, nil
-	})
-}
-
-// ─── ops/meta: estimate_cost ──────────────────────────────────────────────────
-
-func registerEstimateCost(s *Server) {
-	s.registerTool(toolDescriptor{
-		Name:        "estimate_cost",
-		Description: "Estimate the token count and USD cost of a text string (at a given per-thousand-token rate).",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"text":          map[string]any{"type": "string", "description": "Text to estimate"},
-				"rate_per_ktok": map[string]any{"type": "number", "description": "USD per thousand tokens (default 0.002)"},
-			},
-			"required": []string{"text"},
-		},
-		group: GroupShared,
-	}, func(_ context.Context, args json.RawMessage) (any, *rpcError) {
-		var p struct {
-			Text        string  `json:"text"`
-			RatePerKTok float64 `json:"rate_per_ktok"`
 		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "estimate_cost: invalid args"}
+		if el := elisionFor(len(packed.Included), len(items), "score descending, ties by id ascending", "re-call with a larger budget"); el != nil {
+			resp["elided"] = el
 		}
-		if p.Text == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "estimate_cost: text required"}
-		}
-		rate := p.RatePerKTok
-		if rate <= 0 {
-			rate = 0.002
-		}
-		tokens := cost.Estimate(p.Text)
-		usd := cost.PriceUSD(tokens, rate)
-		costTracker.Record("estimate_cost", tokens, usd)
-		return map[string]any{
-			"tokens": tokens,
-			"usd":    usd,
-			"rate":   rate,
-		}, nil
-	})
-}
-
-// ─── ops/meta: cost_report ────────────────────────────────────────────────────
-
-func registerCostReport(s *Server) {
-	s.registerTool(toolDescriptor{
-		Name:        "cost_report",
-		Description: "Return accumulated token counts and USD costs recorded by estimate_cost and other cost-tracking tools.",
-		InputSchema: map[string]any{
-			"type":       "object",
-			"properties": map[string]any{},
-		},
-		group: GroupShared,
-	}, func(_ context.Context, _ json.RawMessage) (any, *rpcError) {
-		report := costTracker.Report()
-		totalTok, totalUSD := costTracker.Totals()
-		rows := make([]any, len(report))
-		for i, r := range report {
-			rows[i] = map[string]any{
-				"tool":   r.Tool,
-				"tokens": r.Tokens,
-				"usd":    r.USD,
-			}
-		}
-		return map[string]any{
-			"tools":        rows,
-			"total_tokens": totalTok,
-			"total_usd":    totalUSD,
-		}, nil
+		return resp, nil
 	})
 }
 
@@ -2189,73 +1269,6 @@ func registerBatch(s *Server) {
 	})
 }
 
-// ─── proto: proto_contract ────────────────────────────────────────────────────
-
-func registerProtoContract(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "proto_contract",
-		Description: "Parse .proto source files and return the extracted services, RPCs, messages, and fields.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		svc, rpcErr := serviceArg(args, "proto_contract")
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		files, rpcErr := fetchSources(ctx, backend, svc)
-		if rpcErr != nil {
-			return nil, rpcErr
-		}
-		var contracts []any
-		for _, f := range files {
-			if !strings.HasSuffix(f.Path, ".proto") {
-				continue
-			}
-			c := proto.Parse(string(f.Content))
-			svcs := make([]any, len(c.Services))
-			for i, ps := range c.Services {
-				rpcs := make([]any, len(ps.RPCs))
-				for j, rpc := range ps.RPCs {
-					rpcs[j] = map[string]any{
-						"name":   rpc.Name,
-						"input":  rpc.Input,
-						"output": rpc.Output,
-					}
-				}
-				svcs[i] = map[string]any{"name": ps.Name, "rpcs": rpcs}
-			}
-			msgs := make([]any, len(c.Messages))
-			for i, m := range c.Messages {
-				fields := make([]any, len(m.Fields))
-				for j, fld := range m.Fields {
-					fields[j] = map[string]any{
-						"name":   fld.Name,
-						"type":   fld.Type,
-						"number": fld.Number,
-					}
-				}
-				msgs[i] = map[string]any{"name": m.Name, "fields": fields}
-			}
-			contracts = append(contracts, map[string]any{
-				"file":     f.Path,
-				"package":  c.Package,
-				"services": svcs,
-				"messages": msgs,
-			})
-		}
-		return map[string]any{"contracts": contracts, "count": len(contracts)}, nil
-	})
-}
-
 // ─── proto: proto_conformance ─────────────────────────────────────────────────
 
 func registerProtoConformance(s *Server, backend QueryInterface) {
@@ -2299,69 +1312,6 @@ func registerProtoConformance(s *Server, backend QueryInterface) {
 			}
 		}
 		return map[string]any{"issues": allIssues, "count": len(allIssues)}, nil
-	})
-}
-
-// ─── schema_export ────────────────────────────────────────────────────────────
-
-func registerSchemaExport(s *Server, backend QueryInterface) {
-	s.registerTool(toolDescriptor{
-		Name:        "schema_export",
-		Description: "Export the symbol graph for a service as JSON or Graphviz DOT format.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"service": map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"format":  map[string]any{"type": "string", "description": "Output format: \"json\" (default) or \"dot\"", "enum": []string{"json", "dot"}},
-			},
-			"required": []string{"service"},
-		},
-		group: GroupCoding,
-	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
-		if backend == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
-		}
-		var p struct {
-			Service string `json:"service"`
-			Format  string `json:"format"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "schema_export: invalid args"}
-		}
-		if p.Service == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "schema_export: service required"}
-		}
-		format := p.Format
-		if format == "" {
-			format = "json"
-		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
-		}
-		switch format {
-		case "dot":
-			// Build edges from Calls.
-			var edges []core.Edge
-			for _, n := range nodes {
-				for _, callee := range n.Calls {
-					edges = append(edges, core.Edge{
-						FromService: n.Service,
-						FromFile:    n.FilePath,
-						FromSymbol:  n.Package + "." + n.Name,
-						ToSymbol:    callee,
-					})
-				}
-			}
-			dot := schemaexport.ExportDOT(edges)
-			return map[string]any{"format": "dot", "output": dot}, nil
-		default:
-			jsonStr, exportErr := schemaexport.ExportJSON(nodes)
-			if exportErr != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: exportErr.Error()}
-			}
-			return map[string]any{"format": "json", "output": jsonStr}, nil
-		}
 	})
 }
 

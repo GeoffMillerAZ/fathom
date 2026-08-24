@@ -184,13 +184,24 @@ func registerReferences(s *Server, backend QueryInterface) {
 			}
 		}
 
-		occs, budgetTrunc := fitToBudget(occs, 0)
-		return map[string]any{
+		// applyBudget's own `of` counts occurrences seen before THIS cut
+		// (i.e. after maxOccs may already have stopped the scan early,
+		// reflected separately in `truncated`) — the two caps are
+		// independent and both stay visible: `truncated` alone can be true
+		// with no `elided` block when maxOccs capped but the budget did not.
+		occs, el := applyBudget(occs, budgetDefaults("references", budgetSettings{}),
+			"service order, then source-scan order",
+			"re-call with a larger budget, narrow \"services\", or tighten the query")
+		resp := map[string]any{
 			"query":       p.Query,
 			"definitions": defs,
 			"occurrences": occs,
 			"count":       len(occs),
-			"truncated":   truncated || budgetTrunc,
-		}, nil
+			"truncated":   truncated || el != nil,
+		}
+		if el != nil {
+			resp["elided"] = el
+		}
+		return resp, nil
 	})
 }

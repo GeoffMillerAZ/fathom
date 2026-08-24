@@ -371,6 +371,55 @@ func impactStat(label string, v *int, note string) stat.Stat {
 	return stat.Stat{Label: label, Value: "—", ValueRole: "ink-faint", Sub: note}
 }
 
+// renderCostPanel is BA-8's Cost panel (docs/design/budgeted-answers.md
+// §6): tokens fathom put into agent contexts by tool (an ESTIMATE — bytes/4,
+// labeled every time it renders), the standing schema tax with an honest
+// trend absence, elision rate per tool, and the tokens-spent vs
+// discovery-served ratio — OBSERVATIONAL, never a savings claim (law 12).
+func renderCostPanel(cp costPanel) string {
+	var b strings.Builder
+	b.WriteString(sectionHeading("cost · what fathom put into your context (estimates, never a savings claim)"))
+
+	schemaTrend := stat.Absent("schema tax trend", cp.SchemaTaxTrendNote)
+	ratio := stat.Absent("tokens per discovery action", cp.RatioNote)
+	if cp.RatioTokensPerDiscoveryX10 != nil {
+		whole := *cp.RatioTokensPerDiscoveryX10 / 10
+		tenth := *cp.RatioTokensPerDiscoveryX10 % 10
+		ratio = stat.Stat{Label: "tokens per discovery action (est.)", Value: fmt.Sprintf("%d.%d", whole, tenth), Sub: cp.RatioNote}
+	}
+	b.WriteString(stat.RenderBand([]stat.Stat{
+		{Label: "agent surface schema tax", Value: fmtThousands(cp.SchemaTaxBytes) + " B", Sub: plural(cp.SchemaTaxTools, "tool") + " carried by every connected session"},
+		schemaTrend,
+		{Label: "total response cost (est.)", Value: "~" + fmtThousands(cp.TotalEstTokens) + " tok", Sub: fmtThousands(cp.TotalBytes) + " B measured across accounted calls"},
+		ratio,
+	}, stat.BandOptions{AriaLabel: "cost"}))
+
+	if len(cp.Tools) == 0 {
+		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">no response-cost rows readable from here</span>`)}))
+		return b.String()
+	}
+
+	var tbl strings.Builder
+	tbl.WriteString(`<div class="overflow-x-auto"><table class="w-full border-collapse text-sm"><tr class="border-b border-line text-left"><th class="px-2 py-1 font-medium text-ink-muted">tool</th><th class="px-2 py-1 font-medium text-ink-muted">calls</th><th class="px-2 py-1 font-medium text-ink-muted">tokens (est.)</th><th class="px-2 py-1 font-medium text-ink-muted">elision rate</th></tr>`)
+	for i, r := range cp.Tools {
+		if i == 10 {
+			break
+		}
+		rate := `<span class="text-ink-faint">—</span>`
+		if pct, ok := r.ElisionRatePct(); ok {
+			role := "text-ink"
+			if pct >= 30 {
+				role = "text-caution"
+			}
+			rate = `<span class="` + role + ` tabular-nums">` + strconv.Itoa(pct) + `%</span>`
+		}
+		tbl.WriteString(`<tr class="border-b border-line"><td class="px-2 py-1 font-mono text-xs">` + html.EscapeString(r.Tool) + `</td><td class="px-2 py-1 tabular-nums">` + fmtThousands(r.Calls) + `</td><td class="px-2 py-1 tabular-nums">~` + fmtThousands(r.EstTokens) + `</td><td class="px-2 py-1">` + rate + `</td></tr>`)
+	}
+	tbl.WriteString(`</table></div><div class="mt-2 text-xs text-ink-muted">tokens are an ESTIMATE (response bytes ÷ 4); elision rate is truncating calls only — a tool with no cut shows "—", not 0%.</div>`)
+	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "response cost by tool", Body: template.HTML(tbl.String())}))
+	return b.String()
+}
+
 func renderObsImpact(m observatoryModel) string {
 	imp := m.Impact
 	var b strings.Builder
@@ -443,6 +492,11 @@ func renderObsImpact(m observatoryModel) string {
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">no call-log rows readable from here</span>`)}))
 	}
 	b.WriteString(dashboard.RenderWidget(dashboard.Widget{Title: "friction filed by hand", Body: template.HTML(kv("open observations across the fleet", fmtThousands(fleetOpenObservations(m))+` <span class="text-ink-muted">(each is a bug spec with a repro — the backlog that improves fathom)</span>`))}))
+
+	// Cost (BA-8): what fathom itself put into agent contexts — the
+	// denominator half of the impact story, folded from the same call-log
+	// entries the Q3 table above already reads.
+	b.WriteString(renderCostPanel(m.Cost))
 
 	// Q4 — Compounding.
 	b.WriteString(sectionHeading("Q4 · is the knowledge compounding?"))

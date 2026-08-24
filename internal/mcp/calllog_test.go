@@ -143,3 +143,61 @@ func TestCallLogOutcomes(t *testing.T) {
 		t.Errorf("logged entry missing outcomes: %v", entry)
 	}
 }
+
+// TestResponseCostAccounting is BA-6: response bytes are recorded per call
+// (calllog.go's own JSONL row, via callOutcome.ResponseBytes) and
+// recordResponseCost totals them per tool across a fixture window — the
+// aggregation seam, not a new log.
+func TestResponseCostAccounting(t *testing.T) {
+	var buf bytes.Buffer
+	l := NewCallLogger(&buf)
+
+	oneElided := 3
+	zeroElided := 0
+	l.log("query_symbols", "svc", "coding", "agent", "", "", false, 0, nil,
+		callOutcome{ResponseBytes: 1000, ElidedCount: &oneElided}, time.Millisecond, nil)
+	l.log("query_symbols", "svc", "coding", "agent", "", "", false, 0, nil,
+		callOutcome{ResponseBytes: 500, ElidedCount: &zeroElided}, time.Millisecond, nil)
+	l.log("find_symbol", "svc", "coding", "agent", "", "", false, 0, nil,
+		callOutcome{ResponseBytes: 200}, time.Millisecond, nil) // no elided field at all: not a truncating call
+	// A blank line and a malformed line must not derail the fold.
+	buf.WriteString("\n{not json\n")
+
+	totals := recordResponseCost(bytes.NewReader(buf.Bytes()))
+	if len(totals) != 2 {
+		t.Fatalf("recordResponseCost = %+v, want 2 distinct tools", totals)
+	}
+
+	byTool := map[string]ToolCost{}
+	for _, tc := range totals {
+		byTool[tc.Tool] = tc
+	}
+
+	qs, ok := byTool["query_symbols"]
+	if !ok {
+		t.Fatalf("query_symbols missing from totals: %+v", totals)
+	}
+	if qs.Calls != 2 {
+		t.Errorf("query_symbols.Calls = %d, want 2", qs.Calls)
+	}
+	if qs.TotalBytes != 1500 {
+		t.Errorf("query_symbols.TotalBytes = %d, want 1500 (1000+500)", qs.TotalBytes)
+	}
+	if qs.TruncatingCalls != 2 {
+		t.Errorf("query_symbols.TruncatingCalls = %d, want 2 (both calls carried an elided field)", qs.TruncatingCalls)
+	}
+	if qs.ElidedCalls != 1 {
+		t.Errorf("query_symbols.ElidedCalls = %d, want 1 (only the count=3 call actually elided)", qs.ElidedCalls)
+	}
+
+	fs, ok := byTool["find_symbol"]
+	if !ok {
+		t.Fatalf("find_symbol missing from totals: %+v", totals)
+	}
+	if fs.Calls != 1 || fs.TotalBytes != 200 {
+		t.Errorf("find_symbol = %+v, want Calls=1 TotalBytes=200", fs)
+	}
+	if fs.TruncatingCalls != 0 || fs.ElidedCalls != 0 {
+		t.Errorf("find_symbol = %+v, want zero truncating/elided (no elided field logged)", fs)
+	}
+}

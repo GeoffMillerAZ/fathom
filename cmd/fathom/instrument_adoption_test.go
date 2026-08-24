@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestBuildAdoptionReport_Golden(t *testing.T) {
 	registered := []string{"brief", "find_symbol", "verify_plan", "capabilities"}
 	openObs := 2
 
-	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, entries, 0, registered, "", &openObs, ".fathom/observations.md", nil)
+	r := buildAdoptionReport("workspace/logs/mcp-calls.jsonl", true, "", entries, 0, registered, "", &openObs, ".fathom/observations.md", nil)
 
 	if r.TotalCalls != 5 {
 		t.Errorf("TotalCalls = %d, want 5", r.TotalCalls)
@@ -153,7 +154,7 @@ func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 			VerdictOutcome: map[string]int{"impact": 0, "obligations": 1, "arch_conformance": 1, "spec_coverage": 0},
 		},
 	}
-	r := buildAdoptionReport("x.jsonl", true, entries, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
+	r := buildAdoptionReport("x.jsonl", true, "", entries, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
 
 	if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 1 {
 		t.Fatalf("VerifyGateRefusals = %v, want 1 refusal event (one ledger row had Failing>0; the call log's own 2 must not leak in)", r.VerifyGateRefusals)
@@ -181,7 +182,7 @@ func TestBuildAdoptionReport_GateCatchesRealCounts(t *testing.T) {
 // real, non-nil 0 — the two must never look the same.
 func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
 	t.Run("no ledger rows: nil, never a fabricated zero", func(t *testing.T) {
-		r := buildAdoptionReport("x.jsonl", true, nil, 0, nil, "", nil, ".fathom/observations.md", nil)
+		r := buildAdoptionReport("x.jsonl", true, "", nil, 0, nil, "", nil, ".fathom/observations.md", nil)
 		if r.VerifyGateRefusals != nil {
 			t.Errorf("VerifyGateRefusals = %v, want nil (the ledger has never run)", r.VerifyGateRefusals)
 		}
@@ -195,7 +196,7 @@ func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
 			{Plan: "docs/plans/a.md", Total: 2, Claimed: 2, Verified: 2, Failing: 0},
 			{Plan: "docs/plans/b.md", Total: 1, Claimed: 1, Verified: 1, Failing: 0},
 		}
-		r := buildAdoptionReport("x.jsonl", true, nil, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
+		r := buildAdoptionReport("x.jsonl", true, "", nil, 0, nil, "", nil, ".fathom/observations.md", ledgerRows)
 		if r.VerifyGateRefusals == nil || *r.VerifyGateRefusals != 0 {
 			t.Fatalf("VerifyGateRefusals = %v, want a real 0 (the ledger ran twice, both clean)", r.VerifyGateRefusals)
 		}
@@ -210,7 +211,7 @@ func TestBuildAdoptionReport_GateCatchesHonestSplit(t *testing.T) {
 
 func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 	entries := []adoptionCallEntry{{TS: "2026-07-23T10:00:00Z", Tool: "find_symbol", Surface: "agent"}}
-	r := buildAdoptionReport("x.jsonl", true, entries, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
+	r := buildAdoptionReport("x.jsonl", true, "", entries, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
 	if r.ClaimsAttachHitRate != nil {
 		t.Errorf("ClaimsAttachHitRate = %v, want nil when no brief calls occurred", r.ClaimsAttachHitRate)
 	}
@@ -220,7 +221,7 @@ func TestBuildAdoptionReport_NoBriefCallsIsUndefinedNotZero(t *testing.T) {
 }
 
 func TestBuildAdoptionReport_EmptyLogIsHonestZero(t *testing.T) {
-	r := buildAdoptionReport("x.jsonl", true, nil, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
+	r := buildAdoptionReport("x.jsonl", true, "", nil, 0, []string{"find_symbol"}, "", nil, ".fathom/observations.md", nil)
 	if r.TotalCalls != 0 {
 		t.Errorf("TotalCalls = %d, want 0", r.TotalCalls)
 	}
@@ -720,5 +721,66 @@ func TestAdoptionCatchesNotCumulative(t *testing.T) {
 	}
 	if !strings.Contains(note, "refusal") {
 		t.Errorf("note must speak in refusal events: %q", note)
+	}
+}
+
+// TestAdoptionNamesReadErrorNeverUniversalZero pins the IT-1 read-error
+// classification (observation O17, filed 2026-08-23, SP-B3 docs/plans/
+// surface-prune.md): a call log that is present but genuinely unreadable
+// (an EPERM-class error — the external-volume TCC wedge CLAUDE.md's own
+// playbook names is the common real-world instance) must never render as
+// "zero-call registered tools (N of N registered)" — the exact universal-
+// zero fabrication a failed read used to produce by collapsing into the
+// same all-tools-empty shape a clean-but-empty log renders. ENOENT stays
+// the separate, honest "no log yet" case (classifyCallLogRead's own
+// contract) and is not exercised here.
+func TestAdoptionNamesReadErrorNeverUniversalZero(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root — permission bits never block root's own reads")
+	}
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mcp-calls.jsonl")
+	if err := os.WriteFile(path, []byte(`{"ts":"2026-01-01T00:00:00Z","tool":"find_symbol"}`+"\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := os.Chmod(path, 0o000); err != nil {
+		t.Fatalf("chmod unreadable: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(path, 0o644) }) // let t.TempDir()'s own cleanup remove it
+
+	entries, skipped, err := classifyCallLogRead(path)
+	if err == nil {
+		t.Fatalf("expected a read error for an unreadable file, got a clean read (entries=%v)", entries)
+	}
+	if os.IsNotExist(err) {
+		t.Fatalf("expected a real (non-ENOENT) read error, got ENOENT-classified: %v", err)
+	}
+	if entries != nil || skipped != 0 {
+		t.Errorf("classifyCallLogRead on a real error must return nil entries and 0 skipped, got entries=%v skipped=%d", entries, skipped)
+	}
+
+	registered := []string{"find_symbol", "outline", "god_object"}
+	report := buildAdoptionReport(path, false, err.Error(), nil, 0, registered, "", nil, ".fathom/observations.md", nil)
+
+	if report.CallLogReadError == "" {
+		t.Fatal("report.CallLogReadError must be set for a real read error")
+	}
+	if len(report.ZeroCallTools) != 0 {
+		t.Errorf("ZeroCallTools must stay uncomputed on a real read error (never a fabricated universal zero), got %v", report.ZeroCallTools)
+	}
+
+	var buf bytes.Buffer
+	renderAdoptionReport(&buf, report)
+	out := buf.String()
+	universalZero := "zero-call registered tools (" +
+		strconv.Itoa(len(registered)) + " of " + strconv.Itoa(len(registered)) + " registered):"
+	if strings.Contains(out, universalZero) {
+		t.Errorf("rendered report must never claim universal zero-call from a read error; got:\n%s", out)
+	}
+	if !strings.Contains(out, "NOT COMPUTED") {
+		t.Errorf("rendered report must honestly say the zero-call figure was not computed; got:\n%s", out)
+	}
+	if !strings.Contains(out, "READ ERROR") {
+		t.Errorf("rendered report must surface the read error; got:\n%s", out)
 	}
 }

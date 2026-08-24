@@ -138,69 +138,6 @@ func TestListServices_Empty(t *testing.T) {
 	}
 }
 
-// ─── query_cross_service ──────────────────────────────────────────────────────
-
-func TestQueryCrossService_MatchesSymbols(t *testing.T) {
-	srv := newFleetServer(fleetFixture())
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1010, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "query_cross_service",
-			"arguments": map[string]any{"keyword": "login"},
-		},
-	})
-	p := platformToolPayload(t, resp)
-	matches, ok := p["matches"].([]any)
-	if !ok {
-		t.Fatalf("query_cross_service.matches missing: %v", p)
-	}
-	// "Login" appears in both svc-a and svc-b.
-	if len(matches) < 2 {
-		t.Errorf("expected at least 2 matches for 'login', got %d: %v", len(matches), matches)
-	}
-}
-
-func TestQueryCrossService_MissingKeyword(t *testing.T) {
-	srv := newFleetServer(fleetFixture())
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1011, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "query_cross_service",
-			"arguments": map[string]any{},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
-func TestQueryCrossService_NoMatches(t *testing.T) {
-	srv := newFleetServer(fleetFixture())
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 1012, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "query_cross_service",
-			"arguments": map[string]any{"keyword": "xyzzy_nonexistent"},
-		},
-	})
-	p := platformToolPayload(t, resp)
-	matches, ok := p["matches"].([]any)
-	if !ok {
-		// An empty JSON array may be nil after unmarshal; treat nil as ok.
-		if p["matches"] != nil {
-			t.Fatalf("matches unexpected type: %T", p["matches"])
-		}
-		matches = nil
-	}
-	if len(matches) != 0 {
-		t.Errorf("expected 0 matches for nonexistent keyword, got %d", len(matches))
-	}
-}
-
 // ─── fleet_drift ──────────────────────────────────────────────────────────────
 
 func TestFleetDrift_DetectsDrift(t *testing.T) {
@@ -466,7 +403,7 @@ func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 	for _, raw := range tools {
 		names[raw.(map[string]any)["name"].(string)] = true
 	}
-	for _, want := range []string{"list_services", "query_cross_service", "fleet_drift", "cross_repo_callers"} {
+	for _, want := range []string{"list_services", "fleet_drift", "cross_repo_callers"} {
 		if !names[want] {
 			t.Errorf("platform profile missing tool %q", want)
 		}

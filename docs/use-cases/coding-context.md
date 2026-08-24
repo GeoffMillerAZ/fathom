@@ -28,7 +28,6 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `brief` | MCP tool | Paste-ready markdown brief combining symbol resolution + concern query; respects a char budget |
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
 | `find_callees` | MCP tool | Direct callees of a named symbol |
-| `call_hierarchy` | MCP tool | Bidirectional call tree rooted at a symbol (callers and callees, configurable depth) |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `batch` | MCP tool | Execute N tool calls in a single request |
 | `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
@@ -134,7 +133,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 ## Setup & notes
 
-**Profile**: set `coding` at session start (stdio `serve-mcp` only — call `set_profile { "profile": "coding" }`; over the shared HTTP daemon, register against `POST /rpc/companion` or `POST /rpc/coding` instead). This exposes `query_symbols`, `symbol_context`, `find_callees`, `call_hierarchy`, `outline`, `entrypoints`, and the shared tools (`find_symbol`, `repo_map`, `pack_context`, `brief`, `batch`). Without a profile set, all tool groups are visible.
+**Profile**: set `coding` at session start (stdio `serve-mcp` only — call `set_profile { "profile": "coding" }`; over the shared HTTP daemon, register against `POST /rpc/companion` or `POST /rpc/coding` instead). This exposes `query_symbols`, `symbol_context`, `find_callees`, `outline`, `entrypoints`, and the shared tools (`find_symbol`, `repo_map`, `pack_context`, `brief`, `batch`). Without a profile set, all tool groups are visible.
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 
@@ -143,8 +142,6 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 **Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom.
 
 **Static context injection**: for sessions where the MCP server is not available, run `fathom gen-claude-md --service auth-service` to write a `CLAUDE.md` to `workspace/artifacts/CLAUDE.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
-
-**`call_hierarchy` depth**: defaults to 2, maximum 5. Keep it low (2–3) for tight context; higher depths expand rapidly and may exceed budget.
 
 ---
 
@@ -171,4 +168,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `find_callees`, `call_hierarchy`, `entrypoints`, `batch`, `set_profile`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `find_callees`, `entrypoints`, `batch`, `set_profile`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`. Update it when these change.

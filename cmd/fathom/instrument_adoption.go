@@ -68,8 +68,16 @@ type adoptionCallEntry struct {
 	// field, OR a gate call with zero claimed tasks — indistinguishable), never as a
 	// fabricated zero catch.
 	VerdictOutcome map[string]int `json:"verdict_outcome,omitempty"`
-	LatencyMS      float64        `json:"latency_ms"`
-	Error          string         `json:"error,omitempty"`
+	// ResponseBytes / ElidedCount (BA-6/BA-1, docs/plans/ambient-fathom.md)
+	// mirror internal/mcp.callLogEntry's own fields of the same JSON names:
+	// what this call's response cost the agent's context, and whether (and
+	// how much) it disclosed eliding. 0 / nil on rows logged before BA-6
+	// existed — buildCostPanel (BA-8) must treat those as "not accounted",
+	// never as a genuine zero-byte or zero-elision call.
+	ResponseBytes int     `json:"response_bytes,omitempty"`
+	ElidedCount   *int    `json:"elided_count,omitempty"`
+	LatencyMS     float64 `json:"latency_ms"`
+	Error         string  `json:"error,omitempty"`
 }
 
 // SurfaceTrafficRow is one surface's traffic in the adoption report — the
@@ -94,7 +102,18 @@ type ToolCallRow struct {
 type AdoptionReport struct {
 	CallLogPath string `json:"call_log_path"`
 	CallLogRead bool   `json:"call_log_read"` // false: log absent/unreadable — every count below is honestly zero, not a guess
-	TotalCalls  int    `json:"total_calls"`
+	// CallLogReadError (IT-1 classification, observation O17) is set only
+	// when the read failed for a reason OTHER than the log simply not
+	// existing yet (ENOENT stays the honest, silent "no log yet" case —
+	// CallLogRead:false alone already says so). A non-empty value here is a
+	// real defect — commonly EPERM on a wedged macOS TCC verdict, the
+	// external-volume playbook CLAUDE.md names — carries the errno and the
+	// tccWedgeHint remedy already appended, and means ZeroCallTools/
+	// RegisteredNotOnAgent/ZeroCallAgentTools below were deliberately left
+	// uncomputed rather than fabricated from an empty read that never
+	// actually happened (never "zero-call registered tools (88 of 88)").
+	CallLogReadError string `json:"call_log_read_error,omitempty"`
+	TotalCalls       int    `json:"total_calls"`
 	// SkippedMalformedLines counts call-log lines that failed to decode
 	// (torn writes, editing debris) and were skipped line-wise (H2) — when
 	// nonzero, the counts above are a floor over a partially readable log,
@@ -191,7 +210,23 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	entries, skippedMalformed, read := readCallLog(callLogPath) // absent/unreadable log: honestly report zero, never fatal (advisory tool)
+	// IT-1 read-error classification (observation O17, filed 2026-08-23):
+	// readCallLog's own bool collapses "file absent" and "file present but
+	// unreadable" into the same false signal — a wedged macOS TCC verdict
+	// (stat succeeds, read fails; CLAUDE.md's own external-volume playbook)
+	// rendered exactly like an honest missing log, and fed straight into
+	// the zero-call math below as if the log had been read clean:
+	// "zero-call registered tools (88 of 88 registered)" from a read that
+	// never actually happened. classifyCallLogRead (flywheel.go's own
+	// classification, mirrored here per SP-B3) tells "no log yet" (ENOENT)
+	// apart from a real defect.
+	entries, skippedMalformed, callLogErr := classifyCallLogRead(callLogPath)
+	read := callLogErr == nil
+	realReadErr := callLogErr != nil && !os.IsNotExist(callLogErr)
+	callLogReadError := ""
+	if realReadErr {
+		callLogReadError = callLogErr.Error()
+	}
 
 	unattributedExcluded := 0
 	if *serviceFlag != "" {
@@ -213,13 +248,23 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "warn: instrument --adoption: reading %s: %v\n", observationsPath(*root), obsErr)
 	}
 
+	if realReadErr {
+		fmt.Fprintf(stderr, "warn: instrument --adoption: call log at %s: %s\n", callLogPath, callLogReadError)
+	}
+
 	// IT-11: the verify-gate figure sources from the verify ledger, never
 	// the call log — readVerifyLedger() already honors FATHOM_VERIFY_LEDGER
 	// (verifyledger.go), the "path injectable" this row asks for.
-	report := buildAdoptionReport(callLogPath, read, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root), readVerifyLedger())
+	report := buildAdoptionReport(callLogPath, read, callLogReadError, entries, skippedMalformed, toolNames, toolNote, openObs, observationsPath(*root), readVerifyLedger())
 	report.ServiceFilter = *serviceFlag
 	report.UnattributedExcluded = unattributedExcluded
-	report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
+	// O17: same fabrication risk as buildAdoptionReport's zeroCall — the
+	// agent-surface partition is equally derived from adoptionToolCounts
+	// (empty on a real read error), so it stays uncomputed (nil/0) rather
+	// than claiming every agent-surface tool is zero-call too.
+	if !realReadErr {
+		report.ZeroCallAgentTools, report.RegisteredNotOnAgent = partitionZeroCalls(toolNames, mcp.AgentSurfaceTools(), adoptionToolCounts(entries))
+	}
 
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
@@ -287,6 +332,33 @@ func readCallLog(path string) (entries []adoptionCallEntry, skippedMalformed int
 	return entries, skippedMalformed, true
 }
 
+// classifyCallLogRead wraps readCallLog with the IT-1 read-error
+// classification (observation O17, filed 2026-08-23) — mirrors
+// flywheelCallLog's own classification (flywheel.go) so both consumers of
+// the call log tell "no log yet" apart from "the log is right there and
+// unreadable" the same way. err is nil on a clean read; os.IsNotExist(err)
+// is the honest ENOENT case; any other non-nil err is a real defect and
+// carries the errno plus tccWedgeHint's remedy (flywheel.go) already
+// appended, so the caller never needs to re-derive which path failed or
+// why.
+func classifyCallLogRead(path string) (entries []adoptionCallEntry, skippedMalformed int, err error) {
+	entries, skippedMalformed, read := readCallLog(path)
+	if read {
+		return entries, skippedMalformed, nil
+	}
+	_, openErr := os.Open(path)
+	if openErr == nil {
+		// readCallLog just failed and a fresh Open didn't (a race, or a
+		// permission state that changed between the two calls) — report
+		// generically rather than claim success with zero entries.
+		return nil, 0, fmt.Errorf("call log at %s: unreadable", path)
+	}
+	if os.IsNotExist(openErr) {
+		return nil, 0, openErr // honest "no log yet"
+	}
+	return nil, 0, fmt.Errorf("%w%s", openErr, tccWedgeHint(path))
+}
+
 // registeredToolNames returns the sorted names of every tool the fathom
 // binary registers — "the served binary's own tool list" (FW-1's own
 // framing). Tool REGISTRATION never depends on the backend: every
@@ -345,7 +417,7 @@ func registeredToolNames(storePath string) ([]string, error) {
 // buildAdoptionReport is pure over its inputs (deterministic given inputs,
 // per FW-1's own requirement) — cmdInstrumentAdoption does all the I/O,
 // this function does none.
-func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
+func buildAdoptionReport(callLogPath string, read bool, callLogReadError string, entries []adoptionCallEntry, skippedMalformed int, registeredTools []string, toolNote string, openObs *int, obsPath string, ledgerRows []verifyLedgerRow) AdoptionReport {
 	surfaceCalls := map[string]int{}
 	surfaceLastTS := map[string]string{}
 	toolCalls := map[string]int{}
@@ -391,13 +463,22 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 		topTools = append(topTools, ToolCallRow{Tool: t, Calls: toolCalls[t]})
 	}
 
+	// O17: a real (non-ENOENT) call-log read error leaves entries/seenCalled
+	// empty for a reason that has nothing to do with actual tool usage —
+	// computing zeroCall from that would fabricate "every registered tool
+	// is zero-call" out of a read that never happened. Only the ENOENT "no
+	// log yet" case and a genuinely clean read compute this list; a real
+	// read error leaves it nil, and callLogReadError (set on the report
+	// below) is what the renderer checks to say so honestly instead.
 	var zeroCall []string
-	for _, t := range registeredTools {
-		if !seenCalled[t] {
-			zeroCall = append(zeroCall, t)
+	if callLogReadError == "" {
+		for _, t := range registeredTools {
+			if !seenCalled[t] {
+				zeroCall = append(zeroCall, t)
+			}
 		}
+		sort.Strings(zeroCall)
 	}
-	sort.Strings(zeroCall)
 
 	var hitRate *float64
 	if briefCalls > 0 {
@@ -411,6 +492,7 @@ func buildAdoptionReport(callLogPath string, read bool, entries []adoptionCallEn
 	return AdoptionReport{
 		CallLogPath:                       callLogPath,
 		CallLogRead:                       read,
+		CallLogReadError:                  callLogReadError,
 		TotalCalls:                        len(entries),
 		SkippedMalformedLines:             skippedMalformed,
 		SurfaceTraffic:                    surfaceTraffic,
@@ -466,9 +548,17 @@ func gateCatchStatsFromLedger(rows []verifyLedgerRow) (catchCount *int, instrume
 func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 	fmt.Fprintln(w, "fathom instrument --adoption")
 	fmt.Fprintln(w)
-	if !r.CallLogRead {
+	switch {
+	case r.CallLogReadError != "":
+		// O17: a real read error (never ENOENT — that renders below as the
+		// honest "not found" case) — the errno and tccWedgeHint's remedy
+		// already ride in the message. Every figure derived from the call
+		// log (zero-call tools chief among them) is uncomputed, not
+		// fabricated, and says so explicitly further down.
+		fmt.Fprintf(w, "call log: %s — READ ERROR: %s\n", r.CallLogPath, r.CallLogReadError)
+	case !r.CallLogRead:
 		fmt.Fprintf(w, "call log: %s (not found — 0 calls observed, not measured)\n", r.CallLogPath)
-	} else {
+	default:
 		fmt.Fprintf(w, "call log: %s (%d calls)\n", r.CallLogPath, r.TotalCalls)
 	}
 	if r.SkippedMalformedLines > 0 {
@@ -513,13 +603,21 @@ func renderAdoptionReport(w io.Writer, r AdoptionReport) {
 		fmt.Fprintf(w, "\nzero-call AGENT-surface tools (%d of %d on the surface — the actionable list):\n  %s\n", len(r.ZeroCallAgentTools), len(r.ZeroCallTools)+0, strings.Join(r.ZeroCallAgentTools, ", "))
 		fmt.Fprintf(w, "registered but not exposed on the agent surface: %d (expose or prune — a different remedy than \"use more tools\")\n", r.RegisteredNotOnAgent)
 	}
-	fmt.Fprintf(w, "\nzero-call registered tools (%d of %d registered):\n", len(r.ZeroCallTools), r.RegisteredToolCount)
-	if r.ToolRegistryNote != "" {
-		fmt.Fprintf(w, "  (%s)\n", r.ToolRegistryNote)
-	} else if len(r.ZeroCallTools) == 0 {
-		fmt.Fprintln(w, "  (none — every registered tool has been called at least once)")
+	// O17: r.CallLogReadError set means ZeroCallTools was deliberately left
+	// uncomputed (buildAdoptionReport) — say so honestly instead of
+	// printing "zero-call registered tools (88 of 88 registered)" for a
+	// read that never happened.
+	if r.CallLogReadError != "" {
+		fmt.Fprintln(w, "\nzero-call registered tools: NOT COMPUTED — the call log failed to read (see the READ ERROR above); this is not a measurement of usage")
 	} else {
-		fmt.Fprintf(w, "  %s\n", strings.Join(r.ZeroCallTools, ", "))
+		fmt.Fprintf(w, "\nzero-call registered tools (%d of %d registered):\n", len(r.ZeroCallTools), r.RegisteredToolCount)
+		if r.ToolRegistryNote != "" {
+			fmt.Fprintf(w, "  (%s)\n", r.ToolRegistryNote)
+		} else if len(r.ZeroCallTools) == 0 {
+			fmt.Fprintln(w, "  (none — every registered tool has been called at least once)")
+		} else {
+			fmt.Fprintf(w, "  %s\n", strings.Join(r.ZeroCallTools, ", "))
+		}
 	}
 
 	fmt.Fprintln(w, "\nclaims-attach hit rate (brief calls):")

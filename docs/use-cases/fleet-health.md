@@ -19,22 +19,16 @@ Use fathom to get an objective quality and security posture across an entire fle
 |---|---|---|
 | `list_services` | MCP tool | All ingested services with symbol counts and detected languages |
 | `fleet_drift` | MCP tool | Symbols that appear in multiple services with conflicting kinds — a signal of diverged shared code |
-| `query_cross_service` | MCP tool | Keyword search across every service in the fleet simultaneously |
 | `complexity` | MCP tool | Cyclomatic-complexity hotspots and Maintainability Index for one service |
 | `god_object` | MCP tool | Types with too many methods or fields — structural debt signals |
 | `secret_scan` | MCP tool | Hardcoded tokens, high-entropy strings, credential-named variables |
 | `shell_out` | MCP tool | Shell-out call sites (exec, subprocess, child_process) |
 | `http_client_calls` | MCP tool | HTTP client call sites across Go, JS/TS, Python |
 | `cloc` | MCP tool | Line counts by language (blank / comment / code) |
-| `dependencies` | MCP tool | SBOM-style dependency list from lockfiles |
-| `hotspots` | MCP tool | Top-N complexity hotspots per service (also returned nested inside `complexity`) |
-| `security_rollup` | MCP tool | Aggregated security posture: `secret_scan` + `shell_out` + `http_client_calls` + license, in one call |
 | `staleness_report` | MCP tool | Whether the index is in sync with HEAD; flags `reingest_recommended` |
 | `set_profile` | MCP tool | Switch the visible tool set |
 | `ingest` | MCP tool | Re-index a service in-session after commits |
 | `fathom ingest` | CLI | Index a repo into the fleet store (avoid while a session is writing the same store — SQLite serializes writers, ADR-020) |
-
-> **Security rollup:** `security_rollup` is a single MCP tool (GroupShared) that internally runs `secret_scan`, `shell_out`, and `http_client_calls` and returns an aggregated posture report including license findings. Use it for a one-call sweep; call the individual tools when you need granular control.
 
 ---
 
@@ -48,7 +42,6 @@ With fathom:
 - **Targeted security sweeps.** `secret_scan`, `shell_out`, and `http_client_calls` run against the pre-indexed store. Findings carry file and line — the agent can surface them directly or use them to open exactly the right files.
 - **Complexity-driven refactor targeting.** `complexity` returns the top-N hotspot functions with cyclomatic scores and an overall Maintainability Index. The agent proposes concrete refactor targets with evidence, not intuition.
 - **Drift detection across the fleet.** `fleet_drift` flags symbols that exist in multiple services with conflicting kinds — a structural signal that shared code has forked or that service boundaries are blurring.
-- **Honest dependency picture.** `dependencies` parses lockfiles and returns direct/indirect flags and ecosystems. An agent can identify outdated or risky transitive deps without parsing lock files manually.
 
 The result: the agent spends tokens on analysis and recommendations, not on discovery and file parsing.
 
@@ -149,8 +142,8 @@ Highlights any symbol that exists in multiple services with conflicting kinds �
 
 **Profiles:**
 
-- Use `set_profile` with `"platform"` for fleet-wide operations (`list_services`, `fleet_drift`, `query_cross_service`). Platform profile includes all shared tools. Over the shared HTTP daemon, register against `POST /rpc/platform` instead.
-- Use `set_profile` with `"coding"` for single-service quality metrics (`complexity`, `god_object`, `cloc`, `dependencies`, `antipatterns`). Coding profile also includes shared tools including `secret_scan`, `shell_out`, `http_client_calls`. Over HTTP, use `POST /rpc/coding`.
+- Use `set_profile` with `"platform"` for fleet-wide operations (`list_services`, `fleet_drift`). Platform profile includes all shared tools. Over the shared HTTP daemon, register against `POST /rpc/platform` instead.
+- Use `set_profile` with `"coding"` for single-service quality metrics (`complexity`, `god_object`, `cloc`). Coding profile also includes shared tools including `secret_scan`, `shell_out`, `http_client_calls`. Over HTTP, use `POST /rpc/coding`.
 - If you need both fleet and per-service tools in the same session, call `set_profile "platform"` first (it exposes the broadest surface including shared tools), then call per-service tools directly. (`set_profile` is available on stdio `serve-mcp` only; over HTTP, the path-scoped endpoint is the equivalent.)
 
 **Concern argument:** The tools in this use case do **not** require a `concern` argument — they are structural/metric queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
@@ -175,10 +168,8 @@ claude mcp add --scope user fathom -- \
 fathom ingest --service payment-service --path /path/to/payment-service
 ```
 
-**`dependencies` parses lockfiles** — `go.sum`, `package-lock.json`/`yarn.lock`, `requirements.txt`/`Pipfile.lock`, `Gemfile.lock`, `Cargo.lock`. Services without a recognised lockfile return an empty list; that is expected for generated or vendored repos.
-
 ---
 
 ## Maintained
 
-This doc covers: `list_services`, `fleet_drift`, `query_cross_service`, `complexity`, `hotspots`, `god_object`, `security_rollup`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `dependencies`, `deps`, `staleness_report`, `set_profile`, `ingest`, `fathom ingest`, `fathom scope` (reversible suppression: list/suppress/unsuppress/preview), `fathom purge` (irreversible, verified removal + history). Update it when these change.
+This doc covers: `list_services`, `fleet_drift`, `complexity`, `god_object`, `secret_scan`, `shell_out`, `http_client_calls`, `cloc`, `staleness_report`, `set_profile`, `ingest`, `fathom ingest`, `fathom scope` (reversible suppression: list/suppress/unsuppress/preview), `fathom purge` (irreversible, verified removal + history). Update it when these change.

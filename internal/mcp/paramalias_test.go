@@ -163,18 +163,18 @@ func TestReferencesAlias_ConflictingValuesErrorsLoudly(t *testing.T) {
 
 // ─── P1-8: dispatch-level required-field validation ───────────────────────────
 
-// TestDispatch_PreviouslyLenientTool_NowRefuses proves license_policy — which
-// declares "allowed" required but never checked it itself (C4-5's audit) —
-// is now rejected by dispatch BEFORE the handler runs, when "allowed" is
+// TestDispatch_PreviouslyLenientTool_NowRefuses proves spec_coverage — which
+// declares "spec_ids" required but never checked it itself (C4-5's audit) —
+// is now rejected by dispatch BEFORE the handler runs, when "spec_ids" is
 // omitted.
 func TestDispatch_PreviouslyLenientTool_NowRefuses(t *testing.T) {
 	srv := mcp.NewServer(&extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}})
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 11, Method: "tools/call",
-		Params: map[string]any{"name": "license_policy", "arguments": map[string]any{"service": "svc"}},
+		Params: map[string]any{"name": "spec_coverage", "arguments": map[string]any{"service": "svc"}},
 	})
 	if code := rpcErrCode(t, resp); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v (license_policy declares \"allowed\" required)", code, mcp.ErrCodeParams)
+		t.Errorf("code = %v, want %v (spec_coverage declares \"spec_ids\" required)", code, mcp.ErrCodeParams)
 	}
 }
 
@@ -210,7 +210,7 @@ func TestDispatch_MissingRequiredField_UnaliasedTool(t *testing.T) {
 // TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch closes
 // the batch bypass the critic pass found: batch sub-calls invoke
 // te.handler directly, skipping handleToolsCallWithCtx's validateRequired
-// gate — so batch{calls:[{name:"license_policy",arguments:{service}}]}
+// gate — so batch{calls:[{name:"spec_coverage",arguments:{service}}]}
 // reached the exact previously-lenient handler P1-8 claims to close off.
 // The batch loop now validates each sub-call before its handler runs. The
 // failing sub-call errors into ITS OWN batchResult; sibling sub-calls
@@ -224,8 +224,8 @@ func TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch(t *testing.T
 			"name": "batch",
 			"arguments": map[string]any{
 				"calls": []map[string]any{
-					// Missing "allowed" (declared required, handler never checked it).
-					{"name": "license_policy", "arguments": map[string]any{"service": "svc"}},
+					// Missing "spec_ids" (declared required, handler never checked it).
+					{"name": "spec_coverage", "arguments": map[string]any{"service": "svc"}},
 					// A valid sibling that must still run.
 					{"name": "outline", "arguments": map[string]any{"service": "svc", "file": "pkg/a.go"}},
 				},
@@ -251,10 +251,10 @@ func TestBatch_SubCallRequiredValidation_RefusesWithoutFailingBatch(t *testing.T
 		t.Fatalf("results = %d, want 2", len(payload.Results))
 	}
 	lp := payload.Results[0]
-	if lp.Name != "license_policy" || lp.Error == "" {
-		t.Errorf("license_policy sub-call should refuse (missing required \"allowed\"), got %+v", lp)
+	if lp.Name != "spec_coverage" || lp.Error == "" {
+		t.Errorf("spec_coverage sub-call should refuse (missing required \"spec_ids\"), got %+v", lp)
 	}
-	if lp.Error != "" && !containsAll(lp.Error, "allowed") {
+	if lp.Error != "" && !containsAll(lp.Error, "spec_ids") {
 		t.Errorf("refusal should name the missing parameter, got %q", lp.Error)
 	}
 	sib := payload.Results[1]

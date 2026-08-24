@@ -105,14 +105,14 @@
 
 ## X — Budgeted answers (`docs/design/budgeted-answers.md`)
 
-- [ ] every tool that can truncate emits an `elided` block naming count, total, ordering and how to get more — enforced by a registry-iteration test so a new tool cannot skip it; silent truncation is a defect {id: BA-1, symbol: elisionFor, package: internal/mcp, reachable_from: TestEveryTruncatingToolDiscloses}
-- [ ] `elided.count + len(results) == total`, checked, so the disclosure cannot drift from reality {id: BA-2, symbol: elisionFor, package: internal/mcp, reachable_from: TestElisionArithmetic}
-- [ ] ordering is deterministic and nested: the same query at a small budget returns a strict prefix of the same query at a large budget {id: BA-3, symbol: applyBudget, package: internal/mcp, reachable_from: TestBudgetPrefixProperty}
-- [ ] a budget too small for the minimum useful response returns that response and says the budget was exceeded — a budget is a target, never a refusal {id: BA-4, symbol: applyBudget, package: internal/mcp, reachable_from: TestBudgetNeverRefuses}
-- [ ] per-tool defaults come from the capability registry so a project sets them once rather than at every call site {id: BA-5, symbol: budgetDefaults, package: internal/mcp, reachable_from: TestBudgetDefaultsFromRegistry}
-- [ ] response-size accounting is recorded per call and totals per tool across a fixture window {id: BA-6, symbol: recordResponseCost, package: internal/mcp, reachable_from: TestResponseCostAccounting}
-- [ ] a narrow surface profile carries only its own tools' schema, with the byte count asserted so an accidental widening fails the build {id: BA-7, symbol: surfaceSchemaTax, package: cmd/fathom, reachable_from: TestNarrowProfileSchemaBytes}
-- [ ] the Cost panel on `/observatory/impact`: tokens fathom put into agent contexts by tool, the standing schema tax and its trend, elision rate per tool, and the tokens-spent against discovery-served ratio labeled observational (law 12) {id: BA-8, symbol: observatoryCostPanel, package: cmd/fathom, reachable_from: TestCostPanel}
+- [x] every tool that can truncate emits an `elided` block naming count, total, ordering and how to get more — enforced by a registry-iteration test so a new tool cannot skip it; silent truncation is a defect {id: BA-1, symbol: elisionFor, package: internal/mcp, reachable_from: TestEveryTruncatingToolDiscloses}
+- [x] `elided.count + len(results) == total`, checked, so the disclosure cannot drift from reality {id: BA-2, symbol: elisionFor, package: internal/mcp, reachable_from: TestElisionArithmetic}
+- [x] ordering is deterministic and nested: the same query at a small budget returns a strict prefix of the same query at a large budget {id: BA-3, symbol: applyBudget, package: internal/mcp, reachable_from: TestBudgetPrefixProperty}
+- [x] a budget too small for the minimum useful response returns that response and says the budget was exceeded — a budget is a target, never a refusal {id: BA-4, symbol: applyBudget, package: internal/mcp, reachable_from: TestBudgetNeverRefuses}
+- [x] per-tool defaults come from the capability registry so a project sets them once rather than at every call site {id: BA-5, symbol: budgetDefaults, package: internal/mcp, reachable_from: TestBudgetDefaultsFromRegistry}
+- [x] response-size accounting is recorded per call and totals per tool across a fixture window {id: BA-6, symbol: recordResponseCost, package: internal/mcp, reachable_from: TestResponseCostAccounting}
+- [x] a narrow surface profile carries only its own tools' schema, with the byte count asserted so an accidental widening fails the build {id: BA-7, symbol: surfaceSchemaTax, package: cmd/fathom, reachable_from: TestNarrowProfileSchemaBytes}
+- [x] the Cost panel on `/observatory/impact`: tokens fathom put into agent contexts by tool, the standing schema tax and its trend, elision rate per tool, and the tokens-spent against discovery-served ratio labeled observational (law 12) {id: BA-8, symbol: observatoryCostPanel, package: cmd/fathom, reachable_from: TestCostPanel}
 
 ---
 

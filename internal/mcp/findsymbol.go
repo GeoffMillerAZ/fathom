@@ -73,8 +73,10 @@ func caseFoldMatches(all []core.SymbolNode, name string) []core.SymbolNode {
 }
 
 // substringMatches returns nodes whose name contains name case-insensitively,
-// tightest (shortest) names first, capped at maxSubstringMatches.
-func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, truncated bool) {
+// tightest (shortest) names first, capped at maxSubstringMatches. total is
+// the pre-cap match count, so a caller can disclose what was elided
+// (BA-1/BA-2) — total == len(nodes) when nothing was cut.
+func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, total int) {
 	q := strings.ToLower(name)
 	for _, n := range all {
 		if strings.Contains(strings.ToLower(n.Name), q) {
@@ -87,10 +89,11 @@ func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNo
 		}
 		return nodeLess(nodes[i], nodes[j])
 	})
+	total = len(nodes)
 	if len(nodes) > maxSubstringMatches {
-		return nodes[:maxSubstringMatches], true
+		return nodes[:maxSubstringMatches], total
 	}
-	return nodes, false
+	return nodes, total
 }
 
 // nodeLess is the deterministic total order for equal-priority nodes:

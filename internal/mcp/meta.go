@@ -324,7 +324,7 @@ var cannedPrompts = []promptDef{
 			{Name: "service", Description: "Service identifier to investigate", Required: true},
 			{Name: "symptom", Description: "Observed symptom or error message", Required: true},
 		},
-		tools: []string{"entrypoints", "complexity", "call_hierarchy", "community", "staleness_report"},
+		tools: []string{"entrypoints", "complexity", "find_callers", "community", "staleness_report"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			symptom := a["symptom"]
@@ -338,7 +338,7 @@ var cannedPrompts = []promptDef{
 								"Steps:\n"+
 								"1. Use entrypoints(%[1]s) to find HTTP handlers and main functions.\n"+
 								"2. Use complexity(%[1]s) to identify high-complexity hotspots.\n"+
-								"3. Use call_hierarchy(%[1]s, <suspect_symbol>) to trace call paths.\n"+
+								"3. Use find_callers(%[1]s, <suspect_symbol>) to trace call paths.\n"+
 								"4. Use community(%[1]s, <symbol>) to find related code.\n"+
 								"5. Use staleness_report(%[1]s) to check if data is stale.\n\n"+
 								"What do you find?",
@@ -414,7 +414,7 @@ var cannedPrompts = []promptDef{
 		Arguments: []promptArg{
 			{Name: "service", Description: "Service identifier to onboard to", Required: true},
 		},
-		tools: []string{"entrypoints", "api_surface", "list_sources", "type_hierarchy", "god_object"},
+		tools: []string{"entrypoints", "list_sources", "god_object"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			return []map[string]any{
@@ -426,10 +426,8 @@ var cannedPrompts = []promptDef{
 							"Help me understand service %q.\n\n"+
 								"Steps:\n"+
 								"1. Use entrypoints(%[1]s) to find the main entry points.\n"+
-								"2. Use api_surface(%[1]s) to see the exported API.\n"+
-								"3. Use list_sources(%[1]s) to enumerate source files.\n"+
-								"4. Use type_hierarchy(%[1]s) to understand key interfaces.\n"+
-								"5. Use god_object(%[1]s) to flag any over-large types.\n\n"+
+								"2. Use list_sources(%[1]s) to enumerate source files.\n"+
+								"3. Use god_object(%[1]s) to flag any over-large types.\n\n"+
 								"Provide a summary tour of the service architecture.",
 							svc,
 						),
@@ -445,7 +443,7 @@ var cannedPrompts = []promptDef{
 			{Name: "service", Description: "Service identifier to implement the requirement in", Required: true},
 			{Name: "requirement", Description: "Description of the new requirement", Required: true},
 		},
-		tools: []string{"api_surface", "type_hierarchy", "entrypoints", "complexity", "dead_code"},
+		tools: []string{"entrypoints", "complexity", "dead_code"},
 		template: func(a map[string]string) []map[string]any {
 			svc := a["service"]
 			req := a["requirement"]
@@ -457,11 +455,9 @@ var cannedPrompts = []promptDef{
 						"text": fmt.Sprintf(
 							"Plan how to implement this requirement in service %q: %s\n\n"+
 								"Steps:\n"+
-								"1. Use api_surface(%[1]s) to understand the current public API.\n"+
-								"2. Use type_hierarchy(%[1]s) to find interfaces to extend.\n"+
-								"3. Use entrypoints(%[1]s) to locate where new behavior should plug in.\n"+
-								"4. Use complexity(%[1]s) to identify the safest files to change.\n"+
-								"5. Use dead_code(%[1]s) to find any unused stubs to repurpose.\n\n"+
+								"1. Use entrypoints(%[1]s) to locate where new behavior should plug in.\n"+
+								"2. Use complexity(%[1]s) to identify the safest files to change.\n"+
+								"3. Use dead_code(%[1]s) to find any unused stubs to repurpose.\n\n"+
 								"Produce a step-by-step implementation plan.",
 							svc, req,
 						),

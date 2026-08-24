@@ -1,12 +1,10 @@
 // Package mcp — fleet/platform MCP tool registrations.
 //
-// registerPlatformTools wires four tools in GroupPlatform:
+// registerPlatformTools wires three tools in GroupPlatform:
 //
 //	list_services        — services with metadata (languages, symbol counts)
-//	query_cross_service  — keyword search across all services
 //	fleet_drift          — config-style version/kind drift across services
 //	cross_repo_callers   — callers of a symbol across all services via Calls edges
-//	platform_callers     — alias for cross_repo_callers
 package mcp
 
 import (
@@ -38,7 +36,6 @@ type FleetBackend interface {
 // injection when the dir name and service ID diverged).
 func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend) {
 	registerListServices(s, backend, fleet)
-	registerQueryCrossService(s, fleet)
 	registerFleetDrift(s, fleet)
 	registerCrossRepoCallers(s, fleet, "cross_repo_callers", "Find all callers of a symbol across every service in the fleet via stored call edges.")
 }
@@ -79,91 +76,6 @@ func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend)
 			entries = append(entries, entry)
 		}
 		return map[string]any{"services": entries, "count": len(svcs)}, nil
-	})
-}
-
-// ─── query_cross_service ──────────────────────────────────────────────────────
-
-func registerQueryCrossService(s *Server, fleet FleetBackend) {
-	s.registerTool(toolDescriptor{
-		Name:        "query_cross_service",
-		Description: "Search for a keyword across every service in the fleet. Returns matching symbol names and their service.",
-		InputSchema: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"keyword": map[string]any{
-					"type":        "string",
-					"description": "Case-insensitive substring to search for in symbol names and claims",
-				},
-			},
-			"required": []string{"keyword"},
-		},
-		group: GroupPlatform,
-	}, func(_ context.Context, args json.RawMessage) (any, *rpcError) {
-		if fleet == nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "no fleet backend configured"}
-		}
-		var p struct {
-			Keyword string `json:"keyword"`
-		}
-		if err := json.Unmarshal(args, &p); err != nil {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "query_cross_service: invalid args"}
-		}
-		if p.Keyword == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "query_cross_service: keyword required"}
-		}
-		kw := strings.ToLower(p.Keyword)
-
-		type hit struct {
-			Service  string `json:"service"`
-			Symbol   string `json:"symbol"`
-			FilePath string `json:"file_path,omitempty"`
-			Kind     string `json:"kind,omitempty"`
-		}
-		var hits []hit
-		for _, svc := range fleet.Services() {
-			for _, n := range fleet.SymbolsFor(svc) {
-				if strings.Contains(strings.ToLower(n.Name), kw) {
-					hits = append(hits, hit{
-						Service:  svc,
-						Symbol:   n.Name,
-						FilePath: n.FilePath,
-						Kind:     string(n.Kind),
-					})
-				}
-			}
-		}
-		// Also search observation claims.
-		for _, svc := range fleet.Services() {
-			for _, obs := range fleet.ObservationsFor(svc) {
-				if strings.Contains(strings.ToLower(obs.Claim), kw) &&
-					!strings.Contains(strings.ToLower(obs.Symbol), kw) {
-					hits = append(hits, hit{
-						Service: svc,
-						Symbol:  obs.Symbol,
-						Kind:    string(obs.SourceKind),
-					})
-				}
-			}
-		}
-		// Sort for determinism.
-		sort.Slice(hits, func(i, j int) bool {
-			if hits[i].Service != hits[j].Service {
-				return hits[i].Service < hits[j].Service
-			}
-			return hits[i].Symbol < hits[j].Symbol
-		})
-		// Convert to []any.
-		result := make([]any, len(hits))
-		for i, h := range hits {
-			result[i] = map[string]any{
-				"service":   h.Service,
-				"symbol":    h.Symbol,
-				"file_path": h.FilePath,
-				"kind":      h.Kind,
-			}
-		}
-		return map[string]any{"matches": result, "count": len(hits)}, nil
 	})
 }
 

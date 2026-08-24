@@ -5,6 +5,32 @@ All notable changes to fathom. Format loosely follows
 
 ## [Unreleased]
 
+### 2026-08-23 — the spine hardens, the registry pays rent, answers get budgets
+
+Three plans landed whole and gate-verified. verify-spine (VS-1..4): the
+O4 annotation tokenizer is quote-aware with a loud lint on malformed
+blocks (canonical pin tests added; the fix itself predated the rows in
+167f480), and CUE joins the call graph — cueReferenceEdges emits
+unification/field-type/list-element/import edges and testdata/*.cue
+unification maps onto test-reaches, ending the skip_test-only exit for
+CUE rows (O3 fixed; the evidence-tier half stays deferred and named).
+surface-prune (SP-B1..3): the vision-05 kill clock executed — 34 of the
+59 zero-call registry tools deleted, 25 exempt with per-tool evidence
+recorded in the plan, docs/mcp-tools.md synced with a new bidirectional
+registry↔doc test, and instrument --adoption gets the IT-1 read-error
+classification (O17 fixed — no more "88 of 88 zero" from a wedged
+reader). ambient-fathom BA-1..8: budgeted answers ship — elisionFor
+with a registry-iteration disclosure test (which found and fixed
+repo_map disclosing nothing on truncation), applyBudget with the strict
+prefix property and never-refuses rule, per-tool defaults, per-call
+response-size accounting in the call log, the narrow-surface schema-tax
+byte assertion, and the observatory Cost panel (estimates labeled,
+absent trend rendered as absence, ratio labeled observational per law
+12). Also: the CUE extractor migrated off the deprecated f.Imports
+before its mid-2026 removal, and a fourth reachability silent-void was
+confirmed and worked around (same-named methods do not wire — the
+Extract collision — hence the direct wire tests).
+
 ### 2026-08-21 — the evidence audit, the work frontier, and instrument truth
 
 A 12-agent audit of every feedback channel produced the first full

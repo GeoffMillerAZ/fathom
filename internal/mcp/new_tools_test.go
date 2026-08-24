@@ -178,53 +178,6 @@ func TestFindCallees_MissingService(t *testing.T) {
 
 // ─── call_hierarchy ───────────────────────────────────────────────────────────
 
-func TestCallHierarchy_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 210, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_hierarchy",
-			"arguments": map[string]any{"service": "svc", "symbol": "A", "depth": 2},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["key"] == nil {
-		t.Fatalf("hierarchy.key missing: %v", p)
-	}
-}
-
-func TestCallHierarchy_DefaultDepth(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 211, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_hierarchy",
-			"arguments": map[string]any{"service": "svc", "symbol": "A"},
-		},
-	})
-	if resp["error"] != nil {
-		t.Fatalf("unexpected error: %v", resp["error"])
-	}
-}
-
-func TestCallHierarchy_MissingParams(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 212, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "call_hierarchy",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	errObj, ok := resp["error"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected error, got result: %v", resp)
-	}
-	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
-		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
 // ─── symbol_context ───────────────────────────────────────────────────────────
 
 func TestSymbolContext_Basic(t *testing.T) {
@@ -450,23 +403,6 @@ func TestGodObject_Basic(t *testing.T) {
 	}
 }
 
-// ─── api_surface ──────────────────────────────────────────────────────────────
-
-func TestAPISurface_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 270, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "api_surface",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["symbols"] == nil {
-		t.Fatalf("api_surface.symbols missing: %v", p)
-	}
-}
-
 // ─── community ────────────────────────────────────────────────────────────────
 
 func TestCommunity_Basic(t *testing.T) {
@@ -504,23 +440,6 @@ func TestCommunity_MissingParams(t *testing.T) {
 	}
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
-	}
-}
-
-// ─── type_hierarchy ───────────────────────────────────────────────────────────
-
-func TestTypeHierarchy_Basic(t *testing.T) {
-	srv := newExtSrv()
-	resp := roundtrip(t, srv, request{
-		JSONRPC: "2.0", ID: 290, Method: "tools/call",
-		Params: map[string]any{
-			"name":      "type_hierarchy",
-			"arguments": map[string]any{"service": "svc"},
-		},
-	})
-	p := extToolPayload(t, resp)
-	if p["hierarchy"] == nil {
-		t.Fatalf("type_hierarchy.hierarchy missing: %v", p)
 	}
 }
 
@@ -1065,14 +984,14 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 	}
 
 	codingTools := toolsInProfile("coding")
-	for _, name := range []string{"find_callees", "call_hierarchy", "symbol_context", "outline", "entrypoints", "complexity", "god_object", "api_surface"} {
+	for _, name := range []string{"find_callees", "symbol_context", "outline", "entrypoints", "complexity", "god_object"} {
 		if !codingTools[name] {
 			t.Errorf("coding profile missing tool %q", name)
 		}
 	}
 
 	investigationTools := toolsInProfile("investigation")
-	for _, name := range []string{"community", "type_hierarchy"} {
+	for _, name := range []string{"community"} {
 		if !investigationTools[name] {
 			t.Errorf("investigation profile missing tool %q", name)
 		}

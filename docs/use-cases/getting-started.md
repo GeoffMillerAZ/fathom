@@ -142,7 +142,7 @@ for svc in auth-service payment-service order-service; do
 done
 ```
 
-This populates the fleet for cross-repo queries (`cross_repo_callers`, `query_cross_service`, `fleet_drift`) via the `platform` surface.
+This populates the fleet for cross-repo queries (`cross_repo_callers`, `fleet_drift`) via the `platform` surface.
 
 Alternatively, use `platform-ingest` if your services are subdirectories under one root:
 
@@ -403,7 +403,7 @@ Output is deterministic (symbols sorted by kind then name). The file includes a 
 - **One store, many services.** A single `fleet.sqlite` can hold all your services. There is no need for per-service store files unless you are using `platform-ingest` + `serve-http` in platform mode (which uses per-service `.sqlite` files).
 - **`workspace/` is gitignored** in fathom's own repo convention. Apply the same pattern in adopter repos: add `workspace/` to `.gitignore` so store files and generated artifacts are never committed.
 - **macOS build note.** `MACOSX_DEPLOYMENT_TARGET=14.0` is required because the tree-sitter extractor bindings compile CGO objects that need it to link cleanly (ADR-013) — not because of the store, which is pure Go and needs neither CGO nor a deployment target (SS-8/ADR-025 deleted the DuckDB backend that used to be the reason). On Linux this env var is ignored.
-- **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, `contradiction_scan`, and `propagate_concern` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
+- **No `concern`, no `query_symbols`.** The tools `query_symbols`, `pack_context`, and `contradiction_scan` all require a `concern` argument. `verify_plan` accepts it as optional. This is intentional (ADR-006) — it prevents unbounded symbol dumps and is the source of the token savings.
 - **Prime every session (recommended).** Registering the MCP server makes the tools *available*; it doesn't make an agent *reach for them* — left to habit, agents grep. Add the `session-hook` SessionStart hook (see [usage.md → `session-hook`](../usage.md#session-hook)) so each session opens with "this repo is service X; use fathom before Grep/Read," or an honest signal when the index doesn't cover the repo.
 
 ---
