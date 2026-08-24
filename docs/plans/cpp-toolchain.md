@@ -17,8 +17,8 @@
 
 ## A — C++ extraction closes its gaps
 
-- [x] one spelling per symbol: out-of-class definitions and collected callees normalize C++ scope `::` to `.` so graph edges join inline and out-of-class definitions {id: CT-1, symbol: cppCanonicalName, package: internal/extractor, reachable_from: TestCppExtractor_ScopeNormalization}
-- [x] templates, operators, destructors, and nested namespaces extract and are pinned by tests {id: CT-2, symbol: walkCpp, package: internal/extractor, reachable_from: TestCppExtractor_TemplatesAndOperators}
+- [x] one spelling per symbol: out-of-class definitions and collected callees normalize C++ scope `::` to `.` so graph edges join inline and out-of-class definitions {id: CT-1, symbol: cppCanonicalName, package: internal/extractor, reachable_from: TestCppCanonicalNameWiredDirect}
+- [x] templates, operators, destructors, and nested namespaces extract and are pinned by tests {id: CT-2, symbol: walkCpp, package: internal/extractor, reachable_from: TestWalkCppWiredDirect}
 - [x] polyglot .h routing: a content-sniffing header extractor sends C++-signal headers to the C++ grammar and plain C headers to the C grammar — LLVM-style codebases keep their classes {id: CT-3, symbol: NewCHeaderExtractor, package: internal/extractor, reachable_from: TestCHeaderRouting}
 
 ## B — CMake is a dialect
