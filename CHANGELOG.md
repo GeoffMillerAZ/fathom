@@ -3,3122 +3,638 @@
 All notable changes to fathom. Format loosely follows
 [Keep a Changelog](https://keepachangelog.com/); dates are ISO-8601.
 
+**How to read this file.** Each release opens with what it was for, then
+one block per day: a bold topic naming the program and its plan rows
+(`SH-1..6`, `O16`, `ADR-025` are durable reference points -- `fathom plans
+archive` checks that every archived row id is absorbed here), followed by
+what changed. The full narrative record -- root causes, measurements,
+rationale as originally written -- lives per release under
+`docs/changelog/` and is never normative; plans, ADRs, and observations are.
+
 ## [Unreleased]
 
-### 2026-08-23 — the spine hardens, the registry pays rent, answers get budgets
-
-Three plans landed whole and gate-verified. verify-spine (VS-1..4): the
-O4 annotation tokenizer is quote-aware with a loud lint on malformed
-blocks (canonical pin tests added; the fix itself predated the rows in
-167f480), and CUE joins the call graph — cueReferenceEdges emits
-unification/field-type/list-element/import edges and testdata/*.cue
-unification maps onto test-reaches, ending the skip_test-only exit for
-CUE rows (O3 fixed; the evidence-tier half stays deferred and named).
-surface-prune (SP-B1..3): the vision-05 kill clock executed — 34 of the
-59 zero-call registry tools deleted, 25 exempt with per-tool evidence
-recorded in the plan, docs/mcp-tools.md synced with a new bidirectional
-registry↔doc test, and instrument --adoption gets the IT-1 read-error
-classification (O17 fixed — no more "88 of 88 zero" from a wedged
-reader). ambient-fathom BA-1..8: budgeted answers ship — elisionFor
-with a registry-iteration disclosure test (which found and fixed
-repo_map disclosing nothing on truncation), applyBudget with the strict
-prefix property and never-refuses rule, per-tool defaults, per-call
-response-size accounting in the call log, the narrow-surface schema-tax
-byte assertion, and the observatory Cost panel (estimates labeled,
-absent trend rendered as absence, ratio labeled observational per law
-12). Also: the CUE extractor migrated off the deprecated f.Imports
-before its mid-2026 removal, and a fourth reachability silent-void was
-confirmed and worked around (same-named methods do not wire — the
-Extract collision — hence the direct wire tests).
-
-### 2026-08-21 — the evidence audit, the work frontier, and instrument truth
-
-A 12-agent audit of every feedback channel produced the first full
-evidence verdict (vision 24 §7, and the shareable evidence-ledger
-artifact): verify gate PROVEN (436 gate runs/5d, 180 caught
-claimed>verified), thread bet COLLECTING at 4/20 per threadBetCheck,
-A/B NOT ADMISSIBLE (ON arm: 0 admissible units), and — the sharpest
-finding — the instruments themselves lied under the TCC wedge (flywheel
-IDLE at exit 0 on EPERM) and under the OFF arm (beats gated before
-emit, "hook not installed" printed about a PASSing hook).
-
-Two plans landed whole, 24/24 rows gate-verified. instrument-truth
-(IT-1..13): flywheel read-errors are OPEN never IDLE with the wedge
-hint; ArmStateForWindow makes every absence note arm-aware; counting
-beats survive FATHOM_CHANNELS=off (arm-stamped); doctor surface_traffic
-falls back to the persistent call log; a session-hook fetch failure is
-never "not indexed" (O2); answered beats carry the displaced count;
-review emits verdict_outcome; metrics interventions defaults --store;
-machine thread notes carry close conditions at mint (new session_ended
-condition); observation ids mint under flock (O-id collisions now
-impossible); the adoption verify figure derives from the verify ledger
-with its denominator named (retires the 215/4940 double-count, O6);
-frozen 16MB-cap totals are excluded from aggregates and named; the Stop
-hook lands a mechanical retro per session. work-frontier (WF-1..11):
-ctx: pointers + `plans context` materializer; needs: + derived
-eligible/blocked_on + --eligible-only; TTL-only advisory leases
-(.fathom/leases.jsonl, flock, overlap counting — heartbeats refused);
-`fathom prime` (Codex pull-tier primer); opening-moves stanza table;
-init prints the codex mcp add lines; codex.md names the measurement
-boundary. Dispatch boundary registered in vision 24: fathom serves
-facts about work; the loop belongs to the harness, forever.
-
-Found while shipping: a wedged ingest writes a zero-symbol/zero-edge
-index while reporting "0 failed" — a fourth false-signal shape; the
-daemon-side ingest tool (its own preserved TCC grant) is the honest
-workaround, and the extractor's swallowed read errors are follow-up
-work. The measurement arm flips ON now that IT-1..5 are live — the OFF
-floor was exceeded 5×, the ON arm is the bottleneck, and every further
-OFF session was redundant evidence.
-
-### 2026-08-14 — the completion pass: every recommendation either shipped or has a dated row
-
-O29 interim fix: `plans status` fans its per-plan verifies out 8-wide
-(was serial at ~4s x ~40 plans = 2m35s measured). SD-1: the verify
-ledger — every gate run appends per-plan rows to
-~/.fathom/verify-ledger.jsonl, which is also what closed O14/O30 (the
-flywheel verify-gate loop read only session-scoped runs; a repo gating
-on every push read "never ran" — now CLOSED by demonstration after one
-gated run). CC-8: the custodian flywheel loop (IDLE named / OPEN =
-violations accumulating unread / CLOSED = being consumed), fed by a new
-custodian audit beat. CC-10: `fathom init` scaffolds a commented
-concerns.cue (loads as zero concerns, test-pinned) and fleet reconcile
-reports zero-coverage repos informationally. DO-1/2/4: the outcome half
-of the A/B criterion now derives from disk (median commits per unit
-beat-window, stated as the narrow v1 everywhere it renders); `fathom
-rate` demoted to optional human override. DP-1: the doctrine catalog
-design doc (one registry compiling to existing enforcement surfaces —
-never a fourth). Spillover, named: SP-10, SH-7..9, AM-6, AM-8 (the
-UI/MCP wave), IR-3..5, DO-3, CC-9/11/12/13, SD-2..4, DP-2..4.
-
-### 2026-08-13 — the adoption surfaces catch up to the shipped fathom
-
-The last two waves (continuity threads, lifecycle hooks, the capability
-registry, scope/purge, the config custodian, plans status/next/archive)
-all landed after the adoption surfaces were written. Refreshed in one
-pass, every claim checked against the binary: the shipped skills (onboard
-now teaches the full hook stack incl. SessionEnd/PreCompact and the nine-
-skill set; doctor's row table gains capabilities + concerns; activate
-gains a concerns step; rewire's template gains the lifecycle hooks;
-verify gains plans archive; impact gains config audit; feedback gains
-`fathom rate`), a NEW ninth skill `fathom-custodian` (the instructed-
-means-true loop — fathom reports, the session edits), the Claude Code
-guide (§7.1 brief+attention injection, new §7.7 continuity threads, §8
-concerns.cue + capabilities.cue, §11 nine skills, Maintained line), the
-Codex guide (capability table gains continuity-half-loop and custodian
-rows), usage.md (plans/thread/config audit/scope/purge/rate/brief/
-flywheel/fleet entries — the catalog had stopped at doctor), mcp-tools.md
-(the phase-V `suppressed` envelope disclosure), and the coding-agents
-Maintained line. The install demo caught a real defect before commit:
-skillsdist.Names is the canonical list and the embed directive alone
-does not ship a skill — nine now proven installed by demonstration.
-
-### 2026-08-13 — the config custodian ships its audit (vision 22, CC-0..7)
-
-"Instructed means true": agent configuration joins the evidence plane.
-`internal/custodian` (named to leave `internal/concern`, the concern-scoped
-query engine, untouched) loads falsifiable wants from CUE at two law-13
-scopes (~/.fathom/concerns.cue as user defaults, .fathom/concerns.cue
-governing; `off: true` disables an inherited concern and the audit still
-names it) with the capability loader's refusals — `?:` fields, unknown
-fields, and unknown check KINDS refused by name: an uncheckable concern is
-a wish. Four mechanical check kinds (forbidden_pattern,
-command_documented_and_exists, max_lines, pointers_resolve) run from file
-reads only — no daemon, no LLM. Surfaces: `fathom config audit`
-(text/JSON, exit 1 iff violated, zero concerns exits 0 with the absence
-named), a doctor row on the capability-row discipline, and a session-brief
-attention line that exists only while violations exist. Fathom is the
-instrument, never the hand (vision 22 §3b): every surface reports; the
-session decides what to edit. Falsification runs: project-governs and
-file:line-evidence mutations both confirmed red. Vision 23 (the doctrine
-plane) and vision 22 §7 (corpora + packs: lefthook/taskfile as honesty
-checks on the deterministic gate chain, shipped as data) land as specs
-with plan rows CC-8..13, DP-1..4, SD-1..4 open.
-
-### 2026-08-13 — the brief learns from its first reader (O28)
-
-First real-world contact: a fresh session reported the brief was *"just
-'session ended with N dirty files', no substantive handoff"* — and that
-*"the durable spec plane… fathom verify printing which rows are claimed
-vs. proven is doing the real continuity work."* The reader independently
-validated the design's own "derived beats deposited" doctrine against a
-v1 that had not fully honored it.
-
-- **Deposits supersede per repo** (stable `se-<repo>` id): "the last
-  session here left work in flight" is one fact, not a pile — and the
-  fact **closes itself when the tree comes clean** (`repo_clean`).
-- **The brief leads with the spec plane**: the local plans summary
-  (checked vs open, with "verify distinguishes claimed from PROVEN" said
-  outright), then this repo's items, then foreign telemetry collapsed to
-  one counted line — cross-repo dirty-file counts no longer outrank the
-  repo being opened.
-- **A thin brief teaches**: when no handoff notes exist for the repo, it
-  says exactly what to run before `/clear` instead of presenting
-  telemetry as a handoff.
-
-Supersede confirmed RED under mutation. On the token question the honest
-answer stands: the fresh cohort has zero ledger rows so far, so no saving
-is claimed — the instrument says "collecting", not a number.
-
-
-### 2026-08-13 — reconcile learns to see stanza-CONTENT drift (and the fleet is refreshed)
-
-The stanza template gained the continuity line and `fathom fleet
-reconcile` reported "wiring current" for all 17 repos — it checked stanza
-PRESENCE, never content against the current template. **A template change
-no reconcile can deliver is a template change that never ships.**
-
-`staleStanzaFiles` now compares each marker-owned region (CLAUDE.md and
-AGENTS.md independently) against the template rendered with the
-**registry's** service id — dirname only as a daemon-unreachable
-fallback. The distinction promptly proved itself: the first apply used the
-dirname and mis-rendered exactly one repo — sextant, whose registry id is
-`fathom` — and the corrected binary flagged and repaired its own mistake.
-Files without markers are never touched: wiring a never-wired repo is
-init's job; reconcile refreshes only what fathom already owns (law 15's
-boundary — the markers ARE the ownership claim).
-
-Applied fleet-wide: 17 repos, 0 drifted, every stanza now carrying the
-continuity instructions (including the Codex/hook-less path). The edits
-live in each repo's working tree for its owner to commit.
-
-
-### 2026-08-13 — phase V lands: scope hides, purge proves — plus the two defects its verifier caught
-
-The rebuilt phase V merged with **all six rework defects re-reproduced
-against the new code and confirmed dead** (fleet-wipe purge, inert
-suppression on the daemon's long-lived handle, VERIFIED-without-probe,
-the constructor-blind audit, fleet-wide exclusions, the home-reading
-gate). The verifier then earned its keep twice more:
-
-**`read_source` served purged content.** After a purge that printed
-VERIFIED (probe clean, exit 0), one MCP call returned the leaked
-credential verbatim — from DISK. The store chokepoint was sound; a
-disk-reading tool bypassed the store entirely, and the surface audit
-passed on the false premise that every surface reads through the store.
-Fixed: `read_source` (and `symbol_context`'s snippet path, same function)
-now loads the SERVICE-SCOPED exclusions Discover uses — an error loading
-them refuses rather than serves — and consults suppressions per call,
-refusing with the suppression named and the undo attached. A behavioral
-audit (`TestDiskReadingToolsHonorSuppression`) pins disk-reading surfaces
-specifically; all three subtests confirmed RED against the shipped code.
-
-**The disclosure channel was inert in deployment** — the V5 failure class
-one layer up. `ApplySuppressions` produced disclosures and no shipped
-surface ever attached a collector, so every filtered response in
-production was silent while SP-3 sat checked on internal-object tests.
-Fixed at the one layer every response passes through: the MCP dispatch
-wraps each call's ctx with the collector and renders a `suppressed`
-block into the envelope — and an UNFILTERED response carries no block at
-all, because disclosing filtering that never happened is law 3's mirror
-image.
-
-
-### 2026-08-13 — TH-5: intent graduates, and the handoff is free
-
-`fathom thread promote <thread>` scaffolds a gate-ready plan from a
-thread's open items: stable uppercase ids, origin session pointers riding
-along, **no row born checked and no contracts claimed** — the scaffold
-says plainly that grounding each `{symbol, package, reachable_from}` comes
-before any claim. The promoted items gain `plan_row_checked` conditions on
-their own rows, so **checking a row closes its source item** — the
-conveyor advancing with no ceremony. Promote refuses to overwrite an
-existing plan: it is a birth certificate, not an update mechanism.
-
-`fathom thread handoff` renders the open work as a harness-neutral
-markdown artifact — full session ids (a foreign agent cannot expand a
-prefix), grouped by thread, unbudgeted because its reader has no other
-context. The multi-agent story costs nothing extra, because continuity
-never lived in a context window to begin with.
-
-The stanza template gains the Codex path: harnesses without a
-SessionStart hook are instructed to run `fathom thread brief` at start.
-Repos pick the new stanza up through the normal reconcile path (law 15 —
-the owned region changes via its template, never by hand).
-
-Also: note/point/close accept the natural `"text" --flags` order (the
-rate-verb lesson, applied before it bit anyone else).
-
-
-||||||| parent of 62dd947 (phase V rebuilt: scope hides, purge proves — the six rework defects made structural (SP-1..SP-9, SP-11, SP-12))
-### 2026-08-13 — phase V rebuilt: scope hides, purge proves, and the six rework defects are structural now
-
-`fathom scope list|suppress|unsuppress|preview` (reversible, disclosed
-suppression) and `fathom purge … | history` (irreversible, verified
-removal), rebuilt from the held branch's review. Each of the six verified
-defects (V1–V6) is now impossible by construction, not patched:
-
-- **V1 — the probe's outcome is part of the verdict TYPE.** `PurgeReport`
-  carries a tri-state `PurgeVerdict` computed in exactly one place
-  (`purgeVerdict`): only "SQL zero + raw-bytes probe ran clean" is
-  `verified`; "SQL zero, bytes unchecked" (probe skipped, nothing
-  scannable, or a read error) is its own named state that the CLI maps to
-  exit 2 and can never print VERIFIED; survivors/residue/derived-store
-  failures are `failed` (exit 1). `RawProbe.Ran` is earned — needles > 0,
-  ≥1 file scanned, no read error — never assumed.
-  (TestPurgeVerdictTable, TestPurgeBytesUncheckedIsNotVerified,
-  TestPurgeBytesUncheckedExitsDistinct.)
-- **V2/V4 — ingest-time exclusions are SERVICE-SCOPED by construction.**
-  Purge writes to `~/.fathom/ignore.d/<service>` ($FATHOM_IGNORE_D),
-  which `Discover` unions only for that service
-  (`connector.LoadIgnoreScopedFor`); a pattern in it cannot reach another
-  service, `AppendServiceIgnore` refuses a fleet-wide write loudly, and
-  the purge report DISCLOSES the exclusion's scope in words. `--all` now
-  scopes its `**` to the purged service alone.
-  (TestServiceScopedIgnoreAppliesOnlyToItsService,
-  TestPurgeAllIsServiceScoped, TestPurgeDisclosesExclusionScope.)
-- **V3 — the chokepoint audit derives the constructor list from the store
-  package's own source.** The suppression filter lives inside the
-  backends' read methods, so EVERY constructor — Open, BackendForPath,
-  NewSQLiteStore, NewMemoryStore, MountReadOnly (the one the old audit
-  missed), OpenPlatform — returns a filtering store, and
-  TestEveryStoreConstructorIsScoped parses the package, behaviorally
-  proves each discovered constructor, and fails a new one by default.
-- **V5 — suppression applies at the QUERY layer, re-read per call.** A
-  `scope.Source` stat()s the suppression file on every read and reloads
-  on (mtime, size) change, so the daemon's long-lived handle sees a new
-  suppression on the NEXT query — proven by a test that suppresses AFTER
-  open (TestSuppressionAppliesToAlreadyOpenHandle).
-- **V6 — no init()-armed globals; the gate is hermetic.** Suppression
-  state resolves only through $FATHOM_SUPPRESSIONS (the
-  FATHOM_SESSION_LEDGER pattern); the fathom binary's main() defaults it
-  to ~/.fathom/suppressions.jsonl; pkg/client carries no blank import;
-  internal/scope has no init (TestScopePackageHasNoInit), so `task
-  validate` never reads the developer's real ~/.fathom.
-
-Everything the design's §3.2 table enumerates is deleted and proven per
-location — the eight SQL tables, claim_events (retained-and-disclosed by
-default, deleted only under `--include-history --force`), the result
-cache and vector index (named absences when unwired, verdict-failing when
-wired and erroring), physical residue (secure_delete pinned connection +
-wal_checkpoint(TRUNCATE) + VACUUM + independent raw-bytes probe), and —
-new, closing AM-12 — `<repo>/.fathom/memories.jsonl`, since a memory may
-QUOTE purged content (memory.FileStore.PurgeMatching,
-TestPurgeTakesQuotingMemories).
-
-Suppression is disclosed at the chokepoint: every filtered read yields a
-Disclosure (count, reasons naming pattern and expiry, suppression ids)
-recorded into a per-request context collector
-(TestSuppressionIsDisclosed, TestSuppressedReadDisclosesViaCollector);
-expiry is judged at read time with no sweep
-(TestSuppressionExpiryAtReadTime); preview counts come from the same
-per-location resolver purge plans with, so preview, filter and purge
-cannot disagree (TestCmdScopePreviewMatchesEffect).
-
-Design doc revised in step (scope-and-purge.md: §2.2 chokepoint restated
-as per-call store-gate, §3.3 verdict trichotomy, §3.5 service-scoped
-exclusion). SP-10 (the observatory Scope panel) stays open by
-instruction.
-
-### 2026-08-13 — continuity threads live: TH-1..4 (vision 21)
-
-The thread — one strand of intent spanning sessions — is now a first-class
-object. `fathom thread brief|note|point|list|close`; a user-central
-append-only store; items that CLOSE THEMSELVES when the artifact they wait
-on materializes (`plan_row_checked` / `file_exists`, attributed
-`closed_by: condition`).
-
-The hooks are the conveyor, and their context cost is zero by
-construction: SessionEnd (fires on `/clear`) deposits ONE mechanical item
-and only when something is actually in flight — uncommitted files,
-stashes, claimed-unproven plan rows; a clean session deposits nothing.
-PreCompact files a pointer before the exact moment in-flight context dies
-today. Neither reads transcript content — the mining refusal is
-structural.
-
-The brief is the one surface that costs anything: ≤2,400 bytes (~600
-tokens), hard-bounded with the cut disclosed, injected ONLY on
-startup/clear — `resume` and `compact` print nothing, because their
-context survives. Both properties confirmed RED under mutation.
-
-The measurement loop (the owner's org-evidence ask): every ledger row now
-carries its cohort label (`session_source`, `brief_injected`,
-`brief_bytes` — the feature's own cost is a ledger SUM, not an estimate),
-`threadBetCheck` evaluates the registered bet (fresh-with-brief vs
-resumed: warm-up and all-in per-turn cost, cache reads named as the 10%
-pricing assumption), the flywheel gains a continuity loop whose OPEN state
-is "briefs injected but nothing ever deposited — a conveyor moving
-empty", and the value brief gains section 6 with the verdict and
-denominators. The registered kill rides IN the verdict text: at n≥20 and
-a failed band, it says the injection is to be removed.
-
-TH-5 (thread promote / handoff, the Codex AGENTS.md stanza) is the next
-slice.
-
-
-### 2026-08-12 — the unit bends to the work: arm-covered windows count (MI-5)
-
-Asked to start forty fresh sessions for a baseline, the owner pushed back
-— correctly. His practice is one session resumed across days, so the
-session-level unit produced a control arm that could never admit anything,
-and forcing fresh starts would have measured unrepresentative behaviour: a
-fresh-start baseline for a practice that has no fresh starts.
-
-**The amendment is registered in the protocol before any data existed
-under it** (production-tokenomics.md §5): the unit becomes an
-*arm-homogeneous unit* — a fully-covered session, or the **arm-covered
-window** of a longer one, measured from the same transcript with the same
-estimators, restricted to lines timestamped after the arm's `set_at`. The
-compared quantity becomes **median real tokens per assistant turn**
-(per-session totals are length-confounded once units are windows), with a
-≥10-turn floor per unit and ≥20 units per arm.
-
-Mechanics that keep it honest:
-
-- the window read is TAIL-bounded (the window is by definition the newest
-  span — the head read the whole-session summary uses would be exactly
-  backwards), aligned to a line boundary;
-- a tail that cannot reach back to the arm boundary marks the window
-  **truncated**, and a truncated window is excluded and named — a partial
-  window admitted as a unit would be the truncation bug one level down;
-- a line with no parseable timestamp is excluded from any window:
-  unattributable activity must not leak into an arm's figures;
-- a contaminated session's whole-session figures still never enter the
-  comparison; only its window speaks for it.
-
-Both leak paths were confirmed RED under mutation (the since-filter
-removed; whole-session figures admitted). Four older tests encoding the
-superseded per-session unit were updated to the registered one.
-
-The flywheel's arm loop now admits windowed units, and its remedy teaches
-the new rule: keep working past ten turns under the arm and the window
-counts — no fresh session required.
-
-
-### 2026-08-12 — the daemon adopts a new binary on its own (AU-1..3)
-
-Owner ask: *"I want you empowered to do this sort of stuff in the future.
-I shouldn't be needed and let my projects suffer if I'm afk."*
-
-The blocker was narrow. An agent can build, sign and install a binary; it
-cannot run `launchctl kickstart` (that wedges the session — a standing
-constraint here). So every committed daemon fix waited for a human, and
-this session priced it exactly: a measurement bug reached main, was fixed
-within the hour, and then sat undeployed while three counterfactual
-sessions collected nothing.
-
-launchd's `KeepAlive` is already true for this job, so **the daemon
-exiting IS a restart**. It now watches its own executable and steps aside
-when a verified newer binary is in place. Four safety properties, because
-a self-restarting daemon that gets this wrong is a fleet-wide outage:
-
-1. **Verify before yielding.** The candidate must execute and report a
-   version. This is not hypothetical: hours earlier an unsigned binary was
-   installed over the daemon's path and macOS refused to run it
-   (`OS_REASON_CODESIGNING`). Exiting on "the file changed" alone would
-   have produced an unbounded restart loop against a binary that could
-   never start.
-2. **Settle.** The same new bytes across two consecutive polls, so a
-   half-written file is never adopted mid-copy.
-3. **Rate limit.** At most one adoption per cooldown.
-4. **Loud.** Every adoption and every refusal is logged with its reason —
-   a daemon that restarts itself silently is indistinguishable from one
-   that is crashing.
-
-`FATHOM_SELF_RESTART=off` pins the binary, and the choice is announced
-rather than silently honoured.
-
-
-### 2026-08-12 — four instruments were wired and their output thrown away (MI-4)
-
-Three sessions into a 20-session counterfactual run, the honest answer to
-"are we getting good data?" was **no: zero admissible sessions**.
-
-`transcriptSummaryFrom` copied three field pairs out of the parser by
-hand:
-
-```go
-rest := summarizeTranscriptBytes(data)
-out.DurationMS, out.DurationNote = rest.DurationMS, rest.DurationNote
-out.TurnCount,  out.TurnNote     = rest.TurnCount,  rest.TurnNote
-out.TokensTotal, out.TokensNote  = rest.TokensTotal, rest.TokensNote
-```
-
-Every field added to `transcriptSummary` afterwards was computed by the
-parser and dropped three lines later. Twelve fields, four instruments:
-
-| Dropped | Consequence |
-|---|---|
-| `FirstTS` | `arm_coverage` read `unknown`, so **not one** OFF-arm session was admissible — the run collected nothing |
-| in/out/cache split | every row counted "pre-split"; neither arm could ever have a spend-shaped median |
-| `FirstEditTurn` | warm-up (IQ-2) reported "rows predate the instrument", forever |
-| exploration ledger | per-question cost (EX-1) never filled in |
-
-Each of those absences was reported as *"rows predate the instrument"* —
-a plausible, self-consistent explanation that was wrong. The instruments
-were live. Nothing downstream could tell the difference between "not
-implemented yet" and "implemented and discarded", which is precisely why
-it survived weeks of dashboards.
-
-The fix is whole-struct assignment, so a new field is carried **by
-construction** rather than by remembering. `TestTranscriptSummaryCarriesEveryField`
-asserts over the struct by reflection rather than a hand-listed set, so it
-cannot drift out of date the same way the copy did — reverting the fix
-makes it name all twelve.
-
-Also fixed: `TestFlywheelSurvivesWithoutALocalCallLog` called `os.Chdir`,
-a process-global mutation, which broke every later test in the package
-that resolved a relative path (the report and remap suites) and reported
-the failure against *them*. Replaced with a `FATHOM_CALL_LOG` override.
-
-
-### 2026-08-09 — "188 sessions" was 8 sessions (MI-1..3)
-
-Setting up the A/B run surfaced the largest measurement defect in the
-program. Asked "what counts as a session?", the ledger answered
-**200 rows / 8 distinct session ids**.
-
-Claude Code's `Stop` event fires at every **turn** boundary, not at session
-close, so a long session appends a row each time the assistant finishes
-speaking. One resume_as_code session wrote **74** of them, several with
-identical turn counts.
-
-Consequences, all silent until now:
-
-- every "of 188 sessions" denominator was inflated roughly **25×**
-- `discovery_actions_total` is a per-session **cumulative**, so summing
-  rows counted the same session once per turn: **17,727 → 1,038**
-- the pre-registered "≥20 sessions per arm" floor would have been
-  satisfied by about **one** real session
-
-Fixed by deduping at read time, keeping the LAST row per session id (the
-final stop has seen the most of the transcript). The raw stop count is
-still reported beside the session count, so the correction is auditable
-rather than a quiet restatement.
-
-**`fathom rate <1-5> [--note]`** closes the other half of the criterion.
-The registered text is *"lower median tokens-per-session AT
-EQUAL-OR-BETTER self-rated outcome"* — tokens and turns were
-instrumented, the outcome never was. Without it a token drop cannot be
-told apart from an unaided session giving up sooner, which would be the
-most misleading thing this program could report. A Stop hook cannot prompt
-a human, so ratings live in their own log and join to the ledger by
-session id at read time; a rating that cannot be joined is refused rather
-than stored.
-
-`evaluateABCriterion` now states in words whether the criterion is
-evaluable and names **every** unmet part. Today: *"the OFF arm has 0 of
-the 20 sessions registered as the minimum; the ON arm has 5 of 20; …
-self-rated outcomes are missing."*
-
-
-### 2026-08-08 — phase Y core: the grade measures realization, not configuration (RG-1..4)
-
-`wiringGrade` folds four signals, three of which are "a file says the
-right thing" and one of which is "at least one call happened, **ever**".
-That is the wrong ceiling: a repository can score A and deliver nothing —
-wired perfectly, one call in July, no obligations firing, no gate running.
-Grading configuration rewards the act of configuring, which is precisely
-the behaviour a tool should not optimize for.
-
-`realizationGrade` folds five dimensions as a **ladder**, each a
-precondition for the next: **wired → fresh → queried → preventing →
-gating**. Three consequences:
-
-- **"Queried" counts calls in the WINDOW, not calls ever.** The incumbent
-  test can never go down, which makes it useless as a health signal.
-- **"Preventing" and "gating" are new, and they are the point** — the only
-  two dimensions that measure fathom *doing* something rather than being
-  available. Both fold from data already collected.
-- **The letter names the first broken rung** (`B — not preventing`). A
-  bare letter was never actionable.
-
-Two absences are handled as absences, not failures. A repository with no
-plans has nothing for the gate to check, so *gating* is not-applicable and
-leaves the denominator. A repository with **no sessions in the window**
-grades **idle**, never F — an indexed reference corpus nobody codes in is
-working exactly as intended, and nine false alarms teach a reader to skim
-past the real one. Freshness that could not be determined is likewise
-not-applicable rather than failed.
-
-The fleet page now orders by **unrealized value** — unmet rungs weighted
-by sessions — replacing the sort by call count. Sorting by traffic answers
-"who is busy", which nobody needs to be told; this answers "where should I
-spend the next ten minutes". A large busy repository failing two rungs
-outranks a tiny one failing three, because the gap is worth more. Ties
-break on sessions then name, so the order is stable.
-
-
-||||||| parent of 60feb50 (self-healing fleet, the engine: fathom edits repositories, law 15 bounds it (SH-1..SH-6))
-### 2026-08-08 — self-healing fleet, the engine: fathom edits repositories, and law 15 bounds it (SH-1..SH-6)
-
-The observatory has correctly printed `fathom fleet reconcile --apply`
-beside nine of seventeen repositories for weeks. Nobody ran it. That is not
-a discipline problem — advice that requires a human to switch context, find
-a terminal and type a command is advice that does not happen. The fix is a
-button, and all the design work is in making the button safe.
-
-`internal/wiring` is that safety. Three tiers of ownership, and fathom's
-authority differs at each:
-
-- **Marker format v3** (`<!-- fathom:begin v3 sha256:… -->`) carries the
-  template version AND the digest of the region body *as fathom last wrote
-  it*. Re-hashing on read makes a hand edit inside fathom's own region
-  detectable with no history, no daemon and no network. A pre-v3 marker
-  records no digest, so its provenance is **unknown** — named separately
-  from drift, because the two demand different responses (law 3).
-- **`.fathom/owned.json`** records the keys fathom added to structured
-  files it does not own (lefthook.yml, `.claude/settings.json`). A key
-  carrying fathom's own name that the ledger does not record is somebody
-  else's and is invisible. Losing the ledger causes fathom to consider
-  itself the owner of nothing — a no-op, never a duplicate.
-- **Plan → apply → receipt.** The plan is *always* computed before any
-  mutation; there is no code path that writes a byte without first
-  producing the diff. Apply executes only `apply` items, and **one BLOCKED
-  item does not block the others in the same run**.
-
-Law 15 is enforced one-sidedly, and the asymmetry is the argument: a false
-stop costs a human one diff, a false merge silently destroys a hand-tuned
-configuration across seventeen repositories and is discovered weeks later.
-So a drifted region is **never** merged — the item reports BLOCKED with
-both versions attached and the file on disk is byte-identical afterwards.
-
-Proven, not asserted: content outside fathom's regions survives
-byte-for-byte including CRLF line endings; three foreign lefthook commands
-keep their order across an apply that adds one; another tool's
-`settings.json` hook and unrelated top-level keys survive; and applying
-twice adds fathom's entries exactly once — including with the ownership
-ledger deleted between the runs. That last one is the `fathom init`
-hook-duplication regression, structurally fixed rather than patched.
-
-New verbs:
-
-    fathom fleet receipts               what fathom has written here, newest first
-    fathom fleet undo --last            restore the most recent apply
-    fathom fleet undo <receipt-id>      restore that one
-
-Undo is a *restore from receipt*, not an inverse operation — the receipt
-carries the full prior content of every file and region touched, so undo
-never reasons about what a change meant. It refuses, writing nothing at
-all, when any file in the receipt has changed since; and the undo is itself
-receipted, so it is reversible in turn. Receipts are append-only, local,
-never leave the machine (law 13), and are pruned by count rather than age
-so an undo is always available for the last N applies.
-
-Also fixed, found by this phase's full-suite run: `fetchServicesOnce`
-dereferenced a nil `*http.Client`, so `fathom flywheel` **panicked
-outright** on any machine whose local call log is absent
-(`resolveCallLogCandidates(nil, …)`). `fetchServices`' own retry path
-already treated nil as "no client supplied"; now the single-shot path
-agrees. A segfault where the honest answer is a timed-out request.
-
-
-||||||| parent of f9109a9 (feat(memory): anchored memory — the refusal is the product (AM-1..AM-5, AM-7))
-### 2026-08-08 — anchored memory: the refusal is the product (AM-1..AM-5, AM-7)
-
-Phase W of `docs/plans/ambient-fathom.md`, from
-`docs/design/anchored-memory.md`. Every memory system in common use is
-append-only and rots silently; its worst failure is not forgetting but
-confidently recalling something that stopped being true. Fathom already
-owned every primitive needed to fix that — content hashes, commit drift,
-evidence tiers, a governed injection path — so the gap was a schema and a
-drift evaluator.
-
-**A memory with no anchor is refused.** Not stored at a low tier: refused,
-with the reason and the destination — *"this is a preference, not a memory
-about this codebase; put it in CLAUDE.md."* That refusal is what keeps the
-store from becoming the junk drawer every other memory system becomes, and
-the test asserts the store is still empty afterwards, because a "refusal"
-that quietly writes a row is the failure mode itself.
-
-**The tier is derived structurally, never asserted.** Evidence carries a
-closed structural kind (machine-check, index, doc, human, model) and the
-kind — not the caller — picks the tier. `WriteMemory` routes the caller's
-claimed confidence through agentic-kit's `scoring.ApplyCeiling` plus
-`TierCeiling`, which is that function's **first caller anywhere in fathom**;
-phase S specified it, anchored memory is its first real consumer. Proven
-with a lying caller: claim `verified`/5 over a single model inference and
-the memory lands at `assumed`/1 with the cap and its reason recorded and
-the claim retained for audit. (`ApplyCeiling` alone is not enough — it
-leaves verified and pre-scan uncapped by design — so both bounds are
-applied.)
-
-**Drift is evaluated at read time, cached per index generation.** No sweep,
-no timer: it cannot be missed while the daemon is down, it costs one hash
-comparison per anchor on a path that already loads them, and a memory is
-never wrong merely because a job had not run yet. Forty surfacings of one
-memory hash its anchors once; a generation change drops that service's
-probes wholesale.
-
-**The lifecycle.** `fresh` → `suspect` when an anchor's content changes:
-still surfaces, but labeled with what changed and when, and with its tier
-dropped one step (a `verified` memory whose code moved is not verified any
-more — the check that verified it ran against different code). `suspect` →
-`orphaned` when an anchor disappears: stops surfacing, is never deleted.
-`fathom memory review` resolves a queued memory as still-true /
-no-longer-true / rewrite, and the tier consequence of *who* resolved it is
-automatic — a model confirming changed code is an inference, a human is an
-expert statement — so model-confirmed lands strictly below human-confirmed
-without anyone stating a tier. A retired memory never surfaces again and
-stays retrievable by id.
-
-**Honest granularity.** Fathom stores one content hash per file, so a
-symbol anchor's drift signal is really "the file holding it changed", and
-every probe carries a `Covers` phrase saying exactly that. Noisy in the
-safe direction, and never a label claiming a precision that does not exist.
-`docs/design/anchored-memory.md` §7 pre-registered this as the thing to
-re-examine if the suspect queue turns out to be too loud.
-
-New: `internal/memory` (model, refusals, tier derivation, read-time
-evaluator, JSONL project-scoped store, `MemoryFromFinding`) and
-`fathom memory add|list|review|show`. Memories live in
-`<root>/.fathom/memories.jsonl` — project scope, loopback only (law 13).
-
-Not in this slice, deliberately: AM-6 (obligations injection) and AM-8
-(the `memory_search` tool). Both are small follow-ups — `EvaluateAll`,
-`SortEvaluations`, `Surfacing` and `Evaluation.Line()` already produce the
-deterministic, always-labeled payload they need — and both touch files a
-concurrent change is editing.
-
-### 2026-08-08 — `fathom flywheel`: are the feedback loops actually closed? (FW-1..3)
-
-Owner ask: *"periodically check in on our flywheel and feedback loops to
-make sure they are working as expected."* The durable answer to "check
-periodically" is not a habit, it is a verb.
-
-Two measurement failures in one day argued for it, and **both were
-silent**: the OFF arm burned fourteen hours of budget recording nothing,
-and then — once fixed — produced rows that were all inadmissible. Every
-dashboard looked fine throughout, because every surface asked *what do the
-numbers say?* and none asked *is the pipe connected?*
-
-`fathom flywheel` checks seven loops — session ledger, counterfactual arm,
-call log, obligations, verify gate, exploration ledger, observations — and
-reports each as:
-
-- **CLOSED** — produced, arriving, **and consumed**. A producer nobody
-  reads is OPEN, not healthy; that asymmetry is the whole point.
-- **OPEN** — a defect. Exit code 1.
-- **IDLE** — honestly nothing to measure yet. Never fails the exit code,
-  because a check that cries wolf gets ignored.
-
-Every verdict carries its numbers, and every non-closed loop carries a
-remedy or an explicit "nothing to run".
-
-The arm loop is checked hardest, since it failed twice: it separates
-*armed but recording nothing* from *rows arriving, none admissible* —
-the second being the subtle one, because the producing side looks alive.
-
-**It caught a bug in itself on first run.** The obligations loop read
-`ObligationCalls` off the impact model, where it is always zero — the
-figure is folded from the call log by `buildObservatoryModel`. It reported
-IDLE on a loop carrying 6,994 injections. Fixed by reading the same source
-the surface it mirrors reads, which is now stated as the rule for every
-check.
-
-Live result on the fleet at time of writing: 4 closed, 1 open
-(counterfactual arm — rows arriving, none admissible), 2 idle.
-
-
-### 2026-08-08 — the arm label was outrunning what it measured
-
-Hours after the OFF-arm measurement fix landed, the ledger produced its
-first two OFF rows. Both were **corrupt**, and neither said so.
-
-Their transcripts began **ten days** before the arm was set (`duration_ms`
-243h and 256h), so their token, turn and discovery totals were
-overwhelmingly *assisted* activity — yet the rows were stamped
-`arm: "off"`. One carried `tokens_total: 933,232,702`.
-
-Fed to a paired comparison, rows like these drag the OFF arm toward the ON
-arm and manufacture a false null result: **"fathom saves nothing"** — the
-single conclusion that would end the program, on evidence that is merely
-mislabelled. It would have been the most expensive possible way to be
-wrong, and nothing in the instrument would have flagged it.
-
-**Producer side.** `sessionLedgerEntry` gains `arm_coverage` (+ note),
-computed by `armCoverage` from the transcript's first timestamp, which the
-duration fold already sorted for:
-
-- `full` — the session began at or after the arm was set. The only value
-  admissible to a paired comparison.
-- `partial` — the transcript predates the arm. Retained and readable, but
-  not control data, and the note states the boundary in words.
-- `unknown` — no timestamped line, so coverage could not be determined.
-  **Not assumed clean** (law 3).
-- `""` — no arm active; the question does not arise.
-
-**Consumer side.** `buildImpactModel` excludes `partial` and `unknown`
-rows from both arms and **names the count** rather than silently dropping
-them — the brief now prints "Excluded from the comparison: 2" with the
-reason. A row stamped `off` with **no** coverage field is treated as
-unknown, because it was written by a binary that never checked; this is
-asymmetric on purpose, since `on` is ordinary operation with no bounded
-window to fall outside of.
-
-Also corrected: the brief promised "compare the two medians above" whenever
-both arms had sessions, even when neither median existed. Sessions on both
-sides is not the same as tokens on both sides, and promising a comparison
-that is not on the page is the small lie that makes a reader distrust the
-honest figures beside it.
-
-Every new test was confirmed RED against the ungated fold first — without
-it, the 933M row leaks into the OFF median.
-
-
-### 2026-08-08 — the capability registry reported switches it did not exercise (CR-7)
-
-Found by adversarial review of `docs/design/capability-registry.md`, hours
-after phase T shipped, and it is the defect the package exists to prevent.
-
-`internal/capability`'s resolution was read by exactly two surfaces — the
-`capabilities` verb and the doctor row — and by nothing else. So
-`fathom capabilities set guards off` wrote a config file, the table then
-reported **"switched off by this repository"** as a statement of fact, and
-guards kept firing on every edit. One `doctor` run could emit that line
-beside its own `guard_file PASS … 1 guard(s)` row. A config read rendered
-as a behavioural fact — law 14, violated inside the thing built to enforce
-it.
-
-Root cause: §2's rule ("detect is a function, not a flag") was written
-only in the ON direction. The implementation took the unstated OFF
-direction.
-
-**The fix is a distinction, not a patch.** `Capability.Switchable` says
-whether an enforcement site actually reads the resolution:
-
-- **Switchable** (`obligations`, `guards`, `verify-gate`) — gated in
-  `edithook.go`, `edithook_pre.go` and `stophook.go`, each *before* any
-  daemon traffic, so off means silent rather than merely quieter.
-  `verify-gate` off still records the ledger row: switching off an
-  assistive gate is not a reason to stop measuring, and `verify_catches`
-  stays nil rather than a fabricated zero.
-- **Status** (`index`, `layers`, `modules`, `agent-surface`,
-  `session-ledger`, `narrate`) — `set` **refuses** them, naming the real
-  control ("narration is a bounded window… `fathom narrate on --for 7d`"),
-  and the renderer no longer prints provenance beside them, because
-  provenance implies a switch.
-
-`session-ledger` is deliberately status: measurement must not be silently
-disableable from a config file (law 3). `FATHOM_CHANNELS=off` remains the
-documented, doctor-visible kill switch.
-
-Enforcement **fails open** — a config file that does not load never
-disarms a safety feature. It is reported loudly by the verb and failed
-loudly by doctor instead.
-
-`TestEverySwitchableCapabilityHasAnEnforcementCase` makes the gap
-unreachable: marking a capability switchable without a test proving
-observed behaviour changes now fails the build. All enforcement tests were
-confirmed RED against the shipped defect before being accepted.
-
-
-### 2026-08-08 — URGENT: the OFF arm was silencing its own measurement
-
-**The bug.** `fathomChannelsDisabled()` returned
-`env == "off" || armOffActive()`, and every hook calls it *first*, before
-any other work. So while an OFF arm was active:
-
-- the session hook exited before reaching its own arm branch, so the loud
-  🔬 announcement never printed and `decrementArmSessions` never ran
-- the stop hook exited before `recordSessionLedgerEntry`, so OFF-arm
-  sessions left **zero** ledger rows
-
-The arm burned its session budget collecting nothing.
-`TokensOffSessions` could never rise, so the counterfactual pilot could
-never leave "collecting" — the one instrument that can license a savings
-claim (law 12) was structurally incapable of ever producing one.
-
-**Measured cost.** An arm set 2026-08-08T07:11:47Z produced no ledger rows
-for the rest of that coding day, with `sessions_remaining` still reading
-10 of 10 because the decrement never ran either.
-
-`arm.go`'s own header states the contract that was being violated: *"the
-session ledger stamps every row with the arm it ran under, which is what
-makes paired comparison possible at all."*
-
-**The fix** (vision 14 §2 semantics): the arm silences **assistance**,
-never **measurement**.
-
-- `fathomChannelsDisabled()` is now the env kill switch alone — total
-  silence, unchanged historical semantics.
-- new `assistiveChannelsDisabled()` = env **or** an active OFF arm; the
-  edit hooks (obligations, guards, the pre-edit channel) use it and stay
-  fully silent under the arm, so the control group is genuinely unaided.
-- the session hook uses the env gate, so its existing arm branch finally
-  reaches its announcement and its decrement.
-- the stop hook uses the env gate, records the ledger row from the
-  transcript, then returns **before** the verify pass — verify is an
-  assistive gate, and its daemon calls would have registered as fathom
-  activity during a supposedly unaided session. `verify_catches` is nil,
-  not 0: the gate did not run, so its result is unknown, and a fabricated
-  zero would read as "the gate found nothing" (law 3).
-
-**A test asserted the bug.** `TestArmStamping/channels_kill_switch_honors_the_arm`
-required that an OFF arm disable channels "exactly like
-FATHOM_CHANNELS=off" — which is what made the conflation look deliberate
-for weeks. It is corrected, and `armmeasurement_test.go` now pins the real
-contract from both sides. All three new tests were confirmed to go RED
-against the old gate before being accepted.
-
-
-### 2026-08-08 — phase T: the capability registry (CR-1..6)
-
-Fathom grew four extension seams with four unrelated on/off mechanisms.
-The cost was not inconsistency for its own sake: nothing could answer
-"why isn't X happening here?", the most common adoption question, because
-nothing knew the full set of X's. Every onboarding defect of the last
-fortnight — the hook duplication, the CUE `?:` trust inversion, O22, O23 —
-was that question going unanswered.
-
-`internal/capability` is one typed registry over the four seams, and
-`fathom capabilities` is the verb. Three properties do the work:
-
-- **Detection is observation, never configuration.** A capability is on
-  when it is observably working. `guards: on` with no rules compiled
-  reports OFF, with the reason — law 3 applied to config.
-- **Every entry can say why it is off**, enforced by a test that iterates
-  the registry against a ZERO probe, so a capability cannot be added
-  without a reason and a remedy.
-- **Absence and breakage are different.** No module bound is normal. Rules
-  compiled with no hook to deliver them is a defect. Only the second may
-  fail doctor — a diagnostic that red-marks nine "you could also enable
-  this" rows teaches people to ignore it.
-
-Law 13 is enforced loudly rather than by silent drop: a user-scope file
-setting a project-only key is refused **with the key named**, an unknown
-id is refused with the nearest match suggested, and resolution carries the
-scope that supplied each value so "off (your user default)" and "off (this
-repo)" are distinguishable.
-
-Three defects the tests caught while building it, each worth recording:
-
-- the doctor row initially failed on an unbound module — absence read as
-  breakage
-- it then duplicated `daemon_reachable`'s diagnosis, so one root cause
-  produced two red marks
-- index freshness is THREE states, not two: `unknown` (nobody could tell)
-  was being treated as `stale` (a defect), which would fail every
-  repository whose daemon is merely unreachable
-
-The plan gate also rejected two of my own contracts: `Validate` was an
-ambiguous anchor shared across the tree (renamed `ValidateSettings`), and
-one `reachable_from` named a test that did not actually reach its symbol.
-Both were my errors, caught before the box stayed checked.
-
-
-### 2026-08-08 — the value brief reads as a story (BR-1..4)
-
-The brief was a correct instrument dump: `17727`, `## Q2`, a bare
-"pilot state: idle". Every figure was honest and almost none of it was
-legible to anyone who had not built the thing. It now opens with a
-plain-language **short version** — what fathom is, its scale, what it
-demonstrably did, what it has **not** shown, and the single
-highest-value configuration change — followed by five numbered
-questions, each closing with an explicit **Reading:** line that says
-whether the number is evidence fathom helped, evidence it did not, or
-evidence of nothing yet.
-
-Three specific corrections:
-
-- **Counts are readable.** Every number routes through the
-  observatory's existing `fmtThousands` — `17,727`, not `17727`. No
-  duplicate helper was added; the first draft of this change shipped
-  one and it was deleted in favour of the incumbent.
-- **The closing section is a work order, not a disclaimer.** Each entry
-  names what is switched off, what switching it on would let a *future*
-  brief say, and either the exact command or a note explaining why
-  there is nothing to run. It is derived from live model state only — a
-  fully configured fleet produces zero entries rather than invented
-  advice.
-- **Exposure is not outcome.** The prevention section now says outright
-  that 6,992 rule injections and 17,727 discovery actions are counts of
-  things fathom *did*, not mistakes avoided, because nobody re-ran the
-  same work without it.
-
-The brief page renders the same emphasis the markdown carries (bold,
-emphasis, code), with escaping applied before tag emission so an
-instrument note can never inject markup.
-
-
-### 2026-08-08 — observatory: the readable pass — spend-shaped arm medians, visible chart values, index-only honesty, learn-affordances
-
-**The 596M-token finding:** `tokens_total` summed ALL flow, including cache
-reads — which dominate a cached session by orders of magnitude, so a single
-row could inflate the "median session" to 596M tokens. The ledger now
-splits in/out/cache at the instrument (transcript parsing), the model
-(arms compare in+out only), and the render (a labeled learn-tooltip on
-"median real tokens"); rows that predate the split count as unknown,
-never fed to the median as their inflated total, and the OFF arm's dash
-now reads "median real tokens —" instead of the old "no token totals"
-phrasing.
-
-**Visible values, not just bar widths:** the "which tools carry the load"
-chart now renders comma-grouped value labels (`ShowValue: true`) instead
-of leaving the reader to eyeball bar length.
-
-**Every non-A card shows its remedy — the actual bug:** `wiringGrade`'s
-`raise` (the one command that fixes a card) was only reachable through
-`FreshnessRemedy`/`WiringRemedy`, which cover the stale-index and
-missing-hooks/stanza cases but not "wired but unused" — a C-grade card
-whose only unmet signal was traffic rendered no remedy at all. Fixed with
-a fallback to `GradeRaise` whenever the specific fields didn't already
-cover it. **Index-only honesty:** a C/D-graded service with zero ledger
-sessions AND zero agent-originated calls is a remote corpus other repos
-query, not a wiring failure — it now renders a neutral "index-only" chip
-with an explaining tooltip instead of a scary amber letter, and its
-(moot) remedy is suppressed. Services with real sessions keep their
-letter and remedy as before.
-
-**Learn-affordances:** "(N agent)" traffic figures — fleet tiles and the
-service detail page — carry a dotted-underline tooltip explaining agent
-calls vs. fathom's own plumbing; the fleet page's expander gained a
-one-line grade legend (A/B/C-D/index-only).
-
-<details><summary>cmd/fathom/observatory.go, observatory_render.go, sessionledger.go</summary>
-
-- `sessionledger.go`: `TokensIn`/`TokensOut`/`TokensCacheRead`/`TokensCacheCreate`
-  split alongside the legacy `TokensTotal`.
-- `observatory.go`: `buildImpactModel` computes spend-shaped (in+out)
-  medians per arm, tracks pre-split rows and average cache-read context
-  separately; `buildObservatoryModel` folds a per-repo `sessionsByRepo`
-  map from the session ledger (mirrors `fleetreport.go`'s own fold) into
-  each service row's `SessionCount`.
-- `observatory_render.go`: `viz.BarsOptions{ShowValue: true}` on the tool
-  chart; fleet card remedy fallback to `GradeRaise`; `index-only` grade
-  chip; `agentCallsTip` helper wraps every "(N agent)" fragment; the
-  fleet `obsLead.Explain` carries the grade legend.
-
-</details>
-
-### 2026-08-08 — the exploration ledger: the 90x measured, the dashboard readable, the field report answered (vision 19, plan EX/FR/TD)
-
-**The instrument the owner asked for:** every session transcript records
-BOTH discovery modes — raw exploration (Grep/Glob/Read results and their
-sizes) and indexed discovery (fathom answers and theirs) — so the
-per-question token cost of each, their observed ratio (labeled
-OBSERVATIONAL; the counterfactual arm keeps causality, law 12), and the
-subagent multiplier (files re-read across sidechains = duplicated
-exploration a shared index pays once) are measured per session and folded
-fleet-wide (EX-1/2/3). The impact page LEADS with this story (EX-4).
-
-**A dashboard a stranger can read (EX-5/6):** every page opens with a
-plain-English lead and a no-JS "what am I looking at?" explainer;
-/observatory/brief renders the management-ready summary with a markdown
-download. **Configuration observability (EX-7/FR-5):** the service page
-shows layers (eval-gated or not), guards, bindings, rules served, and —
-loudly — the obligations-compile condition, so 6,985 staleness-warning
-serves can never hide again.
-
-**The resume_as_code field report, answered row by row:** plans
-status/next discover plans in the SERVICE's repo, never blindly the cwd
-(FR-1 — the cross-repo wrong-verdict bug); the 264,487-catches artifact
-is retired — gate refusals are counted as EVENTS, and per-session NEW
-catches remain the ledger's verify_catches (FR-2); fleet reconcile
-detects and --apply installs missing shipped skills (the Unknown-skill
-failure, FR-3); the session hook now teaches the FIRST query with a live
-symbol from the repo's own index — one early miss loses a whole session
-to grep, so the first query must land (FR-4). O13 filed: CompileLayer
-ignores the provider registry (claude-cli ok, compile refuses) — the
-ANTHROPIC_API_KEY plist workaround unblocks it; FR-6 defers the bridge.
-
-**The tool diet (TD):** the context tax is measured and shown on the
-landing page (agent surface: 16 tools, ~12.3 KB schemas ≈ ~3.1k tokens
-per connected session) and the agent surface is PINNED at ≤16 by test —
-every schema taxes every session; the 88-tool count that alarmed the
-field report is the full /rpc surface, which agents never load. Wiring
-grades stop reading invisible-from-here as absent (EX-8, law 3).
-Fleet-wide: reconcile applied (0 drifted across 17 repos), stale
-indexes refreshed daemon-side.
-
-### 2026-08-08 — the four questions: observatory v2 (vision 18, plan IQ-1..11 + IQ-15)
-
-Activity is not impact. The observatory reframes around the four
-questions an engineering leader actually asks, and lands the
-instruments v1 lacked. **Q1 (what did the agent not have to do?):**
-stays DARK until OFF-arm sessions exist — law 12 rendered as product.
-**Q2 (what did fathom prevent?):** verify catches with denominators
-plus a number v1 could not see — 6,985 obligations served, live from
-the call log; conformity checking is IQ-13's named next wave.
-**Q3 (where does the agent still flounder?):** call-log rows now carry
-result_count and matched_via (IQ-1), so hits, misses and did_you_mean
-consolations are distinguishable per tool forever — the per-tool
-outcome table is the auto-written roadmap, historical rows honestly
-"outcome not recorded", and query text stays OUT of the log by design
-(user-global, metadata-only). **Q4 (is the knowledge compounding?):**
-the ledger learns first_edit_turn (IQ-2) — the session warm-up fathom
-promises to collapse — surfaced as a median once post-IQ-2 sessions
-accumulate.
-
-The story layer: /observatory/session?id=S replays ONE session as a
-viz.Timeline of its beats with the ledger verdict card (IQ-4);
-/observatory/story composes the trailing week with session-replay
-links (IQ-5); both wear the law-14 lens banner. The landing page leads
-with the four questions and their live numbers (IQ-6). Fleet tiles
-gain per-service 14-day sparklines, a top-tools bar chart, activity
-ordering, and a WIRING GRADE chip (A–F from hooks/stanza/freshness/
-traffic with the one command that raises it — the continuous form of
-the doctor/rewire audit, owner ask). The brief reorganizes to the same
-four questions (IQ-11). The tool improves itself: --for 14d parses
-(IQ-9), and fathom init auto-arms a 10-session narrate window so an
-adoption's first sessions are captured (IQ-10) — bounded, announced,
-self-expiring. Narrate is ON fleet-wide until 2026-08-22 for this
-wave. Deferred with named triggers: the session-start context pack
-(IQ-12, needs IQ-2 baselines), obligation conformity (IQ-13), the LLM
-weekly (IQ-14).
-
-### 2026-08-08 — the observatory: value realization at a glance, built on app-kit (vision 17, plan OB-1..12)
-
-The daemon grows a front door and a value UI, all loopback, all honest:
-GET / (landing: every surface linked), /observatory (fleet tiles with a
-stat-band of totals, a 14-day traffic sparkline from the REAL call log,
-per-service freshness/traffic/observations, and the exact remedy command
-on every warning), /observatory/service?id=S (detail + an agent-surface
-share gauge), /observatory/impact (verify catches and discovery actions
-with their denominators BESIDE the numbers; the counterfactual pilot as
-a state machine — a savings figure exists only as an arm range, law 12;
-story rows only under the lens banner, law 14). ?format=json everywhere
-from the same model. `fathom brief` renders the impact model to a dated
-LOCAL markdown value brief with an explicit "Not measured" section —
-sharing stays a human verb (law 13).
-
-Built on app-kit (owner directive): dashboard.RenderWidget/Grid,
-stat.RenderBand, viz.Sparkline/Gauge — the hand-rolled tiles and SVG
-primitives written earlier the same day were DELETED for the kit's
-(D13); the honest-absence tile was promoted UP into the kit as
-stat.Absent (app-kit af47262), and stat.Render now honors Sub/ValueRole.
-CSS builds via `task ui:css` (the kit's checksum-pinned Tailwind binary,
-no Node) from cmd/fathom/ui/input.css — the @source globs are
-load-bearing and documented. Durable wiring: the UI doctrine is in
-CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, and the
-ui-appkit dialect pack is installed (honestly warning it is not yet
-eval-gated). Every page verified by LOOKING: Playwright screenshots in
-both themes; findings the tests could not see (an absence-note rendered
-beside a present value, missing thousands separators, a duplicated
-law-14 line, wrapping commit hashes) were fixed and the metricCell
-contract now separates absent-notes from present-notes.
-
-### 2026-08-08 — full C++/CMake/clang/LLVM/Ninja support (docs/plans/cpp-toolchain.md, IO-27's trigger fired)
-
-C++ extraction closes its correctness gaps: symbols get ONE spelling —
-out-of-class definitions ("Widget::render") and collected callees
-normalize "::" to "." so call edges join the inline-method spelling the
-scope stack already produced (CT-1); templates, operator overloads,
-destructors and C++17 nested namespaces are pinned by tests (CT-2); and
-the polyglot .h extension routes per-file through a C++-signal sniffer
-— LLVM-style codebases (every header .h) keep their classes,
-namespaces and methods instead of being flattened by the C grammar
-(CT-3). CMake becomes a dialect: CMakeLists.txt and *.cmake extract
-projects, targets, functions, options and find_package dependencies,
-with target_link_libraries as target→target call edges (CT-4/5), all
-TierPreScan (hand scanner, not CMake's evaluator — variable
-indirection is dropped, never guessed). The languages field stops
-lying for C-family services (CT-6: cpp/c/cmake/rust/csharp/cue).
-Toolchain awareness: doctor's cpp_toolchain check warns (never fails)
-when a CMake repo lacks compile_commands.json and names the exact
-Ninja+clang export command (CT-7); init's .fathomignore excludes
-build/, out/, cmake-build-*/ (CT-8). build.ninja is refused as
-indexable input — it is generated FROM the CMake intent we already
-index (CT-9). ExtractorEpoch 5→6 forces re-extraction of every stored
-C/C++ observation. Calibrated live against fmtlib/fmt: 5,470 symbols
-(424 classes + 181 namespaces from .h headers), 24 CMake targets with
-normalized link edges, zero "::" contamination (CT-10; record in the
-plan). Precise clang mode, the WASM engine migration, and Conan stay
-deferred with named triggers (CT-11/12/13). O12 filed en route: the
-ingest CLI's cwd-relative -store default indexes into the void.
-
-### 2026-08-08 — the activation plan closes: exit proofs run live, the sweep verifies (plan IO-30/31/32 + final verify)
-
-The three exit-proof rows are skip_test with transcript obligations;
-the transcripts, recorded here per their skip clauses:
-
-- **IO-30 — the adoption question from a consumer repo.** `fathom
-  instrument --adoption --service app-kit`, cwd=app-kit: resolved the
-  daemon call log (69 calls), surface split bare=12 / agent=57, top
-  tools read_source 45 / verify_plan 10 / find_symbol 6. The gauge is
-  cwd-independent and names its log source.
-- **IO-31 — doctor with zero known-false FAILs on app-kit.** 24 checks:
-  20 pass, 3 fail, 1 skipped — and every FAIL is TRUE: lefthook_gates
-  (app-kit has no lefthook.yml), skills_installed (none of the 8 shipped
-  skills present), surface_traffic (zero agent-surface calls since
-  process start, with the process-lifetime caveat printed in the
-  message). No false doctor row survives on a consumer repo.
-- **IO-32 — the pilot pre-registered before any OFF session.**
-  workspace/artifacts/research/counterfactual-pilot-preregistration.md
-  (workspace is gitignored; generation-timestamped in its header):
-  arms via `fathom arm off --sessions 10`, N=10 matched sessions per
-  arm on platform-engineering, primary metric harness-reported
-  tokens_total (ledger, REAL tokens), medians reported as a RANGE with
-  denominators, kill criteria filed (law 12: criteria before data).
-
-Also: O9 closed in the observations file (the IO-9 budget fix is its
-fix), O10 filed (a redeploy rolls the TCC dice — new binary hash under
-launchd silently loses the removable-volume grant; this sweep ran
-against a spare-port instance because of it), O11 filed (CLI call log
-resolves cwd-relative). Final sweep: `fathom verify --service fathom
---plan docs/plans/impact-observatory-activation.md` — 32 rows: 29
-claimed, every contract-bearing row verified against the index, three
-deferred rows carry triggers.
-
-### 2026-08-08 — the skills pack: eight skills, three renderings, one generated plugin (vision 16, plan IO-23/24/25/26)
-
-fathom-rewire and fathom-activate join the embedded pack (the
-rewire/activate prompts promoted to skills — the reconcile pass with
-doctor's false signals named, and the activation catalog with the
-authoring discipline inline). `--skills=agents` renders the same
-SKILL.md set to the shared `.agents/skills` path Codex and Gemini CLI
-both walk natively — one spec-conformant write, multiple harnesses.
-`fathom plugin render` generates the Claude Code plugin from the SAME
-embedded sources: plugin.json (v0.1.0, fathom build in metadata), all
-eight skills (→ /fathom:rewire etc.), hooks/hooks.json carrying the
-full template spelled via the shim-stable `fathom` (never a checkout
-path — pinned by test), .mcp.json, and optionally the marketplace
-manifest. A hand-edited plugin is the schema-copy bug class: the output
-dir belongs to the generator. IO-26 integration proof, run live: both
-kit packs (app-kit ui-appkit, agentic-kit agentic-kit-standards)
-install via `fathom layers install` and list with honest
-not-yet-eval-gated warnings.
-
-### 2026-08-08 — narrate v0: the enhanced-understanding dial, story rows only (vision 14 §6, plan IO-21/22)
-
-`fathom narrate on --for D|--sessions N` — bounded, auto-expiring, off
-by default (an unbounded narrate refuses; the dial is for pioneering,
-never a standing tax). While active the hooks append version-stamped
-STORY ROWS per intervention — obligation-served (file, rule count,
-session), verify-catch (plan, task, detail), guard-served (file/command
-previews) — to <repo>/workspace/artifacts/narrate/story-<date>.jsonl:
-per-repo, local, never bundled, and a LENS over mechanism-labeled
-events, never a source of truth (law 14 candidate — nothing downstream
-may consume them as evidence). The LLM weekly narrative and the
-surrounding-context correlation are the next wave, stated. Pinned by
-TestNarrateExpiry and TestStoryRows (inactive narrate writes nothing).
-
-### 2026-08-08 — fleet reconcile + the session tripwire: wiring is a diff, not an audit (vision 14 §7, plan IO-17/18/19)
-
-`fathom fleet reconcile` diffs every repo's installed hooks against the
-canonical template (fathomHookSpecs — the same table init writes from):
-dry-run names missing entries, stale absolute binary paths, pre-rename
-stanza branding, per repo; `--apply` executes the SAFE subset only —
-repointing stale commands to the shim-stable `fathom` in the project
-file (user scope is reported, never edited) and merging missing entries
-through init's own idempotent machinery (one scope, never both).
-Structural surgery stays human. And the session hook is now the
-tripwire: a drifted repo's session OPENS by naming the drift and the
-exact remedy — the audit that found five wiring shapes across the fleet
-becomes a line every drifted session prints about itself. Pinned by
-TestReconcileDiff / TestReconcileApply (drift → apply → clean) and
-TestSessionTripwire.
-
-### 2026-08-08 — the PATH shim: hooks spell `fathom`, never a checkout path (plan IO-20)
-
-`fathom init` now installs ~/.local/bin/fathom → the deployed libexec
-binary (falling back to the running executable; refusing to clobber a
-foreign real file; idempotent), and doctor gains `binary_on_path` — the
-2026-07-31 journal case made the stakes plain: `fathom verify …` printed
-command-not-found as one token and the pipeline exited 0, a verification
-failure wearing a pass. One stable name on PATH ends the class where
-hook behavior depends on when a checkout was last rebuilt.
-
-### 2026-08-08 — fathom fleet report: the audit as a verb (vision 14 §4, plan IO-16)
-
-One command folds the daemon's registry, per-service traffic from the
-call log, local wiring state (hook references, stanza presence), open
-observations, ledger session counts, and a three-state freshness
-comparison (indexed commit vs repo HEAD via statusz) into
-~/.fathom/fleet/report-<date>.{json,md}. Local files only — no daemon
-writes, no network beyond loopback; collection stays sovereign per repo
-and consumption centralizes (research-flywheel §8's refusal of silent
-aggregation stands: this is explicit and human-run). Every unmeasured
-cell says so — a dash is not-measured, never zero. First live run
-folded the real fleet's 18 services. This is the observatory's data
-plane (vision 14 §8 rung 1) and the reconcile worklist.
-
-### 2026-08-07 — ledger attribution: verify catches ride the session row (plan IO-15)
-
-The stop hook now runs its verify pass FIRST and the session-ledger row
-carries `verify_catches` — the proven-failing count for newly-claimed
-tasks — as a nullable field: nil when verify never ran (no plans,
-unindexed, daemon down), which is UNKNOWN, never a fabricated zero.
-Together with `arm` (IO-14) the ledger now holds the counterfactual
-program's join keys per session. Honest scope note: the vision's other
-two attribution fields (injected_rules_used, discovery_substitutions)
-need obligation-file tracking and call-log/beat correlation that do not
-exist yet — deferred with the narrate wave, not silently dropped.
-
-### 2026-08-07 — the measurement arm: FATHOM_CHANNELS=off with a memory (vision 14 §2, plan IO-14)
-
-`fathom arm off --for D --sessions N [--note]` is the counterfactual
-program's OFF switch done right (the O15 lesson: a silent kill switch is
-a measurement bug): STAMPED (schema+fathom version, set-at, note),
-BOUNDED (an unbounded OFF arm refuses — indefinite is the env var's job,
-deliberately less comfortable), ANNOUNCED (doctor's channels_env names
-an active arm as an ARM with its bound and undo; the session hook opens
-the session by declaring it and decrements the session budget), and
-RECORDED (every session-ledger row now carries `arm: on|off` — the field
-that makes paired comparison possible). `fathomChannelsDisabled()`
-composes both switches; hooks treat them identically. State at
-~/.fathom/arm.json (0600), `fathom arm on` ends it early. Pinned by
-TestArmStamping (bound refusal, session countdown to expiry, wall-clock
-expiry, clear, kill-switch composition).
-
-### 2026-08-07 — version-stamped telemetry: every record names its producer (vision 14 §3, plan IO-11/12/13)
-
-The research bundle carried its producing binary's identity from birth;
-now everything does. New internal/buildinfo package (VCS revision +
--dirty, "unknown" floor, never empty) stamps: call-log rows
-(schema_version 2 + fathom_version), hook-beat meta (plus project_dir —
-the per-repo attribution the user-global beat log lacked, the reason
-doctor once cited one repo's beats as evidence about another; caller
-keys win on collision, caller maps never mutated), session-ledger rows,
-and daily rollups. Legacy rows without the fields read as
-version-unknown — never backfilled, never guessed. The
-251,834-catch-headline class of cross-semantics aggregation becomes a
-filterable query instead of an investigation.
-
-### 2026-08-07 — registry surgery becomes two verbs; the ingest door enforces one-root-one-service (O1 completed, plan IO-2/IO-3)
-
-Asked for verbatim on 2026-06-16, shipped today: `remove_service`
-(idempotent every-row deletion — claim_events cascaded through the
-claims table; deliberately accepts path-like historical ids, since
-excising exactly those is its first job) and `rename_service` (atomic
-re-key across the eleven service_id tables; typed refusals; claim ids
-stay minted as historical evidence). Both delegate store → client →
-AutoRefresh → tool via the ingestAtBackend precedent and bust the
-identity cache on success. The ingest handler now enforces what
-client-side checks could not: ValidServiceID at the daemon (the
-../geoffmiller-cloud twin was re-fed for seven weeks past the client
-fix), absolute-and-existing onboarding paths canonicalized via
-EvalSymlinks (the /Users-symlink registration class), duplicate roots
-refused naming the claimant, nested roots refused in both directions
-(the crossplane-platform accident). With IO-1's deterministic
-resolution, every O1 fix (a)–(d) is now landed.
-
-### 2026-08-07 — the adoption gauge answers from any repo, scoped to what an agent can reach (O6 + audit, plan IO-10)
-
-`instrument --adoption` gains `--service` (rows filtered case-
-insensitively; unattributed rows are excluded AND counted beside the
-filter — never silently dropped) and cwd-independence: when the relative
-default log is absent, the gauge reuses doctor's call-log resolution
-(absolute config → the fathom checkout → the daemon's recorded service
-root) instead of measuring nothing from every repo but the daemon's own.
-O6's headline defect closes: the zero-call list is partitioned by the
-agent surface — "zero-call AGENT-surface tools (the actionable list)"
-vs "registered but not exposed (expose or prune — a different remedy)".
-New mcp.AgentSurfaceTools() exports the allowlist the partition scopes
-against. Pinned by TestAdoptionServiceScoped.
-
-### 2026-08-07 — compile --dry-run: cost prints as an honest range, never a confident zero (O8, plan IO-8)
-
-The dry run once reported input-only tokens and `cost_usd: 0.000000` for
-a run whose real cost was $0.64 and 21 minutes (output was 87% of the
-tokens). A dry run now carries an estimate band on the run
-(EstTokensOutLow/High = input × [2, 8] — the observed obligations layer
-ran ~6.7×; the ratios are revisable data) and the human rendering prints
-tokens-in flagged as the bytes/4 heuristic it is, output as
-unknown-with-a-band, cost as a range labeled "never a point — O8", and a
-duration band at the observed ~100 output tok/s. Real runs print exactly
-as before. Pinned by TestDryRunEstimateRange (positive ascending cost
-band, no LLM configured — a dry run must never need one).
-
-### 2026-08-07 — one vocabulary for "none configured": explicit-empty bindings/guards are valid (O7 completed, plan IO-7)
-
-O22's fix accepted the ABSENT field but kept `bindings: []` a loud error
-("closer to a mistake than an intentional omission") — and the fleet
-promptly proved the opposite: the activate skill, the kit packs, and the
-review fix-pass all standardize the explicit literal, so doctor FAILed an
-adopter file fathom's own tooling prescribes. Two sanctioned vocabularies
-is the drift bug class. Now one: `bindings: []` and `guards: []` load
-clean and pass ValidateStrict (schema `[_, ...]` constraints dropped in
-schema/binding + schema/guard, embedded mirrors re-synced); only a
-present-and-malformed entry fails. Doctor's existing scaffold-awaiting-
-opt-in PASS wording covers both forms. Live proof: platform-engineering's
-standing `binding_file FAIL` (its modules.cue carries the prescribed
-`bindings: []`) is now PASS. Pinned by TestExplicitEmptyBindings /
-TestExplicitEmptyGuards; the schema/loader negatives that asserted the
-rejection are inverted.
-
-### 2026-08-07 — review: --budget-seconds bounds the advisory channel (O9 root-caused, plan IO-9)
-
-O9's root cause corrected: nothing prompts and nothing hangs — a six-file
-pre-push review measured 22.6s, the verify loop adds more, and lefthook
-buffers each step's output until completion, so scripted pushes read the
-silence as a stall and killed it at their caps. `fathom review` gains
-`--budget-seconds N`: the whole body races the deadline and on excess
-prints a named advisory skip and exits 0. The flag REQUIRES --no-persist
-— a run that can be cut off mid-flight must never be a store writer —
-and the pre-push step now passes --budget-seconds 20 (bounding the
-advisory channel, not weakening a gate: that step always exited 0).
-Pinned by TestReviewNonInteractive (budget bounds elapsed time; the
-no-persist guard refuses; fast runs unaffected). Follow-up filed in O9's
-fix note: why a six-file review costs 22.6s at all.
-
-### 2026-08-07 — doctor: lefthook gates recognized through variable indirection (plan IO-5)
-
-`checkLefthookGates` no longer requires the literal substring "fathom
-verify": `lefthookInvokes` matches any per-line spelling of the binary —
-literal, path-suffixed, or a shell variable (`"$FATHOM" verify`,
-`${FATHOM} verify`) — closing the audit's live false negative where a
-correctly-gated repo (platform-engineering's pre-push loop) was told to
-add the gate it already had. Honest note: the audit's other two doctor
-findings (binary_fresh comparing the adopter's HEAD, hooks_firing reading
-a repo-relative call log) were ALREADY fixed at HEAD by the O23 wave —
-the audit ran the stale repo binary, which is the deploy-skew lesson the
-reconcile design exists to close.
-
-### 2026-08-07 — plan grammar: braces in quoted values no longer void the row; unparseable blocks are loud (O4, plan IO-6)
-
-`parseAnnotation`'s brace pairing is now quote-aware: a quoted value
-containing the notation's own vocabulary — the exact string
-`{symbol, package}` an author writes when *explaining the grammar* — no
-longer terminates the block, so the row keeps its author-owned id and its
-whole contract (`TestParseAnnotation_BracesInQuotedValues` pins both the
-id and every key). GI-7's trailing-block rule is preserved: pairing runs
-over outside-quote braces only and the block whose close is last wins
-(the existing prose-example and Beat-literal tests stay green). Second
-half of O4: a brace block that parses to zero keys but contains contract
-keywords surfaces as `Task.AnnotationSuspect`, and `LintPlan` says so by
-name — "the row's contract and author-owned id are VOID" — instead of the
-silent md-NNN downgrade (`TestLintPlan_UnparseableAnnotationIsLoud`).
-
-### 2026-08-07 — session-hook: enumeration failure is not "not indexed" (O2, plan IO-4)
-
-`fetchServices` now returns an error alongside the map, with one retry on
-its own 4s timeout, and every failure mode (transport, non-2xx,
-unmarshal) is an error instead of an indistinguishable empty map. The
-session hook grew the third branch O2 asked for: a healthy daemon whose
-list_services fails renders a degraded notice naming the failure — never
-the confident false "this repo is not an indexed service" instruction
-that taught agents to abandon index-first discovery for indexed repos.
-A genuinely empty index now says "none yet" instead of the dangling
-"Indexed services: ." join artifact, and the hook's inline candidate
-dedup now uses mergeCandidates (the O1-c fix), closing the last copy of
-the collapsing dedup. Pinned by TestSessionHookDegraded and
-TestSessionHookZeroServices.
-
-### 2026-08-07 — observe: the initial read now waits out a concurrent creator's write window
-
-`fathom observe`'s foreign-file refusal fired on a file that was simply
-mid-creation: the initial `readObservations` can land in a concurrent
-winner's O_EXCL-create→header-write window and see a markerless file —
-indistinguishable, at that instant, from a foreign file — so the loser
-refused and the entry was lost (exit 1). The refusal path now waits the
-same 200ms `reReadAfterLostCreateRace` window the lost-O_EXCL path already
-used before concluding the file is genuinely foreign.
-`TestObserve_ConcurrentFirstCreationLosesNothing` was failing
-deterministically in the full suite; now green at `-count=10 -race`.
-Found by the impact-observatory activation gate run (plan §A), not by a
-user losing an observation — which is the order these should be found in.
-
-### 2026-08-07 — deterministic service resolution; dedup never collapses (O1 a–c, plan IO-1)
-
-`resolveFromServices` no longer resolves duplicate-corpus-root conflicts by
-Go map iteration order (the coin flip that zeroed obligations on 18/50
-measured edits): all matches are collected and the winner is chosen by
-richness (symbol count), then basename affinity, then lexicographic order —
-pinned by `TestResolveFromServicesDeterministic` (200-iteration determinism
-asserts per case). `candidatesWithDaemon`'s dedup is extracted to
-`mergeCandidates`, which drops only exact name+root duplicates — a
-name-equal candidate at a different root now survives, so a wrong daemon
-answer degrades instead of totalling the fallback list
-(`TestMergeCandidatesNeverCollapses`). O1 fix (d) — daemon-side duplicate
-refusal — lands with plan row IO-2.
-
-### Measured — T5-8 second swing: fathom WINS its home turf; the lookup ×10 retraction stands (docs/plans/trust-and-tokenomics.md, 2026-07-24)
-- **Home bench (pre-registered H2-1 criterion, unchanged): PASS — both
-  halves met.** Success 13/13 vs grep 11/13 (strictly greater); tokens
-  1,594,762 vs 2,795,948 = 0.570× (≤1× required); turns 47 vs 72. First
-  swing (same corpus, 14-tool surface): 12/13 vs 12/13 at 1.071× — both
-  halves failed. The fix wave drove it: read_source (T5-4) collapsed
-  H1-T13 from 601,132 tokens/16 turns to 106,954/4; DocChunk `end_line`
-  (T5-5) flipped fathom's only home-turf failure (H1-T08) to a pass;
-  H1-T12 fell 299,830/8 → 108,046/4. Anomalies audited before scoring:
-  grep's two failures are legitimate misses (H1-T13's is the identical
-  miss as the first swing; H1-T08's is n=1 variance the verdict does not
-  rest on — granting it back still leaves 13 > 12), and the win survives
-  scoring against grep's better first-swing numbers (0.735×, 13 > 12).
-  Artifacts: `rerun-home-results-20260724T170152Z.json` + summary.
-- **Lookup bench (B1's unchanged <5× bar): the retraction STANDS,
-  recorded either way.** 15/15 vs 14/15 success (fathom strictly better
-  this run), tokens 0.511× = a 1.96× reduction (was 1.38×) — still under
-  the pre-registered 5× bar, so the ×10 claim stays retracted. B1-T09
-  (O12's 6.6× loss) collapsed 504,785/20 turns → 107,268/3 (0.21×).
-  Artifacts: `rerun-results-20260724T164907Z.json` + summary.
-- **Pre-run corpus revision committed FIRST (8a847d3, the registration
-  proof):** home corpus re-verified at HEAD bfb8010 (zero ground-truth
-  changes needed; one new sweep-missed +6-line citation drift on
-  backend.go's obligations recorded as a capability finding); lookup
-  corpus re-swept for three days of drift (B1-T01/T04/T14/T15 gained the
-  real new callers cmd/fathom/plans.go, plans_archive.go, doctor.go —
-  all-of tightenings); the bench runner's fathom-arm allowlist gained
-  `read_source` to match the live 16-tool `/rpc/agent` surface (ingest
-  still denied). Criteria untouched on both benches.
-- **`list_services` now returns each service's recorded corpus `path`**
-  (additive; from ServiceMeta, absolute post-O10), and the session/edit/stop
-  hooks resolve their service identity by matching the project directory
-  (symlink-resolved) against those paths — the daemon's own repo↔service
-  mapping is authoritative, with the old basename guess as fallback and
-  fail-open on any error. Root cause of O15: the sextant→fathom rename left
-  this repo's dir basename naming a nonexistent service, and the back-compat
-  purge removed the alias shim — obligations injection was silently dead on
-  the dogfood repo for six days while probe traffic looked healthy. The
-  edit-hook fetches the resolution only after a candidate root contains the
-  edited file, preserving the out-of-repo total-silence invariant.
-
-### Fixed — sweep re-anchors citation drift instead of only detecting it; obligations eviction is now visible (T5-1/T5-2, docs/plans/trust-and-tokenomics.md, 2026-07-24)
-- **O13 (citation drift, the home bench's top product finding) — fixed in code.** `core.ClaimLink.AnchorText` (the literal cited text, `core.LinesText`) is now persisted alongside the hash by both live "cites"-link writers (`internal/semantic/compile.go`'s `verifyDraft`, the review findings bridge's `AttachClaims`). `semantic.Sweep` re-anchors a drifted citation when its `AnchorText` resolves to exactly one new location in the cited file (`store.Store.UpdateClaimLink`, new — SQLite + memory, with a migration for pre-existing `claim_links` rows), appending a `ClaimEvent{Verdict:"re-anchored"}` audit entry (mirrors ADR-017's remap); zero or multiple matches still fall through to stale, unchanged. A claim compiled before this change has no stored `AnchorText` and can only ever go stale on drift, never heal — an honest degradation. **Fleet re-sweep (T5-1b), run against a read-only copy of the live store:** 340 claims checked, 73 wrong citations found (all fathom-service), 0 healed / 73 staled — every existing claim predates this fix (0/548 fathom `cites` links carry `AnchorText` yet), so healing activates on the NEXT fleet recompile. The exact O13 reproduction claim is now correctly flagged stale in the copy (previously served with no status flag at all).
-- **O14 (eviction visibility) — fixed in code.** `obligations` reports `displaced: N` when the `MaxObligations` cap drops served-eligible claims, and every served rule carries a `layer` label naming which manifest layer compiled it — surfaced on the MCP tool response and the edit-hook payload (one integer + short per-rule labels; the payload budget is unaffected). The scope-mapping half of O14 (a mis-scoped rule crowding out unrelated files) is a compile-prompt fix, filed — not compiled — as `schema/semantic/layers/obligations/prompt.PENDING-scope-precision.md`: `internal/semantic/prompts.go` content-addresses `PromptVersion` off `prompt.md`'s bytes, so editing the live prompt (even a marked-pending block) would silently trigger a flag-day as a side effect of this commit. Lands at the next deliberate flag-day alongside OP-6.
-- **Operator-visible UX event on activation (expected honesty, not a regression):** once the rebuilt daemon binary is deployed and a live sweep runs, ~73 fathom obligations that today serve unflagged begin serving `[stale]`-labeled fleet-wide in the edit-hook payload — the sweep finally telling the truth about citations that were already wrong, not new breakage. They clear via re-anchor/recompile as `AnchorText` populates.
-- Tests: `TestSweep_ReanchorsOnUpstreamLineShift` (internal/semantic, 6 subtests incl. heal-then-resweep idempotency and multi-line double-heal across successive shifts), `TestSweepClaims_ReanchorsOnUpstreamLineShift` (pkg/client), `claims_link_update_reanchors` + `TestSQLiteStore_LegacySchemaGainsAnchorTextColumn` (internal/store), `TestObligationsFor_DisplacedCountAndLayerLabels` (internal/semantic), `TestEditHookRendersDisplacedAndNonDefaultLayer` (cmd/fathom).
-
-### Added — read_source + DocChunk line offsets + symbol_context snippet (T5-4/T5-5/T5-6, docs/plans/trust-and-tokenomics.md, 2026-07-24)
-- **`read_source`**: a new bounded, line-numbered, read-only raw-text tool
-  (`{service, file, start_line?, end_line?}`, `internal/mcp/readsource.go`),
-  added to the agent/companion surface allowlist (now 16 tools — the
-  program's second net-new tool since the founding 15, docs/mcp-tools.md).
-  Capped at 200 lines / 16000 bytes per call; refuses an absolute path,
-  path traversal, a file outside the service corpus, a binary file, and an
-  explicit range wider than the cap; an out-of-range EOF boundary is
-  clamped and noted, never refused. Directly answers the H3-1 home-bench
-  finding: the agent surface had no raw-text read, so recovering current
-  text at a cited line cost 16 turns / 601k tokens (T13) where a plain
-  `sed -n` would do it in one.
-- **DocChunk line offsets**: `core.SymbolNode`/`core.Observation` gained an
-  additive `EndLine` field, threaded through `internal/fusion`'s
-  SymbolNode→Observation mapping, `internal/store`'s SQLite schema
-  (new `end_line` column + `ALTER TABLE` migration for pre-existing
-  stores, including the live fleet store), and every serving path via
-  `core.Observation.ToSymbolNode`. `internal/extractor/mdextract.go`'s
-  `MarkdownExtractor.Extract` now computes each heading's real section
-  extent (the line before the next heading, or EOF for the last one) —
-  closing the H3-1-identified T08 class, where a DocChunk's single heading
-  line forced downstream tools to GUESS a cited line by arithmetic (a
-  reported "line 20" whose real text was at line 29). Paired with
-  `read_source`, a doc-cited answer now pins the section's real lines.
-- **`symbol_context` inline snippet**: an additive `snippet` field carries
-  the definition's source, inline, line-numbered, capped at 40 lines, read
-  via the same safe path as `read_source` — a "what is X, show it to me"
-  question now completes in one turn instead of two. Honest-absence:
-  omitted (never faked) when the source isn't retrievable.
-  `snippet_truncated:true` marks a snippet that stopped at the cap with
-  more file below it (critic finding D — a 100-line function must never
-  silently look 40 lines long), and `snippet:false` opts out entirely.
-- **read_source hardening (critic round, three proven holes closed)**:
-  (A) symlink containment — the lexical-only path check let file and
-  directory symlinks inside a corpus read files OUTSIDE it on the shared
-  daemon; both the corpus root and the candidate are now
-  `filepath.EvalSymlinks`-resolved and the resolved path must sit inside
-  the resolved root (same-corpus symlink targets still read fine).
-  (B) a 2MB `os.Stat` hard ceiling refuses oversized files BEFORE any read
-  (pinned equal to `fusion.MaxExtractSize` — such files aren't in the
-  index either), and a single line longer than the 16000-byte cap comes
-  back truncated to it with a note, never whole (the minified-JS case).
-  (C) "indexed corpus" is enforced, not aspirational — `.fathomignore`'d
-  paths (the connector's own compiled matcher, file + ancestor dirs), the
-  always-skipped directories, and `.env`-pattern files all refuse with a
-  reason (indexed dot-paths like `.github/` stay readable). An empty file
-  now reports `total_lines: 0`. Every "15-tool" surface reference across
-  the living docs updated to 16 with `read_source` named; ADR-014's
-  amendment and docs/vision/05-surfaces.md carry dated amendment notes.
-
-### Measured — home-turf bench run: fathom does NOT win its own ground (H3-1, docs/plans/home-bench.md, 2026-07-24)
-- **Product findings from the run filed as dogfood O13 (sweep-missed citation drift — claims served with silently wrong CLAUDE.md citations, confirmed live) and O14 (the top-6 serving cap silently evicts previously-served claims after a recompile)** — the bench's most valuable outputs beyond the verdict itself.
-- **The Wave-3b home-turf context-bench ran for real** (13 index-native
-  tasks × 2 arms, all 26 `claude -p` runs live against the recompiled
-  daemon; artifacts `home-results-20260724T033131Z.json` +
-  `home-summary-20260724T033131Z.md` under
-  `workspace/artifacts/context-bench/`). Against the pre-registered H2-1
-  criterion, **both halves failed**: success 12/13 vs 12/13 (equal, not
-  strictly greater) and tokens 1.071× grep's (a 7% premium where ≤1× was
-  required). Per the plan's own consequence line, the pillar's pulled-tool
-  story is refuted on its own ground — recorded verbatim in the H3-1 row.
-  Failures offset: fathom alone failed H1-T08 (DocChunk granularity cannot
-  pin a sentence-start line number), grep alone failed H1-T13 (quoted an
-  ADR identifier from outside the required line range). Fathom was cheaper
-  on 8/13 tasks; of the 5 expensive ones (incl. T06 1.91×, a plain lookup grep won on cost), 4 sit exactly where the 14-tool read-only
-  surface lacks a direct evidence path (exact line numbers, current doc
-  text at a cited range) — erased the aggregate.
-- **Mandatory pre-run re-derivation executed and committed first**
-  (corpus revision 1d685a3, per `post_recompile_rederivation`): the
-  recompile's three-layer blend (obligations+adr-rules+spec-bindings)
-  silently drifted T01/T02's citations (sweep gap — content moved, no
-  `status` flag), crowded T12's target claim out of the served top-6
-  (the predicted fresh-re-cite inversion did NOT occur), and SS-8's
-  DuckDB deletion broke T06/T07/T13's targets outright; T11's
-  'single-writer' scoring token collided with new CLAUDE.md prose.
-  Ground truths hand-re-verified at the run commit; the H2-1 criterion
-  untouched.
-
-### Removed — DuckDB backend + CGO deleted outright (ADR-025, SS-8, docs/plans/store-sqlite.md, 2026-07-23)
-- **SS-8's deferred trigger fired**: the operator ran `migrate-store` on the
-  fleet DB and the daemon ran a full day green on SQLite
-  (`workspace/logs/store-migration-stamp.txt`: `2026-07-23T01:56:17Z`). With
-  that, `internal/store/duckdb.go` (`DuckStore`, `github.com/marcboeker/
-  go-duckdb/v2`) and its test file are deleted outright — no DuckDB code
-  remains anywhere in this repo.
-- **`migrate-store` removed** (`internal/store/migrate.go` +
-  `cmd/fathom/migratestore.go`), not kept: it existed solely to read DuckDB
-  as a migration source, so keeping it would have kept a CGO island alive
-  for no live purpose — the fleet migrated, and reading a pre-SS-8 store
-  now needs a pre-SS-8 build of fathom. `scanObservations`/`scanClaims`
-  (shared, backend-agnostic row scanners `migrate.go` and `duckdb.go` both
-  used) moved into `sqlite.go`, their sole remaining consumer.
-- **`store.BackendForPath` now refuses `.duckdb` loudly**: the extension is
-  still *recognized* (so a leftover pre-SS-8 file still participates in
-  `PlatformStore`'s same-stem collision detection instead of vanishing
-  silently) but opening one returns a typed error naming the file and
-  pointing at a pre-SS-8 build — never a silent fallback. The empty-path
-  in-memory convention (`""`) now opens an in-memory `SQLiteStore` instead
-  of an in-memory `DuckStore`.
-- **`go.mod`/`go.sum` cleaned by `go mod tidy`**: `github.com/marcboeker/
-  go-duckdb/v2` and its bindings, plus every indirect dependency that
-  existed only to support DuckDB/Arrow (`apache/arrow-go`, `klauspost/
-  compress`, `klauspost/cpuid/v2`, `pierrec/lz4/v4`, `zeebo/xxh3`,
-  `google/flatbuffers`, `go-viper/mapstructure/v2`, `goccy/go-json`,
-  `golang.org/x/exp`, `golang.org/x/telemetry`, `golang.org/x/xerrors`),
-  are gone.
-- **`internal/store` is now pure Go**: `go build`/`go test -race` pass with
-  `CGO_ENABLED=0` for the store package with zero workarounds — proven, not
-  asserted. `CGO_ENABLED=1`/`MACOSX_DEPLOYMENT_TARGET=14.0` remain required
-  for the full `fathom` binary, but now solely because of the tree-sitter
-  extractor bindings (ADR-013) — a separate, not-yet-triggered removal
-  (XT-6b). Taskfile/CLAUDE.md/scripts/docs updated to state the CGO
-  requirement's real, current reason instead of the retired one.
-- **Docs**: `docs/configuration.md`'s DuckDB→SQLite runbook is now marked
-  historical; `docs/usage.md`'s `migrate-store` section is now a removal
-  notice; `docs/why-duckdb.md`'s superseded banner now also records the
-  removal; `docs/architecture.md`/`docs/distribution.md`/README.md updated
-  to the SQLite-only, tree-sitter-is-the-CGO-reason reality;
-  `scripts/migrate-fleet-store.sh` is marked historical (completed
-  2026-07-23, retained for reference; step 4/8 can no longer run against a
-  post-SS-8 binary); `scripts/reingest-fleet.sh` no longer calls the store
-  lock "DuckDB's". Vision/design docs describing future DuckDB-specific
-  mechanisms (VSS vectors, `ATTACH` federation) got engine-assumption notes
-  flagging a technical re-check is needed before any of them fire — not a
-  redesign of the mechanisms themselves.
-- **Remaining manual step**: the on-disk rollback file
-  `workspace/db/fleet.duckdb` on the fleet checkout is untouched by this
-  removal (deliberately — SS-8 never touches the live fleet store) and is
-  the operator's to delete once satisfied it's no longer needed.
-
-### Added — the review verb: `review_diff` + `fathom review` (Phase C, 2026-07-23, docs/plans/review-verb.md C1-1/C2-1/C3-1)
-- **C1-1 — `review_diff`, the program's one new MCP tool:** a new pure-Go
-  `internal/analysis/review` package composes, in-process, diff impact
-  (blast radius + typed edges), obligations/findings scoped to the changed
-  files, architecture conformance (the service's own `.fathom/rules/
-  archconformance.cue` project rule pack — `review_diff` never accepts
-  inline rules), and spec coverage into ONE cited verdict
-  (`Verdict.Dimensions[].Findings[]`, each carrying an evidence citation).
-  Honesty rules apply per dimension: a dimension that cannot run reports
-  `checked:false` + `reason`, never a clean-shaped pass. New MCP tool
-  `review_diff` (`GroupInvestigation`, `internal/mcp/review_tool.go`); CLI
-  mirror `fathom review --store DB --service S --since <ref>`
-  (`cmd/fathom/review.go`, mirrors `cmdReport`'s store-direct structure —
-  resolves changed files via `git diff --name-only <ref>`, then runs the
-  identical engine). Refactor along the way: the arch-conformance edge
-  normalization logic (method-origin/method-target package resolution,
-  P1-4) moved from `internal/mcp/extra_tools.go`'s unexported
-  `archConformanceEdges`/`archResolver` into
-  `internal/analysis/archconformance.EdgesFromNodes` — one implementation
-  the standalone `arch_conformance` tool and `review_diff` both call, never
-  two that could drift. Likewise the inline/project rule-pack resolution
-  (C4-2/C4-3's honesty split) is now `internal/projectrules.ResolveRules`,
-  shared the same way.
-- **C2-1 — the findings bridge (fires FT-7's pre-armed trigger,
-  docs/plans/findings-tracer.md):** review findings are persisted as
-  content-addressed claims on the `findings` layer (`ClaimID` = sha256 of
-  layer+kind+subject+reproKey, tier `verified` — a deterministic pass, no
-  LLM) via `review.AttachClaims`. Durability rides the store's own
-  `PutClaims` upsert (the pre-existing "status stays refuted" CASE WHEN,
-  FT-4) — no re-derived logic in this row: an unchanged finding re-emitted
-  by a later review reproduces the identical `ClaimID`, so a finding
-  refuted via `fathom claim refute` / the `obligations` tool's feedback
-  action carries `status:"refuted"` (excluded from its dimension's active
-  `count`, but still listed — never silently dropped) across every later
-  re-review. Proven at three layers: `TestFindingsBridge_
-  RefutationDurability` (pure, `internal/analysis/review`),
-  `TestReviewDiff_FindingsBridge_RefutationSticksAcrossReReview` (MCP
-  wiring, fake claims backend), `TestReview_FindingsBridge_
-  RefutationDurability` (CLI, end-to-end through a real store).
-- **C2-1 write-path soundness (critic round — five proven defects fixed
-  before any release carried the bridge):**
-  1. *Sweep contract:* persisted cites links now carry the REAL cited-line
-     hash resolved at emit time, and a bare-path/unhashable citation gets
-     no cites link at all — previously hashless bare-path links made the
-     daemon's post-refresh `SweepClaims` flip EVERY review claim to
-     stale/contradicted with fabricated "anchor no longer resolves" events
-     (measured: 57 claims flipped, 26→77 lying events over two sweeps).
-     Arch findings now cite the violating symbol's real `file#Lline` (new
-     `archconformance.KeyIndex`); spec findings resolve their ref's line.
-     `TestReview_SweepZeroFlips` pins zero flips/zero events.
-  2. *Idempotency + serving purity:* only the deterministic-oracle
-     dimensions persist (`arch_conformance`, `spec_coverage`) — never
-     `obligations` (re-minting re-served claims as wrappers grew the store
-     57→82 on an IDENTICAL re-run and displaced real obligations from
-     `ObligationsFor`'s budget via exact-path scope ranking) and never
-     `impact` info-noise. `TestReview_Idempotent_DoubleRun`,
-     `TestReview_ObligationsForUnpolluted`.
-  3. *Deliberate persistence:* `fathom review --no-persist` added; the
-     pre-push hook uses it (a hook is never an undisclosed writer to the
-     shared store); persist behavior disclosed in the tool description,
-     change-review.md, and the plan. `TestReview_NoPersist_WritesNothing`.
-  4. *Reconcile (no claim rot):* a persisting run over changed-file set F
-     supersedes review-minted claims on files in F its CHECKED dimensions
-     no longer emit — absent = fixed; unchecked dimensions never supersede.
-     Every persisted claim also carries a scope-fp drift anchor (store
-     fingerprint, FT-6) so `DriftedFindings` works for review claims; a
-     finding whose file has no fingerprint is not persisted (upholding the
-     zero-links invariant, whose sweep.go comment now names this bridge as
-     the second legitimate writer). `review.BuildPersist` is the one
-     shared MCP/CLI write composition.
-     `TestReview_Reconcile_FixedFindingSuperseded`,
-     `TestStaleReviewClaims_*`, `TestAttachClaims_LinkSoundness`,
-     `TestAttachClaims_NoFingerprintMeansNoPersist`.
-  5. *Tier admission:* the findings layer.cue (both copies) now records
-     the verified-tier oracle admission (ADR-018 oracle classes / ADR-016
-     M1 — deterministic, Model-empty findings) beside its sme-stated
-     corpus tier; ADR.md's "no layer emits verified yet" updated;
-     `TestClaimsVocabularyMatchesSemanticLayer` pins tier and admission
-     text, not just kind.
-  Plus: the obligations dimension now carries a served claim's
-  stale/contradicted status label through to the verdict
-  (served-with-label, `TestRun_Obligations_ServedStatusLabelCarriedThrough`)
-  instead of mapping it away to severity only.
-- **C3-1 — the forced channel:** `lefthook.yml`'s pre-push gains a
-  non-blocking `fathom review --service fathom --since origin/main
-  --no-persist` summary step — always exits 0 regardless of `bin/fathom
-  review`'s own result, degrading operational errors to one line
-  (fail-open, same doctrine as the `verify` step's exit 2); measured ~12s
-  worst-case on a pathological 1777-file diff. The `review_change` MCP
-  prompt now calls `review_diff` instead of narrating an 8-step manual
-  tool sequence; that sequence is preserved as `docs/use-cases/
-  change-review.md`'s appendix for tool-by-tool users, whose worked example
-  now leads with the one-call form.
-
-### Fixed — serving-layer hygiene (Wave 3a P1-6/P1-9, 2026-07-23)
-- **`migration_targets` merge semantics (dogfood O11, closed):** a caller-
-  supplied `deprecated_pkgs` list now **merges with** the built-in default
-  list (deduplicated, deterministic order) instead of silently replacing it
-  — matching the tool's own parameter description ("default list is always
-  included"). Externally visible: callers passing a custom list now also
-  get default-list findings.
-- **Sweep event vocabulary:** the post-compile sweep's `claim_events`
-  verdict for anchor-dead claims is now `"contradicted"`, matching the
-  `ClaimContradicted` status it sets (previously wrote `"refuted"` — the
-  word reserved for deliberate human/agent judgment, which is never served
-  again; contradicted claims stay served WITH a label pending recompile).
-  The store contract test had encoded the old conflation as its own fixture
-  and now models the real contract.
-
-### Fixed — Wave 3a pulled-tools excellence: O12's three product gaps + the C4-4 method-edge gap (docs/plans/pulled-tools-excellence.md P1-1/P1-2/P1-3/P1-4/P1-5/P1-8)
-- **P1-1 — parameter-name inconsistency (closes O12(b)):** `find_symbol`,
-  `query_symbols`, and `references` now additionally accept `symbol` as an
-  additive alias for their native argument (`name`/`concern`/`query`
-  respectively — `symbol_context` already used `symbol` natively). Native
-  name stays primary; a call supplying both only errors (`ErrCodeParams`,
-  naming both parameters) when the values disagree. New
-  `internal/mcp/paramalias.go`.
-- **P1-2 — cross-repo call edges missing (closes O12(a)):** `symbol_context`
-  and `find_callers` now consult the fleet backend for cross-service call
-  edges when one is wired (fleet stores) — new `cross_service_callers`/
-  `cross_service_callees` result fields, each entry scope-labeled
-  `"cross-service"`, additive and never merged into the existing
-  same-service `callers`/`callees` fields. Reuses `cross_repo_callers`'s
-  own fleet-wide matching (`fleetCallers`, extracted so both tools share
-  one implementation) plus a new symbol-precise cross-service callee
-  resolver (mirrors `internal/platformlink`'s qualified-match rule at
-  single-symbol granularity, since `CrossRepoEdge` tracks the calling FILE,
-  not the calling symbol). New `internal/mcp/crossservice.go`.
-- **P1-3 — case-insensitive tier steers to the wrong package (closes
-  O12(c)):** `find_symbol`'s case-insensitive tier now returns a
-  package-match group alongside the pre-existing name-match group, so a
-  query naming an entire package (e.g. "heartbeat") is no longer hidden
-  behind a same-named type/symbol in an unrelated package — both groups
-  return together, ranked, never first-hit steering. `matched_via` stays
-  `"case_insensitive"`. `caseFoldMatches` (internal/mcp/findsymbol.go).
-- **P1-4 — arch_conformance's disclosed method-edge gap, closed (C4-4):**
-  both edge endpoints are now normalized to their declaring Go package
-  before matching rules, so package-named rules catch method-origin AND
-  method-target edges, not only function-to-function ones. New
-  `archConformanceEdges`/`archResolver` (internal/mcp/extra_tools.go); the
-  "DISCLOSED GAP" comment in `schema/rules/archconformance/schema.cue`
-  (and its byte-identical embed,
-  `internal/projectrules/archconformance_schema.cue`) is now "CLOSED".
-- **P1-5 — the proof re-run:** re-ran the three cross_repo_callers bench
-  tasks (B1-T09/T10/T11) against a freshly-ingested scratch fleet store
-  (never the live daemon). B1-T09 (the O12 flagship case) went from
-  504,785 tokens / 20 turns to 321,100 tokens / 9 turns (−36% / −55%) —
-  improving 6.6×→4.2× vs. grep's answer, which is **still 4.2× more
-  tokens than grep: a non-flip on the ratio, residual tracked** in
-  dogfood O12 (kept under Open). Part of the residual is real code
-  structure: a live probe found `cmdInstrument` delegates two of the
-  three heartbeat calls through `reportInstrument`, a one-hop indirection
-  the original symptom's prose had collapsed. B1-T10/T11 were already
-  near the cheap 3-turn floor pre-fix and show ~1% token noise — also
-  non-flips, recorded as such. See dogfood O12 and the plan's P1-5 row
-  for the full numbers.
-- **P1-8 — dispatch now enforces declared `required` fields
-  (`internal/mcp/dispatch.go`'s new `validateRequired`):** previously only
-  individual handlers enforced their own required parameters. A P1-1 alias
-  satisfies its primary's requirement at this layer too
-  (`toolDescriptor.aliases`), so an alias-only call is never rejected for
-  "missing" the native name. Batch sub-calls get the same gate (the batch
-  loop previously invoked handlers directly, bypassing it); a failing
-  sub-call errors into its own result, never the whole batch. Three tools
-  change observable behavior — each declared a required field its handler
-  never checked, and each now refuses with `-32602` where it used to run:
-  - `license_policy` without `allowed` (C4-5's original find; it used to
-    report against an empty allowlist).
-  - `spec_coverage` without `spec_ids` (used to return an empty coverage
-    matrix — the "orphan-listing" use C4-5 classified as legitimate; the
-    declared contract now wins, and restoring orphan-listing would be a
-    schema change making `spec_ids` optional, not a validation hole).
-  - `spec_status` without `spec_ids` (same shape as spec_coverage).
-
-### Added — spec-driven development adoption guide (AD-3, docs/plans/adoption-docs.md)
-- **`docs/adoption/spec-driven-development.md`**: the third and final definitive
-  adoption guide (alongside `claude-code.md`/`codex.md`) — the full SDD loop
-  (author a plan in the `{id, symbol, package, ...}` grammar → implement →
-  `fathom verify` proves rows → the pre-push gate blocks over-claiming →
-  computed progress → archival lifecycle → `spec-bindings` layer binding →
-  oracle classes), written against this repo's own live adoption program
-  (`docs/plans/activation.md`, `docs/plans/adoption-docs.md`) as the worked
-  example, with real `fathom verify`/`gen-plan-cue` output captured from this
-  worktree's build. `fathom plans status`/`next`/`archive`/`restore` (E3/E4,
-  `docs/plans/new-use-cases.md`) are documented from the committed design and
-  marked "(landing this wave)" — not yet built in this worktree.
-
-### Fixed — Wave-1 adoption-friction findings (dogfood)
-- **`task build` silently diverged from every other build-path convention**:
-  it wrote to `workspace/tmp/fathom` while the post-commit rebuild hook,
-  `fathom init`'s baked-in hook commands, and the daemon-install pattern all
-  expect `bin/fathom` — `docs/adoption/claude-code.md` §1 had to warn
-  adopters away from the task runner's own default build target. `Taskfile.yml`'s
-  `build` task now emits `bin/fathom`; the fast inner-dev-loop variant the
-  calibration harness depends on (`calibration/baseline.sh`'s `BIN` default)
-  moved to a differently-named `build-dev` task, still emitting
-  `workspace/tmp/fathom`. Verified: `task build` → `bin/fathom` exists and
-  runs; `task build-dev` → `workspace/tmp/fathom` unaffected;
-  `task scripts-check` green.
-- **`docs/use-cases/getting-started.md` documented the removed `set_profile`
-  tool**: it narrated a stdio-only per-session profile switch (Step 5, the
-  Tools table, the "Profiles keep the tool surface focused" bullet, the
-  `serve-mcp`/`serve-http` table, and the `## Maintained` line) that ADR-014's
-  surfaces-week1 amendment retired entirely. Rewritten against
-  `docs/mcp-tools.md` (the truth source): path-scoped HTTP surfaces
-  (`/rpc/agent` aka `/rpc/companion`, group surfaces, bare `/rpc`),
-  execute-and-flag gate semantics (`off_surface:true`, never a hard reject),
-  and a real `capabilities` response shape (`active_surface`/`active_profile`).
-- **`docs/usage.md`'s CLI reference stopped at `session-hook`**: thirteen
-  shipped verbs had no reference entry — `init`, `compile`, `layers`,
-  `verify`, `config`, `providers`, `smoke`, `instrument`, `edit-hook`,
-  `stop-hook`, `claim`, `remap`, `report`. Added one section each, flags
-  verified against `cmd/fathom/*.go`. (`fathom plans` is not yet present in
-  this worktree, so it's not documented here — see the SDD guide above for
-  its committed design.)
-
-### Added — `fathom plans` (E3/E4, docs/plans/new-use-cases.md), reverse-drift report (E6-1), verify_plan latency SLO (B3-1, docs/plans/falsifiability.md)
-- **`fathom plans status`** (E3-1): a per-plan rollup — proven, claimed-
-  unproven, open, deferred-with-trigger, skipped-other — computed fresh by
-  running the existing verify engine over one or more plan files (or every
-  active `docs/plans/*.md` by default); never an asserted state. `--json` +
-  a human table; deterministic, sorted by plan file. `cmd/fathom/plans.go`.
-- **`fathom plans next`** (E3-2): the ordered work frontier for an agent —
-  open/in-progress rows plus claimed-but-unproven rows (verify Fail as
-  `claimed-failing`, verify Unknown as `claimed-unknown` — the same set CI's
-  `--strict` blocks on, so the frontier never reports "no open work" on a
-  plan CI rejects), each with its `{id, symbol, package}` anchors and
-  originating plan file. Ordering is (plan file, then DOCUMENT order) —
-  never TaskID-lexical order, since an author-owned `id:` need not sort the
-  way it was written.
-- **`fathom plans archive <plan>` / `fathom plans restore <plan>`** (E4-1):
-  the governed artifact lifecycle. Archive refuses unless (a) every row is
-  `[x]`-claimed-and-currently-verifying-Pass or `[-]` skipped, (b) every
-  row's task ID is lexically absorbed into CHANGELOG.md or ADR.md at a
-  token boundary — "E3-10" never absolves "E3-1" (this entry is that
-  absorption for E3-1, E3-2, E4-1, E4-2, E6-1, B3-1), (c) the engine is
-  re-run fresh, not trusted from a prior pass — and additionally preflights
-  that the plan file itself has no uncommitted changes, so the tombstone's
-  HEAD sha always names the exact content archived. On success the plan is
-  `git mv`d to `docs/plans/archive/` and a tombstone (date, HEAD sha,
-  verify summary) is written into its header and re-staged (a staging
-  failure is surfaced, never swallowed); `restore` reverses the move,
-  refusing if an active plan of the same name exists, and leaves the
-  tombstone in place as the historical record. `cmd/fathom/plans_archive.go`.
-- **Pre-push/CI gate scoped to active plans** (E4-2): both `lefthook.yml`'s
-  `verify` command and `scripts/ci.sh` already only walk the top level of
-  `docs/plans/` (a non-recursive glob / `find -maxdepth 1`), so
-  `docs/plans/archive/` was structurally out of gate scope the moment E4-1
-  introduced it — documented explicitly in both files and
-  `docs/plans/README.md` rather than left as an accident: each archived plan
-  now removes exactly one `fathom verify` invocation per push/CI run.
-- **`fathom report --analyzer reverse-drift`** (E6-1): public API surface
-  (`internal/analysis/apisurface`, unchanged; `_test.go` symbols excluded —
-  test helpers were 68% of the raw exported surface on the fleet index)
-  minus spec-bindings coverage (served `spec-bindings`-layer claims, matched
-  by file-path glob against each claim's `Scope` — the same mechanism
-  `internal/semantic/serve.go` already uses) = the ungoverned public
-  surface, per service. When zero spec-bindings claims are compiled the
-  report banners that the listing is the whole surface, not measured drift.
-  Read-only, one markdown doc, deterministic.
-  `cmd/fathom/report_reversedrift.go`.
-- **verify_plan p95 ≤ 5s SLO + Stop-hook fail-open timeout** (B3-1,
-  docs/plans/falsifiability.md): the measured p50 2.2s / p95 4.5s latency
-  and an explicit p95 ≤ 5s budget are now recorded in
-  `docs/design/coding-agent-excellence.md` §2's ledger. The Stop-hook's
-  verify caller (`cmd/fathom/stophook.go`) times each `verify_plan` call at
-  that same 5s ceiling (`stopHookVerifyTimeout`); a call that exceeds it
-  degrades to an advisory warning ("verify timed out — treat as
-  unconfirmed") for that plan and keeps checking the others, never a
-  blocked session end and never silent — a timeout stays advisory even under
-  `--block`, since it is an operational condition, not a proven-false claim.
-
-### Added — context-bench + the ×10 retraction (falsifiability B1/B2-1, 2026-07-23)
-- **context-bench built and run** (docs/plans/falsifiability.md B1-1/B1-2/B1-3):
-  15-task committed corpus (`testdata/contextbench/tasks.json`, ground truth
-  grep-derived at a recorded commit, three scoring rules), tested scorer
-  (`internal/contextbench`, 16 tests; `cmd/contextbenchscore` CLI, 7 tests),
-  two-arm `claude -p` runner (`scripts/context-bench.sh`: fathom-MCP-only arm
-  vs grep/find/cat-only arm, `--strict-mcp-config` isolation, honest
-  degradation when the daemon is unreachable).
-- **The ×10 tokenomics claim is RETRACTED** (B1-3/B1-4): first full run — all
-  30 arm-runs real — measured equal task success (15/15 both arms) at 1.38×
-  aggregate / 1.79× mean per-task end-to-end token reduction and 2.81× mean
-  wall-time reduction. The pre-registered "<5× → retract" criterion fired;
-  every doc stating ×10 / ≤1/10th as a claim now states the measured
-  magnitudes (coding-agent-excellence §0/§2/§3/§7, product-vision §3,
-  use-cases/coding-agents §5, vision 04 §1, vision 11 §3-B1).
-- **B2-1 existence-check wiring**: `scripts/check-surface-traffic_test.sh`
-  proves the three verdict classes (ok / zero-traffic / missing-dependency)
-  against a local fixture HTTP server, never the live daemon; the script
-  header now distinguishes per-surface `workspace/logs/<surface>.stamp` files
-  from the program-wide `workspace/logs/adoption-clock-t0.txt` (law-8 clock —
-  explicitly NOT started; the file does not exist).
-
-### Fixed — relative corpus paths at the ingest boundary (dogfood O10, 2026-07-22)
-- **Typed edges silently absent for relative `--path`** (the CLI default
-  `.`): the connector-scope filter rel-mapped absolute go/packages file
-  positions against a relative `repoPath`, so every package was excluded —
-  zero edges, zero failures, zero output. `EnrichTypedEdges` now normalizes
-  `repoPath` to absolute at entry; a never-silent stderr guard reports the
-  "packages seen but all excluded" condition; `cmd/fathom ingest` prints the
-  typed-edge counters (their absence was invisible precisely because it
-  didn't).
-- **`ServiceMeta.Path` recorded verbatim-relative**: `--path .` from a
-  sibling repo's post-commit hook would be resolved from the DAEMON's
-  working directory on auto-refresh — refreshing the wrong corpus under that
-  service ID. The pipeline now records the corpus root absolute. Both repos'
-  post-commit hooks pass `--path "$PWD"` (agentic-kit 55ef7cf).
-- **Operational**: `scripts/migrate-fleet-store.sh` — the executable form of
-  the ADR-020 DuckDB→SQLite runbook (stop → quarantine the mismatched
-  same-stem file → migrate → full re-ingest → install the daemon binary to
-  `~/.local/libexec/fathom/` → repoint the plist, with `go` on the daemon
-  PATH for typed enrichment → restart → verify → stamp the SS-8/XT-6b bake
-  clocks). The daemon now runs an installed copy, decoupled from post-commit
-  rebuilds of `bin/fathom`.
-
-### Added — tree-sitter extraction engine: wazero/WASM (ADR-021 §4, docs/plans/extraction-treesitter.md)
-- **`internal/extractor/tsengine`**: a pure-Go tree-sitter execution engine —
-  tree-sitter's own C core runtime statically linked with one grammar's
-  `parser.c`/`scanner.c` per language (plus the checked-in `budget.c` shim),
-  compiled to a self-contained `wasm32-wasi` module (`zig cc
-  --target=wasm32-wasi-musl -mexec-model=reactor` + `wasm-opt -Oz`) and
-  executed by `github.com/tetratelabs/wazero` (now a direct dependency) — no
-  CGO in the engine, no Docker at runtime, no Emscripten dynamic linking.
-  The grammar repos' own released `tree-sitter-<lang>.wasm` artifacts (and
-  the matching `web-tree-sitter` core) were evaluated first and found to
-  require reimplementing Emscripten's dylink relocation + a JS-runtime
-  callback shim to run under bare wazero — confirmed empirically, not just
-  cited from ADR-013; see `internal/extractor/tsengine/grammars/
-  PROVENANCE.md`'s "path not taken" for the concrete import/export dumps.
-  Blobs (exact bytes: JS 458,741; TS+TSX 2,037,040; Python 539,848; Ruby
-  1,710,411) are rebuilt by `grammars/build.sh`; provenance (upstream repo/
-  version/sha, full sha256, toolchain versions) in `grammars/PROVENANCE.md`.
-  **The binary-wide CGO win is PENDING, not achieved here** (owner ruling,
-  plan M2): the CGO tree-sitter deps remain in go.mod as non-load-bearing
-  in-tree incumbents until the fleet bakes N=7 days green on tree-sitter
-  primary, then get deleted (plan row XT-6b); DuckDB's CGO is a separate,
-  ADR-020-tracked surface.
-- **`internal/extractor.NewTSExtractor`** (XT-1): one `TSExtractor` type
-  parameterized by (grammar, `.scm` query set) implements `extractor.
-  Extractor` for `"javascript"` (dispatching `.js`/`.jsx`/`.ts`/`.tsx` — the
-  extensions fusion registers), `"python"`, and `"ruby"`. Query files
-  (`internal/extractor/tsqueries/*.scm`) are real tree-sitter queries
-  (method-name alternations include `private_property_identifier` and
-  `computed_property_name`, so `#private` and `[Symbol.iterator]` methods
-  index — critic B2) compiled and matched via tree-sitter's own query
-  engine, not a hand-rolled tree walk. Symbol qualification ("Class.method",
-  Ruby's "Outer::Inner::Widget") is one generic containment algorithm over
-  the flat match list. A Parser+Query is created once per (grammar, entry
-  point) and reused for the process's lifetime (mutex-guarded).
-- **Pathological-input bounds (critic B1)**: `({[` x 50,000 (150KB, a
-  truncated minified bundle's shape) ran 52.9s unbounded (larger inputs 11+
-  min) where the CGO incumbent takes ~49ms — measured root cause: the parse
-  finishes in ~70ms, the QUERY cursor's error-tree scan is the 45s+. Now
-  bounded three ways: guest-side budgets via tree-sitter's own progress
-  callbacks (`grammars/budget.c`, `tsengine.ParseTimeout` default 10s; the
-  wazero `WithCloseOnContextDone` alternative measured ~3x slower corpus-
-  wide and was rejected), a host-side hard backstop that abandons any guest
-  work the callbacks fail to stop (`tsengine.ParseHardBackstop`, default 2x
-  budget; goroutine+reaper, module memory freed when the runaway finishes),
-  and parser re-creation on any engine fault. Faults are counted per-ingest
-  on **`fusion.Report.TSEngineFaults`** with one stderr line each (critic
-  M1 — previously a silent nil,nil poisoned the parser for the daemon's
-  lifetime); the faulted file is fingerprinted, and the next file of that
-  language extracts on a fresh parser (tested at engine/extractor/fusion
-  levels).
-- **Calibration (XT-2/XT-3/XT-4, `calibration/baseline.sh` before/after on
-  the 12-repo corpus)** — the harness's "recall" column is honestly a
-  **coverage ratio** (extracted code symbols ÷ grep-proxy definitions), not
-  true recall: coverage never regressed on any repo; JavaScript/TypeScript
-  show the largest gains (lodash 0.41→1.26; nest/typeorm/zod/axios all up,
-  including reclaimed `#private`/computed methods after B2). Python/Ruby
-  were already tree-sitter via CGO bindings (ADR-013) — not "heuristic" —
-  and tie their incumbents; the owner ratified ship-on-tie conditional on
-  the XT-6b CGO-deletion path (recorded verbatim in the plan). Corpus
-  blindness recorded: zero `#private` methods exist in the six JS/TS corpus
-  repos, so the gate could not catch B2 — a modern-syntax repo is flagged
-  for the next corpus revision. Performance: strict interleaved medians put
-  the corpus ingest at **1.69x the incumbent (exceeds the plan's 1.5x
-  line — flagged in the plan for the owner's gate call, not silently
-  claimed as met)**; the first commit's 1.41x was measured against a
-  slower incumbent run. Scores + both protocols recorded in
-  `docs/plans/extraction-treesitter.md`.
-- **`fusion.ExtractorEpoch` bumped 4→5** (Python/JS/TS/JSX/TSX/Ruby now
-  produced by the new engine — every already-indexed file's stored
-  observations were produced by the CGO extractor, so re-extraction is
-  forced) with a new epoch-invalidation test seeded at the true prior epoch.
-- **`capabilities` MCP tool** gains `extraction_engines` (XT-5): per-extension
-  engine provenance (`"tree-sitter-wasm"` for `.py`/`.js`/`.jsx`/`.ts`/
-  `.tsx`/`.rb` — exactly the extensions the connector discovers and fusion
-  registers; `.pyi`/`.mjs`/`.cjs` are parseable but not wired, so not
-  claimed) via `extractor.EngineProvenance`.
-
-### Added — typed Go call edges dissolve the O9 ambiguity residue (ADR-021 §3, docs/plans/callgraph-types.md)
-- **`internal/fusion/typedcalls.go`**: `EnrichTypedEdges`, an additive Go-only
-  pass (`golang.org/x/tools/go/packages`, promoted to a direct dependency)
-  that runs in `Ingest` after syntax extraction and resolves call sites via
-  `go/types`: `EdgeDirect` (statically resolved target — embedded-struct
-  promotion and generic instantiation resolve for free), `EdgeIfaceDispatch`
-  (one edge per in-scope implementer of an interface-typed call), and
-  `EdgeUnresolved` (func/method values — explicit, never silent). The
-  syntax-derived `Calls` contract is untouched. Scoped to the connector's
-  Discover set (`.fathomignore` respected — an ignored file's colliding
-  package/func names can never fabricate edges onto live symbol keys), with a
-  per-package content-hash cache, a post-load reconcile that purges rows for
-  deleted/moved packages (a `git mv`-ed package keeps its SymbolKeys, so a
-  stale row would otherwise persist as fabricated reachability evidence
-  forever), and per-package failure counters threaded into `fusion.Report`
-  (`TypedPackages`, `TypedPackagesFailed`, edge counts by kind) plus a stderr
-  line on failure — a daemon whose typed pass always fails (no `go` on PATH)
-  is distinguishable from a non-Go service. `Config.DisableTypedEdges` turns
-  the pass off (degraded environments; true syntax-only baseline measurement).
-  A struct that satisfies an interface only via an embedded interface field is
-  never offered as a dispatch implementer, and a promoted call through one
-  fans out to the real implementers — never to a phantom interface-method key
-  `goextract` doesn't create.
-- **`core.Edge` gains `Kind`**; new store surface (`PutTypedEdges`,
-  `TypedEdges`, `ListTypedEdgePackages`, `DeleteTypedEdgePackage`, per-package
-  fingerprints) round-trips it through SQLite, DuckDB, and the memory fake,
-  contract-tested; `PurgeService` clears typed-edge rows too.
-- **verify (CT-4)**: `test_reaches` consumes typed edges via
-  `verify.DetailedEvidence` — a path crossing an interface-dispatch edge (the
-  old unconditional refusal for a method name shared by multiple receivers)
-  now verifies, labeled `"reached via interface dispatch (N implementer(s))"`
-  in the criterion detail. Three real O9 residue shapes (adapter `Complete`,
-  Store contract-suite `PutClaims`, `Ping`) are proven end-to-end flipping
-  from refusal to typed reach against a real fixture module.
-- **Serving (CT-6)**: `blast_radius`/`diff_impact` traverse typed edges;
-  `find_callers` adds `typed_callers`, `symbol_context` adds `typed_edges`
-  (kind-labeled); `server_stats` takes an optional `service` and reports
-  per-kind typed-edge counts (all-zero = the pass hasn't run for that store).
-  Note: universe/stdlib interface dispatch (`error.Error`) fans out to every
-  first-party implementer and dominates dispatch counts by design.
-- **Performance gate (CT-5)**: first-run typed load measured against a TRUE
-  syntax-only baseline (`DisableTypedEdges`) on this repo — see
-  docs/plans/callgraph-types.md for the recorded numbers; cached re-ingest is
-  delta-only (only changed packages reload).
-
-### Fixed — tool identity critic round (ADR-021 §2, critic F1–F6 on e500b28)
-- **ToolKind/Generated now actually persist** (F1, HIGH): both fields were
-  write-only against the real stores — the sqlite and duckdb column lists
-  dropped them while the memory fake (whole-struct append) round-tripped
-  them, so every asserting test passed against a lie. Both columns now
-  exist in both backends (sqlite: fresh DDL + a PRAGMA table_info
-  conditional-ALTER for pre-existing scratch stores; duckdb: the existing
-  ALTER-IF-NOT-EXISTS legacy path), are written and scanned, and the
-  round-trip assertion lives in the shared store CONTRACT suite so the
-  memory fake and the real backends can never diverge on these fields
-  again.
-- **CRD tagging is per-document** (F1e/P15): a multi-doc YAML stream
-  holding a CRD and a Deployment tagged EVERY observation "k8s-crd"
-  (file-wide classifier verdict). `core.SymbolNode.ToolKind` lets the k8s
-  extractor — which sees document boundaries — tag each node; the pipeline
-  prefers the per-node verdict over the per-file one.
-- **Guard-wrapped Helm templates extract** (F2): `{{- if ... -}}` guards
-  and whole-line control flow became placeholder scalars that broke the
-  YAML decode — half of every `helm create` chart
-  (ingress/serviceaccount/hpa) still emitted zero symbols. Whole-line
-  actions are now dropped, not substituted. Measured on the 10-file demo
-  corpus (helm chart incl. a guard-wrapped ingress template + compose
-  override + kustomize + k8s + root-pattern Dockerfile + OpenAPI doc):
-  7 symbols at the pre-toolident baseline → 23 after this round; the
-  guard-wrapped ingress contributes its Ingress workload node, which the
-  pre-critic build could not decode at all (it saw only the values refs).
-- **image↔Dockerfile keying fixed** (F3): `build/myapp.dockerfile` was
-  keyed by DIRECTORY name, giving an image literally named "build" a false
-  reference and the actual "myapp" none — `*.dockerfile` files now key by
-  STEM. A repo-root `Dockerfile` (the most common layout) keyed "." and
-  never matched; when the repo has exactly one Dockerfile and it sits at
-  the root, image refs now fall back to it (repos with 2+ Dockerfiles
-  never guess). Documented residual: in a lone-root-Dockerfile repo a
-  public image (postgres) also matches the fallback — TierPreScan and the
-  `dockerfile:` signature flag it as the heuristic it is.
-- **IsGenerated honors the real conventions** (F4): for Go, the official
-  `// Code generated ... DO NOT EDIT.` line is now accepted anywhere
-  before the package clause (bounded 4KB) — the zz_generated ecosystem's
-  license-header-first files (marker at line ~17) were all missed by the
-  old 3-line window. For other languages the marker line must begin with
-  that language's comment token, so markdown or YAML values QUOTING the
-  marker no longer vanish from cloc's code counts (markdown's only honored
-  form is an HTML comment `<!-- Code generated ... -->`). Residual
-  documented in the func doc: unrecognized-language files use a permissive
-  token set and can still false-positive on a verbatim quote.
-- **Compose signal + classified-but-zero visibility** (F5):
-  `services: # comment` (valid compose) no longer defeats the top-level
-  signal. And a file that classifies but then extracts zero symbols (a
-  GitLab-CI config's top-level `services:` LIST matching the compose
-  signal) — the last surviving silent-zero path — is now counted: per-tool
-  `classified_zero_files` beside the unclassified/oversize counters in
-  `fusion.Report`, `Pipeline.ClassifiedZeroStats()`, CLI ingest output,
-  and `server_stats`.
-- **Docs** (F6): `server_stats` counters documented as EVENT counters
-  since process start (reset on daemon restart), not index properties; the
-  two distinct "unclassified" meanings (cloc's language bucket vs the
-  classifier's event counter) cross-referenced in both rows; the `.tpl`
-  values-ref scope-out stated in the helm paragraph below.
-
-### Added — tool identity: files understood as what they are (ADR-021 §2, docs/plans/toolident.md)
-- **Pass-3 tool-identity classifier** (`internal/fusion/classify.go`,
-  `fusion.Classify`): between the hash-gate and extractor dispatch, yaml/cue
-  files whose extension is ambiguous are content-classified into a `ToolKind`
-  (k8s manifest, CRD, compose, helm-template-yaml, kustomize, openapi,
-  cue-module, timoni, or unclassified) instead of being dispatched purely by
-  path/extension. A per-ingest **sibling index** (`buildSiblingIndex`), built
-  once from the Discover list, answers "does an ancestor dir contain
-  Chart.yaml / cue.mod?" cheaply.
-- **Helm templates/*.yaml no longer a blind spot**: `HelmTemplateYAMLExtractor`
-  substitutes every `{{ ... }}` action span with a scalar placeholder
-  (balanced on the `{{`/`}}` delimiter pair) before YAML decode, recovering
-  the k8s document shape from the majority of a real chart's content that
-  previously failed yaml.v3 outright and silently emitted nothing. Lines
-  consisting solely of template actions (guards and control flow —
-  `{{- if ... -}}` / `{{- range }}` / `{{- end }}`) are dropped rather than
-  placeholder-substituted, so the guard-wrapped templates `helm create`
-  emits (ingress/serviceaccount/hpa) decode too. Templated
-  `metadata.name` falls back to the file stem with a `templated:true` marker;
-  `.Values.x.y` references are captured as `KindHelmValueRef` observations.
-  `HelmValuesExtractor` now recurses into nested values.yaml keys (dotted
-  names), giving values-key ↔ template-usage an exact join via the
-  `references` tool. Scope note: `.Values` references are extracted from
-  `templates/*.yaml`/`*.yml` only — usage inside `.tpl` partials
-  (`_helpers.tpl`) is NOT captured, so a values key referenced exclusively
-  from a partial is invisible to that join (the `.tpl` extractor still
-  emits the partial's named templates themselves).
-- **Kustomization understood as what it is**: `KustomizeExtractor`
-  (`internal/extractor/kustomizeextract.go`) emits `KindKustomizeResource`/
-  `KindKustomizePatch`/`KindKustomizeImage` reference observations from
-  `resources:`/`patches:`/`images:` — previously parsed-then-discarded by the
-  generic k8s extractor, which only emits a workload node when
-  `metadata.name` is present (kustomization.yaml never has one, so it silently
-  produced zero symbols).
-- **Compose files recognized by content, any filename**: a top-level
-  `services:` mapping key now classifies as compose regardless of basename
-  (`docker-compose.override.yml` and friends), not just the four hardcoded
-  canonical names.
-- **OpenAPI/Swagger documents** (`internal/extractor/openapiextract.go`):
-  detected by a top-level `openapi:`/`swagger:` key, emitting
-  `KindOpenAPIOperation`/`KindOpenAPISchema` instead of falling through to the
-  k8s extractor for silent zero output. CRDs (`apiVersion:
-  apiextensions.k8s.io`) are now tagged distinctly from generic k8s manifests.
-- **CUE module / timoni awareness**: `.cue` files under a `cue.mod/` ancestor
-  or matching timoni's `bundle:`/`timoni.cue` markers are tagged
-  `cue-module`/`timoni` on their observations (`core.Observation.ToolKind`),
-  layered on the existing LT-4 CUE extractor without duplicating it.
-- **Generated-file detection** (`connector.IsGenerated`): the "Code generated
-  ... DO NOT EDIT" convention (Go's own, shared by protoc-gen-go/mockgen/
-  stringer) tags observations (`core.Observation.Generated`) and
-  `core.SourceFile.Generated`; `cloc` reports a `generated` files/bytes
-  bucket (same mechanics as the `binary` bucket), excluded from `by_lang`
-  and `total`.
-- **Unclassified/oversize visibility**: yaml/cue files whose content matches
-  no known tool are counted (`fusion.Report.Unclassified`), never silently
-  routed into the k8s extractor for a zero-symbol result. Files over 2MB
-  (`fusion.MaxExtractSize`) are skipped from extraction and counted
-  (`fusion.Report.Oversize`) rather than parsed. Both counters also
-  accumulate process-lifetime on the `Pipeline` (`Stats()` /
-  `Client.IngestStats()`) and surface via the `server_stats` tool and as a
-  per-call delta on the `ingest` tool, through the optional `statsBackend`
-  capability (forwarded through the auto-refresh wrapper).
-- **Cross-refs, cheap tier**: a k8s/compose container image whose base name
-  matches a Dockerfile found in the same ingest (by parent-directory name)
-  gets a synthesized `KindImageDockerfileRef` reference observation
-  (`TierPreScan` — a same-name match, not a resolved build dependency).
-  Selector↔Service and cross-repo image resolution remain deferred (TI-9).
-- **`fusion.ExtractorEpoch` bumped "3"→"4"**: the tool-identity classifier
-  changed yaml-family extraction semantics for every already-indexed
-  yaml/cue file, so the salt bump forces re-extraction rather than leaving
-  stale pre-classifier observations in place.
-- Deferred (see docs/plans/toolident.md): Selector↔Service and cross-repo
-  image resolution, Helm render-time evaluation (TI-9); jsonnet/.ipynb
-  extraction (TI-10) — no fleet corpus contains them yet.
-
-### Added — pure-Go SQLite (WAL) store backend replaces DuckDB as the default (ADR-020, docs/plans/store-sqlite.md)
-- **`internal/store/sqlite.go`**: `SQLiteStore` (`modernc.org/sqlite`, pure Go)
-  implements the full 26-method `Store` interface with a fresh, final-column
-  schema (no DuckDB-style `ALTER TABLE IF NOT EXISTS` migration cruft — every
-  SQLite store is created with the final columns from day one). Per-connection
-  DSN pragmas (`journal_mode=WAL`, `busy_timeout=5000`, `synchronous=NORMAL`)
-  apply to every physical connection the driver opens, not just the first —
-  verified live by `TestSQLite_WALActuallyEngages` (asserts `PRAGMA
-  journal_mode` really reports `"wal"`, not just "no error"). The read pool is
-  deliberately left uncapped for file stores — DuckStore's
-  `SetMaxOpenConns(1)` write-serialization is DuckDB-specific and does NOT
-  carry over; SQLite's own single-writer lock already serializes writes. The
-  sole exception is the in-memory store (`path == ""`), whose pool is capped
-  at one connection: every physical modernc connection to `":memory:"` opens
-  its OWN private database, so an uncapped pool made concurrent readers fail
-  with "no such table" (`TestSQLiteStore_ParallelReaders` covers both modes:
-  memory proves serialized correctness, file proves true reader concurrency).
-  Fresh DDL also carries an `observations(service_id)` index — every
-  observations query filters on it.
-- **Cross-process concurrency proof** (`TestSQLite_ReaderDuringWriter`): two
-  independent `*sql.DB` handles against the same on-disk file — the honest
-  in-process approximation of two OS processes — prove a reader completes a
-  `SELECT` while a separate connection holds an open, uncommitted write
-  transaction. This is the property DuckDB's cross-process single-writer lock
-  never gave fathom (daemon writes forced CLI `ingest`/`claim`/`report` to fail
-  with a lock error) and the reason for the swap.
-- **`store.BackendForPath(path)`** dispatches `.duckdb` → `DuckStore`,
-  `.sqlite`/`.db` → `SQLiteStore`, replacing four independent `.duckdb`
-  hardcodes (`store.Open`, `PlatformStore.load`, `gen-platform-manifest`,
-  `platform-ingest`). `PlatformStore` now loads a directory of mixed-backend
-  store files (proven by `TestOpenPlatform_MixedBackends`) — a fleet mid-
-  migration, one service moved to SQLite at a time, loads correctly
-  throughout. Same-stem duplicates (svc.duckdb beside svc.sqlite — exactly
-  the state `migrate-store` leaves) resolve via `store.ResolveStoreFiles`:
-  the `.sqlite` file wins with a loud stderr warning naming both files,
-  never a silent name-order first-wins that would serve stale
-  pre-migration data; `gen-platform-manifest` dedupes identically (one
-  entry per service). Store-extension matching is case-insensitive.
-- **`fathom migrate-store --from X.duckdb --to Y.sqlite`** ports the eight
-  non-derivable tables (`semantic_claims`, `claim_links`, `claim_events`,
-  `compile_runs`, `service_meta`, `commits`, `knowledge_cards`,
-  `doc_summaries`) store-direct into a freshly created SQLite store —
-  cards/summaries are LLM-derived enrichment a re-ingest does NOT rebuild
-  (enrichment is opt-in and unwired in production; `PurgeService`
-  deliberately retains cards for the same reason), so treating them as
-  derivable would have silently lost them. The source is opened READ-ONLY
-  (DuckDB `access_mode=read_only`, no schema DDL) and left byte-identical.
-  Prints a per-table row count + content spot-hash, each hash VERIFIED by
-  re-reading the ported rows from the target and comparing (mismatch fails
-  the migration), and the exact re-ingest command for the derived remainder
-  (`observations`, `fingerprints`). Orphan `claim_links` rows (claim_id
-  with no claim — unreachable by any query) are skipped with a counted
-  warning rather than ported as dead rows. Refuses to write into an
-  existing target that already has rows in any of its tables; validates
-  `--from` ends in `.duckdb` and `--to` ends in `.sqlite` before touching
-  either file. Operator runbook (stop daemon → migrate → repoint →
-  restart → re-ingest → delete old store): docs/configuration.md.
-- **Doc-comment truth fix**: `Store.PutObservations`'s comment implied
-  DB-level dedup/upsert ("must not duplicate rows on repeated calls"). Neither
-  backend has ever done this — it is a bare `INSERT`/append; the
-  purge-then-insert replace semantics that make re-ingest idempotent are
-  enforced entirely by the caller (`internal/fusion` calls `PurgeSource`
-  immediately before `PutObservations` on every changed file). The comment now
-  states the real contract.
-- **Defaults flip to SQLite**: the CLI `--store` flag default across
-  `ingest`/`query`/`inspect`/`gen-claude-md`/`gen-status-cue`/`ingest-diff`/
-  `watch`/`platform-callers` moves from `workspace/db/fathom.duckdb` to
-  `workspace/db/fathom.sqlite`; `platform-ingest` now writes
-  `<service>.sqlite` per service; `fathom init`'s starter `config.toml`
-  scaffold and daemon-down manual instructions follow suit. `docs/
-  configuration.md`, `docs/architecture.md`, `docs/usage.md`, `docs/
-  claude-code-integration.md`, `docs/distribution.md`, and `docs/why-duckdb.md`
-  (marked superseded, kept as historical rationale) updated accordingly.
-  Repo tooling followed: `lefthook.yml`'s post-commit refresh,
-  `scripts/reingest-fleet.sh`, `scripts/ci.sh`'s verify scratch store,
-  `calibration/baseline.sh`, and `CLAUDE.md`'s store-path references all
-  moved off `.duckdb` paths so nothing keeps regenerating the same-stem
-  collision state. `docs/usage.md` gained a `migrate-store` catalog entry
-  and `docs/configuration.md` the full ADR-020 operator runbook (stop
-  daemon → migrate → repoint `[daemon].store`/plist → restart →
-  re-ingest → delete the old `.duckdb`), including the sibling-repo
-  post-commit-hook caveat. DuckDB stays compiled in for this slice —
-  `migrate-store`'s source side needs it — removed once the operator's
-  fleet store has migrated (SS-8, deferred, tracked in
-  `docs/plans/store-sqlite.md`).
-- Added dependency: `modernc.org/sqlite v1.52.0` (pure Go; pin matches
-  throughline's known-good version). `go.mod`/`go.sum` updated; the
-  `third_party/agentic-kit` cold-clone property (`GOWORK=off go build ./...`)
-  and `task vendor-check` are unaffected (the kit mirror itself didn't
-  change).
-
-### Fixed — language truth: one registry, binary detection, honest CUE (ADR-021 §1, docs/plans/lang-truth.md)
-- **One ext→language registry.** `pkg/client.langFromPath` — a stale
-  10-language table maintained separately from the extractor registry (25
-  distinct language tags across 45 extension/basename keys) — is deleted. `internal/connector.extClassMap` now pairs each registered
-  extension/basename with both its `SourceKind` and its language tag in one
-  place; `connector.LanguageForPath` is the single source of truth
-  `Client.Sources` consumes, and `internal/fusion`'s new
-  `TestLanguageRegistryParity` asserts a bijection against `fusion.New`'s
-  extractor registrations — a new extractor literally cannot be added
-  without also declaring its language (and vice versa). `cloc` now reports
-  all registered languages plus an explicit `unclassified` bucket for
-  anything with no registered extractor — never a silent `other`. (Three
-  lockfile heuristics with no extractor behind them — `go.sum`,
-  `Gemfile.lock`, `Cargo.lock`, `requirements.txt` — now honestly report
-  `unclassified` instead of a hand-guessed language;
-  `package-lock.json` still resolves via its registered `.json` extension.)
-- **Binary detection.** `connector.IsBinary` sniffs for a NUL byte in a
-  file's first 8000 bytes (precedent: agentic-kit's `constitution-lint`
-  `looksBinary`). Binary content is excluded from extraction (`fusion`'s
-  `extractAndStore`) and from cloc's line counts; the `cloc` MCP tool
-  reports binaries in a separate `binary: {files, bytes}` bucket. Fixes the
-  423K-line "other" bucket that was actually an untracked 103MB `fathom`
-  build binary at repo root; `.fathomignore` now also excludes `/fathom`.
-- **CUE extraction v2.** `internal/extractor/cueextract.go` now recurses
-  struct literals to emit nested fields with dotted names (e.g.
-  `#Layer.budgets.max_usd_per_run`, depth-capped at 6), reads `Package`
-  from the file's actual `package` clause (`ast.File.PackageName`, filename
-  fallback only when absent — fixing `internal/config/config_schema.cue`
-  and `schema/config/schema.cue`, both `package config`, previously landing
-  as two different wrong packages), and captures imports as
-  `core.KindCUEImport` reference observations. Golden-tested against the
-  real `schema/semantic/schema.cue` `#Layer` field tree.
-  `fusion.ExtractorEpoch` is bumped `"2"`→`"3"` so already-indexed `.cue`
-  files are re-extracted under the new semantics. **Blast radius: the epoch
-  salt is global** — it invalidates every stored fingerprint of every file
-  in every service, so the FIRST ingest of each service after this change
-  re-extracts the entire corpus (a one-time full re-index per service, on
-  the order of a cold ingest), not the usual ~0.2s hash-gated refresh.
-  Subsequent ingests return to normal speed.
-- **Root-anchored ignore patterns.** `internal/filter` previously treated a
-  leading `/` as literal pattern text that could never match a normalised
-  path — every leading-slash `.fathomignore` entry was a silent no-op. A
-  leading `/` now strips and root-anchors the pattern (gitignore
-  semantics): `/fathom` excludes the root-level build artifact from
-  discovery entirely without swallowing `cmd/fathom/`.
-- **Scan tools skip binary files.** The source scanners (`secret_scan`,
-  `shell_out`, `http_client_calls`, `antipatterns`, `deprecation`,
-  `env_keys`, `markers`/`test_debt`) no longer regex-scan
-  binary-classified content.
-- **CUE malformed-import crash.** A mid-edit `.cue` save containing a
-  malformed import (e.g. `import 42`) produced a partial AST whose empty
-  import path made `literal.Unquote` panic, crashing `fathom ingest` and
-  the stdio server; import capture now guards nil/empty/non-string paths.
-
-### Added — build fathom without agentic-kit access (ADR-019, docs/distribution.md)
-- **`third_party/agentic-kit/`** is a committed, full mirror of the private
-  `github.com/geoffmilleraz/agentic-kit` tree at exactly the commit
-  `go.mod`'s pseudo-version pins (`git -C ../agentic-kit archive <commit> |
-  tar -x`, whole tree minus `.git`). `go.mod`'s `replace` now points there
-  instead of `../agentic-kit`; `go.work`'s `use ../agentic-kit` still wins
-  for local co-development (unchanged dev workflow), and `GOWORK=off` falls
-  through to the in-tree mirror — proven both ways with `go list -m -f
-  '{{.Dir}}' github.com/geoffmilleraz/agentic-kit`, and end-to-end with
-  `GOWORK=off go build ./...` and `GOWORK=off go test ./internal/config/
-  ./internal/verify/`, all green from a working tree with no sibling
-  checkout involved in the resolution.
-- **`task sync-kit`** (`scripts/sync-kit.sh`) re-archives `../agentic-kit`
-  at the pinned commit into `third_party/agentic-kit`; refuses if the
-  sibling lacks that commit. Run it (and commit the result) on every kit
-  pin bump.
-- **`task vendor-check`** (`scripts/vendor-check.sh`), now a `task
-  validate` dependency and therefore part of the pre-push lefthook gate: a
-  drift guard that content-hashes (sha256 per file, path-keyed — not raw
-  tar bytes, which `git archive`'s embedded commit timestamp would make
-  disagree even for identical content) `third_party/agentic-kit` against a
-  fresh archive of the pinned commit, and fails if they differ. Skips
-  gracefully (exit 0, warning) when `../agentic-kit` isn't present or
-  lacks the pinned commit — the expected case for a kit-free consumer.
-  Covered by `scripts/vendor-check_test.sh` (5 cases: missing dir, fresh
-  match, tampered mismatch, absent sibling, sibling-missing-commit — all
-  in a throwaway temp layout, no mutation of the real repo or sibling).
-- **`third_party/`** is excluded from `task fmt-check` / `task cue-vet`'s
-  file scans (it's upstream's code, upstream's formatting — `vendor-check`
-  owns drift detection there, not gofmt).
-- **Air-gapped builds:** `go mod vendor` now succeeds standalone (the one
-  module needing private-repo access resolves in-tree); the resulting
-  `vendor/` (~565MB, mostly DuckDB static libs) is gitignored — a
-  consumer's local artifact, never committed.
-- Docs: new `docs/distribution.md` (how to build without kit access, the
-  sync-kit ritual, the air-gapped path); README gets a Quickstart note +
-  a docs-table pointer; ADR-019 records the decision.
-- **Size note:** the ground assumption going in was ~716KB for the kit's
-  tree; the pinned commit actually archives to ~13MB (1,153 files),
-  including one ~4.1MB Mach-O binary (`kit-new`) that appears to be an
-  accidental commit upstream (a `docs:` commit, unrelated to the binary).
-  Archived faithfully per "exclude nothing else" — exactness is what makes
-  the content-hash drift guard meaningful — but flagged here for the
-  agentic-kit maintainer to prune in a future commit.
-
-### Removed — sextant back-compat surface (owner decision 2026-07-17: no back-compat wanted)
-- **Pre-rename back-compat is gone, not deprecated.** The rename shipped
-  2026-07-07 (ADR-015) with several shims so a mid-migration fleet wouldn't
-  break; the owner overrode that "kept by design" decision and asked for all
-  of it out. Removed:
-  - `cmd/fathom/serviceident.go`'s `withNameAliases` — the `sextant`↔`fathom`
-    service-name aliasing that `session-hook`, `edit-hook`, and `stop-hook`
-    used to resolve either brand era against the daemon's index. Each hook
-    now looks up only the candidate's own (lower-cased) name; the double
-    loop in all three hooks collapses to a single lookup.
-  - `internal/connector.LegacyIgnoreFileName` (`.sextantignore`) and its
-    fallback read in `loadIgnoreFile` — only `.fathomignore` is honoured
-    now. `TestLocalConnector_Discover_LegacyIgnoreFallback` flips to
-    `TestLocalConnector_Discover_NoLegacyIgnoreFallback`, asserting a
-    `.sextantignore`-only repo now gets zero excludes from it (the file is
-    just an ordinary discovered file to `Discover`).
-  - Migration prose pointing users from `sextant session-hook` to `fathom
-    session-hook` (`docs/use-cases/getting-started.md`).
-  - `docs/rename-migration.md` is marked historical/superseded at the top
-    (its back-compat bullet list is no longer accurate) rather than
-    rewritten — it's a record of what shipped 2026-07-07, not living
-    guidance.
-  **Behavioral consequence:** stores ingested under the service name
-  `"sextant"` and repos relying on `.sextantignore` are no longer
-  recognized — re-ingest under the real service name, or rename the ignore
-  file to `.fathomignore`. The fleet's own store already uses `"fathom"`
-  post `reingest-fleet.sh`, so the dogfood machine is unaffected.
-  `scripts/fathom-adoption.sh`'s `mcp__sextant__`-prefix counting is
-  intentionally untouched — it is retrospective measurement over pre-rename
-  session transcripts that still exist on disk under the old directory
-  name, not a runtime back-compat code path.
-
-### Added — layer catalog: prompt-as-data, pack shape, adr-rules + spec-bindings, `fathom layers` (docs/plans/layer-catalog.md)
-- **Prompts are data, not Go (LC-1).** Every `#Layer` instance now carries
-  `prompt_file`; `promptForLayer` is generic over `LayerDef` instead of a
-  Go switch statement per layer name — the silent obligations fallback
-  for an unwired-but-manifest-valid layer name (a correctness bug) is
-  gone. Zero identity rotation: `obligations` stays `obligations/c02b1aa1`,
-  pinned by test.
-- **`serving.drift_tracked` replaces the `kind=="finding"` hardcode
-  (LC-2)** at all three remediation-drift sites (compile-side scope-fp
-  writing, and both serve-side `code_drifted` sites) — a schema field, not
-  a Go type check, so a future layer opts into drift tracking by setting
-  one CUE field. `findings` sets it `true`; `obligations` stays at the
-  schema default (`false`).
-- **Built-ins migrate to the vision's pack shape (LC-4):**
-  `schema/semantic/layers/<name>/{layer.cue,prompt.md,eval/,KILL.md}`,
-  mirrored (`layer.cue`+`prompt.md` only) into `internal/semantic/layers/`
-  and `go:embed`'d — `schema.cue` now holds only the `#Layer` definition.
-- **The pack loader unions embedded packs with a project's own
-  `.fathom/layers/` (LC-3)** — presence = enabled (ADR-018 reconciler
-  doctrine, no separate enabled/disabled state anywhere), a project pack
-  overriding an embedded one of the same name. `pkg/client.CompileLayer`
-  resolves through this union rooted at the service's own ingested path,
-  so a project-local pack compiles and serves exactly like a built-in one
-  (`TestClient_CompileLayer_ProjectLocalPack`).
-- **`fathom layers list|show|install`** (LC-7): store-direct like `fathom
-  claim`'s v0 convention. `install` validates a candidate pack against
-  `#Layer` (missing `prompt.md`/empty `eval/` warn, don't fail) and copies
-  it into `.fathom/layers/<name>/` — users never hand-author CUE.
-- **Two new embedded packs, both cleared the precision/recall shipping
-  gate LIVE against `FATHOM_LLM_PROVIDER=claude-cli`** (docs/design/
-  semantic-layers.md §4.6; no API key needed): `adr-rules` (the layer-2
-  proof — architectural constraints from `ADR.md`/`docs/design/*.md`,
-  precision 1.00 / recall 1.00) and `spec-bindings` (the SDD pack —
-  gated-plan task bindings from `docs/plans/**` excluding `README.md`,
-  scoped to each task's `package:` annotation, precision 1.00 / recall
-  1.00 on the first attempt). Results in each pack's `eval/RESULTS.md`.
-- **Third-layer end-to-end proof (LC-8):** a fixture pack nobody wrote any
-  Go for compiles and serves — including remediation-drift tracking for a
-  PROJECT-local pack, which surfaced and fixed a real gap: drift-tracking
-  resolution now consults the same embedded ∪ project union a compile saw
-  (via `ServiceMeta.Path`), not an embedded-only lookup.
-- **Fixed:** `#Layer.corpus.exclude` was decoded from the manifest but
-  never wired into any `SelectCorpus` call — `spec-bindings`' corpus is
-  the first to need it. `SelectCorpus` now takes an independent exclude
-  matcher.
-- Docs: `docs/layers.md` is the new catalog reference (per-pack when-to-use,
-  corpus, cost, gate metrics); `docs/mcp-tools.md`'s `compile_layer` row and
-  `docs/use-cases/coding-agents.md`/`change-review.md` updated for the new
-  verb and packs.
-- **Pre-merge hardening (critic review of the slice):**
-  - A broken project pack no longer takes the whole union down: a
-    half-authored `.fathom/layers/<name>/` is skipped (embedded packs —
-    including one it would have overridden — keep serving), warned once on
-    stderr, and surfaced by `fathom layers list` via `LayerInfo.LoadError`;
-    only requesting it by name errors. Drift tracking for embedded
-    `findings` provably survives an invalid sibling pack
-    (`TestDriftedFindings_SurvivesBrokenProjectPack`).
-  - Honest uninstall semantics: pack presence governs COMPILATION; serving
-    derives from the STORE. `layers list --store --service` gains an
-    orphaned-layers section (claims served with no defining pack); a real
-    `layers uninstall` that retires claims is deferred as LC-13.
-  - `fathom compile`'s flag-parse-time layer check is advisory-only now
-    (warn + pass through): a hard CWD-rooted rejection false-negatived
-    cross-repo project layers (`--service B --layer <B's pack>` from repo
-    A) — the backend's service-rooted resolution is the only rejection
-    (`TestCompile_AcceptsCrossRepoProjectLayer`).
-  - Install hygiene: `layers install` stages into a hidden temp sibling and
-    atomically renames (a mid-copy failure leaves no half-written pack);
-    reinstalling refuses without `--force`; `--force` replaces the whole
-    directory, never merges.
-  - Eval evidence hardening: fixture sets are explicit
-    (`labels.json`.`docs`, never a glob — `RESULTS.md` can't leak into the
-    corpus); both new packs' fixtures expanded to the obligations
-    precedent (adr-rules 7 rules + 2 traps, spec-bindings 6 rules + 2
-    traps) and RE-GATED at 1.00/1.00 twice each under the PINNED production
-    compile model (`claude-haiku-4-5-20251001`, claude-cli lane), recorded
-    with model+lane+date+command in each `eval/RESULTS.md`. The obligations
-    layer re-run under that same pinned model recorded precision 1.00 but
-    recall straddling its bar (0.71/0.86) — a pre-OP-6 signal, recorded in
-    `schema/semantic/layers/obligations/eval/RESULTS.md` and escalated.
-  - `layerIsDriftTracked` memoized per `ObligationsFor` call (one union
-    load per distinct layer, not per served rule, on the edit-hook path).
-
-### Added — configuration experience: profiles, ~/.fathom/config.toml, health, smoke (docs/plans/config-experience.md)
-- **`internal/config`**: TOML-authored, CUE-validated (`schema/config/schema.cue`,
-  embedded byte-identical with a drift test — the `internal/semantic/manifest.go`
-  precedent) runtime configuration. `Load` merges a user layer
-  (`~/.fathom/config.toml`) and a project layer (`.fathom/config.toml`)
-  field-by-field — a partial project-layer override never blanks out fields
-  it didn't mention — and tracks per-field `Provenance` (which layer/env-var
-  supplied every value). `ResolveProfile` selects a named profile
-  (`--profile`, else `default_profile`) and layers the **env-overlay**
-  (`FATHOM_LLM_PROVIDER`, `FATHOM_COMPILE_MODEL`, …) on top, so fathom's
-  pre-profile env-only behavior is reproduced byte-for-byte when no config
-  file exists. **Raw secrets are unrepresentable**: `#Profile` is a closed
-  CUE struct with no `api_key` field — `api_key_env` (read at LLM-client
-  construction time, never at load) or `api_key_cmd` (argv-exec, no shell,
-  10s bound, trimmed stdout, output never logged or embedded in errors) are
-  the only credential paths.
-- **`compile --profile`**: a new `cmd/fathom/llmprofile.go` construction
-  path (`buildLLMClientForProfile` + six `build*ClientProfile` functions)
-  sits ALONGSIDE `compile.go`'s original env-only `buildLLMClient` and its
-  six `build*Client` functions, which are byte-for-byte untouched — all 15
-  pre-existing `compile_test.go` provider tests pass unmodified, source and
-  expectations both. `compileModelForProfile` adds the profile as a
-  precedence tier between `FATHOM_COMPILE_MODEL` (still wins) and the
-  cheap-tier default; `compileModel()` itself is unchanged.
-- **`fathom config [--explain] [--json] [--profile X]`**: prints the
-  effective configuration. `--explain` is the flagship feature — every key
-  annotated with its source (`flag`/`env:VAR`/`project:path`/`user:path`/
-  `default`).
-- **`fathom providers [--profile X] [--json]`**: auth-health probe —
-  `map[string]llmclient.Pinger` built from every configured profile (or just
-  one), one `llmclient.ProbeAll` call (zero/near-zero tokens). A profile
-  whose adapter doesn't implement `Pinger` (a type-assertion, not a
-  provider-name allowlist) is reported `not probeable`, never silently
-  dropped. Non-zero exit on any probed or construction failure.
-- **`fathom smoke --profile X|--all [--json]`**: one tiny real completion
-  per selected profile — model, wall-clock latency, tokens, and an estimated
-  cost (the same flat per-KTok rates every `compile` run's `cost_usd`
-  already uses). Spends real tokens, so `--profile`/`--all` is required
-  explicitly; no implicit "smoke everything" default. No live calls in
-  tests — fake shims / `httptest`, mirroring `compile_test.go`'s patterns.
-- **`serve-http`** loads the same config at startup: `[daemon]`
-  (`store`/`addr`/`call_log`/`auto_refresh`) feeds flag *defaults* (a flag
-  on the invocation still wins), and `[daemon].default_profile` (falling
-  back to the top-level `default_profile`) selects `compile_layer`'s
-  provider — closing the gap where the launchd plist carries no env at all
-  and `compile_layer` was silently disabled on the always-on daemon.
-  Read-once: a config change reaches the daemon only after a restart, like
-  every other daemon knob.
-- **`fathom init`** gains a write-if-absent step scaffolding
-  `~/.fathom/config.toml` with every profile shape (subscription, API-key,
-  AWS GovCloud, Azure Government) commented out and the secrets doctrine
-  stated inline; never overwrites an existing file.
-- **AWS GovCloud / Azure Government** are profiles, not modes: `region =
-  "us-gov-west-1"` or an explicit FIPS `endpoint` for Bedrock; `endpoint =
-  "https://<resource>.openai.azure.us"` for Azure OpenAI. Hermetic
-  construct-level proofs (no network) that a profile's region/endpoint
-  actually reaches the kit adapter's `Config`, not just that fathom's own
-  pre-checks pass.
-- Docs: `docs/configuration.md` is the new canonical guide (precedence,
-  profiles, GovCloud/Government recipes, `config`/`providers`/`smoke`,
-  secrets doctrine, daemon restart-to-apply); pointers from `README.md` and
-  `docs/use-cases/coding-agents.md` §5 (the provider-matrix table stays the
-  single source, linked rather than duplicated).
-- Repurposed the pre-existing (unused, zero-importer) `internal/config`
-  package rather than colliding names elsewhere — its old JSON
-  query-profile API (`coding`/`investigation`/`ci`/`platform`) predated this
-  feature and had no callers anywhere in the tree.
-- Review hardening (coordinator critique of the first landing): the two
-  pre-existing serve-http tests that reach the new config load now isolate
-  HOME/cwd (they would have started binding real `[daemon].addr` ports the
-  day an operator adopts `[daemon]`); a modelless bedrock **profile**
-  fails fast naming the requirement instead of silently constructing
-  around the Anthropic-API default model id (which passes `providers`'
-  Ping but breaks the first compile opaquely) — plus a table-driven
-  equivalence test (`llmprofile_equivalence_test.go`) that drives all six
-  lanes through BOTH the frozen env-only builders and the profile builders
-  from the same environment and fails on any construct-vs-error or routing
-  divergence; `compile --profile` without `--store` is now an error naming
-  the constraint (HTTP mode compiles with the daemon's own configured
-  profile) instead of silently ignoring the flag; TOML parse errors carry
-  line/column; CUE validation errors print each offending key once
-  (grouped per path); the daemon's fail-to-start on a malformed config is
-  now tested and documented (pre-flight with `fathom config`); the
-  `providers` "not probeable" branch is tested end-to-end through a
-  builder seam (`providerClientBuilder`).
-
-### Added — provider matrix: openai, azure-openai, bedrock, codex-cli (docs/plans/provider-matrix.md)
-- **Four more `FATHOM_LLM_PROVIDER` lanes**, rounding `buildLLMClient`
-  (`cmd/fathom/compile.go`) out to six: `openai` (`buildOpenAIClient` —
-  vanilla OpenAI Chat Completions via `agentic-kit/foundations/llmclient/openai`,
-  `OPENAI_API_KEY` optional for local/compatible hosts, `FATHOM_OPENAI_BASE_URL`
-  override for Ollama/vLLM), `azure-openai` (`buildAzureOpenAIClient` — the
-  same adapter's Azure mode; `AZURE_OPENAI_ENDPOINT` and
-  `AZURE_OPENAI_DEPLOYMENT` are checked by fathom itself, before calling the
-  adapter, so a missing one names the env var an operator actually sets
-  rather than the adapter's Go `Config` field), `bedrock`
-  (`buildBedrockClient` — AWS Bedrock via `agentic-kit/foundations/llmclient/bedrock`'s
-  full credential-chain resolver: explicit → env → shared files including
-  `aws sso login` sessions and `credential_process` → IMDSv2, expiry-aware
-  refresh, no static keys required from fathom; `FATHOM_COMPILE_MODEL` is
-  fathom's own requirement — Bedrock has no meaningful default model, so a
-  missing value fails construction naming the variable), and `codex-cli`
-  (`buildCodexCLIClient` — mirrors `claude-cli` via
-  `agentic-kit/foundations/llmclient/codexcli`, `FATHOM_CODEX_BIN` override;
-  **also Pings the constructed client** before returning it, since
-  codexcli's `Request.System` mapping and ambient-context suppression ride
-  undocumented `codex-cli` config keys a future CLI upgrade could silently
-  drop — a failed Ping is a construction error naming the silent-degradation
-  risk, so fathom never hands back a client that could silently lose its
-  system prompt and revert to the CLI's ~13k-token built-in persona).
-  The unknown-provider error now lists all six lanes.
-  Follow-up in the same landing: CLI `--store` mode no longer hardcodes the
-  Anthropic model string into `WithLLM` — both construction sites share
-  `compileModel()` (`FATHOM_COMPILE_MODEL`, cheap-tier default), because
-  `Request.Model` wins over any adapter's `DefaultModel` when non-empty and
-  the hardcoded string would have silently overridden every non-Anthropic
-  lane in store-direct compiles.
-  Docs: `docs/use-cases/coding-agents.md` §5 gets a provider matrix table
-  (lane, auth mode, env vars, marginal-cost story) including the honest
-  `codex-cli` cost line — roughly 10k input tokens of ambient overhead per
-  call (~300k for a 31-section compile) against ChatGPT plan limits, ~60%
-  cache-discounted steady-state, versus `claude-cli`'s near-zero ambient
-  overhead under `--safe-mode`.
-  go.mod's `agentic-kit` require bumped to the pseudo-version for the
-  commit landing all three kit slices (aws-credchain, azure-openai,
-  codexcli-adapter). Tests: `cmd/fathom/compile_test.go` — construct-level
-  coverage for `openai`/`azure-openai`/`bedrock` (env fixtures via
-  `t.Setenv`, including a base-URL/Azure-deployment routing round trip
-  against a local `httptest` server), and hermetic fake-shim coverage for
-  `codex-cli` covering both the healthy and degraded Ping outcomes. No real
-  network/API/CLI-login calls in any of it.
-
-### Added — subscription-backed compile provider (claudecli)
-- **`FATHOM_LLM_PROVIDER=claude-cli`.** `cmd/fathom/compile.go`'s single
-  construction site (`buildAnthropicClient`, called by both `compile
-  --dry-run=false` and `serve-http`'s `compile_layer`) is now
-  `buildLLMClient`, which switches on `FATHOM_LLM_PROVIDER`: unset or
-  `"anthropic"` keeps today's behavior (needs `ANTHROPIC_API_KEY`);
-  `"claude-cli"` shells out to a locally logged-in Claude Code CLI instead
-  (via `github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli`,
-  new in agentic-kit), so obligations/findings compiles ride a Claude Pro/Max
-  subscription's OAuth login instead of a metered key.
-  `FATHOM_CLAUDE_BIN` optionally overrides the resolved `claude` binary path
-  (e.g. for the `serve-http` launchd daemon, whose PATH may not include it).
-  The no-provider-available error now names both options. Reported
-  `cost_usd` is the same API-equivalent accounting under either provider;
-  actual marginal spend under `claude-cli` is $0 (subscription plan limits,
-  not a metered key) — documented in `docs/use-cases/coding-agents.md` §5.
-  go.mod's `agentic-kit` require bumped to the pseudo-version pinning the
-  commit that added `claudecli` (kit `go.work`+`replace` still couples the
-  local sibling checkout for day-to-day dev; the pin matters for a cold
-  clone). Tests: `cmd/fathom/compile_test.go` covers `buildLLMClient`'s
-  switch (default/explicit anthropic without a key, claude-cli construct +
-  one real `Complete` through a hermetic fake-shim, unresolvable
-  `FATHOM_CLAUDE_BIN`, an unknown provider value) — the anthropic path's
-  (nonexistent) tests are untouched.
-
-### Added — findings-as-claims tracer bullet (docs/plans/findings-tracer.md D3, FT-1..FT-6)
-- **Kind:"finding" unlocked end-to-end.** A `findings` `#Layer` instance
-  (`schema/semantic/schema.cue`: kind `finding`, corpus `findings/**`, tier
-  `sme-stated`) joins `obligations` in the manifest. `internal/semantic.Compile`
-  is now layer-aware — it resolves name/kind/tier/tier_profile/prompt from
-  `Compiler.Layer` (falling back to the pre-M1 obligations identity when no
-  layer is loaded, so every existing direct-Compiler test and the
-  expert-module non-git-corpus test are unaffected) — instead of hardcoding
-  the obligations identity everywhere. A new findings system prompt
-  (`internal/semantic/prompts.go`) shares the obligations claim envelope and
-  JSON schema; only the compile instructions differ (FT-1).
-- **`pkg/client.CompileLayer(ctx, service, layer, dryRun)`** generalizes
-  `CompileObligations` (now a thin wrapper). Fixes finding F7: `cmd/fathom
-  compile --layer` and the `compile_layer` MCP tool validated the requested
-  layer name via `LoadLayer` and then silently discarded it, always compiling
-  "obligations" regardless of what was asked for — both now route the
-  validated name all the way through.
-- **Kind-aware serving.** `semantic.ObligationsFor` now reads claims across
-  every compiled layer (not just `obligations`) and the served `Obligation`
-  gains a `kind` field (`json:"kind,omitempty"`, omitted for the obligations
-  layer — byte-compatible with every existing consumer) so a finding claim
-  scoped to a file is labeled, not silently indistinguishable from an
-  obligation (FT-2).
-- **`fathom claim refute|corroborate --store DB --service S --claim ID --note
-  "..."`** wires the previously-dead `claim_events` machinery
-  (`AppendClaimEvent` had zero non-test callers before this): `refute` appends
-  a `refuted` event and flips claim status to `ClaimRefuted`; `corroborate`
-  appends a `corroborated` event and never changes status or tier —
-  corroboration is provenance, not evidence-laundering (FT-3).
-- **Refutation durability.** `PutClaims` (both `DuckStore` and `MemoryStore`)
-  now retains `ClaimRefuted` status across an upsert of the same `claim_id` —
-  a recompile that re-emits an unchanged rule can no longer silently
-  resurrect a suppressed finding to the compiler's default fresh status
-  (FT-4).
-- **`fathom report --store DB --service S --analyzer security_rollup --out
-  findings/`** is the deterministic bridge: writes ONE markdown finding
-  document (per-category sections — hardcoded secrets, unchecked shell-outs,
-  unsafe HTTP client usage — each with `path:line` lists), mirroring
-  `internal/mcp/extra_tools.go`'s `security_rollup` shape, so deterministic
-  analyzer output flows through the normal ingest→compile→claims pipeline
-  instead of a parallel persistence path. Output is a pure function of the
-  corpus working tree at run time (`Sources()` re-reads disk, not the index;
-  no clock/random ordering in the body), verified by a double-run
-  byte-compare — including with `--out` INSIDE the corpus, the intended
-  deployment: source files under the resolved `--out` directory are excluded
-  from the scan, closing the self-scan feedback loop where run N+1 would
-  find shell-out/http snippets embedded in run N's own doc and mutate it
-  every run. Secret-category findings are rendered redacted (`path:line` +
-  rule only — the scanner messages embed the matched source line, and a
-  committable document must never exfiltrate the credential it reports)
-  (FT-5).
-- **Remediation drift (FT-6).** The compiler now persists, for finding-kind
-  claims only, a `ClaimLink{Rel:"scope-fp"}` per scope-matched file with its
-  compile-time store fingerprint. `semantic.DriftedFindings` is a new, pure
-  read that re-compares those fingerprints against the CURRENT store state;
-  `ObligationsFor` calls it and sets `code_drifted:true` on the served
-  payload when the scoped code changed since compile. Chosen design: a live
-  re-read at serve time rather than a persisted flag — keeps `Sweep` and
-  `ObligationsFor` both pure functions of current store state, with no third
-  claim-status axis, and matches the vision's explicit rule that code drift
-  is a serving annotation, never a status flip (a finding whose code changed
-  might be FIXED, not wrong). Anchor persistence is loud, never best-effort:
-  a fingerprint read failure (or a fingerprint-less indexed file) at compile
-  time aborts the run (`errDriftAnchor`) instead of silently omitting the
-  link — the digest gate would never recompile the unchanged section, so a
-  missing anchor would permanently blind drift for that file. This upholds
-  the invariant DriftedFindings relies on (every compiled finding claim
-  carries ≥1 scope-fp link), and serving is bounded: a per-call fingerprint
-  cache queries each distinct anchored file at most once per
-  `ObligationsFor`, regardless of how many claims share it (the edit-hook
-  hot path). Post-merge follow-up closed FT-2's last hop: the edit-hook's
-  rendered bullet now labels non-obligation kinds after the tier
-  (`[…, sme-stated, finding]`) and appends `code drifted since compile`
-  when `code_drifted` is set — obligation bullets are byte-identical to
-  before.
-- **Findings prompt: no bare `**` scopes.** The findings compile prompt
-  instructs the narrowest affected-path globs the document justifies; a
-  genuinely repo-wide finding scopes to its affected file class (e.g.
-  `**/*.go`), never a bare `**` — aligned with the O8 precision work's
-  compile guard. The prompt identity is content-addressed, so this rotates
-  only `findings/<hash8>`; no compiled priors existed.
-
-### Added — O8 precision: serve-time trust (docs/plans/o8-precision-and-speclines.md OP-1..OP-5)
-- **Prompt v3** (`internal/semantic/prompts.go`): the obligations compile system
-  prompt now instructs file-class scoping — a rule binds only the file class its
-  governing document addresses (code rules → source globs like `**/*.go`, docs
-  rules → markdown globs like `**/*.md`) and a bare `"**"`/repo-wide catch-all
-  scope is never allowed. All v2 instructions (binding-rules-only, narrowest
-  scope, 28-word rule cap, the `{"claims":[...]}` envelope) are kept. The
-  content-addressed `PromptVersion` (TextHash-derived) rotated to
-  `obligations/c02b1aa1`, forcing every section to recompile under the new
-  prompt rather than silently keeping v2 claims (the v1→v2 hand-bumped-const
-  bug class this mechanism exists to prevent).
-- **Over-broad-scope guard** (`internal/semantic/compile.go` `verifyDraft`): a
-  claim whose scope glob matches more than half of `IndexedFiles` is rejected
-  and counted in `ClaimsRejected`, exactly like a failed citation — the
-  compile-time backstop for prompt v3's "never `**`" instruction. This makes
-  `"**"` always over-broad in a non-empty corpus, so every prior test scope of
-  `["**"]` was rewritten to a real narrow glob (`internal/mcp/**` against the
-  shared 3-file test fixture). **Exemption (review fix):** single-file-class
-  extension globs — a glob whose final segment is `*.<ext>` with one literal
-  extension (`**/*.go`, `docs/**/*.md`, `*.pb.go`) — are exempt from the
-  breadth check (never from zero-match rejection): they are class-scoped by
-  construction, exactly the shape prompt v3 mandates for legitimately
-  fleet-wide rules, and in a go-majority corpus `**/*.go` necessarily exceeds
-  50% — without the exemption the guard would reject every prompt-compliant
-  repo-wide code rule at the OP-6 recompile. Bare `**`, directory globs
-  (`internal/**`), and multi-extension patterns matching >50% stay rejected.
-- **Edit-hook root refusal** (`cmd/fathom/edithook.go` `cmdEditHook`): a file
-  that does not relativize under ANY resolved service-candidate root now skips
-  that candidate outright instead of falling back to querying the daemon with
-  the raw out-of-repo path — the O8 addendum (obligations fired for a file
-  outside every indexed repo) goes silent. **Review fixes:** the check is not
-  purely lexical — `relativeToRoot` retries with both sides
-  `filepath.EvalSymlinks`-resolved (falling back to the lexical path on error),
-  so symlinked layouts (`~/code` → `/Volumes/…/code`, macOS `/var` →
-  `/private/var`) where `gitToplevel` returns the physical root while the
-  session addresses files through the symlink don't false-refuse every in-repo
-  file; the `..`-escape test is `rel == ".." || strings.HasPrefix(rel, "../")`
-  (a root-level `..foo` entry is not an escape); and a relative `file_path` is
-  absolutized before the candidate loop so it cannot bypass the refusal.
-- **Spec-line injection** (`cmd/fathom/edithook.go`): when the edited file cites
-  bracketed spec IDs (`internal/sdd.ExtractRefsFromText`, the same extraction
-  `spec_refs` uses), the edit-hook looks up each ID (capped at 3) via the
-  `spec_refs` MCP tool and appends `"▸ implements [ID] — defined at
-  <file:line>"` for the location OUTSIDE the edited file — literally tying the
-  cited spec to where it's defined, in the channel that already works
-  (docs/vision/04 §4 item 3). **Review fix:** spec lines fire independently of
-  obligations — a file citing a spec ID with zero matching rules (the common
-  case post-recompile, with prompt v3's narrower scopes) gets a
-  spec-lines-only payload under its own `⚖️ fathom spec refs` header;
-  zero-output-on-clean is preserved (no rules AND no spec IDs → silent).
-  Shares the obligations payload's ≤150-token budget; spec lines are dropped
-  first (never truncating obligations), and when obligations alone already
-  spend the budget every spec_refs RPC is skipped up front. Silent on any
-  error (unreadable file, daemon down, etc.) per hook doctrine.
-- **`plan` project skill** (`.claude/skills/plan/SKILL.md`): scaffolds a
-  gate-ready grammar-v2 plan (stable `id`s, `{symbol, package}` contracts
-  grounded via `pack_context`/`test_impact`, typed `disposition`s for skips,
-  `skip_test` always paired with `skip:`, spec-ID brackets, the `fathom verify`
-  command to run before checking any box) so new plans are born gate-ready
-  instead of needing an honesty rewrite after the fact.
-
-### Added — coding-agents canonical doc + staleness sweep (IA-4/IA-5)
-- docs/use-cases/coding-agents.md is THE adoption guide (the loop, hooks,
-  gates, CLAUDE.md/AGENTS.md doctrine, agent-surface registration, the honest
-  cost story); usage.md set_profile guidance retired; the June
-  claude-code-integration.md banner-superseded (assessment content kept);
-  getting-started/coding-context scoped and pointed at the canonical doc.
-
-### Added — fathom init: one-command coding-agent wiring (docs/plans/init-and-adoption.md IA-1/IA-2/IA-3)
-- `fathom init` wires a repo end-to-end, idempotently and additive-only: creates
-  `.fathomignore` if absent, calls the daemon's `ingest` MCP tool and confirms
-  the service is indexed (fail-soft exit 2 with startup instructions when the
-  daemon is unreachable or the service still has no symbols), JSON-merges
-  project-level `.claude/settings.json` hooks (SessionStart `session-hook`,
-  PostToolUse `edit-hook`, Stop `stop-hook`), writes the canonical fathom
-  operating-contract stanza into both CLAUDE.md and AGENTS.md between
-  `<!-- fathom:begin/end -->` markers, and prints the manual steps it cannot
-  safely automate (MCP registration one-liner, lefthook pre-push verify
-  snippet). Every mutation is create-if-absent or marker-replace, so a second
-  run changes zero bytes and reports "already present" throughout.
-- `mergeHookSettings` preserves every unrelated top-level key, hook event, and
-  sibling hook entry in an existing `settings.json`; detection is by command
-  substring (`"fathom session-hook"` etc.), so re-running never duplicates an
-  entry regardless of the exact binary path baked in.
-
-### Changed — MCP surfaces week-1: execute-and-flag, agent surface, loopback default (docs/plans/surfaces-week1.md, amends ADR-014)
-- Gate semantics change from hard-gate to **execute-and-flag**: an off-surface
-  `tools/call` or `batch` sub-call now executes instead of erroring, logged
-  with `off_surface:true` in the JSONL call log — an error taught abandonment,
-  which looked identical to no-demand in 8 days of dogfood evidence. The
-  pre-amendment hard gate stays available behind `Server.strictSurfaces` for
-  any future multi-tenant shape.
-- The `companion` allowlist becomes the 15-tool **agent** surface (minus
-  `batch`/`brief`, plus `verify_plan`/`capabilities` — the top non-hook tool
-  and the discovery escape hatch), served at the new primary path
-  `POST /rpc/agent` with `POST /rpc/companion` kept as a compatible alias.
-- `set_profile` is removed entirely (amends ADR-010/014's stdio clause): no
-  production caller reaches it any more, so stdio now always serves the full
-  registry.
-- Four zero-call alias tool registrations deleted: `platform_callers`,
-  `test_debt`, `api_routes`, `deps` — use the canonical `cross_repo_callers`,
-  `markers`, `routes`, `dependencies`.
-- `serve-http`'s default listen address changes from `:7575` (all interfaces)
-  to `127.0.0.1:7575` (loopback) — surfaces were never a security boundary,
-  so the default must not listen on all interfaces regardless.
-
-### Added — Gap-1 channel instrumentation: denominator, liveness, origin (docs/plans/gap1-instrumentation.md)
-- Hooks beat a central log (FATHOM_HOOKS_LOG, default ~/.fathom/hooks.jsonl)
-  via agentic-kit v0.7.0 telemetry/heartbeat: edit-hook seen/answered/error,
-  session-hook fired — injection coverage finally has a denominator, and beat
-  failures are swallowed (hooks never break their silent contract).
-- `fathom instrument`: coverage (answered/seen vs the ≥90%% gate), per-day
-  rollup, and liveness alarms from the standing expectations (sessions
-  without edits in 7d; edits unanswered in 1d — the four-dark-days failure
-  made visible). Advisory: exit 0 always.
-- X-Fathom-Origin: every hook/CLI HTTP call declares its channel; the daemon
-  call log records `origin` so demand numbers and kill clocks separate
-  plumbing from agent choice.
-- Grammar hardening (GI-7): the plan-annotation parser takes the TRAILING
-  brace block — prose braces and code literals in titles no longer hijack
-  contracts (caught live by the first non-vacuous gate run over the fleet).
-
-### Added — M1: the manifest goes live (semantic layers, ADR-016 amendment)
-- **`schema/semantic/schema.cue` is now a runtime artifact, not documentation.**
-  `internal/semantic.LoadLayer` embeds a package-local, byte-identity-tested
-  copy of the schema (`internal/semantic/manifest_schema.cue`,
-  `TestManifestSchemaMatchesSource`) and decodes `#Layer` instances (corpus
-  globs, tier, budgets, serving caps) via `cuelang.org/go`. The obligations
-  layer's corpus include list and per-claim rule-length budget now come from
-  the manifest instead of the hand-synced `ObligationsInclude` Go var and a
-  bare `maxRuleWords` const — both retired (grep-clean under
-  `internal/semantic`). `cmd/fathom compile` and the `compile_layer` MCP tool
-  accept any manifest-listed layer (today still exactly `obligations`) and
-  reject unknown names with the manifest's live layer list instead of a
-  hardcoded string check.
-- **Content-addressed prompt identity** (agentic-kit v0.7.0
-  `prompttemplate`). The obligations system prompt moved into a
-  `prompttemplate.Template` (`internal/semantic/prompts.go`); `PromptVersion`
-  is no longer a hand-bumped const — `obligationsPromptVersion()` derives it
-  as `obligations/<hash8>` from `Template.TextHash()`. The digest gate
-  (`allDigestsMatch`) keys on this derived identity, so any edit to the
-  prompt text is now automatically a new compile identity — the exact bug
-  class that silently left 27/32 sections on stale v1 claims after the
-  v1→v2 bump cannot recur.
-  **This is a flag-day recompile.** The prompt text did not change in this
-  slice, but its identity's FORM did (hash-derived vs. the retired
-  `obligations/v2` const), so the very next real compile will see every
-  existing claim's `PromptVersion` mismatch and recompile the whole corpus
-  once. No compile was run as part of this change (no API keys, no LLM
-  calls — mocks only); sequence the actual fleet recompile deliberately —
-  ideally folded with the O8 serve-time precision prompt revision so the
-  fleet pays one recompile, not two — and never mid-measurement-window.
-- **Typed compile failures** (agentic-kit `llmclient/structured`). Section
-  completion now goes through `structured.Complete`, which sets
-  `Request.OutputSchema` to the claim-draft JSON Schema and classifies
-  truncation/malformed model output as `structured.ErrTruncated` /
-  `structured.ErrMalformed` — the hand-rolled `errBadResponse` classifier and
-  its fenced-code-block-stripping retire. Skip-section policy
-  (`sections_failed++`) is unchanged; transport errors still abort the run.
-- **Run-level budget enforcement** (`enforceBudgets`, ADR-016 §4.1). A real
-  compile now refuses to start when its pre-flight, digest-gate-aware cost
-  estimate exceeds the layer's `max_usd_per_run` (typed refusal, still
-  ledgered), and stops cleanly mid-corpus when the running token total
-  crosses `max_tokens_per_run` — sections not yet reached are left untouched
-  and resume via the ordinary digest gate on the next invocation. Both cases
-  are recorded on the existing `compile_runs` ledger, additively
-  (`core.CompileRun.Refused` / `RefusalReason` / `BudgetStopped`; new
-  columns on the DuckDB backend, migrated idempotently).
-- **`#Layer.tier` widens to admit `verified`** for deterministic,
-  Model-empty compile paths (ADR-018 oracle classes: `index`/`cmd`/`lexical`)
-  — amendment recorded under ADR-016 in `ADR.md`. No layer emits it yet;
-  `ai-derived` stays unadmitted, still awaiting its own revival evidence.
-- Spec: `docs/plans/m1-manifest.md` (M1-1..M1-8, all landed).
-- **Adversarial-review fixes (same slice, pre-recompile):**
-  (F1) the structured-outputs schema is now OBJECT-rooted
-  (`{"claims":[...]}`) with `additionalProperties:false` on every object —
-  Anthropic structured outputs reject array roots / open objects with a 400,
-  which is transport-class and would have aborted every real compile at
-  section 1; the system prompt and decode target moved to the envelope shape
-  (`TestClaimDraftSchema_AnthropicStructuredOutputCompatible` pins both wire
-  constraints). This prompt/schema change MUST land before the flag-day
-  recompile — the TextHash identity covers the prompt text, not the schema,
-  so sequencing is the protection.
-  (F2) superseded/refuted claims no longer feed the digest gate: one
-  superseded row (old digest or old PromptVersion) previously forced its
-  subject to re-LLM on every future run, forever
-  (`TestCompile_SupersededClaimsDoNotDefeatDigestGate`).
-  (F5) a budget-stopped run is no longer indistinguishable from success at
-  the operator surfaces: `compile_layer` returns
-  `budget_stopped`/`refusal_reason` (and `refused` symmetrically) and the
-  CLI printers render them.
-
-### Fixed — extractor-epoch fingerprint salt: extractor upgrades now reach unchanged files (O9)
-- The pass-3 hash-gate keyed fingerprints on file content only, so a binary
-  with improved extraction (e.g. H1's aliased-selector canonicalization and
-  method-edge forms) silently kept every unchanged file's OLD observations —
-  the fleet store served pre-H1 `Calls` forms and `test_reaches` failed on
-  genuinely-tested symbols (dogfood O9, caught by the first HTTP-mode run of
-  the re-armed agentic-kit gate). Fingerprints are now salted with
-  `fusion.ExtractorEpoch` (bump on any extraction-semantics change → full
-  re-extract on next ingest); `ObligationsIndexStale` adopts the shared
-  `fusion.FingerprintHash` so the formulas cannot diverge. Regression:
-  `TestIngest_ExtractorEpochInvalidatesOldFingerprints`.
-
-### Added — SDD reconciler v0: plan grammar v2, wave gate, CUE shadow, Stop hook (ADR-018)
-- **Plan grammar v2** (`internal/verify`, additive — v1 plans parse unchanged):
-  `[~]` in-progress checkbox; author-owned stable `id:` keys (positional
-  `md-NNN` renumbering was fatal for cross-edit diffs); typed dispositions on
-  `[-]` (`disposition: refused|deferred` + `reason:` + recorded-only
-  `trigger:`); `skip:` justification for `skip_test`; double-quoted annotation
-  values may contain commas. `verify.LintPlan` reports convention violations
-  as warnings (never exit-code changes in v0).
-- **Wave gate**: `fathom verify --require-all` (`verify.GateRequireAll`) —
-  fails on open/in-progress tasks so a wave advances only when every task is
-  claimed-and-verified or explicitly skipped. The recorded exit-0 run is the
-  transition record; there is no transition engine (ADR-018: state is
-  derived, never driven).
-- **CUE shadow**: `fathom gen-plan-cue` emits a generated-only `#Plan`
-  document (schema/plan gains state/disposition/reason/trigger +
-  expect.package/skip_reason) and proves **lossless round-trip** against the
-  Markdown parse. CUE is output, never an authoring surface (the Dagger
-  lesson); hand-authored plan CUE is deprecated.
-- **Stop hook**: `fathom stop-hook` — done-means-proven at session
-  granularity: tasks newly claimed `[x]` this session (working tree vs HEAD,
-  matched by stable ID) that FAIL verification surface at session end.
-  Advisory by default; `--block` refuses session end with the failing
-  citation. Silent exit 0 on every operational failure (edit-hook doctrine);
-  Unknown never fires (fail-open honesty).
-- Specs: `docs/design/sdd-reconciler.md` (normative), ADR-018, gated plan
-  `docs/plans/sdd-reconciler-v0.md`; grammar reference updated in
-  `docs/plans/README.md`. Vision record: `docs/vision/09-deterministic-sdd.md`.
-
-### Changed — obligations v2: first-fleet-compile hardening
-- **Prompt v1 → v2 + corpus narrowed to binding docs** (`CLAUDE.md`, `ADR.md`,
-  `docs/plans/README.md`). The first fleet compile turned `docs/design/**` essays into
-  noisy `**`-scoped aspirational rules ("achieve precision ≥0.90") injected on every
-  edit — the trust-fatal class ADR-016 §4.6 warns about. v2 compiles binding rules only
-  and prefers the narrowest scope the source supports.
-- **Digest gate now includes `PromptVersion`.** A prompt bump previously did not
-  recompile unchanged sections — the v1→v2 recompile silently kept v1 claims on 27/32
-  sections. Covered by `TestCompile_PromptBumpDefeatsDigestGate`.
-- **Per-section failure resilience.** A malformed or truncated model response
-  (strict-JSON parse failure, `StopMaxTokens`) now fails only its own section —
-  counted in the new `compile_runs.sections_failed` — instead of aborting an
-  88-section fleet corpus; transport/auth errors still abort. `MaxTokens` 1200→2400
-  (rule-dense sections were truncating mid-JSON).
-- **Corpus-departure retirement.** Claims whose subject left the corpus selector are
-  superseded on the next compile, not served forever.
-- First full fleet compile under v2: 31/32 sections, 72 claims (9 rejected by
-  compile-time verification), $0.047.
-
-### Added — semantic layers v1: the obligations tracer bullet (ADR-016)
-- **Governed-claims substrate.** Four additive tables beside observations —
-  `semantic_claims` (content-addressed `claim_id`; tier + `tier_profile`; status
-  fresh/stale/contradicted/superseded/refuted; flattened provenance: model, prompt
-  version, repro key, input digest, compile watermark), `claim_links` (`cites` with
-  line-range hash, `scopes` globs), `compile_runs` (real token/USD ledger), and
-  append-only `claim_events` (the refute channel). Superseded claims are status-flipped,
-  never deleted. Both store implementations + contract tests.
-- **Obligations compiler** (`internal/semantic`): governing docs → markdown sections
-  (fence-aware, stable subjects) → digest gate (unchanged sections cost $0) → DLP
-  redaction → injected LLM (strict JSON; mock/replay in tests) → **compile-time anchor
-  and scope verification** (a claim whose cited lines don't resolve or whose scope globs
-  match no indexed file is rejected, counted per run) → transactional store + supersede.
-  Rules are word-budgeted at compile (≤28 words) so a 6-rule payload stays ≤150 tokens.
-  Dry-run estimation is the default spending gate. Layer definition schema:
-  `schema/semantic/schema.cue` (+ Go-asserted negatives).
-- **Citation sweep** (post-ingest, token-free): re-hashes every served claim's cited
-  lines; drift flips status to `stale`, unresolvable citations to `contradicted`,
-  restored docs heal back to `fresh`. Wired into `IngestService` so the daemon's
-  auto-refresh keeps claims honest.
-- **Decision-moment serving.** `obligations` MCP tool (on the companion surface, now 15
-  tools): rules governing a file, ordered by scope specificity, capped at 6, each with
-  `src` citation + tier, drifted rules served *flagged*; **zero-output-on-clean**.
-  `compile_layer` tool (full surface only; `dry_run` defaults true) + `fathom compile`
-  CLI. `staleness_report` gains a per-layer claims summary.
-- **PostToolUse injection** (`fathom edit-hook`): after every Edit/Write, Claude Code
-  gets the edited file's obligations injected (≤150 tokens) plus an index-behind-your-
-  working-tree warning; silent on clean, silent on any error (hooks never block —
-  the coding-agent-excellence §5.3 failure policy). This is the configuration-forced
-  delivery channel the 0–7% pulled-tool share demanded.
-- **Precision eval harness** (`internal/semantic/eval_test.go` + labeled fixture corpus
-  with deliberate scope traps): gates the layer at precision ≥0.90 / recall ≥0.75
-  against a real model; opt-in (`FATHOM_EVAL_LLM=1`), deterministic suite stays free.
-
-### Added — fleet onboarding ergonomics
-- **`ingest` tool onboards new services**: optional `path` (absolute corpus root)
-  ingests a repo the index has never seen — through the live daemon, no
-  single-writer lock dance. The session-hook's "add this repo" guidance now names
-  the exact call. Capability forwarded through the auto-refresh wrapper (the O7
-  lesson) with a through-the-wrapper test.
-- **Subdirectory-rooted projects resolve their service**: both hooks now try the
-  project dir's basename, then the enclosing git repo's basename (a Claude
-  project rooted at `<repo>/deploy` no longer resolves to service "deploy");
-  the edit-hook resolves file paths against whichever root matched.
-  `reingest-fleet.sh` gains nested-path support + three fleet repos
-  (growing-gardens-bi, car-assistant, crossplane-platform); the adoption
-  script's default names follow.
-
-### Added — done-means-proven gate (H1.2)
-- **Checkbox semantics**: `[x]` in a plan is a *claim*; `verify.Gate` fails any claimed
-  task whose contract fails (`--strict` also gates Unknown). `[ ]` open and `[-]`
-  skipped never gate.
-- **`fathom verify` CLI**: HTTP-first against the daemon, `--store` for CI; the gate is
-  always computed locally so a stale daemon can't launder a claim. Exit 0/1/2 with
-  fail-open pre-push (exit 2 warns and allows) and fail-closed strict CI. Wired into
-  lefthook pre-push + `scripts/ci.sh` here and in agentic-kit (`docs/plans/` in both).
-  First gated run caught 3 over-claims by the plan's own author (demo:
-  `docs/plans/README.md`; recall gap filed as dogfood O6).
-- **Gate honesty: an empty index is "cannot verify", never "all claims false".**
-  Caught live against the pre-migration daemon: verifying a service with zero
-  indexed symbols made every claim read `symbol not found` — evidence-shaped
-  output for an operational problem, which would have blocked every push (the
-  §5.3 trust-fatal mode). `fathom verify` now probes the index first (HTTP:
-  `list_services`; store: symbol count) and exits 2 (fail-open) with a
-  fix-it message when the service isn't indexed.
-
-### Added — born-portable stores (ADR-017)
-- **Repo-relative anchors** from every connector (LocalConnector included — absolute
-  refs from legacy stores still read); **`fathom remap`** repoints a service root in one
-  metadata update; **Watermark SPI** (git HEAD or content-addressed `manifest:` hash)
-  makes freshness domain-neutral — non-git corpora (docs folders, findings exports)
-  auto-refresh and sweep honestly; **ingest self-heal** purges pre-ADR-017
-  absolute-anchored content wholesale so no symbol duplicates across anchor styles.
-  Contract: `TestStorePortability_RoundTrip` (move corpus + remap → citations, queries,
-  freshness, and hash-gating all survive).
-
-### Fixed
-- `fathom-adoption.sh` measured nothing for this repo after the rename (transcript dirs
-  are path-keyed): name-era aliasing, per-ISO-week rollup, and a daemon call-log summary
-  section. Measured baseline: **0% fathom share (0 vs 193 grep calls)** — the number the
-  forced channels exist to move.
-
-
-### Renamed
-- **sextant → fathom** (ADR-015). Module path `github.com/geoffmilleraz/fathom`,
-  binary `cmd/fathom` → `bin/fathom`, MCP serverInfo/resource URIs/metrics prefixes,
-  docs and scripts. Back-compat kept where the old name is data in the field:
-  `.sextantignore` still honoured (legacy fallback behind `.fathomignore`),
-  adoption metrics count both `mcp__sextant__`/`mcp__fathom__` prefixes,
-  `session-hook` treats the two service/dir names as one identity, and
-  `reingest-fleet.sh` finds the repo under either directory name. Historical
-  records (this changelog below, USAGE_JOURNAL.md, dogfood-observations.md)
-  intentionally keep "sextant". Operator steps: `docs/rename-migration.md`.
-
-Uplifts from mining local Claude Code usage across the fleet. The finding: sextant works
-when called, but is dramatically under-used — agents reach for shell grep 10×+ more than
-sextant even where the index exists, because "index first" lived only in passive docs.
-
-### Added
-- **Path-scoped tool surfaces on the shared HTTP daemon.** `POST /rpc/{surface}` serves an
-  immutable per-request view of the registry: `companion` is a curated 14-tool coding-agent
-  hot loop (`find_symbol`, `query_symbols`, `references`, `outline`, `repo_map`,
-  `find_callers`, `symbol_context`, `pack_context`, `brief`, `entrypoints`, `batch`,
-  `ingest`, `staleness_report`, `list_services`); `coding`/`investigation`/`shared`/
-  `platform` mirror the group profiles. Bare `/rpc` remains the full surface (the right
-  registration for schema-deferring clients like Claude Code); scoped endpoints cut the
-  tools/list schema payload ~80% for clients that load every schema up front. One daemon,
-  one `mcp.Server`, one store — a surface is context carried per request
-  (`mcp.WithRequestScope`), not a second server. Motivated by the tool-surface strategy
-  review (86 tools ≈ 8.6k schema tokens for non-deferring clients).
-- **Surfaces hard-gate `tools/call`, closing the profile-bypass hole.** Previously a tool
-  hidden from `tools/list` by the active profile was still callable (`findTool` scanned the
-  full registry) — and `batch` dispatched sub-call handlers directly, bypassing any filter.
-  On a named HTTP surface, off-surface calls (including `batch` sub-calls) now return an
-  error naming the surface and pointing at `POST /rpc`. Canned prompts are scoped the same
-  way: a surface hides prompts whose workflow references tools it gates (resources stay
-  available everywhere — data, not capability). The stdio profile stays advisory (a single
-  client owns that process), pinned by regression tests on the non-gating side.
-- **`set_profile` is rejected over HTTP.** The profile is process-global on the shared
-  daemon: any client flipping it changed `tools/list` for *every* session, and
-  `listChanged:false` meant nobody re-fetched. The error points at path-scoped surfaces;
-  stdio keeps `set_profile` and gains `companion` as a valid value. Since every HTTP call
-  to it is dead, `set_profile` is also dropped from every HTTP `tools/list` view — scoped
-  endpoints advertise only what they serve. `capabilities` and the manifest resource now
-  report `active_surface` alongside `active_profile`.
-- **Tool-call telemetry wired into the daemon.** `serve-http --call-log` (default
-  `workspace/logs/mcp-calls.jsonl`, empty disables) appends the existing JSONL CallLogger
-  records — now with the request `surface`, with `batch` sub-calls logged individually
-  (`via:"batch"`) so bundled hot-loop lookups are counted per tool, and with each record
-  written as a single atomic `O_APPEND` write so a daemon kill can't merge lines — making
-  which-tools-does-the-hot-loop-actually-use measurable instead of argued (feeds the
-  sextant-adoption metric and any future surface curation). Decision record: ADR-014.
-- **`session-hook` — a Claude Code SessionStart adoption hook.** `sextant session-hook`
-  pings the shared serve-http daemon, maps the project dir to a service, and injects an
-  active reminder ("this repo is service X (N symbols); resolve symbols/callers/structure
-  via sextant BEFORE Grep/Read") — or an honest signal when the daemon is down or the repo
-  isn't indexed. Short HTTP timeout, always exits 0, hides malformed services from the list.
-
-### Changed
-- **Query-side staleness is constant-size now** (USAGE_JOURNAL.md ask #4: an 8-node
-  `query_symbols` answer arrived buried under ~117 lines of per-source staleness
-  metadata). The `staleness` block on query responses now carries at most 3 example rows
-  (the oldest stale sources) plus `stale_sources`, `total_sources`, `fresh_sources`, and
-  a new `oldest_ingested_at` low-water mark; `reingest_recommended` unchanged. The full
-  source list and commit drift stay available via the `staleness_report` tool.
-  Regression: `TestQuery_StalenessReport_CompactWhenManyStale`.
-- **`find_symbol` no longer punishes not knowing the exact identifier**
-  (USAGE_JOURNAL.md ask #3: `find_symbol("serveHTTP")` → `[]` because that wasn't the
-  exact spelling). Matching now degrades deterministically — exact/key-suffix →
-  case-insensitive (same equality rules, case-folded) → substring (capped at 20,
-  tightest names first, explicit `truncated`) — and a full miss returns up to 5
-  `did_you_mean` suggestions when any exist: edit-distance typo candidates from the
-  symbol list first ("authentiction" → `Authentication`), else concern-ranked. The
-  response reports `matched_via` (`exact`/`case_insensitive`/`substring`/`none`);
-  results are existence proof only for the first two tiers. Fallback tiers run only on
-  an exact miss, in the MCP layer, so no backend interface changed. Regressions:
-  `internal/mcp/findsymbol_test.go`.
-- **`verify_plan`'s tool schema slimmed ~27% (~150 tokens; description nearly halved)**
-  (it was the heaviest schema on the surface at ~554 tokens, ~6% of the whole registry
-  for schema-loading clients). `min_tier`'s valid values moved from prose into a proper
-  JSON-schema `enum`. Behavior is unchanged; the full verdict reference lives in
-  `docs/mcp-tools.md`.
+Nothing yet -- 0.4.0 was cut at HEAD.
+
+## [0.4.0] -- 2026-08-24
+
+**What this release is.** Ambient fathom, measured. The capability
+registry, self-healing fleet, anchored memory, and the flywheel check
+(phases T-Y) made governance a delivered configuration; the impact
+observatory, exploration ledger, and continuity threads made the program
+answer for itself in instruments; the config custodian made "instructed
+means true" mechanical. The 08-21 evidence audit then turned the
+instruments on the instruments (the verify gate proven, the A/B one-armed,
+the gauges caught lying under the TCC wedge and the OFF arm) and the
+closing waves shipped instrument truth, the work frontier (ctx packs,
+eligibility, leases, `fathom prime`), the verify spine (CUE joins the call
+graph), the vision-05 registry prune (34 tools deleted on evidence), and
+budgeted answers. Detail: `docs/changelog/0.4.0.md`.
+
+### 2026-08-23
+
+**Verify spine, surface prune, budgeted answers (VS-1..4, SP-B1..3, BA-1..8)**
+- verify-spine (VS-1..4): O4 annotation tokenizer is quote-aware with a loud lint on malformed blocks; CUE joins the call graph via `cueReferenceEdges` (unification/field-type/list-element/import edges), fixing O3 and ending the skip_test-only exit for CUE rows.
+- surface-prune (SP-B1..3): vision-05 kill clock executed, 34 of 59 zero-call registry tools deleted, 25 exempt with per-tool evidence; `docs/mcp-tools.md` synced with a registry-doc bidirectional test; `instrument --adoption` gains IT-1 read-error classification, fixing O17 (no more "88 of 88 zero" from a wedged reader).
+- ambient-fathom (BA-1..8): budgeted answers ship, `elisionFor` with a registry-iteration disclosure test (caught `repo_map` disclosing nothing on truncation), `applyBudget` with strict-prefix and never-refuses rules, per-tool defaults, per-call size accounting, and the observatory Cost panel.
+- CUE extractor migrated off deprecated `f.Imports` ahead of its mid-2026 removal; a fourth reachability silent-void confirmed (same-named methods do not wire, the Extract collision), worked around with direct wire tests.
+
+### 2026-08-21
+
+**Evidence audit, work frontier, instrument truth (IT-1..13, WF-1..11)**
+- 12-agent audit of every feedback channel produced the first full evidence verdict: verify gate PROVEN (180 of 436 gate runs/5d caught claimed>verified), thread bet COLLECTING at 4/20, A/B NOT ADMISSIBLE (ON arm: 0 admissible units); instruments themselves lied under the TCC wedge and the OFF arm.
+- instrument-truth (IT-1..13), 24/24 rows gate-verified: flywheel read-errors OPEN never IDLE with wedge hint; `ArmStateForWindow` arm-aware; counting beats survive `FATHOM_CHANNELS=off`; doctor surface_traffic falls back to persistent call log; session-hook fetch failure never "not indexed" (O2); observation ids mint under flock; adoption verify figure derives from verify ledger, retiring the 215/4940 double-count (O6).
+- work-frontier (WF-1..11): `ctx:` pointers + `plans context` materializer, `needs:` + derived eligible/blocked_on + `--eligible-only`, TTL-only advisory leases (.fathom/leases.jsonl), `fathom prime` for Codex, dispatch boundary registered in vision 24.
+- Found while shipping: a wedged ingest writes a zero-symbol/zero-edge index while reporting "0 failed", a fourth false-signal shape; measurement arm flips ON now that IT-1..5 are live, OFF floor exceeded 5x.
+
+### 2026-08-14
+
+**Completion pass: recommendations shipped (O29, SD-1, CC-8..10, DO-1)**
+- O29 interim fix: `plans status` fans per-plan verifies out 8-wide (was serial at ~4s x ~40 plans = 2m35s measured).
+- SD-1: the verify ledger, every gate run appends per-plan rows to `~/.fathom/verify-ledger.jsonl`, closing O14/O30 (flywheel verify-gate loop read only session-scoped runs; a repo gating on every push read "never ran").
+- CC-8: the custodian flywheel loop (IDLE/OPEN/CLOSED), fed by a new custodian audit beat; CC-10: `fathom init` scaffolds a commented concerns.cue and fleet reconcile reports zero-coverage repos informationally.
+- DO-1/2/4: A/B criterion's outcome half now derives from disk (median commits per unit beat-window); `fathom rate` demoted to optional human override.
+- DP-1: the doctrine catalog design doc. Spillover named: SP-10, SH-7..9, AM-6, AM-8, IR-3..5, DO-3, CC-9/11/12/13, SD-2..4, DP-2..4.
+
+### 2026-08-13
+
+**Adoption surfaces catch up to shipped fathom**
+- Refreshed continuity threads, lifecycle hooks, capability registry, scope/purge, config custodian, and plans status/next/archive across all adoption surfaces, every claim checked against the binary.
+- Shipped skills updated: onboard teaches the full hook stack including SessionEnd/PreCompact and the nine-skill set; doctor's row table gains capabilities + concerns; a new ninth skill `fathom-custodian` added.
+- Docs synced: Claude Code guide (7.1 brief+attention injection, new 7.7 continuity threads, 8 concerns.cue + capabilities.cue, 11 nine skills), Codex guide, usage.md, mcp-tools.md.
+- Install demo caught a real defect before commit: `skillsdist.Names` is the canonical list and the embed directive alone does not ship a skill, nine skills now proven installed by demonstration.
+
+**Config custodian ships its audit (vision 22, CC-0..7)**
+- "Instructed means true": agent configuration joins the evidence plane via `internal/custodian`, loading falsifiable wants from CUE at two law-13 scopes (`~/.fathom/concerns.cue` user defaults, `.fathom/concerns.cue` governing).
+- Four mechanical check kinds run from file reads only, no daemon, no LLM: forbidden_pattern, command_documented_and_exists, max_lines, pointers_resolve.
+- Surfaces: `fathom config audit` (text/JSON, exit 1 iff violated, zero concerns exits 0 with absence named), a doctor row, and a session-brief attention line that exists only while violations exist.
+- Falsification runs confirmed red for project-governs and file:line-evidence mutations; vision 23 and vision 22 section 7 land as specs with plan rows CC-8..13, DP-1..4, SD-1..4 open.
+
+**Brief learns from its first reader (O28)**
+- First real-world contact: a fresh session reported the brief was just "session ended with N dirty files", no substantive handoff.
+- Deposits supersede per repo (stable `se-<repo>` id): the fact closes itself when the tree comes clean (`repo_clean`).
+- Brief now leads with the spec plane (local plans summary, checked vs open) before this repo's items, then a collapsed foreign-telemetry line.
+- A thin brief teaches: when no handoff notes exist, it says exactly what to run before `/clear`. Supersede confirmed RED under mutation.
+
+**Reconcile detects stanza-content drift, fleet refreshed**
+- Stanza template gained the continuity line, but `fathom fleet reconcile` reported "wiring current" for all 17 repos, it checked stanza PRESENCE, never content against the current template.
+- `staleStanzaFiles` now compares each marker-owned region against the template rendered with the registry's service id, dirname only as a daemon-unreachable fallback.
+- First apply using dirname mis-rendered exactly one repo, sextant (registry id `fathom`); the corrected binary flagged and repaired its own mistake.
+- Applied fleet-wide: 17 repos, 0 drifted, every stanza now carries the continuity instructions.
+
+**Phase V lands: scope hides, purge proves (SP-3)**
+- All six rework defects re-reproduced against the new code and confirmed dead: fleet-wipe purge, inert suppression, VERIFIED-without-probe, constructor-blind audit, fleet-wide exclusions, home-reading gate.
+- `read_source` served purged content from disk after a purge printed VERIFIED; fixed so `read_source` and `symbol_context`'s snippet path load service-scoped exclusions and consult suppressions per call, refusing with the suppression named.
+- The disclosure channel (SP-3) was inert in deployment: `ApplySuppressions` produced disclosures no shipped surface collected; fixed by wrapping MCP dispatch's ctx with the collector, rendering a `suppressed` block into the envelope.
+
+**TH-5: continuity thread promote and handoff**
+- `fathom thread promote <thread>` scaffolds a gate-ready plan from a thread's open items with stable uppercase ids and origin session pointers; no row born checked, no contracts claimed.
+- Promoted items gain `plan_row_checked` conditions on their own rows so checking a row closes its source item; promote refuses to overwrite an existing plan.
+- `fathom thread handoff` renders open work as a harness-neutral markdown artifact with full session ids, grouped by thread, unbudgeted.
+- Stanza template gains the Codex path (SP-1, SP-9, SP-11, SP-12): harnesses without SessionStart are instructed to run `fathom thread brief` at start; note/point/close accept the natural `"text" --flags` order.
+
+**Phase V rebuilt: scope/purge defects made structural (V1-V6, AM-12, SP-10)**
+- `fathom scope list|suppress|unsuppress|preview` (reversible, disclosed suppression) and `fathom purge ... | history` (irreversible, verified removal) rebuilt so each of six verified defects (V1-V6) is impossible by construction.
+- V1: `PurgeReport` carries a tri-state `PurgeVerdict` (verified/bytes-unchecked/failed) computed in one place (`purgeVerdict`), mapped to distinct exit codes.
+- V2/V4: ingest-time exclusions are service-scoped by construction via `~/.fathom/ignore.d/<service>`; V3: chokepoint audit derives constructor list from the store package's own source, catching `MountReadOnly`.
+- V5: suppression applies at the query layer, re-read per call via `scope.Source` stat-based reload; V6: no init()-armed globals, resolved only through `$FATHOM_SUPPRESSIONS`.
+- Everything deleted and proven per location, closing AM-12 (`.fathom/memories.jsonl` purge for quoting memories); SP-10 (observatory Scope panel) stays open by instruction.
+
+**Continuity threads live (vision 21, TH-1..4)**
+- The thread, one strand of intent spanning sessions, is now first-class: `fathom thread brief|note|point|list|close`, an append-only store, items that close themselves when their awaited artifact materializes (`plan_row_checked` / `file_exists`).
+- SessionEnd hook deposits one mechanical item only when work is actually in flight; PreCompact files a pointer before context dies; neither reads transcript content.
+- The brief is capped at 2,400 bytes (~600 tokens), injected only on startup/clear; `resume` and `compact` print nothing, both properties confirmed RED under mutation.
+- Measurement loop: every ledger row carries cohort labels, `threadBetCheck` evaluates the registered bet, flywheel gains a continuity loop. TH-5 (promote/handoff, Codex stanza) is next.
+
+### 2026-08-12
+
+**Arm-covered windows count as measurement unit (MI-5)**
+- Owner pushed back on a 40-fresh-session baseline: his practice is one session resumed across days, so session-level units produced a control arm that could never admit anything.
+- Amendment registered before any data existed under it: the unit becomes an arm-homogeneous unit, a fully-covered session or the arm-covered window of a longer one, restricted to lines timestamped after the arm's `set_at`.
+- Compared quantity becomes median real tokens per assistant turn, with a >=10-turn floor per unit and >=20 units per arm; window read is tail-bounded, a truncated window is excluded and named.
+- Both leak paths (since-filter removed, whole-session figures admitted) confirmed RED under mutation; flywheel's arm loop now admits windowed units.
+
+**Daemon self-updates its own binary (AU-1..3)**
+- launchd `KeepAlive` means the daemon exiting IS a restart; it now watches its own executable and steps aside for a verified newer binary instead of waiting for a human to run `launchctl kickstart`.
+- AU-1 adds four safety properties: verify the candidate executes and reports a version before yielding, require the same bytes across two consecutive polls (settle), rate-limit to one adoption per cooldown, and log every adoption/refusal loudly.
+- Guards against a real incident: an unsigned binary once installed over the daemon's path and macOS refused to run it (`OS_REASON_CODESIGNING`); exiting on file-change alone would have looped forever.
+- `FATHOM_SELF_RESTART=off` pins the binary, and the choice is announced rather than silently honoured.
+
+**Dropped instrument fields caused zero admissible A/B sessions (MI-4)**
+- `transcriptSummaryFrom` hand-copied 3 of 12 parser fields; every field added later (including `FirstTS`) was computed then discarded, so `arm_coverage` read `unknown` and not one OFF-arm session was admissible (EX-1, IQ-2).
+- Consequences: no arm ever had a spend-shaped median (in/out/cache split dropped), warm-up (IQ-2) forever reported 'rows predate the instrument', and exploration-ledger per-question cost (EX-1) never filled in.
+- Fix: whole-struct assignment so new fields carry by construction; `TestTranscriptSummaryCarriesEveryField` asserts via reflection so reverting the fix requires naming all twelve fields.
+- Also fixed: `TestFlywheelSurvivesWithoutALocalCallLog` used process-global `os.Chdir`, breaking later tests resolving relative paths; replaced with a `FATHOM_CALL_LOG` override.
+
+### 2026-08-09
+
+**Session-count measurement bug inflated denominators 25x (MI-1..3)**
+- Claude Code's `Stop` event fires per turn, not per session close, so 200 ledger rows were only 8 distinct session ids; one resume_as_code session wrote 74 rows alone, inflating 'of 188 sessions' denominators roughly 25x.
+- `discovery_actions_total` is a per-session cumulative, so summing rows double-counted: 17,727 collapsed to 1,038 after fix; the pre-registered '>=20 sessions per arm' floor would have been met by about one real session.
+- Fixed by deduping at read time, keeping the LAST row per session id, while still reporting the raw stop count alongside for auditability (MI-1).
+- New `fathom rate <1-5> [--note]` command instruments the self-rated outcome half of the criterion, joined to the ledger by session id at read time; an unjoinable rating is refused rather than stored.
+- `evaluateABCriterion` now states in words which parts are unmet, e.g. 'the OFF arm has 0 of the 20 sessions registered as the minimum; the ON arm has 5 of 20'.
+
+### 2026-08-08
+
+**Realization grade replaces wiring grade, ladder of 5 rungs (RG-1..4)**
+- `wiringGrade` could score a repo A from configuration alone (one call ever, no obligations firing, no gate running); `realizationGrade` (RG-1) instead folds a 5-dimension ladder: wired, fresh, queried, preventing, gating, each a precondition for the next.
+- 'Queried' now counts calls in the current window rather than ever, so the signal can actually go down; 'preventing' and 'gating' are new and are the only dimensions measuring fathom doing something rather than being available.
+- The letter grade names the first broken rung (e.g. 'B -- not preventing') instead of a bare letter.
+- A repo with no plans grades gating not-applicable rather than failing; a repo with no sessions in the window grades idle, never F, avoiding false alarms that bury the real one.
+- Fleet page now sorts by unrealized value (unmet rungs weighted by sessions) instead of call count, ties breaking on sessions then name.
+- Refs: SH-1, SH-6.
+
+**Self-healing fleet engine, fathom edits repos under law 15 (SH-1..6)**
+- `fathom fleet reconcile --apply` sat unrun beside 9 of 17 repos for weeks since it required a human to act; `internal/wiring` (SH-1..6) makes it a safe button via three ownership tiers.
+- Marker format v3 (`<!-- fathom:begin v3 sha256:... -->`) hashes the region body as fathom last wrote it, so a hand edit inside fathom's region is detectable with no history; pre-v3 markers are recorded as unknown provenance, distinct from drift (law 3).
+- `.fathom/owned.json` ledgers keys fathom added to files it doesn't own; a losing ledger makes fathom own nothing, never a duplicate.
+- Plan -> apply -> receipt: the plan is always computed before mutation, and one BLOCKED item does not block others in the same run; law 15 is one-sided -- a drifted region is never merged, only reported BLOCKED with both versions attached.
+- New verbs `fathom fleet receipts`, `fathom fleet undo --last`, `fathom fleet undo <receipt-id>`; undo restores from receipt (never inverts) and refuses if the file changed since, itself receipted.
+- Also fixed: `fetchServicesOnce` dereferenced a nil `*http.Client`, so `fathom flywheel` panicked outright when the local call log was absent.
+- Refs: AM-1, AM-5, AM-7, SH-6.
+
+**Anchored memory, refusal as the product (AM-1..5, AM-7)**
+- Phase W of `docs/plans/ambient-fathom.md`: a memory with no anchor is refused outright (not stored at low tier), with the reason and destination stated, e.g. 'put it in CLAUDE.md'; the store stays empty on refusal by test.
+- Tier is derived structurally from evidence kind, never asserted by the caller; `WriteMemory` routes claimed confidence through agentic-kit's `scoring.ApplyCeiling` plus `TierCeiling` (AM-1's first caller), proven against a lying caller claiming verified/5 that lands capped at assumed/1.
+- Drift is evaluated at read time and cached per index generation, no sweep or timer, so it can't be missed while the daemon is down.
+- Lifecycle: fresh -> suspect (anchor content changed, tier drops one step) -> orphaned (anchor disappears, stops surfacing, never deleted); `fathom memory review` resolves as still-true/no-longer-true/rewrite, with model-confirmed landing strictly below human-confirmed automatically.
+- New `internal/memory` package and `fathom memory add|list|review|show`, stored at `<root>/.fathom/memories.jsonl`, project-scoped, loopback only (law 13); AM-6 (obligations injection) and AM-8 (`memory_search` tool) deliberately deferred.
+- Refs: AM-5.
+
+**`fathom flywheel` verifies feedback loops are actually closed (FW-1..3)**
+- New command checks 7 loops (session ledger, counterfactual arm, call log, obligations, verify gate, exploration ledger, observations) and reports each CLOSED (produced, arriving, and consumed), OPEN (a defect, exit code 1), or IDLE (nothing to measure yet, never fails the exit code).
+- Motivated by two same-day silent measurement failures: the OFF arm burned 14 hours recording nothing, then produced rows that were all inadmissible.
+- The arm loop distinguishes 'armed but recording nothing' from 'rows arriving, none admissible' -- the latter is subtler because the producing side looks alive.
+- Caught a bug in itself on first run: the obligations loop read `ObligationCalls` off the impact model where it is always zero instead of the call log via `buildObservatoryModel`, wrongly reporting IDLE on a loop carrying 6,994 injections.
+- Live fleet result at time of writing: 4 closed, 1 open (counterfactual arm), 2 idle.
+
+**Arm coverage labeling fixed after OFF-arm rows leaked pre-arm activity**
+- First two OFF-arm rows after the earlier fix were corrupt but unlabeled: their transcripts began 10 days before the arm was set (duration_ms 243h and 256h), one carrying tokens_total 933,232,702, yet stamped arm: off.
+- Such rows would drag the OFF arm toward the ON arm in a paired comparison, manufacturing a false null result ('fathom saves nothing') from mislabeled evidence.
+- Producer side: `sessionLedgerEntry` gains `arm_coverage` (+note) via `armCoverage`, valued full (session began at/after arm set, the only value admissible), partial (transcript predates the arm), unknown (no timestamped line, not assumed clean per law 3), or empty (no arm active).
+- Consumer side: `buildImpactModel` excludes partial/unknown rows from both arms and names the excluded count with reason rather than silently dropping them; a row stamped off with no coverage field is treated as unknown.
+- Also fixed: the brief promised a median comparison whenever both arms had any sessions, even without tokens on both sides; every new test was confirmed RED against the ungated fold first, without which the 933M row leaks into the OFF median.
+
+**Capability registry reported switches it never enforced (CR-7)**
+- `fathom capabilities set guards off` wrote config and the table reported 'switched off by this repository' as fact while guards kept firing on every edit -- a config read rendered as behavioral fact, violating law 14 inside the package built to enforce it.
+- Fix distinguishes `Capability.Switchable` (obligations, guards, verify-gate: actually gated in `edithook.go`, `edithook_pre.go`, `stophook.go` before daemon traffic) from Status capabilities (index, layers, modules, agent-surface, session-ledger, narrate), which `set` now refuses and names the real control instead.
+- `verify-gate` off still records the ledger row with `verify_catches` as nil (not a fabricated zero), since the gate did not run and its result is unknown (law 3).
+- `session-ledger` is deliberately status, not switchable, so measurement cannot be silently disabled from a config file; `FATHOM_CHANNELS=off` remains the documented kill switch.
+- `TestEverySwitchableCapabilityHasAnEnforcementCase` fails the build if a capability is marked switchable without a test proving observed behavior changes; all enforcement tests were confirmed RED against the shipped defect first.
+
+**URGENT: OFF arm was silencing its own measurement, zero ledger rows**
+- `fathomChannelsDisabled()` returned `env == "off" || armOffActive()` and every hook called it first, so an active OFF arm made the session hook exit before its announcement/decrement and the stop hook exit before `recordSessionLedgerEntry`, leaving zero ledger rows.
+- Measured cost: an arm set 2026-08-08T07:11:47Z produced no ledger rows for the rest of that coding day, with `sessions_remaining` stuck at 10 of 10 since the decrement never ran.
+- `TokensOffSessions` could never rise, so the counterfactual pilot could never leave 'collecting' -- the one instrument able to license a savings claim (law 12) was structurally unable to produce one.
+- Fix separates measurement from assistance: `fathomChannelsDisabled()` is now the env kill switch alone; new `assistiveChannelsDisabled()` = env or active OFF arm, used only by edit hooks (obligations, guards, pre-edit channel); session and stop hooks use the env gate so they always record, and the stop hook returns before the verify pass (an assistive gate) leaving `verify_catches` nil rather than 0.
+- A test, `TestArmStamping/channels_kill_switch_honors_the_arm`, had asserted the buggy conflation as required behavior for weeks; it and a new `armmeasurement_test.go` now pin the correct contract, confirmed RED against the old gate first.
+
+**Capability registry, one typed on/off surface (CR-1..6)**
+- `internal/capability` is a typed registry over four extension seams; `fathom capabilities` is the new verb answering "why isn't X happening here?"
+- Detection is observation, never configuration: `guards: on` with no rules compiled reports OFF with the reason (law 3 applied to config).
+- Every registry entry must state why it is off, enforced by a test iterating the registry against a ZERO probe; absence and breakage are kept distinct so only breakage fails doctor.
+- Law 13 enforced loudly: a user-scope file setting a project-only key is refused with the key named, unknown ids get nearest-match suggestions.
+- Fixed three defects found by tests: unbound module read as breakage, duplicated `daemon_reachable` diagnosis, and index freshness collapsed from three states (unknown/stale/fresh) to two; also renamed ambiguous anchor `Validate` to `ValidateSettings` (O22, O23).
+
+**Value brief rewritten as a readable story (BR-1..4)**
+- The brief now opens with a plain-language short version (what fathom is, its scale, what it has and has not shown) plus five numbered questions each with an explicit Reading line.
+- All counts route through the observatory's existing `fmtThousands` (`17,727` not `17727`); a duplicate helper added in a first draft was deleted in favor of the incumbent.
+- The closing section became a work order: each entry names what's switched off, what enabling it would let a future brief say, and the exact command or a reason none exists.
+- Exposure is not outcome: the prevention section now states that 6,992 rule injections and 17,727 discovery actions count things fathom did, not mistakes avoided.
+- Brief page rendering escapes markup before tag emission so an instrument note can never inject markup.
+
+**Observatory readable pass: token medians, chart values, index-only honesty**
+- The 596M-token finding: `tokens_total` summed all flow including cache reads, inflating a single row's "median session" to 596M tokens; the ledger now splits in/out/cache at instrument, model, and render layers.
+- Rows predating the split count as unknown rather than feeding the median an inflated total; OFF arm now reads "median real tokens --" instead of "no token totals".
+- The tool-load chart now renders comma-grouped value labels (`ShowValue: true`) instead of relying on bar-width eyeballing.
+- Every non-A wiring card now shows a remedy via fallback to `GradeRaise` when `FreshnessRemedy`/`WiringRemedy` don't cover the "wired but unused" case.
+- A C/D-graded service with zero ledger sessions and zero agent calls now renders a neutral "index-only" chip instead of a scary amber letter; learn-tooltips added for "(N agent)" traffic figures.
+
+**Exploration ledger: the 90x measured, dashboard readable (vision 19, EX/FR/TD)**
+- Every session transcript now records both raw exploration (Grep/Glob/Read sizes) and indexed discovery (fathom answers), measuring per-question token cost and ratio, folded fleet-wide (EX-1/2/3); impact page leads with this story (EX-4).
+- Dashboard readability: every page opens with a plain-English lead and no-JS explainer; `/observatory/brief` renders a management-ready summary with markdown download (EX-5/6); service page shows layers, guards, bindings, and obligations-compile condition (EX-7/FR-5).
+- Field report fixes: plans status/next now discover plans in the service's own repo, not blindly cwd, fixing a cross-repo wrong-verdict bug (FR-1); the 264,487-catches artifact retired in favor of per-session verify_catches (FR-2).
+- Fleet reconcile detects and `--apply` installs missing shipped skills (FR-3); session hook now teaches the first query with a live symbol from the repo's own index so the first query lands (FR-4); O13 filed: CompileLayer ignores the provider registry, deferred to FR-6.
+- Tool diet (TD): agent surface pinned at <=16 tools (~12.3 KB schemas, ~3.1k tokens/session) by test; the alarming 88-tool count is the full /rpc surface agents never load; wiring grades stop reading invisible-from-here as absent (EX-8).
+
+**Observatory v2: the four questions leaders ask (vision 18, IQ-1..11 + IQ-15)**
+- Q1 (what did the agent not have to do?) stays DARK until OFF-arm sessions exist, law 12 rendered as product; Q2 (what did fathom prevent?) shows verify catches plus 6,985 obligations served live from the call log, with conformity checking deferred to IQ-13.
+- Q3 (where does the agent flounder?): call-log rows carry result_count and matched_via (IQ-1) so hits/misses/did_you_mean are distinguishable per tool; Q4 (is knowledge compounding?): ledger learns first_edit_turn (IQ-2).
+- New story layer: `/observatory/session?id=S` replays one session as a Timeline with a ledger verdict card (IQ-4); `/observatory/story` composes the trailing week with session-replay links (IQ-5); landing page leads with the four questions (IQ-6).
+- Fleet tiles gain 14-day sparklines, top-tools bar chart, and a WIRING GRADE chip (A-F) with the one command to raise it (owner ask); brief reorganizes around the four questions (IQ-11).
+- `--for 14d` parses (IQ-9); `fathom init` auto-arms a 10-session narrate window, self-expiring (IQ-10), ON fleet-wide until 2026-08-22; deferred: session-start context pack (IQ-12), obligation conformity (IQ-13), LLM weekly (IQ-14).
+
+**Observatory: value realization at a glance, built on app-kit (vision 17, OB-1..12)**
+- Daemon grows a full loopback front door: GET /, `/observatory` fleet tiles, `/observatory/service?id=S` detail, `/observatory/impact` verify catches/discovery actions with denominators and a counterfactual pilot state machine (law 12); `?format=json` everywhere.
+- `fathom brief` renders the impact model to a dated local markdown value brief with an explicit "Not measured" section, keeping sharing a human verb (law 13).
+- Built entirely on app-kit per owner directive: dashboard.RenderWidget/Grid, stat.RenderBand, viz.Sparkline/Gauge replace hand-rolled tiles deleted the same day; the honest-absence tile was promoted up into the kit as `stat.Absent` (app-kit af47262, D13).
+- CSS builds via `task ui:css` from `cmd/fathom/ui/input.css` using the kit's checksum-pinned Tailwind binary, no Node; UI doctrine wired into CLAUDE.md/AGENTS.md and .fathom/guard.cue.
+- Every page verified by Playwright screenshots in both themes; fixes included absence-note duplication, missing thousands separators, and a duplicated law-14 line.
+
+**Full C++/CMake/clang/LLVM/Ninja support (cpp-toolchain, IO-27 trigger fired)**
+- Symbols get one spelling: out-of-class definitions ("Widget::render") normalize "::" to "." so call edges join inline-method spelling (CT-1); templates, operators, destructors, and C++17 nested namespaces pinned by tests (CT-2).
+- Polyglot `.h` extension now routes per-file through a C++-signal sniffer so LLVM-style headers keep classes/namespaces/methods instead of being flattened by the C grammar (CT-3).
+- CMake becomes a dialect: CMakeLists.txt/*.cmake extract projects, targets, functions, options, find_package deps, with target_link_libraries as target-to-target edges (CT-4/5), via TierPreScan hand scanner (no variable-indirection guessing).
+- languages field stops lying for C-family services: cpp/c/cmake/rust/csharp/cue (CT-6); doctor's `cpp_toolchain` check warns (never fails) when compile_commands.json is missing, naming the Ninja+clang export command (CT-7); init excludes build/, out/, cmake-build-*/ (CT-8); build.ninja refused as indexable input (CT-9).
+- ExtractorEpoch 5->6 forces re-extraction of all stored C/C++ observations; calibrated live against fmtlib/fmt: 5,470 symbols (424 classes + 181 namespaces from .h headers), 24 CMake targets, zero "::" contamination (CT-10). Precise clang mode, WASM engine migration, Conan deferred (CT-11/12/13); O12 filed: ingest CLI's cwd-relative -store default indexes into the void.
+
+**Activation plan closes: exit proofs run live (IO-30/31/32)**
+- IO-30: `fathom instrument --adoption --service app-kit` from app-kit cwd resolved the daemon call log (69 calls, bare=12/agent=57 split), proving the gauge is cwd-independent.
+- IO-31: doctor on app-kit ran 24 checks, 20 pass/3 fail/1 skipped, and every FAIL was true (lefthook_gates, skills_installed, surface_traffic) -- no false doctor row survives on a consumer repo.
+- IO-32: the counterfactual pilot was pre-registered before any OFF session, N=10 matched sessions per arm, primary metric tokens_total from the ledger, medians reported as a range with denominators, kill criteria filed per law 12.
+- O9 closed (fixed by the IO-9 budget fix); O10 filed: a redeploy rolls the TCC dice, new binary hash under launchd silently loses the removable-volume grant; O11 filed: CLI call log resolves cwd-relative.
+- Final sweep `fathom verify --service fathom --plan docs/plans/impact-observatory-activation.md`: 32 rows, 29 claimed, every contract-bearing row verified, three deferred rows carry triggers.
+
+**Skills pack: eight skills, three renderings, one plugin (vision 16, IO-23/24/25/26)**
+- fathom-rewire and fathom-activate join the embedded skills pack, promoted from the reconcile pass and activation catalog prompts.
+- `--skills=agents` renders the same SKILL.md set to the shared `.agents/skills` path Codex and Gemini CLI both walk natively, one spec-conformant write for multiple harnesses.
+- `fathom plugin render` generates the Claude Code plugin from the same embedded sources: plugin.json, all eight skills, hooks/hooks.json spelled via the shim-stable `fathom`, .mcp.json, and optionally a marketplace manifest.
+- IO-26 integration proof run live: both kit packs (app-kit ui-appkit, agentic-kit agentic-kit-standards) install via `fathom layers install` and list with honest not-yet-eval-gated warnings.
+
+**Narrate v0: enhanced-understanding dial, story rows only (vision 14 section 6, IO-21/22)**
+- `fathom narrate on --for D|--sessions N` is bounded, auto-expiring, and off by default; an unbounded narrate call refuses.
+- While active, hooks append version-stamped story rows per intervention (obligation-served, verify-catch, guard-served) to `<repo>/workspace/artifacts/narrate/story-<date>.jsonl`.
+- Story rows are per-repo, local, never bundled, and a lens over mechanism-labeled events, never a source of truth (law 14 candidate) -- nothing downstream may consume them as evidence.
+- Pinned by TestNarrateExpiry and TestStoryRows, confirming inactive narrate writes nothing.
+
+**Fleet reconcile and session tripwire: wiring is a diff (vision 14 section 7, IO-17/18/19)**
+- `fathom fleet reconcile` diffs every repo's installed hooks against the canonical template (fathomHookSpecs), naming missing entries, stale absolute binary paths, and pre-rename stanza branding per repo.
+- `--apply` executes only the SAFE subset: repointing stale commands to the shim-stable `fathom` in the project file, merging missing entries through init's idempotent machinery, one scope, never both.
+- The session hook is now the tripwire: a drifted repo's session opens by naming the drift and the exact remedy.
+- Pinned by TestReconcileDiff/TestReconcileApply (drift -> apply -> clean) and TestSessionTripwire.
+
+**PATH shim: hooks spell `fathom`, never a checkout path (IO-20)**
+- `fathom init` installs `~/.local/bin/fathom` pointing to the deployed libexec binary, falling back to the running executable, refusing to clobber a foreign real file, and idempotent on rerun.
+- doctor gains a `binary_on_path` check after a 2026-07-31 case where `fathom verify ...` printed command-not-found as one token and the pipeline exited 0, a verification failure wearing a pass.
+- One stable name on PATH ends the class of bugs where hook behavior depends on when a checkout was last rebuilt.
+
+**Fleet report: the audit as a verb (IO-16)**
+- `fathom fleet report` folds daemon registry, per-service call-log traffic, local wiring state, open observations, ledger session counts, and three-state freshness (indexed commit vs HEAD via statusz) into `~/.fathom/fleet/report-<date>.{json,md}`.
+- Local files only, no daemon writes, no network beyond loopback; collection stays per-repo, consumption is explicit and human-run, not silent aggregation.
+- Every unmeasured cell is a dash, never a fabricated zero.
+- First live run folded the real fleet's 18 services.
+
+### 2026-08-07
+
+**Ledger attribution: verify catches ride the session row (IO-14, IO-15)**
+- Stop hook now runs its verify pass first; the session-ledger row carries `verify_catches`, the proven-failing count for newly-claimed tasks, as a nullable field (nil = UNKNOWN when verify never ran, not a fabricated zero).
+- Together with `arm` (IO-14) the ledger now holds the counterfactual program's join keys per session.
+- The vision's other two attribution fields, `injected_rules_used` and `discovery_substitutions`, need obligation-file tracking and call-log/beat correlation that don't exist yet; deferred, not dropped.
+
+**Measurement arm: FATHOM_CHANNELS=off with a memory (IO-14, O15)**
+- `fathom arm off --for D --sessions N [--note]` is the counterfactual program's OFF switch: STAMPED (schema+fathom version, set-at, note), BOUNDED (unbounded OFF refuses), ANNOUNCED (doctor's `channels_env` and the session hook declare it), RECORDED (session-ledger `arm: on|off` field).
+- Addresses the O15 lesson that a silent kill switch is a measurement bug.
+- `fathomChannelsDisabled()` composes both switches; hooks treat them identically. State at `~/.fathom/arm.json` (0600); `fathom arm on` ends it early.
+- Pinned by TestArmStamping (bound refusal, session countdown to expiry, wall-clock expiry, clear, kill-switch composition).
+
+**Version-stamped telemetry: every record names its producer (IO-11)**
+- New `internal/buildinfo` package (VCS revision + -dirty, "unknown" floor, never empty) stamps call-log rows (`schema_version 2` + `fathom_version`), hook-beat meta, session-ledger rows, and daily rollups.
+- Hook-beat meta also gains `project_dir`, the per-repo attribution the user-global beat log lacked; caller keys win on collision, caller maps never mutated.
+- Legacy rows without the fields read as version-unknown, never backfilled or guessed.
+- The 251,834-catch-headline class of cross-semantics aggregation becomes a filterable query instead of an investigation.
+
+**Registry surgery: two verbs, one-root-one-service enforced (O1, IO-1, IO-2, IO-3)**
+- `remove_service` (idempotent every-row deletion, claim_events cascaded through claims) and `rename_service` (atomic re-key across eleven service_id tables, typed refusals, claim ids stay minted as historical evidence) both delegate store to client to AutoRefresh to tool and bust the identity cache on success.
+- The ingest handler now enforces ValidServiceID at the daemon (the geoffmiller-cloud twin was re-fed for seven weeks past the client fix), plus EvalSymlinks canonicalization, duplicate-root and nested-root refusal.
+- With IO-1's deterministic resolution, every O1 fix (a)-(d) is now landed.
+
+**Adoption gauge: scoped to any repo, agent-surface aware (O6, IO-10)**
+- `instrument --adoption` gains `--service` (case-insensitive filter; unattributed rows excluded AND counted beside the filter, never silently dropped) and cwd-independence, reusing doctor's call-log resolution when the relative default log is absent.
+- O6's headline defect closes: the zero-call list is partitioned into "zero-call AGENT-surface tools (actionable)" vs "registered but not exposed" (different remedy).
+- New `mcp.AgentSurfaceTools()` exports the allowlist the partition scopes against.
+- Pinned by TestAdoptionServiceScoped.
+
+**compile --dry-run: cost as an honest range (O8, IO-8)**
+- Dry run once reported input-only tokens and `cost_usd: 0.000000` for a run that actually cost $0.64 and 21 minutes (output was 87% of tokens).
+- Now carries an estimate band (EstTokensOutLow/High = input x [2, 8], observed obligations layer ran ~6.7x); human rendering prints tokens-in as the bytes/4 heuristic it is, output as unknown-with-a-band, cost as a labeled range, duration band at ~100 output tok/s.
+- Real runs print exactly as before.
+- Pinned by TestDryRunEstimateRange (positive ascending cost band, no LLM configured needed).
+
+**Explicit-empty bindings/guards accepted as valid (O7, O22, IO-7)**
+- O22's fix accepted the ABSENT field but kept `bindings: []` a loud error; the fleet's activate skill, kit packs, and review fix-pass all standardize the explicit literal, so doctor FAILed an adopter file fathom's own tooling prescribes.
+- Now one vocabulary: `bindings: []` and `guards: []` load clean and pass ValidateStrict (schema `[_, ...]` constraints dropped in schema/binding + schema/guard); only present-and-malformed entries fail.
+- Live proof: platform-engineering's standing `binding_file FAIL` is now PASS.
+- Pinned by TestExplicitEmptyBindings / TestExplicitEmptyGuards; prior rejection-asserting negatives inverted.
+
+**review --budget-seconds bounds the advisory channel (O9, IO-9)**
+- Root cause: nothing prompts and nothing hangs, a six-file pre-push review measured 22.6s and lefthook buffers output until completion, so scripted pushes read the silence as a stall and killed it at their caps.
+- `fathom review` gains `--budget-seconds N`: the whole body races the deadline and on excess prints a named advisory skip, exits 0.
+- Flag requires `--no-persist` since a run that can be cut off must never be a store writer; pre-push step now passes `--budget-seconds 20`.
+- Pinned by TestReviewNonInteractive. Follow-up filed in O9's fix note: why a six-file review costs 22.6s at all.
+
+**doctor: lefthook gates recognized through variable indirection (IO-5, O23)**
+- `checkLefthookGates` no longer requires the literal substring "fathom verify"; `lefthookInvokes` matches literal, path-suffixed, or shell-variable spellings (`"$FATHOM" verify`, `${FATHOM} verify`).
+- Closes the audit's live false negative where a correctly-gated repo (platform-engineering's pre-push loop) was told to add a gate it already had.
+- The audit's other two doctor findings (`binary_fresh` HEAD comparison, `hooks_firing` repo-relative call log) were already fixed at HEAD by the O23 wave; the audit ran a stale repo binary, the deploy-skew lesson the reconcile design exists to close.
+
+**Plan grammar: quoted braces preserved, unparseable blocks loud (O4, GI-7, IO-6)**
+- `parseAnnotation`'s brace pairing is now quote-aware: a quoted value containing the notation's own vocabulary `{symbol, package}` no longer terminates the block, so the row keeps its author-owned id and full contract (TestParseAnnotation_BracesInQuotedValues).
+- GI-7's trailing-block rule is preserved: pairing runs over outside-quote braces only, last close wins.
+- A brace block that parses to zero keys but contains contract keywords now surfaces as `Task.AnnotationSuspect`, and LintPlan names it "VOID" instead of silent md-NNN downgrade (TestLintPlan_UnparseableAnnotationIsLoud).
+
+**Session hook: enumeration failure is not "not indexed" (O1, O2, IO-4)**
+- `fetchServices` now returns an error alongside the map, with one retry on its own 4s timeout; every failure mode (transport, non-2xx, unmarshal) becomes an error instead of an indistinguishable empty map.
+- Session hook grew the third branch O2 asked for: a healthy daemon whose `list_services` fails renders a degraded notice naming the failure, never the confident false "not an indexed service" instruction.
+- A genuinely empty index now says "none yet" instead of the dangling "Indexed services: ." join artifact.
+- Hook's inline candidate dedup now uses mergeCandidates (the O1-c fix). Pinned by TestSessionHookDegraded and TestSessionHookZeroServices.
+
+**observe race window before foreign-file refusal**
+- `fathom observe`'s foreign-file refusal now waits the same 200ms `reReadAfterLostCreateRace` window before concluding a file is genuinely foreign, instead of misreading a concurrent creator's O_EXCL-create-to-header-write window as a foreign file.
+- Previously the loser refused and lost the entry (exit 1); `TestObserve_ConcurrentFirstCreationLosesNothing` now green at `-count=10 -race`.
+- Found by the impact-observatory activation gate run, not by a user losing an observation.
+
+**Deterministic service resolution and dedup (O1 a-c, IO-1, IO-2)**
+- `resolveFromServices` no longer picks duplicate-corpus-root winners by Go map iteration order, which had zeroed obligations on 18/50 measured edits; winner is now chosen by richness (symbol count), then basename affinity, then lexicographic order, pinned by `TestResolveFromServicesDeterministic` (200-iteration determinism per case).
+- `candidatesWithDaemon`'s dedup is extracted to `mergeCandidates`, which drops only exact name+root duplicates so a name-equal candidate at a different root survives (`TestMergeCandidatesNeverCollapses`).
+- O1 fix (d), daemon-side duplicate refusal, lands separately with plan row IO-2.
+
+## [0.3.0] -- 2026-07-30
+
+**What this release is.** The rearchitecture and the proof. The store
+went pure-Go SQLite and DuckDB was deleted outright (ADR-025); the review
+verb, findings-as-claims, semantic layers, expert modules and the layer
+catalog landed; the MCP surface split into a curated 16-tool agent surface
+over an expert registry (ADR-014); the deterministic SDD reconciler,
+`fathom plans`, and the done-means-proven gate went live in the repo's own
+hooks; and the benches were run honestly -- the lookup x10 claim retracted
+under its pre-registered bar, then fathom winning its home turf 13/13 vs
+11/13 at 0.570x tokens. Detail: `docs/changelog/0.3.0.md`.
+
+### 2026-07-24
+
+**T5-8 second bench swing, fathom wins home turf (O10, O12, O15)**
+- Home bench (H2-1 criterion): PASS, success 13/13 vs grep 11/13, tokens 1,594,762 vs 2,795,948 = 0.570x, turns 47 vs 72; fix wave drove it, `read_source` (T5-4) cut H1-T13 from 601,132 tokens/16 turns to 106,954/4, DocChunk `end_line` (T5-5) flipped H1-T08 to a pass.
+- Lookup bench (B1's <5x bar): the x10 claim retraction STANDS; 15/15 vs 14/15 success, tokens 0.511x = 1.96x reduction (was 1.38x), still under the pre-registered 5x bar.
+- Pre-run corpus revision committed first (8a847d3); bench runner's fathom-arm allowlist gained `read_source` to match the live 16-tool `/rpc/agent` surface.
+- `list_services` now returns each service's recorded corpus `path`; session/edit/stop hooks resolve service identity by matching project directory against those paths, fixing O15 where obligations injection was silently dead on the dogfood repo for six days.
+
+**Citation drift re-anchoring and eviction visibility (T5-1, T5-2, O13, O14, ADR-017, OP-6)**
+- O13 fixed: `core.ClaimLink.AnchorText` is now persisted alongside the hash by both live "cites"-link writers; `semantic.Sweep` re-anchors a drifted citation when its `AnchorText` resolves to exactly one new location, appending a `ClaimEvent{Verdict:"re-anchored"}` audit entry.
+- Fleet re-sweep (T5-1b): 340 claims checked, 73 wrong citations found (all fathom-service), 0 healed / 73 staled since no existing claim carries `AnchorText` yet; healing activates on the next fleet recompile.
+- O14 fixed: `obligations` reports `displaced: N` when `MaxObligations` drops served-eligible claims, and every served rule carries a `layer` label; the scope-mapping half is filed as `prompt.PENDING-scope-precision.md` pending a deliberate flag-day alongside OP-6.
+- Once deployed, ~73 fathom obligations begin serving `[stale]`-labeled fleet-wide, an expected honesty event, not new breakage.
+
+**read_source tool, DocChunk line offsets, symbol_context snippet (T5-4, T5-5, T5-6, ADR-014)**
+- New `read_source` MCP tool (`{service, file, start_line?, end_line?}`), bounded/line-numbered/read-only, added to the 16-tool agent surface; capped at 200 lines / 16000 bytes, refuses absolute paths, traversal, out-of-corpus files, and binaries; answers H3-1 where recovering cited text cost 16 turns / 601k tokens.
+- DocChunk gains an additive `EndLine` field threaded through fusion, SQLite schema (`end_line` column + migration), and serving paths; `MarkdownExtractor.Extract` now computes each heading's real section extent, closing the H3-1 T08 class of guessed cited lines.
+- `symbol_context` gains an inline `snippet` field (source, line-numbered, capped at 40 lines), with `snippet_truncated:true` when capped and `snippet:false` to opt out; honest-absence when source isn't retrievable.
+- Hardening round closed three proven holes: symlink containment via `filepath.EvalSymlinks`, a 2MB `os.Stat` ceiling plus 16000-byte line truncation, and enforced `.fathomignore`/skip-dir/`.env` refusal reasons; all "15-tool" doc references updated to 16 with `read_source` named.
+
+**Home-turf bench run: fathom does not win its own ground (H3-1, O13, O14, SS-8)**
+- Wave-3b home-turf context-bench (13 index-native tasks x 2 arms, 26 live `claude -p` runs) failed both halves of the H2-1 criterion: success 12/13 vs 12/13 (equal, not strictly greater), tokens 1.071x grep's (7% premium where <=1x was required).
+- Fathom alone failed H1-T08 (DocChunk granularity can't pin a sentence-start line); grep alone failed H1-T13 (quoted an ADR identifier outside the required line range); fathom cheaper on 8/13 tasks.
+- Run's product findings filed as dogfood O13 (sweep-missed citation drift) and O14 (top-6 serving cap silently evicts previously-served claims after recompile).
+- Pre-run re-derivation found the recompile's three-layer blend silently drifted T01/T02's citations and SS-8's DuckDB deletion broke T06/T07/T13's targets outright.
+
+### 2026-07-23
+
+**DuckDB backend and CGO deleted outright (ADR-025, SS-8, XT-6b, ADR-013)**
+- SS-8's deferred trigger fired after a full green day on SQLite; `internal/store/duckdb.go` (`DuckStore`, `go-duckdb/v2`) and its test file are deleted outright, no DuckDB code remains in the repo.
+- `migrate-store` removed rather than kept, since reading a pre-SS-8 store now needs a pre-SS-8 build; shared row scanners moved into `sqlite.go`.
+- `store.BackendForPath` now refuses `.duckdb` loudly with a typed error naming the file, instead of a silent fallback; empty-path in-memory convention now opens `SQLiteStore`.
+- `go mod tidy` removed `go-duckdb/v2` and its Arrow-only indirect deps; `internal/store` now builds/tests with `CGO_ENABLED=0`, while the full binary still needs CGO solely for tree-sitter (ADR-013), a separate not-yet-triggered removal (XT-6b).
+
+**The review verb: review_diff and fathom review (Phase C, ADR-016, ADR-018, FT-4, FT-6, FT-7)**
+- C1-1: new `review_diff` MCP tool composes diff impact, scoped obligations/findings, architecture conformance, and spec coverage into one cited verdict; CLI mirror `fathom review --store DB --service S --since <ref>`; arch-conformance edge normalization and rule-pack resolution shared via new `internal/analysis/archconformance` and `internal/projectrules` packages.
+- C2-1: review findings persisted as content-addressed claims on the `findings` layer (verified tier, deterministic, fires FT-7's pre-armed trigger); refutation durability proven at three layers of tests.
+- C2-1 write-path fixes before release: real cited-line hashes prevent sweep from falsely flipping 57 review claims to stale/contradicted; only deterministic-oracle dimensions persist (never `obligations` or `impact`); `--no-persist` flag added and used by the pre-push hook; reconcile supersedes fixed findings; verified-tier admission recorded in layer.cue (ADR-018/ADR-016 M1).
+- C3-1: `lefthook.yml` pre-push gains a non-blocking `fathom review --no-persist` summary step (~12s worst case on a 1777-file diff); `review_change` MCP prompt now calls `review_diff` directly instead of an 8-step manual sequence.
+
+**Serving-layer hygiene fixes (Wave 3a P1-6, P1-9, O11)**
+- O11 closed: `migration_targets`'s caller-supplied `deprecated_pkgs` list now merges with the built-in default list (deduplicated, deterministic order) instead of silently replacing it, matching the tool's documented behavior.
+- Sweep event vocabulary fixed: the post-compile sweep's `claim_events` verdict for anchor-dead claims is now `"contradicted"` (matching `ClaimContradicted` status) instead of `"refuted"`, reserving "refuted" for deliberate human/agent judgment.
+
+**Pulled-tools excellence: O12's product gaps and C4-4 method-edge gap (P1-1..P1-5, P1-8)**
+- P1-1 closes O12(b): `find_symbol`, `query_symbols`, and `references` now accept `symbol` as an additive parameter alias, erroring only when both native and alias values disagree.
+- P1-2 closes O12(a): `symbol_context` and `find_callers` gain `cross_service_callers`/`cross_service_callees` fields when a fleet backend is wired, additive and never merged into same-service results.
+- P1-3 closes O12(c): `find_symbol`'s case-insensitive tier now returns a package-match group alongside the name-match group so a package-naming query is no longer hidden behind an unrelated same-named symbol.
+- P1-4 closes C4-4: `arch_conformance` edge endpoints are normalized to their declaring Go package so package rules catch method-origin and method-target edges, not just function-to-function ones.
+- P1-5 re-run: B1-T09 (the O12 flagship case) improved from 504,785 tokens/20 turns to 321,100/9 turns (6.6x to 4.2x vs grep), still 4.2x more than grep, tracked as residual under O12. P1-8: dispatch now enforces declared `required` fields, so `license_policy`, `spec_coverage`, and `spec_status` refuse with -32602 when a required field is missing instead of silently running empty.
+
+**Spec-driven development adoption guide (AD-3)**
+- Added `docs/adoption/spec-driven-development.md`, the third and final adoption guide alongside `claude-code.md`/`codex.md`.
+- Documents the full SDD loop: author a plan in `{id, symbol, package, ...}` grammar, implement, `fathom verify` proves rows, pre-push gate blocks over-claiming, computed progress, archival lifecycle, `spec-bindings` layer binding, oracle classes.
+- Written against this repo's own live adoption program (`docs/plans/activation.md`, `docs/plans/adoption-docs.md`) with real `fathom verify`/`gen-plan-cue` output.
+- `fathom plans status`/`next`/`archive`/`restore` documented from committed design and marked "(landing this wave)", not yet built in this worktree.
+
+**Wave-1 adoption-friction fixes (ADR-014)**
+- `task build` wrote to `workspace/tmp/fathom` while hooks and daemon-install expected `bin/fathom`; `Taskfile.yml`'s `build` now emits `bin/fathom`, with the fast inner-loop variant renamed `build-dev` (still `workspace/tmp/fathom`).
+- `docs/use-cases/getting-started.md` documented the removed `set_profile` tool, retired by ADR-014's surfaces-week1 amendment; rewritten against `docs/mcp-tools.md` covering path-scoped HTTP surfaces, `off_surface:true` gate semantics, and the real `capabilities` response shape.
+- `docs/usage.md`'s CLI reference stopped at `session-hook`; added entries for thirteen shipped verbs (`init`, `compile`, `layers`, `verify`, `config`, `providers`, `smoke`, `instrument`, `edit-hook`, `stop-hook`, `claim`, `remap`, `report`), flags verified against `cmd/fathom/*.go`.
+
+**`fathom plans` (E3/E4), reverse-drift report (E6-1), verify_plan SLO (B3-1)**
+- `fathom plans status` (E3-1): per-plan rollup (proven, claimed-unproven, open, deferred-with-trigger, skipped-other) computed fresh from the verify engine, `--json` plus a human table.
+- `fathom plans next` (E3-2): ordered work frontier including claimed-but-unproven rows as `claimed-failing`/`claimed-unknown`, ordered by plan file then document order.
+- `fathom plans archive`/`restore` (E4-1): governed lifecycle requiring all rows proven or skipped, task IDs absorbed into CHANGELOG.md/ADR.md, and a fresh re-run; writes a tombstone and `git mv`s the plan to `docs/plans/archive/`.
+- Pre-push/CI gate scoped to active plans (E4-2): `lefthook.yml` and `scripts/ci.sh` walk only the top level of `docs/plans/`, so archived plans drop out of gate scope.
+- `fathom report --analyzer reverse-drift` (E6-1) computes ungoverned public API surface per service; `verify_plan` p95 SLO (B3-1) set at 5s with a Stop-hook timeout degrading to advisory, never a hard block.
+
+**context-bench and the x10 tokenomics retraction (B1/B2-1)**
+- context-bench built (B1-1/B1-2/B1-3): 15-task committed corpus with grep-derived ground truth, tested scorer (`internal/contextbench`, 16 tests; `cmd/contextbenchscore`, 7 tests), two-arm `claude -p` runner comparing fathom-MCP-only vs grep/find/cat-only.
+- The x10 tokenomics claim is RETRACTED (B1-3/B1-4): first full run measured equal task success (15/15 both arms) at 1.38x aggregate / 1.79x mean per-task token reduction and 2.81x mean wall-time reduction, below the pre-registered <5x retract criterion.
+- All docs stating x10/<=1/10th updated to measured magnitudes.
+- B2-1 existence-check wiring: `scripts/check-surface-traffic_test.sh` proves ok/zero-traffic/missing-dependency verdicts against a local fixture server; law-8 adoption clock explicitly not started.
+
+### 2026-07-22
+
+**Relative corpus paths at ingest boundary (dogfood O10, ADR-020)**
+- Typed edges were silently absent for relative `--path` (CLI default `.`): the connector-scope filter rel-mapped absolute file positions against a relative `repoPath`, excluding every package with zero edges and zero failures.
+- `EnrichTypedEdges` now normalizes `repoPath` to absolute at entry; added a never-silent stderr guard and typed-edge counters in `cmd/fathom ingest` output.
+- `ServiceMeta.Path` was recorded verbatim-relative, causing wrong-corpus refresh from the daemon's working directory; now recorded absolute, with both repos' post-commit hooks passing `--path "$PWD"`.
+- Added `scripts/migrate-fleet-store.sh`, the executable ADR-020 DuckDB-to-SQLite runbook, decoupling the daemon from post-commit rebuilds and stamping the SS-8/XT-6b bake clocks.
+
+**Tree-sitter extraction engine via wazero/WASM (ADR-021 s4, XT-1..6b)**
+- `internal/extractor/tsengine`: a pure-Go tree-sitter execution engine, C core + one grammar's parser.c/scanner.c compiled to `wasm32-wasi` and run via `wazero`, no CGO in the engine and no Docker at runtime.
+- `NewTSExtractor` (XT-1) implements `extractor.Extractor` for javascript/python/ruby via real tree-sitter `.scm` queries; qualification handles "Class.method" and Ruby's "Outer::Inner::Widget".
+- Pathological-input bounds (critic B1): `({[` x 50,000 previously ran 52.9s unbounded vs ~49ms on the CGO incumbent; now bounded via guest-side parse budgets, a host-side hard backstop, and parser re-creation on fault, counted in `fusion.Report.TSEngineFaults`.
+- Calibration (XT-2/XT-3/XT-4) on the 12-repo corpus: coverage never regressed; JS/TS gains largest (lodash 0.41 to 1.26); Python/Ruby tie their CGO incumbents; corpus ingest measured at 1.69x the incumbent, exceeding the plan's 1.5x line, flagged for owner gate call.
+- `fusion.ExtractorEpoch` bumped 4 to 5, forcing re-extraction; `capabilities` MCP tool gains `extraction_engines` (XT-5); binary-wide CGO deletion (XT-6b) remains PENDING on a 7-day green bake, per ADR-013.
+- Refs: ADR-020.
+
+**Typed Go call edges resolve O9 ambiguity residue (ADR-021 s3, CT-4..6)**
+- `internal/fusion/typedcalls.go`'s `EnrichTypedEdges`: additive Go-only pass via `go/types` producing `EdgeDirect`, `EdgeIfaceDispatch` (one edge per in-scope implementer), and `EdgeUnresolved`, scoped to `.fathomignore`-respecting Discover set with per-package caching and reconcile.
+- `core.Edge` gains `Kind`; new store surface round-trips typed edges through SQLite, DuckDB, and the memory fake, contract-tested.
+- verify (CT-4): `test_reaches` now verifies paths crossing interface-dispatch edges, labeled "reached via interface dispatch (N implementer(s))"; three real O9 residue shapes proven flipping from refusal to typed reach.
+- Serving (CT-6): `blast_radius`/`diff_impact` traverse typed edges; `find_callers` adds `typed_callers`, `symbol_context` adds `typed_edges`, `server_stats` reports per-kind typed-edge counts.
+- Performance gate (CT-5): first-run typed load measured against a true syntax-only baseline; cached re-ingest is delta-only.
+
+**Tool identity critic round fixes (ADR-021 s2, F1-F6)**
+- ToolKind/Generated were write-only against real stores (F1, HIGH): sqlite/duckdb column lists dropped them while the memory fake round-tripped them, so asserting tests passed against a lie; both columns now persist in both backends and are covered by the shared store CONTRACT suite.
+- CRD tagging is now per-document (F1e/P15) via `core.SymbolNode.ToolKind`, fixing a multi-doc YAML stream that tagged every observation "k8s-crd" file-wide.
+- Guard-wrapped Helm templates extract (F2): whole-line `{{- if ... -}}` actions are dropped rather than substituted; measured 7 to 23 symbols on the 10-file demo corpus.
+- image-Dockerfile keying fixed (F3): `*.dockerfile` files now key by stem instead of directory name; root-level lone Dockerfile falls back correctly.
+- IsGenerated (F4) accepts Go's "Code generated ... DO NOT EDIT." marker anywhere before the package clause (bounded 4KB); compose signal and classified-but-zero visibility fixed (F5) with new `classified_zero_files` counters; docs updated (F6) to clarify `server_stats` counters are event counters since process start.
+
+**Tool identity classifier for yaml/cue tooling (ADR-021 s2, LT-4, TI-9/10)**
+- Pass-3 tool-identity classifier (`fusion.Classify`) content-classifies ambiguous yaml/cue files into a `ToolKind` (k8s, CRD, compose, helm-template-yaml, kustomize, openapi, cue-module, timoni, unclassified) using a per-ingest sibling index.
+- `HelmTemplateYAMLExtractor` substitutes `{{ ... }}` action spans with placeholder scalars before YAML decode, recovering document shape from previously-failing helm charts; `KustomizeExtractor` and OpenAPI/Swagger extractor added, previously silently zero-output.
+- Compose files recognized by content (top-level `services:` key) regardless of filename, not just four hardcoded names.
+- CUE module/timoni awareness tags `.cue` files under `cue.mod/` ancestors, layered on the existing LT-4 CUE extractor; generated-file detection adds `Generated` flags and a `cloc` bucket.
+- `fusion.ExtractorEpoch` bumped 3 to 4 forcing re-extraction; Selector-Service and cross-repo image resolution deferred (TI-9), jsonnet/.ipynb extraction deferred (TI-10).
+
+**Pure-Go SQLite store backend replaces DuckDB (ADR-020)**
+- Added `internal/store/sqlite.go`: `SQLiteStore` (`modernc.org/sqlite`) implements the full 26-method `Store` interface with fresh final-column schema, WAL pragmas verified per-connection by `TestSQLite_WALActuallyEngages`.
+- `TestSQLite_ReaderDuringWriter` proves cross-process concurrency, a reader completes a `SELECT` while another connection holds an open write transaction, unlike DuckDB's cross-process lock.
+- `store.BackendForPath` dispatches `.duckdb`/`.sqlite`/`.db` replacing four hardcodes; `PlatformStore` loads mixed-backend fleets; same-stem duplicates resolve to `.sqlite` with a loud warning.
+- `fathom migrate-store --from X.duckdb --to Y.sqlite` ports the eight non-derivable tables read-only with per-table row count + verified content spot-hash; deferred DuckDB removal tracked as SS-8.
+- CLI `--store` defaults flip from `workspace/db/fathom.duckdb` to `workspace/db/fathom.sqlite` across all commands; added dependency `modernc.org/sqlite v1.52.0`.
+
+**Language truth: one registry, binary detection, honest CUE (ADR-021 §1)**
+- Deleted `pkg/client.langFromPath`'s stale 10-language table; `internal/connector.extClassMap` is now the single ext-to-language source, parity-tested against `fusion.New`'s extractor registrations via `TestLanguageRegistryParity`.
+- `cloc` reports an explicit `unclassified` bucket instead of a silent `other`; lockfile heuristics with no extractor (`go.sum`, `Gemfile.lock`, `Cargo.lock`, `requirements.txt`) now honestly report `unclassified`.
+- `connector.IsBinary` sniffs for a NUL byte in the first 8000 bytes; fixes a 423K-line "other" bucket that was actually an untracked 103MB `fathom` binary.
+- CUE extraction v2 recurses struct literals for nested field names, reads `Package` from the actual `package` clause, and captures imports as `core.KindCUEImport`; `fusion.ExtractorEpoch` bumped 2 to 3 triggers a one-time full re-index per service.
+- Fixed root-anchored `.fathomignore` patterns (leading `/` was a silent no-op) and a CUE malformed-import crash in `literal.Unquote`.
+
+**Build fathom without agentic-kit access (ADR-019)**
+- Added `third_party/agentic-kit/`, a committed full mirror of the private kit tree at the pinned commit; `go.mod`'s `replace` points there while `go.work` still wins for local co-development.
+- `task sync-kit` (`scripts/sync-kit.sh`) re-archives the sibling checkout at the pinned commit; `task vendor-check` (`scripts/vendor-check.sh`) content-hashes the mirror against a fresh archive and is now part of `task validate`.
+- Air-gapped `go mod vendor` now succeeds standalone; new `docs/distribution.md` documents the build path.
+- Size note: the pinned commit archives to ~13MB (1,153 files) including an accidental ~4.1MB Mach-O binary (`kit-new`), archived faithfully and flagged for the kit maintainer to prune.
+
+### 2026-07-17
+
+**Sextant back-compat surface removed (ADR-015)**
+- Owner overrode the original 2026-07-07 "kept by design" back-compat decision and asked for all of it removed, not deprecated.
+- Removed `withNameAliases` sextant/fathom service-name aliasing from `session-hook`, `edit-hook`, `stop-hook`, collapsing each hook's double lookup to a single lookup.
+- Removed `internal/connector.LegacyIgnoreFileName` (`.sextantignore`) fallback; only `.fathomignore` is honoured now, covered by `TestLocalConnector_Discover_NoLegacyIgnoreFallback`.
+- Behavioral consequence: stores ingested under service name "sextant" and repos relying on `.sextantignore` are no longer recognized; re-ingest or rename required.
+
+**Layer catalog: prompt-as-data, pack shape, adr-rules + spec-bindings (LC-1..8,13, OP-6)**
+- LC-1: every `#Layer` carries `prompt_file`; `promptForLayer` is generic over `LayerDef`, removing the silent obligations fallback for an unwired layer name.
+- LC-2: `serving.drift_tracked` schema field replaces the `kind=="finding"` Go hardcode at all three remediation-drift sites; LC-3 unions embedded packs with a project's `.fathom/layers/`, LC-4 migrates built-ins to `layer.cue`/`prompt.md`/`eval/`/`KILL.md` pack shape.
+- LC-7 adds `fathom layers list|show|install`; two new embedded packs `adr-rules` and `spec-bindings` each cleared precision 1.00 / recall 1.00 live against `claude-cli`.
+- LC-8: a third-layer end-to-end proof surfaced and fixed a real drift-tracking resolution gap for project-local packs.
+- Hardening: a broken project pack no longer breaks the union (warned, surfaced via `LoadError`); LC-13 (real `layers uninstall`) deferred; obligations layer re-run recorded recall straddling its bar (0.71/0.86), escalated as OP-6.
+- Refs: ADR-018.
+
+**Configuration experience: profiles, ~/.fathom/config.toml, health, smoke**
+- Added `internal/config`: TOML-authored, CUE-validated runtime config merging user (`~/.fathom/config.toml`) and project (`.fathom/config.toml`) layers field-by-field with per-field `Provenance` tracking.
+- `#Profile` is a closed CUE struct with no raw `api_key` field; only `api_key_env` or `api_key_cmd` (argv-exec, no shell, 10s bound) supply credentials.
+- Added `fathom config [--explain]`, `fathom providers [--profile X]` (auth-health probe via `llmclient.Pinger`), and `fathom smoke --profile X|--all` (one real completion, cost estimate, requires explicit selection).
+- `serve-http` now loads `[daemon]` config at startup, closing the gap where `compile_layer` was silently disabled on the launchd daemon with no env; AWS GovCloud and Azure Government ship as profiles.
+- Review hardening: modelless bedrock profile fails fast, `compile --profile` without `--store` errors naming the constraint, TOML/CUE errors carry line/column and grouped keys.
+
+**Provider matrix: openai, azure-openai, bedrock, codex-cli**
+- Rounds `buildLLMClient` out to six `FATHOM_LLM_PROVIDER` lanes, adding `openai`, `azure-openai`, `bedrock` (full AWS credential-chain resolver, no static keys required), and `codex-cli`.
+- `codex-cli` lane also Pings the constructed client before returning it, since undocumented config keys could silently drop system-prompt mapping and revert to the CLI's ~13k-token built-in persona.
+- CLI `--store` mode no longer hardcodes the Anthropic model string into `WithLLM`; both construction sites now share `compileModel()`.
+- Docs add a provider matrix table including the `codex-cli` cost line, roughly 10k input tokens of ambient overhead per call (~300k for a 31-section compile), ~60% cache-discounted steady-state.
+
+**Subscription-backed compile provider via Claude CLI**
+- `FATHOM_LLM_PROVIDER=claude-cli` shells out to a locally logged-in Claude Code CLI instead of `ANTHROPIC_API_KEY`, via new `agentic-kit` `foundations/llmclient/claudecli` package.
+- `cmd/fathom/compile.go`'s single construction site renamed `buildLLMClient`, switching on the provider; `FATHOM_CLAUDE_BIN` overrides the resolved `claude` binary path (e.g. for `serve-http`'s launchd daemon).
+- Reported `cost_usd` is the same API-equivalent accounting under either provider, but actual marginal spend under `claude-cli` is $0 (subscription plan limits, not a metered key).
+- `cmd/fathom/compile_test.go` covers `buildLLMClient`'s switch: default/explicit anthropic without a key, claude-cli construct plus one real `Complete` through a hermetic fake-shim, unresolvable `FATHOM_CLAUDE_BIN`, unknown provider value.
+
+**Findings-as-claims tracer bullet (D3, FT-1..FT-6)**
+- Kind:"finding" `#Layer` instance added alongside `obligations`; `internal/semantic.Compile` becomes layer-aware, resolving name/kind/tier/tier_profile/prompt from `Compiler.Layer` (FT-1).
+- `pkg/client.CompileLayer(ctx, service, layer, dryRun)` generalizes `CompileObligations`; fixes finding F7 where `cmd/fathom compile --layer` and the `compile_layer` MCP tool silently discarded the requested layer name and always compiled "obligations".
+- `semantic.ObligationsFor` now reads claims across every compiled layer, and served `Obligation` gains a `kind` field (FT-2).
+- `fathom claim refute|corroborate --store DB --service S --claim ID --note "..."` wires the previously-dead `claim_events` machinery; `refute` flips status to `ClaimRefuted`, `corroborate` is provenance-only (FT-3). `PutClaims` retains `ClaimRefuted` status across upsert of the same `claim_id` (FT-4).
+- `fathom report --store DB --service S --analyzer security_rollup --out findings/` writes deterministic markdown findings, verified by double-run byte-compare, excluding its own `--out` directory from the scan (FT-5); remediation drift tracked via `ClaimLink{Rel:"scope-fp"}` fingerprints and `semantic.DriftedFindings` sets `code_drifted:true` at serve time (FT-6), tied to O8 precision work's compile guard on bare `**` scopes.
+
+**O8 precision: serve-time trust (OP-1..OP-5)**
+- Prompt v3 forbids bare `**`/repo-wide catch-all scopes, requiring file-class scoping; `PromptVersion` rotates to `obligations/c02b1aa1`, forcing full recompile under O8.
+- Over-broad-scope guard in `internal/semantic/compile.go` `verifyDraft` rejects a claim whose scope glob matches more than half of `IndexedFiles`, counted in `ClaimsRejected`; single-file-class extension globs (`**/*.go`, `docs/**/*.md`) are exempted from the breadth check as a review fix.
+- Edit-hook root refusal (`cmd/fathom/edithook.go` `cmdEditHook`): a file not relativizing under any resolved service-candidate root skips that candidate instead of querying the daemon with a raw out-of-repo path, fixing an O8 addendum; symlink resolution and `..`-escape checks added as review fixes.
+- Spec-line injection appends `"▸ implements [ID] — defined at <file:line>"` for cited spec IDs via `spec_refs`, capped at 3, firing independently of obligations under a shared ≤150-token budget (OP-1..OP-5, OP-6 recompile).
+- New `plan` project skill (`.claude/skills/plan/SKILL.md`) scaffolds gate-ready grammar-v2 plans with stable ids, `{symbol, package}` contracts, typed dispositions, and the `fathom verify` command.
+
+**Coding-agents canonical doc and staleness sweep (IA-4/IA-5)**
+- `docs/use-cases/coding-agents.md` becomes THE adoption guide covering the loop, hooks, gates, CLAUDE.md/AGENTS.md doctrine, agent-surface registration, and the honest cost story.
+- `usage.md` `set_profile` guidance retired; June `claude-code-integration.md` banner-superseded (assessment content kept); `getting-started`/`coding-context` scoped and pointed at the canonical doc.
+
+**`fathom init`: one-command coding-agent wiring (IA-1/IA-2/IA-3)**
+- `fathom init` wires a repo end-to-end, idempotently and additive-only: creates `.fathomignore` if absent, calls the daemon's `ingest` MCP tool and confirms the service is indexed, fail-soft exit 2 when the daemon is unreachable.
+- JSON-merges project-level `.claude/settings.json` hooks (SessionStart `session-hook`, PostToolUse `edit-hook`, Stop `stop-hook`), writes the fathom operating-contract stanza into CLAUDE.md and AGENTS.md between `<!-- fathom:begin/end -->` markers.
+- Every mutation is create-if-absent or marker-replace, so a second run changes zero bytes and reports "already present".
+- `mergeHookSettings` preserves every unrelated top-level key, hook event, and sibling hook entry; detection is by command substring so re-running never duplicates an entry.
+
+**MCP surfaces week-1: execute-and-flag, agent surface (amends ADR-014)**
+- Gate semantics change from hard-gate to execute-and-flag: an off-surface `tools/call` or `batch` sub-call now executes instead of erroring, logged with `off_surface:true` in the JSONL call log; old hard gate stays behind `Server.strictSurfaces`.
+- The `companion` allowlist becomes the 15-tool **agent** surface (minus `batch`/`brief`, plus `verify_plan`/`capabilities`), served at `POST /rpc/agent` with `POST /rpc/companion` kept as a compatible alias.
+- `set_profile` removed entirely, amending ADR-010/014's stdio clause, since stdio now always serves the full registry.
+- Four zero-call alias tools deleted (`platform_callers`, `test_debt`, `api_routes`, `deps`) in favor of canonical `cross_repo_callers`, `markers`, `routes`, `dependencies`; `serve-http`'s default listen address changes from `:7575` to `127.0.0.1:7575` (loopback).
+
+**Gap-1 channel instrumentation: denominator, liveness, origin**
+- Hooks beat a central log (`FATHOM_HOOKS_LOG`) via agentic-kit v0.7.0 telemetry/heartbeat: edit-hook seen/answered/error, session-hook fired, giving injection coverage a denominator.
+- `fathom instrument` computes coverage (answered/seen vs the ≥90% gate), per-day rollup, and liveness alarms (sessions without edits in 7d; edits unanswered in 1d); advisory, exit 0 always.
+- `X-Fathom-Origin` header lets every hook/CLI HTTP call declare its channel, recorded in the daemon call log as `origin` to separate plumbing from agent choice.
+- Grammar hardening (GI-7): the plan-annotation parser takes the trailing brace block, so prose braces and code literals in titles no longer hijack contracts.
+
+**M1: the manifest goes live (semantic layers, ADR-016 amendment)**
+- `schema/semantic/schema.cue` becomes a runtime artifact: `internal/semantic.LoadLayer` embeds a byte-identity-tested copy and decodes `#Layer` instances via `cuelang.org/go`, retiring the hand-synced `ObligationsInclude` var and `maxRuleWords` const.
+- Content-addressed prompt identity via agentic-kit v0.7.0 `prompttemplate`: `PromptVersion` derives as `obligations/<hash8>` from `Template.TextHash()`, so any prompt edit is automatically a new compile identity, preventing the bug class that left 27/32 sections stale on v1 claims after the v1→v2 bump.
+- Typed compile failures via agentic-kit `llmclient/structured`, classifying truncation/malformed output as `structured.ErrTruncated`/`structured.ErrMalformed`, retiring the hand-rolled `errBadResponse` classifier.
+- `enforceBudgets` (ADR-016 §4.1) refuses to start a compile whose pre-flight cost estimate exceeds `max_usd_per_run`, and stops mid-corpus when the running token total crosses `max_tokens_per_run`, recorded on the `compile_runs` ledger.
+- Adversarial-review fixes: (F1) structured-outputs schema made object-rooted (`{"claims":[...]}`) for Anthropic compatibility; (F2) superseded/refuted claims no longer feed the digest gate; (F5) budget-stopped runs surface `budget_stopped`/`refusal_reason` at `compile_layer` and CLI printers. Spec `docs/plans/m1-manifest.md` (M1-1..M1-8, all landed); `#Layer.tier` widens to admit `verified` (ADR-018).
+- Refs: O8.
+
+**Extractor-epoch fingerprint salt fixes stale observations (O9)**
+- The pass-3 hash-gate keyed fingerprints on file content only, so a binary with improved extraction (e.g. H1's aliased-selector canonicalization and method-edge forms) silently kept unchanged files' old observations, breaking `test_reaches` on genuinely-tested symbols (dogfood O9).
+- Fingerprints now salted with `fusion.ExtractorEpoch`, bumped on any extraction-semantics change to force full re-extract on next ingest.
+- `ObligationsIndexStale` adopts the shared `fusion.FingerprintHash` so the formulas cannot diverge; regression covered by `TestIngest_ExtractorEpochInvalidatesOldFingerprints`.
+
+**SDD reconciler v0: plan grammar v2, wave gate, CUE shadow (ADR-018)**
+- Plan grammar v2 (`internal/verify`, additive): `[~]` in-progress checkbox, author-owned stable `id:` keys, typed dispositions on `[-]` (`disposition: refused|deferred` + `reason:` + `trigger:`), `skip:` justification for `skip_test`.
+- Wave gate `fathom verify --require-all` (`verify.GateRequireAll`) fails on open/in-progress tasks so a wave advances only when every task is claimed-and-verified or explicitly skipped.
+- `fathom gen-plan-cue` emits a generated-only `#Plan` document and proves lossless round-trip against the Markdown parse; hand-authored plan CUE is deprecated.
+- `fathom stop-hook` checks tasks newly claimed `[x]` this session against verification at session end; advisory by default, `--block` refuses session end with the failing citation.
+
+**Obligations v2: first-fleet-compile hardening (ADR-016)**
+- Prompt v1 to v2 and corpus narrowed to binding docs only (`CLAUDE.md`, `ADR.md`, `docs/plans/README.md`), after the first fleet compile turned `docs/design/**` essays into noisy `**`-scoped aspirational rules.
+- Digest gate now includes `PromptVersion` after a prompt bump previously failed to recompile 27/32 sections still on v1 claims; covered by `TestCompile_PromptBumpDefeatsDigestGate`.
+- Per-section failure resilience: a malformed/truncated model response now fails only its own section (tracked in `compile_runs.sections_failed`) instead of aborting an 88-section fleet corpus; `MaxTokens` raised 1200 to 2400.
+- Claims whose subject left the corpus selector are now superseded on next compile rather than served forever.
+- First full fleet compile under v2: 31/32 sections, 72 claims (9 rejected by compile-time verification), $0.047.
+
+**Semantic layers v1: obligations tracer bullet (ADR-016)**
+- Governed-claims substrate adds four additive tables: `semantic_claims` (content-addressed, tiered, status-tracked), `claim_links` (cites/scopes), `compile_runs` (token/USD ledger), append-only `claim_events` refute channel.
+- Obligations compiler pipeline: governing docs to markdown sections, digest gate (unchanged sections cost $0), DLP redaction, injected LLM (strict JSON), compile-time anchor and scope verification, transactional store with supersede; rules word-budgeted at ≤28 words so a 6-rule payload stays ≤150 tokens.
+- Citation sweep (post-ingest, token-free) re-hashes cited lines: drift flips status to `stale`, unresolvable citations to `contradicted`, restored docs heal to `fresh`; wired into `IngestService`.
+- `obligations` MCP tool on the 15-tool companion surface serves rules ordered by scope specificity, capped at 6, with zero-output-on-clean; `compile_layer` tool and `fathom compile` CLI added, `dry_run` defaults true.
+- PostToolUse injection via `fathom edit-hook` delivers ≤150-token obligations after every Edit/Write, silent on clean or error; precision eval harness gates the layer at precision ≥0.90 / recall ≥0.75, opt-in via `FATHOM_EVAL_LLM=1`.
+
+**Fleet onboarding ergonomics (O7)**
+- `ingest` tool onboards new services via optional `path` (absolute corpus root), ingesting a repo the index has never seen through the live daemon, no single-writer lock dance.
+- Session-hook's "add this repo" guidance now names the exact call; capability forwarded through the auto-refresh wrapper (the O7 lesson) with a through-the-wrapper test.
+- Subdirectory-rooted projects resolve their service: both hooks try the project dir's basename, then the enclosing git repo's basename, so `<repo>/deploy` no longer resolves to service "deploy".
+- Edit-hook resolves file paths against whichever root matched; `reingest-fleet.sh` gains nested-path support plus three fleet repos (growing-gardens-bi, car-assistant, crossplane-platform).
+
+**Done-means-proven verify gate (H1.2, O6)**
+- Checkbox semantics: `[x]` in a plan is a claim; `verify.Gate` fails any claimed task whose contract fails (`--strict` also gates Unknown); `[ ]` open and `[-]` skipped never gate.
+- `fathom verify` CLI is HTTP-first against the daemon, `--store` for CI; gate always computed locally so a stale daemon can't launder a claim. Exit 0/1/2, fail-open pre-push, fail-closed strict CI.
+- Wired into lefthook pre-push and `scripts/ci.sh` here and in agentic-kit; first gated run caught 3 over-claims by the plan's own author (recall gap filed as dogfood O6).
+- Gate honesty fix: an empty index now reads "cannot verify", never "all claims false" -- `fathom verify` probes the index first (`list_services` or symbol count) and exits 2 with a fix-it message when the service isn't indexed.
+
+**Born-portable stores (ADR-017)**
+- Repo-relative anchors from every connector, including LocalConnector; absolute refs from legacy stores still read.
+- `fathom remap` repoints a service root in one metadata update.
+- Watermark SPI (git HEAD or content-addressed `manifest:` hash) makes freshness domain-neutral, so non-git corpora (docs folders, findings exports) auto-refresh and sweep honestly.
+- Ingest self-heal purges pre-ADR-017 absolute-anchored content wholesale so no symbol duplicates across anchor styles; contract test `TestStorePortability_RoundTrip` covers move corpus + remap.
+
+**Adoption metrics fixed after rename**
+- `fathom-adoption.sh` measured nothing for this repo after the rename because transcript dirs are path-keyed; fix adds name-era aliasing, per-ISO-week rollup, and a daemon call-log summary section.
+- Measured baseline: 0% fathom share (0 vs 193 grep calls), the number the forced channels exist to move.
+
+**Rename sextant to fathom (ADR-015)**
+- Module path becomes `github.com/geoffmilleraz/fathom`, binary `cmd/fathom` moves to `bin/fathom`, MCP serverInfo/resource URIs/metrics prefixes, docs and scripts all renamed.
+- Back-compat kept where the old name is data in the field: `.sextantignore` still honoured as legacy fallback behind `.fathomignore`, adoption metrics count both `mcp__sextant__`/`mcp__fathom__` prefixes, session-hook treats the two service/dir names as one identity, `reingest-fleet.sh` finds the repo under either directory name.
+- Historical records (changelog, USAGE_JOURNAL.md, dogfood-observations.md) intentionally keep "sextant"; operator steps in `docs/rename-migration.md`.
+- Motivated by fleet usage mining: sextant works when called but is dramatically under-used, agents reach for shell grep 10x+ more even where the index exists, because "index first" lived only in passive docs.
+
+**Path-scoped tool surfaces on shared daemon (ADR-014)**
+- `POST /rpc/{surface}` serves an immutable per-request view of the registry: `companion` is a curated 14-tool coding-agent hot loop; `coding`/`investigation`/`shared`/`platform` mirror the group profiles; bare `/rpc` remains full. Scoped endpoints cut tools/list schema payload ~80% for non-deferring clients (motivated by review of 86 tools ≈ 8.6k schema tokens).
+- Surfaces hard-gate `tools/call`, closing the profile-bypass hole where a tool hidden from `tools/list` was still callable, including `batch` sub-calls; off-surface calls now error naming the surface and pointing at `POST /rpc`. Canned prompts scoped the same way.
+- `set_profile` rejected over HTTP since the profile is process-global on the shared daemon; stdio keeps `set_profile` and gains `companion` as a valid value. `capabilities` and the manifest resource report `active_surface` alongside `active_profile`.
+- Tool-call telemetry wired into the daemon via `serve-http --call-log` (default `workspace/logs/mcp-calls.jsonl`), recording request `surface`, individually logged `batch` sub-calls (`via:"batch"`), and atomic `O_APPEND` writes so a daemon kill can't merge lines.
+- `session-hook` (Claude Code SessionStart) pings the daemon, maps project dir to service, and injects an active "resolve via sextant BEFORE Grep/Read" reminder, or an honest signal when the daemon is down or repo isn't indexed.
+
+**Query staleness compaction, find_symbol fallback, schema slim**
+- Query-side staleness is constant-size now (USAGE_JOURNAL.md ask #4): `staleness` block carries at most 3 example rows plus `stale_sources`, `total_sources`, `fresh_sources`, and a new `oldest_ingested_at` low-water mark; full list stays in `staleness_report`. Regression: `TestQuery_StalenessReport_CompactWhenManyStale`.
+- `find_symbol` no longer punishes not knowing the exact identifier (USAGE_JOURNAL.md ask #3): matching degrades exact/key-suffix -> case-insensitive -> substring (capped at 20, `truncated` flag), with up to 5 `did_you_mean` suggestions on a full miss; response reports `matched_via`. Regressions: `internal/mcp/findsymbol_test.go`.
+- `verify_plan`'s tool schema slimmed ~27% (~150 tokens), from ~554 tokens (~6% of the whole registry); `min_tier`'s valid values moved from prose into a JSON-schema `enum`. Behavior unchanged; full verdict reference in `docs/mcp-tools.md`.
 
 ## [0.2.0] — 2026-06-16
 
