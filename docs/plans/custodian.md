@@ -21,6 +21,8 @@
 - [ ] CC-11 Corpus registry seam: `where:` resolves named corpora (agent-config | lefthook | taskfile | ci) behind the one engine — never a per-tool custodian (vision 22 §7) {id: CC-11}
 - [ ] CC-12 Deterministic-validation packs: curated concern sets shipped as data (claude-code, codex, lefthook, taskfile), repo-enabled, entry-overridable (law 13); chain checks for docs → lefthook → Taskfile → scripts {id: CC-12}
 - [ ] CC-13 Doctor convergence (O27): bespoke doctor checks re-expressed via the concern engine where a pack fully covers them — doctor renders what the audit knows {id: CC-13}
+- [ ] CC-14 Stanza-current concern: every tool the CLAUDE.md/AGENTS.md fathom stanza names is served by the running daemon's registry — a stanza pointing at a pruned or undeployed tool is an audit finding (the operator contract's "instructed means true" applied to fathom's own instructions) {id: CC-14, symbol: Audit, package: internal/custodian, reachable_from: TestStanzaCurrentConcern}
+- [ ] CC-15 Completion-cites-instruments concern: a handoff thread note filed at session end that claims shipped work without a verify/retro citation (commit, plan row, or retro artifact) is an audit finding — the operator contract's rule, made mechanical {id: CC-15, symbol: Audit, package: internal/custodian, reachable_from: TestCompletionCitesInstrumentsConcern}
 
 ## Phase DP — the doctrine plane (vision 23; spec-first, no code before its design doc)
 

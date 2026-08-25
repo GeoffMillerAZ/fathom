@@ -19,6 +19,10 @@
 - [x] the CUE extractor emits reference edges it currently discards: unification (`#Kit: #Block & {…}` is an edge #Kit → #Block), field type references (`profile: #Profile`), list element types (`uses: [...#Block]`), and cross-package imports — restoring `find_callers`/`references` for CUE definitions so "what composes this contract?" is answerable {id: VS-3, symbol: cueReferenceEdges, package: internal/extractor, reachable_from: TestCUEReferenceEdgesWiredDirect}
 - [x] `testdata/*.cue` unification is the CUE analogue of test-reaches: a fixture that unifies a definition maps onto the existing test-reaches edge kind, so `reachable_from` becomes satisfiable for a CUE row with no new plan grammar — the twelve `skip_test: true` escapes in one platform-engineering plan stop being the only exit {id: VS-4, symbol: cueTestdataReaches, package: internal/extractor, reachable_from: TestCUETestdataReachesWiredDirect}
 
+## The resolver — reachability that cannot flip
+
+- [ ] a method call resolves by receiver type, or refuses loudly when same-named methods on different receivers are ambiguous — so adding a test to a package can never flip another row's reachability verdict (the fifth silent-void mode, 2026-08-23: CUE wire tests entering internal/extractor flipped the first-wins winner for `Extract` and voided cpp-toolchain CT-1/CT-2); the direct-wire-test workaround stays valid but stops being necessary {id: VS-5, symbol: Build, package: internal/analysis/callgraph, reachable_from: TestSameNamedMethodsDoNotFlipReachability}
+
 ## Deferred, named
 
 - O3(c) — a CUE evidence tier (`vet_clean` / `export_golden`) so a row

@@ -113,6 +113,7 @@
 - [x] response-size accounting is recorded per call and totals per tool across a fixture window {id: BA-6, symbol: recordResponseCost, package: internal/mcp, reachable_from: TestResponseCostAccounting}
 - [x] a narrow surface profile carries only its own tools' schema, with the byte count asserted so an accidental widening fails the build {id: BA-7, symbol: surfaceSchemaTax, package: cmd/fathom, reachable_from: TestNarrowProfileSchemaBytes}
 - [x] the Cost panel on `/observatory/impact`: tokens fathom put into agent contexts by tool, the standing schema tax and its trend, elision rate per tool, and the tokens-spent against discovery-served ratio labeled observational (law 12) {id: BA-8, symbol: observatoryCostPanel, package: cmd/fathom, reachable_from: TestCostPanel}
+- [ ] budget defaults are project-settable: `budgetDefaults` reads a budgets block from the capability settings (project → user → built-in precedence, the law-13 shape BA-5 named) instead of the built-in table alone — the loader half BA-5 shipped without (2026-08-23 deviation, recorded) {id: BA-9, symbol: budgetDefaults, package: internal/mcp, reachable_from: TestBudgetDefaultsLoadFromProjectSettings}
 
 ---
 
@@ -137,6 +138,7 @@
 - [x] SessionStart injection is source-aware and budget-bounded: a ≤600-token brief on startup/clear, NOTHING on resume/compact (their context survives) — the byte bound enforced by test {id: TH-3, symbol: renderThreadBrief, package: cmd/fathom, reachable_from: TestBriefBudgetAndSourceGating}
 - [x] the §2 pre-registered bet is measurable: fresh-with-brief units labeled in the ledger, warm-up (first_edit_turn) and all-in per-turn cost (in+out+cache×0.1) compared against resumed baselines in the flywheel/brief; the registered kill (band unmet after 20 units → the injection is removed) is wired as a named check, not a memory {id: TH-4, symbol: threadBetCheck, package: cmd/fathom, reachable_from: TestThreadBetEvaluation}
 - [x] `fathom thread promote` scaffolds a gate-ready plan (fathom-plan grammar) from a thread's items; `fathom thread handoff` renders the brief as a harness-neutral handoff artifact; AGENTS.md carries the Codex instruction {id: TH-5, symbol: cmdThreadPromote, package: cmd/fathom, reachable_from: TestThreadPromoteScaffoldsGateReadyPlan}
+- [ ] `fathom thread note` files on the current repo's own thread by default — "general" only when no service resolves — and `thread list`/`brief` scope to the current repo first, cross-repo items behind a flag: on 2026-08-23 the open set held 30 items of which ~25 belonged to other repos' handoffs, burying this repo's continuity in every listing (law 13's per-repo tagging exists; the default was the defect) {id: TH-6, symbol: cmdThreadNote, package: cmd/fathom, reachable_from: TestThreadNoteDefaultsToRepoThread}
 
 ---
 

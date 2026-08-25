@@ -44,6 +44,11 @@
 - [x] no surface sums or trends whole-session tokens_total when the transcript exceeded the head-read cap: 163/370 ledger rows carry totals frozen by the 16MB LimitReader (DQ-1) and any aggregate over them must use per-turn rates over the parsed span, with the truncation named {id: IT-12, symbol: buildImpactModel, package: cmd/fathom, reachable_from: TestFrozenTotalsNeverSummed}
 - [x] a mechanical retro lands per session: the Stop hook runs `fathom retro --last --write` (LLM-free, zero tokens) so the firings→outcomes join becomes a standing corpus instead of a run-on-request, and per-session verify-catch attribution stops being the flywheel's permanent asterisk {id: IT-13, symbol: runStopHookRetro, package: cmd/fathom, reachable_from: TestStopHookLandsRetroArtifact}
 
+## Wave 4 — the ingest cannot lie about what it could not read (O16)
+
+- [ ] the extractor's per-file read failures are counted and named in the ingest report's failed column — an ingest under a wedged reader prints the errno and the external-volume hint, never "188 pkg(s) (0 failed)" over a zero-symbol result {id: IT-14, symbol: cmdIngest, package: cmd/fathom, reachable_from: TestIngestReportNamesReadFailures}
+- [ ] an ingest that hit read failures and extracted zero symbols REFUSES to replace an existing non-empty index for that service — exits non-zero naming the cause — so a wedge can never overwrite a good index with a plausible empty one (the O16 incident: five consecutive runs did exactly that) {id: IT-15, symbol: cmdIngest, package: cmd/fathom, reachable_from: TestIngestRefusesEmptyOverwriteOnReadErrors}
+
 ## Explicitly deferred, with reasons
 
 - Re-anchor event beats: staleness tooling had 0 calls in window — one
