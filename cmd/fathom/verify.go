@@ -48,6 +48,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 	jsonOut := fs.Bool("json", false, "emit JSON report + gate result instead of human text")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
+	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -154,6 +155,12 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		for _, rep := range reports {
 			for _, tv := range rep.Tasks {
 				icon := verifyIcon(tv)
+				// --quiet: print only failing rows (✗), plus unknown rows (?)
+				// when --strict is also set — a gate run over many plans reads
+				// as its exceptions, not a wall of checkmarks (VS-8 / O19 / G14).
+				if *quiet && icon != "✗" && !(*strict && icon == "?") {
+					continue
+				}
 				fmt.Fprintf(stdout, "%s [%s] %s\n", icon, tv.TaskID, tv.Title)
 				// Only expand failing criteria for claimed tasks that gate.
 				if tv.Claimed && !tv.Skipped &&

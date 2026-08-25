@@ -13,7 +13,15 @@ rationale as originally written -- lives per release under
 
 ## [Unreleased]
 
-Nothing yet -- 0.4.0 was cut at HEAD.
+### 2026-08-25
+
+**Reachability truth: function values are edges, the gate goes quiet (VS-5..10, O18, O19)**
+- VS-6: a function referenced as a value is an edge in both passes (`core.EdgeFuncValue`): `mux.HandleFunc(p, h)`, route-table literals, `http.HandlerFunc(h)`, middleware, method values. An httptest that builds a server now statically reaches every handler it registers; webui rows no longer need direct-call tests (consumer finding G15). Building it caught a phantom-edge bug: a selector's trailing ident bypassed the interface check.
+- VS-7: the "call it at the test's top level" folk rule is retired with evidence -- both passes already descend into `t.Run`/`defer`/goroutine closures; pinned by `TestClosureCallsReachFromEnclosingTest`.
+- VS-5: the syntax resolver already refuses ambiguous same-named methods (never first-wins), proven stable across node orderings; the 08-23 C++ flip's cause was VS-9's gap, not the resolver.
+- VS-9: the typed pass counts edges dropped because their target file was outside the discovered set and, when that file exists on disk, names it as a discovery gap on stderr -- a partially wedged discovery can no longer void reachability rows as a clean "0 failed".
+- VS-10: `internal/fusion/testdata/reachfix`, the end-to-end reachability harness (mux, route table, HandlerFunc, middleware, method value, closure-only caller, same-named methods) every future reachability claim runs against.
+- VS-8: `fathom verify --quiet` prints failing rows and the summary only; the pre-push gate, the init guidance for consumer repos, and the fathom-verify skill carry it (consumer finding G14).
 
 ## [0.4.0] -- 2026-08-24
 

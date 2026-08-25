@@ -379,12 +379,33 @@ func cyclomaticComplexity(fn *ast.FuncDecl) int {
 //     a wrong "seg.Name" form can only fail to resolve (ambiguity → nothing), never
 //     invent an edge to an unrelated symbol the way a raw alias string could.
 //  3. All callee names are deduplicated and sorted.
+//
+// VS-6 (docs/plans/verify-spine.md): a function referenced as a VALUE, not
+// called at this site — mux.HandleFunc(p, h), a route-table literal
+// {p, h}, an http.HandlerFunc(h) conversion, middleware(h) — is recorded
+// too, additively, using the same key forms: a package-local ident
+// (localFuncs) or a "pkg.Func" import-table selector. Only these two
+// precise, already-established-safe forms are recorded in value position —
+// unlike call position, an arbitrary bare ident here is usually just a
+// plain variable, and the syntax pass has no type information to tell the
+// two apart, so recall is deliberately traded for precision (the typed
+// pass, which DOES have type information, covers the rest — e.g. a method
+// value on a local receiver var). Three positions are excluded because they
+// are not references at all: a CallExpr's own Fun (already classified
+// above), a composite-literal KEY (a field NAME), and the left side of an
+// assignment (the ASSIGNED-TO variable).
 func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[string]bool, imports map[string]string) []string {
 	if fn.Body == nil {
 		return nil
 	}
 
 	seen := map[string]bool{}
+
+	// skip marks AST nodes the value-ref pass below must not treat as a
+	// reference (see the doc comment). Registered at the parent node's
+	// visit — ast.Inspect is pre-order, so a child is marked before Inspect
+	// itself reaches it.
+	skip := map[ast.Expr]bool{}
 
 	// varPkg tracks receiver variables whose initializer is a
 	// constructor-shaped selector call into an imported package:
@@ -397,13 +418,20 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 	varPkgDropped := map[string]bool{}
 
 	ast.Inspect(fn.Body, func(n ast.Node) bool {
-		if as, ok := n.(*ast.AssignStmt); ok && len(as.Lhs) == len(as.Rhs) {
-			for i, lhs := range as.Lhs {
+		switch node := n.(type) {
+		case *ast.AssignStmt:
+			for _, lhs := range node.Lhs {
+				skip[lhs] = true
+			}
+			if len(node.Lhs) != len(node.Rhs) {
+				return true
+			}
+			for i, lhs := range node.Lhs {
 				lhsIdent, ok := lhs.(*ast.Ident)
 				if !ok || lhsIdent.Name == "_" {
 					continue
 				}
-				rhsCall, ok := as.Rhs[i].(*ast.CallExpr)
+				rhsCall, ok := node.Rhs[i].(*ast.CallExpr)
 				if !ok {
 					continue
 				}
@@ -427,41 +455,72 @@ func collectCalls(service, pkgName string, fn *ast.FuncDecl, localFuncs map[stri
 				varPkg[lhsIdent.Name] = imp
 			}
 			return true
-		}
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		switch fun := call.Fun.(type) {
-		case *ast.Ident:
-			// Simple call: Foo()
-			name := fun.Name
-			if localFuncs[name] {
-				key := core.SymbolKey(service, pkgName, name)
-				seen[key] = true
-			} else {
-				// Record bare name for unresolved builtins/other symbols.
-				seen[name] = true
-			}
-		case *ast.SelectorExpr:
-			// Selector call: pkg.Func() or receiver.Method()
-			sel := fun.Sel.Name
-			if ident, ok := fun.X.(*ast.Ident); ok {
-				if imp, ok := varPkg[ident.Name]; ok {
-					// Method call on a constructor-initialized receiver:
-					// record the constructor-scoped form alongside the
-					// legacy "<var>.Method" form (checked before the import
-					// table — a local variable shadows an import ident).
-					seen[imp+"#."+sel] = true
-					seen[ident.Name+"."+sel] = true
-				} else if imp, ok := imports[ident.Name]; ok {
-					// Canonical package identity: the import path's last
-					// segment, never the file-local alias.
-					seen[path.Base(imp)+"."+sel] = true
-				} else {
-					seen[ident.Name+"."+sel] = true
+
+		case *ast.CompositeLit:
+			for _, elt := range node.Elts {
+				if kv, ok := elt.(*ast.KeyValueExpr); ok {
+					if keyIdent, ok := kv.Key.(*ast.Ident); ok {
+						skip[keyIdent] = true
+					}
 				}
 			}
+			return true
+
+		case *ast.CallExpr:
+			skip[node.Fun] = true
+			switch fun := node.Fun.(type) {
+			case *ast.Ident:
+				// Simple call: Foo()
+				name := fun.Name
+				if localFuncs[name] {
+					key := core.SymbolKey(service, pkgName, name)
+					seen[key] = true
+				} else {
+					// Record bare name for unresolved builtins/other symbols.
+					seen[name] = true
+				}
+			case *ast.SelectorExpr:
+				// Selector call: pkg.Func() or receiver.Method()
+				sel := fun.Sel.Name
+				if ident, ok := fun.X.(*ast.Ident); ok {
+					if imp, ok := varPkg[ident.Name]; ok {
+						// Method call on a constructor-initialized receiver:
+						// record the constructor-scoped form alongside the
+						// legacy "<var>.Method" form (checked before the import
+						// table — a local variable shadows an import ident).
+						seen[imp+"#."+sel] = true
+						seen[ident.Name+"."+sel] = true
+					} else if imp, ok := imports[ident.Name]; ok {
+						// Canonical package identity: the import path's last
+						// segment, never the file-local alias.
+						seen[path.Base(imp)+"."+sel] = true
+					} else {
+						seen[ident.Name+"."+sel] = true
+					}
+				}
+			}
+			return true
+
+		case *ast.Ident:
+			// Value position: only a known local func/method name counts
+			// (see the doc comment) — everything else is silently ignored,
+			// same as an unresolvable call target would be.
+			if !skip[node] && localFuncs[node.Name] {
+				seen[core.SymbolKey(service, pkgName, node.Name)] = true
+			}
+			return true
+
+		case *ast.SelectorExpr:
+			// Value position: only an explicit "pkg.Func" import-table
+			// selector counts (see the doc comment).
+			if !skip[node] {
+				if ident, ok := node.X.(*ast.Ident); ok {
+					if imp, ok := imports[ident.Name]; ok {
+						seen[path.Base(imp)+"."+node.Sel.Name] = true
+					}
+				}
+			}
+			return true
 		}
 		return true
 	})

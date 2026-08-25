@@ -182,6 +182,82 @@ func TestCmdVerify_Store_Strict(t *testing.T) {
 	}
 }
 
+// TestVerifyQuietPrintsFailingOnly: --quiet suppresses ✓ rows — a passing plan
+// prints only the summary; a failing plan prints the ✗ row(s) + their detail
+// lines + summary, and no ✓ rows (VS-8 / O19 / G14).
+func TestVerifyQuietPrintsFailingOnly(t *testing.T) {
+	store := filepath.Join(t.TempDir(), "test.sqlite")
+	var ing bytes.Buffer
+	code := run([]string{
+		"ingest", "--service", "payment-service",
+		"--path", fauxPaymentPath(),
+		"--store", store, "--mode", "faux",
+	}, &ing, &ing)
+	if code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+
+	// Passing plan: one claimed task for a symbol that exists.
+	passPlan := writeTempPlan(t, "- [x] Charge handler {symbol: Charge, skip_test: true}\n")
+	var passOut, passErr bytes.Buffer
+	code = run([]string{
+		"verify", "--service", "payment-service",
+		"--plan", passPlan, "--store", store, "--quiet",
+	}, &passOut, &passErr)
+	if code != 0 {
+		t.Fatalf("passing plan under --quiet: want exit 0, got %d; stdout=%q stderr=%q",
+			code, passOut.String(), passErr.String())
+	}
+	if strings.Contains(passOut.String(), "✓") {
+		t.Errorf("--quiet on a passing plan must suppress ✓ rows; stdout=%q", passOut.String())
+	}
+	if !strings.Contains(passOut.String(), "tasks total") {
+		t.Errorf("--quiet on a passing plan must still print the summary; stdout=%q", passOut.String())
+	}
+	// Failing plan: one passing task + one claimed task for a missing symbol.
+	failPlan := writeTempPlan(t, ""+
+		"- [x] Charge handler {symbol: Charge, skip_test: true}\n"+
+		"- [x] Missing ghost {symbol: GhostSymbol, skip_test: true}\n")
+	var failOut, failErr bytes.Buffer
+	code = run([]string{
+		"verify", "--service", "payment-service",
+		"--plan", failPlan, "--store", store, "--quiet",
+	}, &failOut, &failErr)
+	if code != 1 {
+		t.Fatalf("failing plan under --quiet: want exit 1, got %d; stdout=%q stderr=%q",
+			code, failOut.String(), failErr.String())
+	}
+	out := failOut.String()
+	if !strings.Contains(out, "✗") {
+		t.Errorf("--quiet on a failing plan must print the ✗ row; stdout=%q", out)
+	}
+	if !strings.Contains(out, "GhostSymbol") && !strings.Contains(out, "Missing ghost") {
+		t.Errorf("--quiet failing row must name the failing task; stdout=%q", out)
+	}
+	if strings.Contains(out, "✓") {
+		t.Errorf("--quiet on a failing plan must still suppress ✓ rows; stdout=%q", out)
+	}
+	if strings.Contains(out, "Charge handler") {
+		t.Errorf("--quiet must not print the passing task's row; stdout=%q", out)
+	}
+	if !strings.Contains(out, "tasks total") {
+		t.Errorf("--quiet on a failing plan must still print the summary; stdout=%q", out)
+	}
+
+	// --quiet composes with --quiet-pass: both set + passing plan → no output at all.
+	var bothOut, bothErr bytes.Buffer
+	code = run([]string{
+		"verify", "--service", "payment-service",
+		"--plan", passPlan, "--store", store, "--quiet", "--quiet-pass",
+	}, &bothOut, &bothErr)
+	if code != 0 {
+		t.Fatalf("quiet+quiet-pass passing plan: want exit 0, got %d", code)
+	}
+	if bothOut.String() != "" {
+		t.Errorf("--quiet + --quiet-pass on a passing plan must print nothing; stdout=%q", bothOut.String())
+	}
+}
+
 // TestCmdVerify_Store_JSON: --json emits a parseable JSON report with gate key.
 func TestCmdVerify_Store_JSON(t *testing.T) {
 	store := filepath.Join(t.TempDir(), "test.sqlite")

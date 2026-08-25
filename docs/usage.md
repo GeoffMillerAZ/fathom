@@ -560,7 +560,7 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 ```sh
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
-  [--concern <id>] [--json] [--quiet-pass]
+  [--concern <id>] [--json] [--quiet] [--quiet-pass]
 ```
 
 | Flag | Default | Description |
@@ -573,6 +573,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--require-all` | `false` | Wave gate: additionally fail on any open/in-progress task (ADR-018 §2) |
 | `--concern` | `""` | Optional concern for contradiction scoping |
 | `--json` | `false` | Emit a JSON report + gate result instead of human text |
+| `--quiet` | `false` | Print only failing rows (and, with `--strict`, unknown rows) plus the summary line -- the gate mode |
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 
 See [docs/plans/README.md](plans/README.md) for the plan grammar and

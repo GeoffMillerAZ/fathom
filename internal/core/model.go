@@ -348,6 +348,16 @@ const (
 	// explicitly — never silently dropped — so a missing edge always means
 	// "not a call", not "the resolver gave up quietly".
 	EdgeUnresolved EdgeKind = "unresolved"
+	// EdgeFuncValue marks a function or method referenced as a VALUE, not
+	// called at this site: mux.HandleFunc(p, h), a route-table literal
+	// {p, h}, an http.HandlerFunc(h) conversion, middleware(h), a method
+	// value s.handleX (VS-6, docs/plans/verify-spine.md). An enclosing
+	// function that only ever REGISTERS a handler this way still reaches it
+	// — find_callers/TestImpact walk these edges exactly like any other
+	// callee, regardless of Kind. A method value through an interface-typed
+	// receiver fans out like EdgeIfaceDispatch: one EdgeFuncValue edge per
+	// in-scope implementer, never a single ambiguous edge.
+	EdgeFuncValue EdgeKind = "func-value"
 )
 
 // Edge is a directed call/reference edge between two symbols.

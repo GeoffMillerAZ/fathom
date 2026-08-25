@@ -37,6 +37,11 @@ fathom verify --service <svc> --plan docs/plans/<plan>.md
 - `--json`: machine-readable report instead of the human table.
 - `--quiet-pass`: suppress output entirely when the gate passes (exit 0) —
   useful in a pre-push hook that only wants to be noisy on failure.
+- `--quiet`: print only failing (✗) rows — plus unknown (?) rows when
+  `--strict` is also set — and the summary line; `✓` rows are suppressed.
+  Composes with `--quiet-pass`. This repo's own lefthook pre-push verify
+  step uses it so a gate run over many plans reads as its exceptions, not a
+  wall of checkmarks.
 
 ## Exit codes — the contract that makes this a gate worth keeping
 

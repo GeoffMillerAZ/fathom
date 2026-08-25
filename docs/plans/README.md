@@ -53,6 +53,13 @@ tasks block.
 | `trigger` | Revival condition for a `deferred` task — recorded and surfaced, never machine-evaluated in v0 | unset |
 | `skip` | Justification for `skip_test: true` (machine-visible; linted when absent) | unset |
 
+> **Before reaching for `skip_test`:** a test statically reaches every function the
+> code it calls references as a *value* -- an HTTP handler registered through a mux,
+> a route-table literal, `http.HandlerFunc(h)`, middleware, or a method value is
+> reached by an httptest that builds the server (VS-6), and calls inside `t.Run`,
+> `defer`, or goroutine closures count for the enclosing test (VS-7). `skip_test`
+> is for rows with no test at all, never for "the wiring is indirect".
+
 The zero value of every key is the **strictest** contract; loosen explicitly.
 `verify.LintPlan` reports v2 convention violations (duplicate IDs, dispositions
 without reasons, unjustified skips) as **warnings** on stderr — they never

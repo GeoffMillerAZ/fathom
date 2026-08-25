@@ -533,3 +533,29 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** fixed (2026-08-23) — SP-B3, docs/plans/surface-prune.md: classifyCallLogRead in instrument_adoption.go renders READ ERROR + NOT COMPUTED, never universal zero
 - **Impact:** TODO
+
+### O18 — verify's test_reaches cannot see HTTP handlers wired through a mux: every webui handler row needs a direct-call test to prove (G15, reported by a consumer-repo session 2026-08-25)
+
+- **Symptom:** verify's test_reaches cannot see HTTP handlers wired through a mux: every webui handler row needs a direct-call test to prove (G15, reported by a consumer-repo session 2026-08-25)
+- **Evidence:**
+  - **Tool:** verify / internal/fusion/typedcalls.go + internal/extractor/goextract.go collectCalls
+  - **Expected:** an httptest-driven test that builds the server (which registers handlers via mux.HandleFunc / route tables / http.HandlerFunc) statically reaches every handler it registers
+  - **Actual:** both edge passes only record *ast.CallExpr targets; a function passed as a VALUE (mux.HandleFunc(p, h), []route{{p, h}}, http.HandlerFunc(h), middleware(h)) is never an edge -- typedcalls.go's header explicitly excludes func values -- so the handler is unreachable and the row must take skip_test
+  - **Repro:** plan row {symbol: handleX, reachable_from: TestServerServesX} where TestServerServesX calls newServer() and hits httptest; fathom verify -> edge_wired fails
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** fixed (2026-08-25) — VS-6, docs/plans/verify-spine.md: function values are edges in both passes (core.EdgeFuncValue); a test that builds the server reaches every registered handler; harness VS-10 proves mux/route-table/HandlerFunc/middleware/method-value forms
+- **Impact:** TODO
+
+### O19 — fathom verify prints every plan row on every run, so the pre-commit/pre-push gate output is a wall of ✓ rows per plan per commit (G14, consumer-repo session 2026-08-25)
+
+- **Symptom:** fathom verify prints every plan row on every run, so the pre-commit/pre-push gate output is a wall of ✓ rows per plan per commit (G14, consumer-repo session 2026-08-25)
+- **Evidence:**
+  - **Tool:** verify CLI output
+  - **Expected:** a --quiet (failing-only) mode: print ✗ rows and the summary line, suppress ✓ rows; the gate scripts use it
+  - **Actual:** no such flag; every row prints
+  - **Repro:** run the lefthook pre-push verify loop over ~40 plans and read the output
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** fixed (2026-08-25) — VS-8: `fathom verify --quiet` (failing-only + summary); lefthook and the init guidance carry it
+- **Impact:** TODO

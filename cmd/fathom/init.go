@@ -898,7 +898,7 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-verify:")
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
-	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md\n", service)
+	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
 	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
 	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")

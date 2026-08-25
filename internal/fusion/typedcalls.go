@@ -119,7 +119,23 @@ type TypedEdgeReport struct {
 	EdgesDirect        int
 	EdgesIfaceDispatch int
 	EdgesUnresolved    int
-	Duration           time.Duration
+	EdgesFuncValue     int // VS-6: func/method referenced as a value, not called at this site
+	// EdgesDroppedOutOfScope counts edges whose target's declaring file was
+	// outside the connector's discovered set (targetAllowed false) — VS-9,
+	// docs/plans/verify-spine.md. Never folded silently into a clean zero.
+	EdgesDroppedOutOfScope int
+	// DroppedOutOfScopeSample names a few (deduplicated, capped) target
+	// files behind EdgesDroppedOutOfScope, across the whole run.
+	DroppedOutOfScopeSample []string
+	// DiscoveryGaps counts DISTINCT dropped target files that exist on disk
+	// despite being excluded from the connector's allowed set — not a
+	// legitimate out-of-scope target but a likely connector-discovery
+	// failure (a partially wedged Discover pass, the 2026-08-23 cpp-toolchain
+	// flip's likeliest cause). Printed to stderr as it's found, never a
+	// clean "0 failed".
+	DiscoveryGaps     int
+	DiscoveryGapFiles []string // sample of those files (deduplicated, capped)
+	Duration          time.Duration
 }
 
 // hasGoSource reports whether refs contains at least one ".go" file — the
@@ -276,6 +292,13 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// successful rows.
 	keep := make(map[string]bool, len(pkgs))
 
+	// VS-9 (docs/plans/verify-spine.md): run-level dedup for the
+	// out-of-scope-drop sample and the discovery-gap file list, so a target
+	// hit from more than one call site or package is only sampled/printed
+	// once.
+	droppedSampleSeen := map[string]bool{}
+	discoveryGapSeen := map[string]bool{}
+
 	for _, pkg := range pkgs {
 		// Connector scope (see the package doc): a package with zero
 		// allowed files contributes nothing — and is deliberately NOT in
@@ -328,7 +351,27 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 					continue // ignored file within a partially allowed package
 				}
 			}
-			edges = append(edges, resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates, allowed)...)
+			fr := resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates, allowed)
+			edges = append(edges, fr.edges...)
+			report.EdgesDroppedOutOfScope += fr.droppedOutOfScope
+			for _, f := range fr.droppedSample {
+				if !droppedSampleSeen[f] {
+					droppedSampleSeen[f] = true
+					if len(report.DroppedOutOfScopeSample) < 5 {
+						report.DroppedOutOfScopeSample = append(report.DroppedOutOfScopeSample, f)
+					}
+				}
+			}
+			for _, f := range fr.discoveryGapFiles {
+				if !discoveryGapSeen[f] {
+					discoveryGapSeen[f] = true
+					report.DiscoveryGaps++
+					if len(report.DiscoveryGapFiles) < 5 {
+						report.DiscoveryGapFiles = append(report.DiscoveryGapFiles, f)
+					}
+					fmt.Fprintf(os.Stderr, "fusion: typed-edge pass %q: discovery gap — %s exists on disk but was excluded from the connector's allowed set; a typed edge into it was dropped as out-of-scope\n", serviceID, f)
+				}
+			}
 		}
 		sortEdges(edges)
 
@@ -349,6 +392,8 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 				report.EdgesIfaceDispatch++
 			case core.EdgeUnresolved:
 				report.EdgesUnresolved++
+			case core.EdgeFuncValue:
+				report.EdgesFuncValue++
 			}
 		}
 	}
@@ -402,11 +447,37 @@ func sortEdges(edges []core.Edge) {
 	})
 }
 
+// fileEdgeResult is resolveFileEdges' return: the edges it resolved, plus
+// VS-9 (docs/plans/verify-spine.md) accounting for targets it had to drop
+// because the connector-scope filter (targetAllowed) excluded their
+// declaring file — never folded silently into the edge count.
+type fileEdgeResult struct {
+	edges []core.Edge
+	// droppedOutOfScope counts every edge (call, func-value, or dispatch
+	// implementer) dropped because targetAllowed(fn) was false — one per
+	// drop, not deduplicated by file.
+	droppedOutOfScope int
+	// droppedSample names a few (deduplicated, capped) target files whose
+	// edges were dropped this call — a debugging sample, not exhaustive.
+	droppedSample []string
+	// discoveryGapFiles names the (deduplicated) subset of dropped target
+	// files that EXIST on disk despite being excluded from `allowed`: not a
+	// legitimate out-of-scope target but a likely connector-discovery gap
+	// (see EnrichTypedEdges' DiscoveryGaps counter).
+	discoveryGapFiles []string
+}
+
 // resolveFileEdges walks every top-level *ast.FuncDecl in file (mirroring
 // GoExtractor.Extract's own top-level-only walk) and resolves each call
 // site reachable from its body (mirroring collectCalls's descent into
 // nested closures — their calls are attributed to the enclosing named
-// function, exactly like the syntax pass).
+// function, exactly like the syntax pass) PLUS every *ast.Ident/
+// *ast.SelectorExpr in non-call-fun VALUE position that resolves to a
+// *types.Func (VS-6, docs/plans/verify-spine.md): mux.HandleFunc(p, h), a
+// route-table literal {p, h}, an http.HandlerFunc(h) conversion,
+// middleware(h), a method value s.handleX. These are recorded as
+// core.EdgeFuncValue, additive alongside the call edges — an enclosing
+// function that only ever registers a handler this way now reaches it.
 func resolveFileEdges(
 	serviceID, repoPath string,
 	fset *token.FileSet,
@@ -415,14 +486,21 @@ func resolveFileEdges(
 	firstParty map[string]bool,
 	candidates []*types.Named,
 	allowed map[string]bool,
-) []core.Edge {
+) fileEdgeResult {
 	var edges []core.Edge
+	var droppedOutOfScope int
+	var droppedSample []string
+	var discoveryGapFiles []string
+	seenDroppedFile := map[string]bool{}
 	info := pkg.TypesInfo
 
 	// targetAllowed applies the connector-scope filter to a resolved target:
 	// an edge may not point at a symbol whose declaring file the connector
 	// excluded (goextract never indexed it, and its package/receiver names
-	// could collide with a live symbol's key — the fabrication path).
+	// could collide with a live symbol's key — the fabrication path). Every
+	// refusal is counted (VS-9): a small deduplicated sample of the target
+	// files is kept, and a target file that EXISTS ON DISK despite being
+	// excluded is flagged as a discovery gap, never a clean silent drop.
 	targetAllowed := func(fn *types.Func) bool {
 		if allowed == nil {
 			return true
@@ -431,7 +509,21 @@ func resolveFileEdges(
 		if pos.Filename == "" {
 			return false // no declaring position → cannot prove it's in scope
 		}
-		return allowed[repoRelSlash(repoPath, pos.Filename)]
+		rel := repoRelSlash(repoPath, pos.Filename)
+		if allowed[rel] {
+			return true
+		}
+		droppedOutOfScope++
+		if !seenDroppedFile[rel] {
+			seenDroppedFile[rel] = true
+			if len(droppedSample) < 5 {
+				droppedSample = append(droppedSample, rel)
+			}
+			if _, statErr := os.Stat(pos.Filename); statErr == nil {
+				discoveryGapFiles = append(discoveryGapFiles, rel)
+			}
+		}
+		return false
 	}
 
 	for _, decl := range file.Decls {
@@ -457,61 +549,147 @@ func resolveFileEdges(
 		}
 		fromFile := repoRelSlash(repoPath, fset.Position(fn.Pos()).Filename)
 
-		ast.Inspect(fn.Body, func(n ast.Node) bool {
-			call, ok := n.(*ast.CallExpr)
-			if !ok {
-				return true
+		// addDirect/addDispatch are shared by the call pass (EdgeDirect/
+		// EdgeIfaceDispatch below) and the value-ref pass (EdgeFuncValue):
+		// same firstParty/targetAllowed/symbolKeyForFunc discipline, only
+		// the emitted Kind differs.
+		addDirect := func(fn *types.Func, kind core.EdgeKind) {
+			if fn.Pkg() == nil || !firstParty[fn.Pkg().Path()] {
+				return
 			}
-			target := classifyCall(info, call.Fun)
-			switch target.kind {
-			case targetDirect:
-				if target.fn.Pkg() == nil || !firstParty[target.fn.Pkg().Path()] {
-					return true
+			if !targetAllowed(fn) {
+				return
+			}
+			toKey, ok := symbolKeyForFunc(serviceID, fn)
+			if !ok {
+				return
+			}
+			edges = append(edges, core.Edge{
+				FromService: serviceID, FromFile: fromFile,
+				FromSymbol: callerKey, ToSymbol: toKey, Kind: kind,
+			})
+		}
+		addDispatch := func(iface *types.Interface, methodName string, kind core.EdgeKind) {
+			seen := map[string]bool{}
+			for _, cand := range candidates {
+				implFn, ok := lookupImplementerMethod(cand, iface, methodName, pkg.Types)
+				if !ok || implFn.Pkg() == nil || !firstParty[implFn.Pkg().Path()] {
+					continue
 				}
-				if !targetAllowed(target.fn) {
-					return true
+				if !targetAllowed(implFn) {
+					continue
 				}
-				toKey, ok := symbolKeyForFunc(serviceID, target.fn)
-				if !ok {
-					return true
+				toKey, ok := symbolKeyForFunc(serviceID, implFn)
+				if !ok || seen[toKey] {
+					continue
 				}
+				seen[toKey] = true
 				edges = append(edges, core.Edge{
 					FromService: serviceID, FromFile: fromFile,
-					FromSymbol: callerKey, ToSymbol: toKey, Kind: core.EdgeDirect,
+					FromSymbol: callerKey, ToSymbol: toKey, Kind: kind,
 				})
-			case targetIfaceDispatch:
-				seen := map[string]bool{}
-				for _, cand := range candidates {
-					implFn, ok := lookupImplementerMethod(cand, target.iface, target.fn.Name(), pkg.Types)
-					if !ok || implFn.Pkg() == nil || !firstParty[implFn.Pkg().Path()] {
-						continue
+			}
+		}
+
+		// skip marks AST nodes the value-ref pass must not classify on its
+		// own: a CallExpr's own Fun (already classified by the call pass
+		// below), a composite-literal KEY (a struct field NAME, never a
+		// value), and the left side of an assignment (an ASSIGNED-TO
+		// variable, never a reference). Registered at the parent node's
+		// visit — ast.Inspect is pre-order, so the child is marked before
+		// Inspect itself reaches it.
+		skip := map[ast.Expr]bool{}
+
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			switch node := n.(type) {
+			case *ast.CallExpr:
+				funExpr := node.Fun
+				for {
+					p, ok := funExpr.(*ast.ParenExpr)
+					if !ok {
+						break
 					}
-					if !targetAllowed(implFn) {
-						continue
-					}
-					toKey, ok := symbolKeyForFunc(serviceID, implFn)
-					if !ok || seen[toKey] {
-						continue
-					}
-					seen[toKey] = true
+					funExpr = p.X
+				}
+				skip[funExpr] = true
+
+				target := classifyCall(info, node.Fun)
+				switch target.kind {
+				case targetDirect:
+					addDirect(target.fn, core.EdgeDirect)
+				case targetIfaceDispatch:
+					addDispatch(target.iface, target.fn.Name(), core.EdgeIfaceDispatch)
+				case targetUnresolved:
+					line := fset.Position(node.Pos()).Line
 					edges = append(edges, core.Edge{
 						FromService: serviceID, FromFile: fromFile,
-						FromSymbol: callerKey, ToSymbol: toKey, Kind: core.EdgeIfaceDispatch,
+						FromSymbol: callerKey,
+						ToSymbol:   fmt.Sprintf("<unresolved:%d>", line),
+						Kind:       core.EdgeUnresolved,
 					})
 				}
-			case targetUnresolved:
-				line := fset.Position(call.Pos()).Line
-				edges = append(edges, core.Edge{
-					FromService: serviceID, FromFile: fromFile,
-					FromSymbol: callerKey,
-					ToSymbol:   fmt.Sprintf("<unresolved:%d>", line),
-					Kind:       core.EdgeUnresolved,
-				})
+				return true
+
+			case *ast.CompositeLit:
+				for _, elt := range node.Elts {
+					if kv, ok := elt.(*ast.KeyValueExpr); ok {
+						if keyIdent, ok := kv.Key.(*ast.Ident); ok {
+							skip[keyIdent] = true
+						}
+					}
+				}
+				return true
+
+			case *ast.AssignStmt:
+				for _, lhs := range node.Lhs {
+					skip[lhs] = true
+				}
+				return true
+
+			case *ast.Ident:
+				if skip[node] {
+					return true
+				}
+				target := classifyCall(info, node)
+				switch target.kind {
+				case targetDirect:
+					addDirect(target.fn, core.EdgeFuncValue)
+				case targetIfaceDispatch:
+					addDispatch(target.iface, target.fn.Name(), core.EdgeFuncValue)
+				}
+				return true
+
+			case *ast.SelectorExpr:
+				// A SelectorExpr's own Sel identifier is never an independent
+				// value reference — go/types also resolves it via info.Uses
+				// (a method selection included), and the bare-Ident branch of
+				// classifyCall has no interface/concrete distinction, so
+				// letting it through here would misclassify an interface
+				// method value as a direct edge to the interface's own
+				// (phantom) method. Always route through the SelectorExpr
+				// itself, which uses classifySelection's precise resolution.
+				skip[node.Sel] = true
+				if skip[node] {
+					return true
+				}
+				target := classifyCall(info, node)
+				switch target.kind {
+				case targetDirect:
+					addDirect(target.fn, core.EdgeFuncValue)
+				case targetIfaceDispatch:
+					addDispatch(target.iface, target.fn.Name(), core.EdgeFuncValue)
+				}
+				return true
 			}
 			return true
 		})
 	}
-	return edges
+	return fileEdgeResult{
+		edges:             edges,
+		droppedOutOfScope: droppedOutOfScope,
+		droppedSample:     droppedSample,
+		discoveryGapFiles: discoveryGapFiles,
+	}
 }
 
 // targetKind classifies a call site's resolution outcome.
