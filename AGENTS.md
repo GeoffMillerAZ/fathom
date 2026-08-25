@@ -47,3 +47,21 @@ stale) — fail-open, not a verification failure.
   docs, tests, fixtures — `ADR.md`.
 - **Plan grammar + docs upkeep**: `docs/CLAUDE.md`, `docs/plans/README.md`.
 - Full agent guidance (conventions, source-of-truth map): `CLAUDE.md`.
+
+## Project intent
+
+Durable intent lives at `docs/intent/README.md` (router). Vision: `docs/design/product-vision.md`.
+Decisions: `ADR.md` (general decision records, not only architecture; index at
+`docs/intent/decisions/README.md`). Consult the router before material product, design, domain, or
+architecture work and load only what it routes you to. Record decisions that pass its
+threshold; state fired revisit triggers before designing around them.
+
+Change records: conventional commit with a `Verified:` line, one commit per reviewable
+unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observable
+behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
+`[Unreleased]` to the delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
+
+Autonomy (`docs/intent/autonomy.md`): commit and push to `feat/mcp-scoped-surfaces` freely,
+and roll the changelog, tag, and fast-forward `main` after a green wave; ask before deleting,
+purging, spending LLM budget, or touching global agent config; never force-push `main`,
+raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.

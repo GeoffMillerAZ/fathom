@@ -33,6 +33,9 @@ the TDD strategy.**
 
 ## ADR-003 — Storage: DuckDB (supersedes the original SQLite choice)
 
+**Status.** Superseded by ADR-020 (SQLite default, 2026-07-22) and ADR-025 (DuckDB
+deleted outright, 2026-07-23). Kept as written.
+
 **Decision.** Persist observations and derived tables in **DuckDB** (`github.com/marcboeker/go-duckdb/v2`).
 
 **Context / change.** The original design used `modernc.org/sqlite` (pure-Go,
@@ -49,6 +52,9 @@ with an in-memory fake. Schema tables: `observations` (main evidence),
 in a separate store (cheap to update / clear independently).
 
 ## ADR-004 — CGO-free tree-sitter via wazero/WASM; Go via native `go/parser`
+
+**Status.** Superseded in mechanism by ADR-013 (CGO bindings); revived in part by
+ADR-021 §4 (the wazero engine for Python/JS/TS/Ruby). Kept as written.
 
 **Decision.** Multi-language extraction runs tree-sitter grammars compiled to
 **WASM, executed in the pure-Go `wazero` runtime** (no CGO, no Docker, golden
@@ -202,6 +208,11 @@ WASM path remains a viable future option if a pure-Go runtime matures.
 It was implemented incrementally (one language per commit) so any subset can be
 reverted without affecting Track A or the Go extractor.
 
+**Revisit when.** "The WASM path remains a viable future option if a pure-Go runtime
+matures" — ADR-021 §4 adopted that path for Python/JS/TS/Ruby
+(`internal/extractor/tsengine`); the nine languages still on the CGO bindings are
+XT-6b (`docs/intent/futures.md` F1).
+
 ## ADR-015 — Rename to fathom; two strata: deterministic index + semantic layers
 
 **Decision.** The project is renamed **fathom**. Its knowledge model is explicitly
@@ -222,6 +233,10 @@ say the same thing.
 **Trade-off / reversibility.** One-time operator migration (daemon label, MCP
 registration, fleet re-ingest); GitHub redirects the old repo URL. Back-compat
 shims are removable once the fleet has migrated.
+
+**Revisit when.** "Back-compat shims are removable once the fleet has migrated" —
+the `.sextantignore` fallback, legacy telemetry prefixes, and service-name aliasing
+go when no fleet repo carries the old name (`fathom fleet report`).
 
 ## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
 
@@ -286,6 +301,13 @@ hand-mirrored Go constants), so the revival evidence for "the manifest
 generalizes beyond one hand-coded layer" is satisfied by the loader
 existing, independent of whether a second layer has shipped.
 
+**Revisit when.** (1) "a distinct `ai-derived` tier waits for the first non-citable
+claim kind" (`docs/intent/futures.md` F7). (2) The lifecycle FSM/ledger, graph
+ontology, vectors, and new tiers are "deferred with named revival evidence" —
+vectors were specified as "DuckDB VSS" and need a SQLite-era re-check before any
+revival (F13). (3) "If the tracer bullet fails its gate" — the 3-week
+generalize-or-kill telemetry gate on `obligations`.
+
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
 **Context.** D-EM2 ("the store is the module") was prose, not code: the local
@@ -334,6 +356,11 @@ read-only via the absolute-ref fallback; the first write-path ingest converts
 them. Reverting to absolute anchors would only require connectors to stop
 relativizing — nothing downstream depends on absoluteness anymore.
 
+**Revisit when.** (1) Tier profiles: "machinery later … when a non-engineering
+module first needs it (its named revival evidence)". (2) "Manifest watermarks read
+the whole corpus" — a non-git corpus large enough that the manifest hash dominates
+ingest time.
+
 ## ADR-018 — Plan grammar v2 + reconciler verbs: SDD state is derived, never driven
 
 **Context.** The 2026-07 excellence review (docs/vision/09) examined "should
@@ -379,6 +406,14 @@ the default (stable IDs are a lint convention for gated plans). The pilot
 the five metrics / four kill criteria in the design doc §6; a kill reverts
 the hook and generator while keeping the harmless grammar extensions.
 
+**Revisit when.** (1) "The pilot … runs 4 weeks against the five metrics / four
+kill criteria in the design doc §6; a kill reverts the hook and generator" — due
+about 2026-08-12; the 2026-08-21 audit measured the gate PROVEN (180 of 436 runs
+caught claimed > verified, `docs/vision/24-work-frontier.md` §7) but no keep/kill
+record exists (`docs/intent/questions.md` Q9). (2) "machine-evaluated triggers in
+v0" were rejected as a speculative engine — a v1 reopens them only on the condition
+in `docs/intent/futures.md` F9.
+
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 
 The daemon's 8-day call log (docs/vision/05-surfaces.md) showed both agents
@@ -412,6 +447,13 @@ measured H3-1 evidence; the surface is now 16 tools. docs/mcp-tools.md holds
 the live membership.)* The four ADR-010 group surfaces (`coding`/`investigation`/
 `shared`/`platform`) are unchanged and un-killed — zero observed traffic, kept
 for taxonomy completeness pending the 30-day post-flip log.
+
+**Revisit when.** (1) The four group surfaces: "kept for taxonomy completeness
+pending the 30-day post-flip log" — the clock ran from 2026-07-16 with zero
+observed traffic and no kill record exists (`docs/intent/questions.md` Q9).
+(2) "The pre-amendment hard gate stays available behind `Server.strictSurfaces`
+for any future multi-tenant shape" — a hosted or multi-tenant deployment
+(`docs/intent/futures.md` F8) turns it back on.
 
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
@@ -473,6 +515,9 @@ docs/distribution.md's size note). Removable entirely by reverting to a
 bare `replace ... => ../agentic-kit` if kit access becomes universal; the
 sync/drift-guard scripts are additive and inert without a `third_party/`
 directory to check.
+
+**Revisit when.** "Removable entirely by reverting to a bare `replace ... =>
+../agentic-kit` if kit access becomes universal" — the kit repository goes public.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
@@ -575,6 +620,11 @@ oversight. If the kit grows surface/group/prompts/resources support,
 revisit; today adoption would cost a full rewrite to buy back functionality
 fathom already has.
 
+**Revisit when.** "If the kit grows surface/group/prompts/resources support,
+revisit" (`docs/intent/futures.md` F11). The accepted debt — unaudited HTTP
+`Origin` validation, `traceparent`, resync policy, batch-array rejection — is
+reopened by any hosted deployment (law 9, F8).
+
 ## ADR-023: Evaluation stays bespoke — `calibration/` + `internal/verify`, not `kits/eval-runner`/`qa-harness` (2026-07-23)
 
 **Decision.** Fathom's two evaluation instruments — `internal/verify` (the
@@ -605,6 +655,10 @@ LLM-judged evaluation lane (e.g. grading LLM-enriched knowledge cards),
 *that* lane is the natural `qa-harness` adoption point — parked as a named
 ask with a second-consumer trigger (`agentic-kit/docs/plans/
 fathom-uplift-asks.md`, FA-12) rather than forced here.
+
+**Revisit when.** "If fathom later adds an LLM-judged evaluation lane (e.g. grading
+LLM-enriched knowledge cards), *that* lane is the natural `qa-harness` adoption
+point" — FA-12's second-consumer trigger (`docs/intent/futures.md` F12).
 
 ## ADR-024: Pack taxonomy adopted as vocabulary, not machinery (2026-07-23)
 
@@ -686,6 +740,13 @@ the anti-pattern this amendment steers away from. See
 `docs/design/platform-modules.md` for the full design and
 `docs/use-cases/platform-modules.md` for the adoption path.
 
+**Revisit when.** (1) Provider pack type (TX-3): "a named consumer plus one
+concrete provider whose resource semantics an indexed service actually needs"
+(`docs/intent/futures.md` F5). (2) Concern pack growth (TX-4): "per pack: a real
+consumer with a real corpus, eval fixtures, and a kill criterion" (F6). (3) A
+`.fathom/` project pack found copying org-wide content — the amendment's named
+anti-pattern — becomes a platform-module binding instead.
+
 ## ADR-025: DuckDB backend deleted outright — SS-8 executed (2026-07-23)
 
 **Decision.** ADR-020 made SQLite the default store backend but kept the
@@ -749,3 +810,8 @@ and `workspace/db/fleet.duckdb` (the on-disk rollback file from the
 migration) are all outside this change's scope by design — SS-8 is a
 source-tree removal, not a fleet operation. `fleet.duckdb`'s deletion is
 the operator's manual step to take once satisfied it is no longer needed.
+
+**Revisit when.** (1) XT-6b: "Moving those to the wazero/WASM engine … is XT-6b's
+separate, not-yet-triggered slice" — the sole remaining reason for `CGO_ENABLED=1`
+(`docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
+manual step" — done: `workspace/db/` held no `.duckdb` file on 2026-08-25.

@@ -20,6 +20,24 @@ Three layers — connector → fusion → query: `docs/architecture.md`, `ADR.md
 | **UI = app-kit doctrine** — never hand-write observatory markup; role utilities only; CSS via `task ui:css` | `cmd/fathom/CLAUDE.md` |
 | **Org-agnostic (ADR-011)** — zero org-specific names/hosts/catalogs in code, docs, tests, fixtures; anything org-specific is configuration | `ADR.md` |
 
+## Project intent
+
+Durable intent lives at `docs/intent/README.md` (router). Vision: `docs/design/product-vision.md`.
+Decisions: `ADR.md` (general decision records, not only architecture; index at
+`docs/intent/decisions/README.md`). Consult the router before material product, design, domain, or
+architecture work and load only what it routes you to. Record decisions that pass its
+threshold; state fired revisit triggers before designing around them.
+
+Change records: conventional commit with a `Verified:` line, one commit per reviewable
+unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observable
+behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
+`[Unreleased]` to the delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
+
+Autonomy (`docs/intent/autonomy.md`): commit and push to `feat/mcp-scoped-surfaces` freely,
+and roll the changelog, tag, and fast-forward `main` after a green wave; ask before deleting,
+purging, spending LLM budget, or touching global agent config; never force-push `main`,
+raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
+
 ## Working conventions
 
 - **TDD**: write the failing `_test.go` first; prefer golden fixtures

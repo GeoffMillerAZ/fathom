@@ -10,8 +10,15 @@ archive` checks that every archived row id is absorbed here), followed by
 what changed. The full narrative record -- root causes, measurements,
 rationale as originally written -- lives per release under
 `docs/changelog/` and is never normative; plans, ADRs, and observations are.
+From 2026-08-25 the `[Unreleased]` block follows the change-records rules
+(`agentic-kit/docs/project-intent/changes.md`): a `Release impact:` line first,
+one line per observable change at most two sentences, `### Breaking` first
+when present, the delta not the journey; released blocks stay as written.
+Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
+
+Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### 2026-08-25
 
