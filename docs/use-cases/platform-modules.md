@@ -39,6 +39,8 @@ the edit-hook stack — lives in [coding-agents.md](coding-agents.md).
 | `fathom init` | CLI | Wires the PreToolUse guard hook and scaffolds commented `.fathom/guard.cue` / `.fathom/modules.cue` |
 | `fathom doctor` | CLI | Binding/guard config validity, unmounted bindings, sub-servable bindings, dead guards — see Setup & notes |
 | `fathom research report` | CLI | Guarded-edit pre\|post coverage and per-module serving counts (never fabricated when unmeasured) |
+| `fathom module init\|sources\|map\|compile\|eval\|doctor\|pack\|runs` | CLI | The producer side: author a module manifest (`module.cue`), map its sources onto a corpus, compile (dry-run by default, eval-gated), pack a conforming store for mounting — **experimental**: read-only before writable (law 9), no external consumer yet |
+| `serve-http --module <path>` / `--modules-token-env` | CLI | Mount a packed module store read-only on `POST /rpc/modules` (repeatable); the token env gates that surface for hosted deployments |
 
 ---
 
@@ -186,6 +188,8 @@ remapping, no module rules in `verify_plan` gating (a plan row is proven
 by the repo's own evidence only), no auto-derived guards, no blocking, no
 per-user guards.
 
+**Producing a module** (**experimental**): `fathom module init --name … --description … --include GLOB` writes `module.cue`; `module sources` and `module map --store … --service …` show what the manifest covers; `module compile --manifest module.cue --store PATH` is dry-run by default and refuses a real run below the eval gate (`module eval` records the fixture score; `--unsafe-skip-eval-gate` is the loud escape); `module doctor --require-level LEVEL` walks the readiness ladder; `module pack --out DIR` emits the conforming store an operator mounts with `serve-http --module`; `module runs` lists compile runs. The hosted module host (`--modules-token-env`) has no external consumer yet — law 9: read-only before writable.
+
 **Measuring it, honestly:** `fathom research report` reports guarded-edit
 `pre`/`post` coverage (seen/served counts, dedup-suppressed count) and
 per-module rules-served counts separately — both print an explicit
@@ -201,7 +205,10 @@ unbind candidate, reported, never auto-removed.
 This doc covers: `.fathom/modules.cue` (schema: `schema/binding/`),
 `.fathom/guard.cue` (schema: `schema/guard/`), the `obligations` MCP
 tool's `module`/`displaced_repo`/`displaced_module`/`module_notes` fields,
-`fathom edit-hook --pre`, and the `binding_file`/`guard_file`/
-`binding_modules_mounted`/`binding_module_readiness`/`guard_dead_scopes`/
-`guard_include_modules_unbound` doctor checks. Update it when these
-change.
+`list_modules`, `module_obligations`, `module_query`, `module_staleness`,
+`fathom edit-hook --pre`, `fathom module` (`init`/`sources`/`map`/
+`compile`/`eval`/`doctor`/`pack`/`runs`; schema: `schema/module/`),
+`serve-http --module`/`--modules-token-env`, and the `binding_file`/
+`guard_file`/`binding_modules_mounted`/`binding_module_readiness`/
+`guard_dead_scopes`/`guard_include_modules_unbound` doctor checks. Update
+it when these change.

@@ -34,6 +34,10 @@ CI-adjacent script, not from an agent session's tool calls.
 |---|---|---|
 | `fathom research report` | CLI | A deterministic, honest aggregate of local evidence over a `--since` window: call-log traffic, injection coverage, verify-gate catches, staleness signal, observation counts, bench-artifact token/turn deltas, and (phase P, `docs/design/production-tokenomics.md`) a payload **cost** ledger ("what fathom SPENT"), a discovery-share estimate, and a service-identity cache hit rate. Every metric it cannot compute prints `"not measurable: <reason>"` instead of a fabricated zero. |
 | `fathom research bundle` | CLI | The sanitized, shareable twin: aggregate counts, rates, tool-name frequencies, and verdict distributions only — never file paths, repo/service names, symbol names, source code, or free text. Service identities appear only as salted hashes. `--dry-run` previews the exact bundle without writing or transmitting anything. |
+| `fathom observe` | CLI | File one structured friction observation (`--symptom` required; `--tool`, `--expected`, `--actual`, `--repro`) into `.fathom/observations.md` — the input side of the flywheel; the report counts them |
+| `fathom instrument --adoption` | CLI | The flywheel gauge: injection coverage vs the ≥90% gate, read-error classification, surface-scoped zero-call tool list, open observations |
+| `fathom flywheel` | CLI | Each feedback loop reported CLOSED/OPEN/IDLE with its evidence and the remedy (`--json`) |
+| `fathom rate` | CLI | Rate this session 1–5 with a note: the OUTCOME half of the A/B criterion (fewer tokens is not a win if less got done) — an optional human override, **experimental** |
 
 > Both commands are local-file-only: they read `workspace/logs/mcp-calls.jsonl`,
 > `~/.fathom/hooks.jsonl`, `.fathom/observations.md`, and (if present)
@@ -196,7 +200,12 @@ answers the second question.
 
 None of this licenses a production savings claim on its own — that is
 what the pre-registered A/B protocol (design §5) exists to test, not this
-report.
+report. **Status (experimental):** the counterfactual is one-armed today —
+the ON arm is collecting and each arm needs ≥20 admissible units before a
+comparison is admissible (law 12), so every savings claim stays
+inadmissible until then; `fathom rate` supplies the optional human outcome
+score per session, and `fathom flywheel` names which loops are CLOSED,
+OPEN or IDLE with the evidence.
 
 ---
 
@@ -250,8 +259,9 @@ schedules or transmits either command's output.
 
 ## Maintained
 
-This doc covers: `fathom research report`, `fathom research bundle`. Update
-it when either command's flags, output shape, or sanitization guarantees
-change — see also `docs/design/research-flywheel.md` for the full design
+This doc covers: `fathom research report`, `fathom research bundle`,
+`fathom observe` (and `.fathom/observations.md`), `fathom instrument
+--adoption`, `fathom flywheel`, `fathom rate`. Update it when any command's
+flags, output shape, or sanitization guarantees change — see also `docs/design/research-flywheel.md` for the full design
 rationale and `internal/research/bundle`'s doc comments for the allowlist
 implementation.

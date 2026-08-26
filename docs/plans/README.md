@@ -57,8 +57,11 @@ tasks block.
 > code it calls references as a *value* -- an HTTP handler registered through a mux,
 > a route-table literal, `http.HandlerFunc(h)`, middleware, or a method value is
 > reached by an httptest that builds the server (VS-6), and calls inside `t.Run`,
-> `defer`, or goroutine closures count for the enclosing test (VS-7). `skip_test`
-> is for rows with no test at all, never for "the wiring is indirect".
+> `defer`, or goroutine closures count for the enclosing test (VS-7) -- the old
+> "call it at the test's top level" rule is retired. A method name shared by two
+> receivers needs `package:`; an edge into a file the connector never discovered is
+> named by ingest as a discovery failure, never a clean 0 (VS-9). `skip_test` is for
+> rows with no test at all, never for "the wiring is indirect".
 
 The zero value of every key is the **strictest** contract; loosen explicitly.
 `verify.LintPlan` reports v2 convention violations (duplicate IDs, dispositions

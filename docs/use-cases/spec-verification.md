@@ -19,6 +19,9 @@ Stop trusting "done!" — verify each task against actual code evidence before a
 | `spec_refs` | MCP tool | Lists every observation that cites a given spec ID, with tier and staleness |
 | `contradiction_scan` | MCP tool | Finds observations that conflict with each other or with the spec within a concern scope |
 | `fathom gen-status-cue` | CLI | Render a deterministic `STATUS.cue` from a plan file + the live index — the plan stays the source of truth; `STATUS.cue` is regenerated, never hand-edited |
+| `fathom verify` | CLI | The done-means-proven gate over `docs/plans/*.md` (`--quiet`, `--strict`, `--require-all`, `--store`) — see below |
+| `fathom plans status\|next\|context\|lease\|leases\|archive\|restore` | CLI | Computed SDD progress, the work frontier, per-row context packs, advisory leases, and the governed archive lifecycle |
+| `fathom thread brief\|note\|point\|list\|close\|promote\|handoff` | CLI | Continuity threads — the work, not the session; `promote` scaffolds a plan from a thread (**experimental**: the continuity-thread bet is still collecting, 4/20) |
 
 ## How it enhances Claude Code
 
@@ -147,13 +150,17 @@ Writes a deterministic `STATUS.cue` with each task's verdict and cited evidence 
 - `1` — at least one claimed task fails verification; push blocked.
 - `2` — operational error (unreadable plan, daemon unreachable); fail-open, push allowed.
 
-**Lefthook pre-push (fail-open):** `lefthook.yml` runs `fathom verify` over every `docs/plans/*.md` file at pre-push. Exit 1 blocks the push; exit 2 warns and allows (daemon may be down during local work):
+**What counts as a test reaching a symbol** (VS-6/VS-7/VS-9): reachability walks the static call graph, and **function values are edges** — `mux.HandleFunc("/x", h)`, a route table, `http.HandlerFunc(h)`, middleware wrapping, a method value all count as calls of `h`. A call made inside a closure counts for the enclosing test, so the old folk rule "call the symbol at the test's top level" is retired. Two same-named methods on different receivers need `package:` on the row to disambiguate; when the resolver cannot decide, the discovery gap is named on stderr rather than silently verifying `present-but-untested`.
+
+**Lefthook pre-push (fail-open):** `lefthook.yml` runs `fathom verify --quiet` (only failing rows plus the summary; `--quiet-pass` suppresses output entirely on a pass) over every `docs/plans/*.md` file at pre-push. Exit 1 blocks the push; exit 2 warns and allows (daemon may be down during local work):
 
 ```sh
-bin/fathom verify --service <service> --plan docs/plans/my-plan.md
+bin/fathom verify --service <service> --plan docs/plans/my-plan.md --quiet
 ```
 
-**CI (`--strict`, fail-closed):** `scripts/ci.sh` adds `--strict`, which treats operational-error exit 2 as failure — recommended when a daemon is guaranteed available:
+**Wave gate (`--require-all`):** additionally fails on open/in-progress rows — everything claimed-and-verified or explicitly skipped with a disposition (ADR-018 §2). Run it on demand before declaring a wave done.
+
+**CI (`--strict`, fail-closed):** `scripts/ci.sh` adds `--strict`, which treats claimed-but-Unknown rows as failures — recommended when a daemon is guaranteed available. No CI runner exists yet; the script is run by hand, so treat the CI lane as **experimental**:
 
 ```sh
 bin/fathom verify --strict --service <service> --plan docs/plans/my-plan.md \
@@ -187,19 +194,30 @@ never says "done" on a plan CI rejects), each with its `{id, symbol,
 package}` anchors and plan file.
 Ordering is (plan file, then the row's position in the file) — an
 author-owned `id:` need not sort alphabetically the way it was written, so
-this is never a re-sort by ID.
+this is never a re-sort by ID. A row carrying `needs: <ROW-ID>` derives
+`eligible`/`blocked_on` from the target's verified state; `--eligible-only`
+hides blocked rows, `--free` hides rows holding a fresh lease.
 
 ```sh
-bin/fathom plans next --service <service> --store workspace/db/fleet.sqlite --json
+bin/fathom plans next --service <service> --store workspace/db/fleet.sqlite --json --eligible-only
 ```
+
+**`fathom plans context --row <ID>`** — renders the row's context pack: the
+`ctx:` pointers the plan author attached (files, symbols, docs) plus the
+row's anchors, inside a byte budget (`--budget`, default 4000; elision is
+disclosed). **`fathom plans lease --plan <file> <ROW-ID>`** files a TTL
+advisory lease (`--ttl`, default 2h; `--release` to drop it) in
+`.fathom/leases.jsonl` so parallel sessions can see who is on a row;
+`plans leases` lists them. Leases are advisory, never a lock.
 
 **`fathom plans archive <plan>` / `fathom plans restore <plan>`** — the
 governed artifact lifecycle (bounds the gate's cost as the plan count
 grows). Archive refuses unless: every row is `[x]`-claimed-and-currently-
 verifying or `[-]` skipped; every row's task ID appears somewhere in
-CHANGELOG.md or ADR.md (the plan's claims must already be absorbed into the
-permanent record); and the engine is re-run fresh at archive time, never
-trusted from an earlier pass. On success the plan moves to
+CHANGELOG.md, ADR.md or `docs/changelog/*.md` (the plan's claims must
+already be absorbed into the permanent record — the refusal names all
+three); and the engine is re-run fresh at archive time, never trusted from
+an earlier pass. On success the plan moves to
 `docs/plans/archive/` with a tombstone (date, HEAD sha, verify summary)
 written into its header; `restore` moves it back, leaving the tombstone in
 place. `docs/plans/archive/` is out of `fathom verify`'s gate scope by
@@ -212,13 +230,9 @@ bin/fathom plans restore docs/plans/archive/my-plan.md --root .
 
 ## Setup & notes
 
-**Profile:** Set `investigation` before running spec-verification workflows:
+**Surface:** there is no profile switch (`set_profile` was removed, SW-2). `verify_plan` is on the 17-tool `/rpc/agent` allowlist; `spec_coverage`, `spec_refs`, `traceability` and `contradiction_scan` are in the `investigation` group (`POST /rpc/investigation`, or bare `POST /rpc`). An off-surface call still executes over HTTP — logged `off_surface:true`, never refused; stdio `serve-mcp` serves everything.
 
-```json
-{ "profile": "investigation" }
-```
-
-This exposes the investigation tool group plus shared tools, keeping the visible surface focused.
+**Continuity between sessions** (**experimental** — the thread bet is at 4/20): `fathom thread brief` at session start prints this repo's open items (the SessionStart hook does it for Claude Code; Codex runs it by hand, or `fathom prime`); `fathom thread note "…"` / `thread point` file on the current repo's daemon-resolved service id by default (`--thread` overrides; `general` only when nothing resolves); `thread list` and `brief` show this repo's items and one line `N open item(s) in other repos — fathom thread list --all-repos` (`--all` also shows closed and dormant); `thread close <id> --why <sha|row>` closes with a citation; `thread promote` scaffolds `docs/plans/<thread>.md` from a thread so it enters the gate. The `handoff_cites_instruments` custodian concern (`fathom config audit`) flags a handoff note that claims shipped work without citing a commit sha, an active plan row id, `fathom verify`, or a retro artifact.
 
 **Concern is optional for `verify_plan` but strongly recommended.** Without a concern, the scan covers the full service index. With a concern it covers only the relevant slice, which is ~77% fewer tokens in practice.
 
@@ -228,10 +242,10 @@ This exposes the investigation tool group plus shared tools, keeping the visible
 
 **`gen-status-cue` is a CLI command, not an MCP tool.** It renders `STATUS.cue` to `workspace/artifacts/` by default (per the workspace convention). The plan file passed via `--plan` is the human-owned source of truth; never hand-edit the generated `STATUS.cue` — regenerate it. It accepts a `.cue` plan (matching `schema/plan/schema.cue`), a `.json` plan, or a `.md` Markdown checklist (each `- [ ]/[x] title [SPEC-ID] {symbol: Foo}` line becomes a task).
 
-**In the loop.** `verify_plan` also accepts `plan_markdown` — the contents of a checklist like `TRACKING.md` — directly, so an agent can verify before reporting done. The `/verify` slash command automates this: read the plan → call `verify_plan` → surface every `[x]` item that is **not** `verified`. Annotate a checklist line with `{symbol: Foo}` (and optionally `[US-042]`, `{reachable_from: Bar}`) to give it a checkable contract; an unannotated line verifies as `no-contract` (honest, not a false pass).
+**In the loop.** `verify_plan` also accepts `plan_markdown` — the contents of a `docs/plans/*.md` checklist — directly, so an agent can verify before reporting done. The `/verify` slash command automates this: read the plan → call `verify_plan` → surface every `[x]` item that is **not** `verified`. Annotate a checklist line with `{symbol: Foo}` (and optionally `[US-042]`, `{reachable_from: Bar}`) to give it a checkable contract; an unannotated line verifies as `no-contract` (honest, not a false pass).
 
 **Tier thresholds:** `verified` verdict requires evidence at the `verified` tier. Evidence from heuristic extractors (non-Go files) arrives at lower tiers and produces `likely-unconfirmed`, not `verified`. Go sources processed by the AST extractor can reach `verified`. This is not a bug — it is an honest representation of evidence quality.
 
 ## Maintained
 
-This doc covers: `verify_plan`, `spec_coverage`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify`, `fathom plans status`, `fathom plans next`, `fathom plans archive`, `fathom plans restore`. Update it when these change.
+This doc covers: `verify_plan`, `spec_coverage`, `traceability`, `spec_refs`, `contradiction_scan`, `fathom gen-status-cue`, `fathom verify` (`--quiet`, `--quiet-pass`, `--strict`, `--require-all`; the reachability facts), `fathom plans status`, `fathom plans next` (`--eligible-only`, `--free`), `fathom plans context`, `fathom plans lease`/`leases`, `fathom plans archive`, `fathom plans restore`, `fathom thread` (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`). Update it when these change.

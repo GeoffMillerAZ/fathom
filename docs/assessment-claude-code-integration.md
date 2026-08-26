@@ -1,5 +1,17 @@
 # Assessment: Fathom × Claude Code integration (2026-06-12)
 
+> **Historical record (2026-06-12; banner added 2026-08-25).** The measured
+> numbers below are a point-in-time record and stay accurate for that day;
+> the stack they describe has moved on. The store is pure-Go SQLite, not
+> DuckDB (ADR-020/025 — [why-duckdb.md](why-duckdb.md)); the registry is 54
+> tools plus `memory_search`, and a session reaches the 17-tool `/rpc/agent`
+> surface ([mcp-tools.md](mcp-tools.md)); the current wiring guide is
+> [use-cases/coding-agents.md](use-cases/coding-agents.md). The §5 backlog is
+> not the roadmap — `fathom plans status --service fathom` and
+> [intent/scope.md](intent/scope.md) are. The savings figures here predate
+> the A/B counterfactual (experimental: ON arm still collecting, ≥20 units per
+> arm before any savings claim is admissible, law 12).
+
 Owner-requested report on whether wiring the fathom fleet index into Claude
 Code sessions improved **effectiveness, correctness, and tokenomics** — with
 measured numbers where they exist, estimates labeled as estimates, and an
@@ -7,17 +19,20 @@ honest verdict on whether this reinvented existing wheels.
 
 ## 1. What was integrated (one day, 2026-06-12)
 
-- Fleet index: throughline + agentic-kit + app-kit + fathom in one DuckDB
-  store (~12k symbols, 531 doc chunks, CUE definitions, Templ components;
-  ~4 MB; full rebuild seconds; hash-gated no-op re-ingest ~0.2 s).
+- Fleet index: throughline + agentic-kit + app-kit + fathom in one store
+  (DuckDB at the time; SQLite since ADR-025) — ~12k symbols, 531 doc chunks,
+  CUE definitions, Templ components; ~4 MB; full rebuild seconds; hash-gated
+  no-op re-ingest ~0.2 s.
 - MCP server registered user-scope → every Claude Code session (and every
-  subagent it spawns) gets ~80 tools; the six that matter are named in each
-  repo's CLAUDE.md: `find_symbol`, `query_symbols`, `find_callers`,
+  subagent it spawns) got the whole registry (~80 tools then; 54 +
+  `memory_search` today, 17 on the agent surface); the six that matter are
+  named in each repo's CLAUDE.md: `find_symbol`, `query_symbols`, `find_callers`,
   `outline`, `repo_map`, `pack_context`.
 - Operating contract in all four repos: index-before-exploration; refresh
   via the MCP `ingest` tool at session start + post-commit (the DuckDB store
-  is single-writer — measured: CLI ingest fails on the lock while a session
-  lives; best-effort post-commit lefthook covers no-session commits);
+  was single-writer — measured then: CLI ingest failed on the lock while a
+  session lived; SQLite serializes writers instead, ADR-020; best-effort
+  post-commit lefthook covers no-session commits);
   `staleness_report` before trusting results after heavy edits;
   `.fathomignore` keeps case data out (the index sits outside the DLP gate).
 - Pre-packed worker briefs codified: the architect's fathom recon (exact

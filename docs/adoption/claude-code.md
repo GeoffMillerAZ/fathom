@@ -10,7 +10,7 @@ See also: [docs/use-cases/coding-agents.md](../use-cases/coding-agents.md)
 (the shorter canonical-wiring summary this guide expands on),
 [docs/configuration.md](../configuration.md) (the full provider-config
 reference), [docs/layers.md](../layers.md) (the semantic-layer catalog),
-[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 16-tool
+[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 17-tool
 surface covered here).
 
 ---
@@ -76,6 +76,27 @@ one for you if none exists.
 
 Re-ingest is hash-gated (~0.2s when nothing changed) — safe to run often.
 
+**Ingest is honest about what it could not read** (IT-14/IT-15). A file the
+connector cannot read (EPERM/EACCES/EIO/ENOENT on the file read — transport
+errors stay fatal) is printed in a `read-failed: N file(s)` column with its
+path and errno (first 5 inline), the readable files are still indexed, and
+the run exits `1` with `error: ingest degraded: …`. A run that could read
+**nothing** while the store already holds observations for that service
+**refuses to write** — no watermark advance, no purge — `error: ingest
+refused: …`, exit `1`; on `operation not permitted` it adds the hint
+`external-volume TCC wedge? tccutil reset SystemPolicyRemovableVolumes
+<terminal bundle id>`. The daemon's `ingest` MCP tool returns the same cause
+and hint as a JSON-RPC error (never `ok:true`). Go callers get
+`client.ReadFailuresError` (`Refused`, `Existing`, `Hint()`).
+
+**Narrowing what the index holds.** `fathom scope suppress <glob> --reason R
+[--service S] [--until 7d]` hides matching files from every answer,
+reversibly (`scope list`, `scope unsuppress <id>`, `scope preview <glob>`
+shows what would match first). `fathom purge <glob> --service S --reason R
+[--dry-run|--yes]` is the **irreversible** twin for leaked secrets — exit
+`2` means the SQL rows are gone but the raw store bytes were not checked;
+`fathom purge history` keeps the ledger.
+
 ---
 
 ## 3. The fast path: `fathom init`
@@ -106,12 +127,19 @@ correct. It:
    lefthook pre-push snippet (§7.4, `lefthook.yml` is hand-curated —
    `init` never edits it).
 
+Steps 3 and 4 go through one wiring engine (`internal/wiring`, law 15):
+one plan → apply → one receipt per repo in `.fathom/receipts.jsonl`
+(gitignored); `fathom fleet receipts` lists them and `fathom fleet undo
+<receipt> --repo <root>` (or `--last`) reverses one.
+
 Exit codes: `0` fully wired and the daemon confirms the service is indexed;
 `2` wiring is complete but the daemon is unreachable, or reachable but the
 service still shows zero symbols (operational — mirrors `verify`'s
 fail-open doctrine, §7.4 below; never a failure of the files `init` wrote —
 re-run once the daemon is up); `1` is never returned for an operational
-reason **except** a `--skills` marker conflict (§11.1).
+reason **except** a `--skills` marker conflict (§11.1) or a wiring file
+that law 15 **blocked** (§3.1) — a blocked file never aborts the other
+steps; it is listed once at the end, one line per file.
 
 The rest of this guide is the manual/reference version of what `init`
 automates, plus everything it doesn't (the daemon install, provider setup,
@@ -123,36 +151,45 @@ One canonical stanza (`cmd/fathom/init.go`'s `fathomStanza`) is written
 verbatim into both files, wrapped in a marker pair:
 
 ```
-<!-- fathom:begin -->
+<!-- fathom:begin v3 sha256:… -->
 ## fathom code intelligence
 …
 <!-- fathom:end -->
 ```
 
-`applyStanza` (the function behind step 4 above) has exactly three
-outcomes, chosen by what it finds at the target path:
+After the first write the begin line carries the marker version and a
+digest of the body (`v3 sha256:…`); a region written before v3 reads
+`<!-- fathom:begin -->` with no digest. The wiring engine (`internal/wiring`,
+shared with `fathom fleet reconcile --apply`) has these outcomes, chosen by
+what it finds at the target path:
 
 - **File absent** → created with the stanza as its entire content.
 - **File exists, never wired** (neither marker present) → the stanza is
   **appended** to the end of the file — every byte already there is
   preserved; your own `CLAUDE.md`/`AGENTS.md` content is never touched,
   let alone overwritten.
-- **File exists, well-formed marker pair present** → only the content
-  *between* the markers is **replaced** with the current stanza; everything
-  outside the markers (your own sections, above or below) is untouched.
-  This is what makes a re-run idempotent: if the stanza text hasn't
-  changed, the file's bytes don't change either, and `init` prints `ok
-  CLAUDE.md (already present)` instead of `updated`.
+- **File exists, v1 region** (`<!-- fathom:begin -->`, no digest) → adopted
+  as fathom's and upgraded to a v3 marker on the first write. That is a
+  migration, not drift.
+- **File exists, tracked v3 region, body matches its digest** → only the
+  content *between* the markers is **replaced** with the current stanza;
+  everything outside the markers (your own sections, above or below) is
+  untouched. A re-run with an unchanged stanza changes no bytes and prints
+  `ok CLAUDE.md (already present)` instead of `updated`.
+- **Tracked region a human edited** (body no longer matches its digest) →
+  **BLOCKED** and named: exit `1`, the file stays byte-identical, the other
+  files in the same run are still applied, and the final list says
+  `drifted (hand-edited) region` per file. Move your edit outside the
+  markers (or accept fathom's text), then re-run.
 - **Corrupted marker pair** (only one of `fathom:begin`/`fathom:end` found,
-  or `end` appears at or before `begin` — e.g. a hand-edit that deleted or
-  reordered a marker line) → `init` **refuses loudly**, naming the file,
-  rather than guess: silently appending a fresh block on top of a broken
-  pair would compound the corruption (two `begin`s, an orphaned `end`, or
-  worse) instead of surfacing it for a human to fix. Fix or remove the
+  or `end` at or before `begin`) → also BLOCKED, reported as `could not be
+  read/parsed` rather than guessed at: silently appending a fresh block on
+  top of a broken pair would compound the corruption. Fix or remove the
   stray marker by hand, then re-run `init`.
 
 Re-running `init` after editing your own content elsewhere in either file
 is always safe — only the bytes between the markers are ever replaced.
+`fathom doctor`'s `stanza_present` check accepts both marker spellings.
 
 ---
 
@@ -160,7 +197,7 @@ is always safe — only the bytes between the markers are ever replaced.
 
 | | `serve-mcp` | `serve-http` |
 |---|---|---|
-| Transport | stdio, spawned per session | HTTP, one process, `--addr` (default `:7575`) |
+| Transport | stdio, spawned per session | HTTP, one process, `--addr` (default `127.0.0.1:7575`, loopback) |
 | Clients | Exactly one | Any number, concurrently |
 | Store lock | Holds the store's single-writer lock for its lifetime | Same, but there's only ever one holder |
 | Best for | A single Claude Code session on your machine | More than one concurrent session, CI, multiple agents/editors sharing one index |
@@ -198,13 +235,24 @@ curl -s http://127.0.0.1:7575/healthz   # ok
 For anything beyond a one-off test, install the binary and run it under a
 supervisor so it survives logout/reboot **and** so a `bin/fathom` rebuild in
 your repo doesn't silently swap out the binary a running daemon is
-executing. The pattern this repo uses on macOS — copy to a stable path
-outside the repo, point launchd at that copy:
+executing. The pattern this repo uses on macOS — install to a stable path
+outside the repo, point launchd at that copy, and put every install and
+redeploy through one task:
 
 ```sh
-mkdir -p ~/.local/libexec/fathom
-cp bin/fathom ~/.local/libexec/fathom/fathom
+task deploy      # build → ~/.local/libexec/fathom/fathom → restart launchd → assert the daemon serves HEAD
 ```
+
+**Never a raw `cp` onto the installed path.** `cp` truncates a running
+executable in place, and a freshly copied, unsigned binary has a new code
+hash, which voids the daemon's macOS TCC (removable-volume) grant — that
+combination took the daemon down fleet-wide once (O25,
+`docs/dogfood-observations.md`). `task deploy` (this repo's `Taskfile.yml`)
+writes to a temp path and renames, signs with the `fathom-dev` identity
+when one exists, `launchctl kickstart`s the agent, then asserts the running
+process is the installed path **and** reports `git rev-parse HEAD`. Copy
+that task into your own repo and adapt the label/paths; keep all four
+properties.
 
 ```xml
 <!-- ~/Library/LaunchAgents/com.example.fathom-http.plist — adapt the label and paths -->
@@ -248,14 +296,16 @@ run from a real terminal (not a sandboxed agent tool — the restart can wedge
 one):
 
 ```sh
-cp bin/fathom ~/.local/libexec/fathom/fathom
-launchctl kickstart -k gui/$(id -u)/com.example.fathom-http
+task deploy
 ```
 
-On macOS, a newly copied binary has a new code hash — if the restart hangs,
-look for a "fathom would like to access files on a removable volume" dialog
-and click **Allow**. This is also why §13's binary-vs-data staleness check
-matters: a committed fix does not reach the daemon until this step runs.
+If the restart hangs on macOS, look for a "fathom would like to access
+files on a removable volume" dialog and click **Allow** (an unsigned,
+per-hash grant re-prompts on every rebuild; the `fathom-dev` signing
+identity the task uses makes the grant identity-based, granted once). This
+is also why §13's binary-vs-data staleness check matters: a committed fix
+does not reach the daemon until this step runs — and `task deploy`'s final
+assert is what turns "I ran the deploy" into "the daemon serves HEAD".
 
 ---
 
@@ -275,14 +325,16 @@ registered it from.
 
 **Why `/rpc/agent` and not bare `/rpc`.** The daemon serves several
 path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
-full ~80-tool registry (unauthenticated, includes `ingest` and
-`compile_layer`); `/rpc/agent` (aliased `/rpc/companion`) is the curated
-16-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
+full registry — 55 tools on this build (54 after the 2026-08-23 prune of 34
+zero-call tools, plus `memory_search`), unauthenticated, includes `ingest`
+and `compile_layer`; `/rpc/agent` (aliased `/rpc/companion`) is the curated
+17-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
 `/rpc/agent` is still the better default because it's what's dogfooded, and
 because it makes off-surface tool use *measurable* (calls outside the
-16-tool set still execute — they're logged `off_surface:true`, never
-silently rejected — see ADR-014's amendment in `docs/mcp-tools.md`). If you
+17-tool set still execute — they're logged `off_surface:true`, never
+silently rejected — surfaces are execute-and-flag, never a security
+boundary; see ADR-014's amendment in `docs/mcp-tools.md`). If you
 want the full registry too, register it under a second name:
 
 ```sh
@@ -335,7 +387,10 @@ budget-enforced, overflow named as `and N more`) and, when a registered
 config concern is violated, one **custodian attention line** (§8's
 `concerns.cue`: `config: N instruction(s) may no longer be true — fathom
 config audit`). `resume` and `compact` keep their context, so those
-sources inject neither — adding bytes there is pure tax.
+sources inject neither — adding bytes there is pure tax. `fathom prime`
+prints the same primer on demand (identity, freshness, a live example, the
+thread brief, the custodian line) for a harness with no SessionStart hook
+— Codex — or for a human who wants to see what the session was told.
 
 ```json
 {
@@ -388,6 +443,16 @@ bin/fathom compile --service my-service --dry-run=false   # cents-scale spend; d
 Until then the hook exits clean (silent), by design — see `docs/layers.md`
 for what `obligations` (and the other catalog layers — `adr-rules`,
 `spec-bindings`, `findings`) actually compile from.
+
+**Anchored memories ride the same payload** (AM-6, *experimental — new and
+unmeasured*): when `<repo>/.fathom/memories.jsonl` exists, the hook appends
+a separate `🧠 fathom memory — <file>:` block after the obligations/spec
+lines, one bullet per memory anchored to the edited file, each labeled
+`[tier, state]`, ordered tier → anchor specificity → id, inside the same
+150-token whole-payload budget (a displaced tail is counted, never silently
+dropped). No memories file, or nothing anchored to the file → nothing
+added; a memory RPC failure emits an `edit-hook/error` beat instead of
+guessing. §8 covers the `fathom memory` verbs that write the file.
 
 ### 7.3 Stop — `stop-hook` (done-means-proven, session granularity)
 
@@ -443,7 +508,7 @@ pre-push:
         [ ${#plans[@]} -eq 0 ] && exit 0
         rc=0
         for f in "${plans[@]}"; do
-          bin/fathom verify --service <service> --plan "$f"
+          bin/fathom verify --service <service> --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then
@@ -452,6 +517,10 @@ pre-push:
         done
         exit $rc
 ```
+
+`--quiet` prints only the failing rows (and, with `--strict`, the unknown
+ones) plus the summary — a green plan costs one line per push instead of
+one per row; it composes with `--quiet-pass`.
 
 Exit-code contract (`fathom verify`, per
 `docs/design/coding-agent-excellence.md` §5.3): **0** every claimed task
@@ -462,7 +531,8 @@ that blocks pushes because a daemon happened to be down gets disabled within
 a week. In CI, add `--strict` (claimed-but-Unknown also blocks) and treat
 exit 2 as a **failure** too — CI builds its own store
 (`fathom ingest` into a temp store, then `verify --store`), so "daemon down"
-is never a valid CI state.
+is never a valid CI state. (*Experimental in this repo:* no CI runner
+exists yet; `scripts/ci.sh` is the manual, strict edition of the gate.)
 
 Plan files themselves are Markdown checklists — grammar in
 `docs/plans/README.md`:
@@ -589,17 +659,29 @@ The write side that matters most is yours, not the hooks': before a
 
 ```sh
 fathom thread note "purge suppression moved to the query layer — SP-1 next" \
-  [--thread T] [--completes-when plan_row_checked:docs/plans/x.md:SP-1]
-fathom thread list          # open items (deposits + notes), per repo
-fathom thread close <id>    # or let a completes_when condition close it
-fathom thread brief         # what the next fresh session will be shown
+  [--kind handoff-note] [--thread T] [--completes-when plan_row_checked:docs/plans/x.md#SP-1]
+fathom thread point [--session ID]   # a pointer to where the detail lives
+fathom thread list          # this repo's open items (deposits + notes)
+fathom thread close <id> --why "…"   # or let a completes_when condition close it
+fathom thread brief         # what the next fresh session will be shown (≤2,400 bytes)
+fathom thread promote <thread> [--out docs/plans/<thread>.md]   # scaffold a plan from a thread
+fathom thread handoff       # harness-neutral Markdown handoff of the open work
 ```
 
-Notes with a `completes_when` condition (`file_exists`,
-`plan_row_checked`, `repo_clean`) close themselves when reality catches
-up, attributed `closed_by: condition`. The derived spec plane (plans +
-`fathom verify`) always outranks deposits in the brief — a note earns its
-bytes by saying what the index cannot.
+**Threads are scoped to the repo** (TH-6). `note`/`point` file on the
+current repo's daemon-resolved service id by default (`general` only when
+nothing resolves; `--thread` always wins). `list` and `brief` show this
+repo's items and end with one line — `N open item(s) in other repos —
+fathom thread list --all` — widen with `--all-repos` (list and brief) or
+`--all` (list: every repo, plus closed and dormant items). Untagged legacy
+items are never hidden. Notes with a `completes_when` condition
+(`file_exists:<path>`, `plan_row_checked:<plan>#<ROW-ID>`, `repo_clean`)
+close themselves when reality catches up, attributed `closed_by:
+condition`. The derived spec plane (plans + `fathom verify`) always
+outranks deposits in the brief — a note earns its bytes by saying what the
+index cannot. The continuity bet itself is *experimental*: it is being
+collected against a pre-registered criterion (4 of 20 units so far), so
+treat the mechanism as shipped and the benefit as unmeasured.
 
 ## 8. Per-project `.fathom/`
 
@@ -639,17 +721,58 @@ Two more CUE files live here, both law-13-scoped (a user-scope default in
 `~/.fathom/`, the repo file **governs**):
 
 - **`.fathom/capabilities.cue`** — which fathom features are on in this
-  repo. `fathom capabilities` lists every capability with what it costs,
-  whether it is operating, and WHY anything is off; `fathom capabilities
-  set <id> on|off [--scope user|project]` writes the file.
+  repo. `fathom capabilities` (`list`, `--cost`) shows every capability
+  with what it costs, whether it is operating, and WHY anything is off;
+  `fathom capabilities explain <id>` goes one deeper; `fathom capabilities
+  set <id> on|off [--scope project|user]` writes the file — it splices
+  only the `capabilities` block and preserves every other byte (comments,
+  the `budgets` block below), refusing when the file cannot be
+  round-tripped; ids that are not identifiers (`verify-gate`) are written
+  as quoted labels. The same file carries an optional **`budgets`** block
+  (BA-9, *experimental — new*) sizing the answer budget per tool class in
+  **tokens**, closed schema (an unknown key such as `lists` is refused
+  with a did-you-mean), resolved project → user → built-in:
+
+  ```cue
+  budgets: { list: 1500, composite: 4000, map: 2500 }
+  // list = query_symbols, references · composite = pack_context · map = repo_map
+  // find_symbol / find_callers / symbol_context / outline are NOT class-budgeted
+  ```
+
+  Honoured by the `serve-http` daemon; stdio `serve-mcp` still uses the
+  built-ins (a documented gap). Elision is always disclosed in the answer,
+  and each response reports its own cost (the observatory's Cost panel
+  aggregates them).
 - **`.fathom/concerns.cue`** — the config custodian's contracts (vision
   22, "instructed means true"): falsifiable wants about this repo's agent
-  config — a forbidden pattern, a documented command that must exist, a
-  line budget, pointers that must resolve. `fathom config audit` reports
-  per-concern holds/violated/unable **with `file:line` evidence**, the
-  doctor gains a `concerns` row, and §7.1's attention line fires while a
-  violation exists. Fathom never edits your prose — it reports; the
-  session decides (the `fathom-custodian` skill carries the loop).
+  config, each a `check: {kind: …}` — `forbidden_pattern` (a phrase that
+  must not appear), `command_documented_and_exists`, `max_lines` (a line
+  budget for a file), `pointers_resolve` (relative Markdown links), and
+  two newer kinds (*experimental*): `stanza_tools_served` — every tool the
+  fathom stanza names (backticked, or bare with an underscore such as
+  `find_callers`) must be served by the daemon's `/rpc/agent` `tools/list`;
+  daemon down or an empty registry is `unable to check`, never violated —
+  and `handoff_cites_instruments` with `days: N` — a handoff note filed for
+  this repo in the window that claims shipped/landed/done/fixed work must
+  cite a commit sha, an active plan row id, `fathom verify`, or a retro
+  artifact path. `fathom config audit` reports per-concern
+  holds/violated/unable **with `file:line` evidence**, the doctor gains a
+  `concerns` row, and §7.1's attention line fires while a violation
+  exists. The custodian is otherwise offline: `stanza_tools_served` is the
+  one kind that asks the daemon, and it degrades honestly. Fathom never
+  edits your prose — it reports; the session decides (the
+  `fathom-custodian` skill carries the loop).
+- **`.fathom/memories.jsonl`** — anchored memory (AM-*, *experimental*):
+  `fathom memory add --store <db> --service <svc> --claim "…" --anchor
+  symbol:Name --evidence machine-check:<ref>` refuses a memory with no
+  anchor (that is a preference — put it in `CLAUDE.md`); the stored tier
+  is derived from the evidence kind, never from the claim. `memory list
+  [--state fresh|suspect|orphaned|retired]`, `memory show --id`, and
+  `memory review [--id … --resolve still-true|no-longer-true|rewrite --by
+  human]` run the drift loop: an anchor that moved makes the memory
+  `suspect`, a vanished one `orphaned`. The `memory_search` MCP tool (§10)
+  reads the same file; §7.2's edit hook injects what is anchored to the
+  file being edited.
 
 ---
 
@@ -695,7 +818,7 @@ and the daemon's own `[daemon]` config are in
 
 ---
 
-## 10. The 16-tool agent surface — when to use what
+## 10. The 17-tool agent surface — when to use what
 
 The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 
@@ -716,13 +839,15 @@ The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 | `verify_plan` | You want an evidence-backed verdict on a plan's claimed tasks without waiting for the pre-push gate — same engine `fathom verify` uses |
 | `staleness_report` | Before trusting query results after heavy uncommitted edits, or when a query result looks stale/wrong |
 | `list_services` | You need to know what's actually indexed (service IDs, symbol counts, languages) before assuming a repo is in the fleet |
-| `ingest` | Force a re-index right now — after a commit, or when `staleness_report` says you should, or to onboard a repo that isn't indexed yet |
+| `ingest` | Force a re-index right now — after a commit, or when `staleness_report` says you should, or to onboard a repo that isn't indexed yet. A read failure comes back as a JSON-RPC error naming the cause (and the TCC hint), never `ok:true` (§2) |
+| `memory_search` | `{service, query?, file?, limit?}` — the one direct query over anchored memories (§8); every hit carries `tier` and `state`, retired memories never surface. *Experimental — new and unmeasured*; the edit hook's injection stays the primary path |
 
-The full ~80-tool registry (`/rpc`) adds quality/impact analysis
-(`complexity`, `dead_code`, `blast_radius`, …), security scans, and
-platform/cross-repo tools — see `docs/mcp-tools.md` for the complete
-reference; they still work when called off the agent surface (execute, just
-flagged `off_surface` in the call log), so nothing is actually locked out.
+The full registry (`/rpc`, 55 tools on this build) adds quality/impact
+analysis (`complexity`, `dead_code`, `blast_radius`, …), `test_impact`,
+spec traceability, and platform/cross-repo tools — see `docs/mcp-tools.md`
+for the complete reference (a test keeps it in step with the registry);
+they still work when called off the agent surface (execute, just flagged
+`off_surface` in the call log), so nothing is actually locked out.
 
 ---
 
@@ -840,6 +965,15 @@ recorded reason — the same discipline this repo's own
 repo. Both verbs are local-only by design: no telemetry leaves the
 repo, and nothing here depends on a daemon being reachable.
 
+Three more gauges sit beside them: `fathom flywheel` (each feedback loop
+CLOSED/OPEN/IDLE with its evidence and remedy), `fathom rate [--note …]`
+(a 1–5 outcome rating for the session — the human half of the A/B
+criterion, *experimental*, optional), and the week-long
+`fathom research report|bundle` runbook in
+[docs/adoption/research-flywheel.md](research-flywheel.md). The A/B
+counterfactual itself is still collecting (ON arm live, ≥20 units per arm
+needed) — until then no savings claim is admissible (law 12).
+
 ---
 
 ## 13. Troubleshooting
@@ -885,10 +1019,16 @@ have different fixes:
 - *Binary staleness* — the daemon is running old fathom **logic**, not old
   data. Because the daemon runs an installed copy
   (`~/.local/libexec/fathom/fathom`, §5), a committed Go fix does not reach
-  it until you deploy: `cp bin/fathom ~/.local/libexec/fathom/fathom &&
-  launchctl kickstart -k gui/$(id -u)/<your-label>`. Diagnose by comparing
-  `bin/fathom version` (or the daemon's, via a tool call) to
-  `git rev-parse HEAD` — a mismatch means stale, not buggy.
+  it until you deploy: `task deploy` (never a raw `cp` — §5). Diagnose by
+  comparing `bin/fathom version` (or the daemon's, via a tool call) to
+  `git rev-parse HEAD` — a mismatch means stale, not buggy; `task deploy`
+  ends by asserting exactly this.
+
+**`ingest` says `degraded` or `refused`.** Read the `read-failed` column
+(§2): the named paths could not be read. `stat` succeeds but `cat` fails on
+an external volume is a macOS TCC wedge — run the `tccutil reset` hint the
+error prints, then re-ingest. A refused run wrote nothing, so the previous
+index is intact.
 
 **A hook fires but injects nothing.** For `edit-hook`: check the
 `obligations` layer has actually been compiled for the service
@@ -928,9 +1068,9 @@ claude mcp get fathom                            # → Type: http · Status: ✔
 
 Then, inside a Claude Code session:
 
-- [ ] Calling `capabilities` returns `tool_count: 15` (or the count of
+- [ ] Calling `capabilities` returns `tool_count: 17` (or the count of
       whichever surface you registered) and lists `find_symbol`,
-      `query_symbols`, `symbol_context`, `verify_plan`, …
+      `query_symbols`, `symbol_context`, `verify_plan`, `memory_search`, …
 - [ ] `find_symbol` (or `query_symbols` with a `concern`) against a symbol
       you know exists returns a hit with `"tier": "verified"`.
 - [ ] After `fathom compile --service <svc> --dry-run=false` has run once,
@@ -943,12 +1083,26 @@ Then, inside a Claude Code session:
 - [ ] `git push` in the repo runs lefthook's pre-push hooks, including the
       `fathom-verify` command from §7.4.
 - [ ] `bin/fathom init --skills=claude` (or `=all`) populates
-      `.claude/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}/SKILL.md`
+      `.claude/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/SKILL.md`
       (§11), and `bin/fathom instrument --adoption` (§12) runs cleanly,
       reporting `no .fathom/observations.md yet` until the first `fathom
       observe` call, then a real open-observation count after.
 - [ ] `bin/fathom doctor` (§13) reports every row `pass` — or, faster than
       working through this checklist by hand, just run it first.
+- [ ] The daemon's observatory renders: `http://127.0.0.1:7575/observatory`
+      (fleet page — a 30-day grade distribution, *experimental*: days
+      without a persisted snapshot render Absent, today only until daily
+      snapshots persist), `/observatory/service?id=<svc>` (per-dimension
+      30-day series — queried, discovering, preventing, gating — from real
+      call-log rows; a day with no rows renders Absent with its reason, a
+      day the log was alive but this service saw nothing is a measured 0,
+      and sparklines never draw across an absent day), `/observatory/impact`,
+      `/observatory/brief`, and `/observatory/wiring/` (the §3.1 engine over
+      HTTP: `preview` returns a plan plus `plan_digest`, `apply` requires it
+      and answers 409 if the repo changed since, `undo` requires the
+      `receipt_digest` apply returned; mutating endpoints accept loopback
+      Host, same-origin, registered service ids and roots only). Tiles that
+      cannot read the call log or store render Absent, never 0.
 
 If every box above is checked, the full loop — index, serve, inject,
 gate — is live.
@@ -958,14 +1112,21 @@ gate — is live.
 ## Maintained
 
 This doc covers: `fathom init` (incl. `--skills[=claude|codex|all]` and the
-`CLAUDE.md`/`AGENTS.md` marker-delimited stanza), `ingest`, `serve-mcp`,
-`serve-http`, `compile`, `layers` (`list`/`show`/`install`), `verify`
-(`--strict`/`--require-all`), `observe`, `instrument --adoption`, `doctor`
-(`--harness=claude|codex|auto`, `--json`), `config` (incl. `config audit`),
-`capabilities` (incl. `set`), `providers`, `smoke`, `session-hook`,
-`session-end-hook`, `pre-compact-hook`, `edit-hook`, `stop-hook`,
-`thread` (`brief`/`note`/`point`/`list`/`close`); the `/rpc`, `/rpc/agent`
-(`/rpc/companion`) HTTP surfaces; the 16-tool agent allowlist (incl. read_source); the
+`CLAUDE.md`/`AGENTS.md` marker-delimited stanza, v3 digest markers, law-15
+blocking, receipts + `fleet undo`/`receipts`), `ingest` (read-failed /
+degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
+`compile`, `layers` (`list`/`show`/`install`), `verify`
+(`--strict`/`--require-all`/`--quiet`), `observe`, `instrument
+--adoption`, `doctor` (`--harness=claude|codex|auto`, `--json`), `config`
+(incl. `config audit` and the six concern kinds), `capabilities`
+(`list`/`explain`/`set`, the `budgets` block), `memory`
+(`add`/`list`/`review`/`show`), `providers`, `smoke`, `session-hook`,
+`session-end-hook`, `pre-compact-hook`, `edit-hook` (obligations + the
+memory block), `stop-hook`, `thread`
+(`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
+`task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
+the 17-tool agent allowlist (incl. `read_source`, `memory_search`); the
+observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
 Claude Code hook wiring; the lefthook pre-push verify gate; the nine
 shipped agent skills (`dist/agents/skills/` — plan, verify, onboard,

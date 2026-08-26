@@ -494,7 +494,7 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "nothing open here — closed and dormant items with --all")
 	}
 	if hidden > 0 {
-		fmt.Fprintf(stdout, "  %d open item(s) in other repos — fathom thread list --all\n", hidden)
+		fmt.Fprintf(stdout, "  %d open item(s) in other repos — fathom thread list --all-repos\n", hidden)
 	}
 	return 0
 }
@@ -715,11 +715,11 @@ func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot str
 			add(it)
 		}
 	} else if len(foreign) > 0 {
-		lines = append(lines, fmt.Sprintf("  • %d open item(s) in other repos — fathom thread list --all", len(foreign)))
+		lines = append(lines, fmt.Sprintf("  • %d open item(s) in other repos — fathom thread list --all-repos", len(foreign)))
 	}
 	// …and foreign telemetry collapses to one line, total.
 	if foreignMech > 0 {
-		lines = append(lines, fmt.Sprintf("  • %d other repo(s) left sessions with work in flight: fathom thread list --all", foreignMech))
+		lines = append(lines, fmt.Sprintf("  • %d other repo(s) left sessions with work in flight: fathom thread list --all-repos", foreignMech))
 	}
 	if len(lines) == 1 {
 		return "" // nothing to say costs nothing — the budget's best case

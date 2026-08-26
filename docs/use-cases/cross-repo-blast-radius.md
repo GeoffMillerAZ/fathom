@@ -19,8 +19,8 @@ Answer "if I change X, what breaks — here and in every other service?" across 
 | `diff_impact` | MCP tool (investigation) | Alias of `blast_radius`, framed for diff/PR review |
 | `rename_impact` | MCP tool (coding) | Every call site that must be updated if the symbol is renamed |
 | `reachable` | MCP tool (coding) | Boolean: is there any directed call path from symbol A to symbol B? |
-| `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges |
-| `platform_callers` | MCP tool (platform) | Alias for `cross_repo_callers` — identical result |
+| `cross_repo_callers` | MCP tool (platform) | All callers of a symbol **across every ingested service** via stored call edges (its `platform_callers` alias was deleted, SW-1) |
+| `references` | MCP tool (investigation) | Fleet-wide occurrence search for an identifier or string across every service's source, evidence-tiered — catches string/config mentions no call edge records |
 | `cross_repo_blast_radius` | MCP tool (platform) | Blast radius of a **symbol across all services**: the symbol plus every cross-service caller |
 | `list_services` | MCP tool (platform) | All services in the fleet with detected languages and symbol counts |
 | `staleness_report` | MCP tool (shared) | Whether the index is out of date vs. current HEAD |
@@ -133,13 +133,7 @@ Returns the symbol in each service plus every cross-service caller — the one-c
 
 ## Setup & notes
 
-**Profile:** Use `investigation` for single-repo work (`find_callers`, `test_impact`). Switch to `platform` for fleet-wide queries (`cross_repo_callers`, `list_services`). You can switch mid-session (stdio `serve-mcp` only):
-
-```json
-{ "name": "set_profile", "arguments": { "profile": "platform" } }
-```
-
-Then switch back to `investigation` or `coding` when done. Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/platform` for fleet-wide queries or `POST /rpc/investigation` for single-repo work instead.
+**Surface:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; the shared HTTP daemon scopes by path — `POST /rpc/agent` (the 17-tool allowlist: `find_callers`, `references`, `list_services`, `staleness_report`, `ingest` are on it), `POST /rpc/platform` for the fleet group, `POST /rpc/investigation` for the single-repo group, bare `POST /rpc` for everything. An off-surface call (`test_impact`, `rename_impact`, `reachable`, `cross_repo_*` from `/rpc/agent`) still executes — it is logged `off_surface:true`, never refused.
 
 **Cross-repo edges require call-edge data in the index.** If `cross_repo_callers` returns zero results for a symbol you know is called externally, the index was built without call edges populated. Re-ingest with a current build:
 
@@ -151,7 +145,9 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 **Staleness matters for impact analysis.** A long-running `serve-mcp` process can outlive commits. Always call `staleness_report` before a blast-radius review. If `reingest_recommended` is `true`, call `ingest` before proceeding — stale call edges produce false negatives (missing callers).
 
-**`platform_callers` is an alias.** `cross_repo_callers` and `platform_callers` are identical; either name works. The CLI uses `platform-callers` (hyphenated).
+**`platform_callers` is gone.** The MCP alias was deleted as zero-call redundancy (surfaces week-1, SW-1); call `cross_repo_callers`. The CLI verb is still `fathom platform-callers` (hyphenated).
+
+**Mentions that are not call edges.** A symbol referenced from config, a route table, a string or a language the extractor treats heuristically leaves no call edge. `references { "query": "ValidateToken" }` returns every occurrence across all services (text hits at the `pre-scan` tier, definitions at their real tier) — run it beside `cross_repo_callers` before declaring zero consumers.
 
 **`--repos` flag is Go-only (legacy).** When using the CLI, omit `--repos` to get language-agnostic results. The flag filters to a subset of repos using Go module paths and does not apply to Python, TypeScript, Java, or other languages.
 
@@ -159,4 +155,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `platform_callers`, `cross_repo_blast_radius`, `list_services`, `staleness_report`, `ingest`, `set_profile`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `cross_repo_blast_radius`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.

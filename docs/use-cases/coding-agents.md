@@ -14,7 +14,7 @@ and *measures* its own channels — so the agent spends tokens reasoning, not
 rediscovering, and "done" means proven, not asserted.
 
 ```
-index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 16 tools)
+index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 17 tools)
         ▲                              │
         │ auto-refresh on HEAD drift   ▼
 measure (instrument, call log) ◄── inject (edit-hook: obligations)
@@ -42,9 +42,10 @@ prints the two steps it will not do for you:
    ```sh
    claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
    ```
-   `/rpc/agent` is the curated 16-tool surface — the full ~80-tool registry
-   stays one endpoint away at `/rpc`, and off-surface calls still execute
-   (they're just logged `off_surface` so demand is measurable).
+   `/rpc/agent` is the curated 17-tool surface — the full registry
+   (`docs/mcp-tools.md`) stays one endpoint away at `/rpc`, and off-surface
+   calls still execute (they're just logged `off_surface` so demand is
+   measurable).
 2. **Arm the push gate** (per repo, if you use lefthook — printed snippet):
    ```yaml
    pre-push:
@@ -52,7 +53,7 @@ prints the two steps it will not do for you:
        fathom-verify:
          run: |
            for f in docs/plans/*.md; do case "$f" in *README*) continue;; esac
-             fathom verify --service <svc> --plan "$f" || exit 1
+             fathom verify --service <svc> --plan "$f" --quiet || exit 1
            done
    ```
    In CI add `--strict` (claimed-but-Unknown blocks too). Exit-code contract:
@@ -61,20 +62,26 @@ prints the two steps it will not do for you:
 
 One always-on daemon serves every repo and session (launchd example in
 `docs/usage.md`); ingest is hash-gated (~0.2s when clean) and self-refreshes
-on git-HEAD drift.
+on git-HEAD drift. `fathom init --skills` (bare = all; `=claude`/`=codex`)
+also installs the nine shipped skills (activate, custodian, doctor,
+feedback, impact, onboard, plan, rewire, verify). Every file `init` or
+`fathom fleet reconcile --apply` writes goes through one plan → apply →
+receipt (`.fathom/receipts.jsonl`; `fathom fleet undo` reverses it — law
+15); `fathom doctor` then proves the wiring, and `fathom prime` is the
+pull-tier brief for a harness with no SessionStart hook (Codex).
 
 ## 2. The channels, ranked by force
 
 | Channel | Mechanism | Force | Harness |
 |---|---|---|---|
-| CI `verify --strict` | claimed `[x]` must verify against the index | blocking | **any** (git-native) |
-| pre-push `verify` | same, fail-open on operational errors | blocking | **any** |
+| CI `verify --strict` | claimed `[x]` must verify against the index (claimed-but-Unknown fails too); **experimental** — no CI runner yet, `scripts/ci.sh` is run by hand | blocking | **any** (git-native) |
+| pre-push `verify --quiet` | same, failing rows + summary only, fail-open on operational errors | blocking | **any** |
 | `verify --require-all` | wave gate: everything claimed-and-verified or explicitly skipped | blocking, on demand | **any** |
 | Stop hook | tasks claimed `[x]` *this session* that fail verification surface at session end (`--block` to refuse ending) | advisory → blocking | Claude Code |
 | edit-hook | obligations governing the edited file injected ≤150 tokens, zero-output-on-clean | injected context | Claude Code |
 | edit-hook --pre (guarded edits, phase O) | for scopes/commands named in `.fathom/guard.cue`, the SAME injection served BEFORE the edit/command — silent for everything else, zero daemon calls on a miss | injected context | Claude Code |
 | session-hook | index status + "resolve via fathom before grep" primer | injected context | Claude Code |
-| MCP tools | the 16-tool agent surface | pull (agent choice) | any MCP client |
+| MCP tools | the 17-tool agent surface | pull (agent choice) | any MCP client |
 | CLAUDE.md / AGENTS.md stanza | standing doctrine | advisory | Claude Code / Codex |
 
 The ordering is the strategy: **configuration beats habit.** Fathom's own
@@ -87,8 +94,11 @@ gates and MCP work identically; the hook channels are Claude-Code-specific
 ## 3. What goes in CLAUDE.md — and what deliberately doesn't
 
 `fathom init` maintains a marker-delimited stanza (safe to regenerate):
-index-first tool discipline, the refresh contract, the verify command. Keep
-it lean. **Do not** hand-copy coding rules into CLAUDE.md that the
+index-first tool discipline, the refresh contract, the verify command. After
+the first write the begin line carries a digest — `<!-- fathom:begin v3
+sha256:… -->` — so a region a human hand-edited is blocked and named rather
+than overwritten (a digest-less `v1` region is adopted and upgraded, not
+drift). Keep it lean. **Do not** hand-copy coding rules into CLAUDE.md that the
 obligations layer should carry instead: compiled obligations are *scoped*
 (only injected when a governed file is edited), *cited* (file#line), and
 *swept* (they flag themselves stale when their source drifts) — a CLAUDE.md
@@ -131,7 +141,11 @@ Write plans as Markdown checklists in `docs/plans/` (grammar reference:
 ```
 
 `[x]` is a claim; the gate checks the symbol exists, a test statically
-reaches it, and contradictions are absent — with citations. Every escape
+reaches it, and contradictions are absent — with citations. Function
+values are edges (`mux.HandleFunc`, route tables, `http.HandlerFunc`,
+middleware, method values) and a call inside a closure counts for the
+enclosing test; same-named methods need `package:`; a discovery gap is
+named on stderr. Every escape
 (`skip_test`) carries its justification (`skip:`), every deferral its
 reason and trigger. The Stop hook closes the loop at session granularity:
 an agent cannot quietly end a session on a disproven claim.
@@ -234,14 +248,17 @@ numbers and tool-kill decisions run on clean data.
 
 ## Maintained
 
-CLI: `fathom init`, `ingest`, `compile`, `layers` (`list`/`show`/`install`
-— see `docs/layers.md`), `verify` (`--strict`, `--require-all`),
-`instrument`, `session-hook`, `session-end-hook`, `pre-compact-hook`,
-`edit-hook` (`--pre`), `stop-hook`, `doctor`, `gen-plan-cue`, `config`
-(incl. `config audit`), `capabilities`, `thread`
-(`brief`/`note`/`point`/`list`/`close`), `rate`, `providers`, `smoke`.
-MCP: the `/rpc/agent` surface (16 tools, `read_source` included — see
-`docs/mcp-tools.md`).
+CLI: `fathom init` (`--skills`), `ingest`, `compile`, `layers` (`list`/`show`/`install`
+— see `docs/layers.md`), `verify` (`--quiet`, `--strict`, `--require-all`),
+`instrument`, `edit-hook` (`--pre`), `stop-hook`, `doctor`, `gen-plan-cue`,
+`config` (incl. `config audit`), `capabilities`, `thread` (`brief`/`note`/
+`point`/`list`/`close`/`promote`/`handoff`), `rate`, `providers`, `smoke`.
+Hidden verbs — dispatched and answering `fathom <verb> -h`, but absent from
+the `fathom help` table (`cmd/fathom/main.go` printUsage): `session-hook`,
+`session-end-hook`, `pre-compact-hook`, `prime`, `fleet` (`report`/
+`reconcile`/`receipts`/`undo`).
+MCP: the `/rpc/agent` surface (17 tools, `read_source` and `memory_search`
+included — see `docs/mcp-tools.md`).
 Phase O (`.fathom/guard.cue`, `.fathom/modules.cue`) is covered in
 [platform-modules.md](platform-modules.md). When any of these change,
 update this doc's examples and this line.

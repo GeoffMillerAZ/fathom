@@ -3,8 +3,10 @@
 ## docs/plans/ — plan grammar v2 (full spec: `docs/plans/README.md`)
 
 Every top-level `docs/plans/*.md` except `README.md` is run through
-`fathom verify` at pre-push and CI (`--strict`) — never add a stray .md
-file there. `docs/plans/archive/` is out of gate scope. Essentials:
+`fathom verify` at pre-push (`--quiet`, non-strict — `lefthook.yml`) and by
+the manual `scripts/ci.sh` (`--strict`: claimed+unknown rows fail; no CI
+runner exists yet) — never add a stray .md file there. `docs/plans/archive/`
+is out of gate scope. Essentials:
 
 - The `{…}` annotation sits **on the checkbox line itself** — the parser is
   line-based; an annotation on a wrapped continuation line is silently
@@ -13,6 +15,9 @@ file there. `docs/plans/archive/` is out of gate scope. Essentials:
   and never a method name shared by two receivers in the same package
   (check `grep -rn "^func.*<Name>("` across `internal/ cmd/fathom/ pkg/`
   before anchoring; disambiguate with `package:`).
+- Reachability: function values are edges (VS-6) and closure calls count
+  for the enclosing test (VS-7) — the "call it at the test's top level"
+  rule is retired; `skip_test` is only for rows with no test at all.
 - Give every gated row an author-owned `id:` — positional `md-NNN`
   renumbers when lines are inserted.
 - `[-]` skips carry `disposition: refused|deferred` + `reason` (double-quote
@@ -23,13 +28,21 @@ file there. `docs/plans/archive/` is out of gate scope. Essentials:
   `fathom verify --service fathom --plan docs/plans/<plan>.md` —
   exit 0 verified; 1 claimed-unproven (fix the code or uncheck the box);
   2 operational (daemon down / index stale — fail-open).
-- Computed progress: `fathom plans status` / `next`; retire fully-proven
-  plans with `fathom plans archive <plan>`.
+- Computed progress: `fathom plans status` / `next --eligible-only`
+  (hides rows blocked on `needs:`); `plans context --row <id>` renders a
+  row's `ctx:` pack; `plans archive <plan>` retires a proven plan once its
+  row ids are absorbed into `CHANGELOG.md`, `ADR.md`, or `docs/changelog/`.
 
 ## Docs upkeep contracts
 
 - `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI
   command is added/renamed/removed, update that doc's `## Maintained` line
   and the catalog in `docs/mcp-tools.md`.
-- Friction with fathom itself → `docs/dogfood-observations.md` (with a
-  reproduction); close via `CHANGELOG.md` when fixed.
+- The agent-surface tool list is `internal/mcp/surface.go` (17 tools);
+  `TestMcpToolsDocMatchesRegistry` holds `docs/mcp-tools.md` to the registry.
+- Friction with fathom itself: `fathom observe` files structured intake into
+  `.fathom/observations.md`; `docs/dogfood-observations.md` is the narrative
+  log with reproductions. Which is home is an open owner decision
+  (`docs/intent/questions.md` Q7); close via `CHANGELOG.md` when fixed.
+- Root `CLAUDE.md` is a router (≤120 lines) with resolving pointers —
+  `fathom config audit` (`.fathom/concerns.cue`) polices both.

@@ -22,9 +22,12 @@ Build and gate commands:
 ```sh
 task            # list available tasks
 task doctor     # toolchain + workspace health check
-task validate   # full gate: fmt-check + vet + cue-vet + go test -race (CGO/tree-sitter)
+task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + scripts-check + go test -race (CGO/tree-sitter)
 lefthook install
 ```
+
+`store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
+on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
 
 ---
 
@@ -123,10 +126,25 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 
-Output: `discovered`, `extracted`, `skipped`, `symbols` counts.
+Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
+(`unclassified`, `oversize`, `classified-but-zero-symbols`, `typed-edges`, `excluded:`
+pattern counts, and `read-failed`).
 
 The pipeline is hash-gated: unchanged files (same SHA-256 as the stored fingerprint) are
 skipped. Re-ingesting a large repo where few files changed is near-free.
+
+**Ingest honesty (IT-14/IT-15, O16).** A file the connector cannot *read*
+(EPERM/EACCES/EIO, or ENOENT for a file deleted mid-run) is skipped and named:
+`read-failed: N file(s)` with path + errno (first 5 inline, `... and N more`), its stored
+evidence left untouched; every readable file is still indexed; the run exits 1 with
+`error: ingest degraded: …`. A run that could read **nothing** while the store already
+holds observations for the service **refuses to write** (no watermark advance, no purge):
+`error: ingest refused: …`, exit 1, and on "operation not permitted" adds
+`hint: external-volume TCC wedge? tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`.
+Transport errors (context cancellation, connector failure) still abort before any write.
+The daemon's `ingest` MCP tool returns the same cause + hint as a JSON-RPC error rather
+than `ok:true`; `pkg/client` re-exports `client.ReadFailuresError` (`Refused`, `Existing`,
+`Hint()`).
 
 ```sh
 fathom ingest --service payment-service --path /src/payment
@@ -280,31 +298,41 @@ guidance rather than a bare driver error. The process reads JSON-RPC 2.0 message
 Serve the MCP JSON-RPC protocol over HTTP. Suited for multi-client, platform, and CI use.
 
 ```sh
-fathom serve-http --store <path> [--addr <host:port>]
+fathom serve-http --store <path> [--addr <host:port>] [--module <store>]... [--modules-token-env <NAME>]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--store` | (required) | store path (.sqlite/.db) |
-| `--addr` | `:7575` | Listen address |
+| `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
+| `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
 | `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
 | `--call-log` | `workspace/logs/mcp-calls.jsonl` | JSONL tool-call log, resolved against the daemon working directory; empty disables |
+| `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
+| `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
+
+The daemon also reads the `budgets` block of `.fathom/capabilities.cue` /
+`~/.fathom/capabilities.cue` (project → user → built-in) for class-budgeted answers
+(`list` = `query_symbols`/`references`, `composite` = `pack_context`, `map` = `repo_map`;
+BA-9, **experimental**) — see [configuration.md](configuration.md). Stdio `serve-mcp`
+still uses the built-in defaults (documented gap).
 
 HTTP endpoints:
 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/rpc` | Single JSON-RPC 2.0 request/response (4 MB body limit) — full tool surface |
-| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`companion`, `coding`, `investigation`, `shared`, `platform`): filters `tools/list` **and** hard-gates `tools/call` |
+| `POST` | `/rpc/{surface}` | Same protocol scoped to a named surface (`agent`, `companion`, `coding`, `investigation`, `shared`, `platform`, `modules`): filters `tools/list`; an off-surface `tools/call` still **executes** and is logged `off_surface:true` (execute-and-flag, ADR-014 amendment) — the hard gate exists only behind `Server.strictSurfaces` and on hosted `/rpc/modules` |
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | SSE stream — sends `hello` event then stays open |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total` |
 | `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer — JSON via `Accept: application/json`/`?format=json`, HTML otherwise (`docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
+| `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | The observatory (see below); `?format=json` returns the model |
+| `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`) |
 
 ```sh
-fathom serve-http --store workspace/db/fathom.sqlite --addr :7575
-# serve-http: listening on :7575
+fathom serve-http --store workspace/db/fathom.sqlite --addr 127.0.0.1:7575
+# serve-http: listening on 127.0.0.1:7575
 
 # In another terminal:
 curl -s http://localhost:7575/healthz
@@ -405,8 +433,9 @@ fathom gen-claude-md --service my-service
 ### `gen-status-cue`
 
 Render an evidence-backed plan-verification status to a deterministic CUE file. Loads a
-plan (`.cue` matching `schema/plan/schema.cue`, or `.json`), verifies each task against the
-index (the same checks as the `verify_plan` MCP tool), and writes a `STATUS.cue`.
+plan (`.cue` matching `schema/plan/schema.cue`, `.json`, or a `.md` checklist), verifies
+each task against the index (the same checks as the `verify_plan` MCP tool), and writes a
+`STATUS.cue`.
 
 The plan file is the human-owned source of truth; `STATUS.cue` is regenerated, never
 hand-edited — there is no bidirectional sync and no plan state stored in the database.
@@ -417,7 +446,7 @@ fathom gen-status-cue --plan <file> --service <id> [--store <path>] [--output <p
 
 | Flag | Default | Description |
 |---|---|---|
-| `--plan` | (required) | Path to a `.cue` or `.json` plan file |
+| `--plan` | (required) | Path to a `.cue`, `.json`, or `.md` checklist plan file |
 | `--service` | (required) | Service ID to verify against |
 | `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
 | `--output` | `workspace/artifacts/STATUS.cue` | Output CUE file path |
@@ -519,13 +548,24 @@ lines. Silent on a clean file and silent on any error (daemon down, file not ind
 layer never compiled) — it never blocks a write and always exits 0.
 
 ```sh
-fathom edit-hook [--url http://localhost:7575]
+fathom edit-hook [--url http://localhost:7575] [--pre]
 ```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
+| `--pre` | off | Run as the **PreToolUse guard hook** (`docs/design/guarded-edits.md`, `.fathom/guard.cue` + `~/.fathom/guard.cue`) instead of the PostToolUse obligations hook |
 
 Wire it under `hooks.PostToolUse` with matcher `Edit|Write|MultiEdit` (see
 [adoption/claude-code.md](adoption/claude-code.md) §7.2 for the full JSON snippet). The
 `obligations` layer must be compiled for the service at least once
 (`fathom compile --service <id> --dry-run=false`) before this hook has anything to inject.
+
+When `<repo>/.fathom/memories.jsonl` exists, the payload also carries a separate
+`🧠 fathom memory — <file>:` block (AM-6, **experimental**) listing memories anchored to
+the edited file, each `[tier, state]`, ordered tier → specificity → id, inside the same
+150-token whole-payload budget (the displaced count is named); a memory RPC failure emits
+an `edit-hook/error` beat, never a block.
 
 ---
 
@@ -628,9 +668,9 @@ fathom layers show    <name> [--root <dir>]
 fathom layers install <dir>  [--root <dir>] [--force]
 ```
 
-`list` prints every visible pack (name, source, kind, tier, eval status, drift, corpus,
-and — with `--store`/`--service` — compiled claim counts and last-compile date, so
-eval-vs-production is never conflated). `show <name>` prints one pack's full resolved
+`list` prints every visible pack (name, source, kind, tier, stratum, eval status, drift,
+corpus, and — with `--store`/`--service` — compiled claim counts and last-compile date,
+so eval-vs-production is never conflated). `show <name>` prints one pack's full resolved
 definition and prompt provenance. `install <dir>` validates a directory against `#Layer`
 and copies it into `<root>/.fathom/layers/<name>/`; `--force` replaces an
 already-installed pack of the same name (whole-directory replace, never a merge). See
@@ -724,12 +764,18 @@ always, even on a missing or empty log; a broken instrument must never gate anyt
 
 ```sh
 fathom instrument [--log <path>] [--window 168h]
+fathom instrument --adoption [--service <id>] [--call-log <path>] [--store <path>] [--root <dir>] [--json]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--log` | `beatLogPath()` | Hooks beat log (JSONL) |
+| `--log` | `~/.fathom/hooks.jsonl` | Hooks beat log (JSONL) |
 | `--window` | `168h` (7 days) | Coverage window, measured back from now |
+| `--adoption` | off | The flywheel gauge: adoption report from the MCP call log — read-error classification, a surface-scoped zero-call list (tools unused on the agent surface vs not exposed there) |
+| `--service` | all | (`--adoption`) scope to one service's call-log rows; unattributed rows are excluded and counted |
+| `--call-log` | `[daemon].call_log`, else `workspace/logs/mcp-calls.jsonl` | (`--adoption`) MCP tool-call log |
+| `--store` | — | (`--adoption`) build the registered-tool list the way `serve-http` does |
+| `--root` / `--json` | `.` / off | (`--adoption`) project root for `.fathom/observations.md`; JSON output |
 
 ---
 
@@ -743,9 +789,9 @@ that lets analyzer results flow through the ordinary ingest → compile → clai
 fathom report --store <path> --service <id> [--analyzer security_rollup] [--out findings]
 ```
 
-v0 supports exactly two analyzers: `security_rollup` (default; `secret_scan` +
-`shell_out` + `http_client_calls` over the service's sources) and `authorship` (the
-Co-Authored-By trailer ledger joined with staleness and complexity). Output is exactly
+Analyzers: `security_rollup` (default; `secret_scan` + `shell_out` + `http_client_calls`
+over the service's sources), `authorship` (the Co-Authored-By trailer ledger joined with
+staleness and complexity), and `reverse-drift`. Output is exactly
 one file, `<service>-<analyzer>.md`, inside `--out`; generation is a pure function of the
 corpus working tree, so re-running against an unchanged tree reproduces identical bytes.
 
@@ -761,22 +807,34 @@ fathom operating-contract stanza into both `CLAUDE.md` and `AGENTS.md`, and
 write-if-absent scaffolds `~/.fathom/config.toml`.
 
 ```sh
-fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>]
+fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
+  [--skills[=claude|codex|all]] [--seed-user-ignore]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `--path` | cwd | Repo root to wire |
 | `--service` | resolved from `--path` | Service ID — the same identity the hooks use |
-| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
+| `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--bin` | `os.Executable()`, symlink-resolved | fathom binary path baked into the hook commands |
+| `--skills` | omit = skip | Install the shipped agent skills (`fathom-activate`, `-custodian`, `-doctor`, `-feedback`, `-impact`, `-onboard`, `-plan`, `-rewire`, `-verify`) for `claude`, `codex`, or `all` (bare `--skills` = all) |
+| `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
 
 Exit `0` — fully wired and the daemon confirms the service is indexed; exit `2` — wiring
 is complete but the daemon is unreachable or the service still shows zero symbols
-(operational, mirrors `verify`'s fail-open doctrine); exit `1` is never returned for an
-operational reason. Prints the steps it deliberately does not do for you: interactive MCP
-registration and the lefthook pre-push snippet. See
+(operational, mirrors `verify`'s fail-open doctrine). Prints the steps it deliberately
+does not do for you: interactive MCP registration and the lefthook pre-push snippet. See
 [docs/adoption/claude-code.md](adoption/claude-code.md) for the full walkthrough.
+
+**Law 15 (SH-7/SH-8).** The CLAUDE.md/AGENTS.md stanza regions and `.claude/settings.json`
+hooks are written only through `internal/wiring`: one plan → apply → one receipt per repo
+(`.fathom/receipts.jsonl`, gitignored; `fathom fleet undo` reverses it). A tracked region
+(`<!-- fathom:begin v3 sha256:… -->`) that a human edited is **blocked** (exit 1, file
+byte-identical, the other files still applied, one line per file distinguishing
+"drifted (hand-edited) region" from "could not be read/parsed"); a v1 region
+(`<!-- fathom:begin -->`, no digest) is adopted and upgraded to v3 on the first write —
+not drift. `init` continues its other steps around a blocked file and lists the blocked
+files at the end.
 
 ---
 
@@ -799,10 +857,10 @@ fathom doctor [--harness claude|codex|auto] [--path <dir>] [--service <id>] [--u
 | `--harness` | `auto` | `claude`, `codex`, or `auto` (detects from `.claude/settings.json`/`~/.claude.json` vs `.codex/config.toml`, defaulting to `claude` with no evidence either way) |
 | `--path` | cwd | Repo root to diagnose |
 | `--service` | resolved from `--path` | Service ID — the same identity `fathom init` resolves |
-| `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
+| `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--json` | off | Machine-readable report instead of the human table |
 
-Eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
+The founding eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
 binary's own build vs `git rev-parse HEAD` of the checked repo — the local proxy for
 daemon staleness; every pass states the daemon's installed copy is unverified, a dirty
 build surfaces `vcs.modified`, and both linked-worktree caveats — mismatch inside one,
@@ -816,7 +874,14 @@ reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
 `obligations_served` (service resolved the way the hooks resolve it — every candidate
 identity intersected with the daemon's service list, with a distinct not-indexed
 verdict and drift-flagged rules counted into the reason), `surface_traffic`
-(process-lifetime counters — "since this daemon process started").
+(process-lifetime counters — "since this daemon process started"). Later rows:
+`capabilities` (red only when something switched on is failing to deliver), `concerns`
+(the custodian — a load error or a violation is the only red), `user_scope_ignore`,
+`user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
+`binding_file` / `binding_modules_mounted` / `binding_module_readiness`, `binary_on_path`,
+`channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`, and
+`cpp_toolchain` (CMake repos: `compile_commands.json` present). The stanza check accepts
+both the v1 and the v3 (`sha256:`-digested) begin marker.
 
 Exit `0` every check passed; `1` at least one check failed; `2` doctor itself could not
 run (bad flags, unresolvable `--path`) — an operational error, not a verdict on the
@@ -826,35 +891,53 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 ### `plans` — computed SDD progress and archival
 
 ```sh
-fathom plans status --service <svc>          # per-plan rollup: total/proven/claimed-unproven/open/deferred/other-skipped
-fathom plans next   --service <svc>          # the ordered work frontier, with {id, symbol, package} anchors
-fathom plans archive <plan> | restore <plan> # retire a fully-proven plan to docs/plans/archive/ (out of gate scope), or bring it back
+fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/open/deferred/other-skipped
+fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
+fathom plans context --service <svc> --row <id> [--budget 4000]                       # render a row's ctx: context pack (elided beyond the byte budget)
+fathom plans lease   --plan P <row-id> [--holder H] [--ttl 2h] [--release] [--root DIR] # TTL advisory lease on a row (.fathom/leases.jsonl)
+fathom plans leases  [--root DIR] [--json]                                            # list live leases
+fathom plans archive <plan> --service <svc> [--root DIR]   # retire a fully-proven plan to docs/plans/archive/ (out of gate scope)
+fathom plans restore <plan> [--root DIR]                   # bring it back
 ```
 
 State is always derived from the index by the verify engine, never asserted.
-Both read verbs accept `--plan` (repeatable), `--store` (direct mode),
-`--url`, `--json`. Heads-up: `plans status` currently verifies every active
-plan serially over HTTP (minutes on a large plan set — O29 in
-`docs/dogfood-observations.md` tracks the fix).
+`next --eligible-only` hides rows blocked on an unmet `needs:` target (the
+derived `eligible` / `blocked_on` state); `--free` hides rows holding a fresh
+lease. `archive` refuses unless every row id is lexically absorbed into
+`CHANGELOG.md`, `ADR.md`, or `docs/changelog/*.md` (the per-release
+narrative) — the refusal names all three. Heads-up: `plans status` currently
+verifies every active plan serially over HTTP (minutes on a large plan set —
+O29 in `docs/dogfood-observations.md` tracks the fix).
 
 ### `thread` — continuity across sessions (vision 21)
 
 ```sh
-fathom thread brief   [--budget-bytes 2400]    # what a fresh session gets injected (startup/clear only; resume/compact get nothing)
-fathom thread note    "text" [--thread T] [--kind K] [--completes-when …]   # file a handoff BEFORE /clear
-fathom thread point   "what happened" [--session S]                          # side-task pointer
-fathom thread list    [--all]                  # open items; --all includes closed
+fathom thread brief   [--budget-bytes 2400] [--repo .] [--source startup|clear|resume|compact|fork] [--all-repos]
+                                               # what a fresh session gets injected (startup/clear only; resume/compact get nothing)
+fathom thread note    "text" [--thread T] [--kind K] [--completes-when …] [--repo .]   # file a handoff BEFORE /clear
+fathom thread point   "what happened" [--session S] [--thread T] [--repo .]          # side-task pointer
+fathom thread list    [--all-repos] [--all] [--thread T] [--repo .]   # this repo's open items; --all-repos: every repo; --all: also closed + dormant, every repo
 fathom thread close   <id> [--why …]
-fathom thread promote <thread> [--out path]    # render a thread's history to a durable doc
+fathom thread promote <thread> [--out docs/plans/<thread>.md] [--repo .]   # scaffold a thread's history into a plan
+fathom thread handoff [--repo .]               # derived in-flight state for a handoff
 ```
 
 Store: `~/.fathom/threads.jsonl` — user-central, append-only,
 latest-row-wins; never shared (law 13). Deposits from the lifecycle hooks
 (`session-end-hook`, `pre-compact-hook` — wired by `fathom init`) are
-mechanical facts only. Items with `completes_when`
-(`file_exists` / `plan_row_checked` / `repo_clean`) close themselves when
-reality catches up. The brief is byte-budgeted and enforced; overflow is
+mechanical facts only. `--kind` is one of `decision-pending`, `spec-unbuilt`,
+`in-flight`, `side-task`, `handoff-note`, `session-end`, `pre-compact`
+(default `handoff-note`). Items with `completes_when`
+(`file_exists:<path>` / `plan_row_checked:<plan>#<ROW-ID>`) close themselves
+when reality catches up. The brief is byte-budgeted and enforced; overflow is
 named (`and N more`), never silently dropped.
+
+**Repo-scoped (TH-6).** `note`/`point` file on the current repo's
+daemon-resolved service id by default (`general` only when nothing resolves;
+`--thread` wins). `list` and `brief` show this repo's items and print one
+line `N open item(s) in other repos — fathom thread list --all`; untagged
+legacy items are never hidden. The continuity-thread bet itself is
+**experimental** (4/20 units collected).
 
 ### `config audit` — the config custodian (vision 22, "instructed means true")
 
@@ -866,23 +949,39 @@ Audits registered concerns (`~/.fathom/concerns.cue` user defaults;
 `.fathom/concerns.cue` repo scope, governs) against the repo: per-concern
 `holds` / `violated (file:line evidence)` / `unable-to-check (reason)` /
 `off (named)`. Exit `1` iff violated; zero concerns exits `0` with the
-absence named. Check kinds v1: `forbidden_pattern`,
-`command_documented_and_exists`, `max_lines`, `pointers_resolve`. Fathom
-reports and never edits your prose — the session applies fixes. Full
-model: `docs/design/config-custodian.md`.
+absence named. Check kinds: `forbidden_pattern`,
+`command_documented_and_exists`, `max_lines`, `pointers_resolve`, plus
+(CC-14/CC-15, **experimental**) `stanza_tools_served` — every tool the
+fathom stanza names must be served by the daemon's `/rpc/agent`
+`tools/list` (the one kind that asks the daemon; daemon down → `unable to
+check` naming the URL, never violated) — and
+`handoff_cites_instruments` (`days: N`) — a handoff thread note claiming
+shipped work must cite a commit sha, an active plan row id, `fathom
+verify`, or a `workspace/artifacts/retros/` path. Fathom reports and never
+edits your prose — the session applies fixes. Full model:
+`docs/design/config-custodian.md`.
 
 ### `scope` / `purge` — reversible suppression and verified removal
 
 ```sh
-fathom scope list | suppress '<glob>' --reason R [--until 7d] | unsuppress <id> | preview '<glob>'
-fathom purge '<glob>' --service S --reason '<why>' [--dry-run] [--yes]
+fathom scope list      [--all] [--service S] [--json]
+fathom scope suppress  '<glob>' --reason R [--service S] [--until 7d]
+fathom scope unsuppress <id>
+fathom scope preview   '<glob>' [--service S] [--store DB] [--sample 10] [--json]
+fathom purge '<glob>' --service S --reason '<why>' [--store DB] [--dry-run | --yes] \
+     [--all] [--probe <literal>]... [--include-history --force] [--json]
+fathom purge history [--json]
 ```
 
 `scope suppress` hides matching paths from query results (reversible,
 reason-carrying, disclosed in every MCP envelope's `suppressed` block);
 `purge` removes matching content from the store irreversibly, appends a
-service-scoped ignore so re-ingest cannot resurrect it, and its verdict
-includes a post-purge probe. See `docs/use-cases/fleet-health.md`.
+service-scoped ignore so re-ingest cannot resurrect it, and its verdict is
+tri-state with a post-purge byte probe — exit `2` means the SQL rows are
+gone but the raw store bytes were left unchecked. `--all` is the glob
+`**`; `--include-history` also deletes `claim_events` (breaks claim-history
+integrity) and needs `--force` as a second key. See
+`docs/use-cases/fleet-health.md` and `docs/design/scope-and-purge.md`.
 
 ### `retro` — did the firings actually help? (mechanical, free)
 
@@ -903,30 +1002,171 @@ that — law 12). `--write` lands the retro under
 ### `rate` — the session outcome, in one number
 
 ```sh
-fathom rate <1-5> [--note "..."]
+fathom rate <1-5> [--note "..."] [--repo .] [--session S]
+fathom rate --list
 ```
 
 Appends to the local ratings log — the outcome half of the measurement
 loop (`observe` files the specific friction; `rate` files the verdict).
+**Experimental**: an optional human override; the A/B criterion cannot be
+evaluated until ratings exist.
 
 ### `brief` / `flywheel` — the value story and the pipes it rides on
 
 ```sh
-fathom brief --print     # the shareable markdown value brief, honesty covenant included ("Not measured" is a section, not a gap)
-fathom flywheel          # every feedback loop: CLOSED / OPEN / IDLE — exit 1 if any loop is OPEN
+fathom brief [--print | --out ~/.fathom/briefs] [--url U]   # the shareable markdown value brief, honesty covenant included ("Not measured" is a section, not a gap)
+fathom flywheel [--json] [--url U]                          # every feedback loop: CLOSED / OPEN / IDLE — exit 1 if any loop is OPEN
 ```
 
 Run `flywheel` before quoting any number `brief` renders: a figure
 downstream of an OPEN loop is not evidence. `fathom capabilities` (below)
-explains why any surface reads zero.
+explains why any surface reads zero. The A/B counterfactual behind the
+savings figures is **experimental** — the ON arm is still collecting (≥20
+units per arm needed; every savings claim is inadmissible until then, law
+12). `fathom arm [on | off --for D --sessions N]` switches the arm;
+`fathom narrate [on --for D --sessions N | off]` arms self-expiring story
+capture (neither is listed in `fathom help`).
 
-### `fleet` — reconcile, receipts, undo
+### `fleet` — report, reconcile, receipts, undo (law 15)
 
 ```sh
-fathom fleet report                          # wiring/freshness across every indexed repo
-fathom fleet reconcile [--repo R] [--apply]  # dry-run then apply: hooks vs template, stale binary paths → shim, stanza CONTENT drift
-fathom fleet receipts | undo <receipt-id>    # every write fathom makes in a repo is receipted and reversible
+fathom fleet report    [--json | --out ~/.fathom/fleet] [--url U]           # wiring/freshness across every indexed repo
+fathom fleet reconcile [--repo R]... [--apply] [--url U]                     # dry-run by default; --apply: shim repoint + additive template merge + stanza
+fathom fleet receipts  [--repo R] [--limit 20] [--json]                      # every write fathom makes in a repo is receipted…
+fathom fleet undo      [--last | <receipt-id>] [--repo R] [--json]           # …and reversible
 ```
+
+`reconcile --apply` writes stanza regions and hooks only through
+`internal/wiring` — the same plan → apply → receipt path as `init`, with the
+same law-15 refusal for a hand-edited tracked region (blocked and named;
+other files still applied). Dry-run distinguishes `stale` from `up to date
+(will be re-marked with a digest on apply; no prose changes)` for a v1
+region awaiting its digest.
+
+### `prime` — the Codex pull tier
+
+```sh
+fathom prime [--dir <project-dir>] [--url http://localhost:7575]
+```
+
+Prints the full session primer — exactly what the SessionStart hook composes
+into `additionalContext` — as plain text, for a harness with no SessionStart
+hook (Codex). Always exits 0 (daemon down degrades to an honest status
+line). `--dir` defaults to `$CLAUDE_PROJECT_DIR`, else cwd.
+
+### `observe` — file a friction observation
+
+```sh
+fathom observe --symptom "..." [--expected "..."] [--actual "..."] [--repro "<verbatim command>"] [--tool <name>] [--root .]
+```
+
+Appends a structured entry to `<root>/.fathom/observations.md`. `--symptom`
+is required.
+
+### `review` — the change-review verb (not listed in `fathom help`)
+
+```sh
+fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--budget-seconds N] [--call-log P] [--json]
+```
+
+CLI mirror of the `review_diff` MCP tool: diff impact + obligations/findings
++ architecture conformance + spec coverage in one cited verdict. Persists
+the deterministic-oracle findings to the claims store unless `--no-persist`
+(the pre-push summary hook uses it). `--budget-seconds` is advisory — on
+excess it prints a named skip and exits 0; it requires `--no-persist` (a
+bounded run must never be a store writer).
+
+### `gen-plan-cue`
+
+```sh
+fathom gen-plan-cue --plan docs/plans/<slug>.md --service <id> [--output <path>]
+```
+
+Emits the generated CUE shadow of a Markdown plan (round-trip verified);
+stdout by default.
+
+### `research` — the research flywheel
+
+```sh
+fathom research report [--since 168h] [--service S] [--root .] [--out DIR] [--call-log P] [--hooks-log P] [--bench-dir D] [--no-write] [--json]
+fathom research bundle [--since 168h] [--service S] [--root .] [--out DIR] [--dry-run] ...
+```
+
+`report` aggregates local evidence (call log, hooks log, context-bench
+results, observations) into `workspace/artifacts/research/report.{md,json}`;
+`bundle` renders the sanitized, shareable summary (schema
+`schema/research-bundle/`) — sharing stays a human verb. Design:
+`docs/design/research-flywheel.md`.
+
+### `module` — expert-module lifecycle (**experimental**, law 9: read-only before writable)
+
+```sh
+fathom module init    --name N --description T --include GLOB[,…] [--exclude …] [--dir D] [--root D] [--tier-profile P] [--license L] [--force] [--json]
+fathom module sources --manifest module.cue [--root D] [--json]
+fathom module map     --manifest module.cue [--root D] [--store P --service S] [--json]
+fathom module compile --manifest module.cue --store P [--service S] [--dry-run=true|false] [--profile P | --mock --mock-entries-file F] [--force] [--unsafe-skip-eval-gate] [--json]
+fathom module eval    --manifest module.cue [--fixtures D] [--profile P | --mock --mock-entries-file F] [--record P] [--json]
+fathom module doctor  --manifest module.cue [--root D] [--store P --service S] [--pack-dir D] [--require-level L] [--json]
+fathom module pack    --manifest module.cue --store P --out D [--force] [--json]
+fathom module runs    --manifest module.cue --store P [--service S] [--limit 20] [--json]
+```
+
+Specs: `docs/spec/expert-module-v0.md`, `docs/spec/store-format-v0.md`;
+design `docs/design/expert-modules.md`. A packed module is mounted read-only
+by `serve-http --module`; no external consumer exists yet.
+
+### `metrics` — observability surfaces
+
+```sh
+fathom metrics spend         --store P [--service S] [--module LAYER] [--by layer|day|model] [--since DUR | --from RFC3339 --to RFC3339] [--root D] [--json]
+fathom metrics traffic       [--service S] [--by surface|tool|hour] [--since DUR | --from … --to …] [--call-log P] [--json]
+fathom metrics channels      [--since DUR | --from … --to …] [--hooks-log P] [--json]
+fathom metrics interventions [--since DUR | --from … --to …] [--store P] [--call-log P] [--hooks-log P] [--json]
+fathom metrics series        <metric> --bucket hour|day [--since DUR] [--root D] [--json]
+fathom metrics rollup        [--date YYYY-MM-DD] [--root D] [--store P] [--call-log P] [--hooks-log P] [--json]
+fathom metrics rotate        [--call-log P] [--keep-days N] [--apply]
+```
+
+Design: `docs/design/observability-surfaces.md`.
+
+### `findings` — findings as evidence (**experimental**; entry ≥15–20 resolved findings)
+
+```sh
+fathom findings near   <symbol|file> --store P --service S [--hops 2] [--include-superseded] [--json]
+fathom findings status --store P --service S [--json]
+```
+
+`near` is the call-graph precedent lookup (mirror of the `findings_near`
+MCP tool); `status` reports entry-condition progress. Design:
+`docs/design/findings-as-evidence.md`.
+
+### `memory` — anchored memory (**experimental**)
+
+```sh
+fathom memory add    --store P --service S --claim TEXT --anchor KIND:REF [--anchor …] --evidence KIND:REF [--evidence …] [--tier T] [--confidence N] [--by ACTOR] [--root D] [--json]
+fathom memory list   --store P --service S [--state fresh|suspect|orphaned|retired] [--root D] [--json]
+fathom memory review --store P --service S [--id ID --resolve still-true|no-longer-true|rewrite --by ACTOR [--claim TEXT] [--note TEXT] [--commit C]] [--root D] [--json]
+fathom memory show   --id ID [--root D] [--json]
+```
+
+Memories live in `<root>/.fathom/memories.jsonl`. Anchor kinds, sharpest
+first: `symbol | file | commit | claim | path`; evidence kind sets the tier
+(`machine-check` → verified, `index` → pre-scan, `doc` → doc-claimed,
+`human` → sme-stated, `model` → assumed). A memory with no anchor is
+refused — that is a preference, not a memory about this codebase. Anchor
+drift moves a memory to `suspect` (tier dropped one step) or `orphaned`;
+retired memories never surface. Served by the `memory_search` MCP tool
+(agent surface) and the edit-hook memory block. Design:
+`docs/design/anchored-memory.md`.
+
+### `plugin` (not listed in `fathom help`)
+
+```sh
+fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]
+```
+
+Renders the Claude Code plugin tree (hooks, skills, MCP registration) into
+`--out`; the output dir belongs to the generator, so re-rendering overwrites.
 
 ---
 
@@ -938,7 +1178,19 @@ The daemon serves a value-realization UI (vision 17) next to `/statusz`:
   observations; every warning names its remedy command. `?format=json`
   returns the model.
 - `GET /observatory/service?id=S` — one repo's adoption gauge, hook
-  wiring, freshness with the exact re-ingest command.
+  wiring, freshness with the exact re-ingest command, and (RG-6) 30-day
+  per-dimension series (queried, discovering, preventing, gating) from
+  real call-log rows — a day with no call-log rows at all renders Absent
+  ("no call-log rows for <date>"), a day the log was alive but this
+  service saw nothing is a measured 0, and sparklines never draw across
+  an absent day.
+- The fleet page's grade distribution over 30 days (RG-7) is
+  **experimental**: days without a snapshot are Absent — today's fold
+  only, until daily snapshots persist (the page says so). Symbols/traffic/
+  serves tiles render Absent, never 0, when the call log or store could
+  not be read.
+- `GET /observatory/wiring/` — per-repo wiring plans; `preview` → `apply`
+  → `undo` (see the `serve-http` endpoint table).
 - `GET /observatory/impact` — verify catches and discovery actions with
   their denominators, and the counterfactual pilot as a state machine
   (a savings figure exists only as an arm range — law 12). Story rows
@@ -955,13 +1207,19 @@ operating** — a config file saying `guards: on` with no rules compiled
 reports off, with the reason (law 3 applied to configuration).
 
 ```sh
-fathom capabilities                     # table: state, evidence, and the reason for every gap
+fathom capabilities [--repo .] [--service S] [--url U]   # table: state, evidence, and the reason for every gap
 fathom capabilities --cost              # what each one costs when on
 fathom capabilities --json              # the model doctor and the observatory render
 fathom capabilities explain guards      # what it does, what it costs, what evidence it produces
 fathom capabilities set narrate on      # writes .fathom/capabilities.cue
 fathom capabilities set narrate on --scope user
 ```
+
+`set` splices only the `capabilities` block and preserves everything else in
+the file byte-for-byte (a `budgets` block, comments); it refuses when the
+file cannot be round-tripped. Non-identifier ids such as `verify-gate` are
+written as quoted labels. The same file's optional `budgets` block (BA-9,
+**experimental**) is documented in [configuration.md](configuration.md).
 
 Two scopes, resolved built-in → user → project, with the winning scope
 shown beside every value (law 13):
@@ -1102,12 +1360,14 @@ curl -s -X POST http://localhost:7575/rpc \
 
 ### Selecting a tool surface
 
-The `set_profile` tool was retired (ADR-014 amendment, 2026-07-16): surfaces
-superseded profiles. Select a surface by path — `POST /rpc/agent` is the
-curated 16-tool coding surface (also served at `/rpc/companion` for
-compatibility); bare `POST /rpc` is the full registry. Off-surface calls
-execute and are logged `off_surface` rather than rejected; hard gating is
-available via the server's strict-surfaces option.
+There is no profile-switching tool (the old `set_profile` was removed; ADR-014
+amendment, 2026-07-16): a stdio session always sees the full registry, and over
+HTTP a surface is selected by path — `POST /rpc/agent` is the curated 17-tool
+coding surface (`internal/mcp/surface.go`; also served at `/rpc/companion` for
+compatibility); bare `POST /rpc` is the full registry (54 tools plus
+`memory_search`). Off-surface calls execute and are logged `off_surface:true`
+rather than rejected; the hard gate exists only behind the server's
+`strictSurfaces` option and on hosted `/rpc/modules`.
 
 See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources, and
 [use-cases/coding-agents.md](use-cases/coding-agents.md) for the canonical

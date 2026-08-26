@@ -11,9 +11,10 @@ Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
 at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
-MCP**. `/rpc/agent` is the curated 16-tool companion surface
-(`/rpc/companion` is a compatible alias; bare `/rpc` is the full, unscoped
-registry — see `docs/mcp-tools.md`). Every session shares one index and one
+MCP**. `/rpc/agent` is the curated 17-tool agent surface
+(`internal/mcp/surface.go`; `/rpc/companion` is a compatible alias; bare
+`/rpc` is the full, unscoped registry — see `docs/mcp-tools.md`). Every
+session shares one index and one
 store, so there is no per-session server, no single-writer lock contention,
 and no "Failed to connect."
 
@@ -37,7 +38,8 @@ directly from the daemon, without tailing the call log.
    the indexed corpus, `obligations` surfaces governing rules for a file
    before editing it. Read files to *edit* them, not to discover them. The
    index is fleet-wide, so cross-repo questions are one query. (These are
-   the core of the 16-tool `companion` surface — see `docs/mcp-tools.md`.)
+   the core of the 17-tool `agent` surface — see `docs/mcp-tools.md`;
+   `memory_search`, the newest member, is **experimental**.)
    Every Edit/Write also gets governing rules injected via the PostToolUse
    edit-hook (`docs/design/coding-agent-excellence.md` §5.2).
 2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows
@@ -46,7 +48,14 @@ directly from the daemon, without tailing the call log.
    and fail with a lock error. Call the `ingest` MCP tool
    (`{"service":"<this-repo>"}`) at session start and after each commit
    (hash-gated, ~0.2s when clean). Because the store is shared, your refresh
-   updates the index for *every* session.
+   updates the index for *every* session. The tool is honest about a
+   wedged reader (IT-14/IT-15): files it could not read are named with
+   their errno and the call returns a JSON-RPC **error** (cause + hint),
+   never `ok:true`; a run that could read *nothing* while the store already
+   holds the service **refuses to write** (`ingest refused`), and on
+   "operation not permitted" the hint is the external-volume TCC reset
+   (`tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`).
+   Every ingest that wrote anything busts the service-identity cache.
 3. **Honesty.** After heavy *uncommitted* edits, call `staleness_report`
    before trusting results, or just read the file you're about to change.
 4. **Scope.** Only fleet repos are indexed. A repo that isn't a fathom
@@ -87,6 +96,26 @@ Never hand-roll it with `cp`:
   prompt, so the daemon hangs or crash-loops
   (`.fathom/observations.md` O10, closed structurally 2026-08-08 — the
   grant now follows the `fathom-dev` identity, not the hash).
+
+## Fleet wiring: `fleet report`, `reconcile`, receipts, `undo` (law 15)
+
+`fathom fleet report` writes the wiring/freshness report across every
+indexed repo (`--json` to stdout, else `~/.fathom/fleet`). `fathom fleet
+reconcile [--repo R]` is a dry-run — hooks vs the current template, stale
+binary paths → the shim, stanza drift — and `--apply` writes the safe
+subset. Since SH-7/SH-8 every write goes through `internal/wiring`: one
+plan → apply → one receipt per repo (`.fathom/receipts.jsonl`, gitignored);
+`fathom fleet receipts` lists them and `fathom fleet undo [--last |
+<receipt-id>]` reverses one. A tracked stanza region (`<!-- fathom:begin
+v3 sha256:… -->`) a human edited is **blocked** and named — the file stays
+byte-identical, the other files still apply — while a v1 region (`<!--
+fathom:begin -->`, no digest) is adopted and upgraded on the first write
+(dry-run reports it as `up to date (will be re-marked with a digest on
+apply; no prose changes)`, not stale). The observatory's wiring page
+(`/observatory/wiring/`) drives the same plan (`preview` → `apply` with the
+returned `plan_digest`, 409 if the repo changed → `undo` with the
+`receipt_digest`); its mutating endpoints accept loopback, same-origin
+requests for registered service roots only.
 
 ## Rebuilding the fleet index
 

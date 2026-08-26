@@ -27,7 +27,8 @@ Review a diff or pull request with automated impact analysis and conformance gat
 | `review_change` | MCP prompt | Calls `review_diff` for a structured, one-call review of a code change |
 | `ingest` | MCP tool (shared) | Re-ingest a service in-session to refresh the store before querying |
 | `staleness_report` | MCP tool (shared) | Check whether the indexed state has drifted from the current HEAD |
-| `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1) |
+| `fathom review` | CLI | Store-direct CLI mirror of `review_diff`: resolves changed files via `git diff --name-only <ref>`, runs the same engine (used by the non-blocking pre-push summary, `docs/plans/review-verb.md` C3-1); `--budget-seconds N` (with `--no-persist`) prints a named skip and exits 0 on excess. Not yet listed by `fathom help` — `fathom review -h` |
+| `findings_near` / `fathom findings near\|status` | MCP tool / CLI | Prior findings within N call-graph hops of a symbol or file (precedent for a review comment), and the findings layer's entry-condition progress — **experimental** until ≥15–20 resolved findings exist |
 | `fathom ingest-diff` | CLI | Ingest only files changed since a given git ref, then exit (pre-session or CI use) |
 
 ---
@@ -261,15 +262,9 @@ Returns any Markdown references that no longer resolve to known symbols or files
 
 **`review_diff` never accepts inline architecture rules.** Unlike calling `arch_conformance` directly, `review_diff`'s `arch_conformance` dimension always resolves through the service's own `.fathom/rules/archconformance.cue` project rule pack (or reports `checked:false` when none exists) — there is no `rules` argument on `review_diff` itself. If you need to test rules that aren't committed yet, call `arch_conformance` directly with inline `rules`.
 
-**Profile.** `review_diff` and `diff_impact` are both in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `stale_docs`) are in `coding`. To access all of them in one session, either set no profile (all tools visible) or use the `batch` tool to call across groups. Recommended: `investigation` profile for `review_diff`/`diff_impact`, `coding` for the appendix's per-dimension tools.
+**Surface.** `review_diff` and `diff_impact` are in the `investigation` group; the appendix's remaining tools (`api_diff`, `arch_conformance`, `dep_drift`, `proto_conformance`, `stale_docs`) are in `coding`. There is no profile switch (`set_profile` was removed, SW-2): stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope (`POST /rpc/investigation`, `POST /rpc/coding`, or bare `POST /rpc` for everything). None of these review tools is on the 17-tool `/rpc/agent` allowlist, but an off-surface call still executes there — logged `off_surface:true`, never refused — so a session registered on `/rpc/agent` can run the whole review.
 
-On stdio `serve-mcp`:
-
-```json
-{ "name": "set_profile", "arguments": { "profile": "coding" } }
-```
-
-Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/coding` or `POST /rpc/investigation` instead (or `POST /rpc` for the full surface).
+**Precedent before verdict.** `findings_near { "service", "subject": "api.Handler", "hops": 2 }` (CLI: `fathom findings near api.Handler --store … --service …`) answers "was this flagged here before?" — live findings ranked by call-graph proximity, superseded ones only with `include_superseded`/`--include-superseded` and always labeled. `fathom findings status` reports how far the findings layer is from its entry condition (**experimental** until then).
 
 **`api_diff` requires two indexed snapshots.** The tool compares the exported symbol stores of `service_a` and `service_b`. To compare before/after a PR, you need the baseline service indexed separately — either as a second service ID pointing at the base branch checkout, or by re-ingesting the current branch under a distinct service ID (e.g. `payment-service-base`).
 
@@ -291,9 +286,9 @@ This runs `git diff --name-only origin/main`, ingests changed files, and exits. 
 
 ## The `fathom verify` gate — and `fathom review`'s non-blocking summary
 
-Impact analysis answers *what is affected*; the `fathom verify` gate answers *what is proven done*. Before pushing, `lefthook` runs `fathom verify` over any plan files in `docs/plans/*.md`, checking each `[x]`-claimed task against the index. A claimed task that lacks code evidence blocks the push (exit 1); an operational error (daemon down) warns and allows (exit 2, fail-open). In CI, `scripts/ci.sh` adds `--strict` to treat exit 2 as a failure. Run `fathom verify` manually with `--plan <file> --service <id>` or pass `--store` to bypass the daemon. See [spec-verification.md](spec-verification.md) for the full gate reference.
+Impact analysis answers *what is affected*; the `fathom verify` gate answers *what is proven done*. Before pushing, `lefthook` runs `fathom verify --quiet` (failing rows plus the summary only) over any plan files in `docs/plans/*.md`, checking each `[x]`-claimed task against the index. A claimed task that lacks code evidence blocks the push (exit 1); an operational error (daemon down) warns and allows (exit 2, fail-open). `--strict` (claimed-but-Unknown rows fail too) is the CI form — `scripts/ci.sh` carries it, run by hand: no CI runner exists yet, so treat it as **experimental**. Run `fathom verify` manually with `--plan <file> --service <id>` or pass `--store` to bypass the daemon. See [spec-verification.md](spec-verification.md) for the full gate reference.
 
-The same pre-push hook also runs `fathom review --service fathom --since origin/main --no-persist` (C3-1, `docs/plans/review-verb.md`) — unlike `verify`, this step is **advisory, never blocking**: it always exits 0 and prints the verdict summary so review findings are visible on every push, even when nothing forces you to read them. It is truthfully a *summary*: `--no-persist` means the hook never writes to the shared claims store (persisting findings is a deliberate CLI/MCP act, not a hook side effect). An operational error there degrades to a single line (fail-open, same doctrine as `verify`'s exit 2), never a raw error dump. Latency: measured ~12s on a pathological 1777-file diff; a normal `--since` diff is far smaller.
+The same pre-push hook also runs `fathom review --service fathom --since origin/main --store … --no-persist --budget-seconds 20` (C3-1, `docs/plans/review-verb.md`) — unlike `verify`, this step is **advisory, never blocking**: it always exits 0 and prints the verdict summary so review findings are visible on every push, even when nothing forces you to read them. It is truthfully a *summary*: `--no-persist` means the hook never writes to the shared claims store (persisting findings is a deliberate CLI/MCP act, not a hook side effect), and `--budget-seconds` (which requires `--no-persist` — a bounded run must never be a store writer) turns an over-budget run into a named skip rather than a stall. An operational error there degrades to a single line (fail-open, same doctrine as `verify`'s exit 2), never a raw error dump. Latency: measured ~12s on a pathological 1777-file diff; a normal `--since` diff is far smaller.
 
 ---
 
@@ -311,4 +306,4 @@ Once compiled, findings scoped to the files under review surface through the sam
 
 ## Maintained
 
-This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`) and its `fathom review` CLI mirror, `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify`, the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.
+This doc covers: `review_diff` (the composed verb, C1-1/C2-1, `docs/plans/review-verb.md`) and its `fathom review` CLI mirror (incl. `--no-persist`, `--budget-seconds`; dispatched but absent from `fathom help` — `fathom review -h`), `diff_impact`, `api_diff`, `arch_conformance` (incl. its `.fathom/rules/archconformance.cue` project rule packs and `rule_source`/`checked` response fields), `dep_drift`, `proto_conformance`, `stale_docs`, `findings_near`, `fathom findings` (`near`/`status`), `review_change` (MCP prompt), `ingest`, `staleness_report`, `fathom ingest-diff`, `fathom verify` (`--quiet`, `--strict`), the pre-push `fathom review` summary step (C3-1), `fathom report`, `fathom claim` (refute/corroborate). Update it when these change.

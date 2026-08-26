@@ -37,10 +37,15 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   semantics, and the corruption-refusal case are documented once, in
   [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
   since the mechanism and the stanza text are identical for both files), and
-- if you passed `--skills=codex` (or `=all`), rendered the shipped
-  `fathom-plan`/`fathom-verify`/`fathom-onboard`/`fathom-feedback`/
-  `fathom-doctor`/`fathom-impact` prompts into `~/.codex/prompts/` —
-  §1.1 below.
+- if you passed `--skills=codex` (or `=all`), rendered the nine shipped
+  `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`
+  prompts into `~/.codex/prompts/` — §1.1 below.
+
+The stanza and hook writes go through one wiring engine (law 15): a
+receipt lands in `.fathom/receipts.jsonl`, `fathom fleet undo --last`
+reverses it, and a marker region a human edited is BLOCKED and named
+rather than overwritten — the details are in the Claude Code guide's §3.1
+and apply to `AGENTS.md` identically.
 
 `init` does *not* register Codex's MCP client (that's a Codex-side,
 interactive step, same reason it doesn't call `claude mcp add` for you
@@ -53,10 +58,10 @@ step instead — §4).
 bin/fathom init --skills=codex
 ```
 
-Renders the same six shipped skill sources
-(`dist/agents/skills/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}/`)
+Renders the same nine shipped skill sources
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/`)
 that the Claude Code guide installs as `SKILL.md` files
-([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills-fathom-plan--fathom-verify--fathom-onboard--fathom-feedback))
+([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-nine-shipped-with-the-binary))
 into Codex's custom-prompts convention instead: each skill's
 `codex-prompt.md` variant is written to `~/.codex/prompts/<name>.md` —
 **user-global, not project-scoped**, since that's the only location Codex's
@@ -127,9 +132,12 @@ or:
 codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
 ```
 
-`/rpc/agent` is the same curated 16-tool surface Claude Code registers
-against (§10 of the Claude Code guide); the full registry is at `/rpc` if
-you want everything.
+`/rpc/agent` is the same curated 17-tool surface Claude Code registers
+against (§10 of the Claude Code guide — incl. `read_source` and the
+*experimental* `memory_search`); the full registry (55 tools on this
+build) is at `/rpc` if you want everything. Off-surface calls still
+execute and are only flagged in the call log — surfaces are never a
+security boundary.
 
 **This path is unverified on this machine.** Claude Code's own `--transport
 http` client is confirmed working against fathom's `/rpc` endpoint (it's the
@@ -193,15 +201,22 @@ fathom smoke --profile codex       # one real tiny completion — confirms it ac
 The pre-push `fathom verify` gate is git-native — it runs on `git push`
 regardless of which agent produced the commits, Codex included. Nothing
 Codex-specific to configure — use the exact same lefthook block as the
-Claude Code guide, verbatim:
+Claude Code guide, verbatim (it runs `fathom verify … --quiet`: failing
+rows plus the summary, one line per green plan):
 [docs/adoption/claude-code.md §7.4](claude-code.md#74-pre-push--the-fathom-verify-gate-lefthook).
 
 In CI, `fathom verify --strict` (claimed-but-Unknown also blocks) with exit
 2 treated as a failure — CI builds its own store rather than trusting a
 live daemon, so this is identical regardless of which agent's commits are
-being checked. See `docs/plans/README.md` for the plan-checklist grammar
-(`{id, symbol, package, ...}` annotations) that `verify` gates against — it
-too has nothing Claude-Code-specific in it.
+being checked (*experimental here*: this repo has no CI runner yet;
+`scripts/ci.sh` is the manual strict edition). See `docs/plans/README.md`
+for the plan-checklist grammar (`{id, symbol, package, ...}` annotations)
+that `verify` gates against — it too has nothing Claude-Code-specific in
+it, and neither do the reachability facts behind it: a function passed as
+a value (`mux.HandleFunc`, route tables, middleware) is an edge, and a
+call inside a closure counts for the enclosing test — the old "call it at
+the test's top level" rule is retired
+([spec-driven-development.md §3](spec-driven-development.md)).
 
 ---
 
@@ -216,6 +231,26 @@ MCP tool availability and the git-native gates — there is no Codex
 equivalent of a PostToolUse or Stop hook today, so obligations
 injection and the done-means-proven session check (§6) don't reach a Codex
 session the way they reach a Claude Code one.
+
+**The pull tier — what a Codex session runs by hand.** The stanza itself
+now instructs it: `fathom prime` prints the exact primer Claude Code's
+SessionStart hook injects (service identity + freshness, a live
+`find_symbol` example, the continuity-thread brief, the custodian
+attention line) — run it at session start. Then:
+
+```sh
+fathom prime                                   # the session-start primer, on demand
+fathom plans next --service <svc> --eligible-only   # the work frontier, minus rows blocked on an unmet needs:
+fathom plans context --service <svc> --row <id>     # the row's ctx: pack, budgeted
+fathom thread brief                            # this repo's open items (≤2,400 bytes)
+fathom thread note "…"                         # before ending: file what the next session must know
+fathom thread handoff                          # a harness-neutral Markdown handoff of the open work
+fathom config audit                            # the custodian's evidence (no attention line without the hook)
+```
+
+`thread note`/`brief`/`list` are scoped to this repo's service id by
+default (`--all-repos` widens; `--thread` overrides) — same store, same
+verbs, whichever harness wrote to it.
 
 ### 5.1 The flywheel: `observe` / `instrument --adoption` / `fathom-feedback`
 
@@ -246,9 +281,9 @@ Codex-specific to configure.
 | Channel | Claude Code | Codex |
 |---|---|---|
 | MCP tool access (stdio or HTTP) | Yes | Yes |
-| Curated 16-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
-| SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No equivalent.** Codex has no session-start hook mechanism fathom can plug into |
-| PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool |
+| Curated 17-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
+| SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No hook.** Run `fathom prime` yourself at session start — it prints the identical primer (§5) |
+| PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean; plus the anchored-memory block for the edited file (*experimental*) | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool, and memories via `memory_search` (*experimental*) |
 | PreToolUse guarded-edit injection (`edit-hook --pre`, phase O) | Yes — `.fathom/guard.cue`-configured scopes/commands get rules injected BEFORE the edit/command runs, silent-by-default (local glob check, zero daemon calls on a miss) | **No equivalent.** Codex has no PreToolUse hook mechanism; a bound module's rules still reach Codex via `obligations`/`pack_context`, just not pre-edit |
 | Stop-hook done-means-proven check | Yes — newly-claimed `[x]` tasks re-verified at session end, advisory or blocking | **No equivalent.** Nothing checks a session's claims at end-of-session; the pre-push gate (next row) is the backstop |
 | Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source, written by `fathom init` in one step |
@@ -257,10 +292,11 @@ Codex-specific to configure.
 | Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
 | `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
 | Shipped agent skills (nine: `fathom-plan`/`verify`/`onboard`/`feedback`/`doctor`/`impact`/`rewire`/`activate`/`custodian`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
-| Continuity threads (vision 21) | Full loop: SessionEnd/PreCompact hooks deposit mechanical facts; the SessionStart brief injects on `startup`/`clear` only (≤2,400 bytes, budget-enforced) | **Half the loop.** No lifecycle hooks, so nothing deposits or injects automatically — but the store and verbs are identical: `AGENTS.md` instructs running `fathom thread brief` at session start, and `fathom thread note` before ending a session is the same discipline. The store never knows which harness wrote to it |
-| Config custodian (`fathom config audit`, vision 22) | Audit verb + doctor `concerns` row + a session-start attention line while a concern is violated | Audit verb + doctor row work identically (plain CLI); no attention line — run `fathom config audit` yourself, same as the thread brief |
+| Continuity threads (vision 21, *experimental* — the bet is still collecting) | Full loop: SessionEnd/PreCompact hooks deposit mechanical facts; the SessionStart brief injects on `startup`/`clear` only (≤2,400 bytes, budget-enforced) | **Half the loop.** No lifecycle hooks, so nothing deposits or injects automatically — but the store and verbs are identical: `AGENTS.md` instructs running `fathom prime` at session start (it carries the brief), and `fathom thread note` before ending a session is the same discipline. Threads are scoped per repo on both harnesses; the store never knows which harness wrote to it |
+| Config custodian (`fathom config audit`, vision 22) | Audit verb + doctor `concerns` row + a session-start attention line while a concern is violated | Audit verb + doctor row work identically (plain CLI; all six concern kinds, incl. `stanza_tools_served`, which asks the daemon and degrades to `unable to check`); the attention line reaches Codex only through `fathom prime` |
 | Local friction flywheel (`observe`/`instrument --adoption`) | Yes — plain CLI, no hook dependency | Yes, identically — plain CLI, no hook dependency (§5.1) |
-| `fathom doctor` wiring diagnosis | Yes, all 11 checks (`--harness=claude`) | Yes (`--harness=codex`) — 9 of 11 checks apply identically; `hooks_installed`/`hooks_firing` report `skipped` honestly (no hook mechanism to check, §6 above) rather than a false pass or fail |
+| Plan grammar, `plans status`/`next --eligible-only`/`context`, leases | Yes | Yes — plain CLI, identical |
+| `fathom doctor` wiring diagnosis | Yes, every check (27 on this build; `--harness=claude`) | Yes (`--harness=codex`) — every check applies except `hooks_installed`/`hooks_firing`, which report `skipped` honestly (no hook mechanism to check, §6 above) rather than a false pass or fail |
 
 **The practical upshot:** in Codex, fathom is a fully capable *pull* tool
 (every MCP tool works identically) plus two *gate* channels that are
@@ -307,15 +343,18 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 - [ ] Ask Codex to call `find_symbol` for a symbol you know exists in the
       repo and confirm it resolves.
 - [ ] `AGENTS.md` in the repo root contains the
-      `<!-- fathom:begin -->…<!-- fathom:end -->` stanza (from `fathom init`
-      — identical to the one in `CLAUDE.md`).
+      `<!-- fathom:begin v3 sha256:… -->…<!-- fathom:end -->` stanza (from
+      `fathom init` — identical to the one in `CLAUDE.md`; a region written
+      before v3 reads `<!-- fathom:begin -->` until the next write).
+- [ ] `fathom prime` prints the primer (service identity, a live example,
+      the thread brief) from the repo root.
 - [ ] If using the `codex-cli` compile lane: `fathom providers --profile
       codex` reports the lane healthy.
 - [ ] `git push` in the repo runs lefthook's `pre-push` hooks and the
       `fathom-verify` command exits with the expected code (0 pass, 1 a
       real unproven claim, 2 only when the daemon/store is genuinely down).
 - [ ] `bin/fathom init --skills=codex` (or `=all`) populates
-      `~/.codex/prompts/{fathom-plan,fathom-verify,fathom-onboard,fathom-feedback,fathom-doctor,fathom-impact}.md`
+      `~/.codex/prompts/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}.md`
       (§1.1), and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
       --adoption` (§5.1) both run cleanly from a Codex-driven shell — neither
       is hook-dependent, so there's nothing Codex-specific to verify beyond
@@ -329,14 +368,16 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 ## Maintained
 
 This doc covers: `fathom init` (AGENTS.md stanza, `--skills=codex` prompt
-install into `~/.codex/prompts/`), `observe`, `instrument --adoption`,
-`doctor` (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`,
-`/rpc/agent`), the `codex-cli` provider lane
+install into `~/.codex/prompts/`), `prime` (the Codex pull tier),
+`plans next --eligible-only`/`context`, `thread brief`/`note`/`handoff`,
+`config audit`, `observe`, `instrument --adoption`, `doctor`
+(`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`, the
+17-tool allowlist), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
-`fathom verify` / `--strict` (git-native gate, identical to Claude Code),
-the shipped `fathom-plan`/`fathom-verify`/`fathom-onboard`/
-`fathom-feedback`/`fathom-doctor`/`fathom-impact` Codex prompts
-(`dist/agents/skills/`). Codex-specific `config.toml`/`codex mcp` syntax is
+`fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
+Claude Code), the nine shipped Codex prompts
+(`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`).
+Codex-specific `config.toml`/`codex mcp` syntax is
 sourced from Codex's own public docs, not this repo — re-verify those
 specifics against your installed Codex version when they change. Update
 this doc when the codex-cli lane's cost story, the Ping tripwire, the

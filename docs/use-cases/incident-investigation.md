@@ -27,7 +27,11 @@ Triage a production symptom fast using pre-computed call graphs, complexity hots
 | `community` | MCP tool | Related symbols: callers, callees, and co-located symbols in the same package or file |
 | `traverse` | MCP tool | BFS over typed edges (calls, imports, spec-refs, routes, env-keys) from a starting symbol or route |
 | `findings_near` | MCP tool | Prior review/audit findings whose scope lies within N call-graph hops of a symbol or file, ranked by proximity then recency — "has anyone seen this before?" (docs/design/findings-as-evidence.md) |
+| `memory_search` | MCP tool | Anchored memories touching a file or matching a query, each labeled `tier` and `state` — what an earlier session learned about this code, and whether its anchor has since drifted (**experimental**, unmeasured) |
 | `staleness_report` | MCP tool | Whether the index has fallen behind HEAD; `reingest_recommended: true` means results may be stale |
+| `fathom findings near\|status` | CLI | Store-direct twin of `findings_near` (`--hops`, `--include-superseded`), and the findings layer's entry-condition progress (`status`) — the layer is **experimental** until ≥15–20 resolved findings exist |
+| `fathom memory add\|list\|review\|show` | CLI | File what the investigation established as an anchored memory (symbol/file/commit anchor + evidence kind); `review` triages `suspect`/`orphaned` ones |
+| `fathom scope list\|preview` | CLI | See what the index deliberately hides: any tool answer narrowed by a suppression carries a `suppressed` block naming the reason and the reversing command |
 
 ---
 
@@ -157,11 +161,11 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Setup & notes
 
-**Profile.** Set `investigation` before running these tools. It activates the investigation group (which includes `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`) plus the shared group. Some tools (`entrypoints`, `staleness_report`) are available in any profile. (`set_profile` is available on stdio `serve-mcp` only; over the shared HTTP daemon, register against `POST /rpc/investigation` instead.)
+**Surface.** There is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; over the shared HTTP daemon the path is the scope — `POST /rpc/investigation` lists the investigation group (`find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`) plus shared tools; `POST /rpc/agent` lists the 17-tool allowlist (`entrypoints`, `find_callers`, `staleness_report`, `memory_search`, `ingest` are on it). An off-surface call still executes, logged `off_surface:true` — never refused. Prompts follow the surface: `investigate_incident` is hidden on a surface missing one of its tools, so fetch it over `/rpc` or `/rpc/investigation`.
 
-```json
-{ "name": "set_profile", "arguments": { "profile": "investigation" } }
-```
+**"Did we already know this?"** Before reading cold, ask `memory_search { "service": "checkout-service", "file": "internal/cart/validate.go" }` — a `fresh` memory is an earlier session's proven claim about this code; a `suspect` one names the anchor that moved since it was confirmed. When the investigation settles a fact worth keeping, `fathom memory add … --anchor file:internal/cart/validate.go --evidence machine-check:<test>` files it; an unanchored note is refused.
+
+**What the index hides on purpose.** A `suppressed` block in any answer means a `fathom scope suppress` narrowed it — `fathom scope list` shows the id and reason, `fathom scope unsuppress <id>` reverses it. Nothing is hidden silently (law 3).
 
 **`contradiction_scan` requires `concern`.** This is not optional. Pass the narrow concern that matches the symptom (e.g. `"checkout"`, `"payment"`, `"auth"`). A missing concern is a hard error.
 
@@ -181,4 +185,4 @@ Returns: `{ "found": true, "findings": [{ "claim_id": "...", "class": "error-han
 
 ## Maintained
 
-This doc covers: `investigate_incident`, `entrypoints`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `staleness_report`, `set_profile`, `ingest`. Update it when these change.
+This doc covers: `investigate_incident`, `entrypoints`, `find_callers`, `blast_radius`, `history`, `contradiction_scan`, `evidence_summary`, `community`, `traverse`, `findings_near`, `memory_search`, `staleness_report`, `ingest`, `fathom findings` (`near`/`status`), `fathom memory` (`add`/`list`/`review`/`show`), `fathom scope` (`list`/`preview`/`suppress`/`unsuppress`). Update it when these change.

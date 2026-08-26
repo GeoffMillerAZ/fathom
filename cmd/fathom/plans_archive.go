@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,10 +28,12 @@ import (
 //  2. Every claimed row verifies GREEN RIGHT NOW — the engine is run fresh,
 //     never trusting a prior run.
 //  3. Lexical absorption: every row's task ID appears somewhere in
-//     CHANGELOG.md or ADR.md at a token boundary (never a bare substring —
-//     "E3-10" must not absorb "E3-1"; see idAbsorbed) — the plan's claims
-//     must already be recorded in the permanent history before the working
-//     file that carried them disappears from the active set.
+//     CHANGELOG.md, ADR.md, or docs/changelog/*.md (the per-release
+//     narrative) at a token boundary (never a bare substring — "E3-10" must
+//     not absorb "E3-1"; see idAbsorbed), where a range "SH-1..6" or a
+//     slash-list "IT-14/15" names every id it denotes (expandIDNotation) —
+//     the plan's claims must already be recorded in the permanent history
+//     before the working file that carried them disappears from the active set.
 //
 // Known limitation of the absorption check: it is lexical, so it cannot
 // distinguish the SAME id used by two different plans — a CHANGELOG mention
@@ -313,7 +317,48 @@ func readAbsorptionCorpus(root string) (string, error) {
 		b.Write(data)
 		b.WriteByte('\n')
 	}
-	return b.String(), nil
+	corpus := b.String()
+	return corpus + expandIDNotation(corpus), nil
+}
+
+// The changelog names plan rows as durable reference points in range and
+// slash-list notation ("SH-1..6", "VS-5..10", "IT-14/15", "GKE-W1-1..14")
+// — CHANGELOG.md's own header promises that archive checks against them.
+// A lexical match on "VS-2" never finds "VS-1..4", so the corpus is extended
+// with every id such a token denotes; idAbsorbed then matches at the usual
+// token boundaries. A range wider than idRangeMax is ignored rather than
+// expanded (a typo like "SH-1..6000" must not absorb the world).
+var (
+	idRangeRe = regexp.MustCompile(`\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-)(\d+)\.\.(\d+)\b`)
+	idListRe  = regexp.MustCompile(`\b([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-)(\d+)((?:/\d+)+)\b`)
+)
+
+const idRangeMax = 500
+
+// expandIDNotation returns a space-separated list of every id denoted by a
+// range or slash-list token in text, in document order (deterministic).
+func expandIDNotation(text string) string {
+	var b strings.Builder
+	for _, m := range idRangeRe.FindAllStringSubmatch(text, -1) {
+		lo, err1 := strconv.Atoi(m[2])
+		hi, err2 := strconv.Atoi(m[3])
+		if err1 != nil || err2 != nil || hi < lo || hi-lo > idRangeMax {
+			continue
+		}
+		for i := lo; i <= hi; i++ {
+			b.WriteString(" " + m[1] + strconv.Itoa(i))
+		}
+	}
+	for _, m := range idListRe.FindAllStringSubmatch(text, -1) {
+		b.WriteString(" " + m[1] + m[2])
+		for _, n := range strings.Split(strings.TrimPrefix(m[3], "/"), "/") {
+			b.WriteString(" " + m[1] + n)
+		}
+	}
+	if b.Len() == 0 {
+		return ""
+	}
+	return "\n" + b.String() + "\n"
 }
 
 // verifySummaryLine renders the same shape of summary cmdVerify prints,

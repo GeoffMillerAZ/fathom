@@ -3,8 +3,10 @@
 Fathom exposes a JSON-RPC 2.0 MCP server (stdio or HTTP). This page documents every
 registered tool, prompt, and resource.
 
-See [usage.md](usage.md) for how to connect a client and switch profiles.
+See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
+Registry size: 54 tools after the 2026-08-23 surface prune plus `memory_search` (55);
+`TestMcpToolsDocMatchesRegistry` keeps the tables below in step with the registry.
 
 ---
 
@@ -55,6 +57,16 @@ unauthenticated registry. The pre-amendment hard gate (an off-surface call retur
 error naming the surface) stays available for any future multi-tenant shape, behind the
 server's `strictSurfaces` option.
 
+**Budgeted answers (BA-5/BA-9, `docs/design/budgeted-answers.md`; the project-settable
+block is experimental).** Class-budgeted tools size their answer in tokens and disclose
+elision and per-call response cost: `list` = `query_symbols`, `references`; `composite`
+= `pack_context`; `map` = `repo_map` (`find_symbol`, `find_callers`, `symbol_context`,
+`outline` are not class-budgeted). Defaults resolve project → user → built-in from the
+`budgets: {list, composite, map}` block of `.fathom/capabilities.cue` /
+`~/.fathom/capabilities.cue` (closed schema; an unknown key such as `lists` is refused
+with a did-you-mean) — honoured by `serve-http`; stdio `serve-mcp` still uses the
+built-ins (documented gap). The observatory's Cost panel renders the same figures.
+
 Surface boundaries apply to tools and prompts, not resources: canned prompts are hidden
 on surfaces that reference tools not on that surface (prompts are pre-declared
 workflows, so they stay hidden rather than execute-and-flag), while `resources/read`
@@ -74,9 +86,9 @@ in the refusal.
 
 ## Shared tools (GroupShared)
 
-These tools are visible under every group profile and group surface. One exception: the
-`agent`/`companion` surface shows only its explicit allowlist (see above) — other
-shared tools are still callable there, execute-and-flagged rather than hidden.
+These tools are visible on the full registry and under every group surface. One
+exception: the `agent`/`companion` surface shows only its explicit allowlist (see above)
+— other shared tools are still callable there, execute-and-flagged rather than hidden.
 
 | Tool | Arguments | Returns | Purpose |
 |---|---|---|---|

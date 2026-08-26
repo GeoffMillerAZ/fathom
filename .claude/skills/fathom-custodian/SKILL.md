@@ -48,8 +48,12 @@ concerns: {
 	}
 	router_thin: {check: {kind: "max_lines", file: "CLAUDE.md", lines: 120}, want: "the root CLAUDE.md stays a router"}
 	pointers_hold: {check: {kind: "pointers_resolve"}, want: "every pointer in agent config resolves"}
+	stanza_current: {check: {kind: "stanza_tools_served"}, want: "every tool the fathom stanza names is served by the daemon's agent surface"}
+	completion_cites: {check: {kind: "handoff_cites_instruments", days: 7}, want: "a handoff note claiming shipped work cites the instrument that proves it"}
 }
 ```
+
+`fathom init` scaffolds this file commented out; uncomment or author.
 
 Rules the loader enforces (loudly, all errors at once): a concern without
 a machine-evaluable `check` is refused — an uncheckable concern is a
@@ -60,12 +64,26 @@ wholesale; `off: true` disables an inherited concern (still shown).
 Authoring bar: 2–4 concerns whose `why` names a mistake that actually
 happened — speculative contracts teach people to ignore the audit.
 
-The four v1 check kinds: `forbidden_pattern` (regexp over agent-config
-files, `file:line` evidence), `command_documented_and_exists` (the
+Six check kinds. Four scan the **agent-config corpus** (`CLAUDE.md` and
+`AGENTS.md` at any depth, git-tracked): `forbidden_pattern` (regexp,
+`file:line` evidence), `command_documented_and_exists` (the
 instruction-outlives-the-command failure, both halves named), `max_lines`
 (router thinness), `pointers_resolve` (markdown links AND backtick repo
 paths, precision-guarded so foreign names — Go modules, kit packages —
-are never flagged).
+are never flagged). Two are new (**experimental**, CC-14/CC-15):
+`stanza_tools_served` scans only the fathom stanza regions of
+`CLAUDE.md`/`AGENTS.md` (backticked names, plus bare names with an
+underscore such as `find_callers`) and asks the daemon's `/rpc/agent`
+`tools/list` (falls back to `/rpc`) — a pruned or undeployed tool is
+violated with `file:line`; daemon down or an empty registry is `unable to
+check` naming the URL, never violated. It is the one kind that talks to
+the daemon; every other check is offline. `handoff_cites_instruments`
+(`days: N`) scans this repo's handoff notes in `~/.fathom/threads.jsonl`
+within the window — a note claiming shipped/landed/done/fixed work must
+cite a commit sha, an active `docs/plans` row id, `fathom verify`, or a
+`workspace/artifacts/retros/` path; undated rows are named; no thread log
+is a hold. `fathom config propose`/`refresh` (CC-9) have **not** shipped —
+audit is the whole verb.
 
 ## 3. Act on a violation — you are the hand
 

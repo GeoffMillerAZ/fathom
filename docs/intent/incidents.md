@@ -30,17 +30,9 @@ Would have caught it: a custodian concern that the hook's command matches the do
 Class: intent-violated
 Outcome: pending — mitigated: IT-15 now refuses an empty overwrite from either path (`invariants.md` I25); the hook still contradicts the rule (`questions.md` Q2)
 
-### INC-13 2026-08-25 The raw-`cp` deploy instruction survives outside the audit's corpus
-What: `docs/adoption/claude-code.md` instructs `cp bin/fathom ~/.local/libexec/fathom/fathom`
-in three places; the custodian's `deploy_safety` concern scans `CLAUDE.md`/`AGENTS.md` only
-and reports "hold". INC-4 (O25) was this instruction being followed.
-Evidence: `.fathom/concerns.cue` `where: "agent-config"`; `fathom config audit` 4 hold.
-Would have caught it: the concern's corpus including `docs/adoption/**`.
-Class: intent-violated
-Outcome: pending (widen the concern or fix the doc; the doc edit is not part of this bootstrap)
-
 ## Closed
 
+- INC-13 2026-08-25 The raw-`cp` deploy instruction survived outside the custodian's corpus (`docs/adoption/claude-code.md` ×3, doctor's `binary_fresh` remedy) → both now say `task deploy` and why; widening the concern corpus stays CC-11.
 - INC-2 2026-08-21 A wedged reader wrote a zero-symbol index that reported "0 failed" (O16) → IT-14/IT-15: read failures counted and named, zero-readable runs refuse to overwrite (`TestIngestRefusesEmptyOverwriteOnReadErrors`).
 - INC-12 2026-08-25 Law 15 held in the engine, not on the production write path → `init`/`reconcile --apply` write only through `internal/wiring` (`TestInitWritesReceipt`, `TestReconcileStopsOnDriftedRegion`).
 - INC-4 2026-08-12 The documented deploy (raw `cp`) took the daemon down fleet-wide (O25) → `.fathom/concerns.cue` deploy_safety; `CLAUDE.md` non-negotiable row; `task deploy` serving assertion.

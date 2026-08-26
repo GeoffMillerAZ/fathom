@@ -45,7 +45,9 @@ edit-hook isn't firing, `research report`'s injection-coverage number will
 honestly report a low or zero rate — not because fathom isn't helping, but
 because it was never wired to try. Fix what `doctor` flags before starting
 the clock. (The `fathom-doctor` skill covers reading its output in more
-depth than this runbook needs to.)
+depth than this runbook needs to.) `fathom flywheel` is the companion
+gauge for the loops themselves — each feedback loop CLOSED/OPEN/IDLE with
+its evidence and remedy — run it once here and again in Step 6.
 
 ## Step 2 — Work normally for a week
 
@@ -58,8 +60,12 @@ for exactly this and should be used **the moment** something's off, not
 retroactively at the end of the week):
 
 ```sh
-fathom observe   # whenever something's off, right when you notice it
+fathom observe --symptom "…" [--tool T] [--expected …] [--actual …] [--repro …]   # right when you notice it
 ```
+
+Optionally rate each session on the way out — `fathom rate <1-5> [--note
+"…"]` (*experimental*: the human OUTCOME half of the A/B criterion, so
+"fewer tokens" is never counted as a win when less got done).
 
 The point of this step is that the evidence the flywheel reports in Step 3
 has to come from real usage, not a staged session — a research report run
@@ -103,7 +109,11 @@ number or a named reason it can't be computed — read both kinds:
   with," never "caused," until then.
 - **"what fathom SPENT" is a cost figure, never a savings figure** (law
   12). Cite the per-channel token *estimate* if you want, but never phrase
-  it as money or tokens saved — that claim needs the same A/B.
+  it as money or tokens saved — that claim needs the same A/B. The A/B
+  counterfactual is *experimental and still collecting*: the OFF arm ran,
+  the ON arm is live, and ≥20 admissible units per arm are needed before
+  any savings number is admissible — until then the report will not print
+  one, and neither should you.
 - **No context-bench artifact found is a real, common, honest state** — it
   means a tokenomics claim ("fathom saves N% tokens") isn't backed by *this
   repo's own evidence* yet, even if it's true elsewhere. Say so if you're
@@ -154,13 +164,16 @@ lower than expected, a verify-gate catch that should have been three but was
 one — file it:
 
 ```sh
-fathom observe
+fathom observe --symptom "…"
+fathom flywheel          # which loops are now CLOSED, and what each OPEN one still needs
 ```
 
 and, if you also found and fixed something in fathom itself while adopting
-it, record the fix the way this repo's own dogfood discipline requires (see
-`CLAUDE.md`'s "Dogfood discipline" section) — the flywheel's value compounds
-only if what it surfaces actually gets acted on, not just reported.
+it, record the fix the way this repo's own dogfood discipline requires
+(`docs/guides/fleet-index.md` carries the discipline; the narrative log
+with reproductions is `docs/dogfood-observations.md`) — the flywheel's
+value compounds only if what it surfaces actually gets acted on, not just
+reported.
 
 ---
 
@@ -183,6 +196,17 @@ fathom metrics interventions --store workspace/db/fathom.sqlite --since 168h
 
 See [`docs/use-cases/metrics-surfaces.md`](../use-cases/metrics-surfaces.md)
 for the full verb reference, `--json` shapes, and worked examples.
+
+The daemon renders the same substrate as pages: `GET /observatory` (fleet
+— a 30-day grade distribution; *experimental*: days without a persisted
+snapshot render Absent, so today only until daily snapshots persist),
+`/observatory/service?id=<svc>` (per-dimension 30-day series — queried,
+discovering, preventing, gating — from real call-log rows; a day with no
+rows renders Absent with its reason, never a fabricated 0, and sparklines
+never draw across an absent day), `/observatory/impact`, and
+`/observatory/brief` (`?format=json|md` where offered). Every tile that
+cannot read the call log or store renders Absent, never 0 — the same rule
+as the report.
 
 **Turning `FATHOM_METRICS=full` on for a tuning window, then off again.**
 The default tier, `basic`, already captures everything phase P specifies
@@ -219,19 +243,21 @@ stays fully open, exactly like every other route (`/healthz`, `/metrics`,
 
 ```sh
 fathom init                              # Step 0 — wire it in
-fathom doctor                            # Step 1 — verify, don't assume
-# ... work normally for a week, `fathom observe` as friction happens ...
+fathom doctor && fathom flywheel         # Step 1 — verify, don't assume
+# ... work normally for a week, `fathom observe --symptom "…"` as friction happens ...
 fathom research report --since 168h      # Step 3 — collect
 # read report.md, decide what's citable and what isn't (Step 4)
 fathom research bundle --since 168h --dry-run   # Step 5a — preview
 fathom research bundle --since 168h             # Step 5b — write, then choose to share
-fathom observe                           # Step 6 — close the loop
+fathom observe --symptom "…"             # Step 6 — close the loop
 ```
 
 ## Maintained
 
 This doc covers the adoption sequence for `fathom research report` /
-`fathom research bundle`, and (Step 7) the `fathom metrics` verb family's
+`fathom research bundle`, `fathom flywheel`, `fathom rate`, `fathom
+observe --symptom`, the observatory pages (fleet, service, impact, brief),
+and (Step 7) the `fathom metrics` verb family's
 tiering/`/statusz`-gating adoption notes. It intentionally does not
 duplicate what each command measures or how the sanitization/honesty
 guarantees work — see

@@ -22,6 +22,18 @@ Dry-run first, read the diff, then apply — reconcile repoints stale
 absolute binary paths to the shim-stable `fathom` and merges missing
 template entries at exactly one scope (project, deferring to user scope).
 Structural changes (scope moves, removals) are yours, not the verb's.
+Law 15 governs every write: one plan → apply → one receipt per repo in
+`.fathom/receipts.jsonl` (`fathom fleet receipts` lists; `fathom fleet
+undo --last | <receipt-id>` reverses). The dry run tells `stanza: …
+behind the current template` from `up to date (will be re-marked with a
+digest on apply; no prose changes)` — a pre-v3 `<!-- fathom:begin -->`
+region is upgraded to `<!-- fathom:begin v3 sha256:… -->`, not drift. A
+tracked region a human edited is **BLOCKED** and named (exit 1, that file
+byte-identical, other files still applied; unreadable/unparsable files
+named separately): delete the marked block and re-apply to take fathom's
+version, or keep yours and it keeps reporting. `/observatory/wiring/`
+drives the same engine (preview → apply → undo, digest-checked,
+loopback-only).
 
 ## The manual pass (when reconcile is unavailable or you need the audit)
 
@@ -43,8 +55,11 @@ Structural changes (scope moves, removals) are yours, not the verb's.
    plain `fathom`.
 3. `.fathomignore` covers secrets/data/vendored/build — BEFORE any first
    ingest.
-4. `fathom gen-claude-md` and merge — the stanza must say fathom (never a
-   pre-rename name) and spell commands via plain `fathom`.
+4. The stanza is regenerated only through `fathom init` / `fleet
+   reconcile --apply` (the marker region, never your prose) — it must say
+   fathom (never a pre-rename name) and spell commands via plain `fathom`.
+   (`fathom gen-claude-md` is a different verb: a symbol-derived CLAUDE.md
+   written to `workspace/artifacts/`.)
 5. Ingest with BOTH fields — `{"service":"<plain-name>","path":"<canonical
    absolute root>"}`. The daemon now refuses path-like ids, duplicate
    roots (naming the claimant), and nested roots; `rename_service` /

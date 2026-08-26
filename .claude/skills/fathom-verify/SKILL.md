@@ -27,9 +27,12 @@ fathom verify --service <svc> --plan docs/plans/<plan>.md
   `.sqlite`/`.db` file) to verify directly against a store,
   bypassing the daemon entirely — this is what CI should do (build its own
   store, never trust a live daemon).
-- `--strict`: claimed-but-`Unknown` tasks (e.g. no-contract lines, or a
-  symbol the gate can't yet resolve) become gate **failures** too. Always
-  add this in CI.
+- `--strict`: claimed-but-`Unknown` tasks become gate **failures** too. A
+  `no-contract` row is a `[x]` line with no `{symbol…}` block (or one the
+  line-based parser never saw because it wrapped) — it passes by default
+  and fails under `--strict`. Use it in CI: today that is `scripts/ci.sh`,
+  run by hand (no hosted runner exists yet — **experimental**); the
+  pre-push hook stays non-strict.
 - `--require-all`: the wave gate (ADR-018 §2) — additionally fails on any
   `[ ]` open or `[~]` in-progress task, so a wave only passes once every row
   is claimed-and-verified or explicitly `[-]` skipped.
@@ -66,6 +69,17 @@ function **statically reaches** the claimed symbol via the call graph — it
 is never proof the test passes or even runs. Runtime evidence is a separate,
 not-yet-ingested tier.
 
+**What reaches (VS-6/VS-7/VS-9).** A function referenced as a *value* is an
+edge — `mux.HandleFunc(p, h)`, a route-table literal, `http.HandlerFunc(h)`,
+middleware, a method value — so an httptest that builds the server reaches
+every handler it registers. Calls inside `t.Run`, `defer`, goroutines and
+callbacks count for the enclosing test; the "call it at the test's top
+level" rule is retired, and a direct wire test is optional, never required.
+A method name shared by two receivers needs `package:` (never
+first-match-wins). A file the connector could not read is named by
+`fathom ingest` (`read-failed: N file(s)`, exit 1), never a clean 0 — a
+`test_reaches` failure right after a degraded ingest is an ingest problem.
+
 ## Computed progress: `fathom plans status` / `fathom plans next`
 
 State here is always **derived from the index**, never asserted — that's the
@@ -85,12 +99,20 @@ fathom plans next   --service <svc>   # the ordered work frontier
   can't currently prove (`claimed-failing`, `claimed-unknown`) — each with
   its `{symbol, package}` anchor. This is the work frontier for whoever
   picks up the plan next; a plan with "no open work" here is one CI will
-  actually pass.
+  actually pass. `--eligible-only` hides rows blocked on an unmet `needs:`
+  target; `--free` hides rows holding a fresh advisory lease
+  (`fathom plans lease <row-id> --plan <file> [--ttl 2h] [--release]`,
+  `fathom plans leases`, stored in `.fathom/leases.jsonl`).
+- `fathom plans context --row <id> --service <svc>` renders the row's `ctx:`
+  pointers (symbols, files, concerns, threads) as one budgeted pack
+  (`--budget`, default 4000 bytes) — the discovery pack for that row.
 - Both accept `--store <path>` for direct mode or `--url` for a
   non-default daemon, and `--json` for machine output.
 - `fathom plans archive <plan>` retires a fully-proven-or-dispositioned
-  plan to `docs/plans/archive/` (out of gate scope by construction — each
-  archival removes one verify invocation from every push and CI run);
+  plan whose row ids are absorbed into `CHANGELOG.md`, `ADR.md`, or
+  `docs/changelog/*.md` to `docs/plans/archive/` (out of gate scope by
+  construction — each archival removes one verify invocation from every
+  push and CI run; the refusal names all three corpora);
   `fathom plans restore <plan>` brings it back.
 
 ## Reading a failing task

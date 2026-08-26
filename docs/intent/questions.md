@@ -59,3 +59,11 @@ serving path caps rules at 6 × 28 words and live payloads measure 210–350 tok
 Enforce a serving-side cap (with the displaced-count line) or restate the contract?
 Blocks: `invariants.md` I35; T3 in `principles.md`. Answerable by: owner plus a
 measurement of injection precision at the lower cap.
+
+**Q14. Thirty-six fully-proven plans cannot be archived.** `fathom plans archive` refuses them
+because their row ids (`O-1..37`, `SS-1..9`, `CF-1..13`, …) were condensed out of `CHANGELOG.md`
+and `docs/changelog/0.3.0.md` on 2026-08-24, and released blocks are frozen. Options: a
+non-normative `docs/changelog/rows.md` index of archived-plan row ranges, an explicit
+`--absorbed-by <path>` escape recorded in the tombstone, or leave them active (gate cost
+O(43 plans) per push). Blocks: pre-push latency; `docs/plans/README.md`'s archival promise.
+Answerable by: owner.

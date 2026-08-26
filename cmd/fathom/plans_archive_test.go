@@ -376,3 +376,32 @@ func TestCmdPlansArchive_AbsorbedByReleaseNarrative(t *testing.T) {
 		t.Errorf("plan must have moved to docs/plans/archive/: %v", err)
 	}
 }
+
+// TestIDNotationExpansion: the changelog's range ("SH-1..6") and slash-list
+// ("IT-14/15") reference points absorb every id they denote; a lone id,
+// a date, or an over-wide range does not.
+func TestIDNotationExpansion(t *testing.T) {
+	text := "shipped SH-1..6, IT-14/15 and GKE-W1-1..3 on 2026-08-25; ADR-025; RG-6..8; wide X-1..9000"
+	corpus := text + expandIDNotation(text)
+	for _, want := range []string{"SH-1", "SH-6", "IT-14", "IT-15", "GKE-W1-2", "RG-7", "ADR-025"} {
+		if !idAbsorbed(corpus, want) {
+			t.Errorf("%q should be absorbed by %q", want, text)
+		}
+	}
+	for _, not := range []string{"SH-7", "IT-16", "GKE-W1-4", "X-2", "2026-08-26"} {
+		if idAbsorbed(corpus, not) {
+			t.Errorf("%q must NOT be absorbed by %q", not, text)
+		}
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("VS-1..4 verified\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := readAbsorptionCorpus(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !idAbsorbed(got, "VS-3") || idAbsorbed(got, "VS-5") {
+		t.Errorf("corpus from a range must absorb VS-3 and not VS-5: %q", got)
+	}
+}

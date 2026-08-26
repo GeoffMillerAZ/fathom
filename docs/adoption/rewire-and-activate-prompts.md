@@ -1,11 +1,17 @@
 # Rewire & activate: the two prompts
 
-> Date: 2026-08-07 · Companion to vision 14 §7 (reconcile + self-healing).
-> Until `fathom fleet reconcile` ships, these prompts ARE the reconcile:
-> paste Prompt 1 into a session in any drifted repo; paste Prompt 2 into a
-> repo that's wired but hasn't activated the newer features (guards, layer
-> packs, bindings). Both are written for an agent, with the known false
-> signals called out so it doesn't chase doctor's wrong-repo bugs.
+> Date: 2026-08-07, revised 2026-08-25 · Companion to vision 14 §7
+> (reconcile + self-healing). `fathom fleet reconcile [--repo R] [--apply]`
+> has shipped (dry-run by default; `--apply` writes through the wiring
+> engine, one receipt per repo, `fathom fleet undo --last` reverses it, a
+> hand-edited tracked region is BLOCKED and named), and the `fathom-rewire`
+> / `fathom-activate` skills carry the same two passes — so these prompts
+> are now the AUDIT edition: reconcile explains, the prompt proves by
+> demonstration. Paste Prompt 1 into a session in any drifted repo; paste
+> Prompt 2 into a repo that's wired but hasn't activated the newer features
+> (guards, layer packs, bindings, concerns). Both are written for an agent,
+> with the known false signals called out so it doesn't chase doctor's
+> wrong-repo bugs.
 
 ## Prompt 1 — rewire this repo (hooks, binary, stanza, index)
 
@@ -26,25 +32,38 @@ http://localhost:7575.
    not broken; (d) `hooks_installed` may cite hook-beat "evidence" that
    actually came from OTHER repos (the beat log is user-global) — trust
    your own read of settings.json below over it.
-2. Read .claude/settings.json (project scope) AND ~/.claude/settings.json
-   (user scope). The CURRENT hook template is: SessionStart
-   (matcher startup|resume|clear|compact) → `fathom session-hook`,
-   timeout 10; PostToolUse (Edit|Write|MultiEdit) → `fathom edit-hook`,
-   timeout 5; PreToolUse three registrations, each timeout 5 —
+2. Run `fathom fleet reconcile --repo .` (dry-run) and read its diff,
+   then `--apply` for the safe subset (shim repoint + additive template
+   merge + stanza refresh). It writes through the wiring engine: one
+   receipt in .fathom/receipts.jsonl, `fathom fleet undo --last`
+   reverses it, and any file it reports BLOCKED (a hand-edited tracked
+   region, or a file it could not parse) is left byte-identical — fix
+   that one by hand, never by forcing. Then read .claude/settings.json
+   (project scope) AND ~/.claude/settings.json (user scope) yourself.
+   The CURRENT hook template (8 hooks) is: SessionStart (matcher
+   startup|resume|clear|compact) → `fathom session-hook`, timeout 10;
+   SessionEnd (no matcher) → `fathom session-end-hook`, timeout 10;
+   PreCompact (manual|auto) → `fathom pre-compact-hook`, timeout 10;
+   PostToolUse (Edit|Write|MultiEdit) → `fathom edit-hook`, timeout 5;
+   PreToolUse three registrations, each timeout 5 —
    (Edit|Write|MultiEdit), (Bash), (Grep|Glob|Read) — all →
    `fathom edit-hook --pre`; Stop (no matcher) → `fathom stop-hook`,
    timeout 10. Reconcile IN PLACE at whichever ONE scope already has
    fathom hooks (project scope if neither does; never both): add missing
    events/matchers, remove duplicate registrations, and rewrite every
    hook command to invoke plain `fathom` instead of any absolute
-   /Volumes/.../sextant/bin/fathom path.
+   bin/fathom path.
 3. Ensure .fathomignore exists and covers secrets, user data, vendored
    trees, and build output — BEFORE any ingest if this repo has never
    been indexed.
-4. Regenerate the CLAUDE.md stanza: `fathom gen-claude-md` and merge —
-   the stanza must say fathom (not sextant), name the correct service id,
-   and give the verify command in shim form (`fathom verify ...`, no
-   absolute paths).
+4. Confirm the CLAUDE.md/AGENTS.md stanza reconcile refreshed (step 2):
+   the begin marker reads `<!-- fathom:begin v3 sha256:… -->`, the body
+   says fathom, names the correct service id, instructs `fathom prime`
+   for hook-less harnesses, and gives the verify command in shim form
+   (`fathom verify ...`, no absolute paths). A v1 marker without a digest
+   is a migration, not drift — the first apply upgrades it.
+   (`fathom gen-claude-md` is a different tool: it drafts a whole
+   CLAUDE.md from stored symbols, it does not maintain the stanza.)
 5. Index or refresh via the MCP ingest tool with BOTH fields:
    {"service":"<plain-repo-name>","path":"<canonical /Volumes/... path>"}
    — the service id is a logical name, NEVER a path or ../ form; the path
@@ -82,36 +101,54 @@ run Prompt 1's rewire first if doctor shows wiring drift).
    `fathom layers list` for installable shipped packs first.
 3. BINDINGS (.fathom/modules.cue): bind any expert modules actually
    mounted on the daemon; otherwise a concrete `bindings: []`.
-4. SKILLS: ensure the six fathom skills exist under .claude/skills/
-   (fathom-plan/verify/doctor/feedback/impact/onboard) — rerun
-   `fathom init` scoped to skills if absent.
+4. SKILLS: ensure the nine fathom skills exist under .claude/skills/
+   (fathom-plan/verify/doctor/feedback/impact/onboard/rewire/activate/
+   custodian) — `fathom init --skills=claude` (or `=all`) if absent;
+   `fathom doctor`'s skills_installed row says which are current.
 5. GATES: if this repo uses lefthook and has docs/plans/*.md, wire the
-   pre-push verify loop using plain `fathom` (shim), and make the gate
-   LOUD on a missing binary (`command -v fathom || { echo "fathom
-   missing — gate NOT run"; exit 1; }`) — a gate that can't run must
-   fail, not pass.
-6. Prove each activation by demonstration, not assertion: trip one guard
+   pre-push verify loop using plain `fathom` (shim) with `--quiet`
+   (failing rows + summary only), and make the gate LOUD on a missing
+   binary (`command -v fathom || { echo "fathom missing — gate NOT run";
+   exit 1; }`) — a gate that can't run must fail, not pass.
+6. CONCERNS (.fathom/concerns.cue) + CAPABILITIES (.fathom/capabilities.cue):
+   register 3–6 falsifiable concerns about this repo's agent config —
+   kinds: forbidden_pattern, command_documented_and_exists, max_lines,
+   pointers_resolve, stanza_tools_served, handoff_cites_instruments
+   (days: N) — and run `fathom config audit` (holds/violated/unable with
+   file:line). Check `fathom capabilities list` for anything off by
+   absence; `fathom capabilities set <id> on|off` only touches the
+   capabilities block, so a `budgets: {…}` block (tokens per tool class:
+   list/composite/map — new, experimental) survives it.
+7. Prove each activation by demonstration, not assertion: trip one guard
    on purpose (expect the refusal), touch one rule-scoped file (expect
-   the injection in the hook output / a beat), run
-   `fathom verify --service <svc> --plan <a-plan>` once if plans exist.
-7. HONESTY RAIL: `fathom narrate`, `fathom fleet reconcile`, `fathom arm`
-   and an installable `ui-appkit` pack are vision items (docs/vision/14,
-   15) that do NOT exist yet — do not invent flags; if you reach for one,
-   note it as pending and move on.
-8. Report what you activated, what you demonstrated, and file
-   `fathom observe` for any friction.
+   the injection in the hook output / a beat), violate one concern in a
+   scratch branch (expect `fathom config audit` to name file:line), run
+   `fathom verify --service <svc> --plan <a-plan> --quiet` once if plans
+   exist.
+8. HONESTY RAIL: `fathom narrate on --for D --sessions N`, `fathom arm`,
+   `fathom fleet reconcile`, and a project-local `ui-appkit` layer pack
+   all exist now (vision 14/15 landed) — but do NOT invent flags for any
+   verb: run `fathom <verb> -h` first, and if a flag is not there, note
+   the gap with `fathom observe` and move on. The A/B arm is
+   entry-conditioned (≥20 units per arm before any savings claim).
+9. Report what you activated, what you demonstrated, and file
+   `fathom observe --symptom "…"` for any friction.
 ```
 
-## Why prompts and not a flag (yet)
+## Why the prompts survive the flag
 
-These two prompts are the manual edition of vision 14 §7's reconcile tiers:
-Prompt 1 is tier-1 detection + apply done by an agent; Prompt 2 is the
-activation catalog done by an agent. When `fleet reconcile` ships, Prompt 1
-collapses to one command and the session-hook's self-check names it; the
-prompts then remain useful as the AUDIT edition (reconcile explains, the
-prompt verifies by demonstration). Keep them versioned here so the template
-in Prompt 1 is updated in the same commit that changes the init template —
-a drifted prompt is the same bug class as a drifted hook.
+These two prompts were the manual edition of vision 14 §7's reconcile
+tiers: Prompt 1 tier-1 detection + apply done by an agent; Prompt 2 the
+activation catalog done by an agent. `fathom fleet reconcile` has since
+collapsed Prompt 1's mechanical half to one command (with receipts and
+undo), and the `fathom-rewire`/`fathom-activate` skills ship the two
+passes with the binary — the prompts remain the AUDIT edition: reconcile
+explains and applies, the prompt proves by demonstration and catches what
+reconcile deliberately will not touch (a BLOCKED file, a stale
+`.fathomignore`, a gate that passes when it cannot run). Keep them
+versioned here so the template in Prompt 1 is updated in the same commit
+that changes the init template — a drifted prompt is the same bug class as
+a drifted hook.
 
 ## Authoring guards responsibly
 

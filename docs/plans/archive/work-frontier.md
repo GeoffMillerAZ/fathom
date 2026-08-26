@@ -1,5 +1,7 @@
 # work frontier — packs, eligibility, leases, prime
 
+> **Archived** 2026-08-26T00:16:25Z · HEAD `6cd778f3d90aff98871bfb3253a5274da48831fd` · 11 tasks total; 11 claimed (11 verified, 0 failing); 0 skipped
+
 > Governing source: `docs/vision/24-work-frontier.md` (this plan is its
 > binding promotion). The dispatch boundary is normative: every row here
 > serves facts; none of them watches, schedules, or launches anything.

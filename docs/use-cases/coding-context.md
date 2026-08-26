@@ -27,9 +27,14 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `pack_context` | MCP tool | Packs ranked evidence items into a token budget; `concern` and `service` required |
 | `brief` | MCP tool | Paste-ready markdown brief combining symbol resolution + concern query; respects a char budget |
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol |
+| `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 16000 bytes per call) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
+| `references` | MCP tool | Fleet-wide occurrence search for an identifier or string, evidence-tiered — the structured alternative to grepping repo by repo |
+| `memory_search` | MCP tool | Anchored memories for a service, filtered by `query` and/or `file`; every entry carries `tier` and `state` (**experimental** — new, unmeasured) |
 | `find_callees` | MCP tool | Direct callees of a named symbol |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `batch` | MCP tool | Execute N tool calls in a single request |
+| `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
+| `fathom memory add\|list\|review\|show` | CLI | Anchored memory: a memory with no anchor (symbol/file/commit/claim/path) is refused; anchor drift marks it `suspect`/`orphaned` |
 | `gen-claude-md` | CLI | Generate a `CLAUDE.md` from stored symbols for static context injection |
 
 ---
@@ -54,17 +59,13 @@ The concrete payoffs:
 
 Scenario: an agent is about to modify token validation in `auth-service` and needs tight context.
 
-**1. Switch to the coding profile** to filter the tool surface to coding-relevant tools.
-
-On stdio `serve-mcp`:
-
-```json
-set_profile { "profile": "coding" }
-```
-
-Returns: `{ "profile": "coding", "ok": true }`
-
-Over the shared HTTP daemon, `set_profile` is rejected — register against `POST /rpc/companion` (curated 16-tool coding hot-loop) or `POST /rpc/coding` instead.
+**1. Pick the surface at registration time, not per call.** There is no
+profile switch: stdio `serve-mcp` always serves the full registry, and the
+shared HTTP daemon scopes by path — register against `POST /rpc/agent`
+(the curated 17-tool coding hot loop; `/rpc/companion` is an identical
+alias) or `POST /rpc` for everything. Every tool below except `brief`,
+`find_callees` and `batch` is on the agent surface; the rest still execute
+there, flagged `off_surface` in the call log rather than refused.
 
 **2. Query concern-scoped symbols** to find everything relevant to token validation:
 
@@ -133,13 +134,21 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 ## Setup & notes
 
-**Profile**: set `coding` at session start (stdio `serve-mcp` only — call `set_profile { "profile": "coding" }`; over the shared HTTP daemon, register against `POST /rpc/companion` or `POST /rpc/coding` instead). This exposes `query_symbols`, `symbol_context`, `find_callees`, `outline`, `entrypoints`, and the shared tools (`find_symbol`, `repo_map`, `pack_context`, `brief`, `batch`). Without a profile set, all tool groups are visible.
+**Surface**: `set_profile` was removed (surfaces week-1, SW-2). Over HTTP the path is the scope — `POST /rpc/agent` lists the 17-tool allowlist (`docs/mcp-tools.md`); `POST /rpc/coding` lists the coding group plus shared tools; bare `POST /rpc` lists everything. Off-surface calls execute and are logged `off_surface:true` — surfaces are ergonomics and measurement, never a security boundary. stdio `serve-mcp` always serves the full registry.
+
+**Raw text without leaving the surface**: `read_source { "service", "file", "start_line", "end_line" }` returns numbered lines from the *indexed* corpus — cite them as `file:line`. It reads what ingest walks: a `.fathomignore`'d or `fathom scope`-suppressed path is refused by name, with the unsuppress command in the refusal.
+
+**Memories beside obligations** (**experimental**, AM-6/AM-8): once a repo has `.fathom/memories.jsonl`, the edit-hook payload gains a `🧠 fathom memory — <file>:` block after the obligation lines, listing memories anchored to the edited file with `[tier, state]`, inside the same 150-token budget (displaced count named). `memory_search { "service", "query"?, "file"?, "limit"? }` is the pull path; retired memories never surface. File one with `fathom memory add --claim … --anchor symbol:Foo --evidence machine-check:…` — no anchor, no memory (put preferences in CLAUDE.md instead).
 
 **Concern is required**: `query_symbols` and `pack_context` both require a `concern` argument. This is enforced at the API level — calls without it are rejected. The concern should describe the functional area being changed (e.g. `"auth token validation"`, `"payment retry logic"`), not a file name or symbol name.
 
 **Re-ingest when stale**: `serve-mcp` is a long-running process; the index can fall behind after commits. Check `staleness_report` or inspect the `staleness` field on `query_symbols` results. To refresh in-session, call the `ingest` MCP tool — a concurrent CLI `ingest` can contend with the session's own writes (SQLite serializes writers, ADR-020) and fail past `busy_timeout`.
 
-**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom.
+**Budget units**: `pack_context` and `repo_map` `budget` is in tokens (default 4000). `brief` `budget` is in characters (default 16000). Set these according to your model's context headroom. Elision is always disclosed in the response, never silent.
+
+**Project-settable defaults** (**experimental**, BA-9): a `budgets` block in `.fathom/capabilities.cue` (project, governs) or `~/.fathom/capabilities.cue` (user default) sets the class defaults in tokens — `budgets: { list: 1500, composite: 4000, map: 2500 }`, where `list` = `query_symbols`/`references`, `composite` = `pack_context`, `map` = `repo_map`. The block is closed: an unknown key is refused with a did-you-mean. `find_symbol`, `find_callers`, `symbol_context` and `outline` are not class-budgeted. Honoured by the `serve-http` daemon; stdio `serve-mcp` still uses the built-ins.
+
+**Priming a session without hooks**: `fathom prime` (Codex, or any harness with no SessionStart hook) prints the same "this repo is service X — resolve via fathom before grep" brief the `session-hook` injects.
 
 **Static context injection**: for sessions where the MCP server is not available, run `fathom gen-claude-md --service auth-service` to write a `CLAUDE.md` to `workspace/artifacts/CLAUDE.md`. This gives the agent a static symbol index to reason from, though it does not support concern scoping or staleness detection.
 
@@ -168,4 +177,4 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `find_callees`, `entrypoints`, `batch`, `set_profile`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook`. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `brief`, `symbol_context`, `read_source`, `references`, `memory_search`, `find_callees`, `entrypoints`, `batch`, `staleness_report`, `gen-claude-md`, `obligations`, `edit-hook` (incl. the memory block), `fathom memory` (`add`/`list`/`review`/`show`), `fathom prime` (dispatched but absent from `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.

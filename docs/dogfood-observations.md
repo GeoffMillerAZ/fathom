@@ -4,8 +4,9 @@ A living log of how sextant's MCP tools behave **in real fleet sessions** (throu
 agentic-kit, app-kit, sextant). Kept current by whoever is dogfooding the index: every
 session that hits a recall gap, a latency cliff, a contract mismatch, or a pleasant
 surprise records it here while the evidence is fresh. This is the feeder queue for
-sextant's own roadmap — observations graduate into `tmp/TRACKING.md` / `ADR.md` /
-`CHANGELOG.md` as fixes land.
+sextant's own roadmap — observations graduate into `docs/plans/*.md` rows (gated by
+`fathom verify`; progress via `fathom plans status --service fathom`), `docs/intent/scope.md`,
+`ADR.md` and `CHANGELOG.md` as fixes land.
 
 **Discipline (truth-seeking, same as the product):** never log a "tool is broken" claim
 without a reproduction. Probe a known-good case alongside the failing one, root-cause the
@@ -983,4 +984,5 @@ hypothesis has not been tested, and that line stays uncitable until it is.
    blaming the code — O2 was a stale server, not a bug.
 2. Root-cause the difference (don't stop at the symptom).
 3. File under **Open** with a concrete fix. Move to **Resolved** (link the commit) when
-   fixed. Promote anything systemic into `CHANGELOG.md` / `tmp/TRACKING.md`.
+   fixed. Promote anything systemic into `CHANGELOG.md`, a `docs/plans/*.md` row, or
+   `docs/intent/scope.md`.

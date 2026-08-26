@@ -1,5 +1,7 @@
 # verify spine — the gate's anchor and its blind language
 
+> **Archived** 2026-08-26T00:16:20Z · HEAD `6cd778f3d90aff98871bfb3253a5274da48831fd` · 10 tasks total; 10 claimed (10 verified, 0 failing); 0 skipped
+
 > Governing sources: `.fathom/observations.md` O3 + O4 (root causes and
 > fix shapes recorded there), `docs/vision/24-work-frontier.md` §7 (the
 > verify gate is the proven spine — these two observations are its known

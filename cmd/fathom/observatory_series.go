@@ -534,7 +534,7 @@ func renderGradeDistribution(m observatoryModel) string {
 			bars = append(bars, viz.Bar{Label: c.Grade, Value: float64(c.Count), Role: gradeLetterRole(c.Grade)})
 		}
 		body.WriteString(viz.Bars(bars, viz.BarsOptions{W: 420, LabelW: 60, ShowValue: true, AriaLabel: "grade distribution on " + latest.Date}))
-		body.WriteString(`<p class="mt-1 text-xs text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s graded on %s", plural(latest.Total, "repository"), latest.Date)) + `</p>`)
+		body.WriteString(`<p class="mt-1 text-xs text-ink-muted">` + html.EscapeString(fmt.Sprintf("%s graded on %s", plural(latest.Total, "repo"), latest.Date)) + `</p>`)
 	}
 	if gs.Measured > 1 {
 		body.WriteString(`<div class="mt-3 flex flex-wrap gap-2">`)

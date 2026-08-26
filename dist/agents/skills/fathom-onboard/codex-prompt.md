@@ -109,7 +109,7 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 - [ ] Asking Codex to call `list_services` or `capabilities` returns a real
       response.
 - [ ] Asking Codex to call `find_symbol` for a known symbol resolves it.
-- [ ] `AGENTS.md` contains the `<!-- fathom:begin -->…<!-- fathom:end -->`
+- [ ] `AGENTS.md` contains the `<!-- fathom:begin … -->…<!-- fathom:end -->` (the begin line reads `<!-- fathom:begin v3 sha256:… -->` once fathom has written it; a bare `<!-- fathom:begin -->` is the pre-v3 form and is adopted on the next write)
       stanza.
 - [ ] `git push` runs lefthook's pre-push `fathom-verify` command with the
       expected exit code.

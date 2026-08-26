@@ -1,10 +1,16 @@
 # Claude Code integration guide
 
-> **Superseded for wiring (2026-07-16):** the canonical, current guide is
+> **Superseded for wiring (2026-07-16; banner refreshed 2026-08-25):** the
+> canonical, current guide is
 > [use-cases/coding-agents.md](use-cases/coding-agents.md) — `fathom init`,
 > the three hooks, the `/rpc/agent` surface, gates, and the cost story.
 > This document predates the obligations layer, the verify gate, and the
 > hook stack; its measured assessment content remains historically accurate.
+> Read §5 with [mcp-tools.md](mcp-tools.md) open: the agent/companion
+> surface is now **17 tools** at `/rpc/agent`, off-surface calls
+> **execute-and-flag** (`off_surface:true`) rather than being rejected, the
+> `set_profile` tool no longer exists, DuckDB was replaced by SQLite
+> (ADR-025), and the daemon is deployed with `task deploy`, never a raw copy.
 
 How to wire fathom into Claude Code so coding sessions (and every subagent
 they spawn) query a pre-built index instead of re-reading the repo. This is
@@ -130,8 +136,8 @@ free, and `staleness_report` makes drift visible instead of silent.
 ## Multiple concurrent sessions: the shared HTTP server
 
 The stdio `serve-mcp` registration in §3 starts **one server per Claude Code session**, each opening
-its own connection to the same SQLite store file. Reads no longer exclude each other the way they did
-under DuckDB's single-process file lock, but every session refreshing its own copy of the index is
+its own connection to the same SQLite store file (ADR-020/025). Concurrent reads do not exclude each
+other, but every session refreshing its own copy of the index is
 still wasteful (N re-ingests of the same repo instead of one) and a genuinely concurrent write from two
 sessions can still contend and fail past `busy_timeout` (ADR-020) rather than queue. The per-session
 model still doesn't fit a multi-session workflow well.
@@ -208,26 +214,28 @@ registry (see [mcp-tools.md](mcp-tools.md)):
 - `POST /rpc` — the full surface, every tool. **Register this for Claude Code**: it defers MCP tool
   schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
   session and every tool stays one on-demand load away.
-- `POST /rpc/companion` — the curated 16-tool coding-agent hot loop (includes `read_source`, the bounded raw-text read). Register this for MCP clients
-  that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or anywhere you
-  want a hard-bounded surface: it cuts the schema payload ~80% and off-surface calls are rejected,
-  not silently misrouted.
+- `POST /rpc/agent` (alias `POST /rpc/companion`) — the curated 17-tool coding-agent surface
+  (includes `read_source`, the bounded raw-text read, and `memory_search`). Register this for MCP
+  clients that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or
+  anywhere you want a slim surface: it cuts the schema payload ~80%. Off-surface calls still
+  **execute and are flagged** `off_surface:true` in the call log (ADR-014 amendment) — surfaces are
+  ergonomics, never a security boundary.
 - `POST /rpc/{coding|investigation|shared|platform}` — group surfaces for job-specific sessions
   (change review, incident investigation, fleet health).
 
 For a schema-loading client, point its MCP config at `http://localhost:7575/rpc/companion`
-instead of `/rpc`. If you want the hard-bounded surface in Claude Code too, register it
+instead of `/rpc`. If you want the slim surface in Claude Code too, register it
 **under its own name, alongside** the step-2 full-surface registration (re-using the name
 `fathom` would fail with "already exists" — or silently replace the recommended `/rpc`
 registration):
 
 ```sh
-# optional, additive — a slim hard-gated surface next to the full one:
-claude mcp add --transport http --scope user fathom-companion http://localhost:7575/rpc/companion
+# optional, additive — the slim agent surface next to the full one:
+claude mcp add --transport http --scope user fathom-agent http://localhost:7575/rpc/agent
 ```
 
-`set_profile` is rejected over HTTP (the daemon is shared; the profile is process-global) — the
-error points here. Tool selection per surface is measurable from the daemon's call log
+There is no `set_profile` tool (removed; path-scoped surfaces replaced process-global profiles).
+Tool selection per surface is measurable from the daemon's call log
 (`--call-log`, default `workspace/logs/mcp-calls.jsonl` resolved against the daemon working
 directory — which is why the plist above sets `WorkingDirectory`).
 

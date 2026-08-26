@@ -1,5 +1,7 @@
 # impact-questions — vision 18 promoted: instruments, stories, the v2 observatory
 
+> **Archived** 2026-08-26T00:16:59Z · HEAD `6cd778f3d90aff98871bfb3253a5274da48831fd` · 15 tasks total; 12 claimed (12 verified, 0 failing); 3 skipped
+
 > Governing source: docs/vision/18-impact-questions.md. **Covenant
 > (ADR-0070 class):** failing test first; `task validate` green before
 > commit; dated CHANGELOG entry; boxes flip only on `fathom verify`.

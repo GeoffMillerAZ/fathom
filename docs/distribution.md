@@ -72,15 +72,22 @@ bindings packages, and the ~565MB of static libs they contributed to the
 vendor footprint, outright — the trigger ("operator runs migrate-store on
 the fleet DB and the daemon runs a full day green on sqlite") fired
 2026-07-23. `internal/store` is now 100% pure Go: `go build`/`go test` pass
-with `CGO_ENABLED=0` for that package with zero workarounds.
+with `CGO_ENABLED=0` for that package with zero workarounds — and the gate
+proves it on every push: `task store-purego` (a `task validate` dep,
+invariant I2) runs `CGO_ENABLED=0 go test -race ./internal/store/`.
 
 `CGO_ENABLED=1` and `MACOSX_DEPLOYMENT_TARGET=14.0` are still required for
 `task validate` / a full `go build ./...`, but for an unrelated reason now:
 the tree-sitter extractor bindings (`github.com/tree-sitter/go-tree-sitter`
 and the per-language grammar packages, ADR-013) are CGO and unconditionally
-imported by `internal/extractor`. Moving them to wazero/WASM is ADR-004's
-documented future path — a separate, not-yet-triggered slice (XT-6b) — so
-CGO is not yet zero for the whole binary, only for the store.
+imported by `internal/extractor` for Java, C, C++, C#, Rust, Scala, PHP,
+Bash, and Lua. Python, JavaScript/TypeScript, and Ruby already run
+tree-sitter on **wazero** (`internal/extractor/tsengine`, no CGO). Moving
+the remaining rows is ADR-004's documented future path — XT-6b, not started
+— so CGO is not yet zero for the whole binary, only for the store. The C++
+row also carries a `doctor` check (`cpp_toolchain`: a CMake repo should have
+`compile_commands.json` for clang-based tooling); that is a repo-side
+readiness check, not a build requirement for fathom itself.
 
 ## For fathom maintainers: keeping third_party/agentic-kit in sync
 

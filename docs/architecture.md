@@ -6,7 +6,9 @@ observations, and answers concern-scoped queries — for AI coding assistants, c
 blast-radius, change review, incident investigation, and fleet health.
 
 See also: [ADR.md](../ADR.md) for all decisions; [why-duckdb.md](why-duckdb.md) for the
-storage rationale; [mcp-tools.md](mcp-tools.md) for the MCP surface reference.
+original (now historical — SQLite is the only engine, ADR-025) storage rationale;
+[mcp-tools.md](mcp-tools.md) for the MCP surface reference; `docs/intent/README.md` for
+the project-intent router.
 
 ---
 
@@ -276,7 +278,11 @@ Schema tables (SQLite-only now; the DDL no longer needs to port across backends)
 | `fingerprints` | SHA-256 hash-gate index (stored separately; cheap to clear independently) |
 | `knowledge_cards` | LLM-generated structured summaries per symbol (opt-in enrichment) |
 | `doc_summaries` | Document-level summaries for Markdown sources |
-| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs`, plus `knowledge_cards`/`doc_summaries` above | The eight tables the now-removed `fathom migrate-store` command ported from DuckDB stores into SQLite ones during the migration (cards/summaries are LLM-derived enrichment a re-ingest does not rebuild); `observations`/`fingerprints` always rebuild by re-ingest |
+| `service_meta`, `commits`, `semantic_claims`, `claim_links`, `claim_events`, `compile_runs`, plus `knowledge_cards`/`doc_summaries` above | Non-derivable tables (the eight the historical migration ported): corpus root + watermark, git history, and the semantic stratum's claims (cards/summaries are LLM-derived enrichment a re-ingest does not rebuild); `observations`/`fingerprints` always rebuild by re-ingest |
+| `typed_edges`, `typed_edge_fingerprints` | Go type-checked call edges (`direct` / `iface-dispatch`, ADR-021 §3), hash-gated per package |
+
+The on-disk format is specified in `docs/spec/store-format-v0.md` (`application_id`
+`0x46415448`, `user_version` ≥ 1 — the markers `serve-http --module` checks at mount).
 
 Default store path: `workspace/db/fathom.sqlite` (gitignored; all artifacts go under
 `workspace/` — see the workspace convention in [usage.md](usage.md)).
@@ -295,20 +301,27 @@ the full tool reference.
 | stdio | `serve-mcp` | JSON-RPC 2.0 on stdin/stdout | Editor / agent clients (Claude Code, etc.) — zero ports |
 | HTTP | `serve-http` | POST `/rpc` (full surface), POST `/rpc/{surface}` (scoped), GET `/events` SSE, GET `/healthz`, GET `/metrics`, GET `/statusz`, POST `/reload` | Multi-client, platform / CI use |
 
-### Tool groups, profiles, and surfaces
+### Tool groups and surfaces
 
-Tools are grouped into four profiles. On stdio, clients call `set_profile` to filter the
-visible surface (valid values: the four groups plus `companion`); over HTTP `set_profile`
-is rejected and each request selects an immutable surface via the path — `POST
-/rpc/{surface}` filters `tools/list` and hard-gates `tools/call` (`companion` is a curated
-16-tool coding hot loop; the group surfaces mirror the profiles):
+Tools are grouped into five internal groups. There is no profile-switching tool (the old
+`set_profile` was removed — surfaces-week1 SW-2, amending ADR-014's stdio clause): a
+**stdio** session always sees the full registry; over **HTTP** each request selects an
+immutable surface via the path (`internal/mcp/surface.go`). `POST /rpc/{surface}` filters
+`tools/list` only — an off-surface `tools/call` still **executes** and is logged
+`off_surface:true` (execute-and-flag, ADR-014 amendment, 2026-07-16); surfaces are
+ergonomics and measurement, never a security boundary. The pre-amendment hard gate
+survives behind `Server.strictSurfaces` and on the hosted `/rpc/modules` surface only.
+`agent` (`/rpc/agent`; alias `companion`) is the curated 17-tool coding allowlist; the
+group surfaces mirror the groups plus `GroupShared`; the registry is 54 tools plus
+`memory_search` after the 2026-08-23 prune.
 
-| Profile | Tool group | Purpose |
+| Surface | Tool group | Purpose |
 |---|---|---|
 | `coding` | `GroupCoding` | Symbol navigation, complexity, call-graph, impact analysis |
 | `investigation` | `GroupInvestigation` | Cross-service, incident, callers/callees, test impact |
-| `shared` | `GroupShared` | Always available: `set_profile`, `find_symbol`, meta tools, security scans |
+| `shared` | `GroupShared` | Always available: `find_symbol`, `obligations`, `memory_search`, `ingest`, meta tools, security scans |
 | `platform` | `GroupPlatform` | Fleet-wide: list services, cross-service search, drift, cross-repo callers |
+| `modules` | `GroupModules` | Read-only expert-module host (`serve-http --module`; hosted mode narrows it to an explicit allowlist) |
 
 ### Result cache
 
@@ -357,16 +370,53 @@ queries by service ID, and supports atomic `Reload()` — used by the HTTP serve
 
 ---
 
+## The semantic stratum (ADR-016) — claims, compile, sweep, obligations
+
+Above the symbol index sits `internal/semantic`: a **layer pack** (`docs/layers.md`;
+`schema/semantic/schema.cue` `#Layer`, with a `stratum` field per ADR-024) compiles a
+governing corpus (CLAUDE.md, ADR.md, plans, findings) into **governed claims** —
+citation-grounded, evidence-tiered, content-addressed by prompt version — stored in
+`semantic_claims` / `claim_links` / `claim_events` / `compile_runs`. `fathom compile`
+(dry-run by default; eval-gated) and the `compile_layer` tool write them; the daemon's
+post-refresh **sweep** (`internal/semantic/sweep.go`) re-anchors citations and flags
+drift/contradiction rather than falsifying; `fathom claim refute|corroborate` is the
+human triage. Serving is the `obligations` tool (rules governing a file at decision time,
+capped and displacement-disclosed) — injected by the PostToolUse edit hook and, for
+`.fathom/guard.cue` scopes, the PreToolUse guard (`docs/design/guarded-edits.md`). The
+`findings` layer adds review/audit conclusions with remediation drift
+(`docs/design/findings-as-evidence.md`, `review_diff`, `findings_near`); expert modules
+package a compiled store for read-only mounting (`docs/design/expert-modules.md`,
+`docs/spec/expert-module-v0.md`; **experimental**, law 9). Founding design:
+`docs/design/semantic-layers.md`.
+
+## The 2026-08 subsystems — instrument, not hand
+
+Each is a small package with one verb and one design doc; none edits the user's prose
+(fathom reports, the session decides):
+
+| Subsystem | Package | Surface | Design |
+|---|---|---|---|
+| Capability registry — one list of what is on and why anything is off; `capabilities.cue` user/project (law 13) with the `budgets` block (BA-9, experimental) | `internal/capability` | `fathom capabilities`, doctor row, observatory | `docs/design/capability-registry.md`, `docs/design/budgeted-answers.md` |
+| Config custodian — falsifiable concerns over CLAUDE.md/AGENTS.md; six check kinds, one of which (`stanza_tools_served`) asks the daemon and degrades honestly | `internal/custodian` | `fathom config audit`, doctor `concerns`, session-brief line | `docs/design/config-custodian.md` |
+| Continuity threads — the work, not the session; repo-scoped, byte-budgeted brief (bet: experimental, 4/20) | `cmd/fathom/thread.go` (`~/.fathom/threads.jsonl`) | `fathom thread …`, SessionEnd/PreCompact hooks, `fathom prime` | `docs/design/continuity-threads.md` |
+| Anchored memory — claims bound to symbols/files/commits, drift-evaluated at read time; no anchor → refused (experimental) | `internal/memory` | `fathom memory …`, `memory_search` tool, edit-hook memory block | `docs/design/anchored-memory.md` |
+| Wiring + receipts (law 15) — plan → apply → receipt for every file fathom writes in a repo; hand-edited tracked regions blocked, `undo` reverses | `internal/wiring` | `fathom init`, `fleet reconcile --apply`, `fleet receipts|undo`, `/observatory/wiring/` | `docs/design/self-healing-fleet.md` |
+| Scope + purge — reversible suppression disclosed in every envelope; irreversible purge with a byte probe | `internal/scope` | `fathom scope …`, `fathom purge …` | `docs/design/scope-and-purge.md` |
+| Observability + research — call-log/hooks-log metrics, the observatory (30-day series, grade history experimental), the sanitized research bundle | `internal/metrics`, `internal/research`, `cmd/fathom/observatory*.go` | `fathom metrics …`, `/observatory`, `fathom research …` | `docs/design/observability-surfaces.md`, `docs/design/research-flywheel.md` |
+
+---
+
 ## Supporting packages
 
 | Package | Role |
 |---|---|
-| `internal/analysis/*` | 33 pure analysis packages (callgraph, complexity, cognitive, apisurface, antipattern, routes, deps, security, markers, cloc, …) |
+| `internal/analysis/*` | Pure analysis packages (callgraph, complexity, cognitive, apisurface, antipattern, deps, security, cloc, review, findings, …) |
 | `internal/depgraph` | Import-cycle detection (Tarjan SCC) |
 | `internal/filter` | `**`-glob ignore patterns with negation |
 | `internal/resultcache` | Memoisation of expensive derived graphs |
+| `internal/verify`, `internal/sdd` | The done-means-proven gate (ADR-018) and the plan grammar (`ctx:`, `needs:`, leases) |
 | `internal/llm` | Knowledge-card enrichment via agentic-kit `llmclient` |
-| `internal/vector` | Embedding store via agentic-kit `embedding` |
+| `internal/vector` | Embedding store via agentic-kit `embedding` (parked; needs a SQLite re-check) |
 | `internal/llmsec` | Token redaction via agentic-kit `security` |
-| `pkg/client` | Public Go API — wires connector, pipeline, store, query engine |
+| `pkg/client` | Public Go API — wires connector, pipeline, store, query engine; re-exports `ReadFailuresError` |
 | `pkg/platform` | Public cross-repo graph API |

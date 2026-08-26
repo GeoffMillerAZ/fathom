@@ -42,7 +42,10 @@ claude mcp add --scope user fathom -- \
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `ingest` | CLI | Index one service into the SQLite store (sha256 hash-gated; re-ingest is near-free) |
+| `init` | CLI | One-command repo wiring: `.fathomignore`, ingest, hooks, CLAUDE.md/AGENTS.md stanza, config scaffold; `--skills[=claude\|codex\|all]` installs the shipped agent skills |
+| `doctor` | CLI | Deterministic wiring diagnosis (`--harness claude\|codex\|auto`, `--json`): registration, daemon, hooks, stanza, skills, config, obligations, traffic, concerns |
+| `prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex); not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
+| `ingest` | CLI | Index one service into the SQLite store (sha256 hash-gated; re-ingest is near-free); names every file it could not read (`read-failed: N file(s)`) and exits 1 rather than claiming a clean run |
 | `ingest-diff` | CLI | Ingest only files changed since a git ref |
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
 | `serve-mcp` | CLI | Stdio MCP server — one client (editor/agent session) |
@@ -63,7 +66,7 @@ Claude Code has no innate knowledge of your codebase structure. Without fathom, 
 - **Call-graph edges are precomputed.** Callers, callees, and cross-repo paths are stored as indexed edges — no grep required.
 - **Staleness is surfaced, not hidden.** Every query result carries a staleness indicator; `staleness_report` tells the agent exactly when the index has drifted from HEAD.
 - **Subagents share the same server.** `--scope user` in the MCP registration means any Claude Code subagent spawned in any repo can call fathom tools without per-project setup.
-- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the curated 16-tool coding hot loop, or a group endpoint (`/rpc/coding`, `/rpc/investigation`, `/rpc/platform`) for other work. Nothing is actually locked out — an off-surface call still executes, it's just flagged `off_surface:true` in the call log, so unmet demand for a wider surface is measurable instead of argued.
+- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the curated 17-tool coding hot loop, or a group endpoint (`/rpc/coding`, `/rpc/investigation`, `/rpc/platform`) for other work. Nothing is actually locked out — an off-surface call still executes, it's just flagged `off_surface:true` in the call log, so unmet demand for a wider surface is measurable instead of argued.
 
 ---
 
@@ -130,6 +133,8 @@ symbols:    891
 ```
 
 **Re-ingest is near-free** — the 3-pass pipeline (filter → parallel fetch → post-fetch hash-gate → extract → store) skips any file whose SHA-256 matches the stored fingerprint. Only changed files are re-extracted.
+
+**Ingest is honest about what it could not read** (IT-14/IT-15): a file that fails with EPERM/EACCES/EIO/ENOENT appears under `read-failed: N file(s)` with its errno (first five inline); readable files are still indexed and the run exits 1 with `error: ingest degraded: …`. A run that could read nothing while the store already holds the service refuses to write at all (`error: ingest refused: …`) and, on `operation not permitted`, prints the external-volume TCC hint (`tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`).
 
 **Multi-repo fleet:** loop `ingest` over sibling repos, each with its own `--service` ID, all writing into one shared store:
 
@@ -200,8 +205,8 @@ profile switch. Scoping now depends entirely on transport:
 | Surface | Endpoint | Contents |
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated |
-| `agent` | `POST /rpc/agent` | The curated 16-tool coding hot loop — the recommended registration |
-| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 16-tool allowlist |
+| `agent` | `POST /rpc/agent` | The curated 17-tool coding hot loop (`docs/mcp-tools.md` lists it; `read_source` and `memory_search` included) — the recommended registration |
+| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 17-tool allowlist |
 | `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | Internal taxonomy group surfaces (zero observed traffic as of the surfaces-week1 review; kept for completeness) |
 | `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
 
@@ -232,8 +237,8 @@ Returns:
 {
   "active_surface": "agent",
   "active_profile": "",
-  "tool_count": 15,
-  "tools": ["capabilities", "find_symbol", "symbol_context", "verify_plan", ...]
+  "tool_count": 17,
+  "tools": ["capabilities", "find_symbol", "memory_search", "read_source", "symbol_context", "verify_plan", ...]
 }
 ```
 
@@ -276,13 +281,17 @@ Returns ranked `SymbolNode` objects:
 
 ---
 
+## The one-command path: `fathom init`, then `fathom doctor`
+
+Everything below Step 2 is what `fathom init` (run from the repo root) does in one idempotent pass: `.fathomignore`, ingest into the daemon, the hook stack in `.claude/settings.json`, the CLAUDE.md/AGENTS.md stanza, a `.fathom/` config scaffold. Add `--skills` (bare = all; `--skills=claude` or `=codex`) to install the shipped skills (activate, custodian, doctor, feedback, impact, onboard, plan, rewire, verify) under `.claude/skills/` and/or `.agents/skills/`. Every file it writes goes through one plan → apply → receipt (`.fathom/receipts.jsonl`, reversible with `fathom fleet undo`); a stanza region a human hand-edited is blocked and named, the other steps still run. Then `fathom doctor` proves the wiring (registration, daemon, hooks installed *and* firing, stanza, skills, config, obligations, traffic), and on a harness without a SessionStart hook `fathom prime` prints the session brief by hand.
+
 ## Wiring Claude Code hooks
 
-Two hooks turn fathom from a tool the agent must remember to call into one it is nudged toward automatically.
+Two hooks turn fathom from a tool the agent must remember to call into one it is nudged toward automatically (`fathom init` writes them; this is the manual form).
 
 ### SessionStart — `fathom session-hook`
 
-The `session-hook` subcommand runs at session start and injects a service-context message: "this repo is service X — use fathom tools before Grep/Read." It is a no-op (exits 0, emits nothing) when the repo is not in the fleet index.
+The `session-hook` subcommand runs at session start and injects a service-context message: "this repo is service X — use fathom tools before Grep/Read." It is a no-op (exits 0, emits nothing) when the repo is not in the fleet index. Like `prime`, it is not yet listed by `fathom help`; `fathom session-hook -h` shows its flags (`-dir`, `-url`).
 
 Register it in `~/.claude/settings.json` under `hooks.SessionStart`:
 
@@ -338,10 +347,10 @@ If your repo has plan files in `docs/plans/*.md`, the `lefthook.yml` pre-push ho
 
 | | `serve-mcp` | `serve-http` |
 |---|---|---|
-| Transport | stdio (no port) | HTTP on `--addr` (default `:7575`) |
+| Transport | stdio (no port) | HTTP on `--addr` (default `127.0.0.1:7575`, loopback) |
 | Clients | One — the process that launched it | Many concurrent |
 | Use case | One editor / Claude Code session | Multiple concurrent Claude Code sessions, CI, multi-agent platform |
-| Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped `tools/list`; off-surface `tools/call` still executes, flagged `off_surface:true` — see Step 5; surface ∈ `agent`/`companion`/`coding`/`investigation`/`shared`/`platform`/`modules`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `POST /reload` |
+| Endpoints | — | `POST /rpc` (full surface), `POST /rpc/{surface}` (scoped `tools/list`; off-surface `tools/call` still executes, flagged `off_surface:true` — see Step 5; surface ∈ `agent`/`companion`/`coding`/`investigation`/`shared`/`platform`/`modules`), `GET /healthz`, `GET /events` (SSE), `GET /metrics`, `GET /statusz`, `/observatory` (fleet/service/wiring/impact/story/brief pages, loopback), `POST /reload` |
 | Call log | — | `--call-log <path>` writes a JSONL tool-call log (default `workspace/logs/mcp-calls.jsonl` relative to daemon working dir; empty string disables) |
 | Store writes | Serializes with any other writer (SQLite, ADR-020) | Same |
 
@@ -423,4 +432,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `ingest`, `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. Update it when these change.
+This doc covers: `init` (`--skills`), `doctor`, `prime`, `ingest` (incl. `read-failed`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. `prime` and `session-hook` are dispatched but absent from `fathom help` (reach them via `fathom <verb> -h`). Update it when these change.

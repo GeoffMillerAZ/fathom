@@ -16,7 +16,9 @@
 
 `internal/store` is pure Go (`modernc.org/sqlite`) — no CGO. CGO in this
 repo comes only from the tree-sitter extractor bindings (ADR-013). Do not
-add CGO dependencies to the store or query layers.
+add CGO dependencies to the store or query layers — `task store-purego`
+(`CGO_ENABLED=0 go test -race ./internal/store/`, a `task validate` dep)
+fails the gate if you do (invariant I2).
 
 ## The domain model is the keystone
 
@@ -29,7 +31,15 @@ Shared types live in `internal/core`; extend it additively.
   `fusion.New()`, add its ext→kind in `connector`, golden-test it.
 - **Analyzer**: a pure `internal/analysis/<name>` package over
   `[]core.SymbolNode` / `[]core.Observation`; deterministic; tested.
-- **MCP tool**: register in `internal/mcp` with a group; extend the backend
-  interface minimally if it needs new data; cover with a fake-backend test.
-  Then update the catalog in `docs/mcp-tools.md` and the relevant
-  `docs/use-cases/*.md` `## Maintained` line.
+- **MCP tool**: `registerTool` in `internal/mcp` with a `group`; extend the
+  backend interface minimally if it needs new data; cover with a
+  fake-backend test (`fakeBackend`, `tools_test.go`). If coding agents need
+  it, add it to the `companionTools` allowlist in `internal/mcp/surface.go`
+  (17 tools) and the pinned `TestCompanionSurfaceToolsList`. Then update
+  `docs/mcp-tools.md` — `TestMcpToolsDocMatchesRegistry`
+  (`surface_prune_test.go`) fails until the doc matches the registry — and
+  the relevant `docs/use-cases/*.md` `## Maintained` line.
+- **Custodian check kind**: a `CheckKind` in `internal/custodian`
+  (`custodian.go`), loaded from `.fathom/concerns.cue`; only
+  `stanza_tools_served` may ask the daemon, and it degrades to
+  unable-to-check, never to violated.

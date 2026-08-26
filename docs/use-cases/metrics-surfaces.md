@@ -47,6 +47,7 @@ not fathom, gets the interactive screens — see
 | `fathom metrics rollup` | CLI | Builds one date's daily rollup file at `workspace/artifacts/metrics/daily/YYYY-MM-DD.json` — deterministic, overwrites idempotently for the same date, never deletes another date's file. |
 | `fathom metrics rotate` | CLI | The call log's retention verb: dry-run by default (reports what would move); `--apply` archives lines older than `--keep-days` to a dated sibling file — **never deletes**, per the design's "never delete raw data implicitly" rule. |
 | `GET /statusz` | HTTP | Daemon health, per-service index freshness, channel liveness, last compile per layer. JSON via `Accept: application/json` or `?format=json`; HTML otherwise. Loopback-only; gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured. |
+| `GET /observatory…` | HTTP | The daemon's observatory pages: `/observatory` (fleet), `/observatory/service?id=` (one service), `/observatory/wiring/` (preview/apply/undo of repo wiring), `/observatory/impact`, `/observatory/story`, `/observatory/brief` — loopback-only; see "Observatory series" below (**experimental**) |
 
 Every verb accepts `--since DURATION` (default 7 days) or `--from`/`--to`
 (RFC3339, given together) for the report window, and `--json` for
@@ -60,6 +61,25 @@ An unknown name lists these rather than silently returning empty. The
 metric name may come before or after the flags — `metrics series
 spend_total_usd --bucket day` and `metrics series --bucket day
 spend_total_usd` both work.
+
+---
+
+## Observatory series (RG-6/7/8, experimental)
+
+The service page draws four 30-day series — queried, discovering,
+preventing, gating — from real call-log rows. A day with **no call-log
+rows at all** renders `Absent` with the reason `no call-log rows for
+<date>`; a day the log was alive but this service saw nothing is a
+measured 0. Sparklines never draw across an absent day (one segment per
+measured run), and the JSON never carries a zero total for an absent day.
+The fleet page shows the grade distribution (A/B/C/D/F/idle) over 30
+days; a day without a snapshot is Absent — today's fold only, until daily
+snapshots persist, and the page says so. Symbols/traffic/serves tiles
+render `Absent`, never 0, when the call log or store could not be read.
+The wiring page's mutating endpoints (`preview` returns a `plan_digest`;
+`apply` requires it and refuses 409 if the repo changed since; `undo`
+requires the `receipt_digest` apply returned) accept only loopback,
+same-origin requests for registered service roots.
 
 ---
 
@@ -136,8 +156,9 @@ fathom metrics rotate --keep-days 90
 
 This doc covers: `fathom metrics spend`, `fathom metrics traffic`, `fathom
 metrics channels`, `fathom metrics interventions`, `fathom metrics series`,
-`fathom metrics rollup`, `fathom metrics rotate`, `GET /statusz`. Update it
-when any of these verbs' flags, output shape, or the `FATHOM_METRICS`
-tiering behavior change — see also `docs/design/observability-surfaces.md`
+`fathom metrics rollup`, `fathom metrics rotate`, `GET /statusz`, the
+`/observatory` pages (fleet, service, wiring, impact, story, brief). Update
+it when any of these verbs' flags, output shape, the observatory series
+semantics, or the `FATHOM_METRICS` tiering behavior change — see also `docs/design/observability-surfaces.md`
 for the full design rationale and `docs/plans/expert-suite-q.md` for the
 implementation record.

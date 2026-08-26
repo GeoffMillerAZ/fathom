@@ -356,7 +356,7 @@ the relayed review and not independently actioned.
     `compile_edithook_test.go` suites stay green (the post path's
     no-stamp behavior is byte-identical to pre-phase-O).
 
-- [x] `cmd/fathom/init.go`: registers `PreToolUse` under TWO matcher groups (`Edit|Write|MultiEdit` and `Bash`, same `edit-hook --pre` command) — required `ensureHookEntry`'s "already wired" marker search to be scoped to its OWN matcher group rather than the whole event array (a real bug this row's own test caught: the original event-wide search would see the first group's identical command and wrongly skip wiring the second) {id: O-13, symbol: wireHooks, package: cmd/fathom}
+- [x] `cmd/fathom/init.go`: registers `PreToolUse` under TWO matcher groups (`Edit|Write|MultiEdit` and `Bash`, same `edit-hook --pre` command) — required `ensureHookEntry`'s "already wired" marker search to be scoped to its OWN matcher group rather than the whole event array (a real bug this row's own test caught: the original event-wide search would see the first group's identical command and wrongly skip wiring the second) {id: O-13, symbol: ensureHookEntry, package: cmd/fathom}
   - Test: `TestCmdInit_WiresRepoEndToEnd` (extended) asserts BOTH
     `PreToolUse` matcher groups are present with one hook each, not just
     that the marker string appears once.

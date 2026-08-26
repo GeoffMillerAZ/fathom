@@ -38,11 +38,15 @@ Loader discipline is the capability loader's, reused deliberately:
   where wishes are turned away;
 - concerns sorted by ID after merge; no map order reaches output.
 
-## 2. Check kinds v1 — mechanical, index-free, offline-safe
+## 2. Check kinds — mechanical, index-free, offline-safe (one daemon exception)
 
-All four run from file reads on the local tree; no daemon, no LLM, no
-network. `where: "agent-config"` is the only corpus in v1 (the loader
-refuses other values rather than silently scanning nothing).
+The four v1 kinds run from file reads on the local tree; no daemon, no LLM,
+no network. `where: "agent-config"` is the only corpus in v1 (the loader
+refuses other values rather than silently scanning nothing). The two
+kinds added by CC-14/CC-15 keep the no-LLM rule; `stanza_tools_served` is
+the **one kind that asks the daemon** (`/rpc/agent` `tools/list`, falling
+back to `/rpc`) and degrades to `unable to check` naming the URL — never a
+violation — when the daemon is down or the registry is empty/malformed.
 
 | kind | fields | holds when | violated evidence |
 |---|---|---|---|
@@ -50,6 +54,8 @@ refuses other values rather than silently scanning nothing).
 | `command_documented_and_exists` | `command` | the command string appears in ≥1 agent-config file AND it exists (`task X` → an `X:` target in `Taskfile.yml`; else `$PATH` lookup of argv[0]) | which half failed, named |
 | `max_lines` | `file`, `lines` | the file exists and has ≤ `lines` lines | `<file> is N lines (max M)`; absence is a violation (`absent — the concern expects it`) |
 | `pointers_resolve` | `where` | every relative markdown-link target (file-relative, fragment stripped; http/mailto/absolute/`#` skipped) AND every backtick repo-path (this house style's pointer form — ≥2 path-charset segments, no globs; runtime dirs workspace/tmp/ref/bin skipped; `../` escapes skipped; a token whose first segment is not a directory the repo even has is a foreign name — Go module, kit package — not a pointer; root-relative or file-relative resolution both accepted) resolves | `file:line → target` per dead pointer |
+| `stanza_tools_served` (CC-14) | — | every tool name in the fathom stanza region of CLAUDE.md/AGENTS.md (backticked names, and bare names containing an underscore such as `find_callers`/`pack_context`/`verify_plan`; single-word names only when backticked) is served by the daemon's `/rpc/agent` `tools/list` (falls back to `/rpc`) | `file:line` per pruned/undeployed tool; daemon down or an empty/malformed registry → `unable to check` naming the URL |
+| `handoff_cites_instruments` (CC-15) | `days` | every handoff thread note filed for this repo in the window that claims shipped/landed/done/fixed work carries a citation — a commit sha (letters + digits), an active `docs/plans` row id, `fathom verify`, or a `workspace/artifacts/retros/` path | the uncited item ids; rows with unparseable timestamps are counted and named; no threads file → holds |
 
 An invalid regexp or unreadable input is `unable-to-check (reason)` —
 never a silent skip, never a fake pass (law 3).
@@ -89,8 +95,10 @@ can fix. Outside a git work tree: a sorted walk with a fixed skip list
 
 ## 4. Tokenomics
 
-The standing loop is file reads and regexps — zero LLM calls, zero daemon
-calls, sub-millisecond per repo. The only context cost is the attention
+The standing loop is file reads and regexps — zero LLM calls, and zero
+daemon calls except `stanza_tools_served`'s one `tools/list` (which
+degrades to unable-to-check offline), sub-millisecond per repo otherwise.
+The only context cost is the attention
 line, which exists only while violations exist, and whose purpose is to
 end the far larger cost it flags: an agent obeying a false instruction.
 The LLM lane for prose-level truth stays behind FATHOM_METRICS tiers,
@@ -113,7 +121,8 @@ priced before it exists (vision 22 §2, unchanged).
 ## 6. Out of scope for v1
 
 `fathom config propose` (the diff-offering verb — CC-9, after audit has
-users); the flywheel loop (CC-8); `stanza_current` as a check kind
-(reconcile already owns stanza drift; wiring it in duplicates a working
-surface until the audit subsumes it deliberately); ADR assertions and the
-doctrine catalog (vision 23, its own plan phase); any LLM lane.
+users); the flywheel loop (CC-8); stanza *content* drift as a check kind
+(reconcile already owns it; `stanza_tools_served`, CC-14, checks only that
+the tools a stanza names are served — a different question); ADR
+assertions and the doctrine catalog (vision 23, its own plan phase); any
+LLM lane.

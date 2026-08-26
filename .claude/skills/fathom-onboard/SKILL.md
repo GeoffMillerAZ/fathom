@@ -47,11 +47,19 @@ command:
    (§6 below — `PreToolUse` is guarded edits, silent unless
    `.fathom/guard.cue` names the file/command; `SessionEnd`/`PreCompact`
    are continuity deposits that write to disk and inject nothing),
-4. scaffolds `.fathom/guard.cue` and `.fathom/modules.cue`, both
-   **commented out** — nothing guarded or bound by default (§7),
+4. scaffolds `.fathom/guard.cue`, `.fathom/concerns.cue`,
+   `.fathom/modules.cue` and `.fathom/capabilities.cue`, all **commented
+   out** — nothing guarded, audited, bound or switched by default (§7),
 5. stamps a marker-delimited fathom operating-contract stanza into **both**
    `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
-   `AGENTS.md` automatically, zero drift between the two),
+   `AGENTS.md` automatically, zero drift between the two). Hooks and stanzas
+   go through one plan → apply → receipt (`.fathom/receipts.jsonl`,
+   gitignored; `fathom fleet undo --last` reverses it, law 15). After the
+   first write the begin marker reads `<!-- fathom:begin v3 sha256:… -->`;
+   a tracked region a human edited is **BLOCKED** and named (exit 1, file
+   byte-identical, every other step still runs) — delete the marked block
+   and re-run to take fathom's version. A pre-v3 `<!-- fathom:begin -->`
+   region is adopted and upgraded, not drift,
 6. installs the shipped skill set (`fathom-plan`, `fathom-verify`,
    `fathom-onboard`, `fathom-feedback`, `fathom-doctor`, `fathom-impact`,
    `fathom-rewire`, `fathom-activate`, `fathom-custodian`) into
@@ -69,7 +77,8 @@ pre-existing, non-fathom-owned file at a skill's target path — see §2.1).
 Useful flags: `--path DIR` (default cwd), `--service NAME` (default: the
 repo directory's lowercased basename, or the git toplevel's), `--url URL`
 (default `http://localhost:7575` or `$FATHOM_HTTP`), `--bin PATH` (override
-the binary path baked into the hook commands).
+the binary path baked into the hook commands), `--seed-user-ignore` (seed
+`~/.fathom/ignore` with machine-junk defaults, printed as written).
 
 ### 2.1 Re-running / conflicts
 
@@ -90,7 +99,13 @@ bin/fathom ingest --service my-service --path . --store workspace/db/fleet.sqlit
 Re-ingest is hash-gated (~0.2s when nothing changed) — safe to run often.
 Write `.fathomignore` (gitignore syntax) **before** first ingest if not
 using `init` — it excludes noise and anything sensitive (the index is
-queryable by any connected MCP client).
+queryable by any connected MCP client). Ingest names what it could not
+read: `read-failed: N file(s)` (paths + errno), readable files still
+indexed, exit 1 `error: ingest degraded: …`; a run that could read NOTHING
+while the store already holds that service **refuses to write** (`error:
+ingest refused: …`, no watermark advance, no purge; on `operation not
+permitted` it hints at the external-volume TCC wedge). The daemon's `ingest`
+MCP tool returns the same cause as a JSON-RPC error, never `ok:true`.
 
 ## 4. The daemon
 
@@ -112,7 +127,7 @@ service automatically when its git HEAD drifts, before answering a query.
 
 ## 5. Register the MCP server
 
-**Claude Code** (recommended surface — the curated 16-tool agent set):
+**Claude Code** (recommended surface — the curated 17-tool agent set):
 
 ```sh
 claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
@@ -120,9 +135,14 @@ claude mcp get fathom            # expect: Type: http · Status: ✔ Connected
 ```
 
 `--scope user` makes it available to every session and subagent, not just
-this repo. `/rpc/agent` (aliased `/rpc/companion`) is the curated surface;
-`/rpc` is the full ~80-tool registry — register that under a second name if
-you want both:
+this repo. `/rpc/agent` (aliased `/rpc/companion`) is the curated surface
+(`capabilities`, `entrypoints`, `find_callers`, `find_symbol`, `ingest`,
+`list_services`, `memory_search`, `obligations`, `outline`, `pack_context`,
+`query_symbols`, `read_source`, `references`, `repo_map`, `staleness_report`,
+`symbol_context`, `verify_plan`); `/rpc` is the full registry (every tool in
+`docs/mcp-tools.md`, test-synced to the code) — register that under a second
+name if you want both. Surfaces execute-and-flag an off-surface call; they
+are not a security boundary:
 
 ```sh
 claude mcp add --transport http --scope user fathom-full http://127.0.0.1:7575/rpc
@@ -143,7 +163,10 @@ or the stdio form (`serve-mcp`) if HTTP negotiation doesn't work cleanly —
 see `docs/adoption/codex.md` §2 for both options and the honest capability
 table (§6 there) of what Codex can't do that Claude Code can (session-start
 injection, post-edit obligations, the stop-hook check — Codex leans on the
-git-native gates instead).
+git-native gates instead). Codex has no SessionStart hook, so the stanza
+tells it to pull the primer: `fathom prime` prints exactly what Claude Code's
+session hook injects (identity, freshness, a live example, the thread brief,
+the custodian line) — run it at the top of a Codex session.
 
 **The restart caveat.** MCP registration and schema discovery happen at
 session start. A session already running when you register — or across a
@@ -157,8 +180,8 @@ tools. **Restart the session once.**
 | `session-hook` | `SessionStart`, `startup\|resume\|clear\|compact` | `fathom session-hook` | Pings the daemon, injects "this repo is service X" or an honest daemon-down/not-indexed signal — plus, on `startup`/`clear` only (where context was actually lost), the continuity thread brief (≤2,400 bytes, budget-enforced) and a config-custodian attention line when a registered concern is violated. `resume`/`compact` inject nothing extra. Always exits 0. |
 | `session-end-hook` | `SessionEnd` | `fathom session-end-hook` | Continuity deposit: on `/clear`/logout, ONE mechanical fact per repo (dirty files, stashes, claimed-unproven rows — latest supersedes, self-closes when the tree comes clean). Writes to disk, injects nothing. |
 | `pre-compact-hook` | `PreCompact`, `manual\|auto` | `fathom pre-compact-hook` | Files a pointer (session id + repo) before compaction so the pre-summary span stays findable. Never reads transcript content; injects nothing. |
-| `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. |
-| `edit-hook --pre` (guarded edits) | `PreToolUse`, `Edit\|Write\|MultiEdit` and `Bash` | `fathom edit-hook --pre` | Silent unless `.fathom/guard.cue` names the file/command (a local check, zero daemon calls on a miss); when it matches, injects the guard's note plus obligations BEFORE the edit/command runs. See §7 and `docs/use-cases/platform-modules.md`. |
+| `edit-hook` | `PostToolUse`, `Edit\|Write\|MultiEdit` | `fathom edit-hook` | Injects governing rules (`obligations`) for the touched file, ≤150 tokens, silent when clean or when the daemon/layer isn't ready. When `.fathom/memories.jsonl` exists, a second block `🧠 fathom memory — <file>:` lists anchored memories for that file, each `[tier · state]`, inside the same 150-token budget (**experimental**, AM-6). |
+| `edit-hook --pre` (guarded edits) | `PreToolUse`, three matcher groups: `Edit\|Write\|MultiEdit`, `Bash`, `Grep\|Glob\|Read` | `fathom edit-hook --pre` | Silent unless `.fathom/guard.cue` names the file/command (a local check, zero daemon calls on a miss); when it matches, injects the guard's note plus obligations BEFORE the edit/command runs. The `Grep\|Glob\|Read` group only counts discovery (the exploration ledger). See §7 and `docs/use-cases/platform-modules.md`. |
 | `stop-hook` | `Stop` | `fathom stop-hook` | Re-verifies plan tasks newly claimed `[x]` this session; advisory by default, add `--block` to the command to make it a real gate. |
 
 `edit-hook` has nothing to inject until the `obligations` layer is compiled
@@ -168,8 +191,9 @@ uncomment a guard in `.fathom/guard.cue`.
 
 The pre-push `fathom verify` gate is **not** a Claude Code hook — it's
 git-native (lefthook), and `init` never touches `lefthook.yml` (hand-curated)
-— it only prints the snippet to add. See the `fathom-verify` skill for the
-gate's exit codes.
+— it only prints the snippet to add (`fathom verify … --quiet`: failing rows
+plus the summary, non-strict). See the `fathom-verify` skill for the gate's
+exit codes.
 
 ## 7. Per-project `.fathom/`
 
@@ -200,13 +224,26 @@ gate's exit codes.
   until committed. See `docs/use-cases/platform-modules.md`.
 - `.fathom/concerns.cue` — the config custodian's contracts (vision 22,
   "instructed means true"): falsifiable wants about this repo's agent
-  config, audited by `fathom config audit` (hand-written today — not yet
-  scaffolded by `init`). Project scope governs over
-  `~/.fathom/concerns.cue`. See the `fathom-custodian` skill.
+  config, audited by `fathom config audit`; `init` scaffolds a commented
+  example. Project scope governs over `~/.fathom/concerns.cue`. See the
+  `fathom-custodian` skill.
 - `.fathom/capabilities.cue` — which fathom features are on in this repo
   (project scope governs). `fathom capabilities` shows what is operating
-  and WHY anything is off; `fathom capabilities set <id> on|off` writes
-  this file.
+  and WHY anything is off; `fathom capabilities set <id> on|off
+  [--scope project|user]` splices only the `capabilities` block and keeps
+  the rest of the file byte-for-byte. An optional `budgets: {list: 1500,
+  composite: 4000, map: 2500}` block (tokens; `list` = `query_symbols`,
+  `references`; `composite` = `pack_context`; `map` = `repo_map`; closed —
+  an unknown key is refused with a did-you-mean) sets answer budgets
+  project → user → built-in; honoured by `serve-http`, not yet by stdio
+  `serve-mcp` (**experimental**, BA-9).
+- `.fathom/memories.jsonl` — anchored memory (`fathom memory add|list|
+  review|show`): a memory with no anchor is refused, drift marks it
+  suspect/orphaned; served by `memory_search` and the edit hook
+  (**experimental**).
+- `.fathom/receipts.jsonl` (gitignored) — one receipt per wiring apply;
+  `fathom fleet receipts` lists them, `fathom fleet undo --last|<id>`
+  reverses one.
 
 ## 8. Pick a provider (only needed for `fathom compile`)
 
@@ -249,7 +286,9 @@ claude mcp get fathom                  # → Type: http · Status: ✔ Connected
       `fathom thread note` handoffs) — and `fathom thread list` shows the
       session-end deposit.
 - [ ] `fathom config audit` runs (exits 0 with "no concerns registered"
-      until you write `.fathom/concerns.cue` — a named absence, not a
+      until you uncomment `.fathom/concerns.cue` — a named absence, not a
       failure).
+- [ ] `fathom doctor` is all-pass (the `fathom-doctor` skill reads it);
+      under Codex, `fathom prime` prints the primer.
 - [ ] If friction shows up anywhere in this checklist, file it immediately —
       see the `fathom-feedback` skill; don't let it die unrecorded.

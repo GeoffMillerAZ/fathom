@@ -4,7 +4,9 @@ Canonical guide for fathom's LLM provider configuration: `config.toml` file
 format, precedence, named profiles (including AWS GovCloud and Azure
 Government), the secrets doctrine, and the three verbs that read it —
 `fathom config`, `fathom providers`, `fathom smoke`. Design source:
-`docs/plans/config-experience.md`.
+`docs/plans/config-experience.md`. The other `.fathom/*` files — `ignore`,
+`guard.cue`, `capabilities.cue` (+ its `budgets` block), `concerns.cue`,
+`modules.cue` — are covered in the scoped-config sections at the end.
 
 ## Why a config file
 
@@ -374,7 +376,58 @@ violation.
 `~/.fathom/modules.cue` (platform-module bindings) has **no** user-scope
 variant, by design — binding is the trust boundary ("no org rule reaches
 a repo that did not bind it"); a global binding would be the exact
-inversion of that. It stays project-scope-only, always.
+inversion of that. It stays project-scope-only, always
+(`<repo>/.fathom/modules.cue`, `docs/design/platform-modules.md`; doctor's
+`binding_file` / `binding_modules_mounted` / `binding_module_readiness`
+rows report it). The project-scope `.fathom/guard.cue` (`#Guards`: `scopes`
+file globs, `command_scopes`, `note`, `max_rules`, `include_modules`) is the
+PreToolUse guard hook's rule source — `docs/design/guarded-edits.md`.
+
+### `capabilities.cue` — what is on, and the `budgets` block
+
+Two scopes, same shape (`internal/capability/capability_schema.cue`;
+design `docs/design/capability-registry.md`, law 13): `~/.fathom/capabilities.cue`
+may set a **default**; `<repo>/.fathom/capabilities.cue` **governs**.
+
+```cue
+capabilities: {
+    narrate: on: true          // fathom capabilities set narrate on
+}
+// BA-9 (experimental): default answer budget per tool class, in TOKENS.
+budgets: {
+    list:      1500 // query_symbols, references
+    composite: 4000 // pack_context
+    map:       2500 // repo_map
+}
+```
+
+The `budgets` block is closed over exactly those three classes — an unknown
+key (`lists`) is refused with a did-you-mean, a `budgets?:` optional
+declaration is refused, values must be whole positive token counts —
+and resolves project → user → built-in. `find_symbol`, `find_callers`,
+`symbol_context`, `outline` are not class-budgeted. `serve-http` honours
+it; stdio `serve-mcp` still uses the built-ins (documented gap). `fathom
+capabilities set` splices only the `capabilities` block and preserves the
+rest of the file byte-for-byte (it refuses when the file cannot be
+round-tripped); a user-scope file that sets a project-only capability is
+refused with the key named. `fathom capabilities` / `explain <id>` read it;
+`fathom doctor`'s `capabilities` row reds only when something switched on
+is failing to deliver.
+
+### `concerns.cue` — the config custodian's contracts
+
+`~/.fathom/concerns.cue` (user defaults) and `<repo>/.fathom/concerns.cue`
+(governs; a same-named entry replaces, `off: true` disables and is named).
+Each concern is `{want, why?, check: {kind, …}}`; `fathom config audit`
+reports `holds` / `violated (file:line)` / `unable to check` / `off`, and
+doctor's `concerns` row and the session-brief attention line ride the same
+model. Kinds: `forbidden_pattern` (`pattern`, `where: "agent-config"`),
+`command_documented_and_exists` (`command`), `max_lines` (`file`, `lines`),
+`pointers_resolve`, and — CC-14/CC-15, **experimental** —
+`stanza_tools_served` (the one kind that asks the daemon; degrades to
+unable-to-check) and `handoff_cites_instruments` (`days`). Full model and
+check table: `docs/design/config-custodian.md`; this repo's own file is a
+worked example.
 
 ---
 

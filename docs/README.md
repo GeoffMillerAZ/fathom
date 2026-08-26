@@ -19,9 +19,13 @@ fleet health).
 | [usage.md](usage.md) | Quickstart, every CLI subcommand with flags and examples, Go client API, MCP client connection |
 | [configuration.md](configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles, precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [layers.md](layers.md) | Semantic-layer catalog (`obligations`, `findings`, `adr-rules`, `spec-bindings`), module-pack shape, the `fathom layers` verb |
-| [mcp-tools.md](mcp-tools.md) | Full reference table of all MCP tools grouped by profile, plus prompts and resources |
+| [mcp-tools.md](mcp-tools.md) | Full reference table of every registered MCP tool by group and HTTP surface (the 17-tool agent allowlist), plus prompts and resources — test-synced to the registry |
 | [why-duckdb.md](why-duckdb.md) | Why DuckDB replaced SQLite originally, and why ADR-020 reversed that — DuckDB itself was then deleted outright in SS-8/ADR-025 (superseded and removed — historical rationale) |
 | [spec/](spec/) | The publishable Governed Store Format v0 + Expert Module v0 specs (product-vision.md §4 H2) — normative, falsifiability-indexed, separate from this directory's engineer-facing how-tos |
+| [intent/](intent/) | **Project intent** — the router ([intent/README.md](intent/README.md)): principles, invariants, domain, [scope](intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index, autonomy, incidents, open questions |
+| [plans/](plans/) | Gated work orders (grammar v2: [plans/README.md](plans/README.md)); `fathom verify` proves them, `fathom plans status` computes progress |
+| [guides/fleet-index.md](guides/fleet-index.md) | Fleet index, daemon ops, `task deploy`, dogfood discipline |
 
-The authoritative decision log is [ADR.md](../ADR.md).
-The implementation roadmap and status live in [tmp/TRACKING.md](../tmp/TRACKING.md) (gitignored).
+The authoritative decision log is [ADR.md](../ADR.md), indexed at [intent/decisions/README.md](intent/decisions/README.md).
+Implementation status is computed, never asserted: `fathom plans status --service fathom`;
+scope and roadmap live in [intent/scope.md](intent/scope.md).

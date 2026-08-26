@@ -46,14 +46,15 @@ ADR-018's "Rejected" list for what was tried and discarded.
 A spec is any stable bracketed ID (`[US-042]`, `[EP-013]`, `[ADR-017]`)
 declared in a doc and cited in code comments, commit messages, or plan
 titles. `internal/sdd.ExtractRefs` harvests every citation at ingest time;
-four MCP tools serve the resulting matrix (spec → implementing symbols/files
-→ tests):
+three MCP tools serve the resulting matrix (spec → implementing symbols/files
+→ tests) on the full `/rpc` registry (`spec_status`, the yes/no check, was
+pruned with the other zero-call tools on 2026-08-23 — `spec_coverage`
+answers it):
 
 | Tool | What it answers |
 |---|---|
 | `spec_refs` | Every occurrence of spec IDs in a service's source, deterministically sorted (`{specs: {spec_id: [{file, line}]}, total_refs, files_scanned}`); default pattern covers `[US/EP/FR/NFR-N]`, `MN.N`, and `doc N` |
 | `spec_coverage` | For each declared spec ID: which symbols implement it, which specs are uncovered, and which referenced IDs are orphans (cited but never declared) |
-| `spec_status` | `"covered"` / `"uncovered"` for a list of spec IDs — the cheap yes/no check |
 | `traceability` | Extracts spec-ID references from source and builds the symbol → spec-ID map directly |
 
 Convention for fleet repos: new work that implements a documented decision
@@ -104,11 +105,14 @@ load-bearing placement rule below):
 | `reason` | Free-text justification for a disposition or skip (double-quote a value containing commas) | unset |
 | `trigger` | Revival condition for a `deferred` task — recorded and surfaced, **never machine-evaluated in v0** | unset |
 | `skip` | Justification for `skip_test: true` (machine-visible; linted when absent) | unset |
+| `ctx` | Space-separated context-pack pointers (symbol IDs, file paths, concern IDs, thread IDs) carried on the row and **ignored by verify** (non-gating by construction); `fathom plans context --row <id>` renders them against the live index into a budgeted pack (§8). Lint warns only on an empty value | unset |
+| `needs` | Stable row ids this row waits on (`needs: "A-1, A-2"` — double-quote a multi-id value, the block comma-splits at top level). Derives `eligible`/`blocked_on` for `fathom plans next --eligible-only` (§8); lint **errors** on an unknown id, a self-reference, or a cycle | unset |
 
 The zero value of every key is the **strictest** contract; loosen
 explicitly. `verify.LintPlan` reports v2 convention violations (duplicate
-IDs, dispositions without a reason, unjustified skips) as **warnings** on
-stderr — they never change the exit code in v0.
+IDs, dispositions without a reason, unjustified skips, an empty `ctx:`) as
+**warnings** on stderr — they never change the exit code in v0; only a
+malformed `needs:` DAG is an error.
 
 **Annotation placement is load-bearing.** The parser is line-based: an
 annotation on a continuation (wrapped) line is silently ignored, and the
@@ -119,7 +123,28 @@ long.
 **Honesty boundary.** `test_reaches` means a `Test*` function **statically
 reaches** the symbol via the call graph — never that the test passes or
 even runs. `runtime_pass` is always `Unknown` until CI/coverage evidence is
-ingested as its own tier (the `cmd` oracle class, §9 below).
+ingested as its own tier (the `cmd` oracle class, §11 below).
+
+**What "reaches" actually counts** (verify-spine VS-6/VS-7/VS-9 — facts,
+not folk rules):
+
+- A function referenced as a **value** is an edge: `mux.HandleFunc("/x",
+  h)`, a route table, `http.HandlerFunc(h)`, middleware wrapping, method
+  values. An `httptest` that builds the server reaches every handler it
+  registers — handler rows no longer need `skip_test`.
+- A call inside a **closure** — `t.Run(…, func(t *testing.T){…})`,
+  `defer`, a goroutine — counts for the enclosing test. The old advice to
+  "call the symbol at the test's top level" is **retired**; write the test
+  the natural way.
+- Two receivers sharing a method name in one package resolve by
+  `package:`, never first-match-wins — the resolver is proven stable.
+- When the typed-edge pass drops an edge because discovery excluded a file
+  that exists on disk, it says so on stderr (`fusion: typed-edge pass …:
+  discovery gap — <file> …`) instead of silently weakening reachability;
+  fix `.fathomignore` and re-ingest.
+
+`skip_test: true` is for rows with genuinely no test, with `skip:` naming
+the real acceptance evidence.
 
 ### Live worked example — this program's own contract
 
@@ -161,7 +186,7 @@ a stale memory of the codebase, per the companion adoption guides).
 
 The `fathom-plan` agent skill (installed via `fathom init
 --skills[=claude|codex|all]`, see
-[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills-fathom-plan--fathom-verify--fathom-onboard--fathom-feedback))
+[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-nine-shipped-with-the-binary))
 is the condensed, self-contained version of this section and §3 above — it
 inlines the grammar and this grounding discipline so an agent can scaffold
 a gate-ready plan even in a repo that has never seen fathom's own source.
@@ -189,7 +214,7 @@ checks your work, not your word.
 ```sh
 fathom verify --service <id> --plan docs/plans/<slug>.md \
   [--store <path> | --url http://localhost:7575] \
-  [--strict] [--require-all] [--concern <id>] [--json] [--quiet-pass]
+  [--strict] [--require-all] [--concern <id>] [--json] [--quiet] [--quiet-pass]
 ```
 
 | Flag | Default | Meaning |
@@ -202,6 +227,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md \
 | `--require-all` | `false` | **Wave gate** (ADR-018 §2): additionally fail on any open/in-progress task — a wave only advances when every task is claimed-and-verified or explicitly skipped |
 | `--concern` | `""` | Optional concern for contradiction scoping |
 | `--json` | `false` | Machine-readable report instead of human text |
+| `--quiet` | `false` | Print only the failing rows (and, with `--strict`, the unknown ones) plus the summary — what the pre-push hook runs; composes with `--quiet-pass` |
 | `--quiet-pass` | `false` | Suppress output on a passing gate |
 
 **Exit codes are the whole contract:** `0` — every claimed task verifies.
@@ -305,7 +331,7 @@ pre-push:
         [ ${#plans[@]} -eq 0 ] && exit 0
         rc=0
         for f in "${plans[@]}"; do
-          bin/fathom verify --service <service> --plan "$f"
+          bin/fathom verify --service <service> --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then
@@ -315,9 +341,12 @@ pre-push:
         exit $rc
 ```
 
-`fathom init` prints this exact snippet as a manual step (it deliberately
-never edits `lefthook.yml` itself — that file is hand-curated). In CI, add
-`--strict` and build a throwaway store rather than depending on the daemon:
+`fathom init` prints the core of this snippet as a manual step (it
+deliberately never edits `lefthook.yml` itself — that file is
+hand-curated). `--quiet` keeps a green push to one line per plan. In CI,
+add `--strict` and build a throwaway store rather than depending on the
+daemon (*experimental in this repo*: there is no CI runner yet —
+`scripts/ci.sh` is the manual strict edition):
 
 ```sh
 fathom ingest --service <svc> --path . --store /tmp/ci-store.sqlite
@@ -355,6 +384,22 @@ answers "where does this repo's SDD program stand" out of the box),
 `--store`/`--url` (same direct-vs-daemon choice as `verify`), and `--json`.
 CLI-only in v0 (no new MCP tools).
 
+The work-frontier additions (WF-*, `docs/plans/work-frontier.md`) sit on
+the same engine:
+
+- **`fathom plans next --eligible-only`** hides rows blocked on an unmet
+  `needs:` target (§3) — the frontier an agent can actually start on;
+  `--free` additionally hides rows holding a fresh lease.
+- **`fathom plans context --service <svc> --row <id> [--budget 4000]`**
+  renders a row's `ctx:` pointers against the live index into one
+  byte-budgeted pack (elided beyond the budget, never silently truncated)
+  — what to paste to a worker before it touches the row.
+- **`fathom plans lease <row-id> --plan <file> [--holder ID] [--ttl 2h]`**
+  / `--release`, and **`fathom plans leases`** — TTL **advisory** leases in
+  `.fathom/leases.jsonl` so two sessions do not pick the same row
+  (*experimental*: a lease is a courtesy, never a lock; the gate ignores
+  it).
+
 Real output against this repo's own `docs/plans/activation.md`
 (§6's `verify` worked example covers the same plan):
 
@@ -381,10 +426,12 @@ verbs.
 E4 (`docs/plans/new-use-cases.md`) — shipped, `cmd/fathom/plans_archive.go`:
 
 - **`fathom plans archive <plan>`** refuses unless (a) every row is proven
-  or dispositioned, (b) the plan's task IDs appear in `CHANGELOG.md` or
-  `ADR.md` (a lexical absorption check at a token boundary — "E3-10" must
-  not absorb "E3-1" — so the work has to be recorded somewhere durable
-  before its plan file disappears from the gate's view), and (c) every
+  or dispositioned, (b) the plan's task IDs appear in `CHANGELOG.md`,
+  `ADR.md`, or the per-release narrative under `docs/changelog/*.md` (a
+  lexical absorption check at a token boundary — "E3-10" must not absorb
+  "E3-1" — so the work has to be recorded somewhere durable before its
+  plan file disappears from the gate's view; the refusal names all three
+  places), and (c) every
   claimed row verifies green right now (the engine is re-run fresh, never
   trusting a prior result). On success, the plan file is `git mv`d to
   `docs/plans/archive/`, a tombstone (date, HEAD sha, verify summary) is
@@ -558,13 +605,16 @@ gate — is live and honest.
 
 This doc covers: the `docs/plans/*.md` grammar (`{id, symbol, package,
 reachable_from, min_tier, skip_test, allow_contradiction, disposition,
-reason, trigger, skip}`), the `fathom-plan` agent skill as the
-plan-authoring path, `fathom verify` (`--strict`/`--require-all`/
-`--store`/`--json`/`--quiet-pass`), `fathom plans status`/`next`/`archive`/
-`restore` (E3/E4, `cmd/fathom/plans.go` + `plans_archive.go`, shipped), the
-lefthook pre-push gate, the Stop hook (`fathom stop-hook`/`--block`),
+reason, trigger, skip, ctx, needs}`), the reachability facts (function
+values are edges, closures count, `package:` disambiguation, discovery
+gaps on stderr), the `fathom-plan` agent skill as the plan-authoring path,
+`fathom verify` (`--strict`/`--require-all`/`--store`/`--json`/`--quiet`/
+`--quiet-pass`), `fathom plans status`/`next` (`--eligible-only`,
+`--free`)/`context`/`lease`/`leases`/`archive`/`restore` (E3/E4/WF-*,
+`cmd/fathom/plans.go` + `plans_archive.go`, shipped), the lefthook
+pre-push gate, the Stop hook (`fathom stop-hook`/`--block`),
 `fathom gen-plan-cue`, the `spec-bindings` layer pack, the oracle-class
 registry (`docs/design/sdd-reconciler.md` §5), and the MCP tools
-`spec_refs`/`spec_coverage`/`spec_status`/`traceability`/`pack_context`/
-`test_impact`/`verify_plan`. Update this doc's examples to real CLI output
-and update this line whenever any of the above change.
+`spec_refs`/`spec_coverage`/`traceability`/`pack_context`/`test_impact`/
+`verify_plan`. Update this doc's examples to real CLI output and update
+this line whenever any of the above change.
