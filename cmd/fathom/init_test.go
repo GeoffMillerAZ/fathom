@@ -143,7 +143,7 @@ func TestCmdInit_WiresRepoEndToEnd(t *testing.T) {
 			t.Fatalf("reading %s: %v", name, err)
 		}
 		s := string(raw)
-		if !strings.Contains(s, fathomStanzaBegin) || !strings.Contains(s, fathomStanzaEnd) {
+		if !strings.Contains(s, fathomStanzaBeginPrefix) || !strings.Contains(s, fathomStanzaEnd) {
 			t.Errorf("%s missing markers:\n%s", name, s)
 		}
 		if !strings.Contains(s, svc) {
@@ -514,7 +514,7 @@ func TestFathomStanza_AppendsToExistingFileWithoutMarkers(t *testing.T) {
 	if !strings.Contains(gotStr, "Some pre-existing operating notes") {
 		t.Errorf("original content lost:\n%s", gotStr)
 	}
-	if !strings.Contains(gotStr, fathomStanzaBegin) || !strings.Contains(gotStr, fathomStanzaEnd) {
+	if !strings.Contains(gotStr, fathomStanzaBeginPrefix) || !strings.Contains(gotStr, fathomStanzaEnd) {
 		t.Errorf("stanza markers missing after append:\n%s", gotStr)
 	}
 	if !strings.Contains(gotStr, "my-svc") {

@@ -1510,8 +1510,8 @@ func TestBrief_MissingService(t *testing.T) {
 
 // hygieneFakeBackend implements ingest-by-path with per-service recorded
 // roots, so the hygiene tests can seed a registry shaped like the live
-// incidents (the ../geoffmiller-cloud twin, the crossplane-platform nested
-// root) and prove the daemon now refuses them at the door.
+// incidents (the ../orbit-service twin, a nested-root twin) and prove the
+// daemon now refuses them at the door.
 type hygieneFakeBackend struct {
 	extendedFakeBackend
 	paths      map[string]string // service → recorded corpus root
@@ -1569,7 +1569,7 @@ func TestIngestHygiene(t *testing.T) {
 
 	t.Run("path_like_service_id_refused_even_for_refresh", func(t *testing.T) {
 		srv, _ := newSrv(nil, nil)
-		resp := call(t, srv, map[string]any{"service": "../geoffmiller-cloud"})
+		resp := call(t, srv, map[string]any{"service": "../orbit-service"})
 		if e := errMsg(t, resp); !strings.Contains(e, "logical name") {
 			t.Errorf("refusal should teach the rule, got %q", e)
 		}
@@ -1666,12 +1666,12 @@ func TestRemoveRenameService(t *testing.T) {
 	}
 
 	t.Run("remove_accepts_malformed_historical_ids", func(t *testing.T) {
-		srv, b := newSrv(map[string]string{"../geoffmiller-cloud": "/idx/gmc"})
-		p := xtraPayload(t, call(t, srv, "remove_service", map[string]any{"service": "../geoffmiller-cloud"}))
+		srv, b := newSrv(map[string]string{"../orbit-service": "/idx/orbit"})
+		p := xtraPayload(t, call(t, srv, "remove_service", map[string]any{"service": "../orbit-service"}))
 		if p["removed"] != true {
 			t.Fatalf("want removed=true for the twin, got %v", p)
 		}
-		if len(b.removed) != 1 || b.removed[0] != "../geoffmiller-cloud" {
+		if len(b.removed) != 1 || b.removed[0] != "../orbit-service" {
 			t.Errorf("delegation mismatch: %v", b.removed)
 		}
 	})
@@ -1686,7 +1686,7 @@ func TestRemoveRenameService(t *testing.T) {
 
 	t.Run("rename_requires_valid_target", func(t *testing.T) {
 		srv, _ := newSrv(nil)
-		resp := call(t, srv, "rename_service", map[string]any{"from": "../geoffmiller-cloud", "to": "../still-bad"})
+		resp := call(t, srv, "rename_service", map[string]any{"from": "../orbit-service", "to": "../still-bad"})
 		e := xtraError(t, resp)
 		msg, _ := e["message"].(string)
 		if !strings.Contains(msg, "logical name") && !strings.Contains(msg, "valid") {
@@ -1705,12 +1705,12 @@ func TestRemoveRenameService(t *testing.T) {
 	})
 
 	t.Run("rename_happy_path_delegates", func(t *testing.T) {
-		srv, b := newSrv(map[string]string{"../geoffmiller-cloud": "/idx/gmc"})
-		p := xtraPayload(t, call(t, srv, "rename_service", map[string]any{"from": "../geoffmiller-cloud", "to": "geoffmiller-cloud-x"}))
+		srv, b := newSrv(map[string]string{"../orbit-service": "/idx/orbit"})
+		p := xtraPayload(t, call(t, srv, "rename_service", map[string]any{"from": "../orbit-service", "to": "orbit-service-x"}))
 		if p["ok"] != true {
 			t.Fatalf("want ok=true, got %v", p)
 		}
-		if len(b.renamed) != 1 || b.renamed[0] != [2]string{"../geoffmiller-cloud", "geoffmiller-cloud-x"} {
+		if len(b.renamed) != 1 || b.renamed[0] != [2]string{"../orbit-service", "orbit-service-x"} {
 			t.Errorf("delegation mismatch: %v", b.renamed)
 		}
 	})

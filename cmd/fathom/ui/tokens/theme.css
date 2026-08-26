@@ -93,6 +93,34 @@
   --ak-color-surface-sunken: oklch(0.13 0.010 260);
 }
 
+[data-theme="light"] {
+  --ak-polarity: light;
+  color-scheme: light;
+  --ak-color-accent: oklch(0.50 0.19 262);
+  --ak-color-accent-hover: oklch(0.44 0.19 262);
+  --ak-color-accent-ink: oklch(0.98 0.010 262);
+  --ak-color-accent-soft: oklch(0.94 0.040 262);
+  --ak-color-caution: oklch(0.70 0.14 80);
+  --ak-color-caution-soft: oklch(0.95 0.06 90);
+  --ak-color-danger: oklch(0.55 0.19 25);
+  --ak-color-danger-soft: oklch(0.94 0.05 25);
+  --ak-color-focus: oklch(0.55 0.19 262);
+  --ak-color-info: oklch(0.58 0.12 230);
+  --ak-color-info-soft: oklch(0.94 0.04 230);
+  --ak-color-ink: oklch(0.21 0.015 260);
+  --ak-color-ink-faint: oklch(0.60 0.015 260);
+  --ak-color-ink-inverse: oklch(0.98 0.005 260);
+  --ak-color-ink-muted: oklch(0.45 0.020 260);
+  --ak-color-line: oklch(0.90 0.008 260);
+  --ak-color-line-strong: oklch(0.80 0.012 260);
+  --ak-color-positive: oklch(0.55 0.14 155);
+  --ak-color-positive-soft: oklch(0.94 0.05 155);
+  --ak-color-surface: oklch(0.985 0.005 260);
+  --ak-color-surface-overlay: oklch(0.995 0.003 260);
+  --ak-color-surface-raised: oklch(0.995 0.003 260);
+  --ak-color-surface-sunken: oklch(0.965 0.006 260);
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="dark"]) {
     --ak-polarity: dark;

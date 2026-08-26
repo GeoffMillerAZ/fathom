@@ -106,12 +106,14 @@ tasks:
   ui:css:
     desc: Rebuild the observatory CSS via app-kit's pinned Tailwind binary (no Node)
     cmds:
-      - go run github.com/geoffmilleraz/app-kit/cmd/appkit gen -tokens ../app-kit/cue/tokens/kit.cue -css cmd/fathom/ui/tokens/theme.css -dtcg "" -go ""
+      # -terminal "" skips the kit's generated CLI palette (appkit/cli/theme/palette_gen.go,
+      # added with app-kit's cli-kit) — that file belongs to the kit's tree, not this one.
+      - go run github.com/geoffmilleraz/app-kit/cmd/appkit gen -tokens ../app-kit/cue/tokens/kit.cue -css cmd/fathom/ui/tokens/theme.css -dtcg "" -go "" -terminal ""
       - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, scripts-check, test
-    deps: [fmt-check, vet, cue-vet, vendor-check, scripts-check]
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, store-purego, scripts-check, test
+    deps: [fmt-check, vet, cue-vet, vendor-check, store-purego, scripts-check]
     cmds: [{ task: test }]
 
   sync-kit:
@@ -121,6 +123,14 @@ tasks:
   vendor-check:
     desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)
     cmds: ["bash scripts/vendor-check.sh"]
+
+  store-purego:
+    desc: Purity guard (invariant I2, ADR-025) — internal/store must build and pass -race under CGO_ENABLED=0
+    # The override lives in the shell line, not a Taskfile `env:` block — Task
+    # lets the OS environment win over Taskfile env, so a login shell exporting
+    # CGO_ENABLED=1 would silently turn an env: override into a cgo build and
+    # this guard into a no-op (it would even share the cgo test cache).
+    cmds: ["CGO_ENABLED=0 {{.GO}} test -race ./internal/store/"]
 
   doctor:
     desc: Toolchain + workspace health

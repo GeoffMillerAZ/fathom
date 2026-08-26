@@ -189,7 +189,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 		// reflected separately in `truncated`) — the two caps are
 		// independent and both stay visible: `truncated` alone can be true
 		// with no `elided` block when maxOccs capped but the budget did not.
-		occs, el := applyBudget(occs, budgetDefaults("references", budgetSettings{}),
+		occs, el := applyBudget(occs, budgetDefaults("references", s.budgets),
 			"service order, then source-scan order",
 			"re-call with a larger budget, narrow \"services\", or tighten the query")
 		resp := map[string]any{

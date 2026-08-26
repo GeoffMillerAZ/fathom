@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -238,6 +239,55 @@ func describeCondition(c threadCondition) string {
 	return c.Kind
 }
 
+// ─── repo scope (TH-6) ───────────────────────────────────────────────────
+
+// threadScope is the repo a verb runs FROM: the directory basename every
+// deposit is tagged with (law 13's per-repo tag), plus the indexed
+// service id when the daemon resolves one — the thread a note files on by
+// default. On 2026-08-23 the open set held 30 items, ~25 of them other
+// repos' handoffs: the tag existed, the default was the defect.
+type threadScope struct {
+	repo    string // lower-cased basename of the repo root
+	service string // resolved service id, "" when nothing resolves
+}
+
+// threadScopeFor resolves the scope for root: the basename always; the
+// service via the same daemon-backed identity every hook uses
+// (candidatesWithDaemon's cached round trip), fail-open — a down daemon
+// degrades to basename-only scoping, never to an error.
+func threadScopeFor(root string) threadScope {
+	sc := threadScope{repo: strings.ToLower(filepath.Base(root))}
+	hc := &http.Client{Timeout: 1500 * time.Millisecond}
+	if cand, ok := resolveIndexedCandidateCached(hc, defaultFathomURL(), root); ok {
+		sc.service = strings.ToLower(cand.name)
+	}
+	return sc
+}
+
+// defaultThread is where a note lands when --thread is not given: the
+// repo's own service id, "general" only when no service resolves.
+func (s threadScope) defaultThread() string {
+	if s.service != "" {
+		return s.service
+	}
+	return "general"
+}
+
+// owns reports whether an item belongs to this repo's continuity: its
+// repo tag or thread names the basename or the service id. An UNTAGGED
+// item (no repo pointer — older rows, hand-seeded rows) is never hidden:
+// hiding what cannot be attributed would be a silent cut (law 3).
+func (s threadScope) owns(it threadItem) bool {
+	tag := it.Pointers["repo"]
+	if tag == "" {
+		return true
+	}
+	if tag == s.repo || it.Thread == s.repo {
+		return true
+	}
+	return s.service != "" && (tag == s.service || it.Thread == s.service)
+}
+
 // ─── the verbs ───────────────────────────────────────────────────────────
 
 func cmdThread(args []string, stdout, stderr io.Writer) int {
@@ -280,7 +330,7 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 		lead, args = args[0], args[1:]
 	}
 	fs := newFlagSet("thread note", stderr)
-	thread := fs.String("thread", "general", "thread name")
+	thread := fs.String("thread", "", `thread name (default: this repo's indexed service id, else "general")`)
 	kind := fs.String("kind", "handoff-note", "item kind: "+strings.Join(threadKinds, "|"))
 	completes := fs.String("completes-when", "", `self-closing condition: "file_exists:<path>" or "plan_row_checked:<plan>#<ROW-ID>"`)
 	repo := fs.String("repo", ".", "repository this item belongs to")
@@ -305,10 +355,14 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	}
 	now := time.Now()
 	root, _ := filepath.Abs(*repo)
+	name := *thread
+	if name == "" {
+		name = threadScopeFor(root).defaultThread()
+	}
 	it := threadItem{
 		SchemaVersion: threadSchemaVersion,
 		ID:            newThreadID(now, lead),
-		Thread:        *thread,
+		Thread:        name,
 		Kind:          *kind,
 		Text:          strings.TrimSpace(lead),
 		Pointers:      map[string]string{"repo": strings.ToLower(filepath.Base(root))},
@@ -337,7 +391,7 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 		lead, args = args[0], args[1:]
 	}
 	fs := newFlagSet("thread point", stderr)
-	thread := fs.String("thread", "general", "thread name")
+	thread := fs.String("thread", "", `thread name (default: this repo's indexed service id, else "general")`)
 	session := fs.String("session", "", "session id the detail lives in (default: this session)")
 	repo := fs.String("repo", ".", "repository")
 	if err := fs.Parse(args); err != nil {
@@ -362,10 +416,14 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 	}
 	now := time.Now()
 	root, _ := filepath.Abs(*repo)
+	name := *thread
+	if name == "" {
+		name = threadScopeFor(root).defaultThread()
+	}
 	it := threadItem{
 		SchemaVersion: threadSchemaVersion,
 		ID:            newThreadID(now, lead),
-		Thread:        *thread,
+		Thread:        name,
 		Kind:          "side-task",
 		Text:          strings.TrimSpace(lead),
 		Pointers:      map[string]string{"session_id": sid, "repo": strings.ToLower(filepath.Base(root))},
@@ -382,9 +440,10 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 
 func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("thread list", stderr)
-	thread := fs.String("thread", "", "only this thread")
-	all := fs.Bool("all", false, "include closed and dormant items")
-	repo := fs.String("repo", ".", "repository (for condition checks)")
+	thread := fs.String("thread", "", "only this thread, wherever it was filed")
+	all := fs.Bool("all", false, "everything: closed and dormant items, and every repo's")
+	allRepos := fs.Bool("all-repos", false, "open items from every repo, not only this one")
+	repo := fs.String("repo", ".", "repository (scope, and condition checks)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -394,7 +453,12 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "no thread items — `fathom thread note` files one; hooks deposit mechanically at /clear and compaction")
 		return 0
 	}
-	shown := 0
+	// TH-6: this repo first. A named --thread is asked for by name, so it
+	// crosses repos (threads span repos, law 13); --all-repos and --all
+	// widen the default. What is hidden is COUNTED, never silently gone.
+	scope := threadScopeFor(root)
+	crossRepo := *all || *allRepos || *thread != ""
+	shown, hidden := 0, 0
 	for _, it := range items {
 		if *thread != "" && it.Thread != *thread {
 			continue
@@ -411,15 +475,26 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 			}
 			status = "dormant"
 		}
+		where := ""
+		if !scope.owns(it) {
+			if !crossRepo {
+				hidden++
+				continue
+			}
+			where = "  @" + it.Pointers["repo"]
+		}
 		ptr := ""
 		if sid := it.Pointers["session_id"]; sid != "" {
 			ptr = "  ↪ session " + sid[:min(8, len(sid))]
 		}
-		fmt.Fprintf(stdout, "  %-10s %-9s [%s] %-16s %s%s\n", it.ID, status, it.Kind, it.Thread, it.Text, ptr)
+		fmt.Fprintf(stdout, "  %-10s %-9s [%s] %-16s %s%s%s\n", it.ID, status, it.Kind, it.Thread, it.Text, where, ptr)
 		shown++
 	}
 	if shown == 0 {
-		fmt.Fprintln(stdout, "nothing open — closed and dormant items with --all")
+		fmt.Fprintln(stdout, "nothing open here — closed and dormant items with --all")
+	}
+	if hidden > 0 {
+		fmt.Fprintf(stdout, "  %d open item(s) in other repos — fathom thread list --all\n", hidden)
 	}
 	return 0
 }
@@ -531,7 +606,8 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("thread brief", stderr)
 	budget := fs.Int("budget-bytes", threadBriefBudgetBytes, "hard byte budget for the brief")
 	source := fs.String("source", "startup", "session start source: startup|clear|resume|compact|fork")
-	repo := fs.String("repo", ".", "repository (for derived in-flight state)")
+	repo := fs.String("repo", ".", "repository (scope, and derived in-flight state)")
+	allRepos := fs.Bool("all-repos", false, "ride other repos' open items along instead of counting them")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -539,7 +615,7 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 		return 0 // context survives; say nothing
 	}
 	root, _ := filepath.Abs(*repo)
-	out := renderThreadBrief(loadThreadItems(threadsPath()), root, *budget, time.Now())
+	out := renderThreadBriefScoped(loadThreadItems(threadsPath()), threadScopeFor(root), root, *budget, time.Now(), *allRepos)
 	fmt.Fprint(stdout, out)
 	return 0
 }
@@ -556,9 +632,20 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 // one collapsed line for everything foreign — and when no substantive
 // handoff exists, it says how to make the next one better instead of
 // presenting telemetry as a handoff.
+//
+// TH-6: scope is the repo's basename (the tag every deposit carries);
+// other repos' substantive items are COUNTED on one line, not listed —
+// renderThreadBriefScoped takes a daemon-resolved scope and can ride them
+// along on request.
 func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now time.Time) string {
+	scope := threadScope{repo: strings.ToLower(filepath.Base(repoRoot))}
+	return renderThreadBriefScoped(items, scope, repoRoot, budgetBytes, now, false)
+}
+
+// renderThreadBriefScoped is renderThreadBrief with an explicit scope and
+// the --all-repos switch. Pure: no daemon, no clock but the one passed.
+func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot string, budgetBytes int, now time.Time, allRepos bool) string {
 	items = evaluateThreadConditions(items, repoRoot, now)
-	repo := strings.ToLower(filepath.Base(repoRoot))
 
 	kindRank := map[string]int{
 		"handoff-note": 0, "decision-pending": 1, "in-flight": 2,
@@ -573,7 +660,7 @@ func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now
 			continue
 		}
 		switch {
-		case it.Pointers["repo"] == repo || it.Thread == repo:
+		case scope.owns(it):
 			local = append(local, it)
 		case mechanical(it.Kind):
 			foreignMech++ // another repo's telemetry is ONE line, never a list
@@ -620,11 +707,17 @@ func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now
 		}
 		add(it)
 	}
-	// 3) Foreign substantive items ride along (threads span repos)…
-	for _, it := range foreign {
-		add(it)
+	// 3) Other repos' substantive items are a COUNT by default (TH-6: they
+	//    were burying this repo's continuity in every brief) — never a
+	//    silent cut — and ride along only on --all-repos.
+	if allRepos {
+		for _, it := range foreign {
+			add(it)
+		}
+	} else if len(foreign) > 0 {
+		lines = append(lines, fmt.Sprintf("  • %d open item(s) in other repos — fathom thread list --all", len(foreign)))
 	}
-	// …but foreign telemetry collapses to one line, total.
+	// …and foreign telemetry collapses to one line, total.
 	if foreignMech > 0 {
 		lines = append(lines, fmt.Sprintf("  • %d other repo(s) left sessions with work in flight: fathom thread list --all", foreignMech))
 	}

@@ -149,12 +149,6 @@ futures may justify a free option today. The repo's own sequence is
 - Promote when: a colleague adopts, as one deliberate hostile test.
 - Drop if: single-user is accepted in writing (see `questions.md` Q5).
 
-## F16. Repo-local budget defaults in `.fathom/` CUE
-
-- Confidence: plausible. Horizon: next. Evidence: BA-5 deviation ("built-in only, no `.fathom` CUE loader yet").
-- Do not build: the loader. Preserve: budgets resolve through one function.
-- Promote when: a second repo needs different budgets. Drop if: defaults suffice fleet-wide for 30 days.
-
 ## F17. A saved-query discovery router
 
 - Confidence: speculative. Horizon: someday. Evidence: declined in `docs/vision/24`.

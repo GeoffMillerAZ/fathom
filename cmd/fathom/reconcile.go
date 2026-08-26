@@ -13,15 +13,26 @@ import (
 	"time"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 // fathom fleet reconcile (vision 14 §7, plan IO-17/18): wiring is
 // reconciled, not scaffolded — a drifted hook stack is a DIFF to apply,
 // never a refusal to touch. Dry-run by default; --apply applies the SAFE
 // subset only: repointing stale absolute binary paths to the shim-stable
-// `fathom`, and adding missing template entries via init's own idempotent
-// merge (which defers to user scope — one scope, never both). Structural
-// surgery (scope moves, removals) stays a human decision.
+// `fathom`, adding missing template entries (project scope, deferring to
+// user scope — one scope, never both), and refreshing the stanza regions
+// fathom already owns. Structural surgery (scope moves, removals) stays a
+// human decision.
+//
+// Every write goes through internal/wiring as ONE plan → apply per
+// repository (INC-12, law 15): a stanza region fathom is TRACKING (marker
+// format v3, digest recorded) that a human edited is reported BLOCKED and
+// never merged — the other files in the same repository still apply — and
+// each apply lands one receipt in .fathom/receipts.jsonl that `fathom
+// fleet undo` reverses. A pre-v3 region (marker pair, no digest) is
+// fathom's by its markers and is upgraded on the first write; that is the
+// migration, not drift. --apply exits 1 when any file was BLOCKED.
 
 // wiringDiff is one repo's drift against the current template.
 type wiringDiff struct {
@@ -32,7 +43,18 @@ type wiringDiff struct {
 	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skills absent from .claude/skills (FR-3)
 	StanzaNote    string   `json:"stanza_note,omitempty"`    // pre-rename branding etc.
 	StaleStanzas  []string `json:"stale_stanzas,omitempty"`  // marker-owned regions whose content != the current template
-	SettingsNote  string   `json:"settings_note,omitempty"`  // unreadable / absent
+	// RemarkStanzas are owned regions whose PROSE already equals the
+	// current template but whose marker predates format v3 (no digest) or
+	// records an older template version: up to date, NOT stale — --apply
+	// re-marks them with a digest and changes no prose. Reporting these as
+	// "behind the template" told a reader a rewrite was coming when only a
+	// marker line was.
+	RemarkStanzas []string `json:"remark_stanzas,omitempty"`
+	// DriftedStanzas names the files law 15 stops on — "FILE — why": a
+	// tracked region edited by hand, or a corrupted marker pair. --apply
+	// reports them and writes nothing to those files.
+	DriftedStanzas []string `json:"drifted_stanzas,omitempty"`
+	SettingsNote   string   `json:"settings_note,omitempty"` // unreadable / absent
 }
 
 // staleFathomPath matches an absolute path ending in /fathom (optionally
@@ -139,85 +161,148 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// AGENTS.md independently), rendered with the REGISTRY's service id
 	// (dirname only as a daemon-unreachable fallback) so a repo that chose
 	// a different id is neither falsely flagged nor rewritten wrongly.
-	d.StaleStanzas = staleStanzaFiles(root, d.Service)
+	d.StaleStanzas, d.RemarkStanzas, d.DriftedStanzas = staleStanzaFiles(root, d.Service)
 	return d
 }
 
-// staleStanzaFiles reports which of the repo's stanza-carrying files hold a
-// fathom-owned region whose content differs from the current template.
-// Files without markers are NOT reported — wiring a never-wired repo is
-// init's job; reconcile only refreshes what fathom already owns (law 15's
-// boundary: presence of the markers IS the ownership claim).
-func staleStanzaFiles(root, service string) []string {
+// stanzaFiles are the files that carry the operating-contract stanza.
+var stanzaFiles = []string{"CLAUDE.md", "AGENTS.md"}
+
+// stanzaServiceID resolves the service id the stanza is rendered with: the
+// registry's, else the directory basename as a daemon-unreachable fallback.
+func stanzaServiceID(root, service string) string {
 	if service == "" {
-		service = strings.ToLower(filepath.Base(root))
+		return strings.ToLower(filepath.Base(root))
 	}
-	want := strings.TrimSpace(fathomStanza(service))
-	var out []string
-	for _, name := range []string{"CLAUDE.md", "AGENTS.md"} {
-		data, err := os.ReadFile(filepath.Join(root, name))
-		if err != nil {
-			continue
-		}
-		content := string(data)
-		b := strings.Index(content, fathomStanzaBegin)
-		e := strings.Index(content, fathomStanzaEnd)
-		if b < 0 || e < 0 || e < b {
-			continue // unwired or corrupted — not reconcile's to touch
-		}
-		got := strings.TrimSpace(content[b : e+len(fathomStanzaEnd)])
-		if got != want {
-			out = append(out, name)
-		}
-	}
-	sort.Strings(out)
-	return out
+	return service
 }
 
-// repointStaleCommands rewrites absolute fathom paths to the bare `fathom`
-// (the shim) inside a settings file's fathom-marked hook commands. Returns
-// the rewritten bytes and how many commands changed. Only command strings
-// containing "fathom" are touched — nothing else in the file is rewritten.
-func repointStaleCommands(data []byte) ([]byte, int, error) {
-	var rootObj map[string]any
-	if err := json.Unmarshal(data, &rootObj); err != nil {
-		return nil, 0, err
+// stanzaPlan is the wiring plan for the stanza regions of one repository —
+// the same plan --apply executes, computed without touching anything.
+func stanzaPlan(root, service string) (wiring.Plan, error) {
+	svc := stanzaServiceID(root, service)
+	spec := wiring.Spec{}
+	for _, name := range stanzaFiles {
+		spec.Regions = append(spec.Regions, stanzaRegion(name, svc))
 	}
-	changed := 0
-	hooksObj, _ := rootObj["hooks"].(map[string]any)
-	for _, arrAny := range hooksObj {
-		arr, _ := arrAny.([]any)
-		for _, g := range arr {
-			gm, ok := g.(map[string]any)
-			if !ok {
-				continue
+	return wiring.PlanWiring(root, spec)
+}
+
+// staleStanzaFiles reports which of the repo's stanza-carrying files hold a
+// fathom-owned region whose content differs from the current template
+// (stale — refreshed on --apply), which hold one whose prose already equals
+// it but whose marker will be re-marked with a digest (remark — up to date,
+// no prose changes on --apply), and which ones law 15 stops on (drifted —
+// "FILE — why", never written). Files without markers are NOT reported —
+// wiring a never-wired repo is init's job; reconcile only refreshes what
+// fathom already owns (the marker pair IS the ownership claim, and a
+// tracked region's digest is the proof it is still fathom's).
+//
+// Stale and remark are both VerdictApply on a present region; they part on
+// whether the prose changes: the engine's Before is the body on disk and
+// After is the template, and equal bodies mean the only write is the marker
+// line.
+func staleStanzaFiles(root, service string) (stale, remark, drifted []string) {
+	plan, err := stanzaPlan(root, service)
+	if err != nil {
+		return nil, nil, nil
+	}
+	for _, it := range plan.Items {
+		switch it.Verdict {
+		case wiring.VerdictApply:
+			switch {
+			case !it.Present:
+				// no region yet — init's job, not reconcile's
+			case it.Before == it.After:
+				remark = append(remark, it.File)
+			default:
+				stale = append(stale, it.File)
 			}
-			hs, _ := gm["hooks"].([]any)
-			for _, h := range hs {
-				hm, ok := h.(map[string]any)
-				if !ok {
-					continue
-				}
-				cmdStr, _ := hm["command"].(string)
-				if !strings.Contains(cmdStr, "fathom") {
-					continue
-				}
-				next := staleFathomPath.ReplaceAllString(cmdStr, "${1}fathom${3}")
-				if next != cmdStr {
-					hm["command"] = next
-					changed++
-				}
-			}
+		case wiring.VerdictBlocked:
+			drifted = append(drifted, it.File+" — "+it.Reason)
 		}
 	}
-	if changed == 0 {
-		return data, 0, nil
+	sort.Strings(stale)
+	sort.Strings(remark)
+	sort.Strings(drifted)
+	return stale, remark, drifted
+}
+
+// repointCommand rewrites an absolute fathom path inside a hook command to
+// the bare `fathom` (the shim). Everything else in the command survives.
+func repointCommand(cmd string) string {
+	return staleFathomPath.ReplaceAllString(cmd, "${1}fathom${3}")
+}
+
+// reconcileSpec is the safe subset for one repository as ONE wiring spec:
+//
+//   - stanza regions that are present and stale, up to date but awaiting
+//     the digest re-mark, or blocked (so --apply reports the law-15 stop
+//     from the same run that applies the rest); a file without markers is
+//     never created here;
+//   - hook entries absent at both scopes, added with the shim spelling
+//     (`fathom <sub>`) at project scope;
+//   - hook entries present at project scope whose command is fathom's own
+//     spelling once its absolute path is repointed — adopted (they predate
+//     the ownership ledger) and rewritten to the shim, keeping the timeout
+//     the file already carries. An entry with any other spelling is not
+//     fathom's to rewrite and is returned as a note.
+func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
+	svc := stanzaServiceID(root, d.Service)
+	spec := wiring.Spec{}
+	want := map[string]bool{}
+	for _, f := range d.StaleStanzas {
+		want[f] = true
 	}
-	out, err := json.MarshalIndent(rootObj, "", "  ")
-	if err != nil {
-		return nil, 0, err
+	for _, f := range d.RemarkStanzas {
+		want[f] = true
 	}
-	return append(out, '\n'), changed, nil
+	for _, f := range d.DriftedStanzas {
+		if i := strings.Index(f, " — "); i > 0 {
+			want[f[:i]] = true
+		}
+	}
+	for _, name := range stanzaFiles {
+		if want[name] {
+			spec.Regions = append(spec.Regions, stanzaRegion(name, svc))
+		}
+	}
+
+	keys, notes := shimHookKeys(root)
+	spec.Keys = keys
+	return spec, notes
+}
+
+// shimHookKeys is the hook half of the safe subset (see reconcileSpec): the
+// keys to add at project scope with the shim spelling, and the present
+// fathom-spelled entries to adopt and repoint. Notes name what was left
+// alone and why; they are never silent.
+func shimHookKeys(root string) ([]wiring.Key, []string) {
+	var keys []wiring.Key
+	var notes []string
+	userWired, userReadable := userScopeHookKeys()
+	present := projectHookEntries(root)
+	for _, hs := range fathomHookSpecs {
+		template := "fathom " + hs.sub
+		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
+			if repointCommand(entry.command) != template {
+				notes = append(notes, fmt.Sprintf("  note:    %s[%s] spells %q — not fathom's template spelling, left alone", hs.event, hs.matcher, entry.command))
+				continue
+			}
+			k := hookKeyFor(hs, template)
+			if entry.timeout > 0 {
+				k.Timeout = entry.timeout
+			}
+			k.AdoptUntracked = true
+			keys = append(keys, k)
+			continue
+		}
+		if userReadable && userWired[hookSpecKeyOf(hs)] {
+			continue // served by user scope — one scope, never both
+		}
+		keys = append(keys, hookKeyFor(hs, template))
+	}
+	return keys, notes
 }
 
 func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
@@ -264,14 +349,23 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	}
 
 	drifted := 0
+	blockedFiles := map[string]bool{}
 	for _, root := range roots {
 		d := analyzeWiringFor(root, svcByRoot[root])
-		if len(d.Missing) == 0 && len(d.StaleCmds) == 0 && len(d.MissingSkills) == 0 && d.StanzaNote == "" && d.SettingsNote == "" && len(d.StaleStanzas) == 0 {
+		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0
+		if !hasDrift && len(d.RemarkStanzas) == 0 {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
 		}
-		drifted++
-		fmt.Fprintf(stdout, "%s:\n", root)
+		if hasDrift {
+			drifted++
+			fmt.Fprintf(stdout, "%s:\n", root)
+		} else {
+			// Up to date in every signal; only a pre-v3 marker awaits its
+			// digest. Not drift — but still listed, so --apply's re-mark
+			// is announced before it happens.
+			fmt.Fprintf(stdout, "%s: wiring current\n", root)
+		}
 		for _, m := range d.Missing {
 			fmt.Fprintf(stdout, "  missing: %s\n", m)
 		}
@@ -287,6 +381,14 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if len(d.StaleStanzas) > 0 {
 			fmt.Fprintf(stdout, "  stanza:  %s behind the current template (the owned region refreshes on --apply)\n", strings.Join(d.StaleStanzas, ", "))
 		}
+		if len(d.RemarkStanzas) > 0 {
+			fmt.Fprintf(stdout, "  stanza:  %s up to date (will be re-marked with a digest on apply; no prose changes)\n", strings.Join(d.RemarkStanzas, ", "))
+		}
+		if !*apply {
+			for _, f := range d.DriftedStanzas {
+				fmt.Fprintf(stdout, "  BLOCKED: %s (fathom will not merge; --apply leaves this file untouched)\n", f)
+			}
+		}
 		if d.SettingsNote != "" {
 			fmt.Fprintf(stdout, "  note:    %s\n", d.SettingsNote)
 		}
@@ -294,41 +396,43 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if !*apply {
 			continue
 		}
-		// Safe subset, in order: repoint stale commands in the PROJECT
-		// file (user scope belongs to the user — reported, never edited),
-		// then the additive template merge via init's own idempotent
-		// machinery (which defers to user scope; one scope, never both).
-		settingsPath := filepath.Join(root, ".claude", "settings.json")
-		if data, err := os.ReadFile(settingsPath); err == nil {
-			if next, n, rerr := repointStaleCommands(data); rerr == nil && n > 0 {
-				if werr := os.WriteFile(settingsPath, next, 0o644); werr == nil {
-					fmt.Fprintf(stdout, "  applied: %d command(s) repointed to the shim\n", n)
+		// Safe subset as ONE plan → apply (law 15): the stanza regions
+		// fathom owns and the hook entries, in one receipt per repository.
+		// A BLOCKED file is named and left byte-identical; the rest applies.
+		spec, notes := reconcileSpec(root, d)
+		for _, n := range notes {
+			fmt.Fprintln(stdout, n)
+		}
+		if len(spec.Regions) > 0 || len(spec.Keys) > 0 {
+			res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now})
+			if err != nil {
+				fmt.Fprintf(stdout, "  apply failed: %v\n", err)
+			}
+			// One line per file and per distinct reason — not per item: a
+			// settings.json that will not parse blocks every hook key with
+			// the same words.
+			for _, bf := range blockedByFile(res.Blocked) {
+				blockedFiles[root+"\x00"+bf.File] = true
+				fmt.Fprintf(stdout, "  BLOCKED: %s (%s) — %s\n", bf.File, blockedCauseLabel(bf.Cause), strings.Join(bf.Reasons, "; "))
+			}
+			hooksApplied := 0
+			for _, it := range res.Applied {
+				switch {
+				case it.Kind != wiring.KindRegion:
+					hooksApplied++
+				case it.Present && it.Before == it.After:
+					fmt.Fprintf(stdout, "  applied: %s stanza re-marked with a digest (prose unchanged)\n", it.File)
+				default:
+					fmt.Fprintf(stdout, "  applied: %s stanza refreshed to the current template\n", it.File)
 				}
 			}
-		}
-		if len(d.Missing) > 0 {
-			if err := wireHooks(root, "fathom", stdout); err != nil {
-				fmt.Fprintf(stdout, "  apply failed (hooks): %v\n", err)
-			} else {
-				fmt.Fprintf(stdout, "  applied: missing template entries merged (project scope, deferring to user scope)\n")
+			if hooksApplied == 1 {
+				fmt.Fprintln(stdout, "  applied: 1 hook entry written to .claude/settings.json (shim spelling; project scope, deferring to user scope)")
+			} else if hooksApplied > 1 {
+				fmt.Fprintf(stdout, "  applied: %d hook entries written to .claude/settings.json (shim spelling; project scope, deferring to user scope)\n", hooksApplied)
 			}
-		}
-		// Stanza refresh: applyStanza replaces ONLY the content between the
-		// markers fathom owns, is idempotent, and refuses a corrupted
-		// marker pair rather than compounding it — the law-15 boundary in
-		// the mechanism itself.
-		if len(d.StaleStanzas) > 0 {
-			svc := d.Service
-			if svc == "" {
-				svc = strings.ToLower(filepath.Base(root))
-			}
-			stanza := fathomStanza(svc)
-			for _, name := range d.StaleStanzas {
-				if err := applyStanza(filepath.Join(root, name), stanza, stdout); err != nil {
-					fmt.Fprintf(stdout, "  apply failed (stanza %s): %v\n", name, err)
-				} else {
-					fmt.Fprintf(stdout, "  applied: %s stanza refreshed to the current template\n", name)
-				}
+			if res.Receipt != nil {
+				fmt.Fprintf(stdout, "  receipt: %s (fathom fleet undo %s --repo %s reverses it)\n", res.Receipt.ID, res.Receipt.ID, root)
 			}
 		}
 		// FR-3: missing shipped skills install through init's own
@@ -359,6 +463,10 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "concern coverage: %d repo(s) carry no .fathom/concerns.cue (fathom init scaffolds a commented template; not drift)\n", uncovered)
 	}
 	fmt.Fprintf(stdout, "reconcile: %d repo(s), %d drifted (%s)\n", len(roots), drifted, mode)
+	if *apply && len(blockedFiles) > 0 {
+		fmt.Fprintf(stdout, "reconcile: %s BLOCKED — a drifted (hand-edited) region or a file fathom could not read/parse, named above; nothing was written to them (law 15)\n", plural(len(blockedFiles), "file"))
+		return 1
+	}
 	return 0
 }
 

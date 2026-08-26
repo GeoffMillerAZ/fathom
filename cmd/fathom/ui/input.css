@@ -10,8 +10,13 @@
 @source "../observatory_render.go";
 @source "../observatory.go";
 @source "../observatory_story.go";
+@source "../observatory_series.go";
+@source "../observatory_apply.go";
 
 /* kit packages whose emitted classes we render */
 @source "../../../../app-kit/appkit/ui/stat/*.go";
 @source "../../../../app-kit/appkit/ui/dashboard/*.go";
 @source "../../../../app-kit/appkit/ui/chrome/*.go";
+@source "../../../../app-kit/appkit/ui/hitl/*.go";
+@source "../../../../app-kit/appkit/ui/form/*.go";
+@source "../../../../app-kit/appkit/ui/callout/*.go";

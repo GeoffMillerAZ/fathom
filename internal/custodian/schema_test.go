@@ -12,8 +12,8 @@ func TestValidFixtureLoads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cs) != 4 {
-		t.Fatalf("valid fixture should carry all four kinds, got %d concerns", len(cs))
+	if len(cs) != len(KnownKinds) {
+		t.Fatalf("valid fixture should carry every kind (%d), got %d concerns", len(KnownKinds), len(cs))
 	}
 }
 

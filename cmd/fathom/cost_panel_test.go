@@ -30,8 +30,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 16 {
-		t.Errorf("agent surface tools = %d, want 16 (TestAgentSurfaceDiet's own pin)", tools)
+	if tools != 17 {
+		t.Errorf("agent surface tools = %d, want 17 (TestAgentSurfaceDiet's own pin: 16 + memory_search, AM-8)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+

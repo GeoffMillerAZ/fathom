@@ -437,12 +437,12 @@ func TestOutline_deterministic(t *testing.T) {
 // repo-relative path. A relative query must return the same symbols as the
 // absolute one, and a segment-boundary suffix must not false-match a sibling.
 func TestOutline_relativePathMatchesAbsoluteStore(t *testing.T) {
-	abs := "/Volumes/x/code/throughline/app/participants/participant.go"
+	abs := "/repo/orbit/app/participants/participant.go"
 	nodes := []core.SymbolNode{
 		{Name: "Participant", Kind: core.KindGoType, FilePath: abs, Line: 44},
 		{Name: "Participant.HasAlias", Kind: core.KindGoMethod, FilePath: abs, Line: 107},
 		// A sibling whose name is a substring of the query's basename: must NOT match.
-		{Name: "Other", Kind: core.KindGoType, FilePath: "/Volumes/x/code/throughline/app/myparticipant.go", Line: 10},
+		{Name: "Other", Kind: core.KindGoType, FilePath: "/repo/orbit/app/myparticipant.go", Line: 10},
 	}
 
 	rel := symbolnav.Outline(nodes, "app/participants/participant.go")

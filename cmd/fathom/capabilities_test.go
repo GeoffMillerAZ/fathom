@@ -129,6 +129,28 @@ func TestCmdCapabilitiesSet(t *testing.T) {
 		}
 	})
 
+	t.Run("an id that is not a CUE identifier is written quoted and loads back", func(t *testing.T) {
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "verify-gate", "off"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+		p := filepath.Join(repo, ".fathom", "capabilities.cue")
+		got, err := capability.Default().LoadSettings(p, capability.ScopeProject)
+		if err != nil {
+			t.Fatalf("what set wrote must load: %v", err)
+		}
+		if v, ok := got["verify-gate"]; !ok || v {
+			t.Errorf("got %+v, want verify-gate=false", got)
+		}
+		if raw, _ := os.ReadFile(p); !strings.Contains(string(raw), "\"verify-gate\": on: false") {
+			t.Errorf("a hyphenated id must be written as a quoted label:\n%s", raw)
+		}
+		// Put the file back to the shape the next subtest expects.
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "verify-gate", "on"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+	})
+
 	t.Run("a second set preserves the first", func(t *testing.T) {
 		var out, errb bytes.Buffer
 		if code := cmdCapabilities([]string{"set", "--repo", repo, "obligations", "off"}, &out, &errb); code != 0 {
@@ -136,8 +158,157 @@ func TestCmdCapabilitiesSet(t *testing.T) {
 		}
 		reg := capability.Default()
 		got, _ := reg.LoadSettings(filepath.Join(repo, ".fathom", "capabilities.cue"), capability.ScopeProject)
-		if len(got) != 2 || !got["guards"] || got["obligations"] {
-			t.Errorf("got %+v, want both settings retained", got)
+		if len(got) != 3 || !got["guards"] || got["obligations"] || !got["verify-gate"] {
+			t.Errorf("got %+v, want every earlier setting retained", got)
+		}
+	})
+}
+
+// TestCapabilitiesSetPreservesBudgetsBlock pins the BA-9 tenancy contract:
+// `set` rewrites ONLY the capabilities block. A `budgets` block sharing
+// the file — and every comment around it — survives byte-for-byte, the
+// capability still changes, and a file `set` cannot round-trip is refused
+// with the file left exactly as it was.
+func TestCapabilitiesSetPreservesBudgetsBlock(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	reg := capability.Default()
+
+	write := func(t *testing.T, body string) (repo, path string) {
+		t.Helper()
+		repo = t.TempDir()
+		path = filepath.Join(repo, ".fathom", "capabilities.cue")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return repo, path
+	}
+	read := func(t *testing.T, path string) string {
+		t.Helper()
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+
+	const budgetsBlock = "// sized by hand for this repo\n" +
+		"budgets: {\n\tlist:      3000 // roomy\n\tcomposite: 8000\n}\n"
+
+	t.Run("both blocks present: budgets survives verbatim, the capability changes", func(t *testing.T) {
+		before := "// hand-written header\n\n" +
+			"capabilities: {\n\tguards: on: true\n}\n\n" + budgetsBlock
+		repo, path := write(t, before)
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "off"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+		after := read(t, path)
+		if !strings.Contains(after, budgetsBlock) {
+			t.Errorf("the budgets block must survive byte-for-byte:\n--- before ---\n%s\n--- after ---\n%s", before, after)
+		}
+		if !strings.HasPrefix(after, "// hand-written header\n\n") {
+			t.Errorf("the header must survive verbatim:\n%s", after)
+		}
+		got, err := reg.LoadSettings(path, capability.ScopeProject)
+		if err != nil {
+			t.Fatalf("what set wrote must load: %v", err)
+		}
+		if v, ok := got["guards"]; !ok || v {
+			t.Errorf("settings = %v, want guards=false", got)
+		}
+		b, berr := capability.LoadBudgets(path, capability.ScopeProject)
+		if berr != nil {
+			t.Fatalf("budgets must still load: %v", berr)
+		}
+		if b["list"] != 3000 || b["composite"] != 8000 {
+			t.Errorf("budgets = %v, want list 3000 / composite 8000 untouched", b)
+		}
+	})
+
+	t.Run("budgets only: the block is appended and budgets survives verbatim", func(t *testing.T) {
+		repo, path := write(t, budgetsBlock)
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+		after := read(t, path)
+		if !strings.HasPrefix(after, budgetsBlock) {
+			t.Errorf("the budgets block must survive in place:\n%s", after)
+		}
+		got, err := reg.LoadSettings(path, capability.ScopeProject)
+		if err != nil || !got["guards"] {
+			t.Errorf("settings = %v, %v; want guards=true", got, err)
+		}
+		if b, _ := capability.LoadBudgets(path, capability.ScopeProject); b["list"] != 3000 {
+			t.Errorf("budgets = %v, want list 3000 untouched", b)
+		}
+	})
+
+	t.Run("the init scaffold keeps its teaching lines above the new block", func(t *testing.T) {
+		scaffold := string(capability.ExampleTemplate(reg))
+		repo, path := write(t, scaffold)
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code != 0 {
+			t.Fatalf("exit %d: %s", code, errb.String())
+		}
+		if after := read(t, path); !strings.HasPrefix(after, scaffold) {
+			t.Errorf("the scaffold must survive byte-for-byte in front of the block:\n%s", after)
+		}
+	})
+
+	t.Run("a second set still keeps both blocks", func(t *testing.T) {
+		repo, path := write(t, "capabilities: {\n\t\"verify-gate\": on: true\n}\n\n"+budgetsBlock)
+		for _, args := range [][]string{{"guards", "on"}, {"obligations", "off"}} {
+			var out, errb bytes.Buffer
+			if code := cmdCapabilities(append([]string{"set", "--repo", repo}, args...), &out, &errb); code != 0 {
+				t.Fatalf("exit %d: %s", code, errb.String())
+			}
+		}
+		after := read(t, path)
+		if strings.Count(after, budgetsBlock) != 1 {
+			t.Errorf("exactly one budgets block must survive:\n%s", after)
+		}
+		if strings.Count(after, "capabilities: {") != 1 {
+			t.Errorf("exactly one capabilities block must exist:\n%s", after)
+		}
+		got, err := reg.LoadSettings(path, capability.ScopeProject)
+		if err != nil || len(got) != 3 || !got["verify-gate"] || !got["guards"] || got["obligations"] {
+			t.Errorf("settings = %v, %v; want verify-gate/guards on, obligations off", got, err)
+		}
+	})
+
+	t.Run("a file that does not load is refused and left untouched", func(t *testing.T) {
+		// The phase-O inversion: the loader refuses it, so set must too —
+		// a rewrite would replace the author's lines with one of its own.
+		before := "capabilities: {\n\tnarrate: on?: false\n}\n\n" + budgetsBlock
+		repo, path := write(t, before)
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code == 0 {
+			t.Fatal("a file the loader refuses must not be rewritten")
+		}
+		if !strings.Contains(errb.String(), "narrate") || !strings.Contains(errb.String(), "by hand") {
+			t.Errorf("the refusal must name the problem and the manual edit: %s", errb.String())
+		}
+		if after := read(t, path); after != before {
+			t.Errorf("a refused set must leave the file untouched:\n%s", after)
+		}
+	})
+
+	t.Run("two capabilities blocks are refused and left untouched", func(t *testing.T) {
+		before := "capabilities: obligations: on: true\n" + budgetsBlock + "capabilities: guards: on: false\n"
+		repo, path := write(t, before)
+		var out, errb bytes.Buffer
+		if code := cmdCapabilities([]string{"set", "--repo", repo, "guards", "on"}, &out, &errb); code == 0 {
+			t.Fatal("two capabilities blocks cannot be rewritten as one without guessing")
+		}
+		if !strings.Contains(errb.String(), "more than one") {
+			t.Errorf("the refusal must say why: %s", errb.String())
+		}
+		if after := read(t, path); after != before {
+			t.Errorf("a refused set must leave the file untouched:\n%s", after)
 		}
 	})
 }

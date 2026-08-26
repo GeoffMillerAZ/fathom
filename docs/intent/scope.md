@@ -5,11 +5,6 @@ Computed progress: `fathom plans status --service fathom` (46 plans, 561 gated r
 
 ## Current goals
 
-**G1. Ingest honesty.** Done when: `fathom verify --service fathom --plan
-docs/plans/instrument-truth.md` proves IT-14 and IT-15 (an ingest never overwrites a
-populated index with an empty one produced by read errors; unreadable files are counted
-and named) and `.fathom/observations.md` O16 reads fixed.
-
 **G2. The A/B becomes admissible.** Done when: `fathom flywheel` reports ≥20
 arm-homogeneous units per arm (MI-5) and a keep/retract verdict is recorded under law 12.
 Until then every production savings claim stays inadmissible
@@ -20,11 +15,13 @@ reports 20 units and the flywheel's continuity loop states keep or kill
 (`docs/vision/21-continuity-threads.md`; 4 of 20 on 2026-08-21).
 
 **G4. Ambient fathom closes.** Done when: `fathom plans status` shows
-`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows (19 open, 2 claimed-unproven
-on 2026-08-25; BA-9, TH-6, AM-6/8 among them).
+`docs/plans/ambient-fathom.md` with 0 open and 0 claimed-unproven rows. Open on
+2026-08-25 evening: SH-9, SP-10, RG-5 (observatory UI), DO-3, IR-3/4/5 (LLM assess lanes,
+undesigned), OP-1 (the A/B, G2), OP-2 (deploy), RG-9 (wiring row).
 
 **G5. The custodian closes.** Done when: `docs/plans/custodian.md` shows 0 open and 0
-claimed-unproven (12 open, 2 claimed-unproven; CC-14/15 specced in commit 3170754).
+claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/13
+(corpus seam, packs, doctor convergence), DP-2/3/4, SD-2/3/4 (SDD panel).
 
 **G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
 `fathom plans status` shows 0 claimed-unproven across every active plan (12 on

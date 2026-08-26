@@ -33,6 +33,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -77,8 +78,16 @@ type Report struct {
 	// to an extractor.
 	Extracted int
 	// Skipped is the number of files whose fingerprint matched the stored hash
-	// (hash-gate hits). Skipped + Extracted == Discovered (ignoring budget aborts).
+	// (hash-gate hits). Skipped + Extracted + ReadFailed == Discovered
+	// (ignoring budget aborts).
 	Skipped int
+	// ReadFailed is the number of discovered files whose bytes the connector
+	// could not read this run (readfailures.go, IT-14): recorded, named in
+	// ReadFailures, skipped — their stored evidence left exactly as it was.
+	ReadFailed int
+	// ReadFailures names every unreadable file (repo-relative path plus the
+	// connector's errno text), sorted by Path.
+	ReadFailures []ReadFailure
 	// Symbols is the total number of core.SymbolNode values emitted by the
 	// extractor(s) and stored as observations during this run. Zero in lazy mode
 	// until ExtractPending is called.
@@ -562,8 +571,11 @@ func (p *Pipeline) WithEnricher(e *llm.Enricher) {
 //
 // Pass 2 — Fetch: up to cfg.Concurrency goroutines fetch file content in
 // parallel. Each worker writes into a pre-allocated slot in the fetched slice
-// so no locks are needed during fetch. The first fetch error is captured via
-// atomic pointer; all goroutines finish before Ingest returns.
+// so no locks are needed during fetch. A per-file read failure is recorded
+// on the Report and the file skipped (readfailures.go); the first NON-read
+// error is captured via atomic pointer and aborts; all goroutines finish
+// before Ingest returns. An ingest that could read nothing refuses to touch
+// an index that already holds observations (IT-15 / O16).
 //
 // Pass 3 — PostFetch (sequential, input order): sha256 each file, compare
 // against stored fingerprint. Skip unchanged files. On change: PurgeSource
@@ -599,69 +611,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	p.siblingIdx[svc.ID] = idx
 	p.mu.Unlock()
 
-	// ADR-017 self-heal: stores written before repo-relative anchors keyed
-	// fingerprints and observations by absolute path. Once the connector
-	// emits relative refs, those legacy rows would never match the hash-gate
-	// again and every symbol would exist twice (old absolute + new relative
-	// anchor). Detect the mix and rebuild this service's content wholesale,
-	// once.
-	if len(refs) > 0 && !filepath.IsAbs(refs[0].Path) {
-		if n, cErr := p.st.CountAbsoluteSourceRefs(ctx, svc.ID); cErr == nil && n > 0 {
-			if pErr := p.st.PurgeService(ctx, svc.ID); pErr != nil {
-				return report, fmt.Errorf("fusion: purge legacy-anchored service %q: %w", svc.ID, pErr)
-			}
-			report.PurgedLegacyAnchors = true
-		}
-	}
-
-	// Record ingest metadata (freshness watermark + path) for this service.
-	// Git-backed corpora record the HEAD SHA; non-git corpora fall back to
-	// the connector's watermark (content-addressed manifest hash — ADR-017:
-	// freshness is domain-neutral, so docs folders and findings exports get
-	// honest drift detection too). Best-effort: a failure here does not abort
-	// the ingest.
-	{
-		commit := p.gitHeadFn(svc.Path)
-		if commit == "" {
-			if wm, wmErr := p.conn.Watermark(ctx, svc); wmErr == nil {
-				commit = wm
-			}
-		}
-		// Record the corpus root ABSOLUTE: auto-refresh, staleness_report,
-		// and the ingest MCP tool all resolve this path from the DAEMON's
-		// working directory — a relative path recorded from some other CWD
-		// (CLI --path "." default, sibling-repo post-commit hooks) would
-		// make the daemon refresh the wrong corpus under this service ID.
-		// An EMPTY path stays empty: remote/faux services have no local
-		// corpus root, and Abs("") would record the ingesting process's
-		// CWD — auto-refresh treats "" as "skip", which is the truth.
-		metaPath := svc.Path
-		if metaPath != "" {
-			if abs, absErr := filepath.Abs(metaPath); absErr == nil {
-				metaPath = abs
-			}
-		}
-		meta := store.ServiceMeta{
-			ServiceID:     svc.ID,
-			Path:          metaPath,
-			IndexedCommit: commit,
-			IndexedAt:     time.Now().UnixNano(),
-		}
-		_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
-	}
-
-	// Collect git commit history (best-effort; injectable gitLogFn for tests).
-	{
-		raw := p.gitLogFn(svc.Path)
-		if raw != "" {
-			if cs := parseGitLog(svc.ID, raw); len(cs) > 0 {
-				_ = p.st.SetCommits(ctx, svc.ID, cs)
-			}
-		}
-	}
-
 	if len(refs) == 0 {
 		// Still a full-service ingest: every stored ref is now an orphan.
+		p.recordIngestMeta(ctx, svc)
 		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
 			return report, err
 		}
@@ -670,14 +622,17 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// ── Pass 2: Fetch ────────────────────────────────────────────────────────
 	// Pre-allocate indexed result slots — one per ref. Workers write into their
-	// own slot without contention.
+	// own slot without contention. A per-file READ failure (readfailures.go)
+	// stays in its slot and the file is skipped below; any other error is
+	// fatal — the first one is captured via atomic pointer swap and aborts
+	// before a single write.
 	type fetchResult struct {
 		content []byte
 		err     error
 	}
 	fetched := make([]fetchResult, len(refs))
 
-	// firstErr stores the first fetch error via atomic pointer swap.
+	// firstErr stores the first FATAL fetch error via atomic pointer swap.
 	// Using unsafe.Pointer so we can do a compare-and-swap on an error interface.
 	var firstErrPtr unsafe.Pointer // *error
 
@@ -692,7 +647,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 			content, fetchErr := p.conn.Fetch(ctx, r)
 			fetched[idx] = fetchResult{content: content, err: fetchErr}
-			if fetchErr != nil {
+			if fetchErr != nil && !isReadFailure(fetchErr) {
 				var nilPtr unsafe.Pointer
 				heapErr := fetchErr // capture on heap
 				atomic.CompareAndSwapPointer(&firstErrPtr, nilPtr, unsafe.Pointer(&heapErr))
@@ -704,12 +659,90 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	if firstErrPtr != nil {
 		return report, fmt.Errorf("fusion: fetch: %w", *(*error)(firstErrPtr))
 	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return report, fmt.Errorf("fusion: fetch: %w", ctxErr)
+	}
+
+	// Read failures (IT-14): counted, named, sorted by path — never a silent
+	// zero and never fatal on their own. refs keeps every discovered file,
+	// so the orphan purge below cannot mistake "unreadable" for "deleted".
+	var failures []ReadFailure
+	for i, ref := range refs {
+		if fetched[i].err != nil {
+			failures = append(failures, ReadFailure{Path: ref.Path, Err: fetched[i].err.Error()})
+		}
+	}
+	sort.Slice(failures, func(i, j int) bool { return failures[i].Path < failures[j].Path })
+	report.ReadFailed = len(failures)
+	report.ReadFailures = failures
+	// finish wraps every exit below: an ingest that completed but hit read
+	// failures returns them as a *ReadFailuresError beside the (complete,
+	// honest) report, so callers that treat a fetch error as failure keep
+	// doing so — the readable files were still indexed. When the orphan
+	// purge ALSO failed, both signals survive in one joined error: an
+	// err-only caller still sees the purge abort in the text, and an
+	// errors.As caller still finds the read failures it must name.
+	finish := func(err error) (Report, error) {
+		if len(failures) == 0 {
+			return report, err
+		}
+		rfe := &ReadFailuresError{Service: svc.ID, Failures: failures}
+		if err != nil {
+			return report, errors.Join(err, rfe)
+		}
+		return report, rfe
+	}
+
+	// IT-15 refusal (O16): an ingest that could read NOTHING extracted zero
+	// symbols by construction; if the store already holds observations for
+	// this service, replacing them — or even advancing the freshness
+	// watermark over them — would let a wedged reader pass off an empty
+	// index as a fresh one. Refuse before the first write. A store with no
+	// evidence has nothing to protect and falls through (the failures are
+	// still returned loudly). A PARTIAL wedge is not refused: the readable
+	// files are honest progress and the unreadable ones keep their evidence;
+	// refusing there would also make a repo with one permanently unreadable
+	// file un-ingestable forever.
+	if len(failures) > 0 && len(failures) == len(refs) {
+		existing, qErr := p.st.QueryObservations(ctx, svc.ID, "")
+		if qErr != nil {
+			return report, fmt.Errorf("fusion: count observations %q: %w", svc.ID, qErr)
+		}
+		if len(existing) > 0 {
+			return report, &ReadFailuresError{Service: svc.ID, Failures: failures, Refused: true, Existing: len(existing)}
+		}
+	}
+
+	// ADR-017 self-heal: stores written before repo-relative anchors keyed
+	// fingerprints and observations by absolute path. Once the connector
+	// emits relative refs, those legacy rows would never match the hash-gate
+	// again and every symbol would exist twice (old absolute + new relative
+	// anchor). Detect the mix and rebuild this service's content wholesale,
+	// once. Runs after the fetch so a wedge cannot trigger a rebuild it
+	// cannot complete.
+	if !filepath.IsAbs(refs[0].Path) {
+		if n, cErr := p.st.CountAbsoluteSourceRefs(ctx, svc.ID); cErr == nil && n > 0 {
+			if pErr := p.st.PurgeService(ctx, svc.ID); pErr != nil {
+				return report, fmt.Errorf("fusion: purge legacy-anchored service %q: %w", svc.ID, pErr)
+			}
+			report.PurgedLegacyAnchors = true
+		}
+	}
+
+	// Freshness watermark + commit history — only once the ingest is going
+	// to write (a refused ingest above must not look fresh).
+	p.recordIngestMeta(ctx, svc)
 
 	// ── Pass 3: PostFetch (sequential, input order) ──────────────────────────
 	var pending []pendingFile
 	var tokenAccum int64
 
 	for i, ref := range refs {
+		if fetched[i].err != nil {
+			// Unreadable this run: no hash-gate, no purge, no fingerprint —
+			// the stored evidence stays until the file can be read again.
+			continue
+		}
 		content := fetched[i].content
 
 		// Epoch-salted content hash (see FingerprintHash / ExtractorEpoch):
@@ -765,10 +798,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		p.mu.Lock()
 		p.queue[svc.ID] = append(p.queue[svc.ID], pending...)
 		p.mu.Unlock()
-		if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
-			return report, err
-		}
-		return report, nil
+		return finish(p.purgeOrphans(ctx, svc.ID, refs))
 	}
 
 	stats, err := p.extractAndStore(ctx, svc.ID, pending)
@@ -792,10 +822,55 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	report.TypedEdgesUnresolved = typedRep.EdgesUnresolved
 
 	// ── Orphan purge ─────────────────────────────────────────────────────────
-	if err := p.purgeOrphans(ctx, svc.ID, refs); err != nil {
-		return report, err
+	// refs still holds every discovered file, unreadable ones included, so an
+	// unreadable file is never mistaken for a deleted one.
+	return finish(p.purgeOrphans(ctx, svc.ID, refs))
+}
+
+// recordIngestMeta records the ingest metadata (freshness watermark + corpus
+// path) and the git commit history for svc. Best-effort: a failure here
+// never aborts the ingest. Called only once an ingest is committed to
+// writing — a refused ingest (IT-15) must not advance the watermark over
+// evidence it left untouched.
+func (p *Pipeline) recordIngestMeta(ctx context.Context, svc core.ServiceRef) {
+	// Git-backed corpora record the HEAD SHA; non-git corpora fall back to
+	// the connector's watermark (content-addressed manifest hash — ADR-017:
+	// freshness is domain-neutral, so docs folders and findings exports get
+	// honest drift detection too).
+	commit := p.gitHeadFn(svc.Path)
+	if commit == "" {
+		if wm, wmErr := p.conn.Watermark(ctx, svc); wmErr == nil {
+			commit = wm
+		}
 	}
-	return report, nil
+	// Record the corpus root ABSOLUTE: auto-refresh, staleness_report,
+	// and the ingest MCP tool all resolve this path from the DAEMON's
+	// working directory — a relative path recorded from some other CWD
+	// (CLI --path "." default, sibling-repo post-commit hooks) would
+	// make the daemon refresh the wrong corpus under this service ID.
+	// An EMPTY path stays empty: remote/faux services have no local
+	// corpus root, and Abs("") would record the ingesting process's
+	// CWD — auto-refresh treats "" as "skip", which is the truth.
+	metaPath := svc.Path
+	if metaPath != "" {
+		if abs, absErr := filepath.Abs(metaPath); absErr == nil {
+			metaPath = abs
+		}
+	}
+	meta := store.ServiceMeta{
+		ServiceID:     svc.ID,
+		Path:          metaPath,
+		IndexedCommit: commit,
+		IndexedAt:     time.Now().UnixNano(),
+	}
+	_ = p.st.SetServiceMeta(ctx, meta) // best-effort; ignore error
+
+	// Collect git commit history (best-effort; injectable gitLogFn for tests).
+	if raw := p.gitLogFn(svc.Path); raw != "" {
+		if cs := parseGitLog(svc.ID, raw); len(cs) > 0 {
+			_ = p.st.SetCommits(ctx, svc.ID, cs)
+		}
+	}
 }
 
 // purgeOrphans removes observations and fingerprints for source_refs that are

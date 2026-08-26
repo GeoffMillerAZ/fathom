@@ -343,3 +343,36 @@ func TestCmdPlansRestore_UnknownPlan(t *testing.T) {
 		t.Fatal("want non-zero exit restoring a plan that was never archived")
 	}
 }
+
+// TestCmdPlansArchive_AbsorbedByReleaseNarrative: the 2026-08-24 changelog
+// condensation moved row ids out of CHANGELOG.md into the per-release
+// narrative under docs/changelog/<version>.md; an id absorbed ONLY there
+// still satisfies criterion 3 (the narrative is part of the absorption
+// corpus), otherwise every pre-0.4.0 plan became unarchivable overnight.
+func TestCmdPlansArchive_AbsorbedByReleaseNarrative(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	planMD := "# Narrative\n\n" +
+		"- [x] Charge handler {id: N4-1, symbol: Charge, skip_test: true}\n"
+	// CHANGELOG.md and ADR.md say nothing about N4-1 …
+	gitFixtureForArchive(t, root, "narrative.md", planMD, "condensed: nothing here\n", "")
+	// … the per-release narrative does. (Only the PLAN must be clean.)
+	if err := os.MkdirAll(filepath.Join(root, "docs", "changelog"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "docs", "changelog", "0.4.0.md"), []byte("### 2026-08-20\n- N4-1: charge handler landed.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := run(archiveArgs("archive", root, storePath, "narrative.md"), &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("id absorbed by docs/changelog/0.4.0.md must archive; exit %d stderr=%s", code, errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "plans", "archive", "narrative.md")); err != nil {
+		t.Errorf("plan must have moved to docs/plans/archive/: %v", err)
+	}
+}

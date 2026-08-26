@@ -129,6 +129,11 @@ type Server struct {
 
 	// callLogger is wired in by NewServerWithLogger.  May be nil.
 	callLogger *CallLogger
+
+	// budgets is the project/user `budgets` block (BA-9), set once via
+	// SetBudgets before serving; the zero value means the measured
+	// built-in defaults (budget_defaults.go).
+	budgets budgetSettings
 }
 
 // NewServer constructs a Server wired to backend. If backend is nil the server
@@ -178,6 +183,7 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)
 	registerPlatformTools(s, backend, fleet)
+	registerMemoryTools(s, backend)
 	if modules != nil {
 		registerModuleTools(s, modules)
 	}

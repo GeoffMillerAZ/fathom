@@ -3,8 +3,10 @@
 // "concerns" — about a repository's configuration, loaded from CUE at two
 // law-13 scopes (~/.fathom/concerns.cue as user defaults,
 // <repo>/.fathom/concerns.cue governing) and audited mechanically — no
-// daemon, no LLM, no network. (Named custodian, not concern: the
-// concern-scoped QUERY engine already owns internal/concern.)
+// LLM, and no daemon except the stanza check (CC-14), which asks the
+// daemon what it serves and reports unable-to-check when it cannot.
+// (Named custodian, not concern: the concern-scoped QUERY engine already
+// owns internal/concern.)
 //
 // Fathom is the instrument, never the hand (vision 22 §3b): this package
 // reports holds/violated/unable with evidence; an agent in a session, with
@@ -39,6 +41,26 @@ const (
 	KindCommandDocumentedAndExists CheckKind = "command_documented_and_exists"
 	KindMaxLines                   CheckKind = "max_lines"
 	KindPointersResolve            CheckKind = "pointers_resolve"
+
+	// KindStanzaToolsServed (CC-14): every tool name inside the
+	// marker-owned fathom stanza of an agent-config file — backticked
+	// snake_case identifiers, plus bare tokens that carry an underscore
+	// (find_callers, pack_context) — is served by the running daemon's
+	// registry: "instructed means true" applied to fathom's own
+	// instructions. Bare single words (obligations, references, outline,
+	// ingest, capabilities) are policed only when backticked: bare, they
+	// are prose, and a false violation teaches people to ignore the
+	// custodian. The one kind that asks the daemon; an unreachable daemon
+	// OR an empty/malformed registry is unable-to-check, never a
+	// violation.
+	KindStanzaToolsServed CheckKind = "stanza_tools_served"
+
+	// KindHandoffCitesInstruments (CC-15): a handoff thread note from this
+	// repo, filed in the last `days` days, that claims shipped work must
+	// cite an instrument — a commit sha, a plan row id, `fathom verify`,
+	// or a retro artifact path. Reads the user's thread log, never the
+	// transcript.
+	KindHandoffCitesInstruments CheckKind = "handoff_cites_instruments"
 )
 
 // KnownKinds lists the accepted kinds in sorted order, for refusal
@@ -46,9 +68,15 @@ const (
 var KnownKinds = []CheckKind{
 	KindCommandDocumentedAndExists,
 	KindForbiddenPattern,
+	KindHandoffCitesInstruments,
 	KindMaxLines,
 	KindPointersResolve,
+	KindStanzaToolsServed,
 }
+
+// DefaultHandoffDays is the handoff_cites_instruments window when a
+// concern does not set `days`.
+const DefaultHandoffDays = 7
 
 // CorpusAgentConfig is v1's only `where` corpus: the repo's agent
 // configuration files (CLAUDE.md / AGENTS.md at any depth, on git's
@@ -68,6 +96,7 @@ type Check struct {
 	Command string    `json:"command,omitempty"` // command_documented_and_exists
 	File    string    `json:"file,omitempty"`    // max_lines (repo-relative)
 	Lines   int       `json:"lines,omitempty"`   // max_lines budget
+	Days    int       `json:"days,omitempty"`    // handoff_cites_instruments window (default 7)
 }
 
 // Concern is a falsifiable want with provenance.

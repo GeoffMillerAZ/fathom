@@ -35,6 +35,25 @@ const (
 	KindKey    = "key"
 )
 
+// Causes of a BLOCKED verdict. Law 15 stops for more than one reason, and
+// the reasons demand different responses from a human — a hand-edited
+// region is a choice to make (keep yours or take fathom's), an unparsable
+// file is a repair to do — so the cause is typed here rather than left for
+// a caller to recover by parsing Reason.
+const (
+	// CauseDrift: a region or entry fathom is TRACKING no longer matches
+	// what fathom recorded — a human has been inside fathom's region.
+	CauseDrift = "drift"
+	// CauseUnreadable: the file could not be read, or could not be parsed
+	// as the structure fathom expects (a corrupted marker pair, invalid
+	// JSON) — fathom will not guess at a file it cannot read.
+	CauseUnreadable = "unreadable"
+	// CauseUnproven: the region carries no digest and matches nothing
+	// fathom ever shipped — fathom cannot prove it wrote it and, without
+	// Region.AdoptUntracked, will not claim it.
+	CauseUnproven = "unproven"
+)
+
 // Item is one region or one key, with the verdict and — always — the reason
 // behind it. An item with an empty Reason is a defect: a verdict a human
 // cannot interpret is a verdict they will learn to ignore (law 3).
@@ -44,6 +63,9 @@ type Item struct {
 	Kind    string  `json:"kind"`
 	Verdict Verdict `json:"verdict"`
 	Reason  string  `json:"reason"`
+	// Cause classifies a BLOCKED verdict (CauseDrift, CauseUnreadable,
+	// CauseUnproven); empty for apply and skip.
+	Cause string `json:"cause,omitempty"`
 	// Present distinguishes "there is nothing there" from "there is an empty
 	// value there". Before is meaningless unless Present.
 	Present bool   `json:"present"`
@@ -97,8 +119,19 @@ type Region struct {
 	// Known are bodies EARLIER fathom versions wrote. A pre-v3 region
 	// records no digest, so its provenance is unknown; matching a body
 	// fathom is known to have shipped is the only evidence available that
-	// fathom, and not a human, wrote it. Anything else stays BLOCKED.
+	// fathom, and not a human, wrote it. Anything else stays BLOCKED —
+	// unless AdoptUntracked is set.
 	Known []string
+	// AdoptUntracked is the v1→v3 migration switch (INC-12). A region whose
+	// marker carries no digest cannot prove its provenance either way; the
+	// caller that sets this asserts that the MARKER PAIR is the ownership
+	// claim (that is what `fathom init` wrote for a year, and what every
+	// repository in the fleet carries), so the region is fathom's, is
+	// upgraded to a digest-bearing marker on the first write, and every
+	// edit inside it after that is detectable. Only a TRACKED region that
+	// differs from its recorded digest is drift; an untracked one is never
+	// reported as drift. The engine default (false) stays strict.
+	AdoptUntracked bool
 }
 
 // Spec is what fathom wants a repository to carry.
@@ -195,7 +228,7 @@ func planRegion(root string, r Region) Item {
 
 	content, existed, err := readFileIfPresent(path)
 	if err != nil {
-		it.Verdict, it.Reason = VerdictBlocked, "cannot be read: "+err.Error()
+		it.Verdict, it.Cause, it.Reason = VerdictBlocked, CauseUnreadable, "cannot be read: "+err.Error()
 		return it
 	}
 	ending := lineEnding(content)
@@ -210,7 +243,7 @@ func planRegion(root string, r Region) Item {
 
 	reg, perr := parseOwnedRegion(content, r.Syntax)
 	if perr != nil {
-		it.Verdict = VerdictBlocked
+		it.Verdict, it.Cause = VerdictBlocked, CauseUnreadable
 		it.Reason = "the fathom marker pair is corrupted (" + perr.Error() + ") — fathom will not guess at a broken pair"
 		return it
 	}
@@ -224,7 +257,7 @@ func planRegion(root string, r Region) Item {
 
 	switch {
 	case reg.Drifted():
-		it.Verdict = VerdictBlocked
+		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
 		it.Reason = "the region was edited by hand since fathom wrote it (recorded " + short(reg.Digest) +
 			", body now hashes to " + short(reg.BodyDigest) + ") — fathom will not merge; keep yours or take fathom's, explicitly"
 	case !reg.Tracked() && reg.Body == want:
@@ -233,8 +266,12 @@ func planRegion(root string, r Region) Item {
 	case !reg.Tracked() && knownBody(r, reg.Body, ending):
 		it.Verdict = VerdictApply
 		it.Reason = "the region predates marker format v3 and its body matches a template fathom shipped — fathom will upgrade it to " + r.Version
+	case !reg.Tracked() && r.AdoptUntracked:
+		it.Verdict = VerdictApply
+		it.Reason = "the region predates marker format v3 (marker pair present, no digest recorded) — fathom owns it by its markers and will upgrade it to " + r.Version +
+			", recording a digest so any later hand edit is detected; this is the one-time migration, not drift"
 	case !reg.Tracked():
-		it.Verdict = VerdictBlocked
+		it.Verdict, it.Cause = VerdictBlocked, CauseUnproven
 		it.Reason = "the region predates marker format v3 and its body matches no template fathom shipped — fathom cannot prove it wrote this and will not overwrite it"
 	case reg.Body == want && reg.Version == r.Version:
 		it.Verdict = VerdictSkip
@@ -271,7 +308,7 @@ func planKey(root string, k Key, ledger Ledger) Item {
 	it := Item{File: k.File, Target: k.ID(), Kind: KindKey}
 	want, err := k.desired()
 	if err != nil {
-		it.Verdict, it.Reason = VerdictBlocked, err.Error()
+		it.Verdict, it.Cause, it.Reason = VerdictBlocked, CauseUnproven, err.Error()
 		return it
 	}
 	it.After = want
@@ -279,7 +316,7 @@ func planKey(root string, k Key, ledger Ledger) Item {
 	path := filepath.Join(root, filepath.FromSlash(k.File))
 	content, existed, rerr := readFileIfPresent(path)
 	if rerr != nil {
-		it.Verdict, it.Reason = VerdictBlocked, "cannot be read: "+rerr.Error()
+		it.Verdict, it.Cause, it.Reason = VerdictBlocked, CauseUnreadable, "cannot be read: "+rerr.Error()
 		return it
 	}
 	if !existed {
@@ -290,7 +327,7 @@ func planKey(root string, k Key, ledger Ledger) Item {
 
 	current, present, cerr := k.current(content)
 	if cerr != nil {
-		it.Verdict = VerdictBlocked
+		it.Verdict, it.Cause = VerdictBlocked, CauseUnreadable
 		it.Reason = k.File + " could not be read as the structure fathom expects (" + cerr.Error() + ") — fathom will not rewrite a file it cannot parse"
 		return it
 	}
@@ -303,11 +340,17 @@ func planKey(root string, k Key, ledger Ledger) Item {
 
 	owned, isOwned := ownedKey(ledger, k.File, k.ID())
 	switch {
-	case !isOwned:
+	case !isOwned && !k.AdoptUntracked:
 		it.Verdict = VerdictSkip
 		it.Reason = k.ID() + " is present but " + ledgerRelPath + " does not record fathom adding it — it is someone else's and fathom will not touch it"
+	case !isOwned && current == want:
+		it.Verdict = VerdictSkip
+		it.Reason = "already current (" + ledgerRelPath + " does not record it; fathom will record ownership when it next has a reason to write)"
+	case !isOwned:
+		it.Verdict = VerdictApply
+		it.Reason = "fathom's own entry (identified by its marker, unrecorded in " + ledgerRelPath + ") is out of date — updating it to the current template and recording ownership"
 	case owned.Digest != digest(current):
-		it.Verdict = VerdictBlocked
+		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
 		it.Reason = "the entry changed since fathom wrote it on " + orUnrecorded(owned.Wrote) + " (recorded " + short(owned.Digest) +
 			", now " + short(digest(current)) + ") — fathom will not merge"
 	case current == want:

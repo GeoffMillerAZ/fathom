@@ -163,6 +163,7 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 	if serr != nil {
 		return ck, []error{fmt.Errorf("concern %q: check: %w", id, serr)}
 	}
+	sawDays := false
 	for sub.Next() {
 		name := sub.Selector().Unquoted()
 		if sub.IsOptional() {
@@ -212,8 +213,29 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				continue
 			}
 			ck.Lines = int(n)
+		case "days":
+			n, err := sub.Value().Int64()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("concern %q: check.days must be an integer: %w", id, err))
+				continue
+			}
+			sawDays = true
+			ck.Days = int(n)
 		default:
 			errs = append(errs, fmt.Errorf("concern %q: check has unknown field %q", id, name))
+		}
+	}
+	if len(errs) > 0 {
+		return ck, errs
+	}
+	// `days` is the handoff window and nothing else's: a key that no kind
+	// reads is a wish about behaviour that does not exist, refused like
+	// any other unknown field (the schema stays closed).
+	if sawDays {
+		if ck.Kind != KindHandoffCitesInstruments {
+			errs = append(errs, fmt.Errorf("concern %q: check.days applies to %s only, not %q", id, KindHandoffCitesInstruments, ck.Kind))
+		} else if ck.Days <= 0 {
+			errs = append(errs, fmt.Errorf("concern %q: check.days must be > 0 (omit it for the default of %d)", id, DefaultHandoffDays))
 		}
 	}
 	if len(errs) > 0 {
@@ -250,13 +272,19 @@ func validateCheck(id string, ck *Check) []error {
 		}
 	case KindPointersResolve:
 		// no fields beyond where
+	case KindStanzaToolsServed:
+		// no fields beyond where; the registry is the daemon's, at audit time
+	case KindHandoffCitesInstruments:
+		if ck.Days == 0 {
+			ck.Days = DefaultHandoffDays
+		}
 	case "":
 		errs = append(errs, fmt.Errorf("concern %q: check.kind is required (known kinds: %s)", id, kindList()))
 	default:
 		errs = append(errs, fmt.Errorf("concern %q: unknown check kind %q — a concern whose check cannot be stated mechanically is refused (known kinds: %s)", id, ck.Kind, kindList()))
 	}
 	switch ck.Kind {
-	case KindForbiddenPattern, KindCommandDocumentedAndExists, KindPointersResolve:
+	case KindForbiddenPattern, KindCommandDocumentedAndExists, KindPointersResolve, KindStanzaToolsServed:
 		if ck.Where == "" {
 			ck.Where = CorpusAgentConfig
 		} else if ck.Where != CorpusAgentConfig {
@@ -295,8 +323,8 @@ func Merge(user, project []Concern) []Concern {
 }
 
 // ExampleTemplate is what `fathom init` scaffolds (CC-10): entirely
-// commented, so the file exists, teaches the four v1 check kinds, and
-// loads as zero concerns (the three-state loader's scaffold path).
+// commented, so the file exists, teaches the check kinds, and loads as
+// zero concerns (the three-state loader's scaffold path).
 func ExampleTemplate() []byte {
 	return []byte(`// .fathom/concerns.cue — the config custodian's contracts for this repo
 // (vision 22, "instructed means true"). This file GOVERNS: an entry here
@@ -307,7 +335,10 @@ func ExampleTemplate() []byte {
 // fathom reports and never edits your prose — you decide.
 //
 // Uncomment and adapt. Check kinds: forbidden_pattern,
-// command_documented_and_exists, max_lines, pointers_resolve.
+// command_documented_and_exists, max_lines, pointers_resolve,
+// stanza_tools_served (the fathom stanza names only tools the daemon
+// serves), handoff_cites_instruments (a handoff note claiming shipped
+// work cites a commit / plan row / verify run / retro; days: 7).
 //
 // concerns: {
 // 	gate_documented: {

@@ -6,19 +6,26 @@
 // most-specific-wins precedence internal/capability.Resolution.For uses
 // (law 13) — so a project sets its own budgets once rather than at every
 // call site. One settings key family (toolBudgetClass), kept minimal: this
-// package does not itself load .fathom/capabilities.cue; a caller wires a
-// loaded budgetSettings in when project/user overrides exist, and every
+// package does not itself parse .fathom/capabilities.cue — internal/
+// capability.LoadBudgetResolution reads the `budgets` block (BA-9) and
+// cmd/fathom serve-http hands it to Server.SetBudgets at startup; every
 // truncating tool still works correctly with a zero-value budgetSettings
 // (falls straight through to the measured built-in default).
 package mcp
 
+import "github.com/geoffmilleraz/fathom/internal/capability"
+
 // toolBudgetClass categorizes truncating tools per the design's §3 table.
+// The tools beside each class are the ones toolBudgetClasses actually
+// maps — narrower than the design table, which also lists find_callers,
+// symbol_context and outline under these classes; those are NOT wired
+// through this file, so a `budgets` value does not change them.
 type toolBudgetClass string
 
 const (
-	classList      toolBudgetClass = "list"      // references, find_callers, query_symbols, find_symbol
-	classComposite toolBudgetClass = "composite" // symbol_context, pack_context
-	classMap       toolBudgetClass = "map"       // repo_map, outline
+	classList      toolBudgetClass = "list"      // query_symbols, references
+	classComposite toolBudgetClass = "composite" // pack_context
+	classMap       toolBudgetClass = "map"       // repo_map
 )
 
 // measuredDefaults are the design's §3 measured defaults, in approximate
@@ -35,11 +42,17 @@ var measuredDefaults = map[toolBudgetClass]int{
 // (internal/context/packer.tokenEstimate; BA-8's ESTIMATE label).
 const charsPerToken = 4
 
-// toolBudgetClasses maps each truncating tool to its design-table class.
-// A tool absent here has no declared class — budgetDefaults returns 0
-// (defaultCharBudget applies) — which is correct for find_symbol: it is a
+// toolBudgetClasses maps each class-budgeted tool to its design-table
+// class. This map is the ONLY authority on which tools a `budgets` value
+// sizes; every comment that names the classes (internal/capability's
+// schema, Budgets doc and ExampleTemplate) must name exactly these four
+// tools. A tool absent here has no declared class — budgetDefaults returns
+// 0 (defaultCharBudget applies). That is correct for find_symbol: it is a
 // point lookup by the design table (§3), and its substring-tier cap is a
-// safety valve, not a class this table sizes.
+// safety valve, not a class this table sizes. find_callers, symbol_context
+// and outline are likewise absent — the design table classes them, but
+// nothing routes their sizing through here, so they are NOT budgeted by
+// class.
 var toolBudgetClasses = map[string]toolBudgetClass{
 	"query_symbols": classList,
 	"references":    classList,
@@ -89,4 +102,17 @@ func budgetDefaultTokens(tool string, s budgetSettings) (int, bool) {
 		return v, true
 	}
 	return measuredDefaults[class], true
+}
+
+// SetBudgets wires the `budgets` block internal/capability loaded from
+// <repo>/.fathom/capabilities.cue (project) and ~/.fathom/capabilities.cue
+// (user) into the server, so every truncating tool's default resolves
+// project → user → built-in (BA-9). Values are tokens (design §3);
+// budgetDefaults converts to chars where a tool needs them. Set once,
+// BEFORE Serve/ListenAndServe begins accepting concurrent requests — the
+// same single-set-before-serving convention as strictSurfaces; no mutex.
+// A zero-value resolution is the unconfigured case and leaves the measured
+// built-in defaults standing.
+func (s *Server) SetBudgets(res capability.BudgetResolution) {
+	s.budgets = budgetSettings{User: res.User, Project: res.Project}
 }

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 )
@@ -46,7 +48,12 @@ import (
 //	    fathom-owned (no fathom:owned marker) — a real, non-operational
 //	    problem the caller must resolve (rename/remove the file, or pick a
 //	    different skill name), so init refuses loudly rather than fail-open
-//	    or silently clobbering a human-authored file.
+//	    or silently clobbering a human-authored file; and a wiring file law
+//	    15 BLOCKED (a tracked region edited by hand, or a file init could
+//	    not read or parse). A BLOCKED file never aborts the remaining steps
+//	    — the config scaffold, --skills, the shim and the manual steps have
+//	    nothing to do with it — it is recorded, every other step runs, and
+//	    the blocked files are listed once at the end, one line per file.
 func cmdInit(args []string, stdout, stderr io.Writer) int {
 	rpcOrigin = "init"
 	fs := newFlagSet("init", stderr)
@@ -136,12 +143,6 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		exitCode = 2
 	}
 
-	// c. project-level Claude Code hooks.
-	if err := wireHooks(root, binPath, stdout); err != nil {
-		fmt.Fprintf(stderr, "error: writing .claude/settings.json: %v\n", err)
-		return 1
-	}
-
 	// c2. .fathom/ commented scaffolds for phase-O config surfaces (guard.cue,
 	// modules.cue) — write-if-absent, ALWAYS commented (no active config by
 	// default): binding a module or guarding a scope is an explicit,
@@ -152,16 +153,27 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// d. CLAUDE.md + AGENTS.md stanza — one canonical source, two files.
-	stanza := fathomStanza(svc)
-	if err := applyStanza(filepath.Join(root, "CLAUDE.md"), stanza, stdout); err != nil {
-		fmt.Fprintf(stderr, "error: writing CLAUDE.md: %v\n", err)
+	// c + d. Project-level Claude Code hooks and the CLAUDE.md/AGENTS.md
+	// stanza (one canonical source, two files) — ONE plan → apply through
+	// internal/wiring (INC-12, law 15): a region fathom is tracking that a
+	// human edited is reported BLOCKED and never merged, every write lands
+	// in .fathom/receipts.jsonl so `fathom fleet undo --last` reverses it,
+	// and the other files still apply around a blocked one.
+	spec, notes := initWiringSpec(root, svc, binPath)
+	for _, n := range notes {
+		fmt.Fprintln(stdout, n)
+	}
+	res, err := applyWiringSpec(root, spec, stdout)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: wiring %s: %v\n", root, err)
 		return 1
 	}
-	if err := applyStanza(filepath.Join(root, "AGENTS.md"), stanza, stdout); err != nil {
-		fmt.Fprintf(stderr, "error: writing AGENTS.md: %v\n", err)
-		return 1
-	}
+	// A BLOCKED file is recorded here and reported at the end, never
+	// returned on: aborting at this point used to skip the config scaffold,
+	// --skills, the PATH shim and the manual steps — none of which touch
+	// the blocked file — and leave the repo half-wired with the refusal
+	// scrolled off above the abort.
+	blocked := blockedByFile(res.Blocked)
 
 	// e. ~/.fathom/config.toml scaffold (CF-8, docs/plans/config-experience.md):
 	// write-if-absent, never overwrites an operator's existing file.
@@ -204,7 +216,90 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|all]")
 	}
 
+	if len(blocked) > 0 {
+		printBlockedFiles(stderr, blocked)
+		return 1
+	}
 	return exitCode
+}
+
+// blockedFile is one file law 15 stopped on, with every distinct reason
+// the plan gave for it. Eight hook entries refused because ONE settings.json
+// would not parse are one blocked file with one reason — a count of items
+// reported as a count of files, and a settings.json described as a
+// hand-edited region, were both the reader's problem before this grouping.
+type blockedFile struct {
+	File    string
+	Cause   string   // wiring.CauseDrift / CauseUnreadable / CauseUnproven
+	Reasons []string // distinct, in plan order
+}
+
+// blockedByFile groups BLOCKED items per file, files sorted, reasons
+// deduplicated. Cause is the first item's (items of one file share a cause
+// in every shape the engine produces; a mixed file keeps the first, and
+// every reason is still listed).
+func blockedByFile(items []wiring.Item) []blockedFile {
+	byFile := map[string]*blockedFile{}
+	for _, it := range items {
+		bf, ok := byFile[it.File]
+		if !ok {
+			bf = &blockedFile{File: it.File, Cause: it.Cause}
+			byFile[it.File] = bf
+		}
+		dup := false
+		for _, r := range bf.Reasons {
+			if r == it.Reason {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			bf.Reasons = append(bf.Reasons, it.Reason)
+		}
+	}
+	out := make([]blockedFile, 0, len(byFile))
+	for _, bf := range byFile {
+		out = append(out, *bf)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].File < out[j].File })
+	return out
+}
+
+// blockedCauseLabel is the short human phrase for a typed cause.
+func blockedCauseLabel(cause string) string {
+	switch cause {
+	case wiring.CauseDrift:
+		return "drifted (hand-edited) region"
+	case wiring.CauseUnreadable:
+		return "could not be read/parsed"
+	case wiring.CauseUnproven:
+		return "unproven provenance"
+	default:
+		return "blocked"
+	}
+}
+
+// printBlockedFiles is init's closing report of the files law 15 stopped
+// on: one line per file naming the cause, then what to do about each kind.
+func printBlockedFiles(stderr io.Writer, blocked []blockedFile) {
+	fmt.Fprintf(stderr, "error: %s BLOCKED — nothing was written to %s; every other init step above ran (law 15):\n",
+		plural(len(blocked), "file"), map[bool]string{true: "it", false: "them"}[len(blocked) == 1])
+	drift, unreadable := false, false
+	for _, bf := range blocked {
+		fmt.Fprintf(stderr, "error:   %s — %s: %s\n", bf.File, blockedCauseLabel(bf.Cause), strings.Join(bf.Reasons, "; "))
+		switch bf.Cause {
+		case wiring.CauseDrift:
+			drift = true
+		case wiring.CauseUnreadable:
+			unreadable = true
+		}
+	}
+	if drift {
+		fmt.Fprintln(stderr, "error: a drifted region: take fathom's version by deleting the marked block and re-running init, or keep yours and fathom will keep reporting it.")
+	}
+	if unreadable {
+		fmt.Fprintln(stderr, "error: an unreadable file: fix it by hand (it must parse as what it is) and re-run init.")
+	}
 }
 
 // resolveBinPath returns the current binary's path, resolving symlinks so
@@ -480,55 +575,107 @@ var fathomHookSpecs = []hookSpec{
 	{event: "Stop", matcher: "", marker: "fathom stop-hook", sub: "stop-hook", timeout: 10},
 }
 
-// wireHooks JSON-merges the fathom hook entries into <root>/.claude/settings.json,
-// creating the file if absent. Any fathom hook already wired at Claude
-// Code's USER scope (~/.claude/settings.json — the same scope doctor's
-// checkHooksInstalled reads) is skipped here rather than duplicated at
-// project scope: Claude Code applies both scopes, so writing the same hook
-// to both would make it fire twice (the bug this guards against — a
-// project `fathom init` duplicating a global wiring the user already has).
-// Every skip is printed explicitly, never silent.
-func wireHooks(root, binPath string, stdout io.Writer) error {
-	dir := filepath.Join(root, ".claude")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+// hookKeyFor is the wiring key for one hook spec: identity is the
+// (event, matcher) group plus fathom's marker substring — the same identity
+// ensureHookEntry has always used — so a repointed binary path is still
+// the same key. command is the full command line to install.
+func hookKeyFor(spec hookSpec, command string) wiring.Key {
+	return wiring.Key{
+		File:    ".claude/settings.json",
+		Kind:    wiring.KindJSONHook,
+		Path:    []string{spec.event, spec.matcher},
+		Marker:  spec.marker,
+		Body:    command,
+		Timeout: spec.timeout,
 	}
-	p := filepath.Join(dir, "settings.json")
+}
 
-	existing, err := os.ReadFile(p)
-	existed := err == nil
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
+// projectHookEntries reads <root>/.claude/settings.json and returns, per
+// hook spec, the entry already present in that spec's matcher group
+// (found by marker, exactly as ensureHookEntry finds it). Absent, unreadable
+// or unparsable settings yield an empty map — "present" is the only claim
+// this makes, and it makes it only from bytes it could read.
+type projectHookEntry struct {
+	command string
+	timeout int
+}
 
-	merged, changed, skipped, err := mergeHookSettings(existing, binPath)
+func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
+	out := map[hookSpecKey]projectHookEntry{}
+	data, err := os.ReadFile(filepath.Join(root, ".claude", "settings.json"))
 	if err != nil {
-		return err
+		return out
 	}
-	for _, label := range skipped {
-		fmt.Fprintf(stdout, "skip %s — already wired at user scope (~/.claude/settings.json); not duplicating at project scope\n", label)
+	var parsed map[string]any
+	if json.Unmarshal(data, &parsed) != nil {
+		return out
 	}
+	hooksObj, _ := parsed["hooks"].(map[string]any)
+	for _, spec := range fathomHookSpecs {
+		arr, _ := hooksObj[spec.event].([]any)
+		for _, g := range arr {
+			gm, ok := g.(map[string]any)
+			if !ok {
+				continue
+			}
+			if gMatcher, _ := gm["matcher"].(string); gMatcher != spec.matcher {
+				continue
+			}
+			hs, _ := gm["hooks"].([]any)
+			for _, h := range hs {
+				hm, ok := h.(map[string]any)
+				if !ok {
+					continue
+				}
+				cmdStr, _ := hm["command"].(string)
+				if !strings.Contains(cmdStr, spec.marker) {
+					continue
+				}
+				timeout, _ := hm["timeout"].(float64)
+				out[hookSpecKeyOf(spec)] = projectHookEntry{command: cmdStr, timeout: int(timeout)}
+			}
+		}
+	}
+	return out
+}
 
-	switch {
-	case !existed && !changed:
-		// Nothing left to write: project settings.json never existed and
-		// every fathom hook is already covered at user scope — creating an
-		// empty file would be pure noise.
-		fmt.Fprintln(stdout, "ok .claude/settings.json (not created — every fathom hook already wired at user scope)")
-	case !existed:
-		if err := os.WriteFile(p, merged, 0o644); err != nil {
-			return err
+// initWiringSpec is everything `fathom init` wants a repository to carry,
+// as ONE wiring spec: the CLAUDE.md and AGENTS.md regions, and the hook
+// entries to ADD. Init is add-only for hooks, exactly as ensureHookEntry
+// was: an entry already present in its matcher group is left alone (it may
+// spell the shim, or a path a human chose), and an entry already wired at
+// Claude Code's USER scope (~/.claude/settings.json — the scope doctor's
+// checkHooksInstalled reads) is not duplicated at project scope, because
+// Claude Code applies both scopes and the hook would fire twice. Every
+// skip is returned as a note to print, never silent.
+func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
+	spec := wiring.Spec{Regions: []wiring.Region{
+		stanzaRegion("CLAUDE.md", service),
+		stanzaRegion("AGENTS.md", service),
+	}}
+	var notes []string
+	userWired, userReadable := userScopeHookKeys()
+	present := projectHookEntries(root)
+	for _, hs := range fathomHookSpecs {
+		if userReadable && userWired[hookSpecKeyOf(hs)] {
+			notes = append(notes, "skip "+specLabel(hs)+" — already wired at user scope (~/.claude/settings.json); not duplicating at project scope")
+			continue
 		}
-		fmt.Fprintln(stdout, "created .claude/settings.json")
-	case changed:
-		if err := os.WriteFile(p, merged, 0o644); err != nil {
-			return err
+		if _, ok := present[hookSpecKeyOf(hs)]; ok {
+			continue // add-only: present entries are not init's to rewrite
 		}
-		fmt.Fprintln(stdout, "updated .claude/settings.json (fathom hooks added)")
-	default:
-		fmt.Fprintln(stdout, "ok .claude/settings.json (already present)")
+		spec.Keys = append(spec.Keys, hookKeyFor(hs, binPath+" "+hs.sub))
 	}
-	return nil
+	if len(spec.Keys) == 0 {
+		// Nothing to plan for settings.json, so the engine will not name
+		// it; init still owes the reader a line per file it looked at.
+		if _, err := os.Stat(filepath.Join(root, ".claude", "settings.json")); err == nil {
+			notes = append(notes, "ok .claude/settings.json (already present)")
+		} else {
+			notes = append(notes, "ok .claude/settings.json (not created — every fathom hook already wired at user scope)")
+		}
+	}
+	return spec, notes
 }
 
 // userScopeHookKeys reads Claude Code's USER-scope settings
@@ -677,8 +824,22 @@ func ensureHookEntry(hooksObj map[string]any, spec hookSpec, command string) boo
 // ─── d. CLAUDE.md / AGENTS.md stanza ──────────────────────────────────────
 
 const (
-	fathomStanzaBegin = "<!-- fathom:begin -->"
-	fathomStanzaEnd   = "<!-- fathom:end -->"
+	// fathomStanzaBegin / fathomStanzaEnd are the marker pair as `fathom
+	// init` rendered it before marker format v3 (internal/wiring) — the
+	// spelling every repository wired before INC-12 carries. A region
+	// written or upgraded by the wiring engine keeps the same prefix and
+	// the same end marker but carries the template version and the body
+	// digest on the begin line ("<!-- fathom:begin v3 sha256:… -->"), so
+	// anything LOOKING for a region must match fathomStanzaBeginPrefix, not
+	// the v1 spelling; fathomStanza still renders the v1 form for callers
+	// that want the bare template (doctor's fixtures, gen-claude-md).
+	fathomStanzaBegin       = "<!-- fathom:begin -->"
+	fathomStanzaBeginPrefix = "<!-- fathom:begin"
+	fathomStanzaEnd         = "<!-- fathom:end -->"
+	// fathomStanzaVersion is the template version recorded on the begin
+	// marker. The body is compared byte-for-byte regardless, so this only
+	// needs to move with the marker FORMAT.
+	fathomStanzaVersion = "v3"
 )
 
 // fathomStanza returns the canonical fathom operating-contract block for
@@ -722,73 +883,146 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"fix the code or uncheck the box. Exit 2 = operational (daemon down / index\n" +
 	"stale) — fail-open, not a verification failure."
 
-func fathomStanza(service string) string {
-	body := strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
-	return fathomStanzaBegin + "\n" + body + "\n" + fathomStanzaEnd
+// fathomStanzaBody is the stanza WITHOUT its markers — what goes between
+// them, and what the wiring engine digests.
+func fathomStanzaBody(service string) string {
+	return strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
 }
 
-// applyStanza inserts stanza into path if the file is absent, replaces the
-// content between the markers if present, appends the marked block if the
-// file exists but has never been wired, or — AK-3,
-// docs/plans/pack-taxonomy-adoption.md — refuses loudly if the markers are
-// present but corrupted (only one of the pair found, or END appears before
-// BEGIN, e.g. from a hand-edit that deleted or reordered a marker line).
-// The three normal paths are additive/idempotent: a re-run whose stanza
-// content is unchanged rewrites nothing. The corruption path changes
-// nothing either — silently appending a fresh block on top of a broken
-// pair would compound the corruption (two BEGINs, an orphaned END, or
-// worse) instead of surfacing it for a human to fix.
-func applyStanza(path, stanza string, stdout io.Writer) error {
-	name := filepath.Base(path)
+func fathomStanza(service string) string {
+	return fathomStanzaBegin + "\n" + fathomStanzaBody(service) + "\n" + fathomStanzaEnd
+}
 
-	existing, err := os.ReadFile(path)
+// stanzaRegion is the wiring region for one stanza-carrying file.
+// AdoptUntracked is set because the marker pair IS the ownership claim
+// every repository wired before marker format v3 carries: a v1 region is
+// fathom's, gets its digest on the first write, and is never reported as
+// drift; only a tracked region that no longer matches its digest is.
+func stanzaRegion(file, service string) wiring.Region {
+	return wiring.Region{
+		File:           file,
+		Syntax:         wiring.HTMLMarkers,
+		Version:        fathomStanzaVersion,
+		Body:           fathomStanzaBody(service),
+		AdoptUntracked: true,
+	}
+}
+
+// stanzaBodyOf strips the marker pair from a rendered stanza (fathomStanza's
+// output, or a v3-marked region) and returns the body between them.
+func stanzaBodyOf(stanza string) string {
+	s := stanza
+	if i := strings.Index(s, fathomStanzaBeginPrefix); i >= 0 {
+		if nl := strings.IndexByte(s[i:], '\n'); nl >= 0 {
+			s = s[i+nl+1:]
+		}
+	}
+	if i := strings.LastIndex(s, fathomStanzaEnd); i >= 0 {
+		s = s[:i]
+	}
+	return strings.TrimSuffix(s, "\n")
+}
+
+// applyWiringSpec runs spec through internal/wiring's plan → apply and
+// narrates the outcome per file in init's own vocabulary: "created X",
+// "updated X (…)", "ok X (already present)", and — the law-15 outcome —
+// "BLOCKED X — <why>", which names the drift and writes nothing to that
+// file while the others still apply. The receipt lands in
+// .fathom/receipts.jsonl; nothing here writes a byte outside the engine.
+func applyWiringSpec(root string, spec wiring.Spec, stdout io.Writer) (wiring.Result, error) {
+	res, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{Now: time.Now})
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		if err := os.WriteFile(path, []byte(stanza+"\n"), 0o644); err != nil {
-			return err
-		}
-		fmt.Fprintf(stdout, "created %s\n", name)
-		return nil
+		return res, err
 	}
-
-	content := string(existing)
-	beginIdx := strings.Index(content, fathomStanzaBegin)
-	endIdx := strings.Index(content, fathomStanzaEnd)
-
-	var newContent string
-	switch {
-	case beginIdx >= 0 && endIdx > beginIdx:
-		// Well-formed marker pair — replace the content between them.
-		newContent = content[:beginIdx] + stanza + content[endIdx+len(fathomStanzaEnd):]
-
-	case beginIdx < 0 && endIdx < 0:
-		// Never wired — append a fresh block.
-		sep := "\n\n"
-		if strings.HasSuffix(content, "\n\n") {
-			sep = ""
-		} else if strings.HasSuffix(content, "\n") {
-			sep = "\n"
+	created := map[string]bool{}
+	if res.Receipt != nil {
+		for _, f := range res.Receipt.Files {
+			if !f.Existed {
+				created[f.Path] = true
+			}
 		}
-		newContent = content + sep + stanza + "\n"
-
-	default:
-		// Corrupted: exactly one marker present, or END appears at/before
-		// BEGIN. Refuse rather than guess.
-		return fmt.Errorf("%s has a corrupted fathom marker pair (found %s=%t, %s=%t) — fix or remove the stray marker by hand, then re-run init",
-			name, fathomStanzaBegin, beginIdx >= 0, fathomStanzaEnd, endIdx >= 0)
 	}
-
-	if newContent == content {
-		fmt.Fprintf(stdout, "ok %s (already present)\n", name)
-		return nil
+	type outcome struct {
+		applied, skipped []wiring.Item
+		blocked          []wiring.Item
 	}
-	if err := os.WriteFile(path, []byte(newContent), 0o644); err != nil {
+	byFile := map[string]*outcome{}
+	get := func(file string) *outcome {
+		o, ok := byFile[file]
+		if !ok {
+			o = &outcome{}
+			byFile[file] = o
+		}
+		return o
+	}
+	for _, it := range res.Applied {
+		o := get(it.File)
+		o.applied = append(o.applied, it)
+	}
+	for _, it := range res.Skipped {
+		o := get(it.File)
+		o.skipped = append(o.skipped, it)
+	}
+	for _, it := range res.Blocked {
+		o := get(it.File)
+		o.blocked = append(o.blocked, it)
+	}
+	files := make([]string, 0, len(byFile))
+	for f := range byFile {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	for _, f := range files {
+		o := byFile[f]
+		// One BLOCKED line per distinct reason, not per item: a
+		// settings.json that will not parse blocks every hook key with the
+		// same words, and eight identical lines hide the one that differs.
+		for _, bf := range blockedByFile(o.blocked) {
+			for _, reason := range bf.Reasons {
+				fmt.Fprintf(stdout, "BLOCKED %s — %s\n", f, reason)
+			}
+		}
+		switch {
+		case len(o.applied) > 0 && created[f]:
+			fmt.Fprintf(stdout, "created %s\n", f)
+		case len(o.applied) > 0:
+			what := "fathom hooks added"
+			if o.applied[0].Kind == wiring.KindRegion {
+				what = "fathom stanza"
+			}
+			fmt.Fprintf(stdout, "updated %s (%s)\n", f, what)
+		case len(o.blocked) == 0:
+			fmt.Fprintf(stdout, "ok %s (already present)\n", f)
+		}
+	}
+	return res, nil
+}
+
+// applyStanza writes ONE stanza into path through the wiring engine — the
+// one-file form of what cmdInit does for both files at once, kept for the
+// callers (and tests) that address a single file. stanza is fathomStanza's
+// rendered form (markers included); the body between the markers is what
+// gets written. A BLOCKED verdict (a corrupted marker pair, or a tracked
+// region edited by hand) is returned as an error and the file is left
+// byte-identical; nothing is printed for it.
+func applyStanza(path, stanza string, stdout io.Writer) error {
+	root, file := filepath.Dir(path), filepath.Base(path)
+	region := wiring.Region{
+		File:           file,
+		Syntax:         wiring.HTMLMarkers,
+		Version:        fathomStanzaVersion,
+		Body:           stanzaBodyOf(stanza),
+		AdoptUntracked: true,
+	}
+	plan, err := wiring.PlanWiring(root, wiring.Spec{Regions: []wiring.Region{region}})
+	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "updated %s (fathom stanza)\n", name)
-	return nil
+	if blocked := plan.Blocked(); len(blocked) > 0 {
+		return fmt.Errorf("%s: %s", file, blocked[0].Reason)
+	}
+	_, err = applyWiringSpec(root, wiring.Spec{Regions: []wiring.Region{region}}, stdout)
+	return err
 }
 
 // ─── e. ~/.fathom/config.toml scaffold ────────────────────────────────────

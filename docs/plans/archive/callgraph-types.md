@@ -1,5 +1,7 @@
 # Typed Go call edges — dissolving the O9 residue (ADR-021 §3)
 
+> **Archived** 2026-08-25T23:23:54Z · HEAD `41d0bf66666632fc0ff1a7e202edaf42caede370` · 8 tasks total; 6 claimed (6 verified, 0 failing); 2 skipped
+
 Grounded by wf_d0588a59: emission is syntax-only (goextract collectCalls,
 single-file, no go/types); resolution (callgraph/graph.go:156-242)
 correctly refuses ambiguity — any method name with >1 receiver in the

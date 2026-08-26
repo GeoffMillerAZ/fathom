@@ -1026,7 +1026,7 @@ func checkStanzaPresent(root string) doctorCheck {
 			continue
 		}
 		content := string(data)
-		beginIdx := strings.Index(content, fathomStanzaBegin)
+		beginIdx := strings.Index(content, fathomStanzaBeginPrefix)
 		endIdx := strings.Index(content, fathomStanzaEnd)
 		switch {
 		case beginIdx >= 0 && endIdx > beginIdx:

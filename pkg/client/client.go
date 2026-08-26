@@ -57,6 +57,18 @@ type QueryResult = core.QueryResult
 // fusion.Report.
 type Report = fusion.Report
 
+// ReadFailure names one file an Ingest could not read — Report.ReadFailures
+// lists them sorted by Path. It is a re-export of fusion.ReadFailure.
+type ReadFailure = fusion.ReadFailure
+
+// ReadFailuresError is the error Ingest returns beside a complete Report
+// when at least one file could not be read (IT-14). Refused marks the O16
+// guard (IT-15): the ingest could read nothing and the store already held
+// evidence for the service, so nothing was written. Hint() carries the
+// operator hint for the failure class. It is a re-export of
+// fusion.ReadFailuresError.
+type ReadFailuresError = fusion.ReadFailuresError
+
 // SymbolNode is a symbol with location and outgoing call edges. It is a
 // re-export of core.SymbolNode.
 type SymbolNode = core.SymbolNode

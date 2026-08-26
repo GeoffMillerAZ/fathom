@@ -45,6 +45,18 @@ type obsServiceRow struct {
 	// preventing, gating — that grades what fathom is DOING here rather
 	// than how it is configured.
 	Realization *realizationReport `json:"realization,omitempty"`
+	// Series (RG-6): the 30-day per-dimension activity series from the call
+	// log. Nil when the log could not be read (the model's CallLogNote then
+	// carries the reason) — a series of thirty "no rows" absences would
+	// claim the log was read and found empty, which is a different claim.
+	Series []dimSeries `json:"series,omitempty"`
+	// SymbolsNote (RG-8) is non-empty when no store read reported a symbol
+	// count for this row: the symbols cell then renders the note, never
+	// the int's zero value. buildObservatoryModel leaves it empty because
+	// a row only exists once the daemon's registry answered for it; a
+	// model assembled from any other source must set it rather than let
+	// Symbols default to a fabricated 0 (law 3).
+	SymbolsNote string `json:"symbols_note,omitempty"`
 }
 
 // obsArmBanner / obsNarrateBanner surface the active dials loudly.
@@ -155,6 +167,14 @@ type observatoryModel struct {
 	// log is unreadable — never fabricated.
 	TrafficDays []obsTrafficDay `json:"traffic_days,omitempty"`
 
+	// CallLogNote (RG-8) is readCallLog's read bool surfaced as a named
+	// absence: non-empty when the call log could not be read, and then
+	// every call-log-derived figure — per-service traffic, the fleet's
+	// tool-call total, the agent-surface share, rules served, the 30-day
+	// series — is absent WITH this reason rather than a zero. Empty means
+	// the log was read, and a zero downstream is a measured zero.
+	CallLogNote string `json:"call_log_note,omitempty"`
+
 	// Misses (IQ-3): per-tool outcome profile from the call log.
 	Misses []obsMissRow `json:"misses,omitempty"`
 
@@ -219,7 +239,19 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 				}
 			}
 		}
-		entries, _, _ := readCallLog(callLogPath)
+		// classifyCallLogRead (instrument_adoption.go) tells "no log yet"
+		// (ENOENT) apart from a log that is right there and unreadable (a
+		// wedged TCC verdict, a permission defect); both are absences the
+		// tiles must name, but only the second is a defect worth a remedy.
+		entries, _, callLogErr := classifyCallLogRead(callLogPath)
+		callLogRead := callLogErr == nil
+		switch {
+		case callLogRead:
+		case os.IsNotExist(callLogErr):
+			m.CallLogNote = "no call log at " + callLogPath + " — nothing recorded yet; traffic figures are not measured, never zero"
+		default:
+			m.CallLogNote = "call log unreadable: " + callLogErr.Error() + " — traffic figures are not measured, never zero"
+		}
 		m.Misses = buildMissModel(entries)
 
 		// Ledger sessions per repo (mirrors fleetreport.go's own fold): the
@@ -346,6 +378,9 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			}
 			rr := realizationGrade(row, win)
 			row.Realization = &rr
+			if callLogRead {
+				row.Series = dimensionSeries(entries, name, now, seriesDays)
+			}
 			cp := buildConfigPanel(info.path, obligationsBySvc[name])
 			row.Config = &cp
 			if note, ok := compileBySvc[name]; ok && note != "" {
@@ -355,9 +390,11 @@ func buildObservatoryModel(baseURL string, now time.Time) observatoryModel {
 			}
 			m.Services = append(m.Services, row)
 		}
-		for i := 13; i >= 0; i-- {
-			d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
-			m.TrafficDays = append(m.TrafficDays, obsTrafficDay{Date: d, Calls: byDay[d]})
+		if callLogRead {
+			for i := 13; i >= 0; i-- {
+				d := now.UTC().AddDate(0, 0, -i).Format("2006-01-02")
+				m.TrafficDays = append(m.TrafficDays, obsTrafficDay{Date: d, Calls: byDay[d]})
+			}
 		}
 		// RG-4: ordered by UNREALIZED VALUE, not by traffic. Sorting by
 		// call count answers "who is busy", which nobody needs to be told;

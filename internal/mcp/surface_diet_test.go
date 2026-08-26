@@ -9,8 +9,8 @@ import "testing"
 // long tail belongs on bare /rpc.
 func TestAgentSurfaceDiet(t *testing.T) {
 	tools := AgentSurfaceTools()
-	if len(tools) > 16 {
-		t.Fatalf("agent surface carries %d tools — the diet caps it at 16; the long tail belongs on /rpc (TD-2)", len(tools))
+	if len(tools) > 17 {
+		t.Fatalf("agent surface carries %d tools — the diet caps it at 17 (16 + memory_search, AM-8); the long tail belongs on /rpc (TD-2)", len(tools))
 	}
 	on := map[string]bool{}
 	for _, name := range tools {

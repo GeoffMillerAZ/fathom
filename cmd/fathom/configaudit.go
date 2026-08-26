@@ -4,7 +4,9 @@ package main
 // config audit`, the config custodian's verb (vision 22, "instructed means
 // true"). Fathom is the instrument, never the hand (§3b): everything here
 // REPORTS — the session with a human present decides what to edit.
-// Mechanical only: file reads and regexps, no daemon, no LLM.
+// Mechanical only: file reads and regexps, no LLM; the one kind that asks
+// the daemon (stanza_tools_served, CC-14) reports unable-to-check when it
+// is down, never a violation.
 
 import (
 	"encoding/json"

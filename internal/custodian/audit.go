@@ -16,7 +16,13 @@ import (
 // Audit evaluates every concern against the repository at root. One
 // Finding per concern, in input (ID-sorted) order; a disabled concern is
 // reported as off — named, never silently absent.
-func Audit(root string, concerns []Concern) []Finding {
+//
+// Options (options.go) inject the two things the CC-14/CC-15 kinds read
+// beyond the tree — the daemon's tool registry and the user's thread log
+// — plus the clock; every default is the live one, so callers with no
+// opinion pass nothing.
+func Audit(root string, concerns []Concern, opts ...Option) []Finding {
+	env := newAuditEnv(opts)
 	files, filesErr := AgentConfigFiles(root)
 	out := make([]Finding, 0, len(concerns))
 	for _, c := range concerns {
@@ -24,7 +30,7 @@ func Audit(root string, concerns []Concern) []Finding {
 			out = append(out, Finding{Concern: c, Status: StatusOff, Detail: offDetail(c)})
 			continue
 		}
-		out = append(out, checkConcern(root, files, filesErr, c))
+		out = append(out, checkConcern(root, files, filesErr, c, env))
 	}
 	return out
 }
@@ -39,11 +45,12 @@ func offDetail(c Concern) string {
 // checkConcern evaluates one active concern. Every path ends in a status
 // with a detail — an unevaluable check is unable-to-check with the reason,
 // never a silent skip and never a fake pass (law 3).
-func checkConcern(root string, files []string, filesErr error, c Concern) Finding {
+func checkConcern(root string, files []string, filesErr error, c Concern, env auditEnv) Finding {
 	f := Finding{Concern: c}
 	needsCorpus := c.Check.Kind == KindForbiddenPattern ||
 		c.Check.Kind == KindCommandDocumentedAndExists ||
-		c.Check.Kind == KindPointersResolve
+		c.Check.Kind == KindPointersResolve ||
+		c.Check.Kind == KindStanzaToolsServed
 	if needsCorpus && filesErr != nil {
 		f.Status = StatusUnable
 		f.Detail = fmt.Sprintf("agent-config discovery failed: %v", filesErr)
@@ -59,6 +66,10 @@ func checkConcern(root string, files []string, filesErr error, c Concern) Findin
 		return checkMaxLines(root, c)
 	case KindPointersResolve:
 		return checkPointersResolve(root, files, c)
+	case KindStanzaToolsServed:
+		return checkStanzaToolsServed(root, files, c, env)
+	case KindHandoffCitesInstruments:
+		return checkHandoffCitesInstruments(root, c, env)
 	default:
 		// The loader refuses unknown kinds; reaching here means a caller
 		// constructed a Check by hand. Same honesty either way.

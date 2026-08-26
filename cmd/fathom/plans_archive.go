@@ -123,10 +123,11 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 		return "", fmt.Errorf("claimed row(s) do not verify green right now: %s", strings.Join(failing, ", "))
 	}
 
-	// Criterion 3: lexical absorption into CHANGELOG.md or ADR.md.
+	// Criterion 3: lexical absorption into CHANGELOG.md, ADR.md, or the
+	// per-release narrative under docs/changelog/.
 	absorbedText, err := readAbsorptionCorpus(root)
 	if err != nil {
-		return "", fmt.Errorf("reading CHANGELOG.md/ADR.md: %w", err)
+		return "", fmt.Errorf("reading CHANGELOG.md/ADR.md/docs/changelog: %w", err)
 	}
 	var unabsorbed []string
 	for _, row := range rows {
@@ -137,7 +138,7 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 	}
 	if len(unabsorbed) > 0 {
 		sort.Strings(unabsorbed)
-		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md or ADR.md: %s",
+		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md, ADR.md, or docs/changelog/*.md: %s",
 			strings.Join(unabsorbed, ", "))
 	}
 
@@ -283,12 +284,25 @@ func isWordByte(c byte) bool {
 	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
-// readAbsorptionCorpus concatenates CHANGELOG.md and ADR.md's raw text
-// (missing files tolerated as empty — a repo without one yet just fails the
-// absorption check honestly rather than erroring operationally).
+// readAbsorptionCorpus concatenates CHANGELOG.md, ADR.md, and every
+// docs/changelog/*.md (the per-release narrative record the 2026-08-24
+// condensation moved row ids into — CHANGELOG.md keeps the two-sentence
+// lines, docs/changelog/<version>.md keeps the ids as originally written).
+// Missing files are tolerated as empty — a repo without one yet just fails
+// the absorption check honestly rather than erroring operationally. The
+// narrative files are read in sorted order so the corpus is deterministic.
 func readAbsorptionCorpus(root string) (string, error) {
+	names := []string{"CHANGELOG.md", "ADR.md"}
+	narrative, err := filepath.Glob(filepath.Join(root, "docs", "changelog", "*.md"))
+	if err != nil {
+		return "", err
+	}
+	sort.Strings(narrative)
+	for _, p := range narrative {
+		names = append(names, filepath.ToSlash(mustRel(root, p)))
+	}
 	var b strings.Builder
-	for _, name := range []string{"CHANGELOG.md", "ADR.md"} {
+	for _, name := range names {
 		data, err := os.ReadFile(filepath.Join(root, name))
 		if err != nil {
 			if os.IsNotExist(err) {

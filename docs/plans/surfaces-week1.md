@@ -20,7 +20,7 @@ registry.
 
 ## Operator step (recorded when done)
 
-- [ ] User-scope MCP registration re-pointed at /rpc/agent — the one config line companion failed for want of {id: SW-7, symbol: runServeHTTP, skip_test: true, skip: "registration change outside the repo; anchored to the serving symbol"}
+- [x] User-scope MCP registration re-pointed at /rpc/agent — the one config line companion failed for want of {id: SW-7, symbol: runServeHTTP, skip_test: true, skip: "registration change outside the repo; anchored to the serving symbol; verified 2026-08-25: the user-scope mcpServers.fathom url is http://localhost:7575/rpc/agent"}
 
 ## Deferred (30-day kill clock runs from SW-7 with origin tagging live)
 

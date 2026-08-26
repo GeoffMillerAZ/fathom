@@ -6,10 +6,11 @@ All notable changes to fathom. Format loosely follows
 **How to read this file.** Each release opens with what it was for, then
 one block per day: a bold topic naming the program and its plan rows
 (`SH-1..6`, `O16`, `ADR-025` are durable reference points -- `fathom plans
-archive` checks that every archived row id is absorbed here), followed by
-what changed. The full narrative record -- root causes, measurements,
-rationale as originally written -- lives per release under
-`docs/changelog/` and is never normative; plans, ADRs, and observations are.
+archive` checks that every archived row id is absorbed here, in `ADR.md`, or
+in the per-release narrative), followed by what changed. The full narrative
+record -- root causes, measurements, rationale as originally written -- lives
+per release under `docs/changelog/` and is never normative; plans, ADRs, and
+observations are.
 From 2026-08-25 the `[Unreleased]` block follows the change-records rules
 (`agentic-kit/docs/project-intent/changes.md`): a `Release impact:` line first,
 one line per observable change at most two sentences, `### Breaking` first
@@ -21,6 +22,18 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### 2026-08-25
+
+**Frontier closed: ingest honesty, project budgets, law 15 on the production path, repo-scoped threads, custodian concerns, memory surfacing, observatory series (IT-14/15, BA-9, SH-7/8, TH-6, CC-14/15, AM-6/8, RG-6..8, INC-12)**
+- IT-14/IT-15 (O16 fixed): `fathom ingest` counts and names unreadable files in a `read-failed:` column with their errno (plus the external-volume TCC hint), still indexes what it could read, and exits 1; a run that could read nothing refuses to replace a populated index, and the daemon's `ingest` tool returns the same cause as a JSON-RPC error.
+- BA-9: a `budgets` block in `.fathom/capabilities.cue` or `~/.fathom/capabilities.cue` sets per-class answer budgets (`list`, `composite`, `map`; tokens; project → user → built-in); `capabilities set` preserves it.
+- INC-12, SH-7, SH-8: `fathom init` and `fleet reconcile --apply` write only through the wiring engine — v3 digest markers, receipts, `fleet undo`; a hand-edited tracked region is refused and named while a v1 region is adopted. The observatory gains preview → typed diff → apply with a plan digest (409 on drift) behind `requireLocalMutation` (loopback, same-origin, registered services only).
+- TH-6: `thread note|point` default to the current repo's thread; `thread list|brief` show this repo's items and count the rest (`--all-repos`, `--all`).
+- CC-14, CC-15: custodian kinds `stanza_tools_served` (every tool the stanza names is served by the daemon; daemon down reads unable-to-check) and `handoff_cites_instruments` (a handoff note claiming shipped work must cite a commit, plan row, verify run, or retro).
+- AM-6, AM-8: the edit-hook appends a labeled, budget-respecting memory block for memories anchored to the edited file; `memory_search` joins the agent surface (17 tools), every result carries tier and state, retired memories never surface.
+- RG-6..8: the service page renders 30-day per-dimension series and the fleet page a grade distribution from real call-log rows; an absent day renders `stat.Absent` with its reason, never a zero or a line across the gap, and unreadable sources render Absent.
+- `task store-purego` joins `task validate` (the pure-Go store is proven on every push); `fathom plans archive` also scans `docs/changelog/*.md` for absorbed row ids; sibling-project names left the fixtures (ADR-011).
+- Operator rows recorded with evidence: GKE-W1-14 (live-store format markers), SW-7 (registration at `/rpc/agent`), H1-17 (injection coverage 99% over 168 h).
+- Project Intent adopted: `docs/intent/` (router, living docs, decisions index over `ADR.md`) and the stanza in `CLAUDE.md`/`AGENTS.md`.
 
 **Reachability truth: function values are edges, the gate goes quiet (VS-5..10, O18, O19)**
 - VS-6: a function referenced as a value is an edge in both passes (`core.EdgeFuncValue`): `mux.HandleFunc(p, h)`, route-table literals, `http.HandlerFunc(h)`, middleware, method values. An httptest that builds a server now statically reaches every handler it registers; webui rows no longer need direct-call tests (consumer finding G15). Building it caught a phantom-edge bug: a selector's trailing ident bypassed the interface check.

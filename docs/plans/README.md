@@ -98,8 +98,9 @@ frontier (open rows plus claimed-but-failing rows) with their `{id, symbol,
 package}` anchors, for an agent picking up work.
 
 `fathom plans archive <plan>` moves a plan whose every row is proven or
-dispositioned, and whose row IDs are lexically absorbed into CHANGELOG.md or
-ADR.md, to `docs/plans/archive/` — writing a tombstone (date, HEAD sha, verify
+dispositioned, and whose row IDs are lexically absorbed into CHANGELOG.md,
+ADR.md, or the per-release narrative under `docs/changelog/*.md`, to
+`docs/plans/archive/` — writing a tombstone (date, HEAD sha, verify
 summary) into the archived file's header. `fathom plans restore <plan>` moves
 it back. **`docs/plans/archive/` is out of gate scope by construction**: both
 the pre-push `verify` command (`lefthook.yml`) and CI (`scripts/ci.sh`) walk

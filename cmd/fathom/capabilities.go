@@ -11,6 +11,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -254,7 +255,15 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
-	existing, _ := reg.LoadSettings(path, target)
+	// A file that does not load cannot be rewritten honestly: the loader
+	// saw nothing it could keep, so a write would replace whatever the
+	// author meant with only this one line. Refuse and name the fix.
+	existing, lerr := reg.LoadSettings(path, target)
+	if lerr != nil {
+		fmt.Fprintf(stderr, "error: %v\n", lerr)
+		fmt.Fprintf(stderr, "       fix the file by hand before `fathom capabilities set` can rewrite its capabilities block\n")
+		return 1
+	}
 	if existing == nil {
 		existing = capability.Settings{}
 	}
@@ -267,29 +276,61 @@ func cmdCapabilitiesSet(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// capabilityConfigPath is the one place cmd/fathom spells a scope's file:
+// both spellings come from internal/capability (DefaultUserPath,
+// ProjectPath), the same ones the daemon loads the `budgets` block from,
+// so a set here is always read back there.
 func capabilityConfigPath(repo string, scope capability.Scope) (string, error) {
 	if scope == capability.ScopeUser {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("cannot resolve home dir: %w", err)
+		p := capability.DefaultUserPath()
+		if p == "" {
+			return "", errors.New("cannot resolve home dir")
 		}
-		return filepath.Join(home, ".fathom", capability.UserFileName), nil
+		return p, nil
 	}
 	root, err := filepath.Abs(repo)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, ".fathom", capability.ProjectFileName), nil
+	return capability.ProjectPath(root), nil
 }
 
-// writeCapabilitySettings rewrites the whole settings block. The file is
-// fathom's own (tier 1 ownership, docs/design/self-healing-fleet.md §3), so
-// a full rewrite is legitimate here — unlike CLAUDE.md, nothing else lives
-// in it.
+// capabilitiesFileHeader opens a file `set` creates from nothing. An
+// existing file keeps whatever header it has — it is never re-rendered.
+const capabilitiesFileHeader = "// Written by `fathom capabilities set`. Safe to hand-edit.\n" +
+	"// See `fathom capabilities` for what is on and why.\n\n"
+
+// writeCapabilitySettings rewrites ONLY the `capabilities` block of path.
+// The file is fathom's own (tier 1 ownership, docs/design/self-healing-
+// fleet.md §3) but the block is not its only tenant: the `budgets` block
+// (BA-9) shares it, as do a scaffold's teaching comments and anything the
+// user hand-wrote — "safe to hand-edit" is a promise. So the block's own
+// bytes are spliced in place (capability.SpliceSettingsBlock) and every
+// other byte survives verbatim; a file the splice cannot round-trip is
+// refused with the manual edit named, never approximated.
 func writeCapabilitySettings(path string, reg capability.Registry, s capability.Settings) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	block := renderCapabilitiesBlock(reg, s)
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(path, []byte(capabilitiesFileHeader+block+"\n"), 0o644)
+	}
+	if err != nil {
 		return err
 	}
+	out, err := capability.SpliceSettingsBlock(path, data, []byte(block))
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0o644)
+}
+
+// renderCapabilitiesBlock renders the block `set` owns, ids sorted, each
+// line carrying the capability's summary as a comment. No trailing
+// newline: the splice keeps whatever followed the old block.
+func renderCapabilitiesBlock(reg capability.Registry, s capability.Settings) string {
 	ids := make([]string, 0, len(s))
 	for id := range s {
 		ids = append(ids, id)
@@ -297,18 +338,16 @@ func writeCapabilitySettings(path string, reg capability.Registry, s capability.
 	sort.Strings(ids)
 
 	var b strings.Builder
-	b.WriteString("// Written by `fathom capabilities set`. Safe to hand-edit.\n")
-	b.WriteString("// See `fathom capabilities` for what is on and why.\n\n")
 	b.WriteString("capabilities: {\n")
 	for _, id := range ids {
 		summary := ""
 		if c, ok := reg.Get(id); ok {
 			summary = "  // " + firstClause(c.Summary)
 		}
-		fmt.Fprintf(&b, "\t%s: on: %-5t%s\n", id, s[id], summary)
+		fmt.Fprintf(&b, "\t%s: on: %-5t%s\n", capability.FieldLabel(id), s[id], summary)
 	}
-	b.WriteString("}\n")
-	return os.WriteFile(path, []byte(b.String()), 0o644)
+	b.WriteString("}")
+	return b.String()
 }
 
 // loadCapabilityConfig reads both scopes, returning the resolution plus any
@@ -317,8 +356,7 @@ func writeCapabilitySettings(path string, reg capability.Registry, s capability.
 func loadCapabilityConfig(reg capability.Registry, root string) (capability.Resolution, []error) {
 	var errs []error
 	res := capability.Resolution{}
-	if home, err := os.UserHomeDir(); err == nil {
-		p := filepath.Join(home, ".fathom", capability.UserFileName)
+	if p := capability.DefaultUserPath(); p != "" {
 		s, lerr := reg.LoadSettings(p, capability.ScopeUser)
 		if lerr != nil {
 			errs = append(errs, lerr)
@@ -326,7 +364,7 @@ func loadCapabilityConfig(reg capability.Registry, root string) (capability.Reso
 			res.User = s
 		}
 	}
-	p := filepath.Join(root, ".fathom", capability.ProjectFileName)
+	p := capability.ProjectPath(root)
 	s, lerr := reg.LoadSettings(p, capability.ScopeProject)
 	if lerr != nil {
 		errs = append(errs, lerr)

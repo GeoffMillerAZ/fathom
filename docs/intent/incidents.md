@@ -20,15 +20,6 @@ worktree older than its session is an incident).
 Class: gate-bypassed
 Outcome: pending (deletion needs the owner: `questions.md` Q3; then `autonomy.md` "Ask first" carries the rule)
 
-### INC-2 2026-08-21 A wedged reader wrote a zero-symbol index that reported "0 failed"
-What: five `bin/fathom ingest` runs under the external-volume EPERM wedge wrote 0 symbols
-and exited 0; `fathom verify` then refuted 24 freshly proven rows.
-Evidence: `.fathom/observations.md` O16; commit e1fd587.
-Would have caught it: a read error counted in the failed column; a refusal to overwrite a
-populated index with an empty one.
-Class: wrong-done-claim
-Outcome: pending (IT-14/15 in `docs/plans/instrument-truth.md`; scope G1)
-
 ### INC-3 2026-08-25 The post-commit hook does what the Index-first rule forbids
 What: `lefthook.yml` post-commit runs a shell `bin/fathom ingest --service fathom … --store
 workspace/db/fleet.sqlite` against the store the daemon serves, on every commit; this is
@@ -37,18 +28,7 @@ shell `fathom ingest` against the shared store."
 Evidence: `lefthook.yml` post-commit `fathom-refresh`; `CLAUDE.md` Index-first row.
 Would have caught it: a custodian concern that the hook's command matches the documented rule.
 Class: intent-violated
-Outcome: pending (`questions.md` Q2: route through the daemon or land IT-14/15 first)
-
-### INC-12 2026-08-25 Law 15 holds in the engine, not on the production write path
-What: `fathom init` and `fathom fleet reconcile --apply` (the verbs that write
-`CLAUDE.md`, `AGENTS.md`, `.claude/settings.json` across 17 repos) do not call
-`internal/wiring`: a hand edit inside the marker region is replaced, not refused, and no
-receipt is written, so `fleet undo` cannot reverse them.
-Evidence: `cmd/fathom/init.go` `applyStanza` (unconditional region replace, v1 markers
-without a digest); `cmd/fathom/reconcile.go`; `internal/wiring` has one importer (`fleetwiring.go`).
-Would have caught it: a test that the production verbs' writes appear in `receipts.jsonl`.
-Class: intent-violated
-Outcome: pending (`questions.md` Q11)
+Outcome: pending — mitigated: IT-15 now refuses an empty overwrite from either path (`invariants.md` I25); the hook still contradicts the rule (`questions.md` Q2)
 
 ### INC-13 2026-08-25 The raw-`cp` deploy instruction survives outside the audit's corpus
 What: `docs/adoption/claude-code.md` instructs `cp bin/fathom ~/.local/libexec/fathom/fathom`
@@ -61,6 +41,8 @@ Outcome: pending (widen the concern or fix the doc; the doc edit is not part of 
 
 ## Closed
 
+- INC-2 2026-08-21 A wedged reader wrote a zero-symbol index that reported "0 failed" (O16) → IT-14/IT-15: read failures counted and named, zero-readable runs refuse to overwrite (`TestIngestRefusesEmptyOverwriteOnReadErrors`).
+- INC-12 2026-08-25 Law 15 held in the engine, not on the production write path → `init`/`reconcile --apply` write only through `internal/wiring` (`TestInitWritesReceipt`, `TestReconcileStopsOnDriftedRegion`).
 - INC-4 2026-08-12 The documented deploy (raw `cp`) took the daemon down fleet-wide (O25) → `.fathom/concerns.cue` deploy_safety; `CLAUDE.md` non-negotiable row; `task deploy` serving assertion.
 - INC-5 2026-08-08 Every redeploy re-rolled the TCC grant (O10) → `domain.md` platform fact; `fathom-dev` signing identity in `task deploy`.
 - INC-6 2026-07-24 Obligations injection inert for six days after the rename while hooks looked healthy (O15) → deterministic, never-collapsing service resolution (IO-1..3, `cmd/fathom/serviceident_test.go`); doctor `obligations_served` probe.

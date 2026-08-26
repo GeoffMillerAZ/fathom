@@ -635,3 +635,115 @@ func TestTornApplyStillWritesAReceipt(t *testing.T) {
 		t.Errorf("the receipt must name the file that WAS written; got %+v", receipts[0].Files)
 	}
 }
+
+// ─── INC-12: the v1→v3 migration switch ──────────────────────────────────
+
+// TestAdoptUntrackedUpgradesLegacyRegion pins the production path's
+// compatibility rule: a pre-v3 region (marker pair, no digest) is fathom's
+// by its markers when the caller says so — upgraded and digest-marked on
+// the first write, never reported as drift — while the engine default
+// stays strict, and a TRACKED region that differs is still drift.
+func TestAdoptUntrackedUpgradesLegacyRegion(t *testing.T) {
+	legacyBody := "## fathom code intelligence\n\nwording no shipped template ever carried"
+	legacy := "# demo\n\nhouse prose\n\n<!-- fathom:begin -->\n" + legacyBody + "\n<!-- fathom:end -->\n\ntrailing\n"
+
+	strict := Region{File: "CLAUDE.md", Syntax: HTMLMarkers, Version: "v3", Body: stanzaBody}
+	adopt := strict
+	adopt.AdoptUntracked = true
+
+	// Default: unknown provenance stays BLOCKED.
+	root := t.TempDir()
+	write(t, root, "CLAUDE.md", legacy)
+	plan, err := PlanWiring(root, Spec{Regions: []Region{strict}})
+	if err != nil {
+		t.Fatalf("PlanWiring(strict): %v", err)
+	}
+	if got := itemFor(t, plan, "CLAUDE.md", "fathom:region").Verdict; got != VerdictBlocked {
+		t.Fatalf("strict engine verdict = %s, want blocked (unknown provenance is not adopted by default)", got)
+	}
+
+	// AdoptUntracked: apply, upgrade, record — and it is NOT drift.
+	plan, err = PlanWiring(root, Spec{Regions: []Region{adopt}})
+	if err != nil {
+		t.Fatalf("PlanWiring(adopt): %v", err)
+	}
+	it := itemFor(t, plan, "CLAUDE.md", "fathom:region")
+	if it.Verdict != VerdictApply || !it.Present {
+		t.Fatalf("adopt verdict = %s present=%v, want apply/present", it.Verdict, it.Present)
+	}
+	if strings.Contains(strings.ToLower(it.Reason), "edited by hand") {
+		t.Errorf("an untracked region was described as drift: %q", it.Reason)
+	}
+	res, err := ApplyWiring(root, Spec{Regions: []Region{adopt}}, ApplyOptions{Now: fixedClock()})
+	if err != nil {
+		t.Fatalf("ApplyWiring(adopt): %v", err)
+	}
+	if res.Receipt == nil || len(res.Applied) != 1 {
+		t.Fatalf("adopt wrote applied=%d receipt=%v, want 1 applied with a receipt", len(res.Applied), res.Receipt != nil)
+	}
+	got := read(t, root, "CLAUDE.md")
+	if !strings.HasPrefix(got, "# demo\n\nhouse prose\n\n") || !strings.HasSuffix(got, "\n\ntrailing\n") {
+		t.Errorf("bytes outside the region changed:\n%s", got)
+	}
+	reg, err := parseOwnedRegion(got, HTMLMarkers)
+	if err != nil {
+		t.Fatalf("re-parse: %v", err)
+	}
+	if !reg.Tracked() || reg.Version != "v3" || reg.Body != stanzaBody {
+		t.Fatalf("upgraded region tracked=%v version=%q body=%q — the first write must record a digest and the template", reg.Tracked(), reg.Version, reg.Body)
+	}
+
+	// Now it is tracked: current → skip; a hand edit → BLOCKED as drift.
+	plan, _ = PlanWiring(root, Spec{Regions: []Region{adopt}})
+	if got := itemFor(t, plan, "CLAUDE.md", "fathom:region").Verdict; got != VerdictSkip {
+		t.Errorf("second plan verdict = %s, want skip", got)
+	}
+	write(t, root, "CLAUDE.md", strings.Replace(got, "Indexed as service", "Indexed (by hand) as service", 1))
+	plan, _ = PlanWiring(root, Spec{Regions: []Region{adopt}})
+	it = itemFor(t, plan, "CLAUDE.md", "fathom:region")
+	if it.Verdict != VerdictBlocked || !strings.Contains(it.Reason, "edited by hand") {
+		t.Errorf("tracked+edited verdict = %s (%s), want blocked as drift even with AdoptUntracked", it.Verdict, it.Reason)
+	}
+}
+
+// TestAdoptUntrackedUpdatesUnrecordedKey: a marker-identified hook entry a
+// pre-ledger fathom wrote is updated and recorded when the caller adopts
+// it; the engine default leaves it as someone else's.
+func TestAdoptUntrackedUpdatesUnrecordedKey(t *testing.T) {
+	stale := "{\n  \"hooks\": {\n    \"PostToolUse\": [{\"matcher\": \"Edit|Write|MultiEdit\", \"hooks\": [{\"type\": \"command\", \"command\": \"/Volumes/x/bin/fathom edit-hook\", \"timeout\": 5}]}]\n  }\n}\n"
+	key := Key{File: ".claude/settings.json", Kind: KindJSONHook, Path: []string{"PostToolUse", "Edit|Write|MultiEdit"}, Marker: "fathom edit-hook", Body: "fathom edit-hook", Timeout: 5}
+
+	root := t.TempDir()
+	write(t, root, ".claude/settings.json", stale)
+	plan, err := PlanWiring(root, Spec{Keys: []Key{key}})
+	if err != nil {
+		t.Fatalf("PlanWiring(strict): %v", err)
+	}
+	if got := itemFor(t, plan, ".claude/settings.json", key.ID()).Verdict; got != VerdictSkip {
+		t.Fatalf("strict verdict = %s, want skip (unrecorded is someone else's by default)", got)
+	}
+
+	key.AdoptUntracked = true
+	res, err := ApplyWiring(root, Spec{Keys: []Key{key}}, ApplyOptions{Now: fixedClock()})
+	if err != nil {
+		t.Fatalf("ApplyWiring(adopt): %v", err)
+	}
+	if len(res.Applied) != 1 || res.Receipt == nil {
+		t.Fatalf("adopt applied=%d receipt=%v, want 1 with a receipt", len(res.Applied), res.Receipt != nil)
+	}
+	got := read(t, root, ".claude/settings.json")
+	if strings.Contains(got, "/Volumes/x") || !strings.Contains(got, `"command": "fathom edit-hook"`) {
+		t.Errorf("stale entry not updated to the template:\n%s", got)
+	}
+	ledger, err := LoadLedger(root)
+	if err != nil {
+		t.Fatalf("LoadLedger: %v", err)
+	}
+	if _, owned := ownedKey(ledger, key.File, key.ID()); !owned {
+		t.Error("adopted key was not recorded in the ledger — a later hand edit would be invisible")
+	}
+	plan, _ = PlanWiring(root, Spec{Keys: []Key{key}})
+	if got := itemFor(t, plan, ".claude/settings.json", key.ID()).Verdict; got != VerdictSkip {
+		t.Errorf("post-adopt verdict = %s, want skip", got)
+	}
+}

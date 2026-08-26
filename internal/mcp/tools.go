@@ -98,7 +98,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		nodes := toNodeDTOs(result.Nodes)
-		nodes, el := applyBudget(nodes, budgetDefaults("query_symbols", budgetSettings{}),
+		nodes, el := applyBudget(nodes, budgetDefaults("query_symbols", s.budgets),
 			"relevance score, descending",
 			"re-call with a larger budget, or narrow concern/keywords")
 		return symbolQueryResult{

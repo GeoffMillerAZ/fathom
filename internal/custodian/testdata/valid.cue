@@ -1,4 +1,4 @@
-// A positive fixture: every v1 check kind, loaded by TestValidFixtureLoads.
+// A positive fixture: every check kind, loaded by TestValidFixtureLoads.
 concerns: {
 	deploy_safety: {
 		want:  "no raw-cp deploy instruction anywhere in agent config"
@@ -16,5 +16,13 @@ concerns: {
 	pointers_hold: {
 		want:  "every relative path in agent config resolves"
 		check: {kind: "pointers_resolve"}
+	}
+	stanza_current: {
+		want:  "every tool the fathom stanza names is served by the running daemon"
+		check: {kind: "stanza_tools_served"}
+	}
+	completion_cites: {
+		want:  "a handoff note that claims shipped work cites a commit, plan row, verify run, or retro"
+		check: {kind: "handoff_cites_instruments", days: 7}
 	}
 }

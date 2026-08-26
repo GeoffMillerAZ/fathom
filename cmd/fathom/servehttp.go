@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
@@ -160,6 +161,17 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	} else {
 		srv = mcp.NewServerWithFleetAndLogger(backend, &fleetAdapter{c: c, stderr: stderr}, logger)
 	}
+	// BA-9: budget defaults are project-settable. The `budgets` block of
+	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
+	// ~/.fathom/capabilities.cue sizes each tool class in tokens, resolved
+	// project → user → built-in inside the server. A broken block is
+	// reported loudly and the measured built-in stands for THAT scope —
+	// never a silent partial read. Restart-to-apply, like config.toml.
+	budgets, budgetErrs := capability.LoadBudgetResolution(capability.DefaultUserPath(), capability.DefaultProjectPath())
+	for _, e := range budgetErrs {
+		fmt.Fprintf(stderr, "warn: %v — built-in budget defaults stand for that scope\n", e)
+	}
+	srv.SetBudgets(budgets)
 	// GKE-MH-7 (critic finding 2): a configured modules token means this is
 	// a hosted, network-reachable deployment — /rpc/modules must serve ONLY
 	// its own curated allowlist (never GroupShared's fleet-backend reads or
@@ -326,6 +338,7 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 	mux.Handle("/observatory/session", observatorySessionPage(selfURL))
 	mux.Handle("/observatory/story", observatoryStoryPage(selfURL))
 	mux.Handle("/observatory/brief", observatoryBriefPage(selfURL))
+	mux.Handle("/observatory/wiring/", wiringRoutes(clientWiringRegistry(c), selfURL, time.Now)) // SH-7/SH-8: preview → apply → undo, law-13 gated (observatory_apply.go)
 
 	// serveRPC handles one JSON-RPC 2.0 message on the named surface.
 	serveRPC := func(w http.ResponseWriter, r *http.Request, surface string) {

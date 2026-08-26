@@ -46,6 +46,15 @@ type Key struct {
 	Marker  string   // KindJSONHook: the command substring that is fathom's signature
 	Body    string   // KindYAMLCommand: the child block; KindJSONHook: the command
 	Timeout int      // KindJSONHook: the hook timeout in seconds, omitted when 0
+	// AdoptUntracked is the pre-ledger migration switch (INC-12), the key
+	// counterpart of Region.AdoptUntracked: an entry that is PRESENT and
+	// identified as fathom's own (KindJSONHook: by Marker) but absent from
+	// .fathom/owned.json was written by a fathom that kept no ledger. The
+	// caller that sets this asserts the entry's identity is fathom's, so an
+	// out-of-date one is updated to the template and recorded rather than
+	// left as "someone else's". An entry that already matches is skipped
+	// unchanged. The engine default (false) stays strict.
+	AdoptUntracked bool
 }
 
 // ID is the key's stable address, and the string the ownership ledger

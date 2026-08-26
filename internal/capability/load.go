@@ -215,6 +215,17 @@ func ExampleTemplate(r Registry) []byte {
 		fmt.Fprintf(&b, "//     %-14s on: %-5s // %s\n", c.ID+":", def, firstSentence(c.Summary))
 	}
 	b.WriteString("// }\n")
+	b.WriteString("//\n")
+	b.WriteString("// Default answer budgets per tool class, in tokens (docs/design/budgeted-answers.md §3).\n")
+	b.WriteString("// Uncomment to size them for this repository; absent means fathom's measured default.\n")
+	b.WriteString("// Each class sizes only the tools named beside it; find_symbol, find_callers,\n")
+	b.WriteString("// symbol_context and outline are not budgeted by class.\n")
+	b.WriteString("//\n")
+	b.WriteString("// budgets: {\n")
+	b.WriteString("//     list:      1500 // query_symbols, references\n")
+	b.WriteString("//     composite: 4000 // pack_context\n")
+	b.WriteString("//     map:       2500 // repo_map\n")
+	b.WriteString("// }\n")
 	return []byte(b.String())
 }
 

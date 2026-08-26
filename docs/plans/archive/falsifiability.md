@@ -1,5 +1,7 @@
 # Phase B — Falsifiability (vision 11 §3.B)
 
+> **Archived** 2026-08-25T23:23:09Z · HEAD `41d0bf66666632fc0ff1a7e202edaf42caede370` · 6 tasks total; 6 claimed (6 verified, 0 failing); 0 skipped
+
 Measure or retract. B1 is the program keystone and the only
 workload-independent measurement while consumers are paused (vision 11 §6).
 

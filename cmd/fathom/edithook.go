@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/cost"
+	"github.com/geoffmilleraz/fathom/internal/memory"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -143,6 +144,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		indexStale  bool
 		repoRelFile string
 		svcName     string
+		svcRoot     string
 		found       bool
 		resolved    bool
 	)
@@ -175,7 +177,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			continue
 		}
 		if !resolved {
-			resolved, svcName, repoRelFile = true, strings.ToLower(cand.name), rel
+			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
 		}
 		name := strings.ToLower(cand.name)
 		o, stale, ok := fetchObligations(*url, name, rel, 0, 2*time.Second)
@@ -184,7 +186,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			return 0 // daemon down or error → silent
 		}
 		if len(o.Rules) > 0 || stale {
-			obl, indexStale, repoRelFile, svcName, found = o, stale, rel, name, true
+			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
 			break
 		}
 	}
@@ -311,6 +313,29 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// AM-6 (docs/design/anchored-memory.md §4): anchored memories ABOUT the
+	// edited file join the payload as a separate labeled block, through this
+	// same path — measured, budgeted and governed exactly as obligations
+	// are. Lowest priority in the ≤150-token budget: obligations are
+	// compile-time budgeted, spec lines drop first, memories take only what
+	// remains (drop lowest-ranked first, count the displaced). The daemon
+	// (memory_search, file-scoped) evaluates drift and labels every line;
+	// the hook only renders. Gated on the project's own memories file
+	// existing so the overwhelmingly common no-memories case costs no RPC,
+	// and silent on any error (hook doctrine) — silent on STDOUT, that is:
+	// a failed fetch emits the same edit-hook/error beat fetchObligations
+	// does, tagged target=memories, so the instrument can tell a memories
+	// outage from "no memories" rather than reading both as silence.
+	memShown, memDisplaced := 0, 0
+	if _, serr := os.Stat(memory.Path(svcRoot)); serr == nil && cost.Estimate(sb.String()) <= specLineTokenBudget {
+		if evs, more, ok := fetchMemories(*url, svcName, repoRelFile, 2*time.Second); ok {
+			memShown, memDisplaced = injectMemories(&sb, repoRelFile, evs, specLineTokenBudget)
+			memDisplaced += more
+		} else {
+			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "target": "memories"}, hook.SessionID, filePath))
+		}
+	}
+
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
 		return 0 // clean file (or unindexed project), no spec IDs → silent
@@ -330,6 +355,14 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// trendable number rather than a fact visible only in one hook's stdout.
 	if obl.Displaced > 0 {
 		answeredMeta["displaced"] = strconv.Itoa(obl.Displaced)
+	}
+	// AM-6: memory surfacing is measurable on day one through the same
+	// beat — a COUNT of memories shown and of those the budget displaced.
+	if memShown > 0 {
+		answeredMeta["memories"] = strconv.Itoa(memShown)
+	}
+	if memDisplaced > 0 {
+		answeredMeta["memories_displaced"] = strconv.Itoa(memDisplaced)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, hook.SessionID, filePath))
 	recordStoryRow(projDir, "obligation-served", map[string]any{
@@ -626,4 +659,125 @@ func fetchSpecRefs(baseURL, service, spec string) (map[string][]specRefLoc, bool
 		return nil, false
 	}
 	return payload.Specs, true
+}
+
+// maxMemoriesPerEdit caps how many memories one edit asks the daemon for.
+// The ≤150-token payload fits a handful at most; the daemon's own
+// `displaced` count for anything beyond this cap is folded into the beat
+// meta so the truncation is never silent.
+const maxMemoriesPerEdit = 20
+
+// injectMemories appends the anchored-memory block (AM-6, docs/design/
+// anchored-memory.md §4) to sb: a header naming the file, then one bullet
+// per memory, each carrying its [tier · state] label, in the deterministic
+// surfacing order (tier, then anchor specificity, then id — the same
+// SortEvaluations memory_search uses). Retired and orphaned memories never
+// render (memory.Surfacing). budget is the whole-payload token budget: the
+// block keeps the highest-ranked prefix that fits, drops the rest and names
+// the count, so the block can never quietly inflate an edit's context. The
+// input order is irrelevant — the function sorts a copy. Returns how many
+// memories rendered and how many the budget displaced; when nothing
+// matches, sb is untouched.
+func injectMemories(sb *strings.Builder, file string, evs []memory.Evaluation, budget int) (shown, displaced int) {
+	live := memory.Surfacing(append([]memory.Evaluation(nil), evs...))
+	memory.SortEvaluations(live)
+	if len(live) == 0 {
+		return 0, 0
+	}
+	nl := ""
+	if sb.Len() > 0 {
+		nl = "\n"
+	}
+	base := sb.String()
+	header := fmt.Sprintf("%s🧠 fathom memory — %s:", nl, file)
+	var block strings.Builder
+	for i, e := range live {
+		line := "\n• " + e.ShortLine()
+		if cost.Estimate(base+header+block.String()+line) > budget {
+			displaced = len(live) - i
+			break
+		}
+		block.WriteString(line)
+		shown++
+	}
+	if shown == 0 {
+		// Nothing fit. Name the displacement in one short line when even
+		// that fits; otherwise the beat meta is the only record (silence
+		// is never a fabricated "no memories").
+		note := fmt.Sprintf("%s🧠 %d memory(ies) about %s not shown (budget)", nl, displaced, file)
+		if cost.Estimate(base+note) <= budget {
+			sb.WriteString(note)
+		}
+		return shown, displaced
+	}
+	sb.WriteString(header)
+	sb.WriteString(block.String())
+	if displaced > 0 {
+		fmt.Fprintf(sb, "\n⚠️ %d more memory(ies) not shown (budget)", displaced)
+	}
+	return shown, displaced
+}
+
+// fetchMemories calls the memory_search MCP tool file-scoped (AM-6): the
+// daemon lists the service's memories, keeps those whose anchors touch
+// file, evaluates drift against the index and labels every one. Returns
+// the evaluations (already surfacing-only and sorted, re-sorted by the
+// caller regardless), the daemon's own displaced count beyond
+// maxMemoriesPerEdit, and ok=false on any error — mirroring
+// fetchObligations's silent-on-error contract.
+func fetchMemories(baseURL, service, file string, timeout time.Duration) ([]memory.Evaluation, int, bool) {
+	reqBody, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "memory_search",
+			"arguments": map[string]any{
+				"service": service,
+				"file":    file,
+				"limit":   maxMemoriesPerEdit,
+			},
+		},
+	})
+	if err != nil {
+		return nil, 0, false
+	}
+
+	hc := &http.Client{Timeout: timeout}
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, 0, false
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, 0, false
+	}
+	defer resp.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, 0, false
+	}
+
+	inner, err := unwrapRPCResult(raw)
+	if err != nil {
+		return nil, 0, false
+	}
+
+	var payload struct {
+		Memories  []memory.Evaluation `json:"memories"`
+		Displaced int                 `json:"displaced"`
+	}
+	if err := json.Unmarshal(inner, &payload); err != nil {
+		return nil, 0, false
+	}
+	// A memory without a tier and state is a claim the daemon never made:
+	// drop it here too rather than render an unlabelled line (§9).
+	out := make([]memory.Evaluation, 0, len(payload.Memories))
+	for _, e := range payload.Memories {
+		if e.Tier == "" || e.State == "" {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out, payload.Displaced, true
 }

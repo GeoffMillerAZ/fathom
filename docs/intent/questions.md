@@ -45,10 +45,9 @@ reads as "keep" without saying so; (c) `docs/vision/01` §2 recommends tombstoni
 enrichment path (`WithEnricher`, zero production callers) and nothing decided it. Blocks:
 decisions index status for ADR-014/018; a possible ADR-026. Answerable by: owner.
 
-**Q11. Law 15 on the production path (INC-12).** Route `init` and `reconcile --apply`
-through `internal/wiring` (drift stops, receipts, `fleet undo` works), or narrow law 15's
-claim to the engine? Blocks: `invariants.md` I13; the fleet-reconcile autonomy line.
-Answerable by: owner, then a receipt-presence test.
+**Q10. `tmp/TRACKING.md`.** README and `docs/README.md` still name this gitignored file
+(last touched 2026-07-08) as the roadmap. Retire the pointer in favor of `fathom plans
+status` and `scope.md`? Answerable by: owner.
 
 **Q12. Does ADR-006 still stand?** "Mandatory concern-scoped queries" is a parameter
 check on one engine path; 55 of 58 tools never pass through it and the concern does not
@@ -60,7 +59,3 @@ serving path caps rules at 6 × 28 words and live payloads measure 210–350 tok
 Enforce a serving-side cap (with the displaced-count line) or restate the contract?
 Blocks: `invariants.md` I35; T3 in `principles.md`. Answerable by: owner plus a
 measurement of injection precision at the lower cap.
-
-**Q10. `tmp/TRACKING.md`.** README and `docs/README.md` still name this gitignored file
-(last touched 2026-07-08) as the roadmap. Retire the pointer in favor of `fathom plans
-status` and `scope.md`? Answerable by: owner.

@@ -32,6 +32,7 @@ var companionWant = []string{
 	"find_symbol",
 	"ingest",
 	"list_services",
+	"memory_search",
 	"obligations",
 	"outline",
 	"pack_context",

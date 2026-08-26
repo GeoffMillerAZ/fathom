@@ -19,6 +19,13 @@ func threadEnv(t *testing.T) string {
 	dir := t.TempDir()
 	t.Setenv("FATHOM_THREADS", filepath.Join(dir, "threads.jsonl"))
 	t.Setenv("FATHOM_SESSION_STAMPS", filepath.Join(dir, "stamps"))
+	// TH-6: the verbs resolve the repo's service through the daemon. Point
+	// them at a refused port (fast, deterministic "nothing resolves") so no
+	// test ever reads a live daemon, and keep the identity cache and the
+	// beat log out of the user's real files.
+	t.Setenv("FATHOM_HTTP", "http://127.0.0.1:1")
+	t.Setenv("FATHOM_IDENT_NO_CACHE", "1")
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "hooks.jsonl"))
 	return dir
 }
 

@@ -18,6 +18,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -35,6 +36,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/concern"
 	"github.com/geoffmilleraz/fathom/internal/context/packer"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/graph"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
@@ -831,6 +833,23 @@ func registerRenameService(s *Server, backend QueryInterface) {
 // ─── shared: ingest ───────────────────────────────────────────────────────────
 
 func registerIngest(s *Server, backend QueryInterface) {
+	// Ingest honesty (docs/plans/instrument-truth.md IT-15, O16): the
+	// pipeline's refusal to replace a populated index with a wedged
+	// reader's zero-symbol result — and its degraded "N file(s) could not
+	// be read" outcome — arrive as an error whose text names the cause
+	// (count, first path, errno, evidence protected). When the error
+	// carries an operator hint (the external-volume TCC wedge) it rides
+	// along, so the daemon-side caller sees the same fix the CLI prints.
+	ingestFailure := func(err error) *rpcError {
+		msg := "ingest: " + err.Error()
+		var hinted interface{ Hint() string }
+		if errors.As(err, &hinted) {
+			if h := hinted.Hint(); h != "" {
+				msg += " — hint: " + h
+			}
+		}
+		return &rpcError{Code: ErrCodeInternal, Message: msg}
+	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
 		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index.",
@@ -915,24 +934,33 @@ func registerIngest(s *Server, backend QueryInterface) {
 			before.unclassified, before.oversize = sb.IngestStats()
 		}
 
+		var ingestErr error
 		if p.Path != "" {
 			ia, ok := backend.(ingestAtBackend)
 			if !ok {
 				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: this backend does not support onboarding by path"}
 			}
-			if err := ia.IngestServiceAt(ctx, svc, p.Path); err != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
-			}
-		} else if err := backend.IngestService(ctx, svc); err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "ingest: " + err.Error()}
+			ingestErr = ia.IngestServiceAt(ctx, svc, p.Path)
+		} else {
+			ingestErr = backend.IngestService(ctx, svc)
 		}
 		// Critic finding F2 (BLOCKING, phase-P fix round): bust the
 		// CLI's service-identity cache (cmd/fathom/identcache.go) on
-		// every successful ingest via this MCP tool too — a hook
+		// every ingest via this MCP tool that may have written — a hook
 		// re-resolving identity through a daemon this ingest just ran
 		// against must never see a cached pre-ingest answer for up to
-		// the cache's TTL (the O15 class).
-		hookcache.BustIdent()
+		// the cache's TTL (the O15 class). A DEGRADED ingest (IT-14)
+		// indexed every readable file and is returned as an error below,
+		// so the bust must come first; an aborted one may have purged and
+		// partially stored before it stopped. Only a REFUSED ingest
+		// (IT-15) provably wrote nothing and leaves the cache alone.
+		var readErr *fusion.ReadFailuresError
+		if !(errors.As(ingestErr, &readErr) && readErr.Refused) {
+			hookcache.BustIdent()
+		}
+		if ingestErr != nil {
+			return nil, ingestFailure(ingestErr)
+		}
 
 		result := map[string]any{"service": svc, "ok": true}
 		if hasStats {
@@ -1047,7 +1075,7 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		}
 		budget := p.Budget
 		if budget <= 0 {
-			budget, _ = budgetDefaultTokens("repo_map", budgetSettings{}) // BA-5: measured default (design §3 "map")
+			budget, _ = budgetDefaultTokens("repo_map", s.budgets) // BA-5/BA-9: project → user → measured default (design §3 "map")
 		}
 		nodes, err := backend.ListAllSymbols(ctx, p.Service)
 		if err != nil {
@@ -1102,7 +1130,7 @@ func registerPackContext(s *Server, backend QueryInterface) {
 		}
 		budget := p.Budget
 		if budget <= 0 {
-			budget, _ = budgetDefaultTokens("pack_context", budgetSettings{}) // BA-5: measured default (design §3 "composite")
+			budget, _ = budgetDefaultTokens("pack_context", s.budgets) // BA-5/BA-9: project → user → measured default (design §3 "composite")
 		}
 		result, err := backend.QuerySymbols(ctx, core.Query{
 			ServiceID: p.Service,

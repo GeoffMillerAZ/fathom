@@ -139,7 +139,7 @@ func obsPage(title, active string, body string, m observatoryModel) string {
 	b.WriteString(`<body class="min-h-screen bg-surface p-5 font-sans text-sm text-ink">`)
 	b.WriteString(`<h1 class="text-lg font-semibold">fathom observatory</h1>`)
 	b.WriteString(`<nav class="mb-4 mt-1 flex gap-4">`)
-	for _, p := range [][2]string{{"/", "home"}, {"/observatory", "fleet"}, {"/observatory/impact", "impact"}, {"/observatory/story", "story"}, {"/observatory/brief", "brief"}, {"/statusz", "statusz"}} {
+	for _, p := range [][2]string{{"/", "home"}, {"/observatory", "fleet"}, {"/observatory/wiring/", "wiring"}, {"/observatory/impact", "impact"}, {"/observatory/story", "story"}, {"/observatory/brief", "brief"}, {"/statusz", "statusz"}} {
 		cls := "text-accent no-underline"
 		if p[1] == active {
 			cls += " font-semibold"
@@ -175,10 +175,20 @@ func sectionHeading(s string) string {
 	return `<h2 class="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-ink-muted">` + html.EscapeString(s) + `</h2>`
 }
 
+// absentCell renders a kv-row value whose source could not be read: the
+// named reason in the house absence style (metricCell's own), never a
+// digit (RG-8, law 3).
+func absentCell(reason string) string {
+	return metricCell(nil, reason, "")
+}
+
 func renderObsFleet(m observatoryModel) string {
-	totalSymbols, totalCalls, openObs, obsKnown, staleCount := 0, 0, 0, 0, 0
+	totalSymbols, symbolsKnown, totalCalls, openObs, obsKnown, staleCount := 0, 0, 0, 0, 0, 0
 	for _, s := range m.Services {
-		totalSymbols += s.Symbols
+		if s.SymbolsNote == "" {
+			totalSymbols += s.Symbols
+			symbolsKnown++
+		}
 		totalCalls += s.CallsTotal
 		if s.OpenObservations != nil {
 			openObs += *s.OpenObservations
@@ -192,11 +202,27 @@ func renderObsFleet(m observatoryModel) string {
 	if staleCount > 0 {
 		freshRole, freshVal = "caution", plural(staleCount, "stale repo")
 	}
+	// RG-8: a tile whose source was not read is Absent with the reason —
+	// the registry (symbols) and the call log (tool calls) each carry
+	// their own read state, and a sum over nothing is not a zero.
+	symbolsTile := stat.Stat{Label: "symbols", Value: fmtThousands(totalSymbols)}
+	switch {
+	case m.DegradedNote != "":
+		symbolsTile = stat.Absent("symbols", m.DegradedNote)
+	case len(m.Services) > 0 && symbolsKnown == 0:
+		symbolsTile = stat.Absent("symbols", m.Services[0].SymbolsNote)
+	case symbolsKnown < len(m.Services):
+		symbolsTile.Sub = fmt.Sprintf("across %d of %s — the rest report no symbol count", symbolsKnown, plural(len(m.Services), "repo"))
+	}
+	callsTile := stat.Stat{Label: "tool calls (log)", Value: fmtThousands(totalCalls)}
+	if m.CallLogNote != "" {
+		callsTile = stat.Absent("tool calls (log)", m.CallLogNote)
+	}
 	var b strings.Builder
 	b.WriteString(stat.RenderBand([]stat.Stat{
 		{Label: "services indexed", Value: fmtThousands(len(m.Services))},
-		{Label: "symbols", Value: fmtThousands(totalSymbols)},
-		{Label: "tool calls (log)", Value: fmtThousands(totalCalls)},
+		symbolsTile,
+		callsTile,
 		{Label: "index freshness", Value: freshVal, ValueRole: freshRole},
 		{Label: "open observations", Value: fmtThousands(openObs), Sub: "across " + plural(obsKnown, "repo") + " with a backlog"},
 	}, stat.BandOptions{AriaLabel: "fleet totals"}))
@@ -218,10 +244,15 @@ func renderObsFleet(m observatoryModel) string {
 		}
 	}
 
+	b.WriteString(renderGradeDistribution(m))
 	var widgets []string
 	for _, s := range m.Services {
 		var body strings.Builder
-		body.WriteString(kv("symbols", `<span class="font-semibold tabular-nums">`+fmtThousands(s.Symbols)+`</span>`))
+		if s.SymbolsNote != "" {
+			body.WriteString(kv("symbols", absentCell(s.SymbolsNote)))
+		} else {
+			body.WriteString(kv("symbols", `<span class="font-semibold tabular-nums">`+fmtThousands(s.Symbols)+`</span>`))
+		}
 		fr := `<span class="text-positive">fresh</span>`
 		if strings.HasPrefix(s.Freshness, "stale") {
 			fr = `<span class="text-caution">` + html.EscapeString(shortFreshness(s.Freshness)) + `</span>`
@@ -229,9 +260,13 @@ func renderObsFleet(m observatoryModel) string {
 			fr = `<span class="italic text-ink-faint">` + html.EscapeString(s.Freshness) + `</span>`
 		}
 		body.WriteString(kv("freshness", fr))
-		body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+`)</span>`))
+		if m.CallLogNote != "" {
+			body.WriteString(kv("traffic", absentCell(m.CallLogNote)))
+		} else {
+			body.WriteString(kv("traffic", html.EscapeString(plural(s.CallsTotal, "call"))+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+`)</span>`))
+		}
 		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
-		if len(s.TrafficDays) > 0 && s.CallsTotal > 0 {
+		if m.CallLogNote == "" && len(s.TrafficDays) > 0 && s.CallsTotal > 0 {
 			spark := make([]float64, len(s.TrafficDays))
 			for i, c := range s.TrafficDays {
 				spark[i] = float64(c)
@@ -303,13 +338,21 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 		}
 		var body strings.Builder
 		body.WriteString(kv("path", `<span class="font-mono text-xs">`+html.EscapeString(s.Path)+`</span>`))
-		body.WriteString(kv("symbols", fmtThousands(s.Symbols)))
+		if s.SymbolsNote != "" {
+			body.WriteString(kv("symbols", absentCell(s.SymbolsNote)))
+		} else {
+			body.WriteString(kv("symbols", fmtThousands(s.Symbols)))
+		}
 		body.WriteString(kv("freshness", html.EscapeString(s.Freshness)))
 		body.WriteString(kv("indexed commit", `<span class="font-mono text-xs">`+html.EscapeString(s.IndexedCommit)+`</span>`))
 		body.WriteString(kv("repo HEAD", `<span class="font-mono text-xs">`+html.EscapeString(s.RepoHead)+`</span>`))
 		body.WriteString(kv("hooks", html.EscapeString(s.HooksNote)))
 		body.WriteString(kv("stanza", html.EscapeString(s.StanzaNote)))
-		body.WriteString(kv("traffic", plural(s.CallsTotal, "call")+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+` · `+fmtThousands(s.CallsAgent)+`/`+fmtThousands(s.CallsTotal)+`)</span>`))
+		if m.CallLogNote != "" {
+			body.WriteString(kv("traffic", absentCell(m.CallLogNote)))
+		} else {
+			body.WriteString(kv("traffic", plural(s.CallsTotal, "call")+` <span class="text-ink-muted">(`+agentCallsTip(s.CallsAgent)+` · `+fmtThousands(s.CallsAgent)+`/`+fmtThousands(s.CallsTotal)+`)</span>`))
+		}
 		body.WriteString(kv("open observations", metricCell(s.OpenObservations, "no observations file", "")))
 		if s.FreshnessRemedy != "" {
 			body.WriteString(remedy(s.FreshnessRemedy))
@@ -337,22 +380,30 @@ func renderObsService(m observatoryModel, id string) (string, bool) {
 				cfg.WriteString(kv("guards", `<span class="italic text-ink-faint">`+html.EscapeString(c.GuardNote)+`</span>`))
 			}
 			cfg.WriteString(kv("bindings", html.EscapeString(c.BindingNote)))
-			cfg.WriteString(kv("rules served here (calls)", fmtThousands(c.ObligationServes)))
+			if m.CallLogNote != "" {
+				cfg.WriteString(kv("rules served here (calls)", absentCell(m.CallLogNote)))
+			} else {
+				cfg.WriteString(kv("rules served here (calls)", fmtThousands(c.ObligationServes)))
+			}
 			cfg.WriteString(kv("obligations compile", `<span class="text-xs">`+html.EscapeString(s.CompileNote)+`</span>`))
 		}
 		widgets := []string{
 			dashboard.RenderWidget(dashboard.Widget{Title: id, Body: template.HTML(body.String())}),
 			dashboard.RenderWidget(dashboard.Widget{Title: "configuration (layers · guards · bindings)", Body: template.HTML(cfg.String())}),
 		}
-		if s.CallsTotal > 0 {
+		switch {
+		case m.CallLogNote != "":
+			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">not measured — ` + html.EscapeString(m.CallLogNote) + `</span>`)}))
+		case s.CallsTotal > 0:
 			g := viz.Gauge(float64(s.CallsAgent), float64(s.CallsTotal), viz.GaugeOptions{
 				Label:     "of this service's recorded calls arrived over the agent surface",
 				AriaLabel: "agent-surface share",
 			})
 			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(g)}))
-		} else {
+		default:
 			widgets = append(widgets, dashboard.RenderWidget(dashboard.Widget{Title: "agent-surface share", Body: template.HTML(`<span class="italic text-ink-faint">no recorded calls for this service in the current log</span>`)}))
 		}
+		widgets = append(widgets, renderDimensionSeries(s, m.CallLogNote))
 		return sectionHeading(id) + dashboard.RenderWidgetGrid(widgets, dashboard.WidgetGridOptions{Cols: 2, AriaLabel: "service detail"}), true
 	}
 	return "", false

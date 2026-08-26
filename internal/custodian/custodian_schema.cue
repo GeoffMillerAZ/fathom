@@ -23,10 +23,13 @@
 }
 
 #Check: {
-	kind:     "forbidden_pattern" | "command_documented_and_exists" | "max_lines" | "pointers_resolve"
+	kind:     "forbidden_pattern" | "command_documented_and_exists" | "max_lines" | "pointers_resolve" | "stanza_tools_served" | "handoff_cites_instruments"
 	pattern?: string
 	where?:   "agent-config"
 	command?: string
 	file?:    string
 	lines?:   int & >0
+	// days is the handoff_cites_instruments window (default 7); the Go
+	// loader refuses it on any other kind.
+	days?: int & >0
 }

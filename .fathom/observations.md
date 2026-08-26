@@ -516,10 +516,10 @@ triage if it matters.
   - **Expected:** a file or package the extractor cannot READ is counted in the failed column and named; an empty result from read errors must be loud, never a clean-looking zero
   - **Actual:** five consecutive 'bin/fathom ingest --service fathom' runs under the recurring wedge each wrote a zero-symbol index reporting '(0 failed)'; the empty index then made 'fathom verify' refute all 24 freshly-proven plan rows via symbol_present-not-found. Daemon-side MCP ingest (its own TCC grant) produced 8703 symbols from the same tree seconds later
   - **Repro:** with the ghostty process tree wedged (recurs on /Volumes/m2ext), run bin/fathom ingest --service fathom → symbols: 0, typed-edges (0 failed), exit 0; heal via daemon-side mcp ingest tool
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** the fetch pass aborted on the FIRST read error with no per-file read-failed counter, and nothing stopped a run that read nothing from advancing the watermark and replacing the service's observations — so a wedged process tree produced a plausible empty index that printed `(0 failed)`.
+- **Fix:** IT-14/IT-15 (docs/plans/instrument-truth.md, `internal/fusion/readfailures.go`): per-file read failures are recorded and named in a `read-failed:` column with errno (+ the external-volume TCC hint on EPERM), the readable files are still indexed, the run exits 1; a run that could read NOTHING refuses to touch an index that already holds observations for the service (no watermark advance, no purge, no write) and the daemon's `ingest` tool returns the same cause as a JSON-RPC error.
+- **Status:** fixed (2026-08-25) — IT-14/IT-15; the ingest-side refusal covers the whole-tree wedge shape O16 recorded (zero readable files); a partially wedged tree now indexes what it can and exits 1 naming the rest.
+- **Impact:** the fourth false-signal shape of the wedge is closed at the writer: a good index can no longer be replaced by an empty one, and an ingest under the wedge is loud.
 
 ### O17 — instrument --adoption under a wedged call-log read reports 'zero-call registered tools (88 of 88)' — every tool falsely zero — instead of naming the read error; the IT-1 read-error classification landed in flywheel but not here
 

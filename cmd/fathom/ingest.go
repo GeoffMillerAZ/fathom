@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -22,6 +23,18 @@ func parseModeFlag(s string) (client.Mode, bool) {
 	}
 	return 0, false
 }
+
+// newIngestClient builds the client cmdIngest ingests through. A package
+// variable so a test can route the ingest through a connector that simulates
+// per-file read failures against a real store (ingest_honesty_test.go,
+// IT-14 / IT-15) — never by touching a real TCC grant.
+var newIngestClient = func(m client.Mode, storePath string) (*client.Client, error) {
+	return client.NewConstantClient(m, storePath)
+}
+
+// readFailuresShown caps how many unreadable files the summary names inline;
+// the count is always exact and the first entry always carries its errno.
+const readFailuresShown = 5
 
 func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("ingest", stderr)
@@ -46,7 +59,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	c, err := client.NewConstantClient(m, *storePath)
+	c, err := newIngestClient(m, *storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: opening client: %v\n", err)
 		return 1
@@ -64,21 +77,45 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 		ID:   *service,
 		Path: svcPath,
 	})
-	if err != nil {
+	// Ingest honesty (docs/plans/instrument-truth.md IT-14 / IT-15, O16): a
+	// *client.ReadFailuresError arrives beside a COMPLETE report — every
+	// readable file was processed — so the summary prints in full with its
+	// failed column, then the failure is named on stderr and the exit is
+	// non-zero, as a fetch error always was. A Refused one wrote nothing at
+	// all (the store already held evidence and this run could read nothing).
+	// Any other error is the abort it always was.
+	var readErr *client.ReadFailuresError
+	if err != nil && !errors.As(err, &readErr) {
 		fmt.Fprintf(stderr, "error: ingest failed: %v\n", err)
 		return 1
 	}
 	// Critic finding F2 (BLOCKING, phase-P fix round): bust the
-	// service-identity cache (identcache.go) on every successful ingest
+	// service-identity cache (identcache.go) on every ingest that wrote
 	// — a stale cached identity must never outlive the ingest that
-	// changed the answer, regardless of TTL (the O15 class).
-	hookcache.BustIdent()
+	// changed the answer, regardless of TTL (the O15 class). A refused
+	// ingest changed nothing.
+	if readErr == nil || !readErr.Refused {
+		hookcache.BustIdent()
+	}
 
 	fmt.Fprintf(stdout, "service:    %s\n", *service)
 	fmt.Fprintf(stdout, "discovered: %d\n", report.Discovered)
 	fmt.Fprintf(stdout, "extracted:  %d\n", report.Extracted)
 	fmt.Fprintf(stdout, "skipped:    %d\n", report.Skipped)
 	fmt.Fprintf(stdout, "symbols:    %d\n", report.Symbols)
+	// The failed column (IT-14): every file the connector could not read,
+	// with its errno text — a wedged reader must never print a clean
+	// zero-symbol summary. Non-zero-only like the counters below.
+	if report.ReadFailed > 0 {
+		fmt.Fprintf(stdout, "read-failed: %d file(s) — stored evidence for them left untouched\n", report.ReadFailed)
+		for i, f := range report.ReadFailures {
+			if i == readFailuresShown {
+				fmt.Fprintf(stdout, "  ... and %d more\n", report.ReadFailed-readFailuresShown)
+				break
+			}
+			fmt.Fprintf(stdout, "  %s: %s\n", f.Path, f.Err)
+		}
+	}
 	// Unclassified/oversize/classified-zero (ADR-021 §2 / TI-6, F5): print
 	// only when non-zero so the common case stays as quiet as it always was
 	// — a clean chart/repo classifies everything and these counters are 0.
@@ -108,6 +145,17 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	if _, counts, ierr := connector.LoadIgnoreScopedFor(svcPath, *service); ierr == nil && (counts.Project > 0 || counts.User > 0 || counts.Service > 0) {
 		fmt.Fprintf(stdout, "excluded: %d pattern(s) (%d project, %d user-scope ~/.fathom/ignore, %d service-scoped ignore.d/%s)\n",
 			counts.Project+counts.User+counts.Service, counts.Project, counts.User, counts.Service, *service)
+	}
+	if readErr != nil {
+		outcome := "degraded"
+		if readErr.Refused {
+			outcome = "refused"
+		}
+		fmt.Fprintf(stderr, "error: ingest %s: %v\n", outcome, readErr)
+		if h := readErr.Hint(); h != "" {
+			fmt.Fprintf(stderr, "hint: %s\n", h)
+		}
+		return 1
 	}
 	return 0
 }
