@@ -19,7 +19,23 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: minor (pre-1.0: breaking bumps minor)
+Release impact: patch (pre-1.0: breaking bumps minor)
+
+## [0.5.0] -- 2026-08-25
+
+**What this release is.** The frontier closed and the instrument told the truth
+about itself. Reachability became real (function values are edges, closures
+count, discovery gaps are named), ingest became honest (unreadable files are
+counted and a wedged reader can no longer replace a good index with an empty
+one), law 15 reached the production write path (init and reconcile write only
+through the wiring engine, with receipts and undo, and the observatory can
+preview and apply behind a local-only gate), threads scope to the repo you are
+in, the custodian polices the stanza against the daemon and handoff notes
+against their evidence, memories reach the edit loop and the agent surface,
+budgets are project-settable, and the observatory renders absence as absence.
+The repository also adopted Project Intent (`docs/intent/`), archived its first
+proven plans, and re-swept every guide and shipped skill against the binary.
+Detail: `docs/changelog/0.5.0.md`.
 
 ### 2026-08-25
 
@@ -31,7 +47,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - CC-14, CC-15: custodian kinds `stanza_tools_served` (every tool the stanza names is served by the daemon; daemon down reads unable-to-check) and `handoff_cites_instruments` (a handoff note claiming shipped work must cite a commit, plan row, verify run, or retro).
 - AM-6, AM-8: the edit-hook appends a labeled, budget-respecting memory block for memories anchored to the edited file; `memory_search` joins the agent surface (17 tools), every result carries tier and state, retired memories never surface.
 - RG-6..8: the service page renders 30-day per-dimension series and the fleet page a grade distribution from real call-log rows; an absent day renders `stat.Absent` with its reason, never a zero or a line across the gap, and unreadable sources render Absent.
-- `task store-purego` joins `task validate` (the pure-Go store is proven on every push); `fathom plans archive` also scans `docs/changelog/*.md` for absorbed row ids; sibling-project names left the fixtures (ADR-011).
+- `task store-purego` joins `task validate` (the pure-Go store is proven on every push); `fathom plans archive` also scans `docs/changelog/*.md` for absorbed row ids and reads the changelog's range and slash-list reference points (`SH-1..6`, `IT-14/15`) as every id they denote; sibling-project names left the fixtures (ADR-011).
 - Operator rows recorded with evidence: GKE-W1-14 (live-store format markers), SW-7 (registration at `/rpc/agent`), H1-17 (injection coverage 99% over 168 h).
 - Project Intent adopted: `docs/intent/` (router, living docs, decisions index over `ADR.md`) and the stanza in `CLAUDE.md`/`AGENTS.md`.
 
