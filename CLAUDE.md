@@ -33,8 +33,8 @@ unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observab
 behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
 `[Unreleased]` to the delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
 
-Autonomy (`docs/intent/autonomy.md`): commit and push to `feat/mcp-scoped-surfaces` freely,
-and roll the changelog, tag, and fast-forward `main` after a green wave; ask before deleting,
+Autonomy (`docs/intent/autonomy.md`): commit and push to `main` freely (the integration
+branch from v0.5.0), and roll the changelog and tag after a green wave; ask before deleting,
 purging, spending LLM budget, or touching global agent config; never force-push `main`,
 raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 
@@ -64,15 +64,15 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Topic | Where |
 |---|---|
 | Decisions | `ADR.md` |
-| Active program: semantic layers + expert modules | `docs/design/semantic-layers.md`, `docs/design/product-vision.md` |
+| Active program: the evidence plane (intent corpus, honesty debt, change records) | `docs/design/evidence-plane.md`, plan `docs/plans/evidence-plane.md`; founding designs `docs/design/semantic-layers.md`, `docs/design/product-vision.md` |
 | Vision series (numbered; the README carries status) | `docs/vision/` |
 | Plans — gated checklists + grammar | `docs/plans/`, `docs/plans/README.md` |
 | Fleet index, daemon ops, deploy, dogfood discipline | `docs/guides/fleet-index.md` |
 | MCP tools + surfaces catalog | `docs/mcp-tools.md` |
 | CLI usage + workspace convention | `docs/usage.md` |
 | Use-case guides (one doc per use case; keep `## Maintained` current) | `docs/use-cases/` |
-| Friction log (record what you observe) | `docs/dogfood-observations.md` |
-| Original design docs + roadmap checklist (gitignored, local-only) | `tmp/design_inspiration/files/`, `tmp/TRACKING.md` |
+| Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
+| Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 
 <!-- fathom:begin -->
 ## fathom code intelligence

@@ -1,7 +1,7 @@
 # Scope
 
 Where the edges are right now. Present tense; done goals are deleted, git remembers.
-Computed progress: `fathom plans status --service fathom` (46 plans, 561 gated rows).
+Computed progress: `fathom plans status --service fathom` (43 active plans, 623 gated rows on 2026-08-26).
 
 ## Current goals
 
@@ -29,6 +29,12 @@ claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/
 cpp-toolchain 1) and `fathom verify --strict` exits 0 for every top-level plan. Blocked on
 the pending decision `th-c214dd26` (`fathom thread list`).
 
+**G7. The evidence plane's wave 1 ships and its wave-2 gate is read (ADR-026).** Done when:
+`fathom verify --service fathom --plan docs/plans/evidence-plane.md --require-all` exits 0
+for wave 1 (`fathom intent audit`, the intent ledger, the doctor rows, the clock) and the
+clock row records whether K0's demand signal (≥3 annotations across ≥2 repos) was met by
+day 30 — either outcome closes the goal; `docs/plans/honesty-fixes.md` ships first.
+
 ## Current boundaries
 
 - Languages: Go via `go/parser`; Python, JS/TS, Ruby via tree-sitter on wazero
@@ -36,8 +42,8 @@ the pending decision `th-c214dd26` (`fathom thread list`).
   tree-sitter; HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
   Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
   "Extraction", ADR-021.
-- Surfaces: 47 CLI verbs (`fathom help`); MCP over stdio and HTTP with 54 registered
-  tools and a 16-tool agent surface (`docs/mcp-tools.md`); Go client `pkg/client`;
+- Surfaces: 47 CLI verbs (`fathom help`; ADR-026 adds `intent`, honesty-fixes adds `post-commit-hook`); MCP over stdio and HTTP with 55 registered
+  tools and a 17-tool agent surface (`docs/mcp-tools.md`); Go client `pkg/client`;
   the observatory web UI on app-kit (`cmd/fathom/observatory*.go`).
 - Store: pure-Go SQLite in WAL mode, the only on-disk backend; one shared fleet store
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
@@ -74,7 +80,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   adopters' `~/.claude/settings.json`. Evidence: `docs/adoption/claude-code.md`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
   `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
-- The 16-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the
+- The 17-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the
   `/rpc/companion` alias. Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
 - The `.fathom/` files an adopter commits: `concerns.cue`, `guard.cue`, `capabilities.cue`,
   `modules.cue`, `layers/`, `rules/`, `observations.md`. Evidence: `schema/{binding,guard,config,semantic,rules}`.

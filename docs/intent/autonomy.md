@@ -6,10 +6,11 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
 
 ## Branch model
 
-- Integration branch: `feat/mcp-scoped-surfaces`, the de facto trunk since 2026-06-17
-  (335 commits, tags v0.3.0 and v0.4.0 live on it). Agents commit and push here freely.
-- `main`: promoted by fast-forward push of a green wave (`origin/main` reflog shows only
-  "update by push"); the local `main` ref is stale. Whether to rename or realign is `questions.md` Q1.
+- Integration branch: `main`, from v0.5.0 (b8f47c3, 2026-08-26). Agents commit and push
+  here freely after the gate; releases are tags on `main`.
+- `feat/mcp-scoped-surfaces` carried the trunk from 2026-06-17 to v0.5.0 (338 commits,
+  tags v0.3.0–v0.5.0). It is retired: it mirrors `main` until the next release, then is
+  deleted once no worktree references it (ask first, as any deletion).
 - Sibling projects commit to this tree (the dogfood consumers). Stage only your own files
   by explicit path; never `git add -A`; `git diff --stat` before committing.
 
@@ -17,8 +18,8 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
 
 - Edit, test, run `task validate`, commit, push the integration branch.
 - After a wave with the full gate and `fathom verify` green: roll `CHANGELOG.md`, tag
-  `vX.Y.0`, fast-forward `main` to HEAD, push main and the tag (owner's standing
-  authorization of 2026-06-16, practiced since: v0.1.0–v0.4.0).
+  `vX.Y.0` on `main`, push `main` and the tag (owner's standing authorization of
+  2026-06-16, practiced since: v0.1.0–v0.5.0).
 - Refresh the index through the daemon's `ingest` MCP tool; `task deploy` the daemon
   after a source-changing commit and read its serving assertion.
 - Update `docs/intent/` per its rules; file `fathom observe` entries and `fathom thread note`s.

@@ -118,6 +118,13 @@ no_contradiction, spec_covered), `cmd` (future: pinned command exit →
 ratification). Only `index` is wired in v0; the others land strictly
 behind named consumers (docs/vision/09 §3).
 
+*Amendment (2026-08-26, ADR-026).* Two classes join the registry for annotated
+intent conditions (`docs/design/evidence-plane.md` §3), each with a named consumer
+in `docs/intent/`: `plan` (a named plan's rows all proven, or one row proven —
+the consumer is every goal's `Done when` that cites a plan) and `date` (after a
+date — the consumer is every dated `Drop if`). They evaluate only in
+`fathom intent audit`, never in a hook; `cmd` stays future.
+
 ## 6. Pilot metrics and kill criteria
 
 As adopted from docs/vision/09 §5: five metrics (checkbox-drift = 0;

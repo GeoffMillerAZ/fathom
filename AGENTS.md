@@ -61,7 +61,7 @@ unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observab
 behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
 `[Unreleased]` to the delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
 
-Autonomy (`docs/intent/autonomy.md`): commit and push to `feat/mcp-scoped-surfaces` freely,
-and roll the changelog, tag, and fast-forward `main` after a green wave; ask before deleting,
+Autonomy (`docs/intent/autonomy.md`): commit and push to `main` freely (the integration
+branch from v0.5.0), and roll the changelog and tag after a green wave; ask before deleting,
 purging, spending LLM budget, or touching global agent config; never force-push `main`,
 raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.

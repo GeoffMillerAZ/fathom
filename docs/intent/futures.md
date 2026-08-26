@@ -95,7 +95,10 @@ futures may justify a free option today. The repo's own sequence is
 ## F9. Machine-evaluated plan triggers
 
 - Confidence: speculative. Horizon: someday.
-- Motivation: `trigger:` on deferred rows is recorded, never evaluated, in v0. Evidence: ADR-018 "Rejected".
+- Motivation: `trigger:` on deferred plan rows is recorded, never evaluated, in v0. Evidence: ADR-018 "Rejected".
+  The 2026-08-26 design panel checked: plan trigger vocabulary does not repeat across the three
+  consumer repos, so this has NOT fired; ADR-026's annotated *intent* conditions are a different
+  corpus on a different ground (`docs/plans/evidence-plane.md` EP-31 records the distinction).
 - Do not build: a trigger engine. Preserve: `trigger:` stays free text.
 - Promote when: the same trigger vocabulary repeats across two repos' plans.
 - Drop if: `needs:` eligibility and threads already answer the question.
@@ -154,3 +157,11 @@ futures may justify a free option today. The repo's own sequence is
 - Confidence: speculative. Horizon: someday. Evidence: declined in `docs/vision/24`.
 - Listed to stop re-proposal. Promote when: `fathom prime` and the opening-moves table
   measurably fail to route discovery. Drop if: never asked for again.
+
+## F18. Cross-repo intent federation (one corpus over many repos)
+
+- Confidence: speculative. Horizon: someday. Evidence: refused in `docs/design/evidence-plane.md` §9.
+- Do not build: a fleet-wide intent index, cross-repo condition evaluation.
+- Preserve: one repo, one router, one corpus; the parser takes a root, never a fleet.
+- Promote when: two repos' conditions reference each other's artifacts and a human asks for the join.
+- Drop if: never asked for again.

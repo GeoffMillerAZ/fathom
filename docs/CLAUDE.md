@@ -40,9 +40,10 @@ is out of gate scope. Essentials:
   and the catalog in `docs/mcp-tools.md`.
 - The agent-surface tool list is `internal/mcp/surface.go` (17 tools);
   `TestMcpToolsDocMatchesRegistry` holds `docs/mcp-tools.md` to the registry.
-- Friction with fathom itself: `fathom observe` files structured intake into
-  `.fathom/observations.md`; `docs/dogfood-observations.md` is the narrative
-  log with reproductions. Which is home is an open owner decision
-  (`docs/intent/questions.md` Q7); close via `CHANGELOG.md` when fixed.
+- Friction with fathom itself goes to ONE place: `fathom observe` files the
+  structured intake into `.fathom/observations.md` (the live log, counted by
+  `instrument --adoption`). `docs/dogfood-observations.md` is frozen as the
+  narrative record (O1–O29; no new entries; its ids stay historical). Close an
+  observation via `CHANGELOG.md` when fixed (ADR-026 decision, 2026-08-26).
 - Root `CLAUDE.md` is a router (≤120 lines) with resolving pointers —
   `fathom config audit` (`.fathom/concerns.cue`) polices both.

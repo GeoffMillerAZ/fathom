@@ -54,6 +54,7 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | `.fathom/*.cue`, `internal/custodian/**` | governs this repo's own agent config | `fathom config audit` exit 0; `fathom doctor` |
 | `internal/instrument*`, `internal/flywheel*`, measurement code | the numbers the program steers by (law 12) | pre-registered criterion unchanged after data; the carry-every-field test |
 | `CLAUDE.md`, `AGENTS.md` | the always-loaded router and the fleet stanza | `fathom config audit`; stanza paragraphs identical in both files (`intent-doctor` 15) |
+| `docs/intent/**`, `ADR.md`, `.fathom/guard.cue` | the intent corpus itself (ADR-026): a wrong condition, rung, or guard note misleads every session | `intent-doctor` pass; `fathom config audit` 0 violated; once EP-9 ships, `fathom intent audit` with 0 unparsed |
 
 ## Before designing
 

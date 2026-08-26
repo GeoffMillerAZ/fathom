@@ -30,6 +30,15 @@ Would have caught it: a custodian concern that the hook's command matches the do
 Class: intent-violated
 Outcome: pending — mitigated: IT-15 now refuses an empty overwrite from either path (`invariants.md` I25); the hook still contradicts the rule (`questions.md` Q2)
 
+### INC-14 2026-08-26 A design declared itself adopted before its decision record existed
+What: the first draft of `docs/design/evidence-plane.md` carried "adopted (ADR-026)" and
+three intent docs cited ADR-026 while `ADR.md` had no such section; the design panel caught it.
+Evidence: panel workflow `wf_3a238f27-885` (law-and-intent lens, blocking finding 1).
+Would have caught it: a check that every `ADR-\d+` cited in `docs/design/*.md` status lines
+and `docs/intent/**` resolves to an existing record.
+Class: wrong-done-claim
+Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`; ADR-026 now exists)
+
 ## Closed
 
 - INC-13 2026-08-25 The raw-`cp` deploy instruction survived outside the custodian's corpus (`docs/adoption/claude-code.md` ×3, doctor's `binary_fresh` remedy) → both now say `task deploy` and why; widening the concern corpus stays CC-11.

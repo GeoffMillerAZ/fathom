@@ -87,6 +87,17 @@ to that concern, then scores by keyword/semantic overlap and truncates to TopN.
 noisy (~measured 77% token reduction by scoping). Forcing a concern makes callers
 specific and keeps results relevant and cheap.
 
+**Amendment (2026-08-26, ADR-026 review).** Re-scoped to what the code enforces:
+the concern is a required parameter of `Engine.Query` (`query_symbols`, `fathom
+query`, `pkg/client.Query`) and becomes a keyword when the store is unscoped; tools
+that never pass through the engine — 55 of 58 registered at the time, the whole
+index-native navigation surface — are exempt. "Mandatory concern-scoped queries"
+names the engine's contract, not a property of every tool.
+
+**Revisit when.** A tool outside the engine returns result sets the call log shows
+scoping would have cut by more than half; or a second concern-shaped filter is
+proposed for the agent surface.
+
 ## ADR-007 — Evidence tiers reused from agentic-kit
 
 **Decision.** Observations carry an **evidence tier** from agentic-kit's
@@ -414,6 +425,16 @@ record exists (`docs/intent/questions.md` Q9). (2) "machine-evaluated triggers i
 v0" were rejected as a speculative engine — a v1 reopens them only on the condition
 in `docs/intent/futures.md` F9.
 
+**Pilot verdict (2026-08-26): KEEP.** The 2026-08-21 audit measured 180 of 436 gate
+runs in five days catching claimed > verified (`docs/vision/24-work-frontier.md` §7);
+none of the four kill criteria in `docs/design/sdd-reconciler.md` §6 tripped. The
+stop hook and the CUE shadow stay. Condition (2) has NOT fired: plan `trigger:`
+values across the three consumer repos are all unique prose (the design panel of
+2026-08-26 checked), so F9 stays a future and plan triggers stay free text.
+ADR-026 opens annotated conditions on a different corpus (intent docs and ADR
+trailers) on a different ground: the annotation itself is the demand signal, and
+its runtime is not built until ≥3 exist across ≥2 repos.
+
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 
 The daemon's 8-day call log (docs/vision/05-surfaces.md) showed both agents
@@ -454,6 +475,15 @@ observed traffic and no kill record exists (`docs/intent/questions.md` Q9).
 (2) "The pre-amendment hard gate stays available behind `Server.strictSurfaces`
 for any future multi-tenant shape" — a hosted or multi-tenant deployment
 (`docs/intent/futures.md` F8) turns it back on.
+
+**Amendment 2 (2026-08-26).** The four group surfaces (`coding`, `investigation`,
+`shared`, `platform`) were reachable only by URL path after the flip — no client
+registration, stanza, skill, or doc pointed at them — so their zero calls prove
+exposure-zero, not demand-zero (law 8 forbids reading that as a kill clock). They
+are deleted on law 4's ground instead: a surface no wired client can reach is
+registry weight with no consumer. `agent` (+ the `companion` alias), `modules`, and
+bare `/rpc` remain; `Server.strictSurfaces` remains. Executed by
+`docs/plans/honesty-fixes.md` HF-5; the trailer's condition (1) is thereby decided.
 
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
@@ -815,3 +845,75 @@ the operator's manual step to take once satisfied it is no longer needed.
 separate, not-yet-triggered slice" — the sole remaining reason for `CGO_ENABLED=1`
 (`docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
 manual step" — done: `workspace/db/` held no `.duckdb` file on 2026-08-25.
+
+## ADR-026: The evidence plane — intent corpus, unproven claims, change records (2026-08-26)
+
+**Status.** Accepted. **Type.** Architecture / process. Design:
+`docs/design/evidence-plane.md` (panel-reviewed; findings disposed there §12).
+Plan: `docs/plans/evidence-plane.md`; the honesty fixes it forces:
+`docs/plans/honesty-fixes.md`.
+
+**Context.** Three repositories now carry Project Intent (`docs/intent/`, agentic-kit's
+practice): human-authored living docs whose every entry carries an expiry condition
+(`Done when`, `Promote when`, `Drop if`, `Revisit when`), invariants with an honest
+enforcement column, and decision records with revisit trailers. Fathom already makes
+binding documents checkable (obligations, adr-rules, the custodian, `verify`, the
+sweep) and ignored this corpus. The owner asked whether fathom should absorb the
+concepts, optionally; whether "honesty debt" should be tracked; whether fathom should
+be more git-aware — without bloating agent configuration.
+
+**Decision.**
+1. *Corpus, not engine.* `internal/intent` parses the router, the living docs, and
+   decision records deterministically; fathom never edits them, never evaluates
+   prose, never reads `docs/vision/`. Capability `intent-corpus` is on when the
+   router exists and off-able; off silences delivery, never the verb.
+2. *Annotated conditions only.* A condition line may carry one `{oracle: …}` block
+   (plan tokenizer; classes `index`, `plan`, `lexical`, `date`; `cmd` deferred);
+   unannotated conditions are human-judged. Evaluation runs only in the verb, never
+   in a hook. Every verdict transition is recorded first-seen in a separate
+   `~/.fathom/intent-ledger.jsonl`; "decided" is derived from the record's own diff
+   after that timestamp. The runtime is built only after ≥3 annotations exist across
+   ≥2 repos (K0).
+3. *Unproven claims, never a score.* `fathom intent audit` lists plan rows that fail
+   or carry no contract (from the verify ledger at HEAD), `VIOLATED` invariants,
+   invariants and `Done needs` naming tests or gates that do not exist, and
+   fired-undecided conditions — each with a remedy, capped per kind, no total
+   presented as a grade.
+4. *No new channel.* No MCP tool; no edit-time injector (the pre-edit guard path is
+   fed by `fathom intent export --guard`, a proposal a human applies); the session
+   attention line is the custodian's, extended, under a new 3,200-byte whole-primer
+   cap; the stanza's obligations sentence is amended, no line added; global agent
+   config gains nothing.
+5. *Change records.* Ship now: plan-archive absorption via git history (commits that
+   touched non-plan paths), `commit` on thread and ledger rows, a shell commit-msg
+   advisory in the init MANUAL block, and the custodian kind
+   `adr_references_resolve`. Defer the Go change-record kinds and cut `changes impact`.
+
+**Alternatives rejected.** The broad form (fathom owns propose/decide/close) — wins
+if decision latency, not detection, ever measures as the bottleneck. A CUE intent
+catalog (DP-1) — wins if a second tool consumes intent as data (`export --cue`).
+Compiling intent docs through the LLM layer — wins if a measured precision gap
+appears. An edit-hook intent block — wins never: the guard path already exists and
+the payload ceiling has no residual. A second attention line — never.
+
+**Consequences.** One verb with two subverbs, two doctor rows that never FAIL, one
+ledger file added to the compatibility surface, `internal/pathglob` promoted,
+`internal/verify.ParseAnnotation` exported, `internal/adr` extended, the reconciler's
+forward registry gains `plan` and `date`. The practice's own rejections of lint tools
+and generated registries are honored by construction: prose stays human, nothing
+generated is edited.
+
+**Preserves / forecloses.** Preserves F18 (federation) by taking a root, never a fleet;
+preserves DP-1's CUE face as output. Forecloses nothing documented.
+
+**Deferred.** `cmd` oracle; change-record custodian kinds; unproven sources U6–U10;
+LLM compile of the corpus; `export --cue` — each with its trigger in the design §9.
+
+**Revisit when.** (1) Any kill clock in the design §8 fires — K0 (fewer than three
+annotations), K1 (annotated conditions decided no faster than human-judged), K3
+(no verb use), K5 (the attention line ignored), K-plane (no session outside this
+repo uses it). (2) agentic-kit records a decision refusing annotations in its
+template docs (Q18). (3) The practice ships its own evaluator. (4) A second tool
+wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
+repeats across two repos (the real F9). (6) Decision latency measures as the
+bottleneck the broad form would remove.
