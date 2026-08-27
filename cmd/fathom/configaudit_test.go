@@ -100,7 +100,7 @@ func TestConcernAttentionLine(t *testing.T) {
 	violated := t.TempDir()
 	writeConcernFixture(t, violated)
 	line := concernAttentionLine(violated)
-	if !strings.Contains(line, "fathom config audit") || !strings.Contains(line, "1 instruction") {
+	if !strings.Contains(line, "fathom doctor") || !strings.Contains(line, "config 1") {
 		t.Fatalf("attention line must count and point at the verb, got %q", line)
 	}
 }

@@ -82,18 +82,15 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// pre-registered bet evaluable (fresh-with-brief vs resumed).
 	briefBytes := 0
 	if startSource == "startup" || startSource == "clear" || startSource == "" {
-		tb, cl := composeContinuityAndCustodian(projDir)
-		if tb != "" {
-			ctx += "\n" + tb
-			briefBytes = len(tb)
-		}
-		// CC-7 (docs/plans/custodian.md): the custodian's attention line —
-		// present only while a registered concern is violated in this repo.
-		// Mechanical file reads; adds nothing on clean or unconfigured
-		// repos. Same startup/clear gate as the thread brief: resumed
-		// sessions kept their context.
-		if cl != "" {
-			ctx += "\n" + cl
+		// CC-7 (docs/plans/custodian.md) + EP-19: the continuity brief and
+		// the one attention line — present only while this repo has a
+		// violated concern or a recorded unproven claim. Mechanical file
+		// reads; adds nothing on clean or unconfigured repos. Same
+		// startup/clear gate as the thread brief: resumed sessions kept
+		// their context. The whole primer is capped here (EP-20).
+		var attention bool
+		ctx, briefBytes, attention = composeContinuityAndCustodian(ctx, projDir, time.Now())
+		if attention {
 			emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
 		}
 	}
@@ -117,16 +114,67 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	return 0
 }
 
-// composeContinuityAndCustodian renders the continuity thread brief and the
-// custodian attention line for projDir — the two sections layered on top
-// of buildSessionContext's identity/freshness line to form a full session
-// primer. Shared by cmdSessionHook (gated to startup/clear/"" sources) and
-// `fathom prime` (WF-8, docs/plans/work-frontier.md — always-on pull) so
-// neither duplicates the other's string-building.
-func composeContinuityAndCustodian(projDir string) (threadBrief, custodianLine string) {
-	threadBrief = renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, time.Now())
-	custodianLine = concernAttentionLine(projDir)
-	return
+// sessionPrimerBudget caps the WHOLE SessionStart primer (EP-20, ADR-026):
+// identity + freshness line, thread brief, attention line. Each part already
+// carries its own budget, but three budgets do not compose into one — the
+// only number an adopter can reason about is the total that lands in every
+// session. I12 (docs/intent/invariants.md) is the invariant this enforces.
+const sessionPrimerBudget = 3200
+
+// primerOverflowNote is appended when even the identity line alone exceeds
+// the cap — the last-resort cut, never silent.
+const primerOverflowNote = " …[session primer truncated at its byte cap]"
+
+// composeContinuityAndCustodian renders the full SessionStart primer for
+// projDir: the identity/freshness line it is handed, then the continuity
+// thread brief, then the one attention line (EP-19). Shared by cmdSessionHook
+// (gated to startup/clear/"" sources) and `fathom prime` (WF-8 — always-on
+// pull) so neither duplicates the other's string-building or its cap.
+//
+// The result is capped at sessionPrimerBudget with the cut NAMED (law 3):
+// the thread brief absorbs the overflow by whole lines from the end, because
+// identity is why the hook exists and the attention line is the smallest,
+// highest-signal part. Returns the brief's byte count as it was ACTUALLY
+// injected (post-cut — the session stamp must not record bytes that never
+// reached the model) and whether the attention line fired.
+func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention bool) {
+	brief := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, now)
+	line := attentionLine(projDir, now)
+
+	join := func(b string) string {
+		out := identity
+		if b != "" {
+			out += "\n" + b
+		}
+		if line != "" {
+			out += "\n" + line
+		}
+		return out
+	}
+
+	primer = join(brief)
+	if len(primer) > sessionPrimerBudget && brief != "" {
+		lines := strings.Split(brief, "\n")
+		dropped := 0
+		for len(lines) > 0 && len(primer) > sessionPrimerBudget {
+			lines = lines[:len(lines)-1]
+			dropped++
+			trimmed := strings.Join(lines, "\n")
+			if trimmed != "" {
+				trimmed += fmt.Sprintf("\n… %d brief line(s) cut to fit the %d B session primer — `fathom thread brief` for all of them", dropped, sessionPrimerBudget)
+			}
+			brief = trimmed
+			primer = join(brief)
+		}
+	}
+	if len(primer) > sessionPrimerBudget {
+		// Identity alone is over the cap. That is a bug in whoever produced
+		// it, not a reason to inject an over-budget primer OR to truncate
+		// silently — cut with the reason attached.
+		keep := sessionPrimerBudget - len(primerOverflowNote)
+		primer = primer[:keep] + primerOverflowNote
+	}
+	return primer, len(brief), line != ""
 }
 
 // cmdPrime implements the "prime" subcommand (WF-8): prints the full
@@ -154,15 +202,7 @@ func cmdPrime(args []string, stdout, stderr io.Writer) int {
 		projDir, _ = os.Getwd()
 	}
 
-	ctx := buildSessionContext(*url, projDir)
-	tb, cl := composeContinuityAndCustodian(projDir)
-	if tb != "" {
-		ctx += "\n" + tb
-	}
-	if cl != "" {
-		ctx += "\n" + cl
-	}
-
+	ctx, _, _ := composeContinuityAndCustodian(buildSessionContext(*url, projDir), projDir, time.Now())
 	fmt.Fprintln(stdout, ctx)
 	return 0
 }

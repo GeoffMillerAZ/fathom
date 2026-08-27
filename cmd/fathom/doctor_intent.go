@@ -73,7 +73,27 @@ func checkIntent(root string) doctorCheck {
 
 	parts := []string{fmt.Sprintf("%d condition(s) (%d annotated, %d terminal)", len(c.Conditions), annotated, terminal)}
 	parts = append(parts, fmt.Sprintf("%d invariant(s) [%s]", len(c.Invariants), renderRungs(byRung)))
-	parts = append(parts, fmt.Sprintf("%d sensitive surface(s)", len(c.Surfaces)))
+	// EP-21: sensitive surfaces are only a channel when a guard entry
+	// carries their provenance; counting them without saying how many are
+	// WIRED is the "instrumented" illusion law 3 exists to stop.
+	surfaceNote := fmt.Sprintf("%d sensitive surface(s)", len(c.Surfaces))
+	if notes, scopesOf, why := repoGuardNotes(root); scopesOf == nil {
+		surfaceNote += ", guard coverage unknown (" + why + ")"
+	} else {
+		uncovered, stale := 0, 0
+		for _, cl := range intent.GuardEntryStale(c, notes, scopesOf) {
+			if strings.HasPrefix(cl.Ref, ".fathom/guard.cue") {
+				stale++
+				continue
+			}
+			uncovered++
+		}
+		surfaceNote += fmt.Sprintf(", %d covered by guard.cue", len(c.Surfaces)-uncovered)
+		if stale > 0 {
+			surfaceNote += fmt.Sprintf(", %d guard entr(ies) STALE", stale)
+		}
+	}
+	parts = append(parts, surfaceNote)
 	if c.DecisionsHome != "" {
 		parts = append(parts, "decisions: "+c.DecisionsHome)
 	}

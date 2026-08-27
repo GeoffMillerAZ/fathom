@@ -83,7 +83,7 @@ func guardNote(s intent.Surface, byID map[string]intent.Invariant) string {
 	if len(parts) == 0 {
 		parts = append(parts, strings.TrimSpace(s.DoneNeeds))
 	}
-	return "intent: " + strings.Join(parts, "; ") + " (fathom intent audit)"
+	return fmt.Sprintf("intent: %s (fathom intent audit) @ %s", strings.Join(parts, "; "), intent.SurfaceStamp(s))
 }
 
 func quoteJoin(in []string) string {

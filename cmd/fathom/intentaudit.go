@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // intentaudit.go — EP-9, `fathom intent audit`.
@@ -82,14 +84,23 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	}
 
 	rows, note := planRowStates(abs)
+	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
+	contracts, contractNote := planRowContracts(abs)
 	ledger := intent.ReadLedger()
 	audit := intent.RunAudit(intent.AuditInput{
 		Corpus:   corpus,
 		Symbols:  newIndexOracle(*url, svc, abs, gitHeadShort(abs)),
 		PlanRows: rows,
 		PlanNote: note,
-		Ledger:   ledger,
-		Now:      time.Now().UTC(),
+
+		PlanContracts:    contracts,
+		PlanContractNote: contractNote,
+
+		GuardNotes:  guardNotes,
+		GuardScopes: guardScopes,
+		GuardNote:   guardNote2,
+		Ledger:      ledger,
+		Now:         time.Now().UTC(),
 	})
 
 	// Law 6: the clock starts the first time the audit runs with a consumer
@@ -190,7 +201,10 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 				fmt.Fprintf(w, "  [%s]\n", cl.Kind)
 				lastKind = cl.Kind
 			}
-			fmt.Fprintf(w, "    %s — %s\n      → %s (%s)\n", cl.Ref, cl.Detail, cl.Remedy, cl.Evidence)
+			fmt.Fprintf(w, "    %s — %s\n      → %s\n", cl.Ref, cl.Detail, cl.Remedy)
+			if cl.Evidence != "" {
+				fmt.Fprintf(w, "         evidence: %s\n", cl.Evidence)
+			}
 			shown++
 		}
 		if len(a.Unproven) == 0 {
@@ -337,4 +351,73 @@ func intentPopulation(root string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// planRowContracts reads every gated plan's row annotations statically —
+// no index, no daemon, no verify run. U12 (EP-38) joins these against the
+// router's sensitive surfaces.
+func planRowContracts(root string) ([]intent.PlanRow, string) {
+	dir := filepath.Join(root, "docs", "plans")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Sprintf("docs/plans is unreadable (%v)", err)
+	}
+	var out []intent.PlanRow
+	files := 0
+	for _, e := range entries {
+		name := e.Name()
+		if e.IsDir() || !strings.HasSuffix(name, ".md") || name == "README.md" {
+			continue // archive/ is out of gate scope, and so is the grammar doc
+		}
+		md, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		files++
+		rel := filepath.Join("docs", "plans", name)
+		for _, t := range verify.ParseMarkdownPlan("", md).Tasks {
+			if t.Skipped {
+				continue // a refused or deferred row changes nothing
+			}
+			var reach []string
+			if t.Expect.ReachableFrom != "" {
+				reach = append(reach, t.Expect.ReachableFrom)
+			}
+			out = append(out, intent.PlanRow{
+				Plan: rel, ID: t.ID, Package: t.Expect.Package,
+				Symbol: t.Expect.Symbol, ReachableFrom: reach, Claimed: t.Claimed,
+				SkipTest: t.Expect.SkipTest, SkipReason: t.Expect.SkipReason,
+			})
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Sprintf("%d plan file(s) read, no row carried a contract annotation", files)
+	}
+	return out, ""
+}
+
+// repoGuardNotes reads this repo's .fathom/guard.cue and returns each
+// entry's note plus a lookup from note back to scopes. A missing file is a
+// NAMED absence, not an error: most repos have no guard.cue, and U13 says so
+// rather than reporting every sensitive surface as uncovered.
+func repoGuardNotes(root string) ([]string, func(string) []string, string) {
+	path := filepath.Join(root, ".fathom", "guard.cue")
+	if _, err := os.Stat(path); err != nil {
+		return nil, nil, "this repo has no .fathom/guard.cue (`fathom intent export --guard` proposes one)"
+	}
+	set, err := guardspec.LoadGuards(path)
+	if err != nil {
+		return nil, nil, fmt.Sprintf(".fathom/guard.cue did not load (%v) — `fathom doctor` carries that finding", err)
+	}
+	scopes := map[string][]string{}
+	notes := make([]string, 0, len(set.Guards))
+	for _, g := range set.Guards {
+		if g.Note == "" {
+			continue
+		}
+		notes = append(notes, g.Note)
+		scopes[g.Note] = g.Scopes
+	}
+	sort.Strings(notes)
+	return notes, func(n string) []string { return scopes[n] }, ""
 }

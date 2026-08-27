@@ -93,7 +93,7 @@ func TestPrimeMatchesSessionHookPayload(t *testing.T) {
 		"first query to try",    // live example
 		"BuildModel",
 		"prime parity fixture note", // thread brief
-		"fathom config audit",       // custodian attention line
+		"⚠️ attention: config 1",    // the composed attention line (EP-19)
 	} {
 		if !strings.Contains(primeCtx, want) {
 			t.Errorf("prime output missing %q:\n%s", want, primeCtx)

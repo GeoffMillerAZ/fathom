@@ -78,10 +78,19 @@ type PlanRowState struct {
 
 // AuditInput is everything an audit needs beyond the corpus.
 type AuditInput struct {
-	Corpus       Corpus
-	Symbols      SymbolOracle   // nil → U4/U11's index half is uncomputable
-	PlanRows     []PlanRowState // empty → U1/U2 uncomputable
-	PlanNote     string         // why PlanRows is empty, when it is
+	Corpus           Corpus
+	Symbols          SymbolOracle   // nil → U4/U11's index half is uncomputable
+	PlanRows         []PlanRowState // empty → U1/U2 uncomputable
+	PlanNote         string         // why PlanRows is empty, when it is
+	PlanContracts    []PlanRow      // static plan-row contracts; empty → U12 uncomputable
+	PlanContractNote string         // why PlanContracts is empty, when it is
+
+	// GuardNotes are the `note` strings of this repo's .fathom/guard.cue
+	// entries; GuardScopes maps a note back to its scopes. A nil
+	// GuardScopes makes U13 uncomputable.
+	GuardNotes   []string
+	GuardScopes  func(note string) []string
+	GuardNote    string // why GuardNotes is nil, when it is
 	Ledger       []LedgerRow
 	Now          time.Time
 	IncidentDays int // U6's window; 0 → 30, the practice's own check-14 threshold
@@ -104,6 +113,8 @@ func RunAudit(in AuditInput) Audit {
 	a.auditConditions(in)
 	a.auditIncidents(in)
 	a.auditReferences(in)
+	a.auditSurfaceCoverage(in)
+	a.auditGuardProvenance(in)
 
 	sort.SliceStable(a.Unproven, func(i, j int) bool {
 		if a.Unproven[i].Kind != a.Unproven[j].Kind {
@@ -552,4 +563,37 @@ func gateStepExists(step string, targets, hooks map[string]bool) bool {
 		return hooks[strings.TrimSpace(strings.TrimPrefix(step, "lefthook "))]
 	}
 	return true
+}
+
+// auditSurfaceCoverage adds U12 (EP-38): plan rows inside a sensitive
+// surface that prove themselves with a test the surface does not name.
+// Listed, never gated.
+func (a *Audit) auditSurfaceCoverage(in AuditInput) {
+	if len(in.PlanContracts) == 0 {
+		note := in.PlanContractNote
+		if note == "" {
+			note = "no plan-row contracts were read"
+		}
+		a.Uncomputable = append(a.Uncomputable, "U12 (surface coverage): "+note)
+		return
+	}
+	claims, notes := SurfaceRowsUncovered(in.Corpus, in.PlanContracts)
+	a.Unproven = append(a.Unproven, claims...)
+	for _, n := range notes {
+		a.Uncomputable = append(a.Uncomputable, "U12: "+n)
+	}
+}
+
+// auditGuardProvenance adds U13 (EP-21): guard entries whose intent
+// provenance no longer resolves, and sensitive surfaces no guard covers.
+func (a *Audit) auditGuardProvenance(in AuditInput) {
+	if in.GuardScopes == nil {
+		note := in.GuardNote
+		if note == "" {
+			note = "this repo's .fathom/guard.cue was not read"
+		}
+		a.Uncomputable = append(a.Uncomputable, "U13 (guard provenance): "+note)
+		return
+	}
+	a.Unproven = append(a.Unproven, GuardEntryStale(in.Corpus, in.GuardNotes, in.GuardScopes)...)
 }

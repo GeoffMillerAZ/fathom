@@ -14,6 +14,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 )
@@ -177,14 +178,14 @@ func loadConcernsBoth(root string) ([]custodian.Concern, []error) {
 	return custodian.Merge(user, project), errs
 }
 
-// concernAttentionLine is the session-brief surface (CC-7): one line, only
-// while violations exist for the repo being opened. Errors and absence are
-// silent HERE — the hook must never clutter session start; the doctor row
-// and the verb carry the loud versions.
-func concernAttentionLine(projDir string) string {
+// violatedConcernCount is how many of this repo's registered concerns are
+// violated right now — mechanical file reads, no RPC. Returns 0 when the
+// repo registers none or the concern file will not load: an unreadable
+// custodian config is a doctor finding, not a session-brief alarm.
+func violatedConcernCount(projDir string) int {
 	concerns, errs := loadConcernsBoth(projDir)
 	if len(errs) > 0 || len(concerns) == 0 {
-		return ""
+		return 0
 	}
 	violated := 0
 	for _, f := range custodian.Audit(projDir, concerns) {
@@ -192,9 +193,12 @@ func concernAttentionLine(projDir string) string {
 			violated++
 		}
 	}
-	if violated == 0 {
-		return ""
-	}
-	noun := "instruction(s)"
-	return fmt.Sprintf("⚠️ config: %d %s in this repo's agent config may no longer be true — run `fathom config audit` for evidence (fathom reports; this session decides).", violated, noun)
+	return violated
+}
+
+// concernAttentionLine is the session-brief surface (CC-7), now the composed
+// attention line (EP-19): the custodian's count and the intent corpus's
+// unproven claims share ONE line. It reports; it never edits (vision 22 §3b).
+func concernAttentionLine(projDir string) string {
+	return attentionLine(projDir, time.Now())
 }

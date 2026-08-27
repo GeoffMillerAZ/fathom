@@ -383,13 +383,18 @@ dead daemon can't stall session start.
 On `startup` and `clear` **only** — the two sources where context was
 actually lost — it additionally injects the **continuity thread brief**
 (§7.7: local plans summary first, then filed handoff notes; ≤2,400 bytes,
-budget-enforced, overflow named as `and N more`) and, when a registered
-config concern is violated, one **custodian attention line** (§8's
-`concerns.cue`: `config: N instruction(s) may no longer be true — fathom
-config audit`). `resume` and `compact` keep their context, so those
+budget-enforced, overflow named as `and N more`) and, when this repo has a
+violated config concern or a recorded unproven claim, ONE **attention line**
+(`⚠️ attention: config 2 · unproven 8 (+4) · fired 1 — fathom doctor`, ≤160 B):
+the custodian's `concerns.cue` count (§8) and the intent corpus's last
+recorded `fathom intent audit` share a line rather than taking two. The
+intent half reads the ledger only — never an audit, never an RPC — and goes
+silent when the recorded audit is older than 14 days, because a stale count
+is not evidence about the working tree. The whole primer is capped at
+3,200 bytes with any cut named. `resume` and `compact` keep their context, so those
 sources inject neither — adding bytes there is pure tax. `fathom prime`
 prints the same primer on demand (identity, freshness, a live example, the
-thread brief, the custodian line) for a harness with no SessionStart hook
+thread brief, the attention line) for a harness with no SessionStart hook
 — Codex — or for a human who wants to see what the session was told.
 
 ```json

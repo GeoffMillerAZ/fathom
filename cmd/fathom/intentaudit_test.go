@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
 // TestCmdIntentAuditSectionsAndBeat (EP-9): the verb renders the three
@@ -121,6 +123,51 @@ func TestExportGuardProposesNeverWrites(t *testing.T) {
 	}
 	if _, err := os.Stat(guardPath); err == nil {
 		t.Error("export must NEVER write .fathom/guard.cue (law 15) — it prints a proposal")
+	}
+
+	// Every entry carries provenance, so a pasted entry's staleness stays
+	// computable after the router moves on.
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sf := range c.Surfaces {
+		if !strings.Contains(got, "@ "+intent.SurfaceStamp(sf)) {
+			t.Fatalf("surface %v carries no provenance stamp:\n%s", sf.Globs, got)
+		}
+	}
+}
+
+// A pasted entry goes STALE when its source row changes; an unstamped
+// human-authored guard is never policed (it is not fathom's to maintain).
+func TestGuardEntryStaleness(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Surfaces) == 0 {
+		t.Fatal("fixture has no sensitive surface")
+	}
+	scopesOf := func(string) []string { return c.Surfaces[0].Globs }
+
+	fresh := "intent: governed by I2 (fathom intent audit) @ " + intent.SurfaceStamp(c.Surfaces[0])
+	for _, cl := range intent.GuardEntryStale(c, []string{fresh, "a note I wrote myself, no stamp"}, scopesOf) {
+		if strings.HasPrefix(cl.Ref, ".fathom/guard.cue") {
+			t.Fatalf("a fresh stamp and an unstamped note must not fire: %s", cl.Detail)
+		}
+	}
+
+	stale := "intent: governed by I2 (fathom intent audit) @ 0123456789ab"
+	found := false
+	for _, cl := range intent.GuardEntryStale(c, []string{stale}, scopesOf) {
+		if strings.HasPrefix(cl.Ref, ".fathom/guard.cue") && strings.Contains(cl.Detail, "0123456789ab") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("a stamp matching no router row must fire as stale")
 	}
 }
 
