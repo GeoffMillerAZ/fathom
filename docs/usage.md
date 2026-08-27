@@ -957,9 +957,55 @@ fathom stanza names must be served by the daemon's `/rpc/agent`
 check` naming the URL, never violated) — and
 `handoff_cites_instruments` (`days: N`) — a handoff thread note claiming
 shipped work must cite a commit sha, an active plan row id, `fathom
-verify`, or a `workspace/artifacts/retros/` path. Fathom reports and never
-edits your prose — the session applies fixes. Full model:
-`docs/design/config-custodian.md`.
+verify`, or a `workspace/artifacts/retros/` path — and
+`adr_references_resolve` — every path a decision record cites must exist,
+scoped to this repo's own id shape so a sibling repo's records are named
+rather than reported missing. Fathom reports and never edits your prose —
+the session applies fixes. Full model: `docs/design/config-custodian.md`.
+
+### `intent` — the intent corpus, audited (ADR-026, **experimental**)
+
+```sh
+fathom intent audit  [--root .] [--json] [--kind conditions|invariants|unproven] [--fresh] [--top N]
+fathom intent export --guard [--root .]
+```
+
+Reads a repo's Project Intent corpus (`docs/intent/` router, invariants,
+conditions, sensitive surfaces, and the decision records the router points
+at) and reports three things: **what it declares**, **what an instrument can
+show**, and **what nothing shows**. It never edits the corpus, never
+evaluates a condition an author did not annotate, and never scores a
+repository.
+
+Three tiers, all normal: a router-bearing repo gets the full audit; a repo
+with decision records and no router gets the conditions from their
+`Revisit when` trailers; a repo with neither is simply not adopting the
+practice, which is a choice.
+
+`audit` reports unproven claims by kind, each with a remedy:
+
+| Kind | What it names |
+|---|---|
+| U1 / U2 | plan rows the verify gate proved failing, or claimed with no contract (read from the newest recorded gate run — never a fresh verify, which costs ~70 s here) |
+| U3 | invariants at rung `VIOLATED`. `stated` and `reviewed` are listed as UNENFORCED, not as debt — turning an honest rung into debt is how rungs get faked |
+| U4 | an invariant naming a test or gate step that does not resolve |
+| U5 | conditions that fired and were never decided |
+| U6 | incidents open past 30 days with no outcome |
+| U11 | a record citing a path that has moved |
+| U12 | a row claiming done inside a sensitive surface while pinning no named test |
+| U13 | a guard entry whose intent provenance no longer matches the router, or a sensitive surface no guard covers |
+
+Every source it could NOT compute is named with the reason — an audit that
+silently yields nothing is indistinguishable from a healthy repo.
+
+`export --guard` PROPOSES `.fathom/guard.cue` entries from the router's
+sensitive-surface rows, stamped with per-row provenance so staleness stays
+computable. It prints them; **fathom never writes that file** (law 15).
+
+Two `fathom doctor` rows report the corpus and its debt, and neither can
+FAIL: not adopting the practice is a choice, and honest debt is not a broken
+repo. Switch both off with the `intent-corpus` capability — the verb still
+answers on demand. Full design: `docs/design/evidence-plane.md`.
 
 ### `scope` / `purge` — reversible suppression and verified removal
 

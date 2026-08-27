@@ -26,6 +26,7 @@ is the canonical short wiring summary the adoption guides expand on.
 | [coding-context.md](coding-context.md) | Assemble a precise, token-efficient symbol context slice for active feature work |
 | [cross-repo-blast-radius.md](cross-repo-blast-radius.md) | Find all callers of a symbol across every service in the fleet before a refactor or rename |
 | [spec-verification.md](spec-verification.md) | Verify implementation against a spec or task list with per-task evidence verdicts |
+| [intent-corpus.md](intent-corpus.md) | Audit what a repo declares about itself — invariant rungs, fired conditions, and every claim nothing proves (**experimental**) |
 | [incident-investigation.md](incident-investigation.md) | Triage a production symptom using pre-computed call graphs, complexity hotspots, and commit history |
 | [change-review.md](change-review.md) | Gate a PR on blast radius, API breakage, architectural conformance, and dependency drift |
 | [fleet-health.md](fleet-health.md) | Surface security posture, complexity hotspots, dead code, and dependency inventory across all services |

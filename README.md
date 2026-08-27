@@ -106,7 +106,7 @@ Full CLI reference: [docs/usage.md](docs/usage.md); MCP tools and surfaces:
 | [docs/what-is-fathom.html](docs/what-is-fathom.html) | **Start here** — visual explainer of what fathom is and how it works |
 | [docs/intent/README.md](docs/intent/README.md) | **Project intent** router — principles (laws 1–15), invariants, domain, [scope](docs/intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index over `ADR.md`, autonomy, incidents, open questions |
 | [docs/adoption/](docs/adoption/) | **Wire it in** — zero-to-working guides per AI coding assistant: [claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md), [spec-driven-development.md](docs/adoption/spec-driven-development.md) |
-| [docs/use-cases/](docs/use-cases/) | **Use it** — one how-to per concern once you're wired in: coding context, cross-repo blast radius, spec verification, incident investigation, change review, fleet health |
+| [docs/use-cases/](docs/use-cases/) | **Use it** — one how-to per concern once you're wired in: coding context, cross-repo blast radius, spec verification, incident investigation, change review, fleet health, intent-corpus audit |
 | [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how fathom bends the curve, tool comparisons (observed vs speculative, labeled) |
 | [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, store, MCP surface |
 | [docs/usage.md](docs/usage.md) | Quickstart, CLI subcommand reference, Go client API, connecting an MCP client |

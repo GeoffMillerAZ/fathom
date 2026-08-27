@@ -29,11 +29,13 @@ claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/
 cpp-toolchain 1) and `fathom verify --strict` exits 0 for every top-level plan. Blocked on
 the pending decision `th-c214dd26` (`fathom thread list`).
 
-**G7. The evidence plane's wave 1 ships and its wave-2 gate is read (ADR-026).** Done when:
-`fathom verify --service fathom --plan docs/plans/evidence-plane.md --require-all` exits 0
-for wave 1 (`fathom intent audit`, the intent ledger, the doctor rows, the clock) and the
-clock row records whether K0's demand signal (≥3 annotations across ≥2 repos) was met by
-day 30 — either outcome closes the goal; `docs/plans/honesty-fixes.md` ships first.
+**G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
+and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
+attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet
+column, and K5's pair with K1's measured baseline (2 records, median 78 days). Done when:
+the clock row records whether K0's demand signal (≥3 annotations across ≥2 repos) was met
+by day 30 — **either outcome closes the goal**, and EP-16/17/18 are the only rows still
+waiting on it.
 
 ## Current boundaries
 
