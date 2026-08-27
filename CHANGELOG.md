@@ -19,7 +19,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: minor (pre-1.0: breaking bumps minor)
+Release impact: patch (pre-1.0: breaking bumps minor)
+
+## [0.6.0] -- 2026-08-27
+
+**What this release is.** The repository learned to audit what it declares about
+itself. `fathom intent audit` reads a Project Intent corpus -- invariants and their
+enforcement rungs, conditions, sensitive surfaces, decision records -- checks it
+against the index and the gates, and lists every claim nothing proves, with a remedy
+per line and no score. Two doctor rows carry it into a session through ONE shared
+attention line rather than a second always-loaded one. Two checks were narrowed
+because running them against this repo showed they fired on healthy rows, and the
+narrowings are the findings. The obligation ceiling was finally MEASURED (missed on
+47% of payloads) and its enforcement deferred to an owner decision rather than
+shipped blind. Detail: `docs/changelog/0.6.0.md`.
+
+### 2026-08-27
 
 ### Added
 - `fathom intent audit` reads a repo's Project Intent corpus and reports what it declares, what an instrument can show, and what nothing shows — unproven claims by kind, each with a remedy, and every source it could not compute named. `fathom intent export --guard` proposes `.fathom/guard.cue` entries from the router's sensitive surfaces; fathom never writes that file (ADR-026, `docs/use-cases/intent-corpus.md`).
