@@ -961,39 +961,24 @@ func TestCallLogger_TimestampValid(t *testing.T) {
 // ─── profile membership for new tools ────────────────────────────────────────
 
 func TestNewToolsInCorrectProfile(t *testing.T) {
-	srv := newExtSrv()
+	srv := newAnalysisSrv()
 
-	// set_profile is gone; select each group via the HTTP path scope instead
-	// (see TestSetProfileDirect for the stdio/surface equivalence this relies
-	// on).
-	toolsInProfile := func(profile string) map[string]bool {
-		ctx := mcp.WithRequestScope(context.Background(), profile, true)
-		listResp := scopedRoundtrip(t, srv, ctx, request{
-			JSONRPC: "2.0", ID: 801, Method: "tools/list",
-		})
-		if listResp["error"] != nil {
-			t.Fatalf("tools/list: %v", listResp["error"])
-		}
-		result := listResp["result"].(map[string]any)
-		tools := result["tools"].([]any)
-		m := make(map[string]bool, len(tools))
-		for _, raw := range tools {
-			m[raw.(map[string]any)["name"].(string)] = true
-		}
-		return m
-	}
-
-	codingTools := toolsInProfile("coding")
-	for _, name := range []string{"find_callees", "symbol_context", "outline", "entrypoints", "complexity", "god_object"} {
-		if !codingTools[name] {
-			t.Errorf("coding profile missing tool %q", name)
-		}
-	}
-
-	investigationTools := toolsInProfile("investigation")
-	for _, name := range []string{"community"} {
-		if !investigationTools[name] {
-			t.Errorf("investigation profile missing tool %q", name)
+	// HF-5 deleted the path-scoped group surfaces (ADR-014 amendment 2); the
+	// taxonomy still classifies every tool and that is the real contract.
+	for _, tc := range []struct {
+		name  string
+		group mcp.ToolGroup
+	}{
+		{"find_callees", mcp.GroupCoding},
+		{"symbol_context", mcp.GroupCoding},
+		{"outline", mcp.GroupCoding},
+		{"entrypoints", mcp.GroupCoding},
+		{"complexity", mcp.GroupCoding},
+		{"god_object", mcp.GroupCoding},
+		{"community", mcp.GroupInvestigation},
+	} {
+		if got := srv.GroupOfForTest(tc.name); got != tc.group {
+			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)
 		}
 	}
 }

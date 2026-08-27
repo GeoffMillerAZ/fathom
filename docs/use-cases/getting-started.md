@@ -66,7 +66,7 @@ Claude Code has no innate knowledge of your codebase structure. Without fathom, 
 - **Call-graph edges are precomputed.** Callers, callees, and cross-repo paths are stored as indexed edges — no grep required.
 - **Staleness is surfaced, not hidden.** Every query result carries a staleness indicator; `staleness_report` tells the agent exactly when the index has drifted from HEAD.
 - **Subagents share the same server.** `--scope user` in the MCP registration means any Claude Code subagent spawned in any repo can call fathom tools without per-project setup.
-- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the curated 17-tool coding hot loop, or a group endpoint (`/rpc/coding`, `/rpc/investigation`, `/rpc/platform`) for other work. Nothing is actually locked out — an off-surface call still executes, it's just flagged `off_surface:true` in the call log, so unmet demand for a wider surface is measurable instead of argued.
+- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the curated 17-tool coding hot loop, or bare `/rpc` for the full registry. (The four group endpoints were deleted 2026-08-26 — ADR-014 amendment 2, HF-5 — because nothing wired ever pointed at them.) Nothing is locked out either way: an off-surface call still executes, flagged `off_surface:true` in the call log, so unmet demand is measurable instead of argued.
 
 ---
 
@@ -207,7 +207,7 @@ profile switch. Scoping now depends entirely on transport:
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated |
 | `agent` | `POST /rpc/agent` | The curated 17-tool coding hot loop (`docs/mcp-tools.md` lists it; `read_source` and `memory_search` included) — the recommended registration |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 17-tool allowlist |
-| `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | Internal taxonomy group surfaces (zero observed traffic as of the surfaces-week1 review; kept for completeness) |
+| ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | Removed 2026-08-26 (ADR-014 amendment 2, HF-5) — unreachable by any wired client. The group taxonomy still classifies tools; use `POST /rpc`. |
 | `modules` | `POST /rpc/modules` | The GKE module host's floor tools (`list_modules`, `module_obligations`, `module_query`, `module_staleness`) over N conforming stores mounted read-only via `serve-http --module <path>` — see [mcp-tools.md](../mcp-tools.md)'s "Module host tools" section, including its hosted-mode (`--modules-token-env`) restriction |
 
 Register the daemon against the curated surface:

@@ -236,31 +236,26 @@ func TestCallUnknownTool(t *testing.T) {
 // ─── investigation profile: find_callers must appear ─────────────────────────
 
 func TestInvestigationProfileIncludesFindCallers(t *testing.T) {
-	srv := mcp.NewServer(nil)
+	srv := mcp.NewServer(&fakeBackend{})
 
-	// set_profile is gone; select the investigation surface via the HTTP path
-	// scope instead — toolOnSurface resolves named groups identically whether
-	// reached via stdio profile or HTTP surface (see TestSetProfileDirect).
-	ctx := mcp.WithRequestScope(context.Background(), "investigation", true)
-	listResp := scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0",
-		ID:      81,
-		Method:  "tools/list",
-		Params:  map[string]any{},
-	})
-	if listResp["error"] != nil {
-		t.Fatalf("tools/list error: %v", listResp["error"])
+	// HF-5 deleted /rpc/investigation (ADR-014 amendment 2). Two facts
+	// survive and both matter: find_callers' group classification, and its
+	// presence on the curated agent surface — the path agents actually use.
+	if got := srv.GroupOfForTest("find_callers"); got != mcp.GroupInvestigation {
+		t.Errorf("find_callers registered in group %q, want %q", got, mcp.GroupInvestigation)
 	}
-	result := listResp["result"].(map[string]any)
-	tools := result["tools"].([]any)
-
+	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
+	resp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 1, Method: "tools/list"})
+	if resp["error"] != nil {
+		t.Fatalf("tools/list(agent): %v", resp["error"])
+	}
 	found := false
-	for _, raw := range tools {
+	for _, raw := range resp["result"].(map[string]any)["tools"].([]any) {
 		if raw.(map[string]any)["name"] == "find_callers" {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("find_callers not found in investigation profile")
+		t.Error("find_callers must stay on the agent surface — it is the investigation hot loop")
 	}
 }

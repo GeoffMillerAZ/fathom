@@ -18,9 +18,18 @@
 //
 // Surfaces: "agent" is the primary curated allowlist for coding-agent
 // sessions, served at POST /rpc/agent; "companion" is a compatible alias
-// (identical allowlist, POST /rpc/companion). "coding", "investigation",
-// "shared", "platform" mirror the group taxonomy (group + shared tools). The
-// empty surface is the full registry.
+// (identical allowlist, POST /rpc/companion); "modules" is the module host's
+// scoped set. The empty surface is the full registry.
+//
+// The four group surfaces ("coding", "investigation", "shared", "platform")
+// were DELETED 2026-08-26 (ADR-014 amendment 2, docs/plans/honesty-fixes.md
+// HF-5). They were reachable only by typing the URL — no client
+// registration, stanza, skill, or doc ever pointed at one — so their zero
+// calls proved exposure-zero, not demand-zero (law 8 forbids reading that as
+// a kill clock). They are removed on law 4's ground instead: a surface no
+// wired client can reach is registry weight with no consumer. The group
+// TAXONOMY (GroupCoding, GroupInvestigation, …) is untouched; only the
+// path-scoped surfaces named after it are gone.
 package mcp
 
 import (
@@ -149,7 +158,7 @@ func (sc requestScope) enforced() bool {
 // bare /rpc endpoint is the full surface.
 func ValidSurface(name string) bool {
 	switch name {
-	case SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform", SurfaceModules:
+	case SurfaceCompanion, SurfaceAgent, SurfaceModules:
 		return true
 	}
 	return false
@@ -157,14 +166,14 @@ func ValidSurface(name string) bool {
 
 // SurfaceNames returns the valid named surfaces, sorted.
 func SurfaceNames() []string {
-	names := []string{SurfaceCompanion, SurfaceAgent, "coding", "investigation", "shared", "platform", SurfaceModules}
+	names := []string{SurfaceCompanion, SurfaceAgent, SurfaceModules}
 	sort.Strings(names)
 	return names
 }
 
 // toolOnSurface reports whether d is visible on the named surface.
-// "" is the full registry; companion is the explicit allowlist; group
-// surfaces show the group's tools plus shared tools — EXCEPT the modules
+// "" is the full registry; agent/companion is the explicit allowlist; the
+// modules surface serves GroupModules + GroupShared — EXCEPT the modules
 // surface while hosted mode is active, which serves ONLY
 // hostedModulesTools' explicit allowlist (critic finding 2(a): GroupShared
 // carries fleet-backend reads and spend/write tools a modules-token holder
@@ -190,7 +199,10 @@ func (s *Server) toolOnSurface(surface string, d toolDescriptor) bool {
 		}
 		return d.group == GroupShared || d.group == GroupModules
 	default:
-		return d.group == GroupShared || string(d.group) == surface
+		// Unreachable: ValidSurface admits only the three named surfaces
+		// above. A path that is not one of them 404s in servehttp before
+		// reaching the registry (HF-5 deleted the group surfaces).
+		return false
 	}
 }
 

@@ -387,29 +387,13 @@ func TestCrossRepoCallers_CrossServiceCallerReturned(t *testing.T) {
 func TestPlatformProfile_ShowsFleetTools(t *testing.T) {
 	srv := newFleetServer(fleetFixture())
 
-	// set_profile is gone; select the platform surface via the HTTP path
-	// scope instead (see TestSetProfileDirect for the stdio/surface
-	// equivalence this relies on).
-	ctx := mcp.WithRequestScope(context.Background(), "platform", true)
-	listResp := scopedRoundtrip(t, srv, ctx, request{
-		JSONRPC: "2.0", ID: 1041, Method: "tools/list",
-	})
-	if listResp["error"] != nil {
-		t.Fatalf("tools/list error: %v", listResp["error"])
-	}
-	result := listResp["result"].(map[string]any)
-	tools := result["tools"].([]any)
-	names := make(map[string]bool, len(tools))
-	for _, raw := range tools {
-		names[raw.(map[string]any)["name"].(string)] = true
-	}
-	for _, want := range []string{"list_services", "fleet_drift", "cross_repo_callers"} {
-		if !names[want] {
-			t.Errorf("platform profile missing tool %q", want)
+	// HF-5 deleted the /rpc/platform surface (ADR-014 amendment 2). The
+	// GroupPlatform taxonomy still classifies these tools; that is the
+	// contract this test defends.
+	for _, name := range []string{"fleet_drift", "cross_repo_callers"} {
+		if got := srv.GroupOfForTest(name); got != mcp.GroupPlatform {
+			t.Errorf("tool %q registered in group %q, want %q", name, got, mcp.GroupPlatform)
 		}
-	}
-	if names["platform_callers"] {
-		t.Error("platform profile still lists platform_callers — alias should be gone")
 	}
 }
 

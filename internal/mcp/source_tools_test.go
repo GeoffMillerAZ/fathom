@@ -323,44 +323,20 @@ func TestCloc_MissingService(t *testing.T) {
 func TestSourceToolsInCorrectProfile(t *testing.T) {
 	srv := newSourcesSrv(nil)
 
-	// set_profile is gone; select each group via the HTTP path scope instead
-	// (see TestSetProfileDirect for the stdio/surface equivalence this relies
-	// on).
-	toolsInProfile := func(profile string) map[string]bool {
-		ctx := mcp.WithRequestScope(context.Background(), profile, true)
-		listResp := scopedRoundtrip(t, srv, ctx, request{
-			JSONRPC: "2.0", ID: 1201, Method: "tools/list",
-		})
-		if listResp["error"] != nil {
-			t.Fatalf("tools/list(%s): %v", profile, listResp["error"])
-		}
-		result := listResp["result"].(map[string]any)
-		tools := result["tools"].([]any)
-		m := make(map[string]bool, len(tools))
-		for _, raw := range tools {
-			m[raw.(map[string]any)["name"].(string)] = true
-		}
-		return m
-	}
-
-	sharedTools := toolsInProfile("shared")
-	for _, name := range []string{"secret_scan", "shell_out", "http_client_calls"} {
-		if !sharedTools[name] {
-			t.Errorf("shared profile missing tool %q", name)
-		}
-	}
-
-	codingTools := toolsInProfile("coding")
-	for _, name := range []string{"cloc"} {
-		if !codingTools[name] {
-			t.Errorf("coding profile missing tool %q", name)
-		}
-	}
-
-	investigationTools := toolsInProfile("investigation")
-	for _, name := range []string{"markers", "routes", "endpoint_inventory", "dependencies", "test_debt", "api_routes", "deps"} {
-		if investigationTools[name] {
-			t.Errorf("investigation profile still lists removed tool %q", name)
+	// HF-5 deleted the path-scoped group surfaces (ADR-014 amendment 2); the
+	// group TAXONOMY they were named after still classifies every tool, and
+	// that is what this test was always really asserting.
+	for _, tc := range []struct {
+		name  string
+		group mcp.ToolGroup
+	}{
+		{"secret_scan", mcp.GroupShared},
+		{"shell_out", mcp.GroupShared},
+		{"http_client_calls", mcp.GroupShared},
+		{"cloc", mcp.GroupCoding},
+	} {
+		if got := srv.GroupOfForTest(tc.name); got != tc.group {
+			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)
 		}
 	}
 }

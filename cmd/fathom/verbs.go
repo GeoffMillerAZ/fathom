@@ -1,0 +1,99 @@
+package main
+
+// verbs.go — the one table of dispatched subcommands (HF-6).
+//
+// `fathom help` renders from this table and nothing else, and
+// TestHelpListsEveryDispatchedVerb parses main.go's dispatch switch and
+// fails when a `case "x":` has no row here. That is the structural fix for
+// the 2026-08-25 defect where six dispatched verbs (prime, review, fleet,
+// the session hooks) worked but were invisible in help — an agent could
+// only find them by reading the source.
+//
+// It is also the resolver the `## Maintained` doc contract needs (HF-7):
+// a name in a use-case doc's Maintained line is legitimate iff it is a
+// registered MCP tool or a verb in this table.
+
+// verb is one dispatched subcommand and its one-line help summary.
+type verb struct {
+	Name    string
+	Summary string
+}
+
+// verbTable is every subcommand `main` dispatches, in help order.
+var verbTable = []verb{
+	{Name: "ingest", Summary: "Ingest a service into the knowledge store"},
+	{Name: "ingest-diff", Summary: "Ingest only files changed since a git ref"},
+	{Name: "watch", Summary: "Poll for file changes and re-ingest automatically"},
+	{Name: "gen-claude-md", Summary: "Generate a CLAUDE.md from stored symbols"},
+	{Name: "gen-status-cue", Summary: "Generate a CUE status file from a plan + evidence"},
+	{Name: "gen-platform-manifest", Summary: "Generate a platform manifest from *.sqlite/*.db store files"},
+	{Name: "inspect", Summary: "List stored symbols for a service"},
+	{Name: "query", Summary: "Query symbols for a concern"},
+	{Name: "serve-mcp", Summary: "Serve the MCP JSON-RPC protocol over stdio"},
+	{Name: "serve-http", Summary: "Serve the MCP JSON-RPC protocol over HTTP (POST /rpc)"},
+	{Name: "platform-ingest", Summary: "Ingest all services under a root directory"},
+	{Name: "platform-callers", Summary: "Print cross-repo callers of a symbol"},
+	{Name: "verify", Summary: "Verify plan files against the index (done-means-proven gate)"},
+	{Name: "plans", Summary: "Computed SDD progress: status | next [--eligible-only] | context --row ID | lease | leases | archive | restore"},
+	{Name: "remap", Summary: "Point a service's recorded corpus root at a new location"},
+	{Name: "compile", Summary: "Compile a semantic layer for a service (dry-run by default)"},
+	{Name: "claim", Summary: "Triage a compiled claim: refute or corroborate, with a note"},
+	{Name: "layers", Summary: "List/show/install semantic-layer packs (embedded + project .fathom/layers/)"},
+	{Name: "report", Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge)"},
+	{Name: "review", Summary: "Store-direct review of files changed since a git ref (arch conformance, spec coverage); --no-persist = report only, --budget-seconds = advisory bound"},
+	{Name: "session-hook", Summary: "SessionStart hook: resolve this repo's service and emit a one-line reminder (or an honest not-indexed line); always exits 0"},
+	{Name: "prime", Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0"},
+	{Name: "edit-hook", Summary: "PostToolUse hook: inject obligations into session context"},
+	{Name: "stop-hook", Summary: "Stop hook: flag tasks claimed [x] this session that fail verification"},
+	{Name: "session-end-hook", Summary: "SessionEnd hook: deposit one continuity item only when the session leaves uncommitted work, stashes, or claimed-unproven rows"},
+	{Name: "pre-compact-hook", Summary: "PreCompact hook: file one pointer to the pre-compaction span (the transcript itself is never read)"},
+	{Name: "post-commit-hook", Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store — INC-3); always exits 0"},
+	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},
+	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"},
+	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},
+	{Name: "init", Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, CLAUDE.md/AGENTS.md stanza"},
+	{Name: "config", Summary: "Print the effective configuration (--explain for per-key provenance) | audit (custodian concerns)"},
+	{Name: "providers", Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)"},
+	{Name: "smoke", Summary: "One tiny real completion per profile: model, latency, tokens, cost"},
+	{Name: "doctor", Summary: "Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic"},
+	{Name: "capabilities", Summary: "What is switched on here and WHY anything is off: list | explain <id> | set <id> on|off"},
+	{Name: "flywheel", Summary: "Are the feedback loops closed? Each loop CLOSED/OPEN/IDLE with its evidence and remedy"},
+	{Name: "rate", Summary: "Rate this session 1-5: the OUTCOME half of the A/B criterion (fewer tokens is not a win if you got less done)"},
+	{Name: "arm", Summary: "A/B counterfactual arm (law 12): off --for D --sessions N [--note ...] | on"},
+	{Name: "narrate", Summary: "Self-expiring story mode: on --for D --sessions N [--note ...] | off"},
+	{Name: "retro", Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"},
+	{Name: "brief", Summary: "Write the shareable markdown value brief (honesty covenant included) to ~/.fathom/briefs, or --print"},
+	{Name: "thread", Summary: "Continuity threads: brief | note | point | list | close | promote | handoff — the work, not the session (vision 21)"},
+	{Name: "fleet", Summary: "Fleet operations: report | reconcile [--apply] | receipts | undo <receipt> (every write receipted, every receipt reversible)"},
+	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
+	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
+	{Name: "metrics", Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate"},
+	{Name: "findings", Summary: "Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)"},
+	{Name: "memory", Summary: "Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it"},
+	{Name: "scope", Summary: "Reversible suppression: list | suppress <glob> --reason R | unsuppress <id> | preview <glob>"},
+	{Name: "purge", Summary: "IRREVERSIBLE removal: purge <glob> --service S --reason R [--dry-run|--yes] | history (exit 2 = SQL zero but bytes unchecked)"},
+	{Name: "plugin", Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render the Claude Code plugin tree"},
+	{Name: "version", Summary: "Print version information"},
+	{Name: "help", Summary: "Show this help message"},
+}
+
+// verbNames returns every dispatched subcommand name, in help order. The
+// `## Maintained` parser and the help renderer share it, so a verb cannot
+// be dispatched-but-undocumented or documented-but-undispatched.
+func verbNames() []string {
+	names := make([]string, 0, len(verbTable))
+	for _, v := range verbTable {
+		names = append(names, v.Name)
+	}
+	return names
+}
+
+// isVerb reports whether name is a dispatched subcommand.
+func isVerb(name string) bool {
+	for _, v := range verbTable {
+		if v.Name == name {
+			return true
+		}
+	}
+	return false
+}

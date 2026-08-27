@@ -133,7 +133,7 @@ Returns the symbol in each service plus every cross-service caller — the one-c
 
 ## Setup & notes
 
-**Surface:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; the shared HTTP daemon scopes by path — `POST /rpc/agent` (the 17-tool allowlist: `find_callers`, `references`, `list_services`, `staleness_report`, `ingest` are on it), `POST /rpc/platform` for the fleet group, `POST /rpc/investigation` for the single-repo group, bare `POST /rpc` for everything. An off-surface call (`test_impact`, `rename_impact`, `reachable`, `cross_repo_*` from `/rpc/agent`) still executes — it is logged `off_surface:true`, never refused.
+**Surface:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry; the shared HTTP daemon scopes by path — `POST /rpc/agent` (the 17-tool allowlist: `find_callers`, `references`, `list_services`, `staleness_report`, `ingest` are on it), and bare `POST /rpc` for everything (the group endpoints were deleted — HF-5). An off-surface call (`test_impact`, `rename_impact`, `reachable`, `cross_repo_*` from `/rpc/agent`) still executes — it is logged `off_surface:true`, never refused.
 
 **Cross-repo edges require call-edge data in the index.** If `cross_repo_callers` returns zero results for a symbol you know is called externally, the index was built without call edges populated. Re-ingest with a current build:
 

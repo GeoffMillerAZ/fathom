@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -359,7 +360,7 @@ func (s *Server) SetHostedModules(v bool) {
 // setProfile updates the active profile (must be a known surface name or "").
 func (s *Server) setProfile(p string) *rpcError {
 	if p != "" && !ValidSurface(p) {
-		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: companion, coding, investigation, shared, platform, modules", p)}
+		return &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("unknown profile %q; valid: %s", p, strings.Join(SurfaceNames(), ", "))}
 	}
 	s.profileMu.Lock()
 	defer s.profileMu.Unlock()

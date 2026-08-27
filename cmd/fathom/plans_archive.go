@@ -28,8 +28,9 @@ import (
 //  2. Every claimed row verifies GREEN RIGHT NOW — the engine is run fresh,
 //     never trusting a prior run.
 //  3. Lexical absorption: every row's task ID appears somewhere in
-//     CHANGELOG.md, ADR.md, or docs/changelog/*.md (the per-release
-//     narrative) at a token boundary (never a bare substring — "E3-10" must
+//     CHANGELOG.md, ADR.md, docs/changelog/*.md (the per-release narrative),
+//     or the body of a commit since the plan was added that touched
+//     something outside docs/plans, at a token boundary (never a bare substring — "E3-10" must
 //     not absorb "E3-1"; see idAbsorbed), where a range "SH-1..6" or a
 //     slash-list "IT-14/15" names every id it denotes (expandIDNotation) —
 //     the plan's claims must already be recorded in the permanent history
@@ -46,7 +47,7 @@ import (
 // header, then re-staged.
 func cmdPlansArchive(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plans archive", stderr)
-	root := fs.String("root", ".", "repo root (git mv + CHANGELOG.md/ADR.md checks run relative to this)")
+	root := fs.String("root", ".", "repo root (git mv + absorption checks run relative to this)")
 	service := fs.String("service", "", "service ID (required)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
@@ -129,9 +130,9 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 
 	// Criterion 3: lexical absorption into CHANGELOG.md, ADR.md, or the
 	// per-release narrative under docs/changelog/.
-	absorbedText, err := readAbsorptionCorpus(root)
+	absorbedText, err := readAbsorptionCorpus(root, relPlan)
 	if err != nil {
-		return "", fmt.Errorf("reading CHANGELOG.md/ADR.md/docs/changelog: %w", err)
+		return "", fmt.Errorf("reading the absorption corpus (CHANGELOG.md/ADR.md/docs/changelog/git log): %w", err)
 	}
 	var unabsorbed []string
 	for _, row := range rows {
@@ -142,7 +143,7 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 	}
 	if len(unabsorbed) > 0 {
 		sort.Strings(unabsorbed)
-		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md, ADR.md, or docs/changelog/*.md: %s",
+		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md, ADR.md, docs/changelog/*.md, or a commit body: %s",
 			strings.Join(unabsorbed, ", "))
 	}
 
@@ -295,7 +296,7 @@ func isWordByte(c byte) bool {
 // Missing files are tolerated as empty — a repo without one yet just fails
 // the absorption check honestly rather than erroring operationally. The
 // narrative files are read in sorted order so the corpus is deterministic.
-func readAbsorptionCorpus(root string) (string, error) {
+func readAbsorptionCorpus(root, relPlan string) (string, error) {
 	names := []string{"CHANGELOG.md", "ADR.md"}
 	narrative, err := filepath.Glob(filepath.Join(root, "docs", "changelog", "*.md"))
 	if err != nil {
@@ -318,7 +319,52 @@ func readAbsorptionCorpus(root string) (string, error) {
 		b.WriteByte('\n')
 	}
 	corpus := b.String()
+	if hist, err := gitHistoryCorpus(root, relPlan); err == nil {
+		corpus += "\n" + hist
+	}
 	return corpus + expandIDNotation(corpus), nil
+}
+
+// gitHistoryCorpus returns the subject+body of every commit from the one
+// that ADDED relPlan through HEAD that touched at least one path OUTSIDE
+// docs/plans — git is the permanent history (changes.md L1), so a row id
+// named in a commit body is absorbed just as a CHANGELOG line is.
+//
+// The docs/plans exclusion is load-bearing: a plan's own bookkeeping commit
+// routinely names its rows ("custodian CC-14/15"), and counting those would
+// make criterion 3 vacuous — every plan would absolve itself. Commits that
+// touched code AND the plan still count; only plan-only commits drop out.
+//
+// A repo with no git, a plan with no add-commit, or any git failure yields
+// an empty corpus and a nil error: absorption then falls back to the files,
+// which fails honestly rather than erroring operationally.
+func gitHistoryCorpus(root, relPlan string) (string, error) {
+	first := gitFirstCommitTouching(root, relPlan)
+	args := []string{"-C", root, "log", "--format=%s%n%b"}
+	if first != "" {
+		args = append(args, first+"..HEAD")
+	}
+	args = append(args, "--", ".", ":(exclude)docs/plans")
+	out, err := exec.Command("git", args...).Output()
+	if err != nil {
+		return "", nil
+	}
+	return string(out), nil
+}
+
+// gitFirstCommitTouching returns the sha of the commit that added rel, or
+// "" when git cannot say (untracked plan, no history, git absent).
+func gitFirstCommitTouching(root, rel string) string {
+	out, err := exec.Command("git", "-C", root, "log", "--follow", "--diff-filter=A",
+		"--format=%H", "--", rel).Output()
+	if err != nil {
+		return ""
+	}
+	lines := strings.Fields(strings.TrimSpace(string(out)))
+	if len(lines) == 0 {
+		return ""
+	}
+	return lines[len(lines)-1] // oldest
 }
 
 // The changelog names plan rows as durable reference points in range and

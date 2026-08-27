@@ -397,11 +397,76 @@ func TestIDNotationExpansion(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CHANGELOG.md"), []byte("VS-1..4 verified\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := readAbsorptionCorpus(root)
+	got, err := readAbsorptionCorpus(root, "docs/plans/none.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !idAbsorbed(got, "VS-3") || idAbsorbed(got, "VS-5") {
 		t.Errorf("corpus from a range must absorb VS-3 and not VS-5: %q", got)
+	}
+}
+
+// TestCmdPlansArchive_AbsorbedByGitHistory (HF-1): git IS the permanent
+// history (changes.md L1), so a row id named in a commit body absorbs the
+// row. The corpus deliberately EXCLUDES commits that touched only
+// docs/plans — a plan's own bookkeeping commit ("custodian CC-14/15") must
+// not absolve its own rows, which would make criterion 3 vacuous.
+func TestCmdPlansArchive_AbsorbedByGitHistory(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	planMD := "# History\n\n" +
+		"- [x] Charge handler {id: GH-1, symbol: Charge, skip_test: true}\n"
+	// Neither CHANGELOG.md nor ADR.md mentions GH-1.
+	gitFixtureForArchive(t, root, "history.md", planMD, "nothing here\n", "")
+
+	git := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+		cmd.Env = append(os.Environ(),
+			"GIT_AUTHOR_NAME=Alice", "GIT_AUTHOR_EMAIL=alice@example.com",
+			"GIT_COMMITTER_NAME=Alice", "GIT_COMMITTER_EMAIL=alice@example.com")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+
+	// A plan-only commit naming the row must NOT absorb it.
+	if err := os.WriteFile(filepath.Join(root, "docs", "plans", "history.md"), []byte(planMD+"\n<!-- touched -->\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "docs/plans/history.md")
+	git("commit", "-q", "-m", "plans: GH-1 bookkeeping")
+	if corpus, err := gitHistoryCorpus(root, "docs/plans/history.md"); err != nil {
+		t.Fatalf("gitHistoryCorpus: %v", err)
+	} else if idAbsorbed(corpus, "GH-1") {
+		t.Error("a commit touching only docs/plans must not absorb its own row")
+	}
+
+	// A commit touching real code and naming the row DOES absorb it.
+	if err := os.WriteFile(filepath.Join(root, "charge.go"), []byte("package main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "charge.go")
+	git("commit", "-q", "-m", "feat(charge): the handler\n\nRefs: GH-1")
+	corpus, err := gitHistoryCorpus(root, "docs/plans/history.md")
+	if err != nil {
+		t.Fatalf("gitHistoryCorpus: %v", err)
+	}
+	if !idAbsorbed(corpus, "GH-1") {
+		t.Errorf("a commit body naming GH-1 must absorb it; corpus=%q", corpus)
+	}
+
+	// End to end: the archive now succeeds on git history alone. (The plan
+	// file itself must be clean — commit the marker edit's descendant state.)
+	var out, errBuf bytes.Buffer
+	code := run(archiveArgs("archive", root, storePath, "history.md"), &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("archive absorbed by git history should succeed; exit %d stderr=%s", code, errBuf.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs", "plans", "archive", "history.md")); err != nil {
+		t.Errorf("plan must have moved to docs/plans/archive/: %v", err)
 	}
 }

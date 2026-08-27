@@ -388,35 +388,20 @@ func TestDeadCode_MissingService(t *testing.T) {
 func TestAnalysisToolsInCorrectProfile(t *testing.T) {
 	srv := newAnalysisSrv()
 
-	// set_profile is gone; select each group via the HTTP path scope instead
-	// (see TestSetProfileDirect for the stdio/surface equivalence this relies
-	// on).
-	toolsInProfile := func(profile string) map[string]bool {
-		ctx := mcp.WithRequestScope(context.Background(), profile, true)
-		listResp := scopedRoundtrip(t, srv, ctx, request{
-			JSONRPC: "2.0", ID: 161, Method: "tools/list",
-		})
-		if listResp["error"] != nil {
-			t.Fatalf("tools/list: %v", listResp["error"])
+	// HF-5 deleted the path-scoped group surfaces (ADR-014 amendment 2); the
+	// group taxonomy still classifies every tool, which is what this test
+	// was always asserting.
+	for _, tc := range []struct {
+		name  string
+		group mcp.ToolGroup
+	}{
+		{"rename_impact", mcp.GroupCoding},
+		{"reachable", mcp.GroupCoding},
+		{"dead_code", mcp.GroupCoding},
+		{"test_impact", mcp.GroupInvestigation},
+	} {
+		if got := srv.GroupOfForTest(tc.name); got != tc.group {
+			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)
 		}
-		result := listResp["result"].(map[string]any)
-		tools := result["tools"].([]any)
-		m := make(map[string]bool, len(tools))
-		for _, raw := range tools {
-			m[raw.(map[string]any)["name"].(string)] = true
-		}
-		return m
-	}
-
-	codingTools := toolsInProfile("coding")
-	for _, name := range []string{"rename_impact", "reachable", "dead_code"} {
-		if !codingTools[name] {
-			t.Errorf("coding profile missing tool %q", name)
-		}
-	}
-
-	investigationTools := toolsInProfile("investigation")
-	if !investigationTools["test_impact"] {
-		t.Error("investigation profile missing tool test_impact")
 	}
 }

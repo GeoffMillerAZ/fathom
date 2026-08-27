@@ -50,14 +50,14 @@ func TestSetProfileDirect(t *testing.T) {
 
 	// A group profile's stdio view matches the identically-named HTTP
 	// surface's view — both resolve through toolOnSurface/visibleToolsFor.
-	if err := srv.setProfile("coding"); err != nil {
-		t.Fatalf("setProfile(coding): %v", err)
+	if err := srv.setProfile(SurfaceAgent); err != nil {
+		t.Fatalf("setProfile(agent): %v", err)
 	}
 	viaProfile := srv.visibleToolsCtx(stdioCtx)
-	httpCtx := WithRequestScope(context.Background(), "coding", true)
+	httpCtx := WithRequestScope(context.Background(), SurfaceAgent, true)
 	viaSurface := srv.visibleToolsCtx(httpCtx)
 	if len(viaProfile) != len(viaSurface) {
-		t.Fatalf("coding profile (%d tools) != coding surface (%d tools)", len(viaProfile), len(viaSurface))
+		t.Fatalf("agent profile (%d tools) != agent surface (%d tools)", len(viaProfile), len(viaSurface))
 	}
 	surfaceNames := make(map[string]bool, len(viaSurface))
 	for _, d := range viaSurface {
@@ -65,7 +65,7 @@ func TestSetProfileDirect(t *testing.T) {
 	}
 	for _, d := range viaProfile {
 		if !surfaceNames[d.Name] {
-			t.Errorf("coding profile listed %q, not in coding surface view", d.Name)
+			t.Errorf("agent profile listed %q, not in agent surface view", d.Name)
 		}
 	}
 

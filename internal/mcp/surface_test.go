@@ -227,11 +227,12 @@ func TestBatchGatedOnSurface(t *testing.T) {
 	// in this slice (companionTools omits batch/brief); under strict
 	// mode a companion-scoped batch call would be rejected outright before
 	// even reaching its sub-calls. Use the "shared" surface instead, where
-	// batch stays on-surface (GroupShared is included on every group
-	// surface), so the gating shows up specifically on the off-surface
-	// sub-call (find_callers, GroupInvestigation) rather than the outer call.
+	// batch is NOT on the agent allowlist (surfaces week-1 dropped it), so
+	// under strictSurfaces the outer call itself is refused — HF-5 deleted
+	// the group surfaces this case used to ride ("shared"), and the agent
+	// surface is the only curated one left.
 	srv.SetStrictSurfaces(true)
-	sharedCtx := mcp.WithRequestScope(context.Background(), "shared", true)
+	sharedCtx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
 	strictResp := scopedRoundtrip(t, srv, sharedCtx, request{
 		JSONRPC: "2.0", ID: 5, Method: "tools/call",
 		Params: map[string]any{
@@ -244,9 +245,20 @@ func TestBatchGatedOnSurface(t *testing.T) {
 			},
 		},
 	})
-	if strictResp["error"] != nil {
-		t.Fatalf("batch is GroupShared, should still succeed on the shared surface under strictSurfaces: %v", strictResp["error"])
+	if strictResp["error"] == nil {
+		t.Fatalf("batch is off the agent allowlist; strictSurfaces must refuse the outer call")
 	}
+	if msg, _ := strictResp["error"].(map[string]any)["message"].(string); !strings.Contains(msg, "batch") {
+		t.Errorf("strict refusal should name the tool: %q", msg)
+	}
+	return
+}
+
+// batchStrictTail is the pre-HF-5 remainder of TestBatchGatedOnSurface,
+// kept out of the compiled path: it asserted per-sub-call gating on a group
+// surface that no longer exists. The outer-call refusal above is the
+// surviving contract.
+func batchStrictTail(t *testing.T, strictResp map[string]any) {
 	strictContent := strictResp["result"].(map[string]any)["content"].([]any)
 	strictText := strictContent[0].(map[string]any)["text"].(string)
 	var strictPayload struct {
@@ -401,9 +413,19 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 // ─── surface name validation ─────────────────────────────────────────────────
 
 func TestValidSurface(t *testing.T) {
-	for _, name := range []string{"agent", "companion", "coding", "investigation", "shared", "platform", "modules"} {
+	for _, name := range []string{"agent", "companion", "modules"} {
 		if !mcp.ValidSurface(name) {
 			t.Errorf("ValidSurface(%q) = false, want true", name)
+		}
+	}
+	// HF-5 (ADR-014 amendment 2): the four group surfaces are DELETED. They
+	// were reachable only by typing the URL — no client registration, stanza,
+	// skill, or doc pointed at one — so their zero traffic proved
+	// exposure-zero, not demand-zero (law 8 forbids reading that as a kill
+	// clock); they go on law 4's ground, a surface with no reachable consumer.
+	for _, name := range []string{"coding", "investigation", "shared", "platform"} {
+		if mcp.ValidSurface(name) {
+			t.Errorf("ValidSurface(%q) = true — the group surfaces were deleted (HF-5)", name)
 		}
 	}
 	for _, name := range []string{"", "bogus", "Companion", "Agent", "full"} {
@@ -412,8 +434,8 @@ func TestValidSurface(t *testing.T) {
 		}
 	}
 	names := mcp.SurfaceNames()
-	if len(names) != 7 {
-		t.Fatalf("SurfaceNames() = %v, want 7 entries", names)
+	if len(names) != 3 {
+		t.Fatalf("SurfaceNames() = %v, want 3 entries (agent, companion, modules)", names)
 	}
 	if !sort.StringsAreSorted(names) {
 		t.Errorf("SurfaceNames() not sorted: %v", names)
@@ -500,5 +522,34 @@ func TestCallLoggerRecordsBatchSubCalls(t *testing.T) {
 		t.Error("outer batch entry not logged")
 	} else if outer["via"] != nil {
 		t.Errorf("outer batch entry should have no via, got %v", outer["via"])
+	}
+}
+
+// TestGroupSurfacesRetired (HF-5, ADR-014 amendment 2) pins the deletion of
+// the four path-scoped group surfaces. They were reachable only by typing
+// the URL — no client registration, stanza, skill, or doc ever pointed at
+// one — so their zero traffic proved exposure-zero, not demand-zero, and
+// law 8 forbids reading that as a kill clock. They go on law 4's ground
+// instead: a surface no wired client can reach is registry weight with no
+// consumer. The group TAXONOMY they were named after is untouched.
+func TestGroupSurfacesRetired(t *testing.T) {
+	for _, gone := range []string{"coding", "investigation", "shared", "platform"} {
+		if mcp.ValidSurface(gone) {
+			t.Errorf("ValidSurface(%q) = true — HF-5 deleted the group surfaces", gone)
+		}
+	}
+	for _, kept := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion, mcp.SurfaceModules} {
+		if !mcp.ValidSurface(kept) {
+			t.Errorf("ValidSurface(%q) = false — agent, companion and modules survive", kept)
+		}
+	}
+	if got := mcp.SurfaceNames(); len(got) != 3 {
+		t.Errorf("SurfaceNames() = %v, want exactly the three surviving surfaces", got)
+	}
+
+	// The taxonomy survives the surfaces: a tool still carries its group.
+	srv := mcp.NewServer(&fakeBackend{})
+	if got := srv.GroupOfForTest("find_callers"); got != mcp.GroupInvestigation {
+		t.Errorf("group taxonomy must survive surface deletion: find_callers group = %q", got)
 	}
 }

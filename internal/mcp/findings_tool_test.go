@@ -25,25 +25,35 @@ func findingsNodes() []core.SymbolNode {
 // net tool growth on the agent surface" constraint, verified rather than
 // merely claimed.
 func TestFindingsNear_ToolIsOnInvestigationSurfaceNotAgentSurface(t *testing.T) {
-	srv := mcp.NewServer(&extendedFakeBackend{nodes: findingsNodes(), services: []string{"svc"}})
+	srv := mcp.NewServer(&reviewFakeBackend{extendedFakeBackend: extendedFakeBackend{nodes: findingsNodes(), services: []string{"svc"}}})
 
-	bare := roundtrip(t, srv, request{JSONRPC: "2.0", ID: 1, Method: "tools/list"})
-	if !containsName(toolNames(t, bare), "findings_near") {
-		t.Error("findings_near missing from the bare (full) registry")
+	// The point of this test survives HF-5's deletion of /rpc/investigation
+	// (ADR-014 amendment 2): findings_near is an investigation tool and must
+	// NOT ride the curated agent allowlist, where every added tool is a
+	// permanent schema cost on the hot loop (law 4).
+	if got := srv.GroupOfForTest("findings_near"); got != mcp.GroupInvestigation {
+		t.Errorf("findings_near registered in group %q, want %q", got, mcp.GroupInvestigation)
 	}
-
-	investigationCtx := mcp.WithRequestScope(context.Background(), "investigation", true)
-	inv := scopedRoundtrip(t, srv, investigationCtx, request{JSONRPC: "2.0", ID: 2, Method: "tools/list"})
-	if !containsName(toolNames(t, inv), "findings_near") {
-		t.Error("findings_near missing from the \"investigation\" named surface")
+	ctx := mcp.WithRequestScope(context.Background(), mcp.SurfaceAgent, true)
+	resp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 1, Method: "tools/list"})
+	if resp["error"] != nil {
+		t.Fatalf("tools/list(agent): %v", resp["error"])
 	}
-
-	for _, surface := range []string{mcp.SurfaceAgent, mcp.SurfaceCompanion} {
-		ctx := mcp.WithRequestScope(context.Background(), surface, true)
-		resp := scopedRoundtrip(t, srv, ctx, request{JSONRPC: "2.0", ID: 3, Method: "tools/list"})
-		if containsName(toolNames(t, resp), "findings_near") {
-			t.Errorf("findings_near must NOT be on the %q surface (no net agent-surface tool growth)", surface)
+	for _, raw := range resp["result"].(map[string]any)["tools"].([]any) {
+		if raw.(map[string]any)["name"] == "findings_near" {
+			t.Error("findings_near must stay OFF the agent surface (law 4: no net tool growth on the hot loop)")
 		}
+	}
+	// It stays reachable on the full registry at bare /rpc.
+	full := scopedRoundtrip(t, srv, context.Background(), request{JSONRPC: "2.0", ID: 2, Method: "tools/list"})
+	found := false
+	for _, raw := range full["result"].(map[string]any)["tools"].([]any) {
+		if raw.(map[string]any)["name"] == "findings_near" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("findings_near must remain on the full registry (POST /rpc)")
 	}
 }
 

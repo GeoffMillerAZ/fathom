@@ -167,3 +167,46 @@ func TestThreadNoteDefaultsToRepoThread(t *testing.T) {
 		}
 	})
 }
+
+// TestBriefHiddenCountNamesAllRepos (HF-8): the brief hides other repos'
+// open items (TH-6) and names the count — law 3, nothing silently cut. The
+// flag it names must be the one that WIDENS across repos (--all-repos);
+// after TH-6 landed the hint still said `--all`, which on `thread list`
+// means "also closed and dormant" — a different switch, so an agent
+// following the hint saw the wrong set.
+func TestBriefHiddenCountNamesAllRepos(t *testing.T) {
+	now := time.Date(2026, 8, 26, 12, 0, 0, 0, time.UTC)
+	items := []threadItem{
+		{
+			SchemaVersion: 1, ID: "th-local", Thread: "here", Kind: "handoff-note",
+			Text: "local work in flight", FiledAt: now.Add(-time.Hour).Format(time.RFC3339),
+			Pointers: map[string]string{"repo": "here"},
+		},
+		{
+			SchemaVersion: 1, ID: "th-far", Thread: "general", Kind: "handoff-note",
+			Text: "another repo's handoff", FiledAt: now.Add(-2 * time.Hour).Format(time.RFC3339),
+			Pointers: map[string]string{"repo": "elsewhere"},
+		},
+	}
+	scope := threadScope{repo: "here"}
+
+	out := renderThreadBriefScoped(items, scope, t.TempDir(), threadBriefBudgetBytes, now, false)
+	if !strings.Contains(out, "open item(s) in other repos") {
+		t.Fatalf("brief must name the hidden cross-repo count (law 3): %q", out)
+	}
+	if !strings.Contains(out, "--all-repos") {
+		t.Errorf("the hint must name --all-repos, the switch that widens across repos: %q", out)
+	}
+	if strings.Contains(out, "another repo's handoff") {
+		t.Errorf("a foreign repo's item must be counted, not rendered: %q", out)
+	}
+	if !strings.Contains(out, "local work in flight") {
+		t.Errorf("this repo's own item must still render: %q", out)
+	}
+
+	// --all-repos rides the foreign item along instead of counting it.
+	wide := renderThreadBriefScoped(items, scope, t.TempDir(), threadBriefBudgetBytes, now, true)
+	if !strings.Contains(wide, "another repo's handoff") {
+		t.Errorf("--all-repos must render foreign items: %q", wide)
+	}
+}

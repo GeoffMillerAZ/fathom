@@ -29,7 +29,7 @@ only) each request selects an immutable **surface** via the path:
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated — the default for schema-deferring clients such as Claude Code; includes `ingest` (writes) and `compile_layer` (LLM spend). Hides the four module tools instead when the daemon is in hosted-modules mode (see below) |
 | `agent` | `POST /rpc/agent` | The primary agent surface (see below) — the user-scope MCP registration points here |
 | `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical allowlist |
-| `coding` / `investigation` / `shared` / `platform` | `POST /rpc/<name>` | The group's tools plus all shared tools (internal taxonomy; zero observed traffic as of the surfaces-week1 review, kept for completeness) |
+| ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | The four group surfaces were removed 2026-08-26 (ADR-014 amendment 2, `docs/plans/honesty-fixes.md` HF-5): no client registration, stanza, skill, or doc ever pointed at one, so their zero traffic proved exposure-zero, not demand-zero (law 8) — they go on law 4's ground, a surface with no reachable consumer. The group **taxonomy** (`GroupCoding`, `GroupInvestigation`, …) still classifies every tool. Use `POST /rpc` for everything, `POST /rpc/agent` for the curated hot loop. |
 | `modules` | `POST /rpc/modules` | The module host's floor tool set (docs/plans/gke-module-host.md) — see "Module host tools" below for the tool list and the hosted-mode restriction |
 
 **Agent/companion allowlist (17 tools):** `capabilities`, `entrypoints`, `find_callers`,

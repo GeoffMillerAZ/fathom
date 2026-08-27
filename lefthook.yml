@@ -99,10 +99,14 @@ pre-push:
 #     days on a full disk and nothing said so). Note the daemon runs an
 #     INSTALLED copy, not bin/fathom — deploying is a deliberate step (see
 #     docs/configuration.md).
-#  2. fathom-refresh — re-index fathom into the fleet store with the fresh
-#     binary. --path must be ABSOLUTE: the recorded ServiceMeta path is what
-#     the daemon resolves on auto-refresh. Concurrent daemon writes are fine
-#     on the SQLite WAL store (ADR-020); errors stay non-blocking.
+#  2. fathom-refresh — refresh the index THROUGH THE DAEMON (HF-2, INC-3).
+#     This used to be a shell `fathom ingest --store workspace/db/fleet.sqlite`
+#     against the very store the daemon serves: the write path O16 rode when a
+#     wedged reader replaced a good index with a plausible empty one, and the
+#     thing CLAUDE.md's Index-first rule forbids. `post-commit-hook` calls the
+#     daemon's ingest tool instead and falls back to the store-direct path only
+#     when the daemon is unreachable — and there IT-15's refusal is in force.
+#     Always exits 0; a commit is never blocked on a refresh.
 post-commit:
   commands:
     rebuild-binary:
@@ -115,4 +119,4 @@ post-commit:
     fathom-refresh:
       run: |
         [ -x bin/fathom ] || exit 0
-        bin/fathom ingest --service fathom --path "$PWD" --store workspace/db/fleet.sqlite >/dev/null 2>&1 || true
+        bin/fathom post-commit-hook --dir "$PWD" --service fathom --quiet || true

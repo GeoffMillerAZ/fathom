@@ -41,6 +41,6 @@ Each use case has exactly one doc here. When an MCP tool or CLI command is added
 
 1. Find the doc(s) whose **## Maintained** line lists that tool or command.
 2. Update the Tools table, any worked-example calls, and the Maintained line to reflect the change.
-3. If a tool joins or leaves an HTTP surface (`/rpc/agent`, or a group endpoint `coding` / `investigation` / `platform` / `shared`), update any surface guidance in the doc's **Setup & notes** section. There is no profile switch: stdio serves the full registry, HTTP scopes by path, and off-surface calls execute-and-flag.
+3. If a tool joins or leaves the `/rpc/agent` allowlist, update any surface guidance in the doc's **Setup & notes** section. The group endpoints were deleted (HF-5); the surviving surfaces are `agent` (alias `companion`), `modules`, and bare `/rpc`. There is no profile switch: stdio serves the full registry, HTTP scopes by path, and off-surface calls execute-and-flag.
 
 The MCP tool table in `docs/mcp-tools.md` is test-synced to the registry (`internal/mcp`, `TestMcpToolsDocMatchesRegistry`) — a name in a Maintained line must appear there or be a `fathom` verb (`bin/fathom help`, `bin/fathom <verb> -h`). CLI subcommands are the `case` arms in `cmd/fathom/main.go`. Mark a shipped-but-unmeasured or entry-conditioned capability **experimental** in one clause; never describe it as absent.
