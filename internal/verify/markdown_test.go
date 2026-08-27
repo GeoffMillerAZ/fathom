@@ -167,3 +167,43 @@ func TestLintPlan_UnparseableAnnotationIsLoud(t *testing.T) {
 		t.Fatalf("no annotation warning in %v — the silent-void failure mode survives", warns)
 	}
 }
+
+// TestOracleAnnotationMangledLintsLoud (EP-2): intent conditions carry
+// `{oracle: …}` blocks parsed by this same tokenizer (ADR-026 §3). The
+// suspect-key set must know the oracle keys, or a mangled oracle block
+// yields zero keys, reads as prose, and vanishes — the O4 silent-void class
+// that once cost a plan row its id and its whole contract.
+func TestOracleAnnotationMangledLintsLoud(t *testing.T) {
+	// Well-formed: the keys parse and nothing is suspect.
+	kv, title, suspect := verify.ParseAnnotation(
+		`XT-6b lands {oracle: index, service: fathom, symbol: tsengineCppExtractor, present: true}`,
+	)
+	if suspect != "" {
+		t.Errorf("a well-formed oracle block must not be suspect: %q", suspect)
+	}
+	if kv["oracle"] != "index" || kv["service"] != "fathom" || kv["present"] != "true" {
+		t.Errorf("oracle keys not parsed: %#v", kv)
+	}
+	if title != "XT-6b lands" {
+		t.Errorf("title = %q, want the condition text without the block", title)
+	}
+
+	// Mangled (no colon after the key) yields no keys — but the block names
+	// an oracle key, so it must be reported as suspect, never dropped.
+	_, _, suspect = verify.ParseAnnotation(`a second repo needs budgets {oracle lexical paths ".fathom/capabilities.cue"}`)
+	if suspect == "" {
+		t.Error("a mangled block naming oracle keys must lint loud, not vanish (O4)")
+	}
+
+	// Prose braces stay prose.
+	_, _, suspect = verify.ParseAnnotation(`the shape is {a, b} in the docs`)
+	if suspect != "" {
+		t.Errorf("prose braces must not be reported as a mangled annotation: %q", suspect)
+	}
+
+	// Quoted braces inside a value never terminate the block (O4 proper).
+	kv, _, _ = verify.ParseAnnotation(`row {oracle: lexical, pattern: "budgets: {list, map}", min: 1}`)
+	if kv["pattern"] != "budgets: {list, map}" || kv["min"] != "1" {
+		t.Errorf("quoted braces must survive as value content: %#v", kv)
+	}
+}

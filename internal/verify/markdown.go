@@ -165,17 +165,44 @@ func parseAnnotation(s string) (map[string]string, string, string) {
 // contains a known contract key as a whole word. Loudness over silence for
 // exactly these — a lost contract is the gate's biggest honesty risk (O4).
 func suspectAnnotation(block string) bool {
-	keys := []string{"id", "symbol", "package", "skip_test", "skip", "reachable_from", "min_tier", "disposition", "reason", "trigger", "allow_contradiction", "ctx", "needs"}
 	for _, f := range strings.FieldsFunc(block, func(r rune) bool {
 		return r == ' ' || r == ',' || r == ':' || r == '\t'
 	}) {
-		for _, k := range keys {
+		for _, k := range annotationKeys {
 			if f == k {
 				return true
 			}
 		}
 	}
 	return false
+}
+
+// annotationKeys is every key the tokenizer recognises as evidence that a
+// brace block was MEANT to be an annotation. Plan-grammar keys came first;
+// the oracle keys (ADR-026 §3) joined them when intent conditions started
+// carrying `{oracle: …}` blocks parsed by this same tokenizer — without
+// them a mangled oracle block would yield zero keys, look like prose, and
+// vanish silently: the exact O4 class this list exists to catch.
+var annotationKeys = []string{
+	// plan grammar v2
+	"id", "symbol", "package", "skip_test", "skip", "reachable_from",
+	"min_tier", "disposition", "reason", "trigger", "allow_contradiction",
+	"ctx", "needs",
+	// intent-condition oracles (ADR-026)
+	"oracle", "paths", "pattern", "min", "max", "eq", "run", "path",
+	"service", "present", "after", "plan", "rows", "row", "partial",
+}
+
+// ParseAnnotation is parseAnnotation's exported face for callers outside
+// this package — internal/intent parses `{oracle: …}` blocks on intent
+// condition lines with the SAME tokenizer the plan grammar uses, so the two
+// grammars can never drift into two quoting rules (O4's lesson).
+//
+// It returns the key→value map (nil when the line carries no block), the
+// line with the block removed, and a non-empty suspect string when a block
+// looked like an annotation but yielded no keys.
+func ParseAnnotation(s string) (map[string]string, string, string) {
+	return parseAnnotation(s)
 }
 
 // splitPairs splits an annotation block on commas, treating commas inside

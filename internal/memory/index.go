@@ -4,13 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/pathglob"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -326,29 +326,7 @@ func (s *StoreIndex) symbols(ctx context.Context, service string) (symbolSnapsho
 
 // matchGlob matches ref against a glob. "**" spans directory separators;
 // everything else is path.Match semantics.
-func matchGlob(glob, ref string) bool {
-	if glob == ref {
-		return true
-	}
-	if strings.Contains(glob, "**") {
-		prefix, suffix, _ := strings.Cut(glob, "**")
-		if !strings.HasPrefix(ref, prefix) {
-			return false
-		}
-		rest := ref[len(prefix):]
-		suffix = strings.TrimPrefix(suffix, "/")
-		if suffix == "" {
-			return true
-		}
-		if ok, _ := path.Match(suffix, path.Base(rest)); ok {
-			return true
-		}
-		ok, _ := path.Match(suffix, rest)
-		return ok
-	}
-	ok, _ := path.Match(glob, ref)
-	return ok
-}
+func matchGlob(glob, ref string) bool { return pathglob.Match(glob, ref) }
 
 // hashParts is the anchor hash constructor: sha256 over NUL-joined parts, so
 // no part boundary can be forged by embedding the separator.
