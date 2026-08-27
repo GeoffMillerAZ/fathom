@@ -19,7 +19,23 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch (pre-1.0: breaking bumps minor)
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Added
+- `fathom intent audit` reads a repo's Project Intent corpus and reports what it declares, what an instrument can show, and what nothing shows — unproven claims by kind, each with a remedy, and every source it could not compute named. `fathom intent export --guard` proposes `.fathom/guard.cue` entries from the router's sensitive surfaces; fathom never writes that file (ADR-026, `docs/use-cases/intent-corpus.md`).
+- `fathom doctor` gains `intent` and `unproven_claims` rows. Neither can FAIL: not adopting the practice is a choice, and honest debt is not a broken repo. Both are silenced by the `intent-corpus` capability, which never silences the verb.
+- The SessionStart primer's custodian line became one shared attention line — `⚠️ attention: config N · unproven M (+k) · fired F — fathom doctor` — rather than a second always-loaded line. It reads recorded ledger rows only and goes silent when the last audit is over 14 days old.
+- `fathom post-commit-hook` refreshes this repo's index through the daemon instead of a shell ingest against the shared store (INC-3).
+- Custodian check kind `adr_references_resolve`: every path a decision record cites must exist, scoped to this repo's own record-id shape so a sibling repo's records are named rather than reported missing.
+
+### Changed
+- **`fathom fleet report` `schema_version` 1 → 2**: an `unproven` column read from the intent ledger. A repo with no recorded audit renders `n/a: no audit recorded`, never a `0`.
+- The four MCP group surfaces (`coding`, `investigation`, `shared`, `platform`) are retired; `agent`, `companion`, `modules` and bare `/rpc` remain (ADR-014 amendment 2, on law 4).
+- The whole SessionStart primer is capped at 3,200 bytes with any cut named; the thread brief keeps its own 2,400-byte budget.
+- `fathom help` renders from the dispatch table, so a dispatched verb can no longer be missing from it.
+
+### Fixed
+- `fathom plans archive` reads the git history of commits that touched non-plan paths, so a proven plan whose row ids were absorbed by code commits can finally be archived; range and slash-list ids (`SH-1..6`, `IT-14/15`) expand.
 
 ## [0.5.0] -- 2026-08-25
 

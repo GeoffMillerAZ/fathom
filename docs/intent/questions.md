@@ -24,11 +24,12 @@ sanitized research bundle, opt-in, as counts by kind (law 13). Blocks: EP-23's f
 column and any bundle field. Answerable by: owner.
 
 **Q18. Does the practice's owner accept `{oracle: …}` annotations on condition lines?**
-ADR-026 evaluates only annotated conditions; the practice's template says conditions are
-prose and rejected generated registries (README §13). This needs a kit decision record
-(`Status: proposed` filed as EP-34), not a skill note. Blocks: `docs/plans/evidence-plane.md`
-wave 2 (K0's demand signal cannot form if annotations are refused). Answerable by: owner,
-in agentic-kit's `docs/intent/`.
+FILED, not answered: agentic-kit `docs/intent/decisions/0001-condition-lines-may-carry-oracle-annotations.md`
+(`Status: proposed`, 2026-08-27, commit 72ff8b9). Its own revisit condition is the gate —
+three hand-written annotations across two repos accepts it, thirty days with fewer rejects
+it. Blocks: `docs/plans/evidence-plane.md` EP-16/17/18. Answerable by: owner, by ratifying
+or rejecting that record — and by writing the first annotation, which is the demand signal
+fathom must not fake for itself (EP-43 refused exactly that).
 
 **Q19. Where does first-seen live across machines?** ADR-026's intent ledger is per-machine
 (`~/.fathom`), so "fired, first seen on this machine" differs from a second machine's view;
