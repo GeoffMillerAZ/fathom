@@ -274,6 +274,9 @@ func validateCheck(id string, ck *Check) []error {
 		// no fields beyond where
 	case KindStanzaToolsServed:
 		// no fields beyond where; the registry is the daemon's, at audit time
+	case KindADRReferencesResolve:
+		// no fields: the corpus is every doc that cites decisions, and the
+		// record set is whichever home the repo actually has
 	case KindHandoffCitesInstruments:
 		if ck.Days == 0 {
 			ck.Days = DefaultHandoffDays

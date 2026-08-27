@@ -61,11 +61,20 @@ const (
 	// or a retro artifact path. Reads the user's thread log, never the
 	// transcript.
 	KindHandoffCitesInstruments CheckKind = "handoff_cites_instruments"
+
+	// KindADRReferencesResolve (EP-14, INC-14's outcome): every `ADR-NNN`
+	// cited in a design doc, an intent doc, the changelog or a plan
+	// resolves to a record that exists. A design that declares itself
+	// adopted under a record nobody wrote is the failure this catches, and
+	// it cost a panel to find by hand. A repo with no decision records is
+	// unable-to-check, never violated.
+	KindADRReferencesResolve CheckKind = "adr_references_resolve"
 )
 
 // KnownKinds lists the accepted kinds in sorted order, for refusal
 // messages that teach.
 var KnownKinds = []CheckKind{
+	KindADRReferencesResolve,
 	KindCommandDocumentedAndExists,
 	KindForbiddenPattern,
 	KindHandoffCitesInstruments,

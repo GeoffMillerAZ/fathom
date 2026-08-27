@@ -17,11 +17,20 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/capability"
+	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
 // buildCapabilityProbe gathers every observable fact the registry reads.
 func buildCapabilityProbe(baseURL, root, svc string, now time.Time) capability.Probe {
 	p := capability.Probe{RepoRoot: root, Service: svc}
+
+	// The intent corpus is read from disk only — no daemon, no RPC — so a
+	// probe stays cheap even when the daemon is down (EP-10).
+	if c, err := intent.Load(root); err == nil {
+		p.IntentRouterPresent = c.RouterPath != ""
+		p.IntentDecisionsHome = c.DecisionsHome
+		p.IntentConditions = len(c.Conditions)
+	}
 
 	m := cachedObservatoryModel(baseURL, now)
 	p.NarrateActive = m.Narrate.Active

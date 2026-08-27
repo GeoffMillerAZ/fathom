@@ -202,3 +202,61 @@ func itoaRaw(i int) string {
 	}
 	return string(b)
 }
+
+// TestDecisionsOnlyTierListsTrailers (EP-36): a repo with decision records
+// and NO router still gets something back — its `Revisit when` trailers are
+// exactly the conditions worth listing. Nine repos in this fleet are in that
+// tier, and vision 23 promised them an `adr audit` with no router
+// precondition.
+func TestDecisionsOnlyTierListsTrailers(t *testing.T) {
+	root := t.TempDir()
+	body := `# Decisions
+
+## ADR-001 — Pick a thing
+
+**Decision.** Picked.
+
+**Revisit when.** A second consumer appears.
+
+## ADR-002 — Pick another
+
+**Revisit when.** The first one is dropped.
+`
+	if err := os.WriteFile(filepath.Join(root, "ADR.md"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Tier != intent.TierDecisionsOnly {
+		t.Fatalf("tier = %q, want decisions-only (records but no router)", c.Tier)
+	}
+	if c.RouterPath != "" {
+		t.Errorf("no router exists; RouterPath = %q", c.RouterPath)
+	}
+	if c.DecisionsHome != "ADR.md" {
+		t.Errorf("decisions home = %q, want ADR.md", c.DecisionsHome)
+	}
+	if len(c.Conditions) != 2 {
+		t.Fatalf("expected both trailers listed, got %d: %+v", len(c.Conditions), c.Conditions)
+	}
+	for _, cond := range c.Conditions {
+		if cond.Record == "" || !strings.HasPrefix(cond.Record, "ADR-") {
+			t.Errorf("a trailer must be attributed to its record, got %q", cond.Record)
+		}
+		if cond.Label != "Revisit when" {
+			t.Errorf("label = %q", cond.Label)
+		}
+	}
+
+	// A repo with neither is tier none, and says so rather than erroring.
+	empty, err := intent.Load(t.TempDir())
+	if err != nil {
+		t.Fatalf("Load on an empty repo must not error: %v", err)
+	}
+	if empty.Tier != intent.TierNone {
+		t.Errorf("tier = %q, want none", empty.Tier)
+	}
+}

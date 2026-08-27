@@ -1,6 +1,7 @@
 package capability
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -45,6 +46,42 @@ func commaInt(n int) string {
 // last part.
 func Default() Registry {
 	caps := []Capability{
+		{
+			ID:         "intent-corpus",
+			Switchable: true,
+			Seam:       SeamCore,
+			Summary:    "Fathom reads this repository's Project Intent corpus — the router, its living documents and its decision records — so an agent can see which conditions have fired, which invariants nothing enforces, and which claims no instrument proves.",
+			Default:    true,
+			Scopes:     ScopeAny,
+			Cost:       "no per-session cost; `fathom intent audit` pays one index probe per commit, cached after that",
+			Detect: func(p Probe) State {
+				switch {
+				case p.IntentRouterPresent:
+					detail := "router present"
+					if p.IntentConditions > 0 {
+						detail = fmt.Sprintf("%d condition(s) across the corpus", p.IntentConditions)
+					}
+					return State{Operating: true, Detail: detail}
+				case p.IntentDecisionsHome != "":
+					// Decision records without a router are a real tier, not
+					// a half-adoption: their Revisit-when trailers are the
+					// conditions worth listing, and vision 23 promised those
+					// repos an audit with no router precondition.
+					return State{Operating: true, Detail: "decision records only (no router) — trailers are listed"}
+				default:
+					return State{Reason: "this repository has no docs/intent/ router and no decision records — nothing to audit (agentic-kit's intent-init bootstraps one)"}
+				}
+			},
+			Remedy: func(p Probe) Remedy {
+				if p.IntentRouterPresent || p.IntentDecisionsHome != "" {
+					return Remedy{Cmd: "fathom intent audit"}
+				}
+				// Nothing to run: choosing not to adopt the practice is a
+				// choice, not a defect, and a remedy that scolds a repo for
+				// it would be the tool overreaching.
+				return Remedy{Note: "not adopting Project Intent is a choice; agentic-kit's intent-init bootstraps it if you want it"}
+			},
+		},
 		{
 			ID:                   "index",
 			Switchable:           false,

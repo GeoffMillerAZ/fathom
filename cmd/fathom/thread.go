@@ -42,6 +42,11 @@ type threadItem struct {
 	Pointers      map[string]string `json:"pointers,omitempty"`
 	FiledAt       string            `json:"filed_at"`
 	FiledBy       string            `json:"filed_by,omitempty"`
+	// Commit is the repo HEAD when the item was filed — metadata, never a
+	// citation (EP-15). It answers "what was the tree when this was
+	// written?", which is what makes a months-old handoff note readable;
+	// CC-15 still requires the CITATION to be in the text.
+	Commit string `json:"commit,omitempty"`
 
 	// CompletesWhen names a CHECKABLE condition; when it holds, the item
 	// closes itself with closed_by: "condition" — the anchored-memory
@@ -78,6 +83,17 @@ func threadsPath() string {
 }
 
 func appendThreadItem(it threadItem) error {
+	// Stamp HEAD once, here, so every write path (note, point, the
+	// lifecycle hooks, promote) carries it without each remembering to —
+	// the MI-4 lesson: a field every caller must copy by hand is a field
+	// that goes missing.
+	if it.Commit == "" {
+		if repo := it.Pointers["repo_root"]; repo != "" {
+			it.Commit = gitHeadShort(repo)
+		} else if cwd, err := os.Getwd(); err == nil {
+			it.Commit = gitHeadShort(cwd)
+		}
+	}
 	p := threadsPath()
 	if p == "" {
 		return fmt.Errorf("cannot resolve the threads path (no home directory)")

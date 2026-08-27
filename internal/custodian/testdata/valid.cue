@@ -25,4 +25,9 @@ concerns: {
 		want:  "a handoff note that claims shipped work cites a commit, plan row, verify run, or retro"
 		check: {kind: "handoff_cites_instruments", days: 7}
 	}
+	adr_citations_resolve: {
+		want:  "every ADR-NNN cited in a design doc, an intent doc, the changelog or a plan resolves to a record that exists"
+		why:   "INC-14: a design declared itself adopted under a record nobody had written"
+		check: {kind: "adr_references_resolve"}
+	}
 }

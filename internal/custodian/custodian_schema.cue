@@ -23,7 +23,7 @@
 }
 
 #Check: {
-	kind:     "forbidden_pattern" | "command_documented_and_exists" | "max_lines" | "pointers_resolve" | "stanza_tools_served" | "handoff_cites_instruments"
+	kind:     "forbidden_pattern" | "command_documented_and_exists" | "max_lines" | "pointers_resolve" | "stanza_tools_served" | "handoff_cites_instruments" | "adr_references_resolve"
 	pattern?: string
 	where?:   "agent-config"
 	command?: string

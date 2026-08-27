@@ -14,6 +14,13 @@ name:    "obligations"
 version: "v1"
 kind:    "obligation"
 corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
+// docs/intent/** is served DETERMINISTICALLY by `fathom intent audit`
+// (ADR-026), never compiled here: an LLM restating rules that are already
+// rules pays compile cost for no precision, and ADR.md is already
+// dual-served (its Revisit-when trailers reach the edit hook through this
+// layer AND the intent corpus). Pinned by
+// TestObligationsCorpusNeverWidensToIntent so the corpus cannot widen by
+// accident.
 // Advisory only — see #Layer.prompt_version's doc comment in schema.cue. The
 // real identity is content-addressed at runtime (internal/semantic/prompts.go).
 prompt_version: "obligations/content-addressed"

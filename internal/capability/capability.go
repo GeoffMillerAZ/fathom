@@ -91,6 +91,13 @@ type Probe struct {
 	IndexStale     bool
 	IndexNote      string // the freshness verdict verbatim, when not fresh
 
+	// Intent corpus (ADR-026). Three states, like index freshness: a router
+	// present, decision records only, or neither — never "off" for a repo
+	// that simply has not adopted the practice.
+	IntentRouterPresent bool
+	IntentDecisionsHome string
+	IntentConditions    int
+
 	// Wiring
 	HooksReferenced  bool
 	HooksNote        string

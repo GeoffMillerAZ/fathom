@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -209,4 +211,63 @@ func TestBriefHiddenCountNamesAllRepos(t *testing.T) {
 	if !strings.Contains(wide, "another repo's handoff") {
 		t.Errorf("--all-repos must render foreign items: %q", wide)
 	}
+}
+
+// TestThreadNoteRecordsCommit (EP-15): every thread item carries the repo
+// HEAD it was filed at. Metadata, never a citation — CC-15 still requires
+// a shipping claim to cite an instrument in its TEXT; this answers the
+// different question "what was the tree when this was written?", which is
+// what makes a months-old handoff note readable.
+//
+// It is stamped in appendThreadItem, not at each call site: a field every
+// caller must remember to copy is the MI-4 defect, where twelve parser
+// fields were computed and then dropped three lines later.
+func TestThreadNoteRecordsCommit(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("FATHOM_THREADS", filepath.Join(dir, "threads.jsonl"))
+
+	it := threadItem{
+		SchemaVersion: 1, ID: "th-x", Thread: "svc", Kind: "handoff-note",
+		Text: "something", FiledAt: time.Now().UTC().Format(time.RFC3339),
+		Pointers: map[string]string{"repo_root": repoRootForThread(t)},
+	}
+	if err := appendThreadItem(it); err != nil {
+		t.Fatalf("appendThreadItem: %v", err)
+	}
+
+	items := loadThreadItems(filepath.Join(dir, "threads.jsonl"))
+	if len(items) != 1 {
+		t.Fatalf("expected one item, got %d", len(items))
+	}
+	if items[0].Commit == "" {
+		t.Error("a thread item must carry the HEAD it was filed at")
+	}
+	if len(items[0].Commit) > 16 {
+		t.Errorf("commit should be the SHORT sha, got %q", items[0].Commit)
+	}
+
+	// An explicit commit is never overwritten.
+	it.ID, it.Commit = "th-y", "deadbee"
+	if err := appendThreadItem(it); err != nil {
+		t.Fatal(err)
+	}
+	items = loadThreadItems(filepath.Join(dir, "threads.jsonl"))
+	if items[len(items)-1].Commit != "deadbee" {
+		t.Errorf("an explicit commit must survive, got %q", items[len(items)-1].Commit)
+	}
+}
+
+func repoRootForThread(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		dir = filepath.Dir(dir)
+	}
+	return "."
 }

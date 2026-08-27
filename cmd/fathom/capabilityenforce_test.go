@@ -30,9 +30,10 @@ import (
 // this, the next capability re-introduces the original defect silently.
 func TestEverySwitchableCapabilityHasAnEnforcementCase(t *testing.T) {
 	covered := map[string]bool{
-		"obligations": true, // TestSwitchOffStopsObligationInjection
-		"guards":      true, // TestSwitchOffStopsGuards
-		"verify-gate": true, // TestSwitchOffSkipsVerifyButKeepsLedger
+		"obligations":   true, // TestSwitchOffStopsObligationInjection
+		"guards":        true, // TestSwitchOffStopsGuards
+		"verify-gate":   true, // TestSwitchOffSkipsVerifyButKeepsLedger
+		"intent-corpus": true, // TestSwitchOffSilencesIntentRowsNotTheVerb
 	}
 	for _, c := range capability.Default().All() {
 		if c.Switchable && !covered[c.ID] {
@@ -258,5 +259,52 @@ func TestEnforcementFailsOpenOnBrokenConfig(t *testing.T) {
 	}
 	if capabilityOffAt(root, "guards") {
 		t.Error("a config file that does not load must not disarm a guard — fail open, and report loudly elsewhere")
+	}
+}
+
+// TestSwitchOffSilencesIntentRowsNotTheVerb (EP-10) is intent-corpus's
+// enforcement case. `off` must change observed behaviour, and the behaviour
+// it changes is the REPORTING channel: doctor stops narrating the corpus.
+// The verb keeps answering — switching off a report is not the same as
+// making the tool refuse a direct question, and conflating the two is how a
+// switch becomes a gag.
+func TestSwitchOffSilencesIntentRowsNotTheVerb(t *testing.T) {
+	root := t.TempDir()
+	writeCorpusFixture(t, root)
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(root, "l.jsonl"))
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(root, "v.jsonl"))
+
+	// On (the default when a router exists): the row narrates the corpus.
+	on := checkIntent(root)
+	if !strings.Contains(on.Reason, "condition(s)") {
+		t.Fatalf("with the capability on, the row must narrate the corpus: %q", on.Reason)
+	}
+
+	// Off: the row says so and stops reading.
+	if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".fathom", "capabilities.cue"),
+		[]byte("capabilities: {\n\t\"intent-corpus\": on: false\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	off := checkIntent(root)
+	if !strings.Contains(off.Reason, "switched off") {
+		t.Errorf("with the capability off, the row must say so: %q", off.Reason)
+	}
+	if strings.Contains(off.Reason, "condition(s)") {
+		t.Errorf("a switched-off capability must stop narrating: %q", off.Reason)
+	}
+	if offClaims := checkUnprovenClaims(root, "http://127.0.0.1:1", "svc"); !strings.Contains(offClaims.Reason, "switched off") {
+		t.Errorf("unproven_claims must honour the same switch: %q", offClaims.Reason)
+	}
+
+	// The VERB still answers — off silences a report, never a question.
+	var out, errBuf bytes.Buffer
+	if code := cmdIntent([]string{"audit", "--root", root, "--url", "http://127.0.0.1:1", "--service", "svc"}, &out, &errBuf); code != 0 {
+		t.Fatalf("the verb must keep working when the capability is off: exit %d %s", code, errBuf.String())
+	}
+	if !strings.Contains(out.String(), "conditions:") {
+		t.Errorf("the verb must still answer on demand:\n%s", out.String())
 	}
 }

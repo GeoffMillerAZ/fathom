@@ -51,7 +51,8 @@ func TestDetectNeverReturnsBareBoolean(t *testing.T) {
 		HooksReferenced: true, StanzaPresent: true, VerifyInLefthook: true,
 		GuardRules: 2, ModuleBindings: 1, LayerPacks: []string{"ui-appkit"},
 		ObligationRules: 6, ObligationsCompiled: true, NarrateActive: true, LedgerSessions: 4,
-		AgentSurfaceTools: 16, AgentSchemaBytes: 11839,
+		AgentSurfaceTools: 17, AgentSchemaBytes: 11839,
+		IntentRouterPresent: true, IntentDecisionsHome: "ADR.md", IntentConditions: 67,
 	}
 	for _, c := range Default().All() {
 		st := c.Detect(full)

@@ -149,32 +149,50 @@ func classifyRung(raw string) (Rung, []string, []string) {
 		gates = append(gates, "lefthook "+m[1]+" "+m[2])
 	}
 
-	switch {
-	case strings.Contains(strings.ToUpper(raw), "VIOLATED"):
+	// The LEADING token decides the rung. A substring search would read
+	// "`stated` — nothing checks; a denylist test would lift it" as a test
+	// claim, which is exactly backwards: that row's whole point is that
+	// nothing enforces it.
+	if strings.Contains(strings.ToUpper(raw), "VIOLATED") {
 		return RungViolated, tests, gates
-	case strings.HasPrefix(low, "gate") || strings.Contains(low, " gate "):
+	}
+	switch leadingToken(low) {
+	case "gate":
 		if len(gates) == 0 && len(tests) == 0 {
 			return RungUnevaluable, tests, gates
 		}
 		return RungGate, tests, gates
-	case strings.HasPrefix(low, "proven"):
+	case "proven":
 		return RungProven, tests, gates
-	case strings.HasPrefix(low, "test") || strings.Contains(low, " test "):
+	case "test":
 		return RungTest, tests, gates
-	case strings.HasPrefix(low, "lint"):
+	case "lint":
 		return RungLint, tests, gates
-	case strings.HasPrefix(low, "guard"):
+	case "guard":
 		return RungGuard, tests, gates
-	case strings.HasPrefix(low, "code"):
+	case "code":
 		return RungCode, tests, gates
-	case strings.HasPrefix(low, "reviewed"):
+	case "reviewed":
 		return RungReviewed, tests, gates
-	case strings.HasPrefix(low, "stated"):
+	case "stated":
 		return RungStated, tests, gates
-	case len(tests) > 0:
+	}
+	// A cell that opens with something else but names tests is a test claim
+	// written loosely (e.g. "`code` (constructor default) + test Foo").
+	if len(tests) > 0 {
 		return RungTest, tests, gates
 	}
 	return RungUnevaluable, tests, gates
+}
+
+// leadingToken returns the first alphabetic word of a rung cell.
+func leadingToken(low string) string {
+	for _, f := range strings.FieldsFunc(low, func(r rune) bool {
+		return !(r >= 'a' && r <= 'z')
+	}) {
+		return f
+	}
+	return ""
 }
 
 // parseConditionsIn extracts every condition line from one document.

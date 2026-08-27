@@ -16,6 +16,11 @@ concerns: {
 		want:  "the root CLAUDE.md stays a router (the 2026-08-13 compositional restructure holds)"
 		check: {kind: "max_lines", file: "CLAUDE.md", lines: 120}
 	}
+	adr_citations_resolve: {
+		want:  "every ADR-NNN cited in a design doc, an intent doc, the changelog or a plan resolves to a record that exists"
+		why:   "INC-14: a design declared itself adopted under ADR-026 while ADR.md had no such section, and three intent docs cited the phantom — a panel caught it, nothing mechanical would have"
+		check: {kind: "adr_references_resolve"}
+	}
 	pointers_hold: {
 		want:  "every relative markdown pointer in agent config resolves"
 		check: {kind: "pointers_resolve"}

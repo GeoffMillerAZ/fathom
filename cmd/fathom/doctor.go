@@ -218,6 +218,8 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// CC-6 (docs/plans/custodian.md): the config custodian — are this
 		// repo's registered config contracts still true?
 		checkConcerns(root),
+		checkIntent(root),
+		checkUnprovenClaims(root, baseURL, explicitSvc),
 	)
 	return checks
 }
