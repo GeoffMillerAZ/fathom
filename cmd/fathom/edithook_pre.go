@@ -199,7 +199,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return 0 // guard matched but had nothing to say (no note, no rules, not stale)
 	}
-	emitPayloadCost("pre-edit-guard", sb.String(), len(displayed), "pre", sessionID)
+	emitPayloadCost("pre-edit-guard", sb.String(), len(displayed), "pre", sessionID, nil)
 
 	// Stamp what was ACTUALLY displayed — a rule hidden by
 	// include_modules:false must remain visible to the post-hook, not be
@@ -268,7 +268,7 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, armOff bool, std
 	}
 
 	sb := fmt.Sprintf("⚖️ fathom guard — command: %s", note)
-	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID)
+	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID, nil)
 	out, _ := json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     "PreToolUse",

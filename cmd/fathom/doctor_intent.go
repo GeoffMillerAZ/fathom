@@ -97,10 +97,21 @@ func checkIntent(root string) doctorCheck {
 	if c.DecisionsHome != "" {
 		parts = append(parts, "decisions: "+c.DecisionsHome)
 	}
-	if clock, ok := intent.Clock(intent.ReadLedger(), root); ok {
+	ledger := intent.ReadLedger()
+	if clock, ok := intent.Clock(ledger, root); ok {
 		parts = append(parts, "clock started "+clock.At)
 	} else {
 		parts = append(parts, "clock not started")
+	}
+	// A clock without a baseline measures itself (law 12) — say which it is.
+	if b, ok := intent.Baseline(ledger, root); ok {
+		if len(b.BaselineDays) > 0 {
+			parts = append(parts, fmt.Sprintf("K1 baseline: %d record(s), median %d day(s) to answer", len(b.BaselineDays), b.BaselineMedian))
+		} else {
+			parts = append(parts, "K1 baseline: none measurable — "+b.BaselineNote)
+		}
+	} else {
+		parts = append(parts, "K1 baseline NOT recorded (run `fathom intent audit`)")
 	}
 
 	status, remedy := doctorPass, ""

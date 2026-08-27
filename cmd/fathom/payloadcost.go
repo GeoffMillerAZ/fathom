@@ -29,7 +29,10 @@ import (
 // (discovery.go) — the join key instrument D's session ledger uses to
 // attribute this session's A (payload cost) and B (discovery) activity
 // (docs/design/production-tokenomics.md §6).
-func emitPayloadCost(channel, payload string, ruleCount int, phase, sessionID string) {
+// extraMeta carries COMPONENT figures — a breakdown of the payload already
+// counted by this beat, never an addition to it. The channel table sums
+// `bytes`; a component belongs in meta, or the grand total double-counts.
+func emitPayloadCost(channel, payload string, ruleCount int, phase, sessionID string, extraMeta map[string]string) {
 	if payload == "" {
 		return
 	}
@@ -43,6 +46,9 @@ func emitPayloadCost(channel, payload string, ruleCount int, phase, sessionID st
 	}
 	if sessionID != "" {
 		meta["session"] = sessionID
+	}
+	for k, v := range extraMeta {
+		meta[k] = v
 	}
 	emitBeat("payload-cost", channel, meta)
 }

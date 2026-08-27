@@ -114,6 +114,12 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	}
 	root = absRoot
 
+	// K5's second half (EP-24): doctor is one of the two instruments a
+	// session can reach for after seeing the attention line. Law 7 — an
+	// instrument that leaves no trace cannot be shown to have been used.
+	rpcOrigin = "doctor"
+	emitBeat("doctor", "run", nil)
+
 	// svc here is display identity only (the table header). The
 	// obligations_served check does its own candidate resolution against
 	// the daemon's actual service list — the same all-candidates probing

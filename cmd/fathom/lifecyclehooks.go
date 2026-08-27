@@ -29,7 +29,11 @@ type sessionStamp struct {
 	Source        string `json:"source"` // startup|resume|clear|compact|fork
 	BriefInjected bool   `json:"brief_injected"`
 	BriefBytes    int    `json:"brief_bytes"`
-	At            string `json:"at"`
+	// IntentLine records whether the attention line (EP-19) was part of
+	// this session's primer. K5 asks whether a session that SAW the line
+	// acted on it; without the cohort label the question is unanswerable.
+	IntentLine bool   `json:"intent_line,omitempty"`
+	At         string `json:"at"`
 }
 
 func sessionStampDir() string {

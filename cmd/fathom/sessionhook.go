@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -80,7 +81,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// mistake in a new costume. The stamp records the cohort label and the
 	// brief's measured cost either way, which is what makes the
 	// pre-registered bet evaluable (fresh-with-brief vs resumed).
-	briefBytes := 0
+	briefBytes, attentionBytes := 0, 0
+	intentLine := false
 	if startSource == "startup" || startSource == "clear" || startSource == "" {
 		// CC-7 (docs/plans/custodian.md) + EP-19: the continuity brief and
 		// the one attention line — present only while this repo has a
@@ -88,9 +90,11 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		// reads; adds nothing on clean or unconfigured repos. Same
 		// startup/clear gate as the thread brief: resumed sessions kept
 		// their context. The whole primer is capped here (EP-20).
-		var attention bool
-		ctx, briefBytes, attention = composeContinuityAndCustodian(ctx, projDir, time.Now())
-		if attention {
+		var line string
+		ctx, briefBytes, line = composeContinuityAndCustodian(ctx, projDir, time.Now())
+		attentionBytes = len(line)
+		intentLine = line != ""
+		if intentLine {
 			emitBeat("custodian", "attention", firingMeta(nil, sessionID, ""))
 		}
 	}
@@ -100,10 +104,18 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		Source:        startSource,
 		BriefInjected: briefBytes > 0,
 		BriefBytes:    briefBytes,
+		IntentLine:    intentLine,
 		At:            time.Now().UTC().Format(time.RFC3339),
 	})
 
-	emitPayloadCost("session-brief", ctx, 0, "", sessionID)
+	// EP-24: the attention line's bytes as a COMPONENT of the primer, so
+	// the rent model has a per-channel number without the channel table
+	// double-counting bytes it already summed under session-brief.
+	var component map[string]string
+	if attentionBytes > 0 {
+		component = map[string]string{"attention_bytes": strconv.Itoa(attentionBytes)}
+	}
+	emitPayloadCost("session-brief", ctx, 0, "", sessionID, component)
 
 	_ = json.NewEncoder(stdout).Encode(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -137,7 +149,7 @@ const primerOverflowNote = " …[session primer truncated at its byte cap]"
 // highest-signal part. Returns the brief's byte count as it was ACTUALLY
 // injected (post-cut — the session stamp must not record bytes that never
 // reached the model) and whether the attention line fired.
-func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention bool) {
+func composeContinuityAndCustodian(identity, projDir string, now time.Time) (primer string, briefBytes int, attention string) {
 	brief := renderThreadBrief(loadThreadItems(threadsPath()), projDir, threadBriefBudgetBytes, now)
 	line := attentionLine(projDir, now)
 
@@ -174,7 +186,7 @@ func composeContinuityAndCustodian(identity, projDir string, now time.Time) (pri
 		keep := sessionPrimerBudget - len(primerOverflowNote)
 		primer = primer[:keep] + primerOverflowNote
 	}
-	return primer, len(brief), line != ""
+	return primer, len(brief), line
 }
 
 // cmdPrime implements the "prime" subcommand (WF-8): prints the full

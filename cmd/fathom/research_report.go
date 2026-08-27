@@ -187,6 +187,11 @@ type PayloadCostChannelStat struct {
 	Beats               int `json:"beats"`
 	TotalBytes          int `json:"total_bytes"`
 	TotalTokensEstimate int `json:"total_tokens_estimate"`
+	// ComponentBytes breaks the channel's bytes down by named component
+	// (EP-24: the attention line inside session-brief). These are ALREADY
+	// inside TotalBytes — a breakdown, never an addition, or the rent
+	// model double-counts what it is trying to price.
+	ComponentBytes map[string]int `json:"component_bytes,omitempty"`
 }
 
 // Instrument B's numerator (docs/design/production-tokenomics.md §4) now
@@ -737,6 +742,19 @@ func buildPayloadCostSection(r *ResearchReport, beats []heartbeat.Beat, since, u
 				tokensEst = n
 				stat.TotalTokensEstimate += n
 			}
+		}
+		for k, v := range b.Meta {
+			if !strings.HasSuffix(k, "_bytes") {
+				continue
+			}
+			n, convErr := strconv.Atoi(v)
+			if convErr != nil || n == 0 {
+				continue
+			}
+			if stat.ComponentBytes == nil {
+				stat.ComponentBytes = map[string]int{}
+			}
+			stat.ComponentBytes[strings.TrimSuffix(k, "_bytes")] += n
 		}
 		if channel == "post-edit" || channel == "pre-edit-guard" {
 			perEditEstimates = append(perEditEstimates, float64(tokensEst))

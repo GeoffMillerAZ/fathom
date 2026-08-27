@@ -340,7 +340,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
 		return 0 // clean file (or unindexed project), no spec IDs → silent
 	}
-	emitPayloadCost("post-edit", sb.String(), len(renderRules), "post", hook.SessionID)
+	emitPayloadCost("post-edit", sb.String(), len(renderRules), "post", hook.SessionID, nil)
 
 	out, _ := json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
@@ -477,7 +477,7 @@ func reportModuleBeats(rendered []semantic.Obligation, phase, sessionID string) 
 	for _, m := range order {
 		emitBeat("edit-hook", "module-served", map[string]string{"module": m, "phase": phase, "rules": strconv.Itoa(counts[m])})
 	}
-	emitPayloadCost("module-rules", moduleSB.String(), moduleRuleCount, phase, sessionID)
+	emitPayloadCost("module-rules", moduleSB.String(), moduleRuleCount, phase, sessionID, nil)
 }
 
 // relativeToRoot relativizes an absolute file path under a candidate root.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -176,8 +177,8 @@ func TestPrimerUnderBudgetIsUntouched(t *testing.T) {
 	if primer != identity {
 		t.Fatalf("a clean repo adds nothing to the identity line, got %q", primer)
 	}
-	if briefBytes != 0 || attention {
-		t.Fatalf("nothing to report must measure as nothing: bytes=%d attention=%v", briefBytes, attention)
+	if briefBytes != 0 || attention != "" {
+		t.Fatalf("nothing to report must measure as nothing: bytes=%d attention=%q", briefBytes, attention)
 	}
 }
 
@@ -191,5 +192,43 @@ func TestPrimerPartBudgetsSumUnderCap(t *testing.T) {
 	sum := typicalIdentityBytes + threadBriefBudgetBytes + attentionLineBudget
 	if sum > sessionPrimerBudget {
 		t.Fatalf("the parts now sum to %d B against a %d B cap — the cap is load-bearing, not a backstop; re-read EP-20 before changing it", sum, sessionPrimerBudget)
+	}
+}
+
+// EP-24: the attention line's bytes are a COMPONENT of the primer's
+// payload-cost beat — inside the total, never a second row added to it, or
+// the rent model prices the same bytes twice.
+func TestAttentionBytesRideAsAComponentNotASecondChannel(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(dir, "beats.jsonl"))
+
+	payload := "identity line\n⚠️ attention: config 1 — fathom doctor"
+	emitPayloadCost("session-brief", payload, 0, "", "sess-1", map[string]string{"attention_bytes": "41"})
+
+	raw, err := os.ReadFile(filepath.Join(dir, "beats.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var beat struct {
+		Channel string            `json:"channel"`
+		Kind    string            `json:"kind"`
+		Meta    map[string]string `json:"meta"`
+	}
+	line := strings.TrimSpace(strings.Split(strings.TrimSpace(string(raw)), "\n")[0])
+	if err := json.Unmarshal([]byte(line), &beat); err != nil {
+		t.Fatalf("%v: %s", err, line)
+	}
+	if beat.Channel != "payload-cost" || beat.Kind != "session-brief" {
+		t.Fatalf("the component must NOT become its own channel: %s/%s", beat.Channel, beat.Kind)
+	}
+	if beat.Meta["attention_bytes"] != "41" {
+		t.Fatalf("component bytes missing from meta: %v", beat.Meta)
+	}
+	total, convErr := strconv.Atoi(beat.Meta["bytes"])
+	if convErr != nil || total != len(payload) {
+		t.Fatalf("the channel total must still be the WHOLE payload: %q vs %d", beat.Meta["bytes"], len(payload))
+	}
+	if 41 > total {
+		t.Fatal("a component larger than its container is a double-count, not a breakdown")
 	}
 }

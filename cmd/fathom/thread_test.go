@@ -365,7 +365,7 @@ func TestBriefLeadsWithTheSpecPlane(t *testing.T) {
 		})
 	}
 
-	out := renderThreadBrief(loadThreadItems(threadsPath()), root, threadBriefBudgetBytes, time.Now())
+	out := renderThreadBrief(loadThreadItems(threadsPath()), root, threadBriefBudgetBytes, time.Date(2026, 8, 13, 2, 0, 0, 0, time.UTC))
 
 	if !strings.Contains(out, "1 plan(s), 2 gated row(s): 1 checked, 1 open") {
 		t.Fatalf("the spec plane leads — it is what demonstrably restores context:\n%s", out)

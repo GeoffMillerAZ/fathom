@@ -147,6 +147,13 @@ type sessionLedgerEntry struct {
 	BriefInjected bool   `json:"brief_injected,omitempty"`
 	BriefBytes    int    `json:"brief_bytes,omitempty"`
 
+	// IntentLine / IntentActed are K5's pair (EP-24): did this session SEE
+	// the attention line, and did it then reach for an intent verb? Acted
+	// is derived from beats in this session's window, never from prose in
+	// the transcript — law 14, narrative is a lens and never evidence.
+	IntentLine  bool `json:"intent_line,omitempty"`
+	IntentActed bool `json:"intent_acted,omitempty"`
+
 	// ArmWindow carries the ARM-COVERED span of a session that began
 	// before the arm was set (arm_coverage: partial) — the amended unit of
 	// comparison (production-tokenomics.md §5, 2026-08-12). Whole-session
@@ -227,6 +234,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 
 	st := readSessionStamp(sessionID)
 	e.SessionSource, e.BriefInjected, e.BriefBytes = st.Source, st.BriefInjected, st.BriefBytes
+	e.IntentLine = st.IntentLine
 
 	if ts.DurationMS != nil {
 		e.DurationMS = ts.DurationMS
@@ -273,16 +281,17 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 		e.JoinNote = "unavailable: no session_id on this Stop hook invocation — instrument A/B beats cannot be attributed to this session"
 		return e
 	}
-	payloadEstimate, discoveryActions := sumSessionBeats(beats, sessionID)
+	payloadEstimate, discoveryActions, intentActed := sumSessionBeats(beats, sessionID)
 	e.PayloadCostEstimateTotal = &payloadEstimate
 	e.DiscoveryActionsTotal = &discoveryActions
+	e.IntentActed = intentActed
 	return e
 }
 
 // sumSessionBeats sums instrument A's tokens_estimate (channel
 // "payload-cost") and instrument B's action count (channel "discovery")
 // over beats tagged with this exact session_id — the join in action.
-func sumSessionBeats(beats []heartbeat.Beat, sessionID string) (payloadEstimateTotal, discoveryActions int) {
+func sumSessionBeats(beats []heartbeat.Beat, sessionID string) (payloadEstimateTotal, discoveryActions int, intentActed bool) {
 	for _, b := range beats {
 		if b.Meta["session"] != sessionID {
 			continue
@@ -294,9 +303,15 @@ func sumSessionBeats(beats []heartbeat.Beat, sessionID string) (payloadEstimateT
 			}
 		case "discovery":
 			discoveryActions++
+		case "intent-cli", "doctor":
+			// K5 (EP-24): the session reached for an intent instrument.
+			// A beat, not a transcript phrase — an agent SAYING it will
+			// check the corpus is narrative, and narrative is never
+			// evidence (law 14).
+			intentActed = true
 		}
 	}
-	return payloadEstimateTotal, discoveryActions
+	return payloadEstimateTotal, discoveryActions, intentActed
 }
 
 func atoiSafe(s string) int {

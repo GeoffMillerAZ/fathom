@@ -5,6 +5,11 @@
 - Sort every output slice; map iteration order must never reach a result.
 - Inject clocks (`now func() time.Time`) — never call `time.Now()` in
   query/analysis logic.
+- A test that seeds a FIXED fixture date and then passes the REAL clock is a
+  time bomb: it passes until the fixture crosses an age horizon, then fails
+  on a day nobody changed anything (two of these fired on 2026-08-26 against
+  the thread brief's 14-day cutoff). Either inject the same fixed `now`, or
+  stamp the fixture with `time.Now()` — never mix the two.
 - Golden fixtures: `internal/connector/testdata/fauxtown/` is the
   deterministic fixture fleet; prefer golden tests against it.
 - Always run `go test -race` before claiming green — the gate uses it, and

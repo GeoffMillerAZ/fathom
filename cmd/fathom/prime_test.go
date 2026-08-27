@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fakePrimeDaemon serves healthz, list_services (one indexed service named
@@ -53,8 +54,13 @@ func TestPrimeMatchesSessionHookPayload(t *testing.T) {
 
 	// A thread item local to this repo, so the brief carries substantive
 	// content (not just its "nothing deposited" fallback).
+	// Filed NOW, not at seedItem's fixed fixture date: both cmdPrime and
+	// cmdSessionHook read the real clock, so a fixed date makes this test
+	// pass until the item crosses the brief's 14-day horizon and then fail
+	// on a day nobody changed anything.
 	seedItem(t, "th-prime", "handoff-note", "prime parity fixture note", func(it *threadItem) {
 		it.Pointers = map[string]string{"repo": svc}
+		it.FiledAt = time.Now().UTC().Format(time.RFC3339)
 	})
 
 	// A violated custodian concern, so the attention line renders too.

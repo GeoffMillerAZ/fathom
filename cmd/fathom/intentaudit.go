@@ -109,6 +109,11 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	if len(population) > 1 {
 		_ = intent.StartClock(abs, gitHeadShort(abs), population)
 	}
+	// K1's counterfactual (EP-24), recorded ONCE: the pre-plane rate of
+	// answering a decision. A kill clock with nothing to be faster than is
+	// a clock measuring itself (law 12).
+	bDays, bMedian, bNote := intentBaseline(abs, corpus.DecisionsHome, time.Now(), 90)
+	_ = intent.RecordBaseline(abs, gitHeadShort(abs), time.Now().UTC().Format(time.RFC3339), bDays, bMedian, bNote)
 	_ = intent.AppendLedger(intent.LedgerRow{
 		Kind: intent.KindDebt, RepoRoot: abs, Commit: gitHeadShort(abs),
 		ByKind: audit.ByKind, Annotated: audit.Annotated, MS: audit.Elapsed.Milliseconds(),

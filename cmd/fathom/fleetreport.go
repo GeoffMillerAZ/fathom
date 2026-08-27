@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/intent"
 )
 
 // fathom fleet report (vision 14 §4, plan IO-16): the fleet audit that took
@@ -35,6 +36,13 @@ type fleetServiceRow struct {
 	StanzaNote       string `json:"stanza_note"` // CLAUDE.md fathom stanza present?
 	OpenObservations *int   `json:"open_observations,omitempty"`
 
+	// Unproven is the newest recorded `fathom intent audit` for this repo
+	// (EP-23) — read from the LOCAL intent ledger, never computed here: a
+	// fleet report that ran 40 audits would take minutes and would report
+	// numbers nobody asked for. nil = no audit recorded, rendered
+	// "n/a: no audit recorded", never 0.
+	Unproven     *int   `json:"unproven,omitempty"`
+	UnprovenAt   string `json:"unproven_at,omitempty"`
 	CallsTotal   int    `json:"calls_total"`
 	CallsAgent   int    `json:"calls_agent"`
 	LastCallTS   string `json:"last_call_ts,omitempty"`
@@ -52,7 +60,9 @@ type fleetReport struct {
 	Services []fleetServiceRow `json:"services"`
 }
 
-const fleetReportSchemaVersion = 1
+// Bumped to 2 for the unproven column (EP-23). A reader pinned to v1 sees a
+// field it does not know; a reader that CHECKS the version knows why.
+const fleetReportSchemaVersion = 2
 
 func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("fleet report", stderr)
@@ -138,6 +148,9 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 		rep.LedgerNote = "session ledger not readable — session counts are not measured, never zero"
 	}
 
+	// One ledger read for the whole fleet (EP-23) — read, never computed.
+	intentLedger := intent.ReadLedger()
+
 	names := make([]string, 0, len(svcs))
 	for name := range svcs {
 		names = append(names, name)
@@ -152,6 +165,11 @@ func cmdFleetReport(args []string, stdout, stderr io.Writer) int {
 			if content, existed, oerr := readObservations(info.path); oerr == nil && existed {
 				n := countOpenObservations(content)
 				row.OpenObservations = &n
+			}
+		}
+		if info.path != "" {
+			if n, at, ok := fleetUnprovenColumn(intentLedger, info.path); ok {
+				row.Unproven, row.UnprovenAt = &n, at
 			}
 		}
 		if tr := perSvc[name]; tr != nil {
@@ -292,7 +310,7 @@ func renderFleetReportMD(rep fleetReport) string {
 	if rep.LedgerNote != "" {
 		fmt.Fprintf(&b, "> %s\n", rep.LedgerNote)
 	}
-	b.WriteString("\n| service | freshness | symbols | calls (agent) | sessions | open obs | hooks | stanza |\n|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("\n| service | freshness | symbols | calls (agent) | sessions | open obs | unproven | hooks | stanza |\n|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rep.Services {
 		obs := "—"
 		if r.OpenObservations != nil {
@@ -302,9 +320,34 @@ func renderFleetReportMD(rep fleetReport) string {
 		if r.SessionCount != nil {
 			sessions = fmt.Sprintf("%d", *r.SessionCount)
 		}
-		fmt.Fprintf(&b, "| %s | %s | %d | %d (%d) | %s | %s | %s | %s |\n",
-			r.Service, r.Freshness, r.Symbols, r.CallsTotal, r.CallsAgent, sessions, obs, r.HooksNote, r.StanzaNote)
+		unproven := "n/a: no audit recorded"
+		if r.Unproven != nil {
+			unproven = fmt.Sprintf("%d (%s)", *r.Unproven, r.UnprovenAt)
+		}
+		fmt.Fprintf(&b, "| %s | %s | %d | %d (%d) | %s | %s | %s | %s | %s |\n",
+			r.Service, r.Freshness, r.Symbols, r.CallsTotal, r.CallsAgent, sessions, obs, unproven, r.HooksNote, r.StanzaNote)
 	}
 	b.WriteString("\nEvery unmeasured cell says so — a dash is \"not measured\", never zero (law 3).\n")
 	return b.String()
+}
+
+// fleetUnprovenColumn reads the newest recorded intent audit for repoPath
+// and returns its total unproven count and when it was measured. Not
+// recorded → (0, "", false), which the renderer prints as
+// "n/a: no audit recorded" — never a 0 that reads as "clean" (law 3).
+//
+// Q16 is NOT answered by this: the number stays in a LOCAL artifact under
+// ~/.fathom/fleet/. Nothing here reaches the research bundle, and nothing
+// should until the owner decides whether honesty-debt counts may leave the
+// machine at all (law 13, docs/intent/questions.md Q16).
+func fleetUnprovenColumn(rows []intent.LedgerRow, repoPath string) (int, string, bool) {
+	newest, ok := intent.NewestDebt(rows, repoPath)
+	if !ok {
+		return 0, "", false
+	}
+	total := 0
+	for _, n := range newest.ByKind {
+		total += n
+	}
+	return total, newest.At, true
 }

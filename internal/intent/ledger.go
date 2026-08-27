@@ -3,6 +3,7 @@ package intent
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -56,6 +57,14 @@ type LedgerRow struct {
 	Annotated     int            `json:"annotated,omitempty"`  // debt rows: K0's signal
 	Population    []string       `json:"population,omitempty"` // clock rows
 	MS            int64          `json:"ms,omitempty"`
+
+	// K1's PRE-clock baseline (EP-24), carried on a clock row: how long a
+	// decision's condition sat between its last text edit and the edit that
+	// answered it, BEFORE any of this shipped. Without it "the plane made
+	// decisions faster" has nothing to be faster than — law 12.
+	BaselineDays   []int  `json:"baseline_days,omitempty"`
+	BaselineMedian int    `json:"baseline_median,omitempty"`
+	BaselineNote   string `json:"baseline_note,omitempty"`
 }
 
 // LedgerSchemaVersion is bumped when a row's meaning changes, never when a
@@ -218,4 +227,46 @@ func DebtBefore(rows []LedgerRow, root string, cutoff time.Time) (LedgerRow, boo
 		}
 	}
 	return best, found
+}
+
+// Baseline returns the newest clock row for root that actually carries a K1
+// baseline (measured or explained), and whether one exists. A clock row
+// without one is not a baseline — it is a clock that started before anyone
+// asked what it was measuring against.
+func Baseline(rows []LedgerRow, root string) (LedgerRow, bool) {
+	var best LedgerRow
+	found := false
+	for _, r := range rows {
+		if r.Kind != KindClock || r.RepoRoot != root {
+			continue
+		}
+		if len(r.BaselineDays) == 0 && r.BaselineNote == "" {
+			continue
+		}
+		if !found || r.At > best.At {
+			best, found = r, true
+		}
+	}
+	return best, found
+}
+
+// RecordBaseline appends the K1 baseline as a clock row, once. Re-running
+// the audit must not append a new baseline every time: the measurement is
+// over git history that only moves forward, and a file full of near-identical
+// rows makes the one that matters unfindable.
+//
+// days may be empty when nothing was measurable — then note must say why,
+// and the row is still written. "We looked and found nothing" is a result;
+// silence is not.
+func RecordBaseline(root, commit, at string, days []int, median int, note string) error {
+	if _, ok := Baseline(ReadLedger(), root); ok {
+		return nil
+	}
+	if len(days) == 0 && note == "" {
+		return fmt.Errorf("intent: refusing a baseline with neither measurements nor a reason")
+	}
+	return AppendLedger(LedgerRow{
+		Kind: KindClock, RepoRoot: root, Commit: commit, At: at,
+		BaselineDays: days, BaselineMedian: median, BaselineNote: note,
+	})
 }
