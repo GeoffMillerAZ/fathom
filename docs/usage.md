@@ -993,10 +993,14 @@ practice, which is a choice.
 | U6 | incidents open past 30 days with no outcome |
 | U11 | a record citing a path that has moved |
 | U12 | a row claiming done inside a sensitive surface while pinning no named test |
+| U14 | a sensitive-surface row whose globs match no file — it has silently stopped guarding |
 | U13 | a guard entry whose intent provenance no longer matches the router, or a sensitive surface no guard covers |
 
 Every source it could NOT compute is named with the reason — an audit that
-silently yields nothing is indistinguishable from a healthy repo.
+silently yields nothing is indistinguishable from a healthy repo. A file that
+cannot be READ (as opposed to one that is absent) makes every count a named
+lower bound, `≥ N (k source(s) unreadable: <path>: <errno>)`, and `--json`
+carries `coverage.complete` (ADR-027).
 
 `export --guard` PROPOSES `.fathom/guard.cue` entries from the router's
 sensitive-surface rows, stamped with per-row provenance so staleness stays

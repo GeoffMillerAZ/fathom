@@ -34,6 +34,8 @@ that: **no failure mode may make the repository look healthier than it is.**
 
 - [x] FA-20/FA-21 filed with this evidence: D10's `CoverageManifest` discipline has no mechanical counterpart for deterministic reads, and three Project Intent repos need one. NOT promoted yet — D13 requires two consumers and fathom is one {id: RC-11, skip_test: true, skip: "cross-repo ask; acceptance is the entry in agentic-kit/docs/plans/fathom-uplift-asks.md"}
 
+- [x] the last two conflation sites: the ADR-citation concern reports `unable-to-check` naming the file rather than a clean hold it never earned, and the Codex-config check distinguishes "no config" from "a config that exists and could not be read" — a reader told "no config found" never thinks to check permissions {id: RC-14, symbol: checkADRReferencesResolve, package: internal/custodian, reachable_from: TestADRReferencesNamesUnreadableCitingFiles}
+
 ## Kill criteria (law 5)
 
 Delete this plan's machinery if, after 60 days, no manifest has ever been

@@ -319,9 +319,16 @@ func checkCodexMCPRegistration(root string) doctorCheck {
 
 	var readAny bool
 	var parseErr error
+	var unreadable []string
 	for _, path := range candidates {
 		data, err := os.ReadFile(path)
 		if err != nil {
+			// ADR-027: a config that EXISTS and cannot be read is not the
+			// same as one that is not there, and a reader told "no config
+			// found" will never think to check permissions.
+			if !errors.Is(err, fs.ErrNotExist) {
+				unreadable = append(unreadable, fmt.Sprintf("%s (%s)", path, errnoOf(err)))
+			}
 			continue
 		}
 		readAny = true
@@ -344,12 +351,20 @@ func checkCodexMCPRegistration(root string) doctorCheck {
 		}
 	}
 	if !readAny {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "no readable ~/.codex/config.toml or .codex/config.toml — verify manually: codex mcp list (docs/adoption/codex.md §2)", Remedy: remedy}
+		reason := "no ~/.codex/config.toml or .codex/config.toml — verify manually: codex mcp list (docs/adoption/codex.md §2)"
+		if len(unreadable) > 0 {
+			reason = fmt.Sprintf("a Codex config EXISTS but could not be read: %s — this is a permissions problem, not a missing registration", strings.Join(unreadable, "; "))
+		}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: reason, Remedy: remedy}
 	}
 	if parseErr != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("could not parse Codex config: %v", parseErr), Remedy: remedy}
 	}
-	return doctorCheck{Name: name, Status: doctorFail, Reason: "no [mcp_servers.fathom] entry found in any readable Codex config", Remedy: remedy}
+	failReason := "no [mcp_servers.fathom] entry found in any readable Codex config"
+	if len(unreadable) > 0 {
+		failReason += fmt.Sprintf("; %d further config(s) could NOT BE READ and may carry one: %s", len(unreadable), strings.Join(unreadable, "; "))
+	}
+	return doctorCheck{Name: name, Status: doctorFail, Reason: failReason, Remedy: remedy}
 }
 
 // ─── 2. daemon reachable ────────────────────────────────────────────────────

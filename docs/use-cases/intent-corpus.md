@@ -77,6 +77,19 @@ None of that is a failing grade. It is a list with a remedy on every line.
 - **It says what it could not compute.** Every unreadable source, unresolved
   test and unmatchable surface is listed with the reason. An audit that
   silently returns nothing looks exactly like a healthy repo.
+- **It never lets blindness look like health** (ADR-027). If a corpus file
+  cannot be READ — as opposed to being absent — every count becomes a named
+  lower bound and the blindness leads the NOT-COMPUTED list:
+
+  ```
+  unproven claims: ≥ 85 (1 source(s) unreadable: docs/intent/invariants.md: permission denied)
+    NOT COMPUTED — COVERAGE INCOMPLETE — every count below is a LOWER BOUND: …
+  ```
+
+  This was a real defect, measured: before the fix, an unreadable
+  `invariants.md` made the audit report 0 invariants instead of 37 and half
+  the debt, naming nothing. `--json` carries `coverage.complete` so a machine
+  reader can tell a real zero from one nobody could see.
 
 ## In a session
 

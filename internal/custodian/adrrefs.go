@@ -53,10 +53,15 @@ func checkADRReferencesResolve(root string, c Concern) Finding {
 
 	var violations []string
 	var foreign int
+	var unreadable []string
 	checked := 0
 	for _, rel := range adrCitingFiles(root) {
 		body, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
+			// ADR-027: a citing file this check could not open is an
+			// instrument failure, not a cleaner repo. Skipping it silently
+			// shrinks `checked` and hides whatever it cites.
+			unreadable = append(unreadable, rel)
 			continue
 		}
 		checked++
@@ -77,10 +82,25 @@ func checkADRReferencesResolve(root string, c Concern) Finding {
 	}
 	sort.Strings(violations)
 
+	blind := ""
+	if n := len(unreadable); n > 0 {
+		sort.Strings(unreadable)
+		blind = fmt.Sprintf("; %d file(s) could NOT BE READ, so their citations were not checked: %s",
+			n, strings.Join(unreadable, ", "))
+	}
+
 	if len(violations) > 0 {
 		f.Status = StatusViolated
 		f.Detail = fmt.Sprintf("%d citation(s) name a decision record that does not exist: %s",
-			len(violations), strings.Join(violations, "; "))
+			len(violations), strings.Join(violations, "; ")) + blind
+		return f
+	}
+	if blind != "" {
+		// Not violated — nothing it could read was wrong — but not a clean
+		// pass either: the check cannot claim coverage it did not have.
+		f.Status = StatusUnable
+		f.Detail = fmt.Sprintf("every ADR citation across the %d readable file(s) resolves against %s (%d record(s))%s",
+			checked, home, len(records), blind)
 		return f
 	}
 	f.Detail = fmt.Sprintf("every ADR citation across %d file(s) resolves against %s (%d record(s))",

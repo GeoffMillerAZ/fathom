@@ -89,3 +89,41 @@ func mustWrite(t *testing.T, path, body string) {
 		t.Fatal(err)
 	}
 }
+
+// ADR-027: a citing file this check could not open is an instrument failure,
+// not a cleaner repository. Skipping it silently shrinks the checked count
+// and hides whatever it cites — so the concern reports unable-to-check
+// rather than a clean hold it never earned.
+func TestADRReferencesNamesUnreadableCitingFiles(t *testing.T) {
+	concern := custodian.Concern{
+		ID:    "adr_references_resolve",
+		Want:  "every ADR citation resolves to a record that exists",
+		Check: custodian.Check{Kind: custodian.KindADRReferencesResolve},
+	}
+
+	root := t.TempDir()
+	writeADRFixture(t, root, "## ADR-001 \u2014 Real\n")
+	mustWrite(t, filepath.Join(root, "docs", "design", "good.md"), "see ADR-001\n")
+
+	if f := custodian.Audit(root, []custodian.Concern{concern})[0]; f.Status != custodian.StatusHolds {
+		t.Fatalf("baseline must hold, got %q: %s", f.Status, f.Detail)
+	}
+
+	blind := filepath.Join(root, "docs", "design", "blind.md")
+	mustWrite(t, blind, "see ADR-999, which does not exist\n")
+	if err := os.Chmod(blind, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blind, 0o644) })
+
+	f := custodian.Audit(root, []custodian.Concern{concern})[0]
+	if f.Status == custodian.StatusHolds {
+		t.Skipf("this platform still read the chmod-000 file (running as root?): %s", f.Detail)
+	}
+	if f.Status != custodian.StatusUnable {
+		t.Fatalf("blindness is unable-to-check, never violated and never a hold: %q (%s)", f.Status, f.Detail)
+	}
+	if !strings.Contains(f.Detail, "blind.md") || !strings.Contains(f.Detail, "NOT BE READ") {
+		t.Fatalf("the unreadable file must be named: %s", f.Detail)
+	}
+}
