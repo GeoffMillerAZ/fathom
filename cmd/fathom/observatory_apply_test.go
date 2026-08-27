@@ -218,7 +218,7 @@ func TestWiringApplyRequiresFreshPlan(t *testing.T) {
 		t.Fatalf("apply reports nothing applied: %v", body)
 	}
 	got, _ := os.ReadFile(claudePath)
-	if !strings.HasPrefix(string(got), prior) || !strings.Contains(string(got), fathomStanzaBody("demo")) {
+	if !strings.HasPrefix(string(got), prior) || !strings.Contains(string(got), fathomStanzaBody("demo", false)) {
 		t.Errorf("CLAUDE.md after apply is not prior bytes + fathom's region:\n%s", got)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".claude", "settings.json")); err != nil {

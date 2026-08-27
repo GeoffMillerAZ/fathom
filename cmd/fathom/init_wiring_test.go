@@ -108,7 +108,7 @@ func TestInitContinuesPastBlockedFiles(t *testing.T) {
 	if err := os.WriteFile(claudePath, []byte("# repo\n\nhouse prose\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyStanza(claudePath, fathomStanza(svc), &bytes.Buffer{}); err != nil {
+	if err := applyStanza(claudePath, fathomStanza(svc, false), &bytes.Buffer{}); err != nil {
 		t.Fatalf("applyStanza: %v", err)
 	}
 	written, _ := os.ReadFile(claudePath)

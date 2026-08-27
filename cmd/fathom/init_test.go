@@ -445,7 +445,7 @@ func TestFathomStanza_MarkerReplace(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	newStanza := fathomStanza("new-svc")
+	newStanza := fathomStanza("new-svc", false)
 	if err := applyStanza(path, newStanza, &out); err != nil {
 		t.Fatalf("applyStanza: %v", err)
 	}
@@ -501,7 +501,7 @@ func TestFathomStanza_AppendsToExistingFileWithoutMarkers(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	stanza := fathomStanza("my-svc")
+	stanza := fathomStanza("my-svc", false)
 	if err := applyStanza(path, stanza, &out); err != nil {
 		t.Fatalf("applyStanza: %v", err)
 	}
@@ -561,7 +561,7 @@ func TestFathomStanza_CorruptedMarkers_Refuses(t *testing.T) {
 			}
 
 			var out bytes.Buffer
-			err := applyStanza(path, fathomStanza("svc"), &out)
+			err := applyStanza(path, fathomStanza("svc", false), &out)
 			if err == nil {
 				t.Fatal("expected applyStanza to refuse on corrupted markers, got nil error")
 			}

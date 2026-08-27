@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
@@ -649,9 +650,10 @@ func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
 // Claude Code applies both scopes and the hook would fire twice. Every
 // skip is returned as a note to print, never silent.
 func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
+	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{Regions: []wiring.Region{
-		stanzaRegion("CLAUDE.md", service),
-		stanzaRegion("AGENTS.md", service),
+		stanzaRegion("CLAUDE.md", service, intentOn),
+		stanzaRegion("AGENTS.md", service, intentOn),
 	}}
 	var notes []string
 	userWired, userReadable := userScopeHookKeys()
@@ -864,9 +866,7 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"session start and after each commit; it is hash-gated, so a clean repo\n" +
 	"refreshes in well under a second.\n" +
 	"\n" +
-	"Obligations — governing rules for the file you are about to touch — are\n" +
-	"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
-	"as binding, not advisory.\n" +
+	"{{OBLIGATIONS}}\n" +
 	"\n" +
 	"Continuity: run `fathom prime` at session start if your harness has no\n" +
 	"SessionStart hook (Codex does not) — it prints the same identity,\n" +
@@ -883,14 +883,57 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"fix the code or uncheck the box. Exit 2 = operational (daemon down / index\n" +
 	"stale) — fail-open, not a verification failure."
 
+// The obligations paragraph, in two wordings of the SAME three physical
+// lines (EP-22). The intent wording is used ONLY where the channel is
+// actually wired: a stanza that promises matched invariants in a repo whose
+// guard.cue carries none teaches the agent to expect something that will
+// never arrive, which is worse than saying nothing.
+const (
+	obligationsPlain = "Obligations — governing rules for the file you are about to touch — are\n" +
+		"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
+		"as binding, not advisory."
+	obligationsWithIntent = "Obligations — governing rules for the file you are about to touch, and\n" +
+		"where `docs/intent/` exists its matched invariants — are injected on every\n" +
+		"edit via the PostToolUse hook. Treat them as binding, not advisory."
+)
+
 // fathomStanzaBody is the stanza WITHOUT its markers — what goes between
 // them, and what the wiring engine digests.
-func fathomStanzaBody(service string) string {
-	return strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
+func fathomStanzaBody(service string, intentOn bool) string {
+	obligations := obligationsPlain
+	if intentOn {
+		obligations = obligationsWithIntent
+	}
+	s := strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
+	return strings.ReplaceAll(s, "{{OBLIGATIONS}}", obligations)
 }
 
-func fathomStanza(service string) string {
-	return fathomStanzaBegin + "\n" + fathomStanzaBody(service) + "\n" + fathomStanzaEnd
+func fathomStanza(service string, intentOn bool) string {
+	return fathomStanzaBegin + "\n" + fathomStanzaBody(service, intentOn) + "\n" + fathomStanzaEnd
+}
+
+// intentChannelWired is EP-22's predicate: the intent corpus has a router
+// AND at least one guard entry carries intent provenance. Router alone is
+// not enough — the corpus can be adopted with the edit-time channel left
+// unwired, and this repo is exactly that case today (14 sensitive surfaces,
+// 0 covered), so the sentence must not render here.
+func intentChannelWired(root string) bool {
+	c, err := intent.Load(root)
+	if err != nil || c.Tier != intent.TierRouter {
+		return false
+	}
+	notes, scopesOf, _ := repoGuardNotes(root)
+	if scopesOf == nil {
+		return false
+	}
+	// Covered = at least one surface NOT reported as uncovered.
+	uncovered := 0
+	for _, cl := range intent.GuardEntryStale(c, notes, scopesOf) {
+		if !strings.HasPrefix(cl.Ref, ".fathom/guard.cue") {
+			uncovered++
+		}
+	}
+	return uncovered < len(c.Surfaces)
 }
 
 // stanzaRegion is the wiring region for one stanza-carrying file.
@@ -898,12 +941,12 @@ func fathomStanza(service string) string {
 // every repository wired before marker format v3 carries: a v1 region is
 // fathom's, gets its digest on the first write, and is never reported as
 // drift; only a tracked region that no longer matches its digest is.
-func stanzaRegion(file, service string) wiring.Region {
+func stanzaRegion(file, service string, intentOn bool) wiring.Region {
 	return wiring.Region{
 		File:           file,
 		Syntax:         wiring.HTMLMarkers,
 		Version:        fathomStanzaVersion,
-		Body:           fathomStanzaBody(service),
+		Body:           fathomStanzaBody(service, intentOn),
 		AdoptUntracked: true,
 	}
 }

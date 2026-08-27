@@ -15,7 +15,7 @@ func TestStanzaCarriesOpeningMovesAndPrime(t *testing.T) {
 	// Exercise the rendering function, not the raw const — the rendered
 	// stanza is what applyStanza writes to CLAUDE.md/AGENTS.md, and the
 	// call is what wires WF-9's reachability contract.
-	stanza := fathomStanza("fathom")
+	stanza := fathomStanza("fathom", false)
 
 	for _, want := range []string{
 		"Opening moves by task shape (first 2-3 calls, then edit):",

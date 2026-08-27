@@ -97,7 +97,7 @@ func TestReconcileStopsOnDriftedRegion(t *testing.T) {
 	if err := os.WriteFile(claudePath, []byte("# repo\n\nhouse prose\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := applyStanza(claudePath, fathomStanza(svc), &strings.Builder{}); err != nil {
+	if err := applyStanza(claudePath, fathomStanza(svc, false), &strings.Builder{}); err != nil {
 		t.Fatalf("applyStanza: %v", err)
 	}
 	written, _ := os.ReadFile(claudePath)
@@ -132,7 +132,7 @@ func TestReconcileStopsOnDriftedRegion(t *testing.T) {
 	}
 
 	agents, _ := os.ReadFile(agentsPath)
-	if strings.Contains(string(agents), "old wording") || !strings.Contains(string(agents), fathomStanzaBody(svc)) {
+	if strings.Contains(string(agents), "old wording") || !strings.Contains(string(agents), fathomStanzaBody(svc, false)) {
 		t.Errorf("the un-drifted AGENTS.md was not refreshed alongside the BLOCKED file:\n%s", agents)
 	}
 	settings, err := os.ReadFile(filepath.Join(root, ".claude", "settings.json"))
@@ -199,7 +199,7 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 	if !strings.Contains(s, fathomStanzaBeginPrefix+" "+fathomStanzaVersion+" sha256:") {
 		t.Errorf("the upgraded region carries no digest — the next hand edit would be invisible:\n%s", s)
 	}
-	if strings.Contains(s, "old wording") || !strings.Contains(s, fathomStanzaBody(svc)) {
+	if strings.Contains(s, "old wording") || !strings.Contains(s, fathomStanzaBody(svc, false)) {
 		t.Errorf("the region was not rewritten to the template:\n%s", s)
 	}
 	if receipts, err := wiring.LoadReceipts(root); err != nil || len(receipts) != 1 {
@@ -232,7 +232,7 @@ func TestReconcileRemarkIsNotStale(t *testing.T) {
 	svc := strings.ToLower(filepath.Base(root))
 	claudePath := filepath.Join(root, "CLAUDE.md")
 	prefix, suffix := "# repo\n\nhouse prose\n\n", "\n\ntrailing notes\n"
-	if err := os.WriteFile(claudePath, []byte(prefix+fathomStanza(svc)+suffix), 0o644); err != nil {
+	if err := os.WriteFile(claudePath, []byte(prefix+fathomStanza(svc, false)+suffix), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	agentsPath := filepath.Join(root, "AGENTS.md")
@@ -281,7 +281,7 @@ func TestReconcileRemarkIsNotStale(t *testing.T) {
 	if !strings.HasPrefix(s, prefix) || !strings.HasSuffix(s, suffix) {
 		t.Errorf("bytes outside the region changed:\n%s", s)
 	}
-	if !strings.Contains(s, fathomStanzaBeginPrefix+" "+fathomStanzaVersion+" sha256:") || !strings.Contains(s, fathomStanzaBody(svc)) {
+	if !strings.Contains(s, fathomStanzaBeginPrefix+" "+fathomStanzaVersion+" sha256:") || !strings.Contains(s, fathomStanzaBody(svc, false)) {
 		t.Errorf("the region was not re-marked with a digest around unchanged prose:\n%s", s)
 	}
 	if want := prefix + fathomStanzaBeginPrefix; !strings.HasPrefix(s, want) {

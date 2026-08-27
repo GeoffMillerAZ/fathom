@@ -263,7 +263,7 @@ func requireLocalMutation(reg wiringRegistry, next http.Handler) http.Handler {
 func serviceWiringSpec(root, service string) (wiring.Spec, []string) {
 	spec := wiring.Spec{}
 	for _, name := range stanzaFiles {
-		spec.Regions = append(spec.Regions, stanzaRegion(name, service))
+		spec.Regions = append(spec.Regions, stanzaRegion(name, service, intentChannelWired(root)))
 	}
 	keys, notes := shimHookKeys(root)
 	spec.Keys = keys

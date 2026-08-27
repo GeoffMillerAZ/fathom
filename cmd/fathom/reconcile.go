@@ -181,9 +181,10 @@ func stanzaServiceID(root, service string) string {
 // the same plan --apply executes, computed without touching anything.
 func stanzaPlan(root, service string) (wiring.Plan, error) {
 	svc := stanzaServiceID(root, service)
+	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{}
 	for _, name := range stanzaFiles {
-		spec.Regions = append(spec.Regions, stanzaRegion(name, svc))
+		spec.Regions = append(spec.Regions, stanzaRegion(name, svc, intentOn))
 	}
 	return wiring.PlanWiring(root, spec)
 }
@@ -262,9 +263,10 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 			want[f[:i]] = true
 		}
 	}
+	intentOn := intentChannelWired(root)
 	for _, name := range stanzaFiles {
 		if want[name] {
-			spec.Regions = append(spec.Regions, stanzaRegion(name, svc))
+			spec.Regions = append(spec.Regions, stanzaRegion(name, svc, intentOn))
 		}
 	}
 

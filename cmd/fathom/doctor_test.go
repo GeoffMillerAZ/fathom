@@ -186,10 +186,10 @@ func writeFathomGoMod(t *testing.T, dir string) {
 // repo's git HEAD.
 func writeAllPassFixture(t *testing.T, root, svc string) string {
 	t.Helper()
-	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte(fathomStanza(svc, false)+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(fathomStanza(svc, false)+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -954,7 +954,7 @@ func TestCheckStanzaPresent(t *testing.T) {
 
 	t.Run("well-formed passes", func(t *testing.T) {
 		dir := t.TempDir()
-		stanza := fathomStanza("svc") + "\n"
+		stanza := fathomStanza("svc", false) + "\n"
 		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(stanza), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -974,7 +974,7 @@ func TestCheckStanzaPresent(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, "CLAUDE.md"), []byte(corrupted), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(fathomStanza("svc")+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(dir, "AGENTS.md"), []byte(fathomStanza("svc", false)+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		got := checkStanzaPresent(dir)
@@ -1560,10 +1560,10 @@ func TestCmdDoctor_AdopterRepoIsNotFathom(t *testing.T) {
 	// Wire the adopter like a real `fathom init` would: stanza, hooks,
 	// lefthook, skills — everything EXCEPT a call log at its own root (O23:
 	// that belongs to the daemon, never the doctored repo).
-	if err := os.WriteFile(filepath.Join(adopter, "CLAUDE.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(adopter, "CLAUDE.md"), []byte(fathomStanza(svc, false)+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(adopter, "AGENTS.md"), []byte(fathomStanza(svc)+"\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(adopter, "AGENTS.md"), []byte(fathomStanza(svc, false)+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	merged, _, _, err := mergeHookSettings(nil, "/opt/fathom/bin/fathom")
