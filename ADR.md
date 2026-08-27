@@ -917,3 +917,69 @@ template docs (Q18). (3) The practice ships its own evaluator. (4) A second tool
 wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
 repeats across two repos (the real F9). (6) Decision latency measures as the
 bottleneck the broad form would remove.
+
+## ADR-027: Coverage before conclusion — an instrument may not degrade toward "healthy" (2026-08-27)
+
+**Status.** Accepted. **Type.** Architecture / process. Design:
+`docs/design/reader-coverage.md`. Plan: `docs/plans/reader-coverage.md`.
+
+**Context.** ADR-026 shipped a reporting layer whose job is honesty: an audit
+that lists what a repository claims and what nothing proves. Measured the day
+after it shipped, that layer failed at its own job. With
+`docs/intent/invariants.md` made unreadable — the state a wedged macOS TCC
+verdict produces for a whole process tree on this machine, twice during the
+session that wrote ADR-026 — `fathom intent audit` reported **0 invariants
+instead of 37 and 85 unproven claims instead of 169, naming nothing**. The
+repository's most broken state was its healthiest-looking one.
+
+The cause was eight readers doing `if err != nil { continue }`, which collapses
+three different facts into one: the file is not there, the file cannot be read,
+the file is empty. Only the middle is an instrument failure, and it was being
+reported as the other two. Three further instances turned up in the same sitting:
+`binary_fresh` reporting "go.mod does not declare `github.com/geoffmilleraz/fathom`"
+against the repo whose go.mod declares exactly that on line 1; `guard_dead_scopes`
+telling the reader to delete a working guard because the files it covers are not
+INDEXED; and a router surface row (`internal/instrument*`, `internal/flywheel*`)
+whose globs matched nothing and had silently stopped guarding the measurement code.
+
+None was a coding mistake. Each was a check that had never been told it must
+distinguish "false" from "could not look".
+
+**Decision.**
+1. *Coverage before conclusion.* Every read in the reporting layer goes through
+   `internal/readset`, which records `read | absent | unreadable(errno) |
+   skipped(category)`. Only `unreadable` makes a manifest incomplete;
+   first-outcome-wins, so a retry cannot erase a recorded blindness.
+2. *A count over an incomplete manifest is a lower bound and says so.*
+   `≥ 85 (1 source(s) unreadable: docs/intent/invariants.md: permission denied)`
+   — never a bare total. Blindness LEADS the NOT-COMPUTED list, because every
+   other entry there is a bounded gap while this one silently lowers every
+   number above it.
+3. *No failure mode may make the repository look healthier than it is.* Each
+   affected instrument carries a test that makes an input unreadable and
+   asserts the output does not improve.
+4. *This is not new doctrine.* IT-14/IT-15 decided it for `ingest` in v0.5.0,
+   and `fathom verify` was already correct (an unreadable plan exits 2). The
+   layer built last simply never got the same treatment. The vocabulary mirrors
+   `fusion.ReadFailure` deliberately and does NOT import it: the ingest path's
+   refusal semantics are its own, and the reporting layer wants the opposite —
+   report honestly rather than refuse.
+
+**Consequences.** The reporting layer does not refuse to run on partial coverage:
+a `doctor` that dies because one file is unreadable is worse than one that reports
+honestly, so the doctor rows keep their never-FAIL contract and go WARN with the
+reason. Two new claim kinds: U13 (guard provenance) already existed; U14 names a
+sensitive surface whose globs match nothing. Fixing the one U14 finding surfaced
+nine genuinely unpinned rows in measurement code that U12 could not previously see.
+
+**Alternatives rejected.** *Fail hard on any unreadable file* — wins if the
+reporting layer were load-bearing for correctness; it is advisory, and hard
+failure on a transient wedge trains users to disable it. *Log to stderr and carry
+on* — the number in the report is what is read and believed; a warning elsewhere
+does not change what the number claims.
+
+**Revisit when.** After 60 days, no manifest has ever been incomplete in a real
+run on any adopting repo (the discipline is theatre for a condition that does not
+occur), or every incompleteness recorded had a single cause a narrower fix would
+have covered. Measured by `incomplete_coverage` on the existing `intent-cli` and
+`doctor` beats — no new channel.

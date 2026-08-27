@@ -141,3 +141,67 @@ func TestUncomputableNotesCollapse(t *testing.T) {
 		t.Fatalf("a truncated list must say how many it dropped: %s", joined)
 	}
 }
+
+// RC-12 / U14: a sensitive-surface row whose globs match nothing has stopped
+// guarding, silently — no check, no build error, no test would notice.
+//
+// Found live the day this was written: the router declared
+// `internal/instrument*`, `internal/flywheel*` sensitive because it holds
+// "the numbers the program steers by (law 12)". Neither path existed; the
+// code is in `internal/metrics`. The most measurement-critical surface in
+// the repository had been unguarded for as long as the row existed.
+func TestSurfaceGlobsMatchNothingIsAFinding(t *testing.T) {
+	c := Corpus{
+		Root:       "/repo",
+		RouterPath: "docs/intent/README.md",
+		Surfaces: []Surface{
+			{Globs: []string{"internal/metrics/**"}},
+			{Globs: []string{"internal/instrument*", "internal/flywheel*"}},
+		},
+	}
+	count := func(globs []string) (int, bool) {
+		if globs[0] == "internal/metrics/**" {
+			return 12, true
+		}
+		return 0, true
+	}
+
+	claims, notes := SurfaceGlobsMatchNothing(c, count)
+	if len(claims) != 1 {
+		t.Fatalf("exactly the dead surface fires, got %d: %+v", len(claims), claims)
+	}
+	if claims[0].Kind != "U14" || !strings.Contains(claims[0].Ref, "internal/instrument*") {
+		t.Fatalf("the dead surface must be named: %+v", claims[0])
+	}
+	if !strings.Contains(claims[0].Remedy, "delete the row") {
+		t.Fatalf("the remedy must offer both repairs: %q", claims[0].Remedy)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("nothing was unlookable here, got %v", notes)
+	}
+}
+
+// "Could not look" is never "matched nothing" — the same distinction the
+// whole of ADR-027 turns on.
+func TestSurfaceGlobsBlindnessIsNotAFinding(t *testing.T) {
+	c := Corpus{
+		Root:       "/repo",
+		RouterPath: "docs/intent/README.md",
+		Surfaces:   []Surface{{Globs: []string{"internal/store/**"}}},
+	}
+
+	claims, notes := SurfaceGlobsMatchNothing(c, func([]string) (int, bool) { return 0, false })
+	if len(claims) != 0 {
+		t.Fatalf("a surface the checker could not look at is NOT a dead surface: %+v", claims)
+	}
+	if len(notes) != 1 || !strings.Contains(notes[0], "could not check") {
+		t.Fatalf("blindness must be named in the notes, got %v", notes)
+	}
+
+	// And with no resolver at all, the whole check reports itself unrun
+	// rather than returning a confident empty list.
+	claims, notes = SurfaceGlobsMatchNothing(c, nil)
+	if len(claims) != 0 || len(notes) != 1 {
+		t.Fatalf("no resolver → no findings and ONE note, got %d/%d", len(claims), len(notes))
+	}
+}

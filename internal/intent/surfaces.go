@@ -248,3 +248,51 @@ func briefList(names []string, max int) string {
 	}
 	return fmt.Sprintf("%s; and %d more", strings.Join(sorted[:max], "; "), len(sorted)-max)
 }
+
+// U14 — surface_globs_match_nothing (ADR-027, RC-12).
+//
+// The router's sensitive-surface table is a promise: "changes here are
+// dangerous, and here is the evidence they need". A row whose globs match no
+// file is a promise about nothing, and it fails SILENTLY — no check, no
+// build error, no test. It simply stops guarding.
+//
+// Found in this repository the day the check was written: `internal/instrument*`,
+// `internal/flywheel*` — declared sensitive because it holds "the numbers the
+// program steers by (law 12)" — matched zero files. The instrumentation is in
+// `internal/metrics`. The most measurement-critical surface in the repo had
+// been unguarded for as long as the row existed.
+//
+// Same discipline as the dead-guard check: look at the DISK, and distinguish
+// "matched nothing" from "could not look".
+func SurfaceGlobsMatchNothing(c Corpus, count func(globs []string) (int, bool)) ([]Claim, []string) {
+	if count == nil {
+		return nil, []string{"U14 (surface globs): no filesystem resolver was supplied, so the router's surface table was not checked against the tree"}
+	}
+	var claims []Claim
+	var blind []string
+	for _, s := range c.Surfaces {
+		n, ok := count(s.Globs)
+		label := strings.Join(s.Globs, ", ")
+		if !ok {
+			blind = append(blind, label)
+			continue
+		}
+		if n > 0 {
+			continue
+		}
+		claims = append(claims, Claim{
+			Kind:   "U14",
+			Ref:    c.RouterPath + " [" + label + "]",
+			Detail: "the router calls this surface sensitive, but its globs match NO file in the tree — the row has stopped guarding anything, silently",
+			Remedy: "correct the glob to where the code actually lives, or delete the row; a surface that matches nothing protects nothing",
+		})
+	}
+	sort.Slice(claims, func(i, j int) bool { return claims[i].Ref < claims[j].Ref })
+	var notes []string
+	if len(blind) > 0 {
+		notes = append(notes, fmt.Sprintf(
+			"U14 could not check %d surface glob(s) against the tree (%s)", len(blind), briefList(blind, 3),
+		))
+	}
+	return claims, notes
+}

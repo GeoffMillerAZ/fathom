@@ -52,3 +52,15 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 - INC-9 2026-07-07 The first gated run caught the plan's author over-claiming → the pre-push `fathom verify` gate itself (`lefthook.yml`).
 - INC-10 2026-08-23 Two C++ rows flipped when unrelated CUE tests landed; cause was typed edges silently dropped on a discovery gap → VS-9 `DiscoveryGaps` named on stderr; resolver stability pinned (`docs/plans/verify-spine.md`).
 - INC-11 2026-08-21 Push with `LEFTHOOK=0` after the gate ran green but the wedge corrupted transfer → `autonomy.md` "Never" tier names the only allowed form.
+
+**INC-15 (2026-08-27). A design doc cited ADR-027 before ADR-027 existed — the
+same mistake as INC-14, by the same author, one day later.** What caught it:
+`adr_references_resolve`, the custodian kind built AS INC-14's outcome (EP-14).
+It fired within minutes, naming all three citing files, and `fathom doctor`
+turned it into a FAIL. What it produced: nothing new to build — the check
+already existed and worked. The value is the evidence that a mechanical check
+beats an intention: INC-14's remedy was "write the record first", which is
+exactly what was resolved to do and exactly what was not done. **Outcome:**
+closed by ADR-027 being written; the check stays as the enforcement, and this
+entry exists because a repeat under a working check is worth more as evidence
+than the first occurrence was.

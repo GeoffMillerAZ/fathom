@@ -98,6 +98,10 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		PlanContractNote: contractNote,
 		ExtraCoverage:    []readset.Manifest{contractCoverage},
 
+		SurfaceFiles: func(globs []string) (int, bool) {
+			return filesOnDiskUnder(abs, globs), true
+		},
+
 		GuardNotes:  guardNotes,
 		GuardScopes: guardScopes,
 		GuardNote:   guardNote2,

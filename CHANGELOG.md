@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+### Fixed
+- **An unreadable input no longer makes a repository look healthier than it is** (ADR-027). `fathom intent audit` reported 0 invariants instead of 37, and half the unproven claims, when one corpus file could not be read — naming nothing. Counts over incomplete coverage now render as named lower bounds (`≥ 85 (1 source(s) unreadable: …: permission denied)`) and blindness leads the NOT-COMPUTED list.
+- `fathom doctor`'s `unproven_claims` row and `fathom intent audit` reported different totals for the same tree (12 against 88). The row built a partial audit and printed the result as a total; U12 and U13 need no index and are now included.
+- `binary_fresh` reported "go.mod does not declare `github.com/geoffmilleraz/fathom`" against the repo whose go.mod declares exactly that, when the file was merely unreadable. Unreadable is now its own message and a WARN.
+- `guard_dead_scopes` called a guard dead when its files exist but are not INDEXED, sending the reader to a remedy that deletes working configuration. It now looks at the disk first.
+
+### Added
+- Claim kind **U14**: a sensitive-surface row whose globs match no file has silently stopped guarding. It found one on this repo — `internal/instrument*` guarding "the numbers the program steers by", pointing at a path that does not exist.
+
 ## [0.6.0] -- 2026-08-27
 
 **What this release is.** The repository learned to audit what it declares about

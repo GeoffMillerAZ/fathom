@@ -104,9 +104,13 @@ type AuditInput struct {
 	// half the plans and reports a confident U12 total is the same defect
 	// in a different file (ADR-027).
 	ExtraCoverage []readset.Manifest
-	Ledger        []LedgerRow
-	Now           time.Time
-	IncidentDays  int // U6's window; 0 → 30, the practice's own check-14 threshold
+
+	// SurfaceFiles counts files in the tree matching a surface's globs, and
+	// reports whether it could look at all. nil → U14 uncomputable.
+	SurfaceFiles func(globs []string) (int, bool)
+	Ledger       []LedgerRow
+	Now          time.Time
+	IncidentDays int // U6's window; 0 → 30, the practice's own check-14 threshold
 }
 
 // RunAudit computes the findings. Deterministic: every list is sorted, the
@@ -133,6 +137,7 @@ func RunAudit(in AuditInput) Audit {
 	a.auditReferences(in)
 	a.auditSurfaceCoverage(in)
 	a.auditGuardProvenance(in)
+	a.auditSurfaceGlobs(in)
 
 	sort.SliceStable(a.Unproven, func(i, j int) bool {
 		if a.Unproven[i].Kind != a.Unproven[j].Kind {
@@ -622,4 +627,12 @@ func (a *Audit) auditGuardProvenance(in AuditInput) {
 		return
 	}
 	a.Unproven = append(a.Unproven, GuardEntryStale(in.Corpus, in.GuardNotes, in.GuardScopes)...)
+}
+
+// auditSurfaceGlobs adds U14 (RC-12): sensitive surfaces whose globs match
+// nothing in the tree, and so have silently stopped guarding.
+func (a *Audit) auditSurfaceGlobs(in AuditInput) {
+	claims, notes := SurfaceGlobsMatchNothing(in.Corpus, in.SurfaceFiles)
+	a.Unproven = append(a.Unproven, claims...)
+	a.Uncomputable = append(a.Uncomputable, notes...)
 }
