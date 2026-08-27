@@ -54,6 +54,7 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | `.fathom/*.cue`, `internal/custodian/**` | governs this repo's own agent config | `fathom config audit` exit 0; `fathom doctor`; `TestADRReferencesResolveConcern` |
 | `internal/metrics/**`, `cmd/fathom/research_report.go` | the numbers the program steers by (law 12) | pre-registered criterion unchanged after data; `TestAbsenceNotesAreArmAware`; `TestAggregateChannels_NeverMeasurable_NotesVerbatim`; `TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent` |
 | `CLAUDE.md`, `AGENTS.md` | the always-loaded router and the fleet stanza | `fathom config audit`; stanza paragraphs identical in both files (`intent-doctor` 15) |
+| `internal/readset/**` | the honesty floor (I38): every reporting-layer read routes through it, so a bug here makes blindness invisible everywhere | `TestReadSetRecordsAbsentUnreadableAndSkipped`; `TestUnreadableInputNeverLooksHealthier` |
 | `docs/intent/**`, `ADR.md`, `.fathom/guard.cue` | the intent corpus itself (ADR-026): a wrong condition, rung, or guard note misleads every session | `intent-doctor` pass; `fathom config audit` 0 violated; `fathom intent audit` with 0 unparsed and COMPLETE coverage (ADR-027); `TestUnreadableInputNeverLooksHealthier` |
 
 ## Before designing
