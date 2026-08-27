@@ -54,8 +54,7 @@ type PlanRow struct {
 // Deterministic: claims sorted by ref, notes sorted and deduplicated.
 func SurfaceRowsUncovered(c Corpus, rows []PlanRow) ([]Claim, []string) {
 	var claims []Claim
-	noteSet := map[string]bool{}
-	var untested []string
+	var untested, fileOnly, partial []string
 
 	for _, s := range c.Surfaces {
 		dirs, fileScoped := surfaceScopes(s.Globs)
@@ -65,11 +64,11 @@ func SurfaceRowsUncovered(c Corpus, rows []PlanRow) ([]Claim, []string) {
 			untested = append(untested, label)
 		}
 		if len(dirs) == 0 {
-			noteSet[fmt.Sprintf("surface %s: every glob is file-scoped and a plan row's contract is package-scoped — matching would need the index, so U12 skips it rather than guess", label)] = true
+			fileOnly = append(fileOnly, label)
 			continue
 		}
 		if len(fileScoped) > 0 {
-			noteSet[fmt.Sprintf("surface %s: %d file-scoped glob(s) unmatched against plan rows (%s); only the directory globs were", label, len(fileScoped), strings.Join(fileScoped, ", "))] = true
+			partial = append(partial, label)
 		}
 
 		for _, r := range rows {
@@ -95,16 +94,29 @@ func SurfaceRowsUncovered(c Corpus, rows []PlanRow) ([]Claim, []string) {
 		}
 	}
 
-	if len(untested) > 0 {
-		sort.Strings(untested)
-		noteSet[fmt.Sprintf("%d surface(s) name no Test* in `Done needs`, so U12 can say a row is unpinned but not what to pin it to: %s", len(untested), strings.Join(untested, "; "))] = true
+	// RC-9: ONE line per reason, never one per surface. Eleven near-identical
+	// notes drowned the section a reader most needs — the section that says
+	// what the audit could NOT compute.
+	var notes []string
+	if n := len(fileOnly); n > 0 {
+		notes = append(notes, fmt.Sprintf(
+			"could not match %d surface(s) whose globs are all file-scoped against package-scoped plan rows (%s) — index-backed file resolution would close this",
+			n, briefList(fileOnly, 3),
+		))
+	}
+	if n := len(partial); n > 0 {
+		notes = append(notes, fmt.Sprintf(
+			"matched only the directory globs of %d surface(s) with mixed globs (%s)", n, briefList(partial, 3),
+		))
+	}
+	if n := len(untested); n > 0 {
+		notes = append(notes, fmt.Sprintf(
+			"%d surface(s) name no Test* in `Done needs`, so U12 can say a row is unpinned but not what to pin it to (%s)",
+			n, briefList(untested, 3),
+		))
 	}
 
 	sort.Slice(claims, func(i, j int) bool { return claims[i].Ref < claims[j].Ref })
-	notes := make([]string, 0, len(noteSet))
-	for n := range noteSet {
-		notes = append(notes, n)
-	}
 	sort.Strings(notes)
 	return claims, notes
 }
@@ -224,4 +236,15 @@ func GuardEntryStale(c Corpus, notes []string, scopesOf func(note string) []stri
 
 	sort.Slice(claims, func(i, j int) bool { return claims[i].Ref < claims[j].Ref })
 	return claims
+}
+
+// briefList renders at most max names plus an honest "and N more" — a
+// truncation that names its own size, never a silent one.
+func briefList(names []string, max int) string {
+	sorted := append([]string(nil), names...)
+	sort.Strings(sorted)
+	if len(sorted) <= max {
+		return strings.Join(sorted, "; ")
+	}
+	return fmt.Sprintf("%s; and %d more", strings.Join(sorted[:max], "; "), len(sorted)-max)
 }

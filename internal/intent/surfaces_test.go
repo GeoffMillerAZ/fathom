@@ -114,3 +114,30 @@ func keys(m map[string]Claim) []string {
 	}
 	return out
 }
+
+// RC-9: the NOT-COMPUTED section is the one a reader most needs, so it must
+// not drown in repetition. Before this, U12 emitted eleven near-identical
+// lines — one per surface — restating what its first line already said.
+func TestUncomputableNotesCollapse(t *testing.T) {
+	c := Corpus{Root: "/repo"}
+	// Twelve surfaces, all file-scoped and none naming a test: the exact
+	// shape that produced the flood.
+	for i := 0; i < 12; i++ {
+		c.Surfaces = append(c.Surfaces, Surface{Globs: []string{string(rune('a'+i)) + "/*.go"}})
+	}
+	_, notes := SurfaceRowsUncovered(c, []PlanRow{
+		{Plan: "p.md", ID: "P-1", Package: "internal/store", Claimed: true},
+	})
+
+	if len(notes) > 3 {
+		t.Fatalf("one line per REASON, never one per surface; got %d:\n%s", len(notes), strings.Join(notes, "\n"))
+	}
+	joined := strings.Join(notes, "\n")
+	if !strings.Contains(joined, "12 surface(s)") {
+		t.Fatalf("the collapsed line must carry the count: %s", joined)
+	}
+	// Truncation names its own size rather than hiding it.
+	if !strings.Contains(joined, "and 9 more") {
+		t.Fatalf("a truncated list must say how many it dropped: %s", joined)
+	}
+}

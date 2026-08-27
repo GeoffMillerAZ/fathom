@@ -13,6 +13,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/readset"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -85,7 +86,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 
 	rows, note := planRowStates(abs)
 	guardNotes, guardScopes, guardNote2 := repoGuardNotes(abs)
-	contracts, contractNote := planRowContracts(abs)
+	contracts, contractNote, contractCoverage := planRowContracts(abs)
 	ledger := intent.ReadLedger()
 	audit := intent.RunAudit(intent.AuditInput{
 		Corpus:   corpus,
@@ -95,6 +96,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 
 		PlanContracts:    contracts,
 		PlanContractNote: contractNote,
+		ExtraCoverage:    []readset.Manifest{contractCoverage},
 
 		GuardNotes:  guardNotes,
 		GuardScopes: guardScopes,
@@ -118,9 +120,17 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		Kind: intent.KindDebt, RepoRoot: abs, Commit: gitHeadShort(abs),
 		ByKind: audit.ByKind, Annotated: audit.Annotated, MS: audit.Elapsed.Milliseconds(),
 	})
+	// ADR-027 kill criterion: the discipline is theatre if no manifest is
+	// ever incomplete in a real run. Counted on the EXISTING beat — no new
+	// channel, no new file (law 4).
+	incomplete := "0"
+	if !audit.Coverage.Complete() {
+		incomplete = itoa(len(audit.Coverage.UnreadableEntries()))
+	}
 	emitBeat("intent-cli", "audit", map[string]string{
-		"conditions": itoa(len(corpus.Conditions)),
-		"unproven":   itoa(len(audit.Unproven)),
+		"conditions":          itoa(len(corpus.Conditions)),
+		"unproven":            itoa(len(audit.Unproven)),
+		"incomplete_coverage": incomplete,
 	})
 
 	if *asJSON {
@@ -194,7 +204,7 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 	}
 
 	if want("unproven") {
-		fmt.Fprintf(w, "\nunproven claims: %d\n", len(a.Unproven))
+		fmt.Fprintf(w, "\nunproven claims: %s\n", a.Coverage.RenderCount(len(a.Unproven), ""))
 		shown := 0
 		lastKind := ""
 		for _, cl := range a.Unproven {
@@ -258,9 +268,18 @@ func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []inten
 		"unparsed":       c.Unparsed,
 		"unproven":       a.Unproven,
 		"by_kind":        a.ByKind,
-		"unenforced":     joinInvIDs(a.Unenforced),
-		"uncomputable":   a.Uncomputable,
-		"ms":             a.Elapsed.Milliseconds(),
+		// ADR-027: a machine reader must be able to tell a real zero from a
+		// zero the reader was blind to. `complete: false` means every count
+		// in this document is a lower bound.
+		"coverage": map[string]any{
+			"complete":   a.Coverage.Complete(),
+			"note":       a.Coverage.Note(),
+			"unreadable": a.Coverage.UnreadableEntries(),
+			"entries":    len(a.Coverage.Entries),
+		},
+		"unenforced":   joinInvIDs(a.Unenforced),
+		"uncomputable": a.Uncomputable,
+		"ms":           a.Elapsed.Milliseconds(),
 	}
 	if hasClock {
 		payload["clock_started_at"] = clock.At
@@ -361,22 +380,26 @@ func intentPopulation(root string) []string {
 // planRowContracts reads every gated plan's row annotations statically —
 // no index, no daemon, no verify run. U12 (EP-38) joins these against the
 // router's sensitive surfaces.
-func planRowContracts(root string) ([]intent.PlanRow, string) {
+func planRowContracts(root string) ([]intent.PlanRow, string, readset.Manifest) {
+	reads := &readset.Set{Root: root}
 	dir := filepath.Join(root, "docs", "plans")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Sprintf("docs/plans is unreadable (%v)", err)
+		return nil, fmt.Sprintf("docs/plans is unreadable (%v)", err), reads.Manifest()
 	}
 	var out []intent.PlanRow
 	files := 0
 	for _, e := range entries {
 		name := e.Name()
 		if e.IsDir() || !strings.HasSuffix(name, ".md") || name == "README.md" {
-			continue // archive/ is out of gate scope, and so is the grammar doc
-		}
-		md, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
+			// archive/ is out of gate scope, and so is the grammar doc —
+			// a deliberate skip, accounted for rather than invisible.
+			reads.Skip(filepath.Join(dir, name), "not a gated plan")
 			continue
+		}
+		md, ok := reads.ReadFile(filepath.Join(dir, name))
+		if !ok {
+			continue // recorded on the manifest; U12 will render as a bound
 		}
 		files++
 		rel := filepath.Join("docs", "plans", name)
@@ -396,9 +419,9 @@ func planRowContracts(root string) ([]intent.PlanRow, string) {
 		}
 	}
 	if len(out) == 0 {
-		return nil, fmt.Sprintf("%d plan file(s) read, no row carried a contract annotation", files)
+		return nil, fmt.Sprintf("%d plan file(s) read, no row carried a contract annotation", files), reads.Manifest()
 	}
-	return out, ""
+	return out, "", reads.Manifest()
 }
 
 // repoGuardNotes reads this repo's .fathom/guard.cue and returns each

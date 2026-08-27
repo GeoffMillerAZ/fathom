@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/readset"
 )
 
 // doctor_intent.go — EP-11, two rows that never FAIL.
@@ -71,12 +72,16 @@ func checkIntent(root string) doctorCheck {
 		}
 	}
 
-	parts := []string{fmt.Sprintf("%d condition(s) (%d annotated, %d terminal)", len(c.Conditions), annotated, terminal)}
-	parts = append(parts, fmt.Sprintf("%d invariant(s) [%s]", len(c.Invariants), renderRungs(byRung)))
+	// ADR-027: every count goes through the coverage manifest, so a corpus
+	// file that could not be read renders "≥ N" with the path and errno
+	// rather than a confident total that is silently too low.
+	cov := c.Coverage
+	parts := []string{fmt.Sprintf("%s (%d annotated, %d terminal)", cov.RenderCount(len(c.Conditions), "condition(s)"), annotated, terminal)}
+	parts = append(parts, fmt.Sprintf("%s [%s]", cov.RenderCount(len(c.Invariants), "invariant(s)"), renderRungs(byRung)))
 	// EP-21: sensitive surfaces are only a channel when a guard entry
 	// carries their provenance; counting them without saying how many are
 	// WIRED is the "instrumented" illusion law 3 exists to stop.
-	surfaceNote := fmt.Sprintf("%d sensitive surface(s)", len(c.Surfaces))
+	surfaceNote := cov.RenderCount(len(c.Surfaces), "sensitive surface(s)")
 	if notes, scopesOf, why := repoGuardNotes(root); scopesOf == nil {
 		surfaceNote += ", guard coverage unknown (" + why + ")"
 	} else {
@@ -115,6 +120,12 @@ func checkIntent(root string) doctorCheck {
 	}
 
 	status, remedy := doctorPass, ""
+	if !cov.Complete() {
+		// A blind read is an instrument failure, not a finding about the
+		// repo — WARN so it is visible, never FAIL (ADR-026's contract).
+		status = doctorWarn
+		remedy = "check the named path(s) are readable; on an external volume this is usually a wedged TCC verdict — `tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`"
+	}
 	if len(c.Unparsed) > 0 {
 		status = doctorWarn
 		parts = append(parts, fmt.Sprintf("%d UNPARSED (%s:%d %s)",
@@ -154,13 +165,27 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		}
 	}
 
+	// RC-6: this row and `fathom intent audit` must not report different
+	// numbers for the same tree. They did — 12 here against the verb's 88 —
+	// because this row built a partial AuditInput and then printed its
+	// count as a total. U12 and U13 need no index, so they are wired in;
+	// only U4's index probe is skipped, and that is NAMED below rather than
+	// dropped.
 	rows, note := planRowStates(root)
+	contracts, contractNote, contractCoverage := planRowContracts(root)
+	guardNotes, guardScopes, guardWhy := repoGuardNotes(root)
 	a := intent.RunAudit(intent.AuditInput{
-		Corpus:   c,
-		PlanRows: rows,
-		PlanNote: note,
-		Ledger:   intent.ReadLedger(),
-		Now:      time.Now().UTC(),
+		Corpus:           c,
+		PlanRows:         rows,
+		PlanNote:         note,
+		PlanContracts:    contracts,
+		PlanContractNote: contractNote,
+		GuardNotes:       guardNotes,
+		GuardScopes:      guardScopes,
+		GuardNote:        guardWhy,
+		ExtraCoverage:    []readset.Manifest{contractCoverage},
+		Ledger:           intent.ReadLedger(),
+		Now:              time.Now().UTC(),
 		// No SymbolOracle: the doctor row must not pay an index probe. U4
 		// is reported as not computed here, and `fathom intent audit`
 		// (which caches per HEAD) is the place that resolves it.
@@ -176,12 +201,25 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 
 	kinds := renderClaimKinds(a.ByKind)
 	first := a.Unproven[0]
+	reason := fmt.Sprintf("%s [%s]; first: %s — %s",
+		a.Coverage.RenderCount(len(a.Unproven), "unproven claim(s)"), kinds, first.Ref, first.Detail)
+	// The zero path always carried this list; the non-zero path dropped it,
+	// which is how a partial count got printed as a total (RC-6).
+	if n := len(a.Uncomputable); n > 0 {
+		// A doctor row must stay scannable: name the count and the first
+		// reason, truncated, and point at the verb for the rest. Dumping
+		// all of them is how the row became 500 characters.
+		head := a.Uncomputable[0]
+		if len(head) > 110 {
+			head = head[:110] + "…"
+		}
+		reason += fmt.Sprintf("; NOT COMPUTED (%d, first: %s)", n, head)
+	}
 	return doctorCheck{
 		Name:   name,
 		Status: doctorWarn, // never a FAIL: honest debt is not a broken repo
-		Reason: fmt.Sprintf("%d unproven claim(s) [%s]; first: %s — %s",
-			len(a.Unproven), kinds, first.Ref, first.Detail),
-		Remedy: "fathom intent audit  # every claim with its remedy",
+		Reason: reason,
+		Remedy: "fathom intent audit  # every claim with its remedy, and every source it could not compute",
 	}
 }
 

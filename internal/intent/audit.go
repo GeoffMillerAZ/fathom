@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/adr"
+	"github.com/geoffmilleraz/fathom/internal/readset"
 )
 
 // audit.go — EP-7/EP-8: what the corpus CLAIMS versus what any instrument
@@ -60,7 +61,12 @@ type Audit struct {
 	ByKind map[string]int
 	// Annotated is how many conditions carry an oracle — K0's demand signal.
 	Annotated int
-	Elapsed   time.Duration
+	// Coverage is what the corpus reader could and could not see (ADR-027).
+	// When it is incomplete EVERY count in this struct is a lower bound,
+	// because the sources that would have raised it are the ones that could
+	// not be read. RenderCount is the only sanctioned way to print one.
+	Coverage readset.Manifest
+	Elapsed  time.Duration
 }
 
 // PlanRowState is one gated plan row's current verdict, supplied by the
@@ -88,12 +94,19 @@ type AuditInput struct {
 	// GuardNotes are the `note` strings of this repo's .fathom/guard.cue
 	// entries; GuardScopes maps a note back to its scopes. A nil
 	// GuardScopes makes U13 uncomputable.
-	GuardNotes   []string
-	GuardScopes  func(note string) []string
-	GuardNote    string // why GuardNotes is nil, when it is
-	Ledger       []LedgerRow
-	Now          time.Time
-	IncidentDays int // U6's window; 0 → 30, the practice's own check-14 threshold
+	GuardNotes  []string
+	GuardScopes func(note string) []string
+	GuardNote   string // why GuardNotes is nil, when it is
+
+	// ExtraCoverage folds in manifests from readers OUTSIDE the corpus (the
+	// plan-contract reader, the guard reader). Blindness anywhere in the
+	// report makes every count in it a lower bound — a caller that reads
+	// half the plans and reports a confident U12 total is the same defect
+	// in a different file (ADR-027).
+	ExtraCoverage []readset.Manifest
+	Ledger        []LedgerRow
+	Now           time.Time
+	IncidentDays  int // U6's window; 0 → 30, the practice's own check-14 threshold
 }
 
 // RunAudit computes the findings. Deterministic: every list is sorted, the
@@ -106,7 +119,12 @@ func RunAudit(in AuditInput) Audit {
 	if in.IncidentDays == 0 {
 		in.IncidentDays = 30
 	}
-	a := Audit{Root: in.Corpus.Root, ByKind: map[string]int{}}
+	merged := &readset.Set{}
+	merged.Merge(in.Corpus.Coverage)
+	for _, m := range in.ExtraCoverage {
+		merged.Merge(m)
+	}
+	a := Audit{Root: in.Corpus.Root, ByKind: map[string]int{}, Coverage: merged.Manifest()}
 
 	a.auditPlanRows(in)
 	a.auditInvariants(in)
@@ -131,6 +149,14 @@ func RunAudit(in AuditInput) Audit {
 		}
 	}
 	sort.Strings(a.Uncomputable)
+	// Blindness leads the NOT-COMPUTED list, because every other line in it
+	// is a bounded, understood gap while this one silently lowers every
+	// count above it (ADR-027; the measured case was 37 invariants → 0).
+	if note := a.Coverage.Note(); note != "" {
+		a.Uncomputable = append([]string{
+			"COVERAGE INCOMPLETE — every count below is a LOWER BOUND: " + note,
+		}, a.Uncomputable...)
+	}
 	a.Elapsed = time.Since(start)
 	return a
 }

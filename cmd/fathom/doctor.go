@@ -22,8 +22,10 @@ package main
 // detection conventions, never their write paths).
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/exec"
@@ -387,16 +389,50 @@ const fathomModulePath = "github.com/geoffmilleraz/fathom"
 // overwhelmingly common case for anything that is not this repo), never a
 // guessed match.
 func isFathomSourceTree(root string) bool {
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
-	if err != nil {
-		return false
+	yes, _ := fathomSourceTree(root)
+	return yes
+}
+
+// fathomSourceTree reports whether root is the fathom checkout AND, when it
+// is not, WHY — because "go.mod declares another module" and "go.mod could
+// not be read" are different facts and only one of them is about the repo
+// (ADR-027, RC-7).
+//
+// The observed failure: this check reported "<root>'s go.mod does not declare
+// github.com/geoffmilleraz/fathom" against the fathom checkout itself, whose
+// go.mod declares exactly that on line 1. The read had failed — a wedged TCC
+// verdict on the external volume — and the message stated the opposite of the
+// truth, then SKIPped instead of FAILing. Degrading toward "fine" is the one
+// direction an instrument may not degrade in.
+func fathomSourceTree(root string) (bool, string) {
+	path := filepath.Join(root, "go.mod")
+	data, err := os.ReadFile(path)
+	switch {
+	case err == nil:
+	case errors.Is(err, fs.ErrNotExist):
+		return false, "has no go.mod, so it is not a Go module checkout"
+	default:
+		return false, fmt.Sprintf("has a go.mod that could NOT BE READ (%s) — this is an instrument failure, not a fact about the repository; on an external volume it is usually a wedged TCC verdict", errnoOf(err))
 	}
 	for _, line := range strings.Split(string(data), "\n") {
 		if mod, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
-			return strings.TrimSpace(mod) == fathomModulePath
+			m := strings.TrimSpace(mod)
+			if m == fathomModulePath {
+				return true, ""
+			}
+			return false, fmt.Sprintf("declares module %s, not %s", m, fathomModulePath)
 		}
 	}
-	return false
+	return false, "has a go.mod with no module line"
+}
+
+// errnoOf returns the operating system's own wording for a failed read.
+func errnoOf(err error) string {
+	var pe *fs.PathError
+	if errors.As(err, &pe) && pe.Err != nil {
+		return pe.Err.Error()
+	}
+	return err.Error()
 }
 
 // doctorBinaryRevision returns the running `fathom doctor` binary's own
@@ -436,10 +472,17 @@ func checkBinaryFresh(root string) doctorCheck {
 	const name = "binary_fresh"
 	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (O25; docs/adoption/claude-code.md §5)"
 
-	if !isFathomSourceTree(root) {
+	if yes, why := fathomSourceTree(root); !yes {
+		status, remedyForRow := doctorSkipped, ""
+		if strings.Contains(why, "NOT BE READ") {
+			// Blindness is not a reason to skip quietly: the check could
+			// not determine whether it applies, which is a WARN.
+			status, remedyForRow = doctorWarn, "make go.mod readable and re-run; the check cannot tell whether it applies while it cannot read it"
+		}
 		return doctorCheck{
-			Name: name, Status: doctorSkipped,
-			Reason: fmt.Sprintf("binary freshness is only checkable from the fathom source tree (%s's go.mod does not declare %s) — compare `fathom version` to the daemon's deployed commit by hand, or run doctor --path against a fathom checkout", root, fathomModulePath),
+			Name: name, Status: status,
+			Reason: fmt.Sprintf("binary freshness is only checkable from the fathom source tree; %s %s — compare `fathom version` to the daemon's deployed commit by hand, or run doctor --path against a fathom checkout", root, why),
+			Remedy: remedyForRow,
 		}
 	}
 

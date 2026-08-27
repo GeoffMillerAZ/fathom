@@ -337,7 +337,7 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("list_sources(%s): %v", svc, err)}
 	}
 
-	var dead []string
+	var dead, unindexed []string
 	var commandGuardCount int
 	for i, g := range set.Guards {
 		if len(g.CommandScopes) > 0 {
@@ -354,20 +354,41 @@ func checkGuardDeadScopes(hc *http.Client, baseURL, root, explicitSvc string, da
 				break
 			}
 		}
-		if !matches {
-			dead = append(dead, fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", ")))
+		if matches {
+			continue
 		}
+		// RC-8 (ADR-027): "matches no INDEXED file" is not "matches no
+		// file". `cmd/fathom/ui/**` holds three real CSS files that fathom
+		// does not index — reporting it as a dead guard sent the reader to
+		// a remedy that DELETES correct configuration. Look at the disk
+		// before saying nothing is there.
+		label := fmt.Sprintf("guards[%d] (%s)", i, strings.Join(g.Scopes, ", "))
+		if n := filesOnDiskUnder(root, g.Scopes); n > 0 {
+			unindexed = append(unindexed, fmt.Sprintf("%s — %d file(s) on disk, none indexed", label, n))
+			continue
+		}
+		dead = append(dead, label)
 	}
 
 	note := ""
 	if commandGuardCount > 0 {
 		note = fmt.Sprintf(" (%d command-scoped guard(s) not checkable this way — no indexed-commands concept; see research report's guarded-edit coverage instead)", commandGuardCount)
 	}
+	if len(unindexed) > 0 {
+		note = fmt.Sprintf("; %d guard(s) cover real files fathom does not INDEX (not dead — do not delete them): %s",
+			len(unindexed), strings.Join(unindexed, "; ")) + note
+	}
 	if len(dead) > 0 {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
-			Reason: fmt.Sprintf("dead guard(s), matching zero indexed file(s): %s%s", strings.Join(dead, "; "), note),
+			Reason: fmt.Sprintf("dead guard(s), matching zero indexed files AND zero files on disk: %s%s", strings.Join(dead, "; "), note),
 			Remedy: "narrow or remove the scope in .fathom/guard.cue, or re-ingest if the index is stale",
+		}
+	}
+	if len(unindexed) > 0 {
+		return doctorCheck{
+			Name: name, Status: doctorPass,
+			Reason: fmt.Sprintf("no dead guards%s", note),
 		}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("every file-scoped guard matches at least one indexed file%s", note)}
@@ -457,4 +478,38 @@ func loadGuardSetForDoctor(root string) (guardspec.GuardSet, bool, *string) {
 		return guardspec.GuardSet{}, false, nil
 	}
 	return set, true, nil
+}
+
+// filesOnDiskUnder counts files under root matching any of the guard's
+// scopes, so a scope covering file types fathom does not index is reported
+// as unindexed rather than dead (RC-8). Walk errors are treated as "found
+// something": a reader that cannot look must not conclude emptiness.
+func filesOnDiskUnder(root string, scopes []string) int {
+	m := filter.New(scopes)
+	found := 0
+	blind := false
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			blind = true
+			return nil
+		}
+		if d.IsDir() {
+			if name := d.Name(); name == ".git" || name == "node_modules" || name == "workspace" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			return nil
+		}
+		if m.Match(filepath.ToSlash(rel)) {
+			found++
+		}
+		return nil
+	})
+	if found == 0 && blind {
+		return 1 // could not look everywhere; refuse to call it empty
+	}
+	return found
 }

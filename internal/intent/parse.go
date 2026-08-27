@@ -400,16 +400,24 @@ func (c *Corpus) parseDecisions() {
 	if info.IsDir() {
 		entries, _ := filepath.Glob(filepath.Join(abs, "*.md"))
 		for _, e := range entries {
-			b, err := os.ReadFile(e)
-			if err != nil {
+			b, ok := c.read(e)
+			if !ok {
+				c.Unparsed = append(c.Unparsed, Unparsed{
+					File: filepath.ToSlash(rel(c.Root, e)), Line: 1,
+					Reason: "decision record could not be read, so its conditions are not in this corpus",
+				})
 				continue
 			}
 			c.parseConditionsIn(filepath.ToSlash(rel(c.Root, e)), string(b))
 		}
 		return
 	}
-	b, err := os.ReadFile(abs)
-	if err != nil {
+	b, ok := c.read(abs)
+	if !ok {
+		c.Unparsed = append(c.Unparsed, Unparsed{
+			File: home, Line: 1,
+			Reason: "the decisions home could not be read, so NO decision's conditions are in this corpus",
+		})
 		return
 	}
 	// Sections carry their own ids; parse them so a trailer's condition is
@@ -450,4 +458,16 @@ func (c *Corpus) findNestedRouters() {
 		return nil
 	})
 	sortStrings(c.NestedRouters)
+}
+
+// read routes a corpus read through the coverage recorder, so a file that
+// exists and cannot be opened is accounted for rather than silently dropped
+// (ADR-027). A nil recorder (a Corpus built by a test literal) falls back to
+// a plain read: coverage is a property of Load, not of the type.
+func (c *Corpus) read(abs string) ([]byte, bool) {
+	if c.reads == nil {
+		b, err := os.ReadFile(abs)
+		return b, err == nil
+	}
+	return c.reads.ReadFile(abs)
 }

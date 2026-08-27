@@ -19,10 +19,11 @@
 package intent
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+
+	"github.com/geoffmilleraz/fathom/internal/readset"
 )
 
 // Tier says how much of the practice a repository carries. A repo need not
@@ -147,6 +148,18 @@ type Corpus struct {
 	// difference is a parser bug; a silent one is the failure this package
 	// exists to prevent.
 	Excluded []Unparsed
+	// Coverage accounts for every corpus file Load considered: read,
+	// genuinely absent, deliberately skipped, or UNREADABLE with its errno
+	// (ADR-027). Without it an unreadable invariants.md rendered as a repo
+	// with zero invariants and half the debt — its most broken state was
+	// its healthiest-looking one. Every count derived from this corpus must
+	// go through Coverage.RenderCount.
+	Coverage readset.Manifest
+
+	// reads is the live recorder during Load; Coverage is its frozen
+	// manifest. Unexported so a caller cannot append to coverage after the
+	// fact and claim to have seen more than it did.
+	reads *readset.Set
 }
 
 // conditionLabels are the practice's four expiry labels, plus the
@@ -182,9 +195,10 @@ var (
 // the gap instead of an empty success.
 func Load(root string) (Corpus, error) {
 	c := Corpus{Root: root, Tier: TierNone}
+	c.reads = &readset.Set{Root: root}
 
 	routerAbs := filepath.Join(root, routerRelDir, "README.md")
-	if body, err := os.ReadFile(routerAbs); err == nil {
+	if body, ok := c.reads.ReadFile(routerAbs); ok {
 		c.Tier = TierRouter
 		c.RouterPath = filepath.ToSlash(filepath.Join(routerRelDir, "README.md"))
 		c.parseRouter(string(body))
@@ -199,12 +213,19 @@ func Load(root string) (Corpus, error) {
 			if abs == routerAbs {
 				continue
 			}
-			b, err := os.ReadFile(abs)
-			if err != nil {
+			b, ok := c.reads.ReadFile(abs)
+			rp, relErr := filepath.Rel(root, abs)
+			if relErr != nil {
 				continue
 			}
-			rp, err := filepath.Rel(root, abs)
-			if err != nil {
+			if !ok {
+				// Law 3: a file the glob FOUND and the reader could not
+				// open is an instrument failure, recorded on the manifest
+				// and named here — never a silently smaller corpus.
+				c.Unparsed = append(c.Unparsed, Unparsed{
+					File: filepath.ToSlash(rp), Line: 1,
+					Reason: "could not be read, so nothing in it is in this corpus",
+				})
 				continue
 			}
 			c.parseLivingDoc(filepath.ToSlash(rp), string(b))
@@ -213,6 +234,7 @@ func Load(root string) (Corpus, error) {
 
 	c.DecisionsHome = c.decisionsHome()
 	c.parseDecisions()
+	c.Coverage = c.reads.Manifest()
 	if c.Tier == TierNone && len(c.Conditions) > 0 {
 		c.Tier = TierDecisionsOnly
 	}
