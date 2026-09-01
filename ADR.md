@@ -507,9 +507,25 @@ with `GOWORK=off` (a cold clone has no `go.work` at all), the `go.mod`
 replace resolves to the in-tree mirror. Both paths are proven by `go list -m
 -f '{{.Dir}}' github.com/geoffmilleraz/agentic-kit` under each mode.
 
-`scripts/sync-kit.sh` (`task sync-kit`) re-archives the sibling at the
-pinned commit into `third_party/agentic-kit`; it refuses to run if the
-sibling lacks that commit. `scripts/vendor-check.sh` (`task vendor-check`,
+`scripts/sync-vendor.sh <name>` (`task sync-kit` runs it for both) re-archives
+a sibling at the pinned commit into `third_party/<name>`; it refuses to run if
+the sibling lacks that commit.
+
+**Amended 2026-09-01.** This record described a guarantee the repo did not
+keep. `app-kit` — the second private module, and one fathom's observatory does
+not compile without — was never mirrored: it carried a bare
+`replace => ../app-kit`, so a clone without private access failed outright.
+`go.work` was also COMMITTED, listing both siblings, which defeated the
+mechanism above before it could run and masked missing `go.sum` entries.
+Both are fixed: app-kit is mirrored on identical terms, `go.work` is
+untracked and gitignored, and each mirror records its source commit in
+`third_party/<name>/.vendor-commit` (the stamp, not the pin, is authoritative
+— app-kit has no published version to derive a pin from, and a stamp needs no
+network for anyone, which is the point of a mirror). The guarantee is now
+GATED rather than asserted: `task clean-clone-check`, a `task validate`
+dependency, copies the tracked tree, drops the workspace and builds with
+`GOWORK=off`. It exists because this failure was invisible to every machine
+that could have caught it — all of them had the siblings. `scripts/vendor-check.sh` (`task vendor-check`,
 a `task validate` dependency, so part of the pre-push lefthook gate) is the
 drift guard: it re-derives the pinned commit's archive into a temp dir,
 content-hashes both trees (sha256 per file keyed by relative path, not raw
