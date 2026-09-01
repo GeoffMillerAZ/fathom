@@ -21,6 +21,55 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+## [0.7.0] -- 2026-09-01
+
+**What this release is.** fathom became something a second person can adopt.
+A fresh clone did not build at all — `go.work` was committed pointing at two
+private sibling checkouts, and one of those siblings had no in-tree mirror —
+and every "the daemon is down" message named one developer's launchd label.
+Both are fixed, both are now gated, and the evidence for what fathom does and
+does not prove is written down for a reviewer to argue with.
+Detail: `docs/changelog/0.7.0.md`.
+
+### 2026-09-01
+
+### Breaking
+- **`go.work` is no longer committed** and is gitignored. It listed
+  `../agentic-kit` and `../app-kit`, so any clone without those siblings failed
+  before compiling a line — and it masked missing `go.sum` entries underneath.
+  Contributors who want a workspace now create their own; nothing else changes.
+
+### Added
+- **`fathom daemon install | status | uninstall`** (macOS/launchd). `install`
+  writes the agent with your own resolved binary, store, call log and a PATH
+  carrying your Go toolchain, then bootstraps it — replacing a documented
+  copy-paste plist with four paths to hand-edit. It refuses to stack a second
+  agent on the same port, and says so out loud when no Go toolchain is on the
+  PATH it wrote (without one, auto-refresh silently degrades Go services to
+  syntax-only edges).
+- **`third_party/app-kit`** — the second private module is now mirrored in-tree
+  on ADR-019's terms, so a clone with no private access builds. Each mirror
+  records the commit it was cut from in `.vendor-commit`; `task sync-kit`
+  refreshes both; `vendor-check` asserts pin and stamp agree.
+- **`task clean-clone-check`**, in `task validate`: copies the tracked tree,
+  drops the workspace, and builds with `GOWORK=off`. The adopter build broke
+  silently once and stayed broken because every machine that ran the gate had
+  the siblings.
+- **`docs/adoption/README.md`** — a start-here that leads with what is proven
+  (the verify gate has caught 540 claimed-but-unproven rows across 2,494 runs
+  over 167 plans) and what is not (no savings claim is admissible; the A/B is
+  one-armed).
+
+### Changed
+- Every daemon-restart hint — `fathom doctor`'s remedy, the SessionStart line
+  when the daemon is down, `fathom init`'s closing note, `task deploy` —
+  resolves **this machine's** launchd label by reading `~/Library/LaunchAgents`
+  instead of naming a fixed one. A machine with no agent is told to install one;
+  off macOS, to run `fathom serve-http` under its own supervisor.
+- agentic-kit pin advanced 25 commits (2026-07-23 → 9a44f9b).
+- The `fathom-doctor` and `fathom-onboard` skills cover the daemon verb; the
+  doctor skill's stale "the remedy spells a raw copy" note is corrected.
+
 ### Fixed
 - **An unreadable input no longer makes a repository look healthier than it is** (ADR-027). `fathom intent audit` reported 0 invariants instead of 37, and half the unproven claims, when one corpus file could not be read — naming nothing. Counts over incomplete coverage now render as named lower bounds (`≥ 85 (1 source(s) unreadable: …: permission denied)`) and blindness leads the NOT-COMPUTED list.
 - `fathom doctor`'s `unproven_claims` row and `fathom intent audit` reported different totals for the same tree (12 against 88). The row built a partial audit and printed the result as a total; U12 and U13 need no index and are now included.
