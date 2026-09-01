@@ -525,7 +525,7 @@ func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
 // could not reach it at all.
 func printDaemonDownInstructions(stdout io.Writer, baseURL string) {
 	fmt.Fprintf(stdout, "MANUAL: fathom daemon at %s is unreachable — wiring below is complete, but the index is unconfirmed.\n", baseURL)
-	fmt.Fprintln(stdout, "MANUAL: start it via launchd (if installed): launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http")
+	fmt.Fprintf(stdout, "MANUAL: start the daemon: %s\n", daemonRestartHint(""))
 	fmt.Fprintln(stdout, "MANUAL: or run it directly: fathom serve-http --store workspace/db/fathom.sqlite")
 	fmt.Fprintln(stdout, "MANUAL: then re-run `fathom init` — it is idempotent and will only confirm the ingest.")
 }

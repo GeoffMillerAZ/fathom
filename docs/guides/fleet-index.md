@@ -9,7 +9,7 @@ canonical home now.)
 
 Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
-HTTP daemon** — launchd `com.geoffmilleraz.fathom-http` running `serve-http`
+HTTP daemon** — a launchd agent (`fathom daemon status` names yours) running `serve-http`
 at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
 MCP**. `/rpc/agent` is the curated 17-tool agent surface
 (`internal/mcp/surface.go`; `/rpc/companion` is a compatible alias; bare

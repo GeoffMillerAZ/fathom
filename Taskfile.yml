@@ -176,7 +176,10 @@ tasks:
       # No identity → no-op (the || true), and the grant stays per-hash.
       - security find-identity -p codesigning -v | grep -q fathom-dev && codesign -s fathom-dev --force --timestamp=none "$HOME/.local/libexec/fathom/fathom.new" || true
       - mv -f "$HOME/.local/libexec/fathom/fathom.new" "$HOME/.local/libexec/fathom/fathom"
-      - launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http
+      # The label is this machine's, resolved — not assumed. `fathom daemon
+      # status` prints it; an adopter with no agent gets `fathom daemon install`.
+      - 'label=$(bin/fathom daemon status 2>/dev/null | awk "/^launchd agent:/ {print \$3}"); [ -n "$label" ] && launchctl kickstart -k gui/$(id -u)/"$label" || echo "no launchd agent installed — run: fathom daemon install"'
+
       - curl -s --retry 30 --retry-delay 1 --retry-connrefused --retry-all-errors --max-time 60 http://localhost:7575/healthz | grep -q ok
       # Prove the deploy TOOK. Without these two asserts "I ran the deploy" and
       # "the daemon is serving new code" are different claims — which is exactly

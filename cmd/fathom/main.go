@@ -132,6 +132,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPostCommitHook(args[1:], stdout, stderr)
 	case "intent":
 		return cmdIntent(args[1:], stdout, stderr)
+	case "daemon":
+		return cmdDaemon(args[1:], stdout, stderr)
 	case "fleet":
 		if len(args) > 1 && args[1] == "report" {
 			return cmdFleetReport(args[2:], stdout, stderr)

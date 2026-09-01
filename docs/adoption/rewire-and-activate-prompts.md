@@ -19,7 +19,7 @@
 Run a fathom rewire pass on this repo. The fathom binary is `fathom` on
 PATH (a shim at ~/.local/bin/fathom → the deployed daemon binary at
 ~/.local/libexec/fathom/fathom; if the shim is missing, create it with
-ln -sf). The daemon is launchd `com.geoffmilleraz.fathom-http` at
+ln -sf). The daemon is a launchd agent whose label `fathom daemon status` prints, at
 http://localhost:7575.
 
 1. Run `fathom doctor` and capture the output — but do NOT chase these

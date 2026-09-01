@@ -243,7 +243,9 @@ func buildSessionContext(baseURL, projDir string) string {
 		if resp != nil {
 			resp.Body.Close()
 		}
-		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http", baseURL)
+		// This line reaches EVERY session of EVERY adopter, which is why it
+		// may not name a label that exists on one machine.
+		return fmt.Sprintf("⚠️ fathom code-intelligence daemon (%s) is not responding — its MCP tools are unavailable this session, so Grep/Read discovery is expected. Restart it with: %s", baseURL, daemonRestartHint(""))
 	}
 	resp.Body.Close()
 

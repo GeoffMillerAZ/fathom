@@ -49,6 +49,7 @@ var verbTable = []verb{
 	{Name: "pre-compact-hook", Summary: "PreCompact hook: file one pointer to the pre-compaction span (the transcript itself is never read)"},
 	{Name: "post-commit-hook", Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store — INC-3); always exits 0"},
 	{Name: "intent", Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | export --guard"},
+	{Name: "daemon", Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it) | status | uninstall"},
 	{Name: "gen-plan-cue", Summary: "Emit the generated CUE shadow of a Markdown plan (round-trip verified)"},
 	{Name: "instrument", Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"},
 	{Name: "observe", Summary: "File a structured friction observation into .fathom/observations.md"},

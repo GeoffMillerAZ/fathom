@@ -371,7 +371,9 @@ func checkCodexMCPRegistration(root string) doctorCheck {
 
 func checkDaemonReachable(hc *http.Client, baseURL string) (bool, doctorCheck) {
 	const name = "daemon_reachable"
-	remedy := "launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http (or: fathom serve-http --store workspace/db/fathom.sqlite)"
+	// The label is RESOLVED, never assumed: this remedy named one machine's
+	// service for months, and every other adopter got "Could not find service".
+	remedy := daemonRestartHint("")
 
 	resp, err := hc.Get(baseURL + "/healthz")
 	if err != nil {

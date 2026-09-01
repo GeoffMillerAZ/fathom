@@ -963,6 +963,33 @@ scoped to this repo's own id shape so a sibling repo's records are named
 rather than reported missing. Fathom reports and never edits your prose —
 the session applies fixes. Full model: `docs/design/config-custodian.md`.
 
+### `daemon` — install, inspect and remove the serve-http agent
+
+```sh
+fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr :7575] [--bin PATH] [--force]
+fathom daemon status  [--url http://localhost:7575]
+fathom daemon uninstall [--label NAME]
+```
+
+macOS/launchd. `install` writes `~/Library/LaunchAgents/<label>.plist` with
+**your** resolved binary (symlinks followed, so launchd runs the stable
+installed copy rather than a `bin/` build output a rebuild would truncate),
+store at `~/.fathom/db/fathom.sqlite`, call log at
+`~/.fathom/logs/mcp-calls.jsonl`, and a PATH carrying your Go toolchain —
+without `go` the daemon's auto-refresh degrades Go services to syntax-only
+edges, so `install` says so when it cannot find one. It refuses to stack a
+second agent on the same port, naming the one already there and how to keep
+or replace it. `uninstall` leaves the store and logs alone.
+
+`status` prints the installed label and whether the daemon is actually
+serving — an installed agent that is not serving is worse than none, because
+everything downstream assumes it.
+
+Every "the daemon is down" message in fathom (doctor's remedy, the
+SessionStart line, `init`'s closing note) names the label **discovered on
+this machine**, never a fixed one. Off macOS, all of them fall back to
+`fathom serve-http` under your own supervisor.
+
 ### `intent` — the intent corpus, audited (ADR-026, **experimental**)
 
 ```sh

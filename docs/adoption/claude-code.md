@@ -254,37 +254,60 @@ process is the installed path **and** reports `git rev-parse HEAD`. Copy
 that task into your own repo and adapt the label/paths; keep all four
 properties.
 
+**Install it with one command** (macOS):
+
+```sh
+fathom daemon install     # writes ~/Library/LaunchAgents/dev.fathom.serve-http.plist
+                          # with YOUR binary path, store, call log and PATH, then bootstraps it
+fathom daemon status      # what is installed, and whether it is actually serving
+```
+
+`install` resolves the binary by symlink (so launchd runs the stable installed
+copy, never a `bin/` build output a rebuild would truncate), puts the store at
+`~/.fathom/db/fathom.sqlite`, the call log at `~/.fathom/logs/mcp-calls.jsonl`,
+and writes a PATH that includes your Go toolchain — **without `go` on PATH the
+daemon's auto-refresh silently degrades Go services to syntax-only edges**, so
+`install` says so out loud when it cannot find one. It refuses to stack a
+second agent on the same port and tells you how to keep or replace the one
+that is there; `fathom daemon uninstall` removes it and leaves your store and
+logs alone.
+
+Everything that mentions restarting the daemon — `fathom doctor`'s remedy, the
+SessionStart line when the daemon is down, `fathom init`'s closing note —
+names **the label actually installed on your machine**, discovered by reading
+`~/Library/LaunchAgents`. Until 2026-09-01 they all named one developer's
+label, so every other adopter was told to kickstart a service that did not
+exist for them.
+
+<details><summary>The plist it writes, if you would rather hand-roll one</summary>
+
 ```xml
-<!-- ~/Library/LaunchAgents/com.example.fathom-http.plist — adapt the label and paths -->
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>Label</key><string>com.example.fathom-http</string>
+  <key>Label</key><string>dev.fathom.serve-http</string>
   <key>ProgramArguments</key><array>
     <string>/Users/you/.local/libexec/fathom/fathom</string>
     <string>serve-http</string>
-    <string>--store</string><string>/abs/path/to/repo/workspace/db/fleet.sqlite</string>
-    <string>--addr</string><string>127.0.0.1:7575</string>
-    <string>--call-log</string><string>/abs/path/to/repo/workspace/logs/mcp-calls.jsonl</string>
+    <string>--store</string><string>/Users/you/.fathom/db/fathom.sqlite</string>
+    <string>--addr</string><string>:7575</string>
+    <string>--call-log</string><string>/Users/you/.fathom/logs/mcp-calls.jsonl</string>
   </array>
   <key>EnvironmentVariables</key><dict>
-    <!-- go on PATH so daemon-side auto-refresh can run typed-edge enrichment for Go
-         services (it shells out to `go list`); omit it and refreshes silently fall
-         back to syntax-only edges. -->
     <key>PATH</key><string>/usr/local/go/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>WorkingDirectory</key><string>/abs/path/to/repo</string>
-  <key>StandardOutPath</key><string>/tmp/fathom-http.log</string>
-  <key>StandardErrorPath</key><string>/tmp/fathom-http.err</string>
+  <key>StandardOutPath</key><string>/Users/you/.fathom/logs/fathom-http.log</string>
+  <key>StandardErrorPath</key><string>/Users/you/.fathom/logs/fathom-http.err</string>
 </dict></plist>
 ```
 
 ```sh
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.example.fathom-http.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/dev.fathom.serve-http.plist
 curl -s http://127.0.0.1:7575/healthz   # ok
 ```
+</details>
 
 No launchd (Linux/CI)? `nohup fathom serve-http --store … --addr :7575 &` works
 for a session but dies with the shell — use a systemd unit or process

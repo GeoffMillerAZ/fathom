@@ -243,7 +243,8 @@ default_profile = "work"
 
 This is a **read-once** load: a change to `config.toml` reaches the daemon
 only after a restart —
-`launchctl kickstart -k gui/$(id -u)/com.geoffmilleraz.fathom-http` — the
+`fathom daemon status` (which names YOUR installed label) then
+`launchctl kickstart -k gui/$(id -u)/<that label>` — the
 same restart-to-apply rule that already governs a rebuilt `bin/fathom`
 binary. Hot-reload was considered and deferred (see
 `docs/plans/config-experience.md`'s Deferred section) — every other daemon
@@ -451,7 +452,7 @@ exists.
 
 ```sh
 # 1. Stop the daemon (launchd label may differ; see your plist).
-launchctl bootout gui/$(id -u)/com.geoffmilleraz.fathom-http
+launchctl bootout gui/$(id -u)/"$(fathom daemon status | awk '/^launchd agent:/ {print $3}')"
 
 # 2. Port the non-derivable tables (source is opened read-only and left
 #    byte-identical; every ported table is hash-verified against the target).
@@ -466,7 +467,7 @@ bin/fathom migrate-store \
 #    … or the --store argument in the launchd plist, whichever you use.
 
 # 4. Restart the daemon.
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.geoffmilleraz.fathom-http.plist
+fathom daemon install --force   # or: launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<label>.plist
 
 # 5. Re-ingest each service to rebuild the derived tables (observations,
 #    fingerprints) — migrate-store printed the exact per-service commands;
