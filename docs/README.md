@@ -14,6 +14,7 @@ fleet health).
 | Document | What it covers |
 |---|---|
 | [adoption/](adoption/) | Zero-to-working setup guides, per client — the first stop for a newcomer |
+| [adoption/README.md](adoption/README.md) | **Start here** — the 15-minute path, what is proven, and what to push back on |
 | [use-cases/](use-cases/) | Per-concern how-tos once fathom is wired in; [coding-agents.md](use-cases/coding-agents.md) is the canonical short wiring summary the adoption guides expand on |
 | [architecture.md](architecture.md) | Three-layer design, data model, store (SQLite-only, pure Go — ADR-020/ADR-025), fusion pipeline, MCP surface, cross-repo graph |
 | [usage.md](usage.md) | Quickstart, every CLI subcommand with flags and examples, Go client API, MCP client connection |

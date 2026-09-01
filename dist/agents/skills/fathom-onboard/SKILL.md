@@ -29,6 +29,28 @@ CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom
 bin/fathom version   # sanity check — prints the commit it was built from
 ```
 
+## 1b. Stand up the daemon (macOS)
+
+```sh
+bin/fathom daemon install    # writes ~/Library/LaunchAgents/dev.fathom.serve-http.plist
+bin/fathom daemon status     # what is installed, and whether it is actually serving
+```
+
+`install` uses **this machine's** resolved paths — the binary by symlink (so
+launchd runs a stable copy, never a `bin/` output a rebuild would truncate),
+the store at `~/.fathom/db/fathom.sqlite`, the call log under
+`~/.fathom/logs/`, and a PATH carrying the Go toolchain. **Without `go` on
+that PATH the daemon's auto-refresh silently degrades Go services to
+syntax-only edges** — `install` says so when it cannot find one. It refuses
+to stack a second agent on the same port and names the one already there.
+
+Off macOS there is no installer: run `fathom serve-http --store <path> --addr
+:7575` under systemd or your own supervisor. Everything downstream only needs
+it reachable on `http://127.0.0.1:7575`.
+
+Never run a daemon restart from an agent's own sandboxed session — it can
+wedge. Hand the operator the command.
+
 ## 2. The fast path: `fathom init`
 
 From the target repo's root:
