@@ -74,7 +74,7 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 
-<!-- fathom:begin -->
+<!-- fathom:begin v3 sha256:fc09e0823179adf74114d8df3cf6dab0288aae328dc4a389109e19487478fdca -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Before any Grep/Read
@@ -82,6 +82,12 @@ sweep, resolve where/what/who-calls via the fathom MCP tools:
 `find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,
 `pack_context`, `verify_plan`. Read files to *edit* them, not to discover
 them — the index replaces exploratory grep.
+
+Opening moves by task shape (first 2-3 calls, then edit):
+- debug/trace: find_symbol -> find_callers/references -> symbol_context
+- feature/change: repo_map -> pack_context(concern) -> references
+- review/verify: verify_plan -> obligations -> references on changed symbols
+- refactor: references -> outline -> symbol_context
 
 Refresh the index via the `ingest` MCP tool (`{"service":"fathom"}`) at
 session start and after each commit; it is hash-gated, so a clean repo
@@ -91,9 +97,11 @@ Obligations — governing rules for the file you are about to touch — are
 injected automatically on every edit via the PostToolUse hook. Treat them
 as binding, not advisory.
 
-Continuity: run `fathom thread brief` at session start if your harness has
-no SessionStart hook (Codex does not) — it prints the open threads, or
-nothing. File what the next session must know: `fathom thread note "…"`.
+Continuity: run `fathom prime` at session start if your harness has no
+SessionStart hook (Codex does not) — it prints the same identity,
+freshness, live-example, thread-brief, and custodian primer this hook
+injects on Claude Code. File what the next session must know:
+`fathom thread note "…"`.
 
 Done means proven: a plan task is only "done" when the index proves it, not
 when it is claimed. Before checking off a `docs/plans/*.md` item, run:
