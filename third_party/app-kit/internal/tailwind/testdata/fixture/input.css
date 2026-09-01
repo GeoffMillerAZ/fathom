@@ -1,0 +1,5 @@
+/* Conformance fixture input — the exact shape every kit app's
+   assets/input.css takes: Tailwind, then the generated theme, then sources. */
+@import "tailwindcss";
+@import "../../../../appkit/ui/tokens/theme.css";
+@source "./page.templ";

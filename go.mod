@@ -5,7 +5,7 @@ go 1.26.2
 require (
 	cuelang.org/go v0.16.1
 	github.com/emicklei/proto v1.14.3
-	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260723033859-eb24494cf439
+	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20260827202605-9a44f9b4bd66
 	github.com/geoffmilleraz/app-kit v0.0.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pelletier/go-toml/v2 v2.3.1
@@ -50,8 +50,8 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
@@ -67,4 +67,10 @@ require (
 // directive wins over this replace); GOWORK=off falls through to this line.
 replace github.com/geoffmilleraz/agentic-kit => ./third_party/agentic-kit
 
-replace github.com/geoffmilleraz/app-kit => ../app-kit
+// app-kit is mirrored in-tree for the same reason agentic-kit is (ADR-019):
+// it is private, fathom's observatory does not compile without it, and a
+// clone that cannot reach the private repo must still build. Before
+// 2026-09-01 this pointed at ../app-kit and a fresh clone failed outright.
+// The vendored commit is recorded in third_party/app-kit/.vendor-commit;
+// app-kit has no published version, hence the v0.0.0 requirement above.
+replace github.com/geoffmilleraz/app-kit => ./third_party/app-kit

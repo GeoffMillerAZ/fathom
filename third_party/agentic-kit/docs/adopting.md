@@ -2,15 +2,15 @@
 
 How to build a new project on `github.com/geoffmilleraz/agentic-kit` (Go 1.26, stdlib-only).
 The copyable starting point is [`examples/agent-cli`](../examples/agent-cli/README.md); the
-first real consumer is [sextant](https://github.com/geoffmilleraz/sextant), whose wiring is
+first real consumer is [fathom](https://github.com/geoffmilleraz/fathom), whose wiring is
 shown verbatim below.
 
 ## 1. Wiring the dependency
 
-### Local sibling development (sextant's pattern)
+### Local sibling development (fathom's pattern)
 
 Check out your project next to the kit and wire **both** a `go.work` and a
-`require` + `replace` pair. These are sextant's actual lines:
+`require` + `replace` pair. These are fathom's actual lines:
 
 ```
 # go.work
@@ -223,7 +223,7 @@ it documents which `Span` type is canonical.
 - Tags are cut only at green gates. **`task validate` (fmt-check + vet +
   cue-vet + `go test -race ./...`) is the contract** — if it's green at a tag,
   that tag is safe to build on.
-- `task downstream-check` builds and tests both downstream consumers (sextant
+- `task downstream-check` builds and tests both downstream consumers (fathom
   and throughline) against kit HEAD, so the patterns in this doc are exercised
   continuously, not just documented.
 

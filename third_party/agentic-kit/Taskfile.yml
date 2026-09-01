@@ -98,7 +98,7 @@ tasks:
         fi
         cd examples/agent-cli && {{.GO}} run . -mode live -max-turns 4 -prompt "How many words are in testdata/sample.txt? Use your tools."
 
-  sextant-check:
+  fathom-check:
     desc: "Build+test the first real downstream consumer (fathom, dir ../fathom or, pre-rename, ../sextant) against kit HEAD via its go.work; skips if neither is checked out"
     cmds:
       - |
@@ -131,9 +131,9 @@ tasks:
         fi
 
   downstream-check:
-    desc: Run every downstream consumer check (sextant-check + throughline-check + growing-gardens-bi-check) against kit HEAD
+    desc: Run every downstream consumer check (fathom-check + throughline-check + growing-gardens-bi-check) against kit HEAD
     cmds:
-      - task: sextant-check
+      - task: fathom-check
       - task: throughline-check
       - task: growing-gardens-bi-check
 

@@ -112,6 +112,12 @@ foundations/review/run-report
 # scoring: pure-math scoring helpers — behavioral, no CUE contract surface.
 foundations/review/scoring
 
+# ── foundations/security ─────────────────────────────────────────────────────
+# httpauth: bearer-token auth middleware — behavioral, no data-contract surface
+# of its own (Middleware wraps http.Handler; the only configuration is an env
+# var NAME, never a struct crossing a package boundary).
+foundations/security/httpauth
+
 # ── foundations/telemetry ────────────────────────────────────────────────────
 # metrics: Prometheus text-format registry — behavioral, no data contract.
 foundations/telemetry/metrics

@@ -50,3 +50,13 @@ cmd/fathom/workspace/
 # memories sit one `git add .` from being published — law 13 makes sharing
 # a human verb, and that would make it an accident (review finding W4).
 .fathom/memories.jsonl
+
+# go.work is LOCAL DEV ONLY (ADR-019, and the kit's own V1 decision). It was
+# committed until 2026-09-01, referencing ../agentic-kit and ../app-kit, and
+# a fresh clone therefore could not build at all: "cannot load module
+# ../agentic-kit listed in go.work file". It also masked missing go.sum
+# entries, so the standalone build was broken and invisible. Create one
+# locally when you want to edit fathom and a kit side by side; never commit it.
+go.work
+go.work.sum
+

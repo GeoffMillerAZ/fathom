@@ -1,0 +1,200 @@
+/* app-kit motion layer — two-state interpolation, staggering, and the
+   reduced-motion invariant.
+
+   Canonical source: app-kit  appkit/ui/motion/motion.css
+   Hand-written, not generated: unlike tokens/theme.css this derives from no CUE
+   token set, so it is authored here and shipped verbatim.
+
+   ── HOW TO INCLUDE IT (neither path needs a kit component) ─────────────────
+
+     Tailwind apps — in your input.css, after the theme layer:
+
+       @import "tailwindcss";
+       @import ".../appkit/ui/tokens/theme.css";
+       @import ".../appkit/ui/motion/motion.css";
+
+     Anything else — no build step, no Tailwind, no Go templates:
+
+       mux.Handle("GET /static/motion.css", motion.CSSHandler())
+       …or inline motion.CSS() into a <style> tag.
+
+   These are ordinary class selectors, NOT Tailwind utilities. They exist
+   whether or not the Tailwind scanner ever saw an `@source` glob covering your
+   markup. That is deliberate: a motion vocabulary shipped as utility classes
+   inside Go strings disappears silently when a consumer's @source list is
+   incomplete, with no error and nothing to see in review.
+
+   ── THE INVARIANT ──────────────────────────────────────────────────────────
+
+   BOTH STATES MUST BE LEGIBLE WITHOUT MOTION. The animation is a transition
+   BETWEEN two readable states — never the thing that makes them readable. If
+   the meaning only arrives once the tween has played, the design is already
+   broken: for every reader with `prefers-reduced-motion: reduce`, for print,
+   for a screenshot, for a slow frame, and for anyone who looked away for 450ms.
+
+   The escape is structural, not bolted on. Every `transition-*` declaration in
+   this file lives in a rule scoped to `.ak-motion`, and `.ak-motion` is the
+   same selector the reduced-motion block cancels. You cannot opt into kit
+   motion without also opting into the cancel, because the class that grants
+   motion is the class that revokes it. motion_test.go asserts this
+   mechanically — a rule that declares a transition property and is not scoped
+   to `.ak-motion` fails `task check`.
+
+   The STATE rules (.ak-when-a / .ak-when-b / .ak-tone) deliberately do NOT
+   require `.ak-motion`. Strip the wrapper and the widget still switches
+   correctly — instantly, with no tween. That instant version is the no-motion
+   baseline, and it is exactly what a reduced-motion reader gets.
+
+   ── VOCABULARY ─────────────────────────────────────────────────────────────
+
+   On the root element (the thing that owns both states):
+
+     .ak-motion      enable kit transitions in this subtree, and carry the
+                     reduced-motion cancel for everything inside it — including
+                     transitions you wrote yourself. Useful on its own.
+     .ak-state-b     the subtree is in state B. Absence means state A.
+
+   On elements inside it — WHICH state each one belongs to:
+
+     .ak-when-a      fully opaque in A, --ak-motion-dim in B
+     .ak-when-b      --ak-motion-dim in A, fully opaque in B
+     .ak-tone        color/fill interpolates --ak-motion-tone-a → -tone-b
+
+   On elements inside it — WHAT interpolates (pick one; CSS transition lists do
+   not merge across classes, so these are presets, not composable parts):
+
+     .ak-fade        opacity
+     .ak-tint        opacity + color, background-color, border-color, fill, stroke
+     .ak-shift       opacity + transform
+     .ak-anim        whatever you put in --ak-motion-props (default: opacity)
+
+   Staggering — a first-class affordance, not something callers hand-roll.
+   Three tiers, all of which are just `transition-delay`:
+
+     .ak-step-1 … .ak-step-8    index stagger: N × --ak-motion-step (60ms)
+     .ak-after                  phase stagger: start one full duration later,
+                                i.e. after the previous wave has settled
+     --ak-motion-delay: 350ms   raw, per element, for anything else
+
+   Knobs. Every one is read at its point of use with a fallback, and none is
+   declared on .ak-motion — so you can set them on :root, on the wrapper, on a
+   single element, or in a style attribute, and the nearest one wins:
+
+     --ak-motion-duration   450ms
+     --ak-motion-ease       cubic-bezier(0.2, 0, 0.2, 1)
+     --ak-motion-delay      0ms
+     --ak-motion-step       60ms       (the .ak-step-N unit)
+     --ak-motion-dim        0          (opacity of the state that is NOT showing;
+                                        set 0.24 to recede instead of vanish)
+     --ak-motion-props      opacity    (for .ak-anim)
+     --ak-motion-tone-a/-b  currentColor  (for .ak-tone — point these at role
+                                        tokens: var(--ak-color-danger))
+
+   ── WHAT THIS LAYER DELIBERATELY DOES NOT DO ───────────────────────────────
+
+   - It does not hide anything from assistive technology. An element at
+     opacity 0 is still in the accessibility tree and still focusable. If the
+     receding state must be unreachable, the component toggles `inert` or
+     `aria-hidden` itself — that is a content decision, not a motion one.
+   - It does not touch pointer-events, display, or the DOM. Both states stay
+     mounted; that is the whole point (it costs nothing at runtime, prints, and
+     survives theme variants).
+   - It never writes a color literal, and it never gates on a theme selector.
+     There is no `[data-theme=…]` rule in this file, by design: a second shipped
+     token set (themes/synthwave) remaps the palette while leaving data-theme
+     untouched, so a theme-gated override inverts figure and ground under it.
+     Motion keys off state; color keys off role tokens.
+   - Every var() here carries a fallback. A custom property that is referenced
+     but never defined is invalid at computed-value time and silently drops the
+     whole declaration — the worst failure mode there is.
+
+   ── WRITING YOUR OWN ───────────────────────────────────────────────────────
+
+   Nothing here claims a bare element selector, `*`, or any property outside
+   transition/opacity/color/fill. Wrap your own animated markup in `.ak-motion`
+   and write whatever transitions you like: you keep your rules and inherit the
+   reduced-motion cancel for free. Or ignore the wrapper entirely and use only
+   the state classes for an instant two-state widget. */
+
+/* ── State ────────────────────────────────────────────────────────────────
+   No .ak-motion required: this is the readable, no-motion baseline.
+   Specificity strictly increases (0,1,0 → 0,2,0), so the state-B rules win on
+   specificity rather than on source order. Never author an override at equal
+   specificity that relies on coming later — that failure is invisible in
+   review and has shipped more than once. */
+.ak-when-a { opacity: 1; }
+.ak-when-b { opacity: var(--ak-motion-dim, 0); }
+.ak-state-b .ak-when-a { opacity: var(--ak-motion-dim, 0); }
+.ak-state-b .ak-when-b { opacity: 1; }
+
+/* Same element in both states, different tone — the 216-pink-cells-become-18-
+   green-cells case. Point the two properties at role tokens; the fallback keeps
+   the declaration valid when a consumer sets neither. */
+.ak-tone { color: var(--ak-motion-tone-a, inherit); fill: var(--ak-motion-tone-a, currentColor); }
+.ak-state-b .ak-tone { color: var(--ak-motion-tone-b, inherit); fill: var(--ak-motion-tone-b, currentColor); }
+
+/* ── Timing ───────────────────────────────────────────────────────────────
+   Scoped to .ak-motion — this is the half that the reduced-motion block below
+   cancels, and the reason the cancel cannot be forgotten. */
+.ak-motion :is(.ak-fade, .ak-tint, .ak-shift, .ak-anim),
+.ak-motion:is(.ak-fade, .ak-tint, .ak-shift, .ak-anim) {
+  transition-duration: var(--ak-motion-duration, 450ms);
+  transition-timing-function: var(--ak-motion-ease, cubic-bezier(0.2, 0, 0.2, 1));
+  transition-delay: var(--ak-motion-delay, 0ms);
+}
+
+/* ── What interpolates ────────────────────────────────────────────────── */
+.ak-motion .ak-fade,
+.ak-motion.ak-fade { transition-property: opacity; }
+
+.ak-motion .ak-tint,
+.ak-motion.ak-tint { transition-property: opacity, color, background-color, border-color, fill, stroke; }
+
+.ak-motion .ak-shift,
+.ak-motion.ak-shift { transition-property: opacity, transform; }
+
+.ak-motion .ak-anim,
+.ak-motion.ak-anim { transition-property: var(--ak-motion-props, opacity); }
+
+/* ── Stagger ──────────────────────────────────────────────────────────────
+   Delay is orchestration expressed as one number per element. No JS timeline,
+   no chained callbacks, nothing to keep in sync. These rules set a custom
+   property only, so they are inert without a transition and safe to leave on
+   markup that is not inside .ak-motion. */
+.ak-step-1 { --ak-motion-delay: calc(1 * var(--ak-motion-step, 60ms)); }
+.ak-step-2 { --ak-motion-delay: calc(2 * var(--ak-motion-step, 60ms)); }
+.ak-step-3 { --ak-motion-delay: calc(3 * var(--ak-motion-step, 60ms)); }
+.ak-step-4 { --ak-motion-delay: calc(4 * var(--ak-motion-step, 60ms)); }
+.ak-step-5 { --ak-motion-delay: calc(5 * var(--ak-motion-step, 60ms)); }
+.ak-step-6 { --ak-motion-delay: calc(6 * var(--ak-motion-step, 60ms)); }
+.ak-step-7 { --ak-motion-delay: calc(7 * var(--ak-motion-step, 60ms)); }
+.ak-step-8 { --ak-motion-delay: calc(8 * var(--ak-motion-step, 60ms)); }
+
+/* One full wave later: the lane fades only after the grid behind it settles. */
+.ak-after { --ak-motion-delay: var(--ak-motion-duration, 450ms); }
+
+/* ── The escape ───────────────────────────────────────────────────────────
+   Scoped to .ak-motion rather than `*` on purpose: the kit cancels the motion
+   it was asked to own, and does not silently disable a consumer's animations
+   elsewhere in their page. Wrapping your own markup in .ak-motion is how you
+   opt those in.
+
+   1ms rather than `none`: a zero-duration transition never fires a
+   `transitionend` event, so JS that awaits one hangs forever under reduced
+   motion. 1ms keeps the event and removes the motion.
+
+   Everything else — the state and tone rules above — still applies. Both
+   states remain fully legible; only the interpolation between them is gone. */
+@media (prefers-reduced-motion: reduce) {
+  .ak-motion,
+  .ak-motion *,
+  .ak-motion *::before,
+  .ak-motion *::after {
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,32 @@
+# Licensed data — never committed, never redistributed (D10/D6)
+data/tailwindplus/tailwindplus-components.json
+data/tailwindplus/index/
+# MatDash React/Tailwind/Vite Pro (purchased) — original kept on disk, indexed
+# into a corpus for appkit-mcp; the template source itself never enters git.
+data/matdash/
+data/matdash/index/
+
+# Generated SQLite indexes and embedding scratch
+*.sqlite-shm
+*.sqlite-wal
+
+# Tool caches
+.task/
+.cache/
+
+# Build output
+bin/
+dist/
+/appkit-mcp
+
+# Playwright screenshot scratch (Gallery visual checks)
+.playwright-mcp/
+
+# OS noise
+.DS_Store
+
+# fathom code-intelligence index — a generated local artifact rebuilt by
+# `fathom ingest` and by the post-commit hook. 1.4MB of binary SQLite that
+# changes on every ingest; it is a cache, not a source. Committed by accident
+# in 7366363 via `git add -A` and removed in the commit that added this rule.
+workspace/db/

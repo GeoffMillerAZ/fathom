@@ -1,0 +1,27 @@
+[
+  {
+    "slug": "docs",
+    "title": "docs",
+    "source": "testdata/tree/docs",
+    "children": [
+      {
+        "slug": "guide-md",
+        "title": "guide.md",
+        "stable_key": "doc:guide",
+        "source": "docs/guide.md"
+      },
+      {
+        "slug": "reference-md",
+        "title": "reference.md",
+        "stable_key": "doc:reference",
+        "source": "docs/reference.md"
+      },
+      {
+        "slug": "old-notes-md",
+        "title": "old-notes.md",
+        "stable_key": "doc:old-notes",
+        "source": "docs/old-notes.md"
+      }
+    ]
+  }
+]

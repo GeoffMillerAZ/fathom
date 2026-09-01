@@ -1,0 +1,172 @@
+/* ---------------------------------------------------------------------------
+   Prose chrome: the typographic rules for a rendered markdown document body
+   (`doc-prose` / `prose-atrium`), the heading permalink (`doc-heading__anchor`,
+   pairs with docs.RenderPermalink), and the boxed table of contents
+   (`doc-toc*`, pairs with docs.RenderToC).
+
+   Promoted from platform-engineering's portal/ui/input.css per
+   docs/architecture/portal.md §8 — see appkit/ui/docs/docs.go's package
+   comment for what did and did not travel with it. RenderToCPanel and
+   RenderToCRail (the document page's two viewport treatments) need none of
+   this: they emit Tailwind role utilities only, scanned the ordinary L3b way.
+
+   Colours reference --ak-color-* rather than --color-*: the generated theme
+   layer declares its roles with `@theme inline`, which inlines the values
+   into utilities and never emits --color-* into the document. --ak-color-*
+   is the contract that actually reaches the page, and it is what re-themes
+   when [data-theme] changes.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .prose-atrium,
+  .doc-prose {
+    color: var(--ak-color-ink);
+    line-height: 1.7;
+    max-width: 72ch;
+  }
+
+  .prose-atrium > * + *,
+  .doc-prose > * + * {
+    margin-top: 1rem;
+  }
+
+  .doc-prose h1,
+  .doc-prose h2,
+  .doc-prose h3,
+  .doc-prose h4,
+  .doc-prose h5,
+  .doc-prose h6 {
+    color: var(--ak-color-ink);
+    font-weight: 600;
+    letter-spacing: -0.011em;
+    line-height: 1.3;
+    /* Headings own the space above them; the generic rhythm above is not
+       enough to separate a section from the paragraph that preceded it. */
+    margin-top: 2rem;
+    scroll-margin-top: 1.5rem;
+  }
+  .doc-prose h1 { font-size: 1.5rem; margin-top: 0; }
+  .doc-prose h2 { font-size: 1.25rem; }
+  .doc-prose h3 { font-size: 1.05rem; }
+  .doc-prose h4,
+  .doc-prose h5,
+  .doc-prose h6 { font-size: 1rem; }
+
+  /* The permalink anchor appears on hover or focus, never permanently: a "#"
+     beside every heading is visual noise for the reader who is reading
+     rather than linking. It stays keyboard-reachable. Pairs with
+     docs.RenderPermalink and its host's `.doc-heading` wrapper class. */
+  .doc-heading__anchor {
+    color: var(--ak-color-ink-faint);
+    margin-left: 0.375rem;
+    opacity: 0;
+    text-decoration: none;
+  }
+  .doc-heading:hover .doc-heading__anchor,
+  .doc-heading__anchor:focus-visible { opacity: 1; }
+
+  .doc-prose a,
+  .doc-link {
+    color: var(--ak-color-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .doc-prose a:hover { color: var(--ak-color-accent-hover); }
+
+  /* An unresolvable link is VISIBLE, never silently broken. The dotted
+     underline plus the marker say "this target could not be placed" without
+     pretending the link works. */
+  .doc-link--unresolved {
+    color: var(--ak-color-ink-muted);
+    text-decoration-style: dotted;
+  }
+  .doc-link__marker { font-size: 0.75rem; }
+
+  .doc-prose ul,
+  .doc-prose ol { padding-left: 1.5rem; }
+  .doc-prose ul { list-style: disc; }
+  .doc-prose ol { list-style: decimal; }
+  .doc-prose li + li { margin-top: 0.25rem; }
+  .doc-prose li > ul,
+  .doc-prose li > ol { margin-top: 0.25rem; }
+
+  .doc-prose code {
+    background: var(--ak-color-surface-sunken);
+    border-radius: var(--radius-sm, 0.25rem);
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    padding: 0.1em 0.3em;
+  }
+  .doc-prose pre {
+    background: var(--ak-color-surface-sunken);
+    border: 1px solid var(--ak-color-line);
+    border-radius: var(--radius-md, 0.375rem);
+    overflow-x: auto;
+    padding: 0.875rem 1rem;
+  }
+  .doc-prose pre code {
+    background: transparent;
+    font-size: 0.8125rem;
+    padding: 0;
+  }
+
+  .doc-prose blockquote {
+    border-left: 3px solid var(--ak-color-line-strong);
+    color: var(--ak-color-ink-muted);
+    padding-left: 1rem;
+  }
+
+  .doc-prose hr {
+    border: 0;
+    border-top: 1px solid var(--ak-color-line);
+  }
+
+  /* A wide table scrolls inside its own container; the page must never
+     scroll sideways. */
+  .doc-prose table {
+    border-collapse: collapse;
+    display: block;
+    font-size: 0.875rem;
+    overflow-x: auto;
+    width: 100%;
+  }
+  .doc-prose th,
+  .doc-prose td {
+    border-bottom: 1px solid var(--ak-color-line);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .doc-prose th { color: var(--ak-color-ink); font-weight: 500; }
+  .doc-prose td { color: var(--ak-color-ink-muted); }
+
+  .doc-prose img,
+  .doc-prose svg { max-width: 100%; }
+
+  /* The boxed table of contents (docs.RenderToC). Numbering is suppressed
+     because the document's own numbering (an ADR's sections) is the one
+     that means something. RenderToCPanel/RenderToCRail — the document
+     page's own two viewport treatments — do not use these classes; they are
+     plain Tailwind role utilities instead. */
+  .doc-toc {
+    background: var(--ak-color-surface-sunken);
+    border: 1px solid var(--ak-color-line);
+    border-radius: var(--radius-lg, 0.5rem);
+    font-size: 0.875rem;
+    padding: 0.875rem 1rem;
+  }
+  /* Scoped under .doc-prose as well as bare: a ToC rendered INSIDE the
+     article puts the generic `.doc-prose ol` rule above ahead of a bare
+     `.doc-toc__list` by specificity, which would put decimal markers back on
+     a list whose numbering means nothing. */
+  .doc-toc__list,
+  .doc-prose .doc-toc__list { list-style: none; margin: 0; padding: 0; }
+  .doc-toc__list .doc-toc__list,
+  .doc-prose .doc-toc__list .doc-toc__list { padding-left: 1rem; }
+  .doc-toc__item { margin-top: 0.125rem; }
+  .doc-toc__item > a {
+    color: var(--ak-color-ink-muted);
+    text-decoration: none;
+  }
+  .doc-toc__item > a:hover { color: var(--ak-color-accent); }
+  .doc-toc__item--h1 > a { color: var(--ak-color-ink); font-weight: 500; }
+}

@@ -190,10 +190,7 @@ Cheapest rung that catches your bug wins; the example walks all four.
 - **Cross-session memory** — every `Run` builds a fresh conversation by
   design; cross-run state lives in the injected deps. A persistent agent
   memory store waits for a real consumer to shape it.
-- **Eval-runner** — replay cassettes + the conformance suite cover regression
-  today; a scored task-eval harness is deferred until there are tasks worth
-  scoring.
-- **OpenAI-compatible chat client** — anthropic is the only real provider so
-  far; `llm-test` is the contract any second client must pass, so adding one
-  is mechanical when needed (embeddings already speak OpenAI-compatible via
-  `foundations/embedding/http-embedder`).
+- **Eval-runner** and the **OpenAI-compatible chat client** — both graduated
+  (`kits/eval-runner` in v0.5.0 per H5/D9; `foundations/llmclient/openai` in
+  v0.5.0 per uplift D9). Kept here only so a reader of an older copy is not misled;
+  what is still deliberately absent is tracked in `docs/intent/futures.md`.

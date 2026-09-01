@@ -21,6 +21,13 @@ docs/plans/2026-07-uplift.md:183
 # provider default — tracked here, not enforced by this check.
 examples/agent-cli/main.go
 
+# examples/expertchat-service/main.go hardcodes its own default model
+# (defaultModel) exactly like examples/agent-cli/main.go above — the same
+# provider-adapter-default shape the carve-out already covers, living in an
+# example CLI rather than foundations/llmclient/<provider>/. The literal
+# needs periodic manual refresh as models age, same as any provider default.
+examples/expertchat-service/main.go
+
 # cmd/endpoint-guard/config.go:288 embeds an illustrative example value
 # ("claude-haiku-4-5") inside an error message string explaining what to put
 # in a user-supplied config field — the same class of documentation-only

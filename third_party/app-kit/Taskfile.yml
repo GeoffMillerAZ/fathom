@@ -1,0 +1,77 @@
+# Root task runner. Shared task definitions live in tools/taskfiles/ so
+# scaffolded apps include the same vocabulary: task gen / css / check mean
+# the same thing in every kit repo (repo-layout.md §Build tooling).
+version: "3"
+
+includes:
+  css:
+    taskfile: tools/taskfiles/css.yml
+    flatten: false
+
+tasks:
+  gen:
+    desc: Regenerate committed artifacts from CUE sources (tokens → CSS/DTCG/Go)
+    cmds:
+      - go run ./cmd/appkit gen
+
+  gen:synthwave:
+    desc: Regenerate the shipped synthwave theme CSS from its token set
+    cmds:
+      - go run ./cmd/appkit gen --tokens cue/tokens/synthwave/synthwave.cue --css appkit/ui/themes/synthwave/theme.css --dtcg "" --go "" --terminal ""
+
+  check:
+    desc: The full gate — vet, tests, schema vet, regeneration cleanliness
+    cmds:
+      - go vet ./...
+      - go test ./...
+      - go tool cue vet ./internal/tailwind/manifest.cue
+      - go tool cue vet ./internal/twplus/schema/tailwindplus.cue
+      - task: gen
+      - task: gen:synthwave
+      - git diff --exit-code -- appkit/ui/tokens appkit/cli/theme/palette_gen.go appkit/ui/themes/synthwave
+    silent: false
+
+  test:
+    desc: Go tests only
+    cmds:
+      - go test ./...
+
+  twplus:build:
+    desc: Build the TailwindPlus corpus index from the licensed dump (D10)
+    cmds:
+      - go run ./cmd/appkit data build
+
+  twplus:eval:
+    desc: Golden known-item retrieval suite against the corpus index (G2 proof)
+    cmds:
+      - go run ./cmd/appkit data eval
+
+  twplus:verify:
+    desc: Prove the corpus index is internally consistent and byte-faithful to the licensed dump (D10)
+    cmds:
+      - go run ./cmd/appkit data verify
+
+  twplus:embed:
+    desc: Build the optional semantic-search vectors (needs a local Ollama; search is BM25 without it)
+    cmds:
+      - go run ./cmd/appkit data embed
+
+  twplus:previews:
+    desc: Build the optional component-preview artifact (rendered demo HTML)
+    cmds:
+      - go run ./cmd/appkit data previews
+
+  mcp:build:
+    desc: Build the appkit-mcp server (TailwindPlus + kit assistant, D11)
+    cmds:
+      - go build -o bin/appkit-mcp ./cmd/appkit-mcp
+
+  gallery:css:
+    desc: Build the Gallery's CSS with the pinned Tailwind binary (D2 — no Node)
+    cmds:
+      - go run ./cmd/appkit css -i apps/gallery/ui/input.css -o apps/gallery/ui/app.css --minify
+
+  gallery:run:
+    desc: Serve the living style guide (D12) on loopback (http://127.0.0.1:8765)
+    cmds:
+      - go run ./apps/gallery/cmd/gallery

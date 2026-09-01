@@ -1,0 +1,45 @@
+/* The Gallery's CSS input — the canonical shape every kit app uses (D2: no
+   Node; built by the pinned Tailwind standalone via `appkit css`):
+   Tailwind first, then the generated kit theme layer, then the sources to scan.
+
+   The Gallery renders role/radius/font utilities that it builds by name at
+   render time (bg-<role> for every role in tokens.ColorNames, etc.), so the
+   Tailwind scanner can't see them as literals in the Go source. `@source
+   inline(...)` force-generates exactly the kit's token vocabulary via brace
+   expansion — the same vocabulary `get_kit_css_setup` documents. A gallery test
+   asserts this list stays in sync with the generated token names. */
+@import "tailwindcss";
+@import "../../../appkit/ui/tokens/theme.css";
+/* The motion layer (L2). Deliberately NO @source entry: motion.css is plain
+   class selectors, not scanned Tailwind utilities, so its classes resolve with
+   no scanner involved. The /motion page proves this. */
+@import "../../../appkit/ui/motion/motion.css";
+
+/* Structural utilities (flex, grid, spacing, …) appear as literals in the Go
+   templates, so scanning the package source covers them. The Gallery also
+   renders kit component packages, so it scans their source too — the same thing
+   a consuming app does for every kit component package it uses. */
+@source "../*.go";
+@source "../../../appkit/ui/callout/*.go";
+@source "../../../appkit/ui/stat/*.go";
+@source "../../../appkit/ui/card/*.go";
+@source "../../../appkit/ui/kanban/*.go";
+@source "../../../appkit/ui/table/*.go";
+@source "../../../appkit/ui/chrome/*.go";
+@source "../../../appkit/ui/hitl/*.go";
+@source "../../../appkit/ui/form/*.go";
+@source "../../../appkit/ui/overlay/*.go";
+@source "../../../appkit/ui/overlay/*.js";
+@source "../../../appkit/ui/chat/*.go";
+@source "../../../appkit/ui/chat/*.js";
+@source "../../../appkit/ui/dashboard/*.go";
+/* vizframe emits role utilities (L3b, ADR-0017 §1), so the scanner must see its
+   Go source or the provenance frame renders unstyled. ui/viz needs no entry —
+   it is L3a: zero class=, color only through var(--ak-color-*). */
+@source "../../../appkit/ui/vizframe/*.go";
+
+/* Token-driven utilities, built dynamically at render time — force-generated. */
+@source inline("{bg,text,border}-{accent,accent-hover,accent-ink,accent-soft,caution,caution-soft,danger,danger-soft,focus,info,info-soft,ink,ink-faint,ink-inverse,ink-muted,line,line-strong,positive,positive-soft,surface,surface-overlay,surface-raised,surface-sunken}");
+@source inline("ring-focus ring-2");
+@source inline("rounded-{sm,md,lg,xl,full}");
+@source inline("font-{sans,mono,display}");

@@ -7,7 +7,13 @@ Every release ships with the full gate green: `task validate` =
 
 ## [Unreleased]
 
+Release impact: minor
+
 ### Added
+
+- **Project Intent: monorepo guidance** (`docs/project-intent/monorepo.md`, template `repo.md`): a repository charter for multi-product repos (why one repository, membership, a component map with split/merge/retire/inbound triggers, dependency direction, ecosystem), the own-intent test for components, nested routing, and three doctor checks. The kit's own charter is `docs/intent/repo.md`.
+
+- **Project Intent practice** (`docs/project-intent/`, skill and templates in `.agents/skills/project-intent/`): durable intent and decision records with revisit triggers, routed rather than loaded, plus the change-records layer model (`changes.md`) this entry now follows. Why and what was rejected: `docs/project-intent/README.md` §13; practices ledger §16. The kit adopts its own practice (`docs/intent/`, 2026-08-25): router, invariants with the lint/guard that enforces each, scope with the compatibility surface, futures with subscribe-when triggers, decisions index over D1–D10/D13/D35, autonomy, incidents.
 
 - **`foundations/telemetry/heartbeat` gains `CheckExistence`/`ExistenceExpectation`/`ExistenceAlarm` (2026-07-22, Phase K K3-1, promoted from fathom doctrine law 7 — `docs/vision/11-dial-to-eleven.md` in the sibling repo, "Instruments get existence checks. An adoption metric whose traffic source can silently vanish (or never start) is theater."):** `CheckLiveness` already answers "did effect channel B fire alongside activity channel A"; it cannot answer "did channel X ever fire at all since a recorded start time" — a channel that never starts and a channel that stops are indistinguishable to it, and fathom's own B2 zero-call investigation needed exactly that distinction (recorded t0 + connected-client existence check). `CheckExistence(beats, []ExistenceExpectation{{Channel, Since}}, ref)` alarms once per expectation with zero beats for `Channel` in `[Since, ref]`; malformed expectations (empty channel, zero `Since`, `Since` after `ref`) are skipped rather than alarmed, mirroring `CheckLiveness`'s posture. Purely additive — `Expectation`/`Alarm`/`CheckLiveness` untouched; `schema.cue` gains `#ExistenceExpectation` with a positive fixture and two documented-negative fixtures (empty channel, missing `since`); package doc extended to state which of the two checks a caller wants. `go test -race`/`cue vet` green. Named consumer: fathom's `scripts/check-surface-traffic.sh` (companion change in the sibling repo) against the MCP `server_stats` tool's `surface_traffic` block.
 
@@ -136,6 +142,33 @@ Every release ships with the full gate green: `task validate` =
   push by catching 13 malformed acceptance contracts across five handoff
   plans, repaired with cited skips. Done-means-proven is live end to end.
 
+### Fixed
+
+- **Downstream-consumer path defaults survive the fathom repo's pending
+  directory rename (owner order 2026-07-17).** The fathom repo dir will
+  eventually rename `sextant` → `fathom`; `lefthook.yml`'s `fathom-verify`
+  (pre-push) and `fathom-refresh` (post-commit) hooks, and `Taskfile.yml`'s
+  `sextant-check` (rolled into `downstream-check`), hardcoded
+  `../sextant/bin/fathom` / `-d ../sextant` as their only default. `FATHOM_BIN`
+  still wins outright when set; the no-override default now resolves the
+  first-existing of `../fathom/bin/fathom` then `../sextant/bin/fathom`
+  (`fathom-refresh` additionally falls back to the older `../sextant/bin/sextant`
+  binary name, unchanged from before). `fathom-refresh`'s ingest `--store` path
+  is derived from wherever `$FATHOM` actually resolved (`${FATHOM%/bin/*}`)
+  instead of a second independent `../sextant` hardcode, so it can never
+  disagree with which checkout supplied the binary. `README.md`/`CLAUDE.md`
+  prose annotated to name both directory names without a full rewrite.
+  **Same-cause fix, this repo's own file:** removing fathom's `.sextantignore`
+  fallback (the companion fathom-side change) meant agentic-kit's own
+  `.sextantignore` — the only ignore file this repo had — would stop being
+  honored on the next fleet re-ingest, silently reopening the `.claude/`
+  worktree-pollution hole H1 closed above. Renamed `.sextantignore` →
+  `.fathomignore` (content unchanged) in the same change so nothing regresses.
+
+## [0.7.0] — 2026-07-16
+
+### Added
+
 - **Fathom asks W1 (docs/plans/2026-07-fathom-asks.md — three seams the
   fleet's instrument needs, each behind an observed failure):**
   `prompttemplate.Template.TextHash()` — content-addressed template identity
@@ -165,6 +198,7 @@ Every release ships with the full gate green: `task validate` =
   byte-stable, recorded offline). `task eval` runs the whole loop in replay
   mode — deterministic, free, no network. Judge pool/panel/escalation and
   conviction statistics remain parked behind their subscribe-when triggers.
+
 - **Protocol surface completion (H6).** `kits/mcp-server` gains the
   Streamable HTTP transport (stateless POST, protocol-version negotiation,
   fail-closed Origin allowlist, byte-identical dispatch vs stdio pinned by a
@@ -174,15 +208,18 @@ Every release ships with the full gate green: `task validate` =
   gains the W3C traceparent codec + env carrier (roadmap #21 graduated):
   cross-process trace propagation over MCP HTTP hops and bounded-exec
   subprocesses, proven end-to-end by `TestStreamableHTTPTraceRoundTrip`.
+
 - `foundations/security/token-lifecycle` (H2/D35-3, kit side) — pure OAuth
   credential lifecycle extracted from throughline's proven `adapters/oauth`:
   `Classify`, `NextAction` (60s default refresh skew, boundary pinned ±1ns),
   `MergeRefreshed` (preserve-refresh-token rule), `RevocationTarget`.
   Storage, PKCE, and HTTP exchanges stay consumer-side by design.
+
 - `foundations/evidence/authenticity`: per-method grading guidance
   (H2/D35-4) — `ScoreCeiling` (DKIM 0.95, Authentication-Results 0.55),
   `VerdictCeiling`, opt-in `ClampToCeiling`. `Assess` unchanged; clamping
   never lifts adverse verdicts and does not retro-fix stored assessments.
+
 - `foundations/review/intake-triage`: `ResumeFSM` — hydrate the proposal FSM
   at any persisted state including terminals (history-since-resume semantics
   documented); the seam persistence-backed consumers needed for adoption.
@@ -227,29 +264,10 @@ Every release ships with the full gate green: `task validate` =
   against a fresh store-mode index. Pending (human-gated): daemon restart
   via `scripts/reingest-fleet.sh` + branch merge, then HTTP-mode acceptance
   re-arms the pre-push hook end to end.
+
 - `.sextantignore` gains `.claude/` — agent-worktree copies are tool state
   and must never enter the fleet index (belt-and-braces with the fathom-side
   skipDir fix).
-- **Downstream-consumer path defaults survive the fathom repo's pending
-  directory rename (owner order 2026-07-17).** The fathom repo dir will
-  eventually rename `sextant` → `fathom`; `lefthook.yml`'s `fathom-verify`
-  (pre-push) and `fathom-refresh` (post-commit) hooks, and `Taskfile.yml`'s
-  `sextant-check` (rolled into `downstream-check`), hardcoded
-  `../sextant/bin/fathom` / `-d ../sextant` as their only default. `FATHOM_BIN`
-  still wins outright when set; the no-override default now resolves the
-  first-existing of `../fathom/bin/fathom` then `../sextant/bin/fathom`
-  (`fathom-refresh` additionally falls back to the older `../sextant/bin/sextant`
-  binary name, unchanged from before). `fathom-refresh`'s ingest `--store` path
-  is derived from wherever `$FATHOM` actually resolved (`${FATHOM%/bin/*}`)
-  instead of a second independent `../sextant` hardcode, so it can never
-  disagree with which checkout supplied the binary. `README.md`/`CLAUDE.md`
-  prose annotated to name both directory names without a full rewrite.
-  **Same-cause fix, this repo's own file:** removing fathom's `.sextantignore`
-  fallback (the companion fathom-side change) meant agentic-kit's own
-  `.sextantignore` — the only ignore file this repo had — would stop being
-  honored on the next fleet re-ingest, silently reopening the `.claude/`
-  worktree-pollution hole H1 closed above. Renamed `.sextantignore` →
-  `.fathomignore` (content unchanged) in the same change so nothing regresses.
 
 ## [0.6.0] — 2026-07-10
 

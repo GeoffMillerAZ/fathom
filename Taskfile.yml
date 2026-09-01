@@ -112,13 +112,22 @@ tasks:
       - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, store-purego, scripts-check, test
-    deps: [fmt-check, vet, cue-vet, vendor-check, store-purego, scripts-check]
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, test
+    # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
+    # broke silently once (go.work committed, app-kit unmirrored) and stayed
+    # broken because every machine that ran validate had the siblings.
+    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check]
     cmds: [{ task: test }]
 
   sync-kit:
-    desc: Re-archive ../agentic-kit at the commit go.mod pins into third_party/agentic-kit (run after every kit pin bump)
-    cmds: ["bash scripts/sync-kit.sh"]
+    desc: Re-archive BOTH private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump)
+    cmds:
+      - bash scripts/sync-vendor.sh agentic-kit
+      - bash scripts/sync-vendor.sh app-kit
+
+  clean-clone-check:
+    desc: Adopter guard — the committed tree must build with no sibling checkouts and no go.work
+    cmds: ["bash scripts/clean-clone-check.sh"]
 
   vendor-check:
     desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)

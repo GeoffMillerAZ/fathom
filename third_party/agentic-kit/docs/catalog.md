@@ -2,7 +2,7 @@
 
 # Package catalog
 
-184 Go packages. One line each: module-relative import path, package name, doc synopsis.
+190 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -80,12 +80,13 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/evidence/source-linker` (`sourcelinker`) — Package sourcelinker maintains explicit links between evidence spans and the sources they came from.
 - `foundations/evidence/source-registry` (`sourceregistry`) — Package sourceregistry provides a governed registry for evidence sources.
 
-## foundations/governance (9)
+## foundations/governance (10)
 
 - `foundations/governance/answer-cache` (`answercache`) — Package answercache is a cost-saving cache for near-static LLM answers.
 - `foundations/governance/budget-guard` (`budgetguard`) — Package budgetguard provides a multi-dimension aggregate quota guard that enforces per-minute request counts, per-day request counts, and per-day USD spend limits.
 - `foundations/governance/circuit-breaker` (`circuitbreaker`) — Package circuitbreaker implements a closed/open/half-open circuit breaker for protecting downstream dependencies from cascading failures.
 - `foundations/governance/identity` (`identity`) — Package identity provides privacy-preserving identity extraction and hashing.
+- `foundations/governance/identity-quota` (`identityquota`) — Package identityquota provides a PER-IDENTITY rolling-day quota, the companion to budgetguard's aggregate one.
 - `foundations/governance/proof-of-work` (`proofofwork`) — Package proofofwork provides a hashcash-style proof-of-work gate with HMAC-signed challenges for zero-infrastructure anti-bot protection.
 - `foundations/governance/rate-limiter` (`ratelimiter`) — Package ratelimiter provides a token-bucket rate limiter with sliding-window semantics, both single-key (Limiter) and per-key (KeyedLimiter) variants.
 - `foundations/governance/retention-policy` (`retentionpolicy`) — Package retentionpolicy provides pure, WASM-safe evaluation of data-retention rules.
@@ -106,9 +107,10 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/investigation/narrative-shift` (`narrativeshift`) — Package narrativeshift detects when a declarant changed their story over time — the deposition-prep "prior inconsistent statement" gold.
 - `foundations/investigation/query-planner` (`queryplanner`) — Package queryplanner turns a Brief + known entities + date ranges into provider-agnostic query plans with per-query provenance.
 
-## foundations/knowledge (4)
+## foundations/knowledge (5)
 
 - `foundations/knowledge/authority` (`authority`) — Package authority provides legal authority as a first-class node distinct from factual evidence.
+- `foundations/knowledge/catalog` (`catalog`) — Package catalog builds catalogs that cannot lie.
 - `foundations/knowledge/document-parsing` (`documentparsing`) — Package documentparsing parses markdown and plain-text documents into a flat sequence of Segment values.
 - `foundations/knowledge/knowledge-card-generation` (`knowledgecardgeneration`) — Package knowledgecardgeneration generates typed, governed knowledge cards from parsed document segments and a knowledge-card archetype.
 - `foundations/knowledge/memory-manifest` (`memorymanifest`) — Package memorymanifest provides an append-only manifest of stored knowledge units.
@@ -209,9 +211,10 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/schema/schema-evolver` (`schemaevolver`) — Package schemaevolver provides controlled migration paths between schema versions so that consumers are never silently broken by schema changes.
 - `foundations/schema/taxonomy-manager` (`taxonomymanager`) — Package taxonomymanager provides a classification hierarchy manager for org-configurable taxonomies.
 
-## foundations/security (12)
+## foundations/security (13)
 
 - `foundations/security/data-sensitivity-types` (`datasensitivitytypes`) — Package datasensitivitytypes defines the core sensitivity classification types used across the security foundation.
+- `foundations/security/httpauth` (`httpauth`) — Package httpauth provides a minimal bearer-token auth primitive for gating an HTTP handler: Bearer(tokenEnvName) builds a Middleware that requires a constant-time-matched "Authorization: Bearer <token>" header, with the token itself read once from a NAMED environment variable at construction time.
 - `foundations/security/injection-detector` (`injectiondetector`) — Package injectiondetector provides prompt-injection and instruction-override detection for untrusted content.
 - `foundations/security/instruction-hierarchy` (`instructionhierarchy`) — Package instructionhierarchy enforces instruction precedence for agentic systems: system > developer > user > untrusted.
 - `foundations/security/output-integrity-checker` (`outputintegritychecker`) — Package outputintegritychecker verifies that an LLM output satisfies a configurable integrity policy: required disclaimers are present and banned tokens are absent.
@@ -237,7 +240,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/topology/live-graph` (`livegraph`) — Package livegraph provides a deployment/dependency graph with cycle detection, critical-path analysis, and wave-based rollout planning.
 - `foundations/topology/workspace-materialization` (`workspacematerialization`) — Package workspacematerialization computes the minimal transitive dependency set required to materialize a target node from a live-graph topology.
 
-## kits (13)
+## kits (14)
 
 - `kits/agent-harness` (`agentharness`) — Package agentharness is the governed tool-calling agent loop — the kit that composes the platform's foundations into one Run(ctx, input) call: model turn → tool dispatch → governance screens → repeat, until a stop condition.
 - `kits/command-center` (`commandcenter`) — Package commandcenter composes workflow-engine, review-queue, and telemetry foundations into a cross-workflow command surface.
@@ -247,6 +250,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `kits/endpoint-guard` (`endpointguard`) — Package endpointguard is a composition kit that wires the agentic-kit governance primitives into a single, hardened HTTP endpoint guard.
 - `kits/eval-runner` (`evalrunner`) — Package evalrunner is the CUE-configured batch eval runner — the kit that drives scenario-bank scenarios through an LLM-backed qaharness.Judge and refuses, by construction, the standard ways an eval loop lies: a judge grading its sibling model, a verdict that never reached a journal, a budget silently blown, a "stable" claim nobody probed, and a run over nothing exiting green.
 - `kits/eval-runner/gen-cassettes` (`main`) — Command gen-cassettes regenerates the committed replay corpus for kits/eval-runner: the DLP-scrubbed judge cassette (testdata/cassettes/judge.jsonl) and the regression baseline journal (testdata/baseline.jsonl).
+- `kits/expertchat` (`expertchat`) — Package expertchat is the governed answer loop for chatting against fathom "expert modules" — a module host serving citation-bearing claims over HTTP JSON-RPC (docs/spec/expert-module-v0.md, docs/spec/ store-format-v0.md §3 Server conformance, in the fathom repo).
 - `kits/governed-prose-kit` (`governedprosekit`) — Package governedprosekit wires together the prose governance foundations into a single generation→review→regeneration pipeline.
 - `kits/guardrails-pipeline` (`guardrailspipeline`) — Package guardrailspipeline provides a declarative gate-chain that composes existing security and quality foundations into ordered pre-LLM and post-LLM decision pipelines.
 - `kits/hitl` (`hitl`) — Package hitl is a generic human-in-the-loop engine for agents that CHANGE data.
@@ -281,9 +285,11 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default.
 - `cmd/release-notes` (`main`) — Command release-notes prints one version's section of CHANGELOG.md verbatim, for pasting into a GitHub Release body or a release announcement.
 
-## examples (2)
+## examples (4)
 
 - `examples/agent-cli` (`main`) — Command agent-cli is the hello-world agent for agentic-kit: a small, runnable CLI that proves the whole stack end-to-end and is meant to be COPIED as the starting point for new projects (see README.md and docs/adopting.md).
+- `examples/catalog-demo` (`main`) — Command catalog-demo is a worked example for foundations/knowledge/catalog: it scans a small directory tree into a Catalog, loads a previously "published" catalog from a fixture, and gates the two with Verify — design deliverable #8 ("a worked example building a small catalog from a directory scan and gating it").
+- `examples/expertchat-service` (`main`) — Command expertchat-service is a thin, runnable example wiring kits/expertchat to a fathom module host.
 - `examples/governance-wasm` (`main`) — Package main is a thin WASM shim that registers governance primitives as JS-callable functions.
 
 ## scenarios (2)

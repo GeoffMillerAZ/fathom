@@ -68,7 +68,7 @@ Every addition, refactor, and doc is judged against that sentence.
 
 8. **The gate is the contract.** `task validate` (gofmt, vet, `cue vet`
    including fixtures, `go test -race` across every package) plus a green
-   downstream consumer (`task sextant-check`) is what "done" means. TRACKING.md
+   downstream consumer (`task fathom-check`) is what "done" means. TRACKING.md
    records what is built and tested; CHANGELOG.md records what broke and why;
    tags are cut only at green gates.
 
@@ -111,9 +111,9 @@ by hope:
    is the recurring maintenance discipline, not a one-off. Every audit hunts
    specifically for: overclaims, unbounded anything, evidence-link breaks, and
    drift between docs and code.
-3. **Downstream is the oracle.** Real consumers (sextant today, every future
+3. **Downstream is the oracle.** Real consumers (fathom today, every future
    workload tomorrow) drive extraction: when a project hand-builds something
-   twice, the kit owns it. `task sextant-check` keeps the promise mechanical.
+   twice, the kit owns it. `task fathom-check` keeps the promise mechanical.
 
 ## The junk gate (definition of done for any addition)
 

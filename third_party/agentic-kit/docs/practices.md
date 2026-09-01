@@ -390,6 +390,32 @@ that rejects untrusted-fenced content from entering long-term memory without an
 explicit declassification step. Those are the missing seams; the anti-pattern is
 mitigated at the edges but not closed end-to-end.
 
+## 16. Intent amnesia
+
+**The anti-pattern.** The agent knows the code and nothing else: not why the project
+exists, what must never break, which futures are real, which alternatives already lost
+and why, or what would make an old decision worth reopening. It then either optimizes
+the requirement in front of it and walls off a future the humans were counting on, or
+hedges against every imaginable future with abstractions nobody asked for. Both failures
+come from the same gap. Loading the whole history into every session is not the fix; it
+is a second anti-pattern (context bloat) wearing the first one's clothes.
+
+**The opinion.** Durable intent lives in the repo at `docs/intent/` as seven short
+living documents plus decision records, and always-loaded instructions only *route* to
+it. Every entry that can go stale carries its own expiry condition (`Done when`,
+`Promote when`, `Drop if`, `Revisit when`) so one grep is the trigger registry. The
+governing rule for the future: build for now; foreclose nothing documented when keeping
+it open is free. Full practice: `docs/project-intent/README.md`.
+
+| Component | Role |
+|---|---|
+| `docs/project-intent/` | methodology, agent integration (Claude Code, Codex, generic `AGENTS.md`), examples of good and bad future-proofing |
+| `.agents/skills/project-intent/` | the on-demand skill (`design`, `decide`, `triggers`, `bootstrap`, `refresh`) and the templates it copies |
+
+**STATUS: shipped** as docs and a skill; no Go package, by design. Revisit when a second
+adopting repo shows index drift the `refresh` walk did not catch (that is the day a
+checker earns its keep).
+
 ## Using this ledger
 
 Starting a new workload: walk the sections above and wire what applies — each

@@ -51,14 +51,25 @@ all three same-day additions (claudecli, awscred, codexcli) the live
 library count is 172 (169 + 3); the classification-counts table is left
 unchanged for the same reason stated above.
 
+**Third post-audit drift note (2026-07-30):** `foundations/knowledge/catalog`
+landed (docs/designs/catalog-kit.md, D13: 3 in-fleet consumers named:
+this kit's own package catalog, a consumer's MCP tool catalog, and the
+licensed component corpus). Classified `experimental` below: unlike the
+other post-audit additions, one of its three named consumers IS proven
+same-day (`cmd/kit-catalog`'s own catalog `Verify`s clean against
+`docs/catalog.md` via `cmd/kit-catalog/consumer_gate_test.go`), but the
+other two remain unwired, so it stays `experimental` rather than
+`stable` until a second real consumer lands. The classification-counts
+table is left unchanged for the same reason stated above.
+
 ## Classification counts (for sign-off)
 
 | Classification | Count |
 |---|---|
 | `stable` | 124 |
-| `experimental` | 23 |
+| `experimental` | 25 |
 | `internal-ish` | 24 |
-| **Total** | **171** |
+| **Total** | **173** |
 
 This is a real distribution, not a blanket stamp: 124 packages (73%) reflect
 four waves of hardening with no churn and either a real consumer or a
@@ -133,7 +144,7 @@ table keeps `experimental` until that call is made.
 | `foundations/data/schema-migration-ledger` | internal-ish | Thin append-only ledger; no consumer today. |
 | `foundations/embedding/embedding-client` | stable | The single embedding interface; `CachingEmbedder`'s bounded LRU is the VISION belief-4 exemplar; consumed by http-embedder, vector-store, and eval flows. |
 | `foundations/embedding/http-embedder` | stable | Real OpenAI-compatible adapter, hermetic httptest-tested, key-never-in-errors proven. |
-| `foundations/embedding/vector-store` | stable | Lifted-and-generalized from a real prior system (sextant); mature, tested; sextant's own adoption is deferred pending its branch merge, not the package's readiness. |
+| `foundations/embedding/vector-store` | stable | Lifted-and-generalized from a real prior system (fathom); mature, tested; fathom's own adoption is deferred pending its branch merge, not the package's readiness. |
 | `foundations/environment/access-broker` | internal-ish | Thin generic credential-negotiation shim; no consumer today. |
 | `foundations/environment/environment-registry` | internal-ish | Thin named catalog of runtime environments; no consumer today. |
 | `foundations/environment/platform-config` | internal-ish | Thin config loader+validator; no consumer today. |
@@ -161,6 +172,7 @@ table keeps `experimental` until that call is made.
 | `foundations/governance/budget-guard` | stable | The bill cap for agent workflows; heaviest fan-in in governance; VISION belief-4 exemplar. |
 | `foundations/governance/circuit-breaker` | stable | Closed/open/half-open breaker; real fan-in, mature. |
 | `foundations/governance/identity` | stable | Privacy-preserving identity extraction; real fan-in in the governance gauntlet. |
+| `foundations/governance/identity-quota` | experimental | Landed alongside this audit's follow-on work (per-identity rolling-day quota, `budget-guard`'s companion); zero named in-kit consumers yet. |
 | `foundations/governance/proof-of-work` | stable | Redesigned to be unforgeable (HMAC-signed challenges); bounded `SeenSet`; real fan-in. |
 | `foundations/governance/rate-limiter` | stable | Token-bucket limiter; real fan-in, no churn since inception. |
 | `foundations/governance/retention-policy` | stable | Roadmap #18 graduated; the deletion-story companion to `tokenization`'s crypto-shred; the foundation decides, callers execute, by design. |
@@ -178,6 +190,7 @@ table keeps `experimental` until that call is made.
 | `foundations/investigation/narrative-shift` | stable | Real consumer (`case-file`); deposition-prep "prior inconsistent statement" gold. |
 | `foundations/investigation/query-planner` | stable | Real named external consumer: throughline's `app/acquire` swap completed H2 Wave B, donor code deleted, kit core proven-shape. |
 | `foundations/knowledge/authority` | stable | Legal authority as a first-class node; 41 tests, substantial. |
+| `foundations/knowledge/catalog` | experimental | Landed 2026-07-30 (docs/designs/catalog-kit.md, D13: 3 named in-fleet consumers). One consumer proven for real same-day (`cmd/kit-catalog`'s own 190-package catalog, gated via `Verify` in `cmd/kit-catalog/consumer_gate_test.go`); the licensed-component-corpus and MCP-tool-catalog consumers named in the design are not yet wired. |
 | `foundations/knowledge/document-parsing` | stable | Heading-segment parser; real fan-in. |
 | `foundations/knowledge/knowledge-card-generation` | stable | Real generation engine (archetype template fill over contracts), not thin glue. |
 | `foundations/knowledge/memory-manifest` | internal-ish | Thin append-only manifest; no consumer today. |
@@ -245,6 +258,7 @@ table keeps `experimental` until that call is made.
 | `foundations/schema/schema-evolver` | stable | Real algorithm (versioned migration graph, BFS compat-path check), not thin glue; complete and tested. |
 | `foundations/schema/taxonomy-manager` | stable | Real cycle-rejecting hierarchy engine for org-configurable taxonomies; not thin glue. |
 | `foundations/security/data-sensitivity-types` | stable | Core sensitivity-classification type primitive; real fan-in. |
+| `foundations/security/httpauth` | experimental | Landed 2026-07-29 (D13, ahead of a second consumer): bearer-token HTTP middleware, a clean re-implementation of the pattern proven in fathom's module host (`cmd/fathom/servehttp.go`, GKE-MH-7) — not imported. Zero in-kit consumers yet; the hosted expertchat service is the intended first one once it grows a serving mode. Same same-day-addition treatment as claudecli/codexcli/expertchat above. |
 | `foundations/security/injection-detector` | stable | Phase-1 vertical slice; recall uplifted to 22/22 on the seeded corpus; heaviest security fan-in. |
 | `foundations/security/instruction-hierarchy` | stable | System>developer>user>untrusted precedence; small, stable, extensively discussed in VISION/practices as a real shipped guarantee. |
 | `foundations/security/output-integrity-checker` | internal-ish | Thin required-disclaimer/banned-token checker; no consumer today. |
@@ -271,6 +285,7 @@ table keeps `experimental` until that call is made.
 | `kits/endpoint-guard` | stable | Real consumer: the `cmd/endpoint-guard` production sidecar. |
 | `kits/eval-runner` | experimental | Stage 1 landed 2026-07-15; single self-hosted subscriber so far (this repo's own `task eval`); Stages 2-3 (judge pool/panel/escalation) explicitly parked. |
 | `kits/eval-runner/gen-cassettes` | internal-ish | An internal `package main` generator for regenerating eval-runner's own committed test fixtures; not an importable API surface at all. |
+| `kits/expertchat` | experimental | New this wave (`docs/plans/gke-expertchat.md`, agentic-kit repo side of the governed-knowledge-engine wave), critic-reviewed (MERGE-WITH-FIXES, applied) and wire-reconciled 2026-07-28 against fathom's landed `module_query` tool (both same-wave passes): the citation-mandatory answer loop over a fathom module host. Zero in-fleet consumer yet — `examples/expertchat-service` is a composition example, not a consumer. `wire.go` speaks fathom's REAL `tools/call` JSON-RPC envelope (verified against `sextant/internal/mcp/dispatch.go`) invoking the PINNED `module_query` v0 contract (`{text, module?, max?}` → `{results: [...]}`, field-for-field reconciled with fathom's own round-trip test) — no remaining wire assumption. |
 | `kits/governed-prose-kit` | experimental | TRACKING.md explicitly: "Composition unproven — no in-fleet consumer yet"; adoption sketch recorded but not wired. |
 | `kits/guardrails-pipeline` | experimental | TRACKING.md said "wiring pending" when this audit was drafted; throughline wired it the same day (`app/chat/untrusted.go`, H3 Stage 1). Classification deliberately NOT silently upgraded — see the flagged policy question in the sign-off section above. |
 | `kits/hitl` | stable | Real in-repo composition proof (`scenarios/governed-docextract-hitl`); growing-gardens-bi assessed adopt-worthy-in-principle with a stated subscribe-when trigger, not a red flag against the kit. |

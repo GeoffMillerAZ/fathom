@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # vendor-check_test.sh — shell-level test for scripts/vendor-check.sh (and,
-# incidentally, scripts/sync-kit.sh — they share scripts/lib/kit-pin.sh).
+# incidentally, scripts/sync-vendor.sh — they share scripts/lib/kit-pin.sh).
 #
 # Builds a throwaway sibling git repo + a throwaway "consumer" repo (with its
 # own go.mod and third_party/agentic-kit, laid out exactly like the real repo
@@ -73,7 +73,7 @@ EOF
 # ../agentic-kit) resolve exactly like they do in the real repo.
 mkdir -p "${CONSUMER}/scripts/lib"
 cp "${SCRIPT_DIR}/lib/kit-pin.sh" "${CONSUMER}/scripts/lib/kit-pin.sh"
-cp "${SCRIPT_DIR}/sync-kit.sh" "${CONSUMER}/scripts/sync-kit.sh"
+cp "${SCRIPT_DIR}/sync-vendor.sh" "${CONSUMER}/scripts/sync-vendor.sh"
 cp "${SCRIPT_DIR}/vendor-check.sh" "${CONSUMER}/scripts/vendor-check.sh"
 
 run_vendor_check() {
@@ -89,7 +89,7 @@ check "missing third_party/agentic-kit fails" "${rc}" "1"
 grep -q "task sync-kit" "${TMP}/out.log" || fail "missing-dir message should mention task sync-kit"
 
 # ─── sync via the real sync-kit.sh, then case: fresh sync matches ──────────
-( cd "${CONSUMER}" && bash scripts/sync-kit.sh > "${TMP}/sync.log" 2>&1 )
+( cd "${CONSUMER}" && bash scripts/sync-vendor.sh agentic-kit > "${TMP}/sync.log" 2>&1 )
 [ -f "${CONSUMER}/third_party/agentic-kit/foundations/x.go" ] || fail "sync-kit did not populate third_party/agentic-kit"
 
 set +e
@@ -108,7 +108,7 @@ check "tampered third_party/agentic-kit fails" "${rc}" "1"
 grep -q "task sync-kit" "${TMP}/out.log" || fail "drift message should mention task sync-kit"
 
 # restore before the remaining cases
-( cd "${CONSUMER}" && bash scripts/sync-kit.sh > /dev/null 2>&1 )
+( cd "${CONSUMER}" && bash scripts/sync-vendor.sh agentic-kit > /dev/null 2>&1 )
 
 # ─── case 3: sibling absent -> skip (exit 0) ────────────────────────────────
 mv "${SIBLING}" "${SIBLING}.hidden"
