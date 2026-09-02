@@ -24,6 +24,10 @@
 //	    for indeterminate. The exit code is the gate: a fail is a measured
 //	    refutation and a legitimate result to record, while indeterminate
 //	    means the run did not measure enough to decide and must be re-run.
+//
+//	contextbenchscore import -multi-swe <jsonl> -swe-explore <jsonl> -checkouts <dir> [-callers-dir <dir>] -out <path> [-n 35]
+//	    Derives the public localization corpus from pinned local snapshots
+//	    with no LLM and no network (import.go; docs/bench/public-loc.md).
 package main
 
 import (
@@ -45,7 +49,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <score|report|ledger> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <score|report|ledger|import> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -55,8 +59,10 @@ func run(args []string) int {
 		return cmdReport(args[1:])
 	case "ledger":
 		return cmdLedger(args[1:])
+	case "import":
+		return cmdImport(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score, report, or ledger)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score, report, ledger, or import)\n", args[0])
 		return 2
 	}
 }
