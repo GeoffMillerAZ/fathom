@@ -26,7 +26,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// query_symbols — concern-scoped symbol search.
 	s.registerTool(toolDescriptor{
 		Name:        "query_symbols",
-		Description: "Concern-scoped symbol search. Returns ranked SymbolNodes matching the given concern and optional keywords.",
+		Description: "Concern-scoped symbol search. Returns ranked SymbolNodes matching the given concern and optional keywords. Reach for it when you have a topic rather than a name: the concern scopes the index to what is relevant and returns the ranked slice (ADR-006 — the concern is this engine's parameter, not every tool's). Required: service, concern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -112,7 +112,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find all symbols that call the named symbol in the given service.",
+		Description: "Find every symbol that calls the named symbol in one service, each row labeled with depth (direct caller = 1) and edge_confidence (resolved = confirmed by the typed pass, heuristic = syntax-only), plus a by_depth summary; pass depth > 1 to also list transitive_callers. Reach for it when you need who-calls-this before changing a signature or behaviour. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -123,6 +123,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				"symbol": map[string]any{
 					"type":        "string",
 					"description": "Symbol name (bare or fully-qualified)",
+				},
+				"depth": map[string]any{
+					"type":        "integer",
+					"description": "Reverse-graph depth to walk (default 1 = direct callers only). Values above 1 add transitive_callers (depth 2..N) and extend by_depth; 0 = unbounded.",
 				},
 			},
 			"required": []string{"service", "symbol"},
@@ -135,6 +139,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		var p struct {
 			Service string `json:"service"`
 			Symbol  string `json:"symbol"`
+			Depth   *int   `json:"depth"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callers: invalid args"}
@@ -145,11 +150,51 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if p.Symbol == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callers: symbol required"}
 		}
+		maxDepth := 1
+		if p.Depth != nil && *p.Depth >= 0 {
+			maxDepth = *p.Depth
+		}
 		nodes, err := backend.FindCallers(ctx, p.Service, p.Symbol)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		result := map[string]any{"callers": toNodeDTOs(nodes)}
+
+		// BD-2 (docs/plans/blast-depth.md): depth + edge_confidence per row
+		// and a by_depth summary, read from the reverse call graph (syntax
+		// edges plus the typed pass's edges). The graph is best-effort — a
+		// backend that cannot list symbols leaves every direct caller at
+		// depth 1 / heuristic, which is exactly what the syntax engine's
+		// FindCallers proves on its own.
+		g := callerGraph(ctx, backend, p.Service)
+		var depths map[string]depthInfo
+		if g != nil {
+			depths = callerDepths(g, p.Symbol, maxDepth)
+		}
+		callers := toNodeDTOs(nodes)
+		infos := make([]depthInfo, 0, len(callers))
+		listed := make(map[string]bool, len(callers))
+		for i, n := range nodes {
+			info := depthInfo{Depth: 1, Confidence: core.EdgeConfidenceHeuristic}
+			if d, ok := depths[n.Key()]; ok && d.Depth == 1 {
+				info = d
+			}
+			callers[i].Depth = info.Depth
+			callers[i].EdgeConfidence = string(info.Confidence)
+			infos = append(infos, info)
+			listed[n.Key()] = true
+		}
+		result := map[string]any{"callers": callers}
+		if maxDepth != 1 {
+			transitive := map[string]depthInfo{}
+			for k, d := range depths {
+				if d.Depth > 1 || (d.Depth == 1 && !listed[k]) {
+					transitive[k] = d
+					infos = append(infos, d)
+				}
+			}
+			result["transitive_callers"] = sortedDepthRows(transitive)
+		}
+		result["by_depth"] = withDepthBuckets(infos)
 
 		// Typed Go call edges (ADR-021 §3): kind-labeled callers, including
 		// any reachable ONLY via typed dispatch — never visible in the
@@ -157,7 +202,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// receivers, graph.go:218-240, has no Calls entry at all). Additive
 		// and best-effort: a non-Go service, or one with no typed edges yet,
 		// simply omits this field.
-		if typedCallers := typedCallersFor(ctx, backend, p.Service, p.Symbol); len(typedCallers) > 0 {
+		if typedCallers := typedCallersFor(g, p.Symbol); len(typedCallers) > 0 {
 			result["typed_callers"] = typedCallers
 		}
 
@@ -183,7 +228,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -314,6 +359,13 @@ type symbolNodeDTO struct {
 	EndLine   int    `json:"end_line,omitempty"`
 	Signature string `json:"signature,omitempty"`
 	Tier      string `json:"tier,omitempty"`
+	// Depth and EdgeConfidence (BD-2, docs/plans/blast-depth.md) are set
+	// only on find_callers rows: the caller's reverse-graph distance from
+	// the queried symbol (direct caller = 1) and whether the edge that
+	// reached it was confirmed by the typed pass ("resolved") or is
+	// syntax-only ("heuristic"). Omitted on every other tool's node rows.
+	Depth          int    `json:"depth,omitempty"`
+	EdgeConfidence string `json:"edge_confidence,omitempty"`
 }
 
 // symbolQueryResult is the top-level payload for query_symbols.
@@ -343,23 +395,32 @@ func toNodeDTOs(nodes []core.SymbolNode) []symbolNodeDTO {
 	return dtos
 }
 
-// typedCallersFor returns symbol's typed-edge callers (ADR-021 §3), each
-// kind-labeled ("direct" or "iface-dispatch"), as JSON-ready maps —
-// syntax-only edges (Kind == "") are excluded, since those are already
-// covered by the caller's own syntax-based result. Best-effort: any error
-// (unsupported backend, no typed edges yet) yields an empty/nil result, not
-// a tool-level error.
-func typedCallersFor(ctx context.Context, backend QueryInterface, service, symbol string) []any {
-	typed, err := backend.TypedEdges(ctx, service)
-	if err != nil || len(typed) == 0 {
-		return nil
-	}
+// callerGraph builds the service's reverse-walkable call graph — syntax
+// edges from every indexed symbol plus the typed pass's edges (ADR-021 §3)
+// — for find_callers' depth/confidence annotation and typed_callers.
+// Best-effort: a backend that cannot list symbols (or lists none) yields
+// nil, and the caller degrades to the syntax engine's own direct callers.
+func callerGraph(ctx context.Context, backend QueryInterface, service string) *callgraph.Graph {
 	nodes, err := backend.ListAllSymbols(ctx, service)
 	if err != nil || len(nodes) == 0 {
 		return nil
 	}
 	g := callgraph.Build(nodes)
-	callgraph.AddTypedEdges(g, typed)
+	if typed, tErr := backend.TypedEdges(ctx, service); tErr == nil && len(typed) > 0 {
+		callgraph.AddTypedEdges(g, typed)
+	}
+	return g
+}
+
+// typedCallersFor returns symbol's typed-edge callers (ADR-021 §3), each
+// kind-labeled ("direct" or "iface-dispatch"), as JSON-ready maps —
+// syntax-only edges (Kind == "") are excluded, since those are already
+// covered by the caller's own syntax-based result. Best-effort: a nil graph
+// (unsupported backend, no symbols) yields nil, not a tool-level error.
+func typedCallersFor(g *callgraph.Graph, symbol string) []any {
+	if g == nil {
+		return nil
+	}
 	details := callgraph.CallersDetail(g, symbol)
 	var out []any
 	for _, d := range details {

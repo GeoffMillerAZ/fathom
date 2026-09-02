@@ -54,7 +54,7 @@ func registerMeta(s *Server, backend QueryInterface) {
 func registerCapabilities(s *Server) {
 	s.registerTool(toolDescriptor{
 		Name:        "capabilities",
-		Description: "List the tools visible on this request's surface and the active surface/profile.",
+		Description: "List the tools visible on this request's surface, the active surface/profile, the extraction engines behind the index, and schema_bytes — the serialised size of this surface's tools/list, the context every session pays before its first call. Reach for it when you need to know what this endpoint serves (or how much it costs) before choosing a tool. Required: none.",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},
@@ -72,6 +72,7 @@ func registerCapabilities(s *Server) {
 			"active_profile":     s.activeProfile(),
 			"tool_count":         len(descs),
 			"extraction_engines": extractor.EngineProvenance(),
+			"schema_bytes":       s.toolsListBytes(ctx),
 		}, nil
 	})
 }
@@ -176,7 +177,7 @@ func registerServerStats(s *Server) {
 func registerStalenessReport(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "staleness_report",
-		Description: "Return a staleness summary for a service (source files, last-ingested state, and git commit drift).",
+		Description: "Return a staleness summary for a service (source files, last-ingested state, and git commit drift). Reach for it when an answer looks wrong for the code you are looking at: it says whether the index lags the working tree and whether to re-ingest. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

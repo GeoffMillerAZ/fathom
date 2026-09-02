@@ -45,7 +45,7 @@ func registerPlatformTools(s *Server, backend QueryInterface, fleet FleetBackend
 func registerListServices(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "list_services",
-		Description: "List all services in the fleet with metadata: detected languages, symbol counts, and each service's recorded corpus path (the authoritative repo↔service mapping).",
+		Description: "List all services in the fleet with metadata: detected languages, symbol counts, and each service's recorded corpus path (the authoritative repo↔service mapping). Reach for it when you need to know which repos this daemon indexes, or the exact service id to pass every other tool. Required: none.",
 		InputSchema: map[string]any{
 			"type":       "object",
 			"properties": map[string]any{},

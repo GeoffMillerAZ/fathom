@@ -97,7 +97,7 @@ The transport is selected by which keys are present: `command` means stdio,
 
 ### Option A — stdio (`serve-mcp`), guaranteed-compatible
 
-The safest bet if you haven't verified HTTP negotiation (below). Same
+The single-session pattern; HTTP (Option B) is the shared one. Same
 single-writer-lock caveat as the Claude Code stdio path applies: one
 `serve-mcp` process per concurrent Codex session will race for the store
 lock, so this is a single-session pattern.
@@ -139,15 +139,18 @@ build) is at `/rpc` if you want everything. Off-surface calls still
 execute and are only flagged in the call log — surfaces are never a
 security boundary.
 
-**This path is unverified on this machine.** Claude Code's own `--transport
-http` client is confirmed working against fathom's `/rpc` endpoint (it's the
-dogfooded path), but that doesn't guarantee Codex's streamable-HTTP MCP
-client negotiates the same way — the official MCP streamable-HTTP transport
-has session-header and SSE-fallback semantics that fathom's `serve-http`
-implements as plain `POST /rpc` (JSON-RPC) + `GET /events` (SSE), not
-necessarily byte-for-byte the negotiation Codex's client expects. **Test it**
-(`codex mcp list`, then a real tool call) before relying on it; if it
-doesn't connect cleanly, fall back to Option A.
+**What is proven.** fathom's `/rpc/agent` negotiates with a Streamable-HTTP
+MCP client fathom did not write (agentic-kit's `mcp-client`, 2025-11-25
+stateless mode): initialize → tools/list → tools/call succeed end to end
+under `httptest` — `TestServeHTTPNegotiatesWithKitClient` in `cmd/fathom`
+runs on every `task validate`, and its failure text is this sentence.
+`initialize` echoes any of `2025-11-25`, `2025-06-18`, `2025-03-26`,
+`2024-11-05` and answers `2025-11-25` otherwise; the `MCP-Protocol-Version`
+header is tolerated on every request. What is NOT implemented: SSE streaming
+responses, `Mcp-Session-Id` resumability, and the 2026-07-28 modern era
+(`server/discover`, per-request `_meta`) — a client that requires any of
+those falls back to Option A. Confirm your Codex build the usual way
+(`codex mcp list`, then a real tool call).
 
 ---
 
@@ -281,7 +284,7 @@ Codex-specific to configure.
 | Channel | Claude Code | Codex |
 |---|---|---|
 | MCP tool access (stdio or HTTP) | Yes | Yes |
-| Curated 17-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
+| Curated 17-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL — negotiation with a third-party Streamable-HTTP client is proven by `TestServeHTTPNegotiatesWithKitClient` (§2); stdio `serve-mcp` always works |
 | SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No hook.** Run `fathom prime` yourself at session start — it prints the identical primer (§5) |
 | PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean; plus the anchored-memory block for the edited file (*experimental*) | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool, and memories via `memory_search` (*experimental*) |
 | PreToolUse guarded-edit injection (`edit-hook --pre`, phase O) | Yes — `.fathom/guard.cue`-configured scopes/commands get rules injected BEFORE the edit/command runs, silent-by-default (local glob check, zero daemon calls on a miss) | **No equivalent.** Codex has no PreToolUse hook mechanism; a bound module's rules still reach Codex via `obligations`/`pack_context`, just not pre-edit |

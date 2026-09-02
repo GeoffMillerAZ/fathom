@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
@@ -34,7 +35,7 @@ type reviewClaimsBackend interface {
 func registerReviewDiff(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "review_diff",
-		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage into ONE cited verdict for a set of changed files. Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured). WRITES TO THE CLAIMS STORE when the backend supports persistence (findings_persisted reports it): arch_conformance and spec_coverage findings — the deterministic-oracle dimensions only, never obligations (which re-serves existing claims) or impact context — are persisted as content-addressed claims on the \"findings\" layer with hashed citation + scope-fingerprint anchors, and review-minted claims whose finding this run no longer emits are superseded (absent = fixed). A finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, still listed) across every later re-review that re-emits the identical finding. For a report-only run without the store write, use the CLI mirror: fathom review --since <ref> --no-persist.",
+		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage into ONE cited verdict for a set of changed files, plus test_impact: affected_tests (the Test* functions that statically reach a changed symbol, with file:line) and test_gap (changed symbols no test reaches). Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured). WRITES TO THE CLAIMS STORE when the backend supports persistence (findings_persisted reports it): arch_conformance and spec_coverage findings — the deterministic-oracle dimensions only, never obligations (which re-serves existing claims) or impact context — are persisted as content-addressed claims on the \"findings\" layer with hashed citation + scope-fingerprint anchors, and review-minted claims whose finding this run no longer emits are superseded (absent = fixed). A finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, still listed) across every later re-review that re-emits the identical finding. For a report-only run without the store write, use the CLI mirror: fathom review --since <ref> --no-persist.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -75,8 +76,23 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		if vo := reviewVerdictOutcome(v, resolutions); vo != nil {
 			payload["verdict_outcome"] = vo
 		}
+		payload["test_impact"] = reviewTestGap(in).Payload()
 		return payload, nil
 	})
+}
+
+// reviewTestGap composes review_diff's `test_impact` block (BD-4, docs/
+// plans/blast-depth.md) from the same inputs the impact dimension already
+// resolved — nodes, typed edges, changed files — via impact.TestGap: the
+// Test* functions that statically reach a changed symbol (affected_tests,
+// with file:line citations and which symbols each reaches) and the changed
+// symbols no test reaches (test_gap). It is the test_impact tool's own
+// graph walk (callgraph.TestImpactDetail) run once per changed symbol, so
+// review_diff names the tests to run and the unprotected code in the same
+// verdict instead of sending the agent back for N test_impact calls.
+// Additive: every existing payload field is unchanged (law 4).
+func reviewTestGap(in review.Input) impact.TestGapResult {
+	return impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
 }
 
 // reviewVerdictOutcome computes review_diff's gate-shaped result summary

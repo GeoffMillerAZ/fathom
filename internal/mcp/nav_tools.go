@@ -88,7 +88,7 @@ const symbolContextSnippetMaxLines = 40
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload).",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload). Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -241,7 +241,7 @@ func kindLabeledEdges(details []callgraph.EdgeInfo) []any {
 func registerOutline(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "outline",
-		Description: "List all symbols defined in a specific file, ordered by line number.",
+		Description: "List all symbols defined in a specific file, ordered by line number. Reach for it when you need a file's structure — every definition with its line — without reading the whole file. Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -282,7 +282,7 @@ func registerOutline(s *Server, backend QueryInterface) {
 func registerEntrypoints(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "entrypoints",
-		Description: "Return the likely program entrypoints in the service: main functions, HTTP handlers, and CLI root commands.",
+		Description: "Return the likely program entrypoints in the service: main functions, HTTP handlers, and CLI root commands. Reach for it when you are orienting in an unfamiliar service and need where execution starts before tracing inward. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

@@ -155,4 +155,4 @@ After ingest, verify the `Package` column and `Calls` edges are present by check
 
 ## Maintained
 
-This doc covers: `find_callers`, `test_impact`, `blast_radius`, `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `cross_repo_blast_radius`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
+This doc covers: `find_callers` (incl. `depth`, `edge_confidence`, `by_depth`, `transitive_callers`), `test_impact`, `blast_radius` (incl. `by_depth`), `diff_impact`, `rename_impact`, `reachable`, `cross_repo_callers`, `cross_repo_blast_radius`, `references`, `list_services`, `staleness_report`, `ingest`, `fathom platform-callers`. Update it when these change.
