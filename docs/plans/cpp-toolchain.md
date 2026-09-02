@@ -35,7 +35,7 @@
 
 ## D — Calibration (the honesty gate)
 
-- [x] calibrated against a real CMake plus C++ corpus (fmt): C++ classes inside .h headers present post-CT-3, CMake targets and link edges present, symbol and edge counts recorded; the throwaway service is removed from the registry after {id: CT-10, skip_test: true, skip: "live-run transcript recorded in the CHANGELOG and below; run against an isolated scratch store so the fleet registry was never touched"}
+- [x] calibrated against a real CMake plus C++ corpus (fmt): C++ classes inside .h headers present post-CT-3, CMake targets and link edges present, symbol and edge counts recorded; the throwaway service is removed from the registry after {id: CT-10, oracle: lexical, path: CHANGELOG.md, pattern: "calibrated live against fmtlib/fmt: 5,470 symbols"}
 
 ## E — Deferred with triggers
 

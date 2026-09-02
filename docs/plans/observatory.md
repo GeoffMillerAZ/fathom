@@ -10,7 +10,7 @@
 
 - [x] BuildObservatoryModel folds registry, fleet rows, ledger, arm/narrate state and observations into one value; a dead daemon or absent instrument degrades to named reasons, never zeros {id: OB-1, symbol: buildObservatoryModel, package: cmd/fathom, reachable_from: TestBuildObservatoryModel_DegradedIsNamed}
 - [x] the absence primitive: every rendered metric is value-or-named-reason; rendering a nil metric fabricates nothing {id: OB-2, symbol: metricCell, package: cmd/fathom, reachable_from: TestMetricCell_AbsenceNamed}
-- [x] viz comes from the kit (owner redirect 2026-08-08, D13): appkit/ui/viz Sparkline and Gauge render trends and shares; the hand-rolled SVG primitives were deleted the same day they were written {id: OB-3, skip_test: true, skip: "adoption row - the kit's own suites pin Sparkline/Gauge; TestObservatoryFleetPage and TestObservatoryServicePage anchor their use here"}
+- [x] viz comes from the kit (owner redirect 2026-08-08, D13): appkit/ui/viz Sparkline and Gauge render trends and shares; the hand-rolled SVG primitives were deleted the same day they were written {id: OB-3, symbol: TestObservatoryServicePage, package: cmd/fathom, skip_test: true, skip: "adoption row - the kit's own suites pin Sparkline/Gauge; the anchored render test exercises their use here (a Test* is not reached by a test)"}
 
 ## B — The screens
 
@@ -21,12 +21,12 @@
 ## C — The verb and the docs
 
 - [x] fathom brief writes a dated local markdown value brief from the same impact model: real numbers with denominators, version stamps, and an explicit not-measured section; refuses nothing silently {id: OB-7, symbol: cmdBrief, package: cmd/fathom, reachable_from: TestCmdBrief_HonestSections}
-- [x] usage docs and the fathom-impact skill point at the observatory and the brief {id: OB-8, skip_test: true, skip: "docs-only row: docs/usage.md and dist/skills/fathom-impact updated in the same commit; the smoke tests anchor the routes"}
+- [x] usage docs and the fathom-impact skill point at the observatory and the brief {id: OB-8, oracle: lexical, path: docs/usage.md, pattern: "/observatory/brief"}
 
 ## C2 — Owner asks landed mid-flight (2026-08-08)
 
 - [x] GET / is a landing page: every browsable and machine surface linked from the root; unknown paths still 404 {id: OB-11, symbol: landingHandler, package: cmd/fathom, reachable_from: TestLandingPage}
-- [x] the observatory is an app-kit app end to end: dashboard/stat/viz components, kit tokens via task ui:css (pinned binary, no Node), the UI doctrine in CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, the ui-appkit dialect pack installed, and the honest-absence tile promoted UP into the kit as stat.Absent {id: OB-12, skip_test: true, skip: "wiring row - proven by the committed input.css/@source chain, the guard file, the installed layer dir, and app-kit commit af47262; the render tests anchor the components"}
+- [x] the observatory is an app-kit app end to end: dashboard/stat/viz components, kit tokens via task ui:css (pinned binary, no Node), the UI doctrine in CLAUDE.md and AGENTS.md, UI guards in .fathom/guard.cue, the ui-appkit dialect pack installed, and the honest-absence tile promoted UP into the kit as stat.Absent {id: OB-12, symbol: TestObservatoryServicePage, package: cmd/fathom, skip_test: true, skip: "wiring row - the committed input.css/@source chain, the guard file, the installed layer dir, and app-kit commit af47262; the anchored render test exercises the kit components (a Test* is not reached by a test)"}
 
 ## C3 — The brief reads as a story (owner ask, 2026-08-08)
 

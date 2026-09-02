@@ -7,7 +7,7 @@
 
 ## Phase CC — config custodian v1 (mechanical, index-free, offline-safe)
 
-- [x] CC-0 Vision 22 §3b + vision 23 + design doc landed and linked from the vision README {id: CC-0, skip_test: true, skip: "doc deliverables — acceptance is the three files in docs/vision + docs/design and the README row, reviewed in this plan's commit"}
+- [x] CC-0 Vision 22 §3b + vision 23 + design doc landed and linked from the vision README {id: CC-0, oracle: lexical, path: docs/vision/README.md, pattern: "\[22-config-custodian\.md\].*the config custodian"}
 - [x] CC-1 Concern model + CUE loader: three-state load, `?:` refusal, unknown-field refusal, unknown check KINDS refused by name with the accepted list {id: CC-1, symbol: LoadFile, package: internal/custodian}
 - [x] CC-2 Law-13 scoping: project replaces same-ID user concern wholesale; `off: true` disables an inherited concern and the audit still names it {id: CC-2, symbol: Merge, package: internal/custodian}
 - [x] CC-3 Audit engine over agent-config files (git-authority discovery, walk fallback) with per-concern holds/violated/unable and `file:line` evidence {id: CC-3, symbol: Audit, package: internal/custodian}
@@ -26,8 +26,8 @@
 
 ## Phase DP — the doctrine plane (vision 23; spec-first, no code before its design doc)
 
-- [x] DP-1 Doctrine catalog design doc: one CUE catalog, entries declaring their enforcement surface(s) (obligation | concern | conformance); laws + runbooks as entries; ENGINEERING_PRACTICES.md as render/audited view, never parallel truth {id: DP-1, skip_test: true, skip: "design doc — acceptance is docs/design/doctrine-catalog.md reviewed against vision 23 §2"}
-- [ ] DP-2 ADR assertions: accepted ADRs may carry machine-checkable claims; `fathom adr audit` reports decided-but-violated with evidence; assertion-refusal rate measured (vision 23 §6 falsification) {id: DP-2}
+- [x] DP-1 Doctrine catalog design doc: one CUE catalog, entries declaring their enforcement surface(s) (obligation | concern | conformance); laws + runbooks as entries; ENGINEERING_PRACTICES.md as render/audited view, never parallel truth {id: DP-1, oracle: lexical, path: docs/design/doctrine-catalog.md, pattern: "enforcement surface"}
+- [-] DP-2 ADR assertions: accepted ADRs may carry machine-checkable claims; `fathom adr audit` reports decided-but-violated with evidence; assertion-refusal rate measured (vision 23 §6 falsification) {id: DP-2, disposition: refused, reason: "superseded by EP-9 (evidence-plane.md): fathom intent audit over ADR revisit trailers IS the adr audit (ADR-026); a second verb would be the O4 drift; revive only for an ADR assertion the intent audit's oracle vocabulary cannot express"}
 - [ ] DP-3 Vision promotion pipeline, computed: every vision names status/trigger or plan rows; links resolve; staleness dated; surfaced per vision {id: DP-3}
 - [ ] DP-4 Goals as pre-registered bets only: instrument + threshold + review date or refused at load; existing bets (arm bench, thread bet) enumerated by the same surface {id: DP-4}
 
