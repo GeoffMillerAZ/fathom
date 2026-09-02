@@ -1253,7 +1253,8 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL:   or stdio fallback (guaranteed-compatible, single Codex session):")
 	fmt.Fprintln(stdout, "MANUAL:     codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite")
 	printGateAndConfigManualSteps(stdout, service)
-	fmt.Fprintln(stdout, "MANUAL: Codex has no PreToolUse hook mechanism — guard.cue's pre-edit channel is Claude-Code-only;")
+	fmt.Fprintln(stdout, "MANUAL: Codex hooks are wired by `fathom init --harness=codex` (guard.cue's pre-edit channel included);")
+	fmt.Fprintln(stdout, "MANUAL: unverified on this machine until a Codex session writes beats —")
 	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
 }
 
