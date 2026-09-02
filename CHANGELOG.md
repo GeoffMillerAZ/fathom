@@ -26,9 +26,19 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are
   deliberately absent from `validate`, hooks, and CI.
-- **`docs/bench/ledger.jsonl`** is the committed per-run bench history, one
-  line per run; `task bench-ledger` re-renders `docs/bench/README.md` from it
+- **`docs/bench/ledger.jsonl`** is the per-run bench history, one line per
+  run, created by the first run and appended never rewritten; it holds one
+  backfilled n=1 row (the 2026-07-24 second swing, indeterminate under the
+  floor) and `task bench-ledger` re-renders `docs/bench/README.md` from it
   for free. Raw transcripts stay under `workspace/artifacts/`.
+- **The home corpus is true at HEAD again** (`truth_at_head_revision`): the
+  moved workspace rule, the inverted ADR-010 staleness verdict, three moved
+  premises and the bare `29` token are re-derived, and every ground-truth
+  token now carries a `truth_at_head` anchor that `TestHomeCorpusTruthAtHead`
+  re-checks in `task validate`, so corpus drift fails the gate.
+- **Ledger rows carry `per_task`, `corpus_sha256`, `model_id`, `cost_usd`,
+  `dirty_tree`, `cells_lost`, `leaked_tasks`** — additive; older rows parse
+  and read as not-recorded.
 - **`contextbenchscore ledger`** pairs the arms, evaluates the corpus's
   `machine_criterion`, and exits 0 pass / 1 fail / 3 indeterminate. A run
   where a task ran in only one arm, or where the thinnest cell fell below the

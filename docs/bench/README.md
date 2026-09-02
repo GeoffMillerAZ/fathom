@@ -70,20 +70,29 @@ before LLM spend).
 
 <!-- BEGIN ledger table (task bench-ledger) -->
 
-_No runs recorded yet. `task bench-home` produces the first row (it spends real tokens)._
+| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | verdict | why |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
 
 <!-- END ledger table -->
 
 ### History before the ledger
 
-The ledger begins 2026-09-01. Two earlier runs are recorded in their plans
-rather than here, and both were **n=1 per cell** — indeterminate under the
-replication floor registered on 2026-09-01, though their verdicts stand as
-accurate history of the instrument that produced them:
+The ledger begins 2026-09-01. Two earlier runs predate it, and both were
+**n=1 per cell** — indeterminate under the replication floor registered on
+2026-09-01, though their verdicts stand as accurate history of the
+instrument that produced them:
 
 - **2026-07-24, home corpus, 14-tool surface** — `docs/plans/home-bench.md`
   H3-1. Honest negative: success 12/13 vs 12/13 (equal, not strictly
-  greater) at 1.071× tokens. Both halves of the criterion missed.
+  greater) at 1.071× tokens. Both halves of the criterion missed. Not in
+  the ledger: the later run on the same day superseded it.
 - **2026-07-24, home corpus, 16-tool surface with `read_source`** —
   `docs/plans/trust-and-tokenomics.md` T5-8. Same untouched criterion:
-  success 13/13 vs 11/13 at 0.570×. Both halves met.
+  success 13/13 vs 11/13 at 0.570×. Both halves met at the time. This is
+  the ledger's one **backfilled** row (`contextbenchscore backfill`,
+  PB-2): its numbers come from the plan record because the run's artifacts
+  survive in no checkout, it is evaluated under today's criterion (so it
+  reads `indeterminate`, n=1), and it carries no per-task data and no
+  corpus hash — nothing can pair a regression check against it. The
+  median column shows `n/r` (not recorded) for the same reason.

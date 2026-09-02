@@ -55,10 +55,51 @@ func run(args []string) int {
 		return cmdReport(args[1:])
 	case "ledger":
 		return cmdLedger(args[1:])
+	case "backfill":
+		return cmdBackfill(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score, report, or ledger)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score, report, ledger, or backfill)\n", args[0])
 		return 2
 	}
+}
+
+// cmdBackfill appends one row for a run that predates the ledger, from the
+// numbers its plan recorded (PB-2). The row is evaluated under the corpus's
+// CURRENT criterion — an n=1 run reads indeterminate under the replication
+// floor — and -notes must say it was backfilled. Exit 0 on append; the
+// verdict is not the exit code here because a backfill is a record, not a
+// measurement being gated.
+func cmdBackfill(args []string) int {
+	fs := flag.NewFlagSet("backfill", flag.ContinueOnError)
+	tasksPath := fs.String("tasks", "", "path to the corpus JSON (carries the committed machine_criterion)")
+	ledgerPath := fs.String("ledger", "docs/bench/ledger.jsonl", "path to the committed JSONL bench ledger")
+	runID := fs.String("run-id", "", "run identifier (the original run's timestamp)")
+	commit := fs.String("commit", "", "repo HEAD the run measured")
+	model := fs.String("model", "", "model both arms ran on")
+	tasks := fs.Int("task-count", 0, "paired task count")
+	tSucc := fs.Int("treatment-successes", 0, "treatment successes (n=1: one per task at most)")
+	cSucc := fs.Int("control-successes", 0, "control successes")
+	ratio := fs.Float64("aggregate-token-ratio", 0, "treatment/control aggregate token ratio as recorded")
+	notes := fs.String("notes", "", "must contain the word 'backfilled' and name the record it came from")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *tasksPath == "" || *runID == "" || *commit == "" || *tasks <= 0 || !strings.Contains(*notes, "backfilled") {
+		fmt.Fprintln(os.Stderr, "backfill: -tasks, -run-id, -commit, -task-count > 0, and -notes containing 'backfilled' are all required")
+		return 2
+	}
+	criterion, err := contextbench.LoadCriterion(*tasksPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "backfill: %v\n", err)
+		return 2
+	}
+	row := contextbench.BackfillLedgerRow(criterion, *runID, time.Now().UTC().Format(time.RFC3339), *commit, *tasksPath, *model, *tasks, *tSucc, *cSucc, *ratio, *notes)
+	if err := contextbench.AppendLedger(*ledgerPath, row); err != nil {
+		fmt.Fprintf(os.Stderr, "backfill: %v\n", err)
+		return 2
+	}
+	fmt.Printf("%s [%s] %s: %s\n  appended to %s\n", strings.ToUpper(string(row.Evaluation.Verdict)), criterion.ID, *runID, row.Evaluation.Reason, *ledgerPath)
+	return 0
 }
 
 func cmdScore(args []string) int {

@@ -1060,8 +1060,9 @@ at a 35% similarity threshold.
 **Consequences.** `docs/plans/bench-confidence.md` shipped in the same change:
 per-trial repetition, paired per-task statistics, a machine-evaluable
 criterion read from the committed corpus, a tri-state verdict where an
-incomplete run is `indeterminate` rather than a win, and a committed
-`docs/bench/ledger.jsonl`. The assessment's honest finding was that fathom's
+incomplete run is `indeterminate` rather than a win, and a JSONL ledger at
+`docs/bench/ledger.jsonl` — created by the first run; as of 2026-09-02 it
+holds one backfilled n=1 row (PB-2), no replicated row yet. The assessment's honest finding was that fathom's
 benchmark *method* already exceeds the compared project's — pre-registration,
 a published negative verdict, hand-verified ground truth — while its
 *credibility* lagged on three counts fixed or named here: n=1 (fixed, floor
