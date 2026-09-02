@@ -74,6 +74,7 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", "", "project root to union with embedded packs (default: current directory)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (optional — adds compiled-claims counts)")
 	service := fs.String("service", "", "service ID (required with --store, for claims counts)")
+	jsonOut := fs.Bool("json", false, "emit the catalog as JSON (docs/usage.md §layers)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -108,6 +109,9 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if *jsonOut { // RP-17: layers_json.go
+		return jsonExit(renderLayersListJSON(stdout, r, infos, claimCounts, lastCompile), stderr)
+	}
 	fmt.Fprintf(stdout, "root: %s\n\n", r)
 	if len(infos) == 0 {
 		fmt.Fprintln(stdout, "(no layers found)")

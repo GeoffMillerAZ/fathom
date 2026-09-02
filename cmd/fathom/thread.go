@@ -460,12 +460,17 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 	all := fs.Bool("all", false, "everything: closed and dormant items, and every repo's")
 	allRepos := fs.Bool("all-repos", false, "open items from every repo, not only this one")
 	repo := fs.String("repo", ".", "repository (scope, and condition checks)")
+	jsonOut := fs.Bool("json", false, "emit the listed items as JSON (docs/usage.md §thread)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	root, _ := filepath.Abs(*repo)
 	items := evaluateThreadConditions(loadThreadItems(threadsPath()), root, time.Now())
+	listJSON := threadListJSON{Kind: "list", Items: []threadListItemJSON{}} // RP-16: thread_json.go
 	if len(items) == 0 {
+		if *jsonOut {
+			return jsonExit(renderThreadJSON(stdout, listJSON), stderr)
+		}
 		fmt.Fprintln(stdout, "no thread items — `fathom thread note` files one; hooks deposit mechanically at /clear and compaction")
 		return 0
 	}
@@ -503,14 +508,31 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 		if sid := it.Pointers["session_id"]; sid != "" {
 			ptr = "  ↪ session " + sid[:min(8, len(sid))]
 		}
-		fmt.Fprintf(stdout, "  %-10s %-9s [%s] %-16s %s%s%s\n", it.ID, status, it.Kind, it.Thread, it.Text, where, ptr)
+		if *jsonOut {
+			listJSON.Items = append(listJSON.Items, threadListItemOf(it, status))
+		} else {
+			fmt.Fprintf(stdout, "  %-10s %-9s [%s] %-16s %s%s%s\n", it.ID, status, it.Kind, it.Thread, it.Text, where, ptr)
+		}
 		shown++
+	}
+	if *jsonOut {
+		listJSON.HiddenOtherRepos = hidden
+		return jsonExit(renderThreadJSON(stdout, listJSON), stderr)
 	}
 	if shown == 0 {
 		fmt.Fprintln(stdout, "nothing open here — closed and dormant items with --all")
 	}
 	if hidden > 0 {
 		fmt.Fprintf(stdout, "  %d open item(s) in other repos — fathom thread list --all-repos\n", hidden)
+	}
+	return 0
+}
+
+// jsonExit maps an encoder error to an exit code, naming it on stderr.
+func jsonExit(err error, stderr io.Writer) int {
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
 	}
 	return 0
 }
@@ -626,14 +648,21 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 	source := fs.String("source", "startup", "session start source: startup|clear|resume|compact|fork")
 	repo := fs.String("repo", ".", "repository (scope, and derived in-flight state)")
 	allRepos := fs.Bool("all-repos", false, "ride other repos' open items along instead of counting them")
+	jsonOut := fs.Bool("json", false, "emit the brief as JSON: source, budget_bytes, bytes, text (docs/usage.md §thread)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	if *source == "resume" || *source == "compact" {
+		if *jsonOut { // RP-16: thread_json.go — an empty brief is still an envelope
+			return jsonExit(renderThreadJSON(stdout, threadBriefJSON{Kind: "brief", Source: *source, BudgetBytes: *budget}), stderr)
+		}
 		return 0 // context survives; say nothing
 	}
 	root, _ := filepath.Abs(*repo)
 	out := renderThreadBriefScoped(loadThreadItems(threadsPath()), threadScopeFor(root), root, *budget, time.Now(), *allRepos)
+	if *jsonOut {
+		return jsonExit(renderThreadJSON(stdout, threadBriefJSON{Kind: "brief", Source: *source, BudgetBytes: *budget, Bytes: len(out), Text: out}), stderr)
+	}
 	fmt.Fprint(stdout, out)
 	return 0
 }

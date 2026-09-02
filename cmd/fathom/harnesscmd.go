@@ -18,7 +18,7 @@ import (
 
 func cmdHarness(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json]")
+		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json]")
 		return 1
 	}
 	switch args[0] {
@@ -26,10 +26,36 @@ func cmdHarness(args []string, stdout, stderr io.Writer) int {
 		return cmdHarnessList(args[1:], stdout, stderr)
 	case "capabilities":
 		return cmdHarnessCapabilities(args[1:], stdout, stderr)
+	case "matrix":
+		return cmdHarnessMatrix(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities | matrix)\n", args[0])
 		return 1
 	}
+}
+
+// cmdHarnessMatrix renders the adoption matrix (RP-18) — the table
+// docs/adoption/other-harnesses.md pins between its markers — as Markdown
+// or --json rows.
+func cmdHarnessMatrix(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("harness matrix", stderr)
+	url := fs.String("url", "http://127.0.0.1:7575", "daemon base URL the `mcp add` lines are rendered with")
+	jsonOut := fs.Bool("json", false, "emit the rows as JSON")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	now := time.Now()
+	if *jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(harness.AdoptionRows(*url, now)); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+	fmt.Fprint(stdout, harness.RenderAdoptionMatrix(*url, now))
+	return 0
 }
 
 // cmdHarnessList prints one line per registry descriptor (or the exported
