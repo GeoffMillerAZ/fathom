@@ -330,7 +330,7 @@ HTTP endpoints:
 | `GET` | `/healthz` | Liveness probe — returns `ok` |
 | `GET` | `/events` | SSE stream — sends `hello` event then stays open |
 | `GET` | `/metrics` | Text metrics: `fathom_uptime_seconds`, `fathom_requests_total` |
-| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer — JSON via `Accept: application/json`/`?format=json`, HTML otherwise (`docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
+| `GET` | `/statusz` | Daemon health, per-service index freshness, channel liveness, last compile per layer, and (schema 2) the daemon's own build stamp `binary_commit` / `binary_dirty` / `built_at` — JSON via `Accept: application/json`/`?format=json`, HTML otherwise (`docs/design/observability-surfaces.md` §8 item 6). Gated inside the `/rpc/modules` bearer-token allowlist when `--modules-token-env` is configured; open on the default loopback-only daemon |
 | `POST` | `/reload` | Reload the store (PlatformStore re-scan in platform mode) |
 | `GET` | `/observatory`, `/observatory/service`, `/observatory/impact`, `/observatory/story`, `/observatory/brief`, `/observatory/session`, `/observatory/wiring/` | The observatory (see below); `?format=json` returns the model |
 | `POST` | `/observatory/wiring/preview` · `apply` · `undo` | Law-15 wiring through `internal/wiring`: `preview` returns the plan + `plan_digest`; `apply` requires it (409 if the repo changed since preview) and returns a `receipt_digest`; `undo` requires that digest. All three refuse non-loopback `Host`, cross-origin `Origin`, unknown service ids, and paths that are not registered service roots (`requireLocalMutation`) |
@@ -867,16 +867,22 @@ fathom doctor [--harness claude|codex|auto] [--path <dir>] [--service <id>] [--u
 | `--json` | off | Machine-readable report instead of the human table |
 
 The founding eleven checks: `mcp_registration`, `daemon_reachable`, `binary_fresh` (the running
-binary's own build vs `git rev-parse HEAD` of the checked repo — the local proxy for
-daemon staleness; every pass states the daemon's installed copy is unverified, a dirty
-build surfaces `vcs.modified`, and both linked-worktree caveats — mismatch inside one,
-stamp-poisoning by ones nested under the checkout — are printed only when verified to
-apply), `hooks_installed` (any settings scope: project `settings.json`,
+binary's own build vs `git rev-parse HEAD` of its own source tree — the LOCAL binary only,
+and the row says so; a dirty build surfaces `vcs.modified`, and both linked-worktree
+caveats — mismatch inside one, stamp-poisoning by ones nested under the checkout — are
+printed only when verified to apply), `daemon_fresh` (PC-4: the daemon's `/statusz`
+`binary_commit` against this binary's own stamp — PASS on the same revision, FAIL naming
+both, SKIP with the reason for a daemon that predates `/statusz` schema 2 or an
+unstamped binary; never compared to the repo's HEAD), `hooks_installed` (any settings scope: project `settings.json`,
 `settings.local.json`, or user `~/.claude/settings.json`; when nothing readable wires
 them but the call log shows them firing, the verdict names that contradiction instead
 of a duplicate-installing remedy) / `hooks_firing` (both Claude Code only — Codex
 reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
-(harness-agnostic), `stanza_present`, `skills_installed`, `config_valid`,
+(harness-agnostic), `stanza_present`, `skills_installed`, `wiring_drift` (PC-29: hooks,
+stanza regions, each harness's MCP server entry — argv and env/header NAMES, never values —
+and `fathom:owned` skill files against the digests in `.fathom/owned.json`; PASS at zero
+drift naming any entry without a baseline yet, FAIL naming each drift by kind and path,
+SKIP when a file could not be read), `config_valid`,
 `obligations_served` (service resolved the way the hooks resolve it — every candidate
 identity intersected with the daemon's service list, with a distinct not-indexed
 verdict and drift-flagged rules counted into the reason), `surface_traffic`
@@ -884,7 +890,8 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 `capabilities` (red only when something switched on is failing to deliver), `concerns`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
-`binding_file` / `binding_modules_mounted` / `binding_module_readiness`, `binary_on_path`,
+`binding_file` / `binding_modules_mounted` / `binding_module_readiness` (SKIP names the real
+reason when `list_modules` is not registered: no `--module` store was mounted), `binary_on_path`,
 `channels_env`, `ident_cache_env`, `metrics_tier`, `session_ledger_tokens`, and
 `cpp_toolchain` (CMake repos: `compile_commands.json` present). The stanza check accepts
 both the v1 and the v3 (`sha256:`-digested) begin marker.
@@ -897,7 +904,7 @@ discipline, and the tie-in/latency-budget checks doctor itself doesn't run.
 ### `plans` — computed SDD progress and archival
 
 ```sh
-fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/open/deferred/other-skipped
+fathom plans status  --service <svc> [--plan P]... [--store DB | --url U] [--json]   # per-plan rollup: total/proven/claimed-unproven/measured-stale/open/deferred/other-skipped
 fathom plans next    --service <svc> [--eligible-only] [--free] [--root DIR] [--json] # the ordered work frontier, with {id, symbol, package} anchors
 fathom plans context --service <svc> --row <id> [--budget 4000]                       # render a row's ctx: context pack (elided beyond the byte budget)
 fathom plans lease   --plan P <row-id> [--holder H] [--ttl 2h] [--release] [--root DIR] # TTL advisory lease on a row (.fathom/leases.jsonl)
@@ -907,6 +914,11 @@ fathom plans restore <plan> [--root DIR]                   # bring it back
 ```
 
 State is always derived from the index by the verify engine, never asserted.
+`measured-stale` (PC-5, ADR-027): when the daemon that answered is not this
+binary's build (or, inside the fathom checkout, not HEAD), a claimed row it did
+not prove is a coverage gap in that column — never `claimed-unproven` — and a
+footer names why; `fathom intent audit` and doctor's `unproven_claims` apply
+the same rule to the verify ledger's newest reading per plan.
 `next --eligible-only` hides rows blocked on an unmet `needs:` target (the
 derived `eligible` / `blocked_on` state); `--free` hides rows holding a fresh
 lease. `archive` refuses unless every row id is lexically absorbed into
@@ -1114,7 +1126,7 @@ capture (neither is listed in `fathom help`).
 
 ```sh
 fathom fleet report    [--json | --out ~/.fathom/fleet] [--url U]           # wiring/freshness across every indexed repo
-fathom fleet reconcile [--repo R]... [--apply] [--url U]                     # dry-run by default; --apply: shim repoint + additive template merge + stanza
+fathom fleet reconcile [--repo R]... [--apply [--rebaseline]] [--url U]      # dry-run by default; --apply: shim repoint + additive template merge + stanza + baseline digests
 fathom fleet receipts  [--repo R] [--limit 20] [--json]                      # every write fathom makes in a repo is receipted…
 fathom fleet undo      [--last | <receipt-id>] [--repo R] [--json]           # …and reversible
 ```
@@ -1122,7 +1134,12 @@ fathom fleet undo      [--last | <receipt-id>] [--repo R] [--json]           # �
 `reconcile --apply` writes stanza regions and hooks only through
 `internal/wiring` — the same plan → apply → receipt path as `init`, with the
 same law-15 refusal for a hand-edited tracked region (blocked and named;
-other files still applied). Dry-run distinguishes `stale` from `up to date
+other files still applied). The same ledger (`.fathom/owned.json`) baselines
+each harness descriptor's MCP server entry (argv and env/header NAMES, never
+values) and every `fathom:owned` skill file: dry-run prints a `DRIFT:` line by
+kind and path for a changed entry and never merges it; `--apply` records a
+baseline for entries that have none, and `--apply --rebaseline` re-records a
+drifted one when the change is yours. Dry-run distinguishes `stale` from `up to date
 (will be re-marked with a digest on apply; no prose changes)` for a v1
 region awaiting its digest.
 
