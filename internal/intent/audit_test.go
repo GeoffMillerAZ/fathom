@@ -156,10 +156,12 @@ func TestUnprovenClaimsEachNamedWithRemedy(t *testing.T) {
 		t.Errorf("this repo has VIOLATED invariants; they must be listed: %v", a.ByKind)
 	}
 
-	// `stated` is honest, not debt.
-	if len(a.Unenforced) == 0 {
-		t.Error("this repo has `stated` invariants; they belong in Unenforced")
-	}
+	// `stated` is honest, not debt. The live corpus may have none left
+	// (PC-14 lifted the last two, I19 and I36, to tests on 2026-09-02) —
+	// zero is the state the rung ladder exists to reach, never a failure;
+	// what is pinned is that an unenforced invariant is never ALSO listed
+	// as U3 debt.
+	t.Logf("unenforced (`stated`/`reviewed`) invariants in the live corpus: %d", len(a.Unenforced))
 	for _, inv := range a.Unenforced {
 		for _, cl := range a.Unproven {
 			if cl.Ref == inv.ID && cl.Kind == "U3" {
