@@ -482,6 +482,18 @@ dropped). No memories file, or nothing anchored to the file → nothing
 added; a memory RPC failure emits an `edit-hook/error` beat instead of
 guessing. §8 covers the `fathom memory` verbs that write the file.
 
+**The claim moment rides the same hook** (PC-22, vision 26 §4): when the
+edited file is a depth-1 `docs/plans/*.md` and the edit added at least one
+`[x]` relative to git HEAD, the hook runs the verify engine for that one
+plan (the same daemon path the Stop hook uses) and injects the refusal —
+`⛔ done-means-proven (claim moment): … [PC-9] … — symbol_present: …` — as
+`additionalContext`, ahead of any obligations. Silent on a clean claim, on
+an edit that claims nothing new (zero daemon traffic: the HEAD diff decides
+first), and on any operational failure (I9). Every verify it runs leaves a
+`~/.fathom/verify-ledger.jsonl` row with `origin: claim-moment` (the Stop
+hook's rows say `origin: stop`, `fathom verify`'s say `origin: cli`); the
+`claim-moment` beat channel records seen / clean / refused / error.
+
 ### 7.3 Stop — `stop-hook` (done-means-proven, session granularity)
 
 Fires at session end. Diffs which plan tasks in `docs/plans/*.md` were newly
@@ -710,6 +722,37 @@ outranks deposits in the brief — a note earns its bytes by saying what the
 index cannot. The continuity bet itself is *experimental*: it is being
 collected against a pre-registered criterion (4 of 20 units so far), so
 treat the mechanism as shipped and the benefit as unmeasured.
+
+### 7.8 InstructionsLoaded + ConfigChange — the harness as a witness (vision 26 §4)
+
+Two more silent rows (exit 0 always, nothing on stdout — neither event
+honors a decision, and a `ConfigChange` block would surface **no message
+anywhere**, so fathom never emits one):
+
+| Event | Matcher | Command | Timeout | What it leaves |
+|---|---|---|---|---|
+| `InstructionsLoaded` | none (every `load_reason`) | `fathom session-hook --event instructions-loaded` | 5s | one `instructions-loaded/loaded` beat `{file_path, memory_type, load_reason, session}` — the first *harness-side* evidence the stanza reached a session; `fathom doctor`'s `stanza_loaded` row reads it (PASS when a beat names this repo's `CLAUDE.md`/`AGENTS.md`, SKIP naming the wiring date otherwise — never FAIL) |
+| `ConfigChange` | none (every `source`) | `fathom config audit --hook` | 10s | one `custodian/config-change` beat `{source, file_path, result, violated}` after running the custodian audit on the repo; the next session's attention line carries the violated count |
+
+```json
+{
+  "hooks": {
+    "InstructionsLoaded": [
+      { "hooks": [ { "type": "command", "command": "/abs/path/bin/fathom session-hook --event instructions-loaded", "timeout": 5 } ] }
+    ],
+    "ConfigChange": [
+      { "hooks": [ { "type": "command", "command": "/abs/path/bin/fathom config audit --hook", "timeout": 10 } ] }
+    ]
+  }
+}
+```
+
+Both rows come from the one hook table (`internal/harness`, ADR-029), so
+`fathom init`, `fathom plugin render`, `fathom fleet reconcile` and
+`fathom doctor` all carry them; a repo wired before they existed gains
+exactly these two entries on its next `init`/`reconcile` and loses nothing.
+
+---
 
 ## 8. Per-project `.fathom/`
 
@@ -1148,9 +1191,10 @@ degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 --adoption`, `doctor` (`--harness=claude|codex|auto`, `--json`), `config`
 (incl. `config audit` and the six concern kinds), `capabilities`
 (`list`/`explain`/`set`, the `budgets` block), `memory`
-(`add`/`list`/`review`/`show`), `providers`, `smoke`, `session-hook`,
-`session-end-hook`, `pre-compact-hook`, `edit-hook` (obligations + the
-memory block), `stop-hook`, `thread`
+(`add`/`list`/`review`/`show`), `providers`, `smoke`, `session-hook`
+(incl. `--event instructions-loaded`), `session-end-hook`,
+`pre-compact-hook`, `edit-hook` (obligations + the memory block + the
+claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
 `task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
 the 17-tool agent allowlist (incl. `read_source`, `memory_search`); the

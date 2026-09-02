@@ -22,6 +22,27 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
+- **Claim-moment verify (PC-22).** The PostToolUse `edit-hook` runs the
+  verify engine for a depth-1 `docs/plans/*.md` the moment an edit adds a
+  `[x]` relative to git HEAD and injects the refusal as `additionalContext`;
+  silent on a clean claim, an edit that claims nothing new, or any
+  operational failure. `~/.fathom/verify-ledger.jsonl` rows gain an additive
+  `origin` (`cli` | `stop` | `claim-moment`), and the Stop hook now leaves
+  its own `origin: stop` rows.
+- **`InstructionsLoaded` hook row (PC-23)** → `fathom session-hook --event
+  instructions-loaded`: one silent `instructions-loaded/loaded` beat
+  `{file_path, memory_type, load_reason}` — the first harness-side evidence
+  the stanza reached a session; injects nothing.
+- **`ConfigChange` hook row (PC-24)** → `fathom config audit --hook`: runs
+  the custodian audit on the changed repo and writes one
+  `custodian/config-change` beat, never a block; the next session line
+  carries the violated count.
+- **Doctor `stanza_loaded` (PC-25)** PASSes when an `InstructionsLoaded`
+  beat names this repo's `CLAUDE.md`/`AGENTS.md` and SKIPs (never FAILs)
+  naming the wiring date otherwise. The harness registry gains the
+  `stanza-loaded` and `config-audit` capabilities and the
+  `instructions-loaded` / `config-change` events; `claim-gate` is
+  `hook-inject` on Claude Code.
 - **`contextbenchscore import`** derives the public Go localization corpus
   (`testdata/contextbench/tasks-public-go.json`) from pinned local
   Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) JSONL snapshots with
