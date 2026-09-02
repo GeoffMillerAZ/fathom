@@ -17,8 +17,31 @@
     "require_strictly_more_successes": true,
     "max_token_ratio": 1.0,
     "min_trials": 3,
-    "min_trials_registered": "2026-09-01: a replication floor NOT present in the original H2-1 registration. The 2026-07-24 and T5-8 runs were n=1 per cell and are therefore indeterminate under this criterion, not retroactively invalidated — their recorded verdicts stand as accurate history of an n=1 instrument. The floor binds every run from its registration commit forward."
+    "min_trials_registered": "2026-09-01: a replication floor NOT present in the original H2-1 registration. The 2026-07-24 and T5-8 runs were n=1 per cell and are therefore indeterminate under this criterion, not retroactively invalidated — their recorded verdicts stand as accurate history of an n=1 instrument. The floor binds every run from its registration commit forward.",
+    "leak_rule": {
+      "arm": "none",
+      "min_passes": 2,
+      "of_trials": 3,
+      "registered": "2026-09-02 (PB-9, ADR-031 §3), before any run with a `none` arm. A third arm with every tool disallowed and no MCP servers measures the memorisation floor; a task it passes in >= 2 of 3 trials is `leaked` (internal/contextbench.LeakedTasks), excluded from the verdict, and listed in the ledger row's leaked_tasks so the exclusion is visible. Excluding a leaked task never softens the bar: it removes a task neither arm needed tools for. Revisit (ADR-031): if the none arm passes more than half the corpus, the corpus — not the tool — is the finding."
+    }
   },
+  "registered_criteria": [
+    {
+      "id": "H2-2",
+      "description": "Precision-aware form of H2-1 (PB-8, ADR-031 §3; docs/vision/26-proof-credibility.md §2.2). Same bar — strictly more successes than grep, aggregate tokens <= 1x, replication floor 3 — but a cell SUCCEEDS only when the arm's answer is a fenced ``` block whose non-empty lines number at most the task's max_predicted (default max(5, 2·|gold|)) and whose text satisfies the task's scoring rule; test-file paths are dropped from gold. Scored by internal/contextbench.ScoreWithPrecision; precision and recall are recorded beside pass/fail in every ArmResult and reported, never gating. Registered as a NEW criterion because it changes the success definition after H2-1 has recorded data: H2-1's verdicts (2026-07-24, T5-8, the backfilled ledger row) stand as history and are never re-scored under H2-2 (T5).",
+      "registered_at": "2026-09-02",
+      "registered_before_any_run_under_it": true,
+      "require_strictly_more_successes": true,
+      "max_token_ratio": 1.0,
+      "min_trials": 3,
+      "scoring": "precision",
+      "leak_rule": {
+        "arm": "none",
+        "min_passes": 2,
+        "of_trials": 3
+      }
+    }
+  ],
   "post_recompile_rederivation": {
     "mandatory_before_h3": true,
     "rule": "H3's own gate mandates the operator recompile fires BEFORE the run — which re-cites obligations claims fresh at their new source lines and may re-scope rules. Every task listed below has a premise or ground truth pinned to the PRE-recompile store (compile watermark 538b9a8, 2026-07-08): before H3 fires, re-derive each exposed task against the post-recompile daemon AND re-hand-verify it against the repo at the run commit, updating prompt premises and ground truths in a committed corpus revision. H1-T12 in particular INVERTS: its 'verdict: stale' claim will be re-cited fresh by the recompile — re-anchor T12 to a claim that is drifted at run time, or, if the post-recompile sweep shows zero drifted claims, move T12 to unmeasurable_by_comparison for that run and score the remaining 12 tasks. Re-derivation updates premises and ground truths ONLY — the pre-registered criterion above is never touched by this step.",
