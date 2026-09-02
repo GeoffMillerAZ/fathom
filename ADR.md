@@ -319,6 +319,24 @@ vectors were specified as "DuckDB VSS" and need a SQLite-era re-check before any
 revival (F13). (3) "If the tracer bullet fails its gate" — the 3-week
 generalize-or-kill telemetry gate on `obligations`.
 
+**Amendment proposed 2026-09-02 (Q21): a measured obligation ceiling.**
+*Status: proposed; the owner decides.* This ADR's 150-token serving ceiling
+was set before the channel's cost was ever measured. HF-3 measured it
+(`docs/measurements/2026-08-27-obligation-ceiling.md`, 2026-07-30 →
+2026-08-26, one machine, one adopter, `tokens_estimate` = bytes/4, an
+ESTIMATE): `post-edit` obligations payloads n=1,918, p50 131, p90 315, p95
+329, max 378 tokens — **897 of 1,918 (47%) over 150**; `pre-edit-guard`
+payloads n=370, p50 185, p90 198, p95 222, max 380 — **308 (83%) over 150**.
+Rules per post-edit payload p50 3, p95 6. Enforcing 150 as written would
+drop a median of two rules from roughly half of all edits, with no evidence
+about which two (precision was not computable: the beat log records bytes
+and rule counts, never text). Proposed: raise the ceiling to the measured
+post-edit p90 (≈320 tokens) so invariant I35 stops being a permanently
+VIOLATED row nobody can satisfy, and treat drop-ranking under any cap as
+separate work with its own evidence (HF-4, Q13's options 1–3). Not
+adopted by this paragraph: no code or invariant changes until the owner
+ratifies; `docs/intent/questions.md` Q21 carries the decision.
+
 ## ADR-017 — Born-portable stores: repo-relative anchors, domain-neutral freshness
 
 **Context.** D-EM2 ("the store is the module") was prose, not code: the local
@@ -806,7 +824,9 @@ daemon ran green on SQLite through the day. This ADR records the execution:
 `internal/store/duckdb.go` (`DuckStore`, `github.com/marcboeker/
 go-duckdb/v2`), its test file, `internal/store/migrate.go`
 (`MigrateNonDerivable`), and `cmd/fathom/migratestore.go` (the
-`migrate-store` CLI verb) are all deleted outright, along with the DuckDB
+`migrate-store` CLI verb) are all deleted outright (those three paths are
+historical citations — none exists at HEAD; `internal/store/backend.go`
+and `internal/store/sqlite.go` are the living successors), along with the DuckDB
 driver, its per-platform bindings, and every indirect dependency that
 existed only to support them (`go mod tidy` also dropped `apache/
 arrow-go`, `klauspost/compress`, `klauspost/cpuid/v2`, `pierrec/lz4/v4`,
@@ -1060,8 +1080,9 @@ at a 35% similarity threshold.
 **Consequences.** `docs/plans/bench-confidence.md` shipped in the same change:
 per-trial repetition, paired per-task statistics, a machine-evaluable
 criterion read from the committed corpus, a tri-state verdict where an
-incomplete run is `indeterminate` rather than a win, and a committed
-`docs/bench/ledger.jsonl`. The assessment's honest finding was that fathom's
+incomplete run is `indeterminate` rather than a win, and a JSONL ledger at
+`docs/bench/ledger.jsonl` — created by the first run; as of 2026-09-02 it
+holds one backfilled n=1 row (PB-2), no replicated row yet. The assessment's honest finding was that fathom's
 benchmark *method* already exceeds the compared project's — pre-registration,
 a published negative verdict, hand-verified ground truth — while its
 *credibility* lagged on three counts fixed or named here: n=1 (fixed, floor

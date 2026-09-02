@@ -23,20 +23,24 @@
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/intentaudit.go",
         "cmd/fathom/plans.go",
+        "cmd/fathom/planscontext.go",
         "cmd/fathom/stophook.go",
         "cmd/fathom/verify.go",
         "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rn \"ParseMarkdownPlan(\" --include='*.go' . (excluding _test.go and the definition in internal/verify/markdown.go). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep per docs/plans/trust-and-tokenomics.md T5-8): `cmd/fathom/plans.go` is a genuinely new file (git show 9f40934:cmd/fathom/plans.go fails — introduced by a7f5156, 'feat(plans): computed SDD progress...') whose computePlanRows (plans.go:91) now also calls verify.ParseMarkdownPlan — a real 6th caller added by post-authoring feature work, not a corpus defect. Added to ground_truth (all-of, so both arms must now find it too — a fair increase in difficulty, identically presented to both arms).",
+      "source": "fathom @ 9f40934, grep -rn \"ParseMarkdownPlan(\" --include='*.go' . (excluding _test.go and the definition in internal/verify/markdown.go). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep per docs/plans/trust-and-tokenomics.md T5-8): `cmd/fathom/plans.go` is a genuinely new file (git show 9f40934:cmd/fathom/plans.go fails — introduced by a7f5156, 'feat(plans): computed SDD progress...') whose computePlanRows (plans.go:91) now also calls verify.ParseMarkdownPlan — a real 6th caller added by post-authoring feature work, not a corpus defect. Added to ground_truth (all-of, so both arms must now find it too — a fair increase in difficulty, identically presented to both arms). RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): two more callers since bfb8010 — cmd/fathom/intentaudit.go and cmd/fathom/planscontext.go (both new files) call verify.ParseMarkdownPlan; added (8 callers). Same all-of tightening as the T5-8 sweep, identical for both arms.",
       "notes": "RE-SWEPT 2026-07-24 (T5-8): ground_truth gained cmd/fathom/plans.go — see source for the drift."
     },
     {
       "id": "B1-T02",
       "category": "find_callers",
       "prompt": "In the fathom repo, which single non-test Go file constructs the MCP call logger via mcp.NewCallLogger?",
-      "ground_truth": ["cmd/fathom/servehttp.go"],
+      "ground_truth": [
+        "cmd/fathom/servehttp.go"
+      ],
       "scoring_rule": "exact-match",
       "source": "fathom @ 9f40934, grep -rn \"NewCallLogger(\" --include='*.go' . — every other call site is a _test.go file"
     },
@@ -44,7 +48,10 @@
       "id": "B1-T03",
       "category": "find_callers",
       "prompt": "In the fathom repo's internal/mcp package, registerServerStats has exactly one production caller. Which function, in which file, calls it?",
-      "ground_truth": ["internal/mcp/meta.go", "registerMeta"],
+      "ground_truth": [
+        "internal/mcp/meta.go",
+        "registerMeta"
+      ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, internal/mcp/meta.go:45 (registerMeta calls registerServerStats at line 96's definition)"
     },
@@ -67,7 +74,10 @@
       "id": "B1-T05",
       "category": "where_configured",
       "prompt": "In the fathom repo, which environment variable selects the LLM provider for `fathom compile`, and which file's switch statement reads it via os.Getenv?",
-      "ground_truth": ["FATHOM_LLM_PROVIDER", "cmd/fathom/compile.go"],
+      "ground_truth": [
+        "FATHOM_LLM_PROVIDER",
+        "cmd/fathom/compile.go"
+      ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, cmd/fathom/compile.go:293 (switch provider := os.Getenv(\"FATHOM_LLM_PROVIDER\"))"
     },
@@ -75,7 +85,9 @@
       "id": "B1-T06",
       "category": "where_configured",
       "prompt": "In the fathom repo, which file defines the ~/.fathom/config.toml profile loader that also reads FATHOM_LLM_PROVIDER as an env override (via a setEnv helper)?",
-      "ground_truth": ["internal/config/profile.go"],
+      "ground_truth": [
+        "internal/config/profile.go"
+      ],
       "scoring_rule": "exact-match",
       "source": "fathom @ 9f40934, internal/config/profile.go:91 (setEnv(&out.Provider, \"provider\", \"FATHOM_LLM_PROVIDER\"))"
     },
@@ -83,24 +95,32 @@
       "id": "B1-T07",
       "category": "what_governs",
       "prompt": "In the fathom repo's .fathomignore, which ADR is cited as the reason third_party/ (the in-tree vendored agentic-kit mirror) is excluded from indexing?",
-      "ground_truth": ["ADR-019"],
+      "ground_truth": [
+        "ADR-019"
+      ],
       "scoring_rule": "exact-match",
       "source": "fathom @ 9f40934, .fathomignore comment above the third_party/ entry"
     },
     {
       "id": "B1-T08",
       "category": "what_governs",
-      "prompt": "Per fathom's CLAUDE.md, which ADR documents the workspace/db/ default store path convention (workspace/db/fathom.sqlite)?",
-      "ground_truth": ["ADR-020"],
+      "prompt": "Per fathom's CLAUDE.md, which ADR made pure-Go SQLite the store backend whose default path is workspace/db/fathom.sqlite (the ADR named first in the CLAUDE.md line that says `internal/store` stays pure Go)?",
+      "ground_truth": [
+        "ADR-020"
+      ],
       "scoring_rule": "exact-match",
-      "source": "fathom @ 9f40934, CLAUDE.md's workspace/ convention section; confirmed against ADR.md's \"ADR-020: Store backend\" heading",
+      "source": "fathom @ 9f40934, CLAUDE.md's workspace/ convention section; confirmed against ADR.md's \"ADR-020: Store backend\" heading RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): the root CLAUDE.md no longer states the workspace/db/ default path (it routes to docs/usage.md); the ADR is now cited at CLAUDE.md:47 ('`internal/store` stays pure Go (ADR-020/025)'). Premise reworded to the citation that exists; ground truth ADR-020 unchanged.",
       "notes": "Degenerate for arm isolation (methodology critic, 2026-07-23): both bench arms run with the repo's CLAUDE.md loaded as session baseline, and CLAUDE.md itself cites ADR-020 beside the store path — in run-20260723T045809Z the fathom arm answered in 1 turn with ZERO tool calls. Kept as an honest floor case (it measures the shared-baseline floor, not tooling); do not add more baseline-answerable tasks."
     },
     {
       "id": "B1-T09",
       "category": "cross_repo_callers",
       "prompt": "In the fathom repo's cmd/fathom/instrument.go, which three agentic-kit heartbeat package functions are called to load beats and evaluate liveness/rollup? Name the functions (package.Function).",
-      "ground_truth": ["heartbeat.Load", "heartbeat.CheckLiveness", "heartbeat.Rollup"],
+      "ground_truth": [
+        "heartbeat.Load",
+        "heartbeat.CheckLiveness",
+        "heartbeat.Rollup"
+      ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, grep -n \"heartbeat\\.\" cmd/fathom/instrument.go (heartbeat.Expectation is a type reference, not a call, and is excluded)"
     },
@@ -108,23 +128,32 @@
       "id": "B1-T10",
       "category": "cross_repo_callers",
       "prompt": "Which single fathom file constructs a heartbeat log via agentic-kit's heartbeat.NewLog?",
-      "ground_truth": ["cmd/fathom/beats.go"],
+      "ground_truth": [
+        "cmd/fathom/beats.go"
+      ],
       "scoring_rule": "exact-match",
       "source": "fathom @ 9f40934, cmd/fathom/beats.go:42 (heartbeat.NewLog(f, time.Now))"
     },
     {
       "id": "B1-T11",
       "category": "cross_repo_callers",
-      "prompt": "Which two fathom internal packages (by file) import agentic-kit's foundations/review/scoring package?",
-      "ground_truth": ["internal/query/engine.go", "internal/verify/verify.go"],
+      "prompt": "Which fathom internal packages (by file) import agentic-kit's foundations/review/scoring package? List each file path.",
+      "ground_truth": [
+        "internal/memory/tier.go",
+        "internal/query/engine.go",
+        "internal/verify/verify.go"
+      ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rln \"agentic-kit/foundations/review/scoring\" --include='*.go' . (excluding third_party/ and _test.go)"
+      "source": "fathom @ 9f40934, grep -rln \"agentic-kit/foundations/review/scoring\" --include='*.go' . (excluding third_party/ and _test.go) RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): a third importer exists (internal/memory/tier.go), so the prompt's 'which two' premise leaked a stale count; premise reworded to not assert a count, importer added to ground_truth."
     },
     {
       "id": "B1-T12",
       "category": "find_symbol",
       "prompt": "In the fathom repo, which file defines the cmdVerify function (the `fathom verify` CLI subcommand entry point), and which file's switch statement in main dispatches the \"verify\" subcommand to it?",
-      "ground_truth": ["cmd/fathom/verify.go", "cmd/fathom/main.go"],
+      "ground_truth": [
+        "cmd/fathom/verify.go",
+        "cmd/fathom/main.go"
+      ],
       "scoring_rule": "all-of",
       "source": "fathom @ 9f40934, cmd/fathom/verify.go:36 (func cmdVerify) and cmd/fathom/main.go:68-69 (case \"verify\": return cmdVerify(...))"
     },
@@ -132,7 +161,9 @@
       "id": "B1-T13",
       "category": "references",
       "prompt": "In the fathom repo's internal/mcp package, which single file calls CallLogger's SurfaceTraffic() method to populate server_stats' surface_traffic block?",
-      "ground_truth": ["internal/mcp/meta.go"],
+      "ground_truth": [
+        "internal/mcp/meta.go"
+      ],
       "scoring_rule": "exact-match",
       "source": "fathom @ 9f40934, internal/mcp/meta.go:129 (s.callLogger.SurfaceTraffic())"
     },
@@ -141,18 +172,29 @@
       "category": "find_callers",
       "prompt": "In the fathom repo, defaultFathomURL is defined in cmd/fathom/sessionhook.go. Which files call it (including sessionhook.go itself, if it also calls its own helper)? List each file path.",
       "ground_truth": [
-        "cmd/fathom/stophook.go",
-        "cmd/fathom/edithook.go",
-        "cmd/fathom/init.go",
-        "cmd/fathom/verify.go",
+        "cmd/fathom/brief.go",
+        "cmd/fathom/capabilities.go",
         "cmd/fathom/compile.go",
-        "cmd/fathom/sessionhook.go",
+        "cmd/fathom/daemon.go",
+        "cmd/fathom/doctor.go",
+        "cmd/fathom/edithook.go",
+        "cmd/fathom/fleetreport.go",
+        "cmd/fathom/flywheel.go",
+        "cmd/fathom/init.go",
+        "cmd/fathom/instrument_adoption.go",
+        "cmd/fathom/intentaudit.go",
         "cmd/fathom/plans.go",
         "cmd/fathom/plans_archive.go",
-        "cmd/fathom/doctor.go"
+        "cmd/fathom/planscontext.go",
+        "cmd/fathom/postcommithook.go",
+        "cmd/fathom/reconcile.go",
+        "cmd/fathom/sessionhook.go",
+        "cmd/fathom/stophook.go",
+        "cmd/fathom/thread.go",
+        "cmd/fathom/verify.go"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ 9f40934, grep -rn \"defaultFathomURL(\" --include='*.go' . (non-test). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep): three files new since 9f40934 (git show 9f40934:<path> fails for all three) now also call defaultFathomURL() when building their --url flag default: cmd/fathom/plans.go (lines 200, 320), cmd/fathom/plans_archive.go (line 47), cmd/fathom/doctor.go (line 74) — real post-authoring feature growth (the plans/doctor subcommands), not a corpus defect. All three added to ground_truth (all-of now requires 9 files, not 6 — a fair increase in difficulty identical for both arms)."
+      "source": "fathom @ 9f40934, grep -rn \"defaultFathomURL(\" --include='*.go' . (non-test). RE-SWEPT (T5-8, 2026-07-24, worktree HEAD bfb8010, mandatory lookup-corpus drift sweep): three files new since 9f40934 (git show 9f40934:<path> fails for all three) now also call defaultFathomURL() when building their --url flag default: cmd/fathom/plans.go (lines 200, 320), cmd/fathom/plans_archive.go (line 47), cmd/fathom/doctor.go (line 74) — real post-authoring feature growth (the plans/doctor subcommands), not a corpus defect. All three added to ground_truth (all-of now requires 9 files, not 6 — a fair increase in difficulty identical for both arms). RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): `grep -rln 'defaultFathomURL(' --include='*.go' cmd` (non-test) = 20 files (was 9 at bfb8010); every subcommand with a --url flag now calls it. Ground truth replaced by the full current set — an honest tightening identical for both arms, as the T5-8 sweep did."
     },
     {
       "id": "B1-T15",
@@ -161,13 +203,28 @@
       "ground_truth": [
         "cmd/fathom/genplancue.go",
         "cmd/fathom/genstatuscue.go",
+        "cmd/fathom/intentaudit.go",
         "cmd/fathom/plans.go",
+        "cmd/fathom/planscontext.go",
         "cmd/fathom/stophook.go",
         "cmd/fathom/verify.go",
         "internal/mcp/verify_plan_tool.go"
       ],
       "scoring_rule": "any-of",
-      "source": "same source set as B1-T01; exercises the any-of scoring rule against the same ground-truth set. RE-SWEPT (T5-8, 2026-07-24): cmd/fathom/plans.go added alongside B1-T01's identical finding — any-of is unaffected in difficulty (any one of the six still passes), added for set consistency with B1-T01."
+      "source": "same source set as B1-T01; exercises the any-of scoring rule against the same ground-truth set. RE-SWEPT (T5-8, 2026-07-24): cmd/fathom/plans.go added alongside B1-T01's identical finding — any-of is unaffected in difficulty (any one of the six still passes), added for set consistency with B1-T01. RE-SWEPT (PB-1 sweep, 2026-09-02, tree at e8d2948): two more callers since bfb8010 — cmd/fathom/intentaudit.go and cmd/fathom/planscontext.go (both new files) call verify.ParseMarkdownPlan; added (8 callers). Same all-of tightening as the T5-8 sweep, identical for both arms."
     }
-  ]
+  ],
+  "truth_at_head_sweep": {
+    "id": "PB-1-sweep",
+    "performed_at": "2026-09-02",
+    "performed_at_commit": "e8d2948",
+    "findings": [
+      "B1-T01/B1-T15: two new callers of verify.ParseMarkdownPlan (cmd/fathom/intentaudit.go, cmd/fathom/planscontext.go) added.",
+      "B1-T11: a third importer of foundations/review/scoring (internal/memory/tier.go); 'which two' premise removed, importer added.",
+      "B1-T14: defaultFathomURL now has 20 callers (was 9); ground truth replaced by the full set.",
+      "B1-T08: CLAUDE.md no longer states the default store path; premise re-anchored to CLAUDE.md:47's ADR-020/025 citation.",
+      "B1-T02, T03, T04, T05, T06, T07, T09, T10, T12, T13: re-verified unchanged at HEAD (B1-T13: internal/mcp/calllog.go defines SurfaceTraffic; meta.go:129 is still its single caller)."
+    ],
+    "note": "This corpus has no machine_criterion and writes no ledger row; the sweep keeps its ground truths true at HEAD so a lookup run remains interpretable. The home corpus carries per-token truth_at_head anchors gated by TestHomeCorpusTruthAtHead; this corpus does not yet."
+  }
 }

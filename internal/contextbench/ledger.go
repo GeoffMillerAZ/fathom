@@ -2,6 +2,8 @@ package contextbench
 
 import (
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,6 +53,74 @@ type LedgerRow struct {
 
 	Evaluation Evaluation `json:"evaluation"`
 	Notes      string     `json:"notes,omitempty"`
+
+	// PB-3 additions (ADR-031). All additive and omitempty: every row
+	// written before them still parses, and a row that lacks them reads
+	// as "not recorded", never as zero.
+
+	// PerTask carries the paired per-task outcomes the verdict was computed
+	// over, so a later run can be compared task by task (the regression
+	// gate, cmdRegress) instead of only on totals.
+	PerTask []PairedTask `json:"per_task,omitempty"`
+	// CorpusSHA256 identifies the exact corpus bytes the run scored; two
+	// rows are comparable only when it matches (CorpusSHA256).
+	CorpusSHA256 string `json:"corpus_sha256,omitempty"`
+	// ModelID is the concrete model the envelopes reported (e.g. a dated
+	// id), as opposed to Model, the alias the runner was asked for.
+	ModelID string `json:"model_id,omitempty"`
+	// CostUSD is the sum of every cell's reported total_cost_usd.
+	CostUSD float64 `json:"cost_usd,omitempty"`
+	// DirtyTree records that the working tree had uncommitted changes when
+	// the run measured it, so Commit alone does not identify the subject.
+	DirtyTree bool `json:"dirty_tree,omitempty"`
+	// CellsLost counts (task, arm, trial) cells the runner intended but
+	// could not score — a watchdog kill or an empty envelope — so a thinner
+	// run says so in the row instead of only in the summary line.
+	CellsLost int `json:"cells_lost,omitempty"`
+	// LeakedTasks lists tasks excluded from the verdict because the
+	// no-tools arm answered them from memory (LeakedTasks, PB-9).
+	LeakedTasks []string `json:"leaked_tasks,omitempty"`
+}
+
+// CorpusSHA256 returns the hex SHA-256 of the corpus file's bytes — the
+// identity a ledger row records so that two rows are known to have scored
+// the same questions against the same ground truth. It is the whole file,
+// not a canonical subset, so `shasum -a 256 <corpus>` reproduces it with
+// no tooling; the price is that a provenance-note edit yields a new corpus
+// identity, which is the honest reading — the corpus changed.
+func CorpusSHA256(path string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("hashing corpus %s: %w", path, err)
+	}
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:]), nil
+}
+
+// BackfillLedgerRow builds a row for a run that predates the ledger from
+// the numbers its plan recorded (PB-2). It exists so the ledger's history
+// is not silently empty for runs that were real, and it is honest about
+// what it is: the row is evaluated against the corpus's CURRENT criterion
+// (so an n=1 run reads indeterminate under the replication floor, whatever
+// verdict was recorded at the time), it carries no per-task data and no
+// corpus hash (nothing can pair against it), and notes must say it was
+// backfilled. Tasks is the number of paired tasks; successes are summed
+// across the single trial.
+func BackfillLedgerRow(c Criterion, runID, generatedAt, commit, corpus, model string, tasks, treatmentSuccesses, controlSuccesses int, aggregateTokenRatio float64, notes string) LedgerRow {
+	p := PairedSummary{
+		Treatment:           "fathom",
+		Control:             "grep",
+		Tasks:               tasks,
+		MinTrials:           1,
+		TreatmentSuccesses:  treatmentSuccesses,
+		ControlSuccesses:    controlSuccesses,
+		TreatmentTrials:     tasks,
+		ControlTrials:       tasks,
+		AggregateTokenRatio: aggregateTokenRatio,
+	}
+	row := NewLedgerRow(runID, generatedAt, commit, corpus, model, p, c.Evaluate(p))
+	row.Notes = notes
+	return row
 }
 
 // NewLedgerRow builds a row from a paired summary and its criterion's
@@ -157,10 +227,22 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		if len(r.FlakyTasks) > 0 {
 			caveat += fmt.Sprintf(" flaky=%d", len(r.FlakyTasks))
 		}
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %.3f× | %s | %s%s |\n",
+		if r.CellsLost > 0 {
+			caveat += fmt.Sprintf(" cells_lost=%d", r.CellsLost)
+		}
+		if len(r.LeakedTasks) > 0 {
+			caveat += fmt.Sprintf(" leaked=%d", len(r.LeakedTasks))
+		}
+		// A backfilled row has no per-task ratios, so its median is not
+		// recorded — shown as such, never as 0.000×.
+		median := "n/r"
+		if r.MedianTokenRatio > 0 {
+			median = fmt.Sprintf("%.3f×", r.MedianTokenRatio)
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %s | %s | %s%s |\n",
 			r.RunID, r.Commit, corpus, r.Model, r.Tasks, r.MinTrials,
 			r.TreatmentSuccesses, r.ControlSuccesses,
-			r.AggregateTokenRatio, r.MedianTokenRatio,
+			r.AggregateTokenRatio, median,
 			r.Evaluation.Verdict, r.Evaluation.Reason, caveat)
 	}
 	return b.String()

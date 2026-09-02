@@ -235,3 +235,8 @@ tasks:
     cmds:
       - bash scripts/bench-ledger-render.sh
 
+  bench-regress:
+    desc: "Regression gate over the committed ledger (free): newest row vs the previous same-corpus row; exit 1 if a task's treatment success fell, 3 if not comparable. Joins validate only once two same-corpus rows exist (ADR-031)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore regress -ledger docs/bench/ledger.jsonl {{.CLI_ARGS}}
+

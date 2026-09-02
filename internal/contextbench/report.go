@@ -38,6 +38,27 @@ type ArmResult struct {
 	WallTimeMS int64  `json:"wall_time_ms"`
 	NumTurns   int    `json:"num_turns,omitempty"`
 	RawResult  string `json:"raw_result,omitempty"`
+
+	// Additive since PB-3/PB-4/PB-8/PB-11 (all omitempty; older artifacts
+	// parse and read as not-recorded).
+
+	// ModelID is the concrete model id the envelope reported (its
+	// modelUsage keys, sorted and joined with "+" if several), as opposed
+	// to the alias the runner asked for.
+	ModelID string `json:"model_id,omitempty"`
+	// CostUSD is the envelope's total_cost_usd.
+	CostUSD float64 `json:"cost_usd,omitempty"`
+	// Scoring names the rule the cell was scored under ("substring" when
+	// unset — every artifact before H2-2). Precision/Recall/Predicted are
+	// set only under precision scoring.
+	Scoring   string  `json:"scoring,omitempty"`
+	Precision float64 `json:"precision,omitempty"`
+	Recall    float64 `json:"recall,omitempty"`
+	Predicted int     `json:"predicted,omitempty"`
+	// TokensToFirstGoldHit and ToolCalls come from the stream-json
+	// transcript when the runner captured one (FirstGoldHit).
+	TokensToFirstGoldHit int64 `json:"tokens_to_first_gold_hit,omitempty"`
+	ToolCalls            int   `json:"tool_calls,omitempty"`
 }
 
 // claudeEnvelope is the subset of `claude -p --output-format json`'s result
@@ -54,6 +75,20 @@ type claudeEnvelope struct {
 		CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
 		OutputTokens             int64 `json:"output_tokens"`
 	} `json:"usage"`
+	TotalCostUSD float64 `json:"total_cost_usd"`
+	// ModelUsage is keyed by the concrete model id the call resolved to.
+	ModelUsage map[string]json.RawMessage `json:"modelUsage"`
+}
+
+// resolvedModelID joins the envelope's modelUsage keys, sorted, so an
+// alias like "sonnet" is recorded as the dated id it resolved to.
+func (e claudeEnvelope) resolvedModelID() string {
+	ids := make([]string, 0, len(e.ModelUsage))
+	for id := range e.ModelUsage {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, "+")
 }
 
 // ArmResultFromClaudeJSON parses one `claude -p --output-format json` result
@@ -64,23 +99,28 @@ type claudeEnvelope struct {
 // ground-truth substring, so an auth/transport failure can never masquerade
 // as a task success.
 func ArmResultFromClaudeJSON(task Task, arm string, raw []byte) (ArmResult, error) {
+	return armResultFromClaudeJSON(task, arm, raw, ScoringSubstring)
+}
+
+// ArmResultFromClaudeJSONWithPrecision is ArmResultFromClaudeJSON under
+// H2-2's precision-aware scoring (ScoreWithPrecision): the answer must be
+// a fenced block within the task's MaxPredicted, and the result carries
+// precision and recall beside pass/fail.
+func ArmResultFromClaudeJSONWithPrecision(task Task, arm string, raw []byte) (ArmResult, error) {
+	return armResultFromClaudeJSON(task, arm, raw, ScoringPrecision)
+}
+
+func armResultFromClaudeJSON(task Task, arm string, raw []byte, scoring string) (ArmResult, error) {
 	var env claudeEnvelope
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return ArmResult{}, fmt.Errorf("parsing claude -p JSON for task %s (arm %s): %w", task.ID, arm, err)
 	}
 
-	sr := Score(task, env.Result)
-	success := sr.Pass && !env.IsError
-
 	total := env.Usage.InputTokens + env.Usage.CacheCreationInputTokens + env.Usage.CacheReadInputTokens + env.Usage.OutputTokens
-
-	return ArmResult{
+	ar := ArmResult{
 		TaskID:              task.ID,
 		Arm:                 arm,
-		Success:             success,
 		IsError:             env.IsError,
-		Matched:             sr.Matched,
-		Missing:             sr.Missing,
 		InputTokens:         env.Usage.InputTokens,
 		CacheCreationTokens: env.Usage.CacheCreationInputTokens,
 		CacheReadTokens:     env.Usage.CacheReadInputTokens,
@@ -89,7 +129,22 @@ func ArmResultFromClaudeJSON(task Task, arm string, raw []byte) (ArmResult, erro
 		WallTimeMS:          env.DurationMS,
 		NumTurns:            env.NumTurns,
 		RawResult:           env.Result,
-	}, nil
+		ModelID:             env.resolvedModelID(),
+		CostUSD:             env.TotalCostUSD,
+	}
+	switch scoring {
+	case ScoringPrecision:
+		ps := ScoreWithPrecision(task, env.Result)
+		ar.Success = ps.Pass && !env.IsError
+		ar.Matched, ar.Missing = ps.Matched, ps.Missing
+		ar.Scoring = ScoringPrecision
+		ar.Precision, ar.Recall, ar.Predicted = ps.Precision, ps.Recall, ps.Predicted
+	default:
+		sr := Score(task, env.Result)
+		ar.Success = sr.Pass && !env.IsError
+		ar.Matched, ar.Missing = sr.Matched, sr.Missing
+	}
+	return ar, nil
 }
 
 // Aggregate summarizes one arm's results across all tasks.

@@ -295,7 +295,22 @@ type Criterion struct {
 	// MinTrials is the replication floor. A run thinner than this is
 	// indeterminate rather than a win — the n=1 guard.
 	MinTrials int `json:"min_trials,omitempty"`
+	// Scoring names how a cell's success is decided: ScoringSubstring
+	// (the default, H2-1's substring rules) or ScoringPrecision (H2-2's
+	// fenced answer block with a precision term). A criterion registered
+	// under one never re-scores data collected under the other.
+	Scoring string `json:"scoring,omitempty"`
+	// LeakRule, when present, excludes tasks the no-tools arm answers from
+	// memory (LeakedTasks). Registered beside the criterion, before the
+	// run, so the exclusion cannot be shaped by the data.
+	LeakRule *LeakRule `json:"leak_rule,omitempty"`
 }
+
+// Scoring modes a criterion may name.
+const (
+	ScoringSubstring = "substring"
+	ScoringPrecision = "precision"
+)
 
 // Evaluation is a criterion's verdict plus the sentence that justifies it.
 type Evaluation struct {
@@ -346,6 +361,35 @@ func (c Criterion) Evaluate(p PairedSummary) Evaluation {
 // by TestMachineCriterionMatchesTheRegisteredProse, which pins the values.
 type criterionFile struct {
 	MachineCriterion *Criterion `json:"machine_criterion"`
+	// RegisteredCriteria holds criteria registered AFTER the first run
+	// under MachineCriterion, each with its own id (H2-2 and on). They sit
+	// beside the original rather than replacing it: a criterion that has
+	// scored data is history, and history is not rewritten.
+	RegisteredCriteria []Criterion `json:"registered_criteria,omitempty"`
+}
+
+// LoadCriterionByID reads the criterion registered under id: the
+// machine_criterion block when its id matches, else the entry of
+// registered_criteria with that id. An id nobody registered is an error —
+// the same law-12 refusal as LoadCriterion.
+func LoadCriterionByID(path, id string) (Criterion, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return Criterion{}, fmt.Errorf("reading corpus %s: %w", path, err)
+	}
+	var cf criterionFile
+	if err := json.Unmarshal(raw, &cf); err != nil {
+		return Criterion{}, fmt.Errorf("parsing corpus %s: %w", path, err)
+	}
+	if cf.MachineCriterion != nil && cf.MachineCriterion.ID == id {
+		return *cf.MachineCriterion, nil
+	}
+	for _, c := range cf.RegisteredCriteria {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+	return Criterion{}, fmt.Errorf("corpus %s registers no criterion %q — a run cannot be scored against a criterion that was never registered", path, id)
 }
 
 // LoadCriterion reads a corpus's machine-evaluable pre-registered criterion.
