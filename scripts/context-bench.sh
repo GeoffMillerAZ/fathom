@@ -53,11 +53,22 @@
 # workspace/artifacts/context-bench/results-<ts>.json (machine-readable,
 # internal/contextbench.RunResults shape) + summary-<ts>.md (rendered table).
 #
+# Repetition (2026-09-01): --repeat N runs every (task, arm) cell N times.
+# n=1 was the single largest confidence gap in every run to date — a cell
+# that passes once is indistinguishable from a cell that passes two thirds
+# of the time, and the 2026-07-24 verdict turned on per-task token figures
+# that had no measured spread at all. The corpus's committed
+# machine_criterion carries a replication floor; a run below it is scored
+# INDETERMINATE, not a win. Cost scales linearly with N — a --repeat 3 home
+# run is roughly three times the tokens of the 2026-07-24 run, so it is
+# operator-initiated, never automatic.
+#
 # Usage:
 #   scripts/context-bench.sh                  # run every task, both arms
 #   scripts/context-bench.sh --arms grep       # grep arm only (skip fathom
 #                                               # even if the daemon is up)
 #   scripts/context-bench.sh --tasks <file>    # override the corpus path
+#   scripts/context-bench.sh --repeat 3        # three trials per cell
 #
 # Env:
 #   FATHOM_HTTP_URL          base URL of the fathom daemon (default
@@ -74,14 +85,23 @@ FATHOM_HTTP_URL="${FATHOM_HTTP_URL:-http://localhost:7575}"
 MODEL="${CONTEXT_BENCH_MODEL:-sonnet}"
 TIMEOUT="${CONTEXT_BENCH_TIMEOUT:-180}"
 ARMS="fathom grep"
+REPEAT="${CONTEXT_BENCH_REPEAT:-1}"
+LEDGER="${CONTEXT_BENCH_LEDGER:-$ROOT/docs/bench/ledger.jsonl}"
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --arms) ARMS="$2"; shift 2 ;;
     --tasks) TASKS="$2"; shift 2 ;;
-    *) echo "usage: $(basename "$0") [--arms 'fathom grep'] [--tasks <path>]" >&2; exit 2 ;;
+    --repeat) REPEAT="$2"; shift 2 ;;
+    --ledger) LEDGER="$2"; shift 2 ;;
+    *) echo "usage: $(basename "$0") [--arms 'fathom grep'] [--tasks <path>] [--repeat N] [--ledger <path>]" >&2; exit 2 ;;
   esac
 done
+
+case "$REPEAT" in
+  ''|*[!0-9]*) echo "context-bench: --repeat must be a positive integer, got '$REPEAT'" >&2; exit 2 ;;
+esac
+[ "$REPEAT" -ge 1 ] || { echo "context-bench: --repeat must be >= 1" >&2; exit 2; }
 
 if [ ! -f "$TASKS" ]; then
   echo "context-bench: tasks file not found: $TASKS" >&2
@@ -162,11 +182,11 @@ run_with_timeout() {
 }
 
 run_arm() {
-  local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7"
-  local raw="$RAW_DIR/$task_id-$arm.json"
-  local scored="$RESULTS_DIR/$task_id-$arm.json"
+  local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7" trial="${8:-1}"
+  local raw="$RAW_DIR/$task_id-$arm-t$trial.json"
+  local scored="$RESULTS_DIR/$task_id-$arm-t$trial.json"
 
-  echo "context-bench: [$task_id/$arm] running..."
+  echo "context-bench: [$task_id/$arm/t$trial] running..."
   if ! run_with_timeout "$raw" claude -p "$prompt" \
       --append-system-prompt "$system_prompt" \
       --output-format json \
@@ -175,16 +195,16 @@ run_arm() {
       --allowedTools "$allowed" \
       --disallowedTools "$disallowed" \
       --model "$MODEL"; then
-    echo "context-bench: [$task_id/$arm] claude -p exited non-zero (see $raw.stderr)" >&2
+    echo "context-bench: [$task_id/$arm/t$trial] claude -p exited non-zero (see $raw.stderr)" >&2
   fi
 
   if [ ! -s "$raw" ]; then
-    echo "context-bench: [$task_id/$arm] no output captured — skipping scoring" >&2
+    echo "context-bench: [$task_id/$arm/t$trial] no output captured — skipping scoring" >&2
     return 1
   fi
 
-  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -claude-json "$raw" -out "$scored"; then
-    echo "context-bench: [$task_id/$arm] scoring failed" >&2
+  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -claude-json "$raw" -out "$scored"; then
+    echo "context-bench: [$task_id/$arm/t$trial] scoring failed" >&2
     return 1
   fi
   python3 "$RUN_DIR/print_result.py" < "$scored"
@@ -197,14 +217,18 @@ GREP_SYSTEM_PROMPT="You are answering one factual question about the fathom code
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
   TASK_COUNT=$((TASK_COUNT + 1))
-  if echo "$ARMS" | grep -qw grep; then
-    run_arm "$task_id" "$prompt" grep "$GREP_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$GREP_ALLOWED" "$GREP_DISALLOWED" || true
-  fi
-  if echo "$ARMS" | grep -qw fathom; then
-    if [ "$FATHOM_REACHABLE" -eq 1 ]; then
-      run_arm "$task_id" "$prompt" fathom "$FATHOM_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FATHOM_ALLOWED" "$FATHOM_DISALLOWED" || true
+  trial=1
+  while [ "$trial" -le "$REPEAT" ]; do
+    if echo "$ARMS" | grep -qw grep; then
+      run_arm "$task_id" "$prompt" grep "$GREP_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$GREP_ALLOWED" "$GREP_DISALLOWED" "$trial" || true
     fi
-  fi
+    if echo "$ARMS" | grep -qw fathom; then
+      if [ "$FATHOM_REACHABLE" -eq 1 ]; then
+        run_arm "$task_id" "$prompt" fathom "$FATHOM_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FATHOM_ALLOWED" "$FATHOM_DISALLOWED" "$trial" || true
+      fi
+    fi
+    trial=$((trial + 1))
+  done
 done < <(python3 -c '
 import json, sys
 d = json.load(open(sys.argv[1]))
@@ -214,7 +238,7 @@ for t in d["tasks"]:
     out.write(t["prompt"].encode() + b"\x00")
 ' "$TASKS")
 
-echo "context-bench: ran $TASK_COUNT tasks"
+echo "context-bench: ran $TASK_COUNT tasks x $REPEAT trial(s) per arm"
 
 if [ "$FATHOM_REACHABLE" -eq 0 ] && echo "$ARMS" | grep -qw fathom; then
   echo "context-bench: arm 'fathom' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2
@@ -230,7 +254,34 @@ RESULTS_JSON="$ARTIFACTS_DIR/results-$TS.json"
 SUMMARY_MD="$ARTIFACTS_DIR/summary-$TS.md"
 "$SCORER" report -tasks "$TASKS" -results "$RESULTS_DIR" -out-json "$RESULTS_JSON" -out-md "$SUMMARY_MD"
 
+# ─── ledger: pair the arms, evaluate the COMMITTED criterion, record ─────
+# The corpus's machine_criterion is the only thing permitted to declare a
+# win, and it is read from the committed corpus — never passed in here, so
+# this script cannot loosen a bar it just measured against. Exit 3 =
+# indeterminate (re-run), 1 = a measured refutation (record it and say so).
+LEDGER_STATUS="skipped"
+if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('machine_criterion') else 1)" "$TASKS" 2>/dev/null; then
+  mkdir -p "$(dirname "$LEDGER")"
+  COMMIT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  LEDGER_MD="$(dirname "$LEDGER")/README.md"
+  # No `set -e` is in effect (see the header's `set -uo pipefail`), so the
+  # non-zero verdict exit codes are captured directly.
+  "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" \
+    -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -out-md "$LEDGER_MD"
+  LEDGER_RC=$?
+  case "$LEDGER_RC" in
+    0) LEDGER_STATUS="PASS" ;;
+    1) LEDGER_STATUS="FAIL (measured refutation — record it)" ;;
+    3) LEDGER_STATUS="INDETERMINATE (the run did not measure enough — re-run)" ;;
+    *) LEDGER_STATUS="ledger error rc=$LEDGER_RC" ;;
+  esac
+else
+  echo "context-bench: corpus has no machine_criterion — no ledger row written (a run with no registered bar scores nothing)" >&2
+fi
+
 echo "context-bench: done"
 echo "  raw transcripts + per-task scores: $RUN_DIR"
 echo "  results:                           $RESULTS_JSON"
 echo "  summary:                           $SUMMARY_MD"
+echo "  criterion verdict:                 $LEDGER_STATUS"
+echo "  ledger:                            $LEDGER"

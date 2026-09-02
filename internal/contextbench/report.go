@@ -10,10 +10,15 @@ import (
 // ArmResult is one task's outcome for one arm ("fathom" or "grep" by
 // convention; the runner is free to use other arm names for future variants).
 type ArmResult struct {
-	TaskID  string `json:"task_id"`
-	Arm     string `json:"arm"`
-	Success bool   `json:"success"`
-	IsError bool   `json:"is_error,omitempty"`
+	TaskID string `json:"task_id"`
+	Arm    string `json:"arm"`
+	// Trial is the 1-based repetition index within one run. It is omitted
+	// for single-trial runs, so every artifact written before repetition
+	// existed still parses (a missing Trial reads as 0 and groups as one
+	// cell — see StatsByTaskArm).
+	Trial   int  `json:"trial,omitempty"`
+	Success bool `json:"success"`
+	IsError bool `json:"is_error,omitempty"`
 
 	Matched []string `json:"matched,omitempty"`
 	Missing []string `json:"missing,omitempty"`

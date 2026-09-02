@@ -42,6 +42,8 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 | ADR-024 | accepted, amended phase O | architecture | Pack taxonomy adopted as vocabulary, not machinery | provider pack consumer (TX-3); concern pack admission case (TX-4) |
 | ADR-025 | accepted | data | DuckDB backend deleted outright (SS-8 executed) | XT-6b fires (CGO drops); `fleet.duckdb` step done |
 | ADR-026 | accepted | architecture / process | The evidence plane: intent corpus, unproven claims, change records | any kill clock K0/K1/K3/K5/K-plane; the kit refuses annotations (Q18); the practice ships its own evaluator; a second tool wants intent as data; plan trigger vocabulary repeats (F9); decision latency measures as the bottleneck |
+| ADR-027 | accepted | architecture / process | Coverage before conclusion — an instrument may not degrade toward "healthy" | 60 days with no incomplete manifest in a real run, or every incompleteness shares one cause a narrower fix covers |
+| ADR-028 | accepted | dependency / strategy | External agent memory is a peer process, never a dependency (OpenViking assessed) | a permissive relicence; the project ships code indexing; an adopter reports a conflict the guide misses; `pack_context` traffic justifies tiering; fathom adopts a root LICENSE |
 
 ## Decisions recorded elsewhere
 

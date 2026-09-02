@@ -16,6 +16,14 @@
 //	    Reads every ArmResult JSON file in -results (non-recursive), builds
 //	    the aggregated RunResults artifact, and writes both the JSON results
 //	    file and the rendered Markdown summary table.
+//
+//	contextbenchscore ledger -tasks <tasks.json> -results <dir> -ledger <path.jsonl> -run-id <id> -commit <sha> [-model <m>] [-treatment fathom] [-control grep] [-out-md <path>]
+//	    Pairs the two arms, evaluates the corpus's committed
+//	    machine_criterion against the paired summary, appends one row to the
+//	    committed bench ledger, and exits 0 for a pass, 1 for a fail, and 3
+//	    for indeterminate. The exit code is the gate: a fail is a measured
+//	    refutation and a legitimate result to record, while indeterminate
+//	    means the run did not measure enough to decide and must be re-run.
 package main
 
 import (
@@ -25,6 +33,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
@@ -36,7 +45,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <score|report> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <score|report|ledger> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -44,8 +53,10 @@ func run(args []string) int {
 		return cmdScore(args[1:])
 	case "report":
 		return cmdReport(args[1:])
+	case "ledger":
+		return cmdLedger(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score or report)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want score, report, or ledger)\n", args[0])
 		return 2
 	}
 }
@@ -57,6 +68,7 @@ func cmdScore(args []string) int {
 	arm := fs.String("arm", "", "arm name (e.g. fathom, grep)")
 	claudeJSONPath := fs.String("claude-json", "", "path to captured `claude -p --output-format json` output")
 	outPath := fs.String("out", "", "path to write the scored ArmResult JSON")
+	trial := fs.Int("trial", 0, "1-based repetition index within this run (0 = single-trial run)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -93,6 +105,7 @@ func cmdScore(args []string) int {
 		fmt.Fprintf(os.Stderr, "score: %v\n", err)
 		return 1
 	}
+	ar.Trial = *trial
 
 	out, err := json.MarshalIndent(ar, "", "  ")
 	if err != nil {
@@ -179,4 +192,110 @@ func cmdReport(args []string) int {
 
 	fmt.Printf("wrote %s and %s (%d results)\n", *outJSON, *outMD, len(results))
 	return 0
+}
+
+// loadResults reads every ArmResult JSON file directly under dir, in sorted
+// filename order so aggregation is deterministic.
+func loadResults(dir string) ([]contextbench.ArmResult, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("reading %s: %w", dir, err)
+	}
+	var names []string
+	for _, e := range entries {
+		if e.IsDir() || filepath.Ext(e.Name()) != ".json" {
+			continue
+		}
+		names = append(names, e.Name())
+	}
+	sort.Strings(names)
+
+	var results []contextbench.ArmResult
+	for _, name := range names {
+		raw, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			return nil, fmt.Errorf("reading %s: %w", name, err)
+		}
+		var ar contextbench.ArmResult
+		if err := json.Unmarshal(raw, &ar); err != nil {
+			return nil, fmt.Errorf("parsing %s: %w", name, err)
+		}
+		results = append(results, ar)
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no ArmResult *.json files found in %s", dir)
+	}
+	return results, nil
+}
+
+// cmdLedger pairs the arms, evaluates the committed criterion, and appends
+// the run to the bench ledger. Exit codes: 0 pass, 1 fail, 3 indeterminate,
+// 2 usage/IO. Indeterminate is deliberately NOT folded into fail — they
+// demand different responses (re-run vs. accept the refutation).
+func cmdLedger(args []string) int {
+	fs := flag.NewFlagSet("ledger", flag.ContinueOnError)
+	tasksPath := fs.String("tasks", "", "path to the corpus JSON (carries the committed machine_criterion)")
+	resultsDir := fs.String("results", "", "directory of per-task-per-arm-per-trial ArmResult JSON files")
+	ledgerPath := fs.String("ledger", "docs/bench/ledger.jsonl", "path to the committed JSONL bench ledger")
+	runID := fs.String("run-id", "", "run identifier (the runner's timestamp)")
+	commit := fs.String("commit", "", "repo HEAD the run measured")
+	model := fs.String("model", "", "model both arms ran on")
+	treatment := fs.String("treatment", "fathom", "treatment arm name")
+	control := fs.String("control", "grep", "control arm name")
+	outMD := fs.String("out-md", "", "optional path to render the whole ledger as a Markdown table")
+	notes := fs.String("notes", "", "optional free-text note recorded with the row")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *tasksPath == "" || *resultsDir == "" || *runID == "" || *commit == "" {
+		fmt.Fprintln(os.Stderr, "ledger: -tasks, -results, -run-id, and -commit are all required")
+		return 2
+	}
+
+	criterion, err := contextbench.LoadCriterion(*tasksPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+		return 2
+	}
+	results, err := loadResults(*resultsDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+		return 2
+	}
+
+	paired := contextbench.Pair(results, *treatment, *control)
+	ev := criterion.Evaluate(paired)
+	row := contextbench.NewLedgerRow(*runID, time.Now().UTC().Format(time.RFC3339), *commit, *tasksPath, *model, paired, ev)
+	row.Notes = *notes
+
+	if err := contextbench.AppendLedger(*ledgerPath, row); err != nil {
+		fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+		return 2
+	}
+	if *outMD != "" {
+		rows, err := contextbench.LoadLedger(*ledgerPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+			return 2
+		}
+		if err := os.WriteFile(*outMD, []byte(contextbench.RenderLedgerMarkdown(rows)), 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "ledger: writing %s: %v\n", *outMD, err)
+			return 2
+		}
+	}
+
+	fmt.Printf("%s [%s] %s: %s\n", strings.ToUpper(string(ev.Verdict)), criterion.ID, *runID, ev.Reason)
+	fmt.Printf("  tasks=%d min_trials=%d success=%d/%d tokens agg=%.3fx median=%.3fx absent=%d flaky=%d\n",
+		paired.Tasks, paired.MinTrials, paired.TreatmentSuccesses, paired.ControlSuccesses,
+		paired.AggregateTokenRatio, paired.MedianTokenRatio, len(paired.Absent), len(paired.FlakyTasks))
+	fmt.Printf("  appended to %s\n", *ledgerPath)
+
+	switch ev.Verdict {
+	case contextbench.VerdictPass:
+		return 0
+	case contextbench.VerdictFail:
+		return 1
+	default:
+		return 3
+	}
 }

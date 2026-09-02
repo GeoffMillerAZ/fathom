@@ -212,3 +212,26 @@ tasks:
     cmds:
       - { task: calibrate-clone }
       - { task: calibrate-baseline }
+
+  # ─── context-bench (COSTS REAL LLM TOKENS — operator-initiated only) ────
+  # Every bench task below spends against the operator's Claude
+  # subscription: one --repeat 3 home run is roughly three times the
+  # 2026-07-24 run's ~4.5M end-to-end tokens across both arms. autonomy.md
+  # requires asking before LLM spend, so these are never wired into
+  # `validate`, a hook, or CI.
+
+  bench-home:
+    desc: "COSTS TOKENS. Home-turf bench, 3 trials/cell, scored against the committed criterion (override: -- --repeat 1)"
+    cmds:
+      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 {{.CLI_ARGS}}
+
+  bench-lookup:
+    desc: "COSTS TOKENS. Grep-native lookup bench (B1 corpus; no committed criterion, so no ledger row)"
+    cmds:
+      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks.json --repeat 3 {{.CLI_ARGS}}
+
+  bench-ledger:
+    desc: Re-render docs/bench/README.md from the committed ledger (free — reads, never runs the bench)
+    cmds:
+      - bash scripts/bench-ledger-render.sh
+

@@ -999,3 +999,87 @@ run on any adopting repo (the discipline is theatre for a condition that does no
 occur), or every incompleteness recorded had a single cause a narrower fix would
 have covered. Measured by `incomplete_coverage` on the existing `intent-cli` and
 `doctor` beats — no new channel.
+
+## ADR-028: External agent memory is a peer process, never a dependency (2026-09-01)
+
+**Status.** Accepted. **Type.** Dependency / strategy. Assessed subject:
+OpenViking (`volcengine/OpenViking`, AGPL-3.0, Python/Rust, ~35k stars,
+created 2026-01-05, v0.4.17.1 on 2026-08-31). Coexistence guide:
+`docs/guides/openviking-side-by-side.md`.
+
+**Context.** A ByteDance/Volcengine project has claimed the "agent memory"
+territory at a scale fathom will not match: a context database that stores
+memories, resources, and skills as a virtual filesystem (`viking://`),
+retrieved by directory-recursive vector search over LLM-distilled L0/L1/L2
+summaries, installed into Claude Code and Codex by one shell command. The
+question put to this repo was whether to partner, borrow, or ignore it.
+
+The overlap is narrow and real, and it is not the index. OpenViking's own
+integration documentation is explicit that it stores conversational memory
+and does not parse source, build symbol tables, or index call graphs — so
+extraction, typed edges, blast radius, `verify`, and obligations are
+untouched. What it does overlap is the continuity layer: threads, the
+session brief, `memory_search`, the observation log. It occupies four of the
+five Claude Code lifecycle hooks fathom already occupies (`SessionStart`,
+`Stop`, `PreCompact`, `SessionEnd`) and injects up to 2,000 tokens per turn
+at a 35% similarity threshold.
+
+**Decision.**
+1. *Never a dependency.* Not vendored, not linked, not imported, not
+   embedded, and not a required component of any fathom surface. AGPL-3.0
+   is the hard reason — this repo carries no root LICENSE, so its licensing
+   options are all still open, and linking AGPL code would close them
+   permanently in the one direction that cannot be undone. The soft reasons
+   are sufficient on their own: fathom is a single signed Go binary with a
+   deterministic index, and a Python server plus an embedding model plus an
+   LLM provider is a new failure domain inside the determinism contract.
+2. *Coexistence is permitted and documented.* Running OpenViking as a
+   separate process alongside fathom creates no derivative work and no
+   licensing exposure; AGPL constrains distribution and linking, not use.
+   Adopters who want conversational recall may run both, and
+   `docs/guides/openviking-side-by-side.md` says how.
+3. *The authority boundary is the load-bearing clause.* Retrieved
+   conversational memory may recall and may suggest; it may not assert a
+   fact about code. Facts about code come from the index, with an anchor and
+   a read-time freshness state. An unanchored, LLM-distilled memory asserted
+   confidently into every prompt is precisely the failure the `suspect` tier
+   exists to catch, and importing that failure would cost more than the
+   recall is worth. Any future integration keeps fathom's claims
+   authoritative over an external memory's.
+4. *Not a partner.* There is no leverage and no shape for it. Offering the
+   index as a `viking://` resource would make fathom a plugin in another
+   project's context plane in exchange for nothing that is currently
+   scarce.
+5. *One idea is worth borrowing, and one is not.* The L0/L1/L2 tiering of
+   `pack_context` (today flat, ranked by `Complexity+1`) is a genuine
+   improvement — but `pack_context` is a near-zero-traffic surface in this
+   repo's own call log, so demand comes before tiering, and the idea is
+   recorded rather than built (`docs/vision/24-work-frontier.md` territory).
+   The benchmark lesson is the one acted on now: see ADR-028's consequences.
+
+**Consequences.** `docs/plans/bench-confidence.md` shipped in the same change:
+per-trial repetition, paired per-task statistics, a machine-evaluable
+criterion read from the committed corpus, a tri-state verdict where an
+incomplete run is `indeterminate` rather than a win, and a committed
+`docs/bench/ledger.jsonl`. The assessment's honest finding was that fathom's
+benchmark *method* already exceeds the compared project's — pre-registration,
+a published negative verdict, hand-verified ground truth — while its
+*credibility* lagged on three counts fixed or named here: n=1 (fixed, floor
+of 3 registered), nothing committed (fixed, the ledger), and no
+third-party-reproducible corpus (named as BC-15, still open, and the real
+remaining gap).
+
+**Alternatives rejected.** *Adopt it for continuity and retire threads* —
+would trade an anchored, falsifiable record for a similarity score, which is
+the one trade this project exists to refuse. *Fork the Apache-2.0 `ov` CLI
+subtree* — the carve-out covers the client, not the engine, so it buys a
+protocol shim and inherits the maintenance. *Ignore it entirely* — the
+benchmark lesson was real and the coexistence question will be asked again
+by anyone who reads a star count.
+
+**Revisit when.** OpenViking (or an equivalent) relicenses permissively, or
+ships code indexing that overlaps extraction rather than continuity; or an
+adopter runs both and reports a concrete conflict the guide does not cover;
+or `pack_context` traffic rises enough for tiering to have a consumer; or
+fathom adopts a root LICENSE, at which point clause 1's hard reason should
+be restated in terms of that licence rather than the absence of one.

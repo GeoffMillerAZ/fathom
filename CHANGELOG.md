@@ -19,7 +19,33 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch (pre-1.0: breaking bumps minor)
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Added
+- **`task bench-home` / `bench-lookup`** run the context-bench with three
+  trials per (task, arm) cell instead of one, and score the run against the
+  criterion committed in the corpus. Both spend real LLM tokens and are
+  deliberately absent from `validate`, hooks, and CI.
+- **`docs/bench/ledger.jsonl`** is the committed per-run bench history, one
+  line per run; `task bench-ledger` re-renders `docs/bench/README.md` from it
+  for free. Raw transcripts stay under `workspace/artifacts/`.
+- **`contextbenchscore ledger`** pairs the arms, evaluates the corpus's
+  `machine_criterion`, and exits 0 pass / 1 fail / 3 indeterminate. A run
+  where a task ran in only one arm, or where the thinnest cell fell below the
+  registered replication floor, is indeterminate — never a win (ADR-027).
+- **`docs/guides/openviking-side-by-side.md`** — how to run OpenViking
+  alongside fathom without the two fighting, and the authority rule that
+  keeps conversational memory from asserting facts about code (ADR-028,
+  untested as written).
+
+### Changed
+- The home corpus registers a **replication floor of 3 trials** it did not
+  previously have. The two n=1 runs of 2026-07-24 are indeterminate under it
+  going forward; their recorded verdicts stand as history of an n=1
+  instrument and are not rewritten.
+- Bench results now report **two token ratios**: the aggregate the criterion
+  reads, and the per-task median an outlier cannot move. The median is
+  interpretation only and cannot become the gate.
 
 ## [0.7.0] -- 2026-09-01
 
