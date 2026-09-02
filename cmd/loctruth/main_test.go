@@ -110,7 +110,7 @@ func TestRun_FilterAndOutFile(t *testing.T) {
 	root := copyFixture(t)
 	out := filepath.Join(t.TempDir(), "callers.json")
 	var stdout, stderr bytes.Buffer
-	if rc := run([]string{"-root", root, "-out", out, "-func", "b/b.go:Run"}, &stdout, &stderr); rc != 0 {
+	if rc := runLocTruth([]string{"-root", root, "-out", out, "-func", "b/b.go:Run"}, &stdout, &stderr); rc != 0 {
 		t.Fatalf("run exited %d: %s", rc, stderr.String())
 	}
 	raw, err := os.ReadFile(out)
@@ -131,10 +131,10 @@ func TestRun_FilterAndOutFile(t *testing.T) {
 
 func TestRun_UsageErrors(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if rc := run(nil, &stdout, &stderr); rc != 2 {
+	if rc := runLocTruth(nil, &stdout, &stderr); rc != 2 {
 		t.Errorf("no -root: rc=%d, want 2", rc)
 	}
-	if rc := run([]string{"-root", filepath.Join(t.TempDir(), "missing")}, &stdout, &stderr); rc != 1 {
+	if rc := runLocTruth([]string{"-root", filepath.Join(t.TempDir(), "missing")}, &stdout, &stderr); rc != 1 {
 		t.Errorf("missing root: rc=%d, want 1", rc)
 	}
 }

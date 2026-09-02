@@ -26,10 +26,10 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(runLocTruth(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-func run(args []string, stdout, stderr io.Writer) int {
+func runLocTruth(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("loctruth", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	root := fs.String("root", "", "module checkout at the pinned base_commit (required)")
