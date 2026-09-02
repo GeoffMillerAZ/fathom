@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/geoffmilleraz/fathom/internal/readset"
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // Tier says how much of the practice a repository carries. A repo need not
@@ -153,13 +153,13 @@ type Corpus struct {
 	// (ADR-027). Without it an unreadable invariants.md rendered as a repo
 	// with zero invariants and half the debt — its most broken state was
 	// its healthiest-looking one. Every count derived from this corpus must
-	// go through Coverage.RenderCount.
-	Coverage readset.Manifest
+	// go through readcoverage.RenderCount.
+	Coverage readmanifest.Manifest
 
 	// reads is the live recorder during Load; Coverage is its frozen
 	// manifest. Unexported so a caller cannot append to coverage after the
 	// fact and claim to have seen more than it did.
-	reads *readset.Set
+	reads *readmanifest.Set
 }
 
 // conditionLabels are the practice's four expiry labels, plus the
@@ -195,7 +195,8 @@ var (
 // the gap instead of an empty success.
 func Load(root string) (Corpus, error) {
 	c := Corpus{Root: root, Tier: TierNone}
-	c.reads = &readset.Set{Root: root}
+	c.reads = readmanifest.NewSet()
+	c.reads.RelativeTo(root)
 
 	routerAbs := filepath.Join(root, routerRelDir, "README.md")
 	if body, ok := c.reads.ReadFile(routerAbs); ok {

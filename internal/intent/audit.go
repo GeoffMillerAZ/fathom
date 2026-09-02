@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/adr"
-	"github.com/geoffmilleraz/fathom/internal/readset"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
 // audit.go — EP-7/EP-8: what the corpus CLAIMS versus what any instrument
@@ -65,8 +66,9 @@ type Audit struct {
 	// Coverage is what the corpus reader could and could not see (ADR-027).
 	// When it is incomplete EVERY count in this struct is a lower bound,
 	// because the sources that would have raised it are the ones that could
-	// not be read. RenderCount is the only sanctioned way to print one.
-	Coverage readset.Manifest
+	// not be read. readcoverage.RenderCount is the only sanctioned way to
+	// print one.
+	Coverage readmanifest.Manifest
 	Elapsed  time.Duration
 }
 
@@ -108,7 +110,7 @@ type AuditInput struct {
 	// report makes every count in it a lower bound — a caller that reads
 	// half the plans and reports a confident U12 total is the same defect
 	// in a different file (ADR-027).
-	ExtraCoverage []readset.Manifest
+	ExtraCoverage []readmanifest.Manifest
 
 	// SurfaceFiles counts files in the tree matching a surface's globs, and
 	// reports whether it could look at all. nil → U14 uncomputable.
@@ -128,7 +130,7 @@ func RunAudit(in AuditInput) Audit {
 	if in.IncidentDays == 0 {
 		in.IncidentDays = 30
 	}
-	merged := &readset.Set{}
+	merged := readmanifest.NewSet()
 	merged.Merge(in.Corpus.Coverage)
 	for _, m := range in.ExtraCoverage {
 		merged.Merge(m)
@@ -162,7 +164,7 @@ func RunAudit(in AuditInput) Audit {
 	// Blindness leads the NOT-COMPUTED list, because every other line in it
 	// is a bounded, understood gap while this one silently lowers every
 	// count above it (ADR-027; the measured case was 37 invariants → 0).
-	if note := a.Coverage.Note(); note != "" {
+	if note := readcoverage.Note(a.Coverage); note != "" {
 		a.Uncomputable = append([]string{
 			"COVERAGE INCOMPLETE — every count below is a LOWER BOUND: " + note,
 		}, a.Uncomputable...)

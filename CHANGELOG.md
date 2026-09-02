@@ -237,6 +237,12 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   untested as written).
 
 ### Changed
+- **One read manifest (PC-34, ADR-027).** `internal/readset` is deleted onto
+  agentic-kit's `foundations/telemetry/read-manifest`, which the kit
+  generalised from it; fathom keeps the rendering adapter
+  `internal/readcoverage` and the pinned lower-bound wording is unchanged.
+  `fathom intent audit --json` `coverage.unreadable[]` entries now nest the
+  outcome (`{path, outcome:{kind, detail, bytes}}`) instead of flattening it.
 - **`fleet reconcile` plans the shipped skills through the wiring engine**
   (`planOwnedFile`, RP-4): both repo-scoped shapes, rewritten only under the
   `fathom:owned` marker and receipted; a hand-authored file by a skill's name

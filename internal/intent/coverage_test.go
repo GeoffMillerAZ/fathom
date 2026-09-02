@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
 // writeCorpus builds a minimal but real corpus: a router with a sensitive
@@ -110,7 +112,7 @@ func TestUnreadableInputNeverLooksHealthier(t *testing.T) {
 	}
 
 	// And no count derived from it may be rendered as a bare total.
-	rendered := after.Coverage.RenderCount(len(after.Invariants), "invariant(s)")
+	rendered := readcoverage.RenderCount(after.Coverage, len(after.Invariants), "invariant(s)")
 	if !strings.HasPrefix(rendered, "≥") {
 		t.Fatalf("a count over incomplete coverage must render as a lower bound, got %q", rendered)
 	}

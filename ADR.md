@@ -1008,6 +1008,11 @@ reason. Two new claim kinds: U13 (guard provenance) already existed; U14 names a
 sensitive surface whose globs match nothing. Fixing the one U14 finding surfaced
 nine genuinely unpinned rows in measurement code that U12 could not previously see.
 
+2026-09-02: `internal/readset` deleted onto agentic-kit's
+`foundations/telemetry/read-manifest` (FB-8) — the kit generalised the package
+from it, so fathom keeps only the rendering adapter `internal/readcoverage`
+and one shape of "what could I not see" survives.
+
 **Alternatives rejected.** *Fail hard on any unreadable file* — wins if the
 reporting layer were load-bearing for correctness; it is advisory, and hard
 failure on a transient wedge trains users to disable it. *Log to stderr and carry
