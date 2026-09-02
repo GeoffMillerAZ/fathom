@@ -12,19 +12,68 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
-// fathom plugin render (vision 16 R1, plan IO-25): generate the Claude Code
-// plugin directory — skills (all eight, namespaced /fathom:<name>), the
-// full hook template as plugin hooks, and the MCP registration — from the
+// fathom plugin render (vision 16 R1, plan IO-25; RP-6 two manifests):
+// generate the plugin directory — skills (all nine, namespaced
+// /fathom:<name> in Claude Code), the full hook template as Claude plugin
+// hooks, and the MCP registration in BOTH manifest dialects — from the
 // SAME embedded sources init installs. A build artifact, never
 // hand-maintained: a hand-edited plugin is the schema-copy bug class, so
 // re-rendering overwrites unconditionally (the output dir belongs to the
 // generator). Distribution: commit the rendered tree to a marketplace repo;
 // bump pluginVersion to ship an update (the reconcile channel).
+//
+// Layout (one tree, two loaders):
+//
+//	<out>/plugin.json                 Agent Plugins 1.0 (root; $schema-selected)
+//	<out>/mcp.json                    Agent Plugins 1.0 (streamable-http, loopback)
+//	<out>/.claude-plugin/plugin.json  Claude Code
+//	<out>/.mcp.json                   Claude Code (type: http)
+//	<out>/hooks/hooks.json            Claude Code hook template
+//	<out>/skills/<name>/SKILL.md      shared: spec-only frontmatter
 
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.1.0"
+const pluginVersion = "0.2.0"
+
+// pluginDescription is the one description both manifests carry.
+const pluginDescription = "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install."
+
+// Agent Plugins 1.0 schema URLs (agent-plugins.org, spec 1.0.0 published
+// 2026-07-24). plugin.json's `$schema` MUST equal the first (clients select
+// the loading rules by it and reject an unsupported version); mcp.json's
+// version MUST match plugin.json's. schema/plugin/schema.cue vendors both.
+const (
+	agentPluginSchemaURL = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
+	agentMCPSchemaURL    = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+)
+
+// renderAgentPluginManifest renders the Agent Plugins 1.0 pair (RP-6,
+// docs/plans/reach-parity.md): the root `plugin.json` (closed schema —
+// no inline component config, no metadata field) and `mcp.json` pointing
+// at the loopback daemon as a `streamable-http` server. Both sit beside
+// `.claude-plugin/plugin.json` over ONE `skills/` tree, so a directory
+// rendered once loads in Claude Code (which reads its own manifest and
+// auto-discovers `skills/`) and in every Agent Plugins client (VS Code,
+// Cursor, Copilot, Codex, Kiro, …). Deterministic: no build stamp.
+func renderAgentPluginManifest(mcpURL string) (pluginJSON, mcpJSON map[string]any) {
+	pluginJSON = map[string]any{
+		"$schema":     agentPluginSchemaURL,
+		"name":        "fathom",
+		"version":     pluginVersion,
+		"description": pluginDescription,
+		"author":      map[string]any{"name": "fathom"},
+		"license":     "MIT",
+		"keywords":    []string{"code-intelligence", "mcp", "skills", "verify-gate"},
+	}
+	mcpJSON = map[string]any{
+		"$schema": agentMCPSchemaURL,
+		"mcpServers": map[string]any{
+			"fathom": map[string]any{"type": "streamable-http", "url": mcpURL},
+		},
+	}
+	return pluginJSON, mcpJSON
+}
 
 func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plugin render", stderr)
@@ -35,12 +84,13 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// plugin.json
+	// .claude-plugin/plugin.json — Claude Code's manifest.
 	manifest := map[string]any{
 		"name":        "fathom",
 		"displayName": "fathom",
 		"version":     pluginVersion,
-		"description": "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install.",
+		"description": pluginDescription,
+		"author":      map[string]any{"name": "fathom"},
 		"metadata":    map[string]any{"fathomVersion": buildinfo.Version()},
 	}
 	if err := writeJSON(filepath.Join(*out, ".claude-plugin", "plugin.json"), manifest); err != nil {
@@ -48,9 +98,22 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	// skills/
+	// plugin.json + mcp.json — the Agent Plugins 1.0 pair (RP-6).
+	agentPlugin, agentMCP := renderAgentPluginManifest(*mcpURL)
+	if err := writeJSON(filepath.Join(*out, "plugin.json"), agentPlugin); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	if err := writeJSON(filepath.Join(*out, "mcp.json"), agentMCP); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// skills/ — ONE tree, spec-only frontmatter (agentsVariant): the six
+	// Agent Skills fields are the shared floor every client and Claude
+	// Code load unchanged.
 	for _, name := range skillsdist.Names {
-		content, err := skillsdist.FS.ReadFile(name + "/SKILL.md")
+		content, err := renderSkill(skillsTargetAgents, name)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: embedded skill %q: %v\n", name, err)
 			return 1
@@ -116,7 +179,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	fmt.Fprintf(stdout, "plugin rendered: %s (v%s, %d skills, %d hook groups, MCP → %s) — validate with `claude plugin validate %s`\n",
+	fmt.Fprintf(stdout, "plugin rendered: %s (v%s, %d skills, %d hook groups, MCP → %s; .claude-plugin/plugin.json + Agent Plugins 1.0 plugin.json/mcp.json over one skills/ tree) — validate with `claude plugin validate --strict %s`\n",
 		*out, pluginVersion, len(skillsdist.Names), len(specs), *mcpURL, *out)
 	return 0
 }

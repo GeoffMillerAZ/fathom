@@ -8,12 +8,11 @@ argument-hint: [SERVICE=<service-id>] [PLAN=<docs/plans/name.md>]
 > **Capability note.** The `fathom verify` gate itself is fully
 > harness-agnostic — it's a git-native/CLI check, identical whether Codex or
 > Claude Code (or a human) runs it, so nothing below is a Codex compromise.
-> This file just carries fathom's plan-grammar convention into Codex CLI's
-> custom-prompts mechanism (`~/.codex/prompts/fathom-verify.md`, invoked as
-> `/prompts:fathom-verify`). If your Codex CLI version has since adopted the
-> native `SKILL.md`-based skills mechanism (`.agents/skills/`), prefer
-> copying this skill's `SKILL.md` there instead — verify against your
-> installed version, this repo has no Codex install to test against.
+> This file is the DEPRECATED custom-prompts twin
+> (`~/.codex/prompts/fathom-verify.md`, `/prompts:fathom-verify`; written
+> only by `fathom init --skills=codex-prompts`). `fathom init --skills=codex`
+> writes the skill proper to `.agents/skills/fathom-verify/SKILL.md`, the
+> path Codex documents — prefer it.
 
 Run the gate:
 

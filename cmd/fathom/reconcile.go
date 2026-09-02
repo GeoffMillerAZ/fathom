@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -40,9 +39,14 @@ type wiringDiff struct {
 	Service       string   `json:"service,omitempty"`        // the registry's id, when known
 	Missing       []string `json:"missing,omitempty"`        // template entries absent at every readable scope
 	StaleCmds     []string `json:"stale_cmds,omitempty"`     // commands spelling an absolute fathom path
-	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skills absent from .claude/skills (FR-3)
-	StanzaNote    string   `json:"stanza_note,omitempty"`    // pre-rename branding etc.
-	StaleStanzas  []string `json:"stale_stanzas,omitempty"`  // marker-owned regions whose content != the current template
+	MissingSkills []string `json:"missing_skills,omitempty"` // shipped skill files absent (FR-3; RP-4: .claude/skills and .agents/skills)
+	StaleSkills   []string `json:"stale_skills,omitempty"`   // marker-owned skill files behind the shipped source (RP-4)
+	// BlockedSkills names the skill files law 15 stops on — "FILE — why": a
+	// hand-authored file by a skill's name (no marker), or a hand edit
+	// under the marker since fathom wrote it. --apply leaves them alone.
+	BlockedSkills []string `json:"blocked_skills,omitempty"`
+	StanzaNote    string   `json:"stanza_note,omitempty"`   // pre-rename branding etc.
+	StaleStanzas  []string `json:"stale_stanzas,omitempty"` // marker-owned regions whose content != the current template
 	// RemarkStanzas are owned regions whose PROSE already equals the
 	// current template but whose marker predates format v3 (no digest) or
 	// records an older template version: up to date, NOT stale — --apply
@@ -141,16 +145,14 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	sort.Strings(d.Missing)
 	sort.Strings(d.StaleCmds)
 
-	// Shipped-skills check (FR-3, docs/plans/exploration-ledger.md): a repo
-	// whose hooks are current can still fail sessions on Unknown-skill —
-	// repos wired before a skill shipped never receive it. Presence is the
-	// Claude shape (<root>/.claude/skills/<name>/SKILL.md); the Codex shape
-	// is user-global and therefore not a per-repo drift signal.
-	for _, name := range skillsdist.Names {
-		if _, err := os.Stat(filepath.Join(root, ".claude", "skills", name, "SKILL.md")); err != nil {
-			d.MissingSkills = append(d.MissingSkills, name)
-		}
-	}
+	// Shipped-skills drift (FR-3, docs/plans/exploration-ledger.md; RP-4,
+	// docs/plans/reach-parity.md): a repo whose hooks are current can still
+	// fail sessions on Unknown-skill — repos wired before a skill shipped
+	// never receive it — and a skill fathom rendered once drifts from the
+	// shipped source with every release. Both repo-scoped shapes are
+	// planned through the wiring engine (reconcile_skills.go); the
+	// user-global prompts twin is not a per-repo drift signal.
+	d.MissingSkills, d.StaleSkills, d.BlockedSkills = skillDriftFiles(root)
 
 	if cm, err := os.ReadFile(filepath.Join(root, "CLAUDE.md")); err == nil {
 		low := strings.ToLower(string(cm))
@@ -289,6 +291,10 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 
 	keys, notes := shimHookKeys(root)
 	spec.Keys = keys
+	// RP-4: the shipped skills ride the same plan → apply → receipt, so a
+	// hand-authored file by a skill's name is BLOCKED by name and a rewrite
+	// is undoable with everything else in the receipt.
+	spec.Files = skillOwnedFiles(root)
 	return spec, notes
 }
 
@@ -372,7 +378,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	blockedFiles := map[string]bool{}
 	for _, root := range roots {
 		d := analyzeWiringFor(root, svcByRoot[root])
-		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
+		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
 		if !hasDrift && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
@@ -393,7 +399,10 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "  stale:   %s\n", s)
 		}
 		if len(d.MissingSkills) > 0 {
-			fmt.Fprintf(stdout, "  missing: %d shipped skill(s) for claude (Unknown-skill failures in sessions)\n", len(d.MissingSkills))
+			fmt.Fprintf(stdout, "  missing: %d shipped skill file(s) (%s; Unknown-skill failures in sessions)\n", len(d.MissingSkills), skillDirsSummary(d.MissingSkills))
+		}
+		if len(d.StaleSkills) > 0 {
+			fmt.Fprintf(stdout, "  stale:   %d shipped skill file(s) behind the shipped source (%s; rewritten under their marker on --apply)\n", len(d.StaleSkills), skillDirsSummary(d.StaleSkills))
 		}
 		if d.StanzaNote != "" {
 			fmt.Fprintf(stdout, "  stanza:  %s\n", d.StanzaNote)
@@ -407,6 +416,9 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if !*apply {
 			for _, f := range d.DriftedStanzas {
 				fmt.Fprintf(stdout, "  BLOCKED: %s (fathom will not merge; --apply leaves this file untouched)\n", f)
+			}
+			for _, f := range d.BlockedSkills {
+				fmt.Fprintf(stdout, "  BLOCKED: %s (--apply leaves this file untouched)\n", f)
 			}
 		}
 		if d.SettingsNote != "" {
@@ -450,9 +462,11 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				blockedFiles[root+"\x00"+bf.File] = true
 				fmt.Fprintf(stdout, "  BLOCKED: %s (%s) — %s\n", bf.File, blockedCauseLabel(bf.Cause), strings.Join(bf.Reasons, "; "))
 			}
-			hooksApplied := 0
+			hooksApplied, skillsApplied := 0, 0
 			for _, it := range res.Applied {
 				switch {
+				case it.Kind == wiring.KindFile:
+					skillsApplied++
 				case it.Kind != wiring.KindRegion:
 					hooksApplied++
 				case it.Present && it.Before == it.After:
@@ -466,18 +480,11 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			} else if hooksApplied > 1 {
 				fmt.Fprintf(stdout, "  applied: %d hook entries written to .claude/settings.json (shim spelling; project scope, deferring to user scope)\n", hooksApplied)
 			}
+			if skillsApplied > 0 {
+				fmt.Fprintf(stdout, "  applied: %d shipped skill file(s) rendered under their marker (.claude/skills, .agents/skills)\n", skillsApplied)
+			}
 			if res.Receipt != nil {
 				fmt.Fprintf(stdout, "  receipt: %s (fathom fleet undo %s --repo %s reverses it)\n", res.Receipt.ID, res.Receipt.ID, root)
-			}
-		}
-		// FR-3: missing shipped skills install through init's own
-		// installSkills machinery (Claude shape only — the per-repo one),
-		// which refuses to touch a same-named file fathom does not own.
-		if len(d.MissingSkills) > 0 {
-			if err := installSkills(root, "claude", stdout); err != nil {
-				fmt.Fprintf(stdout, "  apply failed (skills): %v\n", err)
-			} else {
-				fmt.Fprintf(stdout, "  applied: %d missing shipped skill(s) installed (claude shape)\n", len(d.MissingSkills))
 			}
 		}
 	}

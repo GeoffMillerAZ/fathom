@@ -109,7 +109,7 @@ func maintainedKnownNames(t *testing.T, root string) map[string]bool {
 		"receipts", "undo", "explain", "set", "install", "init", "sources", "map", "compile", "eval",
 		"doctor", "pack", "runs", "spend", "traffic", "channels", "interventions", "series", "rollup",
 		"rotate", "near", "suppress", "unsuppress", "preview", "history", "context", "lease", "leases",
-		"on", "off", "render", "marketplace", "json", "quiet", "strict", "all", "fresh", "top", "apply",
+		"on", "off", "render", "marketplace", "matrix", "json", "quiet", "strict", "all", "fresh", "top", "apply",
 		"format", "sarif",
 		// config blocks and ingest outcome words the lines legitimately cite
 		"budgets", "degraded", "read-failed", "refused",

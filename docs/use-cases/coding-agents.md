@@ -62,9 +62,13 @@ prints the two steps it will not do for you:
 
 One always-on daemon serves every repo and session (launchd example in
 `docs/usage.md`); ingest is hash-gated (~0.2s when clean) and self-refreshes
-on git-HEAD drift. `fathom init --skills` (bare = all; `=claude`/`=codex`)
-also installs the nine shipped skills (activate, custodian, doctor,
-feedback, impact, onboard, plan, rewire, verify). Every file `init` or
+on git-HEAD drift. `fathom init --skills` (bare = `.agents/skills` +
+`.claude/skills`; `=claude`, `=codex`/`=agents` for one path, `=codex-prompts`
+for the deprecated `~/.codex/prompts` twin) also installs the nine shipped
+skills (activate, custodian, doctor, feedback, impact, onboard, plan,
+rewire, verify); `fathom plugin render` packages the same nine with the
+hook template and the MCP registration as one plugin tree carrying both the
+Claude Code and the Agent Plugins 1.0 manifests. Every file `init` or
 `fathom fleet reconcile --apply` writes goes through one plan → apply →
 receipt (`.fathom/receipts.jsonl`; `fathom fleet undo` reverses it — law
 15); `fathom doctor` then proves the wiring, and `fathom prime` is the
@@ -248,17 +252,18 @@ numbers and tool-kill decisions run on clean data.
 
 ## Maintained
 
-CLI: `fathom init` (`--skills`, `--harness`), `harness` (`list`/`capabilities`/`ladder` — the
-registry every hook verb's `--harness` names, ADR-029), `ingest`, `compile`, `layers`
-(`list`/`show`/`install` — see `docs/layers.md`), `verify` (`--quiet`, `--strict`, `--require-all`),
+CLI: `fathom init` (`--skills`, `--harness`, `--json`), `harness` (`list`/`capabilities`/`ladder`/`matrix`
+— the registry every hook verb's `--harness` names, ADR-029; `matrix` renders the
+adoption matrix `docs/adoption/other-harnesses.md` pins), `plugin` (`render` — one tree,
+both manifests), `ingest` (`--json`), `compile`, `layers`
+(`list` (`--json`)/`show`/`install` — see `docs/layers.md`), `verify` (`--quiet`, `--strict`, `--require-all`),
 `instrument`, `edit-hook` (`--pre`; the claim-moment verify on a plan `[x]`),
 `stop-hook`, `doctor` (its stanza-loaded row reads the InstructionsLoaded beats), `gen-plan-cue`,
 `config` (incl. `config audit` and `config audit --hook`), `capabilities`, `thread` (`brief`/`note`/
-`point`/`list`/`close`/`promote`/`handoff`), `rate`, `providers`, `smoke`.
-Hidden verbs — dispatched and answering `fathom <verb> -h`, but absent from
-the `fathom help` table (`cmd/fathom/main.go` printUsage): `session-hook`,
-`session-end-hook`, `pre-compact-hook`, `prime`, `fleet` (`report`/
-`reconcile`/`receipts`/`undo`).
+`point`/`list`/`close`/`promote`/`handoff`; `brief --json`, `list --json`), `rate`, `providers`, `smoke`,
+`session-hook`, `session-end-hook`, `pre-compact-hook`, `prime`, `fleet` (`report`/
+`reconcile`/`receipts`/`undo`) — every one listed by `fathom help` (the table
+renders from the dispatch table) and answering `fathom <verb> -h`.
 MCP: the `/rpc/agent` surface (17 tools, `read_source` and `memory_search`
 included — see `docs/mcp-tools.md`).
 Phase O (`.fathom/guard.cue`, `.fathom/modules.cue`) is covered in

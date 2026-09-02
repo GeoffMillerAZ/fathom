@@ -924,12 +924,25 @@ they still work when called off the agent surface (execute, just flagged
 
 ## 11. Agent skills — the nine shipped with the binary
 
-`fathom init --skills[=claude|codex|all]` installs nine shipped, versioned
-skill sources (`dist/agents/skills/`, embedded in the binary — no fathom
-source checkout needed at install time):
+`fathom init --skills[=claude|codex|agents|all|codex-prompts]` installs
+nine shipped, versioned skill sources (`dist/agents/skills/`, embedded in
+the binary — no fathom source checkout needed at install time):
 
 ```sh
-bin/fathom init --skills=claude
+bin/fathom init --skills          # bare = all: .agents/skills + .claude/skills
+bin/fathom init --skills=claude   # .claude/skills only
+```
+
+Or package all nine with the hook template and the MCP registration as a
+plugin — `fathom plugin render` writes one tree that carries both Claude
+Code's `.claude-plugin/plugin.json` and the Agent Plugins 1.0
+`plugin.json`/`mcp.json` over one `skills/` directory
+(`docs/usage.md` §plugin; `claude --plugin-dir <out>` for a session, a
+marketplace for a fleet):
+
+```sh
+bin/fathom plugin render --out fathom-plugin
+claude plugin validate --strict fathom-plugin
 ```
 
 - **`fathom-plan`** — scaffold a gate-ready `docs/plans/<slug>.md` in plan
@@ -965,13 +978,21 @@ bin/fathom init --skills=claude
   audit`'s evidence, and apply fixes as the session — fathom reports, the
   session edits (§8).
 
-Each ships two rendered shapes from one authored source: `SKILL.md`
-(Claude Code's frontmatter + Markdown format, installed to
-`.claude/skills/<name>/SKILL.md`) and `codex-prompt.md` (a single Codex
-custom-prompt file — see `docs/adoption/codex.md` §2). `--skills=claude`
-installs only the former, `--skills=codex` only the latter (to
-`~/.codex/prompts/<name>.md`), `--skills=all` (or a bare `--skills`)
-installs both.
+Each is rendered from one authored source into three shapes, selected by
+the `--skills` value:
+
+| Value | Writes | Shape |
+|---|---|---|
+| `claude` | `.claude/skills/<name>/SKILL.md` | the embedded `SKILL.md` verbatim (Claude Code's frontmatter superset) |
+| `codex`, `agents` | `.agents/skills/<name>/SKILL.md` | the Agent Skills standard path every other harness reads (Codex, Gemini CLI, Cursor, Copilot, …); frontmatter reduced to the six spec fields, `name` = the directory (`schema/skills/schema.cue` vets it under `task cue-vet`) |
+| `all` (bare `--skills`) | both of the above | the pair covers 14 of the 15 surveyed harnesses; both repo-scoped |
+| `codex-prompts` | `~/.codex/prompts/<name>.md` | the deprecated Codex custom-prompts twin (`codex-prompt.md`) — the only user-global write, explicit only (`docs/upgrades/0.8.0-skills-on-the-standard.md`) |
+
+`fathom doctor`'s `skills_installed` row reads `.claude/skills` for Claude
+Code and `.agents/skills` for every other `--harness`, naming each missing
+skill; `fathom fleet reconcile` plans both repo-scoped shapes through the
+wiring engine (a stale marker-owned copy is rewritten and receipted, a
+hand-authored file by a skill's name is BLOCKED by name — §11.1).
 
 ### 11.1 Re-running / conflicts
 

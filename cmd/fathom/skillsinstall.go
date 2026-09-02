@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
@@ -26,8 +28,8 @@ const skillMarker = "<!-- fathom:owned"
 // `--skills` (no `=value`) is accepted and calls Set("true") instead of
 // erroring "flag needs an argument" or consuming the next positional arg.
 // `--skills=codex` etc. still calls Set with the literal value. This is
-// what makes `--skills[=claude|codex|all]`'s bracket-optional syntax work
-// with the standard library's flag package.
+// what makes `--skills[=claude|codex|agents|all|codex-prompts]`'s
+// bracket-optional syntax work with the standard library's flag package.
 type optionalStringFlag struct {
 	value string
 	set   bool
@@ -41,8 +43,11 @@ func (f *optionalStringFlag) Set(v string) error {
 }
 func (f *optionalStringFlag) IsBoolFlag() bool { return true }
 
+// skillsModes is the --skills vocabulary, in help order.
+const skillsModes = "claude, codex, agents, all, or codex-prompts"
+
 // resolveSkillsMode normalizes the --skills flag state to "" (flag
-// omitted — skip), "claude", "codex", or "all". A bare `--skills` reaches
+// omitted — skip) or one of the skillsModes. A bare `--skills` reaches
 // here as value "true" (optionalStringFlag.IsBoolFlag's default), which this
 // maps to "all" — the useful default when a caller doesn't know or care
 // which harness is in play, rather than pretending to detect an environment
@@ -61,108 +66,251 @@ func resolveSkillsMode(value string, set bool) (string, error) {
 	switch value {
 	case "true":
 		return "all", nil
-	case "claude", "codex", "agents", "all":
+	case "claude", "codex", "agents", "all", "codex-prompts":
 		return value, nil
 	case "":
-		return "", fmt.Errorf("empty --skills= value (want --skills=claude, --skills=codex, --skills=agents, --skills=all, or bare --skills for all)")
+		return "", fmt.Errorf("empty --skills= value (want --skills=claude, --skills=codex, --skills=agents, --skills=all, --skills=codex-prompts, or bare --skills for all)")
 	default:
-		return "", fmt.Errorf("invalid --skills value %q (want claude, codex, agents, or all)", value)
+		return "", fmt.Errorf("invalid --skills value %q (want %s)", value, skillsModes)
 	}
 }
 
-// installSkills renders the shipped dist/agents/skills/ sources into the
-// selected harness location(s). mode is a value already normalized by
-// resolveSkillsMode ("" is a no-op). root is the target repo (used for the
-// Claude Code shape, .claude/skills/<name>/SKILL.md); the Codex shape is
-// user-global regardless of root — ~/.codex/prompts/<name>.md is the only
-// location Codex's custom-prompts convention documents (no project-scoped
-// variant; see any shipped codex-prompt.md's own header for the newer
-// .agents/skills/ mechanism this falls back to documenting, not writing,
-// since it isn't reliably verifiable from this repo).
-func installSkills(root, mode string, stdout io.Writer) error {
-	if mode == "" {
+// Skill render targets (RP-1, docs/plans/reach-parity.md). Each is one
+// on-disk shape of the shipped skill pack; a --skills mode selects a fixed
+// list of them.
+const (
+	// skillsTargetClaude is `.claude/skills/<name>/SKILL.md` — the Claude
+	// Code superset frontmatter, verbatim from the embedded source.
+	skillsTargetClaude = "claude"
+	// skillsTargetAgents is `.agents/skills/<name>/SKILL.md` — the Agent
+	// Skills standard path (agentskills.io), the one Codex, Gemini CLI,
+	// Cursor, Copilot and the rest read; spec-only frontmatter
+	// (agentsVariant).
+	skillsTargetAgents = "agents"
+	// skillsTargetCodexPrompts is `~/.codex/prompts/<name>.md` — Codex's
+	// DEPRECATED custom-prompts twin. The only user-global write, and only
+	// behind the explicit `--skills=codex-prompts`.
+	skillsTargetCodexPrompts = "codex-prompts"
+)
+
+// skillsTargetsFor maps a --skills mode (already normalized by
+// resolveSkillsMode) to the render targets it writes, in a fixed order.
+//
+//   - bare --skills / "all": `.agents/skills` AND `.claude/skills` — the
+//     pair covers 14 of the 15 surveyed harnesses (vision 25 §1), and both
+//     are repo-scoped.
+//   - "codex": `.agents/skills` — the path Codex documents for skills. The
+//     legacy `~/.codex/prompts` twin is NOT written here any more (0.8.0
+//     Breaking: docs/upgrades/0.8.0-skills-on-the-standard.md).
+//   - "agents": `.agents/skills`.
+//   - "claude": `.claude/skills`.
+//   - "codex-prompts": the deprecated `~/.codex/prompts` twin, explicit only.
+//   - "": nothing.
+func skillsTargetsFor(mode string) []string {
+	switch mode {
+	case "all":
+		return []string{skillsTargetAgents, skillsTargetClaude}
+	case "claude":
+		return []string{skillsTargetClaude}
+	case "codex", "agents":
+		return []string{skillsTargetAgents}
+	case "codex-prompts":
+		return []string{skillsTargetCodexPrompts}
+	default:
 		return nil
 	}
-	if mode == "claude" || mode == "all" {
-		for _, name := range skillsdist.Names {
-			content, err := skillsdist.FS.ReadFile(name + "/SKILL.md")
-			if err != nil {
-				return fmt.Errorf("reading embedded skill %q: %w", name, err)
-			}
-			dest := filepath.Join(root, ".claude", "skills", name, "SKILL.md")
-			if err := installSkillFile(dest, content, stdout); err != nil {
-				return err
-			}
-		}
+}
+
+// skillDest is the on-disk path of one skill for one target. root is the
+// target repo; home is the user's home (only the codex-prompts target uses
+// it, and it is the caller's job to resolve it so tests never touch the
+// real one).
+func skillDest(root, home, target, name string) string {
+	switch target {
+	case skillsTargetClaude:
+		return filepath.Join(root, ".claude", "skills", name, "SKILL.md")
+	case skillsTargetAgents:
+		return filepath.Join(root, ".agents", "skills", name, "SKILL.md")
+	case skillsTargetCodexPrompts:
+		return filepath.Join(home, ".codex", "prompts", name+".md")
 	}
-	if mode == "agents" || mode == "all" {
-		// The open-standard rendering (vision 16 R2, plan IO-24): Agent
-		// Skills' shared repo-scope discovery path — Codex and Gemini CLI
-		// both walk <repo>/.agents/skills natively, so one spec-conformant
-		// write reaches every adopting harness. Same SKILL.md source as
-		// the Claude shape (the format IS the open standard); per-harness
-		// discovery remains a calibration row, not an assumption.
-		for _, name := range skillsdist.Names {
-			content, err := skillsdist.FS.ReadFile(name + "/SKILL.md")
-			if err != nil {
-				return fmt.Errorf("reading embedded skill %q: %w", name, err)
-			}
-			dest := filepath.Join(root, ".agents", "skills", name, "SKILL.md")
-			if err := installSkillFile(dest, content, stdout); err != nil {
-				return err
-			}
-		}
-	}
-	if mode == "codex" || mode == "all" {
-		home, err := os.UserHomeDir()
+	return ""
+}
+
+// renderSkill returns the bytes one target receives for one shipped skill:
+// the embedded SKILL.md verbatim for Claude Code, the spec-only
+// agentsVariant for `.agents/skills`, and the codex-prompt.md twin for the
+// deprecated prompts path.
+func renderSkill(target, name string) ([]byte, error) {
+	switch target {
+	case skillsTargetCodexPrompts:
+		content, err := skillsdist.FS.ReadFile(name + "/codex-prompt.md")
 		if err != nil {
-			return fmt.Errorf("resolving home directory for Codex prompts: %w", err)
+			return nil, fmt.Errorf("reading embedded codex prompt %q: %w", name, err)
 		}
-		for _, name := range skillsdist.Names {
-			content, err := skillsdist.FS.ReadFile(name + "/codex-prompt.md")
-			if err != nil {
-				return fmt.Errorf("reading embedded codex prompt %q: %w", name, err)
-			}
-			dest := filepath.Join(home, ".codex", "prompts", name+".md")
-			if err := installSkillFile(dest, content, stdout); err != nil {
-				return err
-			}
+		return content, nil
+	case skillsTargetClaude, skillsTargetAgents:
+		content, err := skillsdist.FS.ReadFile(name + "/SKILL.md")
+		if err != nil {
+			return nil, fmt.Errorf("reading embedded skill %q: %w", name, err)
+		}
+		if target == skillsTargetAgents {
+			return agentsVariant(name, content)
+		}
+		return content, nil
+	}
+	return nil, fmt.Errorf("unknown skills target %q", target)
+}
+
+// agentSkillsFields is the Agent Skills specification's closed frontmatter
+// field set (agentskills.io/specification, source 2026-08-04; the same six
+// the skills-ref validator and Claude's spec-only surfaces accept). Any
+// other key is a Claude Code extension (`paths`, `hooks`, `context`, …)
+// and is a hard error on a spec-only reader, so the `.agents/skills`
+// rendering never carries one. schema/skills/schema.cue is the same set as
+// a vetted schema.
+var agentSkillsFields = map[string]bool{
+	"name": true, "description": true, "license": true,
+	"compatibility": true, "metadata": true, "allowed-tools": true,
+}
+
+var frontmatterKeyLine = regexp.MustCompile(`^([A-Za-z0-9_-]+):`)
+
+// agentsVariant renders the `.agents/skills` shape of one shipped skill
+// (RP-2): the YAML frontmatter is reduced to the Agent Skills spec fields —
+// a top-level key outside agentSkillsFields is dropped with its
+// continuation lines — and `name` is held equal to the directory name,
+// which the spec requires ("must match the parent directory name"). The
+// body is untouched, marker line included. A file without a leading
+// frontmatter block is an error: there is no spec-conformant rendering of
+// it.
+func agentsVariant(dir string, content []byte) ([]byte, error) {
+	lines := strings.Split(string(content), "\n")
+	if len(lines) == 0 || strings.TrimRight(lines[0], "\r") != "---" {
+		return nil, fmt.Errorf("skill %q: SKILL.md does not start with a --- frontmatter line", dir)
+	}
+	end := -1
+	for i := 1; i < len(lines); i++ {
+		if strings.TrimRight(lines[i], "\r") == "---" {
+			end = i
+			break
 		}
 	}
-	return nil
+	if end < 0 {
+		return nil, fmt.Errorf("skill %q: SKILL.md frontmatter is not closed with ---", dir)
+	}
+	var kept []string
+	keep := false
+	sawName := false
+	for _, line := range lines[1:end] {
+		if m := frontmatterKeyLine.FindStringSubmatch(line); m != nil {
+			key := m[1]
+			keep = agentSkillsFields[key]
+			if key == "name" {
+				sawName = true
+				line = "name: " + dir
+			}
+		}
+		if keep {
+			kept = append(kept, line)
+		}
+	}
+	if !sawName {
+		kept = append([]string{"name: " + dir}, kept...)
+	}
+	var out bytes.Buffer
+	out.WriteString("---\n")
+	for _, l := range kept {
+		out.WriteString(l)
+		out.WriteString("\n")
+	}
+	out.WriteString("---\n")
+	out.WriteString(strings.Join(lines[end+1:], "\n"))
+	return out.Bytes(), nil
+}
+
+// skillsHomeDir resolves the home directory the codex-prompts target writes
+// under. Only consulted when that target is selected, so a repo-scoped
+// install never fails on an unresolvable home.
+var skillsHomeDir = os.UserHomeDir
+
+// installSkills renders the shipped dist/agents/skills/ sources into the
+// targets skillsTargetsFor(mode) names. mode is a value already normalized
+// by resolveSkillsMode ("" is a no-op). root is the target repo; the
+// codex-prompts target is user-global regardless of root.
+func installSkills(root, mode string, stdout io.Writer) error {
+	_, err := installSkillsReport(root, mode, stdout)
+	return err
+}
+
+// skillWrite is one file installSkills touched or left alone — the data
+// `fathom init --json` reports (RP-15).
+type skillWrite struct {
+	Target string `json:"target"`
+	Path   string `json:"path"`
+	Action string `json:"action"` // created | updated | current
+}
+
+// installSkillsReport is installSkills returning every write as data.
+func installSkillsReport(root, mode string, stdout io.Writer) ([]skillWrite, error) {
+	var writes []skillWrite
+	for _, target := range skillsTargetsFor(mode) {
+		home := ""
+		if target == skillsTargetCodexPrompts {
+			h, err := skillsHomeDir()
+			if err != nil {
+				return writes, fmt.Errorf("resolving home directory for Codex prompts: %w", err)
+			}
+			home = h
+		}
+		for _, name := range skillsdist.Names {
+			content, err := renderSkill(target, name)
+			if err != nil {
+				return writes, err
+			}
+			dest := skillDest(root, home, target, name)
+			action, err := installSkillFile(dest, content, stdout)
+			if err != nil {
+				return writes, err
+			}
+			writes = append(writes, skillWrite{Target: target, Path: dest, Action: action})
+		}
+	}
+	return writes, nil
 }
 
 // installSkillFile writes content to destPath, honoring the fathom-owned
 // marker convention: create if absent, overwrite if the existing file
 // carries skillMarker (no-op if the bytes are already identical), and
 // refuse loudly — an error, not a silent skip — if a different,
-// non-fathom-owned file already lives there.
-func installSkillFile(destPath string, content []byte, stdout io.Writer) error {
+// non-fathom-owned file already lives there. It returns the action taken
+// (created | updated | current).
+func installSkillFile(destPath string, content []byte, stdout io.Writer) (string, error) {
 	existing, err := os.ReadFile(destPath)
 	switch {
 	case err == nil:
 		if !strings.Contains(string(existing), skillMarker) {
-			return fmt.Errorf("refusing to overwrite %s: a file already exists there and is not fathom-owned (no %q marker) — rename/remove it, or this skill name collides with one of yours", destPath, skillMarker)
+			return "", fmt.Errorf("refusing to overwrite %s: a file already exists there and is not fathom-owned (no %q marker) — rename/remove it, or this skill name collides with one of yours", destPath, skillMarker)
 		}
 		if string(existing) == string(content) {
 			fmt.Fprintf(stdout, "ok %s (already current)\n", destPath)
-			return nil
+			return "current", nil
 		}
 		if err := os.WriteFile(destPath, content, 0o644); err != nil {
-			return err
+			return "", err
 		}
 		fmt.Fprintf(stdout, "updated %s\n", destPath)
-		return nil
+		return "updated", nil
 	case os.IsNotExist(err):
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-			return err
+			return "", err
 		}
 		if err := os.WriteFile(destPath, content, 0o644); err != nil {
-			return err
+			return "", err
 		}
 		fmt.Fprintf(stdout, "created %s\n", destPath)
-		return nil
+		return "created", nil
 	default:
-		return err
+		return "", err
 	}
 }

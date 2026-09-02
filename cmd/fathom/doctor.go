@@ -221,9 +221,9 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkGatePosture(harness),
 		checkHarnessHookFiles(root, harness), // HP-18/19: doctor_harness.go, never PASS
 		checkStanzaPresent(root),
-		checkStanzaLoaded(root), // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
-		checkSkillsInstalled(root, harness),
-		checkWiringDrift(root, harness), // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
+		checkStanzaLoaded(root),          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
+		checkAgentsSkills(root, harness), // RP-3: skills_installed on the standard (doctor_skills.go)
+		checkWiringDrift(root, harness),  // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp, root),

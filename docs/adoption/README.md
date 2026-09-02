@@ -7,7 +7,10 @@ sweep — and it gates "done" on evidence rather than on an agent's say-so.
 This page is the 15-minute path and an honest account of what is proven and
 what is not. The full guides are
 [claude-code.md](claude-code.md) (canonical, build-through-verify),
-[codex.md](codex.md), and [spec-driven-development.md](spec-driven-development.md).
+[codex.md](codex.md), [other-harnesses.md](other-harnesses.md) (the
+registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
+tier, and what is verified vs. not), and
+[spec-driven-development.md](spec-driven-development.md).
 
 ## Get it running
 
@@ -22,13 +25,20 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom 
 bin/fathom daemon install
 bin/fathom daemon status          # must say "reachable"
 
-# 3. register the MCP server with your agent, once
+# 3. register the MCP server with your agent, once (per harness — the matrix in
+#    other-harnesses.md carries each harness's own line; Claude Code's is:)
 claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
 
 # 4. wire a repo — from that repo's root
-cd /path/to/your/repo && fathom init --skills
+cd /path/to/your/repo && fathom init --skills   # --harness codex|gemini-cli|agents|none for the others
 fathom doctor                     # the checklist; every SKIP says why
 ```
+
+`--skills` (bare) writes the nine shipped skills to `.agents/skills` (the
+Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot, …) and
+`.claude/skills` (Claude Code); `fathom plugin render` packages the same
+nine with the hook template and the MCP registration as one plugin tree
+carrying both the Claude Code and the Agent Plugins 1.0 manifests.
 
 `fathom doctor` is the answer to "is this actually working". It never guesses:
 an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.

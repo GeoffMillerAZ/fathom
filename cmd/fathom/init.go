@@ -57,14 +57,18 @@ import (
 //	    nothing to do with it — it is recorded, every other step runs, and
 //	    the blocked files are listed once at the end, one line per file.
 func cmdInit(args []string, stdout, stderr io.Writer) int {
+	if hasJSONFlag(args) {
+		return renderInitJSON(args, stdout, stderr) // RP-15: init_json.go
+	}
 	rpcOrigin = "init"
 	fs := newFlagSet("init", stderr)
+	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON (docs/usage.md §init)")
 	path := fs.String("path", "", "repo root to wire (default: cwd)")
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	binOverride := fs.String("bin", "", "fathom binary path baked into hook commands (default: os.Executable, symlink-resolved)")
 	var skillsFlag optionalStringFlag
-	fs.Var(&skillsFlag, "skills", "install the nine shipped agent skills (fathom-activate/custodian/doctor/feedback/impact/onboard/plan/rewire/verify): claude | codex | all (bare --skills = all; omit to skip)")
+	fs.Var(&skillsFlag, "skills", "install the nine shipped agent skills (fathom-activate/custodian/doctor/feedback/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
 	if err := fs.Parse(args); err != nil {
@@ -227,8 +231,8 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		printHarnessManualSteps(stdout, targets, svc, *url)
 	}
 	if skillsMode == "" {
-		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (fathom-plan/verify/onboard/feedback):")
-		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|all]")
+		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (nine; .agents/skills is the Agent Skills standard path, .claude/skills the Claude Code one):")
+		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|agents|all|codex-prompts]")
 	}
 
 	if len(blocked) > 0 {

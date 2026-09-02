@@ -21,6 +21,14 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+### Breaking
+- **`fathom init --skills=codex` writes `<repo>/.agents/skills/<name>/SKILL.md`
+  (the path Codex documents) and no longer `~/.codex/prompts/`; bare
+  `--skills` (= `all`) writes `.agents/skills` + `.claude/skills`, both
+  repo-scoped.** The deprecated prompts twin is `--skills=codex-prompts`, the
+  only user-global write (RP-1; migration:
+  `docs/upgrades/0.8.0-skills-on-the-standard.md`).
+
 ### Added
 - **Store provenance on gate verdicts (PC-1..5, O20).** `/statusz` (schema 2)
   carries the daemon's own `binary_commit`, `binary_dirty`, `built_at`; every
@@ -59,6 +67,24 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   `stanza-loaded` and `config-audit` capabilities and the
   `instructions-loaded` / `config-change` events; `claim-gate` is
   `hook-inject` on Claude Code.
+- **`--json` on `ingest`, `init`, `thread brief|list`, `daemon status`,
+  `layers list`** (RP-14..17): ingest carries counts, `read_failures` with an
+  errno class and `outcome: ok|degraded|refused` so CI can assert
+  `read_failed == 0`; init carries every write, the receipt id and the manual
+  steps as data. Envelopes: `docs/usage.md`.
+- **`fathom plugin render` emits the Agent Plugins 1.0 `plugin.json` and
+  `mcp.json` beside `.claude-plugin/plugin.json`, over one `skills/` tree**
+  (RP-6); both manifests vet against the vendored `schema/plugin/schema.cue`
+  under `task cue-vet` and the pair is golden-pinned (RP-7); `scripts/ci.sh`
+  runs `claude plugin validate --strict` over the rendered tree when a
+  `claude` binary is on PATH and prints a named skip otherwise (RP-8).
+- **`fathom harness matrix`** renders the per-harness adoption matrix
+  (`RenderAdoptionMatrix`) that `docs/adoption/other-harnesses.md` pins by
+  test (RP-18); `schema/skills/schema.cue` vendors the Agent Skills frontmatter
+  spec and every shipped `SKILL.md` vets against it under `task cue-vet` (RP-2).
+- **`task stranger-check`**: the tracked tree, built with `GOWORK=off`, runs
+  `fathom init --harness=none` and `fathom doctor` against a throwaway daemon
+  and fails on any FAIL row (RP-23).
 - **`contextbenchscore import`** derives the public Go localization corpus
   (`testdata/contextbench/tasks-public-go.json`) from pinned local
   Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) JSONL snapshots with
@@ -204,6 +230,18 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   untested as written).
 
 ### Changed
+- **`fleet reconcile` plans the shipped skills through the wiring engine**
+  (`planOwnedFile`, RP-4): both repo-scoped shapes, rewritten only under the
+  `fathom:owned` marker and receipted; a hand-authored file by a skill's name
+  or a hand edit under the marker is BLOCKED by name. Doctor's
+  `skills_installed` reads `.agents/skills` for every non-Claude harness and
+  names each missing skill (RP-3).
+- Adoption docs match the binary (RP-19/20/21/22): `--skills` shapes and
+  `fathom plugin render` in the Claude Code and Codex guides, a dated
+  *Verified against* line and the resolved Codex-hooks contradiction in
+  `docs/adoption/codex.md` §6 (vision 16 §3 annotated), the nine shipped
+  skills re-rendered, and `TestNoStaleHelpPhrasesInDocs` forbids the two stale
+  sentences under `docs/`.
 - **Symbol keys carry the package directory** (PC-32, O21): a symbol under a
   directory is keyed `service::<dir>/<package>.Name`, so two `package main`
   binaries with a same-named function are two nodes, never one last-writer

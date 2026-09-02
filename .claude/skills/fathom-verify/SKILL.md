@@ -59,6 +59,15 @@ warning, block only on exit 1. In CI, treat exit 2 as a **failure** too — CI
 builds its own store, so "daemon down" should never be a valid CI state
 there.
 
+Every run lands in the verify ledger (`fathom research report` reads it —
+the "verify gate: figure:" line is the one admissible figure for what the
+gate has caught) tagged with its origin: `verify-cli` (you), the pre-push
+gate, or `stop-hook` (Claude Code's Stop hook, advisory unless `--block`).
+The gate is harness-agnostic — identical under Codex, Gemini CLI or a plain
+shell — and an origin for the *claim moment* itself (verify at the edit
+that flips a box, vision 26 §4) is not emitted by this build; do not report
+one.
+
 **The empty-index honesty rule.** If verify looks like it's failing *every*
 task, check `list_services` (or `fathom inspect`) first — a genuinely empty
 index for that service is an operational error (exit 2), never "all claims
@@ -79,6 +88,20 @@ A method name shared by two receivers needs `package:` (never
 first-match-wins). A file the connector could not read is named by
 `fathom ingest` (`read-failed: N file(s)`, exit 1), never a clean 0 — a
 `test_reaches` failure right after a degraded ingest is an ingest problem.
+
+## Where the verifies are recorded — the ledger and its origins
+
+Every verify run appends one row per plan to `~/.fathom/verify-ledger.jsonl`
+(`FATHOM_VERIFY_LEDGER` overrides). Rows carry `origin` (PC-22): `cli` for
+`fathom verify` (including the pre-push gate), `stop` for the Stop hook's
+session-end pass, and `claim-moment` for the PostToolUse edit hook — which
+runs this same engine for ONE plan the moment an edit adds a `[x]` to a
+depth-1 `docs/plans/*.md` and injects the refusal as `additionalContext`
+(silent on a clean claim, on an edit that claims nothing new, and on any
+operational failure). A `claim-moment` row with `failing > 0` is the gate
+catching a false claim at the keystroke, before the Stop hook or the push
+gate ever saw it; rows written before the field exist without it and are
+origin-unknown, never assumed `cli`.
 
 ## Computed progress: `fathom plans status` / `fathom plans next`
 

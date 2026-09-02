@@ -28,7 +28,12 @@ MCP + skills, no injection) —
 including the `mcp-tools` row, which is the only channel by which a tier-C/D harness
 (no hooks, no injection) reaches anything on this page. An unverified descriptor
 renders every row as `unverified on this machine`; the catalog below is unaffected by
-the harness in use.
+the harness in use. `fathom harness matrix` renders the per-harness adoption matrix
+(tier, instruction file, skills path, MCP config + `mcp add` line, verified-against)
+that `docs/adoption/other-harnesses.md` pins, and `fathom plugin render` packages
+the registration for two plugin loaders at once — Claude Code's `.mcp.json`
+(`type: http`) and the Agent Plugins 1.0 `mcp.json` (`streamable-http`, loopback) —
+over one `skills/` tree.
 
 ### Path-scoped surfaces (HTTP)
 

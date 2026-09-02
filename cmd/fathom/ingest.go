@@ -42,6 +42,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	path := fs.String("path", ".", "path to service source root (local mode)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
+	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -96,6 +97,9 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// ingest changed nothing.
 	if readErr == nil || !readErr.Refused {
 		hookcache.BustIdent()
+	}
+	if *jsonOut {
+		return renderIngestJSON(stdout, *service, svcPath, report, readErr) // RP-14: ingest_json.go
 	}
 
 	fmt.Fprintf(stdout, "service:    %s\n", *service)

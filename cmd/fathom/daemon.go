@@ -283,11 +283,23 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("daemon status", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	jsonOut := fs.Bool("json", false, "emit label, plist, reachability and the remedy as JSON (docs/usage.md §daemon)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
 	label := labelInstalled()
+	if *jsonOut { // RP-17: daemon_json.go
+		st := daemonStatusJSON{Platform: runtime.GOOS, Label: label, URL: *url}
+		if label != "" {
+			st.Plist = filepath.Join(launchAgentsDir(), label+".plist")
+		}
+		st.Reachable, st.Detail = daemonHealthy(*url)
+		if !st.Reachable {
+			st.Remedy = daemonRestartHint("")
+		}
+		return renderDaemonStatusJSON(stdout, st)
+	}
 	switch {
 	case label != "":
 		fmt.Fprintf(stdout, "launchd agent: %s (%s)\n", label, filepath.Join(launchAgentsDir(), label+".plist"))

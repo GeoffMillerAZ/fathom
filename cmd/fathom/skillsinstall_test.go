@@ -23,6 +23,8 @@ func TestResolveSkillsMode(t *testing.T) {
 		{value: "claude", set: true, want: "claude"},
 		{value: "codex", set: true, want: "codex"},
 		{value: "all", set: true, want: "all"},
+		{value: "agents", set: true, want: "agents"},
+		{value: "codex-prompts", set: true, want: "codex-prompts"},
 		{value: "bogus", set: true, wantErr: true},
 	}
 	for _, tc := range cases {
@@ -71,6 +73,10 @@ func TestInstallSkills_Claude_Fresh(t *testing.T) {
 	}
 }
 
+// TestInstallSkills_Codex_Fresh pins RP-1 (docs/plans/reach-parity.md):
+// `--skills=codex` writes the path Codex DOCUMENTS for skills —
+// <repo>/.agents/skills/<name>/SKILL.md — and no longer the deprecated
+// ~/.codex/prompts twin (0.8.0 Breaking; that twin is --skills=codex-prompts).
 func TestInstallSkills_Codex_Fresh(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -78,6 +84,40 @@ func TestInstallSkills_Codex_Fresh(t *testing.T) {
 
 	var out bytes.Buffer
 	if err := installSkills(root, "codex", &out); err != nil {
+		t.Fatalf("installSkills: %v", err)
+	}
+	for _, name := range skillsdist.Names {
+		p := filepath.Join(root, ".agents", "skills", name, "SKILL.md")
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("reading %s: %v", p, err)
+		}
+		s := string(raw)
+		if !strings.Contains(s, "name: "+name) {
+			t.Errorf("%s missing spec frontmatter name:\n%s", p, s)
+		}
+		if !strings.Contains(s, skillMarker) {
+			t.Errorf("%s missing fathom-owned marker:\n%s", p, s)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
+		t.Error("~/.codex was written by --skills=codex — the prompts twin is --skills=codex-prompts only")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills")); err == nil {
+		t.Error(".claude/skills directory created in codex-only mode")
+	}
+}
+
+// TestInstallSkills_CodexPrompts_Fresh: the deprecated ~/.codex/prompts
+// twin still renders, but only behind the explicit mode — the one
+// user-global write --skills can make.
+func TestInstallSkills_CodexPrompts_Fresh(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	root := t.TempDir()
+
+	var out bytes.Buffer
+	if err := installSkills(root, "codex-prompts", &out); err != nil {
 		t.Fatalf("installSkills: %v", err)
 	}
 	for _, name := range skillsdist.Names {
@@ -94,9 +134,53 @@ func TestInstallSkills_Codex_Fresh(t *testing.T) {
 			t.Errorf("%s missing fathom-owned marker:\n%s", p, s)
 		}
 	}
-	// Claude Code skills must NOT have been written in "codex" mode.
-	if _, err := os.Stat(filepath.Join(root, ".claude", "skills")); err == nil {
-		t.Error(".claude/skills directory created in codex-only mode")
+	for _, d := range []string{".claude", ".agents"} {
+		if _, err := os.Stat(filepath.Join(root, d)); err == nil {
+			t.Errorf("%s directory created in codex-prompts mode", d)
+		}
+	}
+}
+
+// TestSkillsTargetsFor pins the mode → target table (RP-1): bare/all is
+// the repo-scoped pair, codex is the documented .agents/skills path, and
+// the user-global prompts twin needs its own explicit mode.
+func TestSkillsTargetsFor(t *testing.T) {
+	cases := map[string][]string{
+		"":              nil,
+		"all":           {skillsTargetAgents, skillsTargetClaude},
+		"claude":        {skillsTargetClaude},
+		"codex":         {skillsTargetAgents},
+		"agents":        {skillsTargetAgents},
+		"codex-prompts": {skillsTargetCodexPrompts},
+	}
+	for mode, want := range cases {
+		got := skillsTargetsFor(mode)
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("skillsTargetsFor(%q) = %v, want %v", mode, got, want)
+		}
+	}
+}
+
+// TestAgentsVariant pins RP-2: the .agents/skills rendering carries only
+// the Agent Skills spec fields, `name` equals the directory, the body (and
+// the marker line) is untouched, and a file without frontmatter is refused.
+func TestAgentsVariant(t *testing.T) {
+	in := "---\nname: wrong-name\ndescription: >\n  two\n  lines\npaths: \"cmd/**\"\nhooks:\n  PostToolUse:\n    - matcher: x\nlicense: MIT\n---\n\n" + skillMarker + " -->\n\nbody `paths:` stays\n"
+	got, err := agentsVariant("fathom-x", []byte(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "---\nname: fathom-x\ndescription: >\n  two\n  lines\nlicense: MIT\n---\n\n" + skillMarker + " -->\n\nbody `paths:` stays\n"
+	if string(got) != want {
+		t.Errorf("agentsVariant:\n--- got ---\n%s\n--- want ---\n%s", got, want)
+	}
+	if _, err := agentsVariant("fathom-x", []byte("no frontmatter\n")); err == nil {
+		t.Error("a file without frontmatter must be refused")
+	}
+	// No name at all: the directory name is supplied.
+	got, err = agentsVariant("fathom-y", []byte("---\ndescription: d\n---\nb\n"))
+	if err != nil || !strings.HasPrefix(string(got), "---\nname: fathom-y\ndescription: d\n---\n") {
+		t.Errorf("missing name must be supplied from the dir: %q (%v)", got, err)
 	}
 }
 
@@ -113,9 +197,14 @@ func TestInstallSkills_All_WritesBothHarnesses(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, ".claude", "skills", name, "SKILL.md")); err != nil {
 			t.Errorf("claude skill %s not installed: %v", name, err)
 		}
-		if _, err := os.Stat(filepath.Join(home, ".codex", "prompts", name+".md")); err != nil {
-			t.Errorf("codex prompt %s not installed: %v", name, err)
+		if _, err := os.Stat(filepath.Join(root, ".agents", "skills", name, "SKILL.md")); err != nil {
+			t.Errorf("agents skill %s not installed: %v", name, err)
 		}
+	}
+	// "all" is the repo-scoped pair; the user-global prompts twin needs
+	// its own explicit mode (RP-1).
+	if _, err := os.Stat(filepath.Join(home, ".codex")); err == nil {
+		t.Error("~/.codex written by --skills=all")
 	}
 }
 
@@ -263,8 +352,9 @@ func TestCmdInit_SkillsFlagOmitted_InstallsNothing(t *testing.T) {
 }
 
 // TestCmdInit_SkillsFlagBare_MeansAll proves the bracket-optional
-// `--skills[=claude|codex|all]` syntax: a bare --skills (no `=value`)
-// installs both harnesses, not zero.
+// `--skills[=…]` syntax: a bare --skills (no `=value`) installs the
+// repo-scoped pair (.claude/skills and .agents/skills), not zero — and
+// never the user-global prompts twin.
 func TestCmdInit_SkillsFlagBare_MeansAll(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -280,8 +370,11 @@ func TestCmdInit_SkillsFlagBare_MeansAll(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, ".claude", "skills", "fathom-plan", "SKILL.md")); err != nil {
 		t.Errorf("claude skill not installed by bare --skills: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(home, ".codex", "prompts", "fathom-plan.md")); err != nil {
-		t.Errorf("codex prompt not installed by bare --skills: %v", err)
+	if _, err := os.Stat(filepath.Join(dir, ".agents", "skills", "fathom-plan", "SKILL.md")); err != nil {
+		t.Errorf("agents skill not installed by bare --skills: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(home, ".codex", "prompts", "fathom-plan.md")); err == nil {
+		t.Error("bare --skills wrote the user-global ~/.codex/prompts twin")
 	}
 }
 

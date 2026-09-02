@@ -36,6 +36,16 @@ Read its three verdicts precisely:
 - **IDLE** — nothing to measure yet. Honest, not broken. Say "unknown",
   never "zero".
 
+Nine loops: `continuity` (the thread bet — **experimental**, 4 of the 20
+sessions its keep/retract verdict needs), `session-ledger`,
+`counterfactual-arm`, `call-log`, `obligations`, `verify-gate`,
+`exploration-ledger`, `observations`, `custodian`. The
+`counterfactual-arm` loop is the A/B (MI-5): a savings claim is admissible
+only once **≥20 arm-homogeneous units per arm** exist; the ON arm is still
+collecting (**experimental**), so until `flywheel` reports that count
+**every token-savings claim is inadmissible** — law 12: a token figure is
+a cost until an arm establishes the counterfactual.
+
 ## 1. Run the instruments
 
 ```sh
@@ -43,6 +53,8 @@ fathom research report --since 168h [--service <svc>] [--json]
 fathom instrument --adoption [--json]
 fathom plans status --service <svc>
 fathom capabilities [--service <svc>]   # what is on here, and WHY anything is off
+fathom config audit                     # are this repo's config instructions still true?
+fathom rate --list                      # session outcomes, 1–5 (optional human override — experimental)
 ```
 
 `fathom capabilities` matters to an impact report because a capability that
@@ -100,11 +112,16 @@ from becoming a fathom advertisement instead of a measurement:
 4. **`call_log_read: false` means "never observed," not "measured zero."**
    An absent or unreadable call log is a distinct state from real,
    confirmed zero traffic — say so explicitly rather than reporting a flat
-   0 that reads as a measurement.
+   0 that reads as a measurement. `call_log_read_error` (IT-1) tells the
+   two apart: "no log yet" (ENOENT) versus a log that exists but could not
+   be read (EPERM — on an external volume, usually the TCC wedge) — the
+   second is a broken pipe, report it as the finding.
 5. **Zero-call tools are a fact, not automatically a verdict.** A
    registered tool with zero calls this window may be genuinely unused, or
    may just not have come up yet — list it, don't editorialize past what
-   the count shows.
+   the count shows. The list is surface-scoped: `zero_call_agent_tools`
+   is the agent allowlist, `registered_not_on_agent` the rest of the
+   registry — never fold the two into one "unused" number.
 6. **Always end with the open frictions.** `instrument --adoption` reports
    only the open-observation *count*
    (`open_observation_count`/`observations_path`, JSON). To name them, read
@@ -137,8 +154,11 @@ A complete narration touches, in this order:
 
 For the at-a-glance version of everything above, open the daemon's
 observatory: `http://127.0.0.1:7575/observatory` (fleet wiring/freshness/
-traffic with remedy commands), `/observatory/impact` (catches and
-discovery with denominators; the counterfactual pilot state machine).
+traffic with remedy commands; a 30-day grade distribution — today's fold
+only until daily snapshots persist, **experimental**), `/observatory/impact`
+(catches and discovery with denominators; the counterfactual pilot state
+machine), `/observatory/service` (per-dimension 30-day series from real
+call-log rows — a day with no rows renders Absent, never 0).
 `fathom brief --print` renders the same model as a shareable markdown
 value brief with an explicit "Not measured" section — write it, read it,
 and let a HUMAN decide where it goes (law 13).

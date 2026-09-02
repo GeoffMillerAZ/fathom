@@ -121,7 +121,7 @@ All subcommands share the convention:
 Ingest a service into the knowledge store.
 
 ```sh
-fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
+fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux] [--json]
 ```
 
 | Flag | Default | Description |
@@ -130,6 +130,7 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 | `--path` | `.` | Source root directory (local mode) |
 | `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
+| `--json` | off | Emit the run as JSON: `{service, outcome: ok|degraded|refused, exit_code, discovered, extracted, skipped, symbols, read_failed, read_failures: [{path, err, errno?}], unclassified, oversize, classified_zero, typed_edges?, excluded?, error?, hint?}` — `errno` is the class (`EPERM`, `EACCES`, `ENOENT`, `EIO`, `EISDIR`) derived from the connector's text, so CI can assert `read_failed == 0` |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
 (`unclassified`, `oversize`, `classified-but-zero-symbols`, `typed-edges`, `excluded:`
@@ -692,10 +693,16 @@ Presence of a pack **is** its enable state for compilation; there is deliberatel
 enable/disable verb.
 
 ```sh
-fathom layers list    [--root <dir>] [--store <path> --service <id>]
+fathom layers list    [--root <dir>] [--store <path> --service <id>] [--json]
 fathom layers show    <name> [--root <dir>]
 fathom layers install <dir>  [--root <dir>] [--force]
 ```
+
+`list --json`: `{root, store_read, layers: [{name, source, overrides, kind,
+tier, stratum, evaled, drift_tracked, corpus_include, load_error?, claims?,
+last_compile?}], orphans?}` — `claims`/`last_compile` appear only when
+`--store`/`--service` read the store (`store_read: true`); a broken project
+pack is an entry with `load_error`, never dropped.
 
 `list` prints every visible pack (name, source, kind, tier, stratum, eval status, drift,
 corpus, and — with `--store`/`--service` — compiled claim counts and last-compile date,
@@ -838,7 +845,7 @@ write-if-absent scaffolds `~/.fathom/config.toml`.
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
   [--harness claude-code|codex|gemini-cli|cursor|copilot|agents|none] \
-  [--skills[=claude|codex|all]] [--seed-user-ignore]
+  [--skills[=claude|codex|agents|all|codex-prompts]] [--seed-user-ignore] [--json]
 ```
 
 | Flag | Default | Description |
@@ -847,9 +854,19 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--service` | resolved from `--path` | Service ID — the same identity the hooks use |
 | `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
 | `--bin` | `os.Executable()`, symlink-resolved | fathom binary path baked into the hook commands |
-| `--skills` | omit = skip | Install the shipped agent skills (`fathom-activate`, `-custodian`, `-doctor`, `-feedback`, `-impact`, `-onboard`, `-plan`, `-rewire`, `-verify`) for `claude`, `codex`, or `all` (bare `--skills` = all) |
+| `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029); `none` = stanza + `.fathom/` only. Prints the descriptor's own `mcp add` line, never runs it |
+| `--skills` | omit = skip | Install the nine shipped agent skills. Bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path, spec-only frontmatter) **and** `.claude/skills/`; `codex` and `agents` write `.agents/skills/`; `claude` writes `.claude/skills/`; `codex-prompts` writes the deprecated user-global `~/.codex/prompts/` twin — the only user-global write, explicit only |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
 | `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
+| `--json` | off | Emit the run as JSON (below) instead of the narration |
+
+**`--json` envelope.** `{service, root, exit_code, writes: [{path, action:
+created|updated|ok|shim, detail}], blocked: [{path, action: "blocked",
+detail}], receipt: {id, time, files} | null, manual_steps: [{text,
+command?}], narration: [...], stderr: [...]}` — every write init narrates,
+the receipt the wiring engine appended during the run (`fathom fleet undo
+<id>` reverses it), and every `MANUAL:` step as data with its runnable line
+in `command` where there is one. Exit code is init's own.
 
 Exit `0` — fully wired and the daemon confirms the service is indexed; exit `2` — wiring
 is complete but the daemon is unreachable or the service still shows zero symbols
@@ -958,11 +975,13 @@ O29 in `docs/dogfood-observations.md` tracks the fix).
 ### `thread` — continuity across sessions (vision 21)
 
 ```sh
-fathom thread brief   [--budget-bytes 2400] [--repo .] [--source startup|clear|resume|compact|fork] [--all-repos]
+fathom thread brief   [--budget-bytes 2400] [--repo .] [--source startup|clear|resume|compact|fork] [--all-repos] [--json]
                                                # what a fresh session gets injected (startup/clear only; resume/compact get nothing)
+                                               # --json: {kind:"brief", source, budget_bytes, bytes, text} — text is "" on resume/compact
 fathom thread note    "text" [--thread T] [--kind K] [--completes-when …] [--repo .]   # file a handoff BEFORE /clear
 fathom thread point   "what happened" [--session S] [--thread T] [--repo .]          # side-task pointer
-fathom thread list    [--all-repos] [--all] [--thread T] [--repo .]   # this repo's open items; --all-repos: every repo; --all: also closed + dormant, every repo
+fathom thread list    [--all-repos] [--all] [--thread T] [--repo .] [--json]   # this repo's open items; --all-repos: every repo; --all: also closed + dormant, every repo
+                                               # --json: {kind:"list", items:[{id,status,kind,thread,text,repo,session_id,filed_at,closed_at,closed_by,commit,pointers}], hidden_other_repos}
 fathom thread close   <id> [--why …]
 fathom thread promote <thread> [--out docs/plans/<thread>.md] [--repo .]   # scaffold a thread's history into a plan
 fathom thread handoff [--repo .]               # derived in-flight state for a handoff
@@ -1020,9 +1039,12 @@ the session applies fixes. Full model: `docs/design/config-custodian.md`.
 
 ```sh
 fathom daemon install [--label dev.fathom.serve-http] [--store PATH] [--addr :7575] [--bin PATH] [--force]
-fathom daemon status  [--url http://localhost:7575]
+fathom daemon status  [--url http://localhost:7575] [--json]
 fathom daemon uninstall [--label NAME]
 ```
+
+`status --json`: `{platform, label?, plist?, url, reachable, detail?,
+remedy?, exit_code}` — exit 1 when not reachable, same as the text path.
 
 macOS/launchd. `install` writes `~/Library/LaunchAgents/<label>.plist` with
 **your** resolved binary (symlinks followed, so launchd runs the stable
@@ -1198,7 +1220,7 @@ fathom observe --symptom "..." [--expected "..."] [--actual "..."] [--repro "<ve
 Appends a structured entry to `<root>/.fathom/observations.md`. `--symptom`
 is required.
 
-### `review` — the change-review verb (not listed in `fathom help`)
+### `review` — the change-review verb
 
 ```sh
 fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--budget-seconds N] [--call-log P] [--json]
@@ -1307,14 +1329,28 @@ retired memories never surface. Served by the `memory_search` MCP tool
 (agent surface) and the edit-hook memory block. Design:
 `docs/design/anchored-memory.md`.
 
-### `plugin` (not listed in `fathom help`)
+### `plugin` — one tree, two manifests
 
 ```sh
 fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]
 ```
 
-Renders the Claude Code plugin tree (hooks, skills, MCP registration) into
-`--out`; the output dir belongs to the generator, so re-rendering overwrites.
+Renders the plugin tree into `--out` (the output dir belongs to the
+generator, so re-rendering overwrites) from the same embedded sources
+`init` installs — never hand-maintained:
+
+| File | Loader |
+|---|---|
+| `plugin.json`, `mcp.json` | Agent Plugins 1.0 (VS Code, Cursor, Copilot, Codex, Kiro, …): the closed `$schema`-selected manifest and the `streamable-http` loopback registration |
+| `.claude-plugin/plugin.json`, `.mcp.json`, `hooks/hooks.json` | Claude Code: its manifest, the `type: http` registration, the full hook template spelled via the shim-stable `fathom` |
+| `skills/<name>/SKILL.md` | both — nine skills, spec-only frontmatter (the six Agent Skills fields are the shared floor) |
+
+Both manifests vet against `schema/plugin/schema.cue` under `task cue-vet`
+(`TestPluginManifestsVet`), the Agent Plugins pair is golden-pinned
+(`cmd/fathom/testdata/plugin/`), and `scripts/ci.sh` runs `claude plugin
+validate --strict` over the rendered tree when a `claude` binary is on PATH
+(a named skip otherwise). `--marketplace` also writes
+`.claude-plugin/marketplace.json` beside the plugin dir.
 
 ---
 

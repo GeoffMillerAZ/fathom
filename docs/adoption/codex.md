@@ -2,11 +2,13 @@
 
 Fathom's index, MCP surface, and git-native gates are Claude-Code-agnostic —
 Codex is a first-class MCP client and gets full read access to the same
-index. What's genuinely different is the **enforcement stack**: Claude
-Code's hook-based context injection (SessionStart, PostToolUse, Stop) has no
-Codex equivalent today, so Codex adoption leans more heavily on the
-git-native gates and the standing `AGENTS.md` doctrine. This guide is honest
-about that gap rather than pretending symmetry — see §6.
+index. What's genuinely different is the **enforcement stack**: Codex
+documents a Claude-shaped hook contract (eleven events, `.codex/hooks.json`),
+but this build carries it as registry data and does not yet drive it
+(*hooks: not wired*), so Codex adoption today leans on the git-native gates,
+the standing `AGENTS.md` doctrine, and the pull tier (`fathom prime`, the
+`obligations` MCP tool). This guide is honest about that gap rather than
+pretending symmetry — see §6.
 
 Build/index/daemon setup is identical to the Claude Code path — this guide
 does not repeat it. If you haven't built `bin/fathom` or stood up a
@@ -37,9 +39,9 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   semantics, and the corruption-refusal case are documented once, in
   [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-claudemd--agentsmd-stanza--markers-re-run-semantics-corruption-refusal),
   since the mechanism and the stanza text are identical for both files), and
-- if you passed `--skills=codex` (or `=all`), rendered the nine shipped
-  `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`
-  prompts into `~/.codex/prompts/` — §1.1 below.
+- if you passed `--skills=codex` (or a bare `--skills`), rendered the nine
+  shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}`
+  skills into `<repo>/.agents/skills/` — the path Codex documents — §1.1 below.
 
 The stanza and hook writes go through one wiring engine (law 15): a
 receipt lands in `.fathom/receipts.jsonl`, `fathom fleet undo --last`
@@ -52,35 +54,42 @@ interactive step, same reason it doesn't call `claude mcp add` for you
 either) and does not touch `lefthook.yml` (hand-curated, printed as a manual
 step instead — §4).
 
-### 1.1 Installing Codex prompts: `--skills=codex`
+### 1.1 Installing the skills: `--skills=codex` (`.agents/skills`)
 
 ```sh
-bin/fathom init --skills=codex
+bin/fathom init --skills=codex          # <repo>/.agents/skills/<name>/SKILL.md
+bin/fathom init --skills                # bare = all: .agents/skills + .claude/skills
+bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, explicit only
 ```
 
 Renders the same nine shipped skill sources
 (`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/`)
-that the Claude Code guide installs as `SKILL.md` files
+that the Claude Code guide installs under `.claude/skills`
 ([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-nine-shipped-with-the-binary))
-into Codex's custom-prompts convention instead: each skill's
-`codex-prompt.md` variant is written to `~/.codex/prompts/<name>.md` —
-**user-global, not project-scoped**, since that's the only location Codex's
-custom-prompts convention documents (no per-repo variant). Invoke one with
-`/prompts:<name>`, e.g. `/prompts:fathom-feedback`. `--skills=all` installs
-both the Claude Code and Codex shapes in one call, useful if the same repo
-is worked from both clients.
+into the path Codex's skills documentation lists — `$REPO_ROOT/.agents/skills`
+(also every directory from cwd up to the repo root, and `$HOME/.agents/skills`
+for personal skills) — as Agent Skills `SKILL.md` files: frontmatter reduced
+to the spec's six fields, `name` equal to the directory, vetted against
+`schema/skills/schema.cue`. Invoke one with `$fathom-<name>` or `/skills`;
+Codex also invokes a skill implicitly when its description matches.
 
-**Honest capability note.** These are plain Markdown prompt files, not
-Codex's newer native `SKILL.md`-based skills mechanism (`.agents/skills/`
-in some CLI versions) — if your Codex CLI has adopted that mechanism, each
-installed `codex-prompt.md`'s own header tells you to copy the sibling
-`SKILL.md` there instead of using the rendered prompt file; this repo has
-no Codex install to verify which mechanism your version supports (same
-version caveat as above). Re-running `--skills=codex` is idempotent the
+**Since 0.8.0** (`docs/upgrades/0.8.0-skills-on-the-standard.md`):
+`--skills=codex` no longer writes `~/.codex/prompts/`. Codex marks custom
+prompts deprecated ("use skills"); the twin still renders behind
+`--skills=codex-prompts` — the one user-global write `--skills` can make —
+and is invoked as `/prompts:<name>`. Re-running any mode is idempotent the
 same way the Claude Code path is: every written file carries a
 `<!-- fathom:owned -->` marker, so a pre-existing, non-fathom-owned file
 with the same name is never clobbered — `init` refuses instead (exit `1`,
-naming the path).
+naming the path), and `fathom fleet reconcile` BLOCKS it by name.
+
+**Verified against.** The skills discovery table and the custom-prompts
+deprecation are from https://developers.openai.com/codex/skills.md and
+https://learn.chatgpt.com/docs/custom-prompts.md, fetched 2026-09-02
+(latest release rust-v0.152.1, 2026-09-01; the installed `codex-cli` here
+is 0.146.0). Whether *this* Codex build loads `.agents/skills` has not been
+exercised on this machine — `fathom doctor --harness codex` says so on its
+`skills_installed` row.
 
 ---
 
@@ -319,6 +328,26 @@ refuses with the reason.
 | `config-audit` | `absent` | unverified on this machine — run `fathom config audit` by hand; no config-change event is documented |
 <!-- fathom:harness-capabilities codex end -->
 
+**Verified against** (the descriptor's data, not a session): the official
+Codex hooks reference — https://developers.openai.com/codex/hooks.md
+(308-redirected to https://learn.chatgpt.com/docs/hooks.md, byte-identical),
+fetched 2026-09-02; the page carries no version or date of its own, the
+latest GitHub release at fetch time was rust-v0.152.1 (2026-09-01), and the
+`codex-cli` installed on this machine is 0.146.0 — which is why every row
+above still reads *unverified on this machine*. That reference settles the
+contradiction this repo carried until 2026-09-02: an earlier edition of
+this section said Codex had "no hook mechanism", while
+`docs/vision/16-skills-pack.md` §3 said its hooks were "real but narrow —
+PreToolUse/PostToolUse intercept only Bash calls, ~10 events". Neither
+was right. Codex hooks are real, documented, and **eleven** Claude-shaped
+events (`SessionStart`, `SessionEnd`, `SubagentStart`, `SubagentStop`,
+`UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`,
+`PreCompact`, `PostCompact`, `Stop`), and the tool hooks intercept shell
+(`Bash`), `apply_patch` (matchable as `Edit|Write`), MCP tools and local
+function tools — not Bash alone. The registry carries that contract as data
+(`fathom harness list --json`); what this build lacks is the codec that
+drives it, and the table says exactly that.
+
 What the rows mean beside Claude Code's (`fathom harness capabilities
 --harness claude-code` renders that side): the 17-tool `/rpc/agent`
 surface is reachable at the same URL, and negotiation itself is no longer
@@ -332,9 +361,9 @@ way; stdio `serve-mcp` always works; the git-native gates (pre-push `fathom veri
 identical on both; the `codex-cli` compile lane carries a real ambient-token
 cost (§3); `fathom init --harness=codex` writes `AGENTS.md` and `.fathom/`
 only and prints the `codex mcp add` line rather than running it; the nine
-shipped skills reach Codex through `--skills=agents` (`.agents/skills`, the
-documented path, unverified here) or the legacy `--skills=codex` prompts
-(§1.1); continuity threads are half a loop here (the store and verbs are
+shipped skills reach Codex through `--skills=codex` (= `--skills=agents`:
+`.agents/skills`, the documented path, unverified here) or the deprecated
+`--skills=codex-prompts` twin (§1.1); continuity threads are half a loop here (the store and verbs are
 identical, nothing deposits automatically); the config custodian's audit
 verb and doctor row work identically, with the attention line reaching Codex
 only through `fathom prime`; and `fathom doctor --harness=codex` runs every
@@ -398,9 +427,10 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 - [ ] `git push` in the repo runs lefthook's `pre-push` hooks and the
       `fathom-verify` command exits with the expected code (0 pass, 1 a
       real unproven claim, 2 only when the daemon/store is genuinely down).
-- [ ] `bin/fathom init --skills=codex` (or `=all`) populates
-      `~/.codex/prompts/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}.md`
-      (§1.1), and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
+- [ ] `bin/fathom init --skills=codex` (or a bare `--skills`) populates
+      `.agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian}/SKILL.md`
+      (§1.1; `--skills=codex-prompts` for the deprecated `~/.codex/prompts` twin),
+      and `bin/fathom observe --symptom "…"` / `bin/fathom instrument
       --adoption` (§5.1) both run cleanly from a Codex-driven shell — neither
       is hook-dependent, so there's nothing Codex-specific to verify beyond
       the CLI itself working.
@@ -419,8 +449,10 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 ## Maintained
 
 This doc covers: `fathom init` (AGENTS.md stanza, `--harness=codex`,
-`--skills=codex` prompt install into `~/.codex/prompts/`), `harness`
-(`list`/`capabilities` — §6 is its output), `prime` (the Codex pull tier),
+`--skills=codex` into `.agents/skills/`, `--skills=codex-prompts` into
+`~/.codex/prompts/`), `harness` (`list`/`capabilities` — §6 is
+`capabilities`' output — and the adoption matrix subcommand), `plugin render` (the Agent Plugins 1.0 manifests
+Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier),
 `plans next --eligible-only`/`context`, `thread brief`/`note`/`handoff`,
 `config audit`, `observe`, `instrument --adoption`, `doctor`
 (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`, the
