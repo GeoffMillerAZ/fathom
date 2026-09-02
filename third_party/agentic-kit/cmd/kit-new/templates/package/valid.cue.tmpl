@@ -1,0 +1,8 @@
+// valid.cue — positive fixtures for the {{.Pkg}} schema; `cue vet ./testdata/`
+// from the package directory checks them against ../schema.cue.
+package {{.Pkg}}
+
+minimal: #Config & {
+	name:  "example"
+	limit: 1
+}

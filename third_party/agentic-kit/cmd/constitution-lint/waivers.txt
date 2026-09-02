@@ -19,8 +19,8 @@ foundations/agent/conversation
 # contract surface of its own (the wire format is JSON-RPC, defined by the MCP
 # spec, not by this package's CUE schema).
 foundations/agent/mcp-client
-# tool-registry: behavioral tool dispatch — no schema, pure handler wiring.
-foundations/agent/tool-registry
+# (tool-registry's waiver was removed 2026-09-02: it now defines #Tool/#Effect
+# in schema.cue — a real data contract — so the waiver's premise is gone.)
 
 # ── foundations/cache ────────────────────────────────────────────────────────
 # result-cache: generic TTL+LRU memoization — pure behavioral, no contract surface.

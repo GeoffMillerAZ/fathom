@@ -67,17 +67,20 @@ table is left unchanged for the same reason stated above.
 | Classification | Count |
 |---|---|
 | `stable` | 124 |
-| `experimental` | 25 |
+| `experimental` | 30 |
 | `internal-ish` | 24 |
-| **Total** | **173** |
+| **Total** | **178** |
 
-This is a real distribution, not a blanket stamp: 124 packages (73%) reflect
+This is a real distribution, not a blanket stamp: 124 packages (70%) reflect
 four waves of hardening with no churn and either a real consumer or a
-foundational role nothing else has displaced; 21 (12%) are honestly flagged
+foundational role nothing else has displaced; 30 (17%) are honestly flagged
 as still-moving (plan-only designs, packages that landed in the last one to
 two days, or kits whose composition TRACKING.md itself calls "unproven");
-24 (14%) are real, tested, and useful but narrow/plumbing rather than a
-primary extension point a new adopter would reach for first. (Three rows —
+24 (13%) are real, tested, and useful but narrow/plumbing rather than a
+primary extension point a new adopter would reach for first. (The counts are
+recomputed from the rows below, not carried forward: the 2026-09-02
+field-absorption merge found the summary reading 25 experimental against 28
+actual rows, so it had drifted before this wave's two new rows landed.) (Three rows —
 `runtimes/credresolve`, `foundations/evidence/record-fingerprint`,
 `foundations/evidence/source-registry` — were re-audited against
 throughline's HEAD after the first draft and promoted `internal-ish` →
@@ -125,9 +128,9 @@ table keeps `experimental` until that call is made.
 |---|---|---|
 | `foundations/agent/bounded-exec` | stable | Load-bearing resource-confinement seam since early waves; non-sandbox guarantees documented at length in VISION/practices, consumed by direct-investigator's optional `rg` engine. |
 | `foundations/agent/conversation` | stable | Core multi-turn invariant-enforcement primitive underlying agent-harness; widened twice (Wave 2 `Compactor`) with no breaking churn to callers. |
-| `foundations/agent/evidence-compactor` | stable | Roadmap #1 graduated; wired into agent-harness's `Config.ContextBudget` compaction hook — the practices §1 closer. |
+| `foundations/agent/evidence-compactor` | stable | Roadmap #1 graduated. Corrected 2026-09 (FB-5/FB-6): the earlier rationale claimed it was "wired into agent-harness's `Config.ContextBudget` compaction hook", but nothing in the kit installed it — the hook only dropped messages. It is now installed by `agentharness.WithEvidenceCompactor` (which refuses a budget-less config) and consumed by `examples/agent-cli` behind `-context-budget`; the package's own contract (journal-before-summary, provenance marker) was always true. |
 | `foundations/agent/mcp-client` | stable | Tool-poisoning defense (hash-pinning) is security-critical and heavily documented (practices §14); H6 added the HTTP transport without breaking the existing `Client`. |
-| `foundations/agent/tool-registry` | stable | The single tool primitive; consumed by both agent-harness and mcp-server; lethal-trifecta taxonomy (practices §13) is load-bearing. |
+| `foundations/agent/tool-registry` | stable | The single tool primitive; consumed by both agent-harness and mcp-server; lethal-trifecta taxonomy (practices §13) is load-bearing. 2026-09: additive `Tool.Effect`/`EffectOf` (the MCP annotation vocabulary; decision 0002) — no existing call site changes. |
 | `foundations/cache/result-cache` | stable | Generic TTL+LRU+single-flight memoization; long-standing, no churn, the bounded-cache exemplar cited in VISION belief 4. |
 | `foundations/communications/clarification-loop` | internal-ish | Thin open-question tracker; no consumer today; narrow by design, not a primary extension point. |
 | `foundations/communications/message-capture` | stable | Real pluggable-`Channel` extension point with dedup/order guarantees (same pattern as `embedding-client`'s `Embedder`); survived the Wave 4 zero-consumer purge that retired its two siblings. |
@@ -198,8 +201,8 @@ table keeps `experimental` until that call is made.
 | `foundations/llmclient/anthropic` | stable | First real provider; README headline; long-standing, 24 tests, real fan-in. |
 | `foundations/llmclient/bedrock` | experimental | One of the four packages TRACKING.md explicitly names as grandfathered in-flight Wave 0. |
 | `foundations/llmclient/bedrock/awscred` | experimental | Landed 2026-07-16 (docs/plans/aws-credchain.md); AWS default credential-resolution chain (shared config/credentials files, SSO, IMDSv2) for the `bedrock` adapter. One named consumer (`bedrock`) by design — D8 forbids speculative generality; graduates to a shared foundations package only when a second consumer names the need (recorded in the package doc). |
-| `foundations/llmclient/claudecli` | experimental | Landed 2026-07-16; shells out to the `claude` CLI so a Claude Pro/Max subscription substitutes for `ANTHROPIC_API_KEY`. Zero in-kit consumers; first subscriber is fathom's semantic-layer compile provider seam (external repo, not yet composed here). |
-| `foundations/llmclient/codexcli` | experimental | Landed 2026-07-16, same day as claudecli and modeled directly on it; shells out to the `codex` CLI so a ChatGPT Plus/Pro subscription substitutes for `OPENAI_API_KEY`. Zero in-kit consumers; first subscriber is fathom's semantic-layer compile provider seam (external repo, not yet composed here). |
+| `foundations/llmclient/claudecli` | experimental | Landed 2026-07-16; shells out to the `claude` CLI so a Claude Pro/Max subscription substitutes for `ANTHROPIC_API_KEY`. Zero in-kit consumers; first subscriber is fathom's semantic-layer compile provider seam (external repo, not yet composed here). **Accepted 2026-09-02: consumer-on-experimental.** fathom's compile lanes wire this adapter (`cmd/fathom/llmprofile.go`, with `cmd/fathom/compile.go`), so a real downstream consumer runs without a compatibility promise — recorded, not silently resolved. Promotion to `stable` is the owner's call (`repo.md` §Promote); the trigger has fired. |
+| `foundations/llmclient/codexcli` | experimental | Landed 2026-07-16, same day as claudecli and modeled directly on it; shells out to the `codex` CLI so a ChatGPT Plus/Pro subscription substitutes for `OPENAI_API_KEY`. Zero in-kit consumers; first subscriber is fathom's semantic-layer compile provider seam (external repo, not yet composed here). **Accepted 2026-09-02: consumer-on-experimental.** fathom's compile lanes wire this adapter (`cmd/fathom/llmprofile.go`, with `cmd/fathom/compile.go`), so a real downstream consumer runs without a compatibility promise — recorded, not silently resolved. Promotion to `stable` is the owner's call (`repo.md` §Promote); the trigger has fired. |
 | `foundations/llmclient/egress` | stable | Gate-before-egress middleware generalized from a real prior system (throughline's `GatedClient`); mature design lineage. |
 | `foundations/llmclient/instrument` | stable | `WithTelemetry`/`WithCost`/`WithBudget`; throughline deleted its hand-rolled ~62-line equivalent in favor of this. |
 | `foundations/llmclient/llm-test` | stable | The conformance suite every `LLMClient` implementation must pass; anthropic/replay/bedrock/noop/openai all depend on it. |
@@ -237,6 +240,7 @@ table keeps `experimental` until that call is made.
 | `foundations/quality/honesty-gate` | stable | Deterministic overclaiming detector; real fan-in (guardrails-pipeline). |
 | `foundations/quality/integrity-evaluator` | stable | Fabricated/unresolvable-reference checker; real fan-in (guardrails-pipeline). |
 | `foundations/quality/qa-harness` | stable | The `Judge` interface + `RubricJudge`/`MockJudge`; real fan-in, compiled into eval-runner's scenario bank. |
+| `foundations/quality/reliability-stats` | experimental | Landed 2026-09-02 (field-absorption FB-11..13): pass@k, pass^k, task-clustered bootstrap CI, Wilcoxon, A12. One in-kit consumer (eval-runner `Regression` pass^3); fathom's bench is the named external one. |
 | `foundations/quality/scenario-bank` | stable | Provenance-disciplined eval scenarios; real fan-in (eval-runner). |
 | `foundations/reasoning/defeasible` | stable | Complete, substantial "effective state" engine (layered typed modifiers, full trace + confidence); 33 tests; not thin glue, awaiting a real workload the same way several evidence-moat pieces did before their consumers arrived. |
 | `foundations/retrieval/evidence-ranker` | stable | Roadmap #24 graduated; LLM-free deterministic reranker for the RAG-that-cites layer. |
@@ -272,6 +276,7 @@ table keeps `experimental` until that call is made.
 | `foundations/security/untrusted-content-wrapper` | stable | Nonce-fence defense-in-depth; redesigned Wave-era to close a spoofing gap (BREAKING, documented); real fan-in. |
 | `foundations/telemetry/event` | stable | Canonical event shape + W3C trace carrier; among the heaviest fan-in in the repo. |
 | `foundations/telemetry/heartbeat` | experimental | Landed 2026-07-16 (fathom-asks FA-4/FA-5); zero in-kit consumers; first subscriber is an external repo, second subscriber (this repo's own proof-gate liveness) not yet wired. |
+| `foundations/telemetry/read-manifest` | experimental | Landed 2026-09-02 (field-absorption FB-8): one in-kit consumer (`cmd/constitution-lint`'s `read-coverage` check, FB-9); the second, fathom's `internal/readset`, arrives by pin bump in the sibling repo — promote once that bump lands and the sibling deletes its copy. |
 | `foundations/telemetry/metrics` | stable | Prometheus text-format registry; real fan-in. |
 | `foundations/telemetry/otel-genai` | stable | Complete, standard-conformant OTel GenAI semconv adapter implementing the stable `sink.Sink` interface; no in-tree wiring yet is a consumer choice, not an incompleteness. |
 | `foundations/telemetry/sink` | stable | The `Sink` interface + Multi/Memory/Filter implementations; heaviest fan-in in telemetry. |

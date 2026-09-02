@@ -48,7 +48,7 @@ var knownProtocolVersions = map[string]bool{
 
 // latestProtocolVersion is offered when the client requests a revision this
 // server does not know, per the MCP version-negotiation rules.
-const latestProtocolVersion = "2025-11-25"
+const latestProtocolVersion = ProtocolRevision
 
 // Config configures a Server. The CUE contract for the data-shaped fields
 // lives in schema.cue; CallLog is a behavioral seam with no CUE shape.
@@ -130,11 +130,28 @@ type toolsListResult struct {
 	Tools []toolDescriptor `json:"tools"`
 }
 
-// toolDescriptor is one MCP tool entry, built from an llmclient.ToolDef.
+// toolDescriptor is one MCP tool entry, built from an llmclient.ToolDef plus
+// the tool's declared Effect, when it has one (annotations is omitted for an
+// undeclared tool, so the descriptor is byte-identical to the pre-Effect
+// shape).
 type toolDescriptor struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	InputSchema json.RawMessage `json:"inputSchema"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	InputSchema json.RawMessage  `json:"inputSchema"`
+	Annotations *toolAnnotations `json:"annotations,omitempty"`
+}
+
+// toolAnnotations is the MCP ToolAnnotations object (spec 2025-03-26
+// onward, unchanged through 2026-07-28), field names verbatim. Every hint is
+// emitted explicitly — never omitted — because the spec DEFAULTS an absent
+// destructiveHint to true and an absent openWorldHint to true, which would
+// silently invert an explicit all-false declaration. title is not carried:
+// the kit has no display-name concept separate from the tool name.
+type toolAnnotations struct {
+	ReadOnlyHint    bool `json:"readOnlyHint"`
+	DestructiveHint bool `json:"destructiveHint"`
+	IdempotentHint  bool `json:"idempotentHint"`
+	OpenWorldHint   bool `json:"openWorldHint"`
 }
 
 // toolCallResult is the tools/call response: the registry's tool_result

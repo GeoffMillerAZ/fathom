@@ -1,0 +1,49 @@
+package {{.Pkg}}
+
+import (
+	"sync"
+	"time"
+)
+
+// Mock{{.Iface}} is a scriptable {{.Iface}} for testing code that consumes the
+// interface. Each Stamp consumes the next scripted time; once the script is
+// exhausted every further call returns Fallback. It is safe for concurrent
+// use.
+type Mock{{.Iface}} struct {
+	mu     sync.Mutex
+	script []time.Time
+	idx    int
+	calls  int
+
+	// Fallback is returned once the script is exhausted (zero value: the
+	// zero time).
+	Fallback time.Time
+}
+
+// NewMock{{.Iface}} returns a Mock{{.Iface}} that yields the given times in order.
+func NewMock{{.Iface}}(script ...time.Time) *Mock{{.Iface}} {
+	return &Mock{{.Iface}}{script: script}
+}
+
+// Stamp records the call and returns the next scripted time.
+func (m *Mock{{.Iface}}) Stamp() time.Time {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls++
+	if m.idx < len(m.script) {
+		t := m.script[m.idx]
+		m.idx++
+		return t
+	}
+	return m.Fallback
+}
+
+// Calls returns how many times Stamp was invoked.
+func (m *Mock{{.Iface}}) Calls() int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.calls
+}
+
+// compile-time interface check.
+var _ {{.Iface}} = (*Mock{{.Iface}})(nil)

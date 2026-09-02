@@ -9,12 +9,14 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+
+	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
 )
 
 // offeredVersions are the MCP protocol revisions this client offers during
 // initialize, in preference order (highest first). The server picks from this
 // list; we record its choice in Client.ProtocolVersion.
-var offeredVersions = []string{"2025-11-25", "2025-06-18"}
+var offeredVersions = []string{ProtocolRevision, "2025-06-18"}
 
 // Options configures a Client.
 type Options struct {
@@ -25,6 +27,19 @@ type Options struct {
 	// ClientVersion is the version reported in the initialize clientInfo.
 	// Defaults to "0" when empty.
 	ClientVersion string
+
+	// TrustedServer marks the server's tool annotations as trusted. MCP
+	// requires clients to treat annotations (readOnlyHint, destructiveHint,
+	// …) as UNTRUSTED unless they come from a trusted server; this flag is
+	// that judgement, made by the operator at configuration time. When
+	// false (the default) ListTools still parses annotations into
+	// ToolInfo.Effect but reports EffectTrusted=false, and RegisterAll
+	// registers the tool with NO effect — undeclared, which a strict harness
+	// reads as destructive. When true, RegisterAll attaches the parsed
+	// Effect to the registered Tool. Description hash-pinning covers
+	// annotations either way, so a trusted server that later flips a hint
+	// trips ToolChangedError.
+	TrustedServer bool
 }
 
 // ToolInfo holds the description fields of one MCP tool and the SHA-256
@@ -33,7 +48,25 @@ type ToolInfo struct {
 	Name        string
 	Description string
 	InputSchema json.RawMessage
-	// Hash is SHA-256(name ‖ "\x00" ‖ description ‖ "\x00" ‖ inputSchema).
+
+	// Annotations is the raw MCP annotations object as the server sent it
+	// (nil when absent). It is part of the pinned Hash.
+	Annotations json.RawMessage
+
+	// Effect is Annotations mapped onto the registry's Effect type with the
+	// MCP defaults applied to absent hints (see effectFromAnnotations); nil
+	// when the server sent none or sent something malformed.
+	Effect *toolregistry.Effect
+
+	// EffectTrusted reports whether Effect may be believed: it is
+	// Options.TrustedServer, stamped per listing so a consumer holding a
+	// ToolInfo cannot lose the provenance of the hint.
+	EffectTrusted bool
+
+	// Hash is SHA-256(name ‖ "\x00" ‖ description ‖ "\x00" ‖ inputSchema),
+	// extended with ‖ "\x00" ‖ annotations when the tool carries any — so a
+	// tool without annotations hashes exactly as it did before annotations
+	// were pinned.
 	Hash string
 }
 
@@ -138,6 +171,7 @@ func (c *Client) ListTools(ctx context.Context) ([]ToolInfo, error) {
 			Name        string          `json:"name"`
 			Description string          `json:"description"`
 			InputSchema json.RawMessage `json:"inputSchema"`
+			Annotations json.RawMessage `json:"annotations"`
 		} `json:"tools"`
 	}
 	if err := json.Unmarshal(resp, &result); err != nil {
@@ -151,12 +185,15 @@ func (c *Client) ListTools(ctx context.Context) ([]ToolInfo, error) {
 	defer c.pinMu.Unlock()
 
 	for i, t := range result.Tools {
-		h := toolHash(t.Name, t.Description, t.InputSchema)
+		h := toolHash(t.Name, t.Description, t.InputSchema, t.Annotations)
 		tools[i] = ToolInfo{
-			Name:        t.Name,
-			Description: t.Description,
-			InputSchema: t.InputSchema,
-			Hash:        h,
+			Name:          t.Name,
+			Description:   t.Description,
+			InputSchema:   t.InputSchema,
+			Annotations:   t.Annotations,
+			Effect:        effectFromAnnotations(t.Annotations),
+			EffectTrusted: c.opts.TrustedServer,
+			Hash:          h,
 		}
 		if existing, pinned := c.pins[t.Name]; pinned {
 			if existing != h && firstErr == nil {
@@ -330,15 +367,23 @@ func (c *Client) call(ctx context.Context, method string, params json.RawMessage
 	return resp.Result, nil
 }
 
-// toolHash returns hex(SHA-256(name ‖ NUL ‖ description ‖ NUL ‖ inputSchema)).
-// The NUL separators prevent concatenation collisions between fields.
-func toolHash(name, description string, inputSchema json.RawMessage) string {
+// toolHash returns hex(SHA-256(name ‖ NUL ‖ description ‖ NUL ‖ inputSchema
+// [‖ NUL ‖ annotations])). The NUL separators prevent concatenation
+// collisions between fields (JSON cannot carry a raw NUL byte, so the
+// separator is unambiguous). The annotations segment is appended ONLY when
+// non-empty, which keeps every pre-annotation hash — and every committed
+// pin — byte-identical for tools that carry none.
+func toolHash(name, description string, inputSchema, annotations json.RawMessage) string {
 	h := sha256.New()
 	h.Write([]byte(name))
 	h.Write([]byte{0})
 	h.Write([]byte(description))
 	h.Write([]byte{0})
 	h.Write(inputSchema)
+	if len(annotations) > 0 {
+		h.Write([]byte{0})
+		h.Write(annotations)
+	}
 	return hex.EncodeToString(h.Sum(nil))
 }
 

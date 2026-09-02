@@ -327,7 +327,7 @@ func TestClientOverHTTPTransport(t *testing.T) {
 			t.Errorf("tool %q not pinned after New", tool.Name)
 			continue
 		}
-		want := toolHash(tool.Name, tool.Description, tool.InputSchema)
+		want := toolHash(tool.Name, tool.Description, tool.InputSchema, nil)
 		if h != want {
 			t.Errorf("tool %q: pin = %s, want %s", tool.Name, h, want)
 		}

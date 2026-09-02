@@ -78,6 +78,7 @@ type toolInfoJSON struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	InputSchema json.RawMessage `json:"inputSchema"`
+	Annotations json.RawMessage `json:"annotations,omitempty"`
 }
 
 func toolsListResp(id int, tools []toolInfoJSON) string {
@@ -210,7 +211,7 @@ func TestPinRecordedAtFirstList(t *testing.T) {
 		if !pinned {
 			t.Errorf("tool %q not pinned after New", tool.Name)
 		}
-		want := toolHash(tool.Name, tool.Description, tool.InputSchema)
+		want := toolHash(tool.Name, tool.Description, tool.InputSchema, nil)
 		if h != want {
 			t.Errorf("tool %q: pin = %s, want %s", tool.Name, h, want)
 		}
@@ -247,7 +248,7 @@ func TestRepinSilencesDrift(t *testing.T) {
 		{Name: "echo", Description: "MODIFIED", InputSchema: defaultTools[0].InputSchema},
 		defaultTools[1],
 	}
-	newHash := toolHash("echo", "MODIFIED", defaultTools[0].InputSchema)
+	newHash := toolHash("echo", "MODIFIED", defaultTools[0].InputSchema, nil)
 
 	// First list: drift detected.
 	go ps.respond(toolsListResp(3, changedTools))
@@ -529,19 +530,19 @@ func TestIOTransportClosedSend(t *testing.T) {
 // ─── toolHash collision resistance ───────────────────────────────────────────
 
 func TestToolHashStability(t *testing.T) {
-	h1 := toolHash("echo", "echo text", json.RawMessage(`{"type":"object"}`))
-	h2 := toolHash("echo", "echo text", json.RawMessage(`{"type":"object"}`))
+	h1 := toolHash("echo", "echo text", json.RawMessage(`{"type":"object"}`), nil)
+	h2 := toolHash("echo", "echo text", json.RawMessage(`{"type":"object"}`), nil)
 	if h1 != h2 {
 		t.Errorf("toolHash not stable: %s != %s", h1, h2)
 	}
 	// Different description → different hash.
-	h3 := toolHash("echo", "MODIFIED", json.RawMessage(`{"type":"object"}`))
+	h3 := toolHash("echo", "MODIFIED", json.RawMessage(`{"type":"object"}`), nil)
 	if h1 == h3 {
 		t.Error("toolHash collision: description change not detected")
 	}
 	// Concatenation-collision resistance: "ab"/"c" vs "a"/"bc".
-	h4 := toolHash("ab", "c", json.RawMessage(`{}`))
-	h5 := toolHash("a", "bc", json.RawMessage(`{}`))
+	h4 := toolHash("ab", "c", json.RawMessage(`{}`), nil)
+	h5 := toolHash("a", "bc", json.RawMessage(`{}`), nil)
 	if h4 == h5 {
 		t.Error("toolHash: concatenation collision between name/description split")
 	}

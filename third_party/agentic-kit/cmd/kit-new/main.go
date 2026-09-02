@@ -1,11 +1,13 @@
 // Command kit-new scaffolds a new consumer module from the agent-cli blueprint
-// with governance ON by default.
+// with governance ON by default, or — with -package — a new kit package in this
+// repository's six-file shape together with the ledger lines it owes.
 //
 // Usage:
 //
 //	kit-new -name myagent -dir ../myagent [-module github.com/me/myagent] [-minimal] [-kit-version v0.2.0]
+//	kit-new -package foundations/<category>/<name> [-practice N] [-interface Name] [-consumer <who>] [-apply]
 //
-// Flags:
+// Consumer-module flags:
 //
 //	-name        agent/binary name (required; used as module path suffix and binary name)
 //	-dir         output directory (required; must not already contain a go.mod)
@@ -14,7 +16,7 @@
 //	-kit-version agentic-kit version to require in go.mod (default: v0.0.0)
 //	-kit-path    replace path for agentic-kit in go.mod (default: ../agentic-kit)
 //
-// The scaffold writes:
+// The consumer scaffold writes:
 //
 //	go.mod         — require + replace for agentic-kit
 //	go.work        — workspace file for local sibling development
@@ -22,6 +24,36 @@
 //	.gitignore     — ignores workspace/ and *.jsonl
 //	README.md      — next steps and what was generated
 //	workspace/     — runtime dir (journal, etc.)
+//
+// Package-mode flags (all exclusive with the consumer-module flags):
+//
+//	-package          <root>/<category>/<name> for foundations, <root>/<name> for
+//	                  kits, runtimes, surfaces, toolchains; kebab-case dirs
+//	-repo             kit repository root holding go.mod (default: .)
+//	-practice N       docs/practices.md section the package carries (0 = none)
+//	-interface Name   declare an exported interface in types.go and ship mock.go
+//	-consumer <who>   the consumer or future workload that pulls for it (junk gate)
+//	-apply            append the ledger lines instead of only printing them
+//	-verified-against text for doc.go's Verified-against line (default: from go.mod + cue.mod)
+//
+// The package scaffold writes, under <repo>/<package>:
+//
+//	schema.cue            — #Config stub (CUE owns the shape)
+//	types.go              — Config mirror + Validate (+ the -interface)
+//	doc.go                — package doc: shape contract, concurrency contract,
+//	                        non-guarantees, Verified-against line
+//	<name>.go             — New with an injected `now func() time.Time` seam
+//	<name>_test.go        — table-driven tests with a fixed clock
+//	testdata/valid.cue    — positive fixture (`cue vet ./testdata/`)
+//	testdata/invalid.cue  — negative fixtures, commented, mirrored by the Go test
+//	mock.go               — only with -interface
+//
+// and prints the exact TRACKING.md row, docs/compat.md row (experimental),
+// CHANGELOG.md line, docs/practices.md row (with -practice) and README.md
+// package-count bump the maintainer must add; -apply appends them (each
+// once — a line already present is skipped). It refuses to overwrite any
+// existing scaffold file and, in -apply mode, refuses before writing
+// anything when a ledger anchor is missing.
 //
 // Generated files contain no timestamps — output is deterministic.
 //
@@ -91,9 +123,35 @@ func run(args []string, stdout, stderr io.Writer) int {
 		minimal    = fs.Bool("minimal", false, "generate bare client + harness Run, no governance")
 		kitVersion = fs.String("kit-version", "v0.0.0", "agentic-kit version to require in go.mod")
 		kitPath    = fs.String("kit-path", "../agentic-kit", "replace path for agentic-kit in go.mod (and go.work)")
+
+		pkg       = fs.String("package", "", "package mode: <root>/<category>/<name> to scaffold in the kit repo (e.g. foundations/telemetry/read-manifest)")
+		repo      = fs.String("repo", ".", "package mode: kit repository root (must hold go.mod)")
+		practice  = fs.Int("practice", 0, "package mode: docs/practices.md section number the package carries (0 = none)")
+		iface     = fs.String("interface", "", "package mode: exported interface name to declare in types.go and mock in mock.go")
+		consumer  = fs.String("consumer", "", "package mode: the consumer or future workload that pulls for the package (junk gate)")
+		apply     = fs.Bool("apply", false, "package mode: append the ledger lines to TRACKING.md, docs/compat.md, CHANGELOG.md, docs/practices.md and bump the README count")
+		verifiedA = fs.String("verified-against", "", "package mode: text for doc.go's Verified-against line (default: derived from go.mod and cue.mod)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+
+	// ---- package mode ---------------------------------------------------------
+	if *pkg != "" {
+		if *name != "" || *dir != "" || *module != "" || *minimal {
+			fmt.Fprintf(stderr, "kit-new: %v\n", errPackageMode)
+			fs.Usage()
+			return 2
+		}
+		return runPackage(packageScaffold{
+			repo:            *repo,
+			pkgPath:         *pkg,
+			practice:        *practice,
+			iface:           *iface,
+			consumer:        *consumer,
+			apply:           *apply,
+			verifiedAgainst: *verifiedA,
+		}, stdout, stderr)
 	}
 
 	// ---- validate required flags --------------------------------------------

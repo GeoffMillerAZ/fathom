@@ -44,3 +44,33 @@ validHTTPOptions: mcpserver.#HTTPOptions & {
 // while header-less (non-browser) clients pass. RandHex is a Go-side func
 // seam, never present in data configs.
 validHTTPOptionsMinimal: mcpserver.#HTTPOptions & {}
+
+// validAnnotationsDestructive is the tools/list annotations object for a
+// tool registered with &toolregistry.Effect{DestructiveHint: true}: every
+// hint explicit, exactly as the server emits it.
+validAnnotationsDestructive: mcpserver.#ToolAnnotations & {
+	readOnlyHint:    false
+	destructiveHint: true
+	idempotentHint:  false
+	openWorldHint:   false
+}
+
+// validProtocolRevision is the revision this kit implements.
+validProtocolRevision: mcpserver.#ProtocolRevision & "2025-11-25"
+
+// validDeprecationDated is a 2026-07-28 retirement with its twelve-month
+// floor, still implemented by the server (the initialize handshake).
+validDeprecationDated: mcpserver.#Deprecation & {
+	Feature:          "initialize handshake"
+	DeprecatedIn:     "2026-07-28T00:00:00Z"
+	RemovableAfter:   "2027-07-28T00:00:00Z"
+	StillImplemented: true
+}
+
+// validDeprecationUndated omits RemovableAfter: the registry names no date
+// for the HTTP+SSE transport ("three months after SEP-2596 reaches Final").
+validDeprecationUndated: mcpserver.#Deprecation & {
+	Feature:          "HTTP+SSE transport"
+	DeprecatedIn:     "2025-03-26T00:00:00Z"
+	StillImplemented: false
+}

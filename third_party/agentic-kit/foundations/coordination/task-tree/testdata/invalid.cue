@@ -42,3 +42,14 @@ package tasktree
 // 	Title:    "some task"
 // 	Status:   "cancelled"
 // }
+
+// // invalidTaskState_SiblingValue — "assigned" is swarm-orchestrator's
+// // #TaskStatus, not a canonical #TaskState (CanonicalState maps it to
+// // "running"); "done" likewise maps to "completed" and is not a #TaskState.
+// invalidTaskState_SiblingValue: #TaskState & "assigned"
+
+// // invalidTerminal_Running — "running" is not a #TerminalState
+// invalidTerminal_Running: #TerminalState & "running"
+
+// // invalidInterrupted_Completed — "completed" is terminal, not interrupted
+// invalidInterrupted_Completed: #InterruptedState & "completed"

@@ -20,6 +20,24 @@ Outcome: rolled retroactively (64db8a4); ritual in `project-intent/changes.md` �
 `intent-release` skill. Pending: the 12 remaining long entries stay by rule (§9) until
 the next tag, when `intent-prune` collapses them.
 
+### INC-7 2026-09-02 an unanchored `.gitignore` pattern hid every file under `cmd/kit-new/`
+What: `.gitignore` line 17 read `kit-new` (added by c7af593 to stop a 4.1 MB Mach-O
+binary being committed). Unanchored, git applies the pattern at every level, so the
+DIRECTORY `cmd/kit-new/` matched too — every source file under it was ignored. Found
+while building `kit-new -package` (FB-21): new files simply did not appear in
+`git status`. Its sibling `/endpoint-guard` was anchored; this one was not.
+Evidence: `git check-ignore -v cmd/kit-new/package.go` named the pattern; fix in 86be7e6
+(`kit-new` → `/kit-new`).
+Would have caught it: a lint asserting that every `.gitignore` pattern which also names
+a tracked directory is anchored (`/name`) — or, more cheaply, that no tracked path is
+matched by a repo `.gitignore` pattern. Neither exists.
+Class: platform-fact
+Outcome: pattern anchored (86be7e6); the files were never lost because they had been
+added before the pattern landed. **Proposed invariant, not built:** "no `.gitignore`
+pattern shadows a tracked directory" as a `constitution-lint` check — recorded here
+rather than added, because a check the kit adds to its own constitution needs the
+owner's call (ask-first list) and one incident is thin evidence for a new gate.
+
 ## Closed
 
 - INC-1 (pre-2026-07) A hook channel died silently for four days while its metric read

@@ -14,6 +14,35 @@ package agentharness
 // ordered low < medium < high < critical.
 #Severity: "low" | "medium" | "high" | "critical"
 
+// #EffectPolicy mirrors the Go EffectPolicy enum: how the harness treats a
+// tool's declared effect at dispatch. "permissive" dispatches whatever the
+// registry and hooks allow; "strict" routes undeclared and destructive
+// dispatches through a human approval first.
+#EffectPolicy: "permissive" | "strict"
+
+// #Handoff mirrors the Go Handoff record: the receipt of one run that
+// stopped on budget, max_tokens or max_turns. Derived from the RunResult,
+// never stored by the kit.
+#Handoff: {
+	// stop_cause is why the run stopped.
+	stop_cause: "budget" | "max_tokens" | "max_turns"
+
+	// turns is the number of completed model calls.
+	turns: int & >=0
+
+	// last_tool is the last tool the model called; absent when none was.
+	last_tool?: string & !=""
+
+	// checkpoint_ref is CheckpointRef(RunResult.Final).
+	checkpoint_ref?: =~"^checkpoint:v[0-9]+:turn[0-9]+:[0-9a-f]{16}$"
+
+	// tried lists the distinct tool names called, in first-call order.
+	tried?: [...string & !=""]
+
+	// summary is the one-line human rendering of the record.
+	summary: string & !=""
+}
+
 // #Config holds the data-shaped settings of a Harness.
 #Config: {
 	// MaxTurns caps the number of model calls in one Run. Required.
@@ -52,4 +81,7 @@ package agentharness
 	// ParallelTools: 0 or 1 = sequential dispatch (default). N > 1 = dispatch
 	// up to N tool calls concurrently.
 	ParallelTools?: int & >=0
+
+	// EffectPolicy: absent defaults to "permissive" in Go.
+	EffectPolicy?: #EffectPolicy
 }

@@ -6,7 +6,9 @@
 //
 // Plan-only status (D7): this package ships only as a planner. The executor
 // (kits/worker-pool with agent-harness as the worker unit) is not yet built;
-// it will be added when a real fan-out workload subscribes.
+// it will be added when a real fan-out workload subscribes. TaskState and
+// CanonicalState (state.go) give the three coordination enums one canonical
+// vocabulary for planners to read; they are a mapping, not an executor (I20).
 //
 // Concurrency contract: TaskTree is not safe for concurrent use; callers that
 // share a TaskTree across goroutines must guard access with their own

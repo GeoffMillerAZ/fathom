@@ -743,6 +743,63 @@ func TestRegression_NothingComparablePasses(t *testing.T) {
 	}
 }
 
+// TestRegression_ReportsPassPowKPerScenario pins the additive per-scenario
+// pass^3 (FB-13): pass and absent_proven are successes, fail a failure,
+// abstain and error excluded but counted; entries sorted by scenario; a
+// scenario with no judged trial is NaN, not 0; the gate verdict is
+// untouched by any of it.
+func TestRegression_ReportsPassPowKPerScenario(t *testing.T) {
+	r := testRunner(t, nil)
+	judgedNothing := func(rec evaljournal.Record) evaljournal.Record {
+		rec.Decisive = false
+		rec.Score = nil
+		return rec
+	}
+	current := []evaljournal.Record{
+		regressionRecord("s2", "c1", evaljournal.VerdictPass, 0.9),
+		regressionRecord("s2", "c2", evaljournal.VerdictFail, 0.2),
+		regressionRecord("s2", "c3", evaljournal.VerdictAbsentProven, 0.8),
+		regressionRecord("s1", "c1", evaljournal.VerdictPass, 0.9),
+		regressionRecord("s1", "c2", evaljournal.VerdictPass, 0.9),
+		regressionRecord("s1", "c3", evaljournal.VerdictPass, 0.9),
+		regressionRecord("s3", "c1", evaljournal.VerdictPass, 0.9),
+		judgedNothing(regressionRecord("s3", "c2", evaljournal.VerdictError, 0)),
+		judgedNothing(regressionRecord("s3", "c3", evaljournal.VerdictAbstain, 0)),
+		judgedNothing(regressionRecord("s4", "c1", evaljournal.VerdictError, 0)),
+	}
+	res, err := r.Regression(journalBytes(t, current...), current)
+	if err != nil {
+		t.Fatalf("Regression: %v", err)
+	}
+	if !res.Passed {
+		t.Errorf("pass^3 must not move the gate; identical baseline must pass: %+v", res.Gate)
+	}
+	want := []ScenarioPassPowK{
+		{ScenarioID: "s1", Trials: 3, Passes: 3, Excluded: 0, K: 3, PassPowK: 1},
+		{ScenarioID: "s2", Trials: 3, Passes: 2, Excluded: 0, K: 3, PassPowK: 8.0 / 27.0},
+		{ScenarioID: "s3", Trials: 1, Passes: 1, Excluded: 2, K: 3, PassPowK: 1},
+		{ScenarioID: "s4", Trials: 0, Passes: 0, Excluded: 1, K: 3}, // PassPowK NaN, checked below
+	}
+	if len(res.PassPowK) != len(want) {
+		t.Fatalf("PassPowK entries: got %d (%+v), want %d", len(res.PassPowK), res.PassPowK, len(want))
+	}
+	for i, w := range want {
+		g := res.PassPowK[i]
+		if g.ScenarioID != w.ScenarioID || g.Trials != w.Trials || g.Passes != w.Passes || g.Excluded != w.Excluded || g.K != w.K {
+			t.Errorf("entry %d: got %+v, want %+v", i, g, w)
+		}
+		if w.Trials == 0 {
+			if g.PassPowK == g.PassPowK { // NaN is the only float64 unequal to itself
+				t.Errorf("entry %d: zero trials must be NaN, got %v", i, g.PassPowK)
+			}
+			continue
+		}
+		if g.PassPowK < w.PassPowK-1e-12 || g.PassPowK > w.PassPowK+1e-12 {
+			t.Errorf("entry %d: pass^3 = %.12f, want %.12f", i, g.PassPowK, w.PassPowK)
+		}
+	}
+}
+
 // ---- LoopConfig / fitness honesty ----
 
 // TestFitness_FieldsComputedFromWiring builds runners via New with one

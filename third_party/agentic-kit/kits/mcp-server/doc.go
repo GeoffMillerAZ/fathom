@@ -53,6 +53,19 @@
 // non-nil injected clock must therefore be safe for concurrent use
 // (time.Now, the default, is).
 //
+// # Tool annotations
+//
+// A registry Tool that declares a toolregistry.Effect is listed with the MCP
+// annotations object (readOnlyHint, destructiveHint, idempotentHint,
+// openWorldHint — the Effect's fields verbatim, all four emitted explicitly
+// so no client-side default can invert an all-false declaration). A tool
+// without a declaration is listed exactly as before, with no annotations
+// key. Annotations describe; they do not gate: this server dispatches every
+// tools/call the registry allows, and it is the CLIENT's harness that
+// decides what a destructive hint means. Per the MCP spec a client must
+// treat these hints as untrusted unless it trusts the server — a lying tool
+// lies here too.
+//
 // # Protocol scope and roadmap
 //
 // Transports are stdio (Serve: newline-delimited JSON-RPC 2.0, one message
@@ -173,4 +186,25 @@
 // Pre-dispatch rejections (parse errors, batches, oversized messages) and
 // notifications are not logged. Logging failures are deliberately swallowed:
 // the call log never disrupts serving.
+//
+// # Protocol revision clock
+//
+// ProtocolRevision names the MCP revision this server implements
+// (2025-11-25). The 2026-07-28 revision retired the initialize handshake,
+// protocol-level sessions, ping, roots, sampling and logging with a
+// twelve-month removal floor; Deprecations lists those retirements with
+// their floors and whether this server still speaks them (the handshake and
+// ping), and DeprecationsDue(now) returns the still-implemented ones whose
+// floor has been reached. Decision 0003 tracks revisions with this clock
+// instead of chasing them: the stateless move (no handshake, per-request
+// _meta, server/discover) is a deferred decision with its own floor, not a
+// build. BY DESIGN, TestDeprecationFloorNotReached calls
+// DeprecationsDue(time.Now()) — the one deliberate wall-clock read in this
+// package's tests — so the suite goes red on 2027-07-28, the day the
+// handshake and ping pass their floor. That failure is the reminder, not a
+// flake: retire the feature or record a new decision with a new floor;
+// never pin, skip or build-tag it away. Non-guarantees: the table is the
+// kit's reading of the MCP deprecated-features registry as of 2026-09-02,
+// not a live feed; a later revision that deprecates something else is
+// invisible until the table is updated (decision 0003 'Revisit when').
 package mcpserver

@@ -33,6 +33,9 @@
 //   - foundations/quality/diff-reporter + eval-gate — the regression gate
 //     (Regression method): baseline JSONL vs current records, verdict
 //     flips and score drops fed through a weighted-threshold Gate.
+//   - foundations/quality/reliability-stats — Regression also reports
+//     per-scenario pass^3 (RegressionResult.PassPowK) over the current
+//     records: reported next to the gate, never gated on.
 //   - foundations/quality/fitness-function-registry — Fitness() registers
 //     the four eval.* loop-honesty functions and executes them.
 //   - foundations/llmclient/replay — replay mode is composition, not a
@@ -80,6 +83,9 @@
 //   - The regression gate compares only (scenario, concern) pairs present
 //     in the baseline or current set; scenarios added since the baseline
 //     are not regressions by definition.
+//   - A per-scenario pass^3 from fewer than three judged trials is a
+//     point on too little evidence, not a reliability claim; Trials and
+//     Excluded are reported so a consumer can apply its own floor.
 //
 // # Concurrency contract
 //

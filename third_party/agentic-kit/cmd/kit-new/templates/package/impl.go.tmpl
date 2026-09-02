@@ -1,0 +1,37 @@
+package {{.Pkg}}
+
+import (
+	"errors"
+	"time"
+)
+
+// {{.Type}} is the package's primary value: one validated Config plus the
+// injected clock. Construct it with New.
+type {{.Type}} struct {
+	cfg Config
+	now func() time.Time
+}
+
+// New returns a {{.Type}} for cfg. now is the injected clock and must not be
+// nil: this package never falls back to time.Now.
+func New(cfg Config, now func() time.Time) (*{{.Type}}, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, err
+	}
+	if now == nil {
+		return nil, errors.New("{{.Pkg}}: clock must not be nil (inject it — no wall-time default)")
+	}
+	return &{{.Type}}{cfg: cfg, now: now}, nil
+}
+
+// Config returns the validated configuration this instance was built with.
+func (p *{{.Type}}) Config() Config { return p.cfg }
+
+// Stamp returns the current time from the injected clock, in UTC. It is the
+// placeholder behavior: replace it with what the package actually does.
+func (p *{{.Type}}) Stamp() time.Time { return p.now().UTC() }
+{{- if .Iface}}
+
+// compile-time interface check.
+var _ {{.Iface}} = (*{{.Type}})(nil)
+{{- end}}

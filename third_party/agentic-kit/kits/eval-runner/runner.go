@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
 	fitnessfunctionregistry "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
 	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
+	reliabilitystats "github.com/geoffmilleraz/agentic-kit/foundations/quality/reliability-stats"
 	scenariobank "github.com/geoffmilleraz/agentic-kit/foundations/quality/scenario-bank"
 )
 
@@ -598,5 +600,51 @@ func (r *Runner) Regression(baseline io.Reader, current []evaljournal.Record) (R
 	if len(checks) == 0 {
 		passed = true // nothing to regress; documented above
 	}
-	return RegressionResult{Delta: delta, Gate: gres, Passed: passed}, nil
+	return RegressionResult{
+		Delta:    delta,
+		Gate:     gres,
+		Passed:   passed,
+		PassPowK: regressionPassPowK(current, regressionPassK),
+	}, nil
+}
+
+// regressionPassK is the k in the per-scenario pass^k Regression reports:
+// three, the smallest k at which "passes every time" starts to separate
+// a reliable scenario from a lucky one (τ-bench's pass^k, reported at
+// k = 3 by this kit's benches).
+const regressionPassK = 3
+
+// regressionPassPowK folds current into one ScenarioPassPowK per scenario
+// in ScenarioID order: pass and absent_proven count as successes, fail as
+// a failure, abstain and error as excluded (counted, not hidden). It is
+// reported next to the gate and never feeds it.
+func regressionPassPowK(current []evaljournal.Record, k int) []ScenarioPassPowK {
+	byID := make(map[string]*ScenarioPassPowK)
+	for _, rec := range current {
+		s := byID[rec.ScenarioID]
+		if s == nil {
+			s = &ScenarioPassPowK{ScenarioID: rec.ScenarioID, K: k}
+			byID[rec.ScenarioID] = s
+		}
+		switch rec.Verdict {
+		case evaljournal.VerdictPass, evaljournal.VerdictAbsentProven:
+			s.Trials++
+			s.Passes++
+		case evaljournal.VerdictFail:
+			s.Trials++
+		default: // abstain, error, or an unknown verdict: judged nothing
+			s.Excluded++
+		}
+	}
+	out := make([]ScenarioPassPowK, 0, len(byID))
+	for _, s := range byID {
+		if s.Trials == 0 {
+			s.PassPowK = math.NaN()
+		} else {
+			s.PassPowK = reliabilitystats.PassPowK(float64(s.Passes)/float64(s.Trials), k)
+		}
+		out = append(out, *s)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ScenarioID < out[j].ScenarioID })
+	return out
 }

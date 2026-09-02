@@ -378,4 +378,37 @@ type RegressionResult struct {
 	// no comparable pairs at all (nothing to regress — documented
 	// explicitly because eval-gate alone would fail an empty check set).
 	Passed bool
+
+	// PassPowK is the per-scenario pass^3 over the current records, one
+	// entry per ScenarioID in sorted order (FB-13). Reported, never gated:
+	// Passed does not depend on it.
+	PassPowK []ScenarioPassPowK
+}
+
+// ScenarioPassPowK is one scenario's pass^k reliability estimate over the
+// current records, from reliabilitystats.PassPowK(Passes/Trials, K).
+// Trials counts judged outcomes (pass, fail, absent_proven), Passes the
+// successes (pass, absent_proven), Excluded the records that judged
+// nothing (abstain, error) — reported so a budget-starved run cannot look
+// reliable by omission. PassPowK is NaN when Trials == 0, and a Trials
+// below K is a point on too little evidence: consumers floor it (fathom's
+// bench requires n >= 3), this kit reports it.
+type ScenarioPassPowK struct {
+	// ScenarioID names the scenario.
+	ScenarioID string
+
+	// Trials is the number of judged (pass/fail/absent_proven) records.
+	Trials int
+
+	// Passes is the number of pass or absent_proven records.
+	Passes int
+
+	// Excluded is the number of abstain or error records left out of Trials.
+	Excluded int
+
+	// K is the exponent: regressionPassK (3).
+	K int
+
+	// PassPowK is (Passes/Trials)^K; NaN when Trials == 0.
+	PassPowK float64
 }

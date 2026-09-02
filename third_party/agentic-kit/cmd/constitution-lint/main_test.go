@@ -2,8 +2,13 @@ package main
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -444,5 +449,179 @@ func TestLoadWaiversMissingFile(t *testing.T) {
 	}
 	if len(waivers) != 0 {
 		t.Error("expected empty waivers for missing file")
+	}
+}
+
+// ── 12. read-coverage ────────────────────────────────────────────────────────
+
+// writeMinimalTree lays down the smallest tree the walk sites all visit: a
+// root go.mod plus one foundation package with a concurrency-contract doc
+// and a schema.cue. Returns the package dir and its .go file.
+func writeMinimalTree(t *testing.T, root string) (pkgDir, goFile string) {
+	t.Helper()
+	pkgDir = filepath.Join(root, "foundations", "cat", "pkg")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.test\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	goFile = filepath.Join(pkgDir, "pkg.go")
+	if err := os.WriteFile(goFile, []byte("// Package pkg is safe for concurrent use.\npackage pkg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "schema.cue"), []byte("package pkg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return pkgDir, goFile
+}
+
+// TestUnreadableTreeNeverPassesConstitution pins FB-9: a file or directory
+// that exists but cannot be read is a FAIL finding of its own, so the
+// constitution cannot pass on a tree it could not fully see, and the
+// summary line renders the finding count as a lower bound naming the
+// blind spot. The readable variant of the same tree produces no
+// read-coverage failure, so the only variable is readability.
+func TestUnreadableTreeNeverPassesConstitution(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits cannot make a path unreadable")
+	}
+
+	t.Run("readable tree has no read-coverage failure", func(t *testing.T) {
+		root := t.TempDir()
+		writeMinimalTree(t, root)
+		var buf bytes.Buffer
+		run(root, &buf, nil)
+		out := buf.String()
+		if strings.Contains(out, "FAIL [read-coverage]") {
+			t.Fatalf("a fully readable tree must not fail read-coverage:\n%s", out)
+		}
+		if strings.Contains(out, "≥") {
+			t.Fatalf("a complete manifest renders a plain count, not a lower bound:\n%s", out)
+		}
+	})
+
+	t.Run("unreadable file", func(t *testing.T) {
+		root := t.TempDir()
+		_, goFile := writeMinimalTree(t, root)
+		if err := os.Chmod(goFile, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(goFile, 0o644) })
+
+		var buf bytes.Buffer
+		code := run(root, &buf, nil)
+		out := buf.String()
+		if code == 0 {
+			t.Fatalf("an unreadable file must fail the constitution:\n%s", out)
+		}
+		want := "FAIL [read-coverage] foundations/cat/pkg/pkg.go: permission denied"
+		if !strings.Contains(out, want) {
+			t.Fatalf("want %q in output:\n%s", want, out)
+		}
+		if !strings.Contains(out, "findings checked: ≥ ") || !strings.Contains(out, "(1 unreadable: foundations/cat/pkg/pkg.go)") {
+			t.Fatalf("summary must render the finding count as a named lower bound:\n%s", out)
+		}
+	})
+
+	t.Run("unreadable directory", func(t *testing.T) {
+		root := t.TempDir()
+		pkgDir, _ := writeMinimalTree(t, root)
+		if err := os.Chmod(pkgDir, 0o000); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(pkgDir, 0o755) })
+
+		var buf bytes.Buffer
+		code := run(root, &buf, nil)
+		out := buf.String()
+		if code == 0 {
+			t.Fatalf("an unreadable directory must fail the constitution:\n%s", out)
+		}
+		want := "FAIL [read-coverage] foundations/cat/pkg: permission denied"
+		if !strings.Contains(out, want) {
+			t.Fatalf("want %q in output:\n%s", want, out)
+		}
+		if !strings.Contains(out, "(1 unreadable: foundations/cat/pkg)") {
+			t.Fatalf("summary must name the blind directory:\n%s", out)
+		}
+	})
+}
+
+// TestWalkWithManifestRecordsOutcomes pins what walkWithManifest records
+// for each kind of path the sweep meets, and that a failed file read is
+// recorded (and skipped) rather than aborting the walk.
+func TestWalkWithManifestRecordsOutcomes(t *testing.T) {
+	root := t.TempDir()
+	mustWrite := func(rel string, data []byte) {
+		t.Helper()
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, data, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite("a.txt", []byte("text"))
+	mustWrite("b.bin", []byte("x\x00y"))
+	mustWrite("c_test.go", []byte("package c"))
+	mustWrite(".git/HEAD", []byte("ref"))
+	if err := os.Symlink(filepath.Join(root, "missing"), filepath.Join(root, "dangling")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+
+	set := readmanifest.NewSet()
+	set.RelativeTo(root)
+	var swept []string
+	if err := walkWithManifest(root, set, func(rel string, _ []byte) { swept = append(swept, rel) }); err != nil {
+		t.Fatalf("walk: %v", err)
+	}
+	if !reflect.DeepEqual(swept, []string{"a.txt"}) {
+		t.Fatalf("swept = %v, want only a.txt", swept)
+	}
+	got := map[string]readmanifest.Outcome{}
+	for _, e := range set.Manifest().Entries {
+		got[e.Path] = e.Outcome
+	}
+	want := map[string]readmanifest.Outcome{
+		".git":      readmanifest.Skipped("sweep-skip-dir"),
+		"a.txt":     readmanifest.Read(4),
+		"b.bin":     readmanifest.Read(3),
+		"c_test.go": readmanifest.Skipped("test-file"),
+		"dangling":  readmanifest.Absent(),
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("manifest = %+v\nwant %+v", got, want)
+	}
+	if !set.Manifest().Complete() {
+		t.Fatal("skips and a dangling symlink are facts, not blindness")
+	}
+
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: permission bits cannot make a file unreadable")
+	}
+	if err := os.Chmod(filepath.Join(root, "a.txt"), 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(root, "a.txt"), 0o644) })
+	blind := readmanifest.NewSet()
+	blind.RelativeTo(root)
+	swept = nil
+	if err := walkWithManifest(root, blind, func(rel string, _ []byte) { swept = append(swept, rel) }); err != nil {
+		t.Fatalf("a failed file read is recorded, not a walk error: %v", err)
+	}
+	if len(swept) != 0 {
+		t.Fatalf("an unreadable file must not be swept, got %v", swept)
+	}
+	m := blind.Manifest()
+	if m.Complete() {
+		t.Fatal("a failed read must make the manifest incomplete")
+	}
+	if bad := m.Unreadable(); len(bad) != 1 || bad[0].Path != "a.txt" || bad[0].Outcome.Detail != "permission denied" {
+		t.Fatalf("unreadable = %+v", bad)
+	}
+	if got, want := m.LowerBound(1), "≥ 1 (1 unreadable: a.txt)"; got != want {
+		t.Fatalf("LowerBound = %q, want %q", got, want)
 	}
 }

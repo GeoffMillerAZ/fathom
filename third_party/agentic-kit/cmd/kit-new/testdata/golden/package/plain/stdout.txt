@@ -1,0 +1,28 @@
+kit-new: scaffolded foundations/alpha/widget-gizmo (package widgetgizmo, type WidgetGizmo): 7 files
+  foundations/alpha/widget-gizmo/doc.go
+  foundations/alpha/widget-gizmo/schema.cue
+  foundations/alpha/widget-gizmo/testdata/invalid.cue
+  foundations/alpha/widget-gizmo/testdata/valid.cue
+  foundations/alpha/widget-gizmo/types.go
+  foundations/alpha/widget-gizmo/widget-gizmo.go
+  foundations/alpha/widget-gizmo/widget-gizmo_test.go
+
+kit-new: ledger lines to add (re-run with -apply to append them):
+
+TRACKING.md — ### 1.1 alpha ✅ [print]
+- [ ] `widget-gizmo` (`foundations/alpha/widget-gizmo`) — scaffolded by kit-new: replace with what it does, what it refuses to do, and its bounds — schema.cue · widget-gizmo_test.go. Consumer: kits/beta. Practice: §1.
+
+docs/compat.md — Classification table, sorted by path [print]
+| `foundations/alpha/widget-gizmo` | experimental | Scaffolded by kit-new; zero consumers proven yet — consumer: kits/beta. Promote to stable only through a real consumer in `task downstream-check` (`docs/intent/repo.md` §Promote). |
+
+CHANGELOG.md — [Unreleased] › Added [print]
+- **`foundations/alpha/widget-gizmo`** (experimental): scaffolded package — replace this line with the observable behavior it ships, or drop it if nothing observable lands with it.
+
+docs/practices.md — §1 table [print]
+| `foundations/alpha/widget-gizmo` | replace with the role this package plays in §1 — what it enforces, in one line |
+
+README.md — source-counted package total [print]
+**0 Go packages → **1 Go packages
+docs/catalog.md — regenerate: task docs-index
+
+kit-new: next: go test -race ./foundations/alpha/widget-gizmo/ && task validate

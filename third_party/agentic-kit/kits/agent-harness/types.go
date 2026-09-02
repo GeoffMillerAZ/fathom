@@ -138,6 +138,15 @@ type Config struct {
 	// ParallelTools: 0 or 1 = sequential (default). N > 1 = dispatch up to N
 	// tool calls concurrently. Results preserved in tool_use order.
 	ParallelTools int
+
+	// EffectPolicy governs irreversible tool calls. Empty or EffectPermissive
+	// (the default) dispatches whatever the registry and hooks allow.
+	// EffectStrict routes every undeclared or destructive dispatch through
+	// Deps.Approver first (see EffectPolicy and RequireApproval); the
+	// PreDispatch hook still runs first and a hook denial short-circuits the
+	// gate. Defs() is unchanged under either policy — the model sees the
+	// same tool list; only dispatch changes.
+	EffectPolicy EffectPolicy
 }
 
 // HookConfig wires synchronous hook points into the governed loop. Any hook
@@ -203,6 +212,13 @@ type Deps struct {
 	// Now is the injected clock for event timestamps, durations, and journal
 	// entries. Nil falls back to time.Now; always inject in tests.
 	Now func() time.Time
+
+	// Approver is the human-in-the-loop channel Config.EffectPolicy
+	// EffectStrict routes undeclared and destructive dispatches through.
+	// Nil under EffectStrict means every such dispatch is DENIED (fail
+	// closed) with a reason saying no approver is wired. Ignored under
+	// EffectPermissive.
+	Approver Approver
 }
 
 // RunResult is the outcome of one Run or RunStream (after draining). It is
@@ -235,6 +251,12 @@ type RunResult struct {
 	// multi-turn session stitching and crash/budget-stop resume. It is always
 	// populated (non-nil), even on error returns (Stop == StopError).
 	Final *Checkpoint
+
+	// Handoff is the typed receipt of a run that stopped before its task
+	// did: set on StopBudget, StopMaxTokens and StopMaxTurns (HandoffFor
+	// derives it from this result), nil on every other stop. The same record
+	// is emitted once on Deps.Sink as a handoff event.
+	Handoff *Handoff
 }
 
 // checkpointVersion is the format version written into every Checkpoint's JSON.
@@ -303,6 +325,15 @@ const (
 	// call (the run continues — a denial result is sent back to the model).
 	// HookStep and HookReason are set.
 	HarnessEventHookDenied HarnessEventKind = "hook_denied"
+
+	// HarnessEventGateDenied is emitted when the strict effect gate denies a
+	// tool call (the run continues — an is_error result is sent back to the
+	// model). ToolName, ToolUseID, Effect and Reason are set.
+	HarnessEventGateDenied HarnessEventKind = "gate_denied"
+
+	// HarnessEventHandoff is emitted once, before the terminal event, when
+	// the run stops on budget, max_tokens or max_turns. Handoff is set.
+	HarnessEventHandoff HarnessEventKind = "handoff"
 )
 
 // HarnessEvent is one event on the channel returned by RunStream. See
@@ -367,4 +398,14 @@ type HarnessEvent struct {
 
 	// HookReason is the hook's denial reason (HarnessEventHookDenied).
 	HookReason string
+
+	// ToolName is the tool the effect gate decided on (HarnessEventGateDenied).
+	ToolName string
+
+	// Effect is why the gate applied: EffectUndeclared or EffectDestructive
+	// (HarnessEventGateDenied).
+	Effect string
+
+	// Handoff is the run's handoff record (HarnessEventHandoff).
+	Handoff *Handoff
 }

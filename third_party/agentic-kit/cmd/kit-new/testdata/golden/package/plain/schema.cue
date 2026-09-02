@@ -1,0 +1,17 @@
+// Package widgetgizmo defines the CUE-first contract for this package's
+// configuration. CUE is authoritative for shape; the Go types in types.go
+// mirror these definitions, and any drift is a bug. Run `cue vet ./...` and
+// `cue vet ./testdata/` from this directory (or `task cue-vet` at the repo
+// root) to validate the fixtures against these constraints.
+package widgetgizmo
+
+// #Config is the caller-supplied configuration. Every bound is explicit
+// (VISION belief 4): there are no defaults, so a config author states each
+// value.
+#Config: {
+	// name identifies this instance in errors and reports.
+	name: string & !=""
+
+	// limit bounds the work one instance may do.
+	limit: int & >0
+}

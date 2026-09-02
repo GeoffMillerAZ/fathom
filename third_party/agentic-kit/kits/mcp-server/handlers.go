@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 )
 
@@ -80,9 +81,33 @@ func (s *Server) handleToolsList() any {
 			// registered without one takes no arguments.
 			schema = json.RawMessage(`{"type":"object"}`)
 		}
-		tools[i] = toolDescriptor{Name: d.Name, Description: d.Description, InputSchema: schema}
+		eff, _ := s.reg.EffectOf(d.Name)
+		tools[i] = toolDescriptor{
+			Name:        d.Name,
+			Description: d.Description,
+			InputSchema: schema,
+			Annotations: annotationsFromEffect(eff),
+		}
 	}
 	return toolsListResult{Tools: tools}
+}
+
+// annotationsFromEffect maps a tool's declared Effect onto the MCP
+// annotations object emitted in tools/list. nil (undeclared) emits no
+// annotations at all — the kit never invents a declaration on a tool's
+// behalf, and a client applying the MCP defaults to the absence reads it as
+// destructive, which is the strict truth. A declared Effect emits all four
+// hints explicitly (see toolAnnotations).
+func annotationsFromEffect(eff *toolregistry.Effect) *toolAnnotations {
+	if eff == nil {
+		return nil
+	}
+	return &toolAnnotations{
+		ReadOnlyHint:    eff.ReadOnlyHint,
+		DestructiveHint: eff.DestructiveHint,
+		IdempotentHint:  eff.IdempotentHint,
+		OpenWorldHint:   eff.OpenWorldHint,
+	}
 }
 
 // handleToolsCall synthesizes a tool_use ContentBlock from the MCP params and

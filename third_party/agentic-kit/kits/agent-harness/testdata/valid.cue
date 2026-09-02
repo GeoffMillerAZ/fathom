@@ -43,3 +43,29 @@ validScanOff: agentharness.#Config & {
 	MaxTurns:        20
 	InjectionAction: "off"
 }
+
+// validStrictEffects opts into the strict effect gate: an undeclared or
+// destructive tool call needs a human approval before it dispatches.
+validStrictEffects: agentharness.#Config & {
+	MaxTurns:     6
+	EffectPolicy: "strict"
+}
+
+// validHandoff is the record a run emits when it stops on max_turns after
+// two tool calls.
+validHandoff: agentharness.#Handoff & {
+	stop_cause:     "max_turns"
+	turns:          2
+	last_tool:      "word_count"
+	checkpoint_ref: "checkpoint:v1:turn2:0123456789abcdef"
+	tried: ["read_file", "word_count"]
+	summary: "run stopped on max_turns after 2 turn(s); last tool word_count; tried [read_file, word_count]; resume from checkpoint:v1:turn2:0123456789abcdef"
+}
+
+// validHandoffNoTools is the record of a run that stopped on budget before
+// any tool was called.
+validHandoffNoTools: agentharness.#Handoff & {
+	stop_cause: "budget"
+	turns:      0
+	summary:    "run stopped on budget after 0 turn(s); no tool was called"
+}

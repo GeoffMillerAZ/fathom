@@ -5,6 +5,15 @@
 // not data — they have no CUE shape.
 package mcpserver
 
+import "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry:toolregistry"
+
+// #ToolAnnotations is the `annotations` object a tools/list entry carries
+// for a tool with a declared Effect. It IS toolregistry.#Effect — the kit
+// invents no second taxonomy — restated here so the wire contract and the
+// registry declaration are provably one shape. The Go side always emits all
+// four hints explicitly (see types.go toolAnnotations).
+#ToolAnnotations: toolregistry.#Effect
+
 // #Config configures an MCP stdio server.
 #Config: {
 	// Name is the server name reported in the initialize serverInfo.
@@ -43,4 +52,35 @@ package mcpserver
 	// header (non-browser clients) always pass. Entries are compared
 	// verbatim and must be non-empty.
 	AllowedOrigins?: [...string & !=""]
+}
+
+// _rfc3339 constrains a string to the RFC3339 timestamp format Go's
+// time.Time marshals to (e.g. "2026-07-28T00:00:00Z").
+_rfc3339: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+
+// #ProtocolRevision is an MCP protocol revision id: the date of the last
+// backwards-incompatible change, YYYY-MM-DD. The Go constant ProtocolRevision
+// ("2025-11-25") is the revision this kit implements.
+#ProtocolRevision: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+
+// #Deprecation is one row of the retirement ledger Deprecations() returns —
+// the same shape foundations/agent/mcp-client exports. RemovableAfter is
+// optional: an absent floor means the MCP deprecated-features registry
+// publishes no date, and DeprecationsDue treats an undated floor on a
+// still-implemented feature as due immediately (fail closed).
+#Deprecation: {
+	// Feature is the retired feature, named as the MCP changelog names it.
+	Feature: string & !=""
+
+	// DeprecatedIn is the release date of the revision that retired the
+	// feature (MCP revisions are named by date, so this is the revision).
+	DeprecatedIn: _rfc3339
+
+	// RemovableAfter is the earliest date on or after which a revision may
+	// remove the feature: twelve months after DeprecatedIn under the MCP
+	// feature-lifecycle policy. Omitted when the registry publishes no date.
+	RemovableAfter?: _rfc3339
+
+	// StillImplemented reports whether this package still speaks the feature.
+	StillImplemented: bool
 }

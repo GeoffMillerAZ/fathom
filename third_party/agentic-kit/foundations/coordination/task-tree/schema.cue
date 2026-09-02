@@ -19,3 +19,18 @@ package tasktree
 	// Status is the current lifecycle state of the task.
 	Status: #Status
 }
+
+// #TaskState is the canonical lifecycle vocabulary for a unit of coordinated
+// work, shared across foundations/coordination. The sibling enums (#Status
+// here, swarm-orchestrator #TaskStatus, implementation-queue #ItemStatus)
+// stay as they are; Go's CanonicalState maps their values onto this one.
+// Plan-only: a vocabulary, not a state machine — no transitions are defined.
+#TaskState: "pending" | "running" | "input-required" | "completed" | "failed" | "cancelled"
+
+// #TerminalState is the class of #TaskState values from which no transition
+// follows.
+#TerminalState: #TaskState & ("completed" | "failed" | "cancelled")
+
+// #InterruptedState is the class of #TaskState values paused awaiting
+// outside input — neither running nor terminal; resumes to "running".
+#InterruptedState: #TaskState & "input-required"

@@ -24,8 +24,8 @@ const TelemetrySource = "kits/agent-harness"
 // Attribute keys stamped on harness telemetry events. Trace correlation keys
 // (event.AttrRunID etc.) are added on top via event.Apply.
 const (
-	// AttrStep discriminates the harness event: StepTurn, StepBudget, or
-	// StepInjection.
+	// AttrStep discriminates the harness event: StepTurn, StepBudget,
+	// StepInjection, StepHandoff, StepGateDenied or StepGateApproved.
 	AttrStep = "step"
 
 	// AttrTurn is the zero-based turn index the event belongs to.
@@ -62,8 +62,25 @@ const (
 	AttrSeverity = "severity"
 
 	// AttrToolUseID is the tool_use ID whose result was flagged (injection
-	// events).
+	// events) or gated (gate events).
 	AttrToolUseID = "tool_use_id"
+
+	// AttrStopCause is the run's stop cause (handoff events).
+	AttrStopCause = "stop_cause"
+
+	// AttrTurns is the number of completed model calls (handoff events).
+	AttrTurns = "turns"
+
+	// AttrLastTool is the last tool the model called (handoff events with
+	// tool calls only).
+	AttrLastTool = "last_tool"
+
+	// AttrTried is the comma-joined distinct tool names the model called, in
+	// first-call order (handoff events with tool calls only).
+	AttrTried = "tried"
+
+	// AttrCheckpointRef is CheckpointRef(RunResult.Final) (handoff events).
+	AttrCheckpointRef = "checkpoint_ref"
 )
 
 // AttrStep values.
@@ -78,6 +95,11 @@ const (
 	// StepInjection marks a detector flag on a tool result; AttrAction says
 	// what was done about it.
 	StepInjection = "injection"
+
+	// StepHandoff marks the one Handoff record of a run that stopped on
+	// budget, max_tokens or max_turns (see Handoff). StepGateDenied and
+	// StepGateApproved (effect.go) mark the strict effect gate's decisions.
+	StepHandoff = "handoff"
 )
 
 // Harness is the governed agent loop. Construct with New. It holds only
@@ -91,6 +113,7 @@ type Harness struct {
 	treatMaxTokensAsError bool
 	action                InjectionAction
 	minSeverity           injectiondetector.Severity
+	effectPolicy          EffectPolicy
 	now                   func() time.Time
 }
 
@@ -100,7 +123,9 @@ type Harness struct {
 // MaxTokensPerCall and EstimatedUSDPerCall must not be negative;
 // InjectionAction must be empty (defaults to InjectionBlock) or one of
 // off/annotate/block; InjectionMinSeverity must be empty (defaults to
-// injectiondetector.SeverityHigh) or one of low/medium/high/critical.
+// injectiondetector.SeverityHigh) or one of low/medium/high/critical;
+// EffectPolicy must be empty (defaults to EffectPermissive) or one of
+// permissive/strict.
 //
 // Registry is optional at construction time: a nil Registry is valid when the
 // caller only intends to use RunOnce or RunOnceStream (which accept a fully
@@ -143,6 +168,16 @@ func New(cfg Config, deps Deps) (*Harness, error) {
 		return nil, fmt.Errorf("agentharness: invalid Config.InjectionMinSeverity %q (want low, medium, high, or critical)", minSev)
 	}
 
+	effectPolicy := cfg.EffectPolicy
+	switch effectPolicy {
+	case "":
+		effectPolicy = EffectPermissive
+	case EffectPermissive, EffectStrict:
+	default:
+		return nil, fmt.Errorf("agentharness: invalid Config.EffectPolicy %q (want %q or %q)",
+			effectPolicy, EffectPermissive, EffectStrict)
+	}
+
 	treatMaxTokensAsError := true
 	if cfg.TreatMaxTokensAsError != nil {
 		treatMaxTokensAsError = *cfg.TreatMaxTokensAsError
@@ -159,6 +194,7 @@ func New(cfg Config, deps Deps) (*Harness, error) {
 		treatMaxTokensAsError: treatMaxTokensAsError,
 		action:                action,
 		minSeverity:           minSev,
+		effectPolicy:          effectPolicy,
 		now:                   now,
 	}, nil
 }
@@ -491,6 +527,7 @@ func (h *Harness) runOnce(ctx context.Context, conv *conversation.Conversation, 
 		result.Stop = cause
 		result.Messages = conv.Messages()
 		result.Final = h.makeCheckpoint(conv, 0)
+		h.attachHandoff(ctx, &result, lsink)
 		h.journal("run-ended", fmt.Sprintf("stop=%s turns=%d", cause, result.Turns))
 		return result, nil
 	}
@@ -641,6 +678,10 @@ type loopSink interface {
 	onCompaction(dropped int)
 	// onHookDenied is called when a PreDispatch hook denies a tool call.
 	onHookDenied(step, reason string)
+	// onGateDenied is called when the strict effect gate denies a tool call.
+	onGateDenied(toolName, toolUseID, effect, reason string)
+	// onHandoff is called once when a run stops with a Handoff.
+	onHandoff(ho Handoff)
 }
 
 // blockingSink is the no-op sink used by the blocking Run path.
@@ -656,6 +697,8 @@ func (blockingSink) onBudgetDenied(string)                                   {}
 func (blockingSink) onInjection(_, _, _, _ string)                           {}
 func (blockingSink) onCompaction(int)                                        {}
 func (blockingSink) onHookDenied(_, _ string)                                {}
+func (blockingSink) onGateDenied(_, _, _, _ string)                          {}
+func (blockingSink) onHandoff(Handoff)                                       {}
 
 // streamingSink sends HarnessEvents on the output channel. Sends select on
 // ctx.Done() so a cancelled caller unblocks the producer.
@@ -726,6 +769,14 @@ func (s *streamingSink) onHookDenied(step, reason string) {
 	s.send(HarnessEvent{Kind: HarnessEventHookDenied, HookStep: step, HookReason: reason})
 }
 
+func (s *streamingSink) onGateDenied(toolName, toolUseID, effect, reason string) {
+	s.send(HarnessEvent{Kind: HarnessEventGateDenied, ToolName: toolName, ToolUseID: toolUseID, Effect: effect, Reason: reason})
+}
+
+func (s *streamingSink) onHandoff(ho Handoff) {
+	s.send(HarnessEvent{Kind: HarnessEventHandoff, Handoff: &ho})
+}
+
 // ─── runLoop ─────────────────────────────────────────────────────────────────
 
 func (h *Harness) runLoop(ctx context.Context, conv *conversation.Conversation, startTurn int, lsink loopSink) (RunResult, error) {
@@ -742,6 +793,7 @@ func (h *Harness) runLoop(ctx context.Context, conv *conversation.Conversation, 
 		result.ToolCalls = toolCalls
 		result.Messages = conv.Messages()
 		result.Final = h.makeCheckpoint(conv, startTurn+turns)
+		h.attachHandoff(ctx, &result, lsink)
 		h.journal("run-ended", fmt.Sprintf("stop=%s turns=%d tool_calls=%d", cause, turns, toolCalls))
 		return result, nil
 	}
@@ -1061,20 +1113,25 @@ func (h *Harness) dispatchWithHooks(ctx context.Context, turn int, calls []llmcl
 		return nil, "", nil
 	}
 
-	// Step 1: Sequential PreDispatch for each call.
+	// Step 1: Sequential PreDispatch for each call — the caller's hook first,
+	// then the strict effect gate on whatever the hook allowed. Both run in
+	// call order, one at a time, even when dispatch itself is parallel: an
+	// approval is a human's decision on one call at a time.
 	type preDispatchResult struct {
 		allow       bool
 		denialBlock llmclient.ContentBlock
 	}
 	pre := make([]preDispatchResult, len(toolUseCalls))
 	for i, call := range toolUseCalls {
+		view := ToolCallView{
+			Turn:      turn,
+			ToolUseID: call.ID,
+			ToolName:  call.Name,
+			Input:     call.Input,
+		}
+		pre[i] = preDispatchResult{allow: true}
 		if h.cfg.Hooks != nil && h.cfg.Hooks.PreDispatch != nil {
-			allow, reason, err := h.cfg.Hooks.PreDispatch(ctx, ToolCallView{
-				Turn:      turn,
-				ToolUseID: call.ID,
-				ToolName:  call.Name,
-				Input:     call.Input,
-			})
+			allow, reason, err := h.cfg.Hooks.PreDispatch(ctx, view)
 			if err != nil {
 				h.journal("hook-failed", fmt.Sprintf("hook pre_dispatch failed on turn %d tool %s: %v", turn, call.Name, err))
 				return nil, StopHook, fmt.Errorf("agentharness: hook pre_dispatch failed on turn %d: %w", turn, err)
@@ -1083,11 +1140,12 @@ func (h *Harness) dispatchWithHooks(ctx context.Context, turn int, calls []llmcl
 				denial := llmclient.ToolResultBlock(call.ID, "tool call denied by policy: "+reason, true)
 				lsink.onHookDenied(call.Name, reason)
 				pre[i] = preDispatchResult{allow: false, denialBlock: denial}
-			} else {
-				pre[i] = preDispatchResult{allow: true}
 			}
-		} else {
-			pre[i] = preDispatchResult{allow: true}
+		}
+		if pre[i].allow && h.effectPolicy == EffectStrict {
+			if denial, denied := h.effectGate(ctx, view, lsink); denied {
+				pre[i] = preDispatchResult{allow: false, denialBlock: denial}
+			}
 		}
 	}
 
@@ -1166,6 +1224,69 @@ func (h *Harness) dispatchWithHooks(ctx context.Context, turn int, calls []llmcl
 	}
 
 	return final, "", nil
+}
+
+// effectGate applies EffectStrict to one call: an undeclared or destructive
+// tool goes through RequireApproval; anything else passes. On a denial it
+// returns the is_error tool_result for the model, records the gate_denied
+// event, journals, and notifies lsink. On an approval it records a
+// gate_approved event carrying who approved. An unregistered tool is not
+// gated — Dispatch reports it as unknown.
+func (h *Harness) effectGate(ctx context.Context, view ToolCallView, lsink loopSink) (denial llmclient.ContentBlock, denied bool) {
+	label, gated := h.gateLabel(view.ToolName)
+	if !gated {
+		return llmclient.ContentBlock{}, false
+	}
+	a, _ := h.RequireApproval(ctx, view) // an approver error is already a denial
+	attrs := map[string]string{
+		AttrTurn:      strconv.Itoa(view.Turn),
+		AttrToolName:  view.ToolName,
+		AttrToolUseID: view.ToolUseID,
+		AttrEffect:    label,
+	}
+	if a.Approved {
+		attrs[AttrStep] = StepGateApproved
+		if a.ApprovedBy != "" {
+			attrs[AttrApprovedBy] = a.ApprovedBy
+		}
+		if a.Reason != "" {
+			attrs[AttrReason] = a.Reason
+		}
+		h.emit(ctx, event.KindInfo, attrs)
+		h.journal("gate-approved", fmt.Sprintf("turn %d: tool %s (%s) approved by %q", view.Turn, view.ToolName, label, a.ApprovedBy))
+		return llmclient.ContentBlock{}, false
+	}
+	attrs[AttrStep] = StepGateDenied
+	attrs[AttrReason] = a.Reason
+	h.emit(ctx, event.KindInfo, attrs)
+	h.journal("gate-denied", fmt.Sprintf("turn %d: tool %s (%s) denied: %s", view.Turn, view.ToolName, label, a.Reason))
+	lsink.onGateDenied(view.ToolName, view.ToolUseID, label, a.Reason)
+	return llmclient.ToolResultBlock(view.ToolUseID, "tool call denied by effect gate: "+a.Reason, true), true
+}
+
+// attachHandoff sets result.Handoff and emits the handoff event when the
+// stop cause warrants one (budget, max_tokens, max_turns); otherwise a no-op.
+func (h *Harness) attachHandoff(ctx context.Context, result *RunResult, lsink loopSink) {
+	if !handoffStop(result.Stop) {
+		return
+	}
+	ho := HandoffFor(*result)
+	result.Handoff = &ho
+	attrs := map[string]string{
+		AttrStep:      StepHandoff,
+		AttrStopCause: string(ho.StopCause),
+		AttrTurns:     strconv.Itoa(ho.Turns),
+	}
+	if ho.LastTool != "" {
+		attrs[AttrLastTool] = ho.LastTool
+		attrs[AttrTried] = strings.Join(ho.Tried, ",")
+	}
+	if ho.CheckpointRef != "" {
+		attrs[AttrCheckpointRef] = ho.CheckpointRef
+	}
+	h.emit(ctx, event.KindInfo, attrs)
+	h.journal("handoff", ho.Summary)
+	lsink.onHandoff(ho)
 }
 
 // emit builds, trace-stamps, normalizes, validates, and emits one harness

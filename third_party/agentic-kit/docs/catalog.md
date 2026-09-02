@@ -2,7 +2,7 @@
 
 # Package catalog
 
-190 Go packages. One line each: module-relative import path, package name, doc synopsis.
+192 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -165,7 +165,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/provenance/anchor` (`anchor`) — Package anchor provides cryptographic proof-of-existence for batches of evidence content-hashes.
 - `foundations/provenance/event-store` (`eventstore`) — Package eventstore provides an append-only, hash-chained event store.
 
-## foundations/quality (12)
+## foundations/quality (13)
 
 - `foundations/quality/agentic-practices-evaluator` (`agenticpracticesevaluator`) — Package agenticpracticesevaluator scores an agent run against a configurable best-practice checklist.
 - `foundations/quality/correction-estimator` (`correctionestimator`) — Package correctionestimator estimates the effort and likelihood of correction required for a set of findings using deterministic scoring rules.
@@ -178,6 +178,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/quality/honesty-gate` (`honestygate`) — Package honestygate flags overclaiming in model outputs using deterministic rules.
 - `foundations/quality/integrity-evaluator` (`integrityevaluator`) — Package integrityevaluator checks output integrity against a set of invariants.
 - `foundations/quality/qa-harness` (`qaharness`) — Package qaharness provides the QA judge interface and deterministic rubric scoring for agentic outputs.
+- `foundations/quality/reliability-stats` (`reliabilitystats`) — Package reliabilitystats is the small statistics kit a bench needs to say "A beats B" or "this scenario is reliable" without lying about how much evidence it has: the unbiased pass@k estimator, pass^k, a task-clustered paired bootstrap confidence interval, the Wilcoxon signed-rank test, and the Vargha–Delaney A12 effect size.
 - `foundations/quality/scenario-bank` (`scenariobank`) — Package scenariobank provides versioned eval scenarios as CUE data with provenance discipline.
 
 ## foundations/reasoning (1)
@@ -227,12 +228,13 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/security/tokenization/vaulttest` (`vaulttest`) — Package vaulttest is an importable conformance suite for tokenization.ShreddableVault implementations.
 - `foundations/security/untrusted-content-wrapper` (`untrustedcontentwrapper`) — Package untrustedcontentwrapper fences untrusted external content (user documents, tool output, fetched web pages) between per-wrap nonce delimiters so a language model is less likely to conflate that content with trusted instructions.
 
-## foundations/telemetry (5)
+## foundations/telemetry (6)
 
 - `foundations/telemetry/event` (`event`) — Package event defines the canonical telemetry event shape for agentic-kit.
 - `foundations/telemetry/heartbeat` (`heartbeat`) — Package heartbeat records channel beats — the liveness substrate for forced delivery channels (hooks, gates, instruments).
 - `foundations/telemetry/metrics` (`metrics`) — Package metrics provides a lightweight, stdlib-only, concurrency-safe in-process metrics registry that emits deterministic Prometheus text-format output.
 - `foundations/telemetry/otel-genai` (`otelgenai`) — Package otelgenai provides an OTel GenAI semconv mapping and a stdlib-only OTLP/JSON sink that implements foundations/telemetry/sink.Sink.
+- `foundations/telemetry/read-manifest` (`readmanifest`) — Package readmanifest makes a reader's blindness visible: every path a report considered is recorded with what happened to it — read, absent, unreadable (with the operating system's own wording), or deliberately skipped — so a count derived from an incomplete read can never be rendered as a bare total.
 - `foundations/telemetry/sink` (`sink`) — Package sink defines the behavioral contracts and implementations for telemetry event sinks.
 
 ## foundations/topology (2)
@@ -282,7 +284,7 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `cmd/internal/catalog` (`catalog`) — Package catalog provides the shared generation core for docs/catalog.md: collecting Go package entries from a module tree and rendering them as Markdown.
 - `cmd/jsonschema-gen` (`main`) — Command jsonschema-gen derives a JSON Schema (draft 2020-12) document from a CUE package directory and writes it to an output file (or stdout).
 - `cmd/kit-catalog` (`main`) — Command kit-catalog generates docs/catalog.md — a one-line-per-package index of every Go package in the module, grouped by area (foundations by category, then kits, runtimes, surfaces, toolchains, cmd, examples, scenarios), from package doc comments.
-- `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default.
+- `cmd/kit-new` (`main`) — Command kit-new scaffolds a new consumer module from the agent-cli blueprint with governance ON by default, or — with -package — a new kit package in this repository's six-file shape together with the ledger lines it owes.
 - `cmd/release-notes` (`main`) — Command release-notes prints one version's section of CHANGELOG.md verbatim, for pasting into a GitHub Release body or a release announcement.
 
 ## examples (4)
@@ -295,4 +297,4 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 ## scenarios (2)
 
 - `scenarios/governed-docextract-hitl` (`governeddocextracthitl`) — Package governeddocextracthitl is an end-to-end scenario blueprint proving that docextract + agent-harness + hitl compose into a governed document-analysis workflow where the agent proposes a change, a human approves it, and the state mutates ONLY through the hitl engine.
-- `scenarios/governed-investigation` (`governedinvestigation`) — Package governedinvestigation is an end-to-end scenario blueprint that wires evidence-span, evidence-graph, investigation-journal, hypothesis-ranker, and dad-investigator into a seeded, deterministic governed investigation.
+- `scenarios/governed-investigation` (`governedinvestigation`) — Package governedinvestigation is an end-to-end scenario blueprint that wires evidence-span, evidence-graph, investigation-journal, hypothesis-ranker, and dad-investigator into a seeded, deterministic governed investigation, then proposes the one irreversible remediation the finding implies through agent-harness under the strict effect gate — a human approval (seeded) sits between the model's tool call and its dispatch.

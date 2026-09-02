@@ -26,10 +26,15 @@ event stores, and evidence spans that survive any windowing decision.
 | `foundations/provenance/event-store` | append-only hash-chained system of record; `Verify` detects edits by anyone who cannot recompute the chain, plus reordering and gaps (NOT holder-recomputed rewrites or tail truncation — anchor `Head().Hash` and entry count externally for both) |
 | `foundations/evidence/evidence-span` | the atomic evidence unit; spans persist independently of any conversation window |
 
-**STATUS: partial.** The retention spine and the `Compactor` hook are shipped
-and tested. An opinionated evidence-preserving summarizer *implementation* to
-plug into that hook does NOT exist yet — today every consumer writes its own
-compactor. That implementation is roadmap.
+**STATUS: shipped.** The retention spine and the `Compactor` hook were always
+shipped; the missing half — an opinionated evidence-preserving summarizer
+*implementation* — is `foundations/agent/evidence-compactor` (roadmap #1,
+Wave 2), and as of 2026-09-02 (FB-6) the kit also *installs* it:
+`agentharness.WithEvidenceCompactor(cfg, ec)` sets it as the conversation
+`Compactor` (refusing a budget-less config), and `examples/agent-cli` runs it
+behind `-context-budget`. Between Wave 2 and FB-6 the package existed but
+nothing in the kit wired it — this ledger said "roadmap" while `compat.md`
+said "wired", and both were wrong in different directions.
 
 ## 2. Unsourced claims / broken evidence linking
 
@@ -82,6 +87,8 @@ bounded; humans are reached through a typed channel; termination is a value.
 
 ## 4. Unbounded loops and spend
 
+*OWASP Agentic Top 10 (2026): ASI10 rogue agents — the lifecycle half: a run nobody bounded keeps spending.*
+
 **The anti-pattern.** An agent loop with no turn cap, calls with no budget,
 caches and seen-sets that grow forever. The failure mode is a bill or an OOM,
 discovered after the fact.
@@ -114,6 +121,8 @@ without importing a runtime dependency. This is the one structure on the hot
 path that required explicit wiring rather than being self-bounding.
 
 ## 5. Trusting model and tool output
+
+*OWASP Agentic Top 10 (2026): ASI01 goal hijack (injected content steering the agent), ASI02 tool misuse.*
 
 **The anti-pattern.** Tool results flow back into the conversation unexamined;
 fetched content is pasted next to instructions; "we run it in a subprocess" is
@@ -166,6 +175,8 @@ everything `-race`-clean.
 
 ## 7. Invisible runs
 
+*OWASP Agentic Top 10 (2026): ASI10 rogue agents — a behavioral baseline needs a run record to baseline against.*
+
 **The anti-pattern.** The agent ran; nobody can say what it did, what it cost,
 or which model call belonged to which run.
 
@@ -188,6 +199,8 @@ during retry storms, exactly when you read them.
 **STATUS: shipped.**
 
 ## 8. Unaudited prompt drift
+
+*OWASP Agentic Top 10 (2026): ASI04 agentic supply chain — a prompt is an unversioned build input.*
 
 **The anti-pattern.** Prompts are edited in place; outputs change quietly;
 nobody can say which prompt version produced which artifact, or rerun the old
@@ -213,6 +226,8 @@ drift is deliberate roadmap — TRACKING.md defers it until a real eval corpus
 exists to shape it. Drift is *attributable* today, not yet *auto-detected*.
 
 ## 9. Tool definition sprawl
+
+*OWASP Agentic Top 10 (2026): ASI02 tool misuse — least-agency tool scoping.*
 
 **The anti-pattern.** The same tool is defined three times — for the API
 request, the dispatch switch, and the MCP listing — and the three drift.
@@ -288,6 +303,8 @@ conformance suite durable adapters must pass.
 
 ## 13. The lethal trifecta
 
+*OWASP Agentic Top 10 (2026): ASI01 goal hijack, ASI02 tool misuse, ASI03 identity and privilege abuse.*
+
 **The anti-pattern.** An agent is given three things at once: a tool that reads
 untrusted content (web pages, user files, email), a tool that reads private data
 (credentials, PII, internal docs), and a tool that writes externally (email,
@@ -327,6 +344,8 @@ honestly documented.
 
 ## 14. Tool poisoning
 
+*OWASP Agentic Top 10 (2026): ASI04 agentic supply chain, ASI02 tool misuse.*
+
 **The anti-pattern.** An MCP server's tool descriptions are fetched over the
 network and injected into the agent's context on every tools/list. An attacker
 who can modify those descriptions between calls — or who operates a malicious
@@ -357,6 +376,8 @@ suite. The upstream CI hook (diffing server-side description changes) is the
 caller's responsibility; the kit enforces the check but cannot own the server.
 
 ## 15. Memory poisoning
+
+*OWASP Agentic Top 10 (2026): ASI06 memory and context poisoning.*
 
 **The anti-pattern.** Untrusted content flows into a persisted memory or
 knowledge store — a vector database, a conversation summary, a retrieved context
@@ -410,11 +431,198 @@ it open is free. Full practice: `docs/project-intent/README.md`.
 | Component | Role |
 |---|---|
 | `docs/project-intent/` | methodology, agent integration (Claude Code, Codex, generic `AGENTS.md`), examples of good and bad future-proofing |
-| `.agents/skills/project-intent/` | the on-demand skill (`design`, `decide`, `triggers`, `bootstrap`, `refresh`) and the templates it copies |
+| `.agents/skills/intent-*/` | the on-demand skills — `intent-init`, `intent-design`, `intent-decide`, `intent-audit`, `intent-doctor`, `intent-prune`, `intent-release`, `intent-incident` — and the templates they copy; `install-intent.sh` puts them on a harness's path |
 
 **STATUS: shipped** as docs and a skill; no Go package, by design. Revisit when a second
 adopting repo shows index drift the `refresh` walk did not catch (that is the day a
 checker earns its keep).
+
+## 17. Instruments that degrade toward healthy
+
+**The anti-pattern.** A check cannot read part of what it was asked to check —
+a file is unreadable, a glob matches nothing, a directory walk hits an error —
+and it reports a *pass*, a *skip*, or a *smaller number*. The most broken state
+of a repository is reported as its healthiest-looking one, because eight
+readers each did `if err != nil { continue }` and collapsed "absent",
+"unreadable" and "empty" into one fact. Measured, not theoretical: `chmod 000`
+on one file made fathom's intent audit report 0 invariants instead of 37 and 85
+unproven claims instead of 169, naming no file (fathom ADR-027).
+
+**The opinion.** An instrument that cannot see must say so, in the number.
+Every deterministic read is one of four outcomes — `read`, `absent`,
+`unreadable(errno)`, `skipped(category)` — recorded in a manifest that only
+`unreadable` makes incomplete; recording is first-outcome-wins, so a later
+retry cannot erase a recorded blindness; and every count taken over an
+incomplete manifest renders as a NAMED lower bound (`≥ N (k unreadable: …)`),
+never a bare total. "Absent" and "could not look" are different facts and a
+rung asserted by a check that cannot tell them apart is *stated*, not *tested*.
+
+| Package | Role |
+|---|---|
+| `foundations/telemetry/read-manifest` | `Outcome` / `NewSet` / `Set.Record` (first-outcome-wins) / `Manifest.Complete` / `LowerBound`; `schema.cue` with fixtures |
+| `cmd/constitution-lint` | the kit's own consumer: `walkWithManifest` routes every continue-on-error walk through a manifest, the `read-coverage` check FAILS the constitution on an unreadable file or directory, and the summary line reports a lower bound when the manifest is incomplete |
+
+**STATUS: shipped.** Two consumers, per D13: `cmd/constitution-lint` in this
+repo, and fathom's `internal/readset` (ADR-027), which is the shape this
+package was promoted from and which collapses onto it at its next pin bump.
+Closes `docs/plans/fathom-uplift-asks.md` FA-20 (the mechanical counterpart to
+D10's coverage discipline) and FA-21 (the practice rule itself).
+
+## 18. Irreversible actions without a structural gate
+
+*OWASP Agentic Top 10 (2026): ASI02 tool misuse; ASI09 human-agent trust exploitation on the confirmation itself.*
+
+**The anti-pattern.** A tool that deletes, force-pushes, pays, emails or drops
+a volume is dispatched exactly like `read_file`. The only thing between the
+agent and the irreversible effect is prose in a system prompt — which the agent
+can recite correctly *after* breaking it.
+
+**The opinion.** Encode the boundary in the tooling, not the prompt. A tool
+carries a typed effect using the MCP annotation vocabulary verbatim
+(`ReadOnlyHint`, `DestructiveHint`, `IdempotentHint`, `OpenWorldHint`), and an
+UNDECLARED effect is not "probably fine" — under a strict policy it reads as
+destructive, the same nil-is-unknown posture §13 takes for capabilities
+(decision `0002`). The gate is structural and per call: a tool approved once is
+not approved for its next call, an absent or errored approver is a denial, and
+a denial is an `is_error` tool_result the loop can continue from rather than a
+crash. The effect is host metadata — `Defs()` is unchanged, so the gate cannot
+be talked out of by the model that reads the tool definitions.
+
+| Package | Role |
+|---|---|
+| `foundations/agent/tool-registry` | `Effect` (the four MCP hints) + `EffectOf`; additive — no existing call site changes |
+| `kits/agent-harness` | `Config.EffectPolicy` (`permissive` default, `strict`); under strict an undeclared or destructive dispatch goes through `RequireApproval` → `Deps.Approver`, emitting `gate_denied` / `gate_approved` events plus a journal record; sequential even under `ParallelTools` |
+| `kits/hitl` | `Preview` supplies the approval card the approver is shown — the impact of the real op, not the model's description of it |
+| `kits/mcp-server` | `annotationsFromEffect` emits the annotations object in `tools/list` for tools with a declared `Effect`, all four hints explicit |
+| `foundations/agent/mcp-client` | `effectFromAnnotations` maps a server's annotations IN as untrusted unless `TrustedServer` — a server's self-declared "read only" is a claim, not a fact |
+
+**STATUS: shipped.** Decision `0002` records the three calls (annotation
+vocabulary verbatim; nil means destructive under strict; approval composes the
+existing `PreDispatch` seam and `kits/hitl` rather than a new gate). Consumers:
+`scenarios/governed-investigation` dispatches a destructive tool through the
+strict gate; `cmd/kit-new`'s generated harness declares effects.
+
+## 19. Protocol-revision drift
+
+*OWASP Agentic Top 10 (2026): ASI04 agentic supply chain.*
+
+**The anti-pattern.** An implementation pins a protocol revision, the protocol
+moves, and nobody in the tree owns the delta. Deprecated features stay
+implemented past their removal floor because the deprecation lived in a
+release note nobody re-reads; or the opposite failure, a chase — the
+implementation churns after every upstream revision with no consumer asking.
+
+**The opinion.** Track revisions with a clock; never chase them. The revision
+is a named constant, the deprecations are a table of
+`{Feature, DeprecatedIn, RemovableAfter, StillImplemented}`, and a test with an
+injected clock goes red the moment a still-implemented feature passes its
+twelve-month floor — the existence-check doctrine (I19) applied to protocol
+time. Moving to a new revision is then a dated decision with a floor, not a
+silent drift; a revision that deprecates something the kit never built costs
+one table row and no code.
+
+| Package | Role |
+|---|---|
+| `kits/mcp-server` | `ProtocolRevision` (`2025-11-25`), `Deprecations()`, `DeprecationsDue(now)`; CUE `#ProtocolRevision` / `#Deprecation`; `TestDeprecationFloorNotReached` reads the wall clock on purpose |
+| `foundations/agent/mcp-client` | the same three exports over the same feature set; `TestDeprecationsMatchClient` pins both ledgers to one list so the two halves cannot drift apart |
+
+**STATUS: shipped** for the clock. Whether to MOVE to the 2026-07-28 revision
+(stateless, `_meta` on every request, Tasks as an extension) is deliberately a
+separate, deferred decision with its own floor — decision `0003`, futures F10.
+
+## 20. Fail-open gates mistaken for gates
+
+*OWASP Agentic Top 10 (2026): ASI02 tool misuse — the control that was supposed to scope agency does not.*
+
+**The anti-pattern.** A guard is advisory — it times out, its infrastructure is
+down, its process is not installed — and the effect proceeds anyway. That is
+often the CORRECT engineering choice for a hook whose failure would wedge an
+editor. The anti-pattern is not fail-open; it is fail-open *presented as a
+boundary*, so nobody can say which of an agent's guards would actually stop an
+irreversible action and which merely usually do. A behavioral classifier
+counted as a boundary is the same error one layer up (belief 6 applied to
+guards).
+
+**The opinion.** Every gate declares its posture: structural or behavioral,
+fail-closed or fail-open, and which effects it covers. Then the honest question
+— "is any irreversible effect covered only by advisory gates?" — is answerable
+rather than assumed.
+
+| Component | Role |
+|---|---|
+| `kits/agent-harness` | fail-closed by construction: `Config.Hooks` are synchronous and a hook error ends the run with `StopHook`; the budget is charged BEFORE every model call and a refusal is `StopBudget`; under `EffectStrict` an absent, errored or denied approver is a denial, never a pass-through |
+| `foundations/agent/tool-registry` | `Options.Policy` is deny-by-default when wired, consulted before every handler; `TrifectaStrict` refuses at registration (§13) |
+| `kits/mcp-server` | an oversized message is an explicit `-32700` and a resync; when clean resync is impossible the server fails closed rather than misparse |
+
+**STATUS: partial**, and the split matters. Shipped HERE: the kit's own harness
+gates are fail-closed by construction (the rows above) — there is no advisory
+rung inside the loop to mislabel. NOT shipped here: the declared-posture type
+itself (`GatePosture{Kind, FailOpen, Covers}`) and an assurance report over it.
+The failure this entry describes lives at the CONSUMER edge, where a harness's
+hooks are fail-open by doctrine for infrastructure errors — correct, and
+undocumented to the operator. That row is fathom's: a doctor `gate_posture`
+check, landing as `HP-15` in its harness-port plan. The kit will absorb the type
+when a second consumer needs it; until then this section is a boundary
+description, not a package claim.
+
+## 21. Self-derived ground truth, n=1 evidence, and precision-less set grading
+
+*OWASP Agentic Top 10 (2026): ASI09 human-agent trust exploitation — a self-graded claim is read as a measurement.*
+
+**The anti-pattern.** Three failures that travel together in every agent
+benchmark. The system grades itself against ground truth it derived (the
+generator writes the answer key). A single run per condition is reported as a
+result, so a 90% single-attempt success rate is quoted for a workload that
+actually succeeds 43% of the time at k = 8. And a set-valued answer is graded
+on recall alone, so returning everything scores perfectly.
+
+**The opinion.** Reliability is a distribution, not a number, and the
+statistics belong in one place rather than hand-built per project. Report
+`pass^k` next to `pass@k`; compare paired conditions with a seeded,
+task-clustered bootstrap interval and a rank test rather than a difference of
+means; state the effect size. Every primitive states its non-guarantees:
+no multiple-comparison correction is applied, the caller pre-registers its
+comparisons, the interval is percentile (not BCa), and byte-stability holds
+only under a fixed seed.
+
+| Package | Role |
+|---|---|
+| `foundations/quality/reliability-stats` | `PassAtK` (the unbiased Chen et al. estimator), `PassPowK` (τ-bench p^k), `PairedBootstrapCI` (seeded, task-clustered, percentile), `Wilcoxon` (exact to n = 25, tie-corrected normal approximation above), `A12` (Vargha–Delaney) |
+| `kits/eval-runner` | the kit's own consumer: `Regression` reports per-scenario pass^3 (`RegressionResult.PassPowK`) — reported, never gated |
+| `foundations/quality/eval-journal` | every judge call becomes a record, so a verdict is attributable to the call that produced it rather than to a summary of it |
+
+**STATUS: shipped for the primitives; the discipline lives downstream.** What
+this kit owns is the arithmetic and its stated non-guarantees. What it
+deliberately does NOT own is a corpus: derived third-party ground truth, a
+memorisation floor and a precision term are properties of a benchmark, and the
+named consumer is fathom's bench (ADR-031, with the n ≥ 3 floor and paired
+statistics of ADR-028). Judge-bias controls — position swapping, cross-family
+requirements, panel escalation — stay parked as F14; this section is about
+counting runs honestly, not about judging them.
+
+## 22. Handoff-less stops
+
+**The anti-pattern.** A run ends on a budget ceiling, a token ceiling or a turn
+ceiling and leaves nothing structured behind. The next context window starts
+blind: it re-derives what was already established, or — worse — trusts a prose
+summary as if it were state.
+
+**The opinion.** A stop that was not "done" produces a receipt. What was tried,
+which tool ran last, where the checkpoint is, and how many turns it took are
+values on the result, emitted once to the sink, the stream and the journal —
+and never stored by the kit. This is deliberately the narrow shape: a handoff
+is a receipt of ONE run, not memory. Cross-session memory remains F2 ("do not
+build a memory store"); fathom's own ADR-028 reaches the same boundary from the
+other side, keeping recall in a peer process that may recall but never assert.
+
+| Package | Role |
+|---|---|
+| `kits/agent-harness` | `Handoff{StopCause, Turns, LastTool, CheckpointRef, Tried, Summary}` via `HandoffFor`/`CheckpointRef`, on `RunResult.Handoff`; emitted once on `StopBudget`, `StopMaxTokens` and `StopMaxTurns` (sink `step=handoff`, `HarnessEventHandoff`, journal); CUE `#Handoff` |
+| `examples/agent-cli` | prints the record — the consumer that proves the shape is usable without a store |
+
+**STATUS: shipped.** A stop cause the harness does not emit a handoff for
+(`StopCompleted`, `StopRefusal`, `StopHook`, `StopCanceled`) is a deliberate
+choice, not a gap: those stops either finished or already carry their reason.
 
 ## Using this ledger
 

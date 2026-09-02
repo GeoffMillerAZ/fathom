@@ -19,6 +19,8 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 | Id | Status | Type | Title | Revisit when |
 |---|---|---|---|---|
 | [0001](0001-condition-lines-may-carry-oracle-annotations.md) | proposed | process | Condition lines MAY carry an optional author-written `{oracle: …}` annotation; nothing generates one | 3 hand-written annotations exist across 2 repos (accept), or 30 days pass from 2026-08-27 with fewer (reject) |
+| [0002](0002-tool-effects-nil-is-irreversible.md) | accepted | architecture | Tool effects are declared data; an undeclared effect is irreversible under Strict; irreversible dispatch needs a single-use approval token; MCP annotations bridge both ways | a consumer reports a tool that cannot declare an effect; MCP's annotation vocabulary changes; the trifecta decision is reopened |
+| [0003](0003-mcp-revisions-track-never-chase.md) | accepted | dependency | MCP revisions are tracked with a deprecation clock (a test that fails on the removal floor), never chased; the 2026-07-28 stateless move is deferred with its own floor | the floor test fires; a consumer's client rejects 2025-11-25; another revision deprecates something the kit implements |
 
 ## Decisions recorded elsewhere
 

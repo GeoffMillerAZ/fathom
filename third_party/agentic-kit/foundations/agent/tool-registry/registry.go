@@ -43,6 +43,16 @@ type Tool struct {
 	// and CapWritesExternal. A toolset holding all three is the "lethal
 	// trifecta" — see capability.go and the package doc for enforcement details.
 	Capabilities CapabilitySet
+
+	// Effect, when non-nil, declares what the tool does to its environment
+	// in the MCP tool-annotation vocabulary (see Effect). nil means
+	// UNDECLARED, which a strict effect policy (kits/agent-harness
+	// EffectStrict) treats as destructive — fail-closed, exactly like nil
+	// Capabilities. Declare &Effect{ReadOnlyHint: true} for a pure read and
+	// &Effect{DestructiveHint: true} for an irreversible action. A declared
+	// Effect never changes Defs: the model sees the same tool list; only
+	// dispatch governance and MCP tools/list annotations read it.
+	Effect *Effect
 }
 
 // Policy decides whether a tool call may proceed. nil Policy in Options means

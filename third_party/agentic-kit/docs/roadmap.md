@@ -136,22 +136,38 @@ The documented limitation is retired. See TRACKING.md §1.2 Wave 1.
 ### 13. Multi-provider routing/failover
 **What:** Ladder generalized across providers (rung = client+model), with
 health-probe-driven failover and per-rung cost weighting.
-**Exists today:** Ladder, Swappable client, anthropic Ping.
-**Subscribe when:** uptime across providers matters to a workload.
+**Exists today:** Ladder, Swappable client, anthropic Ping — **and the failover
+half is built**: `llmclient.NewFailover(lanes, opts...)`
+(`foundations/llmclient/failover.go`) composes ordered lanes behind the one
+`LLMClient` contract. What remains unbuilt is the ROUTING half: per-rung cost
+weighting and a health-probe-driven choice among healthy lanes.
+**Subscribe when:** uptime across providers matters to a workload (futures F7).
 
 ## Protocol surface
 
 ### 14. MCP client foundation
-**What:** the consuming side of MCP — connect to external MCP servers, list
-their tools, surface them through tool-registry so a kit agent can use any
-MCP server's tools. (The kit serves MCP today; it cannot yet *consume* it.)
-**Subscribe when:** an agent needs tools the owner didn't write.
+**✅ Graduated — 2026-08.** Landed as `foundations/agent/mcp-client` (package
+`mcpclient`): stdio and Streamable HTTP transports, initialize handshake with
+version negotiation, `ListTools`/`CallTool`, SHA-256 hash-pinning of every tool
+description re-checked on each `ListTools` with an explicit `Repin`, a
+tool-registry bridge so an external server's tools dispatch like any kit tool,
+and (2026-09-02, FB-17) `Effect` mapped in from MCP annotations as UNTRUSTED
+unless `TrustedServer`. One documented gap, tracked: `CallTool` performs no
+pre-call pin verification — TRACKING.md H8-1, `questions.md` Q3. Closes futures
+F9. See TRACKING.md §1 (mcp-client entry) and practices §14/§18.
 
 ### 15. MCP server: Streamable HTTP transport + prompts/resources
-**What:** the current kit MCP server is stdio + tools-only (deliberate v1).
-Remote serving needs the Streamable HTTP transport (NOT the deprecated
-HTTP+SSE); prompts/resources capabilities when a server has content to serve.
-**Subscribe when:** an MCP server must serve non-local clients.
+**✅ Transport half graduated — H6 (2026-07-15).** `NewHTTPHandler`/`HTTPOptions`
+in `kits/mcp-server`: handshake-free stateless POST, MCP-Protocol-Version
+negotiation with the 2025-03-26 absent-header fallback, a fail-closed Origin
+allowlist, `MaxBytesReader`, and dispatch pinned byte-identical to stdio by an
+11-case conformance table. The deprecated HTTP+SSE transport is a non-goal and
+stays unbuilt. **Still open:** prompts/resources capabilities, and sessions —
+whose target has since moved (MCP 2026-07-28 retires protocol-level sessions;
+decision `0003`, futures F10). `ProtocolRevision`/`DeprecationsDue` now carry
+the clock that will say when.
+**Subscribe when:** an MCP server must serve non-local clients needing prompts
+or resources.
 
 ### 16. CUE → tool-schema codegen
 **✅ Graduated — Wave 1 (v0.3.0).** Landed as `toolchains/jsonschema`

@@ -31,6 +31,13 @@
 //  11. readme-count: README.md's "**N Go packages" sentence matches the
 //     source-counted catalog total, so the README count cannot silently
 //     drift the way the old hand-maintained "148" did.
+//  12. read-coverage: every directory enumeration and file read the checks
+//     above attempted is recorded in a read manifest
+//     (foundations/telemetry/read-manifest); a path that exists but could
+//     not be read is one FAIL finding each, so an unreadable tree can never
+//     pass, and the summary line renders the finding count as a lower
+//     bound ("≥ N (k unreadable: …)") whenever the manifest is incomplete.
+//     Absent paths and deliberate skips are facts, not blindness.
 //
 // Usage:
 //
@@ -41,6 +48,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"go/ast"
@@ -56,6 +64,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // Finding is one lint observation.
@@ -74,6 +83,8 @@ func run(root string, out io.Writer, args []string) int {
 	if err := fs2.Parse(args); err != nil {
 		return 2
 	}
+	reads = readmanifest.NewSet()
+	reads.RelativeTo(root)
 
 	checks := []struct {
 		name string
@@ -97,22 +108,82 @@ func run(root string, out io.Writer, args []string) int {
 		findings := c.fn(root)
 		allFindings = append(allFindings, findings...)
 	}
+	// read-coverage runs last by construction: it reports on the reads the
+	// checks above attempted, so it cannot sit in the table with them.
+	manifest := reads.Manifest()
+	allFindings = append(allFindings, checkReadCoverage(manifest)...)
 
-	anyFail := false
+	failed := 0
 	for _, f := range allFindings {
 		if !f.Pass {
-			anyFail = true
+			failed++
 			fmt.Fprintf(out, "FAIL [%s] %s\n", f.Check, f.Message)
 		} else if *verbose {
 			fmt.Fprintf(out, "ok   [%s] %s\n", f.Check, f.Message)
 		}
 	}
 
-	if !anyFail {
-		fmt.Fprintf(out, "constitution-lint: all checks passed\n")
+	// The finding count is a lower bound whenever the manifest is
+	// incomplete: a package in an unreadable directory produced no findings
+	// at all, so "N findings" would overstate what was checked.
+	total := manifest.LowerBound(len(allFindings))
+	if failed == 0 {
+		fmt.Fprintf(out, "constitution-lint: all checks passed (%s findings checked)\n", total)
 		return 0
 	}
+	fmt.Fprintf(out, "constitution-lint: %d finding(s) failed; findings checked: %s\n", failed, total)
 	return 1
+}
+
+// ── 12. read-coverage ────────────────────────────────────────────────────────
+
+// reads is the read manifest for the current run. Every directory
+// enumeration and file read the checks attempt records its outcome here —
+// first outcome wins, so an unreadable path can never be quietly skipped
+// by a later successful read. run installs a fresh Set rooted at the
+// module root; the check functions (which take only root, and are called
+// directly by tests) record into whichever Set is current. A *Set is safe
+// for concurrent use; the reassignment in run is not, which is fine
+// because run is the binary's single entry point and the tests are
+// sequential.
+var reads = readmanifest.NewSet()
+
+// recordFailure files a failed directory enumeration or file read for
+// path in the run's manifest: a path that genuinely is not there is a fact
+// (absent); anything else is blindness (unreadable, with the operating
+// system's own wording). Every continue-on-error site in this file calls
+// it before continuing, so the skip stays — the existing checks keep their
+// semantics — but the manifest knows, and read-coverage fails the run.
+func recordFailure(path string, err error) {
+	if errors.Is(err, fs.ErrNotExist) {
+		reads.Record(path, readmanifest.Absent())
+		return
+	}
+	reads.Record(path, readmanifest.Unreadable(err))
+}
+
+// checkReadCoverage turns the run's manifest into findings: one FAIL per
+// path that exists but could not be read (an unreadable file or directory
+// is an instrument failure, never a finding about the tree, and every
+// count the other checks printed is a lower bound), or a single Pass when
+// every considered path was read, absent, or deliberately skipped.
+func checkReadCoverage(m readmanifest.Manifest) []Finding {
+	bad := m.Unreadable()
+	if len(bad) == 0 {
+		return []Finding{{
+			Check:   "read-coverage",
+			Pass:    true,
+			Message: fmt.Sprintf("every considered path was read, absent, or deliberately skipped (%d recorded)", len(m.Entries)),
+		}}
+	}
+	findings := make([]Finding, 0, len(bad))
+	for _, e := range bad {
+		findings = append(findings, Finding{
+			Check:   "read-coverage",
+			Message: fmt.Sprintf("%s: %s — the tree could not be fully read, so every count above is a lower bound", e.Path, e.Outcome.Detail),
+		})
+	}
+	return findings
 }
 
 // ── 1. empty-require ────────────────────────────────────────────────────────
@@ -280,6 +351,7 @@ func checkConcurrencyContract(root string) []Finding {
 func packageDocComment(fset *token.FileSet, dir string) (text string, found bool) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		recordFailure(dir, err)
 		return "", false
 	}
 
@@ -302,8 +374,21 @@ func packageDocComment(fset *token.FileSet, dir string) (text string, found bool
 	})
 
 	for _, name := range goFiles {
-		f, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, parser.ParseComments|parser.ImportsOnly)
-		if err != nil || f.Doc == nil {
+		path := filepath.Join(dir, name)
+		f, err := parser.ParseFile(fset, path, nil, parser.ParseComments|parser.ImportsOnly)
+		if err != nil {
+			// ParseFile reads the file itself: a *fs.PathError is a failed
+			// read (blindness); anything else is a syntax error, which is
+			// a fact about the file that vet and fmt-check report.
+			var pe *fs.PathError
+			if errors.As(err, &pe) {
+				recordFailure(path, err)
+			} else {
+				reads.Record(path, readmanifest.Skipped("parse-error"))
+			}
+			continue
+		}
+		if f.Doc == nil {
 			continue
 		}
 		pkgName := f.Name.Name
@@ -345,6 +430,7 @@ func checkSchemaPresence(root string) []Finding {
 		catPath := filepath.Join(foundationRoot, cat.Name())
 		pkgs, err := os.ReadDir(catPath)
 		if err != nil {
+			recordFailure(catPath, err)
 			continue
 		}
 		for _, pkg := range pkgs {
@@ -1328,13 +1414,37 @@ const lintOwnTestdataRel = "cmd/constitution-lint/testdata"
 // skipping sweepSkipDirs, lintOwnTestdataRel, and any *_test.go file
 // (Go test files legitimately contain fake-secret/fake-org-token literals
 // as test fixtures for this repo's own redaction/security suites — see
-// checkSecretScan). rel is root-relative and slash-separated. Unreadable
-// files (e.g. broken symlinks) are silently skipped rather than failing the
-// whole sweep. Binary-looking files (a NUL byte in the first 8000 bytes,
-// the same heuristic classic Unix text tools use) are also skipped.
+// checkSecretScan). rel is root-relative and slash-separated. It is
+// walkWithManifest over the run's manifest: the sweep's skip semantics
+// are unchanged, but every skip and every failed read is recorded, so a
+// file that could not be read fails the run through read-coverage
+// instead of vanishing from the sweep.
 func walkSweepFiles(root string, fn func(rel string, data []byte)) error {
+	return walkWithManifest(root, reads, fn)
+}
+
+// walkWithManifest walks the tree under root and calls fn(rel, data) for
+// every regular, text, non-test file it can read, recording the outcome of
+// every path it considers into reads: read, absent (a broken symlink or a
+// file removed mid-walk — a fact, still skipped), unreadable (recorded
+// with the operating system's own wording, still skipped, and the reason
+// read-coverage fails), or skipped with its category ("sweep-skip-dir"
+// for sweepSkipDirs and lintOwnTestdataRel, recorded once for the
+// directory rather than per descendant; "test-file"). Binary-looking
+// files (a NUL byte in the first 8000 bytes, the same heuristic classic
+// Unix text tools use) were read successfully and are recorded as read;
+// they are simply not handed to fn. A directory that cannot be entered is
+// recorded as unreadable and then returned as the walk error, exactly as
+// before, so the caller's "sweep error" finding is preserved alongside
+// the manifest's.
+func walkWithManifest(root string, reads *readmanifest.Set, fn func(rel string, data []byte)) error {
 	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				reads.Record(path, readmanifest.Absent())
+			} else {
+				reads.Record(path, readmanifest.Unreadable(err))
+			}
 			return err
 		}
 		rel, relErr := filepath.Rel(root, path)
@@ -1347,19 +1457,21 @@ func walkSweepFiles(root string, fn func(rel string, data []byte)) error {
 		}
 		if d.IsDir() {
 			if sweepSkipDirs[d.Name()] || rel == lintOwnTestdataRel {
+				reads.Skip(path, "sweep-skip-dir")
 				return fs.SkipDir
 			}
 			return nil
 		}
 		if strings.HasSuffix(rel, "_test.go") {
+			reads.Skip(path, "test-file")
 			return nil
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
+		data, ok := reads.ReadFile(path)
+		if !ok {
 			return nil
 		}
 		if looksBinary(data) {
-			return nil
+			return nil // read successfully (and recorded so); not swept
 		}
 		fn(rel, data)
 		return nil
@@ -1426,8 +1538,10 @@ func libraryPkgDirs(root string) ([]string, error) {
 		if !cat.IsDir() || skipDirName(cat.Name()) {
 			continue
 		}
-		pkgs, err := os.ReadDir(filepath.Join(foundRoot, cat.Name()))
+		catPath := filepath.Join(foundRoot, cat.Name())
+		pkgs, err := os.ReadDir(catPath)
 		if err != nil {
+			recordFailure(catPath, err)
 			continue
 		}
 		for _, pkg := range pkgs {
@@ -1476,6 +1590,7 @@ func skipDirName(name string) bool {
 func hasGoFiles(dir string) bool {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		recordFailure(dir, err)
 		return false
 	}
 	for _, e := range entries {

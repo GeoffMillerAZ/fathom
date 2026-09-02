@@ -30,6 +30,16 @@ type BridgeOptions struct {
 	// the time they configure the bridge; hash-pinning detects subsequent
 	// description changes that might invalidate that assertion.
 	CapabilityMap map[string]toolregistry.CapabilitySet
+
+	// EffectMap, when non-nil, is the OPERATOR's per-tool effect
+	// declaration and wins over anything the server annotated. It is the
+	// way to declare effects for an untrusted server (whose own annotations
+	// RegisterAll discards) or to override a trusted one. Tools absent from
+	// the map take the server's annotation when Options.TrustedServer is
+	// set, and stay undeclared otherwise. Like CapabilityMap, an entry is the
+	// operator's word at configuration time; hash-pinning detects a later
+	// description or annotation change that might invalidate it.
+	EffectMap map[string]toolregistry.Effect
 }
 
 // maxResultBytes is the maximum byte length of a tools/call result accepted
@@ -50,6 +60,13 @@ const maxResultBytes = 1 << 20 // 1 MiB
 // BridgeOptions.CapabilityMap to supply per-tool declarations. Tools absent
 // from the map remain unknown. See toolregistry.CapabilitySet for the
 // declared-vs-unknown distinction and trifecta enforcement details.
+//
+// Effect declarations follow the same rule with one extra source: the
+// server's own MCP annotations, which are attached to the registered Tool
+// ONLY when Options.TrustedServer is set (MCP: annotations are untrusted
+// unless the server is). BridgeOptions.EffectMap is the operator's override
+// and wins over the server either way. A tool with neither is registered
+// undeclared — which kits/agent-harness EffectStrict reads as destructive.
 //
 // Error mapping:
 //   - ToolCallError (MCP in-band isError) → the content string as a Go error,
@@ -96,6 +113,20 @@ func registerOne(reg *toolregistry.Registry, c *Client, tool ToolInfo, opts Brid
 		}
 	}
 
+	// Effect: the operator's EffectMap wins; else the server's annotation,
+	// but only from a trusted server; else undeclared (nil).
+	var eff *toolregistry.Effect
+	if opts.EffectMap != nil {
+		if declared, ok := opts.EffectMap[tool.Name]; ok {
+			e := declared
+			eff = &e
+		}
+	}
+	if eff == nil && tool.EffectTrusted && tool.Effect != nil {
+		e := *tool.Effect
+		eff = &e
+	}
+
 	name := tool.Name // capture for closure
 	t := toolregistry.Tool{
 		Def: llmclient.ToolDef{
@@ -104,6 +135,7 @@ func registerOne(reg *toolregistry.Registry, c *Client, tool ToolInfo, opts Brid
 			InputSchema: schema,
 		},
 		Capabilities: caps,
+		Effect:       eff,
 		Handler: func(ctx context.Context, input json.RawMessage) (string, error) {
 			result, err := c.CallTool(ctx, name, input)
 			if err != nil {

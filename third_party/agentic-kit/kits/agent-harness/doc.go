@@ -56,8 +56,61 @@
 //     Journaling is best-effort: append errors are ignored so trace
 //     recording can never fail a run. Nil Journal = no journaling.
 //
+//   - kits/hitl + Deps.Approver (OPTIONAL, read only under
+//     Config.EffectPolicy EffectStrict) — the human-in-the-loop channel for
+//     irreversible tool calls. A dispatch whose tool declares no
+//     toolregistry.Effect, or declares a destructive one, is routed through
+//     RequireApproval with a hitl.Preview approval card; denied or absent
+//     approval returns an is_error tool_result to the model and records a
+//     gate_denied event. Under the default EffectPermissive nothing changes.
+//     See "Effect gate" below.
+//
+//   - foundations/agent/evidence-compactor (OPTIONAL, installed with
+//     WithEvidenceCompactor) — the conversation Compactor that journals
+//     dropped messages verbatim before summarising. Nothing installs it
+//     implicitly: without the option, Config.ContextBudget windows by
+//     dropping, with no summary.
+//
 // Nil optional dependencies turn the corresponding feature OFF; the loop
 // itself never requires them.
+//
+// # Effect gate
+//
+// Config.EffectPolicy EffectStrict makes irreversibility a structural
+// property of dispatch rather than a judgement the model makes: before a
+// tool_use runs, the harness reads the tool's declared Effect (the MCP
+// annotation vocabulary, toolregistry.Effect). A read-only or explicitly
+// non-destructive declaration dispatches as usual. An UNDECLARED tool (nil
+// Effect — the strictest reading, docs/intent/decisions/0002) or a
+// DESTRUCTIVE one goes through RequireApproval: Deps.Approver receives an
+// ApprovalRequest carrying the call and a hitl.Preview card, and only an
+// Approved answer dispatches. No approver, a denial, or an approver error
+// all yield an is_error tool_result ("tool call denied by effect gate: …")
+// that the model sees and reacts to — the run continues — plus a
+// gate_denied telemetry event, a journal entry and, on the stream path, a
+// HarnessEventGateDenied. An approval records gate_approved with
+// ApprovedBy. The gate runs AFTER the caller's PreDispatch hook (a hook
+// denial never reaches the approver) and BEFORE dispatch, sequentially in
+// call order even under ParallelTools, and PER CALL: an approval grants one
+// dispatch. Defs() is untouched, so the model sees the same tool list
+// under either policy.
+//
+// What the gate does not do: it makes nothing reversible, sandboxes
+// nothing, and cannot see an effect a tool did not declare — an Effect is
+// self-description, like the capability taxonomy. It is orthogonal to the
+// accepted seam that the trifecta mechanism is not re-checked per call;
+// this gate IS per call by design.
+//
+// # Handoff
+//
+// A run that stops on StopBudget, StopMaxTokens or StopMaxTurns ended
+// before its task did. The harness then derives a Handoff — stop cause,
+// turns, last tool, distinct tools tried, a CheckpointRef for
+// RunResult.Final, one summary line — sets RunResult.Handoff, emits it once
+// on Deps.Sink (step handoff) and on the stream (HarnessEventHandoff), and
+// journals it. HandoffFor is pure over the RunResult, so a consumer can
+// recompute it. The kit stores nothing: a Handoff is the receipt of one
+// run, never a memory the next run reads unasked.
 //
 // # Recommended client composition
 //

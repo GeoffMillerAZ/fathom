@@ -91,6 +91,21 @@
 // audit toolsets and require explicit, named authorization when the trifecta
 // is unavoidable.
 //
+// # Effects (the MCP annotation vocabulary)
+//
+// A Tool MAY declare an Effect — ReadOnlyHint, DestructiveHint,
+// IdempotentHint, OpenWorldHint, the MCP tool-annotation names verbatim —
+// and EffectOf(name) reads it back. The registry itself never gates on it:
+// Dispatch runs a destructive tool exactly as it runs a read-only one. The
+// declaration is consumed by kits/agent-harness (under EffectStrict an
+// undeclared or destructive dispatch needs a human approval first) and by
+// kits/mcp-server (emitted as tools/list annotations). Tool.Effect == nil is
+// UNDECLARED and reads as destructive under a strict policy — the same
+// nil-is-unknown rule Capabilities uses — while an explicit &Effect{} is a
+// declaration of "additive, not destructive" taken at its word. Like the
+// capability taxonomy, an Effect is self-declared: it gates dispatch
+// structurally, it makes nothing reversible, and a lying tool defeats it.
+//
 // # Schema helpers
 //
 // ObjectSchema builds the flat JSON Schema objects that cover the vast

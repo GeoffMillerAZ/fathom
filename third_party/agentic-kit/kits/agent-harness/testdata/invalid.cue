@@ -62,3 +62,16 @@ package agentharness
 // invalidFractionalTurns: #Config & {
 // 	MaxTurns: 2.5
 // }
+
+// // invalidEffectPolicy — EffectPolicy must be permissive | strict
+// invalidEffectPolicy: #Config & {
+// 	MaxTurns:     4
+// 	EffectPolicy: "lenient"
+// }
+
+// // invalidHandoffCause — a Handoff is emitted only on budget | max_tokens | max_turns
+// invalidHandoffCause: #Handoff & {
+// 	stop_cause: "completed"
+// 	turns:      1
+// 	summary:    "x"
+// }

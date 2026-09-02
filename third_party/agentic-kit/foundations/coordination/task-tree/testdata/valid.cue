@@ -40,3 +40,17 @@ _s1: tasktree.#Status & "pending"
 _s2: tasktree.#Status & "running"
 _s3: tasktree.#Status & "done"
 _s4: tasktree.#Status & "failed"
+
+// validTaskStates verifies every canonical #TaskState value is accepted.
+_t1: tasktree.#TaskState & "pending"
+_t2: tasktree.#TaskState & "running"
+_t3: tasktree.#TaskState & "input-required"
+_t4: tasktree.#TaskState & "completed"
+_t5: tasktree.#TaskState & "failed"
+_t6: tasktree.#TaskState & "cancelled"
+
+// validTerminal / validInterrupted verify the two classes.
+_term1: tasktree.#TerminalState & "completed"
+_term2: tasktree.#TerminalState & "failed"
+_term3: tasktree.#TerminalState & "cancelled"
+_int1:  tasktree.#InterruptedState & "input-required"

@@ -61,6 +61,14 @@ when `ANTHROPIC_API_KEY` is unset).
 | `-max-turns` | `8`                                | max model calls per run                                |
 | `-json`      | `false`                            | emit the full `RunResult` (incl. transcript) as JSON   |
 | `-verbose`   | `false`                            | stream JSONL telemetry + cost report to stderr         |
+| `-context-budget` | `0`                           | token budget for the transcript window (0 = off); requires `-compaction-journal` |
+| `-compaction-journal` | —                         | JSONL file the evidence-compactor appends dropped messages to, verbatim, before summarising |
+
+A run that stops on `max_turns`, `budget` or `max_tokens` prints its
+**handoff** on stderr — `agent-cli: handoff: run stopped on max_turns after 1
+turn(s); last tool read_file; tried [read_file]; resume from checkpoint:…` —
+the typed `RunResult.Handoff` record the harness emits, so the next run (or
+the operator) knows what was tried and where to resume.
 
 Exit codes: `0` run completed, `1` startup/run failure (including governance
 stops such as `max_turns`), `2` usage error.

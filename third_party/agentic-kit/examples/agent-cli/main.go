@@ -10,7 +10,11 @@
 //   - foundations/llmclient/replay       — record/replay cassettes for hermetic runs
 //   - foundations/llmclient/instrument   — per-call telemetry + cost middleware
 //   - foundations/agent/tool-registry    — three real tools: read_file, list_dir,
-//     word_count (the first two confined to the working directory)
+//     word_count (the first two confined to the working directory), each
+//     declaring its Effect (all read-only here)
+//   - foundations/agent/evidence-compactor — opt-in with -context-budget: the
+//     conversation Compactor that journals every dropped message verbatim to
+//     -compaction-journal BEFORE summarising (practices §1)
 //   - foundations/telemetry/{event,sink} — JSONL telemetry events
 //   - foundations/cost/cost-tracker      — token/USD accounting
 //   - kits/agent-harness                 — the governed agent loop tying it together
@@ -28,7 +32,9 @@
 // the working directory and the default prompt asks about testdata/sample.txt.
 //
 // Exit codes: 0 = run completed; 1 = startup or run failure (including
-// governance stops such as max_turns); 2 = usage error.
+// governance stops such as max_turns); 2 = usage error. A run that stops on
+// budget, max_tokens or max_turns also prints its Handoff — what was tried,
+// the last tool, the checkpoint to resume from — on stderr.
 //
 // Concurrency: a single-goroutine CLI — one Run per process; nothing here is
 // shared across goroutines.
@@ -48,12 +54,14 @@ import (
 	"strings"
 	"time"
 
+	evidencecompactor "github.com/geoffmilleraz/agentic-kit/foundations/agent/evidence-compactor"
 	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
 	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
 	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
 	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
+	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
 	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
 	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
 )
@@ -227,6 +235,10 @@ func newRegistry(root *os.Root) *toolregistry.Registry {
 				toolregistry.Prop{Name: "path", Type: "string", Description: "Relative path of the file to read.", Required: true},
 			),
 		},
+		// Every tool declares its Effect — the MCP annotation vocabulary —
+		// so a harness under EffectStrict can dispatch the reads without a
+		// human token and gate anything undeclared or destructive.
+		Effect: &toolregistry.Effect{ReadOnlyHint: true, IdempotentHint: true},
 		Handler: func(ctx context.Context, input json.RawMessage) (string, error) {
 			var in struct {
 				Path string `json:"path"`
@@ -246,6 +258,7 @@ func newRegistry(root *os.Root) *toolregistry.Registry {
 				toolregistry.Prop{Name: "path", Type: "string", Description: "Relative path of the directory to list. Defaults to '.'."},
 			),
 		},
+		Effect: &toolregistry.Effect{ReadOnlyHint: true, IdempotentHint: true},
 		Handler: func(ctx context.Context, input json.RawMessage) (string, error) {
 			var in struct {
 				Path string `json:"path"`
@@ -265,6 +278,7 @@ func newRegistry(root *os.Root) *toolregistry.Registry {
 				toolregistry.Prop{Name: "text", Type: "string", Description: "The text to count words in.", Required: true},
 			),
 		},
+		Effect: &toolregistry.Effect{ReadOnlyHint: true, IdempotentHint: true},
 		Handler: func(ctx context.Context, input json.RawMessage) (string, error) {
 			// A pointer field distinguishes "absent" from "empty string", so
 			// a missing required argument is a clear error, not a silent 0.
@@ -379,6 +393,9 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		maxTurns = fs.Int("max-turns", 8, "maximum model calls per run")
 		jsonOut  = fs.Bool("json", false, "emit the RunResult as JSON on stdout")
 		verbose  = fs.Bool("verbose", false, "stream telemetry events (JSONL) and the cost report to stderr")
+
+		contextBudget     = fs.Int("context-budget", 0, "token budget for the transcript window the model sees (0 = no windowing); requires -compaction-journal")
+		compactionJournal = fs.String("compaction-journal", "", "JSONL file the evidence-compactor appends every dropped message to, verbatim, before summarising (required with -context-budget)")
 	)
 	if err := fs.Parse(args); err != nil {
 		return 2 // flag already printed the error
@@ -401,6 +418,14 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 	}
 	if *record && *cassette == "" {
 		fmt.Fprintln(stderr, "agent-cli: -record requires -cassette")
+		return 2
+	}
+	if *contextBudget < 0 {
+		fmt.Fprintf(stderr, "agent-cli: -context-budget must not be negative, got %d\n", *contextBudget)
+		return 2
+	}
+	if *contextBudget > 0 && *compactionJournal == "" {
+		fmt.Fprintln(stderr, "agent-cli: -context-budget requires -compaction-journal (dropped messages must land somewhere before they are summarised)")
 		return 2
 	}
 
@@ -491,13 +516,54 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 	// (security/injection-detector) to screen tool results, Journal
 	// (investigation/investigation-journal) for a human-readable run trace.
 	// Wire them exactly like Sink when your agent needs them.
+	cfg := agentharness.Config{
+		MaxTurns:         *maxTurns,
+		System:           systemPrompt,
+		Model:            *model,
+		MaxTokensPerCall: maxTokensPerCall,
+		ContextBudget:    *contextBudget,
+	}
+
+	// ---- evidence-preserving compaction (opt-in) --------------------------------
+	// With -context-budget the model sees a windowed view of the transcript.
+	// The evidence-compactor makes that window a PROJECTION over ground
+	// truth, never a replacement: every dropped message is appended verbatim
+	// to -compaction-journal BEFORE the summary call, and the summary the
+	// model sees carries a [COMPACTION: …] provenance marker pointing back
+	// at it. The summary call rides the same governed client as every other
+	// call, so it is retried, instrumented and costed identically.
+	// WithEvidenceCompactor refuses a budget-less config — a compactor that
+	// can never run is exactly the claimed-but-not-wired drift it exists to
+	// remove.
+	if *contextBudget > 0 {
+		if dir := filepath.Dir(*compactionJournal); dir != "." {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				fmt.Fprintf(stderr, "agent-cli: create compaction journal dir: %v\n", err)
+				return 1
+			}
+		}
+		jf, err := os.OpenFile(*compactionJournal, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+		if err != nil {
+			fmt.Fprintf(stderr, "agent-cli: open compaction journal: %v\n", err)
+			return 1
+		}
+		defer jf.Close()
+		ec, err := evidencecompactor.New(
+			evidencecompactor.Config{Model: *model, MaxTokens: maxTokensPerCall},
+			client, jsonllog.NewWriter(jf), time.Now,
+		)
+		if err != nil {
+			fmt.Fprintf(stderr, "agent-cli: %v\n", err)
+			return 1
+		}
+		if cfg, err = agentharness.WithEvidenceCompactor(cfg, ec); err != nil {
+			fmt.Fprintf(stderr, "agent-cli: %v\n", err)
+			return 1
+		}
+	}
+
 	h, err := agentharness.New(
-		agentharness.Config{
-			MaxTurns:         *maxTurns,
-			System:           systemPrompt,
-			Model:            *model,
-			MaxTokensPerCall: maxTokensPerCall,
-		},
+		cfg,
 		agentharness.Deps{
 			Client:   client,
 			Registry: registry,
@@ -526,6 +592,16 @@ func run(args []string, stdout, stderr io.Writer, getenv func(string) string) in
 		fmt.Fprintf(stdout, "stop=%s turns=%d tool_calls=%d input_tokens=%d output_tokens=%d\n\n%s\n",
 			result.Stop, result.Turns, result.ToolCalls,
 			result.Usage.InputTokens, result.Usage.OutputTokens, result.FinalText)
+	}
+
+	// ---- handoff ------------------------------------------------------------------
+	// A run that stopped on budget, max_tokens or max_turns ended before its
+	// task did. The harness hands over a typed receipt — what was tried, the
+	// last tool, the checkpoint to resume from — instead of a bare stop
+	// cause; print it where the operator (or the next run's caller) will see
+	// it. In -json mode it is already inside the RunResult above.
+	if result.Handoff != nil && !*jsonOut {
+		fmt.Fprintf(stderr, "agent-cli: handoff: %s\n", result.Handoff.Summary)
 	}
 
 	// ---- cost report on exit ---------------------------------------------------
