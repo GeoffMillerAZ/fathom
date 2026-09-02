@@ -67,6 +67,14 @@ const (
 	ClassConcernSearch   TaskClass = "concern_search"
 	ClassContradiction   TaskClass = "contradiction"
 	ClassStaleness       TaskClass = "staleness"
+
+	// The public localization corpus (docs/plans/bench-public.md PB-14/15,
+	// derived by internal/contextbench/publicloc from gold patches at a
+	// pinned base commit, never authored): which files, which functions,
+	// and which callers a developer-authored fix actually touched.
+	ClassFileLocalization     TaskClass = "file_localization"
+	ClassFunctionLocalization TaskClass = "function_localization"
+	ClassFindCallers          TaskClass = "find_callers"
 )
 
 // Task is one context-bench prompt: a question with a falsifiable answer.
@@ -111,10 +119,11 @@ func (t Task) Validate() error {
 		return fmt.Errorf("task %s: unknown scoring_rule %q (want exact-match, all-of, or any-of)", t.ID, t.ScoringRule)
 	}
 	switch t.Class {
-	case "", ClassObligations, ClassVerify, ClassBlastRadius, ClassClaimProvenance, ClassConcernSearch, ClassContradiction, ClassStaleness:
+	case "", ClassObligations, ClassVerify, ClassBlastRadius, ClassClaimProvenance, ClassConcernSearch, ClassContradiction, ClassStaleness,
+		ClassFileLocalization, ClassFunctionLocalization, ClassFindCallers:
 		// unset is valid (back-compat with the B1 corpus); a recognized class is valid
 	default:
-		return fmt.Errorf("task %s: unknown class %q (want one of obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness)", t.ID, t.Class)
+		return fmt.Errorf("task %s: unknown class %q (want one of obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness, file_localization, function_localization, find_callers)", t.ID, t.Class)
 	}
 	return nil
 }

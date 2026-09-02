@@ -1,0 +1,71 @@
+{
+  "tool": "cmd/loctruth",
+  "module": "example.com/tools",
+  "packages": 2,
+  "packages_with_errors": 0,
+  "edges": [
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller0",
+      "line": 10
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller1",
+      "line": 11
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller2",
+      "line": 12
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller3",
+      "line": 13
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller4",
+      "line": 14
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller5",
+      "line": 15
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller6",
+      "line": 16
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller7",
+      "line": 17
+    },
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "Runner.Exec",
+      "caller_file": "cmd/tools/main.go",
+      "caller": "Caller8",
+      "line": 18
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "tool": "cmd/loctruth",
+  "module": "example.com/gadgets",
+  "packages": 1,
+  "packages_with_errors": 0,
+  "edges": []
+}

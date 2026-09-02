@@ -1,0 +1,43 @@
+{
+  "tool": "cmd/loctruth",
+  "module": "example.com/widgets",
+  "packages": 2,
+  "packages_with_errors": 0,
+  "edges": [
+    {
+      "callee_file": "pkg/store/store.go",
+      "callee": "Open",
+      "caller_file": "cmd/widgets/main.go",
+      "caller": "Run",
+      "line": 15
+    },
+    {
+      "callee_file": "pkg/store/store.go",
+      "callee": "Open",
+      "caller_file": "cmd/widgets/main.go",
+      "caller": "main",
+      "line": 10
+    },
+    {
+      "callee_file": "pkg/store/store.go",
+      "callee": "Store.Get",
+      "caller_file": "cmd/widgets/main.go",
+      "caller": "Run",
+      "line": 16
+    },
+    {
+      "callee_file": "pkg/store/store.go",
+      "callee": "Store.Get",
+      "caller_file": "pkg/store/store.go",
+      "caller": "Store.Get",
+      "line": 23
+    },
+    {
+      "callee_file": "pkg/store/store.go",
+      "callee": "Store.Get",
+      "caller_file": "pkg/store/store_test.go",
+      "caller": "TestGet",
+      "line": 5
+    }
+  ]
+}
