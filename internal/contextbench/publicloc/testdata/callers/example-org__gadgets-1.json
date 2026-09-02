@@ -1,0 +1,15 @@
+{
+  "tool": "cmd/loctruth",
+  "module": "example.com/gadgets",
+  "packages": 1,
+  "packages_with_errors": 0,
+  "edges": [
+    {
+      "callee_file": "lib/lib.go",
+      "callee": "Parse",
+      "caller_file": "lib/lib.go",
+      "caller": "Format",
+      "line": 13
+    }
+  ]
+}

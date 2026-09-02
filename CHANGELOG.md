@@ -22,6 +22,18 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
+- **`contextbenchscore import`** derives the public Go localization corpus
+  (`testdata/contextbench/tasks-public-go.json`) from pinned local
+  Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) JSONL snapshots with
+  no LLM and no network, under the pre-registered selection rule, emitting
+  per-task `derivation`, `requires`, `subject` and a `corpus_sha256` that
+  reproduces bit-for-bit; `-select-only` lists what to check out first.
+- **`cmd/loctruth`** lists a Go module's direct static callers with
+  `go/types` — the `find_callers` ground truth for the public corpus,
+  computed without fathom's index.
+- **`docs/bench/public-loc.md`** is the public-corpus runbook: pin, derive,
+  snapshot into a scratch store, run, score, publish transcripts, the cost
+  statement, and criterion H2-2 registered before run 1.
 - **`task bench-home` / `bench-lookup`** run the context-bench with three
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are

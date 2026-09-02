@@ -44,6 +44,10 @@
 //	contextbenchscore backfill ...
 //	    Appends one row for a run that predates the ledger, from its plan's
 //	    recorded numbers; see cmdBackfill.
+//
+//	contextbenchscore import -multi-swe <jsonl> -swe-explore <jsonl> -checkouts <dir> [-callers-dir <dir>] -out <path> [-n 35]
+//	    Derives the public localization corpus from pinned local snapshots
+//	    with no LLM and no network (import.go; docs/bench/public-loc.md).
 package main
 
 import (
@@ -65,7 +69,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <tasks|score|report|ledger|regress|backfill> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <tasks|score|report|ledger|regress|backfill|import> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -81,8 +85,10 @@ func run(args []string) int {
 		return cmdRegress(args[1:])
 	case "backfill":
 		return cmdBackfill(args[1:])
+	case "import":
+		return cmdImport(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want tasks, score, report, ledger, regress, or backfill)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want tasks, score, report, ledger, regress, backfill, or import)\n", args[0])
 		return 2
 	}
 }

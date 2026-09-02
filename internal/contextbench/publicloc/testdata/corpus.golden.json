@@ -1,0 +1,655 @@
+{
+  "version": 1,
+  "description": "Public Go localization corpus (docs/plans/bench-public.md PB-14..18, ADR-031): every ground truth is derived, never authored — the files and functions a developer's merged gold patch changed at a pinned base commit, and their static callers as computed by cmd/loctruth (go/types), from the pinned upstream snapshots listed in sources under the selection rule recorded in selection. Rebuild with `contextbenchscore import`; the result must reproduce corpus_sha256 bit-for-bit. The runner ingests each task's subject at base_commit into a scratch store under workspace/ (never the fleet store, never the post-fix tree). Criterion H2-2 is registered in machine_criterion before any run.",
+  "sources": [
+    {
+      "source": "multi-swe-bench",
+      "url": "https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench",
+      "license": "CC0-1.0",
+      "revision": "fixture",
+      "file": "multi-swe-go.jsonl",
+      "sha256": "ff4bd8320c92e06f5e34a3b89a371f0130396cc8e44b6877e61c8471048ac135",
+      "rows": 5,
+      "selected": 3
+    },
+    {
+      "source": "swe-explore",
+      "url": "https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench",
+      "license": "MIT",
+      "revision": "fixture",
+      "file": "swe-explore-go.jsonl",
+      "sha256": "1b28d7d6859fe12fc770d3467ae962dd72be97df99473628898247da4ea03066",
+      "rows": 3,
+      "selected": 2
+    }
+  ],
+  "selection": {
+    "rule": {
+      "min_files": 1,
+      "max_files": 5,
+      "n": 35
+    },
+    "pre_registered": true,
+    "statement": "gold patch modifies or deletes 1–5 non-test Go source files present at base_commit; duplicates by (repo, base_commit, gold files) keep the source that sorts first; sort by instance_id; first 35",
+    "candidates": 8,
+    "selected": 5,
+    "excluded_no_gold_files": 1,
+    "excluded_too_many_files": 1,
+    "excluded_duplicate": 1,
+    "excluded_beyond_n": 0
+  },
+  "arms": [
+    {
+      "name": "fathom",
+      "tools": "fathom MCP companion surface only (read-only; ingest denied)",
+      "role": "treatment"
+    },
+    {
+      "name": "grep",
+      "tools": "Bash grep/find/cat only",
+      "role": "control"
+    },
+    {
+      "name": "none",
+      "tools": "no tools",
+      "role": "memorisation floor — a task this arm passes in >= leak_rule.min_passes of leak_rule.of_trials trials is leaked and excluded from the verdict"
+    }
+  ],
+  "machine_criterion": {
+    "id": "H2-2",
+    "description": "fathom wins on the public corpus only if BOTH hold over the non-leaked tasks: (1) the seeded, task-clustered paired bootstrap 95% CI on the per-task success difference (fathom minus grep) excludes 0 in fathom's favour, on at least 30 non-leaked tasks — which entails strictly more successes; AND (2) fathom's aggregate tokens are <= 1.0x grep's. Success per cell is all-of over the fenced answer block within max_predicted; precision and recall are reported beside it. A task the none arm passes in >= 2 of 3 trials is leaked and excluded from the verdict, listed in the row. Any cell under 3 trials, or any task absent from an arm, makes the run indeterminate — never a win (ADR-027).",
+    "require_strictly_more_successes": true,
+    "max_token_ratio": 1,
+    "min_trials": 3,
+    "arms": [
+      "fathom",
+      "grep",
+      "none"
+    ],
+    "leak_rule": {
+      "arm": "none",
+      "min_passes": 2,
+      "of_trials": 3
+    },
+    "precision": {
+      "answer_block": "fenced",
+      "max_predicted_default": "max(5, 2*|gold|)",
+      "test_files_excluded_from_gold": true,
+      "reported": "precision and recall per cell, beside pass/fail; never gating"
+    },
+    "reliability": {
+      "primary": "paired per-task success difference, fathom minus grep, task-clustered bootstrap CI",
+      "ci_success_diff_excludes": 0,
+      "ci_level": 0.95,
+      "min_non_leaked_tasks": 30,
+      "bootstrap_seed": 20260902,
+      "secondary": "aggregate token ratio <= 1.0 (the median is reported for interpretation only)"
+    }
+  },
+  "instances": [
+    {
+      "instance_id": "example-org__gadgets-1",
+      "tasks": 3
+    },
+    {
+      "instance_id": "example-org__gadgets-2",
+      "tasks": 2,
+      "omitted": [
+        "find_callers Legacy: no non-test static callers"
+      ]
+    },
+    {
+      "instance_id": "example-org__widgets-42",
+      "tasks": 4
+    },
+    {
+      "instance_id": "swe-explore-tools-8",
+      "tasks": 3
+    },
+    {
+      "instance_id": "swe-explore-tools-9",
+      "tasks": 2,
+      "omitted": [
+        "find_callers Runner.Exec: 9 callers exceeds the cap of 8"
+      ]
+    }
+  ],
+  "corpus_sha256": "fa6fb6ca03259da7ccc78ae9918b5a59ccdf85e7462df3063c87ab1b205aad49",
+  "tasks": [
+    {
+      "id": "PG-example-org__gadgets-1-file",
+      "class": "file_localization",
+      "category": "file_localization",
+      "prompt": "The following issue was filed against example-org/gadgets at commit b2c3d4e5f60718293a4b5c6d7e8f90123456789a. Which non-test Go source files must change to fix it? List each repository-relative path. Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nParse(\"\") should be -1\n\nAn empty input must parse to -1, not 0.",
+      "ground_truth": [
+        "lib/lib.go"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__gadgets-1 @ b2c3d4e5f60718293a4b5c6d7e8f90123456789a (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/gadgets",
+        "base_commit": "b2c3d4e5f60718293a4b5c6d7e8f90123456789a",
+        "service": "pub-example-org-gadgets-b2c3d4e5"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__gadgets-1",
+        "rule": "non-test .go paths the gold patch modifies or deletes (added files are not gold); all-of within max_predicted",
+        "tool": "publicloc.GoldFiles",
+        "files": [
+          "lib/lib.go"
+        ],
+        "patch_sha256": "c14b0e9b88ece01db59e8313ca09c484207318e4c79c43d8364474edde5015fa"
+      }
+    },
+    {
+      "id": "PG-example-org__gadgets-1-func",
+      "class": "function_localization",
+      "category": "function_localization",
+      "prompt": "The following issue was filed against example-org/gadgets at commit b2c3d4e5f60718293a4b5c6d7e8f90123456789a. Which functions or methods must change to fix it? Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nParse(\"\") should be -1\n\nAn empty input must parse to -1, not 0.",
+      "ground_truth": [
+        "Parse"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__gadgets-1 @ b2c3d4e5f60718293a4b5c6d7e8f90123456789a (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/gadgets",
+        "base_commit": "b2c3d4e5f60718293a4b5c6d7e8f90123456789a",
+        "service": "pub-example-org-gadgets-b2c3d4e5"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__gadgets-1",
+        "rule": "functions whose span at base_commit contains a deleted line, or both neighbours of an inserted run; all-of within max_predicted",
+        "tool": "publicloc.EnclosingFuncsForHunks (go/parser)",
+        "functions": [
+          {
+            "file": "lib/lib.go",
+            "func": "Parse",
+            "line": 4
+          }
+        ],
+        "patch_sha256": "c14b0e9b88ece01db59e8313ca09c484207318e4c79c43d8364474edde5015fa"
+      }
+    },
+    {
+      "id": "PG-example-org__gadgets-1-callers-Parse",
+      "class": "find_callers",
+      "category": "find_callers",
+      "prompt": "In example-org/gadgets at commit b2c3d4e5f60718293a4b5c6d7e8f90123456789a, which functions or methods call `Parse` (declared in lib/lib.go)? Exclude test files and the function itself; count only direct static calls. Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.",
+      "ground_truth": [
+        "Format"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot",
+        "typed-call-edges"
+      ],
+      "source": "multi-swe-bench example-org__gadgets-1 @ b2c3d4e5f60718293a4b5c6d7e8f90123456789a (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/gadgets",
+        "base_commit": "b2c3d4e5f60718293a4b5c6d7e8f90123456789a",
+        "service": "pub-example-org-gadgets-b2c3d4e5"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__gadgets-1",
+        "rule": "non-test static callers of the function at base_commit as listed by cmd/loctruth (go/types); self-calls excluded; 1–8 callers; all-of within max_predicted",
+        "tool": "cmd/loctruth",
+        "callee": {
+          "file": "lib/lib.go",
+          "func": "Parse",
+          "line": 4
+        },
+        "callers": [
+          {
+            "file": "lib/lib.go",
+            "func": "Format"
+          }
+        ],
+        "patch_sha256": "c14b0e9b88ece01db59e8313ca09c484207318e4c79c43d8364474edde5015fa"
+      }
+    },
+    {
+      "id": "PG-example-org__gadgets-2-file",
+      "class": "file_localization",
+      "category": "file_localization",
+      "prompt": "The following issue was filed against example-org/gadgets at commit c3d4e5f60718293a4b5c6d7e8f90123456789ab1. Which non-test Go source files must change to fix it? List each repository-relative path. Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nLegacy is dead code\n\ndelete it",
+      "ground_truth": [
+        "lib/old.go"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__gadgets-2 @ c3d4e5f60718293a4b5c6d7e8f90123456789ab1 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/gadgets",
+        "base_commit": "c3d4e5f60718293a4b5c6d7e8f90123456789ab1",
+        "service": "pub-example-org-gadgets-c3d4e5f6"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__gadgets-2",
+        "rule": "non-test .go paths the gold patch modifies or deletes (added files are not gold); all-of within max_predicted",
+        "tool": "publicloc.GoldFiles",
+        "files": [
+          "lib/old.go"
+        ],
+        "patch_sha256": "d476a428170678d0ebd3c0058cd242d9474b2965c24235017dbb5f1f1ca3dd1a"
+      }
+    },
+    {
+      "id": "PG-example-org__gadgets-2-func",
+      "class": "function_localization",
+      "category": "function_localization",
+      "prompt": "The following issue was filed against example-org/gadgets at commit c3d4e5f60718293a4b5c6d7e8f90123456789ab1. Which functions or methods must change to fix it? Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nLegacy is dead code\n\ndelete it",
+      "ground_truth": [
+        "Legacy"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__gadgets-2 @ c3d4e5f60718293a4b5c6d7e8f90123456789ab1 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/gadgets",
+        "base_commit": "c3d4e5f60718293a4b5c6d7e8f90123456789ab1",
+        "service": "pub-example-org-gadgets-c3d4e5f6"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__gadgets-2",
+        "rule": "functions whose span at base_commit contains a deleted line, or both neighbours of an inserted run; all-of within max_predicted",
+        "tool": "publicloc.EnclosingFuncsForHunks (go/parser)",
+        "functions": [
+          {
+            "file": "lib/old.go",
+            "func": "Legacy",
+            "line": 4
+          }
+        ],
+        "patch_sha256": "d476a428170678d0ebd3c0058cd242d9474b2965c24235017dbb5f1f1ca3dd1a"
+      }
+    },
+    {
+      "id": "PG-example-org__widgets-42-file",
+      "class": "file_localization",
+      "category": "file_localization",
+      "prompt": "The following issue was filed against example-org/widgets at commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678. Which non-test Go source files must change to fix it? List each repository-relative path. Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nGet returns empty values as present\n\nStore.Get should treat an empty string as missing.\n\n<details>steps</details>",
+      "ground_truth": [
+        "cmd/widgets/main.go",
+        "pkg/store/store.go"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__widgets-42 @ a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/widgets",
+        "base_commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "service": "pub-example-org-widgets-a1b2c3d4"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__widgets-42",
+        "rule": "non-test .go paths the gold patch modifies or deletes (added files are not gold); all-of within max_predicted",
+        "tool": "publicloc.GoldFiles",
+        "files": [
+          "cmd/widgets/main.go",
+          "pkg/store/store.go"
+        ],
+        "patch_sha256": "5610aa23ea1e6e8dae7063cefe0186cb86b78346210820eae0c892a139c5e5a5"
+      }
+    },
+    {
+      "id": "PG-example-org__widgets-42-func",
+      "class": "function_localization",
+      "category": "function_localization",
+      "prompt": "The following issue was filed against example-org/widgets at commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678. Which functions or methods must change to fix it? Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nGet returns empty values as present\n\nStore.Get should treat an empty string as missing.\n\n<details>steps</details>",
+      "ground_truth": [
+        "Open",
+        "Store.Get"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "multi-swe-bench example-org__widgets-42 @ a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/widgets",
+        "base_commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "service": "pub-example-org-widgets-a1b2c3d4"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__widgets-42",
+        "rule": "functions whose span at base_commit contains a deleted line, or both neighbours of an inserted run; all-of within max_predicted",
+        "tool": "publicloc.EnclosingFuncsForHunks (go/parser)",
+        "functions": [
+          {
+            "file": "pkg/store/store.go",
+            "func": "Open",
+            "line": 11
+          },
+          {
+            "file": "pkg/store/store.go",
+            "func": "Store.Get",
+            "line": 18
+          }
+        ],
+        "patch_sha256": "5610aa23ea1e6e8dae7063cefe0186cb86b78346210820eae0c892a139c5e5a5",
+        "notes": [
+          "cmd/widgets/main.go: no function encloses a changed line (top-level change)"
+        ]
+      }
+    },
+    {
+      "id": "PG-example-org__widgets-42-callers-Open",
+      "class": "find_callers",
+      "category": "find_callers",
+      "prompt": "In example-org/widgets at commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678, which functions or methods call `Open` (declared in pkg/store/store.go)? Exclude test files and the function itself; count only direct static calls. Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.",
+      "ground_truth": [
+        "Run",
+        "main"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot",
+        "typed-call-edges"
+      ],
+      "source": "multi-swe-bench example-org__widgets-42 @ a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/widgets",
+        "base_commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "service": "pub-example-org-widgets-a1b2c3d4"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__widgets-42",
+        "rule": "non-test static callers of the function at base_commit as listed by cmd/loctruth (go/types); self-calls excluded; 1–8 callers; all-of within max_predicted",
+        "tool": "cmd/loctruth",
+        "callee": {
+          "file": "pkg/store/store.go",
+          "func": "Open",
+          "line": 11
+        },
+        "callers": [
+          {
+            "file": "cmd/widgets/main.go",
+            "func": "Run"
+          },
+          {
+            "file": "cmd/widgets/main.go",
+            "func": "main"
+          }
+        ],
+        "patch_sha256": "5610aa23ea1e6e8dae7063cefe0186cb86b78346210820eae0c892a139c5e5a5"
+      }
+    },
+    {
+      "id": "PG-example-org__widgets-42-callers-Store_Get",
+      "class": "find_callers",
+      "category": "find_callers",
+      "prompt": "In example-org/widgets at commit a1b2c3d4e5f60718293a4b5c6d7e8f9012345678, which functions or methods call `Store.Get` (declared in pkg/store/store.go)? Exclude test files and the function itself; count only direct static calls. Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.",
+      "ground_truth": [
+        "Run"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot",
+        "typed-call-edges"
+      ],
+      "source": "multi-swe-bench example-org__widgets-42 @ a1b2c3d4e5f60718293a4b5c6d7e8f9012345678 (CC0-1.0)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/widgets",
+        "base_commit": "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678",
+        "service": "pub-example-org-widgets-a1b2c3d4"
+      },
+      "derivation": {
+        "source": "multi-swe-bench",
+        "instance_id": "example-org__widgets-42",
+        "rule": "non-test static callers of the function at base_commit as listed by cmd/loctruth (go/types); self-calls excluded; 1–8 callers; all-of within max_predicted",
+        "tool": "cmd/loctruth",
+        "callee": {
+          "file": "pkg/store/store.go",
+          "func": "Store.Get",
+          "line": 18
+        },
+        "callers": [
+          {
+            "file": "cmd/widgets/main.go",
+            "func": "Run"
+          }
+        ],
+        "patch_sha256": "5610aa23ea1e6e8dae7063cefe0186cb86b78346210820eae0c892a139c5e5a5"
+      }
+    },
+    {
+      "id": "PG-swe-explore-tools-8-file",
+      "class": "file_localization",
+      "category": "file_localization",
+      "prompt": "The following issue was filed against example-org/tools at commit f60718293a4b5c6d7e8f90123456789ab1c2d3e4. Which non-test Go source files must change to fix it? List each repository-relative path. Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nexec never fails\n\nexec should return an error.",
+      "ground_truth": [
+        "internal/run/run.go"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/tools",
+        "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
+        "service": "pub-example-org-tools-f6071829"
+      },
+      "derivation": {
+        "source": "swe-explore",
+        "instance_id": "swe-explore-tools-8",
+        "rule": "non-test .go paths the gold patch modifies or deletes (added files are not gold); all-of within max_predicted",
+        "tool": "publicloc.GoldFiles",
+        "files": [
+          "internal/run/run.go"
+        ],
+        "regions": [
+          {
+            "path": "internal/run/run.go",
+            "start": 14,
+            "end": 14
+          }
+        ],
+        "patch_sha256": "e2a8cbdc5f551f27b284c56ff047fe4c0d80e6810718d46314acb6e7c9968403"
+      }
+    },
+    {
+      "id": "PG-swe-explore-tools-8-func",
+      "class": "function_localization",
+      "category": "function_localization",
+      "prompt": "The following issue was filed against example-org/tools at commit f60718293a4b5c6d7e8f90123456789ab1c2d3e4. Which functions or methods must change to fix it? Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nexec never fails\n\nexec should return an error.",
+      "ground_truth": [
+        "exec"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/tools",
+        "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
+        "service": "pub-example-org-tools-f6071829"
+      },
+      "derivation": {
+        "source": "swe-explore",
+        "instance_id": "swe-explore-tools-8",
+        "rule": "functions whose span at base_commit contains a deleted line, or both neighbours of an inserted run; all-of within max_predicted",
+        "tool": "publicloc.EnclosingFuncsForHunks (go/parser)",
+        "functions": [
+          {
+            "file": "internal/run/run.go",
+            "func": "exec",
+            "line": 14
+          }
+        ],
+        "regions": [
+          {
+            "path": "internal/run/run.go",
+            "start": 14,
+            "end": 14
+          }
+        ],
+        "patch_sha256": "e2a8cbdc5f551f27b284c56ff047fe4c0d80e6810718d46314acb6e7c9968403"
+      }
+    },
+    {
+      "id": "PG-swe-explore-tools-8-callers-exec",
+      "class": "find_callers",
+      "category": "find_callers",
+      "prompt": "In example-org/tools at commit f60718293a4b5c6d7e8f90123456789ab1c2d3e4, which functions or methods call `exec` (declared in internal/run/run.go)? Exclude test files and the function itself; count only direct static calls. Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.",
+      "ground_truth": [
+        "Runner.Exec"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot",
+        "typed-call-edges"
+      ],
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/tools",
+        "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
+        "service": "pub-example-org-tools-f6071829"
+      },
+      "derivation": {
+        "source": "swe-explore",
+        "instance_id": "swe-explore-tools-8",
+        "rule": "non-test static callers of the function at base_commit as listed by cmd/loctruth (go/types); self-calls excluded; 1–8 callers; all-of within max_predicted",
+        "tool": "cmd/loctruth",
+        "callee": {
+          "file": "internal/run/run.go",
+          "func": "exec",
+          "line": 14
+        },
+        "callers": [
+          {
+            "file": "internal/run/run.go",
+            "func": "Runner.Exec"
+          }
+        ],
+        "regions": [
+          {
+            "path": "internal/run/run.go",
+            "start": 14,
+            "end": 14
+          }
+        ],
+        "patch_sha256": "e2a8cbdc5f551f27b284c56ff047fe4c0d80e6810718d46314acb6e7c9968403"
+      }
+    },
+    {
+      "id": "PG-swe-explore-tools-9-file",
+      "class": "file_localization",
+      "category": "file_localization",
+      "prompt": "The following issue was filed against example-org/tools at commit e5f60718293a4b5c6d7e8f90123456789ab1c2d3. Which non-test Go source files must change to fix it? List each repository-relative path. Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nExec accepts an empty command\n\nRunner.Exec returns nil for \"\" instead of an error.",
+      "ground_truth": [
+        "internal/run/run.go"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (MIT)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/tools",
+        "base_commit": "e5f60718293a4b5c6d7e8f90123456789ab1c2d3",
+        "service": "pub-example-org-tools-e5f60718"
+      },
+      "derivation": {
+        "source": "swe-explore",
+        "instance_id": "swe-explore-tools-9",
+        "rule": "non-test .go paths of the line-level regions; all-of within max_predicted",
+        "tool": "publicloc.GoldFiles",
+        "files": [
+          "internal/run/run.go"
+        ],
+        "regions": [
+          {
+            "path": "internal/run/run.go",
+            "start": 8,
+            "end": 10
+          },
+          {
+            "path": "internal/run/run_test.go",
+            "start": 1,
+            "end": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "PG-swe-explore-tools-9-func",
+      "class": "function_localization",
+      "category": "function_localization",
+      "prompt": "The following issue was filed against example-org/tools at commit e5f60718293a4b5c6d7e8f90123456789ab1c2d3. Which functions or methods must change to fix it? Write a function as Name and a method as Type.Method (receiver base type, no pointer). Put your final answer inside a single fenced code block, one entry per line and nothing else in the block; entries beyond the task's max_predicted are not scored.\n\nIssue (verbatim):\n\nExec accepts an empty command\n\nRunner.Exec returns nil for \"\" instead of an error.",
+      "ground_truth": [
+        "Runner.Exec"
+      ],
+      "scoring_rule": "all-of",
+      "max_predicted": 5,
+      "requires": [
+        "subject-snapshot"
+      ],
+      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (MIT)",
+      "subject": {
+        "repo_url": "https://github.com/example-org/tools",
+        "base_commit": "e5f60718293a4b5c6d7e8f90123456789ab1c2d3",
+        "service": "pub-example-org-tools-e5f60718"
+      },
+      "derivation": {
+        "source": "swe-explore",
+        "instance_id": "swe-explore-tools-9",
+        "rule": "functions whose span at base_commit intersects a line-level region; all-of within max_predicted",
+        "tool": "publicloc.EnclosingFuncsForRegions (go/parser)",
+        "functions": [
+          {
+            "file": "internal/run/run.go",
+            "func": "Runner.Exec",
+            "line": 7
+          }
+        ],
+        "regions": [
+          {
+            "path": "internal/run/run.go",
+            "start": 8,
+            "end": 10
+          },
+          {
+            "path": "internal/run/run_test.go",
+            "start": 1,
+            "end": 2
+          }
+        ]
+      }
+    }
+  ]
+}

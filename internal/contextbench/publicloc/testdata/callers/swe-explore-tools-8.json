@@ -1,0 +1,15 @@
+{
+  "tool": "cmd/loctruth",
+  "module": "example.com/tools",
+  "packages": 2,
+  "packages_with_errors": 0,
+  "edges": [
+    {
+      "callee_file": "internal/run/run.go",
+      "callee": "exec",
+      "caller_file": "internal/run/run.go",
+      "caller": "Runner.Exec",
+      "line": 11
+    }
+  ]
+}
