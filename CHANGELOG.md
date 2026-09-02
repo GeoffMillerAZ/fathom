@@ -152,6 +152,11 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - A plan row's `package:` names ONE directory (PC-32): it no longer matches
   sub-packages by prefix, so `package: internal/contextbench` singles out that
   package rather than staying ambiguous with `internal/contextbench/publicloc`.
+- `ingest` (MCP tool and `fathom ingest`) refuses to re-root an existing
+  service at a git worktree of its recorded root or any `.claude/worktrees/`
+  path, naming both paths (PC-33, I30, O22); its `ok` envelope now carries
+  `root`. The post-commit hook run inside such a worktree refreshes nothing and
+  says which service and root it left alone.
 - The U2 remedy in `fathom intent audit` now says what the counter does: a
   `skip:` reason does not lift U2; a symbol or a lexical oracle does
   (`TestU2RemedyMatchesCounter`).

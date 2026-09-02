@@ -594,7 +594,7 @@ triage if it matters.
   - **Expected:** ingest {service: fathom} refreshes the index for the repo I am working in, or says it cannot.
   - **Actual:** staleness_report showed current_commit == indexed_commit == c9f2ca3c (a commit only on branch worktree-wf_58a5b5d5-a58-1) with reingest_recommended:false — the daemon was honestly fresh about the wrong tree, and nothing in the ok:true envelope named the root it ingested.
   - **Repro:** mcp ingest {service: fathom}; mcp staleness_report {service: fathom}  # compare current_commit against git rev-parse HEAD in your checkout
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** a worktree's post-commit hook called `ingest {service, path: <worktree>}`; the tool's root-hygiene guard only compared the path against OTHER services' roots, so it re-rooted the existing service at the worktree and answered `ok:true` without naming any root.
+- **Fix:** PC-33 — `internal/worktree.CheckReroot` (shared by the MCP tool and `pkg/client`) refuses to re-root an existing service at a git worktree of its recorded root or any `.claude/worktrees/` path, naming both paths; the `ok` envelope carries `root`; the post-commit hook detects a worktree and refreshes nothing, saying which service and root it left alone. `TestIngestRefusesWorktreeReroot`, `TestPostCommitHookLeavesWorktreeAlone`, `TestCheckReroot`.
+- **Status:** fixed (CHANGELOG [Unreleased], PC-33; I30 extended)
+- **Impact:** four daemon verifies read a tree that was not main (0-2 verified where the probe store read 16/5/5/9/13) with no signal that the root had moved.

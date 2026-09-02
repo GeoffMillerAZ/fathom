@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 // postcommithook.go — HF-2, the fix for INC-3.
@@ -44,6 +46,25 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 	root := *dir
 	if abs, err := absPath(root); err == nil {
 		root = abs
+	}
+	// Worktree guard (PC-33, I30, O22): a commit made inside a linked git
+	// worktree (an agent's .claude/worktrees/… checkout, or any `git
+	// worktree add`) must refresh NOTHING. The daemon's service is rooted
+	// at the main checkout; passing this directory as `path` once re-rooted
+	// the fleet's service at a worktree, and every verify after that read
+	// the wrong tree. Say which service and root were left alone, and exit
+	// 0 — a hook that blocks a commit gets uninstalled (I9).
+	if mainRoot, linked := worktree.Linked(root); linked {
+		svc := *service
+		if svc == "" {
+			if cands := serviceCandidates(mainRoot); len(cands) > 0 {
+				svc = cands[0].name
+			} else {
+				svc = filepath.Base(mainRoot)
+			}
+		}
+		fmt.Fprintf(stderr, "post-commit: %s is a git worktree of %s — refreshed nothing; service %q stays rooted at %s (ingest from the main checkout)\n", root, mainRoot, svc, mainRoot)
+		return 0
 	}
 	svc := *service
 	if svc == "" {

@@ -146,6 +146,16 @@ The daemon's `ingest` MCP tool returns the same cause + hint as a JSON-RPC error
 than `ok:true`; `pkg/client` re-exports `client.ReadFailuresError` (`Refused`, `Existing`,
 `Hint()`).
 
+**Worktree re-root refusal (PC-33, I30, O22).** When the store already records a root
+for `--service` and `--path` is a linked git worktree of that root (`git worktree add`,
+or any path under `.claude/worktrees/`), the ingest is refused with
+`error: ingest failed: ingest: worktree re-root refused: service "<id>" stays rooted at
+<recorded>; <path> is a git worktree (...)`, exit 1, nothing written. The daemon's
+`ingest` MCP tool applies the same check (`internal/worktree.CheckReroot`) and its
+`ok` envelope names the `root` it refreshed. Moving a service from a worktree back to
+its main checkout is allowed. Register a worktree under its own service id if you
+mean to index it.
+
 ```sh
 fathom ingest --service payment-service --path /src/payment
 # service:    payment-service
