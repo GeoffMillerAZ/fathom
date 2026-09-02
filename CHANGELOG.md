@@ -54,6 +54,26 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   per-session schema budget grows from ~12.4 KB to 28.7 KB (16.0 KB from
   the description sentences, the rest from annotations + outputSchema);
   `TestNarrowProfileSchemaBytes` is re-pinned to that measurement.
+- **The lexical oracle** (ADR-030): a plan row may carry `{oracle: lexical,
+  path: <repo path>, pattern: <regexp>}` and `fathom verify` proves it from
+  the working tree — path exists, non-empty, pattern matches — so a
+  measurement, changelog or design row verifies and leaves U2. Lint and the
+  gate refuse a markdown path without a pattern and a row carrying both a
+  symbol and an oracle.
+- **`needs: <sibling>.md#<id>`** — a row may wait on a row in another plan;
+  `fathom verify` lints a missing sibling or row and `plans next` reads the
+  sibling's authored state.
+- **`--format sarif`** on `fathom verify`, `fathom intent audit` and `fathom
+  config audit`: SARIF 2.1.0 of the refusals, one rule per criterion / claim
+  kind / concern, located at the plan line or the cited file:line.
+- **One verify-gate figure**: `fathom research report` prints a
+  `verify gate: figure:` sentence computed from the verify ledger with its
+  window and denominators inline (`verifyFigure`); the adoption gauge reads
+  the same computation.
+- **`task config-audit`** (`fathom config audit` against this repo) joins
+  `task validate`; `TestNoOrgSpecificNames` (ADR-011, with a local
+  `FATHOM_ORG_DENYLIST`) and `TestMaintainedLinesParse` lift invariants I19
+  and I36 from `stated` to tested.
 - **`task bench-home` / `bench-lookup`** run the context-bench with three
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are
@@ -102,6 +122,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   untested as written).
 
 ### Changed
+- The U2 remedy in `fathom intent audit` now says what the counter does: a
+  `skip:` reason does not lift U2; a symbol or a lexical oracle does
+  (`TestU2RemedyMatchesCounter`).
 - The home corpus registers a **replication floor of 3 trials** it did not
   previously have. The two n=1 runs of 2026-07-24 are indeterminate under it
   going forward; their recorded verdicts stand as history of an n=1

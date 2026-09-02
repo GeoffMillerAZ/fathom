@@ -43,6 +43,7 @@ func LintPlan(p Plan) []string {
 		if t.CtxMalformed {
 			out = append(out, fmt.Sprintf("%s: empty ctx: value (want space-separated pointers)", t.ID))
 		}
+		out = append(out, lintLexicalOracle(t)...)
 	}
 	out = append(out, lintNeeds(p)...)
 	return out
@@ -65,6 +66,12 @@ func lintNeeds(p Plan) []string {
 	for _, t := range p.Tasks {
 		for _, dep := range t.Needs {
 			switch {
+			case strings.Contains(dep, "#"):
+				// A cross-plan target (PC-10): only its shape is checkable
+				// without I/O; resolveCrossPlanNeed reads the sibling.
+				if _, ok := ParseCrossPlanNeed(dep); !ok {
+					out = append(out, fmt.Sprintf("%s: needs malformed cross-plan target %q (want <sibling>.md#<id>)", t.ID, dep))
+				}
 			case dep == t.ID:
 				out = append(out, fmt.Sprintf("%s: needs self-reference", t.ID))
 			case !ids[dep]:

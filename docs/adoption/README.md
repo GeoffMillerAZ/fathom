@@ -36,9 +36,15 @@ an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
 ## What is actually proven
 
 - **The verify gate.** `fathom verify` re-checks every `[x]` in a plan against
-  the index — the symbol exists, a test statically reaches it. Across **2,494
-  recorded runs over 167 plans it has caught 540 rows that claimed done and
-  were not.** This is the part that has earned its keep.
+  the index — the symbol exists, a test statically reaches it. The one figure
+  for what it has caught is the `verify gate: figure:` line of
+  `fathom research report`, computed from the verify ledger with its window
+  and denominators in the sentence (PC-13). On the author's machine on
+  2026-09-02 it read: *the verify gate refused 139 of 2,762 recorded runs over
+  197 plans in 10 repos between 2026-08-15 and 2026-09-02* (a refusal is one
+  run whose verdict carried at least one failing claimed row — never a sum of
+  failing rows across runs). Run the verb; do not quote this sentence
+  onward. This is the part that has earned its keep.
 - **The index answers.** `find_symbol`, `find_callers`, `references`,
   `repo_map` over 20-odd languages. Ordinary, and it works.
 

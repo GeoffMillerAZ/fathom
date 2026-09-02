@@ -191,7 +191,7 @@ func (a *Audit) auditPlanRows(in AuditInput) {
 			a.Unproven = append(a.Unproven, Claim{
 				Kind: "U2", Ref: r.Plan + " " + r.ID,
 				Detail:   "claimed [x] with no acceptance contract — the gate proves nothing about it",
-				Remedy:   "anchor a symbol, or mark skip_test with a skip: reason naming the real evidence",
+				Remedy:   "a skip: reason does not lift U2 — anchor a symbol, or add {oracle: lexical, path: <repo path>, pattern: <regexp>} naming the file that carries the evidence (ADR-030)",
 				Evidence: "verify ledger " + r.MeasuredAt,
 			})
 		}

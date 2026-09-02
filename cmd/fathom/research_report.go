@@ -114,6 +114,13 @@ type ResearchReport struct {
 	ReviewActiveFindings     int    `json:"review_active_findings"`
 	ReviewActiveFindingsNote string `json:"review_active_findings_note"`
 	VerifyNote               string `json:"verify_note"`
+	// VerifyGateFigure is THE canonical verify-gate sentence (PC-13,
+	// verifyFigure): refusals / recorded runs / plans / repos with the
+	// ledger window and denominator inside the sentence, computed from
+	// ~/.fathom/verify-ledger.jsonl — never the call log, never a sum of
+	// standing failures (the O6 double-count family). It is the only
+	// verify figure that may leave the repo.
+	VerifyGateFigure string `json:"verify_gate_figure"`
 
 	StalenessReportCalls int    `json:"staleness_report_calls"`
 	StalenessNote        string `json:"staleness_note,omitempty"`
@@ -281,6 +288,9 @@ func cmdResearchReport(args []string, stdout, stderr io.Writer) int {
 		benchPath:    benchPath,
 		benchResults: benchResults,
 	})
+	// PC-13: the one canonical verify-gate figure, from the ledger — not
+	// window-scoped like the call-log counts above, and it says so itself.
+	report.VerifyGateFigure = verifyFigure(readVerifyLedger()).Sentence()
 
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)

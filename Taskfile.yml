@@ -112,12 +112,18 @@ tasks:
       - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, config-audit, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
-    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check]
+    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, config-audit]
     cmds: [{ task: test }]
+
+  config-audit:
+    desc: Custodian gate (invariants I16/I34/I37, PC-14) — this repo's own agent config holds every concern in .fathom/concerns.cue; a down daemon reads unable-to-check, never a violation
+    deps: [build]
+    cmds:
+      - bin/fathom config audit --repo .
 
   sync-kit:
     desc: Re-archive BOTH private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump)

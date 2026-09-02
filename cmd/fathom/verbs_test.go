@@ -85,12 +85,12 @@ func maintainedLineNames(line string) []string {
 	return names
 }
 
-// TestMaintainedLinesNameRegisteredToolsAndVerbs (HF-7) turns invariant I36
-// from `stated` into a test: every name a use-case doc's `## Maintained`
-// line claims must be a registered MCP tool (per docs/mcp-tools.md, itself
-// registry-synced by TestMcpToolsDocMatchesRegistry) or a dispatched verb.
-func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
-	root := repoRootForDocs(t)
+// maintainedKnownNames is the vocabulary a `## Maintained` contract may use:
+// every tool documented in docs/mcp-tools.md (itself registry-synced by
+// TestMcpToolsDocMatchesRegistry), every dispatched verb, and the sub-verbs
+// and flags a line may legitimately name.
+func maintainedKnownNames(t *testing.T, root string) map[string]bool {
+	t.Helper()
 	toolDoc, err := os.ReadFile(filepath.Join(root, "docs", "mcp-tools.md"))
 	if err != nil {
 		t.Skipf("docs/mcp-tools.md unreadable: %v", err)
@@ -110,9 +110,64 @@ func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
 		"doctor", "pack", "runs", "spend", "traffic", "channels", "interventions", "series", "rollup",
 		"rotate", "near", "suppress", "unsuppress", "preview", "history", "context", "lease", "leases",
 		"on", "off", "render", "marketplace", "json", "quiet", "strict", "all", "fresh", "top", "apply",
+		"format", "sarif",
+		// config blocks and ingest outcome words the lines legitimately cite
+		"budgets", "degraded", "read-failed", "refused",
+		// doctor rows and capability ids the module / intent docs maintain
+		"binding_file", "binding_module_readiness", "binding_modules_mounted",
+		"guard_dead_scopes", "guard_file", "guard_include_modules_unbound",
+		"intent-corpus", "unproven", "unproven_claims",
 	} {
 		known[extra] = true
 	}
+	return known
+}
+
+// maintainedContractLines returns every `## Maintained` contract in body:
+// the heading line itself when it carries backticked names (the inline
+// form), else the first paragraph after the heading joined into one line
+// (the section form, "This doc covers: `a`, `b` …", possibly wrapped).
+// One entry per heading.
+func maintainedContractLines(body string) []string {
+	lines := strings.Split(body, "\n")
+	var out []string
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "## Maintained") && !strings.Contains(line, "**Maintained**") {
+			continue
+		}
+		if len(maintainedLineNames(line)) > 0 {
+			out = append(out, line)
+			continue
+		}
+		var para []string
+		for j := i + 1; j < len(lines); j++ {
+			if strings.TrimSpace(lines[j]) == "" {
+				if len(para) > 0 {
+					break
+				}
+				continue
+			}
+			if strings.HasPrefix(lines[j], "#") {
+				break
+			}
+			para = append(para, strings.TrimSpace(lines[j]))
+		}
+		out = append(out, strings.Join(para, " "))
+	}
+	return out
+}
+
+// TestMaintainedLinesNameRegisteredToolsAndVerbs (HF-7) turns invariant I36
+// from `stated` into a test: every name a use-case doc's `## Maintained`
+// contract claims must be a registered MCP tool (per docs/mcp-tools.md) or
+// a dispatched verb. The contract is read through maintainedContractLines,
+// so the section form ("## Maintained" then "This doc covers: …") is held
+// to the same vocabulary as the inline form — before PC-14 the heading
+// alone was scanned and the section form checked nothing.
+func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
+	root := repoRootForDocs(t)
+	known := maintainedKnownNames(t, root)
 
 	docs, err := filepath.Glob(filepath.Join(root, "docs", "use-cases", "*.md"))
 	if err != nil || len(docs) == 0 {
@@ -124,11 +179,7 @@ func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
 		if err != nil {
 			continue
 		}
-		for _, line := range strings.Split(string(body), "\n") {
-			if !strings.HasPrefix(strings.TrimSpace(line), "## Maintained") &&
-				!strings.Contains(line, "**Maintained**") {
-				continue
-			}
+		for _, line := range maintainedContractLines(string(body)) {
 			checked++
 			for _, name := range maintainedLineNames(line) {
 				if !known[name] {
@@ -139,7 +190,51 @@ func TestMaintainedLinesNameRegisteredToolsAndVerbs(t *testing.T) {
 		}
 	}
 	if checked == 0 {
-		t.Log("no `## Maintained` lines found on one line — the contract may have moved to a following line")
+		t.Error("no `## Maintained` contracts found — I36 is unenforced")
+	}
+}
+
+// TestMaintainedLinesParse (PC-14, invariant I36's rung lift): every
+// use-case doc carries exactly one `## Maintained` contract and the
+// contract parses to at least one tool or verb name — a doc whose contract
+// is prose a machine cannot read is an unmaintained doc.
+func TestMaintainedLinesParse(t *testing.T) {
+	root := repoRootForDocs(t)
+	docs, err := filepath.Glob(filepath.Join(root, "docs", "use-cases", "*.md"))
+	if err != nil || len(docs) == 0 {
+		t.Skip("no use-case docs")
+	}
+	for _, doc := range docs {
+		if filepath.Base(doc) == "README.md" {
+			continue // the index describes the docs; it maintains nothing
+		}
+		body, err := os.ReadFile(doc)
+		if err != nil {
+			t.Errorf("%s: unreadable: %v", filepath.Base(doc), err)
+			continue
+		}
+		contracts := maintainedContractLines(string(body))
+		if len(contracts) != 1 {
+			t.Errorf("%s: %d `## Maintained` contract(s), want exactly one", filepath.Base(doc), len(contracts))
+			continue
+		}
+		if names := maintainedLineNames(contracts[0]); len(names) == 0 {
+			t.Errorf("%s: the `## Maintained` contract names no tool or verb in backticks: %q", filepath.Base(doc), strings.TrimSpace(contracts[0]))
+		}
+	}
+
+	// The parser itself, pinned on both forms, including a wrapped paragraph.
+	inline := "## Maintained — `find_symbol`, `fathom verify`\n"
+	if got := maintainedContractLines(inline); len(got) != 1 || len(maintainedLineNames(got[0])) != 2 {
+		t.Errorf("inline form parsed wrong: %q", got)
+	}
+	section := "## Maintained\n\nThis doc covers: `verify_plan`,\n`fathom plans status` (`--json`). Update it when these change.\n\n## Next\n`nope`\n"
+	got := maintainedContractLines(section)
+	if len(got) != 1 {
+		t.Fatalf("section form: %d contracts", len(got))
+	}
+	if names := maintainedLineNames(got[0]); strings.Join(names, ",") != "plans,verify_plan" {
+		t.Errorf("section form names = %v (flags like --json are not names; the next heading ends the paragraph)", names)
 	}
 }
 

@@ -34,7 +34,7 @@ var taskLineRe = regexp.MustCompile(`^\s*[-*]\s+\[([ xX~\-])\]\s+(.*\S)\s*$`)
 func ParseMarkdownPlan(service string, md []byte) Plan {
 	plan := Plan{Service: service}
 	n := 0
-	for _, line := range strings.Split(string(md), "\n") {
+	for i, line := range strings.Split(string(md), "\n") {
 		m := taskLineRe.FindStringSubmatch(line)
 		if m == nil {
 			continue
@@ -50,6 +50,7 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			Claimed:    check == "x" || check == "X",
 			Skipped:    check == "-",
 			InProgress: check == "~",
+			Line:       i + 1,
 
 			AnnotationSuspect: suspect,
 		}
@@ -69,6 +70,14 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 			t.Expect.SkipTest = truthy(ann["skip_test"])
 			t.Expect.SkipReason = ann["skip"]
 			t.Expect.AllowContradiction = truthy(ann["allow_contradiction"])
+			// ADR-030: the lexical oracle keys. `path`/`pattern` mean nothing
+			// without `oracle`, so they are read only alongside it — a stray
+			// pattern on a symbol row stays inert instead of half-contracting.
+			if o := ann["oracle"]; o != "" {
+				t.Oracle = o
+				t.OraclePath = ann["path"]
+				t.OraclePattern = ann["pattern"]
+			}
 			if v, ok := ann["ctx"]; ok {
 				if v == "" {
 					t.CtxMalformed = true

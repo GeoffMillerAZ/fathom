@@ -99,7 +99,7 @@
 - [x] a bare symbol name that collides across packages REFUSES to bind, naming the qualified candidates — the store's row order tracks ingestion, not code, so first-wins resolution bound the same anchor differently on identical stores and a per-file re-ingest could flip the winner, fabricating drift about a file the memory never named {id: AM-9, symbol: WriteMemory, package: internal/memory, reachable_from: TestAmbiguousAnchorIsRefusedAtWrite}
 - [x] drift that cannot be judged is never fresh: an anchor gone ambiguous, or one with no recorded baseline, lands SUSPECT — surfaced, labeled, tier-penalised — because fresh's contract is "every anchor's hash MATCHES its last confirmation" and neither case compared anything (law 3 on the four fields injection and search sort by) {id: AM-10, symbol: EvaluateState, package: internal/memory, reachable_from: TestNoBaselineIsNeverFresh}
 - [x] the TierCeiling half of the confidence clamp is pinned for every tier — the reviewer deleted it and the package stayed green, in the branch whose thesis is law 14; the untested branch was exactly the one covering verified and pre-scan, the two tiers a lying caller would claim {id: AM-11, symbol: capConfidence, package: internal/memory, reachable_from: TestCapConfidenceBoundsEveryTier}
-- [x] `.fathom/memories.jsonl` is gitignored (`.fathom/` is a git-TRACKED directory, so a per-developer file with free-form claim text sat one `git add .` from being published — law 13 makes sharing a human verb, not an accident) and phase V's binding purge enumeration gains the location, since a memory may QUOTE purged content {id: AM-12, skip_test: true, skip: "a .gitignore line and a design-table row; git check-ignore proves the first, and SP-5's per-table proof will cover the second when V lands"}
+- [x] `.fathom/memories.jsonl` is gitignored (`.fathom/` is a git-TRACKED directory, so a per-developer file with free-form claim text sat one `git add .` from being published — law 13 makes sharing a human verb, not an accident) and phase V's binding purge enumeration gains the location, since a memory may QUOTE purged content {id: AM-12, oracle: lexical, path: .gitignore, pattern: "^\.fathom/memories\.jsonl$"}
 
 ---
 
@@ -166,7 +166,7 @@ above. Listed here so they are not lost.
 - [x] DO-1 Derived outcome per measured unit — v1: commits landed in the unit beat-window (stated as narrow everywhere it renders; proven-row deltas follow the verify ledger) {id: DO-1, symbol: derivedCommitsForSession, package: cmd/fathom}
 - [x] DO-2 Arm criterion consumes the derived outcome instead of requiring self-ratings; copy stops asking for `fathom rate` as a precondition {id: DO-2, symbol: evaluateABCriterion, package: cmd/fathom}
 - [ ] DO-3 `fathom assess` — the benchmark lane: LLM judges a unit's on-disk work products (diffs, plan deltas, gate results), NEVER transcripts; explicitly invoked, per-run token cost reported {id: DO-3}
-- [x] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4, skip_test: true, skip: "copy-level demotion — acceptance is evaluateABCriterion treating ratings as override (DO-2 test-covered) and the rate verb hint text"}
+- [x] DO-4 `fathom rate` demoted to optional human override, named when present, never a verdict precondition {id: DO-4, symbol: evaluateABCriterion, package: cmd/fathom, reachable_from: TestObservatoryImpactPage}
 
 ## Phase IR — intervention outcomes (docs/design/intervention-outcomes.md; owner ask 2026-08-14)
 

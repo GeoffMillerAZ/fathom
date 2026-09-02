@@ -99,9 +99,12 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		raws = append(raws, raw)
 	}
 
+	// Lexical oracles (ADR-030) read the working tree the plans came from.
+	files := verify.DirFiles(verifyRepoRoot())
+
 	var reports []verify.Report
 	if storePath != "" {
-		reps, err := verifyAllAgainstStore(localPlans, service, storePath, "")
+		reps, err := verifyAllAgainstStore(localPlans, service, storePath, "", files)
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +137,9 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 				sem <- struct{}{}
 				defer func() { <-sem }()
 				reports[i], verifyErrs[i] = verifyViaHTTP(hc, urlStr, service, "", raws[i], localPlans[i])
+				if verifyErrs[i] == nil {
+					verify.OverlayLocal(&reports[i], localPlans[i], files)
+				}
 			}(i)
 		}
 		wg.Wait()
@@ -382,13 +388,29 @@ func depState(row planRow) string {
 }
 
 // rowEligibility computes eligible + blocked_on for one task's needs:
-// list against byID (WF-4, vision 24 §3).
-func rowEligibility(t verify.Task, byID map[string]planRow) (bool, []blockedDep) {
+// list against byID (WF-4, vision 24 §3). A cross-plan target
+// ("<sibling>.md#<id>", PC-10) is read from planDir: its AUTHORED state
+// decides — claimed or skipped-with-disposition satisfies, anything else
+// blocks — because the sibling's verdict is not recomputed here; the
+// blocked state says which plan it lives in.
+func rowEligibility(t verify.Task, byID map[string]planRow, planDir string) (bool, []blockedDep) {
 	if len(t.Needs) == 0 {
 		return true, nil
 	}
 	var blocked []blockedDep
 	for _, id := range t.Needs {
+		if _, cross := verify.ParseCrossPlanNeed(id); cross {
+			sib, err := verify.ResolveCrossPlanNeed(planDir, id)
+			switch {
+			case err != nil:
+				blocked = append(blocked, blockedDep{ID: id, State: "missing"})
+			case sib.Skipped && sib.Disposition != "", sib.Claimed:
+				// satisfied by authored state (sibling verdict not recomputed)
+			default:
+				blocked = append(blocked, blockedDep{ID: id, State: depState(planRow{Task: sib}) + " (sibling plan)"})
+			}
+			continue
+		}
 		dep, ok := byID[id]
 		if !ok {
 			blocked = append(blocked, blockedDep{ID: id, State: "missing"})
@@ -480,7 +502,7 @@ func frontierForPlan(rows []planRow, leases []leaseRow, now time.Time) []frontie
 			}
 		}
 
-		fr.Eligible, fr.BlockedOn = rowEligibility(t, byID)
+		fr.Eligible, fr.BlockedOn = rowEligibility(t, byID, filepath.Dir(row.PlanFile))
 
 		if fresh := freshByRow[filepath.Base(row.PlanFile)+"|"+t.ID]; len(fresh) > 0 {
 			lease := pickDisplayLease(fresh)

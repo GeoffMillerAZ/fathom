@@ -16,3 +16,6 @@ package plan
 // 4. a plan with a non-string service (missing fields are incomplete, not
 //    invalid, under non-concrete validation — so the negative is a conflict):
 // bad4: #Plan & {service: 42, tasks: []}
+
+// 5. oracle outside the ADR-030 vocabulary (only "lexical" exists):
+// bad5: #Task & {id: "T-5", expect: {oracle: "vibes", path: "docs/x.md", pattern: "y"}}

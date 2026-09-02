@@ -527,13 +527,12 @@ func buildAdoptionReport(callLogPath string, read bool, callLogReadError string,
 // fabricated zero; instrumented (the row count) is the denominator the
 // returned note names explicitly.
 func gateCatchStatsFromLedger(rows []verifyLedgerRow) (catchCount *int, instrumented int, note string) {
-	catches := 0
-	for _, r := range rows {
-		if r.Failing > 0 {
-			catches++ // one refusal EVENT per run, however many rows were failing
-		}
-	}
-	instrumented = len(rows)
+	// One computation for every surface (PC-13): verifyFigure owns the
+	// refusal-event and run counts; this adapter keeps the gauge's own
+	// pointer-nil-means-uninstrumented contract.
+	fig := verifyFigure(rows)
+	catches := fig.Refusals
+	instrumented = fig.Runs
 
 	if instrumented == 0 {
 		return nil, 0, "not instrumented — the verify ledger (~/.fathom/verify-ledger.jsonl) has no recorded `fathom verify` run yet (a placeholder, not a measured zero)"

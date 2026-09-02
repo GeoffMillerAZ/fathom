@@ -42,18 +42,18 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | Surface | Why it is sensitive | Done needs |
 |---|---|---|
 | `internal/store/**` | store purity (I2), on-disk format v0 (I3), WAL pragmas | `go test -race ./internal/store` under `CGO_ENABLED=0`; `TestStoreFormatV0_RequiredSchema`; `TestStorePortability_RoundTrip` |
-| `internal/verify/**`, `cmd/fathom/verify.go` | the gate's honesty: exit codes, static-only, tokenizer | `go test -race ./internal/verify ./cmd/fathom`; `fathom verify --strict` on this repo's own plans exits 0 |
+| `internal/verify/**`, `cmd/fathom/verify.go` | the gate's honesty: exit codes, static-only, tokenizer | `go test -race ./internal/verify ./cmd/fathom`; `TestVerifyPlan_Verified`; `TestEvalLexicalOracle_VerifiesAndRefuses`; `TestGateSARIF_OneResultPerFailingCriterionAndStrictUnknown`; `fathom verify --strict` on this repo's own plans exits 0 |
 | `internal/extractor/**`, `internal/fusion/**` | reachability and edge truth (I23, I24); silent-zero ingest (I25) | golden tests; `TestReachabilityFixtureEndToEnd`; per-language calibration when an extractor changes |
 | `internal/mcp/**` | surface membership, budgets, doc sync (I11) | `TestMcpToolsDocMatchesRegistry`; `TestMaintainedLinesNameRegisteredToolsAndVerbs`; `docs/mcp-tools.md` and the use-case `## Maintained` line updated in the same change |
-| `internal/semantic/**`, `schema/semantic/**` | claim governance: citations, scopes, tiers, sweep | eval fixtures with scope traps at precision ≥0.90; `task cue-vet` |
+| `internal/semantic/**`, `schema/semantic/**` | claim governance: citations, scopes, tiers, sweep | eval fixtures with scope traps at precision ≥0.90; `TestCompile_RejectsBadAnchorsAndScopes`; `TestObligationsCorpusNeverWidensToIntent`; `task cue-vet` |
 | `cmd/fathom/*hook*.go`, `cmd/fathom/brief.go`, `cmd/fathom/sessionhook.go` | injected into every session of every adopter; fail-open (I9, I12) | mutation-RED tests for the property changed; `TestBriefBudgetAndSourceGating`; `TestWholePrimerCap` |
-| `cmd/fathom/observatory*.go`, `cmd/fathom/ui/**` | app-kit doctrine; generated CSS | `task ui:css`; a browser or Playwright screenshot in both themes |
-| `docs/plans/*.md` | gated claims | `fathom verify --service fathom --plan <plan>` exit 0 before any `[x]` |
-| `Taskfile.yml` (deploy), `lefthook.yml`, `scripts/*.sh` | the gates and the daemon install path | `task validate`; `bash -n`; `task deploy`'s serving assertion for deploy changes |
+| `cmd/fathom/observatory*.go`, `cmd/fathom/ui/**` | app-kit doctrine; generated CSS | `TestObservatoryFleetPage`; `TestObservatoryServicePage`; `TestObservatoryImpactPage`; `task ui:css`; a browser or Playwright screenshot in both themes |
+| `docs/plans/*.md` | gated claims | `fathom verify --service fathom --plan <plan>` exit 0 before any `[x]`; `TestPlanContractsNameUnreadablePlans`; `TestCmdPlansArchive_RefusesClaimedRowsNotGreen` |
+| `Taskfile.yml` (deploy), `lefthook.yml`, `scripts/*.sh` | the gates and the daemon install path | `task validate`; `bash -n`; `TestCheckLefthookGates`; `TestLefthookGates_VariableIndirection`; `task deploy`'s serving assertion for deploy changes |
 | `go.mod` (kit pin), `third_party/agentic-kit/**` | mirror drift (I15) | `task sync-kit` then `task vendor-check`; `TestPackFilesMatchSource` |
 | `.fathom/*.cue`, `internal/custodian/**` | governs this repo's own agent config | `fathom config audit` exit 0; `fathom doctor`; `TestADRReferencesResolveConcern` |
 | `internal/metrics/**`, `cmd/fathom/research_report.go` | the numbers the program steers by (law 12) | pre-registered criterion unchanged after data; `TestAbsenceNotesAreArmAware`; `TestAggregateChannels_NeverMeasurable_NotesVerbatim`; `TestBuildResearchReport_DiscoveryShare_ZeroBeats_NeverFabricates100Percent` |
-| `CLAUDE.md`, `AGENTS.md` | the always-loaded router and the fleet stanza | `fathom config audit`; stanza paragraphs identical in both files (`intent-doctor` 15) |
+| `CLAUDE.md`, `AGENTS.md` | the always-loaded router and the fleet stanza | `fathom config audit` (`task config-audit`, in `task validate`); `TestStanzaCarriesOpeningMovesAndPrime`; `TestCheckStanzaPresent`; stanza paragraphs identical in both files (`intent-doctor` 15) |
 | `internal/readset/**` | the honesty floor (I38): every reporting-layer read routes through it, so a bug here makes blindness invisible everywhere | `TestReadSetRecordsAbsentUnreadableAndSkipped`; `TestUnreadableInputNeverLooksHealthier` |
 | `docs/intent/**`, `ADR.md`, `.fathom/guard.cue` | the intent corpus itself (ADR-026): a wrong condition, rung, or guard note misleads every session | `intent-doctor` pass; `fathom config audit` 0 violated; `fathom intent audit` with 0 unparsed and COMPLETE coverage (ADR-027); `TestUnreadableInputNeverLooksHealthier` |
 

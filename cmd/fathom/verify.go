@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,10 +48,20 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks (ADR-018 §2)")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 	jsonOut := fs.Bool("json", false, "emit JSON report + gate result instead of human text")
+	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line (PC-21)")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *jsonOut && *format == "" {
+		*format = "json"
+	}
+	switch *format {
+	case "", "text", "json", "sarif":
+	default:
+		fmt.Fprintf(stderr, "error: --format %q: want text, json or sarif\n", *format)
 		return 2
 	}
 	if len(plans) == 0 {
@@ -82,14 +93,31 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		for _, w := range verify.LintPlan(lp) {
 			fmt.Fprintf(stderr, "lint: %s: %s\n", pf, w)
 		}
+		// PC-10: a needs: target in a sibling plan is resolved here (LintPlan
+		// is pure and checks only the shape); a missing plan or row is a
+		// lint line naming which half failed.
+		for _, t := range lp.Tasks {
+			for _, dep := range t.Needs {
+				if _, ok := verify.ParseCrossPlanNeed(dep); !ok {
+					continue
+				}
+				if _, err := verify.ResolveCrossPlanNeed(filepath.Dir(pf), dep); err != nil {
+					fmt.Fprintf(stderr, "lint: %s: %s: needs %s — %v\n", pf, t.ID, dep, err)
+				}
+			}
+		}
 		localPlans = append(localPlans, lp)
 		planBytes = append(planBytes, raw)
 	}
 
+	// The working tree lexical oracles (ADR-030) read: the tree the plan
+	// files themselves were read from, in both modes.
+	files := verify.DirFiles(verifyRepoRoot())
+
 	// Gather verdicts — either in-process (--store) or via the daemon (HTTP).
 	var reports []verify.Report
 	if *storePath != "" {
-		reps, err := verifyAllAgainstStore(localPlans, *service, *storePath, *concern)
+		reps, err := verifyAllAgainstStore(localPlans, *service, *storePath, *concern, files)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 2
@@ -116,6 +144,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stderr, "error: %v\n", err)
 				return 2
 			}
+			// The daemon has the index but not this working tree: its
+			// lexical verdicts are Unknown-with-reason, replaced here from
+			// the tree the plan came from; every verdict gains its line.
+			verify.OverlayLocal(&rep, lp, files)
 			reports = append(reports, rep)
 		}
 	}
@@ -140,7 +172,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	}
 	gatePass := len(allFail) == 0
 
-	if *jsonOut {
+	if *format == "sarif" {
+		_, _ = stdout.Write(verify.RenderSARIF("fathom verify", verify.GateSARIF(plans, reports, *strict)))
+	} else if *format == "json" {
 		out := map[string]any{
 			"gate": map[string]any{
 				"pass":     gatePass,
@@ -203,7 +237,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 
 // verifyAllAgainstStore opens the store once and runs VerifyPlan for each plan
 // in sequence, sharing the call graph and contradiction index.
-func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern string) ([]verify.Report, error) {
+func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern string, files verify.FileEvidence) ([]verify.Report, error) {
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)
 	if err != nil {
 		return nil, fmt.Errorf("opening store %q: %w", storePath, err)
@@ -255,6 +289,7 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 		contras: contras,
 		matrix:  matrix,
 		haveMat: haveMat,
+		files:   files,
 	}
 
 	reports := make([]verify.Report, 0, len(plans))
