@@ -40,6 +40,15 @@ func TestCmdMetricsInterventions_JSON_AllFiveRows(t *testing.T) {
 }
 
 func TestCmdMetricsInterventions_NoStoreFlag_ReviewRowDegradesHonestly(t *testing.T) {
+	// I31/PC-15: with no --store the default now RESOLVES (the enclosing
+	// repo's workspace/, else ~/.fathom/) instead of a bare cwd-relative
+	// path, so "no store to read" has to be constructed rather than
+	// assumed — otherwise this test reads the developer's own store and
+	// the row is queried-and-zero rather than not-queried.
+	sandbox := t.TempDir()
+	t.Setenv("HOME", sandbox)
+	t.Chdir(sandbox)
+
 	var out, errBuf bytes.Buffer
 	code := cmdMetricsInterventions([]string{"--call-log", filepath.Join(t.TempDir(), "none.jsonl"), "--json"}, &out, &errBuf)
 	if code != 0 {

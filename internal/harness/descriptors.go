@@ -264,6 +264,8 @@ var codex = Descriptor{
 		CapVerifyGate:          VehicleGate,
 		CapClaimGate:           VehicleAbsent,
 		CapSessionLedger:       VehicleAbsent,
+		CapStanzaLoaded:        VehicleAbsent,
+		CapConfigAudit:         VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:               "SessionStart entry in .codex/hooks.json, gated to startup/clear; runs only after `/hooks` trust — `fathom prime` is the fallback",
@@ -389,6 +391,8 @@ var geminiCLI = Descriptor{
 		CapVerifyGate:          VehicleGate,
 		CapClaimGate:           VehicleAbsent,
 		CapSessionLedger:       VehicleAbsent,
+		CapStanzaLoaded:        VehicleAbsent,
+		CapConfigAudit:         VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:               "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
