@@ -63,7 +63,10 @@ func cmdPostCommitHook(args []string, stdout, stderr io.Writer) int {
 				svc = filepath.Base(mainRoot)
 			}
 		}
-		fmt.Fprintf(stderr, "post-commit: %s is a git worktree of %s — refreshed nothing; service %q stays rooted at %s (ingest from the main checkout)\n", root, mainRoot, svc, mainRoot)
+		// The line names the worktree, its main checkout and the service
+		// it left alone; it does NOT assert where the service is rooted —
+		// list_services is the record of truth for that (PC-33).
+		fmt.Fprintf(stderr, "post-commit: %s is a git worktree of %s — refreshed nothing; left service %q and its recorded root alone (list_services is the record of truth; ingest from %s)\n", root, mainRoot, svc, mainRoot)
 		return 0
 	}
 	svc := *service
