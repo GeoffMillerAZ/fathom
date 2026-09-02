@@ -77,6 +77,10 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}
+	// PC-22: the Stop hook now leaves an origin: stop ledger row per verified
+	// plan — pointed at a temp file so the test never touches ~/.fathom.
+	ledgerPath := filepath.Join(t.TempDir(), "verify-ledger.jsonl")
+	t.Setenv("FATHOM_VERIFY_LEDGER", ledgerPath)
 	dir := t.TempDir()
 	svc := strings.ToLower(filepath.Base(dir))
 	plans := filepath.Join(dir, "docs", "plans")
@@ -113,6 +117,11 @@ func TestRunStopHook_AdvisoryAndBlock(t *testing.T) {
 	var out bytes.Buffer
 	if code, _ := runStopHook(dir, hc, srv.URL, false, &out); code != 0 {
 		t.Fatalf("advisory exit = %d, want 0", code)
+	}
+	// PC-22: the verify this hook ran is on the ledger with origin: stop.
+	rows := readVerifyLedger()
+	if len(rows) != 1 || rows[0].Origin != verifyOriginStop || rows[0].Plan != filepath.Join("docs", "plans", "p.md") || rows[0].Failing != 1 {
+		t.Errorf("verify ledger after the Stop hook = %+v, want one origin=stop row for docs/plans/p.md with failing=1", rows)
 	}
 	var adv struct {
 		HookSpecificOutput struct {
@@ -194,6 +203,7 @@ func slowStopDaemon(t *testing.T, service string, delay time.Duration) *httptest
 // silent about it either" for the one companion call expensive enough to
 // time out under normal load).
 func TestRunStopHook_SlowVerifyDegradesToWarning(t *testing.T) {
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(t.TempDir(), "verify-ledger.jsonl")) // never ~/.fathom
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")
 	}

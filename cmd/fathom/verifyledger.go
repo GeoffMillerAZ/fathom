@@ -35,7 +35,21 @@ type verifyLedgerRow struct {
 	Claimed       int    `json:"claimed"`
 	Verified      int    `json:"verified"`
 	Failing       int    `json:"failing"`
+	// Origin names which path ran the verify (vision 26 §4, PC-22):
+	// "cli" (`fathom verify`, incl. the pre-push gate), "stop" (the Stop
+	// hook), "claim-moment" (the PostToolUse edit hook on a newly checked
+	// [x]). Additive; rows written before the field are origin-unknown,
+	// never backfilled as cli.
+	Origin string `json:"origin,omitempty"`
 }
+
+// The three verify origins. PC-26's pre-registered reading counts rows
+// with verifyOriginClaimMoment whose Failing > 0.
+const (
+	verifyOriginCLI         = "cli"
+	verifyOriginStop        = "stop"
+	verifyOriginClaimMoment = "claim-moment"
+)
 
 // gitHeadShort returns the short HEAD sha of root, or "" — absence over
 // failure, this is telemetry.
@@ -59,11 +73,18 @@ func verifyLedgerPath() string {
 }
 
 func appendVerifyLedger(planFiles []string, service string, reports []verify.Report) {
+	root, _ := os.Getwd()
+	appendVerifyLedgerFrom(verifyOriginCLI, root, planFiles, service, reports)
+}
+
+// appendVerifyLedgerFrom is appendVerifyLedger with an explicit origin and
+// repo root — the hooks run from wherever the harness put them, so the
+// root is the project dir they resolved, never their cwd.
+func appendVerifyLedgerFrom(origin, root string, planFiles []string, service string, reports []verify.Report) {
 	path := verifyLedgerPath()
 	if path == "" || len(planFiles) != len(reports) {
 		return
 	}
-	root, _ := os.Getwd()
 	commit := gitHeadShort(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
@@ -78,7 +99,7 @@ func appendVerifyLedger(planFiles []string, service string, reports []verify.Rep
 	for i, rep := range reports {
 		row := verifyLedgerRow{
 			SchemaVersion: 1, At: at, RepoRoot: root, Service: service,
-			Plan: planFiles[i], Commit: commit,
+			Plan: planFiles[i], Commit: commit, Origin: origin,
 		}
 		for _, tv := range rep.Tasks {
 			row.Total++
