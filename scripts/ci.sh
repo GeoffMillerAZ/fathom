@@ -117,7 +117,36 @@ else
     echo "step: fathom verify — no docs/plans/*.md, skipping"
 fi
 
-if [ "${PASS}" -eq 1 ] && [ "${VERIFY_PASS}" -eq 1 ]; then
+# ─── plugin validate (RP-8, docs/plans/reach-parity.md) ──────────────────────
+# Render the plugin tree and run Claude Code's own validator over it with
+# --strict (warnings are errors) when a `claude` binary is on PATH. The
+# rendered tree carries BOTH manifests (.claude-plugin/plugin.json and the
+# Agent Plugins 1.0 plugin.json/mcp.json); the CUE-vetted half runs in
+# `task validate` (TestPluginManifestsVet), this is the harness's own read.
+# Without the binary the step is a NAMED skip, never a silent pass.
+PLUGIN_PASS=1
+echo ""
+if [ -x bin/fathom ] || go build -o bin/fathom ./cmd/fathom; then
+    PLUGIN_TMPDIR=$(mktemp -d)
+    echo "step: plugin validate"
+    bin/fathom plugin render --out "${PLUGIN_TMPDIR}/fathom-plugin" >/dev/null
+    if command -v claude >/dev/null 2>&1; then
+        if claude plugin validate --strict "${PLUGIN_TMPDIR}/fathom-plugin"; then
+            echo "  claude plugin validate --strict: ok"
+        else
+            echo "  claude plugin validate --strict: FAILED"
+            PLUGIN_PASS=0
+        fi
+    else
+        echo "  skip: no \`claude\` binary on PATH — \`claude plugin validate --strict\` not run (the CUE-vetted manifests still ran under task validate)"
+    fi
+    rm -rf "${PLUGIN_TMPDIR}"
+else
+    echo "step: plugin validate — bin/fathom could not be built, skipping"
+    PLUGIN_PASS=0
+fi
+
+if [ "${PASS}" -eq 1 ] && [ "${VERIFY_PASS}" -eq 1 ] && [ "${PLUGIN_PASS}" -eq 1 ]; then
     print_summary ok
     exit 0
 else

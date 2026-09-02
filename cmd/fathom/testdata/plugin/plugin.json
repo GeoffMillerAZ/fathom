@@ -1,0 +1,16 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "name": "fathom"
+  },
+  "description": "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install.",
+  "keywords": [
+    "code-intelligence",
+    "mcp",
+    "skills",
+    "verify-gate"
+  ],
+  "license": "MIT",
+  "name": "fathom",
+  "version": "0.2.0"
+}
