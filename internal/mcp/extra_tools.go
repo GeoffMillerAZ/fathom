@@ -1150,7 +1150,7 @@ func registerPackContext(s *Server, backend QueryInterface) {
 		for i, n := range result.Nodes {
 			text := n.Package + "." + n.Name + " " + n.Signature
 			items[i] = packer.Evidence{
-				ID:    n.Service + "::" + n.Package + "." + n.Name,
+				ID:    n.Key(),
 				Text:  text,
 				Score: float64(n.Complexity + 1),
 			}

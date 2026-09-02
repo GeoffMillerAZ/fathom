@@ -107,8 +107,8 @@ func dispatchFixtureNodes() []core.SymbolNode {
 
 func dispatchFixtureTypedEdges() []core.Edge {
 	return []core.Edge{
-		{FromService: "svc", FromSymbol: "svc::pkg.RunAdapter", ToSymbol: "svc::AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
-		{FromService: "svc", FromSymbol: "svc::pkg.RunAdapter", ToSymbol: "svc::AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
+		{FromService: "svc", FromSymbol: "svc::pkg/pkg.RunAdapter", ToSymbol: "svc::pkg/AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
+		{FromService: "svc", FromSymbol: "svc::pkg/pkg.RunAdapter", ToSymbol: "svc::pkg/AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
 	}
 }
 
@@ -230,7 +230,7 @@ func TestSymbolContext_TypedEdges_DispatchLabeled(t *testing.T) {
 		m := c.(map[string]any)
 		seen[m["key"].(string)] = m["kind"].(string)
 	}
-	if seen["svc::AdapterA.AdapterA.Complete"] != "iface-dispatch" || seen["svc::AdapterB.AdapterB.Complete"] != "iface-dispatch" {
+	if seen["svc::pkg/AdapterA.AdapterA.Complete"] != "iface-dispatch" || seen["svc::pkg/AdapterB.AdapterB.Complete"] != "iface-dispatch" {
 		t.Errorf("typed_edges.callees = %v, want both AdapterA/AdapterB Complete kind=iface-dispatch", seen)
 	}
 }
@@ -253,8 +253,8 @@ func TestFindCallers_TypedEdges_DispatchLabeled(t *testing.T) {
 		t.Fatalf("typed_callers = %v, want 1 entry", p["typed_callers"])
 	}
 	m := typedCallers[0].(map[string]any)
-	if m["key"] != "svc::pkg.RunAdapter" || m["kind"] != "iface-dispatch" {
-		t.Errorf("typed_callers[0] = %v, want key=svc::pkg.RunAdapter kind=iface-dispatch", m)
+	if m["key"] != "svc::pkg/pkg.RunAdapter" || m["kind"] != "iface-dispatch" {
+		t.Errorf("typed_callers[0] = %v, want key=svc::pkg/pkg.RunAdapter kind=iface-dispatch", m)
 	}
 }
 

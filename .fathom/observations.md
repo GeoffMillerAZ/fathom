@@ -581,10 +581,10 @@ triage if it matters.
   - **Expected:** A new binary in its own directory cannot change whether cmd/fathom's TestCmdScopePreviewMatchesEffect reaches cmd/fathom's cmdScope.
   - **Actual:** core.SymbolNode.Key() is service::package.Name, so every 'func run' in every package main collapses to one key fathom::main.run, and callgraph.Build does g.nodes[n.Key()] = n — last-writer-wins. With two main packages cmd/fathom's run happened to win; the third made cmd/loctruth's run win, deleting the run->runWithStdin hop for the whole graph. The verdict therefore depended on ingest order, not on code.
   - **Repro:** fathom ingest -service fathom -path . -store probe.sqlite && fathom verify --store probe.sqlite --service fathom --plan docs/plans/ambient-fathom.md  # before/after adding any second func run to a package main
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** `core.SymbolNode.Key()` was `service::package.Name` with the package's declared NAME, so every `package main` shared the qualifier `main`; `callgraph.Build` deduplicates nodes by key, last writer wins, and the typed pass keyed its edges the same way.
+- **Fix:** PC-32 — the key carries the package DIRECTORY (`core.QualifiedPackage`: `service::<dir>/<package>.Name`); `callgraph` binds same-package and package-name-qualified callees to the caller's directory; the typed pass derives the same key from the declaring file (`TypedEdgeEpoch` 2 rebuilds stored typed edges); verify's `package:` filter is a one-directory match. `TestTwoMainsSameFuncNameNeverCollapse` (reachfix `cmd/a`, `cmd/b`) pins it; the integrator's `runLocTruth` rename is no longer load-bearing.
+- **Status:** fixed (CHANGELOG [Unreleased], PC-32)
+- **Impact:** every verdict over a fleet with two or more `package main` binaries — five ambient-fathom rows refuted by an unrelated commit, and any `cmd/*` symbol's callers/tests reported for the wrong binary.
 
 ### O22 — The MCP ingest tool returned {ok:true} four times while the daemon's service 'fathom' was rooted at a stale agent worktree, so every 'refreshed' daemon verify read a tree that was not merged main (0-2 verified where the probe store read 16/5/5/9/13).
 

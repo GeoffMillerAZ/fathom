@@ -46,7 +46,7 @@ func TestBareCallee_SamePackageBinds(t *testing.T) {
 	}
 	g := callgraph.Build(nodes)
 
-	want := []string{"svc::openai.TestNew"}
+	want := []string{"svc::foundations/llmclient/openai/openai.TestNew"}
 	if got := callgraph.TestImpact(g, "svc::openai.New"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(openai.New) = %v, want %v", got, want)
 	}

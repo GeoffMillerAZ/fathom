@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -41,8 +42,35 @@ func SymbolKey(service, pkg, name string) string {
 	return b.String()
 }
 
-// Key returns the canonical SymbolKey for this node.
-func (n SymbolNode) Key() string { return SymbolKey(n.Service, n.Package, n.Name) }
+// QualifiedPackage returns the package qualifier a symbol's key carries:
+// the symbol's directory (path.Dir of its repo-relative, forward-slash file
+// path) joined with its declared package — "cmd/a/main" for a `package main`
+// under cmd/a. Two `package main` binaries, or two same-named packages in
+// different directories, therefore never share a qualifier (PC-32,
+// docs/plans/proof-credibility.md; O21: before this, every `func run` in
+// every package main collapsed to one key and callgraph.Build kept whichever
+// was ingested last). A root-level or path-less symbol keeps the bare
+// package name, and a symbol with no package keeps the empty qualifier —
+// their keys are unchanged from the historical "service::package.Name" form.
+func QualifiedPackage(filePath, pkg string) string {
+	if pkg == "" || filePath == "" {
+		return pkg
+	}
+	dir := path.Dir(filePath)
+	if dir == "." || dir == "/" || dir == "" {
+		return pkg
+	}
+	return strings.TrimPrefix(dir, "/") + "/" + pkg
+}
+
+// PackagePath returns the node's directory-qualified package — the qualifier
+// its Key carries (see QualifiedPackage).
+func (n SymbolNode) PackagePath() string { return QualifiedPackage(n.FilePath, n.Package) }
+
+// Key returns the canonical SymbolKey for this node:
+// "service::<dir>/<package>.Name" for a symbol under a directory,
+// "service::package.Name" otherwise (see QualifiedPackage).
+func (n SymbolNode) Key() string { return SymbolKey(n.Service, n.PackagePath(), n.Name) }
 
 // ToSymbolNode reconstructs a SymbolNode from a stored Observation — the inverse
 // of the SymbolNode→Observation mapping the fusion pipeline performs at ingest.

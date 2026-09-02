@@ -543,7 +543,7 @@ func resolveFileEdges(
 		if !ok {
 			continue
 		}
-		callerKey, ok := symbolKeyForFunc(serviceID, callerFn)
+		callerKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, callerFn)
 		if !ok {
 			continue
 		}
@@ -560,7 +560,7 @@ func resolveFileEdges(
 			if !targetAllowed(fn) {
 				return
 			}
-			toKey, ok := symbolKeyForFunc(serviceID, fn)
+			toKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, fn)
 			if !ok {
 				return
 			}
@@ -579,7 +579,7 @@ func resolveFileEdges(
 				if !targetAllowed(implFn) {
 					continue
 				}
-				toKey, ok := symbolKeyForFunc(serviceID, implFn)
+				toKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, implFn)
 				if !ok || seen[toKey] {
 					continue
 				}
@@ -806,29 +806,37 @@ func receiverInterface(fn *types.Func) (*types.Interface, bool) {
 }
 
 // symbolKeyForFunc maps a *types.Func to the SAME canonical SymbolKey
-// goextract would have assigned it (see GoExtractor.Extract / funcNode): a
-// plain function's Package component is its declared package NAME (not
-// import path); a method's Package component is its receiver's bare type
-// name (pointer-stripped; a generic receiver's type-parameter list is
-// stripped too — types.Named.Obj().Name() already excludes it, matching
-// goextract's receiverTypeName unwrapping of *ast.IndexExpr/*ast.IndexListExpr).
-// ok is false when fn has no usable package/receiver.
-func symbolKeyForFunc(serviceID string, fn *types.Func) (string, bool) {
+// goextract's node would carry (core.SymbolNode.Key): a plain function's
+// Package component is its declared package NAME (not import path); a
+// method's Package component is its receiver's bare type name
+// (pointer-stripped; a generic receiver's type-parameter list is stripped
+// too — types.Named.Obj().Name() already excludes it, matching goextract's
+// receiverTypeName unwrapping of *ast.IndexExpr/*ast.IndexListExpr). Either
+// component is qualified by the DIRECTORY of fn's declaring file, relative
+// to repoPath, exactly as core.QualifiedPackage qualifies the node's key
+// from its FilePath (PC-32) — so a `func run` in cmd/a and one in cmd/b get
+// distinct keys here just as they do in the syntax pass. ok is false when
+// fn has no usable package/receiver.
+func symbolKeyForFunc(serviceID, repoPath string, fset *token.FileSet, fn *types.Func) (string, bool) {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok {
 		return "", false
+	}
+	var relFile string
+	if pos := fset.Position(fn.Pos()); pos.Filename != "" {
+		relFile = repoRelSlash(repoPath, pos.Filename)
 	}
 	if recv := sig.Recv(); recv != nil {
 		recvName := namedTypeName(recv.Type())
 		if recvName == "" {
 			return "", false
 		}
-		return core.SymbolKey(serviceID, recvName, recvName+"."+fn.Name()), true
+		return core.SymbolKey(serviceID, core.QualifiedPackage(relFile, recvName), recvName+"."+fn.Name()), true
 	}
 	if fn.Pkg() == nil {
 		return "", false
 	}
-	return core.SymbolKey(serviceID, fn.Pkg().Name(), fn.Name()), true
+	return core.SymbolKey(serviceID, core.QualifiedPackage(relFile, fn.Pkg().Name()), fn.Name()), true
 }
 
 // namedTypeName returns the bare declared name of t's named type,
@@ -919,13 +927,28 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 	return fn, true
 }
 
+// TypedEdgeEpoch salts every typed-edge package fingerprint (the per-package
+// cache key below), the way ExtractorEpoch salts the file hash-gate. Bump it
+// in any commit that changes the KEYS or KINDS the typed pass stores: a
+// cache hit keeps the stored rows verbatim, so without the bump every
+// unchanged package would keep edges written in the old key form — silently
+// dropped by callgraph.AddTypedEdges (an endpoint that is no longer a node)
+// and invisible until a file in that package happened to change.
+// Epoch 2 = PC-32: from/to keys carry the package directory
+// (core.QualifiedPackage); every row written before it named the package
+// by declared name only.
+const TypedEdgeEpoch = "2"
+
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
-// content, sorted — the per-package cache key. Repo-relative (not absolute)
-// paths keep the cache portable across machines/worktrees (ADR-017).
+// content, sorted, under the TypedEdgeEpoch salt — the per-package cache
+// key. Repo-relative (not absolute) paths keep the cache portable across
+// machines/worktrees (ADR-017).
 func packageContentHash(repoPath string, pkg *packages.Package) (string, error) {
 	files := append([]string(nil), pkg.CompiledGoFiles...)
 	sort.Strings(files)
 	h := sha256.New()
+	h.Write([]byte("typed-edge-epoch:" + TypedEdgeEpoch))
+	h.Write([]byte{0})
 	h.Write([]byte(pkg.PkgPath))
 	h.Write([]byte{0})
 	for _, f := range files {

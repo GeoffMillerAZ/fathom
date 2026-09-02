@@ -50,7 +50,7 @@ func TestCtorScopedMethodEdge_UniqueInPackageResolves(t *testing.T) {
 	}
 	g := callgraph.Build(nodes)
 
-	want := []string{"svc::evidenceladder_test.TestLadderRun"}
+	want := []string{"svc::foundations/evidence/evidence-ladder/evidenceladder_test.TestLadderRun"}
 	if got := callgraph.TestImpact(g, "svc::Ladder.Ladder.Run"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(Ladder.Run) = %v, want %v", got, want)
 	}
@@ -129,7 +129,7 @@ func TestCtorScopedMethodEdge_SecondaryGlobalFallbackStillWorks(t *testing.T) {
 		},
 	}
 	g := callgraph.Build(nodes)
-	want := []string{"svc::harness_test.TestRun"}
+	want := []string{"svc::kits/agent-harness/harness_test.TestRun"}
 	if got := callgraph.TestImpact(g, "svc::Harness.Harness.Run"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(Harness.Run) = %v, want %v", got, want)
 	}

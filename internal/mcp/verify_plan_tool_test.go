@@ -43,8 +43,8 @@ func newVerifyBackend() *verifyFakeBackend {
 			B:      core.Observation{SourceRef: "docs/c.md"},
 		}},
 		typedEdges: []core.Edge{
-			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work.RunAdapter", ToSymbol: "svc::AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
-			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work.RunAdapter", ToSymbol: "svc::AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
+			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work/work.RunAdapter", ToSymbol: "svc::work/AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
+			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work/work.RunAdapter", ToSymbol: "svc::work/AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
 		},
 	}
 }

@@ -20,6 +20,7 @@ package verify
 
 import (
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 
@@ -487,14 +488,21 @@ func testReachesDetail(details []ReachDetail) string {
 	return fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(details), details[0].Key)
 }
 
-// underDir returns the nodes whose FilePath lies under the repo-relative
-// directory dir. Index paths use forward slashes; matching is a pure string
-// prefix (subdirectories included), preserving VerifyPlan's purity.
+// underDir returns the nodes whose defining directory IS the repo-relative
+// directory dir — a `package:` filter names one package, and a Go package
+// is one directory. Index paths use forward slashes; the comparison is a
+// pure string match on path.Dir(FilePath), preserving VerifyPlan's purity.
+// It was a prefix match (subdirectories included) until PC-32: `package:
+// internal/contextbench` then also matched internal/contextbench/publicloc,
+// so a row naming the parent stayed ambiguous between two packages (the PB-3
+// collision), and a filter could never single out a package that has
+// sub-packages. The directory-qualified key (core.QualifiedPackage) is the
+// same boundary: the filter resolves against the key's directory component.
 func underDir(nodes []core.SymbolNode, dir string) []core.SymbolNode {
-	prefix := strings.TrimSuffix(dir, "/") + "/"
+	dir = strings.TrimSuffix(dir, "/")
 	var out []core.SymbolNode
 	for _, n := range nodes {
-		if strings.HasPrefix(n.FilePath, prefix) {
+		if path.Dir(n.FilePath) == dir {
 			out = append(out, n)
 		}
 	}

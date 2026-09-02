@@ -38,14 +38,14 @@ func TestReviewDiff_TestImpactComposed(t *testing.T) {
 		t.Fatalf("affected_tests = %v, want TestFoo", tests)
 	}
 	tf := tests[0].(map[string]any)
-	if tf["test"] != "svc::pkg.TestFoo" || tf["citation"] != "pkg/a_test.go#L1-L1" || tf["line"] != float64(1) {
+	if tf["test"] != "svc::pkg/pkg.TestFoo" || tf["citation"] != "pkg/a_test.go#L1-L1" || tf["line"] != float64(1) {
 		t.Errorf("affected test = %v: want key + file:line citation", tf)
 	}
-	if r := tf["reaches"].([]any); len(r) != 2 || r[0] != "svc::pkg.A" || r[1] != "svc::pkg.B" {
+	if r := tf["reaches"].([]any); len(r) != 2 || r[0] != "svc::pkg/pkg.A" || r[1] != "svc::pkg/pkg.B" {
 		t.Errorf("reaches = %v, want [A, B] sorted", r)
 	}
 	gap := ti["test_gap"].([]any)
-	if len(gap) != 1 || gap[0].(map[string]any)["symbol"] != "svc::pkg.Orphan" || gap[0].(map[string]any)["citation"] != "pkg/orphan.go#L1-L1" {
+	if len(gap) != 1 || gap[0].(map[string]any)["symbol"] != "svc::pkg/pkg.Orphan" || gap[0].(map[string]any)["citation"] != "pkg/orphan.go#L1-L1" {
 		t.Errorf("test_gap = %v, want Orphan with its citation", gap)
 	}
 

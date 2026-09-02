@@ -35,10 +35,10 @@ func TestBlastRadius_DirectSymbols(t *testing.T) {
 	// Baz is in baz.go, Bar calls Baz, TestFoo calls Bar, Qux calls Baz.
 	// All four should be in Symbols.
 	want := []string{
-		"svc::pkg.Bar",
-		"svc::pkg.Baz",
-		"svc::pkg.Qux",
-		"svc::pkg.TestFoo",
+		"svc::pkg/pkg.Bar",
+		"svc::pkg/pkg.Baz",
+		"svc::pkg/pkg.Qux",
+		"svc::pkg/pkg.TestFoo",
 	}
 	if !reflect.DeepEqual(r.Symbols, want) {
 		t.Errorf("Symbols = %v, want %v", r.Symbols, want)
@@ -47,7 +47,7 @@ func TestBlastRadius_DirectSymbols(t *testing.T) {
 
 func TestBlastRadius_Tests(t *testing.T) {
 	r := impact.BlastRadius(nodes, []string{"pkg/baz.go"})
-	want := []string{"svc::pkg.TestFoo"}
+	want := []string{"svc::pkg/pkg.TestFoo"}
 	if !reflect.DeepEqual(r.Tests, want) {
 		t.Errorf("Tests = %v, want %v", r.Tests, want)
 	}
@@ -64,7 +64,7 @@ func TestBlastRadius_Files(t *testing.T) {
 func TestBlastRadius_LeafFile(t *testing.T) {
 	// Changing TestFoo's file should not cascade further (no callers).
 	r := impact.BlastRadius(nodes, []string{"pkg/test.go"})
-	want := []string{"svc::pkg.TestFoo"}
+	want := []string{"svc::pkg/pkg.TestFoo"}
 	if !reflect.DeepEqual(r.Symbols, want) {
 		t.Errorf("Symbols = %v, want %v", r.Symbols, want)
 	}
@@ -127,7 +127,7 @@ func TestReachable_EmptyNodes(t *testing.T) {
 
 func TestAffectedTests_Found(t *testing.T) {
 	tests := impact.AffectedTests(nodes, []string{"pkg/baz.go"})
-	want := []string{"svc::pkg.TestFoo"}
+	want := []string{"svc::pkg/pkg.TestFoo"}
 	if !reflect.DeepEqual(tests, want) {
 		t.Errorf("AffectedTests = %v, want %v", tests, want)
 	}
