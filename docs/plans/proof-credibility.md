@@ -31,7 +31,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/proof-credibility.md`.
 ## Wave 2 — the lexical oracle (ADR-030)
 
 - [x] `{oracle: lexical, path: <repo path>, pattern: <regex>}` on a plan row: `evalLexicalOracle` checks the path exists in the working tree the plan itself is read from (the same moment, never `git show HEAD:`), is non-empty, and the pattern matches at least once; the row verifies and leaves U2 {id: PC-17, symbol: evalLexicalOracle, package: internal/verify}
-- [x] `LintPlan` refuses a `.md` path without a `pattern` and a lexical row that also carries `symbol` (one contract per row) {id: PC-18, symbol: lintLexicalOracle, package: internal/verify}
+- [x] `LintPlan` refuses a Markdown path without a `pattern` and a lexical row that also carries `symbol` (one contract per row) {id: PC-18, symbol: lintLexicalOracle, package: internal/verify}
 - [x] `schema/plan/schema.cue` gains the keys with valid/invalid testdata; `docs/plans/README.md` gains the grammar row; `CHANGELOG.md` gains the line {id: PC-19, oracle: lexical, path: schema/plan/schema.cue, pattern: "^\s*oracle\?: \"lexical\""}
 - [ ] The non-code rows across active plans carry lexical oracles or a typed disposition; `fathom verify --strict` exits 0 for every top-level plan (scope G6) {id: PC-20, skip_test: true, skip: "plan edits; evidence is the strict verify sweep in the Verified: line"}
 - [x] `fathom verify --format sarif` emits SARIF 2.1.0 for the refusals (rule id per criterion, location = the plan line), so code-scanning and editor problem panes render them; `intent audit` and `config audit` share the emitter {id: PC-21, symbol: renderSARIF, package: internal/verify}

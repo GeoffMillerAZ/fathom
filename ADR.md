@@ -1206,7 +1206,7 @@ plan lines.
 **Decision.** A plan row may carry `{oracle: lexical, path: <repo path>,
 pattern: <regex>}`. `fathom verify` checks the path exists at HEAD, is
 non-empty, and the pattern matches at least once; the row verifies and
-leaves U2. `LintPlan` refuses a `.md` path without a `pattern` (existence
+leaves U2. `LintPlan` refuses a Markdown path without a `pattern` (existence
 proves nothing about a claim). The evaluator is ADR-026's, not a second
 one; the key set stays owned where ADR-026 put it (Q20 named, not decided).
 The U2 remedy text is corrected to say what the counter does.
