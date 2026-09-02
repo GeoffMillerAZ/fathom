@@ -12,7 +12,7 @@ import (
 )
 
 func TestNormalizeDoctorHarness(t *testing.T) {
-	cases := map[string]string{"claude": "claude", "codex": "codex", "auto": "auto", "claude-code": "claude", "gemini-cli": "gemini-cli", "agents": "agents"}
+	cases := map[string]string{"claude": "claude", "codex": "codex", "auto": "auto", "claude-code": "claude", "gemini-cli": "gemini-cli", "cursor": "cursor", "copilot": "copilot", "agents": "agents"}
 	for in, want := range cases {
 		got, ok := normalizeDoctorHarness(in)
 		if !ok || got != want {
@@ -99,16 +99,21 @@ func TestCheckMCPRegistrationNonClaudeNeverGuessesPass(t *testing.T) {
 func TestCheckHooksNonClaudeReasons(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	g := checkHooksInstalled(t.TempDir(), "gemini-cli")
-	if g.Status != doctorSkipped || !strings.Contains(g.Reason, "not wired") || !strings.Contains(g.Reason, "Gemini CLI") {
+	if g.Status != doctorSkipped || !strings.Contains(g.Reason, "harness_hooks") || !strings.Contains(g.Reason, "Gemini CLI") {
 		t.Errorf("gemini-cli hooks_installed = %+v", g)
+	}
+	cu := checkHooksInstalled(t.TempDir(), "cursor")
+	if cu.Status != doctorSkipped || !strings.Contains(cu.Reason, "not wired") || !strings.Contains(cu.Reason, "Cursor") {
+		t.Errorf("cursor hooks_installed = %+v", cu)
 	}
 	a := checkHooksFiring(nil, "http://127.0.0.1:1", false, t.TempDir(), "agents")
 	if a.Status != doctorSkipped || !strings.Contains(a.Reason, "no hook mechanism") {
 		t.Errorf("agents hooks_firing = %+v", a)
 	}
-	// The pre-seam Codex wording is pinned by docs and tests; keep it.
+	// Codex's hooks are wired (wave 2): the pre-seam "Codex has no hook
+	// mechanism" wording is retired for the harness_hooks pointer.
 	c := checkHooksInstalled(t.TempDir(), "codex")
-	if c.Status != doctorSkipped || !strings.Contains(c.Reason, "Codex has no") {
+	if c.Status != doctorSkipped || strings.Contains(c.Reason, "Codex has no") || !strings.Contains(c.Reason, "harness_hooks") {
 		t.Errorf("codex hooks_installed = %+v", c)
 	}
 }

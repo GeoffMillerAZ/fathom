@@ -287,22 +287,28 @@ output of `fathom harness capabilities --harness codex`, verbatim. Every
 row says *unverified on this machine* because no Codex session has run
 against this build here — Codex's own hook contract (11 Claude-shaped
 lifecycle events, `.codex/hooks.json`) is carried as **data** in the
-descriptor (`fathom harness list --json`) and no codec drives it yet
-(*hooks: not wired*, wave 2 of `docs/plans/harness-port.md`). The vehicle
-column is what fathom delivers on Codex **today**; an `absent` vehicle is a
-documented gap, never an emulation.
+descriptor (`fathom harness list --json`) and, since wave 2 of
+`docs/plans/harness-port.md`, a codec drives it: `fathom init --harness=codex`
+writes the fathom entries into the repo's `.codex/hooks.json` through the
+wiring engine (a receipt `fleet undo` reverses), and they run only after you
+trust them in `/hooks`. The vehicle column is what fathom delivers on Codex
+**today**; an `absent` vehicle is a documented gap, never an emulation; a
+`hook-*` vehicle stays *unverified* until doctor's `hooks_firing` sees beats
+from a real Codex session — a descriptor still unverified 60 days after its
+codec landed (2026-09-02) is demoted to tier D and `init --harness=codex`
+refuses with the reason.
 
 <!-- fathom:harness-capabilities codex begin -->
 | Capability | Vehicle | Status |
 |---|---|---|
-| `prime` | `pull` | unverified on this machine — run `fathom prime` at session start (AGENTS.md says so); the SessionStart binding is documented above but not wired |
-| `obligations-post-edit` | `mcp` | unverified on this machine — call the `obligations` MCP tool before editing; no PostToolUse hook is wired by this build |
-| `guard-pre-edit` | `absent` | unverified on this machine — documented PreToolUse contract, not wired; a bound module's rules still reach Codex via `obligations`/`pack_context` |
-| `guard-pre-shell` | `absent` | unverified on this machine — documented PreToolUse contract, not wired |
+| `prime` | `hook-inject` | unverified on this machine — SessionStart entry in .codex/hooks.json, gated to startup/clear; runs only after `/hooks` trust — `fathom prime` is the fallback |
+| `obligations-post-edit` | `hook-inject` | unverified on this machine — PostToolUse on apply_patch (first file of the patch); the `obligations` MCP tool is the fallback until the hook is trusted |
+| `guard-pre-edit` | `hook-inject` | unverified on this machine — PreToolUse on apply_patch, inject-only (no permissionDecision) |
+| `guard-pre-shell` | `hook-inject` | unverified on this machine — PreToolUse on Bash (shell and exec_command), inject-only |
 | `discovery-observe` | `absent` | unverified on this machine — Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved |
-| `stop-verify` | `absent` | unverified on this machine — the pre-push verify gate is the backstop |
-| `deposit-session-end` | `pull` | unverified on this machine — `fathom thread note` before ending a session |
-| `deposit-pre-compact` | `absent` | unverified on this machine — documented PreCompact contract, not wired |
+| `stop-verify` | `hook-inject` | unverified on this machine — advisory; `--block` renders {"decision":"block"} — the pre-push verify gate is the backstop |
+| `deposit-session-end` | `hook-silent` | unverified on this machine — SessionEnd reason is always "other", which the verb does not deposit on — `fathom thread note` before ending a session |
+| `deposit-pre-compact` | `hook-silent` | unverified on this machine — PreCompact entry writes one thread pointer; injects nothing |
 | `mcp-tools` | `mcp` | unverified on this machine |
 | `skills` | `pull` | unverified on this machine — `.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin |
 | `stanza` | `stanza` | unverified on this machine |

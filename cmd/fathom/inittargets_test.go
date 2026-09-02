@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 func TestInitTargetsFor(t *testing.T) {
@@ -27,7 +29,7 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if codex.Hooks || !reflect.DeepEqual(codex.StanzaFiles, []string{"AGENTS.md"}) || !strings.Contains(codex.HooksNote, "not wired (wave 2)") || !strings.Contains(codex.MCPAddLine, "codex mcp add") {
+	if !codex.Hooks || !reflect.DeepEqual(codex.StanzaFiles, []string{"AGENTS.md"}) || !strings.Contains(codex.HooksNote, ".codex/hooks.json") || !strings.Contains(codex.HooksNote, "unverified") || !strings.Contains(codex.MCPAddLine, "codex mcp add") {
 		t.Errorf("codex targets = %+v", codex)
 	}
 
@@ -35,8 +37,15 @@ func TestInitTargetsFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if gemini.Hooks || !reflect.DeepEqual(gemini.StanzaFiles, []string{"GEMINI.md"}) {
+	if !gemini.Hooks || !reflect.DeepEqual(gemini.StanzaFiles, []string{"GEMINI.md"}) || !strings.Contains(gemini.HooksNote, ".gemini/settings.json") {
 		t.Errorf("gemini targets = %+v", gemini)
+	}
+	cursor, err := initTargetsFor("cursor", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cursor.Hooks || !reflect.DeepEqual(cursor.StanzaFiles, []string{"AGENTS.md"}) || !strings.Contains(cursor.HooksNote, "not wired") || !strings.Contains(cursor.MCPAddLine, ".cursor/mcp.json") {
+		t.Errorf("cursor targets = %+v", cursor)
 	}
 
 	agents, err := initTargetsFor(harness.Agents, now)
@@ -72,10 +81,11 @@ func TestInitTargetsFor(t *testing.T) {
 	}
 }
 
-// TestCmdInitHarnessCodex pins HP-13 end to end: `--harness=codex` writes
-// AGENTS.md (with the pull-tier hook sentences) and .fathom/ only, never
-// CLAUDE.md or .claude/settings.json, and prints the descriptor's own
-// `mcp add` line plus the honest hooks line.
+// TestCmdInitHarnessCodex pins HP-13 and HP-18 end to end: `--harness=codex`
+// writes AGENTS.md (with the wired-but-unverified hook sentences),
+// .codex/hooks.json through the wiring engine (every fathom entry, a
+// receipt) and .fathom/, never CLAUDE.md or .claude/settings.json, and
+// prints the descriptor's own `mcp add` line plus the honest hooks line.
 func TestCmdInitHarnessCodex(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
@@ -102,6 +112,54 @@ func TestCmdInitHarnessCodex(t *testing.T) {
 	if !strings.Contains(body, "Codex CLI") || !strings.Contains(body, "`obligations` MCP tool") || !strings.Contains(body, "fathom prime") {
 		t.Errorf("the codex stanza must name the pull tier:\n%s", body)
 	}
+	if !strings.Contains(body, ".codex/hooks.json") || !strings.Contains(body, "unverified here") {
+		t.Errorf("the codex stanza must name the wired-but-unverified hook file:\n%s", body)
+	}
+	hooksRaw, err := os.ReadFile(filepath.Join(dir, ".codex", "hooks.json"))
+	if err != nil {
+		t.Fatalf(".codex/hooks.json must be written: %v", err)
+	}
+	var hooksFile struct {
+		Hooks map[string][]struct {
+			Matcher string `json:"matcher"`
+			Hooks   []struct {
+				Type    string  `json:"type"`
+				Command string  `json:"command"`
+				Timeout float64 `json:"timeout"`
+			} `json:"hooks"`
+		} `json:"hooks"`
+	}
+	if err := json.Unmarshal(hooksRaw, &hooksFile); err != nil {
+		t.Fatalf(".codex/hooks.json: %v\n%s", err, hooksRaw)
+	}
+	entries := 0
+	for _, groups := range hooksFile.Hooks {
+		for _, g := range groups {
+			for _, h := range g.Hooks {
+				entries++
+				if h.Type != "command" || !strings.Contains(h.Command, "--harness codex") || !strings.HasPrefix(h.Command, testBinPath+" ") {
+					t.Errorf("entry %+v must be a command spelling --harness codex", h)
+				}
+			}
+		}
+	}
+	if want := len(hookSpecsFor(harness.Codex)); entries != want {
+		t.Errorf(".codex/hooks.json carries %d entries, want %d:\n%s", entries, want, hooksRaw)
+	}
+	if _, ok := hooksFile.Hooks["PreToolUse"]; !ok {
+		t.Errorf("PreToolUse group missing:\n%s", hooksRaw)
+	}
+	receipts, err := wiring.LoadReceipts(dir)
+	if err != nil || len(receipts) != 1 {
+		t.Fatalf("receipts = %v, %v; want exactly one", receipts, err)
+	}
+	var receiptFiles []string
+	for _, f := range receipts[0].Files {
+		receiptFiles = append(receiptFiles, f.Path)
+	}
+	if !strings.Contains(strings.Join(receiptFiles, ","), ".codex/hooks.json") {
+		t.Errorf("the receipt must name .codex/hooks.json (fleet undo reverses it): %v", receiptFiles)
+	}
 	for _, absent := range []string{"CLAUDE.md", filepath.Join(".claude", "settings.json"), "GEMINI.md"} {
 		if _, err := os.Stat(filepath.Join(dir, absent)); err == nil {
 			t.Errorf("%s must not be written for --harness=codex", absent)
@@ -113,7 +171,9 @@ func TestCmdInitHarnessCodex(t *testing.T) {
 	stdout := out.String()
 	for _, want := range []string{
 		"codex mcp add fathom --url " + srv.URL + "/rpc/agent",
-		"hooks: not wired (wave 2)",
+		"entries written to .codex/hooks.json",
+		"unverified on this machine",
+		"/hooks",
 		"fathom harness capabilities --harness codex",
 		"MANUAL: add the verify gate to lefthook.yml's pre-push",
 	} {

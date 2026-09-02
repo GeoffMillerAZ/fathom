@@ -39,6 +39,8 @@ package harness
 	scope: "project" | "project-local" | "user"
 	kind?: string
 	shape: string
+	timeout_unit?: "s" | "ms"
+	trust?: string
 	note?: string
 }
 

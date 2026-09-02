@@ -97,7 +97,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - Hook verbs and their stdin/stdout contracts: `session-hook`, `edit-hook [--pre]`,
   `stop-hook`, `session-end-hook`, `pre-compact-hook`, each with an additive
   `--harness <id>` (absent ⇒ `claude-code`); `fathom init` writes them into adopters'
-  `~/.claude/settings.json`, and under `--harness=codex` into the repo's `.codex/hooks.json`.
+  `~/.claude/settings.json`, under `--harness=codex` into the repo's `.codex/hooks.json`, and
+  under `--harness=gemini-cli` into the `hooks` key of the repo's `.gemini/settings.json`.
   Evidence: `docs/adoption/claude-code.md`, ADR-029.
 - `fathom harness list|capabilities --json` and the exported descriptor shape
   (`schema/harness`). Evidence: ADR-029.

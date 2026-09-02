@@ -53,7 +53,7 @@ func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 }
 
 func TestRegistryOrderAndLookup(t *testing.T) {
-	want := []string{ClaudeCode, Codex, GeminiCLI, Agents}
+	want := []string{ClaudeCode, Codex, GeminiCLI, "cursor", "copilot", Agents}
 	if got := IDs(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("IDs() = %v, want %v (registry order is priority, not alphabetical)", got, want)
 	}
@@ -236,8 +236,8 @@ func TestDemotionDue(t *testing.T) {
 		t.Errorf("an unreadable clock must be due: %v %q", due, reason)
 	}
 
-	// The shipped registry: nothing is due today (no non-Claude codec has
-	// landed), and Claude Code can never be.
+	// The shipped registry: nothing is due on the landing day (the wave-2
+	// codecs landed 2026-09-02), and Claude Code can never be.
 	for _, d := range All() {
 		if due, reason := DemotionDue(d, landed); due {
 			t.Errorf("%s demoted at founding: %s", d.ID, reason)
@@ -249,7 +249,8 @@ func TestCapabilityRowsAndTable(t *testing.T) {
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 
 	t.Run("unverified descriptor: every row says so", func(t *testing.T) {
-		for _, id := range []string{Codex, GeminiCLI, Agents} {
+		for _, id := range []string{Codex, GeminiCLI, "cursor", "copilot", Agents} {
+			d, _ := Lookup(id)
 			table := RenderCapabilityTable(id, now)
 			lines := strings.Split(strings.TrimSpace(table), "\n")
 			if len(lines) != 2+len(Capabilities) {
@@ -259,8 +260,11 @@ func TestCapabilityRowsAndTable(t *testing.T) {
 				if !strings.Contains(line, "unverified on this machine") {
 					t.Errorf("%s row lacks the honesty marker: %s", id, line)
 				}
-				if strings.Contains(line, "hook-") {
+				if !d.HooksWired() && strings.Contains(line, "hook-") {
 					t.Errorf("%s: a hook vehicle without a codec: %s", id, line)
+				}
+				if d.HooksWired() && strings.Contains(line, "not wired") {
+					t.Errorf("%s: a wired codec labelled not wired: %s", id, line)
 				}
 			}
 		}

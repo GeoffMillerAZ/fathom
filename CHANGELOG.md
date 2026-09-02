@@ -89,13 +89,36 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **`fathom init --harness=claude-code|codex|gemini-cli|agents|none`** writes
   only that descriptor's instruction files and `.fathom/`, generates the
   stanza's hook sentences from the descriptor, and prints the harness's own
-  `mcp add` line; non-Claude hooks report `hooks: not wired (wave 2)`.
+  `mcp add` line; a descriptor with no codec reports `hooks: not wired`.
 - **`fathom doctor`** accepts every registry id, resolves `auto` through
   the registry's presence markers, adds a `gate_posture` row from the
   descriptor's fail mode, and reads MCP registration for a non-Claude
   harness as `skipped: unverified`, never a guessed PASS.
 - **`schema/harness/schema.cue`** validates the exported registry
   (`fathom harness list --json`); `TestHarnessSchemaVetsExport` runs it.
+- **Codex and Gemini CLI codecs (harness-port wave 2, HP-17..HP-23).**
+  `--harness codex|gemini-cli` on the five hook verbs now speaks each
+  harness's documented envelope (Codex: `apply_patch` → the patch's first
+  file, `additionalContext` cut at 8,000 bytes with a named cut; Gemini CLI:
+  flat decision never emitted, `systemMessage` where `additionalContext` is
+  unshown), round-tripped against fixtures that cite their source
+  (`internal/harness/testdata/codecs`); both descriptors ship `unverified`
+  with the 60-day demotion clock started 2026-09-02.
+- **`fathom init --harness=codex|gemini-cli`** writes the fathom hook
+  entries into the repo's `.codex/hooks.json` / the `hooks` key of
+  `.gemini/settings.json` (ms timeouts) through the wiring engine with a
+  receipt `fleet undo` reverses, generates a wired-but-unverified stanza
+  naming the harness's trust step, and prints the `mcp add` line; the
+  `cursor` and `copilot` data rows (`--harness=cursor|copilot`) write stanza
+  and skills only and say `hooks: not wired`.
+- **`fathom doctor --harness codex|gemini-cli`** adds a `harness_hooks` row
+  that reads the descriptor's hook files and reports present/missing
+  entries as `skipped: unverified` — never PASS; an unparsable file is
+  named, not counted absent.
+- **`fathom harness ladder [--url BASE] [--json]`** prints the tier B/C/D
+  rows (Windsurf, OpenCode, Amp, Zed/ACP, Junie, Warp, Continue, Aider):
+  instruction file, skills path, MCP config and `mcp add` line, the honest
+  "no injection here" line and each row's source.
 - **`task bench-home` / `bench-lookup`** run the context-bench with three
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are

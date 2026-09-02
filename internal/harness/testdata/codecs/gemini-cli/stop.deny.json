@@ -1,0 +1,6 @@
+// source: https://geminicli.com/docs/hooks/reference/ (google-gemini/gemini-cli docs/hooks/reference.md e09410b 2026-04-10; index.md a4318f2), fetched 2026-09-02; release v0.58.0 — the "Block" example, verbatim — the shape fathom NEVER emits (§5.3 inject-only; AfterAgent deny would force a retry)
+{
+  "decision": "deny",
+  "reason": "Security Policy: Potential secret detected in content.",
+  "systemMessage": "🔒 Security scanner blocked operation"
+}

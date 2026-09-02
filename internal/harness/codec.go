@@ -65,6 +65,10 @@ func CodecFor(id string) (Codec, bool) {
 	switch d.Codec {
 	case "claude":
 		return ClaudeCodec(), true
+	case "codex":
+		return CodexCodec(), true
+	case "gemini":
+		return GeminiCodec(), true
 	}
 	return nil, false
 }

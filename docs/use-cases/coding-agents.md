@@ -248,7 +248,7 @@ numbers and tool-kill decisions run on clean data.
 
 ## Maintained
 
-CLI: `fathom init` (`--skills`, `--harness`), `harness` (`list`/`capabilities` — the
+CLI: `fathom init` (`--skills`, `--harness`), `harness` (`list`/`capabilities`/`ladder` — the
 registry every hook verb's `--harness` names, ADR-029), `ingest`, `compile`, `layers`
 (`list`/`show`/`install` — see `docs/layers.md`), `verify` (`--quiet`, `--strict`, `--require-all`),
 `instrument`, `edit-hook` (`--pre`), `stop-hook`, `doctor`, `gen-plan-cue`,

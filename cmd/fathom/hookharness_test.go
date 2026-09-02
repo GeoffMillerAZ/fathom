@@ -22,12 +22,19 @@ func TestResolveHookHarness(t *testing.T) {
 		t.Fatalf("explicit claude-code: ok=%v", ok)
 	}
 
+	for _, id := range []string{harness.Codex, harness.GeminiCLI} {
+		errb.Reset()
+		if c, ok := resolveHookHarness(id, &errb); !ok || c.ID() != id || errb.Len() != 0 {
+			t.Fatalf("%s: wave-2 codec must resolve silently: ok=%v stderr=%q", id, ok, errb.String())
+		}
+	}
+
 	errb.Reset()
-	if _, ok := resolveHookHarness(harness.Codex, &errb); ok {
-		t.Fatal("codex has no codec in wave 1; must not resolve")
+	if _, ok := resolveHookHarness("cursor", &errb); ok {
+		t.Fatal("cursor is a data row with no codec; must not resolve")
 	}
 	if lines := strings.Count(strings.TrimSpace(errb.String()), "\n") + 1; lines != 1 || !strings.Contains(errb.String(), "not wired") {
-		t.Errorf("codex: want ONE stderr line naming the unwired codec, got %q", errb.String())
+		t.Errorf("cursor: want ONE stderr line naming the unwired codec, got %q", errb.String())
 	}
 
 	errb.Reset()

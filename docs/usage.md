@@ -809,6 +809,7 @@ write-if-absent scaffolds `~/.fathom/config.toml`.
 
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \
+  [--harness claude-code|codex|gemini-cli|cursor|copilot|agents|none] \
   [--skills[=claude|codex|all]] [--seed-user-ignore]
 ```
 
@@ -820,6 +821,7 @@ fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin
 | `--bin` | `os.Executable()`, symlink-resolved | fathom binary path baked into the hook commands |
 | `--skills` | omit = skip | Install the shipped agent skills (`fathom-activate`, `-custodian`, `-doctor`, `-feedback`, `-impact`, `-onboard`, `-plan`, `-rewire`, `-verify`) for `claude`, `codex`, or `all` (bare `--skills` = all) |
 | `--seed-user-ignore` | off | Seed `~/.fathom/ignore` with machine-junk defaults; prints exactly what it writes |
+| `--harness` | `claude-code` | Which registry descriptor's vehicles to write (ADR-029): `claude-code` (hooks into `.claude/settings.json`), `codex` (hooks into the repo's `.codex/hooks.json`, run after `/hooks` trust), `gemini-cli` (hooks into the repo's `.gemini/settings.json`, ms timeouts), `cursor` / `copilot` (data rows: stanza + skills, no hook file), `agents` (AGENTS.md + MCP), `none` (stanza + `.fathom/` only). Non-Claude descriptors are *unverified on this machine*; every one prints its own `mcp add` line and never writes a user-global file; a descriptor 60 days unverified after its codec landed is refused |
 
 Exit `0` — fully wired and the daemon confirms the service is indexed; exit `2` — wiring
 is complete but the daemon is unreachable or the service still shows zero symbols
@@ -850,12 +852,12 @@ strictly read-only: it never writes a file, calls a mutating MCP tool, or restar
 anything.
 
 ```sh
-fathom doctor [--harness claude|codex|auto] [--path <dir>] [--service <id>] [--url <base>] [--json]
+fathom doctor [--harness claude|codex|gemini-cli|cursor|copilot|agents|auto] [--path <dir>] [--service <id>] [--url <base>] [--json]
 ```
 
 | Flag | Default | Description |
 |---|---|---|
-| `--harness` | `auto` | `claude`, `codex`, or `auto` (detects from `.claude/settings.json`/`~/.claude.json` vs `.codex/config.toml`, defaulting to `claude` with no evidence either way) |
+| `--harness` | `auto` | `claude`, `codex`, any other registry id (`fathom harness list`), or `auto` (detects from each descriptor's presence markers in registry order — `.claude/settings.json`/`~/.claude.json`, `.codex/config.toml`, `.gemini/settings.json`, … — defaulting to `claude` with no evidence). A non-Claude harness adds the `harness_hooks` row, which reads the descriptor's hook files and reports `skipped: unverified` — never PASS |
 | `--path` | cwd | Repo root to diagnose |
 | `--service` | resolved from `--path` | Service ID — the same identity `fathom init` resolves |
 | `--url` | `http://localhost:7575` | fathom `serve-http` base URL |

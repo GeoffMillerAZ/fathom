@@ -1,0 +1,11 @@
+// source: https://geminicli.com/docs/hooks/reference/ (google-gemini/gemini-cli docs/hooks/reference.md e09410b 2026-04-10; index.md a4318f2), fetched 2026-09-02; release v0.58.0 — base schema + AfterAgent prompt, prompt_response, stop_hook_active; CONSTRUCTED from the documented field names (the docs show no full JSON example; per-tool tool_input shapes are UNSHOWN — file_path is the built-in write_file/replace argument name, docs/tools/file-system)
+{
+  "session_id": "sess-1",
+  "transcript_path": "/home/user/.gemini/tmp/hash/chats/session.json",
+  "cwd": "/home/user/project",
+  "hook_event_name": "AfterAgent",
+  "timestamp": "2026-09-02T07:01:00Z",
+  "prompt": "fix the tests",
+  "prompt_response": "done",
+  "stop_hook_active": false
+}

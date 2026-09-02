@@ -211,9 +211,14 @@ func TestCodecFor(t *testing.T) {
 	if c, ok := CodecFor(ClaudeCode); !ok || c.ID() != ClaudeCode {
 		t.Error("claude-code must have a codec")
 	}
-	for _, id := range []string{Codex, GeminiCLI, Agents, "nope", ""} {
+	for _, id := range []string{Codex, GeminiCLI} {
+		if c, ok := CodecFor(id); !ok || c.ID() != id {
+			t.Errorf("%q must have its wave-2 codec", id)
+		}
+	}
+	for _, id := range []string{"cursor", "copilot", Agents, "nope", ""} {
 		if _, ok := CodecFor(id); ok {
-			t.Errorf("%q must have no codec in wave 1", id)
+			t.Errorf("%q must have no codec (data row / pull tier / unknown)", id)
 		}
 	}
 }

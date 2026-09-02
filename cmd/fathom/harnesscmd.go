@@ -18,7 +18,7 @@ import (
 
 func cmdHarness(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json]")
+		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json] | ladder [--url BASE] [--json]")
 		return 1
 	}
 	switch args[0] {
@@ -26,10 +26,36 @@ func cmdHarness(args []string, stdout, stderr io.Writer) int {
 		return cmdHarnessList(args[1:], stdout, stderr)
 	case "capabilities":
 		return cmdHarnessCapabilities(args[1:], stdout, stderr)
+	case "ladder":
+		return cmdHarnessLadder(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities | ladder)\n", args[0])
 		return 1
 	}
+}
+
+// cmdHarnessLadder prints the tier B/C/D rows (HP-22): the harnesses
+// fathom reaches with stanza + MCP + skills and no injection, each with
+// its instruction file, skills path, MCP config, `mcp add` line, the
+// honest "no injection here" line and the primary source it was read from.
+func cmdHarnessLadder(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("harness ladder", stderr)
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL filled into each row's mcp add line")
+	jsonOut := fs.Bool("json", false, "emit the rows as JSON")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *jsonOut {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(harness.LadderRows()); err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+	fmt.Fprint(stdout, harness.RenderLadderTable(*url))
+	return 0
 }
 
 // cmdHarnessList prints one line per registry descriptor (or the exported
