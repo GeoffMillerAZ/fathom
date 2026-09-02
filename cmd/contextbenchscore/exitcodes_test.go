@@ -122,6 +122,11 @@ func TestCmdLedger_ExitCodes(t *testing.T) {
 			if r.CorpusSHA256 == "" || r.ModelID != "claude-x" || r.CostUSD == 0 || len(r.PerTask) == 0 {
 				t.Errorf("row must carry corpus hash, model id, cost, per-task outcomes: %+v", r)
 			}
+			// PB-10: the reliability figures ride on every paired row,
+			// whatever the verdict — they are reported, never gating.
+			if r.Reliability == nil || r.CISuccessDiff == nil || r.CISuccessDiff.Tasks != r.Tasks || r.BootstrapSeed == 0 {
+				t.Errorf("row must carry ci_success_diff over its paired tasks and the seed: %+v", r.Reliability)
+			}
 			// With -env compiled-layer T3 was intended and never ran: 2 arms ×
 			// 3 trials lost, plus whatever the case left out.
 			if r.CellsLost < 6 {

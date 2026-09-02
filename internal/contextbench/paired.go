@@ -304,6 +304,10 @@ type Criterion struct {
 	// memory (LeakedTasks). Registered beside the criterion, before the
 	// run, so the exclusion cannot be shaped by the data.
 	LeakRule *LeakRule `json:"leak_rule,omitempty"`
+	// Reliability, when present, seeds the reported figures
+	// (ComputeReliability, PB-10). Evaluate does not read it: the figures
+	// are reported, never gating.
+	Reliability *ReliabilityConfig `json:"reliability,omitempty"`
 }
 
 // Scoring modes a criterion may name.

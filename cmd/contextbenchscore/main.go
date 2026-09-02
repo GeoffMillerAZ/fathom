@@ -383,6 +383,21 @@ func cmdLedger(args []string) int {
 	row.DirtyTree = *dirty
 	row.CellsLost = cellsLost
 	row.LeakedTasks = leaked
+	// Reported, never gating (PB-10): the verdict above is already fixed;
+	// the figures describe how much evidence stands behind it. A run with
+	// no paired task has nothing to resample and carries none.
+	if paired.Tasks > 0 {
+		var rcfg contextbench.ReliabilityConfig
+		if criterion.Reliability != nil {
+			rcfg = *criterion.Reliability
+		}
+		rel, err := contextbench.ComputeReliability(paired, rcfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+			return 2
+		}
+		row.Reliability = &rel
+	}
 	ids := map[string]bool{}
 	for _, r := range results {
 		if r.ModelID != "" {
