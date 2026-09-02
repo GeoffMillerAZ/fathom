@@ -219,7 +219,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkGatePosture(harness),
 		checkStanzaPresent(root),
-		checkSkillsInstalled(root, harness),
+		checkAgentsSkills(root, harness), // RP-3: doctor_skills.go
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
