@@ -72,6 +72,8 @@ func checkConcern(root string, files []string, filesErr error, c Concern, env au
 		return checkHandoffCitesInstruments(root, c, env)
 	case KindADRReferencesResolve:
 		return checkADRReferencesResolve(root, c)
+	case KindWiringCurrent:
+		return checkWiringCurrent(root, c, env)
 	default:
 		// The loader refuses unknown kinds; reaching here means a caller
 		// constructed a Check by hand. Same honesty either way.

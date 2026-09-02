@@ -112,6 +112,11 @@ func attentionLine(projDir string, now time.Time) string {
 	if n := violatedConcernCount(projDir); n > 0 {
 		parts = append(parts, fmt.Sprintf("config %d", n))
 	}
+	// PC-30: a drifted hook, stanza, MCP entry or owned skill is the one
+	// thing a session must hear before it trusts its own wiring.
+	if frag := wiringDriftAttention(projDir); frag != "" {
+		parts = append(parts, frag)
+	}
 	if frag := intentAttentionFragment(projDir, now); frag != "" {
 		parts = append(parts, frag)
 	}

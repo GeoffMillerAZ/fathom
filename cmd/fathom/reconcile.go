@@ -55,6 +55,12 @@ type wiringDiff struct {
 	// reports them and writes nothing to those files.
 	DriftedStanzas []string `json:"drifted_stanzas,omitempty"`
 	SettingsNote   string   `json:"settings_note,omitempty"` // unreadable / absent
+	// PC-28: drift across MCP server entries and fathom-owned skill files
+	// ("kind path [target] — why"), files that could not be read, and
+	// entries with no baseline yet (recorded on --apply, never merged).
+	WiringDrift      []string `json:"wiring_drift,omitempty"`
+	WiringUnreadable []string `json:"wiring_unreadable,omitempty"`
+	WiringUnrecorded []string `json:"wiring_unrecorded,omitempty"`
 }
 
 // staleFathomPath matches an absolute path ending in /fathom (optionally
@@ -162,6 +168,17 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// (dirname only as a daemon-unreachable fallback) so a repo that chose
 	// a different id is neither falsely flagged nor rewritten wrongly.
 	d.StaleStanzas, d.RemarkStanzas, d.DriftedStanzas = staleStanzaFiles(root, d.Service)
+
+	// PC-28: MCP entries and owned skills against their recorded baselines
+	// (hooks and stanzas are already covered by the plan above).
+	home := wiringDriftHome()
+	ledger, lerr := wiring.LoadLedger(root)
+	if lerr != nil {
+		ledger = wiring.NewLedger()
+	}
+	rep := wiring.DriftMCP(ledger, mcpFilesFor(root, home, nil), nil)
+	rep.Merge(wiring.DriftSkills(ledger, ownedSkillFiles(root, home), nil))
+	d.WiringDrift, d.WiringUnreadable, d.WiringUnrecorded = rep.Lines(), rep.Unreadable, rep.Unrecorded
 	return d
 }
 
@@ -310,6 +327,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("fleet reconcile", stderr)
 	apply := fs.Bool("apply", false, "apply the safe subset (shim repoint + additive template merge); dry-run otherwise")
+	rebaseline := fs.Bool("rebaseline", false, "with --apply: re-record the baseline digest of a DRIFTED MCP entry or owned skill (the change is yours) — fathom never merges the entry itself")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (repo discovery)")
 	var repos repeatedFlag
 	fs.Var(&repos, "repo", "repo root to reconcile (repeatable; default: every daemon service with a local path)")
@@ -354,8 +372,8 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	blockedFiles := map[string]bool{}
 	for _, root := range roots {
 		d := analyzeWiringFor(root, svcByRoot[root])
-		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0
-		if !hasDrift && len(d.RemarkStanzas) == 0 {
+		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
+		if !hasDrift && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
 		}
@@ -394,9 +412,24 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if d.SettingsNote != "" {
 			fmt.Fprintf(stdout, "  note:    %s\n", d.SettingsNote)
 		}
+		for _, w := range d.WiringDrift {
+			fmt.Fprintf(stdout, "  DRIFT:   %s (fathom will not merge; --apply --rebaseline records the new baseline if the change is yours)\n", w)
+		}
+		for _, u := range d.WiringUnreadable {
+			fmt.Fprintf(stdout, "  unread:  %s (may carry drift — not counted as current)\n", u)
+		}
 
 		if !*apply {
 			continue
+		}
+		if len(d.WiringUnrecorded) > 0 || (*rebaseline && len(d.WiringDrift) > 0) {
+			recorded, rerr := recordWiringBaselines(root, nil, wiringDriftHome(), time.Now().UTC().Format("2006-01-02"), *rebaseline)
+			if rerr != nil {
+				fmt.Fprintf(stdout, "  apply failed (baselines): %v\n", rerr)
+			}
+			for _, r := range recorded {
+				fmt.Fprintf(stdout, "  recorded: baseline digest for %s (.fathom/owned.json)\n", r)
+			}
 		}
 		// Safe subset as ONE plan → apply (law 15): the stanza regions
 		// fathom owns and the hook entries, in one receipt per repository.

@@ -585,7 +585,7 @@ func checkLoopCustodian(now time.Time) flywheelCheck {
 		return c
 	}
 	violated := 0
-	for _, f := range custodian.Audit(root, concerns) {
+	for _, f := range custodian.Audit(root, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator)) {
 		if f.Status == custodian.StatusViolated {
 			violated++
 		}

@@ -69,6 +69,12 @@ const (
 	// it cost a panel to find by hand. A repo with no decision records is
 	// unable-to-check, never violated.
 	KindADRReferencesResolve CheckKind = "adr_references_resolve"
+
+	// KindWiringCurrent (PC-30, vision 26 §1.4): nothing fathom trusts —
+	// hooks, stanza regions, MCP server entries, owned skills — changed
+	// since fathom recorded it. Files only; the evaluator is injected
+	// (WithWiringDrift) and its absence is unable-to-check.
+	KindWiringCurrent CheckKind = "wiring_current"
 )
 
 // KnownKinds lists the accepted kinds in sorted order, for refusal
@@ -81,6 +87,7 @@ var KnownKinds = []CheckKind{
 	KindMaxLines,
 	KindPointersResolve,
 	KindStanzaToolsServed,
+	KindWiringCurrent,
 }
 
 // DefaultHandoffDays is the handoff_cites_instruments window when a

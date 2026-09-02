@@ -277,6 +277,8 @@ func validateCheck(id string, ck *Check) []error {
 	case KindADRReferencesResolve:
 		// no fields: the corpus is every doc that cites decisions, and the
 		// record set is whichever home the repo actually has
+	case KindWiringCurrent:
+		// no fields: the evaluator is injected by cmd/fathom (WithWiringDrift)
 	case KindHandoffCitesInstruments:
 		if ck.Days == 0 {
 			ck.Days = DefaultHandoffDays

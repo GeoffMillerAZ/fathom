@@ -221,6 +221,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkGatePosture(harness),
 		checkStanzaPresent(root),
 		checkSkillsInstalled(root, harness),
+		checkWiringDrift(root, harness), // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
