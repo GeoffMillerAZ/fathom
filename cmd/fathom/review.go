@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -215,10 +216,19 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		recordReviewSupersedeEvents(ctx, c, supersededOK, resolve, time.Now, stderr)
 	}
 
+	// BD-5 (docs/plans/blast-depth.md): the same test_impact composition
+	// review_diff emits (internal/mcp's reviewTestGap → impact.TestGap),
+	// over the same inputs, so the CLI mirror names affected tests and the
+	// test gap too — --json carries the identical block, text gets
+	// renderTestGap.
+	gap := impact.TestGap(in.Nodes, in.ChangedFiles, in.TypedEdges)
+
 	if *jsonOut {
+		payload := v.Payload(persisted)
+		payload["test_impact"] = gap.Payload()
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		if err := enc.Encode(v.Payload(persisted)); err != nil {
+		if err := enc.Encode(payload); err != nil {
 			fmt.Fprintf(stderr, "error: encode JSON: %v\n", err)
 			return 1
 		}
@@ -226,7 +236,32 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	}
 
 	printReviewSummary(stdout, v)
+	renderTestGap(stdout, gap)
 	return 0
+}
+
+// renderTestGap prints the test-impact block after the dimension summary
+// (BD-5): the tests that statically reach the change (run these), each
+// with its file:line and the changed symbols it reaches, then the changed
+// symbols no test reaches (the gap — unprotected code, cited so a reviewer
+// can open it). An unchecked result prints its reason, mirroring the
+// dimension lines' own "[ ] … reason:" shape.
+func renderTestGap(w io.Writer, gap impact.TestGapResult) {
+	if !gap.Checked {
+		fmt.Fprintf(w, "[ ] test_impact: not checked\n    reason: %s\n", gap.Reason)
+		return
+	}
+	fmt.Fprintf(w, "[x] test_impact: %d affected test(s), %d changed symbol(s) with no test\n", len(gap.AffectedTests), len(gap.Gap))
+	for _, t := range gap.AffectedTests {
+		via := ""
+		if t.ViaDispatch {
+			via = " via interface dispatch"
+		}
+		fmt.Fprintf(w, "  - run %s (%s) reaches %s%s\n", t.Test, t.Citation, strings.Join(t.Reaches, ", "), via)
+	}
+	for _, s := range gap.Gap {
+		fmt.Fprintf(w, "  - gap %s (%s): no test reaches it\n", s.Symbol, s.Citation)
+	}
 }
 
 // buildReviewInputFromClient does every I/O review.Run itself never

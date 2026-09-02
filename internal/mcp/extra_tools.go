@@ -100,7 +100,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "Compute the blast radius of a set of changed files: symbols defined in those files plus every transitive caller, with affected test functions and file paths.",
+		Description: "Compute the blast radius of a set of changed files: symbols defined in those files plus every transitive caller, with affected test functions and file paths, and by_depth — the same symbols grouped by distance from the change (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence resolved (typed pass) or heuristic (syntax-only).",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -139,6 +139,10 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			"symbols": stringsToAny(result.Symbols),
 			"tests":   stringsToAny(result.Tests),
 			"files":   stringsToAny(result.Files),
+			// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
+			// by distance from the changed files, each labeled with the
+			// confidence of the edge that pulled it in.
+			"by_depth": blastRadiusByDepth(nodes, p.ChangedFiles, typed),
 		}, nil
 	})
 }
@@ -184,9 +188,10 @@ func registerDiffImpact(s *Server, backend QueryInterface) {
 		typed, _ := backend.TypedEdges(ctx, p.Service)
 		result := impact.DiffImpactWithTypedEdges(nodes, p.ChangedFiles, typed)
 		return map[string]any{
-			"symbols": stringsToAny(result.Symbols),
-			"tests":   stringsToAny(result.Tests),
-			"files":   stringsToAny(result.Files),
+			"symbols":  stringsToAny(result.Symbols),
+			"tests":    stringsToAny(result.Tests),
+			"files":    stringsToAny(result.Files),
+			"by_depth": blastRadiusByDepth(nodes, p.ChangedFiles, typed), // BD-3, identical to blast_radius
 		}, nil
 	})
 }
@@ -852,7 +857,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 	}
 	s.registerTool(toolDescriptor{
 		Name:        "ingest",
-		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index.",
+		Description: "Re-ingest the named service to refresh the symbol store; pass path (absolute repo root) to onboard a NEW service into the index. Hash-gated: a clean repo is a sub-second no-op, so call it at session start and after every commit. Reach for it when staleness_report or a stale-index warning says the index lags the working tree. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1049,7 +1054,7 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
-		Description: "Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly.",
+		Description: "Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. Reach for it when you need the shape of a service you have never seen — the most-connected symbols first, within a token budget. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1099,7 +1104,7 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 func registerPackContext(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "pack_context",
-		Description: "Pack ranked evidence items (from QuerySymbols) into a token budget, returning the highest-scoring items that fit.",
+		Description: "Pack the concern-ranked evidence items for one service into a token budget, returning the highest-scoring items that fit (id, text, score) plus what was dropped. Reach for it when you are assembling context for a task and want the most relevant symbols under a fixed token cost instead of a raw listing. Required: service, concern.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

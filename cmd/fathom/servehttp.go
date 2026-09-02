@@ -364,6 +364,12 @@ func newHTTPHandler(srv *mcp.Server, c *client.Client, selfAddr string) http.Han
 		// Background, not r.Context(): a client disconnect must not cancel a
 		// long-running ingest mid-flight. The scope carries the surface.
 		ctx := mcp.WithOrigin(mcp.WithRequestScope(context.Background(), surface, true), r.Header.Get("X-Fathom-Origin"))
+		// MCP-Protocol-Version (2025-06-18+ Streamable HTTP): clients send
+		// the negotiated revision on every post-initialize request. It is
+		// TOLERATED here (RP-12) — never a 400 — and answered with the
+		// revision this server would negotiate for it, so a client can see
+		// the server's choice on every response, not only on initialize.
+		w.Header().Set("MCP-Protocol-Version", mcp.NegotiateProtocolVersion(r.Header.Get("MCP-Protocol-Version")))
 		resp, hasResp := srv.HandleRequest(ctx, raw)
 		if !hasResp {
 			// Notification — no response body.

@@ -180,7 +180,7 @@ func registerMemoryTools(s *Server, backend QueryInterface) {
 		// Every byte of this schema is paid by every connected session
 		// (BA-7's schema tax): keep it terse; docs/mcp-tools.md carries
 		// the full contract.
-		Description: "Anchored memories: claims bound to symbols/files/globs/commits, each WITH its evidence tier and read-time state (fresh | suspect = anchor changed since confirmation, tier dropped a step); retired never appear. Order: tier, specificity, id.",
+		Description: "Anchored memories: claims bound to symbols/files/globs/commits, each WITH its evidence tier and read-time state (fresh | suspect = anchor changed since confirmation, tier dropped a step); retired never appear. Order: tier, specificity, id. Reach for it when you want what earlier sessions recorded about a file or symbol, labeled with how much the code has drifted since. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

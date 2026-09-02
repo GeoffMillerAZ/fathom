@@ -127,6 +127,41 @@ func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 		registryNames[n] = true
 	}
 
+	// RP-10/RP-11 (docs/plans/reach-parity.md): every agent-surface tool
+	// serves ToolAnnotations (the four hints, all booleans) and an
+	// outputSchema, and docs/mcp-tools.md's "Protocol contract" section
+	// documents both — the served contract and the doc drift together or
+	// not at all.
+	onAgent := map[string]bool{}
+	for _, n := range mcp.AgentSurfaceTools() {
+		onAgent[n] = true
+	}
+	for _, raw := range resp["result"].(map[string]any)["tools"].([]any) {
+		e := raw.(map[string]any)
+		name, _ := e["name"].(string)
+		if !onAgent[name] {
+			continue
+		}
+		ann, ok := e["annotations"].(map[string]any)
+		if !ok {
+			t.Errorf("%s: agent-surface tool served without annotations", name)
+			continue
+		}
+		for _, k := range []string{"readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint"} {
+			if _, isBool := ann[k].(bool); !isBool {
+				t.Errorf("%s: annotation %s missing or not boolean", name, k)
+			}
+		}
+		if _, ok := e["outputSchema"].(map[string]any); !ok {
+			t.Errorf("%s: agent-surface tool served without outputSchema", name)
+		}
+	}
+	for _, want := range []string{"## Protocol contract", "`readOnlyHint`", "`outputSchema`", "`structuredContent`", "`MCP-Protocol-Version`"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("docs/mcp-tools.md lacks %q — the served protocol contract must be documented", want)
+		}
+	}
+
 	var undocumented, stale []string
 	for n := range registryNames {
 		if !docNames[n] {

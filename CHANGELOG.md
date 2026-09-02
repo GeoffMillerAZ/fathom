@@ -34,6 +34,26 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **`docs/bench/public-loc.md`** is the public-corpus runbook: pin, derive,
   snapshot into a scratch store, run, score, publish transcripts, the cost
   statement, and criterion H2-2 registered before run 1.
+- **Blast depth (BD-1..5).** `find_callers` and `references` rows carry
+  `depth` and `edge_confidence` (`resolved` = typed pass, `heuristic` =
+  syntax-only; `core.EdgeConfidenceOf`) with a `by_depth` summary, and
+  `find_callers` takes an optional `depth` that adds `transitive_callers`;
+  `blast_radius`/`diff_impact` add `by_depth`. `review_diff` and `fathom
+  review` compose `test_impact` — `affected_tests` (cited file:line) and
+  `test_gap` (changed symbols no test reaches). All fields additive.
+- **Served MCP contract (RP-9..13).** Every agent-surface tool description
+  names its own required arguments and a "Reach for it when" sentence; the
+  17 tools serve `annotations` (readOnly/destructive/idempotent/openWorld
+  hints) and a generated `outputSchema`, and `tools/call` returns
+  `structuredContent`; `initialize` echoes the client's protocol version
+  from a supported table (`2025-11-25` … `2024-11-05`) instead of the
+  hard-coded `2024-11-05`, the `MCP-Protocol-Version` header is tolerated
+  and echoed, `tools/list` is sorted by name, and `capabilities` reports
+  `schema_bytes`. `TestServeHTTPNegotiatesWithKitClient` proves `/rpc/agent`
+  against agentic-kit's Streamable-HTTP client. The agent surface's
+  per-session schema budget grows from ~12.4 KB to 28.7 KB (16.0 KB from
+  the description sentences, the rest from annotations + outputSchema);
+  `TestNarrowProfileSchemaBytes` is re-pinned to that measurement.
 - **`task bench-home` / `bench-lookup`** run the context-bench with three
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are

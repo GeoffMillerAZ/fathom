@@ -1147,7 +1147,20 @@ fathom review --service <id> --since <git-ref> [--store DB] [--no-persist] [--bu
 ```
 
 CLI mirror of the `review_diff` MCP tool: diff impact + obligations/findings
-+ architecture conformance + spec coverage in one cited verdict. Persists
++ architecture conformance + spec coverage in one cited verdict, followed by
+the test-impact block (BD-5, `docs/plans/blast-depth.md`) — the `Test*`
+functions that statically reach a changed symbol (`run …`, cited file:line,
+with the symbols each reaches) and the changed symbols no test reaches
+(`gap …`):
+
+```
+[x] test_impact: 2 affected test(s), 1 changed symbol(s) with no test
+  - run svc::pkg.TestFoo (pkg/a_test.go#L1-L1) reaches svc::pkg.A, svc::pkg.B
+  - gap svc::pkg.Orphan (pkg/orphan.go#L1-L1): no test reaches it
+```
+
+`--json` carries the same block as `test_impact` (`{checked, reason?,
+affected_tests, test_gap}`), identical to `review_diff`'s. Persists
 the deterministic-oracle findings to the claims store unless `--no-persist`
 (the pre-push summary hook uses it). `--budget-seconds` is advisory — on
 excess it prints a named skip and exits 0; it requires `--no-persist` (a
@@ -1401,7 +1414,12 @@ Claude Code will launch the `fathom serve-mcp` process and communicate over stdi
 
 ### Any MCP-compatible client (stdio)
 
-Pipe JSON-RPC 2.0 messages to the `serve-mcp` process:
+Pipe JSON-RPC 2.0 messages to the `serve-mcp` process. `initialize` echoes
+your `protocolVersion` when it is one of `2025-11-25`, `2025-06-18`,
+`2025-03-26`, `2024-11-05`, and answers `2025-11-25` otherwise; every
+agent-surface tool in `tools/list` carries `annotations` and an
+`outputSchema`, and `tools/call` returns `structuredContent` beside the text
+block (`docs/mcp-tools.md` § Protocol contract):
 
 ```sh
 # Initialize

@@ -56,7 +56,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 	s.registerTool(toolDescriptor{
 		Name: "obligations",
 		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules the shared cap dropped this call; displaced_repo/displaced_module split it once a binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. " +
-			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier.",
+			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), or to record a verdict on a served claim. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

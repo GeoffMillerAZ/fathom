@@ -24,3 +24,10 @@ func (s *Server) GroupOfForTest(name string) ToolGroup {
 	}
 	return ""
 }
+
+// ValidateAgainstSchemaForTest exposes validateAgainstSchema (RP-11) so the
+// mcp_test live-result test can check every agent-surface tool's
+// structuredContent against the outputSchema tools/list advertised.
+func ValidateAgainstSchemaForTest(schema map[string]any, v any) string {
+	return validateAgainstSchema("$", schema, v)
+}

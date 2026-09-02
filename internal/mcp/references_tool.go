@@ -17,7 +17,7 @@ import (
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. Returns structured occurrences (heuristic text matches, tier=pre-scan) plus symbol definitions found in the index (tier=verified/pre-scan from the symbol's own evidence tier).",
+		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -112,6 +112,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 			File    string `json:"file"`
 			Line    int    `json:"line"`
 			Tier    string `json:"tier"`
+			// Depth/EdgeConfidence (BD-2): a definition is depth 0; its
+			// confidence is the index's own evidence tier (verified =
+			// resolved, anything weaker = heuristic).
+			Depth          int    `json:"depth"`
+			EdgeConfidence string `json:"edge_confidence"`
 		}
 		type occEntry struct {
 			Service string `json:"service"`
@@ -119,6 +124,12 @@ func registerReferences(s *Server, backend QueryInterface) {
 			Line    int    `json:"line"`
 			Text    string `json:"text"`
 			Tier    string `json:"tier"`
+			// Depth/EdgeConfidence (BD-2): a mention is depth 1 — one hop
+			// from the definition; resolved only when the symbol enclosing
+			// the mention has a TYPED call edge to a definition of the
+			// query in the same service, heuristic for a bare text match.
+			Depth          int    `json:"depth"`
+			EdgeConfidence string `json:"edge_confidence"`
 		}
 
 		var defs []defEntry
@@ -131,6 +142,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 			if err != nil {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: "references: list symbols " + svc + ": " + err.Error()}
 			}
+			var defKeys []string
 			for _, n := range nodes {
 				isDef := false
 				if n.Name == p.Query {
@@ -146,13 +158,20 @@ func registerReferences(s *Server, backend QueryInterface) {
 					if tier == "" {
 						tier = string(core.TierVerified)
 					}
+					conf := core.EdgeConfidenceHeuristic
+					if tier == string(core.TierVerified) {
+						conf = core.EdgeConfidenceResolved
+					}
 					defs = append(defs, defEntry{
-						Service: svc,
-						Symbol:  n.Name,
-						File:    n.FilePath,
-						Line:    n.Line,
-						Tier:    tier,
+						Service:        svc,
+						Symbol:         n.Name,
+						File:           n.FilePath,
+						Line:           n.Line,
+						Tier:           tier,
+						Depth:          0,
+						EdgeConfidence: string(conf),
 					})
+					defKeys = append(defKeys, n.Key())
 				}
 			}
 
@@ -169,17 +188,32 @@ func registerReferences(s *Server, backend QueryInterface) {
 			if err != nil {
 				return nil, &rpcError{Code: ErrCodeParams, Message: "references: " + err.Error()}
 			}
+			// Typed-edge confirmation for mentions (BD-2): built lazily,
+			// only when this service has both definitions of the query and
+			// typed edges to confirm a mention against.
+			var mentionConf func(file string, line int) core.EdgeConfidence
+			if len(defKeys) > 0 && len(found) > 0 {
+				if typed, tErr := backend.TypedEdges(ctx, svc); tErr == nil && len(typed) > 0 {
+					mentionConf = mentionConfidence(nodes, typed, defKeys)
+				}
+			}
 			for _, occ := range found {
 				if len(occs) >= maxOccs {
 					truncated = true
 					break
 				}
+				conf := core.EdgeConfidenceHeuristic
+				if mentionConf != nil {
+					conf = mentionConf(occ.File, occ.Line)
+				}
 				occs = append(occs, occEntry{
-					Service: svc,
-					File:    occ.File,
-					Line:    occ.Line,
-					Text:    occ.Text,
-					Tier:    string(core.TierPreScan),
+					Service:        svc,
+					File:           occ.File,
+					Line:           occ.Line,
+					Text:           occ.Text,
+					Tier:           string(core.TierPreScan),
+					Depth:          1,
+					EdgeConfidence: string(conf),
 				})
 			}
 		}
@@ -192,12 +226,23 @@ func registerReferences(s *Server, backend QueryInterface) {
 		occs, el := applyBudget(occs, budgetDefaults("references", s.budgets),
 			"service order, then source-scan order",
 			"re-call with a larger budget, narrow \"services\", or tighten the query")
+		// by_depth counts what the caller sees: every definition plus the
+		// occurrences that survived BOTH caps (maxOccs above, the budget
+		// here), so the summary never claims rows the response elided.
+		infos := make([]depthInfo, 0, len(defs)+len(occs))
+		for _, d := range defs {
+			infos = append(infos, depthInfo{Depth: d.Depth, Confidence: core.EdgeConfidence(d.EdgeConfidence)})
+		}
+		for _, o := range occs {
+			infos = append(infos, depthInfo{Depth: o.Depth, Confidence: core.EdgeConfidence(o.EdgeConfidence)})
+		}
 		resp := map[string]any{
 			"query":       p.Query,
 			"definitions": defs,
 			"occurrences": occs,
 			"count":       len(occs),
 			"truncated":   truncated || el != nil,
+			"by_depth":    withDepthBuckets(infos),
 		}
 		if el != nil {
 			resp["elided"] = el

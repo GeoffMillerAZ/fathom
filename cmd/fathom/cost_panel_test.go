@@ -16,9 +16,18 @@ import (
 // surface without a measured case (§4 point 2) pushes past this and fails
 // the build; the lower bound catches the opposite defect — an empty or
 // broken surface silently reading as "cheap".
+//
+// Re-pinned 2026-09-02 for the served contract (docs/plans/reach-parity.md
+// RP-9..RP-11), measured on the same 17 tools: 15,980 bytes with the
+// per-tool "Reach for it when …" / "Required: …" sentences (RP-9) and
+// 28,705 bytes with annotations (RP-10) and generated outputSchema (RP-11)
+// on top — the schema budget more than doubled, and that number is the
+// price of a contract a non-Claude client can machine-check; the
+// capabilities tool now reports it live as schema_bytes so the next change
+// is measured too. The band below brackets that measurement, not a hope.
 const (
-	agentSurfaceSchemaByteFloor   = 10000
-	agentSurfaceSchemaByteCeiling = 12500
+	agentSurfaceSchemaByteFloor   = 26000
+	agentSurfaceSchemaByteCeiling = 30000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

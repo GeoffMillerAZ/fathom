@@ -8,6 +8,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/scope"
@@ -91,9 +92,18 @@ func registerBuiltins(s *Server) {
 
 // ─── built-in handlers ───────────────────────────────────────────────────────
 
-func (s *Server) handleInitialize(_ context.Context, _ json.RawMessage) (any, *rpcError) {
+// handleInitialize answers the legacy-era handshake (RP-12, docs/plans/
+// reach-parity.md): the client's protocolVersion is echoed when it is in
+// supportedProtocolVersions, otherwise the newest supported revision is
+// offered (negotiateProtocolVersion) — never an error, so a client on any
+// revision learns what this server speaks and can decide for itself.
+func (s *Server) handleInitialize(_ context.Context, params json.RawMessage) (any, *rpcError) {
+	var p struct {
+		ProtocolVersion string `json:"protocolVersion"`
+	}
+	_ = json.Unmarshal(params, &p) // absent/malformed params negotiate as "" → newest supported
 	return map[string]any{
-		"protocolVersion": "2024-11-05",
+		"protocolVersion": negotiateProtocolVersion(p.ProtocolVersion),
 		"capabilities": map[string]any{
 			"tools":     map[string]any{"listChanged": false},
 			"resources": map[string]any{"listChanged": false},
@@ -111,18 +121,47 @@ func (s *Server) handlePing(_ context.Context, _ json.RawMessage) (any, *rpcErro
 }
 
 func (s *Server) handleToolsList(ctx context.Context, _ json.RawMessage) (any, *rpcError) {
+	return map[string]any{"tools": s.toolsListEntries(ctx)}, nil
+}
+
+// toolsListEntries renders the request's visible tools as the MCP
+// tools/list entries: name, description, inputSchema, and — for every
+// classified tool — annotations (RP-10) and outputSchema (RP-11). The
+// order is pinned to ascending name (RP-12): registration order was
+// already deterministic, but a client that hashes or diffs the list (the
+// kit client pins per-tool hashes; a doc renderer diffs the whole list)
+// deserves an order that does not move when a registration call moves.
+func (s *Server) toolsListEntries(ctx context.Context) []any {
 	descs := s.visibleToolsCtx(ctx)
-	// Convert to []any for JSON serialisation so the output matches the MCP
-	// spec (array of objects with name/description/inputSchema).
+	sort.Slice(descs, func(i, j int) bool { return descs[i].Name < descs[j].Name })
 	tools := make([]any, len(descs))
 	for i, d := range descs {
-		tools[i] = map[string]any{
+		entry := map[string]any{
 			"name":        d.Name,
 			"description": d.Description,
 			"inputSchema": d.InputSchema,
 		}
+		if ann := toolAnnotations(d.Name); ann != nil {
+			entry["annotations"] = ann
+		}
+		if out := outputSchemaFor(d.Name); out != nil {
+			entry["outputSchema"] = out
+		}
+		tools[i] = entry
 	}
-	return map[string]any{"tools": tools}, nil
+	return tools
+}
+
+// toolsListBytes is the serialised size of this request's tools/list —
+// the per-session schema budget every MCP-connected client pays before
+// any work happens (TD-2's diet, reported by the capabilities tool as
+// schema_bytes so growth is measured, not guessed).
+func (s *Server) toolsListBytes(ctx context.Context) int {
+	b, err := json.Marshal(map[string]any{"tools": s.toolsListEntries(ctx)})
+	if err != nil {
+		return 0
+	}
+	return len(b)
 }
 
 func (s *Server) handleToolsCall(ctx context.Context, params json.RawMessage) (any, *rpcError) {
@@ -307,6 +346,14 @@ func (s *Server) handleToolsCallWithCtx(ctx context.Context, params json.RawMess
 		"content": []any{
 			map[string]any{"type": "text", "text": string(b)},
 		},
+	}
+	// RP-11: the same result as structuredContent (MCP 2025-06-18+) so a
+	// client can validate it against the advertised outputSchema without
+	// re-parsing the text block. Only object-shaped results qualify —
+	// 2025-11-25 restricts structuredContent to a JSON object — and the
+	// text block stays the canonical copy older clients read.
+	if len(b) > 0 && b[0] == '{' {
+		envelope["structuredContent"] = json.RawMessage(b)
 	}
 	if suppressed := collector.Render(); suppressed != nil {
 		envelope["suppressed"] = suppressed
