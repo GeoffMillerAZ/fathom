@@ -80,6 +80,20 @@ first-match-wins). A file the connector could not read is named by
 `fathom ingest` (`read-failed: N file(s)`, exit 1), never a clean 0 — a
 `test_reaches` failure right after a degraded ingest is an ingest problem.
 
+## Where the verifies are recorded — the ledger and its origins
+
+Every verify run appends one row per plan to `~/.fathom/verify-ledger.jsonl`
+(`FATHOM_VERIFY_LEDGER` overrides). Rows carry `origin` (PC-22): `cli` for
+`fathom verify` (including the pre-push gate), `stop` for the Stop hook's
+session-end pass, and `claim-moment` for the PostToolUse edit hook — which
+runs this same engine for ONE plan the moment an edit adds a `[x]` to a
+depth-1 `docs/plans/*.md` and injects the refusal as `additionalContext`
+(silent on a clean claim, on an edit that claims nothing new, and on any
+operational failure). A `claim-moment` row with `failing > 0` is the gate
+catching a false claim at the keystroke, before the Stop hook or the push
+gate ever saw it; rows written before the field exist without it and are
+origin-unknown, never assumed `cli`.
+
 ## Computed progress: `fathom plans status` / `fathom plans next`
 
 State here is always **derived from the index**, never asserted — that's the

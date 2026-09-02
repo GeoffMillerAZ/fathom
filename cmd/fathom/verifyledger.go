@@ -41,11 +41,25 @@ type verifyLedgerRow struct {
 	DaemonCommit string `json:"daemon_commit,omitempty"`
 	StoreCommit  string `json:"store_commit,omitempty"`
 	BinaryCommit string `json:"binary_commit,omitempty"`
+	// Origin names which path ran the verify (vision 26 §4, PC-22):
+	// "cli" (`fathom verify`, incl. the pre-push gate), "stop" (the Stop
+	// hook), "claim-moment" (the PostToolUse edit hook on a newly checked
+	// [x]). Additive; rows written before the field are origin-unknown,
+	// never backfilled as cli.
+	Origin string `json:"origin,omitempty"`
 }
 
 // verifyLedgerSchemaVersion: 1 = counts + tree commit; 2 adds the
-// provenance triple above (additive — v1 rows still parse).
+// provenance triple and the origin above (additive — v1 rows still parse).
 const verifyLedgerSchemaVersion = 2
+
+// The three verify origins. PC-26's pre-registered reading counts rows
+// with verifyOriginClaimMoment whose Failing > 0.
+const (
+	verifyOriginCLI         = "cli"
+	verifyOriginStop        = "stop"
+	verifyOriginClaimMoment = "claim-moment"
+)
 
 // gitHeadShort returns the short HEAD sha of root, or "" — absence over
 // failure, this is telemetry.
@@ -69,11 +83,18 @@ func verifyLedgerPath() string {
 }
 
 func appendVerifyLedger(planFiles []string, service string, reports []verify.Report, prov verifyProvenance) {
+	root, _ := os.Getwd()
+	appendVerifyLedgerFrom(verifyOriginCLI, root, planFiles, service, reports, prov)
+}
+
+// appendVerifyLedgerFrom is appendVerifyLedger with an explicit origin and
+// repo root — the hooks run from wherever the harness put them, so the
+// root is the project dir they resolved, never their cwd.
+func appendVerifyLedgerFrom(origin, root string, planFiles []string, service string, reports []verify.Report, prov verifyProvenance) {
 	path := verifyLedgerPath()
 	if path == "" || len(planFiles) != len(reports) {
 		return
 	}
-	root, _ := os.Getwd()
 	commit := gitHeadShort(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return
@@ -88,7 +109,7 @@ func appendVerifyLedger(planFiles []string, service string, reports []verify.Rep
 	for i, rep := range reports {
 		row := verifyLedgerRow{
 			SchemaVersion: verifyLedgerSchemaVersion, At: at, RepoRoot: root, Service: service,
-			Plan: planFiles[i], Commit: commit,
+			Plan: planFiles[i], Commit: commit, Origin: origin,
 			DaemonCommit: prov.DaemonCommit, StoreCommit: prov.StoreCommit, BinaryCommit: prov.BinaryCommit,
 		}
 		for _, tv := range rep.Tasks {

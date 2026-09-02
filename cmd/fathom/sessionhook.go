@@ -39,6 +39,9 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// run, because it owns the loud arm announcement AND the session
 	// decrement (see the arm branch below). Exiting here was the bug that
 	// let an OFF arm run indefinitely without ever spending its budget.
+	if ev := sessionHookEventArg(args); ev != "" {
+		return cmdSessionHookEvent(ev, args, stdin, stderr) // PC-23: an event beat, never the primer and never the "fired" count (sessionhook_instructions.go)
+	}
 	rpcOrigin = "session-hook"
 	emitBeat("session-hook", "fired", nil)
 	fs := newFlagSet("session-hook", stderr)

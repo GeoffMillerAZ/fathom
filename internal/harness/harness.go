@@ -53,6 +53,13 @@ const (
 	CapVerifyGate          Capability = "verify-gate"
 	CapClaimGate           Capability = "claim-gate"
 	CapSessionLedger       Capability = "session-ledger"
+	// CapStanzaLoaded is harness-side evidence that an instruction file
+	// reached a session (vision 26 §4, PC-23): a silent beat on the
+	// harness's "instructions loaded" event, read by doctor stanza_loaded.
+	CapStanzaLoaded Capability = "stanza-loaded"
+	// CapConfigAudit is the custodian audit run on a config change
+	// (vision 26 §4, PC-24): a beat and an attention line, never a block.
+	CapConfigAudit Capability = "config-audit"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -61,6 +68,7 @@ var Capabilities = []Capability{
 	CapPrime, CapObligationsPostEdit, CapGuardPreEdit, CapGuardPreShell,
 	CapDiscoveryObserve, CapStopVerify, CapDepositSessionEnd, CapDepositPreCompact,
 	CapMCPTools, CapSkills, CapStanza, CapVerifyGate, CapClaimGate, CapSessionLedger,
+	CapStanzaLoaded, CapConfigAudit,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -88,6 +96,12 @@ const (
 	EventStop         Event = "stop"
 	EventSessionEnd   Event = "session-end"
 	EventPreCompact   Event = "pre-compact"
+	// EventInstructionsLoaded fires when the harness loads an instruction
+	// file (Claude Code: InstructionsLoaded); observability only.
+	EventInstructionsLoaded Event = "instructions-loaded"
+	// EventConfigChange fires when a harness configuration file changes
+	// mid-session (Claude Code: ConfigChange).
+	EventConfigChange Event = "config-change"
 )
 
 // ToolClass normalizes a harness's tool names (vision 25 §2.1): the guard

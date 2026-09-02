@@ -256,27 +256,14 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 			return 0, nil // other operational errors (daemon down, bad response) → silent
 		}
 		verifiedAny = true
-		verdictByID := map[string]verify.TaskVerdict{}
-		for _, tv := range rep.Tasks {
-			verdictByID[tv.TaskID] = tv
-		}
-		for _, id := range newly {
-			tv, ok := verdictByID[id]
-			if !ok || tv.Status != verify.Fail {
-				continue // Unknown never fires the hook — fail-open honesty
-			}
-			detail := tv.Label
-			for _, c := range tv.Criteria {
-				if c.Status == verify.Fail {
-					detail = fmt.Sprintf("%s: %s", c.Name, c.Detail)
-					break
-				}
-			}
-			complaints = append(complaints, fmt.Sprintf("%s [%s] %s — %s", rel, tv.TaskID, tv.Title, detail))
-			recordStoryRow(projDir, "verify-catch", map[string]any{
-				"plan": rel, "task": tv.TaskID, "title": tv.Title, "detail": detail,
-			})
-		}
+		// PC-22: every hook verify leaves a ledger row with its origin,
+		// so the claim-moment reading (PC-26) and the stop-hook reading
+		// are separable — best effort, never part of the verdict.
+		appendVerifyLedgerFrom(verifyOriginStop, projDir, []string{rel}, service, []verify.Report{rep},
+			verifyLedgerProvenance(hc, baseURL, "", service))
+		// Unknown never fires the hook — fail-open honesty (claimRefusals,
+		// shared with the claim-moment path in edithook_claim.go).
+		complaints = append(complaints, claimRefusals(projDir, rel, newly, rep)...)
 	}
 	var catches *int
 	if verifiedAny {

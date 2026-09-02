@@ -26,8 +26,16 @@ type HookInput struct {
 	Trigger  string
 	ToolName string
 	Tool     ToolClass
+	// FilePath is the edited file on tool events (tool_input.file_path)
+	// and the loaded or changed file on the instructions-loaded and
+	// config-change events (top-level file_path).
 	FilePath string
 	Command  string
+	// MemoryType and LoadReason are the instructions-loaded event's own
+	// fields (Claude Code: "User"|"Project"|"Local"|"Managed";
+	// session_start|nested_traversal|path_glob_match|include|compact).
+	MemoryType string
+	LoadReason string
 	// ReEntrant is Claude Code's stop_hook_active: the stop hook is already
 	// continuing the session and must not loop.
 	ReEntrant bool
@@ -97,6 +105,11 @@ type claudeEnvelope struct {
 		Command  string `json:"command"`
 	} `json:"tool_input"`
 	StopHookActive bool `json:"stop_hook_active"`
+	// InstructionsLoaded / ConfigChange carry file_path at the top level
+	// (hooks reference §7.2, §7.11), beside memory_type and load_reason.
+	FilePath   string `json:"file_path"`
+	MemoryType string `json:"memory_type"`
+	LoadReason string `json:"load_reason"`
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -117,6 +130,14 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		FilePath:       env.ToolInput.FilePath,
 		Command:        env.ToolInput.Command,
 		ReEntrant:      env.StopHookActive,
+		MemoryType:     env.MemoryType,
+		LoadReason:     env.LoadReason,
+	}
+	if ev == EventInstructionsLoaded || ev == EventConfigChange {
+		// Only these two events document a top-level file_path; a tool
+		// event's file lives under tool_input, and the fallback is never
+		// crossed (a field the documentation does not show is not read).
+		in.FilePath = env.FilePath
 	}
 	return in, nil
 }

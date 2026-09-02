@@ -251,8 +251,9 @@ numbers and tool-kill decisions run on clean data.
 CLI: `fathom init` (`--skills`, `--harness`), `harness` (`list`/`capabilities` — the
 registry every hook verb's `--harness` names, ADR-029), `ingest`, `compile`, `layers`
 (`list`/`show`/`install` — see `docs/layers.md`), `verify` (`--quiet`, `--strict`, `--require-all`),
-`instrument`, `edit-hook` (`--pre`), `stop-hook`, `doctor`, `gen-plan-cue`,
-`config` (incl. `config audit`), `capabilities`, `thread` (`brief`/`note`/
+`instrument`, `edit-hook` (`--pre`; the claim-moment verify on a plan `[x]`),
+`stop-hook`, `doctor` (its stanza-loaded row reads the InstructionsLoaded beats), `gen-plan-cue`,
+`config` (incl. `config audit` and `config audit --hook`), `capabilities`, `thread` (`brief`/`note`/
 `point`/`list`/`close`/`promote`/`handoff`), `rate`, `providers`, `smoke`.
 Hidden verbs — dispatched and answering `fathom <verb> -h`, but absent from
 the `fathom help` table (`cmd/fathom/main.go` printUsage): `session-hook`,

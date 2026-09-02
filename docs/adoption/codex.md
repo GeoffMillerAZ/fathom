@@ -307,8 +307,10 @@ documented gap, never an emulation.
 | `skills` | `pull` | unverified on this machine — `.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin |
 | `stanza` | `stanza` | unverified on this machine |
 | `verify-gate` | `gate` | unverified on this machine |
-| `claim-gate` | `absent` | unverified on this machine — not built (vision 26 §4) |
+| `claim-gate` | `absent` | unverified on this machine — no PostToolUse hook is wired by this build; the pre-push verify gate is the backstop (vision 26 §4) |
 | `session-ledger` | `absent` | unverified on this machine — unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it |
+| `stanza-loaded` | `absent` | unverified on this machine — no instructions-loaded event is documented; the stanza check reads the file, not the harness |
+| `config-audit` | `absent` | unverified on this machine — run `fathom config audit` by hand; no config-change event is documented |
 <!-- fathom:harness-capabilities codex end -->
 
 What the rows mean beside Claude Code's (`fathom harness capabilities

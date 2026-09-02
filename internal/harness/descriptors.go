@@ -96,6 +96,20 @@ var claudeCode = Descriptor{
 			Output: withKey(withKey(claudeContextOut, "block", "decision"), "reason", "reason"),
 			Note:   "advisory by default; {\"decision\":\"block\"} only behind --block",
 		},
+		// Vision 26 §4 (PC-23, PC-24): two additive rows AFTER the pre-seam
+		// eight, so the first eight stay byte-identical to what every wired
+		// repository carries (TestLookupClaudeCodeReproducesHookTable pins
+		// the prefix; TestClaudeHookTableAdditions pins these).
+		{
+			Capability: CapStanzaLoaded, Event: EventInstructionsLoaded, Harness: "InstructionsLoaded", Matcher: "", Verb: "session-hook --event instructions-loaded", Marker: "fathom session-hook --event instructions-loaded", TimeoutSec: 5, Vehicle: VehicleHookSilent,
+			Input: withKey(withKey(withKey(claudeCommonIn, "file_path", "file_path"), "memory_type", "memory_type"), "load_reason", "load_reason"),
+			Note:  "observability only: exit code and JSON output are ignored; no matcher, so every load_reason (session_start|nested_traversal|path_glob_match|include|compact) is recorded",
+		},
+		{
+			Capability: CapConfigAudit, Event: EventConfigChange, Harness: "ConfigChange", Matcher: "", Verb: "config audit --hook", Marker: "fathom config audit --hook", TimeoutSec: 10, Vehicle: VehicleHookSilent,
+			Input: withKey(withKey(claudeCommonIn, "source", "source"), "file_path", "file_path"),
+			Note:  "never blocks: a block surfaces no message anywhere in the harness; the beat is the record and the next session line carries the count",
+		},
 	},
 	Tools: map[string]ToolClass{
 		"Edit": ToolFileEdit, "Write": ToolFileEdit, "MultiEdit": ToolFileEdit,
@@ -115,8 +129,10 @@ var claudeCode = Descriptor{
 		CapSkills:              VehiclePull,
 		CapStanza:              VehicleStanza,
 		CapVerifyGate:          VehicleGate,
-		CapClaimGate:           VehicleAbsent,
+		CapClaimGate:           VehicleHookInject,
 		CapSessionLedger:       VehicleHookSilent,
+		CapStanzaLoaded:        VehicleHookSilent,
+		CapConfigAudit:         VehicleHookSilent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:             "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -124,8 +140,10 @@ var claudeCode = Descriptor{
 		CapDepositSessionEnd: "writes one thread item; injects nothing",
 		CapDepositPreCompact: "writes one thread pointer; injects nothing",
 		CapSkills:            "`.claude/skills/<name>/SKILL.md` (+ `.agents/skills`)",
-		CapClaimGate:         "not built (vision 26 §4)",
+		CapClaimGate:         "the PostToolUse edit hook verifies a depth-1 docs/plans/*.md the moment an edit adds a [x] and injects the refusal; silent on a clean claim (vision 26 §4)",
 		CapSessionLedger:     "the Stop hook reads the Claude transcript; measurement only",
+		CapStanzaLoaded:      "InstructionsLoaded writes one silent beat {file_path, memory_type, load_reason}; doctor stanza_loaded reads it",
+		CapConfigAudit:       "ConfigChange runs `fathom config audit --hook`: one beat, an attention line next session, never a block",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open (§5.3)",
@@ -230,8 +248,10 @@ var codex = Descriptor{
 		CapDepositSessionEnd:   "`fathom thread note` before ending a session",
 		CapDepositPreCompact:   "documented PreCompact contract, not wired",
 		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin",
-		CapClaimGate:           "not built (vision 26 §4)",
+		CapClaimGate:           "no PostToolUse hook is wired by this build; the pre-push verify gate is the backstop (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it",
+		CapStanzaLoaded:        "no instructions-loaded event is documented; the stanza check reads the file, not the harness",
+		CapConfigAudit:         "run `fathom config audit` by hand; no config-change event is documented",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all",
 	GatePosture: "fail-open outside exit 2; hooks not wired by this build (wave 2) — the git-native verify gate is the only enforcement",
@@ -329,8 +349,10 @@ var geminiCLI = Descriptor{
 		CapDepositPreCompact:   "documented PreCompress contract, not wired",
 		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); the alias takes precedence over .gemini/skills",
 		CapStanza:              "GEMINI.md natively; AGENTS.md only via settings context.fileName",
-		CapClaimGate:           "not built (vision 26 §4)",
+		CapClaimGate:           "no AfterTool hook is wired by this build; the pre-push verify gate is the backstop (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12): no instrument reads a Gemini transcript",
+		CapStanzaLoaded:        "no instructions-loaded event is documented; the stanza check reads the file, not the harness",
+		CapConfigAudit:         "run `fathom config audit` by hand; no config-change event is documented",
 	},
 	FailMode:    "fail-open: any exit other than 0 or 2 is a warning and the action proceeds; any non-JSON byte on stdout is Allow with the whole output shown as systemMessage; exit 2 blocks with stderr as the reason; SessionEnd and PreCompress are not awaited",
 	GatePosture: "fail-open; hooks not wired by this build (wave 2) — the git-native verify gate is the only enforcement",
@@ -382,8 +404,10 @@ var agents = Descriptor{
 		CapDepositSessionEnd:   "`fathom thread note` before ending a session",
 		CapDepositPreCompact:   "no injection here",
 		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`)",
-		CapClaimGate:           "not built (vision 26 §4)",
+		CapClaimGate:           "no hooks; the pre-push verify gate is the backstop (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12)",
+		CapStanzaLoaded:        "no hooks; the stanza check reads the file, not the harness",
+		CapConfigAudit:         "run `fathom config audit` by hand",
 	},
 	FailMode:    "no hook mechanism: nothing to fail",
 	GatePosture: "no hooks — the git-native verify gate is the only enforcement",
@@ -416,6 +440,8 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapVerifyGate:          VehicleGate,
 		CapClaimGate:           VehicleAbsent,
 		CapSessionLedger:       VehicleAbsent,
+		CapStanzaLoaded:        VehicleAbsent,
+		CapConfigAudit:         VehicleAbsent,
 	}
 }
 

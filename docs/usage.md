@@ -533,8 +533,14 @@ dir (`$CLAUDE_PROJECT_DIR`, else cwd) to a service, and prints a one-line `addit
 — or an honest "daemon down / repo not indexed" signal. Always exits 0; never stalls startup.
 
 ```sh
-fathom session-hook [--url http://localhost:7575] [--dir <project-dir>]
+fathom session-hook [--url http://localhost:7575] [--dir <project-dir>] [--event instructions-loaded]
 ```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--url` | `http://localhost:7575` | fathom `serve-http` base URL |
+| `--dir` | `$CLAUDE_PROJECT_DIR`, else cwd | Project dir to resolve the service from |
+| `--event` | off | Record a harness event instead of priming the session. `instructions-loaded` (the **InstructionsLoaded** hook, PC-23) writes one silent `instructions-loaded/loaded` beat `{file_path, memory_type, load_reason, session}` to `~/.fathom/hooks.jsonl` and prints nothing — the harness-side evidence `fathom doctor`'s `stanza_loaded` row reads. Never counts as a session start |
 
 Wire it into `~/.claude/settings.json` (alongside any existing SessionStart hook):
 
@@ -600,6 +606,13 @@ fathom stop-hook [--url http://localhost:7575] [--block]
 |---|---|---|
 | `--url` | `defaultFathomURL()` | fathom `serve-http` base URL |
 | `--block` | `false` | Block session end on a disproven claim instead of just surfacing it |
+
+Every plan it verifies leaves a `~/.fathom/verify-ledger.jsonl` row with
+`origin: stop` (PC-22); `fathom verify` rows carry `origin: cli`, and the
+edit hook's claim-moment rows carry `origin: claim-moment` — the PostToolUse
+`edit-hook` runs the same verify for one plan the moment an edit adds a
+`[x]` to a depth-1 `docs/plans/*.md` and injects the refusal (silent on a
+clean claim or any operational failure).
 
 ---
 
@@ -888,7 +901,10 @@ unstamped binary; never compared to the repo's HEAD), `hooks_installed` (any set
 them but the call log shows them firing, the verdict names that contradiction instead
 of a duplicate-installing remedy) / `hooks_firing` (both Claude Code only — Codex
 reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
-(harness-agnostic), `stanza_present`, `skills_installed`, `wiring_drift` (PC-29: hooks,
+(harness-agnostic), `stanza_present`, `stanza_loaded` (the harness-side twin
+of `stanza_present`, PC-25: PASS when an `InstructionsLoaded` beat names this
+repo's `CLAUDE.md`/`AGENTS.md`, SKIP naming the wiring date when none does —
+never FAIL), `skills_installed`, `wiring_drift` (PC-29: hooks,
 stanza regions, each harness's MCP server entry — argv and env/header NAMES, never values —
 and `fathom:owned` skill files against the digests in `.fathom/owned.json`; PASS at zero
 drift naming any entry without a baseline yet, FAIL naming each drift by kind and path,
@@ -970,8 +986,15 @@ legacy items are never hidden. The continuity-thread bet itself is
 ### `config audit` — the config custodian (vision 22, "instructed means true")
 
 ```sh
-fathom config audit [--repo .] [--json]
+fathom config audit [--repo .] [--json] [--format text|json|sarif] [--hook [--harness claude-code]]
 ```
+
+`--hook` is the harness **ConfigChange** hook (PC-24): it reads the event
+envelope from stdin, audits the changed repo, writes one
+`custodian/config-change` beat `{source, file_path, result, violated}` and
+exits `0` always — never a block (a block on that event surfaces no message
+anywhere in the harness); the next session's attention line carries the
+violated count.
 
 Audits registered concerns (`~/.fathom/concerns.cue` user defaults;
 `.fathom/concerns.cue` repo scope, governs) against the repo: per-concern
