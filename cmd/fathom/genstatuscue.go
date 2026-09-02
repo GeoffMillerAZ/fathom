@@ -91,7 +91,7 @@ func cmdGenStatusCue(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-status-cue", stderr)
 	planPath := fs.String("plan", "", "path to plan file (.cue, .json, or .md checklist) (required)")
 	service := fs.String("service", "", "service ID (required)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	output := fs.String("output", "workspace/artifacts/STATUS.cue", "output path for STATUS.cue")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 

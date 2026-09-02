@@ -191,12 +191,19 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		// (which caches per HEAD) is the place that resolves it.
 	})
 
+	// PC-5: measured-stale rows are named by count on this row too — a
+	// reader must see that part of the picture is a coverage gap.
+	staleNote := ""
+	if n := countMeasuredStale(rows); n > 0 {
+		staleNote = fmt.Sprintf("; measured-stale %d (a stale daemon's reading — coverage gap, not failure)", n)
+	}
+
 	if len(a.Unproven) == 0 {
 		reason := "no unproven claims from the sources that could be computed"
 		if len(a.Uncomputable) > 0 {
 			reason += "; NOT COMPUTED: " + strings.Join(a.Uncomputable, "; ")
 		}
-		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: reason + staleNote}
 	}
 
 	kinds := renderClaimKinds(a.ByKind)
@@ -215,12 +222,25 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		}
 		reason += fmt.Sprintf("; NOT COMPUTED (%d, first: %s)", n, head)
 	}
+	reason += staleNote
 	return doctorCheck{
 		Name:   name,
 		Status: doctorWarn, // never a FAIL: honest debt is not a broken repo
 		Reason: reason,
 		Remedy: "fathom intent audit  # every claim with its remedy, and every source it could not compute",
 	}
+}
+
+// countMeasuredStale is the number of plan-row states markMeasuredStale
+// flagged (PC-5).
+func countMeasuredStale(rows []intent.PlanRowState) int {
+	n := 0
+	for _, r := range rows {
+		if r.MeasuredStale {
+			n++
+		}
+	}
+	return n
 }
 
 func renderClaimKinds(by map[string]int) string {

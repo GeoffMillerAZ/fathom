@@ -25,7 +25,7 @@ func TestVerifyLedgerAppendsAndReads(t *testing.T) {
 		{TaskID: "T-2", Claimed: true, Status: verify.Fail},
 		{TaskID: "T-3"},
 	}}
-	appendVerifyLedger([]string{"docs/plans/x.md"}, "svc", []verify.Report{rep})
+	appendVerifyLedger([]string{"docs/plans/x.md"}, "svc", []verify.Report{rep}, verifyProvenance{})
 
 	rows := readVerifyLedger()
 	if len(rows) != 1 {

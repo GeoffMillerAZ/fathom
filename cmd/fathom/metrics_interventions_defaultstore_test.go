@@ -21,7 +21,11 @@ import (
 func TestInterventionsDefaultsStorePath(t *testing.T) {
 	_, projectDir := withIsolatedConfigHome(t)
 
-	storePath := filepath.Join(projectDir, defaultStorePath)
+	_ = projectDir
+	// PC-15 / I31: the default is resolved (repo workspace/ or ~/.fathom),
+	// never the bare cwd — withIsolatedConfigHome chdirs into a non-git
+	// temp dir with HOME isolated, so this lands under that HOME.
+	storePath := defaultStorePath()
 	if err := os.MkdirAll(filepath.Dir(storePath), 0o755); err != nil {
 		t.Fatal(err)
 	}

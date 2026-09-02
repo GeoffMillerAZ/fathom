@@ -30,4 +30,8 @@ concerns: {
 		why:   "INC-14: a design declared itself adopted under a record nobody had written"
 		check: {kind: "adr_references_resolve"}
 	}
+	wiring_current: {
+		want:  "hooks, stanza regions, MCP server entries and owned skills match the digests fathom recorded"
+		check: {kind: "wiring_current"}
+	}
 }

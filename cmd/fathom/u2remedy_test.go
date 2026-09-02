@@ -55,7 +55,7 @@ func TestU2RemedyMatchesCounter(t *testing.T) {
 	ledger := filepath.Join(root, "verify-ledger.jsonl")
 	t.Setenv("FATHOM_VERIFY_LEDGER", ledger)
 	cwd, _ := os.Getwd()
-	appendVerifyLedger([]string{planPath}, "svc", []verify.Report{rep})
+	appendVerifyLedger([]string{planPath}, "svc", []verify.Report{rep}, verifyProvenance{})
 	rows, _ := planRowStates(cwd)
 	var u2 []intent.PlanRowState
 	for _, r := range rows {

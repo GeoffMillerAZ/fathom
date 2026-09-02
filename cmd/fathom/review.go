@@ -45,13 +45,13 @@ func cmdReview(args []string, stdout, stderr io.Writer) int {
 
 func runReview(args []string, gitRunner func(args ...string) ([]byte, error), stdout, stderr io.Writer) int {
 	fs := newFlagSet("review", stderr)
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	service := fs.String("service", "", "service ID (required)")
 	since := fs.String("since", "", "git ref to diff against (required; e.g. origin/main)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable summary")
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
 	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
-	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

@@ -426,6 +426,17 @@ func planRowStates(root string) ([]intent.PlanRowState, string) {
 	if stale > 0 {
 		note = fmt.Sprintf("%d of %d plan readings predate HEAD", stale, len(plans))
 	}
+	// PC-5: rows whose reading came from a stale daemon leave U1/U2 and
+	// are counted as coverage gaps by the audit (intent.auditPlanRows).
+	fathomTree, _ := fathomSourceTree(root)
+	if n, stalePlans := markMeasuredStale(out, newest, fathomTree); n > 0 {
+		msg := fmt.Sprintf("%d row(s) in %d plan(s) measured-stale", n, len(stalePlans))
+		if note != "" {
+			note += "; " + msg
+		} else {
+			note = msg
+		}
+	}
 	if len(out) == 0 && note != "" {
 		return nil, note
 	}

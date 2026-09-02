@@ -214,12 +214,14 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checks,
 		daemonCheck,
 		checkBinaryFresh(root),
+		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkGatePosture(harness),
 		checkStanzaPresent(root),
 		checkSkillsInstalled(root, harness),
+		checkWiringDrift(root, harness), // PC-29: hooks, stanzas, MCP entries, owned skills (doctor_wiring.go)
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
 		checkSurfaceTraffic(hc, baseURL, daemonUp, root),
@@ -559,7 +561,7 @@ func checkBinaryFresh(root string) doctorCheck {
 	}
 
 	if strings.HasPrefix(head, rev) || strings.HasPrefix(rev, head) {
-		reason := fmt.Sprintf("binary @ %s matches HEAD %s — local binary only, the daemon's installed copy is unverified", shortSHA(rev), shortSHA(head))
+		reason := fmt.Sprintf("this binary @ %s matches HEAD %s of its own source tree — this row knows only the local binary; the daemon's build is daemon_fresh's row", shortSHA(rev), shortSHA(head))
 		if dirty {
 			reason += "; vcs.modified=true (built from a locally modified tree — the stamp names the commit, not the exact code)"
 		}
@@ -569,7 +571,7 @@ func checkBinaryFresh(root string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
-	reason := fmt.Sprintf("binary @ %s does not match HEAD %s", shortSHA(rev), shortSHA(head))
+	reason := fmt.Sprintf("this binary @ %s does not match HEAD %s of its own source tree (local binary only; the daemon's build is daemon_fresh's row)", shortSHA(rev), shortSHA(head))
 	// Worktree-stamp caveat (this repo's own history — CLAUDE.md's
 	// "Dogfood" section, docs/dogfood-observations.md O3): only asserted
 	// when it can actually be verified — a linked git worktree's own .git
@@ -928,7 +930,10 @@ func editHookBeatCount(phase, target string) int {
 // this honestly returns 0 (no evidence) rather than checking the wrong
 // repo and reporting a false negative as if it were conclusive.
 func originCallCount(root, origin string) int {
-	logPath := resolveCallLogPath()
+	logPath, explicit := configuredCallLogPath()
+	if !explicit {
+		logPath = workspaceCallLogRel // PC-15: never the caller's cwd (O23)
+	}
 	if !filepath.IsAbs(logPath) {
 		if !isFathomSourceTree(root) {
 			return 0
@@ -1071,9 +1076,16 @@ func fathomServicePath(hc *http.Client, baseURL string) (string, bool) {
 // Zero candidates means neither is determinable — the caller reports that
 // honestly (skipped), never guesses a third location.
 func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, root string) []string {
-	logPath := resolveCallLogPath()
-	if filepath.IsAbs(logPath) {
+	// PC-15: the unconfigured default now resolves to an absolute path
+	// from the CALLER's cwd, which is exactly the wrong repo here (O23) —
+	// so an unconfigured log is the daemon-relative literal, joined below
+	// against roots known to be the daemon's working directory.
+	logPath, explicit := configuredCallLogPath()
+	if explicit && filepath.IsAbs(logPath) {
 		return []string{logPath}
+	}
+	if !explicit {
+		logPath = workspaceCallLogRel
 	}
 
 	var out []string

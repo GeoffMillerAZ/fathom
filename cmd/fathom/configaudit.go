@@ -58,7 +58,7 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	findings := custodian.Audit(root, concerns)
+	findings := custodian.Audit(root, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator))
 	violatedForBeat := 0
 	for _, f := range findings {
 		if f.Status == custodian.StatusViolated {
@@ -234,7 +234,7 @@ func violatedConcernCount(projDir string) int {
 		return 0
 	}
 	violated := 0
-	for _, f := range custodian.Audit(projDir, concerns) {
+	for _, f := range custodian.Audit(projDir, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator)) {
 		if f.Status == custodian.StatusViolated {
 			violated++
 		}

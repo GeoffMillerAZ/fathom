@@ -404,13 +404,13 @@ func TestAdoptionVerifyFigureMatchesLedger(t *testing.T) {
 	// Three ledger runs: two failing, one clean.
 	appendVerifyLedger([]string{"docs/plans/a.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
 		{TaskID: "T-1", Claimed: true, Status: verify.Fail},
-	}}})
+	}}}, verifyProvenance{})
 	appendVerifyLedger([]string{"docs/plans/b.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
 		{TaskID: "T-2", Claimed: true, Status: verify.Pass},
-	}}})
+	}}}, verifyProvenance{})
 	appendVerifyLedger([]string{"docs/plans/c.md"}, "svc", []verify.Report{{Tasks: []verify.TaskVerdict{
 		{TaskID: "T-3", Claimed: true, Status: verify.Fail},
-	}}})
+	}}}, verifyProvenance{})
 
 	logPath := filepath.Join(root, "calls.jsonl")
 	// A call log carrying its OWN, LARGER verdict_outcome population — if
@@ -635,8 +635,8 @@ call_log = "custom/logs/calls.jsonl"
 func TestResolveCallLogPath_FallsBackWithNoConfig(t *testing.T) {
 	withIsolatedConfigHome(t)
 	got := resolveCallLogPath()
-	if got != defaultCallLogPath {
-		t.Errorf("resolveCallLogPath() = %q, want the literal default %q", got, defaultCallLogPath)
+	if got != defaultCallLogPath() {
+		t.Errorf("resolveCallLogPath() = %q, want the resolved default %q", got, defaultCallLogPath())
 	}
 }
 

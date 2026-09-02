@@ -19,6 +19,7 @@ type auditEnv struct {
 	toolsFetch  func(daemonURL string) ([]string, error)
 	threadsPath string
 	now         func() time.Time
+	wiringDrift WiringDriftFunc
 }
 
 func newAuditEnv(opts []Option) auditEnv {

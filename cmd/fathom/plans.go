@@ -207,13 +207,16 @@ func discoverPlansForService(explicit planFlags, service, baseURL string) (files
 // accounted for (a [-] task without disposition:deferred still counts
 // somewhere; verify never silently drops state).
 type planRollup struct {
-	Plan                string `json:"plan"`
-	Total               int    `json:"total"`
-	Proven              int    `json:"proven"`
-	ClaimedUnproven     int    `json:"claimed_unproven"`
-	Open                int    `json:"open"`
-	DeferredWithTrigger int    `json:"deferred_with_trigger"`
-	SkippedOther        int    `json:"skipped_other"`
+	Plan            string `json:"plan"`
+	Total           int    `json:"total"`
+	Proven          int    `json:"proven"`
+	ClaimedUnproven int    `json:"claimed_unproven"`
+	// MeasuredStale (PC-5): claimed rows the daemon could not prove while
+	// the daemon's binary was stale — counted here, never as unproven.
+	MeasuredStale       int `json:"measured_stale,omitempty"`
+	Open                int `json:"open"`
+	DeferredWithTrigger int `json:"deferred_with_trigger"`
+	SkippedOther        int `json:"skipped_other"`
 }
 
 // rollupPlan computes one plan's rollup from its rows. Bucket precedence
@@ -224,6 +227,13 @@ type planRollup struct {
 //  4. Claimed + not Pass (Fail or Unknown) → ClaimedUnproven
 //  5. Neither claimed nor skipped ([ ] open or [~] in-progress) → Open
 func rollupPlan(planFile string, rows []planRow) planRollup {
+	return rollupPlanStale(planFile, rows, false)
+}
+
+// rollupPlanStale is rollupPlan with the PC-5 switch: when the daemon that
+// answered was measured-stale, a claimed row it did not prove is a
+// coverage gap (MeasuredStale), not ClaimedUnproven.
+func rollupPlanStale(planFile string, rows []planRow, daemonStale bool) planRollup {
 	r := planRollup{Plan: planFile, Total: len(rows)}
 	for _, row := range rows {
 		t := row.Task
@@ -233,9 +243,12 @@ func rollupPlan(planFile string, rows []planRow) planRollup {
 		case t.Skipped:
 			r.SkippedOther++
 		case t.Claimed:
-			if row.Verdict.Status == verify.Pass {
+			switch {
+			case row.Verdict.Status == verify.Pass:
 				r.Proven++
-			} else {
+			case daemonStale:
+				r.MeasuredStale++
+			default:
 				r.ClaimedUnproven++
 			}
 		default:
@@ -281,9 +294,13 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	daemonStale, staleWhy := false, ""
+	if *storePath == "" {
+		daemonStale, staleWhy = liveDaemonStale(&http.Client{Timeout: 5 * time.Second}, *url, verifyRepoRoot())
+	}
 	rollups := make([]planRollup, len(files))
 	for i, pf := range files {
-		rollups[i] = rollupPlan(pf, rowSets[i])
+		rollups[i] = rollupPlanStale(pf, rowSets[i], daemonStale)
 	}
 
 	if *jsonOut {
@@ -293,11 +310,14 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	fmt.Fprintf(stdout, "%-40s %6s %7s %17s %5s %9s %14s\n",
-		"plan", "total", "proven", "claimed-unproven", "open", "deferred", "other-skipped")
+	fmt.Fprintf(stdout, "%-40s %6s %7s %17s %14s %5s %9s %14s\n",
+		"plan", "total", "proven", "claimed-unproven", "measured-stale", "open", "deferred", "other-skipped")
 	for _, r := range rollups {
-		fmt.Fprintf(stdout, "%-40s %6d %7d %17d %5d %9d %14d\n",
-			filepath.Base(r.Plan), r.Total, r.Proven, r.ClaimedUnproven, r.Open, r.DeferredWithTrigger, r.SkippedOther)
+		fmt.Fprintf(stdout, "%-40s %6d %7d %17d %14d %5d %9d %14d\n",
+			filepath.Base(r.Plan), r.Total, r.Proven, r.ClaimedUnproven, r.MeasuredStale, r.Open, r.DeferredWithTrigger, r.SkippedOther)
+	}
+	if daemonStale {
+		fmt.Fprintf(stdout, "\nmeasured-stale: %s — claimed rows the daemon did not prove are coverage gaps, not failures (ADR-027); task deploy or restart the daemon, then re-run\n", staleWhy)
 	}
 	return 0
 }

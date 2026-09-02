@@ -442,7 +442,7 @@ func TestCheckBinaryFresh(t *testing.T) {
 		if got.Status != doctorPass {
 			t.Fatalf("got %+v, want pass", got)
 		}
-		if !strings.Contains(got.Reason, "daemon's installed copy is unverified") {
+		if !strings.Contains(got.Reason, "knows only the local binary") || !strings.Contains(got.Reason, "daemon_fresh") {
 			t.Errorf("pass must state the local-only limit: %s", got.Reason)
 		}
 		if strings.Contains(got.Reason, "vcs.modified") || strings.Contains(got.Reason, "nested") {

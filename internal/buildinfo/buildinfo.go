@@ -51,3 +51,65 @@ func Version() string {
 	})
 	return version
 }
+
+// Stamp is the producing binary's full VCS identity, for provenance
+// surfaces that must compare two binaries (vision 26 §1.1: the daemon's
+// /statusz against the CLI that reads it). Revision is the full
+// vcs.revision ("" when the binary carries none), Dirty is vcs.modified,
+// BuiltAt is vcs.time as stamped ("" when absent). Version() above is the
+// short form of the same facts.
+type Stamp struct {
+	Revision string
+	Dirty    bool
+	BuiltAt  string
+}
+
+var (
+	stampOnce sync.Once
+	stamp     Stamp
+)
+
+// Read returns the binary's Stamp; stable for the process lifetime and
+// never an error — a binary with no build info yields the zero Stamp.
+func Read() Stamp {
+	stampOnce.Do(func() {
+		bi, ok := debug.ReadBuildInfo()
+		if !ok {
+			return
+		}
+		for _, s := range bi.Settings {
+			switch s.Key {
+			case "vcs.revision":
+				stamp.Revision = s.Value
+			case "vcs.modified":
+				stamp.Dirty = s.Value == "true"
+			case "vcs.time":
+				stamp.BuiltAt = s.Value
+			}
+		}
+	})
+	return stamp
+}
+
+// SameRevision reports whether two revision strings name the same commit:
+// either may be a short prefix of the other (a 12-char ledger stamp against
+// a 40-char /statusz field), a "-dirty" suffix is ignored, and an empty
+// side is never "same" — an unknown revision matches nothing.
+func SameRevision(a, b string) bool {
+	a = trimDirty(a)
+	b = trimDirty(b)
+	if a == "" || b == "" {
+		return false
+	}
+	if len(a) > len(b) {
+		a, b = b, a
+	}
+	return b[:len(a)] == a
+}
+
+func trimDirty(s string) string {
+	if i := len(s) - len("-dirty"); i > 0 && s[i:] == "-dirty" {
+		return s[:i]
+	}
+	return s
+}

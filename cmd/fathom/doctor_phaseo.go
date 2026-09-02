@@ -167,21 +167,15 @@ func checkBindingModulesMounted(hc *http.Client, baseURL, root string, daemonUp 
 }
 
 func listMountedModuleNames(hc *http.Client, baseURL string) (map[string]bool, error) {
-	inner, err := callMCPTool(hc, baseURL, "list_modules", map[string]any{})
+	// PC-11: one caller (doctor_modules.go) that names the real reason
+	// when the tool is not registered, instead of "tool not found".
+	paths, err := moduleListForDoctor(hc, baseURL)
 	if err != nil {
 		return nil, err
 	}
-	var payload struct {
-		Modules []struct {
-			Module string `json:"module"`
-		} `json:"modules"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return nil, err
-	}
-	out := make(map[string]bool, len(payload.Modules))
-	for _, m := range payload.Modules {
-		out[m.Module] = true
+	out := make(map[string]bool, len(paths))
+	for m := range paths {
+		out[m] = true
 	}
 	return out, nil
 }
@@ -263,26 +257,7 @@ func checkBindingModuleReadiness(hc *http.Client, baseURL, root string, daemonUp
 }
 
 func mountedModulePaths(hc *http.Client, baseURL string) (map[string]string, error) {
-	inner, err := callMCPTool(hc, baseURL, "list_modules", map[string]any{})
-	if err != nil {
-		return nil, err
-	}
-	var payload struct {
-		Modules []struct {
-			Module string `json:"module"`
-			Path   string `json:"path"`
-		} `json:"modules"`
-	}
-	if err := json.Unmarshal(inner, &payload); err != nil {
-		return nil, err
-	}
-	out := make(map[string]string, len(payload.Modules))
-	for _, m := range payload.Modules {
-		if _, exists := out[m.Module]; !exists {
-			out[m.Module] = m.Path
-		}
-	}
-	return out, nil
+	return moduleListForDoctor(hc, baseURL) // PC-11
 }
 
 // resolveLocalManifest returns the local module.cue path for a mounted

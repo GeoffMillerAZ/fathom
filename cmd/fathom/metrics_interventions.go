@@ -14,12 +14,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
 
-// defaultStorePath is the literal store-path default every required-store
-// command in cmd/fathom already falls back to when unconfigured (ingest.go,
-// query.go, review.go, et al.) — the same "repo's resolved store path" that
-// resolveStorePath below layers [daemon].store over.
-const defaultStorePath = "workspace/db/fathom.sqlite"
-
 // resolveStorePath mirrors resolveCallLogPath's own default resolution
 // (instrument_adoption.go): config.toml's [daemon].store, falling back to
 // the literal default every other store-reading command already defaults
@@ -28,9 +22,9 @@ const defaultStorePath = "workspace/db/fathom.sqlite"
 func resolveStorePath() string {
 	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if err != nil {
-		return defaultStorePath
+		return defaultStorePath()
 	}
-	return firstNonEmpty(loaded.Config.Daemon.Store, defaultStorePath)
+	return firstNonEmpty(loaded.Config.Daemon.Store, defaultStorePath())
 }
 
 func cmdMetricsInterventions(args []string, stdout, stderr io.Writer) int {
@@ -38,8 +32,8 @@ func cmdMetricsInterventions(args []string, stdout, stderr io.Writer) int {
 	since := fs.Duration("since", 7*24*time.Hour, "report window, measured back from now (ignored if --from/--to given)")
 	from := fs.String("from", "", "window start, RFC3339 (must be given with --to)")
 	to := fs.String("to", "", "window end, RFC3339 (must be given with --from)")
-	storePath := fs.String("store", "", "local store path — needed only for the review-findings-superseded row; defaults to [daemon].store in config.toml, else "+defaultStorePath)
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	storePath := fs.String("store", "", "local store path — needed only for the review-findings-superseded row; defaults to [daemon].store in config.toml, else "+defaultStorePath())
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	hooksLogFlag := fs.String("hooks-log", "", "hooks beat log (JSONL); default: $FATHOM_HOOKS_LOG or ~/.fathom/hooks.jsonl")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	if err := fs.Parse(args); err != nil {

@@ -95,7 +95,7 @@ func cmdPurge(args []string, stdout, stderr io.Writer) int {
 	operands, rest := splitLeadingOperands(args)
 	fs := newFlagSet("purge", stderr)
 	service := fs.String("service", "", "service ID to purge from (REQUIRED)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	reason := fs.String("reason", "", "why this content is being destroyed (REQUIRED)")
 	dryRun := fs.Bool("dry-run", false, "resolve and report only; touch nothing")
 	yes := fs.Bool("yes", false, "confirm: this deletes data and cannot be undone")

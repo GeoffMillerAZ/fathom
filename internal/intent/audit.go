@@ -1,6 +1,7 @@
 package intent
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -80,6 +81,10 @@ type PlanRowState struct {
 	Failing    bool
 	Unknown    bool // claimed but carrying no contract
 	MeasuredAt string
+	// MeasuredStale: the reading came from a daemon whose binary was not
+	// the one that should have answered (PC-5). A coverage gap (ADR-027):
+	// the row is reported as NOT COMPUTED with its count, never as U1/U2.
+	MeasuredStale bool
 }
 
 // AuditInput is everything an audit needs beyond the corpus.
@@ -178,7 +183,13 @@ func (a *Audit) auditPlanRows(in AuditInput) {
 		a.Uncomputable = append(a.Uncomputable, "U1/U2 (plan rows): "+note)
 		return
 	}
+	stale, stalePlans := 0, map[string]bool{}
 	for _, r := range in.PlanRows {
+		if r.MeasuredStale {
+			stale++
+			stalePlans[r.Plan] = true
+			continue
+		}
 		switch {
 		case r.Failing:
 			a.Unproven = append(a.Unproven, Claim{
@@ -195,6 +206,12 @@ func (a *Audit) auditPlanRows(in AuditInput) {
 				Evidence: "verify ledger " + r.MeasuredAt,
 			})
 		}
+	}
+	if stale > 0 {
+		a.Uncomputable = append(a.Uncomputable, fmt.Sprintf(
+			"U1/U2 (plan rows): %d claimed row(s) in %d plan(s) measured-stale — the newest reading came from a daemon whose binary was not the one that verified (see the ledger's daemon_commit); a coverage gap, not a refutation (ADR-027): task deploy or restart the daemon, re-run fathom verify",
+			stale, len(stalePlans),
+		))
 	}
 }
 

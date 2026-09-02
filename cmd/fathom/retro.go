@@ -174,7 +174,7 @@ func cmdRetro(args []string, stdout, stderr io.Writer) int {
 	// story — has anyone (the hand) remedied it since?
 	concerns, loadErrs := loadConcernsBoth(root)
 	if len(loadErrs) == 0 && len(concerns) > 0 {
-		for _, f := range custodian.Audit(root, concerns) {
+		for _, f := range custodian.Audit(root, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator)) {
 			if f.Status == custodian.StatusViolated {
 				m.ViolatedNow++
 			}

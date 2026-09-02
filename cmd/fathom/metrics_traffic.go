@@ -20,7 +20,7 @@ func cmdMetricsTraffic(args []string, stdout, stderr io.Writer) int {
 	since := fs.Duration("since", 7*24*time.Hour, "report window, measured back from now (ignored if --from/--to given)")
 	from := fs.String("from", "", "window start, RFC3339 (must be given with --to)")
 	to := fs.String("to", "", "window end, RFC3339 (must be given with --from)")
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	if err := fs.Parse(args); err != nil {
 		return 1

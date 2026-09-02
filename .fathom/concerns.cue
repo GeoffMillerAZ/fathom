@@ -30,6 +30,11 @@ concerns: {
 		why:   "CC-14: the operator contract's \"instructed means true\" applied to fathom's own instructions. Daemon down, or a 200 with no tools in it, is unable-to-check, never a violation. Bare single words (obligations, references, outline, ingest) are policed only when backticked — bare they are prose, and a false violation teaches people to ignore the custodian"
 		check: {kind: "stanza_tools_served"}
 	}
+	wiring_current: {
+		want:  "nothing fathom trusts changed behind its back — the hook entries, stanza regions, MCP server entries (argv and env NAMES) and fathom-owned skill files match the digests recorded in .fathom/owned.json"
+		why:   "vision 26 §1.4: the year's worst agent incidents were failures of trust configuration, not detection. A drifted entry is reported by kind and path and never merged; an unreadable file is unable-to-check, never a violation (I38). Remedy: read the file; if the change is yours, fathom fleet reconcile --repo <root> --apply --rebaseline"
+		check: {kind: "wiring_current"}
+	}
 	completion_cites: {
 		want:  "a handoff thread note from this repo that claims shipped work cites the instrument that proves it — a commit sha (7–12 or 40 hex, letters and digits), a row id one of docs/plans/*.md carries, `fathom verify`, or a retro artifact under workspace/artifacts/retros"
 		why:   "CC-15: the operator contract's completion rule made mechanical; an uncited claim is exactly the misdirection the next session inherits. UTF-8, SHA-256, deadbeef and a bare ticket number are prose, not citations. An undated note is skipped and named. Remedy: fathom thread close <id> --why <sha|row>"

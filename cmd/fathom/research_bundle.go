@@ -81,7 +81,7 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "optional service ID to scope the underlying report to")
 	since := fs.Duration("since", 7*24*time.Hour, "report window, measured back from now")
 	root := fs.String("root", ".", "project root — .fathom/observations.md, the salt file, and --out resolve under here")
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	hooksLogFlag := fs.String("hooks-log", "", "hooks beat log (JSONL); default: $FATHOM_HOOKS_LOG or ~/.fathom/hooks.jsonl")
 	benchDirFlag := fs.String("bench-dir", "", "context-bench results directory; default: --root/"+defaultBenchDir)
 	out := fs.String("out", "", "output directory for bundle.json/bundle.md; default: --root/"+defaultResearchBundleOutDir)

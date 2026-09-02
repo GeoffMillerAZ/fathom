@@ -35,7 +35,7 @@ func checkConcerns(root string) doctorCheck {
 		}
 	}
 
-	findings := custodian.Audit(root, concerns)
+	findings := custodian.Audit(root, concerns, custodian.WithWiringDrift(wiringCurrentEvaluator))
 	var holds, unable, off int
 	var violated []custodian.Finding
 	for _, f := range findings {

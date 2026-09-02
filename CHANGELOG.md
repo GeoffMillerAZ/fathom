@@ -22,6 +22,22 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
+- **Store provenance on gate verdicts (PC-1..5, O20).** `/statusz` (schema 2)
+  carries the daemon's own `binary_commit`, `binary_dirty`, `built_at`; every
+  verify-ledger row carries `daemon_commit`, `store_commit`, `binary_commit`;
+  `fathom verify` prints one stderr `provenance:` line when the daemon's build
+  is not this binary's (never compared to the cwd's HEAD). Doctor gains
+  `daemon_fresh`; `binary_fresh` says it knows the local binary only.
+  `plans status`, `intent audit` and doctor's `unproven_claims` mark a stale
+  daemon's readings `measured-stale` — a coverage gap, never a failure.
+- **Wiring drift over MCP entries and owned skills (PC-28..30).** The law-15
+  ledger baselines each harness descriptor's MCP server entry (argv and
+  env/header NAMES, never values) and every `fathom:owned` skill file;
+  `fleet reconcile` reports drift by kind and path and never merges
+  (`--apply` records missing baselines, `--apply --rebaseline` re-records a
+  drifted one); doctor `wiring_drift` (PASS / FAIL naming each / SKIP on an
+  unreadable file), custodian kind `wiring_current`, and a `wiring drift N`
+  fragment on the session attention line.
 - **`contextbenchscore import`** derives the public Go localization corpus
   (`testdata/contextbench/tasks-public-go.json`) from pinned local
   Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) JSONL snapshots with
@@ -157,6 +173,13 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   path, naming both paths (PC-33, I30, O22); its `ok` envelope now carries
   `root`. The post-commit hook run inside such a worktree refreshes nothing and
   says which service and root it left alone.
+- Doctor's `binding_modules_mounted` / `binding_module_readiness` rows name
+  the real reason `list_modules` is absent (no `--module` store mounted)
+  instead of "tool not found" (PC-11).
+- **`-store` / `-call-log` defaults resolve under the enclosing repository's
+  `workspace/` from any subdirectory, or `~/.fathom/` outside a repository —
+  never the bare cwd (invariant I31, O11/O12).** Explicit flags,
+  `[daemon].store` / `[daemon].call_log` and `FATHOM_CALL_LOG` still win.
 - The U2 remedy in `fathom intent audit` now says what the counter does: a
   `skip:` reason does not lift U2; a symbol or a lexical oracle does
   (`TestU2RemedyMatchesCounter`).

@@ -135,6 +135,6 @@ switch turns off a reporting channel, not a capability.
 
 This doc covers: `fathom intent audit` (`--root`, `--json`, `--kind`,
 `--fresh`, `--top`), `fathom intent export --guard`, `fathom doctor`'s
-`intent` and `unproven_claims` rows, the `intent-corpus` capability, the
+`intent` and `unproven_claims` rows (incl. the measured-stale count), the `intent-corpus` capability, the
 session attention line, and `fathom fleet report`'s `unproven` column.
 Update it when these change.

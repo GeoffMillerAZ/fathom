@@ -35,7 +35,17 @@ type verifyLedgerRow struct {
 	Claimed       int    `json:"claimed"`
 	Verified      int    `json:"verified"`
 	Failing       int    `json:"failing"`
+	// Provenance (schema 2, PC-2): which daemon binary produced the
+	// verdicts, which watermark the store carried, and which CLI binary
+	// wrote the row. "" is an honest unknown (store mode, a v1 daemon).
+	DaemonCommit string `json:"daemon_commit,omitempty"`
+	StoreCommit  string `json:"store_commit,omitempty"`
+	BinaryCommit string `json:"binary_commit,omitempty"`
 }
+
+// verifyLedgerSchemaVersion: 1 = counts + tree commit; 2 adds the
+// provenance triple above (additive — v1 rows still parse).
+const verifyLedgerSchemaVersion = 2
 
 // gitHeadShort returns the short HEAD sha of root, or "" — absence over
 // failure, this is telemetry.
@@ -58,7 +68,7 @@ func verifyLedgerPath() string {
 	return filepath.Join(home, ".fathom", "verify-ledger.jsonl")
 }
 
-func appendVerifyLedger(planFiles []string, service string, reports []verify.Report) {
+func appendVerifyLedger(planFiles []string, service string, reports []verify.Report, prov verifyProvenance) {
 	path := verifyLedgerPath()
 	if path == "" || len(planFiles) != len(reports) {
 		return
@@ -77,8 +87,9 @@ func appendVerifyLedger(planFiles []string, service string, reports []verify.Rep
 	at := time.Now().UTC().Format(time.RFC3339)
 	for i, rep := range reports {
 		row := verifyLedgerRow{
-			SchemaVersion: 1, At: at, RepoRoot: root, Service: service,
+			SchemaVersion: verifyLedgerSchemaVersion, At: at, RepoRoot: root, Service: service,
 			Plan: planFiles[i], Commit: commit,
+			DaemonCommit: prov.DaemonCommit, StoreCommit: prov.StoreCommit, BinaryCommit: prov.BinaryCommit,
 		}
 		for _, tv := range rep.Tasks {
 			row.Total++
