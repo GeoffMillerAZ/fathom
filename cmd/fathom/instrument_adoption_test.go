@@ -635,8 +635,8 @@ call_log = "custom/logs/calls.jsonl"
 func TestResolveCallLogPath_FallsBackWithNoConfig(t *testing.T) {
 	withIsolatedConfigHome(t)
 	got := resolveCallLogPath()
-	if got != defaultCallLogPath {
-		t.Errorf("resolveCallLogPath() = %q, want the literal default %q", got, defaultCallLogPath)
+	if got != defaultCallLogPath() {
+		t.Errorf("resolveCallLogPath() = %q, want the resolved default %q", got, defaultCallLogPath())
 	}
 }
 

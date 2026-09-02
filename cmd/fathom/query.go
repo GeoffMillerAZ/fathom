@@ -15,7 +15,7 @@ func cmdQuery(args []string, stdout, stderr io.Writer) int {
 	concern := fs.String("concern", "", "concern ID to scope the query (required)")
 	keywords := fs.String("keywords", "", "comma-separated keywords to rank symbols")
 	top := fs.Int("top", 20, "maximum number of results to return")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

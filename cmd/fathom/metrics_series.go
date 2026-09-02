@@ -116,7 +116,7 @@ func cmdMetricsSeries(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "local store path (optional — for --bucket hour's spend numbers)")
 	service := fs.String("service", "", "service ID (used only with --store)")
 	module := fs.String("module", "", "module/layer filter (used only with --store)")
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	hooksLogFlag := fs.String("hooks-log", "", "hooks beat log (JSONL); default: $FATHOM_HOOKS_LOG or ~/.fathom/hooks.jsonl")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
 	if err := fs.Parse(rest); err != nil {

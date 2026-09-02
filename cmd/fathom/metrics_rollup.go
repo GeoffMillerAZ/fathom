@@ -32,7 +32,7 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "local store path (optional — omit to skip the spend/review-superseded rows)")
 	service := fs.String("service", "", "service ID (used only with --store)")
 	module := fs.String("module", "", "module/layer filter (used only with --store)")
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	hooksLogFlag := fs.String("hooks-log", "", "hooks beat log (JSONL); default: $FATHOM_HOOKS_LOG or ~/.fathom/hooks.jsonl")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human summary")
 	if err := fs.Parse(args); err != nil {
@@ -104,7 +104,7 @@ func cmdMetricsRollupBuild(args []string, stdout, stderr io.Writer) int {
 // overwritten or merged).
 func cmdMetricsRotate(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("metrics rotate", stderr)
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	keepDays := fs.Int("keep-days", 90, "lines older than this many days (by their own ts field) are candidates for archiving")
 	apply := fs.Bool("apply", false, "actually archive the matched lines (default: dry-run report only)")
 	if err := fs.Parse(args); err != nil {

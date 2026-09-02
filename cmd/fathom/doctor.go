@@ -929,7 +929,10 @@ func editHookBeatCount(phase, target string) int {
 // this honestly returns 0 (no evidence) rather than checking the wrong
 // repo and reporting a false negative as if it were conclusive.
 func originCallCount(root, origin string) int {
-	logPath := resolveCallLogPath()
+	logPath, explicit := configuredCallLogPath()
+	if !explicit {
+		logPath = workspaceCallLogRel // PC-15: never the caller's cwd (O23)
+	}
 	if !filepath.IsAbs(logPath) {
 		if !isFathomSourceTree(root) {
 			return 0
@@ -1072,9 +1075,16 @@ func fathomServicePath(hc *http.Client, baseURL string) (string, bool) {
 // Zero candidates means neither is determinable — the caller reports that
 // honestly (skipped), never guesses a third location.
 func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, root string) []string {
-	logPath := resolveCallLogPath()
-	if filepath.IsAbs(logPath) {
+	// PC-15: the unconfigured default now resolves to an absolute path
+	// from the CALLER's cwd, which is exactly the wrong repo here (O23) —
+	// so an unconfigured log is the daemon-relative literal, joined below
+	// against roots known to be the daemon's working directory.
+	logPath, explicit := configuredCallLogPath()
+	if explicit && filepath.IsAbs(logPath) {
 		return []string{logPath}
+	}
+	if !explicit {
+		logPath = workspaceCallLogRel
 	}
 
 	var out []string

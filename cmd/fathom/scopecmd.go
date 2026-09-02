@@ -231,7 +231,7 @@ func cmdScopePreview(args []string, stdout, stderr io.Writer) int {
 	operands, rest := splitLeadingOperands(args)
 	fs := newFlagSet("scope preview", stderr)
 	service := fs.String("service", "", "service ID (default: every service in the store)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	asJSON := fs.Bool("json", false, "emit JSON instead of a summary")
 	sample := fs.Int("sample", 10, "how many matching files to print (0 = all)")
 	if err := fs.Parse(rest); err != nil {

@@ -30,7 +30,6 @@ import (
 // [daemon].call_log in config.toml name one — the same literal serve-http's
 // own --call-log flag default uses (servehttp.go), so a repo that never
 // customized either place gets the log the daemon is actually writing.
-const defaultCallLogPath = "workspace/logs/mcp-calls.jsonl"
 
 // maxTopTools caps the human-table rendering of "top tools by calls" (the
 // JSON report always carries the full ranked list — the cap is a display
@@ -181,7 +180,7 @@ type AdoptionReport struct {
 func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("instrument -adoption", stderr)
 	_ = fs.Bool("adoption", false, "select this report (already selected)")
-	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath)
+	callLogFlag := fs.String("call-log", "", "MCP tool-call log (JSONL); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
 	storePath := fs.String("store", "", "optional store path — builds the registered-tool list the same way serve-http constructs its server; omit to use a backend-independent registry (tool registration never depends on the backend, see registeredToolNames)")
 	root := fs.String("root", ".", "project root for .fathom/observations.md")
 	serviceFlag := fs.String("service", "", "scope the report to one service's call-log rows (unattributed rows are excluded and counted) — answers \"is fathom helping in repo X\" from anywhere (IO-10)")
@@ -282,17 +281,29 @@ func cmdInstrumentAdoption(args []string, stdout, stderr io.Writer) int {
 // so a repo that never customized either place gets the log the daemon is
 // actually writing, not a guess.
 func resolveCallLogPath() string {
+	if p, ok := configuredCallLogPath(); ok {
+		return p
+	}
+	return defaultCallLogPath()
+}
+
+// configuredCallLogPath returns the EXPLICITLY configured call-log path —
+// FATHOM_CALL_LOG, then [daemon].call_log — and false when neither names
+// one. Doctor needs the distinction (O23): an unconfigured log lives with
+// the daemon's working directory, not with whatever repo is being doctored,
+// so the default must never be resolved from doctor's own cwd.
+func configuredCallLogPath() (string, bool) {
 	// An explicit override, so a test can exercise the no-call-log path
 	// without chdir-ing the whole process — which broke every later test
 	// that resolved a relative path (2026-08-12).
 	if p := os.Getenv("FATHOM_CALL_LOG"); p != "" {
-		return p
+		return p, true
 	}
 	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
-	if err != nil {
-		return defaultCallLogPath
+	if err != nil || loaded.Config.Daemon.CallLog == "" {
+		return "", false
 	}
-	return firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath)
+	return loaded.Config.Daemon.CallLog, true
 }
 
 // readCallLog parses path as call-log JSONL, line-wise. read is false when

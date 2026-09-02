@@ -107,7 +107,12 @@ only after the bytes have already been read.
 
 All subcommands share the convention:
 
-- `--store` defaults to `workspace/db/fathom.sqlite`
+- `--store` defaults to `<repo>/workspace/db/fathom.sqlite` — the enclosing git
+  repository's `workspace/`, from any subdirectory — or `~/.fathom/db/fathom.sqlite`
+  when the cwd is not inside a repository; never the bare cwd (invariant I31, O11).
+  `[daemon].store` in `config.toml` and an explicit `--store` still win. The same
+  rule resolves `--call-log` (`<repo>/workspace/logs/mcp-calls.jsonl`, else
+  `~/.fathom/logs/mcp-calls.jsonl`; `FATHOM_CALL_LOG` and `[daemon].call_log` win)
 - `--mode` selects the connector: `local` (default), `faux` (fixture data), or `github`
 - Exit 0 on success, 1 on any error
 
@@ -123,7 +128,7 @@ fathom ingest --service <id> [--path <dir>] [--store <path>] [--mode local|faux]
 |---|---|---|
 | `--service` | (required) | Logical service ID, e.g. `payment-service` |
 | `--path` | `.` | Source root directory (local mode) |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode: `local` or `faux` |
 
 Output: `discovered`, `extracted`, `skipped`, `symbols` counts, plus non-zero-only rows
@@ -171,7 +176,7 @@ fathom ingest-diff --service <id> [--path <dir>] [--base <git-ref>] [--store <pa
 | `--service` | (required) | Logical service ID |
 | `--path` | `.` | Source root directory |
 | `--base` | `""` | Git ref to diff against (e.g. `HEAD~1`, `main`). Empty = full ingest |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode |
 
 ```sh
@@ -198,7 +203,7 @@ fathom watch --service <id> --path <dir> [--interval <duration>] [--store <path>
 | `--service` | (required) | Logical service ID |
 | `--path` | (required) | Source root to watch |
 | `--interval` | `5s` | Polling interval, e.g. `5s`, `1m` |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--mode` | `local` | Connector mode |
 
 `watch` uses mtime comparison. On any change it triggers a full `Ingest` for the service
@@ -224,7 +229,7 @@ fathom inspect --service <id> [--kind <SourceKind>] [--store <path>]
 |---|---|---|
 | `--service` | (required) | Service ID to inspect |
 | `--kind` | `""` | Filter by SourceKind (e.g. `GoFunc`, `GoType`, `K8sWorkload`) |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 
 ```sh
 fathom inspect --service my-service --kind GoFunc
@@ -252,7 +257,7 @@ fathom query --service <id> --concern <concern-id> [--keywords <kw,...>] [--top 
 | `--concern` | (required) | Concern ID to scope the query, e.g. `authentication`, `billing` |
 | `--keywords` | `""` | Comma-separated keywords for relevance scoring |
 | `--top` | `20` | Maximum results to return |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 
 When the concern-scoped query returns no results, the command falls back to a keyword
 substring search over all symbols for the service.
@@ -306,7 +311,7 @@ fathom serve-http --store <path> [--addr <host:port>] [--module <store>]... [--m
 | `--store` | (required, or `[daemon].store` in config.toml) | store path (.sqlite/.db) |
 | `--addr` | `127.0.0.1:7575` | Listen address — loopback by default; surfaces are not a security boundary (ADR-014 amendment) |
 | `--auto-refresh` | `true` | Re-ingest a service on git-HEAD drift before answering |
-| `--call-log` | `workspace/logs/mcp-calls.jsonl` | JSONL tool-call log, resolved against the daemon working directory; empty disables |
+| `--call-log` | `<repo>/workspace/logs/mcp-calls.jsonl` (else `~/.fathom/logs/mcp-calls.jsonl`) | JSONL tool-call log, resolved from the daemon working directory's repository (§CLI subcommands); empty disables |
 | `--module` | — | Path to a conforming expert-module store, mounted READ-ONLY on `POST /rpc/modules`; repeatable; a non-conforming store aborts startup |
 | `--modules-token-env` | unset | NAME of an env var holding the bearer token for `POST /rpc/modules` (hosted mode); unset = no auth |
 
@@ -385,7 +390,7 @@ fathom platform-callers --store <path> --symbol <name> [--services a,b,c]
 | Flag | Default | Description |
 |---|---|---|
 | `--symbol` | (required) | Bare symbol name to find cross-repo callers of |
-| `--store` | `workspace/db/fathom.sqlite` | store path, .sqlite/.db (language-agnostic source) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path, .sqlite/.db (language-agnostic source) |
 | `--services` | (all in store) | Comma-separated service IDs to include |
 | `--repos` | — | Legacy Go-only mode: comma-separated `id=path` pairs; walks Go source on disk and overrides `--store` when set |
 
@@ -417,7 +422,7 @@ fathom gen-claude-md --service <id> [--store <path>] [--output <path>]
 | Flag | Default | Description |
 |---|---|---|
 | `--service` | (required) | Service ID |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--output` | `workspace/artifacts/CLAUDE.md` | Output file path |
 
 Output is deterministic: symbols are sorted by kind then name. The file includes a
@@ -448,7 +453,7 @@ fathom gen-status-cue --plan <file> --service <id> [--store <path>] [--output <p
 |---|---|---|
 | `--plan` | (required) | Path to a `.cue`, `.json`, or `.md` checklist plan file |
 | `--service` | (required) | Service ID to verify against |
-| `--store` | `workspace/db/fathom.sqlite` | store path (.sqlite/.db) |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` (see §CLI subcommands) | store path (.sqlite/.db) |
 | `--output` | `workspace/artifacts/STATUS.cue` | Output CUE file path |
 | `--concern` | — | Optional concern to scope contradiction detection |
 
@@ -774,7 +779,7 @@ fathom instrument --adoption [--service <id>] [--call-log <path>] [--store <path
 | `--window` | `168h` (7 days) | Coverage window, measured back from now |
 | `--adoption` | off | The flywheel gauge: adoption report from the MCP call log — read-error classification, a surface-scoped zero-call list (tools unused on the agent surface vs not exposed there) |
 | `--service` | all | (`--adoption`) scope to one service's call-log rows; unattributed rows are excluded and counted |
-| `--call-log` | `[daemon].call_log`, else `workspace/logs/mcp-calls.jsonl` | (`--adoption`) MCP tool-call log |
+| `--call-log` | `[daemon].call_log`, else `<repo>/workspace/logs/mcp-calls.jsonl` (see §CLI subcommands) | (`--adoption`) MCP tool-call log |
 | `--store` | — | (`--adoption`) build the registered-tool list the way `serve-http` does |
 | `--root` / `--json` | `.` / off | (`--adoption`) project root for `.fathom/observations.md`; JSON output |
 

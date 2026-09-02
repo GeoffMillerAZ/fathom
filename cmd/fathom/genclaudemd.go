@@ -73,7 +73,7 @@ type symbolSummary struct {
 func cmdGenClaudeMd(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-claude-md", stderr)
 	service := fs.String("service", "", "service ID (required)")
-	storePath := fs.String("store", "workspace/db/fathom.sqlite", "store path (.sqlite/.db)")
+	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	output := fs.String("output", "workspace/artifacts/CLAUDE.md", "output path for CLAUDE.md")
 
 	if err := fs.Parse(args); err != nil {

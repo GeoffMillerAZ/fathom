@@ -144,6 +144,10 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   untested as written).
 
 ### Changed
+- **`-store` / `-call-log` defaults resolve under the enclosing repository's
+  `workspace/` from any subdirectory, or `~/.fathom/` outside a repository —
+  never the bare cwd (invariant I31, O11/O12).** Explicit flags,
+  `[daemon].store` / `[daemon].call_log` and `FATHOM_CALL_LOG` still win.
 - The U2 remedy in `fathom intent audit` now says what the counter does: a
   `skip:` reason does not lift U2; a symbol or a lexical oracle does
   (`TestU2RemedyMatchesCounter`).
