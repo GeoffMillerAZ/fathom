@@ -67,10 +67,10 @@ func TestEnrichTypedEdges_ReconcileDeletedPackage(t *testing.T) {
 	}
 	var sawA, sawB bool
 	for _, e := range edges {
-		if e.FromSymbol == "recon::a.A" {
+		if e.FromSymbol == "recon::a/a.A" {
 			sawA = true
 		}
-		if e.FromSymbol == "recon::b.B" {
+		if e.FromSymbol == "recon::b/b.B" {
 			sawB = true
 		}
 	}
@@ -89,7 +89,7 @@ func TestEnrichTypedEdges_ReconcileDeletedPackage(t *testing.T) {
 		t.Fatalf("TypedEdges after delete: %v", err)
 	}
 	for _, e := range edges {
-		if strings.HasPrefix(e.FromSymbol, "recon::b.") {
+		if strings.HasPrefix(e.FromSymbol, "recon::b/b.") {
 			t.Errorf("deleted package's edge survived re-ingest: %+v", e)
 		}
 	}
@@ -126,7 +126,7 @@ func TestEnrichTypedEdges_ReconcileMovedPackageDropsRemovedCall(t *testing.T) {
 	}
 	var sawCall bool
 	for _, e := range edges {
-		if e.FromSymbol == "mv::lib.F" && e.ToSymbol == "mv::lib.G" {
+		if e.FromSymbol == "mv::lib/lib.F" && e.ToSymbol == "mv::lib/lib.G" {
 			sawCall = true
 		}
 	}
@@ -155,7 +155,7 @@ func TestEnrichTypedEdges_ReconcileMovedPackageDropsRemovedCall(t *testing.T) {
 		t.Fatalf("TypedEdges after move: %v", err)
 	}
 	for _, e := range edges {
-		if e.FromSymbol == "mv::lib.F" && e.ToSymbol == "mv::lib.G" {
+		if e.FromSymbol == "mv::lib/lib.F" && e.ToSymbol == "mv::lib/lib.G" {
 			t.Errorf("removed call's edge survived the package move (stale row under the old import path): %+v", e)
 		}
 	}

@@ -188,6 +188,29 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	if _, ok := g.nodes[raw]; ok {
 		return raw
 	}
+	// Package-name-qualified full key ("svc::pkg.Name" — the form the Go
+	// extractor records for a callee declared in the caller's own package,
+	// and the form every stored Calls entry had before keys carried the
+	// package DIRECTORY, PC-32). When the named package is the caller's
+	// own, the call binds to the caller's directory-qualified package —
+	// Go's same-package binding, now unambiguous between two `package main`
+	// binaries. Any other service-prefixed form resolves only through the
+	// unambiguous "pkg.Name" index: ambiguity resolves to nothing.
+	if i := strings.Index(raw, "::"); i >= 0 {
+		rest := raw[i+2:]
+		if dot := strings.LastIndex(rest, "."); dot > 0 {
+			if pkg, name := rest[:dot], rest[dot+1:]; pkg == caller.Package && caller.Package != "" {
+				k := core.SymbolKey(caller.Service, caller.PackagePath(), name)
+				if _, ok := g.nodes[k]; ok {
+					return k
+				}
+			}
+		}
+		if key, ok := g.byPkgName[rest]; ok {
+			return key
+		}
+		return ""
+	}
 	// Same-package bare-name binding: a bare (unqualified) identifier cannot
 	// denote another package's symbol — Go's only cross-package reference form
 	// is a qualified identifier, which extractors record with a dot. So when
@@ -195,9 +218,8 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	// language semantics — not first-match-wins. Restricted to plain function
 	// callers: a method node's Package field is its receiver type name, not a
 	// Go package, so binding through it would be a category error.
-	if caller.Kind == core.KindGoFunc && caller.Package != "" &&
-		!strings.Contains(raw, ".") && !strings.Contains(raw, "::") {
-		k := core.SymbolKey(caller.Service, caller.Package, raw)
+	if caller.Kind == core.KindGoFunc && caller.Package != "" && !strings.Contains(raw, ".") {
+		k := core.SymbolKey(caller.Service, caller.PackagePath(), raw)
 		if _, ok := g.nodes[k]; ok {
 			return k
 		}
@@ -216,12 +238,11 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	if key, ok := g.byDirName[raw]; ok {
 		return key
 	}
-	// Suffix match: raw might be "pkg.Name" and the key is "svc::pkg.Name".
-	// Accept only if exactly one node matches.
-	suffix := "." + raw
+	// Suffix match: raw might be "pkg.Name" and the key is "svc::pkg.Name"
+	// or "svc::dir/pkg.Name". Accept only if exactly one node matches.
 	var match string
 	for key := range g.nodes {
-		if strings.HasSuffix(key, suffix) {
+		if keyEndsWith(key, raw) {
 			if match != "" {
 				return "" // ambiguous
 			}
@@ -677,6 +698,15 @@ func DeadCode(g *Graph, entrypoints []string) []string {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+// Canonical resolves symbol — a canonical key, a package-name-qualified
+// key ("svc::pkg.Name"), a "pkg.Name" partial, or a bare name — to the
+// canonical key present in g, or "" when it names nothing or more than one
+// node. It is the tolerant-matching rule every public analysis in this
+// package applies to its symbol argument, exposed so a caller that keys its
+// own tables by canonical key (findings' file neighborhood) resolves a
+// user-supplied subject the same way.
+func Canonical(g *Graph, symbol string) string { return g.canonicalize(symbol) }
+
 // canonicalize resolves symbol to the canonical key present in g.nodes.
 // Accepts full keys or bare names.  Returns "" when unresolvable.
 func (g *Graph) canonicalize(symbol string) string {
@@ -686,15 +716,24 @@ func (g *Graph) canonicalize(symbol string) string {
 	if key, ok := g.byName[symbol]; ok {
 		return key
 	}
-	// Precise package-qualified lookup: "pkg.Name" -> "svc::pkg.Name".
+	// Precise package-qualified lookup: "pkg.Name" -> canonical key. A
+	// package-NAME-qualified full key ("svc::pkg.Name", the pre-PC-32 form a
+	// caller may still hold) resolves the same way, and only when
+	// unambiguous — two `package main` binaries make "svc::main.run" name
+	// nothing rather than whichever was ingested last.
 	if key, ok := g.byPkgName[symbol]; ok {
 		return key
 	}
-	// Try suffix match ".<symbol>" for dotted partial keys like "pkg.Name".
-	suffix := "." + symbol
+	if i := strings.Index(symbol, "::"); i >= 0 {
+		if key, ok := g.byPkgName[symbol[i+2:]]; ok {
+			return key
+		}
+		return ""
+	}
+	// Try suffix match for dotted partial keys like "pkg.Name".
 	var match string
 	for key := range g.nodes {
-		if strings.HasSuffix(key, suffix) {
+		if keyEndsWith(key, symbol) {
 			if match != "" {
 				return "" // ambiguous
 			}
@@ -702,4 +741,14 @@ func (g *Graph) canonicalize(symbol string) string {
 		}
 	}
 	return match
+}
+
+// keyEndsWith reports whether the canonical key ends with the partial
+// reference raw at a component boundary: "."+raw (the historical
+// "svc::pkg.Name" shape, and "Recv.Method" against "svc::dir/Recv.Recv.Method")
+// or "/"+raw ("pkg.Name" against a directory-qualified "svc::dir/pkg.Name",
+// PC-32). Without the "/" boundary a partial reference would match only
+// root-level symbols once keys carried the package directory.
+func keyEndsWith(key, raw string) bool {
+	return strings.HasSuffix(key, "."+raw) || strings.HasSuffix(key, "/"+raw)
 }

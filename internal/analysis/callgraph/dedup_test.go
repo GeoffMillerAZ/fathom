@@ -62,15 +62,15 @@ func TestBuild_DuplicateObservationsDoNotPoisonResolution(t *testing.T) {
 	}{
 		{
 			name:      "triplicated symbol still resolves",
-			symbol:    "svc::widget.Frobnicate",
-			wantTests: []string{"svc::widget_test.TestFrobnicate"},
-			test:      "svc::widget_test.TestFrobnicate",
+			symbol:    "svc::widget/widget.Frobnicate",
+			wantTests: []string{"svc::widget/widget_test.TestFrobnicate"},
+			test:      "svc::widget/widget_test.TestFrobnicate",
 		},
 		{
 			name:      "non-duplicated symbol resolves alongside duplicates",
-			symbol:    "svc::widget.Helper",
-			wantTests: []string{"svc::widget_test.TestHelper"},
-			test:      "svc::widget_test.TestHelper",
+			symbol:    "svc::widget/widget.Helper",
+			wantTests: []string{"svc::widget/widget_test.TestHelper"},
+			test:      "svc::widget/widget_test.TestHelper",
 		},
 	}
 
@@ -97,7 +97,7 @@ func TestBuild_DuplicateObservationsDoNotPoisonResolution(t *testing.T) {
 // a triplicated-but-unique symbol must be usable for tolerant lookup too.
 func TestBuild_DuplicateObservationsBareNameLookup(t *testing.T) {
 	g := callgraph.Build(dedupFixture())
-	want := []string{"svc::widget_test.TestFrobnicate"}
+	want := []string{"svc::widget/widget_test.TestFrobnicate"}
 	if got := callgraph.TestImpact(g, "Frobnicate"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(bare Frobnicate) = %v, want %v", got, want)
 	}

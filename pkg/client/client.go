@@ -24,6 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/query"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 // SourceFile is a single fetched source file. It is a re-export of
@@ -133,11 +134,39 @@ func NewConstantClient(mode Mode, storePath string) (*Client, error) {
 }
 
 // Ingest runs the full fusion pipeline for svc and returns a Report.
+//
+// Worktree re-root refusal (PC-33, I30, O22): when the store already
+// records a root for svc.ID and svc.Path is a linked git worktree of that
+// root (or any .claude/worktrees/ path), the ingest is refused with a
+// *worktree.RerootError naming both paths — the same check the daemon's
+// `ingest` tool applies, so the CLI's store-direct path cannot move a
+// service onto an agent's worktree either. A path that does not exist as a
+// directory (a faux-mode fixture name) is never a worktree.
 func (c *Client) Ingest(ctx context.Context, svc ServiceRef) (Report, error) {
 	if err := core.ValidServiceID(svc.ID); err != nil {
 		return Report{}, fmt.Errorf("ingest: %w", err)
 	}
+	if err := c.refuseWorktreeReroot(ctx, svc.ID, svc.Path); err != nil {
+		return Report{}, fmt.Errorf("ingest: %w", err)
+	}
 	return c.pipe.Ingest(ctx, svc)
+}
+
+// refuseWorktreeReroot applies worktree.CheckReroot against the recorded
+// root for service, when there is one and path is an existing directory.
+func (c *Client) refuseWorktreeReroot(ctx context.Context, service, path string) error {
+	meta, found, err := c.st.GetServiceMeta(ctx, service)
+	if err != nil || !found || meta.Path == "" {
+		return nil
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil
+	}
+	if info, err := os.Stat(abs); err != nil || !info.IsDir() {
+		return nil
+	}
+	return worktree.CheckReroot(service, meta.Path, abs)
 }
 
 // IngestBatch ingests each service in svcs sequentially, collecting Reports.
@@ -327,6 +356,9 @@ func (c *Client) IngestServiceAt(ctx context.Context, service, path string) erro
 	info, err := os.Stat(path)
 	if err != nil || !info.IsDir() {
 		return fmt.Errorf("ingest at: path %q is not an existing directory", path)
+	}
+	if err := c.refuseWorktreeReroot(ctx, service, path); err != nil {
+		return fmt.Errorf("ingest at: %w", err)
 	}
 	if _, err := c.pipe.Ingest(ctx, ServiceRef{ID: service, Path: path}); err != nil {
 		return err

@@ -35,7 +35,7 @@ func TestAliasCanonicalCallee_DirBaseResolves(t *testing.T) {
 	}
 	g := callgraph.Build(nodes)
 
-	want := []string{"svc::evidencesignature_test.TestPreconditionSatisfied_Existence"}
+	want := []string{"svc::foundations/evidence/evidence-signature/evidencesignature_test.TestPreconditionSatisfied_Existence"}
 	if got := callgraph.TestImpact(g, "svc::evidencesignature.PreconditionSatisfied"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(PreconditionSatisfied) = %v, want %v", got, want)
 	}

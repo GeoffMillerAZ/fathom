@@ -26,12 +26,7 @@ type NeighborhoodEntry struct {
 // symbolNeighborhood computes each symbol's minimum call-graph hop distance
 // from seeds, bidirectionally (a finding is relevant whether the subject
 // calls it or is called by it), out to maxHops. seeds start at hop 0.
-func symbolNeighborhood(nodes []core.SymbolNode, typed []core.Edge, seeds []string, maxHops int) map[string]int {
-	g := callgraph.Build(nodes)
-	if len(typed) > 0 {
-		callgraph.AddTypedEdges(g, typed)
-	}
-
+func symbolNeighborhood(g *callgraph.Graph, seeds []string, maxHops int) map[string]int {
 	hops := make(map[string]int, len(seeds))
 	type item struct {
 		key string
@@ -86,9 +81,18 @@ func FileNeighborhood(nodes []core.SymbolNode, typed []core.Edge, subject string
 		fileSymbols[n.FilePath] = append(fileSymbols[n.FilePath], n.Key())
 	}
 
+	g := callgraph.Build(nodes)
+	if len(typed) > 0 {
+		callgraph.AddTypedEdges(g, typed)
+	}
+
+	// The subject resolves the way every call-graph analysis resolves its
+	// symbol argument (callgraph.Canonical): a canonical key, the
+	// package-name-qualified form a caller may still hold, a "pkg.Name"
+	// partial, or a bare name — each only when it names exactly one node.
 	var seeds []string
-	if _, ok := symbolFile[subject]; ok {
-		seeds = []string{subject}
+	if key := callgraph.Canonical(g, subject); key != "" {
+		seeds = []string{key}
 	} else if syms, ok := fileSymbols[subject]; ok {
 		seeds = append(seeds, syms...)
 	}
@@ -96,7 +100,7 @@ func FileNeighborhood(nodes []core.SymbolNode, typed []core.Edge, subject string
 		return nil
 	}
 
-	symHops := symbolNeighborhood(nodes, typed, seeds, maxHops)
+	symHops := symbolNeighborhood(g, seeds, maxHops)
 	fileHops := map[string]int{}
 	for sym, hop := range symHops {
 		fp, ok := symbolFile[sym]

@@ -9,7 +9,8 @@ import (
 )
 
 // pkgNode builds a SymbolNode with service and package set, so Key() yields a
-// full canonical key ("svc::pkg.Name").
+// full canonical key ("svc::dir/pkg.Name" — the key carries the package
+// directory, PC-32).
 func pkgNode(pkg, name, file string, line int, tier core.EvidenceTier) core.SymbolNode {
 	return core.SymbolNode{Service: "svc", Package: pkg, Name: name, FilePath: file, Line: line, Tier: tier}
 }
@@ -25,8 +26,8 @@ func ambiguousRunEvidence() fakeEvidence {
 			pkgNode("ladder", "Run", "foundations/ladder/types.go", 300, core.TierVerified),
 			pkgNode("harness", "Run", "foundations/harness/harness.go", 42, core.TierVerified),
 		}},
-		tests: map[string][]string{"svc::ladder.Run": {"svc::ladder.TestRun"}},
-		reach: map[string]bool{"Router->svc::ladder.Run": true},
+		tests: map[string][]string{"svc::foundations/ladder/ladder.Run": {"svc::foundations/ladder/ladder_test.TestRun"}},
+		reach: map[string]bool{"Router->svc::foundations/ladder/ladder.Run": true},
 	}
 }
 
@@ -73,16 +74,59 @@ func TestVerifyPlan_PackageWrong(t *testing.T) {
 }
 
 // TestVerifyPlan_PackageStillAmbiguous: a `package:` directory that contains
-// TWO distinct symbols with the claimed name does not pick a winner — the
-// query falls back to the (ambiguous) bare name and resolves to nothing.
-// Never first-match-wins.
+// TWO distinct symbols with the claimed name (a package and its external
+// _test package share a directory) does not pick a winner — the query falls
+// back to the (ambiguous) bare name and resolves to nothing. Never
+// first-match-wins.
 func TestVerifyPlan_PackageStillAmbiguous(t *testing.T) {
+	ev := fakeEvidence{
+		symbols: map[string][]core.SymbolNode{"Run": {
+			pkgNode("ladder", "Run", "foundations/ladder/types.go", 300, core.TierVerified),
+			pkgNode("ladder_test", "Run", "foundations/ladder/helpers_test.go", 12, core.TierVerified),
+		}},
+		tests: map[string][]string{"svc::foundations/ladder/ladder.Run": {"svc::foundations/ladder/ladder_test.TestRun"}},
+	}
 	rep := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
-		{ID: "T-1", Expect: verify.Expect{Symbol: "Run", Package: "foundations"}},
-	}}, ambiguousRunEvidence())
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Run", Package: "foundations/ladder"}},
+	}}, ev)
 	v := rep.Tasks[0]
 	if v.Status != verify.Fail || v.Label != "present-but-untested" {
 		t.Fatalf("got %s/%s, want fail/present-but-untested (ambiguity stays honest)", v.Status, v.Label)
+	}
+}
+
+// TestVerifyPlan_PackageIsOneDirectory (PC-32, the PB-3 collision): a
+// `package:` names ONE directory — the parent of two packages matches
+// neither, and a package with a sub-package is singled out without the
+// sub-package's same-named symbol leaking in. Before this the filter was a
+// path prefix, so `package: internal/contextbench` also matched
+// internal/contextbench/publicloc and the row stayed ambiguous.
+func TestVerifyPlan_PackageIsOneDirectory(t *testing.T) {
+	rep := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Run", Package: "foundations"}},
+	}}, ambiguousRunEvidence())
+	if v := rep.Tasks[0]; v.Status != verify.Fail || v.Label != "claimed-but-absent" {
+		t.Fatalf("parent dir: got %s/%s, want fail/claimed-but-absent (a package is one directory)", v.Status, v.Label)
+	}
+
+	ev := fakeEvidence{
+		symbols: map[string][]core.SymbolNode{"Score": {
+			pkgNode("contextbench", "Score", "internal/contextbench/score.go", 10, core.TierVerified),
+			pkgNode("publicloc", "Score", "internal/contextbench/publicloc/score.go", 20, core.TierVerified),
+		}},
+		tests: map[string][]string{"svc::internal/contextbench/contextbench.Score": {"svc::internal/contextbench/contextbench.TestScore"}},
+	}
+	rep = verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Score", Package: "internal/contextbench"}},
+	}}, ev)
+	if v := rep.Tasks[0]; v.Status != verify.Pass || v.Label != "verified" {
+		t.Fatalf("parent package with a sub-package: got %s/%s, want pass/verified; criteria=%+v", v.Status, v.Label, v.Criteria)
+	}
+	rep = verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Score", Package: "internal/contextbench/"}},
+	}}, ev)
+	if v := rep.Tasks[0]; v.Status != verify.Pass {
+		t.Fatalf("trailing slash must not change the match: got %s/%s", v.Status, v.Label)
 	}
 }
 

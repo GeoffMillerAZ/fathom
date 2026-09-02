@@ -33,7 +33,7 @@ func TestMethodEdge_ReceiverVarCallResolves(t *testing.T) {
 	}
 	g := callgraph.Build(nodes)
 
-	want := []string{"svc::harness_test.TestHarnessRunOnce"}
+	want := []string{"svc::harness/harness_test.TestHarnessRunOnce"}
 	if got := callgraph.TestImpact(g, "Harness.RunOnce"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(Harness.RunOnce) = %v, want %v", got, want)
 	}
@@ -147,7 +147,7 @@ func TestMethodEdge_PackageSelectorStillWins(t *testing.T) {
 		},
 	}
 	g := callgraph.Build(nodes)
-	want := []string{"svc::store_test.TestOpen"}
+	want := []string{"svc::store/store_test.TestOpen"}
 	if got := callgraph.TestImpact(g, "svc::store.Open"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(store.Open) = %v, want %v", got, want)
 	}
@@ -175,7 +175,7 @@ func TestMethodEdge_ComposesWithDedup(t *testing.T) {
 		},
 	}
 	g := callgraph.Build(nodes)
-	want := []string{"svc::harness_test.TestRunStream"}
+	want := []string{"svc::harness/harness_test.TestRunStream"}
 	if got := callgraph.TestImpact(g, "Harness.RunStream"); !reflect.DeepEqual(got, want) {
 		t.Errorf("TestImpact(Harness.RunStream) = %v, want %v", got, want)
 	}

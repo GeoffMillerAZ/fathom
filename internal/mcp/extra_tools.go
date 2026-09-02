@@ -42,6 +42,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/internal/worktree"
 )
 
 // registerExtraTools is the single entry-point that wires every new tool.
@@ -924,6 +925,18 @@ func registerIngest(s *Server, backend QueryInterface) {
 					}
 				}
 			}
+			// Worktree re-root refusal (PC-33, I30, O22): an EXISTING
+			// service is never moved onto a linked git worktree of its own
+			// recorded root (or onto any .claude/worktrees/ path). The
+			// daemon once accepted exactly that from a worktree's
+			// post-commit hook, answered {ok:true} four times, and every
+			// "refreshed" verify afterwards read the wrong tree. The same
+			// check guards the CLI's store-direct ingest (pkg/client).
+			if recorded, _, found, merr := backend.ServiceMeta(ctx, svc); merr == nil && found && recorded != "" {
+				if err := worktree.CheckReroot(svc, recorded, canonical); err != nil {
+					return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: " + err.Error()}
+				}
+			}
 			p.Path = canonical
 		}
 
@@ -968,6 +981,12 @@ func registerIngest(s *Server, backend QueryInterface) {
 		}
 
 		result := map[string]any{"service": svc, "ok": true}
+		// Name the root that was ingested (O22: four ok:true envelopes and
+		// not one of them said which tree). Additive; absent when the
+		// backend records no root.
+		if root, _, found, merr := backend.ServiceMeta(ctx, svc); merr == nil && found && root != "" {
+			result["root"] = root
+		}
 		if hasStats {
 			afterUnclassified, afterOversize := sb.IngestStats()
 			result["unclassified_files"] = afterUnclassified - before.unclassified
@@ -1150,7 +1169,7 @@ func registerPackContext(s *Server, backend QueryInterface) {
 		for i, n := range result.Nodes {
 			text := n.Package + "." + n.Name + " " + n.Signature
 			items[i] = packer.Evidence{
-				ID:    n.Service + "::" + n.Package + "." + n.Name,
+				ID:    n.Key(),
 				Text:  text,
 				Score: float64(n.Complexity + 1),
 			}

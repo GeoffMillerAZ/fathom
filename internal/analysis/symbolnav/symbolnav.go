@@ -53,59 +53,27 @@ type Diff struct {
 // built from the raw Calls lists of SymbolNode.
 type forwardIndex map[string][]string
 
-// buildForwardIndex creates a forwardIndex that matches how callgraph.Build
-// resolves callee references (exact key, then bare-name, then suffix match).
-func buildForwardIndex(nodes []core.SymbolNode) forwardIndex {
-	// Build node registry and bare-name index (same logic as callgraph.Build).
-	nodeKeys := make(map[string]struct{}, len(nodes))
-	nameCounts := make(map[string]int, len(nodes))
-	for _, n := range nodes {
-		nodeKeys[n.Key()] = struct{}{}
-		nameCounts[n.Name]++
-	}
-	byName := make(map[string]string, len(nodes))
-	for _, n := range nodes {
-		if nameCounts[n.Name] == 1 {
-			byName[n.Name] = n.Key()
-		}
-	}
-
-	resolve := func(raw string) string {
-		if _, ok := nodeKeys[raw]; ok {
-			return raw
-		}
-		if k, ok := byName[raw]; ok {
-			return k
-		}
-		suffix := "." + raw
-		var match string
-		for k := range nodeKeys {
-			if strings.HasSuffix(k, suffix) {
-				if match != "" {
-					return ""
-				}
-				match = k
-			}
-		}
-		return match
-	}
-
+// buildForwardIndex creates a forwardIndex from g's own resolved callee
+// edges — the ONE resolver (callgraph.Build) every reachability verdict
+// uses, so a callee that verify or find_callers credits is the callee this
+// package lists, and vice versa. It used to re-implement a subset of that
+// resolver (exact key, bare name, suffix), which drifted the moment keys
+// carried the package directory (PC-32) and had never applied same-package
+// binding or the package-qualified index in the first place.
+func buildForwardIndex(g *callgraph.Graph, nodes []core.SymbolNode) forwardIndex {
 	idx := make(forwardIndex, len(nodes))
 	for _, n := range nodes {
 		callerKey := n.Key()
-		seen := make(map[string]struct{})
-		for _, raw := range n.Calls {
-			k := resolve(raw)
-			if k == "" {
-				continue
-			}
-			if _, dup := seen[k]; dup {
-				continue
-			}
-			seen[k] = struct{}{}
-			idx[callerKey] = append(idx[callerKey], k)
+		if _, done := idx[callerKey]; done {
+			continue
 		}
-		sort.Strings(idx[callerKey])
+		cs := callgraph.CalleesDetail(g, callerKey)
+		out := make([]string, 0, len(cs))
+		for _, c := range cs {
+			out = append(out, c.Key)
+		}
+		sort.Strings(out)
+		idx[callerKey] = out
 	}
 	return idx
 }
@@ -117,7 +85,7 @@ func buildForwardIndex(nodes []core.SymbolNode) forwardIndex {
 //
 // nodes is the same slice that was passed to callgraph.Build when constructing g.
 func Callees(g *callgraph.Graph, nodes []core.SymbolNode, symbol string) []string {
-	idx := buildForwardIndex(nodes)
+	idx := buildForwardIndex(g, nodes)
 	key := resolveSymbol(nodes, symbol)
 	if key == "" {
 		return []string{}
@@ -142,7 +110,7 @@ func CallHierarchy(g *callgraph.Graph, nodes []core.SymbolNode, symbol string, d
 	if depth < 0 {
 		depth = 0
 	}
-	idx := buildForwardIndex(nodes)
+	idx := buildForwardIndex(g, nodes)
 	key := resolveSymbol(nodes, symbol)
 	if key == "" {
 		return Tree{Key: symbol}
@@ -184,7 +152,7 @@ func buildHierarchy(g *callgraph.Graph, idx forwardIndex, key string, depth int,
 // closely related to symbol: its direct callers, direct callees, and any
 // symbol sharing the same Package or FilePath.
 func Community(g *callgraph.Graph, nodes []core.SymbolNode, symbol string) []string {
-	idx := buildForwardIndex(nodes)
+	idx := buildForwardIndex(g, nodes)
 	key := resolveSymbol(nodes, symbol)
 	if key == "" {
 		return []string{}
@@ -244,7 +212,7 @@ func Community(g *callgraph.Graph, nodes []core.SymbolNode, symbol string) []str
 // SymbolContext returns the Context for symbol: its definition node, direct
 // callers, direct callees, and any Test* callers.
 func SymbolContext(nodes []core.SymbolNode, g *callgraph.Graph, symbol string) Context {
-	idx := buildForwardIndex(nodes)
+	idx := buildForwardIndex(g, nodes)
 	key := resolveSymbol(nodes, symbol)
 
 	var ctx Context
@@ -597,7 +565,10 @@ func SymbolDiff(oldNodes, newNodes []core.SymbolNode) Diff {
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 // resolveSymbol finds the canonical key for symbol among nodes.
-// It accepts an exact key, a bare Name, or a "pkg.Name" suffix.
+// It accepts an exact key, a bare Name, a "pkg.Name" partial, or the
+// package-name-qualified full key ("svc::pkg.Name") a caller may still hold
+// from before keys carried the package directory (PC-32) — each only when
+// it names exactly one node; ambiguity resolves to nothing.
 func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
 	// Exact key match.
 	for _, n := range nodes {
@@ -618,13 +589,25 @@ func resolveSymbol(nodes []core.SymbolNode, symbol string) string {
 	if match != "" {
 		return match
 	}
-	// Suffix match ".<symbol>".
-	suffix := "." + symbol
+	// "svc::pkg.Name" → the unique node whose Package.Name matches.
+	if i := strings.Index(symbol, "::"); i >= 0 {
+		rest := symbol[i+2:]
+		for _, n := range nodes {
+			if n.Package+"."+n.Name == rest {
+				if match != "" && match != n.Key() {
+					return "" // ambiguous: two same-named packages
+				}
+				match = n.Key()
+			}
+		}
+		return match
+	}
+	// Suffix match at a component boundary: ".<symbol>" or "/<symbol>".
 	match = ""
 	for _, n := range nodes {
 		k := n.Key()
-		if strings.HasSuffix(k, suffix) {
-			if match != "" {
+		if strings.HasSuffix(k, "."+symbol) || strings.HasSuffix(k, "/"+symbol) {
+			if match != "" && match != k {
 				return "" // ambiguous
 			}
 			match = k
