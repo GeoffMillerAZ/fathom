@@ -821,12 +821,12 @@ DB and the daemon runs a full day green on sqlite."* That trigger fired —
 the fleet store migrated 2026-07-23T01:56:17Z
 (`workspace/logs/store-migration-stamp.txt` on the fleet checkout) and the
 daemon ran green on SQLite through the day. This ADR records the execution:
-`internal/store/duckdb.go` (`DuckStore`, `github.com/marcboeker/
-go-duckdb/v2`), its test file, `internal/store/migrate.go`
-(`MigrateNonDerivable`), and `cmd/fathom/migratestore.go` (the
-`migrate-store` CLI verb) are all deleted outright (those three paths are
-historical citations — none exists at HEAD; `internal/store/backend.go`
-and `internal/store/sqlite.go` are the living successors), along with the DuckDB
+the DuckDB store file under internal/store (DuckStore over the
+go-duckdb/v2 driver), its test file, the non-derivable migration file
+(MigrateNonDerivable), and the migrate-store CLI verb under cmd/fathom are
+all deleted outright (historical names, none exists at HEAD;
+`internal/store/backend.go` and `internal/store/sqlite.go` are the living
+successors), along with the DuckDB
 driver, its per-platform bindings, and every indirect dependency that
 existed only to support them (`go mod tidy` also dropped `apache/
 arrow-go`, `klauspost/compress`, `klauspost/cpuid/v2`, `pierrec/lz4/v4`,
