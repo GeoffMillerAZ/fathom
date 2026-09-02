@@ -214,6 +214,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checks,
 		daemonCheck,
 		checkBinaryFresh(root),
+		checkDaemonFresh(hc, baseURL, daemonUp), // PC-4: the daemon's stamp vs this binary (doctor_provenance.go)
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
@@ -559,7 +560,7 @@ func checkBinaryFresh(root string) doctorCheck {
 	}
 
 	if strings.HasPrefix(head, rev) || strings.HasPrefix(rev, head) {
-		reason := fmt.Sprintf("binary @ %s matches HEAD %s — local binary only, the daemon's installed copy is unverified", shortSHA(rev), shortSHA(head))
+		reason := fmt.Sprintf("this binary @ %s matches HEAD %s of its own source tree — this row knows only the local binary; the daemon's build is daemon_fresh's row", shortSHA(rev), shortSHA(head))
 		if dirty {
 			reason += "; vcs.modified=true (built from a locally modified tree — the stamp names the commit, not the exact code)"
 		}
@@ -569,7 +570,7 @@ func checkBinaryFresh(root string) doctorCheck {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 	}
 
-	reason := fmt.Sprintf("binary @ %s does not match HEAD %s", shortSHA(rev), shortSHA(head))
+	reason := fmt.Sprintf("this binary @ %s does not match HEAD %s of its own source tree (local binary only; the daemon's build is daemon_fresh's row)", shortSHA(rev), shortSHA(head))
 	// Worktree-stamp caveat (this repo's own history — CLAUDE.md's
 	// "Dogfood" section, docs/dogfood-observations.md O3): only asserted
 	// when it can actually be verified — a linked git worktree's own .git
