@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 
@@ -65,6 +66,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	var skillsFlag optionalStringFlag
 	fs.Var(&skillsFlag, "skills", "install the nine shipped agent skills (fathom-activate/custodian/doctor/feedback/impact/onboard/plan/rewire/verify): claude | codex | all (bare --skills = all; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
+	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -80,6 +82,14 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	skillsMode, err := resolveSkillsMode(skillsFlag.value, skillsFlag.set)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	// HP-13: the harness decides WHICH vehicles init writes — never more
+	// than the descriptor declares, never a user-global file — and a
+	// descriptor past its demotion clock is refused with the reason.
+	targets, err := initTargetsFor(*harnessFlag, time.Now())
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -160,7 +170,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// human edited is reported BLOCKED and never merged, every write lands
 	// in .fathom/receipts.jsonl so `fathom fleet undo --last` reverses it,
 	// and the other files still apply around a blocked one.
-	spec, notes := initWiringSpec(root, svc, binPath)
+	spec, notes := initWiringSpecFor(root, svc, binPath, targets)
 	for _, n := range notes {
 		fmt.Fprintln(stdout, n)
 	}
@@ -211,7 +221,11 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "%s\n", msg)
 	}
 
-	printManualSteps(stdout, svc, *url)
+	if targets.ID == harness.ClaudeCode {
+		printManualSteps(stdout, svc, *url)
+	} else {
+		printHarnessManualSteps(stdout, targets, svc, *url)
+	}
 	if skillsMode == "" {
 		fmt.Fprintln(stdout, "MANUAL: install fathom's shipped agent skills (fathom-plan/verify/onboard/feedback):")
 		fmt.Fprintln(stdout, "MANUAL:   fathom init --skills[=claude|codex|all]")
@@ -544,37 +558,29 @@ type hookSpec struct {
 	timeout int
 }
 
-var fathomHookSpecs = []hookSpec{
-	{event: "SessionStart", matcher: "startup|resume|clear|compact", marker: "fathom session-hook", sub: "session-hook", timeout: 10},
-	// Continuity threads (vision 21 / docs/design/continuity-threads.md §3):
-	// SessionEnd deposits ONE mechanical item at the moments context is
-	// lost (/clear, logout); PreCompact files a pointer before compaction —
-	// the exact moment in-flight state dies today. Both write to disk and
-	// inject NOTHING, so their context cost is zero by construction.
-	{event: "SessionEnd", matcher: "", marker: "fathom session-end-hook", sub: "session-end-hook", timeout: 10},
-	{event: "PreCompact", matcher: "manual|auto", marker: "fathom pre-compact-hook", sub: "pre-compact-hook", timeout: 10},
-	{event: "PostToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
-	// Guarded edits (docs/design/guarded-edits.md §2.2/§2.5): the SAME
-	// "edit-hook --pre" binary/code path, registered under PreToolUse.
-	// Silent-by-default on any non-guarded file/command (a local glob
-	// check before any daemon call — GI-8's closure, docs/plans/
-	// gap1-instrumentation.md). Two matcher groups, one command each,
-	// because Claude Code's PreToolUse matcher selects by tool name and a
-	// guard can fire on either files (Edit|Write|MultiEdit) or commands
-	// (Bash) — ensureHookEntry's marker check is scoped per matcher group
-	// so both wire independently.
-	{event: "PreToolUse", matcher: "Edit|Write|MultiEdit", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
-	{event: "PreToolUse", matcher: "Bash", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
-	// Production tokenomics instrument B (docs/design/production-tokenomics.md
-	// §4): the SAME edit-hook --pre binary, registered under a THIRD
-	// PreToolUse matcher group for Grep/Glob/Read — the counting-only
-	// discovery observer (discovery.go). Zero daemon calls, zero
-	// injection, ever; ensureHookEntry's marker check is scoped per
-	// matcher group (O-13's fix), so this wires independently of the
-	// other two PreToolUse groups above.
-	{event: "PreToolUse", matcher: "Grep|Glob|Read", marker: "fathom edit-hook --pre", sub: "edit-hook --pre", timeout: 5},
-	{event: "Stop", matcher: "", marker: "fathom stop-hook", sub: "stop-hook", timeout: 10},
-}
+// fathomHookSpecs is the Claude Code hook table, derived from the harness
+// registry (ADR-029: `internal/harness` is the ONE source; hookSpecsFor in
+// hookharness.go is the derivation). The bindings, in order:
+//
+//   - SessionStart (startup|resume|clear|compact) → session-hook, 10s.
+//   - SessionEnd / PreCompact (manual|auto) → the continuity deposits
+//     (vision 21 / docs/design/continuity-threads.md §3): one mechanical
+//     item at the moments context is lost, one pointer before compaction.
+//     Both write to disk and inject NOTHING, so their context cost is zero.
+//   - PostToolUse (Edit|Write|MultiEdit) → edit-hook, 5s.
+//   - PreToolUse ×3 → edit-hook --pre, 5s: guarded edits
+//     (docs/design/guarded-edits.md §2.2/§2.5) on Edit|Write|MultiEdit and
+//     on Bash, silent-by-default on any non-guarded file/command (a local
+//     glob check before any daemon call — GI-8), plus the counting-only
+//     discovery observer on Grep|Glob|Read (production-tokenomics.md §4,
+//     discovery.go; zero daemon calls, zero injection). Three matcher
+//     groups with ONE command each, because Claude Code's PreToolUse
+//     matcher selects by tool name — ensureHookEntry's marker check is
+//     scoped per matcher group (O-13's fix) so each wires independently.
+//   - Stop → stop-hook, 10s.
+//
+// TestHookSpecsForClaude pins this derived table to the pre-seam literal.
+var fathomHookSpecs = hookSpecsFor(harness.ClaudeCode)
 
 // hookKeyFor is the wiring key for one hook spec: identity is the
 // (event, matcher) group plus fathom's marker substring — the same identity
@@ -650,12 +656,26 @@ func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
 // Claude Code applies both scopes and the hook would fire twice. Every
 // skip is returned as a note to print, never silent.
 func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
+	targets, _ := initTargetsFor(harness.ClaudeCode, time.Time{})
+	return initWiringSpecFor(root, service, binPath, targets)
+}
+
+// initWiringSpecFor is initWiringSpec for one harness's targets (HP-13):
+// the stanza goes into the descriptor's declared instruction files with
+// that descriptor's hook sentences (stanzaHookSentences), and the hook
+// table is planned only when the descriptor's hooks are wired — today,
+// Claude Code alone. initWiringSpec (the Claude Code instance) is
+// byte-for-byte what it planned before the seam.
+func initWiringSpecFor(root, service, binPath string, targets initTargets) (wiring.Spec, []string) {
 	intentOn := intentChannelWired(root)
-	spec := wiring.Spec{Regions: []wiring.Region{
-		stanzaRegion("CLAUDE.md", service, intentOn),
-		stanzaRegion("AGENTS.md", service, intentOn),
-	}}
+	spec := wiring.Spec{}
+	for _, file := range targets.StanzaFiles {
+		spec.Regions = append(spec.Regions, stanzaRegionFor(targets.StanzaID, file, service, intentOn))
+	}
 	var notes []string
+	if !targets.Hooks {
+		return spec, notes
+	}
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
 	for _, hs := range fathomHookSpecs {
@@ -868,11 +888,7 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"{{OBLIGATIONS}}\n" +
 	"\n" +
-	"Continuity: run `fathom prime` at session start if your harness has no\n" +
-	"SessionStart hook (Codex does not) — it prints the same identity,\n" +
-	"freshness, live-example, thread-brief, and custodian primer this hook\n" +
-	"injects on Claude Code. File what the next session must know:\n" +
-	"`fathom thread note \"…\"`.\n" +
+	"{{CONTINUITY}}\n" +
 	"\n" +
 	"Done means proven: a plan task is only \"done\" when the index proves it, not\n" +
 	"when it is claimed. Before checking off a `docs/plans/*.md` item, run:\n" +
@@ -895,17 +911,66 @@ const (
 	obligationsWithIntent = "Obligations — governing rules for the file you are about to touch, and\n" +
 		"where `docs/intent/` exists its matched invariants — are injected on every\n" +
 		"edit via the PostToolUse hook. Treat them as binding, not advisory."
+	// continuityClaude is the continuity paragraph as every Claude Code
+	// stanza has carried it (byte-identical: the stanza golden).
+	continuityClaude = "Continuity: run `fathom prime` at session start if your harness has no\n" +
+		"SessionStart hook (Codex does not) — it prints the same identity,\n" +
+		"freshness, live-example, thread-brief, and custodian primer this hook\n" +
+		"injects on Claude Code. File what the next session must know:\n" +
+		"`fathom thread note \"…\"`."
 )
 
-// fathomStanzaBody is the stanza WITHOUT its markers — what goes between
-// them, and what the wiring engine digests.
-func fathomStanzaBody(service string, intentOn bool) string {
-	obligations := obligationsPlain
-	if intentOn {
-		obligations = obligationsWithIntent
+// stanzaHookSentences renders the two hook-naming paragraphs of the stanza
+// for one registry id (HP-11, vision 25 §2.2 rule 3): the text never
+// promises a channel the harness lacks. Claude Code (and "", the default)
+// gets the pre-seam literals; a harness whose hooks are not wired gets the
+// pull-tier wording — `obligations` before an edit, `fathom prime` at
+// session start — naming the harness so the reader knows why.
+func stanzaHookSentences(id string, intentOn bool) (obligations, continuity string) {
+	if id == "" {
+		id = harness.ClaudeCode
 	}
+	d, ok := harness.Lookup(id)
+	if !ok || d.HooksWired() {
+		obligations = obligationsPlain
+		if intentOn {
+			obligations = obligationsWithIntent
+		}
+		return obligations, continuityClaude
+	}
+	display := d.Display
+	if intentOn {
+		obligations = "Obligations — governing rules for the file you are about to touch, and\n" +
+			"where `docs/intent/` exists its matched invariants — are served by the\n" +
+			"`obligations` MCP tool: call it before you edit (no hook injects them on\n" +
+			display + "). Treat them as binding, not advisory."
+	} else {
+		obligations = "Obligations — governing rules for the file you are about to touch — are\n" +
+			"served by the `obligations` MCP tool: call it before you edit (no hook\n" +
+			"injects them on " + display + "). Treat them as binding, not advisory."
+	}
+	continuity = "Continuity: run `fathom prime` at session start — no fathom SessionStart\n" +
+		"hook is wired on " + display + ", so nothing injects the identity, freshness,\n" +
+		"live-example, thread-brief, and custodian primer for you. File what the next\n" +
+		"session must know: `fathom thread note \"…\"`."
+	return obligations, continuity
+}
+
+// fathomStanzaBody is the stanza WITHOUT its markers — what goes between
+// them, and what the wiring engine digests — for the default (Claude
+// Code) harness.
+func fathomStanzaBody(service string, intentOn bool) string {
+	return fathomStanzaBodyFor(harness.ClaudeCode, service, intentOn)
+}
+
+// fathomStanzaBodyFor is fathomStanzaBody with the hook sentences of one
+// registry id. One template, one body per harness; the Claude Code body
+// is byte-identical to what every wired repository carries.
+func fathomStanzaBodyFor(id, service string, intentOn bool) string {
+	obligations, continuity := stanzaHookSentences(id, intentOn)
 	s := strings.ReplaceAll(fathomStanzaTemplate, "{{SERVICE}}", service)
-	return strings.ReplaceAll(s, "{{OBLIGATIONS}}", obligations)
+	s = strings.ReplaceAll(s, "{{OBLIGATIONS}}", obligations)
+	return strings.ReplaceAll(s, "{{CONTINUITY}}", continuity)
 }
 
 func fathomStanza(service string, intentOn bool) string {
@@ -942,11 +1007,16 @@ func intentChannelWired(root string) bool {
 // fathom's, gets its digest on the first write, and is never reported as
 // drift; only a tracked region that no longer matches its digest is.
 func stanzaRegion(file, service string, intentOn bool) wiring.Region {
+	return stanzaRegionFor(harness.ClaudeCode, file, service, intentOn)
+}
+
+// stanzaRegionFor is stanzaRegion with one registry id's hook sentences.
+func stanzaRegionFor(id, file, service string, intentOn bool) wiring.Region {
 	return wiring.Region{
 		File:           file,
 		Syntax:         wiring.HTMLMarkers,
 		Version:        fathomStanzaVersion,
-		Body:           fathomStanzaBody(service, intentOn),
+		Body:           fathomStanzaBodyFor(id, service, intentOn),
 		AdoptUntracked: true,
 	}
 }
@@ -1170,6 +1240,16 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom --url %s/rpc/agent\n", url)
 	fmt.Fprintln(stdout, "MANUAL:   or stdio fallback (guaranteed-compatible, single Codex session):")
 	fmt.Fprintln(stdout, "MANUAL:     codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite")
+	printGateAndConfigManualSteps(stdout, service)
+	fmt.Fprintln(stdout, "MANUAL: Codex has no PreToolUse hook mechanism — guard.cue's pre-edit channel is Claude-Code-only;")
+	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
+}
+
+// printGateAndConfigManualSteps is the harness-neutral half of the manual
+// steps — the lefthook gates, the config.toml pointer, the scaffolded
+// .fathom/ files — shared by printManualSteps (Claude Code) and
+// printHarnessManualSteps (every other descriptor), byte for byte.
+func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL: add the verify gate to lefthook.yml's pre-push (fathom does not edit lefthook.yml):")
 	fmt.Fprintln(stdout, "MANUAL:   pre-push:")
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
@@ -1192,8 +1272,6 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
 	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
 	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
-	fmt.Fprintln(stdout, "MANUAL: Codex has no PreToolUse hook mechanism — guard.cue's pre-edit channel is Claude-Code-only;")
-	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
 }
 
 // autoNarrateSessions bounds init's capture window: enough sessions to see

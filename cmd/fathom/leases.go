@@ -162,24 +162,22 @@ func cmdPlansLease(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	sessionID := os.Getenv("CLAUDE_SESSION_ID")
+	// HP-14: the label and the session id come from the registry's env
+	// contract (hookharness.go), never a CLAUDE* literal here.
+	harnessName, sessionID := harnessLabel()
 	h := *holder
-	harness := "cli"
-	if sessionID != "" {
-		harness = "claude"
-		if h == "" {
-			h = sessionID
-		}
+	if sessionID != "" && h == "" {
+		h = sessionID
 	}
 	if h == "" {
-		fmt.Fprintln(stderr, "error: --holder is required when $CLAUDE_SESSION_ID is not set")
+		fmt.Fprintln(stderr, "error: --holder is required when no harness session variable (e.g. $CLAUDE_SESSION_ID) is set")
 		fs.Usage()
 		return 1
 	}
 
 	now := nowFunc()
 	row := leaseRow{
-		Plan: *planFile, RowID: rowID, Holder: h, Harness: harness,
+		Plan: *planFile, RowID: rowID, Holder: h, Harness: harnessName,
 		Filed: now.UTC(), Expires: now.Add(*ttl).UTC(), Released: *release,
 	}
 	if err := appendLease(*root, row); err != nil {
@@ -191,7 +189,7 @@ func cmdPlansLease(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "released %s (%s) held by %s\n", rowID, *planFile, h)
 	} else {
 		fmt.Fprintf(stdout, "leased %s (%s) for %s, holder %s, expires %s\n",
-			rowID, *planFile, harness, h, row.Expires.Format(time.RFC3339))
+			rowID, *planFile, harnessName, h, row.Expires.Format(time.RFC3339))
 	}
 	return 0
 }

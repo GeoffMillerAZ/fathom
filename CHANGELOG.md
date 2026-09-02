@@ -22,6 +22,28 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
+- **`internal/harness`** is the harness seam (ADR-029): a descriptor
+  registry (Claude Code, Codex, Gemini CLI, the generic `agents` pull tier)
+  plus the Claude Code codec; the Claude Code hook table, stanza, and hook
+  envelopes are derived from it byte-identically.
+- **`fathom harness list|capabilities [--harness ID] [--json]`** prints the
+  registry and each harness's per-capability vehicle table; every row of an
+  unverified descriptor says `unverified on this machine`, and
+  `docs/adoption/codex.md` §6 is now that table, test-pinned.
+- **`--harness <id>`** on `session-hook`, `edit-hook`, `stop-hook`,
+  `session-end-hook`, `pre-compact-hook` (absent ⇒ `claude-code`; an unknown
+  id or a harness with no codec exits 0 with one stderr line). Hooks never
+  detect their caller — the wired command line spells it.
+- **`fathom init --harness=claude-code|codex|gemini-cli|agents|none`** writes
+  only that descriptor's instruction files and `.fathom/`, generates the
+  stanza's hook sentences from the descriptor, and prints the harness's own
+  `mcp add` line; non-Claude hooks report `hooks: not wired (wave 2)`.
+- **`fathom doctor`** accepts every registry id, resolves `auto` through
+  the registry's presence markers, adds a `gate_posture` row from the
+  descriptor's fail mode, and reads MCP registration for a non-Claude
+  harness as `skipped: unverified`, never a guessed PASS.
+- **`schema/harness/schema.cue`** validates the exported registry
+  (`fathom harness list --json`); `TestHarnessSchemaVetsExport` runs it.
 - **`task bench-home` / `bench-lookup`** run the context-bench with three
   trials per (task, arm) cell instead of one, and score the run against the
   criterion committed in the corpus. Both spend real LLM tokens and are

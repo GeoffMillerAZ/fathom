@@ -278,25 +278,54 @@ Codex-specific to configure.
 
 ## 6. Honest capability table
 
-| Channel | Claude Code | Codex |
+This table is **generated** from fathom's harness registry (ADR-029,
+`internal/harness`) and pinned by `cmd/fathom/codexdoc_test.go`: it is the
+output of `fathom harness capabilities --harness codex`, verbatim. Every
+row says *unverified on this machine* because no Codex session has run
+against this build here — Codex's own hook contract (11 Claude-shaped
+lifecycle events, `.codex/hooks.json`) is carried as **data** in the
+descriptor (`fathom harness list --json`) and no codec drives it yet
+(*hooks: not wired*, wave 2 of `docs/plans/harness-port.md`). The vehicle
+column is what fathom delivers on Codex **today**; an `absent` vehicle is a
+documented gap, never an emulation.
+
+<!-- fathom:harness-capabilities codex begin -->
+| Capability | Vehicle | Status |
 |---|---|---|
-| MCP tool access (stdio or HTTP) | Yes | Yes |
-| Curated 17-tool `/rpc/agent` surface | Yes, registered directly | Reachable at the same URL if your Codex version's streamable-HTTP client negotiates cleanly (§2, unverified here) — stdio `serve-mcp` always works |
-| SessionStart context injection (`session-hook`) | Yes — index status primer at every session start | **No hook.** Run `fathom prime` yourself at session start — it prints the identical primer (§5) |
-| PostToolUse obligations injection (`edit-hook`) | Yes — governing rules injected after every edit, ≤150 tokens, silent when clean; plus the anchored-memory block for the edited file (*experimental*) | **No equivalent.** No post-edit hook mechanism; the same rules are only reachable by explicitly calling the `obligations` MCP tool, and memories via `memory_search` (*experimental*) |
-| PreToolUse guarded-edit injection (`edit-hook --pre`, phase O) | Yes — `.fathom/guard.cue`-configured scopes/commands get rules injected BEFORE the edit/command runs, silent-by-default (local glob check, zero daemon calls on a miss) | **No equivalent.** Codex has no PreToolUse hook mechanism; a bound module's rules still reach Codex via `obligations`/`pack_context`, just not pre-edit |
-| Stop-hook done-means-proven check | Yes — newly-claimed `[x]` tasks re-verified at session end, advisory or blocking | **No equivalent.** Nothing checks a session's claims at end-of-session; the pre-push gate (next row) is the backstop |
-| Standing operating-contract doc | `CLAUDE.md` | `AGENTS.md` — same stanza, same source, written by `fathom init` in one step |
-| Pre-push `fathom verify` gate (lefthook) | Yes | Yes — git-native, identical, harness-agnostic |
-| CI `--strict` gate | Yes | Yes — identical |
-| Subscription compile lane (no metered API key) | `claude-cli`, near-$0 marginal | `codex-cli` — real ambient-token cost, see §3 |
-| `fathom init`-driven MCP registration | Manual step it prints (`claude mcp add …`) | Not printed by `init` today — register by hand per §2 |
-| Shipped agent skills (nine: `fathom-plan`/`verify`/`onboard`/`feedback`/`doctor`/`impact`/`rewire`/`activate`/`custodian`) | Yes — `--skills=claude`, `.claude/skills/<name>/SKILL.md` | Yes — `--skills=codex`, `~/.codex/prompts/<name>.md`, invoked via `/prompts:<name>` (§1.1) |
-| Continuity threads (vision 21, *experimental* — the bet is still collecting) | Full loop: SessionEnd/PreCompact hooks deposit mechanical facts; the SessionStart brief injects on `startup`/`clear` only (≤2,400 bytes, budget-enforced) | **Half the loop.** No lifecycle hooks, so nothing deposits or injects automatically — but the store and verbs are identical: `AGENTS.md` instructs running `fathom prime` at session start (it carries the brief), and `fathom thread note` before ending a session is the same discipline. Threads are scoped per repo on both harnesses; the store never knows which harness wrote to it |
-| Config custodian (`fathom config audit`, vision 22) | Audit verb + doctor `concerns` row + a session-start attention line while a concern is violated | Audit verb + doctor row work identically (plain CLI; all six concern kinds, incl. `stanza_tools_served`, which asks the daemon and degrades to `unable to check`); the attention line reaches Codex only through `fathom prime` |
-| Local friction flywheel (`observe`/`instrument --adoption`) | Yes — plain CLI, no hook dependency | Yes, identically — plain CLI, no hook dependency (§5.1) |
-| Plan grammar, `plans status`/`next --eligible-only`/`context`, leases | Yes | Yes — plain CLI, identical |
-| `fathom doctor` wiring diagnosis | Yes, every check (27 on this build; `--harness=claude`) | Yes (`--harness=codex`) — every check applies except `hooks_installed`/`hooks_firing`, which report `skipped` honestly (no hook mechanism to check, §6 above) rather than a false pass or fail |
+| `prime` | `pull` | unverified on this machine — run `fathom prime` at session start (AGENTS.md says so); the SessionStart binding is documented above but not wired |
+| `obligations-post-edit` | `mcp` | unverified on this machine — call the `obligations` MCP tool before editing; no PostToolUse hook is wired by this build |
+| `guard-pre-edit` | `absent` | unverified on this machine — documented PreToolUse contract, not wired; a bound module's rules still reach Codex via `obligations`/`pack_context` |
+| `guard-pre-shell` | `absent` | unverified on this machine — documented PreToolUse contract, not wired |
+| `discovery-observe` | `absent` | unverified on this machine — Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved |
+| `stop-verify` | `absent` | unverified on this machine — the pre-push verify gate is the backstop |
+| `deposit-session-end` | `pull` | unverified on this machine — `fathom thread note` before ending a session |
+| `deposit-pre-compact` | `absent` | unverified on this machine — documented PreCompact contract, not wired |
+| `mcp-tools` | `mcp` | unverified on this machine |
+| `skills` | `pull` | unverified on this machine — `.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin |
+| `stanza` | `stanza` | unverified on this machine |
+| `verify-gate` | `gate` | unverified on this machine |
+| `claim-gate` | `absent` | unverified on this machine — not built (vision 26 §4) |
+| `session-ledger` | `absent` | unverified on this machine — unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it |
+<!-- fathom:harness-capabilities codex end -->
+
+What the rows mean beside Claude Code's (`fathom harness capabilities
+--harness claude-code` renders that side): the 17-tool `/rpc/agent`
+surface is reachable at the same URL if your Codex version's streamable-HTTP
+client negotiates cleanly (§2, unverified here — stdio `serve-mcp` always
+works); the git-native gates (pre-push `fathom verify`, CI `--strict`) are
+identical on both; the `codex-cli` compile lane carries a real ambient-token
+cost (§3); `fathom init --harness=codex` writes `AGENTS.md` and `.fathom/`
+only and prints the `codex mcp add` line rather than running it; the nine
+shipped skills reach Codex through `--skills=agents` (`.agents/skills`, the
+documented path, unverified here) or the legacy `--skills=codex` prompts
+(§1.1); continuity threads are half a loop here (the store and verbs are
+identical, nothing deposits automatically); the config custodian's audit
+verb and doctor row work identically, with the attention line reaching Codex
+only through `fathom prime`; and `fathom doctor --harness=codex` runs every
+check, reporting `hooks_installed`/`hooks_firing` as `skipped` (no wired hook
+to check) and `mcp_registration` as `skipped: unverified` even when a
+`[mcp_servers.fathom]` entry is found — a found entry is evidence of a
+registration, not of a session that negotiated the surface.
 
 **The practical upshot:** in Codex, fathom is a fully capable *pull* tool
 (every MCP tool works identically) plus two *gate* channels that are
@@ -360,15 +389,22 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
       is hook-dependent, so there's nothing Codex-specific to verify beyond
       the CLI itself working.
 - [ ] `bin/fathom doctor --harness=codex` reports every applicable row
-      `pass` (the two Claude-only hook rows `skipped`) — or, faster than
-      this checklist, just run it first.
+      `pass` (the two Claude-only hook rows and `mcp_registration` read
+      `skipped` — the latter `skipped: unverified` until a real Codex
+      session negotiates the surface here; `gate_posture` states Codex's
+      documented fail mode) — or, faster than this checklist, just run it
+      first.
+- [ ] `bin/fathom harness capabilities --harness codex` prints §6's table;
+      `bin/fathom init --harness=codex` writes `AGENTS.md` + `.fathom/`
+      only and prints the `codex mcp add` line (hooks: not wired, wave 2).
 
 ---
 
 ## Maintained
 
-This doc covers: `fathom init` (AGENTS.md stanza, `--skills=codex` prompt
-install into `~/.codex/prompts/`), `prime` (the Codex pull tier),
+This doc covers: `fathom init` (AGENTS.md stanza, `--harness=codex`,
+`--skills=codex` prompt install into `~/.codex/prompts/`), `harness`
+(`list`/`capabilities` — §6 is its output), `prime` (the Codex pull tier),
 `plans next --eligible-only`/`context`, `thread brief`/`note`/`handoff`,
 `config audit`, `observe`, `instrument --adoption`, `doctor`
 (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`, the

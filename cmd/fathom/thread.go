@@ -575,8 +575,10 @@ func threadDormant(it threadItem, now time.Time) bool {
 	return now.Sub(t) > 14*24*time.Hour
 }
 
+// threadFiler labels who filed a thread item: "agent" when a harness's env
+// contract (hookharness.go) says a harness is running this process.
 func threadFiler() string {
-	if os.Getenv("CLAUDECODE") != "" || os.Getenv("CLAUDE_CODE_SESSION_ID") != "" {
+	if harnessPresent() {
 		return "agent"
 	}
 	return "human"

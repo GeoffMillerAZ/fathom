@@ -15,7 +15,11 @@ package main
 // until the pre-registered A/B (§5) runs — the report labels the whole
 // section that way.
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/harness"
+)
 
 // cmdEditHookPreDiscovery is the Grep/Glob/Read branch of cmdEditHookPre:
 // a single beat, zero daemon calls, zero stdout (Claude Code hooks treat
@@ -35,13 +39,29 @@ import "strings"
 // active OFF arm most needs to keep: silencing it too would delete the one
 // signal that proves the arm's sessions are doing anything at all. armOff
 // only decides whether the beat is stamped "arm":"off".
-func cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID string, armOff bool) int {
-	if toolName == "Read" && fileInEditSet(filePath, cwd, sessionID) {
+func cmdEditHookPreDiscovery(tool harness.ToolClass, filePath, cwd, sessionID string, armOff bool) int {
+	if tool == harness.ToolDiscoveryRead && fileInEditSet(filePath, cwd, sessionID) {
 		return 0 // verification read of a just-edited file — excluded, not discovery
 	}
 	meta := firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff)
-	emitBeat("discovery", strings.ToLower(toolName), meta)
+	emitBeat("discovery", discoveryBeatName(tool), meta)
 	return 0
+}
+
+// discoveryBeatName is the beat vocabulary the observer has always used
+// (the lower-cased Claude Code tool name: read | grep | glob), keyed by
+// tool CLASS so a harness with different tool names counts into the same
+// series.
+func discoveryBeatName(tool harness.ToolClass) string {
+	switch tool {
+	case harness.ToolDiscoveryRead:
+		return "read"
+	case harness.ToolDiscoveryGrep:
+		return "grep"
+	case harness.ToolDiscoveryGlob:
+		return "glob"
+	}
+	return strings.ToLower(string(tool))
 }
 
 // shellSearchBinaries are the argv[0] values that count as a "shell

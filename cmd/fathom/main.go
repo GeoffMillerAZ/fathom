@@ -112,6 +112,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		}
 		fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]")
 		return 1
+	case "harness":
+		return cmdHarness(args[1:], stdout, stderr)
 	case "brief":
 		return cmdBrief(args[1:], stdout, stderr)
 	case "capabilities":

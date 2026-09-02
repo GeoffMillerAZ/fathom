@@ -38,6 +38,7 @@ import (
 	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	toml "github.com/pelletier/go-toml/v2"
 )
@@ -82,7 +83,7 @@ type doctorCheck struct {
 func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("doctor", stderr)
 	path := fs.String("path", "", "repo root to diagnose (default: cwd)")
-	harnessFlag := fs.String("harness", "auto", "claude | codex | auto — which harness's wiring to check")
+	harnessFlag := fs.String("harness", "auto", "claude | codex | auto, or a registry id (claude-code, codex, gemini-cli, agents — `fathom harness list`) — which harness's wiring to check")
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
@@ -93,10 +94,8 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: unexpected argument %q\n", fs.Arg(0))
 		return 2
 	}
-	switch *harnessFlag {
-	case "claude", "codex", "auto":
-	default:
-		fmt.Fprintf(stderr, "error: --harness must be claude, codex, or auto (got %q)\n", *harnessFlag)
+	if _, ok := normalizeDoctorHarness(*harnessFlag); !ok {
+		fmt.Fprintf(stderr, "error: --harness must be claude, codex, auto, or a registry id (%s) (got %q)\n", strings.Join(harness.IDs(), ", "), *harnessFlag)
 		return 2
 	}
 
@@ -146,26 +145,50 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	return doctorExitCode(checks)
 }
 
-// resolveDoctorHarness resolves "auto" to a concrete harness by looking for
-// each one's wiring evidence; an explicit claude/codex always wins outright.
-// Detection never errors — an unresolvable auto default falls back to
-// "claude" (the primary, dogfooded path), same spirit as init's default
-// service-name resolution never refusing to run.
+// doctorHarnessLabel maps a registry id to doctor's own harness label: the
+// pre-seam vocabulary ("claude", "codex") stays the label every check
+// switches on and every report prints; newer descriptors are labelled by
+// their registry id.
+func doctorHarnessLabel(id string) string {
+	if id == harness.ClaudeCode {
+		return "claude"
+	}
+	return id
+}
+
+// doctorHarnessID is the inverse: doctor's label back to the registry id.
+func doctorHarnessID(label string) string {
+	if label == "claude" {
+		return harness.ClaudeCode
+	}
+	return label
+}
+
+// normalizeDoctorHarness accepts doctor's historical vocabulary (claude |
+// codex | auto) plus every registry id (HP-12), returning doctor's label.
+func normalizeDoctorHarness(flagVal string) (string, bool) {
+	switch flagVal {
+	case "claude", "codex", "auto":
+		return flagVal, true
+	}
+	if _, ok := harness.Lookup(flagVal); ok {
+		return doctorHarnessLabel(flagVal), true
+	}
+	return "", false
+}
+
+// resolveDoctorHarness resolves "auto" to a concrete harness through the
+// registry's presence markers (harness.Detect, in registry order — the
+// verified primary first); an explicit id always wins outright. Detection
+// never errors — an unresolvable auto default falls back to "claude" (the
+// primary, dogfooded path), same spirit as init's default service-name
+// resolution never refusing to run.
 func resolveDoctorHarness(flagVal, root string) string {
-	if flagVal == "claude" || flagVal == "codex" {
-		return flagVal
+	if label, ok := normalizeDoctorHarness(flagVal); ok && label != "auto" {
+		return label
 	}
-	if fileExists(filepath.Join(root, ".claude", "settings.json")) {
-		return "claude"
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" && fileExists(filepath.Join(home, ".claude.json")) {
-		return "claude"
-	}
-	if fileExists(filepath.Join(root, ".codex", "config.toml")) {
-		return "codex"
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" && fileExists(filepath.Join(home, ".codex", "config.toml")) {
-		return "codex"
+	if ids := harness.Detect(root, harnessHomeDir()); len(ids) > 0 {
+		return doctorHarnessLabel(ids[0])
 	}
 	return "claude"
 }
@@ -194,6 +217,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkHooksInstalled(root, harness),
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
+		checkGatePosture(harness),
 		checkStanzaPresent(root),
 		checkSkillsInstalled(root, harness),
 		checkConfigValid(root),
@@ -249,12 +273,33 @@ func doctorExitCode(checks []doctorCheck) int {
 // fathom at /rpc/agent (or its /rpc/companion alias) — never guessed: an
 // unreadable or unparsable config is `skipped` with a manual fallback
 // instruction, not a clean pass.
-func checkMCPRegistration(root, harness, baseURL string) doctorCheck {
-	switch harness {
-	case "codex":
-		return checkCodexMCPRegistration(root)
-	default:
+func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
+	switch harnessLabel {
+	case "claude":
 		return checkClaudeMCPRegistration(baseURL)
+	case "codex":
+		// The TOML read is real evidence (a missing entry is a real FAIL,
+		// an unreadable file is named — ADR-027), but a found entry is not
+		// a verified registration: no Codex session has negotiated the
+		// surface on this machine, so a PASS here would be a guess
+		// (HP-12: never a guessed PASS). It reads `skipped: unverified`.
+		c := checkCodexMCPRegistration(root)
+		if c.Status == doctorPass {
+			c.Status = doctorSkipped
+			c.Reason = "skipped: unverified — " + c.Reason + "; the descriptor is unverified on this machine (no Codex session has negotiated /rpc/agent here — docs/adoption/codex.md §2)"
+		}
+		return c
+	default:
+		const name = "mcp_registration"
+		d, ok := harness.Lookup(doctorHarnessID(harnessLabel))
+		if !ok {
+			return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("skipped: unverified — no registry descriptor for %q", harnessLabel)}
+		}
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: fmt.Sprintf("skipped: unverified — this build has no %s MCP-registration reader and the descriptor is unverified on this machine", d.Display),
+			Remedy: d.MCPAddLine(baseURL),
+		}
 	}
 }
 
@@ -627,7 +672,7 @@ func shortSHA(s string) string {
 func checkHooksInstalled(root, harness string) doctorCheck {
 	const name = "hooks_installed"
 	if harness != "claude" {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "Codex has no SessionStart/PostToolUse/Stop hook mechanism (docs/adoption/codex.md §6) — nothing to check"}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no SessionStart/PostToolUse/Stop hook mechanism (docs/adoption/codex.md §6) — nothing to check")}
 	}
 
 	type scopeFile struct{ label, path string }
@@ -736,6 +781,46 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		}
 		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: "fathom init --path " + root}
 	}
+}
+
+// hooksNotWiredReason is the skipped reason for the hook checks on a
+// harness other than Claude Code: the pre-seam Codex wording for "codex"
+// (its tests and docs pin it), the descriptor's own honest line for every
+// other registry id — a documented-but-unwired hook table says so, a
+// harness with no hooks says so.
+func hooksNotWiredReason(harnessLabel, codexReason string) string {
+	if harnessLabel == "codex" {
+		return codexReason
+	}
+	d, ok := harness.Lookup(doctorHarnessID(harnessLabel))
+	switch {
+	case !ok:
+		return fmt.Sprintf("no registry descriptor for %q — nothing to check", harnessLabel)
+	case d.HasHooks():
+		return fmt.Sprintf("%s documents %d hook binding(s) this build does not wire (hooks: not wired, wave 2; descriptor unverified) — nothing to check; the lefthook_gates check covers the git-native equivalent", d.Display, len(d.Hooks))
+	default:
+		return fmt.Sprintf("%s has no hook mechanism — nothing to check; the lefthook_gates check covers the git-native equivalent", d.Display)
+	}
+}
+
+// ─── 5b. gate posture ─────────────────────────────────────────────────────
+
+// checkGatePosture states, from the descriptor's fail mode, what a fathom
+// guard on this harness can and cannot do (HP-15): on Claude Code the
+// guards are advisory and fail-open by design (§5.3); elsewhere the row
+// carries the harness's own documented posture. Informational — it never
+// fails, because a posture is a fact to disclose, not a defect to fix.
+func checkGatePosture(harnessLabel string) doctorCheck {
+	const name = "gate_posture"
+	d, ok := harness.Lookup(doctorHarnessID(harnessLabel))
+	if !ok {
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("no registry descriptor for %q", harnessLabel)}
+	}
+	reason := d.GatePosture
+	if d.ID != harness.ClaudeCode {
+		reason += " — fail mode: " + d.FailMode
+	}
+	return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 }
 
 // hookSpecKey identifies one hookSpec's (event, matcher) group — the same
@@ -1032,7 +1117,7 @@ func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, ro
 func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harness string) doctorCheck {
 	const name = "hooks_firing"
 	if harness != "claude" {
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "Codex has no PostToolUse hook to fire; the lefthook_gates check covers its git-native equivalent"}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no PostToolUse hook to fire; the lefthook_gates check covers its git-native equivalent")}
 	}
 
 	candidates := resolveCallLogCandidates(hc, baseURL, daemonUp, root)
@@ -1119,7 +1204,7 @@ func checkStanzaPresent(root string) doctorCheck {
 // stale (present but byte-different), and not-fathom-owned (present but
 // missing the marker, so init itself refuses to touch it) are reported as
 // distinct problems, never lumped into one undifferentiated "fail".
-func checkSkillsInstalled(root, harness string) doctorCheck {
+func checkSkillsInstalled(root, harnessLabel string) doctorCheck {
 	const name = "skills_installed"
 
 	var missing, stale, notOwned []string
@@ -1146,7 +1231,7 @@ func checkSkillsInstalled(root, harness string) doctorCheck {
 		current++
 	}
 
-	switch harness {
+	switch harnessLabel {
 	case "codex":
 		remedy := "fathom init --skills=codex"
 		home, err := os.UserHomeDir()
@@ -1156,13 +1241,26 @@ func checkSkillsInstalled(root, harness string) doctorCheck {
 		for _, skillName := range skillsdist.Names {
 			check(filepath.Join(home, ".codex", "prompts", skillName+".md"), skillName+"/codex-prompt.md")
 		}
-		return summarizeSkillsCheck(name, remedy, harness, missing, stale, notOwned, current)
-	default:
+		return summarizeSkillsCheck(name, remedy, harnessLabel, missing, stale, notOwned, current)
+	case "claude":
 		remedy := "fathom init --skills=claude --path " + root
 		for _, skillName := range skillsdist.Names {
 			check(filepath.Join(root, ".claude", "skills", skillName, "SKILL.md"), skillName+"/SKILL.md")
 		}
 		return summarizeSkillsCheck(name, remedy, "claude", missing, stale, notOwned, current)
+	default:
+		// Every other registry descriptor discovers skills through the
+		// open Agent Skills path (<root>/.agents/skills, `--skills=agents`);
+		// the descriptor says so, and says it is unverified here.
+		remedy := "fathom init --skills=agents --path " + root
+		for _, skillName := range skillsdist.Names {
+			check(filepath.Join(root, ".agents", "skills", skillName, "SKILL.md"), skillName+"/SKILL.md")
+		}
+		c := summarizeSkillsCheck(name, remedy, harnessLabel, missing, stale, notOwned, current)
+		if d, ok := harness.Lookup(doctorHarnessID(harnessLabel)); ok && !d.Skills.Verified {
+			c.Reason += " (discovery of .agents/skills by " + d.Display + " is unverified on this machine)"
+		}
+		return c
 	}
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -51,28 +51,28 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("stop-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	block := fs.Bool("block", false, "block session end on disproven claims (advisory otherwise)")
+	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0 // silent (hook contract)
+	}
+	codec, ok := resolveHookHarness(*harnessFlag, stderr)
+	if !ok {
+		return 0 // I9: an unknown harness id is one stderr line, never a blocked stop
 	}
 	raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 	if err != nil {
 		return 0
 	}
-	var hook struct {
-		StopHookActive bool   `json:"stop_hook_active"`
-		CWD            string `json:"cwd"`
-		SessionID      string `json:"session_id"`
-		TranscriptPath string `json:"transcript_path"`
-	}
-	if err := json.Unmarshal(raw, &hook); err != nil {
+	hook, err := codec.DecodeInput(harness.EventStop, raw)
+	if err != nil {
 		return 0
 	}
-	if hook.StopHookActive {
+	if hook.ReEntrant {
 		return 0
 	}
-	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	projDir := harnessProjectDir(codec.ID())
 	if projDir == "" {
-		projDir = hook.CWD
+		projDir = hook.Cwd
 	}
 	if projDir == "" {
 		projDir, _ = os.Getwd()
@@ -117,7 +117,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	hc := newStopHookClient()
-	exit, catches := runStopHook(projDir, hc, *url, *block, stdout)
+	exit, catches := runStopHookWith(codec, projDir, hc, *url, *block, stdout)
 	recordSessionLedgerEntry(hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
 	runStopHookRetro(projDir, hook.SessionID)
 	return exit
@@ -196,6 +196,13 @@ func newStopHookClient() *http.Client {
 // ran against at least one plan, the number of proven-failing newly-claimed
 // tasks it caught (nil = verify never ran — unknown, not zero; IO-15).
 func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
+	return runStopHookWith(harness.ClaudeCodec(), projDir, hc, baseURL, block, stdout)
+}
+
+// runStopHookWith is runStopHook with the codec that renders the verdict
+// in the calling harness's envelope; runStopHook (the pre-seam signature
+// every test drives) is the Claude Code instance.
+func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
 	plansDir := filepath.Join(projDir, "docs", "plans")
 	entries, err := os.ReadDir(plansDir)
 	if err != nil {
@@ -296,19 +303,16 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 	}
 	msg := strings.Join(sections, "\n\n")
 
-	var out []byte
 	// A timeout is operational, never evidence of a false claim — it must
 	// stay advisory even when --block is set (§5.3: hooks never block on
 	// infrastructure). Only a proven-failing claim may block.
+	verdict := harness.HookOutput{Context: msg}
 	if block && len(complaints) > 0 {
-		out, _ = json.Marshal(map[string]any{"decision": "block", "reason": msg})
-	} else {
-		out, _ = json.Marshal(map[string]any{
-			"hookSpecificOutput": map[string]any{
-				"hookEventName":     "Stop",
-				"additionalContext": msg,
-			},
-		})
+		verdict = harness.HookOutput{Block: true, Reason: msg}
+	}
+	out, err := codec.EncodeOutput(harness.EventStop, verdict)
+	if err != nil {
+		return 0, catches // silence over a malformed envelope (§5.3)
 	}
 	fmt.Fprintln(stdout, string(out))
 	return 0, catches

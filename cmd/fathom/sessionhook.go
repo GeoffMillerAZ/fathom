@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // cmdSessionHook implements the "session-hook" subcommand: a Claude Code
@@ -43,31 +44,35 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	fs := newFlagSet("session-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
+	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
+	// The codec is TOLD which harness called (ADR-029 rule 6: hooks never
+	// sniff); absent ⇒ claude-code, the wired default. An unknown id is
+	// I9 fail-open: one stderr line, exit 0.
+	codec, ok := resolveHookHarness(*harnessFlag, stderr)
+	if !ok {
+		return 0
+	}
 
 	// session_id (docs/design/production-tokenomics.md §6): read
-	// best-effort from the SessionStart hook JSON — the same envelope
-	// shape edit-hook/stop-hook already read. Absent/unreadable/malformed
+	// best-effort from the SessionStart hook JSON through the codec — the
+	// same envelope edit-hook/stop-hook decode. Absent/unreadable/malformed
 	// stdin degrades to sessionID="" (no session-scoped tagging), never a
 	// failure of the session brief itself.
 	var sessionID, startSource string
 	if stdin != nil {
 		raw, _ := io.ReadAll(io.LimitReader(stdin, 1<<16))
-		var hook struct {
-			SessionID string `json:"session_id"`
-			Source    string `json:"source"`
-		}
-		if json.Unmarshal(raw, &hook) == nil {
-			sessionID = hook.SessionID
-			startSource = hook.Source
+		if in, err := codec.DecodeInput(harness.EventSessionStart, raw); err == nil {
+			sessionID = in.SessionID
+			startSource = in.Source
 		}
 	}
 
 	projDir := *dir
 	if projDir == "" {
-		projDir = os.Getenv("CLAUDE_PROJECT_DIR")
+		projDir = harnessProjectDir(codec.ID())
 	}
 	if projDir == "" {
 		projDir, _ = os.Getwd()
@@ -117,12 +122,13 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	}
 	emitPayloadCost("session-brief", ctx, 0, "", sessionID, component)
 
-	_ = json.NewEncoder(stdout).Encode(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "SessionStart",
-			"additionalContext": ctx,
-		},
-	})
+	// The codec renders the harness's envelope; for Claude Code these are
+	// the exact bytes json.NewEncoder(...).Encode produced before the seam.
+	out, err := codec.EncodeOutput(harness.EventSessionStart, harness.HookOutput{Context: ctx})
+	if err != nil {
+		return 0 // a codec that cannot answer is silence, never a failed session start
+	}
+	fmt.Fprintln(stdout, string(out))
 	return 0
 }
 
@@ -208,7 +214,9 @@ func cmdPrime(args []string, stdout, stderr io.Writer) int {
 
 	projDir := *dir
 	if projDir == "" {
-		projDir = os.Getenv("CLAUDE_PROJECT_DIR")
+		// The pull tier serves every harness: whichever descriptor's
+		// project-dir variable is set names the repo.
+		projDir = anyHarnessProjectDir()
 	}
 	if projDir == "" {
 		projDir, _ = os.Getwd()

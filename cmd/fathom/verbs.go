@@ -75,6 +75,7 @@ var verbTable = []verb{
 	{Name: "scope", Summary: "Reversible suppression: list | suppress <glob> --reason R | unsuppress <id> | preview <glob>"},
 	{Name: "purge", Summary: "IRREVERSIBLE removal: purge <glob> --service S --reason R [--dry-run|--yes] | history (exit 2 = SQL zero but bytes unchecked)"},
 	{Name: "plugin", Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render the Claude Code plugin tree"},
+	{Name: "harness", Summary: "The harness registry (ADR-029): list [--json] | capabilities [--harness ID] [--json] — every vehicle per capability, unverified rows say so"},
 	{Name: "version", Summary: "Print version information"},
 	{Name: "help", Summary: "Show this help message"},
 }

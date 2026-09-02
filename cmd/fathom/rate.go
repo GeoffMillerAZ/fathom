@@ -61,16 +61,12 @@ func ratingsPath() string {
 	return filepath.Join(home, ".fathom", "session-ratings.jsonl")
 }
 
-// currentSessionID resolves the harness's session id. Claude Code exports
-// it, which is what lets `fathom rate 4` work with no arguments — asking a
-// human to paste a UUID is asking them not to bother.
+// currentSessionID resolves the harness's session id from the registry's
+// env contracts (hookharness.go). Claude Code exports it, which is what
+// lets `fathom rate 4` work with no arguments — asking a human to paste a
+// UUID is asking them not to bother.
 func currentSessionID() string {
-	for _, k := range []string{"CLAUDE_CODE_SESSION_ID", "CLAUDE_SESSION_ID"} {
-		if v := os.Getenv(k); v != "" {
-			return v
-		}
-	}
-	return ""
+	return harnessSessionID()
 }
 
 func cmdRate(args []string, stdout, stderr io.Writer) int {

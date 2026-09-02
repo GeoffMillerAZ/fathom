@@ -1,0 +1,148 @@
+package main
+
+// hookharness.go — the cmd/fathom side of the harness seam (ADR-029,
+// docs/vision/25-harness-port.md §2): the hook table derives from the
+// registry, the five hook verbs resolve their codec from an explicit
+// `--harness <id>` (absent ⇒ claude-code, so every wired Claude Code
+// command line and its goldens stay byte-identical), and the CLI's
+// harness label and env reads come from the descriptor's env contract
+// instead of `CLAUDE_*` literals. Detection never happens in a hook verb
+// (vision 25 §2.2 rule 6): init and doctor detect; hooks are told.
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/geoffmilleraz/fathom/internal/harness"
+)
+
+// hookSpecsFor derives the hook table for a registry id from its event
+// bindings: one hookSpec per binding, in binding order. For claude-code
+// this reproduces the pre-seam fathomHookSpecs literal event for event
+// (TestHookSpecsForClaude pins it). An unknown id, or a descriptor with
+// no bindings, yields nil — there is no hook table to write.
+func hookSpecsFor(id string) []hookSpec {
+	d, ok := harness.Lookup(id)
+	if !ok || len(d.Hooks) == 0 {
+		return nil
+	}
+	out := make([]hookSpec, 0, len(d.Hooks))
+	for _, b := range d.Hooks {
+		out = append(out, hookSpec{
+			event:   b.Harness,
+			matcher: b.Matcher,
+			marker:  b.Marker,
+			sub:     b.Verb,
+			timeout: b.TimeoutSec,
+		})
+	}
+	return out
+}
+
+// harnessFlagUsage is the one --harness help string the five hook verbs
+// share.
+const harnessFlagUsage = "harness id whose hook envelope to speak (default claude-code; 'fathom harness list' names the rest)"
+
+// addHarnessFlag registers --harness on a hook verb's flag set. The
+// default is the empty string, not "claude-code", so a wired command line
+// that never spelled the flag is indistinguishable from one that did —
+// resolveHookHarness maps "" to claude-code.
+func addHarnessFlag(fs *flag.FlagSet) *string {
+	return fs.String("harness", "", harnessFlagUsage)
+}
+
+// resolveHookHarness maps a hook verb's --harness value to its codec.
+// "" ⇒ claude-code. An unknown id, or a descriptor whose codec has not
+// landed, is I9 fail-open: ONE stderr line and ok=false, and the verb
+// exits 0 — a hook must never fail the harness that called it, and a
+// misspelled flag is an operator error the harness's debug log should
+// show, not a blocked tool call.
+func resolveHookHarness(flagVal string, stderr io.Writer) (harness.Codec, bool) {
+	id := flagVal
+	if id == "" {
+		id = harness.ClaudeCode
+	}
+	if c, ok := harness.CodecFor(id); ok {
+		return c, true
+	}
+	if _, known := harness.Lookup(id); known {
+		fmt.Fprintf(stderr, "fathom: --harness %q has no hook codec in this build (hooks: not wired, wave 2) — exiting 0 (fail-open)\n", id)
+	} else {
+		fmt.Fprintf(stderr, "fathom: unknown --harness %q (known: %v) — exiting 0 (fail-open)\n", id, harness.IDs())
+	}
+	return nil, false
+}
+
+// harnessProjectDir reads the project-dir variable the harness id's env
+// contract names (Claude Code: CLAUDE_PROJECT_DIR); "" when the
+// descriptor names none or the variable is unset.
+func harnessProjectDir(id string) string {
+	d, ok := harness.Lookup(id)
+	if !ok || d.Env.ProjectDir == "" {
+		return ""
+	}
+	return os.Getenv(d.Env.ProjectDir)
+}
+
+// anyHarnessProjectDir reads the first set project-dir variable across
+// every descriptor's env contract — for the pull-tier verbs (`prime`),
+// which serve whichever harness is running them.
+func anyHarnessProjectDir() string {
+	for _, d := range harness.All() {
+		if d.Env.ProjectDir == "" {
+			continue
+		}
+		if v := os.Getenv(d.Env.ProjectDir); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// harnessLabel is the ledger label for the harness whose session variable
+// is set — the registry's Label ("claude" for Claude Code), never a
+// `CLAUDE*` literal — and that session id. "cli" with no id when no
+// harness's SessionID variable is set. Only the descriptor's primary
+// SessionID variable counts here (leases pinned that rule before the
+// seam: $CLAUDE_SESSION_ID, not its aliases).
+func harnessLabel() (label, sessionID string) {
+	for _, d := range harness.All() {
+		if d.Env.SessionID == "" {
+			continue
+		}
+		if v := os.Getenv(d.Env.SessionID); v != "" {
+			return d.Label, v
+		}
+	}
+	return "cli", ""
+}
+
+// harnessSessionID resolves the current session id from any harness's
+// env contract, aliases first (Claude Code exports CLAUDE_CODE_SESSION_ID
+// to the agent's shell; CLAUDE_SESSION_ID is the older spelling).
+func harnessSessionID() string {
+	for _, d := range harness.All() {
+		for _, k := range append(append([]string{}, d.Env.SessionIDAliases...), d.Env.SessionID) {
+			if k == "" {
+				continue
+			}
+			if v := os.Getenv(k); v != "" {
+				return v
+			}
+		}
+	}
+	return ""
+}
+
+// harnessPresent reports whether any harness's env contract says a
+// harness is running this process (its Present marker or a session id).
+func harnessPresent() bool {
+	for _, d := range harness.All() {
+		if d.Env.Present != "" && os.Getenv(d.Env.Present) != "" {
+			return true
+		}
+	}
+	return harnessSessionID() != ""
+}
