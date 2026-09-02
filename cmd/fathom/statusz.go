@@ -17,8 +17,32 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
+
+// statuszSchemaVersion identifies the /statusz payload contract. "2" adds
+// the daemon's own build stamp (binary_commit, binary_dirty, built_at —
+// PC-1, vision 26 §1.1) so a CLI can tell which binary built the store it
+// is about to trust; v1 carried no schema_version at all. Additive: every
+// v1 field keeps its name and meaning.
+const statuszSchemaVersion = 2
+
+// StatuszBuildInfo is the daemon binary's own identity as /statusz reports
+// it — the daemon's stamp, never the CLI's or the repo's HEAD (O5).
+type StatuszBuildInfo struct {
+	BinaryCommit string `json:"binary_commit"`
+	BinaryDirty  bool   `json:"binary_dirty"`
+	BuiltAt      string `json:"built_at,omitempty"`
+}
+
+// statuszBuildInfo reads the running daemon binary's VCS stamp from
+// internal/buildinfo. An unstamped binary (built without -buildvcs) yields
+// an empty commit, which readers treat as "unknown", never as fresh.
+func statuszBuildInfo() StatuszBuildInfo {
+	st := buildinfo.Read()
+	return StatuszBuildInfo{BinaryCommit: st.Revision, BinaryDirty: st.Dirty, BuiltAt: st.BuiltAt}
+}
 
 // StatuszServiceRow is one indexed service's freshness + last-compile
 // summary.
@@ -34,7 +58,9 @@ type StatuszServiceRow struct {
 // StatuszReport is /statusz's payload — both the JSON and HTML renderings
 // come from the exact same value.
 type StatuszReport struct {
-	GeneratedAt  string              `json:"generated_at"`
+	SchemaVersion int    `json:"schema_version"`
+	GeneratedAt   string `json:"generated_at"`
+	StatuszBuildInfo
 	UptimeSec    float64             `json:"uptime_seconds"`
 	ChannelsNote string              `json:"channels_note"`
 	Services     []StatuszServiceRow `json:"services"`
@@ -49,8 +75,10 @@ type StatuszReport struct {
 // (the harness's hooks run in a different process entirely).
 func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now time.Time) StatuszReport {
 	r := StatuszReport{
-		GeneratedAt: now.UTC().Format(time.RFC3339),
-		UptimeSec:   now.Sub(startTime).Seconds(),
+		SchemaVersion:    statuszSchemaVersion,
+		GeneratedAt:      now.UTC().Format(time.RFC3339),
+		StatuszBuildInfo: statuszBuildInfo(),
+		UptimeSec:        now.Sub(startTime).Seconds(),
 	}
 	if fathomChannelsDisabled() {
 		r.ChannelsNote = "FATHOM_CHANNELS=off in this SERVER process's own environment — this does not necessarily reflect the harness's own hook environment"
@@ -114,8 +142,8 @@ func statuszHandler(c *client.Client, startTime time.Time) http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprintf(w, "<!doctype html><html><head><meta charset=\"utf-8\"><title>fathom statusz</title>%s</head><body>", statuszCSS)
 		fmt.Fprintf(w, "<header><h1>fathom <span class=\"sub\">statusz</span></h1>")
-		fmt.Fprintf(w, "<dl class=\"meta\"><dt>generated</dt><dd>%s</dd><dt>uptime</dt><dd>%.1fs</dd><dt>channels</dt><dd>%s</dd></dl></header>",
-			htmlEscape(report.GeneratedAt), report.UptimeSec, htmlEscape(report.ChannelsNote))
+		fmt.Fprintf(w, "<dl class=\"meta\"><dt>generated</dt><dd>%s</dd><dt>uptime</dt><dd>%.1fs</dd><dt>binary</dt><dd>%s</dd><dt>channels</dt><dd>%s</dd></dl></header>",
+			htmlEscape(report.GeneratedAt), report.UptimeSec, htmlEscape(statuszBinaryLabel(report.StatuszBuildInfo)), htmlEscape(report.ChannelsNote))
 		fmt.Fprintf(w, "<h2>services <span class=\"count\">%d</span></h2><div class=\"grid\">", len(report.Services))
 		for _, s := range report.Services {
 			fmt.Fprintf(w, "<section class=\"svc\"><h3>%s</h3>", htmlEscape(s.Service))
@@ -141,6 +169,25 @@ func statuszHandler(c *client.Client, startTime time.Time) http.HandlerFunc {
 		}
 		fmt.Fprintf(w, "</div><footer>read-only diagnostic · JSON at this same path with <code>Accept: application/json</code></footer></body></html>")
 	}
+}
+
+// statuszBinaryLabel renders the build stamp for the HTML view: the commit
+// (short), "-dirty" when built from a modified tree, or "unstamped".
+func statuszBinaryLabel(b StatuszBuildInfo) string {
+	if b.BinaryCommit == "" {
+		return "unstamped (built without -buildvcs)"
+	}
+	label := b.BinaryCommit
+	if len(label) > 12 {
+		label = label[:12]
+	}
+	if b.BinaryDirty {
+		label += "-dirty"
+	}
+	if b.BuiltAt != "" {
+		label += " built " + b.BuiltAt
+	}
+	return label
 }
 
 // statuszCSS is deliberately hand-written and inline.

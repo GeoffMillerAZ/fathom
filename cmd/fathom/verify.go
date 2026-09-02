@@ -116,7 +116,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 
 	// Gather verdicts — either in-process (--store) or via the daemon (HTTP).
 	var reports []verify.Report
+	var prov verifyProvenance
 	if *storePath != "" {
+		prov = verifyLedgerProvenance(nil, "", *storePath, *service)
 		reps, err := verifyAllAgainstStore(localPlans, *service, *storePath, *concern, files)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
@@ -138,6 +140,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stderr, "error: service %q is not indexed on the daemon at %s — claims cannot be verified (operational, fail-open). Ingest it (MCP ingest tool or scripts/reingest-fleet.sh) and retry.\n", *service, *url)
 			return 2
 		}
+		// PC-2: which daemon binary is about to answer, and at which
+		// store watermark — recorded on every ledger row and spoken once
+		// (below) when it is not this binary.
+		prov = verifyLedgerProvenance(hc, *url, "", *service)
 		for i, lp := range localPlans {
 			rep, err := verifyViaHTTP(hc, *url, *service, *concern, planBytes[i], lp)
 			if err != nil {
@@ -157,7 +163,12 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// instead of a guess, and the signal the flywheel's verify-gate loop
 	// reads (O30: lefthook pre-push runs were invisible to it). Best
 	// effort, never part of the gate.
-	appendVerifyLedger(plans, *service, reports)
+	appendVerifyLedger(plans, *service, reports, prov)
+	// PC-3: one line, stderr, only when the daemon's binary is not this one
+	// (or could not be learned) — never a comparison to the cwd's HEAD.
+	if notice := provenanceNotice(prov); notice != "" {
+		fmt.Fprintln(stderr, notice)
+	}
 
 	// Compute gate locally over all reports.
 	var allFail []string
