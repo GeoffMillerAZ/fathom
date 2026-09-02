@@ -22,16 +22,32 @@ var preSeamFathomHookSpecs = []hookSpec{
 	{event: "Stop", matcher: "", marker: "fathom stop-hook", sub: "stop-hook", timeout: 10},
 }
 
+// claimHookSpecAdditions are the two rows vision 26 §4 appended AFTER the
+// pre-seam table (PC-23 InstructionsLoaded, PC-24 ConfigChange) — the one
+// deliberate change to what init, plugin render, reconcile and doctor
+// carry since the seam. Appended, never interleaved: the pre-seam prefix
+// stays byte-identical, so a repo wired before this change gains exactly
+// two entries on its next init/reconcile and loses nothing.
+var claimHookSpecAdditions = []hookSpec{
+	{event: "InstructionsLoaded", matcher: "", marker: "fathom session-hook --event instructions-loaded", sub: "session-hook --event instructions-loaded", timeout: 5},
+	{event: "ConfigChange", matcher: "", marker: "fathom config audit --hook", sub: "config audit --hook", timeout: 10},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
-// hookSpecsFor("claude-code") — byte-identical to the pre-seam literal.
+// hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
+// prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
+	want := append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...)
 	got := hookSpecsFor(harness.ClaudeCode)
-	if !reflect.DeepEqual(got, preSeamFathomHookSpecs) {
-		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table:\n got %+v\nwant %+v", got, preSeamFathomHookSpecs)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 additions:\n got %+v\nwant %+v", got, want)
 	}
-	if !reflect.DeepEqual(fathomHookSpecs, preSeamFathomHookSpecs) {
-		t.Fatalf("fathomHookSpecs drifted from the pre-seam table:\n got %+v\nwant %+v", fathomHookSpecs, preSeamFathomHookSpecs)
+	if !reflect.DeepEqual(fathomHookSpecs, want) {
+		t.Fatalf("fathomHookSpecs drifted from the pre-seam table + the vision 26 §4 additions:\n got %+v\nwant %+v", fathomHookSpecs, want)
+	}
+	if !reflect.DeepEqual(got[:len(preSeamFathomHookSpecs)], preSeamFathomHookSpecs) {
+		t.Fatalf("the pre-seam prefix is not byte-identical:\n got %+v\nwant %+v", got[:len(preSeamFathomHookSpecs)], preSeamFathomHookSpecs)
 	}
 	if got := hookSpecsFor("nope"); got != nil {
 		t.Errorf("unknown id must yield no hook table, got %+v", got)

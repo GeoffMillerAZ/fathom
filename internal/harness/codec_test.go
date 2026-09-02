@@ -226,7 +226,7 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 	reads := map[string]bool{
 		"session_id": true, "cwd": true, "transcript_path": true, "source": true, "reason": true,
 		"trigger": true, "tool_name": true, "tool_input.file_path": true, "tool_input.command": true,
-		"stop_hook_active": true,
+		"stop_hook_active": true, "file_path": true, "memory_type": true, "load_reason": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,

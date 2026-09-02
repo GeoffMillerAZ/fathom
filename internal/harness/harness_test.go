@@ -28,13 +28,25 @@ var preSeamClaudeHookTable = []struct {
 	{"Stop", "", "fathom stop-hook", "stop-hook", 10},
 }
 
+// postSeamClaudeHookAdditions are the rows vision 26 §4 added AFTER the
+// pre-seam eight (PC-23 InstructionsLoaded, PC-24 ConfigChange), the one
+// deliberate change to the Claude Code table since the seam. They are
+// appended, never interleaved, so the pre-seam prefix stays byte-identical.
+var postSeamClaudeHookAdditions = []struct {
+	event, matcher, marker, sub string
+	timeout                     int
+}{
+	{"InstructionsLoaded", "", "fathom session-hook --event instructions-loaded", "session-hook --event instructions-loaded", 5},
+	{"ConfigChange", "", "fathom config audit --hook", "config audit --hook", 10},
+}
+
 func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	d, ok := Lookup(ClaudeCode)
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	if len(d.Hooks) != len(preSeamClaudeHookTable) {
-		t.Fatalf("claude-code bindings = %d, want %d", len(d.Hooks), len(preSeamClaudeHookTable))
+	if len(d.Hooks) != len(preSeamClaudeHookTable)+len(postSeamClaudeHookAdditions) {
+		t.Fatalf("claude-code bindings = %d, want %d (pre-seam) + %d (vision 26 §4)", len(d.Hooks), len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]
@@ -49,6 +61,53 @@ func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	}
 	if !d.HooksWired() {
 		t.Error("claude-code must have its codec wired")
+	}
+}
+
+// TestClaudeHookTableAdditions pins the two vision 26 §4 rows to their
+// position (after the pre-seam eight) and their contract: no matcher on
+// either (InstructionsLoaded matches on load_reason, which fathom records
+// rather than filters; ConfigChange matches on source, likewise), both
+// silent vehicles, and the two new events decode a top-level file_path.
+func TestClaudeHookTableAdditions(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable)
+	for i, want := range postSeamClaudeHookAdditions {
+		got := d.Hooks[base+i]
+		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+			t.Errorf("addition %d = {%s %q %q %q %d}, want {%s %q %q %q %d}", i,
+				got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec,
+				want.event, want.matcher, want.marker, want.sub, want.timeout)
+		}
+		if got.Vehicle != VehicleHookSilent {
+			t.Errorf("%s: vehicle = %s, want hook-silent (neither event can inject)", got.Harness, got.Vehicle)
+		}
+		if len(got.Output) != 0 {
+			t.Errorf("%s: declares output %v but the harness discards it", got.Harness, got.Output)
+		}
+	}
+	if b, ok := d.Binding(EventInstructionsLoaded); !ok || b.Capability != CapStanzaLoaded || b.Input["file_path"] != "file_path" || b.Input["memory_type"] != "memory_type" || b.Input["load_reason"] != "load_reason" {
+		t.Errorf("instructions-loaded binding = %+v", b)
+	}
+	if b, ok := d.Binding(EventConfigChange); !ok || b.Capability != CapConfigAudit || b.Input["source"] != "source" || b.Input["file_path"] != "file_path" {
+		t.Errorf("config-change binding = %+v", b)
+	}
+	if d.Vehicles[CapClaimGate] != VehicleHookInject {
+		t.Errorf("claim-gate = %s, want hook-inject (PC-22 rides the PostToolUse edit hook)", d.Vehicles[CapClaimGate])
+	}
+	codec := ClaudeCodec()
+	in, err := codec.DecodeInput(EventInstructionsLoaded, []byte(`{"session_id":"s1","cwd":"/r","hook_event_name":"InstructionsLoaded","file_path":"/r/CLAUDE.md","memory_type":"Project","load_reason":"session_start"}`))
+	if err != nil || in.FilePath != "/r/CLAUDE.md" || in.MemoryType != "Project" || in.LoadReason != "session_start" || in.SessionID != "s1" {
+		t.Errorf("InstructionsLoaded decode = %+v, %v", in, err)
+	}
+	in, err = codec.DecodeInput(EventConfigChange, []byte(`{"session_id":"s1","cwd":"/r","hook_event_name":"ConfigChange","source":"project_settings","file_path":"/r/.claude/settings.json"}`))
+	if err != nil || in.FilePath != "/r/.claude/settings.json" || in.Source != "project_settings" {
+		t.Errorf("ConfigChange decode = %+v, %v", in, err)
+	}
+	// A tool event never reads the top-level file_path (undocumented there).
+	in, _ = codec.DecodeInput(EventPostTool, []byte(`{"tool_name":"Edit","file_path":"/r/top.md","tool_input":{"file_path":"/r/tool.md"}}`))
+	if in.FilePath != "/r/tool.md" {
+		t.Errorf("PostToolUse file_path = %q, want tool_input.file_path", in.FilePath)
 	}
 }
 
@@ -270,8 +329,13 @@ func TestCapabilityRowsAndTable(t *testing.T) {
 		if strings.Contains(table, "unverified") {
 			t.Errorf("claude-code table carries an unverified row:\n%s", table)
 		}
-		if !strings.Contains(table, "| `claim-gate` | `absent` |") {
-			t.Errorf("an absent vehicle must print as absent:\n%s", table)
+		// PC-22 made claim-gate a hook vehicle on Claude Code; the absent
+		// rendering is pinned on the pull tier, where it is still absent.
+		if !strings.Contains(table, "| `claim-gate` | `hook-inject` |") {
+			t.Errorf("claim-gate must ride the edit hook on claude-code (vision 26 §4):\n%s", table)
+		}
+		if codexTable := RenderCapabilityTable(Codex, now); !strings.Contains(codexTable, "| `claim-gate` | `absent` |") {
+			t.Errorf("an absent vehicle must print as absent:\n%s", codexTable)
 		}
 	})
 	t.Run("unknown id renders a line, never silence", func(t *testing.T) {

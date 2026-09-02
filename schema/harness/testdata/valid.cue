@@ -45,6 +45,8 @@ registry: #Registry & [
 			"verify-gate":           "gate"
 			"claim-gate":            "absent"
 			"session-ledger":        "absent"
+			"stanza-loaded":         "absent"
+			"config-audit":          "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

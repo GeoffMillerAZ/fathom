@@ -13,13 +13,15 @@ package harness
 // harness. Every descriptor must declare a vehicle for every one of them.
 #Capability: "prime" | "obligations-post-edit" | "guard-pre-edit" | "guard-pre-shell" |
 	"discovery-observe" | "stop-verify" | "deposit-session-end" | "deposit-pre-compact" |
-	"mcp-tools" | "skills" | "stanza" | "verify-gate" | "claim-gate" | "session-ledger"
+	"mcp-tools" | "skills" | "stanza" | "verify-gate" | "claim-gate" | "session-ledger" |
+	"stanza-loaded" | "config-audit"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
 
 // #Event is fathom's canonical hook event.
-#Event: "session-start" | "pre-tool" | "post-tool" | "stop" | "session-end" | "pre-compact"
+#Event: "session-start" | "pre-tool" | "post-tool" | "stop" | "session-end" | "pre-compact" |
+	"instructions-loaded" | "config-change"
 
 // #ToolClass normalizes a harness's tool names.
 #ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "other"
@@ -112,6 +114,8 @@ package harness
 		"verify-gate":           #Vehicle
 		"claim-gate":            #Vehicle
 		"session-ledger":        #Vehicle
+		"stanza-loaded":         #Vehicle
+		"config-audit":          #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string
