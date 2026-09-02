@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/cost"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/memory"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
@@ -62,60 +63,59 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	armOff := assistiveChannelsDisabled()
 	rpcOrigin = "edit-hook"
 	fs := newFlagSet("edit-hook", stderr)
-	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	urlFlag := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	pre := fs.Bool("pre", false, "run as the PreToolUse guard hook (docs/design/guarded-edits.md) instead of the default PostToolUse obligations hook")
+	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		// On flag error: silent exit 0 (hook contract).
 		return 0
 	}
+	url := *urlFlag
+	// The codec is TOLD which harness called (ADR-029 rule 6); absent ⇒
+	// claude-code. An unknown id is I9 fail-open: one stderr line, exit 0.
+	codec, ok := resolveHookHarness(*harnessFlag, stderr)
+	if !ok {
+		return 0
+	}
 
-	// Read the hook JSON from stdin — the same envelope shape for
-	// PostToolUse and PreToolUse (Claude Code's generic hook contract);
-	// tool_name/tool_input.command are populated only for the PreToolUse
-	// path (--pre), session_id is read defensively (guardstamp.go's
-	// leakage-bound documents why "" is a safe, honest fallback).
+	// Read the hook JSON from stdin and decode it through the codec — the
+	// same envelope for the post-edit and the pre-edit (--pre) paths;
+	// tool name / command are populated only for the PreToolUse path,
+	// session_id is read defensively (guardstamp.go's leakage-bound
+	// documents why "" is a safe, honest fallback).
 	raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 	if err != nil {
 		return 0 // silent
 	}
-
-	var hook struct {
-		ToolName  string `json:"tool_name"`
-		ToolInput struct {
-			FilePath string `json:"file_path"`
-			Command  string `json:"command"`
-		} `json:"tool_input"`
-		CWD       string `json:"cwd"`
-		SessionID string `json:"session_id"`
+	ev := harness.EventPostTool
+	if *pre {
+		ev = harness.EventPreTool
 	}
-	if err := json.Unmarshal(raw, &hook); err != nil {
+	hook, err := codec.DecodeInput(ev, raw)
+	if err != nil {
 		return 0 // silent
 	}
+	sessionID := hook.SessionID
 
 	if *pre {
-		return cmdEditHookPre(hook.ToolName, hook.ToolInput.FilePath, hook.ToolInput.Command, hook.CWD, hook.SessionID, *url, armOff, stdout)
+		return cmdEditHookPre(codec, hook, url, armOff, stdout)
 	}
 
-	filePath := hook.ToolInput.FilePath
+	filePath := hook.FilePath
 	if filePath == "" {
 		return 0
 	}
-	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post"}, hook.SessionID, filePath, armOff)) // GI-1: the coverage denominator
+	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post"}, sessionID, filePath, armOff)) // GI-1: the coverage denominator
 	if armOff {
 		// Counting-only baseline stops here: no daemon call, no stdout —
 		// injection/output stays fully silenced under OFF (IT-3).
-		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath, armOff))
+		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath, armOff))
 		return 0
 	}
 
-	// Determine project dir.
-	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
-	if projDir == "" {
-		projDir = hook.CWD
-	}
-	if projDir == "" {
-		projDir, _ = os.Getwd()
-	}
+	// Determine project dir: the harness's env contract first, then the
+	// envelope's cwd, then the process cwd.
+	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
 
 	// A relative file path would bypass the root-refusal check below (it
 	// cannot be relativized against a root); absolutize it so OP-3 always
@@ -129,6 +129,60 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		filePath = a
 	}
 
+	// decode → payload → encode (HP-5): the payload is harness-free text;
+	// only the envelope around it belongs to the codec.
+	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID)
+	if !ok {
+		return 0 // renderPostEdit already emitted the beat that names the silence
+	}
+	emitPayloadCost("post-edit", text, meta.rules, "post", sessionID, nil)
+
+	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
+	if err != nil {
+		return 0 // a codec that cannot answer is silence (§5.3)
+	}
+	answeredMeta := map[string]string{"emitted": "true", "phase": "post"}
+	// IT-6: the cap-pressure count already rendered into the payload above
+	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
+	// evicted rules themselves — so obligations-cap pressure becomes a
+	// trendable number rather than a fact visible only in one hook's stdout.
+	if meta.displaced > 0 {
+		answeredMeta["displaced"] = strconv.Itoa(meta.displaced)
+	}
+	// AM-6: memory surfacing is measurable on day one through the same
+	// beat — a COUNT of memories shown and of those the budget displaced.
+	if meta.memShown > 0 {
+		answeredMeta["memories"] = strconv.Itoa(meta.memShown)
+	}
+	if meta.memDisplaced > 0 {
+		answeredMeta["memories_displaced"] = strconv.Itoa(meta.memDisplaced)
+	}
+	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, sessionID, filePath))
+	recordStoryRow(projDir, "obligation-served", map[string]any{
+		"file": meta.repoRelFile, "rules": meta.rules, "session": sessionID,
+	})
+	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+// postEditMeta is what renderPostEdit learned while rendering — the counts
+// the answered beat and the story row carry beside the payload.
+type postEditMeta struct {
+	rules        int
+	repoRelFile  string
+	displaced    int
+	memShown     int
+	memDisplaced int
+}
+
+// renderPostEdit builds the PostToolUse obligations payload for one edited
+// file as harness-free text (HP-5): obligations (delta-rendered against a
+// guard stamp), spec-ref lines, anchored memories — every budget and every
+// counting beat exactly as before the seam. ok=false is the silence
+// contract: nothing to say (or a refused/out-of-repo file, or a daemon
+// error) after the beat that names WHY has been emitted. The caller wraps
+// the text in the calling harness's envelope.
+func renderPostEdit(url, projDir, filePath, sessionID string) (string, postEditMeta, bool) {
 	// Try each service-identity candidate (dir basename, then the enclosing
 	// git repo for subdirectory-rooted projects), resolving the file against
 	// that candidate's root. First candidate with rules (or a stale flag)
@@ -157,7 +211,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// intent. Placed BEFORE any daemon traffic so an off capability is
 	// genuinely silent, not silently-still-querying.
 	if capabilityOffForFile(projDir, filePath, "obligations") {
-		return 0
+		return "", postEditMeta{}, false
 	}
 
 	cands := serviceCandidates(projDir)
@@ -169,7 +223,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if containsFile {
-		cands = candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, *url, projDir)
+		cands = candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, url, projDir)
 	}
 	for _, cand := range cands {
 		rel, ok := relativeToRoot(cand.root, filePath)
@@ -180,10 +234,10 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 			resolved, svcName, repoRelFile, svcRoot = true, strings.ToLower(cand.name), rel, cand.root
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, ok := fetchObligations(*url, name, rel, 0, 2*time.Second)
+		o, stale, ok := fetchObligations(url, name, rel, 0, 2*time.Second)
 		if !ok {
-			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post"}, hook.SessionID, filePath))
-			return 0 // daemon down or error → silent
+			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post"}, sessionID, filePath))
+			return "", postEditMeta{}, false // daemon down or error → silent
 		}
 		if len(o.Rules) > 0 || stale {
 			obl, indexStale, repoRelFile, svcName, svcRoot, found = o, stale, rel, name, cand.root, true
@@ -191,8 +245,8 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	if !resolved {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
-		return 0 // out-of-repo file (OP-3) → silent, daemon never queried
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
+		return "", postEditMeta{}, false // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
 	// Instrument B's edit-set exclusion (docs/design/production-
@@ -200,7 +254,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// this session, regardless of whether there are obligations to
 	// render — a subsequent same-session Read of it is verification, not
 	// discovery, and must not inflate the discovery-share denominator.
-	markFileEdited(hook.SessionID, repoRelFile, time.Now())
+	markFileEdited(sessionID, repoRelFile, time.Now())
 
 	// Guarded-edits dedup (docs/design/guarded-edits.md §2.3): when the
 	// --pre hook already served rules for this exact (session, service,
@@ -214,7 +268,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	suppressedByStamp := 0
 	staleChangedSincePre := false
 	stampConsulted := false
-	if stamp, ok := readGuardStamp(hook.SessionID, svcName, repoRelFile, time.Now()); ok {
+	if stamp, ok := readGuardStamp(sessionID, svcName, repoRelFile, time.Now()); ok {
 		stampConsulted = true
 		dedup := dedupAgainstStamp(stamp, toObligationLike(obl.Rules), indexStale)
 		renderRules = fromObligationLike(dedup.DeltaRules, obl.Rules)
@@ -231,7 +285,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		// Critic finding 9: a stamp is single-use — once consulted for
 		// this render, delete it so it can never be replayed for a
 		// second, unrelated edit of the same file.
-		deleteGuardStamp(hook.SessionID, svcName, repoRelFile)
+		deleteGuardStamp(sessionID, svcName, repoRelFile)
 	}
 
 	// Build compact text.
@@ -268,7 +322,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		for _, n := range obl.ModuleNotes {
 			fmt.Fprintf(&sb, "\n⚠️ module %s: %s", n.Module, n.Note)
 		}
-		reportModuleBeats(renderRules, "post", hook.SessionID)
+		reportModuleBeats(renderRules, "post", sessionID)
 	}
 
 	// OP-4 (spec-line injection, docs/vision/04 §4 item 3): when the edited
@@ -288,7 +342,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 					ids = ids[:maxSpecIDsPerEdit]
 				}
 				for _, id := range ids {
-					specs, ok := fetchSpecRefs(*url, svcName, id)
+					specs, ok := fetchSpecRefs(url, svcName, id)
 					if !ok {
 						continue
 					}
@@ -328,48 +382,25 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// outage from "no memories" rather than reading both as silence.
 	memShown, memDisplaced := 0, 0
 	if _, serr := os.Stat(memory.Path(svcRoot)); serr == nil && cost.Estimate(sb.String()) <= specLineTokenBudget {
-		if evs, more, ok := fetchMemories(*url, svcName, repoRelFile, 2*time.Second); ok {
+		if evs, more, ok := fetchMemories(url, svcName, repoRelFile, 2*time.Second); ok {
 			memShown, memDisplaced = injectMemories(&sb, repoRelFile, evs, specLineTokenBudget)
 			memDisplaced += more
 		} else {
-			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "target": "memories"}, hook.SessionID, filePath))
+			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "target": "memories"}, sessionID, filePath))
 		}
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, hook.SessionID, filePath))
-		return 0 // clean file (or unindexed project), no spec IDs → silent
+		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
+		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
-	emitPayloadCost("post-edit", sb.String(), len(renderRules), "post", hook.SessionID, nil)
-
-	out, _ := json.Marshal(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "PostToolUse",
-			"additionalContext": sb.String(),
-		},
-	})
-	answeredMeta := map[string]string{"emitted": "true", "phase": "post"}
-	// IT-6: the cap-pressure count already rendered into the payload above
-	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
-	// evicted rules themselves — so obligations-cap pressure becomes a
-	// trendable number rather than a fact visible only in one hook's stdout.
-	if obl.Displaced > 0 {
-		answeredMeta["displaced"] = strconv.Itoa(obl.Displaced)
-	}
-	// AM-6: memory surfacing is measurable on day one through the same
-	// beat — a COUNT of memories shown and of those the budget displaced.
-	if memShown > 0 {
-		answeredMeta["memories"] = strconv.Itoa(memShown)
-	}
-	if memDisplaced > 0 {
-		answeredMeta["memories_displaced"] = strconv.Itoa(memDisplaced)
-	}
-	emitBeat("edit-hook", "answered", firingMeta(answeredMeta, hook.SessionID, filePath))
-	recordStoryRow(projDir, "obligation-served", map[string]any{
-		"file": repoRelFile, "rules": len(renderRules), "session": hook.SessionID,
-	})
-	fmt.Fprintln(stdout, string(out))
-	return 0
+	return sb.String(), postEditMeta{
+		rules:        len(renderRules),
+		repoRelFile:  repoRelFile,
+		displaced:    obl.Displaced,
+		memShown:     memShown,
+		memDisplaced: memDisplaced,
+	}, true
 }
 
 // writeRuleBullet appends one rendered rule bullet to sb, in the exact

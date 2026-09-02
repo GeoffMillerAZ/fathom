@@ -17,6 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // sessionStamp records how a session began and what the brief cost — the
@@ -80,23 +82,17 @@ func readSessionStamp(sessionID string) sessionStamp {
 	return st
 }
 
-// lifecycleHookInput is the stdin envelope both lifecycle hooks receive.
-type lifecycleHookInput struct {
-	SessionID      string `json:"session_id"`
-	TranscriptPath string `json:"transcript_path"`
-	CWD            string `json:"cwd"`
-	Reason         string `json:"reason"`  // SessionEnd
-	Trigger        string `json:"trigger"` // PreCompact: manual|auto
-}
-
-func readLifecycleInput() (lifecycleHookInput, bool) {
+// readLifecycleInput decodes the stdin envelope both lifecycle hooks
+// receive through the calling harness's codec (session_id, cwd, and the
+// SessionEnd reason or the PreCompact trigger).
+func readLifecycleInput(codec harness.Codec, ev harness.Event) (harness.HookInput, bool) {
 	raw, err := io.ReadAll(io.LimitReader(os.Stdin, 1<<20))
 	if err != nil {
-		return lifecycleHookInput{}, false
+		return harness.HookInput{}, false
 	}
-	var in lifecycleHookInput
-	if json.Unmarshal(raw, &in) != nil {
-		return lifecycleHookInput{}, false
+	in, err := codec.DecodeInput(ev, raw)
+	if err != nil {
+		return harness.HookInput{}, false
 	}
 	return in, true
 }
@@ -111,10 +107,15 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	fs := newFlagSet("session-end-hook", stderr)
+	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0 // hook contract: silent
 	}
-	in, ok := readLifecycleInput()
+	codec, ok := resolveHookHarness(*harnessFlag, stderr)
+	if !ok {
+		return 0
+	}
+	in, ok := readLifecycleInput(codec, harness.EventSessionEnd)
 	if !ok || in.SessionID == "" {
 		return 0
 	}
@@ -123,7 +124,7 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 	if in.Reason != "clear" && in.Reason != "logout" && in.Reason != "exit" && in.Reason != "prompt_input_exit" {
 		return 0
 	}
-	root := in.CWD
+	root := in.Cwd
 	if root == "" {
 		root, _ = os.Getwd()
 	}
@@ -159,14 +160,19 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	fs := newFlagSet("pre-compact-hook", stderr)
+	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0
 	}
-	in, ok := readLifecycleInput()
+	codec, ok := resolveHookHarness(*harnessFlag, stderr)
+	if !ok {
+		return 0
+	}
+	in, ok := readLifecycleInput(codec, harness.EventPreCompact)
 	if !ok || in.SessionID == "" {
 		return 0
 	}
-	root := in.CWD
+	root := in.Cwd
 	if root == "" {
 		root, _ = os.Getwd()
 	}

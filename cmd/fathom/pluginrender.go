@@ -9,6 +9,7 @@ import (
 
 	skillsdist "github.com/geoffmilleraz/fathom/dist/agents/skills"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // fathom plugin render (vision 16 R1, plan IO-25): generate the Claude Code
@@ -65,10 +66,12 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	// hooks/hooks.json — the SAME template init writes, spelled via the
-	// shim-stable `fathom` (never a checkout path).
+	// hooks/hooks.json — the SAME template init writes (the registry's
+	// Claude Code bindings, ADR-029), spelled via the shim-stable `fathom`
+	// (never a checkout path).
 	hooksObj := map[string]any{}
-	for _, spec := range fathomHookSpecs {
+	specs := hookSpecsFor(harness.ClaudeCode)
+	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",
 			"command": "fathom " + spec.sub,
@@ -114,7 +117,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	}
 
 	fmt.Fprintf(stdout, "plugin rendered: %s (v%s, %d skills, %d hook groups, MCP → %s) — validate with `claude plugin validate %s`\n",
-		*out, pluginVersion, len(skillsdist.Names), len(fathomHookSpecs), *mcpURL, *out)
+		*out, pluginVersion, len(skillsdist.Names), len(specs), *mcpURL, *out)
 	return 0
 }
 

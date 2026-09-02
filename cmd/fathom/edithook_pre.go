@@ -12,7 +12,6 @@ package main
 // hits the daemon) is only reached once a guard has already matched.
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,36 +21,38 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
-// cmdEditHookPre implements the --pre branch of cmdEditHook. toolName
-// selects file-guard matching (Edit/Write/MultiEdit — anything that isn't
-// literally "Bash", "Grep", "Glob", or "Read") vs command-guard matching
-// (Bash, design §2.5) vs the counting-only discovery observer (Grep/Glob/
-// Read, and Bash argv starting with a search binary —
-// docs/design/production-tokenomics.md §4, instrument B).
+// cmdEditHookPre implements the --pre branch of cmdEditHook. The decoded
+// envelope's tool CLASS (harness.ClassifyTool — never a tool-name literal,
+// HP-4) selects command-guard matching (shell, design §2.5) vs the
+// counting-only discovery observer (read/grep/glob, and shell argv
+// starting with a search binary — docs/design/production-tokenomics.md
+// §4, instrument B) vs file-guard matching (file edits, and any class the
+// descriptor does not name — exactly the pre-seam default branch).
 // armOff (IT-3: env kill switch OR an active OFF arm) silences the
 // injection/output every branch below can produce, but never the
 // counting-only beats — cmdEditHookPreDiscovery in particular is ALREADY
 // counting-only (zero daemon calls, zero stdout, always), so it runs
 // unconditionally regardless of armOff; every other branch checks armOff
 // itself, right after its own "seen" beat, and stops there.
-func cmdEditHookPre(toolName, filePath, command, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
-	switch toolName {
-	case "Bash":
-		emitDiscoveryBeatIfShellSearch(command, sessionID, armOff)
-		return cmdEditHookPreCommand(command, cwd, sessionID, url, armOff, stdout)
-	case "Grep", "Glob", "Read":
-		return cmdEditHookPreDiscovery(toolName, filePath, cwd, sessionID, armOff)
+func cmdEditHookPre(codec harness.Codec, in harness.HookInput, url string, armOff bool, stdout io.Writer) int {
+	switch in.Tool {
+	case harness.ToolShell:
+		emitDiscoveryBeatIfShellSearch(in.Command, in.SessionID, armOff)
+		return cmdEditHookPreCommand(codec, in.Command, in.Cwd, in.SessionID, url, armOff, stdout)
+	case harness.ToolDiscoveryRead, harness.ToolDiscoveryGrep, harness.ToolDiscoveryGlob:
+		return cmdEditHookPreDiscovery(in.Tool, in.FilePath, in.Cwd, in.SessionID, armOff)
 	default:
-		return cmdEditHookPreFile(filePath, cwd, sessionID, url, armOff, stdout)
+		return cmdEditHookPreFile(codec, in.FilePath, in.Cwd, in.SessionID, url, armOff, stdout)
 	}
 }
 
 // ─── file guards (Edit/Write/MultiEdit) ──────────────────────────────────
 
-func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
+func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
 	if filePath == "" {
 		return 0
 	}
@@ -62,18 +63,62 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 		}
 		filePath = a
 	}
-	projDir := resolveProjDir(cwd)
+	projDir := resolveProjDirFor(codec.ID(), cwd)
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath, armOff))
 	if armOff {
 		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath, armOff))
 		return 0 // OFF: no guard matching, no daemon call, no stdout
 	}
 
+	// decode → payload → encode (HP-6): the guard payload is harness-free
+	// text; only the envelope around it belongs to the codec.
+	res, ok := renderPreEdit(url, projDir, filePath, sessionID)
+	if !ok {
+		return 0 // renderPreEdit already emitted the beat that names the silence
+	}
+	emitPayloadCost("pre-edit-guard", res.text, len(res.displayed), "pre", sessionID, nil)
+
+	// Stamp what was ACTUALLY displayed — a rule hidden by
+	// include_modules:false must remain visible to the post-hook, not be
+	// silently suppressed forever (design §2.3's dedup is "already shown
+	// to the agent," never "already computed by the daemon").
+	writeGuardStamp(sessionID, res.svcName, res.repoRelFile, ruleKeysOf(res.displayed), res.indexStale, time.Now())
+	reportModuleBeats(res.displayed, "pre", sessionID)
+
+	out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Context: res.text})
+	if err != nil {
+		return 0 // a codec that cannot answer is silence (§5.3)
+	}
+	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, sessionID, filePath))
+	recordStoryRow(projDir, "guard-served-file", nil)
+	fmt.Fprintln(stdout, string(out))
+	return 0
+}
+
+// preEditResult is renderPreEdit's payload plus what the guard stamp and
+// the module beats need to know about it.
+type preEditResult struct {
+	text        string
+	displayed   []semantic.Obligation
+	svcName     string
+	repoRelFile string
+	indexStale  bool
+}
+
+// renderPreEdit builds the PreToolUse guard payload for one file as
+// harness-free text (HP-6): the local guard match (zero daemon calls on a
+// miss), then the authoritative identity + obligations fetch under the
+// shared pre-hook budget, then the rendering — every budget and every
+// counting beat exactly as before the seam. ok=false is the silence
+// contract: no guard names the file, the capability is off, the daemon
+// could not answer, or the guard had nothing to say — after the beat that
+// names WHY has been emitted.
+func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, bool) {
 	// Capability enforcement (capabilityenforce.go): `capabilities set
 	// guards off` must actually stop guards firing. Before the local fast
 	// path, so an off capability reads no guard file either.
 	if capabilityOffForFile(projDir, filePath, "guards") {
-		return 0
+		return preEditResult{}, false
 	}
 
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
@@ -99,7 +144,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 	}
 	if !matched {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
-		return 0 // no guard names this file (or it's out-of-repo entirely) — zero daemon calls
+		return preEditResult{}, false // no guard names this file (or it's out-of-repo entirely) — zero daemon calls
 	}
 
 	// A guard matched: NOW resolve authoritative service identity (the
@@ -122,7 +167,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 	svcName, resolvedRel, ok := resolveServiceAndRel(hc, url, projDir, filePath)
 	if !ok {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
-		return 0
+		return preEditResult{}, false
 	}
 	// Critic finding 8 (phase-O merge, note-only unless trivial): the
 	// LOCAL fast-path loop above already matched a guard against
@@ -147,7 +192,7 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 	obl, indexStale, ok := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining)
 	if !ok {
 		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath))
-		return 0
+		return preEditResult{}, false
 	}
 
 	// include_modules gates DISPLAY only (design §2.1's per-guard toggle) —
@@ -197,36 +242,24 @@ func cmdEditHookPreFile(filePath, cwd, sessionID, url string, armOff bool, stdou
 
 	if sb.Len() == 0 {
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
-		return 0 // guard matched but had nothing to say (no note, no rules, not stale)
+		return preEditResult{}, false // guard matched but had nothing to say (no note, no rules, not stale)
 	}
-	emitPayloadCost("pre-edit-guard", sb.String(), len(displayed), "pre", sessionID, nil)
-
-	// Stamp what was ACTUALLY displayed — a rule hidden by
-	// include_modules:false must remain visible to the post-hook, not be
-	// silently suppressed forever (design §2.3's dedup is "already shown
-	// to the agent," never "already computed by the daemon").
-	writeGuardStamp(sessionID, svcName, repoRelFile, ruleKeysOf(displayed), indexStale, time.Now())
-	reportModuleBeats(displayed, "pre", sessionID)
-
-	out, _ := json.Marshal(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "PreToolUse",
-			"additionalContext": sb.String(),
-		},
-	})
-	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, sessionID, filePath))
-	recordStoryRow(projDir, "guard-served-file", nil)
-	fmt.Fprintln(stdout, string(out))
-	return 0
+	return preEditResult{
+		text:        sb.String(),
+		displayed:   displayed,
+		svcName:     svcName,
+		repoRelFile: repoRelFile,
+		indexStale:  indexStale,
+	}, true
 }
 
 // ─── command guards (Bash, design §2.5) ──────────────────────────────────
 
-func cmdEditHookPreCommand(command, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
+func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url string, armOff bool, stdout io.Writer) int {
 	if command == "" {
 		return 0
 	}
-	projDir := resolveProjDir(cwd)
+	projDir := resolveProjDirFor(codec.ID(), cwd)
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "command"}, sessionID, "", armOff))
 	if armOff {
 		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, "", armOff))
@@ -269,12 +302,10 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, armOff bool, std
 
 	sb := fmt.Sprintf("⚖️ fathom guard — command: %s", note)
 	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID, nil)
-	out, _ := json.Marshal(map[string]any{
-		"hookSpecificOutput": map[string]any{
-			"hookEventName":     "PreToolUse",
-			"additionalContext": sb,
-		},
-	})
+	out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Context: sb})
+	if err != nil {
+		return 0 // a codec that cannot answer is silence (§5.3)
+	}
 	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "command"}, sessionID, ""))
 	recordStoryRow(projDir, "guard-served-command", nil)
 	fmt.Fprintln(stdout, string(out))
@@ -283,8 +314,18 @@ func cmdEditHookPreCommand(command, cwd, sessionID, url string, armOff bool, std
 
 // ─── shared helpers ───────────────────────────────────────────────────────
 
+// resolveProjDir resolves the project dir for the default (Claude Code)
+// harness: its env contract's project-dir variable, then the envelope's
+// cwd, then the process cwd.
 func resolveProjDir(cwd string) string {
-	projDir := os.Getenv("CLAUDE_PROJECT_DIR")
+	return resolveProjDirFor(harness.ClaudeCode, cwd)
+}
+
+// resolveProjDirFor is resolveProjDir for the harness id a hook verb was
+// told it is speaking for — the env variable comes from that descriptor's
+// contract (hookharness.go), never a CLAUDE* literal.
+func resolveProjDirFor(id, cwd string) string {
+	projDir := harnessProjectDir(id)
 	if projDir == "" {
 		projDir = cwd
 	}
