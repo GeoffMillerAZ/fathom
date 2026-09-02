@@ -80,6 +80,11 @@ type LedgerRow struct {
 	// LeakedTasks lists tasks excluded from the verdict because the
 	// no-tools arm answered them from memory (LeakedTasks, PB-9).
 	LeakedTasks []string `json:"leaked_tasks,omitempty"`
+	// Reliability carries the PB-10 figures (ci_success_diff, wilcoxon_p,
+	// a12, pass_at_1, pass_pow_3, and the seed that produced them),
+	// flattened into the row. Reported, never gating: Evaluation is computed
+	// from the summary alone. Nil for rows written before PB-10.
+	*Reliability
 }
 
 // CorpusSHA256 returns the hex SHA-256 of the corpus file's bytes — the
@@ -213,8 +218,8 @@ func LoadLedger(path string) ([]LedgerRow, error) {
 // step rather than a number to recompute.
 func RenderLedgerMarkdown(rows []LedgerRow) string {
 	var b strings.Builder
-	b.WriteString("| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | verdict | why |\n")
-	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | verdict | why |\n")
+	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
 		corpus := r.Corpus
 		if i := strings.LastIndex(corpus, "/"); i >= 0 {
@@ -239,10 +244,10 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		if r.MedianTokenRatio > 0 {
 			median = fmt.Sprintf("%.3f×", r.MedianTokenRatio)
 		}
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %s | %s | %s%s |\n",
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %s | %s | %s | %s%s |\n",
 			r.RunID, r.Commit, corpus, r.Model, r.Tasks, r.MinTrials,
 			r.TreatmentSuccesses, r.ControlSuccesses,
-			r.AggregateTokenRatio, median,
+			r.AggregateTokenRatio, median, renderReliability(r.Reliability),
 			r.Evaluation.Verdict, r.Evaluation.Reason, caveat)
 	}
 	return b.String()

@@ -24,7 +24,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-public.md`.
 
 - [x] Fenced answer block + `max_predicted` (default `max(5, 2·|gold|)`); `ScoreWithPrecision` returns pass/fail plus precision and recall; test files are excluded from gold; registered as criterion H2-2 in the corpus beside H2-1, whose recorded verdicts stand (T5) {id: PB-8, symbol: ScoreWithPrecision, package: internal/contextbench}
 - [x] A `none` arm (all tools disallowed) and a leak rule committed in `machine_criterion`: a task the none arm passes in ≥2 of 3 trials is `leaked` (`LeakedTasks`), excluded from the verdict and listed in the row {id: PB-9, symbol: LeakedTasks, package: internal/contextbench}
-- [ ] `ComputeReliability` fills the row's `ci_success_diff` (seeded, task-clustered paired bootstrap 95% CI), `wilcoxon_p`, `a12`, `pass_at_1`, `pass_pow_3` from the kit's `reliability-stats`; reported, never gating {id: PB-10, symbol: ComputeReliability, package: internal/contextbench}
+- [x] `ComputeReliability` fills the row's `ci_success_diff` (seeded, task-clustered paired bootstrap 95% CI), `wilcoxon_p`, `a12`, `pass_at_1`, `pass_pow_3` from the kit's `reliability-stats`; reported, never gating {id: PB-10, symbol: ComputeReliability, package: internal/contextbench}
 - [x] `FirstGoldHit` parses transcripts for tokens-to-first-gold-hit and tool-call counts per cell {id: PB-11, symbol: FirstGoldHit, package: internal/contextbench}
 - [x] `RequiresSatisfied(task, env)`: a task may declare `requires: [compiled-layer]`; the home corpus is split so a deterministic subset runs without the LLM-compiled obligations layer {id: PB-12, symbol: RequiresSatisfied, package: internal/contextbench}
 

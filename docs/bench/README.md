@@ -65,6 +65,7 @@ runs under it.
 | `success (t/c)` | successful trials, treatment vs control, summed across tasks |
 | `tokens agg` | total-over-total ratio, per trial. **This is what the criterion reads.** |
 | `tokens median` | the middle per-task ratio. Interpretation only, never the gate. |
+| `Δsuccess 95% CI` | `point [low, high] p=… A12=…`: the mean per-task success-rate difference (treatment − control) with its seeded, task-clustered paired bootstrap 95% CI; `p` is the two-sided Wilcoxon signed-rank on per-task mean tokens (absent when no task differs); `A12` is Vargha–Delaney's A over per-task success rates (0.5 = no effect). The row also carries per-arm `pass_at_1` and `pass_pow_3` and the `bootstrap_seed`. **Reported, never gating** — from agentic-kit `reliability-stats`, whose non-guarantees apply (percentile interval, no multiple-comparison correction, coarse exact `p` at small n). `n/r` for rows written before PB-10. |
 | `verdict` | `pass` · `fail` · `indeterminate` |
 | `why` | the sentence the verdict was computed from, plus `absent=` / `flaky=` / `cells_lost=` / `leaked=` caveats |
 
@@ -135,9 +136,9 @@ so it reports exactly that.
 
 <!-- BEGIN ledger table (task bench-ledger) -->
 
-| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | verdict | why |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
+| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | verdict | why |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | n/r | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
 
 <!-- END ledger table -->
 

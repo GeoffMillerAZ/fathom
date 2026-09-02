@@ -113,6 +113,13 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **Ledger rows carry `per_task`, `corpus_sha256`, `model_id`, `cost_usd`,
   `dirty_tree`, `cells_lost`, `leaked_tasks`** — additive; older rows parse
   and read as not-recorded.
+- **Ledger rows carry the reliability figures** (`ComputeReliability`, from
+  agentic-kit `reliability-stats`): `ci_success_diff` (seeded, task-clustered
+  paired bootstrap 95% CI on the per-task success difference, seed recorded),
+  `wilcoxon_p` on per-task mean tokens (absent when no pair differs), `a12`,
+  and per-arm `pass_at_1` / `pass_pow_3` — reported in the row and the
+  rendered `Δsuccess 95% CI` column, never gating. Additive; older rows
+  render `n/r`.
 - **`contextbenchscore regress` / `task bench-regress`** compare the newest
   ledger row against the previous same-corpus row task by task and exit
   0 / 1 / 3 (no regression / a task fell / not comparable); flaky tasks are
