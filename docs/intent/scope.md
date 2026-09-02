@@ -1,7 +1,7 @@
 # Scope
 
 Where the edges are right now. Present tense; done goals are deleted, git remembers.
-Computed progress: `fathom plans status --service fathom` (43 active plans, 623 gated rows on 2026-08-26).
+Computed progress: `fathom plans status --service fathom` (51 active plans, 779 gated rows on 2026-09-02).
 
 ## Current goals
 
@@ -24,24 +24,20 @@ claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/
 (corpus seam, packs, doctor convergence), DP-2/3/4, SD-2/3/4 (SDD panel).
 
 **G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
-`fathom plans status` shows 0 claimed-unproven across every active plan (23 on
-2026-09-01, of which 5 are false failures from a stale daemon store and 18 are non-code
-rows with no contract) and `fathom verify --strict` exits 0 for every top-level plan.
-Path: store provenance on verdicts and the lexical oracle (ADR-030), `docs/plans/proof-credibility.md`
-PC-1..5 and PC-17..20. The earlier blocker, thread `th-c214dd26`, was decided on
-2026-08-26 (ADR-026 D2).
-
-**G8. The harness port lands with Claude Code byte-identical.** Done when:
-`docs/plans/harness-port.md` wave 1 and `docs/plans/reach-parity.md` are proven, every
-pre-existing Claude Code golden is unchanged, and `fathom harness capabilities --json`
-renders Codex and Gemini CLI as `unverified` until a real session's beats say otherwise
-(ADR-029; `docs/vision/25-harness-port.md`).
+`fathom plans status` shows 0 claimed-unproven across every active plan (0 on
+2026-09-02, with 10 rows `measured-stale` behind a daemon predating HEAD -- a coverage
+gap, not a failure) and `fathom verify --strict` exits 0 for every top-level plan (the
+sweep over all 51 reads 672 claimed / 662 verified / 0 refuted on 2026-09-02; the 10
+unverified are claimed rows with no contract the gate can refute, each naming why).
+Path: store provenance on verdicts and the lexical oracle shipped in 0.8.0 (ADR-030,
+`docs/plans/proof-credibility.md` PC-1..5, PC-17..19); PC-20 is what is left.
 
 **G9. A stranger can re-run the bench.** Done when: `docs/plans/bench-public.md` PB-1..18
 are proven (truth at HEAD, H2-2 registered, the derived public corpus reproduces
-bit-for-bit from a clean clone) and the first replicated home run (BC-14) has a ledger
-row, verdict honest either way (ADR-031). The public run and any publication stay
-operator decisions (Q4, F2).
+bit-for-bit from a clean clone -- all proven in 0.8.0) and the first replicated home run
+(BC-14) has a ledger row, verdict honest either way (ADR-031). BC-14 has NOT been run:
+the ledger holds one backfilled n=1 row, indeterminate under the 3-trial floor. The
+public run (PB-19) and any publication stay operator decisions (Q4, F2).
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
@@ -58,9 +54,10 @@ waiting on it.
   tree-sitter; HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
   Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
   "Extraction", ADR-021.
-- Surfaces: 47 CLI verbs (`fathom help`; ADR-026 adds `intent`, honesty-fixes adds `post-commit-hook`); MCP over stdio and HTTP with 55 registered
-  tools and a 17-tool agent surface (`docs/mcp-tools.md`); Go client `pkg/client`;
-  the observatory web UI on app-kit (`cmd/fathom/observatory*.go`).
+- Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
+  MCP over stdio and HTTP with 55 registered tools and a 17-tool agent surface, which
+  now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client
+  `pkg/client`; the observatory web UI on app-kit (`cmd/fathom/observatory*.go`).
 - Store: pure-Go SQLite in WAL mode, the only on-disk backend; one shared fleet store
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
   Evidence: ADR-020, ADR-025, `Taskfile.yml` deploy.
@@ -71,7 +68,8 @@ waiting on it.
   them; Cursor and Copilot are data rows; tiers C/D are documented rows. Evidence:
   `docs/adoption/claude-code.md`, `docs/adoption/codex.md`, `docs/vision/25-harness-port.md`.
 - Fleet: the repositories on this workstation, reconciled by `fathom fleet reconcile`
-  (17 on 2026-08-13). Evidence: `CHANGELOG.md` 2026-08-13.
+  (20 on 2026-09-02, 19 drifted on the dry run; nothing applied). Evidence:
+  `CHANGELOG.md` 2026-08-13.
 - Substrate: `agentic-kit` via `go.work`, or the byte-pinned in-tree mirror. Evidence: ADR-009, ADR-019.
 - Platform: macOS only in practice (launchd daemon, TCC, code signing); no CI runner
   exists (`scripts/ci.sh` is the CI helper, nothing invokes it).

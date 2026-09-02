@@ -50,13 +50,24 @@ an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
   for what it has caught is the `verify gate: figure:` line of
   `fathom research report`, computed from the verify ledger with its window
   and denominators in the sentence (PC-13). On the author's machine on
-  2026-09-02 it read: *the verify gate refused 139 of 2,762 recorded runs over
-  197 plans in 10 repos between 2026-08-15 and 2026-09-02* (a refusal is one
+  2026-09-02 it read: *the verify gate refused 171 of 3,426 recorded runs over
+  317 plans in 21 repos between 2026-08-15 and 2026-09-02* (a refusal is one
   run whose verdict carried at least one failing claimed row — never a sum of
   failing rows across runs). Run the verb; do not quote this sentence
   onward. This is the part that has earned its keep.
 - **The index answers.** `find_symbol`, `find_callers`, `references`,
   `repo_map` over 20-odd languages. Ordinary, and it works.
+- **The gate knows when it cannot see.** A verdict now records which binary
+  built the store it read, so a daemon behind your checkout is reported as
+  `measured-stale` — a coverage gap — instead of producing failures that look
+  real (0.8.0). Three separate ways an instrument could report a clean
+  result over a broken reading were found and closed this release; that class
+  of bug is what this project cares most about.
+- **The harness is data, not Claude Code literals** (ADR-029). One seam
+  (`internal/harness`) carries every harness's hook table, envelopes and
+  vehicles; Claude Code's bytes are pinned byte-identical by golden, and
+  `fathom harness capabilities --json` tells you, per harness and per
+  capability, which vehicle is used and whether it has ever been verified.
 
 ## What is NOT proven, and where you should push hardest
 
@@ -67,7 +78,31 @@ an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
   evidence. If you see a number that implies a saving, that is a bug worth
   reporting.
 - **Single adopter until now.** Every measurement here comes from one
-  developer on one machine. You are the second, which is the point.
+  developer on one machine, on macOS. You are the second, which is the point.
+- **Codex and Gemini CLI are wired but unverified.** Their hook codecs are
+  round-tripped against fixtures citing the official envelope documentation,
+  and `fathom init --harness=codex|gemini-cli` writes real hook entries — but
+  no Codex or Gemini CLI session has ever run on the author's machine. Every
+  capability row says `unverified on this machine`, doctor's `harness_hooks`
+  row can only ever SKIP, and both descriptors carry a 60-day demotion clock
+  started 2026-09-02. If you run either, you are the verification.
+- **The bench has an instrument and no result.** 0.8.0 shipped the
+  three-trial replication floor, a memorisation-floor `none` arm, paired
+  reliability statistics on every ledger row, and a public Go corpus derived
+  from third-party gold patches with ground truth computed by `go/types`
+  rather than by fathom's own index (ADR-031). None of it has been **run**:
+  the first replicated home run (BC-14) and the public run (PB-19) both spend
+  real LLM tokens and are operator decisions, so `docs/bench/ledger.jsonl`
+  holds exactly one backfilled n=1 row that is *indeterminate* under the floor
+  this release registered. Read the bench as a method, never as a score.
+- **The new hook rows are not deployed across the fleet.** `fathom fleet
+  reconcile` (dry run, 2026-09-02) reports 20 repositories, 19 drifted, all of
+  them missing the `InstructionsLoaded` and `ConfigChange` rows. Nothing was
+  applied, so the 14-day reading that would show them producing beats does not
+  exist (PC-26).
+- **The evidence plane's demand signal has not fired.** K0 still has 0
+  human-written annotations; the goal closes on either outcome, and
+  manufacturing them to close it would defeat the point.
 - **The intent/evidence plane (ADR-026/027) is days old.** `fathom intent
   audit` reads what a repo declares about itself and lists what nothing
   proves. It found real defects in fathom immediately — including that its own
@@ -98,7 +133,8 @@ an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
 | Layer | What it is |
 |---|---|
 | `internal/connector` → `fusion` → `store` | ingest: discover, extract, fuse, persist (SQLite, pure Go) |
-| `internal/mcp` | the agent surface — 17 tools |
+| `internal/mcp` | the agent surface — 17 tools, annotated with an `outputSchema` |
+| `internal/harness` | every harness as data: descriptors, codecs, vehicles, verification state |
 | `cmd/fathom` | the CLI, the hooks, the daemon, the observatory |
 | `docs/intent/` | what the repo promises about itself, and how each promise is enforced |
 | `docs/plans/` | work orders whose `[x]` is gated by `fathom verify` |

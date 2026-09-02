@@ -41,6 +41,19 @@ Outcome: pending (`docs/plans/evidence-plane.md` EP-14 `adr_references_resolve`;
 
 ## Closed
 
+- INC-16 2026-09-01 A third `package main` (`cmd/loctruth`) collapsed `fathom::main.run`, so
+  `callgraph.Build` kept the last-ingested `run` and five untouched ambient-fathom rows (SP-4,
+  SP-7, SP-8, SP-9, TH-1) were silently REFUTED (O21); caught by the wave-1 integration probe --
+  a `--strict` sweep over all 51 plans on a freshly built store -- not by any test → PC-32:
+  symbol keys carry the package directory (`service::<dir>/<package>.Name`), `TypedEdgeEpoch` 2
+  rebuilds stored typed edges, `TestTwoMainsSameFuncNameNeverCollapse` (f6fda39).
+- INC-17 2026-09-01 A worker worktree's post-commit hook re-rooted the daemon's `fathom` service
+  at `.claude/worktrees/…` while the MCP `ingest` tool answered `{ok:true}` four times and named
+  no root, so every "refreshed" verify read a tree that was not merged main (O22) → PC-33:
+  `internal/worktree.CheckReroot` refuses a re-root at a linked worktree of the recorded root on
+  BOTH write paths (MCP handler and `pkg/client`), the `ok` envelope carries `root`, the
+  post-commit hook in a worktree refreshes nothing and names what it left alone; invariant I30
+  extended (cada740).
 - INC-13 2026-08-25 The raw-`cp` deploy instruction survived outside the custodian's corpus (`docs/adoption/claude-code.md` ×3, doctor's `binary_fresh` remedy) → both now say `task deploy` and why; widening the concern corpus stays CC-11.
 - INC-2 2026-08-21 A wedged reader wrote a zero-symbol index that reported "0 failed" (O16) → IT-14/IT-15: read failures counted and named, zero-readable runs refuse to overwrite (`TestIngestRefusesEmptyOverwriteOnReadErrors`).
 - INC-12 2026-08-25 Law 15 held in the engine, not on the production write path → `init`/`reconcile --apply` write only through `internal/wiring` (`TestInitWritesReceipt`, `TestReconcileStopsOnDriftedRegion`).

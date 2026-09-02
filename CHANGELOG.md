@@ -19,7 +19,26 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: minor (pre-1.0: breaking bumps minor)
+Release impact: patch (pre-1.0: breaking bumps minor)
+
+## [0.8.0] -- 2026-09-02
+
+**What this release is.** fathom stopped being a Claude Code program and
+started being a harness-agnostic one: the harness is now data behind one seam
+(ADR-029) -- Claude Code byte-identical by golden, Codex and Gemini CLI
+shipping with real codecs and an honest `unverified` stamp -- and the shipped
+skills moved to the `.agents/skills` path 13 of 15 surveyed harnesses read.
+Three ways the gate could report a clean result over a broken reading were
+found and closed: a verdict that recorded nothing about which binary built the
+store it read (O20), a third `package main` that collapsed a symbol key and
+silently refuted five untouched rows (O21), and a worktree that re-rooted the
+daemon's service while every ingest answered `ok` (O22). The verify gate
+gained a lexical oracle (ADR-030) so a documentation or measurement row proves
+itself instead of carrying a skip note, and the bench gained the two things it
+needed to be believable by someone who is not its author -- a third-party
+derived public corpus and reliability statistics on every ledger row
+(ADR-031). Nothing here licenses a savings claim; the A/B is still one-armed.
+Detail: `docs/changelog/0.8.0.md`.
 
 ### Breaking
 - **`fathom init --skills=codex` writes `<repo>/.agents/skills/<name>/SKILL.md`
@@ -28,263 +47,253 @@ Release impact: minor (pre-1.0: breaking bumps minor)
   repo-scoped.** The deprecated prompts twin is `--skills=codex-prompts`, the
   only user-global write (RP-1; migration:
   `docs/upgrades/0.8.0-skills-on-the-standard.md`).
+- **A plan row's `package:` names ONE directory and no longer matches
+  sub-packages by prefix** (PC-32), so a row anchored at a parent directory
+  stops matching. Migration: name the symbol's own package directory
+  (`internal/contextbench/publicloc`, not `internal/contextbench`).
+- **`fathom intent audit --json` nests the read outcome in
+  `coverage.unreadable[]`** -- `{path, outcome: {kind, detail, bytes}}` where
+  `outcome` was a bare string (PC-34, ADR-027). Migration: read
+  `outcome.kind` for the old value.
 
 ### Added
-- **Store provenance on gate verdicts (PC-1..5, O20).** `/statusz` (schema 2)
-  carries the daemon's own `binary_commit`, `binary_dirty`, `built_at`; every
-  verify-ledger row carries `daemon_commit`, `store_commit`, `binary_commit`;
-  `fathom verify` prints one stderr `provenance:` line when the daemon's build
-  is not this binary's (never compared to the cwd's HEAD). Doctor gains
-  `daemon_fresh`; `binary_fresh` says it knows the local binary only.
-  `plans status`, `intent audit` and doctor's `unproven_claims` mark a stale
-  daemon's readings `measured-stale` — a coverage gap, never a failure.
-- **Wiring drift over MCP entries and owned skills (PC-28..30).** The law-15
-  ledger baselines each harness descriptor's MCP server entry (argv and
-  env/header NAMES, never values) and every `fathom:owned` skill file;
-  `fleet reconcile` reports drift by kind and path and never merges
-  (`--apply` records missing baselines, `--apply --rebaseline` re-records a
-  drifted one); doctor `wiring_drift` (PASS / FAIL naming each / SKIP on an
-  unreadable file), custodian kind `wiring_current`, and a `wiring drift N`
-  fragment on the session attention line.
-- **Claim-moment verify (PC-22).** The PostToolUse `edit-hook` runs the
-  verify engine for a depth-1 `docs/plans/*.md` the moment an edit adds a
-  `[x]` relative to git HEAD and injects the refusal as `additionalContext`;
-  silent on a clean claim, an edit that claims nothing new, or any
-  operational failure. `~/.fathom/verify-ledger.jsonl` rows gain an additive
-  `origin` (`cli` | `stop` | `claim-moment`), and the Stop hook now leaves
-  its own `origin: stop` rows.
-- **`InstructionsLoaded` hook row (PC-23)** → `fathom session-hook --event
-  instructions-loaded`: one silent `instructions-loaded/loaded` beat
-  `{file_path, memory_type, load_reason}` — the first harness-side evidence
-  the stanza reached a session; injects nothing.
-- **`ConfigChange` hook row (PC-24)** → `fathom config audit --hook`: runs
-  the custodian audit on the changed repo and writes one
-  `custodian/config-change` beat, never a block; the next session line
-  carries the violated count.
-- **Doctor `stanza_loaded` (PC-25)** PASSes when an `InstructionsLoaded`
-  beat names this repo's `CLAUDE.md`/`AGENTS.md` and SKIPs (never FAILs)
-  naming the wiring date otherwise. The harness registry gains the
-  `stanza-loaded` and `config-audit` capabilities and the
-  `instructions-loaded` / `config-change` events; `claim-gate` is
-  `hook-inject` on Claude Code.
-- **`--json` on `ingest`, `init`, `thread brief|list`, `daemon status`,
-  `layers list`** (RP-14..17): ingest carries counts, `read_failures` with an
-  errno class and `outcome: ok|degraded|refused` so CI can assert
-  `read_failed == 0`; init carries every write, the receipt id and the manual
-  steps as data. Envelopes: `docs/usage.md`.
-- **`fathom plugin render` emits the Agent Plugins 1.0 `plugin.json` and
-  `mcp.json` beside `.claude-plugin/plugin.json`, over one `skills/` tree**
-  (RP-6); both manifests vet against the vendored `schema/plugin/schema.cue`
-  under `task cue-vet` and the pair is golden-pinned (RP-7); `scripts/ci.sh`
-  runs `claude plugin validate --strict` over the rendered tree when a
-  `claude` binary is on PATH and prints a named skip otherwise (RP-8).
-- **`fathom harness matrix`** renders the per-harness adoption matrix
-  (`RenderAdoptionMatrix`) that `docs/adoption/other-harnesses.md` pins by
-  test (RP-18); `schema/skills/schema.cue` vendors the Agent Skills frontmatter
-  spec and every shipped `SKILL.md` vets against it under `task cue-vet` (RP-2).
-- **`task stranger-check`**: the tracked tree, built with `GOWORK=off`, runs
-  `fathom init --harness=none` and `fathom doctor` against a throwaway daemon
-  and fails on any FAIL row (RP-23).
-- **`contextbenchscore import`** derives the public Go localization corpus
-  (`testdata/contextbench/tasks-public-go.json`) from pinned local
-  Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) JSONL snapshots with
-  no LLM and no network, under the pre-registered selection rule, emitting
-  per-task `derivation`, `requires`, `subject` and a `corpus_sha256` that
-  reproduces bit-for-bit; `-select-only` lists what to check out first.
-- **`cmd/loctruth`** lists a Go module's direct static callers with
-  `go/types` — the `find_callers` ground truth for the public corpus,
-  computed without fathom's index.
-- **`docs/bench/public-loc.md`** is the public-corpus runbook: pin, derive,
-  snapshot into a scratch store, run, score, publish transcripts, the cost
-  statement, and criterion H2-2 registered before run 1.
-- **Blast depth (BD-1..5).** `find_callers` and `references` rows carry
-  `depth` and `edge_confidence` (`resolved` = typed pass, `heuristic` =
-  syntax-only; `core.EdgeConfidenceOf`) with a `by_depth` summary, and
-  `find_callers` takes an optional `depth` that adds `transitive_callers`;
-  `blast_radius`/`diff_impact` add `by_depth`. `review_diff` and `fathom
-  review` compose `test_impact` — `affected_tests` (cited file:line) and
-  `test_gap` (changed symbols no test reaches). All fields additive.
-- **Served MCP contract (RP-9..13).** Every agent-surface tool description
-  names its own required arguments and a "Reach for it when" sentence; the
-  17 tools serve `annotations` (readOnly/destructive/idempotent/openWorld
-  hints) and a generated `outputSchema`, and `tools/call` returns
-  `structuredContent`; `initialize` echoes the client's protocol version
-  from a supported table (`2025-11-25` … `2024-11-05`) instead of the
-  hard-coded `2024-11-05`, the `MCP-Protocol-Version` header is tolerated
-  and echoed, `tools/list` is sorted by name, and `capabilities` reports
-  `schema_bytes`. `TestServeHTTPNegotiatesWithKitClient` proves `/rpc/agent`
-  against agentic-kit's Streamable-HTTP client. The agent surface's
-  per-session schema budget grows from ~12.4 KB to 28.7 KB (16.0 KB from
-  the description sentences, the rest from annotations + outputSchema);
-  `TestNarrowProfileSchemaBytes` is re-pinned to that measurement.
-- **The lexical oracle** (ADR-030): a plan row may carry `{oracle: lexical,
-  path: <repo path>, pattern: <regexp>}` and `fathom verify` proves it from
-  the working tree — path exists, non-empty, pattern matches — so a
-  measurement, changelog or design row verifies and leaves U2. Lint and the
-  gate refuse a markdown path without a pattern and a row carrying both a
-  symbol and an oracle.
-- **`needs: <sibling>.md#<id>`** — a row may wait on a row in another plan;
+- **The harness is data behind one seam (ADR-029).** `internal/harness` holds a
+  descriptor registry (Claude Code, Codex, Gemini CLI, the generic `agents`
+  pull tier) plus per-harness codecs, and Claude Code's hook table, stanza and
+  hook envelopes are derived from it byte-identically (HP-1, HP-2, HP-3, HP-9,
+  HP-10, HP-16); `schema/harness/schema.cue` validates the exported registry
+  (HP-11).
+- **`fathom harness list | capabilities | matrix | ladder`** prints the
+  registry, each harness's per-capability vehicle table (HP-4), the adoption
+  matrix `docs/adoption/other-harnesses.md` pins by test (RP-18), and the tier
+  B/C/D rows -- Windsurf, OpenCode, Amp, Zed/ACP, Junie, Warp, Continue, Aider
+  -- each with its source (HP-25). Every row of an unverified descriptor says
+  `unverified on this machine`, and `docs/adoption/codex.md` §6 is now that
+  table, test-pinned (HP-24).
+- **`--harness <id>` on `session-hook`, `edit-hook`, `stop-hook`,
+  `session-end-hook`, `pre-compact-hook`** (HP-5, HP-6, HP-7, HP-8): absent ⇒
+  `claude-code`, and an unknown id or a harness with no codec exits 0 with one
+  stderr line. Hooks never detect their caller -- the wired command line
+  spells it.
+- **Codex and Gemini CLI codecs** (HP-17, HP-19, HP-22, HP-23). Each speaks its
+  harness's documented envelope (Codex: `apply_patch` → the patch's first file,
+  `additionalContext` cut at 8,000 bytes with a named cut; Gemini CLI:
+  `systemMessage` where `additionalContext` is unshown, flat decision never
+  emitted), round-tripped against fixtures that cite their source; both
+  descriptors ship `unverified` with the 60-day demotion clock started
+  2026-09-02.
+- **`fathom init --harness=claude-code|codex|gemini-cli|agents|cursor|copilot|none`**
+  writes only that descriptor's instruction files and `.fathom/`, generates the
+  stanza's hook sentences from the descriptor, and prints the harness's own
+  `mcp add` line (HP-12, HP-18). Codex and Gemini CLI hook entries go into
+  `.codex/hooks.json` and the `hooks` key of `.gemini/settings.json` through
+  the wiring engine with a receipt `fleet undo` reverses; `cursor` and
+  `copilot` write stanza and skills only and report `hooks: not wired`
+  (HP-20).
+- **`fathom doctor` accepts every registry id**, resolves `auto` through the
+  registry's presence markers, adds a `gate_posture` row from the descriptor's
+  fail mode (HP-13, HP-14), and reads MCP registration or a non-Claude
+  harness's hook files as `skipped: unverified`, never a guessed PASS (HP-15,
+  HP-21).
+- **Store provenance on gate verdicts (O20).** `/statusz` (schema 2) carries
+  the daemon's own `binary_commit`, `binary_dirty` and `built_at`, every
+  verify-ledger row carries `daemon_commit`, `store_commit` and
+  `binary_commit`, and `fathom verify` prints one stderr `provenance:` line
+  when the daemon's build is not this binary's -- never compared to the cwd's
+  HEAD (PC-1, PC-2, PC-3). Doctor gains `daemon_fresh` and `binary_fresh` says
+  it knows the local binary only (PC-4, PC-6); `plans status`, `intent audit`
+  and doctor's `unproven_claims` mark a stale daemon's readings
+  `measured-stale` -- a coverage gap, never a failure (PC-5).
+- **Claim-moment verify (PC-22).** The PostToolUse `edit-hook` runs the verify
+  engine for a depth-1 `docs/plans/*.md` the moment an edit adds a `[x]`
+  relative to git HEAD and injects the refusal as `additionalContext`, silent
+  on a clean claim, an edit that claims nothing new, or any operational
+  failure. `~/.fathom/verify-ledger.jsonl` rows gain an additive `origin`
+  (`cli` | `stop` | `claim-moment`), and the Stop hook now leaves its own rows.
+- **Two more hook rows.** `InstructionsLoaded` → `fathom session-hook --event
+  instructions-loaded` writes one silent `instructions-loaded/loaded` beat
+  `{file_path, memory_type, load_reason}`, the first harness-side evidence the
+  stanza reached a session (PC-23); `ConfigChange` → `fathom config audit
+  --hook` runs the custodian audit on the changed repo and writes one
+  `custodian/config-change` beat, never a block (PC-24). Doctor's
+  `stanza_loaded` PASSes when a beat names this repo's `CLAUDE.md`/`AGENTS.md`
+  and SKIPs -- never FAILs -- naming the wiring date otherwise (PC-25).
+- **Wiring drift over MCP entries and owned skills.** The law-15 ledger
+  baselines each harness descriptor's MCP server entry (argv and env/header
+  NAMES, never values) and every `fathom:owned` skill file; `fleet reconcile`
+  reports drift by kind and path and never merges (`--apply` records missing
+  baselines, `--apply --rebaseline` re-records a drifted one) (PC-28, PC-29).
+  Doctor gains `wiring_drift` (PASS / FAIL naming each / SKIP on an unreadable
+  file), the custodian a `wiring_current` kind, and the session attention line
+  a `wiring drift N` fragment (PC-30).
+- **The lexical oracle (ADR-030).** A plan row may carry `{oracle: lexical,
+  path: <repo path>, pattern: <regexp>}` and `fathom verify` proves it from the
+  working tree -- path exists, non-empty, pattern matches -- so a measurement,
+  changelog or design row verifies and leaves U2 (PC-10, PC-18, PC-19). Lint
+  and the gate refuse a markdown path without a pattern and a row carrying both
+  a symbol and an oracle (PC-12, PC-20).
+- **`needs: <sibling>.md#<id>`** -- a row may wait on a row in another plan;
   `fathom verify` lints a missing sibling or row and `plans next` reads the
-  sibling's authored state.
+  sibling's authored state (PC-17).
 - **`--format sarif`** on `fathom verify`, `fathom intent audit` and `fathom
   config audit`: SARIF 2.1.0 of the refusals, one rule per criterion / claim
-  kind / concern, located at the plan line or the cited file:line.
-- **One verify-gate figure**: `fathom research report` prints a
-  `verify gate: figure:` sentence computed from the verify ledger with its
-  window and denominators inline (`verifyFigure`); the adoption gauge reads
-  the same computation.
-- **`task config-audit`** (`fathom config audit` against this repo) joins
-  `task validate`; `TestNoOrgSpecificNames` (ADR-011, with a local
-  `FATHOM_ORG_DENYLIST`) and `TestMaintainedLinesParse` lift invariants I19
-  and I36 from `stated` to tested.
-- **`internal/harness`** is the harness seam (ADR-029): a descriptor
-  registry (Claude Code, Codex, Gemini CLI, the generic `agents` pull tier)
-  plus the Claude Code codec; the Claude Code hook table, stanza, and hook
-  envelopes are derived from it byte-identically.
-- **`fathom harness list|capabilities [--harness ID] [--json]`** prints the
-  registry and each harness's per-capability vehicle table; every row of an
-  unverified descriptor says `unverified on this machine`, and
-  `docs/adoption/codex.md` §6 is now that table, test-pinned.
-- **`--harness <id>`** on `session-hook`, `edit-hook`, `stop-hook`,
-  `session-end-hook`, `pre-compact-hook` (absent ⇒ `claude-code`; an unknown
-  id or a harness with no codec exits 0 with one stderr line). Hooks never
-  detect their caller — the wired command line spells it.
-- **`fathom init --harness=claude-code|codex|gemini-cli|agents|none`** writes
-  only that descriptor's instruction files and `.fathom/`, generates the
-  stanza's hook sentences from the descriptor, and prints the harness's own
-  `mcp add` line; a descriptor with no codec reports `hooks: not wired`.
-- **`fathom doctor`** accepts every registry id, resolves `auto` through
-  the registry's presence markers, adds a `gate_posture` row from the
-  descriptor's fail mode, and reads MCP registration for a non-Claude
-  harness as `skipped: unverified`, never a guessed PASS.
-- **`schema/harness/schema.cue`** validates the exported registry
-  (`fathom harness list --json`); `TestHarnessSchemaVetsExport` runs it.
-- **Codex and Gemini CLI codecs (harness-port wave 2, HP-17..HP-23).**
-  `--harness codex|gemini-cli` on the five hook verbs now speaks each
-  harness's documented envelope (Codex: `apply_patch` → the patch's first
-  file, `additionalContext` cut at 8,000 bytes with a named cut; Gemini CLI:
-  flat decision never emitted, `systemMessage` where `additionalContext` is
-  unshown), round-tripped against fixtures that cite their source
-  (`internal/harness/testdata/codecs`); both descriptors ship `unverified`
-  with the 60-day demotion clock started 2026-09-02.
-- **`fathom init --harness=codex|gemini-cli`** writes the fathom hook
-  entries into the repo's `.codex/hooks.json` / the `hooks` key of
-  `.gemini/settings.json` (ms timeouts) through the wiring engine with a
-  receipt `fleet undo` reverses, generates a wired-but-unverified stanza
-  naming the harness's trust step, and prints the `mcp add` line; the
-  `cursor` and `copilot` data rows (`--harness=cursor|copilot`) write stanza
-  and skills only and say `hooks: not wired`.
-- **`fathom doctor --harness codex|gemini-cli`** adds a `harness_hooks` row
-  that reads the descriptor's hook files and reports present/missing
-  entries as `skipped: unverified` — never PASS; an unparsable file is
-  named, not counted absent.
-- **`fathom harness ladder [--url BASE] [--json]`** prints the tier B/C/D
-  rows (Windsurf, OpenCode, Amp, Zed/ACP, Junie, Warp, Continue, Aider):
-  instruction file, skills path, MCP config and `mcp add` line, the honest
-  "no injection here" line and each row's source.
-- **`task bench-home` / `bench-lookup`** run the context-bench with three
-  trials per (task, arm) cell instead of one, and score the run against the
-  criterion committed in the corpus. Both spend real LLM tokens and are
-  deliberately absent from `validate`, hooks, and CI.
-- **`docs/bench/ledger.jsonl`** is the per-run bench history, one line per
-  run, created by the first run and appended never rewritten; it holds one
+  kind / concern, located at the plan line or the cited file:line (PC-21).
+- **One verify-gate figure (PC-13).** `fathom research report` prints a `verify
+  gate: figure:` sentence computed from the verify ledger with its window and
+  denominators inline (`verifyFigure`), and the adoption gauge reads the same
+  computation.
+- **`task config-audit`** (`fathom config audit` against this repo) joins `task
+  validate`; `TestNoOrgSpecificNames` (ADR-011, with a local
+  `FATHOM_ORG_DENYLIST`) and `TestMaintainedLinesParse` lift invariants I19 and
+  I36 from `stated` to tested (PC-14, PC-27).
+- **`--json` on `ingest`, `init`, `thread brief|list`, `daemon status`, `layers
+  list`** (RP-14, RP-15, RP-16, RP-17): ingest carries counts and
+  `read_failures` with an errno class and `outcome: ok|degraded|refused` so CI
+  can assert `read_failed == 0`; init carries every write, the receipt id and
+  the manual steps as data. Envelopes: `docs/usage.md`.
+- **`fathom plugin render` emits the Agent Plugins 1.0 `plugin.json` and
+  `mcp.json` beside `.claude-plugin/plugin.json` over one `skills/` tree**
+  (RP-6). Both manifests vet against the vendored `schema/plugin/schema.cue`
+  under `task cue-vet` and the pair is golden-pinned (RP-7); `scripts/ci.sh`
+  runs `claude plugin validate --strict` over the rendered tree when a `claude`
+  binary is on PATH and prints a named skip otherwise (RP-8).
+- **`schema/skills/schema.cue`** vendors the Agent Skills frontmatter spec, and
+  every shipped `SKILL.md` vets against it under `task cue-vet` (RP-2).
+- **`task stranger-check`**, inside `task validate`: the tracked tree, built
+  with `GOWORK=off`, runs `fathom init --harness=none` and `fathom doctor`
+  against a throwaway daemon and fails on any FAIL row (RP-5, RP-23).
+- **Blast depth.** `find_callers` and `references` rows carry `depth` and
+  `edge_confidence` (`resolved` = typed pass, `heuristic` = syntax-only;
+  `core.EdgeConfidenceOf`) with a `by_depth` summary, `find_callers` takes an
+  optional `depth` that adds `transitive_callers`, and
+  `blast_radius`/`diff_impact` add `by_depth` (BD-1, BD-2, BD-3, BD-6).
+  `review_diff` and `fathom review` compose `test_impact` -- `affected_tests`
+  (cited file:line) and `test_gap`, the changed symbols no test reaches (BD-4,
+  BD-5); all fields additive.
+- **Served MCP contract.** Every agent-surface tool description names its own
+  required arguments and a "Reach for it when" sentence, the 17 tools serve
+  `annotations` and a generated `outputSchema`, `tools/call` returns
+  `structuredContent`, `tools/list` is sorted by name, `capabilities` reports
+  `schema_bytes`, and `initialize` echoes the client's protocol version from a
+  supported table (`2025-11-25` … `2024-11-05`) with the
+  `MCP-Protocol-Version` header tolerated and echoed (RP-9, RP-10, RP-11,
+  RP-12). The per-session schema budget grows from ~12.4 KB to 28.7 KB (16.0
+  KB of it the description sentences) and
+  `TestServeHTTPNegotiatesWithKitClient` proves `/rpc/agent` against
+  agentic-kit's Streamable-HTTP client (RP-13).
+- **`contextbenchscore import`** derives the public Go localization corpus
+  (`testdata/contextbench/tasks-public-go.json`) from pinned local
+  Multi-SWE-bench (CC0-1.0) and SWE-Explore-Bench (MIT) snapshots with no LLM
+  and no network, under a pre-registered selection rule, emitting per-task
+  `derivation`, `requires`, `subject` and a `corpus_sha256` that reproduces
+  bit-for-bit (PB-14, PB-15, PB-17). `cmd/loctruth` computes the `find_callers`
+  ground truth with `go/types` -- never fathom's own index (PB-16) -- and
+  `docs/bench/public-loc.md` is the runbook with the cost statement and
+  criterion H2-2 registered before run 1 (PB-18, PB-20).
+- **`docs/bench/ledger.jsonl`** is the per-run bench history, one line per run,
+  created by the first run and appended never rewritten; it holds one
   backfilled n=1 row (the 2026-07-24 second swing, indeterminate under the
-  floor) and `task bench-ledger` re-renders `docs/bench/README.md` from it
-  for free. Raw transcripts stay under `workspace/artifacts/`.
-- **The home corpus is true at HEAD again** (`truth_at_head_revision`): the
-  moved workspace rule, the inverted ADR-010 staleness verdict, three moved
-  premises and the bare `29` token are re-derived, and every ground-truth
-  token now carries a `truth_at_head` anchor that `TestHomeCorpusTruthAtHead`
-  re-checks in `task validate`, so corpus drift fails the gate.
-- **Ledger rows carry `per_task`, `corpus_sha256`, `model_id`, `cost_usd`,
-  `dirty_tree`, `cells_lost`, `leaked_tasks`** — additive; older rows parse
-  and read as not-recorded.
-- **Ledger rows carry the reliability figures** (`ComputeReliability`, from
-  agentic-kit `reliability-stats`): `ci_success_diff` (seeded, task-clustered
-  paired bootstrap 95% CI on the per-task success difference, seed recorded),
-  `wilcoxon_p` on per-task mean tokens (absent when no pair differs), `a12`,
-  and per-arm `pass_at_1` / `pass_pow_3` — reported in the row and the
-  rendered `Δsuccess 95% CI` column, never gating. Additive; older rows
-  render `n/r`.
+  floor) and `task bench-ledger` re-renders `docs/bench/README.md` from it for
+  free (PB-2, PB-3).
+- **Reliability figures on every ledger row (PB-10).** `ComputeReliability`
+  (agentic-kit `reliability-stats`) records `ci_success_diff` -- a seeded,
+  task-clustered paired bootstrap 95% CI on the per-task success difference --
+  plus `wilcoxon_p` on per-task mean tokens, `a12`, and per-arm `pass_at_1` /
+  `pass_pow_3`, rendered as a `Δsuccess 95% CI` column. Reported, never
+  gating; additive, so older rows render `n/r`.
 - **`contextbenchscore regress` / `task bench-regress`** compare the newest
   ledger row against the previous same-corpus row task by task and exit
   0 / 1 / 3 (no regression / a task fell / not comparable); flaky tasks are
-  listed, added tasks are not regressions. Free, and outside `validate`
-  until two same-corpus rows exist.
-- **Criterion H2-2** (precision-aware: a fenced answer block within
-  `max_predicted`, precision and recall recorded) is registered beside
-  H2-1 in the home corpus; H2-1's verdicts stand. The corpus also commits
-  a **leak rule**: a task the new no-tools `none` arm passes in 2 of 3
-  trials is excluded from the verdict and named on the row.
+  listed and added tasks are not regressions (PB-4, PB-6, PB-13, BC-16).
+- **Criterion H2-2** -- precision-aware: a fenced answer block within
+  `max_predicted`, precision and recall recorded -- is registered beside H2-1
+  in the home corpus, whose verdicts stand (PB-8, PB-11). The corpus also
+  commits a leak rule: a task the new no-tools `none` arm passes in 2 of 3
+  trials is excluded from the verdict and named on the row (PB-9).
 - **Runner flags** `--resume <run-dir>` (score only the missing cells),
-  `--subject-root` / `--service` / `--fathom-url` / `--prompt-subject`
-  (bench a repo other than this one), `--scratch-daemon` (ingest the
-  subject into a store under `workspace/`, never the fleet store),
-  `--env` (skip tasks whose `requires` the environment lacks),
-  `--scoring precision`, `--criterion`, `--stream` (tokens-to-first-gold-hit
-  and tool-call counts per cell). `memory_search` is excluded from the
-  fathom arm by design and the README says why.
-- **ADR-016 carries a PROPOSED amendment (Q21)**: a measured obligation
-  ceiling (~320 tokens, the post-edit p90) in place of the unmeasured 150 —
+  `--subject-root` / `--service` / `--fathom-url` / `--prompt-subject` (bench a
+  repo other than this one), `--scratch-daemon` (ingest the subject into a
+  store under `workspace/`, never the fleet store), `--env`, `--scoring
+  precision`, `--criterion` and `--stream` (PB-5, PB-7, PB-12). `memory_search`
+  is excluded from the fathom arm by design and the README says why.
+- **`task bench-home` / `bench-lookup`** run three trials per (task, arm) cell
+  instead of one and score the run against the criterion committed in the
+  corpus (BC-14). Both spend real LLM tokens and are deliberately absent from
+  `validate`, hooks and CI.
+- **The home corpus is true at HEAD again** (`truth_at_head_revision`, PB-1):
+  the moved workspace rule, the inverted ADR-010 staleness verdict, three moved
+  premises and the bare `29` token are re-derived, and every ground-truth token
+  now carries a `truth_at_head` anchor that `TestHomeCorpusTruthAtHead`
+  re-checks in `task validate`, so corpus drift fails the gate.
+- **`docs/guides/openviking-side-by-side.md`** -- how to run OpenViking
+  alongside fathom without the two fighting, and the authority rule that keeps
+  conversational memory from asserting facts about code (ADR-028, untested as
+  written).
+- **ADR-016 carries a PROPOSED amendment (Q21, PC-16)**: a measured obligation
+  ceiling (~320 tokens, the post-edit p90) in place of the unmeasured 150 --
   recorded in `ADR.md` as proposed; nothing changes until the owner decides.
-- **`contextbenchscore ledger`** pairs the arms, evaluates the corpus's
-  `machine_criterion`, and exits 0 pass / 1 fail / 3 indeterminate. A run
-  where a task ran in only one arm, or where the thinnest cell fell below the
-  registered replication floor, is indeterminate — never a win (ADR-027).
-- **`docs/guides/openviking-side-by-side.md`** — how to run OpenViking
-  alongside fathom without the two fighting, and the authority rule that
-  keeps conversational memory from asserting facts about code (ADR-028,
-  untested as written).
 
 ### Changed
 - **One read manifest (PC-34, ADR-027).** `internal/readset` is deleted onto
   agentic-kit's `foundations/telemetry/read-manifest`, which the kit
   generalised from it; fathom keeps the rendering adapter
   `internal/readcoverage` and the pinned lower-bound wording is unchanged.
-  `fathom intent audit --json` `coverage.unreadable[]` entries now nest the
-  outcome (`{path, outcome:{kind, detail, bytes}}`) instead of flattening it.
 - **`fleet reconcile` plans the shipped skills through the wiring engine**
-  (`planOwnedFile`, RP-4): both repo-scoped shapes, rewritten only under the
-  `fathom:owned` marker and receipted; a hand-authored file by a skill's name
-  or a hand edit under the marker is BLOCKED by name. Doctor's
-  `skills_installed` reads `.agents/skills` for every non-Claude harness and
-  names each missing skill (RP-3).
-- Adoption docs match the binary (RP-19/20/21/22): `--skills` shapes and
-  `fathom plugin render` in the Claude Code and Codex guides, a dated
-  *Verified against* line and the resolved Codex-hooks contradiction in
-  `docs/adoption/codex.md` §6 (vision 16 §3 annotated), the nine shipped
-  skills re-rendered, and `TestNoStaleHelpPhrasesInDocs` forbids the two stale
+  (RP-4): both repo-scoped shapes, rewritten only under the `fathom:owned`
+  marker and receipted; a hand-authored file by a skill's name or a hand edit
+  under the marker is BLOCKED by name. Doctor's `skills_installed` reads
+  `.agents/skills` for every non-Claude harness and names each missing skill
+  (RP-3).
+- **Adoption docs match the binary** (RP-19, RP-20, RP-21, RP-22): the
+  `--skills` shapes and `fathom plugin render` in the Claude Code and Codex
+  guides, a dated *Verified against* line and the resolved Codex-hooks
+  contradiction in `docs/adoption/codex.md` §6, the nine shipped skills
+  re-rendered, and `TestNoStaleHelpPhrasesInDocs` forbidding the two stale
   sentences under `docs/`.
-- **Symbol keys carry the package directory** (PC-32, O21): a symbol under a
-  directory is keyed `service::<dir>/<package>.Name`, so two `package main`
-  binaries with a same-named function are two nodes, never one last-writer
-  node whose verdict depended on ingest order. The old `service::package.Name`
-  form still resolves as an input wherever it names exactly one symbol.
-- A plan row's `package:` names ONE directory (PC-32): it no longer matches
-  sub-packages by prefix, so `package: internal/contextbench` singles out that
-  package rather than staying ambiguous with `internal/contextbench/publicloc`.
-- `ingest` (MCP tool and `fathom ingest`) refuses to re-root an existing
-  service at a git worktree of its recorded root or any `.claude/worktrees/`
-  path, naming both paths (PC-33, I30, O22); its `ok` envelope now carries
-  `root`. The post-commit hook run inside such a worktree refreshes nothing and
-  says which service and root it left alone.
-- Doctor's `binding_modules_mounted` / `binding_module_readiness` rows name
-  the real reason `list_modules` is absent (no `--module` store mounted)
-  instead of "tool not found" (PC-11).
-- **`-store` / `-call-log` defaults resolve under the enclosing repository's
-  `workspace/` from any subdirectory, or `~/.fathom/` outside a repository —
-  never the bare cwd (invariant I31, O11/O12).** Explicit flags,
-  `[daemon].store` / `[daemon].call_log` and `FATHOM_CALL_LOG` still win.
-- The U2 remedy in `fathom intent audit` now says what the counter does: a
-  `skip:` reason does not lift U2; a symbol or a lexical oracle does
-  (`TestU2RemedyMatchesCounter`).
-- The home corpus registers a **replication floor of 3 trials** it did not
+- **`contextbenchscore ledger`** pairs the arms, evaluates the corpus's
+  `machine_criterion` and exits 0 pass / 1 fail / 3 indeterminate (BC-15). A
+  run where a task ran in only one arm, or where the thinnest cell fell below
+  the registered replication floor, is indeterminate -- never a win (ADR-031).
+- **The home corpus registers a replication floor of 3 trials** it did not
   previously have. The two n=1 runs of 2026-07-24 are indeterminate under it
-  going forward; their recorded verdicts stand as history of an n=1
-  instrument and are not rewritten.
-- Bench results now report **two token ratios**: the aggregate the criterion
-  reads, and the per-task median an outlier cannot move. The median is
-  interpretation only and cannot become the gate.
+  going forward; their recorded verdicts stand as history of an n=1 instrument
+  and are not rewritten.
+- **Bench results report two token ratios**: the aggregate the criterion reads,
+  and the per-task median an outlier cannot move. The median is interpretation
+  only and cannot become the gate.
+- Ledger rows carry `per_task`, `corpus_sha256`, `model_id`, `cost_usd`,
+  `dirty_tree`, `cells_lost` and `leaked_tasks` -- additive, so older rows
+  parse and read as not-recorded (PB-3, PB-19).
+- The U2 remedy in `fathom intent audit` now says what the counter does: a
+  `skip:` reason does not lift U2, a symbol or a lexical oracle does
+  (`TestU2RemedyMatchesCounter`, PC-7, PC-8, PC-9).
+
+### Fixed
+- **A third `package main` silently refuted five untouched plan rows (O21,
+  PC-32).** `core.SymbolNode.Key()` collapsed every `func run` in every
+  `package main` into one node, so `callgraph.Build` kept whichever was
+  ingested last and the verdict depended on ingest order; a symbol under a
+  directory is now keyed `service::<dir>/<package>.Name` and `TypedEdgeEpoch`
+  2 rebuilds stored typed edges on the next ingest (the old
+  `service::package.Name` form still resolves as an input wherever it names
+  exactly one symbol).
+- **A worktree's post-commit hook re-rooted the daemon's service while every
+  ingest answered `ok` (O22, PC-33, I30).** `ingest` -- the MCP tool and
+  `fathom ingest` -- now refuses to re-root an existing service at a git
+  worktree of its recorded root or any `.claude/worktrees/` path, naming both
+  paths, and its `ok` envelope carries `root`; the post-commit hook run inside
+  such a worktree refreshes nothing and says which service and root it left
+  alone.
+- **`-store` / `-call-log` defaults resolve under the enclosing repository's
+  `workspace/` from any subdirectory, or `~/.fathom/` outside a repository --
+  never the bare cwd** (invariant I31, O11/O12, PC-15). Explicit flags,
+  `[daemon].store` / `[daemon].call_log` and `FATHOM_CALL_LOG` still win.
+- Doctor's `binding_modules_mounted` / `binding_module_readiness` rows name the
+  real reason `list_modules` is absent -- no `--module` store was mounted --
+  instead of "tool not found" (PC-11).
+- `fathom init`'s manual steps no longer claim Codex has no PreToolUse hook;
+  the sentence predated the Codex codec, and the replacement says what is wired
+  and that it stays unverified until a Codex session writes beats.
 
 ## [0.7.0] -- 2026-09-01
 
