@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -54,7 +56,17 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	kind := fs.String("kind", "", "restrict to kinds: conditions|invariants|unproven (comma-separated)")
 	top := fs.Int("top", intentTopDefault, "max rows per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON")
+	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the unproven claims, one rule per kind (U1, U2, …), located at the claim's file:line when the evidence names one (PC-21)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *asJSON && *format == "" {
+		*format = "json"
+	}
+	switch *format {
+	case "", "text", "json", "sarif":
+	default:
+		fmt.Fprintf(stderr, "error: --format %q: want text, json or sarif\n", *format)
 		return 1
 	}
 
@@ -137,11 +149,77 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 		"incomplete_coverage": incomplete,
 	})
 
-	if *asJSON {
+	switch *format {
+	case "json":
 		return emitIntentJSON(stdout, corpus, audit, ledger)
+	case "sarif":
+		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
+		return 0
 	}
 	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top)
 	return 0
+}
+
+// fileLineRe matches a "path:line" citation (with an optional trailing
+// " → target" or other suffix ignored) as the audit and the custodian
+// write them.
+var fileLineRe = regexp.MustCompile(`^([^\s:]+):(\d+)\b`)
+
+// sarifLocation turns an evidence/ref citation into a repo-relative file
+// and line. A citation without a line locates the file at line 0 (SARIF
+// omits the region); a plan ref ("docs/plans/x.md ROW") locates the plan.
+func sarifLocation(root string, candidates ...string) (string, int) {
+	for _, c := range candidates {
+		c = strings.TrimSpace(c)
+		if m := fileLineRe.FindStringSubmatch(c); m != nil {
+			n, _ := strconv.Atoi(m[2])
+			return relToRoot(root, m[1]), n
+		}
+		if i := strings.Index(c, ".md"); i > 0 && !strings.ContainsAny(c[:i], " \t") {
+			return relToRoot(root, c[:i+3]), 0
+		}
+	}
+	return "", 0
+}
+
+// relToRoot renders p relative to root when it is absolute and inside it;
+// repo-relative citations pass through unchanged.
+func relToRoot(root, p string) string {
+	if filepath.IsAbs(p) {
+		if rel, err := filepath.Rel(root, p); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+	}
+	return filepath.ToSlash(p)
+}
+
+// intentAuditSARIF renders the unproven claims as SARIF results: rule id =
+// the claim kind, message = ref, detail and remedy, location from the
+// claim's evidence or ref, falling back to the router file (line 0) so a
+// claim is never dropped for lacking a citation. Uncomputable sources
+// become "note"-level results on the router: a code-scanning pane must
+// show blindness, not hide it (ADR-027).
+func intentAuditSARIF(root string, c intent.Corpus, a intent.Audit) []verify.SARIFResult {
+	router := relToRoot(root, c.RouterPath)
+	if router == "" {
+		router = "docs/intent/README.md"
+	}
+	var out []verify.SARIFResult
+	for _, cl := range a.Unproven {
+		file, line := sarifLocation(root, cl.Evidence, cl.Ref)
+		if file == "" {
+			file = router
+		}
+		out = append(out, verify.SARIFResult{
+			RuleID: cl.Kind, Level: "warning",
+			Message: fmt.Sprintf("%s — %s → %s", cl.Ref, cl.Detail, cl.Remedy),
+			File:    file, Line: line,
+		})
+	}
+	for _, u := range a.Uncomputable {
+		out = append(out, verify.SARIFResult{RuleID: "not-computed", Level: "note", Message: u, File: router})
+	}
+	return out
 }
 
 func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, kinds []string, top int) {

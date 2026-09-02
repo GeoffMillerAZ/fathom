@@ -17,13 +17,24 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("config audit", stderr)
 	repo := fs.String("repo", ".", "repository root")
 	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
+	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the violated concerns, one rule per concern id, located at the first evidence file:line (PC-21)")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *asJSON && *format == "" {
+		*format = "json"
+	}
+	switch *format {
+	case "", "text", "json", "sarif":
+	default:
+		fmt.Fprintf(stderr, "error: --format %q: want text, json or sarif\n", *format)
 		return 1
 	}
 	root, err := filepath.Abs(*repo)
@@ -59,14 +70,17 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	// unread" by exactly this beat.
 	emitBeat("custodian", "audit", map[string]string{"violated": fmt.Sprintf("%d", violatedForBeat)})
 
-	if *asJSON {
+	switch *format {
+	case "json":
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(configAuditJSON(root, findings)); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
-	} else {
+	case "sarif":
+		_, _ = stdout.Write(verify.RenderSARIF("fathom config audit", configAuditSARIF(root, findings)))
+	default:
 		renderConfigAudit(stdout, root, findings)
 	}
 
@@ -80,6 +94,38 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// configAuditSARIF renders findings as SARIF results: violated concerns are
+// errors located at their first evidence citation (file:line), and
+// unable-to-check concerns are notes on the concerns file — a pane that
+// showed only violations would read a down daemon as a clean bill (law 3).
+func configAuditSARIF(root string, findings []custodian.Finding) []verify.SARIFResult {
+	var out []verify.SARIFResult
+	for _, f := range findings {
+		switch f.Status {
+		case custodian.StatusViolated:
+			file, line := "", 0
+			if len(f.Evidence) > 0 {
+				file, line = sarifLocation(root, f.Evidence[0])
+			}
+			if file == "" {
+				file = ".fathom/concerns.cue"
+			}
+			out = append(out, verify.SARIFResult{
+				RuleID: f.Concern.ID, Level: "error",
+				Message: f.Concern.Want + " — " + f.Detail,
+				File:    file, Line: line,
+			})
+		case custodian.StatusUnable:
+			out = append(out, verify.SARIFResult{
+				RuleID: f.Concern.ID, Level: "note",
+				Message: "unable to check — " + f.Detail,
+				File:    ".fathom/concerns.cue",
+			})
+		}
+	}
+	return out
 }
 
 func renderConfigAudit(w io.Writer, root string, findings []custodian.Finding) {
