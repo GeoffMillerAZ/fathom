@@ -85,16 +85,20 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 	for _, k := range spec.Keys {
 		keys[k.File+"\x00"+k.ID()] = k
 	}
+	files := map[string]OwnedFile{}
+	for _, f := range spec.Files {
+		files[f.File] = f
+	}
 
 	byFile := map[string][]Item{}
-	var files []string
+	var fileOrder []string
 	for _, it := range todo {
 		if _, seen := byFile[it.File]; !seen {
-			files = append(files, it.File)
+			fileOrder = append(fileOrder, it.File)
 		}
 		byFile[it.File] = append(byFile[it.File], it)
 	}
-	sort.Strings(files)
+	sort.Strings(fileOrder)
 
 	ledger, lerr := LoadLedger(root)
 	if lerr != nil {
@@ -142,7 +146,7 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 		}
 		res.Receipt = &written
 	}()
-	for _, file := range files {
+	for _, file := range fileOrder {
 		path := filepath.Join(root, filepath.FromSlash(file))
 		before, existed, rerr := readFileIfPresent(path)
 		if rerr != nil {
@@ -183,6 +187,17 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 					return res, derr
 				}
 				ledger.Record(file, OwnedKey{ID: k.ID(), Digest: digest(want), Wrote: receipt.Time})
+				keysRecorded = true
+			case KindFile:
+				// A whole owned file (ownedfile.go): the content IS the
+				// body, and the digest of what fathom wrote is recorded so
+				// a later hand edit under the marker is detectable.
+				f, ok := files[file]
+				if !ok {
+					return res, fmt.Errorf("internal: no owned-file spec for %s", file)
+				}
+				content = f.Body
+				ledger.Record(file, OwnedKey{ID: ownedFileID, Digest: digest(f.Body), Wrote: receipt.Time})
 				keysRecorded = true
 			}
 			rf.Touched = append(rf.Touched, TouchedRegion{

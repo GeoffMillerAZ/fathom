@@ -33,6 +33,7 @@ const (
 const (
 	KindRegion = "region"
 	KindKey    = "key"
+	// KindFile is declared in ownedfile.go.
 )
 
 // Causes of a BLOCKED verdict. Law 15 stops for more than one reason, and
@@ -138,6 +139,8 @@ type Region struct {
 type Spec struct {
 	Regions []Region
 	Keys    []Key
+	// Files are whole files fathom owns by marker (ownedfile.go).
+	Files []OwnedFile
 }
 
 func (s Spec) validate() error {
@@ -150,6 +153,16 @@ func (s Spec) validate() error {
 			return fmt.Errorf("two regions target %s — fathom owns at most one region per file", r.File)
 		}
 		seenRegion[r.File] = true
+	}
+	seenFile := map[string]bool{}
+	for _, f := range s.Files {
+		if f.File == "" {
+			return fmt.Errorf("owned file with no path")
+		}
+		if seenRegion[f.File] || seenFile[f.File] {
+			return fmt.Errorf("two items target the whole of %s", f.File)
+		}
+		seenFile[f.File] = true
 	}
 	seenKey := map[string]bool{}
 	for _, k := range s.Keys {
@@ -191,6 +204,9 @@ func PlanWiring(root string, spec Spec) (Plan, error) {
 	}
 	for _, k := range spec.Keys {
 		p.Items = append(p.Items, planKey(root, k, ledger))
+	}
+	for _, f := range spec.Files {
+		p.Items = append(p.Items, planOwnedFile(root, f, ledger))
 	}
 
 	sort.SliceStable(p.Items, func(i, j int) bool {
