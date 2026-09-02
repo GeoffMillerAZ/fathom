@@ -49,5 +49,13 @@ Verify: `fathom verify --service fathom --plan docs/plans/harness-port.md`.
 
 ## Records
 
+Wave 1 landed the parts of HP-24 that wave 1 can honestly claim: the
+`CHANGELOG.md` `[Unreleased]` lines, the coding-agents `## Maintained` line and
+`docs/mcp-tools.md` both naming `fathom harness`. The row stays open because the
+rest of it describes the end state of **both** waves — `docs/intent/scope.md`
+cannot restate the Harnesses boundary as "Cursor and Copilot data rows" or list
+`.codex/hooks.json` writes in the compatibility surface until HP-18 and HP-20
+exist. Restate scope in the same change that ships them.
+
 - [ ] `docs/intent/scope.md`: Harnesses boundary restated (Claude Code verified; Codex and Gemini CLI descriptors with codecs, unverified; Cursor and Copilot data rows; tiers C/D documented), compatibility surface gains `--harness`, `fathom harness`, `.codex/hooks.json` writes; `CHANGELOG.md` lines; `docs/mcp-tools.md` and the coding-agents use-case `## Maintained` line name `fathom harness` {id: HP-24, skip_test: true, skip: "docs; acceptance evidence is the scope.md diff and TestMaintainedLinesNameRegisteredToolsAndVerbs"}
 - [ ] FA-22 filed in agentic-kit (`docs/plans/fathom-uplift-asks.md`): the harness manifest contract moves to the kit only when the kit deletes `install-intent.sh` and the `integration.md` harness table onto it {id: HP-25, skip_test: true, skip: "a row in another repo's plan; evidence is the kit commit"}

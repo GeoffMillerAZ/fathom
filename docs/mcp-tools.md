@@ -19,6 +19,15 @@ process-global way to filter `tools/list` on stdio — was **removed entirely**
 reaches it any more, so a **stdio** session always sees the full registry. Scoping now
 lives entirely over HTTP.
 
+**Which harness reaches these tools, and how, is registry data** (ADR-029): every
+harness descriptor carries its MCP config path, HTTP key name, `mcp add` command and
+tool-name pattern. `fathom harness list` names the registered harnesses and
+`fathom harness capabilities [--harness ID]` prints the per-capability vehicle table —
+including the `mcp-tools` row, which is the only channel by which a tier-C/D harness
+(no hooks, no injection) reaches anything on this page. An unverified descriptor
+renders every row as `unverified on this machine`; the catalog below is unaffected by
+the harness in use.
+
 ### Path-scoped surfaces (HTTP)
 
 Over **HTTP** (`serve-http`, the shared daemon — default `127.0.0.1:7575`, loopback
