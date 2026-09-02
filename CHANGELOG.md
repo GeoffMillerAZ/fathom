@@ -39,6 +39,27 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **Ledger rows carry `per_task`, `corpus_sha256`, `model_id`, `cost_usd`,
   `dirty_tree`, `cells_lost`, `leaked_tasks`** — additive; older rows parse
   and read as not-recorded.
+- **`contextbenchscore regress` / `task bench-regress`** compare the newest
+  ledger row against the previous same-corpus row task by task and exit
+  0 / 1 / 3 (no regression / a task fell / not comparable); flaky tasks are
+  listed, added tasks are not regressions. Free, and outside `validate`
+  until two same-corpus rows exist.
+- **Criterion H2-2** (precision-aware: a fenced answer block within
+  `max_predicted`, precision and recall recorded) is registered beside
+  H2-1 in the home corpus; H2-1's verdicts stand. The corpus also commits
+  a **leak rule**: a task the new no-tools `none` arm passes in 2 of 3
+  trials is excluded from the verdict and named on the row.
+- **Runner flags** `--resume <run-dir>` (score only the missing cells),
+  `--subject-root` / `--service` / `--fathom-url` / `--prompt-subject`
+  (bench a repo other than this one), `--scratch-daemon` (ingest the
+  subject into a store under `workspace/`, never the fleet store),
+  `--env` (skip tasks whose `requires` the environment lacks),
+  `--scoring precision`, `--criterion`, `--stream` (tokens-to-first-gold-hit
+  and tool-call counts per cell). `memory_search` is excluded from the
+  fathom arm by design and the README says why.
+- **ADR-016 carries a PROPOSED amendment (Q21)**: a measured obligation
+  ceiling (~320 tokens, the post-edit p90) in place of the unmeasured 150 —
+  recorded in `ADR.md` as proposed; nothing changes until the owner decides.
 - **`contextbenchscore ledger`** pairs the arms, evaluates the corpus's
   `machine_criterion`, and exits 0 pass / 1 fail / 3 indeterminate. A run
   where a task ran in only one arm, or where the thinnest cell fell below the

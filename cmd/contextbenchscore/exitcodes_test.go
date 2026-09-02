@@ -110,7 +110,7 @@ func TestCmdLedger_ExitCodes(t *testing.T) {
 			results := filepath.Join(dir, "results")
 			writeCells(t, results, c.cells)
 			ledger := filepath.Join(dir, "ledger.jsonl")
-			rc := run([]string{"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger, "-run-id", "r1", "-commit", "abc", "-arms", "fathom grep", "-repeat", "3"})
+			rc := run([]string{"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger, "-run-id", "r1", "-commit", "abc", "-arms", "fathom grep", "-repeat", "3", "-env", "compiled-layer"})
 			if rc != c.want {
 				t.Fatalf("exit %d, want %d", rc, c.want)
 			}
@@ -122,8 +122,8 @@ func TestCmdLedger_ExitCodes(t *testing.T) {
 			if r.CorpusSHA256 == "" || r.ModelID != "claude-x" || r.CostUSD == 0 || len(r.PerTask) == 0 {
 				t.Errorf("row must carry corpus hash, model id, cost, per-task outcomes: %+v", r)
 			}
-			// T3 requires compiled-layer and never ran: 2 arms × 3 trials lost,
-			// plus whatever the case left out.
+			// With -env compiled-layer T3 was intended and never ran: 2 arms ×
+			// 3 trials lost, plus whatever the case left out.
 			if r.CellsLost < 6 {
 				t.Errorf("cells_lost = %d, want >= 6 (T3 never ran)", r.CellsLost)
 			}
@@ -154,6 +154,10 @@ func TestCmdLedger_LeakedTaskLeavesTheVerdictAndStaysOnTheRow(t *testing.T) {
 	}
 	if r.Tasks != 1 || len(r.PerTask) != 1 || r.PerTask[0].TaskID != "T1" {
 		t.Errorf("the leaked task must leave the paired verdict: %+v", r)
+	}
+	// Without -env, T3 (requires compiled-layer) was never intended: not lost.
+	if r.CellsLost != 0 {
+		t.Errorf("cells_lost = %d, want 0 — a task the environment could not run was never intended", r.CellsLost)
 	}
 }
 

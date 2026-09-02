@@ -310,6 +310,7 @@ func cmdLedger(args []string) int {
 	control := fs.String("control", "grep", "control arm name")
 	arms := fs.String("arms", "", "every arm the run intended (space/comma separated), for the cells_lost count; default: treatment and control")
 	repeat := fs.Int("repeat", 1, "trials per cell the run intended, for the cells_lost count")
+	env := fs.String("env", "", "capabilities the run's environment provided; tasks whose requires it does not cover were never intended and are not counted lost")
 	dirty := fs.Bool("dirty-tree", false, "the working tree had uncommitted changes when the run measured it")
 	outMD := fs.String("out-md", "", "optional path to render the whole ledger as a Markdown table")
 	notes := fs.String("notes", "", "optional free-text note recorded with the row")
@@ -352,7 +353,14 @@ func cmdLedger(args []string) int {
 	if len(intended) == 0 {
 		intended = []string{*treatment, *control}
 	}
-	cellsLost := contextbench.CellsLost(tasks, intended, *repeat, results)
+	have := splitList(*env)
+	var runnable []contextbench.Task
+	for _, t := range tasks {
+		if contextbench.RequiresSatisfied(t, have) {
+			runnable = append(runnable, t)
+		}
+	}
+	cellsLost := contextbench.CellsLost(runnable, intended, *repeat, results)
 
 	var leaked []string
 	if criterion.LeakRule != nil {

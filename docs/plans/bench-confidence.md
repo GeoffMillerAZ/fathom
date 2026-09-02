@@ -49,6 +49,14 @@ retroactively rewritten.
 
 ### Open — needs the operator
 
-- [ ] (op) First `--repeat 3` home run against the registered floor, ledger row committed, verdict honest either way {id: BC-14, symbol: Pair, package: internal/contextbench}
-- [ ] A public, third-party-reproducible corpus: every ground truth here is derived from *this* repo, so no outsider can re-run the bench and get a number. This is the remaining credibility gap versus a project that publishes against LoCoMo or tau2-bench, and it is a corpus problem, not a harness one {id: BC-15, symbol: LoadTasks, package: internal/contextbench}
-- [ ] Regression gate: compare a fresh run against the previous ledger row and fail on a per-task success regression, so the bench catches a surface change that breaks discovery instead of only scoring wins {id: BC-16, symbol: LoadLedger, package: internal/contextbench}
+Re-anchored 2026-09-02 (PB-7, ADR-031): the three rows below were anchored
+on `Pair` / `LoadTasks` / `LoadLedger` — symbols that already existed — so
+flipping any of them to `[x]` passed the gate with zero new work (I2 F5).
+Each now names the symbol only the work itself produces. `TestLedgerHasReplicatedRow`
+is deliberately NOT written yet: a skipped test still statically reaches its
+anchor, so writing it early would re-open the hole; it is written by the
+operator run that produces the row it asserts.
+
+- [ ] (op) First `--repeat 3` home run against the registered floor, ledger row committed, verdict honest either way; `TestLedgerHasReplicatedRow` asserts a row with `min_trials >= 3` exists and is written in the same change as the row {id: BC-14, symbol: TestLedgerHasReplicatedRow, package: internal/contextbench, skip_test: true, skip: "the test is the anchor; it does not exist until the replicated row does — fathom verify reports this row unproven until then"}
+- [ ] A public, third-party-reproducible corpus: every ground truth here is derived from *this* repo, so no outsider can re-run the bench and get a number. `RequiresSatisfied` (PB-12) is the split that lets a deterministic subset run on a scratch daemon; the row flips only with `bench-public.md` PB-19's public-corpus ledger row (`TestLedgerHasPublicRow`), not on the split alone {id: BC-15, symbol: RequiresSatisfied, package: internal/contextbench, needs: PB-19}
+- [ ] Regression gate: `contextbenchscore regress` (`cmdRegress`, PB-13) compares the newest ledger row against the previous same-corpus row and fails on a per-task treatment-success regression; built, but the row flips only once two same-corpus rows exist and `task bench-regress` has compared them {id: BC-16, symbol: cmdRegress, package: cmd/contextbenchscore, needs: BC-14}

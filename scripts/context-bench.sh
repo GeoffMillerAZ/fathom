@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 #
 # scripts/context-bench.sh — B1-2 (docs/plans/falsifiability.md): the
-# two-arm context-bench runner for the ×10 tokenomics falsifiability gate
-# (coding-agent-excellence.md §0 sentence 5 / §7 gate 6).
+# context-bench runner for the tokenomics falsifiability gate
+# (coding-agent-excellence.md §0 sentence 5 / §7 gate 6), extended by
+# bench-confidence.md (repetition, the ledger) and bench-public.md
+# (resume, subject parameterization, the none arm, precision scoring).
 #
-# Runs every task in testdata/contextbench/tasks.json (B1-1's committed
-# corpus) TWICE via headless `claude -p` subagents:
-#   - arm "fathom": may use ONLY the fathom MCP companion tools (find_symbol,
-#     find_callers, references, symbol_context, outline, repo_map,
-#     pack_context, entrypoints, query_symbols, capabilities, list_services,
-#     staleness_report, verify_plan, obligations, read_source — the T5-4
-#     bounded raw-text read added to the 16-tool /rpc/agent surface since the
-#     prior H3-1 run) — never Bash/Read/Grep; mcp__fathom__ingest stays
-#     explicitly denied (read-only against the live daemon, per CLAUDE.md).
+# Runs every runnable task in the corpus via headless `claude -p`
+# subagents, one fresh session per (task, arm, trial):
+#   - arm "fathom": may use ONLY the fathom MCP companion tools listed in
+#     FATHOM_ALLOWED below — never Bash/Read/Grep; mcp__fathom__ingest
+#     stays explicitly denied (read-only against the daemon it is pointed
+#     at). mcp__fathom__memory_search is deliberately NOT in the allowlist:
+#     it recalls conversational continuity, not code facts (ADR-028's
+#     authority boundary — memory may recall, never assert a code fact),
+#     so a bench of code discovery must not let the treatment arm answer
+#     from a prior session's notes. Documented in docs/bench/README.md.
 #   - arm "grep":   may use ONLY grep/find/cat via Bash — never Read, never
 #     any MCP tool.
-# Both arms score real, non-fabricated runs when the fathom daemon is
+#   - arm "none":   NO tools at all (the memorisation floor, PB-9). A task
+#     this arm passes in >= 2 of 3 trials is `leaked` under the corpus's
+#     committed leak_rule and leaves the verdict; the ledger row lists it.
+# Both tool arms score real, non-fabricated runs when the fathom daemon is
 # reachable; see the honest-degradation note below for what happens when
 # it is not.
 #
@@ -24,59 +30,75 @@
 #     (this repo's claude -p lane is the OAuth/subscription lane, which
 #     --bare cannot use — verified live, "Not logged in"), and --safe-mode
 #     disables MCP servers even with an explicit --mcp-config (verified
-#     live). Both arms therefore run in the default startup mode, so
-#     CLAUDE.md + user memory load identically for both — a fixed,
+#     live). All arms therefore run in the default startup mode, so
+#     CLAUDE.md + user memory load identically for every arm — a fixed,
 #     symmetric baseline of cache_creation/cache_read tokens per call
 #     (tens of thousands of tokens; see the summary's per-arm totals). This
 #     means TotalTokens as reported is dominated by that shared baseline,
 #     NOT by discovery-call cost alone, for any single trivial task — the
-#     ×10 discovery-token claim is only visible in aggregate / on
-#     multi-hop tasks (cross-repo, multi-caller lookups), which is why
-#     B1-1's corpus favors those categories. Report this caveat alongside
-#     any number pulled from this script's output.
+#     discovery-token claim is only visible in aggregate / on multi-hop
+#     tasks, which is why the corpora favor those categories. Report this
+#     caveat alongside any number pulled from this script's output.
 #   - --strict-mcp-config with a single-server config file scopes each
 #     call's MCP surface precisely: arm "fathom" sees only the fathom HTTP
-#     server (at $FATHOM_HTTP_URL/rpc/agent); arm "grep" sees no MCP
-#     servers at all. Neither arm can accidentally use the user's other
-#     registered servers (playwright, tailwindplus, appkit, apify).
+#     server (at $FATHOM_HTTP_URL/rpc/agent); the other arms see no MCP
+#     servers at all. No arm can accidentally use the user's other
+#     registered servers.
 #   - mcp__fathom__ingest is explicitly disallowed for arm "fathom" — this
-#     script performs read-only queries against the live daemon only
-#     (CLAUDE.md: never mutate the shared fleet store from a worker
-#     script). If the daemon is unreachable at all, arm "fathom" is
-#     skipped entirely (not faked) and every task's fathom-arm row is
-#     marked accordingly in the results artifact; arm "grep" still runs
-#     for real. This is the honest-degradation path required by
-#     docs/plans/falsifiability.md B1-3.
+#     script performs read-only queries against the daemon only (CLAUDE.md:
+#     never mutate the shared fleet store from a worker script). If the
+#     daemon is unreachable at all, arm "fathom" is skipped entirely (not
+#     faked) and every task's fathom-arm cell is ABSENT in the results
+#     artifact; the other arms still run for real. This is the
+#     honest-degradation path required by docs/plans/falsifiability.md B1-3.
+#   - --scratch-daemon (PB-5) never touches the fleet store: it builds
+#     bin/fathom from this tree, ingests --subject-root into a store under
+#     workspace/tmp/, serves it on a free loopback port for the run, and
+#     kills it at exit. A scratch daemon has no LLM-compiled obligations
+#     layer, so --env defaults to "" there and tasks that declare
+#     `requires: [compiled-layer]` are skipped (never scored as misses);
+#     against the fleet daemon --env defaults to "compiled-layer".
 #
 # Output: workspace/artifacts/context-bench/run-<ts>/ (raw claude -p JSON
-# per task/arm + scored ArmResult JSON per task/arm) and, at the top level,
+# per cell + scored ArmResult JSON per cell) and, at the top level,
 # workspace/artifacts/context-bench/results-<ts>.json (machine-readable,
 # internal/contextbench.RunResults shape) + summary-<ts>.md (rendered table).
 #
 # Repetition (2026-09-01): --repeat N runs every (task, arm) cell N times.
-# n=1 was the single largest confidence gap in every run to date — a cell
-# that passes once is indistinguishable from a cell that passes two thirds
-# of the time, and the 2026-07-24 verdict turned on per-task token figures
-# that had no measured spread at all. The corpus's committed
-# machine_criterion carries a replication floor; a run below it is scored
-# INDETERMINATE, not a win. Cost scales linearly with N — a --repeat 3 home
-# run is roughly three times the tokens of the 2026-07-24 run, so it is
+# The corpus's committed machine_criterion carries a replication floor; a
+# run below it is scored INDETERMINATE, not a win. Cost scales linearly
+# with N — a --repeat 3 home run is roughly three times the tokens of the
+# 2026-07-24 run (~13M tokens, ~$13 at 2026-09 prices), so it is
 # operator-initiated, never automatic.
 #
+# Resume (PB-4): --resume <run-dir> re-uses a run directory, skips every
+# cell whose scored file already exists, scores only the gaps, and records
+# how many intended cells are still missing (cells_lost on the ledger row).
+# One watchdog kill in 78 calls no longer forces a full re-run.
+#
 # Usage:
-#   scripts/context-bench.sh                  # run every task, both arms
-#   scripts/context-bench.sh --arms grep       # grep arm only (skip fathom
-#                                               # even if the daemon is up)
-#   scripts/context-bench.sh --tasks <file>    # override the corpus path
-#   scripts/context-bench.sh --repeat 3        # three trials per cell
+#   scripts/context-bench.sh                       # every task, arms "fathom grep"
+#   scripts/context-bench.sh --arms 'fathom grep none'
+#   scripts/context-bench.sh --tasks <file>        # override the corpus path
+#   scripts/context-bench.sh --repeat 3            # three trials per cell
+#   scripts/context-bench.sh --resume <run-dir>    # fill the gaps of an earlier run
+#   scripts/context-bench.sh --scoring precision   # H2-2's fenced-block scoring
+#   scripts/context-bench.sh --criterion H2-2      # evaluate a registered criterion
+#   scripts/context-bench.sh --stream              # capture stream-json transcripts
+#                                                  # (tokens-to-first-gold-hit, tool calls)
+#   scripts/context-bench.sh --subject-root <dir> --service <id> \
+#                            --prompt-subject 'the acme codebase' --scratch-daemon
+#   scripts/context-bench.sh --env compiled-layer  # capabilities the environment provides
 #
 # Env:
 #   FATHOM_HTTP_URL          base URL of the fathom daemon (default
-#                             http://localhost:7575)
+#                             http://localhost:7575; --fathom-url overrides)
 #   CONTEXT_BENCH_MODEL      claude -p --model value (default sonnet)
 #   CONTEXT_BENCH_TIMEOUT    per-call watchdog timeout in seconds (default
 #                             180) — macOS has no `timeout` in the base
 #                             install, so this script implements its own.
+#   CONTEXT_BENCH_REPEAT     default for --repeat (1)
+#   CONTEXT_BENCH_LEDGER     default for --ledger (docs/bench/ledger.jsonl)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -87,6 +109,26 @@ TIMEOUT="${CONTEXT_BENCH_TIMEOUT:-180}"
 ARMS="fathom grep"
 REPEAT="${CONTEXT_BENCH_REPEAT:-1}"
 LEDGER="${CONTEXT_BENCH_LEDGER:-$ROOT/docs/bench/ledger.jsonl}"
+RESUME_DIR=""
+SUBJECT_ROOT="$ROOT"
+SERVICE="fathom"
+PROMPT_SUBJECT="the fathom codebase"
+SCRATCH_DAEMON=0
+SCORING="substring"
+CRITERION=""
+STREAM=0
+ENV_SET=0
+ENV=""
+
+usage() {
+  cat >&2 <<USAGE
+usage: $(basename "$0") [--arms 'fathom grep none'] [--tasks <path>] [--repeat N] [--ledger <path>]
+          [--resume <run-dir>] [--scoring substring|precision] [--criterion <id>] [--stream]
+          [--subject-root <dir>] [--service <id>] [--fathom-url <url>] [--prompt-subject <text>]
+          [--scratch-daemon] [--env <cap,cap>]
+USAGE
+  exit 2
+}
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -94,7 +136,17 @@ while [ "$#" -gt 0 ]; do
     --tasks) TASKS="$2"; shift 2 ;;
     --repeat) REPEAT="$2"; shift 2 ;;
     --ledger) LEDGER="$2"; shift 2 ;;
-    *) echo "usage: $(basename "$0") [--arms 'fathom grep'] [--tasks <path>] [--repeat N] [--ledger <path>]" >&2; exit 2 ;;
+    --resume) RESUME_DIR="$2"; shift 2 ;;
+    --scoring) SCORING="$2"; shift 2 ;;
+    --criterion) CRITERION="$2"; shift 2 ;;
+    --stream) STREAM=1; shift ;;
+    --subject-root) SUBJECT_ROOT="$(cd "$2" && pwd)" || exit 2; shift 2 ;;
+    --service) SERVICE="$2"; shift 2 ;;
+    --fathom-url) FATHOM_HTTP_URL="$2"; shift 2 ;;
+    --prompt-subject) PROMPT_SUBJECT="$2"; shift 2 ;;
+    --scratch-daemon) SCRATCH_DAEMON=1; shift ;;
+    --env) ENV="$2"; ENV_SET=1; shift 2 ;;
+    *) usage ;;
   esac
 done
 
@@ -102,15 +154,31 @@ case "$REPEAT" in
   ''|*[!0-9]*) echo "context-bench: --repeat must be a positive integer, got '$REPEAT'" >&2; exit 2 ;;
 esac
 [ "$REPEAT" -ge 1 ] || { echo "context-bench: --repeat must be >= 1" >&2; exit 2; }
+case "$SCORING" in
+  substring|precision) ;;
+  *) echo "context-bench: --scoring must be substring or precision, got '$SCORING'" >&2; exit 2 ;;
+esac
 
 if [ ! -f "$TASKS" ]; then
   echo "context-bench: tasks file not found: $TASKS" >&2
   exit 2
 fi
 
-TS="$(date -u +%Y%m%dT%H%M%SZ)"
+# The environment's capabilities decide which tasks are runnable
+# (`requires`, PB-12). A scratch daemon has no compiled layer.
+if [ "$ENV_SET" -eq 0 ]; then
+  if [ "$SCRATCH_DAEMON" -eq 1 ]; then ENV=""; else ENV="compiled-layer"; fi
+fi
+
 ARTIFACTS_DIR="$ROOT/workspace/artifacts/context-bench"
-RUN_DIR="$ARTIFACTS_DIR/run-$TS"
+if [ -n "$RESUME_DIR" ]; then
+  RUN_DIR="$(cd "$RESUME_DIR" && pwd)" || { echo "context-bench: --resume dir not found: $RESUME_DIR" >&2; exit 2; }
+  TS="${RUN_DIR##*/run-}"
+  echo "context-bench: resuming $RUN_DIR (run id $TS) — cells with a scored file are kept, the rest are run"
+else
+  TS="$(date -u +%Y%m%dT%H%M%SZ)"
+  RUN_DIR="$ARTIFACTS_DIR/run-$TS"
+fi
 RAW_DIR="$RUN_DIR/raw"
 RESULTS_DIR="$RUN_DIR/results"
 mkdir -p "$RAW_DIR" "$RESULTS_DIR"
@@ -120,6 +188,50 @@ SCORER="$RUN_DIR/contextbenchscore"
 if ! GOWORK=off CGO_ENABLED=1 go build -o "$SCORER" "$ROOT/cmd/contextbenchscore"; then
   echo "context-bench: failed to build cmd/contextbenchscore" >&2
   exit 2
+fi
+
+# ─── scratch daemon (PB-5): never the fleet store ─────────────────────
+SCRATCH_PID=""
+cleanup() {
+  if [ -n "$SCRATCH_PID" ]; then
+    kill "$SCRATCH_PID" 2>/dev/null
+    wait "$SCRATCH_PID" 2>/dev/null
+    echo "context-bench: scratch daemon stopped"
+  fi
+}
+trap cleanup EXIT
+
+if [ "$SCRATCH_DAEMON" -eq 1 ]; then
+  SCRATCH_BIN="$RUN_DIR/fathom"
+  SCRATCH_STORE="$ROOT/workspace/tmp/bench-scratch-$TS.sqlite"
+  mkdir -p "$ROOT/workspace/tmp"
+  echo "context-bench: building bin/fathom for the scratch daemon"
+  if ! GOWORK=off CGO_ENABLED=1 go build -o "$SCRATCH_BIN" "$ROOT/cmd/fathom"; then
+    echo "context-bench: failed to build cmd/fathom" >&2
+    exit 2
+  fi
+  echo "context-bench: ingesting $SUBJECT_ROOT as service '$SERVICE' into $SCRATCH_STORE"
+  if ! "$SCRATCH_BIN" ingest -service "$SERVICE" -path "$SUBJECT_ROOT" -store "$SCRATCH_STORE" > "$RUN_DIR/scratch-ingest.log" 2>&1; then
+    echo "context-bench: scratch ingest failed (see $RUN_DIR/scratch-ingest.log)" >&2
+    exit 2
+  fi
+  SCRATCH_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+  FATHOM_HTTP_URL="http://127.0.0.1:$SCRATCH_PORT"
+  ( cd "$ROOT" && exec "$SCRATCH_BIN" serve-http -store "$SCRATCH_STORE" -addr "127.0.0.1:$SCRATCH_PORT" -auto-refresh=false -call-log "" ) > "$RUN_DIR/scratch-daemon.log" 2>&1 &
+  SCRATCH_PID=$!
+  ready=0
+  for _ in $(seq 1 60); do
+    if curl -sS -m 2 -o /dev/null "$FATHOM_HTTP_URL/rpc/agent" -X POST -H 'Content-Type: application/json' \
+        -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}' 2>/dev/null; then
+      ready=1; break
+    fi
+    sleep 0.5
+  done
+  if [ "$ready" -ne 1 ]; then
+    echo "context-bench: scratch daemon did not become ready at $FATHOM_HTTP_URL (see $RUN_DIR/scratch-daemon.log)" >&2
+    exit 2
+  fi
+  echo "context-bench: scratch daemon serving $SCRATCH_STORE at $FATHOM_HTTP_URL (pid $SCRATCH_PID)"
 fi
 
 # ─── fathom-arm reachability preflight (honest degradation, B1-3) ─────────
@@ -132,7 +244,7 @@ if echo "$ARMS" | grep -qw fathom; then
     echo "context-bench: fathom daemon reachable at $FATHOM_HTTP_URL/rpc/agent — arm 'fathom' will run for real"
   else
     echo "context-bench: WARNING — fathom daemon NOT reachable at $FATHOM_HTTP_URL/rpc/agent" >&2
-    echo "context-bench: degrading honestly — arm 'fathom' is SKIPPED (not faked); arm 'grep' still runs for real" >&2
+    echo "context-bench: degrading honestly — arm 'fathom' is SKIPPED (not faked); the other arms still run for real" >&2
   fi
 fi
 
@@ -143,34 +255,53 @@ EOF
 EMPTY_MCP_CONFIG="$RUN_DIR/empty-mcp.json"
 echo '{"mcpServers":{}}' > "$EMPTY_MCP_CONFIG"
 
-# Tiny helper (avoids fragile nested-quote python -c one-liners): prints one
-# scored ArmResult's headline to stdout.
+# Tiny helpers (avoid fragile nested-quote python -c one-liners).
 cat > "$RUN_DIR/print_result.py" <<'PY'
 import json, sys
 d = json.load(sys.stdin)
 status = "PASS" if d["success"] else "FAIL"
-print("context-bench: [{}/{}] {} tokens={} wall_ms={}".format(
-    d["task_id"], d["arm"], status, d["total_tokens"], d["wall_time_ms"]))
+print("context-bench: [{}/{}/t{}] {} tokens={} wall_ms={}".format(
+    d["task_id"], d["arm"], d.get("trial", 1), status, d["total_tokens"], d["wall_time_ms"]))
+PY
+# stream-json → the final result envelope (the last {"type":"result"} event
+# has the same shape as --output-format json's envelope).
+cat > "$RUN_DIR/last_result.py" <<'PY'
+import json, sys
+last = None
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    line = line.strip()
+    if not line.startswith("{"):
+        continue
+    try:
+        ev = json.loads(line)
+    except ValueError:
+        continue
+    if ev.get("type") == "result":
+        last = ev
+if last is None:
+    sys.exit(1)
+json.dump(last, open(sys.argv[2], "w"))
 PY
 
-# T5-8 (docs/plans/trust-and-tokenomics.md): read_source joined the 16-tool
-# companion allowlist (T5-4) since the previous H3-1 run — added here so the
-# fathom arm's allowed surface matches the live /rpc/agent registry exactly
-# (companionWant in internal/mcp/surface_test.go, minus ingest, which stays
-# explicitly denied below: this script never lets an arm mutate the shared
-# fleet store).
+# The fathom arm's allowed surface is the live /rpc/agent registry
+# (companionWant in internal/mcp/surface_test.go) minus two deliberate
+# exclusions: ingest (never mutate the store from a worker script) and
+# memory_search (continuity, not code facts — see the header).
 FATHOM_ALLOWED="mcp__fathom__find_symbol mcp__fathom__find_callers mcp__fathom__references mcp__fathom__symbol_context mcp__fathom__outline mcp__fathom__repo_map mcp__fathom__pack_context mcp__fathom__entrypoints mcp__fathom__query_symbols mcp__fathom__capabilities mcp__fathom__list_services mcp__fathom__staleness_report mcp__fathom__verify_plan mcp__fathom__obligations mcp__fathom__read_source"
-FATHOM_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest"
+FATHOM_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest mcp__fathom__memory_search"
 GREP_ALLOWED="Bash(grep:*) Bash(find:*) Bash(cat:*)"
 GREP_DISALLOWED="Read Grep Glob Task WebSearch WebFetch Write Edit NotebookEdit"
+NONE_ALLOWED=""
+NONE_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch NotebookEdit"
 
 # run_with_timeout OUTFILE CMD...  — macOS's base install has no `timeout(1)`;
-# this is the standard background-watchdog substitute. Redirects CMD's
-# stdout to OUTFILE (stderr to OUTFILE.stderr), returns CMD's exit code, or
-# 124 (matching GNU timeout's convention) if the watchdog had to kill it.
+# this is the standard background-watchdog substitute. Runs CMD in the
+# subject root, redirects its stdout to OUTFILE (stderr to OUTFILE.stderr),
+# returns CMD's exit code, or 124 (GNU timeout's convention) if the
+# watchdog had to kill it.
 run_with_timeout() {
   local outfile="$1"; shift
-  "$@" < /dev/null > "$outfile" 2>"$outfile.stderr" &
+  ( cd "$SUBJECT_ROOT" && exec "$@" ) < /dev/null > "$outfile" 2>"$outfile.stderr" &
   local pid=$!
   ( sleep "$TIMEOUT" && kill -TERM "$pid" 2>/dev/null ) &
   local watchdog=$!
@@ -181,29 +312,52 @@ run_with_timeout() {
   return "$rc"
 }
 
+CELLS_RUN=0
+CELLS_KEPT=0
 run_arm() {
   local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7" trial="${8:-1}"
   local raw="$RAW_DIR/$task_id-$arm-t$trial.json"
+  local stream="$RAW_DIR/$task_id-$arm-t$trial.stream.jsonl"
   local scored="$RESULTS_DIR/$task_id-$arm-t$trial.json"
 
+  if [ -s "$scored" ]; then
+    echo "context-bench: [$task_id/$arm/t$trial] kept (scored file exists)"
+    CELLS_KEPT=$((CELLS_KEPT + 1))
+    return 0
+  fi
+  CELLS_RUN=$((CELLS_RUN + 1))
+
   echo "context-bench: [$task_id/$arm/t$trial] running..."
-  if ! run_with_timeout "$raw" claude -p "$prompt" \
+  local -a fmt=(--output-format json)
+  local capture="$raw"
+  if [ "$STREAM" -eq 1 ]; then
+    fmt=(--output-format stream-json --verbose)
+    capture="$stream"
+  fi
+  if ! run_with_timeout "$capture" claude -p "$prompt" \
       --append-system-prompt "$system_prompt" \
-      --output-format json \
+      "${fmt[@]}" \
       --mcp-config "$mcp_config" \
       --strict-mcp-config \
       --allowedTools "$allowed" \
       --disallowedTools "$disallowed" \
       --model "$MODEL"; then
-    echo "context-bench: [$task_id/$arm/t$trial] claude -p exited non-zero (see $raw.stderr)" >&2
+    echo "context-bench: [$task_id/$arm/t$trial] claude -p exited non-zero (see $capture.stderr)" >&2
+  fi
+  if [ "$STREAM" -eq 1 ] && [ -s "$stream" ]; then
+    python3 "$RUN_DIR/last_result.py" "$stream" "$raw" || true
   fi
 
   if [ ! -s "$raw" ]; then
-    echo "context-bench: [$task_id/$arm/t$trial] no output captured — skipping scoring" >&2
+    echo "context-bench: [$task_id/$arm/t$trial] no output captured — cell LOST (counted on the ledger row)" >&2
     return 1
   fi
 
-  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -claude-json "$raw" -out "$scored"; then
+  local -a extra=()
+  if [ "$STREAM" -eq 1 ] && [ -s "$stream" ]; then
+    extra=(-transcript "$stream")
+  fi
+  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -scoring "$SCORING" -claude-json "$raw" -out "$scored" "${extra[@]}"; then
     echo "context-bench: [$task_id/$arm/t$trial] scoring failed" >&2
     return 1
   fi
@@ -211,8 +365,13 @@ run_arm() {
 }
 
 # ─── main loop ──────────────────────────────────────────────────────────
-FATHOM_SYSTEM_PROMPT="You are answering one factual question about the fathom codebase using ONLY the fathom MCP tools available to you. Do not use Bash, Read, Grep, Glob, or any other tool — solve the task purely through fathom tool calls. Answer concisely, citing exact file paths / symbol names / IDs, since your answer is scored by substring match against a ground truth."
-GREP_SYSTEM_PROMPT="You are answering one factual question about the fathom codebase. You may ONLY use grep, find, and cat, invoked via the Bash tool — no Read tool, no Grep tool, no Glob tool, no MCP tools of any kind. Answer concisely, citing exact file paths / symbol names / IDs, since your answer is scored by substring match against a ground truth."
+ANSWER_FORM="Answer concisely, citing exact file paths / symbol names / IDs, since your answer is scored by substring match against a ground truth."
+if [ "$SCORING" = "precision" ]; then
+  ANSWER_FORM="Put your final answer in a single fenced code block (three backticks), one item per line — exact file paths / symbol names / IDs only, no commentary inside the block. Only the last fenced block is scored, its lines are counted against a small cap, and an answer without a fenced block scores zero."
+fi
+FATHOM_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT using ONLY the fathom MCP tools available to you; the subject is indexed as service \"$SERVICE\". Do not use Bash, Read, Grep, Glob, or any other tool — solve the task purely through fathom tool calls. $ANSWER_FORM"
+GREP_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT. You may ONLY use grep, find, and cat, invoked via the Bash tool — no Read tool, no Grep tool, no Glob tool, no MCP tools of any kind. $ANSWER_FORM"
+NONE_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT from your own knowledge only. You have no tools: do not attempt to read files, run commands, or call any tool. If you do not know, say so. $ANSWER_FORM"
 
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
@@ -227,18 +386,14 @@ while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
         run_arm "$task_id" "$prompt" fathom "$FATHOM_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FATHOM_ALLOWED" "$FATHOM_DISALLOWED" "$trial" || true
       fi
     fi
+    if echo "$ARMS" | grep -qw none; then
+      run_arm "$task_id" "$prompt" none "$NONE_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$NONE_ALLOWED" "$NONE_DISALLOWED" "$trial" || true
+    fi
     trial=$((trial + 1))
   done
-done < <(python3 -c '
-import json, sys
-d = json.load(open(sys.argv[1]))
-out = sys.stdout.buffer
-for t in d["tasks"]:
-    out.write(t["id"].encode() + b"\x00")
-    out.write(t["prompt"].encode() + b"\x00")
-' "$TASKS")
+done < <("$SCORER" tasks -tasks "$TASKS" -env "$ENV")
 
-echo "context-bench: ran $TASK_COUNT tasks x $REPEAT trial(s) per arm"
+echo "context-bench: $TASK_COUNT runnable task(s) x $REPEAT trial(s) per arm (env='$ENV'); cells run=$CELLS_RUN kept=$CELLS_KEPT"
 
 if [ "$FATHOM_REACHABLE" -eq 0 ] && echo "$ARMS" | grep -qw fathom; then
   echo "context-bench: arm 'fathom' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2
@@ -255,24 +410,33 @@ SUMMARY_MD="$ARTIFACTS_DIR/summary-$TS.md"
 "$SCORER" report -tasks "$TASKS" -results "$RESULTS_DIR" -out-json "$RESULTS_JSON" -out-md "$SUMMARY_MD"
 
 # ─── ledger: pair the arms, evaluate the COMMITTED criterion, record ─────
-# The corpus's machine_criterion is the only thing permitted to declare a
-# win, and it is read from the committed corpus — never passed in here, so
-# this script cannot loosen a bar it just measured against. Exit 3 =
+# The corpus's registered criterion is the only thing permitted to declare
+# a win, and it is read from the committed corpus — never passed in here,
+# so this script cannot loosen a bar it just measured against. Exit 3 =
 # indeterminate (re-run), 1 = a measured refutation (record it and say so).
 LEDGER_STATUS="skipped"
 if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('machine_criterion') else 1)" "$TASKS" 2>/dev/null; then
   mkdir -p "$(dirname "$LEDGER")"
-  COMMIT="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  COMMIT="$(git -C "$SUBJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  DIRTY=()
+  if [ -n "$(git -C "$SUBJECT_ROOT" status --porcelain 2>/dev/null)" ]; then
+    DIRTY=(-dirty-tree)
+  fi
+  CRIT=()
+  if [ -n "$CRITERION" ]; then
+    CRIT=(-criterion "$CRITERION")
+  fi
   LEDGER_MD="$(dirname "$LEDGER")/README.md"
   # No `set -e` is in effect (see the header's `set -uo pipefail`), so the
   # non-zero verdict exit codes are captured directly.
   "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" \
-    -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -out-md "$LEDGER_MD"
+    -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -arms "$ARMS" -repeat "$REPEAT" -env "$ENV" \
+    "${DIRTY[@]}" "${CRIT[@]}" -out-md "$LEDGER_MD"
   LEDGER_RC=$?
   case "$LEDGER_RC" in
     0) LEDGER_STATUS="PASS" ;;
     1) LEDGER_STATUS="FAIL (measured refutation — record it)" ;;
-    3) LEDGER_STATUS="INDETERMINATE (the run did not measure enough — re-run)" ;;
+    3) LEDGER_STATUS="INDETERMINATE (the run did not measure enough — re-run, or --resume $RUN_DIR to fill lost cells)" ;;
     *) LEDGER_STATUS="ledger error rc=$LEDGER_RC" ;;
   esac
 else
