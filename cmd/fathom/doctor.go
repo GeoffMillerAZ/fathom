@@ -219,6 +219,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkGatePosture(harness),
 		checkStanzaPresent(root),
+		checkStanzaLoaded(root), // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
 		checkSkillsInstalled(root, harness),
 		checkConfigValid(root),
 		checkObligationsServed(hc, baseURL, root, explicitSvc, daemonUp),
