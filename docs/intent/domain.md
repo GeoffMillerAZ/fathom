@@ -122,9 +122,14 @@ shaped decisions, and the assumptions the design rests on.
 - The obligations corpus stays tiny and binding (`CLAUDE.md`, `ADR.md`,
   `docs/plans/README.md`). If it grows aspirational content, precision falls below the
   0.90 gate and injection becomes noise. Source: `docs/vision/01-thesis.md` §2, ADR-016.
-- Claude Code and Codex remain the harnesses and their hook events keep their shapes. If
-  false: every forced channel in `docs/design/coding-agent-excellence.md` §5 needs
-  re-verification; the router footer's tool versions are the tripwire.
+- Claude Code's hook envelope is the interchange format the other harnesses shim to
+  (Codex ≥0.152 carries eleven Claude-shaped events; Copilot, VS Code, Gemini CLI,
+  Cursor and Amp accept or export the same shapes). If false: the codecs in
+  `internal/harness` need per-harness re-verification; the descriptor's
+  `verified_against` field and the router footer's tool versions are the tripwire.
+  **Restated 2026-09-02 (ADR-029)** — the earlier form, "Claude Code and Codex remain
+  the harnesses and their hook events keep their shapes", FIRED on 2026-09-01: Codex
+  gained a Claude-shaped 11-event hook contract (`docs/vision/25-harness-port.md` §1).
 - A sibling `../agentic-kit` checkout exists for co-development; otherwise the in-tree
   mirror serves. If the kit becomes public, ADR-019's mirror is removable.
 - Kill clocks have a consumer population (sessions from non-fathom repos in the call log).

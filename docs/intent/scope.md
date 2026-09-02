@@ -24,10 +24,24 @@ claimed-unproven. Open on 2026-08-25 evening: CC-9 (`config propose`), CC-11/12/
 (corpus seam, packs, doctor convergence), DP-2/3/4, SD-2/3/4 (SDD panel).
 
 **G6. Zero claimed-unproven rows fleet-wide, then CI fails closed.** Done when:
-`fathom plans status` shows 0 claimed-unproven across every active plan (12 on
-2026-08-25: impact-observatory-activation 4, observatory 3, custodian 2, ambient-fathom 2,
-cpp-toolchain 1) and `fathom verify --strict` exits 0 for every top-level plan. Blocked on
-the pending decision `th-c214dd26` (`fathom thread list`).
+`fathom plans status` shows 0 claimed-unproven across every active plan (23 on
+2026-09-01, of which 5 are false failures from a stale daemon store and 18 are non-code
+rows with no contract) and `fathom verify --strict` exits 0 for every top-level plan.
+Path: store provenance on verdicts and the lexical oracle (ADR-030), `docs/plans/proof-credibility.md`
+PC-1..5 and PC-17..20. The earlier blocker, thread `th-c214dd26`, was decided on
+2026-08-26 (ADR-026 D2).
+
+**G8. The harness port lands with Claude Code byte-identical.** Done when:
+`docs/plans/harness-port.md` wave 1 and `docs/plans/reach-parity.md` are proven, every
+pre-existing Claude Code golden is unchanged, and `fathom harness capabilities --json`
+renders Codex and Gemini CLI as `unverified` until a real session's beats say otherwise
+(ADR-029; `docs/vision/25-harness-port.md`).
+
+**G9. A stranger can re-run the bench.** Done when: `docs/plans/bench-public.md` PB-1..18
+are proven (truth at HEAD, H2-2 registered, the derived public corpus reproduces
+bit-for-bit from a clean clone) and the first replicated home run (BC-14) has a ledger
+row, verdict honest either way (ADR-031). The public run and any publication stay
+operator decisions (Q4, F2).
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
@@ -51,8 +65,11 @@ waiting on it.
   served by one always-on loopback daemon (`serve-http`, `127.0.0.1:7575`) under launchd.
   Evidence: ADR-020, ADR-025, `Taskfile.yml` deploy.
 - Harnesses: Claude Code (SessionStart, PreToolUse, PostToolUse, Stop, SessionEnd,
-  PreCompact hooks) and Codex (AGENTS.md stanza, `fathom prime`). Evidence:
-  `docs/adoption/claude-code.md`, `docs/adoption/codex.md`.
+  PreCompact hooks; verified on this machine) and Codex (AGENTS.md stanza, `fathom prime`,
+  MCP). Under ADR-029 the harness is data in `internal/harness`: Codex and Gemini CLI
+  descriptors carry codecs and ship `unverified` until a real session's beats verify
+  them; Cursor and Copilot are data rows; tiers C/D are documented rows. Evidence:
+  `docs/adoption/claude-code.md`, `docs/adoption/codex.md`, `docs/vision/25-harness-port.md`.
 - Fleet: the repositories on this workstation, reconciled by `fathom fleet reconcile`
   (17 on 2026-08-13). Evidence: `CHANGELOG.md` 2026-08-13.
 - Substrate: `agentic-kit` via `go.work`, or the byte-pinned in-tree mirror. Evidence: ADR-009, ADR-019.
@@ -78,8 +95,14 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
 - Hook verbs and their stdin/stdout contracts: `session-hook`, `edit-hook [--pre]`,
-  `stop-hook`, `session-end-hook`, `pre-compact-hook`; `fathom init` writes them into
-  adopters' `~/.claude/settings.json`. Evidence: `docs/adoption/claude-code.md`.
+  `stop-hook`, `session-end-hook`, `pre-compact-hook`, each with an additive
+  `--harness <id>` (absent ⇒ `claude-code`); `fathom init` writes them into adopters'
+  `~/.claude/settings.json`, and under `--harness=codex` into the repo's `.codex/hooks.json`.
+  Evidence: `docs/adoption/claude-code.md`, ADR-029.
+- `fathom harness list|capabilities --json` and the exported descriptor shape
+  (`schema/harness`). Evidence: ADR-029.
+- Plan grammar v2's lexical oracle keys on plan rows (`oracle: lexical`, `path`,
+  `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
   `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
 - The 17-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the

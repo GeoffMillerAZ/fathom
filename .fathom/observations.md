@@ -559,3 +559,16 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** fixed (2026-08-25) — VS-8: `fathom verify --quiet` (failing-only + summary); lefthook and the init guidance carry it
 - **Impact:** TODO
+
+### O20 — A daemon predating HEAD turned the pre-push verify gate into a FALSE FAILURE: docs/plans/ambient-fathom.md blocked the push with edge_wired misses (TestCmdScopePreviewMatchesEffect does not reach main.cmdScope; same for cmdPurge/cmdThread rows) while doctor reported binary_fresh PASS.
+
+- **Symptom:** A daemon predating HEAD turned the pre-push verify gate into a FALSE FAILURE: docs/plans/ambient-fathom.md blocked the push with edge_wired misses (TestCmdScopePreviewMatchesEffect does not reach main.cmdScope; same for cmdPurge/cmdThread rows) while doctor reported binary_fresh PASS.
+- **Evidence:**
+  - **Tool:** verify (pre-push) + mcp ingest
+  - **Expected:** verify to gate on what the tree actually proves — the symbols and tests both exist and the chain Test -> run -> runWithStdin -> cmdScope is intact in source.
+  - **Actual:** Exit 1 against the daemon's store, exit 0 against a HEAD-built store. Same plan, same tree, two stores. The daemon process had ~9h uptime (older binary) and it is what serviced the MCP ingest refresh, so the shared index was rebuilt by pre-HEAD extraction code. doctor's binary_fresh note already says 'local binary only, the daemon installed copy is unverified' but the row still reads PASS, so the diagnostic said fine while the gate failed loudly. Candidate remedies: (1) verify/doctor compares the DAEMON's binary stamp to HEAD, not only the local one, and annotates a gate failure whose store an older binary built; (2) the MCP ingest tool refreshing a shared store from a stale daemon binary is the hazard itself — O25's sibling.
+  - **Repro:** bin/fathom verify --service fathom --plan docs/plans/ambient-fathom.md  # exit 1 (daemon store)   vs   bin/fathom ingest -service fathom -path . -store workspace/tmp/verifyprobe/probe.sqlite && bin/fathom verify --service fathom --plan docs/plans/ambient-fathom.md --store workspace/tmp/verifyprobe/probe.sqlite  # exit 0, 77 claimed / 75 verified / 0 failing
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

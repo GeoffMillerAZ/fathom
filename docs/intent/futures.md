@@ -165,3 +165,30 @@ futures may justify a free option today. The repo's own sequence is
 - Preserve: one repo, one router, one corpus; the parser takes a root, never a fleet.
 - Promote when: two repos' conditions reference each other's artifacts and a human asks for the join.
 - Drop if: never asked for again.
+
+## F19. Anchored-memory export into harness memory formats
+
+- Confidence: plausible. Horizon: later.
+- Motivation: a second harness vendor shipped cited, just-in-time re-verified memory
+  (2026-01) and Claude Code's auto-memory carries typed, timestamped frontmatter — the
+  anchored-memory thesis validated externally. Evidence: `docs/vision/26-proof-credibility.md` §5.
+- Do not build: a second memory surface; any write into a harness's memory file that is
+  not inside fathom's own markers (law 15).
+- Preserve: memories carry anchors and a read-time freshness state (ADR-028's authority
+  boundary); the harness descriptor records where a harness keeps memory (`internal/harness`).
+- Promote when: an adopter asks for fathom facts inside the harness's memory, or the
+  session brief measurably loses to the harness's own recall on the thread bet (G3).
+- Drop if: harness memory formats keep churning quarterly (Cursor removed theirs in 2.1).
+
+## F20. Spec-scaffold interop: `tasks.md` as plan rows and a converge report
+
+- Confidence: plausible. Horizon: later.
+- Motivation: the spec-driven scaffolds (Spec Kit, OpenSpec, BMAD, Kiro) emit task
+  checklists whose "verify" step is LLM-judged; fathom's gate is the only deterministic
+  one. The inverse of claimed-unproven — code nothing claims — is what their converge
+  step does by LLM. Evidence: `docs/vision/26-proof-credibility.md` §5, E1 F7.
+- Do not build: a spec authoring workflow; a separate SDD binary (non-goal).
+- Preserve: plan grammar v2 stays markdown-authored; `ParseMarkdownPlan` is the seam a
+  second checklist dialect would plug into.
+- Promote when: a wired repo uses one of the scaffolds and asks for its checklist gated.
+- Drop if: the scaffolds converge on a checklist format fathom already parses.

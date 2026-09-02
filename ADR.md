@@ -1083,3 +1083,187 @@ adopter runs both and reports a concrete conflict the guide does not cover;
 or `pack_context` traffic rises enough for tiering to have a consumer; or
 fathom adopts a root LICENSE, at which point clause 1's hard reason should
 be restated in terms of that licence rather than the absence of one.
+
+## ADR-029: Harness adapters are data behind one seam; a second harness's inject tier ships unverified (2026-09-02)
+
+**Status.** Accepted under the delegated ownership of 2026-07-07 and the
+owner's 2026-09-01 directive to decide, spec and implement; the owner may
+reopen by editing this status. **Type.** Architecture / strategy. Design:
+`docs/vision/25-harness-port.md`. Plans: `docs/plans/harness-port.md`,
+`docs/plans/reach-parity.md`. Amends the sequencing rule of
+`docs/vision/04-coding-agents.md` §5 and `docs/vision/24-work-frontier.md` §6.
+
+**Context.** The owner asked for a hexagonal capability with adapters for the
+major coding harnesses, kept DRY. A 14-agent evaluation (2026-09-01) found
+that the harness extension surface collapsed onto four open standards
+(`AGENTS.md`, Agent Skills, Agent Plugins 1.0, MCP over HTTP) plus Claude
+Code's hook JSON as the de-facto wire format every other harness shims to;
+that fathom's coupling is one hook table, four decode sites, four encode
+sites, one `claude|codex` switch and nine files of path literals; and that
+Codex now carries eleven Claude-shaped lifecycle events, which falsifies the
+`domain.md` assumption "Claude Code and Codex … hook events keep their
+shapes". The previous rule — pull-tier only for a second harness until the
+Claude numbers are green — rested on a Codex without hooks and on the cost
+of a second implementation. Neither premise holds.
+
+**Decision.**
+1. *One seam, in fathom.* `internal/harness` holds a descriptor registry
+   (data: identity, detection, instruction files, hook files and event
+   bindings with stdin/stdout field maps, `failMode`, scope-merge rule,
+   skills dirs, MCP target, env contract, transcript availability,
+   `verified_against`) and one codec per harness. Claude Code's registry
+   entry reproduces `fathomHookSpecs` byte-identically; the existing goldens
+   are the proof and any changed golden byte kills the change.
+2. *Additive surface.* `--harness <id>` (default `claude-code`) on the hook
+   verbs; `fathom init --harness=claude-code|codex|agents|none`;
+   `fathom harness list|capabilities --json`; `schema/harness/schema.cue`
+   validates the exported descriptor. Detection lives in init and doctor
+   only. The compatibility surface gains these and changes nothing existing.
+3. *Writes go through the wiring engine.* A hook or MCP file whose shape
+   differs from Claude Code's settings gets a `wiring.KeyKind` with
+   plan/apply/undo and a receipt (law 15, I13).
+4. *Honesty by construction.* Every harness's capability table is generated
+   from the registry and pinned by test; `docs/adoption/codex.md` §6 becomes
+   a rendering of it; an absent vehicle prints as absent; an unverified
+   descriptor prints every row as unverified and doctor never guesses a PASS.
+5. *The sequencing rule is amended narrowly.* A second harness's inject tier
+   may ship as descriptor + codec + fixtures marked `unverified`, written by
+   `init --harness=<id>` only on that explicit flag (repo-scoped files only;
+   user-global configuration stays ask-first), with no measurement claim. A
+   codec is written only for a harness with a documented Claude-shaped
+   contract and a local install to verify against (P20); other harnesses
+   ship as data rows carrying their documented field maps. Scope G2 is untouched: no Claude instrument is repointed, no
+   savings number is admissible for any harness, and only doctor's
+   `hooks_firing` on a real install turns `unverified` into a dated
+   `verified_against`.
+6. *Measurement stays Claude-only.* `Descriptor.Transcript == ""` makes the
+   session-ledger capability absent; law 12 forbids extrapolation. No
+   `TranscriptReader` port until a second harness exposes transcripts.
+7. *The kit does not get the port yet.* agentic-kit carries three hand-rolled
+   harness touchpoints; a kit package lands when a second consumer deletes
+   its copy onto the contract (D8). Ask FA-22 is filed with that trigger.
+
+**Consequences.** Adapters become configuration; `fleet reconcile` and
+`fleet undo` cover every new harness for free; the degradation ladder
+(A hooks + inject, B block-only, C JS-only, D none) is a first-class output
+and tiers C/D are documented rows, not code. `domain.md`'s assumption is
+restated; `scope.md`'s Harnesses boundary widens only as descriptors are
+verified. A descriptor still `unverified` 60 days after its codec lands is
+demoted to tier D and its `init --harness` write refuses with the reason.
+
+**Alternatives rejected.** *A hooks framework in agentic-kit* — single
+consumer, "not a framework", ADR-022/023 precedent. *A neutral hook schema*
+— Claude Code's envelope is the interchange; a third shape adds a
+translation. *A marketplace* — F2 unpromoted; two manifests over one tree
+reach seven clients. *JS plugin hosts for OpenCode/Amp/Cline* — no-Node
+non-goal. *An ACP agent* — fathom is not an agent; MCP passthrough reaches
+ACP editors with zero code. *Waiting for G2 before any second harness* —
+the premise (a second implementation) is gone; only the measurement claim
+is still gated, and this record keeps it gated.
+
+**Revisit when.** A second consumer imports the descriptor contract (FA-22
+fires); a harness exposes transcripts (the measurement clause); Claude Code
+stops being the interchange envelope; a descriptor reaches 60 days
+unverified; or `hooks_firing` verifies Codex on a real install (widen the
+Harnesses boundary, then revisit whether the Codex lane earns an instrument).
+
+## ADR-030: A lexical oracle proves non-code plan rows (2026-09-02)
+
+**Status.** Accepted. **Type.** Process / architecture. Design:
+`docs/vision/26-proof-credibility.md` §1.3. Plan: `docs/plans/proof-credibility.md`.
+Compatibility surface: plan grammar v2, additive.
+
+**Context.** Eighteen of fathom's claimed-unproven rows are `[x]` rows with a
+`skip_test` reason and no symbol — docs, measurements, changelog lines,
+operator actions — and the U2 remedy text promised a `skip:` reason lifts
+the debt while the counter never honored it. The verify ledger shows an
+external repo's plans at 9 claimed / 0 verified and 37 / 12: the second
+puller for a deterministic non-code contract exists in evidence, not
+assertion. The tokenizer already accepts the ADR-026 oracle vocabulary on
+plan lines.
+
+**Decision.** A plan row may carry `{oracle: lexical, path: <repo path>,
+pattern: <regex>}`. `fathom verify` checks the path exists at HEAD, is
+non-empty, and the pattern matches at least once; the row verifies and
+leaves U2. `LintPlan` refuses a `.md` path without a `pattern` (existence
+proves nothing about a claim). The evaluator is ADR-026's, not a second
+one; the key set stays owned where ADR-026 put it (Q20 named, not decided).
+The U2 remedy text is corrected to say what the counter does.
+
+**Consequences.** `schema/plan/schema.cue` and its valid/invalid testdata
+gain the keys; `docs/plans/README.md` gains the row; `CHANGELOG.md` gains
+the line; scope G6 gets a real path. Kill: if more than 30% of lexical rows
+in the fleet point under `docs/vision` or `docs/design`, the lint tightens
+to measurements, changelog, tests and specs.
+
+**Alternatives rejected.** *Keep `skip_test` as the escape* — it trains the
+reflex T8 warns about and the counter cannot honor it without lying. *A
+separate `proof:` key* — a parallel grammar to ADR-026's oracles is the
+drift O4 exists to catch. *An LLM judge for prose rows* — no LLM in the gate
+(scope non-goal).
+
+**Revisit when.** Q20 moves the grammar to the kit; the kill fires; or a
+second evaluator appears.
+
+## ADR-031: Bench credibility — derived third-party truth, a memorisation floor, a precision term, and statistics owned by the kit (2026-09-02)
+
+**Status.** Accepted. **Type.** Process / strategy. Design:
+`docs/vision/26-proof-credibility.md` §2. Plan: `docs/plans/bench-public.md`.
+Extends ADR-028's consequences (BC-14/15/16).
+
+**Context.** The bench method exceeds the field; its credibility does not:
+every ground truth is derived from this private repo, the home corpus is
+false at HEAD, the ledger ADR-028 calls committed has no rows, the open
+bench rows already pass the verify gate on pre-existing anchors, and the
+runner hard-codes its subject. The field converged on gold-patch-derived
+localization truth (Loc-Bench, SWE-PolyBench, SWE-Explore, Multi-SWE-bench)
+that needs no LLM and no execution to derive, on a no-tools arm as the
+memorisation floor, on a precision term for set-valued grading, and on
+paired task-clustered statistics with effect sizes.
+
+**Decision.**
+1. *Truth at HEAD before spend.* A committed corpus re-sweep revision, the
+   `29` substring hole fixed, `machine_criterion` untouched; the ledger
+   wording corrected; BC-14/15/16 re-anchored to symbols that do not exist
+   until the work does.
+2. *The corpus is derived, never authored.* `contextbenchscore import`
+   derives Go localization tasks from two pinned public datasets with no LLM
+   — SWE-Explore's Go subset (line-level truth an outsider built) and
+   Multi-SWE-bench (CC0 gold patches for file, function and callers truth) —
+   under a pre-registered selection rule, with per-task derivation and
+   `requires`; the derivation reproduces bit-for-bit from a clean clone. The
+   runner ingests each instance's base commit into a scratch store, never
+   the fleet store and never the post-fix tree.
+3. *Method additions, pre-registered.* A `none` arm and a committed leak
+   rule; a fenced answer block with `max_predicted` and precision/recall,
+   registered as a new criterion H2-2 because it changes the success
+   definition after H2-1 has data (H2-1's verdicts stand as history, T5);
+   seeded task-clustered paired bootstrap CI, exact Wilcoxon, A12, the
+   unbiased `pass@k` and `pass^k` — reported, never gating.
+4. *Statistics live in agentic-kit.* `foundations/quality/reliability-stats`
+   is consumed by fathom's bench and the kit's eval-runner: fathom hand-built
+   paired statistics twice, so the kit owns them.
+5. *Regression is free; runs are not.* `contextbenchscore regress` mirrors
+   the kit's eval-runner `Regression` semantics and joins `validate` only
+   after two same-corpus rows exist. Runs stay operator-initiated
+   (autonomy: ask before LLM spend).
+
+**Consequences.** `LedgerRow` gains `per_task`, `corpus_sha256`, `model_id`,
+`cost_usd`, `dirty_tree` (additive). The first replicated home run and the
+first public-corpus run are operator actions with their cost stated in the
+plan. Publishing a third-party-reproducible number still needs the binary
+in a stranger's hands (Q4, F2) — built now, published on that decision.
+The follow-on is registering the fathom-equipped harness as an explorer in
+SWE-Explore's Go subset, the one leaderboard whose truth an outsider built —
+a registry listing, so it waits on F2.
+
+**Alternatives rejected.** *Hand-author a public corpus* — permissively
+licensed derived corpora exist; authoring is the self-derived-truth hazard
+again. *Adopt an execution harness* — localization needs none. *Keep stats
+in fathom* — twice-built. *Automate the run* — real spend; refused in
+`bench-confidence.md` and here.
+
+**Revisit when.** The none arm passes more than half the home corpus (the
+corpus, not the tool, is the finding); a public number is requested before
+the repo is public; SWE-Explore accepts the registration; or the kit's
+stats package gains a third consumer.
