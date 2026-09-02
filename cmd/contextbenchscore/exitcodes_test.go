@@ -223,6 +223,14 @@ func TestCmdRegress_ExitCodes(t *testing.T) {
 	if rc := run([]string{"regress", "-ledger", filepath.Join(dir, "absent.jsonl")}); rc != 3 {
 		t.Fatalf("an empty ledger is not comparable: want 3, got %d", rc)
 	}
+	// The subcommand itself, called directly: the same contract, and the
+	// JSON form of the report.
+	if rc := cmdRegress([]string{"-ledger", ledger, "-json"}); rc != 1 {
+		t.Fatalf("cmdRegress direct: want 1, got %d", rc)
+	}
+	if rc := cmdRegress([]string{"-bogus"}); rc != 2 {
+		t.Fatalf("a bad flag is a usage error: want 2, got %d", rc)
+	}
 }
 
 func TestCmdTasks_FiltersByRequires(t *testing.T) {
@@ -232,7 +240,7 @@ func TestCmdTasks_FiltersByRequires(t *testing.T) {
 	r, w, _ := os.Pipe()
 	saved := os.Stdout
 	os.Stdout = w
-	rc := run([]string{"tasks", "-tasks", tasks})
+	rc := cmdTasks([]string{"-tasks", tasks})
 	w.Close()
 	os.Stdout = saved
 	var buf bytes.Buffer
@@ -247,7 +255,7 @@ func TestCmdTasks_FiltersByRequires(t *testing.T) {
 
 	r, w, _ = os.Pipe()
 	os.Stdout = w
-	run([]string{"tasks", "-tasks", tasks, "-env", "compiled-layer"})
+	cmdTasks([]string{"-tasks", tasks, "-env", "compiled-layer"})
 	w.Close()
 	os.Stdout = saved
 	buf.Reset()
