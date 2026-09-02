@@ -16,6 +16,7 @@ const genPlanFixture = `# Fixture
 - [~] Long haul {id: W-2, reason: "kit-side done, donor NOT deleted"}
 - [-] Later {id: W-3, disposition: deferred, reason: "waiting on O6", trigger: "skip share <30%"}
 - [ ] Open {id: W-4, symbol: GateRequireAll, skip_test: true, skip: "cmd oracle pending"}
+- [x] Measured {id: W-5, oracle: lexical, path: docs/measurements/m.md, pattern: "p95 ≈ 329"}
 - [x] Positional untyped line
 `
 
@@ -34,6 +35,11 @@ func TestGenPlanCue_RoundTrip(t *testing.T) {
 	back, err := planFromCUE([]byte(doc))
 	if err != nil {
 		t.Fatalf("planFromCUE: %v\n%s", err, doc)
+	}
+	// Line is the row's position in the Markdown — a SARIF location, not
+	// part of the contract — so the typed shadow does not carry it.
+	for i := range plan.Tasks {
+		plan.Tasks[i].Line = 0
 	}
 	if !reflect.DeepEqual(plan, back) {
 		t.Fatalf("round-trip loss:\n md: %+v\ncue: %+v\ndoc:\n%s", plan, back, doc)

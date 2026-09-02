@@ -46,11 +46,16 @@ func cmdGenPlanCue(args []string, stdout, stderr io.Writer) int {
 
 	doc := renderPlanCUE(plan)
 
-	// Round-trip: the emitted CUE must rebuild the identical Plan.
+	// Round-trip: the emitted CUE must rebuild the identical Plan. Line is
+	// the row's Markdown position (a SARIF location, never a contract), so
+	// the typed shadow does not carry it and the comparison ignores it.
 	back, err := planFromCUE([]byte(doc))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: round-trip parse of emitted CUE failed: %v\n", err)
 		return 2
+	}
+	for i := range plan.Tasks {
+		plan.Tasks[i].Line = 0
 	}
 	if !reflect.DeepEqual(plan, back) {
 		fmt.Fprintf(stderr, "error: round-trip loss — emitted CUE does not rebuild the parsed plan\n")
@@ -115,7 +120,7 @@ func renderPlanCUE(p verify.Plan) string {
 		if t.Trigger != "" {
 			fmt.Fprintf(&b, "\t\ttrigger: %q\n", t.Trigger)
 		}
-		if t.Expect != (verify.Expect{}) {
+		if t.Expect != (verify.Expect{}) || t.Oracle != "" {
 			b.WriteString("\t\texpect: {\n")
 			e := t.Expect
 			if e.Symbol != "" {
@@ -139,6 +144,17 @@ func renderPlanCUE(p verify.Plan) string {
 			if e.MinTier != "" {
 				fmt.Fprintf(&b, "\t\t\tmin_tier: %q\n", string(e.MinTier))
 			}
+			// ADR-030: the lexical oracle keys live in #Expect beside the
+			// symbol contract they are the alternative to.
+			if t.Oracle != "" {
+				fmt.Fprintf(&b, "\t\t\toracle: %q\n", t.Oracle)
+				if t.OraclePath != "" {
+					fmt.Fprintf(&b, "\t\t\tpath: %q\n", t.OraclePath)
+				}
+				if t.OraclePattern != "" {
+					fmt.Fprintf(&b, "\t\t\tpattern: %q\n", t.OraclePattern)
+				}
+			}
 			b.WriteString("\t\t}\n")
 		}
 		b.WriteString("\t},\n")
@@ -157,6 +173,9 @@ type cuePlanExpect struct {
 	SkipReason         string `json:"skip_reason"`
 	AllowContradiction bool   `json:"allow_contradiction"`
 	MinTier            string `json:"min_tier"`
+	Oracle             string `json:"oracle"`
+	Path               string `json:"path"`
+	Pattern            string `json:"pattern"`
 }
 
 type cuePlanTask struct {
@@ -209,6 +228,9 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 				AllowContradiction: ct.Expect.AllowContradiction,
 				MinTier:            core.EvidenceTier(ct.Expect.MinTier),
 			}
+			t.Oracle = ct.Expect.Oracle
+			t.OraclePath = ct.Expect.Path
+			t.OraclePattern = ct.Expect.Pattern
 		}
 		plan.Tasks = append(plan.Tasks, t)
 	}
