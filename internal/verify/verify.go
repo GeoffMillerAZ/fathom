@@ -71,8 +71,25 @@ type Task struct {
 
 	// Needs lists the ids (another row's id:) this row depends on — the
 	// eligibility DAG. Non-gating in verify; LintPlan errors on an unknown
-	// id, a self-reference, or a cycle.
+	// id, a self-reference, or a cycle. A target of the form
+	// "<sibling>.md#<id>" names a row in another plan (PC-10): LintPlan
+	// checks its shape only; resolveCrossPlanNeed reads the sibling.
 	Needs []string
+
+	// Line is the 1-based line of the checkbox row in the plan file — the
+	// location a SARIF result points at (PC-21). 0 when the plan did not
+	// come from Markdown.
+	Line int
+
+	// Oracle names a non-index acceptance contract (ADR-030). The only
+	// class today is "lexical": OraclePath is a repo-relative file that
+	// must exist and be non-empty in the working tree verify reads plans
+	// from, and OraclePattern (a Go regexp, line-anchored) must match it at
+	// least once. One contract per row: a row carrying both a symbol and an
+	// oracle fails verification and is refused by LintPlan.
+	Oracle        string
+	OraclePath    string
+	OraclePattern string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -116,6 +133,7 @@ type TaskVerdict struct {
 	Claimed    bool // propagated from Task.Claimed ([x])
 	Skipped    bool // propagated from Task.Skipped ([-])
 	InProgress bool // propagated from Task.InProgress ([~])
+	Line       int  // propagated from Task.Line (0 when unknown)
 }
 
 // Summary holds report-level counts.
@@ -245,6 +263,15 @@ type DetailedEvidence interface {
 	TestReachesDetail(symbol string) []ReachDetail
 }
 
+// FileEvidence is an optional capability: an Evidence that can read the
+// files of the repo the plan belongs to, for the lexical oracle (ADR-030).
+// ReadRepoFile takes a repo-relative path; a missing file is an error.
+// VerifyPlan type-asserts for it — an Evidence without it leaves every
+// lexical row Unknown with a reason, never a fabricated pass.
+type FileEvidence interface {
+	ReadRepoFile(path string) ([]byte, error)
+}
+
 // VerifyPlan evaluates every task in plan against ev and returns a sorted,
 // deterministic report.
 func VerifyPlan(plan Plan, ev Evidence) Report {
@@ -253,10 +280,11 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 	for _, c := range ev.Contradictions() {
 		contraBySymbol[c.Symbol] = append(contraBySymbol[c.Symbol], c)
 	}
+	files, _ := ev.(FileEvidence)
 
 	verdicts := make([]TaskVerdict, 0, len(plan.Tasks))
 	for _, t := range plan.Tasks {
-		verdicts = append(verdicts, verifyTask(t, ev, contraBySymbol))
+		verdicts = append(verdicts, verifyTask(t, ev, files, contraBySymbol))
 	}
 	// Deterministic order by task ID.
 	sort.Slice(verdicts, func(i, j int) bool { return verdicts[i].TaskID < verdicts[j].TaskID })
@@ -275,9 +303,9 @@ func VerifyPlan(plan Plan, ev Evidence) Report {
 	return Report{Service: plan.Service, Tasks: verdicts, Summary: sum}
 }
 
-func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
+func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[string][]core.Contradiction) TaskVerdict {
 	e := t.Expect
-	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress}
+	v := TaskVerdict{TaskID: t.ID, Title: t.Title, Status: Pass, Label: "verified", Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Line: t.Line}
 
 	// fail downgrades the overall status and records the most salient label
 	// (first failure wins, since criteria are appended in priority order).
@@ -292,6 +320,31 @@ func verifyTask(t Task, ev Evidence, contraBySymbol map[string][]core.Contradict
 	na := func(name, detail string) { v.Criteria = append(v.Criteria, Criterion{name, NA, detail}) }
 
 	checked := false
+
+	// --- lexical oracle (ADR-030): a non-code row's file-backed contract ---
+	// Evaluated first so that a row carrying BOTH a symbol and an oracle is
+	// labeled by the contract conflict, not by whatever the index says
+	// about the symbol; the symbol path is skipped for it entirely.
+	if t.Oracle != "" {
+		checked = true
+		c, label := evalLexicalOracle(t, files)
+		switch c.Status {
+		case Pass:
+			pass(c.Name, c.Detail)
+		case Fail:
+			fail(c.Name, c.Detail, label)
+		default:
+			v.Criteria = append(v.Criteria, c)
+			if v.Status == Pass {
+				v.Status = Unknown
+				v.Label = label
+			}
+		}
+		if e.Symbol != "" {
+			v.Criteria = append(v.Criteria, Criterion{Name: "runtime_pass", Status: Unknown, Detail: "not evaluated: one contract per row"})
+			return v
+		}
+	}
 
 	// --- symbol presence + tier + test_reaches ---
 	// querySym is the identifier used for reachability queries. It stays the

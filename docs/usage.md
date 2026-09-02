@@ -600,7 +600,7 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 ```sh
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
-  [--concern <id>] [--json] [--quiet] [--quiet-pass]
+  [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass]
 ```
 
 | Flag | Default | Description |
@@ -612,7 +612,8 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--strict` | `false` | Treat claimed-but-Unknown tasks as failures too (recommended for CI) |
 | `--require-all` | `false` | Wave gate: additionally fail on any open/in-progress task (ADR-018 §2) |
 | `--concern` | `""` | Optional concern for contradiction scoping |
-| `--json` | `false` | Emit a JSON report + gate result instead of human text |
+| `--json` | `false` | Emit a JSON report + gate result instead of human text (alias of `--format json`) |
+| `--format` | `text` | `text`, `json`, or `sarif` — SARIF 2.1.0 of the refusals: one rule per criterion (`symbol_present`, `test_reaches`, `lexical_oracle`, …), each result located at the plan file and row line, so code scanning and editor problem panes render them. `fathom intent audit --format sarif` and `fathom config audit --format sarif` share the emitter. Exit codes are unchanged |
 | `--quiet` | `false` | Print only failing rows (and, with `--strict`, unknown rows) plus the summary line -- the gate mode |
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 

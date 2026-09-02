@@ -41,6 +41,22 @@ package plan
 	// min_tier is the minimum evidence tier required for symbol. Default:
 	// "verified" (extracted directly from source code).
 	min_tier?: "verified" | "pre-scan" | "doc-claimed" | "sme-stated" | "assumed" | *"verified"
+
+	// oracle names a non-index contract (ADR-030). "lexical" is the only
+	// class: path must exist in the working tree and be non-empty, and
+	// pattern (a Go regexp, line-anchored) must match it at least once.
+	// One contract per row — a task carrying both symbol and oracle is
+	// refused by verify.LintPlan and fails verification.
+	oracle?: "lexical"
+
+	// path is the repo-relative file a lexical oracle reads. Required with
+	// oracle; never absolute, never escaping the repo.
+	path?: string
+
+	// pattern is the regexp a lexical oracle must match in path. Required
+	// when path is a markdown file (existence proves nothing about prose);
+	// optional for other files, where existence + non-empty suffices.
+	pattern?: string
 }
 
 // #Task is one unit of planned work with an acceptance contract.

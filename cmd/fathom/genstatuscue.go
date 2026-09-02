@@ -172,6 +172,7 @@ func cmdGenStatusCue(args []string, stdout, stderr io.Writer) int {
 		contras: contras,
 		matrix:  matrix,
 		haveMat: haveMat,
+		files:   verify.DirFiles(verifyRepoRoot()),
 	}
 
 	// 3. Evaluate the plan.
@@ -308,6 +309,32 @@ type cliEvidence struct {
 	contras []core.Contradiction
 	matrix  sdd.Matrix
 	haveMat bool
+	// files is the working tree the lexical oracle (ADR-030) reads — the
+	// same tree the plan file came from (verifyRepoRoot).
+	files verify.FileEvidence
+}
+
+// ReadRepoFile implements verify.FileEvidence over the repo's working tree.
+func (e *cliEvidence) ReadRepoFile(path string) ([]byte, error) {
+	if e.files == nil {
+		return nil, fmt.Errorf("no repo root resolved for lexical oracles")
+	}
+	return e.files.ReadRepoFile(path)
+}
+
+// verifyRepoRoot is the root lexical-oracle paths resolve under: the git
+// toplevel of the cwd (plans are read cwd-relative, so this is the tree
+// the plan itself came from), else the cwd. The WORKING tree, never
+// `git show HEAD:` — a plan and its evidence are read at the same moment.
+func verifyRepoRoot() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	if top := gitToplevel(cwd); top != "" {
+		return top
+	}
+	return cwd
 }
 
 func (e *cliEvidence) FindSymbol(name string) []core.SymbolNode {
@@ -350,6 +377,7 @@ func (e *cliEvidence) SpecImplementors(specID string) []string {
 var (
 	_ verify.Evidence         = (*cliEvidence)(nil)
 	_ verify.DetailedEvidence = (*cliEvidence)(nil)
+	_ verify.FileEvidence     = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

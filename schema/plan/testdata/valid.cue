@@ -37,5 +37,16 @@ plan: #Plan & {
 				skip_reason: "reached only via methods until the cmd oracle lands"
 			}
 		},
+		{
+			// ADR-030: a non-code row proven by a lexical oracle.
+			id:    "T-5"
+			title: "measurement recorded durably"
+			state: "claimed"
+			expect: {
+				oracle:  "lexical"
+				path:    "docs/measurements/2026-08-27-obligation-ceiling.md"
+				pattern: "p95"
+			}
+		},
 	]
 }

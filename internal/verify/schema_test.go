@@ -42,6 +42,8 @@ bad: #Task & {id: "T-2", state: "skipped", disposition: "sideways"}`},
 bad: #Task & {id: "T-3", expect: {symbol: "X", min_tier: "vibes"}}`},
 		{"plan with a non-string service", `
 bad: #Plan & {service: 42, tasks: []}`},
+		{"oracle outside the ADR-030 vocabulary", `
+bad: #Task & {id: "T-5", expect: {oracle: "vibes", path: "docs/x.md", pattern: "y"}}`},
 	}
 	cctx := cuecontext.New()
 
