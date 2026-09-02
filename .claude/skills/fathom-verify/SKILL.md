@@ -59,6 +59,15 @@ warning, block only on exit 1. In CI, treat exit 2 as a **failure** too — CI
 builds its own store, so "daemon down" should never be a valid CI state
 there.
 
+Every run lands in the verify ledger (`fathom research report` reads it —
+the "verify gate: figure:" line is the one admissible figure for what the
+gate has caught) tagged with its origin: `verify-cli` (you), the pre-push
+gate, or `stop-hook` (Claude Code's Stop hook, advisory unless `--block`).
+The gate is harness-agnostic — identical under Codex, Gemini CLI or a plain
+shell — and an origin for the *claim moment* itself (verify at the edit
+that flips a box, vision 26 §4) is not emitted by this build; do not report
+one.
+
 **The empty-index honesty rule.** If verify looks like it's failing *every*
 task, check `list_services` (or `fathom inspect`) first — a genuinely empty
 index for that service is an operational error (exit 2), never "all claims

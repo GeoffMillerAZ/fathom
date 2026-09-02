@@ -19,9 +19,17 @@ fathom fleet reconcile --repo . && fathom fleet reconcile --repo . --apply
 ```
 
 Dry-run first, read the diff, then apply — reconcile repoints stale
-absolute binary paths to the shim-stable `fathom` and merges missing
-template entries at exactly one scope (project, deferring to user scope).
-Structural changes (scope moves, removals) are yours, not the verb's.
+absolute binary paths to the shim-stable `fathom`, merges missing
+template entries at exactly one scope (project, deferring to user scope),
+and plans the nine shipped skills in BOTH repo-scoped shapes
+(`.claude/skills` and `.agents/skills`, the Agent Skills standard path)
+through the same engine: `missing` is created, `stale` (marker-owned,
+behind the shipped source) is rewritten under its marker, and a
+hand-authored file by a skill's name — or a hand edit under the marker —
+is **BLOCKED** by name and left alone. Structural changes (scope moves,
+removals) are yours, not the verb's. The hook template itself derives
+from the harness registry (`fathom harness list`); every hook verb takes
+`--harness <id>` and is wired for `claude-code` in this build.
 Law 15 governs every write: one plan → apply → one receipt per repo in
 `.fathom/receipts.jsonl` (`fathom fleet receipts` lists; `fathom fleet
 undo --last | <receipt-id>` reverses). The dry run tells `stanza: …
@@ -52,7 +60,13 @@ loopback-only).
    MultiEdit), (Bash), (Grep|Glob|Read) — all →`fathom edit-hook --pre`;
    Stop→`fathom stop-hook` t10. Reconcile in place at whichever ONE scope
    already has fathom hooks; rewrite absolute `/…/fathom` commands to
-   plain `fathom`.
+   plain `fathom`. (`fathom plugin render` emits the same template as
+   `hooks/hooks.json` for the plugin install path.)
+2b. Skills: `.claude/skills/<name>/SKILL.md` and
+   `.agents/skills/<name>/SKILL.md` for all nine, each carrying the
+   `fathom:owned` marker; `fathom doctor`'s `skills_installed` names the
+   missing ones per harness, and `fathom init --skills` re-renders them
+   (refusing, by name, a file it does not own).
 3. `.fathomignore` covers secrets/data/vendored/build — BEFORE any first
    ingest.
 4. The stanza is regenerated only through `fathom init` / `fleet

@@ -38,7 +38,14 @@ description: >
    composite, map}` block (tokens) sizes list/composite/map answers —
    honoured by `serve-http`, not stdio (**experimental**, BA-9).
 6. **Skills**: the nine fathom skills installed (`fathom init
-   --skills`); **gates**: lefthook pre-push `fathom verify … --quiet` via
+   --skills` — bare writes `.agents/skills`, the Agent Skills standard
+   path every harness reads, AND `.claude/skills`; `fathom plugin render`
+   packages them with the hook template and the MCP registration as one
+   plugin tree carrying both Claude Code's and the Agent Plugins 1.0
+   manifests); on a non-Claude harness `fathom harness capabilities
+   --harness <id>` says which vehicles actually carry each feature —
+   an `absent` row is a documented gap, never an emulation;
+   **gates**: lefthook pre-push `fathom verify … --quiet` via
    plain `fathom`, LOUD on a missing binary (`command -v fathom || { echo
    "fathom missing — gate NOT run"; exit 1; }`) — a gate that cannot run
    must fail, not pass. Stanza/hook writes go through receipts

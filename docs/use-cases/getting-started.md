@@ -42,9 +42,9 @@ claude mcp add --scope user fathom -- \
 
 | Name | Kind | What it gives you |
 |---|---|---|
-| `init` | CLI | One-command repo wiring: `.fathomignore`, ingest, hooks, CLAUDE.md/AGENTS.md stanza, config scaffold; `--skills[=claude\|codex\|all]` installs the shipped agent skills |
-| `doctor` | CLI | Deterministic wiring diagnosis (`--harness claude\|codex\|auto`, `--json`): registration, daemon, hooks, stanza, skills, config, obligations, traffic, concerns |
-| `prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex); not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
+| `init` | CLI | One-command repo wiring: `.fathomignore`, ingest, hooks, CLAUDE.md/AGENTS.md stanza, config scaffold; `--harness <id>` picks the descriptor; `--skills[=claude\|codex\|agents\|all\|codex-prompts]` installs the shipped agent skills (bare = `.agents/skills` + `.claude/skills`); `--json` reports every write, the receipt id and the manual steps as data |
+| `doctor` | CLI | Deterministic wiring diagnosis (`--harness claude\|codex\|auto` or a registry id, `--json`): registration, daemon, hooks, gate posture, stanza, skills (`.agents/skills` for every non-Claude harness), config, obligations, traffic, concerns |
+| `prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex); `fathom prime -h` (`-dir`, `-url`) |
 | `ingest` | CLI | Index one service into the SQLite store (sha256 hash-gated; re-ingest is near-free); names every file it could not read (`read-failed: N file(s)`) and exits 1 rather than claiming a clean run |
 | `ingest-diff` | CLI | Ingest only files changed since a git ref |
 | `watch` | CLI | Poll and re-ingest on file changes automatically |
@@ -283,7 +283,7 @@ Returns ranked `SymbolNode` objects:
 
 ## The one-command path: `fathom init`, then `fathom doctor`
 
-Everything below Step 2 is what `fathom init` (run from the repo root) does in one idempotent pass: `.fathomignore`, ingest into the daemon, the hook stack in `.claude/settings.json`, the CLAUDE.md/AGENTS.md stanza, a `.fathom/` config scaffold. Add `--skills` (bare = all; `--skills=claude` or `=codex`) to install the shipped skills (activate, custodian, doctor, feedback, impact, onboard, plan, rewire, verify) under `.claude/skills/` and/or `.agents/skills/`. Every file it writes goes through one plan → apply → receipt (`.fathom/receipts.jsonl`, reversible with `fathom fleet undo`); a stanza region a human hand-edited is blocked and named, the other steps still run. Then `fathom doctor` proves the wiring (registration, daemon, hooks installed *and* firing, stanza, skills, config, obligations, traffic), and on a harness without a SessionStart hook `fathom prime` prints the session brief by hand.
+Everything below Step 2 is what `fathom init` (run from the repo root) does in one idempotent pass: `.fathomignore`, ingest into the daemon, the hook stack in `.claude/settings.json`, the CLAUDE.md/AGENTS.md stanza, a `.fathom/` config scaffold. Add `--skills` to install the shipped skills (activate, custodian, doctor, feedback, impact, onboard, plan, rewire, verify): bare `--skills` (= `all`) writes `.agents/skills/` (the Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot read it; spec-only frontmatter) **and** `.claude/skills/` (Claude Code); `--skills=codex` or `=agents` writes `.agents/skills/` only, `=claude` writes `.claude/skills/` only, and the deprecated user-global `~/.codex/prompts/` twin is `--skills=codex-prompts` only (`docs/upgrades/0.8.0-skills-on-the-standard.md`). Every file it writes goes through one plan → apply → receipt (`.fathom/receipts.jsonl`, reversible with `fathom fleet undo`); a stanza region a human hand-edited is blocked and named, the other steps still run. Then `fathom doctor` proves the wiring (registration, daemon, hooks installed *and* firing, stanza, skills, config, obligations, traffic), and on a harness without a SessionStart hook `fathom prime` prints the session brief by hand.
 
 ## Wiring Claude Code hooks
 
@@ -291,7 +291,7 @@ Two hooks turn fathom from a tool the agent must remember to call into one it is
 
 ### SessionStart — `fathom session-hook`
 
-The `session-hook` subcommand runs at session start and injects a service-context message: "this repo is service X — use fathom tools before Grep/Read." It is a no-op (exits 0, emits nothing) when the repo is not in the fleet index. Like `prime`, it is not yet listed by `fathom help`; `fathom session-hook -h` shows its flags (`-dir`, `-url`).
+The `session-hook` subcommand runs at session start and injects a service-context message: "this repo is service X — use fathom tools before Grep/Read." When the repo is not in the fleet index it still exits 0 but prints an explicit not-indexed line with the ingest hint (the O2 fix) — never silence. Like `prime`, it is listed by `fathom help`; `fathom session-hook -h` shows its flags (`-dir`, `-url`, `--harness`).
 
 Register it in `~/.claude/settings.json` under `hooks.SessionStart`:
 
@@ -432,4 +432,4 @@ Once fathom is wired in and returning results, see the per-use-case guides for h
 
 ## Maintained
 
-This doc covers: `init` (`--skills`), `doctor`, `prime`, `ingest` (incl. `read-failed`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. `prime` and `session-hook` are dispatched but absent from `fathom help` (reach them via `fathom <verb> -h`). Update it when these change.
+This doc covers: `init` (`--skills`, `--harness`, `--json`), `doctor`, `prime`, `ingest` (incl. `read-failed`, `--json`), `ingest-diff`, `watch`, `serve-mcp`, `serve-http` (incl. `--module`/`--modules-token-env`, `/statusz`, `/observatory`), `gen-claude-md`, `platform-ingest`, `version`, the `/rpc`/`/rpc/agent` (`/rpc/companion`)/`/rpc/modules` path-scoped surfaces, `capabilities`, `ingest` (MCP tool), `staleness_report`, `query_symbols`, `session-hook`, `edit-hook`, `fathom verify`. Every verb here is listed by `fathom help` (the table renders from the dispatch table since 0.6.0); `fathom <verb> -h` shows flags. Update it when these change.

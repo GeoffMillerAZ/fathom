@@ -84,9 +84,12 @@ command:
    region is adopted and upgraded, not drift,
 6. installs the shipped skill set (`fathom-plan`, `fathom-verify`,
    `fathom-onboard`, `fathom-feedback`, `fathom-doctor`, `fathom-impact`,
-   `fathom-rewire`, `fathom-activate`, `fathom-custodian`) into
-   `.claude/skills/` — `--skills` bare installs both harnesses;
-   `--skills=claude` or `--skills=codex` selects one,
+   `fathom-rewire`, `fathom-activate`, `fathom-custodian`) — bare
+   `--skills` writes `.agents/skills/` (the Agent Skills standard path:
+   Codex, Gemini CLI, Cursor, Copilot read it; spec-only frontmatter) AND
+   `.claude/skills/` (Claude Code); `--skills=claude`, `=codex`/`=agents`
+   select one path; `--skills=codex-prompts` is the deprecated user-global
+   `~/.codex/prompts` twin, explicit only,
 7. write-if-absent scaffolds `~/.fathom/config.toml` (§8), and
 8. prints the steps it deliberately does **not** do for you (MCP
    registration, the lefthook pre-push snippet — see §4 and §6).
@@ -99,18 +102,27 @@ pre-existing, non-fathom-owned file at a skill's target path — see §2.1).
 Useful flags: `--path DIR` (default cwd), `--service NAME` (default: the
 repo directory's lowercased basename, or the git toplevel's), `--url URL`
 (default `http://localhost:7575` or `$FATHOM_HTTP`), `--bin PATH` (override
-the binary path baked into the hook commands), `--seed-user-ignore` (seed
-`~/.fathom/ignore` with machine-junk defaults, printed as written).
+the binary path baked into the hook commands), `--harness
+claude-code|codex|gemini-cli|agents|none` (write only that registry
+descriptor's vehicles and print ITS `mcp add` line — hooks are wired for
+`claude-code` only in this build; `none` = stanza + `.fathom/` only),
+`--json` (every write, the receipt id and the manual steps as data),
+`--seed-user-ignore` (seed `~/.fathom/ignore` with machine-junk defaults,
+printed as written).
 
 ### 2.1 Re-running / conflicts
 
 `fathom init --skills` marks every file it writes with an internal ownership
 marker so a re-run safely re-renders it. If a file already exists at a
-skill's target path (`.claude/skills/<name>/SKILL.md` or
-`~/.codex/prompts/<name>.md`) **without** that marker — i.e. you already
-have your own skill/prompt with that exact name — init refuses loudly
-(exit 1, naming the path) instead of clobbering it. Rename your file or pick
-a different skill name to resolve the conflict.
+skill's target path (`.agents/skills/<name>/SKILL.md`,
+`.claude/skills/<name>/SKILL.md` or `~/.codex/prompts/<name>.md`)
+**without** that marker — i.e. you already have your own skill/prompt with
+that exact name — init refuses loudly (exit 1, naming the path) instead of
+clobbering it, and `fathom fleet reconcile` BLOCKS it by name. Rename your
+file or pick a different skill name to resolve the conflict. `fathom
+plugin render` packages the same nine with the hook template and the MCP
+registration as one plugin tree carrying both Claude Code's and the Agent
+Plugins 1.0 manifests — the two-command install for a fleet.
 
 ## 3. Index a repo (what `init` does for you)
 
@@ -183,12 +195,23 @@ url = "http://127.0.0.1:7575/rpc/agent"
 
 or the stdio form (`serve-mcp`) if HTTP negotiation doesn't work cleanly —
 see `docs/adoption/codex.md` §2 for both options and the honest capability
-table (§6 there) of what Codex can't do that Claude Code can (session-start
-injection, post-edit obligations, the stop-hook check — Codex leans on the
-git-native gates instead). Codex has no SessionStart hook, so the stanza
-tells it to pull the primer: `fathom prime` prints exactly what Claude Code's
-session hook injects (identity, freshness, a live example, the thread brief,
-the custodian line) — run it at the top of a Codex session.
+table (§6 there — `fathom harness capabilities --harness codex` renders it)
+of what fathom delivers on Codex today: Codex documents Claude-shaped hooks,
+but this build carries them as registry data and does not drive them
+(*hooks: not wired*), so session-start injection, post-edit obligations and
+the stop-hook check are absent and Codex leans on the git-native gates and
+the pull tier. The stanza tells it to pull the primer: `fathom prime`
+prints exactly what Claude Code's session hook injects (identity,
+freshness, a live example, the thread brief, the custodian line) — run it
+at the top of a Codex session.
+
+**Any other harness** (Gemini CLI, Cursor, Copilot, …): `fathom init
+--harness gemini-cli|agents` writes the stanza and `.fathom/` and prints
+that harness's own `mcp add` line; `fathom harness list` names every
+registered descriptor and `fathom harness matrix` renders the adoption
+matrix (`docs/adoption/other-harnesses.md`) — a row that says *unverified*
+means no session on this build has run there, and `fathom doctor --harness
+<id>` says the same on every row it cannot prove.
 
 **The restart caveat.** MCP registration and schema discovery happen at
 session start. A session already running when you register — or across a
@@ -311,6 +334,9 @@ claude mcp get fathom                  # → Type: http · Status: ✔ Connected
       until you uncomment `.fathom/concerns.cue` — a named absence, not a
       failure).
 - [ ] `fathom doctor` is all-pass (the `fathom-doctor` skill reads it);
-      under Codex, `fathom prime` prints the primer.
+      under Codex, `fathom prime` prints the primer and `fathom doctor
+      --harness codex` reports `skills_installed` from `.agents/skills`.
+- [ ] `fathom plugin render --out fathom-plugin` writes both manifests and
+      `claude plugin validate --strict fathom-plugin` passes (fleet install path).
 - [ ] If friction shows up anywhere in this checklist, file it immediately —
       see the `fathom-feedback` skill; don't let it die unrecorded.

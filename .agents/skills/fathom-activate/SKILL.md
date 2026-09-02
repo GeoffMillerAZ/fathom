@@ -24,14 +24,37 @@ description: >
    KILL.md with a real metric and kill criterion).
 3. **Bindings** (`.fathom/modules.cue`): bind modules actually mounted on
    the daemon; else the explicit `bindings: []`.
-4. **Skills**: the eight fathom skills installed (`fathom init
-   --skills`); **gates**: lefthook pre-push verify via plain `fathom`,
-   LOUD on a missing binary (`command -v fathom || { echo "fathom
-   missing — gate NOT run"; exit 1; }`) — a gate that cannot run must
-   fail, not pass.
-5. **Prove by demonstration**: trip one guard deliberately (expect the
+4. **Concerns** (`.fathom/concerns.cue`, scaffolded commented by `init`
+   — see the `fathom-custodian` skill): register 2–4 falsifiable wants
+   about this repo's agent config, each with a `why` naming the failure
+   it prevents (the bar is the same as guards: a mistake that already
+   happened — e.g. a documented command that no longer exists); the six
+   kinds include `stanza_tools_served` and `handoff_cites_instruments`
+   (new, **experimental**). `fathom config audit` must run clean or its
+   violations must be triaged before you call this step done.
+5. **Capabilities** (`.fathom/capabilities.cue`): `fathom capabilities`
+   shows what is on and WHY anything is off; `fathom capabilities set
+   <id> on|off` writes only that block. An optional `budgets: {list,
+   composite, map}` block (tokens) sizes list/composite/map answers —
+   honoured by `serve-http`, not stdio (**experimental**, BA-9).
+6. **Skills**: the nine fathom skills installed (`fathom init
+   --skills` — bare writes `.agents/skills`, the Agent Skills standard
+   path every harness reads, AND `.claude/skills`; `fathom plugin render`
+   packages them with the hook template and the MCP registration as one
+   plugin tree carrying both Claude Code's and the Agent Plugins 1.0
+   manifests); on a non-Claude harness `fathom harness capabilities
+   --harness <id>` says which vehicles actually carry each feature —
+   an `absent` row is a documented gap, never an emulation;
+   **gates**: lefthook pre-push `fathom verify … --quiet` via
+   plain `fathom`, LOUD on a missing binary (`command -v fathom || { echo
+   "fathom missing — gate NOT run"; exit 1; }`) — a gate that cannot run
+   must fail, not pass. Stanza/hook writes go through receipts
+   (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
+   never overwritten — law 15).
+7. **Prove by demonstration**: trip one guard deliberately (expect the
    note), touch one rule-scoped file (expect the injection or its beat),
-   run one `fathom verify` if plans exist. Guard budgets: `max_rules` ≤ 4,
-   notes ≤ ~150 words — the channel is token-capped and deduped; attention
-   is not.
-6. `fathom observe` any friction; report activations + demonstrations.
+   run one `fathom verify` if plans exist, and run `fathom config audit`
+   (expect per-concern holds/violated with evidence — never a silent
+   skip). Guard budgets: `max_rules` ≤ 4, notes ≤ ~150 words — the
+   channel is token-capped and deduped; attention is not.
+8. `fathom observe` any friction; report activations + demonstrations.
