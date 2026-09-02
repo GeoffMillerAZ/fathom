@@ -79,6 +79,87 @@ type Task struct {
 	ScoringRule ScoringRule `json:"scoring_rule"`
 	Source      string      `json:"source,omitempty"`
 	Notes       string      `json:"notes,omitempty"`
+
+	// TruthAtHead names, for every ground-truth token, the repo file its
+	// derivation rests on (PB-1). TestHomeCorpusTruthAtHead re-checks each
+	// anchor against the working tree, so a ground truth that goes false at
+	// HEAD is a gate failure rather than a discovery made after the tokens
+	// were spent. Optional: the grep-native B1 corpus predates it.
+	TruthAtHead []TruthAnchor `json:"truth_at_head,omitempty"`
+
+	// Requires lists environment capabilities the task cannot be scored
+	// without (PB-12) — e.g. "compiled-layer" for a task whose premise is
+	// what the LLM-compiled obligations layer serves. RequiresSatisfied
+	// decides whether a given environment may run it. Empty = deterministic.
+	Requires []string `json:"requires,omitempty"`
+
+	// MaxPredicted caps how many answer lines a fenced answer block may
+	// carry under precision-aware scoring (PB-8, criterion H2-2). Zero means
+	// the default, max(5, 2·|gold|) — see MaxPredictedOrDefault.
+	MaxPredicted int `json:"max_predicted,omitempty"`
+}
+
+// TruthAnchorKind says how a TruthAnchor is checked against the tree.
+type TruthAnchorKind string
+
+const (
+	// AnchorFile: Token appears verbatim in File.
+	AnchorFile TruthAnchorKind = "file"
+	// AnchorPath: Token is a repo-relative path that exists.
+	AnchorPath TruthAnchorKind = "path"
+	// AnchorLine: Token cites the 1-based line of File where Needle first
+	// appears (Token ends with that number, e.g. "CLAUDE.md#L15"), and no
+	// other line number of File makes Token a substring of its citation —
+	// the guard against the bare-number hole that let "29" match anything
+	// containing 29.
+	AnchorLine TruthAnchorKind = "line"
+	// AnchorForm: Token is an answer form the prompt prescribes (e.g.
+	// "verdict: stale") or a value the prompt itself supplies; nothing on
+	// disk can confirm it, so Why must say what does.
+	AnchorForm TruthAnchorKind = "form"
+)
+
+// TruthAnchor ties one ground-truth token to the evidence it was derived
+// from, in a shape a test can re-check without a daemon.
+type TruthAnchor struct {
+	Token  string          `json:"token"`
+	Kind   TruthAnchorKind `json:"kind"`
+	File   string          `json:"file,omitempty"`
+	Needle string          `json:"needle,omitempty"`
+	Why    string          `json:"why,omitempty"`
+}
+
+// MaxPredictedOrDefault returns the task's answer-line cap under
+// precision-aware scoring: MaxPredicted when set, else max(5, 2·|gold|) —
+// wide enough that a correct multi-file answer with a line of context per
+// hit fits, narrow enough that dumping the tree does not.
+func (t Task) MaxPredictedOrDefault() int {
+	if t.MaxPredicted > 0 {
+		return t.MaxPredicted
+	}
+	if n := 2 * len(t.GroundTruth); n > 5 {
+		return n
+	}
+	return 5
+}
+
+// RequiresSatisfied reports whether env — the set of capabilities the
+// runner's environment provides — covers every capability the task
+// requires (PB-12). A task with no requirements runs anywhere; a task that
+// requires "compiled-layer" is skipped, not failed, on a scratch daemon
+// that never compiled one, so a deterministic subset of the corpus can be
+// scored honestly without the LLM-compiled obligations layer.
+func RequiresSatisfied(task Task, env []string) bool {
+	have := make(map[string]bool, len(env))
+	for _, e := range env {
+		have[e] = true
+	}
+	for _, r := range task.Requires {
+		if !have[r] {
+			return false
+		}
+	}
+	return true
 }
 
 // Validate reports whether t is well-formed: non-empty id/prompt/ground
@@ -115,6 +196,30 @@ func (t Task) Validate() error {
 		// unset is valid (back-compat with the B1 corpus); a recognized class is valid
 	default:
 		return fmt.Errorf("task %s: unknown class %q (want one of obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness)", t.ID, t.Class)
+	}
+	for i, a := range t.TruthAtHead {
+		if a.Token == "" {
+			return fmt.Errorf("task %s: truth_at_head[%d] has an empty token", t.ID, i)
+		}
+		switch a.Kind {
+		case AnchorFile, AnchorPath:
+			if a.File == "" && a.Kind == AnchorFile {
+				return fmt.Errorf("task %s: truth_at_head[%d] (%s) needs a file", t.ID, i, a.Kind)
+			}
+		case AnchorLine:
+			if a.File == "" || a.Needle == "" {
+				return fmt.Errorf("task %s: truth_at_head[%d] (line) needs file and needle", t.ID, i)
+			}
+		case AnchorForm:
+			if a.Why == "" {
+				return fmt.Errorf("task %s: truth_at_head[%d] (form) must say why nothing on disk confirms it", t.ID, i)
+			}
+		default:
+			return fmt.Errorf("task %s: truth_at_head[%d] unknown kind %q (want file, path, line, or form)", t.ID, i, a.Kind)
+		}
+	}
+	if t.MaxPredicted < 0 {
+		return fmt.Errorf("task %s: max_predicted must be >= 0", t.ID)
 	}
 	return nil
 }
