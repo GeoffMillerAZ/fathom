@@ -180,7 +180,7 @@ futures may justify a free option today. The repo's own sequence is
   session brief measurably loses to the harness's own recall on the thread bet (G3).
 - Drop if: harness memory formats keep churning quarterly (Cursor removed theirs in 2.1).
 
-## F20. Spec-scaffold interop: `tasks.md` as plan rows and a converge report
+## F20. Spec-scaffold interop: scaffold task checklists as plan rows and a converge report
 
 - Confidence: plausible. Horizon: later.
 - Motivation: the spec-driven scaffolds (Spec Kit, OpenSpec, BMAD, Kiro) emit task
