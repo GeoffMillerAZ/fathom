@@ -1,0 +1,7 @@
+// source: https://geminicli.com/docs/hooks/reference/ (google-gemini/gemini-cli docs/hooks/reference.md e09410b 2026-04-10; index.md a4318f2), fetched 2026-09-02; release v0.58.0 — AfterTool → hookSpecificOutput.additionalContext (appended to the tool result); CONSTRUCTED from the documented field path
+{
+  "hookSpecificOutput": {
+    "hookEventName": "AfterTool",
+    "additionalContext": "obligations for this file"
+  }
+}

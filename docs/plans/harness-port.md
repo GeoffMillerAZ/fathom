@@ -39,23 +39,23 @@ Verify: `fathom verify --service fathom --plan docs/plans/harness-port.md`.
 
 ## Wave 2 — descriptors and codecs (unverified until a real session)
 
-- [ ] Codex descriptor + codec: `AGENTS.md`; `.codex/hooks.json` (repo layer; root-level event keys per the verified contract, `features.hooks` noted); Claude-shaped bindings for the session/edit/pre-edit/stop/pre-compact/session-end events; `apply_patch`→FileEdit, `shell`→Shell; `additionalContext` cap; hash-trust step noted; `.agents/skills`; `config.toml [mcp_servers.fathom] url=` printed as the `codex mcp add` line, never written; `verified_against: unverified` (local Codex is 0.146) {id: HP-17, symbol: CodexCodec, package: internal/harness}
-- [ ] Codex hook file wiring through the engine: a `wiring.Key` for `.codex/hooks.json` (`KindJSONHook` reused when the verified shape matches Claude's; a new kind with plan/apply/undo otherwise) so `init --harness=codex` leaves a receipt `fleet undo` reverses {id: HP-18, symbol: codexHookKey, package: cmd/fathom}
-- [ ] Gemini CLI descriptor + codec (a local install exists): `GEMINI.md`, or `AGENTS.md` via `context.fileName`; `settings.json` hooks; the flat decision plus `hookSpecificOutput.additionalContext` shape; parse-failure-means-allow recorded as `failMode`; `mcpServers.<name>.httpUrl`; `.agents/skills`; `verified_against: unverified` until a real session writes beats {id: HP-19, symbol: GeminiCodec, package: internal/harness}
-- [ ] Cursor and Copilot descriptors as data rows only (instruction files, hook file path and `failMode`, skills dirs, MCP target, `mcp add` line), no codec: `init --harness` for them writes stanza and skills and prints the MCP line; the generated table says `hooks: not wired` {id: HP-20, symbol: DataOnlyDescriptors, package: internal/harness}
+- [x] Codex descriptor + codec: `AGENTS.md`; `.codex/hooks.json` (repo layer; the verified contract's `hooks.<Event>` nesting — Claude's, so the json-hook editor is reused; `features.hooks` noted); Claude-shaped bindings for the session/edit/pre-edit/stop/pre-compact/session-end events; `apply_patch`→FileEdit, `shell`→Shell; `additionalContext` cap; hash-trust step noted; `.agents/skills`; `config.toml [mcp_servers.fathom] url=` printed as the `codex mcp add` line, never written; `verified_against: unverified` (local Codex is 0.146) {id: HP-17, symbol: CodexCodec, package: internal/harness}
+- [x] Codex hook file wiring through the engine: a `wiring.Key` for `.codex/hooks.json` (`KindJSONHook` reused when the verified shape matches Claude's; a new kind with plan/apply/undo otherwise) so `init --harness=codex` leaves a receipt `fleet undo` reverses {id: HP-18, symbol: codexHookKey, package: cmd/fathom}
+- [x] Gemini CLI descriptor + codec (a local install exists): `GEMINI.md`, or `AGENTS.md` via `context.fileName`; `settings.json` hooks; the flat decision plus `hookSpecificOutput.additionalContext` shape; parse-failure-means-allow recorded as `failMode`; `mcpServers.<name>.httpUrl`; `.agents/skills`; `verified_against: unverified` until a real session writes beats {id: HP-19, symbol: GeminiCodec, package: internal/harness}
+- [x] Cursor and Copilot descriptors as data rows only (instruction files, hook file path and `failMode`, skills dirs, MCP target, `mcp add` line), no codec: `init --harness` for them writes stanza and skills and prints the MCP line; the generated table says `hooks: not wired` {id: HP-20, symbol: DataOnlyDescriptors, package: internal/harness}
 - [-] Cursor and Copilot codecs {id: HP-21, disposition: deferred, reason: "no local install and no adopter (P20); the descriptors carry the documented field maps as data so a codec is a fixture away", trigger: "an adopter on that harness, or a local install to verify hooks_firing against"}
-- [ ] Tier C/D rows (OpenCode, Amp, Zed/ACP, Junie, Warp, Continue, Aider, Windsurf) as data in the generated table: instruction file, skills path, MCP config path, `mcp add` line, and the honest "no injection" line — no codecs {id: HP-22, symbol: LadderRows, package: internal/harness}
-- [ ] Every codec round-trips its documented fixtures (`TestCodecsRoundTripDocumentedFixtures`) and never emits `deny` (§5.3 inject-only); each fixture header cites the source URL and date {id: HP-23, symbol: TestCodecsRoundTripDocumentedFixtures, package: internal/harness, skip_test: true, skip: "the test is the anchor"}
+- [x] Tier C/D rows (OpenCode, Amp, Zed/ACP, Junie, Warp, Continue, Aider, Windsurf) as data in the generated table: instruction file, skills path, MCP config path, `mcp add` line, and the honest "no injection" line — no codecs {id: HP-22, symbol: LadderRows, package: internal/harness}
+- [x] Every codec round-trips its documented fixtures (`TestCodecsRoundTripDocumentedFixtures`) and never emits `deny` (§5.3 inject-only); each fixture header cites the source URL and date {id: HP-23, symbol: TestCodecsRoundTripDocumentedFixtures, package: internal/harness, skip_test: true, skip: "the test is the anchor"}
 
 ## Records
 
-Wave 1 landed the parts of HP-24 that wave 1 can honestly claim: the
-`CHANGELOG.md` `[Unreleased]` lines, the coding-agents `## Maintained` line and
-`docs/mcp-tools.md` both naming `fathom harness`. The row stays open because the
-rest of it describes the end state of **both** waves — `docs/intent/scope.md`
-cannot restate the Harnesses boundary as "Cursor and Copilot data rows" or list
-`.codex/hooks.json` writes in the compatibility surface until HP-18 and HP-20
-exist. Restate scope in the same change that ships them.
+Wave 1 landed the `CHANGELOG.md` lines, the coding-agents `## Maintained` line
+and `docs/mcp-tools.md` naming `fathom harness`; wave 2 (HP-18, HP-20) let
+`docs/intent/scope.md` restate the Harnesses boundary (Codex and Gemini CLI
+codecs, unverified; Cursor and Copilot data rows; tiers C/D as ladder rows) and
+list the `.codex/hooks.json` / `.gemini/settings.json` writes in the
+compatibility surface. Verbatim contracts the codecs were built from:
+`docs/adoption/other-harnesses.md` is generated by RP-18, never hand-written.
 
-- [ ] `docs/intent/scope.md`: Harnesses boundary restated (Claude Code verified; Codex and Gemini CLI descriptors with codecs, unverified; Cursor and Copilot data rows; tiers C/D documented), compatibility surface gains `--harness`, `fathom harness`, `.codex/hooks.json` writes; `CHANGELOG.md` lines; `docs/mcp-tools.md` and the coding-agents use-case `## Maintained` line name `fathom harness` {id: HP-24, skip_test: true, skip: "docs; acceptance evidence is the scope.md diff and TestMaintainedLinesNameRegisteredToolsAndVerbs"}
-- [ ] FA-22 filed in agentic-kit (`docs/plans/fathom-uplift-asks.md`): the harness manifest contract moves to the kit only when the kit deletes `install-intent.sh` and the `integration.md` harness table onto it {id: HP-25, skip_test: true, skip: "a row in another repo's plan; evidence is the kit commit"}
+- [x] `docs/intent/scope.md`: Harnesses boundary restated (Claude Code verified; Codex and Gemini CLI descriptors with codecs, unverified; Cursor and Copilot data rows; tiers C/D documented), compatibility surface gains `--harness`, `fathom harness`, `.codex/hooks.json` writes; `CHANGELOG.md` lines; `docs/mcp-tools.md` and the coding-agents use-case `## Maintained` line name `fathom harness` {id: HP-24, skip_test: true, skip: "docs; acceptance evidence is the scope.md diff and TestMaintainedLinesNameRegisteredToolsAndVerbs"}
+- [x] FA-22 filed in agentic-kit (`docs/plans/fathom-uplift-asks.md`): the harness manifest contract moves to the kit only when the kit deletes `install-intent.sh` and the `integration.md` harness table onto it {id: HP-25, skip_test: true, skip: "a row in another repo's plan; evidence is the kit commit"}

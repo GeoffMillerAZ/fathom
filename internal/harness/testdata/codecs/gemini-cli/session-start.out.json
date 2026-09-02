@@ -1,0 +1,7 @@
+// source: https://geminicli.com/docs/hooks/reference/ (google-gemini/gemini-cli docs/hooks/reference.md e09410b 2026-04-10; index.md a4318f2), fetched 2026-09-02; release v0.58.0 — writing-hooks.md inject-context example (verbatim shape: hookSpecificOutput.hookEventName + additionalContext; the doc example names BeforeAgent, SessionStart is documented as carrying the same field); event name swapped, otherwise verbatim
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "Recent commits:\n$context"
+  }
+}

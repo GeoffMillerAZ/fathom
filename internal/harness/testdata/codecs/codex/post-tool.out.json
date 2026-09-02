@@ -1,0 +1,9 @@
+// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — PostToolUse output, verbatim (fathom emits only the hookSpecificOutput half: decision block is never emitted)
+{
+  "decision": "block",
+  "reason": "The Bash output needs review before continuing.",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "The command updated generated files."
+  }
+}

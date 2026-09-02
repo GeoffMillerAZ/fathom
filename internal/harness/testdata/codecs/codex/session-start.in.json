@@ -1,0 +1,10 @@
+// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — §SessionStart schema required fields (cwd, hook_event_name, model, permission_mode, session_id, source, transcript_path); CONSTRUCTED from the field list, no verbatim example in the doc
+{
+  "session_id": "thr_123",
+  "transcript_path": "/workspace/.codex/rollout.jsonl",
+  "cwd": "/workspace",
+  "hook_event_name": "SessionStart",
+  "model": "gpt-5-codex",
+  "permission_mode": "default",
+  "source": "startup"
+}

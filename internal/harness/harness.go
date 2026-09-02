@@ -138,7 +138,27 @@ type HookFile struct {
 	// Shape names the documented JSON shape: "claude-settings" is the
 	// hooks.<Event>[{matcher, hooks:[{type,command,timeout}]}] block.
 	Shape string `json:"shape"`
+	// TimeoutUnit is the unit of the entry's timeout field: "" or "s"
+	// (seconds, Claude Code and Codex) or "ms" (Gemini CLI). The wiring
+	// key builder converts the binding's TimeoutSec accordingly.
+	TimeoutUnit string `json:"timeout_unit,omitempty"`
+	// Trust is the user step the harness documents before an entry in
+	// this file runs (Codex: trust its hash in /hooks); "" when none.
+	Trust string `json:"trust,omitempty"`
 	Note  string `json:"note,omitempty"`
+}
+
+// InitHookFile returns the project-scoped hook file `init --harness`
+// writes for this descriptor — the first project-scope file with a wiring
+// Kind — and false when the descriptor documents no such file (a data row,
+// or a harness whose hooks are user-global only).
+func (d Descriptor) InitHookFile() (HookFile, bool) {
+	for _, f := range d.HookFiles {
+		if f.Scope == "project" && f.Kind != "" {
+			return f, true
+		}
+	}
+	return HookFile{}, false
 }
 
 // EventBinding is one row of a harness's hook table: which fathom verb

@@ -1,0 +1,7 @@
+// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — "PreToolUse context without blocking", verbatim
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "additionalContext": "The pending command touches generated files."
+  }
+}

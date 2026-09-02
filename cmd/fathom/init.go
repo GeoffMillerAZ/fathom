@@ -676,6 +676,11 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets) (wiri
 	if !targets.Hooks {
 		return spec, notes
 	}
+	if targets.ID != harness.ClaudeCode { // HP-18: the descriptor's own hook file (init_harnesshooks.go)
+		keys, hookNotes := harnessHookKeys(root, targets.ID, binPath)
+		spec.Keys = append(spec.Keys, keys...)
+		return spec, append(notes, hookNotes...)
+	}
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
 	for _, hs := range fathomHookSpecs {
@@ -931,12 +936,15 @@ func stanzaHookSentences(id string, intentOn bool) (obligations, continuity stri
 		id = harness.ClaudeCode
 	}
 	d, ok := harness.Lookup(id)
-	if !ok || d.HooksWired() {
+	if !ok || (d.HooksWired() && !d.Unverified()) {
 		obligations = obligationsPlain
 		if intentOn {
 			obligations = obligationsWithIntent
 		}
 		return obligations, continuityClaude
+	}
+	if d.HooksWired() { // wired but unverified (HP-18): init_harnesshooks.go
+		return unverifiedHookSentences(d, intentOn)
 	}
 	display := d.Display
 	if intentOn {

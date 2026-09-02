@@ -22,7 +22,9 @@ lives entirely over HTTP.
 **Which harness reaches these tools, and how, is registry data** (ADR-029): every
 harness descriptor carries its MCP config path, HTTP key name, `mcp add` command and
 tool-name pattern. `fathom harness list` names the registered harnesses and
-`fathom harness capabilities [--harness ID]` prints the per-capability vehicle table —
+`fathom harness capabilities [--harness ID]` prints the per-capability vehicle table
+(the `ladder` subcommand, `fathom harness ladder`, prints the tier B/C/D rows — stanza +
+MCP + skills, no injection) —
 including the `mcp-tools` row, which is the only channel by which a tier-C/D harness
 (no hooks, no injection) reaches anything on this page. An unverified descriptor
 renders every row as `unverified on this machine`; the catalog below is unaffected by

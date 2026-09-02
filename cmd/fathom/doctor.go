@@ -219,6 +219,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkGatePosture(harness),
+		checkHarnessHookFiles(root, harness), // HP-18/19: doctor_harness.go, never PASS
 		checkStanzaPresent(root),
 		checkStanzaLoaded(root), // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
 		checkSkillsInstalled(root, harness),
@@ -792,10 +793,13 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 // other registry id — a documented-but-unwired hook table says so, a
 // harness with no hooks says so.
 func hooksNotWiredReason(harnessLabel, codexReason string) string {
+	d, ok := harness.Lookup(doctorHarnessID(harnessLabel))
+	if ok && d.HooksWired() { // HP-18/19: the harness_hooks row (doctor_harness.go) reads its files
+		return fmt.Sprintf("%s hook entries are read by the harness_hooks row (unverified on this machine) — nothing else to check here; the lefthook_gates check covers the git-native equivalent", d.Display)
+	}
 	if harnessLabel == "codex" {
 		return codexReason
 	}
-	d, ok := harness.Lookup(doctorHarnessID(harnessLabel))
 	switch {
 	case !ok:
 		return fmt.Sprintf("no registry descriptor for %q — nothing to check", harnessLabel)

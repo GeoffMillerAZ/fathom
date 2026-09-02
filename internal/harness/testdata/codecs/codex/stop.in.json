@@ -1,0 +1,12 @@
+// source: https://learn.chatgpt.com/docs/hooks.md (developers.openai.com/codex/hooks.md), fetched 2026-09-02; codex-cli 0.146.0 local — §Stop fields (turn_id, stop_hook_active, last_assistant_message); CONSTRUCTED from the field list, no verbatim example in the doc
+{
+  "session_id": "thr_123",
+  "transcript_path": "/workspace/.codex/rollout.jsonl",
+  "cwd": "/workspace",
+  "hook_event_name": "Stop",
+  "model": "gpt-5-codex",
+  "permission_mode": "default",
+  "turn_id": "turn_1",
+  "stop_hook_active": true,
+  "last_assistant_message": null
+}

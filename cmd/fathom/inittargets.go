@@ -79,6 +79,11 @@ func initTargetsForDescriptor(d harness.Descriptor, now time.Time) (initTargets,
 		MCPAddLine:  d.MCP.AddCommand,
 	}
 	switch {
+	case d.HooksWired() && d.Unverified():
+		// HP-18: the descriptor's own hook file is planned through the
+		// wiring engine, and the line says it is unverified here and what
+		// gates it (init_harnesshooks.go).
+		t.HooksNote = wiredUnverifiedHooksNote(d)
 	case d.HooksWired():
 		// nothing to say: the hook table is planned through the wiring engine
 	case d.HasHooks():
