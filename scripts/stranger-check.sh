@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+#
+# stranger-check.sh — the v0.7.0 lesson as a task (RP-23,
+# docs/plans/reach-parity.md): prove the adoption path works for someone
+# who is NOT the author. Copy the tracked tree into scratch, build it
+# with GOWORK=off (no sibling checkouts), start a throwaway daemon on a
+# free port with a temp store, run `fathom init --harness=none --skills`
+# against the copy with a temp HOME, then `fathom doctor`, and fail on any
+# FAIL row. Nothing here touches the shared daemon, the shared store, or
+# the real home directory.
+#
+# DIVERGENCE from the plan row's "workspace/tmp": the copy is a Go module
+# tree, and `task validate` runs `go vet ./...` in PARALLEL with this
+# script — a copy under the repo's own tree is walked by vet mid-rsync
+# ("open workspace/tmp/stranger-check/tree/…: no such file or directory",
+# 2026-09-02). Go toolchain scratch belongs OUTSIDE the module
+# (Taskfile.yml's GOTMPDIR note), so the copy lives under TMPDIR.
+#
+# Run: task stranger-check   (prints the elapsed seconds; joins `task
+# validate` only if that number stays under two minutes)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+start=$SECONDS
+work="${TMPDIR:-/tmp}/fathom-stranger-check"
+rm -rf "${work}"
+mkdir -p "${work}"
+tree="${work}/tree"
+home="${work}/home"
+mkdir -p "${tree}" "${home}"
+
+cleanup() {
+  if [ -n "${daemon_pid:-}" ]; then
+    kill "${daemon_pid}" 2>/dev/null || true
+    wait "${daemon_pid}" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+# 1. The tracked tree, as a stranger receives it (working-tree content of
+#    tracked paths, so the gate checks what would be committed), made into
+#    its OWN repository with its own HEAD — a stranger's clone has one, and
+#    the build below stamps that revision, which is what `binary_fresh`
+#    compares against. Without it the copy would inherit THIS checkout's
+#    HEAD and the row would report a false mismatch (O5's class).
+git ls-files | while IFS= read -r f; do [ -e "$f" ] && printf '%s\n' "$f"; done > "${work}/.tracked"
+rsync -a --files-from="${work}/.tracked" . "${tree}/"
+rm -f "${work}/.tracked"
+(
+  cd "${tree}"
+  git init -q
+  git add .
+  git -c user.name=stranger -c user.email=stranger@example.invalid commit -q -m "stranger-check: the tracked tree" --no-verify
+) >"${work}/git.log" 2>&1
+
+# 2. Build standalone.
+if ! (cd "${tree}" && GOWORK=off CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom >"${work}/build.log" 2>&1); then
+  echo "stranger-check: FAIL the tracked tree does not build standalone:" >&2
+  head -20 "${work}/build.log" >&2
+  exit 1
+fi
+bin="${tree}/bin/fathom"
+
+# 3. A throwaway daemon on a free port with a temp store.
+port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
+url="http://127.0.0.1:${port}"
+HOME="${home}" "${bin}" serve-http --store "${work}/store.sqlite" --addr "127.0.0.1:${port}" >"${work}/daemon.log" 2>&1 &
+daemon_pid=$!
+for _ in $(seq 1 50); do
+  if curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then break; fi
+  sleep 0.2
+done
+if ! curl -s --max-time 1 "${url}/healthz" 2>/dev/null | grep -q ok; then
+  echo "stranger-check: FAIL the throwaway daemon did not come up:" >&2
+  tail -20 "${work}/daemon.log" >&2
+  exit 1
+fi
+
+# 4. init as a stranger: temp HOME, --harness=none (stanza + .fathom/ +
+#    skills, no hook file), the copy's own binary.
+if ! HOME="${home}" "${bin}" init --path "${tree}" --url "${url}" --bin "${bin}" --harness=none --skills --service stranger >"${work}/init.log" 2>&1; then
+  echo "stranger-check: FAIL fathom init exited non-zero:" >&2
+  tail -30 "${work}/init.log" >&2
+  exit 1
+fi
+
+# 5. One real tool call against /rpc/agent, the way a stranger's first
+#    session makes one — this is what proves the surface answers, and it
+#    is what doctor's surface_traffic row counts.
+if ! curl -s --max-time 5 -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}' \
+      "${url}/rpc/agent" | grep -q '"result"'; then
+  echo "stranger-check: FAIL a tools/call against ${url}/rpc/agent returned no result" >&2
+  exit 1
+fi
+
+# 6. doctor: any FAIL row fails the check, with ONE named exception:
+#    obligations_served fails honestly on a repo whose obligations layer
+#    has never been compiled, and its remedy (`fathom compile`) spends LLM
+#    budget — outside this gate's scope (docs/intent/autonomy.md). It is
+#    printed as expected, never hidden. Rows doctor cannot prove are SKIP
+#    with a reason, which is the contract — never a guessed PASS.
+HOME="${home}" "${bin}" doctor --path "${tree}" --url "${url}" --harness agents --service stranger --json >"${work}/doctor.json" 2>"${work}/doctor.err" || true
+fails=$(python3 - "${work}/doctor.json" "${work}/doctor.fails" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+rows = d.get("checks", d if isinstance(d, list) else [])
+expected = {"obligations_served"}
+bad = [r for r in rows if str(r.get("status", "")).lower() == "fail" and r.get("name") not in expected]
+for r in rows:
+    if str(r.get("status", "")).lower() == "fail" and r.get("name") in expected:
+        print(f"  expected for a never-compiled repo: {r.get('name')} — {r.get('reason')}")
+for r in bad:
+    print(f"  FAIL {r.get('name')}: {r.get('reason')} (remedy: {r.get('remedy')})")
+open(sys.argv[2], "w").write(str(len(bad)))
+PY
+)
+nfail=$(cat "${work}/doctor.fails")
+elapsed=$((SECONDS - start))
+if [ "${nfail}" != "0" ]; then
+  echo "stranger-check: FAIL — ${nfail} doctor row(s) FAIL for a stranger (${elapsed}s):" >&2
+  echo "${fails}" >&2
+  exit 1
+fi
+[ -n "${fails}" ] && echo "${fails}"
+echo "stranger-check: the tracked tree builds standalone, inits with --harness=none --skills, answers a tools/call on /rpc/agent, and doctor reports no unexpected FAIL row (${elapsed}s)"

@@ -79,6 +79,17 @@ tasks:
           found=1; d=$(dirname "$schema"); echo "cue vet: $d"
           (cd "$d" && cue vet ./...) || exit 1
         done
+        # RP-2 (docs/plans/reach-parity.md): every shipped skill's SKILL.md
+        # frontmatter vets against the vendored Agent Skills schema — the
+        # standard is a schema under this gate, never a hand-written check.
+        for skill in dist/agents/skills/*/SKILL.md; do
+          fm=$(mktemp "${TMPDIR:-/tmp}/skill-frontmatter.XXXXXX")
+          awk 'NR==1 && $0!="---"{exit 1} NR>1 && $0=="---"{exit} NR>1{print}' "$skill" > "$fm" || { echo "cue vet: $skill has no leading --- frontmatter"; rm -f "$fm"; exit 1; }
+          mv "$fm" "$fm.yaml"
+          echo "cue vet: $skill (frontmatter)"
+          cue vet -d '#Frontmatter' schema/skills/schema.cue "$fm.yaml" || { echo "cue vet FAILED: $skill"; rm -f "$fm.yaml"; exit 1; }
+          rm -f "$fm.yaml"
+        done
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:
@@ -112,11 +123,14 @@ tasks:
       - go run github.com/geoffmilleraz/app-kit/cmd/appkit css -i cmd/fathom/ui/input.css -o cmd/fathom/ui/app.css
 
   validate:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, config-audit, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
-    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, store-purego, scripts-check, config-audit]
+    # stranger-check (RP-23) is the same lesson one step further: the copy
+    # must init and pass doctor for someone who is not the author. Measured
+    # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
+    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit]
     cmds: [{ task: test }]
 
   config-audit:
@@ -138,6 +152,10 @@ tasks:
   vendor-check:
     desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)
     cmds: ["bash scripts/vendor-check.sh"]
+
+  stranger-check:
+    desc: "Adopter guard (RP-23) — copy the tracked tree to $TMPDIR (outside the module, so a parallel `go vet ./...` never walks it), build with GOWORK=off, run `fathom init --harness=none --skills` and `fathom doctor` against a throwaway daemon + temp store with a temp HOME; fail on any FAIL row. Prints its elapsed seconds."
+    cmds: ["bash scripts/stranger-check.sh"]
 
   store-purego:
     desc: Purity guard (invariant I2, ADR-025) — internal/store must build and pass -race under CGO_ENABLED=0
