@@ -190,7 +190,7 @@ func MCPEntryDigest(content []byte, format string, keyPath []string) (dig string
 }
 
 // readFn is how drift reads files; tests inject one, callers pass
-// os.ReadFile (or a readset-recording wrapper).
+// os.ReadFile (or a read-manifest-recording wrapper).
 type readFn func(path string) ([]byte, error)
 
 // DriftMCP compares every MCP file's fathom entry to the ledger's recorded

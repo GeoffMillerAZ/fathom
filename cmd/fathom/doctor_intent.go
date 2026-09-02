@@ -5,8 +5,9 @@ import (
 	"strings"
 	"time"
 
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/intent"
-	"github.com/geoffmilleraz/fathom/internal/readset"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 )
 
 // doctor_intent.go — EP-11, two rows that never FAIL.
@@ -76,12 +77,12 @@ func checkIntent(root string) doctorCheck {
 	// file that could not be read renders "≥ N" with the path and errno
 	// rather than a confident total that is silently too low.
 	cov := c.Coverage
-	parts := []string{fmt.Sprintf("%s (%d annotated, %d terminal)", cov.RenderCount(len(c.Conditions), "condition(s)"), annotated, terminal)}
-	parts = append(parts, fmt.Sprintf("%s [%s]", cov.RenderCount(len(c.Invariants), "invariant(s)"), renderRungs(byRung)))
+	parts := []string{fmt.Sprintf("%s (%d annotated, %d terminal)", readcoverage.RenderCount(cov, len(c.Conditions), "condition(s)"), annotated, terminal)}
+	parts = append(parts, fmt.Sprintf("%s [%s]", readcoverage.RenderCount(cov, len(c.Invariants), "invariant(s)"), renderRungs(byRung)))
 	// EP-21: sensitive surfaces are only a channel when a guard entry
 	// carries their provenance; counting them without saying how many are
 	// WIRED is the "instrumented" illusion law 3 exists to stop.
-	surfaceNote := cov.RenderCount(len(c.Surfaces), "sensitive surface(s)")
+	surfaceNote := readcoverage.RenderCount(cov, len(c.Surfaces), "sensitive surface(s)")
 	if notes, scopesOf, why := repoGuardNotes(root); scopesOf == nil {
 		surfaceNote += ", guard coverage unknown (" + why + ")"
 	} else {
@@ -183,7 +184,7 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 		GuardNotes:       guardNotes,
 		GuardScopes:      guardScopes,
 		GuardNote:        guardWhy,
-		ExtraCoverage:    []readset.Manifest{contractCoverage},
+		ExtraCoverage:    []readmanifest.Manifest{contractCoverage},
 		Ledger:           intent.ReadLedger(),
 		Now:              time.Now().UTC(),
 		// No SymbolOracle: the doctor row must not pay an index probe. U4
@@ -209,7 +210,7 @@ func checkUnprovenClaims(root, baseURL, service string) doctorCheck {
 	kinds := renderClaimKinds(a.ByKind)
 	first := a.Unproven[0]
 	reason := fmt.Sprintf("%s [%s]; first: %s — %s",
-		a.Coverage.RenderCount(len(a.Unproven), "unproven claim(s)"), kinds, first.Ref, first.Detail)
+		readcoverage.RenderCount(a.Coverage, len(a.Unproven), "unproven claim(s)"), kinds, first.Ref, first.Detail)
 	// The zero path always carried this list; the non-zero path dropped it,
 	// which is how a partial count got printed as a total (RC-6).
 	if n := len(a.Uncomputable); n > 0 {

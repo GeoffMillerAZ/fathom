@@ -84,12 +84,16 @@ healthier than it is.**
 
 Mechanically, four rules:
 
-1. **Every read in the reporting layer is recorded.** A small
-   `internal/readset` returns content or a named failure and accumulates a
-   `Manifest`: files read, files skipped with a category, files that FAILED
-   with their errno text. This mirrors `fusion.ReadFailure` deliberately;
-   it is not shared code because the ingest path's refusal semantics are
-   its own, and coupling the audit to the ingest pipeline buys nothing.
+1. **Every read in the reporting layer is recorded.** A small read-manifest
+   `Set` returns content or a named failure and accumulates a `Manifest`:
+   files read, files skipped with a category, files that FAILED with their
+   errno text. This mirrors `fusion.ReadFailure` deliberately; it is not
+   shared code because the ingest path's refusal semantics are its own, and
+   coupling the audit to the ingest pipeline buys nothing. *2026-09-02: the
+   package that shipped this (`internal/readset`) was generalised by
+   agentic-kit as `foundations/telemetry/read-manifest` and deleted onto it
+   (PC-34); fathom keeps only `internal/readcoverage`, the rendering in
+   rule 2.*
 2. **A count over an incomplete manifest is a lower bound, and says so.**
    `37 invariants` becomes `≥ 0 invariants (2 source(s) unreadable)`. The
    number is never presented as a total. Downstream (doctor rows, the

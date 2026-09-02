@@ -1,15 +1,23 @@
-package readset
+package readcoverage
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // RC-1: the three facts a bare `if err != nil { continue }` collapses stay
 // distinct — absent, unreadable, and skipped are different outcomes, and
 // only "unreadable" makes a manifest incomplete.
+//
+// The accounting now belongs to the kit (foundations/telemetry/read-manifest,
+// generalized from the deleted internal/readset). This test keeps its name
+// and its job: it is fathom's contract against the package it depends on, so
+// a kit change that quietly reinstated the conflation would fail HERE, where
+// I38 is stated, rather than nowhere.
 func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 	dir := t.TempDir()
 	good := filepath.Join(dir, "good.md")
@@ -25,7 +33,7 @@ func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
 
-	var s Set
+	var s readmanifest.Set
 	if b, ok := s.ReadFile(good); !ok || string(b) != "hello" {
 		t.Fatalf("readable file: ok=%v body=%q", ok, b)
 	}
@@ -38,11 +46,12 @@ func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 	s.Skip(filepath.Join(dir, "archive.md"), "out of gate scope")
 
 	m := s.Manifest()
-	got := map[Outcome]int{}
+	got := map[readmanifest.Kind]int{}
 	for _, e := range m.Entries {
-		got[e.Outcome]++
+		got[e.Outcome.Kind]++
 	}
-	if got[Read] != 1 || got[Absent] != 1 || got[Unreadable] != 1 || got[Skipped] != 1 {
+	if got[readmanifest.KindRead] != 1 || got[readmanifest.KindAbsent] != 1 ||
+		got[readmanifest.KindUnreadable] != 1 || got[readmanifest.KindSkipped] != 1 {
 		t.Fatalf("each outcome must be distinct, got %v", got)
 	}
 
@@ -51,7 +60,7 @@ func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 	if m.Complete() {
 		t.Fatal("a failed read must make the manifest incomplete")
 	}
-	var clean Set
+	var clean readmanifest.Set
 	_, _ = clean.ReadFile(good)
 	_, _ = clean.ReadFile(filepath.Join(dir, "nope.md"))
 	clean.Skip(filepath.Join(dir, "archive.md"), "out of gate scope")
@@ -61,7 +70,7 @@ func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 
 	// The note names the path AND the operating system's own wording, which
 	// is what tells a reader "TCC wedge" rather than "file missing".
-	note := m.Note()
+	note := Note(m)
 	if !strings.Contains(note, "bad.md") || !strings.Contains(note, "denied") {
 		t.Fatalf("note must name path and errno, got %q", note)
 	}
@@ -69,11 +78,12 @@ func TestReadSetRecordsAbsentUnreadableAndSkipped(t *testing.T) {
 
 // RC-3's floor: a count over an incomplete manifest is a LOWER BOUND and can
 // never be rendered as a bare total. This is the formatting rule that stops
-// "0 invariants" being printed for a repo with 37.
+// "0 invariants" being printed for a repo with 37 — and the rendering is the
+// one thing fathom still owns after the deletion onto the kit package.
 func TestRenderCountIsALowerBoundWhenBlind(t *testing.T) {
-	var complete Set
+	var complete readmanifest.Set
 	seen := complete.Manifest()
-	if got := seen.RenderCount(37, "invariant(s)"); got != "37 invariant(s)" {
+	if got := RenderCount(seen, 37, "invariant(s)"); got != "37 invariant(s)" {
 		t.Fatalf("complete coverage renders a plain count, got %q", got)
 	}
 
@@ -85,12 +95,17 @@ func TestRenderCountIsALowerBoundWhenBlind(t *testing.T) {
 	_ = os.Chmod(bad, 0o000)
 	t.Cleanup(func() { _ = os.Chmod(bad, 0o644) })
 
-	var blind Set
+	var blind readmanifest.Set
 	_, _ = blind.ReadFile(bad)
 	unseen := blind.Manifest()
-	got := unseen.RenderCount(0, "invariant(s)")
+	got := RenderCount(unseen, 0, "invariant(s)")
 	if !strings.HasPrefix(got, "≥ 0 invariant(s)") || !strings.Contains(got, "invariants.md") {
 		t.Fatalf("an incomplete count must be a named lower bound, got %q", got)
+	}
+	// The wording ADR-027 and the CHANGELOG pin, kept byte-identical across
+	// the deletion onto the kit package.
+	if !strings.Contains(got, "1 source(s) unreadable: ") {
+		t.Fatalf("the pinned lower-bound wording must survive the migration, got %q", got)
 	}
 }
 
@@ -102,7 +117,7 @@ func TestFirstOutcomeWinsSoBlindnessCannotBeUndone(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = os.Chmod(p, 0o000)
-	var s Set
+	var s readmanifest.Set
 	_, _ = s.ReadFile(p)
 	_ = os.Chmod(p, 0o644)
 	_, _ = s.ReadFile(p)
@@ -120,10 +135,10 @@ func TestMergeAccumulatesBlindness(t *testing.T) {
 	_ = os.Chmod(p, 0o000)
 	t.Cleanup(func() { _ = os.Chmod(p, 0o644) })
 
-	var sub Set
+	var sub readmanifest.Set
 	_, _ = sub.ReadFile(p)
 
-	var top Set
+	var top readmanifest.Set
 	if !top.Manifest().Complete() {
 		t.Fatal("an empty set has seen everything it looked at")
 	}

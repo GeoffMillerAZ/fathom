@@ -13,9 +13,10 @@ import (
 	"strings"
 	"time"
 
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/intent"
-	"github.com/geoffmilleraz/fathom/internal/readset"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -108,7 +109,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 
 		PlanContracts:    contracts,
 		PlanContractNote: contractNote,
-		ExtraCoverage:    []readset.Manifest{contractCoverage},
+		ExtraCoverage:    []readmanifest.Manifest{contractCoverage},
 
 		SurfaceFiles: func(globs []string) (int, bool) {
 			return filesOnDiskUnder(abs, globs), true
@@ -141,7 +142,7 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	// channel, no new file (law 4).
 	incomplete := "0"
 	if !audit.Coverage.Complete() {
-		incomplete = itoa(len(audit.Coverage.UnreadableEntries()))
+		incomplete = itoa(len(audit.Coverage.Unreadable()))
 	}
 	emitBeat("intent-cli", "audit", map[string]string{
 		"conditions":          itoa(len(corpus.Conditions)),
@@ -286,7 +287,7 @@ func renderIntentAudit(w io.Writer, c intent.Corpus, a intent.Audit, ledger []in
 	}
 
 	if want("unproven") {
-		fmt.Fprintf(w, "\nunproven claims: %s\n", a.Coverage.RenderCount(len(a.Unproven), ""))
+		fmt.Fprintf(w, "\nunproven claims: %s\n", readcoverage.RenderCount(a.Coverage, len(a.Unproven), ""))
 		shown := 0
 		lastKind := ""
 		for _, cl := range a.Unproven {
@@ -355,8 +356,8 @@ func emitIntentJSON(w io.Writer, c intent.Corpus, a intent.Audit, ledger []inten
 		// in this document is a lower bound.
 		"coverage": map[string]any{
 			"complete":   a.Coverage.Complete(),
-			"note":       a.Coverage.Note(),
-			"unreadable": a.Coverage.UnreadableEntries(),
+			"note":       readcoverage.Note(a.Coverage),
+			"unreadable": a.Coverage.Unreadable(),
 			"entries":    len(a.Coverage.Entries),
 		},
 		"unenforced":   joinInvIDs(a.Unenforced),
@@ -473,8 +474,9 @@ func intentPopulation(root string) []string {
 // planRowContracts reads every gated plan's row annotations statically —
 // no index, no daemon, no verify run. U12 (EP-38) joins these against the
 // router's sensitive surfaces.
-func planRowContracts(root string) ([]intent.PlanRow, string, readset.Manifest) {
-	reads := &readset.Set{Root: root}
+func planRowContracts(root string) ([]intent.PlanRow, string, readmanifest.Manifest) {
+	reads := readmanifest.NewSet()
+	reads.RelativeTo(root)
 	dir := filepath.Join(root, "docs", "plans")
 	entries, err := os.ReadDir(dir)
 	if err != nil {
