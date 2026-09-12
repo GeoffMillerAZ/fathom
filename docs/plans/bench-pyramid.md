@@ -28,14 +28,14 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 
 ## L0 — the index oracle (free)
 
-- [ ] `cmd/loctruth` runs over the fixture fleet (`internal/connector/testdata/fauxtown` Go services) and the index built from the same tree; `IndexOracleReport` scores precision and recall for `find_callers`, `references` and the transitive closure `blast_radius` walks, per service {id: BP-12, symbol: IndexOracleReport, package: internal/indexbench}
-- [ ] Goldens committed (`internal/indexbench/testdata/fauxtown.golden.json`); `TestIndexOracleMatchesGolden` fails on any precision or recall drop; in `task validate` {id: BP-13, symbol: TestIndexOracleMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
-- [ ] `task bench-l0-self`: the same oracle over this repository at HEAD (slower, on demand and before a release); the report is written under `workspace/` and its precision/recall printed with the denominator {id: BP-14, skip_test: true, skip: "Taskfile target; bash -n; the Go side is BP-12"}
+- [x] `cmd/loctruth` runs over the fixture fleet (`internal/connector/testdata/fauxtown` Go services) and the index built from the same tree; `IndexOracleReport` scores precision and recall for `find_callers`, `references` and the transitive closure `blast_radius` walks, per service {id: BP-12, symbol: IndexOracleReport, package: internal/indexbench}
+- [x] Goldens committed (`internal/indexbench/testdata/fauxtown.golden.json`); `TestIndexOracleMatchesGolden` fails on any precision or recall drop; in `task validate` {id: BP-13, symbol: TestIndexOracleMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
+- [x] `task bench-l0-self`: the same oracle over this repository at HEAD (slower, on demand and before a release); the report is written under `workspace/` and its precision/recall printed with the denominator {id: BP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  bench-l0-self:$"}
 
 ## L1 — payload replay (free)
 
-- [ ] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench}
-- [ ] `TestPayloadReplayMatchesGolden` in `task validate`; a byte-count growth over 10% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplayMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
+- [x] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench}
+- [x] `TestPayloadReplayMatchesGolden` in `task validate`; a byte-count growth over 10% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplayMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
 
 ## The fixes the bench found (D1, D2, D3, D5 of the design)
 

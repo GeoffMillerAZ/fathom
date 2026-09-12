@@ -23,7 +23,18 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 )
+
+// CallersTruth is the go/types walker, which lives in
+// internal/contextbench/publicloc so the L0 index oracle
+// (internal/indexbench, bench-pyramid BP-12) can cite the same independent
+// truth this command prints. Calling it through this alias keeps the
+// command's own contract — and its tests — unchanged by the move.
+func CallersTruth(root string) (publicloc.CallersFile, error) {
+	return publicloc.CallersTruth(root)
+}
 
 func main() {
 	os.Exit(runLocTruth(os.Args[1:], os.Stdout, os.Stderr))

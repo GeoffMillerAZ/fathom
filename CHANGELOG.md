@@ -19,7 +19,21 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch (pre-1.0: breaking bumps minor)
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+**Bench pyramid L0/L1 (ADR-032; `BP-12..16`).** `task validate` now gates two
+free bench layers over the fixture fleet: an index oracle that scores
+`find_callers`, `references` and `blast_radius` against an independent
+`go/types` truth, and a payload replay that pins each tool's response bytes,
+result count and latency. A precision or recall drop, a payload more than 10%
+larger, or any `displaced` count on an `obligations` entry now fails a test
+naming the tool; regenerate deliberate changes with
+`go test ./internal/indexbench/... -update`.
+New `task bench-l0-self` runs the same oracle over this repository at HEAD
+(free, on demand) and writes the report under `workspace/artifacts/indexbench/`.
+`cmd/loctruth`'s `go/types` walker moved to `internal/contextbench/publicloc`
+so both benches cite the same independent truth; the command's output is
+unchanged.
 
 ## [0.8.0] -- 2026-09-02
 

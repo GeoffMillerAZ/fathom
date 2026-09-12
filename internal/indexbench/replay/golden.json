@@ -1,0 +1,123 @@
+[
+  {
+    "id": "obligations-ledger",
+    "tool": "obligations",
+    "args": {
+      "file": "ledger-service/ledger.go",
+      "service": "ledger-service"
+    },
+    "count_field": "rules",
+    "budget_ms": 250,
+    "bytes": 754,
+    "result_count": 4,
+    "displaced": 0
+  },
+  {
+    "id": "obligations-payment",
+    "tool": "obligations",
+    "args": {
+      "file": "payment-service/payment.go",
+      "service": "payment-service"
+    },
+    "count_field": "rules",
+    "budget_ms": 250,
+    "bytes": 575,
+    "result_count": 3,
+    "displaced": 0
+  },
+  {
+    "id": "obligations-errors",
+    "tool": "obligations",
+    "args": {
+      "file": "ledger-service/errors.go",
+      "service": "ledger-service"
+    },
+    "count_field": "rules",
+    "budget_ms": 250,
+    "bytes": 605,
+    "result_count": 3,
+    "displaced": 0
+  },
+  {
+    "id": "find-callers-validateEntry",
+    "tool": "find_callers",
+    "args": {
+      "service": "ledger-service",
+      "symbol": "validateEntry"
+    },
+    "count_field": "callers",
+    "budget_ms": 250,
+    "bytes": 301,
+    "result_count": 1,
+    "displaced": 0
+  },
+  {
+    "id": "references-Charge",
+    "tool": "references",
+    "args": {
+      "query": "Charge",
+      "services": [
+        "payment-service"
+      ]
+    },
+    "count_field": "occurrences",
+    "budget_ms": 250,
+    "bytes": 3158,
+    "result_count": 12,
+    "displaced": 0
+  },
+  {
+    "id": "blast-radius-ledger",
+    "tool": "blast_radius",
+    "args": {
+      "changed_files": [
+        "ledger-service/ledger.go"
+      ],
+      "service": "ledger-service"
+    },
+    "count_field": "symbols",
+    "budget_ms": 500,
+    "bytes": 953,
+    "result_count": 7,
+    "displaced": 0
+  },
+  {
+    "id": "symbol-context-Post",
+    "tool": "symbol_context",
+    "args": {
+      "service": "ledger-service",
+      "symbol": "Post"
+    },
+    "count_field": "callees",
+    "budget_ms": 250,
+    "bytes": 342,
+    "result_count": 2,
+    "displaced": 0
+  },
+  {
+    "id": "pack-context-ledger",
+    "tool": "pack_context",
+    "args": {
+      "budget": 2000,
+      "concern": "ledger",
+      "service": "ledger-service"
+    },
+    "count_field": "included",
+    "budget_ms": 250,
+    "bytes": 139,
+    "result_count": 1,
+    "displaced": 0
+  },
+  {
+    "id": "repo-map-ledger",
+    "tool": "repo_map",
+    "args": {
+      "budget": 2000,
+      "service": "ledger-service"
+    },
+    "budget_ms": 250,
+    "bytes": 457,
+    "result_count": 0,
+    "displaced": 0
+  }
+]

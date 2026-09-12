@@ -1,0 +1,412 @@
+// Package indexbench is the bench pyramid's two free layers (ADR-032,
+// docs/design/bench-pyramid.md §3.1–3.2): L0, the index oracle, which scores
+// fathom's own answers against an independent go/types truth, and L1,
+// payload replay, which pins what each tool's answer COSTS.
+//
+// Both run in `task validate` on every commit, spend no tokens, and fail as
+// tests rather than as benchmark numbers a reader might not notice. The
+// division of labour is deliberate: L0 asks "is the index RIGHT", L1 asks
+// "is the answer SMALL AND STABLE", and neither re-asks a question the other
+// already answered.
+//
+// The truth comes from internal/contextbench/publicloc's go/types walker —
+// the same walker cmd/loctruth prints for the public corpus. It never opens
+// a fathom store and never asks a daemon: a benchmark whose truth comes from
+// the instrument under test measures nothing.
+package indexbench
+
+import (
+	"context"
+	"fmt"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
+	"github.com/geoffmilleraz/fathom/internal/analysis/references"
+	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
+	"github.com/geoffmilleraz/fathom/internal/core"
+)
+
+// Tool names scored by the oracle. They are the MCP tool names on purpose:
+// a red number in this report points at the tool an agent actually calls.
+const (
+	ToolFindCallers = "find_callers"
+	ToolReferences  = "references"
+	ToolBlastRadius = "blast_radius"
+)
+
+// Backend is the slice of mcp.QueryInterface the oracle needs. *pkg/client.
+// Client satisfies it, so the oracle scores the same code path the MCP tool
+// handlers call — never the HTTP surface, which would make the daemon's
+// availability part of the measurement.
+type Backend interface {
+	FindCallers(ctx context.Context, serviceID, symbol string) ([]core.SymbolNode, error)
+	ListAllSymbols(ctx context.Context, serviceID string) ([]core.SymbolNode, error)
+	TypedEdges(ctx context.Context, serviceID string) ([]core.Edge, error)
+	Sources(ctx context.Context, serviceID string) ([]core.SourceFile, error)
+}
+
+// Subject is one scored unit: a service as the index knows it, and the Go
+// module tree the go/types oracle reads for the same code.
+type Subject struct {
+	// Service is the service id in the index.
+	Service string
+	// Root is the module root on disk — it must contain a go.mod, because
+	// go/types loads a module, not a directory.
+	Root string
+	// Prefix is prepended to a truth path to get the path the index uses
+	// (e.g. "payment-service/" for the fauxtown fixture fleet, whose
+	// connector reports paths relative to the fleet root, not the service
+	// root). Empty when the two agree.
+	Prefix string
+	// MaxQueries bounds how many questions each tool is asked. Zero means
+	// every one — the fixture fleet's setting, and the only setting a
+	// committed golden may use.
+	//
+	// A whole module is quadratic to score exhaustively (every declared name
+	// against every source file), which on this repository is minutes, not
+	// seconds. A positive MaxQueries takes a deterministic STRIDE sample of
+	// the sorted candidate list — same subjects, same questions, every run —
+	// and Population records what it was sampled from, so a rate is never
+	// read as covering more than it did.
+	MaxQueries int
+	// MaxBlastQueries bounds blast_radius separately, because it is two
+	// orders of magnitude more expensive per question than the other two:
+	// impact.BlastRadiusWithTypedEdges rebuilds the whole call graph on
+	// every call, which on a ten-thousand-symbol service is ~10s a query.
+	// That cost is a FINDING, not a measurement artifact — it is what the
+	// blast_radius tool charges a real agent — so the oracle pays it
+	// honestly on a smaller sample rather than hiding it by caching a graph
+	// the tool does not cache. Zero falls back to MaxQueries.
+	MaxBlastQueries int
+}
+
+// ToolScore is one tool's precision and recall over one subject, with the
+// denominators attached. A rate with no denominator is a claim, not a
+// measurement (ADR-031): 1.0000 over two questions and 1.0000 over nine
+// hundred are different facts, and the golden records both.
+type ToolScore struct {
+	Tool string `json:"tool"`
+	// Queries is how many oracle questions were asked (symbols, or files
+	// for blast_radius).
+	Queries int `json:"queries"`
+	// Population is how many questions COULD have been asked. It differs
+	// from Queries only under Subject.MaxQueries, and its presence is what
+	// stops a sampled rate from being read as an exhaustive one.
+	Population int `json:"population"`
+	// Predicted, Truth and Correct are micro-averaged: summed over every
+	// query, then divided once. A macro average would let a symbol with one
+	// caller outvote a symbol with forty.
+	Predicted int     `json:"predicted"`
+	Truth     int     `json:"truth"`
+	Correct   int     `json:"correct"`
+	Precision float64 `json:"precision"`
+	Recall    float64 `json:"recall"`
+	// ElapsedMS is wall-clock time for this tool's whole scored pass. It is
+	// the one field in the report that is NOT deterministic, so the
+	// committed goldens zero it (see zeroTimings): a golden that carried a
+	// timing would fail on a loaded laptop, and a gate that fails for
+	// reasons unrelated to the index teaches people to rerun it until it
+	// passes. It is here for the on-demand self run, whose whole question
+	// is "what does this cost".
+	ElapsedMS int64 `json:"elapsed_ms,omitempty"`
+}
+
+// ZeroTimings clears every non-deterministic field in rep so it can be
+// compared against, or written as, a committed golden.
+func ZeroTimings(rep *Report) {
+	for i := range rep.Services {
+		for j := range rep.Services[i].Tools {
+			rep.Services[i].Tools[j].ElapsedMS = 0
+		}
+	}
+}
+
+// ServiceScore is every tool's score for one subject.
+type ServiceScore struct {
+	Service            string      `json:"service"`
+	Module             string      `json:"module"`
+	GoPackages         int         `json:"go_packages"`
+	PackagesWithErrors int         `json:"packages_with_errors"`
+	IndexedSymbols     int         `json:"indexed_symbols"`
+	Tools              []ToolScore `json:"tools"`
+}
+
+// Report is the whole L0 run — the committed golden's shape.
+type Report struct {
+	Oracle   string         `json:"oracle"`
+	Corpus   string         `json:"corpus"`
+	Services []ServiceScore `json:"services"`
+}
+
+// IndexOracleReport scores fathom's index for every subject against the
+// go/types truth for the same trees (bench-pyramid BP-12).
+//
+// What each tool is scored on, stated once so a number means one thing:
+//
+//   - find_callers: for every function declared in the module, the set of
+//     function names that directly call it. Truth from go/types; prediction
+//     from Backend.FindCallers, the function the find_callers handler calls.
+//     Interface dispatch is not a static call and is not in the truth.
+//   - references: for every RECEIVERLESS function (a method's mention in
+//     source text is the bare method name, so scoring "Type.Method" as a
+//     text query would measure the query spelling, not the index), the set
+//     of files that mention it. Truth is every identifier go/types resolves
+//     to the function, plus its declaring file; prediction is the
+//     references handler's own two halves — definitions from
+//     ListAllSymbols, occurrences from references.Find.
+//   - blast_radius: for every file declaring at least one function, the
+//     transitive closure of callers over the go/types call graph, seeded
+//     with the file's own functions. Prediction is
+//     impact.BlastRadiusWithTypedEdges — the function the blast_radius
+//     handler calls — filtered to function and method symbols, because the
+//     truth is a call graph and types/consts/vars are not in it.
+//
+// Every subject is scored even when a denominator is zero (fauxtown's
+// worktree-service declares no functions at all): a rate over nothing is
+// reported as 1.0 with Queries and Truth at 0, so the reader can see that it
+// measured nothing rather than mistaking it for a pass.
+func IndexOracleReport(ctx context.Context, be Backend, subjects []Subject) (Report, error) {
+	rep := Report{Oracle: "internal/indexbench", Services: []ServiceScore{}}
+	for _, sub := range subjects {
+		truth, err := publicloc.LoadGoTruth(sub.Root)
+		if err != nil {
+			return Report{}, fmt.Errorf("indexbench: truth for %s: %w", sub.Service, err)
+		}
+		nodes, err := be.ListAllSymbols(ctx, sub.Service)
+		if err != nil {
+			return Report{}, fmt.Errorf("indexbench: symbols for %s: %w", sub.Service, err)
+		}
+		sc := ServiceScore{
+			Service:            sub.Service,
+			Module:             truth.Module,
+			GoPackages:         truth.Packages,
+			PackagesWithErrors: truth.PackagesWithErrors,
+			IndexedSymbols:     len(nodes),
+		}
+		t0 := time.Now()
+		callers, err := scoreFindCallers(ctx, be, sub, truth)
+		if err != nil {
+			return Report{}, err
+		}
+		callers.ElapsedMS = time.Since(t0).Milliseconds()
+		t0 = time.Now()
+		refs, err := scoreReferences(ctx, be, sub, truth, nodes)
+		if err != nil {
+			return Report{}, err
+		}
+		refs.ElapsedMS = time.Since(t0).Milliseconds()
+		t0 = time.Now()
+		blast, err := scoreBlastRadius(ctx, be, sub, truth, nodes)
+		if err != nil {
+			return Report{}, err
+		}
+		blast.ElapsedMS = time.Since(t0).Milliseconds()
+		sc.Tools = []ToolScore{callers, refs, blast}
+		rep.Services = append(rep.Services, sc)
+	}
+	sort.Slice(rep.Services, func(i, j int) bool { return rep.Services[i].Service < rep.Services[j].Service })
+	return rep, nil
+}
+
+// declaredNames is every qualified function name the module declares, sorted.
+func declaredNames(truth publicloc.GoTruth) []string {
+	set := map[string]bool{}
+	for _, names := range truth.DeclsByFile {
+		for _, n := range names {
+			set[n] = true
+		}
+	}
+	out := make([]string, 0, len(set))
+	for n := range set {
+		out = append(out, n)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// sample takes a deterministic stride sample of at most max entries from the
+// sorted slice in, or all of in when max is zero or larger. Striding rather
+// than truncating keeps the sample spread across the whole alphabet: the
+// first two hundred names of a Go module are not a sample of it, they are
+// its A section.
+func sample(in []string, max int) []string {
+	if max <= 0 || len(in) <= max {
+		return in
+	}
+	out := make([]string, 0, max)
+	for i := 0; i < max; i++ {
+		out = append(out, in[i*len(in)/max])
+	}
+	return out
+}
+
+func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth) (ToolScore, error) {
+	all := declaredNames(truth)
+	sc := ToolScore{Tool: ToolFindCallers, Population: len(all)}
+	for _, name := range sample(all, sub.MaxQueries) {
+		sc.Queries++
+		want := setOf(truth.CallersByName[name])
+		nodes, err := be.FindCallers(ctx, sub.Service, name)
+		if err != nil {
+			return sc, fmt.Errorf("indexbench: find_callers %s/%s: %w", sub.Service, name, err)
+		}
+		got := map[string]bool{}
+		for _, n := range nodes {
+			got[n.Name] = true
+		}
+		accumulate(&sc, got, want)
+	}
+	finish(&sc)
+	return sc, nil
+}
+
+func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, nodes []core.SymbolNode) (ToolScore, error) {
+	var bare []string
+	for _, n := range declaredNames(truth) {
+		if !isMethod(n) {
+			bare = append(bare, n)
+		}
+	}
+	sc := ToolScore{Tool: ToolReferences, Population: len(bare)}
+	sources, err := be.Sources(ctx, sub.Service)
+	if err != nil {
+		return sc, fmt.Errorf("indexbench: sources %s: %w", sub.Service, err)
+	}
+	for _, name := range sample(bare, sub.MaxQueries) {
+		sc.Queries++
+		want := map[string]bool{}
+		for _, f := range truth.UsesByName[name] {
+			want[sub.Prefix+f] = true
+		}
+		got := map[string]bool{}
+		// The references handler's definition half: an index symbol whose
+		// name equals or contains the query.
+		for _, n := range nodes {
+			if n.Name == name || strings.Contains(n.Name, name) {
+				addGoFile(got, n.FilePath)
+			}
+		}
+		// The occurrence half, at the handler's defaults.
+		occs, err := references.Find(name, sources, references.Options{})
+		if err != nil {
+			return sc, fmt.Errorf("indexbench: references %s/%s: %w", sub.Service, name, err)
+		}
+		for _, o := range occs {
+			addGoFile(got, o.File)
+		}
+		accumulate(&sc, got, want)
+	}
+	finish(&sc)
+	return sc, nil
+}
+
+func scoreBlastRadius(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, nodes []core.SymbolNode) (ToolScore, error) {
+	sc := ToolScore{Tool: ToolBlastRadius}
+
+	typed, err := be.TypedEdges(ctx, sub.Service)
+	if err != nil {
+		return sc, fmt.Errorf("indexbench: typed edges %s: %w", sub.Service, err)
+	}
+	funcName := map[string]string{}
+	for _, n := range nodes {
+		if n.Kind == core.KindGoFunc || n.Kind == core.KindGoMethod {
+			funcName[n.Key()] = n.Name
+		}
+	}
+	files := make([]string, 0, len(truth.DeclsByFile))
+	for f := range truth.DeclsByFile {
+		if len(truth.DeclsByFile[f]) > 0 {
+			files = append(files, f)
+		}
+	}
+	sort.Strings(files)
+	sc.Population = len(files)
+
+	maxBlast := sub.MaxBlastQueries
+	if maxBlast == 0 {
+		maxBlast = sub.MaxQueries
+	}
+	for _, f := range sample(files, maxBlast) {
+		seeds := truth.DeclsByFile[f]
+		sc.Queries++
+		want := closure(truth.CallersByName, seeds)
+		res := impact.BlastRadiusWithTypedEdges(nodes, []string{sub.Prefix + f}, typed)
+		got := map[string]bool{}
+		for _, key := range res.Symbols {
+			if n, ok := funcName[key]; ok {
+				got[n] = true
+			}
+		}
+		accumulate(&sc, got, want)
+	}
+	finish(&sc)
+	return sc, nil
+}
+
+// closure walks the reverse call graph transitively from seeds, seeds
+// included — the set blast_radius is defined to return.
+func closure(callersByName map[string][]string, seeds []string) map[string]bool {
+	out := map[string]bool{}
+	queue := append([]string(nil), seeds...)
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if out[cur] {
+			continue
+		}
+		out[cur] = true
+		queue = append(queue, callersByName[cur]...)
+	}
+	return out
+}
+
+// accumulate folds one query's predicted/truth sets into the running score.
+func accumulate(sc *ToolScore, got, want map[string]bool) {
+	sc.Predicted += len(got)
+	sc.Truth += len(want)
+	for g := range got {
+		if want[g] {
+			sc.Correct++
+		}
+	}
+}
+
+// finish turns the accumulated counts into rates. A zero denominator scores
+// 1.0 — nothing was asked, so nothing was got wrong — and Queries/Truth in
+// the same row say so out loud.
+func finish(sc *ToolScore) {
+	sc.Precision = rate(sc.Correct, sc.Predicted)
+	sc.Recall = rate(sc.Correct, sc.Truth)
+}
+
+func rate(num, den int) float64 {
+	if den == 0 {
+		return 1
+	}
+	return float64(num) / float64(den)
+}
+
+// addGoFile records path in the predicted set only when it is Go source.
+// The truth is a go/types use set, so a .md or .yaml hit is outside the
+// oracle's competence, not a wrong answer: the references tool is a
+// fleet-wide occurrence search over code, docs AND config by design, and
+// scoring its doc hits against a truth that cannot contain them would
+// manufacture a precision failure the tool does not have.
+func addGoFile(set map[string]bool, path string) {
+	if strings.HasSuffix(path, ".go") {
+		set[path] = true
+	}
+}
+
+func setOf(ss []string) map[string]bool {
+	out := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		out[s] = true
+	}
+	return out
+}
+
+// isMethod reports whether a qualified name carries a receiver.
+func isMethod(name string) bool { return strings.Contains(name, ".") }
