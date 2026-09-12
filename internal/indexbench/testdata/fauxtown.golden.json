@@ -1,0 +1,123 @@
+{
+  "oracle": "internal/indexbench",
+  "corpus": "fauxtown",
+  "services": [
+    {
+      "service": "ledger-service",
+      "module": "fauxtown.test/ledger-service",
+      "go_packages": 1,
+      "packages_with_errors": 0,
+      "indexed_symbols": 7,
+      "tools": [
+        {
+          "tool": "find_callers",
+          "queries": 5,
+          "population": 5,
+          "predicted": 3,
+          "truth": 3,
+          "correct": 3,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "references",
+          "queries": 5,
+          "population": 5,
+          "predicted": 5,
+          "truth": 5,
+          "correct": 5,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "blast_radius",
+          "queries": 1,
+          "population": 1,
+          "predicted": 5,
+          "truth": 5,
+          "correct": 5,
+          "precision": 1,
+          "recall": 1
+        }
+      ]
+    },
+    {
+      "service": "payment-service",
+      "module": "fauxtown.test/payment-service",
+      "go_packages": 1,
+      "packages_with_errors": 0,
+      "indexed_symbols": 5,
+      "tools": [
+        {
+          "tool": "find_callers",
+          "queries": 2,
+          "population": 2,
+          "predicted": 1,
+          "truth": 1,
+          "correct": 1,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "references",
+          "queries": 2,
+          "population": 2,
+          "predicted": 2,
+          "truth": 2,
+          "correct": 2,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "blast_radius",
+          "queries": 1,
+          "population": 1,
+          "predicted": 2,
+          "truth": 2,
+          "correct": 2,
+          "precision": 1,
+          "recall": 1
+        }
+      ]
+    },
+    {
+      "service": "worktree-service",
+      "module": "fauxtown.test/worktree-service",
+      "go_packages": 1,
+      "packages_with_errors": 0,
+      "indexed_symbols": 1,
+      "tools": [
+        {
+          "tool": "find_callers",
+          "queries": 0,
+          "population": 0,
+          "predicted": 0,
+          "truth": 0,
+          "correct": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "references",
+          "queries": 0,
+          "population": 0,
+          "predicted": 0,
+          "truth": 0,
+          "correct": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        {
+          "tool": "blast_radius",
+          "queries": 0,
+          "population": 0,
+          "predicted": 0,
+          "truth": 0,
+          "correct": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      ]
+    }
+  ]
+}
