@@ -752,6 +752,36 @@ Both rows come from the one hook table (`internal/harness`, ADR-029), so
 `fathom doctor` all carry them; a repo wired before they existed gains
 exactly these two entries on its next `init`/`reconcile` and loses nothing.
 
+### 7.9 The advisory events — seven more rows that never block (wave 3)
+
+Claude Code 2.1.270 offers **33** hook events. Fathom wires fifteen of them
+and leaves eighteen alone *on purpose*; `fathom doctor`'s `hooks_coverage`
+row names every unwired event with its reason, so "why isn't fathom on
+`UserPromptSubmit`?" has an answer you can argue with instead of a silence.
+It is advisory and never FAILs — an unwired event is a decision.
+
+The seven rows below were added in wave 3 of `docs/plans/harness-port.md`.
+Only two of them can inject: the hooks reference documents
+`hookSpecificOutput.additionalContext` on `SubagentStart` and
+`PostToolUseFailure` and **not** on the other five, so fathom records those
+five as beats and says so rather than promising a channel the harness does
+not have.
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `SubagentStart` | none | `fathom session-hook --event subagent-start` | yes | a ≤600 B primer — the service identity line plus the opening-moves table — so a subagent that never saw `SessionStart` still starts index-first. Silent when the root is not an indexed service |
+| `PostToolUseFailure` | `mcp__fathom__.*\|mcp__plugin_[^_]*_fathom__.*` | `fathom session-hook --event tool-failure` | yes | one remedy line after a **fathom** tool call fails: daemon down, repo not indexed, or "the wiring is fine, check the arguments". Silent for anyone else's failure, which is almost all of them. The matcher covers the plugin-scoped name (`mcp__plugin_<plugin>_<server>__<tool>`) as well as the plain one |
+| `FileChanged` | `CLAUDE.md\|AGENTS.md\|concerns.cue\|config.toml` | `fathom config audit --hook --event file-changed` | no | the same custodian audit and beat `ConfigChange` writes, on the other trigger: a governed file changed *on disk* (a sibling agent, a rebase, a merge). The matcher is literal filenames — the reference documents no glob here |
+| `WorktreeCreate` | none | `fathom session-hook --event worktree-create` | no | records which service a new worktree belongs to, and that `ingest` will not re-root the service at it |
+| `CwdChanged` | none | `fathom session-hook --event cwd-changed` | no | the identity line for the root the session moved to |
+| `DirectoryAdded` | none | `fathom session-hook --event cwd-changed` | no | the same, for `/add-dir` and the SDK (the new root arrives in `directory_path`) |
+| `Setup` | none | `fathom doctor --brief` | no | FAIL rows only, at most 5 lines, **exit 0 whatever it finds** — a setup diagnosis that fails setup is worse than no diagnosis |
+
+A repo wired before wave 3 gains exactly these seven entries on its next
+`fathom init` / `fathom fleet reconcile` and loses nothing: they are
+appended after the existing rows, and the pre-existing table is pinned
+byte-for-byte by `cmd/fathom/hookspecs_test.go`.
+
 ---
 
 ## 8. Per-project `.fathom/`

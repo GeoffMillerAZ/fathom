@@ -92,14 +92,22 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `internal/verify/markdown.go`.
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
-- Hook verbs and their stdin/stdout contracts: `session-hook`, `edit-hook [--pre]`,
-  `stop-hook`, `session-end-hook`, `pre-compact-hook`, each with an additive
-  `--harness <id>` (absent ⇒ `claude-code`); `fathom init` writes them into adopters'
-  `~/.claude/settings.json`, under `--harness=codex` into the repo's `.codex/hooks.json`, and
-  under `--harness=gemini-cli` into the `hooks` key of the repo's `.gemini/settings.json`.
-  Evidence: `docs/adoption/claude-code.md`, ADR-029.
-- `fathom harness list|capabilities --json` and the exported descriptor shape
+- Hook verbs and their stdin/stdout contracts: `session-hook` (with `--event
+  instructions-loaded|subagent-start|tool-failure|worktree-create|cwd-changed`),
+  `edit-hook [--pre]`, `stop-hook`, `session-end-hook`, `pre-compact-hook`,
+  `config audit --hook [--event file-changed]` and `doctor --brief`, each with an
+  additive `--harness <id>` (absent ⇒ `claude-code`); `fathom init` writes them into
+  adopters' `~/.claude/settings.json` and, under `--harness=gemini-cli`, into the
+  `hooks` key of the repo's `.gemini/settings.json`. It writes NO Codex hook file:
+  codex-cli 0.153.1 loads hooks only from the user-global `$CODEX_HOME/hooks.json`,
+  which fathom does not edit unasked — `fathom harness hooks --harness codex` prints
+  the entries instead. Evidence: `docs/adoption/claude-code.md`, ADR-029.
+- `fathom harness list|capabilities|hooks|ladder|matrix` (`--json` where offered) and
+  the exported descriptor shape, including each descriptor's event catalogue
   (`schema/harness`). Evidence: ADR-029.
+- The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, written by
+  `fathom intent render --playbook` and held to existence by `config audit`'s
+  `pointers_resolve`. Evidence: `cmd/fathom/intent_playbook.go`.
 - Plan grammar v2's lexical oracle keys on plan rows (`oracle: lexical`, `path`,
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and

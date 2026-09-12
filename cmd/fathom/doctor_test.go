@@ -565,8 +565,19 @@ func TestCheckHooksInstalled(t *testing.T) {
 	// the check now reads it by design, so every subtest pins HOME.
 	t.Setenv("HOME", t.TempDir())
 
-	t.Run("codex is skipped — no hook mechanism", func(t *testing.T) {
+	// HP-34: Codex's hooks are wired AND verified, so this row is a real
+	// verdict for it now. A harness whose codec has not landed (cursor)
+	// keeps the skip — that is what the skip was ever for.
+	t.Run("codex gets a real verdict, not a skip", func(t *testing.T) {
+		t.Setenv("CODEX_HOME", t.TempDir())
 		got := checkHooksInstalled(t.TempDir(), "codex")
+		if got.Status != doctorFail {
+			t.Fatalf("status = %v, want fail (nothing wired in this CODEX_HOME)", got.Status)
+		}
+	})
+
+	t.Run("a harness with no codec is skipped", func(t *testing.T) {
+		got := checkHooksInstalled(t.TempDir(), "cursor")
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}
@@ -855,8 +866,19 @@ func TestCheckHooksFiring(t *testing.T) {
 	deadHC := http.DefaultClient
 	const deadURL = "http://127.0.0.1:1"
 
-	t.Run("codex is skipped", func(t *testing.T) {
+	// HP-34: the beat log's `harness` stamp is real per-harness firing
+	// evidence, so Codex gets a verdict; an empty log is a FAIL naming
+	// what is missing, never a skip that hides it.
+	t.Run("codex reads the beat log, not the call log", func(t *testing.T) {
+		t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
 		got := checkHooksFiring(deadHC, deadURL, false, t.TempDir(), "codex")
+		if got.Status != doctorFail || !strings.Contains(got.Reason, "harness=codex") {
+			t.Fatalf("got %+v, want fail naming the missing harness stamp", got)
+		}
+	})
+
+	t.Run("a harness with no codec is skipped", func(t *testing.T) {
+		got := checkHooksFiring(deadHC, deadURL, false, t.TempDir(), "cursor")
 		if got.Status != doctorSkipped {
 			t.Fatalf("status = %v, want skipped", got.Status)
 		}

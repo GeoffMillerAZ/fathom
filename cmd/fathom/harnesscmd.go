@@ -18,7 +18,7 @@ import (
 
 func cmdHarness(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json] | ladder [--url BASE] [--json] | matrix [--url U] [--json]")
+		fmt.Fprintln(stderr, "usage: fathom harness list [--json] | capabilities [--harness ID] [--json] | hooks --harness ID [--bin PATH] | ladder [--url BASE] [--json] | matrix [--url U] [--json]")
 		return 1
 	}
 	switch args[0] {
@@ -30,8 +30,10 @@ func cmdHarness(args []string, stdout, stderr io.Writer) int {
 		return cmdHarnessLadder(args[1:], stdout, stderr)
 	case "matrix":
 		return cmdHarnessMatrix(args[1:], stdout, stderr)
+	case "hooks":
+		return cmdHarnessHooks(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities | ladder | matrix)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown harness subcommand %q (want list | capabilities | hooks | ladder | matrix)\n", args[0])
 		return 1
 	}
 }
@@ -183,4 +185,99 @@ func harnessHomeDir() string {
 		return ""
 	}
 	return home
+}
+
+// cmdHarnessHooks prints the hook entries for a descriptor as the JSON
+// its harness expects, ready to paste (HP-34). It exists because of a
+// measured fact: Codex CLI 0.153.1 loads hooks ONLY from its user-global
+// CODEX_HOME/hooks.json, and fathom does not edit user-global
+// configuration unasked (docs/intent/autonomy.md). Printing is the honest
+// half of that rule — refusing to write is not a reason to leave the
+// operator to hand-assemble eight entries from a descriptor dump.
+//
+// It writes nothing, anywhere.
+func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("harness hooks", stderr)
+	id := fs.String("harness", "", "registry id whose hook entries to print (required; `fathom harness list` names them)")
+	binPath := fs.String("bin", "", "absolute path to the fathom binary the entries should call (default: this executable)")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *id == "" {
+		fmt.Fprintf(stderr, "error: harness hooks needs --harness ID (one of %s)\n", strings.Join(harness.IDs(), ", "))
+		return 1
+	}
+	d, ok := harness.Lookup(*id)
+	if !ok {
+		fmt.Fprintf(stderr, "error: unknown --harness %q (want %s)\n", *id, strings.Join(harness.IDs(), ", "))
+		return 1
+	}
+	specs := hookSpecsFor(d.ID)
+	if len(specs) == 0 {
+		fmt.Fprintf(stderr, "error: %s documents no hook bindings in this build — there is nothing to paste; `fathom harness capabilities --harness %s` shows what reaches it instead\n", d.Display, d.ID)
+		return 1
+	}
+	bin := *binPath
+	if bin == "" {
+		if exe, err := os.Executable(); err == nil {
+			bin = exe
+		} else {
+			bin = "fathom"
+		}
+	}
+
+	// Which file, and the unit its timeouts are in, come from the
+	// descriptor — never from a literal here.
+	var target harness.HookFile
+	for _, f := range d.HookFiles {
+		if f.Kind != "" {
+			target = f
+			break
+		}
+	}
+	type entry struct {
+		Type    string `json:"type"`
+		Command string `json:"command"`
+		Timeout int    `json:"timeout"`
+	}
+	type group struct {
+		Matcher string  `json:"matcher,omitempty"`
+		Hooks   []entry `json:"hooks"`
+	}
+	byEvent := map[string][]group{}
+	var order []string
+	for _, sp := range specs {
+		timeout := sp.timeout
+		if target.TimeoutUnit == "ms" {
+			timeout *= 1000
+		}
+		if _, seen := byEvent[sp.event]; !seen {
+			order = append(order, sp.event)
+		}
+		byEvent[sp.event] = append(byEvent[sp.event], group{
+			Matcher: sp.matcher,
+			Hooks:   []entry{{Type: "command", Command: bin + " " + sp.sub, Timeout: timeout}},
+		})
+	}
+	// Deterministic output: encoding/json sorts the map keys, and the
+	// groups inside each event keep binding order.
+	payload := map[string]any{"hooks": byEvent}
+	raw, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	if target.Path != "" {
+		fmt.Fprintf(stdout, "# %d fathom hook entries for %s — merge into %s (%s scope)\n", len(specs), d.Display, target.Path, target.Scope)
+		if target.Trust != "" {
+			fmt.Fprintf(stdout, "# before they run: %s\n", target.Trust)
+		}
+		if d.Env.Home != "" {
+			fmt.Fprintf(stdout, "# %s relocates that file\n", d.Env.Home)
+		}
+		fmt.Fprintln(stdout, "# fathom never writes it: user-global configuration is ask-first (docs/intent/autonomy.md)")
+	}
+	fmt.Fprintln(stdout, string(raw))
+	_ = order
+	return 0
 }

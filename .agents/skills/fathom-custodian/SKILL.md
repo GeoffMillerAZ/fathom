@@ -64,13 +64,25 @@ wholesale; `off: true` disables an inherited concern (still shown).
 Authoring bar: 2–4 concerns whose `why` names a mistake that actually
 happened — speculative contracts teach people to ignore the audit.
 
+**When the audit runs by itself.** Two harness events run
+`fathom config audit --hook` and leave one `custodian/config-change` beat
+each: `ConfigChange` (a config file changed through the harness) and
+`FileChanged` (one changed on disk — a sibling agent, a rebase, a merge;
+the beat's `trigger` meta tells them apart). Neither ever blocks: a block
+on `ConfigChange` surfaces no message anywhere in the harness, and a silent
+refusal is the one thing the custodian may not be. The beat is the record,
+and the next session's attention line carries the violated count.
+
 Six check kinds. Four scan the **agent-config corpus** (`CLAUDE.md` and
 `AGENTS.md` at any depth, git-tracked): `forbidden_pattern` (regexp,
 `file:line` evidence), `command_documented_and_exists` (the
 instruction-outlives-the-command failure, both halves named), `max_lines`
 (router thinness), `pointers_resolve` (markdown links AND backtick repo
 paths, precision-guarded so foreign names — Go modules, kit packages —
-are never flagged). Two are new (**experimental**, CC-14/CC-15):
+are never flagged; its corpus is WIDER than the other three: it also holds
+the root `INTENT.md`, which `fathom intent render --playbook` generates
+from `docs/intent/` and which is almost entirely pointers, so a corpus file
+that moves breaks it first and loudest). Two are new (**experimental**, CC-14/CC-15):
 `stanza_tools_served` scans only the fathom stanza regions of
 `CLAUDE.md`/`AGENTS.md` (backticked names, plus bare names with an
 underscore such as `find_callers`) and asks the daemon's `/rpc/agent`

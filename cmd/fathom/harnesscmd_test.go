@@ -47,13 +47,22 @@ func TestCmdHarnessCapabilities(t *testing.T) {
 		t.Fatalf("exit = %d: %s", code, errb.String())
 	}
 	rows := 0
+	cd, _ := harness.Lookup(harness.Codex)
+	wantStatus := "verified"
+	if cd.Unverified() {
+		wantStatus = "unverified on this machine"
+	}
 	for _, line := range strings.Split(out.String(), "\n") {
 		if !strings.HasPrefix(line, "| `") {
 			continue
 		}
 		rows++
-		if !strings.Contains(line, "unverified on this machine") {
-			t.Errorf("codex row lacks the honesty status: %s", line)
+		// The status word is computed from verified_against, never typed:
+		// codex read "unverified on this machine" before HP-34's live
+		// session and "verified" after it. What the test pins is that the
+		// column is never blank and never disagrees with the descriptor.
+		if !strings.Contains(line, wantStatus) {
+			t.Errorf("codex row lacks the honesty status %q: %s", wantStatus, line)
 		}
 	}
 	if rows != len(harness.Capabilities) {

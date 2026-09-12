@@ -60,6 +60,27 @@ const (
 	// CapConfigAudit is the custodian audit run on a config change
 	// (vision 26 §4, PC-24): a beat and an attention line, never a block.
 	CapConfigAudit Capability = "config-audit"
+	// The wave-3 advisory capabilities (vision 25 §2, HP-26..HP-31). Every
+	// one of them advises or records and none can block (§5.3): they exist
+	// because a session that never saw SessionStart, a tool call that just
+	// failed, a new worktree, a changed root and a fresh checkout are all
+	// moments where fathom knows something the agent does not.
+	//
+	// CapSubagentPrime is the ≤600-byte index-first primer a subagent gets
+	// on the harness's subagent-start event (HP-26).
+	CapSubagentPrime Capability = "subagent-prime"
+	// CapToolFailureAdvice is one remedy line after a FATHOM tool call
+	// failed — silent on anyone else's failure (HP-27).
+	CapToolFailureAdvice Capability = "tool-failure-advice"
+	// CapWorktreeAdvice is the one line a new git worktree gets: which
+	// service it belongs to, and that ingest will not re-root it (HP-29).
+	CapWorktreeAdvice Capability = "worktree-advice"
+	// CapCwdPrime is the identity line for a root the session just moved
+	// to or added (HP-30).
+	CapCwdPrime Capability = "cwd-prime"
+	// CapSetupDoctor is `fathom doctor --brief` on the harness's setup
+	// event: FAIL rows only, ≤5 lines, exit 0 (HP-31).
+	CapSetupDoctor Capability = "setup-doctor"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -69,6 +90,8 @@ var Capabilities = []Capability{
 	CapDiscoveryObserve, CapStopVerify, CapDepositSessionEnd, CapDepositPreCompact,
 	CapMCPTools, CapSkills, CapStanza, CapVerifyGate, CapClaimGate, CapSessionLedger,
 	CapStanzaLoaded, CapConfigAudit,
+	// Wave 3, appended so every existing table row keeps its position.
+	CapSubagentPrime, CapToolFailureAdvice, CapWorktreeAdvice, CapCwdPrime, CapSetupDoctor,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -102,6 +125,26 @@ const (
 	// EventConfigChange fires when a harness configuration file changes
 	// mid-session (Claude Code: ConfigChange).
 	EventConfigChange Event = "config-change"
+	// EventSubagentStart fires when the harness starts a subagent —
+	// a session that never sees SessionStart (Claude Code, Codex:
+	// SubagentStart).
+	EventSubagentStart Event = "subagent-start"
+	// EventToolFailure fires after a tool call FAILED (Claude Code:
+	// PostToolUseFailure). fathom answers only for its own tools.
+	EventToolFailure Event = "tool-failure"
+	// EventFileChanged fires when a watched file changed on disk (Claude
+	// Code: FileChanged) — the custodian's second trigger beside
+	// EventConfigChange.
+	EventFileChanged Event = "file-changed"
+	// EventWorktreeCreate fires when the harness creates a git worktree
+	// (Claude Code: WorktreeCreate).
+	EventWorktreeCreate Event = "worktree-create"
+	// EventCwdChanged fires when the session's root moves or gains a
+	// directory (Claude Code: CwdChanged, DirectoryAdded).
+	EventCwdChanged Event = "cwd-changed"
+	// EventSetup fires once when the harness sets a project up (Claude
+	// Code: Setup).
+	EventSetup Event = "setup"
 )
 
 // ToolClass normalizes a harness's tool names (vision 25 §2.1): the guard
@@ -180,6 +223,48 @@ type EventBinding struct {
 	Note       string            `json:"note,omitempty"`
 }
 
+// EventCatalogEntry is one event the harness OFFERS, and whether fathom
+// wires it (HP-32). The catalog is how doctor's hooks_coverage row can
+// name what fathom leaves on the table with a reason instead of leaving
+// the adopter to diff two documentations by hand. Advisory data: an
+// unwired event is a choice, never a defect.
+type EventCatalogEntry struct {
+	// Event is the harness's OWN event name (the settings key), not
+	// fathom's canonical Event.
+	Event string `json:"event"`
+	// Wired is true exactly when a binding in Hooks names this event.
+	Wired bool `json:"wired"`
+	// Reason says why an unwired event stays unwired; required on every
+	// unwired row (TestEventCatalogMatchesBindings enforces both halves).
+	Reason string `json:"reason,omitempty"`
+}
+
+// UnwiredEvents returns the catalog rows fathom does not wire, in catalog
+// order.
+func (d Descriptor) UnwiredEvents() []EventCatalogEntry {
+	var out []EventCatalogEntry
+	for _, e := range d.Events {
+		if !e.Wired {
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// WiredEventNames returns the harness event names fathom binds, in
+// binding order, deduplicated (PreToolUse binds three matcher groups).
+func (d Descriptor) WiredEventNames() []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, b := range d.Hooks {
+		if !seen[b.Harness] {
+			seen[b.Harness] = true
+			out = append(out, b.Harness)
+		}
+	}
+	return out
+}
+
 // SkillsShape is where the harness discovers skills. Patterns carry
 // {{name}}; "~/" means the user's home.
 type SkillsShape struct {
@@ -226,6 +311,10 @@ type Descriptor struct {
 	Instructions []InstructionFile `json:"instruction_files"`
 	HookFiles    []HookFile        `json:"hook_files,omitempty"`
 	Hooks        []EventBinding    `json:"hooks,omitempty"`
+	// Events is the catalog of every event this harness offers, with the
+	// reason fathom leaves each unwired one unwired (HP-32). Empty on a
+	// descriptor whose event surface fathom has not catalogued.
+	Events []EventCatalogEntry `json:"events,omitempty"`
 	// Tools maps the harness's tool names to classes; unknown names are
 	// ToolOther.
 	Tools    map[string]ToolClass   `json:"tools,omitempty"`

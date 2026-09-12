@@ -19,7 +19,40 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch (pre-1.0: breaking bumps minor)
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Added
+
+- **Codex is verified.** A headless `codex exec` session on codex-cli 0.153.1
+  ran fathom's hooks and its MCP surface; the descriptor's `verified_against`
+  is dated, five live stdin captures are committed as replayed fixtures, and
+  `doctor --harness=codex` now gives `hooks_installed`/`hooks_firing`/
+  `mcp_registration` real verdicts instead of `skipped: unverified`.
+- **`fathom harness hooks --harness ID`** prints a harness's hook entries as
+  paste-ready JSON. It exists because codex-cli 0.153.1 loads hooks only from
+  the user-global `$CODEX_HOME/hooks.json`, which fathom will not write
+  unasked.
+- **Seven advisory hook rows** on Claude Code, all fail-open and none able to
+  block: `SubagentStart` (a 600-byte index-first primer), `PostToolUseFailure`
+  (a remedy line after a fathom tool call fails), `FileChanged` (the custodian
+  audit on an on-disk change), `WorktreeCreate`, `CwdChanged`,
+  `DirectoryAdded` and `Setup` (`fathom doctor --brief`). A wired repo gains
+  them on its next `init`/`fleet reconcile` and loses nothing.
+- **`doctor hooks_coverage`** (advisory, never FAIL) reports how many events
+  the detected harness offers against how many fathom wires, with a recorded
+  reason for each unwired event.
+- **`fathom intent render --playbook`** writes a root `INTENT.md` inside
+  fathom markers, rendered as pointers into `docs/intent/`; `config audit`'s
+  `pointers_resolve` holds those pointers to existence.
+- Hook beats now carry a `harness` stamp, so one user-global beat log can say
+  which harness a firing came from.
+
+### Changed
+
+- **`fathom init --harness=codex` no longer writes `.codex/hooks.json`.**
+  codex-cli 0.153.1 does not load a project hook file at all (measured), so
+  writing one was wiring that could never fire; init prints the entries and
+  the reason instead.
 
 ## [0.8.0] -- 2026-09-02
 

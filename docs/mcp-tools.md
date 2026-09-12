@@ -27,10 +27,19 @@ tool-name pattern. `fathom harness list` names the registered harnesses and
 MCP + skills, no injection) —
 including the `mcp-tools` row, which is the only channel by which a tier-C/D harness
 (no hooks, no injection) reaches anything on this page. An unverified descriptor
-renders every row as `unverified on this machine`; the catalog below is unaffected by
-the harness in use. `fathom harness matrix` renders the per-harness adoption matrix
+renders every row as `unverified on this machine` — Claude Code and Codex are verified
+against real sessions on this machine, the rest are not; the catalog below is
+unaffected by the harness in use. Each descriptor also carries the harness's full
+EVENT catalogue with a reason per unwired event, which `fathom doctor`'s advisory
+`hooks_coverage` row prints. `fathom intent render --playbook` is the one verb that
+writes outside `.fathom/` and the instruction files: a root `INTENT.md` inside fathom
+markers, rendered as pointers into `docs/intent/`. `fathom harness matrix` renders the per-harness adoption matrix
 (tier, instruction file, skills path, MCP config + `mcp add` line, verified-against)
-that `docs/adoption/other-harnesses.md` pins, and `fathom plugin render` packages
+that `docs/adoption/other-harnesses.md` pins, `fathom harness hooks --harness ID`
+prints that harness's hook entries as paste-ready JSON for the cases where fathom
+refuses to write the file itself (Codex loads hooks only from its user-global
+`$CODEX_HOME/hooks.json`, and user-global configuration is ask-first), and
+`fathom plugin render` packages
 the registration for two plugin loaders at once — Claude Code's `.mcp.json`
 (`type: http`) and the Agent Plugins 1.0 `mcp.json` (`streamable-http`, loopback) —
 over one `skills/` tree.

@@ -33,18 +33,38 @@ var claimHookSpecAdditions = []hookSpec{
 	{event: "ConfigChange", matcher: "", marker: "fathom config audit --hook", sub: "config audit --hook", timeout: 10},
 }
 
+// waveThreeHookSpecAdditions are HP-26..HP-31 (docs/plans/harness-port.md
+// wave 3): the advisory events, appended after the vision 26 §4 pair.
+//
+// DELIBERATE GOLDEN CHANGE (2026-09-12), stated rather than slipped in:
+// this is the second change to what `fathom init` writes since the seam,
+// and it is additive in exactly the same way. The pre-seam eight and the
+// vision 26 §4 two are untouched byte for byte (the assertions below still
+// pin the prefix), so a repository wired before this change gains these
+// seven entries on its next `init`/`fleet reconcile` and loses nothing.
+// internal/harness/harness_test.go carries the registry-side twin.
+var waveThreeHookSpecAdditions = []hookSpec{
+	{event: "SubagentStart", matcher: "", marker: "fathom session-hook --event subagent-start", sub: "session-hook --event subagent-start", timeout: 5},
+	{event: "PostToolUseFailure", matcher: `mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*`, marker: "fathom session-hook --event tool-failure", sub: "session-hook --event tool-failure", timeout: 5},
+	{event: "FileChanged", matcher: "CLAUDE.md|AGENTS.md|concerns.cue|config.toml", marker: "fathom config audit --hook --event file-changed", sub: "config audit --hook --event file-changed", timeout: 10},
+	{event: "WorktreeCreate", matcher: "", marker: "fathom session-hook --event worktree-create", sub: "session-hook --event worktree-create", timeout: 5},
+	{event: "CwdChanged", matcher: "", marker: "fathom session-hook --event cwd-changed", sub: "session-hook --event cwd-changed", timeout: 5},
+	{event: "DirectoryAdded", matcher: "", marker: "fathom session-hook --event cwd-changed", sub: "session-hook --event cwd-changed", timeout: 5},
+	{event: "Setup", matcher: "", marker: "fathom doctor --brief", sub: "doctor --brief", timeout: 15},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
-	want := append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...)
+	want := append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 additions:\n got %+v\nwant %+v", got, want)
+		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)
 	}
 	if !reflect.DeepEqual(fathomHookSpecs, want) {
-		t.Fatalf("fathomHookSpecs drifted from the pre-seam table + the vision 26 §4 additions:\n got %+v\nwant %+v", fathomHookSpecs, want)
+		t.Fatalf("fathomHookSpecs drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", fathomHookSpecs, want)
 	}
 	if !reflect.DeepEqual(got[:len(preSeamFathomHookSpecs)], preSeamFathomHookSpecs) {
 		t.Fatalf("the pre-seam prefix is not byte-identical:\n got %+v\nwant %+v", got[:len(preSeamFathomHookSpecs)], preSeamFathomHookSpecs)

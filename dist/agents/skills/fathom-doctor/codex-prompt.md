@@ -9,13 +9,17 @@ argument-hint: [HARNESS=claude|codex|auto] [DIR=<repo-root>] [SERVICE=<service-i
 > (`--skills=codex-prompts`); `fathom init --skills=codex` writes the skill
 > proper to `.agents/skills/fathom-doctor/SKILL.md`, the path Codex
 > documents. `fathom doctor` itself is fully harness-agnostic — a
-> git-native/CLI check identical whether Codex or Claude Code runs it. Two
-> of its rows read `skipped` under `--harness=codex`, honestly:
-> `hooks_installed` and `hooks_firing`, because Codex's documented
-> `SessionStart`/`PostToolUse`/`PreToolUse`/`Stop` hooks are carried as
-> registry data and not wired by this build (`docs/adoption/codex.md` §6);
-> `skills_installed` reads `.agents/skills` and `gate_posture` states
-> Codex's documented fail mode. `lefthook_gates` still applies —
+> git-native/CLI check identical whether Codex or Claude Code runs it.
+> Since 2026-09-12 `hooks_installed` and `hooks_firing` give Codex REAL
+> verdicts rather than `skipped: unverified` — a live headless session
+> verified the descriptor (`docs/adoption/codex.md` §6). `hooks_installed`
+> reads `$CODEX_HOME/hooks.json` (NOT `<repo>/.codex/hooks.json`, which
+> codex-cli 0.153.1 does not load) and `hooks_firing` reads beats stamped
+> `harness=codex` in `~/.fathom/hooks.jsonl`. `hooks_coverage` is advisory
+> and never FAILs: Codex offers 12 events, fathom wires 7, and the row
+> names the 5 it leaves alone with the reason for each. `skills_installed`
+> reads `.agents/skills` and `gate_posture` states Codex's documented fail
+> mode. `lefthook_gates` still applies —
 > the pre-push `fathom verify` gate is identical for both harnesses. The
 > six phase-O checks (`binding_file`, `guard_file`,
 > `binding_modules_mounted`, `binding_module_readiness`,
@@ -49,10 +53,11 @@ code** — report it as its own bucket, not folded into `pass` or `fail`.
 Report `skipped` as "could not verify: `<reason>`," never collapsed into
 either extreme.
 
-Seventeen checks: `mcp_registration`, `daemon_reachable`, `binary_fresh`
+Eighteen checks: `mcp_registration`, `daemon_reachable`, `binary_fresh`
 (a LOCAL proxy — the running binary's own build vs `git rev-parse HEAD`;
 mind the linked-worktree caveat doctor prints when it applies),
-`hooks_installed`/`hooks_firing` (Claude Code only), `lefthook_gates`
+`hooks_installed`/`hooks_firing` (any VERIFIED harness — Claude Code and
+Codex), `hooks_coverage` (advisory, never FAIL), `lefthook_gates`
 (both harnesses), `stanza_present`, `skills_installed`, `config_valid`,
 `obligations_served`, `surface_traffic`, and phase O's `binding_file`,
 `guard_file`, `binding_modules_mounted`, `binding_module_readiness`,

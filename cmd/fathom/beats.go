@@ -95,6 +95,19 @@ func firingMetaArm(meta map[string]string, sessionID, file string, armOff bool) 
 	return meta
 }
 
+// beatHarness is the registry id of the harness whose envelope this
+// process is speaking, set by resolveHookHarness the moment a hook verb
+// resolves its codec (hookharness.go). Every beat a hook writes is then
+// stamped with it, which is what lets doctor's hooks_firing answer
+// "have CODEX's hooks ever fired here?" from one user-global log that
+// every harness appends to. "" for a non-hook invocation (a CLI run), and
+// the key is then omitted rather than recorded as an empty string.
+//
+// A package var, not a parameter: emitBeat has ~40 call sites across the
+// hook verbs and threading a harness id through all of them would be a
+// large diff whose only effect is this one meta key.
+var beatHarness string
+
 // stampBeatMeta returns a copy of meta carrying the telemetry stamps every
 // persistent record now shares (vision 14 §3, plan IO-12): schema_version,
 // fathom_version, and project_dir — the per-repo attribution the beat log
@@ -108,6 +121,9 @@ func stampBeatMeta(meta map[string]string) map[string]string {
 	out["fathom_version"] = buildinfo.Version()
 	if cwd, err := os.Getwd(); err == nil {
 		out["project_dir"] = cwd
+	}
+	if beatHarness != "" {
+		out["harness"] = beatHarness
 	}
 	for k, v := range meta {
 		out[k] = v

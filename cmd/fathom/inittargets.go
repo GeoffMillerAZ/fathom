@@ -79,6 +79,15 @@ func initTargetsForDescriptor(d harness.Descriptor, now time.Time) (initTargets,
 		MCPAddLine:  d.MCP.AddCommand,
 	}
 	switch {
+	case d.HooksWired() && !hasInitHookFile(d):
+		// HP-34: the descriptor's hooks are real and its codec is wired,
+		// but the harness loads them from a file init may not write (Codex
+		// 0.153.1 loads only the CODEX_HOME layer, and user-global
+		// configuration is ask-first). Writing the documented project file
+		// anyway would be wiring that cannot fire, so init writes nothing
+		// and prints the entries for the operator to paste.
+		t.Hooks = false
+		t.HooksNote = unwritableHooksNote(d)
 	case d.HooksWired() && d.Unverified():
 		// HP-18: the descriptor's own hook file is planned through the
 		// wiring engine, and the line says it is unverified here and what

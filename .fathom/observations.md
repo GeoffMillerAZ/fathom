@@ -650,3 +650,16 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O27 — init wrote .codex/hooks.json for two waves, and codex-cli never read it
+
+- **Symptom:** init wrote .codex/hooks.json for two waves, and codex-cli never read it
+- **Evidence:**
+  - **Tool:** fathom init --harness=codex
+  - **Expected:** the documented project hook layer (<repo>/.codex/hooks.json) loads under directory trust, as Codex's hooks reference describes
+  - **Actual:** on codex-cli 0.153.1, touch hooks placed in <repo>/.codex/hooks.json on SessionStart, Stop, SessionEnd and UserPromptSubmit fired ZERO times in a headless codex exec run under a trusted parent project with [features] hooks = true and --dangerously-bypass-hook-trust; the identical entries under $CODEX_HOME/hooks.json fired every time. Every fathom Codex adopter since 2026-09-02 has been given a hook file the harness ignores, and doctor's harness_hooks row read it back as evidence of wiring. Fixed: the descriptor records the project file as documented-but-not-loaded with no wiring kind, init writes nothing and prints the entries (fathom harness hooks --harness codex), and the descriptor is now verified against a real session instead of a fetched doc page. The general lesson: a documented extension point is a claim, and the only thing that settles it is a smoke test that would have failed.
+  - **Repro:** place a touch hook in <repo>/.codex/hooks.json, run: codex exec --json --sandbox read-only --dangerously-bypass-hook-trust 'reply ok'
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
