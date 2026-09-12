@@ -28,7 +28,36 @@ func TestHomeCorpusTruthAtHead(t *testing.T) {
 	}
 	root := filepath.Join("..", "..")
 
+	// BP-1: the two corpus-gate questions (ADR-032 §1, design §3.3). A gold
+	// token already in the agent's pre-prompt context measures recall, not
+	// discovery (O25); a prompt naming its own anchor file collapses
+	// discovery to one `cat` (O23/E1).
+	baselines := map[string]string{}
+	for _, p := range corpusBaselineFiles(root) {
+		body, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatalf("reading auto-loaded baseline %s: %v", p, err)
+		}
+		baselines[p] = string(body)
+	}
+	if len(baselines) == 0 {
+		t.Fatal("corpusBaselineFiles found nothing to check — a repo whose agents auto-load no file at all is not this one")
+	}
+
 	for _, task := range tasks {
+		for _, tok := range task.GroundTruth {
+			for path, body := range baselines {
+				if strings.Contains(body, tok) {
+					t.Errorf("%s: ground-truth token %q appears verbatim in %s, which every `claude -p` session loads before the prompt — the task scores recall, not discovery (O25); re-derive the truth",
+						task.ID, tok, filepath.Base(path))
+				}
+			}
+		}
+		if f := promptNamesAnchorFile(task); f != "" {
+			t.Errorf("%s: the prompt names %s, the file its own ground truth is derived from — discovery collapses to reading that file (O23); ask the question without naming the file",
+				task.ID, f)
+		}
+
 		anchors := map[string]TruthAnchor{}
 		for _, a := range task.TruthAtHead {
 			anchors[a.Token] = a

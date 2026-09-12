@@ -50,6 +50,18 @@ type TaskArmStat struct {
 	// by looking at Trials.
 	StdDevTokens float64 `json:"stddev_tokens"`
 	MeanWallMS   float64 `json:"mean_wall_ms"`
+
+	// BorrowedTrials counts the cell's trials that were borrowed from an
+	// earlier run rather than paid for by this one (BP-4).
+	BorrowedTrials int `json:"borrowed_trials,omitempty"`
+
+	// MeanPayloadBytes, MeanCostUSD and MeanToolSearchTurns carry the H2-3
+	// cost half (BP-9/BP-10). Payload is the tool-result bytes returned to
+	// the model — the discovery cost fathom controls, as opposed to
+	// total_tokens, which O26 showed to be cache-read x turns.
+	MeanPayloadBytes    float64 `json:"mean_payload_bytes,omitempty"`
+	MeanCostUSD         float64 `json:"mean_cost_usd,omitempty"`
+	MeanToolSearchTurns float64 `json:"mean_toolsearch_turns,omitempty"`
 }
 
 // StatsByTaskArm collapses raw per-trial results into one cell per
@@ -79,15 +91,24 @@ func StatsByTaskArm(results []ArmResult) []TaskArmStat {
 		rows := grouped[k]
 		st := TaskArmStat{TaskID: k.task, Arm: k.arm, Trials: len(rows)}
 		tokens := make([]float64, 0, len(rows))
-		var sumTokens, sumWall float64
+		var sumTokens, sumWall, sumPayload, sumCost, sumToolSearch float64
 		for _, r := range rows {
 			if r.Success {
 				st.Successes++
 			}
+			if r.Borrowed {
+				st.BorrowedTrials++
+			}
 			tokens = append(tokens, float64(r.TotalTokens))
 			sumTokens += float64(r.TotalTokens)
 			sumWall += float64(r.WallTimeMS)
+			sumPayload += float64(r.PayloadBytes)
+			sumCost += r.CostUSD
+			sumToolSearch += float64(r.ToolSearchTurns)
 		}
+		st.MeanPayloadBytes = sumPayload / float64(st.Trials)
+		st.MeanCostUSD = sumCost / float64(st.Trials)
+		st.MeanToolSearchTurns = sumToolSearch / float64(st.Trials)
 		st.SuccessRate = float64(st.Successes) / float64(st.Trials)
 		st.Flaky = st.Successes > 0 && st.Successes < st.Trials
 		st.MeanTokens = sumTokens / float64(st.Trials)
@@ -134,6 +155,11 @@ type PairedTask struct {
 	// median, and its exclusion is visible because Tasks counts it.
 	TokenRatio float64 `json:"token_ratio"`
 	Flaky      bool    `json:"flaky"`
+
+	// PayloadRatio and CostRatio are H2-3's cost half per task (BP-10),
+	// each 0 when the control arm recorded none of that quantity.
+	PayloadRatio float64 `json:"payload_ratio,omitempty"`
+	CostRatio    float64 `json:"cost_ratio,omitempty"`
 }
 
 // PairedSummary is the head-to-head verdict material for one run.
@@ -173,7 +199,40 @@ type PairedSummary struct {
 
 	FlakyTasks []string     `json:"flaky_tasks,omitempty"`
 	PerTask    []PairedTask `json:"per_task"`
+
+	// Scope says what the run selected (BP-8): ScopeFull is the whole
+	// corpus, ScopeTargeted only the tasks a diff selected. Set by the
+	// caller from the run's own flags, since the results themselves cannot
+	// know what was left out.
+	Scope string `json:"scope,omitempty"`
+
+	// Cells counts every compared trial across both arms; BorrowedCells
+	// counts those that came from an earlier run's key-matched cell
+	// (BP-4/BP-5). A row whose cells are all borrowed measured nothing
+	// new, and Evaluate says so.
+	Cells         int `json:"cells,omitempty"`
+	BorrowedCells int `json:"borrowed_cells,omitempty"`
+
+	// H2-3's cost half (BP-10), computed exactly like AggregateTokenRatio:
+	// totals per trial, treatment over control. Each is 0 when the control
+	// arm recorded none of that quantity — e.g. a run scored without
+	// --stream transcripts records no payload at all, which Evaluate
+	// reports as indeterminate rather than as a ratio of zero.
+	TreatmentPayloadBytes  int64   `json:"treatment_payload_bytes,omitempty"`
+	ControlPayloadBytes    int64   `json:"control_payload_bytes,omitempty"`
+	AggregatePayloadRatio  float64 `json:"aggregate_payload_ratio,omitempty"`
+	TreatmentCostUSD       float64 `json:"treatment_cost_usd,omitempty"`
+	ControlCostUSD         float64 `json:"control_cost_usd,omitempty"`
+	AggregateCostRatio     float64 `json:"aggregate_cost_ratio,omitempty"`
+	TreatmentToolSearchAvg float64 `json:"treatment_toolsearch_turns_mean,omitempty"`
+	ControlToolSearchAvg   float64 `json:"control_toolsearch_turns_mean,omitempty"`
 }
+
+// Scope values a run may declare (BP-8).
+const (
+	ScopeFull     = "full"
+	ScopeTargeted = "targeted"
+)
 
 // Pair compares two named arms over results. Only tasks present in both
 // arms are compared; the rest are named in Absent (see the honesty note at
@@ -213,6 +272,9 @@ func Pair(results []ArmResult, treatment, control string) PairedSummary {
 			p.MinTrials = cc.Trials
 		}
 
+		p.Cells += tc.Trials + cc.Trials
+		p.BorrowedCells += tc.BorrowedTrials + cc.BorrowedTrials
+
 		row := PairedTask{
 			TaskID:              id,
 			TreatmentTrials:     tc.Trials,
@@ -222,6 +284,12 @@ func Pair(results []ArmResult, treatment, control string) PairedSummary {
 			TreatmentMeanTokens: tc.MeanTokens,
 			ControlMeanTokens:   cc.MeanTokens,
 			Flaky:               tc.Flaky || cc.Flaky,
+		}
+		if cc.MeanPayloadBytes > 0 {
+			row.PayloadRatio = tc.MeanPayloadBytes / cc.MeanPayloadBytes
+		}
+		if cc.MeanCostUSD > 0 {
+			row.CostRatio = tc.MeanCostUSD / cc.MeanCostUSD
 		}
 		if cc.MeanTokens > 0 {
 			row.TokenRatio = tc.MeanTokens / cc.MeanTokens
@@ -245,6 +313,12 @@ func Pair(results []ArmResult, treatment, control string) PairedSummary {
 		p.ControlTrials += cc.Trials
 		p.TreatmentTokens += int64(tc.MeanTokens * float64(tc.Trials))
 		p.ControlTokens += int64(cc.MeanTokens * float64(cc.Trials))
+		p.TreatmentPayloadBytes += int64(tc.MeanPayloadBytes * float64(tc.Trials))
+		p.ControlPayloadBytes += int64(cc.MeanPayloadBytes * float64(cc.Trials))
+		p.TreatmentCostUSD += tc.MeanCostUSD * float64(tc.Trials)
+		p.ControlCostUSD += cc.MeanCostUSD * float64(cc.Trials)
+		p.TreatmentToolSearchAvg += tc.MeanToolSearchTurns * float64(tc.Trials)
+		p.ControlToolSearchAvg += cc.MeanToolSearchTurns * float64(cc.Trials)
 		p.PerTask = append(p.PerTask, row)
 	}
 
@@ -257,10 +331,18 @@ func Pair(results []ArmResult, treatment, control string) PairedSummary {
 	// Totals are compared per-trial-normalized so an arm that ran more
 	// trials than the other cannot look more expensive for that reason
 	// alone.
-	if p.ControlTokens > 0 && p.TreatmentTrials > 0 && p.ControlTrials > 0 {
-		tPer := float64(p.TreatmentTokens) / float64(p.TreatmentTrials)
-		cPer := float64(p.ControlTokens) / float64(p.ControlTrials)
-		p.AggregateTokenRatio = tPer / cPer
+	if p.TreatmentTrials > 0 && p.ControlTrials > 0 {
+		if p.ControlTokens > 0 {
+			p.AggregateTokenRatio = (float64(p.TreatmentTokens) / float64(p.TreatmentTrials)) / (float64(p.ControlTokens) / float64(p.ControlTrials))
+		}
+		if p.ControlPayloadBytes > 0 {
+			p.AggregatePayloadRatio = (float64(p.TreatmentPayloadBytes) / float64(p.TreatmentTrials)) / (float64(p.ControlPayloadBytes) / float64(p.ControlTrials))
+		}
+		if p.ControlCostUSD > 0 {
+			p.AggregateCostRatio = (p.TreatmentCostUSD / float64(p.TreatmentTrials)) / (p.ControlCostUSD / float64(p.ControlTrials))
+		}
+		p.TreatmentToolSearchAvg /= float64(p.TreatmentTrials)
+		p.ControlToolSearchAvg /= float64(p.ControlTrials)
 	}
 	p.MedianTokenRatio = median(ratios)
 	return p
@@ -292,6 +374,15 @@ type Criterion struct {
 	RequireStrictlyMoreSuccesses bool `json:"require_strictly_more_successes"`
 	// MaxTokenRatio caps AggregateTokenRatio (0 = unconstrained).
 	MaxTokenRatio float64 `json:"max_token_ratio,omitempty"`
+	// MaxPayloadRatio caps AggregatePayloadRatio and MaxCostRatio caps
+	// AggregateCostRatio (0 = unconstrained) — H2-3's cost half (ADR-032
+	// §3). They exist because total_tokens is cache-read x turns (O26): a
+	// turn counter in a token costume, under which the discovery payload
+	// fathom actually shrinks is invisible. A criterion that caps payload
+	// but whose run recorded none is INDETERMINATE, never a pass: the
+	// instrument did not look.
+	MaxPayloadRatio float64 `json:"max_payload_ratio,omitempty"`
+	MaxCostRatio    float64 `json:"max_cost_ratio,omitempty"`
 	// MinTrials is the replication floor. A run thinner than this is
 	// indeterminate rather than a win — the n=1 guard.
 	MinTrials int `json:"min_trials,omitempty"`
@@ -340,6 +431,31 @@ func (c Criterion) Evaluate(p PairedSummary) Evaluation {
 		ev.Verdict = VerdictIndeterminate
 		ev.Reason = fmt.Sprintf("thinnest cell ran %d trial(s), below the pre-registered floor of %d", p.MinTrials, c.MinTrials)
 		return ev
+	case p.Scope == ScopeTargeted:
+		// BP-8: a targeted run re-ran only the tasks a diff selected. Its
+		// per-task rows are the point; a corpus-level verdict over a
+		// subset chosen after the change is not a verdict at all.
+		ev.Verdict = VerdictIndeterminate
+		ev.Reason = fmt.Sprintf("scope targeted: %d task(s) were selected by a diff, not the whole corpus — a verdict needs a full run", p.Tasks)
+		return ev
+	case p.Scope != "" && p.Scope != ScopeFull && p.Scope != ScopeTargeted:
+		ev.Verdict = VerdictIndeterminate
+		ev.Reason = fmt.Sprintf("unknown run scope %q — only %q may produce a verdict", p.Scope, ScopeFull)
+		return ev
+	case p.Cells > 0 && p.BorrowedCells == p.Cells:
+		// BP-5: every cell key-matched an earlier run, so this row is a
+		// restatement of that run, not a measurement.
+		ev.Verdict = VerdictIndeterminate
+		ev.Reason = fmt.Sprintf("all %d compared cell(s) were borrowed from earlier runs by cell key — this row re-states an earlier measurement and is not one", p.Cells)
+		return ev
+	case c.MaxPayloadRatio > 0 && p.ControlPayloadBytes == 0:
+		ev.Verdict = VerdictIndeterminate
+		ev.Reason = "criterion caps payload_bytes but the run recorded none — score it from the stream transcripts (ledger -raw) before reading a verdict"
+		return ev
+	case c.MaxCostRatio > 0 && p.ControlCostUSD == 0:
+		ev.Verdict = VerdictIndeterminate
+		ev.Reason = "criterion caps cost_usd but the run recorded none"
+		return ev
 	}
 
 	if c.RequireStrictlyMoreSuccesses && p.TreatmentSuccesses <= p.ControlSuccesses {
@@ -352,9 +468,26 @@ func (c Criterion) Evaluate(p PairedSummary) Evaluation {
 		ev.Reason = fmt.Sprintf("aggregate token ratio %.3f× exceeds the pre-registered cap of %.3f×", p.AggregateTokenRatio, c.MaxTokenRatio)
 		return ev
 	}
+	if c.MaxPayloadRatio > 0 && p.AggregatePayloadRatio > c.MaxPayloadRatio {
+		ev.Verdict = VerdictFail
+		ev.Reason = fmt.Sprintf("aggregate payload_bytes ratio %.3f× exceeds the pre-registered cap of %.3f×", p.AggregatePayloadRatio, c.MaxPayloadRatio)
+		return ev
+	}
+	if c.MaxCostRatio > 0 && p.AggregateCostRatio > c.MaxCostRatio {
+		ev.Verdict = VerdictFail
+		ev.Reason = fmt.Sprintf("aggregate cost_usd ratio %.3f× exceeds the pre-registered cap of %.3f×", p.AggregateCostRatio, c.MaxCostRatio)
+		return ev
+	}
 	ev.Verdict = VerdictPass
 	ev.Reason = fmt.Sprintf("success %d vs %d at %.3f× tokens over %d task(s), min %d trial(s) per cell",
 		p.TreatmentSuccesses, p.ControlSuccesses, p.AggregateTokenRatio, p.Tasks, p.MinTrials)
+	if c.MaxPayloadRatio > 0 {
+		ev.Reason += fmt.Sprintf("; payload %.3f× (cap %.3f×), cost %.3f× (cap %.3f×), toolsearch turns %.2f vs %.2f (reported, never gated)",
+			p.AggregatePayloadRatio, c.MaxPayloadRatio, p.AggregateCostRatio, c.MaxCostRatio, p.TreatmentToolSearchAvg, p.ControlToolSearchAvg)
+	}
+	if p.BorrowedCells > 0 {
+		ev.Reason += fmt.Sprintf("; %d of %d cell(s) borrowed by key from earlier runs", p.BorrowedCells, p.Cells)
+	}
 	return ev
 }
 

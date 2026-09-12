@@ -21,6 +21,30 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+**The bench pyramid (ADR-032, BP-1..BP-11).** The free corpus gate now runs in
+`task validate`: `TestHomeCorpusTruthAtHead` fails when a ground-truth token
+appears in any file a `claude -p` session auto-loads, or when a prompt names
+the file its own ground truth is derived from. Eight of the thirteen home
+tasks were re-derived to pass it; none was weakened, three now pin a line
+citation instead of a phrase the baseline already contained.
+
+Every scored cell is now remembered by a key over the invariants that bind
+it (corpus, task, arm, model, harness, scoring, prompt subject, and the
+fathom commit for the fathom arm), stored content-addressed under
+`workspace/artifacts/context-bench/cells/`. A run borrows any cell whose key
+it recomputes — so the grep and `none` arms survive every fathom change — and
+the evaluator refuses a borrowed cell by key equality and makes an
+all-borrowed row indeterminate. `task bench-select` (free) and `task
+bench-targeted RANGE=…` re-run only the tasks a diff can move; a targeted
+row never becomes a verdict.
+
+Criterion **H2-3** is registered: the same success bar as H2-1 with a cost
+half that reads `payload_bytes` and `cost_usd` instead of `total_tokens`
+(cache-read × turns, O26), reports `toolsearch_turns` as the harness tax it
+is (O24), and records `gold_source_tool` per cell so a tool passes only when
+it is the source. `contextbenchscore ledger -criterion H2-3 -raw <run>/raw`
+scores an existing run's transcripts offline — one spend, two criteria.
+
 **The serve-time fixes the bench found (ADR-032 §4, BP-17..20).** The
 `obligations` tool orders served rules fresh before non-fresh, then by layer
 role, then specificity -- a stale rule no longer leads an edit-hook payload.

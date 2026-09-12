@@ -249,6 +249,29 @@ tasks:
     cmds:
       - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 {{.CLI_ARGS}}
 
+  bench-select:
+    desc: "Free. Which home tasks a diff makes worth re-running (RANGE=origin/main...HEAD): the committed handler table maps changed files to agent-surface tools, tools to tasks."
+    vars:
+      RANGE: '{{.RANGE | default "origin/main...HEAD"}}'
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} {{.CLI_ARGS}}
+
+  bench-targeted:
+    desc: "COSTS TOKENS (a fraction of bench-home). Re-run only the tasks a diff can move, fathom arm only (RANGE=origin/main...HEAD). The row is scope=targeted and the evaluator refuses to turn it into a verdict."
+    vars:
+      RANGE: '{{.RANGE | default "origin/main...HEAD"}}'
+    cmds:
+      - |
+        set -eu
+        ONLY="$(GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore select -tasks testdata/contextbench/tasks-home.json -diff {{.RANGE}} | tr '\n' ' ')"
+        if [ -z "${ONLY// /}" ]; then
+          echo "bench-targeted: {{.RANGE}} moves no task the corpus exercises — nothing to run, nothing to spend."
+          exit 0
+        fi
+        echo "bench-targeted: running $ONLY (fathom arm only; the control arms' cells are borrowed by key)"
+        bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 \
+          --only "$ONLY" --scope targeted --arms 'fathom' --stream {{.CLI_ARGS}}
+
   bench-lookup:
     desc: "COSTS TOKENS. Grep-native lookup bench (B1 corpus; no committed criterion, so no ledger row)"
     cmds:
