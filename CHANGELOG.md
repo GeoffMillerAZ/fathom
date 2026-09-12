@@ -21,6 +21,13 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+**The bench pyramid (ADR-032, BP-1..BP-11).** The free corpus gate now runs in
+`task validate`: `TestHomeCorpusTruthAtHead` fails when a ground-truth token
+appears in any file a `claude -p` session auto-loads, or when a prompt names
+the file its own ground truth is derived from. Eight of the thirteen home
+tasks were re-derived to pass it; none was weakened, three now pin a line
+citation instead of a phrase the baseline already contained.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and
