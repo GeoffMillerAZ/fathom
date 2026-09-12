@@ -237,6 +237,24 @@ tasks:
       - { task: calibrate-clone }
       - { task: calibrate-baseline }
 
+  # ─── bench pyramid L0/L1 (FREE — no tokens, no daemon) ─────────────────
+  # L0 (index oracle) and L1 (payload replay) over the fixture fleet are
+  # plain Go tests in internal/indexbench, so `task test` — and therefore
+  # `validate` — already runs them on every commit. Only the self run is
+  # on demand: it type-checks and ingests the whole module, which is a
+  # minute-scale cost the per-commit gate should not pay (ADR-032 §3.6).
+
+  bench-l0-self:
+    desc: "L0 index oracle over THIS repository at HEAD (free, on demand): precision/recall for find_callers, references and blast_radius against a go/types truth, written under workspace/artifacts/indexbench/"
+    cmds:
+      - mkdir -p workspace/artifacts/indexbench
+      - >-
+        GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/indexbench
+        -root .
+        -service indexbench-self
+        -out workspace/artifacts/indexbench/self-$(date -u +%Y%m%dT%H%M%SZ).json
+        {{.CLI_ARGS}}
+
   # ─── context-bench (COSTS REAL LLM TOKENS — operator-initiated only) ────
   # Every bench task below spends against the operator's Claude
   # subscription: one --repeat 3 home run is roughly three times the
