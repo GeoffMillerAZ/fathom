@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -65,9 +66,15 @@ type LedgerRow struct {
 	// CorpusSHA256 identifies the exact corpus bytes the run scored; two
 	// rows are comparable only when it matches (CorpusSHA256).
 	CorpusSHA256 string `json:"corpus_sha256,omitempty"`
-	// ModelID is the concrete model the envelopes reported (e.g. a dated
-	// id), as opposed to Model, the alias the runner was asked for.
+	// ModelID is the PRIMARY model the envelopes reported (e.g. a dated
+	// id), as opposed to Model, the alias the runner was asked for — the
+	// model that generated the run's answers, never a joined blend
+	// (PrimaryModelID, BP-34). The cell key uses this id alone.
 	ModelID string `json:"model_id,omitempty"`
+	// AuxModels lists every other model the run's envelopes reported,
+	// sorted — the harness's own small-model traffic for tool search and
+	// summaries. Additive, reported, never part of any key.
+	AuxModels []string `json:"aux_models,omitempty"`
 	// CostUSD is the sum of every cell's reported total_cost_usd.
 	CostUSD float64 `json:"cost_usd,omitempty"`
 	// DirtyTree records that the working tree had uncommitted changes when
@@ -286,4 +293,34 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 			r.Evaluation.Verdict, r.Evaluation.Reason, caveat)
 	}
 	return b.String()
+}
+
+// ─── BP-33: where a targeted run's row belongs ─────────────────────────────
+
+// TargetedLedgerPath returns the ledger file a run's row must be appended to.
+//
+// docs/bench/ledger.jsonl is COMMITTED history: every row in it is supposed
+// to be a corpus-scoped reading someone can compare against the next one. A
+// `--scope targeted` / `--only` run is a diff-selected subset that carries no
+// verdict by construction, so appending it to that file grows the committed
+// history with rows that can never be compared — noise that a reader has to
+// learn to skip. Such a run writes to
+// <artifactsDir>/ledger-targeted.jsonl instead, under the gitignored
+// workspace/ tree, unless the operator named a ledger explicitly (`--ledger`
+// or CONTEXT_BENCH_LEDGER) — an explicit path is always obeyed, because
+// overriding the default is how an operator says "yes, this one counts".
+//
+// Pure and deterministic: it decides from the run's own shape, never from the
+// filesystem.
+func TargetedLedgerPath(requested string, explicit bool, scope string, onlySelected bool, artifactsDir string) string {
+	if explicit {
+		return requested
+	}
+	if scope != ScopeTargeted && !onlySelected {
+		return requested
+	}
+	if artifactsDir == "" {
+		artifactsDir = filepath.Join("workspace", "artifacts", "context-bench")
+	}
+	return filepath.Join(artifactsDir, "ledger-targeted.jsonl")
 }

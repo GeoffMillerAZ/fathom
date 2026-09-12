@@ -82,7 +82,11 @@
 # move. --no-reuse-cells turns borrowing off (default: on).
 #
 # Targeted runs (BP-8): --only 'H1-T01 H1-T05' runs a subset, and
-# --scope targeted marks the row as diff-selected — the evaluator then
+# --scope targeted marks the row as diff-selected. Such a run does NOT append
+# to the committed docs/bench/ledger.jsonl (BP-33): its row goes to
+# workspace/artifacts/context-bench/ledger-targeted.jsonl unless --ledger (or
+# CONTEXT_BENCH_LEDGER) names one explicitly, and cells_lost counts only the
+# SELECTED tasks x arms x trials. The evaluator then
 # refuses to turn it into a verdict (indeterminate, reason named). Use
 # `task bench-targeted RANGE=origin/main...HEAD`, which chains
 # `contextbenchscore select` into this script.
@@ -134,6 +138,10 @@ TIMEOUT="${CONTEXT_BENCH_TIMEOUT:-180}"
 ARMS="fathom grep"
 REPEAT="${CONTEXT_BENCH_REPEAT:-1}"
 LEDGER="${CONTEXT_BENCH_LEDGER:-$ROOT/docs/bench/ledger.jsonl}"
+# Whether the operator NAMED a ledger (--ledger or CONTEXT_BENCH_LEDGER). A
+# targeted run writes to the workspace targeted ledger unless they did (BP-33).
+LEDGER_EXPLICIT=0
+[ -n "${CONTEXT_BENCH_LEDGER:-}" ] && LEDGER_EXPLICIT=1
 RESUME_DIR=""
 SUBJECT_ROOT="$ROOT"
 SERVICE="fathom"
@@ -164,7 +172,7 @@ while [ "$#" -gt 0 ]; do
     --arms) ARMS="$2"; shift 2 ;;
     --tasks) TASKS="$2"; shift 2 ;;
     --repeat) REPEAT="$2"; shift 2 ;;
-    --ledger) LEDGER="$2"; shift 2 ;;
+    --ledger) LEDGER="$2"; LEDGER_EXPLICIT=1; shift 2 ;;
     --resume) RESUME_DIR="$2"; shift 2 ;;
     --scoring) SCORING="$2"; shift 2 ;;
     --criterion) CRITERION="$2"; shift 2 ;;
@@ -214,6 +222,18 @@ if [ "$ENV_SET" -eq 0 ]; then
 fi
 
 ARTIFACTS_DIR="$ROOT/workspace/artifacts/context-bench"
+
+# BP-33: a targeted run's row is not committed history. docs/bench/ledger.jsonl
+# holds corpus-scoped rows a reader can compare; a --scope targeted / --only
+# subset carries no verdict by construction, so its row goes to the gitignored
+# workspace ledger unless the operator named --ledger (or CONTEXT_BENCH_LEDGER)
+# deliberately. The evaluator makes the same decision (TargetedLedgerPath) — it
+# is repeated here only so the run's final lines can say where the row went.
+LEDGER_REDIRECTED=0
+if [ "$LEDGER_EXPLICIT" -eq 0 ] && { [ -n "$ONLY" ] || [ "$SCOPE" = "targeted" ]; }; then
+  LEDGER="$ARTIFACTS_DIR/ledger-targeted.jsonl"
+  LEDGER_REDIRECTED=1
+fi
 if [ -n "$RESUME_DIR" ]; then
   RUN_DIR="$(cd "$RESUME_DIR" && pwd)" || { echo "context-bench: --resume dir not found: $RESUME_DIR" >&2; exit 2; }
   TS="${RUN_DIR##*/run-}"
@@ -508,9 +528,14 @@ if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('
   LEDGER_MD="$(dirname "$LEDGER")/README.md"
   # No `set -e` is in effect (see the header's `set -uo pipefail`), so the
   # non-zero verdict exit codes are captured directly.
+  LEDGER_FLAGS=()
+  if [ "$LEDGER_EXPLICIT" -eq 1 ]; then
+    LEDGER_FLAGS=(-ledger-explicit)
+  fi
   "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" \
     -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -arms "$ARMS" -repeat "$REPEAT" -env "$ENV" \
-    -scope "$SCOPE" -scoring "$SCORING" -raw "$RAW_DIR" \
+    -scope "$SCOPE" -scoring "$SCORING" -raw "$RAW_DIR" -only "$ONLY" \
+    -artifacts "$ARTIFACTS_DIR" "${LEDGER_FLAGS[@]}" \
     -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
     -prompt-subject "$PROMPT_SUBJECT" -arm-surface "$FATHOM_ARM_SURFACE" \
     "${DIRTY[@]}" "${CRIT[@]}" -out-md "$LEDGER_MD"
@@ -530,4 +555,9 @@ echo "  raw transcripts + per-task scores: $RUN_DIR"
 echo "  results:                           $RESULTS_JSON"
 echo "  summary:                           $SUMMARY_MD"
 echo "  criterion verdict:                 $LEDGER_STATUS"
-echo "  ledger:                            $LEDGER"
+if [ "$LEDGER_REDIRECTED" -eq 1 ]; then
+  echo "  ledger (targeted, NOT committed):  $LEDGER"
+  echo "  committed ledger:                  untouched ($ROOT/docs/bench/ledger.jsonl) — pass --ledger explicitly to record there"
+else
+  echo "  ledger:                            $LEDGER"
+fi

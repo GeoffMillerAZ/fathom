@@ -145,6 +145,14 @@ named): per-task evidence is the point, and a corpus-level claim from a
 subset the change itself selected would be a claim about a sample chosen
 after the fact. `--only` without `--scope targeted` is refused by the runner.
 
+Such a run does **not** append to this directory's committed `ledger.jsonl`
+(BP-33). Its row goes to
+`workspace/artifacts/context-bench/ledger-targeted.jsonl`, and the run says so
+in its final lines; pass `--ledger` (or set `CONTEXT_BENCH_LEDGER`) to record
+it here deliberately. `cells_lost` on a targeted row counts only the SELECTED
+tasks × arms × trials minus the cells that scored — never the tasks the run
+never meant to buy.
+
 ## The pyramid
 
 <!-- BP-24 renders the layer table (L0 index oracle … L5 ambient instrument)
@@ -165,7 +173,10 @@ after the fact. `--only` without `--scope targeted` is refused by the runner.
 Not rendered but on every row since 2026-09-02 (`ledger.jsonl`): `per_task`
 (the paired outcomes the verdict was computed over — what the regression
 gate compares), `corpus_sha256` (the exact corpus bytes; `shasum -a 256`
-reproduces it), `model_id` (the dated id the alias resolved to), `cost_usd`,
+reproduces it), `model_id` (the PRIMARY model the envelopes reported — the one that generated
+the answers, and the only id the cell key uses), `aux_models` (every other
+model seen, i.e. the harness's own small model for tool search and summaries —
+reported, never keyed), `cost_usd`,
 `dirty_tree` (the tree had uncommitted changes, so `commit` alone does not
 name the subject), `cells_lost` (intended cells that never scored — a
 watchdog kill or an empty envelope; `--resume <run-dir>` fills them without

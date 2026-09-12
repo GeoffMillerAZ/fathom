@@ -30,6 +30,14 @@ floored to that subtree at compile time — a wildcard scope is prefixed with
 `<dir>/`, and a scope naming another directory is rejected by name
 (`scope-out-of-subtree`).
 
+**Bench runner bookkeeping (`BP-33`, `BP-34`).** A `--scope targeted` /
+`--only` run no longer appends to the committed `docs/bench/ledger.jsonl`: its
+row goes to `workspace/artifacts/context-bench/ledger-targeted.jsonl` unless
+`--ledger` names one explicitly, and `cells_lost` now counts only the selected
+tasks × arms × trials. A ledger row's `model_id` is the run's primary model
+(most output tokens in the envelope's `modelUsage`), with the harness's other
+models carried additively in a new `aux_models` field.
+
 **Bench pyramid L0/L1 (ADR-032; `BP-12..16`).** `task validate` now gates two
 free bench layers over the fixture fleet: an index oracle that scores
 `find_callers`, `references` and `blast_radius` against an independent

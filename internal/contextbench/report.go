@@ -42,10 +42,17 @@ type ArmResult struct {
 	// Additive since PB-3/PB-4/PB-8/PB-11 (all omitempty; older artifacts
 	// parse and read as not-recorded).
 
-	// ModelID is the concrete model id the envelope reported (its
-	// modelUsage keys, sorted and joined with "+" if several), as opposed
-	// to the alias the runner asked for.
+	// ModelID is the PRIMARY model the envelope reported: the modelUsage
+	// entry with the most output tokens (PrimaryModelID), as opposed to
+	// the alias the runner asked for. Claude Code also drives a small
+	// model for tool search and summaries, and joining every id the
+	// envelope mentions made the cell key and the ledger row read as if
+	// the run had been measured on two models at once.
 	ModelID string `json:"model_id,omitempty"`
+	// AuxModels lists every OTHER model the envelope reported, sorted —
+	// the harness's own small-model traffic. Additive and reported: it
+	// never enters the cell key, because it is not what the run measured.
+	AuxModels []string `json:"aux_models,omitempty"`
 	// CostUSD is the envelope's total_cost_usd.
 	CostUSD float64 `json:"cost_usd,omitempty"`
 	// Scoring names the rule the cell was scored under ("substring" when
@@ -99,18 +106,60 @@ type claudeEnvelope struct {
 	} `json:"usage"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
 	// ModelUsage is keyed by the concrete model id the call resolved to.
-	ModelUsage map[string]json.RawMessage `json:"modelUsage"`
+	// Claude Code reports MORE than one: the model the run asked for plus
+	// the small model it drives for tool search and summaries.
+	ModelUsage map[string]modelUsage `json:"modelUsage"`
 }
 
-// resolvedModelID joins the envelope's modelUsage keys, sorted, so an
-// alias like "sonnet" is recorded as the dated id it resolved to.
-func (e claudeEnvelope) resolvedModelID() string {
-	ids := make([]string, 0, len(e.ModelUsage))
-	for id := range e.ModelUsage {
+// modelUsage is the per-model slice of the envelope's usage block. Only the
+// output tokens are read — they are what says which model did the work.
+type modelUsage struct {
+	OutputTokens int64 `json:"outputTokens"`
+}
+
+// resolvedModelID returns the envelope's PRIMARY model and every other model
+// it reported (BP-34).
+func (e claudeEnvelope) resolvedModelID() (primary string, aux []string) {
+	out := make(map[string]int64, len(e.ModelUsage))
+	for id, u := range e.ModelUsage {
+		out[id] = u.OutputTokens
+	}
+	return PrimaryModelID(out)
+}
+
+// PrimaryModelID picks the model that DID the run's work from a map of model
+// id to output tokens, and returns every other model seen as an additive,
+// sorted aux list (BP-34).
+//
+// A context-bench cell is measured on one model; Claude Code's envelope names
+// several, because the harness drives a small model of its own for tool
+// search and summaries. Joining them ("a+b") made a two-model string the cell
+// key and the ledger row's model_id, which reads as if the bench had measured
+// a blend — and changes the key the moment the harness changes its helper
+// model, refusing every borrow for a reason that has nothing to do with the
+// subject. Output tokens is the discriminator: the model answering the task
+// generates the answer.
+//
+// Deterministic: ties (including an all-zero map, which is what a probe
+// envelope with empty modelUsage objects looks like) break lexicographically,
+// so the same envelope always yields the same primary.
+func PrimaryModelID(outputTokens map[string]int64) (primary string, aux []string) {
+	ids := make([]string, 0, len(outputTokens))
+	for id := range outputTokens {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
-	return strings.Join(ids, "+")
+	for _, id := range ids {
+		if primary == "" || outputTokens[id] > outputTokens[primary] {
+			primary = id
+		}
+	}
+	for _, id := range ids {
+		if id != primary {
+			aux = append(aux, id)
+		}
+	}
+	return primary, aux
 }
 
 // ArmResultFromClaudeJSON parses one `claude -p --output-format json` result
@@ -151,9 +200,9 @@ func armResultFromClaudeJSON(task Task, arm string, raw []byte, scoring string) 
 		WallTimeMS:          env.DurationMS,
 		NumTurns:            env.NumTurns,
 		RawResult:           env.Result,
-		ModelID:             env.resolvedModelID(),
 		CostUSD:             env.TotalCostUSD,
 	}
+	ar.ModelID, ar.AuxModels = env.resolvedModelID()
 	switch scoring {
 	case ScoringPrecision:
 		ps := ScoreWithPrecision(task, env.Result)

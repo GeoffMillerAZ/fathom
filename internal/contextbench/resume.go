@@ -75,3 +75,28 @@ func CellsLost(tasks []Task, arms []string, repeat int, results []ArmResult) int
 	}
 	return lost
 }
+
+// TasksSelected narrows a runnable task list to the ids a targeted run
+// actually selected (`--only`), preserving order. An empty selection means
+// "the whole list" — the default full run.
+//
+// It exists because cells_lost must count only cells the run INTENDED to
+// execute (BP-33). Counting unselected tasks made a one-task smoke
+// (`--only H1-T01 --repeat 1 --arms fathom`) report cells_lost=12: twelve
+// cells nobody ever meant to buy, reported as losses on the row.
+func TasksSelected(tasks []Task, only []string) []Task {
+	if len(only) == 0 {
+		return tasks
+	}
+	want := make(map[string]bool, len(only))
+	for _, id := range only {
+		want[id] = true
+	}
+	var out []Task
+	for _, t := range tasks {
+		if want[t.ID] {
+			out = append(out, t)
+		}
+	}
+	return out
+}

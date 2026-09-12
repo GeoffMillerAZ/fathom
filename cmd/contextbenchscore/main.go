@@ -367,6 +367,9 @@ func cmdLedger(args []string) int {
 	outMD := fs.String("out-md", "", "optional path to render the whole ledger as a Markdown table")
 	notes := fs.String("notes", "", "optional free-text note recorded with the row")
 	scope := fs.String("scope", contextbench.ScopeFull, "full (the corpus) or targeted (a diff-selected subset, which never carries a verdict)")
+	only := fs.String("only", "", "the task ids the run selected (space/comma separated); cells_lost counts only these")
+	ledgerExplicit := fs.Bool("ledger-explicit", false, "the operator named -ledger deliberately; a targeted run then writes there instead of the workspace targeted ledger")
+	artifacts := fs.String("artifacts", filepath.Join("workspace", "artifacts", "context-bench"), "artifacts directory a targeted run's ledger is written under")
 	rawDir := fs.String("raw", "", "directory of stream-json transcripts to re-read the H2-3 metrics from (default: <results>/../raw when it exists)")
 	scoring := fs.String("scoring", contextbench.ScoringSubstring, "the scoring mode the cells were scored under (part of the cell key)")
 	cell := cellFlags(fs)
@@ -416,7 +419,10 @@ func cmdLedger(args []string) int {
 			runnable = append(runnable, t)
 		}
 	}
-	cellsLost := contextbench.CellsLost(runnable, intended, *repeat, results)
+	// BP-33: a run only intended the cells it SELECTED. Counting unselected
+	// tasks reported a one-task smoke as having lost twelve cells.
+	selected := contextbench.TasksSelected(runnable, splitList(*only))
+	cellsLost := contextbench.CellsLost(selected, intended, *repeat, results)
 
 	// BP-11: score an existing run's transcripts offline. One spend, two
 	// criteria — H2-1's verdict stands as history and H2-3 reads the same
@@ -488,26 +494,50 @@ func cmdLedger(args []string) int {
 		}
 		row.Reliability = &rel
 	}
-	ids := map[string]bool{}
+	// BP-34: the row's model_id is the run's PRIMARY model — the one that
+	// generated the answers — with every other model the envelopes reported
+	// (the harness's small model for tool search and summaries) carried
+	// additively beside it. A comma-joined set read as if the bench had been
+	// run on two models at once.
+	outputByModel := map[string]int64{}
+	aux := map[string]bool{}
 	for _, r := range results {
 		if r.ModelID != "" {
-			ids[r.ModelID] = true
+			outputByModel[r.ModelID] += r.OutputTokens
+		}
+		for _, a := range r.AuxModels {
+			aux[a] = true
 		}
 		row.CostUSD += r.CostUSD
 	}
-	var modelIDs []string
-	for id := range ids {
-		modelIDs = append(modelIDs, id)
+	primary, otherPrimaries := contextbench.PrimaryModelID(outputByModel)
+	row.ModelID = primary
+	for _, id := range otherPrimaries {
+		aux[id] = true
 	}
-	sort.Strings(modelIDs)
-	row.ModelID = strings.Join(modelIDs, ",")
+	delete(aux, primary)
+	var auxModels []string
+	for id := range aux {
+		auxModels = append(auxModels, id)
+	}
+	sort.Strings(auxModels)
+	row.AuxModels = auxModels
 
-	if err := contextbench.AppendLedger(*ledgerPath, row); err != nil {
+	// BP-33: a targeted run never grows the COMMITTED ledger unless the
+	// operator named one explicitly.
+	writePath := contextbench.TargetedLedgerPath(*ledgerPath, *ledgerExplicit, *scope, len(splitList(*only)) > 0, *artifacts)
+	if writePath != *ledgerPath {
+		if err := os.MkdirAll(filepath.Dir(writePath), 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+			return 2
+		}
+	}
+	if err := contextbench.AppendLedger(writePath, row); err != nil {
 		fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
 		return 2
 	}
 	if *outMD != "" {
-		rows, err := contextbench.LoadLedger(*ledgerPath)
+		rows, err := contextbench.LoadLedger(writePath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
 			return 2
@@ -523,6 +553,9 @@ func cmdLedger(args []string) int {
 		paired.Tasks, paired.MinTrials, paired.TreatmentSuccesses, paired.ControlSuccesses,
 		paired.AggregateTokenRatio, paired.MedianTokenRatio, len(paired.Absent), len(paired.FlakyTasks),
 		len(leaked), cellsLost, row.CostUSD, row.ModelID)
+	if len(row.AuxModels) > 0 {
+		fmt.Printf("  aux_models=%s (harness traffic; not the measured model, never in the cell key)\n", strings.Join(row.AuxModels, " "))
+	}
 	if row.AggregatePayloadRatio > 0 || paired.TreatmentToolSearchAvg > 0 {
 		fmt.Printf("  payload=%.3fx cost=%.3fx toolsearch_turns %s=%.2f %s=%.2f (reported, never gated)\n",
 			paired.AggregatePayloadRatio, paired.AggregateCostRatio,
@@ -534,7 +567,10 @@ func cmdLedger(args []string) int {
 	if len(row.GoldSourceRates) > 0 {
 		fmt.Print(contextbench.RenderGoldSourceRate(row.GoldSourceRates))
 	}
-	fmt.Printf("  appended to %s\n", *ledgerPath)
+	fmt.Printf("  appended to %s\n", writePath)
+	if writePath != *ledgerPath {
+		fmt.Printf("  targeted run (scope=%s): the COMMITTED ledger %s was NOT touched — pass -ledger explicitly to record there\n", *scope, *ledgerPath)
+	}
 
 	return exitFor(ev.Verdict)
 }
