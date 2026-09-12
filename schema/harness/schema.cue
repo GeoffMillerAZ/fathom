@@ -14,14 +14,17 @@ package harness
 #Capability: "prime" | "obligations-post-edit" | "guard-pre-edit" | "guard-pre-shell" |
 	"discovery-observe" | "stop-verify" | "deposit-session-end" | "deposit-pre-compact" |
 	"mcp-tools" | "skills" | "stanza" | "verify-gate" | "claim-gate" | "session-ledger" |
-	"stanza-loaded" | "config-audit"
+	"stanza-loaded" | "config-audit" |
+	// Wave 3 (HP-26..HP-31): the advisory capabilities.
+	"subagent-prime" | "tool-failure-advice" | "worktree-advice" | "cwd-prime" | "setup-doctor"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
 
 // #Event is fathom's canonical hook event.
 #Event: "session-start" | "pre-tool" | "post-tool" | "stop" | "session-end" | "pre-compact" |
-	"instructions-loaded" | "config-change"
+	"instructions-loaded" | "config-change" |
+	"subagent-start" | "tool-failure" | "file-changed" | "worktree-create" | "cwd-changed" | "setup"
 
 // #ToolClass normalizes a harness's tool names.
 #ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "other"
@@ -58,6 +61,12 @@ package harness
 	input?: {[string]: string}
 	output?: {[string]: string}
 	note?: string
+}
+
+#EventCatalogEntry: {
+	event:   string
+	wired:   bool
+	reason?: string
 }
 
 #SkillsShape: {
@@ -98,6 +107,11 @@ package harness
 	instruction_files: [#InstructionFile, ...#InstructionFile]
 	hook_files?: [...#HookFile]
 	hooks?: [...#EventBinding]
+	// The catalogue of every event the harness OFFERS, with the reason
+	// fathom leaves each unwired one unwired (HP-32). Absent on a
+	// descriptor whose event surface fathom has not catalogued — which
+	// doctor reports as unknown coverage, never as full coverage.
+	events?: [...#EventCatalogEntry]
 	tools?: {[string]: #ToolClass}
 	// Every capability, always: an absent vehicle is a declared "absent",
 	// never a missing key.
@@ -118,6 +132,11 @@ package harness
 		"session-ledger":        #Vehicle
 		"stanza-loaded":         #Vehicle
 		"config-audit":          #Vehicle
+		"subagent-prime":        #Vehicle
+		"tool-failure-advice":   #Vehicle
+		"worktree-advice":       #Vehicle
+		"cwd-prime":             #Vehicle
+		"setup-doctor":          #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

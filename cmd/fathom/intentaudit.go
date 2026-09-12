@@ -36,7 +36,7 @@ const intentTopDefault = 20
 
 func cmdIntent(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, export)")
+		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, export, render)")
 		return 1
 	}
 	switch args[0] {
@@ -44,8 +44,10 @@ func cmdIntent(args []string, stdout, stderr io.Writer) int {
 		return cmdIntentAudit(args[1:], stdout, stderr)
 	case "export":
 		return cmdIntentExport(args[1:], stdout, stderr)
+	case "render":
+		return cmdIntentRender(args[1:], stdout, stderr) // HP-35: intent_playbook.go
 	}
-	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, export)\n", args[0])
+	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, export, render)\n", args[0])
 	return 1
 }
 

@@ -26,7 +26,7 @@ const configChangeBeatKind = "config-change"
 // cmdConfigAuditHook is the `--hook` branch of cmdConfigAudit: resolve the
 // codec (I9 fail-open on an unknown id), read the envelope from stdin,
 // run configChangeHook.
-func cmdConfigAuditHook(harnessFlag string, stderr io.Writer) int {
+func cmdConfigAuditHook(harnessFlag, event string, stderr io.Writer) int {
 	if fathomChannelsDisabled() {
 		return 0 // FATHOM_CHANNELS=off: total silence
 	}
@@ -34,7 +34,22 @@ func cmdConfigAuditHook(harnessFlag string, stderr io.Writer) int {
 	if !ok {
 		return 0
 	}
+	if event == "file-changed" {
+		return fileChangedHook(codec, os.Stdin)
+	}
 	return configChangeHook(codec, os.Stdin)
+}
+
+// fileChangedHook is HP-28: the harness's FileChanged event — a governed
+// configuration file changed ON DISK rather than through the harness (an
+// edit by a sibling agent, a rebase, a merge). It is deliberately the
+// SAME audit and the SAME beat ConfigChange writes, distinguished only by
+// the beat's trigger meta: the custodian's question ("is what this repo
+// instructs still true?") does not change with how the file got edited,
+// and two divergent implementations of one question is how the two
+// answers start disagreeing. Exit 0 always.
+func fileChangedHook(codec harness.Codec, stdin io.Reader) int {
+	return auditConfigChange(codec, stdin, harness.EventFileChanged, "file-changed")
 }
 
 // configChangeHook audits the repo the event belongs to and writes the
@@ -43,6 +58,13 @@ func cmdConfigAuditHook(harnessFlag string, stderr io.Writer) int {
 // as unable-to-check (a doctor finding, not a hook alarm); a repo with no
 // concerns records that it had nothing to hold the change to.
 func configChangeHook(codec harness.Codec, stdin io.Reader) int {
+	return auditConfigChange(codec, stdin, harness.EventConfigChange, "")
+}
+
+// auditConfigChange is the shared body of both custodian events. trigger
+// is "" for ConfigChange (the original event, whose beats must keep their
+// exact shape) and names the other event otherwise.
+func auditConfigChange(codec harness.Codec, stdin io.Reader, ev harness.Event, trigger string) int {
 	if stdin == nil {
 		return 0
 	}
@@ -50,7 +72,7 @@ func configChangeHook(codec harness.Codec, stdin io.Reader) int {
 	if err != nil {
 		return 0
 	}
-	in, err := codec.DecodeInput(harness.EventConfigChange, raw)
+	in, err := codec.DecodeInput(ev, raw)
 	if err != nil {
 		return 0
 	}
@@ -62,6 +84,9 @@ func configChangeHook(codec harness.Codec, stdin io.Reader) int {
 		root, _ = os.Getwd()
 	}
 	meta := map[string]string{}
+	if trigger != "" {
+		meta["trigger"] = trigger
+	}
 	if in.Source != "" {
 		meta["source"] = in.Source
 	}

@@ -877,6 +877,16 @@ const (
 // service, wrapped in begin/end markers. It is the ONE source emitted
 // verbatim into both CLAUDE.md and AGENTS.md (Codex reads the latter
 // automatically) — one stanza, two files, no drift between them.
+// openingMovesTable is the first-2-3-calls table, named once: the stanza
+// embeds it (below) and the subagent primer re-renders it (HP-26,
+// sessionhook_events.go). A subagent that never read the stanza gets the
+// same four lines, not a second dialect of them.
+const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then edit):\n" +
+	"- debug/trace: find_symbol -> find_callers/references -> symbol_context\n" +
+	"- feature/change: repo_map -> pack_context(concern) -> references\n" +
+	"- review/verify: verify_plan -> obligations -> references on changed symbols\n" +
+	"- refactor: references -> outline -> symbol_context"
+
 const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"{{SERVICE}}\". Before any Grep/Read\n" +
@@ -885,11 +895,7 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"`pack_context`, `verify_plan`. Read files to *edit* them, not to discover\n" +
 	"them — the index replaces exploratory grep.\n" +
 	"\n" +
-	"Opening moves by task shape (first 2-3 calls, then edit):\n" +
-	"- debug/trace: find_symbol -> find_callers/references -> symbol_context\n" +
-	"- feature/change: repo_map -> pack_context(concern) -> references\n" +
-	"- review/verify: verify_plan -> obligations -> references on changed symbols\n" +
-	"- refactor: references -> outline -> symbol_context\n" +
+	openingMovesTable + "\n" +
 	"\n" +
 	"Refresh the index via the `ingest` MCP tool (`{\"service\":\"{{SERVICE}}\"}`) at\n" +
 	"session start and after each commit; it is hash-gated, so a clean repo\n" +
@@ -940,14 +946,21 @@ func stanzaHookSentences(id string, intentOn bool) (obligations, continuity stri
 		id = harness.ClaudeCode
 	}
 	d, ok := harness.Lookup(id)
-	if !ok || (d.HooksWired() && !d.Unverified()) {
+	// The plain sentences ("injected automatically on every edit") may be
+	// written only when init ITSELF wired the hooks and a real session has
+	// verified them. Two different failures otherwise, and rule 3 forbids
+	// both: an unverified descriptor would be promising a channel nobody
+	// has seen work, and a VERIFIED descriptor whose hook file init cannot
+	// write (Codex 0.153.1's user-global layer, HP-34) would be promising
+	// a channel that is real but not wired here yet.
+	if !ok || (d.HooksWired() && !d.Unverified() && hasInitHookFile(d)) {
 		obligations = obligationsPlain
 		if intentOn {
 			obligations = obligationsWithIntent
 		}
 		return obligations, continuityClaude
 	}
-	if d.HooksWired() { // wired but unverified (HP-18): init_harnesshooks.go
+	if d.HooksWired() { // wired, but either unverified (HP-18) or unwritable (HP-34)
 		return unverifiedHookSentences(d, intentOn)
 	}
 	display := d.Display

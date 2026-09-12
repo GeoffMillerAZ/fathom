@@ -232,6 +232,11 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"session_id": true, "cwd": true, "transcript_path": true, "source": true, "reason": true,
 		"trigger": true, "tool_name": true, "tool_input.file_path": true, "tool_input.command": true,
 		"stop_hook_active": true, "file_path": true, "memory_type": true, "load_reason": true,
+		// Wave 3 (HP-26..HP-31), each read only on the event that
+		// documents it (claudeEnvelope's per-event switch).
+		"agent_id": true, "agent_type": true, "tool_error": true, "tool_use_id": true,
+		"worktree_path": true, "previous_cwd": true, "directory_path": true,
+		"how_added": true, "triggered_by": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,

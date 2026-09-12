@@ -39,6 +39,15 @@ type HookInput struct {
 	// ReEntrant is Claude Code's stop_hook_active: the stop hook is already
 	// continuing the session and must not loop.
 	ReEntrant bool
+	// AgentType is the subagent's type on the subagent-start event
+	// (Claude Code: agent_type); "" when the harness does not name one.
+	AgentType string
+	// ToolError is the failure message on the tool-failure event.
+	ToolError string
+	// Path is the directory an event is ABOUT rather than the session's
+	// own cwd: the new worktree's root (worktree-create), or the root the
+	// session moved to or added (cwd-changed).
+	Path string
 }
 
 // HookOutput is what a hook verb wants the harness to do with its payload.
@@ -114,6 +123,19 @@ type claudeEnvelope struct {
 	FilePath   string `json:"file_path"`
 	MemoryType string `json:"memory_type"`
 	LoadReason string `json:"load_reason"`
+	// The wave-3 advisory events' own fields (hooks reference, fetched
+	// 2026-09-12 against Claude Code 2.1.270). Each is read ONLY on the
+	// event that documents it — a field the documentation does not show
+	// on an event is not read there.
+	AgentID      string `json:"agent_id"`       // SubagentStart
+	AgentType    string `json:"agent_type"`     // SubagentStart
+	ToolError    string `json:"tool_error"`     // PostToolUseFailure
+	ToolUseID    string `json:"tool_use_id"`    // PostToolUseFailure
+	WorktreePath string `json:"worktree_path"`  // WorktreeCreate
+	PreviousCwd  string `json:"previous_cwd"`   // CwdChanged
+	DirPath      string `json:"directory_path"` // DirectoryAdded
+	HowAdded     string `json:"how_added"`      // DirectoryAdded
+	TriggeredBy  string `json:"triggered_by"`   // Setup
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -137,11 +159,32 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		MemoryType:     env.MemoryType,
 		LoadReason:     env.LoadReason,
 	}
-	if ev == EventInstructionsLoaded || ev == EventConfigChange {
-		// Only these two events document a top-level file_path; a tool
-		// event's file lives under tool_input, and the fallback is never
-		// crossed (a field the documentation does not show is not read).
+	switch ev {
+	case EventInstructionsLoaded, EventConfigChange, EventFileChanged:
+		// Only these events document a top-level file_path; a tool event's
+		// file lives under tool_input, and the fallback is never crossed
+		// (a field the documentation does not show is not read).
 		in.FilePath = env.FilePath
+	case EventSubagentStart:
+		in.AgentType = env.AgentType
+		in.Source = env.AgentID
+	case EventToolFailure:
+		in.ToolError = env.ToolError
+	case EventWorktreeCreate:
+		in.Path = env.WorktreePath
+	case EventCwdChanged:
+		// One canonical event, two harness events: CwdChanged names the
+		// new root in cwd (previous_cwd is the old one), DirectoryAdded
+		// names it in directory_path and says how it arrived.
+		if env.DirPath != "" {
+			in.Path = env.DirPath
+			in.Source = env.HowAdded
+		} else {
+			in.Path = env.CWD
+			in.Reason = env.PreviousCwd
+		}
+	case EventSetup:
+		in.Trigger = env.TriggeredBy
 	}
 	return in, nil
 }

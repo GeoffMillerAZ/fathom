@@ -102,6 +102,9 @@ func TestHarnessSchema_Negatives(t *testing.T) {
 		{"a capability missing from vehicles", `bad: #Descriptor & {vehicles: close({prime: "pull"})}`},
 		{"non-positive binding timeout", `bad: #EventBinding & {capability: "prime", event: "session-start", harness_event: "SessionStart", verb: "session-hook", marker: "fathom session-hook", timeout_sec: 0, vehicle: "hook-inject"}`},
 		{"non-ISO codec landing date", `bad: #Descriptor & {codec_landed: "yesterday"}`},
+		{"event catalogue row with no wired verdict", `bad: #EventCatalogEntry & close({event: "SessionStart", reason: "maybe?"})`},
+		{"canonical event outside the vocabulary", `bad: #EventBinding & {capability: "prime", event: "telepathy", harness_event: "X", verb: "v", marker: "m", timeout_sec: 1, vehicle: "hook-inject"}`},
+		{"capability outside the vocabulary", `bad: #EventBinding & {capability: "subagent-primer", event: "subagent-start", harness_event: "SubagentStart", verb: "v", marker: "m", timeout_sec: 1, vehicle: "hook-inject"}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

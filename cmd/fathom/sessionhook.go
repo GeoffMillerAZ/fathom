@@ -40,9 +40,14 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 	// decrement (see the arm branch below). Exiting here was the bug that
 	// let an OFF arm run indefinitely without ever spending its budget.
 	if ev := sessionHookEventArg(args); ev != "" {
-		return cmdSessionHookEvent(ev, args, stdin, stderr) // PC-23: an event beat, never the primer and never the "fired" count (sessionhook_instructions.go)
+		return cmdSessionHookEvent(ev, args, stdin, stdout, stderr) // PC-23/HP-26..HP-30: an event branch, never the primer and never the "fired" count (sessionhook_instructions.go)
 	}
 	rpcOrigin = "session-hook"
+	// Stamp the harness BEFORE the first beat: the "fired" count is the
+	// session denominator doctor and instrument read, and a beat written
+	// before the codec is resolved would be the one beat of the session
+	// that cannot say which harness produced it (hookharness.go).
+	noteBeatHarness(args)
 	emitBeat("session-hook", "fired", nil)
 	fs := newFlagSet("session-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")

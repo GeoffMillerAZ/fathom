@@ -225,10 +225,31 @@ var pointerRuntimeDirs = map[string]struct{}{
 	"workspace": {}, "tmp": {}, "ref": {}, "bin": {},
 }
 
+// PointersCorpus is the file set the pointers check holds to existence:
+// the agent-config corpus PLUS the root INTENT.md when one exists (HP-35).
+// A wider corpus than the other checks use, deliberately: INTENT.md is
+// rendered from `docs/intent/` and is almost entirely pointers, so a
+// corpus file that moves breaks it first and loudest — but it carries no
+// stanza and no commands, so subjecting it to the stanza and command
+// checks would only invite false violations, and a false violation
+// teaches people to ignore the custodian.
+func PointersCorpus(root string, files []string) []string {
+	const intentFile = "INTENT.md"
+	for _, rel := range files {
+		if rel == intentFile {
+			return files
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, intentFile)); err != nil {
+		return files
+	}
+	return append(append([]string{}, files...), intentFile)
+}
+
 func checkPointersResolve(root string, files []string, c Concern) Finding {
 	f := Finding{Concern: c}
 	resolved := 0
-	for _, rel := range files {
+	for _, rel := range PointersCorpus(root, files) {
 		lines, err := readFileLines(root, rel)
 		if err != nil {
 			f.Status = StatusUnable
@@ -304,10 +325,10 @@ func checkPointersResolve(root string, files []string, c Concern) Finding {
 	}
 	f.Status = StatusHolds
 	if resolved == 0 {
-		f.Detail = fmt.Sprintf("no relative pointers found across %s", countNoun(len(files), "agent-config file"))
+		f.Detail = fmt.Sprintf("no relative pointers found across %s", countNoun(len(PointersCorpus(root, files)), "agent-config file"))
 		return f
 	}
-	f.Detail = fmt.Sprintf("%d pointer(s) resolve across %s", resolved, countNoun(len(files), "agent-config file"))
+	f.Detail = fmt.Sprintf("%d pointer(s) resolve across %s", resolved, countNoun(len(PointersCorpus(root, files)), "agent-config file"))
 	return f
 }
 

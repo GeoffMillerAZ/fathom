@@ -24,16 +24,28 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
-// codexHookKey is the wiring key for one Codex hook spec in
-// `<repo>/.codex/hooks.json`. The verified shape (hooks.md, 2026-09-02)
-// is `{"hooks": {<Event>: [{matcher, hooks: [{type, command, timeout}]}]}}`
-// — the same three-level nesting as Claude Code's settings — so
-// KindJSONHook is reused unchanged and no new editor kind is needed: the
-// identity is (event, matcher, marker), exactly as hookKeyFor's.
-func codexHookKey(spec hookSpec, command string) wiring.Key {
+// codexHookKey is the wiring key for one Codex hook spec — HP-18's
+// anchor, kept and now honest about its own obsolescence.
+//
+// The shape was never the problem: Codex's hooks.json IS Claude's
+// three-level nesting, so KindJSONHook addresses it with no new editor
+// kind. The problem is the FILE. HP-34 measured codex-cli 0.153.1 on this
+// workstation and found that `<repo>/.codex/hooks.json` is not loaded at
+// all — only the CODEX_HOME layer is — so there is no repo-scoped Codex
+// hook file left for the wiring engine to write, and the descriptor no
+// longer names one. ok is false in that state, and `init --harness=codex`
+// plans nothing and prints the entries instead (unwritableHooksNote).
+//
+// Kept rather than deleted because the day Codex honors the project layer
+// this is the one function that has to change back, and because deleting
+// the anchor of a proven plan row hides that the row's world moved.
+func codexHookKey(spec hookSpec, command string) (wiring.Key, bool) {
 	d, _ := harness.Lookup(harness.Codex)
-	f, _ := d.InitHookFile()
-	return harnessHookKeyFor(f, spec, command)
+	f, ok := d.InitHookFile()
+	if !ok {
+		return wiring.Key{}, false
+	}
+	return harnessHookKeyFor(f, spec, command), true
 }
 
 // harnessHookKeyFor builds the json-hook key for one spec in one
@@ -126,7 +138,18 @@ func wiredUnverifiedHooksNote(d harness.Descriptor) string {
 // names the channel that IS wired, the trust step that gates it, and the
 // pull-tier fallback — never a promise the harness has not kept yet.
 func unverifiedHookSentences(d harness.Descriptor, intentOn bool) (obligations, continuity string) {
-	f, _ := d.InitHookFile()
+	f, ok := d.InitHookFile()
+	if !ok {
+		// HP-34: no project hook file init may write — name the file the
+		// harness actually loads, so the sentence points at something the
+		// reader can act on instead of a path that does nothing.
+		for _, hf := range d.HookFiles {
+			if hf.Kind != "" {
+				f = hf
+				break
+			}
+		}
+	}
 	trust := "once the fathom entries in " + f.Path + " are trusted"
 	if f.Trust != "" {
 		trust = "once you " + trustLeadClause(f.Trust)
@@ -159,4 +182,37 @@ func trustLeadClause(s string) string {
 		}
 	}
 	return s
+}
+
+// hasInitHookFile reports whether init has a repo-scoped hook file it may
+// write for this descriptor.
+func hasInitHookFile(d harness.Descriptor) bool {
+	_, ok := d.InitHookFile()
+	return ok
+}
+
+// unwritableHooksNote is the honest hooks line for a descriptor whose
+// hooks fathom CAN speak but whose hook file init may not write: the only
+// layer the harness loads is user-global, and touching user-global
+// configuration unasked is the one thing autonomy forbids outright
+// (docs/intent/autonomy.md). So init names the file, says why it stopped,
+// and points at the verb that prints the exact entries — the operator
+// stays the hand (vision 22 §3b).
+func unwritableHooksNote(d harness.Descriptor) string {
+	var userFile string
+	for _, f := range d.HookFiles {
+		if f.Scope == "user" && f.Kind != "" {
+			userFile = f.Path
+			break
+		}
+	}
+	if userFile == "" {
+		return fmt.Sprintf("hooks: %s documents no hook file this build can write — nothing written; the pull tier (`fathom prime`, the `obligations` MCP tool) carries the same content", d.Display)
+	}
+	note := fmt.Sprintf("hooks: NOT written — %s loads hooks only from %s (user-global), and fathom never edits user-global configuration unasked. Print the %d entries to paste with: fathom harness hooks --harness %s",
+		d.Display, userFile, len(d.Hooks), d.ID)
+	if d.Env.Home != "" {
+		note += fmt.Sprintf(" (%s relocates that file)", d.Env.Home)
+	}
+	return note
 }

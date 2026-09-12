@@ -193,17 +193,32 @@ verify flags against your installed version):
 url = "http://127.0.0.1:7575/rpc/agent"
 ```
 
-or the stdio form (`serve-mcp`) if HTTP negotiation doesn't work cleanly —
-see `docs/adoption/codex.md` §2 for both options and the honest capability
-table (§6 there — `fathom harness capabilities --harness codex` renders it)
-of what fathom delivers on Codex today: Codex documents Claude-shaped hooks,
-but this build carries them as registry data and does not drive them
-(*hooks: not wired*), so session-start injection, post-edit obligations and
-the stop-hook check are absent and Codex leans on the git-native gates and
-the pull tier. The stanza tells it to pull the primer: `fathom prime`
-prints exactly what Claude Code's session hook injects (identity,
-freshness, a live example, the thread brief, the custodian line) — run it
-at the top of a Codex session.
+or the stdio form (`serve-mcp`); HTTP negotiation with Codex is verified
+(a headless session called `list_services` over `/rpc/agent` on 2026-09-12).
+See `docs/adoption/codex.md` §2 for both options and the honest capability
+table (§6 there — `fathom harness capabilities --harness codex` renders it).
+
+**Codex hooks work too, with one wrinkle you must know.** Codex CLI
+0.153.1 loads hooks ONLY from `$CODEX_HOME/hooks.json` (default
+`~/.codex/hooks.json`); a project `<repo>/.codex/hooks.json` is not read at
+all — measured, not inferred. Because that file is user-global and fathom
+never edits user-global configuration unasked, `init --harness=codex`
+writes no hook file and prints the entries instead:
+
+```sh
+fathom harness hooks --harness codex   # 8 entries, ready to merge
+$EDITOR ~/.codex/hooks.json            # then trust them in /hooks
+fathom doctor --harness=codex          # hooks_installed + hooks_firing
+```
+
+Two consequences worth saying out loud: the entries fire in EVERY repo (the
+hook verbs resolve which repo they are in from the envelope's `cwd`), and
+six of Claude Code's events have no Codex equivalent at all —
+`PostToolUseFailure`, `InstructionsLoaded`, `ConfigChange`, `FileChanged`,
+`WorktreeCreate`, `CwdChanged`, `Setup`. Until you have pasted and trusted
+the entries, the stanza tells the session to pull the primer instead:
+`fathom prime` prints exactly what the session hook injects (identity,
+freshness, a live example, the thread brief, the custodian line).
 
 **Any other harness** (Gemini CLI, Cursor, Copilot, …): `fathom init
 --harness gemini-cli|agents` writes the stanza and `.fathom/` and prints

@@ -45,11 +45,11 @@ func sessionHookEventArg(args []string) string {
 
 // cmdSessionHookEvent dispatches `session-hook --event <name>`. Every
 // path exits 0 (hook contract); an unknown event is one stderr line.
-func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stderr io.Writer) int {
+func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	fs := newFlagSet("session-hook", stderr)
-	fs.String("url", defaultFathomURL(), "fathom serve-http base URL (unused by event beats)")
-	fs.String("dir", "", "project dir (unused by event beats)")
-	fs.String("event", "", "harness event to record instead of priming the session: instructions-loaded")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	dir := fs.String("dir", "", "project dir (default: the event's own path, else $CLAUDE_PROJECT_DIR, else the envelope cwd)")
+	fs.String("event", "", "harness event to handle instead of priming the session: "+strings.Join(sessionHookEvents, " | "))
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0
@@ -58,14 +58,41 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stderr io
 	if !ok {
 		return 0 // I9: unknown harness id is one stderr line, never a failed hook
 	}
+	// The root an event is about is resolved per event (eventProjectDir);
+	// --dir overrides it for tests and for an operator replaying a capture.
+	root := func(in harness.HookInput) string {
+		if *dir != "" {
+			return *dir
+		}
+		return eventProjectDir(codec, in)
+	}
 	switch event {
 	case "instructions-loaded":
 		return recordInstructionsLoaded(codec, stdin)
+	case "subagent-start":
+		return runAdvisoryEvent(codec, harness.EventSubagentStart, "subagent-hook", stdin, stdout, func(in harness.HookInput) string {
+			return subagentPrimer(*url, root(in))
+		})
+	case "tool-failure":
+		return runAdvisoryEvent(codec, harness.EventToolFailure, "tool-failure-hook", stdin, stdout, func(in harness.HookInput) string {
+			return toolFailureAdvice(*url, root(in), in.ToolName, in.ToolError)
+		})
+	case "worktree-create":
+		return runAdvisoryEvent(codec, harness.EventWorktreeCreate, "worktree-hook", stdin, stdout, func(in harness.HookInput) string {
+			return worktreeAdvice(*url, root(in))
+		})
+	case "cwd-changed":
+		return runAdvisoryEvent(codec, harness.EventCwdChanged, "cwd-hook", stdin, stdout, func(in harness.HookInput) string {
+			return cwdChangedPrimer(*url, root(in))
+		})
 	default:
-		fmt.Fprintf(stderr, "fathom: session-hook --event %q: unknown event (known: instructions-loaded) — exiting 0\n", event)
+		fmt.Fprintf(stderr, "fathom: session-hook --event %q: unknown event (known: %s) — exiting 0\n", event, strings.Join(sessionHookEvents, ", "))
 		return 0
 	}
 }
+
+// sessionHookEvents is the --event vocabulary, in help order.
+var sessionHookEvents = []string{"instructions-loaded", "subagent-start", "tool-failure", "worktree-create", "cwd-changed"}
 
 // recordInstructionsLoaded decodes the InstructionsLoaded envelope through
 // the codec and writes one beat {file_path, memory_type, load_reason} (+

@@ -58,7 +58,19 @@ loopback-only).
    deposits — disk-only, inject nothing); PostToolUse(Edit|Write|
    MultiEdit)→`fathom edit-hook` t5; PreToolUse ×3 t5 — (Edit|Write|
    MultiEdit), (Bash), (Grep|Glob|Read) — all →`fathom edit-hook --pre`;
-   Stop→`fathom stop-hook` t10. Reconcile in place at whichever ONE scope
+   Stop→`fathom stop-hook` t10; InstructionsLoaded→`fathom session-hook
+   --event instructions-loaded` t5 and ConfigChange→`fathom config audit
+   --hook` t10 (silent witnesses); and the seven advisory rows —
+   SubagentStart→`fathom session-hook --event subagent-start` t5,
+   PostToolUseFailure(fathom tools, plain AND plugin-scoped)→`fathom
+   session-hook --event tool-failure` t5, FileChanged(CLAUDE.md|AGENTS.md|
+   concerns.cue|config.toml)→`fathom config audit --hook --event
+   file-changed` t10, WorktreeCreate→`fathom session-hook --event
+   worktree-create` t5, CwdChanged and DirectoryAdded→`fathom session-hook
+   --event cwd-changed` t5, Setup→`fathom doctor --brief` t15. A repo wired
+   before those rows existed gains exactly them and loses nothing — they
+   are appended, and everything above is byte-identical.
+   Reconcile in place at whichever ONE scope
    already has fathom hooks; rewrite absolute `/…/fathom` commands to
    plain `fathom`. (`fathom plugin render` emits the same template as
    `hooks/hooks.json` for the plugin install path.)

@@ -15,6 +15,10 @@ registry: #Registry & [
 		hook_files: [
 			{path: ".example/settings.json", scope: "project", kind: "json-hook", shape: "claude-settings"},
 		]
+		events: [
+			{event: "SessionStart", wired: true},
+			{event: "Notification", wired: false, reason: "nothing fathom knows that the session does not"},
+		]
 		hooks: [
 			{
 				capability:    "prime"
@@ -47,6 +51,11 @@ registry: #Registry & [
 			"session-ledger":        "absent"
 			"stanza-loaded":         "absent"
 			"config-audit":          "absent"
+			"subagent-prime":        "hook-inject"
+			"tool-failure-advice":   "absent"
+			"worktree-advice":       "absent"
+			"cwd-prime":             "absent"
+			"setup-doctor":          "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

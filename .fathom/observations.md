@@ -663,3 +663,16 @@ triage if it matters.
 - **Fix:** `TestNarrowProfileSchemaBytes` re-pinned at the same 26,000–30,000 band with this measurement as its stated reason (a budget, not a threshold); `alwaysLoad: true` added to the Claude Code plugin's `.mcp.json` and to the claude-code descriptor's MCP note for the startup-ordering benefit it does have; `toolsearch_turns` shipped on the session/exploration ledger (BP-23) so a future harness release that re-introduces deferral shows up as a number instead of a surprise.
 - **Status:** open
 - **Impact:** BP-22 cannot be checked off as written — the plan row asks for the surface to be held under a threshold, and the honest finding is that no threshold is binding. The row needs re-wording against this measurement before it is claimed.
+
+### O28 — init wrote .codex/hooks.json for two waves, and codex-cli never read it
+
+- **Symptom:** init wrote .codex/hooks.json for two waves, and codex-cli never read it
+- **Evidence:**
+  - **Tool:** fathom init --harness=codex
+  - **Expected:** the documented project hook layer (<repo>/.codex/hooks.json) loads under directory trust, as Codex's hooks reference describes
+  - **Actual:** on codex-cli 0.153.1, touch hooks placed in <repo>/.codex/hooks.json on SessionStart, Stop, SessionEnd and UserPromptSubmit fired ZERO times in a headless codex exec run under a trusted parent project with [features] hooks = true and --dangerously-bypass-hook-trust; the identical entries under $CODEX_HOME/hooks.json fired every time. Every fathom Codex adopter since 2026-09-02 has been given a hook file the harness ignores, and doctor's harness_hooks row read it back as evidence of wiring. Fixed: the descriptor records the project file as documented-but-not-loaded with no wiring kind, init writes nothing and prints the entries (fathom harness hooks --harness codex), and the descriptor is now verified against a real session instead of a fetched doc page. The general lesson: a documented extension point is a claim, and the only thing that settles it is a smoke test that would have failed.
+  - **Repro:** place a touch hook in <repo>/.codex/hooks.json, run: codex exec --json --sandbox read-only --dangerously-bypass-hook-trust 'reply ok'
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

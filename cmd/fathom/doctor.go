@@ -87,6 +87,7 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
+	brief := fs.Bool("brief", false, "FAIL rows only, at most 5 lines, exit 0 always — the payload of the harness Setup event (HP-31; doctor_brief.go)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -136,6 +137,10 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	harness := resolveDoctorHarness(*harnessFlag, root)
 	checks := runDoctorChecks(root, explicitSvc, harness, *url)
 
+	if *brief {
+		// Exit 0 whatever the findings: --brief runs as a hook.
+		return printDoctorBrief(stdout, checks)
+	}
 	if *jsonOut {
 		printDoctorJSON(stdout, harness, svc, root, checks)
 	} else {
@@ -219,6 +224,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkLefthookGates(root),
 		checkHooksFiring(hc, baseURL, daemonUp, root, harness),
 		checkGatePosture(harness),
+		checkHooksCoverage(harness),          // HP-32: what the harness offers vs what fathom wires (advisory, never FAIL)
 		checkHarnessHookFiles(root, harness), // HP-18/19: doctor_harness.go, never PASS
 		checkStanzaPresent(root),
 		checkStanzaLoaded(root),          // PC-25: the harness-side twin of stanza_present (doctor_stanza_loaded.go)
@@ -288,6 +294,16 @@ func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 		// surface on this machine, so a PASS here would be a guess
 		// (HP-12: never a guessed PASS). It reads `skipped: unverified`.
 		c := checkCodexMCPRegistration(root)
+		if d, ok := harness.Lookup(harness.Codex); ok && !d.Unverified() {
+			// HP-34: a real headless session HAS negotiated the surface here
+			// (it called list_services over /rpc/agent), so the found entry
+			// is evidence of a registration that works, not of one that
+			// might. The demotion below exists for the unverified case and
+			// must not outlive it — a permanent "skipped" would make the
+			// verified state unreachable, which is the circular gate this
+			// wave broke.
+			return c
+		}
 		if c.Status == doctorPass {
 			c.Status = doctorSkipped
 			c.Reason = "skipped: unverified — " + c.Reason + "; the descriptor is unverified on this machine (no Codex session has negotiated /rpc/agent here — docs/adoption/codex.md §2)"
@@ -676,6 +692,12 @@ func shortSHA(s string) string {
 func checkHooksInstalled(root, harness string) doctorCheck {
 	const name = "hooks_installed"
 	if harness != "claude" {
+		// HP-34: a verified non-Claude descriptor gets a REAL row — its own
+		// hook files, read for fathom's markers. An unverified one keeps the
+		// skip, and harness_hooks reports what it found without claiming it.
+		if d, ok := descriptorHooksVerifiable(harness); ok {
+			return checkHarnessHooksInstalled(root, d)
+		}
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no SessionStart/PostToolUse/Stop hook mechanism (docs/adoption/codex.md §6) — nothing to check")}
 	}
 
@@ -1134,6 +1156,12 @@ func resolveCallLogCandidates(hc *http.Client, baseURL string, daemonUp bool, ro
 func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harness string) doctorCheck {
 	const name = "hooks_firing"
 	if harness != "claude" {
+		// HP-34: the beat log's `harness` stamp is per-harness firing
+		// evidence the call log cannot give (its origins name the VERB, not
+		// the harness that ran it).
+		if d, ok := descriptorHooksVerifiable(harness); ok {
+			return checkHarnessHooksFiring(d)
+		}
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no PostToolUse hook to fire; the lefthook_gates check covers its git-native equivalent")}
 	}
 

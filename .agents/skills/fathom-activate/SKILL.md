@@ -51,6 +51,24 @@ description: >
    must fail, not pass. Stanza/hook writes go through receipts
    (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
    never overwritten — law 15).
+6b. **INTENT.md** (optional, and only where `docs/intent/` exists):
+   `fathom intent render --playbook` writes a root `INTENT.md` inside
+   fathom markers — the AI-native SDLC playbook's entry document
+   (Problem / Proposed outcome / Affected users / Constraints / Open
+   questions), rendered as POINTERS into `docs/intent/` rather than a
+   second corpus to keep true. No harness reads it automatically; it is
+   for a human arriving at the repo, and for an agent told to read it.
+   `config audit`'s `pointers_resolve` holds its pointers to existence.
+   Re-render rather than hand-edit; text outside the markers is yours.
+6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
+   subagent that never saw `SessionStart`, `PostToolUseFailure` explains a
+   failed FATHOM tool call (silent for anyone else's), `FileChanged` runs
+   the custodian audit on an on-disk change, `WorktreeCreate`/`CwdChanged`/
+   `DirectoryAdded` record which service a new root belongs to, and
+   `Setup` runs `fathom doctor --brief`. All seven arrive with `fathom
+   init` / `fathom fleet reconcile`; none of them can block. `fathom
+   doctor`'s `hooks_coverage` row (advisory, never FAIL) says what the
+   harness offers that fathom still leaves alone, and why.
 7. **Prove by demonstration**: trip one guard deliberately (expect the
    note), touch one rule-scoped file (expect the injection or its beat),
    run one `fathom verify` if plans exist, and run `fathom config audit`
