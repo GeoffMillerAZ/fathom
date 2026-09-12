@@ -75,7 +75,7 @@ stratum today.
 
 | Layer | Kind | Tier | Stratum | Corpus | Drift-tracked | Eval | Production |
 |---|---|---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
+| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md`, `**/CLAUDE.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`; a later production-model recheck found recall unstable around the bar, 0.71/0.86 — escalated as a pre-OP-6 input, not a gate failure) | `fathom layers list --store PATH --service NAME` |
 | `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | **not-gated** — `eval/{labels.json,corpus.md}` now exist (docs/design/findings-as-evidence.md §6 item 5: 6 labeled findings across 6 classes + 2 traps), but `TestFindingsEval_Precision` has not yet been run against a real model (see `eval/RESULTS.md`); `fathom compile` still refuses this layer without `--unsafe-skip-eval-gate`, and no derived pattern (`internal/analysis/findings.PromoteTier`) may serve at a promoted tier until it does | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
@@ -87,8 +87,27 @@ stratum today.
 injected by the PostToolUse edit-hook.
 
 **Corpus:** binding documents only — `CLAUDE.md`, `ADR.md`,
-`docs/plans/README.md`. Design essays are deliberately excluded (they
-produced noisy aspirational rules on the first fleet compile).
+`docs/plans/README.md`, and **every nested instruction file** (`**/CLAUDE.md`,
+excluding `third_party/**`, `.claude/worktrees/**`, `workspace/**`,
+`node_modules/**`). Design essays are deliberately excluded (they produced
+noisy aspirational rules on the first fleet compile). `AGENTS.md` is excluded
+too: fathom writes the same stanza into both files, so including it compiles a
+byte-duplicate of text `CLAUDE.md` already contributes — a repo whose
+`AGENTS.md` carries rules its `CLAUDE.md` does not wants a project-local pack
+override, not a default.
+
+**Directory scope floor (BP-32).** Nested instruction files joined the corpus
+because of O23: `internal/CLAUDE.md`'s "adding an extractor: register it in
+`fusion.New` and add a golden test" was never compiled, so an edit to
+`internal/extractor/goextract.go` was served six broad root-corpus rules with
+the precise one absent. A nested file's rules only bind its own subtree, so
+`internal/semantic`'s `scopeFloor` enforces that deterministically at compile
+time, with no second LLM call: for a claim compiled from `<dir>/CLAUDE.md`,
+a glob already under `<dir>/` passes through; a wildcard-leading or bare-file
+glob (`**/*.go`, `goextract.go`) is prefixed with `<dir>/`; and a glob naming
+a different literal directory (`cmd/**`) is a **compile error named per
+claim** (`scope-out-of-subtree`) — never silently widened, never silently
+re-homed. Root `CLAUDE.md`/`ADR.md` claims are unaffected.
 
 **Cost:** single-digit cents per full compile of a repo this size; $0
 marginal on code commits (claims anchor to slow-churn docs, joined to code

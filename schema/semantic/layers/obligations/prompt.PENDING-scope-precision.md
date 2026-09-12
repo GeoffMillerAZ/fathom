@@ -71,3 +71,23 @@ eval gate exists to catch regressions on). Close this file and update
 docs/dogfood-observations.md O14 to note the landed identity bump.
 
 See docs/plans/trust-and-tokenomics.md row T5-2b for the decision record.
+
+## Rider: the directory scope floor (BP-32, O23)
+
+BP-32 landed the nested-instruction-file corpus (`**/CLAUDE.md`) plus a
+DETERMINISTIC compile-time directory scope floor (`internal/semantic/
+compile.go`, `scopeFloor`) — no prompt edit, no identity rotation, no
+flag-day. The floor is correct without the model's cooperation, which is why
+it shipped alone.
+
+The prompt-side half is still worth having and belongs to THIS file's
+flag-day, folded into the same `scope:` bullet:
+
+> When the Document path is a nested instruction file (`<dir>/CLAUDE.md`),
+> every scope glob MUST name a path inside `<dir>/` — that file's rules
+> govern its own subtree only. Emit `internal/extractor/**`, never `**/*.go`,
+> from `internal/CLAUDE.md`.
+
+Landing it turns a class of rejections (`scope-out-of-subtree`) and a class of
+silent widenings into scopes the model gets right first time; until then the
+floor absorbs both.

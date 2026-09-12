@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Obligations cover nested instruction files (`BP-32`).** The `obligations`
+layer now compiles every `**/CLAUDE.md`, not only the repo root's, so a rule a
+human wrote about one subtree (`internal/CLAUDE.md`) reaches the edit hook for
+files in it; `third_party/`, `.claude/worktrees/`, `workspace/` and
+`node_modules/` are excluded. A claim compiled from `<dir>/CLAUDE.md` is
+floored to that subtree at compile time — a wildcard scope is prefixed with
+`<dir>/`, and a scope naming another directory is rejected by name
+(`scope-out-of-subtree`).
+
 **Bench pyramid L0/L1 (ADR-032; `BP-12..16`).** `task validate` now gates two
 free bench layers over the fixture fleet: an index oracle that scores
 `find_callers`, `references` and `blast_radius` against an independent

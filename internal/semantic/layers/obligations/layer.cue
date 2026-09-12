@@ -13,7 +13,22 @@
 name:    "obligations"
 version: "v1"
 kind:    "obligation"
-corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
+corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"]
+// **/CLAUDE.md (BP-32, O23's root cause): a repo's NESTED instruction files
+// are binding rules a human wrote about one subtree — internal/CLAUDE.md's
+// "adding an extractor: register it in fusion.New and add a golden test" is
+// exactly the obligation the edit hook should serve for
+// internal/extractor/*.go. With a root-only corpus that rule was never
+// compiled, and the hook served six broad root rules with the precise one
+// absent. The compile-time directory scope floor (internal/semantic/
+// compile.go, scopeFloor) keeps the new claims honest: a claim compiled from
+// <dir>/CLAUDE.md may only scope inside <dir>/.
+// AGENTS.md is deliberately NOT included: fathom writes the same stanza into
+// both files (cmd/fathom stanza injector), so `**/AGENTS.md` compiles a
+// byte-duplicate of text CLAUDE.md already contributes — double spend, two
+// claim sets, one rule. A repo whose AGENTS.md carries rules its CLAUDE.md
+// does not is a project-local pack override, not a default.
+corpus: exclude: ["third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"]
 // docs/intent/** is served DETERMINISTICALLY by `fathom intent audit`
 // (ADR-026), never compiled here: an LLM restating rules that are already
 // rules pays compile cost for no precision, and ADR.md is already

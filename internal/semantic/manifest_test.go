@@ -86,12 +86,16 @@ func TestLoadLayer_Obligations(t *testing.T) {
 	if def.Name != "obligations" || def.Version != "v1" || def.Kind != "obligation" {
 		t.Errorf("identity = %+v", def)
 	}
-	wantInclude := []string{"CLAUDE.md", "ADR.md", "docs/plans/README.md"}
+	// BP-32 widened the corpus to every NESTED instruction file (O23: the
+	// rule governing internal/extractor/*.go lives in internal/CLAUDE.md and
+	// was never compiled), with the build/vendor trees excluded.
+	wantInclude := []string{"CLAUDE.md", "ADR.md", "docs/plans/README.md", "**/CLAUDE.md"}
 	if !reflect.DeepEqual(def.CorpusInclude, wantInclude) {
 		t.Errorf("CorpusInclude = %v, want %v", def.CorpusInclude, wantInclude)
 	}
-	if len(def.CorpusExclude) != 0 {
-		t.Errorf("CorpusExclude = %v, want none", def.CorpusExclude)
+	wantExclude := []string{"third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"}
+	if !reflect.DeepEqual(def.CorpusExclude, wantExclude) {
+		t.Errorf("CorpusExclude = %v, want %v", def.CorpusExclude, wantExclude)
 	}
 	if def.Tier != "doc-claimed" {
 		t.Errorf("Tier = %q, want doc-claimed", def.Tier)

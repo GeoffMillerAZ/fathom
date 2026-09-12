@@ -1211,3 +1211,209 @@ func TestDryRunEstimateRange(t *testing.T) {
 		t.Errorf("cost band = [%f, %f], want a positive ascending range — never a confident zero", run.EstCostLowUSD, run.EstCostHighUSD)
 	}
 }
+
+// ─── BP-32: the directory scope floor (O23's root cause) ───────────────────
+
+// nestedGovDoc is a nested instruction file's section, shaped like
+// internal/CLAUDE.md's real "adding an extractor" rule.
+// Line numbers (1-based):
+//
+//	1: # Adding an extractor
+//	2: (blank)
+//	3: - Register the extractor in fusion.New and add a golden test.
+//	4: - Never widen a rule beyond this package tree.
+const nestedGovDoc = `# Adding an extractor
+
+- Register the extractor in fusion.New and add a golden test.
+- Never widen a rule beyond this package tree.
+`
+
+func nestedCompileInput() CompileInput {
+	in := compileInput(false)
+	in.Docs = []core.SourceFile{{Path: "internal/CLAUDE.md", Content: []byte(nestedGovDoc)}}
+	in.IndexedFiles = []string{
+		"internal/extractor/goextract.go",
+		"internal/fusion/fusion.go",
+		"cmd/fathom/main.go",
+		"docs/x.md",
+	}
+	return in
+}
+
+// TestCompile_NestedInstructionFileFloorsScopeToItsSubtree (BP-32, O23's root
+// cause): a claim compiled from internal/CLAUDE.md may only bind files under
+// internal/. A file-class glob the model proposed repo-wide ("**/*.go") is
+// floored to "internal/**/*.go" — deterministically, at compile time, with no
+// second LLM call — so the edit hook serves the precise rule for
+// internal/extractor/goextract.go instead of six broad root-corpus rules.
+func TestCompile_NestedInstructionFileFloorsScopeToItsSubtree(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[
+  {"rule":"Register a new extractor in fusion.New and add a golden test.","scope":["**/*.go"],"cite_start":3,"cite_end":3},
+  {"rule":"Keep extractor rules inside the package tree.","scope":["internal/extractor/**"],"cite_start":4,"cite_end":4}
+]}`,
+	}})
+
+	run, err := c.Compile(ctx, nestedCompileInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 2 || run.ClaimsRejected != 0 {
+		t.Fatalf("emitted=%d rejected=%d, want 2/0", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	got := map[string][]string{}
+	for _, cl := range claims {
+		got[cl.Rule] = cl.Scope
+	}
+	if s := got["Register a new extractor in fusion.New and add a golden test."]; len(s) != 1 || s[0] != "internal/**/*.go" {
+		t.Errorf("repo-wide glob scope = %v, want [internal/**/*.go] (floored to the document's own subtree)", s)
+	}
+	if s := got["Keep extractor rules inside the package tree."]; len(s) != 1 || s[0] != "internal/extractor/**" {
+		t.Errorf("already-inside glob scope = %v, want it unchanged", s)
+	}
+}
+
+// TestCompile_NestedInstructionFileRejectsOutOfSubtreeScope (BP-32): a glob
+// naming a DIFFERENT literal directory is a compile error named per claim —
+// never silently widened, never silently re-homed under the document's own
+// directory. A rule a human wrote in internal/CLAUDE.md cannot bind cmd/.
+func TestCompile_NestedInstructionFileRejectsOutOfSubtreeScope(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	c := newCompiler(t, st, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[
+  {"rule":"Wire every new extractor into the CLI.","scope":["cmd/**"],"cite_start":3,"cite_end":3},
+  {"rule":"Register a new extractor in fusion.New and add a golden test.","scope":["internal/fusion/**"],"cite_start":3,"cite_end":3}
+]}`,
+	}})
+
+	run, err := c.Compile(ctx, nestedCompileInput())
+	if err != nil {
+		t.Fatalf("Compile: %v", err)
+	}
+	if run.ClaimsEmitted != 1 || run.ClaimsRejected != 1 {
+		t.Fatalf("emitted=%d rejected=%d, want 1/1 (cmd/** rejected, internal/fusion/** passes)", run.ClaimsEmitted, run.ClaimsRejected)
+	}
+	if len(run.RejectionReasons) != 1 || run.RejectionReasons[0].Cause != string(causeScopeOutOfSubtree) {
+		t.Fatalf("RejectionReasons = %+v, want a single %q cause", run.RejectionReasons, causeScopeOutOfSubtree)
+	}
+	sample := strings.Join(run.RejectionReasons[0].Samples, " ")
+	if !strings.Contains(sample, "cmd/**") || !strings.Contains(sample, "internal") {
+		t.Errorf("rejection sample %q does not NAME the offending glob and the governing subtree", sample)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != 1 || claims[0].Scope[0] != "internal/fusion/**" {
+		t.Fatalf("stored claims = %+v, want only the in-subtree claim", claims)
+	}
+}
+
+// TestScopeFloor_RootDocumentsAreUnchanged (BP-32): the floor is a NESTED
+// instruction-file rule. Root CLAUDE.md, ADR.md and every other governing doc
+// keep exactly the scope the model proposed — this change must not narrow the
+// fleet-wide corpus that already works.
+func TestScopeFloor_RootDocumentsAreUnchanged(t *testing.T) {
+	for _, doc := range []string{"CLAUDE.md", "AGENTS.md", "ADR.md", "docs/plans/README.md", "docs/conventions.md"} {
+		in := []string{"**/*.go", "cmd/**", "docs/**"}
+		got, err := scopeFloor(doc, in)
+		if err != nil {
+			t.Fatalf("scopeFloor(%q): unexpected error %v", doc, err)
+		}
+		if strings.Join(got, ",") != strings.Join(in, ",") {
+			t.Errorf("scopeFloor(%q) = %v, want %v unchanged", doc, got, in)
+		}
+	}
+}
+
+// TestScopeFloor_Table pins the per-glob decision table deterministically.
+func TestScopeFloor_Table(t *testing.T) {
+	const doc = "internal/CLAUDE.md"
+	for _, tc := range []struct {
+		in      string
+		want    string
+		wantErr bool
+	}{
+		{in: "internal/**", want: "internal/**"},
+		{in: "internal", want: "internal"},
+		{in: "internal/extractor/*.go", want: "internal/extractor/*.go"},
+		{in: "**/*.go", want: "internal/**/*.go"},
+		{in: "*_test.go", want: "internal/*_test.go"},
+		{in: "goextract.go", want: "internal/goextract.go"},
+		{in: "./**/*.go", want: "internal/**/*.go"},
+		{in: "cmd/**", wantErr: true},
+		{in: "docs/plans/*.md", wantErr: true},
+		{in: "internalish/**", wantErr: true},
+	} {
+		got, err := scopeFloor(doc, []string{tc.in})
+		if tc.wantErr {
+			if err == nil {
+				t.Errorf("scopeFloor(%q, %q) = %v, want an out-of-subtree error", doc, tc.in, got)
+			}
+			continue
+		}
+		if err != nil {
+			t.Errorf("scopeFloor(%q, %q): unexpected error %v", doc, tc.in, err)
+			continue
+		}
+		if len(got) != 1 || got[0] != tc.want {
+			t.Errorf("scopeFloor(%q, %q) = %v, want [%s]", doc, tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestObligationsCorpusIncludesNestedInstructionFiles (BP-32): the corpus that
+// was missing internal/CLAUDE.md — O23's root cause — must keep covering every
+// nested instruction file, with the build/vendor trees excluded.
+func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
+	def, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	var hasNested bool
+	for _, g := range def.CorpusInclude {
+		if g == "**/CLAUDE.md" {
+			hasNested = true
+		}
+	}
+	if !hasNested {
+		t.Errorf("obligations corpus include = %v, want it to cover **/CLAUDE.md (O23: internal/CLAUDE.md's rules were never compiled)", def.CorpusInclude)
+	}
+	for _, want := range []string{"third_party/**", ".claude/worktrees/**", "workspace/**", "node_modules/**"} {
+		var found bool
+		for _, g := range def.CorpusExclude {
+			if g == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("obligations corpus exclude = %v, want it to carry %q", def.CorpusExclude, want)
+		}
+	}
+
+	// The floor and the corpus are one change: widening the corpus without
+	// it would let a nested file's rules compile repo-wide scopes.
+	files := []core.SourceFile{
+		{Path: "CLAUDE.md"}, {Path: "internal/CLAUDE.md"}, {Path: "cmd/fathom/CLAUDE.md"},
+		{Path: "third_party/x/CLAUDE.md"}, {Path: ".claude/worktrees/w/internal/CLAUDE.md"},
+		{Path: "workspace/tmp/CLAUDE.md"}, {Path: "node_modules/p/CLAUDE.md"},
+		{Path: "ADR.md"}, {Path: "docs/design/essay.md"},
+	}
+	var got []string
+	for _, f := range SelectCorpus(files, def.CorpusInclude, def.CorpusExclude) {
+		got = append(got, f.Path)
+	}
+	want := "ADR.md,CLAUDE.md,cmd/fathom/CLAUDE.md,internal/CLAUDE.md"
+	if strings.Join(got, ",") != want {
+		t.Errorf("SelectCorpus = %v, want %s", got, want)
+	}
+}

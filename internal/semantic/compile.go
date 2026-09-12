@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -586,10 +587,19 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	// least one") — finding-kind claims need the full matched-file set below
 	// to anchor remediation-drift fingerprints (FT-6).
 	scope := append([]string(nil), d.Scope...)
-	sort.Strings(scope)
 	if len(scope) == 0 {
 		return core.SemanticClaim{}, nil, rejectErr(causeMalformed, "empty scope")
 	}
+	// BP-32: a claim compiled from a NESTED instruction file governs only
+	// that file's own subtree. Applied before the match/breadth checks so
+	// everything downstream (validation, RelScopes links, reproKey) sees the
+	// floored globs.
+	floored, ferr := scopeFloor(doc.Path, scope)
+	if ferr != nil {
+		return core.SemanticClaim{}, nil, rejectErr(causeScopeOutOfSubtree, "%s", ferr)
+	}
+	scope = floored
+	sort.Strings(scope)
 	scopeFiles := map[string]bool{}
 	for _, g := range scope {
 		m := filter.New([]string{g})
@@ -693,6 +703,79 @@ func (c *Compiler) verifyDraft(ctx context.Context, serviceID string, d claimDra
 	return claim, links, nil
 }
 
+// ─── BP-32: the directory scope floor (O23's root cause) ───────────────────
+
+// instructionFileBases are the agent-instruction filenames whose rules bind
+// the directory they sit in, not the repo. A nested one is a human writing
+// "in THIS subtree, do X"; the compiler must not let an LLM restate it as a
+// repo-wide rule.
+var instructionFileBases = map[string]bool{"CLAUDE.md": true, "AGENTS.md": true}
+
+// scopeFloorDir returns the subtree a governing document's claims are floored
+// to, or "" when the document imposes no floor. Only a NESTED instruction
+// file floors: the root CLAUDE.md/AGENTS.md, ADR.md, docs/plans/README.md and
+// every other governing doc keep whatever scope the model proposed (verified
+// by the match/breadth checks as before).
+func scopeFloorDir(docPath string) string {
+	dir, base := path.Split(path.Clean(docPath))
+	if !instructionFileBases[base] {
+		return ""
+	}
+	dir = strings.Trim(dir, "/")
+	if dir == "" || dir == "." {
+		return ""
+	}
+	return dir
+}
+
+// scopeFloor applies the directory scope floor to one draft's proposed scope
+// globs (BP-32, docs/plans/bench-pyramid.md; O23: internal/CLAUDE.md's
+// extractor rule was never compiled, and once it is, nothing stopped it from
+// being scoped "**/*.go"). For a claim compiled from <dir>/CLAUDE.md:
+//
+//   - a glob already inside <dir>/ passes through unchanged;
+//   - a glob whose first segment is a wildcard, or that names a bare file
+//     ("**/*.go", "*_test.go", "goextract.go"), is PREFIXED with <dir>/ —
+//     the model expressed a file class, the document says where it applies;
+//   - a glob whose first segment is a literal directory OTHER than <dir>
+//     ("cmd/**", "docs/plans/*.md") is a compile error, named per claim.
+//     It is not silently widened and not silently re-homed: a rule scoped to
+//     a subtree its own document does not govern is a wrong claim, not a
+//     narrow one.
+//
+// Deterministic and LLM-free: same document path plus same globs, same
+// result, on every machine and every recompile.
+func scopeFloor(docPath string, globs []string) ([]string, error) {
+	dir := scopeFloorDir(docPath)
+	if dir == "" {
+		return globs, nil
+	}
+	out := make([]string, 0, len(globs))
+	for _, g := range globs {
+		g = strings.TrimPrefix(strings.TrimSpace(g), "./")
+		switch {
+		case g == dir || strings.HasPrefix(g, dir+"/"):
+			out = append(out, g)
+		case namesAnotherDirectory(g):
+			return nil, fmt.Errorf("scope %q is outside %s's own subtree %q — a nested instruction file governs only its own directory", g, docPath, dir)
+		default:
+			out = append(out, dir+"/"+g)
+		}
+	}
+	return out, nil
+}
+
+// namesAnotherDirectory reports whether a glob explicitly names a directory
+// path with a literal (wildcard-free) first segment — "cmd/**" does,
+// "**/*.go" and "goextract.go" do not.
+func namesAnotherDirectory(g string) bool {
+	first, _, found := strings.Cut(g, "/")
+	if !found {
+		return false
+	}
+	return !strings.ContainsAny(first, "*?[{")
+}
+
 // errDriftAnchor marks a scope-fp drift-anchor persistence failure inside
 // verifyDraft (FT-6). Unlike every other verifyDraft error — which rejects
 // only the one draft (ClaimsRejected++) — this one is infrastructure, not a
@@ -733,6 +816,12 @@ const (
 	// Never applies to a non-finding-kind draft (class is not required
 	// there at all).
 	causeInvalidClass rejectionCause = "invalid-class"
+	// causeScopeOutOfSubtree (BP-32, O23): a claim compiled from a nested
+	// instruction file (<dir>/CLAUDE.md) proposed a scope glob that names a
+	// path outside <dir>/. Never silently widened and never silently
+	// re-homed — the claim is rejected by name, because a rule a human
+	// wrote about one subtree cannot bind another.
+	causeScopeOutOfSubtree rejectionCause = "scope-out-of-subtree"
 )
 
 // claimRejectionError wraps a verifyDraft rejection with its classified
