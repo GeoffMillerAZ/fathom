@@ -417,3 +417,34 @@ func DriftedFindings(ctx context.Context, st store.Store, serviceID string) (map
 	}
 	return drifted, nil
 }
+
+// Layer serving roles (schema.cue #Layer.role, ADR-032 §4 D1/D2).
+//
+// RoleGoverns names a layer whose claims restate BINDING rules a human
+// wrote about the code; RoleClaims names a layer whose claims restate what
+// some document CLAIMS about the code. The distinction is not decoration:
+// it is what ObligationsFor splits the serving budget on, and O23 is why it
+// exists — six plan-row spec-bindings filled the whole budget for one Go
+// file, displaced 65 more, and the CLAUDE.md rule the file was actually
+// governed by never reached the agent.
+const (
+	RoleGoverns = "governs"
+	RoleClaims  = "claims"
+)
+
+// LayerRole reports the named layer's serving role, resolved through the
+// SAME embedded ∪ project-local union layerIsDriftTracked uses (LC-3), so a
+// project-installed pack's role is honored exactly like an embedded one.
+//
+// An unresolvable layer name — or a pack whose role field predates this
+// schema field — reads RoleGoverns, the schema default: a rule can never
+// lose serving priority because its pack was uninstalled or written before
+// the field existed. Same fail-open leniency as layerIsDriftTracked, and
+// for the same reason: this is a serve-time hot path.
+func LayerRole(root, name string) string {
+	def, err := LoadLayerIn(root, name)
+	if err != nil || def.Role != RoleClaims {
+		return RoleGoverns
+	}
+	return RoleClaims
+}

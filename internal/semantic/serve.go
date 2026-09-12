@@ -128,9 +128,30 @@ type Obligations struct {
 
 // ObligationsFor returns the claims governing file across EVERY compiled
 // layer (FT-2: obligations plus, when compiled, findings and any future
-// kind), ordered by scope specificity (narrowest glob first) then rule text,
-// capped at max (MaxObligations when max<=0). Deterministic: same store, same
-// answer.
+// kind), capped at max (MaxObligations when max<=0). Deterministic: same
+// store, same answer.
+//
+// Three things decide what the agent actually sees, in this order
+// (ADR-032 §4, the fixes the stopped bench run found — D1, D2, D5):
+//
+//  1. SCOPE (BP-19, D2). A claims-role layer's rule is re-scoped at serve
+//     time from the {package, symbol} contract its cited plan row names
+//     (ContractScope), and a row that names no contract binds to nothing
+//     and is not served. Prose-matched scopes are what let six plan rows
+//     about C++, CUE and tree-sitter bind to one Go file (O23). The
+//     compile-time, LLM-proposed scope survives only as the fallback for a
+//     claims layer over a NON-plan corpus.
+//
+//  2. BUDGET (BP-18, D1). Governs-role rules (obligations, adr-rules — the
+//     binding rules a human wrote) fill the cap FIRST; claims-role rules
+//     (spec-bindings, findings) take only the slots left. Displaced still
+//     counts both roles, so an eviction is never silent.
+//
+//  3. ORDER (BP-17, D5). What survives is ordered fresh before non-fresh,
+//     then governs before claims, then by scope specificity (narrowest
+//     glob first), then rule text, then claim id. Both T02 payloads in the
+//     stopped run led with stale rules; the agent reads top-down, so the
+//     freshest binding rule goes first.
 func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string, max int) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
@@ -165,14 +186,51 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 		}
 	}
 
+	anchorText := map[string]string{}
+	for _, l := range links {
+		if l.Rel == core.RelCites && l.AnchorText != "" {
+			if _, ok := anchorText[l.ClaimID]; !ok {
+				anchorText[l.ClaimID] = l.AnchorText
+			}
+		}
+	}
+
+	// serviceRoot is the ONE place a service's project directory is knowable
+	// from (ctx, st, serviceID); both LayerRole (BP-18) and the citation
+	// re-read behind ContractScope (BP-19) resolve through it, so serving
+	// sees the same embedded ∪ project-local union a compile saw.
+	root := serviceRoot(ctx, st, serviceID)
+	roleByLayer := map[string]string{}
+	layerRole := func(layer string) string {
+		r, ok := roleByLayer[layer]
+		if !ok {
+			r = LayerRole(root, layer)
+			roleByLayer[layer] = r
+		}
+		return r
+	}
+	citedText := citedTextResolver(root, anchorText)
+	lookup := symbolFileLookup(ctx, st, serviceID)
+
 	type scored struct {
 		cl          core.SemanticClaim
 		specificity int
+		claims      bool // RoleClaims: fills the budget only after governs
 	}
 	var matched []scored
 	for _, cl := range served {
+		claims := layerRole(cl.Layer) == RoleClaims
+		scope := cl.Scope
+		if claims {
+			// BP-19/D2: the plan row's own contract, not its prose. ok=false
+			// means the citation is not a plan row — a findings-style corpus
+			// — and the compile-time scope stands.
+			if cs, ok := ContractScope(citedText(primaryCite[cl.ClaimID], cl.ClaimID), lookup); ok {
+				scope = cs
+			}
+		}
 		best := -1
-		for _, g := range cl.Scope {
+		for _, g := range scope {
 			if filter.New([]string{g}).Match(file) {
 				if len(g) > best {
 					best = len(g)
@@ -180,27 +238,58 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 			}
 		}
 		if best >= 0 {
-			matched = append(matched, scored{cl: cl, specificity: best})
+			matched = append(matched, scored{cl: cl, specificity: best, claims: claims})
 		}
 	}
 	if len(matched) == 0 {
 		return out, nil
 	}
-	sort.Slice(matched, func(i, j int) bool {
-		if matched[i].specificity != matched[j].specificity {
-			return matched[i].specificity > matched[j].specificity
+	less := func(a, b scored) bool {
+		if af, bf := a.cl.Status == core.ClaimFresh, b.cl.Status == core.ClaimFresh; af != bf {
+			return af // BP-17/D5: fresh before stale or contradicted
 		}
-		if matched[i].cl.Rule != matched[j].cl.Rule {
-			return matched[i].cl.Rule < matched[j].cl.Rule
+		if a.claims != b.claims {
+			return !a.claims // BP-18/D1: governs before claims
 		}
-		return matched[i].cl.ClaimID < matched[j].cl.ClaimID
-	})
+		if a.specificity != b.specificity {
+			return a.specificity > b.specificity
+		}
+		if a.cl.Rule != b.cl.Rule {
+			return a.cl.Rule < b.cl.Rule
+		}
+		return a.cl.ClaimID < b.cl.ClaimID
+	}
+	sort.Slice(matched, func(i, j int) bool { return less(matched[i], matched[j]) })
 	if len(matched) > max {
 		// T5-2/O14: record the cap's damage BEFORE slicing it away — this is
 		// the only point that knows how many served-eligible claims existed
-		// versus how many fit the budget.
+		// versus how many fit the budget. BP-18: the cut is role-partitioned,
+		// so a claims rule can never evict a governs rule, but Displaced
+		// still counts BOTH — the eviction stays one honest integer.
 		out.Displaced = len(matched) - max
-		matched = matched[:max]
+		kept := make([]scored, 0, max)
+		for _, m := range matched {
+			if !m.claims {
+				kept = append(kept, m)
+			}
+		}
+		if len(kept) > max {
+			kept = kept[:max]
+		}
+		for _, m := range matched {
+			if len(kept) >= max {
+				break
+			}
+			if m.claims {
+				kept = append(kept, m)
+			}
+		}
+		// Re-order the survivors: the role partition above is a BUDGET
+		// decision, not a presentation one, and it can leave a stale governs
+		// rule ahead of a fresh claims rule. The served payload is ordered
+		// by less() — fresh first (BP-17) — whatever the budget did.
+		sort.Slice(kept, func(i, j int) bool { return less(kept[i], kept[j]) })
+		matched = kept
 	}
 
 	// Remediation-drift annotation (FT-6): computed once, only when a claim
@@ -215,7 +304,6 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 	// this ObligationsFor invocation (the same map pattern DriftedFindings
 	// itself uses for fingerprints) — a served set of 6 same-layer rules
 	// costs one union load, not six, on the edit-hook hot path.
-	root := serviceRoot(ctx, st, serviceID)
 	var drifted map[string]bool
 	trackedByLayer := map[string]bool{}
 	for _, m := range matched {

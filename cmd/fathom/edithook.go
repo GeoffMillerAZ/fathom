@@ -571,6 +571,12 @@ func fetchObligations(baseURL, service, file string, maxRules int, timeout time.
 	args := map[string]any{
 		"service": service,
 		"file":    file,
+		// BP-20 (ADR-032 §4 D3): the tool inlines each rule's cited lines by
+		// default; the edit hook opts OUT. The decision-moment payload is
+		// budgeted at ~150 tokens and its rendered bytes are pinned by
+		// golden tests — a snippet here would pay a discovery cost the hook
+		// never asked for, on every edit.
+		"include_snippets": false,
 	}
 	if maxRules > 0 {
 		args["max_rules"] = maxRules

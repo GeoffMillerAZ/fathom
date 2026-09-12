@@ -114,14 +114,22 @@ type sessionLedgerEntry struct {
 
 	// The exploration ledger (EX-2): both discovery modes measured from
 	// this session's transcript with the same estimator.
-	RawDiscoveryCalls     int    `json:"raw_discovery_calls,omitempty"`
-	RawDiscoveryTokensEst *int   `json:"raw_discovery_tokens_est,omitempty"`
-	FathomCalls           int    `json:"fathom_calls,omitempty"`
-	FathomTokensEst       *int   `json:"fathom_tokens_est,omitempty"`
-	RepeatedReadFiles     int    `json:"repeated_read_files,omitempty"`
-	RepeatedReadTokensEst *int   `json:"repeated_read_tokens_est,omitempty"`
-	SidechainToolResults  int    `json:"sidechain_tool_results,omitempty"`
-	ExplorationNote       string `json:"exploration_note,omitempty"`
+	RawDiscoveryCalls     int  `json:"raw_discovery_calls,omitempty"`
+	RawDiscoveryTokensEst *int `json:"raw_discovery_tokens_est,omitempty"`
+	FathomCalls           int  `json:"fathom_calls,omitempty"`
+	FathomTokensEst       *int `json:"fathom_tokens_est,omitempty"`
+	RepeatedReadFiles     int  `json:"repeated_read_files,omitempty"`
+	RepeatedReadTokensEst *int `json:"repeated_read_tokens_est,omitempty"`
+	SidechainToolResults  int  `json:"sidechain_tool_results,omitempty"`
+	// ToolSearchTurns (BP-23, ADR-032 §5) is the deferral tax this session
+	// paid: assistant turns spent loading deferred MCP tool schemas instead
+	// of doing work. Claude Code 2.1.x defers MCP tools while Bash is core
+	// and never deferred, so this is a cost the INDEXED mode pays and the
+	// raw-grep mode does not (O24) — it belongs on the exploration ledger
+	// beside the two modes it distorts, as the tripwire that says when
+	// fathom's own surface has grown past the harness's deferral point.
+	ToolSearchTurns int    `json:"toolsearch_turns,omitempty"`
+	ExplorationNote string `json:"exploration_note,omitempty"`
 
 	TokensTotal *int   `json:"tokens_total,omitempty"`
 	TokensNote  string `json:"tokens_note"` // ALWAYS present — law 12: never a silent absence either
@@ -265,6 +273,7 @@ func buildSessionLedgerEntry(sessionID, repo string, ts transcriptSummary, beats
 	e.RepeatedReadFiles = ts.RepeatedReadFiles
 	e.RepeatedReadTokensEst = ts.RepeatedReadTokensEst
 	e.SidechainToolResults = ts.SidechainToolResults
+	e.ToolSearchTurns = ts.ToolSearchTurns
 	e.ExplorationNote = ts.ExplorationNote
 	// A transcript was actually read (as opposed to absent/unreadable)
 	// whenever ANY of the three fields resolved to a real value — the
@@ -358,6 +367,7 @@ type transcriptSummary struct {
 	RepeatedReadFiles     int    // files Read 2+ times (the shared index answers once)
 	RepeatedReadTokensEst *int   // estimated tokens spent on 2nd+ reads
 	SidechainToolResults  int    // tool results inside sidechains (subagents)
+	ToolSearchTurns       int    // assistant turns spent loading deferred MCP schemas (BP-23/O24)
 	ExplorationNote       string // the estimator disclosure, or the absence reason
 	Truncated             bool
 	// FirstTS is the earliest timestamped line in the transcript — when
@@ -521,6 +531,7 @@ func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary 
 		sawResult                 bool
 		repeatFiles, repeatTokens int
 		sidechainResults          int
+		toolSearchCount           int
 	)
 	for _, l := range lines {
 		if len(l) == 0 {
@@ -538,6 +549,9 @@ func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary 
 		}
 		if tl.Type == "assistant" {
 			turnCount++
+			if toolSearchTurns(tl) > 0 {
+				toolSearchCount++
+			}
 			if tl.Message != nil {
 				for _, c := range tl.Message.Content {
 					if c.Type != "tool_use" {
@@ -637,6 +651,7 @@ func summarizeTranscriptWindow(data []byte, since *time.Time) transcriptSummary 
 	}
 	out.RawDiscoveryCalls = rawCalls
 	out.FathomCalls = fathomCalls
+	out.ToolSearchTurns = toolSearchCount
 	out.RepeatedReadFiles = repeatFiles
 	out.SidechainToolResults = sidechainResults
 	if sawResult {
@@ -680,6 +695,35 @@ func splitLines(data []byte) [][]byte {
 		out = append(out, data[start:])
 	}
 	return out
+}
+
+// toolSearchTurns reports how many deferred-schema loads one transcript
+// line carries — the count is per LINE, and the caller increments a TURN
+// counter when it is non-zero, because a turn spent loading two schemas is
+// still one turn of latency and one full cache-read.
+//
+// BP-23 / ADR-032 §5 (O24): Claude Code 2.1.x defers MCP tool schemas, so
+// every fathom-using session opens by spending one or two whole turns
+// loading them — at roughly 28k cache-read tokens each — while the grep arm
+// pays nothing, because Bash is a core tool and is never deferred. July's
+// transcripts contain zero of these. That makes this counter two things at
+// once: a correction term the exploration ledger's two modes need to be
+// comparable, and the tripwire that fires when fathom's own agent surface
+// has grown past whatever size the harness starts deferring at.
+//
+// It counts the harness's own tool, never a fathom tool: a session that
+// never loads a deferred schema reads a true zero here, not an absence.
+func toolSearchTurns(tl transcriptLine) int {
+	if tl.Type != "assistant" || tl.Message == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range tl.Message.Content {
+		if c.Type == "tool_use" && c.Name == "ToolSearch" {
+			n++
+		}
+	}
+	return n
 }
 
 // isEditTool reports whether a tool_use name changes files — the boundary

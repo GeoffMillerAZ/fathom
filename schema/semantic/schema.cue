@@ -61,6 +61,25 @@ package semantic
 	// "schema/semantic/layers/<name>/prompt.md".
 	prompt_file: string
 
+	// role says what kind of statement this layer's claims ARE, and it is
+	// what the serving budget is split on (ADR-032 §4 D1/D2, O23):
+	// "governs" names a layer that restates BINDING rules a human wrote
+	// about the code (obligations, adr-rules); "claims" names a layer that
+	// restates what some document CLAIMS about the code (spec-bindings'
+	// plan rows, findings' review conclusions). ObligationsFor fills the
+	// serving budget with governs rules FIRST and lets claims rules take
+	// only the slots left over — O23 is the defect this closes: six
+	// plan-row spec-bindings about C++, CUE and tree-sitter filled the
+	// whole budget for one Go file and displaced 65 more, and the
+	// internal/CLAUDE.md rule the file is actually governed by was not
+	// served at all. Displaced still counts BOTH roles, so the eviction
+	// stays visible.
+	//
+	// Defaults "governs": a pack authored before this field existed keeps
+	// exactly the serving priority it had, so an external pack is unchanged
+	// by this field's arrival.
+	role: "governs" | "claims" | *"governs"
+
 	// tier every emitted claim carries. V1 layers are citation-grounded
 	// restatements, hence doc-claimed; an LLM-inferred kind would need the
 	// ai-derived tier and its revival evidence first (ADR-016 §4.2).

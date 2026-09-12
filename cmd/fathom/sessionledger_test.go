@@ -452,3 +452,54 @@ func TestFirstEditTurn(t *testing.T) {
 		}
 	})
 }
+
+// TestToolSearchTurns is BP-23's anchor (docs/plans/bench-pyramid.md,
+// ADR-032 §5): the deferral tax O24 measured — turns spent loading deferred
+// MCP tool schemas — counted per session from the same transcript the
+// exploration ledger is parsed from.
+func TestToolSearchTurns(t *testing.T) {
+	mk := func(lines ...string) []byte { return []byte(strings.Join(lines, "\n")) }
+
+	t.Run("two opening schema loads", func(t *testing.T) {
+		data := mk(
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"ToolSearch","id":"t1"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"ToolSearch","id":"t2"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__fathom__find_symbol","id":"t3"}]}}`,
+		)
+		s := summarizeTranscriptBytes(data)
+		if s.ToolSearchTurns != 2 {
+			t.Fatalf("ToolSearchTurns = %d, want 2", s.ToolSearchTurns)
+		}
+		if s.FathomCalls != 1 {
+			t.Errorf("FathomCalls = %d, want 1 — ToolSearch must not be counted as a fathom call", s.FathomCalls)
+		}
+	})
+
+	t.Run("two loads in one turn are one turn", func(t *testing.T) {
+		data := mk(`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"ToolSearch","id":"a"},{"type":"tool_use","name":"ToolSearch","id":"b"}]}}`)
+		s := summarizeTranscriptBytes(data)
+		if s.ToolSearchTurns != 1 {
+			t.Fatalf("ToolSearchTurns = %d, want 1 — the unit is the turn, not the call", s.ToolSearchTurns)
+		}
+	})
+
+	t.Run("July's shape reads a true zero", func(t *testing.T) {
+		data := mk(
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Grep","id":"g1"}]}}`,
+			`{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__fathom__references","id":"f1"}]}}`,
+		)
+		if s := summarizeTranscriptBytes(data); s.ToolSearchTurns != 0 {
+			t.Fatalf("ToolSearchTurns = %d, want 0", s.ToolSearchTurns)
+		}
+	})
+
+	t.Run("a user-role line is never a turn", func(t *testing.T) {
+		var tl transcriptLine
+		if err := json.Unmarshal([]byte(`{"type":"user","message":{"content":[{"type":"tool_use","name":"ToolSearch"}]}}`), &tl); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if n := toolSearchTurns(tl); n != 0 {
+			t.Errorf("toolSearchTurns(user line) = %d, want 0", n)
+		}
+	})
+}
