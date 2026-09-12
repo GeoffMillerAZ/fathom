@@ -1293,3 +1293,75 @@ in fathom* — twice-built. *Automate the run* — real spend; refused in
 corpus, not the tool, is the finding); a public number is requested before
 the repo is public; SWE-Explore accepts the registration; or the kit's
 stats package gains a third consumer.
+
+## ADR-032: The bench pyramid — measure the index for free, spend on the agent only where it can change, and remember every cell by its key (2026-09-12)
+
+**Status.** Accepted (delegated ownership 2026-07-07; owner directive 2026-09-12: make
+the bench show fathom's strengths and keep the loop token-efficient). **Type.**
+Process / architecture. Design: `docs/design/bench-pyramid.md` (proposed 2026-09-03 from
+the stopped replicated run, O23–O26). Plan: `docs/plans/bench-pyramid.md`. Extends
+ADR-031; H2-1's recorded verdicts stand as history.
+
+**Context.** The first replicated home run (`run-20260902T211103Z`, stopped at 17 of 117
+cells, ~1.5M tokens) produced four findings in nine minutes: the obligations tool served
+six plan-row spec-bindings and displaced the one governing rule, and the fathom arm
+passed the task anyway by reading the file grep's way — task-level success hid tool-level
+failure (O23); Claude Code 2.1.x defers MCP tool schemas, so every fathom cell now opens
+with one or two `ToolSearch` turns the grep arm never pays (O24); a ground truth sat
+verbatim in the auto-loaded `CLAUDE.md`, discovered only by spending six tool-arm cells
+(O25); and `total_tokens` is cache-read × turns — a turn counter in a token costume,
+under which the payload fathom shrinks is invisible (O26). The single expensive bench
+measured agent × harness × index with the harness term dominant, could test only what
+grep can also do, sat near ceiling on thirteen tasks, and cost enough to run quarterly.
+
+**Decision.**
+1. *Six layers, one question each, cheapest first.* L0 index oracle (`cmd/loctruth`
+   over the fixture fleet, precision and recall goldens), L1 payload replay (golden
+   bytes, count and latency per read-only tool against a pinned store), L2 corpus gate
+   (truth at HEAD, no gold token in any auto-loaded file, no prompt naming the governing
+   file) run in `task validate` at zero LLM cost. L3 targeted agent runs re-run only the
+   fathom arm for tasks whose `exercises` touch the tool handlers a diff changed. L4 is
+   the full three-arm run at n≥3, on a release tag or a surface change. L5 is the ambient
+   session instrument (verify-gate catches, the A/B arm).
+2. *Every cell is remembered by its key.* A scored cell carries
+   `cell_key = sha256(corpus_sha256 · task_id · arm · model_id · harness_version ·
+   scoring · prompt_subject · arm_surface)`, where `arm_surface` is the fathom binary
+   commit for the fathom arm and empty for grep and none. Cells live content-addressed
+   under `workspace/artifacts/context-bench/cells/`; a run borrows any cell whose key
+   matches, records `borrowed` with the source run id, and the evaluator accepts a
+   borrowed cell only by key equality — a changed invariant produces a different key,
+   never a silent reuse. Control-arm cells therefore survive every fathom change; a
+   fathom change re-runs the cells its diff can move.
+3. *H2-3 is the criterion the next run is scored on.* Same success bar as H2-1; the cost
+   half reads `payload_bytes` (tool-result bytes returned to the model) and `cost_usd`;
+   `toolsearch_turns` and `turns_excl_toolsearch` are reported as named lines so the
+   harness tax is visible, never hidden; `gold_source_tool` names the tool whose result
+   first carried a gold token, so a tool passes only when it is the source. H2-1 is
+   never re-scored.
+4. *The bench's product findings are fixed before the next spend.* Fresh rules rank
+   before stale ones; layers with the role `governs` (obligations, adr-rules) rank
+   before layers with the role `claims` (spec-bindings) and the latter fill only the
+   budget the former leave; a spec-binding claim is scoped at serve time by the plan
+   row's `{package, symbol}` contract parsed from its citation, and a row with no
+   contract binds to nothing; the obligations tool inlines each rule's cited lines under
+   a cap so the agent stops round-tripping `read_source`.
+5. *The deferral tax is a fathom cost.* The agent-surface schema budget is held under the
+   harness's deferral threshold when the threshold is documented, else measured per
+   release; `toolsearch_turns` on the exploration ledger is the tripwire.
+
+**Consequences.** `docs/bench/README.md` gains the pyramid and a strengths map (which
+layer shows which of fathom's differentiated capabilities: done-means-proven via L5
+catches, edit-time obligations via `gold_source_tool`, callers and blast-radius truth via
+L0, discovery cost via `payload_bytes`). `task validate` grows by L0–L2 (seconds).
+Scope G9 is restated in these terms. The next full run is one spend scored under H2-1
+(history) and H2-3 offline from the same transcripts.
+
+**Alternatives rejected.** *Run the same bench harder* — the four findings are structural.
+*Drop the control arm* — L4 is the only layer that answers "versus grep" and stays.
+*Hash by tree instead of key* — a tree hash invalidates control cells on every docs
+commit; the key names the invariants that actually bind a cell.
+
+**Revisit when.** A harness release removes MCP tool deferral (retire the line item); L0
+reports precision or recall under 0.95 on a pinned repo (the index is the bottleneck;
+L4 must not run); the `none` arm passes more than half the corpus; two same-corpus L4
+rows exist and `regress` has compared them.

@@ -598,3 +598,55 @@ triage if it matters.
 - **Fix:** PC-33 — `internal/worktree.CheckReroot` (shared by the MCP tool and `pkg/client`) refuses to re-root an existing service at a git worktree of its recorded root or any `.claude/worktrees/` path, naming both paths; the `ok` envelope carries `root`; the post-commit hook detects a worktree and refreshes nothing, saying which service and root it left alone. `TestIngestRefusesWorktreeReroot`, `TestPostCommitHookLeavesWorktreeAlone`, `TestCheckReroot`.
 - **Status:** fixed (CHANGELOG [Unreleased], PC-33; I30 extended)
 - **Impact:** four daemon verifies read a tree that was not main (0-2 verified where the probe store read 16/5/5/9/13) with no signal that the root had moved.
+
+### O23 — Bench run-20260902T211103Z H1-T01: obligations for internal/extractor/goextract.go served 6 rules, displaced 65 — all six are spec-bindings from cpp-toolchain.md (CT-1..4), lang-truth.md (CUE) and extraction-treesitter.md; the internal/CLAUDE.md extractor-wiring rule (fusion.New + golden test) the file is actually governed by was NOT served. 71 rules matched one Go file; plan-row bindings keyed on the word 'extractor' crowded out the human-written CLAUDE.md rule. H1-T02 (model.go): 64 matched, the right rule ranked 1 but flagged stale, beside the O14 mis-scoped 'ext→kind mapping' rule and a process rule ('Advance waves only when…') bound to a Go file.
+
+- **Symptom:** Bench run-20260902T211103Z H1-T01: obligations for internal/extractor/goextract.go served 6 rules, displaced 65 — all six are spec-bindings from cpp-toolchain.md (CT-1..4), lang-truth.md (CUE) and extraction-treesitter.md; the internal/CLAUDE.md extractor-wiring rule (fusion.New + golden test) the file is actually governed by was NOT served. 71 rules matched one Go file; plan-row bindings keyed on the word 'extractor' crowded out the human-written CLAUDE.md rule. H1-T02 (model.go): 64 matched, the right rule ranked 1 but flagged stale, beside the O14 mis-scoped 'ext→kind mapping' rule and a process rule ('Advance waves only when…') bound to a Go file.
+- **Evidence:**
+  - **Tool:** obligations
+  - **Expected:** For 'what governs this file', the CLAUDE.md obligations layer outranks spec-bindings (plan rows are 'what claims this file', a different question), and a plan row scopes by its {package} contract, not by prose keyword.
+  - **Actual:** Fathom arm passed T01 only by falling back to read_source internal/CLAUDE.md after obligations returned irrelevant rules — the cell PASSes while the tool it was designed to exercise FAILED. Task-level success hides tool-level failure.
+  - **Repro:** obligations {service: fathom, file: internal/extractor/goextract.go} against the daemon at 138e465; transcript workspace/artifacts/context-bench/run-20260902T211103Z/raw/H1-T01-fathom-t1.stream.jsonl
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O24 — Every fathom-arm cell in run-20260902T211103Z opens with 1–2 ToolSearch turns to load deferred MCP tool schemas (Claude Code 2.1.258 defers MCP tools; Bash is core and never deferred). July's run-20260724T033131Z has zero ToolSearch calls. On H1-T01, 2 of the fathom arm's 4 tool calls are ToolSearch; each is a full turn at ~28k cache-read tokens. The grep arm pays none of this.
+
+- **Symptom:** Every fathom-arm cell in run-20260902T211103Z opens with 1–2 ToolSearch turns to load deferred MCP tool schemas (Claude Code 2.1.258 defers MCP tools; Bash is core and never deferred). July's run-20260724T033131Z has zero ToolSearch calls. On H1-T01, 2 of the fathom arm's 4 tool calls are ToolSearch; each is a full turn at ~28k cache-read tokens. The grep arm pays none of this.
+- **Evidence:**
+  - **Tool:** context-bench
+  - **Expected:** Both arms pay the same harness overhead, or the bench reports ToolSearch turns as a named, excluded line item.
+  - **Actual:** An asymmetric harness tax of 1–2 turns per cell lands entirely on the treatment arm and is counted against it by H2-1's token half. Also a daily user-facing cost: every session's first fathom call pays it.
+  - **Repro:** grep -c ToolSearch workspace/artifacts/context-bench/run-20260902T211103Z/raw/H1-T01-fathom-t*.stream.jsonl vs the July raw dir
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O25 — H1-T02's ground truth ('internal/core', 'pkg/client') is verbatim in the root CLAUDE.md, which every claude -p session auto-loads. The none arm (no tools) passed it 2/2 at ~28k tokens in 5.5s by quoting the system prompt. Under the committed leak_rule the task is leaked and leaves the verdict — the mechanism worked, but only after spending 6 tool-arm cells on it.
+
+- **Symptom:** H1-T02's ground truth ('internal/core', 'pkg/client') is verbatim in the root CLAUDE.md, which every claude -p session auto-loads. The none arm (no tools) passed it 2/2 at ~28k tokens in 5.5s by quoting the system prompt. Under the committed leak_rule the task is leaked and leaves the verdict — the mechanism worked, but only after spending 6 tool-arm cells on it.
+- **Evidence:**
+  - **Tool:** context-bench
+  - **Expected:** A static gate: no ground-truth token may appear verbatim in any file the harness auto-loads (root CLAUDE.md, AGENTS.md, user memory). TestHomeCorpusTruthAtHead already walks every token; the same walk can assert absence from the baseline set for free.
+  - **Actual:** Leaks are only discovered by spending LLM tokens on the none arm.
+  - **Repro:** grep -n 'pkg/client' CLAUDE.md; results/H1-T02-none-t1.json raw_result
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O26 — Per-cell token breakdown in run-20260902T211103Z: input 4–12, output 400–1,600, cache_creation 1–30k, cache_read 28k–180k. total_tokens is cache_read × turns — a turn counter wearing a token costume. The 3.1× spread on identical H1-T02 fathom trials (59k/181k/148k) is 3 vs 6 vs 5 turns; the discovery payload fathom claims to shrink is invisible under a ~28k/turn baseline both arms re-read.
+
+- **Symptom:** Per-cell token breakdown in run-20260902T211103Z: input 4–12, output 400–1,600, cache_creation 1–30k, cache_read 28k–180k. total_tokens is cache_read × turns — a turn counter wearing a token costume. The 3.1× spread on identical H1-T02 fathom trials (59k/181k/148k) is 3 vs 6 vs 5 turns; the discovery payload fathom claims to shrink is invisible under a ~28k/turn baseline both arms re-read.
+- **Evidence:**
+  - **Tool:** context-bench
+  - **Expected:** A payload-scoped metric registered before the next run: tool-result bytes per cell, turns excluding ToolSearch, and cost_usd — H2-1's total-token half kept as history, never re-scored.
+  - **Actual:** H2-1's token criterion rewards fewer turns, not smaller payloads; the July record already said a payload-scoped claim needs a payload-scoped instrument, and none exists.
+  - **Repro:** results/H1-T02-fathom-t{1,2,3}.json fields input_tokens/cache_read_tokens/num_turns
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

@@ -59,3 +59,25 @@ compatibility surface. Verbatim contracts the codecs were built from:
 
 - [x] `docs/intent/scope.md`: Harnesses boundary restated (Claude Code verified; Codex and Gemini CLI descriptors with codecs, unverified; Cursor and Copilot data rows; tiers C/D documented), compatibility surface gains `--harness`, `fathom harness`, `.codex/hooks.json` writes; `CHANGELOG.md` lines; `docs/mcp-tools.md` and the coding-agents use-case `## Maintained` line name `fathom harness` {id: HP-24, skip_test: true, skip: "docs; acceptance evidence is the scope.md diff and TestMaintainedLinesNameRegisteredToolsAndVerbs"}
 - [x] FA-22 filed in agentic-kit (`docs/plans/fathom-uplift-asks.md`): the harness manifest contract moves to the kit only when the kit deletes `install-intent.sh` and the `integration.md` harness table onto it {id: HP-25, skip_test: true, skip: "a row in another repo's plan; evidence is the kit commit"}
+
+## Wave 3 — the events that advise, and Codex for real (2026-09-12)
+
+Claude Code 2.1.270 offers 33 events and Codex 0.154 twelve; fathom wires eight. Every
+event below advises or records and never blocks (§5.3); each maps onto both harnesses
+through the descriptor, and the doctor row names every event fathom leaves unwired with
+its reason. INTENT.md is not a harness feature but the entry document of Anthropic's
+SDLC playbook (intent → spec → plan → diff → PR → incident); the router under
+`docs/intent/` is its durable form, so fathom renders the playbook's one-screen file
+from the router rather than adopting a second corpus.
+
+- [ ] `SubagentStart` → `fathom session-hook --event subagent-start`: a ≤600-byte primer (identity line + the opening-moves table) as `additionalContext`, so subagents that never see SessionStart still start index-first; a beat is recorded (`subagentPrimer`) {id: HP-26, symbol: subagentPrimer, package: cmd/fathom}
+- [ ] `PostToolUseFailure` (matcher: the fathom MCP tools under both the plain and the plugin-scoped names) → `fathom session-hook --event tool-failure`: one remedy line from the daemon and staleness diagnosis doctor already computes; silent when the failure is not fathom's (`toolFailureAdvice`) {id: HP-27, symbol: toolFailureAdvice, package: cmd/fathom}
+- [ ] `FileChanged` (matcher `CLAUDE.md|AGENTS.md|.fathom/**`) → `fathom config audit --hook`, the same attention beat `ConfigChange` writes (`fileChangedHook`) {id: HP-28, symbol: fileChangedHook, package: cmd/fathom}
+- [ ] `WorktreeCreate` → `fathom session-hook --event worktree-create`: one advisory line naming the service the worktree belongs to and that ingest will not re-root it (PC-33) (`worktreeAdvice`) {id: HP-29, symbol: worktreeAdvice, package: cmd/fathom}
+- [ ] `CwdChanged|DirectoryAdded` → `fathom session-hook --event cwd-changed`: the identity line for the new root's service, or the not-indexed line (`cwdChangedPrimer`) {id: HP-30, symbol: cwdChangedPrimer, package: cmd/fathom}
+- [ ] `Setup` → `fathom doctor --brief`: FAIL rows only, ≤5 lines, exit 0 (`doctorBrief`) {id: HP-31, symbol: doctorBrief, package: cmd/fathom}
+- [ ] Doctor `hooks_coverage`: for the detected harness, every event the descriptor knows against what fathom wires, one reason per unwired event (advisory, never FAIL); the descriptor carries the event catalog with reasons (`checkHooksCoverage`) {id: HP-32, symbol: checkHooksCoverage, package: cmd/fathom}
+- [ ] Codex descriptor at the 0.154 contract (12 events incl. SubagentStart/Stop, PostCompact, Interrupt, PermissionRequest; the `hooks` wrapper shape; project `.codex/hooks.json` honored under directory trust); `fathom init --harness=codex` wires the eight fathom rows plus wave 3's; `TestCodexHooksFixtureFromLiveSession` replays a stdin captured from a real headless `codex exec` session on this machine {id: HP-33, symbol: TestCodexHooksFixtureFromLiveSession, package: internal/harness, skip_test: true, skip: "the test is the anchor; the fixture header names the codex-cli version and date the descriptor is verified against"}
+- [ ] Codex wired on this workstation: `.codex/hooks.json` in this repo, the MCP server registered for Codex, one headless session's beats on file, `doctor --harness=codex` hooks_installed and hooks_firing PASS, the descriptor's `verified_against` dated {id: HP-34, skip_test: true, skip: "operator wiring; evidence is doctor --harness=codex and the descriptor field"}
+- [ ] `fathom intent render --playbook` writes a root `INTENT.md` (Problem, Proposed outcome, Affected users, Constraints, Open questions — each a pointer into `docs/intent/`) inside fathom markers, policed by `config audit` pointers (`renderPlaybookIntent`) {id: HP-35, symbol: renderPlaybookIntent, package: cmd/fathom}
+- [ ] The nine skills (SKILL.md and codex-prompt.md twins) and `docs/adoption/{claude-code,codex,other-harnesses}.md` describe the new events, `hooks_coverage`, the verified Codex lane and INTENT.md; `docs/mcp-tools.md` verbs current {id: HP-36, skip_test: true, skip: "docs and skill prose; evidence is codexdoc_test.go, the adoption matrix test and skills_installed"}

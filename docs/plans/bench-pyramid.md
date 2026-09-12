@@ -1,0 +1,56 @@
+# Bench pyramid — free layers in the gate, remembered cells, targeted spend, and the fixes the bench found
+
+Design: `docs/design/bench-pyramid.md`. Decision: ADR-032 (extends ADR-031; H2-1 is
+history). Runs that spend tokens stay operator-initiated; everything else here is free
+and lands in `task validate`.
+
+Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
+
+## L2 — the corpus gate (free, first)
+
+- [ ] `TestHomeCorpusTruthAtHead` also asserts every gold token is ABSENT from every file the harness auto-loads (root `CLAUDE.md`, `AGENTS.md`, `.claude/CLAUDE.md`, the user memory index when present) and refuses a prompt that names the file its own ground truth cites (`corpusBaselineFiles`) {id: BP-1, symbol: corpusBaselineFiles, package: internal/contextbench}
+- [ ] H1-T02's truth and any other leaked task re-derived so the gate passes without weakening the task; the corpus revision bumped {id: BP-2, skip_test: true, skip: "corpus edit; evidence is TestHomeCorpusTruthAtHead green after BP-1"}
+
+## Remembered cells and targeted runs
+
+- [ ] `CellKey(inputs)`: sha256 over corpus_sha256, task id, arm, model id, harness version, scoring, prompt subject and `arm_surface` (the fathom binary commit for the fathom arm, empty for grep and none); every scored cell carries `cell_key` and `arm_surface` {id: BP-3, symbol: CellKey, package: internal/contextbench}
+- [ ] Content-addressed cell store under `workspace/artifacts/context-bench/cells/<key>/t<n>.json`: the runner writes every scored cell there and, before running a cell, borrows one whose key matches (`BorrowCell`), copying it into the run with `borrowed: true` and `source_run_id` {id: BP-4, symbol: BorrowCell, package: internal/contextbench}
+- [ ] The ledger row lists borrowed cells with provenance and `Criterion.Evaluate` accepts a borrowed cell only by key equality (`AcceptBorrowed`); a row composed entirely of borrowed cells is indeterminate with the reason named {id: BP-5, symbol: AcceptBorrowed, package: internal/contextbench}
+- [ ] `exercises: [tool, …]` on every home task (the tools it was written to exercise); `Task.Validate` refuses an unknown tool name {id: BP-6, symbol: TestTasksDeclareExercises, package: internal/contextbench, skip_test: true, skip: "the test is the anchor: it walks tasks-home.json"}
+- [ ] `contextbenchscore select -diff <git range>`: changed files under `internal/mcp`, `internal/semantic`, `internal/query`, `internal/fusion` map to agent-surface tools by a committed handler table, then to the tasks that exercise them; prints task ids (`SelectTasks`) {id: BP-7, symbol: SelectTasks, package: internal/contextbench}
+- [ ] Runner `--only <ids>` and `--scope targeted`: a targeted run writes per-task cells and a row with `scope: targeted` that the evaluator refuses to turn into a verdict (indeterminate, reason named); `task bench-targeted RANGE=<git range>` chains select → run {id: BP-8, skip_test: true, skip: "shell + Taskfile; bash -n via scripts-check; the Go side is BP-5/BP-7"}
+
+## H2-3 — the criterion the next run is scored on
+
+- [ ] `TranscriptMetrics(stream)`: `payload_bytes` (sum of tool-result bytes returned to the model), `toolsearch_turns`, `turns_excl_toolsearch`, `gold_source_tool` (the tool whose result first carried a gold token, or `answer` when none did); parsed from the `--stream` transcript the runner already captures {id: BP-9, symbol: TranscriptMetrics, package: internal/contextbench}
+- [ ] H2-3 registered in `tasks-home.json` beside H2-1 and H2-2: same success bar; cost half reads `payload_bytes` ratio ≤1.0 and `cost_usd` ratio ≤1.0; `toolsearch_turns` reported never gated; `LoadCriterionByID("H2-3")` evaluates it and its values are pinned by a test {id: BP-10, symbol: TestCriterionH23Pinned, package: internal/contextbench, skip_test: true, skip: "the test is the anchor"}
+- [ ] `contextbenchscore ledger -criterion H2-3` scores an existing run's transcripts offline (one spend, two criteria); the row carries per-arm `gold_source_rate` per tool {id: BP-11, symbol: GoldSourceRate, package: internal/contextbench}
+
+## L0 — the index oracle (free)
+
+- [ ] `cmd/loctruth` runs over the fixture fleet (`internal/connector/testdata/fauxtown` Go services) and the index built from the same tree; `IndexOracleReport` scores precision and recall for `find_callers`, `references` and the transitive closure `blast_radius` walks, per service {id: BP-12, symbol: IndexOracleReport, package: internal/indexbench}
+- [ ] Goldens committed (`internal/indexbench/testdata/fauxtown.golden.json`); `TestIndexOracleMatchesGolden` fails on any precision or recall drop; in `task validate` {id: BP-13, symbol: TestIndexOracleMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
+- [ ] `task bench-l0-self`: the same oracle over this repository at HEAD (slower, on demand and before a release); the report is written under `workspace/` and its precision/recall printed with the denominator {id: BP-14, skip_test: true, skip: "Taskfile target; bash -n; the Go side is BP-12"}
+
+## L1 — payload replay (free)
+
+- [ ] `internal/indexbench/replay`: a committed list of (tool, args) against the fixture store with golden `bytes`, `result_count` and a latency budget; `obligations` on fixture files first, then `find_callers`, `references`, `blast_radius`, `symbol_context`, `pack_context`, `repo_map` (`ReplayGolden`) {id: BP-15, symbol: ReplayGolden, package: internal/indexbench}
+- [ ] `TestPayloadReplayMatchesGolden` in `task validate`; a byte-count growth over 10% or a `displaced` count on any fixture file is a failing test naming the tool {id: BP-16, symbol: TestPayloadReplayMatchesGolden, package: internal/indexbench, skip_test: true, skip: "the test is the anchor"}
+
+## The fixes the bench found (D1, D2, D3, D5 of the design)
+
+- [ ] Fresh-first: `ObligationsFor` orders served claims fresh before non-fresh, then by layer role, then specificity, then rule text; pinned by `TestObligationsFreshFirst` {id: BP-17, symbol: TestObligationsFreshFirst, package: internal/semantic, skip_test: true, skip: "the test is the anchor; ObligationsFor already carries its own anchor in earlier plans"}
+- [ ] Layer roles: `#Layer` gains `role: "governs" | "claims"` (obligations and adr-rules govern; spec-bindings and findings claim); `LayerRole(layer)` reads it; `claims` rules fill only the budget `governs` rules leave {id: BP-18, symbol: LayerRole, package: internal/semantic}
+- [ ] Contract scoping at serve time: a spec-bindings claim's scope is re-derived from the cited plan row's `{package, symbol}` annotation (`ContractScope`); a row with no contract binds to nothing; the LLM-proposed scope is kept only as a fallback for non-plan corpora {id: BP-19, symbol: ContractScope, package: internal/semantic}
+- [ ] The `obligations` MCP tool inlines each rule's cited lines as `snippet` (capped at 240 bytes, `include_snippets` defaults true on the tool and false on the edit hook so the hook payload budget is unchanged) {id: BP-20, symbol: obligationSnippet, package: internal/mcp}
+- [ ] Payload replay golden for `obligations` on `internal/extractor/goextract.go`-shaped fixture files shows the governing rule first and `displaced` 0 after BP-17..19 {id: BP-21, skip_test: true, skip: "evidence is the BP-15 golden diff in the same change"}
+
+## The deferral tax (D4)
+
+- [ ] The agent-surface per-session schema bytes are measured by `capabilities` and held under the harness's documented MCP deferral threshold (or, when undocumented, under the size that produced zero `ToolSearch` turns in July: compact `outputSchema` by reference, drop redundant descriptions); `TestNarrowProfileSchemaBytes` re-pinned with the reason {id: BP-22, symbol: TestNarrowProfileSchemaBytes, package: cmd/fathom, skip_test: true, skip: "the test is the anchor"}
+- [ ] `toolsearch_turns` per session on the exploration ledger (from the session transcript parser) as the tripwire named in ADR-032 §5 {id: BP-23, symbol: toolSearchTurns, package: cmd/fathom}
+
+## Records and the run
+
+- [ ] `docs/bench/README.md` gains the pyramid table, the strengths map (which layer shows which capability), the cell-cache contract and `task bench-targeted`; scope G9 restated; `docs/design/coding-agent-excellence.md` §0 sentence 5 states the July figure as a turn-count result and names H2-3 as the standing bar {id: BP-24, skip_test: true, skip: "docs; evidence is the diffs and TestNoStaleHelpPhrasesInDocs"}
+- [ ] (op) Full L4 run on the home corpus at n=3, three arms, scored under H2-1 (history) and H2-3, ledger rows committed, `gold_source_rate` per tool in the row {id: BP-25, symbol: TestLedgerHasReplicatedRow, package: internal/contextbench, skip_test: true, skip: "operator spend; the test asserts a replicated row exists"}
