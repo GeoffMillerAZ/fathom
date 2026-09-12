@@ -32,12 +32,14 @@ unverified are claimed rows with no contract the gate can refute, each naming wh
 Path: store provenance on verdicts and the lexical oracle shipped in 0.8.0 (ADR-030,
 `docs/plans/proof-credibility.md` PC-1..5, PC-17..19); PC-20 is what is left.
 
-**G9. A stranger can re-run the bench.** Done when: `docs/plans/bench-public.md` PB-1..18
-are proven (truth at HEAD, H2-2 registered, the derived public corpus reproduces
-bit-for-bit from a clean clone -- all proven in 0.8.0) and the first replicated home run
-(BC-14) has a ledger row, verdict honest either way (ADR-031). BC-14 has NOT been run:
-the ledger holds one backfilled n=1 row, indeterminate under the 3-trial floor. The
-public run (PB-19) and any publication stay operator decisions (Q4, F2).
+**G9. The bench shows fathom's strengths and can run on a commit.** Done when:
+`docs/plans/bench-pyramid.md` BP-1..24 are proven (L0 index oracle, L1 payload replay and
+L2 corpus gate in `task validate`; every cell remembered by its key; `exercises:` and a
+targeted run for the tasks a diff can move; H2-3 registered) and the first replicated home
+run (BC-14 / BP-25) has ledger rows under both H2-1 and H2-3, verdict honest either way
+(ADR-031, ADR-032). Before ADR-032 the single three-arm bench could only test what grep can
+also do and measured the harness more than the index (O23–O26); the public run (PB-19) and
+any publication stay operator decisions (Q4, F2).
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared

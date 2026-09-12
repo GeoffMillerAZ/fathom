@@ -118,6 +118,15 @@ renders in code scanning and editor problem panes for free.
 
 ## 2. A bench a stranger can re-run (plan PB, ADR-031)
 
+> **Amended 2026-09-12 by ADR-032 (the bench pyramid).** The first replicated run
+> (stopped at 17 of 117 cells) showed the single three-arm bench measuring the
+> harness more than the index (O23–O26). The pyramid puts free layers under it —
+> an index oracle against `go/types`, payload replay goldens, a corpus gate — and
+> remembers every scored cell by a content key so a change re-runs only the cells
+> it can move. H2-3 (payload bytes, cost, gold-source tool) scores the next run;
+> H2-1 stands as history. Design: `../design/bench-pyramid.md`; plan:
+> `../plans/bench-pyramid.md`. §2.1–2.4 below remain true and are the L4 layer.
+
 ### 2.1 Truth at HEAD first
 
 The home corpus is false at HEAD: one ground truth names a rule that

@@ -28,11 +28,15 @@ Fathom is excellent as a coding-agent companion when, in an indexed repo:
 5. **The win is falsifiable** — context-bench, run for real (first run
    2026-07-23, docs/plans/falsifiability.md B1-3), measured equal task
    success (15/15 both arms) at 1.38× aggregate end-to-end token reduction
-   and 2.81× mean wall-time reduction vs grep-only. The original
-   "≤1/10th the discovery tokens" form of this sentence is **retracted**
-   (the pre-registered <5× criterion fired); the standing bar is
-   equal-or-better success at measurably lower tokens and wall time,
-   re-verified by re-running the bench (`scripts/context-bench.sh`).
+   and 2.81× mean wall-time reduction vs grep-only. **Read that figure as a
+   turn-count result (ADR-032, O26):** `total_tokens` is cache-read × turns,
+   so it says fathom needed fewer turns, not that its payloads were smaller.
+   The original "≤1/10th the discovery tokens" form of this sentence is
+   **retracted** (the pre-registered <5× criterion fired). The standing bar is
+   H2-3: equal-or-better success at lower tool-result bytes and lower cost,
+   with the harness's schema-load turns reported as their own line, verified
+   by re-running the bench (`scripts/context-bench.sh`; the pyramid's free
+   layers run on every commit).
 
 Every mechanism below exists to serve one of those five sentences; anything
 that serves none of them is out of scope for the companion.
