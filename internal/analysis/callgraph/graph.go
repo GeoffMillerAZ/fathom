@@ -93,6 +93,44 @@ func (g *Graph) EdgeCount() int {
 // any order.  Unknown callees (those not present in nodes) are silently dropped
 // — they represent external dependencies.
 func Build(nodes []core.SymbolNode) *Graph {
+	g := buildIndexes(nodes)
+
+	// Second pass: resolve call edges. Iterate the deduplicated node set so
+	// duplicate observations of a caller cannot duplicate its edges; the
+	// adjacency lists are sorted below, so map order does not leak out.
+	for callerKey, n := range g.nodes {
+		seen := make(map[string]struct{}) // deduplicate edges from this caller
+		for _, raw := range n.Calls {
+			calleeKey := g.resolve(n, raw)
+			if calleeKey == "" {
+				continue // unknown external symbol
+			}
+			if _, dup := seen[calleeKey]; dup {
+				continue
+			}
+			seen[calleeKey] = struct{}{}
+			g.callees[callerKey] = append(g.callees[callerKey], calleeKey)
+			g.callers[calleeKey] = append(g.callers[calleeKey], callerKey)
+		}
+	}
+
+	// Sort all adjacency lists for determinism.
+	for k := range g.callees {
+		sort.Strings(g.callees[k])
+	}
+	for k := range g.callers {
+		sort.Strings(g.callers[k])
+	}
+
+	return g
+}
+
+// buildIndexes registers every node and computes the tolerant-matching
+// indexes (byName / byPkgName / byDirName) WITHOUT adding a single edge.
+// Build adds the syntax-derived edges on top; BuildResolved (resolved.go)
+// deliberately does not, so the two graphs share one node universe and one
+// canonicalization rule and differ only in which edges they carry.
+func buildIndexes(nodes []core.SymbolNode) *Graph {
 	g := &Graph{
 		nodes:     make(map[string]core.SymbolNode, len(nodes)),
 		callees:   make(map[string][]string, len(nodes)),
@@ -133,33 +171,6 @@ func Build(nodes []core.SymbolNode) *Graph {
 		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
 			g.byDirName[dn] = n.Key()
 		}
-	}
-
-	// Second pass: resolve call edges. Iterate the deduplicated node set so
-	// duplicate observations of a caller cannot duplicate its edges; the
-	// adjacency lists are sorted below, so map order does not leak out.
-	for callerKey, n := range g.nodes {
-		seen := make(map[string]struct{}) // deduplicate edges from this caller
-		for _, raw := range n.Calls {
-			calleeKey := g.resolve(n, raw)
-			if calleeKey == "" {
-				continue // unknown external symbol
-			}
-			if _, dup := seen[calleeKey]; dup {
-				continue
-			}
-			seen[calleeKey] = struct{}{}
-			g.callees[callerKey] = append(g.callees[callerKey], calleeKey)
-			g.callers[calleeKey] = append(g.callers[calleeKey], callerKey)
-		}
-	}
-
-	// Sort all adjacency lists for determinism.
-	for k := range g.callees {
-		sort.Strings(g.callees[k])
-	}
-	for k := range g.callers {
-		sort.Strings(g.callers[k])
 	}
 
 	return g

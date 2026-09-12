@@ -162,3 +162,54 @@ instrument that produced them:
   reads `indeterminate`, n=1), and it carries no per-task data and no
   corpus hash — nothing can pair a regression check against it. The
   median column shows `n/r` (not recorded) for the same reason.
+
+## L0 index oracle — index precision, before and after (2026-09-12)
+
+`task bench-l0-self` scores `find_callers`, `references` and `blast_radius`
+over THIS repository at HEAD against an independent go/types truth
+(`internal/contextbench/publicloc`). The first run made ADR-032's floor
+bite, and the second is what changing the tools' defaults and memoizing the
+graph bought (plan rows BP-26..BP-30).
+
+Same command, same corpus shape (100 Go packages, 0 with type errors; ~10.7k
+indexed symbols), 200 sampled queries per tool, 20 for `blast_radius`:
+
+| tool | precision before | precision after | recall before | recall after | seconds/query before | after |
+|---|---|---|---|---|---|---|
+| `find_callers` | 0.607 (295/486) | **1.000 (308/308)** | 0.899 | 0.942 | 0.034 | **0.000** |
+| `references` | 0.158 (352/2226) | **0.402 (364/906)** | 1.000 | 1.000 | 0.010 | 0.011 |
+| `blast_radius` | 0.086 (871/10158) | **1.000 (230/230)** | 0.805 | 0.983 | **10.9** | **0.006** |
+
+Three changes produced that, and only the first two changed what an agent sees:
+
+1. **BP-26/BP-27 — resolved by default.** `find_callers` and `blast_radius`
+   answer from typed-pass edges; the syntax pass's bare-name matches are
+   opt-in behind `include_heuristic: true` and still labeled
+   `edge_confidence` either way. `blast_radius` also gained a depth cap of 2
+   and a 500-symbol listing cap, both reported in the response.
+2. **BP-28 — the call graph is memoized** per (service, store watermark),
+   below the MCP layer. The 10.9s → 0.006s column is that: nothing about
+   building the graph was ever per-query.
+3. **BP-30 — the comparison was made honest**, which moved numbers without
+   moving code. Three things the go/types truth cannot adjudicate are now
+   reported as *unadjudicated* rather than scored as errors: symbols in
+   `_test.go` files (the walker loads with `Tests: false`, so a test caller
+   is not in the truth at all), interface-dispatch and func-value edges (a
+   static-call truth has no such call site), and — for `references` — text
+   mentions in files the type checker never walked, plus the definition
+   half's substring hits. The after run reports 1,086 / 1,076 / 547
+   unadjudicated answers for the three tools, in no rate.
+
+**What is still below the floor**, stated plainly:
+
+- `find_callers` **recall 0.942** — 19 of 327 true callers missing, edges the
+  typed pass classified as something other than a direct call. Under the
+  0.95 floor, so ADR-032 still keeps L4 closed.
+- `references` **precision 0.402** is a **lower bound, not a verdict.** The
+  remaining false positives are text mentions inside comments and string
+  literals in Go files the checker did walk. Nothing in a text search can
+  tell those from identifier uses, and nothing in a go/types use-set can
+  contain them, so the honest report is the low number plus this sentence —
+  not a filter invented to raise it. `references` is a fleet-wide occurrence
+  search across code, docs and config by design; the oracle scores the one
+  slice of it a type checker can rule on.

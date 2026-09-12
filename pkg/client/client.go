@@ -413,6 +413,30 @@ func (c *Client) ServiceWatermark(ctx context.Context, service string) (string, 
 	return c.conn.Watermark(ctx, svcRef)
 }
 
+// StoreWatermark returns the STORE's freshness token for serviceID: the git
+// commit recorded at the last ingest joined to that ingest's timestamp.
+//
+// It is deliberately not ServiceWatermark. ServiceWatermark asks the
+// connector what the TREE looks like right now, which moves whenever a file
+// is edited; this one moves when — and only when — an ingest replaced the
+// service's observations. That is the key derived data may be memoized
+// under (invariant I21, bench-pyramid BP-28): a hit can never serve a graph
+// built from rows the store has since replaced, and an unchanged index does
+// not invalidate on every keystroke.
+//
+// Returns "" with no error for a service the store has no metadata for; a
+// caller must treat "" as "cannot memoize", never as a key.
+func (c *Client) StoreWatermark(ctx context.Context, serviceID string) (string, error) {
+	meta, ok, err := c.st.GetServiceMeta(ctx, serviceID)
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", nil
+	}
+	return fmt.Sprintf("%s@%d", meta.IndexedCommit, meta.IndexedAt), nil
+}
+
 // ServiceMeta returns the stored ingest metadata (path, indexed commit) for
 // serviceID.  found is false when no metadata has been recorded yet.
 // This satisfies the mcp.QueryInterface.ServiceMeta contract.

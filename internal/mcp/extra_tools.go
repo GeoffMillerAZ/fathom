@@ -101,12 +101,15 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "Compute the blast radius of a set of changed files: symbols defined in those files plus every transitive caller, with affected test functions and file paths, and by_depth — the same symbols grouped by distance from the change (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence resolved (typed pass) or heuristic (syntax-only).",
+		Description: "Blast radius of changed files: the symbols they define plus transitive callers, with affected tests, file paths, and by_depth (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence. DEFAULTS changed in 0.9: resolved edges only, depth 2, at most 500 symbols — widen with include_heuristic / max_depth / max_symbols (0 = unbounded). Always reports edge_filter, total_symbols, truncated and depth_capped, so a bounded answer never reads as complete.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"changed_files": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
+				"service":           map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"changed_files":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative file paths that changed"},
+				"include_heuristic": map[string]any{"type": "boolean", "description": "Also follow syntax-only (heuristic) edges. Default false."},
+				"max_depth":         map[string]any{"type": "integer", "description": "Hops from the changed files (default 2; 0 = unbounded)."},
+				"max_symbols":       map[string]any{"type": "integer", "description": "Symbols listed, shallowest first (default 500; 0 = uncapped); total_symbols keeps the full count."},
 			},
 			"required": []string{"service", "changed_files"},
 		},
@@ -116,8 +119,11 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
 		var p struct {
-			Service      string   `json:"service"`
-			ChangedFiles []string `json:"changed_files"`
+			Service          string   `json:"service"`
+			ChangedFiles     []string `json:"changed_files"`
+			IncludeHeuristic bool     `json:"include_heuristic"`
+			MaxDepth         *int     `json:"max_depth"`
+			MaxSymbols       *int     `json:"max_symbols"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: invalid args"}
@@ -128,24 +134,43 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		if len(p.ChangedFiles) == 0 {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
 		}
-		nodes, err := backend.ListAllSymbols(ctx, p.Service)
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		navs := s.loadNavGraphs(ctx, backend, p.Service)
+		if navs == nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + p.Service}
 		}
-		// Typed Go call edges (ADR-021 §3): additive on the transitive-caller
-		// walk — best-effort, a non-Go service contributes nothing.
-		typed, _ := backend.TypedEdges(ctx, p.Service)
-		result := impact.BlastRadiusWithTypedEdges(nodes, p.ChangedFiles, typed)
+		// BP-27: bounded, resolved-by-default. The unbounded both-kinds
+		// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
+		// what the verify engine's reachability reads.
+		res := blastRadiusResolved(navs, p.ChangedFiles, p.IncludeHeuristic,
+			intOr(p.MaxDepth, defaultBlastDepth), intOr(p.MaxSymbols, defaultBlastSymbols))
 		return map[string]any{
-			"symbols": stringsToAny(result.Symbols),
-			"tests":   stringsToAny(result.Tests),
-			"files":   stringsToAny(result.Files),
+			"symbols":       stringsToAny(res.Symbols),
+			"tests":         stringsToAny(res.Tests),
+			"files":         stringsToAny(res.Files),
+			"edge_filter":   res.EdgeFilter,
+			"total_symbols": res.TotalSymbols,
+			"truncated":     res.Truncated,
+			"depth_capped":  res.DepthCapped,
+			"max_depth":     res.MaxDepthReached,
 			// BD-3 (docs/plans/blast-depth.md): the same symbols regrouped
 			// by distance from the changed files, each labeled with the
-			// confidence of the edge that pulled it in.
-			"by_depth": blastRadiusByDepth(nodes, p.ChangedFiles, typed),
+			// confidence of the edge that pulled it in — under the SAME
+			// graph and bounds the listing used (BP-27).
+			"by_depth": res.Buckets,
 		}, nil
 	})
+}
+
+// intOr returns *p when the caller supplied it (0 is a real value meaning
+// "unbounded"), else def.
+func intOr(p *int, def int) int {
+	if p == nil {
+		return def
+	}
+	if *p < 0 {
+		return def
+	}
+	return *p
 }
 
 // ─── investigation: diff_impact ──────────────────────────────────────────────

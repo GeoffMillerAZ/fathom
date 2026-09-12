@@ -44,6 +44,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "probe store path (default: in-memory; never the shared fleet store)")
 	out := fs.String("out", "", "write the report JSON here (default: stdout)")
 	maxBlast := fs.Int("max-blast-queries", 20, "bound blast_radius separately — it rebuilds the call graph on every call, so it costs ~10s a query on a ten-thousand-symbol service")
+	blastDepth := fs.Int("blast-depth", 1, "reverse-walk bound blast_radius is scored at; the truth closure uses the same bound (-1 = unbounded, the pre-BP-27 walk)")
 	maxQ := fs.Int("max-queries", 200, "bound each tool to this many deterministic stride-sampled questions (0 = every one; a whole module scored exhaustively is minutes, not seconds)")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -76,7 +77,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// The LocalConnector reports paths relative to the service root, which is
 	// the same root go/types walks — so no prefix translation is needed.
 	rep, err := indexbench.IndexOracleReport(ctx, c, []indexbench.Subject{
-		{Service: *service, Root: abs, MaxQueries: *maxQ, MaxBlastQueries: *maxBlast},
+		{Service: *service, Root: abs, MaxQueries: *maxQ, MaxBlastQueries: *maxBlast, BlastDepth: *blastDepth},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "indexbench: %v\n", err)
@@ -109,19 +110,59 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// Every rate is printed WITH its denominator: a bench that prints
 	// "precision 0.98" and hides "of 51" has told the reader a feeling, not
 	// a measurement (ADR-031).
+	// BP-29: a per-tool VERDICT against the ADR-032 floor, not just a
+	// number. ADR-032 holds L4 closed while L0 precision or recall is
+	// under 0.95 on a pinned repo, and a reader should not have to do that
+	// comparison in their head on every run.
+	below := 0
 	for _, svc := range rep.Services {
 		fmt.Fprintf(stdout, "\n%s — %d go packages (%d with type errors), %d indexed symbols\n",
 			svc.Service, svc.GoPackages, svc.PackagesWithErrors, svc.IndexedSymbols)
 		for _, t := range svc.Tools {
 			fmt.Fprintf(stdout, "  %-13s precision %.4f (%d/%d)  recall %.4f (%d/%d)  over %d of %d queries\n",
 				t.Tool, t.Precision, t.Correct, t.Predicted, t.Recall, t.Correct, t.Truth, t.Queries, t.Population)
-			fmt.Fprintf(stdout, "  %-13s %s\n", "", time.Duration(t.ElapsedMS)*time.Millisecond)
+			detail := time.Duration(t.ElapsedMS) * time.Millisecond
+			per := ""
+			if t.Queries > 0 {
+				per = fmt.Sprintf(", %s/query", (detail / time.Duration(t.Queries)).Round(time.Millisecond))
+			}
+			bound := ""
+			if t.EdgeFilter != "" {
+				bound = "edges=" + t.EdgeFilter
+			}
+			if t.Depth > 0 {
+				bound += fmt.Sprintf(" depth=%d", t.Depth)
+			}
+			fmt.Fprintf(stdout, "  %-13s %s%s  %s\n", "", detail, per, bound)
+			if t.Unadjudicated > 0 || t.UnadjudicatedQueries > 0 {
+				fmt.Fprintf(stdout, "  %-13s unadjudicated: %d answers, %d queries — outside the go/types truth's competence, in no rate (BP-30)\n",
+					"", t.Unadjudicated, t.UnadjudicatedQueries)
+			}
+			verdict := "PASS"
+			if t.Precision < l0Floor || t.Recall < l0Floor {
+				verdict = "BELOW FLOOR"
+				below++
+			}
+			fmt.Fprintf(stdout, "  %-13s %s vs the ADR-032 %.2f floor\n", "", verdict, l0Floor)
 		}
 	}
 	fmt.Fprintf(stdout, "\ntotal %s (ingest %s)\n",
 		time.Since(started).Round(time.Millisecond), ingested.Round(time.Millisecond))
+	if *out != "" {
+		fmt.Fprintf(stdout, "report: %s\n", *out)
+	}
+	if below > 0 {
+		fmt.Fprintf(stdout, "%d tool/metric pair(s) BELOW the %.2f floor — ADR-032 keeps L4 closed while that holds.\n", below, l0Floor)
+	} else {
+		fmt.Fprintf(stdout, "every scored tool is at or above the %.2f floor.\n", l0Floor)
+	}
 	return 0
 }
+
+// l0Floor is ADR-032's gate: L4 must not run while L0 precision or recall
+// is under it on a pinned repo. It is printed beside every rate so the
+// verdict and the number it came from are never separated.
+const l0Floor = 0.95
 
 func marshal(v any) ([]byte, error) {
 	data, err := json.MarshalIndent(v, "", "  ")

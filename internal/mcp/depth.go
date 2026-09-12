@@ -156,12 +156,22 @@ type blastBucket struct {
 // result's Symbols. Buckets are sorted by depth, symbols by key; the result
 // is never nil.
 func blastRadiusByDepth(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) []blastBucket {
+	g := callgraph.Build(nodes)
+	callgraph.AddTypedEdges(g, typed)
+	return blastBucketsOf(g, nodes, changedFiles, 0, nil)
+}
+
+// blastBucketsOf is blastRadiusByDepth over a graph the caller already has,
+// under the same bounds that caller's answer used (BP-27). maxDepth 0 is
+// unbounded; a non-nil include restricts the buckets to the symbols the
+// answer actually listed, so `by_depth` can never describe a wider set than
+// `symbols` — a summary that outruns the thing it summarises is how a
+// bounded answer starts reading as a complete one.
+func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string, maxDepth int, include map[string]bool) []blastBucket {
 	changed := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changed[f] = true
 	}
-	g := callgraph.Build(nodes)
-	callgraph.AddTypedEdges(g, typed)
 
 	seen := map[string]depthInfo{}
 	var queue []string
@@ -178,6 +188,9 @@ func blastRadiusByDepth(nodes []core.SymbolNode, changedFiles []string, typed []
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]
+		if maxDepth > 0 && seen[cur].Depth >= maxDepth {
+			continue
+		}
 		for _, d := range callgraph.CallersDetail(g, cur) {
 			if _, ok := seen[d.Key]; ok {
 				continue
@@ -189,6 +202,9 @@ func blastRadiusByDepth(nodes []core.SymbolNode, changedFiles []string, typed []
 
 	byDepth := map[int]*blastBucket{}
 	for k, d := range seen {
+		if include != nil && !include[k] {
+			continue
+		}
 		b := byDepth[d.Depth]
 		if b == nil {
 			b = &blastBucket{Depth: d.Depth, Symbols: []depthRow{}}

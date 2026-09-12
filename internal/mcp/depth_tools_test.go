@@ -81,9 +81,15 @@ func callTool(t *testing.T, srv *mcp.Server, name string, args map[string]any) m
 
 // BD-2: find_callers rows carry depth + edge_confidence, by_depth summarises
 // them, and depth > 1 adds transitive_callers.
+//
+// Every call here passes include_heuristic: true. What BD-2 pins is the
+// LABEL — that a syntax-only caller and a typed-pass caller are told apart
+// in the response — and that is only observable when both are present.
+// BP-26 changed which set the DEFAULT returns, not what the rows say; the
+// default's own behaviour is pinned by TestFindCallersResolvedByDefault.
 func TestFindCallersDepthAndConfidence(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	payload := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "include_heuristic": true})
 	callers := payload["callers"].([]any)
 	if len(callers) != 2 {
 		t.Fatalf("callers = %v, want Direct1 and Direct2", callers)
@@ -107,7 +113,7 @@ func TestFindCallersDepthAndConfidence(t *testing.T) {
 		t.Error("depth 1 (default) must not add transitive_callers")
 	}
 
-	deep := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "depth": 0})
+	deep := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "depth": 0, "include_heuristic": true})
 	trans := deep["transitive_callers"].([]any)
 	if len(trans) != 2 || trans[0].(map[string]any)["key"] != "svc::pkg.Deep" || trans[1].(map[string]any)["depth"] != float64(3) {
 		t.Errorf("transitive_callers = %v: want Deep@2 then TestDeep@3", trans)
@@ -117,7 +123,7 @@ func TestFindCallersDepthAndConfidence(t *testing.T) {
 	}
 
 	// Determinism: identical calls marshal identically.
-	a, _ := json.Marshal(callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "depth": 0}))
+	a, _ := json.Marshal(callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "depth": 0, "include_heuristic": true}))
 	b, _ := json.Marshal(deep)
 	if string(a) != string(b) {
 		t.Fatalf("find_callers not deterministic:\n%s\n%s", a, b)
@@ -125,10 +131,21 @@ func TestFindCallersDepthAndConfidence(t *testing.T) {
 }
 
 // BD-3: blast_radius (and its diff_impact alias) group the radius by depth.
+//
+// blast_radius is asked for the unbounded both-kinds walk explicitly
+// (BP-27 made resolved/depth-2 the default); diff_impact still IS that
+// walk, so it takes no arguments. The bucket shape under the new defaults
+// is pinned by TestBlastRadiusResolvedByDefault.
 func TestBlastRadiusByDepthField(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
 	for _, tool := range []string{"blast_radius", "diff_impact"} {
-		payload := callTool(t, srv, tool, map[string]any{"service": "svc", "changed_files": []string{"a.go"}})
+		args := map[string]any{"service": "svc", "changed_files": []string{"a.go"}}
+		if tool == "blast_radius" {
+			args["include_heuristic"] = true
+			args["max_depth"] = 0
+			args["max_symbols"] = 0
+		}
+		payload := callTool(t, srv, tool, args)
 		buckets, ok := payload["by_depth"].([]any)
 		if !ok || len(buckets) != 4 {
 			t.Fatalf("%s by_depth = %v, want depths 0..3", tool, payload["by_depth"])

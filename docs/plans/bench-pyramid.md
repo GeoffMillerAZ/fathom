@@ -54,3 +54,19 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 
 - [ ] `docs/bench/README.md` gains the pyramid table, the strengths map (which layer shows which capability), the cell-cache contract and `task bench-targeted`; scope G9 restated; `docs/design/coding-agent-excellence.md` §0 sentence 5 states the July figure as a turn-count result and names H2-3 as the standing bar {id: BP-24, skip_test: true, skip: "docs; evidence is the diffs and TestNoStaleHelpPhrasesInDocs"}
 - [ ] (op) Full L4 run on the home corpus at n=3, three arms, scored under H2-1 (history) and H2-3, ledger rows committed, `gold_source_rate` per tool in the row {id: BP-25, symbol: TestLedgerHasReplicatedRow, package: internal/contextbench, skip_test: true, skip: "operator spend; the test asserts a replicated row exists"}
+
+## L0 findings — index precision (2026-09-12)
+
+The first `task bench-l0-self` run at HEAD (10,651 symbols, 100 Go packages, 0 with type
+errors) measured what the nav tools actually return on this repository: `find_callers`
+precision 0.607 (295/486) recall 0.899, `references` precision 0.158 (352/2,226) recall
+1.000, `blast_radius` precision 0.086 (871/10,158) recall 0.805 at ~10.9 s a query. High
+recall with low precision is the signature of the syntax pass's tolerant bare-name
+matching, and ADR-032 holds L4 closed while L0 is under 0.95. Before/after numbers:
+`docs/bench/README.md`.
+
+- [x] `find_callers` and `references` return resolved (typed-pass) edges by default and heuristic (syntax-only) edges only with `include_heuristic: true`, each row still carrying `edge_confidence` (BD-2); precision on the self oracle ≥0.95 for find_callers {id: BP-26, symbol: resolvedCallersOnly, package: internal/mcp}
+- [x] `blast_radius` walks resolved edges by default with a default depth cap (2) and a named result cap, heuristic edges opt-in; precision on the self oracle ≥0.95 at depth 1 {id: BP-27, symbol: blastRadiusResolved, package: internal/mcp}
+- [x] The call graph is memoized per (service, store watermark) below the MCP layer and invalidated on ingest; I21 in `docs/intent/invariants.md` amended to "derived graphs may be memoized keyed by the store watermark only, never across ingests", with the test that pins invalidation {id: BP-28, symbol: CachedCallGraph, package: internal/analysis/callgraph, skip_test: true, skip: "CachedCallGraph is a type; no test CALLS it, so test_reaches cannot see the tests that prove it — `TestCachedCallGraphInvalidatesOnReIngest`, `TestCachedCallGraphEmptyWatermarkNeverCaches`, `TestCachedCallGraphBoundedLRU` and the MCP-level `TestNavGraphMemoIsWatermarkKeyed`, all in `task validate`"}
+- [x] `task bench-l0-self` prints a per-tool verdict against the 0.95 floor and the report path; `docs/bench/README.md` carries the before/after numbers {id: BP-29, oracle: lexical, path: Taskfile.yml, pattern: "^  bench-l0-self:$", skip_test: true, skip: "Taskfile + docs; the Go side is the verdict printer in cmd/indexbench"}
+- [x] The `references` oracle comparison is made honest: which reference kinds the go/types truth can adjudicate (identifier uses in walked Go files, unambiguously-named functions) versus what `references` returns (every text mention, docs and config included) is defined, only the comparable subset is scored, and the rest is reported as unadjudicated — never forced into a number {id: BP-30, symbol: ReferencesOracleSubset, package: internal/indexbench, skip_test: true, skip: "ReferencesOracleSubset is a type; the tests that prove it reach its constructor, not it — `TestReferencesOracleSubsetPartitionsQueries`, `TestReferencesOracleSubsetAdjudicableFiles`, both in `task validate`"}

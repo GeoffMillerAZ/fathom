@@ -9,6 +9,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -112,7 +113,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find every symbol that calls the named symbol in one service, each row labeled with depth (direct caller = 1) and edge_confidence (resolved = confirmed by the typed pass, heuristic = syntax-only), plus a by_depth summary; pass depth > 1 to also list transitive_callers. Reach for it when you need who-calls-this before changing a signature or behaviour. Required: service, symbol.",
+		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Rows carry depth (direct = 1) and edge_confidence; edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers; by_depth summarises. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -128,6 +129,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 					"type":        "integer",
 					"description": "Reverse-graph depth to walk (default 1 = direct callers only). Values above 1 add transitive_callers (depth 2..N) and extend by_depth; 0 = unbounded.",
 				},
+				"include_heuristic": map[string]any{
+					"type":        "boolean",
+					"description": "Add syntax-only (heuristic) callers, which come from bare-name matching. Default false.",
+				},
 			},
 			"required": []string{"service", "symbol"},
 		},
@@ -137,9 +142,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
 		}
 		var p struct {
-			Service string `json:"service"`
-			Symbol  string `json:"symbol"`
-			Depth   *int   `json:"depth"`
+			Service          string `json:"service"`
+			Symbol           string `json:"symbol"`
+			Depth            *int   `json:"depth"`
+			IncludeHeuristic bool   `json:"include_heuristic"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callers: invalid args"}
@@ -165,16 +171,65 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// backend that cannot list symbols leaves every direct caller at
 		// depth 1 / heuristic, which is exactly what the syntax engine's
 		// FindCallers proves on its own.
-		g := callerGraph(ctx, backend, p.Service)
+		navs := s.loadNavGraphs(ctx, backend, p.Service)
+		var g *callgraph.Graph
+		if navs != nil {
+			g = navs.Both
+		}
 		var depths map[string]depthInfo
 		if g != nil {
 			depths = callerDepths(g, p.Symbol, maxDepth)
+		}
+
+		// BP-26: resolved by default. The resolved graph both DROPS the
+		// syntax pass's name-collision callers and ADDS the ones reachable
+		// only through typed interface dispatch, which never had a Calls
+		// entry to be found by — so the default answer is a different set,
+		// not a subset.
+		edgeFilter := "all"
+		if !p.IncludeHeuristic {
+			if keep, ok := resolvedCallersOnly(navs, p.Symbol); ok {
+				edgeFilter = "resolved"
+				kept := nodes[:0:0]
+				for _, n := range nodes {
+					if keep[n.Key()] {
+						kept = append(kept, n)
+						delete(keep, n.Key())
+					}
+				}
+				// A resolved caller the syntax engine never listed still
+				// belongs in the answer; find it in the index by key.
+				if len(keep) > 0 && navs != nil {
+					for _, n := range navs.Nodes {
+						if keep[n.Key()] {
+							kept = append(kept, n)
+						}
+					}
+				}
+				sort.Slice(kept, func(i, j int) bool {
+					if kept[i].Name != kept[j].Name {
+						return kept[i].Name < kept[j].Name
+					}
+					return kept[i].Key() < kept[j].Key()
+				})
+				nodes = kept
+				if depths != nil {
+					for k := range depths {
+						if d := depths[k]; d.Depth == 1 && d.Confidence != core.EdgeConfidenceResolved {
+							delete(depths, k)
+						}
+					}
+				}
+			}
 		}
 		callers := toNodeDTOs(nodes)
 		infos := make([]depthInfo, 0, len(callers))
 		listed := make(map[string]bool, len(callers))
 		for i, n := range nodes {
 			info := depthInfo{Depth: 1, Confidence: core.EdgeConfidenceHeuristic}
+			if edgeFilter == "resolved" {
+				info.Confidence = core.EdgeConfidenceResolved
+			}
 			if d, ok := depths[n.Key()]; ok && d.Depth == 1 {
 				info = d
 			}
@@ -183,7 +238,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			infos = append(infos, info)
 			listed[n.Key()] = true
 		}
-		result := map[string]any{"callers": callers}
+		result := map[string]any{"callers": callers, "edge_filter": edgeFilter}
 		if maxDepth != 1 {
 			transitive := map[string]depthInfo{}
 			for k, d := range depths {

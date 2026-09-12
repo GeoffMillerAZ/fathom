@@ -17,7 +17,7 @@ import (
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
+		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Occurrences are unaffected. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -50,6 +50,10 @@ func registerReferences(s *Server, backend QueryInterface) {
 					"type":        "integer",
 					"description": "Maximum total occurrences to return (default 200)",
 				},
+				"include_heuristic": map[string]any{
+					"type":        "boolean",
+					"description": "Also list definitions whose name merely CONTAINS the query (\"FooBar\" for \"Foo\"). Default false; occurrences are unaffected.",
+				},
 			},
 			"required": []string{"query"},
 		},
@@ -67,6 +71,12 @@ func registerReferences(s *Server, backend QueryInterface) {
 			Regex           bool     `json:"regex"`
 			CaseInsensitive bool     `json:"case_insensitive"`
 			Max             int      `json:"max"`
+			// IncludeHeuristic (BP-26) restores the substring-containment
+			// definition matching below. It is opt-in because a hit on
+			// "FooBar" for query "Foo" is not a reference to Foo: the L0
+			// oracle counted those separately and they are the definition
+			// half's whole precision loss (docs/bench/README.md).
+			IncludeHeuristic bool `json:"include_heuristic"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: invalid args"}
@@ -147,8 +157,8 @@ func registerReferences(s *Server, backend QueryInterface) {
 				isDef := false
 				if n.Name == p.Query {
 					isDef = true
-				} else if !p.Word && !p.Regex {
-					// substring match on name
+				} else if p.IncludeHeuristic && !p.Word && !p.Regex {
+					// Substring match on name — opt-in since BP-26.
 					if strings.Contains(n.Name, p.Query) {
 						isDef = true
 					}
@@ -241,6 +251,9 @@ func registerReferences(s *Server, backend QueryInterface) {
 			"definitions": defs,
 			"occurrences": occs,
 			"count":       len(occs),
+			// Which definition matching answered (BP-26): "resolved" =
+			// exact-name definitions only, "all" = plus substring hits.
+			"edge_filter": map[bool]string{true: "all", false: "resolved"}[p.IncludeHeuristic],
 			"truncated":   truncated || el != nil,
 			"by_depth":    withDepthBuckets(infos),
 		}

@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -135,6 +136,12 @@ type Server struct {
 	// SetBudgets before serving; the zero value means the measured
 	// built-in defaults (budget_defaults.go).
 	budgets budgetSettings
+
+	// graphCache memoizes each service's call graphs per store watermark
+	// (BP-28, I21). Building one cost ~9.7s of every blast_radius query on
+	// a ten-thousand-symbol service and nothing about that work is
+	// per-query. Never nil after newServer; safe for concurrent use.
+	graphCache *callgraph.CachedCallGraph
 }
 
 // NewServer constructs a Server wired to backend. If backend is nil the server
@@ -180,6 +187,7 @@ func newServer(backend QueryInterface, fleet FleetBackend, logger *CallLogger, m
 		backend:    backend,
 		startTime:  time.Now(),
 		callLogger: logger,
+		graphCache: callgraph.NewCachedCallGraph(0),
 	}
 	registerBuiltins(s)
 	registerTools(s, backend, fleet, modules)

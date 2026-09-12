@@ -47,7 +47,7 @@
     },
     "count_field": "callers",
     "budget_ms": 250,
-    "bytes": 301,
+    "bytes": 321,
     "result_count": 1,
     "displaced": 0
   },
@@ -62,7 +62,7 @@
     },
     "count_field": "occurrences",
     "budget_ms": 250,
-    "bytes": 3158,
+    "bytes": 2710,
     "result_count": 12,
     "displaced": 0
   },
@@ -77,7 +77,7 @@
     },
     "count_field": "symbols",
     "budget_ms": 500,
-    "bytes": 953,
+    "bytes": 1044,
     "result_count": 7,
     "displaced": 0
   },

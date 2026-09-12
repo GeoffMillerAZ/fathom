@@ -35,6 +35,34 @@ New `task bench-l0-self` runs the same oracle over this repository at HEAD
 so both benches cite the same independent truth; the command's output is
 unchanged.
 
+**Nav tools answer from resolved edges (`BP-26..30`).**
+
+### Changed
+
+`find_callers` and `blast_radius` now return only edges the Go typed pass
+resolved; the syntax-only (heuristic) edges they used to include are opt-in
+behind a new `include_heuristic: true` argument. The same argument on
+`references` covers its definition half: an index symbol whose name merely
+CONTAINS the query is no longer listed as a definition of it by default.
+Its text occurrences -- searching code, docs and config for a string, the
+tool's purpose -- are unchanged. Every row still carries
+`edge_confidence`, and each response reports `edge_filter` naming which
+evidence answered -- a service with no typed edges falls back to the
+heuristic answer rather than returning an empty one.
+`blast_radius` additionally defaults to a depth cap of 2 and a 500-symbol
+listing cap, both overridable (`max_depth`, `max_symbols`; 0 = no bound) and
+both reported alongside `total_symbols`, `truncated` and `depth_capped`.
+`diff_impact` is no longer an alias: it keeps the unbounded both-kinds walk
+for PR review, where recall is the point.
+The L0 self oracle measured the reason on this repository: `find_callers`
+precision 0.607 -> 1.000, `blast_radius` 0.086 -> 1.000, and ~10.9s -> 0.006s
+per `blast_radius` query once the call graph is memoized per store watermark
+(`docs/bench/README.md`). The verify gate's reachability is deliberately
+untouched and still walks both edge kinds.
+`task bench-l0-self` now prints a per-tool verdict against ADR-032's 0.95
+floor and the report path, and reports answers the `go/types` truth cannot
+adjudicate as unadjudicated instead of scoring them as errors.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

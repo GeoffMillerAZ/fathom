@@ -17,7 +17,8 @@
           "truth": 3,
           "correct": 3,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "edge_filter": "all"
         },
         {
           "tool": "references",
@@ -37,7 +38,10 @@
           "truth": 5,
           "correct": 5,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "unadjudicated": 4,
+          "edge_filter": "all",
+          "depth": 1
         }
       ]
     },
@@ -56,7 +60,8 @@
           "truth": 1,
           "correct": 1,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "edge_filter": "all"
         },
         {
           "tool": "references",
@@ -76,7 +81,10 @@
           "truth": 2,
           "correct": 2,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "unadjudicated": 6,
+          "edge_filter": "all",
+          "depth": 1
         }
       ]
     },
@@ -95,7 +103,8 @@
           "truth": 0,
           "correct": 0,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "edge_filter": "all"
         },
         {
           "tool": "references",
@@ -115,7 +124,9 @@
           "truth": 0,
           "correct": 0,
           "precision": 1,
-          "recall": 1
+          "recall": 1,
+          "edge_filter": "all",
+          "depth": 1
         }
       ]
     }
