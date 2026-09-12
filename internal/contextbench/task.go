@@ -101,6 +101,14 @@ type Task struct {
 	// decides whether a given environment may run it. Empty = deterministic.
 	Requires []string `json:"requires,omitempty"`
 
+	// Exercises names the agent-surface tools the task was written to
+	// exercise (BP-6). It is what makes a targeted run possible: a diff
+	// maps to tool names (ToolsForFiles) and tool names map to the tasks
+	// that exercise them (SelectTasks). Declared honestly per task — it
+	// says what the PROMPT was written to require, not everything an arm
+	// might happen to call.
+	Exercises []string `json:"exercises,omitempty"`
+
 	// MaxPredicted caps how many answer lines a fenced answer block may
 	// carry under precision-aware scoring (PB-8, criterion H2-2). Zero means
 	// the default, max(5, 2·|gold|) — see MaxPredictedOrDefault.
@@ -226,6 +234,9 @@ func (t Task) Validate() error {
 		default:
 			return fmt.Errorf("task %s: truth_at_head[%d] unknown kind %q (want file, path, line, or form)", t.ID, i, a.Kind)
 		}
+	}
+	if err := validateExercises(t); err != nil {
+		return err
 	}
 	if t.MaxPredicted < 0 {
 		return fmt.Errorf("task %s: max_predicted must be >= 0", t.ID)

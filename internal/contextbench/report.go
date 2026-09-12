@@ -59,6 +59,28 @@ type ArmResult struct {
 	// transcript when the runner captured one (FirstGoldHit).
 	TokensToFirstGoldHit int64 `json:"tokens_to_first_gold_hit,omitempty"`
 	ToolCalls            int   `json:"tool_calls,omitempty"`
+
+	// Additive since BP-3/BP-4 (ADR-032 §2): the cell's identity and
+	// provenance. CellKey is the hash of the invariants the cell was
+	// bought under (CellKey/CellInputs); ArmSurface is the subject the arm
+	// was talking to (the fathom binary commit for the fathom arm, empty
+	// otherwise); Borrowed says this reading was not paid for by the run
+	// that reports it, and SourceRunID names the run that was.
+	CellKey     string `json:"cell_key,omitempty"`
+	ArmSurface  string `json:"arm_surface,omitempty"`
+	Borrowed    bool   `json:"borrowed,omitempty"`
+	SourceRunID string `json:"source_run_id,omitempty"`
+
+	// Additive since BP-9 (ADR-032 §3, H2-3): the transcript metrics the
+	// cost half of H2-3 reads. PayloadBytes is the discovery cost fathom
+	// controls; ToolSearchTurns is the harness tax, reported and never
+	// gated; GoldSourceTool names the tool whose result first carried a
+	// gold token ("answer" when only the final answer did). See
+	// TranscriptMetrics.
+	PayloadBytes        int64  `json:"payload_bytes,omitempty"`
+	ToolSearchTurns     int    `json:"toolsearch_turns,omitempty"`
+	TurnsExclToolSearch int    `json:"turns_excl_toolsearch,omitempty"`
+	GoldSourceTool      string `json:"gold_source_tool,omitempty"`
 }
 
 // claudeEnvelope is the subset of `claude -p --output-format json`'s result
