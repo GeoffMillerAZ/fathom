@@ -72,6 +72,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 					"type":        "integer",
 					"description": "Maximum rules to return (default 6)",
 				},
+				"include_snippets": map[string]any{
+					"type":        "boolean",
+					"description": "Inline each rule's cited lines as snippet, capped at 240 bytes (default true). Set false for the smallest possible payload.",
+				},
 				"action": map[string]any{
 					"type":        "string",
 					"enum":        []string{"refute", "corroborate"},
@@ -95,13 +99,14 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		group: GroupShared,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		var p struct {
-			Service  string `json:"service"`
-			File     string `json:"file"`
-			MaxRules int    `json:"max_rules"`
-			Action   string `json:"action"`
-			ClaimID  string `json:"claim_id"`
-			Note     string `json:"note"`
-			Author   string `json:"author"`
+			Service         string `json:"service"`
+			File            string `json:"file"`
+			MaxRules        int    `json:"max_rules"`
+			IncludeSnippets *bool  `json:"include_snippets"`
+			Action          string `json:"action"`
+			ClaimID         string `json:"claim_id"`
+			Note            string `json:"note"`
+			Author          string `json:"author"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: invalid args"}
@@ -170,7 +175,17 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			"file":    obl.File,
 		}
 		if len(obl.Rules) > 0 {
-			result["rules"] = obl.Rules
+			// BP-20/D3: inline each rule's cited lines so the agent stops
+			// paying a read_source turn per rule it trusts. Default ON for
+			// the TOOL (an agent calling obligations directly is about to
+			// read the citation anyway) and OFF for the EDIT HOOK, which
+			// passes include_snippets:false — the decision-moment payload's
+			// budget is ~150 tokens and its rendered bytes must not move.
+			if p.IncludeSnippets == nil || *p.IncludeSnippets {
+				result["rules"] = withSnippets(ctx, backend, p.Service, obl.Rules)
+			} else {
+				result["rules"] = obl.Rules
+			}
 		}
 		if obl.Watermark != "" {
 			result["compiled_at_watermark"] = obl.Watermark

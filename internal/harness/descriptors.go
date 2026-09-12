@@ -164,7 +164,7 @@ var claudeCode = Descriptor{
 		HTTPKey:         "url",
 		AddCommand:      "claude mcp add --transport http --scope user fathom {{url}}/rpc/agent",
 		ToolNamePattern: "mcp__{{server}}__{{tool}}",
-		Note:            "type:\"http\" beside url; doctor reads ~/.claude.json",
+		Note:            "type:\"http\" beside url; doctor reads ~/.claude.json. Add \"alwaysLoad\": true beside them (BP-22, ADR-032 §5): per Claude Code's MCP docs it makes startup WAIT for this server to connect before the session begins, so the tools are present on turn one instead of arriving late — it is a startup-ordering flag, NOT a deferral control, and it does not change whether schemas are deferred. Measured 2026-09-12 against claude 2.1.270: all 17 agent-surface tools load eagerly and a session spends ZERO ToolSearch turns with it AND without it, so the O24 deferral tax does not reproduce on this harness version.",
 	},
 	Env: EnvContract{
 		ProjectDir:       "CLAUDE_PROJECT_DIR",

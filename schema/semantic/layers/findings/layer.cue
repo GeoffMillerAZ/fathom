@@ -30,6 +30,10 @@ prompt_file:    "schema/semantic/layers/findings/prompt.md"
 // (internal/analysis/review) pins this admission text against the bridge's
 // constants.
 tier: "sme-stated"
+// claims, not governs (ADR-032 §4 D1): a review conclusion is a claim
+// about the code, not a rule the code is governed by — see
+// spec-bindings/layer.cue for the serving consequence.
+role: "claims"
 // concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
 // for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
 stratum: "concern"

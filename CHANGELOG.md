@@ -21,6 +21,24 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch (pre-1.0: breaking bumps minor)
 
+**The serve-time fixes the bench found (ADR-032 §4, BP-17..20).** The
+`obligations` tool orders served rules fresh before non-fresh, then by layer
+role, then specificity -- a stale rule no longer leads an edit-hook payload.
+- `#Layer` gains `role: "governs" | "claims"` (default `governs`, so external
+  packs are unchanged): `obligations`/`adr-rules` fill the serving cap first
+  and `spec-bindings`/`findings` take only the slots left; `displaced` still
+  counts both.
+- A claims-layer rule citing a gated plan row is scoped at serve time by that
+  row's own `{package, symbol}` contract, and a row naming no contract binds
+  to nothing -- six plan rows about C++, CUE and tree-sitter no longer bind to
+  a Go file because their prose says "extractor" (O23).
+- The `obligations` MCP tool inlines each rule's cited lines as `snippet`,
+  capped at 240 bytes with a named cut; `include_snippets` defaults true on
+  the tool and false on the edit hook, whose payload is unchanged.
+- The session ledger and the exploration ledger carry `toolsearch_turns` per
+  session (ADR-032 §5's tripwire), and the Claude Code plugin's `.mcp.json`
+  registers the daemon with `alwaysLoad: true`.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

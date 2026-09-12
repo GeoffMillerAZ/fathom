@@ -39,16 +39,16 @@ Verify: `fathom verify --service fathom --plan docs/plans/bench-pyramid.md`.
 
 ## The fixes the bench found (D1, D2, D3, D5 of the design)
 
-- [ ] Fresh-first: `ObligationsFor` orders served claims fresh before non-fresh, then by layer role, then specificity, then rule text; pinned by `TestObligationsFreshFirst` {id: BP-17, symbol: TestObligationsFreshFirst, package: internal/semantic, skip_test: true, skip: "the test is the anchor; ObligationsFor already carries its own anchor in earlier plans"}
-- [ ] Layer roles: `#Layer` gains `role: "governs" | "claims"` (obligations and adr-rules govern; spec-bindings and findings claim); `LayerRole(layer)` reads it; `claims` rules fill only the budget `governs` rules leave {id: BP-18, symbol: LayerRole, package: internal/semantic}
-- [ ] Contract scoping at serve time: a spec-bindings claim's scope is re-derived from the cited plan row's `{package, symbol}` annotation (`ContractScope`); a row with no contract binds to nothing; the LLM-proposed scope is kept only as a fallback for non-plan corpora {id: BP-19, symbol: ContractScope, package: internal/semantic}
-- [ ] The `obligations` MCP tool inlines each rule's cited lines as `snippet` (capped at 240 bytes, `include_snippets` defaults true on the tool and false on the edit hook so the hook payload budget is unchanged) {id: BP-20, symbol: obligationSnippet, package: internal/mcp}
+- [x] Fresh-first: `ObligationsFor` orders served claims fresh before non-fresh, then by layer role, then specificity, then rule text; pinned by `TestObligationsFreshFirst` {id: BP-17, symbol: TestObligationsFreshFirst, package: internal/semantic, skip_test: true, skip: "the test is the anchor; ObligationsFor already carries its own anchor in earlier plans"}
+- [x] Layer roles: `#Layer` gains `role: "governs" | "claims"` (obligations and adr-rules govern; spec-bindings and findings claim); `LayerRole(layer)` reads it; `claims` rules fill only the budget `governs` rules leave {id: BP-18, symbol: LayerRole, package: internal/semantic}
+- [x] Contract scoping at serve time: a spec-bindings claim's scope is re-derived from the cited plan row's `{package, symbol}` annotation (`ContractScope`); a row with no contract binds to nothing; the LLM-proposed scope is kept only as a fallback for non-plan corpora {id: BP-19, symbol: ContractScope, package: internal/semantic}
+- [x] The `obligations` MCP tool inlines each rule's cited lines as `snippet` (capped at 240 bytes, `include_snippets` defaults true on the tool and false on the edit hook so the hook payload budget is unchanged) {id: BP-20, symbol: obligationSnippet, package: internal/mcp}
 - [ ] Payload replay golden for `obligations` on `internal/extractor/goextract.go`-shaped fixture files shows the governing rule first and `displaced` 0 after BP-17..19 {id: BP-21, skip_test: true, skip: "evidence is the BP-15 golden diff in the same change"}
 
 ## The deferral tax (D4)
 
 - [ ] The agent-surface per-session schema bytes are measured by `capabilities` and held under the harness's documented MCP deferral threshold (or, when undocumented, under the size that produced zero `ToolSearch` turns in July: compact `outputSchema` by reference, drop redundant descriptions); `TestNarrowProfileSchemaBytes` re-pinned with the reason {id: BP-22, symbol: TestNarrowProfileSchemaBytes, package: cmd/fathom, skip_test: true, skip: "the test is the anchor"}
-- [ ] `toolsearch_turns` per session on the exploration ledger (from the session transcript parser) as the tripwire named in ADR-032 §5 {id: BP-23, symbol: toolSearchTurns, package: cmd/fathom}
+- [x] `toolsearch_turns` per session on the exploration ledger (from the session transcript parser) as the tripwire named in ADR-032 §5 {id: BP-23, symbol: toolSearchTurns, package: cmd/fathom}
 
 ## Records and the run
 

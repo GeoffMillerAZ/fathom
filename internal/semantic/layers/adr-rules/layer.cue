@@ -16,6 +16,9 @@ corpus: include: ["ADR.md", "docs/design/*.md"]
 prompt_version: "adr-rules/content-addressed"
 prompt_file:    "schema/semantic/layers/adr-rules/prompt.md"
 tier:           "doc-claimed"
+// governs (the #Layer default, stated): an architectural constraint from
+// a decision record binds the code it is scoped to.
+role: "governs"
 // concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
 // for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
 stratum: "concern"

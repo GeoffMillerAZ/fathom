@@ -55,16 +55,19 @@ func TestObligationsFor_ScopedOrderedFlagged(t *testing.T) {
 	if len(got.Rules) != 3 {
 		t.Fatalf("got %d rules, want 3 (narrow, stale-narrow, broad; refuted+mcp excluded): %+v", len(got.Rules), got.Rules)
 	}
-	// Narrow scope beats broad; ties break on rule text.
-	if got.Rules[0].Rule != "Inject clocks in query logic." || got.Rules[1].Rule != "Old rule that drifted." {
+	// BP-17 (ADR-032 §4 D5): FRESH first, then specificity. The stale
+	// narrow rule therefore ranks BELOW the fresh broad one — before this
+	// change it ranked above it, and both T02 payloads in the stopped bench
+	// run led with a stale rule as a result.
+	if got.Rules[0].Rule != "Inject clocks in query logic." || got.Rules[1].Rule != "Sort all outputs." {
 		t.Errorf("order wrong: %+v", got.Rules)
 	}
-	if got.Rules[2].Rule != "Sort all outputs." {
-		t.Errorf("broad rule not last: %+v", got.Rules)
+	if got.Rules[2].Rule != "Old rule that drifted." {
+		t.Errorf("stale rule not last: %+v", got.Rules)
 	}
 	// Drifted rule is served FLAGGED, never dropped.
-	if got.Rules[1].Status != string(core.ClaimStale) {
-		t.Errorf("stale rule status = %q, want flagged stale", got.Rules[1].Status)
+	if got.Rules[2].Status != string(core.ClaimStale) {
+		t.Errorf("stale rule status = %q, want flagged stale", got.Rules[2].Status)
 	}
 	if got.Rules[0].Status != "" {
 		t.Errorf("fresh rule must omit status, got %q", got.Rules[0].Status)

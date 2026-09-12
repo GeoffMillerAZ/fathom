@@ -25,6 +25,36 @@ import (
 // price of a contract a non-Claude client can machine-check; the
 // capabilities tool now reports it live as schema_bytes so the next change
 // is measured too. The band below brackets that measurement, not a hope.
+//
+// BP-22 re-pin, 2026-09-12 (docs/plans/bench-pyramid.md, ADR-032 §5). The
+// band is UNCHANGED and its justification is now a measurement instead of
+// an assertion. ADR-032 §5 asked for this number to be held under "the
+// harness's documented MCP deferral threshold". Claude Code documents no
+// such threshold, so it was measured directly: one `claude -p` run per
+// config against the live daemon's agent surface (28,715 bytes / 17 tools),
+// `--output-format stream-json`, ToolSearch turns counted in the stream.
+//
+//	claude 2.1.270, alwaysLoad:true  → 17/17 fathom tools in the init
+//	                                   tool list, 0 ToolSearch turns
+//	claude 2.1.270, alwaysLoad unset → 17/17 fathom tools in the init
+//	                                   tool list, 0 ToolSearch turns
+//
+// So on this harness version the whole surface loads eagerly at ~28.7 kB
+// and the O24 deferral tax (measured on 2.1.258: 1–2 ToolSearch turns per
+// cell, ~28k cache-read tokens each) does not reproduce. ADR-032's own
+// revisit trigger — "a harness release removes MCP tool deferral (retire
+// the line item)" — has therefore FIRED, and this band is a BUDGET (a
+// per-session context cost worth watching) rather than a threshold.
+//
+// The band is deliberately not tightened toward the ~16 kB July figure.
+// Reaching it would mean deleting either the generated outputSchemas
+// (10,693 bytes — the machine-checkable contract RP-11 exists to provide)
+// or the per-tool "Reach for it when …" sentences and argument
+// descriptions that make the surface discoverable, to chase a threshold
+// that is measurably not binding. `$ref`/`$defs` compaction was evaluated
+// and rejected on evidence: every repeated sub-schema repeats ACROSS tools,
+// and tools/list gives each tool its own independent schema document, so
+// in-document refs save exactly 0 bytes (measured).
 const (
 	agentSurfaceSchemaByteFloor   = 26000
 	agentSurfaceSchemaByteCeiling = 30000

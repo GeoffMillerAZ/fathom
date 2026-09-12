@@ -26,6 +26,10 @@ corpus: include: ["CLAUDE.md", "ADR.md", "docs/plans/README.md"]
 prompt_version: "obligations/content-addressed"
 prompt_file:    "schema/semantic/layers/obligations/prompt.md"
 tier:           "doc-claimed"
+// governs (the #Layer default, stated here because this is THE governing
+// layer): CLAUDE.md/ADR.md rules are binding rules a human wrote about
+// the code, and they fill the serving budget before any claims layer.
+role: "governs"
 // concern, not platform (ADR-024, docs/design/pack-taxonomy.md "The
 // obligations call"): the corpus (CLAUDE.md/ADR.md) is as org-specific as
 // content gets, but this pack's prompt/corpus-selector/eval fixtures are
