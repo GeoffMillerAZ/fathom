@@ -155,8 +155,52 @@ never meant to buy.
 
 ## The pyramid
 
-<!-- BP-24 renders the layer table (L0 index oracle … L5 ambient instrument)
-     and the strengths map here. -->
+One expensive bench cannot both guard the index on every commit and answer
+"versus grep"; ADR-032 (`docs/design/bench-pyramid.md`) splits the question
+into six layers, each measuring one thing at one cost on one trigger. A layer
+never re-asks what a cheaper layer already answered.
+
+| Layer | Question | Oracle | LLM cost | Runs on | Where |
+|---|---|---|---|---|---|
+| **L0** index oracle | Is the index right? callers, references, blast-radius closure vs `go/types` | `internal/contextbench/publicloc` walker (loctruth) | 0 | every commit (`task validate`, fixture fleet); `task bench-l0-self` on demand | `internal/indexbench` |
+| **L1** payload replay | Is each tool's answer small and stable? bytes, count, latency per (tool, query) | committed goldens against the fixture store | 0 | every commit | `internal/indexbench/replay` |
+| **L2** corpus gate | Is the corpus clean? truth at HEAD; no gold token in an auto-loaded file; no prompt naming its own answer | static walk | 0 | every commit | `TestHomeCorpusTruthAtHead` |
+| **L3** targeted agent | Did this change move the tasks it could move? fathom arm only, tasks by `exercises:` | H2-3 per task, no verdict | 1–4M tokens | a commit touching a tool handler (`task bench-targeted RANGE=…`) | `contextbenchscore select`, `--only`, `--scope targeted` |
+| **L4** full agent | Does fathom beat grep on its home turf at n≥3? | H2-1 (history), H2-3 (registered) | ~15M tokens | release tag; corpus, criterion or surface change | `task bench-home` |
+| **L5** sessions | Do real sessions go better with the channels on? | A/B arm, verify-gate catches, thread bet | ambient | continuously | `fathom flywheel`, `fathom research report` |
+
+### What each layer shows about fathom
+
+| Differentiated capability | Instrument | Number to read |
+|---|---|---|
+| Done means proven (the verify gate refuses unproven `[x]`) | L5: the verify ledger | `verifyFigure` — refusals / gate runs / plans, window and denominator in the sentence |
+| Cited obligations at the edit | L3/L4: `gold_source_rate[fathom].obligations` | a task passes the cell; the tool passes only when its result carried the gold token |
+| Callers and blast radius that are actually true | L0 | precision and recall vs `go/types`, per tool, with the unadjudicated remainder named |
+| Discovery cost the tool controls | L4: H2-3 | `payload_bytes` ratio and `cost_usd` ratio, with `toolsearch_turns` as its own line |
+| Answers that stay small as the index grows | L1 | bytes and `displaced` per replay entry |
+| Continuity across sessions | L5: the thread bet | `threadBetCheck` units toward its registered floor |
+
+### Remembered cells and the cost of a change
+
+Every scored cell carries `cell_key` = sha256 over `corpus_sha256`, task id, arm,
+`model_id`, harness version, scoring, prompt subject and `arm_surface` (the fathom
+binary commit for the fathom arm, empty for grep and none). Cells live under
+`workspace/artifacts/context-bench/cells/<key>/`; a run borrows any cell whose key
+matches, marks it `borrowed` with its source run, and the evaluator accepts a borrowed
+cell only by key equality — a changed invariant is a different key, never a silent
+reuse. Control-arm cells therefore survive every fathom change; a fathom change re-runs
+only the fathom cells for the tasks its diff can move (about 2M tokens instead of 15M).
+A row composed entirely of borrowed cells is indeterminate, with the reason named.
+
+### Gates
+
+| Trigger | Runs |
+|---|---|
+| any commit | L0 (fixture fleet), L1, L2 — inside `task validate` |
+| a commit touching `internal/mcp`, `internal/semantic`, `internal/query`, `internal/fusion` | L3 for the tasks those handlers exercise |
+| corpus revision, criterion registration, model or harness version change | grep and `none` cells re-run (their keys changed) |
+| release tag; a tool added to or removed from the surface | L4, three arms, n=3, verdict |
+| before any L4 run | `task bench-l0-self`: every adjudicable tool ≥0.95 precision and recall (ADR-032), else the index is the finding and L4 waits |
 
 ## How to read a row
 

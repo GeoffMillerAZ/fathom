@@ -1361,7 +1361,21 @@ Scope G9 is restated in these terms. The next full run is one spend scored under
 *Hash by tree instead of key* — a tree hash invalidates control cells on every docs
 commit; the key names the invariants that actually bind a cell.
 
+**Amended 2026-09-12, same day, from the first L0 self-run.** The oracle found
+`blast_radius` at precision 0.075 (heuristic edges over-connect) and ~10 s per query, and
+`find_callers` at 0.65; the fix was resolved edges by default with heuristic edges opt-in
+(`include_heuristic`), a watermark-keyed call-graph memo (I21 amended), and a repaired
+bare-name query path — find_callers now 1.0/1.0 and blast_radius 1.0/0.98 on this repo. The
+0.95 floor binds the tools the type checker can adjudicate (callers, the resolved blast
+walk); `references` is scored as a LOWER BOUND (comment and string-literal mentions cannot be
+told from identifier uses by a text search) and is reported, not gated. The same day's
+daemon log showed the typed-edge pass failing under launchd (no HOME/GOPATH), serving
+syntax-only edges with no doctor row saying so — a `typed_edges` row and an absolute Go
+environment for the daemon close it (BP-35..37). The deferral tax (O24) did not reproduce on
+Claude Code 2.1.270 (zero ToolSearch turns at 28.7k schema bytes); BP-22 is refused and the
+`toolsearch_turns` tripwire stands.
+
 **Revisit when.** A harness release removes MCP tool deferral (retire the line item); L0
-reports precision or recall under 0.95 on a pinned repo (the index is the bottleneck;
-L4 must not run); the `none` arm passes more than half the corpus; two same-corpus L4
-rows exist and `regress` has compared them.
+reports precision or recall under 0.95 for an adjudicable tool on a pinned repo (the index is
+the bottleneck; L4 must not run); the `none` arm passes more than half the corpus; two
+same-corpus L4 rows exist and `regress` has compared them.
