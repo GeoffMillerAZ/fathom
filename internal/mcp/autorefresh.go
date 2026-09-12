@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
@@ -210,6 +211,18 @@ func (a *autoRefreshBackend) ClassifiedZeroStats() map[string]int64 {
 		return nil
 	}
 	return cz.ClassifiedZeroStats()
+}
+
+// TypedEdgeStatus forwards the per-service typed-edge pass outcome (BP-35,
+// see typedEdgeStatusBackend in meta.go) — the same O7 forwarding class:
+// without it, wrapping the client in auto-refresh would make every
+// staleness_report say "unknown" on a daemon that knows perfectly well.
+func (a *autoRefreshBackend) TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool) {
+	teb, ok := a.QueryInterface.(typedEdgeStatusBackend)
+	if !ok {
+		return fusion.TypedEdgeStatus{}, false
+	}
+	return teb.TypedEdgeStatus(service)
 }
 
 func (a *autoRefreshBackend) Obligations(ctx context.Context, service, file string, maxRules int) (semantic.Obligations, error) {

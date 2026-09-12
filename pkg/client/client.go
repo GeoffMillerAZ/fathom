@@ -400,6 +400,17 @@ func (c *Client) ClassifiedZeroStats() map[string]int64 {
 	return c.pipe.ClassifiedZeroStats()
 }
 
+// TypedEdgeStatus returns the last typed-edge pass outcome this Client's
+// pipeline recorded for service (BP-35, internal/fusion/typedenv.go), and
+// whether any ingest of that service has run in this process at all. A
+// daemon whose Go toolchain environment is broken reports Failed with the
+// named reason here, instead of serving a syntax-only graph that every
+// surface renders as healthy. Consumed by /statusz, the mcp
+// staleness_report tool, and doctor's typed_edges row.
+func (c *Client) TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool) {
+	return c.pipe.TypedEdgeStatus(service)
+}
+
 // ServiceWatermark returns the connector's *current* freshness token for the
 // service's corpus (git HEAD SHA, or a content-addressed manifest hash for
 // non-git corpora — ADR-017), resolved from the path recorded in service_meta

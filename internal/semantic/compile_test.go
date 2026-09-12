@@ -1403,10 +1403,15 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 	// The floor and the corpus are one change: widening the corpus without
 	// it would let a nested file's rules compile repo-wide scopes.
 	files := []core.SourceFile{
-		{Path: "CLAUDE.md"}, {Path: "internal/CLAUDE.md"}, {Path: "cmd/fathom/CLAUDE.md"},
-		{Path: "third_party/x/CLAUDE.md"}, {Path: ".claude/worktrees/w/internal/CLAUDE.md"},
-		{Path: "workspace/tmp/CLAUDE.md"}, {Path: "node_modules/p/CLAUDE.md"},
-		{Path: "ADR.md"}, {Path: "docs/design/essay.md"},
+		{Path: "CLAUDE.md"},
+		{Path: "internal/CLAUDE.md"},
+		{Path: "cmd/fathom/CLAUDE.md"},
+		{Path: "third_party/x/CLAUDE.md"},
+		{Path: ".claude/worktrees/w/internal/CLAUDE.md"},
+		{Path: "workspace/tmp/CLAUDE.md"},
+		{Path: "node_modules/p/CLAUDE.md"},
+		{Path: "ADR.md"},
+		{Path: "docs/design/essay.md"},
 	}
 	var got []string
 	for _, f := range SelectCorpus(files, def.CorpusInclude, def.CorpusExclude) {

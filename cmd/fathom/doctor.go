@@ -253,6 +253,9 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		checkMetricsTier(),
 		// Phase R (docs/plans/cpp-toolchain.md CT-7).
 		checkCppToolchain(root),
+		// BP-36 (docs/plans/bench-pyramid.md): is the graph this daemon
+		// serves actually typed? (doctor_typed.go)
+		checkTypedEdges(hc, baseURL, root, explicitSvc, daemonUp),
 		// Phase T (docs/design/capability-registry.md): the one row that
 		// answers "why isn't X happening here?" — last, because it reads
 		// every fact the rows above diagnose individually.

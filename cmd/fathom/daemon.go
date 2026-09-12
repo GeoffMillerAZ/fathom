@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 )
 
 // daemon.go — `fathom daemon install|status|uninstall`.
@@ -126,7 +128,15 @@ func cmdDaemon(args []string, stdout, stderr io.Writer) int {
 // plistBody renders the launchd agent. KeepAlive + RunAtLoad because the
 // daemon is meant to be always-there; a fathom that needs starting by hand
 // is a fathom the agent silently stops using.
-func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string) string {
+func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string, goEnv []string) string {
+	var goEnvXML strings.Builder
+	for _, kv := range goEnv {
+		k, v, ok := strings.Cut(kv, "=")
+		if !ok || v == "" {
+			continue
+		}
+		fmt.Fprintf(&goEnvXML, "\n    <key>%s</key><string>%s</string>", k, v)
+	}
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
@@ -145,13 +155,19 @@ func plistBody(label, bin, store, addr, logDir, callLog, pathEnv string) string 
          back to syntax-only edges SILENTLY, which is the kind of quiet
          downgrade fathom exists to refuse. -->
     <key>PATH</key><string>%s</string>
+    <!-- BP-37: PATH alone was not enough. launchd does not hand an agent a
+         login shell's environment, so GOPATH arrived UNSET and go resolved
+         its default to the literal, unexpanded "$HOME/go" — refusing every
+         command with "GOPATH entry is relative". Every daemon-side ingest of
+         a Go service fell back to syntax-only edges (2026-09-12). Absolute
+         values, written at install time from this shell's own go env. -->%s
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>StandardOutPath</key><string>%s/fathom-http.log</string>
   <key>StandardErrorPath</key><string>%s/fathom-http.err</string>
 </dict></plist>
-`, label, bin, store, addr, callLog, pathEnv, logDir, logDir)
+`, label, bin, store, addr, callLog, pathEnv, goEnvXML.String(), logDir, logDir)
 }
 
 // daemonPathEnv builds the PATH launchd gives the daemon. launchd starts
@@ -178,6 +194,38 @@ func daemonPathEnv() string {
 		add(d)
 	}
 	return strings.Join(dirs, ":")
+}
+
+// daemonGoEnvKeys is the ordered set of Go toolchain variables the plist
+// carries beside PATH (BP-37). Pinned as a list so a test can assert the
+// plist declares exactly these, and so the status verb prints the same ones.
+var daemonGoEnvKeys = []string{"GOPATH", "GOCACHE", "GOMODCACHE"}
+
+// daemonGoEnv resolves absolute values for daemonGoEnvKeys from THIS
+// shell's environment, falling back to `go env` and then to home-relative
+// defaults — the same repair ladder the typed-edge loader itself walks
+// (internal/fusion.TypedEdgeEnv), applied once at install time so the
+// daemon never has to.
+//
+// Returns "KEY=VALUE" entries for every key that resolved, in
+// daemonGoEnvKeys order. A key that resolves to nothing is omitted rather
+// than written empty: an empty GOPATH in the plist is exactly the state
+// this row exists to prevent.
+func daemonGoEnv() []string {
+	env := fusion.TypedEdgeEnv()
+	resolved := map[string]string{}
+	for _, kv := range env {
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			resolved[k] = v // later entries win, exactly as exec does
+		}
+	}
+	out := make([]string, 0, len(daemonGoEnvKeys))
+	for _, k := range daemonGoEnvKeys {
+		if v := resolved[k]; v != "" && filepath.IsAbs(v) {
+			out = append(out, k+"="+v)
+		}
+	}
+	return out
 }
 
 func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
@@ -256,11 +304,20 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 	}
 
 	pathEnv := daemonPathEnv()
-	if err := os.WriteFile(plistPath, []byte(plistBody(*label, exe, storePath, *addr, logDir, callLog, pathEnv)), 0o644); err != nil {
+	goEnv := daemonGoEnv()
+	if err := os.WriteFile(plistPath, []byte(plistBody(*label, exe, storePath, *addr, logDir, callLog, pathEnv, goEnv)), 0o644); err != nil {
 		fmt.Fprintf(stderr, "error: writing %s: %v\n", plistPath, err)
 		return 1
 	}
 	fmt.Fprintf(stdout, "wrote %s\n  binary   %s\n  store    %s\n  addr     %s\n  call log %s\n  PATH     %s\n", plistPath, exe, storePath, *addr, callLog, pathEnv)
+	for _, kv := range goEnv {
+		k, v, _ := strings.Cut(kv, "=")
+		fmt.Fprintf(stdout, "  %-8s %s\n", k, v)
+	}
+	if len(goEnv) < len(daemonGoEnvKeys) {
+		fmt.Fprintf(stdout, "  NOTE: only %d of %d Go toolchain variables (%s) resolved to absolute paths — typed-edge enrichment may fall back to syntax-only edges\n",
+			len(goEnv), len(daemonGoEnvKeys), strings.Join(daemonGoEnvKeys, ", "))
+	}
 	if !strings.Contains(pathEnv, "go/bin") && !strings.Contains(pathEnv, "/usr/local/go") {
 		fmt.Fprintln(stdout, "  NOTE: no Go toolchain found on PATH — typed-edge enrichment for Go services will fall back to syntax-only edges")
 	}
@@ -303,6 +360,11 @@ func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
 	switch {
 	case label != "":
 		fmt.Fprintf(stdout, "launchd agent: %s (%s)\n", label, filepath.Join(launchAgentsDir(), label+".plist"))
+		// BP-37: what the daemon's Go environment actually is, read back
+		// from the installed plist — not what this shell's environment
+		// would be. A plist missing these is the 2026-09-12 defect still
+		// present, and the reader must be able to see that from here.
+		printPlistGoEnv(stdout, filepath.Join(launchAgentsDir(), label+".plist"))
 	case runtime.GOOS == "darwin":
 		fmt.Fprintln(stdout, "launchd agent: none installed — `fathom daemon install` writes one")
 	default:
@@ -348,6 +410,32 @@ func cmdDaemonUninstall(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "removed %s (%s)\n", target, plistPath)
 	fmt.Fprintln(stdout, "the store and logs under ~/.fathom are untouched")
 	return 0
+}
+
+// printPlistGoEnv reports the Go toolchain variables the installed plist
+// declares (BP-37). A key the plist does not carry is named as MISSING with
+// the remedy: an absent GOPATH is what made every daemon-side ingest of a
+// Go service fall back to syntax-only edges while reporting success.
+func printPlistGoEnv(stdout io.Writer, plistPath string) {
+	raw, err := os.ReadFile(plistPath)
+	if err != nil {
+		fmt.Fprintf(stdout, "go env:        unreadable plist (%v)\n", err)
+		return
+	}
+	body := string(raw)
+	var missing []string
+	for _, k := range daemonGoEnvKeys {
+		if strings.Contains(body, "<key>"+k+"</key>") {
+			continue
+		}
+		missing = append(missing, k)
+	}
+	if len(missing) == 0 {
+		fmt.Fprintf(stdout, "go env:        plist declares %s\n", strings.Join(daemonGoEnvKeys, ", "))
+		return
+	}
+	fmt.Fprintf(stdout, "go env:        MISSING %s from the plist environment — typed-edge enrichment for Go services will fall back to syntax-only edges silently\n", strings.Join(missing, ", "))
+	fmt.Fprintf(stdout, "remedy:        fathom daemon install --force\n")
 }
 
 // daemonHealthy probes /healthz and returns a short human detail either way.

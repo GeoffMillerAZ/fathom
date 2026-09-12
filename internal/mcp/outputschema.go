@@ -156,6 +156,10 @@ type stalenessReportResult struct {
 	IndexedCommit       string   `json:"indexed_commit"`
 	CurrentCommit       string   `json:"current_commit"`
 	ReingestRecommended bool     `json:"reingest_recommended"`
+	// TypedEdges (BP-35): {known, packages, failed, reason} — whether this
+	// daemon's typed Go call-edge pass ran for the service, and why not
+	// when it did not. Absent when the backend cannot report it.
+	TypedEdges any `json:"typed_edges,omitempty"`
 }
 
 type symbolContextResult struct {

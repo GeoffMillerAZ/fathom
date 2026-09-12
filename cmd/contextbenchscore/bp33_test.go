@@ -25,10 +25,12 @@ func TestCmdLedger_TargetedRunNeverTouchesTheCommittedLedger(t *testing.T) {
 	}
 	artifacts := filepath.Join(dir, "workspace", "artifacts", "context-bench")
 
-	run([]string{"ledger", "-tasks", tasks, "-results", results, "-ledger", committed,
+	run([]string{
+		"ledger", "-tasks", tasks, "-results", results, "-ledger", committed,
 		"-run-id", "r1", "-commit", "abc", "-arms", "fathom grep", "-repeat", "3",
 		"-env", "compiled-layer", "-scope", contextbench.ScopeTargeted, "-only", "T1",
-		"-artifacts", artifacts})
+		"-artifacts", artifacts,
+	})
 
 	if _, err := os.Stat(committed); !os.IsNotExist(err) {
 		rows, _ := contextbench.LoadLedger(committed)
@@ -61,10 +63,12 @@ func TestCmdLedger_ExplicitLedgerIsObeyed(t *testing.T) {
 	))
 	ledger := filepath.Join(dir, "ledger.jsonl")
 
-	run([]string{"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger,
+	run([]string{
+		"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger,
 		"-run-id", "r1", "-commit", "abc", "-arms", "fathom grep", "-repeat", "3",
 		"-env", "compiled-layer", "-scope", contextbench.ScopeTargeted, "-only", "T1",
-		"-ledger-explicit", "-artifacts", filepath.Join(dir, "artifacts")})
+		"-ledger-explicit", "-artifacts", filepath.Join(dir, "artifacts"),
+	})
 
 	rows, err := contextbench.LoadLedger(ledger)
 	if err != nil || len(rows) != 1 {
@@ -90,9 +94,11 @@ func TestCmdLedger_RowCarriesPrimaryModelAndAux(t *testing.T) {
 	writeCells(t, results, cells)
 	ledger := filepath.Join(dir, "ledger.jsonl")
 
-	run([]string{"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger,
+	run([]string{
+		"ledger", "-tasks", tasks, "-results", results, "-ledger", ledger,
 		"-run-id", "r1", "-commit", "abc", "-arms", "fathom grep", "-repeat", "3",
-		"-env", "compiled-layer"})
+		"-env", "compiled-layer",
+	})
 
 	rows, err := contextbench.LoadLedger(ledger)
 	if err != nil || len(rows) != 1 {
