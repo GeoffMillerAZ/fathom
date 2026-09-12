@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 )
@@ -65,6 +66,10 @@ func resolveHookHarness(flagVal string, stderr io.Writer) (harness.Codec, bool) 
 		id = harness.ClaudeCode
 	}
 	if c, ok := harness.CodecFor(id); ok {
+		// Every beat this process writes from here on carries the harness
+		// it spoke for (beats.go) — the evidence doctor's hooks_firing
+		// reads for a non-Claude harness.
+		beatHarness = id
 		return c, true
 	}
 	if _, known := harness.Lookup(id); known {
@@ -145,4 +150,35 @@ func harnessPresent() bool {
 		}
 	}
 	return harnessSessionID() != ""
+}
+
+// noteBeatHarness pre-scans a hook verb's args for --harness and stamps
+// beatHarness from it, WITHOUT parsing the flag set — so a beat emitted
+// before flag parsing still carries the harness that produced it. An
+// absent flag means claude-code, the wired default, exactly as
+// resolveHookHarness resolves it later.
+func noteBeatHarness(args []string) {
+	if id := hookHarnessArg(args); id != "" {
+		beatHarness = id
+		return
+	}
+	beatHarness = harness.ClaudeCode
+}
+
+// hookHarnessArg returns the value of --harness in args, or "".
+func hookHarnessArg(args []string) string {
+	for i, a := range args {
+		if a == "--" {
+			return ""
+		}
+		for _, name := range []string{"--harness", "-harness"} {
+			if a == name && i+1 < len(args) {
+				return args[i+1]
+			}
+			if strings.HasPrefix(a, name+"=") {
+				return strings.TrimPrefix(a, name+"=")
+			}
+		}
+	}
+	return ""
 }

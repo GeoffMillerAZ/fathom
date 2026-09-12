@@ -38,9 +38,15 @@ type streamEvent struct {
 	Type    string `json:"type"`
 	Message struct {
 		Content []struct {
-			Type    string          `json:"type"`
-			Text    string          `json:"text"`
-			Content json.RawMessage `json:"content"` // tool_result: string or []block
+			Type string `json:"type"`
+			Text string `json:"text"`
+			// tool_use carries ID/Name; the matching tool_result carries
+			// ToolUseID, which is how a payload is attributed to the tool
+			// that produced it (TranscriptMetrics, gold_source_tool).
+			ID        string          `json:"id"`
+			Name      string          `json:"name"`
+			ToolUseID string          `json:"tool_use_id"`
+			Content   json.RawMessage `json:"content"` // tool_result: string or []block
 		} `json:"content"`
 		Usage struct {
 			InputTokens              int64 `json:"input_tokens"`

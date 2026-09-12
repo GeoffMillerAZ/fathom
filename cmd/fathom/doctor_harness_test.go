@@ -77,9 +77,13 @@ func TestCheckMCPRegistrationNonClaudeNeverGuessesPass(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".codex", "config.toml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// HP-34: Codex is VERIFIED now (a real session negotiated /rpc/agent on
+	// this workstation), so a found entry is a real PASS. The demotion
+	// below it exists for the unverified state and must not outlive it —
+	// an unverified-forever row makes the verified state unreachable.
 	c := checkMCPRegistration(dir, "codex", "http://127.0.0.1:7575")
-	if c.Status != doctorSkipped || !strings.HasPrefix(c.Reason, "skipped: unverified") || !strings.Contains(c.Reason, "registered in") {
-		t.Errorf("codex with an entry = %+v; want skipped: unverified naming the found entry", c)
+	if c.Status != doctorPass || !strings.Contains(c.Reason, "registered in") {
+		t.Errorf("codex with an entry = %+v; want PASS naming the found entry", c)
 	}
 	// A missing entry is still a real FAIL — evidence, not a guess.
 	if c := checkMCPRegistration(t.TempDir(), "codex", "http://127.0.0.1:7575"); c.Status == doctorPass {
@@ -110,10 +114,11 @@ func TestCheckHooksNonClaudeReasons(t *testing.T) {
 	if a.Status != doctorSkipped || !strings.Contains(a.Reason, "no hook mechanism") {
 		t.Errorf("agents hooks_firing = %+v", a)
 	}
-	// Codex's hooks are wired (wave 2): the pre-seam "Codex has no hook
-	// mechanism" wording is retired for the harness_hooks pointer.
+	// Codex is wired AND verified (HP-34), so its rows are real verdicts,
+	// not pointers at harness_hooks: an unwired repo FAILs, with a remedy
+	// that does not prescribe `init` (init cannot write that file).
 	c := checkHooksInstalled(t.TempDir(), "codex")
-	if c.Status != doctorSkipped || strings.Contains(c.Reason, "Codex has no") || !strings.Contains(c.Reason, "harness_hooks") {
+	if c.Status != doctorFail || strings.Contains(c.Reason, "Codex has no") || !strings.Contains(c.Remedy, "fathom harness hooks") {
 		t.Errorf("codex hooks_installed = %+v", c)
 	}
 }

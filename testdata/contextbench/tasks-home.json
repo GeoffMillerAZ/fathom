@@ -40,6 +40,22 @@
         "min_passes": 2,
         "of_trials": 3
       }
+    },
+    {
+      "id": "H2-3",
+      "description": "The criterion the next full run is scored on (BP-10, ADR-032 §3; docs/design/bench-pyramid.md §3.5). SAME success bar as H2-1 — strictly more successes than the control arm, replication floor 3, substring scoring, the same committed leak rule. DIFFERENT cost half: `payload_bytes` (the sum of tool-result bytes returned to the model, internal/contextbench.TranscriptMetrics) ratio <= 1.0 AND `cost_usd` ratio <= 1.0. total_tokens is RECORDED and NOT gated: the first replicated run showed it to be cache_read x turns — a turn counter in a token costume, under which the discovery payload fathom shrinks is invisible (O26). `toolsearch_turns` (the harness's deferred MCP schema loads, O24) is reported as its own line per arm and never gated: it is a harness tax, so it may not penalise the fathom arm silently, and naming it stops it being an excuse either. `gold_source_tool` — the tool whose result first carried a gold token — is recorded per cell and summarised as gold_source_rate per arm per tool on the ledger row, so a tool passes only when it is the source (E1/O23: obligations served six displaced rules and the arm passed the task anyway by reading the file grep's way). Registered as a NEW criterion because it changes the cost half after H2-1 recorded data; H2-1's verdicts stand as history and are never re-scored (T5). Evaluated by internal/contextbench.Criterion.Evaluate; a run that recorded no payload_bytes is INDETERMINATE under it, never a pass — the instrument did not look.",
+      "registered_at": "2026-09-12",
+      "registered_before_any_run_under_it": true,
+      "require_strictly_more_successes": true,
+      "min_trials": 3,
+      "scoring": "substring",
+      "max_payload_ratio": 1.0,
+      "max_cost_ratio": 1.0,
+      "leak_rule": {
+        "arm": "none",
+        "min_passes": 2,
+        "of_trials": 3
+      }
     }
   ],
   "post_recompile_rederivation": {
@@ -109,9 +125,9 @@
     }
   },
   "truth_at_head_revision": {
-    "rederived_at": "2026-09-02",
-    "rederived_at_commit": "e8d2948",
-    "method": "PB-1 (docs/plans/bench-public.md; design docs/vision/26-proof-credibility.md §2.1, ADR-031). Every ground-truth token re-derived by direct grep/read of the working tree at the named commit (never the daemon alone), and each token now carries a `truth_at_head` anchor (kind file|path|line|form) that internal/contextbench's TestHomeCorpusTruthAtHead re-checks on every `task validate`, so corpus drift is a gate failure. Premises that rest on what the LLM-compiled obligations layer serves declare `requires: [compiled-layer]` (PB-12); the live daemon's obligations tool was queried read-only for those five to record its current serving state. machine_criterion (H2-1) untouched, per the rule the post_recompile_rederivation block set.",
+    "rederived_at": "2026-09-12",
+    "rederived_at_commit": "1b8765d",
+    "method": "PB-1 (docs/plans/bench-public.md; design docs/vision/26-proof-credibility.md §2.1, ADR-031). Every ground-truth token re-derived by direct grep/read of the working tree at the named commit (never the daemon alone), and each token now carries a `truth_at_head` anchor (kind file|path|line|form) that internal/contextbench's TestHomeCorpusTruthAtHead re-checks on every `task validate`, so corpus drift is a gate failure. Premises that rest on what the LLM-compiled obligations layer serves declare `requires: [compiled-layer]` (PB-12); the live daemon's obligations tool was queried read-only for those five to record its current serving state. machine_criterion (H2-1) untouched, per the rule the post_recompile_rederivation block set. RE-SWEPT 2026-09-12 under BP-1/BP-2 (docs/plans/bench-pyramid.md, ADR-032 §1): TestHomeCorpusTruthAtHead now also asserts that no ground-truth token appears in any file the harness auto-loads (corpusBaselineFiles: root CLAUDE.md, AGENTS.md, .claude/CLAUDE.md, and the user memory index when $CONTEXT_BENCH_MEMORY_INDEX names it) and refuses a prompt that names the file its own ground truth is derived from (citations of the form `file#L12-L13` are stripped first: a staleness task must be allowed to quote the citation under test). Both checks are free and run in `task validate`.",
     "findings": [
       "H1-T08: FALSE at HEAD — the workspace/ rule moved from CLAUDE.md:29-30 to the Non-negotiables table row at line 15; the bare-number token '29' (a substring of any answer containing 29) replaced by the citation form 'CLAUDE.md#L15', which the prompt now prescribes.",
       "H1-T13: INVERTED at HEAD — ADR.md#L158-L159 no longer carries the companion-allowlist rule (its text moved to line 176); the live layer serves the claim with status: stale. Ground truth 'verdict: fresh' -> 'verdict: stale'; 'ADR-010' re-anchored to the line carrying the rule's words.",
@@ -119,7 +135,14 @@
       "H1-T01: premise moved — the Extractor bullet is in the path-scoped internal/CLAUDE.md:35-36; prompt admits the path-scoped file; ground truth unchanged.",
       "H1-T12: premise still stale at HEAD (CLAUDE.md#L83-L84 is now the index-first stanza; the rule is at line 48); verdict unchanged and the live layer now agrees (status: stale).",
       "H1-T02, T03, T04, T05, T06, T07, T09, T10: re-verified unchanged at HEAD.",
-      "Split (PB-12): H1-T01, T02, T07, T12, T13 declare requires: [compiled-layer]; the other eight are deterministic and run on a scratch daemon with no compiled layer."
+      "Split (PB-12): H1-T01, T02, T07, T12, T13 declare requires: [compiled-layer]; the other eight are deterministic and run on a scratch daemon with no compiled layer.",
+      "H1-T02: LEAKED — 'internal/core' and 'pkg/client' are verbatim in the auto-loaded root CLAUDE.md (O25). Re-derived onto the ADR-021 typed-call-edge rule the layer serves for the same file: ground truth 'core.Edge' + 'ADR-021'.",
+      "H1-T07: LEAKED — the answer was the bare file name 'ADR.md', which both CLAUDE.md and AGENTS.md contain. Re-derived to the citation 'ADR.md#L590' (document AND line), exact-match.",
+      "H1-T08: LEAKED — 'workspace/' is in CLAUDE.md and AGENTS.md. Dropped; the task is now scored on the citation 'CLAUDE.md#L15' alone (exact-match) and the prompt no longer names the file.",
+      "H1-T11: LEAKED — 'never a shell' is in CLAUDE.md and AGENTS.md, and any-of made it sufficient. Dropped; the surviving tokens live only in docs/guides/fleet-index.md.",
+      "H1-T12: LEAKED — 'keystone' is in CLAUDE.md. Part (b) now asks for the line the rule's text occupies at HEAD ('CLAUDE.md#L48').",
+      "H1-T01/H1-T03/H1-T13: PROMPT NAMED THE ANSWER'S FILE (internal/CLAUDE.md, cmd/fathom/verify_test.go, ADR.md) — the E1/O23 shape. The pointers are removed; ground truth unchanged.",
+      "Maintenance note: three tasks (H1-T07, H1-T08, H1-T12) now pin a line citation, so an edit above the cited line in ADR.md or CLAUDE.md fails this test. That is the intended trade: a line number is the one fact about an auto-loaded file that the auto-load does not hand the agent."
     ]
   },
   "tasks": [
@@ -127,13 +150,17 @@
       "id": "H1-T01",
       "class": "obligations",
       "category": "what_governs",
-      "prompt": "Per fathom's compiled obligations layer, which CLAUDE.md convention (the root file or the path-scoped `internal/CLAUDE.md` it routes to) governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
+      "prompt": "Per fathom's compiled obligations layer, which repository convention governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
       "ground_truth": [
         "fusion.New",
         "golden-test"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool (compiled_at_watermark 538b9a8, layer last compiled 2026-07-08, service=fathom — the only production layer with compiled claims per docs/vision/11-dial-to-eleven.md §1) served for file internal/extractor/goextract.go: rule 'Implement extractor.Extractor, register by extension in fusion.New(), add ext→kind in connector, golden-test it.' cites CLAUDE.md#L89-L90, no `status` field (fresh). Hand-verified: CLAUDE.md lines 89-90 today read '- **Extractor**: implement `extractor.Extractor`, register by extension in / `fusion.New()`, add its ext→kind in `connector`, golden-test it.' — citation is exact and current despite the compile watermark being 112 commits behind HEAD (`git log --oneline 538b9a8..HEAD | wc -l` = 112 at authoring time). RE-DERIVED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): live obligations(internal/extractor/goextract.go) now blends three production layers (obligations+adr-rules+spec-bindings) at compiled_at_watermark 5a7bd81 (5 commits behind HEAD) and returns exactly one CLAUDE.md-sourced rule: 'Add new extractor ext→kind mapping in connector.' src CLAUDE.md#L89-L90, no status field. Hand-verified against worktree HEAD: CLAUDE.md#L89-L90 today holds unrelated text ('...pkg/client re-exports for external consumers.' / '- New CUE schemas...'), not the Extractor bullet — it shifted to L94-95 when five lines were inserted earlier in the file by the SS-8 DuckDB-deletion prose (added between watermark 5a7bd81 and HEAD; verified via `git diff 5a7bd81..HEAD -- CLAUDE.md`). This is a genuine citation drift the post-ingest sweep has not flagged (no status field present). Ground truth is UNCHANGED — independently hand-verified true against the real, current CLAUDE.md text (lines 94-95, content unchanged: '...register by extension in `fusion.New()`, add its ext→kind in `connector`, golden-test it.'). Separately noted: the recompiled rule's own paraphrase also narrowed to omit 'fusion.New()' and 'golden-test' entirely (an LLM-compile scoping choice, independent of the line drift) — so a single obligations() call on this exact file will not itself surface either ground-truth token post-recompile. Recorded as a real, honestly-observed capability finding for the H3-1 run, not a corpus defect. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the Extractor bullet moved out of the root CLAUDE.md (now a <=120-line router) into the path-scoped internal/CLAUDE.md:35-36 ('register by extension in `fusion.New()`, add its ext->kind in `connector`, golden-test it'). Premise reworded to admit the path-scoped file; ground truth unchanged and re-anchored there. The live daemon's obligations(internal/extractor/goextract.go) at watermark 976134c serves only spec-binding rules for this file (the CLAUDE.md-sourced extractor rule is displaced: displaced=65), so this task rests on the compiled layer's serving state — declared requires: [compiled-layer].",
+      "exercises": [
+        "obligations",
+        "read_source"
+      ],
+      "source": "fathom @ d1ead30, obligations tool (compiled_at_watermark 538b9a8, layer last compiled 2026-07-08, service=fathom — the only production layer with compiled claims per docs/vision/11-dial-to-eleven.md §1) served for file internal/extractor/goextract.go: rule 'Implement extractor.Extractor, register by extension in fusion.New(), add ext→kind in connector, golden-test it.' cites CLAUDE.md#L89-L90, no `status` field (fresh). Hand-verified: CLAUDE.md lines 89-90 today read '- **Extractor**: implement `extractor.Extractor`, register by extension in / `fusion.New()`, add its ext→kind in `connector`, golden-test it.' — citation is exact and current despite the compile watermark being 112 commits behind HEAD (`git log --oneline 538b9a8..HEAD | wc -l` = 112 at authoring time). RE-DERIVED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): live obligations(internal/extractor/goextract.go) now blends three production layers (obligations+adr-rules+spec-bindings) at compiled_at_watermark 5a7bd81 (5 commits behind HEAD) and returns exactly one CLAUDE.md-sourced rule: 'Add new extractor ext→kind mapping in connector.' src CLAUDE.md#L89-L90, no status field. Hand-verified against worktree HEAD: CLAUDE.md#L89-L90 today holds unrelated text ('...pkg/client re-exports for external consumers.' / '- New CUE schemas...'), not the Extractor bullet — it shifted to L94-95 when five lines were inserted earlier in the file by the SS-8 DuckDB-deletion prose (added between watermark 5a7bd81 and HEAD; verified via `git diff 5a7bd81..HEAD -- CLAUDE.md`). This is a genuine citation drift the post-ingest sweep has not flagged (no status field present). Ground truth is UNCHANGED — independently hand-verified true against the real, current CLAUDE.md text (lines 94-95, content unchanged: '...register by extension in `fusion.New()`, add its ext→kind in `connector`, golden-test it.'). Separately noted: the recompiled rule's own paraphrase also narrowed to omit 'fusion.New()' and 'golden-test' entirely (an LLM-compile scoping choice, independent of the line drift) — so a single obligations() call on this exact file will not itself surface either ground-truth token post-recompile. Recorded as a real, honestly-observed capability finding for the H3-1 run, not a corpus defect. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the Extractor bullet moved out of the root CLAUDE.md (now a <=120-line router) into the path-scoped internal/CLAUDE.md:35-36 ('register by extension in `fusion.New()`, add its ext->kind in `connector`, golden-test it'). Premise reworded to admit the path-scoped file; ground truth unchanged and re-anchored there. The live daemon's obligations(internal/extractor/goextract.go) at watermark 976134c serves only spec-binding rules for this file (the CLAUDE.md-sourced extractor rule is displaced: displaced=65), so this task rests on the compiled layer's serving state — declared requires: [compiled-layer]. BP-1 (2026-09-12): the prompt's parenthetical named `internal/CLAUDE.md` — the file the ground truth is derived from — so discovery collapsed to one read (O23/E1). The parenthetical is removed; the ground truth and scoring are unchanged.",
       "notes": "RECOMPILE-EXPOSED: premise assumes the layer still serves this rule for this file post-recompile — see post_recompile_rederivation. RE-DERIVED 2026-07-24 (H3-1): ground truth confirmed still accurate at current HEAD; the live obligations() call's own citation and rule text have drifted (see source) — a capability finding, not a ground-truth change.",
       "requires": [
         "compiled-layer"
@@ -155,27 +182,35 @@
       "id": "H1-T02",
       "class": "obligations",
       "category": "what_governs",
-      "prompt": "Per fathom's compiled obligations layer, which CLAUDE.md rule governs internal/core/model.go regarding where shared domain model types must live, and which downstream package is named as the point that re-exports them for external consumers?",
+      "prompt": "Per fathom's compiled obligations layer, a decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried. Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
       "ground_truth": [
-        "internal/core",
-        "pkg/client"
+        "core.Edge",
+        "ADR-021"
       ],
       "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30, obligations tool served for file internal/core/model.go: rule 'Place shared domain model types in internal/core; extend additively; pkg/client re-exports for external consumers.' cites CLAUDE.md#L83-L84, no status field (fresh). Hand-verified: CLAUDE.md line 83 reads '- **The domain model is the keystone**: shared types live in `internal/core`; extend' and line 84 'it additively; `pkg/client` re-exports for external consumers.' — exact match at today's HEAD. RE-DERIVED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): live obligations(internal/core/model.go) (compiled_at_watermark 5a7bd81, 5 commits behind HEAD) serves 'Maintain shared types in `internal/core` and extend them additively.' src CLAUDE.md#L83-L84, no status field. Hand-verified against worktree HEAD: CLAUDE.md#L83-L84 today reads '- **Determinism is a contract**: sort outputs...' / '  never call `time.Now()`...' — the domain-model bullet shifted to L88-89 (same five-line SS-8-prose-insertion shift documented on H1-T01). Another genuine sweep-missed drift (no status field). Ground truth UNCHANGED — independently hand-verified true against current CLAUDE.md lines 88-89 ('shared types live in `internal/core`; extend it additively; `pkg/client` re-exports for external consumers.', content unchanged). Separately noted: the recompiled rule's paraphrase also dropped the 'pkg/client re-exports' clause entirely (present in full at the compile-watermark source text, so this is an LLM-compile scoping choice, not solely the line drift) — a single obligations() call on this file will not surface the 'pkg/client' token post-recompile. Recorded as a capability finding for the H3-1 run. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the domain-model bullet now lives at CLAUDE.md:48-49 ('**The domain model is the keystone**: shared types live in `internal/core`, extended additively; `pkg/client` re-exports for external consumers.'). Ground truth unchanged. Live obligations(internal/core/model.go) at watermark 5a7bd81 still serves 'Maintain shared types in `internal/core` and extend them additively.' src CLAUDE.md#L83-L84, now flagged status: stale by the sweep. requires: [compiled-layer] because the premise is what the layer serves.",
+      "exercises": [
+        "obligations",
+        "read_source"
+      ],
+      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The task's previous truth ('internal/core', 'pkg/client') sat verbatim in the root CLAUDE.md, which every `claude -p` session auto-loads: the no-tools arm passed it 2 of 2 at ~28k tokens in 5.5s by quoting its own system prompt (O25, run-20260902T211103Z), and it cost six tool-arm cells to discover that. Re-derived against the same file (internal/core/model.go) and the same class (what governs this file, per the compiled layer) onto a rule the baseline does not contain: obligations(internal/core/model.go) served, at compiled_at_watermark 5a7bd81, 'ADR-021: Typed call edges must reside on core.Edge, never mutating Calls contract.' src ADR.md#L635-L636, layer adr-rules, no staleness flag. Hand-verified at HEAD: ADR.md#L621 is the ADR-021 heading and ADR.md#L636 reads 'carried on core.Edge, never mutating the existing syntax-derived Calls'. Neither token appears in CLAUDE.md or AGENTS.md.",
       "notes": "RECOMPILE-EXPOSED: premise assumes the layer still serves this rule for this file post-recompile — see post_recompile_rederivation. RE-DERIVED 2026-07-24 (H3-1): ground truth confirmed still accurate at current HEAD; used as T12's new re-anchor claim (same file, same drifted citation) — see H1-T12.",
       "requires": [
         "compiled-layer"
       ],
       "truth_at_head": [
         {
-          "token": "internal/core",
+          "token": "core.Edge",
           "kind": "file",
-          "file": "CLAUDE.md"
+          "file": "ADR.md",
+          "needle": "carried on core.Edge",
+          "why": "ADR-021's decision text: typed Go call edges are 'carried on core.Edge, never mutating the existing syntax-derived Calls contract'"
         },
         {
-          "token": "pkg/client",
+          "token": "ADR-021",
           "kind": "file",
-          "file": "CLAUDE.md"
+          "file": "ADR.md",
+          "needle": "## ADR-021",
+          "why": "the decision record's own heading line"
         }
       ]
     },
@@ -183,7 +218,7 @@
       "id": "H1-T03",
       "class": "verify",
       "category": "is_proven",
-      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function (in cmd/fathom/verify_test.go) that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
+      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
       "ground_truth": [
         "TestCmdVerify_MissingPlan",
         "TestCmdVerify_MissingService",
@@ -203,7 +238,12 @@
         "TestCmdVerify_InMainSwitch"
       ],
       "scoring_rule": "any-of",
-      "source": "fathom @ d1ead30. Hand-verified directly (never via the live daemon): `grep -rn \"cmdVerify(\" --include='*_test.go' .` returns zero matches (only cmd/fathom/main.go:69 and verify.go:36, both non-test). `grep -n '^func TestCmdVerify' cmd/fathom/verify_test.go` enumerates exactly 16 functions, and each passes \"verify\" as run()'s first arg (mapped line-by-line: MissingPlan:23, MissingService:35, UnreadablePlan:44, Store_Pass:76, Store_GateFail:103, Store_OpenTask_NoGate:137, Store_Strict:166+176, Store_JSON:203, OperationalError_BadStore:228, HTTP_ServiceNotIndexed:315, Store_EmptyIndex:336, HTTP_Pass:352, HTTP_GateFail:369, HTTP_FailNotGated_OpenTask:388, HTTP_OperationalError:402, InMainSwitch:417); cmd/fathom/main.go:68-69 `case \"verify\": return cmdVerify(...)` confirms the dispatch. All 16 are valid any-of answers (critic round D2 extended the list from an arbitrary 5-of-16 subset to the full set). docs/plans/falsifiability.md:42 for the B3-1 row text/contract; `bin/fathom verify --service fathom --store workspace/tmp/scratch.sqlite --plan docs/plans/falsifiability.md` confirms B3-1 verifies (0 failing) against a scratch store built by this task's author, never the live daemon. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): `grep -c '^func TestCmdVerify' cmd/fathom/verify_test.go` = 16, `grep -rn 'cmdVerify(' --include='*_test.go' .` = 0 matches. Unchanged.",
+      "exercises": [
+        "verify_plan",
+        "find_callers",
+        "references"
+      ],
+      "source": "fathom @ d1ead30. Hand-verified directly (never via the live daemon): `grep -rn \"cmdVerify(\" --include='*_test.go' .` returns zero matches (only cmd/fathom/main.go:69 and verify.go:36, both non-test). `grep -n '^func TestCmdVerify' cmd/fathom/verify_test.go` enumerates exactly 16 functions, and each passes \"verify\" as run()'s first arg (mapped line-by-line: MissingPlan:23, MissingService:35, UnreadablePlan:44, Store_Pass:76, Store_GateFail:103, Store_OpenTask_NoGate:137, Store_Strict:166+176, Store_JSON:203, OperationalError_BadStore:228, HTTP_ServiceNotIndexed:315, Store_EmptyIndex:336, HTTP_Pass:352, HTTP_GateFail:369, HTTP_FailNotGated_OpenTask:388, HTTP_OperationalError:402, InMainSwitch:417); cmd/fathom/main.go:68-69 `case \"verify\": return cmdVerify(...)` confirms the dispatch. All 16 are valid any-of answers (critic round D2 extended the list from an arbitrary 5-of-16 subset to the full set). docs/plans/falsifiability.md:42 for the B3-1 row text/contract; `bin/fathom verify --service fathom --store workspace/tmp/scratch.sqlite --plan docs/plans/falsifiability.md` confirms B3-1 verifies (0 failing) against a scratch store built by this task's author, never the live daemon. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): `grep -c '^func TestCmdVerify' cmd/fathom/verify_test.go` = 16, `grep -rn 'cmdVerify(' --include='*_test.go' .` = 0 matches. Unchanged. BP-1 (2026-09-12): the prompt named cmd/fathom/verify_test.go, the file every ground-truth token is anchored to; the pointer is removed and the answer set is unchanged.",
       "truth_at_head": [
         {
           "token": "TestCmdVerify_MissingPlan",
@@ -297,6 +337,10 @@
         "not found"
       ],
       "scoring_rule": "all-of",
+      "exercises": [
+        "verify_plan",
+        "find_symbol"
+      ],
       "source": "fathom @ d1ead30. Ground truth reproduced directly: `grep -rn \"GetGovernedClaimByRepro\" --include='*.go' .` returns zero matches (the symbol is fabricated for this task, confirmed absent). `bin/fathom verify --service fathom --store workspace/tmp/scratch.sqlite --plan workspace/tmp/demo-verify-task.md` (scratch store built by this task's author from a fresh `fathom ingest` of this repo at d1ead30, never the live daemon) produced: '✗ [DEMO-H1] ... symbol_present: \"GetGovernedClaimByRepro\" not found under \"internal/store\" in the index' / '✓ [DEMO-H2] ...' / '2 tasks total; 2 claimed: 1 verified, 1 failing' / exit 1. Mirrors the DEMO-1/DEMO-2 worked example in docs/adoption/spec-driven-development.md §6. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): `grep -rn GetGovernedClaimByRepro --include='*.go' .` = 0 matches; the gate's phrase is internal/verify/verify.go:315 ('%q not found in the index'). Unchanged.",
       "truth_at_head": [
         {
@@ -321,6 +365,11 @@
         "cmd/contextbenchscore/main.go"
       ],
       "scoring_rule": "all-of",
+      "exercises": [
+        "find_callers",
+        "references",
+        "symbol_context"
+      ],
       "source": "fathom @ d1ead30. Hand-verified by direct grep, never the live daemon alone: `grep -n \"Summarize(\" internal/contextbench/report.go internal/contextbench/report_test.go` shows direct callers at report.go:156 (inside RenderMarkdown, func boundary 131-180) and report.go:186 (inside NewRunResults, 181+) and report_test.go:80 (TestSummarize). `grep -rn \"RenderMarkdown(\" --include='*.go' internal/contextbench/ cmd/` shows report_test.go:104-105 (TestRenderMarkdown_DeterministicAndContainsKeyFacts) and cmd/contextbenchscore/main.go:174, which `grep -n \"^func \" cmd/contextbenchscore/main.go` places inside cmdReport (115-182). Cross-checked (reconnaissance only) against the scratch-store call_hierarchy tool served on a throwaway 127.0.0.1:7599 instance over the same scratch store, never the live daemon: root Summarize -> children {NewRunResults, RenderMarkdown, TestSummarize}; RenderMarkdown's own child is TestRenderMarkdown_DeterministicAndContainsKeyFacts. cmdReport was found by the independent grep pass above, not by the tool (the tool's depth-3 query happened not to expand cmdReport in the branch shown). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): cmd/contextbenchscore/main.go:187 `md := contextbench.RenderMarkdown(results)` inside cmdReport; RenderMarkdown calls Summarize at internal/contextbench/report.go. Unchanged.",
       "truth_at_head": [
         {
@@ -345,6 +394,11 @@
         "SQLiteStore"
       ],
       "scoring_rule": "all-of",
+      "exercises": [
+        "references",
+        "find_symbol",
+        "query_symbols"
+      ],
       "source": "fathom @ d1ead30. Hand-verified: `grep -n \"func (s \\*DuckStore) PutObservations\\|func (m \\*MemoryStore) PutObservations\" internal/store/*.go` plus a direct read of internal/store/sqlite.go:319 `func (s *SQLiteStore) PutObservations(...)` — three implementers, not the two an incomplete pass might assume (duckdb.go:271, memory.go:71, sqlite.go:319). Reconnaissance only, never trusted alone: symbol_context on the scratch-store instance (127.0.0.1:7599, never the live daemon) for DuckStore.PutObservations/MemoryStore.PutObservations shows typed_edges callers including `Pipeline.Pipeline.extractAndStore` (kind: iface-dispatch) for both, confirming the interface call site in internal/fusion/pipeline.go dispatches to both concrete types at runtime. RE-DERIVED (H3-1, 2026-07-24, worktree HEAD 00ed3b6): NOT one of the five post_recompile_rederivation-exposed tasks, but broken by an orthogonal repo change discovered during H3-1's mandated diligence sweep — ADR-025/SS-8 (committed well before HEAD 00ed3b6, part of the merged feat/mcp-scoped-surfaces history) deleted internal/store/duckdb.go and DuckStore outright. Hand-verified at worktree HEAD: `ls internal/store/*.go` shows no duckdb.go; `grep -rln 'func.*PutObservations' --include='*.go' .` (repo-wide, excluding _test.go) returns exactly internal/store/memory.go and internal/store/sqlite.go — two implementers, not three. internal/store/platform_store.go's PlatformStore does not define its own PutObservations. Premise changed from 'all THREE' to 'all the concrete types' (count no longer asserted in the prompt, since asserting a stale count would leak the pre-deletion answer); ground_truth reduced from 3 to 2 entries accordingly. This is a ground-truth correction for factual accuracy (fairness rule 1), not a softening of the task's difficulty. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): `grep -rln 'func.*PutObservations' --include='*.go' .` (non-test) = internal/store/memory.go, internal/store/sqlite.go. Unchanged.",
       "truth_at_head": [
         {
@@ -363,20 +417,27 @@
       "id": "H1-T07",
       "class": "claim_provenance",
       "category": "which_sources_feed_claim",
-      "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Name it (file name only).",
+      "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "ADR.md"
+        "ADR.md#L590"
       ],
       "scoring_rule": "exact-match",
-      "source": "fathom @ d1ead30, obligations tool served for internal/store/duckdb.go: 6 rules, sources ADR.md#L46, ADR.md#L36, ADR.md#L231-L232, CLAUDE.md#L50-L52, ADR.md#L174-L175, ADR.md#L68-L68 — two distinct doc files. Hand-verified each citation directly: ADR.md:36 'Persist observations and derived tables in **DuckDB**...'; ADR.md:46 'the store package hides DuckDB behind an interface (`Store`)... swappable and unit-testable'; ADR.md:68 '...bucket pending by language and extract'; ADR.md:174-175 'extractor and query outputs are asserted with golden files'; ADR.md:231-232 'Claim identity is content-addressed (layer, kind, subject, aiprovenance repro_key)'; CLAUDE.md:50 'Always verify with the race detector' — all confirmed present and accurate at today's HEAD (d1ead30), all served without a `status` field (fresh) despite the 112-commit-stale compile watermark. RE-ANCHORED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): internal/store/duckdb.go no longer exists (confirmed: `ls internal/store/*.go` has no duckdb.go), so the original target file is gone outright — a break independent of, and more severe than, ordinary citation drift; not fixable by re-deriving against the same file. Live obligations() was queried for every remaining internal/store/*.go file (backend.go, sqlite.go, store.go, memory.go, platform_store.go): all five return the IDENTICAL 6-rule set, compiled_at_watermark 740addf (1 commit behind HEAD), ALL sourced from ADR.md#L487-500 (the ADR-020/SS-8 store-sqlite migration section) — zero CLAUDE.md-sourced rules attach to this package post-recompile (a real change: pre-recompile duckdb.go's rules spanned ADR.md+CLAUDE.md; post-recompile the whole package's obligations consolidated onto ADR.md alone). Hand-verified two of the six rules directly against ADR.md at worktree HEAD: lines 491-492 read '...the sole exception is the in-memory store, whose pool is / capped at one because each modernc \":memory:\" connection is a private' (matches 'Cap in-memory SQLite store connection pool to one.'); lines 487-488 read '**Constraints.** Fresh final-column DDL for SQLite (no ALTER-IF-NOT-EXISTS / emulation; only DuckDB carries legacy on-disk migration).' (matches 'Do not use ALTER-IF-NOT-EXISTS emulation...'). Both genuinely fresh, no status field, content confirmed. Re-anchored the prompt to backend.go (chosen for thematic continuity with duckdb.go's former role and because it is independently referenced by H1-T09 in this corpus) and reduced the ground truth from two documents to the one now actually governing it — this reflects real post-SS-8 consolidation, not a softened task; scoring_rule changed from all-of to exact-match to match the single-item ground truth (Task.Validate requires exactly one ground_truth entry for exact-match). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): live obligations(internal/store/backend.go) at watermark 976134c serves 6 rules, every src ADR.md (#L596-L600, #L572-L573, #L491-L492, #L592-L593, #L493-L494, #L487-L488; three flagged stale, none from CLAUDE.md). Ground truth unchanged. requires: [compiled-layer].",
+      "exercises": [
+        "obligations",
+        "read_source"
+      ],
+      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The previous ground truth was the bare file name 'ADR.md', which appears in both auto-loaded baseline files (CLAUDE.md's source-of-truth table and AGENTS.md), so any arm could answer it from context. The provenance question is unchanged and strictly harder: the answer must now name the document AND the line. Live reconnaissance: obligations(internal/store/backend.go) at compiled_at_watermark 976134c returns six rules, all six cited to ADR.md (displaced 83), including 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' src ADR.md#L590-L591. Hand-verified at HEAD: ADR.md#L590 ends '... then is removed. Backend selection' and #L591 continues 'is extension-based in a single shared helper (`store.BackendForPath`),'.",
       "notes": "RECOMPILE-EXPOSED (original): the source-document set is a compile-time scope decision. RE-ANCHORED 2026-07-24 (H3-1): original target file (duckdb.go) no longer exists post-SS-8 — re-anchored to backend.go per the source field; prompt and ground_truth both changed, which is more than ordinary re-derivation but required because the file itself is gone.",
       "requires": [
         "compiled-layer"
       ],
       "truth_at_head": [
         {
-          "token": "ADR.md",
-          "kind": "path"
+          "token": "ADR.md#L590",
+          "kind": "line",
+          "file": "ADR.md",
+          "needle": "Backend selection",
+          "why": "the served rule 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' cites ADR.md#L590-L591; line 590 is where its text begins"
         }
       ]
     },
@@ -384,20 +445,19 @@
       "id": "H1-T08",
       "class": "claim_provenance",
       "category": "what_governs",
-      "prompt": "In the fathom repo, which CLAUDE.md rule governs where code and commands that emit files must place their output by default? Quote the rule's key path convention and cite the CLAUDE.md line on which the rule's row begins, in the citation form `CLAUDE.md#L<n>` (e.g. `CLAUDE.md#L7`).",
+      "prompt": "In the fathom repo, which repository-root convention governs where code and commands that emit files must place their output by default? Cite the line on which that rule's row begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "workspace/",
         "CLAUDE.md#L15"
       ],
-      "scoring_rule": "all-of",
-      "source": "fathom @ d1ead30. Hand-verified: CLAUDE.md lines 29-30 read '`store.Open` auto-creates the parent dir. When adding code or commands that emit / files, default their output under `workspace/`.' — the workspace/ convention. Both arms have a real path: grep reads CLAUDE.md directly; fathom's obligations layer serves the same rule verbatim ('Default output of code and commands that emit files under workspace/.', src CLAUDE.md#L29-L30, confirmed during authoring for internal/query/engine.go) with its citation attached. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the rule is now the first row of the root CLAUDE.md's Non-negotiables table, line 15 ('**workspace/** — ALL build artifacts, logs, temp files, local DBs go under gitignored `workspace/`'); the old ground truth ('workspace/', '29') was FALSE at HEAD. Fixed in two ways: the line token moved to 15, and its form changed from the bare number (a substring of any answer containing 29 — the '29 hole' named in docs/vision/26-proof-credibility.md §2.1) to the citation form `CLAUDE.md#L15`, which the prompt now prescribes for both arms; TestHomeCorpusTruthAtHead re-derives the line number from the rule's text and refuses a token that is a substring of another line's citation (CLAUDE.md is 114 lines, so no L15x exists).",
+      "scoring_rule": "exact-match",
+      "exercises": [
+        "obligations",
+        "references",
+        "read_source"
+      ],
+      "source": "fathom @ d1ead30. Hand-verified: CLAUDE.md lines 29-30 read '`store.Open` auto-creates the parent dir. When adding code or commands that emit / files, default their output under `workspace/`.' — the workspace/ convention. Both arms have a real path: grep reads CLAUDE.md directly; fathom's obligations layer serves the same rule verbatim ('Default output of code and commands that emit files under workspace/.', src CLAUDE.md#L29-L30, confirmed during authoring for internal/query/engine.go) with its citation attached. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the rule is now the first row of the root CLAUDE.md's Non-negotiables table, line 15 ('**workspace/** — ALL build artifacts, logs, temp files, local DBs go under gitignored `workspace/`'); the old ground truth ('workspace/', '29') was FALSE at HEAD. Fixed in two ways: the line token moved to 15, and its form changed from the bare number (a substring of any answer containing 29 — the '29 hole' named in docs/vision/26-proof-credibility.md §2.1) to the citation form `CLAUDE.md#L15`, which the prompt now prescribes for both arms; TestHomeCorpusTruthAtHead re-derives the line number from the rule's text and refuses a token that is a substring of another line's citation (CLAUDE.md is 114 lines, so no L15x exists). BP-2 (2026-09-12): the token 'workspace/' is verbatim in both CLAUDE.md and AGENTS.md — every arm had it before the prompt — so it is dropped and the task is scored on the citation alone (exact-match). The line number is not in the auto-loaded text: the harness loads the file's content, never its line numbering. The prompt no longer names the file either; the answer must supply it.",
       "notes": "Reworked in the critic round (D3): the original asked which rule the compiler scoped UNIQUELY to engine.go vs goextract.go — a compile-time LLM scope decision not derivable from any on-disk text (rigged for the fathom arm), and its ground truth used fathom's native citation format ('CLAUDE.md#L29') that a correct grep answer ('CLAUDE.md line 29') would fail. The rework anchors the question and both ground truths to on-disk text reachable by either arm, which also removes the task's recompile exposure.",
       "truth_at_head": [
-        {
-          "token": "workspace/",
-          "kind": "file",
-          "file": "CLAUDE.md"
-        },
         {
           "token": "CLAUDE.md#L15",
           "kind": "line",
@@ -415,6 +475,11 @@
         "BackendForPath"
       ],
       "scoring_rule": "exact-match",
+      "exercises": [
+        "references",
+        "query_symbols",
+        "read_source"
+      ],
       "source": "fathom @ d1ead30. Hand-verified directly: `grep -n \"silent fallback\" internal/store/backend.go` -> line 106 inside the doc comment for `func BackendForPath(path string) (Store, error)` (internal/store/backend.go:108): 'An unrecognized extension is a typed error naming both options, never a silent fallback.' Reconnaissance only: query_symbols on the scratch-store instance (127.0.0.1:7599) with concern 'error-handling in the store layer' surfaced BackendForPath among its ranked results, alongside noise (most Go functions in the package return `error` and rank similarly) — the tool's ranking is approximate, not a targeted match; the ground truth here rests on the direct grep + doc-comment read, not the ranking. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): internal/store/backend.go:128 'a silent fallback.' inside BackendForPath's doc comment. Unchanged.",
       "truth_at_head": [
         {
@@ -434,6 +499,11 @@
         "query_symbols"
       ],
       "scoring_rule": "all-of",
+      "exercises": [
+        "references",
+        "query_symbols",
+        "read_source"
+      ],
       "source": "fathom @ d1ead30. Hand-verified directly: internal/mcp/budget.go:5-9 doc comment on `defaultCharBudget` / internal/mcp/budget.go:16 `func fitToBudget[T any](items []T, maxChars int) ([]T, bool)` — comment reads 'Real sessions hit this: a query_symbols result of ~57KB was truncated by the client and saved to a file, which erodes trust in the tool.' RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): internal/mcp/budget.go:7 (the query_symbols ~57KB incident) and :16 `func fitToBudget[T any]`. Unchanged.",
       "truth_at_head": [
         {
@@ -454,19 +524,18 @@
       "category": "synthetic_diff",
       "prompt": "A teammate proposes adding this line to fathom's CLAUDE.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's CLAUDE.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
       "ground_truth": [
-        "never a shell",
         "lock error",
         "busy_timeout"
       ],
       "scoring_rule": "any-of",
-      "source": "fathom @ d1ead30. Hand-verified directly: CLAUDE.md's dogfood item 2 ('Refresh through the server, never the CLI') reads 'The daemon holds the / single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock / error.' — directly contradicts the proposed 'always safe... even while the daemon is running' addition. This is a constructed synthetic diff (per the plan's design section), scored against real, already-committed text rather than a store mutation: fathom's contradiction_scan tool operates over ingested symbol observations with differing kind/claim (internal/query/engine.go:447 detectContradictions), not prose-level doc contradictions, so no fathom tool call is expected to out-perform a careful read here — recorded honestly as a task where both arms have equal structural access (see unmeasurable_by_comparison for the genuinely index-only contradiction capability this task deliberately does NOT test). RE-DERIVED (H3-1, 2026-07-24, worktree HEAD 00ed3b6): not one of the five recompile-exposed tasks, but the underlying CLAUDE.md prose changed materially since d1ead30 (SS-8/ADR-020's SQLite migration rewrote dogfood item 2). Hand-verified at worktree HEAD: item 2 now reads 'SQLite (ADR-020) allows many / concurrent readers, but writes still serialize — a shell `fathom ingest` / racing the daemon's own writes can hit its busy_timeout and fail with a / lock error.' — the contradiction with the proposed addition still holds exactly (a racing `fathom ingest` CAN fail with a lock error, so it is not 'always safe'). However the literal string 'single-writer' no longer appears in this sentence; it now separately appears at CLAUDE.md:125 in an unrelated sentence about the daemon's session-sharing architecture ('no single-writer lock contention') — keeping it in ground_truth would let an arm score a false positive by quoting an irrelevant sentence that does not itself establish the contradiction. Swapped 'single-writer' for 'busy_timeout' (grep-confirmed to occur exactly once in CLAUDE.md, inside the actually-relevant sentence) so both any-of tokens are tied to the real conflicting text. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the dogfood section left the root CLAUDE.md when it became a router; the rule is now the Index-first row (CLAUDE.md:19: 'refresh via the `ingest` MCP tool, never a shell `fathom ingest` against the shared store'), and the `busy_timeout` / `lock error` sentence lives in docs/guides/fleet-index.md:46-49 (item 2, 'Refresh through the server, never the CLI'). Premise reworded to name the guide as the router's pointer; any-of gains 'never a shell' (the phrase on disk in CLAUDE.md itself) beside the two guide phrases. Both arms can read all three files.",
+      "exercises": [
+        "references",
+        "read_source",
+        "obligations"
+      ],
+      "source": "fathom @ d1ead30. Hand-verified directly: CLAUDE.md's dogfood item 2 ('Refresh through the server, never the CLI') reads 'The daemon holds the / single-writer DuckDB lock, so a shell `fathom ingest` fails with a lock / error.' — directly contradicts the proposed 'always safe... even while the daemon is running' addition. This is a constructed synthetic diff (per the plan's design section), scored against real, already-committed text rather than a store mutation: fathom's contradiction_scan tool operates over ingested symbol observations with differing kind/claim (internal/query/engine.go:447 detectContradictions), not prose-level doc contradictions, so no fathom tool call is expected to out-perform a careful read here — recorded honestly as a task where both arms have equal structural access (see unmeasurable_by_comparison for the genuinely index-only contradiction capability this task deliberately does NOT test). RE-DERIVED (H3-1, 2026-07-24, worktree HEAD 00ed3b6): not one of the five recompile-exposed tasks, but the underlying CLAUDE.md prose changed materially since d1ead30 (SS-8/ADR-020's SQLite migration rewrote dogfood item 2). Hand-verified at worktree HEAD: item 2 now reads 'SQLite (ADR-020) allows many / concurrent readers, but writes still serialize — a shell `fathom ingest` / racing the daemon's own writes can hit its busy_timeout and fail with a / lock error.' — the contradiction with the proposed addition still holds exactly (a racing `fathom ingest` CAN fail with a lock error, so it is not 'always safe'). However the literal string 'single-writer' no longer appears in this sentence; it now separately appears at CLAUDE.md:125 in an unrelated sentence about the daemon's session-sharing architecture ('no single-writer lock contention') — keeping it in ground_truth would let an arm score a false positive by quoting an irrelevant sentence that does not itself establish the contradiction. Swapped 'single-writer' for 'busy_timeout' (grep-confirmed to occur exactly once in CLAUDE.md, inside the actually-relevant sentence) so both any-of tokens are tied to the real conflicting text. RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): the dogfood section left the root CLAUDE.md when it became a router; the rule is now the Index-first row (CLAUDE.md:19: 'refresh via the `ingest` MCP tool, never a shell `fathom ingest` against the shared store'), and the `busy_timeout` / `lock error` sentence lives in docs/guides/fleet-index.md:46-49 (item 2, 'Refresh through the server, never the CLI'). Premise reworded to name the guide as the router's pointer; any-of gains 'never a shell' (the phrase on disk in CLAUDE.md itself) beside the two guide phrases. Both arms can read all three files. BP-2 (2026-09-12): the token 'never a shell' is verbatim in CLAUDE.md and AGENTS.md, so the any-of rule could be satisfied from the auto-loaded baseline with no tool call at all. It is dropped; the surviving tokens both live in docs/guides/fleet-index.md, which no session auto-loads, so the task now requires following the router's pointer — strictly harder than before.",
       "notes": "Scoring changed to any-of in the critic round (D4): the prompt asks for 'the key conflicting phrase' (singular), so a correct answer quoting only one of the two phrases must pass — all-of would have failed correct single-quote answers. RE-DERIVED 2026-07-24 (H3-1): 'single-writer' swapped for 'busy_timeout' — see source for the collision this fixes.",
       "truth_at_head": [
-        {
-          "token": "never a shell",
-          "kind": "file",
-          "file": "CLAUDE.md"
-        },
         {
           "token": "lock error",
           "kind": "file",
@@ -483,13 +552,18 @@
       "id": "H1-T12",
       "class": "staleness",
       "category": "citation_drift",
-      "prompt": "Fathom's compiled obligations layer serves a rule governing internal/core/model.go that reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Determine whether that citation still resolves to this rule's text at the current HEAD, and state the claim's serving status in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) Name the bolded term of the CLAUDE.md bullet under which the rule's text actually appears today.",
+      "prompt": "Fathom's compiled obligations layer serves a rule governing internal/core/model.go that reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Determine whether that citation still resolves to this rule's text at the current HEAD, and state the claim's serving status in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) Cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "verdict: stale",
-        "keystone"
+        "CLAUDE.md#L48"
       ],
       "scoring_rule": "all-of",
-      "source": "RE-ANCHORED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6) per post_recompile_rederivation's primary instruction ('re-anchor T12 to a claim that is genuinely stale NOW'). Original target (internal/query/engine.go's staleness_report rule) is no longer served at all post-recompile — obligations(internal/query/engine.go) returns 6 rules (kit-uplift.md, ADR.md#L97-98, ADR.md#L88-89, ADR.md#L89-89, CLAUDE.md#L89-90, ADR.md#L158-159), none of which mention staleness_report or Honesty; the claim was crowded out of the top-6 by the two new production layers (adr-rules, spec-bindings) rather than surviving fresh — so the inversion the corpus predicted did not cleanly happen, but the underlying claim vanished from view instead, which is not a fair 'name the bolded term' target either way. Re-anchored instead to a genuinely fresh, hand-confirmed drift found during this same sweep (documented in full on H1-T02, same file): live obligations(internal/core/model.go) (compiled_at_watermark 5a7bd81) serves 'Maintain shared types in `internal/core` and extend them additively.' src CLAUDE.md#L83-L84, no status field. Hand-verified against worktree HEAD: CLAUDE.md#L83-L84 today holds the unrelated 'Determinism is a contract' bullet ('- **Determinism is a contract**: sort outputs; inject clocks (`now func() time.Time`), / never call `time.Now()` in query/analysis logic.') — the domain-model rule's real text ('shared types live in `internal/core`; extend it additively; `pkg/client` re-exports for external consumers.') lives today at CLAUDE.md lines 88-89, under the bullet '- **The domain model is the keystone**:'. Verdict: stale (citation does not resolve at current HEAD) — CONFIRMED, unlike the original T12 target this is a live, presently-servable drift, not a hypothetical. Both arms have a real path: grep reads CLAUDE.md#L83-84 directly and finds the rule text absent (present at L88); the fathom arm's obligations() call alone cannot detect the line-content mismatch (no status flag), but can use pack_context to pull the surrounding CLAUDE.md text and locate the bolded bullet, mirroring the original design's intent that (b) requires more than a single obligations() call. 'keystone' (not the full phrase) is the required token — distinctive, appears exactly once in CLAUDE.md, and does not leak from this prompt's own phrasing (unlike a term such as 'Extractor', which was considered and rejected as a T12 anchor because the file path/rule text already contain that word, risking a false-positive on prompt-echo alone). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): CLAUDE.md#L83-L84 at HEAD is the index-first stanza ('`pack_context`, `verify_plan`. Read files to *edit* them, not to discover / them — the index replaces exploratory grep.'); the rule's text lives at CLAUDE.md:48 under '**The domain model is the keystone**'. Live obligations(internal/core/model.go) still serves the claim at src CLAUDE.md#L83-L84, now with status: stale. verdict: stale — still correct; 'keystone' appears exactly once in CLAUDE.md. requires: [compiled-layer].",
+      "exercises": [
+        "obligations",
+        "staleness_report",
+        "read_source"
+      ],
+      "source": "RE-ANCHORED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6) per post_recompile_rederivation's primary instruction ('re-anchor T12 to a claim that is genuinely stale NOW'). Original target (internal/query/engine.go's staleness_report rule) is no longer served at all post-recompile — obligations(internal/query/engine.go) returns 6 rules (kit-uplift.md, ADR.md#L97-98, ADR.md#L88-89, ADR.md#L89-89, CLAUDE.md#L89-90, ADR.md#L158-159), none of which mention staleness_report or Honesty; the claim was crowded out of the top-6 by the two new production layers (adr-rules, spec-bindings) rather than surviving fresh — so the inversion the corpus predicted did not cleanly happen, but the underlying claim vanished from view instead, which is not a fair 'name the bolded term' target either way. Re-anchored instead to a genuinely fresh, hand-confirmed drift found during this same sweep (documented in full on H1-T02, same file): live obligations(internal/core/model.go) (compiled_at_watermark 5a7bd81) serves 'Maintain shared types in `internal/core` and extend them additively.' src CLAUDE.md#L83-L84, no status field. Hand-verified against worktree HEAD: CLAUDE.md#L83-L84 today holds the unrelated 'Determinism is a contract' bullet ('- **Determinism is a contract**: sort outputs; inject clocks (`now func() time.Time`), / never call `time.Now()` in query/analysis logic.') — the domain-model rule's real text ('shared types live in `internal/core`; extend it additively; `pkg/client` re-exports for external consumers.') lives today at CLAUDE.md lines 88-89, under the bullet '- **The domain model is the keystone**:'. Verdict: stale (citation does not resolve at current HEAD) — CONFIRMED, unlike the original T12 target this is a live, presently-servable drift, not a hypothetical. Both arms have a real path: grep reads CLAUDE.md#L83-84 directly and finds the rule text absent (present at L88); the fathom arm's obligations() call alone cannot detect the line-content mismatch (no status flag), but can use pack_context to pull the surrounding CLAUDE.md text and locate the bolded bullet, mirroring the original design's intent that (b) requires more than a single obligations() call. 'keystone' (not the full phrase) is the required token — distinctive, appears exactly once in CLAUDE.md, and does not leak from this prompt's own phrasing (unlike a term such as 'Extractor', which was considered and rejected as a T12 anchor because the file path/rule text already contain that word, risking a false-positive on prompt-echo alone). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): CLAUDE.md#L83-L84 at HEAD is the index-first stanza ('`pack_context`, `verify_plan`. Read files to *edit* them, not to discover / them — the index replaces exploratory grep.'); the rule's text lives at CLAUDE.md:48 under '**The domain model is the keystone**'. Live obligations(internal/core/model.go) still serves the claim at src CLAUDE.md#L83-L84, now with status: stale. verdict: stale — still correct; 'keystone' appears exactly once in CLAUDE.md. requires: [compiled-layer]. BP-2 (2026-09-12): part (b)'s token 'keystone' is verbatim in the auto-loaded CLAUDE.md, so the no-tools arm could complete the all-of pair by recall. Part (b) now asks for the line the rule's text occupies at HEAD — a fact the auto-loaded text does not carry (content is loaded, line numbering is not) — and the staleness verdict in (a) is unchanged.",
       "notes": "RECOMPILE-EXPOSED (original, critic D1): predicted verdict inversion for internal/query/engine.go's staleness_report claim. RE-DERIVED 2026-07-24 (H3-1): the predicted inversion did not materialize cleanly (the claim was dropped from the served top-6 entirely, not re-cited fresh) — re-anchored per the block's primary instruction to a different, genuinely-stale-now claim (internal/core/model.go, same file/citation documented on H1-T02) rather than invoking the unmeasurable_by_comparison fallback, since a real drifted claim was available. Ground-truth tokens keep the collision-safe 'verdict: <word>' form per critic D5; 'keystone' chosen over the bullet's full bolded phrase for a cleaner, unambiguous substring.",
       "requires": [
         "compiled-layer"
@@ -501,9 +575,11 @@
           "why": "the answer form the prompt prescribes; the fact it encodes is that CLAUDE.md#L83-L84 no longer carries the rule's text (it is the index-first stanza at HEAD)"
         },
         {
-          "token": "keystone",
-          "kind": "file",
-          "file": "CLAUDE.md"
+          "token": "CLAUDE.md#L48",
+          "kind": "line",
+          "file": "CLAUDE.md",
+          "needle": "The domain model is the keystone",
+          "why": "where the rule's text lives at HEAD, now that CLAUDE.md#L83-L84 no longer carries it"
         }
       ]
     },
@@ -511,13 +587,18 @@
       "id": "H1-T13",
       "class": "staleness",
       "category": "citation_still_fresh",
-      "prompt": "Per fathom's compiled obligations layer, the rule 'Add new hot-loop tools to the companion allowlist' governing internal/core/model.go cites ADR.md#L158-L159 (as served on 2026-07-24, when it carried no staleness flag). At the current HEAD commit, does that citation still resolve to the rule's text? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the ADR.md line where the rule's own words ('new hot-loop tool must be added') live today.",
+      "prompt": "Per fathom's compiled obligations layer, the rule 'Add new hot-loop tools to the companion allowlist' governing internal/core/model.go cites ADR.md#L158-L159 (as served on 2026-07-24, when it carried no staleness flag). At the current HEAD commit, does that citation still resolve to the rule's text? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the line where the rule's own words ('new hot-loop tool must be added') live today.",
       "ground_truth": [
         "verdict: stale",
         "ADR-010"
       ],
       "scoring_rule": "all-of",
-      "source": "RE-ANCHORED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): internal/store/duckdb.go no longer exists (SS-8/ADR-025 deleted it outright — same finding as H1-T07/H1-T06), so the original target file is gone, not merely drifted; no currently-tracked internal/store/*.go file's obligations cite ADR.md#L46 anymore (all five surviving files consolidated onto ADR.md#L487-500 instead — see H1-T07's source). Re-anchored to a different claim confirmed genuinely FRESH by direct inspection: live obligations(internal/core/model.go) (compiled_at_watermark 5a7bd81) serves 'Add new hot-loop tools to the companion allowlist' src ADR.md#L158-L159, no status field. Hand-verified against worktree HEAD: ADR.md lines 158-159 today read '**Trade-off / reversibility.** Surface membership is a contract (pinned by / tests and `docs/mcp-tools.md`); the `companion` allowlist is a second place a / new hot-loop tool must be added. Purely additive over ADR-010 — removing the' — the rule's paraphrase matches this text exactly ('companion allowlist', 'new hot-loop tool must be added'); verdict: fresh, CONFIRMED. Chose 'ADR-010' (not 'allowlist' or 'hot-loop', both of which already appear in this prompt's own paraphrase of the rule, risking a prompt-echo false positive) as the required distinctive token — it appears at line 159 and nowhere in the prompt, so it can only be produced by actually reading ADR.md's current text at that citation (grep) or via a tool call that surfaces it (fathom's companion surface has no raw-text-read tool; pack_context is the closest path, mirroring H1-T12's same-shape requirement). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): INVERTED at HEAD — the old ground truth ('verdict: fresh', 'ADR-010') was false. ADR.md lines 158-159 now read 'chosen: one `mcp.Server` instance per surface (duplicates stats/prompt/resource / state and re-creates split-brain risk with any future per-server cache), a' (ADR-014's trade-off paragraph grew above it); the rule's words 'new hot-loop tool must be added. Purely additive over ADR-010' moved to ADR.md:176. Live obligations(internal/core/model.go) at watermark 5a7bd81 serves the claim at src ADR.md#L158-L159 with status: stale. Verdict flipped to stale; 'ADR-010' kept as the second token but re-anchored to the line that carries the rule's text (needle 'new hot-loop tool must be added'), so the token still requires locating where the rule went, not merely echoing the staleness answer. The staleness class therefore no longer carries a fresh/stale pair at HEAD; a task anchored to a citation that is fresh at HEAD is the next re-sweep's job once one is served — noted so nobody mistakes the two 'stale' verdicts for a corpus that rewards a reflex answer (T12 and T13 differ on their second token, which is what discriminates).",
+      "exercises": [
+        "obligations",
+        "staleness_report",
+        "read_source"
+      ],
+      "source": "RE-ANCHORED post-recompile (H3-1, 2026-07-24, worktree HEAD 00ed3b6): internal/store/duckdb.go no longer exists (SS-8/ADR-025 deleted it outright — same finding as H1-T07/H1-T06), so the original target file is gone, not merely drifted; no currently-tracked internal/store/*.go file's obligations cite ADR.md#L46 anymore (all five surviving files consolidated onto ADR.md#L487-500 instead — see H1-T07's source). Re-anchored to a different claim confirmed genuinely FRESH by direct inspection: live obligations(internal/core/model.go) (compiled_at_watermark 5a7bd81) serves 'Add new hot-loop tools to the companion allowlist' src ADR.md#L158-L159, no status field. Hand-verified against worktree HEAD: ADR.md lines 158-159 today read '**Trade-off / reversibility.** Surface membership is a contract (pinned by / tests and `docs/mcp-tools.md`); the `companion` allowlist is a second place a / new hot-loop tool must be added. Purely additive over ADR-010 — removing the' — the rule's paraphrase matches this text exactly ('companion allowlist', 'new hot-loop tool must be added'); verdict: fresh, CONFIRMED. Chose 'ADR-010' (not 'allowlist' or 'hot-loop', both of which already appear in this prompt's own paraphrase of the rule, risking a prompt-echo false positive) as the required distinctive token — it appears at line 159 and nowhere in the prompt, so it can only be produced by actually reading ADR.md's current text at that citation (grep) or via a tool call that surfaces it (fathom's companion surface has no raw-text-read tool; pack_context is the closest path, mirroring H1-T12's same-shape requirement). RE-SWEPT (PB-1, 2026-09-02, tree at e8d2948): INVERTED at HEAD — the old ground truth ('verdict: fresh', 'ADR-010') was false. ADR.md lines 158-159 now read 'chosen: one `mcp.Server` instance per surface (duplicates stats/prompt/resource / state and re-creates split-brain risk with any future per-server cache), a' (ADR-014's trade-off paragraph grew above it); the rule's words 'new hot-loop tool must be added. Purely additive over ADR-010' moved to ADR.md:176. Live obligations(internal/core/model.go) at watermark 5a7bd81 serves the claim at src ADR.md#L158-L159 with status: stale. Verdict flipped to stale; 'ADR-010' kept as the second token but re-anchored to the line that carries the rule's text (needle 'new hot-loop tool must be added'), so the token still requires locating where the rule went, not merely echoing the staleness answer. The staleness class therefore no longer carries a fresh/stale pair at HEAD; a task anchored to a citation that is fresh at HEAD is the next re-sweep's job once one is served — noted so nobody mistakes the two 'stale' verdicts for a corpus that rewards a reflex answer (T12 and T13 differ on their second token, which is what discriminates). BP-1 (2026-09-12): the prompt named ADR.md outside the citation under test, handing the agent the file the second token lives in; the bare mention is removed (the premise citation ADR.md#L158-L159 stays — a staleness task cannot ask whether a citation resolves without quoting it).",
       "notes": "RECOMPILE-EXPOSED premise (original): the '112 commits after the last compile' framing and the watermark identity change post-recompile. RE-ANCHORED 2026-07-24 (H3-1): original target file (duckdb.go) deleted outright, not merely drifted — re-anchored to internal/core/model.go's companion-allowlist claim (verified genuinely fresh) rather than duckdb.go's now-orphaned ADR.md#L46 citation. Ground-truth's second token changed from 'swappable' (which, in the original design, was safe because it didn't appear in that prompt either) to 'ADR-010' for the same collision-avoidance reason, adapted to the new anchor's text.",
       "requires": [
         "compiled-layer"

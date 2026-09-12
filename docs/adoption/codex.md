@@ -2,13 +2,17 @@
 
 Fathom's index, MCP surface, and git-native gates are Claude-Code-agnostic —
 Codex is a first-class MCP client and gets full read access to the same
-index. What's genuinely different is the **enforcement stack**: Codex
-documents a Claude-shaped hook contract (eleven events, `.codex/hooks.json`),
-but this build carries it as registry data and does not yet drive it
-(*hooks: not wired*), so Codex adoption today leans on the git-native gates,
-the standing `AGENTS.md` doctrine, and the pull tier (`fathom prime`, the
-`obligations` MCP tool). This guide is honest about that gap rather than
-pretending symmetry — see §6.
+index. Since 2026-09-12 the **enforcement stack** works here too, and that
+is a measurement rather than a reading of the documentation: a headless
+`codex exec` session on codex-cli 0.153.1 ran fathom's own hook entries and
+left beats for SessionStart, PreToolUse and PostToolUse, and its five stdin
+captures are committed as fixtures (`internal/harness/testdata/codecs/codex/
+*.live.in.json`). Two things are worth knowing before you start, both
+measured the same day: hooks load **only** from `$CODEX_HOME/hooks.json` —
+a project `<repo>/.codex/hooks.json` is not read at all on this build — and
+because fathom never edits user-global configuration unasked, `fathom init
+--harness=codex` writes no hook file and `fathom harness hooks --harness
+codex` prints the entries for you to paste. See §6.
 
 Build/index/daemon setup is identical to the Claude Code path — this guide
 does not repeat it. If you haven't built `bin/fathom` or stood up a
@@ -87,9 +91,11 @@ naming the path), and `fathom fleet reconcile` BLOCKS it by name.
 deprecation are from https://developers.openai.com/codex/skills.md and
 https://learn.chatgpt.com/docs/custom-prompts.md, fetched 2026-09-02
 (latest release rust-v0.152.1, 2026-09-01; the installed `codex-cli` here
-is 0.146.0). Whether *this* Codex build loads `.agents/skills` has not been
-exercised on this machine — `fathom doctor --harness codex` says so on its
-`skills_installed` row.
+is 0.153.1). Whether *this* Codex build loads `.agents/skills` has still not
+been exercised on this machine — the 2026-09-12 verifying session proved
+hooks and MCP, not skills — and `fathom doctor --harness codex` says so on
+its `skills_installed` row. Verifying one thing does not verify its
+neighbours.
 
 ---
 
@@ -292,61 +298,101 @@ Codex-specific to configure.
 
 This table is **generated** from fathom's harness registry (ADR-029,
 `internal/harness`) and pinned by `cmd/fathom/codexdoc_test.go`: it is the
-output of `fathom harness capabilities --harness codex`, verbatim. Every
-row says *unverified on this machine* because no Codex session has run
-against this build here — Codex's own hook contract (11 Claude-shaped
-lifecycle events, `.codex/hooks.json`) is carried as **data** in the
-descriptor (`fathom harness list --json`) and, since wave 2 of
-`docs/plans/harness-port.md`, a codec drives it: `fathom init --harness=codex`
-writes the fathom entries into the repo's `.codex/hooks.json` through the
-wiring engine (a receipt `fleet undo` reverses), and they run only after you
-trust them in `/hooks`. The vehicle column is what fathom delivers on Codex
-**today**; an `absent` vehicle is a documented gap, never an emulation; a
-`hook-*` vehicle stays *unverified* until doctor's `hooks_firing` sees beats
-from a real Codex session — a descriptor still unverified 60 days after its
-codec landed (2026-09-02) is demoted to tier D and `init --harness=codex`
-refuses with the reason.
+output of `fathom harness capabilities --harness codex`, verbatim. The rows
+read *verified* because a real session earned that word on 2026-09-12 (see
+**Verified against** below), not because anyone typed it here — the status
+column is computed from the descriptor's `verified_against` field, and it
+said *unverified on this machine* on every row the day before.
+
+Codex's hook contract is twelve Claude-shaped lifecycle events (the eleven
+of 2026-09-02, plus `Interrupt`), carried as **data** in the descriptor
+(`fathom harness list --json`) and driven by a codec since wave 2 of
+`docs/plans/harness-port.md`. Of the twelve, fathom wires seven; `fathom
+doctor --harness=codex`'s `hooks_coverage` row names the five it leaves
+alone and why. The vehicle column is what fathom delivers on Codex
+**today**; an `absent` vehicle is a documented gap, never an emulation.
 
 <!-- fathom:harness-capabilities codex begin -->
 | Capability | Vehicle | Status |
 |---|---|---|
-| `prime` | `hook-inject` | unverified on this machine — SessionStart entry in .codex/hooks.json, gated to startup/clear; runs only after `/hooks` trust — `fathom prime` is the fallback |
-| `obligations-post-edit` | `hook-inject` | unverified on this machine — PostToolUse on apply_patch (first file of the patch); the `obligations` MCP tool is the fallback until the hook is trusted |
-| `guard-pre-edit` | `hook-inject` | unverified on this machine — PreToolUse on apply_patch, inject-only (no permissionDecision) |
-| `guard-pre-shell` | `hook-inject` | unverified on this machine — PreToolUse on Bash (shell and exec_command), inject-only |
-| `discovery-observe` | `absent` | unverified on this machine — Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved |
-| `stop-verify` | `hook-inject` | unverified on this machine — advisory; `--block` renders {"decision":"block"} — the pre-push verify gate is the backstop |
-| `deposit-session-end` | `hook-silent` | unverified on this machine — SessionEnd reason is always "other", which the verb does not deposit on — `fathom thread note` before ending a session |
-| `deposit-pre-compact` | `hook-silent` | unverified on this machine — PreCompact entry writes one thread pointer; injects nothing |
-| `mcp-tools` | `mcp` | unverified on this machine |
-| `skills` | `pull` | unverified on this machine — `.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin |
-| `stanza` | `stanza` | unverified on this machine |
-| `verify-gate` | `gate` | unverified on this machine |
-| `claim-gate` | `absent` | unverified on this machine — no PostToolUse hook is wired by this build; the pre-push verify gate is the backstop (vision 26 §4) |
-| `session-ledger` | `absent` | unverified on this machine — unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it |
-| `stanza-loaded` | `absent` | unverified on this machine — no instructions-loaded event is documented; the stanza check reads the file, not the harness |
-| `config-audit` | `absent` | unverified on this machine — run `fathom config audit` by hand; no config-change event is documented |
+| `prime` | `hook-inject` | verified — SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install |
+| `obligations-post-edit` | `hook-inject` | verified — PostToolUse on apply_patch (first file of the patch); MEASURED firing 2026-09-12 on a real patch. The `obligations` MCP tool is the fallback until the hook is trusted |
+| `guard-pre-edit` | `hook-inject` | verified — PreToolUse on apply_patch, inject-only (no permissionDecision); MEASURED firing 2026-09-12 |
+| `guard-pre-shell` | `hook-inject` | verified — PreToolUse on Bash (shell and exec_command), inject-only |
+| `discovery-observe` | `absent` | verified — Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved |
+| `stop-verify` | `hook-inject` | verified — advisory; `--block` renders {"decision":"block"} — the pre-push verify gate is the backstop |
+| `deposit-session-end` | `hook-silent` | verified — SessionEnd reason is always "other", which the verb does not deposit on — `fathom thread note` before ending a session |
+| `deposit-pre-compact` | `hook-silent` | verified — PreCompact entry writes one thread pointer; injects nothing |
+| `mcp-tools` | `mcp` | verified |
+| `skills` | `pull` | verified — `.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin. Discovery on this build is still unverified — the verifying session did not invoke a skill |
+| `stanza` | `stanza` | verified |
+| `verify-gate` | `gate` | verified |
+| `claim-gate` | `absent` | verified — the PostToolUse hook IS wired here, but it serves obligations only — the claim check rides Claude Code's edit payload and is not ported; the pre-push verify gate is the backstop (vision 26 §4) |
+| `session-ledger` | `absent` | verified — unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it |
+| `stanza-loaded` | `absent` | verified — no instructions-loaded event is documented; the stanza check reads the file, not the harness |
+| `config-audit` | `absent` | verified — run `fathom config audit` by hand; no config-change event is documented |
+| `subagent-prime` | `hook-inject` | verified — SubagentStart in CODEX_HOME/hooks.json injects the ≤600 B index-first primer; wired and documented, but no subagent ran in the verifying session — the one wave-3 row on this harness that is still unmeasured |
+| `tool-failure-advice` | `absent` | verified — Codex documents no post-failure event — a failed fathom tool call gets no remedy line; run `fathom doctor` |
+| `worktree-advice` | `absent` | verified — Codex documents no worktree event |
+| `cwd-prime` | `absent` | verified — Codex documents no cwd-change or directory-added event |
+| `setup-doctor` | `absent` | verified — Codex documents no setup event — run `fathom doctor --brief` by hand after wiring |
 <!-- fathom:harness-capabilities codex end -->
 
-**Verified against** (the descriptor's data, not a session): the official
-Codex hooks reference — https://developers.openai.com/codex/hooks.md
-(308-redirected to https://learn.chatgpt.com/docs/hooks.md, byte-identical),
-fetched 2026-09-02; the page carries no version or date of its own, the
-latest GitHub release at fetch time was rust-v0.152.1 (2026-09-01), and the
-`codex-cli` installed on this machine is 0.146.0 — which is why every row
-above still reads *unverified on this machine*. That reference settles the
-contradiction this repo carried until 2026-09-02: an earlier edition of
-this section said Codex had "no hook mechanism", while
+**Verified against — a session, 2026-09-12.** `codex-cli 0.153.1` on this
+workstation, one headless `codex exec --json` run. What it proved, and what
+it disproved:
+
+- **Hooks fire.** SessionStart, PreToolUse and PostToolUse (on a real
+  `apply_patch`), Stop and SessionEnd all ran fathom's wired commands. Their
+  beats carry `harness=codex` in `~/.fathom/hooks.jsonl`, which is what
+  `fathom doctor --harness=codex`'s `hooks_firing` row reads.
+- **The envelope is what the documentation said.** All five stdin captures
+  are committed under `internal/harness/testdata/codecs/codex/*.live.in.json`
+  with their version and date in the file, and
+  `TestCodexHooksFixtureFromLiveSession` replays every one through
+  `CodexCodec`. The codec needed no change — including the load-bearing
+  assumption that `apply_patch` reports its whole patch in
+  `tool_input.command` and never a `file_path`.
+- **The MCP surface answers.** The session called `list_services` over
+  `/rpc/agent` and got all 20 services back, so streamable-HTTP negotiation
+  with Codex is now a measurement rather than a hope.
+- **The project hook layer does NOT exist on this build.** `touch` hooks
+  placed in `<repo>/.codex/hooks.json` on `SessionStart`, `Stop`,
+  `SessionEnd` and `UserPromptSubmit` fired **zero** times — in a trusted
+  project, with `[features] hooks = true`, and with
+  `--dangerously-bypass-hook-trust` — while the identical entries under
+  `$CODEX_HOME/hooks.json` fired every time. So Codex hooks are user-global
+  on 0.153.1: there is no per-repo hook wiring to have, every fathom entry
+  fires in every repo, and the hook verbs resolve which repo they are in
+  from the envelope's `cwd`.
+- **SessionEnd's timeout is clamped to 3s** with a notice, and its `reason`
+  is always `"other"` — which the deposit verb does not deposit on, so
+  `fathom thread note` remains the way to leave a handoff on Codex.
+
+That settles the contradiction this repo carried until 2026-09-02, when an
+earlier edition of this section said Codex had "no hook mechanism" while
 `docs/vision/16-skills-pack.md` §3 said its hooks were "real but narrow —
-PreToolUse/PostToolUse intercept only Bash calls, ~10 events". Neither
-was right. Codex hooks are real, documented, and **eleven** Claude-shaped
-events (`SessionStart`, `SessionEnd`, `SubagentStart`, `SubagentStop`,
+PreToolUse/PostToolUse intercept only Bash calls, ~10 events". Neither was
+right: Codex hooks are real, are **twelve** Claude-shaped events
+(`SessionStart`, `SessionEnd`, `SubagentStart`, `SubagentStop`,
 `UserPromptSubmit`, `PreToolUse`, `PermissionRequest`, `PostToolUse`,
-`PreCompact`, `PostCompact`, `Stop`), and the tool hooks intercept shell
-(`Bash`), `apply_patch` (matchable as `Edit|Write`), MCP tools and local
-function tools — not Bash alone. The registry carries that contract as data
-(`fathom harness list --json`); what this build lacks is the codec that
-drives it, and the table says exactly that.
+`PreCompact`, `PostCompact`, `Stop`, `Interrupt`), and their tool hooks
+intercept shell (`Bash`), `apply_patch`, MCP tools and local function tools.
+
+**Wiring them, then.** `fathom init --harness=codex` writes `AGENTS.md` and
+`.fathom/` and deliberately writes no hook file: the only file that works is
+user-global, and fathom does not edit user-global configuration unasked
+(`docs/intent/autonomy.md`). Print the entries and paste them yourself:
+
+```sh
+fathom harness hooks --harness codex     # 8 entries, ready to merge
+$EDITOR ~/.codex/hooks.json              # or $CODEX_HOME/hooks.json
+```
+
+Then trust them in `/hooks` (Codex records trust per hook hash, so a changed
+command re-prompts) and confirm with `fathom doctor --harness=codex`:
+`hooks_installed` reads the file the harness actually loads, `hooks_firing`
+reads the beat log.
 
 What the rows mean beside Claude Code's (`fathom harness capabilities
 --harness claude-code` renders that side): the 17-tool `/rpc/agent`
@@ -355,31 +401,34 @@ the open question it was: `initialize` echoes the client's own protocol
 version from a supported table (`2025-11-25` … `2024-11-05`), the
 `MCP-Protocol-Version` header is tolerated, and
 `TestServeHTTPNegotiatesWithKitClient` proves `/rpc/agent` end to end
-against a Streamable-HTTP client fathom did not write (§2). What stays
-`unverified on this machine` is *this Codex build* — confirm it the usual
-way; stdio `serve-mcp` always works; the git-native gates (pre-push `fathom verify`, CI `--strict`) are
+against a Streamable-HTTP client fathom did not write (§2). *This Codex build* is now
+verified (above); stdio `serve-mcp` always works; the git-native gates (pre-push `fathom verify`, CI `--strict`) are
 identical on both; the `codex-cli` compile lane carries a real ambient-token
 cost (§3); `fathom init --harness=codex` writes `AGENTS.md` and `.fathom/`
-only and prints the `codex mcp add` line rather than running it; the nine
+only, prints the `codex mcp add` line rather than running it, and prints the
+hook entries rather than writing a user-global file; the nine
 shipped skills reach Codex through `--skills=codex` (= `--skills=agents`:
 `.agents/skills`, the documented path, unverified here) or the deprecated
 `--skills=codex-prompts` twin (§1.1); continuity threads are half a loop here (the store and verbs are
 identical, nothing deposits automatically); the config custodian's audit
 verb and doctor row work identically, with the attention line reaching Codex
 only through `fathom prime`; and `fathom doctor --harness=codex` runs every
-check, reporting `hooks_installed`/`hooks_firing` as `skipped` (no wired hook
-to check) and `mcp_registration` as `skipped: unverified` even when a
-`[mcp_servers.fathom]` entry is found — a found entry is evidence of a
-registration, not of a session that negotiated the surface.
+check, with `hooks_installed`, `hooks_firing` and `mcp_registration` now
+reporting real verdicts rather than `skipped: unverified` — that demotion
+existed for a descriptor no session had run, and keeping it after one had
+would have made the verified state unreachable by construction.
 
 **The practical upshot:** in Codex, fathom is a fully capable *pull* tool
-(every MCP tool works identically) plus two *gate* channels that are
-completely harness-agnostic (pre-push, CI). What's missing is the *inject*
-tier — the thing that made fathom's measured Claude Code impact come from
-configuration rather than agent habit (`docs/design/coding-agent-excellence.md`
-§5). Until Codex grows an equivalent hook surface, lean harder on `AGENTS.md`
-being genuinely followed, and treat the pre-push/CI gates as the honest
-backstop rather than a nice-to-have.
+(every MCP tool works identically), two harness-agnostic *gate* channels
+(pre-push, CI), and — once you have pasted and trusted the entries — a
+working *inject* tier: the thing that made fathom's measured Claude Code
+impact come from configuration rather than agent habit
+(`docs/design/coding-agent-excellence.md` §5). Three real differences
+remain, none of them a gap fathom can close: the hooks are user-global
+rather than per-repo, six of Claude Code's events have no Codex equivalent
+at all (`PostToolUseFailure`, `InstructionsLoaded`, `ConfigChange`,
+`FileChanged`, `WorktreeCreate`, `CwdChanged`, `Setup` — the capability
+table says what each costs you), and the measurement boundary below.
 
 **The measurement boundary (honesty, not a gap to close).** Codex sessions
 are outside the impact observatory's instrumentation: the session ledger and
@@ -441,8 +490,13 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
       documented fail mode) — or, faster than this checklist, just run it
       first.
 - [ ] `bin/fathom harness capabilities --harness codex` prints §6's table;
-      `bin/fathom init --harness=codex` writes `AGENTS.md` + `.fathom/`
-      only and prints the `codex mcp add` line (hooks: not wired, wave 2).
+      `bin/fathom init --harness=codex` writes `AGENTS.md` + `.fathom/` only
+      and prints both the `codex mcp add` line and the reason it wrote no
+      hook file.
+- [ ] `bin/fathom harness hooks --harness codex` prints 8 entries; after you
+      merge them into `$CODEX_HOME/hooks.json` and trust them in `/hooks`,
+      `bin/fathom doctor --harness=codex` shows `hooks_installed` PASS, and
+      `hooks_firing` PASS once one session has run.
 
 ---
 

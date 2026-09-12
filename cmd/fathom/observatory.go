@@ -138,16 +138,22 @@ type obsImpact struct {
 	// The exploration story (EX-3): folded across sessions carrying the
 	// exploration ledger. Per-question = tokens / calls, per mode; the
 	// ratio is OBSERVATIONAL (labeled) — the arm pilot carries causality.
-	ExpSessions       int    `json:"exp_sessions"`
-	ExpRawCalls       int    `json:"exp_raw_calls"`
-	ExpRawTokens      int    `json:"exp_raw_tokens_est"`
-	ExpFathomCalls    int    `json:"exp_fathom_calls"`
-	ExpFathomTokens   int    `json:"exp_fathom_tokens_est"`
-	ExpRatioMedianX10 *int   `json:"exp_ratio_median_x10,omitempty"` // per-question raw/indexed ×10
-	ExpRepeatFiles    int    `json:"exp_repeat_files"`
-	ExpRepeatTokens   int    `json:"exp_repeat_tokens_est"`
-	ExpSidechainShare int    `json:"exp_sidechain_results"`
-	ExpNote           string `json:"exp_note"`
+	ExpSessions       int  `json:"exp_sessions"`
+	ExpRawCalls       int  `json:"exp_raw_calls"`
+	ExpRawTokens      int  `json:"exp_raw_tokens_est"`
+	ExpFathomCalls    int  `json:"exp_fathom_calls"`
+	ExpFathomTokens   int  `json:"exp_fathom_tokens_est"`
+	ExpRatioMedianX10 *int `json:"exp_ratio_median_x10,omitempty"` // per-question raw/indexed ×10
+	ExpRepeatFiles    int  `json:"exp_repeat_files"`
+	ExpRepeatTokens   int  `json:"exp_repeat_tokens_est"`
+	ExpSidechainShare int  `json:"exp_sidechain_results"`
+	// ExpToolSearchTurns (BP-23, ADR-032 §5) is the deferral tax summed
+	// across the same sessions: turns spent loading deferred MCP schemas.
+	// It belongs beside the two exploration modes because only ONE of them
+	// pays it — Bash is never deferred (O24) — so a per-question comparison
+	// that ignores it flatters the indexed mode.
+	ExpToolSearchTurns int    `json:"exp_toolsearch_turns"`
+	ExpNote            string `json:"exp_note"`
 }
 
 type observatoryModel struct {
@@ -531,6 +537,7 @@ func buildImpactModel(now time.Time) obsImpact {
 				imp.ExpRepeatTokens += *e.RepeatedReadTokensEst
 			}
 			imp.ExpSidechainShare += e.SidechainToolResults
+			imp.ExpToolSearchTurns += e.ToolSearchTurns
 			if e.RawDiscoveryCalls > 0 && e.FathomCalls > 0 && e.RawDiscoveryTokensEst != nil && e.FathomTokensEst != nil && *e.FathomTokensEst > 0 {
 				rawPerQ := float64(*e.RawDiscoveryTokensEst) / float64(e.RawDiscoveryCalls)
 				idxPerQ := float64(*e.FathomTokensEst) / float64(e.FathomCalls)

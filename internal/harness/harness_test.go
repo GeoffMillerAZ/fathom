@@ -40,13 +40,38 @@ var postSeamClaudeHookAdditions = []struct {
 	{"ConfigChange", "", "fathom config audit --hook", "config audit --hook", 10},
 }
 
+// waveThreeClaudeHookAdditions are HP-26..HP-31, appended after the
+// vision 26 §4 pair for the same reason that pair was appended after the
+// pre-seam eight: a repo wired before this change gains exactly these
+// seven entries on its next init/reconcile and loses nothing.
+//
+// DELIBERATE GOLDEN CHANGE (2026-09-12): this table and
+// cmd/fathom/hookspecs_test.go's twin were updated together, because the
+// wiring an adopter carries genuinely changed. Nothing above this literal
+// moved a byte, and TestLookupClaudeCodeReproducesHookTable still pins the
+// pre-seam prefix to the byte.
+var waveThreeClaudeHookAdditions = []struct {
+	event, matcher, marker, sub string
+	timeout                     int
+}{
+	{"SubagentStart", "", "fathom session-hook --event subagent-start", "session-hook --event subagent-start", 5},
+	{"PostToolUseFailure", `mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*`, "fathom session-hook --event tool-failure", "session-hook --event tool-failure", 5},
+	{"FileChanged", "CLAUDE.md|AGENTS.md|concerns.cue|config.toml", "fathom config audit --hook --event file-changed", "config audit --hook --event file-changed", 10},
+	{"WorktreeCreate", "", "fathom session-hook --event worktree-create", "session-hook --event worktree-create", 5},
+	{"CwdChanged", "", "fathom session-hook --event cwd-changed", "session-hook --event cwd-changed", 5},
+	{"DirectoryAdded", "", "fathom session-hook --event cwd-changed", "session-hook --event cwd-changed", 5},
+	{"Setup", "", "fathom doctor --brief", "doctor --brief", 15},
+}
+
 func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	d, ok := Lookup(ClaudeCode)
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	if len(d.Hooks) != len(preSeamClaudeHookTable)+len(postSeamClaudeHookAdditions) {
-		t.Fatalf("claude-code bindings = %d, want %d (pre-seam) + %d (vision 26 §4)", len(d.Hooks), len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions))
+	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions)
+	if len(d.Hooks) != want {
+		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3)", len(d.Hooks), want,
+			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]
@@ -157,8 +182,15 @@ func TestEveryDescriptorIsHonestByConstruction(t *testing.T) {
 		if d.Transcript == "" && d.Vehicles[CapSessionLedger] != VehicleAbsent {
 			t.Errorf("%s: no transcript but session-ledger is %s (ADR-029 §6)", d.ID, d.Vehicles[CapSessionLedger])
 		}
-		if d.ID != ClaudeCode && !d.Unverified() {
+		// A descriptor may only be verified by a real session on this
+		// machine. Claude Code and (since HP-34) Codex are; everything else
+		// must still ship unverified, because "unverified" is the default
+		// that keeps an unmeasured claim out of every generated table.
+		if d.ID != ClaudeCode && d.ID != Codex && !d.Unverified() {
 			t.Errorf("%s: must ship unverified until a real session verifies it", d.ID)
+		}
+		if !d.Unverified() && !strings.Contains(d.VerifiedAgainst, "20") {
+			t.Errorf("%s: verified_against %q must name the date it was verified", d.ID, d.VerifiedAgainst)
 		}
 		if len(d.StanzaFiles()) == 0 {
 			t.Errorf("%s: declares no stanza file", d.ID)
@@ -308,7 +340,7 @@ func TestCapabilityRowsAndTable(t *testing.T) {
 	now := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
 
 	t.Run("unverified descriptor: every row says so", func(t *testing.T) {
-		for _, id := range []string{Codex, GeminiCLI, "cursor", "copilot", Agents} {
+		for _, id := range []string{GeminiCLI, "cursor", "copilot", Agents} {
 			d, _ := Lookup(id)
 			table := RenderCapabilityTable(id, now)
 			lines := strings.Split(strings.TrimSpace(table), "\n")
@@ -395,6 +427,135 @@ func TestExportJSONIsDeterministic(t *testing.T) {
 	for _, id := range IDs() {
 		if !strings.Contains(string(a), `"id": "`+id+`"`) {
 			t.Errorf("export lacks %s", id)
+		}
+	}
+}
+
+// TestWaveThreeClaudeHookAdditions pins HP-26..HP-31 to their position
+// (after the vision 26 §4 pair) and to the one contract that matters most
+// here: ONLY the two events whose reference documents additionalContext
+// may declare an injecting vehicle. Claude Code 2.1.270 documents
+// additionalContext on SubagentStart and PostToolUseFailure and NOT on
+// FileChanged, WorktreeCreate, CwdChanged, DirectoryAdded or Setup — so a
+// future edit that quietly promotes one of those to hook-inject (and with
+// it, a stanza sentence promising a channel the harness does not have)
+// fails here instead of in an adopter's session.
+func TestWaveThreeClaudeHookAdditions(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions)
+	canInject := map[string]bool{"SubagentStart": true, "PostToolUseFailure": true}
+	for i, want := range waveThreeClaudeHookAdditions {
+		got := d.Hooks[base+i]
+		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+			t.Errorf("wave-3 addition %d = {%s %q %q %q %d}, want {%s %q %q %q %d}", i,
+				got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec,
+				want.event, want.matcher, want.marker, want.sub, want.timeout)
+		}
+		if canInject[got.Harness] {
+			if got.Vehicle != VehicleHookInject || len(got.Output) == 0 {
+				t.Errorf("%s documents additionalContext: vehicle = %s, output = %v — want hook-inject with an output map", got.Harness, got.Vehicle, got.Output)
+			}
+			continue
+		}
+		if got.Vehicle != VehicleHookSilent {
+			t.Errorf("%s documents NO additionalContext: vehicle = %s, want hook-silent", got.Harness, got.Vehicle)
+		}
+		if len(got.Output) != 0 {
+			t.Errorf("%s declares output %v but the reference documents no additionalContext on it", got.Harness, got.Output)
+		}
+	}
+	// The matcher is the plugin-scoped-name half of HP-27: a fathom tool
+	// reached through a plugin is still a fathom tool.
+	b, ok := d.Binding(EventToolFailure)
+	if !ok || !strings.Contains(b.Matcher, "mcp__plugin_") || !strings.Contains(b.Matcher, "mcp__fathom__") {
+		t.Errorf("tool-failure matcher = %q, want both the plain and the plugin-scoped fathom tool names", b.Matcher)
+	}
+}
+
+// TestWaveThreeClaudeCodecDecodes pins the field maps to real decoding:
+// each wave-3 event's own stdin fields land in the envelope the verbs
+// read, and no event reads a field the reference does not show on it.
+func TestWaveThreeClaudeCodecDecodes(t *testing.T) {
+	c := ClaudeCodec()
+	in, err := c.DecodeInput(EventSubagentStart, []byte(`{"session_id":"s1","cwd":"/r","agent_id":"a1","agent_type":"explorer"}`))
+	if err != nil || in.AgentType != "explorer" || in.Source != "a1" {
+		t.Errorf("SubagentStart = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventToolFailure, []byte(`{"tool_name":"mcp__fathom__find_symbol","tool_error":"daemon refused","tool_use_id":"t1"}`))
+	if err != nil || in.ToolName != "mcp__fathom__find_symbol" || in.ToolError != "daemon refused" {
+		t.Errorf("PostToolUseFailure = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventWorktreeCreate, []byte(`{"session_id":"s1","worktree_path":"/r/wt"}`))
+	if err != nil || in.Path != "/r/wt" {
+		t.Errorf("WorktreeCreate = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventCwdChanged, []byte(`{"cwd":"/r/new","previous_cwd":"/r/old"}`))
+	if err != nil || in.Path != "/r/new" || in.Reason != "/r/old" {
+		t.Errorf("CwdChanged = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventCwdChanged, []byte(`{"cwd":"/r","directory_path":"/other","how_added":"slash_command"}`))
+	if err != nil || in.Path != "/other" || in.Source != "slash_command" {
+		t.Errorf("DirectoryAdded = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventFileChanged, []byte(`{"file_path":"/r/CLAUDE.md"}`))
+	if err != nil || in.FilePath != "/r/CLAUDE.md" {
+		t.Errorf("FileChanged = %+v, %v", in, err)
+	}
+	in, err = c.DecodeInput(EventSetup, []byte(`{"triggered_by":"init"}`))
+	if err != nil || in.Trigger != "init" {
+		t.Errorf("Setup = %+v, %v", in, err)
+	}
+	// A tool event still never reads the top-level file_path.
+	in, _ = c.DecodeInput(EventPostTool, []byte(`{"tool_name":"Edit","file_path":"/r/top.md","tool_input":{"file_path":"/r/tool.md"}}`))
+	if in.FilePath != "/r/tool.md" {
+		t.Errorf("PostToolUse file_path = %q, want tool_input.file_path", in.FilePath)
+	}
+}
+
+// TestEventCatalogMatchesBindings is HP-32's honesty proof. The catalog
+// is what doctor's hooks_coverage row PRINTS, so a Wired flag that
+// disagrees with the bindings is a lie told to every adopter who runs
+// doctor. Both directions are checked, and every unwired row must carry a
+// reason: "not wired" with no reason is the shape of an oversight, and an
+// oversight rendered as a decision is exactly the dishonesty ADR-029 §5
+// exists to prevent.
+func TestEventCatalogMatchesBindings(t *testing.T) {
+	for _, d := range All() {
+		if len(d.Events) == 0 {
+			continue // not catalogued; doctor reports that as SKIPPED, never as full coverage
+		}
+		wired := map[string]bool{}
+		for _, n := range d.WiredEventNames() {
+			wired[n] = true
+		}
+		inCatalog := map[string]bool{}
+		for _, e := range d.Events {
+			if inCatalog[e.Event] {
+				t.Errorf("%s: duplicate catalog row %q", d.ID, e.Event)
+			}
+			inCatalog[e.Event] = true
+			if e.Wired != wired[e.Event] {
+				t.Errorf("%s: catalog says %s wired=%t, bindings say %t", d.ID, e.Event, e.Wired, wired[e.Event])
+			}
+			if !e.Wired && strings.TrimSpace(e.Reason) == "" {
+				t.Errorf("%s: unwired event %s carries no reason", d.ID, e.Event)
+			}
+			if e.Wired && e.Reason != "" {
+				t.Errorf("%s: wired event %s carries an unwired reason %q", d.ID, e.Event, e.Reason)
+			}
+		}
+		for n := range wired {
+			if !inCatalog[n] {
+				t.Errorf("%s: binds %s but the event catalog has no row for it", d.ID, n)
+			}
+		}
+	}
+	// The two catalogued surfaces, pinned to their documented sizes so a
+	// harness release that grows one is noticed rather than absorbed.
+	for id, want := range map[string]int{ClaudeCode: 33, Codex: 12} {
+		d, _ := Lookup(id)
+		if len(d.Events) != want {
+			t.Errorf("%s catalogue = %d events, want %d (update the catalogue AND verified_against together)", id, len(d.Events), want)
 		}
 	}
 }

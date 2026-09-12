@@ -650,3 +650,29 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O27 — O24's deferral tax does not reproduce on Claude Code 2.1.270: the whole 17-tool, 28,715-byte agent surface loads eagerly and a session spends ZERO ToolSearch turns, with and without `alwaysLoad: true`. ADR-032's own revisit trigger ("a harness release removes MCP tool deferral") has fired.
+
+- **Symptom:** O24's deferral tax does not reproduce on Claude Code 2.1.270: the whole 17-tool, 28,715-byte agent surface loads eagerly and a session spends ZERO ToolSearch turns, with and without `alwaysLoad: true`. ADR-032's own revisit trigger ("a harness release removes MCP tool deferral") has fired.
+- **Evidence:**
+  - **Tool:** mcp-surface
+  - **Expected:** ADR-032 §5 asked for the agent-surface schema budget to be held under the harness's deferral threshold, measured per release when undocumented (BP-22). Claude Code documents no threshold, so it was measured.
+  - **Actual:** Two `claude -p --output-format stream-json` runs against the live daemon's `/rpc/agent` surface (28,715 bytes / 17 tools, `capabilities.schema_bytes`), one with `alwaysLoad: true` and one without: BOTH reported all 17 `mcp__fathom__*` tools in the `system/init` tool list and zero `ToolSearch` tool_use blocks in the stream. O24 (claude 2.1.258) measured 1–2 ToolSearch turns per cell at ~28k cache-read tokens each. `alwaysLoad` is a startup-ordering flag per Claude Code's MCP docs (startup waits for the server), NOT a deferral control, and the measurement is consistent with that. Consequence: shrinking the surface to the ~16kB July size would have to come out of the generated `outputSchema`s (10,693 bytes, the RP-11 machine-checkable contract) or the per-tool "Reach for it when …" sentences, to chase a threshold that is measurably not binding. `$ref`/`$defs` compaction was evaluated and saves exactly 0 bytes: every repeated sub-schema repeats ACROSS tools, and tools/list gives each tool an independent schema document.
+  - **Repro:** claude -p "list the fathom MCP tools you can call, names only" --output-format stream-json --verbose --mcp-config <{"mcpServers":{"fathom":{"type":"http","url":"http://127.0.0.1:7575/rpc/agent","alwaysLoad":true}}}> --strict-mcp-config --allowedTools "mcp__fathom__*" --model sonnet, then count tool_use blocks named ToolSearch
+- **Root cause:** A harness behavior change between claude 2.1.258 and 2.1.270, outside fathom.
+- **Fix:** `TestNarrowProfileSchemaBytes` re-pinned at the same 26,000–30,000 band with this measurement as its stated reason (a budget, not a threshold); `alwaysLoad: true` added to the Claude Code plugin's `.mcp.json` and to the claude-code descriptor's MCP note for the startup-ordering benefit it does have; `toolsearch_turns` shipped on the session/exploration ledger (BP-23) so a future harness release that re-introduces deferral shows up as a number instead of a surprise.
+- **Status:** open
+- **Impact:** BP-22 cannot be checked off as written — the plan row asks for the surface to be held under a threshold, and the honest finding is that no threshold is binding. The row needs re-wording against this measurement before it is claimed.
+
+### O28 — init wrote .codex/hooks.json for two waves, and codex-cli never read it
+
+- **Symptom:** init wrote .codex/hooks.json for two waves, and codex-cli never read it
+- **Evidence:**
+  - **Tool:** fathom init --harness=codex
+  - **Expected:** the documented project hook layer (<repo>/.codex/hooks.json) loads under directory trust, as Codex's hooks reference describes
+  - **Actual:** on codex-cli 0.153.1, touch hooks placed in <repo>/.codex/hooks.json on SessionStart, Stop, SessionEnd and UserPromptSubmit fired ZERO times in a headless codex exec run under a trusted parent project with [features] hooks = true and --dangerously-bypass-hook-trust; the identical entries under $CODEX_HOME/hooks.json fired every time. Every fathom Codex adopter since 2026-09-02 has been given a hook file the harness ignores, and doctor's harness_hooks row read it back as evidence of wiring. Fixed: the descriptor records the project file as documented-but-not-loaded with no wiring kind, init writes nothing and prints the entries (fathom harness hooks --harness codex), and the descriptor is now verified against a real session instead of a fetched doc page. The general lesson: a documented extension point is a claim, and the only thing that settles it is a smoke test that would have failed.
+  - **Repro:** place a touch hook in <repo>/.codex/hooks.json, run: codex exec --json --sandbox read-only --dangerously-bypass-hook-trust 'reply ok'
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO

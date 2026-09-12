@@ -113,7 +113,56 @@ var claudeCode = Descriptor{
 			Input: withKey(withKey(claudeCommonIn, "source", "source"), "file_path", "file_path"),
 			Note:  "never blocks: a block surfaces no message anywhere in the harness; the beat is the record and the next session line carries the count",
 		},
+		// Wave 3 (HP-26..HP-31), appended after the vision 26 §4 pair so
+		// every earlier row keeps its position. Of the six, ONLY the two
+		// the reference documents as carrying additionalContext inject;
+		// the other four are silent by the harness's contract, not by
+		// fathom's choice, and their notes say so (rule 3: the wiring
+		// never promises a channel the harness lacks).
+		{
+			Capability: CapSubagentPrime, Event: EventSubagentStart, Harness: "SubagentStart", Matcher: "", Verb: "session-hook --event subagent-start", Marker: "fathom session-hook --event subagent-start", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeCommonIn, "agent_id", "agent_id"), "agent_type", "agent_type"),
+			Output: claudeContextOut,
+			Note:   "a subagent never sees SessionStart; the primer is capped at 600 B (subagentPrimerBudget) and is silent when this root is not an indexed service",
+		},
+		{
+			Capability: CapToolFailureAdvice, Event: EventToolFailure, Harness: "PostToolUseFailure", Matcher: "mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*", Verb: "session-hook --event tool-failure", Marker: "fathom session-hook --event tool-failure", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeToolIn, "tool_error", "tool_error"), "tool_use_id", "tool_use_id"),
+			Output: claudeContextOut,
+			Note:   "the matcher covers BOTH the plain server-scoped tool names and the plugin-scoped mcp__plugin_<plugin>_<server>__<tool> form; the verb is silent for any tool that is not fathom's, so a failure anyone else owns costs nothing",
+		},
+		{
+			Capability: CapConfigAudit, Event: EventFileChanged, Harness: "FileChanged", Matcher: "CLAUDE.md|AGENTS.md|concerns.cue|config.toml", Verb: "config audit --hook --event file-changed", Marker: "fathom config audit --hook --event file-changed", TimeoutSec: 10, Vehicle: VehicleHookSilent,
+			Input: withKey(claudeCommonIn, "file_path", "file_path"),
+			Note:  "the same custodian audit and the same beat ConfigChange writes, on the other trigger: a config file changed ON DISK rather than through the harness. The matcher is LITERAL FILENAMES (the reference documents no glob here), so `.fathom/**` is spelled as the two files that actually carry contracts",
+		},
+		{
+			Capability: CapWorktreeAdvice, Event: EventWorktreeCreate, Harness: "WorktreeCreate", Matcher: "", Verb: "session-hook --event worktree-create", Marker: "fathom session-hook --event worktree-create", TimeoutSec: 5, Vehicle: VehicleHookSilent,
+			Input: withKey(claudeCommonIn, "worktree_path", "worktree_path"),
+			Note:  "the reference documents NO additionalContext on this event, so the line is recorded as a beat and printed to stdout (the harness shows it in its debug view only) — never injected, and never a block, although the event would honor one",
+		},
+		{
+			Capability: CapCwdPrime, Event: EventCwdChanged, Harness: "CwdChanged", Matcher: "", Verb: "session-hook --event cwd-changed", Marker: "fathom session-hook --event cwd-changed", TimeoutSec: 5, Vehicle: VehicleHookSilent,
+			Input: withKey(claudeCommonIn, "previous_cwd", "previous_cwd"),
+			Note:  "no additionalContext on this event either; the identity line for the new root is a beat plus stdout",
+		},
+		{
+			Capability: CapCwdPrime, Event: EventCwdChanged, Harness: "DirectoryAdded", Matcher: "", Verb: "session-hook --event cwd-changed", Marker: "fathom session-hook --event cwd-changed", TimeoutSec: 5, Vehicle: VehicleHookSilent,
+			Input: withKey(withKey(claudeCommonIn, "directory_path", "directory_path"), "how_added", "how_added"),
+			Note:  "the second harness event behind one canonical event: /add-dir and the SDK name the new root in directory_path",
+		},
+		{
+			Capability: CapSetupDoctor, Event: EventSetup, Harness: "Setup", Matcher: "", Verb: "doctor --brief", Marker: "fathom doctor --brief", TimeoutSec: 15, Vehicle: VehicleHookSilent,
+			Input: withKey(claudeCommonIn, "triggered_by", "triggered_by"),
+			Note:  "FAIL rows only, at most 5 lines, exit 0 whatever doctor finds — a setup diagnosis that fails setup is worse than no diagnosis",
+		},
 	},
+	// The full event surface of Claude Code 2.1.270, as the hooks
+	// reference lists it (fetched 2026-09-12). Every row fathom does not
+	// wire carries the reason it stays unwired — doctor's hooks_coverage
+	// prints them, so an adopter reads one table instead of diffing two
+	// documentations by hand. Advisory: an unwired event is a decision.
+	Events: claudeEventCatalog,
 	Tools: map[string]ToolClass{
 		"Edit": ToolFileEdit, "Write": ToolFileEdit, "MultiEdit": ToolFileEdit,
 		"Bash": ToolShell,
@@ -136,6 +185,11 @@ var claudeCode = Descriptor{
 		CapSessionLedger:       VehicleHookSilent,
 		CapStanzaLoaded:        VehicleHookSilent,
 		CapConfigAudit:         VehicleHookSilent,
+		CapSubagentPrime:       VehicleHookInject,
+		CapToolFailureAdvice:   VehicleHookInject,
+		CapWorktreeAdvice:      VehicleHookSilent,
+		CapCwdPrime:            VehicleHookSilent,
+		CapSetupDoctor:         VehicleHookSilent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:             "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -146,7 +200,12 @@ var claudeCode = Descriptor{
 		CapClaimGate:         "the PostToolUse edit hook verifies a depth-1 docs/plans/*.md the moment an edit adds a [x] and injects the refusal; silent on a clean claim (vision 26 §4)",
 		CapSessionLedger:     "the Stop hook reads the Claude transcript; measurement only",
 		CapStanzaLoaded:      "InstructionsLoaded writes one silent beat {file_path, memory_type, load_reason}; doctor stanza_loaded reads it",
-		CapConfigAudit:       "ConfigChange runs `fathom config audit --hook`: one beat, an attention line next session, never a block",
+		CapConfigAudit:       "ConfigChange and FileChanged both run `fathom config audit --hook`: one beat, an attention line next session, never a block",
+		CapSubagentPrime:     "SubagentStart injects a ≤600 B index-first primer (identity line + the opening moves), silent when the root is not indexed",
+		CapToolFailureAdvice: "PostToolUseFailure injects one remedy line after a FATHOM tool call fails (plain and plugin-scoped names); silent for anyone else's failure",
+		CapWorktreeAdvice:    "WorktreeCreate records which service a new worktree belongs to; the event documents no additionalContext, so the line is a beat, not an injection",
+		CapCwdPrime:          "CwdChanged / DirectoryAdded record the new root's service identity; no additionalContext on either event, so the line is a beat",
+		CapSetupDoctor:       "Setup runs `fathom doctor --brief` (FAIL rows only, ≤5 lines, exit 0); the event documents no additionalContext",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open (§5.3)",
@@ -164,7 +223,7 @@ var claudeCode = Descriptor{
 		HTTPKey:         "url",
 		AddCommand:      "claude mcp add --transport http --scope user fathom {{url}}/rpc/agent",
 		ToolNamePattern: "mcp__{{server}}__{{tool}}",
-		Note:            "type:\"http\" beside url; doctor reads ~/.claude.json",
+		Note:            "type:\"http\" beside url; doctor reads ~/.claude.json. Add \"alwaysLoad\": true beside them (BP-22, ADR-032 §5): per Claude Code's MCP docs it makes startup WAIT for this server to connect before the session begins, so the tools are present on turn one instead of arriving late — it is a startup-ordering flag, NOT a deferral control, and it does not change whether schemas are deferred. Measured 2026-09-12 against claude 2.1.270: all 17 agent-surface tools load eagerly and a session spends ZERO ToolSearch turns with it AND without it, so the O24 deferral tax does not reproduce on this harness version.",
 	},
 	Env: EnvContract{
 		ProjectDir:       "CLAUDE_PROJECT_DIR",
@@ -175,7 +234,7 @@ var claudeCode = Descriptor{
 	Transcript:      "claude-jsonl",
 	Codec:           "claude",
 	CodecLanded:     "2026-09-02",
-	VerifiedAgainst: "https://code.claude.com/docs/en/hooks (2026-09-02, text cites v2.1.251); local claude 2.1.258; doctor hooks_firing on this machine",
+	VerifiedAgainst: "https://code.claude.com/docs/en/hooks (2026-09-12, 33 events, against Claude Code 2.1.270); local claude 2.1.258; doctor hooks_firing on this machine",
 }
 
 // codex is Codex CLI's descriptor with its codec (HP-17). Contract:
@@ -198,11 +257,14 @@ var codex = Descriptor{
 	},
 	HookFiles: []HookFile{
 		{
-			Path: ".codex/hooks.json", Scope: "project", Kind: "json-hook", Shape: "claude-settings", TimeoutUnit: "s",
-			Trust: "trust the fathom entries in `/hooks` (Codex records trust against each hook's hash; a changed command re-prompts) and keep `[features] hooks` enabled in config.toml",
-			Note:  "hooks.<Event>[{matcher, hooks:[{type,command,timeout,statusMessage,additionalContextLimit}]}]; loads only when the project layer is trusted; written by `init --harness=codex` through the wiring engine (receipt, `fleet undo`)",
+			Path: "~/.codex/hooks.json", Scope: "user", Kind: "json-hook", Shape: "claude-settings", TimeoutUnit: "s",
+			Trust: "trust the fathom entries in `/hooks` (Codex records trust against each hook's hash; a changed command re-prompts) and keep `[features] hooks = true` in config.toml",
+			Note:  "THE hook file that works: hooks.<Event>[{matcher, hooks:[{type,command,timeout}]}], relocatable with CODEX_HOME. Read by doctor, NEVER written by init — user-global configuration is ask-first (docs/intent/autonomy.md) — so `init --harness=codex` prints the entries and the operator pastes them. Measured 2026-09-12 on codex-cli 0.153.1: SessionStart, Stop and SessionEnd entries here all fired; SessionEnd's timeout is clamped to 3s with a notice",
 		},
-		{Path: "~/.codex/hooks.json", Scope: "user", Shape: "claude-settings", Note: "inline [hooks] in config.toml is the TOML twin; one representation per layer; never written by init (user-global is ask-first)"},
+		{
+			Path: ".codex/hooks.json", Scope: "project", Shape: "claude-settings", TimeoutUnit: "s",
+			Note: "DOCUMENTED BUT NOT LOADED by codex-cli 0.153.1 — measured 2026-09-12: `touch` hooks on SessionStart, Stop, SessionEnd and UserPromptSubmit placed here fired ZERO times in a headless `codex exec` run under a trusted parent project with --dangerously-bypass-hook-trust, while the identical entries under CODEX_HOME fired every time. No wiring Kind, so `init --harness=codex` does not write it: a file the harness ignores is worse than no file, because doctor would then read a wiring that cannot fire",
+		},
 	},
 	Hooks: []EventBinding{
 		{
@@ -244,7 +306,20 @@ var codex = Descriptor{
 			Output: withKey(withKey(claudeContextOut, "block", "decision"), "reason", "reason"),
 			Note:   "JSON required on exit 0 (plain text is invalid); {\"decision\":\"block\"} only behind --block",
 		},
+		// Wave 3: the ONE advisory event Codex shares with Claude Code.
+		// The other five (PostToolUseFailure, FileChanged, WorktreeCreate,
+		// CwdChanged, Setup) are absent from this harness, not declined —
+		// codexAbsentEvents names each with what the adopter loses.
+		{
+			Capability: CapSubagentPrime, Event: EventSubagentStart, Harness: "SubagentStart", Matcher: "", Verb: "session-hook --event subagent-start --harness codex", Marker: "fathom session-hook --event subagent-start", TimeoutSec: 5, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(claudeCommonIn, "agent_id", "agent_id"), "agent_type", "agent_type"),
+			Output: claudeContextOut,
+			Note:   "a Codex subagent never sees SessionStart either; the ≤600 B primer is well under the additionalContext cap, so no cut ever fires here",
+		},
 	},
+	// Codex CLI 0.154's twelve events (0.153.1 locally). The eleven of
+	// 2026-09-02 plus Interrupt.
+	Events: codexEventCatalog,
 	Tools: map[string]ToolClass{
 		"apply_patch": ToolFileEdit, "Edit": ToolFileEdit, "Write": ToolFileEdit,
 		"Bash": ToolShell,
@@ -266,25 +341,35 @@ var codex = Descriptor{
 		CapSessionLedger:       VehicleAbsent,
 		CapStanzaLoaded:        VehicleAbsent,
 		CapConfigAudit:         VehicleAbsent,
+		CapSubagentPrime:       VehicleHookInject,
+		CapToolFailureAdvice:   VehicleAbsent,
+		CapWorktreeAdvice:      VehicleAbsent,
+		CapCwdPrime:            VehicleAbsent,
+		CapSetupDoctor:         VehicleAbsent,
 	},
 	Notes: map[Capability]string{
-		CapPrime:               "SessionStart entry in .codex/hooks.json, gated to startup/clear; runs only after `/hooks` trust — `fathom prime` is the fallback",
-		CapObligationsPostEdit: "PostToolUse on apply_patch (first file of the patch); the `obligations` MCP tool is the fallback until the hook is trusted",
-		CapGuardPreEdit:        "PreToolUse on apply_patch, inject-only (no permissionDecision)",
+		CapPrime:               "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
+		CapObligationsPostEdit: "PostToolUse on apply_patch (first file of the patch); MEASURED firing 2026-09-12 on a real patch. The `obligations` MCP tool is the fallback until the hook is trusted",
+		CapGuardPreEdit:        "PreToolUse on apply_patch, inject-only (no permissionDecision); MEASURED firing 2026-09-12",
 		CapGuardPreShell:       "PreToolUse on Bash (shell and exec_command), inject-only",
 		CapDiscoveryObserve:    "Codex has no Read/Grep/Glob tools to observe; shell searches are unobserved",
 		CapStopVerify:          "advisory; `--block` renders {\"decision\":\"block\"} — the pre-push verify gate is the backstop",
 		CapDepositSessionEnd:   "SessionEnd reason is always \"other\", which the verb does not deposit on — `fathom thread note` before ending a session",
 		CapDepositPreCompact:   "PreCompact entry writes one thread pointer; injects nothing",
-		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin",
-		CapClaimGate:           "no PostToolUse hook is wired by this build; the pre-push verify gate is the backstop (vision 26 §4)",
+		CapSkills:              "`.agents/skills/<name>/SKILL.md` (`fathom init --skills=agents`); `~/.codex/prompts` is the legacy twin. Discovery on this build is still unverified — the verifying session did not invoke a skill",
+		CapClaimGate:           "the PostToolUse hook IS wired here, but it serves obligations only — the claim check rides Claude Code's edit payload and is not ported; the pre-push verify gate is the backstop (vision 26 §4)",
 		CapSessionLedger:       "unmeasured by design (law 12): the rollout transcript format is not stable and no instrument reads it",
 		CapStanzaLoaded:        "no instructions-loaded event is documented; the stanza check reads the file, not the harness",
 		CapConfigAudit:         "run `fathom config audit` by hand; no config-change event is documented",
+		CapSubagentPrime:       "SubagentStart in CODEX_HOME/hooks.json injects the ≤600 B index-first primer; wired and documented, but no subagent ran in the verifying session — the one wave-3 row on this harness that is still unmeasured",
+		CapToolFailureAdvice:   "Codex documents no post-failure event — a failed fathom tool call gets no remedy line; run `fathom doctor`",
+		CapWorktreeAdvice:      "Codex documents no worktree event",
+		CapCwdPrime:            "Codex documents no cwd-change or directory-added event",
+		CapSetupDoctor:         "Codex documents no setup event — run `fathom doctor --brief` by hand after wiring",
 	},
-	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all",
-	GatePosture: "advisory, fail-open (§5.3); hooks written by init run only after /hooks trust — the git-native verify gate is the only enforcement",
-	ScopeMerge:  "every matching hook from every layer runs (system, user, project, plugin, managed); a higher-precedence layer adds, never replaces; the project layer loads only when trusted",
+	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
+	GatePosture: "advisory, fail-open (§5.3); the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
+	ScopeMerge:  "MEASURED 2026-09-12 on codex-cli 0.153.1: only the CODEX_HOME layer loads. The documentation's project layer (<repo>/.codex/hooks.json) did not load even under directory trust, so a per-repo hook wiring is not achievable on this build — every fathom entry is user-global and therefore fires in EVERY repo, which is why the hook verbs resolve their repo from the envelope's cwd rather than assuming one",
 	Skills: SkillsShape{
 		RepoDirs: []string{".agents/skills/{{name}}/SKILL.md"},
 		UserDirs: []string{"~/.agents/skills/{{name}}/SKILL.md", "~/.codex/prompts/{{name}}.md"},
@@ -300,15 +385,25 @@ var codex = Descriptor{
 		AddCommand:      "codex mcp add fathom --url {{url}}/rpc/agent",
 		StdioCommand:    "codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite",
 		ToolNamePattern: "mcp__{{server}}__{{tool}}",
-		Note:            "`codex mcp add` writes ~/.codex/config.toml ([mcp_servers.fathom] url=); printed by init, never written; a project .codex/config.toml applies only to trusted projects; streamable-HTTP negotiation is unverified on this machine",
+		Note:            "`codex mcp add` writes ~/.codex/config.toml ([mcp_servers.fathom] url=); printed by init, never written. VERIFIED 2026-09-12: a headless `codex exec` session called the fathom MCP tool list_services over /rpc/agent and got all 20 services back, so streamable-HTTP negotiation is a measurement here, not a hope",
 	},
 	Env: EnvContract{
 		Home: "CODEX_HOME",
 		Note: "no project-dir or session-id variable is documented; hooks read cwd and session_id from stdin",
 	},
-	Codec:           "codex",
-	CodecLanded:     "2026-09-02",
-	VerifiedAgainst: "unverified",
+	Codec:       "codex",
+	CodecLanded: "2026-09-02",
+	// VERIFIED (HP-34). A headless `codex exec --json` session on this
+	// workstation ran fathom's own hook entries and left beats stamped
+	// harness=codex: SessionStart (the session brief), PreToolUse and
+	// PostToolUse on apply_patch (the guard and the obligations payload),
+	// Stop and SessionEnd. The captured stdin of all five is replayed
+	// through this codec by TestCodexHooksFixtureFromLiveSession
+	// (testdata/codecs/codex/*.live.in.json), and it decoded every one
+	// without a change to the codec — the 2026-09-02 documented contract
+	// held against the running binary, including apply_patch reporting its
+	// whole patch in tool_input.command.
+	VerifiedAgainst: "codex-cli 0.153.1 (2026-09-12, headless exec): hooks fired from CODEX_HOME/hooks.json, five live stdin captures replay through CodexCodec, and the MCP surface answered list_services over /rpc/agent",
 }
 
 // geminiCLI is Gemini CLI's descriptor with its codec (HP-19). Contract:
@@ -319,6 +414,12 @@ var codex = Descriptor{
 // writes there through the json-hook editor with timeouts in ms. Output
 // carries a flat decision plus hookSpecificOutput.additionalContext; a
 // parse failure means Allow (failMode). fathom never emits deny.
+// geminiWave3Note is the honest row for every wave-3 capability on a
+// harness whose event surface wave 3 did not catalogue: absent HERE is
+// "fathom has not verified an equivalent event", never "the harness has
+// none" — a claim nobody checked may not be printed as a fact.
+const geminiWave3Note = "not catalogued: wave 3 catalogued Claude Code and Codex event surfaces only — `absent` here means unverified, not known-missing"
+
 var geminiCLI = Descriptor{
 	ID:      GeminiCLI,
 	Display: "Gemini CLI",
@@ -393,8 +494,18 @@ var geminiCLI = Descriptor{
 		CapSessionLedger:       VehicleAbsent,
 		CapStanzaLoaded:        VehicleAbsent,
 		CapConfigAudit:         VehicleAbsent,
+		CapSubagentPrime:       VehicleAbsent,
+		CapToolFailureAdvice:   VehicleAbsent,
+		CapWorktreeAdvice:      VehicleAbsent,
+		CapCwdPrime:            VehicleAbsent,
+		CapSetupDoctor:         VehicleAbsent,
 	},
 	Notes: map[Capability]string{
+		CapSubagentPrime:       geminiWave3Note,
+		CapToolFailureAdvice:   geminiWave3Note,
+		CapWorktreeAdvice:      geminiWave3Note,
+		CapCwdPrime:            geminiWave3Note,
+		CapSetupDoctor:         geminiWave3Note,
 		CapPrime:               "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit: "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:        "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -500,6 +611,12 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapSessionLedger:       VehicleAbsent,
 		CapStanzaLoaded:        VehicleAbsent,
 		CapConfigAudit:         VehicleAbsent,
+		// Wave 3: all five ride hooks, and the pull tier has none.
+		CapSubagentPrime:     VehicleAbsent,
+		CapToolFailureAdvice: VehicleAbsent,
+		CapWorktreeAdvice:    VehicleAbsent,
+		CapCwdPrime:          VehicleAbsent,
+		CapSetupDoctor:       VehicleAbsent,
 	}
 }
 

@@ -35,7 +35,82 @@ New `task bench-l0-self` runs the same oracle over this repository at HEAD
 so both benches cite the same independent truth; the command's output is
 unchanged.
 
-**Nav tools answer from resolved edges (`BP-26..30`).**
+**The bench pyramid (ADR-032, BP-1..BP-11).** The free corpus gate now runs in
+`task validate`: `TestHomeCorpusTruthAtHead` fails when a ground-truth token
+appears in any file a `claude -p` session auto-loads, or when a prompt names
+the file its own ground truth is derived from. Eight of the thirteen home
+tasks were re-derived to pass it; none was weakened, three now pin a line
+citation instead of a phrase the baseline already contained.
+
+Every scored cell is now remembered by a key over the invariants that bind
+it (corpus, task, arm, model, harness, scoring, prompt subject, and the
+fathom commit for the fathom arm), stored content-addressed under
+`workspace/artifacts/context-bench/cells/`. A run borrows any cell whose key
+it recomputes — so the grep and `none` arms survive every fathom change — and
+the evaluator refuses a borrowed cell by key equality and makes an
+all-borrowed row indeterminate. `task bench-select` (free) and `task
+bench-targeted RANGE=…` re-run only the tasks a diff can move; a targeted
+row never becomes a verdict.
+
+Criterion **H2-3** is registered: the same success bar as H2-1 with a cost
+half that reads `payload_bytes` and `cost_usd` instead of `total_tokens`
+(cache-read × turns, O26), reports `toolsearch_turns` as the harness tax it
+is (O24), and records `gold_source_tool` per cell so a tool passes only when
+it is the source. `contextbenchscore ledger -criterion H2-3 -raw <run>/raw`
+scores an existing run's transcripts offline — one spend, two criteria.
+
+**The serve-time fixes the bench found (ADR-032 §4, BP-17..20).** The
+`obligations` tool orders served rules fresh before non-fresh, then by layer
+role, then specificity -- a stale rule no longer leads an edit-hook payload.
+- `#Layer` gains `role: "governs" | "claims"` (default `governs`, so external
+  packs are unchanged): `obligations`/`adr-rules` fill the serving cap first
+  and `spec-bindings`/`findings` take only the slots left; `displaced` still
+  counts both.
+- A claims-layer rule citing a gated plan row is scoped at serve time by that
+  row's own `{package, symbol}` contract, and a row naming no contract binds
+  to nothing -- six plan rows about C++, CUE and tree-sitter no longer bind to
+  a Go file because their prose says "extractor" (O23).
+- The `obligations` MCP tool inlines each rule's cited lines as `snippet`,
+  capped at 240 bytes with a named cut; `include_snippets` defaults true on
+  the tool and false on the edit hook, whose payload is unchanged.
+- The session ledger and the exploration ledger carry `toolsearch_turns` per
+  session (ADR-032 §5's tripwire), and the Claude Code plugin's `.mcp.json`
+  registers the daemon with `alwaysLoad: true`.
+
+### Added
+
+- **Codex is verified.** A headless `codex exec` session on codex-cli 0.153.1
+  ran fathom's hooks and its MCP surface; the descriptor's `verified_against`
+  is dated, five live stdin captures are committed as replayed fixtures, and
+  `doctor --harness=codex` now gives `hooks_installed`/`hooks_firing`/
+  `mcp_registration` real verdicts instead of `skipped: unverified`.
+- **`fathom harness hooks --harness ID`** prints a harness's hook entries as
+  paste-ready JSON. It exists because codex-cli 0.153.1 loads hooks only from
+  the user-global `$CODEX_HOME/hooks.json`, which fathom will not write
+  unasked.
+- **Seven advisory hook rows** on Claude Code, all fail-open and none able to
+  block: `SubagentStart` (a 600-byte index-first primer), `PostToolUseFailure`
+  (a remedy line after a fathom tool call fails), `FileChanged` (the custodian
+  audit on an on-disk change), `WorktreeCreate`, `CwdChanged`,
+  `DirectoryAdded` and `Setup` (`fathom doctor --brief`). A wired repo gains
+  them on its next `init`/`fleet reconcile` and loses nothing.
+- **`doctor hooks_coverage`** (advisory, never FAIL) reports how many events
+  the detected harness offers against how many fathom wires, with a recorded
+  reason for each unwired event.
+- **`fathom intent render --playbook`** writes a root `INTENT.md` inside
+  fathom markers, rendered as pointers into `docs/intent/`; `config audit`'s
+  `pointers_resolve` holds those pointers to existence.
+- Hook beats now carry a `harness` stamp, so one user-global beat log can say
+  which harness a firing came from.
+
+### Changed
+
+- **`fathom init --harness=codex` no longer writes `.codex/hooks.json`.**
+  codex-cli 0.153.1 does not load a project hook file at all (measured), so
+  writing one was wiring that could never fire; init prints the entries and
+  the reason instead.
+
+**Nav tools answer from resolved edges (`BP-26..31`).**
 
 ### Changed
 

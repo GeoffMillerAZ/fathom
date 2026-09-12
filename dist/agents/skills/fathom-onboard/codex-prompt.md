@@ -1,5 +1,5 @@
 ---
-description: Wire a repo end-to-end into fathom for Codex — build/install, ingest, MCP registration, AGENTS.md, .fathom/ config, and an honest rundown of what Codex can't do that Claude Code can.
+description: Wire a repo end-to-end into fathom for Codex — build/install, ingest, MCP registration, AGENTS.md, .fathom/ config, the user-global hook entries, and an honest rundown of what Codex still can't do that Claude Code can.
 argument-hint: [SERVICE=<service-id>]
 ---
 
@@ -10,8 +10,13 @@ argument-hint: [SERVICE=<service-id>]
 > only by `fathom init --skills=codex-prompts`). `fathom init --skills=codex`
 > writes the skill proper to `.agents/skills/fathom-onboard/SKILL.md`, the
 > path Codex documents, invoked as `$fathom-onboard` — prefer it. Codex's
-> hooks are carried as registry data and not wired by this build; `fathom
-> harness capabilities --harness codex` is the honest table.
+> hooks ARE wired and verified (2026-09-12, codex-cli 0.153.1), with one
+> wrinkle: they load only from `$CODEX_HOME/hooks.json`, never from a
+> project `<repo>/.codex/hooks.json`. Since that file is user-global,
+> `fathom init --harness=codex` writes no hook file — run `fathom harness
+> hooks --harness codex`, paste the 8 entries, trust them in `/hooks`, and
+> confirm with `fathom doctor --harness=codex`. `fathom harness
+> capabilities --harness codex` is the honest table.
 
 Full reference: `docs/adoption/codex.md` (Codex-specific registration and
 honest capability gaps) and `docs/adoption/claude-code.md` (build/index/

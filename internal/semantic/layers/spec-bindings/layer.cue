@@ -19,6 +19,11 @@ corpus: {
 prompt_version: "spec-bindings/content-addressed"
 prompt_file:    "schema/semantic/layers/spec-bindings/prompt.md"
 tier:           "doc-claimed"
+// claims, not governs (ADR-032 §4 D1, O23): a plan row RESTATES what a
+// task claims about code it has not necessarily reached yet — it is not a
+// binding rule a human wrote about the file being edited. Claims rules
+// take only the serving slots the governs layers leave.
+role: "claims"
 // concern: fathom-authored, eval-gated-embedded — see obligations/layer.cue
 // for the full stratum reasoning (ADR-024, docs/design/pack-taxonomy.md).
 stratum: "concern"

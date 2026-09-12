@@ -489,6 +489,9 @@ func renderObsImpact(m observatoryModel) string {
 			{Label: "indexed discovery, per question", Value: "~" + fmtThousands(idxPerQ) + " tok", Sub: "fathom answers, " + fmtThousands(imp.ExpFathomCalls) + " calls", ValueRole: "positive"},
 			{Label: "observed ratio (median)", Value: ratio, Sub: "per-session, both modes present"},
 			{Label: "duplicated exploration", Value: "~" + fmtThousands(imp.ExpRepeatTokens) + " tok", Sub: fmtThousands(imp.ExpRepeatFiles) + " files re-read — a shared index answers once"},
+			// BP-23 / ADR-032 §5: the harness tax, named on the same band as
+			// the modes it distorts — never folded into either one.
+			{Label: "deferred-schema turns", Value: fmtThousands(imp.ExpToolSearchTurns), Sub: "ToolSearch turns loading MCP schemas — a cost only the indexed mode pays", ValueRole: "caution"},
 		}, stat.BandOptions{AriaLabel: "exploration story"}))
 	} else {
 		b.WriteString(dashboard.RenderWidget(dashboard.Widget{Body: template.HTML(`<span class="italic text-ink-faint">` + html.EscapeString(imp.ExpNote) + `</span>`)}))

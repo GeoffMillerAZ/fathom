@@ -26,12 +26,13 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	asJSON := fs.Bool("json", false, "emit JSON instead of a table")
 	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the violated concerns, one rule per concern id, located at the first evidence file:line (PC-21)")
 	hook := fs.Bool("hook", false, "run as the harness ConfigChange hook: audit the changed repo, write one beat, exit 0 always (PC-24; configchangehook.go)")
+	hookEvent := fs.String("event", "", "which harness event --hook is answering: config-change (default) | file-changed (HP-28) — only the beat's trigger differs")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	if *hook {
-		return cmdConfigAuditHook(*harnessFlag, stderr)
+		return cmdConfigAuditHook(*harnessFlag, *hookEvent, stderr)
 	}
 	if *asJSON && *format == "" {
 		*format = "json"

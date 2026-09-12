@@ -80,6 +80,26 @@ type LedgerRow struct {
 	// LeakedTasks lists tasks excluded from the verdict because the
 	// no-tools arm answered them from memory (LeakedTasks, PB-9).
 	LeakedTasks []string `json:"leaked_tasks,omitempty"`
+	// BP-4/BP-5/BP-8 additions (ADR-032 §2). Scope says whether the run
+	// covered the corpus (ScopeFull) or only the tasks a diff selected
+	// (ScopeTargeted, which never carries a verdict). Borrowed lists every
+	// reading this run did not pay for, with the key that admitted it and
+	// the run that did pay — so "what did this row cost" and "what did it
+	// measure" stay separable years later.
+	Scope    string         `json:"scope,omitempty"`
+	Borrowed []BorrowedCell `json:"borrowed_cells,omitempty"`
+
+	// BP-9/BP-11 additions (H2-3). PayloadBytes/CostUSD ratios are the
+	// cost half the criterion reads; ToolSearchTurns is the harness tax,
+	// reported and never gated (O24); GoldSourceRates says, per arm, how
+	// often each tool was the one whose result first carried a gold token
+	// — the number that turns "the task passed" into "this tool passed".
+	AggregatePayloadRatio  float64                       `json:"aggregate_payload_ratio,omitempty"`
+	AggregateCostRatio     float64                       `json:"aggregate_cost_ratio,omitempty"`
+	TreatmentToolSearchAvg float64                       `json:"treatment_toolsearch_turns_mean,omitempty"`
+	ControlToolSearchAvg   float64                       `json:"control_toolsearch_turns_mean,omitempty"`
+	GoldSourceRates        map[string]map[string]float64 `json:"gold_source_rate,omitempty"`
+
 	// Reliability carries the PB-10 figures (ci_success_diff, wilcoxon_p,
 	// a12, pass_at_1, pass_pow_3, and the seed that produced them),
 	// flattened into the row. Reported, never gating: Evaluation is computed
@@ -155,6 +175,12 @@ func NewLedgerRow(runID, generatedAt, commit, corpus, model string, p PairedSumm
 		Absent:              absent,
 		FlakyTasks:          flaky,
 		Evaluation:          ev,
+		Scope:               p.Scope,
+
+		AggregatePayloadRatio:  p.AggregatePayloadRatio,
+		AggregateCostRatio:     p.AggregateCostRatio,
+		TreatmentToolSearchAvg: p.TreatmentToolSearchAvg,
+		ControlToolSearchAvg:   p.ControlToolSearchAvg,
 	}
 }
 
@@ -237,6 +263,15 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		}
 		if len(r.LeakedTasks) > 0 {
 			caveat += fmt.Sprintf(" leaked=%d", len(r.LeakedTasks))
+		}
+		if len(r.Borrowed) > 0 {
+			caveat += fmt.Sprintf(" borrowed=%d", len(r.Borrowed))
+		}
+		if r.Scope != "" && r.Scope != ScopeFull {
+			caveat += " scope=" + r.Scope
+		}
+		if r.AggregatePayloadRatio > 0 {
+			caveat += fmt.Sprintf(" payload=%.3f×", r.AggregatePayloadRatio)
 		}
 		// A backfilled row has no per-task ratios, so its median is not
 		// recorded — shown as such, never as 0.000×.

@@ -57,6 +57,99 @@ It is a *new* criterion, not an edit to H2-1, because it changes what
 history and are never re-scored. `--scoring precision --criterion H2-2`
 runs under it.
 
+### H2-3 — the criterion the next run is scored on
+
+**H2-3** is registered beside them (BP-10, ADR-032 §3) and is what the next
+full run will be scored under. Same success bar as H2-1 — strictly more
+successes, replication floor 3, substring scoring, the same committed leak
+rule — and a different cost half:
+
+| Reading | Role under H2-3 |
+|---|---|
+| `payload_bytes` | tool-result bytes returned to the model. **Gated: ratio ≤ 1.0.** The discovery cost fathom actually controls. |
+| `cost_usd` | **Gated: ratio ≤ 1.0.** The number a buyer sees. |
+| `total_tokens` | Recorded, **not gated**. It is cache-read × turns — a turn counter in a token costume (O26), under which a smaller payload is invisible. |
+| `toolsearch_turns` | Reported per arm, **never gated**. The harness's deferred MCP schema loads (O24): a tax the fathom arm pays and the grep arm does not, named so it is neither a hidden penalty nor a hidden excuse. |
+| `gold_source_tool` | The tool whose result FIRST carried a gold token (`answer` when only the final answer did). Summarised on the row as `gold_source_rate` per arm per tool. |
+
+`gold_source_rate` is the reading that separates *the task passed* from *the
+tool that was supposed to answer it did*. On the stopped 2026-09-02 run,
+re-scored offline under H2-3, the fathom arm passed H1-T01 three times out of
+three and `obligations` was the gold source **zero** of those three —
+`read_source` was, every time. That is E1/O23 as a number.
+
+A criterion that gates payload but whose run recorded none is
+**indeterminate**, never a pass: the instrument did not look.
+
+`contextbenchscore ledger -criterion H2-3 -raw <run>/raw` scores an existing
+run's stream transcripts offline — one spend, two criteria. H2-1's verdicts
+stand as history and are never re-scored.
+
+## Remembered cells
+
+Every scored cell is filed content-addressed under
+`workspace/artifacts/context-bench/cells/<key>/t<n>.json`, where the key is
+`sha256` over the invariants that bind it (ADR-032 §2):
+
+    corpus_sha256 · task_id · arm · model_id · harness_version ·
+    scoring · prompt_subject · arm_surface
+
+`arm_surface` is the fathom binary commit for the fathom arm and **empty for
+grep and none** — which is the whole saving. The control arms do not depend
+on a line of fathom's code, so their cells survive every fathom change; a
+fathom change re-runs only the cells its own commit can move.
+
+The contract, in four rules:
+
+1. **Borrow by key equality, never by resemblance.** Before running a cell
+   the runner asks the store for that exact key (`--reuse-cells`, the
+   default; `--no-reuse-cells` disables). A changed corpus, model, harness,
+   scoring mode, prompt subject or fathom commit produces a *different* key,
+   so a stale reading is a miss, never a silent reuse.
+2. **Provenance travels with the reading.** A borrowed cell carries
+   `borrowed: true` and `source_run_id`; the ledger row lists every one of
+   them (`borrowed=` in the row's caveats).
+3. **The evaluator re-checks the key.** `AcceptBorrowed` recomputes what
+   this run's invariants produce and refuses anything else, naming the cell.
+   A refused cell is dropped, which makes its (task, arm) incomplete and the
+   row indeterminate through the coverage rule.
+4. **A row composed entirely of borrowed cells is indeterminate.** It
+   re-states an earlier measurement; it is not one.
+
+The model half is the soft spot worth knowing: `model_id` defaults to the
+alias the runner asked for (`sonnet`), and an alias can re-resolve to a newer
+dated model without changing the key. The row records the *resolved* id
+beside it so a reader can see when that happened; pin
+`CONTEXT_BENCH_MODEL_ID` to the previous row's `model_id` to borrow across a
+model release safely.
+
+## Targeted runs
+
+A full three-arm home run is ~117 cells and ~15M tokens — a quarterly budget,
+not a feedback loop. Most changes cannot move most cells.
+
+    task bench-select   RANGE=origin/main...HEAD   # free: which tasks a diff can move
+    task bench-targeted RANGE=origin/main...HEAD   # costs tokens, a fraction of bench-home
+
+`select` maps changed files to agent-surface tools through a committed
+handler table (`internal/contextbench/exercises.go`: each `internal/mcp/*.go`
+handler file to the tools registered in it, plus `internal/semantic`,
+`internal/query` and `internal/fusion` to the tools that read through them),
+then to the tasks whose `exercises:` declaration names those tools. Files the
+table does not cover are **named, not ignored**.
+
+A targeted run passes `--only '<ids>' --scope targeted`, runs the fathom arm
+and borrows the control arms' cells by key. Its row is `scope: targeted` and
+the evaluator **refuses to turn it into a verdict** (indeterminate, reason
+named): per-task evidence is the point, and a corpus-level claim from a
+subset the change itself selected would be a claim about a sample chosen
+after the fact. `--only` without `--scope targeted` is refused by the runner.
+
+## The pyramid
+
+<!-- BP-24 renders the layer table (L0 index oracle … L5 ambient instrument)
+     and the strengths map here. -->
+
 ## How to read a row
 
 | Column | Means |
@@ -76,8 +169,10 @@ reproduces it), `model_id` (the dated id the alias resolved to), `cost_usd`,
 `dirty_tree` (the tree had uncommitted changes, so `commit` alone does not
 name the subject), `cells_lost` (intended cells that never scored — a
 watchdog kill or an empty envelope; `--resume <run-dir>` fills them without
-re-spending the rest), `leaked_tasks`. Older rows lack them and read as
-not recorded, never as zero.
+re-spending the rest), `leaked_tasks`, and since 2026-09-12 `scope`, `borrowed_cells`,
+`aggregate_payload_ratio`, `aggregate_cost_ratio`, the per-arm
+`toolsearch_turns` means and `gold_source_rate`. Older rows lack them and
+read as not recorded, never as zero.
 
 Two ratios are reported because they disagree in the way that matters. On
 2026-07-24 the fathom arm was cheaper on 8 of 13 tasks and still lost the
@@ -107,7 +202,9 @@ than a quiet one. Nothing else may declare a win.
 
 ## Running one
 
-`task bench-home` — **this spends real LLM tokens**, roughly three times the
+`task bench-targeted RANGE=<git range>` first: it runs only the tasks the
+diff can move and borrows the rest. `task bench-home` — **this spends real
+LLM tokens**, roughly three times the
 2026-07-24 run at the default `--repeat 3` (~13M tokens, ~$13 at 2026-09
 prices; add a third for the `none` arm). It is operator-initiated: never in
 `validate`, never in a hook, never in CI (`docs/intent/autonomy.md`: ask

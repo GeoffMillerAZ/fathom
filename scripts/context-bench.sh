@@ -71,6 +71,22 @@
 # 2026-07-24 run (~13M tokens, ~$13 at 2026-09 prices), so it is
 # operator-initiated, never automatic.
 #
+# Remembered cells (BP-4, ADR-032 §2): every scored cell is filed under a
+# content-addressed key over the invariants that bind it — corpus bytes,
+# task, arm, model id, harness version, scoring, prompt subject, and the
+# fathom binary commit for the fathom arm (empty for grep and none). Before
+# running a cell the runner looks for one with that key and borrows it,
+# recording `borrowed: true` and the run that paid for it. The grep and
+# `none` arms do not depend on fathom's code, so their cells survive every
+# fathom change; a fathom change re-runs only the cells its own commit can
+# move. --no-reuse-cells turns borrowing off (default: on).
+#
+# Targeted runs (BP-8): --only 'H1-T01 H1-T05' runs a subset, and
+# --scope targeted marks the row as diff-selected — the evaluator then
+# refuses to turn it into a verdict (indeterminate, reason named). Use
+# `task bench-targeted RANGE=origin/main...HEAD`, which chains
+# `contextbenchscore select` into this script.
+#
 # Resume (PB-4): --resume <run-dir> re-uses a run directory, skips every
 # cell whose scored file already exists, scores only the gaps, and records
 # how many intended cells are still missing (cells_lost on the ledger row).
@@ -89,6 +105,8 @@
 #   scripts/context-bench.sh --subject-root <dir> --service <id> \
 #                            --prompt-subject 'the acme codebase' --scratch-daemon
 #   scripts/context-bench.sh --env compiled-layer  # capabilities the environment provides
+#   scripts/context-bench.sh --only 'H1-T01 H1-T05' --scope targeted
+#   scripts/context-bench.sh --no-reuse-cells      # never borrow a stored cell
 #
 # Env:
 #   FATHOM_HTTP_URL          base URL of the fathom daemon (default
@@ -99,6 +117,13 @@
 #                             install, so this script implements its own.
 #   CONTEXT_BENCH_REPEAT     default for --repeat (1)
 #   CONTEXT_BENCH_LEDGER     default for --ledger (docs/bench/ledger.jsonl)
+#   CONTEXT_BENCH_MODEL_ID   model identity the cell key is built on
+#                             (default: the --model alias; pin it to the
+#                             dated id from the last ledger row to borrow
+#                             safely across a model release)
+#   CONTEXT_BENCH_FATHOM_COMMIT  arm_surface for the fathom arm (default:
+#                             this tree's HEAD, which --scratch-daemon
+#                             builds from and `task deploy` asserts)
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -119,13 +144,17 @@ CRITERION=""
 STREAM=0
 ENV_SET=0
 ENV=""
+ONLY=""
+SCOPE="full"
+REUSE_CELLS=1
 
 usage() {
   cat >&2 <<USAGE
 usage: $(basename "$0") [--arms 'fathom grep none'] [--tasks <path>] [--repeat N] [--ledger <path>]
           [--resume <run-dir>] [--scoring substring|precision] [--criterion <id>] [--stream]
           [--subject-root <dir>] [--service <id>] [--fathom-url <url>] [--prompt-subject <text>]
-          [--scratch-daemon] [--env <cap,cap>]
+          [--scratch-daemon] [--env <cap,cap>] [--only '<id id>'] [--scope full|targeted]
+          [--no-reuse-cells]
 USAGE
   exit 2
 }
@@ -146,6 +175,10 @@ while [ "$#" -gt 0 ]; do
     --prompt-subject) PROMPT_SUBJECT="$2"; shift 2 ;;
     --scratch-daemon) SCRATCH_DAEMON=1; shift ;;
     --env) ENV="$2"; ENV_SET=1; shift 2 ;;
+    --only) ONLY="$2"; shift 2 ;;
+    --scope) SCOPE="$2"; shift 2 ;;
+    --reuse-cells) REUSE_CELLS=1; shift ;;
+    --no-reuse-cells) REUSE_CELLS=0; shift ;;
     *) usage ;;
   esac
 done
@@ -158,6 +191,16 @@ case "$SCORING" in
   substring|precision) ;;
   *) echo "context-bench: --scoring must be substring or precision, got '$SCORING'" >&2; exit 2 ;;
 esac
+case "$SCOPE" in
+  full|targeted) ;;
+  *) echo "context-bench: --scope must be full or targeted, got '$SCOPE'" >&2; exit 2 ;;
+esac
+# A subset run that still claims full scope would let a diff-chosen sample
+# produce a corpus verdict. Refuse it here, not only in the evaluator.
+if [ -n "$ONLY" ] && [ "$SCOPE" != "targeted" ]; then
+  echo "context-bench: --only requires --scope targeted (a subset never carries a verdict)" >&2
+  exit 2
+fi
 
 if [ ! -f "$TASKS" ]; then
   echo "context-bench: tasks file not found: $TASKS" >&2
@@ -181,7 +224,23 @@ else
 fi
 RAW_DIR="$RUN_DIR/raw"
 RESULTS_DIR="$RUN_DIR/results"
-mkdir -p "$RAW_DIR" "$RESULTS_DIR"
+CELLS_DIR="$ARTIFACTS_DIR/cells"
+mkdir -p "$RAW_DIR" "$RESULTS_DIR" "$CELLS_DIR"
+
+# The cell-key invariants (BP-3). Captured once so `borrow`, `score` and
+# `ledger` cannot disagree about what a key means.
+MODEL_ID="${CONTEXT_BENCH_MODEL_ID:-$MODEL}"
+HARNESS_VERSION="$(claude --version 2>/dev/null | head -1)"
+if [ -z "$HARNESS_VERSION" ]; then
+  echo "context-bench: could not read \`claude --version\` — cells cannot be keyed on an unknown harness (O24: the harness IS a variable)" >&2
+  exit 2
+fi
+# arm_surface for the fathom arm: which fathom the arm was talking to. With
+# --scratch-daemon this tree is literally what the daemon was built from;
+# against the fleet daemon it is the operator's assertion that the daemon
+# serves HEAD (`task deploy` checks it). Override when it does not.
+FATHOM_ARM_SURFACE="${CONTEXT_BENCH_FATHOM_COMMIT:-$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)}"
+echo "context-bench: cell key inputs — model_id=$MODEL_ID harness='$HARNESS_VERSION' scoring=$SCORING subject='$PROMPT_SUBJECT' fathom_arm_surface=$FATHOM_ARM_SURFACE (reuse_cells=$REUSE_CELLS)"
 
 echo "context-bench: building the scorer (GOWORK=off — nested worktrees can't resolve ../agentic-kit)"
 SCORER="$RUN_DIR/contextbenchscore"
@@ -314,6 +373,7 @@ run_with_timeout() {
 
 CELLS_RUN=0
 CELLS_KEPT=0
+CELLS_BORROWED=0
 run_arm() {
   local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7" trial="${8:-1}"
   local raw="$RAW_DIR/$task_id-$arm-t$trial.json"
@@ -324,6 +384,20 @@ run_arm() {
     echo "context-bench: [$task_id/$arm/t$trial] kept (scored file exists)"
     CELLS_KEPT=$((CELLS_KEPT + 1))
     return 0
+  fi
+
+  local surface=""
+  if [ "$arm" = "fathom" ]; then surface="$FATHOM_ARM_SURFACE"; fi
+
+  # BP-4: an earlier run may already have bought this exact cell.
+  if [ "$REUSE_CELLS" -eq 1 ]; then
+    if "$SCORER" borrow -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" \
+        -scoring "$SCORING" -cells "$CELLS_DIR" -out "$scored" \
+        -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
+        -prompt-subject "$PROMPT_SUBJECT" -arm-surface "$surface"; then
+      CELLS_BORROWED=$((CELLS_BORROWED + 1))
+      return 0
+    fi
   fi
   CELLS_RUN=$((CELLS_RUN + 1))
 
@@ -357,7 +431,9 @@ run_arm() {
   if [ "$STREAM" -eq 1 ] && [ -s "$stream" ]; then
     extra=(-transcript "$stream")
   fi
-  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -scoring "$SCORING" -claude-json "$raw" -out "$scored" "${extra[@]}"; then
+  if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -scoring "$SCORING" -claude-json "$raw" -out "$scored" \
+      -cells "$CELLS_DIR" -run-id "$TS" -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
+      -prompt-subject "$PROMPT_SUBJECT" -arm-surface "$surface" "${extra[@]}"; then
     echo "context-bench: [$task_id/$arm/t$trial] scoring failed" >&2
     return 1
   fi
@@ -375,6 +451,9 @@ NONE_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT
 
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
+  if [ -n "$ONLY" ] && ! echo " $ONLY " | grep -q " $task_id "; then
+    continue
+  fi
   TASK_COUNT=$((TASK_COUNT + 1))
   trial=1
   while [ "$trial" -le "$REPEAT" ]; do
@@ -393,7 +472,7 @@ while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
   done
 done < <("$SCORER" tasks -tasks "$TASKS" -env "$ENV")
 
-echo "context-bench: $TASK_COUNT runnable task(s) x $REPEAT trial(s) per arm (env='$ENV'); cells run=$CELLS_RUN kept=$CELLS_KEPT"
+echo "context-bench: $TASK_COUNT runnable task(s) x $REPEAT trial(s) per arm (env='$ENV', scope=$SCOPE); cells run=$CELLS_RUN kept=$CELLS_KEPT borrowed=$CELLS_BORROWED"
 
 if [ "$FATHOM_REACHABLE" -eq 0 ] && echo "$ARMS" | grep -qw fathom; then
   echo "context-bench: arm 'fathom' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2
@@ -431,6 +510,9 @@ if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('
   # non-zero verdict exit codes are captured directly.
   "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" \
     -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -arms "$ARMS" -repeat "$REPEAT" -env "$ENV" \
+    -scope "$SCOPE" -scoring "$SCORING" -raw "$RAW_DIR" \
+    -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
+    -prompt-subject "$PROMPT_SUBJECT" -arm-surface "$FATHOM_ARM_SURFACE" \
     "${DIRTY[@]}" "${CRIT[@]}" -out-md "$LEDGER_MD"
   LEDGER_RC=$?
   case "$LEDGER_RC" in

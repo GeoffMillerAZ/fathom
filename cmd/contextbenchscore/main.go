@@ -13,11 +13,29 @@
 //	    runner, skipping (to stderr) tasks whose `requires` the environment
 //	    does not satisfy (RequiresSatisfied, PB-12).
 //
-//	contextbenchscore score  -tasks <tasks.json> -task-id <id> -arm <name> -claude-json <path> -out <path> [-trial N] [-scoring substring|precision] [-transcript <stream.jsonl>]
+//	contextbenchscore score  -tasks <tasks.json> -task-id <id> -arm <name> -claude-json <path> -out <path> [-trial N] [-scoring substring|precision] [-transcript <stream.jsonl>] [cell flags]
 //	    Scores one arm's raw `claude -p --output-format json` output against
 //	    one task and writes an ArmResult JSON to -out. -scoring precision
 //	    applies H2-2's fenced-block rule; -transcript reads a stream-json
-//	    transcript for tokens-to-first-gold-hit and tool-call counts.
+//	    transcript for tokens-to-first-gold-hit, tool-call counts and the
+//	    H2-3 metrics (payload_bytes, toolsearch_turns, gold_source_tool).
+//	    The cell flags (-model-id, -harness-version, -prompt-subject,
+//	    -arm-surface, -run-id, -cells) stamp the cell key on the result and
+//	    file it in the content-addressed cell store (ADR-032 §2).
+//
+//	contextbenchscore borrow -tasks <tasks.json> -task-id <id> -arm <name> -trial N -cells <dir> -out <path> [cell flags]
+//	    Looks up the cell store for a cell whose key this run's invariants
+//	    produce and, on a hit, writes it to -out as a borrowed reading with
+//	    its source run recorded. Exit 0 = borrowed (the runner skips the
+//	    call), 3 = no such cell (run it), 2 = usage/IO. Key equality is the
+//	    only admission rule: a changed corpus, model, harness, scoring,
+//	    prompt subject or fathom commit yields a different key and
+//	    therefore a miss, never a stale reuse.
+//
+//	contextbenchscore select -tasks <tasks.json> [-diff <git range>] [-files <paths>] [-json]
+//	    Maps changed files to agent-surface tools by the committed handler
+//	    table, then to the tasks that exercise them, and prints the task
+//	    ids one per line (SelectTasks). Free: it reads git and the corpus.
 //
 //	contextbenchscore report -tasks <tasks.json> -results <dir of *.json ArmResults> -out-json <path> -out-md <path>
 //	    Reads every ArmResult JSON file in -results (non-recursive), builds
@@ -69,7 +87,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <tasks|score|report|ledger|regress|backfill|import> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: contextbenchscore <tasks|score|borrow|select|report|ledger|regress|backfill|import> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -77,6 +95,10 @@ func run(args []string) int {
 		return cmdTasks(args[1:])
 	case "score":
 		return cmdScore(args[1:])
+	case "borrow":
+		return cmdBorrow(args[1:])
+	case "select":
+		return cmdSelect(args[1:])
 	case "report":
 		return cmdReport(args[1:])
 	case "ledger":
@@ -88,7 +110,7 @@ func run(args []string) int {
 	case "import":
 		return cmdImport(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want tasks, score, report, ledger, regress, backfill, or import)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want tasks, score, borrow, select, report, ledger, regress, backfill, or import)\n", args[0])
 		return 2
 	}
 }
@@ -145,7 +167,10 @@ func cmdScore(args []string) int {
 	outPath := fs.String("out", "", "path to write the scored ArmResult JSON")
 	trial := fs.Int("trial", 0, "1-based repetition index within this run (0 = single-trial run)")
 	scoring := fs.String("scoring", contextbench.ScoringSubstring, "substring (H2-1) or precision (H2-2: fenced answer block within max_predicted)")
-	transcript := fs.String("transcript", "", "optional stream-json transcript; fills tokens_to_first_gold_hit and tool_calls")
+	transcript := fs.String("transcript", "", "optional stream-json transcript; fills tokens_to_first_gold_hit, tool_calls and the H2-3 metrics")
+	cells := fs.String("cells", "", "content-addressed cell store to file this cell in (ADR-032 §2)")
+	runID := fs.String("run-id", "", "the run that paid for this cell (recorded as its provenance)")
+	cell := cellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -202,6 +227,27 @@ func cmdScore(args []string) int {
 		ar.ToolCalls = hit.ToolCalls
 		if hit.Found {
 			ar.TokensToFirstGoldHit = hit.TokensToFirstHit
+		}
+		applyTranscriptMetrics(&ar, tr, task.GroundTruth)
+	}
+
+	// The cell's identity (ADR-032 §2). It is stamped whenever the runner
+	// supplies the invariants; a cell without them is still scored, but it
+	// can never be borrowed — which is the honest outcome, not a silent one.
+	if *cell.HarnessVersion != "" || *cells != "" {
+		in := cell.inputs(*tasksPath, *taskID, *arm, *scoring)
+		if err := in.Validate(); err != nil {
+			fmt.Fprintf(os.Stderr, "score: %v\n", err)
+			return 2
+		}
+		ar.CellKey = contextbench.CellKey(in)
+		ar.ArmSurface = in.ArmSurface
+		ar.SourceRunID = *runID
+		if *cells != "" {
+			if err := contextbench.StoreCell(*cells, ar); err != nil {
+				fmt.Fprintf(os.Stderr, "score: %v\n", err)
+				return 1
+			}
 		}
 	}
 
@@ -320,6 +366,10 @@ func cmdLedger(args []string) int {
 	dirty := fs.Bool("dirty-tree", false, "the working tree had uncommitted changes when the run measured it")
 	outMD := fs.String("out-md", "", "optional path to render the whole ledger as a Markdown table")
 	notes := fs.String("notes", "", "optional free-text note recorded with the row")
+	scope := fs.String("scope", contextbench.ScopeFull, "full (the corpus) or targeted (a diff-selected subset, which never carries a verdict)")
+	rawDir := fs.String("raw", "", "directory of stream-json transcripts to re-read the H2-3 metrics from (default: <results>/../raw when it exists)")
+	scoring := fs.String("scoring", contextbench.ScoringSubstring, "the scoring mode the cells were scored under (part of the cell key)")
+	cell := cellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -368,6 +418,43 @@ func cmdLedger(args []string) int {
 	}
 	cellsLost := contextbench.CellsLost(runnable, intended, *repeat, results)
 
+	// BP-11: score an existing run's transcripts offline. One spend, two
+	// criteria — H2-1's verdict stands as history and H2-3 reads the same
+	// cells for payload, harness tax and gold source.
+	transcripts := *rawDir
+	if transcripts == "" {
+		guess := filepath.Join(filepath.Dir(strings.TrimRight(*resultsDir, string(filepath.Separator))), "raw")
+		if st, err := os.Stat(guess); err == nil && st.IsDir() {
+			transcripts = guess
+		}
+	}
+	if transcripts != "" {
+		filled, err := fillTranscriptMetrics(results, tasks, transcripts)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "ledger: %v\n", err)
+			return 2
+		}
+		results = filled
+	}
+
+	// BP-5: a borrowed cell is admitted by key equality and nothing else.
+	// A refused cell is dropped, which makes its (task, arm) incomplete
+	// and the row indeterminate through the coverage rule — never scored
+	// as if the invariants had held.
+	if hasBorrowed(results) {
+		if *cell.HarnessVersion == "" || *cell.ModelID == "" {
+			fmt.Fprintln(os.Stderr, "ledger: this run carries borrowed cells but no -harness-version/-model-id to recompute their keys from — refusing to accept provenance it cannot check")
+			return 2
+		}
+		base := cell.inputs(*tasksPath, "", "", *scoring)
+		surfaces := map[string]string{*treatment: *cell.ArmSurface}
+		kept, refused := contextbench.RefuseMismatchedBorrows(results, base, surfaces)
+		for _, r := range refused {
+			fmt.Fprintf(os.Stderr, "ledger: %s\n", r)
+		}
+		results = kept
+	}
+
 	var leaked []string
 	if criterion.LeakRule != nil {
 		leaked = contextbench.LeakedTasks(results, *criterion.LeakRule)
@@ -375,6 +462,7 @@ func cmdLedger(args []string) int {
 	}
 
 	paired := contextbench.Pair(results, *treatment, *control)
+	paired.Scope = *scope
 	ev := criterion.Evaluate(paired)
 	row := contextbench.NewLedgerRow(*runID, time.Now().UTC().Format(time.RFC3339), *commit, *tasksPath, *model, paired, ev)
 	row.Notes = *notes
@@ -383,6 +471,8 @@ func cmdLedger(args []string) int {
 	row.DirtyTree = *dirty
 	row.CellsLost = cellsLost
 	row.LeakedTasks = leaked
+	row.Borrowed = contextbench.BorrowedCellsOf(results)
+	row.GoldSourceRates = contextbench.GoldSourceRate(results)
 	// Reported, never gating (PB-10): the verdict above is already fixed;
 	// the figures describe how much evidence stands behind it. A run with
 	// no paired task has nothing to resample and carries none.
@@ -433,6 +523,17 @@ func cmdLedger(args []string) int {
 		paired.Tasks, paired.MinTrials, paired.TreatmentSuccesses, paired.ControlSuccesses,
 		paired.AggregateTokenRatio, paired.MedianTokenRatio, len(paired.Absent), len(paired.FlakyTasks),
 		len(leaked), cellsLost, row.CostUSD, row.ModelID)
+	if row.AggregatePayloadRatio > 0 || paired.TreatmentToolSearchAvg > 0 {
+		fmt.Printf("  payload=%.3fx cost=%.3fx toolsearch_turns %s=%.2f %s=%.2f (reported, never gated)\n",
+			paired.AggregatePayloadRatio, paired.AggregateCostRatio,
+			*treatment, paired.TreatmentToolSearchAvg, *control, paired.ControlToolSearchAvg)
+	}
+	if len(row.Borrowed) > 0 {
+		fmt.Printf("  borrowed=%d of %d compared cell(s) (scope=%s)\n", len(row.Borrowed), paired.Cells, row.Scope)
+	}
+	if len(row.GoldSourceRates) > 0 {
+		fmt.Print(contextbench.RenderGoldSourceRate(row.GoldSourceRates))
+	}
 	fmt.Printf("  appended to %s\n", *ledgerPath)
 
 	return exitFor(ev.Verdict)

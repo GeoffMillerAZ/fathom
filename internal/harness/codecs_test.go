@@ -72,6 +72,14 @@ func TestCodecsRoundTripDocumentedFixtures(t *testing.T) {
 		}
 		for _, f := range files {
 			name := filepath.Base(f)
+			if strings.HasSuffix(name, ".live.in.json") {
+				// A LIVE capture, not a documented fixture: its provenance
+				// is a JSON header inside the object (version + date), and
+				// codec_codex_live_test.go replays and checks it. Holding it
+				// to the documented-fixture header comment would force a
+				// hand-edit of bytes whose whole value is being unedited.
+				continue
+			}
 			_, body := readFixture(t, f)
 			switch {
 			case strings.HasSuffix(name, ".in.json"):
@@ -336,7 +344,9 @@ func TestCodexCodecDecodesNonObjectToolInput(t *testing.T) {
 // due 61 days later unless a real session verifies them first.
 func TestWiredCodecsStartTheDemotionClock(t *testing.T) {
 	landed := time.Date(2026, 9, 2, 0, 0, 0, 0, time.UTC)
-	for _, id := range []string{Codex, GeminiCLI} {
+	// Gemini CLI is still unverified: its clock runs, and 61 days after
+	// landing it demotes unless a real session verifies it first.
+	for _, id := range []string{GeminiCLI} {
 		d, _ := Lookup(id)
 		if d.Codec == "" || d.CodecLanded != "2026-09-02" || !d.Unverified() {
 			t.Errorf("%s: codec=%q landed=%q verified=%q", id, d.Codec, d.CodecLanded, d.VerifiedAgainst)
@@ -350,6 +360,21 @@ func TestWiredCodecsStartTheDemotionClock(t *testing.T) {
 		if _, ok := d.InitHookFile(); !ok {
 			t.Errorf("%s: no project hook file for init to write", id)
 		}
+	}
+	// Codex's clock STOPPED: HP-34's live session verified it, which is the
+	// only thing that stops a demotion clock. Pinned because a regression
+	// to "unverified" would silently re-arm a 60-day countdown that has
+	// already been satisfied, and `init --harness=codex` would start
+	// refusing a harness that demonstrably works.
+	cx, _ := Lookup(Codex)
+	if cx.Unverified() {
+		t.Fatal("codex was verified by a live session; verified_against must say so")
+	}
+	if due, reason := DemotionDue(cx, landed.Add(400*24*time.Hour)); due {
+		t.Errorf("a verified descriptor never demotes: %s", reason)
+	}
+	if EffectiveTier(cx, landed.Add(400*24*time.Hour)) != "A" {
+		t.Error("codex must stay tier A once verified")
 	}
 	for _, d := range DataOnlyDescriptors() {
 		if d.Codec != "" || !d.HasHooks() {

@@ -357,6 +357,9 @@ func renderBriefMD(m observatoryModel) string {
 		if imp.ExpRatioMedianX10 != nil {
 			fmt.Fprintf(&b, " Median cost ratio: %s× cheaper per question.", strconv.FormatFloat(float64(*imp.ExpRatioMedianX10)/10, 'f', 1, 64))
 		}
+		// BP-23 / ADR-032 §5: the deferral tax is stated beside the ratio it
+		// distorts, never silently netted into it.
+		fmt.Fprintf(&b, " Deferred-schema (ToolSearch) turns in the same sessions: %s.", fmtThousands(imp.ExpToolSearchTurns))
 		b.WriteString(" " + imp.ExpNote + "\n")
 	}
 

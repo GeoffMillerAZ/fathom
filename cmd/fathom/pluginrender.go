@@ -69,6 +69,10 @@ func renderAgentPluginManifest(mcpURL string) (pluginJSON, mcpJSON map[string]an
 	mcpJSON = map[string]any{
 		"$schema": agentMCPSchemaURL,
 		"mcpServers": map[string]any{
+			// No alwaysLoad here: this is the PORTABLE agent-plugins.org
+			// manifest, and schema/plugin/schema.cue's #AgentMCP does not
+			// admit the field — it is Claude Code's own, and it rides the
+			// Claude plugin's .mcp.json below (BP-22).
 			"fathom": map[string]any{"type": "streamable-http", "url": mcpURL},
 		},
 	}
@@ -155,7 +159,16 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	// .mcp.json — the daemon registration.
 	if err := writeJSON(filepath.Join(*out, ".mcp.json"), map[string]any{
 		"mcpServers": map[string]any{
-			"fathom": map[string]any{"type": "http", "url": *mcpURL},
+			// alwaysLoad (BP-22, ADR-032 §5): per Claude Code's MCP docs,
+			// startup WAITS for this server to connect before the session
+			// begins, so fathom's tools are present on turn one instead of
+			// arriving after the agent has already reached for Grep. It is a
+			// startup-ordering flag, NOT a deferral control — measured
+			// 2026-09-12 on claude 2.1.270, a session pays zero ToolSearch
+			// turns with it and without it. Claude Code's own .mcp.json
+			// shape, not the portable agent-plugins.org one above, which
+			// does not admit the field.
+			"fathom": map[string]any{"type": "http", "url": *mcpURL, "alwaysLoad": true},
 		},
 	}); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

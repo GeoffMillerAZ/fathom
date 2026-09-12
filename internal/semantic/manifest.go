@@ -84,6 +84,15 @@ type LayerDef struct {
 	Tier        string
 	TierProfile string
 
+	// Role is this pack's serving role (schema.cue #Layer.role, ADR-032 §4
+	// D1/D2): RoleGoverns for a layer that restates binding rules a human
+	// wrote about the code, RoleClaims for a layer that restates what a
+	// document claims about it. ObligationsFor splits the serving budget on
+	// it — governs rules fill it first. Empty only for a pack that failed to
+	// decode; LayerRole normalizes an unknown value to RoleGoverns, the
+	// schema default, so a layer can never lose priority by surprise.
+	Role string
+
 	// Stratum names this pack instance's place in the four-stratum pack
 	// taxonomy (ADR-024, docs/design/pack-taxonomy.md): "concern" (a
 	// fathom-authored, eval-gated-embedded pack — every pack this repo
@@ -143,6 +152,7 @@ type cueLayer struct {
 	PromptFile    string `json:"prompt_file"`
 	Tier          string `json:"tier"`
 	TierProfile   string `json:"tier_profile"`
+	Role          string `json:"role"`
 	Stratum       string `json:"stratum"`
 	Evaled        bool   `json:"evaled"`
 	Budgets       struct {
@@ -303,6 +313,7 @@ func decodePack(cctx *cue.Context, layerSchema cue.Value, fsys fs.FS, cuePath, d
 		PromptText:    promptText,
 		Tier:          cl.Tier,
 		TierProfile:   cl.TierProfile,
+		Role:          cl.Role,
 		Stratum:       cl.Stratum,
 		Evaled:        cl.Evaled,
 		Budgets: LayerBudgets{

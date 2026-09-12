@@ -20,7 +20,10 @@ audit and report holds. Register new concerns in `.fathom/concerns.cue`
 (repo governs) or `~/.fathom/concerns.cue` (user defaults): falsifiable
 wants only — `forbidden_pattern`, `command_documented_and_exists`,
 `max_lines`, `pointers_resolve` — each with a `why` naming a failure that
-actually happened. Codex's session hooks are not wired by this build, so
-the attention line never fires here: run the audit yourself at session
-start (`fathom prime` prints it), the same way AGENTS.md
-tells you to run `fathom thread brief`.
+actually happened. Its `pointers_resolve` corpus also covers the root
+`INTENT.md` where one exists (`fathom intent render --playbook` generates
+it from `docs/intent/`). Codex has no `ConfigChange` or `FileChanged`
+event, so the audit never runs itself here even once the session hooks are
+pasted in: run it yourself at session start (`fathom prime` prints the
+attention line), the same way AGENTS.md tells you to run
+`fathom thread brief`.
