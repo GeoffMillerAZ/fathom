@@ -176,9 +176,9 @@ indexed symbols), 200 sampled queries per tool, 20 for `blast_radius`:
 
 | tool | precision before | precision after | recall before | recall after | seconds/query before | after |
 |---|---|---|---|---|---|---|
-| `find_callers` | 0.607 (295/486) | **1.000 (308/308)** | 0.899 | 0.942 | 0.034 | **0.000** |
-| `references` | 0.158 (352/2226) | **0.402 (364/906)** | 1.000 | 1.000 | 0.010 | 0.011 |
-| `blast_radius` | 0.086 (871/10158) | **1.000 (230/230)** | 0.805 | 0.983 | **10.9** | **0.006** |
+| `find_callers` | 0.607 (295/486) | **1.000 (365/365)** | 0.899 | **1.000 (365/365)** | 0.034 | **0.000** |
+| `references` | 0.158 (352/2226) | **0.466 (359/771)** | 1.000 | 1.000 | 0.010 | 0.010 |
+| `blast_radius` | 0.086 (871/10158) | **1.000 (230/230)** | 0.805 | **0.983** | **10.9** | **0.006** |
 
 Three changes produced that, and only the first two changed what an agent sees:
 
@@ -190,7 +190,17 @@ Three changes produced that, and only the first two changed what an agent sees:
 2. **BP-28 — the call graph is memoized** per (service, store watermark),
    below the MCP layer. The 10.9s → 0.006s column is that: nothing about
    building the graph was ever per-query.
-3. **BP-30 — the comparison was made honest**, which moved numbers without
+3. **BP-31 — an ambiguous bare name is answered, not refused.** `callgraph.
+   canonicalize` returns nothing for a name two packages share, which is the
+   right rule for "does A reach B" and the wrong one for "who calls X". The
+   first resolved-by-default run lost 19 of 327 true callers to it — every
+   single one PRESENT in the typed graph under its own canonical key, and
+   invisible to the syntax pass too. `CandidateKeys` / `ResolvedCallersAcross`
+   union the candidates instead; a bare query matches by exact symbol Name so
+   it never crosses a receiver boundary into a same-named method, and a name
+   the index does not carry still returns nothing so the handler can fall
+   back. That took recall to 1.000 with precision unchanged at 1.000.
+4. **BP-30 — the comparison was made honest**, which moved numbers without
    moving code. Three things the go/types truth cannot adjudicate are now
    reported as *unadjudicated* rather than scored as errors: symbols in
    `_test.go` files (the walker loads with `Tests: false`, so a test caller
@@ -200,16 +210,28 @@ Three changes produced that, and only the first two changed what an agent sees:
    half's substring hits. The after run reports 1,086 / 1,076 / 547
    unadjudicated answers for the three tools, in no rate.
 
+**Where the 19 misses went** (the classification `-misses` produced, which is
+why the flag exists): all 19, one class. Every one was a query whose bare
+name the index carries more than once — `Reachable`, `Parse`, `Match`,
+`Surface`, `matchGlob`, `shortSHA`, `ExportJSON` — and for every one the
+typed edge was already in the graph under its own canonical key. None was a
+method-value or func-value edge (VS-6 holds: those are edges in both passes,
+and the syntax pass had not seen these either, `heuristic_edge: false` on all
+19); none was a generic instantiation, an embedded-promotion call, a method
+expression, or an alias; and none was a package the typed pass could not
+load — the run reports 100 packages, 0 with type errors, and the ingest 211
+typed-edge packages with 0 failed, so there were no DiscoveryGaps to name.
+It was not a fusion defect at all: it was the query path added in BP-26.
+Fixed in code (BP-31), not excused with an unadjudicated bucket.
+
 **What is still below the floor**, stated plainly:
 
-- `find_callers` **recall 0.942** — 19 of 327 true callers missing, edges the
-  typed pass classified as something other than a direct call. Under the
-  0.95 floor, so ADR-032 still keeps L4 closed.
-- `references` **precision 0.402** is a **lower bound, not a verdict.** The
+- `references` **precision 0.466** is a **lower bound, not a verdict.** The
   remaining false positives are text mentions inside comments and string
   literals in Go files the checker did walk. Nothing in a text search can
   tell those from identifier uses, and nothing in a go/types use-set can
   contain them, so the honest report is the low number plus this sentence —
   not a filter invented to raise it. `references` is a fleet-wide occurrence
   search across code, docs and config by design; the oracle scores the one
-  slice of it a type checker can rule on.
+  slice of it a type checker can rule on. It is the only row still holding
+  ADR-032's gate shut.

@@ -135,3 +135,88 @@ func TestBuildResolvedCarriesOnlyTypedEdges(t *testing.T) {
 		t.Errorf("ResolvedCallers = %+v, want one EdgeDirect row", got)
 	}
 }
+
+// ambiguousNodes: two packages declare Target, and a third type has a
+// method whose final component is also Target. Real callers exist for each.
+func ambiguousNodes() []core.SymbolNode {
+	f := func(pkg, name, file string, calls ...string) core.SymbolNode {
+		return core.SymbolNode{Service: "s", Package: pkg, Name: name, Kind: core.KindGoFunc, FilePath: file, Calls: calls}
+	}
+	return []core.SymbolNode{
+		f("a", "Target", "a/a.go"),
+		f("b", "Target", "b/b.go"),
+		f("c", "Recv.Target", "c/c.go"),
+		f("a", "CallerA", "a/a.go"),
+		f("b", "CallerB", "b/b.go"),
+		f("c", "CallerC", "c/c.go"),
+	}
+}
+
+func ambiguousGraph() (*Graph, map[string]string) {
+	nodes := ambiguousNodes()
+	key := map[string]string{}
+	for _, n := range nodes {
+		key[n.Package+"."+n.Name] = n.Key()
+	}
+	return BuildResolved(nodes, []core.Edge{
+		{FromSymbol: key["a.CallerA"], ToSymbol: key["a.Target"], Kind: core.EdgeDirect},
+		{FromSymbol: key["b.CallerB"], ToSymbol: key["b.Target"], Kind: core.EdgeDirect},
+		{FromSymbol: key["c.CallerC"], ToSymbol: key["c.Recv.Target"], Kind: core.EdgeDirect},
+	}), key
+}
+
+// TestResolvedCallersAcrossUnionsAmbiguousName is BP-31: an ambiguous bare
+// name is a question the resolved graph CAN answer — the union — and
+// answering it is what keeps find_callers from degrading to the syntax
+// pass's imprecise answer for every name two packages share.
+func TestResolvedCallersAcrossUnionsAmbiguousName(t *testing.T) {
+	g, key := ambiguousGraph()
+
+	if got := ResolvedCallers(g, "Target"); len(got) != 0 {
+		t.Fatalf("fixture: single-answer ResolvedCallers should refuse an ambiguous name, got %+v", got)
+	}
+	got := ResolvedCallersAcross(g, "Target")
+	var names []string
+	for _, e := range got {
+		names = append(names, e.Key)
+	}
+	if len(got) != 2 {
+		t.Fatalf("ResolvedCallersAcross(Target) = %v, want the callers of BOTH a.Target and b.Target", names)
+	}
+	for _, want := range []string{key["a.CallerA"], key["b.CallerB"]} {
+		var found bool
+		for _, e := range got {
+			if e.Key == want {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s missing from %v", want, names)
+		}
+	}
+	for _, e := range got {
+		if e.Key == key["c.CallerC"] {
+			t.Errorf("CallerC is in the answer: a BARE query must not cross a receiver boundary into the method Recv.Target, whose callers answer a different question")
+		}
+	}
+}
+
+// TestCandidateKeysSpellings: a method asked by its own name resolves to
+// itself, and a name the index does not carry resolves to nothing — which
+// a caller must be able to tell from "no callers".
+func TestCandidateKeysSpellings(t *testing.T) {
+	g, key := ambiguousGraph()
+
+	if got := CandidateKeys(g, "Recv.Target"); len(got) != 1 || got[0] != key["c.Recv.Target"] {
+		t.Errorf("CandidateKeys(Recv.Target) = %v, want just the method's own key", got)
+	}
+	if got := CandidateKeys(g, "Target"); len(got) != 2 {
+		t.Errorf("CandidateKeys(Target) = %v, want both package-level Targets", got)
+	}
+	if got := CandidateKeys(g, "NotInIndex"); got != nil {
+		t.Errorf("CandidateKeys(NotInIndex) = %v, want nil — a name the index does not carry is not an answer", got)
+	}
+	if got := ResolvedCallersAcross(g, "NotInIndex"); got != nil {
+		t.Errorf("ResolvedCallersAcross(NotInIndex) = %v, want nil so the caller can fall back", got)
+	}
+}

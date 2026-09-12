@@ -47,6 +47,14 @@ type Graph struct {
 	// Only populated when "package.Name" is unambiguous.
 	byPkgName map[string]string
 
+	// byNameAll maps bare Name -> EVERY node key with that name, sorted.
+	// byName above holds only the UNAMBIGUOUS ones, because resolving a
+	// call edge must never guess; this one holds all of them, because
+	// "who calls X" has a good answer when X names three functions (the
+	// union) and canonicalize's refusal would throw it away. Read only by
+	// CandidateKeys (resolved.go).
+	byNameAll map[string][]string
+
 	// byDirName maps "dir-base.Name" -> canonical key, where dir-base is the
 	// base name of the node's defining directory (path.Base(path.Dir(FilePath))).
 	// It resolves callees the Go extractor canonicalized from an explicit import
@@ -138,6 +146,7 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		byName:    make(map[string]string),
 		byPkgName: make(map[string]string),
 		byDirName: make(map[string]string),
+		byNameAll: make(map[string][]string),
 	}
 
 	// First pass: register all nodes (g.nodes dedupes identical SymbolKeys)
@@ -162,6 +171,7 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		}
 	}
 	for _, n := range g.nodes {
+		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], n.Key())
 		if nameCounts[n.Name] == 1 {
 			g.byName[n.Name] = n.Key()
 		}
@@ -171,6 +181,9 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
 			g.byDirName[dn] = n.Key()
 		}
+	}
+	for k := range g.byNameAll {
+		sort.Strings(g.byNameAll[k])
 	}
 
 	return g

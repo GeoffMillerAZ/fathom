@@ -77,6 +77,12 @@ type Subject struct {
 	// default of 1 (direct callers), the bound BP-27 gates at >=0.95;
 	// negative means unbounded, the pre-BP-27 walk.
 	BlastDepth int
+	// RecordMisses collects every truth caller the resolved edges did NOT
+	// predict, with the file and line of each side, so a recall number can
+	// be turned into a list of defects instead of an argument. Off for the
+	// committed goldens (the list is long and churns with the fixture); on
+	// for the self run, whose whole job is to find the next fix.
+	RecordMisses bool
 	// MaxBlastQueries bounds blast_radius separately, because it is two
 	// orders of magnitude more expensive per question than the other two:
 	// impact.BlastRadiusWithTypedEdges rebuilds the whole call graph on
@@ -147,6 +153,28 @@ func ZeroTimings(rep *Report) {
 	}
 }
 
+// Miss is one truth answer the index did not predict — the raw material of
+// the next fix. A recall rate says how many; this says which.
+type Miss struct {
+	Tool string `json:"tool"`
+	// Query is the question asked (a callee's qualified name).
+	Query string `json:"query"`
+	// Want is the answer go/types holds that the index did not give.
+	Want string `json:"want"`
+	// WantFile/WantLine locate the missing caller's declaration, when the
+	// index knows the symbol at all.
+	WantFile string `json:"want_file,omitempty"`
+	WantLine int    `json:"want_line,omitempty"`
+	// Indexed is false when the index has no symbol by that name at all —
+	// a different failure from "indexed but no edge", and the one that
+	// points at ingest rather than at the typed pass.
+	Indexed bool `json:"indexed"`
+	// HeuristicEdge is true when the SYNTAX pass did find this caller. A
+	// true here is a typed-pass defect by definition: the edge is visible
+	// to the weaker pass and not the stronger one.
+	HeuristicEdge bool `json:"heuristic_edge"`
+}
+
 // ServiceScore is every tool's score for one subject.
 type ServiceScore struct {
 	Service            string      `json:"service"`
@@ -155,6 +183,8 @@ type ServiceScore struct {
 	PackagesWithErrors int         `json:"packages_with_errors"`
 	IndexedSymbols     int         `json:"indexed_symbols"`
 	Tools              []ToolScore `json:"tools"`
+	// Misses is populated only under Subject.RecordMisses.
+	Misses []Miss `json:"misses,omitempty"`
 }
 
 // Report is the whole L0 run — the committed golden's shape.
@@ -235,10 +265,23 @@ func IndexOracleReport(ctx context.Context, be Backend, subjects []Subject) (Rep
 		nameOf := funcNames(nodes)
 
 		t0 := time.Now()
-		callers, err := scoreFindCallers(ctx, be, sub, truth, directGraph, resolvedGraph, nameOf)
+		// The syntax graph exists only to CLASSIFY a miss (did the weaker
+		// pass see the edge the typed pass lost?). Building it over ten
+		// thousand symbols costs ~9.5s, so it is built on the first miss
+		// and never when there are none — a diagnostic must not dominate
+		// the measurement it annotates.
+		var syntaxGraph *callgraph.Graph
+		syntaxFn := func() *callgraph.Graph {
+			if syntaxGraph == nil {
+				syntaxGraph = callgraph.Build(nodes)
+			}
+			return syntaxGraph
+		}
+		callers, misses, err := scoreFindCallers(ctx, be, sub, truth, directGraph, resolvedGraph, syntaxFn, nameOf, nodes)
 		if err != nil {
 			return Report{}, err
 		}
+		sc.Misses = misses
 		callers.ElapsedMS = time.Since(t0).Milliseconds()
 		t0 = time.Now()
 		refs, err := scoreReferences(ctx, be, sub, truth, nodes)
@@ -297,7 +340,14 @@ func sample(in []string, max int) []string {
 // typed edges at all the handler falls back to the syntax engine, and so
 // does this: scoring a fallback path as if it were the default would report
 // a number for code no agent runs.
-func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, direct, resolved *callgraph.Graph, nameOf map[string]string) (ToolScore, error) {
+func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, direct, resolved *callgraph.Graph, syntaxFn func() *callgraph.Graph, nameOf map[string]string, nodes []core.SymbolNode) (ToolScore, []Miss, error) {
+	var misses []Miss
+	byName := map[string][]core.SymbolNode{}
+	if sub.RecordMisses {
+		for _, n := range nodes {
+			byName[n.Name] = append(byName[n.Name], n)
+		}
+	}
 	all := declaredNames(truth)
 	sc := ToolScore{Tool: ToolFindCallers, Population: len(all), EdgeFilter: "resolved"}
 	if !resolved.HasEdges() {
@@ -308,7 +358,7 @@ func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth public
 		want := setOf(truth.CallersByName[name])
 		got := map[string]bool{}
 		if sc.EdgeFilter == "resolved" {
-			for _, e := range callgraph.ResolvedCallers(direct, name) {
+			for _, e := range callgraph.ResolvedCallersAcross(direct, name) {
 				if n, ok := nameOf[e.Key]; ok {
 					got[n] = true
 					continue
@@ -318,24 +368,58 @@ func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth public
 			// Rows the shipped default returns that this truth cannot rule
 			// on: reached through dispatch or a func value, never a static
 			// call site.
-			for _, e := range callgraph.ResolvedCallers(resolved, name) {
+			for _, e := range callgraph.ResolvedCallersAcross(resolved, name) {
 				if n, ok := nameOf[e.Key]; !ok || !got[n] {
 					sc.Unadjudicated++
 				}
 			}
 		} else {
-			nodes, err := be.FindCallers(ctx, sub.Service, name)
+			found, err := be.FindCallers(ctx, sub.Service, name)
 			if err != nil {
-				return sc, fmt.Errorf("indexbench: find_callers %s/%s: %w", sub.Service, name, err)
+				return sc, nil, fmt.Errorf("indexbench: find_callers %s/%s: %w", sub.Service, name, err)
 			}
-			for _, n := range nodes {
+			for _, n := range found {
 				got[n.Name] = true
+			}
+		}
+		if sub.RecordMisses {
+			// Built lazily, and only for a query that actually missed:
+			// resolving a bare ambiguous name against the syntax graph
+			// costs an O(nodes) scan, and paying it on every query turned a
+			// 3ms pass into a 9.5s one for instrumentation nobody reads
+			// when recall is 1.0.
+			var syntaxSaw map[string]bool
+			for w := range want {
+				if got[w] {
+					continue
+				}
+				if syntaxSaw == nil {
+					syntaxSaw = map[string]bool{}
+					for _, e := range callgraph.CallersDetail(syntaxFn(), name) {
+						if n, ok := nameOf[e.Key]; ok {
+							syntaxSaw[n] = true
+						}
+					}
+				}
+				m := Miss{Tool: ToolFindCallers, Query: name, Want: w, HeuristicEdge: syntaxSaw[w]}
+				if decls := byName[w]; len(decls) > 0 {
+					m.Indexed = true
+					m.WantFile = decls[0].FilePath
+					m.WantLine = decls[0].Line
+				}
+				misses = append(misses, m)
 			}
 		}
 		accumulate(&sc, got, want)
 	}
 	finish(&sc)
-	return sc, nil
+	sort.Slice(misses, func(i, j int) bool {
+		if misses[i].Query != misses[j].Query {
+			return misses[i].Query < misses[j].Query
+		}
+		return misses[i].Want < misses[j].Want
+	})
+	return sc, misses, nil
 }
 
 // funcNames maps canonical SymbolKey -> the bare qualified name the

@@ -128,14 +128,17 @@ func resolvedCallersOnly(g *navGraphs, symbol string) (keep map[string]bool, ok 
 	if g == nil || !g.TypedAvailable {
 		return nil, false
 	}
-	rows := callgraph.ResolvedCallers(g.Resolved, symbol)
+	rows := callgraph.ResolvedCallersAcross(g.Resolved, symbol)
 	keep = make(map[string]bool, len(rows))
 	for _, r := range rows {
 		keep[r.Key] = true
 	}
-	// A symbol that does not resolve to a node in the graph (a name the
-	// index does not carry) is not a "no callers" answer — it is a question
-	// the resolved graph cannot take. Fall back.
+	// A symbol that names NO node in the graph (a name the index does not
+	// carry) is not a "no callers" answer — it is a question the resolved
+	// graph cannot take. Fall back. An AMBIGUOUS name is a question it can
+	// take: ResolvedCallersAcross unions the candidates rather than
+	// refusing, so `find_callers Reachable` no longer degrades to the
+	// syntax answer just because two packages declare that name (BP-31).
 	if rows == nil {
 		return nil, false
 	}

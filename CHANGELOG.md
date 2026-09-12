@@ -54,13 +54,18 @@ listing cap, both overridable (`max_depth`, `max_symbols`; 0 = no bound) and
 both reported alongside `total_symbols`, `truncated` and `depth_capped`.
 `diff_impact` is no longer an alias: it keeps the unbounded both-kinds walk
 for PR review, where recall is the point.
+`find_callers` also answers a bare name two packages share instead of
+silently falling back to the syntax answer: the resolved graph now unions
+every candidate that name could mean, without crossing a receiver boundary
+into a same-named method.
 The L0 self oracle measured the reason on this repository: `find_callers`
-precision 0.607 -> 1.000, `blast_radius` 0.086 -> 1.000, and ~10.9s -> 0.006s
-per `blast_radius` query once the call graph is memoized per store watermark
-(`docs/bench/README.md`). The verify gate's reachability is deliberately
-untouched and still walks both edge kinds.
+precision 0.607 -> 1.000 and recall 0.899 -> 1.000, `blast_radius` 0.086 ->
+1.000, and ~10.9s -> 0.006s per `blast_radius` query once the call graph is
+memoized per store watermark (`docs/bench/README.md`). The verify gate's
+reachability is deliberately untouched and still walks both edge kinds.
 `task bench-l0-self` now prints a per-tool verdict against ADR-032's 0.95
-floor and the report path, and reports answers the `go/types` truth cannot
+floor and the report path, records every truth caller the index missed so a
+recall number can be read as a list of defects, and reports answers the `go/types` truth cannot
 adjudicate as unadjudicated instead of scoring them as errors.
 
 ## [0.8.0] -- 2026-09-02

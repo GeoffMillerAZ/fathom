@@ -323,3 +323,43 @@ func TestReferencesDefinitionsExactByDefault(t *testing.T) {
 		t.Error("include_heuristic did not restore the substring definition match")
 	}
 }
+
+// TestFindCallersAmbiguousNameStaysResolved is BP-31 at the tool surface:
+// before it, a symbol name two packages share resolved to nothing in the
+// resolved graph, resolvedCallersOnly reported "cannot answer", and
+// find_callers silently returned the SYNTAX answer — the imprecise answer
+// BP-26 exists to stop returning. The L0 oracle lost 19 of 327 true callers
+// to exactly this.
+func TestFindCallersAmbiguousNameStaysResolved(t *testing.T) {
+	f := newNavFake()
+	// A second package also declares Target, with its own resolved caller,
+	// and a bystander whose Calls name Target without a typed edge.
+	extra := []core.SymbolNode{
+		{Service: "svc", Package: "q", Name: "Target", Kind: core.KindGoFunc, FilePath: "q/target.go"},
+		{Service: "svc", Package: "q", Name: "RealQ", Kind: core.KindGoFunc, FilePath: "q/real.go", Calls: []string{"Target"}},
+	}
+	f.nodes = append(f.nodes, extra...)
+	byName := map[string]string{}
+	for _, n := range f.nodes {
+		byName[n.Package+"."+n.Name] = n.Key()
+	}
+	f.typed = append(f.typed, core.Edge{
+		FromService: "svc", FromSymbol: byName["q.RealQ"], ToSymbol: byName["q.Target"], Kind: core.EdgeDirect,
+	})
+	srv := mcp.NewServer(f)
+
+	got := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	if got["edge_filter"] != "resolved" {
+		t.Fatalf("edge_filter = %v, want resolved — an ambiguous name must not silently degrade to the syntax answer", got["edge_filter"])
+	}
+	names := callerNames(t, got)
+	want := map[string]bool{"Real": true, "RealQ": true}
+	if len(names) != 2 {
+		t.Fatalf("callers = %v, want the resolved callers of BOTH Targets", names)
+	}
+	for _, n := range names {
+		if !want[n] {
+			t.Errorf("unexpected caller %q in %v — Ghost has no typed edge and must stay out", n, names)
+		}
+	}
+}
