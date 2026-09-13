@@ -171,6 +171,11 @@ func applyTranscriptMetrics(ar *contextbench.ArmResult, transcript []byte, gold 
 	ar.ToolSearchTurns = st.ToolSearchTurns
 	ar.TurnsExclToolSearch = st.TurnsExclToolSearch
 	ar.GoldSourceTool = st.GoldSourceTool
+
+	// RC-17 (F8): trusted_without_recheck, per fathom tool call in this cell.
+	if twr := contextbench.TrustedWithoutRecheck(transcript); twr.Calls > 0 {
+		ar.TrustedWithoutRecheck = &twr
+	}
 }
 
 // hasBorrowed reports whether any cell in results was inherited from an

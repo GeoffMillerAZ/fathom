@@ -88,6 +88,12 @@ type ArmResult struct {
 	ToolSearchTurns     int    `json:"toolsearch_turns,omitempty"`
 	TurnsExclToolSearch int    `json:"turns_excl_toolsearch,omitempty"`
 	GoldSourceTool      string `json:"gold_source_tool,omitempty"`
+
+	// Additive since RC-17 (F8, vision 28 §2.4): this cell's
+	// trusted_without_recheck reading. Nil when the cell was scored without
+	// a stream transcript or made no fathom tool call — see
+	// TrustedWithoutRecheck.
+	TrustedWithoutRecheck *TrustedWithoutRecheckStats `json:"trusted_without_recheck,omitempty"`
 }
 
 // claudeEnvelope is the subset of `claude -p --output-format json`'s result
@@ -293,6 +299,14 @@ func RenderMarkdown(results []ArmResult) string {
 	for _, arm := range arms {
 		a := agg[arm]
 		fmt.Fprintf(&b, "| %s | %d | %d | %.0f%% | %d | %.0f |\n", a.Arm, a.TaskCount, a.SuccessCount, a.SuccessRate*100, a.TotalTokens, a.MeanTokens)
+	}
+
+	// RC-17: the search-receipt reading (F8) — how often a fathom answer
+	// stood without a Grep/Read/Bash re-check, per tool. Omitted when no
+	// cell in this run recorded a fathom call (e.g. a grep/none-only run).
+	if twr := AggregateTrustedWithoutRecheck(results); twr != nil {
+		b.WriteByte('\n')
+		b.WriteString(RenderTrustedWithoutRecheck(twr))
 	}
 
 	return b.String()

@@ -180,6 +180,7 @@
     },
     {
       "id": "H1-T02",
+      "min_trials": 5,
       "class": "obligations",
       "category": "what_governs",
       "prompt": "Per fathom's compiled obligations layer, a decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried. Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
@@ -415,6 +416,7 @@
     },
     {
       "id": "H1-T07",
+      "min_trials": 5,
       "class": "claim_provenance",
       "category": "which_sources_feed_claim",
       "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
@@ -443,6 +445,7 @@
     },
     {
       "id": "H1-T08",
+      "min_trials": 5,
       "class": "claim_provenance",
       "category": "what_governs",
       "prompt": "In the fathom repo, which repository-root convention governs where code and commands that emit files must place their output by default? Cite the line on which that rule's row begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
@@ -585,6 +588,7 @@
     },
     {
       "id": "H1-T13",
+      "min_trials": 5,
       "class": "staleness",
       "category": "citation_still_fresh",
       "prompt": "Per fathom's compiled obligations layer, the rule 'Add new hot-loop tools to the companion allowlist' governing internal/core/model.go cites ADR.md#L158-L159 (as served on 2026-07-24, when it carried no staleness flag). At the current HEAD commit, does that citation still resolve to the rule's text? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the line where the rule's own words ('new hot-loop tool must be added') live today.",

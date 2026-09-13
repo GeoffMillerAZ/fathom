@@ -107,6 +107,12 @@ type LedgerRow struct {
 	ControlToolSearchAvg   float64                       `json:"control_toolsearch_turns_mean,omitempty"`
 	GoldSourceRates        map[string]map[string]float64 `json:"gold_source_rate,omitempty"`
 
+	// TrustedWithoutRecheck is the RC-17 reading (F8, vision 28 §2.4): how
+	// often a fathom tool call in this run stood without a Grep/Read/Bash
+	// re-check within the next few turns, per tool. Nil when no cell in the
+	// run recorded a fathom call (see AggregateTrustedWithoutRecheck).
+	TrustedWithoutRecheck *TrustedWithoutRecheckStats `json:"trusted_without_recheck,omitempty"`
+
 	// Reliability carries the PB-10 figures (ci_success_diff, wilcoxon_p,
 	// a12, pass_at_1, pass_pow_3, and the seed that produced them),
 	// flattened into the row. Reported, never gating: Evaluation is computed
@@ -279,6 +285,9 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		}
 		if r.AggregatePayloadRatio > 0 {
 			caveat += fmt.Sprintf(" payload=%.3f×", r.AggregatePayloadRatio)
+		}
+		if r.TrustedWithoutRecheck != nil && r.TrustedWithoutRecheck.Calls > 0 {
+			caveat += fmt.Sprintf(" trusted=%.0f%%(n=%d)", r.TrustedWithoutRecheck.Rate*100, r.TrustedWithoutRecheck.Calls)
 		}
 		// A backfilled row has no per-task ratios, so its median is not
 		// recorded — shown as such, never as 0.000×.

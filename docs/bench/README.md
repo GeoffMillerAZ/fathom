@@ -73,12 +73,19 @@ rule — and a different cost half:
 | `total_tokens` | Recorded, **not gated**. It is cache-read × turns — a turn counter in a token costume (O26), under which a smaller payload is invisible. |
 | `toolsearch_turns` | Reported per arm, **never gated**. The harness's deferred MCP schema loads (O24, O32): a tax the fathom arm pays and the grep arm does not, named so it is neither a hidden penalty nor a hidden excuse. Since 2026-09-13 the runner's MCP config carries `alwaysLoad: true`, which removes it (BP-39). |
 | `gold_source_tool` | The tool whose result FIRST carried a gold token (`answer` when only the final answer did). Summarised on the row as `gold_source_rate` per arm per tool. |
+| `trusted_without_recheck` | RC-17 (F8, vision 28 §2.4). A fathom tool call is *trusted* unless, within the next 3 turns, a Grep/Read/Bash targets the same file path or symbol name that appeared in the call's own input or result. Reported per run and per tool (`{calls, trusted, rate, by_tool}`) on the results artifact, the rendered summary, and the ledger row's caveat column (`trusted=NN%(n=…)`). **Never gated** — it is the search-receipt (SB-48) falsifier: a rerun with a receipt on search that still shows low trust says the lookup tools are not believed on their own. |
 
 `gold_source_rate` is the reading that separates *the task passed* from *the
 tool that was supposed to answer it did*. On the stopped 2026-09-02 run,
 re-scored offline under H2-3, the fathom arm passed H1-T01 three times out of
 three and `obligations` was the gold source **zero** of those three —
 `read_source` was, every time. That is E1/O23 as a number.
+
+`trusted_without_recheck` is the companion reading, from the other end: the
+home bench's first pass at F8 found a fathom answer stood without a
+Grep/Read/Bash re-check 85-90% of the time it was called, while 27% of plain
+Greps were followed by a Read of the same file — the search-receipt case for
+SB-48, not just a token-ratio one.
 
 A criterion that gates payload but whose run recorded none is
 **indeterminate**, never a pass: the instrument did not look.
@@ -273,6 +280,23 @@ Against another repo: `scripts/context-bench.sh --subject-root <dir>
 `workspace/tmp/` (never the fleet store, never a post-fix tree), serves it
 on a free loopback port for the run, and stops it at exit. `--fathom-url`
 points the fathom arm at a daemon you already run.
+
+**Clean room (RC-7, vision 28 §2.2).** Before running any session, the
+script builds a scratch config dir under
+`workspace/tmp/context-bench-config-<run>/`: a `settings.json` of `{}` (no
+hooks, no plugins, no slash commands) and a `.claude.json` copied from the
+operator's own with `mcpServers`, `projects`, and any hooks/plugins keys
+removed (`jq`) — auth/onboarding fields are kept, since credentials
+themselves live in the macOS keychain, not in that file. `CLAUDE_CONFIG_DIR`
+is exported to it for every `claude -p` call, and every call also passes
+`--permission-mode default` so an arm's `--allowedTools`/`--disallowedTools`
+restriction actually denies a disallowed tool instead of decorating it. This
+closes F3/F4 (§1): before it, every session — control included — inherited
+the operator's own ~90 slash commands, plugins, and fathom's own
+SessionStart primer, so the control arm was not a control. It runs alongside
+`prepare_session_root`'s existing hook-free export of the *subject* tree
+(`.claude/settings.json` stripped from the checkout being asked about) —
+together, no operator configuration reaches either side of a cell.
 
 ## Regression
 

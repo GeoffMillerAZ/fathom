@@ -1,0 +1,8 @@
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"1","name":"mcp__fathom__find_symbol","input":{"symbol":"Foo"}}],"usage":{"input_tokens":10,"output_tokens":5}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"1","content":"found Foo at internal/pkg/foo.go"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"2","name":"mcp__fathom__references","input":{"symbol":"Bar"}}],"usage":{"input_tokens":10,"output_tokens":5}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"2","content":"referenced from internal/pkg/bar.go"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"3","name":"Read","input":{"file_path":"internal/pkg/foo.go"}}],"usage":{"input_tokens":10,"output_tokens":5}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"3","content":"package pkg\n\nfunc Foo() {}\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"done"}],"usage":{"input_tokens":5,"output_tokens":2}}}
+{"type":"result","subtype":"success","is_error":false,"result":"done"}

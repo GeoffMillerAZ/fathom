@@ -119,6 +119,21 @@
 #   scripts/context-bench.sh --only 'H1-T01 H1-T05' --scope targeted
 #   scripts/context-bench.sh --no-reuse-cells      # never borrow a stored cell
 #
+# Clean room (RC-7, vision 28 §2.2): every `claude -p` call in this script
+# runs with CLAUDE_CONFIG_DIR pointed at a scratch dir under
+# workspace/tmp/context-bench-config-<run>/, holding a minimal
+# settings.json (`{}`: no hooks, no plugins, no slash commands) and a
+# `.claude.json` copied from the operator's own with `mcpServers`,
+# `projects`, and any hooks/plugins keys stripped (jq) — auth/onboarding
+# fields are kept (credentials themselves live in the macOS keychain, not
+# in this file). --permission-mode default is passed on every call so an
+# arm's --allowedTools/--disallowedTools restriction actually DENIES a
+# disallowed tool instead of auto-accepting it. Before this, every session
+# — control included — inherited the operator's ~90 slash commands,
+# plugins, and fathom's own SessionStart primer (F4/O25): the control was
+# not a control. Combined with prepare_session_root's hook-free export of
+# the SUBJECT tree below, no operator configuration reaches either arm.
+#
 # Env:
 #   FATHOM_HTTP_URL          base URL of the fathom daemon (default
 #                             http://localhost:7575; --fathom-url overrides)
@@ -255,6 +270,31 @@ RAW_DIR="$RUN_DIR/raw"
 RESULTS_DIR="$RUN_DIR/results"
 CELLS_DIR="$ARTIFACTS_DIR/cells"
 mkdir -p "$RAW_DIR" "$RESULTS_DIR" "$CELLS_DIR"
+
+# ─── RC-7 clean room: no operator hook/plugin/MCP config reaches a cell ───
+CONFIG_DIR="$ROOT/workspace/tmp/context-bench-config-$TS"
+mkdir -p "$CONFIG_DIR"
+echo '{}' > "$CONFIG_DIR/settings.json"
+if [ -f "$HOME/.claude.json" ] && command -v jq >/dev/null 2>&1; then
+  if ! jq '
+      to_entries
+      | map(select(
+          (.key != "mcpServers") and
+          (.key != "projects") and
+          ((.key | test("hook"; "i")) | not) and
+          ((.key | test("plugin"; "i")) | not)
+        ))
+      | from_entries
+    ' "$HOME/.claude.json" > "$CONFIG_DIR/.claude.json" 2>/dev/null; then
+    echo "context-bench: WARNING — jq could not scrub $HOME/.claude.json; clean room's .claude.json is empty ({})" >&2
+    echo '{}' > "$CONFIG_DIR/.claude.json"
+  fi
+else
+  echo "context-bench: WARNING — no jq or no $HOME/.claude.json found; clean room's .claude.json is empty ({}) — auth/onboarding state will be missing for these sessions" >&2
+  echo '{}' > "$CONFIG_DIR/.claude.json"
+fi
+export CLAUDE_CONFIG_DIR="$CONFIG_DIR"
+echo "context-bench: clean room at $CONFIG_DIR (CLAUDE_CONFIG_DIR exported for every claude -p call below: no operator hooks, plugins, slash commands, or MCP servers)"
 
 # The cell-key invariants (BP-3). Captured once so `borrow`, `score` and
 # `ledger` cannot disagree about what a key means.
@@ -484,6 +524,7 @@ run_arm() {
       --strict-mcp-config \
       --allowedTools "$allowed" \
       --disallowedTools "$disallowed" \
+      --permission-mode default \
       --model "$MODEL"; then
     echo "context-bench: [$task_id/$arm/t$trial] claude -p exited non-zero (see $capture.stderr)" >&2
   fi
@@ -521,13 +562,22 @@ FULL_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT
 
 prepare_session_root
 TASK_COUNT=0
-while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
+while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt && IFS= read -r -d '' task_min_trials; do
   if [ -n "$ONLY" ] && ! echo " $ONLY " | grep -q " $task_id "; then
     continue
   fi
   TASK_COUNT=$((TASK_COUNT + 1))
+  # RC-18: a task's own registered min_trials (the floor for tasks flaky at
+  # the corpus default n) overrides --repeat when it asks for MORE trials —
+  # never fewer, so an operator's explicit --repeat never gets cut down.
+  # 0 (the common case: the task sets none) means "use --repeat as given".
+  task_trials="$REPEAT"
+  case "$task_min_trials" in
+    ''|*[!0-9]*) ;;
+    *) [ "$task_min_trials" -gt "$task_trials" ] && task_trials="$task_min_trials" ;;
+  esac
   trial=1
-  while [ "$trial" -le "$REPEAT" ]; do
+  while [ "$trial" -le "$task_trials" ]; do
     if echo "$ARMS" | grep -qw grep; then
       run_arm "$task_id" "$prompt" grep "$GREP_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$GREP_ALLOWED" "$GREP_DISALLOWED" "$trial" || true
     fi
@@ -548,7 +598,7 @@ while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
   done
 done < <("$SCORER" tasks -tasks "$TASKS" -env "$ENV")
 
-echo "context-bench: $TASK_COUNT runnable task(s) x $REPEAT trial(s) per arm (env='$ENV', scope=$SCOPE); cells run=$CELLS_RUN kept=$CELLS_KEPT borrowed=$CELLS_BORROWED"
+echo "context-bench: $TASK_COUNT runnable task(s) x >=$REPEAT trial(s) per arm (a task's own min_trials, RC-18, may run more; env='$ENV', scope=$SCOPE); cells run=$CELLS_RUN kept=$CELLS_KEPT borrowed=$CELLS_BORROWED"
 
 if [ "$FATHOM_REACHABLE" -eq 0 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARMS" | grep -qw full; }; then
   echo "context-bench: arm 'fathom'/'full' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2

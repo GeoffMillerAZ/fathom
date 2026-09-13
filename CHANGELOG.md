@@ -21,6 +21,20 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**context-bench: a clean room, a search-receipt reading, and per-task
+replication floors (RC-7/RC-17/RC-18, vision 28 §2.2/§2.4).**
+`scripts/context-bench.sh` now runs every `claude -p` call with
+`CLAUDE_CONFIG_DIR` pointed at a scratch dir (`settings.json` of `{}`, a
+`.claude.json` with `mcpServers`/`projects`/hooks/plugins stripped) and
+`--permission-mode default`, so neither arm inherits the operator's own
+hooks, plugins, or slash commands (F3/F4). `internal/contextbench.TrustedWithoutRecheck`
+reads a stream transcript for `trusted_without_recheck` — a fathom tool call
+not followed within 3 turns by a Grep/Read/Bash on the same file or symbol —
+aggregated per run and per tool onto the results artifact, the summary
+markdown, and the ledger row (F8). `testdata/contextbench/tasks-home.json`
+tasks gain a per-task `min_trials` (5 on H1-T02/T07/T08/T13, the tasks flaky
+at n=3); the runner's trial loop honors it over `--repeat`.
+
 **Every wired scenariobench cell ran without fathom's MCP tools — fixed
 (instrument truth, `docs/bench/scenarios.md`).** `ClaudeHarness.RunSession` now
 copies the config `RenderArm` actually rendered (`SessionRequest.MCPConfigPath`)

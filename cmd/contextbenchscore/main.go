@@ -128,9 +128,11 @@ func splitList(s string) []string {
 }
 
 // cmdTasks emits the runnable subset of a corpus for the shell runner:
-// id NUL prompt NUL per task, in corpus order. Tasks whose `requires` the
-// environment (-env) does not cover are named on stderr and skipped —
-// never scored as misses.
+// id NUL prompt NUL min_trials NUL per task, in corpus order. min_trials is
+// the task's own registered replication floor (RC-18) — 0 when the task
+// sets none, meaning "use --repeat / the corpus default". Tasks whose
+// `requires` the environment (-env) does not cover are named on stderr and
+// skipped — never scored as misses.
 func cmdTasks(args []string) int {
 	fs := flag.NewFlagSet("tasks", flag.ContinueOnError)
 	tasksPath := fs.String("tasks", "", "path to the corpus JSON")
@@ -153,7 +155,7 @@ func cmdTasks(args []string) int {
 			fmt.Fprintf(os.Stderr, "tasks: skipping %s — requires %v, env provides %v\n", t.ID, t.Requires, have)
 			continue
 		}
-		fmt.Printf("%s\x00%s\x00", t.ID, t.Prompt)
+		fmt.Printf("%s\x00%s\x00%d\x00", t.ID, t.Prompt, t.MinTrials)
 	}
 	return 0
 }
@@ -479,6 +481,7 @@ func cmdLedger(args []string) int {
 	row.LeakedTasks = leaked
 	row.Borrowed = contextbench.BorrowedCellsOf(results)
 	row.GoldSourceRates = contextbench.GoldSourceRate(results)
+	row.TrustedWithoutRecheck = contextbench.AggregateTrustedWithoutRecheck(results)
 	// Reported, never gating (PB-10): the verdict above is already fixed;
 	// the figures describe how much evidence stands behind it. A run with
 	// no paired task has nothing to resample and carries none.
@@ -566,6 +569,9 @@ func cmdLedger(args []string) int {
 	}
 	if len(row.GoldSourceRates) > 0 {
 		fmt.Print(contextbench.RenderGoldSourceRate(row.GoldSourceRates))
+	}
+	if row.TrustedWithoutRecheck != nil {
+		fmt.Print(contextbench.RenderTrustedWithoutRecheck(row.TrustedWithoutRecheck))
 	}
 	fmt.Printf("  appended to %s\n", writePath)
 	if writePath != *ledgerPath {

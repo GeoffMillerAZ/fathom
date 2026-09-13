@@ -254,8 +254,10 @@ func TestCmdTasks_FiltersByRequires(t *testing.T) {
 	if rc != 0 {
 		t.Fatalf("exit %d", rc)
 	}
+	// id NUL prompt NUL min_trials NUL per task (RC-18) — 3 fields/task, so
+	// 2 tasks yield 6 NULs (7 parts, the trailing one empty).
 	parts := bytes.Split(buf.Bytes(), []byte{0})
-	if len(parts) != 5 || string(parts[0]) != "T1" || string(parts[2]) != "T2" {
+	if len(parts) != 7 || string(parts[0]) != "T1" || string(parts[3]) != "T2" {
 		t.Fatalf("without compiled-layer only T1 and T2 run: %q", buf.String())
 	}
 
@@ -266,7 +268,7 @@ func TestCmdTasks_FiltersByRequires(t *testing.T) {
 	os.Stdout = saved
 	buf.Reset()
 	buf.ReadFrom(r)
-	if parts := bytes.Split(buf.Bytes(), []byte{0}); len(parts) != 7 || string(parts[4]) != "T3" {
+	if parts := bytes.Split(buf.Bytes(), []byte{0}); len(parts) != 10 || string(parts[6]) != "T3" {
 		t.Fatalf("with compiled-layer T3 runs too: %q", buf.String())
 	}
 }

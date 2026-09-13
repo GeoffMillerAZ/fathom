@@ -46,7 +46,8 @@ type streamEvent struct {
 			ID        string          `json:"id"`
 			Name      string          `json:"name"`
 			ToolUseID string          `json:"tool_use_id"`
-			Content   json.RawMessage `json:"content"` // tool_result: string or []block
+			Input     json.RawMessage `json:"input,omitempty"` // tool_use: the call's arguments
+			Content   json.RawMessage `json:"content"`         // tool_result: string or []block
 		} `json:"content"`
 		Usage struct {
 			InputTokens              int64 `json:"input_tokens"`

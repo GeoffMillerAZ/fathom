@@ -113,6 +113,25 @@ type Task struct {
 	// carry under precision-aware scoring (PB-8, criterion H2-2). Zero means
 	// the default, max(5, 2·|gold|) — see MaxPredictedOrDefault.
 	MaxPredicted int `json:"max_predicted,omitempty"`
+
+	// MinTrials is this task's own replication floor (RC-18, vision 28
+	// §2.4): a task flaky at the corpus's default n is registered with a
+	// higher floor (e.g. 5) so the runner and the ledger honor it instead
+	// of silently under-replicating just that task. Zero means "use the
+	// corpus/criterion default" (MinTrialsOrDefault) — most tasks never set
+	// this field.
+	MinTrials int `json:"min_trials,omitempty"`
+}
+
+// MinTrialsOrDefault returns t's own replication floor when registered
+// (MinTrials > 0), else corpusDefault — the criterion's own MinTrials. A
+// per-task floor only ever raises the bar for that task; it never lowers it
+// below the corpus default.
+func (t Task) MinTrialsOrDefault(corpusDefault int) int {
+	if t.MinTrials > corpusDefault {
+		return t.MinTrials
+	}
+	return corpusDefault
 }
 
 // TruthAnchorKind says how a TruthAnchor is checked against the tree.
