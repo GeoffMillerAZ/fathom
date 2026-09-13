@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
+`docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards
+corpora, 64 cells, zero rule violations on either arm, the wired arm at 0.77–0.85× the tokens;
+M2 — false-done not yet measurable (no agent wrote a contract-bearing row; SB-53); M3 — plan
+coverage sparse and equal; M4 — refuted as run, the wired arm re-discovers more before its
+second session's first edit; M5 — confirmed, workers on the wired arm re-read 13–34% of the
+planner's files against 61–100%; M6 — five tools indistinguishable on five lookups, grep a
+third the cost, exact references 1.00/0.997 against go/types; M7 — not measurable (setup
+defect, repaired, SB-51). The wave-1 home rerun fails H2-3 on payload (2.66×): the lookup
+tools are the wrong shape, and search-with-a-receipt (SB-48) is the reply. Bench sessions
+run in a hook-free export of the subject; the realistic arm's shell is read-only.
+
 **Exact references, compact callers, a call graph that is memoised for real (`SB-45`,
 `SB-47`, `SB-50`, `O33`, `O36`).** `references` defaults to `exact: true` where the service
 has typed edges — identifier-use sites only, text mentions behind `include_heuristic` — and
