@@ -126,7 +126,12 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		reports = reps
 	} else {
-		hc := &http.Client{Timeout: 10 * time.Second}
+		// verify_plan measured 10-15 s on the fleet daemon on 2026-09-13
+		// (4.5 s on 2026-09-09; O33). A client deadline under that turns
+		// the pre-push verify gate into exit 2 — operational, fail-open —
+		// which proves nothing while looking green. The budget is the
+		// slowest measured call with headroom, not a guess.
+		hc := &http.Client{Timeout: 60 * time.Second}
 		// Probe first: a service with no symbols in the index would make every
 		// claim read as "not found" — evidence-shaped output for an operational
 		// problem. That must be exit 2 (fail-open), never a blocking gate fail

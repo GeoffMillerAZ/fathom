@@ -728,3 +728,16 @@ triage if it matters.
 - **Fix:** BP-22 re-dispositioned deferred (not refused) with the headless measurement; ADR-032 amended; H2-3 already reports the turns without gating them (it is a harness cost, not a payload cost — and it is real money for a headless adopter).
 - **Status:** open
 - **Impact:** ~11% of the fathom arm's token cost in headless runs is the harness loading fathom's schemas; the 1.444× token ratio is ~1.28× without it, still over 1.0.
+
+### O33 — verify_plan's daemon latency doubled between 2026-09-09 (median ~4.5 s over the day's calls) and 2026-09-12 (10.7–14.8 s, every call), and `fathom verify`'s 10 s client timeout then turned every verification into exit 2 (operational, fail-open): the pre-push gate looked green while proving nothing.
+
+- **Symptom:** `fathom verify --plan docs/plans/bench-pyramid.md` → `error: POST http://localhost:7575/rpc: context deadline exceeded`, exit 2, while the daemon's call log shows the same verify_plan completing in 11.6 s with claimed 39 / failing 0.
+- **Evidence:**
+  - **Tool:** verify_plan (daemon), fathom verify (CLI client, cmd/fathom/verify.go)
+  - **Expected:** a verify call completes inside the client budget, or the budget is set from the measured call.
+  - **Actual:** workspace/logs/mcp-calls.jsonl: verify_plan latency_ms 3906–5447 on 2026-09-09, 10029–14795 on 2026-09-12/13 (same service, 10,985 symbols); client timeout 10 s.
+  - **Repro:** grep '"tool":"verify_plan"' workspace/logs/mcp-calls.jsonl | tail -20   # latency_ms
+- **Root cause:** TODO — the doubling coincides with this session's package-path-qualified symbol keys (PC-32), resolved-edge-by-default nav and the watermark-keyed call-graph memo (I21 amended); the memo evidently does not serve verify_plan, since repeated calls at one watermark cost the same.
+- **Fix:** the client budget is 60 s (the slowest measured call with headroom) so the gate verifies instead of failing open; the latency itself is open.
+- **Status:** open
+- **Impact:** every plan verification on this fleet store since 2026-09-12 that ran through the CLI was exit 2; the daemon's verdicts (visible in the call log) were correct throughout.
