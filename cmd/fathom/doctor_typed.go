@@ -49,7 +49,14 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 
 	svc := explicitSvc
 	if svc == "" {
-		cands := serviceCandidates(root)
+		// Resolve like checkObligationsServed does: candidatesWithDaemon
+		// prepends the daemon-recorded corpus-path identity ahead of the
+		// directory-basename guess, so a repo whose dir basename names no
+		// (or the wrong) indexed service still resolves to the service that
+		// actually records this root (O30: the sextant-dir/fathom-service
+		// split, live on this very repo, was defeating this row's own
+		// staleness_report lookup while obligations_served resolved fine).
+		cands := candidatesWithDaemon(hc, baseURL, root)
 		if len(cands) == 0 {
 			return doctorCheck{Name: name, Status: doctorSkipped, Reason: "no service identity resolvable for this repo"}
 		}

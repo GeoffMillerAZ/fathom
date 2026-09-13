@@ -698,10 +698,10 @@ triage if it matters.
   - **Expected:** PASS with the package count for service fathom, resolved like every other daemon-backed row.
   - **Actual:** SKIP naming a service that does not exist.
   - **Repro:** bin/fathom doctor | grep typed_edges   # vs   curl -s -X POST http://127.0.0.1:7575/rpc -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"staleness_report","arguments":{"service":"fathom"}}}' | grep -o '"typed_edges":{[^}]*}'
-- **Root cause:** TODO
-- **Fix:** TODO
-- **Status:** open
-- **Impact:** TODO
+- **Root cause:** `checkTypedEdges` (cmd/fathom/doctor_typed.go) resolved its `svc` from bare `serviceCandidates(root)` — the directory-basename guess only — instead of `candidatesWithDaemon(hc, baseURL, root)`, the daemon-resolved-path-first resolution `checkObligationsServed` already uses; a repo whose dir basename does not name (or misnames) the indexed service always asked `staleness_report` for the wrong id and got `known:false`.
+- **Fix:** `checkTypedEdges` now resolves `svc` via `candidatesWithDaemon` when no `--service` is given, same as `checkObligationsServed`. `TestCheckTypedEdges_ResolvesServiceLikeObligationsServed` (cmd/fathom/doctor_typed_test.go) pins it: dir named "sextant", daemon indexes it as "fathom" at the matching path — row now PASSes naming "fathom" and its package count instead of SKIPping "sextant".
+- **Status:** fixed
+- **Impact:** every doctor run on this repo (and any adopter with the same dir-basename/service-id split) reported typed_edges SKIP instead of the daemon's real PASS/FAIL verdict.
 
 ### O31 — The first replicated home run (run-20260913T002832Z, 3 arms × 13 tasks × n=3, $7.90) refutes the cost half of both criteria: fathom passed 31/33 to grep's 28/33 (p=0.042, CI −0.06..+0.24) but returned 1.90× grep's tool-result bytes and cost 1.46× as much; `read_source` was the largest single payload (38 calls, 123 KB of 419 KB) and the worst task (H1-T06, payload 18.6×) was a two-line grep that the fathom arm answered in 492 bytes with `find_symbol` and then kept exploring with `references` calls that returned 6–7 KB each, one of them for the junk query `func (s *`.
 
