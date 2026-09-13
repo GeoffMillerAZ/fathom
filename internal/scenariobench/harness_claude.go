@@ -74,7 +74,7 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 
 	cmd := exec.Command(h.bin(), args...)
 	cmd.Dir = req.Worktree
-	cmd.Env = sessionEnv(req.Env)
+	cmd.Env = SubjectEnv(req.Worktree, req.Env)
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -129,25 +129,6 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 		args = append(args, "--model", req.Model)
 	}
 	return args
-}
-
-// sessionEnv merges extra into the current environment, sorted so the
-// child process's environment is deterministic given the same input map
-// (map iteration order otherwise would not be).
-func sessionEnv(extra map[string]string) []string {
-	env := os.Environ()
-	if len(extra) == 0 {
-		return env
-	}
-	keys := make([]string, 0, len(extra))
-	for k := range extra {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		env = append(env, k+"="+extra[k])
-	}
-	return env
 }
 
 // relativizeSessionPaths converts each path to root-relative when it is

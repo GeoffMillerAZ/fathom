@@ -18,6 +18,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -227,6 +228,7 @@ func runSetup(ctx context.Context, dir string, cmds []string, logPath string) er
 
 func runIn(ctx context.Context, dir string, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = SubjectEnv(dir, nil)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -384,4 +386,28 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 		}
 	}
 	return cost, nil
+}
+
+// SubjectEnv is the environment every subprocess that runs INSIDE a subject
+// worktree gets — the oracle's tests and detectors, the subject's and the
+// arm's setup, and the agent's own session. A linked worktree of a repo
+// with a go.work whose `use` lines name sibling directories cannot resolve
+// them from workspace/scenariobench/…, so `go test` fails with "[setup
+// failed]" before the agent has done anything and every detector reads
+// "violated" (dry cells, 2026-09-13). With a go.work present the worktree
+// builds from its own go.mod (GOWORK=off); extra is merged in sorted order.
+func SubjectEnv(worktree string, extra map[string]string) []string {
+	env := os.Environ()
+	if _, err := os.Stat(filepath.Join(worktree, "go.work")); err == nil {
+		env = append(env, "GOWORK=off")
+	}
+	keys := make([]string, 0, len(extra))
+	for k := range extra {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		env = append(env, k+"="+extra[k])
+	}
+	return env
 }
