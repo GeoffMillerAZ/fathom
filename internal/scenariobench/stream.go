@@ -175,7 +175,7 @@ func (ps *parsedStream) handleAssistant(ev streamEvent, checkedLines map[string]
 			}
 		}
 		if editToolNames[c.Name] {
-			path := toolInputString(c.Input, "file_path")
+			path := firstLine(toolInputString(c.Input, "file_path"))
 			if path != "" {
 				ps.filesEdited[path] = true
 			}
@@ -336,10 +336,25 @@ func toolInputString(raw json.RawMessage, key string) string {
 func toolInputPath(toolName string, raw json.RawMessage) string {
 	switch toolName {
 	case "mcp__fathom__read_source":
-		return toolInputString(raw, "file")
+		return firstLine(toolInputString(raw, "file"))
 	default:
-		return toolInputString(raw, "file_path")
+		return firstLine(toolInputString(raw, "file_path"))
 	}
+}
+
+// firstLine sanitizes a value this parser treats as a file path to its
+// first line: a malformed tool_use whose "file_path"/"file" carries an
+// entire file body (a Write call's content mistakenly duplicated into its
+// path field, observed in the public pilot, 2026-09-13) must not turn
+// FilesEdited/FilesRead into a one-entry set holding megabytes of text. A
+// trailing "\r" (a "\r\n" line ending inside the malformed body) is
+// trimmed too. Only ever applied to a path field — never to box-check
+// text (new_string/content), which legitimately spans many lines.
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i]
+	}
+	return strings.TrimSuffix(s, "\r")
 }
 
 // rawTextBlock flattens a tool_result content field, which is either a

@@ -123,3 +123,42 @@ func TestParseSessionStream_FinalAnswer(t *testing.T) {
 		t.Errorf("Error = %q, want empty", r.Error)
 	}
 }
+
+// TestParseSessionStream_MalformedPathSanitizedToFirstLine covers a
+// malformed tool_use whose path-shaped input field carries an entire file
+// body instead of a path (public pilot 1, 2026-09-13): FilesEdited and
+// FilesRead must record only the first line, never the whole body.
+func TestParseSessionStream_MalformedPathSanitizedToFirstLine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "malformed.jsonl")
+	writeTestFile(t, path,
+		`{"type":"assistant","message":{"content":[`+
+			`{"type":"tool_use","id":"tu_1","name":"Write","input":{"file_path":"/repo/BROKEN.md\npackage foo\n\nfunc Foo() {}\n"}},`+
+			`{"type":"tool_use","id":"tu_2","name":"Read","input":{"file_path":"/repo/OTHER.md\nsome body text\nmore body\n"}},`+
+			`{"type":"tool_use","id":"tu_3","name":"mcp__fathom__read_source","input":{"file":"internal/x.go\nsome body text\n"}}`+
+			`],"usage":{"input_tokens":1,"output_tokens":1}}}`+"\n"+
+			`{"type":"result","is_error":false,"num_turns":1,"duration_ms":1,"total_cost_usd":0,"usage":{"input_tokens":1,"output_tokens":1}}`+"\n")
+
+	r, err := ParseSessionStream(path)
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if len(r.FilesEdited) != 1 || r.FilesEdited[0] != "/repo/BROKEN.md" {
+		t.Errorf("FilesEdited = %v, want [/repo/BROKEN.md] (sanitized to the first line)", r.FilesEdited)
+	}
+	wantRead := []string{"/repo/OTHER.md", "internal/x.go"}
+	if len(r.FilesRead) != len(wantRead) {
+		t.Fatalf("FilesRead = %v, want %v", r.FilesRead, wantRead)
+	}
+	for _, w := range wantRead {
+		found := false
+		for _, got := range r.FilesRead {
+			if got == w {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("FilesRead = %v, missing sanitized path %q", r.FilesRead, w)
+		}
+	}
+}
