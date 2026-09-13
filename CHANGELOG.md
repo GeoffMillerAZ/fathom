@@ -21,6 +21,23 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The strengths bench, waves 1–5 (`SB-1..36`, `SB-40`, vision 27, ADR-033).** The doctrine
+routes by question shape: the stanza `fathom init` writes, the session primer, the shipped
+skills and the adoption guides send where / who-calls / what-breaks / what-governs /
+what-was-known to the index and literal text to grep. `references` renders one occurrence in
+under 100 bytes, defaults to 25, and refuses a query that is not an identifier, a dotted path
+or a declared regex. `read_source` takes `max_bytes` (default 8 KB) and says when not to
+reach for it. `find_symbol` on a Go interface carries `implementations`. Five definitive
+tools say when their result is the answer. The bench runner gains the realistic `full` arm.
+`cmd/scenariobench plan|run|score|ledger` runs change scenarios from `testdata/scenariobench/`
+with arms as data, sessions under a turn budget, and the subject's tests, a coverage
+profile and the invariant's own detectors as the oracle; SDD, guards and exploration-reuse
+readings compute offline. `indexbench compare` scores graphify, Serena and gopls edges
+against the go/types truth (`docs/bench/competitors-ledger.jsonl`: callers fathom 1.00/1.00
+vs graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, fathom 0.33/1.00).
+`docs/bench/scenarios.md` is the stranger's runbook; `task bench-scenario-*` wrap each tier.
+SWE-Explore-Bench's license pin is corrected to CC-BY-NC-ND-4.0.
+
 **The WorktreeCreate hook is withdrawn (`HP-29` refused, `O34`).** Claude Code reads a
 registered WorktreeCreate hook's stdout as the path of the worktree the hook was meant to
 create, so fathom's advisory there blocked every worktree-isolated agent spawn. `fathom init`

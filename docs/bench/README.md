@@ -431,6 +431,31 @@ Fixed in code (BP-31), not excused with an unadjudicated bucket.
   slice of it a type checker can rule on. It is the only row still holding
   ADR-032's gate shut.
 
+## The strengths matrix (vision 27, ADR-033)
+
+Every claim fathom makes, as a row: what it is compared against, the oracle
+fathom does not own, and the prediction written before spend. Ledger
+pointers fill in as rows run; a row that refutes its own prediction is a
+product finding and stays on the table.
+
+| Row | Claim | Versus | Oracle | Predicted win / no-effect | Reading |
+|---|---|---|---|---|---|
+| M1 | a rule served at the edit prevents the violation | the same rule as CLAUDE.md prose | the invariant's own test or lint | far-from-edit rules / short-file rules | `scenarios-ledger.jsonl`, corpus `guards-fathom` (pilot pending) |
+| M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | corpus `public-go` (pilot pending) |
+| M3 | index-grounded plans cover the real change | plans from grep | the gold patch's functions | multi-package / one-function | same |
+| M4 | continuity resumes without re-discovery | a notes file | tokens to first edit, duplicated edits | multi-session / one session | same |
+| M5 | exploration once, reused by K workers | each worker explores | bytes re-read vs the planner | K ≥ 3 / K = 1 | `planner-workers` mode (pilot pending) |
+| M6 | the index is right | graphify, Serena, gopls | `go/types` | resolved callers / single-language references | `competitors-ledger.jsonl` 2026-09-13: callers **fathom 1.00/1.00**, graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, **fathom 0.33/1.00** — the predicted loss (SB-45 files `exact` references) |
+| M7 | the answer reflects HEAD | a static artifact | truth at HEAD | changed code / unchanged code | `lookups-vs.json` freshness task (pilot pending) |
+| M8 | fleet blast radius | grep over every repo | consumers' builds and tests | ≥ 3 consumers / one | registered, after the pilots |
+| M9 | breadth beyond Go | the same rows on TS and Python | the language's type checker | none claimed | registered, after the pilots |
+
+The free rows (M6, M7's artifact half) run in `task validate` on the in-tree
+fixture and on demand against any repo with `task bench-compare-edges`;
+`docs/bench/competitors.md` names each tool's version and the exact
+commands. The paid rows are one driver, `cmd/scenariobench`, with arms as
+data — `docs/bench/scenarios.md` is the runbook a stranger repeats them from.
+
 ## Scenario runs
 
 The change bench (vision 27, ADR-033): `cmd/scenariobench` over a corpus of
