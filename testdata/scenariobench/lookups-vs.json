@@ -1,0 +1,326 @@
+{
+  "version": 1,
+  "description": "M6/M7 vs. the alternative (docs/vision/27-strengths-bench.md §6, plan docs/plans/strengths-bench.md SB-32): the home lookup corpus (testdata/contextbench/tasks-home.json, ids kept, prompts and ground truth copied verbatim) run as scenariobench tasks with five arms — full (fathom, wired), graphify, serena, gopls (each a competitor's own MCP tool documented in docs/bench/competitors.md), and grep (no MCP at all). Every arm gets Read/Grep/Bash; only 'full' is wired and gets the fathom stanza ('stanza'); every other arm's instructions variant is 'plain' — the subject's own files, untouched. This corpus's tasks are LOOKUPS, not code changes, so Oracle (fail_to_pass/pass_to_pass/coverage) is deliberately left empty for every task: the graded answer is a short string, not a test result. The expected ground truth for each task lives in notes.gold (SB-32's instruction: 'put gold under notes'), keyed by task id, copied from tasks-home.json's own ground_truth/scoring_rule/class fields — see notes.gold_source for the exact pointer instead of duplicating tasks-home.json's multi-paragraph provenance essays here. A FRESHNESS task (id FRESH-M7-01, category 'freshness', M7) is added: its Subject.Setup writes a brand-new file and function AFTER the arm's own setup has already run — see notes.freshness_run_order for the ordering assumption this task depends on, flagged for whoever implements PrepareSubject/RenderArm (plan wave 2, SB-11/SB-12, not built yet). Task categories for the 13 lookup tasks are hand-assigned from tasks-home.json's own class taxonomy (obligations, verify, blast_radius, claim_provenance, concern_search, contradiction, staleness) per types.go's 'Category ... assigned by ... hand with a derivation note' allowance — none of them are a ClassifyChange shape, because none of them is a code change.",
+  "arms": {
+    "full": {
+      "wired": true,
+      "allowed_tools": ["Read", "Grep", "Bash"],
+      "instructions": "stanza",
+      "surface": "fathom",
+      "prediction": "Wins the obligations/verify/staleness lookups outright (no competitor tool answers governance questions at all); wins or ties the two structural lookups (2-hop callers, interface implementers) via find_callers/blast_radius and find_symbol's implementations field; wins the freshness task because the wired worktree is (re-)ingested after the scripted edit lands; ties everyone on the pure-prose contradiction task, where no index has an edge."
+    },
+    "graphify": {
+      "wired": false,
+      "setup": ["pip install graphifyy", "graphify install", "/graphify ."],
+      "mcp": {"graphify": {"command": "graphify", "args": ["--mcp"]}},
+      "allowed_tools": ["Read", "Grep", "Bash"],
+      "instructions": "plain",
+      "surface": "graphify@v0.9.61",
+      "prediction": "Its query_graph/get_neighbors/shortest_path tools answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (a direct calls-relation edge, its home turf); a predicted loss on the interface-implementers lookup (no type-checker, so implicit Go interface satisfaction is outside what tree-sitter extraction can encode); a predicted loss on the freshness task (its graph.json is a precomputed artifact built during this arm's own setup, before the freshness edit lands, and this arm's setup runs no --update afterward)."
+    },
+    "serena": {
+      "mcp": {"serena": {"command": "serena", "args": ["start-mcp-server", "--context", "claude-code", "--project", "."]}},
+      "allowed_tools": ["Read", "Grep", "Bash"],
+      "instructions": "plain",
+      "surface": "serena@v1.7.0",
+      "prediction": "find_symbol/find_referencing_symbols/find_implementations answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (find_referencing_symbols chained twice) and the interface-implementers lookup (find_implementations is backed by gopls's real type-checker — single-language references and implementations are its home turf, docs/vision/27-strengths-bench.md §6); a predicted tie with fathom on the freshness task, since its gopls backend re-analyzes the file on disk on every call — no precomputed artifact to go stale."
+    },
+    "gopls": {
+      "mcp": {"gopls": {"command": "gopls", "args": ["mcp"]}},
+      "allowed_tools": ["Read", "Grep", "Bash"],
+      "instructions": "plain",
+      "surface": "gopls@v0.20+",
+      "prediction": "go_symbol_references/go_references answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (go_symbol_references chained twice) — single-language references is its home turf; a predicted tie with fathom on the freshness task, since it re-analyzes the file on disk on every call — no precomputed artifact to go stale. No find_implementations-equivalent is in its tool list here, so the interface-implementers lookup is predicted weaker than serena's, closer to a textual match."
+    },
+    "grep": {
+      "allowed_tools": ["Read", "Grep", "Bash"],
+      "instructions": "plain",
+      "surface": "",
+      "prediction": "Predicted below fathom on the obligations/verify/staleness lookups (the fact is on disk and grep-findable given the right file, but nothing points it at that file the way fathom's own tool does) and on the 2-hop caller lookup (nothing prompts a second grep once the first plausible-looking direct caller is found — the home-bench's own empirical run found fathom beats grep on exactly this task shape); predicted tied with fathom on the pure-prose contradiction task; predicted tied with fathom on the freshness task, since a direct file read always reflects the file's current on-disk content."
+    }
+  },
+  "tasks": [
+    {
+      "id": "H1-T01",
+      "category": "obligations",
+      "prompt": "Per fathom's compiled obligations layer, which repository convention governs internal/extractor/goextract.go regarding how a NEW extractor implementation must be wired into the pipeline? Name the two things it must be registered into (in prose or code-identifier form), quoting enough of the rule to be unambiguous.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all.",
+        "graphify": "ties grep, below fathom: query_graph/get_node answer code structure, not documented conventions.",
+        "serena": "ties grep, below fathom: find_symbol/find_referencing_symbols answer code structure, not documented conventions.",
+        "gopls": "ties grep, below fathom: go_symbol_references answers code structure, not documented conventions.",
+        "grep": "below fathom: the rule is on disk in internal/CLAUDE.md and grep-findable given the right file, but nothing points the agent at it directly the way obligations() does."
+      },
+      "requires": ["compiled-layer"],
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T01 (prompt, ground truth); full provenance and re-derivation history there. category hand-assigned from that file's own class field ('obligations'); not a ClassifyChange shape (this is a lookup, not a code change)."
+    },
+    {
+      "id": "H1-T02",
+      "category": "obligations",
+      "prompt": "Per fathom's compiled obligations layer, a decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried. Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: answered directly by the obligations tool's compiled rule for this file, citing ADR.md#L635-L636 — no competitor tool reads decision records at all.",
+        "graphify": "ties grep, below fathom: no tool surface for a decision-record rule.",
+        "serena": "ties grep, below fathom: no tool surface for a decision-record rule.",
+        "gopls": "ties grep, below fathom: no tool surface for a decision-record rule.",
+        "grep": "below fathom: the rule is on disk in ADR.md and grep-findable given the right section, but nothing points the agent at ADR-021 directly."
+      },
+      "requires": ["compiled-layer"],
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T02. category hand-assigned ('obligations'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T03",
+      "category": "verify",
+      "prompt": "In the fathom repo's docs/plans/falsifiability.md, task B3-1 is claimed [x] with contract {symbol: cmdVerify, package: cmd/fathom} and carries NO skip_test annotation — meaning fathom's verify gate requires some Test* function to statically REACH cmdVerify via the call graph, not necessarily call it directly by name. A literal grep for the substring \"cmdVerify(\" inside any _test.go file in this repo returns zero matches. Name one Test* function that nonetheless satisfies the test-reach requirement, by calling run() with \"verify\" as the first CLI argument — which cmd/fathom/main.go's subcommand switch then dispatches to cmdVerify.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: references/find_callers on run() (or verify_plan's own reachability check) surfaces a qualifying Test* function directly.",
+        "graphify": "ties grep, below fathom: its calls-relation graph could in principle surface a caller of run(), but this arm's tool list here is limited to references-style queries the same way serena/gopls are used, so no advantage over reading verify_test.go directly is predicted.",
+        "serena": "ties grep, below fathom: find_referencing_symbols on run() finds the same 16 candidates a direct read does — no edge over reading the file.",
+        "gopls": "ties grep, below fathom: go_symbol_references on run() finds the same candidates — no edge over reading the file.",
+        "grep": "below fathom only in directness, not in reachability: `grep -n 'run(\"verify'` finds a correct answer readily; predicted a near-tie with the competitor arms and slightly below fathom."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T03 (all-16-name any-of answer set kept in full). category hand-assigned ('verify'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T04",
+      "category": "verify",
+      "prompt": "Given this two-row scratch plan for the fathom repo (evaluate it fresh against the current index — it is not a committed plan):\n```\n- [x] Row A: Ghost accessor is wired {id: DEMO-H1, symbol: GetGovernedClaimByRepro, package: internal/store}\n- [x] Row B: verify CLI exists {id: DEMO-H2, symbol: cmdVerify, package: cmd/fathom, skip_test: true}\n```\nWhich row ID FAILS fathom's verify gate against the current index, and what is the one-phrase reason fathom's gate gives for the failure?",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins outright: verify_plan is a fathom-exclusive tool that answers this in one call, including the gate's own exact phrase.",
+        "graphify": "loses: no verify-gate tool exists; the exact failure phrase ('not found') lives in internal/verify/verify.go and is only findable by reading fathom's own source, an indirect path.",
+        "serena": "loses, same reason as graphify.",
+        "gopls": "loses, same reason as graphify.",
+        "grep": "loses: can grep GetGovernedClaimByRepro to confirm it does not exist, but the exact gate phrasing requires reading internal/verify/verify.go, an indirect path competitors share equally."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T04. category hand-assigned ('verify'); not a ClassifyChange shape (a synthetic demo plan, not a real change)."
+    },
+    {
+      "id": "H1-T05",
+      "category": "blast_radius",
+      "prompt": "In the fathom repo, internal/contextbench/report.go defines `Summarize(results []ArmResult) map[string]Aggregate`. If Summarize's signature changed, its direct callers would need updating — but so would at least one caller TWO HOPS away (a caller of a caller, never calling Summarize by name itself). Name that production (non-test) function, and the file it lives in, that calls RenderMarkdown (which itself calls Summarize) — a dependency invisible to a single-hop grep for \"Summarize(\".",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: blast_radius / find_callers surfaces the 2-hop caller directly in one call.",
+        "graphify": "plausible tie with fathom: a direct static calls-relation edge two hops out is exactly what its graph encodes, reachable via get_neighbors/shortest_path chained twice.",
+        "serena": "plausible tie with fathom: find_referencing_symbols chained twice (Summarize -> RenderMarkdown -> caller) reaches the same 2-hop caller — single-language references is its home turf.",
+        "gopls": "plausible tie with fathom: go_symbol_references chained twice reaches the same 2-hop caller — single-language references is its home turf.",
+        "grep": "below fathom: nothing prompts a second grep once the first `grep Summarize(` returns a plausible-looking direct caller; the home-bench's own empirical run found fathom beats grep on exactly this task shape."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T05. category hand-assigned ('blast_radius'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T06",
+      "category": "blast_radius",
+      "prompt": "The internal/store.Store interface (internal/store/store.go) declares `PutObservations(ctx context.Context, obs []core.Observation) error`. Because Go interfaces are structural (no explicit \"implements\" keyword), every concrete type satisfying Store must change its PutObservations method in lockstep if the interface's signature changed. Name all the concrete types in internal/store that define a PutObservations method matching this signature.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: find_symbol's implementations field (SB-5) lists both concrete types directly from the typed pass.",
+        "graphify": "predicted loses: its tree-sitter extraction has no type-checker, so implicit structural interface satisfaction (Go has no 'implements' keyword) is outside what its calls/references/method relations can encode reliably.",
+        "serena": "plausible tie with fathom: find_implementations is backed by gopls's real type-checker, which resolves structural interface satisfaction directly — an LSP's forte.",
+        "gopls": "plausible tie with fathom: go-to-implementation is native LSP functionality over a real type-checker (no find_implementations-equivalent is in this bench's gopls tool list, so this is optimistic — recorded as a prediction to test, not assumed).",
+        "grep": "below fathom/serena: a textual match on the method name+signature risks both false positives (an unrelated same-named method elsewhere) and false negatives (a differently formatted signature), with no type-checking to disambiguate."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T06 (ground truth already reduced to 2 implementers post-ADR-025's DuckStore deletion). category hand-assigned ('blast_radius'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T07",
+      "category": "claim_provenance",
+      "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: the obligations tool's compiled rule for this file names the exact citation directly.",
+        "graphify": "ties grep, below fathom: no tool surface for decision-record provenance.",
+        "serena": "ties grep, below fathom: no tool surface for decision-record provenance.",
+        "gopls": "ties grep, below fathom: no tool surface for decision-record provenance.",
+        "grep": "below fathom: ADR.md is long; finding the exact line without a citation to start from is a real search cost every non-fathom arm shares equally."
+      },
+      "requires": ["compiled-layer"],
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T07 (exact-match citation form, re-derived under BP-1/BP-2 to require file+line, not the bare filename). category hand-assigned ('claim_provenance'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T08",
+      "category": "claim_provenance",
+      "prompt": "In the fathom repo, which repository-root convention governs where code and commands that emit files must place their output by default? Cite the line on which that rule's row begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins: the obligations tool's compiled rule for the root CLAUDE.md names the exact citation directly.",
+        "graphify": "ties grep, below fathom: no tool surface for a documented convention's citation.",
+        "serena": "ties grep, below fathom: no tool surface for a documented convention's citation.",
+        "gopls": "ties grep, below fathom: no tool surface for a documented convention's citation.",
+        "grep": "below fathom only in directness: CLAUDE.md is short enough that a full read finds the workspace/ row readily; predicted a near-tie with the competitor arms and slightly below fathom."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T08 (workspace/ token dropped as leaked per BP-2; scored on the citation alone). category hand-assigned ('claim_provenance'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T09",
+      "category": "concern_search",
+      "prompt": "Concern-scoped search: find the function in fathom's store layer whose doc comment explicitly promises \"never a silent fallback\" for an unrecognized input — the deliberate error-handling design for store backend selection by file extension. Name the function.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins in directness: query_symbols' concern ranking surfaces BackendForPath among its top candidates, though its own source notes the ranking is approximate.",
+        "graphify": "ties grep, below fathom: no concern-scoped ranking; a plain doc-comment string search is available to every arm equally via grep.",
+        "serena": "ties grep, below fathom: no concern-scoped ranking; find_symbol answers by name, not by doc-comment content.",
+        "gopls": "ties grep, below fathom: no concern-scoped ranking.",
+        "grep": "near-tie with fathom: `grep -rn 'silent fallback'` finds the exact doc comment directly — this is a case where a distinctive phrase makes grep about as strong as concern search."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T09. category hand-assigned ('concern_search'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T10",
+      "category": "concern_search",
+      "prompt": "Concern-scoped search: fathom's internal/mcp package has a generic helper function that truncates a list-returning tool's JSON payload to stay within a token budget. Its doc comment cites a real incident as the reason it exists — a specific MCP tool whose oversized (~57KB) result was truncated by the client and saved to a file, eroding trust. Name the helper function AND the tool named in that incident.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins in directness: query_symbols' concern ranking surfaces fitToBudget among its top candidates.",
+        "graphify": "ties grep, below fathom: no concern-scoped ranking.",
+        "serena": "ties grep, below fathom: no concern-scoped ranking.",
+        "gopls": "ties grep, below fathom: no concern-scoped ranking.",
+        "grep": "near-tie with fathom: `grep -n '57KB' internal/mcp/*.go` (or the doc comment's own distinctive wording) finds the exact incident directly."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T10. category hand-assigned ('concern_search'); not a ClassifyChange shape."
+    },
+    {
+      "id": "H1-T11",
+      "category": "contradiction",
+      "prompt": "A teammate proposes adding this line to fathom's CLAUDE.md: \"fathom ingest is always safe to run directly against the shared store, even while the daemon is running.\" Does this proposed addition contradict any EXISTING statement already in fathom's CLAUDE.md (or in the guide its Index-first rule row points to for the full text)? If so, quote the key conflicting phrase from the existing text.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "no-effect: pure prose read-and-compare over already-open files; fathom's contradiction_scan operates over ingested symbol observations, not prose, so no fathom tool call is expected to out-perform a careful read here (the task's own honest self-assessment, tasks-home.json id H1-T11).",
+        "graphify": "no-effect: same reason — a doc-prose contradiction is outside every arm's special tool.",
+        "serena": "no-effect: same reason.",
+        "gopls": "no-effect: same reason.",
+        "grep": "no-effect: reading CLAUDE.md and docs/guides/fleet-index.md directly is exactly as effective as any other arm's path here."
+      },
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T11. category hand-assigned ('contradiction'); not a ClassifyChange shape. This is the corpus's deliberate no-effect task: predictions are identical across every arm, honestly, per vision 27 §6's instruction to include a no-effect prediction where it is the honest one."
+    },
+    {
+      "id": "H1-T12",
+      "category": "staleness",
+      "prompt": "Fathom's compiled obligations layer serves a rule governing internal/core/model.go that reads 'Maintain shared types in `internal/core` and extend them additively.', cited to CLAUDE.md#L83-L84. (a) Determine whether that citation still resolves to this rule's text at the current HEAD, and state the claim's serving status in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) Cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to.",
+        "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so any arm can check CLAUDE.md#L83-L84 against the rule's wording by reading it directly and answer (a) by comparison; no tool surface gives an edge on (b).",
+        "serena": "below fathom, plausible partial credit — same reasoning as graphify.",
+        "gopls": "below fathom, plausible partial credit — same reasoning as graphify.",
+        "grep": "below fathom, plausible partial credit: the prompt hands every arm the historical citation, so a direct read of CLAUDE.md#L83-L84 versus the rule's own wording answers (a); grep for the rule's distinctive phrase answers (b)."
+      },
+      "requires": ["compiled-layer"],
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T12. category hand-assigned ('staleness'); not a ClassifyChange shape. tasks-home.json's own unmeasurable_by_comparison section confirms this task is fair (grep-accessible) exactly because the prompt supplies the historical citation."
+    },
+    {
+      "id": "H1-T13",
+      "category": "staleness",
+      "prompt": "Per fathom's compiled obligations layer, the rule 'Add new hot-loop tools to the companion allowlist' governing internal/core/model.go cites ADR.md#L158-L159 (as served on 2026-07-24, when it carried no staleness flag). At the current HEAD commit, does that citation still resolve to the rule's text? State the claim's serving status in exactly the form 'verdict: fresh' or 'verdict: stale', and quote the distinctive ADR identifier that appears on the line where the rule's own words ('new hot-loop tool must be added') live today.",
+      "subject": {"repo_url": "https://github.com/geoffmilleraz/fathom", "base_commit": "1b8765d", "service": "fathom", "language": "go"},
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "predictions": {
+        "full": "wins in directness: staleness_report states the verdict in one call.",
+        "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so a direct read of ADR.md#L158-L159 versus the rule's wording answers the verdict; finding where the text moved to (ADR.md:176) is a plain text search available to every arm.",
+        "serena": "below fathom, plausible partial credit — same reasoning as graphify.",
+        "gopls": "below fathom, plausible partial credit — same reasoning as graphify.",
+        "grep": "below fathom, plausible partial credit: the prompt hands every arm the historical citation; grep for the rule's distinctive phrase finds where it moved to."
+      },
+      "requires": ["compiled-layer"],
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T13. category hand-assigned ('staleness'); not a ClassifyChange shape."
+    },
+    {
+      "id": "FRESH-M7-01",
+      "category": "freshness",
+      "prompt": "In this repository, what integer does the function FreshnessMarkerValue in internal/store/freshnessmarker.go return?",
+      "subject": {
+        "repo_url": "https://github.com/geoffmilleraz/fathom",
+        "base_commit": "1b8765d",
+        "service": "fathom",
+        "language": "go",
+        "setup": [
+          "printf 'package store\\n\\n// FreshnessMarkerValue exists only for the M7 freshness scenario\\n// (docs/vision/27-strengths-bench.md \\xc2\\xa76): it is written by\\n// Subject.Setup AFTER each arm'\\''s own setup step (a competitor's\\n// artifact build, or fathom'\\''s worktree ingest) has already run, so a\\n// precomputed artifact answers stale and a live index or query does not.\\nfunc FreshnessMarkerValue() int { return 42 }\\n' > internal/store/freshnessmarker.go"
+        ]
+      },
+      "sessions": {"count": 1, "max_turns": 30, "mode": "single"},
+      "oracle": {},
+      "gold": {"files": ["internal/store/freshnessmarker.go"], "functions": ["FreshnessMarkerValue"]},
+      "predictions": {
+        "full": "wins: the wired arm's worktree is (re-)ingested after this setup step lands, so the index reflects the new file and function at answer time.",
+        "graphify": "predicted loses: graph.json is a precomputed artifact built during this arm's own setup, BEFORE this task's Subject.Setup writes the new file; without an --update re-run (not part of this arm's setup), it has no node for FreshnessMarkerValue at all.",
+        "serena": "predicted ties fathom: gopls-backed queries re-analyze the file on disk on every call, so a query issued after the setup step sees the new function.",
+        "gopls": "predicted ties fathom: same live-query mechanism as serena — no precomputed artifact to go stale.",
+        "grep": "predicted ties fathom: a direct file read always reflects the file's current on-disk content, so grep is never disadvantaged by staleness."
+      },
+      "derivation": "New task, not from tasks-home.json: constructed for M7 (docs/vision/27-strengths-bench.md §6) per SB-32's instruction. category is CategoryFreshness (types.go), the one existing const this corpus uses as-is. Uses a brand-new file rather than editing an existing one so the scripted change never depends on any existing file's current line numbers drifting."
+    }
+  ],
+  "criterion": {
+    "id": "M6-1",
+    "treatment": "full",
+    "control": "grep",
+    "min_trials": 2,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-13"
+  },
+  "sources": [
+    {"name": "graphify", "url": "https://github.com/Graphify-Labs/graphify", "revision": "v0.9.61", "license": "Apache-2.0"},
+    {"name": "serena", "url": "https://github.com/oraios/serena", "revision": "v1.7.0", "license": "MIT"},
+    {"name": "gopls", "url": "https://go.googlesource.com/tools", "revision": "v0.20.0", "license": "BSD-3-Clause"}
+  ],
+  "notes": {
+    "gold_source": "Ground truth for H1-T01..H1-T13 is testdata/contextbench/tasks-home.json's own ground_truth/scoring_rule/class fields at the same task id — copied into notes.gold below rather than duplicated inline in each task's derivation, to avoid the two corpora drifting apart under separate edits.",
+    "gold": {
+      "H1-T01": {"ground_truth": ["fusion.New", "golden-test"], "scoring_rule": "all-of"},
+      "H1-T02": {"ground_truth": ["core.Edge", "ADR-021"], "scoring_rule": "all-of"},
+      "H1-T03": {
+        "ground_truth": [
+          "TestCmdVerify_MissingPlan", "TestCmdVerify_MissingService", "TestCmdVerify_UnreadablePlan",
+          "TestCmdVerify_Store_Pass", "TestCmdVerify_Store_GateFail", "TestCmdVerify_Store_OpenTask_NoGate",
+          "TestCmdVerify_Store_Strict", "TestCmdVerify_Store_JSON", "TestCmdVerify_OperationalError_BadStore",
+          "TestCmdVerify_HTTP_ServiceNotIndexed", "TestCmdVerify_Store_EmptyIndex", "TestCmdVerify_HTTP_Pass",
+          "TestCmdVerify_HTTP_GateFail", "TestCmdVerify_HTTP_FailNotGated_OpenTask", "TestCmdVerify_HTTP_OperationalError",
+          "TestCmdVerify_InMainSwitch"
+        ],
+        "scoring_rule": "any-of"
+      },
+      "H1-T04": {"ground_truth": ["DEMO-H1", "not found"], "scoring_rule": "all-of"},
+      "H1-T05": {"ground_truth": ["cmdReport", "cmd/contextbenchscore/main.go"], "scoring_rule": "all-of"},
+      "H1-T06": {"ground_truth": ["MemoryStore", "SQLiteStore"], "scoring_rule": "all-of"},
+      "H1-T07": {"ground_truth": ["ADR.md#L590"], "scoring_rule": "exact-match"},
+      "H1-T08": {"ground_truth": ["CLAUDE.md#L15"], "scoring_rule": "exact-match"},
+      "H1-T09": {"ground_truth": ["BackendForPath"], "scoring_rule": "exact-match"},
+      "H1-T10": {"ground_truth": ["fitToBudget", "query_symbols"], "scoring_rule": "all-of"},
+      "H1-T11": {"ground_truth": ["lock error", "busy_timeout"], "scoring_rule": "any-of"},
+      "H1-T12": {"ground_truth": ["verdict: stale", "CLAUDE.md#L48"], "scoring_rule": "all-of"},
+      "H1-T13": {"ground_truth": ["verdict: stale", "ADR-010"], "scoring_rule": "all-of"},
+      "FRESH-M7-01": {"ground_truth": ["42"], "scoring_rule": "exact-match"}
+    },
+    "freshness_run_order": "FRESH-M7-01 depends on a run-order guarantee that is not yet enforced by any built code (PrepareSubject/RenderArm are plan wave 2, SB-11/SB-12, not implemented as of this corpus's authoring): each arm's OWN setup — graphify's '/graphify .' build, or the wired arm's fathom-init worktree ingest — must run BEFORE this task's Subject.Setup writes internal/store/freshnessmarker.go. If Subject.Setup instead ran first, every arm (including graphify) would see the new file at build/ingest time and the freshness comparison would measure nothing. Flagged here for the wave-2 implementer rather than silently assumed."
+  }
+}
