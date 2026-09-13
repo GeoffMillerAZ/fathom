@@ -87,6 +87,7 @@ func walkPy(
 				Kind:     core.KindPyClass,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -113,6 +114,7 @@ func walkPy(
 				Kind:     core.KindPyFunc,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call": "function"}),
 			})
@@ -148,6 +150,7 @@ func walkPy(
 							Kind:     core.KindPyVar,
 							FilePath: relPath,
 							Line:     treesitter.Line(n),
+							EndLine:  treesitter.EndLine(n),
 							Tier:     core.TierVerified,
 						})
 					}

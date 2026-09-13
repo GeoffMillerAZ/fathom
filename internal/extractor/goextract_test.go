@@ -83,6 +83,11 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		if n.Service != "mysvc" {
 			t.Errorf("Service: got %q, want %q", n.Service, "mysvc")
 		}
+		// Greeter's struct body spans multiple lines: EndLine must be the
+		// closing brace's line, strictly after Line.
+		if n.EndLine <= n.Line {
+			t.Errorf("EndLine: got %d, want > Line (%d)", n.EndLine, n.Line)
+		}
 	})
 
 	// --- interface ---
@@ -93,6 +98,9 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		}
 		if n.Kind != core.KindGoInterface {
 			t.Errorf("Kind: got %q, want %q", n.Kind, core.KindGoInterface)
+		}
+		if n.EndLine <= n.Line {
+			t.Errorf("EndLine: got %d, want > Line (%d)", n.EndLine, n.Line)
 		}
 	})
 
@@ -105,6 +113,10 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		if n.Kind != core.KindGoConst {
 			t.Errorf("Kind: got %q, want %q", n.Kind, core.KindGoConst)
 		}
+		// Single-line declaration: EndLine equals Line.
+		if n.EndLine != n.Line {
+			t.Errorf("EndLine: got %d, want == Line (%d)", n.EndLine, n.Line)
+		}
 	})
 
 	// --- var ---
@@ -115,6 +127,10 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		}
 		if n.Kind != core.KindGoVar {
 			t.Errorf("Kind: got %q, want %q", n.Kind, core.KindGoVar)
+		}
+		// Single-line declaration: EndLine equals Line.
+		if n.EndLine != n.Line {
+			t.Errorf("EndLine: got %d, want == Line (%d)", n.EndLine, n.Line)
 		}
 	})
 
@@ -130,6 +146,9 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		if n.Signature == "" {
 			t.Error("Signature: want non-empty")
 		}
+		if n.EndLine <= n.Line {
+			t.Errorf("EndLine: got %d, want > Line (%d)", n.EndLine, n.Line)
+		}
 	})
 
 	// --- method ---
@@ -143,6 +162,9 @@ func TestGoExtractor_Symbols(t *testing.T) {
 		}
 		if n.Package != "Greeter" {
 			t.Errorf("Package (receiver qualifier): got %q, want %q", n.Package, "Greeter")
+		}
+		if n.EndLine <= n.Line {
+			t.Errorf("EndLine: got %d, want > Line (%d)", n.EndLine, n.Line)
 		}
 	})
 }

@@ -95,6 +95,9 @@ func TestRustExtractor_TierVerified(t *testing.T) {
 		if n.Tier != core.TierVerified {
 			t.Errorf("symbol %q: expected TierVerified, got %q", n.Name, n.Tier)
 		}
+		if n.EndLine <= 0 {
+			t.Errorf("symbol %q: EndLine not set (got %d)", n.Name, n.EndLine)
+		}
 	}
 }
 

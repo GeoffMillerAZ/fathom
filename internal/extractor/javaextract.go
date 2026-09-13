@@ -90,6 +90,7 @@ func walkJava(
 			Kind:     symKind,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 
@@ -114,6 +115,7 @@ func walkJava(
 			Kind:     core.KindJavaMethod,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 			Calls:    treesitter.CollectCalls(n, src, map[string]string{"method_invocation": "name"}),
 		})

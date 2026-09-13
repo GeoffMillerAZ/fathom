@@ -81,6 +81,7 @@ func walkLua(
 				Kind:     core.KindLuaFunction,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"function_call": "name"}),
 			})

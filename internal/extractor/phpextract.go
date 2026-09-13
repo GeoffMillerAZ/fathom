@@ -85,6 +85,7 @@ func walkPHP(
 				Kind:     core.KindPhpClass,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -105,6 +106,7 @@ func walkPHP(
 				Kind:     core.KindPhpInterface,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -124,6 +126,7 @@ func walkPHP(
 				Kind:     core.KindPhpTrait,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -143,6 +146,7 @@ func walkPHP(
 				Kind:     core.KindPhpEnum,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -160,6 +164,7 @@ func walkPHP(
 				Kind:     core.KindPhpFunction,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls: treesitter.CollectCalls(n, src, map[string]string{
 					"function_call_expression": "function",
@@ -186,6 +191,7 @@ func walkPHP(
 				Kind:     core.KindPhpMethod,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls: treesitter.CollectCalls(n, src, map[string]string{
 					"function_call_expression": "function",

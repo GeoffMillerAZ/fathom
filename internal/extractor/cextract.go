@@ -76,6 +76,7 @@ func walkC(
 				Kind:     core.KindCFunc,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
@@ -99,6 +100,7 @@ func walkC(
 				Kind:     core.KindCStruct,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -119,6 +121,7 @@ func walkC(
 				Kind:     core.KindCEnum,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -149,6 +152,7 @@ func walkC(
 				Kind:     core.KindCTypedef,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}

@@ -195,6 +195,54 @@ func TestTemplExtractor_CallEdges(t *testing.T) {
 	})
 }
 
+// TestTemplExtractor_EndLine proves T5-5 for the Templ extractor: each
+// declaration's EndLine is the line before the next top-level declaration
+// (adjacency, same technique as mdextract.go — Templ has no AST), and the
+// last declaration's EndLine runs to EOF.
+func TestTemplExtractor_EndLine(t *testing.T) {
+	x := extractor.NewTemplExtractor()
+	nodes, err := x.Extract("svc", "web/views/page.templ", []byte(templFixtureFull))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+
+	byName := make(map[string]core.SymbolNode, len(nodes))
+	for _, n := range nodes {
+		byName[n.Name] = n
+	}
+
+	cases := []struct {
+		name string
+		next string // name of the next top-level decl; "" for the last one
+	}{
+		{"Page", "Sidebar"},
+		{"Sidebar", "initMap"},
+		{"initMap", "cardStyle"},
+		{"cardStyle", "helper"},
+		{"helper", ""},
+	}
+	for _, tc := range cases {
+		n, ok := byName[tc.name]
+		if !ok {
+			t.Fatalf("expected symbol %q", tc.name)
+		}
+		if tc.next == "" {
+			// Last declaration: EndLine runs to EOF, strictly after its own Line.
+			if n.EndLine <= n.Line {
+				t.Errorf("%s.EndLine = %d, want > Line (%d) (EOF)", tc.name, n.EndLine, n.Line)
+			}
+			continue
+		}
+		next, ok := byName[tc.next]
+		if !ok {
+			t.Fatalf("expected symbol %q", tc.next)
+		}
+		if want := next.Line - 1; n.EndLine != want {
+			t.Errorf("%s.EndLine = %d, want %d (next decl %s's Line - 1)", tc.name, n.EndLine, want, tc.next)
+		}
+	}
+}
+
 func TestTemplExtractor_EmptyFile(t *testing.T) {
 	x := extractor.NewTemplExtractor()
 	nodes, err := x.Extract("svc", "empty.templ", []byte(""))

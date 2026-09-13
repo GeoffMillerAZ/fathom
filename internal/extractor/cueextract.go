@@ -103,6 +103,7 @@ func (c *CUEExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 			Kind:     core.KindCUEImport,
 			FilePath: relPath,
 			Line:     imp.Pos().Line(),
+			EndLine:  imp.End().Line(),
 			Tier:     core.TierVerified,
 		})
 
@@ -199,6 +200,7 @@ func walkCUEField(d ast.Decl, service, pkg, relPath, parent string, depth int, l
 		Kind:     kind,
 		FilePath: relPath,
 		Line:     field.Pos().Line(),
+		EndLine:  field.End().Line(),
 		Tier:     core.TierVerified,
 		Calls:    cueReferenceEdges(service, pkg, field.Value, localDefs, imports),
 	})
@@ -341,6 +343,7 @@ func cueTestdataReaches(service, pkg, relPath string, nodes []core.SymbolNode) [
 			Kind:     n.Kind,
 			FilePath: relPath,
 			Line:     n.Line,
+			EndLine:  n.EndLine,
 			Tier:     core.TierVerified,
 			Calls:    append([]string(nil), n.Calls...),
 		})

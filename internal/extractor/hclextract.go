@@ -61,6 +61,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("resource %q %q", rType, rName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -77,6 +78,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("data %q %q", dType, dName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -93,6 +95,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("module %q", mName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -109,6 +112,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("variable %q", vName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -125,6 +129,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("output %q", oName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -141,6 +146,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				FilePath:  relPath,
 				Line:      b.TypeRange.Start.Line,
 				Signature: fmt.Sprintf("provider %q", pName),
+				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
 			})
 
@@ -158,6 +164,7 @@ func (h *HCLExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 					FilePath:  relPath,
 					Line:      attr.SrcRange.Start.Line,
 					Signature: fmt.Sprintf("locals { %s }", k),
+					EndLine:   attr.SrcRange.End.Line,
 					Tier:      core.TierVerified,
 				})
 			}

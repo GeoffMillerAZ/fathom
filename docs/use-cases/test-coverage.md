@@ -65,11 +65,13 @@ A review kit consuming `fathom review --json`'s `coverage` block (or `review_dif
 
 ---
 
-## Known gap: `SymbolNode.EndLine` is unset for Go
+## Former gap, fixed: `SymbolNode.EndLine` for Go (T5-5)
 
-Found while building this feature: the Go extractor (`internal/extractor/goextract.go`) never sets `core.SymbolNode.EndLine` — only the Markdown extractor computes it. Since `JoinSymbols`/`JoinLayeredSymbols` need a symbol's END line to decide which profiled statement blocks belong to it, an unconditional `EndLine>0` requirement would make the join dead-on-arrival for every real Go function in this index today.
+Found while building this feature: the Go extractor (`internal/extractor/goextract.go`) did not set `core.SymbolNode.EndLine` — only the Markdown extractor computed it. Since `JoinSymbols`/`JoinLayeredSymbols` need a symbol's END line to decide which profiled statement blocks belong to it, an unconditional `EndLine>0` requirement would have made the join dead-on-arrival for every real Go function in this index.
 
-**Fallback used (RC-37/38, `internal/analysis/coverage/join.go`):** when a coverage-eligible symbol's `EndLine` is 0, it is synthesized as the line immediately before the NEXT coverage-eligible symbol's own `Line` in the same file (sorted by `Line`), or "the rest of the file" for the last symbol in it — the same technique `internal/extractor/mdextract.go` already uses for a Markdown heading's own `EndLine`. This is a reasonable approximation (Go functions rarely have meaningful trailing dead space between them) but is exactly that: an approximation standing in for a real extractor fix. It has not been filed as its own plan row yet.
+The Go extractor now sets `EndLine` for every func/method/type/const/var it emits, from the declaration's own `ast.Node.End()` — a real end line, not an approximation. Several tree-sitter/AST-backed extractors (C, C++, C#, Java, Lua, PHP, Rust, Scala, CUE, HCL/Terraform, CMake, Templ) do the same.
+
+**Fallback kept for what's still unset (RC-37/38, `internal/analysis/coverage/join.go`):** when a coverage-eligible symbol's `EndLine` is still 0 (an unrefreshed index, or an extractor that doesn't compute it — see `core.SymbolNode.EndLine`'s doc comment for the current list), it is synthesized as the line immediately before the NEXT coverage-eligible symbol's own `Line` in the same file (sorted by `Line`), or "the rest of the file" for the last symbol in it — the same technique `internal/extractor/mdextract.go` uses for a Markdown heading's own `EndLine`. `join.go` prefers a real, positive `EndLine` over this synthesis.
 
 ---
 

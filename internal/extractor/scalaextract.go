@@ -82,6 +82,7 @@ func walkScala(
 				Kind:     core.KindScalaClass,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -102,6 +103,7 @@ func walkScala(
 				Kind:     core.KindScalaObject,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -121,6 +123,7 @@ func walkScala(
 				Kind:     core.KindScalaTrait,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -144,6 +147,7 @@ func walkScala(
 				Kind:     core.KindScalaDef,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})

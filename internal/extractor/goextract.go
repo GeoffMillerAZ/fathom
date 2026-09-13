@@ -121,6 +121,7 @@ func (g *GoExtractor) funcNode(
 	imports map[string]string,
 ) core.SymbolNode {
 	pos := fset.Position(fn.Pos())
+	endPos := fset.Position(fn.End())
 	name := fn.Name.Name
 	pkg := pkgName
 	kind := core.KindGoFunc
@@ -143,6 +144,7 @@ func (g *GoExtractor) funcNode(
 		Kind:       kind,
 		FilePath:   relPath,
 		Line:       pos.Line,
+		EndLine:    endPos.Line,
 		Signature:  sig,
 		Calls:      calls,
 		Tier:       core.TierVerified,
@@ -166,6 +168,7 @@ func (g *GoExtractor) genDeclNodes(
 				continue
 			}
 			pos := fset.Position(ts.Pos())
+			endPos := fset.Position(ts.End())
 			kind := core.KindGoType
 			if _, isIface := ts.Type.(*ast.InterfaceType); isIface {
 				kind = core.KindGoInterface
@@ -177,6 +180,7 @@ func (g *GoExtractor) genDeclNodes(
 				Kind:     kind,
 				FilePath: relPath,
 				Line:     pos.Line,
+				EndLine:  endPos.Line,
 				Tier:     core.TierVerified,
 			})
 		}
@@ -187,6 +191,7 @@ func (g *GoExtractor) genDeclNodes(
 			if !ok {
 				continue
 			}
+			endPos := fset.Position(vs.End())
 			for _, name := range vs.Names {
 				if name == nil || !ast.IsExported(name.Name) {
 					continue
@@ -199,6 +204,7 @@ func (g *GoExtractor) genDeclNodes(
 					Kind:     core.KindGoConst,
 					FilePath: relPath,
 					Line:     pos.Line,
+					EndLine:  endPos.Line,
 					Tier:     core.TierVerified,
 				})
 			}
@@ -210,6 +216,7 @@ func (g *GoExtractor) genDeclNodes(
 			if !ok {
 				continue
 			}
+			endPos := fset.Position(vs.End())
 			for _, name := range vs.Names {
 				if name == nil || !ast.IsExported(name.Name) {
 					continue
@@ -222,6 +229,7 @@ func (g *GoExtractor) genDeclNodes(
 					Kind:     core.KindGoVar,
 					FilePath: relPath,
 					Line:     pos.Line,
+					EndLine:  endPos.Line,
 					Tier:     core.TierVerified,
 				})
 			}

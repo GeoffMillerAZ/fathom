@@ -137,15 +137,16 @@ func percentOf(statements, covered int) float64 {
 // reported as a fabricated 0% — JoinSymbols only speaks for symbols the
 // profile actually has data for).
 //
-// EndLine is frequently 0 (unknown) for a Go function/method today — the Go
-// extractor does not compute it (only the Markdown extractor does). Rather
-// than making the whole join dead-on-arrival for Go, a symbol with
-// EndLine<=0 gets a SYNTHESIZED end line: the line immediately before the
-// next coverage-eligible symbol's own Line in the same file (sorted by
+// EndLine is set by the Go extractor for every func/method symbol (from the
+// declaration's own ast.Node.End()); a symbol with a positive EndLine keeps
+// it untouched. It can still be 0 (unknown) for a symbol produced by an
+// older, unrefreshed index, or by an extractor that does not compute it.
+// Rather than making the whole join dead-on-arrival in that case, a symbol
+// with EndLine<=0 gets a SYNTHESIZED end line: the line immediately before
+// the next coverage-eligible symbol's own Line in the same file (sorted by
 // Line), or "the rest of the file" (math.MaxInt32) for the last one —
 // exactly the technique internal/extractor/mdextract.go already uses for a
-// Markdown heading's own EndLine. A symbol whose OWN EndLine was already
-// positive keeps it untouched.
+// Markdown heading's own EndLine.
 //
 // A profile Block's ImportPath is import-path-relative (module-path-
 // prefixed); it is resolved to a symbol's repo-relative FilePath by suffix

@@ -109,6 +109,23 @@ func TestCMakeExtractor_TargetsAndLinks(t *testing.T) {
 		}
 	})
 
+	t.Run("EndLine spans a multi-line invocation", func(t *testing.T) {
+		core := byName["core"] // add_library(core STATIC\n  src/a.cc\n  src/b.cc)
+		if core.EndLine <= core.Line {
+			t.Errorf("core.EndLine = %d, want > Line (%d)", core.EndLine, core.Line)
+		}
+		if want := core.Line + 2; core.EndLine != want {
+			t.Errorf("core.EndLine = %d, want %d (closing paren's line)", core.EndLine, want)
+		}
+	})
+
+	t.Run("EndLine equals Line for a single-line invocation", func(t *testing.T) {
+		proj := byName["MyProj"] // project(MyProj VERSION 1.0 LANGUAGES CXX)
+		if proj.EndLine != proj.Line {
+			t.Errorf("MyProj.EndLine = %d, want == Line (%d)", proj.EndLine, proj.Line)
+		}
+	})
+
 	t.Run("tier is pre-scan", func(t *testing.T) {
 		for _, n := range nodes {
 			if n.Tier != core.TierPreScan {

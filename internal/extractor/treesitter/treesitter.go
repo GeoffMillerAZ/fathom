@@ -61,6 +61,14 @@ func Line(n *ts.Node) int {
 	return int(n.StartPosition().Row) + 1
 }
 
+// EndLine converts a node's zero-based end row to a 1-based line number —
+// the last line the node's own span covers (core.SymbolNode.EndLine, T5-5).
+// Callers building a SymbolNode from a definition node already have that
+// node in scope, so this is a one-line addition alongside Line(n).
+func EndLine(n *ts.Node) int {
+	return int(n.EndPosition().Row) + 1
+}
+
 // CollectCalls walks the subtree rooted at root and returns the sorted,
 // de-duplicated callee texts. For each descendant node whose Kind() is a key
 // in callFields, it reads the child at the named field callFields[kind] (when

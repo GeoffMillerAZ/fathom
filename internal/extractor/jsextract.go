@@ -111,6 +111,7 @@ func walkJS(
 				Kind:     core.KindJSFunc,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
@@ -132,6 +133,7 @@ func walkJS(
 				Kind:     core.KindJSClass,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -152,6 +154,7 @@ func walkJS(
 				Kind:     core.KindJSMethod,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 				Calls:    treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"}),
 			})
@@ -175,6 +178,7 @@ func walkJS(
 						Kind:     core.KindJSFunc,
 						FilePath: relPath,
 						Line:     treesitter.Line(n),
+						EndLine:  treesitter.EndLine(n),
 						Tier:     core.TierVerified,
 						Calls:    treesitter.CollectCalls(val, src, map[string]string{"call_expression": "function"}),
 					})
@@ -197,6 +201,7 @@ func walkJS(
 				Kind:     core.KindTSInterface,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -212,6 +217,7 @@ func walkJS(
 				Kind:     core.KindTSType,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -227,6 +233,7 @@ func walkJS(
 				Kind:     core.KindTSEnum,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}

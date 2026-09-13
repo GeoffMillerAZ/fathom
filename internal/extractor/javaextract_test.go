@@ -57,6 +57,9 @@ func TestJavaExtractor_Basic(t *testing.T) {
 		if n.Tier != core.TierVerified {
 			t.Errorf("symbol %q: Tier=%q, want TierVerified", n.Name, n.Tier)
 		}
+		if n.EndLine <= 0 {
+			t.Errorf("symbol %q: EndLine not set (got %d)", n.Name, n.EndLine)
+		}
 	}
 
 	t.Run("class PaymentService", func(t *testing.T) {

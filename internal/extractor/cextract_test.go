@@ -64,6 +64,9 @@ func TestCExtractor_BasicSymbols(t *testing.T) {
 		if n.FilePath != "src/foo.c" {
 			t.Errorf("symbol %q: want FilePath %q, got %q", w.name, "src/foo.c", n.FilePath)
 		}
+		if n.EndLine <= 0 {
+			t.Errorf("symbol %q: EndLine not set (got %d)", w.name, n.EndLine)
+		}
 	}
 
 	// Bare prototype "int add(int a, int b);" must NOT be emitted.

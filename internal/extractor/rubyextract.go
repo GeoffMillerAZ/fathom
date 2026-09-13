@@ -89,6 +89,7 @@ func walkRuby(
 			Kind:     symKind,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Recurse into the body with this container pushed.
@@ -112,6 +113,7 @@ func walkRuby(
 			Kind:     core.KindRubyMethod,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 			Calls:    treesitter.CollectCalls(n, src, map[string]string{"call": "method"}),
 		})

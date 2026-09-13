@@ -85,6 +85,7 @@ func walkCSharp(
 				Kind:     core.KindCSharpNamespace,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -108,6 +109,7 @@ func walkCSharp(
 			Kind:     core.KindCSharpClass,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Recurse into body with this type name pushed onto the scope stack.
@@ -131,6 +133,7 @@ func walkCSharp(
 			Kind:     core.KindCSharpInterface,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Recurse into body with the interface name on the scope stack.
@@ -154,6 +157,7 @@ func walkCSharp(
 			Kind:     core.KindCSharpStruct,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		newScope := append(append([]string{}, scopeStack...), qualName)
@@ -176,6 +180,7 @@ func walkCSharp(
 			Kind:     core.KindCSharpEnum,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Do not recurse into enum bodies — enum member declarations are not
@@ -195,6 +200,7 @@ func walkCSharp(
 			Kind:     core.KindCSharpMethod,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 			Calls:    treesitter.CollectCalls(n, src, map[string]string{"invocation_expression": "function"}),
 		})

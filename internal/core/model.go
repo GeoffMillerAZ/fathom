@@ -266,12 +266,22 @@ type Observation struct {
 	// EndLine is the 1-based last line covered by this observation in
 	// SourceRef; 0 = unknown/not computed (T5-5, docs/plans/trust-and-
 	// tokenomics.md — kills the T08 class where a DocChunk's single heading
-	// Line forced downstream arithmetic to GUESS a section's extent). Most
-	// extractors leave it 0 (a single-line definition has no separate
-	// extent worth recording); the Markdown extractor is the first to set
-	// it, per KindDocChunk node, as the line before the next heading (or
-	// EOF for the last heading) — so a doc-cited answer can pin the real
-	// line range of a section instead of a heading-relative guess.
+	// Line forced downstream arithmetic to GUESS a section's extent). Set
+	// by: the Markdown extractor (KindDocChunk, line before the next
+	// heading or EOF for the last one); the Go extractor (func/method/type/
+	// const/var, from the declaration's own ast.Node.End()); the CGO
+	// tree-sitter extractors — C, C++, C#, Java, Lua, PHP, Rust, Scala —
+	// and the CUE, HCL/Terraform, and CMake extractors (from the parsed
+	// node's own end position, or — CMake only — the scanned invocation's
+	// closing paren); the Templ extractor (KindTemplComponent, via the same
+	// next-declaration adjacency technique as Markdown, since it has no
+	// AST). A single-line declaration gets EndLine == Line, not
+	// 0 — 0 means "not computed" (see docs/plans/extraction-treesitter.md
+	// for the query-based wazero engine covering .py/.js/.jsx/.ts/.tsx/.rb,
+	// which does not compute it yet: the engine's Node snapshot carries no
+	// end row, only start). Extractors not listed here (SQL, GraphQL,
+	// Protocol Buffers) either have no AST end position at hand (regex
+	// line-scan) or the library in use records only a token's start.
 	EndLine    int `json:"end_line,omitempty"`
 	IngestedAt time.Time
 

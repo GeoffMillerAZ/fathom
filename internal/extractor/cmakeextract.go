@@ -39,9 +39,10 @@ func NewCMakeExtractor() *CMakeExtractor { return &CMakeExtractor{} }
 
 // cmakeCommand is one scanned `name(args…)` invocation.
 type cmakeCommand struct {
-	name string   // lower-cased command name
-	args []string // split on whitespace, quotes stripped
-	line int      // 1-based line of the command name
+	name    string   // lower-cased command name
+	args    []string // split on whitespace, quotes stripped
+	line    int      // 1-based line of the command name
+	endLine int      // 1-based line of the invocation's closing paren
 }
 
 // Extract scans src and returns SymbolNodes sorted by Line then Name.
@@ -53,7 +54,7 @@ func (c *CMakeExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 	targetIdx := map[string]int{} // target name → index into nodes
 	links := map[string][]string{}
 
-	add := func(name string, kind core.SourceKind, line int, sig string) int {
+	add := func(name string, kind core.SourceKind, line, endLine int, sig string) int {
 		nodes = append(nodes, core.SymbolNode{
 			Service:   service,
 			Package:   pkg,
@@ -61,6 +62,7 @@ func (c *CMakeExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 			Kind:      kind,
 			FilePath:  relPath,
 			Line:      line,
+			EndLine:   endLine,
 			Tier:      core.TierPreScan,
 			Signature: sig,
 		})
@@ -74,23 +76,23 @@ func (c *CMakeExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 		first := cmd.args[0]
 		switch cmd.name {
 		case "project":
-			add(first, core.KindCMakeProject, cmd.line, "")
+			add(first, core.KindCMakeProject, cmd.line, cmd.endLine, "")
 		case "option":
-			add(first, core.KindCMakeOption, cmd.line, "")
+			add(first, core.KindCMakeOption, cmd.line, cmd.endLine, "")
 		case "find_package":
-			add(first, core.KindCMakeDependency, cmd.line, "")
+			add(first, core.KindCMakeDependency, cmd.line, cmd.endLine, "")
 		case "add_executable":
-			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, "executable")
+			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, cmd.endLine, "executable")
 		case "add_library":
 			sig := "library"
 			if len(cmd.args) > 1 && cmakeLibraryType(cmd.args[1]) {
 				sig = "library " + cmd.args[1]
 			}
-			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, sig)
+			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, cmd.endLine, sig)
 		case "add_custom_target":
-			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, "custom")
+			targetIdx[first] = add(first, core.KindCMakeTarget, cmd.line, cmd.endLine, "custom")
 		case "function", "macro":
-			add(first, core.KindCMakeFunction, cmd.line, "")
+			add(first, core.KindCMakeFunction, cmd.line, cmd.endLine, "")
 		case "target_link_libraries":
 			if strings.Contains(first, "$") {
 				continue // variable indirection: unresolvable, dropped not guessed
@@ -193,7 +195,7 @@ func scanCMakeCommands(src string) []cmakeCommand {
 				continue // bare identifier, not an invocation
 			}
 			args, next, nl := scanCMakeArgs(src, j+1)
-			out = append(out, cmakeCommand{name: strings.ToLower(name), args: args, line: nameLine})
+			out = append(out, cmakeCommand{name: strings.ToLower(name), args: args, line: nameLine, endLine: nameLine + nl})
 			line += nl
 			i = next
 		default:

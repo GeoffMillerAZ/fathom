@@ -82,6 +82,9 @@ func (t *TemplExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 		if m := templDeclRe.FindStringSubmatch(line); m != nil {
 			// m[1] = keyword (templ|script|css), m[2] = name
 			sig := strings.TrimSpace(line)
+			if len(decls) > 0 {
+				nodes[decls[len(decls)-1].nodeIdx].EndLine = lineNo - 1
+			}
 			node := core.SymbolNode{
 				Service:   service,
 				Package:   pkg,
@@ -100,6 +103,9 @@ func (t *TemplExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 		// Attempt to match a plain Go func declaration.
 		if m := templFuncRe.FindStringSubmatch(line); m != nil {
 			sig := strings.TrimSpace(line)
+			if len(decls) > 0 {
+				nodes[decls[len(decls)-1].nodeIdx].EndLine = lineNo - 1
+			}
 			node := core.SymbolNode{
 				Service:   service,
 				Package:   pkg,
@@ -114,6 +120,12 @@ func (t *TemplExtractor) Extract(service, relPath string, src []byte) ([]core.Sy
 			decls = append(decls, declEntry{nodeIdx: len(nodes) - 1, startAt: lineNo})
 			continue
 		}
+	}
+
+	// The last open declaration (if any) runs to EOF — mirrors mdextract's
+	// "EndLine is EOF for the last node" adjacency rule (T5-5).
+	if len(decls) > 0 {
+		nodes[decls[len(decls)-1].nodeIdx].EndLine = lineNo
 	}
 
 	sort.Slice(nodes, func(i, j int) bool {

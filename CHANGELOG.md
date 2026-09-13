@@ -21,6 +21,13 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Symbol end lines (T5-5).** `core.SymbolNode.EndLine` is now set by the Go
+extractor and most tree-sitter/AST-backed extractors (C, C++, C#, Java, Lua,
+PHP, Rust, Scala, CUE, HCL/Terraform, CMake, Templ), not only Markdown;
+`outline`/`query_symbols`/`symbol_context` render `end_line` for these
+symbols, and the coverage join prefers a real `EndLine` over its synthesized
+one.
+
 **context-bench: a clean room, a search-receipt reading, and per-task
 replication floors (RC-7/RC-17/RC-18, vision 28 §2.2/§2.4).**
 `scripts/context-bench.sh` now runs every `claude -p` call with

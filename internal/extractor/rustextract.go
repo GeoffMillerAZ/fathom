@@ -89,6 +89,7 @@ func walkRust(
 			Kind:     core.KindRustFn,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 			Calls: treesitter.CollectCalls(n, src, map[string]string{
 				"call_expression":  "function",
@@ -109,6 +110,7 @@ func walkRust(
 				Kind:     core.KindRustStruct,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -125,6 +127,7 @@ func walkRust(
 				Kind:     core.KindRustEnum,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -140,6 +143,7 @@ func walkRust(
 				Kind:     core.KindRustTrait,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -158,6 +162,7 @@ func walkRust(
 				Kind:     core.KindRustMod,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -180,6 +185,7 @@ func walkRust(
 				Kind:     core.KindRustImpl,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}

@@ -63,6 +63,11 @@ func TestCUEExtractor_Basic(t *testing.T) {
 		if n.Tier != core.TierVerified {
 			t.Errorf("Tier: got %q, want TierVerified", n.Tier)
 		}
+		// #Service's struct literal spans multiple lines: EndLine must be
+		// the closing brace's line, strictly after Line.
+		if n.EndLine <= n.Line {
+			t.Errorf("EndLine: got %d, want > Line (%d)", n.EndLine, n.Line)
+		}
 	})
 
 	t.Run("someValue_is_KindCUEField", func(t *testing.T) {
@@ -75,6 +80,10 @@ func TestCUEExtractor_Basic(t *testing.T) {
 		}
 		if n.Tier != core.TierVerified {
 			t.Errorf("someValue Tier: got %q, want TierVerified", n.Tier)
+		}
+		// Single-line field: EndLine equals Line.
+		if n.EndLine != n.Line {
+			t.Errorf("someValue EndLine: got %d, want == Line (%d)", n.EndLine, n.Line)
 		}
 	})
 

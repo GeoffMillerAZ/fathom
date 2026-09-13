@@ -86,6 +86,7 @@ func walkCpp(
 				Kind:     core.KindCppNamespace,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -112,6 +113,7 @@ func walkCpp(
 			Kind:     core.KindCppClass,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Recurse into body with this class name on the scope stack so inline
@@ -140,6 +142,7 @@ func walkCpp(
 			Kind:     core.KindCppStruct,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 		})
 		// Recurse into body with the struct name on the scope stack.
@@ -165,6 +168,7 @@ func walkCpp(
 				Kind:     core.KindCppEnum,
 				FilePath: relPath,
 				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
 		}
@@ -191,6 +195,7 @@ func walkCpp(
 			Kind:     core.KindCppFunc,
 			FilePath: relPath,
 			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
 			Tier:     core.TierVerified,
 			Calls:    cppCanonicalCalls(treesitter.CollectCalls(n, src, map[string]string{"call_expression": "function"})),
 		})

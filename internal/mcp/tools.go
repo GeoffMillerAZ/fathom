@@ -487,8 +487,10 @@ type symbolNodeDTO struct {
 	FilePath string `json:"file_path"`
 	Line     int    `json:"line,omitempty"`
 	// EndLine mirrors core.SymbolNode.EndLine (T5-5): the last line covered
-	// by this symbol, when the extractor computed one (currently DocChunk
-	// headings only) — 0/omitted otherwise.
+	// by this symbol, when the extractor computed one — DocChunk headings,
+	// Go func/method/type/const/var, and most tree-sitter/AST-backed
+	// extractors; 0/omitted for the extractors that don't yet (see
+	// core.SymbolNode.EndLine's doc comment).
 	EndLine   int    `json:"end_line,omitempty"`
 	Signature string `json:"signature,omitempty"`
 	Tier      string `json:"tier,omitempty"`
