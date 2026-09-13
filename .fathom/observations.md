@@ -767,3 +767,16 @@ triage if it matters.
 - **Fix:** the five commits; the dry cell IS that tier now (`-harness fake` against the committed guards corpus) and belongs in the runbook as the step before any spend.
 - **Status:** fixed
 - **Impact:** ~$0.40 of compile spend on aborted cells; no pilot cell was scored on the broken oracle.
+
+### O36 — `references` without a `services` filter fails the WHOLE call when one indexed service's root has vanished ("references: sources demo: client.Sources discover \"demo\": lstat …/scratchpad/adopt2/demo: no such file or directory") — a stale service from an earlier session's scratch adoption makes a fleet-wide references query unusable for every live service.
+
+- **Symptom:** tools/call references {"service":"fathom","query":"HooksWired"} on the fleet daemon → -32603 naming service "demo".
+- **Evidence:**
+  - **Tool:** references (internal/mcp), the sources discovery it runs per service
+  - **Expected:** a service whose root is gone is skipped and named in `degraded`; the live services answer.
+  - **Actual:** the first unreadable service aborts the call.
+  - **Repro:** curl -s -X POST http://127.0.0.1:7575/rpc/agent -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"references","arguments":{"service":"fathom","query":"HooksWired","max":3}}}'
+- **Root cause:** TODO — the per-service loop returns on the first discover error instead of collecting it.
+- **Fix:** TODO (execute-and-flag, ADR-014: degrade per service, never the call)
+- **Status:** open
+- **Impact:** every fleet-wide references call on this store since the `demo` service was registered; the bench's fathom arm always passes `services: ["fathom"]` and was not affected.
