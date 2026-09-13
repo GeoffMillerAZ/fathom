@@ -197,22 +197,81 @@ func anyViolated(drs []DetectorResult) bool {
 	return false
 }
 
-// ApplyTestPatch applies task.Gold.TestPatch into wt.Path: `git apply
-// --3way` first (so a patch whose context has drifted still merges when
-// the blobs it names are reachable), falling back to a plain `git apply`
-// (the common case: a fresh worktree at base_commit, or a throwaway
-// calibration worktree, where there is nothing to three-way merge
-// against). A task with no test patch is a no-op. RunOracle calls this
-// AFTER the sessions and BEFORE the tests — the patch is hidden from
-// every session, exactly as SWE-bench evaluates.
+// ApplyTestPatch applies task.Gold.TestPatch into wt.Path. SWE-bench
+// semantics: the patch was cut against base_commit, so BEFORE applying it
+// every path the patch's own `diff --git a/X b/X` headers name is reset to
+// its base_commit content — `git checkout base_commit -- path` for a path
+// that exists there, `rm -f` for one the patch creates — so a patch does
+// not fail with "does not match index"/"patch does not apply" merely
+// because the agent's own (non-test) edit also touched one of those files
+// (public pilot 1, 2026-09-13). Every OTHER file the agent touched is left
+// exactly as the agent left it. `git apply --3way` is then tried first (a
+// patch whose context has otherwise drifted still merges when the blobs
+// it names are reachable), falling back to a plain `git apply`. A task
+// with no test patch is a no-op. RunOracle calls this AFTER the sessions
+// and BEFORE the tests — the patch is hidden from every session, exactly
+// as SWE-bench evaluates.
 func ApplyTestPatch(ctx context.Context, wt Worktree, task Task) error {
 	if task.Gold.TestPatch == "" {
 		return nil
+	}
+	if task.Subject.BaseCommit != "" {
+		if err := resetTestPatchTargets(ctx, wt, task.Subject.BaseCommit, task.Gold.TestPatch); err != nil {
+			return fmt.Errorf("resetting test patch targets to base_commit: %w", err)
+		}
 	}
 	patch := []byte(task.Gold.TestPatch)
 	if err := runGitApply(ctx, wt.Path, patch, true); err != nil {
 		if err2 := runGitApply(ctx, wt.Path, patch, false); err2 != nil {
 			return fmt.Errorf("git apply --3way: %v; git apply: %w", err, err2)
+		}
+	}
+	return nil
+}
+
+// diffGitHeaderRE matches a unified diff's own "diff --git a/X b/X"
+// header line; the b/ side is the patch's post-image path (identical to
+// a/ except for a rename — resetTestPatchTargets treats a rename's a/
+// side the same as any other path the patch does not itself name: left
+// alone, since the patch's hunks address it only by its b/ name).
+var diffGitHeaderRE = regexp.MustCompile(`(?m)^diff --git a/(.+) b/(.+)$`)
+
+// testPatchPaths returns the deduplicated b/-side paths a patch's
+// `diff --git a/X b/X` headers name, in header order.
+func testPatchPaths(patch string) []string {
+	var paths []string
+	seen := map[string]bool{}
+	for _, m := range diffGitHeaderRE.FindAllStringSubmatch(patch, -1) {
+		p := m[2]
+		if !seen[p] {
+			seen[p] = true
+			paths = append(paths, p)
+		}
+	}
+	return paths
+}
+
+// resetTestPatchTargets resets every path patch's `diff --git` headers
+// name, in wt.Path, to its baseCommit content: `git checkout baseCommit --
+// path` when the path exists in baseCommit (undoing whatever the agent did
+// to it, so the patch — cut against exactly that content — applies
+// cleanly), `rm -f` when it does not (the patch creates a new file at that
+// path; an agent that independently created something at the same path
+// must not collide with it). Every path the patch does NOT name is left
+// untouched — an agent's non-test edits survive intact.
+func resetTestPatchTargets(ctx context.Context, wt Worktree, baseCommit, patch string) error {
+	for _, path := range testPatchPaths(patch) {
+		existsAtBase := exec.CommandContext(ctx, "git", "cat-file", "-e", baseCommit+":"+path)
+		existsAtBase.Dir = wt.Path
+		if err := existsAtBase.Run(); err == nil {
+			if out, err := runIn(ctx, wt.Path, "git", "checkout", baseCommit, "--", path); err != nil {
+				return fmt.Errorf("checking out %s at %s: %w (%s)", path, baseCommit, err, out)
+			}
+			continue
+		}
+		full := filepath.Join(wt.Path, filepath.FromSlash(path))
+		if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("removing %s (not present at %s, the test patch creates it): %w", path, baseCommit, err)
 		}
 	}
 	return nil

@@ -347,6 +347,130 @@ func TestRunOracle_AnswerAllOf(t *testing.T) {
 	})
 }
 
+// testPatchTargetFixtureRepo builds a tiny git module at base_commit with a
+// buggy Add and ONE pre-existing test file (thing_test.go, carrying
+// TestBroken only) — the same file the hidden test patch below also
+// modifies, so an agent that independently edits it lands on the exact
+// file the patch's own headers name. testPatch is generated from a REAL
+// `git diff` of a second, uncommitted edit to that file (adding TestFix),
+// so its hunks carry genuine base-relative line numbers.
+func testPatchTargetFixtureRepo(t *testing.T) (repoPath, baseCommit, testPatch string) {
+	t.Helper()
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			os.Environ(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	testFilePath := filepath.Join(dir, "thing_test.go")
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, "go.mod"), "module scenariotestpatchtargetfixture\n\ngo 1.21\n")
+	writeTestFile(t, filepath.Join(dir, "thing.go"), "package thing\n\nfunc Add(a, b int) int { return a - b }\n")
+	writeTestFile(t, testFilePath, "package thing\n\nimport \"testing\"\n\nfunc TestBroken(t *testing.T) {\n\tt.Fatal(\"environment broken: this test always fails regardless of code\")\n}\n")
+	run("add", ".")
+	run("commit", "-q", "-m", "base")
+	base := run("rev-parse", "HEAD")
+
+	// The gold edit to the SAME file the fixture's own agent will also
+	// touch below — left uncommitted so `git diff` yields the real patch,
+	// then reverted so the fixture repo itself stays at base_commit.
+	writeTestFile(t, testFilePath, `package thing
+
+import "testing"
+
+func TestBroken(t *testing.T) {
+	t.Fatal("environment broken: this test always fails regardless of code")
+}
+
+func TestFix(t *testing.T) {
+	if Add(2, 3) != 5 {
+		t.Fatalf("Add(2,3) = %d, want 5", Add(2, 3))
+	}
+}
+`)
+	// NOT via run() above: its strings.TrimSpace strips the diff's own
+	// trailing newline, which corrupts the last hunk line for git apply
+	// ("corrupt patch") — the patch text itself must be captured verbatim.
+	diffCmd := exec.Command("git", "diff", "--", "thing_test.go")
+	diffCmd.Dir = dir
+	diffOut, err := diffCmd.Output()
+	if err != nil {
+		t.Fatalf("git diff: %v", err)
+	}
+	patch := string(diffOut)
+	run("checkout", "--", "thing_test.go")
+	return dir, base, patch
+}
+
+// TestApplyTestPatch_ResetsAgentEditedTarget covers the public pilot 1
+// failure (2026-09-13): an agent edits a file the hidden test patch ALSO
+// touches, and a plain `git apply` used to fail with "does not match
+// index"/"patch does not apply". ApplyTestPatch must reset that file to
+// base_commit first — undoing only the agent's edit to THAT path, not any
+// other file — so the patch still applies and the oracle stays measurable.
+func TestApplyTestPatch_ResetsAgentEditedTarget(t *testing.T) {
+	repoPath, baseCommit, testPatch := testPatchTargetFixtureRepo(t)
+	wtPath := cloneAtCommit(t, repoPath, baseCommit)
+
+	// Simulate the agent: it edited thing_test.go too (a comment, nothing
+	// that changes behavior), leaving the file's content diverged from
+	// base — the condition that broke a plain `git apply` in the pilot.
+	writeTestFile(t, filepath.Join(wtPath, "thing_test.go"), `package thing
+
+import "testing"
+
+func TestBroken(t *testing.T) {
+	// the agent left this note while investigating, unrelated to the fix
+	t.Fatal("environment broken: this test always fails regardless of code")
+}
+`)
+	// A non-test file the patch does NOT name — must survive untouched.
+	writeTestFile(t, filepath.Join(wtPath, "NOTES.md"), "agent's own scratch notes\n")
+
+	wt := Worktree{Path: wtPath, SubjectClone: repoPath, CellDir: t.TempDir()}
+	task := Task{
+		ID:      "T-RESET",
+		Subject: Subject{RepoURL: repoPath, BaseCommit: baseCommit},
+		Oracle:  Oracle{FailToPass: []string{"TestFix"}, PassToPass: []string{"TestBroken"}},
+		Gold:    Gold{TestPatch: testPatch},
+	}
+
+	result, err := RunOracle(context.Background(), wt, task, nil, t.TempDir())
+	if err != nil {
+		t.Fatalf("RunOracle: %v", err)
+	}
+	if result.Calibration == nil {
+		t.Fatal("expected a Calibration summary")
+	}
+	if result.Calibration.NotMeasurable != "" {
+		t.Fatalf("expected the test patch to apply despite the agent's edit to the same file, got not_measurable=%q", result.Calibration.NotMeasurable)
+	}
+	if result.FailToPassOK {
+		t.Error("expected FailToPassOK=false — Add is still buggy, TestFix should still fail")
+	}
+
+	raw, err := os.ReadFile(filepath.Join(wtPath, "thing_test.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(raw), "func TestFix(") {
+		t.Errorf("expected thing_test.go to carry TestFix after the patch applied: %s", raw)
+	}
+	notes, err := os.ReadFile(filepath.Join(wtPath, "NOTES.md"))
+	if err != nil || string(notes) != "agent's own scratch notes\n" {
+		t.Errorf("expected NOTES.md (not named by the patch) to survive untouched: content=%q err=%v", notes, err)
+	}
+}
+
 // TestAnswerOnly proves the shape AnswerOnly reports: an AnswerAllOf oracle
 // with no tree-level check at all is answer-only; any tree-level check
 // (even alongside AnswerAllOf) is not.
