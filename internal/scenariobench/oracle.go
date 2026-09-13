@@ -26,6 +26,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 )
 
 // defaultTestCommand is used when Subject.TestCommand is unset (types.go).
@@ -327,6 +328,24 @@ func calibrationKey(task Task) string {
 // command once over fail_to_pass ∪ pass_to_pass. root is this repo's
 // root; the cache lives at
 // <root>/workspace/scenariobench/calibration/<key>.json.
+// calibrationLocks serializes CalibrateSubject per calibration key,
+// process-wide (see the comment at its use).
+var calibrationLocks sync.Map // map[string]*sync.Mutex
+
+// prepareCalibrationWorktree clears any leftover of a previous calibration
+// at calibWT — the directory AND git's registration of it (a crashed or
+// killed run leaves a "missing but already registered worktree" that
+// `git worktree add` refuses) — then adds a detached worktree at commit.
+// It returns git's combined output for the error message.
+func prepareCalibrationWorktree(ctx context.Context, clone, calibWT, commit string) ([]byte, error) {
+	if err := os.RemoveAll(calibWT); err != nil {
+		return nil, fmt.Errorf("clearing %s: %w", calibWT, err)
+	}
+	_ = exec.CommandContext(ctx, "git", "-C", clone, "worktree", "prune").Run()
+	addCmd := exec.CommandContext(ctx, "git", "-C", clone, "worktree", "add", "--detach", calibWT, commit)
+	return addCmd.CombinedOutput()
+}
+
 func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) (Calibration, error) {
 	if abs, err := filepath.Abs(root); err == nil {
 		root = abs
@@ -334,6 +353,13 @@ func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) 
 	cacheDir := filepath.Join(root, "workspace", "scenariobench", "calibration")
 	key := calibrationKey(task)
 	cachePath := filepath.Join(cacheDir, key+".json")
+	// Two arms of one task calibrate the same (subject, commit) — under
+	// -parallel-arms concurrently, in one process. Serialize per key so the
+	// second caller finds the cache the first one wrote instead of racing it
+	// for the calibration worktree (reuse-pilot-2 lost a cell to that race).
+	mu, _ := calibrationLocks.LoadOrStore(key, &sync.Mutex{})
+	mu.(*sync.Mutex).Lock()
+	defer mu.(*sync.Mutex).Unlock()
 
 	if raw, err := os.ReadFile(cachePath); err == nil {
 		var cached Calibration
@@ -353,11 +379,7 @@ func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) 
 		clone = wt.Path
 	}
 	calibWT := filepath.Join(cacheDir, "wt-"+key)
-	if err := os.RemoveAll(calibWT); err != nil {
-		return Calibration{}, fmt.Errorf("calibrating subject: clearing %s: %w", calibWT, err)
-	}
-	addCmd := exec.CommandContext(ctx, "git", "-C", clone, "worktree", "add", "--detach", calibWT, task.Subject.BaseCommit)
-	if out, err := addCmd.CombinedOutput(); err != nil {
+	if out, err := prepareCalibrationWorktree(ctx, clone, calibWT, task.Subject.BaseCommit); err != nil {
 		return Calibration{}, fmt.Errorf("calibrating subject: git worktree add: %w (%s)", err, strings.TrimSpace(string(out)))
 	}
 	defer func() {
