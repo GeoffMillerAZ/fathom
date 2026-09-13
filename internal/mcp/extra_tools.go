@@ -6,7 +6,7 @@
 //
 //	investigation: blast_radius, diff_impact, spec_coverage,
 //	               traceability, evidence_summary,
-//	               contradiction_scan, review_diff
+//	               contradiction_scan, review_diff, search
 //	coding:        arch_conformance, stale_docs, api_diff, dep_drift
 //	shared:        ingest
 //	platform:      cross_repo_blast_radius
@@ -57,6 +57,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 	registerEvidenceSummary(s, backend)
 	registerContradictionScan(s, backend)
 	registerReferences(s, backend)
+	registerSearch(s, backend)
 	registerVerifyPlan(s, backend)
 	registerReviewDiff(s, backend)
 	registerFindingsNear(s, backend)

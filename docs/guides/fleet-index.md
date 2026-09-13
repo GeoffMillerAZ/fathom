@@ -60,16 +60,19 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
    who-calls, what breaks (RC-23, docs/vision/28-receipts.md §3.5): what
    governs this repository is `obligations` called with no path (the root
    conventions, not a file); is this still true / what was known is
-   `staleness_report`; a literal string, a config value, a log line, or a
-   document-versus-document contradiction is still grep's (vision 27 §8) —
-   `references` replaces fleet-wide grep for a symbol,
-   `symbol_context` gives def+callers+callees+tests in one call (plus an
-   inline definition snippet), `read_source` reads an exact line range from
-   the indexed corpus, `obligations` surfaces governing rules for a file
-   before editing it. Read files to *edit* them, not to discover them. The
-   index is fleet-wide, so cross-repo questions are one query. (These are
-   the core of the 17-tool `agent` surface — see `docs/mcp-tools.md`;
-   `memory_search`, the newest member, is **experimental**.)
+   `staleness_report`; a literal string, a config value, or a log line
+   routes to `search` (RC-24: grep with a receipt — the hit plus its
+   enclosing symbol from the index) when fathom is wired, plain grep
+   otherwise, and a document-versus-document contradiction is still
+   grep's either way (vision 27 §8) — `references` replaces fleet-wide
+   grep for a symbol, `symbol_context` gives def+callers+callees+tests in
+   one call (plus an inline definition snippet), `read_source` reads an
+   exact line range from the indexed corpus, `obligations` surfaces
+   governing rules for a file before editing it. Read files to *edit*
+   them, not to discover them. The index is fleet-wide, so cross-repo
+   questions are one query. (These are the core of the 18-tool `agent`
+   surface — see `docs/mcp-tools.md`; `memory_search` is **experimental**;
+   `search`, RC-24, is the newest member.)
    Every Edit/Write also gets governing rules injected via the PostToolUse
    edit-hook (`docs/design/coding-agent-excellence.md` §5.2).
 2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows

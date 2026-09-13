@@ -74,6 +74,7 @@ var companionTools = map[string]bool{
 	"read_source":      true,
 	"references":       true,
 	"repo_map":         true,
+	"search":           true,
 	"staleness_report": true,
 	"symbol_context":   true,
 	"verify_plan":      true,

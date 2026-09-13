@@ -898,7 +898,8 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"path (the root conventions); is this still true / what was known is\n" +
 	"`staleness_report` (RC-23, docs/vision/28-receipts.md §3.5). A literal\n" +
 	"string, a config value, a log line, or a document-versus-document\n" +
-	"contradiction is grep's job, not the index's.\n" +
+	"contradiction is `search`'s job (grep with a receipt, RC-24), not the\n" +
+	"other tools'.\n" +
 	"Read files to *edit* them, not to discover them.\n" +
 	"\n" +
 	openingMovesTable + "\n" +

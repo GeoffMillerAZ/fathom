@@ -198,6 +198,7 @@ var truncatingTools = map[string]bool{
 	"repo_map":      true,
 	"pack_context":  true,
 	"find_symbol":   true,
+	"search":        true, // proven live in search_tool_test.go (TestSearchLimitAndElision)
 }
 
 // textElisionTools (RC-19) is the second, disjoint truncating class: tools

@@ -74,7 +74,7 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 
-<!-- fathom:begin v3 sha256:937d65ff005bd70f39830922abd1cef8d36cc2748037de3fa3d535066c703b2f -->
+<!-- fathom:begin v3 sha256:0ac331d4f347089d3dd89ec45dbc7bdcfa8b06b9b0943e2f017dcafb3d10fec7 -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
@@ -86,7 +86,8 @@ what-breaks resolve via the fathom MCP tools (`find_symbol`,
 path (the root conventions); is this still true / what was known is
 `staleness_report` (RC-23, docs/vision/28-receipts.md §3.5). A literal
 string, a config value, a log line, or a document-versus-document
-contradiction is grep's job, not the index's.
+contradiction is `search`'s job (grep with a receipt, RC-24), not the
+other tools'.
 Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):

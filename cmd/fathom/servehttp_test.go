@@ -275,8 +275,8 @@ func TestServeHTTPCompanionSurfaceToolsList(t *testing.T) {
 			t.Fatalf("tools/list error on %s: %v", path, resp["error"])
 		}
 		tools := resp["result"].(map[string]any)["tools"].([]any)
-		if len(tools) != 17 {
-			t.Fatalf("%s lists %d tools, want 17 (16 + memory_search, AM-8)", path, len(tools))
+		if len(tools) != 18 {
+			t.Fatalf("%s lists %d tools, want 18 (16 + memory_search AM-8 + search RC-24)", path, len(tools))
 		}
 	}
 }

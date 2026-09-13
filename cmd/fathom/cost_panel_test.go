@@ -65,16 +65,17 @@ const (
 	// and five tools gained a "this result IS the answer" sentence — a
 	// measured, deliberate widening (O31/O32's over-payload findings), not
 	// a new tool (still 17, TestNarrowProfileSchemaBytes' own pin).
-	// Re-pinned 2026-09-13: `references` gained `exact`, `find_callers`
-	// gained `with_signatures`, `find_symbol` gained `implementations`
-	// (SB-45/47/5) — 34,821 bytes measured. Size never decided deferral
-	// (O32: alwaysLoad does), so this band is a budget, not a threshold.
 	// Re-pinned again 2026-09-13: `find_callers`/`references`/`outline`/
 	// `symbol_context`/`staleness_report`/`repo_map` gained budget/
 	// `scope_required` fields and descriptions (RC-19/RC-20), and
 	// `references` gained `implementations` (RC-21) — 36,948 bytes
 	// measured (vision 28, receipts).
-	agentSurfaceSchemaByteCeiling = 37200
+	// RC-24 (docs/plans/receipts.md) then added `search` — the
+	// grep-with-a-receipt tool, ships SB-48 — as an 18th agent-surface
+	// tool: 40,204 bytes measured with RC-19/20/21 combined. A genuinely
+	// new tool, not a widened description (TestAgentSurfaceDiet's own pin
+	// moved to 18 alongside it).
+	agentSurfaceSchemaByteCeiling = 41000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -86,8 +87,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 17 {
-		t.Errorf("agent surface tools = %d, want 17 (TestAgentSurfaceDiet's own pin: 16 + memory_search, AM-8)", tools)
+	if tools != 18 {
+		t.Errorf("agent surface tools = %d, want 18 (TestAgentSurfaceDiet's own pin: 16 + memory_search AM-8 + search RC-24)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+

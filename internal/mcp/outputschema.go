@@ -291,6 +291,7 @@ var agentResultTypes = map[string]reflect.Type{
 	"read_source":      reflect.TypeOf(readSourceResult{}),
 	"references":       reflect.TypeOf(referencesResult{}),
 	"repo_map":         reflect.TypeOf(repoMapResult{}),
+	"search":           reflect.TypeOf(searchResult{}),
 	"staleness_report": reflect.TypeOf(stalenessReportResult{}),
 	"symbol_context":   reflect.TypeOf(symbolContextResult{}),
 	"verify_plan":      reflect.TypeOf(verifyPlanResult{}),

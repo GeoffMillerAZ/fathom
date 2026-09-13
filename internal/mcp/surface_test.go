@@ -21,7 +21,9 @@ import (
 // companionWant is the curated agent allowlist, pinned exactly
 // (docs/vision/05-surfaces.md §3: companion 15, minus batch and brief, plus
 // verify_plan and capabilities; T5-4, docs/plans/trust-and-tokenomics.md,
-// added read_source as the program's second net-new tool — 16 total).
+// added read_source as the program's second net-new tool — 16 total;
+// AM-8 added memory_search — 17; RC-24, docs/plans/receipts.md, added
+// search, the grep-with-a-receipt tool — 18 total).
 // Changing the surface is deliberate: update this list and docs/mcp-tools.md
 // together. Served identically at both /rpc/agent (the primary path) and
 // /rpc/companion (a compatible alias).
@@ -40,6 +42,7 @@ var companionWant = []string{
 	"read_source",
 	"references",
 	"repo_map",
+	"search",
 	"staleness_report",
 	"symbol_context",
 	"verify_plan",

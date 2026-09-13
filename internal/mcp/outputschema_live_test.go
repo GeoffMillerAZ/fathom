@@ -89,6 +89,7 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 		"read_source":      {"service": "svc", "file": "pkg/a.go"},
 		"references":       {"query": "A", "word": true},
 		"repo_map":         {"service": "svc"},
+		"search":           {"service": "svc", "pattern": "func"},
 		"staleness_report": {"service": "svc"},
 		"symbol_context":   {"service": "svc", "symbol": "A"},
 		"verify_plan":      {"service": "svc", "plan_markdown": "- [x] A exists {id: T1, symbol: A}"},

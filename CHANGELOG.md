@@ -115,6 +115,14 @@ only where it would decide.
   across a fleet): the response carries the true count and the top ≤8 packages instead of
   any rows.
 
+**`search` — grep with a receipt, never a smarter grep (`RC-24`, ships `SB-48`).** New
+agent-surface tool (18 total, `docs/mcp-tools.md`): runs ripgrep against the working tree
+(Go-regexp fallback with an identical shape when `rg` is absent), each hit annotated from
+the index with its enclosing symbol/kind, `test`/`generated`/`vendored` flags, and an
+`ident`/`comment`/`string` classification from same-line lexical evidence — omitted, never
+guessed, when it cannot be determined. Vendored and `workspace/` trees excluded by default;
+results sorted path-then-line under the shared 16KB budget.
+
 **The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
 `docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards
 corpora, 64 cells, zero rule violations on either arm, the wired arm at 0.77–0.85× the tokens;
