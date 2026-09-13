@@ -776,9 +776,9 @@ triage if it matters.
   - **Expected:** a service whose root is gone is skipped and named in `degraded`; the live services answer.
   - **Actual:** the first unreadable service aborts the call.
   - **Repro:** curl -s -X POST http://127.0.0.1:7575/rpc/agent -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"references","arguments":{"service":"fathom","query":"HooksWired","max":3}}}'
-- **Root cause:** TODO — the per-service loop returns on the first discover error instead of collecting it.
-- **Fix:** TODO (execute-and-flag, ADR-014: degrade per service, never the call)
-- **Status:** open
+- **Root cause:** the per-service loop returned on the first `ListAllSymbols`/`Sources` error instead of collecting it — confirmed: both discovery calls in `registerReferences` (internal/mcp/references_tool.go) used `return nil, &rpcError{...}` on a per-service error.
+- **Fix:** both calls now append a `{service, reason}` row to a new `degraded` field and `continue` to the next service instead of aborting (execute-and-flag, ADR-014) — `TestReferencesDegradesUnreadableServiceRoot` and `TestReferencesDegradesUnreadableSourcesOnly` (internal/mcp/references_tool_test.go) pin a fake backend reproducing the exact repro shape.
+- **Status:** fixed
 - **Impact:** every fleet-wide references call on this store since the `demo` service was registered; the bench's fathom arm always passes `services: ["fathom"]` and was not affected.
 
 ### O37 — Guards pilot 1 (2026-09-13) scored 16 cells that never ran: `claude -p` died at startup ("MCP config file not found" — the driver passed --mcp-config relative to ITS cwd while the session runs in the worktree), the dead sessions were stored as cells with zero tokens, the untouched tree passed every detector so the full arm read PASS, and the re-run borrowed the dead cells as data. The first public dry cell's oracle also never ran: a subtest name with an apostrophe broke the `sh -c` test command.

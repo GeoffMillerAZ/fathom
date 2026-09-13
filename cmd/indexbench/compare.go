@@ -82,8 +82,12 @@ func cmdCompare(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	// ReferencesExact: true — SB-45's whole point. `compare` measures the
+	// answer references actually ships (exact mode, the shipped default
+	// when typed edges exist), never the pre-SB-45 text-occurrence answer
+	// the ledger's historical rows recorded.
 	rep, err := indexbench.IndexOracleReport(ctx, c, []indexbench.Subject{
-		{Service: *service, Root: abs, MaxQueries: *maxQ},
+		{Service: *service, Root: abs, MaxQueries: *maxQ, ReferencesExact: true},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "indexbench compare: %v\n", err)

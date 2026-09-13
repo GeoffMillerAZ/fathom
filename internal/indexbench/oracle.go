@@ -92,6 +92,15 @@ type Subject struct {
 	// honestly on a smaller sample rather than hiding it by caching a graph
 	// the tool does not cache. Zero falls back to MaxQueries.
 	MaxBlastQueries int
+	// ReferencesExact (SB-45, docs/plans/strengths-bench.md) scores the
+	// references handler's exact-mode answer instead of its pre-SB-45 one:
+	// a text occurrence is only counted when the symbol enclosing it has a
+	// typed call edge to the query's definition (callgraph.MentionConfidence
+	// — the same confirmation the handler renders as edge_confidence).
+	// False (the zero value) keeps every committed golden's own number
+	// unchanged; the self run and `compare` set it true to measure the
+	// improvement SB-45 was built for.
+	ReferencesExact bool
 }
 
 // ToolScore is one tool's precision and recall over one subject, with the
@@ -284,7 +293,7 @@ func IndexOracleReport(ctx context.Context, be Backend, subjects []Subject) (Rep
 		sc.Misses = misses
 		callers.ElapsedMS = time.Since(t0).Milliseconds()
 		t0 = time.Now()
-		refs, err := scoreReferences(ctx, be, sub, truth, nodes)
+		refs, err := scoreReferences(ctx, be, sub, truth, nodes, typed)
 		if err != nil {
 			return Report{}, err
 		}
@@ -456,7 +465,7 @@ func funcNames(nodes []core.SymbolNode) map[string]string {
 // rate, because no honest verdict about it exists. The previous scoring
 // folded all of it into Predicted and reported precision 0.158, which
 // measured the mismatch between two questions, not the index.
-func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, nodes []core.SymbolNode) (ToolScore, error) {
+func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicloc.GoTruth, nodes []core.SymbolNode, typed []core.Edge) (ToolScore, error) {
 	subset := NewReferencesOracleSubset(truth, sub.Prefix)
 	sc := ToolScore{
 		Tool:                 ToolReferences,
@@ -466,6 +475,14 @@ func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicl
 	sources, err := be.Sources(ctx, sub.Service)
 	if err != nil {
 		return sc, fmt.Errorf("indexbench: sources %s: %w", sub.Service, err)
+	}
+	// SB-45: built ONCE for the whole subject, not per query — the graph
+	// construction MentionIndex does is the same cost callgraph.Build pays
+	// anywhere else in this file, and this loop asks up to MaxQueries
+	// questions over the identical (nodes, typed) pair.
+	var mentionIdx *callgraph.MentionIndex
+	if sub.ReferencesExact {
+		mentionIdx = callgraph.BuildMentionIndex(nodes, typed)
 	}
 	for _, name := range sample(subset.Names, sub.MaxQueries) {
 		sc.Queries++
@@ -486,11 +503,15 @@ func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicl
 		// (BP-26): EXACT name matches. The substring-containment matching
 		// it used to do is now behind include_heuristic, and is counted
 		// here as unadjudicated rather than scored — a hit on "FooBar" for
-		// query "Foo" is not a claim that the file references Foo.
+		// query "Foo" is not a claim that the file references Foo. defKeys
+		// doubles as SB-45's exact-mode confirmation set: the query's
+		// definitions in this service.
+		var defKeys []string
 		for _, n := range nodes {
 			switch {
 			case n.Name == name:
 				record(n.FilePath)
+				defKeys = append(defKeys, n.Key())
 			case strings.Contains(n.Name, name):
 				unadj[n.FilePath] = true
 			}
@@ -500,7 +521,20 @@ func scoreReferences(ctx context.Context, be Backend, sub Subject, truth publicl
 		if err != nil {
 			return sc, fmt.Errorf("indexbench: references %s/%s: %w", sub.Service, name, err)
 		}
+		// SB-45: under ReferencesExact, score the same typed-confirmation
+		// the handler renders — an occurrence only counts when the symbol
+		// enclosing it has a typed call edge to one of defKeys. A query
+		// with no typed reference sites (no definitions here, or no typed
+		// edges at all) falls back to every occurrence, exactly like the
+		// handler's own degrade-and-flag path.
+		var mentionConf func(file string, line int) core.EdgeConfidence
+		if mentionIdx != nil && len(defKeys) > 0 && len(typed) > 0 {
+			mentionConf = mentionIdx.Confidence(defKeys)
+		}
 		for _, o := range occs {
+			if mentionConf != nil && mentionConf(o.File, o.Line) != core.EdgeConfidenceResolved {
+				continue
+			}
 			record(o.File)
 		}
 		for p := range got {

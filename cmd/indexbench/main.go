@@ -65,6 +65,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	misses := fs.Bool("misses", true, "record every truth caller the resolved edges did not predict, with its file and whether the syntax pass saw it — the list a recall number is made of")
 	blastDepth := fs.Int("blast-depth", 1, "reverse-walk bound blast_radius is scored at; the truth closure uses the same bound (-1 = unbounded, the pre-BP-27 walk)")
 	maxQ := fs.Int("max-queries", 200, "bound each tool to this many deterministic stride-sampled questions (0 = every one; a whole module scored exhaustively is minutes, not seconds)")
+	referencesExact := fs.Bool("references-exact", false, "score references' SB-45 exact-mode answer (typed-confirmed occurrences only) instead of its pre-SB-45 one")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -96,7 +97,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// The LocalConnector reports paths relative to the service root, which is
 	// the same root go/types walks — so no prefix translation is needed.
 	rep, err := indexbench.IndexOracleReport(ctx, c, []indexbench.Subject{
-		{Service: *service, Root: abs, MaxQueries: *maxQ, MaxBlastQueries: *maxBlast, BlastDepth: *blastDepth, RecordMisses: *misses},
+		{Service: *service, Root: abs, MaxQueries: *maxQ, MaxBlastQueries: *maxBlast, BlastDepth: *blastDepth, RecordMisses: *misses, ReferencesExact: *referencesExact},
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "indexbench: %v\n", err)

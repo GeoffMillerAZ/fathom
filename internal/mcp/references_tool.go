@@ -149,7 +149,7 @@ func renderReferenceOccurrence(o occEntry, includeService bool) referenceOccurre
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. query must be an identifier (\"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true) — a free-text fragment (e.g. \"func (s *\") is refused, naming the three accepted forms. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Occurrences are unaffected. Each occurrence is rendered compact for the wire — {loc: \"file:line\", text (trimmed to 60 chars), c: \"r\"|\"h\"} at 100 bytes or under — with service, tier (always pre-scan) and depth (always 1) lifted to the envelope (occurrence_service, occurrence_tier, occurrence_depth) when uniform across every occurrence rather than repeated per row; a search whose results span several services keeps a per-row \"svc\" instead. Definitions keep the fuller {service,symbol,file,line,tier,depth,edge_confidence} shape. Default max is 25 occurrences; the elided block names how to get more. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
+		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. query must be an identifier (\"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true) — a free-text fragment (e.g. \"func (s *\") is refused, naming the three accepted forms. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Each occurrence is rendered compact for the wire — {loc: \"file:line\", text (trimmed to 60 chars), c: \"r\"|\"h\"} at 100 bytes or under — with service, tier (always pre-scan) and depth (always 1) lifted to the envelope (occurrence_service, occurrence_tier, occurrence_depth) when uniform across every occurrence rather than repeated per row; a search whose results span several services keeps a per-row \"svc\" instead. Definitions keep the fuller {service,symbol,file,line,tier,depth,edge_confidence} shape. Default max is 25 occurrences; the elided block names how to get more. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. SB-45: occurrences default to `exact` mode whenever a queried service's last ingest reported typed edges (see staleness_report's typed_edges) — only typed-confirmed (edge_confidence: resolved) mentions are returned, dropping bare text hits; `exact: false` restores every text occurrence regardless of confirmation. `include_heuristic: true` adds the syntax-only text hits back beside the exact ones without turning exact off. A service whose store holds no typed reference sites for this query (no typed edges, or no indexed definition of it there) is named in `degraded` with why and falls back to its unfiltered occurrences, and the response reports `exact_available: false`. A service whose root is unreadable (deleted, unmounted) is likewise named in `degraded` and skipped rather than failing the whole call. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -184,7 +184,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 				},
 				"include_heuristic": map[string]any{
 					"type":        "boolean",
-					"description": "Also list definitions whose name merely CONTAINS the query (\"FooBar\" for \"Foo\"). Default false; occurrences are unaffected.",
+					"description": "Also list definitions whose name merely CONTAINS the query (\"FooBar\" for \"Foo\"), and (SB-45) add back the bare text occurrences exact mode drops. Default false.",
+				},
+				"exact": map[string]any{
+					"type":        "boolean",
+					"description": "SB-45: keep only occurrences the typed pass confirmed (edge_confidence: resolved) — identifier uses, never a comment or doc mention. Defaults to true when at least one queried service's last ingest reported typed edges (staleness_report's typed_edges); false restores every text occurrence. A service with no typed reference sites for this query falls back automatically and is named in degraded.",
 				},
 			},
 			"required": []string{"query"},
@@ -207,8 +211,13 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// definition matching below. It is opt-in because a hit on
 			// "FooBar" for query "Foo" is not a reference to Foo: the L0
 			// oracle counted those separately and they are the definition
-			// half's whole precision loss (docs/bench/README.md).
+			// half's whole precision loss (docs/bench/README.md). SB-45
+			// additively reuses it to add back the bare text occurrences
+			// exact mode drops.
 			IncludeHeuristic bool `json:"include_heuristic"`
+			// Exact (SB-45) is a pointer so "not given" (nil, defaulted
+			// below) is distinguishable from an explicit false.
+			Exact *bool `json:"exact"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "references: invalid args"}
@@ -251,6 +260,25 @@ func registerReferences(s *Server, backend QueryInterface) {
 			CaseInsensitive: p.CaseInsensitive,
 		}
 
+		// SB-45: fetch each queried service's typed edges up front — once,
+		// both to decide exact's default (true when ANY queried service's
+		// typed pass produced edges) and to reuse below instead of asking
+		// twice per service.
+		typedByService := make(map[string][]core.Edge, len(svcs))
+		exactDefault := false
+		for _, svc := range svcs {
+			if typed, tErr := backend.TypedEdges(ctx, svc); tErr == nil {
+				typedByService[svc] = typed
+				if len(typed) > 0 {
+					exactDefault = true
+				}
+			}
+		}
+		exact := exactDefault
+		if p.Exact != nil {
+			exact = *p.Exact
+		}
+
 		type defEntry struct {
 			Service string `json:"service"`
 			Symbol  string `json:"symbol"`
@@ -264,15 +292,31 @@ func registerReferences(s *Server, backend QueryInterface) {
 			EdgeConfidence string `json:"edge_confidence"`
 		}
 
+		// degradedEntry (O36, ADR-014 execute-and-flag): a service this
+		// call could not fully answer for — its root vanished, or (SB-45)
+		// its store holds no typed reference sites to confirm a mention
+		// against — named with why, never silently dropped and never
+		// aborting the whole fleet-wide call.
+		type degradedEntry struct {
+			Service string `json:"service"`
+			Reason  string `json:"reason"`
+		}
+
 		var defs []defEntry
 		var occs []occEntry
+		var degraded []degradedEntry
 		truncated := false
+		exactAvailable := true
 
 		for _, svc := range svcs {
 			// ── definitions: symbol index lookup ─────────────────────────────
 			nodes, err := backend.ListAllSymbols(ctx, svc)
 			if err != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: "references: list symbols " + svc + ": " + err.Error()}
+				// O36: a service whose root vanished (or is otherwise
+				// unreadable) must not fail the whole fleet-wide call —
+				// skip it and name it in degraded.
+				degraded = append(degraded, degradedEntry{Service: svc, Reason: "list symbols: " + err.Error()})
+				continue
 			}
 			var defKeys []string
 			for _, n := range nodes {
@@ -314,7 +358,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 			}
 			sources, err := backend.Sources(ctx, svc)
 			if err != nil {
-				return nil, &rpcError{Code: ErrCodeInternal, Message: "references: sources " + svc + ": " + err.Error()}
+				// O36: same doctrine as ListAllSymbols above — a service
+				// whose sources cannot be discovered degrades, never
+				// aborts the whole call.
+				degraded = append(degraded, degradedEntry{Service: svc, Reason: "sources: " + err.Error()})
+				continue
 			}
 			found, err := references.Find(p.Query, sources, opts)
 			if err != nil {
@@ -323,11 +371,28 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// Typed-edge confirmation for mentions (BD-2): built lazily,
 			// only when this service has both definitions of the query and
 			// typed edges to confirm a mention against.
+			typed := typedByService[svc]
 			var mentionConf func(file string, line int) core.EdgeConfidence
-			if len(defKeys) > 0 && len(found) > 0 {
-				if typed, tErr := backend.TypedEdges(ctx, svc); tErr == nil && len(typed) > 0 {
-					mentionConf = mentionConfidence(nodes, typed, defKeys)
+			if len(defKeys) > 0 && len(typed) > 0 && len(found) > 0 {
+				mentionConf = mentionConfidence(nodes, typed, defKeys)
+			}
+			// SB-45: exact mode keeps only occurrences mentionConf marks
+			// resolved. A service that cannot even attempt confirmation
+			// (no typed edges, or no indexed definition of the query here)
+			// has no typed reference sites to filter to — fall back to its
+			// unfiltered occurrences and say so, rather than silently
+			// returning none for it (execute-and-flag, ADR-014).
+			serviceExact := exact && mentionConf != nil
+			if exact && mentionConf == nil && len(found) > 0 {
+				exactAvailable = false
+				reason := fmt.Sprintf("no typed reference sites for %q in %s", p.Query, svc)
+				switch {
+				case len(typed) == 0:
+					reason += " (no typed edges)"
+				case len(defKeys) == 0:
+					reason += " (no indexed definition)"
 				}
+				degraded = append(degraded, degradedEntry{Service: svc, Reason: reason})
 			}
 			// Append the WHOLE service's matches — never break mid-service —
 			// so totalOccs below is an honest count of what was actually
@@ -339,6 +404,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 				conf := core.EdgeConfidenceHeuristic
 				if mentionConf != nil {
 					conf = mentionConf(occ.File, occ.Line)
+				}
+				if serviceExact && conf != core.EdgeConfidenceResolved && !p.IncludeHeuristic {
+					// Exact mode: drop the bare text hit unless the caller
+					// explicitly asked for heuristic occurrences back too.
+					continue
 				}
 				occs = append(occs, occEntry{
 					Service:        svc,
@@ -413,6 +483,17 @@ func registerReferences(s *Server, backend QueryInterface) {
 			"edge_filter": map[bool]string{true: "all", false: "resolved"}[p.IncludeHeuristic],
 			"truncated":   truncated || el != nil,
 			"by_depth":    withDepthBuckets(infos),
+			// SB-45: whether occurrences answered from the typed pass only.
+			"exact": exact,
+		}
+		if exact {
+			// exact_available is false when at least one scanned service
+			// had no typed reference sites to confirm against and fell
+			// back to its unfiltered occurrences (named in degraded).
+			resp["exact_available"] = exactAvailable
+		}
+		if len(degraded) > 0 {
+			resp["degraded"] = degraded
 		}
 		if len(occs) > 0 {
 			resp["occurrence_tier"] = string(core.TierPreScan)

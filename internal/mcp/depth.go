@@ -58,18 +58,6 @@ func withDepthBuckets(infos []depthInfo) []depthBucket {
 	return out
 }
 
-// edgeConfidence reads the confidence of the (caller → callee) edge in g:
-// resolved when the typed pass confirmed that exact pair, heuristic for a
-// syntax-only edge (callgraph.EdgeInfo.Kind == "").
-func edgeConfidence(g *callgraph.Graph, caller, callee string) core.EdgeConfidence {
-	for _, d := range callgraph.CallersDetail(g, callee) {
-		if d.Key == caller {
-			return core.EdgeConfidenceOf(core.Edge{FromSymbol: caller, ToSymbol: callee, Kind: d.Kind})
-		}
-	}
-	return core.EdgeConfidenceHeuristic
-}
-
 // callerDepths walks the reverse call graph from symbol (full key or bare
 // name) breadth-first and returns every transitive caller keyed by
 // canonical key, with its shortest-path depth (direct caller = 1) and the
@@ -232,44 +220,8 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 	return out
 }
 
-// mentionConfidence returns a lookup that classifies a text mention at
-// (file, line) for the references tool (BD-2): resolved when the symbol
-// enclosing that line has a typed call edge to any of defKeys — the
-// query's definitions in this service — heuristic otherwise. The enclosing
-// symbol is the last indexed symbol in the file that starts at or before
-// the line (most Go definitions carry no end_line, so "last start before"
-// is the honest approximation). Deterministic: per-file symbol lists are
-// sorted by line, then key.
-func mentionConfidence(nodes []core.SymbolNode, typed []core.Edge, defKeys []string) func(file string, line int) core.EdgeConfidence {
-	g := callgraph.Build(nodes)
-	callgraph.AddTypedEdges(g, typed)
-	byFile := map[string][]core.SymbolNode{}
-	for _, n := range nodes {
-		if n.Line > 0 {
-			byFile[n.FilePath] = append(byFile[n.FilePath], n)
-		}
-	}
-	for f := range byFile {
-		ns := byFile[f]
-		sort.Slice(ns, func(i, j int) bool {
-			if ns[i].Line != ns[j].Line {
-				return ns[i].Line < ns[j].Line
-			}
-			return ns[i].Key() < ns[j].Key()
-		})
-	}
-	return func(file string, line int) core.EdgeConfidence {
-		ns := byFile[file]
-		idx := sort.Search(len(ns), func(i int) bool { return ns[i].Line > line }) - 1
-		if idx < 0 {
-			return core.EdgeConfidenceHeuristic
-		}
-		enclosing := ns[idx].Key()
-		for _, def := range defKeys {
-			if edgeConfidence(g, enclosing, def) == core.EdgeConfidenceResolved {
-				return core.EdgeConfidenceResolved
-			}
-		}
-		return core.EdgeConfidenceHeuristic
-	}
-}
+// mentionConfidence is references_tool.go's alias for
+// callgraph.MentionConfidence (moved there in SB-45 so the L0 index oracle
+// can score the same typed-confirmation the tool renders, instead of
+// duplicating it).
+var mentionConfidence = callgraph.MentionConfidence
