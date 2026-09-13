@@ -18,8 +18,8 @@ import (
 // The post-commit refresh used to run a SHELL `fathom ingest --store
 // workspace/db/fleet.sqlite` against the very store the daemon serves — the
 // exact write path O16 rode when a wedged reader replaced a good index with
-// a plausible empty one, and the exact thing CLAUDE.md's Index-first rule
-// forbids ("refresh via the `ingest` MCP tool, never a shell `fathom
+// a plausible empty one, and the exact thing CLAUDE.md's question-shape
+// routing rule forbids ("refresh via the `ingest` MCP tool, never a shell `fathom
 // ingest` against the shared store").
 //
 // This verb routes the refresh through the daemon, which owns the store and

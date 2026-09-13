@@ -212,7 +212,7 @@ func TestReconcileUpgradesUntrackedRegion(t *testing.T) {
 	}
 
 	// Now tracked: a hand edit inside the region is drift, and stays so.
-	if err := os.WriteFile(claudePath, []byte(strings.Replace(s, "the index replaces exploratory grep", "the index replaces exploratory grep (mostly)", 1)), 0o644); err != nil {
+	if err := os.WriteFile(claudePath, []byte(strings.Replace(s, "not to discover them.", "not to discover them (mostly).", 1)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	d = analyzeWiring(root)

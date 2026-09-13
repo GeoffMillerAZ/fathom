@@ -889,11 +889,14 @@ const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then ed
 
 const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
-	"This repo is indexed by fathom as service \"{{SERVICE}}\". Before any Grep/Read\n" +
-	"sweep, resolve where/what/who-calls via the fathom MCP tools:\n" +
-	"`find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,\n" +
-	"`pack_context`, `verify_plan`. Read files to *edit* them, not to discover\n" +
-	"them — the index replaces exploratory grep.\n" +
+	"This repo is indexed by fathom as service \"{{SERVICE}}\". Route by\n" +
+	"question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home\n" +
+	"bench found \"index before any grep\" over-broad): where / who-calls /\n" +
+	"what-breaks / what-governs / what-was-known resolve via the fathom MCP\n" +
+	"tools (`find_symbol`, `references`, `symbol_context`, `outline`,\n" +
+	"`repo_map`, `pack_context`, `verify_plan`); a literal string, a config\n" +
+	"value, or a log line is grep's job, not the index's.\n" +
+	"Read files to *edit* them, not to discover them.\n" +
 	"\n" +
 	openingMovesTable + "\n" +
 	"\n" +

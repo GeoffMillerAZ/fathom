@@ -1,11 +1,14 @@
-<!-- fathom:begin v3 sha256:fc09e0823179adf74114d8df3cf6dab0288aae328dc4a389109e19487478fdca -->
+<!-- fathom:begin v3 sha256:8188aabcf34fc1ad890ef1658465ceb9ed48326413d1509dd85462c0c6f6ef47 -->
 ## fathom code intelligence
 
-This repo is indexed by fathom as service "fathom". Before any Grep/Read
-sweep, resolve where/what/who-calls via the fathom MCP tools:
-`find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,
-`pack_context`, `verify_plan`. Read files to *edit* them, not to discover
-them — the index replaces exploratory grep.
+This repo is indexed by fathom as service "fathom". Route by
+question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home
+bench found "index before any grep" over-broad): where / who-calls /
+what-breaks / what-governs / what-was-known resolve via the fathom MCP
+tools (`find_symbol`, `references`, `symbol_context`, `outline`,
+`repo_map`, `pack_context`, `verify_plan`); a literal string, a config
+value, or a log line is grep's job, not the index's.
+Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):
 - debug/trace: find_symbol -> find_callers/references -> symbol_context

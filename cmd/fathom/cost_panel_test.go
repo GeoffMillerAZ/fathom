@@ -57,8 +57,15 @@ import (
 // and tools/list gives each tool its own independent schema document, so
 // in-document refs save exactly 0 bytes (measured).
 const (
-	agentSurfaceSchemaByteFloor   = 26000
-	agentSurfaceSchemaByteCeiling = 30000
+	agentSurfaceSchemaByteFloor = 26000
+	// agentSurfaceSchemaByteCeiling was 30000 before SB-1..SB-5
+	// (docs/plans/strengths-bench.md): references/read_source/find_symbol
+	// gained longer, more specific descriptions and new response fields
+	// (implementations, elided, occurrence_tier/depth/service, max_bytes),
+	// and five tools gained a "this result IS the answer" sentence — a
+	// measured, deliberate widening (O31/O32's over-payload findings), not
+	// a new tool (still 17, TestNarrowProfileSchemaBytes' own pin).
+	agentSurfaceSchemaByteCeiling = 34000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

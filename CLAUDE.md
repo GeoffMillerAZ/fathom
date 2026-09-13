@@ -16,7 +16,7 @@ Three layers — connector → fusion → query: `docs/architecture.md`, `ADR.md
 | **Gate** — `task validate` (fmt-check, vet, cue-vet, vendor-check, scripts-check, `go test -race`) stays green; `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
 | **Done means proven** — a `docs/plans/*.md` box flips to `[x]` only when `fathom verify` proves it, never on claim | `docs/CLAUDE.md`, `docs/plans/README.md` |
 | **Deploy = `task deploy`, NEVER a raw `cp`** — cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant (deploy signs with the `fathom-dev` identity, then asserts the daemon serves HEAD) | `Taskfile.yml` deploy, `.fathom/observations.md` O10; `docs/dogfood-observations.md` O25 (the incident) |
-| **Index-first** — resolve where/what/who-calls via the fathom MCP tools (`find_symbol`, `references`, `symbol_context`, …) before any Grep/Read sweep; refresh via the `ingest` MCP tool, never a shell `fathom ingest` against the shared store | `docs/guides/fleet-index.md` |
+| **Question-shape routing (SB-7)** — where/who-calls/what-breaks/what-governs/what-was-known resolve via the fathom MCP tools (`find_symbol`, `references`, `symbol_context`, …); a literal string, a config value, or a log line is grep's job; refresh via the `ingest` MCP tool, never a shell `fathom ingest` against the shared store | `docs/guides/fleet-index.md` |
 | **UI = app-kit doctrine** — never hand-write observatory markup; role utilities only; CSS via `task ui:css` | `cmd/fathom/CLAUDE.md` |
 | **Org-agnostic (ADR-011)** — zero org-specific names/hosts/catalogs in code, docs, tests, fixtures; anything org-specific is configuration | `ADR.md` |
 
@@ -74,14 +74,17 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 
-<!-- fathom:begin v3 sha256:fc09e0823179adf74114d8df3cf6dab0288aae328dc4a389109e19487478fdca -->
+<!-- fathom:begin v3 sha256:8188aabcf34fc1ad890ef1658465ceb9ed48326413d1509dd85462c0c6f6ef47 -->
 ## fathom code intelligence
 
-This repo is indexed by fathom as service "fathom". Before any Grep/Read
-sweep, resolve where/what/who-calls via the fathom MCP tools:
-`find_symbol`, `references`, `symbol_context`, `outline`, `repo_map`,
-`pack_context`, `verify_plan`. Read files to *edit* them, not to discover
-them — the index replaces exploratory grep.
+This repo is indexed by fathom as service "fathom". Route by
+question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home
+bench found "index before any grep" over-broad): where / who-calls /
+what-breaks / what-governs / what-was-known resolve via the fathom MCP
+tools (`find_symbol`, `references`, `symbol_context`, `outline`,
+`repo_map`, `pack_context`, `verify_plan`); a literal string, a config
+value, or a log line is grep's job, not the index's.
+Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):
 - debug/trace: find_symbol -> find_callers/references -> symbol_context

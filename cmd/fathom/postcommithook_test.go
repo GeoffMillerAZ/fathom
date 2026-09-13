@@ -13,7 +13,8 @@ import (
 // must go through the daemon — the process that owns the shared store and
 // carries its own read grant. A shell ingest against that same store is the
 // write path O16 rode when a wedged reader replaced a good index with a
-// plausible empty one, and it is what CLAUDE.md's Index-first rule forbids.
+// plausible empty one, and it is what CLAUDE.md's question-shape routing
+// rule forbids.
 func TestPostCommitHookPrefersDaemon(t *testing.T) {
 	var called struct {
 		tool    string

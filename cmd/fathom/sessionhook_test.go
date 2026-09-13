@@ -28,7 +28,7 @@ func TestSessionContext_IndexedService(t *testing.T) {
 	srv := fakeDaemon()
 	defer srv.Close()
 	ctx := buildSessionContext(srv.URL, "fathom")
-	for _, want := range []string{`service "fathom"`, "7093", "BEFORE any Grep", "find_symbol"} {
+	for _, want := range []string{`service "fathom"`, "7093", "Route by question shape", "find_symbol"} {
 		if !strings.Contains(ctx, want) {
 			t.Errorf("indexed context missing %q:\n%s", want, ctx)
 		}
