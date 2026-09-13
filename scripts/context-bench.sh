@@ -16,14 +16,20 @@
 #     authority boundary — memory may recall, never assert a code fact),
 #     so a bench of code discovery must not let the treatment arm answer
 #     from a prior session's notes. Documented in docs/bench/README.md.
+#   - arm "full":   the realistic arm (SB-6, docs/plans/strengths-bench.md):
+#     the SAME fathom MCP surface as arm "fathom" PLUS Bash/Read/Grep/Glob
+#     — no artificial tool-starvation, so a session can mix index calls
+#     with a plain grep or read exactly as an unconstrained agent would.
+#     Talks to the same fathom daemon as arm "fathom" and its cells key on
+#     the fathom commit the same way (arm_surface = FATHOM_ARM_SURFACE).
 #   - arm "grep":   may use ONLY grep/find/cat via Bash — never Read, never
 #     any MCP tool.
 #   - arm "none":   NO tools at all (the memorisation floor, PB-9). A task
 #     this arm passes in >= 2 of 3 trials is `leaked` under the corpus's
 #     committed leak_rule and leaves the verdict; the ledger row lists it.
-# Both tool arms score real, non-fabricated runs when the fathom daemon is
-# reachable; see the honest-degradation note below for what happens when
-# it is not.
+# All tool arms score real, non-fabricated runs when the fathom daemon is
+# reachable (arm "grep" needs no daemon); see the honest-degradation note
+# below for what happens when it is not.
 #
 # Methodology notes (read before trusting the numbers):
 #   - Neither arm uses --bare or --safe-mode: --bare forces API-key auth
@@ -99,6 +105,7 @@
 # Usage:
 #   scripts/context-bench.sh                       # every task, arms "fathom grep"
 #   scripts/context-bench.sh --arms 'fathom grep none'
+#   scripts/context-bench.sh --arms 'full grep'    # the realistic arm (SB-6): fathom MCP + Bash/Read/Grep
 #   scripts/context-bench.sh --tasks <file>        # override the corpus path
 #   scripts/context-bench.sh --repeat 3            # three trials per cell
 #   scripts/context-bench.sh --resume <run-dir>    # fill the gaps of an earlier run
@@ -158,7 +165,7 @@ REUSE_CELLS=1
 
 usage() {
   cat >&2 <<USAGE
-usage: $(basename "$0") [--arms 'fathom grep none'] [--tasks <path>] [--repeat N] [--ledger <path>]
+usage: $(basename "$0") [--arms 'fathom grep none full'] [--tasks <path>] [--repeat N] [--ledger <path>]
           [--resume <run-dir>] [--scoring substring|precision] [--criterion <id>] [--stream]
           [--subject-root <dir>] [--service <id>] [--fathom-url <url>] [--prompt-subject <text>]
           [--scratch-daemon] [--env <cap,cap>] [--only '<id id>'] [--scope full|targeted]
@@ -314,16 +321,18 @@ if [ "$SCRATCH_DAEMON" -eq 1 ]; then
 fi
 
 # ─── fathom-arm reachability preflight (honest degradation, B1-3) ─────────
+# arm "full" talks to the same daemon as arm "fathom" (SB-6), so either
+# name in --arms triggers this same preflight.
 FATHOM_REACHABLE=0
-if echo "$ARMS" | grep -qw fathom; then
+if echo "$ARMS" | grep -qw fathom || echo "$ARMS" | grep -qw full; then
   if curl -sS -m 5 -o /dev/null -w '' "$FATHOM_HTTP_URL/rpc/agent" \
       -X POST -H 'Content-Type: application/json' \
       -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}'; then
     FATHOM_REACHABLE=1
-    echo "context-bench: fathom daemon reachable at $FATHOM_HTTP_URL/rpc/agent — arm 'fathom' will run for real"
+    echo "context-bench: fathom daemon reachable at $FATHOM_HTTP_URL/rpc/agent — arms 'fathom'/'full' will run for real"
   else
     echo "context-bench: WARNING — fathom daemon NOT reachable at $FATHOM_HTTP_URL/rpc/agent" >&2
-    echo "context-bench: degrading honestly — arm 'fathom' is SKIPPED (not faked); the other arms still run for real" >&2
+    echo "context-bench: degrading honestly — arms 'fathom'/'full' are SKIPPED (not faked); the other arms still run for real" >&2
   fi
 fi
 
@@ -372,6 +381,12 @@ GREP_ALLOWED="Bash(grep:*) Bash(find:*) Bash(cat:*)"
 GREP_DISALLOWED="Read Grep Glob Task WebSearch WebFetch Write Edit NotebookEdit"
 NONE_ALLOWED=""
 NONE_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch NotebookEdit"
+# arm "full" (SB-6): the realistic arm — the same fathom MCP surface as arm
+# "fathom" plus Bash/Read/Grep/Glob, no artificial tool-starvation. Still
+# refuses ingest/memory_search (same reasons as arm "fathom") and every
+# mutating/agentic tool the other arms also refuse.
+FULL_ALLOWED="$FATHOM_ALLOWED Bash Read Grep Glob"
+FULL_DISALLOWED="Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest mcp__fathom__memory_search"
 
 # run_with_timeout OUTFILE CMD...  — macOS's base install has no `timeout(1)`;
 # this is the standard background-watchdog substitute. Runs CMD in the
@@ -407,7 +422,13 @@ run_arm() {
   fi
 
   local surface=""
-  if [ "$arm" = "fathom" ]; then surface="$FATHOM_ARM_SURFACE"; fi
+  # SB-6: arm "full" keys its cells on the fathom commit exactly like arm
+  # "fathom" — both arms talk to the same daemon, so a fathom change that
+  # moves one moves the other.
+  case "$arm" in
+    fathom) surface="$FATHOM_ARM_SURFACE" ;;
+    full) surface="$FATHOM_ARM_SURFACE" ;;
+  esac
 
   # BP-4: an earlier run may already have bought this exact cell.
   if [ "$REUSE_CELLS" -eq 1 ]; then
@@ -468,6 +489,7 @@ fi
 FATHOM_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT using ONLY the fathom MCP tools available to you; the subject is indexed as service \"$SERVICE\". Do not use Bash, Read, Grep, Glob, or any other tool — solve the task purely through fathom tool calls. $ANSWER_FORM"
 GREP_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT. You may ONLY use grep, find, and cat, invoked via the Bash tool — no Read tool, no Grep tool, no Glob tool, no MCP tools of any kind. $ANSWER_FORM"
 NONE_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT from your own knowledge only. You have no tools: do not attempt to read files, run commands, or call any tool. If you do not know, say so. $ANSWER_FORM"
+FULL_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT; the subject is indexed as service \"$SERVICE\". You have the fathom MCP tools AND Bash/Read/Grep/Glob available — use whichever gets you to a confident answer fastest. $ANSWER_FORM"
 
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
@@ -488,14 +510,19 @@ while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
     if echo "$ARMS" | grep -qw none; then
       run_arm "$task_id" "$prompt" none "$NONE_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$NONE_ALLOWED" "$NONE_DISALLOWED" "$trial" || true
     fi
+    if echo "$ARMS" | grep -qw full; then
+      if [ "$FATHOM_REACHABLE" -eq 1 ]; then
+        run_arm "$task_id" "$prompt" full "$FULL_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FULL_ALLOWED" "$FULL_DISALLOWED" "$trial" || true
+      fi
+    fi
     trial=$((trial + 1))
   done
 done < <("$SCORER" tasks -tasks "$TASKS" -env "$ENV")
 
 echo "context-bench: $TASK_COUNT runnable task(s) x $REPEAT trial(s) per arm (env='$ENV', scope=$SCOPE); cells run=$CELLS_RUN kept=$CELLS_KEPT borrowed=$CELLS_BORROWED"
 
-if [ "$FATHOM_REACHABLE" -eq 0 ] && echo "$ARMS" | grep -qw fathom; then
-  echo "context-bench: arm 'fathom' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2
+if [ "$FATHOM_REACHABLE" -eq 0 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARMS" | grep -qw full; }; then
+  echo "context-bench: arm 'fathom'/'full' rows are ABSENT from this run's results (daemon unreachable) — do not report them as measured" >&2
 fi
 
 # ─── aggregate + render (only if we have anything to aggregate) ──────────
