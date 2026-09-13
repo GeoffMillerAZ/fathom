@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The WorktreeCreate hook is withdrawn (`HP-29` refused, `O34`).** Claude Code reads a
+registered WorktreeCreate hook's stdout as the path of the worktree the hook was meant to
+create, so fathom's advisory there blocked every worktree-isolated agent spawn. `fathom init`
+and `fleet reconcile` no longer write the entry (reconcile removes it as drift); the
+worktree line now rides on `SubagentStart` when a subagent starts inside a linked worktree.
+Advisory events that document no `additionalContext` (CwdChanged, Setup, FileChanged,
+ConfigChange, InstructionsLoaded) emit the top-level `systemMessage` instead.
+
+**Vision 27 / ADR-033: the strengths matrix.** Every claim fathom makes is registered as a
+matrix row with its alternative, an oracle fathom does not own, and a predicted win and
+no-effect written before spend; `internal/scenariobench` carries the type contract.
+
 **The first replicated home bench, read honestly (`BP-25`, `BC-14`, `BP-38..40`, `O31`,
 `O32`, ADR-032 as amended 2026-09-13).** `docs/bench/ledger.jsonl` carries run
 20260913T002832Z under H2-1 and H2-3: FAIL on cost either way (31/33 successes to grep's
