@@ -163,6 +163,22 @@ func restrictedToolsList(allowed []string) []string {
 // gets `--permission-mode default`, since "auto" (Claude Code's default)
 // approves outside an allow-list too — 35 writes from
 // allowedTools:[Read,Grep,Bash] arms in the second reading.
+// sessionAllowList is what --allowedTools names for req: the arm's own
+// allow-list when it has one (already carrying mcp__<server> entries from
+// RenderArm), else the restricted tool list plus mcp__<server> for each of
+// the arm's servers — sorted, so the argv is stable.
+func sessionAllowList(req SessionRequest) []string {
+	if len(req.AllowedTools) > 0 {
+		return sortedCopy(req.AllowedTools)
+	}
+	out := restrictedToolsList(nil)
+	for _, name := range req.MCPServerNames {
+		out = append(out, "mcp__"+name)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 	args := []string{
 		"-p", req.Prompt,
@@ -180,10 +196,18 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 	if req.SystemAppend != "" {
 		args = append(args, "--append-system-prompt", req.SystemAppend)
 	}
-	if len(req.AllowedTools) > 0 {
-		allowed := sortedCopy(req.AllowedTools)
-		args = append(args, "--allowedTools", strings.Join(allowed, " "))
-		args = append(args, "--permission-mode", "default")
+	// Every session runs under --permission-mode default with an explicit
+	// allow-list: an arm's own list when it has one, else every tool the
+	// session was given plus mcp__<server> for each of its servers. Under
+	// --restricted a session with no allow-list had every Bash call answered
+	// "This command requires approval" (-p cannot approve), and without
+	// --add-dir even mkdir inside the worktree was refused (reuse-pilot-2,
+	// 2026-09-13) — the clean room must deny the operator's hooks, never the
+	// agent's own hands.
+	args = append(args, "--allowedTools", strings.Join(sessionAllowList(req), " "))
+	args = append(args, "--permission-mode", "default")
+	if req.Worktree != "" {
+		args = append(args, "--add-dir", req.Worktree)
 	}
 	if len(req.DisallowedTools) > 0 {
 		disallowed := sortedCopy(req.DisallowedTools)

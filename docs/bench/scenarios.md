@@ -326,7 +326,7 @@ command/code-running tool outright. `buildClaudeArgs` still adds
 `allowed_tools: [Read, Grep, Bash]` arms in the second reading).
 `cleanRoomEnv`'s only remaining job is `FATHOM_THREADS`, a per-cell
 `threads.jsonl` under the cell's own `CellDir`, so two tasks sharing a
-worktree basename never share a thread scope either (F5).
+worktree basename never share a thread scope either (F5). Every session also runs under `--permission-mode default` with an explicit allow-list — the arm's own when it has one, else every tool the session was given plus `mcp__<server>` for each of its servers — and `--add-dir <worktree>`; without those, a session under `--restricted` had every shell command answered "requires approval" and could not create a directory in its own worktree (reuse-pilot-2, 2026-09-13). Raw transcripts live under `<raw-dir>/<run-id>/` so a rerun never reads another run's sessions.
 
 **First design, replaced.** RC-6 first tried a scratch `CLAUDE_CONFIG_DIR`
 per run, with a stripped `~/.claude.json`/`~/.claude/settings.json` copied

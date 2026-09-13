@@ -524,7 +524,12 @@ type SessionRequest struct {
 	// settings never load. Empty only for a worktree RenderArm never
 	// touched (a test constructing a SessionRequest by hand); buildClaudeArgs
 	// simply omits `--settings` in that case.
-	SettingsPath string
+	// MCPServerNames are the rendered arm's server names (wt.Arm's
+	// ArmFiles.MCPServerNames): the harness allow-lists `mcp__<name>` for
+	// each when the arm carries no allow-list of its own, so a wired arm's
+	// tools never prompt under --permission-mode default.
+	MCPServerNames []string
+	SettingsPath   string
 	// AllowedTools / DisallowedTools are the RENDERED lists (wt.Arm's
 	// ArmFiles, not Arm's own) — ArmFiles.AllowedTools additionally
 	// carries "mcp__<server>" for every MCP server this arm declares, so

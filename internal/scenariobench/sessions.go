@@ -27,6 +27,10 @@ type RunOptions struct {
 	Model  string
 	RawDir string
 	Env    map[string]string
+	// RunID keys the raw transcript directory (RawDir/<RunID>/…) so a rerun
+	// never reads or overwrites another run's sessions (reuse-pilot-2 read
+	// stale worker transcripts from the round before, 2026-09-13).
+	RunID string
 }
 
 // scenarioContinuationPrompt is the fixed, documented prompt every session
@@ -250,7 +254,11 @@ func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStar
 var factsReusedHook func(session *SessionResult, pointers []string)
 
 func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) (SessionRequest, error) {
-	rawDir := filepath.Join(opts.RawDir, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+	rawBase := opts.RawDir
+	if opts.RunID != "" {
+		rawBase = filepath.Join(opts.RawDir, opts.RunID)
+	}
+	rawDir := filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
 	env, err := sessionEnv(wt, opts)
 	if err != nil {
 		return SessionRequest{}, fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, index, err)
@@ -271,6 +279,7 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 		SettingsPath:    wt.Arm.SettingsPath,
 		AllowedTools:    wt.Arm.AllowedTools,
 		DisallowedTools: wt.Arm.DisallowedTools,
+		MCPServerNames:  wt.Arm.MCPServerNames,
 	}, nil
 }
 

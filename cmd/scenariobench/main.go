@@ -524,6 +524,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// session env by RunSessions itself, keyed on wt.CellDir.
 	sessionsStart := time.Now()
 	sessions, err := scenariobench.RunSessions(ctx, harness, cp.task, cp.arm, arm, wt, scenariobench.RunOptions{
+		RunID: runID,
 		Trial: cp.trial, Model: model, RawDir: rawDir,
 	})
 	if err != nil {

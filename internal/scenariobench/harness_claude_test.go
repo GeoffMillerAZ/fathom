@@ -41,7 +41,7 @@ func TestBuildClaudeArgs_OmitsEmptyOptionalFlags(t *testing.T) {
 	req := SessionRequest{Prompt: "p"}
 	args := buildClaudeArgs(req, "/tmp/mcp.json")
 	joined := strings.Join(args, " ")
-	for _, absent := range []string{"--append-system-prompt", "--allowedTools", "--disallowedTools", "--max-turns", "--model", "--permission-mode"} {
+	for _, absent := range []string{"--append-system-prompt", "--disallowedTools", "--max-turns", "--model", "--add-dir"} {
 		if strings.Contains(joined, absent) {
 			t.Errorf("expected %q to be omitted when unset, got %q", absent, joined)
 		}
@@ -61,11 +61,20 @@ func TestBuildClaudeArgs_AllowListGetsPermissionModeDefault(t *testing.T) {
 	}
 }
 
-func TestBuildClaudeArgs_NoAllowListOmitsPermissionMode(t *testing.T) {
-	req := SessionRequest{Prompt: "p"}
-	args := buildClaudeArgs(req, "/tmp/mcp.json")
-	if strings.Contains(strings.Join(args, " "), "--permission-mode") {
-		t.Errorf("expected no --permission-mode with an empty allow-list, got %v", args)
+// TestBuildClaudeArgs_NoAllowListStillAllowsEverySessionTool: an arm with
+// no allow-list of its own is not testing a restriction, so every tool the
+// session was given — and mcp__<server> for each of its servers — is
+// allow-listed under --permission-mode default, and --add-dir names the
+// worktree. Under --restricted, a session without these had every Bash
+// call answered "This command requires approval" and mkdir inside its own
+// worktree refused (reuse-pilot-2, 2026-09-13).
+func TestBuildClaudeArgs_NoAllowListStillAllowsEverySessionTool(t *testing.T) {
+	req := SessionRequest{Prompt: "p", Worktree: "/wt/cell", MCPServerNames: []string{"fathom"}}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	for _, want := range []string{"--allowedTools Bash Edit Glob Grep MultiEdit NotebookEdit Read TodoWrite Write mcp__fathom", "--permission-mode default", "--add-dir /wt/cell"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("expected %q in %q", want, joined)
+		}
 	}
 }
 
