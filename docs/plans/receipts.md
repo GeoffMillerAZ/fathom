@@ -28,6 +28,13 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 - [ ] The home bench reads `trusted_without_recheck`: fathom calls not followed within three turns by a Grep/Read/Bash on the same file or symbol, per task and per tool {id: RC-17, symbol: TrustedWithoutRecheck, package: internal/contextbench}
 - [ ] The home corpus carries `min_trials` per task — five on the tasks flaky in two of three runs (H1-T02, T07, T08, T13), three elsewhere, leaked tasks excluded from the criterion as before {id: RC-18, oracle: lexical, path: testdata/contextbench/tasks-home.json, pattern: min_trials}
 
+## Wave 0 addendum — what the review of the merged fix found (O41 addendum)
+
+- [ ] `RenderArm` never replaces the hooks `fathom init` wrote: for a wired arm the rendered settings file is the one the init wrote, asserted to carry a SessionStart entry and absolute hook commands, and the nonexistent `obligations-hook` stanza is gone {id: RC-54, symbol: assertWiredHooksPresent, package: internal/scenariobench}
+- [ ] Hooks are instrument truth too: `hook_response` events are parsed into `hooks_fired`, and a wired session with no SessionStart hook response is an instrument error — the cell is LOST, as it is when any session (not only every session) carries one {id: RC-53, symbol: hooksInstrumentError, package: internal/scenariobench}
+- [ ] The index carries a symbol's end line for Go, C, C++, C#, Java, Lua, PHP, Rust, Scala, CUE, HCL, CMake and Templ, so `outline` renders `end_line`, the search receipt attributes a hit to the symbol whose span holds it, and the coverage join no longer guesses a boundary {id: RC-52, symbol: EndLine, package: internal/extractor/treesitter}
+- [-] End lines for the wazero tree-sitter engine's languages (Python, JavaScript, TypeScript, Ruby), SQL, GraphQL and Protocol Buffers {id: RC-55, disposition: deferred, reason: "the engine's node carries a start row only — an end row needs a guest call on a hot path; the other three record no end position", trigger: "a coverage or search consumer on one of those languages, or the engine gains an end row"}
+
 ## Wave 1 — receipts on the answer (F7–F9)
 
 - [ ] `find_callers`, `outline`, `symbol_context`, `repo_map` and `staleness_report` render under the same 16 KB budget as `references`: elide, count, and name the refinement in the elision line {id: RC-19, symbol: fitToolBudget, package: internal/mcp}
