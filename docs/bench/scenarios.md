@@ -172,6 +172,15 @@ the scratch daemon stops afterwards (`pgrep -fl serve-http`). Five driver
 defects were found this way on 2026-09-13 (O35) before a dollar of pilot
 spend.
 
+**Two real dry cells before the pilots.** The replayed cell proves the
+driver; it cannot prove the session. Run one real session per arm on a
+lookup task (`-only H1-T10 -trials 1 -model claude-haiku-4-5-20251001`,
+about a cent each) and read each cell's `mcp_servers`, `hooks_fired` and
+`surface_calls`; then one real session on a change-shaped task and check
+its transcript for "requires approval" or "was blocked" — the first pilots
+on the clean room lost fifty cells to a denied `mkdir` that no dry cell had
+exercised (O43).
+
 ## Repeat it yourself
 
 **What a stranger needs:** Go (the module's version — `go.mod`), the

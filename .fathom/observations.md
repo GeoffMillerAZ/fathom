@@ -873,3 +873,16 @@ triage if it matters.
 - **Fix:** `fathom init --hooks-scope project` (and `FATHOM_HOOKS_SCOPE=project`) writes every fathom hook at project scope regardless of user scope; the scenario driver passes it; branch fix-g.
 - **Status:** fix in flight (fix-g)
 - **Impact:** every wired scenario cell of both rounds had no fathom hooks under the clean room; adopters running project-only settings (CI, --restricted) get a silently hook-less wiring.
+
+### O43 — First pilots on the --restricted clean room: every cell FAILED on both arms and the wired planners hit max_turns without writing a plan; transcripts show 'This command requires approval' on every Bash call (no allow-list ⇒ default mode prompts ⇒ -p denies) and 'mkdir in <worktree>/docs/plans was blocked … may only create directories in the allowed working directories' (no --add-dir). The fake-harness dry cell and a lookup-only real dry cell both passed — neither exercises a shell command or a write.
+
+- **Symptom:** First pilots on the --restricted clean room: every cell FAILED on both arms and the wired planners hit max_turns without writing a plan; transcripts show 'This command requires approval' on every Bash call (no allow-list ⇒ default mode prompts ⇒ -p denies) and 'mkdir in <worktree>/docs/plans was blocked … may only create directories in the allowed working directories' (no --add-dir). The fake-harness dry cell and a lookup-only real dry cell both passed — neither exercises a shell command or a write.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (buildClaudeArgs --restricted clean room)
+  - **Expected:** The clean room denies the operator's hooks and plugins, never the agent's own tools inside its worktree.
+  - **Actual:** Both arms crippled equally; 50 cells (reuse-pilot-2, guards-pilot-4, public-pilot-3) produced under it, quarantined to workspace/artifacts/scenariobench/cells-void-clean-room/; ≈ $9 spent.
+  - **Repro:** claude -p --restricted --settings s.json --tools Bash,Write --mcp-config m.json --strict-mcp-config (no --allowedTools, no --add-dir) in a git worktree: ask it to mkdir -p docs/plans and write a file
+- **Root cause:** `--permission-mode default` was passed only with an allow-list; an arm without one ran under the default mode with nothing pre-approved, and `--restricted` confines file tools to the working directories it is told about — the worktree was never named with `--add-dir`.
+- **Fix:** 17f6345 — every session gets `--allowedTools` (the arm's list, else every session tool plus `mcp__<server>`), `--permission-mode default` and `--add-dir <worktree>`; raw transcripts keyed by run id. Discipline: the real dry cell must include a change-shaped task (RC-43 restated).
+- **Status:** fixed; pilots rerun
+- **Impact:** ≈ $9 and one hour; no reading was published from the void cells.

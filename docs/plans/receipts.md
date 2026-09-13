@@ -73,7 +73,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 
 ## Wave 5 — the reruns (pilot tier) and the second reading
 
-- [ ] (op) Dry cells on every arm show `surface_calls > 0` for fathom, gopls, Serena and graphify before any spend; the runbook's dry-cell section records them {id: RC-43, skip_test: true, skip: "operator spend; evidence is docs/bench/scenarios.md's dry-cell section"}
+- [ ] (op) Dry cells before any spend: one real session per arm on a lookup task shows the server connected and, where the agent reaches for it, `surface_calls > 0`; and one real session on a change-shaped task proves the agent can run a shell command, create a directory and write a file inside its worktree (a replayed session catches neither — O43); the runbook's dry-cell section records both {id: RC-43, skip_test: true, skip: "operator spend; evidence is docs/bench/scenarios.md's dry-cell section"}
 - [ ] (op) vs-pilot-2: the lookups across five arms with tools present and stanzas, and the repaired freshness task (SB-51); M6 and M7 written from it {id: RC-44, skip_test: true, skip: "operator spend; evidence is the ledger rows with surface_calls > 0", needs: RC-43}
 - [ ] (op) guards-pilot-4 on both corpora with tools present, n=2, rule readings on the rows; M1 written as a rate {id: RC-45, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: RC-43}
 - [ ] (op) public-pilot-3 on 10016, 10043 and 10072 with the plan-grammar instruction (SB-53); M2, M3 and M4 written from it {id: RC-46, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: RC-43}
