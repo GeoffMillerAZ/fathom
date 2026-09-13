@@ -156,6 +156,7 @@ PROMPT_SUBJECT="the fathom codebase"
 SCRATCH_DAEMON=0
 SCORING="substring"
 CRITERION=""
+TREATMENT="fathom"
 STREAM=0
 ENV_SET=0
 ENV=""
@@ -183,6 +184,7 @@ while [ "$#" -gt 0 ]; do
     --resume) RESUME_DIR="$2"; shift 2 ;;
     --scoring) SCORING="$2"; shift 2 ;;
     --criterion) CRITERION="$2"; shift 2 ;;
+    --treatment) TREATMENT="$2"; shift 2 ;;
     --stream) STREAM=1; shift ;;
     --subject-root) SUBJECT_ROOT="$(cd "$2" && pwd)" || exit 2; shift 2 ;;
     --service) SERVICE="$2"; shift 2 ;;
@@ -393,9 +395,32 @@ FULL_DISALLOWED="Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__in
 # subject root, redirects its stdout to OUTFILE (stderr to OUTFILE.stderr),
 # returns CMD's exit code, or 124 (GNU timeout's convention) if the
 # watchdog had to kill it.
+# Sessions run in SESSION_ROOT, an export of the subject's tracked tree with
+# .claude/settings.json removed: a subject that is itself a fathom-wired
+# repo carries hooks (the Stop verify gate, obligations) that otherwise fire
+# INSIDE the bench session and replace the answer with a reply to the hook
+# (the 2026-09-13 `full` arm answered a stop-hook message about a plan file,
+# not the question). The tracked tree is also what a stranger's clone has —
+# no workspace/ artifacts for grep to stumble on.
+prepare_session_root() {
+  local sha
+  sha="$(git -C "$SUBJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
+  SESSION_ROOT="$ROOT/workspace/tmp/bench-subject-$sha"
+  if [ ! -d "$SESSION_ROOT" ]; then
+    mkdir -p "$SESSION_ROOT"
+    if git -C "$SUBJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
+      git -C "$SUBJECT_ROOT" archive HEAD | tar -x -C "$SESSION_ROOT"
+    else
+      cp -R "$SUBJECT_ROOT"/. "$SESSION_ROOT"/
+    fi
+    rm -f "$SESSION_ROOT/.claude/settings.json" "$SESSION_ROOT/.claude/settings.local.json"
+  fi
+  echo "context-bench: sessions run in $SESSION_ROOT (tracked tree at $sha, hooks removed)"
+}
+
 run_with_timeout() {
   local outfile="$1"; shift
-  ( cd "$SUBJECT_ROOT" && exec "$@" ) < /dev/null > "$outfile" 2>"$outfile.stderr" &
+  ( cd "$SESSION_ROOT" && exec "$@" ) < /dev/null > "$outfile" 2>"$outfile.stderr" &
   local pid=$!
   ( sleep "$TIMEOUT" && kill -TERM "$pid" 2>/dev/null ) &
   local watchdog=$!
@@ -491,6 +516,7 @@ GREP_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT
 NONE_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT from your own knowledge only. You have no tools: do not attempt to read files, run commands, or call any tool. If you do not know, say so. $ANSWER_FORM"
 FULL_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT; the subject is indexed as service \"$SERVICE\". You have the fathom MCP tools AND Bash/Read/Grep/Glob available — use whichever gets you to a confident answer fastest. $ANSWER_FORM"
 
+prepare_session_root
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt; do
   if [ -n "$ONLY" ] && ! echo " $ONLY " | grep -q " $task_id "; then
@@ -558,7 +584,7 @@ if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('
   if [ "$LEDGER_EXPLICIT" -eq 1 ]; then
     LEDGER_FLAGS=(-ledger-explicit)
   fi
-  "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" \
+  "$SCORER" ledger -tasks "$TASKS" -results "$RESULTS_DIR" -ledger "$LEDGER" -treatment "$TREATMENT" \
     -run-id "$TS" -commit "$COMMIT" -model "$MODEL" -arms "$ARMS" -repeat "$REPEAT" -env "$ENV" \
     -scope "$SCOPE" -scoring "$SCORING" -raw "$RAW_DIR" -only "$ONLY" \
     -artifacts "$ARTIFACTS_DIR" "${LEDGER_FLAGS[@]}" \
