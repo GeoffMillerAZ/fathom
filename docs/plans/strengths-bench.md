@@ -75,6 +75,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 
 - [ ] A second guards corpus whose rules live ONLY outside the instruction files — ADR sections, plan rows, design docs the compiled layer indexes and a notes file does not — derived from `ADR.md` and `docs/design/*.md` the way `guards-fathom.json` was from `invariants.md`; predictions per arm; it is the M1 win condition the first corpus could not reach {id: SB-49, oracle: lexical, path: testdata/scenariobench/guards-adr.json, pattern: "\"rule\""}
 
+- [ ] `callgraph.Build`'s ambiguous-name fallback is O(calls × nodes) and is why a cold-watermark call still costs 13–54 s after the memo fix (O33): index candidates by bare name once per build so resolution is O(calls); `verify_plan` cold under 5 s on this repo, recorded in the commit {id: SB-50, symbol: resolveAmbiguousCallees, package: internal/analysis/callgraph}
+
 ## Wave 7 — the record
 
 - [ ] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
