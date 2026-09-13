@@ -129,6 +129,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 
 	files, err := RenderArm(renderedArm, wtPath)
 	if err != nil {
+		_ = StopWorktree(&wt) // never leave a scratch daemon behind (two did, 2026-09-13)
 		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
 	}
 	wt.Arm = files
@@ -136,6 +137,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	if arm.Wired && arm.CompileLayers {
 		cost, err := compileLayers(ctx, root, task, wt)
 		if err != nil {
+			_ = StopWorktree(&wt)
 			return Worktree{}, fmt.Errorf("preparing subject: compiling layers: %w", err)
 		}
 		wt.CompileCost = cost

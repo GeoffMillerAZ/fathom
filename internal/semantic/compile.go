@@ -343,16 +343,32 @@ sectionLoop:
 			drafts, usage, err := c.compileSection(ctx, sec, systemPrompt)
 			run.TokensIn += usage.InputTokens
 			run.TokensOut += usage.OutputTokens
+			if err != nil && ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+				// One retry after a short pause: a harness that hit a rate
+				// limit or printed a non-envelope line usually answers the
+				// second time (the 2026-09-13 scenario dry cells failed one
+				// section of ~130 on two different runs, a different section
+				// each time).
+				time.Sleep(compileRetryPause)
+				var usage2 llmclient.Usage
+				drafts, usage2, err = c.compileSection(ctx, sec, systemPrompt)
+				run.TokensIn += usage2.InputTokens
+				run.TokensOut += usage2.OutputTokens
+			}
 			if err != nil {
-				// A malformed/truncated model response poisons only its own
-				// section: count it, keep the section's prior claims, and
-				// move on — one bad response must never abort an 88-section
-				// corpus. Anything else (auth, network, context) aborts.
-				if errors.Is(err, structured.ErrTruncated) || errors.Is(err, structured.ErrMalformed) || isDecodeError(err) {
-					run.SectionsFailed++
-					continue
+				// A section whose answer never arrived poisons only its own
+				// section: count it, name it, keep the section's prior
+				// claims, and move on — one bad response must never abort
+				// an 88-section corpus. Only a cancelled or expired context
+				// aborts; a run in which NOTHING compiled fails at the end.
+				if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+					return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
 				}
-				return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
+				run.SectionsFailed++
+				if len(run.SectionErrors) < maxSectionErrors {
+					run.SectionErrors = append(run.SectionErrors, fmt.Sprintf("%s: %v", sec.Subject, firstLine(err.Error())))
+				}
+				continue
 			}
 			run.SectionsCompiled++
 			recompiledSubjects = append(recompiledSubjects, sec.Subject)
@@ -392,6 +408,9 @@ sectionLoop:
 	run.ClaimsEmitted = len(newClaims)
 	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)
+	if run.SectionsCompiled == 0 && run.SectionsFailed > 0 {
+		return run, fmt.Errorf("semantic: compile: every section that needed the model failed (%d); first: %s", run.SectionsFailed, run.SectionErrors[0])
+	}
 	run.DurationMS = now().Sub(started).Milliseconds()
 
 	if in.DryRun {
@@ -923,4 +942,17 @@ func isDecodeError(err error) bool {
 	var syn *json.SyntaxError
 	var typ *json.UnmarshalTypeError
 	return errors.As(err, &syn) || errors.As(err, &typ) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
+// compileRetryPause is the wait before a section's single retry.
+const compileRetryPause = 3 * time.Second
+
+// maxSectionErrors bounds how many failed sections a run names verbatim.
+const maxSectionErrors = 10
+
+func firstLine(s string) string {
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		return s[:i]
+	}
+	return s
 }

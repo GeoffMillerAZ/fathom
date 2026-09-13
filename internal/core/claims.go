@@ -227,10 +227,13 @@ type CompileRun struct {
 	DurationMS       int64
 	SectionsTotal    int // sections in the corpus
 	SectionsCompiled int // sections that missed the digest gate (spent tokens)
-	SectionsFailed   int // sections skipped for a malformed/truncated LLM response
-	ClaimsEmitted    int
-	ClaimsRejected   int // failed compile-time anchor/scope verification
-	RanAt            time.Time
+	SectionsFailed   int // sections skipped because the model's answer never arrived usable (after one retry)
+	// SectionErrors names the first failed sections ("subject: error"),
+	// capped, so a partial compile says what it left out.
+	SectionErrors  []string `json:"section_errors,omitempty"`
+	ClaimsEmitted  int
+	ClaimsRejected int // failed compile-time anchor/scope verification
+	RanAt          time.Time
 
 	// Refused is true when the run's pre-flight cost estimate exceeded the
 	// layer's max_usd_per_run budget: the run never started (no LLM calls,
