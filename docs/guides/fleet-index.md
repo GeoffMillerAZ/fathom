@@ -55,10 +55,14 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
 
 1. **Index first.** Resolve where / what / who-calls via fathom
    (`find_symbol`, `query_symbols`, `references`, `find_callers`,
-   `symbol_context`, `outline`, `repo_map`, `pack_context`, `obligations`)
-   for the questions only an index answers — where, who-calls, what
-   breaks, what governs, what was known; a literal string is still grep's
-   (vision 27 §8) — `references` replaces fleet-wide grep for a symbol,
+   `symbol_context`, `outline`, `repo_map`, `pack_context`, `obligations`,
+   `staleness_report`) for the questions only an index answers — where,
+   who-calls, what breaks (RC-23, docs/vision/28-receipts.md §3.5): what
+   governs this repository is `obligations` called with no path (the root
+   conventions, not a file); is this still true / what was known is
+   `staleness_report`; a literal string, a config value, a log line, or a
+   document-versus-document contradiction is still grep's (vision 27 §8) —
+   `references` replaces fleet-wide grep for a symbol,
    `symbol_context` gives def+callers+callees+tests in one call (plus an
    inline definition snippet), `read_source` reads an exact line range from
    the indexed corpus, `obligations` surfaces governing rules for a file

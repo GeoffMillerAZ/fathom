@@ -60,6 +60,42 @@ func refuseNonSymbolQuery(query string, regexDeclared bool) string {
 	return fmt.Sprintf("references: query %q is not one of the three accepted forms — an identifier (e.g. \"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true)", query)
 }
 
+// interfaceMethodQuery reports whether query names a method exactly one
+// indexed interface declares — bare ("PutObservations") or dotted with the
+// interface's own name ("Store.PutObservations") — returning that
+// interface's node and the bare method name. Go forbids a method whose
+// receiver names an interface type, so an interface's own methods are
+// NEVER indexed as their own GoMethod symbol (only KindGoInterface for the
+// interface type itself); this is the only place "is query an interface
+// method" can be answered — by parsing each candidate interface's own
+// declared method set (interfaceMethodNames), never by a definition
+// lookup. Ambiguous (more than one interface declares the bare method) or
+// no match returns ok=false — a conservative false negative is safe, a
+// wrong interface's implementers is not (RC-21, docs/vision/28-receipts.md
+// §3.4).
+func interfaceMethodQuery(sources []core.SourceFile, nodes []core.SymbolNode, query string) (iface core.SymbolNode, method string, ok bool) {
+	ifaceName, bareMethod := "", query
+	if i := strings.LastIndexByte(query, '.'); i >= 0 {
+		ifaceName, bareMethod = query[:i], query[i+1:]
+	}
+	var matches []core.SymbolNode
+	for _, n := range nodes {
+		if n.Kind != core.KindGoInterface {
+			continue
+		}
+		if ifaceName != "" && n.Name != ifaceName {
+			continue
+		}
+		if interfaceMethodNames(sources, n)[bareMethod] {
+			matches = append(matches, n)
+		}
+	}
+	if len(matches) != 1 {
+		return core.SymbolNode{}, "", false
+	}
+	return matches[0], bareMethod, true
+}
+
 // confidenceChar collapses an edge_confidence value to a single wire
 // character: "r" for resolved, "h" for anything else (heuristic).
 func confidenceChar(conf string) string {
@@ -305,6 +341,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 		var defs []defEntry
 		var occs []occEntry
 		var degraded []degradedEntry
+		var implRows []implementationEntry
 		truncated := false
 		exactAvailable := true
 		// RC-20: tallies definitions by package as they are found, so a
@@ -373,6 +410,19 @@ func registerReferences(s *Server, backend QueryInterface) {
 				degraded = append(degraded, degradedEntry{Service: svc, Reason: "sources: " + err.Error()})
 				continue
 			}
+
+			// RC-21: query names an interface method (typed edges know the
+			// receiver is an interface, but the method itself is never
+			// indexed as its own symbol — see interfaceMethodQuery) — list
+			// the implementing types first, ahead of the occurrences below.
+			if implRows == nil {
+				if iface, method, ok := interfaceMethodQuery(sources, nodes, p.Query); ok {
+					if rows := implementationsForMethod(ctx, backend, svc, iface, method, nodes); len(rows) > 0 {
+						implRows = rows
+					}
+				}
+			}
+
 			found, err := references.Find(p.Query, sources, opts)
 			if err != nil {
 				return nil, &rpcError{Code: ErrCodeParams, Message: "references: " + err.Error()}
@@ -527,6 +577,15 @@ func registerReferences(s *Server, backend QueryInterface) {
 		}
 		if len(degraded) > 0 {
 			resp["degraded"] = degraded
+		}
+		if len(implRows) > 0 {
+			// RC-21: same per-tool budget occurrences fit inside — a handful
+			// of implementing types never approaches it, but an interface
+			// with an unusually large implementer set must not blow past
+			// the 16 KB discipline this reused it to protect in the first
+			// place.
+			implRows, _ = fitToBudget(implRows, budgetDefaults("references", s.budgets))
+			resp["implementations"] = implRows
 		}
 		if len(occs) > 0 {
 			resp["occurrence_tier"] = string(core.TierPreScan)

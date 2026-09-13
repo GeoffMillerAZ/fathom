@@ -149,6 +149,73 @@ func TestObligationsTool_BackendUnsupported(t *testing.T) {
 	}
 }
 
+// ─── obligations: no file → root-scope answer (RC-22, docs/vision/28-receipts.md §3.5) ───
+
+// TestObligationsTool_NoFile_ReturnsRootScope proves a fileless call is a
+// documented shape, not "obligations: file required" — RC-22 replaces the
+// error with root:true, a note steering a caller who wants file-scoped
+// rules toward the file argument, and the same rules/watermark/displaced
+// payload a file-scoped call gets (the fake ignores its file argument
+// entirely, so this exercises the WIRING — no-file no longer errors and
+// carries the root markers — not internal/semantic's own glob matching,
+// which is out of the MCP tool's layer).
+func TestObligationsTool_NoFile_ReturnsRootScope(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Service: "svc",
+			File:    "CLAUDE.md",
+			Rules:   []semantic.Obligation{{Rule: "Sort outputs.", Src: "CLAUDE.md#L5-L5", Tier: "doc-claimed", Layer: "obligations"}},
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 10, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error on a fileless call: %v", resp["error"])
+	}
+	payload := extractPayload(t, resp)
+	if v, _ := payload["root"].(bool); !v {
+		t.Errorf("expected root:true, got %v", payload["root"])
+	}
+	if note, _ := payload["note"].(string); note == "" {
+		t.Error("expected a non-empty note steering toward file for file-scoped rules")
+	}
+	if f, has := payload["file"]; has && f != "" {
+		t.Errorf("expected no/empty file on a root-scope answer, got %v", f)
+	}
+	rules, ok := payload["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("expected the root-scope rules to come through, got %v", payload["rules"])
+	}
+}
+
+// TestObligationsTool_NoFileNoAction_BackendUnsupported keeps the existing
+// "backend does not serve semantic layers" refusal for a fileless call too
+// — RC-22 documents the shape, it does not require an obligationsBackend
+// that was never there.
+func TestObligationsTool_NoFileNoAction_BackendUnsupported(t *testing.T) {
+	srv := mcp.NewServer(&fakeBackend{})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 11, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	errObj, ok := resp["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected error, got %v", resp)
+	}
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeInvalid) {
+		t.Errorf("code = %v, want ErrCodeInvalid (%d)", code, mcp.ErrCodeInvalid)
+	}
+}
+
 // ─── obligations: feedback action (D2, docs/plans/expert-depth.md) ───────────
 // The obligations tool doubles as the refute/corroborate write path — the
 // already-hot channel, not a new tool.

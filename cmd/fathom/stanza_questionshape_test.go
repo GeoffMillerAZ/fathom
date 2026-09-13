@@ -5,9 +5,11 @@
 // junk references query and 38 read_source calls came from a stanza that
 // told every session to index-first, unconditionally. The stanza fathom
 // init writes, the subagent primer, and the SessionStart primer now route
-// by QUESTION SHAPE instead — where/who-calls/what-breaks/what-governs/
-// what-was-known reach for the index; a literal string, a config value, or
-// a log line reach for grep.
+// by QUESTION SHAPE instead — where/who-calls/what-breaks reach for the
+// index; RC-23 (docs/vision/28-receipts.md §3.5) names the tool per shape:
+// what-governs is `obligations` with no path, is-this-still-true/
+// what-was-known is `staleness_report`; a literal string, a config value,
+// a log line, or a document-versus-document contradiction reach for grep.
 package main
 
 import (
@@ -25,7 +27,7 @@ func assertRoutesByQuestionShape(t *testing.T, label, text string) {
 			t.Errorf("%s: still carries the retired blanket phrase %q:\n%s", label, retired, text)
 		}
 	}
-	for _, want := range []string{"question shape", "who-calls", "what-breaks", "what-governs", "grep"} {
+	for _, want := range []string{"question shape", "who-calls", "what-breaks", "what-governs", "staleness_report", "grep"} {
 		if !strings.Contains(text, want) {
 			t.Errorf("%s: missing question-shape routing phrase %q:\n%s", label, want, text)
 		}

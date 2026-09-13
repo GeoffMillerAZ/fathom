@@ -21,9 +21,12 @@ fathom fleet reconcile --repo . && fathom fleet reconcile --repo . --apply
 Dry-run first, read the diff, then apply — reconcile repoints stale
 absolute binary paths to the shim-stable `fathom`, refreshes a behind-
 template stanza to the current wording (SB-7: the stanza now routes by
-**question shape** — where / who-calls / what-breaks / what-governs /
-what-was-known via the fathom MCP tools, grep for a literal string, a
-config value, or a log line — never a blanket "index before any grep"),
+**question shape** — where / who-calls / what-breaks via the fathom MCP
+tools; what-governs is `obligations` with no path; is this still true /
+what was known is `staleness_report` (RC-23, docs/vision/28-receipts.md
+§3.5); a literal string, a config value, a log line, or a
+document-versus-document contradiction is grep's — never a blanket
+"index before any grep"),
 merges missing template entries at exactly one scope (project, deferring
 to user scope),
 and plans the nine shipped skills in BOTH repo-scoped shapes

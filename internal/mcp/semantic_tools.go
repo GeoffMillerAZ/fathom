@@ -43,6 +43,30 @@ type claimFeedbackBackend interface {
 	ClaimFeedback(ctx context.Context, service, claimID, action, note, author string) error
 }
 
+// rootObligationsProbe is the scope-matching bait path for rootObligations:
+// never read for content, only fed to ObligationsFor's glob matching. A
+// root-level CLAUDE.md/AGENTS.md's claims are NEVER floored to a subtree
+// (semantic.scopeFloorDir floors only a NESTED instruction file's globs to
+// its own directory), so any claim whose scope actually reaches repo root —
+// a narrow "CLAUDE.md"/"ADR.md" glob, or a broad extension-class glob
+// ("**/*.go") proposed by a root-level governing doc — matches this literal
+// path; a NESTED CLAUDE.md's floored glob ("internal/**/*.go") cannot,
+// because it can never match a bare top-level filename.
+const rootObligationsProbe = "CLAUDE.md"
+
+// rootObligations answers "what governs this repository" for an obligations
+// call with no file argument (RC-22, docs/vision/28-receipts.md §3.5): the
+// compiled layer's rules whose scope reaches the repo root / CLAUDE.md
+// level, budgeted exactly like a file-scoped call. It is a thin wrapper
+// over the SAME obligationsBackend.Obligations a file-scoped call uses,
+// probed at rootObligationsProbe — see its doc comment for why that is a
+// correct (not merely convenient) root-scope filter.
+func rootObligations(ctx context.Context, ob obligationsBackend, service string, maxRules int) (semantic.Obligations, error) {
+	obl, err := ob.Obligations(ctx, service, rootObligationsProbe, maxRules)
+	obl.File = ""
+	return obl, err
+}
+
 // ─── registerSemanticTools ───────────────────────────────────────────────────
 
 // registerSemanticTools wires the obligations and compile_layer MCP tools.
@@ -55,8 +79,8 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
 		Name: "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules the shared cap dropped this call; displaced_repo/displaced_module split it once a binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
-			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), or to record a verdict on a served claim. Required: service.",
+		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file and no action — the root-scope rules that answer \"what governs this repository\" (RC-22): the compiled layer's rules whose scope reaches the repo root / CLAUDE.md level, budgeted the same way, with root:true and a note to pass file for file-scoped rules. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules the shared cap dropped this call; displaced_repo/displaced_module split it once a binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file (or the repository) right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
+			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), to ask what governs the whole repository, or to record a verdict on a served claim. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -66,7 +90,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				},
 				"file": map[string]any{
 					"type":        "string",
-					"description": "Repo-relative file path being edited (omit when action is set)",
+					"description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
 				},
 				"max_rules": map[string]any{
 					"type":        "integer",
@@ -139,15 +163,24 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			return map[string]any{"service": p.Service, "claim_id": p.ClaimID, "action": p.Action}, nil
 		}
 
-		if p.File == "" {
-			return nil, &rpcError{Code: ErrCodeParams, Message: "obligations: file required"}
-		}
 		ob, ok := backend.(obligationsBackend)
 		if !ok {
 			return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not serve semantic layers"}
 		}
 
-		obl, err := ob.Obligations(ctx, p.Service, p.File, p.MaxRules)
+		// RC-22 (docs/vision/28-receipts.md §3.5): no file means "what
+		// governs this repository" — root-scope rules only, never an
+		// error. A real file argument keeps the exact pre-RC-22 behavior
+		// below, module union included.
+		rootScope := p.File == ""
+
+		var obl semantic.Obligations
+		var err error
+		if rootScope {
+			obl, err = rootObligations(ctx, ob, p.Service, p.MaxRules)
+		} else {
+			obl, err = ob.Obligations(ctx, p.Service, p.File, p.MaxRules)
+		}
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
@@ -158,7 +191,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		// daemon started with no --module flags -- modserve.Bind itself
 		// also no-ops on a nil host, so this call is a pure
 		// backward-compatible no-op for every pre-phase-O deployment.
-		if modules != nil {
+		// Skipped for the root-scope call above: module bindings are a
+		// file-scoped federation (a real path is what modserve.Bind keys
+		// its union off of), out of RC-22's "root conventions" shape.
+		if modules != nil && !rootScope {
 			max := p.MaxRules
 			if max <= 0 || max > semantic.MaxObligations {
 				max = semantic.MaxObligations
@@ -173,6 +209,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		result := map[string]any{
 			"service": obl.Service,
 			"file":    obl.File,
+		}
+		if rootScope {
+			result["root"] = true
+			result["note"] = "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
 		}
 		if len(obl.Rules) > 0 {
 			// BP-20/D3: inline each rule's cited lines so the agent stops
@@ -209,7 +249,11 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		if len(obl.ModuleNotes) > 0 {
 			result["module_notes"] = obl.ModuleNotes
 		}
-		if ob.ObligationsIndexStale(ctx, p.Service, p.File) {
+		staleFile := p.File
+		if rootScope {
+			staleFile = rootObligationsProbe
+		}
+		if ob.ObligationsIndexStale(ctx, p.Service, staleFile) {
 			result["index_stale"] = true
 		}
 		return result, nil

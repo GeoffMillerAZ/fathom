@@ -255,6 +255,48 @@ func typedImplementers(edges []core.Edge, allNodes []core.SymbolNode, candidates
 	return out
 }
 
+// implementationsForMethod narrows implementationsOf's whole-interface
+// evidence (typed > assertion > method_set) to ONE declared method: iface
+// must already be confirmed to declare method (interfaceMethodQuery in
+// references_tool.go does that check, via interfaceMethodNames — Go forbids
+// a method whose receiver names an interface type, so an interface's own
+// methods are never indexed as their own GoMethod symbol, only as part of
+// the interface's KindGoInterface node). Each implementer row is renamed
+// "Type.method" and its file:line moved from the type's own declaration to
+// that type's OWN definition of method, when indexed — the concrete site a
+// "references on an interface method" call actually wants (RC-21,
+// docs/vision/28-receipts.md §3.4/F9: the home bench read a 19 KB file to
+// count PutObservations' implementers because references had no way to
+// name them up front).
+func implementationsForMethod(ctx context.Context, backend QueryInterface, service string, iface core.SymbolNode, method string, allNodes []core.SymbolNode) []implementationEntry {
+	impls := implementationsOf(ctx, backend, service, iface, allNodes)
+	if len(impls) == 0 {
+		return nil
+	}
+	site := map[string]core.SymbolNode{}
+	for _, n := range allNodes {
+		if n.Kind != core.KindGoMethod {
+			continue
+		}
+		recv, meth := splitReceiverMethod(n.Name)
+		if meth != method {
+			continue
+		}
+		if _, ok := site[recv]; !ok {
+			site[recv] = n
+		}
+	}
+	out := make([]implementationEntry, 0, len(impls))
+	for _, im := range impls {
+		row := implementationEntry{Name: im.Name + "." + method, FilePath: im.FilePath, Line: im.Line, Via: im.Via}
+		if s, ok := site[im.Name]; ok {
+			row.FilePath, row.Line = s.FilePath, s.Line
+		}
+		out = append(out, row)
+	}
+	return out
+}
+
 // renderImplementations converts a candidate map into the sorted,
 // deterministic response slice.
 func renderImplementations(m map[string]core.SymbolNode, via string) []implementationEntry {

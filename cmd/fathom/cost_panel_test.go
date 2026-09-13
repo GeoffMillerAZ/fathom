@@ -69,7 +69,12 @@ const (
 	// gained `with_signatures`, `find_symbol` gained `implementations`
 	// (SB-45/47/5) — 34,821 bytes measured. Size never decided deferral
 	// (O32: alwaysLoad does), so this band is a budget, not a threshold.
-	agentSurfaceSchemaByteCeiling = 36000
+	// Re-pinned again 2026-09-13: `find_callers`/`references`/`outline`/
+	// `symbol_context`/`staleness_report`/`repo_map` gained budget/
+	// `scope_required` fields and descriptions (RC-19/RC-20), and
+	// `references` gained `implementations` (RC-21) — 36,948 bytes
+	// measured (vision 28, receipts).
+	agentSurfaceSchemaByteCeiling = 37200
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

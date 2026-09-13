@@ -108,6 +108,11 @@ type obligationsResult struct {
 	IndexStale          bool   `json:"index_stale,omitempty"`
 	ClaimID             string `json:"claim_id,omitempty"`
 	Action              string `json:"action,omitempty"`
+	// Root/Note (RC-22, docs/vision/28-receipts.md §3.5): present only on a
+	// fileless call — "what governs this repository" — never together with
+	// File, which the handler omits (empty) for that same call.
+	Root bool   `json:"root,omitempty"`
+	Note string `json:"note,omitempty"`
 }
 
 type packContextResult struct {
@@ -162,6 +167,11 @@ type referencesResult struct {
 	ScopeRequired bool           `json:"scope_required,omitempty"`
 	TopPackages   []packageCount `json:"top_packages,omitempty"`
 	Message       string         `json:"message,omitempty"`
+	// Implementations (RC-21, docs/vision/28-receipts.md §3.4): present
+	// only when query names a method exactly one indexed interface
+	// declares (interfaceMethodQuery) — the implementing types, ahead of
+	// occurrences, reusing find_symbol's implementationEntry shape.
+	Implementations []implementationEntry `json:"implementations,omitempty"`
 }
 
 // referenceDegradedService is one references degraded-service row (O36,

@@ -76,9 +76,12 @@ command:
    `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
    `AGENTS.md` automatically, zero drift between the two). The stanza
    routes by **question shape** (SB-7, docs/vision/27-strengths-bench.md
-   §8): where / who-calls / what-breaks / what-governs / what-was-known
-   resolve via the fathom MCP tools; a literal string, a config value, or
-   a log line is grep's job — not a blanket "index before any grep" rule.
+   §8): where / who-calls / what-breaks resolve via the fathom MCP tools;
+   what-governs this repository is `obligations` with no path (the root
+   conventions); is this still true / what was known is `staleness_report`
+   (RC-23, docs/vision/28-receipts.md §3.5); a literal string, a config
+   value, a log line, or a document-versus-document contradiction is
+   grep's job — not a blanket "index before any grep" rule.
    Hooks and stanzas go through one plan → apply → receipt (`.fathom/receipts.jsonl`,
    gitignored; `fathom fleet undo --last` reverses it, law 15). After the
    first write the begin marker reads `<!-- fathom:begin v3 sha256:… -->`;

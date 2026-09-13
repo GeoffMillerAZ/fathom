@@ -74,16 +74,19 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 
-<!-- fathom:begin v3 sha256:8188aabcf34fc1ad890ef1658465ceb9ed48326413d1509dd85462c0c6f6ef47 -->
+<!-- fathom:begin v3 sha256:937d65ff005bd70f39830922abd1cef8d36cc2748037de3fa3d535066c703b2f -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
 question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home
 bench found "index before any grep" over-broad): where / who-calls /
-what-breaks / what-governs / what-was-known resolve via the fathom MCP
-tools (`find_symbol`, `references`, `symbol_context`, `outline`,
-`repo_map`, `pack_context`, `verify_plan`); a literal string, a config
-value, or a log line is grep's job, not the index's.
+what-breaks resolve via the fathom MCP tools (`find_symbol`,
+`references`, `symbol_context`, `outline`, `repo_map`, `pack_context`,
+`verify_plan`); what-governs this repository is `obligations` with no
+path (the root conventions); is this still true / what was known is
+`staleness_report` (RC-23, docs/vision/28-receipts.md §3.5). A literal
+string, a config value, a log line, or a document-versus-document
+contradiction is grep's job, not the index's.
 Read files to *edit* them, not to discover them.
 
 Opening moves by task shape (first 2-3 calls, then edit):

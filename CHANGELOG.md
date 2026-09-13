@@ -21,7 +21,6 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
-<<<<<<< HEAD
 **context-bench: a clean room, a search-receipt reading, and per-task
 replication floors (RC-7/RC-17/RC-18, vision 28 §2.2/§2.4).**
 `scripts/context-bench.sh` now runs every `claude -p` call with
@@ -352,6 +351,13 @@ reachability is deliberately untouched and still walks both edge kinds.
 floor and the report path, records every truth caller the index missed so a
 recall number can be read as a list of defects, and reports answers the `go/types` truth cannot
 adjudicate as unadjudicated instead of scoring them as errors.
+
+**Receipts on the answer (`RC-21`, `RC-22`, vision 28).** `references` on a query naming a
+method exactly one indexed interface declares now carries `implementations` first -- one row
+per implementing type's own definition of that method -- instead of leaving the agent to read
+the whole file and count. `obligations` called with no `file` (and no `action`) answers "what
+governs this repository" with the root-scope rules and a `root`/`note` pair, instead of
+erroring "file required".
 
 ## [0.8.0] -- 2026-09-02
 

@@ -52,7 +52,7 @@ func subagentPrimer(baseURL, projDir string) string {
 		return ""
 	}
 	primer := fmt.Sprintf(
-		"fathom: this repo is the indexed service %q (%d symbols) — route by question shape: where / who-calls / what-breaks / what-governs / what-was-known resolve via the fathom MCP tools; a literal string, a config value, or a log line is grep's job.\n%s",
+		"fathom: this repo is the indexed service %q (%d symbols) — route by question shape: where/who-calls/what-breaks -> fathom MCP tools; what-governs -> obligations (no path); what-was-known -> staleness_report; a doc-vs-doc conflict is grep's job.\n%s",
 		name, info.symbols, openingMovesTable,
 	)
 	// A subagent started inside a git worktree of the service gets the
