@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -54,6 +55,14 @@ func subagentPrimer(baseURL, projDir string) string {
 		"fathom: this repo is the indexed service %q (%d symbols) — resolve where/what/who-calls through the fathom MCP tools before any Grep/Read sweep.\n%s",
 		name, info.symbols, openingMovesTable,
 	)
+	// A subagent started inside a git worktree of the service gets the
+	// worktree line here: WorktreeCreate is a creation hook, not an
+	// advisory one (O34), so this is the only moment that can carry it.
+	if isWorktreeDir(projDir) {
+		if line := worktreeAdvice(baseURL, projDir); line != "" {
+			primer = line + "\n" + primer
+		}
+	}
 	if len(primer) > subagentPrimerBudget {
 		keep := subagentPrimerBudget - len(subagentPrimerCut)
 		if keep < 0 {
@@ -244,4 +253,14 @@ func eventProjectDir(codec harness.Codec, in harness.HookInput) string {
 		return p
 	}
 	return in.Cwd
+}
+
+// isWorktreeDir reports whether dir is a linked git worktree: its `.git` is
+// a file (gitdir pointer), not a directory. Cheap, no subprocess.
+func isWorktreeDir(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	st, err := os.Stat(filepath.Join(dir, ".git"))
+	return err == nil && !st.IsDir()
 }

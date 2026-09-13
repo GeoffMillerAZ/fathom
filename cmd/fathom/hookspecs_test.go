@@ -47,7 +47,6 @@ var waveThreeHookSpecAdditions = []hookSpec{
 	{event: "SubagentStart", matcher: "", marker: "fathom session-hook --event subagent-start", sub: "session-hook --event subagent-start", timeout: 5},
 	{event: "PostToolUseFailure", matcher: `mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*`, marker: "fathom session-hook --event tool-failure", sub: "session-hook --event tool-failure", timeout: 5},
 	{event: "FileChanged", matcher: "CLAUDE.md|AGENTS.md|concerns.cue|config.toml", marker: "fathom config audit --hook --event file-changed", sub: "config audit --hook --event file-changed", timeout: 10},
-	{event: "WorktreeCreate", matcher: "", marker: "fathom session-hook --event worktree-create", sub: "session-hook --event worktree-create", timeout: 5},
 	{event: "CwdChanged", matcher: "", marker: "fathom session-hook --event cwd-changed", sub: "session-hook --event cwd-changed", timeout: 5},
 	{event: "DirectoryAdded", matcher: "", marker: "fathom session-hook --event cwd-changed", sub: "session-hook --event cwd-changed", timeout: 5},
 	{event: "Setup", matcher: "", marker: "fathom doctor --brief", sub: "doctor --brief", timeout: 15},

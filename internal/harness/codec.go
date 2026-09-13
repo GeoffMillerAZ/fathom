@@ -208,16 +208,16 @@ func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 	if out.Context == "" {
 		return nil, nil
 	}
-	name, ok := claudeEventName(ev)
-	if !ok {
-		return nil, fmt.Errorf("claude-code: no binding for event %q", ev)
-	}
 	if claudeStdoutIsData[ev] {
 		// On WorktreeCreate the harness reads the hook's STDOUT as the
 		// worktree path — any byte we print becomes a path it then refuses
 		// (O34, second form). Nothing may be emitted; the advisory goes to
 		// stderr in the caller.
 		return nil, nil
+	}
+	name, ok := claudeEventName(ev)
+	if !ok {
+		return nil, fmt.Errorf("claude-code: no binding for event %q", ev)
 	}
 	if !claudeContextEvents[ev] {
 		// Claude Code validates hookSpecificOutput per event and REJECTS

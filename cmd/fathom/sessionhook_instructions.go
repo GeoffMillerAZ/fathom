@@ -77,10 +77,6 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 		return runAdvisoryEvent(codec, harness.EventToolFailure, "tool-failure-hook", stdin, stdout, func(in harness.HookInput) string {
 			return toolFailureAdvice(*url, root(in), in.ToolName, in.ToolError)
 		})
-	case "worktree-create":
-		return runAdvisoryEvent(codec, harness.EventWorktreeCreate, "worktree-hook", stdin, stdout, func(in harness.HookInput) string {
-			return worktreeAdvice(*url, root(in))
-		})
 	case "cwd-changed":
 		return runAdvisoryEvent(codec, harness.EventCwdChanged, "cwd-hook", stdin, stdout, func(in harness.HookInput) string {
 			return cwdChangedPrimer(*url, root(in))
@@ -92,7 +88,7 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 }
 
 // sessionHookEvents is the --event vocabulary, in help order.
-var sessionHookEvents = []string{"instructions-loaded", "subagent-start", "tool-failure", "worktree-create", "cwd-changed"}
+var sessionHookEvents = []string{"instructions-loaded", "subagent-start", "tool-failure", "cwd-changed"}
 
 // recordInstructionsLoaded decodes the InstructionsLoaded envelope through
 // the codec and writes one beat {file_path, memory_type, load_reason} (+

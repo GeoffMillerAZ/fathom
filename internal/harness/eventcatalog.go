@@ -52,7 +52,7 @@ var claudeEventCatalog = []EventCatalogEntry{
 	{Event: "CwdChanged", Wired: true},
 	{Event: "DirectoryAdded", Wired: true},
 	{Event: "FileChanged", Wired: true},
-	{Event: "WorktreeCreate", Wired: true},
+	{Event: "WorktreeCreate", Wired: false, Reason: "a creation hook: the harness expects a registered hook to create the worktree and print its path, and refuses any other stdout (O34) — the worktree line rides on SubagentStart instead"},
 	{Event: "WorktreeRemove", Wired: false, Reason: "nothing to say: a removed worktree never re-rooted the service (the WorktreeCreate note is why), so its removal changes no index fact"},
 	{Event: "PreCompact", Wired: true},
 	{Event: "PostCompact", Wired: false, Reason: reasonCovered + "PreCompact deposits the thread pointer BEFORE the context is gone, which is the only moment the deposit is worth anything"},

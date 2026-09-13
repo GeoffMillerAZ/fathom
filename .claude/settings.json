@@ -111,17 +111,6 @@
           }
         ]
       }
-    ],
-    "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "command": "/Volumes/m2ext/code/geoffmilleraz/sextant/bin/fathom session-hook --event worktree-create",
-            "timeout": 5,
-            "type": "command"
-          }
-        ]
-      }
     ]
   }
 }

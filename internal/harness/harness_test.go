@@ -57,7 +57,6 @@ var waveThreeClaudeHookAdditions = []struct {
 	{"SubagentStart", "", "fathom session-hook --event subagent-start", "session-hook --event subagent-start", 5},
 	{"PostToolUseFailure", `mcp__fathom__.*|mcp__plugin_[^_]*_fathom__.*`, "fathom session-hook --event tool-failure", "session-hook --event tool-failure", 5},
 	{"FileChanged", "CLAUDE.md|AGENTS.md|concerns.cue|config.toml", "fathom config audit --hook --event file-changed", "config audit --hook --event file-changed", 10},
-	{"WorktreeCreate", "", "fathom session-hook --event worktree-create", "session-hook --event worktree-create", 5},
 	{"CwdChanged", "", "fathom session-hook --event cwd-changed", "session-hook --event cwd-changed", 5},
 	{"DirectoryAdded", "", "fathom session-hook --event cwd-changed", "session-hook --event cwd-changed", 5},
 	{"Setup", "", "fathom doctor --brief", "doctor --brief", 15},
