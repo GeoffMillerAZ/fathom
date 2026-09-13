@@ -45,6 +45,22 @@ const scenarioContinuationPrompt = "Continue the task from where the previous se
 // toward docs/plans/<slug>.md instead of NOTES.md, never this sentence.
 const PlanFirstInstruction = "\n\nBefore making any changes, write your plan as a markdown checklist (`- [ ] ...` per row) to NOTES.md at the repo root, or to a file under docs/plans/ if the repository already keeps plans there. Do not implement anything yet — later sessions will pick up individual rows."
 
+// planGrammarInstruction is the wired arm's addendum to PlanFirstInstruction
+// (SB-53): it names the repository's plan grammar and the verify verb so
+// the plan carries rows the verify gate can adjudicate (the M2 reading).
+// The control arm keeps the plain checklist — the grammar is part of what
+// "wired" means, not a prompt advantage handed to one arm by the driver.
+const planGrammarInstruction = " Because this repository is indexed by fathom, write the plan to docs/plans/<slug>.md in its plan grammar: one row per change, `- [ ] <what changes> {id: <SLUG>-<n>, symbol: <the function you will add or change>, package: <its package path>}`, anchoring every row to a function. A row is done only when `fathom verify --plan docs/plans/<slug>.md` proves it — never mark `[x]` on a claim."
+
+// planFirstInstructionFor returns the plan-first instruction for one arm:
+// the shared checklist text, plus the plan-grammar addendum on a wired arm.
+func planFirstInstructionFor(arm Arm) string {
+	if arm.Wired {
+		return PlanFirstInstruction + planGrammarInstruction
+	}
+	return PlanFirstInstruction
+}
+
 // workerRowPromptFmt formats one worker's assignment in "planner-workers"
 // mode: the row text the planner wrote, verbatim, plus the original task
 // prompt for context.
@@ -77,7 +93,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 			// nothing for PlanCoverage/FalseDoneRate to read. Same
 			// instruction planner-workers gives its planner, appended
 			// here instead of replacing the task prompt.
-			prompt = task.Prompt + PlanFirstInstruction
+			prompt = task.Prompt + planFirstInstructionFor(arm)
 		default:
 			prompt = scenarioContinuationPrompt
 		}
@@ -104,7 +120,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	// must cover what the PLANNER established, not just what happened
 	// between the planner and each worker.
 	sessionStart := time.Now()
-	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
+	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+planFirstInstructionFor(arm))
 	if err != nil {
 		return results, err
 	}
