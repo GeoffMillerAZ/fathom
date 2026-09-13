@@ -113,10 +113,23 @@ type cellPlan struct {
 	trial int
 	inv   scenariobench.CellInvariants
 	key   string
+	// altKeys are the keys the same cell carries under the OTHER fathom
+	// commits named by a comma-separated -fathom-commit: a run whose tree
+	// moved between launches for driver-only commits keyed its wired
+	// cells on more than one surface; the ledger step may read them all,
+	// naming every surface it used. `run` and `plan` key on the first.
+	altKeys []string
 }
 
 func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA string) []cellPlan {
-	fathomCommit := resolveFathomCommit(*cf.fathomCommit)
+	commits := strings.Split(*cf.fathomCommit, ",")
+	fathomCommit := resolveFathomCommit(strings.TrimSpace(commits[0]))
+	var altCommits []string
+	for _, c := range commits[1:] {
+		if c = strings.TrimSpace(c); c != "" {
+			altCommits = append(altCommits, c)
+		}
+	}
 	armNames := make([]string, 0, len(c.Arms))
 	for name := range c.Arms {
 		armNames = append(armNames, name)
@@ -139,7 +152,15 @@ func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA strin
 					PromptSubject:  promptSubjectFor(task),
 					ArmSurface:     surface,
 				}
-				out = append(out, cellPlan{task: task, arm: armName, trial: trial, inv: inv, key: scenariobench.ScenarioCellKey(inv)})
+				cp := cellPlan{task: task, arm: armName, trial: trial, inv: inv, key: scenariobench.ScenarioCellKey(inv)}
+				for _, alt := range altCommits {
+					altInv := inv
+					altInv.ArmSurface = scenariobench.ResolveArmSurface(arm, alt)
+					if altInv.ArmSurface != inv.ArmSurface {
+						cp.altKeys = append(cp.altKeys, scenariobench.ScenarioCellKey(altInv))
+					}
+				}
+				out = append(out, cp)
 			}
 		}
 	}
@@ -453,6 +474,16 @@ func cmdLedger(args []string) int {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
 			return 2
+		}
+		for _, alt := range cp.altKeys {
+			if ok {
+				break
+			}
+			cell, ok, err = scenariobench.BorrowScenarioCell(*cellsDir, alt, cp.trial)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+				return 2
+			}
 		}
 		if !ok || cell.RunID != *runID {
 			continue

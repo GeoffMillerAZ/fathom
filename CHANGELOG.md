@@ -21,6 +21,13 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The guards pilot is on the scenarios ledger (`SB-37`, M1).** Eight governance-bound
+tasks × wired and stripped arms × two trials: equal compliance (6 of 16 each), violations 0
+against 1, the wired arm at 0.85× the tokens — M1-1 passes its bar and shows no effect on the
+predicted wins, because every rule sits in a CLAUDE.md both arms read. `scenariobench ledger`
+reads wired cells across the driver-only commits a run's tree moved through
+(`-fathom-commit a,b`). The driver treats the turn budget as a hand-off, never a lost cell.
+
 **The strengths bench, waves 1–5 (`SB-1..36`, `SB-40`, vision 27, ADR-033).** The doctrine
 routes by question shape: the stanza `fathom init` writes, the session primer, the shipped
 skills and the adoption guides send where / who-calls / what-breaks / what-governs /

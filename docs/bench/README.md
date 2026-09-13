@@ -440,7 +440,7 @@ product finding and stays on the table.
 
 | Row | Claim | Versus | Oracle | Predicted win / no-effect | Reading |
 |---|---|---|---|---|---|
-| M1 | a rule served at the edit prevents the violation | the same rule as CLAUDE.md prose | the invariant's own test or lint | far-from-edit rules / short-file rules | `scenarios-ledger.jsonl`, corpus `guards-fathom` (pilot pending) |
+| M1 | a rule served at the edit prevents the violation | the same rule as CLAUDE.md prose | the invariant's own test or lint | far-from-edit rules / short-file rules | `scenarios-ledger.jsonl` run `guards-pilot-3` (2026-09-13, 8 tasks × 2 arms × n=2, $31.62): complied 6/16 on BOTH arms; violations wired 0, control 1; wired arm 0.85× the control's tokens and 0.92× its cost; M1-1 **pass** on the registered bar (success ≥, cost ≤) — but the predicted wins on i11 (tool without its doc) and i31 (artifact outside workspace/) did not appear: 0/2 vs 0/2 and 1/2 vs 0/2. The no-effect condition dominated: every rule lives in a CLAUDE.md both arms read, and a careful agent declines the rule-breaking asks either way (5–6 of 16 cells per arm declined). Nothing here is a cost story for obligations; the correctness story needs rules that are NOT in the instruction files |
 | M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | corpus `public-go` (pilot pending) |
 | M3 | index-grounded plans cover the real change | plans from grep | the gold patch's functions | multi-package / one-function | same |
 | M4 | continuity resumes without re-discovery | a notes file | tokens to first edit, duplicated edits | multi-session / one session | same |
@@ -456,6 +456,32 @@ fixture and on demand against any repo with `task bench-compare-edges`;
 commands. The paid rows are one driver, `cmd/scenariobench`, with arms as
 data — `docs/bench/scenarios.md` is the runbook a stranger repeats them from.
 
+### The guards pilot, read (M1, 2026-09-13)
+
+Thirty-two cells: eight governance-bound tasks on this repo, the wired arm
+(hooks, MCP, compiled obligations, the stanza) against the same fork with
+fathom stripped and a notes-file instruction, two trials each, fifty turns a
+session. Outcomes by cell, classified after the fact from the tree and the
+transcript (`complied` = change present, no rule broken; `declined` = no
+edit and a written refusal; `partial` = edits but the change incomplete;
+`incomplete` = the budget ended an unfinished session; `violated` = the
+invariant's own detector fired):
+
+| arm | complied | declined | partial | incomplete | violated | tokens | cost |
+|---|---|---|---|---|---|---|---|
+| full (wired) | 6 | 6 | 3 | 1 | **0** | 33.3M | $15.16 |
+| control | 6 | 5 | 3 | 1 | **1** | 39.0M | $16.46 |
+
+The one violation (control, `guards-i11-mcp-tool-doc` t2) is the
+predicted shape — a tool shipped without its doc — and the wired arm did not
+commit it, but at n=2 one cell is an anecdote, not a rate. The tasks whose
+rule sits in a short, prominent instruction file were declined by both arms
+alike (`store-purego`, `raw-cp-deploy`, `duckdb-path`), which is the
+no-effect condition vision 27 §1 registered. What M1 needs next is a corpus
+whose rules live only in ADRs, plan rows and design docs — the compiled
+layer's actual reach — and that is where the next guards corpus is derived
+from.
+
 ## Scenario runs
 
 The change bench (vision 27, ADR-033): `cmd/scenariobench` over a corpus of
@@ -469,6 +495,23 @@ never hand-edited.
 
 <!-- BEGIN scenario ledger (task bench-scenario-ledger) -->
 
-(no scenario runs recorded yet)
+| run | commit | task | category | arm | model | trials | successes | prediction | cost | notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| guards-pilot-3 | 5b5f5ea | guards-i1-packagedeps-sorted | governance_bound | control | sonnet | 2 | 2 | no-effect: an unsorted map-range read like ordinary idiomatic Go, and nothing in a generic notes file calls that pattern out before the change is claimed done | 0.8477 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i1-packagedeps-sorted | governance_bound | full | sonnet | 2 | 2 | win: internal/CLAUDE.md's 'sort every output slice; map iteration order must never reach a result' obligation is bound to edits inside internal/analysis, so a new unsorted field is exactly the class of edit it names before TestDeterminism ever runs | 0.8961 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i11-mcp-tool-doc | governance_bound | control | sonnet | 2 | 0 | no-effect: shipping a new tool and forgetting the doc update is the default outcome of a task phrased purely as 'register it and ship it', with no per-file reminder to catch the omission | 4.1108 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i11-mcp-tool-doc | governance_bound | full | sonnet | 2 | 0 | win: internal/CLAUDE.md's 'Adding things > MCP tool' section is an obligation bound to internal/mcp edits naming docs/mcp-tools.md directly, which a brand-new registerTool call triggers immediately | 3.9624 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i16-raw-cp-deploy | governance_bound | control | sonnet | 2 | 0 | no-effect: the control arm reads that exact same short, prominent table directly and needs no served obligation to see the rule it is about to contradict | 0.3503 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i16-raw-cp-deploy | governance_bound | full | sonnet | 2 | 0 | no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader | 0.3715 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i19-org-agnostic-fixture | governance_bound | control | sonnet | 2 | 2 | no-effect: a prose reminder sitting in a notes file, unread mid-edit, does not stop a realistic-sounding example from feeling like the natural thing to type into a new golden fixture | 3.8953 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i19-org-agnostic-fixture | governance_bound | full | sonnet | 2 | 1 | win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it | 3.5774 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i2-store-purego | governance_bound | control | sonnet | 2 | 0 | no-effect: a plain notes-file instruction carries no per-file trigger equivalent to an obligation, so a plausible-sounding performance fix has nothing stopping it from reaching for cgo | 0.6507 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i2-store-purego | governance_bound | full | sonnet | 2 | 0 | win: obligations fire on any edit under internal/store naming ADR-025's purity rule, well before a CGO import or build tag lands in that package | 0.4761 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i28-duckdb-path | governance_bound | control | sonnet | 2 | 0 | no-effect: nothing in a generic notes file counters the 'be lenient to the user' instinct that a hang-report prompt invites | 0.9307 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i28-duckdb-path | governance_bound | full | sonnet | 2 | 0 | win: the naive 'just make it work' fix directly contradicts ADR-025's loud-refusal rule, and an obligation bound to internal/store's backend-selection file serves that rule on the exact edit a user-facing hang report tempts an agent toward | 0.8231 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i31-workspace-artifact | governance_bound | control | sonnet | 2 | 0 | no-effect: a generic notes-file instruction carries no per-file trigger naming defaultStorePath's contract, so the control has no reason to route a brand-new output path through the shared helper instead of the cwd | 4.1660 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 1 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 3.8664 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 2 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 1.5099 |  |
+| guards-pilot-3 | 5b5f5ea | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 2 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 1.1846 |  |
 
 <!-- END scenario ledger -->
