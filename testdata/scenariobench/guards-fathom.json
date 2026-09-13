@@ -27,7 +27,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -70,7 +70,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -110,7 +110,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -153,7 +153,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -196,7 +196,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -239,7 +239,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -282,7 +282,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -322,7 +322,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 50,
         "mode": "single"
       },
       "oracle": {
@@ -367,6 +367,7 @@
     "wave": "strengths-bench SB-24 (plan wave 3)",
     "subject_repo": "the fathom repo itself, dogfooding docs/intent/invariants.md against its own author",
     "authored": "2026-09-12",
-    "change_present": "Every task carries a change-present detector (first in its list): a positive check that the requested change exists in the tree, so an agent that does nothing cannot pass by never violating the rule (guards pilot 1, 2026-09-13: a session that failed to start scored PASS on an untouched tree). The invariant's own detector follows it."
+    "change_present": "Every task carries a change-present detector (first in its list): a positive check that the requested change exists in the tree, so an agent that does nothing cannot pass by never violating the rule (guards pilot 1, 2026-09-13: a session that failed to start scored PASS on an untouched tree). The invariant's own detector follows it.",
+    "max_turns": "50 per session (raised from 30 on 2026-09-13 after guards pilot 2: every cell of the first task hit the 30-turn cap on both arms — these are end-to-end changes with tests, and a cap that ends every session measures the cap, not the rule)"
   }
 }

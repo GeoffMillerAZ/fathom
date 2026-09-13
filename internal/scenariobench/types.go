@@ -194,7 +194,10 @@ type SessionResult struct {
 	PayloadBytes      int64          `json:"payload_bytes"`
 	WallTime          time.Duration  `json:"wall_time_ns"`
 	RawPath           string         `json:"raw_path,omitempty"`
-	Error             string         `json:"error,omitempty"`
+	// BudgetHit is true when the turn cap ended the session (Claude Code's
+	// error_max_turns): the designed hand-off, never counted as an error.
+	BudgetHit bool   `json:"budget_hit,omitempty"`
+	Error     string `json:"error,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.

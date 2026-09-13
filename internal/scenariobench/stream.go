@@ -56,6 +56,7 @@ type streamEvent struct {
 	// The terminal `{"type":"result",...}` event carries the same shape as
 	// `claude -p --output-format json`'s envelope.
 	IsError      bool    `json:"is_error"`
+	Subtype      string  `json:"subtype"`
 	NumTurns     int     `json:"num_turns"`
 	DurationMS   int64   `json:"duration_ms"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
@@ -296,8 +297,14 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 		r.TotalTokens = u.InputTokens + u.OutputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
 		r.CostUSD = ps.result.TotalCostUSD
 		r.WallTime = time.Duration(ps.result.DurationMS) * time.Millisecond
-		if ps.result.IsError {
-			r.Error = "claude reported is_error for this session"
+		switch {
+		case ps.result.IsError && ps.result.Subtype == "error_max_turns":
+			// The turn budget ended the session: that is the designed
+			// hand-off (vision 27 §2), not an error. The tree the agent
+			// left is the reading; the next session starts cold from it.
+			r.BudgetHit = true
+		case ps.result.IsError:
+			r.Error = "claude reported is_error for this session (" + ps.result.Subtype + ")"
 		}
 	} else {
 		r.Error = "no terminal result event found in transcript"
