@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -63,8 +64,15 @@ func TruthSymbolsForMCP(truth publicloc.GoTruth, names []string) []TruthSymbol {
 func mcpReferenceArgs(tool string, sym TruthSymbol) (json.RawMessage, error) {
 	switch tool {
 	case "find_referencing_symbols":
+		// Serena resolves a method by its bare name within the file
+		// ("HooksWired"); "Descriptor.HooksWired" and "Descriptor/HooksWired"
+		// both answer "No symbol matching" (probed 2026-09-13, v1.7.0).
+		name := sym.Name
+		if i := strings.LastIndex(name, "."); i >= 0 {
+			name = name[i+1:]
+		}
 		return json.Marshal(map[string]string{
-			"name_path":     sym.Name,
+			"name_path":     name,
 			"relative_path": sym.File,
 		})
 	case "go_symbol_references":
@@ -84,13 +92,59 @@ type refSite struct {
 	line int
 }
 
-// serenaReference is one entry of find_referencing_symbols' JSON array
-// response (docs/bench/competitors.md).
+// serenaReference is one referencing symbol in find_referencing_symbols'
+// response. The live shape (v1.7.0, probed 2026-09-13) is an object keyed
+// by relative file path → symbol kind → entries; the reference LINE is not
+// a field but the `>  N:` marker inside content_around_reference, and
+// body_location is the span of the ENCLOSING symbol, never the reference.
 type serenaReference struct {
-	NamePath     string `json:"name_path"`
-	RelativePath string `json:"relative_path"`
-	Kind         string `json:"kind"`
-	Line         int    `json:"line"`
+	NamePath               string `json:"name_path"`
+	ContentAroundReference string `json:"content_around_reference"`
+	BodyLocation           struct {
+		StartLine int `json:"start_line"`
+		EndLine   int `json:"end_line"`
+	} `json:"body_location"`
+}
+
+var reSerenaRefLine = regexp.MustCompile(`(?m)^\s*>\s*(\d+):`)
+
+// parseSerenaReferences turns the file → kind → entries object into
+// reference sites, one per `>  N:` marker; an entry with no marker falls
+// back to the enclosing symbol's start line so the reference is still
+// attributed to the right file.
+func parseSerenaReferences(text string) ([]refSite, error) {
+	var byFile map[string]map[string][]serenaReference
+	if err := json.Unmarshal([]byte(text), &byFile); err != nil {
+		return nil, err
+	}
+	files := make([]string, 0, len(byFile))
+	for f := range byFile {
+		files = append(files, f)
+	}
+	sort.Strings(files)
+	var out []refSite
+	for _, f := range files {
+		kinds := byFile[f]
+		kindNames := make([]string, 0, len(kinds))
+		for k := range kinds {
+			kindNames = append(kindNames, k)
+		}
+		sort.Strings(kindNames)
+		for _, k := range kindNames {
+			for _, r := range kinds[k] {
+				marks := reSerenaRefLine.FindAllStringSubmatch(r.ContentAroundReference, -1)
+				if len(marks) == 0 {
+					out = append(out, refSite{file: f, line: r.BodyLocation.StartLine})
+					continue
+				}
+				for _, m := range marks {
+					line, _ := strconv.Atoi(m[1])
+					out = append(out, refSite{file: f, line: line})
+				}
+			}
+		}
+	}
+	return out, nil
 }
 
 var (
@@ -123,13 +177,9 @@ func parseGoplsProse(text string) []refSite {
 func parseMCPReferenceSites(tool, text string) ([]refSite, error) {
 	switch tool {
 	case "find_referencing_symbols":
-		var refs []serenaReference
-		if err := json.Unmarshal([]byte(text), &refs); err != nil {
+		out, err := parseSerenaReferences(text)
+		if err != nil {
 			return nil, fmt.Errorf("indexbench: parse %s JSON response: %w", tool, err)
-		}
-		out := make([]refSite, 0, len(refs))
-		for _, r := range refs {
-			out = append(out, refSite{file: r.RelativePath, line: r.Line})
 		}
 		return out, nil
 	case "go_symbol_references":
@@ -194,9 +244,16 @@ func ProbeReferencesViaMCP(ctx context.Context, cfg MCPServerConfig, tool string
 			continue
 		}
 		for _, s := range sites {
-			from := s.file
+			file := s.file
+			if cfg.Dir != "" && filepath.IsAbs(file) {
+				// gopls answers absolute paths; the truth is repo-relative.
+				if rel, err := filepath.Rel(cfg.Dir, file); err == nil && !strings.HasPrefix(rel, "..") {
+					file = rel
+				}
+			}
+			from := file
 			if s.line > 0 {
-				from = fmt.Sprintf("%s:%d", s.file, s.line)
+				from = fmt.Sprintf("%s:%d", file, s.line)
 			}
 			set.Edges = append(set.Edges, Edge{From: from, To: sym.Name, Kind: EdgeKindReference})
 		}

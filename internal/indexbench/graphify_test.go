@@ -5,18 +5,21 @@ import (
 	"testing"
 )
 
-func TestLoadGraphifyEdges_KeepsCallsAndReferencesDropsRest(t *testing.T) {
+func TestLoadGraphifyEdges_KeepsCallsDropsRest(t *testing.T) {
 	set, err := LoadGraphifyEdges(filepath.Join("testdata", "graphify-fixture.json"))
 	if err != nil {
 		t.Fatalf("LoadGraphifyEdges: %v", err)
 	}
-	// n2->n1 (calls), n3->n1 (calls), n3->n2 (references) resolve; the
-	// n2->n9 "calls" edge names a target node id not in the node table.
-	// LoadGraphifyEdges sorts by (To, From) for a deterministic output.
+	// n2->n1 (calls) and n3->n1 (calls) resolve; n3->n2 (references) is
+	// dropped with its count — in v0.9.61 "references" is function→type,
+	// not a call the truth can judge; the n2->n9 "calls" edge names a
+	// target node id not in the node table. Sorted by (To, From).
 	want := []Edge{
-		{From: "Baz", To: "Bar", Kind: EdgeKindCall},
 		{From: "Bar", To: "Foo", Kind: EdgeKindCall},
 		{From: "Baz", To: "Foo", Kind: EdgeKindCall},
+	}
+	if set.DroppedKinds["references"] != 1 {
+		t.Errorf("references must be dropped with a count, got %v", set.DroppedKinds)
 	}
 	if len(set.Edges) != len(want) {
 		t.Fatalf("got %d edges, want %d: %+v", len(set.Edges), len(want), set.Edges)

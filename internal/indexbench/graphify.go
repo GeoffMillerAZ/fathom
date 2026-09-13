@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 )
 
 // graphifyGraph is the subset of graphify's networkx node-link output
@@ -13,6 +14,7 @@ import (
 type graphifyGraph struct {
 	Nodes []graphifyNode `json:"nodes"`
 	Edges []graphifyEdge `json:"edges"`
+	Links []graphifyEdge `json:"links"` // networkx node-link form, what v0.9.61 writes
 }
 
 type graphifyNode struct {
@@ -45,8 +47,11 @@ type graphifyEdge struct {
 // with a named count rather than silently discarded (BP-30's rule,
 // extended to a loader).
 var graphifyKeptRelations = map[string]bool{
-	"calls":      true,
-	"references": true,
+	// Only "calls" is a caller→callee claim the go/types truth can judge.
+	// "references" in v0.9.61 is mostly function→TYPE (a parameter or a
+	// return type), which is not a call and not a reference site either;
+	// it is dropped with its count so the row says what was left out.
+	"calls": true,
 }
 
 // LoadGraphifyEdges reads a graphify graph.json (docs/bench/competitors.md)
@@ -73,7 +78,8 @@ func LoadGraphifyEdges(path string) (EdgeSet, error) {
 	}
 
 	set := EdgeSet{DroppedKinds: map[string]int{}}
-	for _, e := range g.Edges {
+	edges := append(append([]graphifyEdge{}, g.Edges...), g.Links...)
+	for _, e := range edges {
 		if !graphifyKeptRelations[e.Relation] {
 			set.DroppedKinds[e.Relation]++
 			continue
@@ -88,7 +94,7 @@ func LoadGraphifyEdges(path string) (EdgeSet, error) {
 			set.DroppedKinds["unresolved_target"]++
 			continue
 		}
-		set.Edges = append(set.Edges, Edge{From: from, To: to, Kind: EdgeKindCall})
+		set.Edges = append(set.Edges, Edge{From: graphifyLabelName(from), To: graphifyLabelName(to), Kind: EdgeKindCall})
 	}
 	sort.Slice(set.Edges, func(i, j int) bool {
 		if set.Edges[i].To != set.Edges[j].To {
@@ -100,4 +106,13 @@ func LoadGraphifyEdges(path string) (EdgeSet, error) {
 		set.DroppedKinds = nil
 	}
 	return set, nil
+}
+
+// graphifyLabelName turns a graphify node label into the name CompareEdges
+// resolves: v0.9.61 labels Go functions "Name()" and methods ".Method()"
+// (the receiver is not in the label — a bare method name resolves only
+// when it is unambiguous in the truth, else it is counted unadjudicated).
+func graphifyLabelName(label string) string {
+	label = strings.TrimSuffix(strings.TrimSpace(label), "()")
+	return strings.TrimPrefix(label, ".")
 }

@@ -104,7 +104,7 @@ func helperMCPConfig(t *testing.T, toolName, response string) MCPServerConfig {
 
 func TestProbeReferencesViaMCP_SerenaJSON(t *testing.T) {
 	cfg := helperMCPConfig(t, "find_referencing_symbols",
-		`[{"name_path":"Caller","relative_path":"pkg/caller.go","kind":"function","line":12}]`)
+		`{"pkg/caller.go":{"Function":[{"name_path":"Caller","body_location":{"start_line":10,"end_line":20},"content_around_reference":"...  11:\tx := 1\n  >  12:\ty := Target(x)\n...  13:\treturn y"}]}}`)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

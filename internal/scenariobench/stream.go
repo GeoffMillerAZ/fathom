@@ -281,8 +281,8 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 	r.ToolSearchTurns = ps.toolSearchTurns
 	r.FirstEditTurn = ps.firstEditTurn
 	r.TokensToFirstEdit = ps.tokensToFirstEdit
-	r.FilesRead = sortedKeys(ps.filesRead)
-	r.FilesEdited = sortedKeys(ps.filesEdited)
+	r.FilesRead = sortedBoolKeys(ps.filesRead)
+	r.FilesEdited = sortedBoolKeys(ps.filesEdited)
 	r.BytesRead = ps.bytesRead
 	r.BoxChecks = ps.boxChecks
 	r.ToolCalls = ps.toolCalls
@@ -356,7 +356,7 @@ func rawTextBlock(raw json.RawMessage) string {
 	return b.String()
 }
 
-func sortedKeys(m map[string]bool) []string {
+func sortedBoolKeys(m map[string]bool) []string {
 	if len(m) == 0 {
 		return nil
 	}
