@@ -87,3 +87,29 @@ func TestRenderLedgerMarkdown_ShowsVerdictAndTrialsNewestLast(t *testing.T) {
 		t.Error("rows render in ledger order (append order), oldest first")
 	}
 }
+
+// BC-14 / BP-25: the committed ledger holds at least one row at or above the
+// registered replication floor with a corpus hash, and the first such run
+// is recorded under BOTH H2-1 (history) and H2-3 (the standing bar) with
+// an honest verdict on each — the run of 2026-09-13 failed both, and the
+// ledger says so. Written in the same change as the rows, never before.
+func TestLedgerHasReplicatedRow(t *testing.T) {
+	rows, err := contextbench.LoadLedger("../../docs/bench/ledger.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	byCriterion := map[string]bool{}
+	for _, r := range rows {
+		if r.MinTrials < 3 || r.CorpusSHA256 == "" || len(r.PerTask) == 0 {
+			continue
+		}
+		if r.Evaluation.Verdict != "" {
+			byCriterion[r.Evaluation.CriterionID] = true
+		}
+	}
+	for _, id := range []string{"H2-1", "H2-3"} {
+		if !byCriterion[id] {
+			t.Errorf("no replicated (min_trials >= 3, corpus hashed, per_task) row scored under %s", id)
+		}
+	}
+}

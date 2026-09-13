@@ -57,10 +57,12 @@ It is a *new* criterion, not an edit to H2-1, because it changes what
 history and are never re-scored. `--scoring precision --criterion H2-2`
 runs under it.
 
-### H2-3 — the criterion the next run is scored on
+### H2-3 — the criterion runs are scored on
 
-**H2-3** is registered beside them (BP-10, ADR-032 §3) and is what the next
-full run will be scored under. Same success bar as H2-1 — strictly more
+**H2-3** is registered beside them (BP-10, ADR-032 §3) and is the scorer's
+default since 2026-09-13: a run is scored under the newest registered
+criterion unless `--criterion` names another (BP-38); H2-1 stays loadable
+by id and its verdicts stand as history. Same success bar as H2-1 — strictly more
 successes, replication floor 3, substring scoring, the same committed leak
 rule — and a different cost half:
 
@@ -69,7 +71,7 @@ rule — and a different cost half:
 | `payload_bytes` | tool-result bytes returned to the model. **Gated: ratio ≤ 1.0.** The discovery cost fathom actually controls. |
 | `cost_usd` | **Gated: ratio ≤ 1.0.** The number a buyer sees. |
 | `total_tokens` | Recorded, **not gated**. It is cache-read × turns — a turn counter in a token costume (O26), under which a smaller payload is invisible. |
-| `toolsearch_turns` | Reported per arm, **never gated**. The harness's deferred MCP schema loads (O24): a tax the fathom arm pays and the grep arm does not, named so it is neither a hidden penalty nor a hidden excuse. |
+| `toolsearch_turns` | Reported per arm, **never gated**. The harness's deferred MCP schema loads (O24, O32): a tax the fathom arm pays and the grep arm does not, named so it is neither a hidden penalty nor a hidden excuse. Since 2026-09-13 the runner's MCP config carries `alwaysLoad: true`, which removes it (BP-39). |
 | `gold_source_tool` | The tool whose result FIRST carried a gold token (`answer` when only the final answer did). Summarised on the row as `gold_source_rate` per arm per tool. |
 
 `gold_source_rate` is the reading that separates *the task passed* from *the
@@ -281,18 +283,59 @@ in either row is listed, not failed; tasks added since the baseline are not
 regressions; no comparable baseline is exit 3, not a pass. The semantics
 mirror agentic-kit's eval-runner `Regression` so the fleet has one
 convention. It joins `validate` only after two same-corpus rows exist
-(ADR-031) — today the ledger holds one backfilled row with no corpus hash,
-so it reports exactly that.
+(ADR-031) — today the ledger holds the backfilled row (no corpus hash) and
+the 2026-09-13 run's two rows, which share a `run_id` and are never compared
+with each other (BP-38); the next same-corpus run is the first real
+comparison.
 
 ## Runs
 
 <!-- BEGIN ledger table (task bench-ledger) -->
 
-| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | verdict | why |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | n/r | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
+| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | criterion | verdict | why |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | n/r | H2-1 | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
+| 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-1 | fail | aggregate token ratio 1.444× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
+| 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-3 | fail | aggregate payload_bytes ratio 1.901× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
 
 <!-- END ledger table -->
+
+### The 2026-09-13 run, read (O31, O32)
+
+The first replicated run — three arms, 13 tasks, n=3, $7.90, run
+2026-09-13 at a75e64e — fails both criteria on cost and is the baseline
+every later row regresses against.
+
+| Reading | fathom | grep | none |
+|---|---|---|---|
+| successes / trials (11 scored tasks) | 31/33 | 28/33 | leaked H1-T04, H1-T12 (3/3 each) |
+| tool-result bytes (33 cells) | 419 KB, 209 calls | 222 KB, 138 calls | — |
+| ToolSearch turns per cell | 1.27 (every cell ≥ 1) | 0 | 0 |
+| ratio to grep | tokens 1.444×, payload 1.901×, cost 1.465× | 1 | — |
+
+Δsuccess +0.09 (95% CI −0.06..+0.24, p=0.042, A12 0.60): fathom passes more
+and the interval touches zero. Five tasks were flaky in one arm or the other.
+Where fathom wins it wins outright — H1-T07 (which sources feed a claim)
+3/3 against 1/3 at 0.41× tokens and 0.21× payload, H1-T13 at 0.96× — and
+where it loses, it loses on greppable lookups: H1-T06 (which types satisfy
+an interface) at 18.6× payload was answered in 492 bytes by the first
+`find_symbol` call, after which the arm kept calling `references`, once with
+the junk query `func (s *` (27 heuristic lines, 6 KB). `read_source` was the
+arm's largest payload (38 calls, 123 KB). `gold_source_rate[fathom]`:
+obligations 0.18, references 0.18, read_source 0.15, find_callers 0.12,
+query_symbols 0.12 — the obligations tool is now a gold source (it was zero
+on the 2026-09-02 run); grep's `Bash` is 0.82.
+
+Two instrument findings, both fixed in the same change: the runner's default
+criterion was still H2-1 (the H2-3 row was scored offline from the same
+transcripts, BP-38), and the runner's `-out-md` overwrote this file with the
+bare table (BP-40). One harness finding: every headless fathom cell paid a
+`ToolSearch` turn — about 11% of the arm's tokens — because Claude Code
+defers every MCP schema unless the entry says `alwaysLoad: true`; the runner
+config now does (BP-39, O32; the 2026-09-12 "did not reproduce" probe never
+called a fathom tool). The product rows this run bought are BP-41..43;
+the next L4 (BP-44) borrows every grep and none cell by key and re-runs only
+the fathom cells.
 
 ### History before the ledger
 

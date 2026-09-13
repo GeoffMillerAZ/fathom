@@ -651,7 +651,7 @@ triage if it matters.
 - **Status:** open
 - **Impact:** TODO
 
-### O27 — O24's deferral tax does not reproduce on Claude Code 2.1.270: the whole 17-tool, 28,715-byte agent surface loads eagerly and a session spends ZERO ToolSearch turns, with and without `alwaysLoad: true`. ADR-032's own revisit trigger ("a harness release removes MCP tool deferral") has fired.
+### O27 — (interactive mode only — see O32 for the headless measurement) O24's deferral tax does not reproduce on Claude Code 2.1.270: the whole 17-tool, 28,715-byte agent surface loads eagerly and a session spends ZERO ToolSearch turns, with and without `alwaysLoad: true`. ADR-032's own revisit trigger ("a harness release removes MCP tool deferral") has fired.
 
 - **Symptom:** O24's deferral tax does not reproduce on Claude Code 2.1.270: the whole 17-tool, 28,715-byte agent surface loads eagerly and a session spends ZERO ToolSearch turns, with and without `alwaysLoad: true`. ADR-032's own revisit trigger ("a harness release removes MCP tool deferral") has fired.
 - **Evidence:**
@@ -702,3 +702,29 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O31 — The first replicated home run (run-20260913T002832Z, 3 arms × 13 tasks × n=3, $7.90) refutes the cost half of both criteria: fathom passed 31/33 to grep's 28/33 (p=0.042, CI −0.06..+0.24) but returned 1.90× grep's tool-result bytes and cost 1.46× as much; `read_source` was the largest single payload (38 calls, 123 KB of 419 KB) and the worst task (H1-T06, payload 18.6×) was a two-line grep that the fathom arm answered in 492 bytes with `find_symbol` and then kept exploring with `references` calls that returned 6–7 KB each, one of them for the junk query `func (s *`.
+
+- **Symptom:** H2-1 FAIL (tokens 1.444×), H2-3 FAIL (payload 1.901×, cost 1.465×); leaked H1-T04, H1-T12 (the none arm passed both 3/3); flaky in one arm or the other H1-T02, T07, T08, T11, T13. fathom won outright on H1-T07 (3/3 vs 1/3, 0.41× tokens, 0.21× payload) and H1-T13; lost cost on every greppable lookup (T06 18.6×, T11 6.5×, T08 4.5×, T03 3.5×, T10 2.7× tokens).
+- **Evidence:**
+  - **Tool:** references, read_source, query_symbols, outline (payload per call 2.4–3.2 KB; grep's Bash 1.6 KB)
+  - **Expected:** fathom's own payload ≤ grep's on its home corpus (H2-3, ADR-032 §3).
+  - **Actual:** fathom arm 209 tool calls / 419 KB over 33 cells; grep arm 138 calls / 222 KB. gold_source_rate[fathom]: obligations 0.18, references 0.18, read_source 0.15, find_callers 0.12, query_symbols 0.12, answer 0.09.
+  - **Repro:** docs/bench/ledger.jsonl rows run_id 20260913T002832Z; per-tool bytes from workspace/artifacts/context-bench/run-20260913T002832Z/raw/*.stream.jsonl
+- **Root cause:** three, each measured: (1) `references` renders ~220 bytes per occurrence (seven JSON keys and a text line) and answers a textual junk query with 27 heuristic lines instead of a refusal; (2) the fathom arm has no `cat`, so `read_source` is used as one and its bytes count against fathom while the grep arm's `cat` bytes count against grep equally — a wash in bytes but not in turns; (3) the model keeps exploring after the index has answered (T06: the answer was in the first 492-byte result), which the tool descriptions do not stop.
+- **Fix:** pre-registered as BP-40..43 in docs/plans/bench-pyramid.md; the targeted L3 run over T06/T10/T11 must show payload ≤ 1.0× before the next L4 spend.
+- **Status:** open
+- **Impact:** the home bench is honest and cheap to re-run (grep and none cells borrow by key; only the 39 fathom cells re-run, ~$2.60); the win claim is success rate, not cost, until BP-40..43 land.
+
+### O32 — O27 was measured in the wrong harness mode: in headless `claude -p` (the bench runner) every one of the 39 fathom cells spent at least one `ToolSearch` turn (histogram 1:31, 2:7, 3:1; 48 turns in the 33 scored cells), and those turns carried 11.4% of the fathom arm's assistant-turn tokens (1.41M of 12.35M); the grep arm spent zero.
+
+- **Symptom:** the stream-json `init` event lists all 17 `mcp__fathom__*` tools, yet the model's first fathom call is preceded by `ToolSearch {"query":"select:mcp__fathom__find_symbol,..."}` — the schemas are deferred in headless mode at 28.7 KB even though an interactive session on the same binary (O27) loaded them eagerly.
+- **Evidence:**
+  - **Tool:** ToolSearch (harness), toolsearch_turns on the ledger row (treatment_toolsearch_turns_mean = 1.27)
+  - **Expected:** zero ToolSearch turns, as O27 measured interactively on 2.1.270.
+  - **Actual:** ≥1 per headless cell, 11.4% of the arm's tokens, ~2% of its payload bytes.
+  - **Repro:** python tally over workspace/artifacts/context-bench/run-20260913T002832Z/raw/*-fathom-t*.stream.jsonl counting tool_use blocks named ToolSearch
+- **Root cause:** the deferral rule differs between interactive and `-p` sessions (or by tool-count/config path); O27 generalised one mode to the harness. Whether a smaller schema would avoid it in headless mode is unmeasured.
+- **Fix:** BP-22 re-dispositioned deferred (not refused) with the headless measurement; ADR-032 amended; H2-3 already reports the turns without gating them (it is a harness cost, not a payload cost — and it is real money for a headless adopter).
+- **Status:** open
+- **Impact:** ~11% of the fathom arm's token cost in headless runs is the harness loading fathom's schemas; the 1.444× token ratio is ~1.28× without it, still over 1.0.

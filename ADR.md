@@ -1375,6 +1375,21 @@ environment for the daemon close it (BP-35..37). The deferral tax (O24) did not 
 Claude Code 2.1.270 (zero ToolSearch turns at 28.7k schema bytes); BP-22 is refused and the
 `toolsearch_turns` tripwire stands.
 
+**Amended 2026-09-13 (the run).** The first replicated home run (run-20260913T002832Z,
+three arms, n=3, $7.90) is on the ledger under H2-1 and H2-3 and FAILS both on cost: 31/33
+successes to grep's 28/33 (p=0.042, the CI crosses zero), tokens 1.444×, payload 1.901×,
+cost 1.465×; two tasks leaked to the none arm and left the verdict (O31). §5 is corrected:
+the deferral tax DID reproduce — every headless fathom cell paid at least one ToolSearch
+turn, 11% of the arm's tokens (O32); the 2026-09-12 zero was a probe that never called a
+fathom tool. Claude Code documents no size threshold: with `ENABLE_TOOL_SEARCH` unset every
+MCP schema is deferred and only `alwaysLoad: true` exempts a server, so the remedy is that
+bit on every entry fathom writes (BP-39, measured 1 → 0 turns), not a smaller schema; BP-22
+stays refused for the corrected reason. The scorer now defaults to the newest registered
+criterion (BP-38) and the runner may not overwrite the README (BP-40). The next spend is
+gated on a targeted run over the losing tasks (BP-41..44): the bench did what §1 asked —
+it named the product work (references and read_source payload, stop-when-answered) before
+another dollar goes to L4.
+
 **Revisit when.** A harness release removes MCP tool deferral (retire the line item); L0
 reports precision or recall under 0.95 for an adjudicable tool on a pinned repo (the index is
 the bottleneck; L4 must not run); the `none` arm passes more than half the corpus; two

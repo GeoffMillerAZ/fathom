@@ -32,14 +32,17 @@ unverified are claimed rows with no contract the gate can refute, each naming wh
 Path: store provenance on verdicts and the lexical oracle shipped in 0.8.0 (ADR-030,
 `docs/plans/proof-credibility.md` PC-1..5, PC-17..19); PC-20 is what is left.
 
-**G9. The bench shows fathom's strengths and can run on a commit.** Done when:
-`docs/plans/bench-pyramid.md` BP-1..24 are proven (L0 index oracle, L1 payload replay and
-L2 corpus gate in `task validate`; every cell remembered by its key; `exercises:` and a
-targeted run for the tasks a diff can move; H2-3 registered) and the first replicated home
-run (BC-14 / BP-25) has ledger rows under both H2-1 and H2-3, verdict honest either way
-(ADR-031, ADR-032). Before ADR-032 the single three-arm bench could only test what grep can
-also do and measured the harness more than the index (O23–O26); the public run (PB-19) and
-any publication stay operator decisions (Q4, F2).
+**G9. The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline.**
+BP-1..25 proved (L0 index oracle, L1 payload replay and L2 corpus gate in `task validate`;
+every cell remembered by its key; targeted runs; H2-3 registered) and the first replicated
+home run (run-20260913T002832Z, BC-14 / BP-25) is on the ledger under both H2-1 and H2-3:
+FAIL on cost either way — fathom passed 31/33 to grep's 28/33 but returned 1.90× the bytes
+(O31), and every headless fathom cell paid a ToolSearch turn the config can remove (O32,
+BP-39). Done when the next L4 (BP-44) borrows every grep and none cell by key, re-runs
+only the fathom cells, and records payload ≤ 1.0× or why not — after BP-41..43 land and a
+targeted run over the losing tasks shows them. Before ADR-032 the single three-arm bench
+could only test what grep can also do and measured the harness more than the index
+(O23–O26); the public run (PB-19) and any publication stay operator decisions (Q4, F2).
 
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
