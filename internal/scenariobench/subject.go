@@ -1,0 +1,377 @@
+// PrepareSubject (SB-12) turns a Task's pinned subject into a git worktree
+// ready for sessions: a shared clone under
+// workspace/scenariobench/subjects/<sha256(repo_url)>, one `git worktree
+// add` per cell at base_commit, the subject's and the arm's setup commands,
+// and — for a wired arm — a scratch daemon that ingests ONLY that worktree
+// (never the fleet store) so `fathom init --harness claude-code --json` can
+// wire it for real.
+package scenariobench
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// CompileCost is what PrepareSubject spent compiling a semantic layer for a
+// wired, CompileLayers arm — recorded on the cell so a run that asked for
+// compiled obligations shows what that cost, separately from the session
+// spend RunSessions measures.
+type CompileCost struct {
+	TokensIn  int64         `json:"tokens_in"`
+	TokensOut int64         `json:"tokens_out"`
+	CostUSD   float64       `json:"cost_usd"`
+	Duration  time.Duration `json:"duration_ns"`
+}
+
+// Worktree is what PrepareSubject prepared for one (task, arm) cell.
+type Worktree struct {
+	// Path is the git worktree's absolute path — SessionRequest.Worktree.
+	Path string
+	// SubjectClone is the shared clone this worktree was added from.
+	SubjectClone string
+	// CellDir is where this cell's own working artifacts (oracle output,
+	// raw session transcripts) belong — distinct from the content-addressed
+	// cell store (cell.go), whose key is not known until scoring time.
+	CellDir string
+	// Arm is what RenderArm wrote into this worktree.
+	Arm ArmFiles
+	// DaemonURL is "" for an unwired arm; the scratch daemon's base URL
+	// otherwise (e.g. "http://127.0.0.1:53219").
+	DaemonURL string
+	// StorePath is the scratch daemon's sqlite store (wired only).
+	StorePath string
+	// CompileCost is set only when arm.CompileLayers asked for it.
+	CompileCost *CompileCost
+
+	daemon *exec.Cmd // unexported: StopWorktree's handle on the scratch daemon, if one was started
+}
+
+// PrepareSubject clones task.Subject.RepoURL once under
+// <root>/workspace/scenariobench/subjects/<sha256(repo_url)> (reusing the
+// clone across every cell of every task that shares a subject), adds a
+// worktree at base_commit, runs the subject's and then the arm's Setup
+// commands in it, renders the arm (RenderArm), and — for a wired arm —
+// starts a scratch daemon over ONLY this worktree, runs `fathom init
+// --harness claude-code --json` against it, and points the arm's MCP
+// config at the daemon (alwaysLoad: true) before compiling layers when
+// asked. root is this repo's root (where `go build ./cmd/fathom` runs
+// from); it is never the subject.
+func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Worktree, error) {
+	subjectsDir := filepath.Join(root, "workspace", "scenariobench", "subjects")
+	cloneDir := filepath.Join(subjectsDir, shortHash(task.Subject.RepoURL))
+	if err := ensureClone(ctx, task.Subject.RepoURL, cloneDir); err != nil {
+		return Worktree{}, err
+	}
+
+	worktreesDir := cloneDir + "-worktrees"
+	if err := os.MkdirAll(worktreesDir, 0o755); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", worktreesDir, err)
+	}
+	base := filepath.Join(worktreesDir, task.ID+"-"+armContentHash(arm))
+	wtPath, err := nextFreeDir(base)
+	if err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: choosing a worktree dir: %w", err)
+	}
+
+	if err := ensureCommit(ctx, cloneDir, task.Subject.BaseCommit); err != nil {
+		return Worktree{}, err
+	}
+	if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
+	}
+
+	wt := Worktree{Path: wtPath, SubjectClone: cloneDir}
+	wt.CellDir = filepath.Join(root, "workspace", "artifacts", "scenariobench", "worktrees", filepath.Base(wtPath))
+	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", wt.CellDir, err)
+	}
+
+	if err := runSetup(ctx, wtPath, task.Subject.Setup, filepath.Join(wt.CellDir, "subject-setup.log")); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: subject setup: %w", err)
+	}
+	if err := runSetup(ctx, wtPath, arm.Setup, filepath.Join(wt.CellDir, "arm-setup.log")); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: arm setup: %w", err)
+	}
+
+	renderedArm := arm
+	if arm.Wired {
+		if err := wireScratchDaemon(ctx, &wt, task, &renderedArm, root); err != nil {
+			return Worktree{}, err
+		}
+	}
+
+	files, err := RenderArm(renderedArm, wtPath)
+	if err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
+	}
+	wt.Arm = files
+
+	if arm.Wired && arm.CompileLayers {
+		cost, err := compileLayers(ctx, root, task, wt)
+		if err != nil {
+			return Worktree{}, fmt.Errorf("preparing subject: compiling layers: %w", err)
+		}
+		wt.CompileCost = cost
+	}
+
+	return wt, nil
+}
+
+// StopWorktree stops a wired cell's scratch daemon (SB-12: "stop it after
+// the last session"). A control/unwired worktree has none; calling it on
+// one is a no-op.
+func StopWorktree(wt *Worktree) error {
+	if wt == nil || wt.daemon == nil || wt.daemon.Process == nil {
+		return nil
+	}
+	if err := wt.daemon.Process.Kill(); err != nil {
+		return fmt.Errorf("stopping scratch daemon: %w", err)
+	}
+	_ = wt.daemon.Wait()
+	wt.daemon = nil
+	return nil
+}
+
+// ─── clone / worktree plumbing ──────────────────────────────────────────
+
+func shortHash(s string) string {
+	sum := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(sum[:])
+}
+
+// armContentHash is a short, stable identifier for one Arm value, used
+// only to keep a cell's worktree directory name readable and distinct from
+// another arm's; it is not the cell key (cell.go's ScenarioCellKey is).
+func armContentHash(arm Arm) string {
+	raw, _ := json.Marshal(arm)
+	sum := sha256.Sum256(raw)
+	return hex.EncodeToString(sum[:6])
+}
+
+// nextFreeDir returns base, or base-2, base-3, … — the first path that
+// does not exist yet. Deterministic given a deterministic call order (the
+// caller always prepares cells in the same order), which is what lets a
+// clean re-run reproduce the same worktree names.
+func nextFreeDir(base string) (string, error) {
+	for i := 0; ; i++ {
+		candidate := base
+		if i > 0 {
+			candidate = fmt.Sprintf("%s-%d", base, i+1)
+		}
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate, nil
+		} else if err != nil {
+			return "", err
+		}
+	}
+}
+
+func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
+	if _, err := os.Stat(filepath.Join(cloneDir, ".git")); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("preparing subject: statting %s: %w", cloneDir, err)
+	}
+	if err := os.MkdirAll(filepath.Dir(cloneDir), 0o755); err != nil {
+		return fmt.Errorf("preparing subject: creating %s: %w", filepath.Dir(cloneDir), err)
+	}
+	if out, err := runIn(ctx, "", "git", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
+		return fmt.Errorf("preparing subject: git clone %s: %w (%s)", repoURL, err, out)
+	}
+	return nil
+}
+
+func ensureCommit(ctx context.Context, cloneDir, commit string) error {
+	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err == nil {
+		return nil
+	}
+	// Best-effort: the commit may have landed after the clone. A local
+	// (file://, plain-path) fixture with no remote still fails this
+	// harmlessly, and ensureCommit's caller surfaces the ORIGINAL missing
+	// commit as the real error below.
+	_, _ = runIn(ctx, cloneDir, "git", "fetch", "--all", "--quiet")
+	if _, err := runIn(ctx, cloneDir, "git", "cat-file", "-e", commit+"^{commit}"); err != nil {
+		return fmt.Errorf("preparing subject: base_commit %s not found in %s after fetch: %w", commit, cloneDir, err)
+	}
+	return nil
+}
+
+func runSetup(ctx context.Context, dir string, cmds []string, logPath string) error {
+	if len(cmds) == 0 {
+		return nil
+	}
+	var log strings.Builder
+	for _, c := range cmds {
+		log.WriteString("$ " + c + "\n")
+		out, err := runIn(ctx, dir, "sh", "-c", c)
+		log.WriteString(out)
+		log.WriteString("\n")
+		if err != nil {
+			_ = os.WriteFile(logPath, []byte(log.String()), 0o644)
+			return fmt.Errorf("running %q: %w", c, err)
+		}
+	}
+	return os.WriteFile(logPath, []byte(log.String()), 0o644)
+}
+
+func runIn(ctx context.Context, dir string, name string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	return string(out), err
+}
+
+// ─── scratch daemon (wired arms only) ───────────────────────────────────
+
+// wireScratchDaemon builds the fathom binary from root, ingests wt.Path
+// (never the fleet store) into a fresh sqlite store under
+// workspace/scenariobench/stores/<cell>/, serves it on a free loopback
+// port, runs `fathom init --harness claude-code --json` against it, and
+// points renderedArm's MCP entry at the daemon (alwaysLoad: true) so
+// RenderArm's later write carries the real URL.
+func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm *Arm, root string) error {
+	binDir := wt.CellDir
+	bin := filepath.Join(binDir, "fathom")
+	if out, err := buildFathomBinary(ctx, root, bin); err != nil {
+		return fmt.Errorf("wiring scratch daemon: %w (%s)", err, out)
+	}
+
+	storeDir := filepath.Join(root, "workspace", "scenariobench", "stores", filepath.Base(wt.Path))
+	if err := os.MkdirAll(storeDir, 0o755); err != nil {
+		return fmt.Errorf("wiring scratch daemon: creating %s: %w", storeDir, err)
+	}
+	wt.StorePath = filepath.Join(storeDir, "store.sqlite")
+
+	service := task.Subject.Service
+	if service == "" {
+		service = filepath.Base(wt.Path)
+	}
+	if out, err := runIn(ctx, wt.Path, bin, "ingest", "-service", service, "-path", wt.Path, "-store", wt.StorePath); err != nil {
+		return fmt.Errorf("wiring scratch daemon: ingest: %w (%s)", err, out)
+	}
+
+	port, err := freePort()
+	if err != nil {
+		return fmt.Errorf("wiring scratch daemon: finding a free port: %w", err)
+	}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	daemon := exec.Command(bin, "serve-http", "-store", wt.StorePath, "-addr", addr, "-auto-refresh=false", "-call-log", "")
+	daemon.Dir = wt.Path
+	logFile, err := os.Create(filepath.Join(wt.CellDir, "scratch-daemon.log"))
+	if err == nil {
+		daemon.Stdout = logFile
+		daemon.Stderr = logFile
+	}
+	if err := daemon.Start(); err != nil {
+		return fmt.Errorf("wiring scratch daemon: starting serve-http: %w", err)
+	}
+	wt.daemon = daemon
+	wt.DaemonURL = "http://" + addr
+
+	if err := waitDaemonReady(wt.DaemonURL, 30*time.Second); err != nil {
+		_ = StopWorktree(wt)
+		return fmt.Errorf("wiring scratch daemon: %w", err)
+	}
+
+	if out, err := runIn(ctx, wt.Path, bin, "init", "--path", wt.Path, "--service", service, "--url", wt.DaemonURL, "--harness", "claude-code", "--json"); err != nil {
+		return fmt.Errorf("wiring scratch daemon: fathom init: %w (%s)", err, out)
+	}
+
+	// renderedArm.MCP may alias the corpus's own Arm.MCP map (arm was
+	// shallow-copied into *renderedArm by the caller); a fresh map here
+	// means this write can never mutate a map another cell still holds.
+	merged := make(map[string]any, len(renderedArm.MCP)+1)
+	for k, v := range renderedArm.MCP {
+		merged[k] = v
+	}
+	merged["fathom"] = map[string]any{
+		"type":       "http",
+		"url":        wt.DaemonURL + "/rpc/agent",
+		"alwaysLoad": true,
+	}
+	renderedArm.MCP = merged
+	return nil
+}
+
+// buildFathomBinary mirrors scripts/context-bench.sh's own scratch build:
+// GOWORK=off (a linked worktree cannot always resolve ../agentic-kit) and
+// CGO_ENABLED=1 (tree-sitter, ADR-013).
+func buildFathomBinary(ctx context.Context, root, out string) (string, error) {
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", out, "./cmd/fathom")
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
+	output, err := cmd.CombinedOutput()
+	return string(output), err
+}
+
+func freePort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func waitDaemonReady(baseURL string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}`)
+	for time.Now().Before(deadline) {
+		resp, err := http.Post(baseURL+"/rpc/agent", "application/json", body)
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode < 500 {
+				return nil
+			}
+		}
+		body = strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"capabilities","arguments":{}}}`)
+		time.Sleep(200 * time.Millisecond)
+	}
+	return fmt.Errorf("scratch daemon at %s did not become ready within %s", baseURL, timeout)
+}
+
+// compileLayers runs `fathom compile -dry-run=false` (real LLM spend — an
+// operator-initiated wired+CompileLayers cell only) for the ingested
+// service's "obligations" layer against the scratch store directly
+// (bypassing the daemon, per cmd/fathom/compile.go's --store mode), and
+// reports its cost from the prose lines it prints ("tokens_in:",
+// "tokens_out:", "cost_usd:"). An unrecognized output shape still returns
+// a zero-cost CompileCost rather than failing the cell, since the compile
+// step itself already succeeded (its exit code is what compileLayers
+// propagates as an error).
+func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*CompileCost, error) {
+	bin := filepath.Join(wt.CellDir, "fathom")
+	service := task.Subject.Service
+	if service == "" {
+		service = filepath.Base(wt.Path)
+	}
+	start := time.Now()
+	out, err := runIn(ctx, wt.Path, bin, "compile", "-service", service, "-store", wt.StorePath, "-layer", "obligations", "-dry-run=false")
+	dur := time.Since(start)
+	if err != nil {
+		return nil, fmt.Errorf("fathom compile: %w (%s)", err, out)
+	}
+	cost := &CompileCost{Duration: dur}
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "tokens_in:"):
+			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "tokens_in:")), "%d", &cost.TokensIn)
+		case strings.HasPrefix(line, "tokens_out:"):
+			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "tokens_out:")), "%d", &cost.TokensOut)
+		case strings.HasPrefix(line, "cost_usd:"):
+			fmt.Sscanf(strings.TrimSpace(strings.TrimPrefix(line, "cost_usd:")), "%f", &cost.CostUSD)
+		}
+	}
+	return cost, nil
+}
