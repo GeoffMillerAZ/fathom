@@ -24,9 +24,17 @@ is out of gate scope. Essentials:
   `{oracle: ledger, path: <jsonl>, run_id: R, task: T, arm: A,
   min_trials: N}` verifies when the JSONL row keyed by (run_id, task, arm)
   exists, is not flagged `surface_unused: true`, carries no
-  `instrument_defect`, and ran `trials ≥ min_trials` (default 1); a row
+  `instrument_defect`, its own `evaluation.verdict` is not `fail`/
+  `indeterminate` (add `accept_verdict: any` to certify despite it — name
+  the reason it still counts), and ran at least `min_trials` trials
+  (default 1) — a scenario row's own `trials`, or a home row's own
+  per-cell `min_trials` (never its run-total `treatment_trials`, which
+  inflates with task count and proves nothing about replication). A row
   keyed by `run_id` alone matches the home bench's one-row-per-run ledger
-  (`docs/bench/ledger.jsonl`) instead. Full key reference:
+  (`docs/bench/ledger.jsonl`) instead; when that run_id has more than one
+  such row (the same run scored under two registered criteria), the claim
+  is refused as ambiguous unless `criterion: <id>` names the one row's
+  `evaluation.criterion_id` to pick. Full key reference:
   `docs/plans/README.md`'s Annotation keys table.
 - Give every gated row an author-owned `id:` — positional `md-NNN`
   renumbers when lines are inserted.

@@ -132,14 +132,22 @@ func TrustedWithoutRecheck(transcript []byte) TrustedWithoutRecheckStats {
 // scanTurns groups a stream transcript into one []turnCall slot per
 // assistant turn — including a turn that made no tool call at all, so "the
 // next 3 turns" counts real elapsed turns and not just turns that happened
-// to call a tool. Each call's targets are resolved from its own input plus
-// the matching tool_result text the following user event carries (looked
-// up by tool_use_id, the same attribution TranscriptMetrics uses for
-// gold_source_tool).
+// to call a tool. Each call's targets are resolved from its own input
+// plus, for a fathom call only, the matching tool_result text the
+// following user event carries (looked up by tool_use_id, the same
+// attribution TranscriptMetrics uses for gold_source_tool) — a recheck
+// tool's own result (a Read's file body, a Grep's match list) is never
+// mined for targets, only its input arguments are.
+//
+// currentByID maps a tool_use id to its INDEX in current, not a pointer:
+// current keeps growing as the same assistant turn's tool_use blocks are
+// appended, and a pointer taken mid-loop can be left pointing at a
+// backing array append() has since replaced, orphaning every call but the
+// last one added in the turn.
 func scanTurns(transcript []byte) [][]turnCall {
 	var turns [][]turnCall
 	var current []turnCall
-	currentByID := map[string]*turnCall{}
+	currentByID := map[string]int{}
 	started := false
 
 	sc := bufio.NewScanner(bytes.NewReader(transcript))
@@ -160,15 +168,14 @@ func scanTurns(transcript []byte) [][]turnCall {
 			}
 			started = true
 			current = nil
-			currentByID = map[string]*turnCall{}
+			currentByID = map[string]int{}
 			for _, c := range ev.Message.Content {
 				if c.Type != "tool_use" {
 					continue
 				}
-				tc := turnCall{name: c.Name, targets: stringsInJSON(c.Input)}
-				current = append(current, tc)
+				current = append(current, turnCall{name: c.Name, targets: stringsInJSON(c.Input)})
 				if c.ID != "" {
-					currentByID[c.ID] = &current[len(current)-1]
+					currentByID[c.ID] = len(current) - 1
 				}
 			}
 		case "user":
@@ -176,11 +183,11 @@ func scanTurns(transcript []byte) [][]turnCall {
 				if c.Type != "tool_result" {
 					continue
 				}
-				tc := currentByID[c.ToolUseID]
-				if tc == nil {
+				idx, ok := currentByID[c.ToolUseID]
+				if !ok || !strings.HasPrefix(current[idx].name, fathomToolPrefix) {
 					continue
 				}
-				tc.targets = append(tc.targets, pathOrSymbolTokens(rawText(c.Content))...)
+				current[idx].targets = append(current[idx].targets, pathOrSymbolTokens(rawText(c.Content))...)
 			}
 		}
 	}
@@ -190,10 +197,20 @@ func scanTurns(transcript []byte) [][]turnCall {
 	return turns
 }
 
-// stringsInJSON recursively collects every string leaf value out of a JSON
+// nonIdentifyingKeys are JSON keys whose string value is a fixed
+// configuration token, never a file path or symbol name: every fathom
+// tool requires "service" (its value is always the repo/service name,
+// e.g. "fathom" in this repo, which otherwise reads as a plausible bare
+// match target), and a "model" or "flag" argument is the same kind of
+// plumbing value. A string under one of these keys never enters targets,
+// regardless of its shape.
+var nonIdentifyingKeys = map[string]bool{"service": true, "model": true, "flag": true}
+
+// stringsInJSON recursively collects string leaf values out of a JSON
 // value (a tool call's input arguments, whatever shape its schema gives
 // them — "path", "symbol", "file_path", "pattern", … all fall out the same
-// way), deduplicated and floored at minTargetLen.
+// way), deduplicated, floored at minTargetLen, and excluding
+// nonIdentifyingKeys.
 func stringsInJSON(raw json.RawMessage) []string {
 	if len(raw) == 0 {
 		return nil
@@ -204,25 +221,28 @@ func stringsInJSON(raw json.RawMessage) []string {
 	}
 	seen := map[string]bool{}
 	var out []string
-	var walk func(interface{})
-	walk = func(v interface{}) {
+	var walk func(key string, v interface{})
+	walk = func(key string, v interface{}) {
 		switch t := v.(type) {
 		case string:
+			if nonIdentifyingKeys[key] {
+				return
+			}
 			if len(t) >= minTargetLen && !seen[t] {
 				seen[t] = true
 				out = append(out, t)
 			}
 		case []interface{}:
 			for _, e := range t {
-				walk(e)
+				walk(key, e)
 			}
 		case map[string]interface{}:
-			for _, e := range t {
-				walk(e)
+			for k, e := range t {
+				walk(k, e)
 			}
 		}
 	}
-	walk(v)
+	walk("", v)
 	return out
 }
 
@@ -245,23 +265,41 @@ func pathOrSymbolTokens(text string) []string {
 	return out
 }
 
-// overlaps reports whether any target in a shares a substring relationship
-// (either direction) with any target in b, both floored at minTargetLen —
-// "the same file path or symbol name" without demanding byte-for-byte
-// equality (a fathom answer may cite "internal/mcp/tools.go" while the
-// later Read names the absolute path).
+// overlaps reports whether any target in a names the same file path or
+// symbol as any target in b, via pathOrSymbolMatch.
 func overlaps(a, b []string) bool {
 	for _, x := range a {
-		if len(x) < minTargetLen {
-			continue
-		}
 		for _, y := range b {
-			if len(y) < minTargetLen {
-				continue
-			}
-			if strings.Contains(x, y) || strings.Contains(y, x) {
+			if pathOrSymbolMatch(x, y) {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// pathOrSymbolMatch reports whether x and y name the same file path or
+// symbol: exact equality (a "whole-token match" — the same bare symbol
+// name, or the same path spelled identically), or, when at least one
+// value looks like a path, a shared path suffix at a "/" boundary (a
+// fathom answer may cite "internal/mcp/tools.go" while the later Read
+// names the absolute path). A bare shared directory segment ("internal",
+// "pkg") does not qualify on its own — two unrelated files that merely
+// live in the same directory must not count as a match — and neither does
+// an arbitrary substring: a short generic token (a service name, a common
+// word) must no longer "match" nearly everything, which is what let a
+// fathom call's own required arguments and an unrelated Read's full
+// result text count as re-checks of each other.
+func pathOrSymbolMatch(x, y string) bool {
+	if len(x) < minTargetLen || len(y) < minTargetLen {
+		return false
+	}
+	if x == y {
+		return true
+	}
+	if strings.Contains(x, "/") || strings.Contains(y, "/") {
+		if strings.HasSuffix(y, "/"+x) || strings.HasSuffix(x, "/"+y) {
+			return true
 		}
 	}
 	return false

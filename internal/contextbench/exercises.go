@@ -28,6 +28,7 @@ import (
 // fails when the two drift, so the copy cannot go quietly stale.
 var agentSurfaceTools = []string{
 	"capabilities",
+	"discoveries",
 	"entrypoints",
 	"find_callers",
 	"find_symbol",
@@ -83,6 +84,7 @@ var handlerTable = []handlerRule{
 	{Path: "internal/mcp/tools.go", Tools: []string{"find_symbol", "find_callers", "query_symbols"}, Why: "the three symbol tools are registered here"},
 	{Path: "internal/mcp/nav_tools.go", Tools: []string{"entrypoints", "outline", "symbol_context"}},
 	{Path: "internal/mcp/references_tool.go", Tools: []string{"references"}},
+	{Path: "internal/mcp/discoveries_tool.go", Tools: []string{"discoveries"}},
 	{Path: "internal/mcp/readsource.go", Tools: []string{"read_source"}},
 	{Path: "internal/mcp/semantic_tools.go", Tools: []string{"obligations"}},
 	{Path: "internal/mcp/verify_plan_tool.go", Tools: []string{"verify_plan"}},

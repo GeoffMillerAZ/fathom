@@ -44,24 +44,41 @@ type ledgerRow struct {
 	Arm    string `json:"arm"`
 
 	// Trials is the scenario ledger's own per-(run,task,arm) trial count.
-	// TreatmentTrials is the home ledger's per-RUN total (its rows carry
-	// no task_id/arm at all): the fallback used only when trialCount finds
-	// no Trials value of its own.
-	Trials          int `json:"trials"`
-	TreatmentTrials int `json:"treatment_trials"`
+	// MinTrials is the home ledger's own per-cell replication floor (the
+	// thinnest cell any run measured, contextbench.PairedSummary.MinTrials)
+	// — the number this oracle must compare a claimed floor against for a
+	// home row, never TreatmentTrials (tasks × trials, the run TOTAL: 33
+	// successes-out-of on an 11-task run at n=3 says nothing about
+	// replication and passes almost any floor by sheer task count).
+	Trials    int `json:"trials"`
+	MinTrials int `json:"min_trials"`
 
 	SurfaceUnused    bool   `json:"surface_unused"`
 	InstrumentDefect string `json:"instrument_defect"`
+
+	// Evaluation is the criterion verdict the row was written with — a
+	// home row's own registered-criterion judgment (contextbench.
+	// Evaluation) or a scenario row's per-run ScenarioEvaluation. Read
+	// here so a row whose own bench run failed or could not decide never
+	// certifies a plan claim by existing and clearing the trial floor
+	// alone.
+	Evaluation struct {
+		CriterionID string `json:"criterion_id"`
+		Verdict     string `json:"verdict"`
+		Reason      string `json:"reason"`
+	} `json:"evaluation"`
 }
 
 // trialCount is the row's own reading of "how many trials did this
-// measure" — Trials when the row carries one (a scenario ledger row),
-// else TreatmentTrials (a home ledger row).
+// measure, per cell" — Trials when the row carries one (a scenario ledger
+// row, its own per-(task,arm) count), else MinTrials (a home ledger row's
+// per-cell replication floor — never the run-total treatment_trials,
+// which inflates with task count and says nothing about replication).
 func (r ledgerRow) trialCount() int {
 	if r.Trials > 0 {
 		return r.Trials
 	}
-	return r.TreatmentTrials
+	return r.MinTrials
 }
 
 // ledgerContractError returns the static reason a ledger row's contract is
@@ -132,7 +149,9 @@ func ledgerOracle(t Task, files FileEvidence) (Criterion, string) {
 		return Criterion{ledgerCriterion, Fail, fmt.Sprintf("path %q not readable in the working tree: %v", t.OraclePath, err)}, "path-absent"
 	}
 
+	homeShaped := t.OracleTaskID == "" && t.OracleArm == ""
 	var match *ledgerRow
+	var homeMatches []ledgerRow
 	lineNo := 0
 	for _, line := range strings.Split(string(body), "\n") {
 		lineNo++
@@ -147,19 +166,53 @@ func ledgerOracle(t Task, files FileEvidence) (Criterion, string) {
 		if r.RunID != t.OracleRunID {
 			continue
 		}
-		if t.OracleTaskID == "" && t.OracleArm == "" {
+		if homeShaped {
 			// Matched on run_id alone (the home bench's one-row-per-run
 			// ledger): the row itself must ALSO carry no task_id/arm, so a
 			// scenario-shaped row that happens to share the run_id string
-			// is never mistaken for the row this claim named.
+			// is never mistaken for the row this claim named. Every such
+			// row is collected — a run_id scored under two registered
+			// criteria (e.g. H2-1 and H2-3) writes one row each, and
+			// silently taking "the last one" would let the claim pick
+			// whichever verdict happened to be written second.
 			if r.TaskID != "" || r.Arm != "" {
 				continue
 			}
-		} else if r.TaskID != t.OracleTaskID || r.Arm != t.OracleArm {
+			homeMatches = append(homeMatches, r)
+			continue
+		}
+		if r.TaskID != t.OracleTaskID || r.Arm != t.OracleArm {
 			continue
 		}
 		rr := r
 		match = &rr // last match in file order wins: the freshest reading
+	}
+
+	if homeShaped {
+		switch len(homeMatches) {
+		case 0:
+			// match stays nil; falls through to the absent-row report below.
+		case 1:
+			match = &homeMatches[0]
+		default:
+			if t.OracleCriterion == "" {
+				return Criterion{ledgerCriterion, Fail, fmt.Sprintf("run_id=%s is ambiguous in %s: %d rows match (criteria: %s) — add criterion: <id> to pick one", t.OracleRunID, t.OraclePath, len(homeMatches), criterionIDs(homeMatches))}, "ambiguous-run-id"
+			}
+			var picked []ledgerRow
+			for _, r := range homeMatches {
+				if r.Evaluation.CriterionID == t.OracleCriterion {
+					picked = append(picked, r)
+				}
+			}
+			switch len(picked) {
+			case 0:
+				return Criterion{ledgerCriterion, Fail, fmt.Sprintf("run_id=%s in %s has no row for criterion %q — rows present: %s", t.OracleRunID, t.OraclePath, t.OracleCriterion, criterionIDs(homeMatches))}, "ledger-row-absent"
+			case 1:
+				match = &picked[0]
+			default:
+				return Criterion{ledgerCriterion, Fail, fmt.Sprintf("run_id=%s criterion=%s is still ambiguous in %s: %d rows match", t.OracleRunID, t.OracleCriterion, t.OraclePath, len(picked))}, "ambiguous-run-id"
+			}
+		}
 	}
 
 	if match == nil {
@@ -176,9 +229,27 @@ func ledgerOracle(t Task, files FileEvidence) (Criterion, string) {
 	if match.InstrumentDefect != "" {
 		return Criterion{ledgerCriterion, Fail, fmt.Sprintf("ledger row %s carries instrument_defect: %q — voided, not proof", rowName, match.InstrumentDefect)}, "instrument-defect"
 	}
+	if verdict := match.Evaluation.Verdict; (verdict == "fail" || verdict == "indeterminate") && t.OracleAcceptVerdict != "any" {
+		return Criterion{ledgerCriterion, Fail, fmt.Sprintf("ledger row %s carries evaluation.verdict=%s: %s — add accept_verdict: any to certify despite it", rowName, verdict, match.Evaluation.Reason)}, "verdict-" + verdict
+	}
 	minTrials := ledgerMinTrials(t)
 	if trials := match.trialCount(); trials < minTrials {
 		return Criterion{ledgerCriterion, Fail, fmt.Sprintf("ledger row %s ran %d trial(s), below the required floor of %d", rowName, trials, minTrials)}, "below-trial-floor"
 	}
 	return Criterion{ledgerCriterion, Pass, fmt.Sprintf("ledger row %s: %d trial(s) (>= required %d), not voided", rowName, match.trialCount(), minTrials)}, ""
+}
+
+// criterionIDs renders the criterion_id each of rows carries, in file
+// order, for an ambiguity message — "(unset)" for a row written before
+// evaluations carried one, never a blank that reads as a typo.
+func criterionIDs(rows []ledgerRow) string {
+	ids := make([]string, 0, len(rows))
+	for _, r := range rows {
+		id := r.Evaluation.CriterionID
+		if id == "" {
+			id = "(unset)"
+		}
+		ids = append(ids, id)
+	}
+	return strings.Join(ids, ", ")
 }

@@ -129,7 +129,7 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 		}
 		b.WriteString(".\n")
 		b.WriteString(surfaceCallsLine(arms, byArm))
-		b.WriteString(plainLanguageLine(runID, crit, t, c))
+		b.WriteString(plainLanguageLine(runID, crit, crit.Evaluate(sound), t, c))
 	default:
 		if sha == "" {
 			b.WriteString(" (voided or no sound row named a corpus)")
@@ -178,20 +178,34 @@ func rawArmsLine(arms []string, byArm map[string]*armTotals) string {
 
 // plainLanguageLine is vision 28 §2.7: the verdict in plain language,
 // before any ratio — "On <run>, fathom's arm matched/beat/lost to <control>
-// on success (a v b) at <x>× the tokens; the tools were called N times."
-func plainLanguageLine(runID string, crit Criterion, t, c *armTotals) string {
-	verdict := "matched"
+// on success (a v b) at <x>× the tokens; the tools were called N times." —
+// followed by the registered criterion's own verdict on the same line.
+//
+// The beat/lost-to/matched verb comes from the raw success rates, but a
+// verb alone does not get to claim a win or a loss: ev (crit.Evaluate over
+// this run's own sound rows) is the pre-registered criterion's judgment,
+// and an indeterminate run — most commonly below the replication floor,
+// the n=1 guard — has not measured enough to say either, so the verb is
+// replaced rather than left to imply a result the criterion refused to
+// certify.
+func plainLanguageLine(runID string, crit Criterion, ev ScenarioEvaluation, t, c *armTotals) string {
+	verb := "matched"
 	tRate, cRate := rateOf(t.successes, t.trials), rateOf(c.successes, c.trials)
 	switch {
 	case tRate > cRate:
-		verdict = "beat"
+		verb = "beat"
 	case tRate < cRate:
-		verdict = "lost to"
+		verb = "lost to"
+	}
+	verdictPhrase := fmt.Sprintf("%s %s", verb, crit.Control)
+	if ev.Verdict == ScenarioVerdictIndeterminate {
+		verdictPhrase = "did not run enough trials to decide against " + crit.Control
 	}
 	tokenPart := "an unmeasured"
 	if t.tokens > 0 && c.tokens > 0 {
 		tokenPart = fmt.Sprintf("%.3f×", float64(t.tokens)/float64(c.tokens))
 	}
-	return fmt.Sprintf("On %s, fathom's arm %s %s on success (%d v %d) at %s the tokens; the tools were called %d time(s).\n",
-		runID, verdict, crit.Control, t.successes, c.successes, tokenPart, t.surfaceCalls)
+	return fmt.Sprintf("On %s, fathom's arm %s on success (%d v %d) at %s the tokens; the tools were called %d time(s). Registered criterion %s: %s (%s).\n",
+		runID, verdictPhrase, t.successes, c.successes, tokenPart, t.surfaceCalls,
+		ev.CriterionID, ev.Verdict, ev.Reason)
 }

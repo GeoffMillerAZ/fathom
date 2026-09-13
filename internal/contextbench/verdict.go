@@ -30,13 +30,21 @@ func RenderVerdict(rows []LedgerRow) string {
 		return b.String()
 	}
 	for _, r := range rows {
-		verdict := "matched"
+		verb := "matched"
 		tRate, cRate := successRate(r.TreatmentSuccesses, r.TreatmentTrials), successRate(r.ControlSuccesses, r.ControlTrials)
 		switch {
 		case tRate > cRate:
-			verdict = "beat"
+			verb = "beat"
 		case tRate < cRate:
-			verdict = "lost to"
+			verb = "lost to"
+		}
+		// RC-35 fix: the registered criterion, not the raw success rates,
+		// decides whether the row may claim a beat/loss at all — an
+		// indeterminate row (e.g. below the replication floor) has not
+		// measured enough to say either.
+		verdictPhrase := fmt.Sprintf("%s %s", verb, r.Control)
+		if r.Evaluation.Verdict == VerdictIndeterminate {
+			verdictPhrase = "did not run enough trials to decide against " + r.Control
 		}
 		tokenPart := "an unmeasured"
 		if r.AggregateTokenRatio > 0 {
@@ -53,8 +61,8 @@ func RenderVerdict(rows []LedgerRow) string {
 			fmt.Fprintf(&b, ", cost %.3f×", r.AggregateCostRatio)
 		}
 		b.WriteString(".\n")
-		fmt.Fprintf(&b, "On %s, fathom's arm %s %s on success (%d v %d) at %s the tokens; registered criterion %s: %s (%s).\n\n",
-			r.RunID, verdict, r.Control, r.TreatmentSuccesses, r.ControlSuccesses, tokenPart,
+		fmt.Fprintf(&b, "On %s, fathom's arm %s on success (%d v %d) at %s the tokens; registered criterion %s: %s (%s).\n\n",
+			r.RunID, verdictPhrase, r.TreatmentSuccesses, r.ControlSuccesses, tokenPart,
 			r.Evaluation.CriterionID, r.Evaluation.Verdict, r.Evaluation.Reason)
 	}
 	return b.String()

@@ -43,6 +43,30 @@ func TestRenderVerdict_LostToAndMatched(t *testing.T) {
 	}
 }
 
+// TestRenderVerdict_IndeterminateDoesNotClaimBeat (review finding 4): a
+// row the criterion calls indeterminate — an n=1 run below the
+// replication floor, in this case — must never render "beat"/"lost to"
+// from the raw success rates; it must say the run did not measure enough
+// and still show the criterion's own verdict and reason.
+func TestRenderVerdict_IndeterminateDoesNotClaimBeat(t *testing.T) {
+	rows := []LedgerRow{{
+		RunID: "20260724T170152Z", Treatment: "fathom", Control: "grep",
+		TreatmentSuccesses: 13, ControlSuccesses: 11, TreatmentTrials: 13, ControlTrials: 13,
+		AggregateTokenRatio: 0.570,
+		Evaluation:          Evaluation{CriterionID: "H2-1", Verdict: VerdictIndeterminate, Reason: "thinnest cell ran 1 trial(s), below the pre-registered floor of 3"},
+	}}
+	out := RenderVerdict(rows)
+	if strings.Contains(out, "fathom's arm beat") || strings.Contains(out, "fathom's arm lost to") {
+		t.Errorf("an indeterminate row must never claim beat/lost to from raw rates:\n%s", out)
+	}
+	if !strings.Contains(out, "did not run enough trials to decide against grep") {
+		t.Errorf("must say the run did not measure enough:\n%s", out)
+	}
+	if !strings.Contains(out, "registered criterion H2-1: indeterminate (thinnest cell ran 1 trial(s), below the pre-registered floor of 3)") {
+		t.Errorf("must still render the criterion's own verdict and reason:\n%s", out)
+	}
+}
+
 func TestRenderVerdict_NoRows(t *testing.T) {
 	out := RenderVerdict(nil)
 	if !strings.Contains(out, VerdictHeading) || !strings.Contains(out, "No runs recorded") {

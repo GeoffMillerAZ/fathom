@@ -90,16 +90,23 @@ type Task struct {
 	// ledger; OracleRunID/OracleTaskID/OracleArm key one row in it (a
 	// task/arm-less row — the home bench's one-row-per-run shape — is
 	// matched by OracleRunID alone), and OracleMinTrials (default 1, when
-	// set) is the trial floor the row must meet. One contract per row: a
-	// row carrying both a symbol and an oracle fails verification and is
+	// set) is the trial floor the row must meet. A task/arm-less run_id
+	// that matches more than one home row (the same run scored under two
+	// registered criteria) is ambiguous and refused unless OracleCriterion
+	// names the one row's evaluation.criterion_id to pick. A matched row
+	// whose own evaluation.verdict is fail/indeterminate is refused too,
+	// unless OracleAcceptVerdict is "any". One contract per row: a row
+	// carrying both a symbol and an oracle fails verification and is
 	// refused by LintPlan.
-	Oracle          string
-	OraclePath      string
-	OraclePattern   string
-	OracleRunID     string
-	OracleTaskID    string
-	OracleArm       string
-	OracleMinTrials string
+	Oracle              string
+	OraclePath          string
+	OraclePattern       string
+	OracleRunID         string
+	OracleTaskID        string
+	OracleArm           string
+	OracleMinTrials     string
+	OracleCriterion     string
+	OracleAcceptVerdict string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST

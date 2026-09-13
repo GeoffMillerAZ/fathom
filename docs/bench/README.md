@@ -338,7 +338,7 @@ comparison.
 ### Where fathom stands
 
 **20260724T170152Z** — fathom vs grep: success 13/13 vs 11/13, tokens 0.570×.
-On 20260724T170152Z, fathom's arm beat grep on success (13 v 11) at 0.570× the tokens; registered criterion H2-1: indeterminate (thinnest cell ran 1 trial(s), below the pre-registered floor of 3).
+On 20260724T170152Z, fathom's arm did not run enough trials to decide against grep on success (13 v 11) at 0.570× the tokens; registered criterion H2-1: indeterminate (thinnest cell ran 1 trial(s), below the pre-registered floor of 3).
 
 **20260913T002832Z** — fathom vs grep: success 31/33 vs 28/33, tokens 1.444×, cost 1.465×.
 On 20260913T002832Z, fathom's arm beat grep on success (31 v 28) at 1.444× the tokens; registered criterion H2-1: fail (aggregate token ratio 1.444× exceeds the pre-registered cap of 1.000×).

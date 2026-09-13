@@ -58,7 +58,9 @@ tasks block.
 | `run_id` | `oracle: ledger` only: the run whose row to check in `path`. Required. | unset |
 | `task` | `oracle: ledger` only: the task id half of the (run_id, task, arm) key. Leave unset (with `arm`) to match a row keyed by `run_id` alone instead — the home bench's one-row-per-run ledger (`docs/bench/ledger.jsonl`), whose own rows carry no task/arm either. | unset |
 | `arm` | `oracle: ledger` only: the arm half of the (run_id, task, arm) key. Setting `arm` without `task` is refused by lint. | unset |
-| `min_trials` | `oracle: ledger` only: the trial floor the matched row's `trials` (or, for a home-bench row, `treatment_trials`) must meet or exceed. | `1` |
+| `min_trials` | `oracle: ledger` only: the trial floor the matched row's own per-cell trial count must meet or exceed — a scenario row's `trials`, or a home row's own `min_trials` (never its run-total `treatment_trials`, which inflates with task count and proves nothing about replication). | `1` |
+| `criterion` | `oracle: ledger` only, task/arm-less rows: disambiguates a `run_id` that matches more than one home row (the same run scored under two registered criteria) by naming the one row's `evaluation.criterion_id`. Refused as ambiguous, naming the criteria present, when omitted and more than one row matches. | unset |
+| `accept_verdict` | `oracle: ledger` only: `any` certifies the claim even though the matched row's own `evaluation.verdict` is `fail` or `indeterminate` — otherwise such a row is refused, naming the reason. | unset (refuses a fail/indeterminate row) |
 | `needs` | Comma-separated row ids this row waits on (eligibility, never gating). `<sibling>.md#<id>` names a row in another plan under the same directory: lint checks the shape, `fathom verify` and `plans next` read the sibling's authored state (claimed or dispositioned satisfies; its verdict is not recomputed). | unset |
 
 > **Before reaching for `skip_test`:** a test statically reaches every function the

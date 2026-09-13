@@ -6,6 +6,7 @@ package verify
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -37,6 +38,20 @@ func TestParseMarkdownPlan_LedgerOracleKeys(t *testing.T) {
 	}
 }
 
+// TestParseMarkdownPlan_LedgerOracleCriterionAndAcceptVerdictKeys (review
+// findings 5 and 6): the two new disambiguation/opt-in keys parse like
+// every other ledger oracle key.
+func TestParseMarkdownPlan_LedgerOracleCriterionAndAcceptVerdictKeys(t *testing.T) {
+	p := ParseMarkdownPlan("svc", []byte(ambiguousLedgerMD))
+	al2, al3 := p.Tasks[1], p.Tasks[2]
+	if al2.OracleCriterion != "H2-1" || al2.OracleAcceptVerdict != "" {
+		t.Fatalf("AL-2 criterion/accept_verdict parsed wrong: %+v", al2)
+	}
+	if al3.OracleCriterion != "H2-1" || al3.OracleAcceptVerdict != "any" {
+		t.Fatalf("AL-3 criterion/accept_verdict parsed wrong: %+v", al3)
+	}
+}
+
 func TestEvalLedgerOracle_VerifiesAndRefuses(t *testing.T) {
 	p := ParseMarkdownPlan("svc", []byte(ledgerMD))
 	wd, err := os.Getwd()
@@ -54,7 +69,7 @@ func TestEvalLedgerOracle_VerifiesAndRefuses(t *testing.T) {
 		"RG-3":  {Fail, "instrument-defect", "instrument_defect"},
 		"RG-4":  {Fail, "below-trial-floor", "below the required floor of 2"},
 		"RG-5":  {Fail, "ledger-row-absent", "no ledger row"},
-		"RG-6":  {Pass, "verified", "33 trial(s)"}, // trialCount falls back to treatment_trials=33
+		"RG-6":  {Pass, "verified", "3 trial(s)"}, // trialCount reads the row's own per-cell min_trials=3, never the run-total treatment_trials=33
 		"RG-7":  {Fail, "below-trial-floor", "below the required floor of 50"},
 		"RG-8":  {Fail, "contract-invalid", "one contract per row"},
 		"RG-9":  {Fail, "contract-invalid", "without a path"},
@@ -115,6 +130,74 @@ func TestLintLedgerOracle_RefusesTheSameShapesVerifyFails(t *testing.T) {
 	for _, id := range []string{"RG-1", "RG-2", "RG-3", "RG-4", "RG-5", "RG-6", "RG-7", "RG-14"} {
 		if strings.Contains(joined, id+": ledger oracle refused") {
 			t.Errorf("lint must not refuse a sound contract %s (its truth is verify's job); got:\n%s", id, joined)
+		}
+	}
+}
+
+// ambiguousLedgerMD (review findings 5 and 6) points at the REAL committed
+// docs/bench/ledger.jsonl on HEAD: run_id 20260913T002832Z has two
+// task/arm-less rows (the same run scored under H2-1 and H2-3, both
+// "fail"), and run_id 20260724T170152Z has one row whose own verdict is
+// "indeterminate" — both are current facts about that file, not a
+// synthetic fixture, so a fix here is proven against what the repo
+// actually ships.
+const ambiguousLedgerMD = `# plan
+- [x] Ambiguous run_id, no criterion given {id: AL-1, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260913T002832Z}
+- [x] Disambiguated, but that row's own verdict is fail {id: AL-2, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260913T002832Z, criterion: H2-1}
+- [x] Disambiguated and the fail accepted on request {id: AL-3, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260913T002832Z, criterion: H2-1, accept_verdict: any}
+- [x] Criterion names a row that is not among the matches {id: AL-4, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260913T002832Z, criterion: NOPE}
+- [x] Unambiguous row, but its own verdict is indeterminate {id: AL-5, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260724T170152Z}
+- [x] Unambiguous indeterminate row, accepted on request {id: AL-6, oracle: ledger, path: docs/bench/ledger.jsonl, run_id: 20260724T170152Z, accept_verdict: any}
+`
+
+// repoRootEvidence returns FileEvidence rooted at the actual repo root
+// (two levels above internal/verify, go test's working directory), so a
+// row can name a real repo-relative path like docs/bench/ledger.jsonl —
+// unlike dirEvidence's usual internal/verify-rooted testdata/ fixtures.
+func repoRootEvidence(t *testing.T) dirEvidence {
+	t.Helper()
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dirEvidence{noEvidence{}, DirFiles(filepath.Join(wd, "..", ".."))}
+}
+
+func TestEvalLedgerOracle_AmbiguousRunIDAndVerdictGate_OnHeadLedger(t *testing.T) {
+	p := ParseMarkdownPlan("svc", []byte(ambiguousLedgerMD))
+	rep := VerifyPlan(p, repoRootEvidence(t))
+	want := map[string]struct {
+		status CriterionStatus
+		label  string
+		detail string
+	}{
+		"AL-1": {Fail, "ambiguous-run-id", "H2-1, H2-3"},
+		"AL-2": {Fail, "verdict-fail", "aggregate token ratio"},
+		"AL-3": {Pass, "verified", "3 trial(s)"},
+		"AL-4": {Fail, "ledger-row-absent", "rows present: H2-1, H2-3"},
+		"AL-5": {Fail, "verdict-indeterminate", "below the pre-registered floor of 3"},
+		"AL-6": {Pass, "verified", "1 trial(s)"},
+	}
+	for _, tv := range rep.Tasks {
+		w, ok := want[tv.TaskID]
+		if !ok {
+			t.Fatalf("unexpected task %s", tv.TaskID)
+		}
+		if tv.Status != w.status || tv.Label != w.label {
+			t.Errorf("%s: status/label = %s/%s, want %s/%s (%+v)", tv.TaskID, tv.Status, tv.Label, w.status, w.label, tv.Criteria)
+		}
+		var led *Criterion
+		for i := range tv.Criteria {
+			if tv.Criteria[i].Name == ledgerCriterion {
+				led = &tv.Criteria[i]
+			}
+		}
+		if led == nil {
+			t.Errorf("%s: no %s criterion", tv.TaskID, ledgerCriterion)
+			continue
+		}
+		if !strings.Contains(led.Detail, w.detail) {
+			t.Errorf("%s: detail %q lacks %q", tv.TaskID, led.Detail, w.detail)
 		}
 	}
 }

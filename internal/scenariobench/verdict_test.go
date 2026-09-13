@@ -74,6 +74,28 @@ func TestRenderVerdict_MatchedAndLostToWording(t *testing.T) {
 	}
 }
 
+// TestRenderVerdict_IndeterminateDoesNotClaimBeat (review finding 4): a
+// run below the criterion's registered replication floor must not claim
+// beat/lost-to from the raw success rates, and must still render the
+// criterion's own indeterminate verdict.
+func TestRenderVerdict_IndeterminateDoesNotClaimBeat(t *testing.T) {
+	criteria := map[string]Criterion{"sha": {ID: "M1-1", Treatment: "full", Control: "control", MinTrials: 3}}
+	rows := []ScenarioLedgerRow{
+		{RunID: "r1", Arm: "full", CorpusSHA256: "sha", Trials: 1, Successes: 1, Readings: Readings{TotalTokens: 100}},
+		{RunID: "r1", Arm: "control", CorpusSHA256: "sha", Trials: 1, Successes: 0, Readings: Readings{TotalTokens: 100}},
+	}
+	out := renderVerdict(rows, criteria)
+	if strings.Contains(out, "fathom's arm beat") || strings.Contains(out, "fathom's arm lost to") {
+		t.Errorf("a run below the replication floor must not claim beat/lost to:\n%s", out)
+	}
+	if !strings.Contains(out, "did not run enough trials to decide against control") {
+		t.Errorf("must say the run did not measure enough:\n%s", out)
+	}
+	if !strings.Contains(out, "Registered criterion M1-1: indeterminate") {
+		t.Errorf("must still render the criterion's own verdict:\n%s", out)
+	}
+}
+
 func TestRenderVerdict_UnknownCriterionFallsBackToRawTotals(t *testing.T) {
 	rows := []ScenarioLedgerRow{
 		{RunID: "vs-pilot-1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha-unknown", Trials: 2, Successes: 2},

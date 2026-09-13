@@ -1,6 +1,7 @@
 package contextbench
 
 import (
+	"encoding/json"
 	"os"
 	"strings"
 	"testing"
@@ -73,6 +74,81 @@ func TestTrustedWithoutRecheck_OutsideWindow(t *testing.T) {
 	got := TrustedWithoutRecheck([]byte(b.String()))
 	if got.Calls != 1 || got.Trusted != 1 {
 		t.Fatalf("got %+v, want a trusted call (the Read fell outside the window)", got)
+	}
+}
+
+// TestTrustedWithoutRecheck_ParallelToolUse: two tool_use blocks in the
+// same assistant turn must each keep their own tool_result targets. A
+// prior bug indexed currentByID by a pointer taken mid-append, which
+// append() can leave pointing at an orphaned backing array once a later
+// element in the same turn triggers a slice reallocation — every call but
+// the last in the turn then loses its result targets.
+func TestTrustedWithoutRecheck_ParallelToolUse(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`{"type":"assistant","message":{"content":[` +
+		`{"type":"tool_use","id":"1","name":"mcp__fathom__find_symbol","input":{"symbol":"Foo"}},` +
+		`{"type":"tool_use","id":"2","name":"mcp__fathom__references","input":{"symbol":"Bar"}}` +
+		`],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[` +
+		`{"type":"tool_result","tool_use_id":"1","content":"internal/pkg/foo.go"},` +
+		`{"type":"tool_result","tool_use_id":"2","content":"internal/pkg/bar.go"}` +
+		`]}}` + "\n")
+	// Re-checks only the FIRST call's surfaced path.
+	b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"3","name":"Read","input":{"file_path":"internal/pkg/foo.go"}}],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"3","content":"package pkg"}]}}` + "\n")
+
+	got := TrustedWithoutRecheck([]byte(b.String()))
+	find := got.ByTool["find_symbol"]
+	if find.Calls != 1 || find.Trusted != 0 {
+		t.Fatalf("find_symbol = %+v, want {calls:1 trusted:0} (its result path was re-read)", find)
+	}
+	refs := got.ByTool["references"]
+	if refs.Calls != 1 || refs.Trusted != 1 {
+		t.Fatalf("references = %+v, want {calls:1 trusted:1} (not re-checked)", refs)
+	}
+}
+
+// TestTrustedWithoutRecheck_ServiceArgNotTarget: the required "service"
+// argument (always the repo name, e.g. "fathom") must not become a match
+// target — a later Grep for that literal word is unrelated to the file or
+// symbol the call surfaced, and must not count as a re-check.
+func TestTrustedWithoutRecheck_ServiceArgNotTarget(t *testing.T) {
+	var b strings.Builder
+	b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"1","name":"mcp__fathom__find_symbol","input":{"service":"fathom","symbol":"Foo"}}],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"1","content":"internal/pkg/foo.go"}]}}` + "\n")
+	b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"2","name":"Grep","input":{"pattern":"fathom"}}],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"2","content":"3 matches"}]}}` + "\n")
+
+	got := TrustedWithoutRecheck([]byte(b.String()))
+	if got.Calls != 1 || got.Trusted != 1 {
+		t.Fatalf("got %+v, want trusted (the service arg must not be a match target)", got)
+	}
+}
+
+// TestTrustedWithoutRecheck_UnrelatedReadNotRecheck: a fathom call
+// followed by a Read of an unrelated Go file must count as trusted, even
+// though the file's body is dense with dotted tokens and the literal word
+// "fathom" — a recheck tool's own result body is never mined for targets,
+// only its input arguments are.
+func TestTrustedWithoutRecheck_UnrelatedReadNotRecheck(t *testing.T) {
+	body := "package other\n\n" +
+		"import \"github.com/geoffmilleraz/fathom/internal/core\"\n\n" +
+		"// Bar implements fathom's other thing. See core.Edge for the shared type.\n" +
+		"func Bar() core.Edge { return core.Edge{} }\n"
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var b strings.Builder
+	b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"1","name":"mcp__fathom__find_symbol","input":{"service":"fathom","symbol":"Foo"}}],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"1","content":"internal/pkg/foo.go"}]}}` + "\n")
+	b.WriteString(`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"2","name":"Read","input":{"file_path":"internal/other/bar.go"}}],"usage":{}}}` + "\n")
+	b.WriteString(`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"2","content":` + string(encoded) + `}]}}` + "\n")
+
+	got := TrustedWithoutRecheck([]byte(b.String()))
+	if got.Calls != 1 || got.Trusted != 1 {
+		t.Fatalf("got %+v, want the fathom call trusted (unrelated Read must not count as a re-check)", got)
 	}
 }
 

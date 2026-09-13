@@ -85,6 +85,8 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 				t.OracleTaskID = ann["task"]
 				t.OracleArm = ann["arm"]
 				t.OracleMinTrials = ann["min_trials"]
+				t.OracleCriterion = ann["criterion"]
+				t.OracleAcceptVerdict = ann["accept_verdict"]
 			}
 			if v, ok := ann["ctx"]; ok {
 				if v == "" {
