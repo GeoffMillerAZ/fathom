@@ -1,0 +1,17 @@
+{
+  "nodes": [
+    {"id": "n1", "label": "Foo", "file_type": "go", "source_file": "a.go", "source_location": "L1", "community": 0},
+    {"id": "n2", "label": "Bar", "file_type": "go", "source_file": "a.go", "source_location": "L10", "community": 0},
+    {"id": "n3", "label": "Baz", "file_type": "go", "source_file": "a.go", "source_location": "L20", "community": 0},
+    {"id": "n4", "label": "pkg/a", "file_type": "package", "source_file": "a.go", "source_location": "L1", "community": 0},
+    {"id": "n5", "label": "pkg/b", "file_type": "package", "source_file": "b.go", "source_location": "L1", "community": 1}
+  ],
+  "edges": [
+    {"source": "n2", "target": "n1", "relation": "calls", "confidence": "EXTRACTED", "source_file": "a.go", "source_location": "L11", "weight": 1.0},
+    {"source": "n3", "target": "n1", "relation": "calls", "confidence": "EXTRACTED", "source_file": "a.go", "source_location": "L21", "weight": 1.0},
+    {"source": "n3", "target": "n2", "relation": "references", "confidence": "INFERRED", "source_file": "a.go", "source_location": "L22", "weight": 0.6},
+    {"source": "n5", "target": "n4", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "b.go", "source_location": "L1", "weight": 1.0},
+    {"source": "n4", "target": "n1", "relation": "contains", "confidence": "EXTRACTED", "source_file": "a.go", "source_location": "L1", "weight": 1.0},
+    {"source": "n2", "target": "n9", "relation": "calls", "confidence": "AMBIGUOUS", "source_file": "a.go", "source_location": "L12", "weight": 0.3}
+  ]
+}
