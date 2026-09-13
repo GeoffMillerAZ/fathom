@@ -31,7 +31,7 @@ fact by layer, judgment left to the review kit).
 
 | # | Fact | Where it bites |
 |---|---|---|
-| F1 | `mcp_servers: []` in 72/72 wired scenario sessions; the rendered MCP config never reached `claude -p` | M1–M5 readings measure no tool |
+| F1 | `mcp_servers: []` in 72/72 wired scenario sessions; the rendered MCP config never reached `claude -p`; and `RenderArm` truncated the hooks `fathom init` had written to one nonexistent command, so the wired arm had no fathom hooks either (found by the review of the fix) | M1–M5 readings measure no tool and no hook |
 | F2 | graphify server `failed` 12/12 (`graphify --mcp` is not a command; the documented server is `python -m graphify.serve <graph.json>` under uv); gopls and Serena `connected`, 0 calls in 24 sessions | M6/M7 paid rows measure grep five times |
 | F3 | `permissionMode: auto` in every session; `allowed_tools: [Read, Grep, Bash]` arms wrote files 35 times | arm restrictions are decorative |
 | F4 | every session inherited the operator's config: ~90 slash commands, plugins, and fathom's own SessionStart primer on the control arm; one home cell answered a Stop hook's plan snapshot instead of the task | the control is not a control |
