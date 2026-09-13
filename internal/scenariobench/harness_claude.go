@@ -94,7 +94,12 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	result.RawPath = streamPath
 	result.FilesRead = relativizeSessionPaths(req.Worktree, result.FilesRead)
 	result.FilesEdited = relativizeSessionPaths(req.Worktree, result.FilesEdited)
-	if runErr != nil && result.Error == "" {
+	// claude -p exits 1 whenever its result carries is_error — including
+	// error_max_turns, the budget hand-off. A transcript with a terminal
+	// result is a reading whatever the exit code; only a run with no result
+	// event at all is an error (guards pilot 3 lost four cells to this,
+	// 2026-09-13).
+	if runErr != nil && result.Error == "" && !result.BudgetHit && result.Turns == 0 {
 		result.Error = fmt.Sprintf("claude -p exited non-zero: %v", runErr)
 	}
 	return result, nil
