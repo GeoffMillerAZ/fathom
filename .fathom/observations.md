@@ -860,3 +860,16 @@ triage if it matters.
 - **Status:** fixed (driver); reruns pending (receipts wave 5)
 - **Addendum (2026-09-13, review of the merged fix):** the wired arm had no fathom HOOKS either. `PrepareSubject` ran `fathom init` (real hook stack into `.claude/settings.json`) and then `RenderArm` truncated that file to a single PostToolUse running `fathom obligations-hook`, a subcommand that does not exist. The "hook" text the first-round readers saw in wired transcripts was the operator's global SessionStart hook, present on both arms. Fixed on branch fix-a (RenderArm never replaces an existing hooks key; hook commands name the cell's binary) with a new instrument-truth gate: a wired session with no SessionStart hook response is LOST.
 - **Impact:** ≈ $108 of scenario spend measured prompt text against prompt text; M1–M5 and the paid M6/M7 readings are voided and restated as unmeasured. The home bench (tools present) stands.
+
+### O42 — fathom init writes no project-scope hooks when the same hooks are already wired at user scope (~/.claude/settings.json): the note says 'not created — every fathom hook already wired at user scope'. Under a clean-room harness (claude -p --restricted --settings <project>/.claude/settings.json, which ignores user settings) or in CI, the repo then has no fathom hooks at all. The scenario bench's wired arm hit this in the first dry cell after the review fixes (assertWiredHooksPresent refused the worktree).
+
+- **Symptom:** fathom init writes no project-scope hooks when the same hooks are already wired at user scope (~/.claude/settings.json): the note says 'not created — every fathom hook already wired at user scope'. Under a clean-room harness (claude -p --restricted --settings <project>/.claude/settings.json, which ignores user settings) or in CI, the repo then has no fathom hooks at all. The scenario bench's wired arm hit this in the first dry cell after the review fixes (assertWiredHooksPresent refused the worktree).
+- **Evidence:**
+  - **Tool:** fathom init --harness claude-code (cmd/fathom/init.go hook writer)
+  - **Expected:** A repo wired by fathom init carries its hook stack wherever a harness that loads only project settings can see it, or init says plainly that it relied on user scope and offers a project-scope switch.
+  - **Actual:** The worktree's settings.json kept only the subject's own hooks (ConfigChange, CwdChanged, PreToolUse …) — no SessionStart, no PostToolUse edit-hook, no Stop; init exit_code 2 with manual steps about the daemon, nothing about the skipped hooks.
+  - **Repro:** HOME with ~/.claude/settings.json carrying fathom's SessionStart hook; fathom init --path <fresh clone> --harness claude-code --json; inspect <clone>/.claude/settings.json hooks keys
+- **Root cause:** `cmd/fathom/init.go` (~L656-706) treats a hook present at user scope as satisfied and skips the project entry to avoid double-firing on the operator's machine.
+- **Fix:** `fathom init --hooks-scope project` (and `FATHOM_HOOKS_SCOPE=project`) writes every fathom hook at project scope regardless of user scope; the scenario driver passes it; branch fix-g.
+- **Status:** fix in flight (fix-g)
+- **Impact:** every wired scenario cell of both rounds had no fathom hooks under the clean room; adopters running project-only settings (CI, --restricted) get a silently hook-less wiring.
