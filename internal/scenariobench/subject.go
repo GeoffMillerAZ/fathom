@@ -398,9 +398,13 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 // builds from its own go.mod (GOWORK=off); extra is merged in sorted order.
 func SubjectEnv(worktree string, extra map[string]string) []string {
 	env := os.Environ()
-	if _, err := os.Stat(filepath.Join(worktree, "go.work")); err == nil {
-		env = append(env, "GOWORK=off")
-	}
+	// Always off, not only when the subject has a go.work: a subject
+	// worktree lives under workspace/ of THIS repo, and Go walks up from
+	// it to this repo's go.work, whose main module then "does not contain
+	// package …/workspace/scenariobench/…" (dry cell 5, 2026-09-13). A
+	// subject that genuinely needs a workspace sets GOWORK in its Setup
+	// or the arm's Env, which is merged after this and wins.
+	env = append(env, "GOWORK=off")
 	keys := make([]string, 0, len(extra))
 	for k := range extra {
 		keys = append(keys, k)
