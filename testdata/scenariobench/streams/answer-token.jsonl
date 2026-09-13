@@ -1,0 +1,2 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"Looking into it."}],"usage":{"input_tokens":10,"output_tokens":5}}}
+{"type":"result","is_error":false,"num_turns":1,"duration_ms":150,"total_cost_usd":0.002,"result":"The answer is fusion.New and also golden-test appear here.","usage":{"input_tokens":10,"output_tokens":5}}

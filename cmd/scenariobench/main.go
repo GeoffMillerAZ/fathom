@@ -319,21 +319,24 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		return scenariobench.CellResult{}, fmt.Errorf("running sessions: %w", err)
 	}
 
-	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task)
+	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task, sessions, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
 	}
 
 	readings := scenariobench.AggregateReadings(sessions)
 	return scenariobench.CellResult{
-		TaskID:         cp.task.ID,
-		Arm:            cp.arm,
-		Trial:          cp.trial,
-		Category:       cp.task.Category,
-		Sessions:       sessions,
-		Oracle:         oracle,
-		Readings:       readings,
-		Success:        oracle.Passed && scenariobench.AnyEdits(sessions), // an untouched tree cannot pass (guards pilot 1)
+		TaskID:   cp.task.ID,
+		Arm:      cp.arm,
+		Trial:    cp.trial,
+		Category: cp.task.Category,
+		Sessions: sessions,
+		Oracle:   oracle,
+		Readings: readings,
+		// An untouched tree cannot pass (guards pilot 1) — UNLESS the
+		// task's oracle is answer-only (SB-32 lookups-vs.json), where
+		// nothing was ever meant to be edited.
+		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.AnyEdits(sessions)),
 		CellKey:        cp.key,
 		CorpusSHA256:   cp.inv.CorpusSHA256,
 		ModelID:        cp.inv.ModelID,

@@ -60,7 +60,10 @@ type streamEvent struct {
 	NumTurns     int     `json:"num_turns"`
 	DurationMS   int64   `json:"duration_ms"`
 	TotalCostUSD float64 `json:"total_cost_usd"`
-	Usage        struct {
+	// Result is the result event's own final-answer text (SB-32's
+	// answer-only oracle).
+	Result string `json:"result"`
+	Usage  struct {
 		InputTokens              int64 `json:"input_tokens"`
 		CacheCreationInputTokens int64 `json:"cache_creation_input_tokens"`
 		CacheReadInputTokens     int64 `json:"cache_read_input_tokens"`
@@ -297,6 +300,7 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 		r.TotalTokens = u.InputTokens + u.OutputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
 		r.CostUSD = ps.result.TotalCostUSD
 		r.WallTime = time.Duration(ps.result.DurationMS) * time.Millisecond
+		r.FinalAnswer = ps.result.Result
 		switch {
 		case ps.result.IsError && ps.result.Subtype == "error_max_turns":
 			// The turn budget ended the session: that is the designed

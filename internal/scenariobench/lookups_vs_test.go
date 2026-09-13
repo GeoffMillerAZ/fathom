@@ -156,6 +156,25 @@ func TestLookupsVSCorpus_ParsesAgainstContract(t *testing.T) {
 	}
 }
 
+// TestLookupsVSCorpus_LoadScenarioCorpusAccepts proves LoadScenarioCorpus
+// (SB-10's gate) no longer refuses lookups-vs.json's answer-only tasks:
+// before oracle.answer_all_of existed, every task's oracle was `{}` and
+// hasOracle refused it ("no oracle ... nothing would decide success").
+func TestLookupsVSCorpus_LoadScenarioCorpusAccepts(t *testing.T) {
+	c, err := LoadScenarioCorpus(lookupsVSPath(t))
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+	for _, task := range c.Tasks {
+		if len(task.Oracle.AnswerAllOf) == 0 {
+			t.Errorf("task %q: Oracle.AnswerAllOf is empty", task.ID)
+		}
+		if !AnswerOnly(task) {
+			t.Errorf("task %q: want AnswerOnly(task)=true", task.ID)
+		}
+	}
+}
+
 // TestLookupsVSCorpus_ContainsGraphifyLiteral pins the same lexical fact
 // fathom verify's oracle checks for this file's plan row (SB-32: pattern
 // "\"graphify\"").

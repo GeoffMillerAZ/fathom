@@ -103,7 +103,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "fusion.New",
+          "golden-test"
+        ]
+      },
       "predictions": {
         "full": "wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all.",
         "graphify": "ties grep, below fathom: query_graph/get_node answer code structure, not documented conventions.",
@@ -131,7 +136,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "core.Edge",
+          "ADR-021"
+        ]
+      },
       "predictions": {
         "full": "wins: answered directly by the obligations tool's compiled rule for this file, citing ADR.md#L635-L636 — no competitor tool reads decision records at all.",
         "graphify": "ties grep, below fathom: no tool surface for a decision-record rule.",
@@ -159,7 +169,26 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "TestCmdVerify_MissingPlan",
+          "TestCmdVerify_MissingService",
+          "TestCmdVerify_UnreadablePlan",
+          "TestCmdVerify_Store_Pass",
+          "TestCmdVerify_Store_GateFail",
+          "TestCmdVerify_Store_OpenTask_NoGate",
+          "TestCmdVerify_Store_Strict",
+          "TestCmdVerify_Store_JSON",
+          "TestCmdVerify_OperationalError_BadStore",
+          "TestCmdVerify_HTTP_ServiceNotIndexed",
+          "TestCmdVerify_Store_EmptyIndex",
+          "TestCmdVerify_HTTP_Pass",
+          "TestCmdVerify_HTTP_GateFail",
+          "TestCmdVerify_HTTP_FailNotGated_OpenTask",
+          "TestCmdVerify_HTTP_OperationalError",
+          "TestCmdVerify_InMainSwitch"
+        ]
+      },
       "predictions": {
         "full": "wins: references/find_callers on run() (or verify_plan's own reachability check) surfaces a qualifying Test* function directly.",
         "graphify": "ties grep, below fathom: its calls-relation graph could in principle surface a caller of run(), but this arm's tool list here is limited to references-style queries the same way serena/gopls are used, so no advantage over reading verify_test.go directly is predicted.",
@@ -184,7 +213,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "DEMO-H1",
+          "not found"
+        ]
+      },
       "predictions": {
         "full": "wins outright: verify_plan is a fathom-exclusive tool that answers this in one call, including the gate's own exact phrase.",
         "graphify": "loses: no verify-gate tool exists; the exact failure phrase ('not found') lives in internal/verify/verify.go and is only findable by reading fathom's own source, an indirect path.",
@@ -209,7 +243,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "cmdReport",
+          "cmd/contextbenchscore/main.go"
+        ]
+      },
       "predictions": {
         "full": "wins: blast_radius / find_callers surfaces the 2-hop caller directly in one call.",
         "graphify": "plausible tie with fathom: a direct static calls-relation edge two hops out is exactly what its graph encodes, reachable via get_neighbors/shortest_path chained twice.",
@@ -234,7 +273,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "MemoryStore",
+          "SQLiteStore"
+        ]
+      },
       "predictions": {
         "full": "wins: find_symbol's implementations field (SB-5) lists both concrete types directly from the typed pass.",
         "graphify": "predicted loses: its tree-sitter extraction has no type-checker, so implicit structural interface satisfaction (Go has no 'implements' keyword) is outside what its calls/references/method relations can encode reliably.",
@@ -259,7 +303,11 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "ADR.md#L590"
+        ]
+      },
       "predictions": {
         "full": "wins: the obligations tool's compiled rule for this file names the exact citation directly.",
         "graphify": "ties grep, below fathom: no tool surface for decision-record provenance.",
@@ -287,7 +335,11 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "CLAUDE.md#L15"
+        ]
+      },
       "predictions": {
         "full": "wins: the obligations tool's compiled rule for the root CLAUDE.md names the exact citation directly.",
         "graphify": "ties grep, below fathom: no tool surface for a documented convention's citation.",
@@ -312,7 +364,11 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "BackendForPath"
+        ]
+      },
       "predictions": {
         "full": "wins in directness: query_symbols' concern ranking surfaces BackendForPath among its top candidates, though its own source notes the ranking is approximate.",
         "graphify": "ties grep, below fathom: no concern-scoped ranking; a plain doc-comment string search is available to every arm equally via grep.",
@@ -337,7 +393,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "fitToBudget",
+          "query_symbols"
+        ]
+      },
       "predictions": {
         "full": "wins in directness: query_symbols' concern ranking surfaces fitToBudget among its top candidates.",
         "graphify": "ties grep, below fathom: no concern-scoped ranking.",
@@ -362,7 +423,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "lock error",
+          "busy_timeout"
+        ]
+      },
       "predictions": {
         "full": "no-effect: pure prose read-and-compare over already-open files; fathom's contradiction_scan operates over ingested symbol observations, not prose, so no fathom tool call is expected to out-perform a careful read here (the task's own honest self-assessment, tasks-home.json id H1-T11).",
         "graphify": "no-effect: same reason — a doc-prose contradiction is outside every arm's special tool.",
@@ -387,7 +453,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "verdict: stale",
+          "CLAUDE.md#L48"
+        ]
+      },
       "predictions": {
         "full": "wins in directness: staleness_report states the verdict in one call; (b) still needs a read of the current CLAUDE.md to find where the text moved to.",
         "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so any arm can check CLAUDE.md#L83-L84 against the rule's wording by reading it directly and answer (a) by comparison; no tool surface gives an edge on (b).",
@@ -415,7 +486,12 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "verdict: stale",
+          "ADR-010"
+        ]
+      },
       "predictions": {
         "full": "wins in directness: staleness_report states the verdict in one call.",
         "graphify": "below fathom, plausible partial credit: the prompt supplies the historical citation, so a direct read of ADR.md#L158-L159 versus the rule's wording answers the verdict; finding where the text moved to (ADR.md:176) is a plain text search available to every arm.",
@@ -446,7 +522,11 @@
         "max_turns": 30,
         "mode": "single"
       },
-      "oracle": {},
+      "oracle": {
+        "answer_all_of": [
+          "42"
+        ]
+      },
       "gold": {
         "files": [
           "internal/store/freshnessmarker.go"

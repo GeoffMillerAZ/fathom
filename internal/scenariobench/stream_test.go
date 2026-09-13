@@ -105,3 +105,21 @@ func TestParseSessionStream_NoResultEvent(t *testing.T) {
 		t.Error("expected Error to be set when no terminal result event is present")
 	}
 }
+
+// TestParseSessionStream_FinalAnswer proves the result event's own
+// "result" text lands on SessionResult.FinalAnswer (SB-32's answer-only
+// oracle) — the fixture's fake stream fixture whose result text carries a
+// token.
+func TestParseSessionStream_FinalAnswer(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "answer-token.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	const want = "The answer is fusion.New and also golden-test appear here."
+	if r.FinalAnswer != want {
+		t.Errorf("FinalAnswer = %q, want %q", r.FinalAnswer, want)
+	}
+	if r.Error != "" {
+		t.Errorf("Error = %q, want empty", r.Error)
+	}
+}

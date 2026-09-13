@@ -76,6 +76,56 @@ verification pass, also recorded in `notes`:
   `grpc-go` and `go-zero` alphabetically. `notes.repo_diversity` names
   this; stratifying by repo is future work, not done here.
 
+## Test patch and calibration
+
+Multi-SWE-bench (and SWE-bench generally) ships each instance's tests in
+**two** patches: `fix_patch` (the developer's real fix — never seen by the
+agent) and `test_patch` (the tests that prove it — hidden from the agent
+too, applied by the harness only at evaluation time). An earlier version
+of this corpus applied only `fix_patch`'s own gold files and ran
+`fail_to_pass` straight from source, which silently dropped `test_patch`
+— found 2026-09-13 when all 28 `fail_to_pass` tests of `SB-cli__cli-10043`
+turned out to already PASS at `base_commit`: without the hidden test file,
+there was nothing for the fix to make pass. `DeriveScenarioTasks` now
+carries the source's `test_patch` verbatim onto `Gold.TestPatch` (plus
+`Gold.TestPatchSHA256`), and the oracle applies it itself:
+
+- **`ApplyTestPatch`** (`oracle.go`) runs `git apply --3way` (falling back
+  to a plain `git apply`) of `Gold.TestPatch` in the cell's worktree
+  **after every session and before the tests** — the patch is never on
+  disk while an agent can read it. A patch that fails to apply is
+  recorded as `calibration.not_measurable: "test patch did not apply: …"`
+  and the cell fails rather than silently running without it.
+- **`CalibrateSubject`** (`oracle.go`) answers the question the raw
+  source data cannot: of the named `fail_to_pass`/`pass_to_pass` tests,
+  which ones actually behave the way SWE-bench assumes IN THIS
+  environment? It applies the test patch in a **separate, throwaway
+  worktree of the shared clone at `base_commit`** (never the cell's own
+  worktree) with no fix, runs the task's test command once, and records
+  which `fail_to_pass` tests FAILED at base (only those are the agent's to
+  fix) and which `pass_to_pass` tests PASSED at base (only those can be
+  broken BY the agent). The reading is cached at
+  `<root>/workspace/scenariobench/calibration/<sha256>.json`, keyed on
+  `(subject repo, base_commit, test-patch sha256)` — computed once no
+  matter how many tasks, arms, or trials share the triple, never inside a
+  cell's own worktree. This matters in practice: of the public corpus's
+  3,849 `pass_to_pass` tests, 116 fail at `base_commit` in this
+  environment (network, auth, wall-clock — not code), and calibration is
+  what keeps them from being blamed on the agent.
+- `RunOracle` folds calibration into the verdict: `FailToPassOK` requires
+  every `fail_to_pass` test calibration found FAILING at base to pass now
+  (one that already passed at base is dropped from the requirement, not
+  counted against either arm); `PassToPassOK` requires every
+  `pass_to_pass` test calibration found PASSING at base to still pass
+  (one already failing at base is excluded — environment, not the agent).
+  A task whose `fail_to_pass` set has no test failing at base is
+  `calibration.not_measurable: "no fail_to_pass test fails at base with
+  the test patch applied"` — not a pass, not a failure, a task this
+  environment cannot measure. `OracleResult.Calibration` records the
+  counts (`fail_to_pass_failed_at_base`/`_total`,
+  `pass_to_pass_effective`/`_total`) on every cell so a reader never has
+  to open the cache to see what was actually asked of the agent.
+
 ## Pins
 
 The two files `DeriveScenarioTasks` was actually run against

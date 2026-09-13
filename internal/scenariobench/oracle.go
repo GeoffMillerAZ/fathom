@@ -3,15 +3,28 @@
 // subject's own test command once, separately, over fail-to-pass and
 // pass-to-pass so each can be reported independently, with a coverage
 // profile when the task asks for one, then runs every detector.
+//
+// A task carrying Gold.TestPatch follows SWE-bench semantics: the test
+// patch is hidden from every session and applied by the oracle itself,
+// after the sessions and before the tests, then calibrated against a
+// throwaway worktree at base_commit (CalibrateSubject) so a fail_to_pass
+// test that never failed at base, or a pass_to_pass test broken by the
+// environment rather than the agent, cannot decide the verdict — see
+// docs/bench/scenarios.md "Test patch and calibration".
 package scenariobench
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -28,23 +41,71 @@ var (
 // RunOracle runs task's oracle against wt: the test command over the union
 // of fail-to-pass and pass-to-pass test names (with -coverprofile when
 // Oracle.Coverage), decided per-test from `go test -v`'s own PASS/FAIL
-// lines so FailToPassOK and PassToPassOK are independently meaningful, and
-// then every detector. Output (test stdout, the coverage profile) is
-// written under wt.CellDir and referenced from the result.
-func RunOracle(ctx context.Context, wt Worktree, task Task) (OracleResult, error) {
+// lines so FailToPassOK and PassToPassOK are independently meaningful,
+// then every detector, then the answer-only oracle (Oracle.AnswerAllOf)
+// against the last of sessions. Output (test stdout, the coverage
+// profile) is written under wt.CellDir and referenced from the result.
+// root is this repo's root, passed through to CalibrateSubject when task
+// carries a Gold.TestPatch — otherwise unused.
+func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionResult, root string) (OracleResult, error) {
 	var result OracleResult
 
+	hasTestPatch := task.Gold.TestPatch != ""
+	if hasTestPatch {
+		if err := ApplyTestPatch(ctx, wt, task); err != nil {
+			result.Calibration = &CalibrationSummary{NotMeasurable: fmt.Sprintf("test patch did not apply: %v", err)}
+			result.Passed = false
+			return result, nil
+		}
+	}
+
 	names := append(append([]string(nil), task.Oracle.FailToPass...), task.Oracle.PassToPass...)
+	var passed map[string]bool
 	if len(names) > 0 {
-		passed, outputRef, coverRef, err := runOracleTests(ctx, wt, task, names)
+		p, outputRef, coverRef, err := runOracleTests(ctx, wt, task, names)
 		if err != nil {
 			return OracleResult{}, fmt.Errorf("running oracle tests: %w", err)
 		}
+		passed = p
 		result.TestOutputRef = outputRef
 		result.CoverProfile = coverRef
+	}
+
+	switch {
+	case hasTestPatch:
+		calib, err := CalibrateSubject(ctx, task, wt, root)
+		if err != nil {
+			return OracleResult{}, fmt.Errorf("calibrating subject: %w", err)
+		}
+		if calib.NotMeasurable != "" {
+			result.Calibration = &CalibrationSummary{
+				FailToPassTotal: len(task.Oracle.FailToPass), PassToPassTotal: len(task.Oracle.PassToPass),
+				NotMeasurable: calib.NotMeasurable,
+			}
+			result.Passed = false
+			return result, nil
+		}
+		failedAtBase := toSet(calib.FailToPassFailedAtBase)
+		if len(failedAtBase) == 0 {
+			result.Calibration = &CalibrationSummary{
+				FailToPassTotal: len(task.Oracle.FailToPass), PassToPassTotal: len(task.Oracle.PassToPass),
+				PassToPassEffective: len(calib.PassToPassPassedAtBase),
+				NotMeasurable:       "no fail_to_pass test fails at base with the test patch applied",
+			}
+			result.Passed = false
+			return result, nil
+		}
+		passedAtBase := toSet(calib.PassToPassPassedAtBase)
+		result.FailToPassOK = allPassedInSet(passed, failedAtBase)
+		result.PassToPassOK = allPassedInSet(passed, passedAtBase)
+		result.Calibration = &CalibrationSummary{
+			FailToPassFailedAtBase: len(failedAtBase), FailToPassTotal: len(task.Oracle.FailToPass),
+			PassToPassEffective: len(passedAtBase), PassToPassTotal: len(task.Oracle.PassToPass),
+		}
+	case len(names) > 0:
 		result.FailToPassOK = allPassed(passed, task.Oracle.FailToPass)
 		result.PassToPassOK = allPassed(passed, task.Oracle.PassToPass)
-	} else {
+	default:
 		// No named tests: nothing to fail, vacuously OK.
 		result.FailToPassOK = true
 		result.PassToPassOK = true
@@ -58,8 +119,44 @@ func RunOracle(ctx context.Context, wt Worktree, task Task) (OracleResult, error
 		result.Detectors = append(result.Detectors, dr)
 	}
 
-	result.Passed = result.FailToPassOK && result.PassToPassOK && !anyViolated(result.Detectors)
+	answerOK := true
+	if len(task.Oracle.AnswerAllOf) > 0 {
+		answerOK = answerMatchesAllOf(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf)
+	}
+
+	result.Passed = result.FailToPassOK && result.PassToPassOK && !anyViolated(result.Detectors) && answerOK
 	return result, nil
+}
+
+// AnswerOnly reports whether task's oracle is answer-only: an
+// Oracle.AnswerAllOf with no tree-level check at all (fail_to_pass,
+// pass_to_pass, detectors) — SB-32's lookups-vs.json shape, where success
+// cannot require an edited file because nothing was meant to be edited.
+func AnswerOnly(task Task) bool {
+	o := task.Oracle
+	return len(o.AnswerAllOf) > 0 && len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
+}
+
+// lastFinalAnswer is the LAST session's FinalAnswer, exactly as the
+// answer-only oracle is specified: not the first non-empty one, the last
+// session's, empty if there were none.
+func lastFinalAnswer(sessions []SessionResult) string {
+	if len(sessions) == 0 {
+		return ""
+	}
+	return sessions[len(sessions)-1].FinalAnswer
+}
+
+// answerMatchesAllOf reports whether every token appears, case-insensitive
+// substring, in answer.
+func answerMatchesAllOf(answer string, tokens []string) bool {
+	lower := strings.ToLower(answer)
+	for _, tok := range tokens {
+		if !strings.Contains(lower, strings.ToLower(tok)) {
+			return false
+		}
+	}
+	return true
 }
 
 func allPassed(passed map[string]bool, names []string) bool {
@@ -71,6 +168,26 @@ func allPassed(passed map[string]bool, names []string) bool {
 	return true
 }
 
+// allPassedInSet is allPassed over a set rather than a slice — used for
+// the test-patch calibration path, where the requirement is "every test
+// IN THIS SET passed", not "every named test passed".
+func allPassedInSet(passed map[string]bool, set map[string]bool) bool {
+	for n := range set {
+		if !passed[n] {
+			return false
+		}
+	}
+	return true
+}
+
+func toSet(names []string) map[string]bool {
+	m := make(map[string]bool, len(names))
+	for _, n := range names {
+		m[n] = true
+	}
+	return m
+}
+
 func anyViolated(drs []DetectorResult) bool {
 	for _, d := range drs {
 		if d.Violated {
@@ -78,6 +195,183 @@ func anyViolated(drs []DetectorResult) bool {
 		}
 	}
 	return false
+}
+
+// ApplyTestPatch applies task.Gold.TestPatch into wt.Path: `git apply
+// --3way` first (so a patch whose context has drifted still merges when
+// the blobs it names are reachable), falling back to a plain `git apply`
+// (the common case: a fresh worktree at base_commit, or a throwaway
+// calibration worktree, where there is nothing to three-way merge
+// against). A task with no test patch is a no-op. RunOracle calls this
+// AFTER the sessions and BEFORE the tests — the patch is hidden from
+// every session, exactly as SWE-bench evaluates.
+func ApplyTestPatch(ctx context.Context, wt Worktree, task Task) error {
+	if task.Gold.TestPatch == "" {
+		return nil
+	}
+	patch := []byte(task.Gold.TestPatch)
+	if err := runGitApply(ctx, wt.Path, patch, true); err != nil {
+		if err2 := runGitApply(ctx, wt.Path, patch, false); err2 != nil {
+			return fmt.Errorf("git apply --3way: %v; git apply: %w", err, err2)
+		}
+	}
+	return nil
+}
+
+func runGitApply(ctx context.Context, dir string, patch []byte, threeWay bool) error {
+	args := []string{"apply"}
+	if threeWay {
+		args = append(args, "--3way")
+	}
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = dir
+	cmd.Stdin = bytes.NewReader(patch)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s: %w (%s)", strings.Join(cmd.Args, " "), err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// Calibration is one (subject repo, base_commit, test-patch sha256)
+// reading: which of the task's fail_to_pass tests actually FAILED at base
+// with the test patch applied (only those are this task's to prove — a
+// f2p test that already passed at base proves nothing about the agent's
+// fix), and which of its pass_to_pass tests actually PASSED at base (only
+// those can be broken BY the agent — one already failing at base is an
+// environment problem, not the agent's). Cached under
+// <root>/workspace/scenariobench/calibration/<key>.json, computed once no
+// matter how many tasks or trials share the triple.
+type Calibration struct {
+	FailToPassFailedAtBase []string `json:"fail_to_pass_failed_at_base"`
+	PassToPassPassedAtBase []string `json:"pass_to_pass_passed_at_base"`
+	NotMeasurable          string   `json:"not_measurable,omitempty"`
+}
+
+// calibrationKey identifies one (subject repo, base_commit, test-patch
+// sha256) triple — the granularity CalibrateSubject caches at.
+func calibrationKey(task Task) string {
+	sha := task.Gold.TestPatchSHA256
+	if sha == "" && task.Gold.TestPatch != "" {
+		sum := sha256.Sum256([]byte(task.Gold.TestPatch))
+		sha = hex.EncodeToString(sum[:])
+	}
+	sum := sha256.Sum256([]byte(task.Subject.RepoURL + "\n" + task.Subject.BaseCommit + "\n" + sha))
+	return hex.EncodeToString(sum[:])
+}
+
+// CalibrateSubject computes (or, after the first call, reads back) the
+// Calibration for task: a SEPARATE throwaway worktree of the shared clone
+// (wt.SubjectClone, falling back to wt.Path when unset) at base_commit —
+// NEVER the cell's own worktree, so calibration never disturbs a cell in
+// flight — with the test patch applied and no fix, running task's test
+// command once over fail_to_pass ∪ pass_to_pass. root is this repo's
+// root; the cache lives at
+// <root>/workspace/scenariobench/calibration/<key>.json.
+func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) (Calibration, error) {
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
+	cacheDir := filepath.Join(root, "workspace", "scenariobench", "calibration")
+	key := calibrationKey(task)
+	cachePath := filepath.Join(cacheDir, key+".json")
+
+	if raw, err := os.ReadFile(cachePath); err == nil {
+		var cached Calibration
+		if err := json.Unmarshal(raw, &cached); err != nil {
+			return Calibration{}, fmt.Errorf("calibrating subject: parsing cached %s: %w", cachePath, err)
+		}
+		return cached, nil
+	} else if !os.IsNotExist(err) {
+		return Calibration{}, fmt.Errorf("calibrating subject: reading cache %s: %w", cachePath, err)
+	}
+	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
+		return Calibration{}, fmt.Errorf("calibrating subject: creating %s: %w", cacheDir, err)
+	}
+
+	clone := wt.SubjectClone
+	if clone == "" {
+		clone = wt.Path
+	}
+	calibWT := filepath.Join(cacheDir, "wt-"+key)
+	if err := os.RemoveAll(calibWT); err != nil {
+		return Calibration{}, fmt.Errorf("calibrating subject: clearing %s: %w", calibWT, err)
+	}
+	addCmd := exec.CommandContext(ctx, "git", "-C", clone, "worktree", "add", "--detach", calibWT, task.Subject.BaseCommit)
+	if out, err := addCmd.CombinedOutput(); err != nil {
+		return Calibration{}, fmt.Errorf("calibrating subject: git worktree add: %w (%s)", err, strings.TrimSpace(string(out)))
+	}
+	defer func() {
+		_ = exec.Command("git", "-C", clone, "worktree", "remove", "--force", calibWT).Run()
+		_ = os.RemoveAll(calibWT)
+	}()
+
+	calibCellDir := filepath.Join(cacheDir, "cell-"+key)
+	if err := os.MkdirAll(calibCellDir, 0o755); err != nil {
+		return Calibration{}, fmt.Errorf("calibrating subject: creating %s: %w", calibCellDir, err)
+	}
+	defer os.RemoveAll(calibCellDir)
+	throwaway := Worktree{Path: calibWT, SubjectClone: clone, CellDir: calibCellDir}
+
+	var result Calibration
+	if err := ApplyTestPatch(ctx, throwaway, task); err != nil {
+		result.NotMeasurable = fmt.Sprintf("test patch did not apply during calibration: %v", err)
+		if werr := writeCalibrationCache(cachePath, result); werr != nil {
+			return Calibration{}, werr
+		}
+		return result, nil
+	}
+
+	names := dedupSorted(append(append([]string(nil), task.Oracle.FailToPass...), task.Oracle.PassToPass...))
+	passed := map[string]bool{}
+	if len(names) > 0 {
+		p, _, _, err := runOracleTests(ctx, throwaway, task, names)
+		if err != nil {
+			return Calibration{}, fmt.Errorf("calibrating subject: running tests: %w", err)
+		}
+		passed = p
+	}
+	for _, n := range task.Oracle.FailToPass {
+		if !passed[n] {
+			result.FailToPassFailedAtBase = append(result.FailToPassFailedAtBase, n)
+		}
+	}
+	for _, n := range task.Oracle.PassToPass {
+		if passed[n] {
+			result.PassToPassPassedAtBase = append(result.PassToPassPassedAtBase, n)
+		}
+	}
+	result.FailToPassFailedAtBase = dedupSorted(result.FailToPassFailedAtBase)
+	result.PassToPassPassedAtBase = dedupSorted(result.PassToPassPassedAtBase)
+
+	if err := writeCalibrationCache(cachePath, result); err != nil {
+		return Calibration{}, err
+	}
+	return result, nil
+}
+
+func writeCalibrationCache(path string, c Calibration) error {
+	raw, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return fmt.Errorf("calibrating subject: marshaling: %w", err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
+		return fmt.Errorf("calibrating subject: writing %s: %w", path, err)
+	}
+	return nil
+}
+
+func dedupSorted(names []string) []string {
+	seen := make(map[string]bool, len(names))
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		if !seen[n] {
+			seen[n] = true
+			out = append(out, n)
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // runOracleTests runs the subject's test command once (-v appended for

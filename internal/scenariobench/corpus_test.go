@@ -112,6 +112,42 @@ func TestLoadScenarioCorpus_RefusesMissingDerivation(t *testing.T) {
 	}
 }
 
+// TestLoadScenarioCorpus_AnswerOnlyOracleIsValid proves a task whose ONLY
+// oracle is answer_all_of (SB-32 lookups-vs.json's shape) loads without
+// error — hasOracle must accept it.
+func TestLoadScenarioCorpus_AnswerOnlyOracleIsValid(t *testing.T) {
+	dir := t.TempDir()
+	good := `{
+  "version": 1,
+  "description": "test corpus",
+  "arms": {
+    "full": {"wired": true, "instructions": "stanza", "surface": "fathom"},
+    "control": {"wired": false, "instructions": "none", "surface": ""}
+  },
+  "tasks": [
+    {
+      "id": "T1",
+      "category": "obligations",
+      "prompt": "which rule governs this file?",
+      "derivation": "hand-authored lookup task",
+      "subject": {"repo_url": "https://example.invalid/repo.git", "base_commit": "deadbeef"},
+      "sessions": {"mode": "single", "count": 1, "max_turns": 10},
+      "oracle": {"answer_all_of": ["tok1", "tok2"]},
+      "predictions": {"full": "wins", "control": "loses"}
+    }
+  ],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1, "require_success_at_least_equal": true, "max_tokens_per_success_ratio": 1.0, "registered": "2026-09-01"}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", good)
+	c, err := LoadScenarioCorpus(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+	if len(c.Tasks) != 1 || len(c.Tasks[0].Oracle.AnswerAllOf) != 2 {
+		t.Fatalf("unexpected tasks: %+v", c.Tasks)
+	}
+}
+
 func TestCorpusSHA256_Deterministic(t *testing.T) {
 	dir := t.TempDir()
 	path := writeCorpusFixture(t, dir, "corpus.json", validCorpusJSON())
