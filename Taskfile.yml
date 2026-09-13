@@ -261,15 +261,15 @@ tasks:
 
   # ─── context-bench (COSTS REAL LLM TOKENS — operator-initiated only) ────
   # Every bench task below spends against the operator's Claude
-  # subscription: one --repeat 3 home run is roughly three times the
+  # subscription: one --trials 3 home run is roughly three times the
   # 2026-07-24 run's ~4.5M end-to-end tokens across both arms. autonomy.md
   # requires asking before LLM spend, so these are never wired into
   # `validate`, a hook, or CI.
 
   bench-home:
-    desc: "COSTS TOKENS. Home-turf bench, 3 trials/cell, scored against the committed criterion (override: -- --repeat 1)"
+    desc: "COSTS TOKENS. Home-turf bench, 3 trials/cell, scored against the committed criterion (override: -- --trials 1)"
     cmds:
-      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 {{.CLI_ARGS}}
+      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --trials 3 {{.CLI_ARGS}}
 
   bench-select:
     desc: "Free. Which home tasks a diff makes worth re-running (RANGE=origin/main...HEAD): the committed handler table maps changed files to agent-surface tools, tools to tasks."
@@ -291,13 +291,13 @@ tasks:
           exit 0
         fi
         echo "bench-targeted: running $ONLY (fathom arm only; the control arms' cells are borrowed by key)"
-        bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --repeat 3 \
+        bash scripts/context-bench.sh --tasks testdata/contextbench/tasks-home.json --trials 3 \
           --only "$ONLY" --scope targeted --arms 'fathom' --stream {{.CLI_ARGS}}
 
   bench-lookup:
     desc: "COSTS TOKENS. Grep-native lookup bench (B1 corpus; no committed criterion, so no ledger row)"
     cmds:
-      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks.json --repeat 3 {{.CLI_ARGS}}
+      - bash scripts/context-bench.sh --tasks testdata/contextbench/tasks.json --trials 3 {{.CLI_ARGS}}
 
   bench-ledger:
     desc: Re-render docs/bench/README.md from the committed ledger (free — reads, never runs the bench)
@@ -326,17 +326,17 @@ tasks:
   bench-scenario-guards:
     desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot: the fathom-repo invariants corpus, arms full vs control, n=2 (SB-37; testdata/scenariobench/guards-fathom.json is SB-24, another wave)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -trials 2 {{.CLI_ARGS}}
 
   bench-scenario-guards-adr:
     desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot #2: rules that live only in ADR.md (never repeated in a CLAUDE.md/AGENTS.md), arms full vs control, n=2 (SB-49; testdata/scenariobench/guards-adr.json)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -trials 2 {{.CLI_ARGS}}
 
   bench-scenario-pilot:
     desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
     cmds:
-      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/public-go.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/public-go.json -trials 2 {{.CLI_ARGS}}
 
   bench-compare-edges:
     desc: "Free. Competitor edge comparison (M6/M7): graphify/Serena/gopls precision-recall against the go/types L0 truth, beside fathom's own row (SB-28..31; cmd/indexbench compare is another wave)."
