@@ -846,3 +846,16 @@ triage if it matters.
 - **Fix:** detectors receive SCENARIO_BASE_COMMIT and diff the package directory against base (SB-54); the run is recorded as violations-measurable, success-not-measurable.
 - **Status:** fixed (the corpus and driver); the pilot itself is not re-run — its violation reading stands
 - **Impact:** $31 bought the violation reading and not the success reading; the change-present pattern is now the same on both guards corpora.
+
+### O41 — Every wired scenariobench cell of the 2026-09-13 round ran without fathom's MCP tools: 72/72 full sessions show mcp_servers [] in the stream-json init event; graphify's server failed 12/12 (graphify --mcp is not a command); gopls and Serena connected and were never called (0/24 sessions); every session inherited the operator's global hooks (fathom's own SessionStart primer on the control arm) and the thread brief crossed tasks sharing a worktree basename
+
+- **Symptom:** Every wired scenariobench cell of the 2026-09-13 round ran without fathom's MCP tools: 72/72 full sessions show mcp_servers [] in the stream-json init event; graphify's server failed 12/12 (graphify --mcp is not a command); gopls and Serena connected and were never called (0/24 sessions); every session inherited the operator's global hooks (fathom's own SessionStart primer on the control arm) and the thread brief crossed tasks sharing a worktree basename
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (ClaudeHarness.RunSession)
+  - **Expected:** The rendered arm (fathom entry merged by wireScratchDaemon, written by RenderArm) reaches claude -p; a cell whose server is absent is LOST; the control arm sees nothing of fathom
+  - **Actual:** PrepareSubject rendered the arm but main.go passed the original arm to RunSessions; newSessionRequest set Arm: arm (MCP nil); the harness wrote {mcpServers:{}} and passed --strict-mcp-config, which also hid the worktree's .mcp.json. M1–M5 and the paid half of M6/M7 measured prompt text against prompt text.
+  - **Repro:** python3 over workspace/artifacts/scenariobench/raw/*/session-0-*.stream.jsonl: the init event's mcp_servers is [] for every *-full-* dir; grep -c mcp__ over the assistant tool_use names is 0
+- **Root cause:** `runOneCell` passed the corpus arm, not the rendered one, into `RunSessions`; the harness built its own MCP config from `Arm.MCP` (nil) and `--strict-mcp-config` hid the worktree `.mcp.json`. graphify: wrong CLI (`--mcp`). gopls/Serena: present but un-named by any routing text, so the agent grepped. Hooks: `SubjectEnv` inherits `os.Environ()` and the operator's `~/.claude`. Threads: `threadScope{repo: filepath.Base(repoRoot)}`.
+- **Fix:** fd49bb7 (rendered config reaches the harness; `alwaysLoad`; allow-lists cover `mcp__<server>`; init event parsed; absent server ⇒ LOST; `tool_calls`/`surface_calls`/`surface_unused` on every row). The clean room, competitor stanzas, graphify command, thread scope and the voiding of the 74 rows are `docs/plans/receipts.md` wave 0–3 (vision 28, ADR-034).
+- **Status:** fixed (driver); reruns pending (receipts wave 5)
+- **Impact:** ≈ $108 of scenario spend measured prompt text against prompt text; M1–M5 and the paid M6/M7 readings are voided and restated as unmeasured. The home bench (tools present) stands.

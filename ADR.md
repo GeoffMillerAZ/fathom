@@ -1449,3 +1449,56 @@ LSP beating fathom on multi-package resolved callers (vision 21's typed edges ar
 not more bench); payload stays over 1.0× after wave 1 (replace the lookup tools with
 answer-shaped tools); a competitor ships an MCP surface that makes the free comparison
 one command (fold it into L0).
+
+## ADR-034: Receipts — instrument truth on every bench cell, evidence anchors the gate verifies, a budget and a receipt on every answer, discoveries as fresh-resolved pointers, coverage as a code fact (2026-09-13)
+
+**Status.** Accepted. Vision: `docs/vision/28-receipts.md`. Plan: `docs/plans/receipts.md`.
+
+**Context.** The first strengths-matrix round (ADR-033) published readings for M1–M7 on
+74 ledger rows. A second reading of the raw transcripts found the wired arm had run
+without fathom's MCP server in all 72 sessions (the driver handed the harness the
+un-rendered arm; `--strict-mcp-config` hid the worktree's own entry), the graphify server
+had failed on a command that does not exist, gopls and Serena had connected and never been
+called, every session had inherited the operator's global hooks (fathom's own primer on the
+control arm; a Stop hook's plan snapshot answered in a home cell), and the thread brief had
+crossed between two tasks that shared a worktree basename. The numbers were honest; what
+they measured was prompt text. The home bench, where the tools were present, showed the
+uncapped tools (`find_callers` 28 KB, `staleness_report` 46 KB) as a third of the payload
+overshoot, a Read after 27 % of Greps, and one missing shape (implementations of an
+interface method). Nothing carries a planner's discoveries to a worker except a plan row's
+`ctx:` pointers pasted by hand.
+
+**Decision.**
+1. A bench cell carries its instrument truth: MCP server statuses, a tool-call histogram,
+   `surface_calls`; a wired or surface arm whose server is not connected is LOST, and one
+   whose surface was never called is flagged. Sessions run in a clean room (scratch
+   `CLAUDE_CONFIG_DIR`, `--permission-mode default` under an allow-list, per-cell threads).
+   A competitor arm gets a routing stanza of the same shape as fathom's.
+2. A published reading is a plan row with an `oracle: ledger` anchor the verify gate
+   resolves; it refuses a missing, LOST or `surface_unused` cell. Numbers in the README are
+   rendered from the ledger. Every artifact opens with the verdict in plain language.
+3. Every agent-surface tool renders under the 16 KB budget with a named refinement; a
+   generic name asks for scope; `references` lists implementations on an interface method;
+   search returns each hit with its enclosing symbol from the index (SB-48).
+4. A discovery is a pointer with provenance, never rendered text: the call log records the
+   answer's top pointers; SubagentStart renders the parent session's discoveries resolved
+   fresh; the session-end note carries them to the next session; `routes` derives the
+   recurring ones with decay; the thread scope is the repo's identity. Kill criteria are
+   pre-registered in the vision (§4).
+5. Test coverage is a code fact fathom asserts from a supplied profile joined to the index,
+   by a repo-declared layer; judgments about test quality stay in the review kit.
+
+**Consequences.** The 74 first-round rows carry `instrument_defect` and the readings are
+restated as unmeasured; vision 27's §0, the bench README and scope G10 say so. Reruns stay
+in the pilot tier (≈ $120). The agent surface grows by `search` and `discoveries`, each
+with a kill criterion. `fathom verify` learns one oracle class.
+
+**Alternatives rejected.** Re-scoring the old cells (they contain no tool calls to score).
+An LLM-distilled hand-off (vision 21 §7 rejects it; ADR-028's boundary). A third store for
+discoveries (threads hold pointers, memory holds anchored facts, both already verify on
+read). Building test-quality judgment into fathom (the review kit's lane; ADR-011).
+
+**Revisit when.** A reading published after this record is found on a LOST or
+`surface_unused` cell; the discoveries kill criteria fire; the rerun with every tool present
+still shows the lookup surface above 1.0× grep on payload at equal success (the token claim
+is withdrawn, the tools kept for review and verify).

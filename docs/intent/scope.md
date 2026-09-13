@@ -54,6 +54,14 @@ and M7 (a setup defect, SB-51). Done when those two rows carry a reading and SB-
 (search with a receipt) has a targeted run beside the lookup tasks grep won — the cost story
 the whole matrix points at. M8 and M9 stay registered behind that.
 
+**G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
+round's 74 rows are voided by an instrument defect (the wired arm never had the tools) and
+say so on the ledger; every cell now carries its server status and surface calls, published
+readings are plan rows the gate verifies against the ledger, every tool answers under a
+budget with a receipt, discoveries reach workers and the next session as fresh-resolved
+pointers, and coverage is a code fact by layer. Done when the reruns in `docs/plans/receipts.md`
+wave 5 carry readings with `surface_calls > 0` and the discoveries kill criteria are decided.
+
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
 attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet

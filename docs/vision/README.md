@@ -93,6 +93,7 @@ measured) before laying stones no one is standing on.
 
 ## How this review was grounded
 - **[27 — The strengths bench](27-strengths-bench.md)** — ACCEPTED 2026-09-13 (ADR-033). Every claim fathom makes, as a matrix row: versus, an oracle fathom does not own, predicted win and predicted no-effect, written before spend; one scenario driver with arms as data; SDD, guards, exploration-reuse, competitor and freshness rows; repeatable by a stranger.
+- **[28 — Receipts](28-receipts.md)** — ACCEPTED 2026-09-13 (ADR-034). The first round's second reading: every wired cell had run without fathom's tools, so a reading, a hand-off and an answer are all claims that carry their evidence or are not made — instrument truth on every cell, evidence anchors the gate verifies, a budget and a receipt on every answer, discoveries as fresh-resolved pointers for workers and the next session, coverage as a code fact.
 
 Every **repo-facing** number is measured, not argued: the call log
 (`workspace/logs/mcp-calls.jsonl`, 1,186 calls over 8 days at the review
