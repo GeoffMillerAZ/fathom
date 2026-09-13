@@ -100,12 +100,18 @@ func (f *navFake) StoreWatermark(context.Context, string) (string, error) {
 	return f.watermark, nil
 }
 
+// callerNames extracts each caller's name from the SB-47 compact wire
+// shape's "loc" field ("file:line name") — the row no longer carries a
+// bare "name" property.
 func callerNames(t *testing.T, payload map[string]any) []string {
 	t.Helper()
 	rows, _ := payload["callers"].([]any)
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, r.(map[string]any)["name"].(string))
+		loc, _ := r.(map[string]any)["loc"].(string)
+		if i := strings.LastIndex(loc, " "); i >= 0 {
+			out = append(out, loc[i+1:])
+		}
 	}
 	return out
 }
@@ -125,9 +131,14 @@ func TestFindCallersResolvedByDefault(t *testing.T) {
 	if len(names) != 1 || names[0] != "Real" {
 		t.Fatalf("callers = %v, want [Real] — the syntax pass's bare-name caller Ghost must not be in the default answer", names)
 	}
+	// SB-47: a single-row (uniform) answer lifts edge_confidence to the
+	// envelope; the row itself keeps only the one-character "c" code.
 	rows := got["callers"].([]any)
-	if c := rows[0].(map[string]any)["edge_confidence"]; c != "resolved" {
-		t.Errorf("edge_confidence = %v, want resolved — BD-2's label must survive BP-26", c)
+	if c := rows[0].(map[string]any)["c"]; c != "r" {
+		t.Errorf("c = %v, want r — BD-2's label must survive BP-26", c)
+	}
+	if got["caller_edge_confidence"] != "resolved" {
+		t.Errorf("caller_edge_confidence = %v, want resolved (uniform across the one row)", got["caller_edge_confidence"])
 	}
 }
 
@@ -145,9 +156,14 @@ func TestFindCallersIncludeHeuristic(t *testing.T) {
 	if len(names) != 2 {
 		t.Fatalf("callers = %v, want both Ghost and Real", names)
 	}
+	// SB-47: Ghost/Real disagree, so edge_confidence is NOT lifted to the
+	// envelope — each row's one-character "c" is the only label.
+	if _, uniform := got["caller_edge_confidence"]; uniform {
+		t.Errorf("caller_edge_confidence = %v, want absent — Ghost and Real disagree", got["caller_edge_confidence"])
+	}
 	var sawHeuristic bool
 	for _, r := range got["callers"].([]any) {
-		if r.(map[string]any)["edge_confidence"] == "heuristic" {
+		if r.(map[string]any)["c"] == "h" {
 			sawHeuristic = true
 		}
 	}

@@ -195,9 +195,11 @@ func TestOutputSchemaGeneration(t *testing.T) {
 	if strings.Join(req, ",") != "by_depth,callers" {
 		t.Errorf("required = %v (omitempty fields must be optional, required sorted)", req)
 	}
+	// SB-47: find_callers' "callers" items are the compact callerEntry wire
+	// shape ({loc, c, sig?}), not a full symbolNodeDTO.
 	items := props["callers"].(map[string]any)["items"].(map[string]any)
-	if items["properties"].(map[string]any)["file_path"].(map[string]any)["type"] != "string" {
-		t.Errorf("symbol node item schema = %v", items)
+	if items["properties"].(map[string]any)["loc"].(map[string]any)["type"] != "string" {
+		t.Errorf("caller entry item schema = %v", items)
 	}
 	if outputSchemaFor("compile_layer") != nil {
 		t.Error("an undeclared long-tail tool must advertise no outputSchema")

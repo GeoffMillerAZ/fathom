@@ -3,6 +3,7 @@ package mcp_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -94,16 +95,28 @@ func TestFindCallersDepthAndConfidence(t *testing.T) {
 	if len(callers) != 2 {
 		t.Fatalf("callers = %v, want Direct1 and Direct2", callers)
 	}
+	// SB-47: callers are the compact {loc, c} wire shape — "name" no longer
+	// exists as its own field, and confidence is the one-character "c"
+	// (not lifted to the envelope here since Direct1/Direct2 disagree).
 	byName := map[string]map[string]any{}
 	for _, c := range callers {
 		m := c.(map[string]any)
-		byName[m["name"].(string)] = m
+		loc, _ := m["loc"].(string)
+		switch {
+		case strings.Contains(loc, "Direct1"):
+			byName["Direct1"] = m
+		case strings.Contains(loc, "Direct2"):
+			byName["Direct2"] = m
+		}
 	}
-	if byName["Direct1"]["depth"] != float64(1) || byName["Direct1"]["edge_confidence"] != "heuristic" {
-		t.Errorf("Direct1 = %v: want depth 1, heuristic (syntax-only edge)", byName["Direct1"])
+	if payload["caller_depth"] != float64(1) {
+		t.Errorf("caller_depth = %v, want 1 (both are direct callers)", payload["caller_depth"])
 	}
-	if byName["Direct2"]["edge_confidence"] != "resolved" {
-		t.Errorf("Direct2 = %v: want resolved (typed pass confirmed the edge)", byName["Direct2"])
+	if byName["Direct1"]["c"] != "h" {
+		t.Errorf("Direct1 = %v: want c=h (heuristic, syntax-only edge)", byName["Direct1"])
+	}
+	if byName["Direct2"]["c"] != "r" {
+		t.Errorf("Direct2 = %v: want c=r (resolved, typed pass confirmed the edge)", byName["Direct2"])
 	}
 	buckets := payload["by_depth"].([]any)
 	if len(buckets) != 1 || buckets[0].(map[string]any)["resolved"] != float64(1) || buckets[0].(map[string]any)["heuristic"] != float64(1) {
@@ -162,10 +175,12 @@ func TestBlastRadiusByDepthField(t *testing.T) {
 
 // BD-2: references rows carry depth (0 = definition, 1 = mention) and
 // edge_confidence: a mention inside a symbol with a typed edge to the
-// definition is resolved; a doc mention is heuristic.
+// definition is resolved; a doc mention is heuristic. exact: false so this
+// test sees every mention regardless of SB-45's exact-mode default filter
+// — its own default behavior is pinned by TestReferencesExactModeDefault.
 func TestReferencesDepthAndConfidence(t *testing.T) {
 	srv := mcp.NewServer(newGraphBackend())
-	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true})
+	payload := callTool(t, srv, "references", map[string]any{"query": "Target", "word": true, "exact": false})
 	defs := payload["definitions"].([]any)
 	if len(defs) != 1 || defs[0].(map[string]any)["depth"] != float64(0) || defs[0].(map[string]any)["edge_confidence"] != "resolved" {
 		t.Fatalf("definitions = %v: want Target at depth 0, resolved (verified tier)", defs)

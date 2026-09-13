@@ -6,6 +6,7 @@ package mcp_test
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -186,10 +187,12 @@ func TestFindCallers_CrossServiceCallers(t *testing.T) {
 	if !ok || len(callers) == 0 {
 		t.Fatalf("callers missing same-service TestCheckLiveness: %v", p)
 	}
+	// SB-47: callers is the compact {loc, c} wire shape — "loc" ends in the
+	// symbol name ("file:line name"), there is no separate "name" field.
 	foundSameService := false
 	for _, c := range callers {
 		entry := c.(map[string]any)
-		if entry["name"] == "TestCheckLiveness" {
+		if loc, _ := entry["loc"].(string); strings.HasSuffix(loc, " TestCheckLiveness") {
 			foundSameService = true
 		}
 	}

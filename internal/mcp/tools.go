@@ -113,7 +113,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Rows carry depth (direct = 1) and edge_confidence; edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers; by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth) or add the heuristic edges this default omits (include_heuristic: true), never to re-confirm what a resolved edge already settled. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
+		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Each caller is rendered compact for the wire (SB-47, like references' SB-1): {loc: \"file:line name\", c: \"r\"|\"h\"} — no signature unless with_signatures: true — with service/tier/depth/edge_confidence lifted to the envelope (caller_service, caller_tier, caller_depth, caller_edge_confidence) whenever every listed caller shares one, which the direct \"callers\" list almost always does. edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers (full {key,depth,edge_confidence} rows, uncompacted); by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth), add the heuristic edges this default omits (include_heuristic: true), or get full signatures (with_signatures: true), never to re-confirm what a resolved edge already settled. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -133,6 +133,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 					"type":        "boolean",
 					"description": "Add syntax-only (heuristic) callers, which come from bare-name matching. Default false.",
 				},
+				"with_signatures": map[string]any{
+					"type":        "boolean",
+					"description": "SB-47: include each caller's full signature (\"sig\") on the wire row. Default false — the compact {loc, c} shape omits it.",
+				},
 			},
 			"required": []string{"service", "symbol"},
 		},
@@ -146,6 +150,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			Symbol           string `json:"symbol"`
 			Depth            *int   `json:"depth"`
 			IncludeHeuristic bool   `json:"include_heuristic"`
+			WithSignatures   bool   `json:"with_signatures"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "find_callers: invalid args"}
@@ -238,7 +243,32 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			infos = append(infos, info)
 			listed[n.Key()] = true
 		}
-		result := map[string]any{"callers": callers, "edge_filter": edgeFilter}
+
+		// SB-47: render each caller compact for the wire — "file:line
+		// name" plus a one-character confidence code, never a signature
+		// unless with_signatures asked for it — and lift service/tier/
+		// depth/edge_confidence to the envelope whenever every listed
+		// caller shares one (mirroring references' SB-1 occurrence_*
+		// lift). The direct "callers" list is depth-1 and single-service
+		// by construction, so these are almost always uniform.
+		wireCallers := make([]callerEntry, len(callers))
+		for i, n := range callers {
+			wireCallers[i] = renderCallerEntry(n, p.WithSignatures)
+		}
+		env := uniformCallerFields(callers)
+		result := map[string]any{"callers": wireCallers, "edge_filter": edgeFilter}
+		if env.ServiceUniform {
+			result["caller_service"] = env.Service
+		}
+		if env.TierUniform {
+			result["caller_tier"] = env.Tier
+		}
+		if env.DepthUniform {
+			result["caller_depth"] = env.Depth
+		}
+		if env.ConfUniform {
+			result["caller_edge_confidence"] = env.EdgeConfidence
+		}
 		if maxDepth != 1 {
 			transitive := map[string]depthInfo{}
 			for k, d := range depths {

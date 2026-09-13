@@ -148,6 +148,88 @@ func TestFindCallers(t *testing.T) {
 	}
 }
 
+// TestFindCallersCallerUnder100Bytes (SB-47, docs/plans/strengths-bench.md;
+// mirrors SB-1's TestReferencesOccurrenceUnder100Bytes): every rendered
+// caller — the compact {loc, c} wire shape renderCallerEntry produces —
+// marshals at or under 100 bytes, even over a realistically deep, long
+// caller set (the plan's own repro: a 38-caller answer for a real symbol
+// used to cost 14 KB before this row).
+func TestFindCallersCallerUnder100Bytes(t *testing.T) {
+	const n = 38
+	fake := &fakeBackend{}
+	for i := 0; i < n; i++ {
+		fake.callers = append(fake.callers, fakeNode{
+			name: "someCallerFunctionName",
+			kind: "GoFunc",
+			file: "internal/cmd/fathom/serve/handlers/dispatch.go",
+		})
+	}
+	srv := mcp.NewServer(fake)
+	payload := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "runWithStdin"})
+
+	callers, ok := payload["callers"].([]any)
+	if !ok || len(callers) != n {
+		t.Fatalf("callers = %v, want %d entries", payload["callers"], n)
+	}
+	var total int
+	for _, raw := range callers {
+		b, err := json.Marshal(raw)
+		if err != nil {
+			t.Fatalf("marshal caller: %v", err)
+		}
+		if len(b) > 100 {
+			t.Errorf("caller %s is %d bytes, want <= 100", b, len(b))
+		}
+		if _, hasSig := raw.(map[string]any)["sig"]; hasSig {
+			t.Errorf("caller %s carries \"sig\" without with_signatures: true", b)
+		}
+		total += len(b)
+	}
+	// The plan's own bar: this shape must cost well under 4 KB for the
+	// answer that used to cost 14 KB.
+	if total >= 4000 {
+		t.Errorf("callers array totals %d bytes, want < 4000 (SB-47's target)", total)
+	}
+	if payload["caller_service"] != "svc" {
+		t.Errorf("caller_service = %v, want svc (uniform — one service per call)", payload["caller_service"])
+	}
+}
+
+// findCallersSigFake is a minimal QueryInterface whose caller carries a
+// real signature, for TestFindCallersWithSignatures.
+type findCallersSigFake struct {
+	fakeBackend
+}
+
+func (f *findCallersSigFake) FindCallers(_ context.Context, serviceID, symbol string) ([]core.SymbolNode, error) {
+	return []core.SymbolNode{{
+		Service: serviceID, Name: "Caller", Kind: core.KindGoFunc,
+		FilePath: "pkg/caller.go", Line: 12,
+		Signature: "func Caller(ctx context.Context, arg string) error",
+	}}, nil
+}
+
+// TestFindCallersWithSignatures: with_signatures: true adds "sig" to each
+// compact row; its absence is the default (SB-47).
+func TestFindCallersWithSignatures(t *testing.T) {
+	srv := mcp.NewServer(&findCallersSigFake{})
+
+	without := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	rows := without["callers"].([]any)
+	if len(rows) != 1 {
+		t.Fatalf("callers = %v, want 1", rows)
+	}
+	if _, hasSig := rows[0].(map[string]any)["sig"]; hasSig {
+		t.Errorf("caller %v carries \"sig\" by default, want absent", rows[0])
+	}
+
+	with := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target", "with_signatures": true})
+	rows = with["callers"].([]any)
+	if sig, _ := rows[0].(map[string]any)["sig"].(string); sig != "func Caller(ctx context.Context, arg string) error" {
+		t.Errorf("caller sig = %q, want the full signature", sig)
+	}
+}
+
 // ─── find_symbol ─────────────────────────────────────────────────────────────
 
 func TestFindSymbol(t *testing.T) {

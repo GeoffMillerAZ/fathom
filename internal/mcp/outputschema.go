@@ -29,13 +29,20 @@ import (
 // additional properties: fields are additive by contract (law 4), and a
 // client pinned to an older schema must keep parsing a newer response.
 
-// findCallersResult mirrors find_callers' payload (tools.go).
+// findCallersResult mirrors find_callers' payload (tools.go). Callers is
+// the SB-47 compact wire shape; CallerService/CallerTier/CallerDepth/
+// CallerEdgeConfidence are the envelope lift, present only when every
+// listed caller shares one (see uniformCallerFields).
 type findCallersResult struct {
-	Callers             []symbolNodeDTO `json:"callers"`
-	ByDepth             []depthBucket   `json:"by_depth"`
-	TransitiveCallers   []depthRow      `json:"transitive_callers,omitempty"`
-	TypedCallers        []typedEdgeRef  `json:"typed_callers,omitempty"`
-	CrossServiceCallers []any           `json:"cross_service_callers,omitempty"`
+	Callers              []callerEntry  `json:"callers"`
+	ByDepth              []depthBucket  `json:"by_depth"`
+	TransitiveCallers    []depthRow     `json:"transitive_callers,omitempty"`
+	TypedCallers         []typedEdgeRef `json:"typed_callers,omitempty"`
+	CrossServiceCallers  []any          `json:"cross_service_callers,omitempty"`
+	CallerService        string         `json:"caller_service,omitempty"`
+	CallerTier           string         `json:"caller_tier,omitempty"`
+	CallerDepth          int            `json:"caller_depth,omitempty"`
+	CallerEdgeConfidence string         `json:"caller_edge_confidence,omitempty"`
 }
 
 // typedEdgeRef is one kind-labeled typed edge ({key, kind}).
@@ -128,6 +135,23 @@ type referencesResult struct {
 	OccurrenceTier    string                `json:"occurrence_tier,omitempty"`
 	OccurrenceDepth   int                   `json:"occurrence_depth,omitempty"`
 	OccurrenceService string                `json:"occurrence_service,omitempty"`
+	// Exact/ExactAvailable (SB-45): whether occurrences answered from the
+	// typed pass only, and whether every scanned service could actually
+	// confirm against one (false when any fell back — see Degraded).
+	Exact          bool `json:"exact"`
+	ExactAvailable bool `json:"exact_available,omitempty"`
+	// Degraded (SB-45, O36 — ADR-014 execute-and-flag): services this call
+	// could not fully answer for — an unreadable root, or no typed
+	// reference sites to confirm exact mode against — named with why,
+	// never silently dropped and never aborting the whole call.
+	Degraded []referenceDegradedService `json:"degraded,omitempty"`
+}
+
+// referenceDegradedService is one references degraded-service row (O36,
+// SB-45).
+type referenceDegradedService struct {
+	Service string `json:"service"`
+	Reason  string `json:"reason"`
 }
 
 type referenceDefinition struct {
