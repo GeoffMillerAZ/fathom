@@ -1,0 +1,6 @@
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_1","name":"Read","input":{"file_path":"/repo/NOTES.md"}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_1","content":"# Plan\n\n- [ ] {id: row-1} do thing one\n- [ ] {id: row-2} do thing two\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_2","name":"Edit","input":{"file_path":"/repo/NOTES.md","old_string":"- [ ] {id: row-1} do thing one","new_string":"- [x] {id: row-1} do thing one"}}],"usage":{"input_tokens":7,"output_tokens":3,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_2","content":"Edit applied"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Row 1 done."}],"usage":{"input_tokens":2,"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"result","is_error":false,"num_turns":3,"duration_ms":900,"total_cost_usd":0.0040,"usage":{"input_tokens":14,"output_tokens":6,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}
