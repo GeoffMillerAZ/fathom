@@ -1,0 +1,268 @@
+// The scenario cell store (SB-17), mirroring ADR-032's contract
+// (internal/contextbench/cell.go): a cell is remembered under a
+// content-addressed key over the invariants that bind it, so a later run
+// can borrow it instead of re-running, and a borrow either matches exactly
+// or does not exist — never a silent, partial match.
+package scenariobench
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+// CellInvariants are the invariants that bind one scored scenario cell.
+// Every field is part of the key; a cell whose inputs differ in any of
+// them is a different cell, not the same cell measured again.
+type CellInvariants struct {
+	// CorpusSHA256 is the hash of the corpus file's bytes (CorpusSHA256).
+	CorpusSHA256 string
+	TaskID       string
+	Arm          string
+	// ModelID is the model identity the run was pinned to.
+	ModelID string
+	// HarnessVersion is the harness's own version string (Harness.Version()).
+	HarnessVersion string
+	// Scoring names how this cell's readings were computed (an oracle/
+	// readings version identifier) — the same transcripts scored two ways
+	// are two cells.
+	Scoring string
+	// PromptSubject is the subject description named in the prompt.
+	PromptSubject string
+	// ArmSurface identifies the subject-under-test for arms that have one:
+	// the fathom binary commit for a wired arm, a competitor's pinned
+	// version for a competitor arm, empty for a pure control — so a fathom
+	// change changes only the wired arm's key.
+	ArmSurface string
+}
+
+// canonical renders the invariants as labeled, newline-separated lines —
+// labeled so two different inputs can never collide into the same hash by
+// concatenation alone.
+func (in CellInvariants) canonical() string {
+	var b strings.Builder
+	for _, kv := range [][2]string{
+		{"corpus_sha256", in.CorpusSHA256},
+		{"task_id", in.TaskID},
+		{"arm", in.Arm},
+		{"model_id", in.ModelID},
+		{"harness_version", in.HarnessVersion},
+		{"scoring", in.Scoring},
+		{"prompt_subject", in.PromptSubject},
+		{"arm_surface", in.ArmSurface},
+	} {
+		b.WriteString(kv[0])
+		b.WriteByte('=')
+		b.WriteString(kv[1])
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// ScenarioCellKey is the content address of one scored scenario cell:
+// sha256 over the labeled invariants, hex-encoded.
+func ScenarioCellKey(inv CellInvariants) string {
+	sum := sha256.Sum256([]byte(inv.canonical()))
+	return hex.EncodeToString(sum[:])
+}
+
+// Validate reports the first invariant a key cannot be built without
+// (ArmSurface is allowed to be empty — that is what a pure control means).
+func (in CellInvariants) Validate() error {
+	for _, kv := range [][2]string{
+		{"corpus_sha256", in.CorpusSHA256},
+		{"task_id", in.TaskID},
+		{"arm", in.Arm},
+		{"model_id", in.ModelID},
+		{"harness_version", in.HarnessVersion},
+		{"scoring", in.Scoring},
+		{"prompt_subject", in.PromptSubject},
+	} {
+		if kv[1] == "" {
+			return fmt.Errorf("scenario cell key: %s is empty — a key over an unknown invariant would let an unrelated cell be borrowed", kv[0])
+		}
+	}
+	return nil
+}
+
+func cellTrialFile(trial int) string {
+	if trial < 1 {
+		trial = 1
+	}
+	return fmt.Sprintf("t%d.json", trial)
+}
+
+// ScenarioCellPath returns the content-addressed path of one trial of one
+// cell: <cellsDir>/<key>/t<n>.json.
+func ScenarioCellPath(cellsDir, key string, trial int) string {
+	return filepath.Join(cellsDir, key, cellTrialFile(trial))
+}
+
+// StoreScenarioCell writes a scored cell into the content-addressed store
+// (workspace/artifacts/scenariobench/cells/<key>/t<n>.json). A cell already
+// present is left alone — the first writer owns the provenance — and a
+// borrowed cell is never written back (it is already in the store under
+// this exact key).
+func StoreScenarioCell(cellsDir string, r CellResult) error {
+	if r.CellKey == "" {
+		return fmt.Errorf("storing scenario cell %s/%s: no cell_key", r.TaskID, r.Arm)
+	}
+	if r.Borrowed {
+		return nil
+	}
+	dir := filepath.Join(cellsDir, r.CellKey)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("creating cell dir %s: %w", dir, err)
+	}
+	path := filepath.Join(dir, cellTrialFile(r.Trial))
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	raw, err := json.MarshalIndent(r, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshaling cell %s: %w", r.CellKey, err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
+		return fmt.Errorf("writing cell %s: %w", path, err)
+	}
+	return nil
+}
+
+// BorrowScenarioCell returns the stored cell for (key, trial) marked
+// Borrowed, with the run that paid for it named in SourceRunID. The second
+// return is false when no such cell exists — the caller then runs the cell
+// for real. A read error is an error, never a miss (ADR-027): "I could not
+// read it" and "it is not there" are different facts.
+func BorrowScenarioCell(cellsDir, key string, trial int) (CellResult, bool, error) {
+	path := ScenarioCellPath(cellsDir, key, trial)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return CellResult{}, false, nil
+		}
+		return CellResult{}, false, fmt.Errorf("reading cell %s: %w", path, err)
+	}
+	var r CellResult
+	if err := json.Unmarshal(raw, &r); err != nil {
+		return CellResult{}, false, fmt.Errorf("parsing cell %s: %w", path, err)
+	}
+	if r.CellKey != key {
+		return CellResult{}, false, fmt.Errorf("cell %s records key %s — the store is inconsistent with its own addressing", path, r.CellKey)
+	}
+	r.Borrowed = true
+	if r.SourceRunID == "" {
+		// Unlike contextbench's ArmResult, CellResult already carries a
+		// mandatory RunID naming the run that produced it — so a
+		// first-generation borrow can report the real source instead of
+		// ADR-032's "unrecorded" (that fallback stays for the genuinely
+		// unknown case: a cell whose RunID was also never recorded, e.g.
+		// hand-migrated from elsewhere).
+		r.SourceRunID = orUnrecordedScenario(r.RunID)
+	}
+	return r, true, nil
+}
+
+// AcceptBorrowedScenario is the evaluator's admission rule for a borrowed
+// cell: key equality, and nothing else. want is the key THIS run's
+// invariants produce; a borrowed reading whose recorded key differs was
+// bought under different invariants and may not stand in for it.
+func AcceptBorrowedScenario(want string, r CellResult) error {
+	if !r.Borrowed {
+		return nil
+	}
+	if r.CellKey == "" {
+		return fmt.Errorf("borrowed cell %s/%s/t%d (from run %s) carries no cell_key — provenance unverifiable", r.TaskID, r.Arm, r.Trial, orUnrecordedScenario(r.SourceRunID))
+	}
+	if r.CellKey != want {
+		return fmt.Errorf("borrowed cell %s/%s/t%d (from run %s) has key %s, but this run's invariants produce %s — refused", r.TaskID, r.Arm, r.Trial, orUnrecordedScenario(r.SourceRunID), shortScenario(r.CellKey), shortScenario(want))
+	}
+	return nil
+}
+
+func orUnrecordedScenario(s string) string {
+	if s == "" {
+		return "unrecorded"
+	}
+	return s
+}
+
+// shortScenario truncates a key to 12 chars for an error message, without
+// panicking on a shorter (e.g. test-fixture) key.
+func shortScenario(s string) string {
+	if len(s) <= 12 {
+		return s
+	}
+	return s[:12]
+}
+
+// ResolveArmSurface returns the ArmSurface a cell key should use for arm:
+// the literal fathomCommit when arm.Surface == "fathom" (the corpus's
+// sentinel for "the fathom this arm was talking to"), the pinned
+// competitor version verbatim for any other non-empty Surface, and "" for
+// a pure control (Surface == "").
+func ResolveArmSurface(arm Arm, fathomCommit string) string {
+	switch arm.Surface {
+	case "":
+		return ""
+	case "fathom":
+		return fathomCommit
+	default:
+		return arm.Surface
+	}
+}
+
+// BorrowedScenarioCell is one borrowed reading's provenance, as a ledger
+// row records it.
+type BorrowedScenarioCell struct {
+	TaskID      string `json:"task_id"`
+	Arm         string `json:"arm"`
+	Trial       int    `json:"trial"`
+	CellKey     string `json:"cell_key"`
+	SourceRunID string `json:"source_run_id"`
+}
+
+// AggregateReadings computes the basic, always-available Readings fields
+// (total tokens, turns, cost, payload bytes) from a cell's sessions. The
+// wave-3 readings (plan coverage, false-done, resumption, overlap, drift,
+// rule-served) are computed elsewhere and merged in by the caller — this
+// is deliberately just the sum every cell can report regardless of what
+// else has landed.
+func AggregateReadings(sessions []SessionResult) Readings {
+	var r Readings
+	for _, s := range sessions {
+		r.TotalTokens += s.TotalTokens
+		r.TotalTurns += s.Turns
+		r.TotalCostUSD += s.CostUSD
+		r.PayloadBytes += s.PayloadBytes
+	}
+	return r
+}
+
+// BorrowedScenarioCellsOf lists every borrowed reading in results, sorted
+// by (task, arm, trial).
+func BorrowedScenarioCellsOf(results []CellResult) []BorrowedScenarioCell {
+	var out []BorrowedScenarioCell
+	for _, r := range results {
+		if !r.Borrowed {
+			continue
+		}
+		out = append(out, BorrowedScenarioCell{TaskID: r.TaskID, Arm: r.Arm, Trial: r.Trial, CellKey: r.CellKey, SourceRunID: orUnrecordedScenario(r.SourceRunID)})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].TaskID != out[j].TaskID {
+			return out[i].TaskID < out[j].TaskID
+		}
+		if out[i].Arm != out[j].Arm {
+			return out[i].Arm < out[j].Arm
+		}
+		return out[i].Trial < out[j].Trial
+	})
+	return out
+}
