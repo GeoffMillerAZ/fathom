@@ -807,3 +807,42 @@ triage if it matters.
 - **Fix:** W7: reset-then-apply; plan-first prompt in single mode; readings wired into runOneCell with plan.md and agent.diff captured per cell for offline re-scoring; paths sanitized. The pilot re-runs on four tasks.
 - **Status:** open (fix in progress)
 - **Impact:** ~$25 of spend produced transcripts but no ledger row; the false-done pattern in the notes is the first direct sighting of what M2 exists to measure.
+
+### O39 — references exact results omit known callers while verify_plan sees their test reachability
+
+- **Symptom:** references exact results omit known callers while verify_plan sees their test reachability
+- **Evidence:**
+  - **Tool:** references
+  - **Expected:** Known in-repo call occurrences or an explicit unsupported-typed-scope reason
+  - **Actual:** references query runReview and SyncCatalogs each returned count 0 with edge_filter resolved; verify_plan reports 27 and 23 tests reaching them after the same fresh MCP ingest
+  - **Repro:** MCP references service platform-engineering query runReview max 12 after MCP ingest; compare verify_plan symbol runReview package kits/review-kit/internal/cli on 2026-09-13. Six reference queries also took about a minute together.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O40 — Selector-method call edges disappear and receiver names duplicate in canonical verification targets
+
+- **Symptom:** Selector-method call edges disappear and receiver names duplicate in canonical verification targets
+- **Evidence:**
+  - **Tool:** verify_plan
+  - **Expected:** Direct TestFileContextIsScopedBoundedAndVersionAware calls to s.Context and s.Append are present in the call graph
+  - **Actual:** symbol_context lists Open/draft/event/subject but omits direct methods; verification target becomes Store.Store.Context and reports no test reachability. Interface a.Collect similarly disappears with fathomAdapter.fathomAdapter.Collect.
+  - **Repro:** Fresh MCP ingest platform-engineering, verify_plan symbol Store.Context package kits/review-kit/internal/findings; inspect TestFileContextIsScopedBoundedAndVersionAware. Public runFindingsQuery and its native runtime tests pass independently.
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O40 — guards-adr-pilot-1 (32 cells, $31.45) read 30 cells as "partial": every task's change-present detector diffed ONE named file against the index, so a change the agent made in a sibling file (or committed) counted as absent. The rule detectors were clean on every cell — the second corpus in a row with zero rule violations on either arm.
+
+- **Symptom:** `change-present (exit 1, violated)` beside a non-empty agent.diff (3–13 KB) on 30 of 32 cells; `rule` detectors exit 0 everywhere.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (RunOracle detectors), testdata/scenariobench/guards-adr.json
+  - **Expected:** a positive check that the requested change exists wherever the agent put it.
+  - **Actual:** `test -n "$(git diff --name-only cmd/fathom/query.go)"` — one file, working tree vs index.
+  - **Repro:** cells with run_id guards-adr-pilot-1; `git apply` any agent.diff onto base and run the old detector.
+- **Root cause:** the detector guessed the file the change would land in; agents put it elsewhere, and a committed change has no working-tree diff.
+- **Fix:** detectors receive SCENARIO_BASE_COMMIT and diff the package directory against base (SB-54); the run is recorded as violations-measurable, success-not-measurable.
+- **Status:** fixed (the corpus and driver); the pilot itself is not re-run — its violation reading stands
+- **Impact:** $31 bought the violation reading and not the success reading; the change-present pattern is now the same on both guards corpora.
