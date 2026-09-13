@@ -87,5 +87,5 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 
 ## Wave 7 — the record
 
-- [ ] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
+- [x] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
 - [ ] CHANGELOG lines for the doctrine change, the new tools' contracts and the driver; a Claude artifact with the readings {id: SB-44, skip_test: true, skip: "docs; evidence is the diffs"}

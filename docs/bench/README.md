@@ -298,6 +298,7 @@ comparison.
 | 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-1 | fail | aggregate token ratio 1.444× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
 | 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-3 | fail | aggregate payload_bytes ratio 1.901× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
 | 20260913T094546Z | 68a5348 | tasks-home.json | sonnet | 11 | 3 | 28/28 | 1.375× | 1.193× | +0.000 [-0.121, +0.152] p=0.240 A12=0.48 | H2-3 | fail | success 28 vs 28 — not strictly greater flaky=6 leaked=2 borrowed=66 payload=2.656× |
+| 20260913T154217Z | 47ee05f | tasks-home.json | sonnet | 13 | 3 | 35/34 | 1.810× | 1.750× | +0.026 [-0.103, +0.154] p=0.013 A12=0.54 | H2-3 | fail | aggregate payload_bytes ratio 1.615× exceeds the pre-registered cap of 1.000× flaky=5 borrowed=39 payload=1.615× |
 
 <!-- END ledger table -->
 
@@ -313,6 +314,14 @@ payload. `read_source` is now the arm's first gold source (0.24): a smaller
 are the wrong shape for these questions, exactly the falsifier vision 27
 §10 registered; SB-48 (search with a receipt) is the reply, not another
 trim. ToolSearch turns: 0.00 — `alwaysLoad` removed the harness tax.
+
+The realistic arm (`full`: fathom plus Read, Grep, Glob and read-only
+shell forms, in a hook-free export) ran the same corpus against the same
+borrowed grep cells: successes 35 vs 34, tokens 1.81×, payload 1.62×, cost
+1.60× — FAIL under H2-3. Its gold sources were Grep 0.23 and Bash 0.18
+before any fathom tool (obligations 0.15): given everything, the agent
+greps first, reaches for the index second, and pays for both. That is the
+cost story of the whole matrix in one row, and it is why SB-48 exists.
 
 ### The 2026-09-13 run, read (O31, O32)
 
