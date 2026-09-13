@@ -1,6 +1,7 @@
 package scenariobench
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -167,6 +168,77 @@ func TestCriterionEvaluate(t *testing.T) {
 		ev := c.Evaluate(rows)
 		if ev.Verdict != ScenarioVerdictPass {
 			t.Errorf("Verdict = %s, want pass: %s", ev.Verdict, ev.Reason)
+		}
+	})
+}
+
+func TestEscalationPlan(t *testing.T) {
+	c := Criterion{ID: "C1", Treatment: "full", Control: "control", RequireSuccessAtLeastEqual: true, MaxTokensPerSuccessRatio: 1.5}
+
+	t.Run("success delta within margin is flagged", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			// treatment 1/2 = 0.5, control 1/2 = 0.5 -> delta 0.0, within 0.15
+			{TaskID: "T1", Arm: "full", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
+			{TaskID: "T1", Arm: "control", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
+		}
+		got := EscalationPlan(rows, c, 0.15)
+		if len(got) != 1 || got[0].TaskID != "T1" {
+			t.Fatalf("got %+v, want one cell for T1", got)
+		}
+		if got[0].Trials != 2 {
+			t.Errorf("Trials = %d, want 2", got[0].Trials)
+		}
+		if got[0].SuccessDelta != 0 {
+			t.Errorf("SuccessDelta = %v, want 0", got[0].SuccessDelta)
+		}
+	})
+
+	t.Run("success delta outside margin is not flagged", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			// treatment 2/2 = 1.0, control 0/2 = 0.0 -> delta 1.0, far outside 0.15
+			{TaskID: "T2", Arm: "full", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
+			{TaskID: "T2", Arm: "control", Trials: 2, Successes: 0, Readings: Readings{TotalTokens: 100}},
+		}
+		got := EscalationPlan(rows, c, 0.15)
+		if len(got) != 0 {
+			t.Fatalf("got %+v, want no cells (delta is decisive, not borderline)", got)
+		}
+	})
+
+	t.Run("tokens ratio within margin is flagged", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			// success rates tie (no success-delta flag); tokens ratio =
+			// (300/2)/(100/1) = 1.5, exactly the criterion's bar.
+			{TaskID: "T3", Arm: "full", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 300}},
+			{TaskID: "T3", Arm: "control", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 200}},
+		}
+		got := EscalationPlan(rows, c, 0.15)
+		if len(got) != 1 || got[0].TaskID != "T3" {
+			t.Fatalf("got %+v, want one cell for T3", got)
+		}
+		if math.Abs(got[0].TokensRatio-1.5) > 1e-9 {
+			t.Errorf("TokensRatio = %v, want 1.5", got[0].TokensRatio)
+		}
+	})
+
+	t.Run("n=3 already escalated is not a candidate", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			{TaskID: "T4", Arm: "full", Trials: 3, Successes: 1, Readings: Readings{TotalTokens: 100}},
+			{TaskID: "T4", Arm: "control", Trials: 3, Successes: 1, Readings: Readings{TotalTokens: 100}},
+		}
+		got := EscalationPlan(rows, c, 0.15)
+		if len(got) != 0 {
+			t.Fatalf("got %+v, want no cells (n=3 already ran)", got)
+		}
+	})
+
+	t.Run("rows from unrelated arms are ignored", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			{TaskID: "T5", Arm: "competitor-x", Trials: 2, Successes: 1},
+		}
+		got := EscalationPlan(rows, c, 0.15)
+		if len(got) != 0 {
+			t.Fatalf("got %+v, want no cells (no treatment/control rows)", got)
 		}
 	})
 }

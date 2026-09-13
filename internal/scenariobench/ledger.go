@@ -11,8 +11,10 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -199,6 +201,104 @@ func rateOf(successes, trials int) float64 {
 		return 0
 	}
 	return float64(successes) / float64(trials)
+}
+
+// EscalationCell is one task RC-14 (vision 28 §2.6: "screen at n=2,
+// escalate to n≥3 only where the delta sits within the criterion's
+// margin") flags for a third trial.
+type EscalationCell struct {
+	TaskID string `json:"task_id"`
+	// Trials is the treatment arm's own trial count at the point this cell
+	// was flagged — always 2 (the screening floor); EscalationPlan does
+	// not consider a task that already escalated.
+	Trials int `json:"trials"`
+	// SuccessDelta is the treatment success rate minus the control's — the
+	// quantity RequireSuccessAtLeastEqual's zero line judges.
+	SuccessDelta float64 `json:"success_delta"`
+	// TokensRatio is the treatment/control tokens-per-success ratio
+	// MaxTokensPerSuccessRatio judges; 0 when neither arm had a success to
+	// compute one from.
+	TokensRatio float64 `json:"tokens_ratio,omitempty"`
+	Reason      string  `json:"reason"`
+}
+
+// EscalationPlan is RC-14: among ledgerRows (any run's ScenarioLedgerRow
+// set — the caller filters by run-id first when that matters), the tasks
+// whose TREATMENT arm ran EXACTLY criterion.MinTrials-independent n=2 (the
+// registered screening floor) and whose delta against the criterion sits
+// within margin of the line that decides pass/fail: the success rate
+// against the zero line RequireSuccessAtLeastEqual judges, and the
+// tokens-per-success ratio against MaxTokensPerSuccessRatio. A task with
+// fewer than 2 trials, or more than 2 (already escalated, or run at a
+// higher floor), is not a candidate. Rows for arms other than
+// criterion.Treatment/.Control are ignored. Returned in task-id order.
+func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin float64) []EscalationCell {
+	type acc struct {
+		tTrials, tSuccesses, cTrials, cSuccesses int
+		tTokens, cTokens                         int64
+	}
+	byTask := map[string]*acc{}
+	var order []string
+	for _, r := range ledgerRows {
+		if r.Arm != criterion.Treatment && r.Arm != criterion.Control {
+			continue
+		}
+		a, ok := byTask[r.TaskID]
+		if !ok {
+			a = &acc{}
+			byTask[r.TaskID] = a
+			order = append(order, r.TaskID)
+		}
+		switch r.Arm {
+		case criterion.Treatment:
+			a.tTrials += r.Trials
+			a.tSuccesses += r.Successes
+			a.tTokens += r.Readings.TotalTokens
+		case criterion.Control:
+			a.cTrials += r.Trials
+			a.cSuccesses += r.Successes
+			a.cTokens += r.Readings.TotalTokens
+		}
+	}
+	sort.Strings(order)
+
+	var out []EscalationCell
+	for _, taskID := range order {
+		a := byTask[taskID]
+		if a.tTrials != 2 {
+			continue // only the n=2 screen is a candidate for escalation
+		}
+		successDelta := rateOf(a.tSuccesses, a.tTrials) - rateOf(a.cSuccesses, a.cTrials)
+
+		var reasons []string
+		if math.Abs(successDelta) <= margin {
+			reasons = append(reasons, fmt.Sprintf("success delta %.3f is within %.2f of the pass/fail line", successDelta, margin))
+		}
+
+		var ratio float64
+		if criterion.MaxTokensPerSuccessRatio > 0 && a.tSuccesses > 0 && a.cSuccesses > 0 {
+			tPerSuccess := float64(a.tTokens) / float64(a.tSuccesses)
+			cPerSuccess := float64(a.cTokens) / float64(a.cSuccesses)
+			if cPerSuccess > 0 {
+				ratio = tPerSuccess / cPerSuccess
+				if math.Abs(ratio-criterion.MaxTokensPerSuccessRatio) <= margin {
+					reasons = append(reasons, fmt.Sprintf("tokens-per-success ratio %.3f× is within %.2f of the registered bar %.3f×", ratio, margin, criterion.MaxTokensPerSuccessRatio))
+				}
+			}
+		}
+
+		if len(reasons) == 0 {
+			continue
+		}
+		out = append(out, EscalationCell{
+			TaskID:       taskID,
+			Trials:       a.tTrials,
+			SuccessDelta: successDelta,
+			TokensRatio:  ratio,
+			Reason:       strings.Join(reasons, "; "),
+		})
+	}
+	return out
 }
 
 // ScenarioLedgerBeginMarker / ScenarioLedgerEndMarker fence the rendered

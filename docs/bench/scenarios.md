@@ -383,3 +383,27 @@ fall, and raw transcripts are published as a release artifact
 `cmd/scenariobench`'s `ledger` subcommand lands, a run's raw cells under
 `workspace/artifacts/` are the evidence; do not hand-edit
 `scenarios-ledger.jsonl`.
+
+## Trial escalation (RC-14)
+
+Every task screens at n=2 first — a third trial is spent only where the
+first two left the verdict genuinely undecided. After a run lands its rows
+in the ledger:
+
+```sh
+scenariobench plan -corpus <corpus.json> -escalate \
+  -ledger docs/bench/scenarios-ledger.jsonl [-run-id <id>] [-margin 0.15]
+```
+
+reads the ledger (optionally narrowed to one `-run-id`) and, for every task
+whose treatment arm ran EXACTLY n=2, computes `internal/scenariobench.
+EscalationPlan`'s two deltas against the corpus's own registered
+`criterion`: the treatment/control **success-rate delta** against
+`require_success_at_least_equal`'s zero line, and the **tokens-per-success
+ratio** against `max_tokens_per_success_ratio`. A task is printed — and only
+printed, never run — when either delta sits within `-margin` (default 0.10)
+of the line that decides pass/fail: close enough that a third trial's
+result could still flip the verdict. A task whose n=2 delta is already
+decisive, or that already ran at n≥3, is not a candidate. No cell store is
+touched and nothing spends: `-escalate` is a read of the ledger, the same
+free-until-you-choose-to-spend shape as `plan`'s normal cell listing.

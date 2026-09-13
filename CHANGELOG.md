@@ -93,6 +93,20 @@ on `CellResult.Readings.CompileCost`/`CompileCostUSD` and rolled into
 `TotalCostUSD`/the ledger row's `cost_usd` — previously computed
 (`Worktree.CompileCost`) but never surfaced past the worktree.
 
+**Receipts on readings, wave 0 (`RC-11..14`, vision 28).** `SessionReadBytes`
+now weighs Grep results and a literal-path Bash read (`cat`, `sed -n`,
+`head`, `tail`, `awk`, `less`) alongside Read/`read_source`, so a worker
+discovering through grep is no longer invisible to the overlap reading.
+Readings gain `rule_served_before_edit` (`RuleServedBeforeEdit`: did a
+served-rule text reach the transcript before the first edit of a governed
+file), `violation` (the oracle's own detector outcome, carried onto the
+row), and `facts_reused` (`FactsReused`: hand-off pointers a session
+referenced before its first edit); `tokens_to_first_edit` is now summed for
+every session, not only from session 2. `scenariobench plan --escalate
+--margin` reads the ledger and lists the n=2 cells whose treatment/control
+delta sits within margin of the criterion's own thresholds, so n≥3 is spent
+only where it would decide.
+
 **The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
 `docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards
 corpora, 64 cells, zero rule violations on either arm, the wired arm at 0.77–0.85× the tokens;

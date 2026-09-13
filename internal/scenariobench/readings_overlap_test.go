@@ -93,6 +93,76 @@ func TestSessionReadBytes_ReadAndReadSource(t *testing.T) {
 	}
 }
 
+// TestSessionReadBytes_GrepAndCatReads is RC-11's fixture proof (vision 28
+// §2.4, F6): a worker discovering through Grep and a literal-path Bash
+// `cat` is no longer invisible to SessionReadBytes. The committed fixture
+// (testdata/scenariobench/streams/grep-and-cat-reads.jsonl) carries one
+// Grep call matching a.go and b.go, one `cat a.go`, one PIPED `cat a.go |
+// wc -l` (must be ignored — not a literal-path read), and an Edit of a.go
+// (must never be counted as a read).
+func TestSessionReadBytes_GrepAndCatReads(t *testing.T) {
+	got, err := SessionReadBytes(filepath.Join("..", "..", "testdata", "scenariobench", "streams", "grep-and-cat-reads.jsonl"))
+	if err != nil {
+		t.Fatalf("SessionReadBytes: %v", err)
+	}
+	// a.go: 8 bytes from the Grep line ("a.go:1:x") + 12 bytes from
+	// `cat a.go`'s result ("package foo\n") = 20.
+	if got["a.go"] != 20 {
+		t.Errorf("a.go bytes = %d, want 20 (8 grep + 12 cat)", got["a.go"])
+	}
+	// b.go: 8 bytes from the Grep line ("b.go:1:y") only.
+	if got["b.go"] != 8 {
+		t.Errorf("b.go bytes = %d, want 8 (grep only)", got["b.go"])
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d files, want 2 (a.go, b.go): %v", len(got), got)
+	}
+}
+
+func TestBashReadFile(t *testing.T) {
+	cases := []struct {
+		command string
+		want    string
+	}{
+		{"cat a.go", "a.go"},
+		{"cat -n a.go", "a.go"},
+		{"head -50 internal/foo.go", "internal/foo.go"},
+		{"tail -n 20 internal/foo.go", "internal/foo.go"},
+		{"less internal/foo.go", "internal/foo.go"},
+		{`sed -n '1,5p' internal/foo.go`, "internal/foo.go"},
+		{`awk '{print $1}' internal/foo.go`, "internal/foo.go"},
+		{"cat a.go | wc -l", ""},          // pipe: not a literal single-file read
+		{"cat a.go > out.txt", ""},        // redirection
+		{"cat $FILE", ""},                 // variable, not a literal path
+		{"cat *.go", ""},                  // glob, not a literal path
+		{"sed -n internal/foo.go", ""},    // sed with no script argument
+		{"grep TODO internal/foo.go", ""}, // not a recognized read command
+		{"cat", ""},                       // no path at all
+		{"cat -n", ""},                    // trailing token is a flag, not a path
+	}
+	for _, c := range cases {
+		if got := bashReadFile(c.command); got != c.want {
+			t.Errorf("bashReadFile(%q) = %q, want %q", c.command, got, c.want)
+		}
+	}
+}
+
+func TestGrepFileBytes(t *testing.T) {
+	out := grepFileBytes("a.go:1:x\nb.go:1:y\n")
+	if out["a.go"] != 8 || out["b.go"] != 8 {
+		t.Fatalf("grepFileBytes content-mode = %v, want a.go=8 b.go=8", out)
+	}
+
+	out = grepFileBytes("a.go\nb.go\n")
+	if out["a.go"] != 4 || out["b.go"] != 4 {
+		t.Fatalf("grepFileBytes files_with_matches mode = %v, want a.go=4 b.go=4", out)
+	}
+
+	if out := grepFileBytes("no matches found\n"); len(out) != 0 {
+		t.Fatalf("grepFileBytes on prose = %v, want empty", out)
+	}
+}
+
 func TestSessionReadBytes_EmptyRawPath(t *testing.T) {
 	got, err := SessionReadBytes("")
 	if err != nil || got != nil {

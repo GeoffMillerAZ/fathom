@@ -325,10 +325,16 @@ type FalseDoneReading struct {
 
 // ResumptionReading is M4.
 type ResumptionReading struct {
-	Sessions            int    `json:"sessions"`
-	TokensToFirstEditS2 int64  `json:"tokens_to_first_edit_from_session_2"`
-	DuplicatedEdits     int    `json:"duplicated_edits"`
-	NotMeasurable       string `json:"not_measurable,omitempty"`
+	Sessions            int   `json:"sessions"`
+	TokensToFirstEditS2 int64 `json:"tokens_to_first_edit_from_session_2"`
+	// TokensToFirstEditAll is RC-13 (vision 28 §2.4): the same field summed
+	// over EVERY session, session 1 included — unlike TokensToFirstEditS2
+	// (deliberately session>=2 only, M4's cold-hand-off cost), a consumer
+	// like FactsReused needs the whole population. Always computed, with no
+	// NotMeasurable gate: even a single session has one number.
+	TokensToFirstEditAll int64  `json:"tokens_to_first_edit_all_sessions"`
+	DuplicatedEdits      int    `json:"duplicated_edits"`
+	NotMeasurable        string `json:"not_measurable,omitempty"`
 }
 
 // OverlapReading is M5.
@@ -378,6 +384,21 @@ type Readings struct {
 	// since a wired cell's compile step is real spend the row's total must
 	// include, not a number that only shows up in a side column.
 	CompileCostUSD float64 `json:"compile_cost_usd,omitempty"`
+	// RuleServedBeforeEdit is RC-12 (vision 28 §2.4, F12): RuleServedBeforeEdit's
+	// own direct transcript reading — did a served-rule text (the obligations
+	// hook's live render, or the SessionStart stanza) reach the transcript
+	// before the first Edit/Write of a governed file? Complements RuleServed
+	// (the beat-log reading) rather than replacing it.
+	RuleServedBeforeEdit *bool `json:"rule_served_before_edit,omitempty"`
+	// Violation is RC-12: whether any of OracleResult.Detectors reported
+	// Violated — the rule detectors' own outcome, already computed by the
+	// oracle, carried onto the row so M1 is a rate over stored readings and
+	// not prose re-derived from the detector list each time.
+	Violation *bool `json:"violation,omitempty"`
+	// FactsReused is RC-13 (vision 28 §2.4, F11): among a hand-off brief's
+	// pointers, how many did this session's own transcript reference (tool
+	// input or a read result) before its first edit — see FactsReused.
+	FactsReused *int `json:"facts_reused,omitempty"`
 }
 
 // CompileCostReading is the wave-0 receipt (RC-10) of what a wired,

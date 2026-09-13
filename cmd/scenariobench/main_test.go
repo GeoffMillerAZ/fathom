@@ -574,6 +574,115 @@ func TestCmdRunScoreLedger_SurfaceCallsAndUnusedFlag(t *testing.T) {
 	}
 }
 
+// captureStdout redirects os.Stdout for the duration of fn and returns
+// what it wrote. Tests in this package run serially (none call
+// t.Parallel()), so the global swap is safe. The copy runs concurrently so
+// fn cannot deadlock writing more than the pipe's own buffer.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	done := make(chan string, 1)
+	go func() {
+		var buf bytes.Buffer
+		io.Copy(&buf, r)
+		done <- buf.String()
+	}()
+	fn()
+	w.Close()
+	os.Stdout = old
+	return <-done
+}
+
+// writeEscalationCorpusFixture writes a corpus with a REAL treatment/control
+// pair ("full"/"control", unlike writeCorpusFixture's single-arm criterion)
+// so EscalationPlan's delta math has two distinct arms to compare — plan
+// -escalate never calls PrepareSubject/RunOracle, so subject.repo_url and
+// base_commit need only be present, never reachable.
+func writeEscalationCorpusFixture(t *testing.T, dir string) string {
+	t.Helper()
+	corpus := `{
+  "arms": {
+    "full": {"wired": true, "instructions": "stanza", "surface": "fathom"},
+    "control": {"wired": false, "instructions": "none", "surface": ""}
+  },
+  "tasks": [{
+    "id": "T1",
+    "category": "bug_fix",
+    "prompt": "fix it",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/subject.git", "base_commit": "deadbeef"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"fail_to_pass": ["TestPass"]},
+    "predictions": {"full": "wins", "control": "no-effect (this is the control)"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1, "require_success_at_least_equal": true, "max_tokens_per_success_ratio": 1.5}
+}`
+	path := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(path, []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// TestCmdPlan_Escalate is RC-14 (vision 28 §2.6): `scenariobench plan
+// -escalate -margin` reads a ledger and prints the n=2 tasks whose
+// treatment/control delta sits within margin of the corpus criterion's own
+// thresholds — no cell store touched, no spend.
+func TestCmdPlan_Escalate(t *testing.T) {
+	dir := t.TempDir()
+	corpusPath := writeEscalationCorpusFixture(t, dir)
+
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	rows := []scenariobench.ScenarioLedgerRow{
+		// full 1/2 = 0.5, control 1/2 = 0.5 -> delta 0.0, within 0.15.
+		{RunID: "run-1", TaskID: "T1", Arm: "full", Trials: 2, Successes: 1},
+		{RunID: "run-1", TaskID: "T1", Arm: "control", Trials: 2, Successes: 1},
+	}
+	for _, r := range rows {
+		if err := scenariobench.AppendScenarioLedger(ledgerPath, r); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var rc int
+	out := captureStdout(t, func() {
+		rc = run([]string{"plan", "-corpus", corpusPath, "-escalate", "-ledger", ledgerPath, "-margin", "0.15"})
+	})
+	if rc != 0 {
+		t.Fatalf("plan -escalate exited %d", rc)
+	}
+	if !strings.Contains(out, "T1") {
+		t.Errorf("expected T1 named in -escalate output, got:\n%s", out)
+	}
+	// plan -escalate must not have created any subject clone or workspace —
+	// it reads the ledger, never the cell store.
+	if _, err := os.Stat(filepath.Join(dir, "workspace")); !os.IsNotExist(err) {
+		t.Errorf("plan -escalate should spend nothing and create no workspace (err=%v)", err)
+	}
+}
+
+func TestCmdPlan_Escalate_NoCandidates(t *testing.T) {
+	dir := t.TempDir()
+	corpusPath := writeEscalationCorpusFixture(t, dir)
+	ledgerPath := filepath.Join(dir, "empty-ledger.jsonl")
+
+	var rc int
+	out := captureStdout(t, func() {
+		rc = run([]string{"plan", "-corpus", corpusPath, "-escalate", "-ledger", ledgerPath})
+	})
+	if rc != 0 {
+		t.Fatalf("plan -escalate exited %d, want 0 (an empty ledger is not an error)", rc)
+	}
+	if !strings.Contains(out, "no n=2 cell") {
+		t.Errorf("expected a no-candidates message, got:\n%s", out)
+	}
+}
+
 // repoRelative resolves a path relative to the fathom repo root, walking up
 // from the test's working directory (cmd/scenariobench) — cmd tests run
 // with cwd set to the package dir, two levels below the repo root.

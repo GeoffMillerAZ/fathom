@@ -1,0 +1,10 @@
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_1","name":"Grep","input":{"pattern":"TODO","path":"."}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_1","content":"a.go:1:x\nb.go:1:y\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_2","name":"Bash","input":{"command":"cat a.go"}}],"usage":{"input_tokens":4,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_2","content":"package foo\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_3","name":"Bash","input":{"command":"cat a.go | wc -l"}}],"usage":{"input_tokens":6,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_3","content":"1\n"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_4","name":"Edit","input":{"file_path":"a.go","old_string":"foo","new_string":"bar"}}],"usage":{"input_tokens":7,"output_tokens":3,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_4","content":"Edit applied"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":"Fixed."}],"usage":{"input_tokens":2,"output_tokens":1,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"result","is_error":false,"num_turns":4,"duration_ms":900,"total_cost_usd":0.0040,"usage":{"input_tokens":24,"output_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}

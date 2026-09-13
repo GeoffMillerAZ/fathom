@@ -1,6 +1,13 @@
 package scenariobench
 
-import "sort"
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"os"
+	"sort"
+	"strings"
+)
 
 // readings_resume.go is SB-22 (vision 27 §3, M4): does a later session
 // resume without re-discovery, and does the change's contract still hold
@@ -18,6 +25,17 @@ import "sort"
 // read over `sessions`.
 func ResumptionReadings(sessions []SessionResult, proven map[string]bool) ResumptionReading {
 	reading := ResumptionReading{Sessions: len(sessions)}
+
+	// RC-13 (vision 28 §2.4): tokens_to_first_edit for EVERY session,
+	// session 1 included — unconditionally, with no NotMeasurable gate,
+	// since even one session has a number. TokensToFirstEditS2 below stays
+	// session>=2 only BY DESIGN (a session 1 pays discovery once by
+	// construction — the comment above this function); a consumer like
+	// FactsReused needs the whole population, not just the cold hand-offs.
+	for _, s := range sessions {
+		reading.TokensToFirstEditAll += s.TokensToFirstEdit
+	}
+
 	if len(sessions) < 2 {
 		reading.NotMeasurable = "fewer than 2 sessions"
 	} else {
@@ -88,4 +106,72 @@ func ContractDrift(planMD []byte, tree, coverprofile string) DriftReading {
 	sort.Strings(drifted)
 	reading.Drifted = drifted
 	return reading
+}
+
+// FactsReused is RC-13 (vision 28 §2.4, F11: "nothing carries a planner's
+// discoveries to a worker except a plan row's ctx: pointers pasted by
+// hand"): among briefPointers — the hand-off pointers (symbol ids, paths)
+// a planning session's brief, or a prior session's own end-of-session
+// note, named — how many did session's OWN transcript reference, as a
+// tool_use input or inside a tool_result it read, before its first
+// Edit/Write? "Reused", not merely present: a pointer that surfaces only
+// AFTER the first edit was not part of orienting for it, so scanning stops
+// there.
+//
+// 0 (never nil) when briefPointers is empty or session has no raw
+// transcript to read: nothing to reuse and nothing found are the same
+// answer here, unlike the tri-state readings above — a caller distinguishing
+// "not measurable" from "reused nothing" does so via Readings.FactsReused's
+// own nil-ness, set only when this function is actually invoked.
+func FactsReused(session SessionResult, briefPointers []string) int {
+	if len(briefPointers) == 0 || session.RawPath == "" {
+		return 0
+	}
+	data, err := os.ReadFile(session.RawPath)
+	if err != nil {
+		return 0
+	}
+
+	found := make(map[string]bool, len(briefPointers))
+	sc := bufio.NewScanner(bytes.NewReader(data))
+	sc.Buffer(make([]byte, 0, 64*1024), 16*1024*1024)
+	for sc.Scan() {
+		line := bytes.TrimSpace(sc.Bytes())
+		if len(line) == 0 || line[0] != '{' {
+			continue
+		}
+		var ev streamToolEvent
+		if err := json.Unmarshal(line, &ev); err != nil {
+			continue
+		}
+		if ev.Type != "assistant" && ev.Type != "user" {
+			continue
+		}
+		stopAfterThisLine := false
+		for _, c := range ev.Message.Content {
+			switch c.Type {
+			case "tool_use":
+				if editTargetFile(c.Name, c.Input) != "" {
+					stopAfterThisLine = true
+					continue
+				}
+				for _, p := range briefPointers {
+					if p != "" && bytes.Contains(c.Input, []byte(p)) {
+						found[p] = true
+					}
+				}
+			case "tool_result":
+				text := rawResultText(c.Content)
+				for _, p := range briefPointers {
+					if p != "" && strings.Contains(text, p) {
+						found[p] = true
+					}
+				}
+			}
+		}
+		if stopAfterThisLine {
+			break
+		}
+	}
+	return len(found)
 }

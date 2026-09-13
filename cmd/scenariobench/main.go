@@ -197,6 +197,10 @@ func cmdPlan(args []string) int {
 	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
 	trials := fs.Int("trials", 1, "trials per (task, arm)")
+	escalate := fs.Bool("escalate", false, "RC-14: instead of listing cells, read -ledger and list the n=2 tasks whose treatment/control delta sits within -margin of the corpus criterion's own thresholds — candidates to re-run at n>=3")
+	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "-escalate: the ledger JSONL to read")
+	margin := fs.Float64("margin", 0.1, "-escalate: how close a delta must sit to the criterion's own threshold to flag a trial escalation")
+	runIDFilter := fs.String("run-id", "", "-escalate: restrict to this run id (default: every row in the ledger)")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -205,13 +209,18 @@ func cmdPlan(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench plan: -corpus is required")
 		return 2
 	}
-	if *cf.harnessVersion == "" {
-		fmt.Fprintln(os.Stderr, "scenariobench plan: -harness-version is required (a cell key over an unknown harness would let an unrelated cell be borrowed)")
-		return 2
-	}
 	corpus, sha, err := loadCorpus(*corpusPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench plan: %v\n", err)
+		return 2
+	}
+
+	if *escalate {
+		return cmdPlanEscalate(*ledgerPath, *runIDFilter, corpus.Criterion, *margin)
+	}
+
+	if *cf.harnessVersion == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench plan: -harness-version is required (a cell key over an unknown harness would let an unrelated cell be borrowed)")
 		return 2
 	}
 
@@ -233,6 +242,38 @@ func cmdPlan(args []string) int {
 		fmt.Fprintf(os.Stdout, "%s/%s/t%d key=%s %s\n", cp.task.ID, cp.arm, cp.trial, cp.key[:12], verb)
 	}
 	fmt.Fprintf(os.Stdout, "scenariobench plan: %d cell(s) — %d would run, %d would borrow (no spend)\n", len(cells), wouldRun, wouldBorrow)
+	return 0
+}
+
+// cmdPlanEscalate is RC-14's `scenariobench plan --escalate` path: no cell
+// store, no corpus cell listing — just EscalationPlan over ledgerPath's
+// rows (optionally narrowed to one run-id), so a screen-then-escalate
+// decision costs a ledger read, never a spend.
+func cmdPlanEscalate(ledgerPath, runIDFilter string, criterion scenariobench.Criterion, margin float64) int {
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench plan --escalate: %v\n", err)
+		return 2
+	}
+	if runIDFilter != "" {
+		filtered := rows[:0]
+		for _, r := range rows {
+			if r.RunID == runIDFilter {
+				filtered = append(filtered, r)
+			}
+		}
+		rows = filtered
+	}
+
+	cells := scenariobench.EscalationPlan(rows, criterion, margin)
+	if len(cells) == 0 {
+		fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: no n=2 cell sits within %.2f of %s's thresholds\n", margin, criterion.ID)
+		return 0
+	}
+	for _, c := range cells {
+		fmt.Fprintf(os.Stdout, "%s: n=%d success_delta=%.3f tokens_ratio=%.3f — %s\n", c.TaskID, c.Trials, c.SuccessDelta, c.TokensRatio, c.Reason)
+	}
+	fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: %d cell(s) flagged for n>=3\n", len(cells))
 	return 0
 }
 
@@ -465,7 +506,14 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		if turn, ok := firstClaimTurn(sessions); ok {
 			readings.RuleServed = scenariobench.RuleServed(hooksLogPath(wt), cp.task.Rule.ID, turn)
 		}
+		// RC-12 (vision 28 §2.4, F12): the direct transcript reading,
+		// against the task's own gold files (what the accepted change
+		// touched is exactly what a guards task's rule governs). Left nil
+		// (not measurable) when the task carries no gold files to check
+		// against — never a guessed governed path.
+		readings.RuleServedBeforeEdit = ruleServedBeforeEditForCell(sessions, cp.task.Gold.Files)
 	}
+	readings.Violation = cellViolation(oracle)
 
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
@@ -517,6 +565,41 @@ func firstClaimTurn(sessions []scenariobench.SessionResult) (turn int, ok bool) 
 		}
 	}
 	return turn, ok
+}
+
+// ruleServedBeforeEditForCell is RC-12's per-cell wiring over
+// RuleServedBeforeEdit: sessions run in chronological order, so the FIRST
+// session where the reading is measurable (it edited a governedPath) is
+// the one whose verdict answers the cell's own question. nil (not
+// measurable) when governedPaths is empty, or no session ever edited one.
+func ruleServedBeforeEditForCell(sessions []scenariobench.SessionResult, governedPaths []string) *bool {
+	if len(governedPaths) == 0 {
+		return nil
+	}
+	for _, s := range sessions {
+		if got := scenariobench.RuleServedBeforeEdit(s, governedPaths); got != nil {
+			return got
+		}
+	}
+	return nil
+}
+
+// cellViolation is RC-12: the rule detectors' own outcome, already computed
+// by RunOracle, carried onto the row — true when ANY detector reported
+// Violated, nil when the task registered no detector at all (a task with
+// no rule to violate answers no question, not a false "no violation").
+func cellViolation(oracle scenariobench.OracleResult) *bool {
+	if len(oracle.Detectors) == 0 {
+		return nil
+	}
+	violated := false
+	for _, d := range oracle.Detectors {
+		if d.Violated {
+			violated = true
+			break
+		}
+	}
+	return &violated
 }
 
 // provenFromFalseDone derives ResumptionReadings' "proven" map from

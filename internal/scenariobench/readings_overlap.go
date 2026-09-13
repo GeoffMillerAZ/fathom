@@ -5,11 +5,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path"
 	"strings"
 )
 
 // readings_overlap.go is SB-23 (vision 27 §5, M5): in `planner-workers`
-// mode, how much of what a worker read had the planner already read?
+// mode, how much of what a worker read had the planner already read? RC-11
+// (vision 28 §2.4, F6) extended what SessionReadBytes weighs from Read
+// alone to Read, read_source, Grep results, and a Bash call recognizable
+// as a literal-path file read — see SessionReadBytes' own doc comment for
+// the four shapes and grepFileBytes/bashReadFile for how each is
+// attributed to a file.
 
 // streamToolEvent is the subset of one `claude -p --output-format
 // stream-json` line SessionReadBytes needs: an assistant turn's tool_use
@@ -31,15 +37,26 @@ type streamToolEvent struct {
 	} `json:"message"`
 }
 
-// readToolFile returns the file path a tool_use call named, for the two
-// read-shaped tools SessionReadBytes weighs: the harness's own "Read" tool
-// (input {"file_path": "…"}) and any MCP server's read_source tool (MCP
-// names them "mcp__<server>__read_source"; input {"file": "…", …}) — ""
-// for every other tool, including Grep/Glob/Bash, which do not name one
-// file's content the way these two do.
+// readToolFile returns the file path a tool_use call named, for the
+// single-file-shaped read tools SessionReadBytes weighs directly: the
+// harness's own "Read" tool (input {"file_path": "…"}), any MCP server's
+// read_source tool (MCP names them "mcp__<server>__read_source"; input
+// {"file": "…", …}), and a "Bash" call recognizable as a literal-path file
+// read (bashReadFile) — "" for every other tool, including Glob, and for
+// "Grep", which SessionReadBytes weighs separately from its RESULT text
+// (grepFileBytes) since one Grep call can name many files, never one.
 func readToolFile(name string, input json.RawMessage) string {
 	if len(input) == 0 {
 		return ""
+	}
+	if name == "Bash" {
+		var p struct {
+			Command string `json:"command"`
+		}
+		if err := json.Unmarshal(input, &p); err != nil {
+			return ""
+		}
+		return bashReadFile(p.Command)
 	}
 	if name != "Read" && !strings.HasSuffix(name, "read_source") {
 		return ""
@@ -55,6 +72,120 @@ func readToolFile(name string, input json.RawMessage) string {
 		return p.FilePath
 	}
 	return p.File
+}
+
+// bashShellMetachars are the characters whose presence makes a Bash
+// command's target NOT a "literal path" (RC-11, vision 28 §2.4 F6): a
+// pipe or redirection means the tool result is not that one file's raw
+// content, a variable/subshell/glob means the path is not written out in
+// the transcript at all. Any of these disqualifies the whole command.
+const bashShellMetachars = "|&;<>`$*?~\n"
+
+// stripQuoted drops the content of every single- or double-quoted span in
+// s (naively — no backslash-escape handling, which this repo's own
+// commands never need): an awk/sed script's own '$1' or similar is quoted
+// text, not a shell variable, and must not trip bashShellMetachars the way
+// an unquoted "cat $FILE" correctly does.
+func stripQuoted(s string) string {
+	var b strings.Builder
+	var quote byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		if c == '\'' || c == '"' {
+			quote = c
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
+// bashReadFiles are the shell commands RC-11 recognizes as reading one
+// file's content to stdout when given a literal trailing path: the CLAUDE.md
+// non-negotiables' own routing line names cat/sed -n/head/tail/awk/less as
+// grep's-job-shaped, file-content-shaped commands, and a worker discovering
+// through one of them is exactly what F6 says the old Read-only weighing
+// made invisible.
+var bashReadFiles = map[string]bool{
+	"cat": true, "head": true, "tail": true, "less": true, "sed": true, "awk": true,
+}
+
+// bashReadFile returns the literal file path a Bash command reads via
+// cat/sed -n/head/tail/awk/less, or "" when command is not recognizable as
+// one of those (a pipe, redirection, glob, or variable substitution makes
+// it unrecognizable, per bashShellMetachars — reporting a false single-file
+// byte weight for a pipeline would misattribute another command's output).
+// The path is the command's LAST whitespace-separated token: sed/awk's
+// script argument is whatever came before it and is never inspected, only
+// skipped over, so a quoted "1,5p" style script needs no special parsing.
+func bashReadFile(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" || strings.ContainsAny(stripQuoted(command), bashShellMetachars) {
+		return ""
+	}
+	fields := strings.Fields(command)
+	if len(fields) < 2 {
+		return ""
+	}
+	if !bashReadFiles[path.Base(fields[0])] {
+		return ""
+	}
+	last := fields[len(fields)-1]
+	if last == "" || strings.HasPrefix(last, "-") {
+		return "" // a trailing flag, not a path (e.g. "cat -n" with nothing after)
+	}
+	// awk always takes a script argument before the path ("awk '{...}'
+	// file" is the 3-field minimum); sed's read shape is specifically
+	// "sed -n <script> file" (the 4-field minimum) — a bare "sed -n file"
+	// has no script and sed would read it as one, not as a path.
+	switch path.Base(fields[0]) {
+	case "awk":
+		if len(fields) < 3 {
+			return ""
+		}
+	case "sed":
+		if len(fields) < 4 || fields[1] != "-n" {
+			return ""
+		}
+	}
+	return last
+}
+
+// grepFileBytes attributes a Grep tool_result's text to the file(s) it
+// names, line by line: ripgrep/grep's own "path:line:match" and
+// "path:match" content-mode output, and the bare "path" lines
+// files_with_matches mode prints. A line with no matched file — prose, a
+// summary count, "No matches found" — contributes to no file, so a Grep
+// call whose whole result is not a bare list of paths and matches (like a
+// tool description or an error string) is correctly weighed as zero, not
+// misattributed. Each matched file's weight is that LINE's own byte
+// length (the newline the caller's strings.Split ate is not added back),
+// so the sum over every file stays close to the result's total bytes
+// rather than multiplying the result by however many files matched.
+func grepFileBytes(resultText string) map[string]int64 {
+	out := map[string]int64{}
+	for _, line := range strings.Split(resultText, "\n") {
+		if line == "" {
+			continue
+		}
+		var candidate string
+		if i := strings.Index(line, ":"); i > 0 {
+			candidate = line[:i]
+		} else if !strings.ContainsAny(line, " \t") {
+			candidate = line // files_with_matches mode: one bare path per line
+		}
+		if candidate == "" || strings.ContainsAny(candidate, " \t") {
+			continue
+		}
+		out[candidate] += int64(len(line))
+	}
+	return out
 }
 
 // rawResultText flattens a tool_result content field — a plain string or a
@@ -85,12 +216,25 @@ func rawResultText(raw json.RawMessage) string {
 }
 
 // SessionReadBytes parses one captured stream-json transcript (a
-// SessionResult.RawPath) and totals bytes read per file: a Read tool
-// result's length, or a read_source result's length — its bounded-read
-// JSON envelope, not the underlying file's real size, since that envelope
-// is fathom's own weight on the wire. Every other tool call is ignored:
-// this is the byte-weighted read set ReexplorationOverlap needs, not a
-// general transcript accounting.
+// SessionResult.RawPath) and totals bytes read per file — RC-11 (vision 28
+// §2.4, F6: "the overlap reading weighed only Read, while workers
+// discovered through Grep and cat"). Four tool shapes are weighed, all by
+// their RESULT length, never the underlying file's real size:
+//   - Read: its result's length, keyed by input.file_path.
+//   - an MCP server's read_source (name ends "read_source"): its result's
+//     length — the bounded-read JSON envelope, not the file's real size,
+//     since that envelope is fathom's own weight on the wire — keyed by
+//     input.file.
+//   - Bash, when bashReadFile recognizes the command as a literal-path
+//     read via cat/sed -n/head/tail/awk/less: the command's stdout length,
+//     keyed by the path bashReadFile extracted.
+//   - Grep: grepFileBytes attributes the result text to every file its
+//     ripgrep-shaped output lines name (never Grep's own input — one call
+//     can match many files, so this is per-file, not per-call).
+//
+// Every other tool call (Glob, a plain Bash that is not a recognized
+// read, …) is ignored: this is the byte-weighted read set
+// ReexplorationOverlap needs, not a general transcript accounting.
 //
 // A line that is not a decodable stream-json object is skipped — the same
 // tolerance internal/contextbench.FirstGoldHit gives a transcript that may
@@ -105,7 +249,10 @@ func SessionReadBytes(rawPath string) (map[string]int64, error) {
 		return nil, err
 	}
 
-	type pending struct{ file string }
+	type pending struct {
+		file string
+		grep bool
+	}
 	byID := map[string]pending{}
 	out := map[string]int64{}
 
@@ -126,6 +273,10 @@ func SessionReadBytes(rawPath string) (map[string]int64, error) {
 				if c.Type != "tool_use" {
 					continue
 				}
+				if c.Name == "Grep" {
+					byID[c.ID] = pending{grep: true}
+					continue
+				}
 				if file := readToolFile(c.Name, c.Input); file != "" {
 					byID[c.ID] = pending{file: file}
 				}
@@ -136,7 +287,16 @@ func SessionReadBytes(rawPath string) (map[string]int64, error) {
 					continue
 				}
 				p, ok := byID[c.ToolUseID]
-				if !ok || p.file == "" {
+				if !ok {
+					continue
+				}
+				if p.grep {
+					for f, b := range grepFileBytes(rawResultText(c.Content)) {
+						out[f] += b
+					}
+					continue
+				}
+				if p.file == "" {
 					continue
 				}
 				out[p.file] += int64(len(rawResultText(c.Content)))

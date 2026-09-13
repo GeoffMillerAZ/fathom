@@ -44,6 +44,55 @@ func TestResumptionReadings_FewerThanTwoSessions(t *testing.T) {
 	}
 }
 
+// TestResumptionReadings_TokensToFirstEditAllIsEverySession is RC-13
+// (vision 28 §2.4): unlike TokensToFirstEditS2, this field is computed
+// even for a single session, session 1 included.
+func TestResumptionReadings_TokensToFirstEditAllIsEverySession(t *testing.T) {
+	got := ResumptionReadings([]SessionResult{{TokensToFirstEdit: 40}}, nil)
+	if got.TokensToFirstEditAll != 40 {
+		t.Fatalf("tokens to first edit (all sessions) = %d, want 40", got.TokensToFirstEditAll)
+	}
+	if got.NotMeasurable != "fewer than 2 sessions" {
+		t.Fatalf("not_measurable = %q, want the S2-only note unaffected", got.NotMeasurable)
+	}
+
+	got = ResumptionReadings([]SessionResult{{TokensToFirstEdit: 40}, {TokensToFirstEdit: 60}}, nil)
+	if got.TokensToFirstEditAll != 100 {
+		t.Fatalf("tokens to first edit (all sessions) = %d, want 100 (40+60)", got.TokensToFirstEditAll)
+	}
+	if got.TokensToFirstEditS2 != 60 {
+		t.Fatalf("tokens to first edit from session 2 = %d, want 60 (unchanged: session 1 excluded)", got.TokensToFirstEditS2)
+	}
+}
+
+func TestFactsReused_CountsPointersReferencedBeforeFirstEdit(t *testing.T) {
+	dir := t.TempDir()
+	path := writeRawLines(t, dir, "session.jsonl", []string{
+		// tool_use referencing pointer "internal/store.Open" in its input.
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu1","name":"Grep","input":{"pattern":"internal/store.Open"}}]}}`,
+		// tool_result containing pointer "internal/core/model.go" in its content.
+		`{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu1","content":"see internal/core/model.go for the type"}]}}`,
+		editLine("tu2", "internal/store/db.go"),
+		// this pointer only surfaces AFTER the edit and must not count.
+		`{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu3","name":"Grep","input":{"pattern":"internal/late.Pointer"}}]}}`,
+	})
+	session := SessionResult{RawPath: path}
+	briefPointers := []string{"internal/store.Open", "internal/core/model.go", "internal/late.Pointer", "internal/never.Seen"}
+	got := FactsReused(session, briefPointers)
+	if got != 2 {
+		t.Fatalf("FactsReused = %d, want 2 (store.Open + model.go, before the edit)", got)
+	}
+}
+
+func TestFactsReused_NoBriefPointersOrNoRawPath(t *testing.T) {
+	if got := FactsReused(SessionResult{RawPath: "irrelevant"}, nil); got != 0 {
+		t.Fatalf("FactsReused with no pointers = %d, want 0", got)
+	}
+	if got := FactsReused(SessionResult{}, []string{"a"}); got != 0 {
+		t.Fatalf("FactsReused with no raw path = %d, want 0", got)
+	}
+}
+
 func TestContractDrift_VanishedAndReached(t *testing.T) {
 	tree := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tree, "pkg"), 0o755); err != nil {
