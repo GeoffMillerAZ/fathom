@@ -99,6 +99,29 @@ Subject clones live under `workspace/bench/subjects/<org>__<repo>.git`
 with `git fetch --quiet --depth 1 origin <sha>` — no ref needed, no full
 history, and idempotent (a commit already present is not re-fetched).
 
+## Before any spend: the dry cell
+
+Run one wired and one control cell with the fake harness against the real
+subject first. It clones and worktrees the subject, builds the fathom
+binary, starts the scratch daemon, compiles the obligations layer once
+(about seven minutes and $0.12 on the fathom repo; later cells on the same
+subject, commit and arm reuse the store — `compiled.ok` beside it), replays
+a committed transcript instead of calling the model, and runs the real
+tests and detectors:
+
+    go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json \
+      -harness fake -fake-streams-dir testdata/scenariobench/streams \
+      -fake-streams '{"guards-i31-workspace-artifact/full":"single-session.jsonl"}' \
+      -only guards-i31-workspace-artifact -arm full -trials 1 -harness-version fake -run-id dry -root .
+
+A replayed session edits nothing, so the oracle FAILS by design; what the
+dry cell proves is that every detector can build and run in the worktree
+(a subject with a `go.work` naming sibling modules builds under
+`GOWORK=off`, which the driver sets for every subject subprocess) and that
+the scratch daemon stops afterwards (`pgrep -fl serve-http`). Five driver
+defects were found this way on 2026-09-13 (O35) before a dollar of pilot
+spend.
+
 ## Repeat it yourself
 
 **What a stranger needs:** Go (the module's version — `go.mod`), the

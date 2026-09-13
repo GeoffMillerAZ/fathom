@@ -754,3 +754,16 @@ triage if it matters.
 - **Fix:** `claudeContextEvents` in internal/harness/codec.go — additionalContext only where documented, `systemMessage` (top-level, accepted on every event, shown to the user) elsewhere; `TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented`.
 - **Status:** fixed (second form found on relaunch: the harness reads WorktreeCreate stdout as the worktree path, so even systemMessage broke it; the codec now emits nothing on that event and the advisory goes to stderr)
 - **Impact:** every agent spawn with worktree isolation from a fathom-wired repo was blocked between the wave-3 rollout (2026-09-12) and this fix; the same shape would have hit Setup, CwdChanged, DirectoryAdded, FileChanged and ConfigChange advisories the moment they had something to say.
+
+### O35 — The scenario driver's wired arm needed five fixes before its first real cell, none of which a unit test could have caught: a relative root landed the worktree inside the clone; the scratch daemon outlived a failed cell; a seven-minute obligations compile aborted on one section of ~130 (a malformed claude CLI envelope, a different section each run); every cell re-paid the compile; and a linked worktree of a repo with a go.work could not build (`[setup failed]`), so every detector read "violated" before the agent had done anything.
+
+- **Symptom:** dry cells 1–4 on 2026-09-13 (fake harness, real subject, real scratch daemon, real compile, real detectors) each failed one layer deeper than the last.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (PrepareSubject, wireScratchDaemon, compileLayers, RunOracle)
+  - **Expected:** a wired cell prepares, compiles once per (subject, commit, arm), runs, and its detectors judge the agent's tree.
+  - **Actual:** chdir on a relative path; two `serve-http` processes left running; `fathom compile: exit status 1 (claudecli: malformed response envelope)` at ADR-010 then ADR-005; `go test` `[setup failed]` under the subject's go.work; detectors violated=true on an untouched tree.
+  - **Repro:** the fixes' commits name each: 0524756 (SubjectEnv), 670dc0f (retry + count), 79d35b9 (shared worktree + compiled.ok), and the abs-root fix in eab006d.
+- **Root cause:** the fake-harness tests exercise the loop with a fake worktree; the subject-level plumbing (git worktree add from the clone's cwd, a subprocess's cwd, the compile's LLM transport, a sibling-module go.work) only fails against a real subject. The driver had no "real subject, fake model" tier.
+- **Fix:** the five commits; the dry cell IS that tier now (`-harness fake` against the committed guards corpus) and belongs in the runbook as the step before any spend.
+- **Status:** fixed
+- **Impact:** ~$0.40 of compile spend on aborted cells; no pilot cell was scored on the broken oracle.
