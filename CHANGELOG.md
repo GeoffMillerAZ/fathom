@@ -21,6 +21,30 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Exact references, compact callers, a call graph that is memoised for real (`SB-45`,
+`SB-47`, `SB-50`, `O33`, `O36`).** `references` defaults to `exact: true` where the service
+has typed edges — identifier-use sites only, text mentions behind `include_heuristic` — and
+its precision on this repo against the go/types truth went from 0.76 to 1.00 at recall 0.997
+(`docs/bench/competitors-ledger.jsonl`); a service whose root has vanished is named in
+`degraded` instead of failing the call. `find_callers` renders one caller in under 100 bytes
+(`with_signatures: true` restores signatures). `verify_plan` builds its call graph through the
+watermark memo, which `serve-http`'s auto-refresh backend had silently defeated for every nav
+tool: a warm call fell from 12–24 s to 0.4 s, and the cold build from 13 s to 0.2 s once the
+ambiguous-name fallback resolves through a suffix index. Doctor's `typed_edges` row resolves
+the service like the other daemon-backed rows (`O30`).
+
+**The scenario bench evaluates changes the SWE-bench way.** The hidden test patch is applied
+after the test files it names are reset to the base commit; each subject and commit is
+calibrated once (fail-to-pass tests must fail at base, pass-to-pass tests that fail in this
+environment are excluded, never blamed); single-session tasks plan first; every cell carries
+the SDD readings (plan coverage, false-done against a coverage profile, resumption, drift,
+worker overlap) with its plan and diff captured for offline re-scoring; a session ended by
+the turn budget is a hand-off, never a lost cell. Lookup scenarios carry an answer oracle.
+`testdata/scenariobench/guards-adr.json` registers eight governance tasks whose rules live
+only in ADRs (M1's win condition) and `reuse-go.json` the planner-workers tasks (M5).
+
+- Codex Stop-hook advisories now emit the valid common `systemMessage` field.
+
 **The guards pilot is on the scenarios ledger (`SB-37`, M1).** Eight governance-bound
 tasks × wired and stripped arms × two trials: equal compliance (6 of 16 each), violations 0
 against 1, the wired arm at 0.85× the tokens — M1-1 passes its bar and shows no effect on the
