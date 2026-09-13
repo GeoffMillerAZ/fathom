@@ -259,3 +259,40 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		}
 	}
 }
+
+// O34: Claude Code rejects additionalContext on events where it is not
+// documented (WorktreeCreate's schema accepts only worktreePath), and the
+// rejection blocked every worktree-isolated agent spawn. Advisory events
+// encode as the top-level systemMessage instead; the documented events keep
+// additionalContext byte-for-byte.
+func TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented(t *testing.T) {
+	c, ok := CodecFor(ClaudeCode)
+	if !ok {
+		t.Fatal("no claude-code codec")
+	}
+	for _, ev := range []Event{EventWorktreeCreate, EventCwdChanged, EventSetup, EventFileChanged, EventConfigChange, EventInstructionsLoaded} {
+		out, err := c.EncodeOutput(ev, HookOutput{Context: "advice"})
+		if err != nil {
+			t.Fatalf("%s: %v", ev, err)
+		}
+		var got map[string]any
+		if err := json.Unmarshal(out, &got); err != nil {
+			t.Fatalf("%s: %v", ev, err)
+		}
+		if _, has := got["hookSpecificOutput"]; has {
+			t.Errorf("%s: emitted hookSpecificOutput, which Claude Code rejects on this event", ev)
+		}
+		if got["systemMessage"] != "advice" {
+			t.Errorf("%s: want systemMessage advice, got %s", ev, out)
+		}
+	}
+	for _, ev := range []Event{EventSessionStart, EventSubagentStart, EventToolFailure, EventPostTool} {
+		out, err := c.EncodeOutput(ev, HookOutput{Context: "primer"})
+		if err != nil {
+			t.Fatalf("%s: %v", ev, err)
+		}
+		if !strings.Contains(string(out), `"additionalContext":"primer"`) {
+			t.Errorf("%s: documented event must keep additionalContext, got %s", ev, out)
+		}
+	}
+}

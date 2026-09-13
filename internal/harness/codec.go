@@ -212,10 +212,35 @@ func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("claude-code: no binding for event %q", ev)
 	}
+	if !claudeContextEvents[ev] {
+		// Claude Code validates hookSpecificOutput per event and REJECTS
+		// additionalContext where it is undocumented — on WorktreeCreate
+		// that rejection blocked every worktree-isolated agent spawn
+		// (O34, 2026-09-13). The top-level systemMessage is accepted on
+		// every event and reaches the user, which is what an advisory is
+		// for; the model never sees it, and these events have no model
+		// turn to inject into anyway.
+		return json.Marshal(map[string]any{"systemMessage": out.Context})
+	}
 	return json.Marshal(map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     name,
 			"additionalContext": out.Context,
 		},
 	})
+}
+
+// claudeContextEvents are the events on which Claude Code documents
+// hookSpecificOutput.additionalContext (2.1.270: SessionStart,
+// UserPromptSubmit, PreToolUse, PostToolUse, PostToolBatch,
+// PostToolUseFailure, SubagentStart, Stop, SubagentStop). Every other event
+// gets systemMessage. Extending this set without the harness documenting
+// the field re-creates O34.
+var claudeContextEvents = map[Event]bool{
+	EventSessionStart:  true,
+	EventPreTool:       true,
+	EventPostTool:      true,
+	EventStop:          true,
+	EventSubagentStart: true,
+	EventToolFailure:   true,
 }

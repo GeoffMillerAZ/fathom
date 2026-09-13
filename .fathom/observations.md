@@ -741,3 +741,16 @@ triage if it matters.
 - **Fix:** the client budget is 60 s (the slowest measured call with headroom) so the gate verifies instead of failing open; the latency itself is open.
 - **Status:** open
 - **Impact:** every plan verification on this fleet store since 2026-09-12 that ran through the CLI was exit 2; the daemon's verdicts (visible in the call log) were correct throughout.
+
+### O34 — The WorktreeCreate hook (HP-30) emitted hookSpecificOutput.additionalContext, which Claude Code 2.1.270 rejects on that event ("hookSpecificOutput.worktreePath: Invalid input"), and the rejection blocked EVERY worktree-isolated agent spawn from this repo — five workers refused at once on 2026-09-13.
+
+- **Symptom:** `Agent(isolation: worktree)` → "WorktreeCreate hook failed: … Hook JSON output validation failed — hookSpecificOutput.worktreePath: Invalid input"; the hook's output was the fathom worktree advisory as additionalContext.
+- **Evidence:**
+  - **Tool:** fathom session-hook --event worktree-create (harness codec claudeCodec.EncodeOutput)
+  - **Expected:** a hook-silent vehicle (the descriptor row says VehicleHookSilent) emits nothing the harness can reject; an advisory reaches the user.
+  - **Actual:** the codec encoded every non-empty Context as hookSpecificOutput.additionalContext regardless of the event; Claude Code validates that field per event and only accepts it on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolBatch, PostToolUseFailure, SubagentStart, Stop/SubagentStop.
+  - **Repro:** echo '{"session_id":"x","cwd":"/tmp","hook_event_name":"WorktreeCreate","worktree_path":"/tmp/w"}' | bin/fathom session-hook --event worktree-create   # before: hookSpecificOutput; after: {"systemMessage": …}
+- **Root cause:** the codec had one output shape for all events; the descriptor's Vehicle was never consulted at encode time and the wave-3 events were verified against the docs' input schemas, not their output schemas (O27's sibling: a probe that exercised the wrong half).
+- **Fix:** `claudeContextEvents` in internal/harness/codec.go — additionalContext only where documented, `systemMessage` (top-level, accepted on every event, shown to the user) elsewhere; `TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented`.
+- **Status:** fixed
+- **Impact:** every agent spawn with worktree isolation from a fathom-wired repo was blocked between the wave-3 rollout (2026-09-12) and this fix; the same shape would have hit Setup, CwdChanged, DirectoryAdded, FileChanged and ConfigChange advisories the moment they had something to say.
