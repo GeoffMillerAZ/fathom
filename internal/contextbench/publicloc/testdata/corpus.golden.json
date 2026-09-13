@@ -15,7 +15,7 @@
     {
       "source": "swe-explore",
       "url": "https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench",
-      "license": "MIT",
+      "license": "CC-BY-NC-ND-4.0",
       "revision": "fixture",
       "file": "swe-explore-go.jsonl",
       "sha256": "1b28d7d6859fe12fc770d3467ae962dd72be97df99473628898247da4ea03066",
@@ -114,7 +114,7 @@
       ]
     }
   ],
-  "corpus_sha256": "fa6fb6ca03259da7ccc78ae9918b5a59ccdf85e7462df3063c87ab1b205aad49",
+  "corpus_sha256": "56e1870f176d89814bea6e6882cd1e98b0887929c815ef3c78775b1d357d1311",
   "tasks": [
     {
       "id": "PG-example-org__gadgets-1-file",
@@ -454,7 +454,7 @@
       "requires": [
         "subject-snapshot"
       ],
-      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (CC-BY-NC-ND-4.0)",
       "subject": {
         "repo_url": "https://github.com/example-org/tools",
         "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
@@ -491,7 +491,7 @@
       "requires": [
         "subject-snapshot"
       ],
-      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (CC-BY-NC-ND-4.0)",
       "subject": {
         "repo_url": "https://github.com/example-org/tools",
         "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
@@ -533,7 +533,7 @@
         "subject-snapshot",
         "typed-call-edges"
       ],
-      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (MIT)",
+      "source": "swe-explore swe-explore-tools-8 @ f60718293a4b5c6d7e8f90123456789ab1c2d3e4 (CC-BY-NC-ND-4.0)",
       "subject": {
         "repo_url": "https://github.com/example-org/tools",
         "base_commit": "f60718293a4b5c6d7e8f90123456789ab1c2d3e4",
@@ -578,7 +578,7 @@
       "requires": [
         "subject-snapshot"
       ],
-      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (MIT)",
+      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (CC-BY-NC-ND-4.0)",
       "subject": {
         "repo_url": "https://github.com/example-org/tools",
         "base_commit": "e5f60718293a4b5c6d7e8f90123456789ab1c2d3",
@@ -619,7 +619,7 @@
       "requires": [
         "subject-snapshot"
       ],
-      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (MIT)",
+      "source": "swe-explore swe-explore-tools-9 @ e5f60718293a4b5c6d7e8f90123456789ab1c2d3 (CC-BY-NC-ND-4.0)",
       "subject": {
         "repo_url": "https://github.com/example-org/tools",
         "base_commit": "e5f60718293a4b5c6d7e8f90123456789ab1c2d3",

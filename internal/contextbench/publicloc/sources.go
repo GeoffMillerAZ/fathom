@@ -39,9 +39,14 @@ var Sources = map[string]SourceInfo{
 		Fields:  "JSONL rows: org, repo, number, title, body, base{sha}, resolved_issues[{title,body}], fix_patch (instance_id derived as org__repo-number when absent)",
 	},
 	SourceSWEExplore: {
-		Name:    SourceSWEExplore,
-		URL:     "https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench",
-		License: "MIT",
+		Name: SourceSWEExplore,
+		URL:  "https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench",
+		// Verified 2026-09-13 against the dataset card: CC-BY-NC-ND-4.0, not
+		// the MIT this pin carried since PB-14. ND forbids derived works, so
+		// no committed corpus derives from it (the 2026-09-13 derivation
+		// also found no base_commit/patch fields to derive from); the
+		// importer keeps the source for localization truth only.
+		License: "CC-BY-NC-ND-4.0",
 		Fields:  "JSONL rows: instance_id, repo (org/repo), base_commit, problem_statement, language, patch and/or regions (map path -> [[start,end],...] or list of {file,start,end})",
 	},
 }

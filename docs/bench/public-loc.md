@@ -27,7 +27,7 @@ Sources, each recorded beside its pin in the corpus's `sources` block:
 | Source | Licence | What it contributes | Adapter schema |
 |---|---|---|---|
 | [Multi-SWE-bench](https://huggingface.co/datasets/ByteDance-Seed/Multi-SWE-bench) (Go JSONL: `cli/cli`, `grpc-go`, `go-zero`) | CC0-1.0 | developer-authored gold patches (`fix_patch`), issue text | `org, repo, number, title, body, base.sha, resolved_issues[].{title,body}, fix_patch` |
-| [SWE-Explore-Bench](https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench) (Go subset) | MIT | line-level regions an outsider built, plus the SWE-bench patch where present | `instance_id, repo, base_commit, problem_statement, language, patch, regions \| ground_truth` |
+| [SWE-Explore-Bench](https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench) (Go subset) | CC-BY-NC-ND-4.0 (verified 2026-09-13; the pin said MIT until then — ND: nothing committed derives from it) | line-level regions an outsider built, plus the SWE-bench patch where present | `instance_id, repo, base_commit, problem_statement, language, patch, regions \| ground_truth` |
 
 The adapters (`internal/contextbench/publicloc/sources.go`) name the fields
 they read. A row missing one fails the import loudly with its line number
@@ -52,7 +52,7 @@ from a test, never from `task validate` — the import reads local files only.
 ```sh
 mkdir -p workspace/bench/public/{snapshots,checkouts,callers}
 # Multi-SWE-bench: the Go JSONL files from the dataset's release (CC0-1.0).
-# SWE-Explore-Bench: the Go rows as JSONL (MIT).
+# SWE-Explore-Bench: the Go rows as JSONL (CC-BY-NC-ND-4.0 — no derived corpus may be committed from it).
 # Record the upstream revision (dataset commit / release tag) you took.
 sha256sum workspace/bench/public/snapshots/*.jsonl
 ```
