@@ -1,0 +1,543 @@
+// Command scenariobench is the change bench driver (vision 27, ADR-033;
+// docs/plans/strengths-bench.md wave 2) over internal/scenariobench.
+//
+// Subcommands:
+//
+//	scenariobench plan -corpus <path> [-cells <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N]
+//	    Lists every (task, arm, trial) cell the corpus implies, its key, and
+//	    whether it would borrow from the cell store or run for real. Spends
+//	    nothing: no process is started.
+//
+//	scenariobench run -corpus <path> -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>]
+//	    For each selected cell not already in the cell store: PrepareSubject,
+//	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
+//	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
+//	    stream file name) replays committed transcripts instead of shelling
+//	    out to `claude -p` — the only spend-free way to exercise this
+//	    subcommand, and what this package's own tests use.
+//
+//	scenariobench score -in <cell.json> [-out <path>]
+//	    Recomputes a stored cell's basic aggregate readings (total tokens,
+//	    turns, cost, payload bytes) from its sessions and rewrites it. Free:
+//	    it reads what run already captured.
+//
+//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-arm-surface arm=value ...]
+//	    Reads every stored cell for -run-id, groups by (task, arm) into
+//	    ScenarioLedgerRow, appends them to -ledger, re-renders -readme's
+//	    marker-fenced section, and evaluates the corpus's registered
+//	    criterion. Exit 0 pass, 1 fail (a measured refutation — recorded, not
+//	    excused), 3 indeterminate (re-run: not enough was measured).
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/scenariobench"
+)
+
+func main() {
+	os.Exit(run(os.Args[1:]))
+}
+
+func run(args []string) int {
+	if len(args) == 0 {
+		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger> [flags]")
+		return 2
+	}
+	switch args[0] {
+	case "plan":
+		return cmdPlan(args[1:])
+	case "run":
+		return cmdRun(args[1:])
+	case "score":
+		return cmdScore(args[1:])
+	case "ledger":
+		return cmdLedger(args[1:])
+	default:
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, or ledger)\n", args[0])
+		return 2
+	}
+}
+
+// cellFlags are the invariants every subcommand that touches the cell
+// store needs, factored out so plan/run/ledger cannot disagree about what
+// a key means.
+type cellFlags struct {
+	modelID        *string
+	harnessVersion *string
+	scoring        *string
+	fathomCommit   *string
+}
+
+func addCellFlags(fs *flag.FlagSet) cellFlags {
+	return cellFlags{
+		modelID:        fs.String("model-id", "sonnet", "model identity the cell key is built on"),
+		harnessVersion: fs.String("harness-version", "", "harness version string the cell key is built on (required; e.g. `claude --version`'s output, or the fake harness's Version())"),
+		scoring:        fs.String("scoring", "oracle-v1", "the readings/oracle version identifier the cell key is built on"),
+		fathomCommit:   fs.String("fathom-commit", "", "the fathom commit a wired arm's cells key on (default: this tree's HEAD via git)"),
+	}
+}
+
+func resolveFathomCommit(explicit string) string {
+	if explicit != "" {
+		return explicit
+	}
+	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
+	if err != nil {
+		return "unknown"
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func promptSubjectFor(task scenariobench.Task) string {
+	svc := task.Subject.Service
+	if svc == "" {
+		svc = "the subject"
+	}
+	return "the " + svc + " codebase"
+}
+
+// cellPlan is one (task, arm, trial) cell's identity, computed the same
+// way by plan/run/ledger.
+type cellPlan struct {
+	task  scenariobench.Task
+	arm   string
+	trial int
+	inv   scenariobench.CellInvariants
+	key   string
+}
+
+func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA string) []cellPlan {
+	fathomCommit := resolveFathomCommit(*cf.fathomCommit)
+	armNames := make([]string, 0, len(c.Arms))
+	for name := range c.Arms {
+		armNames = append(armNames, name)
+	}
+	sort.Strings(armNames)
+
+	var out []cellPlan
+	for _, task := range c.Tasks {
+		for _, armName := range armNames {
+			arm := c.Arms[armName]
+			surface := scenariobench.ResolveArmSurface(arm, fathomCommit)
+			for trial := 1; trial <= trials; trial++ {
+				inv := scenariobench.CellInvariants{
+					CorpusSHA256:   corpusSHA,
+					TaskID:         task.ID,
+					Arm:            armName,
+					ModelID:        *cf.modelID,
+					HarnessVersion: *cf.harnessVersion,
+					Scoring:        *cf.scoring,
+					PromptSubject:  promptSubjectFor(task),
+					ArmSurface:     surface,
+				}
+				out = append(out, cellPlan{task: task, arm: armName, trial: trial, inv: inv, key: scenariobench.ScenarioCellKey(inv)})
+			}
+		}
+	}
+	return out
+}
+
+func loadCorpus(path string) (scenariobench.Corpus, string, error) {
+	c, err := scenariobench.LoadScenarioCorpus(path)
+	if err != nil {
+		return scenariobench.Corpus{}, "", err
+	}
+	sha, err := scenariobench.CorpusSHA256(path)
+	if err != nil {
+		return scenariobench.Corpus{}, "", err
+	}
+	return c, sha, nil
+}
+
+// ─── plan ────────────────────────────────────────────────────────────────
+
+func cmdPlan(args []string) int {
+	fs := newFlagSet("plan")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
+	trials := fs.Int("trials", 1, "trials per (task, arm)")
+	cf := addCellFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *corpusPath == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench plan: -corpus is required")
+		return 2
+	}
+	if *cf.harnessVersion == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench plan: -harness-version is required (a cell key over an unknown harness would let an unrelated cell be borrowed)")
+		return 2
+	}
+	corpus, sha, err := loadCorpus(*corpusPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench plan: %v\n", err)
+		return 2
+	}
+
+	cells := planCells(corpus, cf, *trials, sha)
+	var wouldRun, wouldBorrow int
+	for _, cp := range cells {
+		_, borrowed, err := scenariobench.BorrowScenarioCell(*cellsDir, cp.key, cp.trial)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench plan: checking cell store for %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
+			return 2
+		}
+		verb := "would run"
+		if borrowed {
+			verb = "would borrow"
+			wouldBorrow++
+		} else {
+			wouldRun++
+		}
+		fmt.Fprintf(os.Stdout, "%s/%s/t%d key=%s %s\n", cp.task.ID, cp.arm, cp.trial, cp.key[:12], verb)
+	}
+	fmt.Fprintf(os.Stdout, "scenariobench plan: %d cell(s) — %d would run, %d would borrow (no spend)\n", len(cells), wouldRun, wouldBorrow)
+	return 0
+}
+
+// ─── run ─────────────────────────────────────────────────────────────────
+
+func cmdRun(args []string) int {
+	fs := newFlagSet("run")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	root := fs.String("root", "", "this repo's root, where `go build ./cmd/fathom` runs from (required for a wired arm)")
+	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
+	rawDir := fs.String("raw-dir", filepath.Join("workspace", "artifacts", "scenariobench", "raw"), "base directory for per-session raw transcripts")
+	trials := fs.Int("trials", 1, "trials per (task, arm)")
+	model := fs.String("model", "sonnet", "model passed to the harness")
+	only := fs.String("only", "", "comma-separated task ids to run (default: every task)")
+	onlyArm := fs.String("arm", "", "run only this arm (default: every arm)")
+	runID := fs.String("run-id", "", "this run's id (required; stamps CellResult.RunID)")
+	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend) or fake (replays committed transcripts, no spend)")
+	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
+	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
+	cf := addCellFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *corpusPath == "" || *runID == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench run: -corpus and -run-id are required")
+		return 2
+	}
+	if *cf.harnessVersion == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench run: -harness-version is required")
+		return 2
+	}
+	corpus, sha, err := loadCorpus(*corpusPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
+		return 2
+	}
+	onlyTasks := splitCommaSet(*only)
+	cells := planCells(corpus, cf, *trials, sha)
+
+	ctx := context.Background()
+	anyFailed := false
+	ran := 0
+	for _, cp := range cells {
+		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {
+			continue
+		}
+		if *onlyArm != "" && cp.arm != *onlyArm {
+			continue
+		}
+		if _, borrowed, err := scenariobench.BorrowScenarioCell(*cellsDir, cp.key, cp.trial); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: checking cell store for %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
+			return 2
+		} else if borrowed {
+			fmt.Fprintf(os.Stdout, "%s/%s/t%d: borrowed\n", cp.task.ID, cp.arm, cp.trial)
+			continue
+		}
+
+		arm := corpus.Arms[cp.arm]
+		harness, herr := resolveHarness(*harnessName, *fakeStreamsDir, *fakeStreams, cp.task.ID, cp.arm)
+		if herr != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", herr)
+			return 2
+		}
+
+		result, err := runOneCell(ctx, *root, cp, arm, harness, *rawDir, *model, *runID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
+			return 2
+		}
+		if err := scenariobench.StoreScenarioCell(*cellsDir, result); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench run: storing %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
+			return 2
+		}
+		ran++
+		status := "FAIL"
+		if result.Success {
+			status = "PASS"
+		} else {
+			anyFailed = true
+		}
+		fmt.Fprintf(os.Stdout, "%s/%s/t%d: %s tokens=%d cost=%.4f\n", cp.task.ID, cp.arm, cp.trial, status, result.Readings.TotalTokens, result.Readings.TotalCostUSD)
+	}
+	fmt.Fprintf(os.Stdout, "scenariobench run: %d cell(s) run\n", ran)
+	if anyFailed {
+		return 1
+	}
+	return 0
+}
+
+func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID string) (scenariobench.CellResult, error) {
+	wt, err := scenariobench.PrepareSubject(ctx, cp.task, arm, root)
+	if err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("preparing subject: %w", err)
+	}
+	defer scenariobench.StopWorktree(&wt)
+
+	sessions, err := scenariobench.RunSessions(ctx, harness, cp.task, cp.arm, arm, wt, scenariobench.RunOptions{
+		Trial: cp.trial, Model: model, RawDir: rawDir,
+	})
+	if err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("running sessions: %w", err)
+	}
+
+	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task)
+	if err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
+	}
+
+	readings := scenariobench.AggregateReadings(sessions)
+	return scenariobench.CellResult{
+		TaskID:         cp.task.ID,
+		Arm:            cp.arm,
+		Trial:          cp.trial,
+		Category:       cp.task.Category,
+		Sessions:       sessions,
+		Oracle:         oracle,
+		Readings:       readings,
+		Success:        oracle.Passed,
+		CellKey:        cp.key,
+		CorpusSHA256:   cp.inv.CorpusSHA256,
+		ModelID:        cp.inv.ModelID,
+		HarnessVersion: cp.inv.HarnessVersion,
+		ArmSurface:     cp.inv.ArmSurface,
+		RunID:          runID,
+		StartedAt:      "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
+		WorktreePath:   wt.Path,
+	}, nil
+}
+
+func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scenariobench.Harness, error) {
+	switch name {
+	case "claude":
+		return scenariobench.ClaudeHarness{}, nil
+	case "fake":
+		if streamsDir == "" {
+			return nil, fmt.Errorf("-harness fake requires -fake-streams-dir")
+		}
+		streams := map[string]string{}
+		if streamsJSON != "" {
+			if err := json.Unmarshal([]byte(streamsJSON), &streams); err != nil {
+				return nil, fmt.Errorf("parsing -fake-streams: %w", err)
+			}
+		}
+		return &scenariobench.FakeHarness{StreamsDir: streamsDir, Streams: streams, TaskID: taskID, ArmName: armName}, nil
+	default:
+		return nil, fmt.Errorf("unknown -harness %q (want claude or fake)", name)
+	}
+}
+
+// ─── score ───────────────────────────────────────────────────────────────
+
+func cmdScore(args []string) int {
+	fs := newFlagSet("score")
+	in := fs.String("in", "", "path to a stored CellResult JSON (required)")
+	out := fs.String("out", "", "path to write the recomputed CellResult (default: overwrite -in)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *in == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench score: -in is required")
+		return 2
+	}
+	raw, err := os.ReadFile(*in)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench score: %v\n", err)
+		return 2
+	}
+	var cell scenariobench.CellResult
+	if err := json.Unmarshal(raw, &cell); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench score: parsing %s: %v\n", *in, err)
+		return 2
+	}
+	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
+	cell.Success = cell.Oracle.Passed
+
+	dest := *out
+	if dest == "" {
+		dest = *in
+	}
+	outRaw, err := json.MarshalIndent(cell, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench score: %v\n", err)
+		return 2
+	}
+	if err := os.WriteFile(dest, append(outRaw, '\n'), 0o644); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench score: writing %s: %v\n", dest, err)
+		return 2
+	}
+	fmt.Fprintf(os.Stdout, "scenariobench score: rewrote %s (tokens=%d)\n", dest, cell.Readings.TotalTokens)
+	return 0
+}
+
+// ─── ledger ──────────────────────────────────────────────────────────────
+
+func cmdLedger(args []string) int {
+	fs := newFlagSet("ledger")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
+	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "committed JSONL ledger")
+	readmePath := fs.String("readme", filepath.Join("docs", "bench", "README.md"), "README carrying the marker-fenced scenario ledger table")
+	runID := fs.String("run-id", "", "the run whose cells to file (required)")
+	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
+	trials := fs.Int("trials", 1, "trials per (task, arm) this run intended")
+	cf := addCellFlags(fs)
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *corpusPath == "" || *runID == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench ledger: -corpus and -run-id are required")
+		return 2
+	}
+	if *cf.harnessVersion == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench ledger: -harness-version is required")
+		return 2
+	}
+	corpus, sha, err := loadCorpus(*corpusPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
+	}
+	generatedAt := ""
+	resolvedCommit := *commit
+	if resolvedCommit == "" {
+		resolvedCommit = resolveFathomCommit("")
+	}
+
+	cells := planCells(corpus, cf, *trials, sha)
+	type key struct{ task, arm string }
+	byTaskArm := map[key][]scenariobench.CellResult{}
+	for _, cp := range cells {
+		cell, ok, err := scenariobench.BorrowScenarioCell(*cellsDir, cp.key, cp.trial)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
+			return 2
+		}
+		if !ok || cell.RunID != *runID {
+			continue
+		}
+		k := key{cp.task.ID, cp.arm}
+		byTaskArm[k] = append(byTaskArm[k], cell)
+	}
+
+	var rows []scenariobench.ScenarioLedgerRow
+	var allCells []scenariobench.CellResult
+	keys := make([]key, 0, len(byTaskArm))
+	for k := range byTaskArm {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i].task != keys[j].task {
+			return keys[i].task < keys[j].task
+		}
+		return keys[i].arm < keys[j].arm
+	})
+	taskByID := map[string]scenariobench.Task{}
+	for _, t := range corpus.Tasks {
+		taskByID[t.ID] = t
+	}
+	for _, k := range keys {
+		group := byTaskArm[k]
+		allCells = append(allCells, group...)
+		row := scenariobench.ScenarioLedgerRow{
+			RunID:          *runID,
+			GeneratedAt:    generatedAt,
+			Commit:         resolvedCommit,
+			CorpusSHA256:   sha,
+			TaskID:         k.task,
+			Category:       taskByID[k.task].Category,
+			Arm:            k.arm,
+			ModelID:        *cf.modelID,
+			HarnessVersion: *cf.harnessVersion,
+		}
+		for _, cell := range group {
+			row.Trials++
+			if cell.Success {
+				row.Successes++
+			}
+			row.Readings.TotalTokens += cell.Readings.TotalTokens
+			row.Readings.TotalTurns += cell.Readings.TotalTurns
+			row.Readings.TotalCostUSD += cell.Readings.TotalCostUSD
+			row.Readings.PayloadBytes += cell.Readings.PayloadBytes
+			row.CostUSD += cell.Readings.TotalCostUSD
+		}
+		row.Prediction = taskByID[k.task].Predictions[k.arm]
+		rows = append(rows, row)
+	}
+	rowBorrowed := scenariobench.BorrowedScenarioCellsOf(allCells)
+	for i := range rows {
+		for _, b := range rowBorrowed {
+			if b.TaskID == rows[i].TaskID && b.Arm == rows[i].Arm {
+				rows[i].Borrowed = append(rows[i].Borrowed, b)
+			}
+		}
+	}
+
+	for _, row := range rows {
+		if err := scenariobench.AppendScenarioLedger(*ledgerPath, row); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+			return 2
+		}
+	}
+
+	all, err := scenariobench.LoadScenarioLedger(*ledgerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
+	}
+	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, scenariobench.RenderScenarioLedger(all)); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: rendering %s: %v\n", *readmePath, err)
+		return 2
+	}
+
+	ev := corpus.Criterion.Evaluate(rows)
+	fmt.Fprintf(os.Stdout, "scenariobench ledger: filed %d row(s); criterion %s: %s (%s)\n", len(rows), ev.CriterionID, ev.Verdict, ev.Reason)
+	switch ev.Verdict {
+	case scenariobench.ScenarioVerdictPass:
+		return 0
+	case scenariobench.ScenarioVerdictIndeterminate:
+		return 3
+	default:
+		return 1
+	}
+}
+
+// ─── flag helpers ────────────────────────────────────────────────────────
+
+func newFlagSet(name string) *flag.FlagSet {
+	return flag.NewFlagSet(name, flag.ContinueOnError)
+}
+
+func splitCommaSet(s string) map[string]bool {
+	out := map[string]bool{}
+	for _, f := range strings.Split(s, ",") {
+		f = strings.TrimSpace(f)
+		if f != "" {
+			out[f] = true
+		}
+	}
+	return out
+}
