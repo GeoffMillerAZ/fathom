@@ -379,6 +379,21 @@ the whole file and count. `obligations` called with no `file` (and no `action`) 
 governs this repository" with the root-scope rules and a `root`/`note` pair, instead of
 erroring "file required".
 
+**Test coverage joins fathom's own claim of fact, not the review kit's judgment (`RC-37..41`).**
+`review_diff` and `fathom review` accept one Go cover profile PER TEST LAYER (`go test
+-coverprofile=unit.out ./...`, `go test -tags integration -coverprofile=integration.out
+./...`, an e2e suite writing its own) — `coverage_profiles: [{layer, path}]` / repeatable
+`--coverage-profile [layer=]<file>` (a bare path defaults to layer `"unit"`): each carries a
+new `coverage` dimension with per-changed-symbol `{symbol, file, line, layers,
+uncovered_at, percent, uncovered}` — `layers`/`uncovered_at` name exactly which SUPPLIED,
+caller-labeled profile covers or misses the symbol, never a guess from per-test data, which
+a standard cover profile never carries; `checked:false` with reason `no coverage profile
+supplied` when none is given. `fathom tests coverage --profile [layer=]<file>` (repeatable)
+[--diff <base>] reports the same per-layer join standalone, one column per layer plus `ANY`,
+or narrowed to a diff's changed symbols uncovered in every layer. `internal/testlayer.Classify`
+classifies a TEST FILE into unit/integration/e2e by default, or a
+`schema/testlayer/schema.cue`-shaped config.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

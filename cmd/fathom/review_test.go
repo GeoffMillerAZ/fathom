@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -104,8 +105,8 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 		t.Errorf("service = %v", payload["service"])
 	}
 	dims, ok := payload["dimensions"].([]any)
-	if !ok || len(dims) != 4 {
-		t.Fatalf("expected 4 dimensions, got %v", payload["dimensions"])
+	if !ok || len(dims) != 5 {
+		t.Fatalf("expected 5 dimensions, got %v", payload["dimensions"])
 	}
 	var specDim map[string]any
 	for _, raw := range dims {
@@ -131,8 +132,218 @@ func TestReview_OneCallWorkedExample(t *testing.T) {
 	if payload["findings_persisted"] != true {
 		t.Errorf("findings_persisted = %v, want true", payload["findings_persisted"])
 	}
+	// The "coverage" dimension is always present (RC-41) — checked:false
+	// here since this run passed no --coverage-profile at all, the SAME
+	// honesty discipline arch_conformance's own unchecked case demonstrates.
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil {
+		t.Fatal("missing coverage dimension")
+	}
+	if covDim["checked"] != false || covDim["reason"] != "no coverage profile supplied" {
+		t.Errorf("coverage dimension = %+v", covDim)
+	}
 
 	t.Logf("one-call worked example output:\n%s", out.String())
+}
+
+// TestReview_CoverageProfile proves RC-41's --coverage-profile flag end to
+// end: a real cover profile (func A's own [Line, EndLine] span, resolved
+// from a real ingest — the same discipline testsCoverageFixture in
+// tests_coverage_test.go uses) produces a checked "coverage" dimension
+// carrying func A's joined statement coverage.
+func TestReview_CoverageProfile(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(reviewFixtureSrc), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+
+	var ingestOut, ingestErr bytes.Buffer
+	if code := run([]string{"ingest", "--service", "cov-review-svc", "--path", root, "--store", storePath}, &ingestOut, &ingestErr); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, ingestErr.String())
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	c := client.New(connector.NewLocalConnector(), st)
+	nodes, err := c.ListAllSymbols(context.Background(), "cov-review-svc")
+	if err != nil {
+		t.Fatalf("list symbols: %v", err)
+	}
+	c.Close()
+	st.Close()
+	var fn core.SymbolNode
+	for _, n := range nodes {
+		if n.Name == "A" {
+			fn = n
+		}
+	}
+	if fn.Name == "" {
+		t.Fatalf("func A not found among indexed symbols: %+v", nodes)
+	}
+
+	profilePath := filepath.Join(t.TempDir(), "cover.out")
+	body := fmt.Sprintf("mode: set\npkg/a.go:%d.1,%d.1 1 1\n", fn.Line, fn.EndLine)
+	if err := os.WriteFile(profilePath, []byte(body), 0o644); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := runReview(
+		[]string{
+			"--service", "cov-review-svc", "--since", "HEAD~1", "--store", storePath, "--json",
+			"--no-persist", "--coverage-profile", profilePath,
+			"--call-log", filepath.Join(t.TempDir(), "calls.jsonl"),
+		},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("review exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, out.String())
+	}
+	dims := payload["dimensions"].([]any)
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil {
+		t.Fatal("missing coverage dimension")
+	}
+	if covDim["checked"] != true {
+		t.Fatalf("expected checked:true with --coverage-profile supplied, got %+v", covDim)
+	}
+	items, _ := covDim["coverage"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected exactly one changed-symbol coverage entry (func A), got %+v", covDim["coverage"])
+	}
+}
+
+// TestReview_CoverageProfile_TwoLayers proves --coverage-profile's real
+// "by layer" attribution end to end: two separately-run profiles, each
+// labeled with its own test layer, produce a coverage entry naming which
+// layer covers the symbol and which does not.
+func TestReview_CoverageProfile_TwoLayers(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "pkg"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "pkg", "a.go"), []byte(reviewFixtureSrc), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+
+	var ingestOut, ingestErr bytes.Buffer
+	if code := run([]string{"ingest", "--service", "cov-review-layers-svc", "--path", root, "--store", storePath}, &ingestOut, &ingestErr); code != 0 {
+		t.Fatalf("ingest exit = %d, stderr: %s", code, ingestErr.String())
+	}
+
+	st, err := store.Open(storePath)
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	c := client.New(connector.NewLocalConnector(), st)
+	nodes, err := c.ListAllSymbols(context.Background(), "cov-review-layers-svc")
+	if err != nil {
+		t.Fatalf("list symbols: %v", err)
+	}
+	c.Close()
+	st.Close()
+	var fn core.SymbolNode
+	for _, n := range nodes {
+		if n.Name == "A" {
+			fn = n
+		}
+	}
+	if fn.Name == "" {
+		t.Fatalf("func A not found among indexed symbols: %+v", nodes)
+	}
+
+	unitPath := filepath.Join(t.TempDir(), "unit.out")
+	if err := os.WriteFile(unitPath, []byte(fmt.Sprintf("mode: set\npkg/a.go:%d.1,%d.1 1 0\n", fn.Line, fn.EndLine)), 0o644); err != nil {
+		t.Fatalf("write unit profile: %v", err)
+	}
+	intPath := filepath.Join(t.TempDir(), "integration.out")
+	if err := os.WriteFile(intPath, []byte(fmt.Sprintf("mode: set\npkg/a.go:%d.1,%d.1 1 1\n", fn.Line, fn.EndLine)), 0o644); err != nil {
+		t.Fatalf("write integration profile: %v", err)
+	}
+
+	var out, errBuf bytes.Buffer
+	code := runReview(
+		[]string{
+			"--service", "cov-review-layers-svc", "--since", "HEAD~1", "--store", storePath, "--json",
+			"--no-persist",
+			"--coverage-profile", "unit=" + unitPath,
+			"--coverage-profile", "integration=" + intPath,
+			"--call-log", filepath.Join(t.TempDir(), "calls.jsonl"),
+		},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("review exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal: %v\noutput: %s", err, out.String())
+	}
+	dims := payload["dimensions"].([]any)
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil {
+		t.Fatal("missing coverage dimension")
+	}
+	items, _ := covDim["coverage"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected exactly one changed-symbol coverage entry (func A), got %+v", covDim["coverage"])
+	}
+	entry := items[0].(map[string]any)
+	layers, _ := entry["layers"].([]any)
+	if len(layers) != 1 || layers[0] != "integration" {
+		t.Errorf("layers = %v, want [integration] (only that layer covers it)", entry["layers"])
+	}
+	uncoveredAt, _ := entry["uncovered_at"].([]any)
+	if len(uncoveredAt) != 1 || uncoveredAt[0] != "unit" {
+		t.Errorf("uncovered_at = %v, want [unit]", entry["uncovered_at"])
+	}
+	if entry["uncovered"] != false {
+		t.Errorf("uncovered should be false — the union is covered by integration: %+v", entry)
+	}
+}
+
+// TestReview_CoverageProfile_BadPathFailsLoudly proves a SUPPLIED but
+// unreadable --coverage-profile is a hard error, unlike an ABSENT one
+// (which is an honest checked:false) — the caller explicitly asked for
+// coverage and got a bad file.
+func TestReview_CoverageProfile_BadPathFailsLoudly(t *testing.T) {
+	var out, errBuf bytes.Buffer
+	code := runReview(
+		[]string{"--service", "svc", "--since", "origin/main", "--coverage-profile", "/does/not/exist.out"},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code == 0 {
+		t.Fatal("expected a nonzero exit for an unreadable --coverage-profile")
+	}
 }
 
 // TestReview_FindingsBridge_RefutationDurability is C2-1's "prove it with a

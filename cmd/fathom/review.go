@@ -52,6 +52,8 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	noPersist := fs.Bool("no-persist", false, "report only: never write findings to the claims store (the pre-push summary hook uses this)")
 	budgetSeconds := fs.Int("budget-seconds", 0, "advisory time budget: on excess, print a named skip and exit 0 (requires --no-persist — a bounded run must never be a store writer); 0 = unbounded")
 	callLogFlag := fs.String("call-log", "", "MCP-format call log (JSONL) to append this run's verdict outcome to (T5-7); default: [daemon].call_log in config.toml, else "+defaultCallLogPath())
+	var coverageProfileFlags profileFlagValues
+	fs.Var(&coverageProfileFlags, "coverage-profile", "Go cover profile (go test -coverprofile) to join against changed symbols for the coverage dimension, as `[layer=]path` (repeatable — one per test layer, e.g. --coverage-profile unit=workspace/cov/unit.out --coverage-profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\". Absent = coverage dimension reports checked:false.")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -66,7 +68,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	}
 
 	body := func() int {
-		return runReviewBody(gitRunner, *storePath, *service, *since, *jsonOut, *noPersist, *callLogFlag, stdout, stderr)
+		return runReviewBody(gitRunner, *storePath, *service, *since, *jsonOut, *noPersist, *callLogFlag, coverageProfileFlags, stdout, stderr)
 	}
 	if *budgetSeconds > 0 {
 		// The whole body races the budget. On excess the process prints a
@@ -90,7 +92,7 @@ func runReview(args []string, gitRunner func(args ...string) ([]byte, error), st
 	return body()
 }
 
-func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV string, jsonOutV, noPersistV bool, callLogFlagV string, stdout, stderr io.Writer) int {
+func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, serviceV, sinceV string, jsonOutV, noPersistV bool, callLogFlagV string, coverageProfilesV []string, stdout, stderr io.Writer) int {
 	storePath, service, since, jsonOut, noPersist, callLogFlag := &storePathV, &serviceV, &sinceV, &jsonOutV, &noPersistV, &callLogFlagV
 
 	out, err := gitRunner("diff", "--name-only", *since)
@@ -126,6 +128,12 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
+	}
+	if len(coverageProfilesV) > 0 {
+		if err := applyCoverageProfile(&in, coverageProfilesV); err != nil {
+			fmt.Fprintf(stderr, "error: --coverage-profile %v: %v\n", coverageProfilesV, err)
+			return 1
+		}
 	}
 	reviewStart := time.Now()
 	v := review.Run(in)
@@ -325,6 +333,25 @@ func buildReviewInputFromClient(ctx context.Context, c *client.Client, service s
 	}
 
 	return in, sources, nil
+}
+
+// applyCoverageProfile opens and parses the Go cover profile at path
+// (coverage.ParseProfile), joins it against in.Nodes (review.ResolveCoverage
+// — the same composition the review_diff MCP tool uses), and sets the
+// review.Input coverage fields (RC-41) so DimTestCoverage reports a real
+// verdict instead of checked:false. Unlike an ABSENT --coverage-profile
+// (an honest "not supplied"), a SUPPLIED-but-unreadable-or-malformed file is
+// a hard error: the caller explicitly asked for coverage and got a bad
+// file, which must fail loudly rather than silently degrade to
+// checked:false.
+func applyCoverageProfile(in *review.Input, rawProfiles []string) error {
+	labeled, err := loadLabeledProfiles(rawProfiles)
+	if err != nil {
+		return err
+	}
+	in.CoverageChecked = true
+	in.CoverageLayered = review.ResolveCoverage(labeled, in.Nodes)
+	return nil
 }
 
 // printReviewSummary renders v as a short, human-readable report — the form

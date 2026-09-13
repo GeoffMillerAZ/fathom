@@ -148,18 +148,26 @@ func TestReviewDiff_ComposesDimensionsHonestly(t *testing.T) {
 		t.Errorf("service = %v", p["service"])
 	}
 	dims, ok := p["dimensions"].([]any)
-	if !ok || len(dims) != 4 {
-		t.Fatalf("expected 4 dimensions, got %v", p["dimensions"])
+	if !ok || len(dims) != 5 {
+		t.Fatalf("expected 5 dimensions, got %v", p["dimensions"])
 	}
 	byName := map[string]map[string]any{}
 	for _, raw := range dims {
 		d := raw.(map[string]any)
 		byName[d["name"].(string)] = d
 	}
-	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage"} {
+	for _, want := range []string{"impact", "obligations", "arch_conformance", "spec_coverage", "coverage"} {
 		if _, ok := byName[want]; !ok {
 			t.Errorf("missing dimension %q", want)
 		}
+	}
+	// No coverage_profile was supplied in this call — the SAME honesty
+	// discipline arch_conformance's own unchecked case demonstrates.
+	if byName["coverage"]["checked"] != false {
+		t.Errorf("coverage should be unchecked (no coverage_profile supplied): %v", byName["coverage"])
+	}
+	if byName["coverage"]["reason"] != "no coverage profile supplied" {
+		t.Errorf("coverage reason = %v", byName["coverage"]["reason"])
 	}
 	if byName["impact"]["checked"] != true {
 		t.Errorf("impact should be checked: %v", byName["impact"])
@@ -208,6 +216,144 @@ func TestReviewDiff_ObligationsScoped(t *testing.T) {
 	findings := obligDim["findings"].([]any)
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 obligation finding, got %d: %v", len(findings), findings)
+	}
+}
+
+// TestReviewDiff_CoverageProfile proves RC-41's MCP wiring end to end: a
+// coverage_profile argument (a repo-relative path under the service's
+// corpus root, here workspace/cover.out — the SAME "under the repo or
+// workspace/" scoping the CLI mirror documents) produces a checked
+// "coverage" dimension with func A's real statement coverage, resolved via
+// review.ResolveCoverage exactly as the CLI's --coverage-profile flag does.
+func TestReviewDiff_CoverageProfile(t *testing.T) {
+	corpusRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(corpusRoot, "workspace"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	profile := "mode: set\npkg/a.go:10.1,12.1 2 1\n"
+	if err := os.WriteFile(filepath.Join(corpusRoot, "workspace", "cover.out"), []byte(profile), 0o644); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 6, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "workspace/cover.out"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	dims := p["dimensions"].([]any)
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil {
+		t.Fatal("missing coverage dimension")
+	}
+	if covDim["checked"] != true {
+		t.Fatalf("expected checked:true with coverage_profile supplied, got %v (reason=%v)", covDim["checked"], covDim["reason"])
+	}
+	items, _ := covDim["coverage"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected exactly one changed-symbol coverage entry (func A), got %+v", covDim["coverage"])
+	}
+	entry := items[0].(map[string]any)
+	if entry["uncovered"] != false {
+		t.Errorf("func A's block has Count>0 — expected uncovered:false, got %+v", entry)
+	}
+}
+
+// TestReviewDiff_CoverageProfiles_TwoLayers proves review_diff's real
+// "by layer" attribution: two profiles, each labeled with an explicit
+// layer via coverage_profiles, produce a coverage entry naming which
+// layer covers the symbol and which does not (never guessed from
+// per-test data).
+func TestReviewDiff_CoverageProfiles_TwoLayers(t *testing.T) {
+	corpusRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(corpusRoot, "workspace"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	unit := "mode: set\npkg/a.go:10.1,12.1 2 0\n"
+	if err := os.WriteFile(filepath.Join(corpusRoot, "workspace", "unit.out"), []byte(unit), 0o644); err != nil {
+		t.Fatalf("write unit profile: %v", err)
+	}
+	integration := "mode: set\npkg/a.go:10.1,12.1 2 1\n"
+	if err := os.WriteFile(filepath.Join(corpusRoot, "workspace", "integration.out"), []byte(integration), 0o644); err != nil {
+		t.Fatalf("write integration profile: %v", err)
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 8, Method: "tools/call",
+		Params: map[string]any{
+			"name": "review_diff",
+			"arguments": map[string]any{
+				"service":       "svc",
+				"changed_files": []string{"pkg/a.go"},
+				"coverage_profiles": []map[string]any{
+					{"layer": "unit", "path": "workspace/unit.out"},
+					{"layer": "integration", "path": "workspace/integration.out"},
+				},
+			},
+		},
+	})
+	p := extToolPayload(t, resp)
+	dims := p["dimensions"].([]any)
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil {
+		t.Fatal("missing coverage dimension")
+	}
+	items, _ := covDim["coverage"].([]any)
+	if len(items) != 1 {
+		t.Fatalf("expected exactly one changed-symbol coverage entry (func A), got %+v", covDim["coverage"])
+	}
+	entry := items[0].(map[string]any)
+	layers, _ := entry["layers"].([]any)
+	if len(layers) != 1 || layers[0] != "integration" {
+		t.Errorf("layers = %v, want [integration] (only that layer covers it)", entry["layers"])
+	}
+	uncoveredAt, _ := entry["uncovered_at"].([]any)
+	if len(uncoveredAt) != 1 || uncoveredAt[0] != "unit" {
+		t.Errorf("uncovered_at = %v, want [unit]", entry["uncovered_at"])
+	}
+	if entry["uncovered"] != false {
+		t.Errorf("uncovered should be false — the union is covered by integration: %+v", entry)
+	}
+}
+
+// TestReviewDiff_CoverageProfile_TraversalRefused proves the safe-path
+// discipline applies to coverage_profile too: a path escaping the corpus
+// root is refused, never read.
+func TestReviewDiff_CoverageProfile_TraversalRefused(t *testing.T) {
+	corpusRoot := t.TempDir()
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 7, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "../../etc/passwd"},
+		},
+	})
+	if resp["error"] == nil {
+		t.Fatal("expected an error for a coverage_profile path escaping the corpus root")
 	}
 }
 

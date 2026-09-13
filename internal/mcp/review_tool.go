@@ -8,8 +8,10 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -35,13 +37,23 @@ type reviewClaimsBackend interface {
 func registerReviewDiff(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "review_diff",
-		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage into ONE cited verdict for a set of changed files, plus test_impact: affected_tests (the Test* functions that statically reach a changed symbol, with file:line) and test_gap (changed symbols no test reaches). Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured). WRITES TO THE CLAIMS STORE when the backend supports persistence (findings_persisted reports it): arch_conformance and spec_coverage findings — the deterministic-oracle dimensions only, never obligations (which re-serves existing claims) or impact context — are persisted as content-addressed claims on the \"findings\" layer with hashed citation + scope-fingerprint anchors, and review-minted claims whose finding this run no longer emits are superseded (absent = fixed). A finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, still listed) across every later re-review that re-emits the identical finding. For a report-only run without the store write, use the CLI mirror: fathom review --since <ref> --no-persist.",
+		Description: "Compose diff impact (blast radius, typed-edge aware) + obligations/findings scoped to the changed files + architecture conformance (project rule pack) + spec coverage + test coverage into ONE cited verdict for a set of changed files, plus test_impact: affected_tests (the Test* functions that statically reach a changed symbol, with file:line) and test_gap (changed symbols no test reaches). Each dimension reports checked:false with a reason instead of a clean-shaped pass when it cannot run (e.g. no architecture rule pack configured, or no coverage_profile(s) supplied). Pass coverage_profiles (an array of {layer, path} — one Go cover profile per test layer, e.g. [{\"layer\":\"unit\",\"path\":\"workspace/cov/unit.out\"},{\"layer\":\"integration\",\"path\":\"workspace/cov/integration.out\"}], each path repo-relative under the service's corpus root or its workspace/) to get the \"coverage\" dimension: per-changed-symbol {symbol, layers (which supplied layers actually cover it), uncovered_at (layers that ran over it with 0%), percent (union across every layer), uncovered}. `coverage_profile` (a single bare path) is kept as the single-profile alias — it is treated as one profile labeled layer \"unit\" (there is no way to recover which layer produced an unlabeled profile from its own contents, so \"unit\" is the honest default, not an inference); pass coverage_profiles instead when you have more than one layer. Layer attribution is ALWAYS from the caller-declared label, never guessed from per-test data — a standard cover profile carries none. fathom asserts the coverage FACT only, never whether it is adequate. WRITES TO THE CLAIMS STORE when the backend supports persistence (findings_persisted reports it): arch_conformance and spec_coverage findings — the deterministic-oracle dimensions only, never obligations (which re-serves existing claims), impact context, or coverage — are persisted as content-addressed claims on the \"findings\" layer with hashed citation + scope-fingerprint anchors, and review-minted claims whose finding this run no longer emits are superseded (absent = fixed). A finding refuted via `fathom claim refute` or the obligations tool's feedback action stays refuted (status:\"refuted\", excluded from count, still listed) across every later re-review that re-emits the identical finding. For a report-only run without the store write, use the CLI mirror: fathom review --since <ref> --no-persist.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
-				"changed_files": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths (e.g. from git diff --name-only)"},
-				"concern":       map[string]any{"type": "string", "description": "Optional concern token (currently descriptive only; carried for forward compatibility)"},
+				"service":          map[string]any{"type": "string", "description": "Service / repo identifier"},
+				"changed_files":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Repo-relative changed file paths (e.g. from git diff --name-only)"},
+				"concern":          map[string]any{"type": "string", "description": "Optional concern token (currently descriptive only; carried for forward compatibility)"},
+				"coverage_profile": map[string]any{"type": "string", "description": "Optional single-profile alias for coverage_profiles: a repo-relative path to one Go cover profile, labeled layer \"unit\" (no per-profile layer metadata exists to say otherwise). Ignored when coverage_profiles is also given."},
+				"coverage_profiles": map[string]any{
+					"type":        "array",
+					"description": "Optional: one entry per test layer — {layer, path}, each path repo-relative under the service's corpus root (e.g. workspace/cov/unit.out). Enables the \"coverage\" dimension with real per-layer attribution; absent (and no coverage_profile) = checked:false, reason \"no coverage profile supplied\".",
+					"items": map[string]any{
+						"type":       "object",
+						"properties": map[string]any{"layer": map[string]any{"type": "string"}, "path": map[string]any{"type": "string"}},
+						"required":   []string{"layer", "path"},
+					},
+				},
 			},
 			"required": []string{"service", "changed_files"},
 		},
@@ -54,6 +66,14 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			Service      string   `json:"service"`
 			ChangedFiles []string `json:"changed_files"`
 			Concern      string   `json:"concern"`
+			// CoverageProfile is the single-profile alias; CoverageProfiles
+			// is the real multi-layer form. CoverageProfiles wins when both
+			// are given.
+			CoverageProfile  string `json:"coverage_profile"`
+			CoverageProfiles []struct {
+				Layer string `json:"layer"`
+				Path  string `json:"path"`
+			} `json:"coverage_profiles"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "review_diff: invalid args"}
@@ -68,6 +88,24 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 		in, sources, rpcErr := buildReviewInput(ctx, backend, p.Service, p.ChangedFiles, p.Concern)
 		if rpcErr != nil {
 			return nil, rpcErr
+		}
+		var labeledPaths []labeledProfilePath
+		switch {
+		case len(p.CoverageProfiles) > 0:
+			for _, cp := range p.CoverageProfiles {
+				layer := cp.Layer
+				if layer == "" {
+					layer = defaultCoverageProfileLayer
+				}
+				labeledPaths = append(labeledPaths, labeledProfilePath{Layer: layer, Path: cp.Path})
+			}
+		case p.CoverageProfile != "":
+			labeledPaths = []labeledProfilePath{{Layer: defaultCoverageProfileLayer, Path: p.CoverageProfile}}
+		}
+		if len(labeledPaths) > 0 {
+			if rpcErr := applyCoverageProfiles(ctx, backend, p.Service, labeledPaths, &in); rpcErr != nil {
+				return nil, rpcErr
+			}
 		}
 		v := review.Run(in)
 		persisted, resolutions := applyAndPersistFindings(ctx, backend, &v, sources)
@@ -207,6 +245,84 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	}
 
 	return in, sources, nil
+}
+
+// applyCoverageProfile resolves review_diff's optional coverage_profile
+// argument (RC-41) and sets in's coverage fields: read + parse the Go cover
+// profile at path, join it against in.Nodes (review.ResolveCoverage — the
+// SAME composition the CLI mirror's --coverage-profile flag uses, so both
+// surfaces resolve identically), and enable the "coverage" dimension.
+//
+// path is resolved SAFELY under the service's own corpus root — the
+// lexical + physical containment checks read_source already established
+// (validateRelPath, resolveRealPath: no absolute path, no traversal, no
+// symlink escape) — but deliberately WITHOUT read_source's "indexed
+// corpus" membership check (notIndexedReason): a coverage profile is a
+// build artifact, typically under workspace/, which a repo's own
+// .fathomignore routinely excludes from the indexed corpus — applying that
+// check here would refuse the exact files this parameter exists to read.
+// defaultCoverageProfileLayer is the layer an unlabeled `coverage_profile`
+// alias entry is treated as — the same "unit" default the CLI's bare
+// `--profile <path>` (no `layer=` prefix) uses (internal/testlayer.
+// Classify's own default for an unlabeled test file); no per-profile
+// metadata exists to say otherwise.
+const defaultCoverageProfileLayer = "unit"
+
+// labeledProfilePath is one resolved (layer, repo-relative path) pair from
+// either coverage_profiles or the coverage_profile alias, before the file
+// is opened.
+type labeledProfilePath struct {
+	Layer string
+	Path  string
+}
+
+// applyCoverageProfiles resolves review_diff's coverage_profiles (or the
+// single-profile coverage_profile alias, both already normalized to
+// labeledProfilePath by the caller) and sets in's coverage fields: read +
+// parse each Go cover profile, label it by its caller-declared layer, join
+// the set against in.Nodes (review.ResolveCoverage — the SAME composition
+// the CLI mirror's --profile flags use, so both surfaces resolve
+// identically), and enable the "coverage" dimension.
+//
+// Each path is resolved SAFELY under the service's own corpus root — the
+// lexical + physical containment checks read_source already established
+// (validateRelPath, resolveRealPath: no absolute path, no traversal, no
+// symlink escape) — but deliberately WITHOUT read_source's "indexed
+// corpus" membership check (notIndexedReason): a coverage profile is a
+// build artifact, typically under workspace/, which a repo's own
+// .fathomignore routinely excludes from the indexed corpus — applying that
+// check here would refuse the exact files this parameter exists to read.
+func applyCoverageProfiles(ctx context.Context, backend QueryInterface, service string, paths []labeledProfilePath, in *review.Input) *rpcError {
+	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
+	if err != nil {
+		return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profile(s): " + err.Error()}
+	}
+
+	labeled := make([]coverage.LabeledProfile, 0, len(paths))
+	for _, lp := range paths {
+		_, full, err := validateRelPath(corpusRoot, lp.Path)
+		if err != nil {
+			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: " + err.Error()}
+		}
+		full, err = resolveRealPath(corpusRoot, full, lp.Path)
+		if err != nil {
+			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: " + err.Error()}
+		}
+		f, err := os.Open(full) //nolint:gosec — full is the EvalSymlinks-resolved, corpus-root-contained path from resolveRealPath
+		if err != nil {
+			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: open: " + err.Error()}
+		}
+		profile, perr := coverage.ParseProfile(f)
+		f.Close()
+		if perr != nil {
+			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: " + perr.Error()}
+		}
+		labeled = append(labeled, coverage.LabeledProfile{Layer: lp.Layer, Profile: profile})
+	}
+
+	in.CoverageChecked = true
+	in.CoverageLayered = review.ResolveCoverage(labeled, in.Nodes)
+	return nil
 }
 
 // applyAndPersistFindings runs the C2-1 findings bridge when the backend

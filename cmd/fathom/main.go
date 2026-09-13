@@ -96,6 +96,12 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdReport(args[1:], stdout, stderr)
 	case "review":
 		return cmdReview(args[1:], stdout, stderr)
+	case "tests":
+		if len(args) > 1 && args[1] == "coverage" {
+			return cmdTestsCoverage(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]")
+		return 1
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)
 	case "instrument":

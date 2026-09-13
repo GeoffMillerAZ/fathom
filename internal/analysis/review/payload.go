@@ -41,6 +41,13 @@ func (d Dimension) payload() map[string]any {
 	if len(d.Files) > 0 {
 		resp["files"] = nonNilStrings(d.Files)
 	}
+	if d.Name == dimCoverageName {
+		items := make([]any, len(d.Coverage))
+		for i, c := range d.Coverage {
+			items[i] = c.payload()
+		}
+		resp["coverage"] = items
+	}
 	return resp
 }
 

@@ -41,6 +41,7 @@ var verbTable = []verb{
 	{Name: "layers", Summary: "List/show/install semantic-layer packs (embedded + project .fathom/layers/)"},
 	{Name: "report", Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge)"},
 	{Name: "review", Summary: "Store-direct review of files changed since a git ref (arch conformance, spec coverage); --no-persist = report only, --budget-seconds = advisory bound"},
+	{Name: "tests", Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer, joined against indexed symbols; --diff <base> narrows to changed symbols with no covering test"},
 	{Name: "session-hook", Summary: "SessionStart hook: resolve this repo's service and emit a one-line reminder (or an honest not-indexed line); always exits 0"},
 	{Name: "prime", Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0"},
 	{Name: "edit-hook", Summary: "PostToolUse hook: inject obligations into session context"},

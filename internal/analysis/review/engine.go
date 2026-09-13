@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/archconformance"
+	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
@@ -101,6 +102,11 @@ type Dimension struct {
 	// reconstructed from Findings). Empty for every other dimension.
 	Tests []string
 	Files []string
+
+	// Coverage is coverage-dimension-only detail (RC-41): one entry per
+	// changed symbol DimTestCoverage found profile data for — {symbol,
+	// layers, percent, uncovered}. Empty for every other dimension.
+	Coverage []CoverageDetail
 }
 
 // Verdict is the ONE cited verdict review_diff returns.
@@ -159,6 +165,17 @@ type Input struct {
 
 	// spec_coverage
 	ChangedSources []core.SourceFile // source content of ONLY the changed files
+
+	// coverage (RC-41) — caller-parsed, per-layer Go cover profiles,
+	// already joined to symbols via
+	// internal/analysis/coverage.JoinLayeredSymbols (ResolveCoverage does
+	// the join). CoverageChecked is false whenever the caller resolved no
+	// profile at all — DimTestCoverage reports checked:false, reason "no
+	// coverage profile supplied" in that case, never a clean-shaped empty
+	// pass. "By layer" is a caller-declared label on each profile
+	// (coverage.LabeledProfile), never guessed from per-test data.
+	CoverageChecked bool
+	CoverageLayered []coverage.SymbolLayerCoverage
 }
 
 // Run composes every dimension into one Verdict. Deterministic: identical
@@ -172,6 +189,7 @@ func Run(in Input) Verdict {
 		runObligations(in),
 		runArch(in),
 		runSpecCoverage(in),
+		DimTestCoverage(in),
 	}
 
 	v := Verdict{
@@ -451,6 +469,150 @@ func runSpecCoverage(in Input) Dimension {
 	sort.Slice(d.Findings, func(i, j int) bool { return d.Findings[i].Message < d.Findings[j].Message })
 	d.Count = len(d.Findings)
 	return d
+}
+
+// ─── coverage ─────────────────────────────────────────────────────────────
+
+// dimCoverageName is the "coverage" dimension's Name — a plain constant
+// (not exported as DimCoverage alongside DimImpact/DimObligations/DimArch/
+// DimSpecCoverage) because the exported identifier DimTestCoverage names
+// the dimension's constructor FUNCTION instead (this row's own anchor),
+// and the two cannot share a name.
+const dimCoverageName = "coverage"
+
+// CoverageDetail is coverage-dimension-only detail: one changed symbol's
+// joined, per-layer test coverage, as DimTestCoverage renders it into
+// Dimension.Coverage.
+type CoverageDetail struct {
+	Symbol string
+	File   string
+	Line   int
+	// Layers is the sorted set of test layers that ACTUALLY COVER this
+	// symbol (Covered>0 in that layer's own profile) — an assertion
+	// grounded in which caller-labeled profile recorded the coverage
+	// (coverage.LabeledProfile), never guessed from the symbol's own name
+	// or file.
+	Layers []string
+	// UncoveredAt is the sorted set of layers that DID have profile data
+	// for this symbol but recorded zero executions — distinct from a layer
+	// with no data at all, which is simply absent from both Layers and
+	// UncoveredAt.
+	UncoveredAt []string
+	// Percent/Uncovered are the UNION across every supplied layer
+	// (coverage.SymbolLayerCoverage.Any): a statement counts as covered if
+	// ANY layer covered it.
+	Percent   float64
+	Uncovered bool
+}
+
+func (c CoverageDetail) payload() map[string]any {
+	return map[string]any{
+		"symbol":       c.Symbol,
+		"file":         c.File,
+		"line":         c.Line,
+		"layers":       nonNilStrings(c.Layers),
+		"uncovered_at": nonNilStrings(c.UncoveredAt),
+		"percent":      c.Percent,
+		"uncovered":    c.Uncovered,
+	}
+}
+
+// DimTestCoverage computes the "coverage" dimension (RC-41, extended for
+// true per-layer attribution): per-CHANGED-symbol test coverage from
+// caller-parsed, per-layer Go cover profiles (internal/analysis/coverage.
+// ParseProfile + JoinLayeredSymbols, composed by ResolveCoverage), scoped
+// to the diff exactly like every other dimension. Checked is false — with
+// Reason "no coverage profile supplied" — whenever the caller resolved no
+// profile at all (in.CoverageChecked): the SAME honesty discipline
+// runObligations/runArch already apply — a capability the caller did not
+// configure reports checked:false, never a clean-shaped empty pass. A
+// changed symbol no supplied profile has data for (not
+// statement-instrumented, or its package was outside every covered set) is
+// silently omitted from Coverage, not reported as a fabricated 0%.
+//
+// "By layer" is a caller-declared LABEL on each profile
+// (coverage.LabeledProfile — CLI: `--profile <layer>=<path>`, repeatable;
+// MCP/review: `coverage_profiles: [{layer, path}]`), never guessed from
+// per-test data: a standard `go test -coverprofile` file carries none. A
+// symbol's Layers/UncoveredAt therefore report exactly which LABELED
+// PROFILE recorded the coverage — real attribution when the caller ran one
+// profile per layer, not an inference from the profile's own contents.
+//
+// The boundary this dimension keeps: fathom ASSERTS which changed symbols
+// are statement-covered, by what percent, and by which layer(s) — it never
+// judges whether that coverage is adequate, which tests SHOULD exist, or
+// blocks a review on a coverage threshold. That judgment belongs to the
+// review kit consuming this block, not to fathom.
+//
+// Exported (unlike the other run* dimension functions, runImpact/
+// runObligations/runArch/runSpecCoverage) per the plan row's own anchor
+// name.
+func DimTestCoverage(in Input) Dimension {
+	d := Dimension{Name: dimCoverageName}
+	if !in.CoverageChecked {
+		d.Reason = "no coverage profile supplied"
+		return d
+	}
+	d.Checked = true
+
+	changedSet := toSet(in.ChangedFiles)
+	byKey := make(map[string]coverage.SymbolLayerCoverage, len(in.CoverageLayered))
+	for _, sc := range in.CoverageLayered {
+		byKey[sc.Symbol] = sc
+	}
+
+	for _, n := range in.Nodes {
+		if !changedSet[n.FilePath] {
+			continue
+		}
+		sc, ok := byKey[n.Key()]
+		if !ok {
+			continue // no profile data for this symbol — omitted, not fabricated as 0%
+		}
+		detail := CoverageDetail{
+			Symbol:      sc.Symbol,
+			File:        sc.File,
+			Line:        sc.Line,
+			Layers:      sc.CoveringLayers(),
+			UncoveredAt: sc.UncoveredAt(),
+			Percent:     sc.Any.Percent,
+			Uncovered:   sc.Any.Covered == 0,
+		}
+		d.Coverage = append(d.Coverage, detail)
+		if detail.Uncovered {
+			d.Findings = append(d.Findings, Finding{
+				Kind:     dimCoverageName,
+				Symbol:   sc.Symbol,
+				File:     sc.File,
+				Line:     sc.Line,
+				Message:  "changed symbol has no covering test in any supplied layer (0% statements covered)",
+				Citation: citeOf(sc.File, sc.Line),
+				Severity: "warn",
+			})
+		}
+	}
+	sort.Slice(d.Coverage, func(i, j int) bool {
+		if d.Coverage[i].File != d.Coverage[j].File {
+			return d.Coverage[i].File < d.Coverage[j].File
+		}
+		return d.Coverage[i].Line < d.Coverage[j].Line
+	})
+	sort.Slice(d.Findings, func(i, j int) bool { return d.Findings[i].Symbol < d.Findings[j].Symbol })
+	d.Count = len(d.Findings)
+	return d
+}
+
+// ResolveCoverage builds DimTestCoverage's Input.CoverageLayered from
+// caller-labeled, parsed Go cover profiles: internal/analysis/coverage.
+// JoinLayeredSymbols against nodes. Shared by the CLI (cmd/fathom review /
+// tests coverage) and the review_diff MCP tool so "coverage_profile(s)
+// supplied" resolves identically on every surface. Pure: does no I/O
+// itself — callers read and coverage.ParseProfile each profile file first,
+// labeling it by layer (an explicit `--profile <layer>=<path>` /
+// `coverage_profiles[].layer`, or "unit" for an unlabeled bare path — see
+// coverage.LabeledProfile's own doc comment).
+func ResolveCoverage(profiles []coverage.LabeledProfile, nodes []core.SymbolNode) []coverage.SymbolLayerCoverage {
+	return coverage.JoinLayeredSymbols(profiles, nodes)
 }
 
 // ─── shared helpers ───────────────────────────────────────────────────────
