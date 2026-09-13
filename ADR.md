@@ -1471,8 +1471,8 @@ interface method). Nothing carries a planner's discoveries to a worker except a 
 **Decision.**
 1. A bench cell carries its instrument truth: MCP server statuses, a tool-call histogram,
    `surface_calls`; a wired or surface arm whose server is not connected is LOST, and one
-   whose surface was never called is flagged. Sessions run in a clean room (scratch
-   `CLAUDE_CONFIG_DIR`, `--permission-mode default` under an allow-list, per-cell threads).
+   whose surface was never called is flagged. Sessions run in a clean room (Claude Code's `--restricted` mode with the arm's
+   own settings file, `--permission-mode default` under an allow-list, per-cell threads).
    A competitor arm gets a routing stanza of the same shape as fathom's.
 2. A published reading is a plan row with an `oracle: ledger` anchor the verify gate
    resolves; it refuses a missing, LOST or `surface_unused` cell. Numbers in the README are

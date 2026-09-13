@@ -52,9 +52,11 @@ fact by layer, judgment left to the review kit).
    surface was never called, is LOST or flagged `surface_unused` — the
    row carries `tool_calls` and `surface_calls` so a stranger can see the
    tool was used, not just installed.
-2. **A clean room for both arms.** Sessions run under a scratch
-   `CLAUDE_CONFIG_DIR` (no global hooks, no plugins, no slash commands),
-   `--permission-mode default` so an allow-list denies, a per-cell
+2. **A clean room for both arms.** Sessions run under Claude Code's
+   `--restricted` mode with the arm's own rendered settings file as the only
+   settings source (no operator hooks, plugins or slash commands; the login
+   stays intact — a scratch config dir loses it), `--permission-mode default`
+   so an allow-list denies, `--tools` naming the arm's tools, a per-cell
    `FATHOM_THREADS`, and the arm's own hooks only. The home bench does the
    same. The control arm sees nothing of fathom's.
 3. **Fair competitors.** An arm's surface gets the same shape of routing
