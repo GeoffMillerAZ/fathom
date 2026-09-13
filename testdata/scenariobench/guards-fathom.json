@@ -5,7 +5,8 @@
     "full": {
       "wired": true,
       "instructions": "stanza",
-      "surface": "fathom"
+      "surface": "fathom",
+      "compile_layers": true
     },
     "control": {
       "wired": false,
@@ -24,11 +25,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestDefaultStorePathNeverTheCwd"],
+        "pass_to_pass": [
+          "TestDefaultStorePathNeverTheCwd"
+        ],
         "detectors": [
-          { "name": "no-cwd-artifacts", "command": "go test ./cmd/fathom -run TestDefaultStorePathNeverTheCwd", "expect_exit": 0 }
+          {
+            "name": "no-cwd-artifacts",
+            "command": "go test ./cmd/fathom -run TestDefaultStorePathNeverTheCwd",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -52,10 +63,18 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
         "detectors": [
-          { "name": "store-purego", "command": "task store-purego", "expect_exit": 0 }
+          {
+            "name": "store-purego",
+            "command": "task store-purego",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -79,11 +98,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestNoOrgSpecificNames"],
+        "pass_to_pass": [
+          "TestNoOrgSpecificNames"
+        ],
         "detectors": [
-          { "name": "no-org-names", "command": "go test ./cmd/fathom -run TestNoOrgSpecificNames", "expect_exit": 0 }
+          {
+            "name": "no-org-names",
+            "command": "go test ./cmd/fathom -run TestNoOrgSpecificNames",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -107,11 +136,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestDeterminism"],
+        "pass_to_pass": [
+          "TestDeterminism"
+        ],
         "detectors": [
-          { "name": "packagedeps-sorted", "command": "go test ./internal/analysis/packagedeps -run TestDeterminism", "expect_exit": 0 }
+          {
+            "name": "packagedeps-sorted",
+            "command": "go test ./internal/analysis/packagedeps -run TestDeterminism",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -135,11 +174,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestMcpToolsDocMatchesRegistry"],
+        "pass_to_pass": [
+          "TestMcpToolsDocMatchesRegistry"
+        ],
         "detectors": [
-          { "name": "mcp-tool-doc-sync", "command": "go test ./internal/mcp -run TestMcpToolsDocMatchesRegistry", "expect_exit": 0 }
+          {
+            "name": "mcp-tool-doc-sync",
+            "command": "go test ./internal/mcp -run TestMcpToolsDocMatchesRegistry",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -163,11 +212,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestMaintainedLinesParse"],
+        "pass_to_pass": [
+          "TestMaintainedLinesParse"
+        ],
         "detectors": [
-          { "name": "usecase-maintained-line", "command": "go test ./cmd/fathom -run TestMaintainedLinesParse", "expect_exit": 0 }
+          {
+            "name": "usecase-maintained-line",
+            "command": "go test ./cmd/fathom -run TestMaintainedLinesParse",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -191,10 +250,18 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
         "detectors": [
-          { "name": "config-audit-deploy-safety", "command": "task config-audit", "expect_exit": 0 }
+          {
+            "name": "config-audit-deploy-safety",
+            "command": "task config-audit",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {
@@ -218,11 +285,21 @@
         "service": "fathom",
         "language": "go"
       },
-      "sessions": { "count": 1, "max_turns": 30, "mode": "single" },
+      "sessions": {
+        "count": 1,
+        "max_turns": 30,
+        "mode": "single"
+      },
       "oracle": {
-        "pass_to_pass": ["TestBackendForPath_DuckDBLoudlyRefused"],
+        "pass_to_pass": [
+          "TestBackendForPath_DuckDBLoudlyRefused"
+        ],
         "detectors": [
-          { "name": "duckdb-loud-refusal", "command": "go test ./internal/store -run TestBackendForPath_DuckDBLoudlyRefused", "expect_exit": 0 }
+          {
+            "name": "duckdb-loud-refusal",
+            "command": "go test ./internal/store -run TestBackendForPath_DuckDBLoudlyRefused",
+            "expect_exit": 0
+          }
         ]
       },
       "rule": {

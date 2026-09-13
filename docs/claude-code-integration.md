@@ -86,10 +86,12 @@ this to each repo's CLAUDE.md (adapt the service name):
 ```markdown
 ## Fathom fleet index (code intelligence — use it first)
 
-1. **Index before exploration.** Resolve "where/what/who-calls" questions
-   via fathom tools (`find_symbol`, `query_symbols`, `find_callers`,
-   `outline`, `repo_map`, `pack_context`) before any Grep/Read sweep.
-   Read files to edit them, not to discover them.
+1. **Route by question shape.** Where is it, who calls it, what breaks,
+   what governs this file, what did the last session know — the index
+   (`find_symbol`, `query_symbols`, `find_callers`, `outline`, `repo_map`,
+   `pack_context`, `obligations`). A literal string, a config value, a log
+   line — grep, which is cheaper for exactly that (the 2026-09-13 bench,
+   vision 27 §8). Read files to edit them, not to discover them.
    **Never re-discover what the architect already discovered:** worker
    prompts carry a pre-packed context section (exact signatures, file
    paths, verbatim contract types). Workers trust it and verify only what

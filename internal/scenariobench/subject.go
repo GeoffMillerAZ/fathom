@@ -67,6 +67,13 @@ type Worktree struct {
 // asked. root is this repo's root (where `go build ./cmd/fathom` runs
 // from); it is never the subject.
 func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Worktree, error) {
+	// Every path below is handed to subprocesses that run in OTHER
+	// directories (git worktree add runs in the clone, ingest in the
+	// worktree): a relative root silently lands the worktree inside the
+	// clone and the next chdir fails (dry cell, 2026-09-13).
+	if abs, err := filepath.Abs(root); err == nil {
+		root = abs
+	}
 	subjectsDir := filepath.Join(root, "workspace", "scenariobench", "subjects")
 	cloneDir := filepath.Join(subjectsDir, shortHash(task.Subject.RepoURL))
 	if err := ensureClone(ctx, task.Subject.RepoURL, cloneDir); err != nil {
