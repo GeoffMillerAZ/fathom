@@ -65,7 +65,11 @@ const (
 	// and five tools gained a "this result IS the answer" sentence — a
 	// measured, deliberate widening (O31/O32's over-payload findings), not
 	// a new tool (still 17, TestNarrowProfileSchemaBytes' own pin).
-	agentSurfaceSchemaByteCeiling = 34000
+	// Re-pinned 2026-09-13: `references` gained `exact`, `find_callers`
+	// gained `with_signatures`, `find_symbol` gained `implementations`
+	// (SB-45/47/5) — 34,821 bytes measured. Size never decided deferral
+	// (O32: alwaysLoad does), so this band is a budget, not a threshold.
+	agentSurfaceSchemaByteCeiling = 36000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
