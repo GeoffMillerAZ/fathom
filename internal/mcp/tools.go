@@ -113,7 +113,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Rows carry depth (direct = 1) and edge_confidence; edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers; by_depth summarises. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
+		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Rows carry depth (direct = 1) and edge_confidence; edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers; by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth) or add the heuristic edges this default omits (include_heuristic: true), never to re-confirm what a resolved edge already settled. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -283,7 +283,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_symbol — locate a symbol definition.
 	s.registerTool(toolDescriptor{
 		Name:        "find_symbol",
-		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
+		Description: "Locate symbol definitions by name, with tiered matching: exact/key-suffix first, then case-insensitive, then substring; a full miss returns did_you_mean suggestions (edit-distance typo candidates, else concern-ranked) when any exist. matched_via reports which tier answered — treat the result as proof the named symbol exists only when it is exact or case_insensitive. An exact hit on a Go interface additionally carries implementations: [{name, file_path, line, via}] — via is \"typed\" (a real call-graph dispatch edge), \"assertion\" (a var _ Iface = (*T)(nil) in source), or \"method_set\" (structural match), in that order of preference. This result IS the answer once matched_via is exact or case_insensitive — file and line are settled; a follow-up call only adds what find_symbol itself does not carry: the neighbourhood (symbol_context) or call sites (find_callers, references). Reach for it when you know (roughly) a name and need its definition's file and line before reading or editing — the first move of almost every task. Required: service, name.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -335,7 +335,17 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		if len(nodes) > 0 {
-			return map[string]any{"symbols": toNodeDTOs(nodes), "matched_via": "exact"}, nil
+			resp := map[string]any{"symbols": toNodeDTOs(nodes), "matched_via": "exact"}
+			// SB-5: an exact hit on a single Go interface additionally
+			// carries its implementers (H1-T06's question in one call).
+			if len(nodes) == 1 && nodes[0].Kind == core.KindGoInterface {
+				if all, allErr := backend.ListAllSymbols(ctx, p.Service); allErr == nil {
+					if impls := implementationsOf(ctx, backend, p.Service, nodes[0], all); len(impls) > 0 {
+						resp["implementations"] = impls
+					}
+				}
+			}
+			return resp, nil
 		}
 
 		// Exact tier missed — degrade over the service's symbol list. Fallback
