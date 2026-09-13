@@ -135,3 +135,46 @@ func TestRunSessions_FakeHarnessReplays(t *testing.T) {
 		}
 	})
 }
+
+// recordingHarness wraps FakeHarness and remembers every SessionRequest.Prompt
+// it was asked to run, in call order, so a test can assert on the exact
+// prompt text RunSessions builds without a real (or fake-transcript-blind)
+// harness caring what that text is.
+type recordingHarness struct {
+	*FakeHarness
+	prompts []string
+}
+
+func (h *recordingHarness) RunSession(req SessionRequest) (SessionResult, error) {
+	h.prompts = append(h.prompts, req.Prompt)
+	return h.FakeHarness.RunSession(req)
+}
+
+// TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction is SB-XX:
+// a single-session task never asked for a plan, so the M2/M3 (plan
+// coverage, false-done) readings had nothing to read. The FIRST session's
+// prompt must now carry the same PlanFirstInstruction planner-workers'
+// planner gets; later sessions keep the cold-continuation prompt
+// untouched.
+func TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction(t *testing.T) {
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 2, MaxTurns: 10}}
+	h := &recordingHarness{FakeHarness: &FakeHarness{
+		StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
+		Streams: map[string]string{"T1/full": "single-session.jsonl"},
+	}}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	if _, err := RunSessions(context.Background(), h, task, "full", Arm{}, Worktree{Path: t.TempDir()}, opts); err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(h.prompts) != 2 {
+		t.Fatalf("expected 2 recorded prompts, got %d", len(h.prompts))
+	}
+	wantFirst := task.Prompt + PlanFirstInstruction
+	if h.prompts[0] != wantFirst {
+		t.Errorf("session 0 prompt = %q, want %q", h.prompts[0], wantFirst)
+	}
+	if h.prompts[1] != scenarioContinuationPrompt {
+		t.Errorf("session 1 prompt = %q, want the unchanged continuation prompt %q", h.prompts[1], scenarioContinuationPrompt)
+	}
+}

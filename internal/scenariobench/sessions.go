@@ -33,10 +33,15 @@ type RunOptions struct {
 // worktree — the repo, and (for an arm with NotesFile) NOTES.md.
 const scenarioContinuationPrompt = "Continue the task from where the previous session left off. The repository is in whatever state that session left it; check your notes file if you kept one, and the current state of the tree, before doing anything else."
 
-// plannerPlanPrompt is appended to the task prompt for the planning
-// session in "planner-workers" mode, so the planner reliably produces a
-// checklist RunSessions can read back (readPlanRows).
-const plannerPlanPrompt = "\n\nBefore making any changes, write your plan as a markdown checklist (`- [ ] ...` per row) to NOTES.md at the repo root, or to a file under docs/plans/ if the repository already keeps plans there. Do not implement anything yet — later sessions will pick up individual rows."
+// PlanFirstInstruction is appended to a task's prompt whenever the driver
+// wants a session to write its plan before touching anything: the
+// planning session in "planner-workers" mode (so RunSessions can read the
+// checklist back, readPlanRows), and — since single-session tasks used to
+// give the M2/M3 readings (PlanCoverage, FalseDoneRate) nothing to read —
+// the FIRST session of "single" mode too (runSingle). Identical text in
+// every mode and arm: only a wired arm's own stanza may steer the agent
+// toward docs/plans/<slug>.md instead of NOTES.md, never this sentence.
+const PlanFirstInstruction = "\n\nBefore making any changes, write your plan as a markdown checklist (`- [ ] ...` per row) to NOTES.md at the repo root, or to a file under docs/plans/ if the repository already keeps plans there. Do not implement anything yet — later sessions will pick up individual rows."
 
 // workerRowPromptFmt formats one worker's assignment in "planner-workers"
 // mode: the row text the planner wrote, verbatim, plus the original task
@@ -63,8 +68,15 @@ func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm 
 func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
 	for i := 0; i < task.Sessions.Count; i++ {
-		prompt := task.Prompt
-		if i > 0 {
+		var prompt string
+		switch {
+		case i == 0:
+			// A single-session task never asked for a plan before —
+			// nothing for PlanCoverage/FalseDoneRate to read. Same
+			// instruction planner-workers gives its planner, appended
+			// here instead of replacing the task prompt.
+			prompt = task.Prompt + PlanFirstInstruction
+		default:
 			prompt = scenarioContinuationPrompt
 		}
 		req := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
@@ -82,7 +94,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
-	plannerReq := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+plannerPlanPrompt)
+	plannerReq := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
 	plannerRes, err := h.RunSession(plannerReq)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
