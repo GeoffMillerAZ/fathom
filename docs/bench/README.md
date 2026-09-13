@@ -430,3 +430,20 @@ Fixed in code (BP-31), not excused with an unadjudicated bucket.
   search across code, docs and config by design; the oracle scores the one
   slice of it a type checker can rule on. It is the only row still holding
   ADR-032's gate shut.
+
+## Scenario runs
+
+The change bench (vision 27, ADR-033): `cmd/scenariobench` over a corpus of
+scenarios (`testdata/scenariobench/*.json`) — a change to a pinned subject,
+run by an agent across sessions under a turn budget, in arms that differ
+only in data, scored by oracles fathom does not own
+(`internal/scenariobench`, `docs/plans/strengths-bench.md`). Each row below
+is one (run, task, arm); the full per-cell data lives in
+`docs/bench/scenarios-ledger.jsonl`, appended by `scenariobench ledger` and
+never hand-edited.
+
+<!-- BEGIN scenario ledger (task bench-scenario-ledger) -->
+
+(no scenario runs recorded yet)
+
+<!-- END scenario ledger -->
