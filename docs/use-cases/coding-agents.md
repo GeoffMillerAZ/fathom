@@ -84,7 +84,7 @@ pull-tier brief for a harness with no SessionStart hook (Codex).
 | Stop hook | tasks claimed `[x]` *this session* that fail verification surface at session end (`--block` to refuse ending) | advisory → blocking | Claude Code |
 | edit-hook | obligations governing the edited file injected ≤150 tokens, zero-output-on-clean | injected context | Claude Code |
 | edit-hook --pre (guarded edits, phase O) | for scopes/commands named in `.fathom/guard.cue`, the SAME injection served BEFORE the edit/command — silent for everything else, zero daemon calls on a miss | injected context | Claude Code |
-| session-hook | index status + "resolve via fathom before grep" primer | injected context | Claude Code |
+| session-hook | index status + question-shape routing primer (SB-7: where/who-calls/what-breaks/what-governs/what-was-known via fathom, a literal string/config value/log line via grep) | injected context | Claude Code |
 | MCP tools | the 17-tool agent surface | pull (agent choice) | any MCP client |
 | CLAUDE.md / AGENTS.md stanza | standing doctrine | advisory | Claude Code / Codex |
 

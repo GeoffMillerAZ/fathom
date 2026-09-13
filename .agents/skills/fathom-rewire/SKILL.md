@@ -19,8 +19,13 @@ fathom fleet reconcile --repo . && fathom fleet reconcile --repo . --apply
 ```
 
 Dry-run first, read the diff, then apply — reconcile repoints stale
-absolute binary paths to the shim-stable `fathom`, merges missing
-template entries at exactly one scope (project, deferring to user scope),
+absolute binary paths to the shim-stable `fathom`, refreshes a behind-
+template stanza to the current wording (SB-7: the stanza now routes by
+**question shape** — where / who-calls / what-breaks / what-governs /
+what-was-known via the fathom MCP tools, grep for a literal string, a
+config value, or a log line — never a blanket "index before any grep"),
+merges missing template entries at exactly one scope (project, deferring
+to user scope),
 and plans the nine shipped skills in BOTH repo-scoped shapes
 (`.claude/skills` and `.agents/skills`, the Agent Skills standard path)
 through the same engine: `missing` is created, `stale` (marker-owned,

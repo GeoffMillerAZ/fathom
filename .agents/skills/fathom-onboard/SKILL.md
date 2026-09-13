@@ -74,8 +74,12 @@ command:
    out** — nothing guarded, audited, bound or switched by default (§7),
 5. stamps a marker-delimited fathom operating-contract stanza into **both**
    `CLAUDE.md` and `AGENTS.md` (one canonical source — Codex reads
-   `AGENTS.md` automatically, zero drift between the two). Hooks and stanzas
-   go through one plan → apply → receipt (`.fathom/receipts.jsonl`,
+   `AGENTS.md` automatically, zero drift between the two). The stanza
+   routes by **question shape** (SB-7, docs/vision/27-strengths-bench.md
+   §8): where / who-calls / what-breaks / what-governs / what-was-known
+   resolve via the fathom MCP tools; a literal string, a config value, or
+   a log line is grep's job — not a blanket "index before any grep" rule.
+   Hooks and stanzas go through one plan → apply → receipt (`.fathom/receipts.jsonl`,
    gitignored; `fathom fleet undo --last` reverses it, law 15). After the
    first write the begin marker reads `<!-- fathom:begin v3 sha256:… -->`;
    a tracked region a human edited is **BLOCKED** and named (exit 1, file
