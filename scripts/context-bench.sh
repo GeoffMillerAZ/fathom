@@ -119,15 +119,23 @@
 #   scripts/context-bench.sh --only 'H1-T01 H1-T05' --scope targeted
 #   scripts/context-bench.sh --no-reuse-cells      # never borrow a stored cell
 #
-# Clean room (RC-7, vision 28 §2.2): every `claude -p` call in this script
-# runs with CLAUDE_CONFIG_DIR pointed at a scratch dir under
-# workspace/tmp/context-bench-config-<run>/, holding a minimal
-# settings.json (`{}`: no hooks, no plugins, no slash commands) and a
-# `.claude.json` copied from the operator's own with `mcpServers`,
-# `projects`, and any hooks/plugins keys stripped (jq) — auth/onboarding
-# fields are kept (credentials themselves live in the macOS keychain, not
-# in this file). --permission-mode default is passed on every call so an
-# arm's --allowedTools/--disallowedTools restriction actually DENIES a
+# Clean room (RC-7, vision 28 §2.2): a smoke test proved the earlier scratch
+# CLAUDE_CONFIG_DIR approach loses the login ("Not logged in"), so every
+# `claude -p` call in this script instead uses Claude Code 2.1.270's own
+# isolation: `--restricted` (ignores the operator's user/project/local
+# settings files while still confining file tools to the working
+# directory), `--disable-slash-commands`, `--settings <path>` naming a
+# settings.json this script renders per arm under the run dir, and
+# `--tools <list>` naming exactly the arm's own built-in tools (derived
+# from that arm's allow-list variable below, mcp__ entries stripped — an
+# MCP server's tools are already scoped by --mcp-config/--strict-mcp-config,
+# not --tools). Every arm's settings.json is `{}` today (no hooks, no
+# plugins, no slash commands) — the home bench runs the subject hook-free
+# (see prepare_session_root) and, for now, runs the harness side hook-free
+# too; a future arm meant to exercise the subject's own hook stack would
+# render that arm's settings.json with it instead. --permission-mode
+# default is passed on every call so an arm's
+# --allowedTools/--disallowedTools restriction actually DENIES a
 # disallowed tool instead of auto-accepting it. Before this, every session
 # — control included — inherited the operator's ~90 slash commands,
 # plugins, and fathom's own SessionStart primer (F4/O25): the control was
@@ -271,31 +279,6 @@ RESULTS_DIR="$RUN_DIR/results"
 CELLS_DIR="$ARTIFACTS_DIR/cells"
 mkdir -p "$RAW_DIR" "$RESULTS_DIR" "$CELLS_DIR"
 
-# ─── RC-7 clean room: no operator hook/plugin/MCP config reaches a cell ───
-CONFIG_DIR="$ROOT/workspace/tmp/context-bench-config-$TS"
-mkdir -p "$CONFIG_DIR"
-echo '{}' > "$CONFIG_DIR/settings.json"
-if [ -f "$HOME/.claude.json" ] && command -v jq >/dev/null 2>&1; then
-  if ! jq '
-      to_entries
-      | map(select(
-          (.key != "mcpServers") and
-          (.key != "projects") and
-          ((.key | test("hook"; "i")) | not) and
-          ((.key | test("plugin"; "i")) | not)
-        ))
-      | from_entries
-    ' "$HOME/.claude.json" > "$CONFIG_DIR/.claude.json" 2>/dev/null; then
-    echo "context-bench: WARNING — jq could not scrub $HOME/.claude.json; clean room's .claude.json is empty ({})" >&2
-    echo '{}' > "$CONFIG_DIR/.claude.json"
-  fi
-else
-  echo "context-bench: WARNING — no jq or no $HOME/.claude.json found; clean room's .claude.json is empty ({}) — auth/onboarding state will be missing for these sessions" >&2
-  echo '{}' > "$CONFIG_DIR/.claude.json"
-fi
-export CLAUDE_CONFIG_DIR="$CONFIG_DIR"
-echo "context-bench: clean room at $CONFIG_DIR (CLAUDE_CONFIG_DIR exported for every claude -p call below: no operator hooks, plugins, slash commands, or MCP servers)"
-
 # The cell-key invariants (BP-3). Captured once so `borrow`, `score` and
 # `ledger` cannot disagree about what a key means.
 MODEL_ID="${CONTEXT_BENCH_MODEL_ID:-$MODEL}"
@@ -385,6 +368,18 @@ EOF
 EMPTY_MCP_CONFIG="$RUN_DIR/empty-mcp.json"
 echo '{"mcpServers":{}}' > "$EMPTY_MCP_CONFIG"
 
+# RC-7 clean room, `--settings`: one settings.json per arm under the run
+# dir. Every arm is `{}` today (hook-free) — see the header comment; a
+# future arm meant to carry the subject's own hook stack would render its
+# file with that instead of this shared empty one.
+GREP_SETTINGS="$RUN_DIR/settings-grep.json"
+FATHOM_SETTINGS="$RUN_DIR/settings-fathom.json"
+NONE_SETTINGS="$RUN_DIR/settings-none.json"
+FULL_SETTINGS="$RUN_DIR/settings-full.json"
+for f in "$GREP_SETTINGS" "$FATHOM_SETTINGS" "$NONE_SETTINGS" "$FULL_SETTINGS"; do
+  echo '{}' > "$f"
+done
+
 # Tiny helpers (avoid fragile nested-quote python -c one-liners).
 cat > "$RUN_DIR/print_result.py" <<'PY'
 import json, sys
@@ -433,6 +428,33 @@ NONE_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch Notebook
 FULL_ALLOWED="$FATHOM_ALLOWED Read Grep Glob Bash(grep:*) Bash(find:*) Bash(cat:*) Bash(ls:*) Bash(wc:*) Bash(head:*) Bash(tail:*) Bash(go doc:*)"
 FULL_DISALLOWED="Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest mcp__fathom__memory_search"
 
+# tools_from_allowed ALLOWED-STR — an arm's `--tools` value (RC-7),
+# derived from its own *_ALLOWED variable above rather than hardcoded:
+# extract each entry (a bare tool name, or a scoped `Bash(cmd:*)` rule —
+# note some, like "Bash(go doc:*)", have a space inside the parens, hence
+# the regex tokenizer rather than plain word-splitting), drop every mcp__
+# entry (an MCP server's tools are already scoped by
+# --mcp-config/--strict-mcp-config, not --tools), collapse a scoped rule
+# down to its bare tool name (--tools takes a built-in tool, not an
+# --allowedTools-style scope), then dedupe+sort what remains. An arm whose
+# ALLOWED is 100% mcp__ entries (arm "fathom") derives to "" — `claude
+# --tools ""` disables every built-in tool, which is what "exclusive
+# fathom, never Bash/Read/Grep" means; --disallowedTools already denies
+# them too, so this is belt-and-braces, not the only guard.
+tools_from_allowed() {
+  local allowed="$1"
+  printf '%s' "$allowed" \
+    | grep -oE '[A-Za-z_]+(\([^)]*\))?' \
+    | grep -v '^mcp__' \
+    | sed -E 's/\(.*$//' \
+    | sort -u \
+    | paste -sd, -
+}
+FATHOM_TOOLS="$(tools_from_allowed "$FATHOM_ALLOWED")"
+GREP_TOOLS="$(tools_from_allowed "$GREP_ALLOWED")"
+NONE_TOOLS="$(tools_from_allowed "$NONE_ALLOWED")"
+FULL_TOOLS="$(tools_from_allowed "$FULL_ALLOWED")"
+
 # run_with_timeout OUTFILE CMD...  — macOS's base install has no `timeout(1)`;
 # this is the standard background-watchdog substitute. Runs CMD in the
 # subject root, redirects its stdout to OUTFILE (stderr to OUTFILE.stderr),
@@ -478,7 +500,7 @@ CELLS_RUN=0
 CELLS_KEPT=0
 CELLS_BORROWED=0
 run_arm() {
-  local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7" trial="${8:-1}"
+  local task_id="$1" prompt="$2" arm="$3" system_prompt="$4" mcp_config="$5" allowed="$6" disallowed="$7" settings_path="$8" tools="$9" trial="${10:-1}"
   local raw="$RAW_DIR/$task_id-$arm-t$trial.json"
   local stream="$RAW_DIR/$task_id-$arm-t$trial.stream.jsonl"
   local scored="$RESULTS_DIR/$task_id-$arm-t$trial.json"
@@ -522,6 +544,10 @@ run_arm() {
       "${fmt[@]}" \
       --mcp-config "$mcp_config" \
       --strict-mcp-config \
+      --restricted \
+      --disable-slash-commands \
+      --settings "$settings_path" \
+      --tools "$tools" \
       --allowedTools "$allowed" \
       --disallowedTools "$disallowed" \
       --permission-mode default \
@@ -579,19 +605,19 @@ while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt && IFS= read -r -d
   trial=1
   while [ "$trial" -le "$task_trials" ]; do
     if echo "$ARMS" | grep -qw grep; then
-      run_arm "$task_id" "$prompt" grep "$GREP_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$GREP_ALLOWED" "$GREP_DISALLOWED" "$trial" || true
+      run_arm "$task_id" "$prompt" grep "$GREP_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$GREP_ALLOWED" "$GREP_DISALLOWED" "$GREP_SETTINGS" "$GREP_TOOLS" "$trial" || true
     fi
     if echo "$ARMS" | grep -qw fathom; then
       if [ "$FATHOM_REACHABLE" -eq 1 ]; then
-        run_arm "$task_id" "$prompt" fathom "$FATHOM_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FATHOM_ALLOWED" "$FATHOM_DISALLOWED" "$trial" || true
+        run_arm "$task_id" "$prompt" fathom "$FATHOM_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FATHOM_ALLOWED" "$FATHOM_DISALLOWED" "$FATHOM_SETTINGS" "$FATHOM_TOOLS" "$trial" || true
       fi
     fi
     if echo "$ARMS" | grep -qw none; then
-      run_arm "$task_id" "$prompt" none "$NONE_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$NONE_ALLOWED" "$NONE_DISALLOWED" "$trial" || true
+      run_arm "$task_id" "$prompt" none "$NONE_SYSTEM_PROMPT" "$EMPTY_MCP_CONFIG" "$NONE_ALLOWED" "$NONE_DISALLOWED" "$NONE_SETTINGS" "$NONE_TOOLS" "$trial" || true
     fi
     if echo "$ARMS" | grep -qw full; then
       if [ "$FATHOM_REACHABLE" -eq 1 ]; then
-        run_arm "$task_id" "$prompt" full "$FULL_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FULL_ALLOWED" "$FULL_DISALLOWED" "$trial" || true
+        run_arm "$task_id" "$prompt" full "$FULL_SYSTEM_PROMPT" "$FATHOM_MCP_CONFIG" "$FULL_ALLOWED" "$FULL_DISALLOWED" "$FULL_SETTINGS" "$FULL_TOOLS" "$trial" || true
       fi
     fi
     trial=$((trial + 1))

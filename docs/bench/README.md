@@ -300,21 +300,24 @@ Against another repo: `scripts/context-bench.sh --subject-root <dir>
 on a free loopback port for the run, and stops it at exit. `--fathom-url`
 points the fathom arm at a daemon you already run.
 
-**Clean room (RC-7, vision 28 §2.2).** Before running any session, the
-script builds a scratch config dir under
-`workspace/tmp/context-bench-config-<run>/`: a `settings.json` of `{}` (no
-hooks, no plugins, no slash commands) and a `.claude.json` copied from the
-operator's own with `mcpServers`, `projects`, and any hooks/plugins keys
-removed (`jq`) — auth/onboarding fields are kept, since credentials
-themselves live in the macOS keychain, not in that file. `CLAUDE_CONFIG_DIR`
-is exported to it for every `claude -p` call, and every call also passes
-`--permission-mode default` so an arm's `--allowedTools`/`--disallowedTools`
-restriction actually denies a disallowed tool instead of decorating it. This
-closes F3/F4 (§1): before it, every session — control included — inherited
-the operator's own ~90 slash commands, plugins, and fathom's own
-SessionStart primer, so the control arm was not a control. It runs alongside
-`prepare_session_root`'s existing hook-free export of the *subject* tree
-(`.claude/settings.json` stripped from the checkout being asked about) —
+**Clean room (RC-7, vision 28 §2.2).** A smoke test proved the earlier
+scratch `CLAUDE_CONFIG_DIR` approach loses the login ("Not logged in"), so
+every session instead runs under Claude Code 2.1.270's own isolation:
+`--restricted` (ignores the operator's user/project/local settings files,
+confines file tools to the working directory) plus `--disable-slash-commands`,
+`--settings <path>` naming a settings.json the script renders per arm under
+the run dir, and `--tools <list>` naming exactly that arm's own built-in
+tools (derived from its allow-list, mcp__ entries stripped). Every arm's
+settings.json is `{}` today — the home bench runs the subject hook-free
+(unchanged) and, for now, the harness side hook-free too; every call also
+passes `--permission-mode default` so an arm's
+`--allowedTools`/`--disallowedTools` restriction actually denies a
+disallowed tool instead of decorating it. This closes F3/F4 (§1): before it,
+every session — control included — inherited the operator's own ~90 slash
+commands, plugins, and fathom's own SessionStart primer, so the control arm
+was not a control. It runs alongside `prepare_session_root`'s existing
+hook-free export of the *subject* tree (`.claude/settings.json` stripped
+from the checkout being asked about) —
 together, no operator configuration reaches either side of a cell.
 
 ## Regression
