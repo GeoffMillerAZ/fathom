@@ -20,9 +20,16 @@
       ],
       "mcp": {
         "graphify": {
-          "command": "graphify",
+          "command": "uv",
           "args": [
-            "--mcp"
+            "run",
+            "--with",
+            "graphifyy",
+            "--with",
+            "mcp",
+            "-m",
+            "graphify.serve",
+            "graphify-out/graph.json"
           ]
         }
       },
@@ -31,10 +38,11 @@
         "Grep",
         "Bash"
       ],
-      "instructions": "plain",
+      "instructions": "text",
       "surface": "graphify@v0.9.61",
       "prediction": "Its query_graph/get_neighbors/shortest_path tools answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (a direct calls-relation edge, its home turf); a predicted loss on the interface-implementers lookup (no type-checker, so implicit Go interface satisfaction is outside what tree-sitter extraction can encode); a predicted loss on the freshness task (its graph.json is a precomputed artifact built during this arm's own setup, before the freshness edit lands, and this arm's setup runs no --update afterward).",
-      "notes": "setup is the headless CLI build (graphify update <path> --no-cluster: tree-sitter only, no LLM, no plugin install) — `graphify install` writes a Claude Code skill into the user's global config and `/graphify .` is an in-session slash command, neither of which a bench may run (docs/bench/competitors.md)"
+      "notes": "setup is the headless CLI build (graphify update <path> --no-cluster: tree-sitter only, no LLM, no plugin install) — `graphify install` writes a Claude Code skill into the user's global config and `/graphify .` is an in-session slash command, neither of which a bench may run (docs/bench/competitors.md)",
+      "instructions_text": "## graphify code navigation\n\nThis repository's code structure is available via graphify's MCP\ntools, backed by a precomputed graph.json. Route by question shape: a\nnode's own edges resolve via `get_neighbors`; a path between two\nsymbols resolves via `shortest_path`; a free-form structural question\nresolves via `query_graph`; a specific node's own record resolves via\n`get_node`. graphify's graph is a precomputed artifact with no view\nonto documented conventions, decision records, or live freshness —\nthose are not its job. A literal string, a config value, a log line,\nor a repository convention is grep's job, not graphify's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: get_neighbors -> get_node\n- feature/change: query_graph -> get_neighbors\n- refactor: shortest_path -> get_neighbors"
     },
     "serena": {
       "mcp": {
@@ -54,9 +62,10 @@
         "Grep",
         "Bash"
       ],
-      "instructions": "plain",
+      "instructions": "text",
       "surface": "serena@v1.7.0",
-      "prediction": "find_symbol/find_referencing_symbols/find_implementations answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (find_referencing_symbols chained twice) and the interface-implementers lookup (find_implementations is backed by gopls's real type-checker — single-language references and implementations are its home turf, docs/vision/27-strengths-bench.md §6); a predicted tie with fathom on the freshness task, since its gopls backend re-analyzes the file on disk on every call — no precomputed artifact to go stale."
+      "prediction": "find_symbol/find_referencing_symbols/find_implementations answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (find_referencing_symbols chained twice) and the interface-implementers lookup (find_implementations is backed by gopls's real type-checker — single-language references and implementations are its home turf, docs/vision/27-strengths-bench.md §6); a predicted tie with fathom on the freshness task, since its gopls backend re-analyzes the file on disk on every call — no precomputed artifact to go stale.",
+      "instructions_text": "## serena code navigation\n\nThis repository's code structure is available via Serena's MCP tools\n(gopls-backed for Go). Route by question shape: where a symbol is\ndefined resolves via `find_symbol`; who calls it resolves via\n`find_referencing_symbols`; which types implement an interface\nresolves via `find_implementations`; a file's own symbol outline\nresolves via `get_symbols_overview`. Serena has no view onto\ndocumented conventions, decision records, or repository-wide\nfreshness — those are not its job. A literal string, a config value,\na log line, or a repository convention is grep's job, not Serena's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: find_symbol -> find_referencing_symbols\n- feature/change: get_symbols_overview -> find_symbol\n- refactor: find_referencing_symbols -> find_implementations"
     },
     "gopls": {
       "mcp": {
@@ -72,9 +81,10 @@
         "Grep",
         "Bash"
       ],
-      "instructions": "plain",
+      "instructions": "text",
       "surface": "gopls@v0.20+",
-      "prediction": "go_symbol_references/go_references answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (go_symbol_references chained twice) — single-language references is its home turf; a predicted tie with fathom on the freshness task, since it re-analyzes the file on disk on every call — no precomputed artifact to go stale. No find_implementations-equivalent is in its tool list here, so the interface-implementers lookup is predicted weaker than serena's, closer to a textual match."
+      "prediction": "go_symbol_references/go_references answer code structure, not documented governance rules, so it is predicted to tie the grep arm (not fathom) on every obligations/verify/staleness lookup; a plausible tie with fathom on the 2-hop caller lookup (go_symbol_references chained twice) — single-language references is its home turf; a predicted tie with fathom on the freshness task, since it re-analyzes the file on disk on every call — no precomputed artifact to go stale. No find_implementations-equivalent is in its tool list here, so the interface-implementers lookup is predicted weaker than serena's, closer to a textual match.",
+      "instructions_text": "## gopls code navigation\n\nThis repository's Go structure is available via gopls's MCP tools.\nRoute by question shape: where a symbol is defined and who calls it\nresolve via `go_symbol_references`; a free-form structural search\nresolves via `go_search`; a file's own symbols and imports resolve via\n`go_file_context`; a package's exported API resolves via\n`go_package_api`. gopls has no view onto documented conventions,\ndecision records, or repository-wide freshness — those are not its\njob. A literal string, a config value, a log line, or a repository\nconvention is grep's job, not gopls's.\nRead files to *edit* them, not to discover them.\n\nOpening moves by task shape (first 1-2 calls, then edit):\n- debug/trace: go_symbol_references -> go_file_context\n- feature/change: go_package_api -> go_symbol_references\n- refactor: go_search -> go_symbol_references -> go_file_context"
     },
     "grep": {
       "allowed_tools": [
@@ -100,7 +110,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -133,7 +143,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -166,7 +176,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -210,7 +220,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -240,7 +250,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -270,7 +280,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -300,7 +310,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -332,7 +342,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -361,7 +371,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -390,7 +400,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -420,7 +430,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -450,7 +460,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -483,7 +493,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {
@@ -519,7 +529,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 30,
+        "max_turns": 20,
         "mode": "single"
       },
       "oracle": {

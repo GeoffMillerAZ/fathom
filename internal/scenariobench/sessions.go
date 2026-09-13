@@ -25,6 +25,15 @@ type RunOptions struct {
 	Model  string
 	RawDir string
 	Env    map[string]string
+	// RunDir is the per-run scratch base directory the clean room's
+	// CLAUDE_CONFIG_DIR lives under (RC-6) — e.g. workspace/tmp/<run-id>.
+	// Empty skips the clean room entirely, so a caller/test that never
+	// sets it keeps the pre-RC-6 environment unchanged.
+	RunDir string
+	// HomeDir is the operator's home directory, whose ~/.claude.json the
+	// clean room copies forward with mcpServers/projects/hooks/plugins
+	// stripped (cleanRoomEnv). Ignored when RunDir is empty.
+	HomeDir string
 }
 
 // scenarioContinuationPrompt is the fixed, documented prompt every session
@@ -79,7 +88,10 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		default:
 			prompt = scenarioContinuationPrompt
 		}
-		req := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
+		if err != nil {
+			return results, err
+		}
 		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
@@ -94,7 +106,10 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
-	plannerReq := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
+	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
+	if err != nil {
+		return results, err
+	}
 	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
@@ -119,7 +134,10 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 			rowID = fmt.Sprintf("worker-%d", i+1)
 		}
 		prompt := fmt.Sprintf(workerRowPromptFmt, task.Prompt, row.text)
-		req := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
+		if err != nil {
+			return results, err
+		}
 		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
@@ -132,8 +150,12 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	return results, nil
 }
 
-func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) SessionRequest {
+func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) (SessionRequest, error) {
 	rawDir := filepath.Join(opts.RawDir, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+	env, err := sessionEnv(wt, opts)
+	if err != nil {
+		return SessionRequest{}, fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, index, err)
+	}
 	return SessionRequest{
 		Worktree:        wt.Path,
 		Prompt:          prompt,
@@ -145,11 +167,35 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 		Index:           index,
 		Role:            role,
 		RowID:           rowID,
-		Env:             opts.Env,
+		Env:             env,
 		MCPConfigPath:   wt.Arm.MCPConfigPath,
 		AllowedTools:    wt.Arm.AllowedTools,
 		DisallowedTools: wt.Arm.DisallowedTools,
+	}, nil
+}
+
+// sessionEnv is opts.Env with the clean room's own overrides
+// (cleanRoomEnv) merged underneath it, when opts.RunDir asks for one —
+// empty RunDir (the default for every existing caller/test) skips the
+// clean room entirely and returns opts.Env unchanged. opts.Env, when set,
+// wins over the clean room's own CLAUDE_CONFIG_DIR/FATHOM_THREADS on a key
+// collision, since it is the caller's explicit, more specific request.
+func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
+	if opts.RunDir == "" {
+		return opts.Env, nil
 	}
+	cr, err := cleanRoomEnv(opts.RunDir, wt.CellDir, opts.HomeDir)
+	if err != nil {
+		return nil, err
+	}
+	merged := make(map[string]string, len(cr)+len(opts.Env))
+	for k, v := range cr {
+		merged[k] = v
+	}
+	for k, v := range opts.Env {
+		merged[k] = v
+	}
+	return merged, nil
 }
 
 func orOne(trial int) int {

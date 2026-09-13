@@ -3932,7 +3932,9 @@
         "control": "loses relative to full on this task",
         "full": "wins — vision 27 M2/M3: a cross-package, signature, or governance-bound change is where index-grounded plans and the verify gate diverge from a plain checklist"
       },
-      "derivation": "multi-swe-bench cli__cli-10009 @ 179f0c479e955581b947b40d1e1cc3af3b2308c0 (CC0-1.0). Selected under ADR-031's rule: gold patch touches 3 non-test Go file(s). Category \"signature_change\" by exported signature changed (go/parser before/after)."
+      "derivation": "multi-swe-bench cli__cli-10009 @ 179f0c479e955581b947b40d1e1cc3af3b2308c0 (CC0-1.0). Selected under ADR-031's rule: gold patch touches 3 non-test Go file(s). Category \"signature_change\" by exported signature changed (go/parser before/after).",
+      "disposition": "dropped",
+      "reason": "oracle honesty (vision 28 F10): fail_to_pass names internal/safepaths tests (TestJoin, TestParseAbsolutePath, TestAbsoluteEmptyPathStringPanic, TestPathTraversalErrorMessage) of a package that does not exist at base_commit — the gold patch's own test_patch INTRODUCES internal/safepaths/absolute_test.go. No agent, however correct, can pass an oracle asserting a package it has not yet been told to create; the driver skips this task."
     },
     {
       "id": "SB-cli__cli-10016",

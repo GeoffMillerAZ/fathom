@@ -43,8 +43,16 @@ type Arm struct {
 	DisallowedTools []string `json:"disallowed_tools,omitempty"`
 	// Instructions selects the instruction-file variant written into the
 	// worktree: "stanza" (fathom's), "plain" (the subject's own file
-	// untouched), "none" (the file removed for the run).
+	// untouched), "none" (the file removed for the run), "text" (writes
+	// InstructionsText verbatim — a competitor arm's own routing stanza,
+	// RC-8).
 	Instructions string `json:"instructions"`
+	// InstructionsText is the CLAUDE.md body RenderArm writes for
+	// Instructions == "text": a competitor arm's own routing stanza, the
+	// same shape as fathom's (which verb answers which question shape),
+	// so a tool that is present and un-named is never measured as unused
+	// for want of a name (vision 28 §2 F2).
+	InstructionsText string `json:"instructions_text,omitempty"`
 	// NotesFile adds the same "keep notes in NOTES.md" instruction to every
 	// session so continuity is compared against a real alternative.
 	NotesFile bool `json:"notes_file,omitempty"`
@@ -161,6 +169,14 @@ type Task struct {
 	Derivation  string            `json:"derivation"`
 	Requires    []string          `json:"requires,omitempty"`
 	MergedAt    string            `json:"merged_at,omitempty"`
+	// Disposition marks a task the driver must not run: "dropped" — an
+	// oracle that cannot be won from the task text (RC-15, vision 28 §2
+	// F10: SB-cli__cli-10009's fail_to_pass names tests of a package
+	// absent at base). Empty runs the task normally.
+	Disposition string `json:"disposition,omitempty"`
+	// Reason names why Disposition was set — required whenever Disposition
+	// is non-empty, so a dropped task is never silent about why.
+	Reason string `json:"reason,omitempty"`
 }
 
 // Criterion is the pre-registered bar for a corpus.
@@ -351,6 +367,30 @@ type Readings struct {
 	Overlap      *OverlapReading      `json:"overlap,omitempty"`
 	Drift        *DriftReading        `json:"drift,omitempty"`
 	RuleServed   *bool                `json:"rule_served,omitempty"` // guards: obligation carried the rule before the first claim
+	// CompileCost is a wired, CompileLayers cell's own compile spend
+	// (readingsCompileCost, from Worktree.CompileCost) — nil for an
+	// unwired or non-CompileLayers arm: "compiled nothing" is a fact,
+	// never a zero (RC-10, vision 28 §2 F6).
+	CompileCost *CompileCostReading `json:"compile_cost,omitempty"`
+	// CompileCostUSD is CompileCost.CostUSD, carried as its own field (and
+	// summed across a ledger row's cells) so a reader sees the compile
+	// spend's own share — it is ALSO folded into TotalCostUSD (ApplyCompileCost),
+	// since a wired cell's compile step is real spend the row's total must
+	// include, not a number that only shows up in a side column.
+	CompileCostUSD float64 `json:"compile_cost_usd,omitempty"`
+}
+
+// CompileCostReading is the wave-0 receipt (RC-10) of what a wired,
+// CompileLayers cell's obligations-layer compile actually cost — the same
+// shape as subject.go's own CompileCost (PrepareSubject's runtime record),
+// named distinctly because that type already exists for a different
+// purpose (Worktree.CompileCost) and this one is the JSON-persisted
+// reading on CellResult/ScenarioLedgerRow.
+type CompileCostReading struct {
+	TokensIn  int64   `json:"tokens_in"`
+	TokensOut int64   `json:"tokens_out"`
+	CostUSD   float64 `json:"cost_usd"`
+	Cached    bool    `json:"cached,omitempty"`
 }
 
 // CellResult is one (task, arm, trial), the unit of the cell store.

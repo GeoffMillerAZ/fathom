@@ -69,9 +69,11 @@ const notesInstructionText = "Keep a running log of your plan and progress in NO
 //   - sorted copies of the allowed/disallowed tool lists;
 //   - the instruction-file variant selected by arm.Instructions: "plain"
 //     leaves the subject's own CLAUDE.md untouched, "none" removes it,
-//     and "stanza" requires arm.Wired (only a wired arm's `fathom init`
+//     "stanza" requires arm.Wired (only a wired arm's `fathom init`
 //     run puts a real stanza there — RenderArm just asserts the
-//     precondition and reports the path);
+//     precondition and reports the path), and "text" writes
+//     arm.InstructionsText verbatim (a competitor arm's own routing
+//     stanza, RC-8);
 //   - the notes-file instruction text, when arm.NotesFile is set.
 func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	var out ArmFiles
@@ -137,6 +139,18 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	case "stanza":
 		if !arm.Wired {
 			return ArmFiles{}, fmt.Errorf("rendering arm: instructions %q requires a wired arm (only `fathom init` writes a real stanza)", arm.Instructions)
+		}
+		out.InstructionsPath = claudeMD
+	case "text":
+		// A competitor arm's own routing stanza (RC-8): arm.InstructionsText
+		// verbatim, so its tool is never measured as unused for want of a
+		// name (vision 28 §2 F2) — the same mechanism "stanza" gives a
+		// wired arm, without requiring `fathom init`.
+		if arm.InstructionsText == "" {
+			return ArmFiles{}, fmt.Errorf("rendering arm: instructions %q requires arm.InstructionsText", arm.Instructions)
+		}
+		if err := os.WriteFile(claudeMD, []byte(arm.InstructionsText), 0o644); err != nil {
+			return ArmFiles{}, fmt.Errorf("rendering arm: writing %s: %w", claudeMD, err)
 		}
 		out.InstructionsPath = claudeMD
 	default:

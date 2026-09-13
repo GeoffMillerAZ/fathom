@@ -287,6 +287,77 @@ stderr for a cell in that state, and `scenariobench ledger`'s rendered
 table shows a "surface calls" column (`N (unused)` when flagged) so the
 gap is visible without opening the raw cells.
 
+## The clean room
+
+Every session (`RunSessions`/`newSessionRequest`, RC-6, vision 28 §2 F4)
+runs with `CLAUDE_CONFIG_DIR` pointed at a scratch config dir under
+`workspace/tmp/scenariobench-cleanroom-<run-id>/claude-config`, holding a
+`settings.json` copied from the operator's own `~/.claude/settings.json`
+with `hooks`/`enabledPlugins` stripped, and a `.claude.json` copied from
+`~/.claude.json` (kept nearly verbatim — `mcpServers`/`projects` are
+harmless to carry forward, since every session already passes
+`--strict-mcp-config`, which ignores the config file's own `mcpServers`
+regardless). A fresh `CLAUDE_CONFIG_DIR` has no `commands/`, `plugins/` or
+`agents/` subdirectory to begin with, so the second reading's own defect —
+"every session inherited the operator's config: ~90 slash commands,
+plugins, and fathom's own SessionStart primer on the control arm" — cannot
+recur. `FATHOM_THREADS` is set to a per-cell `threads.jsonl` under the
+cell's own `CellDir`, so two tasks sharing a worktree basename never share
+a thread scope either (F5). `buildClaudeArgs` adds `--permission-mode
+default` whenever the session's `AllowedTools` is non-empty, so an
+arm testing a restriction gets a restriction that actually denies, instead
+of Claude Code's `auto` default approving outside the allow-list anyway
+(F3: 35 writes from `allowed_tools: [Read, Grep, Bash]` arms in the second
+reading).
+
+**Smoke test finding (RC-6, 2026-09-13):** `claude -p "reply with the
+single word ok" --max-turns 1 --model claude-haiku-4-5-20251001
+--output-format json` run inside a hand-built clean room returned `"Not
+logged in · Please run /login"` (`is_error: true`, `total_cost_usd: 0` —
+no spend occurred) on every variant tried: stripping
+`mcpServers`/`projects`/`hooks`/`plugins` from `.claude.json` with a blank
+`settings.json`; copying the full `~/.claude.json` and
+`~/.claude/settings.json` with only `hooks`/`enabledPlugins` removed (the
+shape this package now implements). The cause is not file content —
+whatever backs Claude Code's macOS-keychain login lookup did not resolve
+under a scratch `CLAUDE_CONFIG_DIR` in this environment/CLI version,
+contrary to this row's working assumption ("macOS keeps credentials in the
+keychain" — true, but evidently keyed in a way a copied `.claude.json`
+does not satisfy). **Operational precondition, not a code defect:** a
+fresh `CLAUDE_CONFIG_DIR` this package creates needs one `claude /login`
+run inside it before a paid cell can use it; a bench operator should
+authenticate the clean-room config dir once (or point `-root` at a
+long-lived scratch root whose `claude-config` has already been logged
+into) before spending real sessions through it.
+
+## Dropped tasks
+
+A task can carry `"disposition": "dropped"` with a `"reason"` (RC-15,
+vision 28 §2 F10): an oracle that cannot be won from the task text at all.
+`SB-cli__cli-10009` (`testdata/scenariobench/public-go.json`) is the first:
+its `fail_to_pass` names `internal/safepaths` tests, but that package does
+not exist at `base_commit` — the gold patch's own `test_patch` is what
+*introduces* `internal/safepaths/absolute_test.go`. No agent can satisfy an
+oracle asserting a package it was never told to create. `planCells`
+(`cmd/scenariobench/main.go`, shared by `plan`/`run`/`ledger`) skips a
+dropped task entirely — it never becomes a cell, so it is never run,
+never LOST, never scored, and never appears in the ledger. `scenariobench
+score` operates on one already-stored `CellResult` with no corpus in hand
+at all, so a dropped task simply never has a cell for it to rescore.
+
+## Running arms concurrently
+
+`scenariobench run -parallel-arms` (RC-16, default off) runs one task's
+arms concurrently instead of one at a time: `PrepareSubject` keys a
+worktree on `(subject, base_commit, arm)` and a wired arm's own scratch
+daemon binds an independently allocated port, so a task's treatment and
+control cells already share no worktree, no daemon, and no port —
+`scenariobench.RunArmsConcurrently` (`internal/scenariobench/concurrent.go`)
+is safe by construction, not by locking. Outcomes are always processed in
+the cells' original `(task, arm, trial)` order, never completion order, so
+the printed log and the stored/borrowed/lost counts are identical whether
+or not `-parallel-arms` is set — only wall-clock time changes.
+
 ## How to publish a row
 
 After a paid run, its per-cell results append one row to

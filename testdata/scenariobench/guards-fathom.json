@@ -27,7 +27,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 80,
         "mode": "single"
       },
       "oracle": {
@@ -196,7 +196,7 @@
       },
       "sessions": {
         "count": 1,
-        "max_turns": 50,
+        "max_turns": 80,
         "mode": "single"
       },
       "oracle": {

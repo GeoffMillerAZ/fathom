@@ -41,10 +41,31 @@ func TestBuildClaudeArgs_OmitsEmptyOptionalFlags(t *testing.T) {
 	req := SessionRequest{Prompt: "p"}
 	args := buildClaudeArgs(req, "/tmp/mcp.json")
 	joined := strings.Join(args, " ")
-	for _, absent := range []string{"--append-system-prompt", "--allowedTools", "--disallowedTools", "--max-turns", "--model"} {
+	for _, absent := range []string{"--append-system-prompt", "--allowedTools", "--disallowedTools", "--max-turns", "--model", "--permission-mode"} {
 		if strings.Contains(joined, absent) {
 			t.Errorf("expected %q to be omitted when unset, got %q", absent, joined)
 		}
+	}
+}
+
+// TestBuildClaudeArgs_AllowListGetsPermissionModeDefault is RC-6's own
+// proof: an arm with an allow-list is testing a restriction, and Claude
+// Code's "auto" default approves outside it too (vision 28 §2 F3) —
+// --permission-mode default is what makes the restriction actually deny.
+func TestBuildClaudeArgs_AllowListGetsPermissionModeDefault(t *testing.T) {
+	req := SessionRequest{Prompt: "p", AllowedTools: []string{"Read", "Grep", "Bash"}}
+	args := buildClaudeArgs(req, "/tmp/mcp.json")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "--permission-mode default") {
+		t.Errorf("expected --permission-mode default with a non-empty allow-list, got %q", joined)
+	}
+}
+
+func TestBuildClaudeArgs_NoAllowListOmitsPermissionMode(t *testing.T) {
+	req := SessionRequest{Prompt: "p"}
+	args := buildClaudeArgs(req, "/tmp/mcp.json")
+	if strings.Contains(strings.Join(args, " "), "--permission-mode") {
+		t.Errorf("expected no --permission-mode with an empty allow-list, got %v", args)
 	}
 }
 

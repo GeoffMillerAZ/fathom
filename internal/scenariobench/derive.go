@@ -352,8 +352,9 @@ func deriveTask(in publicloc.Instance, ex extraFields, opts DeriveOptions, cutof
 		derivation += " " + strings.Join(cloneNotes, "; ") + "."
 	}
 
-	return Task{
-		ID:          "SB-" + in.SafeID(),
+	taskID := "SB-" + in.SafeID()
+	task := Task{
+		ID:          taskID,
 		Category:    category,
 		Prompt:      taskPrompt(in),
 		Subject:     Subject{RepoURL: in.RepoURL(), BaseCommit: in.BaseCommit, Service: in.Service(), Language: "go"},
@@ -364,7 +365,23 @@ func deriveTask(in publicloc.Instance, ex extraFields, opts DeriveOptions, cutof
 		Derivation:  derivation,
 		Requires:    requires,
 		MergedAt:    mergedAt,
-	}, nil
+	}
+	if reason, ok := droppedTaskReasons[taskID]; ok {
+		task.Disposition = "dropped"
+		task.Reason = reason
+	}
+	return task, nil
+}
+
+// droppedTaskReasons names every derived task the driver must never run
+// (RC-15, vision 28 §2 F10): an oracle that cannot be won from the task
+// text at all, discovered by hand after the fact — never something
+// ClassifyChange or the source snapshot can detect on its own, so it is
+// applied here as a keyed override rather than a derivation rule, and
+// still reproduces the committed corpus byte-for-byte
+// (TestPublicScenarioCorpusIsDerived).
+var droppedTaskReasons = map[string]string{
+	"SB-cli__cli-10009": "oracle honesty (vision 28 F10): fail_to_pass names internal/safepaths tests (TestJoin, TestParseAbsolutePath, TestAbsoluteEmptyPathStringPanic, TestPathTraversalErrorMessage) of a package that does not exist at base_commit — the gold patch's own test_patch INTRODUCES internal/safepaths/absolute_test.go. No agent, however correct, can pass an oracle asserting a package it has not yet been told to create; the driver skips this task.",
 }
 
 func formatSkipped(skipped []string) string {

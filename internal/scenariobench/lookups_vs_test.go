@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -45,10 +46,21 @@ func TestLookupsVSCorpus_ParsesAgainstContract(t *testing.T) {
 	if !full.Wired || full.Instructions != "stanza" || full.Surface != "fathom" {
 		t.Errorf("full arm = %+v, want wired=true instructions=stanza surface=fathom", full)
 	}
-	for _, name := range []string{"graphify", "serena", "gopls", "grep"} {
-		if c.Arms[name].Instructions != "plain" {
-			t.Errorf("arm %q instructions = %q, want plain", name, c.Arms[name].Instructions)
+	// RC-8: grep has no MCP tool to route to and stays "plain"; the three
+	// MCP-backed competitors each carry their own routing stanza.
+	if c.Arms["grep"].Instructions != "plain" {
+		t.Errorf("grep arm instructions = %q, want plain", c.Arms["grep"].Instructions)
+	}
+	for _, name := range []string{"graphify", "serena", "gopls"} {
+		arm := c.Arms[name]
+		if arm.Instructions != "text" {
+			t.Errorf("arm %q instructions = %q, want text", name, arm.Instructions)
 		}
+		if arm.InstructionsText == "" {
+			t.Errorf("arm %q InstructionsText is empty, want a routing stanza", name)
+		}
+	}
+	for _, name := range []string{"graphify", "serena", "gopls", "grep"} {
 		if c.Arms[name].Wired {
 			t.Errorf("arm %q must not be wired", name)
 		}
@@ -76,6 +88,20 @@ func TestLookupsVSCorpus_ParsesAgainstContract(t *testing.T) {
 	}
 	if len(c.Arms["grep"].MCP) != 0 {
 		t.Error("grep arm must carry no mcp block")
+	}
+
+	// RC-9: graphify's server command must be the one graphify.serve
+	// actually starts under uv — `graphify --mcp` is not a real command
+	// (vision 28 F2: failed 12/12 sessions in the second reading).
+	graphifyMCP, _ := c.Arms["graphify"].MCP["graphify"].(map[string]any)
+	args, _ := graphifyMCP["args"].([]any)
+	var argsJoined string
+	for _, a := range args {
+		s, _ := a.(string)
+		argsJoined += s + " "
+	}
+	if graphifyMCP["command"] != "uv" || !strings.Contains(argsJoined, "graphify.serve") {
+		t.Errorf("graphify mcp block = %+v, want uv run ... -m graphify.serve <graph.json>", c.Arms["graphify"].MCP["graphify"])
 	}
 
 	wantIDs := []string{

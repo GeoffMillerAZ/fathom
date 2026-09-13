@@ -139,6 +139,12 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 	if len(req.AllowedTools) > 0 {
 		allowed := sortedCopy(req.AllowedTools)
 		args = append(args, "--allowedTools", strings.Join(allowed, " "))
+		// The clean room (RC-6, vision 28 §2 F3): an allow-list means the
+		// arm is testing a restriction, and "auto" (Claude Code's default
+		// permission mode) approves outside it too — 35 writes from
+		// allowedTools:[Read,Grep,Bash] arms in the second reading. Default
+		// mode makes a restriction deny instead of decorating.
+		args = append(args, "--permission-mode", "default")
 	}
 	if len(req.DisallowedTools) > 0 {
 		disallowed := sortedCopy(req.DisallowedTools)

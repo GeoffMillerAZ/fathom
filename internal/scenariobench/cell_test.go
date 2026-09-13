@@ -196,6 +196,49 @@ func TestAggregateReadings_SumsToolCalls(t *testing.T) {
 	}
 }
 
+func TestReadingsCompileCost_NilWhenWorktreeNeverCompiled(t *testing.T) {
+	if got := readingsCompileCost(Worktree{}); got != nil {
+		t.Errorf("readingsCompileCost(no CompileCost) = %+v, want nil", got)
+	}
+}
+
+func TestReadingsCompileCost_CopiesWorktreeCompileCost(t *testing.T) {
+	wt := Worktree{CompileCost: &CompileCost{TokensIn: 100, TokensOut: 50, CostUSD: 0.02, Cached: true}}
+	got := readingsCompileCost(wt)
+	if got == nil {
+		t.Fatal("expected a non-nil CompileCostReading")
+	}
+	if got.TokensIn != 100 || got.TokensOut != 50 || got.CostUSD != 0.02 || !got.Cached {
+		t.Errorf("readingsCompileCost = %+v, want {100 50 0.02 true}", got)
+	}
+}
+
+func TestApplyCompileCost_RollsUSDIntoTotalCostUSD(t *testing.T) {
+	wt := Worktree{CompileCost: &CompileCost{CostUSD: 0.5}}
+	r := Readings{TotalCostUSD: 1.0}
+	ApplyCompileCost(&r, wt)
+	if r.CompileCost == nil || r.CompileCost.CostUSD != 0.5 {
+		t.Errorf("expected r.CompileCost.CostUSD = 0.5, got %+v", r.CompileCost)
+	}
+	if r.CompileCostUSD != 0.5 {
+		t.Errorf("r.CompileCostUSD = %v, want 0.5", r.CompileCostUSD)
+	}
+	if r.TotalCostUSD != 1.5 {
+		t.Errorf("r.TotalCostUSD = %v, want 1.5 (1.0 sessions + 0.5 compile)", r.TotalCostUSD)
+	}
+}
+
+func TestApplyCompileCost_NoOpWhenNeverCompiled(t *testing.T) {
+	r := Readings{TotalCostUSD: 1.0}
+	ApplyCompileCost(&r, Worktree{})
+	if r.CompileCost != nil {
+		t.Errorf("expected CompileCost to stay nil, got %+v", r.CompileCost)
+	}
+	if r.TotalCostUSD != 1.0 {
+		t.Errorf("expected TotalCostUSD unchanged, got %v", r.TotalCostUSD)
+	}
+}
+
 func TestSurfaceToolPrefix(t *testing.T) {
 	cases := []struct{ surface, want string }{
 		{"", ""},

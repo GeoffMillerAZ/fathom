@@ -251,6 +251,36 @@ func AggregateReadings(sessions []SessionResult) Readings {
 	return r
 }
 
+// readingsCompileCost derives the CompileCostReading a cell's Readings
+// should carry from wt's own CompileCost (PrepareSubject/compileLayers,
+// subject.go) — nil when the cell never compiled a layer (an unwired or
+// non-CompileLayers arm leaves wt.CompileCost nil).
+func readingsCompileCost(wt Worktree) *CompileCostReading {
+	if wt.CompileCost == nil {
+		return nil
+	}
+	return &CompileCostReading{
+		TokensIn:  wt.CompileCost.TokensIn,
+		TokensOut: wt.CompileCost.TokensOut,
+		CostUSD:   wt.CompileCost.CostUSD,
+		Cached:    wt.CompileCost.Cached,
+	}
+}
+
+// ApplyCompileCost sets r.CompileCost/CompileCostUSD from wt
+// (readingsCompileCost) and rolls the dollar figure into r.TotalCostUSD
+// too: a wired cell's compile spend is real spend the row's total must
+// include (RC-10, vision 28 §2 F6), not a number that only shows up in a
+// side column. A no-op when wt never compiled a layer.
+func ApplyCompileCost(r *Readings, wt Worktree) {
+	cc := readingsCompileCost(wt)
+	r.CompileCost = cc
+	if cc != nil {
+		r.CompileCostUSD = cc.CostUSD
+		r.TotalCostUSD += cc.CostUSD
+	}
+}
+
 // SurfaceToolPrefix returns the MCP tool-name prefix an arm's Surface maps
 // to: the part before any "@" version suffix ("graphify@v0.9.61" ->
 // "mcp__graphify__"; "fathom" -> "mcp__fathom__"), or "" for an empty

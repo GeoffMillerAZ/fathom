@@ -209,6 +209,31 @@ func TestRenderArm_InstructionsPlainLeavesFileUntouched(t *testing.T) {
 	}
 }
 
+func TestRenderArm_InstructionsTextWritesInstructionsTextVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), "# subject's own\n")
+	arm := Arm{Instructions: "text", InstructionsText: "## routing stanza\n\nwhere: find_symbol\n"}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if files.InstructionsPath == "" {
+		t.Error("expected InstructionsPath to be set")
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil || string(raw) != arm.InstructionsText {
+		t.Errorf("CLAUDE.md = %q, err=%v, want %q", raw, err, arm.InstructionsText)
+	}
+}
+
+func TestRenderArm_InstructionsTextRequiresText(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{Instructions: "text"}
+	if _, err := RenderArm(arm, dir); err == nil {
+		t.Fatal("expected an error: instructions=text with no InstructionsText")
+	}
+}
+
 func TestRenderArm_StanzaRequiresWired(t *testing.T) {
 	dir := t.TempDir()
 	arm := Arm{Wired: false, Instructions: "stanza"}

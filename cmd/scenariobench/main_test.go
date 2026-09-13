@@ -114,6 +114,32 @@ func TestCmdPlan_NoSpend(t *testing.T) {
 	}
 }
 
+// TestPlanCells_SkipsDroppedTasks is RC-15's own proof: a task the corpus
+// marks disposition=dropped (an oracle that cannot be won from the task
+// text) never becomes a cell — plan/run/ledger all build their cell list
+// from planCells, so none of them ever runs or reports on it.
+func TestPlanCells_SkipsDroppedTasks(t *testing.T) {
+	corpus := scenariobench.Corpus{
+		Arms: map[string]scenariobench.Arm{"control": {}},
+		Tasks: []scenariobench.Task{
+			{ID: "kept", Sessions: scenariobench.Sessions{Mode: scenariobench.ModeSingle, Count: 1}},
+			{ID: "dropped-one", Disposition: "dropped", Reason: "fail_to_pass names a package absent at base", Sessions: scenariobench.Sessions{Mode: scenariobench.ModeSingle, Count: 1}},
+		},
+	}
+	fs := newFlagSet("test")
+	cf := addCellFlags(fs)
+	if err := fs.Parse([]string{"-harness-version", "v1"}); err != nil {
+		t.Fatal(err)
+	}
+	cells := planCells(corpus, cf, 1, "sha")
+	if len(cells) != 1 {
+		t.Fatalf("expected only the kept task's cell, got %d: %+v", len(cells), cells)
+	}
+	if cells[0].task.ID != "kept" {
+		t.Errorf("expected the surviving cell to be for task %q, got %q", "kept", cells[0].task.ID)
+	}
+}
+
 func TestCmdPlan_MissingFlags(t *testing.T) {
 	if rc := run([]string{"plan"}); rc != 2 {
 		t.Errorf("plan with no -corpus: exit %d, want 2", rc)

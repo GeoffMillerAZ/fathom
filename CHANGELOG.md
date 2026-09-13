@@ -37,6 +37,46 @@ non-empty `surface` with zero surface calls is flagged `surface_unused` —
 `scenariobench score` warns on stderr, `scenariobench ledger`'s table shows a
 "surface calls" column.
 
+**The scenario bench runs in a clean room (`RC-6`, vision 28 §2 F3/F4).**
+Every session's `CLAUDE_CONFIG_DIR` now points at a scratch config dir
+carrying no operator hooks, plugins, or slash commands (a `.claude.json`
+and `.claude/settings.json` copied from the operator's own, hooks and
+enabled plugins stripped); `--permission-mode default` is added whenever
+an arm has an `allowed_tools` list, so a restriction denies instead of
+Claude Code's `auto` default approving outside it anyway. The smoke test
+this row requires found the clean room needs one `claude /login` inside
+its own `CLAUDE_CONFIG_DIR` before a paid run (`docs/bench/scenarios.md`
+"The clean room") — an operational precondition, not a code defect.
+
+**Competitor arms get their own routing stanza, and graphify's MCP server
+command is fixed (`RC-8`, `RC-9`, vision 28 §2 F2).** `Arm.InstructionsText`
+(`instructions: "text"`) writes a competitor's own question-shape routing
+stanza into the subject's `CLAUDE.md`, the same shape fathom's `stanza`
+gives a wired arm — `lookups-vs.json`'s gopls/serena/graphify arms each
+carry one, naming their own verbs. graphify's arm now runs
+`uv run --with graphifyy --with mcp -m graphify.serve graphify-out/graph.json`
+(the documented server invocation) instead of the nonexistent
+`graphify --mcp`, which failed 12/12 sessions in the second reading.
+
+**Dropped tasks and concurrent arms (`RC-15`, `RC-16`).** A task can carry
+`disposition: "dropped"` with a `reason`; `SB-cli__cli-10009`
+(`public-go.json`) is the first — its oracle's `fail_to_pass` names a
+package the gold patch's own test patch introduces, so no agent can pass
+it — and `plan`/`run`/`ledger` all skip it via `planCells`. Guards tasks
+`guards-i11-mcp-tool-doc`/`guards-i31-workspace-artifact` move to
+`max_turns: 80` and every `lookups-vs.json` task to `20`, following
+measured utilization. `scenariobench run -parallel-arms` (default off)
+runs one task's arms concurrently — each already prepares its own
+worktree and, when wired, its own scratch daemon on an independently
+allocated port — with outcomes always processed in original order, so the
+ledger's order never depends on which goroutine finishes first.
+
+**A wired cell's compile-layer cost is on the row (`RC-10`).** A
+`CompileLayers` arm's `fathom compile` spend (tokens, USD) is now carried
+on `CellResult.Readings.CompileCost`/`CompileCostUSD` and rolled into
+`TotalCostUSD`/the ledger row's `cost_usd` — previously computed
+(`Worktree.CompileCost`) but never surfaced past the worktree.
+
 **The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
 `docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards
 corpora, 64 cells, zero rule violations on either arm, the wired arm at 0.77–0.85× the tokens;

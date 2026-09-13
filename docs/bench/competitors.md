@@ -18,9 +18,14 @@ Apache-2.0, release v0.9.61 (2026-09-12), verified 2026-09-13.
   tree-sitter AST — no LLM; docs go through the host LLM). A plain-CLI build
   form also exists — check the installed README for the exact invocation
   before scripting it (`graphify --help` names it).
-- **Query surface**: `graphify --mcp` starts a stdio MCP server exposing
-  `query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`,
-  `graph_stats`, `shortest_path`, `list_prs`, `get_pr_impact`, `triage_prs`.
+- **Query surface**: `graphify --mcp` is NOT a real command (vision 28 F2:
+  it failed 12/12 sessions in the second reading). The documented server
+  invocation is `uv run --with graphifyy --with mcp -m graphify.serve
+  <graph.json>` (stdio; `install.py`'s own Antigravity-config snippet, and
+  `graphify.serve`'s `argparse` help, both confirm this exact form) —
+  exposing `query_graph`, `get_node`, `get_neighbors`, `get_community`,
+  `god_nodes`, `graph_stats`, `shortest_path`, `list_prs`, `get_pr_impact`,
+  `triage_prs`.
 - **Output format**: `graphify-out/graph.json`, a networkx node-link graph —
   `nodes`: `{id, label, file_type, source_file, source_location, community}`;
   `edges`: `{source, target, relation, confidence, source_file,
@@ -40,9 +45,12 @@ Apache-2.0, release v0.9.61 (2026-09-12), verified 2026-09-13.
 - **Cost shape**: precompute. One `/graphify .` (or CLI-form) build pays the
   whole indexing cost; every query after that reads the committed
   `graph.json` and costs nothing further until the next `--update`.
-- **Bench arm command** (`lookups-vs.json`, arm `graphify`): `setup: ["pip
-  install graphifyy", "graphify install", "/graphify ."]`, `mcp:
-  {"graphify": {"command": "graphify", "args": ["--mcp"]}}`.
+- **Bench arm command** (`lookups-vs.json`, arm `graphify`): `setup:
+  ["graphify update . --no-cluster"]` (the headless CLI build — tree-sitter
+  only, no LLM, no plugin install), `mcp: {"graphify": {"command": "uv",
+  "args": ["run", "--with", "graphifyy", "--with", "mcp", "-m",
+  "graphify.serve", "graphify-out/graph.json"]}}` (RC-9: the previous
+  `{"command": "graphify", "args": ["--mcp"]}` does not exist).
 
 ## Serena
 

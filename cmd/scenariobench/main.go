@@ -8,7 +8,7 @@
 //	    whether it would borrow from the cell store or run for real. Spends
 //	    nothing: no process is started.
 //
-//	scenariobench run -corpus <path> -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>]
+//	scenariobench run -corpus <path> -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
@@ -139,6 +139,16 @@ func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA strin
 
 	var out []cellPlan
 	for _, task := range c.Tasks {
+		// RC-15: a task the corpus marked dropped (an oracle that cannot be
+		// won from the task text — SB-cli__cli-10009's fail_to_pass names
+		// tests of a package absent at base) never becomes a cell at all —
+		// plan/run/ledger all build their cell list from planCells, so
+		// none of them ever sees it. `scenariobench score` operates on one
+		// already-stored CellResult with no corpus in hand at all, so a
+		// dropped task simply never has a cell for it to rescore.
+		if task.Disposition == "dropped" {
+			continue
+		}
 		for _, armName := range armNames {
 			arm := c.Arms[armName]
 			surface := scenariobench.ResolveArmSurface(arm, fathomCommit)
@@ -242,6 +252,7 @@ func cmdRun(args []string) int {
 	harnessName := fs.String("harness", "claude", "harness to run sessions with: claude (real spend) or fake (replays committed transcripts, no spend)")
 	fakeStreamsDir := fs.String("fake-streams-dir", "", "-harness fake: directory holding the committed stream fixtures")
 	fakeStreams := fs.String("fake-streams", "", "-harness fake: JSON map of \"<task>/<arm>[/<role>]\" to a file name under -fake-streams-dir")
+	parallelArms := fs.Bool("parallel-arms", false, "run one task's arms concurrently (RC-16) — each cell prepares its own worktree and, when wired, its own scratch daemon on an independently allocated port, so nothing is shared between them; default off")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -267,6 +278,17 @@ func cmdRun(args []string) int {
 	ran := 0
 	lost := 0
 	absRawDir, _ := filepath.Abs(*rawDir) // claude -p runs in the worktree and resolves --mcp-config against ITS cwd
+	// cleanRoomDir (RC-6) is shared across every cell of this run; empty
+	// (no -root) skips the clean room entirely rather than writing under
+	// the process's relative cwd.
+	cleanRoomDir := ""
+	if *root != "" {
+		if abs, err := filepath.Abs(*root); err == nil {
+			cleanRoomDir = filepath.Join(abs, "workspace", "tmp", "scenariobench-cleanroom-"+*runID)
+		}
+	}
+
+	var selected []cellPlan
 	for _, cp := range cells {
 		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {
 			continue
@@ -274,48 +296,72 @@ func cmdRun(args []string) int {
 		if *onlyArm != "" && cp.arm != *onlyArm {
 			continue
 		}
-		if _, borrowed, err := scenariobench.BorrowScenarioCell(*cellsDir, cp.key, cp.trial); err != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench run: checking cell store for %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
-			return 2
-		} else if borrowed {
-			fmt.Fprintf(os.Stdout, "%s/%s/t%d: borrowed\n", cp.task.ID, cp.arm, cp.trial)
-			continue
+		selected = append(selected, cp)
+	}
+
+	// Batched by task: planCells groups cells task-major already, so a
+	// contiguous run of `selected` sharing one TaskID is exactly one
+	// task's arms/trials. RunArmsConcurrently (RC-16) runs a batch's cells
+	// in parallel when -parallel-arms asks for it — each prepares its own
+	// worktree and, when wired, its own scratch daemon on an
+	// independently allocated port, so nothing is shared between them —
+	// and outcomes are always processed in the batch's ORIGINAL order, so
+	// the ledger's printed/stored order never depends on which goroutine
+	// finished first.
+	for i := 0; i < len(selected); {
+		j := i + 1
+		for j < len(selected) && selected[j].task.ID == selected[i].task.ID {
+			j++
+		}
+		batch := selected[i:j]
+		fns := make([]func() (cellOutcome, error), len(batch))
+		for k, cp := range batch {
+			cp := cp
+			fns[k] = func() (cellOutcome, error) {
+				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID, cleanRoomDir)
+			}
 		}
 
-		arm := corpus.Arms[cp.arm]
-		harness, herr := resolveHarness(*harnessName, *fakeStreamsDir, *fakeStreams, cp.task.ID, cp.arm)
-		if herr != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", herr)
-			return 2
-		}
-
-		result, err := runOneCell(ctx, *root, cp, arm, harness, absRawDir, *model, *runID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench run: %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
-			return 2
-		}
-		if reason := scenariobench.CellLost(result.Sessions); reason != "" {
-			// A session that never ran is not a reading: it is not stored
-			// (a later run would borrow it as data) and the row counts it
-			// lost, exactly as context-bench does (guards pilot 1,
-			// 2026-09-13: 16 cells whose harness died at startup were
-			// stored, then borrowed by the re-run).
-			lost++
-			fmt.Fprintf(os.Stderr, "%s/%s/t%d: LOST — %s\n", cp.task.ID, cp.arm, cp.trial, reason)
-			continue
-		}
-		if err := scenariobench.StoreScenarioCell(*cellsDir, result); err != nil {
-			fmt.Fprintf(os.Stderr, "scenariobench run: storing %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
-			return 2
-		}
-		ran++
-		status := "FAIL"
-		if result.Success {
-			status = "PASS"
+		var outcomes []cellOutcome
+		var errs []error
+		if *parallelArms && len(fns) > 1 {
+			outcomes, errs = scenariobench.RunArmsConcurrently(fns)
 		} else {
-			anyFailed = true
+			outcomes = make([]cellOutcome, len(fns))
+			errs = make([]error, len(fns))
+			for k, fn := range fns {
+				outcomes[k], errs[k] = fn()
+			}
 		}
-		fmt.Fprintf(os.Stdout, "%s/%s/t%d: %s tokens=%d cost=%.4f\n", cp.task.ID, cp.arm, cp.trial, status, result.Readings.TotalTokens, result.Readings.TotalCostUSD)
+
+		for k, oc := range outcomes {
+			if errs[k] != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", errs[k])
+				return 2
+			}
+			switch {
+			case oc.borrowed:
+				fmt.Fprintf(os.Stdout, "%s/%s/t%d: borrowed\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial)
+			case oc.lostReason != "":
+				// A session that never ran is not a reading: it is not
+				// stored (a later run would borrow it as data) and the row
+				// counts it lost, exactly as context-bench does (guards
+				// pilot 1, 2026-09-13: 16 cells whose harness died at
+				// startup were stored, then borrowed by the re-run).
+				lost++
+				fmt.Fprintf(os.Stderr, "%s/%s/t%d: LOST — %s\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial, oc.lostReason)
+			default:
+				ran++
+				status := "FAIL"
+				if oc.result.Success {
+					status = "PASS"
+				} else {
+					anyFailed = true
+				}
+				fmt.Fprintf(os.Stdout, "%s/%s/t%d: %s tokens=%d cost=%.4f\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial, status, oc.result.Readings.TotalTokens, oc.result.Readings.TotalCostUSD)
+			}
+		}
+		i = j
 	}
 	fmt.Fprintf(os.Stdout, "scenariobench run: %d cell(s) run, %d lost\n", ran, lost)
 	if lost > 0 && ran == 0 {
@@ -327,16 +373,65 @@ func cmdRun(args []string) int {
 	return 0
 }
 
-func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID string) (scenariobench.CellResult, error) {
+// cellOutcome is what running (or borrowing) one cellPlan produced —
+// runCellForReport's own result type, so a caller feeding it through
+// scenariobench.RunArmsConcurrently (RC-16) or a plain sequential loop
+// prints/stores/counts it identically either way.
+type cellOutcome struct {
+	cp         cellPlan
+	borrowed   bool
+	lostReason string
+	result     scenariobench.CellResult
+}
+
+// runCellForReport is cmdRun's per-cell unit of work: borrow-check, then
+// (on a miss) resolve the harness, run the cell, apply the LOST gate, and
+// store it — returning the outcome as data rather than printing anything
+// itself, so the caller can print cells in a fixed order even when several
+// ran concurrently (RC-16).
+func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scenariobench.Corpus, harnessName, fakeStreamsDir, fakeStreams, cellsDir, rawDir, model, runID, cleanRoomDir string) (cellOutcome, error) {
+	if _, borrowed, err := scenariobench.BorrowScenarioCell(cellsDir, cp.key, cp.trial); err != nil {
+		return cellOutcome{cp: cp}, fmt.Errorf("checking cell store for %s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
+	} else if borrowed {
+		return cellOutcome{cp: cp, borrowed: true}, nil
+	}
+
+	arm := corpus.Arms[cp.arm]
+	harness, herr := resolveHarness(harnessName, fakeStreamsDir, fakeStreams, cp.task.ID, cp.arm)
+	if herr != nil {
+		return cellOutcome{cp: cp}, herr
+	}
+
+	result, err := runOneCell(ctx, root, cp, arm, harness, rawDir, model, runID, cleanRoomDir)
+	if err != nil {
+		return cellOutcome{cp: cp}, fmt.Errorf("%s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
+	}
+	if reason := scenariobench.CellLost(result.Sessions); reason != "" {
+		return cellOutcome{cp: cp, lostReason: reason}, nil
+	}
+	if err := scenariobench.StoreScenarioCell(cellsDir, result); err != nil {
+		return cellOutcome{cp: cp}, fmt.Errorf("storing %s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
+	}
+	return cellOutcome{cp: cp, result: result}, nil
+}
+
+func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID, cleanRoomDir string) (scenariobench.CellResult, error) {
 	wt, err := scenariobench.PrepareSubject(ctx, cp.task, arm, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("preparing subject: %w", err)
 	}
 	defer scenariobench.StopWorktree(&wt)
 
+	// The clean room (RC-6): every session runs with CLAUDE_CONFIG_DIR
+	// pointed at cleanRoomDir's scratch config (no operator hooks, no
+	// plugins, no MCP servers) and FATHOM_THREADS pointed at this cell's
+	// own file — homeDir is best-effort (an unresolvable home directory
+	// just means nothing gets copied forward, not a failed cell).
+	homeDir, _ := os.UserHomeDir()
+
 	sessionsStart := time.Now()
 	sessions, err := scenariobench.RunSessions(ctx, harness, cp.task, cp.arm, arm, wt, scenariobench.RunOptions{
-		Trial: cp.trial, Model: model, RawDir: rawDir,
+		Trial: cp.trial, Model: model, RawDir: rawDir, RunDir: cleanRoomDir, HomeDir: homeDir,
 	})
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running sessions: %w", err)
@@ -357,6 +452,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 
 	readings := scenariobench.AggregateReadings(sessions)
 	readings.SurfaceCalls = scenariobench.SurfaceCallCount(readings.ToolCalls, arm.Surface)
+	scenariobench.ApplyCompileCost(&readings, wt)
 	boxChecks := allBoxChecks(sessions)
 
 	planCoverage := scenariobench.PlanCoverage(planBytes, cp.task.Gold)
@@ -697,7 +793,19 @@ func cmdScore(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench score: parsing %s: %v\n", *in, err)
 		return 2
 	}
+	// AggregateReadings recomputes Readings from scratch (sessions only) —
+	// the compile-cost reading (RC-10) comes from a `fathom compile` run
+	// outside any session, so it survives the replacement only if carried
+	// across by hand, USD rolled back into the recomputed total exactly as
+	// ApplyCompileCost would from a live Worktree (which score never has).
+	compileCost := cell.Readings.CompileCost
+	compileCostUSD := cell.Readings.CompileCostUSD
 	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
+	cell.Readings.CompileCost = compileCost
+	cell.Readings.CompileCostUSD = compileCostUSD
+	if compileCost != nil {
+		cell.Readings.TotalCostUSD += compileCostUSD
+	}
 	cell.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(cell.Readings.ToolCalls, cell.Surface)
 	if cell.Surface != "" && cell.Readings.SurfaceCalls == 0 {
 		fmt.Fprintf(os.Stderr, "scenariobench score: %s/%s/t%d: surface %q unused — zero %s* tool calls across the cell\n",
@@ -822,6 +930,7 @@ func cmdLedger(args []string) int {
 			row.Readings.TotalTurns += cell.Readings.TotalTurns
 			row.Readings.TotalCostUSD += cell.Readings.TotalCostUSD
 			row.Readings.PayloadBytes += cell.Readings.PayloadBytes
+			row.Readings.CompileCostUSD += cell.Readings.CompileCostUSD
 			row.CostUSD += cell.Readings.TotalCostUSD
 			for name, n := range cell.Readings.ToolCalls {
 				if row.Readings.ToolCalls == nil {
