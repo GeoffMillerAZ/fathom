@@ -18,6 +18,16 @@ is out of gate scope. Essentials:
 - Reachability: function values are edges (VS-6) and closure calls count
   for the enclosing test (VS-7) — the "call it at the test's top level"
   rule is retired; `skip_test` is only for rows with no test at all.
+- Non-code rows carry an `oracle:` instead of a `symbol:`. `lexical`
+  (ADR-030) proves a file exists and matches a pattern. `ledger` (ADR-034
+  decision 2, RC-34) proves a *published bench reading*:
+  `{oracle: ledger, path: <jsonl>, run_id: R, task: T, arm: A,
+  min_trials: N}` verifies when the JSONL row keyed by (run_id, task, arm)
+  exists, is not flagged `surface_unused: true`, carries no
+  `instrument_defect`, and ran `trials ≥ min_trials` (default 1); a row
+  keyed by `run_id` alone matches the home bench's one-row-per-run ledger
+  (`docs/bench/ledger.jsonl`) instead. Full key reference:
+  `docs/plans/README.md`'s Annotation keys table.
 - Give every gated row an author-owned `id:` — positional `md-NNN`
   renumbers when lines are inserted.
 - `[-]` skips carry `disposition: refused|deferred` + `reason` (double-quote

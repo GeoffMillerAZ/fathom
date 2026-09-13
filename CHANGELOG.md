@@ -35,6 +35,18 @@ markdown, and the ledger row (F8). `testdata/contextbench/tasks-home.json`
 tasks gain a per-task `min_trials` (5 on H1-T02/T07/T08/T13, the tasks flaky
 at n=3); the runner's trial loop honors it over `--repeat`.
 
+**The first round's strengths-matrix readings are withdrawn (`O41`, `ADR-034`,
+`RC-34..36`).** All 74 `docs/bench/scenarios-ledger.jsonl` rows —
+`guards-pilot-3`, `guards-adr-pilot-1`, `public-pilot-2`, `reuse-pilot-1`,
+`vs-pilot-1` — now carry `instrument_defect`: the wired arm ran with no MCP
+tools connected, so the round measured prompt text, not fathom's surface.
+`fathom verify` gains `oracle: ledger` (`{path, run_id, task, arm,
+min_trials}`), which refuses a plan row backed by a ledger cell that is
+missing, `surface_unused`, defective, or under the trial floor; `scenariobench
+ledger` and the home bench's render (`benchledgerrender`) now open with a
+"Where fathom stands" verdict block, built from the ledger, above every
+table.
+
 **Every wired scenariobench cell ran without fathom's MCP tools — fixed
 (instrument truth, `docs/bench/scenarios.md`).** `ClaudeHarness.RunSession` now
 copies the config `RenderArm` actually rendered (`SessionRequest.MCPConfigPath`)

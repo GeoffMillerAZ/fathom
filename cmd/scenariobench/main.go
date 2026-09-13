@@ -21,12 +21,15 @@
 //	    turns, cost, payload bytes) from its sessions and rewrites it. Free:
 //	    it reads what run already captured.
 //
-//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-arm-surface arm=value ...]
+//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...]
 //	    Reads every stored cell for -run-id, groups by (task, arm) into
 //	    ScenarioLedgerRow, appends them to -ledger, re-renders -readme's
-//	    marker-fenced section, and evaluates the corpus's registered
-//	    criterion. Exit 0 pass, 1 fail (a measured refutation — recorded, not
-//	    excused), 3 indeterminate (re-run: not enough was measured).
+//	    marker-fenced section — a "Where fathom stands" verdict block
+//	    (RC-35, scenariobench.RenderVerdict) above the table, built from
+//	    every corpus under -corpus-glob — and evaluates the corpus's
+//	    registered criterion. Exit 0 pass, 1 fail (a measured refutation —
+//	    recorded, not excused), 3 indeterminate (re-run: not enough was
+//	    measured).
 package main
 
 import (
@@ -188,6 +191,27 @@ func loadCorpus(path string) (scenariobench.Corpus, string, error) {
 		return scenariobench.Corpus{}, "", err
 	}
 	return c, sha, nil
+}
+
+// criteriaBySHA256 loads every corpus matching glob and returns its
+// registered Criterion keyed by the corpus's own SHA256 — the same key a
+// ScenarioLedgerRow carries as CorpusSHA256 (RC-35), so RenderVerdict can
+// name each run's treatment/control without a hardcoded run→corpus table.
+// An empty match (a repo with no corpora yet) is not an error.
+func criteriaBySHA256(glob string) (map[string]scenariobench.Criterion, error) {
+	paths, err := filepath.Glob(glob)
+	if err != nil {
+		return nil, fmt.Errorf("globbing %q: %w", glob, err)
+	}
+	out := make(map[string]scenariobench.Criterion, len(paths))
+	for _, p := range paths {
+		c, sha, err := loadCorpus(p)
+		if err != nil {
+			return nil, fmt.Errorf("loading corpus %s: %w", p, err)
+		}
+		out[sha] = c.Criterion
+	}
+	return out, nil
 }
 
 // ─── plan ────────────────────────────────────────────────────────────────
@@ -911,6 +935,7 @@ func cmdLedger(args []string) int {
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
 	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "committed JSONL ledger")
 	readmePath := fs.String("readme", filepath.Join("docs", "bench", "README.md"), "README carrying the marker-fenced scenario ledger table")
+	corpusGlob := fs.String("corpus-glob", filepath.Join("testdata", "scenariobench", "*.json"), "every corpus whose criterion the verdict block may cite, keyed by corpus SHA256")
 	runID := fs.String("run-id", "", "the run whose cells to file (required)")
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
 	trials := fs.Int("trials", 1, "trials per (task, arm) this run intended")
@@ -1040,7 +1065,18 @@ func cmdLedger(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2
 	}
-	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, scenariobench.RenderScenarioLedger(all)); err != nil {
+	// RC-35: the "Where fathom stands" block goes ABOVE the table, built
+	// from every corpus under -corpus-glob (keyed by its own SHA256, which
+	// each row already carries) — not only the one this invocation loaded
+	// — so the block stays informative across the whole committed history,
+	// not just the run being filed.
+	criteria, err := criteriaBySHA256(*corpusGlob)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+		return 2
+	}
+	body := scenariobench.RenderVerdict(all, criteria) + "\n" + scenariobench.RenderScenarioLedger(all)
+	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, body); err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: rendering %s: %v\n", *readmePath, err)
 		return 2
 	}

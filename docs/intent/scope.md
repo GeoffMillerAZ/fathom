@@ -52,7 +52,8 @@ overlap without a token win, M6 equal accuracy at a third of grep's cost for gre
 are honestly unmeasured and re-run next: M2 (no agent wrote a contract-bearing row, SB-53)
 and M7 (a setup defect, SB-51). Done when those two rows carry a reading and SB-48
 (search with a receipt) has a targeted run beside the lookup tasks grep won — the cost story
-the whole matrix points at. M8 and M9 stay registered behind that.
+the whole matrix points at. M8 and M9 stay registered behind that. **2026-09-13:** every
+pilot named above is voided by O41 (G11) — read this paragraph as history, not proof.
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows are voided by an instrument defect (the wired arm never had the tools) and

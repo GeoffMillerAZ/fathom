@@ -47,6 +47,12 @@ type ScenarioLedgerRow struct {
 	// second documented defect (docs/bench/scenarios.md "Instrument
 	// truth"), distinct from the first (never connected at all).
 	SurfaceUnused bool `json:"surface_unused,omitempty"`
+	// InstrumentDefect names the instrument fact that voids this row's
+	// reading (ADR-034 decision 2, RC-36) — a row carrying it measured
+	// something other than what it claims (O41: the first round's rows
+	// ran with no MCP tools) and is excluded from every verdict, listed
+	// only as voided. Empty for a sound row.
+	InstrumentDefect string `json:"instrument_defect,omitempty"`
 
 	Borrowed []BorrowedScenarioCell `json:"borrowed_cells,omitempty"`
 	Notes    string                 `json:"notes,omitempty"`
@@ -124,9 +130,16 @@ func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 		if r.SurfaceUnused {
 			surfaceCalls += " (unused)"
 		}
+		notes := r.Notes
+		// RC-36: a voided row stays IN the table (deleting history is not
+		// the fix) but is named as voided, never blends silently into a
+		// reader's eye as a normal reading.
+		if r.InstrumentDefect != "" {
+			notes = strings.TrimSpace("VOIDED (" + r.InstrumentDefect + ") " + notes)
+		}
 		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %s | %.4f | %s |\n",
 			r.RunID, r.Commit, r.TaskID, r.Category, r.Arm, r.ModelID,
-			r.Trials, r.Successes, r.Prediction, surfaceCalls, r.CostUSD, r.Notes)
+			r.Trials, r.Successes, r.Prediction, surfaceCalls, r.CostUSD, notes)
 	}
 	return b.String()
 }
@@ -156,6 +169,12 @@ func (c Criterion) Evaluate(rows []ScenarioLedgerRow) ScenarioEvaluation {
 	var tTrials, tSuccesses, cTrials, cSuccesses int
 	var tTokens, cTokens int64
 	for _, r := range rows {
+		// ADR-034 decision 2 / RC-36: a row carrying instrument_defect is
+		// voided — it measured something other than what it claims — and
+		// is excluded from every verdict, never silently counted in.
+		if r.InstrumentDefect != "" {
+			continue
+		}
 		switch r.Arm {
 		case c.Treatment:
 			tTrials += r.Trials

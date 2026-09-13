@@ -22,10 +22,12 @@ func main() {
 		fmt.Fprintf(os.Stderr, "benchledgerrender: %v\n", err)
 		os.Exit(1)
 	}
+	// RC-35: the "Where fathom stands" verdict block renders ABOVE the
+	// table — RenderVerdict already covers the empty-ledger sentence, so
+	// an empty ledger needs no special case here.
+	fmt.Print(contextbench.RenderVerdict(rows))
+	fmt.Println()
 	if len(rows) == 0 {
-		// An empty ledger renders as a sentence, not an empty table: a bare
-		// header would read as "measured, nothing to report".
-		fmt.Println("_No runs recorded yet. `task bench-home` produces the first row (it spends real tokens)._")
 		return
 	}
 	fmt.Print(contextbench.RenderLedgerMarkdown(rows))

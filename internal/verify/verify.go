@@ -82,15 +82,24 @@ type Task struct {
 	// come from Markdown.
 	Line int
 
-	// Oracle names a non-index acceptance contract (ADR-030). The only
-	// class today is "lexical": OraclePath is a repo-relative file that
-	// must exist and be non-empty in the working tree verify reads plans
-	// from, and OraclePattern (a Go regexp, line-anchored) must match it at
-	// least once. One contract per row: a row carrying both a symbol and an
-	// oracle fails verification and is refused by LintPlan.
-	Oracle        string
-	OraclePath    string
-	OraclePattern string
+	// Oracle names a non-index acceptance contract. "lexical" (ADR-030):
+	// OraclePath is a repo-relative file that must exist and be non-empty
+	// in the working tree verify reads plans from, and OraclePattern (a Go
+	// regexp, line-anchored) must match it at least once. "ledger"
+	// (ADR-034 decision 2, RC-34): OraclePath names a committed JSONL bench
+	// ledger; OracleRunID/OracleTaskID/OracleArm key one row in it (a
+	// task/arm-less row — the home bench's one-row-per-run shape — is
+	// matched by OracleRunID alone), and OracleMinTrials (default 1, when
+	// set) is the trial floor the row must meet. One contract per row: a
+	// row carrying both a symbol and an oracle fails verification and is
+	// refused by LintPlan.
+	Oracle          string
+	OraclePath      string
+	OraclePattern   string
+	OracleRunID     string
+	OracleTaskID    string
+	OracleArm       string
+	OracleMinTrials string
 }
 
 // Expect is a task's acceptance contract. The zero value is the STRICTEST
@@ -322,13 +331,21 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 
 	checked := false
 
-	// --- lexical oracle (ADR-030): a non-code row's file-backed contract ---
+	// --- non-code oracles: a row's contract is a file, not a symbol ---
 	// Evaluated first so that a row carrying BOTH a symbol and an oracle is
 	// labeled by the contract conflict, not by whatever the index says
 	// about the symbol; the symbol path is skipped for it entirely.
+	// "ledger" (ADR-034 decision 2) dispatches to ledgerOracle; every
+	// other value (including "lexical" and an unrecognized name) goes to
+	// evalLexicalOracle, which is itself the one that reports "unknown
+	// oracle" for anything but "lexical".
 	if t.Oracle != "" {
 		checked = true
-		c, label := evalLexicalOracle(t, files)
+		evalOracle := evalLexicalOracle
+		if t.Oracle == "ledger" {
+			evalOracle = ledgerOracle
+		}
+		c, label := evalOracle(t, files)
 		switch c.Status {
 		case Pass:
 			pass(c.Name, c.Detail)

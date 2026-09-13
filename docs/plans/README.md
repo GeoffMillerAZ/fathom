@@ -52,9 +52,13 @@ tasks block.
 | `reason` | Free-text justification for a disposition or skip. **Double-quote a value containing commas** (`reason: "kit-side done, donor NOT deleted"`); unquoted values must be comma-free. | unset |
 | `trigger` | Revival condition for a `deferred` task — recorded and surfaced, never machine-evaluated in v0 | unset |
 | `skip` | Justification for `skip_test: true` (machine-visible; linted when absent) | unset |
-| `oracle` | `lexical` — a non-code row's contract (ADR-030): `path` must exist in the working tree `fathom verify` reads the plan from (never `git show HEAD:`), be non-empty, and match `pattern` at least once. The row verifies and leaves U2. **One contract per row**: `symbol` and `oracle` together are refused by lint and fail verification. A `skip:` reason never lifts U2 — only a symbol or an oracle does. | unset |
-| `path` | Repo-relative file the lexical oracle reads. Never absolute, never `..`. | unset |
-| `pattern` | Go regexp (line-anchored: `^`/`$` match at line bounds) the oracle must find in `path`. **Required when `path` is `.md`** — a document that merely exists proves nothing about a claim. Double-quote it (regexps carry commas and braces). | unset |
+| `oracle` | `lexical` — a non-code row's contract (ADR-030): `path` must exist in the working tree `fathom verify` reads the plan from (never `git show HEAD:`), be non-empty, and match `pattern` at least once. `ledger` — a published-bench-reading contract (ADR-034 decision 2, RC-34): see `run_id`/`task`/`arm`/`min_trials` below. Either class verifies and leaves U2 — it IS a contract the gate can refute. **One contract per row**: `symbol` and `oracle` together are refused by lint and fail verification. A `skip:` reason never lifts U2 — only a symbol or an oracle does. | unset |
+| `path` | Repo-relative file the oracle reads (the lexical file, or a committed JSONL bench ledger for `oracle: ledger`). Never absolute, never `..`. | unset |
+| `pattern` | Go regexp (line-anchored: `^`/`$` match at line bounds) the lexical oracle must find in `path`. **Required when `path` is `.md`** — a document that merely exists proves nothing about a claim. Double-quote it (regexps carry commas and braces). | unset |
+| `run_id` | `oracle: ledger` only: the run whose row to check in `path`. Required. | unset |
+| `task` | `oracle: ledger` only: the task id half of the (run_id, task, arm) key. Leave unset (with `arm`) to match a row keyed by `run_id` alone instead — the home bench's one-row-per-run ledger (`docs/bench/ledger.jsonl`), whose own rows carry no task/arm either. | unset |
+| `arm` | `oracle: ledger` only: the arm half of the (run_id, task, arm) key. Setting `arm` without `task` is refused by lint. | unset |
+| `min_trials` | `oracle: ledger` only: the trial floor the matched row's `trials` (or, for a home-bench row, `treatment_trials`) must meet or exceed. | `1` |
 | `needs` | Comma-separated row ids this row waits on (eligibility, never gating). `<sibling>.md#<id>` names a row in another plan under the same directory: lint checks the shape, `fathom verify` and `plans next` read the sibling's authored state (claimed or dispositioned satisfies; its verdict is not recomputed). | unset |
 
 > **Before reaching for `skip_test`:** a test statically reaches every function the

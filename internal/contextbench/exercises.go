@@ -41,6 +41,7 @@ var agentSurfaceTools = []string{
 	"read_source",
 	"references",
 	"repo_map",
+	"search",
 	"staleness_report",
 	"symbol_context",
 	"verify_plan",

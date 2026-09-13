@@ -6,6 +6,17 @@ H2-3), the 2026-09-13 reading (`docs/bench/README.md`, O31–O33).
 
 ## 0. The verdict in one paragraph
 
+> **Amendment, 2026-09-13 (O41, ADR-034).** The matrix's first round — every
+> pilot run below (`guards-pilot-3`, `guards-adr-pilot-1`, `public-pilot-2`,
+> `reuse-pilot-1`, `vs-pilot-1`; 74 `docs/bench/scenarios-ledger.jsonl` rows)
+> — is **voided**, not withdrawn from the record: the wired arm ran with no
+> MCP tools connected (`mcp_servers: []`) and every arm inherited the
+> operator's own hooks, so the round measured prompt text, not fathom's
+> surface. No claim below stands as measured until the wave-5 reruns
+> (`docs/plans/receipts.md`) repeat it in a clean room with the tools
+> actually present. This paragraph amends the reading; it does not rewrite
+> the prose that follows, which is left as it was written and predicted.
+
 The home bench measured one thing — a cold single lookup with the arms locked
 to one tool each — and said fathom answers more often and costs more. That is
 true and narrow. Every claim fathom actually makes to an adopter is about a

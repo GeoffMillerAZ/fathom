@@ -77,6 +77,14 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 				t.Oracle = o
 				t.OraclePath = ann["path"]
 				t.OraclePattern = ann["pattern"]
+				// ADR-034 decision 2: the ledger oracle's own keys. Read
+				// only alongside `oracle` for the same reason path/pattern
+				// are — a stray `run_id`/`task`/`arm` on a symbol row
+				// stays inert instead of half-contracting.
+				t.OracleRunID = ann["run_id"]
+				t.OracleTaskID = ann["task"]
+				t.OracleArm = ann["arm"]
+				t.OracleMinTrials = ann["min_trials"]
 			}
 			if v, ok := ann["ctx"]; ok {
 				if v == "" {
@@ -200,6 +208,8 @@ var annotationKeys = []string{
 	// intent-condition oracles (ADR-026)
 	"oracle", "paths", "pattern", "min", "max", "eq", "run", "path",
 	"service", "present", "after", "plan", "rows", "row", "partial",
+	// ledger oracle (ADR-034 decision 2)
+	"run_id", "task", "arm", "min_trials",
 }
 
 // ParseAnnotation is parseAnnotation's exported face for callers outside
