@@ -33,6 +33,14 @@ func (c *Client) Obligations(ctx context.Context, service, file string, maxRules
 	return semantic.ObligationsFor(ctx, c.st, service, file, maxRules)
 }
 
+// RootObligations returns "what governs this repository" (RC-22): the
+// served claims whose source is a root-level governing doc or whose scope
+// glob is unanchored/wildcard-rooted, capped at maxRules — see
+// semantic.RootObligationsFor.
+func (c *Client) RootObligations(ctx context.Context, service string, maxRules int) (semantic.Obligations, error) {
+	return semantic.RootObligationsFor(ctx, c.st, service, maxRules)
+}
+
 // ObligationsIndexStale reports whether the index's fingerprint for file
 // differs from the file's current content on disk. It is best-effort: true
 // only when both the disk file and the stored fingerprint exist AND they

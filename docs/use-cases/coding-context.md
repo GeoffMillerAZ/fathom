@@ -62,7 +62,7 @@ Scenario: an agent is about to modify token validation in `auth-service` and nee
 **1. Pick the surface at registration time, not per call.** There is no
 profile switch: stdio `serve-mcp` always serves the full registry, and the
 shared HTTP daemon scopes by path — register against `POST /rpc/agent`
-(the curated 17-tool coding hot loop; `/rpc/companion` is an identical
+(the curated 19-tool coding hot loop; `/rpc/companion` is an identical
 alias) or `POST /rpc` for everything. Every tool below except `brief`,
 `find_callees` and `batch` is on the agent surface; the rest still execute
 there, flagged `off_surface` in the call log rather than refused.
@@ -134,7 +134,7 @@ Returns all three results in one response. Use `batch` when the calls are indepe
 
 ## Setup & notes
 
-**Surface**: `set_profile` was removed (surfaces week-1, SW-2). Over HTTP the path is the scope — `POST /rpc/agent` lists the 17-tool allowlist (`docs/mcp-tools.md`) and bare `POST /rpc` lists everything (the group endpoints were deleted — HF-5). Off-surface calls execute and are logged `off_surface:true` — surfaces are ergonomics and measurement, never a security boundary. stdio `serve-mcp` always serves the full registry.
+**Surface**: `set_profile` was removed (surfaces week-1, SW-2). Over HTTP the path is the scope — `POST /rpc/agent` lists the 19-tool allowlist (`docs/mcp-tools.md`) and bare `POST /rpc` lists everything (the group endpoints were deleted — HF-5). Off-surface calls execute and are logged `off_surface:true` — surfaces are ergonomics and measurement, never a security boundary. stdio `serve-mcp` always serves the full registry.
 
 **Raw text without leaving the surface**: `read_source { "service", "file", "start_line", "end_line" }` returns numbered lines from the *indexed* corpus — cite them as `file:line`. It reads what ingest walks: a `.fathomignore`'d or `fathom scope`-suppressed path is refused by name, with the unsuppress command in the refusal.
 

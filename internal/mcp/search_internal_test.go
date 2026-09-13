@@ -2,10 +2,14 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -70,10 +74,107 @@ func TestEnclosingSymbol(t *testing.T) {
 		{100, "B", true}, // deep inside B (open-ended: last symbol in file)
 	}
 	for _, c := range cases {
-		got, ok := enclosingSymbol(syms, c.line)
+		// lines:nil throughout — A has a real EndLine and B is the file's
+		// last (open-ended) symbol, so neither case exercises the
+		// fallback-narrowing lines feeds; that is TestEnclosingSymbol_
+		// FallbackNarrowing's job below.
+		got, ok := enclosingSymbol(syms, c.line, nil)
 		if ok != c.wantOK || (ok && got.Name != c.wantName) {
 			t.Errorf("enclosingSymbol(line=%d) = (%q, %v), want (%q, %v)", c.line, got.Name, ok, c.wantName, c.wantOK)
 		}
+	}
+}
+
+// TestEnclosingSymbol_FallbackNarrowing is the MAJOR finding's fix: with
+// nodes carrying EndLine:0 exactly like the real Go extractor emits today,
+// a hit landing in a doc comment or a blank run BEFORE the next symbol
+// must not be attributed to the symbol above it — honest absence, not a
+// guess.
+func TestEnclosingSymbol_FallbackNarrowing(t *testing.T) {
+	// A blank line, then a nested doc-comment run, separate B from A —
+	// both scenarios must narrow A's naive "up to B.Line-1" fallback.
+	syms := []core.SymbolNode{
+		{Name: "A", Kind: core.KindGoFunc, FilePath: "a.go", Line: 3, EndLine: 0},
+		{Name: "B", Kind: core.KindGoFunc, FilePath: "a.go", Line: 8, EndLine: 0}, // open-ended, last in file
+	}
+	lines := []string{
+		"package pkg", // 1
+		"",            // 2
+		"func A() {",  // 3
+		"\treturn",    // 4
+		"}",           // 5
+		"",            // 6 <- blank run: A's fallback body ends at 5
+		"// B docs",   // 7 <- B's own doc comment, not A's body
+		"func B() {",  // 8
+	}
+	cases := []struct {
+		line     int
+		wantName string
+		wantOK   bool
+	}{
+		{3, "A", true},   // A's opening line
+		{5, "A", true},   // A's last real line before the blank run
+		{6, "", false},   // the blank run itself — unattributable
+		{7, "", false},   // B's own doc comment — not A's body, and B has not started
+		{8, "B", true},   // B's opening line
+		{100, "B", true}, // deep inside B (open-ended: last symbol, unaffected by narrowing)
+	}
+	for _, c := range cases {
+		got, ok := enclosingSymbol(syms, c.line, lines)
+		if ok != c.wantOK || (ok && got.Name != c.wantName) {
+			t.Errorf("enclosingSymbol(line=%d) = (%q, %v), want (%q, %v)", c.line, got.Name, ok, c.wantName, c.wantOK)
+		}
+	}
+}
+
+// TestEnclosingSymbol_FallbackNarrowing_CommentRunWithoutBlankLine isolates
+// the comment-only-run half of narrowFallbackSpan (no blank line at all
+// between the two symbols — a doc comment can immediately follow the
+// previous symbol's closing brace).
+func TestEnclosingSymbol_FallbackNarrowing_CommentRunWithoutBlankLine(t *testing.T) {
+	syms := []core.SymbolNode{
+		{Name: "A", Kind: core.KindGoFunc, FilePath: "a.go", Line: 3, EndLine: 0},
+		{Name: "B", Kind: core.KindGoFunc, FilePath: "a.go", Line: 8, EndLine: 0},
+	}
+	lines := []string{
+		"package pkg",    // 1
+		"",               // 2
+		"func A() {",     // 3
+		"\treturn",       // 4
+		"}",              // 5
+		"// B docs",      // 6 <- immediately follows A's closing brace
+		"// more B docs", // 7
+		"func B() {",     // 8
+	}
+	cases := []struct {
+		line     int
+		wantName string
+		wantOK   bool
+	}{
+		{5, "A", true}, // A's last real line
+		{6, "", false}, // B's doc comment run — not A's body
+		{7, "", false}, // still B's doc comment run
+	}
+	for _, c := range cases {
+		got, ok := enclosingSymbol(syms, c.line, lines)
+		if ok != c.wantOK || (ok && got.Name != c.wantName) {
+			t.Errorf("enclosingSymbol(line=%d) = (%q, %v), want (%q, %v)", c.line, got.Name, ok, c.wantName, c.wantOK)
+		}
+	}
+}
+
+// TestEnclosingSymbol_FallbackNarrowing_UnreadableFileKeepsNaiveBoundary
+// proves the degrade: lines==nil (the file could not be read) leaves the
+// pre-fix, wider "up to the next symbol" boundary in place — nothing to
+// narrow against, so this is not a regression for that case.
+func TestEnclosingSymbol_FallbackNarrowing_UnreadableFileKeepsNaiveBoundary(t *testing.T) {
+	syms := []core.SymbolNode{
+		{Name: "A", Kind: core.KindGoFunc, FilePath: "a.go", Line: 3, EndLine: 0},
+		{Name: "B", Kind: core.KindGoFunc, FilePath: "a.go", Line: 8, EndLine: 0},
+	}
+	got, ok := enclosingSymbol(syms, 6, nil)
+	if !ok || got.Name != "A" {
+		t.Errorf("enclosingSymbol(line=6, lines=nil) = (%q, %v), want (\"A\", true) — unreadable file keeps the naive boundary", got.Name, ok)
 	}
 }
 
@@ -193,7 +294,7 @@ func TestSearchRunFallsBackWhenRipgrepFails(t *testing.T) {
 	}
 	t.Setenv("PATH", fakeBin)
 
-	hits, engine, err := searchRun(context.Background(), root, "needle", "", true, 0)
+	hits, engine, err := searchRun(context.Background(), root, "needle", "", true, 0, nil, nil)
 	if err != nil {
 		t.Fatalf("searchRun: %v", err)
 	}
@@ -212,4 +313,167 @@ func contains(ss []string, s string) bool {
 		}
 	}
 	return false
+}
+
+// hitFiles collects the File of each raw hit, for a compact assertion.
+func hitFiles(hits []searchRawHit) []string {
+	files := make([]string, 0, len(hits))
+	for _, h := range hits {
+		files = append(files, h.File)
+	}
+	return files
+}
+
+// ─── CRITICAL (V-review): search must mirror the service's .fathomignore
+// exactly as ingest/read_source do, on BOTH engines — a file ingest and
+// read_source refuse must never be served by search. ──────────────────────
+
+// TestSearchIgnore_FathomignoredDir_RefusedBothEngines proves the fix
+// directly on both engines: a service's own .fathomignore excluding a
+// directory must be honored by searchWalk (the Go-regexp fallback) AND by
+// ripgrep's own -g excludes built from the identical raw patterns — not
+// just whichever engine happens to answer a given call.
+func TestSearchIgnore_FathomignoredDir_RefusedBothEngines(t *testing.T) {
+	t.Setenv("FATHOM_IGNORE_D", t.TempDir()) // isolate: no real service-scoped file leaks in
+	root := t.TempDir()
+	writeFlagFixture(t, root, ".fathomignore", "secrets/\n")
+	writeFlagFixture(t, root, "pkg/a.go", "package pkg\n\nfunc Needle() {}\n")
+	writeFlagFixture(t, root, "secrets/prod/keys.go", "package prod\n\nfunc Needle() {}\n")
+
+	ignore, patterns, _, err := connector.LoadIgnoreScopedForWithPatterns(root, "svc")
+	if err != nil {
+		t.Fatalf("LoadIgnoreScopedForWithPatterns: %v", err)
+	}
+	if ignore == nil {
+		t.Fatal("ignore is nil, want a compiled Matcher for the seeded .fathomignore")
+	}
+
+	walkHits, err := searchWalk(root, "Needle", "", true, 0, ignore)
+	if err != nil {
+		t.Fatalf("searchWalk: %v", err)
+	}
+	if got := hitFiles(walkHits); len(got) != 1 || got[0] != "pkg/a.go" {
+		t.Fatalf("searchWalk hits = %v, want exactly [pkg/a.go] (secrets/ excluded)", got)
+	}
+
+	if _, lerr := exec.LookPath("rg"); lerr != nil {
+		t.Skip("rg not on PATH — ripgrep engine not exercised directly here")
+	}
+	rgHits, err := searchRipgrep(context.Background(), root, "Needle", "", true, 0, patterns)
+	if err != nil {
+		t.Fatalf("searchRipgrep: %v", err)
+	}
+	if got := hitFiles(rgHits); len(got) != 1 || got[0] != "pkg/a.go" {
+		t.Fatalf("searchRipgrep hits = %v, want exactly [pkg/a.go] (secrets/ excluded)", got)
+	}
+}
+
+// searchIgnoreTestBackend wraps elisionFakeBackend, overriding ServiceMeta
+// to record a real corpus root — the minimal QueryInterface search's
+// service branch needs beyond ListAllSymbols (already on the embedded
+// fake).
+type searchIgnoreTestBackend struct {
+	elisionFakeBackend
+	svcPath string
+}
+
+func (b *searchIgnoreTestBackend) ServiceMeta(_ context.Context, _ string) (string, string, bool, error) {
+	return b.svcPath, "", true, nil
+}
+
+// TestSearchIgnore_LoadErrorFailsClosed proves the fail-closed contract:
+// when the scoped loader errors (a user-scope re-include, the same
+// *ErrUserScopeReinclude LoadIgnoreScopedFor already refuses), the tool
+// handler must REFUSE the search rather than run it without exclusions.
+func TestSearchIgnore_LoadErrorFailsClosed(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("FATHOM_IGNORE_D", t.TempDir())
+	if err := os.MkdirAll(filepath.Join(home, ".fathom"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// A user-scope re-include is the one thing LoadIgnoreScopedFor refuses
+	// loudly (law 13) — the fail-closed path this test exercises.
+	if err := os.WriteFile(filepath.Join(home, ".fathom", "ignore"), []byte("!reincluded\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := t.TempDir()
+	writeFlagFixture(t, root, "pkg/a.go", "package pkg\n\nfunc Needle() {}\n")
+
+	srv := NewServer(&searchIgnoreTestBackend{svcPath: root})
+	req := map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "search", "arguments": map[string]any{"service": "svc", "pattern": "Needle"}},
+	}
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	resp, hasResp := srv.HandleRequest(context.Background(), raw)
+	if !hasResp {
+		t.Fatal("search: no response")
+	}
+	var env map[string]any
+	if err := json.Unmarshal(resp, &env); err != nil {
+		t.Fatalf("decode envelope: %v (raw=%s)", err, resp)
+	}
+	errObj, ok := env["error"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected search to refuse when the service's exclusions fail to load, got success: %v", env)
+	}
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "exclusions could not be loaded") {
+		t.Errorf("error message = %q, want it to name the load failure", msg)
+	}
+}
+
+// ─── MINOR (V-review): the ripgrep path lacked searchWalk's own .env
+// exclusion and symlink safety. ─────────────────────────────────────────
+
+// TestSearchEnvFile_RefusedBothEngines proves both engines refuse a
+// .env-pattern file the same way read_source does — the ripgrep path had
+// no equivalent to searchWalk's isEnvPatternFile check before this fix.
+func TestSearchEnvFile_RefusedBothEngines(t *testing.T) {
+	root := t.TempDir()
+	writeFlagFixture(t, root, "prod.env", "API_KEY=Needle\n")
+	writeFlagFixture(t, root, "pkg/a.go", "// Needle marker\n")
+
+	walkHits, err := searchWalk(root, "Needle", "", true, 0, nil)
+	if err != nil {
+		t.Fatalf("searchWalk: %v", err)
+	}
+	if got := hitFiles(walkHits); len(got) != 1 || got[0] != "pkg/a.go" {
+		t.Fatalf("searchWalk hits = %v, want exactly [pkg/a.go] (prod.env excluded)", got)
+	}
+
+	if _, lerr := exec.LookPath("rg"); lerr != nil {
+		t.Skip("rg not on PATH — ripgrep engine not exercised directly here")
+	}
+	rgHits, err := searchRipgrep(context.Background(), root, "Needle", "", true, 0, nil)
+	if err != nil {
+		t.Fatalf("searchRipgrep: %v", err)
+	}
+	if got := hitFiles(rgHits); len(got) != 1 || got[0] != "pkg/a.go" {
+		t.Fatalf("searchRipgrep hits = %v, want exactly [pkg/a.go] (prod.env excluded)", got)
+	}
+}
+
+// TestSearchWalk_SkipsSymlinks proves searchWalk never follows a symlink —
+// it can resolve outside root entirely, exactly what read_source refuses.
+func TestSearchWalk_SkipsSymlinks(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	writeFlagFixture(t, outside, "secret.txt", "Needle outside root\n")
+	if err := os.Symlink(filepath.Join(outside, "secret.txt"), filepath.Join(root, "link.txt")); err != nil {
+		t.Skipf("symlink unsupported in this environment: %v", err)
+	}
+	writeFlagFixture(t, root, "pkg/a.go", "// Needle real\n")
+
+	hits, err := searchWalk(root, "Needle", "", true, 0, nil)
+	if err != nil {
+		t.Fatalf("searchWalk: %v", err)
+	}
+	if got := hitFiles(hits); len(got) != 1 || got[0] != "pkg/a.go" {
+		t.Fatalf("hits = %v, want exactly [pkg/a.go] (the symlink must never be followed)", got)
+	}
 }

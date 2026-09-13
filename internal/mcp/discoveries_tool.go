@@ -50,6 +50,7 @@ func resultPointers(toolName string, args json.RawMessage, result any) []string 
 		Query  string `json:"query"`
 		Name   string `json:"name"`
 		File   string `json:"file"`
+		Regex  bool   `json:"regex"`
 	}
 	_ = json.Unmarshal(args, &argp)
 
@@ -95,14 +96,25 @@ func resultPointers(toolName string, args json.RawMessage, result any) []string 
 		if q == "" {
 			q = argp.Symbol
 		}
-		add(q)
-		for _, raw := range asSlice(payload["definitions"]) {
+		defs := asSlice(payload["definitions"])
+		callerRows := asSlice(payload["callers"])
+		occRows := asSlice(payload["occurrences"])
+		// MINOR (V-review): the raw query string is a pointer worth
+		// re-resolving only when the call actually found something — a
+		// zero-result miss has nothing to hand off — AND was a literal
+		// symbol/text lookup: `regex: true` means q is a REGEXP, not a
+		// resolvable symbol name or file path the discoveries grammar
+		// (cmd/fathom's ctx: pointers) can ever re-resolve.
+		if !argp.Regex && (len(defs) > 0 || len(callerRows) > 0 || len(occRows) > 0) {
+			add(q)
+		}
+		for _, raw := range defs {
 			if m, ok := raw.(map[string]any); ok {
 				add(asString(m["file"]))
 			}
 		}
-		for _, key := range []string{"callers", "occurrences"} {
-			for _, raw := range asSlice(payload[key]) {
+		for _, rows := range [][]any{callerRows, occRows} {
+			for _, raw := range rows {
 				if m, ok := raw.(map[string]any); ok {
 					addFile(asString(m["loc"]))
 				}
@@ -213,6 +225,14 @@ type discoveriesResult struct {
 	Pointers []discoveryRow `json:"pointers"`
 	Rendered string         `json:"rendered"`
 	Note     string         `json:"note,omitempty"`
+	// IndexError names, once, an error reading the live index
+	// (ListAllSymbols/Sources) this call hit (V-review MAJOR) — every
+	// pointer that would otherwise have resolved against it renders
+	// "unresolved (index unreachable: …)" instead of the positive claim
+	// "stale" makes. Omitted when the index was read cleanly (or backend
+	// is nil — a distinct, pre-existing "no index to ask" shape, not an
+	// error this call encountered).
+	IndexError string `json:"index_error,omitempty"`
 }
 
 // registerDiscoveries wires the "discoveries" tool: the pull form of
@@ -267,29 +287,74 @@ func registerDiscoveries(s *Server, backend QueryInterface) {
 
 		var nodes []core.SymbolNode
 		sourceSet := map[string]bool{}
+		// MAJOR (V-review): ListAllSymbols' error used to be discarded
+		// (nodes, _ = …) and Sources' error just skipped populating
+		// sourceSet — either way every pointer then rendered "stale
+		// (unresolved)", a positive claim the index never made (it was
+		// never successfully consulted at all). idxErr is threaded into
+		// renderDiscoveryPointer below so an index-read failure renders
+		// its own honest line instead.
+		var idxErr error
 		if backend != nil {
-			nodes, _ = backend.ListAllSymbols(ctx, p.Service)
-			if sources, err := backend.Sources(ctx, p.Service); err == nil {
+			var nerr error
+			nodes, nerr = backend.ListAllSymbols(ctx, p.Service)
+			sources, serr := backend.Sources(ctx, p.Service)
+			if serr == nil {
 				for _, sf := range sources {
 					sourceSet[sf.Path] = true
 				}
+			}
+			switch {
+			case nerr != nil:
+				idxErr = nerr
+			case serr != nil:
+				idxErr = serr
 			}
 		}
 
 		rows := make([]discoveryRow, 0, len(agg))
 		lines := make([]string, 0, len(agg))
 		for _, e := range agg {
-			line, resolved := renderDiscoveryPointer(e.Pointer, e.Count, nodes, sourceSet)
-			rows = append(rows, discoveryRow{Pointer: e.Pointer, Count: e.Count, LastSeen: e.Last.UTC().Format(time.RFC3339), Resolved: resolved, Line: line})
+			line, resKind := renderDiscoveryPointer(e.Pointer, e.Count, nodes, sourceSet, idxErr)
+			rows = append(rows, discoveryRow{Pointer: e.Pointer, Count: e.Count, LastSeen: e.Last.UTC().Format(time.RFC3339), Resolved: resKind == discoveryResolved, Line: line})
 			lines = append(lines, line)
 		}
-		rendered, _ := budgetDiscoveryLines(lines, budget)
-		res := discoveriesResult{Service: p.Service, Budget: budget, Pointers: rows, Rendered: rendered}
+		// MAJOR (V-review): `pointers` used to return the WHOLE aggregate
+		// unbudgeted while only `rendered` was cut — a large window could
+		// blow the response's byte budget through `pointers` alone even
+		// when `rendered` looked small, and the two fields could describe
+		// DIFFERENT sets (rendered's own byte-budget cut point over the
+		// short rendered lines has no reason to land on the same row
+		// count as an unbounded JSON array would need). Fix: budget rows
+		// FIRST via the same fitToBudget every other truncating tool uses
+		// — a discoveryRow's JSON encoding is always at least as large as
+		// its bare rendered Line (same string plus pointer/count/
+		// last_seen/resolved), so the kept prefix's lines are guaranteed
+		// to fit the same byte budget too — then derive rendered from
+		// that SAME kept prefix, never a second, independently-cut one.
+		// docs/mcp-tools.md's doctrine (discoveries deliberately uses its
+		// own inline "…N more" notice, not the shared `elided` block) is
+		// unchanged; this keeps that notice truthful about `pointers` too.
+		keptRows, _ := fitToBudget(rows, budget)
+		rowsDropped := len(rows) - len(keptRows)
+		rendered, totalDropped := budgetDiscoveryLines(lines[:len(keptRows)], budget, rowsDropped)
+		res := discoveriesResult{Service: p.Service, Budget: budget, Pointers: keptRows, Rendered: rendered}
 		if p.Since != "" {
 			res.Since = since.UTC().Format(time.RFC3339)
 		}
-		if len(rows) == 0 {
+		if idxErr != nil {
+			// Surfaced ONCE at the top level (V-review MAJOR) — every
+			// per-row "unresolved (index unreachable: …)" line already
+			// names it too, but a caller reading only the structured
+			// fields (not every rendered line) must still learn the
+			// index itself, not just this pointer, could not be read.
+			res.IndexError = idxErr.Error()
+		}
+		switch {
+		case len(rows) == 0:
 			res.Note = "no discoveries recorded for this service in the window"
+		case totalDropped > 0:
+			res.Note = fmt.Sprintf("%d of %d pointer(s) shown — %d more beyond the %d-byte budget (see rendered's inline notice); raise budget or narrow with since", len(keptRows), len(rows), totalDropped, budget)
 		}
 		return res, nil
 	})
@@ -416,12 +481,29 @@ func findDiscoverySymbol(nodes []core.SymbolNode, pkgHint, name string) (core.Sy
 	return core.SymbolNode{}, false
 }
 
+// discoveryResolution distinguishes HOW renderDiscoveryPointer's render was
+// produced (V-review MAJOR, mirroring cmd/fathom/discoveries.go's identical
+// fix): an unreachable/erroring index is an operational fact, never the
+// positive claim "stale" makes — the index was never consulted, so it
+// never said the pointer was gone.
+type discoveryResolution int
+
+const (
+	discoveryResolved    discoveryResolution = iota // resolved live (file or symbol)
+	discoveryStale                                  // index reachable; genuinely not found
+	discoveryUnreachable                            // the index itself could not be consulted
+)
+
 // renderDiscoveryPointer resolves ptr FRESH against nodes/sourceSet (both
 // read moments before this call, from the live index) and renders one
 // line: "read <path>" for a file, "symbol <ptr> → file:line" for a
-// resolved symbol, or "<ptr> — stale (unresolved)" when neither holds —
-// never rendered from anything stored at write time (ADR-028).
-func renderDiscoveryPointer(ptr string, count int, nodes []core.SymbolNode, sourceSet map[string]bool) (line string, resolved bool) {
+// resolved symbol, "<ptr> — unresolved (index unreachable: <err>)" when
+// idxErr is set (ListAllSymbols/Sources could not be read — never
+// rendered as "stale", a claim the index never made), or "<ptr> — stale
+// (unresolved)" when the index WAS reachable and genuinely does not know
+// the pointer — never rendered from anything stored at write time
+// (ADR-028).
+func renderDiscoveryPointer(ptr string, count int, nodes []core.SymbolNode, sourceSet map[string]bool, idxErr error) (line string, res discoveryResolution) {
 	freq := ""
 	if count > 1 {
 		freq = fmt.Sprintf(" (%d)", count)
@@ -432,21 +514,31 @@ func renderDiscoveryPointer(ptr string, count int, nodes []core.SymbolNode, sour
 		if citation != "" {
 			suffix = "#" + citation
 		}
-		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), true
+		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), discoveryResolved
+	}
+	if idxErr != nil {
+		return fmt.Sprintf("%s — unresolved (index unreachable: %v)%s", ptr, idxErr, freq), discoveryUnreachable
 	}
 	pkgHint, name := splitDiscoveryPointer(ptr)
 	if n, ok := findDiscoverySymbol(nodes, pkgHint, name); ok {
-		return fmt.Sprintf("symbol %s → %s:%d%s", ptr, n.FilePath, n.Line, freq), true
+		return fmt.Sprintf("symbol %s → %s:%d%s", ptr, n.FilePath, n.Line, freq), discoveryResolved
 	}
-	return fmt.Sprintf("%s — stale (unresolved)%s", ptr, freq), false
+	return fmt.Sprintf("%s — stale (unresolved)%s", ptr, freq), discoveryStale
 }
 
 // budgetDiscoveryLines joins lines up to budget bytes, cutting whole lines
 // from the bottom and naming the cut (law 3) — the same elision shape
-// cmd/fathom's budgetContextPack uses for ctx: packs.
-func budgetDiscoveryLines(lines []string, budget int) (string, int) {
+// cmd/fathom's budgetContextPack uses for ctx: packs. alreadyDropped is the
+// count of rows a caller already cut UPSTREAM of lines (the `pointers`
+// JSON-budget cut, MAJOR V-review fix: `rows` and `rendered` must describe
+// the same kept prefix, so lines here is already that same prefix, not the
+// full aggregate) — folded into the returned total so the "…N more"
+// footer and the returned count both name the FULL number of pointers
+// missing from this answer, not just whatever this function additionally
+// cut off the tail of an already-trimmed lines.
+func budgetDiscoveryLines(lines []string, budget, alreadyDropped int) (string, int) {
 	if len(lines) == 0 {
-		return "", 0
+		return "", alreadyDropped
 	}
 	var b strings.Builder
 	included := 0
@@ -458,7 +550,7 @@ func budgetDiscoveryLines(lines []string, budget int) (string, int) {
 		b.WriteString(row)
 		included++
 	}
-	dropped := len(lines) - included
+	dropped := alreadyDropped + (len(lines) - included)
 	if dropped > 0 {
 		fmt.Fprintf(&b, "…%d more: fathom discoveries --budget %d\n", dropped, budget*2)
 	}

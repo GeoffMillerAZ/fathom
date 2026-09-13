@@ -1551,7 +1551,7 @@ curl -s -X POST http://localhost:7575/rpc \
 
 There is no profile-switching tool (the old `set_profile` was removed; ADR-014
 amendment, 2026-07-16): a stdio session always sees the full registry, and over
-HTTP a surface is selected by path — `POST /rpc/agent` is the curated 17-tool
+HTTP a surface is selected by path — `POST /rpc/agent` is the curated 19-tool
 coding surface (`internal/mcp/surface.go`; also served at `/rpc/companion` for
 compatibility); bare `POST /rpc` is the full registry (54 tools plus
 `memory_search`). Off-surface calls execute and are logged `off_surface:true`

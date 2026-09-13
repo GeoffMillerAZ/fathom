@@ -11,7 +11,7 @@ Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — a launchd agent (`fathom daemon status` names yours) running `serve-http`
 at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
-MCP**. `/rpc/agent` is the curated 17-tool agent surface
+MCP**. `/rpc/agent` is the curated 19-tool agent surface
 (`internal/mcp/surface.go`; `/rpc/companion` is a compatible alias; bare
 `/rpc` is the full, unscoped registry — see `docs/mcp-tools.md`). Every
 session shares one index and one
@@ -163,7 +163,7 @@ resolves it FRESH against the live index and marks what no longer holds.
   item with no identity tag still matches on the legacy basename rule, so
   nothing existing is hidden.
 - **Kill criteria, pre-registered (vision 28 §4).** The `discoveries` tool
-  is the one deliberate exception to the 17-tool agent-surface diet
+  is the one deliberate exception to the 19-tool agent-surface diet
   (`surface_diet_test.go`, TD-2): M5 at K=3 with the worker brief —
   `facts_reused >= 3` per worker and tokens-to-first-edit below the
   control on two of three tasks, else the worker brief is removed and

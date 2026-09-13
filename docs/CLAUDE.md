@@ -56,7 +56,7 @@ is out of gate scope. Essentials:
 - `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI
   command is added/renamed/removed, update that doc's `## Maintained` line
   and the catalog in `docs/mcp-tools.md`.
-- The agent-surface tool list is `internal/mcp/surface.go` (18 tools);
+- The agent-surface tool list is `internal/mcp/surface.go` (19 tools);
   `TestMcpToolsDocMatchesRegistry` holds `docs/mcp-tools.md` to the registry.
 - Friction with fathom itself goes to ONE place: `fathom observe` files the
   structured intake into `.fathom/observations.md` (the live log, counted by

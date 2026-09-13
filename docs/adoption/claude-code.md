@@ -10,7 +10,7 @@ See also: [docs/use-cases/coding-agents.md](../use-cases/coding-agents.md)
 (the shorter canonical-wiring summary this guide expands on),
 [docs/configuration.md](../configuration.md) (the full provider-config
 reference), [docs/layers.md](../layers.md) (the semantic-layer catalog),
-[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 17-tool
+[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 19-tool
 surface covered here).
 
 ---
@@ -368,11 +368,11 @@ path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
 full registry — 55 tools on this build (54 after the 2026-08-23 prune of 34
 zero-call tools, plus `memory_search`), unauthenticated, includes `ingest`
 and `compile_layer`; `/rpc/agent` (aliased `/rpc/companion`) is the curated
-17-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
+19-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
 `/rpc/agent` is still the better default because it's what's dogfooded, and
 because it makes off-surface tool use *measurable* (calls outside the
-17-tool set still execute — they're logged `off_surface:true`, never
+19-tool set still execute — they're logged `off_surface:true`, never
 silently rejected — surfaces are execute-and-flag, never a security
 boundary; see ADR-014's amendment in `docs/mcp-tools.md`). If you
 want the full registry too, register it under a second name:
@@ -936,7 +936,7 @@ and the daemon's own `[daemon]` config are in
 
 ---
 
-## 10. The 17-tool agent surface — when to use what
+## 10. The 19-tool agent surface — when to use what
 
 The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
 
@@ -1265,7 +1265,7 @@ degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
 `task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
-the 17-tool agent allowlist (incl. `read_source`, `memory_search`); the
+the 19-tool agent allowlist (incl. `read_source`, `memory_search`); the
 observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
 Claude Code hook wiring; the lefthook pre-push verify gate; the nine

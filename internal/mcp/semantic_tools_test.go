@@ -29,6 +29,13 @@ type semanticFakeBackend struct {
 	claimsSummaryErr error
 	gotCompileLayer  string // records the layer name CompileLayer was called with
 
+	// gotObligationsFile records the `file` arg the LAST Obligations call
+	// carried — used to prove rootObligations() preferred RootObligations
+	// (this fake implements rootObligationsBackend) over degrading to the
+	// literal-probe fallback, which would have called Obligations with
+	// rootObligationsProbe ("CLAUDE.md").
+	gotObligationsFile string
+
 	// ClaimFeedback (D2, docs/plans/expert-depth.md): records the call and
 	// returns feedbackErr.
 	feedbackErr        error
@@ -45,11 +52,20 @@ func (s *semanticFakeBackend) ClaimFeedback(_ context.Context, service, claimID,
 }
 
 func (s *semanticFakeBackend) Obligations(_ context.Context, service, file string, _ int) (semantic.Obligations, error) {
+	s.gotObligationsFile = file
 	return s.obligations, s.obligationsErr
 }
 
 func (s *semanticFakeBackend) ObligationsIndexStale(_ context.Context, _, _ string) bool {
 	return s.indexStale
+}
+
+// RootObligations makes semanticFakeBackend satisfy rootObligationsBackend
+// too (every real backend does) — returns the same fixed s.obligations a
+// file-scoped call would, so existing root-scope tests observe identical
+// payloads regardless of which path served them.
+func (s *semanticFakeBackend) RootObligations(_ context.Context, _ string, _ int) (semantic.Obligations, error) {
+	return s.obligations, s.obligationsErr
 }
 
 func (s *semanticFakeBackend) CompileLayer(_ context.Context, _, layer string, dryRun bool) (core.CompileRun, error) {
@@ -191,6 +207,82 @@ func TestObligationsTool_NoFile_ReturnsRootScope(t *testing.T) {
 	rules, ok := payload["rules"].([]any)
 	if !ok || len(rules) != 1 {
 		t.Fatalf("expected the root-scope rules to come through, got %v", payload["rules"])
+	}
+}
+
+// TestObligationsTool_NoFile_PrefersRootObligationsBackend proves the MCP
+// wiring for the MAJOR finding: when the backend implements
+// rootObligationsBackend (every real one does), rootObligations() must use
+// it directly rather than degrading to the literal-probe fallback — the
+// fallback would call Obligations with rootObligationsProbe ("CLAUDE.md"),
+// which this test asserts never happens.
+func TestObligationsTool_NoFile_PrefersRootObligationsBackend(t *testing.T) {
+	fake := &semanticFakeBackend{
+		obligations: semantic.Obligations{
+			Rules: []semantic.Obligation{{Rule: "Repo-wide code rule.", Src: "CLAUDE.md#L1-L1", Tier: "doc-claimed", Layer: "obligations"}},
+		},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 12, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotObligationsFile != "" {
+		t.Errorf("Obligations called with file %q — rootObligations should have preferred RootObligations, never the literal-probe fallback, for a backend that implements it", fake.gotObligationsFile)
+	}
+	payload := extractPayload(t, resp)
+	rules, ok := payload["rules"].([]any)
+	if !ok || len(rules) != 1 {
+		t.Fatalf("expected the RootObligations rule to come through, got %v", payload["rules"])
+	}
+}
+
+// probeOnlyBackend implements obligationsBackend but deliberately NOT
+// rootObligationsBackend — proves rootObligations() still degrades to the
+// literal-probe fallback for a backend with no better answer (an older
+// module, a minimal test double).
+type probeOnlyBackend struct {
+	fakeBackend
+	obligations semantic.Obligations
+	gotFile     string // records the `file` arg Obligations was called with
+}
+
+func (p *probeOnlyBackend) Obligations(_ context.Context, _, file string, _ int) (semantic.Obligations, error) {
+	p.gotFile = file
+	return p.obligations, nil
+}
+
+func (p *probeOnlyBackend) ObligationsIndexStale(_ context.Context, _, _ string) bool { return false }
+
+// TestObligationsTool_NoFile_DegradesToProbeWithoutRootObligationsBackend
+// proves the fallback branch itself: a backend lacking rootObligationsBackend
+// still gets a root-scope answer, via the literal probe path.
+func TestObligationsTool_NoFile_DegradesToProbeWithoutRootObligationsBackend(t *testing.T) {
+	const wantProbe = "CLAUDE.md" // mcp.rootObligationsProbe's documented value
+	fake := &probeOnlyBackend{obligations: semantic.Obligations{Service: "svc", File: wantProbe}}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 13, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "obligations",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("unexpected error: %v", resp["error"])
+	}
+	if fake.gotFile != wantProbe {
+		t.Errorf("Obligations called with file %q, want the literal probe path %q", fake.gotFile, wantProbe)
+	}
+	payload := extractPayload(t, resp)
+	if v, _ := payload["root"].(bool); !v {
+		t.Errorf("expected root:true, got %v", payload["root"])
 	}
 }
 

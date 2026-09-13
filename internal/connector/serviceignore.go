@@ -174,19 +174,17 @@ func serviceIgnoreLines(serviceID string) ([]string, int, string) {
 	return lines, n, path
 }
 
-// LoadIgnoreScopedFor unions root's project-scope .fathomignore with the
-// user-scope ~/.fathom/ignore AND serviceID's own scoped exclusions
-// (~/.fathom/ignore.d/<serviceID>), returning the merged Matcher (nil when
-// nothing contributes a pattern) and the per-scope pattern-count split for
-// disclosure. serviceID "" loads no scoped file — the LoadIgnoreScoped
-// compatibility path for callers with no service in hand.
-//
-// A re-include in EITHER user-scope file is refused loudly
-// (*ErrUserScopeReinclude): both are machine-local files that may only ever
-// ADD exclusions (law 13). Project patterns are appended last, so a
+// combinedIgnoreLines is the shared load behind LoadIgnoreScopedFor and
+// LoadIgnoreScopedForWithPatterns: root's project-scope .fathomignore
+// unioned with the user-scope ~/.fathom/ignore AND serviceID's own scoped
+// exclusions (~/.fathom/ignore.d/<serviceID>), as raw glob patterns in
+// union order (user, then service, then project — project last, so a
 // project's own negation still overrides any user-scope exclusion on
-// conflict — where both scopes speak, the project wins.
-func LoadIgnoreScopedFor(root, serviceID string) (*filter.Matcher, IgnoreCounts, error) {
+// conflict) plus the per-scope pattern-count split for disclosure.
+// serviceID "" loads no scoped file. A re-include in EITHER user-scope
+// file is refused loudly (*ErrUserScopeReinclude): both are machine-local
+// files that may only ever ADD exclusions (law 13).
+func combinedIgnoreLines(root, serviceID string) ([]string, IgnoreCounts, error) {
 	projectLines, projectN := ignoreLines(filepath.Join(root, IgnoreFileName))
 
 	userPath := UserIgnorePath()
@@ -206,12 +204,54 @@ func LoadIgnoreScopedFor(root, serviceID string) (*filter.Matcher, IgnoreCounts,
 		}
 	}
 
+	counts := IgnoreCounts{Project: projectN, User: userN, Service: svcN}
 	if projectN == 0 && userN == 0 && svcN == 0 {
-		return nil, IgnoreCounts{}, nil
+		return nil, counts, nil
 	}
 	combined := make([]string, 0, len(userLines)+len(svcLines)+len(projectLines))
 	combined = append(combined, userLines...)
 	combined = append(combined, svcLines...)
 	combined = append(combined, projectLines...)
-	return filter.New(combined), IgnoreCounts{Project: projectN, User: userN, Service: svcN}, nil
+	return combined, counts, nil
+}
+
+// LoadIgnoreScopedFor unions root's project-scope .fathomignore with the
+// user-scope ~/.fathom/ignore AND serviceID's own scoped exclusions
+// (~/.fathom/ignore.d/<serviceID>), returning the merged Matcher (nil when
+// nothing contributes a pattern) and the per-scope pattern-count split for
+// disclosure. serviceID "" loads no scoped file — the LoadIgnoreScoped
+// compatibility path for callers with no service in hand.
+//
+// A re-include in EITHER user-scope file is refused loudly
+// (*ErrUserScopeReinclude): both are machine-local files that may only ever
+// ADD exclusions (law 13). Project patterns are appended last, so a
+// project's own negation still overrides any user-scope exclusion on
+// conflict — where both scopes speak, the project wins.
+func LoadIgnoreScopedFor(root, serviceID string) (*filter.Matcher, IgnoreCounts, error) {
+	combined, counts, err := combinedIgnoreLines(root, serviceID)
+	if err != nil {
+		return nil, IgnoreCounts{}, err
+	}
+	if len(combined) == 0 {
+		return nil, IgnoreCounts{}, nil
+	}
+	return filter.New(combined), counts, nil
+}
+
+// LoadIgnoreScopedForWithPatterns is LoadIgnoreScopedFor plus the exact
+// same exclusions as raw glob patterns (nil when nothing contributes one)
+// — for a caller that must hand the SAME exclusions to an external tool's
+// own glob engine (search's ripgrep path: `rg -g '!pattern'`), not only
+// Matcher.Match(). Same union, same order, same reinclude refusal as
+// LoadIgnoreScopedFor — this is not a second, potentially-divergent
+// exclusion mechanism, only a second view of the one load.
+func LoadIgnoreScopedForWithPatterns(root, serviceID string) (*filter.Matcher, []string, IgnoreCounts, error) {
+	combined, counts, err := combinedIgnoreLines(root, serviceID)
+	if err != nil {
+		return nil, nil, IgnoreCounts{}, err
+	}
+	if len(combined) == 0 {
+		return nil, nil, IgnoreCounts{}, nil
+	}
+	return filter.New(combined), combined, counts, nil
 }

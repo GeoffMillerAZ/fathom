@@ -44,7 +44,7 @@ not an afterthought bolted onto the quickstart below. Pick your client:
 | | |
 |---|---|
 | [docs/adoption/README.md](docs/adoption/README.md) | **Start here** — the 15-minute path, what this project has actually proven, what it has NOT, and where a reviewer should push hardest |
-| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the 17-tool agent surface, troubleshooting, and a verification checklist |
+| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the 19-tool agent surface, troubleshooting, and a verification checklist |
 | [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
 | [docs/adoption/spec-driven-development.md](docs/adoption/spec-driven-development.md) | **Spec-driven development** — the full markdown-spec → gated-plan → done-means-proven verify loop, using this repo as the worked example |
 
@@ -113,7 +113,7 @@ Full CLI reference: [docs/usage.md](docs/usage.md); MCP tools and surfaces:
 | [docs/usage.md](docs/usage.md) | Quickstart, CLI subcommand reference, Go client API, connecting an MCP client |
 | [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [docs/layers.md](docs/layers.md) | Semantic-layer catalog — `obligations`, `findings`, `adr-rules`, `spec-bindings`, module-pack shape, the `fathom layers` verb |
-| [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: every registered tool, the HTTP surfaces (17-tool agent allowlist), prompts, and resources — test-synced to the registry |
+| [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: every registered tool, the HTTP surfaces (19-tool agent allowlist), prompts, and resources — test-synced to the registry |
 | [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
 | [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that and ADR-025/SS-8 removed DuckDB outright — historical rationale |
 | [docs/claude-code-integration.md](docs/claude-code-integration.md) | Superseded for wiring by `docs/adoption/claude-code.md` — kept for its measured-assessment content ([assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md)) |

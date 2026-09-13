@@ -423,6 +423,13 @@ or narrowed to a diff's changed symbols uncovered in every layer. `internal/test
 classifies a TEST FILE into unit/integration/e2e by default, or a
 `schema/testlayer/schema.cue`-shaped config.
 
+**`search {service}` now mirrors the indexed corpus (V-review CRITICAL/MINOR).**
+A service-scoped `search` call loads the SAME service-scoped `.fathomignore`
+`read_source`/ingest use and refuses (fail-closed) rather than serve if it
+cannot load; both engines also exclude `.env`-pattern files and never follow
+a symlink, so a file ingest and `read_source` refuse is never still served
+by `search`.
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

@@ -62,7 +62,7 @@ only) each request selects an immutable **surface** via the path:
 `outline`, `pack_context`, `query_symbols`, `read_source`, `references`, `repo_map`,
 `search`, `staleness_report`, `symbol_context`, `verify_plan`. `search` (RC-24) and
 `discoveries` (RC-27, docs/vision/28-receipts.md §4) are the two deliberate exceptions
-to the 17-tool diet cap (`surface_diet_test.go`, TD-2) — each added with a
+to the 19-tool diet cap (`surface_diet_test.go`, TD-2) — each added with a
 pre-registered kill criterion, not a hunch.
 `memory_search` (AM-8,
 docs/design/anchored-memory.md §4) is the third net-new tool on this allowlist — the
@@ -139,7 +139,7 @@ Served by `serve-http` and `serve-mcp` alike; the contract lives in
   exactly the arguments its own `inputSchema` marks required — per-tool truth,
   not a blanket rule (ADR-006 as amended: the concern is the engine's
   parameter, not every tool's). `TestAgentSurfaceDescriptionsNameRequiredArgs`
-  iterates the 18-tool allowlist.
+  iterates the 19-tool allowlist.
 - **Annotations (RP-10).** Every agent-surface tool serves MCP
   `ToolAnnotations`: `readOnlyHint`, `destructiveHint`, `idempotentHint`,
   `openWorldHint`. Sixteen are read-only; `ingest` (re-indexes: not read-only,
@@ -186,7 +186,7 @@ exception: the `agent`/`companion` surface shows only its explicit allowlist (se
 | `rename_service` | `from` (req), `to` (req) | `{from, to, ok}` | Registry surgery: atomically re-key every stored row from one service id to another. Refuses when the source has no rows or the target already exists. Claim ids keep their minted values (historical evidence); new compiles mint fresh ids. |
 | `repo_map` | `service` (req), `budget` (opt, default 4000) | `{map: string, budget, elided?, elision?}` | Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. **RC-19**: a truncated map carries the existing structured `elided` block (`{count, of, ordering, how_to_get_more}`) alongside a uniform one-line `elision`: `"elided: N more — refine with budget or package"`. Also on the agent/companion surface. |
 | `pack_context` | `service` (req), `concern` (req), `budget` (opt, default 4000) | `{included: [{id,text,score}], tokens, dropped, budget}` | Pack ranked evidence items from a concern-scoped query into a token budget, returning the highest-scoring items that fit. Also on the agent/companion surface. |
-| `discoveries` | `service` (req), `since` (opt, RFC3339), `budget` (opt, default 4000) | `{service, since?, budget, pointers: [{pointer, count, last_seen, resolved, line}], rendered, note?}` | Receipts on the hand-off (RC-25..RC-27, docs/vision/28-receipts.md §4): this service's call-log pointers (symbol ids, files) established since `since`, deduped and ranked by recency then frequency, each re-resolved FRESH against the live index at read time — never rendered from what was true when established. A pointer the index no longer confirms renders `resolved:false` with a "stale" line rather than being served as fact. `rendered` is the same budget-cut text `fathom discoveries` prints; truncation is disclosed with its own inline "…N more" notice (not the `elided` block — see `docs/mcp-tools.md`'s elision doctrine). `note` explains an empty answer (no call log configured on this daemon; nothing recorded in the window). Also on the agent/companion surface (RC-27) — one of two deliberate exceptions to the 17-tool diet cap (TD-2), alongside `search` (RC-24), each carrying its own pre-registered kill criterion (vision 28 §4, M5). |
+| `discoveries` | `service` (req), `since` (opt, RFC3339), `budget` (opt, default 4000) | `{service, since?, budget, pointers: [{pointer, count, last_seen, resolved, line}], rendered, note?}` | Receipts on the hand-off (RC-25..RC-27, docs/vision/28-receipts.md §4): this service's call-log pointers (symbol ids, files) established since `since`, deduped and ranked by recency then frequency, each re-resolved FRESH against the live index at read time — never rendered from what was true when established. A pointer the index no longer confirms renders `resolved:false` with a "stale" line rather than being served as fact. `rendered` is the same budget-cut text `fathom discoveries` prints; truncation is disclosed with its own inline "…N more" notice (not the `elided` block — see `docs/mcp-tools.md`'s elision doctrine). `note` explains an empty answer (no call log configured on this daemon; nothing recorded in the window). Also on the agent/companion surface (RC-27) — one of two deliberate exceptions to the 19-tool diet cap (TD-2), alongside `search` (RC-24), each carrying its own pre-registered kill criterion (vision 28 §4, M5). |
 | `batch` | `calls` (req: `[{name, arguments}]`) | `{results: [{name, result?, error?}], count}` | Execute N tool calls in a single request; a per-call error is reported in that call's result entry rather than aborting the batch. Sub-calls are logged individually in the call log (`via:"batch"`) with their own `off_surface` flag, so surface telemetry reflects the tools a batch actually exercised. |
 
 `Finding` shape: `{file, line, rule, message}`.

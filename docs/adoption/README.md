@@ -133,7 +133,7 @@ an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
 | Layer | What it is |
 |---|---|
 | `internal/connector` → `fusion` → `store` | ingest: discover, extract, fuse, persist (SQLite, pure Go) |
-| `internal/mcp` | the agent surface — 17 tools, annotated with an `outputSchema` |
+| `internal/mcp` | the agent surface — 19 tools, annotated with an `outputSchema` |
 | `internal/harness` | every harness as data: descriptors, codecs, vehicles, verification state |
 | `cmd/fathom` | the CLI, the hooks, the daemon, the observatory |
 | `docs/intent/` | what the repo promises about itself, and how each promise is enforced |

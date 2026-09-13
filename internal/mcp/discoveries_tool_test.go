@@ -3,8 +3,11 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,6 +63,35 @@ func TestResultPointers_OutlineUsesArgsFile(t *testing.T) {
 	got := resultPointers("outline", json.RawMessage(`{"service":"fathom","file":"internal/core/model.go"}`), result)
 	if len(got) != 1 || got[0] != "internal/core/model.go" {
 		t.Fatalf("resultPointers(outline) = %v, want [internal/core/model.go]", got)
+	}
+}
+
+// TestResultPointers_References_ZeroResultMissOmitsQuery is the MINOR
+// finding's fix: a references/find_callers call that found NOTHING must
+// not add the raw query string as a discovery — there is nothing to hand
+// off, and re-issuing the same miss is not a pointer.
+func TestResultPointers_References_ZeroResultMissOmitsQuery(t *testing.T) {
+	result := map[string]any{
+		"content": []any{map[string]any{"type": "text", "text": `{"query":"NoSuchSymbol","definitions":[],"occurrences":[]}`}},
+	}
+	got := resultPointers("references", json.RawMessage(`{"query":"NoSuchSymbol"}`), result)
+	if len(got) != 0 {
+		t.Fatalf("resultPointers(references, zero-result) = %v, want empty (nothing to hand off)", got)
+	}
+}
+
+// TestResultPointers_References_RegexQueryOmitsQuery proves the OTHER half
+// of the same fix: regex:true means the query text is a REGEXP, never a
+// resolvable symbol/file pointer — it must never be added even when the
+// call found hits (the hit files/locations themselves still are pointers).
+func TestResultPointers_References_RegexQueryOmitsQuery(t *testing.T) {
+	result := map[string]any{
+		"content": []any{map[string]any{"type": "text", "text": `{"query":"Put.*","definitions":[{"file":"internal/store/store.go"}]}`}},
+	}
+	got := resultPointers("references", json.RawMessage(`{"query":"Put.*","regex":true}`), result)
+	want := []string{"internal/store/store.go"}
+	if len(got) != len(want) || got[0] != want[0] {
+		t.Fatalf("resultPointers(references, regex:true) = %v, want %v (the regex query text itself must be omitted)", got, want)
 	}
 }
 
@@ -184,6 +216,169 @@ func TestDiscoveriesTool_NoCallLogConfigured(t *testing.T) {
 	}
 	if payload.Note == "" {
 		t.Errorf("expected a note explaining the empty answer, got none: %+v", payload)
+	}
+}
+
+// TestDiscoveriesTool_PointersBudgetedSameAsRendered is the MAJOR finding's
+// fix: `pointers` used to return the whole aggregate unbudgeted while only
+// `rendered` was cut. With enough distinct pointers to force a cut at a
+// small budget, `pointers` must ALSO be cut, and the two must describe the
+// SAME kept prefix — every pointers[i].Line equal to rendered's i-th line.
+func TestDiscoveriesTool_PointersBudgetedSameAsRendered(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "mcp-calls.jsonl")
+	now := time.Now().UTC()
+	const total = 30
+	var rows []string
+	for i := 0; i < total; i++ {
+		ts := now.Add(-time.Duration(i) * time.Second).Format(time.RFC3339Nano)
+		rows = append(rows, fmt.Sprintf(`{"ts":%q,"service":"svc","pointers":["pkg.Sym%02d"]}`, ts, i))
+	}
+	if err := os.WriteFile(logPath, []byte(joinLines(rows)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	backend := &elisionFakeBackend{} // every pointer resolves to "stale (unresolved)"
+	l := NewCallLogger(mustOpenAppend(t, logPath))
+	srv := NewServerWithLogger(backend, l)
+
+	req := map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "discoveries", "arguments": map[string]any{"service": "svc", "budget": 300}},
+	}
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, ok := srv.HandleRequest(context.Background(), raw)
+	if !ok {
+		t.Fatalf("discoveries: no response")
+	}
+	var env map[string]any
+	if err := json.Unmarshal(resp, &env); err != nil {
+		t.Fatalf("decode envelope: %v (%s)", err, resp)
+	}
+	if env["error"] != nil {
+		t.Fatalf("discoveries: rpc error: %v", env["error"])
+	}
+	result := env["result"].(map[string]any)
+	content := result["content"].([]any)
+	first := content[0].(map[string]any)
+	var payload discoveriesResult
+	if err := json.Unmarshal([]byte(first["text"].(string)), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	if len(payload.Pointers) == 0 || len(payload.Pointers) >= total {
+		t.Fatalf("expected pointers cut well below %d at budget 300, got %d", total, len(payload.Pointers))
+	}
+	if payload.Note == "" {
+		t.Error("expected a note disclosing the cut")
+	}
+	renderedLines := strings.Split(strings.TrimRight(payload.Rendered, "\n"), "\n")
+	if len(renderedLines) != len(payload.Pointers)+1 {
+		t.Fatalf("rendered has %d lines, want %d (pointers) + 1 (the inline \"…N more\" footer): %q",
+			len(renderedLines), len(payload.Pointers), payload.Rendered)
+	}
+	for i, row := range payload.Pointers {
+		if renderedLines[i] != row.Line {
+			t.Errorf("rendered line %d = %q, want pointers[%d].Line %q — rows and rendered must describe the same set", i, renderedLines[i], i, row.Line)
+		}
+	}
+}
+
+// TestRenderDiscoveryPointer_IndexUnreachableIsNotStale is the MAJOR
+// finding's unit-level proof: an index error must render its own honest
+// line, never the "stale" text a reachable-but-not-found index makes.
+func TestRenderDiscoveryPointer_IndexUnreachableIsNotStale(t *testing.T) {
+	wantErr := errors.New("dial tcp: connection refused")
+	line, res := renderDiscoveryPointer("pkg.Sym", 1, nil, nil, wantErr)
+	if res != discoveryUnreachable {
+		t.Fatalf("res = %v, want discoveryUnreachable", res)
+	}
+	if !strings.Contains(line, "index unreachable") || strings.Contains(line, "stale") {
+		t.Errorf("line = %q, want it to name the index unreachable and never say stale", line)
+	}
+	// A sourceSet hit from a call that itself SUCCEEDED still resolves —
+	// idxErr only matters once that cheap fast-path check has missed.
+	line2, res2 := renderDiscoveryPointer("pkg/live.go", 1, nil, map[string]bool{"pkg/live.go": true}, wantErr)
+	if res2 != discoveryResolved || !strings.HasPrefix(line2, "read ") {
+		t.Errorf("line2 = %q, res2 = %v, want a resolved \"read\" line even with idxErr set", line2, res2)
+	}
+}
+
+// indexErrorBackend wraps elisionFakeBackend, overriding ListAllSymbols to
+// return an error — proves the discoveries TOOL end to end never renders
+// an unreachable index's pointers as "stale".
+type indexErrorBackend struct {
+	elisionFakeBackend
+	listErr error
+}
+
+func (b *indexErrorBackend) ListAllSymbols(_ context.Context, _ string) ([]core.SymbolNode, error) {
+	return nil, b.listErr
+}
+
+func TestDiscoveriesTool_IndexUnreachableIsNotRenderedStale(t *testing.T) {
+	dir := t.TempDir()
+	logPath := filepath.Join(dir, "mcp-calls.jsonl")
+	now := time.Now().UTC()
+	rows := []string{
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"svc","pointers":["pkg.Sym"]}`,
+	}
+	if err := os.WriteFile(logPath, []byte(joinLines(rows)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wantErr := errors.New("store unavailable")
+	backend := &indexErrorBackend{listErr: wantErr}
+	l := NewCallLogger(mustOpenAppend(t, logPath))
+	srv := NewServerWithLogger(backend, l)
+
+	req := map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "discoveries", "arguments": map[string]any{"service": "svc"}},
+	}
+	raw, err := json.Marshal(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, ok := srv.HandleRequest(context.Background(), raw)
+	if !ok {
+		t.Fatalf("discoveries: no response")
+	}
+	var env map[string]any
+	if err := json.Unmarshal(resp, &env); err != nil {
+		t.Fatalf("decode envelope: %v (%s)", err, resp)
+	}
+	if env["error"] != nil {
+		t.Fatalf("discoveries: rpc error: %v", env["error"])
+	}
+	result := env["result"].(map[string]any)
+	content := result["content"].([]any)
+	first := content[0].(map[string]any)
+	var payload discoveriesResult
+	if err := json.Unmarshal([]byte(first["text"].(string)), &payload); err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+
+	if payload.IndexError == "" {
+		t.Fatal("expected index_error to name the ListAllSymbols failure")
+	}
+	if !strings.Contains(payload.IndexError, wantErr.Error()) {
+		t.Errorf("index_error = %q, want it to contain %q", payload.IndexError, wantErr.Error())
+	}
+	if len(payload.Pointers) != 1 {
+		t.Fatalf("got %d pointers, want 1: %+v", len(payload.Pointers), payload.Pointers)
+	}
+	row := payload.Pointers[0]
+	if row.Resolved {
+		t.Error("an unreachable index must never render resolved:true")
+	}
+	if strings.Contains(row.Line, "stale") {
+		t.Errorf("line = %q, must not render \"stale\" for an unreachable index (a positive claim the index never made)", row.Line)
+	}
+	if !strings.Contains(row.Line, "index unreachable") {
+		t.Errorf("line = %q, want it to name the index as unreachable", row.Line)
 	}
 }
 

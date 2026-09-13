@@ -3,6 +3,7 @@ package semantic
 import (
 	"context"
 	"encoding/json"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -171,5 +172,109 @@ func TestObligationsFor_DisplacedCountAndLayerLabels(t *testing.T) {
 	}
 	if !strings.Contains(string(b), `"layer":`) {
 		t.Errorf("JSON payload missing per-rule layer label: %s", b)
+	}
+}
+
+// ─── RootObligationsFor: selection by scope breadth (review finding, MAJOR:
+// the old literal-probe approach matched a claim's scope glob against the
+// bare string "CLAUDE.md", so a genuinely repo-wide "**/*.go" rule from the
+// root CLAUDE.md never matched and was silently dropped) ────────────────────
+
+// seedServedSubject is seedServedLayer with an explicit Subject (governing-
+// source citation) — the root-scope tests need to control it directly
+// (seedServedLayer always writes "docs/g.md#s-"+id).
+func seedServedSubject(t *testing.T, st store.Store, id, layer, subject, rule string, scope []string, status core.ClaimStatus) {
+	t.Helper()
+	claim := core.SemanticClaim{
+		ClaimID: id, ServiceID: "svc",
+		Layer: layer, LayerVersion: "v1", Kind: KindObligation,
+		Subject: subject, Rule: rule, Scope: scope,
+		Tier: core.TierDocClaimed, TierProfile: "engineering", Status: status,
+		PromptVersion: obligationsPromptVersion(), ReproKey: id, InputDigest: "d",
+		CompiledAtWatermark: "manifest:root", CompiledAt: time.Date(2026, 7, 7, 0, 0, 0, 0, time.UTC),
+	}
+	links := []core.ClaimLink{{ClaimID: id, Rel: core.RelCites, TargetRef: subject, TargetHash: "h"}}
+	for _, g := range scope {
+		links = append(links, core.ClaimLink{ClaimID: id, Rel: core.RelScopes, TargetRef: g})
+	}
+	if err := st.PutClaims(context.Background(), []core.SemanticClaim{claim}, links); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+}
+
+// TestRootObligationsFor_SourceOrGlobBreadth proves the OR the fix requires:
+// a claim counts as root-scope when EITHER its source is a root-level
+// governing doc OR its scope glob is unanchored/wildcard-rooted — and a
+// package-scoped rule from a NESTED CLAUDE.md (floored to its own subtree
+// at compile time, BP-32) counts as neither.
+func TestRootObligationsFor_SourceOrGlobBreadth(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	// The MAJOR finding's exact reproduction: a repo-wide code rule from
+	// the root CLAUDE.md, scoped "**/*.go" — the literal probe path
+	// "CLAUDE.md" never matches that glob.
+	seedServedSubject(t, st, "c-root-go", LayerObligations, "CLAUDE.md#go-gate", "Run gofmt before commit.", []string{"**/*.go"}, core.ClaimFresh)
+	// A nested CLAUDE.md's package-scoped rule — must be EXCLUDED: neither
+	// a root-level source (the subject names a nested doc) nor a
+	// wildcard-rooted glob (floored to internal/mcp/).
+	seedServedSubject(t, st, "c-pkg-go", LayerObligations, "internal/mcp/CLAUDE.md#pkg-rule", "Package-scoped rule.", []string{"internal/mcp/**/*.go"}, core.ClaimFresh)
+	// Root-scope by GLOB BREADTH alone — a non-root-doc source, but an
+	// unanchored glob.
+	seedServedSubject(t, st, "c-wild", "adr-rules", "ADR.md#wild", "Sort every output.", []string{"**"}, core.ClaimFresh)
+	// Root-scope by SOURCE alone — a root CLAUDE.md rule whose proposed
+	// scope is a narrow, non-wildcard glob.
+	seedServedSubject(t, st, "c-root-narrow", LayerObligations, "CLAUDE.md#narrow", "Narrow root rule.", []string{"CLAUDE.md"}, core.ClaimFresh)
+
+	got, err := RootObligationsFor(ctx, st, "svc", 0)
+	if err != nil {
+		t.Fatalf("RootObligationsFor: %v", err)
+	}
+	if got.File != "" {
+		t.Errorf("File = %q, want empty — root-scope answers for no single file", got.File)
+	}
+	var rules []string
+	for _, r := range got.Rules {
+		rules = append(rules, r.Rule)
+	}
+	sort.Strings(rules)
+	want := []string{"Narrow root rule.", "Run gofmt before commit.", "Sort every output."}
+	if len(rules) != len(want) {
+		t.Fatalf("got %d rules %v, want %v (the nested package-scoped rule must be excluded)", len(rules), rules, want)
+	}
+	for i, w := range want {
+		if rules[i] != w {
+			t.Errorf("rules = %v, want %v", rules, want)
+		}
+	}
+}
+
+func TestGlobReachesRoot(t *testing.T) {
+	cases := map[string]bool{
+		"*": true, "**": true, "**/*.go": true, "**/x": true,
+		"*.go": false, "internal/**/*.go": false, "internal/**": false, "": false,
+	}
+	for g, want := range cases {
+		if got := globReachesRoot(g); got != want {
+			t.Errorf("globReachesRoot(%q) = %v, want %v", g, got, want)
+		}
+	}
+}
+
+func TestIsRootLevelSource(t *testing.T) {
+	cases := map[string]bool{
+		"CLAUDE.md#gate":               true,
+		"CLAUDE.md":                    true,
+		"AGENTS.md#x":                  true,
+		"docs/intent/README.md#router": true,
+		"docs/intent/scope.md":         true,
+		"internal/mcp/CLAUDE.md#pkg":   false,
+		"docs/vision/28-receipts.md#x": false,
+		"ADR.md#decision":              false,
+	}
+	for subject, want := range cases {
+		if got := isRootLevelSource(subject); got != want {
+			t.Errorf("isRootLevelSource(%q) = %v, want %v", subject, got, want)
+		}
 	}
 }

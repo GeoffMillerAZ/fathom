@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
@@ -153,10 +154,91 @@ type Obligations struct {
 //     stopped run led with stale rules; the agent reads top-down, so the
 //     freshest binding rule goes first.
 func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string, max int) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, func(_ core.SemanticClaim, scope []string) int {
+		best := -1
+		for _, g := range scope {
+			if filter.New([]string{g}).Match(file) {
+				if len(g) > best {
+					best = len(g)
+				}
+			}
+		}
+		return best
+	})
+}
+
+// globReachesRoot reports whether glob g is unanchored or wildcard-rooted —
+// a bare "*", a bare "**", or anything starting "**/" — i.e. it reaches the
+// repo root by construction. "internal/**/*.go" does not qualify: BP-32's
+// scopeFloor prefixed it to a nested CLAUDE.md's own subtree, and it can
+// never match a file outside that subtree.
+func globReachesRoot(g string) bool {
+	g = strings.TrimSpace(g)
+	return g == "*" || g == "**" || strings.HasPrefix(g, "**/")
+}
+
+// isRootLevelSource reports whether subject — a claim's governing-source
+// citation, e.g. "CLAUDE.md#deterministic-excellence-gate" — names a
+// root-level governing doc: the repo-root CLAUDE.md/AGENTS.md (never a
+// NESTED one — "internal/mcp/CLAUDE.md" governs only its own subtree per
+// scopeFloorDir/instructionFileBases and fails this exact-string check), or
+// anything under docs/intent/ (the project-intent router and its living
+// docs, repo-wide by convention).
+func isRootLevelSource(subject string) bool {
+	path := subject
+	if i := strings.IndexByte(subject, '#'); i >= 0 {
+		path = subject[:i]
+	}
+	if instructionFileBases[path] {
+		return true
+	}
+	return strings.HasPrefix(path, "docs/intent/")
+}
+
+// RootObligationsFor answers "what governs this repository" (RC-22,
+// docs/vision/28-receipts.md §3.5): the served claims whose SOURCE is a
+// root-level governing doc (isRootLevelSource) or whose scope glob is
+// unanchored/wildcard-rooted (globReachesRoot) — i.e. rules that reach the
+// repo root by construction, not merely a glob that happens to match one
+// literal probe path. That literal-probe approach is the bug this replaces:
+// a repo-wide "**/*.go" rule from the root CLAUDE.md never matches the
+// literal string "CLAUDE.md", so root-scope code rules were silently
+// dropped from every root-scope call. Budgeted and ordered identically to a
+// file-scoped call (BP-17/BP-18); out.File is always "" (no single file
+// answers this question).
+func RootObligationsFor(ctx context.Context, st store.Store, serviceID string, max int) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, "", max, func(cl core.SemanticClaim, scope []string) int {
+		best := -1
+		for _, g := range scope {
+			if globReachesRoot(g) && len(g) > best {
+				best = len(g)
+			}
+		}
+		if best < 0 && isRootLevelSource(cl.Subject) {
+			// The SOURCE alone is enough even when the model proposed a
+			// scope glob that is not itself wildcard-rooted (a narrow
+			// "CLAUDE.md#section" restatement scoped to one file, say) —
+			// a root-level governing doc's claim is root-scope by where it
+			// came from, not only by how widely its glob reaches.
+			best = 0
+		}
+		return best
+	})
+}
+
+// obligationsCore is the shared match/budget/order engine behind
+// ObligationsFor and RootObligationsFor: outFile is what the returned
+// Obligations.File carries (a real path, or "" for the root-scope
+// answer — there is no probe file at all, honest absence); match decides,
+// per claim, whether its (already ContractScope-resolved) scope belongs in
+// the answer, returning a specificity (higher wins ties) or <0 for no
+// match. See ObligationsFor's doc comment for the SCOPE/BUDGET/ORDER
+// contract this enforces regardless of which match function is passed.
+func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
 	}
-	out := Obligations{Service: serviceID, File: file}
+	out := Obligations{Service: serviceID, File: outFile}
 
 	claims, err := st.ClaimsForService(ctx, serviceID, "")
 	if err != nil {
@@ -229,14 +311,7 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 				scope = cs
 			}
 		}
-		best := -1
-		for _, g := range scope {
-			if filter.New([]string{g}).Match(file) {
-				if len(g) > best {
-					best = len(g)
-				}
-			}
-		}
+		best := match(cl, scope)
 		if best >= 0 {
 			matched = append(matched, scored{cl: cl, specificity: best, claims: claims})
 		}

@@ -20,7 +20,7 @@ import (
 var requiredSentence = regexp.MustCompile(`Required: ([a-z_, ]+|none)\.`)
 
 // TestAgentSurfaceDescriptionsNameRequiredArgs iterates the agent-surface
-// allowlist (surface.go's companionTools, 17 tools): each served
+// allowlist (surface.go's companionTools, 19 tools): each served
 // description carries a "Reach for it when …" sentence and a "Required:"
 // sentence whose names equal the schema's required list; pack_context no
 // longer leaks the Go method name QuerySymbols.

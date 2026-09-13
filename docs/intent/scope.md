@@ -79,7 +79,7 @@ waiting on it.
   Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
   "Extraction", ADR-021.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
-  MCP over stdio and HTTP with 55 registered tools and a 17-tool agent surface, which
+  MCP over stdio and HTTP with 55 registered tools and a 19-tool agent surface, which
   now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client
   `pkg/client`; the observatory web UI on app-kit (`cmd/fathom/observatory*.go`).
 - Store: pure-Go SQLite in WAL mode, the only on-disk backend; one shared fleet store
@@ -136,7 +136,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `pattern`). Evidence: ADR-030, `schema/plan/schema.cue`.
 - The `<!-- fathom:begin -->`…`<!-- fathom:end -->` stanza region in `CLAUDE.md` and
   `AGENTS.md` (fleet reconcile compares content, law 15). Evidence: `CHANGELOG.md` 2026-08-13.
-- The 17-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the
+- The 19-tool agent surface allowlist, tool names and schemas, `POST /rpc/agent` and the
   `/rpc/companion` alias. Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
 - The `.fathom/` files an adopter commits: `concerns.cue`, `guard.cue`, `capabilities.cue`,
   `modules.cue`, `layers/`, `rules/`, `observations.md`. Evidence: `schema/{binding,guard,config,semantic,rules}`.

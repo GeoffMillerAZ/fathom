@@ -7,7 +7,7 @@
 > This document predates the obligations layer, the verify gate, and the
 > hook stack; its measured assessment content remains historically accurate.
 > Read §5 with [mcp-tools.md](mcp-tools.md) open: the agent/companion
-> surface is now **17 tools** at `/rpc/agent`, off-surface calls
+> surface is now **19 tools** at `/rpc/agent`, off-surface calls
 > **execute-and-flag** (`off_surface:true`) rather than being rejected, the
 > `set_profile` tool no longer exists, DuckDB was replaced by SQLite
 > (ADR-025), and the daemon is deployed with `task deploy`, never a raw copy.
@@ -216,7 +216,7 @@ registry (see [mcp-tools.md](mcp-tools.md)):
 - `POST /rpc` — the full surface, every tool. **Register this for Claude Code**: it defers MCP tool
   schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
   session and every tool stays one on-demand load away.
-- `POST /rpc/agent` (alias `POST /rpc/companion`) — the curated 17-tool coding-agent surface
+- `POST /rpc/agent` (alias `POST /rpc/companion`) — the curated 19-tool coding-agent surface
   (includes `read_source`, the bounded raw-text read, and `memory_search`). Register this for MCP
   clients that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or
   anywhere you want a slim surface: it cuts the schema payload ~80%. Off-surface calls still

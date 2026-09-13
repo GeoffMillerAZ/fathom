@@ -211,6 +211,8 @@ func registerSearch(s *Server, backend QueryInterface) {
 
 		root := p.Root
 		var byFile map[string][]core.SymbolNode
+		var ignore *filter.Matcher
+		var ignorePatterns []string
 		if p.Service != "" {
 			if backend == nil {
 				return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}
@@ -223,6 +225,21 @@ func registerSearch(s *Server, backend QueryInterface) {
 			if nodes, err := backend.ListAllSymbols(ctx, p.Service); err == nil {
 				byFile = groupSymbolsByFile(nodes)
 			}
+			// CRITICAL (V-review): a `service` search must mirror the
+			// INDEXED corpus exactly as read_source does — the same
+			// scoped .fathomignore loader, the same fail-closed posture
+			// (readsource.go's notIndexedReason, born of the purged-
+			// credential incident). Without this, a file ingest and
+			// read_source both refuse is still served here: search reads
+			// the raw filesystem and had no per-service exclusion at all.
+			// An error loading the exclusions REFUSES the search rather
+			// than searching without them — a broken exclusion mechanism
+			// must not fail toward disclosure.
+			ig, pats, _, ierr := connector.LoadIgnoreScopedForWithPatterns(root, p.Service)
+			if ierr != nil {
+				return nil, &rpcError{Code: ErrCodeInternal, Message: fmt.Sprintf("search: refusing to search service %q: its exclusions could not be loaded (%v) — searching without them could disclose purged or excluded content", p.Service, ierr)}
+			}
+			ignore, ignorePatterns = ig, pats
 		} else {
 			info, err := os.Stat(root)
 			if err != nil || !info.IsDir() {
@@ -239,7 +256,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 			contextN = 0
 		}
 
-		rawHits, engine, err := searchRun(ctx, root, p.Pattern, p.Path, caseSensitive, contextN)
+		rawHits, engine, err := searchRun(ctx, root, p.Pattern, p.Path, caseSensitive, contextN, ignore, ignorePatterns)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "search: " + err.Error()}
 		}
@@ -256,9 +273,10 @@ func registerSearch(s *Server, backend QueryInterface) {
 			limited = limited[:limit]
 		}
 		flagsCache := map[string][]string{}
+		linesCache := map[string][]string{}
 		hits := make([]searchHit, 0, len(limited))
 		for _, rh := range limited {
-			hits = append(hits, renderSearchHit(rh, re, byFile, flagsCache, root))
+			hits = append(hits, renderSearchHit(rh, re, byFile, flagsCache, linesCache, root))
 		}
 		kept, truncated := fitToBudget(hits, 0)
 		var el *elided
@@ -272,25 +290,62 @@ func registerSearch(s *Server, backend QueryInterface) {
 // searchRun runs ripgrep when it is on PATH, falling back to searchWalk
 // (an equivalent Go-regexp walk, identical output shape) on any rg
 // plumbing failure or absence — the fallback promise the RC-24 spec makes.
-func searchRun(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int) ([]searchRawHit, string, error) {
+// ignore/ignorePatterns are the SAME service-scoped .fathomignore load
+// (connector.LoadIgnoreScopedForWithPatterns) applied to both engines:
+// ignore (the compiled Matcher) drives searchWalk's own tree walk;
+// ignorePatterns (the identical raw globs) become ripgrep's own `-g`
+// excludes, so a `service` call never serves what ingest/read_source
+// would refuse, regardless of which engine answers it. Both nil for a
+// bare `root` call, which has no per-service ignore file to load.
+func searchRun(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int, ignore *filter.Matcher, ignorePatterns []string) ([]searchRawHit, string, error) {
 	if _, err := exec.LookPath("rg"); err == nil {
-		if hits, err := searchRipgrep(ctx, root, pattern, pathGlob, caseSensitive, contextN); err == nil {
+		if hits, err := searchRipgrep(ctx, root, pattern, pathGlob, caseSensitive, contextN, ignorePatterns); err == nil {
 			return hits, "ripgrep", nil
 		}
 		// Any rg plumbing failure (an unexpected build's flag set, a
 		// transient exec error) falls through to the Go walk rather than
 		// surfacing an engine implementation detail as a tool error.
 	}
-	hits, err := searchWalk(root, pattern, pathGlob, caseSensitive, contextN)
+	hits, err := searchWalk(root, pattern, pathGlob, caseSensitive, contextN, ignore)
 	return hits, "regexp", err
+}
+
+// ignorePatternToRipgrepGlob converts one raw .fathomignore line (gitignore
+// syntax — the exact same line filter.New compiles into ignore's Matcher)
+// into the equivalent ripgrep -g glob. ripgrep's glob sense is INVERTED
+// from gitignore's: a bare glob means "search files matching this", so an
+// ignore-file EXCLUDE line needs a "!" added; a gitignore RE-INCLUDE line
+// ("!pattern") becomes a plain rg include glob (bang stripped) so a
+// project's own negation still overrides an earlier exclude, exactly as
+// Matcher's last-match-wins does when both are handed the same lines in
+// the same order. "" for a blank or comment line — not a pattern at all.
+func ignorePatternToRipgrepGlob(line string) string {
+	t := strings.TrimSpace(line)
+	if t == "" || strings.HasPrefix(t, "#") {
+		return ""
+	}
+	if strings.HasPrefix(t, "!") {
+		return t[1:]
+	}
+	return "!" + t
 }
 
 // searchRipgrep shells out to rg. Exit code 1 (no matches) is success with
 // zero hits; any other non-zero exit is a real error.
-func searchRipgrep(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int) ([]searchRawHit, error) {
+func searchRipgrep(ctx context.Context, root, pattern, pathGlob string, caseSensitive bool, contextN int, ignorePatterns []string) ([]searchRawHit, error) {
 	args := []string{
 		"--line-number", "--no-heading", "--with-filename", "--color=never", "--sort", "path",
 		"-g", "!vendor/**", "-g", "!node_modules/**", "-g", "!workspace/**",
+		// MINOR (V-review): searchWalk already refuses a .env-pattern
+		// basename via isEnvPatternFile — the ripgrep path had no
+		// equivalent, so a secrets-shaped file was servable through this
+		// engine alone depending on which one answered a given call.
+		"-g", "!*.env", "-g", "!.env", "-g", "!.env.*",
+	}
+	for _, p := range ignorePatterns {
+		if g := ignorePatternToRipgrepGlob(p); g != "" {
+			args = append(args, "-g", g)
+		}
 	}
 	if !caseSensitive {
 		args = append(args, "-i")
@@ -381,9 +436,40 @@ func parseRipgrepOutput(raw string, contextN int) []searchRawHit {
 	return hits
 }
 
+// searchIgnoreMatch reports whether ignore excludes path — tested
+// directly, then against every ancestor directory with a trailing slash
+// appended (mirroring notIndexedReason's ancestor walk, readsource.go, so
+// search's own mirror of the INDEXED corpus stays consistent with
+// read_source's): a dir-only .fathomignore pattern ("workspace/") needs
+// that trailing slash to match the directory segment, not a same-named
+// file. A caller testing a DIRECTORY node itself should pass path with
+// its own trailing slash already appended (nil ignore never matches —
+// the bare `root` call path, which has no per-service ignore to load).
+func searchIgnoreMatch(ignore *filter.Matcher, path string) bool {
+	if ignore == nil {
+		return false
+	}
+	if ignore.Match(path) {
+		return true
+	}
+	trimmed := strings.Trim(strings.TrimSuffix(path, "/"), "/")
+	if trimmed == "" {
+		return false
+	}
+	segs := strings.Split(trimmed, "/")
+	for i := 1; i < len(segs); i++ {
+		if ignore.Match(strings.Join(segs[:i], "/") + "/") {
+			return true
+		}
+	}
+	return false
+}
+
 // searchWalk is the Go-regexp fallback: same exclusions, same output
-// shape, used when rg is not on PATH.
-func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int) ([]searchRawHit, error) {
+// shape, used when rg is not on PATH. ignore (nil for a bare `root` call)
+// is the service-scoped .fathomignore Matcher search's caller loaded via
+// connector.LoadIgnoreScopedForWithPatterns — see searchRun's doc comment.
+func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int, ignore *filter.Matcher) ([]searchRawHit, error) {
 	reSrc := pattern
 	if !caseSensitive {
 		reSrc = "(?i)" + reSrc
@@ -407,8 +493,16 @@ func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int
 			return nil
 		}
 		rel = filepath.ToSlash(rel)
+		if rel != "." && d.Type()&fs.ModeSymlink != 0 {
+			// MINOR (V-review): never follow a symlink — it can resolve
+			// outside root entirely, exactly what read_source refuses
+			// ("symlinks resolving outside the corpus root"); a grep
+			// tool must not become a wider door than the read tool it
+			// hands out a receipt for.
+			return nil
+		}
 		if d.IsDir() {
-			if rel != "." && searchSkipDir(d.Name()) {
+			if rel != "." && (searchSkipDir(d.Name()) || searchIgnoreMatch(ignore, rel+"/")) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -417,6 +511,9 @@ func searchWalk(root, pattern, pathGlob string, caseSensitive bool, contextN int
 			return nil
 		}
 		if isEnvPatternFile(d.Name()) {
+			return nil
+		}
+		if searchIgnoreMatch(ignore, rel) {
 			return nil
 		}
 		info, ierr := d.Info()
@@ -481,11 +578,28 @@ func groupSymbolsByFile(nodes []core.SymbolNode) map[string][]core.SymbolNode {
 // enclosingSymbol returns the innermost symbol (from a file's Line-sorted
 // symbol list) whose span contains line: EndLine when the extractor set
 // it, else bounded by the next symbol's start line (or open-ended for the
-// file's last symbol). Returns (_, false) when no symbol's span covers
-// line — never a guess at the nearest one.
-func enclosingSymbol(syms []core.SymbolNode, line int) (core.SymbolNode, bool) {
+// file's last symbol) — the SAME candidate selection as before this fix,
+// so a real EndLine's nesting behavior (an outer symbol still wins when a
+// later, more specific one does not itself reach line) is unchanged.
+//
+// MAJOR fix (V-review): the Go extractor never sets EndLine, so that
+// fallback boundary is a GUESS — "the next symbol starts here" is not "this
+// symbol's body ends here". A doc comment or a blank run between two
+// symbols sits inside the naive boundary and was silently attributed to
+// the symbol ABOVE it. Once the naive-boundary winner is chosen, this now
+// re-checks ONLY that winner (never a candidate that already lost to a
+// more specific real-EndLine nested match) against lines — the file's
+// content, nil when unreadable — narrowing its trusted span to the first
+// blank line or comment-only run before the next symbol (narrowFallbackSpan).
+// A hit past that narrowed point is honestly unattributable: this returns
+// (_, false) rather than keep the naive guess. lines==nil (can't narrow)
+// or a real EndLine (nothing to narrow) leaves the naive answer untouched.
+// Returns (_, false) when no symbol's span covers line at all — never a
+// guess at the nearest one.
+func enclosingSymbol(syms []core.SymbolNode, line int, lines []string) (core.SymbolNode, bool) {
 	var best core.SymbolNode
 	found := false
+	bestIdx := -1
 	for i, n := range syms {
 		if n.Line > line {
 			break
@@ -499,10 +613,65 @@ func enclosingSymbol(syms []core.SymbolNode, line int) (core.SymbolNode, bool) {
 			}
 		}
 		if line <= upper {
-			best, found = n, true
+			best, found, bestIdx = n, true, i
+		}
+	}
+	if found && best.EndLine <= 0 && bestIdx+1 < len(syms) {
+		naive := syms[bestIdx+1].Line - 1
+		if narrowed := narrowFallbackSpan(best.Line, naive, lines, symbolFileExt(best)); line > narrowed {
+			return core.SymbolNode{}, false
 		}
 	}
 	return best, found
+}
+
+// narrowFallbackSpan trims naiveUpper — the next symbol's start line minus
+// one, the boundary enclosingSymbol falls back to when a symbol's EndLine
+// is unset — down to the last line of startLine's block that scanning
+// forward still looks unambiguously like code: the first blank line, or
+// the start of a comment-only run that continues uninterrupted up to
+// naiveUpper (almost always the NEXT symbol's own doc comment, not this
+// symbol's body), whichever comes first. A plain run of code all the way
+// to naiveUpper, a nil lines (file unreadable — nothing to narrow
+// against), or an extension with no known line-comment token leaves
+// naiveUpper unchanged.
+func narrowFallbackSpan(startLine, naiveUpper int, lines []string, ext string) int {
+	if lines == nil {
+		return naiveUpper
+	}
+	upper := naiveUpper
+	for ln := startLine; ln <= naiveUpper; ln++ {
+		if ln < 1 || ln > len(lines) {
+			break
+		}
+		if strings.TrimSpace(lines[ln-1]) == "" {
+			upper = ln - 1
+			break
+		}
+	}
+	if tok, known := searchLineCommentTokens[ext]; known {
+		commentStart := naiveUpper + 1
+		for ln := naiveUpper; ln >= startLine; ln-- {
+			if ln < 1 || ln > len(lines) {
+				break
+			}
+			text := strings.TrimSpace(lines[ln-1])
+			if text == "" || !strings.HasPrefix(text, tok) {
+				break
+			}
+			commentStart = ln
+		}
+		if commentStart-1 < upper {
+			upper = commentStart - 1
+		}
+	}
+	return upper
+}
+
+// symbolFileExt returns n's lowercased file extension, for
+// narrowFallbackSpan's searchLineCommentTokens lookup.
+func symbolFileExt(n core.SymbolNode) string {
+	return strings.ToLower(filepath.Ext(n.FilePath))
 }
 
 // symbolKindLabel maps a core.SourceKind to the RC-24 vocabulary
@@ -681,18 +850,27 @@ func searchHitWireSize(h searchHit) int {
 
 // renderSearchHit renders one raw match into its wire shape: the trimmed
 // location/text, the enclosing-symbol receipt (when byFile is non-nil and
-// covers this file), the test/generated/vendored flags (cached per file —
+// covers this file — enclosingSymbol's own fallback-narrowing needs the
+// file's lines, read at most once per file via linesCache, nil when
+// unreadable), the test/generated/vendored flags (cached per file —
 // searchComputeFlags reads the file at most once regardless of hit count),
 // and the ident/comment/string classification (re-locating the match in
 // the returned line text with re, so classification is consistent
 // regardless of which engine produced the hit).
-func renderSearchHit(rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, root string) searchHit {
+func renderSearchHit(rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, linesCache map[string][]string, root string) searchHit {
 	h := searchHit{
 		Loc:  rh.File + ":" + strconv.Itoa(rh.Line),
 		Text: truncateForWire(rh.Text, searchTextMaxChars),
 	}
 	if syms, ok := byFile[rh.File]; ok {
-		if sym, found := enclosingSymbol(syms, rh.Line); found {
+		lines, cached := linesCache[rh.File]
+		if !cached {
+			if data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rh.File))); err == nil {
+				lines = strings.Split(string(data), "\n")
+			}
+			linesCache[rh.File] = lines
+		}
+		if sym, found := enclosingSymbol(syms, rh.Line, lines); found {
 			h.Sym = sym.Name
 			if k, ok := symbolKindLabel(sym.Kind); ok {
 				h.Kind = k

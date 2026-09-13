@@ -311,7 +311,7 @@ immutable surface via the path (`internal/mcp/surface.go`). `POST /rpc/{surface}
 `off_surface:true` (execute-and-flag, ADR-014 amendment, 2026-07-16); surfaces are
 ergonomics and measurement, never a security boundary. The pre-amendment hard gate
 survives behind `Server.strictSurfaces` and on the hosted `/rpc/modules` surface only.
-`agent` (`/rpc/agent`; alias `companion`) is the curated 17-tool coding allowlist; the
+`agent` (`/rpc/agent`; alias `companion`) is the curated 19-tool coding allowlist; the
 group surfaces mirror the groups plus `GroupShared`; the registry is 54 tools plus
 `memory_search` after the 2026-08-23 prune.
 

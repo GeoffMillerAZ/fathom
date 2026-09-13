@@ -144,7 +144,7 @@ Highlights any symbol that exists in multiple services with conflicting kinds �
 
 ## Setup & notes
 
-**Surfaces:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry. Over the shared HTTP daemon the path is the scope: the group endpoints were deleted 2026-08-26 (HF-5), so bare `POST /rpc` serves the fleet and quality tools (`list_services`, `fleet_drift`, `cross_repo_*`, `complexity`, `god_object`, `cloc`, `secret_scan`, `staleness_report`, `ingest`); `POST /rpc/agent` is the 17-tool allowlist (`list_services`, `staleness_report`, `ingest` are on it; the security and quality tools are not). An off-surface call still executes and is logged `off_surface:true` — never refused — so one registration serves every step above.
+**Surfaces:** there is no profile switch (`set_profile` was removed, SW-2). stdio `serve-mcp` serves the full registry. Over the shared HTTP daemon the path is the scope: the group endpoints were deleted 2026-08-26 (HF-5), so bare `POST /rpc` serves the fleet and quality tools (`list_services`, `fleet_drift`, `cross_repo_*`, `complexity`, `god_object`, `cloc`, `secret_scan`, `staleness_report`, `ingest`); `POST /rpc/agent` is the 19-tool allowlist (`list_services`, `staleness_report`, `ingest` are on it; the security and quality tools are not). An off-surface call still executes and is logged `off_surface:true` — never refused — so one registration serves every step above.
 
 **Concern argument:** The tools in this use case do **not** require a `concern` argument — they are structural/metric queries, not concern-scoped symbol searches. (`query_symbols` and `pack_context` require a concern; those are covered in other use-case docs.)
 

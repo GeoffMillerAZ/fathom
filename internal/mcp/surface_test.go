@@ -23,7 +23,9 @@ import (
 // verify_plan and capabilities; T5-4, docs/plans/trust-and-tokenomics.md,
 // added read_source as the program's second net-new tool — 16 total;
 // AM-8 added memory_search — 17; RC-24, docs/plans/receipts.md, added
-// search, the grep-with-a-receipt tool — 18 total).
+// search, the grep-with-a-receipt tool — 18 total; RC-27, docs/vision/
+// 28-receipts.md §4, added discoveries, the hand-off receipt tool — 19
+// total, companionWantCount below).
 // Changing the surface is deliberate: update this list and docs/mcp-tools.md
 // together. Served identically at both /rpc/agent (the primary path) and
 // /rpc/companion (a compatible alias).
@@ -92,7 +94,18 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 
 // ─── companion surface: tools/list is exactly the allowlist ─────────────────
 
+// companionWantCount pins the agent-surface tool count (V-review MINOR:
+// prose docs drifted to "17-tool"/"18-tool" after RC-27 added discoveries
+// without this assertion catching it) — the ONE place the number lives as
+// a checked fact; docs/mcp-tools.md, docs/CLAUDE.md, internal/CLAUDE.md and
+// every other prose mention are asserted equal to companionWant's own
+// length here, never independently counted by hand.
+const companionWantCount = 19
+
 func TestCompanionSurfaceToolsList(t *testing.T) {
+	if len(companionWant) != companionWantCount {
+		t.Fatalf("companionWant has %d entries, want %d — update companionWantCount, docs/mcp-tools.md, docs/CLAUDE.md and internal/CLAUDE.md together", len(companionWant), companionWantCount)
+	}
 	srv := mcp.NewServer(&fakeBackend{})
 	want := append([]string(nil), companionWant...)
 	sort.Strings(want)

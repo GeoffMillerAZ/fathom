@@ -19,6 +19,18 @@ type obligationsBackend interface {
 	ObligationsIndexStale(ctx context.Context, service, file string) bool
 }
 
+// rootObligationsBackend is the optional backend capability for the
+// CORRECT root-scope answer (semantic.RootObligationsFor: source- and
+// glob-breadth selection, not a literal-path probe against
+// obligationsBackend.Obligations — see rootObligations' doc comment for why
+// the probe cannot be made correct). pkg/client implements it; a backend
+// that omits it falls back to the probe, which still finds a NARROW
+// "CLAUDE.md#section"-style scope but silently drops a repo-wide
+// "**/*.go"-style one (the MAJOR finding this type fixes).
+type rootObligationsBackend interface {
+	RootObligations(ctx context.Context, service string, maxRules int) (semantic.Obligations, error)
+}
+
 // compileBackend is the optional backend capability for on-demand
 // semantic-layer compilation. CompileLayer takes the layer name the caller
 // requested (FT-1/F7: compile_layer previously validated the name via
@@ -43,26 +55,44 @@ type claimFeedbackBackend interface {
 	ClaimFeedback(ctx context.Context, service, claimID, action, note, author string) error
 }
 
-// rootObligationsProbe is the scope-matching bait path for rootObligations:
-// never read for content, only fed to ObligationsFor's glob matching. A
-// root-level CLAUDE.md/AGENTS.md's claims are NEVER floored to a subtree
-// (semantic.scopeFloorDir floors only a NESTED instruction file's globs to
-// its own directory), so any claim whose scope actually reaches repo root —
-// a narrow "CLAUDE.md"/"ADR.md" glob, or a broad extension-class glob
-// ("**/*.go") proposed by a root-level governing doc — matches this literal
-// path; a NESTED CLAUDE.md's floored glob ("internal/**/*.go") cannot,
-// because it can never match a bare top-level filename.
+// rootObligationsProbe is the FALLBACK-only bait path for rootObligations,
+// used solely when the backend does not implement rootObligationsBackend:
+// never read for content, only fed to obligationsBackend.Obligations' glob
+// matching. It is NOT a correct root-scope filter — a claim's scope glob is
+// matched against this one literal string, so a narrow "CLAUDE.md"-shaped
+// glob matches, but a broad, genuinely repo-wide glob like "**/*.go" does
+// NOT (the string "CLAUDE.md" is not a "*.go" file), even when it was
+// proposed by the root CLAUDE.md itself — the MAJOR finding
+// semantic.RootObligationsFor exists to fix. Kept only as a degrade for a
+// backend with no better answer; every real backend should implement
+// rootObligationsBackend instead.
 const rootObligationsProbe = "CLAUDE.md"
 
 // rootObligations answers "what governs this repository" for an obligations
 // call with no file argument (RC-22, docs/vision/28-receipts.md §3.5): the
-// compiled layer's rules whose scope reaches the repo root / CLAUDE.md
-// level, budgeted exactly like a file-scoped call. It is a thin wrapper
-// over the SAME obligationsBackend.Obligations a file-scoped call uses,
-// probed at rootObligationsProbe — see its doc comment for why that is a
-// correct (not merely convenient) root-scope filter.
-func rootObligations(ctx context.Context, ob obligationsBackend, service string, maxRules int) (semantic.Obligations, error) {
-	obl, err := ob.Obligations(ctx, service, rootObligationsProbe, maxRules)
+// compiled layer's rules whose SOURCE is a root-level governing doc or
+// whose scope glob is unanchored/wildcard-rooted (semantic.
+// RootObligationsFor — selection by scope breadth, not by matching one
+// literal probe path), budgeted exactly like a file-scoped call. Prefers
+// backend.(rootObligationsBackend) when the concrete backend offers it
+// (every real one does); a backend that does not (a minimal test fake, an
+// older module) degrades to the rootObligationsProbe bait path, which is
+// narrower — see its doc comment for exactly what it misses. Either way,
+// zero rules means no compiled claim's source or scope reaches the repo
+// root — an honest "nothing governs this repo at that level" answer, the
+// same zero-output-on-clean contract a file-scoped call makes.
+func rootObligations(ctx context.Context, backend QueryInterface, ob obligationsBackend, service string, maxRules int) (semantic.Obligations, error) {
+	var obl semantic.Obligations
+	var err error
+	if rb, ok := backend.(rootObligationsBackend); ok {
+		obl, err = rb.RootObligations(ctx, service, maxRules)
+	} else {
+		obl, err = ob.Obligations(ctx, service, rootObligationsProbe, maxRules)
+	}
+	// A root-scope answer never carries a single file — true by
+	// construction in semantic.RootObligationsFor, enforced again here so
+	// it holds regardless of which path served it (a test double, or a
+	// future backend, that forgets to clear it).
 	obl.File = ""
 	return obl, err
 }
@@ -177,7 +207,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		var obl semantic.Obligations
 		var err error
 		if rootScope {
-			obl, err = rootObligations(ctx, ob, p.Service, p.MaxRules)
+			obl, err = rootObligations(ctx, backend, ob, p.Service, p.MaxRules)
 		} else {
 			obl, err = ob.Obligations(ctx, p.Service, p.File, p.MaxRules)
 		}

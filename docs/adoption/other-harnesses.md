@@ -26,7 +26,7 @@ edit the registry, re-run the verb, paste. Never hand-edit the rows.
   (bare) writes both; `--skills=codex` writes `.agents/skills`; the
   deprecated `~/.codex/prompts` twin is `--skills=codex-prompts` only
   (`docs/upgrades/0.8.0-skills-on-the-standard.md`).
-- **MCP.** Every harness reaches the same 17-tool `/rpc/agent` surface over
+- **MCP.** Every harness reaches the same 19-tool `/rpc/agent` surface over
   streamable HTTP; the config file and the `mcp add` spelling differ per
   harness and the row carries the harness's own. `fathom init --harness <id>`
   prints that line and never runs it (user-global configuration is ask-first).

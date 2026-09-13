@@ -242,6 +242,15 @@ func (a *autoRefreshBackend) ObligationsIndexStale(ctx context.Context, service,
 	return ob.ObligationsIndexStale(ctx, service, file)
 }
 
+func (a *autoRefreshBackend) RootObligations(ctx context.Context, service string, maxRules int) (semantic.Obligations, error) {
+	a.ensure(ctx, service)
+	rb, ok := a.QueryInterface.(rootObligationsBackend)
+	if !ok {
+		return semantic.Obligations{}, errSemanticUnsupported
+	}
+	return rb.RootObligations(ctx, service, maxRules)
+}
+
 func (a *autoRefreshBackend) CompileLayer(ctx context.Context, service, layer string, dryRun bool) (core.CompileRun, error) {
 	a.ensure(ctx, service)
 	cb, ok := a.QueryInterface.(compileBackend)
