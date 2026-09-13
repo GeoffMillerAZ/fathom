@@ -404,6 +404,8 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		RunID:          runID,
 		StartedAt:      "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
 		WorktreePath:   wt.Path,
+		SubjectClone:   wt.SubjectClone,
+		BaseCommit:     cp.task.Subject.BaseCommit,
 	}, nil
 }
 
@@ -543,19 +545,64 @@ func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) string {
 	return dest
 }
 
+// reconstructFinalTree rebuilds cell's final tree when its shared
+// WorktreePath no longer exists on disk (a later cell sharing the same
+// subject/base_commit/arm reset it out from under this one): a detached
+// temp worktree off the persisted SubjectClone at BaseCommit, with the
+// cell's own AgentDiffPath applied via `git apply` — the same shape
+// PrepareSubject/captureAgentDiff produced at run time, rebuilt from what
+// was captured rather than by re-running anything. ok is false whenever
+// reconstruction cannot be attempted or fails at any step (SubjectClone or
+// BaseCommit missing — an older CellResult from before these fields
+// existed — the clone gone, the commit unreachable, or the diff failing to
+// apply); the caller then falls back to its ordinary not_measurable rather
+// than trust a wrong tree. The returned cleanup removes the temp worktree
+// and MUST be called once the caller is done reading tree.
+func reconstructFinalTree(cell *scenariobench.CellResult) (tree string, cleanup func(), ok bool) {
+	noop := func() {}
+	if cell.SubjectClone == "" || cell.BaseCommit == "" {
+		return "", noop, false
+	}
+	if _, err := os.Stat(filepath.Join(cell.SubjectClone, ".git")); err != nil {
+		return "", noop, false
+	}
+	tmp, err := os.MkdirTemp("", "scenariobench-rescore-")
+	if err != nil {
+		return "", noop, false
+	}
+	remove := func() {
+		_ = exec.Command("git", "-C", cell.SubjectClone, "worktree", "remove", "--force", tmp).Run()
+		_ = os.RemoveAll(tmp)
+	}
+	if _, err := exec.Command("git", "-C", cell.SubjectClone, "worktree", "add", "--detach", tmp, cell.BaseCommit).CombinedOutput(); err != nil {
+		_ = os.RemoveAll(tmp)
+		return "", noop, false
+	}
+	if cell.AgentDiffPath != "" {
+		if info, err := os.Stat(cell.AgentDiffPath); err == nil && info.Size() > 0 {
+			apply := exec.Command("git", "apply", cell.AgentDiffPath)
+			apply.Dir = tmp
+			if _, err := apply.CombinedOutput(); err != nil {
+				remove()
+				return "", noop, false
+			}
+		}
+	}
+	return tmp, remove, true
+}
+
 // rescoreSDDReadings recomputes cell's SDD readings (PlanCoverage,
 // FalseDone, Resumption, Drift) from what was captured at run time —
 // PlanPath/AgentDiffPath and cell.Gold, both persisted on the CellResult —
 // never by re-preparing the subject. PlanCoverage never needed a tree at
 // all. FalseDone/ContractDrift's "final tree" search does: cell.WorktreePath
-// is used when it still exists on disk, else both readings report an
-// explicit not_measurable rather than a false zero — the worktree a cell
+// is used when it still exists on disk; else reconstructFinalTree rebuilds
+// it from SubjectClone/BaseCommit/AgentDiffPath — the worktree a cell
 // recorded is a SHARED, REUSED path (PrepareSubject keys it on
 // subject+base_commit+arm, not on task or trial), so a later cell sharing
 // it may already have reset it out from under this one by the time score
-// runs. agent.diff is captured for provenance; re-deriving the final tree
-// from it (independent of whether the worktree still exists) is not
-// implemented.
+// runs. Only when reconstruction also cannot be attempted do both readings
+// report an explicit not_measurable rather than a false zero.
 func rescoreSDDReadings(cell *scenariobench.CellResult) {
 	var planBytes []byte
 	if cell.PlanPath != "" {
@@ -570,6 +617,12 @@ func rescoreSDDReadings(cell *scenariobench.CellResult) {
 	if tree != "" {
 		if _, err := os.Stat(tree); err != nil {
 			tree = ""
+		}
+	}
+	if tree == "" {
+		if recon, cleanup, ok := reconstructFinalTree(cell); ok {
+			defer cleanup()
+			tree = recon
 		}
 	}
 	boxChecks := allBoxChecks(cell.Sessions)

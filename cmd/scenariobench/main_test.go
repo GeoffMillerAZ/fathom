@@ -135,10 +135,13 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 	if cell.Readings.PlanCoverage == nil {
 		t.Error("expected Readings.PlanCoverage to be present")
 	}
+	// single-session.jsonl edits foo.go, never a .md checklist, so no
+	// BoxCheck is ever recorded — FalseDoneRate correctly reports this as
+	// not_measurable (no claimed row to judge at all), not a false 0/0.
 	if cell.Readings.FalseDone == nil {
 		t.Error("expected Readings.FalseDone to be present")
-	} else if cell.Readings.FalseDone.NotMeasurable != "" {
-		t.Errorf("expected FalseDone measurable (coverage was requested, nothing was claimed to refute): not_measurable=%q", cell.Readings.FalseDone.NotMeasurable)
+	} else if cell.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+		t.Errorf("expected FalseDone not_measurable (no box checks were ever recorded): got %q", cell.Readings.FalseDone.NotMeasurable)
 	}
 	if cell.Readings.Resumption == nil {
 		t.Error("expected Readings.Resumption to be present")
@@ -163,8 +166,8 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 		rescored.Readings.Resumption == nil || rescored.Readings.Drift == nil {
 		t.Errorf("expected score to recompute every SDD reading too, got %+v", rescored.Readings)
 	}
-	if rescored.Readings.FalseDone.NotMeasurable != "" {
-		t.Errorf("expected score's FalseDone to stay measurable (the worktree still exists): not_measurable=%q", rescored.Readings.FalseDone.NotMeasurable)
+	if rescored.Readings.FalseDone.NotMeasurable != "no claimed row carries a symbol contract" {
+		t.Errorf("expected score's FalseDone reading to be recomputed the same way: got not_measurable=%q", rescored.Readings.FalseDone.NotMeasurable)
 	}
 
 	// Running it again must borrow rather than re-run (the second run
@@ -254,6 +257,137 @@ func TestCmdScore_SDDReadingsWithoutWorktree(t *testing.T) {
 	}
 	if cell.Readings.Drift == nil || cell.Readings.Drift.NotMeasurable == "" {
 		t.Errorf("expected Drift to be explicitly not_measurable (worktree gone), got %+v", cell.Readings.Drift)
+	}
+}
+
+// runGit runs a git command in dir and fails the test on error, returning
+// trimmed combined output — shared by the reconstruction tests below and
+// gitFixtureSubject's own local closure covers the simpler single-commit
+// case those don't need.
+func runGit(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(
+		os.Environ(),
+		"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+		"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+	)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v (%s)", args, err, out)
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// TestCmdScore_ReconstructsTreeWhenWorktreeGone covers SB-21 follow-up
+// (public-pilot-2/reuse-pilot-1, 2026-09-13): a cell whose shared
+// WorktreePath was already reset by a later cell must still recompute
+// FalseDone/Drift, by rebuilding the final tree from SubjectClone +
+// BaseCommit + AgentDiffPath rather than reporting a blanket
+// not_measurable.
+func TestCmdScore_ReconstructsTreeWhenWorktreeGone(t *testing.T) {
+	repoPath, commit := gitFixtureSubject(t)
+
+	// Build the "final tree" a real cell would have captured: a detached
+	// worktree off the clone at base_commit, edited by the "agent", with
+	// its diff captured the same way captureAgentDiff does.
+	editWT := filepath.Join(t.TempDir(), "edit-wt")
+	runGit(t, repoPath, "worktree", "add", "--detach", editWT, commit)
+	addFn := "package thing\n\nfunc Add(a, b int) int { return a + b }\n\nfunc Multiply(a, b int) int { return a * b }\n"
+	if err := os.WriteFile(filepath.Join(editWT, "thing.go"), []byte(addFn), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, editWT, "add", "-N", ".")
+	diff := runGit(t, editWT, "diff")
+	dir := t.TempDir()
+	diffPath := filepath.Join(dir, "agent.diff")
+	if err := os.WriteFile(diffPath, []byte(diff+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repoPath, "worktree", "remove", "--force", editWT)
+
+	coverPath := filepath.Join(dir, "coverage.out")
+	cover := "mode: set\nscenariobenchsubject/thing.go:1.1,100.2 1 1\n"
+	if err := os.WriteFile(coverPath, []byte(cover), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":         "T1",
+		"arm":             "control",
+		"cell_key":        "k1",
+		"run_id":          "run-1",
+		"worktree_path":   filepath.Join(dir, "does-not-exist"), // reset by a later cell
+		"subject_clone":   repoPath,
+		"base_commit":     commit,
+		"agent_diff_path": diffPath,
+		"sessions": []map[string]any{
+			{
+				"index": 0, "role": "single", "files_edited": []string{"thing.go"},
+				"box_checks": []map[string]any{{"session": 0, "turn": 1, "row_id": "r1", "symbol": "Multiply", "file": "NOTES.md"}},
+			},
+		},
+		"oracle":   map[string]any{"passed": true, "cover_profile": coverPath},
+		"readings": map[string]any{},
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if cell.Readings.FalseDone == nil {
+		t.Fatal("expected Readings.FalseDone to be present")
+	}
+	if cell.Readings.FalseDone.NotMeasurable != "" {
+		t.Errorf("expected FalseDone measurable via the reconstructed tree, got not_measurable=%q", cell.Readings.FalseDone.NotMeasurable)
+	}
+	if cell.Readings.FalseDone.Claimed != 1 || cell.Readings.FalseDone.Refuted != 0 {
+		t.Errorf("expected Multiply to be claimed and not refuted (added by the diff, covered), got %+v", cell.Readings.FalseDone)
+	}
+
+	// The temp worktree reconstructFinalTree created must be cleaned up —
+	// the clone's worktree list must be back down to just itself.
+	list := runGit(t, repoPath, "worktree", "list")
+	if strings.Count(list, "\n") != 0 {
+		t.Errorf("expected the reconstructed temp worktree to be removed, worktree list:\n%s", list)
+	}
+}
+
+// TestCmdScore_ReconstructionFailsGracefully covers a BaseCommit that
+// cannot be resolved in SubjectClone (a corrupted or wrong record):
+// reconstruction must fail closed to the ordinary not_measurable, never
+// panic or fabricate a tree.
+func TestCmdScore_ReconstructionFailsGracefully(t *testing.T) {
+	repoPath, _ := gitFixtureSubject(t)
+	dir := t.TempDir()
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":         "T1",
+		"arm":             "control",
+		"cell_key":        "k1",
+		"run_id":          "run-1",
+		"worktree_path":   filepath.Join(dir, "does-not-exist"),
+		"subject_clone":   repoPath,
+		"base_commit":     "0000000000000000000000000000000000000000",
+		"agent_diff_path": filepath.Join(dir, "agent.diff"),
+		"sessions":        []map[string]any{{"index": 0, "role": "single"}},
+		"oracle":          map[string]any{"passed": true},
+		"readings":        map[string]any{},
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if cell.Readings.FalseDone == nil || cell.Readings.FalseDone.NotMeasurable == "" {
+		t.Errorf("expected FalseDone not_measurable (reconstruction cannot resolve BaseCommit), got %+v", cell.Readings.FalseDone)
 	}
 }
 
