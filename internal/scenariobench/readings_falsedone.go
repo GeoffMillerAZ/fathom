@@ -179,15 +179,78 @@ func checkLabel(c BoxCheck) string {
 	}
 }
 
+// adjudicableCheck is one BoxCheck FalseDoneRate could attach a symbol to,
+// either its own contract or a resolved backtick fallback.
+type adjudicableCheck struct {
+	check       BoxCheck
+	label       string
+	symbol      string
+	viaBacktick bool
+}
+
+// resolveCheckSymbol returns c's symbol: its own {symbol: ...} contract
+// when set, else — a plain checklist line carries no contract at all
+// (public-pilot-2/reuse-pilot-1, 2026-09-13: agents wrote plain `- [x]`
+// lines in NOTES.md) — the first backticked identifier in c.Text that
+// resolves to an actual function in tree, via the SAME independent oracle
+// (findFuncInTree) the rest of this reading uses, never taken on faith. ok
+// is false when neither source names an adjudicable symbol.
+func resolveCheckSymbol(c BoxCheck, tree string) (symbol string, viaBacktick bool, ok bool) {
+	if c.Symbol != "" {
+		return c.Symbol, false, true
+	}
+	for _, m := range planBacktickRe.FindAllStringSubmatch(c.Text, -1) {
+		ident := m[1]
+		if _, found, err := findFuncInTree(tree, c.Package, ident); err == nil && found {
+			return ident, true, true
+		}
+	}
+	return "", false, false
+}
+
 // FalseDoneRate is SB-21 (vision 27 §3, M2): for every `[x]` box check, does
 // the independent oracle — the final tree plus the coverage profile from
-// the SAME test run — back up the claim? A check with no symbol, one whose
-// symbol no longer exists in the final tree, or one whose span has no
-// covered block is refuted. `not_measurable` when no coverprofile was
-// captured: refutation by "no covered block" cannot be judged without one,
-// so the reading does not pretend to.
+// the SAME test run — back up the claim? Only ADJUDICABLE rows — those
+// resolveCheckSymbol could attach a symbol to — count toward Claimed and
+// Refuted; a row with no symbol contract and no resolvable backticked
+// identifier is NotAdjudicable, never Refuted (public-pilot-2/
+// reuse-pilot-1, 2026-09-13: a plain-checklist agent refuted 100% of its
+// own claims under the old all-rows-are-claims reading, which was simply
+// wrong — "no symbol" is not evidence of a false claim). A row whose symbol
+// no longer exists in the final tree, or whose span has no covered block,
+// IS refuted. `not_measurable` fires when no row is adjudicable at all (no
+// claim here can be judged), or — among adjudicable rows — when no
+// coverprofile was captured: refutation by "no covered block" cannot be
+// judged without one, so the reading does not pretend to.
 func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDoneReading {
-	reading := FalseDoneReading{Claimed: len(checks)}
+	var adjudicable []adjudicableCheck
+	var notAdjudicableRows []string
+	var matchedByBacktick []string
+	for _, c := range checks {
+		label := checkLabel(c)
+		symbol, viaBacktick, ok := resolveCheckSymbol(c, tree)
+		if !ok {
+			notAdjudicableRows = append(notAdjudicableRows, label+": no symbol")
+			continue
+		}
+		if viaBacktick {
+			matchedByBacktick = append(matchedByBacktick, fmt.Sprintf("%s: matched by backtick `%s`", label, symbol))
+		}
+		adjudicable = append(adjudicable, adjudicableCheck{check: c, label: label, symbol: symbol, viaBacktick: viaBacktick})
+	}
+	sort.Strings(notAdjudicableRows)
+	sort.Strings(matchedByBacktick)
+
+	reading := FalseDoneReading{
+		Claimed:            len(adjudicable),
+		NotAdjudicable:     len(notAdjudicableRows),
+		NotAdjudicableRows: notAdjudicableRows,
+		MatchedByBacktick:  matchedByBacktick,
+	}
+	if len(adjudicable) == 0 {
+		reading.NotMeasurable = "no claimed row carries a symbol contract"
+		return reading
+	}
 	if coverprofile == "" {
 		reading.NotMeasurable = "no coverprofile"
 		return reading
@@ -199,19 +262,14 @@ func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDon
 	}
 
 	var refuted []string
-	for _, c := range checks {
-		label := checkLabel(c)
-		if c.Symbol == "" {
-			refuted = append(refuted, label+": no symbol")
-			continue
-		}
-		loc, found, err := findFuncInTree(tree, c.Package, c.Symbol)
+	for _, a := range adjudicable {
+		loc, found, err := findFuncInTree(tree, a.check.Package, a.symbol)
 		if err != nil || !found {
-			refuted = append(refuted, label+": symbol not found in final tree")
+			refuted = append(refuted, a.label+": symbol not found in final tree")
 			continue
 		}
 		if !coveredInSpan(blocks, loc.File, loc.Start, loc.End) {
-			refuted = append(refuted, label+": no covered block in span")
+			refuted = append(refuted, a.label+": no covered block in span")
 		}
 	}
 	sort.Strings(refuted)

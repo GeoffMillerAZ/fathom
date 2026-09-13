@@ -182,6 +182,13 @@ type BoxCheck struct {
 	Symbol  string `json:"symbol,omitempty"`
 	Package string `json:"package,omitempty"`
 	File    string `json:"file"`
+	// Text is the raw checklist line as written (e.g. "- [x] implement
+	// `Foo`"), captured whether or not the row carries a v2-grammar
+	// {symbol: ...} contract. FalseDoneRate uses it, at scoring time, as a
+	// fallback source of a symbol for a row Symbol left empty (a plain
+	// checklist with no contract) — never at record time, since no tree
+	// exists yet to confirm a backticked identifier names a real function.
+	Text string `json:"text,omitempty"`
 }
 
 // SessionResult is the harness-independent record of one session.
@@ -263,12 +270,27 @@ type PlanCoverageReading struct {
 	NotMeasurable string   `json:"not_measurable,omitempty"`
 }
 
-// FalseDoneReading is M2: claims against the independent oracle.
+// FalseDoneReading is M2: claims against the independent oracle. Claimed
+// and Refuted count only ADJUDICABLE rows — those FalseDoneRate could
+// attach a symbol to, directly or by backtick fallback (SB-21 follow-up,
+// public-pilot-2/reuse-pilot-1, 2026-09-13): a row with no symbol contract
+// and no resolvable backticked identifier is not a false-done candidate at
+// all, and must not inflate Refuted the way it did before this reading
+// distinguished the two.
 type FalseDoneReading struct {
-	Claimed       int      `json:"claimed"`
-	Refuted       int      `json:"refuted"`
-	RefutedRows   []string `json:"refuted_rows,omitempty"`
-	NotMeasurable string   `json:"not_measurable,omitempty"`
+	Claimed        int      `json:"claimed"`
+	Refuted        int      `json:"refuted"`
+	RefutedRows    []string `json:"refuted_rows,omitempty"`
+	NotAdjudicable int      `json:"not_adjudicable,omitempty"`
+	// NotAdjudicableRows names each row FalseDoneRate could not attach any
+	// symbol to (checkLabel, then why), for the same debugging purpose
+	// RefutedRows serves for refutation.
+	NotAdjudicableRows []string `json:"not_adjudicable_rows,omitempty"`
+	// MatchedByBacktick names each row whose symbol came from a backticked
+	// identifier in Text rather than a v2-grammar contract — never silent,
+	// since it is a weaker match than an authored {symbol: ...}.
+	MatchedByBacktick []string `json:"matched_by_backtick,omitempty"`
+	NotMeasurable     string   `json:"not_measurable,omitempty"`
 }
 
 // ResumptionReading is M4.
@@ -343,6 +365,13 @@ type CellResult struct {
 	// and is never touched again.
 	PlanPath      string `json:"plan_path,omitempty"`
 	AgentDiffPath string `json:"agent_diff_path,omitempty"`
+	// SubjectClone / BaseCommit are PrepareSubject's own shared clone
+	// (Worktree.SubjectClone) and the task's pinned commit, persisted so
+	// `scenariobench score` can rebuild the final tree in a detached temp
+	// worktree (base_commit + AgentDiffPath applied) when WorktreePath's
+	// SHARED, REUSED directory has already been reset by a later cell.
+	SubjectClone string `json:"subject_clone,omitempty"`
+	BaseCommit   string `json:"base_commit,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

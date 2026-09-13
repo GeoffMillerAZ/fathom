@@ -69,6 +69,9 @@ func TestParseSessionStream_WorkerBoxCheck(t *testing.T) {
 	if bc.Turn != 2 {
 		t.Errorf("BoxChecks[0].Turn = %d, want 2", bc.Turn)
 	}
+	if bc.Text != "- [x] {id: row-1} do thing one" {
+		t.Errorf("BoxChecks[0].Text = %q, want the raw checklist line", bc.Text)
+	}
 }
 
 func TestParseSessionStream_PlannerWriteNoBoxCheck(t *testing.T) {

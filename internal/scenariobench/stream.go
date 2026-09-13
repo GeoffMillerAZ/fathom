@@ -251,7 +251,7 @@ func (ps *parsedStream) recordBoxChecks(c streamContentBlock, path string, turn 
 				continue
 			}
 			checkedLines[path][trimmed] = true
-			bc := BoxCheck{Turn: turn, File: path}
+			bc := BoxCheck{Turn: turn, File: path, Text: trimmed}
 			bc.RowID, bc.Symbol, bc.Package = parseBoxCheckAnnotation(trimmed)
 			ps.boxChecks = append(ps.boxChecks, bc)
 		}
