@@ -71,6 +71,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 
 - [ ] `find_callers` renders one caller in ≤ 100 bytes on the wire like `references` (SB-1): `file:line name`, confidence as one character, `service`/`tier`/`depth`/`edge_confidence` lifted to the envelope when uniform, no signature unless `with_signatures: true`; the 38-caller answer for `runWithStdin` that cost 14 KB on the targeted run costs under 4 KB; `TestFindCallersCallerUnder100Bytes` pins it {id: SB-47, symbol: renderCallerEntry, package: internal/mcp}
 
+- [ ] `search` — grep with a receipt, never a smarter grep: ripgrep underneath (recall, exactness, freshness), each hit annotated from the index with its enclosing symbol and kind, test/generated/vendored flags, and identifier-vs-comment classification where typed edges exist; vendored and workspace trees excluded by default; definitions ranked before uses, tests and comments; fleet scope in one call; rendered in ≤ grep's bytes per hit. Pre-registered: wins on lookups whose grep answer needs a follow-up read to classify or locate the hit and on multi-repo questions (turns to answer and payload ≤ grep's on H1-T06, H1-T03, H1-T08); no effect on a single literal in a single file — the doctrine keeps sending literal text to grep either way {id: SB-48, symbol: renderSearchHit, package: internal/mcp, needs: SB-45}
+
 ## Wave 7 — the record
 
 - [ ] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
