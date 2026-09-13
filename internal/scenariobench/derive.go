@@ -325,6 +325,10 @@ func deriveTask(in publicloc.Instance, ex extraFields, opts DeriveOptions, cutof
 	sessions := Sessions{Count: 2, MaxTurns: 40, Mode: ModeSingle}
 	oracle := Oracle{FailToPass: ex.FailToPass, PassToPass: ex.PassToPass, Coverage: true}
 	gold := Gold{Files: files, Functions: goldFuncs, PatchSHA: publicloc.SHA256Hex([]byte(in.Patch))}
+	if ex.TestPatch != "" {
+		gold.TestPatch = ex.TestPatch
+		gold.TestPatchSHA256 = publicloc.SHA256Hex([]byte(ex.TestPatch))
+	}
 
 	var mergedAt string
 	if t, ok := mergedAtTime(ex); ok {
@@ -334,6 +338,9 @@ func deriveTask(in publicloc.Instance, ex extraFields, opts DeriveOptions, cutof
 	var oracleNote string
 	if len(oracle.FailToPass) == 0 && len(oracle.PassToPass) == 0 {
 		oracleNote = "; the source recorded no fail-to-pass or pass-to-pass test names for this instance"
+	}
+	if gold.TestPatch == "" {
+		oracleNote += "; the source recorded no test patch for this instance"
 	}
 
 	derivation := fmt.Sprintf(
@@ -394,6 +401,120 @@ func predictionsFor(cat Category) map[string]string {
 	}
 }
 
+// ReuseDescription is fixed text for DeriveReuseTasks (vision 27 M5,
+// docs/bench/scenarios.md §exploration-reuse), written for the registered
+// call (n=3, workers=3) that produced testdata/scenariobench/reuse-go.json
+// — like Description, no timestamp or hostname, so two identical
+// derivations byte-match.
+const ReuseDescription = "Exploration reuse (vision 27 M5): the three lowest-id cross_package_feature tasks of public-go.json run in planner-workers mode — one planning session decomposes the change into rows, then K=3 worker sessions each build one row cold. The reading is ReexplorationOverlap: bytes each worker reads that the planner already read, over bytes it reads at all. Derived by scripts in docs/bench/scenarios.md §exploration-reuse from public-go.json (same pins, same oracle); never hand-edited."
+
+// reuseSessionMaxTurns is the fixed turn budget of a reuse-corpus session —
+// independent of the base task's own Sessions.MaxTurns, since a
+// planner-workers session shape is not the same budget as the base
+// task's single-mode sessions.
+const reuseSessionMaxTurns = 30
+
+// reuseArms is the two-arm design testdata/scenariobench/reuse-go.json
+// registers: full (wired, compiled obligations) against a plain, notes-file
+// control, each carrying its own pre-registered corpus-level prediction
+// (Arm.Prediction) alongside the per-task predictions.
+func reuseArms() map[string]Arm {
+	return map[string]Arm{
+		"full": {
+			Wired: true, CompileLayers: true, Instructions: "stanza", Surface: "fathom",
+			Prediction: "workers inherit the planner's map through the plan rows' ctx packs and the index: overlap ratio well under the control's, tokens to first edit lower per worker",
+		},
+		"control": {
+			Wired: false, Instructions: "plain", NotesFile: true,
+			Prediction: "each worker re-reads what the planner read: overlap ratio high (the vision's falsifier is a control overlap under 30%)",
+		},
+	}
+}
+
+// reusePredictionsK is the K>1 (multi-worker) per-task predictions row.
+func reusePredictionsK() map[string]string {
+	return map[string]string{
+		"full":    "planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner",
+		"control": "planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high",
+	}
+}
+
+// reusePredictionsK1 is the pre-registered no-effect cell (vision 27 M5):
+// with one worker there is nothing to compare overlap against.
+func reusePredictionsK1() map[string]string {
+	return map[string]string{
+		"full":    "no effect: with one worker there is nothing to reuse across workers — the overlap reading is defined only against the planner, and vision 27 M5 predicts the pack advantage vanishes at K = 1",
+		"control": "no effect for the same reason; this variant is the matrix's no-effect cell",
+	}
+}
+
+// DeriveReuseTasks derives the exploration-reuse corpus (vision 27 M5,
+// docs/bench/scenarios.md §exploration-reuse) from an already-derived
+// public corpus pub: the n lowest-id cross_package_feature tasks,
+// re-shaped into planner-workers mode with `workers` worker sessions
+// (oracle, gold, prompt and subject copied verbatim from the base task —
+// only the session shape, predictions, and derivation note differ), plus
+// a K=1 no-effect variant of the first (lowest-id) selected task. Never
+// spends an LLM call and never reads a file; pub is expected to already
+// be validated (DeriveScenarioTasks or LoadScenarioCorpus). Calling this
+// with n=3, workers=3 reproduces testdata/scenariobench/reuse-go.json
+// byte-for-byte from testdata/scenariobench/public-go.json.
+func DeriveReuseTasks(pub Corpus, n, workers int) Corpus {
+	var candidates []Task
+	for _, t := range pub.Tasks {
+		if t.Category == CategoryFeature {
+			candidates = append(candidates, t)
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].ID < candidates[j].ID })
+	if n >= 0 && n < len(candidates) {
+		candidates = candidates[:n]
+	}
+
+	tasks := make([]Task, 0, len(candidates)+1)
+	for _, base := range candidates {
+		tasks = append(tasks, reshapeForReuse(base, workers, false))
+	}
+	if len(candidates) > 0 {
+		tasks = append(tasks, reshapeForReuse(candidates[0], 1, true))
+	}
+
+	return Corpus{
+		Version:     1,
+		Description: ReuseDescription,
+		Arms:        reuseArms(),
+		Tasks:       tasks,
+		Criterion: Criterion{
+			ID: "M5-1", Treatment: "full", Control: "control",
+			MinTrials: 2, RequireSuccessAtLeastEqual: true,
+			MaxTokensPerSuccessRatio: 1.0, Registered: "2026-09-13",
+		},
+		Sources: pub.Sources,
+	}
+}
+
+// reshapeForReuse builds one reuse-corpus task from a base public-corpus
+// task: the ID gains an "RE-" prefix (and, for the K=1 variant, a "-K1"
+// suffix), Sessions becomes planner-workers with the given worker count,
+// Predictions and Derivation are replaced/extended — everything else
+// (Prompt, Subject, Oracle, Gold, Category) is copied verbatim.
+func reshapeForReuse(base Task, workers int, k1 bool) Task {
+	id := "RE-" + base.ID
+	derivation := base.Derivation + " | RE-: re-shaped for planner-workers mode (K=3, one planning session, one worker per row) by the exploration-reuse derivation; oracle and gold unchanged."
+	predictions := reusePredictionsK()
+	if k1 {
+		id += "-K1"
+		derivation += " | -K1: the same task with one worker, the pre-registered no-effect cell for M5."
+		predictions = reusePredictionsK1()
+	}
+	t := base
+	t.ID = id
+	t.Sessions = Sessions{Count: 1, MaxTurns: reuseSessionMaxTurns, Workers: workers, Mode: ModePlannerWorkers}
+	t.Predictions = predictions
+	t.Derivation = derivation
+	return t
+}
+
 // extraFields is what the pinned Multi-SWE-bench snapshot carries beyond
 // what publicloc.ReadMultiSWEBench normalises: the fail-to-pass /
 // pass-to-pass test names (SB-34 "from the source fields") and, if a
@@ -402,6 +523,10 @@ type extraFields struct {
 	FailToPass []string
 	PassToPass []string
 	MergedAt   string
+	// TestPatch is the source's own hidden test patch (SWE-bench
+	// semantics — docs/bench/scenarios.md "Test patch and calibration"),
+	// not read by publicloc.ReadMultiSWEBench.
+	TestPatch string
 }
 
 type extraFieldsRow struct {
@@ -414,6 +539,7 @@ type extraFieldsRow struct {
 	F2P        map[string]json.RawMessage `json:"f2p_tests"`
 	N2P        map[string]json.RawMessage `json:"n2p_tests"`
 	P2P        map[string]json.RawMessage `json:"p2p_tests"`
+	TestPatch  string                     `json:"test_patch"`
 }
 
 // scanExtraFields is a best-effort side read of the same JSONL bytes
@@ -435,7 +561,7 @@ func scanExtraFields(raw []byte) (map[string]extraFields, error) {
 		if id == "" {
 			return nil
 		}
-		f := extraFields{FailToPass: sortedKeys(row.F2P, row.N2P), PassToPass: sortedKeys(row.P2P)}
+		f := extraFields{FailToPass: sortedKeys(row.F2P, row.N2P), PassToPass: sortedKeys(row.P2P), TestPatch: row.TestPatch}
 		if row.MergedAt != "" {
 			f.MergedAt = row.MergedAt
 		} else if row.ClosedAt != "" {

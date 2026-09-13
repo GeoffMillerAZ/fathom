@@ -2,6 +2,8 @@ package scenariobench
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -357,5 +359,86 @@ func TestPublicScenarioCorpusIsDerived(t *testing.T) {
 	}
 	if !bytes.Equal(gotBytes, wantBytes) {
 		t.Errorf("re-derivation does not match the committed corpus — regenerate testdata/scenariobench/public-go.json (docs/bench/scenarios.md)")
+	}
+}
+
+// TestDeriveScenarioTasks_TestPatchCarriedVerbatim proves the source's
+// hidden test_patch field (not read by publicloc.ReadMultiSWEBench) is
+// carried verbatim into Gold.TestPatch, with a matching TestPatchSHA256,
+// and that the derivation note says so when the field is absent.
+func TestDeriveScenarioTasks_TestPatchCarriedVerbatim(t *testing.T) {
+	dir := t.TempDir()
+	const testPatch = `diff --git a/pkg/a_test.go b/pkg/a_test.go
+new file mode 100644
+--- /dev/null
++++ b/pkg/a_test.go
+@@ -0,0 +1,3 @@
++package pkg
++
++func TestF(t *testing.T) {}
+`
+	rows := []string{
+		multiSWEFixtureRow(t, "org__repo-tp", "org", "repo", "deadbeeftp", singleFilePatch, map[string]any{"test_patch": testPatch}),
+	}
+	path := writeSnapshot(t, dir, "testpatch.jsonl", rows)
+	corpus, err := DeriveScenarioTasks(DeriveOptions{MultiSWE: []SnapshotPin{{Path: path}}, SkipClone: true})
+	if err != nil {
+		t.Fatalf("DeriveScenarioTasks: %v", err)
+	}
+	task := corpus.Tasks[0]
+	if task.Gold.TestPatch != testPatch {
+		t.Fatalf("Gold.TestPatch = %q, want the source's test_patch verbatim", task.Gold.TestPatch)
+	}
+	sum := sha256.Sum256([]byte(testPatch))
+	wantSHA := hex.EncodeToString(sum[:])
+	if task.Gold.TestPatchSHA256 != wantSHA {
+		t.Fatalf("Gold.TestPatchSHA256 = %q, want %q", task.Gold.TestPatchSHA256, wantSHA)
+	}
+	if strings.Contains(task.Derivation, "no test patch") {
+		t.Fatalf("Derivation = %q, should not claim no test patch when one was supplied", task.Derivation)
+	}
+}
+
+// TestDeriveScenarioTasks_NoTestPatchIsNoted proves the absence of a
+// test_patch field is empty (never a placeholder) and noted in Derivation.
+func TestDeriveScenarioTasks_NoTestPatchIsNoted(t *testing.T) {
+	dir := t.TempDir()
+	rows := []string{multiSWEFixtureRow(t, "org__repo-notp", "org", "repo", "deadbeefnotp", singleFilePatch, nil)}
+	path := writeSnapshot(t, dir, "notestpatch.jsonl", rows)
+	corpus, err := DeriveScenarioTasks(DeriveOptions{MultiSWE: []SnapshotPin{{Path: path}}, SkipClone: true})
+	if err != nil {
+		t.Fatalf("DeriveScenarioTasks: %v", err)
+	}
+	task := corpus.Tasks[0]
+	if task.Gold.TestPatch != "" || task.Gold.TestPatchSHA256 != "" {
+		t.Fatalf("Gold.TestPatch(SHA256) = %q/%q, want both empty", task.Gold.TestPatch, task.Gold.TestPatchSHA256)
+	}
+	if !strings.Contains(task.Derivation, "no test patch") {
+		t.Fatalf("Derivation = %q, want it to note the missing test patch", task.Derivation)
+	}
+}
+
+// TestReuseGoCorpusIsDerived re-derives testdata/scenariobench/
+// reuse-go.json from the committed public-go.json (DeriveReuseTasks with
+// the registered n=3, workers=3) and compares byte-for-byte — both files
+// are committed, so unlike TestPublicScenarioCorpusIsDerived this never
+// skips.
+func TestReuseGoCorpusIsDerived(t *testing.T) {
+	const root = "../.."
+	pub, err := LoadScenarioCorpus(root + "/testdata/scenariobench/public-go.json")
+	if err != nil {
+		t.Fatalf("loading public-go.json: %v", err)
+	}
+	got := DeriveReuseTasks(pub, 3, 3)
+	gotBytes, err := canonicalMarshal(got)
+	if err != nil {
+		t.Fatalf("marshal derived reuse corpus: %v", err)
+	}
+	wantBytes, err := os.ReadFile(root + "/testdata/scenariobench/reuse-go.json")
+	if err != nil {
+		t.Skipf("committed reuse corpus %s not present yet: %v", root+"/testdata/scenariobench/reuse-go.json", err)
+	}
+	if !bytes.Equal(gotBytes, wantBytes) {
+		t.Errorf("re-derivation does not match the committed reuse-go.json — regenerate it with DeriveReuseTasks(pub, 3, 3)")
 	}
 }
