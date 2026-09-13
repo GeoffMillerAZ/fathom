@@ -73,7 +73,6 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 | Use-case guides (one doc per use case; keep `## Maintained` current) | `docs/use-cases/` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
-
 <!-- fathom:begin v3 sha256:0ac331d4f347089d3dd89ec45dbc7bdcfa8b06b9b0943e2f017dcafb3d10fec7 -->
 ## fathom code intelligence
 
