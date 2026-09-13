@@ -69,6 +69,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 
 - [ ] `references` gains `exact: true` (default when the service has typed edges): identifier uses from the typed pass only, text occurrences behind `include_heuristic`; L0 references precision ≥ 0.95 on the fathom repo, measured beside gopls and Serena by `indexbench compare` — the M6 row's product finding {id: SB-45, symbol: exactReferences, package: internal/mcp, needs: SB-1}
 
+- [ ] `find_callers` renders one caller in ≤ 100 bytes on the wire like `references` (SB-1): `file:line name`, confidence as one character, `service`/`tier`/`depth`/`edge_confidence` lifted to the envelope when uniform, no signature unless `with_signatures: true`; the 38-caller answer for `runWithStdin` that cost 14 KB on the targeted run costs under 4 KB; `TestFindCallersCallerUnder100Bytes` pins it {id: SB-47, symbol: renderCallerEntry, package: internal/mcp}
+
 ## Wave 7 — the record
 
 - [ ] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
