@@ -179,9 +179,9 @@ func TestCriterion_TokenRatioUsesTheAggregateNotTheFriendlierMedian(t *testing.T
 // lowering the replication floor — must be a deliberate edit here, visible
 // in review, never a quiet change that lets a weaker run read as a win.
 func TestMachineCriterionMatchesTheRegisteredProse(t *testing.T) {
-	c, err := contextbench.LoadCriterion("../../testdata/contextbench/tasks-home.json")
+	c, err := contextbench.LoadCriterionByID("../../testdata/contextbench/tasks-home.json", "H2-1")
 	if err != nil {
-		t.Fatalf("LoadCriterion: %v", err)
+		t.Fatalf("LoadCriterionByID: %v", err)
 	}
 	if c.ID != "H2-1" {
 		t.Errorf("id = %q, want H2-1 (the id the plan registered)", c.ID)
@@ -202,5 +202,26 @@ func TestLoadCriterion_CorpusWithoutOneIsAnError(t *testing.T) {
 	// it must fail loudly rather than fabricate a bar after the fact.
 	if _, err := contextbench.LoadCriterion("../../testdata/contextbench/tasks.json"); err == nil {
 		t.Fatal("want an error for a corpus with no machine_criterion, got nil")
+	}
+}
+
+// The criterion a run is scored under by default is the newest registered
+// one — H2-3 since 2026-09-12 — never the historical machine_criterion,
+// which stays loadable by id. The 2026-09-13 run was appended under H2-1
+// by a runner that still defaulted to the block; this pins the rule that
+// replaced it (BP-39).
+func TestLoadCriterion_DefaultsToTheNewestRegisteredCriterion(t *testing.T) {
+	c, err := contextbench.LoadCriterion("../../testdata/contextbench/tasks-home.json")
+	if err != nil {
+		t.Fatalf("LoadCriterion: %v", err)
+	}
+	if c.ID != "H2-3" {
+		t.Fatalf("default criterion = %q, want H2-3 (the newest registered)", c.ID)
+	}
+	if c.MaxPayloadRatio != 1.0 || c.MaxCostRatio != 1.0 || c.MinTrials != 3 || !c.RequireStrictlyMoreSuccesses {
+		t.Errorf("H2-3's registered bar drifted: %+v", c)
+	}
+	if c.LeakRule == nil || c.LeakRule.Arm != "none" {
+		t.Error("H2-3 must carry the committed leak rule")
 	}
 }

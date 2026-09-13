@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The first replicated home bench, read honestly (`BP-25`, `BC-14`, `BP-38..40`, `O31`,
+`O32`, ADR-032 as amended 2026-09-13).** `docs/bench/ledger.jsonl` carries run
+20260913T002832Z under H2-1 and H2-3: FAIL on cost either way (31/33 successes to grep's
+28/33; payload 1.90×, cost 1.46×, tokens 1.44×). `contextbenchscore ledger` scores under the
+NEWEST registered criterion by default (H2-3 for the home corpus); H2-1 stays loadable by
+id. `regress` never baselines a run against its own second-criterion row; the ledger table
+gains a `criterion` column. The runner renders `docs/bench/README.md` only through the
+marker script, never by whole-file `-out-md`. Every Claude Code MCP entry fathom writes —
+the bench's per-run config, `fathom plugin render`, the descriptor note, adoption §6 —
+carries `alwaysLoad: true`: a headless session otherwise spends one `ToolSearch` turn per
+run loading fathom's schemas (measured 1 → 0).
+
 **The daemon stopped serving a syntax-only graph in silence (`BP-35`, `BP-36`,
 `BP-37`).** `fathom daemon install` now writes `GOPATH`, `GOCACHE` and
 `GOMODCACHE` (absolute) into the launchd plist beside `PATH`, and the

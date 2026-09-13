@@ -329,7 +329,7 @@ fi
 
 FATHOM_MCP_CONFIG="$RUN_DIR/fathom-mcp.json"
 cat > "$FATHOM_MCP_CONFIG" <<EOF
-{"mcpServers":{"fathom":{"type":"http","url":"$FATHOM_HTTP_URL/rpc/agent"}}}
+{"mcpServers":{"fathom":{"type":"http","url":"$FATHOM_HTTP_URL/rpc/agent","alwaysLoad":true}}}
 EOF
 EMPTY_MCP_CONFIG="$RUN_DIR/empty-mcp.json"
 echo '{"mcpServers":{}}' > "$EMPTY_MCP_CONFIG"
@@ -525,7 +525,6 @@ if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('
   if [ -n "$CRITERION" ]; then
     CRIT=(-criterion "$CRITERION")
   fi
-  LEDGER_MD="$(dirname "$LEDGER")/README.md"
   # No `set -e` is in effect (see the header's `set -uo pipefail`), so the
   # non-zero verdict exit codes are captured directly.
   LEDGER_FLAGS=()
@@ -538,8 +537,14 @@ if python3 -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('
     -artifacts "$ARTIFACTS_DIR" "${LEDGER_FLAGS[@]}" \
     -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
     -prompt-subject "$PROMPT_SUBJECT" -arm-surface "$FATHOM_ARM_SURFACE" \
-    "${DIRTY[@]}" "${CRIT[@]}" -out-md "$LEDGER_MD"
+    "${DIRTY[@]}" "${CRIT[@]}"
   LEDGER_RC=$?
+  # The committed README is prose around a marker-fenced table; only the
+  # marker renderer may touch it (a whole-file -out-md once replaced the
+  # prose with the bare table, BP-38). A workspace ledger renders nothing.
+  if [ "$LEDGER" = "$ROOT/docs/bench/ledger.jsonl" ]; then
+    bash "$ROOT/scripts/bench-ledger-render.sh" "$LEDGER" || echo "context-bench: README table not re-rendered (run: task bench-ledger)" >&2
+  fi
   case "$LEDGER_RC" in
     0) LEDGER_STATUS="PASS" ;;
     1) LEDGER_STATUS="FAIL (measured refutation — record it)" ;;

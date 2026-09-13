@@ -352,6 +352,13 @@ claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/ag
 claude mcp get fathom            # expect: Type: http · Status: ✔ Connected
 ```
 
+Then add `"alwaysLoad": true` beside the entry's `url` in `~/.claude.json`
+(or `.mcp.json`): with `ENABLE_TOOL_SEARCH` unset, Claude Code defers every
+MCP tool schema behind `ToolSearch`, and a headless `claude -p` session pays
+one ToolSearch turn — about a tenth of its tokens on a discovery task —
+before its first fathom call (`.fathom/observations.md` O32; measured 1 turn
+plain, 0 with the flag). `fathom plugin render` writes it already.
+
 `--scope user` makes the server (and its tools) available to every Claude
 Code session and every subagent spawned in any repo — not just the one you
 registered it from.

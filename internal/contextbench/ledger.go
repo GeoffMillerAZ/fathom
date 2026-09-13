@@ -251,8 +251,8 @@ func LoadLedger(path string) ([]LedgerRow, error) {
 // step rather than a number to recompute.
 func RenderLedgerMarkdown(rows []LedgerRow) string {
 	var b strings.Builder
-	b.WriteString("| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | verdict | why |\n")
-	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("| run | commit | corpus | model | tasks | n | success (t/c) | tokens agg | tokens median | Δsuccess 95% CI | criterion | verdict | why |\n")
+	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
 		corpus := r.Corpus
 		if i := strings.LastIndex(corpus, "/"); i >= 0 {
@@ -286,11 +286,14 @@ func RenderLedgerMarkdown(rows []LedgerRow) string {
 		if r.MedianTokenRatio > 0 {
 			median = fmt.Sprintf("%.3f×", r.MedianTokenRatio)
 		}
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %s | %s | %s | %s%s |\n",
+		// One run may carry two rows — the criterion it was scored under
+		// as history and the newer one (BP-38) — so the column that tells
+		// them apart is on the table.
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %d | %d | %d/%d | %.3f× | %s | %s | %s | %s | %s%s |\n",
 			r.RunID, r.Commit, corpus, r.Model, r.Tasks, r.MinTrials,
 			r.TreatmentSuccesses, r.ControlSuccesses,
 			r.AggregateTokenRatio, median, renderReliability(r.Reliability),
-			r.Evaluation.Verdict, r.Evaluation.Reason, caveat)
+			r.Evaluation.CriterionID, r.Evaluation.Verdict, r.Evaluation.Reason, caveat)
 	}
 	return b.String()
 }

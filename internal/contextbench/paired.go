@@ -529,9 +529,15 @@ func LoadCriterionByID(path, id string) (Criterion, error) {
 	return Criterion{}, fmt.Errorf("corpus %s registers no criterion %q — a run cannot be scored against a criterion that was never registered", path, id)
 }
 
-// LoadCriterion reads a corpus's machine-evaluable pre-registered criterion.
-// A corpus without one is an error, not a default: inventing a criterion at
-// evaluation time is precisely the post-hoc move law 12 forbids.
+// LoadCriterion reads the criterion a run is scored under when none is
+// named: the NEWEST entry of registered_criteria when the corpus has any,
+// else the machine_criterion block. Registration is a committed act that
+// precedes the run it binds (H2-3 was registered 2026-09-12 to score the
+// 2026-09-13 run), so "newest registered" is the pre-registered bar, never
+// a post-hoc choice; the older criteria stay loadable by id and their
+// recorded verdicts stand as history. A corpus without any criterion is an
+// error, not a default: inventing a criterion at evaluation time is
+// precisely the post-hoc move law 12 forbids.
 func LoadCriterion(path string) (Criterion, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -540,6 +546,9 @@ func LoadCriterion(path string) (Criterion, error) {
 	var cf criterionFile
 	if err := json.Unmarshal(raw, &cf); err != nil {
 		return Criterion{}, fmt.Errorf("parsing corpus %s: %w", path, err)
+	}
+	if n := len(cf.RegisteredCriteria); n > 0 {
+		return cf.RegisteredCriteria[n-1], nil
 	}
 	if cf.MachineCriterion == nil {
 		return Criterion{}, fmt.Errorf("corpus %s has no machine_criterion block: a run cannot be scored against a criterion that was never registered", path)

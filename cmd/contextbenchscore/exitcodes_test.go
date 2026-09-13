@@ -16,7 +16,8 @@ const gatedTasksJSON = `{
   "version": 1,
   "machine_criterion": {"id": "H2-1", "require_strictly_more_successes": true, "max_token_ratio": 1.0, "min_trials": 3,
     "leak_rule": {"arm": "none", "min_passes": 2, "of_trials": 3}},
-  "registered_criteria": [{"id": "H2-2", "require_strictly_more_successes": true, "max_token_ratio": 1.0, "min_trials": 3, "scoring": "precision"}],
+  "registered_criteria": [{"id": "H2-2", "require_strictly_more_successes": true, "max_token_ratio": 1.0, "min_trials": 3, "scoring": "precision",
+    "leak_rule": {"arm": "none", "min_passes": 2, "of_trials": 3}}],
   "tasks": [
     {"id": "T1", "prompt": "p1", "ground_truth": ["a"], "scoring_rule": "exact-match"},
     {"id": "T2", "prompt": "p2", "ground_truth": ["b"], "scoring_rule": "exact-match"},

@@ -80,6 +80,12 @@ func Regress(rows []LedgerRow, baselineID string) RegressionReport {
 			}
 			continue
 		}
+		if r.RunID == cur.RunID {
+			// The same run scored under a second criterion (H2-1 as
+			// history beside H2-3) carries identical per_task outcomes;
+			// comparing a run with itself would read as "no regression".
+			continue
+		}
 		if r.CorpusSHA256 == cur.CorpusSHA256 {
 			base = &rows[i]
 			break

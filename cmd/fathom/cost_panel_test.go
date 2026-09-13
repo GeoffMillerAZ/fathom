@@ -26,25 +26,26 @@ import (
 // capabilities tool now reports it live as schema_bytes so the next change
 // is measured too. The band below brackets that measurement, not a hope.
 //
-// BP-22 re-pin, 2026-09-12 (docs/plans/bench-pyramid.md, ADR-032 §5). The
-// band is UNCHANGED and its justification is now a measurement instead of
-// an assertion. ADR-032 §5 asked for this number to be held under "the
-// harness's documented MCP deferral threshold". Claude Code documents no
-// such threshold, so it was measured directly: one `claude -p` run per
-// config against the live daemon's agent surface (28,715 bytes / 17 tools),
-// `--output-format stream-json`, ToolSearch turns counted in the stream.
+// BP-22 re-pin, 2026-09-12, CORRECTED 2026-09-13 (O32). The band is
+// unchanged. The 2026-09-12 probe reported 0 ToolSearch turns with and
+// without alwaysLoad, but it read the stream's `init` tool list — which
+// names every MCP tool whether or not its schema is deferred — and its
+// prompt never made the model call a fathom tool, so deferral had nothing
+// to show. The 2026-09-13 probe that DID demand a fathom call, headless
+// `claude -p --output-format stream-json` on 2.1.270 against the same
+// 17-tool / 28.7 kB surface:
 //
-//	claude 2.1.270, alwaysLoad:true  → 17/17 fathom tools in the init
-//	                                   tool list, 0 ToolSearch turns
-//	claude 2.1.270, alwaysLoad unset → 17/17 fathom tools in the init
-//	                                   tool list, 0 ToolSearch turns
+//	alwaysLoad unset → 1 ToolSearch turn before the first fathom call
+//	alwaysLoad:true  → 0 ToolSearch turns
 //
-// So on this harness version the whole surface loads eagerly at ~28.7 kB
-// and the O24 deferral tax (measured on 2.1.258: 1–2 ToolSearch turns per
-// cell, ~28k cache-read tokens each) does not reproduce. ADR-032's own
-// revisit trigger — "a harness release removes MCP tool deferral (retire
-// the line item)" — has therefore FIRED, and this band is a BUDGET (a
-// per-session context cost worth watching) rather than a threshold.
+// Claude Code's MCP docs (2.1.270) say the same: with ENABLE_TOOL_SEARCH
+// unset EVERY MCP tool schema is deferred behind ToolSearch, no threshold;
+// `alwaysLoad: true` exempts a server. The full home run of 2026-09-13
+// paid ≥1 ToolSearch turn in every fathom cell (11% of the arm's tokens).
+// So the O24 tax is real in headless sessions, the remedy is the
+// alwaysLoad bit (written by `fathom plugin render`, the bench config and
+// the descriptor note), and this band stays a BUDGET — the schema size
+// was never what decided deferral.
 //
 // The band is deliberately not tightened toward the ~16 kB July figure.
 // Reaching it would mean deleting either the generated outputSchemas

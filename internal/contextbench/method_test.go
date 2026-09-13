@@ -118,12 +118,12 @@ func TestLeakRuleIsCommittedInTheHomeCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 	if c.LeakRule == nil || c.LeakRule.Arm != "none" || c.LeakRule.MinPasses != 2 {
-		t.Fatalf("machine_criterion must carry the registered leak rule (none arm, >=2 of 3), got %+v", c.LeakRule)
+		t.Fatalf("the default criterion must carry the registered leak rule (none arm, >=2 of 3), got %+v", c.LeakRule)
 	}
 }
 
 func TestH2_2IsRegisteredBesideH2_1(t *testing.T) {
-	h21, err := contextbench.LoadCriterion("../../testdata/contextbench/tasks-home.json")
+	h21, err := contextbench.LoadCriterionByID("../../testdata/contextbench/tasks-home.json", "H2-1")
 	if err != nil {
 		t.Fatal(err)
 	}

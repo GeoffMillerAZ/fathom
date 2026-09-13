@@ -44,7 +44,7 @@
 //
 //	contextbenchscore ledger -tasks <tasks.json> -results <dir> -ledger <path.jsonl> -run-id <id> -commit <sha> [-model <m>] [-criterion H2-1] [-treatment fathom] [-control grep] [-arms "fathom grep none"] [-repeat N] [-dirty-tree] [-out-md <path>]
 //	    Applies the corpus's committed leak rule, pairs the two arms,
-//	    evaluates the named criterion (default: the machine_criterion
+//	    evaluates the named criterion (default: the newest registered criterion, else the machine_criterion
 //	    block) against the paired summary, appends one row — per-task
 //	    outcomes, corpus hash, resolved model id, cost, cells lost — to the
 //	    committed bench ledger, and exits 0 for a pass, 1 for a fail, and 3
@@ -357,7 +357,7 @@ func cmdLedger(args []string) int {
 	runID := fs.String("run-id", "", "run identifier (the runner's timestamp)")
 	commit := fs.String("commit", "", "repo HEAD the run measured")
 	model := fs.String("model", "", "model alias both arms ran on")
-	criterionID := fs.String("criterion", "", "registered criterion id to evaluate (default: the machine_criterion block)")
+	criterionID := fs.String("criterion", "", "registered criterion id to evaluate (default: the newest registered_criteria entry, else the machine_criterion block)")
 	treatment := fs.String("treatment", "fathom", "treatment arm name")
 	control := fs.String("control", "grep", "control arm name")
 	arms := fs.String("arms", "", "every arm the run intended (space/comma separated), for the cells_lost count; default: treatment and control")

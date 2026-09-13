@@ -159,3 +159,25 @@ func TestCellsLost_CountsIntendedCellsThatNeverScored(t *testing.T) {
 		t.Fatalf("repeat 0 reads as 1: lost = %d, want 1 (T2/fathom; T2/grep's trial-0 artifact counts as trial 1)", got)
 	}
 }
+
+func TestRegress_NeverBaselinesARunAgainstItself(t *testing.T) {
+	// One run, two criteria: the 2026-09-13 run has an H2-1 row (history)
+	// and an H2-3 row with the same per_task outcomes. The newest row must
+	// look past its own run for a baseline, not compare itself with itself.
+	rows := []contextbench.LedgerRow{
+		ledgerRow("r1", shaA, pt("T1", 3, 3), pt("T2", 3, 3)),
+		ledgerRow("r2", shaA, pt("T1", 3, 3), pt("T2", 0, 3)),
+		ledgerRow("r2", shaA, pt("T1", 3, 3), pt("T2", 0, 3)),
+	}
+	got := contextbench.Regress(rows, "")
+	if got.BaselineRunID != "r1" {
+		t.Fatalf("baseline = %q, want r1 (the same run's other row is not a baseline)", got.BaselineRunID)
+	}
+	if got.Verdict != contextbench.VerdictFail {
+		t.Fatalf("T2 fell against r1: want fail, got %s (%s)", got.Verdict, got.Reason)
+	}
+	only := []contextbench.LedgerRow{rows[1], rows[2]}
+	if got := contextbench.Regress(only, ""); got.Verdict != contextbench.VerdictIndeterminate {
+		t.Fatalf("a run with only its own rows has nothing to regress against: want indeterminate, got %s", got.Verdict)
+	}
+}
