@@ -126,11 +126,11 @@ func cmdCompare(args []string, stdout, stderr io.Writer) int {
 		ledgerRows = append(
 			ledgerRows,
 			indexbench.CompetitorLedgerRow{
-				Arm: "fathom", Version: fathomVersion(), Repo: abs, Commit: commit,
+				Arm: "fathom", Oracle: "find_callers", Version: fathomVersion(), Repo: abs, Commit: commit,
 				Precision: fathomCalls.Precision, Recall: fathomCalls.Recall, Adjudicable: fathomCalls.Queries, Date: date,
 			},
 			indexbench.CompetitorLedgerRow{
-				Arm: "graphify", Version: *version, Repo: abs, Commit: commit,
+				Arm: "graphify", Oracle: "find_callers", Version: *version, Repo: abs, Commit: commit,
 				Precision: cmp.Precision, Recall: cmp.Recall, Adjudicable: cmp.Queries, DroppedKinds: edges.DroppedKinds, Date: date,
 			},
 		)
@@ -165,11 +165,11 @@ func cmdCompare(args []string, stdout, stderr io.Writer) int {
 		ledgerRows = append(
 			ledgerRows,
 			indexbench.CompetitorLedgerRow{
-				Arm: "fathom", Version: fathomVersion(), Repo: abs, Commit: commit,
+				Arm: "fathom", Oracle: "references", Version: fathomVersion(), Repo: abs, Commit: commit,
 				Precision: fathomRefs.Precision, Recall: fathomRefs.Recall, Adjudicable: fathomRefs.Queries, Date: date,
 			},
 			indexbench.CompetitorLedgerRow{
-				Arm: armName, Version: armVersion, Repo: abs, Commit: commit,
+				Arm: armName, Oracle: "references", Version: armVersion, Repo: abs, Commit: commit,
 				Precision: cmp.Precision, Recall: cmp.Recall, Adjudicable: cmp.Queries, DroppedKinds: edges.DroppedKinds, Date: date,
 			},
 		)
@@ -182,11 +182,11 @@ func cmdCompare(args []string, stdout, stderr io.Writer) int {
 		ledgerRows = append(
 			ledgerRows,
 			indexbench.CompetitorLedgerRow{
-				Arm: "fathom-find_callers", Version: fathomVersion(), Repo: abs, Commit: commit,
+				Arm: "fathom", Oracle: "find_callers", Version: fathomVersion(), Repo: abs, Commit: commit,
 				Precision: fathomCalls.Precision, Recall: fathomCalls.Recall, Adjudicable: fathomCalls.Queries, Date: date,
 			},
 			indexbench.CompetitorLedgerRow{
-				Arm: "fathom-references", Version: fathomVersion(), Repo: abs, Commit: commit,
+				Arm: "fathom", Oracle: "references", Version: fathomVersion(), Repo: abs, Commit: commit,
 				Precision: fathomRefs.Precision, Recall: fathomRefs.Recall, Adjudicable: fathomRefs.Queries, Date: date,
 			},
 		)

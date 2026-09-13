@@ -63,9 +63,11 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 - [ ] (op) Guards pilot on the fathom repo: guards corpus × arms `full`, `control` × n=2; row on the scenarios ledger with rule-served and violation readings beside the predictions {id: SB-37, skip_test: true, skip: "operator spend; evidence is the ledger row", needs: SB-24}
 - [ ] (op) Change-bench pilot: 8 public Go tasks × `full`, `control` × n=2 × 2 sessions; SDD readings on the row {id: SB-38, skip_test: true, skip: "operator spend; evidence is the ledger row", needs: SB-34}
 - [ ] (op) Exploration-reuse pilot: 3 cross-package tasks in `planner-workers` mode, K=3, both arms {id: SB-39, skip_test: true, skip: "operator spend; evidence is the ledger row", needs: SB-23}
-- [ ] Competitor edge comparison (free) on the fathom repo and one public subject: precision/recall per tool on `docs/bench/competitors-ledger.jsonl` {id: SB-40, skip_test: true, skip: "free run; evidence is the competitors ledger", needs: SB-31}
+- [ ] Competitor edge comparison (free) on the fathom repo: precision/recall per tool on `docs/bench/competitors-ledger.jsonl` — 2026-09-13: callers fathom 1.00/1.00 vs graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, fathom 0.33–0.46/1.00 (text occurrences, the predicted loss) {id: SB-40, oracle: lexical, path: docs/bench/competitors-ledger.jsonl, pattern: "\"arm\":\"serena\""}
 - [ ] (op) Competitor lookup pilot: `lookups-vs.json` × n=2 with the freshness task {id: SB-41, skip_test: true, skip: "operator spend; evidence is the ledger row", needs: SB-32}
 - [-] M8 fleet blast radius and M9 breadth rows {id: SB-42, disposition: deferred, reason: "registered in vision 27 §1; scheduled after the pilots so their cost is decided on the pilots' readings", trigger: "SB-37..41 rows are on the ledger"}
+
+- [ ] `references` gains `exact: true` (default when the service has typed edges): identifier uses from the typed pass only, text occurrences behind `include_heuristic`; L0 references precision ≥ 0.95 on the fathom repo, measured beside gopls and Serena by `indexbench compare` — the M6 row's product finding {id: SB-45, symbol: exactReferences, package: internal/mcp, needs: SB-1}
 
 ## Wave 7 — the record
 

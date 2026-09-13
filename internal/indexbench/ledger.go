@@ -14,7 +14,11 @@ import (
 // ToolScore.Queries) — the denominator a bare precision/recall pair needs
 // context from.
 type CompetitorLedgerRow struct {
-	Arm          string         `json:"arm"`
+	Arm string `json:"arm"`
+	// Oracle names which truth the row was scored against — "find_callers"
+	// (caller→callee edges) or "references" (identifier-use sites) — so a
+	// fathom row beside graphify is never confused with one beside an LSP.
+	Oracle       string         `json:"oracle"`
 	Version      string         `json:"version"`
 	Repo         string         `json:"repo"`
 	Commit       string         `json:"commit"`

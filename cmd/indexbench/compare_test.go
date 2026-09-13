@@ -56,8 +56,8 @@ func TestCmdCompare_RepoOnly(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("got %d ledger rows, want 2 (fathom-find_callers, fathom-references): %+v", len(rows), rows)
 	}
-	if rows[0].Arm != "fathom-find_callers" || rows[1].Arm != "fathom-references" {
-		t.Errorf("arms = %q, %q", rows[0].Arm, rows[1].Arm)
+	if rows[0].Arm != "fathom" || rows[0].Oracle != "find_callers" || rows[1].Arm != "fathom" || rows[1].Oracle != "references" {
+		t.Errorf("rows = %s/%s, %s/%s; want fathom/find_callers, fathom/references", rows[0].Arm, rows[0].Oracle, rows[1].Arm, rows[1].Oracle)
 	}
 	if rows[0].Date != "2026-09-13" {
 		t.Errorf("date = %q, want 2026-09-13", rows[0].Date)
