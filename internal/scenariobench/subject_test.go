@@ -111,11 +111,33 @@ func TestPrepareSubject_ReusesSharedClone(t *testing.T) {
 	if wt1.SubjectClone != wt2.SubjectClone {
 		t.Errorf("expected both cells to share one clone, got %q and %q", wt1.SubjectClone, wt2.SubjectClone)
 	}
-	if wt1.Path == wt2.Path {
-		t.Error("expected each cell to get its own worktree directory")
+	// Same (subject, commit, arm): the worktree is SHARED and reset between
+	// cells, so a compiled store is paid for once; a different arm gets its
+	// own. Whatever the first cell left behind must be gone.
+	if wt1.Path != wt2.Path {
+		t.Errorf("expected cells on one (subject, commit, arm) to share a worktree, got %q and %q", wt1.Path, wt2.Path)
 	}
 	if _, err := os.Stat(filepath.Join(wt2.Path, "marker.txt")); err != nil {
 		t.Errorf("expected the second worktree to also have the subject's file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(wt2.Path, "leftover.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wt3, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (3rd): %v", err)
+	}
+	defer StopWorktree(&wt3)
+	if _, err := os.Stat(filepath.Join(wt3.Path, "leftover.txt")); !os.IsNotExist(err) {
+		t.Errorf("a reused worktree must be cleaned between cells; leftover.txt survived (%v)", err)
+	}
+	other, err := PrepareSubject(context.Background(), task, Arm{Instructions: "plain", NotesFile: true}, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (other arm): %v", err)
+	}
+	defer StopWorktree(&other)
+	if other.Path == wt1.Path {
+		t.Error("a different arm must get its own worktree")
 	}
 }
 
@@ -135,29 +157,5 @@ func TestStopWorktree_NilAndZeroValueAreNoOps(t *testing.T) {
 	wt := Worktree{}
 	if err := StopWorktree(&wt); err != nil {
 		t.Errorf("StopWorktree on a zero-value Worktree: %v", err)
-	}
-}
-
-func TestNextFreeDir(t *testing.T) {
-	dir := t.TempDir()
-	base := filepath.Join(dir, "cell")
-
-	first, err := nextFreeDir(base)
-	if err != nil {
-		t.Fatalf("nextFreeDir: %v", err)
-	}
-	if first != base {
-		t.Errorf("first call: got %q, want %q", first, base)
-	}
-	if err := os.MkdirAll(first, 0o755); err != nil {
-		t.Fatal(err)
-	}
-
-	second, err := nextFreeDir(base)
-	if err != nil {
-		t.Fatalf("nextFreeDir: %v", err)
-	}
-	if second == base || second == "" {
-		t.Errorf("second call: expected a distinct dir, got %q", second)
 	}
 }

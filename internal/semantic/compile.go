@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path"
 	"sort"
 	"strings"
@@ -347,7 +348,7 @@ sectionLoop:
 				// section: count it, keep the section's prior claims, and
 				// move on — one bad response must never abort an 88-section
 				// corpus. Anything else (auth, network, context) aborts.
-				if errors.Is(err, structured.ErrTruncated) || errors.Is(err, structured.ErrMalformed) {
+				if errors.Is(err, structured.ErrTruncated) || errors.Is(err, structured.ErrMalformed) || isDecodeError(err) {
 					run.SectionsFailed++
 					continue
 				}
@@ -909,4 +910,17 @@ func isFileClassGlob(g string) bool {
 		return false
 	}
 	return !strings.ContainsAny(ext, "*?[{}")
+}
+
+// isDecodeError reports a transport-level JSON decode failure — the CLI
+// backend's "malformed response envelope" (a *json.SyntaxError or an
+// unexpected EOF when the harness printed something that is not its JSON
+// envelope, or was cut off). It is the same class as structured.ErrMalformed
+// seen one layer down: one section's answer was unusable, the run goes on.
+// The 2026-09-13 scenario dry cell aborted a 7-minute compile on the 88th
+// section for exactly this.
+func isDecodeError(err error) bool {
+	var syn *json.SyntaxError
+	var typ *json.UnmarshalTypeError
+	return errors.As(err, &syn) || errors.As(err, &typ) || errors.Is(err, io.ErrUnexpectedEOF)
 }

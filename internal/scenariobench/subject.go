@@ -27,6 +27,7 @@ import (
 // compiled obligations shows what that cost, separately from the session
 // spend RunSessions measures.
 type CompileCost struct {
+	Cached    bool          `json:"cached,omitempty"` // served from a store an earlier cell compiled
 	TokensIn  int64         `json:"tokens_in"`
 	TokensOut int64         `json:"tokens_out"`
 	CostUSD   float64       `json:"cost_usd"`
@@ -84,21 +85,30 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	if err := os.MkdirAll(worktreesDir, 0o755); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", worktreesDir, err)
 	}
-	base := filepath.Join(worktreesDir, task.ID+"-"+armContentHash(arm))
-	wtPath, err := nextFreeDir(base)
-	if err != nil {
-		return Worktree{}, fmt.Errorf("preparing subject: choosing a worktree dir: %w", err)
-	}
+	// One worktree per (subject, base_commit, arm), REUSED across the
+	// tasks and trials that share it: a compiled obligations layer costs
+	// ~7 minutes and ~$0.12 per store (dry cell, 2026-09-13), and every
+	// task of a corpus on the same commit needs the same one. Between
+	// cells the tree is reset to base_commit and cleaned; the scratch
+	// store beside it persists and is re-ingested hash-gated.
+	wtPath := filepath.Join(worktreesDir, task.Subject.BaseCommit+"-"+armContentHash(arm))
 
 	if err := ensureCommit(ctx, cloneDir, task.Subject.BaseCommit); err != nil {
 		return Worktree{}, err
 	}
-	if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
+	if _, err := os.Stat(filepath.Join(wtPath, ".git")); err == nil {
+		if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
+			return Worktree{}, fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
+		}
+		if out, err := runIn(ctx, wtPath, "git", "clean", "-fdx"); err != nil {
+			return Worktree{}, fmt.Errorf("preparing subject: cleaning the shared worktree: %w (%s)", err, out)
+		}
+	} else if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
 	}
 
 	wt := Worktree{Path: wtPath, SubjectClone: cloneDir}
-	wt.CellDir = filepath.Join(root, "workspace", "artifacts", "scenariobench", "worktrees", filepath.Base(wtPath))
+	wt.CellDir = filepath.Join(root, "workspace", "artifacts", "scenariobench", "worktrees", task.ID+"-"+filepath.Base(wtPath))
 	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", wt.CellDir, err)
 	}
@@ -163,24 +173,6 @@ func armContentHash(arm Arm) string {
 	raw, _ := json.Marshal(arm)
 	sum := sha256.Sum256(raw)
 	return hex.EncodeToString(sum[:6])
-}
-
-// nextFreeDir returns base, or base-2, base-3, … — the first path that
-// does not exist yet. Deterministic given a deterministic call order (the
-// caller always prepares cells in the same order), which is what lets a
-// clean re-run reproduce the same worktree names.
-func nextFreeDir(base string) (string, error) {
-	for i := 0; ; i++ {
-		candidate := base
-		if i > 0 {
-			candidate = fmt.Sprintf("%s-%d", base, i+1)
-		}
-		if _, err := os.Stat(candidate); os.IsNotExist(err) {
-			return candidate, nil
-		} else if err != nil {
-			return "", err
-		}
-	}
 }
 
 func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
@@ -362,11 +354,20 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 	if service == "" {
 		service = filepath.Base(wt.Path)
 	}
+	marker := filepath.Join(filepath.Dir(wt.StorePath), "compiled.ok")
+	if _, err := os.Stat(marker); err == nil {
+		// The shared store was compiled by an earlier cell on this
+		// (subject, commit, arm); the layer is served, nothing is spent.
+		return &CompileCost{Cached: true}, nil
+	}
 	start := time.Now()
 	out, err := runIn(ctx, wt.Path, bin, "compile", "-service", service, "-store", wt.StorePath, "-layer", "obligations", "-dry-run=false")
 	dur := time.Since(start)
 	if err != nil {
 		return nil, fmt.Errorf("fathom compile: %w (%s)", err, out)
+	}
+	if werr := os.WriteFile(marker, []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644); werr != nil {
+		return nil, fmt.Errorf("fathom compile: writing %s: %w", marker, werr)
 	}
 	cost := &CompileCost{Duration: dur}
 	for _, line := range strings.Split(out, "\n") {
