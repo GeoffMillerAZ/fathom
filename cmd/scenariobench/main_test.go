@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -137,6 +138,65 @@ func TestPlanCells_SkipsDroppedTasks(t *testing.T) {
 	}
 	if cells[0].task.ID != "kept" {
 		t.Errorf("expected the surviving cell to be for task %q, got %q", "kept", cells[0].task.ID)
+	}
+}
+
+// TestBatchCellPlans_NeverBatchesTwoTrialsOfTheSameArm is the -parallel-arms
+// race fix's own proof: planCells emits cells arm-major within a task
+// (every trial of arm A, then every trial of arm B), so a naive "same
+// task.ID" contiguous grouping put every trial of the SAME arm in one
+// batch — and PrepareSubject's worktree key (base_commit + armContentHash)
+// carries no trial, so those trials would race on one worktree under
+// -parallel-arms. batchCellPlans must instead put every ARM of one trial
+// together, and never two trials of one arm together.
+func TestBatchCellPlans_NeverBatchesTwoTrialsOfTheSameArm(t *testing.T) {
+	task := scenariobench.Task{ID: "T1"}
+	cells := []cellPlan{
+		{task: task, arm: "A", trial: 1},
+		{task: task, arm: "A", trial: 2},
+		{task: task, arm: "B", trial: 1},
+		{task: task, arm: "B", trial: 2},
+	}
+	batches := batchCellPlans(cells)
+	if len(batches) != 2 {
+		t.Fatalf("expected 2 batches (one per trial), got %d: %+v", len(batches), batches)
+	}
+	for _, b := range batches {
+		seen := map[string]bool{}
+		for _, cp := range b {
+			key := fmt.Sprintf("%s/t%d", cp.arm, cp.trial)
+			if seen[key] {
+				t.Fatalf("batch %+v carries the same arm/trial twice", b)
+			}
+			seen[key] = true
+			trial := b[0].trial
+			if cp.trial != trial {
+				t.Errorf("batch mixes trial %d with trial %d: %+v", trial, cp.trial, b)
+			}
+		}
+	}
+	// Batch 0 must be trial 1's two arms, batch 1 trial 2's two arms —
+	// first-seen order of (task, trial), matching planCells' own emission
+	// order closely (arm A's trial 1 appears before arm B's trial 1).
+	if len(batches[0]) != 2 || batches[0][0].arm != "A" || batches[0][1].arm != "B" {
+		t.Errorf("batches[0] = %+v, want arms [A B] at trial 1", batches[0])
+	}
+	if len(batches[1]) != 2 || batches[1][0].arm != "A" || batches[1][1].arm != "B" {
+		t.Errorf("batches[1] = %+v, want arms [A B] at trial 2", batches[1])
+	}
+}
+
+// TestBatchCellPlans_SeparatesDifferentTasks covers the ordinary case:
+// cells from two different tasks never share a batch even at the same
+// trial number.
+func TestBatchCellPlans_SeparatesDifferentTasks(t *testing.T) {
+	cells := []cellPlan{
+		{task: scenariobench.Task{ID: "T1"}, arm: "A", trial: 1},
+		{task: scenariobench.Task{ID: "T2"}, arm: "A", trial: 1},
+	}
+	batches := batchCellPlans(cells)
+	if len(batches) != 2 {
+		t.Fatalf("expected 2 batches (one per task), got %d: %+v", len(batches), batches)
 	}
 }
 

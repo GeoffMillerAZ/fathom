@@ -2,10 +2,12 @@ package scenariobench
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -138,6 +140,56 @@ func TestPrepareSubject_ReusesSharedClone(t *testing.T) {
 	defer StopWorktree(&other)
 	if other.Path == wt1.Path {
 		t.Error("a different arm must get its own worktree")
+	}
+}
+
+// TestPrepareSubject_ConcurrentCallsShareOneCloneWithoutRacing is the
+// -parallel-arms clone race's own proof: two cells of the same subject
+// (as -parallel-arms' batching would produce — distinct arms, one shared
+// cloneDir keyed only on repo_url) calling PrepareSubject at the same
+// moment must both succeed and end up sharing one valid clone, never one
+// racing `git clone` into the other's half-written target directory.
+func TestPrepareSubject_ConcurrentCallsShareOneCloneWithoutRacing(t *testing.T) {
+	repoPath, commit := gitFixtureRepo(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: commit}}
+
+	const n = 8
+	results := make([]Worktree, n)
+	errs := make([]error, n)
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			// Distinct arms (as batchCellPlans would run concurrently) so
+			// each gets its OWN worktree — only the shared clone is meant
+			// to be contended.
+			arm := Arm{Instructions: "none", Setup: []string{fmt.Sprintf("echo arm-%d > arm.marker", i)}}
+			results[i], errs[i] = PrepareSubject(context.Background(), task, arm, root)
+		}()
+	}
+	wg.Wait()
+
+	var clone string
+	for i, err := range errs {
+		if err != nil {
+			t.Errorf("PrepareSubject[%d]: %v", i, err)
+			continue
+		}
+		defer StopWorktree(&results[i])
+		if clone == "" {
+			clone = results[i].SubjectClone
+		} else if results[i].SubjectClone != clone {
+			t.Errorf("PrepareSubject[%d]: SubjectClone = %q, want %q (shared)", i, results[i].SubjectClone, clone)
+		}
+	}
+	if clone == "" {
+		t.Fatal("no successful PrepareSubject call to check the clone against")
+	}
+	if out, err := exec.Command("git", "-C", clone, "rev-parse", "HEAD").CombinedOutput(); err != nil {
+		t.Errorf("shared clone %s is not a valid git repo: %v (%s)", clone, err, out)
 	}
 }
 

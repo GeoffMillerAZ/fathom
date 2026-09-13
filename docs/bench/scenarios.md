@@ -299,8 +299,18 @@ recur — while still keeping auth, still honoring `--settings <file>` and
 `--mcp-config`/`--strict-mcp-config`, and confining the file tools to the
 working directory; `--disable-slash-commands` removes skills on top.
 `--settings` is passed the arm's own rendered `.claude/settings.json`
-(`RenderArm`, `SessionRequest.SettingsPath`), so a wired arm's real hooks
-still fire. `--tools` is exactly what the arm allows
+(`SessionRequest.SettingsPath`) — for a wired arm this is the file `fathom
+init` (`PrepareSubject`'s `wireScratchDaemon`, BEFORE `RenderArm` runs)
+already wrote with the real hook stack (SessionStart/PreToolUse/
+PostToolUse/Stop, each naming the cell's own binary); `RenderArm` only
+asserts that file still carries a `hooks.SessionStart` entry
+(`assertWiredHooksPresent`), it never writes or replaces the hooks key
+itself. (A first version of `RenderArm` overwrote that file with a
+one-hook stand-in naming a fathom subcommand that does not exist —
+`obligations-hook` — so every wired cell ran with none of fathom's real
+hooks; the instrument-truth gate now also fails a cell whose transcript
+shows no `SessionStart` hook_response at all, so this cannot recur
+silently.) `--tools` is exactly what the arm allows
 (`restrictedToolsList`): the arm's own `AllowedTools` with every `mcp__`
 entry stripped (MCP access is already governed by
 `--mcp-config`/`--strict-mcp-config`, not `--tools`) when non-empty, else

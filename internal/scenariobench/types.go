@@ -244,6 +244,17 @@ type SessionResult struct {
 	PayloadBytes int64         `json:"payload_bytes"`
 	WallTime     time.Duration `json:"wall_time_ns"`
 	RawPath      string        `json:"raw_path,omitempty"`
+	// HooksFired maps every hook event name (e.g. "SessionStart",
+	// "PostToolUse") to how many `system`/`hook_response` events the
+	// transcript carried for it, counted regardless of the hook's own
+	// outcome — a hook that fired and errored still proves the harness's
+	// `--settings` file wired something, unlike one that never fired at
+	// all (docs/bench/scenarios.md's clean-room smoke test: real shape is
+	// `{"type":"system","subtype":"hook_response","hook_event":"SessionStart",...}`).
+	// Nil when the transcript carried no hook_response event at all — a
+	// wired session with nil/zero SessionStart is the instrument error
+	// runOneSession gates on, exactly like an absent MCP server.
+	HooksFired map[string]int `json:"hooks_fired,omitempty"`
 	// BudgetHit is true when the turn cap ended the session (Claude Code's
 	// error_max_turns): the designed hand-off, never counted as an error.
 	BudgetHit bool `json:"budget_hit,omitempty"`
@@ -251,7 +262,14 @@ type SessionResult struct {
 	// answer-only oracle) — set whenever the harness's transcript carries
 	// one, never inferred from FilesRead/FilesEdited.
 	FinalAnswer string `json:"final_answer,omitempty"`
-	Error       string `json:"error,omitempty"`
+	// Error is the harness's or Claude's own reported session failure, or
+	// (runOneSession) the instrument-truth gate's message — kept for the
+	// existing "stop after an errored session" behavior. InstrumentError
+	// carries the SAME message only for an instrument-truth failure, so
+	// CellLost can flag a cell on any ONE such session, not only when
+	// every session in it errored.
+	Error           string `json:"error,omitempty"`
+	InstrumentError string `json:"instrument_error,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.
@@ -363,6 +381,10 @@ type Readings struct {
 	// ToolCalls sums every session's own ToolCalls (SessionResult), name to
 	// count.
 	ToolCalls map[string]int `json:"tool_calls,omitempty"`
+	// HooksFired sums every session's own HooksFired (SessionResult), hook
+	// event name to count — the same aggregation ToolCalls gets
+	// (AggregateReadings).
+	HooksFired map[string]int `json:"hooks_fired,omitempty"`
 	// SurfaceCalls counts, within ToolCalls, every call to a tool
 	// namespaced to the arm's own Surface (SurfaceCallCount) — 0 for a
 	// pure control (empty Surface) by definition, never "not measured".

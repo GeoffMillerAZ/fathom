@@ -181,7 +181,7 @@ func TestEscalationPlan(t *testing.T) {
 			{TaskID: "T1", Arm: "full", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
 			{TaskID: "T1", Arm: "control", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
 		}
-		got := EscalationPlan(rows, c, 0.15)
+		got, _ := EscalationPlan(rows, c, 0.15)
 		if len(got) != 1 || got[0].TaskID != "T1" {
 			t.Fatalf("got %+v, want one cell for T1", got)
 		}
@@ -199,7 +199,7 @@ func TestEscalationPlan(t *testing.T) {
 			{TaskID: "T2", Arm: "full", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 100}},
 			{TaskID: "T2", Arm: "control", Trials: 2, Successes: 0, Readings: Readings{TotalTokens: 100}},
 		}
-		got := EscalationPlan(rows, c, 0.15)
+		got, _ := EscalationPlan(rows, c, 0.15)
 		if len(got) != 0 {
 			t.Fatalf("got %+v, want no cells (delta is decisive, not borderline)", got)
 		}
@@ -212,7 +212,7 @@ func TestEscalationPlan(t *testing.T) {
 			{TaskID: "T3", Arm: "full", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 300}},
 			{TaskID: "T3", Arm: "control", Trials: 2, Successes: 2, Readings: Readings{TotalTokens: 200}},
 		}
-		got := EscalationPlan(rows, c, 0.15)
+		got, _ := EscalationPlan(rows, c, 0.15)
 		if len(got) != 1 || got[0].TaskID != "T3" {
 			t.Fatalf("got %+v, want one cell for T3", got)
 		}
@@ -226,7 +226,7 @@ func TestEscalationPlan(t *testing.T) {
 			{TaskID: "T4", Arm: "full", Trials: 3, Successes: 1, Readings: Readings{TotalTokens: 100}},
 			{TaskID: "T4", Arm: "control", Trials: 3, Successes: 1, Readings: Readings{TotalTokens: 100}},
 		}
-		got := EscalationPlan(rows, c, 0.15)
+		got, _ := EscalationPlan(rows, c, 0.15)
 		if len(got) != 0 {
 			t.Fatalf("got %+v, want no cells (n=3 already ran)", got)
 		}
@@ -236,9 +236,33 @@ func TestEscalationPlan(t *testing.T) {
 		rows := []ScenarioLedgerRow{
 			{TaskID: "T5", Arm: "competitor-x", Trials: 2, Successes: 1},
 		}
-		got := EscalationPlan(rows, c, 0.15)
+		got, _ := EscalationPlan(rows, c, 0.15)
 		if len(got) != 0 {
 			t.Fatalf("got %+v, want no cells (no treatment/control rows)", got)
+		}
+	})
+
+	// TestEscalationPlan/rows_carrying_instrument_defect_are_skipped_and_counted
+	// is finding 6's own proof: EscalationPlan must not build a
+	// recommendation from a row ADR-034/RC-36 already voided (the same
+	// exclusion Evaluate already applies), and must report how many rows
+	// it skipped rather than silently dropping them.
+	t.Run("rows carrying instrument_defect are skipped and counted", func(t *testing.T) {
+		rows := []ScenarioLedgerRow{
+			// Would otherwise flag T6 (delta 0, within margin) — voided by
+			// InstrumentDefect on BOTH rows, so no evidence at all remains.
+			{TaskID: "T6", Arm: "full", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}, InstrumentDefect: "no mcp tool calls"},
+			{TaskID: "T6", Arm: "control", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}, InstrumentDefect: "no mcp tool calls"},
+			// T7 is sound and should still be flagged.
+			{TaskID: "T7", Arm: "full", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
+			{TaskID: "T7", Arm: "control", Trials: 2, Successes: 1, Readings: Readings{TotalTokens: 100}},
+		}
+		got, skipped := EscalationPlan(rows, c, 0.15)
+		if skipped != 2 {
+			t.Errorf("skipped = %d, want 2 (T6's two instrument_defect rows)", skipped)
+		}
+		if len(got) != 1 || got[0].TaskID != "T7" {
+			t.Fatalf("got %+v, want exactly one cell for T7 (T6 voided out of evidence entirely)", got)
 		}
 	})
 }

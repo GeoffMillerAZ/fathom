@@ -225,6 +225,115 @@ func TestRunSessions_InstrumentTruthGate_AllConnectedIsNotLost(t *testing.T) {
 	}
 }
 
+// TestHooksInstrumentError covers hooksInstrumentError directly: only a
+// wired session with no SessionStart entry in HooksFired is an instrument
+// error; an unwired arm never is, regardless of HooksFired.
+func TestHooksInstrumentError(t *testing.T) {
+	cases := []struct {
+		name    string
+		wired   bool
+		fired   map[string]int
+		wantMsg string
+	}{
+		{"unwired, no hooks at all", false, nil, ""},
+		{"wired, SessionStart fired", true, map[string]int{"SessionStart": 1}, ""},
+		{"wired, nil HooksFired", true, nil, "instrument: no SessionStart hook fired"},
+		{"wired, HooksFired present but no SessionStart", true, map[string]int{"PostToolUse": 1}, "instrument: no SessionStart hook fired"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := hooksInstrumentError(c.wired, SessionResult{HooksFired: c.fired})
+			if got != c.wantMsg {
+				t.Errorf("hooksInstrumentError = %q, want %q", got, c.wantMsg)
+			}
+		})
+	}
+}
+
+// TestRunSessions_WiredArmNoSessionStartHook_LosesTheCell is the hooks
+// instrument-truth gate's own end-to-end proof: a wired arm whose
+// transcript never shows a SessionStart hook_response must not pass as a
+// reading, exactly like an absent MCP server.
+func TestRunSessions_WiredArmNoSessionStartHook_LosesTheCell(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir}
+	h := &FakeHarness{
+		StreamsDir: streamsDir,
+		TaskID:     "T1",
+		ArmName:    "full",
+		// single-session.jsonl carries no hook_response event at all.
+		Streams: map[string]string{"T1/full": "single-session.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{Wired: true}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected the single (failing) session, got %d", len(results))
+	}
+	wantErr := "instrument: no SessionStart hook fired"
+	if results[0].Error != wantErr {
+		t.Errorf("Error = %q, want %q", results[0].Error, wantErr)
+	}
+	if results[0].InstrumentError != wantErr {
+		t.Errorf("InstrumentError = %q, want %q", results[0].InstrumentError, wantErr)
+	}
+	if reason := CellLost(results); reason == "" {
+		t.Error("expected CellLost to report this cell as lost")
+	}
+}
+
+// TestRunSessions_WiredArmSessionStartHookFired_NotLost is the converse: a
+// wired arm whose transcript shows the SessionStart hook firing must leave
+// the session clean.
+func TestRunSessions_WiredArmSessionStartHookFired_NotLost(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir}
+	h := &FakeHarness{
+		StreamsDir: streamsDir,
+		TaskID:     "T1",
+		ArmName:    "full",
+		Streams:    map[string]string{"T1/full": "hooks-fired.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{Wired: true}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 || results[0].Error != "" || results[0].InstrumentError != "" {
+		t.Errorf("expected one clean session, got %+v", results)
+	}
+}
+
+// TestCellLost_AnySessionInstrumentErrorLosesCell is finding 3's own proof:
+// an instrument error on ONE session (here, session 0 lost its server)
+// must lose the whole cell even though session 1 ran cleanly with turns —
+// the pre-fix code only lost a cell when EVERY session errored.
+func TestCellLost_AnySessionInstrumentErrorLosesCell(t *testing.T) {
+	sessions := []SessionResult{
+		{Error: "instrument: mcp server fathom absent", InstrumentError: "instrument: mcp server fathom absent"},
+		{Turns: 3},
+	}
+	if reason := CellLost(sessions); reason == "" {
+		t.Error("expected CellLost to report this cell as lost when any session carries an InstrumentError")
+	}
+}
+
+// TestCellLost_NoInstrumentErrorUnaffected is the converse: with no
+// InstrumentError anywhere, CellLost's pre-existing behavior (every
+// session errored, or no turns at all) is unchanged.
+func TestCellLost_NoInstrumentErrorUnaffected(t *testing.T) {
+	sessions := []SessionResult{{Turns: 1}, {Error: "some in-band failure", Turns: 1}}
+	if reason := CellLost(sessions); reason != "" {
+		t.Errorf("CellLost = %q, want empty (not every session errored, no instrument error)", reason)
+	}
+}
+
 // TestRunSessions_PropagatesMCPConfigPath proves item 1's plumbing through
 // the whole RunSessions loop: every session's request carries
 // wt.Arm.MCPConfigPath, not an empty string a harness would silently fall

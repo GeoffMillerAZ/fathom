@@ -167,6 +167,16 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 // this cell, the command failing, or an empty answer — never a fabricated
 // brief (RC-32, docs/vision/28-receipts.md §4).
 //
+// The subprocess env is the CELL's own, never the operator's: `fathom
+// discoveries` reads FATHOM_THREADS (thread.go's threadsPath, default
+// ~/.fathom/threads.jsonl) and — via threadScopeFor's own service
+// auto-resolution — FATHOM_HTTP (default http://localhost:7575) when no
+// override is set; runIn's bare os.Environ() inheritance would otherwise
+// hand this subprocess the OPERATOR's real threads file and daemon. Both
+// are pinned here (FATHOM_THREADS under wt.CellDir, FATHOM_HTTP to
+// wt.DaemonURL), and -service is passed explicitly so the command never
+// falls back to that same auto-resolution either.
+//
 // Note: the scratch daemon wireScratchDaemon (subject.go) starts with
 // `-call-log ""` (disabled) for a wired cell, so this call reads an empty
 // log until that is revisited — the function itself is correct and
@@ -180,8 +190,16 @@ func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStar
 	if _, err := os.Stat(bin); err != nil {
 		return "", nil
 	}
-	out, err := runIn(ctx, wt.Path, bin, "discoveries",
-		"-url", wt.DaemonURL, "-since", sessionStart.UTC().Format(time.RFC3339), "-budget", "1200", "-json")
+	// The SAME per-cell FATHOM_THREADS a real session's own clean room
+	// gets (cleanRoomEnv, cleanroom.go) — one threads.jsonl per cell, not
+	// a second path this function invents on its own.
+	env, err := cleanRoomEnv(wt.CellDir)
+	if err != nil {
+		return "", nil
+	}
+	env["FATHOM_HTTP"] = wt.DaemonURL
+	out, err := runInEnv(ctx, wt.Path, env, bin, "discoveries",
+		"-url", wt.DaemonURL, "-service", wt.Service, "-since", sessionStart.UTC().Format(time.RFC3339), "-budget", "1200", "-json")
 	if err != nil {
 		return "", nil
 	}
@@ -359,18 +377,29 @@ func findPlanFile(worktree string) (string, error) {
 // the tools it was measured as having — the defect this closes (72/72
 // "full" sessions ran with mcp_servers: [] because RunSessions handed the
 // harness the ORIGINAL arm, whose MCP map a wired cell's merged-in fathom
-// entry never reached). A mismatch is reported as res.Error, exactly like
-// any other in-band session failure, so the existing "stop after an
-// errored session" / CellLost handling picks it up unchanged. err is
-// non-nil only when the harness failed to even start the process.
+// entry never reached) — and, for a wired arm, that its transcript shows
+// no SessionStart hook ever fired (hooksInstrumentError): the same defect
+// shape as an absent MCP server, since a wired cell whose `--settings`
+// file never actually ran fathom's hooks was not measured with what it
+// claims either. Either mismatch is recorded on BOTH res.Error (so the
+// existing "stop after an errored session" handling picks it up
+// unchanged) and res.InstrumentError, which CellLost treats as
+// disqualifying the whole cell regardless of how the other sessions in it
+// went. err is non-nil only when the harness failed to even start the
+// process.
 func runOneSession(h Harness, req SessionRequest, wantServers []string) (SessionResult, error) {
 	res, err := h.RunSession(req)
 	if err != nil {
 		return res, err
 	}
 	if res.Error == "" {
-		if msg := instrumentTruthError(wantServers, res); msg != "" {
+		msg := instrumentTruthError(wantServers, res)
+		if msg == "" {
+			msg = hooksInstrumentError(req.Arm.Wired, res)
+		}
+		if msg != "" {
 			res.Error = msg
+			res.InstrumentError = msg
 		}
 	}
 	return res, nil
@@ -395,11 +424,38 @@ func instrumentTruthError(wantServers []string, res SessionResult) string {
 	return ""
 }
 
-// CellLost reports why a cell is not a reading: every session errored, or
-// no session ever produced a turn. A lost cell is never stored or scored.
+// hooksInstrumentError reports "instrument: no SessionStart hook fired"
+// when wired is true and res.HooksFired shows no SessionStart entry — a
+// wired session's `--settings` file is supposed to carry the real fathom
+// hook stack (RenderArm/subject.go), and a session whose own transcript
+// never shows that hook running was not measured with it, exactly like a
+// declared MCP server that never connected. "" for an unwired arm, which
+// declares no hook at all.
+func hooksInstrumentError(wired bool, res SessionResult) string {
+	if !wired {
+		return ""
+	}
+	if res.HooksFired["SessionStart"] > 0 {
+		return ""
+	}
+	return "instrument: no SessionStart hook fired"
+}
+
+// CellLost reports why a cell is not a reading: any session carrying an
+// instrument error (instrumentTruthError/hooksInstrumentError, via
+// runOneSession), every session errored some other way, or no session
+// ever produced a turn. A single instrument-broken session voids the
+// whole cell regardless of how the other sessions in it went — unlike a
+// session that merely errored in-band, which only loses the cell when
+// EVERY session did. A lost cell is never stored or scored.
 func CellLost(sessions []SessionResult) string {
 	if len(sessions) == 0 {
 		return "no sessions ran"
+	}
+	for _, s := range sessions {
+		if s.InstrumentError != "" {
+			return "instrument error: " + s.InstrumentError
+		}
 	}
 	errs := 0
 	turns := 0

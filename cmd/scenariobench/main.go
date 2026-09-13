@@ -181,6 +181,39 @@ func planCells(c scenariobench.Corpus, cf cellFlags, trials int, corpusSHA strin
 	return out
 }
 
+// batchCellPlans groups cells so a batch never carries two trials of the
+// SAME arm — only distinct arms of the same (task, trial) may run
+// concurrently under -parallel-arms, since PrepareSubject keys a worktree
+// on (subject, base_commit, ARM) with no trial component: two trials of
+// one arm sharing a batch would run PrepareSubject/RunSessions
+// concurrently against the very same worktree, scratch daemon store, and
+// cell dir. planCells emits cells arm-major within a task (every trial of
+// arm 1, then every trial of arm 2, ...), so cells sharing a (task,
+// trial) key are not generally contiguous in cells' own order — this
+// groups by that key directly, in FIRST-SEEN order of the key, so a
+// batch's own printed/stored order stays deterministic regardless of
+// input order.
+func batchCellPlans(cells []cellPlan) [][]cellPlan {
+	type taskTrial struct {
+		taskID string
+		trial  int
+	}
+	var order []taskTrial
+	byKey := map[taskTrial][]cellPlan{}
+	for _, cp := range cells {
+		key := taskTrial{cp.task.ID, cp.trial}
+		if _, ok := byKey[key]; !ok {
+			order = append(order, key)
+		}
+		byKey[key] = append(byKey[key], cp)
+	}
+	out := make([][]cellPlan, 0, len(order))
+	for _, key := range order {
+		out = append(out, byKey[key])
+	}
+	return out
+}
+
 func loadCorpus(path string) (scenariobench.Corpus, string, error) {
 	c, err := scenariobench.LoadScenarioCorpus(path)
 	if err != nil {
@@ -289,15 +322,23 @@ func cmdPlanEscalate(ledgerPath, runIDFilter string, criterion scenariobench.Cri
 		rows = filtered
 	}
 
-	cells := scenariobench.EscalationPlan(rows, criterion, margin)
+	cells, skipped := scenariobench.EscalationPlan(rows, criterion, margin)
 	if len(cells) == 0 {
-		fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: no n=2 cell sits within %.2f of %s's thresholds\n", margin, criterion.ID)
+		fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: no n=2 cell sits within %.2f of %s's thresholds", margin, criterion.ID)
+		if skipped > 0 {
+			fmt.Fprintf(os.Stdout, " (%d voided instrument_defect row(s) skipped)", skipped)
+		}
+		fmt.Fprintln(os.Stdout)
 		return 0
 	}
 	for _, c := range cells {
 		fmt.Fprintf(os.Stdout, "%s: n=%d success_delta=%.3f tokens_ratio=%.3f — %s\n", c.TaskID, c.Trials, c.SuccessDelta, c.TokensRatio, c.Reason)
 	}
-	fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: %d cell(s) flagged for n>=3\n", len(cells))
+	fmt.Fprintf(os.Stdout, "scenariobench plan --escalate: %d cell(s) flagged for n>=3", len(cells))
+	if skipped > 0 {
+		fmt.Fprintf(os.Stdout, " (%d voided instrument_defect row(s) skipped, never a basis for the recommendation)", skipped)
+	}
+	fmt.Fprintln(os.Stdout)
 	return 0
 }
 
@@ -355,21 +396,20 @@ func cmdRun(args []string) int {
 		selected = append(selected, cp)
 	}
 
-	// Batched by task: planCells groups cells task-major already, so a
-	// contiguous run of `selected` sharing one TaskID is exactly one
-	// task's arms/trials. RunArmsConcurrently (RC-16) runs a batch's cells
-	// in parallel when -parallel-arms asks for it — each prepares its own
+	// Batched by (task, trial): batchCellPlans groups cells so a batch
+	// never carries two trials of the SAME arm — PrepareSubject keys a
+	// worktree on (subject, base_commit, ARM) with no trial component, so
+	// two trials of one arm running concurrently under -parallel-arms
+	// would race on the very same worktree/scratch-store/cell dir (only
+	// DIFFERENT arms are safe to run concurrently — RunArmsConcurrently's
+	// own doc comment). RunArmsConcurrently runs a batch's cells in
+	// parallel when -parallel-arms asks for it — each prepares its own
 	// worktree and, when wired, its own scratch daemon on an
 	// independently allocated port, so nothing is shared between them —
 	// and outcomes are always processed in the batch's ORIGINAL order, so
 	// the ledger's printed/stored order never depends on which goroutine
 	// finished first.
-	for i := 0; i < len(selected); {
-		j := i + 1
-		for j < len(selected) && selected[j].task.ID == selected[i].task.ID {
-			j++
-		}
-		batch := selected[i:j]
+	for _, batch := range batchCellPlans(selected) {
 		fns := make([]func() (cellOutcome, error), len(batch))
 		for k, cp := range batch {
 			cp := cp
@@ -417,7 +457,6 @@ func cmdRun(args []string) int {
 				fmt.Fprintf(os.Stdout, "%s/%s/t%d: %s tokens=%d cost=%.4f\n", oc.cp.task.ID, oc.cp.arm, oc.cp.trial, status, oc.result.Readings.TotalTokens, oc.result.Readings.TotalCostUSD)
 			}
 		}
-		i = j
 	}
 	fmt.Fprintf(os.Stdout, "scenariobench run: %d cell(s) run, %d lost\n", ran, lost)
 	if lost > 0 && ran == 0 {

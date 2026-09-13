@@ -133,6 +133,41 @@ func TestParseSessionStream_NoInitEventLeavesMCPServersNil(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_HookResponseEvents covers RC-hooks: a
+// "system"/"hook_response" event's own hook_event must land on
+// SessionResult.HooksFired, counted per event name — the real shape found
+// in docs/bench/scenarios.md's clean-room smoke test and this repo's own
+// committed raw transcripts (workspace/artifacts/scenariobench/raw).
+func TestParseSessionStream_HookResponseEvents(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "hooks-fired.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	want := map[string]int{"SessionStart": 1, "PostToolUse": 1}
+	if len(r.HooksFired) != len(want) {
+		t.Fatalf("HooksFired = %v, want %v", r.HooksFired, want)
+	}
+	for name, n := range want {
+		if r.HooksFired[name] != n {
+			t.Errorf("HooksFired[%q] = %d, want %d", name, r.HooksFired[name], n)
+		}
+	}
+}
+
+// TestParseSessionStream_NoHookResponseLeavesHooksFiredNil mirrors
+// TestParseSessionStream_NoInitEventLeavesMCPServersNil: a transcript with
+// no hook_response event at all must report nil, never an empty-but-non-nil
+// map that could be mistaken for "every hook counted, zero times".
+func TestParseSessionStream_NoHookResponseLeavesHooksFiredNil(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "single-session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.HooksFired != nil {
+		t.Errorf("HooksFired = %v, want nil (no hook_response event in this fixture)", r.HooksFired)
+	}
+}
+
 func TestParseSessionStream_MissingFile(t *testing.T) {
 	if _, err := ParseSessionStream(filepath.Join(streamsDir, "does-not-exist.jsonl")); err == nil {
 		t.Fatal("expected an error for a missing transcript")

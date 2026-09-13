@@ -247,6 +247,12 @@ func AggregateReadings(sessions []SessionResult) Readings {
 			}
 			r.ToolCalls[name] += n
 		}
+		for name, n := range s.HooksFired {
+			if r.HooksFired == nil {
+				r.HooksFired = map[string]int{}
+			}
+			r.HooksFired[name] += n
+		}
 	}
 	return r
 }

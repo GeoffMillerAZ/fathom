@@ -50,8 +50,14 @@ type streamEvent struct {
 	} `json:"mcp_servers"`
 	// Tools is the init event's own available-tool list — counted for
 	// MCP-namespaced entries (MCPTools), never stored verbatim.
-	Tools   []string `json:"tools"`
-	Message struct {
+	Tools []string `json:"tools"`
+	// HookEvent is the "system"/"hook_response" event's own hook event
+	// name ("SessionStart", "PostToolUse", ...) — docs/bench/scenarios.md's
+	// clean-room smoke test found the real shape carries this as
+	// "hook_event" (distinct from "hook_name", which is "Event:matcher",
+	// e.g. "SessionStart:startup").
+	HookEvent string `json:"hook_event"`
+	Message   struct {
 		Content []streamContentBlock `json:"content"`
 		Usage   struct {
 			InputTokens              int64 `json:"input_tokens"`
@@ -116,6 +122,10 @@ type parsedStream struct {
 	// before this parser could tell the difference).
 	mcpServers map[string]string
 	mcpTools   int
+	// hooksFired mirrors mcpServers' nil-means-unseen convention: nil when
+	// no "system"/"hook_response" event was seen at all, else event name
+	// to count (handleHookResponse).
+	hooksFired map[string]int
 }
 
 // ParseSessionStream reads a captured `claude -p --output-format
@@ -161,8 +171,11 @@ func parseSessionStreamBytes(transcript []byte) SessionResult {
 		case "user":
 			ps.handleUser(ev)
 		case "system":
-			if ev.Subtype == "init" {
+			switch ev.Subtype {
+			case "init":
 				ps.handleInit(ev)
+			case "hook_response":
+				ps.handleHookResponse(ev)
 			}
 		case "result":
 			ps.sawResult = true
@@ -255,6 +268,22 @@ func (ps *parsedStream) handleInit(ev streamEvent) {
 	ps.mcpTools = tools
 }
 
+// handleHookResponse reads one "system"/"hook_response" event and counts
+// it under its own hook_event name, regardless of the hook's outcome — a
+// hook that fired and errored still proves the harness's --settings file
+// wired something (the instrument-truth question runOneSession asks),
+// unlike one that never fired at all. An event with no hook_event at all
+// (should not happen; defensive) is skipped rather than counted under "".
+func (ps *parsedStream) handleHookResponse(ev streamEvent) {
+	if ev.HookEvent == "" {
+		return
+	}
+	if ps.hooksFired == nil {
+		ps.hooksFired = map[string]int{}
+	}
+	ps.hooksFired[ev.HookEvent]++
+}
+
 // recordBoxChecks scans an edit tool_use's new content for markdown
 // checklist lines ("- [x]") not already recorded for path, and appends one
 // BoxCheck per new line. Both Edit (new_string) and MultiEdit (edits[].new_string)
@@ -336,6 +365,7 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 	r.ToolCalls = ps.toolCalls
 	r.MCPServers = ps.mcpServers
 	r.MCPTools = ps.mcpTools
+	r.HooksFired = ps.hooksFired
 	r.PayloadBytes = ps.payloadBytes
 	if ps.sawResult {
 		u := ps.result.Usage

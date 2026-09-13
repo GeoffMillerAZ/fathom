@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -52,6 +53,16 @@ type Worktree struct {
 	DaemonURL string
 	// StorePath is the scratch daemon's sqlite store (wired only).
 	StorePath string
+	// Service is the id wireScratchDaemon ingested this worktree under
+	// ("" for an unwired arm) — task.Subject.Service, or wt.Path's own
+	// basename when the task named none, the SAME resolution `fathom
+	// init`/`ingest` were called with. workerDiscoveryBrief (sessions.go)
+	// passes it to `fathom discoveries -service` explicitly, so that
+	// subprocess never falls back to auto-resolving a service against
+	// whatever daemon FATHOM_HTTP/localhost:7575 happens to be — the
+	// operator's own, in the environment every subprocess here inherits
+	// (SubjectEnv).
+	Service string
 	// CompileCost is set only when arm.CompileLayers asked for it.
 	CompileCost *CompileCost
 
@@ -178,7 +189,28 @@ func armContentHash(arm Arm) string {
 	return hex.EncodeToString(sum[:6])
 }
 
+// cloneLocks serializes ensureClone per cloneDir, process-wide: under
+// -parallel-arms, every arm/trial of one task shares the SAME subject
+// clone (cloneDir is keyed only on repo_url), so two cells racing
+// PrepareSubject at once could both see cloneDir absent and both run `git
+// clone` into it — one `git clone` losing to "destination path already
+// exists and is not an empty directory", the other landing a clone with
+// the loser's partial state still in it. A lazily-created *sync.Mutex per
+// distinct cloneDir (never one global lock across unrelated subjects)
+// makes the check-then-clone atomic without serializing clones of
+// different repos.
+var cloneLocks sync.Map // map[string]*sync.Mutex
+
+func lockClone(cloneDir string) func() {
+	v, _ := cloneLocks.LoadOrStore(cloneDir, &sync.Mutex{})
+	mu := v.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
+}
+
 func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
+	unlock := lockClone(cloneDir)
+	defer unlock()
 	if _, err := os.Stat(filepath.Join(cloneDir, ".git")); err == nil {
 		return nil
 	} else if !os.IsNotExist(err) {
@@ -227,8 +259,18 @@ func runSetup(ctx context.Context, dir string, cmds []string, logPath string) er
 }
 
 func runIn(ctx context.Context, dir string, name string, args ...string) (string, error) {
+	return runInEnv(ctx, dir, nil, name, args...)
+}
+
+// runInEnv is runIn plus extra environment variables (SubjectEnv's own
+// extra map, which wins on a key collision with the inherited operator
+// environment) — workerDiscoveryBrief (sessions.go) uses this to point a
+// wired cell's own `fathom discoveries` subprocess at the CELL's threads
+// file and daemon, never the operator's real ones that a bare os.Environ()
+// inheritance would otherwise silently expose it to.
+func runInEnv(ctx context.Context, dir string, extra map[string]string, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	cmd.Env = SubjectEnv(dir, nil)
+	cmd.Env = SubjectEnv(dir, extra)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	return string(out), err
@@ -259,6 +301,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	if service == "" {
 		service = filepath.Base(wt.Path)
 	}
+	wt.Service = service
 	if out, err := runIn(ctx, wt.Path, bin, "ingest", "-service", service, "-path", wt.Path, "-store", wt.StorePath); err != nil {
 		return fmt.Errorf("wiring scratch daemon: ingest: %w (%s)", err, out)
 	}

@@ -59,11 +59,12 @@ type ArmFiles struct {
 const notesInstructionText = "Keep a running log of your plan and progress in NOTES.md at the repo root, and consult it at the start of every session before doing anything else."
 
 // RenderArm turns arm into the harness inputs a worktree needs:
-//   - .claude/settings.json, carrying a "hooks" key only when arm.Wired
-//     (a wired arm's REAL hooks are written by `fathom init` in
-//     PrepareSubject; this stanza is what marks a directly-rendered arm
-//     as wired for RenderArm's own callers and tests, and is itself
-//     exactly what StripFathom removes);
+//   - .claude/settings.json: for a wired arm, `fathom init` (PrepareSubject's
+//     wireScratchDaemon, which runs BEFORE RenderArm) has already written
+//     the REAL hook stack there — SessionStart/PreToolUse/PostToolUse/Stop —
+//     and RenderArm only asserts it is present (assertWiredHooksPresent),
+//     NEVER replaces it with a stand-in; an unwired arm gets an empty `{}`
+//     (StripFathom's own "hooks" removal is what undoes a wired one);
 //   - an MCP config file holding arm.MCP's mcpServers block, written even
 //     when it is empty;
 //   - sorted copies of the allowed/disallowed tool lists;
@@ -83,12 +84,17 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 		return ArmFiles{}, fmt.Errorf("rendering arm: creating %s: %w", claudeDir, err)
 	}
 
-	settings := map[string]any{}
-	if arm.Wired {
-		settings["hooks"] = scenarioHooksStanza()
-	}
 	settingsPath := filepath.Join(claudeDir, "settings.json")
-	if err := writeJSONFile(settingsPath, settings); err != nil {
+	if arm.Wired {
+		// `fathom init` (PrepareSubject's wireScratchDaemon) already wrote
+		// the real hook stack here, BEFORE RenderArm runs — replacing it
+		// with a stand-in (the defect this closes) left every wired cell
+		// running with none of fathom's actual hooks. Assert it, never
+		// rewrite it.
+		if err := assertWiredHooksPresent(settingsPath); err != nil {
+			return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
+		}
+	} else if err := writeJSONFile(settingsPath, map[string]any{}); err != nil {
 		return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
 	}
 	out.SettingsPath = settingsPath
@@ -164,24 +170,75 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	return out, nil
 }
 
-// scenarioHooksStanza is the minimal wired-arm hooks block RenderArm
-// writes. It is deliberately small: the point is that the file carries a
-// "hooks" key at all when wired and none when not, so StripFathom's
-// removal and the control comparison are unambiguous. A cell prepared by
-// PrepareSubject for a wired arm calls `fathom init` first — which writes
-// the real hooks — and RenderArm's own settings.json write happens before
-// that, so the real wiring is what a rendered wired worktree ends up with.
-func scenarioHooksStanza() map[string]any {
-	return map[string]any{
-		"PostToolUse": []any{
-			map[string]any{
-				"matcher": "Edit|Write|MultiEdit",
-				"hooks": []any{
-					map[string]any{"type": "command", "command": "fathom obligations-hook"},
-				},
-			},
-		},
+// assertWiredHooksPresent reads the settings.json a wired cell's `fathom
+// init` (PrepareSubject's wireScratchDaemon) already wrote at path — BEFORE
+// RenderArm ever runs — and errors, naming path, unless it carries a
+// "hooks" key with at least one SessionStart entry: RenderArm's own proof
+// that the real hook stack (SessionStart/PreToolUse/PostToolUse/Stop) is
+// what a wired cell's harness will actually see, never a stand-in RenderArm
+// invented itself (the defect this closes: every wired cell used to run
+// under a single fake PostToolUse hook naming a fathom subcommand that does
+// not exist, with no SessionStart/PreToolUse/Stop hooks at all).
+//
+// It also refuses a hook command naming a bare binary on PATH rather than
+// an absolute path: `fathom init`'s default binPath resolution
+// (os.Executable(), cmd/fathom/init.go's resolveBinPath) already produces
+// the absolute path of whatever binary is running it — the cell's own
+// <binDir>/fathom, since wireScratchDaemon execs that binary directly,
+// never through PATH — so a bare command here means something upstream
+// changed that contract; erroring loudly beats silently guessing at the
+// intended absolute path.
+func assertWiredHooksPresent(path string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("a wired arm requires %s to already exist (PrepareSubject's wireScratchDaemon runs `fathom init` before RenderArm): %w", path, err)
 	}
+	var settings map[string]any
+	if err := json.Unmarshal(raw, &settings); err != nil {
+		return fmt.Errorf("%s: parsing: %w", path, err)
+	}
+	hooksObj, _ := settings["hooks"].(map[string]any)
+	sessionStart, ok := hooksObj["SessionStart"].([]any)
+	if !ok || len(sessionStart) == 0 {
+		return fmt.Errorf("%s: a wired arm's settings.json must carry a hooks.SessionStart entry from `fathom init` (found none — was `fathom init` run before RenderArm?)", path)
+	}
+	if bad := firstBareHookCommand(hooksObj); bad != "" {
+		return fmt.Errorf("%s: hook command %q names a bare binary on PATH, not the cell's own fathom binary (fathom init's binPath resolution should have written an absolute path)", path, bad)
+	}
+	return nil
+}
+
+// firstBareHookCommand walks every hook entry in a Claude Code
+// hooks-object (event -> [{matcher, hooks:[{command,...}]}]) and returns
+// the first command whose leading token has no "/" — a bare name that
+// would resolve through PATH at run time instead of naming a specific
+// binary. "" when every command is a path.
+func firstBareHookCommand(hooksObj map[string]any) string {
+	for _, groupsRaw := range hooksObj {
+		groups, _ := groupsRaw.([]any)
+		for _, g := range groups {
+			gm, ok := g.(map[string]any)
+			if !ok {
+				continue
+			}
+			hs, _ := gm["hooks"].([]any)
+			for _, h := range hs {
+				hm, ok := h.(map[string]any)
+				if !ok {
+					continue
+				}
+				cmd, _ := hm["command"].(string)
+				fields := strings.Fields(cmd)
+				if len(fields) == 0 {
+					continue
+				}
+				if !strings.Contains(fields[0], "/") {
+					return cmd
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // StripFathom removes fathom's wiring from a worktree PrepareSubject wired

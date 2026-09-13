@@ -250,8 +250,13 @@ type EscalationCell struct {
 // tokens-per-success ratio against MaxTokensPerSuccessRatio. A task with
 // fewer than 2 trials, or more than 2 (already escalated, or run at a
 // higher floor), is not a candidate. Rows for arms other than
-// criterion.Treatment/.Control are ignored. Returned in task-id order.
-func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin float64) []EscalationCell {
+// criterion.Treatment/.Control are ignored. A row carrying
+// InstrumentDefect (ADR-034 decision 2, RC-36: it measured something
+// other than what it claims) is also skipped, exactly as Evaluate already
+// excludes it from every verdict — counted and returned as skipped, so a
+// caller can report that an escalation recommendation was not built from
+// voided evidence. Returned in task-id order.
+func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin float64) (cells []EscalationCell, skipped int) {
 	type acc struct {
 		tTrials, tSuccesses, cTrials, cSuccesses int
 		tTokens, cTokens                         int64
@@ -259,6 +264,10 @@ func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin 
 	byTask := map[string]*acc{}
 	var order []string
 	for _, r := range ledgerRows {
+		if r.InstrumentDefect != "" {
+			skipped++
+			continue
+		}
 		if r.Arm != criterion.Treatment && r.Arm != criterion.Control {
 			continue
 		}
@@ -281,7 +290,6 @@ func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin 
 	}
 	sort.Strings(order)
 
-	var out []EscalationCell
 	for _, taskID := range order {
 		a := byTask[taskID]
 		if a.tTrials != 2 {
@@ -309,7 +317,7 @@ func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin 
 		if len(reasons) == 0 {
 			continue
 		}
-		out = append(out, EscalationCell{
+		cells = append(cells, EscalationCell{
 			TaskID:       taskID,
 			Trials:       a.tTrials,
 			SuccessDelta: successDelta,
@@ -317,7 +325,7 @@ func EscalationPlan(ledgerRows []ScenarioLedgerRow, criterion Criterion, margin 
 			Reason:       strings.Join(reasons, "; "),
 		})
 	}
-	return out
+	return cells, skipped
 }
 
 // ScenarioLedgerBeginMarker / ScenarioLedgerEndMarker fence the rendered

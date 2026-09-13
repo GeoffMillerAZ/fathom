@@ -3,15 +3,42 @@ package scenariobench
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
-func TestRenderArm_WiredWritesHooks(t *testing.T) {
+// realWiredSettingsJSON is what fathom init actually writes into a wired
+// worktree's .claude/settings.json: the real hook stack (SessionStart,
+// PreToolUse x3, PostToolUse, Stop), each command naming an absolute
+// binary path — never RenderArm's job to invent, only to keep. Shaped
+// like cmd/fathom/init.go's own hookKeyFor output.
+func realWiredSettingsJSON(binPath string) string {
+	return `{"hooks":{
+		"SessionStart":[{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"` + binPath + ` session-hook","timeout":10}]}],
+		"PreToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"` + binPath + ` edit-hook --pre","timeout":5}]}],
+		"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"` + binPath + ` edit-hook","timeout":5}]}],
+		"Stop":[{"hooks":[{"type":"command","command":"` + binPath + ` stop-hook","timeout":10}]}]
+	}}`
+}
+
+// TestRenderArm_WiredKeepsRealHooksAlreadyWritten covers the CRITICAL
+// defect: for a wired arm, `fathom init` (PrepareSubject's
+// wireScratchDaemon) has already written the real hook stack into
+// settings.json BEFORE RenderArm ever runs. RenderArm must leave those
+// bytes alone, never replace them with a stand-in.
+func TestRenderArm_WiredKeepsRealHooksAlreadyWritten(t *testing.T) {
 	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), realWiredSettingsJSON("/cells/T1-full/fathom"))
+
 	arm := Arm{Wired: true, Instructions: "stanza", MCP: map[string]any{"fathom": map[string]any{"type": "http"}}}
 	files, err := RenderArm(arm, dir)
 	if err != nil {
@@ -23,6 +50,11 @@ func TestRenderArm_WiredWritesHooks(t *testing.T) {
 	raw, err := os.ReadFile(files.SettingsPath)
 	if err != nil {
 		t.Fatalf("reading settings: %v", err)
+	}
+	for _, want := range []string{"session-hook", "edit-hook", "stop-hook"} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("settings.json lost the real %q hook entry: %s", want, raw)
+		}
 	}
 	var settings map[string]any
 	if err := json.Unmarshal(raw, &settings); err != nil {
@@ -36,6 +68,115 @@ func TestRenderArm_WiredWritesHooks(t *testing.T) {
 	}
 	if files.InstructionsPath == "" {
 		t.Error("expected InstructionsPath for instructions=stanza")
+	}
+}
+
+// TestRenderArm_WiredWithNoSettingsFileIsAnError covers the precondition
+// RenderArm now asserts: a wired arm with no pre-existing settings.json at
+// all (fathom init never ran) must fail loudly, naming the file, never
+// silently invent one.
+func TestRenderArm_WiredWithNoSettingsFileIsAnError(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{Wired: true, Instructions: "none"}
+	if _, err := RenderArm(arm, dir); err == nil {
+		t.Fatal("expected an error: wired arm with no settings.json written by fathom init")
+	} else if !strings.Contains(err.Error(), "settings.json") {
+		t.Errorf("error %q does not name settings.json", err)
+	}
+}
+
+// TestRenderArm_WiredWithNoSessionStartHookIsAnError covers the assertion
+// itself: a settings.json that exists but carries no hooks.SessionStart
+// entry (e.g. a hand-edited or truncated file) must also fail loudly.
+func TestRenderArm_WiredWithNoSessionStartHookIsAnError(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), `{"hooks":{"PostToolUse":[]}}`)
+	arm := Arm{Wired: true, Instructions: "none"}
+	if _, err := RenderArm(arm, dir); err == nil {
+		t.Fatal("expected an error: settings.json with no hooks.SessionStart entry")
+	}
+}
+
+// TestRenderArm_WiredWithBareHookCommandIsAnError covers the binary-path
+// assertion: a hook command naming a bare "fathom" (no path separator,
+// meaning it would resolve through PATH at run time) rather than the
+// cell's own binary must also fail loudly rather than silently run
+// whatever "fathom" happens to resolve to.
+func TestRenderArm_WiredWithBareHookCommandIsAnError(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), realWiredSettingsJSON("fathom"))
+	arm := Arm{Wired: true, Instructions: "none"}
+	if _, err := RenderArm(arm, dir); err == nil {
+		t.Fatal("expected an error: hook command names a bare binary on PATH")
+	}
+}
+
+// TestRenderArm_WiredKeepsRealFathomInitHooks is the CRITICAL defect's own
+// end-to-end regression proof: build the REAL fathom binary, run the REAL
+// `fathom init` against a temp worktree exactly as PrepareSubject's
+// wireScratchDaemon does, then call RenderArm on the same worktree and
+// assert the real hook stack — including edit-hook and session-hook —
+// survives in ArmFiles.SettingsPath, never replaced by a stand-in.
+func TestRenderArm_WiredKeepsRealFathomInitHooks(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds and runs the real fathom binary; skipped in -short")
+	}
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	repoRoot := filepath.Join(filepath.Dir(file), "..", "..")
+
+	binDir := t.TempDir()
+	bin := filepath.Join(binDir, "fathom")
+	build := exec.Command("go", "build", "-o", bin, "./cmd/fathom")
+	build.Dir = repoRoot
+	build.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building fathom: %v\n%s", err, out)
+	}
+
+	// A wired arm's real settings.json is written by `fathom init`, into
+	// the CELL's worktree, naming the CELL's own binary — never the
+	// operator's real ~/.fathom or ~/.claude state.
+	t.Setenv("HOME", t.TempDir())
+	worktree := t.TempDir()
+	initCmd := exec.Command(bin, "init", "--path", worktree, "--service", "renderarmtest", "--url", "http://127.0.0.1:1", "--bin", bin, "--harness", "claude-code")
+	out, _ := initCmd.CombinedOutput() // exit 2 (daemon unreachable) is fine; wiring still completes
+	t.Logf("fathom init output:\n%s", out)
+
+	settingsPath := filepath.Join(worktree, ".claude", "settings.json")
+	before, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("fathom init did not write %s: %v (init output: %s)", settingsPath, err, out)
+	}
+	for _, want := range []string{"edit-hook", "session-hook"} {
+		if !strings.Contains(string(before), want) {
+			t.Fatalf("fathom init's own settings.json is missing %q — test precondition failed: %s", want, before)
+		}
+	}
+
+	arm := Arm{Wired: true, Instructions: "stanza"}
+	files, err := RenderArm(arm, worktree)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	after, err := os.ReadFile(files.SettingsPath)
+	if err != nil {
+		t.Fatalf("reading %s: %v", files.SettingsPath, err)
+	}
+	for _, want := range []string{"edit-hook", "session-hook"} {
+		if !strings.Contains(string(after), want) {
+			t.Errorf("RenderArm replaced fathom init's real hooks — %q did not survive: %s", want, after)
+		}
 	}
 }
 

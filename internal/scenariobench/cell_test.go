@@ -196,6 +196,24 @@ func TestAggregateReadings_SumsToolCalls(t *testing.T) {
 	}
 }
 
+func TestAggregateReadings_SumsHooksFired(t *testing.T) {
+	sessions := []SessionResult{
+		{HooksFired: map[string]int{"SessionStart": 1}},
+		{HooksFired: map[string]int{"SessionStart": 1, "PostToolUse": 2}},
+		{}, // no hook_response at all — must not panic or introduce a false 0
+	}
+	got := AggregateReadings(sessions)
+	want := map[string]int{"SessionStart": 2, "PostToolUse": 2}
+	if len(got.HooksFired) != len(want) {
+		t.Fatalf("HooksFired = %v, want %v", got.HooksFired, want)
+	}
+	for name, n := range want {
+		if got.HooksFired[name] != n {
+			t.Errorf("HooksFired[%q] = %d, want %d", name, got.HooksFired[name], n)
+		}
+	}
+}
+
 func TestReadingsCompileCost_NilWhenWorktreeNeverCompiled(t *testing.T) {
 	if got := readingsCompileCost(Worktree{}); got != nil {
 		t.Errorf("readingsCompileCost(no CompileCost) = %+v, want nil", got)
