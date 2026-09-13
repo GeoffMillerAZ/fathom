@@ -387,7 +387,10 @@ NONE_DISALLOWED="Bash Read Grep Glob Write Edit Task WebSearch WebFetch Notebook
 # "fathom" plus Bash/Read/Grep/Glob, no artificial tool-starvation. Still
 # refuses ingest/memory_search (same reasons as arm "fathom") and every
 # mutating/agentic tool the other arms also refuse.
-FULL_ALLOWED="$FATHOM_ALLOWED Bash Read Grep Glob"
+# Read-only Bash forms only: the fleet daemon's answers name paths under the
+# INDEXED root (the real checkout), so an unrestricted shell in this arm
+# could write outside the export the session runs in.
+FULL_ALLOWED="$FATHOM_ALLOWED Read Grep Glob Bash(grep:*) Bash(find:*) Bash(cat:*) Bash(ls:*) Bash(wc:*) Bash(head:*) Bash(tail:*) Bash(go doc:*)"
 FULL_DISALLOWED="Write Edit Task WebSearch WebFetch NotebookEdit mcp__fathom__ingest mcp__fathom__memory_search"
 
 # run_with_timeout OUTFILE CMD...  — macOS's base install has no `timeout(1)`;
