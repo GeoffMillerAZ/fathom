@@ -21,6 +21,20 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**The daemon stopped serving a syntax-only graph in silence (`BP-35`, `BP-36`,
+`BP-37`).** `fathom daemon install` now writes `GOPATH`, `GOCACHE` and
+`GOMODCACHE` (absolute) into the launchd plist beside `PATH`, and the
+typed-edge loader repairs those variables itself when they arrive unset,
+empty, relative or carrying an unexpanded `$VAR` — without them go refused
+every command and every daemon-side ingest of a Go service fell back to
+syntax-only call edges while reporting a healthy index.
+The outcome is now reported, not just logged: `fathom doctor` gains a
+`typed_edges` row (FAIL with the reason and the remedy), `fathom daemon
+status` names any Go variable missing from the installed plist, and both
+`/statusz` (schema_version 3) and `staleness_report` carry a per-service
+`typed_edges: {known, packages, failed, reason}` block where `known: false`
+is explicitly not a pass.
+
 **Obligations cover nested instruction files (`BP-32`).** The `obligations`
 layer now compiles every `**/CLAUDE.md`, not only the repo root's, so a rule a
 human wrote about one subtree (`internal/CLAUDE.md`) reaches the edit hook for

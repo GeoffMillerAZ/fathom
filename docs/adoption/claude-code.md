@@ -258,9 +258,19 @@ properties.
 
 ```sh
 fathom daemon install     # writes ~/Library/LaunchAgents/dev.fathom.serve-http.plist
-                          # with YOUR binary path, store, call log and PATH, then bootstraps it
+                          # with YOUR binary path, store, call log, PATH and the Go
+                          # toolchain variables, then bootstraps it
 fathom daemon status      # what is installed, and whether it is actually serving
 ```
+
+**Why the plist carries `GOPATH`/`GOCACHE`/`GOMODCACHE` and not just `PATH`:**
+launchd does not give an agent a login shell's environment. With `GOPATH`
+unset, go resolves its default to the literal, unexpanded `"$HOME/go"` and
+refuses every command — so the daemon's typed-edge pass fails on every ingest
+of a Go service and the index quietly degrades to syntax-only call edges,
+while the same ingest run from your terminal type-checks fine. If you wrote
+your plist by hand, or it was written by a fathom older than this note, run
+`fathom daemon install --force` and check `fathom doctor`'s `typed_edges` row.
 
 `install` resolves the binary by symlink (so launchd runs the stable installed
 copy, never a `bin/` build output a rebuild would truncate), puts the store at

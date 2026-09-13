@@ -166,6 +166,13 @@ type Pipeline struct {
 	// by czMu (a map, not an atomic).
 	czMu           sync.Mutex
 	classifiedZero map[string]int64
+
+	// typedEdgeStatus records, per service, the last typed-edge pass
+	// outcome this process observed (BP-35, internal/fusion/typedenv.go) —
+	// the fact /statusz, staleness_report and doctor's typed_edges row
+	// read. Guarded by teMu.
+	teMu            sync.Mutex
+	typedEdgeStatus map[string]TypedEdgeStatus
 }
 
 // pendingFile holds a fetched, hash-gated file waiting for extraction.

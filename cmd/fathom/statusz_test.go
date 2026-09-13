@@ -186,8 +186,8 @@ func TestStatusz_MethodNotAllowed(t *testing.T) {
 // no binary_commit is talking to a v1 daemon and must say "unknown", so the
 // field is always emitted (empty string, never omitted).
 func TestStatuszSchemaVersionPinned(t *testing.T) {
-	if statuszSchemaVersion != 2 {
-		t.Fatalf("statuszSchemaVersion = %d, want 2 — bump deliberately and update this pin", statuszSchemaVersion)
+	if statuszSchemaVersion != 3 {
+		t.Fatalf("statuszSchemaVersion = %d, want 3 — bump deliberately and update this pin", statuszSchemaVersion)
 	}
 	storePath := filepath.Join(t.TempDir(), "s.sqlite")
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)
@@ -209,8 +209,8 @@ func TestStatuszSchemaVersionPinned(t *testing.T) {
 			t.Errorf("/statusz JSON lacks %q: %s", key, raw)
 		}
 	}
-	if got := m["schema_version"]; got != float64(2) {
-		t.Errorf("schema_version = %v, want 2", got)
+	if got := m["schema_version"]; got != float64(3) {
+		t.Errorf("schema_version = %v, want 3", got)
 	}
 	// The stamp is whatever this test binary carries; the contract is that
 	// it comes from internal/buildinfo, not from git or the cwd (O5).

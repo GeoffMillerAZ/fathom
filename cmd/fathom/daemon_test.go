@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/xml"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -42,7 +43,7 @@ func TestDaemonRestartHintNeverNamesAnUninstalledService(t *testing.T) {
 		t.Fatal(err)
 	}
 	plist := filepath.Join(agents, "com.example.mine.plist")
-	if err := os.WriteFile(plist, []byte(plistBody("com.example.mine", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin")), 0o644); err != nil {
+	if err := os.WriteFile(plist, []byte(plistBody("com.example.mine", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if got := labelInstalled(); got != "com.example.mine" {
@@ -90,7 +91,7 @@ func TestDaemonInstallRefusesToStackASecondAgent(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(agents, "com.existing.fathom-http.plist"),
-		[]byte(plistBody("com.existing.fathom-http", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin")), 0o644); err != nil {
+		[]byte(plistBody("com.existing.fathom-http", "/opt/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/bin", nil)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -113,7 +114,7 @@ func TestDaemonInstallRefusesToStackASecondAgent(t *testing.T) {
 // The plist launchd gets must carry the resolved paths, not placeholders —
 // this was previously a doc snippet the adopter hand-edited.
 func TestPlistCarriesResolvedPaths(t *testing.T) {
-	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/home/u/.fathom/db/fathom.sqlite", ":7575", "/home/u/.fathom/logs", "/home/u/.fathom/logs/mcp-calls.jsonl", "/usr/local/go/bin:/usr/bin")
+	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/home/u/.fathom/db/fathom.sqlite", ":7575", "/home/u/.fathom/logs", "/home/u/.fathom/logs/mcp-calls.jsonl", "/usr/local/go/bin:/usr/bin", nil)
 	for _, want := range []string{
 		"<string>dev.fathom.serve-http</string>",
 		"<string>/usr/local/bin/fathom</string>",
@@ -128,5 +129,62 @@ func TestPlistCarriesResolvedPaths(t *testing.T) {
 	}
 	if strings.Contains(body, "com.example") {
 		t.Fatal("the plist must not carry the doc's placeholder label")
+	}
+}
+
+// BP-37 (docs/plans/bench-pyramid.md): the plist must carry the Go
+// toolchain's environment, not only PATH.
+//
+// On 2026-09-12 the installed daemon had PATH and nothing else. launchd
+// does not add a login shell's environment, so GOPATH reached the daemon
+// UNSET, go resolved its default to the literal "$HOME/go" and refused
+// every command, and every daemon-side ingest of a Go service fell back to
+// syntax-only edges while reporting a healthy index. These keys are the fix
+// at the source; internal/fusion.TypedEdgeEnv is the belt for daemons an
+// older binary installed.
+func TestPlistCarriesGoToolchainEnv(t *testing.T) {
+	body := plistBody("dev.fathom.serve-http", "/usr/local/bin/fathom", "/tmp/s.sqlite", ":7575", "/tmp", "/tmp/c.jsonl", "/usr/local/go/bin:/usr/bin",
+		[]string{"GOPATH=/home/u/go", "GOCACHE=/home/u/Library/Caches/go-build", "GOMODCACHE=/home/u/go/pkg/mod"})
+	for _, want := range []string{
+		"<key>GOPATH</key><string>/home/u/go</string>",
+		"<key>GOCACHE</key><string>/home/u/Library/Caches/go-build</string>",
+		"<key>GOMODCACHE</key><string>/home/u/go/pkg/mod</string>",
+		"<key>PATH</key><string>/usr/local/go/bin:/usr/bin</string>",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("plist missing %q:\n%s", want, body)
+		}
+	}
+	// The plist must stay valid XML with the extra keys in it.
+	var doc any
+	if err := xml.Unmarshal([]byte(body), &doc); err != nil {
+		t.Fatalf("plist is not well-formed XML with the Go env keys: %v", err)
+	}
+	// An unresolvable variable is omitted, never written empty — an empty
+	// GOPATH is exactly the state this row prevents.
+	partial := plistBody("l", "/b", "/s", ":1", "/l", "/c", "/usr/bin", []string{"GOPATH=/home/u/go", "GOCACHE="})
+	if strings.Contains(partial, "<key>GOCACHE</key>") {
+		t.Fatalf("an empty value was written into the plist environment:\n%s", partial)
+	}
+}
+
+// daemonGoEnv resolves what the installer writes: absolute values only, in
+// the pinned key order.
+func TestDaemonGoEnvIsAbsolute(t *testing.T) {
+	t.Setenv("GOPATH", "relative/path") // the daemon's exact broken state
+	got := daemonGoEnv()
+	if len(got) == 0 {
+		t.Fatal("daemonGoEnv resolved nothing — the installer would write a PATH-only plist, which is the defect")
+	}
+	seen := map[string]bool{}
+	for _, kv := range got {
+		k, v, ok := strings.Cut(kv, "=")
+		if !ok || !strings.HasPrefix(v, "/") || strings.Contains(v, "$") {
+			t.Fatalf("daemonGoEnv produced a non-absolute or unexpanded entry: %q", kv)
+		}
+		seen[k] = true
+	}
+	if !seen["GOPATH"] {
+		t.Fatalf("daemonGoEnv did not resolve GOPATH from a relative one: %v", got)
 	}
 }

@@ -24,9 +24,12 @@ import (
 // statuszSchemaVersion identifies the /statusz payload contract. "2" adds
 // the daemon's own build stamp (binary_commit, binary_dirty, built_at —
 // PC-1, vision 26 §1.1) so a CLI can tell which binary built the store it
-// is about to trust; v1 carried no schema_version at all. Additive: every
-// v1 field keeps its name and meaning.
-const statuszSchemaVersion = 2
+// is about to trust; v1 carried no schema_version at all. "3" adds each
+// service's typed_edges block (BP-35): whether the daemon's own typed Go
+// call-edge pass ran, and why not when it did not — the fact that was
+// invisible while a broken daemon environment served a syntax-only graph
+// (2026-09-12). Additive: every v1/v2 field keeps its name and meaning.
+const statuszSchemaVersion = 3
 
 // StatuszBuildInfo is the daemon binary's own identity as /statusz reports
 // it — the daemon's stamp, never the CLI's or the repo's HEAD (O5).
@@ -44,12 +47,26 @@ func statuszBuildInfo() StatuszBuildInfo {
 	return StatuszBuildInfo{BinaryCommit: st.Revision, BinaryDirty: st.Dirty, BuiltAt: st.BuiltAt}
 }
 
+// StatuszTypedEdges is one service's typed Go call-edge pass outcome as of
+// the last ingest THIS daemon process ran for it (BP-35,
+// internal/fusion/typedenv.go). Omitted entirely when this process has not
+// ingested the service — which readers must treat as "unknown", never as a
+// pass: the whole defect class here is a degradation that reads healthy.
+type StatuszTypedEdges struct {
+	Packages int    `json:"packages"`
+	Failed   bool   `json:"failed"`
+	Reason   string `json:"reason,omitempty"`
+}
+
 // StatuszServiceRow is one indexed service's freshness + last-compile
 // summary.
 type StatuszServiceRow struct {
 	Service       string `json:"service"`
 	IndexedCommit string `json:"indexed_commit,omitempty"`
 	FreshnessNote string `json:"freshness_note,omitempty"`
+	// TypedEdges is nil when no ingest of this service has run in this
+	// daemon process — see StatuszTypedEdges.
+	TypedEdges *StatuszTypedEdges `json:"typed_edges,omitempty"`
 	// LastCompilePerLayer maps layer name -> a human-readable summary of
 	// its most recent compile_runs row ("ran_at, model, cost").
 	LastCompilePerLayer map[string]string `json:"last_compile_per_layer,omitempty"`
@@ -98,6 +115,9 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 			_ = path
 		} else {
 			row.FreshnessNote = "not measurable: no ServiceMeta recorded for this service"
+		}
+		if st, known := c.TypedEdgeStatus(svc); known {
+			row.TypedEdges = &StatuszTypedEdges{Packages: st.Packages, Failed: st.Failed, Reason: st.Reason}
 		}
 		if runs, rerr := c.CompileRunsFor(ctx, svc); rerr == nil && len(runs) > 0 {
 			// runs is newest-first (Store.CompileRuns' own contract) —
@@ -150,6 +170,15 @@ func statuszHandler(c *client.Client, startTime time.Time) http.HandlerFunc {
 			fmt.Fprintf(w, "<p class=\"commit\">%s</p>", htmlEscape(s.IndexedCommit))
 			if s.FreshnessNote != "" {
 				fmt.Fprintf(w, "<p class=\"note\">%s</p>", htmlEscape(s.FreshnessNote))
+			}
+			// BP-35: a failed typed pass is the loudest thing on this card,
+			// because the graph it degrades to looks identical to a healthy one.
+			if te := s.TypedEdges; te != nil {
+				if te.Failed {
+					fmt.Fprintf(w, "<p class=\"note\">typed_edges: FAILED — %s</p>", htmlEscape(te.Reason))
+				} else {
+					fmt.Fprintf(w, "<p class=\"note\">typed_edges: %d package(s)</p>", te.Packages)
+				}
 			}
 			if len(s.LastCompilePerLayer) > 0 {
 				layers := make([]string, 0, len(s.LastCompilePerLayer))

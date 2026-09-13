@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 )
 
 // currentGitHead shells out to git to return HEAD for path.
@@ -92,6 +93,17 @@ type statsBackend interface {
 // classified as a known tool but whose extractor emitted zero symbols.
 type classifiedZeroBackend interface {
 	ClassifiedZeroStats() map[string]int64
+}
+
+// typedEdgeStatusBackend is the optional backend capability for the
+// per-service typed Go call-edge pass outcome (BP-35,
+// internal/fusion/typedenv.go, via pkg/client.Client.TypedEdgeStatus).
+// staleness_report reports it so "is the graph I am querying typed?" is
+// answerable from the same call that answers "is it fresh?" — the two
+// questions failed together on 2026-09-12 and only one of them was
+// askable.
+type typedEdgeStatusBackend interface {
+	TypedEdgeStatus(service string) (fusion.TypedEdgeStatus, bool)
 }
 
 func registerServerStats(s *Server) {
@@ -238,6 +250,22 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			"indexed_commit":       indexedCommit,
 			"current_commit":       currentCommit,
 			"reingest_recommended": reingestRecommended,
+		}
+		// BP-35: the typed-edge pass outcome for this service, when the
+		// backend can report it. `known: false` is the honest "no ingest
+		// of this service has run in this daemon process" state — a
+		// reader must not read an absent block as a passing one.
+		if teb, ok := backend.(typedEdgeStatusBackend); ok {
+			st, known := teb.TypedEdgeStatus(p.Service)
+			block := map[string]any{"known": known}
+			if known {
+				block["packages"] = st.Packages
+				block["failed"] = st.Failed
+				if st.Reason != "" {
+					block["reason"] = st.Reason
+				}
+			}
+			resp["typed_edges"] = block
 		}
 		// Optional: append per-layer claims summary when backend supports it.
 		if csb, ok := backend.(claimsSummaryBackend); ok {

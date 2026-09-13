@@ -27,6 +27,30 @@ it once. `server_stats`' `surface_traffic` block (A1-1,
 `docs/plans/activation.md`) answers "is anything flowing on `/rpc/agent`?"
 directly from the daemon, without tailing the call log.
 
+**The daemon's own Go environment is load-bearing.** launchd hands an agent
+almost nothing, so `fathom daemon install` writes `PATH`, `GOPATH`, `GOCACHE`
+and `GOMODCACHE` (absolute) into the plist. Without them the daemon's
+typed-edge pass — the go/types load that produces resolved call edges —
+fails on every ingest of a Go service and falls back to syntax-only edges,
+which look identical to a healthy index from every query. That is exactly
+what happened on 2026-09-12: `GOPATH` reached the daemon unset, go resolved
+its default to the literal `"$HOME/go"`, and the fleet was served a weaker
+graph than the tests measured for an unknown number of days.
+
+Three things now make that visible, and any one of them is enough:
+
+```sh
+fathom doctor                 # the typed_edges row: FAIL with the reason and the remedy
+fathom daemon status          # names any Go variable MISSING from the installed plist
+curl -s localhost:7575/statusz -H 'Accept: application/json' | jq '.services[].typed_edges'
+```
+
+`staleness_report` carries the same `{known, packages, failed, reason}` block,
+so a session can ask "is this graph typed?" in the same call that asks "is it
+fresh?". `known: false` means this daemon process has not ingested the service
+since it started — it is not a pass. A daemon installed by an older binary is
+repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
+
 ## Working against the index
 
 1. **Index first.** Resolve where / what / who-calls via fathom

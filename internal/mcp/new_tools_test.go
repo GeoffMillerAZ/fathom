@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -980,5 +981,67 @@ func TestNewToolsInCorrectProfile(t *testing.T) {
 		if got := srv.GroupOfForTest(tc.name); got != tc.group {
 			t.Errorf("tool %q registered in group %q, want %q", tc.name, got, tc.group)
 		}
+	}
+}
+
+// ─── BP-35: staleness_report's typed_edges block ─────────────────────────────
+
+// typedStatusBackend adds the optional TypedEdgeStatus capability to the
+// extended fake, matching pkg/client.Client's method exactly.
+type typedStatusBackend struct {
+	*extendedFakeBackend
+	status fusion.TypedEdgeStatus
+	known  bool
+}
+
+func (b typedStatusBackend) TypedEdgeStatus(string) (fusion.TypedEdgeStatus, bool) {
+	return b.status, b.known
+}
+
+// A backend that CAN report the typed pass's outcome must have it surfaced:
+// "is the graph I am querying typed?" is answered by the same call that
+// answers "is it fresh?". On 2026-09-12 the first question was unaskable
+// while the answer was no.
+func TestStalenessReport_TypedEdgesBlock(t *testing.T) {
+	base := &extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}}
+	srv := mcp.NewServer(typedStatusBackend{
+		extendedFakeBackend: base,
+		status:              fusion.TypedEdgeStatus{Failed: true, Reason: "GOPATH entry is relative"},
+		known:               true,
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 322, Method: "tools/call",
+		Params: map[string]any{"name": "staleness_report", "arguments": map[string]any{"service": "svc"}},
+	})
+	block, ok := extToolPayload(t, resp)["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("staleness_report carried no typed_edges block: %v", extToolPayload(t, resp))
+	}
+	if block["known"] != true || block["failed"] != true {
+		t.Fatalf("typed_edges = %v, want known+failed", block)
+	}
+	if reason, _ := block["reason"].(string); !strings.Contains(reason, "GOPATH") {
+		t.Fatalf("typed_edges.reason must name the failure (I24): %v", block)
+	}
+}
+
+// A backend with no ingest of the service yet reports known:false — never a
+// block that reads as a pass.
+func TestStalenessReport_TypedEdgesUnknown(t *testing.T) {
+	base := &extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}}
+	srv := mcp.NewServer(typedStatusBackend{extendedFakeBackend: base})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 323, Method: "tools/call",
+		Params: map[string]any{"name": "staleness_report", "arguments": map[string]any{"service": "svc"}},
+	})
+	block, ok := extToolPayload(t, resp)["typed_edges"].(map[string]any)
+	if !ok {
+		t.Fatalf("typed_edges block missing: %v", extToolPayload(t, resp))
+	}
+	if block["known"] != false {
+		t.Fatalf("typed_edges.known = %v, want false", block["known"])
+	}
+	if _, present := block["failed"]; present {
+		t.Fatalf("an unknown outcome must not carry a failed verdict either way: %v", block)
 	}
 }
