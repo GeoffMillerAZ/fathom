@@ -51,6 +51,32 @@ const (
 	sourceReadMaxBytes = defaultCharBudget
 )
 
+// sourceReadDefaultBytes is read_source's own DEFAULT per-call byte budget
+// (SB-3, docs/plans/strengths-bench.md; O31/O32): the home bench found
+// read_source the single largest contributor to references/read_source
+// over-payload (123KB of 419KB across 38 calls) — half of the old 16000
+// default is plenty for the citation this tool exists to serve (a cited
+// range, not a whole file) and still overridable per call via max_bytes,
+// up to the sourceReadMaxBytes ceiling that also bounds symbol_context's
+// own snippet read.
+const sourceReadDefaultBytes = 8000
+
+// readSourceBudget resolves the effective byte budget for one read_source
+// call: a non-positive/absent max_bytes uses the measured 8000-byte
+// default; a caller-declared max_bytes is honored up to the
+// sourceReadMaxBytes (16000) ceiling — read_source's escape hatch is for a
+// cited range, never a mechanism to pull an entire large file through in
+// one call.
+func readSourceBudget(requested int) int {
+	if requested <= 0 {
+		return sourceReadDefaultBytes
+	}
+	if requested > sourceReadMaxBytes {
+		return sourceReadMaxBytes
+	}
+	return requested
+}
+
 // sourceReadMaxFileBytes is the hard per-file ceiling checked via os.Stat
 // BEFORE any read — a multi-GB corpus file must refuse cheaply, never be
 // loaded into the shared daemon's memory just to slice 200 lines out of it.
@@ -76,6 +102,15 @@ type sourceRange struct {
 	TotalLines int
 	ClampedEOF bool   // an explicit caller boundary (start_line / end_line) ran past EOF
 	Note       string // human-readable clamp/truncation explanation, "" if none
+	// Requested is the line count the caller's own range would have
+	// returned absent any cap (naturalEnd-start+1) — 0 when the request
+	// starts past EOF. Capped (SB-3) is true when either the line cap or
+	// the byte cap actually cut the response short; registerReadSource
+	// uses the two together to build the elided block (Requested-len(Lines)
+	// elided of Requested), never when the range simply reached EOF on its
+	// own.
+	Requested int
+	Capped    bool
 }
 
 // resolveCorpusRoot resolves service's on-disk corpus root via ServiceMeta,
@@ -383,6 +418,8 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 		TotalLines: total,
 		ClampedEOF: clampedEOF,
 		Note:       strings.Join(notes, "; "),
+		Requested:  naturalEnd - start + 1,
+		Capped:     truncatedForBytes || lineCapped,
 	}, nil
 }
 
@@ -391,7 +428,7 @@ func readSourceRange(ctx context.Context, backend QueryInterface, service, file 
 func registerReadSource(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "read_source",
-		Description: "Read a line range (or a capped whole-file view) of one file from a service's INDEXED corpus. Read-only, line-numbered so results are pinnable as citations. Capped at 200 lines / 16000 bytes per call, whichever is hit first — narrow start_line/end_line for larger files or ranges; end_line == total_lines in the response means EOF was reached; a single line longer than the byte cap comes back truncated to it, with a note. Readable = what ingest walks: refuses .fathomignore'd paths, always-skipped directories (vendor, .git, testdata, generated, node_modules, .idea, .vscode, .claude), .env-pattern files, files over the 2MB extraction cap, binary files, absolute paths, path traversal, symlinks resolving outside the corpus root, and an EXPLICIT range wider than the line cap. An explicit start_line or end_line landing beyond EOF is clamped (not refused) and noted. Reach for it when a symbol_context snippet was truncated or you need the exact lines to cite. Required: service, file.",
+		Description: "Read a line range (or a capped whole-file view) of one file from a service's INDEXED corpus. Read-only, line-numbered so results are pinnable as citations. Capped at 200 lines / 8000 bytes per call by default (whichever is hit first); max_bytes raises the byte cap up to 16000 for one call. Narrow start_line/end_line for larger files or ranges; end_line == total_lines in the response means EOF was reached; a single line longer than the byte cap comes back truncated to it, with a note, and a range the cap cut short carries an elided block naming how many of the requested lines were dropped. Readable = what ingest walks: refuses .fathomignore'd paths, always-skipped directories (vendor, .git, testdata, generated, node_modules, .idea, .vscode, .claude), .env-pattern files, files over the 2MB extraction cap, binary files, absolute paths, path traversal, symlinks resolving outside the corpus root, and an EXPLICIT range wider than the line cap. An explicit start_line or end_line landing beyond EOF is clamped (not refused) and noted. Reach for it when you need bytes a find_symbol hit (file+line only, no body) or a symbol_context snippet (capped at 40 lines) did not already carry — never as the first move after either, since both already carry what read_source would only repeat. Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -399,6 +436,7 @@ func registerReadSource(s *Server, backend QueryInterface) {
 				"file":       map[string]any{"type": "string", "description": "Repo-relative file path (never absolute, never containing \"..\")"},
 				"start_line": map[string]any{"type": "integer", "description": "1-based start line (default 1)"},
 				"end_line":   map[string]any{"type": "integer", "description": "1-based end line, inclusive (default: start_line + 199, or EOF). An explicit range wider than the cap is refused, not narrowed."},
+				"max_bytes":  map[string]any{"type": "integer", "description": "Per-call byte budget (default 8000, ceiling 16000). Raise it for one call instead of re-calling with a narrower range."},
 			},
 			"required": []string{"service", "file"},
 		},
@@ -412,6 +450,7 @@ func registerReadSource(s *Server, backend QueryInterface) {
 			File      string `json:"file"`
 			StartLine int    `json:"start_line"`
 			EndLine   int    `json:"end_line"`
+			MaxBytes  int    `json:"max_bytes"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: invalid args"}
@@ -423,7 +462,8 @@ func registerReadSource(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: file required"}
 		}
 
-		rng, err := readSourceRange(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, sourceReadMaxBytes)
+		maxBytes := readSourceBudget(p.MaxBytes)
+		rng, err := readSourceRange(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: " + err.Error()}
 		}
@@ -442,6 +482,16 @@ func registerReadSource(s *Server, backend QueryInterface) {
 		}
 		if rng.Note != "" {
 			resp["note"] = rng.Note
+		}
+		// elided (SB-3) fires only when actual LINES were dropped — the
+		// line/byte cap cut the range short before it reached its natural
+		// end (naturalEnd/lineCapped). A single line alone exceeding the
+		// byte cap (the minified-JS case) still returns that one line,
+		// truncated in content but not in count: `note` already discloses
+		// that, and `elided`'s count/of contract (lines dropped, not bytes
+		// cut within one) would be misleading there.
+		if rng.Requested > len(rng.Lines) {
+			resp["elided"] = elisionFor(len(rng.Lines), rng.Requested, "line order", "call again with a larger max_bytes, or narrow start_line/end_line")
 		}
 		return resp, nil
 	})

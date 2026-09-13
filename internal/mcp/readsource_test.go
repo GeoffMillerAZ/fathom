@@ -393,9 +393,9 @@ func TestReadSource_FileOverCeiling_Refused(t *testing.T) {
 }
 
 // TestReadSource_FirstLineOverByteCap_Truncated: the minified-JS case — a
-// single line longer than the 16000-byte cap must come back TRUNCATED to
-// the cap with the note set, never whole (silently voiding the cap) and
-// never empty (unreadable at any budget).
+// single line longer than the DEFAULT 8000-byte cap (SB-3) must come back
+// TRUNCATED to the cap with the note set, never whole (silently voiding the
+// cap) and never empty (unreadable at any budget).
 func TestReadSource_FirstLineOverByteCap_Truncated(t *testing.T) {
 	root := t.TempDir()
 	long := strings.Repeat("x", 200*1024) // 200KB, one line
@@ -408,12 +408,90 @@ func TestReadSource_FirstLineOverByteCap_Truncated(t *testing.T) {
 		t.Fatalf("lines count = %d, want 1", len(raw))
 	}
 	text, _ := raw[0].(map[string]any)["text"].(string)
-	if len(text) != 16000 {
-		t.Errorf("first line length = %d, want exactly 16000 (truncated to the byte cap)", len(text))
+	if len(text) != 8000 {
+		t.Errorf("first line length = %d, want exactly 8000 (truncated to the default byte cap)", len(text))
 	}
 	note, _ := p["note"].(string)
 	if !strings.Contains(note, "byte cap") {
 		t.Errorf("note = %q, want it to mention the byte cap", note)
+	}
+	// A single line alone exceeding the byte cap still returns that ONE
+	// line (truncated in content, not dropped) — no LINE was elided, so
+	// there is no elided block; `note` already carries this disclosure.
+	if _, has := p["elided"]; has {
+		t.Errorf("elided block present when no line was dropped (single over-cap line): %v", p["elided"])
+	}
+}
+
+// TestReadSource_MultiLineByteCap_ElidedNamesDroppedLines (SB-3): when the
+// byte cap stops a multi-line range short of its requested end, the
+// response carries an elided block naming how many LINES were dropped —
+// distinct from the single-over-cap-line case above, where nothing is
+// dropped, only truncated in place.
+func TestReadSource_MultiLineByteCap_ElidedNamesDroppedLines(t *testing.T) {
+	root := t.TempDir()
+	// 10 lines of ~1000 bytes each: well over the 8000-byte default, so
+	// only some lines fit.
+	var content strings.Builder
+	for i := 0; i < 10; i++ {
+		content.WriteString(strings.Repeat("x", 999))
+		content.WriteString("\n")
+	}
+	writeCorpusFile(t, root, "many.txt", content.String())
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "many.txt"})
+	raw, _ := p["lines"].([]any)
+	if len(raw) == 0 || len(raw) >= 10 {
+		t.Fatalf("lines count = %d, want some but fewer than all 10", len(raw))
+	}
+	elided, ok := p["elided"].(map[string]any)
+	if !ok {
+		t.Fatalf("elided block missing when lines were actually dropped: %v", p)
+	}
+	if elided["of"].(float64) != 10 {
+		t.Errorf("elided.of = %v, want 10 (the requested whole-file range)", elided["of"])
+	}
+	if int(elided["count"].(float64)) != 10-len(raw) {
+		t.Errorf("elided.count = %v, want %d", elided["count"], 10-len(raw))
+	}
+}
+
+// TestReadSource_MaxBytesOverride_RaisesTheCap (SB-3): a caller-declared
+// max_bytes raises the effective per-call budget above the 8000-byte
+// default, up to the 16000-byte ceiling.
+func TestReadSource_MaxBytesOverride_RaisesTheCap(t *testing.T) {
+	root := t.TempDir()
+	long := strings.Repeat("x", 200*1024) // 200KB, one line
+	writeCorpusFile(t, root, "minified.js", long+"\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "minified.js", "max_bytes": 12000})
+	raw, _ := p["lines"].([]any)
+	if len(raw) != 1 {
+		t.Fatalf("lines count = %d, want 1", len(raw))
+	}
+	text, _ := raw[0].(map[string]any)["text"].(string)
+	if len(text) != 12000 {
+		t.Errorf("first line length = %d, want exactly 12000 (max_bytes honored)", len(text))
+	}
+}
+
+// TestReadSource_MaxBytesOverride_ClampedAtCeiling (SB-3): a max_bytes
+// request above the 16000-byte ceiling is clamped to it, never honored
+// verbatim — read_source's escape hatch is a cited range, never a
+// mechanism to pull an entire large file through in one call.
+func TestReadSource_MaxBytesOverride_ClampedAtCeiling(t *testing.T) {
+	root := t.TempDir()
+	long := strings.Repeat("x", 200*1024) // 200KB, one line
+	writeCorpusFile(t, root, "minified.js", long+"\n")
+	srv := mcp.NewServer(&extendedFakeBackend{services: []string{"svc"}, svcPath: root})
+
+	p := readSourceCall(t, srv, map[string]any{"service": "svc", "file": "minified.js", "max_bytes": 999999})
+	raw, _ := p["lines"].([]any)
+	text, _ := raw[0].(map[string]any)["text"].(string)
+	if len(text) != 16000 {
+		t.Errorf("first line length = %d, want exactly 16000 (clamped to the ceiling)", len(text))
 	}
 }
 
