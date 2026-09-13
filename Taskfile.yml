@@ -328,6 +328,11 @@ tasks:
     cmds:
       - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -arms full,control -repeat 2 {{.CLI_ARGS}}
 
+  bench-scenario-guards-adr:
+    desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot #2: rules that live only in ADR.md (never repeated in a CLAUDE.md/AGENTS.md), arms full vs control, n=2 (SB-49; testdata/scenariobench/guards-adr.json)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-adr.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+
   bench-scenario-pilot:
     desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
     cmds:

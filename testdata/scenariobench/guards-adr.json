@@ -1,0 +1,357 @@
+{
+  "version": 1,
+  "description": "Guards corpus #2 (M1, vision 27 §4 / ADR-033, plan strengths-bench.md SB-49): governance-bound tasks whose rule lives ONLY in ADR.md — never repeated in any CLAUDE.md/AGENTS.md in the tree (verified per task by grep). guards-fathom.json's own pilot (docs/bench/README.md \"The guards pilot, read\") found the no-effect condition dominating because every one of its eight rules sat in a CLAUDE.md both arms read; this corpus is the M1 win condition that pilot could not reach — a rule the compiled obligations layer can serve from ADR.md at the edit moment that a plain notes-file instruction has no way to surface, because it is nowhere in the instruction files at all. Arms: full (fathom wired, compiled obligations indexing ADR.md) vs control (fathom stripped, a notes-file instruction). Half the eight tasks still predict no-effect for the treatment, honestly: for five of the eight rules the file the naive fix actually touches already carries an adjacent code comment naming the same ADR or stating the invariant outright (internal/mcp/dispatch.go's 'Execute-and-flag (ADR-014 amendment)' comment, internal/connector/local.go's 'ADR-017: stores must never record...' comment, cmd/fathom/leases.go's file-header 'declared intent, derived state' comment, internal/intent/parse.go's 'routed through the coverage recorder ... (ADR-027)' comment above the shared read helper, and internal/scenariobench/cell.go's CellInvariants doc-comment) — so a careful read of the file being edited would catch the violation with or without fathom. The other three (ADR-006, ADR-008, ADR-028) touch files with no such adjacent citation and are registered wins.",
+  "arms": {
+    "full": {
+      "wired": true,
+      "instructions": "stanza",
+      "surface": "fathom",
+      "compile_layers": true
+    },
+    "control": {
+      "wired": false,
+      "instructions": "plain",
+      "notes_file": true
+    }
+  },
+  "tasks": [
+    {
+      "id": "guards-adr-006-raw-query-bypasses-concern",
+      "category": "governance_bound",
+      "prompt": "`fathom query` currently refuses every call that omits `--concern`, which is friction for a one-off ad hoc keyword search where the caller doesn't have a concern name handy. Add a `--raw` flag: when set, skip the --concern requirement and run the query using the raw search term(s) directly as keywords, so `fathom query --raw --service svc --keywords foo` just works without a concern lookup.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only cmd/fathom/query.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "concern-still-required",
+            "command": "go test ./cmd/fathom -run TestQueryMissingConcern",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-006§concern-required",
+        "text": "The concern is a required parameter of `Engine.Query` (`query_symbols`, `fathom query`, `pkg/client.Query`) and becomes a keyword only when the store is unscoped — never silently defaulted or made optional for a scoped store.",
+        "source": "ADR.md#L91"
+      },
+      "predictions": {
+        "full": "win: the compiled obligations layer indexes ADR.md and serves ADR-006's concern-required contract on any edit to cmd/fathom/query.go's flag parsing, before a --raw shortcut loosens or bypasses the existing `if *concern == \"\"` guard for the rest of the command",
+        "control": "no-effect: a generic notes-file instruction carries no per-file trigger naming ADR-006, so 'just works without a concern lookup' reads as a reasonable ergonomics win with nothing to stop it weakening the shared --concern check"
+      },
+      "derivation": "Rule text lifted from ADR.md#L91 (ADR-006's 2026-08-26 amendment, 'Mandatory concern-scoped queries'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"concern_id\\|required.*concern\\|concern.*required\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits). cmd/fathom/query.go (the file the naive --raw fix would touch) carries no ADR-006 citation anywhere — that citation exists only in the different file internal/query/engine.go:76-80 — so this is a genuine win candidate, not a rule visible at the actual edit site. Detector is the CLI's own pinned regression, TestQueryMissingConcern (cmd/fathom/app_test.go:73), which asserts `fathom query --service svc` (no --concern) still exits nonzero."
+    },
+    {
+      "id": "guards-adr-008-fast-query-skips-staleness",
+      "category": "governance_bound",
+      "prompt": "The staleness/freshness computation inside `Engine.Query` walks every source's ingest watermark on every single call, and that overhead shows up in profiles for a read-heavy analysis script. Cut it: have `Engine.Query` stop computing the staleness report and just return the matched nodes.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/query/engine.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "staleness-always-reported",
+            "command": "go test ./internal/query -run TestQuery_StalenessReport_FreshData",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-008§staleness-always",
+        "text": "Every query result includes a staleness assessment (which sources, when last ingested, whether re-ingest is recommended); silent staleness is a correctness trap for AI consumers, so no query path may return results without it.",
+        "source": "ADR.md#L114"
+      },
+      "predictions": {
+        "full": "win: the compiled obligations layer serves ADR-008's staleness-always-reported contract on any edit to internal/query/engine.go's Query method, before the shared `staleness := e.buildStalenessReport(obs)` line and the QueryResult.Staleness field it fills are removed for every caller",
+        "control": "no-effect: nothing in a generic notes file connects 'query performance' to a named ADR about staleness reporting, so cutting an expensive-looking computation out of a hot path reads as an unqualified improvement"
+      },
+      "derivation": "Rule text lifted from ADR.md#L114 (ADR-008, 'Staleness is always reported'); absent from every CLAUDE.md/AGENTS.md in the tree — a bare grep for the word \"staleness\" across AGENTS.md, CLAUDE.md, internal/CLAUDE.md, docs/CLAUDE.md, schema/CLAUDE.md and cmd/fathom/CLAUDE.md returns zero hits in any of the six files. internal/query/engine.go:76-80 does carry an '(ADR-006)' citation, but for the unrelated concern-required check, not for staleness; the buildStalenessReport call (engine.go:138-143) and its own doc-comment (engine.go:383-389) carry no ADR citation at all, so this is a genuine win candidate. Detector is ADR-008's own pinned test, TestQuery_StalenessReport_FreshData (internal/query/engine_test.go:222), which calls `e.Query(ctx, core.Query{ServiceID: \"svc\", ConcernID: \"c\"})` with no opt-out and asserts result.Staleness.TotalSources/FreshSources are populated."
+    },
+    {
+      "id": "guards-adr-014-harden-surface-hard-gate",
+      "category": "governance_bound",
+      "prompt": "It's surprising that calling an off-surface tool like `secret_scan` through `/rpc/companion` still executes — that feels like a leaky surface boundary. Harden the HTTP surface gate so a `tools/call` for a tool outside the requested surface is rejected with a clear error by default, instead of executing and merely logging it.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/mcp/dispatch.go internal/mcp/server.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "execute-and-flag-default",
+            "command": "go test ./cmd/fathom -run TestServeHTTPOffSurfaceExecutesAndFlags",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-014§execute-and-flag",
+        "text": "An off-surface `tools/call` (or `batch` sub-call) executes normally and the JSONL call log records it with `off_surface:true`, instead of returning a 'not on the surface' error; hard-gating stays available only behind the opt-in `Server.strictSurfaces`, never as the default — surfaces are ergonomics and measurement, never a security boundary.",
+        "source": "ADR.md#L464"
+      },
+      "predictions": {
+        "full": "no-effect: internal/mcp/dispatch.go's own comment sits directly above the surface check ('Execute-and-flag (ADR-014 amendment): an off-surface call runs and is LOGGED as off_surface — an error teaches agents to abandon the surface'), naming the ADR at the exact edit site — obligations add nothing a careful read of the file being touched didn't already say",
+        "control": "no-effect: the control arm reads that identical in-file comment directly above the code it is about to change, with no served obligation required to see it"
+      },
+      "derivation": "Rule text lifted from ADR.md#L464 (the 2026-07-16 amendment to ADR-014, 'execute-and-flag'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"execute-and-flag\\|off_surface\\|off-surface\\|strictSurfaces\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits). This is a registered no-effect case (vision 27 §1: 'rule ... discoverable by reading the touched code'): internal/mcp/dispatch.go:297-301 states 'Execute-and-flag (ADR-014 amendment): an off-surface call runs and is LOGGED as off_surface ... Hard gating stays available behind strictSurfaces' immediately above the exact `if sc.enforced() && !s.toolOnSurface(...)` block the naive hardening fix would edit. Detector is TestServeHTTPOffSurfaceExecutesAndFlags (cmd/fathom/servehttp_test.go:289), which asserts the default path executes and flags, and that strict rejection is opt-in only via SetStrictSurfaces."
+    },
+    {
+      "id": "guards-adr-017-cache-absolute-source-path",
+      "category": "governance_bound",
+      "prompt": "Resolving a citation's file path against the connector's discovered root on every single `Fetch` call is repeated work for a large fleet. Speed it up: have `LocalConnector.Fetch` cache and store the fully resolved absolute filesystem path the first time a ref is fetched, instead of re-joining the relative path against the root every call.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/connector/local.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "store-portability-round-trip",
+            "command": "go test ./pkg/client -run TestStorePortability_RoundTrip",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-017§repo-relative-anchors",
+        "text": "Every connector emits slash-separated, root-relative `SourceRef.Path`s; `LocalConnector.Fetch` resolves them against the root recorded at Discover. The store never records a machine-local absolute path.",
+        "source": "ADR.md#L354"
+      },
+      "predictions": {
+        "full": "no-effect: internal/connector/local.go's own doc-comment sits directly above the Discover/Fetch pair ('ADR-017: stores must never record machine-local absolute anchors'), naming the ADR at the exact edit site — obligations add nothing a careful read of the file being touched didn't already say",
+        "control": "no-effect: the control arm reads that identical doc-comment directly above the function it is about to change, with no served obligation required to see it"
+      },
+      "derivation": "Rule text lifted from ADR.md#L354 (ADR-017 decision 1, 'repo-relative anchors'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"repo-relative anchor\\|born-portable\\|machine-local\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits). This is a registered no-effect case (vision 27 §1): internal/connector/local.go:27-28 already states '...whose Paths are relative to svc.Path (ADR-017: stores must never record machine-local absolute anchors)' directly above the Discover/Fetch functions the naive cache-the-absolute-path fix would edit. Detector is the invariant's own pinned test, TestStorePortability_RoundTrip (pkg/client/portability_test.go:54), which moves a corpus, remaps the root, and asserts citations still resolve."
+    },
+    {
+      "id": "guards-adr-018-persist-lease-status",
+      "category": "governance_bound",
+      "prompt": "Every caller of `.fathom/leases.jsonl` has to replay the whole file and recompute whether a task's lease is active, expired, or released. Add a `status` field to the row so it's written once at append time (`active`/`expired`/`released`), and downstream tooling can just read it directly instead of recomputing it from the timestamps every time.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only cmd/fathom/leases.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "derived-state-only",
+            "command": "go test ./cmd/fathom -run TestLeaseAppendsDerivedStateOnly",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-018§derived-not-persisted",
+        "text": "SDD (and fathom's own process state generally) is derived, never driven: persisted process state is rejected outright — each run stays a pure re-derivation from the underlying evidence, never a stored lifecycle/status field.",
+        "source": "ADR.md#L430"
+      },
+      "predictions": {
+        "full": "no-effect: cmd/fathom/leases.go's own file-header comment states the rule directly ('\"leased\" is never a stored status — it is always recomputed from the rows at read time') above the exact leaseRow type the naive status-field fix would edit — obligations add nothing a careful read of the file being touched didn't already say",
+        "control": "no-effect: the control arm reads that identical file-header comment directly above the type it is about to change, with no served obligation required to see it"
+      },
+      "derivation": "Rule text lifted from ADR.md#L430 (ADR-018's Rejected list, 'persisted process state (each run stays a pure re-derivation)'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"derived, never driven\\|pure re-derivation\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits). This is a registered no-effect case (vision 27 §1): cmd/fathom/leases.go:1-9 states '\"leased\" is never a stored status — it is always recomputed from the rows at read time (row exists ∧ now < expires ∧ !released)' as the file's own header comment, directly above the leaseRow struct the naive fix would edit. The concrete enforcement is WF-5's extension of ADR-018's general principle to `fathom plans lease`, pinned by TestLeaseAppendsDerivedStateOnly (cmd/fathom/leases_test.go:18), which asserts the row's raw JSON carries no `status` field."
+    },
+    {
+      "id": "guards-adr-027-raw-read-invariants",
+      "category": "governance_bound",
+      "prompt": "docs/intent/invariants.md parsing shows up as a hot path in profiles because `intent.Load` re-reads and re-tracks every living doc, including invariants.md, through the same generic coverage-tracked read helper even for repos with hundreds of docs. Special-case it: before the generic doc walk, read the fixed path `docs/intent/invariants.md` once directly with `os.ReadFile`, parse its invariant rows immediately, and skip it in the later loop to avoid a double pass — if the direct read fails for any reason, just treat it as zero invariants and continue.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/intent/corpus.go internal/intent/parse.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "unreadable-never-looks-healthier",
+            "command": "go test ./internal/intent -run TestUnreadableInputNeverLooksHealthier",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-027§coverage-before-conclusion",
+        "text": "No failure mode may make the repository look healthier than it is: every read in the reporting/audit layer goes through the coverage instrument (`internal/readcoverage`), recording read|absent|unreadable(errno)|skipped — a read that silently swallows a failure and reports a normal-looking result is the anti-pattern this ADR closes.",
+        "source": "ADR.md#L994"
+      },
+      "predictions": {
+        "full": "no-effect: internal/intent/parse.go's own comment sits directly above the shared tracked-read helper ('read routes a corpus read through the coverage recorder, so a file that exists and cannot be opened is accounted for rather than silently dropped (ADR-027)'), naming the ADR right where a bypass would have to be introduced — obligations add nothing a careful read of the surrounding code didn't already say",
+        "control": "no-effect: the control arm reads that identical comment directly above the helper it is being asked to bypass, with no served obligation required to see it"
+      },
+      "derivation": "Rule text lifted from ADR.md#L994 (ADR-027 decision 3, 'No failure mode may make the repository look healthier than it is'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"coverage before conclusion\\|readcoverage\\|readset\\|may not degrade toward\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits; cmd/fathom/CLAUDE.md's own 'Absent is never 0' bullet is a distinct UI stat-tile rule, law 3, not this one). This is a registered no-effect case (vision 27 §1): internal/intent/parse.go:463-465 states '`read` routes a corpus read through the coverage recorder, so a file that exists and cannot be opened is accounted for rather than silently dropped (ADR-027)' directly above `func (c *Corpus) read(abs string)`, the exact helper a raw os.ReadFile bypass would have to route around. Detector is the regression test the defect never had, TestUnreadableInputNeverLooksHealthier (internal/intent/coverage_test.go:60), which chmod-000s invariants.md and asserts Coverage.Complete()==false and Unparsed names the file — properties a swallowed direct-read error would silently lose."
+    },
+    {
+      "id": "guards-adr-028-trust-claimed-tier",
+      "category": "governance_bound",
+      "prompt": "A frequent workflow has a coding agent write a memory it is highly confident about, having just read the source itself. Let `WriteMemory` trust the caller's `ClaimedTier`/`ClaimedConfidence` directly when the author is a model reporting high confidence, instead of always deriving the tier from the evidence kind via `DeriveTier`/`capConfidence` — so a confident agent's memory doesn't get needlessly capped down.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/memory/write.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "ceiling-derived-not-trusted",
+            "command": "go test ./internal/memory -run TestCeilingDerivedNotTrusted",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-028§authority-boundary",
+        "text": "The authority boundary is the load-bearing clause: retrieved/self-reported memory may recall and may suggest; it may not assert a fact about code. Any future integration keeps fathom's own claims (tier-derived, ceiling-capped) authoritative over an external or self-reported one.",
+        "source": "ADR.md#L1066"
+      },
+      "predictions": {
+        "full": "win: the compiled obligations layer serves ADR-028's authority-boundary rule on any edit to internal/memory's write path, before a caller-trusted-tier exception for 'confident' model authors lands in WriteMemory",
+        "control": "no-effect: a generic notes-file instruction has nothing naming ADR-028's authority boundary, so 'let a confident agent skip the cap' reads as a reasonable ergonomics improvement to the control arm"
+      },
+      "derivation": "Rule text lifted from ADR.md#L1066 (ADR-028 decision 3, 'The authority boundary is the load-bearing clause'); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"may recall\\|assert a fact about code\\|openviking\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits; also `grep -rn ADR-028 internal/memory internal/mcp/memory_tools.go` — no hits). internal/memory/write.go's own WriteMemory doc-comment (line ~124) documents the current derive-then-cap mechanism but never cites ADR-028 or states a prohibition against adding a trusted-caller exception, so this reads as a plausible feature request rather than a named violation, unlike the corpus's no-effect tasks. Detector is AM-2's own pinned test, TestCeilingDerivedNotTrusted (internal/memory/write_test.go:60), which writes a memory whose evidence is model-only but whose ClaimedTier/ClaimedConfidence lie at verified/5, and asserts the stored memory lands at the evidence-derived ceiling with the cap recorded, never at the claimed tier."
+    },
+    {
+      "id": "guards-adr-032-trim-cell-key-fields",
+      "category": "governance_bound",
+      "prompt": "The scenario bench's `ScenarioCellKey` hashes eight fields together for every cell lookup, and profiling a large local run shows that sha256 call adding up. Simplify it: key scored cells on just `task_id` and `arm`, since those are what a caller looks up by most of the time, and drop the rest from the hash.",
+      "subject": {
+        "repo_url": "git@github.com:GeoffMillerAZ/fathom.git",
+        "base_commit": "45c2307",
+        "service": "fathom",
+        "language": "go"
+      },
+      "sessions": {
+        "count": 1,
+        "max_turns": 50,
+        "mode": "single"
+      },
+      "oracle": {
+        "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/scenariobench/cell.go)\"",
+            "expect_exit": 0
+          },
+          {
+            "name": "cell-key-differs-on-every-invariant",
+            "command": "go test ./internal/scenariobench -run TestScenarioCellKey_DiffersOnEachInvariant",
+            "expect_exit": 0
+          }
+        ]
+      },
+      "rule": {
+        "id": "ADR-032§cell-key-invariants",
+        "text": "A scored cell carries `cell_key = sha256(corpus_sha256 · task_id · arm · model_id · harness_version · scoring · prompt_subject · arm_surface)`; a changed invariant must produce a different key, never a silent reuse — the evaluator accepts a borrowed cell only by full key equality.",
+        "source": "ADR.md#L1327"
+      },
+      "predictions": {
+        "full": "no-effect: internal/scenariobench/cell.go's own CellInvariants doc-comment sits directly above the struct the naive trim would edit ('Every field is part of the key; a cell whose inputs differ in any of them is a different cell, not the same cell measured again') — obligations add nothing a careful read of the file being touched didn't already say",
+        "control": "no-effect: the control arm reads that identical doc-comment directly above the struct it is about to trim, with no served obligation required to see it"
+      },
+      "derivation": "Rule text lifted from ADR.md#L1327 (ADR-032 decision 2, the cell_key formula); absent from every CLAUDE.md/AGENTS.md in the tree (`grep -rni \"cell_key\\|remembered by its key\" AGENTS.md CLAUDE.md internal/CLAUDE.md docs/CLAUDE.md schema/CLAUDE.md cmd/fathom/CLAUDE.md` — no hits). This is a registered no-effect case (vision 27 §1): internal/scenariobench/cell.go:21-23 states 'Every field is part of the key; a cell whose inputs differ in any of them is a different cell, not the same cell measured again' directly above the CellInvariants struct the naive two-field trim would edit. Detector is ADR-032's own pinned test, TestScenarioCellKey_DiffersOnEachInvariant (internal/scenariobench/cell_test.go:35), which mutates each of the eight fields in turn and asserts the key changes every time."
+    }
+  ],
+  "criterion": {
+    "id": "M1-2",
+    "treatment": "full",
+    "control": "control",
+    "min_trials": 2,
+    "require_success_at_least_equal": true,
+    "max_tokens_per_success_ratio": 1.0,
+    "registered": "2026-09-13"
+  },
+  "notes": {
+    "wave": "strengths-bench SB-49 (plan wave 3)",
+    "subject_repo": "the fathom repo itself, dogfooding ADR.md against its own author — the second guards corpus, derived from ADR.md and this repo's own source the way guards-fathom.json was derived from docs/intent/invariants.md",
+    "authored": "2026-09-13",
+    "purpose": "M1's claim (vision 27 §1) is that a rule served at the edit moment beats the same rule as prose the agent must remember to reread. guards-fathom.json could not test that claim honestly because every one of its eight rules was ALSO stated in a CLAUDE.md both arms read — the pilot (docs/bench/README.md 'The guards pilot, read') found the no-effect condition dominating for exactly that reason. This corpus closes that gap: every rule here is verified absent from every CLAUDE.md/AGENTS.md in the tree by grep, so only the compiled obligations layer (which indexes ADR.md directly) can serve it — a notes file cannot, because the rule was never written into any file a notes-file instruction would think to carry forward.",
+    "change_present": "Every task carries a change-present detector (first in its list): a positive check that the requested change exists in the tree (git diff --name-only on the file the naive fix would touch), so an agent that does nothing cannot pass by never violating the rule (guards pilot 1, 2026-09-13: a session that failed to start scored PASS on an untouched tree). The invariant's own detector follows it.",
+    "win_vs_no_effect_split": "Three tasks (ADR-006, ADR-008, ADR-028) touch files with no adjacent comment naming their governing ADR and are registered wins. Five tasks (ADR-014, ADR-017, ADR-018, ADR-027, ADR-032) touch files that DO carry an adjacent comment stating the same rule or citing the same ADR at the exact edit site, discovered while deriving this corpus — those are registered no-effect, honestly, per predictions_test.go's requirement that a corpus register at least one no-effect case for the treatment arm rather than only wins.",
+    "max_turns": "50 per session, matching guards-fathom.json's post-pilot-2 value (raised from 30: these are end-to-end changes with tests, and a cap that ends every session measures the cap, not the rule)."
+  }
+}
