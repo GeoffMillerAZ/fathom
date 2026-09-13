@@ -43,6 +43,15 @@ type findCallersResult struct {
 	CallerTier           string         `json:"caller_tier,omitempty"`
 	CallerDepth          int            `json:"caller_depth,omitempty"`
 	CallerEdgeConfidence string         `json:"caller_edge_confidence,omitempty"`
+	// Elision (RC-19): the plain-text "elided: N more — refine with <arg>"
+	// line, present only when fitToolBudget cut the "callers" list.
+	Elision string `json:"elision,omitempty"`
+	// ScopeRequired/TopPackages (RC-20): when a fan-in is too large to page
+	// through at all, "callers"/"by_depth" come back empty and these carry
+	// the shape of the answer instead.
+	ScopeRequired bool           `json:"scope_required,omitempty"`
+	TopPackages   []packageCount `json:"top_packages,omitempty"`
+	Message       string         `json:"message,omitempty"`
 }
 
 // typedEdgeRef is one kind-labeled typed edge ({key, kind}).
@@ -57,6 +66,8 @@ type entrypointsResult struct {
 
 type outlineResult struct {
 	Symbols []symbolNodeDTO `json:"symbols"`
+	// Elision (RC-19): present only when fitToolBudget cut "symbols".
+	Elision string `json:"elision,omitempty"`
 }
 
 type findSymbolResult struct {
@@ -145,6 +156,12 @@ type referencesResult struct {
 	// reference sites to confirm exact mode against — named with why,
 	// never silently dropped and never aborting the whole call.
 	Degraded []referenceDegradedService `json:"degraded,omitempty"`
+	// ScopeRequired/TopPackages (RC-20): when a definition fan-in is too
+	// large to page through at all, "definitions"/"occurrences" come back
+	// empty and these carry the shape of the answer instead.
+	ScopeRequired bool           `json:"scope_required,omitempty"`
+	TopPackages   []packageCount `json:"top_packages,omitempty"`
+	Message       string         `json:"message,omitempty"`
 }
 
 // referenceDegradedService is one references degraded-service row (O36,
@@ -180,6 +197,10 @@ type referenceOccurrence struct {
 type repoMapResult struct {
 	Map    string `json:"map"`
 	Budget int    `json:"budget"`
+	// Elision (RC-19): the same one-line disclosure the other newly-
+	// budgeted tools carry, alongside the existing Elided struct below.
+	Elision string  `json:"elision,omitempty"`
+	Elided  *elided `json:"elided,omitempty"`
 }
 
 type stalenessReportResult struct {
@@ -193,6 +214,8 @@ type stalenessReportResult struct {
 	// daemon's typed Go call-edge pass ran for the service, and why not
 	// when it did not. Absent when the backend cannot report it.
 	TypedEdges any `json:"typed_edges,omitempty"`
+	// Elision (RC-19): present only when fitToolBudget cut "sources".
+	Elision string `json:"elision,omitempty"`
 }
 
 type symbolContextResult struct {
@@ -205,6 +228,9 @@ type symbolContextResult struct {
 	TypedEdges          any           `json:"typed_edges,omitempty"`
 	CrossServiceCallees []any         `json:"cross_service_callees,omitempty"`
 	CrossServiceCallers []any         `json:"cross_service_callers,omitempty"`
+	// Elision (RC-19): present only when fitToolBudget cut "callers" or
+	// "callees".
+	Elision string `json:"elision,omitempty"`
 }
 
 type verifyPlanResult struct {

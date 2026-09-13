@@ -4,6 +4,8 @@ package mcp_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -227,6 +229,101 @@ func TestFindCallersWithSignatures(t *testing.T) {
 	rows = with["callers"].([]any)
 	if sig, _ := rows[0].(map[string]any)["sig"].(string); sig != "func Caller(ctx context.Context, arg string) error" {
 		t.Errorf("caller sig = %q, want the full signature", sig)
+	}
+}
+
+// manyCallersFake returns a caller-configurable QueryInterface: FindCallers
+// always answers with the fixed `callers` slice (Service filled in per
+// call), regardless of the requested symbol — RC-19/RC-20 proof only cares
+// about the SHAPE of a large fan-in, not resolving a real one.
+type manyCallersFake struct {
+	fakeBackend
+	callers []core.SymbolNode
+}
+
+func (f *manyCallersFake) FindCallers(_ context.Context, serviceID, _ string) ([]core.SymbolNode, error) {
+	out := make([]core.SymbolNode, len(f.callers))
+	for i, n := range f.callers {
+		n.Service = serviceID
+		out[i] = n
+	}
+	return out, nil
+}
+
+// manyCallersAcrossPackages builds n synthetic callers spread evenly across
+// numPkgs packages, each with a realistic file path/name so the rendered
+// wire size is representative.
+func manyCallersAcrossPackages(n, numPkgs int) []core.SymbolNode {
+	nodes := make([]core.SymbolNode, n)
+	for i := 0; i < n; i++ {
+		pkg := fmt.Sprintf("internal/service/pkg%02d", i%numPkgs)
+		nodes[i] = core.SymbolNode{
+			Package:  pkg,
+			Name:     fmt.Sprintf("handleRequest%04d", i),
+			Kind:     core.KindGoFunc,
+			FilePath: fmt.Sprintf("%s/handler.go", pkg),
+			Line:     i + 1,
+		}
+	}
+	return nodes
+}
+
+// TestFindCallers_BudgetElision is RC-19's proof for find_callers: a fan-in
+// too large for one response (but nowhere near scope_required's much higher
+// threshold) is truncated to a whole-row prefix plus a one-line elision
+// naming the refinement.
+func TestFindCallers_BudgetElision(t *testing.T) {
+	fake := &manyCallersFake{callers: manyCallersAcrossPackages(250, 12)}
+	srv := mcp.NewServer(fake)
+	payload := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+
+	if payload["scope_required"] == true {
+		t.Fatalf("scope_required unexpectedly true for a 250-row fan-in: %v", payload)
+	}
+	callers, ok := payload["callers"].([]any)
+	if !ok || len(callers) == 0 || len(callers) >= 250 {
+		t.Fatalf("callers = %d rows, want a nonzero partial prefix < 250", len(callers))
+	}
+	line, ok := payload["elision"].(string)
+	if !ok || line == "" {
+		t.Fatalf("elision missing: %v", payload)
+	}
+	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with package or file") {
+		t.Errorf("elision = %q, want the RC-19 shape", line)
+	}
+}
+
+// TestFindCallers_ScopeRequired is RC-20's golden test for find_callers: a
+// generic name's fan-in so large that no page of rows would help returns
+// the count and top packages instead of any rows at all.
+func TestFindCallers_ScopeRequired(t *testing.T) {
+	const n, numPkgs = 1500, 12
+	fake := &manyCallersFake{callers: manyCallersAcrossPackages(n, numPkgs)}
+	srv := mcp.NewServer(fake)
+	payload := callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "String"})
+
+	if payload["scope_required"] != true {
+		t.Fatalf("scope_required = %v, want true for a %d-row fan-in", payload["scope_required"], n)
+	}
+	callers, ok := payload["callers"].([]any)
+	if !ok || len(callers) != 0 {
+		t.Errorf("callers = %v, want empty when scope_required", payload["callers"])
+	}
+	if count, _ := payload["count"].(float64); int(count) != n {
+		t.Errorf("count = %v, want %d", payload["count"], n)
+	}
+	tops, ok := payload["top_packages"].([]any)
+	if !ok || len(tops) != 8 {
+		t.Fatalf("top_packages = %v, want 8 entries", payload["top_packages"])
+	}
+	// Every package carries the same count (n/numPkgs); sorted ties break
+	// on package name ascending — pkg00 must lead.
+	first := tops[0].(map[string]any)
+	if first["package"] != "internal/service/pkg00" {
+		t.Errorf("top_packages[0].package = %v, want pkg00 (tie-break by name)", first["package"])
+	}
+	if msg, _ := payload["message"].(string); msg == "" {
+		t.Error("message missing for scope_required response")
 	}
 }
 

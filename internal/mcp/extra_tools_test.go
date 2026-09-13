@@ -830,6 +830,31 @@ func TestRepoMap_Basic(t *testing.T) {
 	}
 }
 
+// TestRepoMap_ElisionLine is RC-19's proof for repo_map: alongside the
+// existing structured "elided" block, a truncated map now also carries the
+// uniform one-line "elision" text the other four newly-budgeted tools use.
+func TestRepoMap_ElisionLine(t *testing.T) {
+	srv := newExtraSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 1281, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "repo_map",
+			"arguments": map[string]any{"service": "svc", "budget": 5},
+		},
+	})
+	p := xtraPayload(t, resp)
+	if p["elided"] == nil {
+		t.Fatalf("repo_map: elided missing though a tiny budget was forced: %v", p)
+	}
+	line, ok := p["elision"].(string)
+	if !ok || line == "" {
+		t.Fatalf("repo_map: elision missing: %v", p)
+	}
+	if !strings.HasPrefix(line, "elided: ") || !strings.Contains(line, "refine with budget or package") {
+		t.Errorf("repo_map: elision = %q, want the RC-19 shape", line)
+	}
+}
+
 // ─── pack_context ─────────────────────────────────────────────────────────────
 
 func TestPackContext_Basic(t *testing.T) {

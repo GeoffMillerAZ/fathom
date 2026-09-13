@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -17,14 +18,22 @@ import (
 type elisionFakeBackend struct {
 	nodes   []core.SymbolNode
 	sources []core.SourceFile
+	// callers, when set, is what FindCallers returns — RC-19/textElisionTools'
+	// find_callers proof needs a fan-in independent of nodes/sources.
+	callers []core.SymbolNode
 }
 
 func (f *elisionFakeBackend) QuerySymbols(_ context.Context, q core.Query) (core.QueryResult, error) {
 	return core.QueryResult{Nodes: f.nodes}, nil
 }
 
-func (f *elisionFakeBackend) FindCallers(_ context.Context, _, _ string) ([]core.SymbolNode, error) {
-	return nil, nil
+func (f *elisionFakeBackend) FindCallers(_ context.Context, serviceID, _ string) ([]core.SymbolNode, error) {
+	out := make([]core.SymbolNode, len(f.callers))
+	for i, n := range f.callers {
+		n.Service = serviceID
+		out[i] = n
+	}
+	return out, nil
 }
 
 func (f *elisionFakeBackend) FindSymbol(_ context.Context, _, _ string) ([]core.SymbolNode, error) {
@@ -191,18 +200,35 @@ var truncatingTools = map[string]bool{
 	"find_symbol":   true,
 }
 
+// textElisionTools (RC-19) is the second, disjoint truncating class: tools
+// that had NO budget/disclosure at all before this row now truncate via
+// fitToolBudget and disclose via elisionLine's plain-text
+// "elided: N more — refine with <arg>" line, distinct from truncatingTools'
+// structured `elided` object (BA-1's elisionFor) — proven live in
+// TestTextElisionToolsDiscloseOnOverflow (new_tools_test.go/tools_test.go).
+// find_callers and references (already in truncatingTools) ALSO gain RC-20's
+// scope_required escape hatch for a fan-in too large to page at all; that is
+// proven separately (TestFindCallers_ScopeRequired, TestReferences_ScopeRequired)
+// since it is a different response shape, not a disclosure line.
+var textElisionTools = map[string]bool{
+	"find_callers":     true,
+	"outline":          true,
+	"symbol_context":   true,
+	"staleness_report": true,
+}
+
 // nonTruncatingTools is every other tool the registry currently serves,
 // named explicitly (not derived as "everything else") so that a genuinely
-// NEW tool — absent from both lists — fails TestEveryTruncatingToolDiscloses
+// NEW tool — absent from every list — fails TestEveryTruncatingToolDiscloses
 // loudly instead of silently passing as exempt.
 var nonTruncatingTools = map[string]bool{
-	"find_callers": true, "rename_impact": true, "reachable": true,
+	"rename_impact": true, "reachable": true,
 	"test_impact": true, "dead_code": true, "find_callees": true,
-	"symbol_context": true, "outline": true, "entrypoints": true,
-	"complexity": true, "god_object": true, "community": true,
+	"entrypoints": true,
+	"complexity":  true, "god_object": true, "community": true,
 	"secret_scan": true, "shell_out": true, "http_client_calls": true,
 	"cloc": true, "read_source": true, "capabilities": true,
-	"server_stats": true, "staleness_report": true, "list_sources": true,
+	"server_stats": true, "list_sources": true,
 	"blast_radius": true, "diff_impact": true, "spec_coverage": true,
 	"traceability": true, "evidence_summary": true, "contradiction_scan": true,
 	"verify_plan": true, "review_diff": true, "findings_near": true,
@@ -227,14 +253,17 @@ func TestEveryTruncatingToolDiscloses(t *testing.T) {
 		switch {
 		case truncatingTools[name]:
 			// proven live below
+		case textElisionTools[name]:
+			// proven live in TestTextElisionToolsDiscloseOnOverflow below
 		case nonTruncatingTools[name]:
 			// exempt — does not slice/limit a countable result list
 		default:
 			t.Errorf("tool %q is registered but categorized as neither truncating nor exempt — classify it in internal/mcp/elision_test.go (BA-1)", name)
 		}
 	}
-	// Every name in truncatingTools must actually be registered — a typo or
-	// a renamed tool here would otherwise pass by never being reached.
+	// Every name in truncatingTools/textElisionTools must actually be
+	// registered — a typo or a renamed tool here would otherwise pass by
+	// never being reached.
 	registered := map[string]bool{}
 	for _, te := range srv.tools {
 		registered[te.desc.Name] = true
@@ -244,12 +273,92 @@ func TestEveryTruncatingToolDiscloses(t *testing.T) {
 			t.Errorf("truncatingTools names %q but the registry does not serve it", name)
 		}
 	}
+	for name := range textElisionTools {
+		if !registered[name] {
+			t.Errorf("textElisionTools names %q but the registry does not serve it", name)
+		}
+	}
 
 	assertElided(t, "query_symbols", callTool(t, srv, "query_symbols", map[string]any{"service": "svc", "concern": "handler", "top": 60}))
 	assertElided(t, "references", callTool(t, srv, "references", map[string]any{"query": "Needle"}))
 	assertElided(t, "repo_map", callTool(t, srv, "repo_map", map[string]any{"service": "svc", "budget": 50}))
 	assertElided(t, "pack_context", callTool(t, srv, "pack_context", map[string]any{"service": "svc", "concern": "handler", "budget": 50}))
 	assertElided(t, "find_symbol", callTool(t, srv, "find_symbol", map[string]any{"service": "svc", "name": "handler"}))
+}
+
+// assertElisionLine checks the RC-19 plain-text disclosure's shape:
+// "elided: N more — refine with <refineWith>" — the textElisionTools'
+// analogue of assertElided (BA-1's structured `elided` object).
+func assertElisionLine(t *testing.T, tool string, payload map[string]any, refineWith string) {
+	t.Helper()
+	line, ok := payload["elision"].(string)
+	if !ok || line == "" {
+		t.Fatalf("%s: response carries no \"elision\" line though truncation was forced: %v", tool, payload)
+	}
+	if !strings.HasPrefix(line, "elided: ") {
+		t.Errorf("%s: elision = %q, want prefix \"elided: \"", tool, line)
+	}
+	if !strings.Contains(line, "refine with "+refineWith) {
+		t.Errorf("%s: elision = %q, want it to name refinement %q", tool, line, refineWith)
+	}
+}
+
+// TestTextElisionToolsDiscloseOnOverflow proves, live, that every tool in
+// textElisionTools (RC-19) truncates and discloses via elisionLine when
+// forced — the registry-iteration counterpart to TestEveryTruncatingToolDiscloses'
+// assertElided calls, using a plain-text line instead of the `elided` object.
+func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
+	// find_callers: a fan-in far too large for one budget, but nowhere near
+	// scope_required's much higher threshold.
+	callers := make([]core.SymbolNode, 250)
+	for i := range callers {
+		pkg := fmt.Sprintf("internal/svc/pkg%02d", i%12)
+		callers[i] = core.SymbolNode{
+			Package: pkg, Name: fmt.Sprintf("handleRequest%04d", i), Kind: core.KindGoFunc,
+			FilePath: pkg + "/handler.go", Line: i + 1,
+		}
+	}
+	fcSrv := NewServer(&elisionFakeBackend{callers: callers})
+	fcResp := callTool(t, fcSrv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	if fcResp["scope_required"] == true {
+		t.Fatalf("find_callers: scope_required unexpectedly true for a 250-row fan-in: %v", fcResp)
+	}
+	assertElisionLine(t, "find_callers", fcResp, "package or file")
+
+	// outline: many symbols in one file.
+	outlineNodes := make([]core.SymbolNode, 600)
+	for i := range outlineNodes {
+		outlineNodes[i] = core.SymbolNode{
+			Package: "pkg", Name: fmt.Sprintf("Func%04d", i), Kind: core.KindGoFunc,
+			FilePath: "big/file.go", Line: i + 1, Signature: "func()",
+		}
+	}
+	outlineSrv := NewServer(&elisionFakeBackend{nodes: outlineNodes})
+	assertElisionLine(t, "outline", callTool(t, outlineSrv, "outline", map[string]any{"service": "svc", "file": "big/file.go"}), "depth or kinds")
+
+	// symbol_context: many callers of one shared symbol.
+	scNodes := make([]core.SymbolNode, 401)
+	scNodes[0] = core.SymbolNode{Package: "pkg", Name: "Shared", Kind: core.KindGoFunc, FilePath: "pkg/shared.go", Line: 1}
+	for i := 1; i < len(scNodes); i++ {
+		pkg := fmt.Sprintf("pkg%02d", i%10)
+		scNodes[i] = core.SymbolNode{
+			Package: pkg, Name: fmt.Sprintf("Caller%04d", i), Kind: core.KindGoFunc,
+			FilePath: pkg + "/caller.go", Line: i, Calls: []string{"Shared"},
+		}
+	}
+	scSrv := NewServer(&elisionFakeBackend{nodes: scNodes})
+	assertElisionLine(t, "symbol_context", callTool(t, scSrv, "symbol_context", map[string]any{"service": "svc", "symbol": "Shared", "snippet": false}), "depth")
+
+	// staleness_report: many distinct source files.
+	srNodes := make([]core.SymbolNode, 1200)
+	for i := range srNodes {
+		srNodes[i] = core.SymbolNode{
+			Package: fmt.Sprintf("pkg%04d", i), Name: "Func", Kind: core.KindGoFunc,
+			FilePath: fmt.Sprintf("pkg%04d/file.go", i), Line: 1,
+		}
+	}
+	srSrv := NewServer(&elisionFakeBackend{nodes: srNodes})
+	assertElisionLine(t, "staleness_report", callTool(t, srSrv, "staleness_report", map[string]any{"service": "svc"}), "service or limit")
 }
 
 // ─── BA-2: the arithmetic is checked at construction ────────────────────────

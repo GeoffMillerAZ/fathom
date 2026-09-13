@@ -149,7 +149,7 @@ func renderReferenceOccurrence(o occEntry, includeService bool) referenceOccurre
 func registerReferences(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "references",
-		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. query must be an identifier (\"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true) — a free-text fragment (e.g. \"func (s *\") is refused, naming the three accepted forms. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Each occurrence is rendered compact for the wire — {loc: \"file:line\", text (trimmed to 60 chars), c: \"r\"|\"h\"} at 100 bytes or under — with service, tier (always pre-scan) and depth (always 1) lifted to the envelope (occurrence_service, occurrence_tier, occurrence_depth) when uniform across every occurrence rather than repeated per row; a search whose results span several services keeps a per-row \"svc\" instead. Definitions keep the fuller {service,symbol,file,line,tier,depth,edge_confidence} shape. Default max is 25 occurrences; the elided block names how to get more. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. SB-45: occurrences default to `exact` mode whenever a queried service's last ingest reported typed edges (see staleness_report's typed_edges) — only typed-confirmed (edge_confidence: resolved) mentions are returned, dropping bare text hits; `exact: false` restores every text occurrence regardless of confirmation. `include_heuristic: true` adds the syntax-only text hits back beside the exact ones without turning exact off. A service whose store holds no typed reference sites for this query (no typed edges, or no indexed definition of it there) is named in `degraded` with why and falls back to its unfiltered occurrences, and the response reports `exact_available: false`. A service whose root is unreadable (deleted, unmounted) is likewise named in `degraded` and skipped rather than failing the whole call. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
+		Description: "Fleet-wide occurrence search: find every mention of a query string across code, docs, and config for one or more services. query must be an identifier (\"FindMe\"), a dotted path (\"pkg.Sym\" or \"Type.Method\"), or a declared regular expression (regex: true) — a free-text fragment (e.g. \"func (s *\") is refused, naming the three accepted forms. Returns structured occurrences (text matches, tier=pre-scan) plus symbol definitions found in the index (tier from the symbol's own evidence tier). Definitions are exact-name matches by default; include_heuristic: true also lists symbols whose name merely contains the query. Each occurrence is rendered compact for the wire — {loc: \"file:line\", text (trimmed to 60 chars), c: \"r\"|\"h\"} at 100 bytes or under — with service, tier (always pre-scan) and depth (always 1) lifted to the envelope (occurrence_service, occurrence_tier, occurrence_depth) when uniform across every occurrence rather than repeated per row; a search whose results span several services keeps a per-row \"svc\" instead. Definitions keep the fuller {service,symbol,file,line,tier,depth,edge_confidence} shape. Default max is 25 occurrences; the elided block names how to get more. Every row carries depth (0 = a definition, 1 = a mention) and edge_confidence (resolved = the mention's enclosing symbol has a typed call edge to the definition, or the definition is at the verified tier; heuristic = text match only), summarised in by_depth. SB-45: occurrences default to `exact` mode whenever a queried service's last ingest reported typed edges (see staleness_report's typed_edges) — only typed-confirmed (edge_confidence: resolved) mentions are returned, dropping bare text hits; `exact: false` restores every text occurrence regardless of confirmation. `include_heuristic: true` adds the syntax-only text hits back beside the exact ones without turning exact off. A service whose store holds no typed reference sites for this query (no typed edges, or no indexed definition of it there) is named in `degraded` with why and falls back to its unfiltered occurrences, and the response reports `exact_available: false`. A service whose root is unreadable (deleted, unmounted) is likewise named in `degraded` and skipped rather than failing the whole call. A definition fan-in too large to page through at all (a generic name across many packages/services) returns scope_required: true with the count and top_packages instead of rows. Reach for it when you need every place a name appears — docs and config included — not just the call graph. Required: query.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -307,6 +307,10 @@ func registerReferences(s *Server, backend QueryInterface) {
 		var degraded []degradedEntry
 		truncated := false
 		exactAvailable := true
+		// RC-20: tallies definitions by package as they are found, so a
+		// generic name (huge fan-in across many packages/services) can be
+		// summarized instead of listed, without a second pass over nodes.
+		byPkg := make(map[string]int)
 
 		for _, svc := range svcs {
 			// ── definitions: symbol index lookup ─────────────────────────────
@@ -348,6 +352,11 @@ func registerReferences(s *Server, backend QueryInterface) {
 						EdgeConfidence: string(conf),
 					})
 					defKeys = append(defKeys, n.Key())
+					pkg := n.Package
+					if pkg == "" {
+						pkg = svc
+					}
+					byPkg[pkg]++
 				}
 			}
 
@@ -423,6 +432,30 @@ func registerReferences(s *Server, backend QueryInterface) {
 			if len(occs) >= maxOccs {
 				truncated = true
 			}
+		}
+
+		// RC-20: a definition fan-in this large (a generic name matched
+		// across many packages/services) would never fit even a paged
+		// answer — return the shape of the answer instead of rows.
+		// Occurrences are already hard-capped at maxOccs above, so
+		// definitions (uncapped until now) are the runaway signal.
+		if need, sum := scopeRequired(len(defs), scopeRequiredBudget, byPkg); need {
+			return map[string]any{
+				"query":          p.Query,
+				"definitions":    []any{},
+				"occurrences":    []any{},
+				"count":          sum.Count,
+				"edge_filter":    map[bool]string{true: "all", false: "resolved"}[p.IncludeHeuristic],
+				"truncated":      true,
+				"by_depth":       []any{},
+				"exact":          exact,
+				"scope_required": true,
+				"top_packages":   sum.TopPackages,
+				"message": fmt.Sprintf(
+					"%d definitions named %q exceed the budget — too many to page through; scope with \"services\", or a dotted path (\"pkg.%s\") instead of a bare identifier.",
+					sum.Count, p.Query, p.Query,
+				),
+			}, nil
 		}
 
 		// SB-1/BA-1: ONE disclosure for both caps. totalOccs is every

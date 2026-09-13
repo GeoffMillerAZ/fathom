@@ -189,7 +189,7 @@ func registerServerStats(s *Server) {
 func registerStalenessReport(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "staleness_report",
-		Description: "Return a staleness summary for a service (source files, last-ingested state, and git commit drift). Reach for it when an answer looks wrong for the code you are looking at: it says whether the index lags the working tree and whether to re-ingest. Required: service.",
+		Description: "Return a staleness summary for a service (source files, last-ingested state, and git commit drift). Budgeted; the elision line names the refinement (service or limit). Reach for it when an answer looks wrong for the code you are looking at: it says whether the index lags the working tree and whether to re-ingest. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -243,13 +243,22 @@ func registerStalenessReport(s *Server, backend QueryInterface) {
 			}
 		}
 
+		// RC-19: no budget line existed for staleness_report before this
+		// row — measured 46,567 B for a large service's source list on
+		// this repo's own index. source_count stays the TRUE total (an
+		// honest summary is never truncated); only the listed "sources"
+		// rows are capped.
+		listedSources, elidedCount := fitToolBudget(sources, defaultCharBudget)
 		resp := map[string]any{
 			"service":              p.Service,
 			"source_count":         len(sources),
-			"sources":              stringsToAny(sources),
+			"sources":              stringsToAny(listedSources),
 			"indexed_commit":       indexedCommit,
 			"current_commit":       currentCommit,
 			"reingest_recommended": reingestRecommended,
+		}
+		if line := elisionLine(elidedCount, "service or limit"); line != "" {
+			resp["elision"] = line
 		}
 		// BP-35: the typed-edge pass outcome for this service, when the
 		// backend can report it. `known: false` is the honest "no ingest

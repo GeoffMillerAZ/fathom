@@ -88,7 +88,7 @@ const symbolContextSnippetMaxLines = 40
 func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend) {
 	s.registerTool(toolDescriptor{
 		Name:        "symbol_context",
-		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload). This result IS the answer for a symbol's immediate neighbourhood — a follow-up call only helps once you need lines beyond the 40-line snippet cap (read_source) or a DIFFERENT symbol's neighbourhood, never to re-fetch this one. Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
+		Description: "Return the neighbourhood context for a symbol: its definition, direct callers, direct callees, related tests, and (when readable) an inline source snippet of the definition capped at 40 lines — snippet_truncated:true marks a snippet that stopped at the cap with more file below it. Pass snippet:false to omit the snippet entirely (smaller payload). This result IS the answer for a symbol's immediate neighbourhood — a follow-up call only helps once you need lines beyond the 40-line snippet cap (read_source) or a DIFFERENT symbol's neighbourhood, never to re-fetch this one. Budgeted; the elision line names the refinement (depth). Reach for it when you have located a symbol and need its neighbourhood — definition, callers, callees, tests, source — in one call before changing it. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -137,11 +137,20 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			}
 			defDTO = &d
 		}
+		// RC-19: no budget line existed for symbol_context before this row
+		// — callers/callees are the fields a hot, widely-called symbol can
+		// blow up. Each gets its own half of the budget; the two counts
+		// combine into one elision line (both name the same refinement).
+		callers, callersElided := fitToolBudget(sctx.Callers, defaultCharBudget/2)
+		callees, calleesElided := fitToolBudget(sctx.Callees, defaultCharBudget/2)
 		result := map[string]any{
 			"def":           defDTO,
-			"callers":       stringsToAny(sctx.Callers),
-			"callees":       stringsToAny(sctx.Callees),
+			"callers":       stringsToAny(callers),
+			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
+		}
+		if line := elisionLine(callersElided+calleesElided, "depth"); line != "" {
+			result["elision"] = line
 		}
 
 		// Inline definition snippet (T5-6): additive, honest-absence field —
@@ -241,7 +250,7 @@ func kindLabeledEdges(details []callgraph.EdgeInfo) []any {
 func registerOutline(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "outline",
-		Description: "List all symbols defined in a specific file, ordered by line number. Reach for it when you need a file's structure — every definition with its line — without reading the whole file. Required: service, file.",
+		Description: "List all symbols defined in a specific file, ordered by line number. Reach for it when you need a file's structure — every definition with its line — without reading the whole file. Budgeted; the elision line names the refinement (depth or kinds). Required: service, file.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -273,7 +282,15 @@ func registerOutline(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
 		outlined := symbolnav.Outline(nodes, p.File)
-		return map[string]any{"symbols": toNodeDTOs(outlined)}, nil
+		// RC-19: no budget line existed for outline before this row —
+		// measured 16,778 B for internal/core/model.go on this repo's own
+		// index. Keep whole rows up to budget, then a one-line elision.
+		symbols, elidedCount := fitToolBudget(toNodeDTOs(outlined), defaultCharBudget)
+		resp := map[string]any{"symbols": symbols}
+		if line := elisionLine(elidedCount, "depth or kinds"); line != "" {
+			resp["elision"] = line
+		}
+		return resp, nil
 	})
 }
 

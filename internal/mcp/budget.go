@@ -1,6 +1,9 @@
 package mcp
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // defaultCharBudget bounds a list-returning tool's payload so a single result
 // can never blow the caller's token budget. Real sessions hit this: a
@@ -53,4 +56,38 @@ func applyBudget[T any](items []T, maxChars int, ordering, howToGetMore string) 
 		return kept, nil
 	}
 	return kept, elisionFor(len(kept), len(items), ordering, howToGetMore)
+}
+
+// fitToolBudget generalizes fitToBudget/applyBudget's row-cutting discipline
+// (RC-19) to the tools that had NO budget line at all before this row:
+// find_callers, outline, symbol_context, and staleness_report — each
+// measured well past defaultCharBudget on a real corpus (find_callers("run")
+// 28,206 B, outline(internal/core/model.go) 16,778 B, staleness_report
+// 46,567 B). A non-positive maxChars uses defaultCharBudget. Returns the
+// kept prefix and how many items were cut — 0 when nothing was — so the
+// caller can pair the count with elisionLine to render the one-line
+// disclosure. Deterministic (BA-3's nested-prefix property): the cut point
+// depends only on items' own order and maxChars, so a stable input ordering
+// (already required of every tool here) elides the same tail every time.
+func fitToolBudget[T any](items []T, maxChars int) ([]T, int) {
+	kept, truncated := fitToBudget(items, maxChars)
+	if !truncated {
+		return kept, 0
+	}
+	return kept, len(items) - len(kept)
+}
+
+// elisionLine renders fitToolBudget's cut count as the one-line disclosure
+// RC-19 asks for: "elided: N more — refine with <refineWith>" — deliberately
+// plainer than BA-1's structured `elided` object (elisionFor), since these
+// four tools have no existing consumer parsing that shape. refineWith names
+// the tool's OWN scoping angle (e.g. "package or file" for find_callers) so
+// the hint is never generic filler; it need not be a literal parameter name
+// when the tool has none — narrowing the query itself is a valid refinement
+// too. Returns "" when elided <= 0 — never attach an empty line.
+func elisionLine(elided int, refineWith string) string {
+	if elided <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("elided: %d more — refine with %s", elided, refineWith)
 }

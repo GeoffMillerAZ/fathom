@@ -21,6 +21,7 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+<<<<<<< HEAD
 **context-bench: a clean room, a search-receipt reading, and per-task
 replication floors (RC-7/RC-17/RC-18, vision 28 §2.2/§2.4).**
 `scripts/context-bench.sh` now runs every `claude -p` call with
@@ -106,6 +107,14 @@ every session, not only from session 2. `scenariobench plan --escalate
 --margin` reads the ledger and lists the n=2 cells whose treatment/control
 delta sits within margin of the criterion's own thresholds, so n≥3 is spent
 only where it would decide.
+
+- `find_callers`, `outline`, `symbol_context`, and `staleness_report` are now budgeted
+  (`fitToolBudget`, RC-19): a truncated answer keeps whole rows and carries a one-line
+  `elision` naming the tool's own refinement; `repo_map` gains the same line alongside its
+  existing `elided` block. `find_callers` and `references` add a `scope_required` escape
+  hatch (RC-20) for a fan-in too large to page through at all (a generic name's matches
+  across a fleet): the response carries the true count and the top ≤8 packages instead of
+  any rows.
 
 **The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
 `docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards

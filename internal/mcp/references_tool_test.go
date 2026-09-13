@@ -197,6 +197,58 @@ func TestReferences_MaxCap_Truncated(t *testing.T) {
 	}
 }
 
+// TestReferences_ScopeRequired is RC-20's golden test for references: a
+// generic definition name (e.g. "String") matched across many packages is a
+// fan-in no page of rows would resolve — the tool returns the count and top
+// packages instead. Occurrences are already hard-capped at maxOccs, so the
+// runaway signal is definitions, which had no cap at all before this row.
+func TestReferences_ScopeRequired(t *testing.T) {
+	const n, numPkgs = 1500, 12
+	nodes := make([]core.SymbolNode, n)
+	for i := 0; i < n; i++ {
+		pkg := fmt.Sprintf("internal/service/pkg%02d", i%numPkgs)
+		nodes[i] = core.SymbolNode{
+			Service:  "svc",
+			Package:  pkg,
+			Name:     "String",
+			Kind:     core.KindGoFunc,
+			FilePath: fmt.Sprintf("%s/x%04d.go", pkg, i),
+			Line:     i + 1,
+			Tier:     core.TierVerified,
+		}
+	}
+	be := &extendedFakeBackend{nodes: nodes, services: []string{"svc"}}
+	srv := mcp.NewServer(be)
+
+	payload := callTool(t, srv, "references", map[string]any{"query": "String"})
+
+	if payload["scope_required"] != true {
+		t.Fatalf("scope_required = %v, want true for a %d-definition fan-in", payload["scope_required"], n)
+	}
+	defs, ok := payload["definitions"].([]any)
+	if !ok || len(defs) != 0 {
+		t.Errorf("definitions = %v, want empty when scope_required", payload["definitions"])
+	}
+	occs, ok := payload["occurrences"].([]any)
+	if !ok || len(occs) != 0 {
+		t.Errorf("occurrences = %v, want empty when scope_required", payload["occurrences"])
+	}
+	if count, _ := payload["count"].(float64); int(count) != n {
+		t.Errorf("count = %v, want %d", payload["count"], n)
+	}
+	tops, ok := payload["top_packages"].([]any)
+	if !ok || len(tops) != 8 {
+		t.Fatalf("top_packages = %v, want 8 entries", payload["top_packages"])
+	}
+	first := tops[0].(map[string]any)
+	if first["package"] != "internal/service/pkg00" {
+		t.Errorf("top_packages[0].package = %v, want pkg00 (every package ties at n/numPkgs, tie-break by name)", first["package"])
+	}
+	if msg, _ := payload["message"].(string); msg == "" {
+		t.Error("message missing for scope_required response")
+	}
+}
+
 func TestReferences_ServiceFilter(t *testing.T) {
 	srv, query := newReferencesSrv()
 	resp := roundtrip(t, srv, request{

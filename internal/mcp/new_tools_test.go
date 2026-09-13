@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -119,6 +120,69 @@ func newDispatchSrv() *mcp.Server {
 		services:   []string{"svc"},
 		typedEdges: dispatchFixtureTypedEdges(),
 	})
+}
+
+// bigFileNodes builds n synthetic symbols all defined in the SAME file, for
+// outline's RC-19 budget-elision proof.
+func bigFileNodes(n int) []core.SymbolNode {
+	nodes := make([]core.SymbolNode, n)
+	for i := 0; i < n; i++ {
+		nodes[i] = core.SymbolNode{
+			Service: "svc", Package: "pkg", Name: fmt.Sprintf("Func%04d", i),
+			Kind: core.KindGoFunc, FilePath: "big/file.go", Line: i + 1,
+			Signature: "func()",
+		}
+	}
+	return nodes
+}
+
+// manyCallersOfShared builds n synthetic symbols across numPkgs packages,
+// each calling the single symbol "Shared" — for symbol_context's RC-19
+// budget-elision proof (a huge "callers" list).
+func manyCallersOfShared(n, numPkgs int) []core.SymbolNode {
+	nodes := make([]core.SymbolNode, n+1)
+	nodes[0] = core.SymbolNode{
+		Service: "svc", Package: "pkg", Name: "Shared",
+		Kind: core.KindGoFunc, FilePath: "pkg/shared.go", Line: 1,
+	}
+	for i := 0; i < n; i++ {
+		pkg := fmt.Sprintf("pkg%02d", i%numPkgs)
+		nodes[i+1] = core.SymbolNode{
+			Service: "svc", Package: pkg, Name: fmt.Sprintf("Caller%04d", i),
+			Kind: core.KindGoFunc, FilePath: fmt.Sprintf("%s/caller.go", pkg), Line: i + 1,
+			Calls: []string{"Shared"},
+		}
+	}
+	return nodes
+}
+
+// manyFileNodes builds n synthetic symbols each in its OWN file, for
+// staleness_report's RC-19 budget-elision proof (a huge "sources" list).
+func manyFileNodes(n int) []core.SymbolNode {
+	nodes := make([]core.SymbolNode, n)
+	for i := 0; i < n; i++ {
+		nodes[i] = core.SymbolNode{
+			Service: "svc", Package: fmt.Sprintf("pkg%04d", i), Name: "Func",
+			Kind: core.KindGoFunc, FilePath: fmt.Sprintf("pkg%04d/file.go", i), Line: 1,
+		}
+	}
+	return nodes
+}
+
+// assertRC19Elision checks the RC-19 plain-text elision line's shape:
+// "elided: N more — refine with <refineWith>".
+func assertRC19Elision(t *testing.T, payload map[string]any, refineWith string) {
+	t.Helper()
+	line, ok := payload["elision"].(string)
+	if !ok || line == "" {
+		t.Fatalf("elision missing or not a string: %v", payload)
+	}
+	if !strings.HasPrefix(line, "elided: ") {
+		t.Errorf("elision = %q, want prefix \"elided: \"", line)
+	}
+	if !strings.Contains(line, "refine with "+refineWith) {
+		t.Errorf("elision = %q, want it to name refinement %q", line, refineWith)
+	}
 }
 
 // ─── helper ──────────────────────────────────────────────────────────────────
@@ -277,6 +341,29 @@ func TestSymbolContext_MissingService(t *testing.T) {
 	}
 }
 
+// TestSymbolContext_BudgetElision is RC-19's proof for symbol_context: a
+// symbol called by far more callers than fit one budget is truncated to a
+// whole-row prefix (across "callers") plus a one-line elision.
+func TestSymbolContext_BudgetElision(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    manyCallersOfShared(400, 10),
+		services: []string{"svc"},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 224, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "symbol_context",
+			"arguments": map[string]any{"service": "svc", "symbol": "Shared", "snippet": false},
+		},
+	})
+	p := extToolPayload(t, resp)
+	callers, ok := p["callers"].([]any)
+	if !ok || len(callers) == 0 || len(callers) >= 400 {
+		t.Fatalf("callers = %d rows, want a nonzero partial prefix < 400", len(callers))
+	}
+	assertRC19Elision(t, p, "depth")
+}
+
 // ─── outline ──────────────────────────────────────────────────────────────────
 
 func TestOutline_Basic(t *testing.T) {
@@ -315,6 +402,29 @@ func TestOutline_MissingParams(t *testing.T) {
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
 	}
+}
+
+// TestOutline_BudgetElision is RC-19's proof for outline: a file with far
+// more symbols than fit one budget is truncated to a whole-row prefix plus
+// a one-line elision naming the refinement.
+func TestOutline_BudgetElision(t *testing.T) {
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    bigFileNodes(600),
+		services: []string{"svc"},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 232, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "outline",
+			"arguments": map[string]any{"service": "svc", "file": "big/file.go"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	symbols, ok := p["symbols"].([]any)
+	if !ok || len(symbols) == 0 || len(symbols) >= 600 {
+		t.Fatalf("symbols = %d rows, want a nonzero partial prefix < 600", len(symbols))
+	}
+	assertRC19Elision(t, p, "depth or kinds")
 }
 
 // ─── entrypoints ──────────────────────────────────────────────────────────────
@@ -584,6 +694,34 @@ func TestStalenessReport_MissingService(t *testing.T) {
 	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
 		t.Errorf("code = %v, want %v", code, mcp.ErrCodeParams)
 	}
+}
+
+// TestStalenessReport_BudgetElision is RC-19's proof for staleness_report: a
+// service with far more distinct source files than fit one budget is
+// truncated to a whole-row prefix of "sources" plus a one-line elision —
+// while source_count stays the TRUE, un-truncated total.
+func TestStalenessReport_BudgetElision(t *testing.T) {
+	const n = 1200
+	srv := mcp.NewServer(&extendedFakeBackend{
+		nodes:    manyFileNodes(n),
+		services: []string{"svc"},
+	})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 322, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "staleness_report",
+			"arguments": map[string]any{"service": "svc"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	if count, _ := p["source_count"].(float64); int(count) != n {
+		t.Errorf("source_count = %v, want %d (the TRUE total, never truncated)", p["source_count"], n)
+	}
+	sources, ok := p["sources"].([]any)
+	if !ok || len(sources) == 0 || len(sources) >= n {
+		t.Fatalf("sources = %d rows, want a nonzero partial prefix < %d", len(sources), n)
+	}
+	assertRC19Elision(t, p, "service or limit")
 }
 
 // ─── meta: list_sources ───────────────────────────────────────────────────────

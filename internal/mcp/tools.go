@@ -9,6 +9,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
@@ -113,7 +114,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// find_callers — k-hop callers of a symbol.
 	s.registerTool(toolDescriptor{
 		Name:        "find_callers",
-		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Each caller is rendered compact for the wire (SB-47, like references' SB-1): {loc: \"file:line name\", c: \"r\"|\"h\"} — no signature unless with_signatures: true — with service/tier/depth/edge_confidence lifted to the envelope (caller_service, caller_tier, caller_depth, caller_edge_confidence) whenever every listed caller shares one, which the direct \"callers\" list almost always does. edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers (full {key,depth,edge_confidence} rows, uncompacted); by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth), add the heuristic edges this default omits (include_heuristic: true), or get full signatures (with_signatures: true), never to re-confirm what a resolved edge already settled. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
+		Description: "Find every symbol that calls the named symbol in one service. Returns only RESOLVED callers by default (edges the Go typed pass confirmed); include_heuristic: true adds the syntax-only ones back. Each caller is rendered compact for the wire (SB-47, like references' SB-1): {loc: \"file:line name\", c: \"r\"|\"h\"} — no signature unless with_signatures: true — with service/tier/depth/edge_confidence lifted to the envelope (caller_service, caller_tier, caller_depth, caller_edge_confidence) whenever every listed caller shares one, which the direct \"callers\" list almost always does. edge_filter names which evidence answered, and a corpus with no typed edges falls back to \"all\". depth > 1 adds transitive_callers (full {key,depth,edge_confidence} rows, uncompacted); by_depth summarises. This result IS the answer for who calls this symbol at the requested depth — a follow-up call only helps to walk further (raise depth), add the heuristic edges this default omits (include_heuristic: true), or get full signatures (with_signatures: true), never to re-confirm what a resolved edge already settled. Budgeted; the elision line names the refinement (package or file). A fan-in too large to page through at all returns scope_required: true with the count and top_packages instead of rows. Reach for it when you need who-calls-this before changing a signature. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -227,6 +228,30 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				}
 			}
 		}
+		// RC-20: a fan-in this large would never fit even a paged answer
+		// (fitToolBudget below already handles the ordinary "busy
+		// function" case) — a generic name's callers spread across a
+		// whole fleet. Return the shape of the answer instead of rows:
+		// the count and the packages driving it.
+		byPkg := make(map[string]int, len(nodes))
+		for _, n := range nodes {
+			byPkg[n.Package]++
+		}
+		if need, sum := scopeRequired(len(nodes), scopeRequiredBudget, byPkg); need {
+			return map[string]any{
+				"callers":        []any{},
+				"edge_filter":    edgeFilter,
+				"by_depth":       []any{},
+				"scope_required": true,
+				"count":          sum.Count,
+				"top_packages":   sum.TopPackages,
+				"message": fmt.Sprintf(
+					"%d callers exceed the budget — too many to page through; scope with a more specific symbol, or inspect top_packages below.",
+					sum.Count,
+				),
+			}, nil
+		}
+
 		callers := toNodeDTOs(nodes)
 		infos := make([]depthInfo, 0, len(callers))
 		listed := make(map[string]bool, len(callers))
@@ -256,7 +281,16 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 			wireCallers[i] = renderCallerEntry(n, p.WithSignatures)
 		}
 		env := uniformCallerFields(callers)
+
+		// RC-19: keep whole rows up to budget, then a one-line elision
+		// naming the refinement — the direct "callers" list had no
+		// budget line at all before this row.
+		var elidedCount int
+		wireCallers, elidedCount = fitToolBudget(wireCallers, defaultCharBudget)
 		result := map[string]any{"callers": wireCallers, "edge_filter": edgeFilter}
+		if line := elisionLine(elidedCount, "package or file"); line != "" {
+			result["elision"] = line
+		}
 		if env.ServiceUniform {
 			result["caller_service"] = env.Service
 		}

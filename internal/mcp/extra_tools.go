@@ -1098,7 +1098,7 @@ func registerCrossRepoBlastRadius(s *Server, backend QueryInterface) {
 func registerRepoMap(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "repo_map",
-		Description: "Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. Reach for it when you need the shape of a service you have never seen — the most-connected symbols first, within a token budget. Required: service.",
+		Description: "Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. Budgeted; the elision line names the refinement (budget or package). Reach for it when you need the shape of a service you have never seen — the most-connected symbols first, within a token budget. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -1138,6 +1138,13 @@ func registerRepoMap(s *Server, backend QueryInterface) {
 		resp := map[string]any{"map": mapStr, "budget": budget}
 		if el := elisionFor(included, len(nodes), "outbound call-edge count, most-connected first, ties by package+name", "re-call with a larger budget"); el != nil {
 			resp["elided"] = el
+			// RC-19: the same one-line disclosure the other four newly-
+			// budgeted tools carry, alongside (not instead of) the existing
+			// structured "elided" block above — repo_map already had a
+			// working disclosure; this just makes its wording uniform.
+			if line := elisionLine(len(nodes)-included, "budget or package"); line != "" {
+				resp["elision"] = line
+			}
 		}
 		return resp, nil
 	})
