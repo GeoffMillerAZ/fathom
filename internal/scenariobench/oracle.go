@@ -464,7 +464,7 @@ func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string)
 		cmd = exec.CommandContext(ctx, "sh", "-c", cmdStr)
 	}
 	cmd.Dir = wt.Path
-	cmd.Env = SubjectEnv(wt.Path, nil)
+	cmd.Env = SubjectEnv(wt.Path, oracleEnv(task))
 	out, runErr := cmd.CombinedOutput() // a failing test set is a normal, expected exit != 0
 
 	outputRef = filepath.Join(wt.CellDir, "oracle-test-output-"+shortHash(cmdStr)[:8]+".txt")
@@ -491,7 +491,7 @@ func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string)
 func runDetector(ctx context.Context, wt Worktree, d Detector) (DetectorResult, error) {
 	cmd := exec.CommandContext(ctx, "sh", "-c", d.Command)
 	cmd.Dir = wt.Path
-	cmd.Env = SubjectEnv(wt.Path, nil)
+	cmd.Env = SubjectEnv(wt.Path, oracleEnv(task))
 	out, err := cmd.CombinedOutput()
 	exit := 0
 	if err != nil {
@@ -537,4 +537,13 @@ func goTestRunPattern(names []string) string {
 // shellSingleQuoteEscape makes s safe inside a single-quoted sh word.
 func shellSingleQuoteEscape(s string) string {
 	return strings.ReplaceAll(s, "'", `'\''`)
+}
+
+// oracleEnv is what a detector or test command may rely on beyond the
+// subject environment: SCENARIO_BASE_COMMIT, so a change-present check can
+// diff against base whether or not the agent committed (`git diff` alone
+// is empty after a commit, and a single-file diff misses a change the
+// agent made elsewhere — guards-adr-pilot-1, 2026-09-13).
+func oracleEnv(task Task) map[string]string {
+	return map[string]string{"SCENARIO_BASE_COMMIT": task.Subject.BaseCommit}
 }
