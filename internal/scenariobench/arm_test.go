@@ -119,6 +119,30 @@ func TestRenderArm_WiredWithBareHookCommandIsAnError(t *testing.T) {
 	}
 }
 
+// TestRenderArm_WiredIgnoresSubjectsOwnBareHooks: a subject repository may
+// commit its own bare `fathom …` hooks under events fathom init does not
+// own (the fathom repo does, for ConfigChange and InstructionsLoaded). Those
+// are the subject's business — only the entries init writes must name the
+// cell's binary.
+func TestRenderArm_WiredIgnoresSubjectsOwnBareHooks(t *testing.T) {
+	dir := t.TempDir()
+	claudeDir := filepath.Join(dir, ".claude")
+	if err := os.MkdirAll(claudeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	settings := `{"hooks":{
+	  "ConfigChange":[{"hooks":[{"type":"command","command":"fathom config audit --hook"}]}],
+	  "PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"fathom edit-hook --pre"}]}],
+	  "SessionStart":[{"hooks":[{"type":"command","command":"/cells/x/fathom session-hook"}]}],
+	  "PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"/cells/x/fathom edit-hook"}]}],
+	  "Stop":[{"hooks":[{"type":"command","command":"/cells/x/fathom stop-hook"}]}]
+	}}`
+	writeTestFile(t, filepath.Join(claudeDir, "settings.json"), settings)
+	if _, err := RenderArm(Arm{Wired: true, Instructions: "none"}, dir); err != nil {
+		t.Fatalf("a subject's own bare hooks under un-owned events must not fail the wired arm: %v", err)
+	}
+}
+
 // TestRenderArm_WiredKeepsRealFathomInitHooks is the CRITICAL defect's own
 // end-to-end regression proof: build the REAL fathom binary, run the REAL
 // `fathom init` against a temp worktree exactly as PrepareSubject's

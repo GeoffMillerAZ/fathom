@@ -329,7 +329,22 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 		return fmt.Errorf("wiring scratch daemon: %w", err)
 	}
 
-	if out, err := runIn(ctx, wt.Path, bin, "init", "--path", wt.Path, "--service", service, "--url", wt.DaemonURL, "--harness", "claude-code", "--json"); err != nil {
+	// --hooks-scope project: a wired cell's session runs under
+	// `claude --restricted --settings <this worktree's .claude/settings.json>`
+	// (docs/bench/scenarios.md "The clean room"), which never sees Claude
+	// Code USER-scope hooks — so on any machine where fathom's hooks are
+	// already wired globally (the operator's own dev machine, most often),
+	// init's default `auto` scope would skip writing them at PROJECT scope
+	// as "already wired at user scope", and the cell would run with none
+	// of fathom's hooks at all. Forcing project scope here is what makes
+	// assertWiredHooksPresent's promise (RenderArm never invents a hook
+	// stand-in; `fathom init` already wrote the real one) true regardless
+	// of the machine running the bench.
+	out, err := runIn(ctx, wt.Path, bin, "init", "--path", wt.Path, "--service", service, "--url", wt.DaemonURL, "--harness", "claude-code", "--hooks-scope", "project", "--json")
+	if err != nil {
+		return fmt.Errorf("wiring scratch daemon: fathom init: %w (%s)", err, out)
+	}
+	if err := checkInitJSON(out); err != nil {
 		return fmt.Errorf("wiring scratch daemon: fathom init: %w (%s)", err, out)
 	}
 

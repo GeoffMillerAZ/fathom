@@ -302,10 +302,13 @@ working directory; `--disable-slash-commands` removes skills on top.
 (`SessionRequest.SettingsPath`) — for a wired arm this is the file `fathom
 init` (`PrepareSubject`'s `wireScratchDaemon`, BEFORE `RenderArm` runs)
 already wrote with the real hook stack (SessionStart/PreToolUse/
-PostToolUse/Stop, each naming the cell's own binary); `RenderArm` only
-asserts that file still carries a `hooks.SessionStart` entry
-(`assertWiredHooksPresent`), it never writes or replaces the hooks key
-itself. (A first version of `RenderArm` overwrote that file with a
+PostToolUse/Stop, each naming the cell's own binary) — via `fathom init
+--hooks-scope project`, so a hook already wired at the OPERATOR machine's
+Claude Code user scope (invisible to `--restricted --settings <file>`,
+which reads only that file) still lands in the settings file the cell's
+session actually gets; `RenderArm` only asserts that file still carries a
+`hooks.SessionStart` entry (`assertWiredHooksPresent`), it never writes or
+replaces the hooks key itself. (A first version of `RenderArm` overwrote that file with a
 one-hook stand-in naming a fathom subcommand that does not exist —
 `obligations-hook` — so every wired cell ran with none of fathom's real
 hooks; the instrument-truth gate now also fails a cell whose transcript

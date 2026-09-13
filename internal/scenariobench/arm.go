@@ -208,13 +208,25 @@ func assertWiredHooksPresent(path string) error {
 	return nil
 }
 
-// firstBareHookCommand walks every hook entry in a Claude Code
-// hooks-object (event -> [{matcher, hooks:[{command,...}]}]) and returns
-// the first command whose leading token has no "/" — a bare name that
-// would resolve through PATH at run time instead of naming a specific
-// binary. "" when every command is a path.
+// initOwnedHookEvents are the events `fathom init` writes for a wired cell
+// (cmd/fathom/init.go fathomHookSpecs). The bare-command check below looks
+// only at these: a subject repository's own pre-existing entries under other
+// events (the fathom repo itself commits bare `fathom …` hooks for
+// ConfigChange and InstructionsLoaded, for example) are the subject's
+// business and part of what "wired" means on that subject.
+var initOwnedHookEvents = []string{"SessionStart", "PostToolUse", "Stop"}
+
+// firstBareHookCommand walks the hook entries `fathom init` owns in a Claude
+// Code hooks-object (event -> [{matcher, hooks:[{command,...}]}]) and
+// returns the first command whose leading token has no "/" — a bare name
+// that would resolve through PATH at run time instead of naming the cell's
+// own binary. "" when every owned command is a path.
 func firstBareHookCommand(hooksObj map[string]any) string {
-	for _, groupsRaw := range hooksObj {
+	for _, event := range initOwnedHookEvents {
+		groupsRaw, ok := hooksObj[event]
+		if !ok {
+			continue
+		}
 		groups, _ := groupsRaw.([]any)
 		for _, g := range groups {
 			gm, ok := g.(map[string]any)

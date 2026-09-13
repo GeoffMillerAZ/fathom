@@ -720,3 +720,113 @@ func TestCmdInit_DaemonDown(t *testing.T) {
 		t.Errorf("expected an unreachable-daemon message: %s", stdout)
 	}
 }
+
+func TestResolveHooksScope(t *testing.T) {
+	t.Run("default (empty) is auto", func(t *testing.T) {
+		got, err := resolveHooksScope("")
+		if err != nil || got != hooksScopeAuto {
+			t.Fatalf("resolveHooksScope(\"\") = %q, %v; want %q, nil", got, err, hooksScopeAuto)
+		}
+	})
+	t.Run("explicit project", func(t *testing.T) {
+		got, err := resolveHooksScope("project")
+		if err != nil || got != hooksScopeProject {
+			t.Fatalf("resolveHooksScope(\"project\") = %q, %v; want %q, nil", got, err, hooksScopeProject)
+		}
+	})
+	t.Run("explicit auto", func(t *testing.T) {
+		got, err := resolveHooksScope("auto")
+		if err != nil || got != hooksScopeAuto {
+			t.Fatalf("resolveHooksScope(\"auto\") = %q, %v; want %q, nil", got, err, hooksScopeAuto)
+		}
+	})
+	t.Run("invalid value refused", func(t *testing.T) {
+		if _, err := resolveHooksScope("bogus"); err == nil {
+			t.Fatal("resolveHooksScope(\"bogus\") = nil error, want a refusal")
+		}
+	})
+	t.Run("FATHOM_HOOKS_SCOPE=project forces project when flag left at auto", func(t *testing.T) {
+		t.Setenv("FATHOM_HOOKS_SCOPE", "project")
+		got, err := resolveHooksScope("auto")
+		if err != nil || got != hooksScopeProject {
+			t.Fatalf("resolveHooksScope(\"auto\") with env = %q, %v; want %q, nil", got, err, hooksScopeProject)
+		}
+	})
+	t.Run("explicit --hooks-scope=project always wins regardless of env", func(t *testing.T) {
+		t.Setenv("FATHOM_HOOKS_SCOPE", "project")
+		got, err := resolveHooksScope("project")
+		if err != nil || got != hooksScopeProject {
+			t.Fatalf("resolveHooksScope(\"project\") with env = %q, %v; want %q, nil", got, err, hooksScopeProject)
+		}
+	})
+}
+
+// TestCmdInit_HooksScopeProject_OverridesUserScope is the regression test
+// for the clean-room/CI defect: on a machine where fathom's hooks are
+// already wired at Claude Code USER scope (~/.claude/settings.json — the
+// operator's own machine, or any harness that seeded one), `fathom init`'s
+// default `auto` scope skips writing them at PROJECT scope, so a harness
+// that only ever loads project settings (`claude --restricted --settings
+// <path>`, docs/bench/scenarios.md "The clean room") sees NO fathom hooks
+// at all. `--hooks-scope project` must write SessionStart, PostToolUse
+// (the post edit-hook) and Stop at project scope regardless.
+func TestCmdInit_HooksScopeProject_OverridesUserScope(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	userSettings := `{"hooks":{
+		"SessionStart":[{"matcher":"startup|resume|clear|compact","hooks":[{"type":"command","command":"` + testBinPath + ` session-hook","timeout":10}]}],
+		"PostToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"` + testBinPath + ` edit-hook","timeout":5}]}],
+		"Stop":[{"hooks":[{"type":"command","command":"` + testBinPath + ` stop-hook","timeout":10}]}]
+	}}`
+	if err := os.MkdirAll(filepath.Join(home, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".claude", "settings.json"), []byte(userSettings), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	svc := strings.ToLower(filepath.Base(dir))
+	srv := fakeInitDaemon(t, svc, 7)
+	defer srv.Close()
+
+	var out, errBuf bytes.Buffer
+	code := cmdInit([]string{"--path", dir, "--url", srv.URL, "--bin", testBinPath, "--hooks-scope", "project"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0; stdout=%s stderr=%s", code, out.String(), errBuf.String())
+	}
+
+	settingsRaw, err := os.ReadFile(filepath.Join(dir, ".claude", "settings.json"))
+	if err != nil {
+		t.Fatalf("reading settings.json: %v", err)
+	}
+	var settings map[string]any
+	if err := json.Unmarshal(settingsRaw, &settings); err != nil {
+		t.Fatalf("settings.json not valid JSON: %v\n%s", err, settingsRaw)
+	}
+	hooksObj, _ := settings["hooks"].(map[string]any)
+	if sessionStart, _ := hooksObj["SessionStart"].([]any); len(sessionStart) == 0 {
+		t.Errorf("SessionStart missing at project scope under --hooks-scope project (user scope already had it wired): %v", hooksObj)
+	}
+	if postToolUse, _ := hooksObj["PostToolUse"].([]any); len(postToolUse) == 0 {
+		t.Errorf("PostToolUse missing at project scope under --hooks-scope project: %v", hooksObj)
+	}
+	if stop, _ := hooksObj["Stop"].([]any); len(stop) == 0 {
+		t.Errorf("Stop missing at project scope under --hooks-scope project: %v", hooksObj)
+	}
+
+	settingsStr := string(settingsRaw)
+	for _, want := range []string{
+		testBinPath + " session-hook",
+		testBinPath + " edit-hook",
+		testBinPath + " stop-hook",
+	} {
+		if !strings.Contains(settingsStr, want) {
+			t.Errorf("settings.json missing %q even though --hooks-scope project should force it:\n%s", want, settingsStr)
+		}
+	}
+
+	if !strings.Contains(out.String(), "wired at project scope (--hooks-scope project)") {
+		t.Errorf("stdout missing the --hooks-scope project note:\n%s", out.String())
+	}
+}

@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**`fathom init --hooks-scope project`.** `init`'s default `auto` scope
+skips a fathom hook already wired at Claude Code USER scope
+(`~/.claude/settings.json`), which is invisible to a clean-room or CI
+harness that loads only project settings (`claude --restricted --settings
+<path>`) — such a session could end up with none of fathom's hooks wired.
+`--hooks-scope project` (or `FATHOM_HOOKS_SCOPE=project`) forces every
+fathom hook to project scope regardless of user scope; `cmd/scenariobench`'s
+scratch daemons now pass it.
+
 **Symbol end lines (T5-5).** `core.SymbolNode.EndLine` is now set by the Go
 extractor and most tree-sitter/AST-backed extractors (C, C++, C#, Java, Lua,
 PHP, Rust, Scala, CUE, HCL/Terraform, CMake, Templ), not only Markdown;

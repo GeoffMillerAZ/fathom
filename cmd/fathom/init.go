@@ -71,7 +71,13 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	fs.Var(&skillsFlag, "skills", "install the nine shipped agent skills (fathom-activate/custodian/doctor/feedback/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (bare --skills = all = .agents/skills + .claude/skills; codex = .agents/skills; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
 	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own `mcp add` line; hooks are wired for claude-code only in this build")
+	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	hooksScope, err := resolveHooksScope(*hooksScopeFlag)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
 	// Refuse positionals loudly. init takes none — and because --skills is
@@ -174,7 +180,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	// human edited is reported BLOCKED and never merged, every write lands
 	// in .fathom/receipts.jsonl so `fathom fleet undo --last` reverses it,
 	// and the other files still apply around a blocked one.
-	spec, notes := initWiringSpecFor(root, svc, binPath, targets)
+	spec, notes := initWiringSpecFor(root, svc, binPath, targets, hooksScope)
 	for _, n := range notes {
 		fmt.Fprintln(stdout, n)
 	}
@@ -661,7 +667,7 @@ func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
 // skip is returned as a note to print, never silent.
 func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
 	targets, _ := initTargetsFor(harness.ClaudeCode, time.Time{})
-	return initWiringSpecFor(root, service, binPath, targets)
+	return initWiringSpecFor(root, service, binPath, targets, hooksScopeAuto)
 }
 
 // initWiringSpecFor is initWiringSpec for one harness's targets (HP-13):
@@ -670,7 +676,15 @@ func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
 // table is planned only when the descriptor's hooks are wired — today,
 // Claude Code alone. initWiringSpec (the Claude Code instance) is
 // byte-for-byte what it planned before the seam.
-func initWiringSpecFor(root, service, binPath string, targets initTargets) (wiring.Spec, []string) {
+//
+// hooksScope is resolveHooksScope's result: hooksScopeAuto (default) skips
+// a spec already wired at Claude Code USER scope exactly as before this
+// parameter existed; hooksScopeProject writes every fathom hook spec at
+// PROJECT scope regardless of user scope, for a harness that only ever
+// loads project settings (clean-room/CI `claude --restricted --settings
+// <path>` — user-scope hooks are invisible to it, so a repo whose operator
+// already wired fathom globally would otherwise ship a hookless cell).
+func initWiringSpecFor(root, service, binPath string, targets initTargets, hooksScope string) (wiring.Spec, []string) {
 	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{}
 	for _, file := range targets.StanzaFiles {
@@ -685,10 +699,14 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets) (wiri
 		spec.Keys = append(spec.Keys, keys...)
 		return spec, append(notes, hookNotes...)
 	}
+	projectOnly := hooksScope == hooksScopeProject
+	if projectOnly {
+		notes = append(notes, "hooks: wired at project scope (--hooks-scope project)")
+	}
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
 	for _, hs := range fathomHookSpecs {
-		if userReadable && userWired[hookSpecKeyOf(hs)] {
+		if !projectOnly && userReadable && userWired[hookSpecKeyOf(hs)] {
 			notes = append(notes, "skip "+specLabel(hs)+" — already wired at user scope (~/.claude/settings.json); not duplicating at project scope")
 			continue
 		}
@@ -707,6 +725,39 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets) (wiri
 		}
 	}
 	return spec, notes
+}
+
+// Claude Code hook scopes --hooks-scope (and FATHOM_HOOKS_SCOPE) select
+// between: hooksScopeAuto is today's default (skip a spec already wired at
+// USER scope); hooksScopeProject forces every fathom hook spec to PROJECT
+// scope regardless of user scope.
+const (
+	hooksScopeAuto    = "auto"
+	hooksScopeProject = "project"
+)
+
+// resolveHooksScope normalizes the --hooks-scope flag value to
+// hooksScopeAuto or hooksScopeProject. An empty value (the flag's own
+// default) or an explicit "auto" both fall back to the FATHOM_HOOKS_SCOPE
+// env var — the flag has no way to tell "left at the default" apart from
+// "spelled out explicitly", both being the string "auto" — so a harness or
+// CI script can set the scope once via the env var for every `fathom init`
+// invocation instead of threading a flag through every call site; only an
+// explicit --hooks-scope=project always wins, since it names the value
+// unambiguously.
+func resolveHooksScope(flagValue string) (string, error) {
+	v := strings.ToLower(strings.TrimSpace(flagValue))
+	switch v {
+	case "", hooksScopeAuto:
+		if strings.ToLower(strings.TrimSpace(os.Getenv("FATHOM_HOOKS_SCOPE"))) == hooksScopeProject {
+			return hooksScopeProject, nil
+		}
+		return hooksScopeAuto, nil
+	case hooksScopeProject:
+		return hooksScopeProject, nil
+	default:
+		return "", fmt.Errorf("invalid --hooks-scope value %q (want %q or %q)", flagValue, hooksScopeAuto, hooksScopeProject)
+	}
 }
 
 // userScopeHookKeys reads Claude Code's USER-scope settings

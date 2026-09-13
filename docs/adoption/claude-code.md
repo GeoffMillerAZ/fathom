@@ -412,6 +412,18 @@ skip is a no-op for that hook (it stays skipped, not later re-added) unless
 the user-scope wiring is removed, in which case the next `init` run installs
 it at project scope as normal.
 
+**Clean rooms and CI.** User-scope dedup is right on an operator's own
+machine, and wrong for a harness that never reads user scope at all — a
+Claude Code `--restricted` session started with `--settings <path>` (as
+`cmd/scenariobench`'s clean room does, `docs/bench/scenarios.md`), or any
+CI runner that hands the agent only a project-local settings file. On such
+a machine, a fathom hook already wired globally would make `init` skip it
+at project scope as usual, but the harness itself never sees the user-scope
+copy — so the session ends up with NO fathom hooks at all, not a
+double-fire. Pass `--hooks-scope project` (or set `FATHOM_HOOKS_SCOPE=project`
+once, for a script that always wires clean rooms) to force every fathom
+hook to project scope regardless of what user scope carries.
+
 ### 7.1 SessionStart — `session-hook`
 
 Fires at session start (`startup|resume|clear|compact`). Pings the daemon,
