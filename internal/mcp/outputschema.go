@@ -53,9 +53,10 @@ type outlineResult struct {
 }
 
 type findSymbolResult struct {
-	Symbols    []symbolNodeDTO `json:"symbols"`
-	MatchedVia string          `json:"matched_via"`
-	DidYouMean []any           `json:"did_you_mean,omitempty"`
+	Symbols         []symbolNodeDTO       `json:"symbols"`
+	MatchedVia      string                `json:"matched_via"`
+	DidYouMean      []any                 `json:"did_you_mean,omitempty"`
+	Implementations []implementationEntry `json:"implementations,omitempty"`
 }
 
 type ingestResult struct {
@@ -112,16 +113,21 @@ type readSourceResult struct {
 	TotalLines int          `json:"total_lines"`
 	ClampedEOF bool         `json:"clamped_eof"`
 	Note       string       `json:"note,omitempty"`
+	Elided     *elided      `json:"elided,omitempty"`
 }
 
 type referencesResult struct {
-	Query       string                `json:"query"`
-	Definitions []referenceDefinition `json:"definitions"`
-	Occurrences []referenceOccurrence `json:"occurrences"`
-	Count       int                   `json:"count"`
-	Truncated   bool                  `json:"truncated"`
-	ByDepth     []depthBucket         `json:"by_depth"`
-	Elided      *elided               `json:"elided,omitempty"`
+	Query             string                `json:"query"`
+	Definitions       []referenceDefinition `json:"definitions"`
+	Occurrences       []referenceOccurrence `json:"occurrences"`
+	Count             int                   `json:"count"`
+	EdgeFilter        string                `json:"edge_filter"`
+	Truncated         bool                  `json:"truncated"`
+	ByDepth           []depthBucket         `json:"by_depth"`
+	Elided            *elided               `json:"elided,omitempty"`
+	OccurrenceTier    string                `json:"occurrence_tier,omitempty"`
+	OccurrenceDepth   int                   `json:"occurrence_depth,omitempty"`
+	OccurrenceService string                `json:"occurrence_service,omitempty"`
 }
 
 type referenceDefinition struct {
@@ -134,14 +140,17 @@ type referenceDefinition struct {
 	EdgeConfidence string `json:"edge_confidence"`
 }
 
+// referenceOccurrence is one compact occurrence row on the wire (SB-1): a
+// combined "file:line" location, text trimmed to fit the 100-byte cap, a
+// one-character confidence code, and an optional per-row service — set
+// only when a response's occurrences span more than one service (the
+// common single-service case lifts it to the envelope instead; see
+// renderReferenceOccurrence).
 type referenceOccurrence struct {
-	Service        string `json:"service"`
-	File           string `json:"file"`
-	Line           int    `json:"line"`
-	Text           string `json:"text"`
-	Tier           string `json:"tier"`
-	Depth          int    `json:"depth"`
-	EdgeConfidence string `json:"edge_confidence"`
+	Loc  string `json:"loc"`
+	Text string `json:"text"`
+	C    string `json:"c"`
+	Svc  string `json:"svc,omitempty"`
 }
 
 type repoMapResult struct {

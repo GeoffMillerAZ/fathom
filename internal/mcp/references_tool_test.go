@@ -3,6 +3,8 @@ package mcp_test
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -103,21 +105,25 @@ func TestReferences_OccurrencesAcrossServices(t *testing.T) {
 		t.Errorf("expected at least 3 occurrences across 2 services, got %d", len(occs))
 	}
 
-	// Every occurrence must be from one of the expected services and have tier pre-scan.
+	// SB-1: tier and depth are ALWAYS lifted to the envelope (occurrences
+	// are always pre-scan/depth 1); service is per-row here because the
+	// search spans two services (not uniform), so it is NOT lifted.
+	if tier, _ := p["occurrence_tier"].(string); tier != "pre-scan" {
+		t.Errorf("occurrence_tier = %q, want pre-scan", tier)
+	}
+	if _, hasEnvelopeSvc := p["occurrence_service"]; hasEnvelopeSvc {
+		t.Error("occurrence_service should not be set when occurrences span two services")
+	}
 	services := map[string]bool{}
 	for _, raw := range occs {
 		occ := raw.(map[string]any)
-		svc, _ := occ["service"].(string)
+		svc, _ := occ["svc"].(string)
+		if svc == "" {
+			t.Error("occurrence missing per-row svc when the search spans services")
+		}
 		services[svc] = true
-		tier, _ := occ["tier"].(string)
-		if tier != "pre-scan" {
-			t.Errorf("occurrence tier should be pre-scan, got %q", tier)
-		}
-		if occ["file"] == nil {
-			t.Error("occurrence missing file")
-		}
-		if occ["line"] == nil {
-			t.Error("occurrence missing line")
+		if occ["loc"] == nil {
+			t.Error("occurrence missing loc")
 		}
 	}
 	if !services["svcA"] {
@@ -205,10 +211,19 @@ func TestReferences_ServiceFilter(t *testing.T) {
 	if !ok {
 		t.Fatalf("occurrences missing: %v", p)
 	}
+	// SB-1: a single-service search lifts service to the envelope instead
+	// of repeating it per row.
+	if svc, _ := p["occurrence_service"].(string); svc != "svcB" {
+		t.Errorf("occurrence_service = %q, want svcB", svc)
+	}
 	for _, raw := range occs {
 		occ := raw.(map[string]any)
-		if occ["service"] != "svcB" {
-			t.Errorf("expected only svcB occurrences, got service=%v", occ["service"])
+		if _, hasSvc := occ["svc"]; hasSvc {
+			t.Errorf("expected no per-row svc when the search stays within one service, got %v", occ["svc"])
+		}
+		loc, _ := occ["loc"].(string)
+		if !strings.HasPrefix(loc, "docs/guide.md:") {
+			t.Errorf("expected only svcB (docs/guide.md) occurrences, got loc=%q", loc)
 		}
 	}
 }
@@ -278,8 +293,91 @@ func TestReferences_WordMatch(t *testing.T) {
 	}
 	if len(occs) == 1 {
 		occ := occs[0].(map[string]any)
-		if occ["line"].(float64) != 1 {
-			t.Errorf("expected line 1, got %v", occ["line"])
+		if loc, _ := occ["loc"].(string); loc != "pkg/x.go:1" {
+			t.Errorf("expected loc pkg/x.go:1, got %v", occ["loc"])
+		}
+	}
+}
+
+// TestReferencesOccurrenceUnder100Bytes (SB-1, docs/plans/strengths-bench.md;
+// O31/O32): one rendered occurrence — the compact wire shape
+// renderReferenceOccurrence produces — never exceeds 100 marshaled bytes,
+// even when the source line it cites is far longer than that.
+func TestReferencesOccurrenceUnder100Bytes(t *testing.T) {
+	longLine := "func (s *someRatherLongTypeName) SomeRatherLongMethodName(ctx context.Context, arg1 string, arg2 int) (result string, err error) {"
+	f := core.SourceFile{
+		Path:    "internal/analysis/references/references.go",
+		Content: []byte(longLine + "\nFindMe\n"),
+		Lang:    "go",
+	}
+	be := &referencesFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}},
+		sourcesByService:    map[string][]core.SourceFile{"svc": {f}},
+	}
+	srv := mcp.NewServer(be)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2020, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "references",
+			"arguments": map[string]any{"query": "FindMe"},
+		},
+	})
+	p := xtraPayload(t, resp)
+	occs, ok := p["occurrences"].([]any)
+	if !ok || len(occs) == 0 {
+		t.Fatalf("occurrences missing or empty: %v", p)
+	}
+	for _, raw := range occs {
+		b, err := json.Marshal(raw)
+		if err != nil {
+			t.Fatalf("marshal occurrence: %v", err)
+		}
+		if len(b) > 100 {
+			t.Errorf("occurrence %s is %d bytes, want <= 100", b, len(b))
+		}
+	}
+}
+
+// TestReferences_RefusesNonSymbolQuery (SB-2, O31): a query that is not an
+// identifier, a dotted path, or a declared regex is refused, naming the
+// three accepted forms — the O31 junk query ("func (s *") that kept
+// exploring must never reach the source scan again.
+func TestReferences_RefusesNonSymbolQuery(t *testing.T) {
+	srv, _ := newReferencesSrv()
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 2021, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "references",
+			"arguments": map[string]any{"query": "func (s *"},
+		},
+	})
+	errObj := xtraError(t, resp)
+	if code := errObj["code"].(float64); code != float64(mcp.ErrCodeParams) {
+		t.Errorf("expected params error code, got %v", code)
+	}
+	msg, _ := errObj["message"].(string)
+	for _, form := range []string{"identifier", "dotted path", "regular expression"} {
+		if !strings.Contains(msg, form) {
+			t.Errorf("refusal message %q does not name accepted form %q", msg, form)
+		}
+	}
+}
+
+// TestReferences_DottedPathAndRegexAccepted (SB-2): the other two accepted
+// forms are never refused.
+func TestReferences_DottedPathAndRegexAccepted(t *testing.T) {
+	srv, _ := newReferencesSrv()
+	for _, args := range []map[string]any{
+		{"query": "pkg.Sym"},
+		{"query": "Type.Method"},
+		{"query": "Find.*", "regex": true},
+	} {
+		resp := roundtrip(t, srv, request{
+			JSONRPC: "2.0", ID: 2022, Method: "tools/call",
+			Params: map[string]any{"name": "references", "arguments": args},
+		})
+		if resp["error"] != nil {
+			t.Errorf("query %v unexpectedly refused: %v", args, resp["error"])
 		}
 	}
 }

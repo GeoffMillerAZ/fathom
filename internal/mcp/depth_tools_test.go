@@ -170,31 +170,30 @@ func TestReferencesDepthAndConfidence(t *testing.T) {
 	if len(defs) != 1 || defs[0].(map[string]any)["depth"] != float64(0) || defs[0].(map[string]any)["edge_confidence"] != "resolved" {
 		t.Fatalf("definitions = %v: want Target at depth 0, resolved (verified tier)", defs)
 	}
+	// SB-1: depth and tier are lifted to the envelope (occurrences are
+	// always pre-scan/depth 1); confidence stays per-row, collapsed to one
+	// character ("r"/"h").
+	if depth, _ := payload["occurrence_depth"].(float64); depth != 1 {
+		t.Errorf("occurrence_depth = %v, want 1", payload["occurrence_depth"])
+	}
 	occs := payload["occurrences"].([]any)
 	got := map[string]string{}
 	for _, o := range occs {
 		m := o.(map[string]any)
-		if m["depth"] != float64(1) {
-			t.Errorf("occurrence %v: want depth 1", m)
-		}
-		got[m["file"].(string)+":"+jsonNum(m["line"])] = m["edge_confidence"].(string)
+		loc, _ := m["loc"].(string)
+		got[loc] = m["c"].(string)
 	}
-	if got["b.go:12"] != "resolved" {
-		t.Errorf("mention inside Direct2 (typed edge to Target) = %q, want resolved; all: %v", got["b.go:12"], got)
+	if got["b.go:12"] != "r" {
+		t.Errorf("mention inside Direct2 (typed edge to Target) = %q, want r (resolved); all: %v", got["b.go:12"], got)
 	}
-	if got["b.go:4"] != "heuristic" {
-		t.Errorf("mention inside Direct1 (syntax-only edge) = %q, want heuristic; all: %v", got["b.go:4"], got)
+	if got["b.go:4"] != "h" {
+		t.Errorf("mention inside Direct1 (syntax-only edge) = %q, want h (heuristic); all: %v", got["b.go:4"], got)
 	}
-	if got["README.md:1"] != "heuristic" {
-		t.Errorf("doc mention = %q, want heuristic; all: %v", got["README.md:1"], got)
+	if got["README.md:1"] != "h" {
+		t.Errorf("doc mention = %q, want h (heuristic); all: %v", got["README.md:1"], got)
 	}
 	buckets := payload["by_depth"].([]any)
 	if len(buckets) != 2 || buckets[0].(map[string]any)["depth"] != float64(0) || buckets[1].(map[string]any)["count"] != float64(len(occs)) {
 		t.Errorf("by_depth = %v: want depth 0 (1 def) and depth 1 (%d mentions)", buckets, len(occs))
 	}
-}
-
-func jsonNum(v any) string {
-	b, _ := json.Marshal(v)
-	return string(b)
 }
