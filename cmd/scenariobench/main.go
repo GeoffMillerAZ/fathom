@@ -39,6 +39,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 )
@@ -333,6 +334,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	}
 	defer scenariobench.StopWorktree(&wt)
 
+	sessionsStart := time.Now()
 	sessions, err := scenariobench.RunSessions(ctx, harness, cp.task, cp.arm, arm, wt, scenariobench.RunOptions{
 		Trial: cp.trial, Model: model, RawDir: rawDir,
 	})
@@ -340,12 +342,45 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		return scenariobench.CellResult{}, fmt.Errorf("running sessions: %w", err)
 	}
 
+	// SDD readings capture: plan.md and agent.diff go into wt.CellDir
+	// AFTER the sessions and BEFORE the oracle — RunOracle applies the
+	// hidden test patch and resets nothing else in the tree, but it is
+	// still the last thing to touch it, and these two files must record
+	// only what the AGENT produced.
+	planPath, planBytes := captureAgentPlan(wt, sessionsStart)
+	diffPath := captureAgentDiff(ctx, wt)
+
 	oracle, err := scenariobench.RunOracle(ctx, wt, cp.task, sessions, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
 	}
 
 	readings := scenariobench.AggregateReadings(sessions)
+	boxChecks := allBoxChecks(sessions)
+
+	planCoverage := scenariobench.PlanCoverage(planBytes, cp.task.Gold)
+	readings.PlanCoverage = &planCoverage
+
+	falseDone := scenariobench.FalseDoneRate(boxChecks, wt.Path, oracle.CoverProfile)
+	readings.FalseDone = &falseDone
+
+	resumption := scenariobench.ResumptionReadings(sessions, provenFromFalseDone(sessions, falseDone))
+	readings.Resumption = &resumption
+
+	drift := scenariobench.ContractDrift(planBytes, wt.Path, oracle.CoverProfile)
+	readings.Drift = &drift
+
+	if cp.task.Sessions.Mode == scenariobench.ModePlannerWorkers {
+		overlap := scenariobench.ReexplorationOverlap(sessions)
+		readings.Overlap = &overlap
+	}
+
+	if cp.task.Rule != nil {
+		if turn, ok := firstClaimTurn(sessions); ok {
+			readings.RuleServed = scenariobench.RuleServed(hooksLogPath(wt), cp.task.Rule.ID, turn)
+		}
+	}
+
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
 		Arm:      cp.arm,
@@ -363,10 +398,205 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		ModelID:        cp.inv.ModelID,
 		HarnessVersion: cp.inv.HarnessVersion,
 		ArmSurface:     cp.inv.ArmSurface,
+		Gold:           cp.task.Gold,
+		PlanPath:       planPath,
+		AgentDiffPath:  diffPath,
 		RunID:          runID,
 		StartedAt:      "", // TODO(SB-19 follow-up): inject a clock; not needed for wave 2's own tests
 		WorktreePath:   wt.Path,
 	}, nil
+}
+
+// allBoxChecks flattens every session's BoxChecks, in session order.
+func allBoxChecks(sessions []scenariobench.SessionResult) []scenariobench.BoxCheck {
+	var out []scenariobench.BoxCheck
+	for _, s := range sessions {
+		out = append(out, s.BoxChecks...)
+	}
+	return out
+}
+
+// firstClaimTurn is the earliest Turn among every session's BoxChecks — the
+// turn RuleServed compares an obligation's own first-served turn against.
+// ok is false when no session ever checked a box, in which case RuleServed
+// is not called at all: "did the rule reach the session before its first
+// claim" is not a question without a claim.
+func firstClaimTurn(sessions []scenariobench.SessionResult) (turn int, ok bool) {
+	for _, bc := range allBoxChecks(sessions) {
+		if !ok || bc.Turn < turn {
+			turn, ok = bc.Turn, true
+		}
+	}
+	return turn, ok
+}
+
+// provenFromFalseDone derives ResumptionReadings' "proven" map from
+// FalseDoneRate's own verdict (claimed − refuted): a box-checked row is
+// proven when FalseDoneRate did NOT refute it against the final tree — the
+// caller's ground truth, never re-derived by ResumptionReadings itself.
+func provenFromFalseDone(sessions []scenariobench.SessionResult, fd scenariobench.FalseDoneReading) map[string]bool {
+	refuted := make(map[string]bool, len(fd.RefutedRows))
+	for _, row := range fd.RefutedRows {
+		label := row
+		if i := strings.Index(row, ": "); i >= 0 {
+			label = row[:i]
+		}
+		refuted[label] = true
+	}
+	proven := map[string]bool{}
+	for _, bc := range allBoxChecks(sessions) {
+		if bc.RowID == "" {
+			continue
+		}
+		if _, seen := proven[bc.RowID]; !seen {
+			proven[bc.RowID] = !refuted[bc.RowID]
+		}
+	}
+	return proven
+}
+
+// hooksLogPath is the edit-hook beat log RuleServed should read for this
+// cell: $FATHOM_HOOKS_LOG when the harness's own environment (or this
+// process's) set one, else a best-effort guess under the worktree itself.
+// Neither PrepareSubject nor RunSessions scopes FATHOM_HOOKS_LOG per cell
+// today (a wired arm's own session env would need to point it at a
+// cell-local file) — RuleServed already treats an unreadable/absent log as
+// not_measurable (nil), so a wrong guess here costs nothing but a false
+// "not served" rather than a false "served".
+func hooksLogPath(wt scenariobench.Worktree) string {
+	if p := os.Getenv("FATHOM_HOOKS_LOG"); p != "" {
+		return p
+	}
+	return filepath.Join(wt.Path, ".fathom", "hooks.jsonl")
+}
+
+// captureAgentPlan copies the agent's own scratch plan into
+// wt.CellDir/plan.md — the first (sorted) docs/plans/*.md file in the
+// worktree modified AFTER sessionsStart (so a subject that already ships
+// its own docs/plans/*.md, this repo included, is never mistaken for the
+// agent's plan), else NOTES.md at the worktree root. Returns ("", nil)
+// when neither exists — a task whose agent wrote no plan at all, which
+// PlanCoverage/ContractDrift report as not_measurable, never as zero.
+func captureAgentPlan(wt scenariobench.Worktree, sessionsStart time.Time) (path string, data []byte) {
+	src := findAgentPlanFile(wt.Path, sessionsStart)
+	if src == "" {
+		return "", nil
+	}
+	raw, err := os.ReadFile(src)
+	if err != nil {
+		return "", nil
+	}
+	dest := filepath.Join(wt.CellDir, "plan.md")
+	if err := os.WriteFile(dest, raw, 0o644); err != nil {
+		return "", raw
+	}
+	return dest, raw
+}
+
+func findAgentPlanFile(worktree string, sessionsStart time.Time) string {
+	plansDir := filepath.Join(worktree, "docs", "plans")
+	if entries, err := os.ReadDir(plansDir); err == nil {
+		var names []string
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".md") {
+				names = append(names, e.Name())
+			}
+		}
+		sort.Strings(names)
+		for _, name := range names {
+			p := filepath.Join(plansDir, name)
+			if info, err := os.Stat(p); err == nil && info.ModTime().After(sessionsStart) {
+				return p
+			}
+		}
+	}
+	notes := filepath.Join(worktree, "NOTES.md")
+	if _, err := os.Stat(notes); err == nil {
+		return notes
+	}
+	return ""
+}
+
+// captureAgentDiff writes wt.CellDir/agent.diff: `git add -N .` (so an
+// untracked file the agent created shows up as a new-file hunk, not as
+// nothing) followed by `git diff` against the index, covering everything
+// the sessions changed since PrepareSubject reset the tree to base_commit.
+// Best-effort: an error returns "" rather than failing the cell — a
+// captured diff is a convenience for later re-scoring, not a precondition
+// for the readings computed here (which read the live worktree directly).
+func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) string {
+	add := exec.CommandContext(ctx, "git", "add", "-N", ".")
+	add.Dir = wt.Path
+	if _, err := add.CombinedOutput(); err != nil {
+		return ""
+	}
+	diff := exec.CommandContext(ctx, "git", "diff")
+	diff.Dir = wt.Path
+	out, err := diff.Output()
+	if err != nil {
+		return ""
+	}
+	dest := filepath.Join(wt.CellDir, "agent.diff")
+	if err := os.WriteFile(dest, out, 0o644); err != nil {
+		return ""
+	}
+	return dest
+}
+
+// rescoreSDDReadings recomputes cell's SDD readings (PlanCoverage,
+// FalseDone, Resumption, Drift) from what was captured at run time —
+// PlanPath/AgentDiffPath and cell.Gold, both persisted on the CellResult —
+// never by re-preparing the subject. PlanCoverage never needed a tree at
+// all. FalseDone/ContractDrift's "final tree" search does: cell.WorktreePath
+// is used when it still exists on disk, else both readings report an
+// explicit not_measurable rather than a false zero — the worktree a cell
+// recorded is a SHARED, REUSED path (PrepareSubject keys it on
+// subject+base_commit+arm, not on task or trial), so a later cell sharing
+// it may already have reset it out from under this one by the time score
+// runs. agent.diff is captured for provenance; re-deriving the final tree
+// from it (independent of whether the worktree still exists) is not
+// implemented.
+func rescoreSDDReadings(cell *scenariobench.CellResult) {
+	var planBytes []byte
+	if cell.PlanPath != "" {
+		if raw, err := os.ReadFile(cell.PlanPath); err == nil {
+			planBytes = raw
+		}
+	}
+	planCoverage := scenariobench.PlanCoverage(planBytes, cell.Gold)
+	cell.Readings.PlanCoverage = &planCoverage
+
+	tree := cell.WorktreePath
+	if tree != "" {
+		if _, err := os.Stat(tree); err != nil {
+			tree = ""
+		}
+	}
+	boxChecks := allBoxChecks(cell.Sessions)
+	falseDone := falseDoneOrNotMeasurable(boxChecks, tree, cell.Oracle.CoverProfile)
+	cell.Readings.FalseDone = &falseDone
+
+	resumption := scenariobench.ResumptionReadings(cell.Sessions, provenFromFalseDone(cell.Sessions, falseDone))
+	cell.Readings.Resumption = &resumption
+
+	drift := driftOrNotMeasurable(planBytes, tree, cell.Oracle.CoverProfile)
+	cell.Readings.Drift = &drift
+}
+
+const noWorktreeForRescore = "no worktree available to re-check the final tree (it was reused by a later cell sharing the same subject/base_commit/arm)"
+
+func falseDoneOrNotMeasurable(checks []scenariobench.BoxCheck, tree, coverprofile string) scenariobench.FalseDoneReading {
+	if tree == "" {
+		return scenariobench.FalseDoneReading{Claimed: len(checks), NotMeasurable: noWorktreeForRescore}
+	}
+	return scenariobench.FalseDoneRate(checks, tree, coverprofile)
+}
+
+func driftOrNotMeasurable(planMD []byte, tree, coverprofile string) scenariobench.DriftReading {
+	if tree == "" {
+		return scenariobench.DriftReading{NotMeasurable: noWorktreeForRescore}
+	}
+	return scenariobench.ContractDrift(planMD, tree, coverprofile)
 }
 
 func resolveHarness(name, streamsDir, streamsJSON, taskID, armName string) (scenariobench.Harness, error) {
@@ -414,6 +644,7 @@ func cmdScore(args []string) int {
 	}
 	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
 	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
+	rescoreSDDReadings(&cell)
 
 	dest := *out
 	if dest == "" {

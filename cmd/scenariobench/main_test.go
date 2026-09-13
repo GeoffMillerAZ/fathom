@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 )
 
 // gitFixtureSubject creates a local, self-contained go module git repo (one
@@ -57,7 +59,7 @@ func writeCorpusFixture(t *testing.T, dir, repoURL, commit string) string {
     "derivation": "synthetic fixture for scenariobench's own tests",
     "subject": {"repo_url": "` + repoURL + `", "base_commit": "` + commit + `"},
     "sessions": {"mode": "single", "count": 1, "max_turns": 5},
-    "oracle": {"fail_to_pass": ["TestPass"]},
+    "oracle": {"fail_to_pass": ["TestPass"], "coverage": true},
     "predictions": {"control": "no-effect (this is the control)"}
   }],
   "criterion": {"id": "C1", "treatment": "control", "control": "control", "min_trials": 1}
@@ -125,6 +127,46 @@ func TestCmdRun_FakeHarnessControlArm(t *testing.T) {
 		t.Fatalf("expected at least one cell filed under %s: err=%v entries=%v", cellsDir, err, entries)
 	}
 
+	// The SDD readings (plan coverage, false-done, resumption, drift) must
+	// be present on every stored cell — not_measurable is an honest
+	// reading; a nil pointer is a bug.
+	cellPath := findStoredCell(t, cellsDir)
+	cell := readStoredCell(t, cellPath)
+	if cell.Readings.PlanCoverage == nil {
+		t.Error("expected Readings.PlanCoverage to be present")
+	}
+	if cell.Readings.FalseDone == nil {
+		t.Error("expected Readings.FalseDone to be present")
+	} else if cell.Readings.FalseDone.NotMeasurable != "" {
+		t.Errorf("expected FalseDone measurable (coverage was requested, nothing was claimed to refute): not_measurable=%q", cell.Readings.FalseDone.NotMeasurable)
+	}
+	if cell.Readings.Resumption == nil {
+		t.Error("expected Readings.Resumption to be present")
+	}
+	if cell.Readings.Drift == nil {
+		t.Error("expected Readings.Drift to be present")
+	}
+	if cell.AgentDiffPath == "" {
+		t.Error("expected AgentDiffPath to be captured (a `git diff` runs regardless of content)")
+	} else if _, err := os.Stat(cell.AgentDiffPath); err != nil {
+		t.Errorf("AgentDiffPath %q does not exist: %v", cell.AgentDiffPath, err)
+	}
+
+	// `score` must recompute the same SDD readings from what was
+	// captured (plan.md/agent.diff/coverage.out, plus the persisted Gold
+	// and WorktreePath) — never by re-preparing the subject.
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	rescored := readStoredCell(t, cellPath)
+	if rescored.Readings.PlanCoverage == nil || rescored.Readings.FalseDone == nil ||
+		rescored.Readings.Resumption == nil || rescored.Readings.Drift == nil {
+		t.Errorf("expected score to recompute every SDD reading too, got %+v", rescored.Readings)
+	}
+	if rescored.Readings.FalseDone.NotMeasurable != "" {
+		t.Errorf("expected score's FalseDone to stay measurable (the worktree still exists): not_measurable=%q", rescored.Readings.FalseDone.NotMeasurable)
+	}
+
 	// Running it again must borrow rather than re-run (the second run
 	// still exits 0 and needs no fake stream mapping since it never calls
 	// the harness).
@@ -171,6 +213,50 @@ func TestCmdScore_RecomputesReadings(t *testing.T) {
 	}
 }
 
+// TestCmdScore_SDDReadingsWithoutWorktree covers the honesty rule "re-score
+// must not need the worktree": PlanCoverage recomputes fully from a
+// captured plan.md + the persisted Gold with no worktree at all, while
+// FalseDone/Drift — which need the final tree — report an explicit
+// not_measurable when WorktreePath no longer exists (a later cell sharing
+// the same subject/base_commit/arm reset it), never a false zero.
+func TestCmdScore_SDDReadingsWithoutWorktree(t *testing.T) {
+	dir := t.TempDir()
+	planPath := filepath.Join(dir, "plan.md")
+	if err := os.WriteFile(planPath, []byte("- [ ] fix it `Add`\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":       "T1",
+		"arm":           "control",
+		"cell_key":      "k1",
+		"run_id":        "run-1",
+		"plan_path":     planPath,
+		"worktree_path": filepath.Join(dir, "does-not-exist"),
+		"gold":          map[string]any{"functions": []string{"Add"}},
+		"sessions":      []map[string]any{{"index": 0, "role": "single", "files_edited": []string{"pkg/a.go"}}},
+		"oracle":        map[string]any{"passed": true},
+		"readings":      map[string]any{},
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if cell.Readings.PlanCoverage == nil || cell.Readings.PlanCoverage.Named != 1 || cell.Readings.PlanCoverage.Fraction != 1 {
+		t.Errorf("expected PlanCoverage recomputed from plan.md with no worktree needed, got %+v", cell.Readings.PlanCoverage)
+	}
+	if cell.Readings.FalseDone == nil || cell.Readings.FalseDone.NotMeasurable == "" {
+		t.Errorf("expected FalseDone to be explicitly not_measurable (worktree gone), got %+v", cell.Readings.FalseDone)
+	}
+	if cell.Readings.Drift == nil || cell.Readings.Drift.NotMeasurable == "" {
+		t.Errorf("expected Drift to be explicitly not_measurable (worktree gone), got %+v", cell.Readings.Drift)
+	}
+}
+
 func TestCmdScore_MissingIn(t *testing.T) {
 	if rc := run([]string{"score"}); rc != 2 {
 		t.Errorf("score with no -in: exit %d, want 2", rc)
@@ -194,4 +280,29 @@ func repoRelative(t *testing.T, parts ...string) string {
 	}
 	root := filepath.Join(wd, "..", "..")
 	return filepath.Join(append([]string{root}, parts...)...)
+}
+
+// findStoredCell returns the single trial-1 cell file under the
+// content-addressed cell store rooted at cellsDir, failing the test unless
+// there is exactly one (this package's fixtures only ever run one cell).
+func findStoredCell(t *testing.T, cellsDir string) string {
+	t.Helper()
+	matches, err := filepath.Glob(filepath.Join(cellsDir, "*", "t1.json"))
+	if err != nil || len(matches) != 1 {
+		t.Fatalf("expected exactly one stored cell under %s: matches=%v err=%v", cellsDir, matches, err)
+	}
+	return matches[0]
+}
+
+func readStoredCell(t *testing.T, path string) scenariobench.CellResult {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("reading stored cell %s: %v", path, err)
+	}
+	var cell scenariobench.CellResult
+	if err := json.Unmarshal(raw, &cell); err != nil {
+		t.Fatalf("parsing stored cell %s: %v", path, err)
+	}
+	return cell
 }

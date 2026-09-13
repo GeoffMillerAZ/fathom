@@ -330,6 +330,19 @@ type CellResult struct {
 	RunID          string          `json:"run_id"`
 	StartedAt      string          `json:"started_at"`
 	WorktreePath   string          `json:"worktree_path,omitempty"`
+	// Gold is the task's own gold record, persisted so `scenariobench
+	// score` can recompute PlanCoverage/ContractDrift later without
+	// reloading the corpus.
+	Gold Gold `json:"gold,omitzero"`
+	// PlanPath / AgentDiffPath are the SDD readings' own captured
+	// artifacts under this cell's CellDir: the agent's own plan file (""
+	// when none was found) and its whole-session diff, captured right
+	// after the sessions and before the oracle. Both live under CellDir,
+	// which — unlike the shared subject worktree a later cell on the same
+	// (subject, base_commit, arm) resets and reuses — is this cell's own
+	// and is never touched again.
+	PlanPath      string `json:"plan_path,omitempty"`
+	AgentDiffPath string `json:"agent_diff_path,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code
