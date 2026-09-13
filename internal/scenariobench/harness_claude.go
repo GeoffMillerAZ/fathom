@@ -122,9 +122,47 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	return result, nil
 }
 
+// defaultRestrictedTools is what `--tools` names under `--restricted`
+// (RC-6) when the arm declared no AllowedTools of its own: the built-in
+// set a session needs to actually work, since `--restricted` otherwise
+// strips every command/code-running tool.
+var defaultRestrictedTools = []string{"Bash", "Read", "Edit", "Write", "MultiEdit", "Grep", "Glob", "NotebookEdit", "TodoWrite"}
+
+// restrictedToolsList is what `--tools` should name for req: allowed with
+// every "mcp__<server>" entry removed (an MCP server's own tools are
+// gated by --mcp-config/--strict-mcp-config, not --tools) when allowed is
+// non-empty, else defaultRestrictedTools.
+func restrictedToolsList(allowed []string) []string {
+	if len(allowed) == 0 {
+		return append([]string(nil), defaultRestrictedTools...)
+	}
+	out := make([]string, 0, len(allowed))
+	for _, t := range allowed {
+		if !strings.HasPrefix(t, "mcp__") {
+			out = append(out, t)
+		}
+	}
+	if len(out) == 0 {
+		return append([]string(nil), defaultRestrictedTools...)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // buildClaudeArgs is the pure part of RunSession: the CLI flags for one
 // session, given the request and a resolved MCP config path. Kept
 // separate from process execution so it is unit-testable with no spend.
+//
+// The clean room (RC-6, vision 28 §2 F3/F4) is `--restricted` plus
+// `--disable-slash-commands`: `--restricted` ignores the operator's user,
+// project and local settings files (hooks, plugins) while still honoring
+// `--settings <file>` (the arm's own rendered settings.json) and
+// `--mcp-config`/`--strict-mcp-config` (already passed below), and
+// confines the file tools to the working directory; `--tools` is exactly
+// what the arm allows (restrictedToolsList). An allow-list additionally
+// gets `--permission-mode default`, since "auto" (Claude Code's default)
+// approves outside an allow-list too — 35 writes from
+// allowedTools:[Read,Grep,Bash] arms in the second reading.
 func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 	args := []string{
 		"-p", req.Prompt,
@@ -132,18 +170,19 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 		"--verbose",
 		"--mcp-config", mcpConfigPath,
 		"--strict-mcp-config",
+		"--restricted",
+		"--disable-slash-commands",
 	}
+	if req.SettingsPath != "" {
+		args = append(args, "--settings", req.SettingsPath)
+	}
+	args = append(args, "--tools", strings.Join(restrictedToolsList(req.AllowedTools), ","))
 	if req.SystemAppend != "" {
 		args = append(args, "--append-system-prompt", req.SystemAppend)
 	}
 	if len(req.AllowedTools) > 0 {
 		allowed := sortedCopy(req.AllowedTools)
 		args = append(args, "--allowedTools", strings.Join(allowed, " "))
-		// The clean room (RC-6, vision 28 §2 F3): an allow-list means the
-		// arm is testing a restriction, and "auto" (Claude Code's default
-		// permission mode) approves outside it too — 35 writes from
-		// allowedTools:[Read,Grep,Bash] arms in the second reading. Default
-		// mode makes a restriction deny instead of decorating.
 		args = append(args, "--permission-mode", "default")
 	}
 	if len(req.DisallowedTools) > 0 {

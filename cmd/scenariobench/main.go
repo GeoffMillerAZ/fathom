@@ -278,15 +278,6 @@ func cmdRun(args []string) int {
 	ran := 0
 	lost := 0
 	absRawDir, _ := filepath.Abs(*rawDir) // claude -p runs in the worktree and resolves --mcp-config against ITS cwd
-	// cleanRoomDir (RC-6) is shared across every cell of this run; empty
-	// (no -root) skips the clean room entirely rather than writing under
-	// the process's relative cwd.
-	cleanRoomDir := ""
-	if *root != "" {
-		if abs, err := filepath.Abs(*root); err == nil {
-			cleanRoomDir = filepath.Join(abs, "workspace", "tmp", "scenariobench-cleanroom-"+*runID)
-		}
-	}
 
 	var selected []cellPlan
 	for _, cp := range cells {
@@ -318,7 +309,7 @@ func cmdRun(args []string) int {
 		for k, cp := range batch {
 			cp := cp
 			fns[k] = func() (cellOutcome, error) {
-				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID, cleanRoomDir)
+				return runCellForReport(ctx, *root, cp, corpus, *harnessName, *fakeStreamsDir, *fakeStreams, *cellsDir, absRawDir, *model, *runID)
 			}
 		}
 
@@ -389,7 +380,7 @@ type cellOutcome struct {
 // store it — returning the outcome as data rather than printing anything
 // itself, so the caller can print cells in a fixed order even when several
 // ran concurrently (RC-16).
-func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scenariobench.Corpus, harnessName, fakeStreamsDir, fakeStreams, cellsDir, rawDir, model, runID, cleanRoomDir string) (cellOutcome, error) {
+func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scenariobench.Corpus, harnessName, fakeStreamsDir, fakeStreams, cellsDir, rawDir, model, runID string) (cellOutcome, error) {
 	if _, borrowed, err := scenariobench.BorrowScenarioCell(cellsDir, cp.key, cp.trial); err != nil {
 		return cellOutcome{cp: cp}, fmt.Errorf("checking cell store for %s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
 	} else if borrowed {
@@ -402,7 +393,7 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 		return cellOutcome{cp: cp}, herr
 	}
 
-	result, err := runOneCell(ctx, root, cp, arm, harness, rawDir, model, runID, cleanRoomDir)
+	result, err := runOneCell(ctx, root, cp, arm, harness, rawDir, model, runID)
 	if err != nil {
 		return cellOutcome{cp: cp}, fmt.Errorf("%s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
 	}
@@ -415,23 +406,21 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 	return cellOutcome{cp: cp, result: result}, nil
 }
 
-func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID, cleanRoomDir string) (scenariobench.CellResult, error) {
+func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID string) (scenariobench.CellResult, error) {
 	wt, err := scenariobench.PrepareSubject(ctx, cp.task, arm, root)
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("preparing subject: %w", err)
 	}
 	defer scenariobench.StopWorktree(&wt)
 
-	// The clean room (RC-6): every session runs with CLAUDE_CONFIG_DIR
-	// pointed at cleanRoomDir's scratch config (no operator hooks, no
-	// plugins, no MCP servers) and FATHOM_THREADS pointed at this cell's
-	// own file — homeDir is best-effort (an unresolvable home directory
-	// just means nothing gets copied forward, not a failed cell).
-	homeDir, _ := os.UserHomeDir()
-
+	// The clean room (RC-6) is Claude Code's own --restricted mode
+	// (buildClaudeArgs) plus --settings <wt.Arm.SettingsPath> — both
+	// derived from req/wt.Arm inside RunSessions/buildClaudeArgs, nothing
+	// to wire here. FATHOM_THREADS (per cell) is still merged into the
+	// session env by RunSessions itself, keyed on wt.CellDir.
 	sessionsStart := time.Now()
 	sessions, err := scenariobench.RunSessions(ctx, harness, cp.task, cp.arm, arm, wt, scenariobench.RunOptions{
-		Trial: cp.trial, Model: model, RawDir: rawDir, RunDir: cleanRoomDir, HomeDir: homeDir,
+		Trial: cp.trial, Model: model, RawDir: rawDir,
 	})
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running sessions: %w", err)

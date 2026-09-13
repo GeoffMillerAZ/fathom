@@ -38,15 +38,17 @@ non-empty `surface` with zero surface calls is flagged `surface_unused` —
 "surface calls" column.
 
 **The scenario bench runs in a clean room (`RC-6`, vision 28 §2 F3/F4).**
-Every session's `CLAUDE_CONFIG_DIR` now points at a scratch config dir
-carrying no operator hooks, plugins, or slash commands (a `.claude.json`
-and `.claude/settings.json` copied from the operator's own, hooks and
-enabled plugins stripped); `--permission-mode default` is added whenever
-an arm has an `allowed_tools` list, so a restriction denies instead of
-Claude Code's `auto` default approving outside it anyway. The smoke test
-this row requires found the clean room needs one `claude /login` inside
-its own `CLAUDE_CONFIG_DIR` before a paid run (`docs/bench/scenarios.md`
-"The clean room") — an operational precondition, not a code defect.
+Every session now runs under Claude Code's own `--restricted` mode plus
+`--disable-slash-commands`, `--settings <the arm's rendered settings.json>`
+and `--tools <the arm's own tools, mcp__ entries excluded>`, so operator
+hooks/plugins/slash-commands never reach a cell while auth and the arm's
+own hooks keep working; `--permission-mode default` is still added
+whenever an arm has an `allowed_tools` list. A first design (a scratch
+`CLAUDE_CONFIG_DIR` with a copied, stripped `~/.claude.json`) broke
+authentication in this environment (`docs/bench/scenarios.md` "The clean
+room" — replaced); the `--restricted` smoke test (real spend, $0.0037)
+proved auth, a per-arm `--settings` hook firing, and zero operator config
+reaching the session together in one run.
 
 **Competitor arms get their own routing stanza, and graphify's MCP server
 command is fixed (`RC-8`, `RC-9`, vision 28 §2 F2).** `Arm.InstructionsText`

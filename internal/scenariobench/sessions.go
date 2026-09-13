@@ -25,15 +25,6 @@ type RunOptions struct {
 	Model  string
 	RawDir string
 	Env    map[string]string
-	// RunDir is the per-run scratch base directory the clean room's
-	// CLAUDE_CONFIG_DIR lives under (RC-6) — e.g. workspace/tmp/<run-id>.
-	// Empty skips the clean room entirely, so a caller/test that never
-	// sets it keeps the pre-RC-6 environment unchanged.
-	RunDir string
-	// HomeDir is the operator's home directory, whose ~/.claude.json the
-	// clean room copies forward with mcpServers/projects/hooks/plugins
-	// stripped (cleanRoomEnv). Ignored when RunDir is empty.
-	HomeDir string
 }
 
 // scenarioContinuationPrompt is the fixed, documented prompt every session
@@ -169,22 +160,22 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 		RowID:           rowID,
 		Env:             env,
 		MCPConfigPath:   wt.Arm.MCPConfigPath,
+		SettingsPath:    wt.Arm.SettingsPath,
 		AllowedTools:    wt.Arm.AllowedTools,
 		DisallowedTools: wt.Arm.DisallowedTools,
 	}, nil
 }
 
-// sessionEnv is opts.Env with the clean room's own overrides
-// (cleanRoomEnv) merged underneath it, when opts.RunDir asks for one —
-// empty RunDir (the default for every existing caller/test) skips the
-// clean room entirely and returns opts.Env unchanged. opts.Env, when set,
-// wins over the clean room's own CLAUDE_CONFIG_DIR/FATHOM_THREADS on a key
-// collision, since it is the caller's explicit, more specific request.
+// sessionEnv is opts.Env with the clean room's own FATHOM_THREADS merged
+// underneath it (cleanRoomEnv), keyed on wt.CellDir being set — a
+// hand-built Worktree with no CellDir (every existing test fixture that
+// predates RC-6) simply gets opts.Env unchanged, same as before RC-6.
+// opts.Env, when set, wins on a key collision.
 func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
-	if opts.RunDir == "" {
+	if wt.CellDir == "" {
 		return opts.Env, nil
 	}
-	cr, err := cleanRoomEnv(opts.RunDir, wt.CellDir, opts.HomeDir)
+	cr, err := cleanRoomEnv(wt.CellDir)
 	if err != nil {
 		return nil, err
 	}

@@ -474,6 +474,14 @@ type SessionRequest struct {
 	// SessionRequest by hand); ClaudeHarness falls back to writing
 	// Arm.MCP verbatim in that case.
 	MCPConfigPath string
+	// SettingsPath is the arm's own rendered `.claude/settings.json`
+	// (wt.Arm.SettingsPath, RenderArm) — passed to the harness as
+	// `--settings` under `--restricted` mode (RC-6), so a wired arm's real
+	// hooks still fire while the operator's own user/project/local
+	// settings never load. Empty only for a worktree RenderArm never
+	// touched (a test constructing a SessionRequest by hand); buildClaudeArgs
+	// simply omits `--settings` in that case.
+	SettingsPath string
 	// AllowedTools / DisallowedTools are the RENDERED lists (wt.Arm's
 	// ArmFiles, not Arm's own) — ArmFiles.AllowedTools additionally
 	// carries "mcp__<server>" for every MCP server this arm declares, so

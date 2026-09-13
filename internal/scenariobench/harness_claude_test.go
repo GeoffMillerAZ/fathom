@@ -69,6 +69,62 @@ func TestBuildClaudeArgs_NoAllowListOmitsPermissionMode(t *testing.T) {
 	}
 }
 
+// TestBuildClaudeArgs_AlwaysRestrictedAndDisablesSlashCommands is RC-6's
+// revised proof: every session runs Claude Code's own `--restricted` mode
+// plus `--disable-slash-commands`, unconditionally — the clean room is no
+// longer an opt-in environment variable.
+func TestBuildClaudeArgs_AlwaysRestrictedAndDisablesSlashCommands(t *testing.T) {
+	req := SessionRequest{Prompt: "p"}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	for _, want := range []string{"--restricted", "--disable-slash-commands"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("buildClaudeArgs missing %q in %q", want, joined)
+		}
+	}
+}
+
+func TestBuildClaudeArgs_SettingsPathPassedWhenSet(t *testing.T) {
+	req := SessionRequest{Prompt: "p", SettingsPath: "/wt/.claude/settings.json"}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	if !strings.Contains(joined, "--settings /wt/.claude/settings.json") {
+		t.Errorf("expected --settings with the rendered path, got %q", joined)
+	}
+}
+
+func TestBuildClaudeArgs_SettingsOmittedWhenUnset(t *testing.T) {
+	req := SessionRequest{Prompt: "p"}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	if strings.Contains(joined, "--settings") {
+		t.Errorf("expected no --settings when SettingsPath is empty, got %q", joined)
+	}
+}
+
+// TestBuildClaudeArgs_ToolsDefaultsWhenArmDeclaresNone and
+// TestBuildClaudeArgs_ToolsUsesArmAllowedToolsMinusMCP are RC-6's proof
+// for --tools: --restricted strips every command/code-running tool unless
+// --tools names them, so a control arm with no AllowedTools still needs
+// the default working set, and a wired arm's mcp__ entries (added by
+// RenderArm) must not appear on --tools — MCP access is already governed
+// by --mcp-config/--strict-mcp-config.
+func TestBuildClaudeArgs_ToolsDefaultsWhenArmDeclaresNone(t *testing.T) {
+	req := SessionRequest{Prompt: "p"}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	if !strings.Contains(joined, "--tools Bash,Read,Edit,Write,MultiEdit,Grep,Glob,NotebookEdit,TodoWrite") {
+		t.Errorf("expected the default restricted tool set, got %q", joined)
+	}
+}
+
+func TestBuildClaudeArgs_ToolsUsesArmAllowedToolsMinusMCP(t *testing.T) {
+	req := SessionRequest{Prompt: "p", AllowedTools: []string{"Read", "Grep", "Bash", "mcp__fathom__find_symbol"}}
+	joined := strings.Join(buildClaudeArgs(req, "/tmp/mcp.json"), " ")
+	if !strings.Contains(joined, "--tools Bash,Grep,Read") {
+		t.Errorf("expected --tools from AllowedTools with mcp__ entries stripped, got %q", joined)
+	}
+	if strings.Contains(joined, "--tools Bash,Grep,Read,mcp__") {
+		t.Errorf("expected no mcp__ entry on --tools, got %q", joined)
+	}
+}
+
 func TestRelativizeSessionPaths(t *testing.T) {
 	root := "/repo"
 	got := relativizeSessionPaths(root, []string{"/repo/b/file.go", "/repo/a/file.go", "a/already-relative.go", "/repo/a/file.go"})

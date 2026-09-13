@@ -289,46 +289,58 @@ gap is visible without opening the raw cells.
 
 ## The clean room
 
-Every session (`RunSessions`/`newSessionRequest`, RC-6, vision 28 §2 F4)
-runs with `CLAUDE_CONFIG_DIR` pointed at a scratch config dir under
-`workspace/tmp/scenariobench-cleanroom-<run-id>/claude-config`, holding a
-`settings.json` copied from the operator's own `~/.claude/settings.json`
-with `hooks`/`enabledPlugins` stripped, and a `.claude.json` copied from
-`~/.claude.json` (kept nearly verbatim — `mcpServers`/`projects` are
-harmless to carry forward, since every session already passes
-`--strict-mcp-config`, which ignores the config file's own `mcpServers`
-regardless). A fresh `CLAUDE_CONFIG_DIR` has no `commands/`, `plugins/` or
-`agents/` subdirectory to begin with, so the second reading's own defect —
-"every session inherited the operator's config: ~90 slash commands,
-plugins, and fathom's own SessionStart primer on the control arm" — cannot
-recur. `FATHOM_THREADS` is set to a per-cell `threads.jsonl` under the
-cell's own `CellDir`, so two tasks sharing a worktree basename never share
-a thread scope either (F5). `buildClaudeArgs` adds `--permission-mode
-default` whenever the session's `AllowedTools` is non-empty, so an
-arm testing a restriction gets a restriction that actually denies, instead
-of Claude Code's `auto` default approving outside the allow-list anyway
-(F3: 35 writes from `allowed_tools: [Read, Grep, Bash]` arms in the second
-reading).
+Every session (`buildClaudeArgs`, `harness_claude.go`, RC-6, vision 28 §2
+F4) runs under Claude Code 2.1.270's own `--restricted` mode plus
+`--disable-slash-commands`: `--restricted` ignores the operator's user,
+project and local settings files — so the second reading's own defect
+("every session inherited the operator's config: ~90 slash commands,
+plugins, and fathom's own SessionStart primer on the control arm") cannot
+recur — while still keeping auth, still honoring `--settings <file>` and
+`--mcp-config`/`--strict-mcp-config`, and confining the file tools to the
+working directory; `--disable-slash-commands` removes skills on top.
+`--settings` is passed the arm's own rendered `.claude/settings.json`
+(`RenderArm`, `SessionRequest.SettingsPath`), so a wired arm's real hooks
+still fire. `--tools` is exactly what the arm allows
+(`restrictedToolsList`): the arm's own `AllowedTools` with every `mcp__`
+entry stripped (MCP access is already governed by
+`--mcp-config`/`--strict-mcp-config`, not `--tools`) when non-empty, else
+the default working set `Bash,Read,Edit,Write,MultiEdit,Grep,Glob,
+NotebookEdit,TodoWrite` — `--restricted` otherwise removes every
+command/code-running tool outright. `buildClaudeArgs` still adds
+`--permission-mode default` whenever the arm has a non-empty
+`AllowedTools`, so a restriction actually denies instead of Claude Code's
+`auto` default approving outside it anyway (F3: 35 writes from
+`allowed_tools: [Read, Grep, Bash]` arms in the second reading).
+`cleanRoomEnv`'s only remaining job is `FATHOM_THREADS`, a per-cell
+`threads.jsonl` under the cell's own `CellDir`, so two tasks sharing a
+worktree basename never share a thread scope either (F5).
 
-**Smoke test finding (RC-6, 2026-09-13):** `claude -p "reply with the
-single word ok" --max-turns 1 --model claude-haiku-4-5-20251001
---output-format json` run inside a hand-built clean room returned `"Not
-logged in · Please run /login"` (`is_error: true`, `total_cost_usd: 0` —
-no spend occurred) on every variant tried: stripping
-`mcpServers`/`projects`/`hooks`/`plugins` from `.claude.json` with a blank
-`settings.json`; copying the full `~/.claude.json` and
-`~/.claude/settings.json` with only `hooks`/`enabledPlugins` removed (the
-shape this package now implements). The cause is not file content —
-whatever backs Claude Code's macOS-keychain login lookup did not resolve
-under a scratch `CLAUDE_CONFIG_DIR` in this environment/CLI version,
-contrary to this row's working assumption ("macOS keeps credentials in the
-keychain" — true, but evidently keyed in a way a copied `.claude.json`
-does not satisfy). **Operational precondition, not a code defect:** a
-fresh `CLAUDE_CONFIG_DIR` this package creates needs one `claude /login`
-run inside it before a paid cell can use it; a bench operator should
-authenticate the clean-room config dir once (or point `-root` at a
-long-lived scratch root whose `claude-config` has already been logged
-into) before spending real sessions through it.
+**First design, replaced.** RC-6 first tried a scratch `CLAUDE_CONFIG_DIR`
+per run, with a stripped `~/.claude.json`/`~/.claude/settings.json` copied
+into it. Its own smoke test found that broke authentication ("Not logged
+in · Please run /login", `total_cost_usd: 0`) under every variant tried —
+whatever backs this CLI's macOS-keychain login lookup did not resolve
+under a scratch `CLAUDE_CONFIG_DIR` in this environment, contrary to the
+row's working assumption. `--restricted` needs no config-dir copying at
+all: it isolates a session from the operator's config while running in
+the operator's own, already-authenticated `CLAUDE_CONFIG_DIR`.
+
+**Smoke test (RC-6, 2026-09-13, real spend $0.0037):** `claude -p "reply
+with the single word ok" --max-turns 1 --model claude-haiku-4-5-20251001
+--output-format stream-json --verbose --restricted --disable-slash-commands
+--settings <temp settings.json with a SessionStart hook echoing a marker>
+--tools Read` proved all three properties together in one run:
+
+- **Auth works.** `is_error: false`, `result: "ok"`, `total_cost_usd:
+  0.00368` — a real, billed turn.
+- **The `--settings` hook fires.** The stream carries a `hook_response`
+  event for `SessionStart:startup` with `"outcome":"success"` and the
+  marker (`RC6-HOOK-FIRED-MARKER`) in its own `stdout`/`output`; the
+  hook's side-channel marker file was also written.
+- **No operator config reaches the session.** The `init` event shows
+  `"tools":["Read"]` (exactly `--tools`' value), `"mcp_servers":[]`,
+  `"slash_commands":[]`, `"plugins":[]`; the operator's own stanza text
+  ("fathom code-intelligence is live") appears zero times in the stream.
 
 ## Dropped tasks
 
