@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","mcp_servers":[{"name":"graphify","status":"connected"}],"tools":["Read","ToolSearch","mcp__graphify__query_graph"]}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"tu_1","name":"Read","input":{"file_path":"/repo/foo.go"}}],"usage":{"input_tokens":5,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"tu_1","content":"package foo\n"}]}}
+{"type":"result","is_error":false,"num_turns":1,"duration_ms":5,"total_cost_usd":0.001,"result":"The answer names fusion.New as the token.","usage":{"input_tokens":5,"output_tokens":2}}

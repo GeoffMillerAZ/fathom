@@ -64,6 +64,31 @@ func TestRenderScenarioLedger(t *testing.T) {
 	}
 }
 
+// TestRenderScenarioLedger_SurfaceCallsColumn covers item 6's markdown
+// render: a row's SurfaceCalls prints, and SurfaceUnused annotates it.
+func TestRenderScenarioLedger_SurfaceCallsColumn(t *testing.T) {
+	rows := []ScenarioLedgerRow{
+		{
+			RunID: "run-1", TaskID: "T1", Arm: "comp", Trials: 1, Successes: 1,
+			Readings: Readings{SurfaceCalls: 3},
+		},
+		{
+			RunID: "run-1", TaskID: "T2", Arm: "comp", Trials: 1, Successes: 1,
+			Readings: Readings{SurfaceCalls: 0}, SurfaceUnused: true,
+		},
+	}
+	out := RenderScenarioLedger(rows)
+	if !strings.Contains(out, "surface calls") {
+		t.Errorf("rendered table missing the surface calls column header:\n%s", out)
+	}
+	if !strings.Contains(out, "| 3 |") {
+		t.Errorf("rendered table missing SurfaceCalls=3 for T1:\n%s", out)
+	}
+	if !strings.Contains(out, "0 (unused)") {
+		t.Errorf("rendered table missing the unused annotation for T2:\n%s", out)
+	}
+}
+
 func TestRewriteScenarioLedgerSection(t *testing.T) {
 	dir := t.TempDir()
 	readme := filepath.Join(dir, "README.md")

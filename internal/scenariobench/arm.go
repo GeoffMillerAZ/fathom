@@ -28,10 +28,19 @@ type ArmFiles struct {
 	// has a --mcp-config path to pass (context-bench.sh's EMPTY_MCP_CONFIG
 	// pattern: an explicit empty config, never an absent flag).
 	MCPConfigPath string `json:"mcp_config_path"`
-	// AllowedTools / DisallowedTools are sorted copies of the arm's lists,
-	// handed to the harness verbatim (SessionRequest carries the Arm
-	// itself, so these are also derivable from it — kept here so a caller
-	// can read them without re-deriving).
+	// MCPServerNames is the sorted, deduped set of server names actually
+	// written into MCPConfigPath's mcpServers block — including a wired
+	// arm's merged-in "fathom" entry (wireScratchDaemon runs before
+	// RenderArm), regardless of whether AllowedTools was ever set. This is
+	// what the instrument-truth gate (RunSessions) checks a session's own
+	// SessionResult.MCPServers against, and what AllowedTools' own
+	// "mcp__<server>" augmentation below is derived from.
+	MCPServerNames []string `json:"mcp_server_names,omitempty"`
+	// AllowedTools / DisallowedTools are sorted copies of the arm's lists
+	// — AllowedTools additionally carries "mcp__<server>" for every name
+	// in MCPServerNames not already present, so a non-empty allow-list
+	// always covers the MCP surface this arm was also handed (never a
+	// silent gap between what was wired and what was permitted).
 	AllowedTools    []string `json:"allowed_tools,omitempty"`
 	DisallowedTools []string `json:"disallowed_tools,omitempty"`
 	// InstructionsPath is the worktree's CLAUDE.md path; empty when
@@ -82,17 +91,35 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 	}
 	out.SettingsPath = settingsPath
 
-	mcpServers := arm.MCP
-	if mcpServers == nil {
-		mcpServers = map[string]any{}
-	}
+	mcpServers := normalizeMCPServers(arm.MCP)
 	mcpPath := filepath.Join(claudeDir, "scenariobench-mcp.json")
 	if err := writeJSONFile(mcpPath, map[string]any{"mcpServers": mcpServers}); err != nil {
 		return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
 	}
 	out.MCPConfigPath = mcpPath
 
+	serverNames := make([]string, 0, len(mcpServers))
+	for name := range mcpServers {
+		serverNames = append(serverNames, name)
+	}
+	sort.Strings(serverNames)
+	out.MCPServerNames = serverNames
+
 	out.AllowedTools = sortedCopy(arm.AllowedTools)
+	if len(out.AllowedTools) > 0 {
+		have := map[string]bool{}
+		for _, t := range out.AllowedTools {
+			have[t] = true
+		}
+		for _, name := range serverNames {
+			tool := "mcp__" + name
+			if !have[tool] {
+				have[tool] = true
+				out.AllowedTools = append(out.AllowedTools, tool)
+			}
+		}
+		sort.Strings(out.AllowedTools)
+	}
 	out.DisallowedTools = sortedCopy(arm.DisallowedTools)
 
 	claudeMD := filepath.Join(worktree, "CLAUDE.md")
@@ -252,6 +279,35 @@ func stripMCPEntry(path, name string) error {
 		return os.Remove(path)
 	}
 	return writeJSONFile(path, doc)
+}
+
+// normalizeMCPServers returns a fresh mcpServers map (never mutating
+// arm.MCP's own nested maps — they may be shared by another cell/trial):
+// nil becomes an empty map (RenderArm always writes an MCP config), and
+// every entry shaped as a map gets "alwaysLoad": true when it does not
+// already carry that key. Claude Code 2.1.x defers MCP tool schemas
+// behind ToolSearch unless an entry says otherwise, so a competitor arm
+// connected but never called (docs/bench/scenarios.md "Instrument truth")
+// is this default's second defect, not a stanza problem. An explicit
+// alwaysLoad — true or false — is never overwritten.
+func normalizeMCPServers(mcp map[string]any) map[string]any {
+	out := make(map[string]any, len(mcp))
+	for name, v := range mcp {
+		entry, ok := v.(map[string]any)
+		if !ok {
+			out[name] = v
+			continue
+		}
+		copied := make(map[string]any, len(entry)+1)
+		for k, vv := range entry {
+			copied[k] = vv
+		}
+		if _, has := copied["alwaysLoad"]; !has {
+			copied["alwaysLoad"] = true
+		}
+		out[name] = copied
+	}
+	return out
 }
 
 func sortedCopy(in []string) []string {

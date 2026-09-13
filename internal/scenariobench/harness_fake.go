@@ -29,6 +29,12 @@ type FakeHarness struct {
 	TaskID  string
 
 	version string
+
+	// MCPConfigPaths records req.MCPConfigPath for every RunSession call,
+	// in order, so a test can assert the rendered config actually
+	// propagated through RunSessions/newSessionRequest without shelling
+	// out to a real harness.
+	MCPConfigPaths []string
 }
 
 // NewFakeHarness returns a FakeHarness reporting version "fake-1" unless
@@ -52,6 +58,7 @@ func (h *FakeHarness) Version() string {
 // exactly what a real harness does, so RunSessions cannot tell the two
 // apart except by Name().
 func (h *FakeHarness) RunSession(req SessionRequest) (SessionResult, error) {
+	h.MCPConfigPaths = append(h.MCPConfigPaths, req.MCPConfigPath)
 	name, err := h.resolveStream(req)
 	if err != nil {
 		return SessionResult{}, err

@@ -77,6 +77,105 @@ func TestRenderArm_UnwiredNoHooks(t *testing.T) {
 	}
 }
 
+// TestRenderArm_MCPEntriesDefaultAlwaysLoadTrue covers the second
+// documented defect (docs/bench/scenarios.md "Instrument truth"): Claude
+// Code 2.1.x defers MCP tool schemas behind ToolSearch unless an entry
+// carries "alwaysLoad": true, so a competitor arm connects but is never
+// called. RenderArm must default it for every map-shaped MCP entry that
+// does not already set it, and never touch one that does — including an
+// explicit false.
+func TestRenderArm_MCPEntriesDefaultAlwaysLoadTrue(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{
+		Instructions: "none",
+		MCP: map[string]any{
+			"graphify": map[string]any{"command": "graphify", "args": []any{"--mcp"}},
+			"explicit": map[string]any{"command": "x", "alwaysLoad": false},
+		},
+	}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw, err := os.ReadFile(files.MCPConfigPath)
+	if err != nil {
+		t.Fatalf("reading mcp config: %v", err)
+	}
+	var doc struct {
+		MCPServers map[string]map[string]any `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(raw, &doc); err != nil {
+		t.Fatalf("parsing mcp config: %v", err)
+	}
+	if doc.MCPServers["graphify"]["alwaysLoad"] != true {
+		t.Errorf("expected graphify's alwaysLoad defaulted to true, got %v", doc.MCPServers["graphify"])
+	}
+	if doc.MCPServers["explicit"]["alwaysLoad"] != false {
+		t.Errorf("expected explicit's alwaysLoad left at false, got %v", doc.MCPServers["explicit"])
+	}
+	// The original arm.MCP nested maps must not have been mutated in
+	// place — arm.MCP may be shared across cells/trials.
+	if _, has := arm.MCP["graphify"].(map[string]any)["alwaysLoad"]; has {
+		t.Error("RenderArm mutated arm.MCP's own nested map in place")
+	}
+	wantNames := []string{"explicit", "graphify"}
+	if len(files.MCPServerNames) != len(wantNames) {
+		t.Fatalf("MCPServerNames = %v, want %v", files.MCPServerNames, wantNames)
+	}
+	for i, w := range wantNames {
+		if files.MCPServerNames[i] != w {
+			t.Errorf("MCPServerNames[%d] = %q, want %q", i, files.MCPServerNames[i], w)
+		}
+	}
+}
+
+// TestRenderArm_AllowedToolsGetsMCPServerNames covers item 3: a non-empty
+// AllowedTools must cover the MCP surface it was also handed — otherwise
+// an arm's tools are wired but outside the allow-list (the third
+// documented defect).
+func TestRenderArm_AllowedToolsGetsMCPServerNames(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{
+		Instructions: "none",
+		AllowedTools: []string{"Read", "Grep", "Bash"},
+		MCP: map[string]any{
+			"graphify": map[string]any{"command": "graphify"},
+		},
+	}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	want := []string{"Bash", "Grep", "Read", "mcp__graphify"}
+	if len(files.AllowedTools) != len(want) {
+		t.Fatalf("AllowedTools = %v, want %v", files.AllowedTools, want)
+	}
+	for i, w := range want {
+		if files.AllowedTools[i] != w {
+			t.Errorf("AllowedTools[%d] = %q, want %q", i, files.AllowedTools[i], w)
+		}
+	}
+}
+
+// TestRenderArm_EmptyAllowedToolsUnaffectedByMCP covers the converse: an
+// arm with NO allow-list restriction at all must not gain one just
+// because it has MCP entries (RenderArm only ever narrows the surface
+// covered by an allow-list that already exists).
+func TestRenderArm_EmptyAllowedToolsUnaffectedByMCP(t *testing.T) {
+	dir := t.TempDir()
+	arm := Arm{
+		Instructions: "none",
+		MCP:          map[string]any{"fathom": map[string]any{"type": "http"}},
+	}
+	files, err := RenderArm(arm, dir)
+	if err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if len(files.AllowedTools) != 0 {
+		t.Errorf("expected no AllowedTools to be introduced, got %v", files.AllowedTools)
+	}
+}
+
 func TestRenderArm_InstructionsNoneRemovesClaudeMD(t *testing.T) {
 	dir := t.TempDir()
 	writeTestFile(t, filepath.Join(dir, "CLAUDE.md"), "# hi\n")

@@ -179,6 +179,60 @@ func TestAcceptBorrowedScenario(t *testing.T) {
 	}
 }
 
+func TestAggregateReadings_SumsToolCalls(t *testing.T) {
+	sessions := []SessionResult{
+		{ToolCalls: map[string]int{"Read": 2, "mcp__fathom__find_symbol": 1}},
+		{ToolCalls: map[string]int{"Read": 1, "mcp__fathom__references": 3}},
+	}
+	got := AggregateReadings(sessions)
+	want := map[string]int{"Read": 3, "mcp__fathom__find_symbol": 1, "mcp__fathom__references": 3}
+	if len(got.ToolCalls) != len(want) {
+		t.Fatalf("ToolCalls = %v, want %v", got.ToolCalls, want)
+	}
+	for name, n := range want {
+		if got.ToolCalls[name] != n {
+			t.Errorf("ToolCalls[%q] = %d, want %d", name, got.ToolCalls[name], n)
+		}
+	}
+}
+
+func TestSurfaceToolPrefix(t *testing.T) {
+	cases := []struct{ surface, want string }{
+		{"", ""},
+		{"fathom", "mcp__fathom__"},
+		{"graphify@v0.9.61", "mcp__graphify__"},
+		{"serena@v1.7.0", "mcp__serena__"},
+	}
+	for _, c := range cases {
+		if got := SurfaceToolPrefix(c.surface); got != c.want {
+			t.Errorf("SurfaceToolPrefix(%q) = %q, want %q", c.surface, got, c.want)
+		}
+	}
+}
+
+func TestSurfaceCallCount(t *testing.T) {
+	toolCalls := map[string]int{
+		"Read":                     5,
+		"mcp__graphify__query":     2,
+		"mcp__graphify__neighbors": 1,
+		"mcp__fathom__find_symbol": 7,
+	}
+	cases := []struct {
+		surface string
+		want    int
+	}{
+		{"", 0},
+		{"graphify@v0.9.61", 3},
+		{"fathom", 7},
+		{"serena@v1.7.0", 0},
+	}
+	for _, c := range cases {
+		if got := SurfaceCallCount(toolCalls, c.surface); got != c.want {
+			t.Errorf("SurfaceCallCount(surface=%q) = %d, want %d", c.surface, got, c.want)
+		}
+	}
+}
+
 func TestBorrowedScenarioCellsOf_SortedByTaskArmTrial(t *testing.T) {
 	results := []CellResult{
 		{TaskID: "T2", Arm: "full", Trial: 1, Borrowed: true, CellKey: "k1", SourceRunID: "r1"},

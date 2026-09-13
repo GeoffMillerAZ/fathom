@@ -90,6 +90,49 @@ func TestParseSessionStream_PlannerWriteNoBoxCheck(t *testing.T) {
 	}
 }
 
+// TestParseSessionStream_MCPInitEvent is the defect fix's own proof at the
+// parser layer: a system/init event's mcp_servers and tools must land on
+// SessionResult.MCPServers/MCPTools, and the mcp-namespaced tool_use calls
+// it precedes still count into ToolCalls exactly as any other tool would.
+func TestParseSessionStream_MCPInitEvent(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "mcp-init.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	wantServers := map[string]string{"fathom": "connected", "graphify": "failed"}
+	if len(r.MCPServers) != len(wantServers) {
+		t.Fatalf("MCPServers = %v, want %v", r.MCPServers, wantServers)
+	}
+	for name, status := range wantServers {
+		if r.MCPServers[name] != status {
+			t.Errorf("MCPServers[%q] = %q, want %q", name, r.MCPServers[name], status)
+		}
+	}
+	if r.MCPTools != 2 {
+		t.Errorf("MCPTools = %d, want 2 (mcp__fathom__find_symbol, mcp__fathom__references)", r.MCPTools)
+	}
+	if r.ToolCalls["mcp__fathom__find_symbol"] != 1 || r.ToolCalls["mcp__fathom__references"] != 1 {
+		t.Errorf("ToolCalls = %v, want mcp__fathom__find_symbol=1 mcp__fathom__references=1", r.ToolCalls)
+	}
+}
+
+// TestParseSessionStream_NoInitEventLeavesMCPServersNil covers the
+// no-MCP/control case: a transcript with no system/init event at all must
+// report a nil MCPServers, never an empty-but-non-nil map that could be
+// mistaken for "every declared server absent".
+func TestParseSessionStream_NoInitEventLeavesMCPServersNil(t *testing.T) {
+	r, err := ParseSessionStream(filepath.Join(streamsDir, "single-session.jsonl"))
+	if err != nil {
+		t.Fatalf("ParseSessionStream: %v", err)
+	}
+	if r.MCPServers != nil {
+		t.Errorf("MCPServers = %v, want nil (no init event in this fixture)", r.MCPServers)
+	}
+	if r.MCPTools != 0 {
+		t.Errorf("MCPTools = %d, want 0", r.MCPTools)
+	}
+}
+
 func TestParseSessionStream_MissingFile(t *testing.T) {
 	if _, err := ParseSessionStream(filepath.Join(streamsDir, "does-not-exist.jsonl")); err == nil {
 		t.Fatal("expected an error for a missing transcript")

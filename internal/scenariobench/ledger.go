@@ -38,6 +38,13 @@ type ScenarioLedgerRow struct {
 
 	Readings Readings `json:"readings"`
 	CostUSD  float64  `json:"cost_usd,omitempty"`
+	// SurfaceUnused is true when the arm names a non-empty Surface but
+	// Readings.SurfaceCalls is 0 across every cell filed into this row:
+	// the arm's own MCP server connected (else the cell would be LOST by
+	// the instrument-truth gate) but was never actually called — the
+	// second documented defect (docs/bench/scenarios.md "Instrument
+	// truth"), distinct from the first (never connected at all).
+	SurfaceUnused bool `json:"surface_unused,omitempty"`
 
 	Borrowed []BorrowedScenarioCell `json:"borrowed_cells,omitempty"`
 	Notes    string                 `json:"notes,omitempty"`
@@ -108,12 +115,16 @@ func LoadScenarioLedger(path string) ([]ScenarioLedgerRow, error) {
 // (run, task, arm).
 func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 	var b strings.Builder
-	b.WriteString("| run | commit | task | category | arm | model | trials | successes | prediction | cost | notes |\n")
-	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("| run | commit | task | category | arm | model | trials | successes | prediction | surface calls | cost | notes |\n")
+	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %.4f | %s |\n",
+		surfaceCalls := fmt.Sprintf("%d", r.Readings.SurfaceCalls)
+		if r.SurfaceUnused {
+			surfaceCalls += " (unused)"
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %s | %.4f | %s |\n",
 			r.RunID, r.Commit, r.TaskID, r.Category, r.Arm, r.ModelID,
-			r.Trials, r.Successes, r.Prediction, r.CostUSD, r.Notes)
+			r.Trials, r.Successes, r.Prediction, surfaceCalls, r.CostUSD, r.Notes)
 	}
 	return b.String()
 }

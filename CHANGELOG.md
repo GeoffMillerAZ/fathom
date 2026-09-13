@@ -21,6 +21,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+**Every wired scenariobench cell ran without fathom's MCP tools — fixed
+(instrument truth, `docs/bench/scenarios.md`).** `ClaudeHarness.RunSession` now
+copies the config `RenderArm` actually rendered (`SessionRequest.MCPConfigPath`)
+into the harness invocation instead of re-deriving one from the arm the caller
+still held before a wired cell's fathom entry was merged in — the cause of
+72/72 "full" sessions reporting `mcp_servers: []`. `RenderArm` defaults
+`alwaysLoad: true` on every MCP entry (Claude Code 2.1.x defers MCP schemas
+behind `ToolSearch` otherwise) and extends a non-empty `allowed_tools` with
+`mcp__<server>` for every server it renders. A session whose transcript
+doesn't report every declared server `connected` is LOST, never stored
+(`instrument: mcp server <name> <status|absent>`). Every `CellResult`/ledger
+row now carries `readings.tool_calls` and `readings.surface_calls`; a
+non-empty `surface` with zero surface calls is flagged `surface_unused` —
+`scenariobench score` warns on stderr, `scenariobench ledger`'s table shows a
+"surface calls" column.
+
 **The strengths matrix has readings (`SB-37..41`, `SB-49`, vision 27).** On
 `docs/bench/scenarios-ledger.jsonl` (74 rows) and `docs/bench/README.md`: M1 — two guards
 corpora, 64 cells, zero rule violations on either arm, the wired arm at 0.77–0.85× the tokens;

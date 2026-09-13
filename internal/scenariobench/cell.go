@@ -241,8 +241,45 @@ func AggregateReadings(sessions []SessionResult) Readings {
 		r.TotalTurns += s.Turns
 		r.TotalCostUSD += s.CostUSD
 		r.PayloadBytes += s.PayloadBytes
+		for name, n := range s.ToolCalls {
+			if r.ToolCalls == nil {
+				r.ToolCalls = map[string]int{}
+			}
+			r.ToolCalls[name] += n
+		}
 	}
 	return r
+}
+
+// SurfaceToolPrefix returns the MCP tool-name prefix an arm's Surface maps
+// to: the part before any "@" version suffix ("graphify@v0.9.61" ->
+// "mcp__graphify__"; "fathom" -> "mcp__fathom__"), or "" for an empty
+// Surface — a pure control names no surface to have called, by
+// definition, not merely "not measured".
+func SurfaceToolPrefix(surface string) string {
+	if surface == "" {
+		return ""
+	}
+	if i := strings.IndexByte(surface, '@'); i >= 0 {
+		surface = surface[:i]
+	}
+	return "mcp__" + surface + "__"
+}
+
+// SurfaceCallCount sums toolCalls for every tool namespaced to surface's
+// own MCP server (SurfaceToolPrefix). 0 for an empty surface.
+func SurfaceCallCount(toolCalls map[string]int, surface string) int {
+	prefix := SurfaceToolPrefix(surface)
+	if prefix == "" {
+		return 0
+	}
+	n := 0
+	for name, c := range toolCalls {
+		if strings.HasPrefix(name, prefix) {
+			n += c
+		}
+	}
+	return n
 }
 
 // BorrowedScenarioCellsOf lists every borrowed reading in results, sorted

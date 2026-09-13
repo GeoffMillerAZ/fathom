@@ -211,9 +211,23 @@ type SessionResult struct {
 	BytesRead         int64          `json:"bytes_read"`
 	BoxChecks         []BoxCheck     `json:"box_checks,omitempty"`
 	ToolCalls         map[string]int `json:"tool_calls"`
-	PayloadBytes      int64          `json:"payload_bytes"`
-	WallTime          time.Duration  `json:"wall_time_ns"`
-	RawPath           string         `json:"raw_path,omitempty"`
+	// MCPServers maps every MCP server name the transcript's own
+	// system/init event reported to the connection status it gave that
+	// server ("connected", or whatever the harness reported otherwise) —
+	// set only from that event, never inferred from ToolCalls. Nil when
+	// the transcript carried no init event with an mcp_servers list at all
+	// (the defect this type closes: a session can show tool_calls with no
+	// way to prove any MCP server was actually behind them).
+	MCPServers map[string]string `json:"mcp_servers,omitempty"`
+	// MCPTools is the init event's own tool list, counted for entries
+	// namespaced to an MCP server ("mcp__" prefix) — a session whose
+	// MCPServers all report connected but MCPTools is 0 still ran with no
+	// MCP tool schema loaded (Claude Code defers MCP schemas behind
+	// ToolSearch unless the config entry carries "alwaysLoad": true).
+	MCPTools     int           `json:"mcp_tools,omitempty"`
+	PayloadBytes int64         `json:"payload_bytes"`
+	WallTime     time.Duration `json:"wall_time_ns"`
+	RawPath      string        `json:"raw_path,omitempty"`
 	// BudgetHit is true when the turn cap ended the session (Claude Code's
 	// error_max_turns): the designed hand-off, never counted as an error.
 	BudgetHit bool `json:"budget_hit,omitempty"`
@@ -320,10 +334,17 @@ type DriftReading struct {
 // Readings are computed offline from sessions + oracle; never gated unless
 // the corpus's criterion names them.
 type Readings struct {
-	TotalTokens  int64                `json:"total_tokens"`
-	TotalTurns   int                  `json:"total_turns"`
-	TotalCostUSD float64              `json:"total_cost_usd"`
-	PayloadBytes int64                `json:"payload_bytes"`
+	TotalTokens  int64   `json:"total_tokens"`
+	TotalTurns   int     `json:"total_turns"`
+	TotalCostUSD float64 `json:"total_cost_usd"`
+	PayloadBytes int64   `json:"payload_bytes"`
+	// ToolCalls sums every session's own ToolCalls (SessionResult), name to
+	// count.
+	ToolCalls map[string]int `json:"tool_calls,omitempty"`
+	// SurfaceCalls counts, within ToolCalls, every call to a tool
+	// namespaced to the arm's own Surface (SurfaceCallCount) — 0 for a
+	// pure control (empty Surface) by definition, never "not measured".
+	SurfaceCalls int                  `json:"surface_calls,omitempty"`
 	PlanCoverage *PlanCoverageReading `json:"plan_coverage,omitempty"`
 	FalseDone    *FalseDoneReading    `json:"false_done,omitempty"`
 	Resumption   *ResumptionReading   `json:"resumption,omitempty"`
@@ -347,11 +368,20 @@ type CellResult struct {
 	ModelID        string          `json:"model_id"`
 	HarnessVersion string          `json:"harness_version"`
 	ArmSurface     string          `json:"arm_surface"`
-	Borrowed       bool            `json:"borrowed,omitempty"`
-	SourceRunID    string          `json:"source_run_id,omitempty"`
-	RunID          string          `json:"run_id"`
-	StartedAt      string          `json:"started_at"`
-	WorktreePath   string          `json:"worktree_path,omitempty"`
+	// Surface is the arm's own configured Surface (Arm.Surface) verbatim —
+	// "fathom", a competitor's "name@version", or "" for a pure control.
+	// Kept distinct from ArmSurface (the RESOLVED key material: a wired
+	// arm's fathom commit, never the literal "fathom" sentinel), because
+	// that resolution is exactly what SurfaceCallCount must NOT use — an
+	// MCP server is registered under Surface's own literal name, so a
+	// later `score` recompute needs this, not ArmSurface, to know which
+	// tool prefix to count.
+	Surface      string `json:"surface,omitempty"`
+	Borrowed     bool   `json:"borrowed,omitempty"`
+	SourceRunID  string `json:"source_run_id,omitempty"`
+	RunID        string `json:"run_id"`
+	StartedAt    string `json:"started_at"`
+	WorktreePath string `json:"worktree_path,omitempty"`
 	// Gold is the task's own gold record, persisted so `scenariobench
 	// score` can recompute PlanCoverage/ContractDrift later without
 	// reloading the corpus.
@@ -396,4 +426,19 @@ type SessionRequest struct {
 	Role         string
 	RowID        string
 	Env          map[string]string
+	// MCPConfigPath is the MCP config RenderArm actually wrote for this
+	// worktree (wt.Arm.MCPConfigPath) — what the harness must hand the
+	// agent, since it (never Arm.MCP directly) carries RenderArm's own
+	// normalization (alwaysLoad defaulted true). Empty only for a
+	// worktree RenderArm never touched (a test constructing a
+	// SessionRequest by hand); ClaudeHarness falls back to writing
+	// Arm.MCP verbatim in that case.
+	MCPConfigPath string
+	// AllowedTools / DisallowedTools are the RENDERED lists (wt.Arm's
+	// ArmFiles, not Arm's own) — ArmFiles.AllowedTools additionally
+	// carries "mcp__<server>" for every MCP server this arm declares, so
+	// a harness reading these two fields (never Arm.AllowedTools) always
+	// sees an allow-list that covers the MCP surface it was also handed.
+	AllowedTools    []string
+	DisallowedTools []string
 }

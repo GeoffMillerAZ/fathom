@@ -80,7 +80,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 			prompt = scenarioContinuationPrompt
 		}
 		req := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
-		res, err := h.RunSession(req)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
 		}
@@ -95,7 +95,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
 	plannerReq := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
-	plannerRes, err := h.RunSession(plannerReq)
+	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
 	}
@@ -120,7 +120,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		}
 		prompt := fmt.Sprintf(workerRowPromptFmt, task.Prompt, row.text)
 		req := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
-		res, err := h.RunSession(req)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
 		}
@@ -135,17 +135,20 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) SessionRequest {
 	rawDir := filepath.Join(opts.RawDir, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
 	return SessionRequest{
-		Worktree:     wt.Path,
-		Prompt:       prompt,
-		SystemAppend: wt.Arm.SystemAppend,
-		Arm:          arm,
-		MaxTurns:     task.Sessions.MaxTurns,
-		Model:        opts.Model,
-		RawDir:       rawDir,
-		Index:        index,
-		Role:         role,
-		RowID:        rowID,
-		Env:          opts.Env,
+		Worktree:        wt.Path,
+		Prompt:          prompt,
+		SystemAppend:    wt.Arm.SystemAppend,
+		Arm:             arm,
+		MaxTurns:        task.Sessions.MaxTurns,
+		Model:           opts.Model,
+		RawDir:          rawDir,
+		Index:           index,
+		Role:            role,
+		RowID:           rowID,
+		Env:             opts.Env,
+		MCPConfigPath:   wt.Arm.MCPConfigPath,
+		AllowedTools:    wt.Arm.AllowedTools,
+		DisallowedTools: wt.Arm.DisallowedTools,
 	}
 }
 
@@ -236,6 +239,49 @@ func findPlanFile(worktree string) (string, error) {
 		return "", fmt.Errorf("statting %s: %w", notes, err)
 	}
 	return "", nil
+}
+
+// runOneSession runs one session via h and then applies the
+// instrument-truth gate: a wired session whose rendered MCP config
+// declared a server (wantServers, wt.Arm.MCPServerNames) that the
+// transcript's own init event never reported connected did not run with
+// the tools it was measured as having — the defect this closes (72/72
+// "full" sessions ran with mcp_servers: [] because RunSessions handed the
+// harness the ORIGINAL arm, whose MCP map a wired cell's merged-in fathom
+// entry never reached). A mismatch is reported as res.Error, exactly like
+// any other in-band session failure, so the existing "stop after an
+// errored session" / CellLost handling picks it up unchanged. err is
+// non-nil only when the harness failed to even start the process.
+func runOneSession(h Harness, req SessionRequest, wantServers []string) (SessionResult, error) {
+	res, err := h.RunSession(req)
+	if err != nil {
+		return res, err
+	}
+	if res.Error == "" {
+		if msg := instrumentTruthError(wantServers, res); msg != "" {
+			res.Error = msg
+		}
+	}
+	return res, nil
+}
+
+// instrumentTruthError reports the first wantServers entry (in the given,
+// deterministic order) that res.MCPServers does not show connected:
+// "instrument: mcp server <name> absent" when the transcript's init event
+// never mentioned it at all, "instrument: mcp server <name> <status>"
+// when it did but not as connected. Empty wantServers (an arm with no MCP
+// entries) always reports "".
+func instrumentTruthError(wantServers []string, res SessionResult) string {
+	for _, name := range wantServers {
+		status, ok := res.MCPServers[name]
+		switch {
+		case !ok:
+			return fmt.Sprintf("instrument: mcp server %s absent", name)
+		case status != "connected":
+			return fmt.Sprintf("instrument: mcp server %s %s", name, status)
+		}
+	}
+	return ""
 }
 
 // CellLost reports why a cell is not a reading: every session errored, or

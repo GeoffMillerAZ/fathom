@@ -136,6 +136,122 @@ func TestRunSessions_FakeHarnessReplays(t *testing.T) {
 	})
 }
 
+// TestInstrumentTruthError covers the gate directly: every wantServers
+// entry must show "connected" in res.MCPServers, in order, else the
+// FIRST mismatch (absent or non-connected) is reported.
+func TestInstrumentTruthError(t *testing.T) {
+	cases := []struct {
+		name        string
+		wantServers []string
+		got         map[string]string
+		wantMsg     string
+	}{
+		{"no servers declared", nil, nil, ""},
+		{"declared and connected", []string{"fathom"}, map[string]string{"fathom": "connected"}, ""},
+		{"declared but absent from the transcript", []string{"fathom"}, map[string]string{}, "instrument: mcp server fathom absent"},
+		{"declared but not connected", []string{"graphify"}, map[string]string{"graphify": "failed"}, "instrument: mcp server graphify failed"},
+		{"first of two mismatches wins (deterministic order)", []string{"a", "b"}, map[string]string{"a": "connected"}, "instrument: mcp server b absent"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := instrumentTruthError(c.wantServers, SessionResult{MCPServers: c.got})
+			if got != c.wantMsg {
+				t.Errorf("instrumentTruthError = %q, want %q", got, c.wantMsg)
+			}
+		})
+	}
+}
+
+// TestRunSessions_InstrumentTruthGate_LosesTheCell is the DEFECT fix's own
+// end-to-end proof at the RunSessions layer: a wired arm's declared MCP
+// server that the transcript's own init event never reports connected
+// must not pass as a reading — the session's Error is set so CellLost
+// reports the cell as lost, exactly as an every-session-errored cell
+// already does.
+func TestRunSessions_InstrumentTruthGate_LosesTheCell(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	// wt.Arm.MCPServerNames is what RenderArm actually wrote — set
+	// directly here, standing in for what RenderArm would have produced
+	// for a wired arm declaring "fathom" and "graphify".
+	wt := Worktree{Path: wtDir, Arm: ArmFiles{MCPServerNames: []string{"fathom", "graphify"}}}
+	h := &FakeHarness{
+		StreamsDir: streamsDir,
+		TaskID:     "T1",
+		ArmName:    "full",
+		// mcp-init.jsonl's own init event reports fathom connected but
+		// graphify failed.
+		Streams: map[string]string{"T1/full": "mcp-init.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected the single (failing) session, got %d", len(results))
+	}
+	wantErr := "instrument: mcp server graphify failed"
+	if results[0].Error != wantErr {
+		t.Errorf("Error = %q, want %q", results[0].Error, wantErr)
+	}
+	if reason := CellLost(results); reason == "" {
+		t.Error("expected CellLost to report this cell as lost")
+	}
+}
+
+// TestRunSessions_InstrumentTruthGate_AllConnectedIsNotLost is the
+// converse: every declared server connected must leave the session's
+// Error untouched.
+func TestRunSessions_InstrumentTruthGate_AllConnectedIsNotLost(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir, Arm: ArmFiles{MCPServerNames: []string{"fathom"}}}
+	h := &FakeHarness{
+		StreamsDir: streamsDir,
+		TaskID:     "T1",
+		ArmName:    "full",
+		Streams:    map[string]string{"T1/full": "mcp-init.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 || results[0].Error != "" {
+		t.Errorf("expected one clean session, got %+v", results)
+	}
+}
+
+// TestRunSessions_PropagatesMCPConfigPath proves item 1's plumbing through
+// the whole RunSessions loop: every session's request carries
+// wt.Arm.MCPConfigPath, not an empty string a harness would silently fall
+// back from.
+func TestRunSessions_PropagatesMCPConfigPath(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 2, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir, Arm: ArmFiles{MCPConfigPath: "/rendered/scenariobench-mcp.json"}}
+	h := &FakeHarness{
+		StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
+		Streams: map[string]string{"T1/full": "single-session.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	if _, err := RunSessions(context.Background(), h, task, "full", Arm{}, wt, opts); err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(h.MCPConfigPaths) != 2 {
+		t.Fatalf("expected 2 recorded MCPConfigPaths, got %d: %v", len(h.MCPConfigPaths), h.MCPConfigPaths)
+	}
+	for i, got := range h.MCPConfigPaths {
+		if got != wt.Arm.MCPConfigPath {
+			t.Errorf("session %d: MCPConfigPath = %q, want %q", i, got, wt.Arm.MCPConfigPath)
+		}
+	}
+}
+
 // recordingHarness wraps FakeHarness and remembers every SessionRequest.Prompt
 // it was asked to run, in call order, so a test can assert on the exact
 // prompt text RunSessions builds without a real (or fake-transcript-blind)

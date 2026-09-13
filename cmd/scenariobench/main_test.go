@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,6 +12,30 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 )
+
+// captureStderr redirects os.Stderr for the duration of fn and returns
+// what was written to it — used to assert on `scenariobench score`'s own
+// warning line, which (like every subcommand here) writes straight to
+// os.Stderr rather than returning it as data.
+func captureStderr(t *testing.T, fn func()) string {
+	t.Helper()
+	orig := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	defer func() { os.Stderr = orig }()
+	fn()
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
 
 // gitFixtureSubject creates a local, self-contained go module git repo (one
 // commit) with a passing and a failing test, so cmdRun's oracle step has
@@ -400,6 +426,125 @@ func TestCmdScore_MissingIn(t *testing.T) {
 func TestCmdLedger_MissingFlags(t *testing.T) {
 	if rc := run([]string{"ledger"}); rc != 2 {
 		t.Errorf("ledger with no flags: exit %d, want 2", rc)
+	}
+}
+
+// TestCmdRunScoreLedger_SurfaceCallsAndUnusedFlag is item 6's end-to-end
+// proof: a competitor arm whose MCP server connected but was never called
+// (docs/bench/scenarios.md "Instrument truth", second documented defect)
+// must carry ToolCalls/SurfaceCalls==0 on the stored cell, a
+// surface-unused stderr warning from `score`, and a surface_unused=true
+// row from `ledger`.
+func TestCmdRunScoreLedger_SurfaceCallsAndUnusedFlag(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpus := `{
+  "arms": {
+    "comp": {
+      "wired": false,
+      "instructions": "plain",
+      "surface": "graphify@v0.9.61",
+      "mcp": {"graphify": {"command": "graphify", "args": ["--mcp"]}}
+    }
+  },
+  "tasks": [{
+    "id": "T1",
+    "category": "obligations",
+    "prompt": "what does foo do",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "` + repoURL + `", "base_commit": "` + commit + `"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_all_of": ["fusion.New"]},
+    "predictions": {"comp": "predicted to tie"}
+  }],
+  "criterion": {"id": "C1", "treatment": "comp", "control": "comp", "min_trials": 1}
+}`
+	corpusPath := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(corpusPath, []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", "run-1",
+		"-harness-version", "fake-1",
+		"-harness", "fake",
+		"-fake-streams-dir", streamsDir,
+		"-fake-streams", `{"T1/comp":"mcp-connected-unused.jsonl"}`,
+	})
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0 (the fixture's answer-only oracle matches)", rc)
+	}
+
+	cellPath := findStoredCell(t, cellsDir)
+	cell := readStoredCell(t, cellPath)
+	if cell.Surface != "graphify@v0.9.61" {
+		t.Errorf("Surface = %q, want graphify@v0.9.61", cell.Surface)
+	}
+	if cell.Readings.ToolCalls["Read"] != 1 {
+		t.Errorf("ToolCalls = %v, want Read=1", cell.Readings.ToolCalls)
+	}
+	if cell.Readings.SurfaceCalls != 0 {
+		t.Errorf("SurfaceCalls = %d, want 0 (the fixture never calls mcp__graphify__*)", cell.Readings.SurfaceCalls)
+	}
+
+	stderr := captureStderr(t, func() {
+		if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+			t.Fatalf("score exited %d", rc)
+		}
+	})
+	if !strings.Contains(stderr, `surface "graphify@v0.9.61" unused`) {
+		t.Errorf("expected a surface-unused warning on stderr, got %q", stderr)
+	}
+
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	readmePath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	rc = run([]string{
+		"ledger",
+		"-corpus", corpusPath,
+		"-cells", cellsDir,
+		"-ledger", ledgerPath,
+		"-readme", readmePath,
+		"-run-id", "run-1",
+		"-harness-version", "fake-1",
+	})
+	if rc != 0 {
+		t.Fatalf("ledger exited %d, want 0", rc)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 filed row, got %d", len(rows))
+	}
+	if !rows[0].SurfaceUnused {
+		t.Error("expected the ledger row to carry surface_unused=true")
+	}
+	if rows[0].Readings.SurfaceCalls != 0 {
+		t.Errorf("row SurfaceCalls = %d, want 0", rows[0].Readings.SurfaceCalls)
+	}
+	readme, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readme), "0 (unused)") {
+		t.Errorf("expected the rendered README table to flag the unused surface:\n%s", readme)
 	}
 }
 

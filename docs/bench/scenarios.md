@@ -259,6 +259,34 @@ every task has predicted the new arm's outcome. Nothing about the harness
 changes; `RunSessions`/`ClaudeHarness` (wave 2, another file) read the arm
 the same way regardless of what it contains.
 
+## Instrument truth
+
+A wired or MCP-carrying arm's cell is only a reading if the tools it was
+measured as having actually ran. `RenderArm` writes the config a harness is
+handed (`.claude/scenariobench-mcp.json`), defaulting `alwaysLoad: true` on
+every entry that does not already set it — Claude Code 2.1.x defers MCP
+tool schemas behind `ToolSearch` otherwise, so a competitor arm can connect
+and still never be called. After each session, `RunSessions` checks the
+transcript's own `system`/`init` event against what was actually rendered
+(`ArmFiles.MCPServerNames`, including a wired arm's merged-in `fathom`
+entry): a declared server missing from that event, or reporting anything
+but `connected`, sets the session's `Error` to `instrument: mcp server
+<name> <status|absent>` and the cell is **LOST** — never stored, exactly
+like an every-session-errored cell (this is the defect 72/72 "full"
+sessions hit: the harness ran the config it wrote for itself, never the
+one `RenderArm` rendered).
+
+A cell that clears that gate still has a second thing to prove: that the
+tools it connected to were actually *used*. Every `CellResult`/ledger row's
+`readings.tool_calls` sums `SessionResult.ToolCalls` by name, and
+`readings.surface_calls` counts the ones namespaced to the arm's own
+`surface` (`mcp__<surface-without-@version>__*`). An arm with a non-empty
+`surface` whose `surface_calls` comes out 0 is flagged `surface_unused:
+true` on the ledger row; `scenariobench score` prints one warning line to
+stderr for a cell in that state, and `scenariobench ledger`'s rendered
+table shows a "surface calls" column (`N (unused)` when flagged) so the
+gap is visible without opening the raw cells.
+
 ## How to publish a row
 
 After a paid run, its per-cell results append one row to

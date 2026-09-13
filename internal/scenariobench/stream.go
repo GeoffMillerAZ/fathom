@@ -43,7 +43,14 @@ var (
 
 // streamEvent is the subset of a stream-json line this parser reads.
 type streamEvent struct {
-	Type    string `json:"type"`
+	Type       string `json:"type"`
+	MCPServers []struct {
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	} `json:"mcp_servers"`
+	// Tools is the init event's own available-tool list — counted for
+	// MCP-namespaced entries (MCPTools), never stored verbatim.
+	Tools   []string `json:"tools"`
 	Message struct {
 		Content []streamContentBlock `json:"content"`
 		Usage   struct {
@@ -54,7 +61,10 @@ type streamEvent struct {
 		} `json:"usage"`
 	} `json:"message"`
 	// The terminal `{"type":"result",...}` event carries the same shape as
-	// `claude -p --output-format json`'s envelope.
+	// `claude -p --output-format json`'s envelope. Subtype is shared with
+	// the "system" event this parser also reads ("init" carries
+	// MCPServers/Tools above); a result event's own Subtype is otherwise
+	// "success" or an error subtype like "error_max_turns".
 	IsError      bool    `json:"is_error"`
 	Subtype      string  `json:"subtype"`
 	NumTurns     int     `json:"num_turns"`
@@ -100,6 +110,12 @@ type parsedStream struct {
 	payloadBytes      int64
 	sawResult         bool
 	result            streamEvent
+	// mcpServers/mcpTools come from the "system"/"init" event(s); nil map
+	// when no such event was seen (the defect this closes: a wired
+	// session that never gets one still looked identical to a control
+	// before this parser could tell the difference).
+	mcpServers map[string]string
+	mcpTools   int
 }
 
 // ParseSessionStream reads a captured `claude -p --output-format
@@ -144,6 +160,10 @@ func parseSessionStreamBytes(transcript []byte) SessionResult {
 			ps.handleAssistant(ev, checkedLines)
 		case "user":
 			ps.handleUser(ev)
+		case "system":
+			if ev.Subtype == "init" {
+				ps.handleInit(ev)
+			}
 		case "result":
 			ps.sawResult = true
 			ps.result = ev
@@ -209,6 +229,30 @@ func (ps *parsedStream) handleUser(ev streamEvent) {
 			ps.bytesRead += n
 		}
 	}
+}
+
+// handleInit reads one "system"/"init" event: every named MCP server's
+// connection status (merged into mcpServers — a later init event's status
+// for the same name wins, since only the last is still current) and the
+// init event's own tool list, counted for MCP-namespaced entries
+// (mcpTools; a later init event's count replaces rather than adds, for
+// the same reason). A session with no init event at all leaves both zero,
+// which toSessionResult reports as a nil MCPServers, never a false "no
+// servers connected".
+func (ps *parsedStream) handleInit(ev streamEvent) {
+	if ps.mcpServers == nil {
+		ps.mcpServers = map[string]string{}
+	}
+	for _, s := range ev.MCPServers {
+		ps.mcpServers[s.Name] = s.Status
+	}
+	tools := 0
+	for _, name := range ev.Tools {
+		if strings.HasPrefix(name, "mcp__") {
+			tools++
+		}
+	}
+	ps.mcpTools = tools
 }
 
 // recordBoxChecks scans an edit tool_use's new content for markdown
@@ -290,6 +334,8 @@ func (ps *parsedStream) toSessionResult() SessionResult {
 	r.BytesRead = ps.bytesRead
 	r.BoxChecks = ps.boxChecks
 	r.ToolCalls = ps.toolCalls
+	r.MCPServers = ps.mcpServers
+	r.MCPTools = ps.mcpTools
 	r.PayloadBytes = ps.payloadBytes
 	if ps.sawResult {
 		u := ps.result.Usage

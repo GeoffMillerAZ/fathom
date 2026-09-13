@@ -356,6 +356,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	}
 
 	readings := scenariobench.AggregateReadings(sessions)
+	readings.SurfaceCalls = scenariobench.SurfaceCallCount(readings.ToolCalls, arm.Surface)
 	boxChecks := allBoxChecks(sessions)
 
 	planCoverage := scenariobench.PlanCoverage(planBytes, cp.task.Gold)
@@ -398,6 +399,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		ModelID:        cp.inv.ModelID,
 		HarnessVersion: cp.inv.HarnessVersion,
 		ArmSurface:     cp.inv.ArmSurface,
+		Surface:        arm.Surface,
 		Gold:           cp.task.Gold,
 		PlanPath:       planPath,
 		AgentDiffPath:  diffPath,
@@ -696,6 +698,11 @@ func cmdScore(args []string) int {
 		return 2
 	}
 	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
+	cell.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(cell.Readings.ToolCalls, cell.Surface)
+	if cell.Surface != "" && cell.Readings.SurfaceCalls == 0 {
+		fmt.Fprintf(os.Stderr, "scenariobench score: %s/%s/t%d: surface %q unused — zero %s* tool calls across the cell\n",
+			cell.TaskID, cell.Arm, cell.Trial, cell.Surface, scenariobench.SurfaceToolPrefix(cell.Surface))
+	}
 	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 	rescoreSDDReadings(&cell)
 
@@ -816,8 +823,19 @@ func cmdLedger(args []string) int {
 			row.Readings.TotalCostUSD += cell.Readings.TotalCostUSD
 			row.Readings.PayloadBytes += cell.Readings.PayloadBytes
 			row.CostUSD += cell.Readings.TotalCostUSD
+			for name, n := range cell.Readings.ToolCalls {
+				if row.Readings.ToolCalls == nil {
+					row.Readings.ToolCalls = map[string]int{}
+				}
+				row.Readings.ToolCalls[name] += n
+			}
 		}
 		row.Prediction = taskByID[k.task].Predictions[k.arm]
+		surface := corpus.Arms[k.arm].Surface
+		row.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(row.Readings.ToolCalls, surface)
+		if surface != "" && row.Readings.SurfaceCalls == 0 {
+			row.SurfaceUnused = true
+		}
 		rows = append(rows, row)
 	}
 	rowBorrowed := scenariobench.BorrowedScenarioCellsOf(allCells)

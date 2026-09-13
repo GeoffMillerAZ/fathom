@@ -61,12 +61,29 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 		return SessionResult{}, fmt.Errorf("claude harness: creating raw dir %s: %w", req.RawDir, err)
 	}
 	mcpPath := filepath.Join(req.RawDir, fmt.Sprintf("session-%d-mcp.json", req.Index))
-	mcpServers := req.Arm.MCP
-	if mcpServers == nil {
-		mcpServers = map[string]any{}
-	}
-	if err := writeJSONFile(mcpPath, map[string]any{"mcpServers": mcpServers}); err != nil {
-		return SessionResult{}, fmt.Errorf("claude harness: %w", err)
+	if req.MCPConfigPath != "" {
+		// The RENDERED config (RenderArm's own normalization — alwaysLoad
+		// defaulted true, a wired arm's merged-in fathom entry) is what
+		// must reach the agent; copying it into RawDir (rather than
+		// pointing --mcp-config at it directly) keeps the existing
+		// provenance filename and worktree-independent raw artifact.
+		raw, err := os.ReadFile(req.MCPConfigPath)
+		if err != nil {
+			return SessionResult{}, fmt.Errorf("claude harness: reading rendered mcp config %s: %w", req.MCPConfigPath, err)
+		}
+		if err := os.WriteFile(mcpPath, raw, 0o644); err != nil {
+			return SessionResult{}, fmt.Errorf("claude harness: writing mcp config copy %s: %w", mcpPath, err)
+		}
+	} else {
+		// No rendered config (a SessionRequest built by hand, e.g. a
+		// test): fall back to writing req.Arm.MCP verbatim, as before.
+		mcpServers := req.Arm.MCP
+		if mcpServers == nil {
+			mcpServers = map[string]any{}
+		}
+		if err := writeJSONFile(mcpPath, map[string]any{"mcpServers": mcpServers}); err != nil {
+			return SessionResult{}, fmt.Errorf("claude harness: %w", err)
+		}
 	}
 
 	streamPath := filepath.Join(req.RawDir, fmt.Sprintf("session-%d-%s.stream.jsonl", req.Index, safeRole(req.Role)))
@@ -119,12 +136,12 @@ func buildClaudeArgs(req SessionRequest, mcpConfigPath string) []string {
 	if req.SystemAppend != "" {
 		args = append(args, "--append-system-prompt", req.SystemAppend)
 	}
-	if len(req.Arm.AllowedTools) > 0 {
-		allowed := sortedCopy(req.Arm.AllowedTools)
+	if len(req.AllowedTools) > 0 {
+		allowed := sortedCopy(req.AllowedTools)
 		args = append(args, "--allowedTools", strings.Join(allowed, " "))
 	}
-	if len(req.Arm.DisallowedTools) > 0 {
-		disallowed := sortedCopy(req.Arm.DisallowedTools)
+	if len(req.DisallowedTools) > 0 {
+		disallowed := sortedCopy(req.DisallowedTools)
 		args = append(args, "--disallowedTools", strings.Join(disallowed, " "))
 	}
 	if req.MaxTurns > 0 {
