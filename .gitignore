@@ -60,3 +60,7 @@ cmd/fathom/workspace/
 go.work
 go.work.sum
 
+
+# competitor artifacts written by their own CLIs during bench runs (vision 27 §6)
+.serena/
+graphify-out/
