@@ -58,6 +58,13 @@ var blockLineRe = regexp.MustCompile(`^(.+):(\d+)\.(\d+),(\d+)\.(\d+) (\d+) (\d+
 // signal that it happened. Blank lines are tolerated (skipped) wherever
 // they appear; the profile format itself never emits them, but a
 // hand-edited or concatenated file might.
+//
+// CRITICAL fix (review_tool.go finding 3): every error names the line
+// NUMBER and a byte LENGTH only, never the line's own content — this
+// profile is read from an MCP-supplied path (review_diff's
+// coverage_profiles), so an error string that echoed the offending line
+// verbatim was a content leak through the MCP error channel when that
+// path named the wrong (possibly sensitive) file.
 func ParseProfile(r io.Reader) (Profile, error) {
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
@@ -74,21 +81,21 @@ func ParseProfile(r io.Reader) (Profile, error) {
 		if !modeSeen {
 			const prefix = "mode:"
 			if !strings.HasPrefix(line, prefix) {
-				return Profile{}, fmt.Errorf("coverage: line %d: expected a %q header, got %q", lineNo, "mode: set|count|atomic", line)
+				return Profile{}, fmt.Errorf("coverage: line %d: expected a %q header (got a %d-byte line that is not one)", lineNo, "mode: set|count|atomic", len(line))
 			}
 			mode := Mode(strings.TrimSpace(strings.TrimPrefix(line, prefix)))
 			switch mode {
 			case ModeSet, ModeCount, ModeAtomic:
 				p.Mode = mode
 			default:
-				return Profile{}, fmt.Errorf("coverage: line %d: unknown mode %q (want set, count, or atomic)", lineNo, mode)
+				return Profile{}, fmt.Errorf("coverage: line %d: unknown mode (%d-byte value; want set, count, or atomic)", lineNo, len(mode))
 			}
 			modeSeen = true
 			continue
 		}
 		m := blockLineRe.FindStringSubmatch(line)
 		if m == nil {
-			return Profile{}, fmt.Errorf("coverage: line %d: malformed block line %q", lineNo, line)
+			return Profile{}, fmt.Errorf("coverage: line %d: malformed block line (%d bytes)", lineNo, len(line))
 		}
 		startLine, _ := strconv.Atoi(m[2])
 		startCol, _ := strconv.Atoi(m[3])

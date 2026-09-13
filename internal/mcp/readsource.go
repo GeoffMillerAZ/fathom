@@ -37,6 +37,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 )
 
@@ -219,6 +220,27 @@ func pathWithin(root, candidate string) bool {
 //     matcher Discover applies, connector.LoadIgnore) — checked against the
 //     file and every ancestor directory, mirroring the walk-time pruning.
 func notIndexedReason(ctx context.Context, corpusRoot, service, relFile string) string {
+	return notIndexedReasonOpts(ctx, corpusRoot, service, relFile, notIndexedOpts{})
+}
+
+// notIndexedOpts configures notIndexedReasonOpts's checks beyond
+// notIndexedReason's default (every refusal applies).
+type notIndexedOpts struct {
+	// SkipProjectIgnore skips ONLY the project's own .fathomignore
+	// corpus-membership refusal — set exclusively by applyCoverageProfiles's
+	// build-artifact carve-out (internal/mcp/review_tool.go): a coverage
+	// profile is typically a workspace/ build artifact a repo's
+	// .fathomignore routinely excludes from the indexed corpus, and that
+	// exclusion alone must not refuse the exact files this parameter
+	// exists to read. Every OTHER refusal still applies UNCHANGED: .env,
+	// always-skipped directories, a scoped-ignore/purge exclusion (user-
+	// or service-scope — ignoreReason distinguishes it from a plain
+	// project .fathomignore hit), and suppression.
+	SkipProjectIgnore bool
+}
+
+// notIndexedReasonOpts is notIndexedReason with opts. See notIndexedOpts.
+func notIndexedReasonOpts(ctx context.Context, corpusRoot, service, relFile string, opts notIndexedOpts) string {
 	base := filepath.Base(filepath.FromSlash(relFile))
 	if base == ".env" || strings.HasPrefix(base, ".env.") || strings.HasSuffix(base, ".env") {
 		return fmt.Sprintf("refusing %q: .env-pattern files are never served (secrets-shaped; defense in depth)", relFile)
@@ -229,31 +251,8 @@ func notIndexedReason(ctx context.Context, corpusRoot, service, relFile string) 
 			return fmt.Sprintf("%q is not in the indexed corpus: directory %q is always excluded from ingest", relFile, seg)
 		}
 	}
-	// SERVICE-SCOPED exclusions (the V-review's read_source finding): the
-	// mirror this function claims — "the readable set mirrors what
-	// Discover walks" — was enforced with the service-BLIND loader, so for
-	// exactly a purged service the mirror silently diverged: Discover
-	// excluded secrets/**, read_source served it, and one MCP call
-	// returned a purged credential verbatim after a purge printed
-	// VERIFIED. The scoped loader is the SAME one Discover now uses; an
-	// error loading it REFUSES rather than serving — a broken exclusion
-	// mechanism must not fail toward disclosure of purged content.
-	ignore, _, ierr := connector.LoadIgnoreScopedFor(corpusRoot, service)
-	if ierr != nil {
-		return fmt.Sprintf("refusing %q: the service's exclusions could not be loaded (%v) — serving without them could disclose purged content", relFile, ierr)
-	}
-	if ignore != nil {
-		if ignore.Match(relFile) {
-			return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's ignore rules (%s or a scoped exclusion)", relFile, connector.IgnoreFileName)
-		}
-		// Ancestor directories, with the trailing slash Discover uses when
-		// pruning dirs mid-walk — a dir-only pattern ("workspace/") must
-		// exclude every file beneath it here exactly as it does at ingest.
-		for i := 1; i < len(segs); i++ {
-			if ignore.Match(strings.Join(segs[:i], "/") + "/") {
-				return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's ignore rules (%s or a scoped exclusion)", relFile, connector.IgnoreFileName)
-			}
-		}
+	if reason := ignoreReason(corpusRoot, service, relFile, segs, opts.SkipProjectIgnore); reason != "" {
+		return reason
 	}
 
 	// SUPPRESSIONS apply to disk reads exactly as to store reads — a
@@ -270,6 +269,62 @@ func notIndexedReason(ctx context.Context, corpusRoot, service, relFile string) 
 		}
 	}
 	return ""
+}
+
+// ignoreReason checks relFile (with its pre-split segs) against the
+// service's SCOPED ignore rules — project .fathomignore UNION user-scope
+// ~/.fathom/ignore UNION service-scope ~/.fathom/ignore.d/<service>
+// (purge's write-side chokepoint, serviceignore.go) — the same mirror
+// Discover applies at ingest. "" when nothing excludes it.
+//
+// When skipProjectIgnore is set and the match is found to be caused ONLY
+// by the project's own .fathomignore (re-checked against
+// connector.UserAndServiceOnlyIgnore, the project-free matcher), this
+// returns "" too — the narrow carve-out applyCoverageProfiles needs. A
+// match that ALSO holds under the project-free matcher (a genuine
+// user-scope or service-scope/purge exclusion) still refuses regardless of
+// skipProjectIgnore: MAJOR fix (review_tool.go finding 3) — that refusal
+// must never be silently bypassed.
+//
+// An error loading either matcher REFUSES rather than serving — a broken
+// exclusion mechanism must not fail toward disclosure of purged content
+// (the V-review's read_source finding this function otherwise mirrors).
+func ignoreReason(corpusRoot, service, relFile string, segs []string, skipProjectIgnore bool) string {
+	ignore, _, ierr := connector.LoadIgnoreScopedFor(corpusRoot, service)
+	if ierr != nil {
+		return fmt.Sprintf("refusing %q: the service's exclusions could not be loaded (%v) — serving without them could disclose purged content", relFile, ierr)
+	}
+	if ignore == nil || !matchesFileOrAncestor(ignore, relFile, segs) {
+		return ""
+	}
+	if skipProjectIgnore {
+		scoped, serr := connector.UserAndServiceOnlyIgnore(service)
+		if serr != nil {
+			return fmt.Sprintf("refusing %q: the service's scoped exclusions could not be loaded (%v) — serving without them could disclose purged content", relFile, serr)
+		}
+		if scoped == nil || !matchesFileOrAncestor(scoped, relFile, segs) {
+			// Excluded ONLY by the project's own .fathomignore — the
+			// corpus-membership refusal this carve-out exists to skip.
+			return ""
+		}
+	}
+	return fmt.Sprintf("%q is not in the indexed corpus: excluded by the service's ignore rules (%s or a scoped exclusion)", relFile, connector.IgnoreFileName)
+}
+
+// matchesFileOrAncestor reports whether m excludes relFile itself or any
+// ancestor directory (with the trailing slash Discover uses when pruning
+// dirs mid-walk — a dir-only pattern like "workspace/" must exclude every
+// file beneath it here exactly as it does at ingest).
+func matchesFileOrAncestor(m *filter.Matcher, relFile string, segs []string) bool {
+	if m.Match(relFile) {
+		return true
+	}
+	for i := 1; i < len(segs); i++ {
+		if m.Match(strings.Join(segs[:i], "/") + "/") {
+			return true
+		}
+	}
+	return false
 }
 
 // readSourceRange reads a bounded, line-numbered range of file (repo-relative

@@ -247,20 +247,6 @@ func buildReviewInput(ctx context.Context, backend QueryInterface, service strin
 	return in, sources, nil
 }
 
-// applyCoverageProfile resolves review_diff's optional coverage_profile
-// argument (RC-41) and sets in's coverage fields: read + parse the Go cover
-// profile at path, join it against in.Nodes (review.ResolveCoverage — the
-// SAME composition the CLI mirror's --coverage-profile flag uses, so both
-// surfaces resolve identically), and enable the "coverage" dimension.
-//
-// path is resolved SAFELY under the service's own corpus root — the
-// lexical + physical containment checks read_source already established
-// (validateRelPath, resolveRealPath: no absolute path, no traversal, no
-// symlink escape) — but deliberately WITHOUT read_source's "indexed
-// corpus" membership check (notIndexedReason): a coverage profile is a
-// build artifact, typically under workspace/, which a repo's own
-// .fathomignore routinely excludes from the indexed corpus — applying that
-// check here would refuse the exact files this parameter exists to read.
 // defaultCoverageProfileLayer is the layer an unlabeled `coverage_profile`
 // alias entry is treated as — the same "unit" default the CLI's bare
 // `--profile <path>` (no `layer=` prefix) uses (internal/testlayer.
@@ -287,11 +273,22 @@ type labeledProfilePath struct {
 // Each path is resolved SAFELY under the service's own corpus root — the
 // lexical + physical containment checks read_source already established
 // (validateRelPath, resolveRealPath: no absolute path, no traversal, no
-// symlink escape) — but deliberately WITHOUT read_source's "indexed
-// corpus" membership check (notIndexedReason): a coverage profile is a
-// build artifact, typically under workspace/, which a repo's own
-// .fathomignore routinely excludes from the indexed corpus — applying that
-// check here would refuse the exact files this parameter exists to read.
+// symlink escape) — AND read_source's notIndexedReason checks, EXCEPT its
+// plain project-.fathomignore corpus-membership refusal: a coverage
+// profile is a build artifact, typically under workspace/, which a repo's
+// own .fathomignore routinely excludes from the indexed corpus, so that ONE
+// check alone must not refuse the exact files this parameter exists to
+// read.
+//
+// CRITICAL fix (review_tool.go finding 3): before this fix the WHOLE of
+// notIndexedReason was skipped, so a coverage_profiles path could name a
+// .env-shaped file, a purged/scoped-ignored file, or a suppressed file —
+// none of which this carve-out's rationale ever covered — and
+// coverage.ParseProfile's own error could echo that file's content back
+// through the MCP error channel. notIndexedReasonOpts (readsource.go) now
+// applies every refusal EXCEPT the narrow one the comment above justifies:
+// .env, always-skipped directories, a scoped-ignore/purge exclusion, and
+// suppression all still refuse.
 func applyCoverageProfiles(ctx context.Context, backend QueryInterface, service string, paths []labeledProfilePath, in *review.Input) *rpcError {
 	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
 	if err != nil {
@@ -300,9 +297,12 @@ func applyCoverageProfiles(ctx context.Context, backend QueryInterface, service 
 
 	labeled := make([]coverage.LabeledProfile, 0, len(paths))
 	for _, lp := range paths {
-		_, full, err := validateRelPath(corpusRoot, lp.Path)
+		rel, full, err := validateRelPath(corpusRoot, lp.Path)
 		if err != nil {
 			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: " + err.Error()}
+		}
+		if reason := notIndexedReasonOpts(ctx, corpusRoot, service, rel, notIndexedOpts{SkipProjectIgnore: true}); reason != "" {
+			return &rpcError{Code: ErrCodeParams, Message: "review_diff: coverage_profiles: " + reason}
 		}
 		full, err = resolveRealPath(corpusRoot, full, lp.Path)
 		if err != nil {

@@ -147,15 +147,19 @@ func cmdRoutes(args []string, stdout, stderr io.Writer) int {
 	}
 	var resolved []resolvedRoute
 	for _, r := range routed {
-		line, ok := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0)
-		if !ok {
-			continue // dropped: the index no longer confirms it (RC-30)
+		line, res := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0)
+		if res == discoveryStale {
+			continue // dropped: the index confirmed it's genuinely gone (RC-30)
 		}
+		// MAJOR fix: an unreachable index (res == discoveryUnreachable) is
+		// KEPT, not dropped — the index never said this pointer was gone,
+		// it simply couldn't be asked. Silently dropping it here is exactly
+		// how "no routes yet" got printed for a healthy set of candidates.
 		pkg := routePackagePrefix(r.Pointer)
 		if filterPrefix != "" && pkg != filterPrefix && !strings.HasPrefix(pkg, filterPrefix) {
 			continue
 		}
-		resolved = append(resolved, resolvedRoute{Pkg: pkg, Line: line, Sessions: r.Sessions, Resolved: ok})
+		resolved = append(resolved, resolvedRoute{Pkg: pkg, Line: line, Sessions: r.Sessions, Resolved: res == discoveryResolved})
 	}
 	sort.Slice(resolved, func(i, j int) bool {
 		if resolved[i].Pkg != resolved[j].Pkg {
@@ -172,17 +176,32 @@ func cmdRoutes(args []string, stdout, stderr io.Writer) int {
 			Package  string `json:"package"`
 			Line     string `json:"line"`
 			Sessions int    `json:"sessions"`
+			Resolved bool   `json:"resolved"`
 		}
 		rows := make([]row, len(resolved))
 		for i, r := range resolved {
-			rows[i] = row{Package: r.Pkg, Line: r.Line, Sessions: r.Sessions}
+			rows[i] = row{Package: r.Pkg, Line: r.Line, Sessions: r.Sessions, Resolved: r.Resolved}
+		}
+		out := map[string]any{"service": svc, "window_days": int(routesWindow.Hours() / 24), "routes": rows}
+		if idxErr != nil {
+			// MAJOR fix: name the operational fact instead of letting an
+			// empty/partial "routes" array read as "nothing routes here".
+			out["index_unreachable"] = idxErr.Error()
 		}
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		_ = enc.Encode(map[string]any{"service": svc, "window_days": int(routesWindow.Hours() / 24), "routes": rows})
+		_ = enc.Encode(out)
 		return 0
 	}
 	if len(resolved) == 0 {
+		if idxErr != nil {
+			// MAJOR fix: an unreachable index means "unknown", never "no
+			// routes yet" — that line is a positive claim the index never
+			// made (a routed candidate may well exist and simply
+			// couldn't be confirmed this call).
+			fmt.Fprintf(stdout, "routes unknown — index unreachable: %v\n", idxErr)
+			return 0
+		}
 		fmt.Fprintln(stdout, "no routes yet — a route needs the same pointer established in 2+ sessions over the last 30 days")
 		return 0
 	}

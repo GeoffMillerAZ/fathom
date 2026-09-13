@@ -81,6 +81,50 @@ func TestParseProfile_MalformedBlockLine(t *testing.T) {
 	}
 }
 
+// CRITICAL fix (review_tool.go finding 3): ParseProfile is called on an
+// MCP-supplied path (review_diff's coverage_profiles) — its errors must
+// name the line number and a byte length, never echo the offending line's
+// own content, or a wrong/sensitive path leaks its content through the
+// MCP error channel.
+func TestParseProfile_MalformedLineErrorCarriesNoContent(t *testing.T) {
+	const secret = "super-sensitive-token-should-never-appear"
+	_, err := ParseProfile(strings.NewReader("mode: set\n" + secret + "\n"))
+	if err == nil {
+		t.Fatal("expected an error for a malformed block line")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("ParseProfile error leaked the offending line's content: %q", err)
+	}
+	if !strings.Contains(err.Error(), "line 2") {
+		t.Errorf("error %q does not name the offending line number", err)
+	}
+	if !strings.Contains(err.Error(), "bytes") {
+		t.Errorf("error %q does not report a byte length", err)
+	}
+}
+
+func TestParseProfile_MissingModeHeaderErrorCarriesNoContent(t *testing.T) {
+	const secret = "AKIA-fake-secret-shaped-header-line"
+	_, err := ParseProfile(strings.NewReader(secret + "\n"))
+	if err == nil {
+		t.Fatal("expected an error for a missing mode header")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("ParseProfile error leaked the offending line's content: %q", err)
+	}
+}
+
+func TestParseProfile_UnknownModeErrorCarriesNoContent(t *testing.T) {
+	const secret = "secret-mode-value"
+	_, err := ParseProfile(strings.NewReader("mode: " + secret + "\n"))
+	if err == nil {
+		t.Fatal("expected an error for an unknown mode")
+	}
+	if strings.Contains(err.Error(), secret) {
+		t.Errorf("ParseProfile error leaked the mode value's content: %q", err)
+	}
+}
+
 func TestParseProfile_EmptyInput(t *testing.T) {
 	_, err := ParseProfile(strings.NewReader(""))
 	if err == nil {

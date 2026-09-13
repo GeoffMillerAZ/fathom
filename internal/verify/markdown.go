@@ -108,22 +108,14 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 	return plan
 }
 
-// parseAnnotation splits a "{key: value, …}" block out of s, returning the
-// parsed key→value map (nil when there is no block), s with the block
-// removed and trimmed, and a non-empty suspect string when a brace block
-// LOOKED like an annotation but yielded no keys — the O4 silent-void class,
-// surfaced so LintPlan can be loud instead of the row quietly degrading to
-// a positional md-NNN id with no contract.
-//
-// Values may be double-quoted; a quoted value may contain commas AND braces
-// — the notation's own vocabulary ("never write {symbol, package} in a
-// value") is exactly what authors quote, and it must never terminate the
-// block (O4). Unquoted values must not contain commas or braces.
-func parseAnnotation(s string) (map[string]string, string, string) {
-	// The annotation is the TRAILING brace block: earlier braces in the
-	// title (code literals like Beat{...}, prose examples of annotations)
-	// stay title text (GI-7). Brace pairing is QUOTE-AWARE: braces inside
-	// double-quoted spans are value content, never delimiters.
+// trailingBraceBlock locates s's trailing "{...}" block — the annotation
+// convention every reader/writer in this file shares (parseAnnotation,
+// UpsertAnnotationField): earlier braces (code literals like Beat{...},
+// prose examples of annotations) stay title text (GI-7), and brace pairing
+// is QUOTE-AWARE — a brace inside a double-quoted span is value content,
+// never a delimiter. ok is false when s carries no balanced brace pair at
+// all.
+func trailingBraceBlock(s string) (open, close int, ok bool) {
 	type pair struct{ open, close int }
 	var (
 		pairs   []pair
@@ -146,7 +138,7 @@ func parseAnnotation(s string) (map[string]string, string, string) {
 		}
 	}
 	if len(pairs) == 0 {
-		return nil, strings.TrimSpace(s), ""
+		return 0, 0, false
 	}
 	// The block whose close brace is last is the trailing annotation.
 	best := pairs[0]
@@ -155,7 +147,25 @@ func parseAnnotation(s string) (map[string]string, string, string) {
 			best = p
 		}
 	}
-	i, j := best.open, best.close
+	return best.open, best.close, true
+}
+
+// parseAnnotation splits a "{key: value, …}" block out of s, returning the
+// parsed key→value map (nil when there is no block), s with the block
+// removed and trimmed, and a non-empty suspect string when a brace block
+// LOOKED like an annotation but yielded no keys — the O4 silent-void class,
+// surfaced so LintPlan can be loud instead of the row quietly degrading to
+// a positional md-NNN id with no contract.
+//
+// Values may be double-quoted; a quoted value may contain commas AND braces
+// — the notation's own vocabulary ("never write {symbol, package} in a
+// value") is exactly what authors quote, and it must never terminate the
+// block (O4). Unquoted values must not contain commas or braces.
+func parseAnnotation(s string) (map[string]string, string, string) {
+	i, j, ok := trailingBraceBlock(s)
+	if !ok {
+		return nil, strings.TrimSpace(s), ""
+	}
 	block := s[i+1 : j]
 	title := strings.TrimSpace(strings.TrimSpace(s[:i]) + " " + strings.TrimSpace(s[j+1:]))
 	m := map[string]string{}
@@ -224,6 +234,74 @@ var annotationKeys = []string{
 // looked like an annotation but yielded no keys.
 func ParseAnnotation(s string) (map[string]string, string, string) {
 	return parseAnnotation(s)
+}
+
+// UpsertAnnotationField sets key to value within line's trailing "{...}"
+// annotation block (RC-30, cmd/fathom/threadpromote.go's `thread promote
+// --route` — writing a route's pointers onto a plan row's `ctx:` field is
+// the first caller, but the operation is grammar-level, not ctx-specific)
+// — the SAME quote/brace-aware block trailingBraceBlock/ParseAnnotation
+// locate. An existing key's value is replaced IN PLACE; every other
+// key/value pair's original text is preserved byte-for-byte (order,
+// spacing, quoting) — only the named key's segment changes. A key absent
+// from an existing block is appended before the closing brace; a line
+// with NO block at all gets one appended: "<line> {key: value}".
+//
+// value is wrapped in double quotes in the output only when it contains a
+// comma or a brace (the grammar's own "must quote" rule) — never
+// otherwise, so an ordinary space-separated ctx: pointer list stays
+// unquoted like every other row's.
+//
+// ok is false when line's trailing block cannot be safely edited: a
+// brace block that looks like a MANGLED annotation (suspectAnnotation,
+// O4) rather than a fresh one, or one that already repeats key more than
+// once (ambiguous which occurrence is authoritative) — either way,
+// writing into a block the tokenizer itself doesn't trust would stack a
+// second corruption on the first, so this refuses rather than guessing.
+// Callers must treat ok:false as "do not write this line back".
+func UpsertAnnotationField(line, key, value string) (result string, ok bool) {
+	encoded := value
+	if strings.ContainsAny(value, ",{}") {
+		encoded = `"` + value + `"`
+	}
+	newPair := key + ": " + encoded
+
+	i, j, hasBlock := trailingBraceBlock(line)
+	if !hasBlock {
+		return strings.TrimRight(line, " \t") + " {" + newPair + "}", true
+	}
+
+	block := line[i+1 : j]
+	pairs := splitPairs(block)
+	matches := 0
+	for idx, p := range pairs {
+		kv := strings.SplitN(p, ":", 2)
+		if len(kv) == 2 && strings.TrimSpace(kv[0]) == key {
+			pairs[idx] = " " + newPair
+			matches++
+		}
+	}
+	switch {
+	case matches > 1:
+		return line, false
+	case matches == 0:
+		m := map[string]string{}
+		for _, p := range pairs {
+			kv := strings.SplitN(p, ":", 2)
+			if len(kv) == 2 && strings.TrimSpace(kv[0]) != "" {
+				m[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+			}
+		}
+		if len(m) == 0 && suspectAnnotation(block) {
+			return line, false
+		}
+		if strings.TrimSpace(block) == "" {
+			pairs = []string{" " + newPair}
+		} else {
+			pairs = append(pairs, " "+newPair)
+		}
+	}
+	return line[:i+1] + strings.Join(pairs, ",") + line[j:], true
 }
 
 // splitPairs splits an annotation block on commas, treating commas inside

@@ -112,15 +112,27 @@ resolves it FRESH against the live index and marks what no longer holds.
 - **`fathom discoveries [--since T] [--budget N] [--json]`** (and the
   `discoveries` MCP tool, `{service, since?, budget?}`) renders this
   repo's recent pointers, deduped and ranked by recency then frequency,
-  each resolved fresh — `symbol <ptr> → file:line`, `read <path>`, or
-  `<ptr> — stale (unresolved)`. Read it before re-exploring what a prior
-  call, or a prior session, already found.
+  each resolved fresh — `symbol <ptr> → file:line`, `read <path>`,
+  `<ptr> — stale (unresolved)` when the index is reachable and genuinely
+  no longer knows the pointer, or `<ptr> — unresolved (index unreachable:
+  <err>)` when the index itself could not be consulted at all (an
+  operational fact, never the positive "stale" claim). Read it before
+  re-exploring what a prior call, or a prior session, already found.
+  Resolution is lazy and budget-bounded: pointers are resolved one at a
+  time inside the render loop and stop the moment the byte budget fills,
+  so a large or slow pointer set can never cost more round trips than the
+  render actually needed.
 - **Workers.** A subagent's `SubagentStart` primer appends the parent
   session's discoveries since its own recorded start, within 1,200 bytes
   total (the plain ≤600-byte primer stays the cap when there is nothing
   to add). The scenario driver gives a wired arm's planner-workers cell
   the same brief (`workerDiscoveryBrief`), so a bench reading measures the
-  feature, not the prompt.
+  feature, not the prompt. The brief is capped to the 12 most relevant
+  pointers (recency×frequency) before resolution even starts, and the
+  whole resolution pass carries its own ~2s deadline independent of the
+  hook's own timeout: past it, the discoveries brief is dropped and the
+  constant identity+opening-moves primer ships alone, on time, rather than
+  a slow or unreachable index costing the primer that sits ahead of it.
 - **The next session.** A session-end note carries that session's top
   pointers; the next `SessionStart` thread brief renders them resolved
   fresh, inside its existing budget, as "last session established: …".
@@ -128,9 +140,22 @@ resolves it FRESH against the live index and marks what no longer holds.
   derives, per package prefix, the pointers established in **two or more
   distinct sessions** (attributed via `workspace/logs/sessions.jsonl`'s own
   recorded windows) over the last 30 days, resolved fresh and dropped the
-  moment the index no longer confirms them. The `SessionStart` primer names
-  routes in ONE line only when at least one exists (`routes known for N
-  package(s) — fathom routes`).
+  moment the index CONFIRMS them gone. An unreachable index is reported as
+  its own operational line (`routes unknown — index unreachable: <err>`,
+  or `index_unreachable` in `--json`) — never the empty-list "no routes
+  yet", which is a positive claim the index never made when it was simply
+  never consulted. The `SessionStart` primer names routes in ONE line only
+  when at least one exists (`routes known for N package(s) — fathom
+  routes`).
+- **`fathom thread promote --route <package> --plan <file> --row <id>
+  [--service S] [--url URL | --store DB]`** writes that route's pointers —
+  the SAME derivation `fathom routes` uses, resolved fresh and refused
+  outright if the index is unreachable (never write an unconfirmed route)
+  — onto the named plan row's `ctx:` annotation, UNIONED with whatever
+  pointers the row already carries (a promotion extends a row's discovery
+  pack, it never replaces what a human or a prior promotion already
+  grounded there). This is the OTHER `thread promote` mode: `--route`
+  never scaffolds a new plan, it annotates an existing row.
 - **Scope by identity.** A thread deposit is now tagged by the repo's
   identity (the normalized `origin` URL, else the absolute path) rather
   than a directory basename — two worktrees of unrelated repos that happen

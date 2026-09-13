@@ -1,9 +1,10 @@
 package testlayer
 
 import (
-	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/pathglob"
 )
 
 // Classify reports which test layer filePath (a repo-relative file path)
@@ -46,7 +47,7 @@ func ClassifyWith(spec LayerSet, filePath string, buildTags []string) string {
 			}
 		}
 		for _, g := range l.Globs {
-			if ok, _ := path.Match(g, slashPath); ok {
+			if pathglob.Match(g, slashPath) {
 				return l.Name
 			}
 		}

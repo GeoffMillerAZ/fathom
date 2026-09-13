@@ -55,6 +55,28 @@ func TestClassifyWith_CustomLayerGlob(t *testing.T) {
 	}
 }
 
+// TestClassifyWith_DoubleStarGlobsMatch is the MINOR fix (finding 4):
+// Classify/ClassifyWith matched globs with path.Match, which has no "**"
+// — so the two "**"-shaped examples this package ships in
+// schema/testlayer/testdata/valid.cue ("**/e2e/**", "contract/**") never
+// matched anything. internal/pathglob.Match falls back to path.Match when
+// a glob has no "**", so a plain glob's behavior is unchanged.
+func TestClassifyWith_DoubleStarGlobsMatch(t *testing.T) {
+	spec := LayerSet{Layers: []LayerSpec{
+		{Name: "e2e", Globs: []string{"**/e2e/**"}},
+		{Name: "contract", Globs: []string{"contract/**"}},
+	}}
+	if got := ClassifyWith(spec, "e2e/smoke_test.go", nil); got != "e2e" {
+		t.Errorf("ClassifyWith(%q glob) = %q, want e2e", "**/e2e/**", got)
+	}
+	if got := ClassifyWith(spec, "contract/api_test.go", nil); got != "contract" {
+		t.Errorf("ClassifyWith(%q glob) = %q, want contract", "contract/**", got)
+	}
+	if got := ClassifyWith(spec, "contract/nested/api_test.go", nil); got != "contract" {
+		t.Errorf("ClassifyWith(%q glob) = %q, want contract (nested)", "contract/**", got)
+	}
+}
+
 func TestClassify_PrecedenceBuildTagBeforeDir(t *testing.T) {
 	// A file under an "e2e" dir but carrying the "integration" tag: build
 	// tags are checked first per declared-layer order (DefaultLayers lists

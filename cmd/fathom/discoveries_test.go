@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -207,19 +210,36 @@ func TestRenderOneDiscoveryLine_ResolvesAFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chdir(wd)
-	line, ok := renderOneDiscoveryLine(nil, nil, "model.go", 3)
-	if !ok || !strings.HasPrefix(line, "read model.go") || !strings.Contains(line, "(3)") {
-		t.Errorf("renderOneDiscoveryLine(file) = (%q, %v), want a \"read model.go ... (3)\" line", line, ok)
+	line, res := renderOneDiscoveryLine(nil, nil, "model.go", 3)
+	if res != discoveryResolved || !strings.HasPrefix(line, "read model.go") || !strings.Contains(line, "(3)") {
+		t.Errorf("renderOneDiscoveryLine(file) = (%q, %v), want a \"read model.go ... (3)\" line", line, res)
 	}
 }
 
 func TestRenderOneDiscoveryLine_UnresolvedIsStale(t *testing.T) {
-	line, ok := renderOneDiscoveryLine(nil, nil, "internal/nope.GoneNow", 1)
-	if ok {
-		t.Fatalf("expected unresolved, got resolved: %q", line)
+	line, res := renderOneDiscoveryLine(nil, nil, "internal/nope.GoneNow", 1)
+	if res != discoveryStale {
+		t.Fatalf("expected discoveryStale, got %v: %q", res, line)
 	}
 	if !strings.Contains(line, "stale") {
 		t.Errorf("renderOneDiscoveryLine unresolved = %q, want it to say \"stale\"", line)
+	}
+}
+
+// MAJOR fix: an unreachable/erroring index must never render as "stale" —
+// that word is the index's own positive claim the pointer is gone, which
+// it never made when it was never consulted.
+func TestRenderOneDiscoveryLine_IndexUnreachableIsNotStale(t *testing.T) {
+	unreachable := errors.New(`probing daemon for service "fathom": dial tcp: connection refused`)
+	line, res := renderOneDiscoveryLine(nil, unreachable, "internal/nope.GoneNow", 1)
+	if res != discoveryUnreachable {
+		t.Fatalf("expected discoveryUnreachable, got %v: %q", res, line)
+	}
+	if strings.Contains(line, "stale") {
+		t.Errorf("renderOneDiscoveryLine with an unreachable index = %q, must not say \"stale\"", line)
+	}
+	if !strings.Contains(line, "unreachable") {
+		t.Errorf("renderOneDiscoveryLine with an unreachable index = %q, want it to say \"unreachable\"", line)
 	}
 }
 
@@ -303,6 +323,105 @@ func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
 	}
 	if !strings.HasPrefix(got, "last session established:") {
 		t.Errorf("subagentDiscoveries = %q, want the \"last session established:\" lead line", got)
+	}
+}
+
+// fakeSlowResolverDaemon answers list_services immediately (so the index
+// is reachable and the service resolves) but sleeps past every test's
+// deadline on symbol_context — the CRITICAL-fix regression fixture: a
+// resolver that never returns fast enough must never be allowed to block
+// the whole SubagentStart hook.
+func fakeSlowResolverDaemon(t *testing.T) *httptest.Server {
+	t.Helper()
+	mux := http.NewServeMux()
+	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Name string `json:"name"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		switch req.Params.Name {
+		case "list_services":
+			inner := `{"services":[{"service":"fathom","symbol_count":10,"languages":["go"]}]}`
+			env := map[string]any{"result": map[string]any{"content": []map[string]any{{"type": "text", "text": inner}}}}
+			_ = json.NewEncoder(w).Encode(env)
+		case "symbol_context":
+			// Slower than subagentDiscoveriesDeadline (the fixture's whole
+			// point) but short enough that the test — and the httptest
+			// server's own Close() waiting out this handler afterward —
+			// stays fast; the assertions run well before this returns.
+			time.Sleep(subagentDiscoveriesDeadline + 3*time.Second)
+		default:
+			http.Error(w, "unknown tool", 400)
+		}
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+// CRITICAL fix (finding 1): subagentDiscoveries must return within its own
+// deadline even when the index is reachable but every symbol lookup hangs
+// — the base primer sits ahead of this call in subagentPrimer and must
+// never be starved by a slow resolver.
+func TestSubagentDiscoveries_ReturnsWithinDeadlineWhenIndexIsSlow(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	now := time.Now().UTC()
+	logPath := callLogPathFor(root)
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["pkg.SlowSymbol"]}`,
+	})
+	srv := fakeSlowResolverDaemon(t)
+
+	start := time.Now()
+	got := subagentDiscoveries(srv.URL, root, "fathom", "parent-1", now)
+	elapsed := time.Since(start)
+
+	if elapsed > subagentDiscoveriesDeadline+2*time.Second {
+		t.Fatalf("subagentDiscoveries took %v with a slow index, want it bounded near its %v deadline", elapsed, subagentDiscoveriesDeadline)
+	}
+	if got != "" {
+		t.Errorf("subagentDiscoveries past its deadline = %q, want \"\" so the constant primer ships alone", got)
+	}
+}
+
+// CRITICAL fix (finding 1): the full SubagentStart primer — identity line
+// included — must still ship, and on time, when the discoveries brief's
+// own index resolution hangs.
+func TestSubagentPrimer_ShipsAloneWithIdentityIntactWhenDiscoveriesIndexIsSlow(t *testing.T) {
+	threadEnv(t)
+	// indexedServiceFor derives the service name from projDir's own
+	// basename absent a "path" field on list_services' response — name
+	// the root "fathom" so it matches fakeSlowResolverDaemon's fixed
+	// service name without needing that extra plumbing.
+	root := filepath.Join(t.TempDir(), "fathom")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	now := time.Now().UTC()
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "parent-1", Cwd: root, Service: "fathom", Started: now.Add(-time.Hour).Format(time.RFC3339)})
+	logPath := callLogPathFor(root)
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["pkg.SlowSymbol"]}`,
+	})
+	srv := fakeSlowResolverDaemon(t)
+
+	start := time.Now()
+	primer := subagentPrimer(srv.URL, root, "parent-1")
+	elapsed := time.Since(start)
+
+	if elapsed > subagentDiscoveriesDeadline+3*time.Second {
+		t.Fatalf("subagentPrimer took %v with a slow discoveries index, want it bounded near the %v discoveries deadline", elapsed, subagentDiscoveriesDeadline)
+	}
+	if !strings.Contains(primer, `indexed service "fathom"`) {
+		t.Errorf("subagentPrimer with a slow discoveries index = %q, want the identity line intact", primer)
+	}
+	if strings.Contains(primer, "last session established:") {
+		t.Errorf("subagentPrimer with a slow discoveries index = %q, must not carry a discoveries brief past its deadline", primer)
 	}
 }
 

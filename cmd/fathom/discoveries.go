@@ -9,6 +9,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -252,13 +253,27 @@ func stripDiscoveryCitation(ptr string) (filePath, citation string) {
 	return ptr, ""
 }
 
+// discoveryResolution distinguishes HOW a pointer's render was produced —
+// MAJOR fix: an unreachable/erroring index is an operational fact, never
+// the positive claim "stale" makes (the index was never consulted, so it
+// never said the pointer was gone).
+type discoveryResolution int
+
+const (
+	discoveryResolved    discoveryResolution = iota // resolved live (file or symbol)
+	discoveryStale                                  // index reachable; genuinely not found
+	discoveryUnreachable                            // the index itself could not be consulted
+)
+
 // renderOneDiscoveryLine resolves ptr FRESH via idx/resolveFilePointer
 // (planscontext.go's own seam) and renders one line — "read <path>" for a
-// file, "symbol <ptr> → file:line" for a resolved symbol, or "<ptr> —
-// stale (unresolved)" otherwise. Mirrors internal/mcp's
+// file, "symbol <ptr> → file:line" for a resolved symbol, "<ptr> —
+// unresolved (index unreachable: <err>)" when the index itself could not
+// be consulted, or "<ptr> — stale (unresolved)" when the index WAS
+// reachable and genuinely does not know the pointer. Mirrors internal/mcp's
 // renderDiscoveryPointer exactly (same grammar, different package: the two
 // surfaces share the POINTER SHAPE, not code).
-func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (line string, resolved bool) {
+func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (line string, res discoveryResolution) {
 	freq := ""
 	if count > 1 {
 		freq = fmt.Sprintf(" (%d)", count)
@@ -270,39 +285,52 @@ func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (
 			suffix = "#" + citation
 		}
 		_ = lines
-		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), true
+		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), discoveryResolved
 	}
-	if idxErr == nil && idx != nil {
+	if idxErr != nil {
+		return fmt.Sprintf("%s — unresolved (index unreachable: %v)%s", ptr, idxErr, freq), discoveryUnreachable
+	}
+	if idx != nil {
 		pkgHint, name := splitPointer(ptr)
 		if sctx, ok := idx.resolveSymbol(pkgHint, name); ok {
-			return fmt.Sprintf("symbol %s → %s:%d%s", ptr, sctx.Def.FilePath, sctx.Def.Line, freq), true
+			return fmt.Sprintf("symbol %s → %s:%d%s", ptr, sctx.Def.FilePath, sctx.Def.Line, freq), discoveryResolved
 		}
 	}
-	return fmt.Sprintf("%s — stale (unresolved)%s", ptr, freq), false
+	return fmt.Sprintf("%s — stale (unresolved)%s", ptr, freq), discoveryStale
 }
 
 // renderDiscoveryLines renders ptrs in order, cutting whole lines from the
 // bottom once budget bytes is reached and naming the cut (law 3) — the
 // same elision shape planscontext.go's budgetContextPack uses.
+//
+// CRITICAL fix: resolution happens LAZILY, one pointer at a time, inside
+// this same loop — never a separate eager pass over every pointer before
+// the budget is applied. In HTTP mode each resolution is one network round
+// trip (openCtxIndex's httpCtxIndex), so resolving pointers the budget will
+// never render was the bug: a large or slow pointer set could blow well
+// past a caller's own deadline (subagentDiscoveries) before a single byte
+// of output existed.
 func renderDiscoveryLines(idx ctxIndex, idxErr error, ptrs []discoveryPointerAgg, budget int) string {
 	if len(ptrs) == 0 {
 		return ""
 	}
-	lines := make([]string, len(ptrs))
-	for i, p := range ptrs {
-		lines[i], _ = renderOneDiscoveryLine(idx, idxErr, p.Pointer, p.Count)
-	}
 	var b strings.Builder
 	included := 0
-	for _, l := range lines {
-		row := l + "\n"
+	for _, p := range ptrs {
+		// Budget already full from prior lines: stop BEFORE resolving the
+		// next pointer, not after — the whole point of laziness.
+		if budget > 0 && b.Len() >= budget && included > 0 {
+			break
+		}
+		line, _ := renderOneDiscoveryLine(idx, idxErr, p.Pointer, p.Count)
+		row := line + "\n"
 		if budget > 0 && b.Len()+len(row) > budget && included > 0 {
 			break
 		}
 		b.WriteString(row)
 		included++
 	}
-	if dropped := len(lines) - included; dropped > 0 {
+	if dropped := len(ptrs) - included; dropped > 0 {
 		fmt.Fprintf(&b, "…%d more: fathom discoveries --budget %d\n", dropped, budget*2)
 	}
 	return b.String()
@@ -411,13 +439,33 @@ func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
 // still applies as the hard backstop.
 const subagentDiscoveriesBudget = 900
 
+// subagentDiscoveriesMaxPointers caps how many pointers are even
+// considered for resolution, BEFORE rendering — gatherDiscoveryPointers
+// already orders recency-then-frequency, so this keeps only the most
+// relevant candidates and bounds worst-case resolution work (one HTTP
+// round trip per pointer in daemon mode) independent of how many pointers
+// a busy session happened to establish.
+const subagentDiscoveriesMaxPointers = 12
+
+// subagentDiscoveriesDeadline bounds subagentDiscoveries' ENTIRE
+// resolution pass — opening the index plus every pointer lookup — CRITICAL
+// fix: this runs inside the harness's SubagentStart hook (~5s timeout)
+// AFTER subagentPrimer has already built the constant identity+opening-
+// moves primer. Past this deadline the discoveries brief is abandoned so
+// the hook always returns promptly and the base primer ships alone,
+// rather than an unreachable or slow index silently costing the whole
+// primer (the base primer WITH it).
+const subagentDiscoveriesDeadline = 2 * time.Second
+
 // subagentDiscoveries renders "last session established: …" for a
 // subagent starting under root, resolved fresh against service's live
 // index — the parent session's discoveries since its own recorded start
 // (sessionStartFor), falling back to now-2h when this repo never recorded
 // that session (an older harness build, or a rotated log). "" when
 // nothing was established (silence costs nothing — subagentPrimer.go's own
-// doctrine for every advisory line here).
+// doctrine for every advisory line here), OR when resolution did not
+// finish within subagentDiscoveriesDeadline (CRITICAL fix: the base
+// primer must still ship on time).
 func subagentDiscoveries(baseURL, root, service, parentSessionID string, now time.Time) string {
 	if service == "" {
 		return ""
@@ -432,13 +480,32 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID string, now tim
 	if len(ptrs) == 0 {
 		return ""
 	}
-	// baseURL is the SAME daemon subagentPrimer already resolved this
-	// service against — never defaultFathomURL() again, which would
-	// silently re-resolve against a DIFFERENT daemon when --url pointed
-	// subagentPrimer somewhere else (a scratch daemon, a non-default
-	// FATHOM_HTTP) and make every pointer read back "stale" for no reason.
-	idx, idxErr := openCtxIndex(service, "", baseURL)
-	rendered := renderDiscoveryLines(idx, idxErr, ptrs, subagentDiscoveriesBudget)
+	if len(ptrs) > subagentDiscoveriesMaxPointers {
+		ptrs = ptrs[:subagentDiscoveriesMaxPointers]
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), subagentDiscoveriesDeadline)
+	defer cancel()
+	ch := make(chan string, 1)
+	go func() {
+		// baseURL is the SAME daemon subagentPrimer already resolved this
+		// service against — never defaultFathomURL() again, which would
+		// silently re-resolve against a DIFFERENT daemon when --url pointed
+		// subagentPrimer somewhere else (a scratch daemon, a non-default
+		// FATHOM_HTTP) and make every pointer read back "stale" for no reason.
+		idx, idxErr := openCtxIndex(service, "", baseURL)
+		ch <- renderDiscoveryLines(idx, idxErr, ptrs, subagentDiscoveriesBudget)
+	}()
+	var rendered string
+	select {
+	case rendered = <-ch:
+	case <-ctx.Done():
+		// Deadline hit: abandon the brief entirely so the constant primer
+		// ships alone — the goroutine above may still be blocked in an
+		// HTTP call and simply exits on its own once that returns; nothing
+		// reads its result.
+		return ""
+	}
 	if rendered == "" {
 		return ""
 	}

@@ -88,6 +88,146 @@ func TestThreadPromoteScaffoldsGateReadyPlan(t *testing.T) {
 	})
 }
 
+// ─── thread promote --route (RC-30 remainder) ────────────────────────────
+
+// writeRoutePlanFixture writes a minimal plan file with one row carrying
+// ann (the annotation block's INNER text, e.g. "id: RT-1, symbol: x,
+// package: pkg/x") and returns its path.
+func writeRoutePlanFixture(t *testing.T, dir, ann string) string {
+	t.Helper()
+	path := filepath.Join(dir, "plan.md")
+	body := "# fixture plan\n\n- [ ] Wire the route {" + ann + "}\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// seedRouteFixtureCallLog records two distinct sessions both establishing
+// pointer over root's sessions log and call log — routedPointers' own
+// two-distinct-session bar (RC-30) — and returns the call-log path.
+func seedRouteFixtureCallLog(t *testing.T, root, service, pointer string, now time.Time) string {
+	t.Helper()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s1", Cwd: root, Service: service, Started: now.Add(-2 * time.Hour).Format(time.RFC3339)})
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s2", Cwd: root, Service: service, Started: now.Add(-time.Hour).Format(time.RFC3339)})
+	logPath := filepath.Join(root, "calls.jsonl")
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Add(-90*time.Minute).Format(time.RFC3339Nano) + `","service":"` + service + `","pointers":["` + pointer + `"]}`,
+		`{"ts":"` + now.Add(-30*time.Minute).Format(time.RFC3339Nano) + `","service":"` + service + `","pointers":["` + pointer + `"]}`,
+	})
+	return logPath
+}
+
+func TestThreadPromoteRoute_WritesRoutePointerOntoPlanRowCtx(t *testing.T) {
+	threadEnv(t)
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	now := time.Now().UTC()
+	logPath := seedRouteFixtureCallLog(t, root, "payment-service", "payments.Charge", now)
+	planPath := writeRoutePlanFixture(t, root, "id: RT-1, symbol: something, package: pkg/x")
+
+	var out, errb bytes.Buffer
+	code := cmdThreadPromote([]string{
+		"--route", "payments", "--plan", planPath, "--row", "RT-1",
+		"--service", "payment-service", "--store", storePath,
+		"--repo", root, "--call-log", logPath,
+	}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	raw, err := os.ReadFile(planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(raw)
+	if !strings.Contains(got, "ctx: payments.Charge") {
+		t.Fatalf("expected the routed pointer written onto ctx:, got:\n%s", got)
+	}
+	if !strings.Contains(got, "symbol: something") || !strings.Contains(got, "package: pkg/x") {
+		t.Errorf("existing annotation keys must survive untouched:\n%s", got)
+	}
+	if !strings.Contains(out.String(), "wrote 1 route pointer") {
+		t.Errorf("stdout should report what was written: %q", out.String())
+	}
+}
+
+func TestThreadPromoteRoute_UnionsWithExistingCtx(t *testing.T) {
+	threadEnv(t)
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	now := time.Now().UTC()
+	logPath := seedRouteFixtureCallLog(t, root, "payment-service", "payments.Charge", now)
+	planPath := writeRoutePlanFixture(t, root, `id: RT-2, ctx: "already/here.Pointer"`)
+
+	var out, errb bytes.Buffer
+	code := cmdThreadPromote([]string{
+		"--route", "payments", "--plan", planPath, "--row", "RT-2",
+		"--service", "payment-service", "--store", storePath,
+		"--repo", root, "--call-log", logPath,
+	}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	got, err := os.ReadFile(planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), "already/here.Pointer") || !strings.Contains(string(got), "payments.Charge") {
+		t.Fatalf("promote must UNION with the row's existing ctx:, never replace it:\n%s", got)
+	}
+}
+
+func TestThreadPromoteRoute_UnreachableIndexRefuses(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	now := time.Now().UTC()
+	logPath := seedRouteFixtureCallLog(t, root, "svc", "pkg.Thing", now)
+	planPath := writeRoutePlanFixture(t, root, "id: RT-3")
+
+	var out, errb bytes.Buffer
+	code := cmdThreadPromote([]string{
+		"--route", "pkg", "--plan", planPath, "--row", "RT-3",
+		"--service", "svc", "--url", "http://127.0.0.1:1",
+		"--repo", root, "--call-log", logPath,
+	}, &out, &errb)
+	if code == 0 {
+		t.Fatal("an unreachable index must refuse — never write an unconfirmed route")
+	}
+	got, err := os.ReadFile(planPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(got), "ctx:") {
+		t.Errorf("the plan must be left UNCHANGED on refusal:\n%s", got)
+	}
+	if !strings.Contains(errb.String(), "unreachable") {
+		t.Errorf("stderr should name the unreachable index: %q", errb.String())
+	}
+}
+
+func TestThreadPromoteRoute_RowNotFoundRefuses(t *testing.T) {
+	threadEnv(t)
+	storePath := seedPlansFixtureStore(t)
+	root := t.TempDir()
+	now := time.Now().UTC()
+	logPath := seedRouteFixtureCallLog(t, root, "payment-service", "payments.Charge", now)
+	planPath := writeRoutePlanFixture(t, root, "id: RT-1")
+
+	var out, errb bytes.Buffer
+	code := cmdThreadPromote([]string{
+		"--route", "payments", "--plan", planPath, "--row", "NO-SUCH-ROW",
+		"--service", "payment-service", "--store", storePath,
+		"--repo", root, "--call-log", logPath,
+	}, &out, &errb)
+	if code == 0 {
+		t.Fatal("a missing row id must refuse")
+	}
+	if !strings.Contains(errb.String(), "not found") {
+		t.Errorf("stderr should name the missing row: %q", errb.String())
+	}
+}
+
 func TestThreadHandoffIsHarnessNeutral(t *testing.T) {
 	threadEnv(t)
 	seedItem(t, "th-h1", "handoff-note", "the next agent needs the V verdicts", func(it *threadItem) {

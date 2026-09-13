@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -354,6 +355,153 @@ func TestReviewDiff_CoverageProfile_TraversalRefused(t *testing.T) {
 	})
 	if resp["error"] == nil {
 		t.Fatal("expected an error for a coverage_profile path escaping the corpus root")
+	}
+}
+
+// TestReviewDiff_CoverageProfile_ProjectFathomignoreCarveOutStillWorks is
+// the REGRESSION guard for RC-41's original rationale: a coverage profile
+// that is excluded ONLY by the project's own .fathomignore (the ordinary
+// "workspace/ is build output" case) must still resolve normally — the
+// CRITICAL fix (finding 3) narrows the carve-out, it must not remove it.
+func TestReviewDiff_CoverageProfile_ProjectFathomignoreCarveOutStillWorks(t *testing.T) {
+	corpusRoot := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(corpusRoot, "workspace"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	writeCorpusFile(t, corpusRoot, ".fathomignore", "workspace/\n")
+	profile := "mode: set\npkg/a.go:10.1,12.1 2 1\n"
+	if err := os.WriteFile(filepath.Join(corpusRoot, "workspace", "cover.out"), []byte(profile), 0o644); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 9, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "workspace/cover.out"},
+		},
+	})
+	p := extToolPayload(t, resp)
+	dims := p["dimensions"].([]any)
+	var covDim map[string]any
+	for _, raw := range dims {
+		d := raw.(map[string]any)
+		if d["name"] == "coverage" {
+			covDim = d
+		}
+	}
+	if covDim == nil || covDim["checked"] != true {
+		t.Fatalf("expected checked:true — a project-.fathomignore-only exclusion must still be readable (RC-41's build-artifact carve-out), got %v", covDim)
+	}
+}
+
+// TestReviewDiff_CoverageProfile_EnvFileRefused is the MAJOR fix's first
+// kept refusal: a coverage_profiles path shaped like a .env file must
+// still refuse — the carve-out this comment justifies is about the
+// project's OWN .fathomignore, never the unconditional secrets-shaped
+// defense-in-depth check.
+func TestReviewDiff_CoverageProfile_EnvFileRefused(t *testing.T) {
+	corpusRoot := t.TempDir()
+	writeCorpusFile(t, corpusRoot, "workspace/.env", "API_KEY=super-secret-canary\n")
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 10, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "workspace/.env"},
+		},
+	})
+	errObj, _ := resp["error"].(map[string]any)
+	if errObj == nil {
+		t.Fatal("expected an error for a .env-shaped coverage_profile path")
+	}
+	msg, _ := errObj["message"].(string)
+	if strings.Contains(msg, "super-secret-canary") {
+		t.Fatalf("the refusal itself leaked the file's content: %q", msg)
+	}
+	if !strings.Contains(msg, ".env-pattern") {
+		t.Errorf("message = %q, want it to mention .env-pattern", msg)
+	}
+}
+
+// TestReviewDiff_CoverageProfile_ServiceScopedPurgeStillRefused is the
+// MAJOR fix's second kept refusal: a coverage_profiles path excluded by
+// the SERVICE-scoped ignore (~/.fathom/ignore.d/<service>, purge's
+// write-side chokepoint) must still refuse even when the project's own
+// .fathomignore also happens to exclude the same tree — the carve-out
+// applies to the project-.fathomignore reason alone, never to purge.
+func TestReviewDiff_CoverageProfile_ServiceScopedPurgeStillRefused(t *testing.T) {
+	corpusRoot := t.TempDir()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("FATHOM_SUPPRESSIONS", "") // isolate: suppression must not be why this refuses
+	dir := filepath.Join(home, ".fathom", "ignore.d")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "svc"), []byte("workspace/**\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(corpusRoot, "workspace"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	profile := "mode: set\npkg/a.go:10.1,12.1 2 1\n"
+	if err := os.WriteFile(filepath.Join(corpusRoot, "workspace", "cover.out"), []byte(profile), 0o644); err != nil {
+		t.Fatalf("write profile: %v", err)
+	}
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 11, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "workspace/cover.out"},
+		},
+	})
+	errObj, _ := resp["error"].(map[string]any)
+	if errObj == nil {
+		t.Fatal("expected an error: a service-scoped (purge) exclusion must still refuse")
+	}
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "not in the indexed corpus") {
+		t.Errorf("message = %q, want it to name the scoped exclusion refusal", msg)
+	}
+}
+
+// TestReviewDiff_CoverageProfile_SuppressedRefused is the MAJOR fix's
+// third kept refusal: a coverage_profiles path matching an active
+// suppression must still refuse — suppression is untouched by the
+// .fathomignore carve-out.
+func TestReviewDiff_CoverageProfile_SuppressedRefused(t *testing.T) {
+	corpusRoot := t.TempDir()
+	writeCorpusFile(t, corpusRoot, "workspace/cover.out", "mode: set\npkg/a.go:10.1,12.1 2 1\n")
+	suppressionsFile(t, "svc", "workspace/**", "suppressed for this test")
+	fake := &reviewFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: extFixtureNodes(), services: []string{"svc"}, svcPath: corpusRoot},
+	}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 12, Method: "tools/call",
+		Params: map[string]any{
+			"name":      "review_diff",
+			"arguments": map[string]any{"service": "svc", "changed_files": []string{"pkg/a.go"}, "coverage_profile": "workspace/cover.out"},
+		},
+	})
+	errObj, _ := resp["error"].(map[string]any)
+	if errObj == nil {
+		t.Fatal("expected an error: an active suppression must still refuse")
+	}
+	msg, _ := errObj["message"].(string)
+	if !strings.Contains(msg, "suppressed") {
+		t.Errorf("message = %q, want it to name the suppression", msg)
 	}
 }
 

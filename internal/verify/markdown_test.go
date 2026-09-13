@@ -207,3 +207,103 @@ func TestOracleAnnotationMangledLintsLoud(t *testing.T) {
 		t.Errorf("quoted braces must survive as value content: %#v", kv)
 	}
 }
+
+// ─── UpsertAnnotationField (RC-30: `thread promote --route`) ─────────────
+
+func TestUpsertAnnotationField_AddsNewKey(t *testing.T) {
+	line := "- [ ] Wire the router {id: RC-30-1, symbol: cmdRoutes, package: cmd/fathom}"
+	got, ok := verify.UpsertAnnotationField(line, "ctx", "cmd/fathom.cmdRoutes internal/mcp.registerDiscoveries")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	kv, title, suspect := verify.ParseAnnotation(got)
+	if suspect != "" {
+		t.Fatalf("result is suspect: %q (line: %q)", suspect, got)
+	}
+	if kv["ctx"] != "cmd/fathom.cmdRoutes internal/mcp.registerDiscoveries" {
+		t.Errorf("ctx = %q, got line %q", kv["ctx"], got)
+	}
+	// Every pre-existing key survives untouched.
+	if kv["id"] != "RC-30-1" || kv["symbol"] != "cmdRoutes" || kv["package"] != "cmd/fathom" {
+		t.Errorf("existing keys mangled: %#v (line: %q)", kv, got)
+	}
+	if title != "- [ ] Wire the router" {
+		t.Errorf("title = %q", title)
+	}
+}
+
+func TestUpsertAnnotationField_ReplacesExistingKeyInPlace(t *testing.T) {
+	line := `- [ ] Row {id: RC-30-2, ctx: "old.Pointer", package: cmd/fathom}`
+	got, ok := verify.UpsertAnnotationField(line, "ctx", "new.Pointer another.Pointer")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	kv, _, suspect := verify.ParseAnnotation(got)
+	if suspect != "" {
+		t.Fatalf("result is suspect: %q (line: %q)", suspect, got)
+	}
+	if kv["ctx"] != "new.Pointer another.Pointer" {
+		t.Errorf("ctx = %q, want the replaced value (line: %q)", kv["ctx"], got)
+	}
+	if kv["id"] != "RC-30-2" || kv["package"] != "cmd/fathom" {
+		t.Errorf("other keys mangled: %#v (line: %q)", kv, got)
+	}
+}
+
+func TestUpsertAnnotationField_QuotesValueContainingCommaOrBrace(t *testing.T) {
+	line := "- [ ] Row {id: RC-30-3}"
+	got, ok := verify.UpsertAnnotationField(line, "reason", "needs a, comma")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	kv, _, _ := verify.ParseAnnotation(got)
+	if kv["reason"] != "needs a, comma" {
+		t.Errorf("reason = %q, want the comma preserved as value content (line: %q)", kv["reason"], got)
+	}
+	if !strings.Contains(got, `"needs a, comma"`) {
+		t.Errorf("a comma-carrying value must be quoted in the output: %q", got)
+	}
+}
+
+func TestUpsertAnnotationField_AppendsBlockWhenLineHasNone(t *testing.T) {
+	line := "- [ ] A plain row with no annotation yet"
+	got, ok := verify.UpsertAnnotationField(line, "ctx", "pkg.Symbol")
+	if !ok {
+		t.Fatal("expected ok=true")
+	}
+	kv, title, suspect := verify.ParseAnnotation(got)
+	if suspect != "" {
+		t.Fatalf("result is suspect: %q (line: %q)", suspect, got)
+	}
+	if kv["ctx"] != "pkg.Symbol" {
+		t.Errorf("ctx = %q (line: %q)", kv["ctx"], got)
+	}
+	if title != "- [ ] A plain row with no annotation yet" {
+		t.Errorf("title = %q", title)
+	}
+}
+
+func TestUpsertAnnotationField_RefusesAMangledBlock(t *testing.T) {
+	// No colons at all — this is exactly the O4 "suspect" shape
+	// (TestLintPlan_UnparseableAnnotationIsLoud's fixture): writing into it
+	// would stack a second corruption on the first.
+	line := "- [ ] Broken block {id T-9 symbol Foo}"
+	got, ok := verify.UpsertAnnotationField(line, "ctx", "pkg.Symbol")
+	if ok {
+		t.Fatalf("expected ok=false for a mangled/suspect block, got %q", got)
+	}
+	if got != line {
+		t.Errorf("a refused write must return the line UNCHANGED, got %q", got)
+	}
+}
+
+func TestUpsertAnnotationField_RefusesADuplicateKey(t *testing.T) {
+	line := "- [ ] Row {id: RC-30-4, ctx: foo, ctx: bar}"
+	got, ok := verify.UpsertAnnotationField(line, "ctx", "baz")
+	if ok {
+		t.Fatalf("expected ok=false for an already-duplicated key, got %q", got)
+	}
+	if got != line {
+		t.Errorf("a refused write must return the line UNCHANGED, got %q", got)
+	}
+}

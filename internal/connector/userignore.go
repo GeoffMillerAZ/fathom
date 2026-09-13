@@ -115,6 +115,44 @@ func LoadIgnoreScoped(root string) (*filter.Matcher, IgnoreCounts, error) {
 	return LoadIgnoreScopedFor(root, "")
 }
 
+// UserAndServiceOnlyIgnore compiles serviceID's scoped exclusions —
+// ~/.fathom/ignore (user-scope) UNION ~/.fathom/ignore.d/<serviceID>
+// (service-scope; purge's write-side chokepoint, serviceignore.go) —
+// WITHOUT any project .fathomignore. The mirror image of ProjectOnlyIgnore:
+// isolates whether a path is excluded by a scoped-ignore/purge rule
+// INDEPENDENT of the project's own .fathomignore, so a caller can
+// distinguish "this file is purged or user-excluded" (must still refuse)
+// from "this file is merely outside the project's own .fathomignore-
+// defined corpus" (a narrower refusal a caller may legitimately skip —
+// e.g. review_diff's coverage_profiles carve-out for build artifacts
+// under workspace/, internal/mcp/review_tool.go's applyCoverageProfiles).
+//
+// A re-include in either scoped file is refused loudly (*ErrUserScopeReinclude),
+// exactly as LoadIgnoreScopedFor enforces it.
+func UserAndServiceOnlyIgnore(serviceID string) (*filter.Matcher, error) {
+	userPath := UserIgnorePath()
+	var userLines []string
+	if userPath != "" {
+		userLines, _ = ignoreLines(userPath)
+		if err := checkNoReinclude(userPath, userLines); err != nil {
+			return nil, err
+		}
+	}
+	svcLines, svcN, svcPath := serviceIgnoreLines(serviceID)
+	if svcN > 0 {
+		if err := checkNoReinclude(svcPath, svcLines); err != nil {
+			return nil, err
+		}
+	}
+	if len(userLines) == 0 && len(svcLines) == 0 {
+		return nil, nil
+	}
+	combined := make([]string, 0, len(userLines)+len(svcLines))
+	combined = append(combined, userLines...)
+	combined = append(combined, svcLines...)
+	return filter.New(combined), nil
+}
+
 // ProjectOnlyIgnore compiles root/.fathomignore alone (no user-scope
 // union) — used by doctor's "why can't fathom see my code" check
 // (docs/design/scoped-config.md §4) to isolate whether a USER-scope
