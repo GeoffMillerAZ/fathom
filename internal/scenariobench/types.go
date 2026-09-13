@@ -104,6 +104,11 @@ type Oracle struct {
 	Detectors  []Detector `json:"detectors,omitempty"`
 	// Coverage requests a coverprofile from the test run (SDD readings).
 	Coverage bool `json:"coverage,omitempty"`
+	// AnswerAllOf is the answer-only oracle (SB-32 lookups-vs.json): every
+	// token must appear (case-insensitive substring) in the LAST session's
+	// SessionResult.FinalAnswer. A task may carry this ALONE — no
+	// tree-level check at all — see AnswerOnly (oracle.go).
+	AnswerAllOf []string `json:"answer_all_of,omitempty"`
 }
 
 // Gold is what the accepted change touched, from the pinned patch.
@@ -111,6 +116,14 @@ type Gold struct {
 	Files     []string `json:"files,omitempty"`
 	Functions []string `json:"functions,omitempty"`
 	PatchSHA  string   `json:"patch_sha256,omitempty"`
+	// TestPatch is the upstream TEST PATCH verbatim (SWE-bench semantics:
+	// hidden from the agent's sessions, applied by the oracle at
+	// evaluation time — docs/bench/scenarios.md "Test patch and
+	// calibration"). Empty when the source carried none.
+	TestPatch string `json:"test_patch,omitempty"`
+	// TestPatchSHA256 pins TestPatch's bytes, so a calibration cache keyed
+	// on it invalidates the moment the patch text changes.
+	TestPatchSHA256 string `json:"test_patch_sha256,omitempty"`
 }
 
 // Rule is the documented rule a guards task is built around (M1).
@@ -196,8 +209,12 @@ type SessionResult struct {
 	RawPath           string         `json:"raw_path,omitempty"`
 	// BudgetHit is true when the turn cap ended the session (Claude Code's
 	// error_max_turns): the designed hand-off, never counted as an error.
-	BudgetHit bool   `json:"budget_hit,omitempty"`
-	Error     string `json:"error,omitempty"`
+	BudgetHit bool `json:"budget_hit,omitempty"`
+	// FinalAnswer is the terminal `result` stream event's own text (SB-32's
+	// answer-only oracle) — set whenever the harness's transcript carries
+	// one, never inferred from FilesRead/FilesEdited.
+	FinalAnswer string `json:"final_answer,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.
@@ -215,6 +232,25 @@ type OracleResult struct {
 	Detectors     []DetectorResult `json:"detectors,omitempty"`
 	CoverProfile  string           `json:"cover_profile,omitempty"`
 	TestOutputRef string           `json:"test_output_ref,omitempty"`
+	// Calibration is set only for a task carrying a Gold.TestPatch — what
+	// CalibrateSubject found (oracle.go): how many fail_to_pass tests
+	// actually failed at base with the test patch applied (the rest are
+	// not this task's to prove), and how many pass_to_pass tests were
+	// even eligible to be broken (the rest already failed at base —
+	// environment, not the agent).
+	Calibration *CalibrationSummary `json:"calibration,omitempty"`
+}
+
+// CalibrationSummary is the counted (never per-test) shape of one task's
+// test-patch calibration, small enough to live on every stored CellResult.
+// The raw per-test sets live in the calibration cache (oracle.go's
+// Calibration type), keyed by (subject repo, base_commit, test-patch sha).
+type CalibrationSummary struct {
+	FailToPassFailedAtBase int    `json:"fail_to_pass_failed_at_base"`
+	FailToPassTotal        int    `json:"fail_to_pass_total"`
+	PassToPassEffective    int    `json:"pass_to_pass_effective"`
+	PassToPassTotal        int    `json:"pass_to_pass_total"`
+	NotMeasurable          string `json:"not_measurable,omitempty"`
 }
 
 // PlanCoverageReading is M3.
