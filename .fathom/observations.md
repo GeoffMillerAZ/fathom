@@ -676,3 +676,29 @@ triage if it matters.
 - **Fix:** TODO
 - **Status:** open
 - **Impact:** TODO
+
+### O29 — The launchd daemon hung for minutes inside open() of the SQLite store on /Volumes/m2ext (goroutine 1 [syscall] in modernc sqlite _posixOpen, SIGQUIT dump) after 'fathom daemon uninstall' + 'install': install's defaults chose a new label (dev.fathom.serve-http), a fresh ~/.fathom/db store and dropped WorkingDirectory and the call-log arg; even after reinstalling with the fleet store, the original label, the fathom-dev-signed libexec binary and WorkingDirectory restored, the process bootstrapped from this shell inherited a wedged removable-volume TCC verdict and never bound the port. The same signed binary started in the foreground from the shell opened the store in 6 s.
+
+- **Symptom:** The launchd daemon hung for minutes inside open() of the SQLite store on /Volumes/m2ext (goroutine 1 [syscall] in modernc sqlite _posixOpen, SIGQUIT dump) after 'fathom daemon uninstall' + 'install': install's defaults chose a new label (dev.fathom.serve-http), a fresh ~/.fathom/db store and dropped WorkingDirectory and the call-log arg; even after reinstalling with the fleet store, the original label, the fathom-dev-signed libexec binary and WorkingDirectory restored, the process bootstrapped from this shell inherited a wedged removable-volume TCC verdict and never bound the port. The same signed binary started in the foreground from the shell opened the store in 6 s.
+- **Evidence:**
+  - **Tool:** daemon install / launchd
+  - **Expected:** 'fathom daemon install' on a machine that already has an agent should refuse or reuse the existing label/store/call-log/WorkingDirectory rather than silently create a second, default-configured agent; 'daemon status' should name a hung-in-open() process as a TCC consult (pid alive, no listen socket, no 'listening' log line for this run) with the Ghostty-relaunch remedy from the playbook; the foreground fallback should be a documented verb.
+  - **Actual:** A second agent with the wrong store came up; the restored agent hung; doctor said only 'NOT reachable'; the fix was manual: bootout, foreground serve-http via nohup, GOPATH exported by hand.
+  - **Repro:** fathom daemon uninstall && fathom daemon install  # then launchctl print gui/$(id -u)/com.geoffmilleraz.fathom-http shows pid alive, lsof -iTCP:7575 empty; kill -QUIT <pid>; grep -n 'goroutine 1 \[syscall' ~/.fathom/logs/fathom-http.err
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
+
+### O30 — doctor's typed_edges row SKIPs with 'this daemon process has not ingested "sextant"' while the daemon's own staleness_report for service fathom says typed_edges packages=211 failed=false — the row derives the service id from the directory name (sextant) instead of resolving it the way obligations_served does (fathom).
+
+- **Symptom:** doctor's typed_edges row SKIPs with 'this daemon process has not ingested "sextant"' while the daemon's own staleness_report for service fathom says typed_edges packages=211 failed=false — the row derives the service id from the directory name (sextant) instead of resolving it the way obligations_served does (fathom).
+- **Evidence:**
+  - **Tool:** doctor typed_edges
+  - **Expected:** PASS with the package count for service fathom, resolved like every other daemon-backed row.
+  - **Actual:** SKIP naming a service that does not exist.
+  - **Repro:** bin/fathom doctor | grep typed_edges   # vs   curl -s -X POST http://127.0.0.1:7575/rpc -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"staleness_report","arguments":{"service":"fathom"}}}' | grep -o '"typed_edges":{[^}]*}'
+- **Root cause:** TODO
+- **Fix:** TODO
+- **Status:** open
+- **Impact:** TODO
