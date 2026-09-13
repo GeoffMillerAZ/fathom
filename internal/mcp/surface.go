@@ -61,6 +61,7 @@ const SurfaceModules = "modules"
 // test in surface_test.go and docs/mcp-tools.md together.
 var companionTools = map[string]bool{
 	"capabilities":     true,
+	"discoveries":      true,
 	"entrypoints":      true,
 	"find_callers":     true,
 	"find_symbol":      true,

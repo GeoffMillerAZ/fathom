@@ -76,6 +76,7 @@ func TestOutputSchemasMatchLiveResults(t *testing.T) {
 
 	args := map[string]map[string]any{
 		"capabilities":     {},
+		"discoveries":      {"service": "svc"},
 		"entrypoints":      {"service": "svc"},
 		"find_callers":     {"service": "svc", "symbol": "B", "depth": 0},
 		"find_symbol":      {"service": "svc", "name": "A"},

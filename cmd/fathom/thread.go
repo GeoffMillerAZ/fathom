@@ -257,27 +257,79 @@ func describeCondition(c threadCondition) string {
 
 // ─── repo scope (TH-6) ───────────────────────────────────────────────────
 
-// threadScope is the repo a verb runs FROM: the directory basename every
-// deposit is tagged with (law 13's per-repo tag), plus the indexed
-// service id when the daemon resolves one — the thread a note files on by
-// default. On 2026-08-23 the open set held 30 items, ~25 of them other
-// repos' handoffs: the tag existed, the default was the defect.
+// threadScope is the repo a verb runs FROM: its identity (RC-31,
+// docs/vision/28-receipts.md F5) every NEW deposit is tagged with, the
+// legacy basename kept only as the read-side fallback for items filed
+// before RC-31, plus the indexed service id when the daemon resolves one
+// — the thread a note files on by default. On 2026-08-23 the open set
+// held 30 items, ~25 of them other repos' handoffs: the tag existed, the
+// default was the defect; F5 then found the tag ITSELF collapsing two
+// unrelated worktrees that happened to share a directory basename.
 type threadScope struct {
-	repo    string // lower-cased basename of the repo root
-	service string // resolved service id, "" when nothing resolves
+	identity string // repoIdentity(root) — origin URL, else absolute path
+	repo     string // lower-cased basename of the repo root (legacy tag)
+	service  string // resolved service id, "" when nothing resolves
 }
 
-// threadScopeFor resolves the scope for root: the basename always; the
-// service via the same daemon-backed identity every hook uses
+// threadScopeFor resolves the scope for root: identity and basename
+// always; the service via the same daemon-backed identity every hook uses
 // (candidatesWithDaemon's cached round trip), fail-open — a down daemon
 // degrades to basename-only scoping, never to an error.
 func threadScopeFor(root string) threadScope {
-	sc := threadScope{repo: strings.ToLower(filepath.Base(root))}
+	sc := threadScope{identity: repoIdentity(root), repo: strings.ToLower(filepath.Base(root))}
 	hc := &http.Client{Timeout: 1500 * time.Millisecond}
 	if cand, ok := resolveIndexedCandidateCached(hc, defaultFathomURL(), root); ok {
 		sc.service = strings.ToLower(cand.name)
 	}
 	return sc
+}
+
+// repoIdentity (RC-31) is the identity a thread deposit is scoped by: the
+// normalized `origin` remote URL when root has one, else root's own
+// lowercased absolute path. Two worktrees of the SAME repo share an
+// origin and so share continuity (a feature, not a leak); two UNRELATED
+// repos that merely happen to share a directory basename — F5's
+// contamination: "two tasks pinned to one commit shared a worktree
+// basename and each other's thread notes" — no longer collide, because
+// the basename is never this function's answer.
+func repoIdentity(repoRoot string) string {
+	if url := gitOriginURL(repoRoot); url != "" {
+		return normalizeOriginURL(url)
+	}
+	abs, err := filepath.Abs(repoRoot)
+	if err != nil {
+		abs = repoRoot
+	}
+	return strings.ToLower(abs)
+}
+
+// gitOriginURL returns repoRoot's `origin` remote URL, "" when it has none
+// (not a git repo, or no `origin` configured) — repoIdentity's file-path
+// fallback then applies.
+func gitOriginURL(repoRoot string) string {
+	out, err := exec.Command("git", "-C", repoRoot, "remote", "get-url", "origin").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// normalizeOriginURL lowercases url and strips its scheme, any embedded
+// user@ auth, and a trailing ".git" or "/", so "https://github.com/x/y.git",
+// "git@github.com:x/y.git" and "ssh://git@github.com/x/y/" all normalize
+// to the identical "github.com/x/y" identity.
+func normalizeOriginURL(url string) string {
+	u := strings.ToLower(strings.TrimSpace(url))
+	if i := strings.Index(u, "://"); i >= 0 {
+		u = u[i+3:]
+	}
+	if i := strings.LastIndex(u, "@"); i >= 0 {
+		u = u[i+1:]
+	}
+	u = strings.Replace(u, ":", "/", 1) // scp-like "host:path" -> "host/path"
+	u = strings.TrimSuffix(u, "/")
+	u = strings.TrimSuffix(u, ".git")
+	return u
 }
 
 // defaultThread is where a note lands when --thread is not given: the
@@ -289,11 +341,18 @@ func (s threadScope) defaultThread() string {
 	return "general"
 }
 
-// owns reports whether an item belongs to this repo's continuity: its
-// repo tag or thread names the basename or the service id. An UNTAGGED
-// item (no repo pointer — older rows, hand-seeded rows) is never hidden:
-// hiding what cannot be attributed would be a silent cut (law 3).
+// owns reports whether an item belongs to this repo's continuity. An item
+// carrying RC-31's "repo_identity" tag (every deposit filed from here on)
+// is matched EXACTLY against it — the fix for F5: two unrelated repos
+// sharing a directory basename no longer collide. An older item with no
+// identity tag falls back to the pre-RC-31 rule unchanged (basename or
+// service match on the tag or the thread name); an UNTAGGED item (no repo
+// pointer at all — older rows, hand-seeded rows) is never hidden: hiding
+// what cannot be attributed would be a silent cut (law 3).
 func (s threadScope) owns(it threadItem) bool {
+	if id := it.Pointers["repo_identity"]; id != "" {
+		return id == s.identity
+	}
 	tag := it.Pointers["repo"]
 	if tag == "" {
 		return true
@@ -381,7 +440,7 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 		Thread:        name,
 		Kind:          *kind,
 		Text:          strings.TrimSpace(lead),
-		Pointers:      map[string]string{"repo": strings.ToLower(filepath.Base(root))},
+		Pointers:      map[string]string{"repo": strings.ToLower(filepath.Base(root)), "repo_identity": repoIdentity(root)},
 		FiledAt:       now.UTC().Format(time.RFC3339),
 		FiledBy:       threadFiler(),
 		CompletesWhen: cond,
@@ -442,7 +501,7 @@ func cmdThreadPoint(args []string, stdout, stderr io.Writer) int {
 		Thread:        name,
 		Kind:          "side-task",
 		Text:          strings.TrimSpace(lead),
-		Pointers:      map[string]string{"session_id": sid, "repo": strings.ToLower(filepath.Base(root))},
+		Pointers:      map[string]string{"session_id": sid, "repo": strings.ToLower(filepath.Base(root)), "repo_identity": repoIdentity(root)},
 		FiledAt:       now.UTC().Format(time.RFC3339),
 		FiledBy:       threadFiler(),
 	}
@@ -685,7 +744,7 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 // renderThreadBriefScoped takes a daemon-resolved scope and can ride them
 // along on request.
 func renderThreadBrief(items []threadItem, repoRoot string, budgetBytes int, now time.Time) string {
-	scope := threadScope{repo: strings.ToLower(filepath.Base(repoRoot))}
+	scope := threadScope{identity: repoIdentity(repoRoot), repo: strings.ToLower(filepath.Base(repoRoot))}
 	return renderThreadBriefScoped(items, scope, repoRoot, budgetBytes, now, false)
 }
 
@@ -736,6 +795,14 @@ func renderThreadBriefScoped(items []threadItem, scope threadScope, repoRoot str
 			ptr = " [session " + sid[:min(8, len(sid))] + "]"
 		}
 		lines = append(lines, fmt.Sprintf("  • (%s/%s) %s%s", it.Thread, it.Kind, it.Text, ptr))
+		// RC-29 (docs/vision/28-receipts.md §4): a session-end note's own
+		// pointers, resolved FRESH at brief-render time — never the text
+		// that was true when the note was filed (ADR-028).
+		if it.Kind == "session-end" {
+			if disc := sessionEndDiscoveriesLine(it, repoRoot); disc != "" {
+				lines = append(lines, "    "+disc)
+			}
+		}
 	}
 
 	lines = append(lines, "🧵 fathom continuity — the work, not the session:")

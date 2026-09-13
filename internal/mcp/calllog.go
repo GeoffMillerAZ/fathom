@@ -13,6 +13,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -85,6 +86,15 @@ type callLogEntry struct {
 
 	LatencyMS float64 `json:"latency_ms"`
 	Error     string  `json:"error,omitempty"`
+
+	// Pointers (RC-25, docs/vision/28-receipts.md §4) are this call's top
+	// discovery pointers — symbol ids ("pkgDir.Name") and repo-relative
+	// file paths, in the same untyped grammar cmd/fathom's `ctx:` plan
+	// annotation and `fathom plans context` already resolve — extracted
+	// from the tool's STRUCTURED result by resultPointers (discoveries_
+	// tool.go), never rendered text. At most maxResultPointers (8); nil
+	// when the tool's result carries nothing pointer-shaped.
+	Pointers []string `json:"pointers,omitempty"`
 }
 
 // SurfaceStat is one surface's process-lifetime traffic snapshot (A1-1,
@@ -108,6 +118,14 @@ type CallLogger struct {
 
 	surfaceCalls  map[string]int64
 	surfaceLastTS map[string]time.Time
+
+	// path is the log's own file path, when w is an *os.File — read back
+	// by registerDiscoveries (RC-27) to answer the "discoveries" tool from
+	// the same rows this logger just wrote. "" for any other writer (a
+	// test's bytes.Buffer, or a caller that never opened a real file):
+	// the discoveries tool then degrades to "no call log configured"
+	// rather than guessing a path (law 3).
+	path string
 }
 
 // NewCallLogger creates a CallLogger that writes to w.
@@ -116,11 +134,24 @@ func NewCallLogger(w io.Writer) *CallLogger {
 	if w == nil {
 		return nil
 	}
-	return &CallLogger{
+	l := &CallLogger{
 		w:             w,
 		surfaceCalls:  make(map[string]int64),
 		surfaceLastTS: make(map[string]time.Time),
 	}
+	if f, ok := w.(*os.File); ok {
+		l.path = f.Name()
+	}
+	return l
+}
+
+// Path returns the log's own file path (RC-27), or "" when this logger was
+// not built over a real file (nil receiver included).
+func (l *CallLogger) Path() string {
+	if l == nil {
+		return ""
+	}
+	return l.path
 }
 
 // log writes one JSONL entry and bumps the in-memory per-surface counters.
@@ -134,6 +165,10 @@ type callOutcome struct {
 	// does not grow another positional parameter.
 	ResponseBytes int
 	ElidedCount   *int
+	// Pointers (RC-25) is the pre-extracted discovery-pointer list for
+	// this call's result — computed by dispatch.go's pointer-extraction
+	// hook (resultPointers) before the call is logged.
+	Pointers []string
 }
 
 func (l *CallLogger) log(tool, service, group, surface, via, origin string, offSurface bool, claimsAttached int, verdictOutcome map[string]int, outcome callOutcome, latency time.Duration, callErr error) {
@@ -159,6 +194,7 @@ func (l *CallLogger) log(tool, service, group, surface, via, origin string, offS
 		ResponseBytes:  outcome.ResponseBytes,
 		ElidedCount:    outcome.ElidedCount,
 		LatencyMS:      float64(latency.Milliseconds()),
+		Pointers:       outcome.Pointers,
 	}
 	if callErr != nil {
 		entry.Error = callErr.Error()

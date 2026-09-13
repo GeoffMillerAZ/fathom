@@ -44,6 +44,8 @@ var verbTable = []verb{
 	{Name: "tests", Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer, joined against indexed symbols; --diff <base> narrows to changed symbols with no covering test"},
 	{Name: "session-hook", Summary: "SessionStart hook: resolve this repo's service and emit a one-line reminder (or an honest not-indexed line); always exits 0"},
 	{Name: "prime", Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0"},
+	{Name: "discoveries", Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index (docs/vision/28-receipts.md §4)"},
+	{Name: "routes", Summary: "Long-lived discovery paths: pointers established in 2+ sessions over 30 days, grouped by package"},
 	{Name: "edit-hook", Summary: "PostToolUse hook: inject obligations into session context"},
 	{Name: "stop-hook", Summary: "Stop hook: flag tasks claimed [x] this session that fail verification"},
 	{Name: "session-end-hook", Summary: "SessionEnd hook: deposit one continuity item only when the session leaves uncommitted work, stashes, or claimed-unproven rows"},

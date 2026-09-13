@@ -223,6 +223,12 @@ var textElisionTools = map[string]bool{
 // NEW tool — absent from every list — fails TestEveryTruncatingToolDiscloses
 // loudly instead of silently passing as exempt.
 var nonTruncatingTools = map[string]bool{
+	// discoveries cuts its rendered pointer list at a byte budget with its
+	// own inline "…N more: fathom discoveries --budget" notice (RC-26/
+	// RC-27, docs/vision/28-receipts.md §4) — the same "own inline
+	// notice" shape as brief/read_source below, not elisionFor's
+	// {count, of, ordering, how_to_get_more} object.
+	"discoveries":   true,
 	"rename_impact": true, "reachable": true,
 	"test_impact": true, "dead_code": true, "find_callees": true,
 	"entrypoints": true,

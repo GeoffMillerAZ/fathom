@@ -88,6 +88,25 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 
 	ctx := buildSessionContext(*url, projDir)
 
+	// Session windows (design point 2, docs/vision/28-receipts.md §4): a
+	// mechanical {session_id, cwd, service, started} row under
+	// workspace/logs/sessions.jsonl — SubagentStart looks its parent's
+	// start up here (subagentDiscoveries), and the session-end hook looks
+	// its OWN start up here (sessionEndPointers). Best-effort: the service
+	// resolution reuses the same daemon-backed lookup the advisory events
+	// already make, so this costs one extra round trip only when a
+	// session id exists to tag it with.
+	if sessionID != "" {
+		svc := ""
+		if name, _, ok := indexedServiceFor(&http.Client{Timeout: 2 * time.Second}, *url, projDir); ok {
+			svc = name
+		}
+		recordSessionWindow(projDir, sessionWindowRow{
+			SchemaVersion: 1, SessionID: sessionID, Cwd: projDir, Service: svc,
+			Started: time.Now().UTC().Format(time.RFC3339),
+		})
+	}
+
 	// Continuity (vision 21, TH-3): the thread brief joins the session
 	// context ONLY where context was actually lost — startup and clear.
 	// resume/compact keep their context; injecting there is the schema-tax
@@ -311,6 +330,12 @@ func buildSessionContext(baseURL, projDir string) string {
 		// is free and universal; nothing mutates here.
 		if d := analyzeWiring(projDir); len(d.Missing) > 0 || len(d.StaleCmds) > 0 {
 			ctxLine += fmt.Sprintf(" ⚠️ wiring drift: %d missing hook template entr(ies), %d stale binary path(s) — run `fathom fleet reconcile --apply` (or /fathom:rewire) to reconcile in place.", len(d.Missing), len(d.StaleCmds))
+		}
+		// RC-30: routes named in ONE line only when at least one exists —
+		// a cheap candidate count (no live-index resolution here; `fathom
+		// routes` does that pass).
+		if rl := routesSummaryLine(projDir, lookup, time.Now()); rl != "" {
+			ctxLine += " " + rl
 		}
 		return ctxLine
 	}

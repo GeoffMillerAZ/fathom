@@ -8,12 +8,14 @@ package scenariobench
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 )
 
 // RunOptions is what RunSessions needs beyond the task/arm/worktree: the
@@ -97,6 +99,11 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 
 func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
 	var results []SessionResult
+	// RC-32 (docs/vision/28-receipts.md §4): the planner's own session
+	// start, captured BEFORE it runs — workerDiscoveryBrief's `--since`
+	// must cover what the PLANNER established, not just what happened
+	// between the planner and each worker.
+	sessionStart := time.Now()
 	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+PlanFirstInstruction)
 	if err != nil {
 		return results, err
@@ -118,6 +125,11 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	if len(rows) < n {
 		n = len(rows)
 	}
+	// RC-32: on a wired arm, the same discoveries brief SubagentStart
+	// renders (cmd/fathom's subagentDiscoveries) — run once, against the
+	// cell's own scratch daemon, and prepended to every worker's prompt so
+	// M5 measures the feature, not the prompt.
+	brief, pointers := workerDiscoveryBrief(ctx, wt, arm, sessionStart)
 	for i := 0; i < n; i++ {
 		row := rows[i]
 		rowID := row.id
@@ -125,6 +137,9 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 			rowID = fmt.Sprintf("worker-%d", i+1)
 		}
 		prompt := fmt.Sprintf(workerRowPromptFmt, task.Prompt, row.text)
+		if brief != "" {
+			prompt = brief + "\n\n" + prompt
+		}
 		req, err := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
 		if err != nil {
 			return results, err
@@ -133,6 +148,9 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
 		}
+		if len(pointers) > 0 && factsReusedHook != nil {
+			factsReusedHook(&res, pointers)
+		}
 		results = append(results, res)
 		if res.Error != "" {
 			return results, nil
@@ -140,6 +158,62 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 	}
 	return results, nil
 }
+
+// workerDiscoveryBrief runs `fathom discoveries` against a wired cell's
+// scratch daemon for the pointers established since sessionStart, and
+// returns the text to prepend to each worker's prompt plus the raw
+// pointer list (for factsReusedHook). "" / nil whenever there is nothing
+// honest to say: an unwired arm, no scratch daemon, no built binary for
+// this cell, the command failing, or an empty answer — never a fabricated
+// brief (RC-32, docs/vision/28-receipts.md §4).
+//
+// Note: the scratch daemon wireScratchDaemon (subject.go) starts with
+// `-call-log ""` (disabled) for a wired cell, so this call reads an empty
+// log until that is revisited — the function itself is correct and
+// tested against a populated log; making the daemon actually log is
+// subject.go's row, out of this row's file scope.
+func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStart time.Time) (brief string, pointers []string) {
+	if !arm.Wired || wt.DaemonURL == "" {
+		return "", nil
+	}
+	bin := filepath.Join(wt.CellDir, "fathom")
+	if _, err := os.Stat(bin); err != nil {
+		return "", nil
+	}
+	out, err := runIn(ctx, wt.Path, bin, "discoveries",
+		"-url", wt.DaemonURL, "-since", sessionStart.UTC().Format(time.RFC3339), "-budget", "1200", "-json")
+	if err != nil {
+		return "", nil
+	}
+	var payload struct {
+		Rendered string `json:"rendered"`
+		Pointers []struct {
+			Pointer string `json:"pointer"`
+		} `json:"pointers"`
+	}
+	if json.Unmarshal([]byte(out), &payload) != nil {
+		return "", nil
+	}
+	rendered := strings.TrimSpace(payload.Rendered)
+	if rendered == "" {
+		return "", nil
+	}
+	ptrs := make([]string, len(payload.Pointers))
+	for i, p := range payload.Pointers {
+		ptrs[i] = p.Pointer
+	}
+	return rendered, ptrs
+}
+
+// factsReusedHook is RC-32's TODO seam: FactsReused(session, pointers)
+// (docs/vision/28-receipts.md §4 / RC-13) is designed to live in
+// readings_resume.go on a sibling branch and was absent from this
+// worktree at RC-32 time. A small function-var interface rather than a
+// stub — wiring it to the real FactsReused is that row's job, not this
+// one's; nil here means "not counted yet", never a faked count.
+//
+// TODO(RC-13): set this to a thin adapter over FactsReused once it lands.
+var factsReusedHook func(session *SessionResult, pointers []string)
 
 func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) (SessionRequest, error) {
 	rawDir := filepath.Join(opts.RawDir, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))

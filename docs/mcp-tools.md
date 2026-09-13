@@ -57,10 +57,14 @@ only) each request selects an immutable **surface** via the path:
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | The four group surfaces were removed 2026-08-26 (ADR-014 amendment 2, `docs/plans/honesty-fixes.md` HF-5): no client registration, stanza, skill, or doc ever pointed at one, so their zero traffic proved exposure-zero, not demand-zero (law 8) — they go on law 4's ground, a surface with no reachable consumer. The group **taxonomy** (`GroupCoding`, `GroupInvestigation`, …) still classifies every tool. Use `POST /rpc` for everything, `POST /rpc/agent` for the curated hot loop. |
 | `modules` | `POST /rpc/modules` | The module host's floor tool set (docs/plans/gke-module-host.md) — see "Module host tools" below for the tool list and the hosted-mode restriction |
 
-**Agent/companion allowlist (18 tools):** `capabilities`, `entrypoints`, `find_callers`,
-`find_symbol`, `ingest`, `list_services`, `memory_search`, `obligations`, `outline`,
-`pack_context`, `query_symbols`, `read_source`, `references`, `repo_map`, `search`,
-`staleness_report`, `symbol_context`, `verify_plan`. `memory_search` (AM-8,
+**Agent/companion allowlist (19 tools):** `capabilities`, `discoveries`, `entrypoints`,
+`find_callers`, `find_symbol`, `ingest`, `list_services`, `memory_search`, `obligations`,
+`outline`, `pack_context`, `query_symbols`, `read_source`, `references`, `repo_map`,
+`search`, `staleness_report`, `symbol_context`, `verify_plan`. `search` (RC-24) and
+`discoveries` (RC-27, docs/vision/28-receipts.md §4) are the two deliberate exceptions
+to the 17-tool diet cap (`surface_diet_test.go`, TD-2) — each added with a
+pre-registered kill criterion, not a hunch.
+`memory_search` (AM-8,
 docs/design/anchored-memory.md §4) is the third net-new tool on this allowlist — the
 one direct query over anchored memories, every answer labeled with tier and state;
 injection through the edit hook stays the primary path. `read_source` (T5-4, docs/plans/trust-and-tokenomics.md)
@@ -182,6 +186,7 @@ exception: the `agent`/`companion` surface shows only its explicit allowlist (se
 | `rename_service` | `from` (req), `to` (req) | `{from, to, ok}` | Registry surgery: atomically re-key every stored row from one service id to another. Refuses when the source has no rows or the target already exists. Claim ids keep their minted values (historical evidence); new compiles mint fresh ids. |
 | `repo_map` | `service` (req), `budget` (opt, default 4000) | `{map: string, budget, elided?, elision?}` | Build a budget-bounded symbol map ranked by outbound call-edge count (most-connected symbols first), suitable for LLM context assembly. **RC-19**: a truncated map carries the existing structured `elided` block (`{count, of, ordering, how_to_get_more}`) alongside a uniform one-line `elision`: `"elided: N more — refine with budget or package"`. Also on the agent/companion surface. |
 | `pack_context` | `service` (req), `concern` (req), `budget` (opt, default 4000) | `{included: [{id,text,score}], tokens, dropped, budget}` | Pack ranked evidence items from a concern-scoped query into a token budget, returning the highest-scoring items that fit. Also on the agent/companion surface. |
+| `discoveries` | `service` (req), `since` (opt, RFC3339), `budget` (opt, default 4000) | `{service, since?, budget, pointers: [{pointer, count, last_seen, resolved, line}], rendered, note?}` | Receipts on the hand-off (RC-25..RC-27, docs/vision/28-receipts.md §4): this service's call-log pointers (symbol ids, files) established since `since`, deduped and ranked by recency then frequency, each re-resolved FRESH against the live index at read time — never rendered from what was true when established. A pointer the index no longer confirms renders `resolved:false` with a "stale" line rather than being served as fact. `rendered` is the same budget-cut text `fathom discoveries` prints; truncation is disclosed with its own inline "…N more" notice (not the `elided` block — see `docs/mcp-tools.md`'s elision doctrine). `note` explains an empty answer (no call log configured on this daemon; nothing recorded in the window). Also on the agent/companion surface (RC-27) — one of two deliberate exceptions to the 17-tool diet cap (TD-2), alongside `search` (RC-24), each carrying its own pre-registered kill criterion (vision 28 §4, M5). |
 | `batch` | `calls` (req: `[{name, arguments}]`) | `{results: [{name, result?, error?}], count}` | Execute N tool calls in a single request; a per-call error is reported in that call's result entry rather than aborting the batch. Sub-calls are logged individually in the call log (`via:"batch"`) with their own `off_surface` flag, so surface telemetry reflects the tools a batch actually exercised. |
 
 `Finding` shape: `{file, line, rule, message}`.

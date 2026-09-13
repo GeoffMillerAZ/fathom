@@ -134,6 +134,15 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 	}
 	repo := strings.ToLower(filepath.Base(root))
 	now := time.Now()
+	pointers := map[string]string{"session_id": in.SessionID, "repo": repo, "root": root, "repo_identity": repoIdentity(root)}
+	// RC-29 (docs/vision/28-receipts.md §4): the session's top pointers
+	// (recency then frequency, since its own recorded start) ride along in
+	// the SAME map every other tag lives in — the thread brief resolves
+	// them fresh at render time (sessionEndDiscoveriesLine), never from
+	// what this string held at filing time.
+	if ptrs := sessionEndPointers(root, in.SessionID, now); len(ptrs) > 0 {
+		pointers[discoveriesPointerKey] = strings.Join(ptrs, " ")
+	}
 	_ = threadAutoNote(
 		// STABLE id per repo: the latest session-end SUPERSEDES the
 		// previous one (latest-row-wins), because "the last session here
@@ -141,7 +150,7 @@ func cmdSessionEndHook(args []string, stdout, stderr io.Writer) int {
 		// the first field report's brief was 100% accumulated telemetry.
 		"se-"+repo, repo, "session-end",
 		fmt.Sprintf("session ended (%s) with %s", in.Reason, facts),
-		map[string]string{"session_id": in.SessionID, "repo": repo, "root": root},
+		pointers,
 		// Self-closing: once that repo's tree is clean again, the fact is
 		// stale and the item retires itself — the same artifact-keyed
 		// expiry every other item gets (IT-9).
@@ -182,7 +191,7 @@ func cmdPreCompactHook(args []string, stdout, stderr io.Writer) int {
 		"pc-"+repo, // latest compaction pointer per repo supersedes
 		repo, "pre-compact",
 		fmt.Sprintf("compaction (%s) at %s — the full pre-summary detail stays in this session's transcript", orUnknown(in.Trigger), now.UTC().Format("15:04Z")),
-		map[string]string{"session_id": in.SessionID, "repo": repo},
+		map[string]string{"session_id": in.SessionID, "repo": repo, "repo_identity": repoIdentity(root)},
 		// IT-9: closes once a session-end note for this SAME session
 		// exists — the pointer's own session having ended is what makes
 		// the pre-summary detail it names no longer in-flight context.

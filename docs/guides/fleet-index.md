@@ -70,9 +70,10 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
    exact line range from the indexed corpus, `obligations` surfaces
    governing rules for a file before editing it. Read files to *edit*
    them, not to discover them. The index is fleet-wide, so cross-repo
-   questions are one query. (These are the core of the 18-tool `agent`
+   questions are one query. (These are the core of the 19-tool `agent`
    surface — see `docs/mcp-tools.md`; `memory_search` is **experimental**;
-   `search`, RC-24, is the newest member.)
+   `search` (RC-24) and `discoveries` (RC-27, its own kill criterion — see
+   "Discoveries and routes" below) are the newest members.)
    Every Edit/Write also gets governing rules injected via the PostToolUse
    edit-hook (`docs/design/coding-agent-excellence.md` §5.2).
 2. **Refresh through the server, never the CLI.** SQLite (ADR-020) allows
@@ -96,6 +97,54 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
 
 Repo-specific index excludes live in `.fathomignore` (`ref/`, `tmp/`,
 `workspace/`, `bin/`).
+
+## Discoveries and routes
+
+Receipts on the hand-off (RC-25..RC-30, `docs/vision/28-receipts.md` §4): a
+**discovery** is a pointer a tool answer established — a symbol id
+(`internal/mcp.registerReferences`) or a repo-relative file path — never
+rendered text. Every agent-surface call gets its answer's top pointers
+extracted mechanically (no model distills anything) and logged; an agent
+may also file one explicitly (`fathom thread point`). Nothing is ever
+served from what a pointer meant when it was recorded — every render
+resolves it FRESH against the live index and marks what no longer holds.
+
+- **`fathom discoveries [--since T] [--budget N] [--json]`** (and the
+  `discoveries` MCP tool, `{service, since?, budget?}`) renders this
+  repo's recent pointers, deduped and ranked by recency then frequency,
+  each resolved fresh — `symbol <ptr> → file:line`, `read <path>`, or
+  `<ptr> — stale (unresolved)`. Read it before re-exploring what a prior
+  call, or a prior session, already found.
+- **Workers.** A subagent's `SubagentStart` primer appends the parent
+  session's discoveries since its own recorded start, within 1,200 bytes
+  total (the plain ≤600-byte primer stays the cap when there is nothing
+  to add). The scenario driver gives a wired arm's planner-workers cell
+  the same brief (`workerDiscoveryBrief`), so a bench reading measures the
+  feature, not the prompt.
+- **The next session.** A session-end note carries that session's top
+  pointers; the next `SessionStart` thread brief renders them resolved
+  fresh, inside its existing budget, as "last session established: …".
+- **Routes** (long-lived discovery paths). `fathom routes [package|concern]`
+  derives, per package prefix, the pointers established in **two or more
+  distinct sessions** (attributed via `workspace/logs/sessions.jsonl`'s own
+  recorded windows) over the last 30 days, resolved fresh and dropped the
+  moment the index no longer confirms them. The `SessionStart` primer names
+  routes in ONE line only when at least one exists (`routes known for N
+  package(s) — fathom routes`).
+- **Scope by identity.** A thread deposit is now tagged by the repo's
+  identity (the normalized `origin` URL, else the absolute path) rather
+  than a directory basename — two worktrees of unrelated repos that happen
+  to share a basename no longer merge each other's notes (F5); an older
+  item with no identity tag still matches on the legacy basename rule, so
+  nothing existing is hidden.
+- **Kill criteria, pre-registered (vision 28 §4).** The `discoveries` tool
+  is the one deliberate exception to the 17-tool agent-surface diet
+  (`surface_diet_test.go`, TD-2): M5 at K=3 with the worker brief —
+  `facts_reused >= 3` per worker and tokens-to-first-edit below the
+  control on two of three tasks, else the worker brief is removed and
+  `discoveries` stays pull-only (and the diet cap drops back to 17).
+  Routes: pulled in five of the next twenty sessions on this repo, or
+  removed.
 
 ## Staleness — two kinds
 

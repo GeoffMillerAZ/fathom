@@ -1,0 +1,518 @@
+// discoveries.go — RC-25..RC-29, RC-32 (docs/vision/28-receipts.md §4):
+// receipts on the hand-off. A discovery is a pointer a tool answer
+// established (a symbol id in the same "pkgDir.Name" grammar the `ctx:`
+// plan annotation uses, or a repo-relative file path) — never rendered
+// text. Every render here resolves pointers FRESH against the live index
+// at read time (reusing planscontext.go's ctxIndex seam: openCtxIndex,
+// resolveFilePointer, splitPointer) and marks what no longer holds
+// (ADR-028) — nothing here stores rendered discovery text.
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
+	"syscall"
+	"time"
+)
+
+// discoveriesDefaultBudget mirrors the "discoveries" MCP tool's default
+// (internal/mcp/discoveries_tool.go) — the same render on both surfaces.
+const discoveriesDefaultBudget = 4000
+
+// ─── session windows (design point 2) ───────────────────────────────────
+
+// sessionWindowRow is one JSONL row of workspace/logs/sessions.jsonl:
+// SessionStart's own mechanical fact — when a session began, in which
+// directory, against which resolved service (best-effort; "" when none
+// resolved). Never mined from a transcript; written once, at start, by
+// cmdSessionHook.
+type sessionWindowRow struct {
+	SchemaVersion int    `json:"schema_version"`
+	SessionID     string `json:"session_id"`
+	Cwd           string `json:"cwd"`
+	Service       string `json:"service,omitempty"`
+	Started       string `json:"started"` // RFC3339
+}
+
+// sessionsLogPathFor is workspace/logs/sessions.jsonl under root's git
+// toplevel (or root itself outside a repo) — the same workspace/
+// convention every other fathom artifact uses (docs/usage.md).
+// FATHOM_SESSIONS_LOG overrides it (tests; an operator replaying a
+// capture against a scratch tree).
+func sessionsLogPathFor(root string) string {
+	if p := os.Getenv("FATHOM_SESSIONS_LOG"); p != "" {
+		return p
+	}
+	base := root
+	if top := gitToplevel(root); top != "" {
+		base = top
+	}
+	return filepath.Join(base, "workspace", "logs", "sessions.jsonl")
+}
+
+// recordSessionWindow appends row to root's sessions log under a
+// cross-process flock (leases.go's own appendLease pattern: a session
+// window row must never interleave with a concurrent session's write).
+// Best-effort and silent on any failure — a hook must never fail session
+// start over a missing log directory.
+func recordSessionWindow(root string, row sessionWindowRow) {
+	if row.SessionID == "" {
+		return
+	}
+	path := sessionsLogPathFor(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+		return
+	}
+	defer syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	line, err := json.Marshal(row)
+	if err != nil {
+		return
+	}
+	_, _ = f.Write(append(line, '\n'))
+}
+
+// readSessionWindows reads every row in root's sessions log. A missing
+// file is "no sessions recorded yet" (nil), not an error; a malformed
+// line is skipped (best-effort instrument, never a gate).
+func readSessionWindows(root string) []sessionWindowRow {
+	data, err := os.ReadFile(sessionsLogPathFor(root))
+	if err != nil {
+		return nil
+	}
+	var out []sessionWindowRow
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var r sessionWindowRow
+		if json.Unmarshal([]byte(line), &r) != nil {
+			continue
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// sessionStartFor looks up sessionID's recorded start under root. ok is
+// false when no window row names that session (a harness that never fired
+// SessionStart for it, or a log rotated/cleared since).
+func sessionStartFor(root, sessionID string) (time.Time, bool) {
+	if sessionID == "" {
+		return time.Time{}, false
+	}
+	var found time.Time
+	ok := false
+	for _, r := range readSessionWindows(root) {
+		if r.SessionID != sessionID {
+			continue
+		}
+		if t, err := time.Parse(time.RFC3339, r.Started); err == nil {
+			found, ok = t, true
+		}
+	}
+	return found, ok
+}
+
+// ─── pointer aggregation (shared: discoveries + routes) ─────────────────
+
+// discoveryPointerAgg is one pointer's aggregate over a call-log window:
+// how many rows established it and the most recent timestamp.
+type discoveryPointerAgg struct {
+	Pointer string
+	Count   int
+	Last    time.Time
+}
+
+// callLogPointerRow is the minimal shape read back from a call-log JSONL
+// row (internal/mcp/calllog.go's callLogEntry) — just enough to bucket by
+// service, time, and pointer.
+type callLogPointerRow struct {
+	TS       time.Time
+	Pointers []string
+}
+
+// readCallLogPointerRows reads logPath's JSONL rows, keeping only those
+// naming service (when non-empty) with ts >= since and at least one
+// pointer. A missing or malformed log degrades to empty, never an error.
+func readCallLogPointerRows(logPath, service string, since time.Time) []callLogPointerRow {
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		return nil
+	}
+	var out []callLogPointerRow
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var row struct {
+			TS       string   `json:"ts"`
+			Service  string   `json:"service"`
+			Pointers []string `json:"pointers"`
+		}
+		if json.Unmarshal([]byte(line), &row) != nil || len(row.Pointers) == 0 {
+			continue
+		}
+		if service != "" && row.Service != service {
+			continue
+		}
+		ts, terr := time.Parse(time.RFC3339Nano, row.TS)
+		if terr != nil || ts.Before(since) {
+			continue
+		}
+		out = append(out, callLogPointerRow{TS: ts, Pointers: row.Pointers})
+	}
+	return out
+}
+
+// gatherDiscoveryPointers folds readCallLogPointerRows plus this scope's
+// filed thread items (a "discoveries" pointer set an agent explicitly
+// filed, vision 28 §4's "no model distills anything" write path) into a
+// ranked, deduped pointer list: most recent first, then most frequent,
+// then lexical (determinism, internal/CLAUDE.md).
+func gatherDiscoveryPointers(logPath, service string, since time.Time, scope threadScope) []discoveryPointerAgg {
+	agg := map[string]*discoveryPointerAgg{}
+	bump := func(ptr string, ts time.Time) {
+		ptr = strings.TrimSpace(ptr)
+		if ptr == "" {
+			return
+		}
+		e, ok := agg[ptr]
+		if !ok {
+			e = &discoveryPointerAgg{Pointer: ptr}
+			agg[ptr] = e
+		}
+		e.Count++
+		if ts.After(e.Last) {
+			e.Last = ts
+		}
+	}
+	for _, row := range readCallLogPointerRows(logPath, service, since) {
+		for _, p := range row.Pointers {
+			bump(p, row.TS)
+		}
+	}
+	for _, it := range loadThreadItems(threadsPath()) {
+		if !scope.owns(it) {
+			continue
+		}
+		disc := it.Pointers["discoveries"]
+		if disc == "" {
+			continue
+		}
+		filedAt, ferr := time.Parse(time.RFC3339, it.FiledAt)
+		if ferr != nil || filedAt.Before(since) {
+			continue
+		}
+		for _, p := range strings.Fields(disc) {
+			bump(p, filedAt)
+		}
+	}
+	out := make([]discoveryPointerAgg, 0, len(agg))
+	for _, e := range agg {
+		out = append(out, *e)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].Last.Equal(out[j].Last) {
+			return out[i].Last.After(out[j].Last)
+		}
+		if out[i].Count != out[j].Count {
+			return out[i].Count > out[j].Count
+		}
+		return out[i].Pointer < out[j].Pointer
+	})
+	return out
+}
+
+// discoveryCitationRE matches an obligations-style citation suffix
+// ("path#Lstart-Lend", internal/semantic.Obligation.Src's own format).
+var discoveryCitationRE = regexp.MustCompile(`^(.+)#(L\d+-L\d+)$`)
+
+// stripDiscoveryCitation splits a citation-shaped pointer into its file
+// path and the line-range suffix; any other pointer returns unchanged.
+func stripDiscoveryCitation(ptr string) (filePath, citation string) {
+	if m := discoveryCitationRE.FindStringSubmatch(ptr); m != nil {
+		return m[1], m[2]
+	}
+	return ptr, ""
+}
+
+// renderOneDiscoveryLine resolves ptr FRESH via idx/resolveFilePointer
+// (planscontext.go's own seam) and renders one line — "read <path>" for a
+// file, "symbol <ptr> → file:line" for a resolved symbol, or "<ptr> —
+// stale (unresolved)" otherwise. Mirrors internal/mcp's
+// renderDiscoveryPointer exactly (same grammar, different package: the two
+// surfaces share the POINTER SHAPE, not code).
+func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (line string, resolved bool) {
+	freq := ""
+	if count > 1 {
+		freq = fmt.Sprintf(" (%d)", count)
+	}
+	filePath, citation := stripDiscoveryCitation(ptr)
+	if lines, ok := resolveFilePointer("", filePath); ok {
+		suffix := ""
+		if citation != "" {
+			suffix = "#" + citation
+		}
+		_ = lines
+		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), true
+	}
+	if idxErr == nil && idx != nil {
+		pkgHint, name := splitPointer(ptr)
+		if sctx, ok := idx.resolveSymbol(pkgHint, name); ok {
+			return fmt.Sprintf("symbol %s → %s:%d%s", ptr, sctx.Def.FilePath, sctx.Def.Line, freq), true
+		}
+	}
+	return fmt.Sprintf("%s — stale (unresolved)%s", ptr, freq), false
+}
+
+// renderDiscoveryLines renders ptrs in order, cutting whole lines from the
+// bottom once budget bytes is reached and naming the cut (law 3) — the
+// same elision shape planscontext.go's budgetContextPack uses.
+func renderDiscoveryLines(idx ctxIndex, idxErr error, ptrs []discoveryPointerAgg, budget int) string {
+	if len(ptrs) == 0 {
+		return ""
+	}
+	lines := make([]string, len(ptrs))
+	for i, p := range ptrs {
+		lines[i], _ = renderOneDiscoveryLine(idx, idxErr, p.Pointer, p.Count)
+	}
+	var b strings.Builder
+	included := 0
+	for _, l := range lines {
+		row := l + "\n"
+		if budget > 0 && b.Len()+len(row) > budget && included > 0 {
+			break
+		}
+		b.WriteString(row)
+		included++
+	}
+	if dropped := len(lines) - included; dropped > 0 {
+		fmt.Fprintf(&b, "…%d more: fathom discoveries --budget %d\n", dropped, budget*2)
+	}
+	return b.String()
+}
+
+// callLogPathFor is the default call log discoveries reads: the daemon's
+// own default (workspace/logs/mcp-calls.jsonl under root), matching
+// defaultCallLogPath()'s convention without depending on process cwd.
+func callLogPathFor(root string) string {
+	base := root
+	if top := gitToplevel(root); top != "" {
+		base = top
+	}
+	return filepath.Join(base, workspaceCallLogRel)
+}
+
+// parseSinceFlag accepts an RFC3339 timestamp or a bare Go duration
+// ("2h", "45m"), the latter meaning "now minus that duration" — the same
+// ergonomic a `--since` flag wants without a date-math dependency.
+func parseSinceFlag(s string, now time.Time) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t, nil
+	}
+	if d, err := time.ParseDuration(s); err == nil {
+		return now.Add(-d), nil
+	}
+	return time.Time{}, fmt.Errorf("want an RFC3339 timestamp or a duration like \"2h\"")
+}
+
+// ─── fathom discoveries (RC-26) ──────────────────────────────────────────
+
+func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("discoveries", stderr)
+	sinceFlag := fs.String("since", "", "only pointers established at/after this time (RFC3339, or a duration like \"2h\"); default: all recorded history")
+	budget := fs.Int("budget", discoveriesDefaultBudget, "byte budget for the rendered list")
+	jsonOut := fs.Bool("json", false, "emit JSON instead of the rendered text")
+	service := fs.String("service", "", "service to resolve pointers against (default: this repo's indexed service)")
+	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
+	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
+	callLog := fs.String("call-log", "", "call log path (default: workspace/logs/mcp-calls.jsonl under --root)")
+	root := fs.String("root", ".", "repository root")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+
+	rootAbs, err := filepath.Abs(*root)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	scope := threadScopeFor(rootAbs)
+	svc := *service
+	if svc == "" {
+		svc = scope.service
+	}
+	logPath := *callLog
+	if logPath == "" {
+		logPath = callLogPathFor(rootAbs)
+	}
+	now := time.Now()
+	var since time.Time
+	if *sinceFlag != "" {
+		t, perr := parseSinceFlag(*sinceFlag, now)
+		if perr != nil {
+			fmt.Fprintf(stderr, "error: --since: %v\n", perr)
+			return 1
+		}
+		since = t
+	}
+
+	ptrs := gatherDiscoveryPointers(logPath, svc, since, scope)
+	idx, idxErr := openCtxIndex(svc, *storePath, *url)
+	rendered := renderDiscoveryLines(idx, idxErr, ptrs, *budget)
+
+	if *jsonOut {
+		type ptrJSON struct {
+			Pointer  string `json:"pointer"`
+			Count    int    `json:"count"`
+			LastSeen string `json:"last_seen"`
+		}
+		pj := make([]ptrJSON, len(ptrs))
+		for i, p := range ptrs {
+			pj[i] = ptrJSON{Pointer: p.Pointer, Count: p.Count, LastSeen: p.Last.UTC().Format(time.RFC3339)}
+		}
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(map[string]any{
+			"service": svc, "since": since.UTC().Format(time.RFC3339), "budget": *budget,
+			"pointers": pj, "rendered": rendered,
+		})
+		return 0
+	}
+	if rendered == "" {
+		fmt.Fprintln(stdout, "no discoveries recorded")
+		return 0
+	}
+	fmt.Fprint(stdout, rendered)
+	return 0
+}
+
+// ─── the SubagentStart discoveries brief (RC-28) ─────────────────────────
+
+// subagentDiscoveriesBudget is the discoveries chunk's own render budget —
+// deliberately smaller than the 1200-byte TOTAL subagentPrimer enforces,
+// leaving room for the base ≤600-byte primer ahead of it; the outer cut
+// still applies as the hard backstop.
+const subagentDiscoveriesBudget = 900
+
+// subagentDiscoveries renders "last session established: …" for a
+// subagent starting under root, resolved fresh against service's live
+// index — the parent session's discoveries since its own recorded start
+// (sessionStartFor), falling back to now-2h when this repo never recorded
+// that session (an older harness build, or a rotated log). "" when
+// nothing was established (silence costs nothing — subagentPrimer.go's own
+// doctrine for every advisory line here).
+func subagentDiscoveries(baseURL, root, service, parentSessionID string, now time.Time) string {
+	if service == "" {
+		return ""
+	}
+	since := now.Add(-2 * time.Hour)
+	if t, ok := sessionStartFor(root, parentSessionID); ok {
+		since = t
+	}
+	logPath := callLogPathFor(root)
+	scope := threadScopeFor(root)
+	ptrs := gatherDiscoveryPointers(logPath, service, since, scope)
+	if len(ptrs) == 0 {
+		return ""
+	}
+	// baseURL is the SAME daemon subagentPrimer already resolved this
+	// service against — never defaultFathomURL() again, which would
+	// silently re-resolve against a DIFFERENT daemon when --url pointed
+	// subagentPrimer somewhere else (a scratch daemon, a non-default
+	// FATHOM_HTTP) and make every pointer read back "stale" for no reason.
+	idx, idxErr := openCtxIndex(service, "", baseURL)
+	rendered := renderDiscoveryLines(idx, idxErr, ptrs, subagentDiscoveriesBudget)
+	if rendered == "" {
+		return ""
+	}
+	return "last session established:\n" + strings.TrimRight(rendered, "\n")
+}
+
+// ─── the session-end pointer set (RC-29) ─────────────────────────────────
+
+// sessionEndPointersMax is "the session's top 8 pointers" (vision 28 §4).
+const sessionEndPointersMax = 8
+
+// sessionEndPointers returns the session's top pointers (recency then
+// frequency) since its own recorded start, for the machine-minted
+// session-end thread note to carry in its Pointers map
+// (cmdSessionEndHook, lifecyclehooks.go). Falls back to now-2h when this
+// session's start was never recorded. nil when nothing was established —
+// a clean/read-only session carries no discoveries, which is not an error.
+func sessionEndPointers(root, sessionID string, now time.Time) []string {
+	since := now.Add(-2 * time.Hour)
+	if t, ok := sessionStartFor(root, sessionID); ok {
+		since = t
+	}
+	scope := threadScopeFor(root)
+	svc := scope.service
+	logPath := callLogPathFor(root)
+	agg := gatherDiscoveryPointers(logPath, svc, since, scope)
+	if len(agg) == 0 {
+		return nil
+	}
+	if len(agg) > sessionEndPointersMax {
+		agg = agg[:sessionEndPointersMax]
+	}
+	out := make([]string, len(agg))
+	for i, p := range agg {
+		out[i] = p.Pointer
+	}
+	return out
+}
+
+// discoveriesPointerKey is the threadItem.Pointers map key a filed
+// discoveries set lives under — space-separated, the same "pointers, not
+// prose" grammar the plan grammar's `ctx:` field already uses.
+const discoveriesPointerKey = "discoveries"
+
+// sessionEndDiscoveriesLine renders "last session established: …" from a
+// session-end threadItem's stored Pointers["discoveries"] set, resolved
+// FRESH against service's live index at brief-render time — never from
+// what was true when the note was filed (ADR-028). "" when the item
+// carries no discoveries pointers, or none resolve to anything a reader
+// could act on.
+func sessionEndDiscoveriesLine(it threadItem, root string) string {
+	disc := it.Pointers[discoveriesPointerKey]
+	if disc == "" {
+		return ""
+	}
+	ptrs := strings.Fields(disc)
+	if len(ptrs) == 0 {
+		return ""
+	}
+	scope := threadScopeFor(root)
+	idx, idxErr := openCtxIndex(scope.service, "", defaultFathomURL())
+	agg := make([]discoveryPointerAgg, len(ptrs))
+	for i, p := range ptrs {
+		agg[i] = discoveryPointerAgg{Pointer: p, Count: 1}
+	}
+	rendered := renderDiscoveryLines(idx, idxErr, agg, sessionEndBriefPointerBudget)
+	rendered = strings.TrimRight(rendered, "\n")
+	if rendered == "" {
+		return ""
+	}
+	return "last session established: " + strings.ReplaceAll(rendered, "\n", "; ")
+}
+
+// sessionEndBriefPointerBudget bounds the pointer line INSIDE the thread
+// brief's existing threadBriefBudgetBytes (2400) total — small on purpose,
+// since it is one bullet among several.
+const sessionEndBriefPointerBudget = 400

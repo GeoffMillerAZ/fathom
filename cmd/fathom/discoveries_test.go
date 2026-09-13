@@ -1,0 +1,378 @@
+package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+// ─── repoIdentity (RC-31) ────────────────────────────────────────────────
+
+func discoGitRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	dir, _ = filepath.EvalSymlinks(dir)
+	if out, err := exec.Command("git", "-C", dir, "init", "-q").CombinedOutput(); err != nil {
+		t.Skipf("git init: %v %s", err, out)
+	}
+	return dir
+}
+
+func setOrigin(t *testing.T, repo, url string) {
+	t.Helper()
+	if out, err := exec.Command("git", "-C", repo, "remote", "add", "origin", url).CombinedOutput(); err != nil {
+		t.Fatalf("git remote add origin: %v %s", err, out)
+	}
+}
+
+func TestRepoIdentity_OriginURLNormalizesAcrossForms(t *testing.T) {
+	forms := []string{
+		"https://github.com/Geoff/Fathom.git",
+		"git@github.com:Geoff/Fathom.git",
+		"ssh://git@github.com/Geoff/Fathom/",
+	}
+	var want string
+	for i, url := range forms {
+		repo := discoGitRepo(t)
+		setOrigin(t, repo, url)
+		got := repoIdentity(repo)
+		if i == 0 {
+			want = got
+		} else if got != want {
+			t.Errorf("repoIdentity(%q) = %q, want %q (same as form 0)", url, got, want)
+		}
+	}
+	if want != "github.com/geoff/fathom" {
+		t.Errorf("normalized identity = %q, want \"github.com/geoff/fathom\"", want)
+	}
+}
+
+func TestRepoIdentity_FallsBackToLowercasedPath(t *testing.T) {
+	dir := t.TempDir() // no git repo at all
+	got := repoIdentity(dir)
+	want := strings.ToLower(dir)
+	if got != want {
+		t.Errorf("repoIdentity(%q) = %q, want %q", dir, got, want)
+	}
+}
+
+func TestThreadScope_IdentitySeparatesSameBasenameRepos(t *testing.T) {
+	// F5 (docs/vision/28-receipts.md): two unrelated repos sharing a
+	// directory basename must never merge under the old basename tag.
+	parentA := t.TempDir()
+	parentB := t.TempDir()
+	repoA := filepath.Join(parentA, "worker-1")
+	repoB := filepath.Join(parentB, "worker-1")
+	if err := os.MkdirAll(repoA, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(repoB, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	idA, idB := repoIdentity(repoA), repoIdentity(repoB)
+	if idA == idB {
+		t.Fatalf("two unrelated repos sharing a basename got the same identity: %q", idA)
+	}
+	scopeA := threadScope{identity: idA, repo: "worker-1"}
+	itemFromB := threadItem{Pointers: map[string]string{"repo_identity": idB}}
+	if scopeA.owns(itemFromB) {
+		t.Errorf("scopeA must not own an item tagged with repo B's identity")
+	}
+	itemFromA := threadItem{Pointers: map[string]string{"repo_identity": idA}}
+	if !scopeA.owns(itemFromA) {
+		t.Errorf("scopeA must own an item tagged with its own identity")
+	}
+}
+
+func TestThreadScope_LegacyBasenameTagStillOwned(t *testing.T) {
+	// RC-31: an item filed before this change (no repo_identity key) must
+	// not be silently hidden — the old basename rule still applies.
+	scope := threadScope{identity: "github.com/x/y", repo: "y"}
+	legacy := threadItem{Pointers: map[string]string{"repo": "y"}}
+	if !scope.owns(legacy) {
+		t.Errorf("a legacy (pre-RC-31) item tagged with the old basename must still be owned")
+	}
+}
+
+// ─── session windows ─────────────────────────────────────────────────────
+
+func TestSessionWindows_RecordAndLookup(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	now := time.Now().UTC()
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s1", Cwd: root, Service: "fathom", Started: now.Format(time.RFC3339)})
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s2", Cwd: root, Service: "fathom", Started: now.Add(time.Minute).Format(time.RFC3339)})
+
+	got, ok := sessionStartFor(root, "s1")
+	if !ok {
+		t.Fatal("sessionStartFor(s1) not found")
+	}
+	if !got.Truncate(time.Second).Equal(now.Truncate(time.Second)) {
+		t.Errorf("sessionStartFor(s1) = %v, want ~%v", got, now)
+	}
+	if _, ok := sessionStartFor(root, "unknown"); ok {
+		t.Errorf("sessionStartFor(unknown) should not resolve")
+	}
+	windows := readSessionWindows(root)
+	if len(windows) != 2 {
+		t.Fatalf("readSessionWindows = %d rows, want 2", len(windows))
+	}
+}
+
+// ─── gatherDiscoveryPointers ─────────────────────────────────────────────
+
+func writeDiscoCallLogFixture(t *testing.T, path string, rows []string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(strings.Join(rows, "\n")+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGatherDiscoveryPointers_RanksByRecencyThenFrequency(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "mcp-calls.jsonl")
+	now := time.Now().UTC()
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Add(-time.Hour).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["internal/mcp.registerReferences"]}`,
+		`{"ts":"` + now.Add(-2*time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["internal/store.PutObservations"]}`,
+		`{"ts":"` + now.Add(-time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["internal/store.PutObservations"]}`,
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"other","pointers":["should/never.Appear"]}`,
+	})
+	scope := threadScopeFor(root)
+	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope)
+	if len(got) != 2 {
+		t.Fatalf("gatherDiscoveryPointers = %d pointers, want 2 (service-scoped): %+v", len(got), got)
+	}
+	if got[0].Pointer != "internal/store.PutObservations" || got[0].Count != 2 {
+		t.Errorf("rank[0] = %+v, want internal/store.PutObservations count=2 (most recent + most frequent)", got[0])
+	}
+	if got[1].Pointer != "internal/mcp.registerReferences" {
+		t.Errorf("rank[1] = %+v, want internal/mcp.registerReferences", got[1])
+	}
+}
+
+func TestGatherDiscoveryPointers_HonoursSince(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "mcp-calls.jsonl")
+	now := time.Now().UTC()
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Add(-3*time.Hour).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["too/old.Pointer"]}`,
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["recent.Pointer"]}`,
+	})
+	scope := threadScopeFor(root)
+	got := gatherDiscoveryPointers(logPath, "fathom", now.Add(-time.Hour), scope)
+	if len(got) != 1 || got[0].Pointer != "recent.Pointer" {
+		t.Fatalf("gatherDiscoveryPointers with --since = %+v, want just recent.Pointer", got)
+	}
+}
+
+func TestGatherDiscoveryPointers_IncludesFiledThreadPoints(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "mcp-calls.jsonl") // absent: only thread items contribute
+	scope := threadScopeFor(root)
+	now := time.Now().UTC()
+	if err := appendThreadItem(threadItem{
+		SchemaVersion: threadSchemaVersion, ID: "th-filed", Thread: "fathom", Kind: "side-task",
+		Text: "found the registration site", FiledAt: now.Format(time.RFC3339),
+		Pointers: map[string]string{"repo_identity": scope.identity, discoveriesPointerKey: "internal/mcp.registerDiscoveries"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope)
+	if len(got) != 1 || got[0].Pointer != "internal/mcp.registerDiscoveries" {
+		t.Fatalf("gatherDiscoveryPointers from filed thread items = %+v, want [internal/mcp.registerDiscoveries]", got)
+	}
+}
+
+// ─── renderOneDiscoveryLine ──────────────────────────────────────────────
+
+func TestRenderOneDiscoveryLine_ResolvesAFile(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "model.go"), []byte("package core\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+	line, ok := renderOneDiscoveryLine(nil, nil, "model.go", 3)
+	if !ok || !strings.HasPrefix(line, "read model.go") || !strings.Contains(line, "(3)") {
+		t.Errorf("renderOneDiscoveryLine(file) = (%q, %v), want a \"read model.go ... (3)\" line", line, ok)
+	}
+}
+
+func TestRenderOneDiscoveryLine_UnresolvedIsStale(t *testing.T) {
+	line, ok := renderOneDiscoveryLine(nil, nil, "internal/nope.GoneNow", 1)
+	if ok {
+		t.Fatalf("expected unresolved, got resolved: %q", line)
+	}
+	if !strings.Contains(line, "stale") {
+		t.Errorf("renderOneDiscoveryLine unresolved = %q, want it to say \"stale\"", line)
+	}
+}
+
+// ─── fathom discoveries (RC-26) ──────────────────────────────────────────
+
+func TestCmdDiscoveries_RendersFromCallLog(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl")
+	now := time.Now().UTC()
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["some/pkg.Thing"]}`,
+	})
+	var out, errb bytes.Buffer
+	code := cmdDiscoveries([]string{"--root", root, "--service", "fathom", "--call-log", logPath}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("cmdDiscoveries exit %d: %s", code, errb.String())
+	}
+	if !strings.Contains(out.String(), "some/pkg.Thing") {
+		t.Errorf("cmdDiscoveries output = %q, want it to name the pointer", out.String())
+	}
+}
+
+func TestCmdDiscoveries_JSONShape(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl")
+	now := time.Now().UTC()
+	writeDiscoCallLogFixture(t, logPath, []string{
+		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["some/pkg.Thing"]}`,
+	})
+	var out, errb bytes.Buffer
+	code := cmdDiscoveries([]string{"--root", root, "--service", "fathom", "--call-log", logPath, "--json"}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("cmdDiscoveries --json exit %d: %s", code, errb.String())
+	}
+	var payload struct {
+		Pointers []struct {
+			Pointer string `json:"pointer"`
+		} `json:"pointers"`
+		Rendered string `json:"rendered"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v (%s)", err, out.String())
+	}
+	if len(payload.Pointers) != 1 || payload.Pointers[0].Pointer != "some/pkg.Thing" {
+		t.Errorf("json pointers = %+v, want [some/pkg.Thing]", payload.Pointers)
+	}
+}
+
+// ─── subagentDiscoveries (RC-28) ─────────────────────────────────────────
+
+func TestSubagentDiscoveries_EmptyWhenNothingEstablished(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	if got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", time.Now()); got != "" {
+		t.Errorf("subagentDiscoveries with no call log = %q, want \"\"", got)
+	}
+}
+
+func TestSubagentDiscoveries_UsesParentSessionStart(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	now := time.Now().UTC()
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "parent-1", Cwd: root, Service: "fathom", Started: now.Add(-30 * time.Minute).Format(time.RFC3339)})
+	logPath := callLogPathFor(root)
+	writeDiscoCallLogFixture(t, logPath, []string{
+		// before the parent's own start: must be excluded.
+		`{"ts":"` + now.Add(-time.Hour).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["before.Start"]}`,
+		// after the parent's start: must be included.
+		`{"ts":"` + now.Add(-time.Minute).Format(time.RFC3339Nano) + `","service":"fathom","pointers":["after.Start"]}`,
+	})
+	got := subagentDiscoveries("http://127.0.0.1:1", root, "fathom", "parent-1", now)
+	if !strings.Contains(got, "after.Start") {
+		t.Errorf("subagentDiscoveries = %q, want it to include after.Start", got)
+	}
+	if strings.Contains(got, "before.Start") {
+		t.Errorf("subagentDiscoveries = %q, must not include a pointer from before the parent's start", got)
+	}
+	if !strings.HasPrefix(got, "last session established:") {
+		t.Errorf("subagentDiscoveries = %q, want the \"last session established:\" lead line", got)
+	}
+}
+
+// ─── sessionEndPointers (RC-29) ──────────────────────────────────────────
+
+func TestSessionEndPointers_TopEightSinceSessionStart(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	now := time.Now().UTC()
+	recordSessionWindow(root, sessionWindowRow{SchemaVersion: 1, SessionID: "s1", Cwd: root, Service: "", Started: now.Add(-10 * time.Minute).Format(time.RFC3339)})
+	logPath := callLogPathFor(root)
+	var rows []string
+	for i := 0; i < 10; i++ {
+		rows = append(rows, `{"ts":"`+now.Add(-time.Duration(9-i)*time.Second).Format(time.RFC3339Nano)+`","pointers":["p`+string(rune('A'+i))+`"]}`)
+	}
+	writeDiscoCallLogFixture(t, logPath, rows)
+	got := sessionEndPointers(root, "s1", now)
+	if len(got) != sessionEndPointersMax {
+		t.Fatalf("sessionEndPointers returned %d, want %d (capped)", len(got), sessionEndPointersMax)
+	}
+}
+
+func TestSessionEndPointers_NilWhenNothingEstablished(t *testing.T) {
+	threadEnv(t)
+	root := t.TempDir()
+	t.Setenv("FATHOM_SESSIONS_LOG", filepath.Join(root, "sessions.jsonl"))
+	if got := sessionEndPointers(root, "no-such-session", time.Now()); got != nil {
+		t.Errorf("sessionEndPointers = %v, want nil", got)
+	}
+}
+
+// ─── routes (RC-30) ──────────────────────────────────────────────────────
+
+func TestRoutedPointers_RequiresTwoDistinctSessions(t *testing.T) {
+	now := time.Now().UTC()
+	windows := []sessionWindowRow{
+		{SessionID: "s1", Started: now.Add(-2 * time.Hour).Format(time.RFC3339)},
+		{SessionID: "s2", Started: now.Add(-time.Hour).Format(time.RFC3339)},
+	}
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl")
+	writeDiscoCallLogFixture(t, logPath, []string{
+		// established during s1 AND again during s2: a route.
+		`{"ts":"` + now.Add(-90*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.Routed"]}`,
+		`{"ts":"` + now.Add(-30*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.Routed"]}`,
+		// established twice, but both within s2: not a route.
+		`{"ts":"` + now.Add(-29*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.OnceOnly"]}`,
+		`{"ts":"` + now.Add(-28*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.OnceOnly"]}`,
+	})
+	routed := routedPointers(logPath, "", windows, now.Add(-3*time.Hour))
+	if len(routed) != 1 || routed[0].Pointer != "pkg.Routed" || routed[0].Sessions != 2 {
+		t.Fatalf("routedPointers = %+v, want exactly [pkg.Routed sessions=2]", routed)
+	}
+}
+
+func TestRoutePackagePrefix_FileVsSymbol(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "a.go"), []byte("package p\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	wd, _ := os.Getwd()
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(wd)
+	if got := routePackagePrefix("a.go"); got != "." && got != "(root)" {
+		t.Errorf("routePackagePrefix(a.go) = %q", got)
+	}
+	if got := routePackagePrefix("internal/mcp.registerDiscoveries"); got != "internal/mcp" {
+		t.Errorf("routePackagePrefix(symbol) = %q, want internal/mcp", got)
+	}
+}

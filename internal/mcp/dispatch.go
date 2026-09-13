@@ -219,8 +219,22 @@ func (s *Server) loggedToolsCall(ctx context.Context, toolName string, params js
 		responseBytes = len(b)
 	}
 	elidedCount := elidedCountFrom(result)
+	// RC-25 (docs/vision/28-receipts.md §4): the pointer-extraction hook —
+	// every agent-surface call log row gains the answer's own top
+	// pointers, extracted from the structured result before it is
+	// rendered, never from text. resultPointers wants the tool's own
+	// argument object (its contract, matched by its unit tests) — not
+	// this call's {name, arguments} envelope — so unwrap the same
+	// "arguments" field args.Arguments.Service above was already read
+	// from, best-effort (a malformed envelope leaves it "null", and every
+	// extraction branch degrades to "no pointer" on that, never a panic).
+	var rawArgs struct {
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	_ = json.Unmarshal(params, &rawArgs)
+	pointers := resultPointers(toolName, rawArgs.Arguments, result)
 	s.callLogger.log(toolName, args.Arguments.Service, group, s.effectiveSurface(ctx), "", originFrom(ctx), offSurface, claimsAttached, verdictOutcome,
-		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount}, latency, logErr)
+		callOutcome{ResultCount: resultCount, MatchedVia: matchedVia, ResponseBytes: responseBytes, ElidedCount: elidedCount, Pointers: pointers}, latency, logErr)
 	return result, rpcErr
 }
 

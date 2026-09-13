@@ -338,6 +338,16 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `setup-doctor` | `absent` | verified — Codex documents no setup event — run `fathom doctor --brief` by hand after wiring |
 <!-- fathom:harness-capabilities codex end -->
 
+`subagent-prime`'s ≤600 B primer now carries an addition (RC-28, docs/vision/
+28-receipts.md §4, not yet reflected in the generated table above —
+`internal/harness/descriptors.go`'s `CapSubagentPrime` note is the row to
+update next): when the parent session already established discoveries
+(call-log pointers since its own recorded start), a "last session
+established: …" brief, resolved fresh, is appended within 1,200 bytes
+TOTAL — the 600 B cap stays the ceiling when there is nothing to add. Codex
+has no mid-session pull-form event of its own for this; `fathom discoveries`
+is that pull form here too, same as `fathom prime` is for `SessionStart`.
+
 **Verified against — a session, 2026-09-12.** `codex-cli 0.153.1` on this
 workstation, one headless `codex exec --json` run. What it proved, and what
 it disproved:

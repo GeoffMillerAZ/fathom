@@ -29,6 +29,7 @@ import (
 // /rpc/companion (a compatible alias).
 var companionWant = []string{
 	"capabilities",
+	"discoveries",
 	"entrypoints",
 	"find_callers",
 	"find_symbol",

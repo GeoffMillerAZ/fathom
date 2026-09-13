@@ -47,6 +47,28 @@ ledger` and the home bench's render (`benchledgerrender`) now open with a
 "Where fathom stands" verdict block, built from the ledger, above every
 table.
 
+**Receipts on the hand-off: discoveries and routes (`RC-25..RC-33`, vision
+28 §4).** Every agent-surface call log row now carries the answer's top
+pointers (symbol ids, file paths — never text), extracted mechanically from
+the tool's structured result. `fathom discoveries [--since T] [--budget N]
+[--json]` and the new `discoveries` MCP tool (a deliberate exception to the
+agent-surface diet, alongside `search` (RC-24) now 19 tools total, with its
+own pre-registered kill criterion) render this repo's recent pointers, deduped and ranked by
+recency then frequency, each resolved FRESH against the live index — a
+pointer the index no longer confirms renders stale, never as fact. A
+subagent's `SubagentStart` primer appends the parent session's discoveries
+since its own recorded start (within 1,200 bytes total; the scenario
+driver gives a wired planner-workers cell the same brief); a session-end
+note carries that session's top pointers, rendered fresh as "last session
+established: …" in the next `SessionStart` thread brief. `fathom routes
+[package|concern]` derives the pointers established in 2+ distinct
+sessions over 30 days (attributed via a new `workspace/logs/sessions.jsonl`
+session-window log), grouped by package. Thread deposits are now scoped by
+the repo's identity (normalized `origin` URL, else absolute path) instead
+of a directory basename, fixing two unrelated worktrees sharing a basename
+from merging each other's continuity notes (F5); older items still match
+on the legacy basename rule.
+
 **Every wired scenariobench cell ran without fathom's MCP tools — fixed
 (instrument truth, `docs/bench/scenarios.md`).** `ClaudeHarness.RunSession` now
 copies the config `RenderArm` actually rendered (`SessionRequest.MCPConfigPath`)

@@ -61,14 +61,19 @@ description: >
    `config audit`'s `pointers_resolve` holds its pointers to existence.
    Re-render rather than hand-edit; text outside the markers is yours.
 6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
-   subagent that never saw `SessionStart`, `PostToolUseFailure` explains a
+   subagent that never saw `SessionStart` — identity plus, when the parent
+   session already established something (RC-28, docs/vision/
+   28-receipts.md §4), a "last session established: …" discoveries brief
+   resolved fresh, within 1,200 bytes total (600 when there is nothing to
+   add) — `PostToolUseFailure` explains a
    failed FATHOM tool call (silent for anyone else's), `FileChanged` runs
    the custodian audit on an on-disk change, `WorktreeCreate`/`CwdChanged`/
    `DirectoryAdded` record which service a new root belongs to, and
    `Setup` runs `fathom doctor --brief`. All seven arrive with `fathom
    init` / `fathom fleet reconcile`; none of them can block. `fathom
    doctor`'s `hooks_coverage` row (advisory, never FAIL) says what the
-   harness offers that fathom still leaves alone, and why.
+   harness offers that fathom still leaves alone, and why. Codex has no
+   SubagentStart equivalent; `fathom discoveries` is the pull form there.
 7. **Prove by demonstration**: trip one guard deliberately (expect the
    note), touch one rule-scoped file (expect the injection or its beat),
    run one `fathom verify` if plans exist, and run `fathom config audit`

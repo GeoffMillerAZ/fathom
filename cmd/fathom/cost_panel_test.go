@@ -75,7 +75,12 @@ const (
 	// tool: 40,204 bytes measured with RC-19/20/21 combined. A genuinely
 	// new tool, not a widened description (TestAgentSurfaceDiet's own pin
 	// moved to 18 alongside it).
-	agentSurfaceSchemaByteCeiling = 41000
+	// Re-pinned again for `discoveries` (RC-27, docs/vision/
+	// 28-receipts.md §4) — a second deliberate, pre-registered exception to
+	// the agent-surface diet (surface_diet_test.go), alongside `search`,
+	// carrying its own kill criterion: 41,733 bytes measured at 19 tools
+	// combined with RC-19/20/21/24.
+	agentSurfaceSchemaByteCeiling = 42500
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -87,8 +92,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 18 {
-		t.Errorf("agent surface tools = %d, want 18 (TestAgentSurfaceDiet's own pin: 16 + memory_search AM-8 + search RC-24)", tools)
+	if tools != 19 {
+		t.Errorf("agent surface tools = %d, want 19 (TestAgentSurfaceDiet's own pin: 16 + memory_search AM-8 + search RC-24 + discoveries RC-27)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+

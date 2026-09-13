@@ -45,7 +45,14 @@ const subagentPrimerCut = " …[cut at the subagent primer's byte cap]"
 // is down, enumeration failed, or this root is not an indexed service. A
 // subagent is spawned for a narrow job; a warning it cannot act on is
 // pure cost.
-func subagentPrimer(baseURL, projDir string) string {
+//
+// parentSessionID (RC-28, docs/vision/28-receipts.md §4) is the harness's
+// own session id on the SubagentStart event — the PARENT session's id
+// (Claude Code's subagent-start hook fires inside the parent's session,
+// never a subagent-minted one of its own), used to look up that session's
+// recorded start (sessionStartFor) so the discoveries brief covers
+// exactly what the parent had established, not an arbitrary window.
+func subagentPrimer(baseURL, projDir, parentSessionID string) string {
 	hc := &http.Client{Timeout: 2 * time.Second}
 	name, info, ok := indexedServiceFor(hc, baseURL, projDir)
 	if !ok {
@@ -63,8 +70,16 @@ func subagentPrimer(baseURL, projDir string) string {
 			primer = line + "\n" + primer
 		}
 	}
-	if len(primer) > subagentPrimerBudget {
-		keep := subagentPrimerBudget - len(subagentPrimerCut)
+	// RC-28: the parent's discoveries since its own recorded start, within
+	// 1200 bytes TOTAL — the constant 600-byte primer above stays the cap
+	// when there is nothing to append (subagentPrimerBudget).
+	budget := subagentPrimerBudget
+	if disc := subagentDiscoveries(baseURL, projDir, name, parentSessionID, time.Now()); disc != "" {
+		primer += "\n" + disc
+		budget = subagentDiscoveriesPrimerBudget
+	}
+	if len(primer) > budget {
+		keep := budget - len(subagentPrimerCut)
 		if keep < 0 {
 			keep = 0
 		}
@@ -72,6 +87,11 @@ func subagentPrimer(baseURL, projDir string) string {
 	}
 	return primer
 }
+
+// subagentDiscoveriesPrimerBudget is the SubagentStart primer's TOTAL cap
+// once a discoveries brief is appended (RC-28) — 600 bytes for the base
+// primer's own headroom, up to 1200 bytes total.
+const subagentDiscoveriesPrimerBudget = 1200
 
 // fathomToolName reports whether toolName is one of fathom's own MCP
 // tools — under the plain server-scoped name (`mcp__fathom__find_symbol`)

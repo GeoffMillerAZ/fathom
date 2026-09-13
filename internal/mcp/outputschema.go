@@ -278,6 +278,7 @@ type capabilitiesResult struct {
 // companionTools without a row here fails TestOutputSchemasMatchLiveResults.
 var agentResultTypes = map[string]reflect.Type{
 	"capabilities":     reflect.TypeOf(capabilitiesResult{}),
+	"discoveries":      reflect.TypeOf(discoveriesResult{}),
 	"entrypoints":      reflect.TypeOf(entrypointsResult{}),
 	"find_callers":     reflect.TypeOf(findCallersResult{}),
 	"find_symbol":      reflect.TypeOf(findSymbolResult{}),
