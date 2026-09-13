@@ -270,7 +270,11 @@ func TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented(t *tes
 	if !ok {
 		t.Fatal("no claude-code codec")
 	}
-	for _, ev := range []Event{EventWorktreeCreate, EventCwdChanged, EventSetup, EventFileChanged, EventConfigChange, EventInstructionsLoaded} {
+	// WorktreeCreate's stdout IS the worktree path: nothing may be printed.
+	if out, err := c.EncodeOutput(EventWorktreeCreate, HookOutput{Context: "advice"}); err != nil || len(out) != 0 {
+		t.Errorf("WorktreeCreate must emit nothing on stdout, got %q (%v)", out, err)
+	}
+	for _, ev := range []Event{EventCwdChanged, EventSetup, EventFileChanged, EventConfigChange, EventInstructionsLoaded} {
 		out, err := c.EncodeOutput(ev, HookOutput{Context: "advice"})
 		if err != nil {
 			t.Fatalf("%s: %v", ev, err)

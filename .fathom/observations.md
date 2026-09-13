@@ -752,5 +752,5 @@ triage if it matters.
   - **Repro:** echo '{"session_id":"x","cwd":"/tmp","hook_event_name":"WorktreeCreate","worktree_path":"/tmp/w"}' | bin/fathom session-hook --event worktree-create   # before: hookSpecificOutput; after: {"systemMessage": …}
 - **Root cause:** the codec had one output shape for all events; the descriptor's Vehicle was never consulted at encode time and the wave-3 events were verified against the docs' input schemas, not their output schemas (O27's sibling: a probe that exercised the wrong half).
 - **Fix:** `claudeContextEvents` in internal/harness/codec.go — additionalContext only where documented, `systemMessage` (top-level, accepted on every event, shown to the user) elsewhere; `TestClaudeCodecUsesSystemMessageWhereAdditionalContextIsUndocumented`.
-- **Status:** fixed
+- **Status:** fixed (second form found on relaunch: the harness reads WorktreeCreate stdout as the worktree path, so even systemMessage broke it; the codec now emits nothing on that event and the advisory goes to stderr)
 - **Impact:** every agent spawn with worktree isolation from a fathom-wired repo was blocked between the wave-3 rollout (2026-09-12) and this fix; the same shape would have hit Setup, CwdChanged, DirectoryAdded, FileChanged and ConfigChange advisories the moment they had something to say.

@@ -212,6 +212,13 @@ func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 	if !ok {
 		return nil, fmt.Errorf("claude-code: no binding for event %q", ev)
 	}
+	if claudeStdoutIsData[ev] {
+		// On WorktreeCreate the harness reads the hook's STDOUT as the
+		// worktree path — any byte we print becomes a path it then refuses
+		// (O34, second form). Nothing may be emitted; the advisory goes to
+		// stderr in the caller.
+		return nil, nil
+	}
 	if !claudeContextEvents[ev] {
 		// Claude Code validates hookSpecificOutput per event and REJECTS
 		// additionalContext where it is undocumented — on WorktreeCreate
@@ -228,6 +235,13 @@ func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
 			"additionalContext": out.Context,
 		},
 	})
+}
+
+// claudeStdoutIsData names the events whose stdout the harness parses as a
+// value rather than as a hook envelope (WorktreeCreate: the custom worktree
+// path). The codec emits nothing for them.
+var claudeStdoutIsData = map[Event]bool{
+	EventWorktreeCreate: true,
 }
 
 // claudeContextEvents are the events on which Claude Code documents

@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -211,7 +212,14 @@ func runAdvisoryEvent(codec harness.Codec, ev harness.Event, channel string, std
 		return 0
 	}
 	out, err := codec.EncodeOutput(ev, harness.HookOutput{Context: payload})
-	if err != nil || len(out) == 0 {
+	if err != nil {
+		return 0
+	}
+	if len(out) == 0 {
+		// The codec declined stdout for this event (WorktreeCreate's
+		// stdout is the worktree path, O34): the advisory still exists,
+		// on stderr, where a verbose harness shows it and nothing parses it.
+		fmt.Fprintln(os.Stderr, payload)
 		return 0
 	}
 	fmt.Fprintln(stdout, string(out))
