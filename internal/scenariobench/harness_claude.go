@@ -9,6 +9,7 @@ package scenariobench
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -98,6 +99,18 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 	cmd.Stderr = &stderr
 	runErr := cmd.Run()
 	if err := os.WriteFile(streamPath, stdout.Bytes(), 0o644); err != nil {
+		if errors.Is(err, os.ErrPermission) {
+			// A wedged external-volume TCC verdict (EPERM on a path that
+			// stat can see) is an instrument fault of this machine, not of
+			// the cell: report it as an instrument error so the cell is
+			// LOST and the run continues (vs-pilot-2 aborted 33 cells in on
+			// one, 2026-09-13); a rerun fills the gap.
+			return SessionResult{
+				Index: req.Index, Role: req.Role, RowID: req.RowID,
+				InstrumentError: fmt.Sprintf("instrument: writing transcript %s: %v", streamPath, err),
+				Error:           fmt.Sprintf("instrument: writing transcript %s: %v", streamPath, err),
+			}, nil
+		}
 		return SessionResult{}, fmt.Errorf("claude harness: writing transcript %s: %w", streamPath, err)
 	}
 	if runErr != nil {
