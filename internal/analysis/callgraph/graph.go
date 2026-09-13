@@ -66,6 +66,22 @@ type Graph struct {
 	// when "dir-base.Name" is unambiguous across the whole node set.
 	byDirName map[string]string
 
+	// bySuffix maps a component-boundary suffix (the raw keyEndsWith once
+	// scanned every key for) to how many node keys end with "."+suffix or
+	// "/"+suffix, and — when exactly one does — that key. Built once per
+	// Build (buildSuffixIndex, O(nodes)) so resolveAmbiguousCallees's suffix
+	// match costs one map lookup per unresolved callee instead of the
+	// O(nodes) scan the fallback used to run for every one of them
+	// (bench-pyramid SB-50). nil on a graph buildIndexes alone produced
+	// (BuildResolved never calls resolve, so it never needs this).
+	bySuffix map[string]suffixCandidate
+
+	// byDotSuffix is the "."-boundary-only subset of bySuffix: it is what
+	// the method-call fallback in resolveAmbiguousCallees needs, since a
+	// receiver-variable callee ("<var>.Method") can only match a key
+	// immediately preceded by a literal ".", never a directory separator.
+	byDotSuffix map[string]suffixCandidate
+
 	// edgeKind records, for every (caller+"\x00"+callee) pair added by
 	// AddTypedEdges, the typed Kind it was added with (core.EdgeDirect or
 	// core.EdgeIfaceDispatch — core.EdgeUnresolved edges are never added,
@@ -102,6 +118,7 @@ func (g *Graph) EdgeCount() int {
 // — they represent external dependencies.
 func Build(nodes []core.SymbolNode) *Graph {
 	g := buildIndexes(nodes)
+	g.buildSuffixIndex()
 
 	// Second pass: resolve call edges. Iterate the deduplicated node set so
 	// duplicate observations of a caller cannot duplicate its edges; the
@@ -189,6 +206,71 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 	return g
 }
 
+// suffixCandidate tracks, for one component-boundary suffix, how many
+// distinct node keys end with it and — only when that count is exactly
+// one — which key. count > 1 means genuinely ambiguous: resolveAmbiguousCallees
+// must return "" rather than guess, never first-match-wins.
+type suffixCandidate struct {
+	key   string
+	count int
+}
+
+// buildSuffixIndex populates bySuffix and byDotSuffix from every node key's
+// component-boundary suffixes — the suffixes keyEndsWith's "."+raw / "/"+raw
+// checks compare against — once per Build. It is what turns
+// resolveAmbiguousCallees's suffix match and method-call fallback from an
+// O(nodes) scan per unresolved callee into an O(1) map lookup against an
+// index this function builds in O(nodes) (more precisely, O(total key
+// bytes), since it walks each key once).
+//
+// For a key, a "boundary" is any position immediately after a '.' or '/'
+// character; the suffix starting there is a candidate for whatever raw a
+// later query names. A key can add the SAME suffix at most once (the
+// per-key seen sets below): keyEndsWith's own semantics is a single
+// fixed-position tail check per (key, raw) pair, so a key must never
+// contribute more than one hit for a given suffix, even in the
+// pathological case where the same substring recurs at two boundaries.
+func (g *Graph) buildSuffixIndex() {
+	g.bySuffix = make(map[string]suffixCandidate)
+	g.byDotSuffix = make(map[string]suffixCandidate)
+	for key := range g.nodes {
+		seenAll := make(map[string]struct{})
+		seenDot := make(map[string]struct{})
+		for i := 1; i < len(key); i++ {
+			c := key[i-1]
+			if c != '.' && c != '/' {
+				continue
+			}
+			suf := key[i:]
+			if _, dup := seenAll[suf]; !dup {
+				seenAll[suf] = struct{}{}
+				addSuffixCandidate(g.bySuffix, suf, key)
+			}
+			if c == '.' {
+				if _, dup := seenDot[suf]; !dup {
+					seenDot[suf] = struct{}{}
+					addSuffixCandidate(g.byDotSuffix, suf, key)
+				}
+			}
+		}
+	}
+}
+
+// addSuffixCandidate records one (suffix, key) occurrence: the first key
+// seen for a suffix is remembered as the answer; a second occurrence clears
+// it, because a query landing on this suffix has no single honest answer —
+// count alone says "ambiguous", the key is only meaningful when count is 1.
+func addSuffixCandidate(m map[string]suffixCandidate, suf, key string) {
+	c := m[suf]
+	c.count++
+	if c.count == 1 {
+		c.key = key
+	} else {
+		c.key = ""
+	}
+	m[suf] = c
+}
+
 // resolve converts a raw callee reference (full key or bare name) to a
 // canonical key present in g.nodes.  Returns "" when unresolvable.  caller is
 // the node whose Calls entry is being resolved; it scopes same-package
@@ -262,19 +344,28 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	if key, ok := g.byDirName[raw]; ok {
 		return key
 	}
+	// Ambiguous-name fallback: raw might be a dotted partial ("pkg.Name",
+	// "seg.Name") that keyEndsWith would match, or a receiver-variable
+	// method call ("<var>.Method") the lookups above can't map. Resolved
+	// through the suffix index Build computed once (bench-pyramid SB-50) —
+	// see resolveAmbiguousCallees.
+	return g.resolveAmbiguousCallees(raw)
+}
+
+// resolveAmbiguousCallees resolves raw through the component-boundary
+// suffix indexes Build computes once per call (buildSuffixIndex), replacing
+// what used to be two full O(nodes) scans of g.nodes run for every one of
+// resolve's unresolved callees — O(calls * nodes) overall. The index makes
+// each of the two checks below an O(1) map lookup, so resolving every call
+// in the corpus costs O(calls) amortized against the one O(nodes) build.
+// Semantics are byte-for-byte the ones the scans implemented: a lone
+// candidate wins, two or more resolve to nothing — ambiguity, never
+// first-match-wins.
+func (g *Graph) resolveAmbiguousCallees(raw string) string {
 	// Suffix match: raw might be "pkg.Name" and the key is "svc::pkg.Name"
 	// or "svc::dir/pkg.Name". Accept only if exactly one node matches.
-	var match string
-	for key := range g.nodes {
-		if keyEndsWith(key, raw) {
-			if match != "" {
-				return "" // ambiguous
-			}
-			match = key
-		}
-	}
-	if match != "" {
-		return match
+	if c, ok := g.bySuffix[raw]; ok {
+		return c.key // "" when c.count > 1 (ambiguous); the sole key otherwise
 	}
 	// Method-call fallback: extractors name a method node "Recv.Name" (key
 	// "svc::Recv.Recv.Name") while a call site is recorded as "<var>.Name"
@@ -285,18 +376,12 @@ func (g *Graph) resolve(caller core.SymbolNode, raw string) string {
 	// A method name defined on more than one receiver stays unresolved:
 	// ambiguity resolves to nothing, never first-match-wins.
 	if i := strings.LastIndex(raw, "."); i > 0 && i < len(raw)-1 {
-		msuffix := raw[i:] // "."+Method
-		var mmatch string
-		for key := range g.nodes {
-			if strings.HasSuffix(key, msuffix) {
-				if mmatch != "" {
-					return "" // ambiguous
-				}
-				mmatch = key
+		msuffix := raw[i:]  // ".Method"
+		method := raw[i+1:] // "Method" — the byDotSuffix key (boundary-less)
+		if c, ok := g.byDotSuffix[method]; ok && c.count == 1 {
+			if strings.HasSuffix(g.nodes[c.key].Name, msuffix) {
+				return c.key
 			}
-		}
-		if mmatch != "" && strings.HasSuffix(g.nodes[mmatch].Name, msuffix) {
-			return mmatch
 		}
 	}
 	return ""

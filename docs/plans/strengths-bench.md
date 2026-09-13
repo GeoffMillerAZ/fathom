@@ -77,6 +77,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/strengths-bench.md`.
 
 - [ ] `callgraph.Build`'s ambiguous-name fallback is O(calls × nodes) and is why a cold-watermark call still costs 13–54 s after the memo fix (O33): index candidates by bare name once per build so resolution is O(calls); `verify_plan` cold under 5 s on this repo, recorded in the commit {id: SB-50, symbol: resolveAmbiguousCallees, package: internal/analysis/callgraph}
 
+- [x] `resolveAmbiguousCallees` resolves `Build`'s suffix match and method-call fallback through a component-boundary suffix index (`bySuffix`/`byDotSuffix`) built once per `Build` — O(nodes) — instead of an O(nodes) scan per unresolved callee, so resolving a corpus's calls costs O(calls) amortized; edges identical to the old scan (golden/equality tests on the fauxtown fixture fleet and a synthetic multi-package/multi-receiver ambiguity graph). O33's measured cause: cold `callgraph.Build` over this repo's 11,537-symbol scratch store dropped from 12.2 s best / 13.4 s avg (old scan) to 0.18 s best / 0.25 s avg (new index), 17,141 edges both {id: SB-50, symbol: resolveAmbiguousCallees, package: internal/analysis/callgraph}
+
 ## Wave 7 — the record
 
 - [ ] `docs/bench/README.md` gains the strengths matrix with each row's ledger pointer and the pilots' readings; `docs/design/coding-agent-excellence.md` and `docs/adoption/README.md` cite the matrix, not the lookup bench, for fathom's claims {id: SB-43, oracle: lexical, path: docs/bench/README.md, pattern: "strengths matrix"}
