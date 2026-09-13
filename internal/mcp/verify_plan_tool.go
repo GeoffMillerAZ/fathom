@@ -19,7 +19,7 @@ import (
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
-		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test. Tasks carry claimed/skipped from checkbox state for gate computation. Reach for it when you are about to check off a plan row: done means proven by the index, not claimed. Required: service.",
+		Description: "Evidence-backed definition-of-done: per plan task, verify the claimed symbol exists at the required evidence tier, a test statically reaches it, required call-edges are wired, and declared specs are covered. Verdicts cite file:line and can disagree with a 'done' claim. Static only — a reached test is not a passing test. Tasks carry claimed/skipped from checkbox state for gate computation. This result IS the answer for whether a claimed task is proven — a follow-up call only helps to fix an UNPROVEN row (find_symbol/references on the missing symbol) or to recheck after an edit, never to add more certainty about this same verdict. Reach for it when you are about to check off a plan row: done means proven by the index, not claimed. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
