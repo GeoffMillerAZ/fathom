@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -27,7 +28,24 @@ const moduleRoot = "../.."
 
 func loadGuardsCorpus(t *testing.T) Corpus {
 	t.Helper()
-	data, err := os.ReadFile(guardsCorpusPath)
+	return loadGuardsCorpusAt(t, guardsCorpusPath)
+}
+
+// guardsCorpora are every committed guards corpus; a second one
+// (guards-adr.json, SB-49) must pass the same detector gate as the first.
+func guardsCorpora(t *testing.T) []string {
+	t.Helper()
+	paths, err := filepath.Glob("../../testdata/scenariobench/guards-*.json")
+	if err != nil || len(paths) == 0 {
+		t.Fatalf("no guards corpora found: %v", err)
+	}
+	sort.Strings(paths)
+	return paths
+}
+
+func loadGuardsCorpusAt(t *testing.T, path string) Corpus {
+	t.Helper()
+	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("read guards corpus: %v", err)
 	}
@@ -131,7 +149,13 @@ func testFuncExistsInTree(root, pkgDir, name string) (bool, error) {
 // actually declares, and every rule's `source` citation ("file#Lnn") names
 // a line that actually carries that rule's id.
 func TestGuardsCorpusDetectorsExist(t *testing.T) {
-	c := loadGuardsCorpus(t)
+	for _, path := range guardsCorpora(t) {
+		t.Run(filepath.Base(path), func(t *testing.T) { checkGuardsCorpusDetectors(t, loadGuardsCorpusAt(t, path)) })
+	}
+}
+
+func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
+	t.Helper()
 	if len(c.Tasks) < 8 {
 		t.Fatalf("guards corpus has %d tasks, want >= 8", len(c.Tasks))
 	}
@@ -188,9 +212,24 @@ func TestGuardsCorpusDetectorsExist(t *testing.T) {
 			if line < 1 || line > len(lines) {
 				t.Fatalf("task %s: rule source %q names line %d, file has %d lines", task.ID, task.Rule.Source, line, len(lines))
 			}
+			// The source line must carry the rule's id: an invariants table row
+			// ("| I31 |") or, for a rule that lives in an ADR section, the
+			// record's heading ("## ADR-006: …" — the id before "§").
 			marker := fmt.Sprintf("| %s |", task.Rule.ID)
-			if !strings.Contains(lines[line-1], marker) {
-				t.Errorf("task %s: %s line %d does not contain %q:\n%s", task.ID, path, line, marker, lines[line-1])
+			head, _, _ := strings.Cut(task.Rule.ID, "§")
+			if !strings.Contains(lines[line-1], marker) && !strings.Contains(lines[line-1], head) {
+				// A rule quoted from inside an ADR section: the nearest
+				// preceding "## " heading must be that record.
+				ok := false
+				for i := line - 1; i >= 0; i-- {
+					if strings.HasPrefix(lines[i], "## ") {
+						ok = strings.Contains(lines[i], head)
+						break
+					}
+				}
+				if !ok {
+					t.Errorf("task %s: %s line %d is neither a %q row nor inside the %s section:\n%s", task.ID, path, line, marker, head, lines[line-1])
+				}
 			}
 		})
 	}
