@@ -258,3 +258,20 @@ func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) 
 	}
 	return cs.ClaimsSummary(ctx, service)
 }
+
+// StoreWatermark forwards the optional storeWatermarker capability
+// (resolved_nav.go) — same O7 forwarding class as IngestStats/TypedEdgeStatus
+// above. Without it, serve-http's default configuration (auto-refresh ON,
+// daemonAutoRefreshDefault) wraps every backend in autoRefreshBackend, whose
+// embedded QueryInterface never promotes a method outside that interface's
+// own set; serviceWatermark's type assertion then always fails, mark is
+// always "", and the BP-28 watermark-keyed call-graph memo silently never
+// caches anything — for the nav tools AND verify_plan (O33) alike, no matter
+// how correctly their own callers are wired to the cache.
+func (a *autoRefreshBackend) StoreWatermark(ctx context.Context, serviceID string) (string, error) {
+	w, ok := a.QueryInterface.(storeWatermarker)
+	if !ok {
+		return "", fmt.Errorf("backend does not support store watermarks")
+	}
+	return w.StoreWatermark(ctx, serviceID)
+}

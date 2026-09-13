@@ -31,3 +31,12 @@ func (s *Server) GroupOfForTest(name string) ToolGroup {
 func ValidateAgainstSchemaForTest(schema map[string]any, v any) string {
 	return validateAgainstSchema("$", schema, v)
 }
+
+// GraphCacheStatsForTest exposes the server's watermark-keyed call-graph
+// memo stats (entries, hits, misses) — O33: pins that verify_plan's second
+// call at an unchanged watermark HITS the same cache the nav tools use
+// (resolved_nav.go's loadNavGraphs) instead of rebuilding the graph from
+// scratch every call.
+func (s *Server) GraphCacheStatsForTest() (entries, hits, misses int) {
+	return s.graphCache.Stats()
+}

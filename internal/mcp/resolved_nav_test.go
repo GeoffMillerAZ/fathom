@@ -251,6 +251,35 @@ func TestNavGraphMemoIsWatermarkKeyed(t *testing.T) {
 	}
 }
 
+// TestNavGraphMemoSurvivesAutoRefreshWrapper is the same O7 forwarding class
+// as TestServerStats_StatsForwardThroughAutoRefreshWrapper (statsbackend_
+// test.go): interface embedding does not forward a method outside
+// QueryInterface's own method set, and StoreWatermark is one such optional
+// capability (storeWatermarker, this file). serve-http's default
+// configuration wraps the client in auto-refresh (daemonAutoRefreshDefault
+// defaults true), and autoRefreshBackend never forwarded StoreWatermark —
+// so on the ACTUAL daemon, serviceWatermark's type assertion always failed,
+// mark was always "", and the BP-28 graph memo (this whole file, plus
+// verify_plan_tool.go's O33 fix) silently never cached anything, for nav
+// tools and verify_plan alike, no matter how the graph build itself was
+// wired.
+func TestNavGraphMemoSurvivesAutoRefreshWrapper(t *testing.T) {
+	f := newNavFake()
+	srv := mcp.NewServer(mcp.NewAutoRefresh(f, nil))
+
+	callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	_, hits1, misses1 := srv.GraphCacheStatsForTest()
+	if misses1 == 0 {
+		t.Fatal("first call should have missed the cache (nothing built yet)")
+	}
+
+	callTool(t, srv, "find_callers", map[string]any{"service": "svc", "symbol": "Target"})
+	_, hits2, misses2 := srv.GraphCacheStatsForTest()
+	if hits2 <= hits1 || misses2 != misses1 {
+		t.Errorf("graph memo did not survive the auto-refresh wrapper (hits %d->%d, misses %d->%d) — autoRefreshBackend must forward StoreWatermark", hits1, hits2, misses1, misses2)
+	}
+}
+
 // ─── the line that must NOT move ─────────────────────────────────────────────
 
 // TestVerifyReachabilityUsesBothEdgeKinds is the guard on BP-26/BP-27's

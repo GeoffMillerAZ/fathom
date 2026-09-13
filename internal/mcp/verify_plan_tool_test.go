@@ -230,6 +230,36 @@ func TestVerifyPlan_Tool_TypedEdgeDispatch(t *testing.T) {
 	}
 }
 
+// TestVerifyPlan_ReusesWatermarkedCallGraphMemo is O33's fix, pinned: before
+// it, verify_plan rebuilt its call graph (callgraph.Build/AddTypedEdges)
+// from scratch on every call — profiled at 13-25s on this repository's
+// ~11.5k symbols (everything else in the handler combined: under 200ms) —
+// even though the watermark-keyed memo (BP-28, I21) already existed and
+// served the nav tools. A second verify_plan call at an unchanged watermark
+// must now HIT that same cache instead of building again.
+func TestVerifyPlan_ReusesWatermarkedCallGraphMemo(t *testing.T) {
+	srv := mcp.NewServer(newNavFake())
+	args := map[string]any{
+		"service": "svc",
+		"tasks":   []any{map[string]any{"id": "R-1", "symbol": "Target"}},
+	}
+
+	callTool(t, srv, "verify_plan", args)
+	_, hits1, misses1 := srv.GraphCacheStatsForTest()
+	if misses1 == 0 {
+		t.Fatal("first call should have missed the cache (nothing built yet) — the memo isn't wired at all")
+	}
+
+	callTool(t, srv, "verify_plan", args)
+	_, hits2, misses2 := srv.GraphCacheStatsForTest()
+	if hits2 <= hits1 {
+		t.Errorf("second call at the same watermark did not hit the memo (hits %d -> %d): verify_plan is still rebuilding its own graph", hits1, hits2)
+	}
+	if misses2 != misses1 {
+		t.Errorf("second call at the same watermark rebuilt the graph (misses %d -> %d) — O33 regression", misses1, misses2)
+	}
+}
+
 // TestVerifyPlan_VerdictOutcomeReachesCallLog is T5-7's real evidence
 // (docs/plans/trust-and-tokenomics.md): the gate-catches instrument is the
 // JSONL call log, not just the tool result — mirrors D1-2's

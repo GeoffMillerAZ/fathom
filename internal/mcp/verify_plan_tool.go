@@ -78,19 +78,31 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: service required"}
 		}
 
-		// Build the call graph once (reused for all reachability / test checks).
+		// Build the call graph once (reused for all reachability / test
+		// checks), memoized under the store's watermark in the SAME cache
+		// the nav tools use (I21/BP-28, resolved_nav.go's loadNavGraphs).
+		//
+		// O33: before this, verify_plan rebuilt its graph from scratch on
+		// EVERY call via callgraph.Build — on this repository's ~11.5k
+		// symbols that alone costs 13-25s (profiled 2026-09-13; every other
+		// stage combined is under 200ms), which is why the daemon's
+		// verify_plan latency doubled to 10-15s/call and why repeated calls
+		// at one watermark cost the same: the watermark-keyed memo existed
+		// (BP-28) but nothing on this path ever called into it. A second
+		// call at an unchanged watermark now costs microseconds instead of
+		// paying the build again.
 		nodes, err := backend.ListAllSymbols(ctx, p.Service)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
 		}
-		graph := callgraph.Build(nodes)
-
 		// Typed Go call edges (ADR-021 §3): additive on top of the syntax
 		// graph — best-effort, a non-Go service or a store with no typed
 		// edges yet simply contributes nothing.
-		if typed, typedErr := backend.TypedEdges(ctx, p.Service); typedErr == nil {
-			callgraph.AddTypedEdges(graph, typed)
-		}
+		typed, _ := backend.TypedEdges(ctx, p.Service)
+		mark := serviceWatermark(ctx, backend, p.Service)
+		graph := s.graphCache.Graph(p.Service+"\x00both", mark, func() *callgraph.Graph {
+			return callgraph.BuildBoth(nodes, typed)
+		})
 
 		// Contradictions (best-effort; scoped by concern when provided).
 		var contras []core.Contradiction
