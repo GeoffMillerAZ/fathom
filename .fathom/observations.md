@@ -793,3 +793,16 @@ triage if it matters.
 - **Fix:** absolute raw dir; `CellLost` (never stored, counted); `Success = oracle.Passed && AnyEdits`; a `change-present` detector on every guards task; `go test` exec'd as argv with regex-quoted, anchored names.
 - **Status:** fixed
 - **Impact:** no scored row was published; ~$0.50 of dead-session spend; the 21 junk cells were deleted from the store.
+
+### O38 — Public pilot 1 (cli/cli, 17 cells, ~$25): zero successes on both arms, for two reasons the cells make separable. The agents finished by writing their OWN tests and reporting "done, verified green" while the hidden upstream tests still failed (the M2 false-done shape, before the SDD readings were wired into the driver); and in 8 of 17 cells the hidden test patch could not be applied because the agent had edited the same test files ("does not match index") — SWE-bench resets those files to base before applying, the driver did not.
+
+- **Symptom:** every public cell FAIL; `not_measurable: "test patch did not apply: …download_test.go: does not match index"` on the 10009/10154/10043-t2 cells; a control NOTES.md reading "State: done, verified green … all pass, including the new test" beside `f2p pass 0 fail 1 of 1`.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (ApplyTestPatch, RunOracle), public-go.json tasks 10009, 10016, 10043, 10048, 10072, 10154
+  - **Expected:** the hidden test patch applies over the agent's tree; a session's "done" is judged by the upstream tests, and the false-done reading is on the cell.
+  - **Actual:** 8 cells not measurable; 9 measurable cells all failed the upstream tests (one partial: 10048 control t2 passed 2 of 4); readings carried tokens/turns/cost only — PlanCoverage/FalseDone/Resumption existed as functions but runOneCell never called them, and single-session tasks were never asked to plan.
+  - **Repro:** workspace/artifacts/scenariobench/cells/*/t*.json with run_id public-pilot-1
+- **Root cause:** the driver's oracle followed the patch, not the protocol (reset test files, then apply); the wave-3 readings were proven by symbol, not by a cell that carried them (SB-20..23 anchored functions, no row demanded the wiring).
+- **Fix:** W7: reset-then-apply; plan-first prompt in single mode; readings wired into runOneCell with plan.md and agent.diff captured per cell for offline re-scoring; paths sanitized. The pilot re-runs on four tasks.
+- **Status:** open (fix in progress)
+- **Impact:** ~$25 of spend produced transcripts but no ledger row; the false-done pattern in the notes is the first direct sighting of what M2 exists to measure.
