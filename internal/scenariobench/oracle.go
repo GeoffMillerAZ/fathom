@@ -112,7 +112,7 @@ func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionRe
 	}
 
 	for _, d := range task.Oracle.Detectors {
-		dr, err := runDetector(ctx, wt, d)
+		dr, err := runDetector(ctx, wt, task, d)
 		if err != nil {
 			return OracleResult{}, fmt.Errorf("running detector %s: %w", d.Name, err)
 		}
@@ -488,7 +488,7 @@ func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string)
 	return passed, outputRef, coverRef, nil
 }
 
-func runDetector(ctx context.Context, wt Worktree, d Detector) (DetectorResult, error) {
+func runDetector(ctx context.Context, wt Worktree, task Task, d Detector) (DetectorResult, error) {
 	cmd := exec.CommandContext(ctx, "sh", "-c", d.Command)
 	cmd.Dir = wt.Path
 	cmd.Env = SubjectEnv(wt.Path, oracleEnv(task))
