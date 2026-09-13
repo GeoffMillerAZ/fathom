@@ -130,8 +130,12 @@ tasks:
     # stranger-check (RP-23) is the same lesson one step further: the copy
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
-    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit]
+    deps: [fmt-check, vet, cue-vet, vendor-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, scenariobench]
     cmds: [{ task: test }]
+
+  scenariobench:
+    desc: "Free — internal/scenariobench (the change-bench driver, vision 27/ADR-033): corpus load, category/prediction gate, fake-harness driver tests. TestPublicScenarioCorpusIsDerived skips (never fails) when workspace/bench/sources/ is empty, the normal case on a fresh clone or CI."
+    cmds: ["CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 {{.GO}} test -race ./internal/scenariobench/..."]
 
   config-audit:
     desc: Custodian gate (invariants I16/I34/I37, PC-14) — this repo's own agent config holds every concern in .fathom/concerns.cue; a down daemon reads unable-to-check, never a violation
@@ -304,4 +308,33 @@ tasks:
     desc: "Regression gate over the committed ledger (free): newest row vs the previous same-corpus row; exit 1 if a task's treatment success fell, 3 if not comparable. Joins validate only once two same-corpus rows exist (ADR-031)."
     cmds:
       - GOWORK=off CGO_ENABLED=1 go run ./cmd/contextbenchscore regress -ledger docs/bench/ledger.jsonl {{.CLI_ARGS}}
+
+  # ─── scenario bench (vision 27, ADR-033; docs/bench/scenarios.md) ───────
+  # One driver (cmd/scenariobench) over corpora under
+  # testdata/scenariobench/*.json — an arm is data, never code (SB-11).
+  # This wave ships testdata/scenariobench/public-go.json (SB-34); the
+  # driver itself (SB-19) and guards-fathom.json (SB-24) land in other
+  # waves of docs/plans/strengths-bench.md — these tasks are written ahead
+  # of them, per that plan, so the commands are in place the day they do.
+  # Costs follow vision 27 §9: free / targeted (~$20-40) / pilot (~$90-130).
+
+  bench-scenario-plan:
+    desc: "Free. Lists the public Go corpus's cells, their keys, and what would borrow by key — no spend."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench plan -corpus testdata/scenariobench/public-go.json {{.CLI_ARGS}}
+
+  bench-scenario-guards:
+    desc: "COSTS TOKENS (targeted tier, ~$20-40 — vision 27 §9). Guards pilot: the fathom-repo invariants corpus, arms full vs control, n=2 (SB-37; testdata/scenariobench/guards-fathom.json is SB-24, another wave)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/guards-fathom.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+
+  bench-scenario-pilot:
+    desc: "COSTS TOKENS (pilot tier, ~$90-130 — vision 27 §9). Change-bench pilot over the public Go corpus: arms full vs control, 2 trials, 2 sessions/cell (SB-38)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/scenariobench run -corpus testdata/scenariobench/public-go.json -arms full,control -repeat 2 {{.CLI_ARGS}}
+
+  bench-compare-edges:
+    desc: "Free. Competitor edge comparison (M6/M7): graphify/Serena/gopls precision-recall against the go/types L0 truth, beside fathom's own row (SB-28..31; cmd/indexbench compare is another wave)."
+    cmds:
+      - GOWORK=off CGO_ENABLED=1 go run ./cmd/indexbench compare {{.CLI_ARGS}}
 
