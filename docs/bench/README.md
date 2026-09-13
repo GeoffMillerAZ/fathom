@@ -455,7 +455,7 @@ product finding and stays on the table.
 | Row | Claim | Versus | Oracle | Predicted win / no-effect | Reading |
 |---|---|---|---|---|---|
 | M1 | a rule served at the edit prevents the violation | the same rule as CLAUDE.md prose | the invariant's own test or lint | far-from-edit rules / short-file rules | `scenarios-ledger.jsonl` run `guards-pilot-3` (2026-09-13, 8 tasks × 2 arms × n=2, $31.62): complied 6/16 on BOTH arms; violations wired 0, control 1; wired arm 0.85× the control's tokens and 0.92× its cost; M1-1 **pass** on the registered bar (success ≥, cost ≤) — but the predicted wins on i11 (tool without its doc) and i31 (artifact outside workspace/) did not appear: 0/2 vs 0/2 and 1/2 vs 0/2. The no-effect condition dominated: every rule lives in a CLAUDE.md both arms read, and a careful agent declines the rule-breaking asks either way (5–6 of 16 cells per arm declined). Nothing here is a cost story for obligations; the correctness story needs rules that are NOT in the instruction files |
-| M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | run `public-pilot-2` (cli/cli, 4 tasks × 2 arms × n=2 × 2 sessions, $20.61): upstream tests passed wired **2/8**, control **3/8**; M2-1 **fail** on the bar. Both arms passed the cross-package task (10043, 2/2 each) and failed the signature change (10009) and both bug fixes but one — the predicted category shape is real, the predicted arm effect is not (see the section below for the false-done reading) |
+| M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | **false-done not measurable yet** (no adjudicable row on either arm, SB-52/SB-53); run `public-pilot-2` (cli/cli, 4 tasks × 2 arms × n=2 × 2 sessions, $20.61): upstream tests passed wired **2/8**, control **3/8**; M2-1 **fail** on the bar. Both arms passed the cross-package task (10043, 2/2 each) and failed the signature change (10009) and both bug fixes but one — the predicted category shape is real, the predicted arm effect is not (see the section below for the false-done reading) |
 | M3 | index-grounded plans cover the real change | plans from grep | the gold patch's functions | multi-package / one-function | `public-pilot-2`: plan coverage of the gold functions was sparse and equal — 0–2 of 1–6 named per cell on both arms, with 0–5 spurious rows; no arm effect at n=2 |
 | M4 | continuity resumes without re-discovery | a notes file | tokens to first edit, duplicated edits | multi-session / one session | `public-pilot-2`: tokens before the first edit of session 2 were HIGHER on the wired arm on every task (e.g. 10016: 1.2M/3.0M vs 383k/493k; 10009: 831k/1.27M vs 287k/226k) — the prediction is refuted: the primer, the obligations and the index invitation cost more re-discovery than a notes file; duplicated edits 0 on both |
 | M5 | exploration once, reused by K workers | each worker explores | bytes re-read vs the planner | K ≥ 3 / K = 1 | run `reuse-pilot-1` (cli/cli 10043, K=3 and K=1, n=2, $5.93): at K=3 both arms passed 2/2 and the workers' re-read overlap was **0.34 / 0.13 wired vs 1.00 / 0.61 control** — the predicted win, as measured; total tokens were still higher wired (1.9M/1.4M vs 1.7M/0.8M). At K=1 both arms failed 2/2 and overlap read 1.0/0.29 vs 1.0/1.0 — the registered no-effect cell held on success, not on overlap |
@@ -506,11 +506,12 @@ base, and pass-to-pass calibrated per environment. The wired arm passed 2 of
 8, the control 3 of 8; both passed the cross-package task twice and failed
 the signature change twice. Tokens per cell ran 1.2M–4.2M on both arms.
 The SDD readings on every cell: plan coverage of the gold functions was
-sparse on both arms; false-done as first computed refuted every claimed
-row because the agents' checklists carry no symbol contracts — the
-reading is being re-scored with rows without a contract marked
-not-adjudicable (SB-52), and only that re-scoring will say whether the gate
-changed anything. Resumption refuted M4's prediction outright: the wired
+sparse on both arms; false-done, re-scored with rows that carry no symbol
+contract marked not-adjudicable (SB-52), is **not measurable on this run**:
+0 adjudicable rows on either arm (control 53 rows, wired 35, all plain
+checklist lines in NOTES.md). The wired arm never wrote a plan-grammar row
+the gate could check, so M2 has no reading yet; its plan-first instruction
+must name the grammar and the verify verb (SB-53) before the next run. Resumption refuted M4's prediction outright: the wired
 arm spent more tokens before its first edit of the second session on every
 task. `reuse-pilot-1` confirmed M5's overlap prediction at K=3 (workers on
 the wired arm re-read 13–34% of what the planner read, the control's
