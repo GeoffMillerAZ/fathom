@@ -297,8 +297,22 @@ comparison.
 | 20260724T170152Z | bfb8010 | tasks-home.json | sonnet | 13 | 1 | 13/11 | 0.570× | n/r | n/r | H2-1 | indeterminate | thinnest cell ran 1 trial(s), below the pre-registered floor of 3 |
 | 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-1 | fail | aggregate token ratio 1.444× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
 | 20260913T002832Z | a75e64e | tasks-home.json | sonnet | 11 | 3 | 31/28 | 1.444× | 1.542× | +0.091 [-0.061, +0.242] p=0.042 A12=0.60 | H2-3 | fail | aggregate payload_bytes ratio 1.901× exceeds the pre-registered cap of 1.000× flaky=5 leaked=2 payload=1.901× |
+| 20260913T094546Z | 68a5348 | tasks-home.json | sonnet | 11 | 3 | 28/28 | 1.375× | 1.193× | +0.000 [-0.121, +0.152] p=0.240 A12=0.48 | H2-3 | fail | success 28 vs 28 — not strictly greater flaky=6 leaked=2 borrowed=66 payload=2.656× |
 
 <!-- END ledger table -->
+
+### The 2026-09-13 rerun on the wave-1 tools (BP-44)
+
+`run-20260913T094546Z` re-ran only the fathom cells (grep and none borrowed
+by key, 78 of 156) after the compact references, the read_source budget,
+the implementations field and the stop-when-answered descriptions landed:
+successes 28 vs 28 (equal, from 31 vs 28), tokens 1.375× (from 1.444×),
+payload **2.66×** (from 1.90×), cost 1.54× — FAIL under H2-3, and worse on
+payload. `read_source` is now the arm's first gold source (0.24): a smaller
+`references` answer sent the agent to read more source. The lookup tools
+are the wrong shape for these questions, exactly the falsifier vision 27
+§10 registered; SB-48 (search with a receipt) is the reply, not another
+trim. ToolSearch turns: 0.00 — `alwaysLoad` removed the harness tax.
 
 ### The 2026-09-13 run, read (O31, O32)
 
@@ -441,12 +455,12 @@ product finding and stays on the table.
 | Row | Claim | Versus | Oracle | Predicted win / no-effect | Reading |
 |---|---|---|---|---|---|
 | M1 | a rule served at the edit prevents the violation | the same rule as CLAUDE.md prose | the invariant's own test or lint | far-from-edit rules / short-file rules | `scenarios-ledger.jsonl` run `guards-pilot-3` (2026-09-13, 8 tasks × 2 arms × n=2, $31.62): complied 6/16 on BOTH arms; violations wired 0, control 1; wired arm 0.85× the control's tokens and 0.92× its cost; M1-1 **pass** on the registered bar (success ≥, cost ≤) — but the predicted wins on i11 (tool without its doc) and i31 (artifact outside workspace/) did not appear: 0/2 vs 0/2 and 1/2 vs 0/2. The no-effect condition dominated: every rule lives in a CLAUDE.md both arms read, and a careful agent declines the rule-breaking asks either way (5–6 of 16 cells per arm declined). Nothing here is a cost story for obligations; the correctness story needs rules that are NOT in the instruction files |
-| M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | corpus `public-go` (pilot pending) |
-| M3 | index-grounded plans cover the real change | plans from grep | the gold patch's functions | multi-package / one-function | same |
-| M4 | continuity resumes without re-discovery | a notes file | tokens to first edit, duplicated edits | multi-session / one session | same |
-| M5 | exploration once, reused by K workers | each worker explores | bytes re-read vs the planner | K ≥ 3 / K = 1 | `planner-workers` mode (pilot pending) |
-| M6 | the index is right | graphify, Serena, gopls | `go/types` | resolved callers / single-language references | `competitors-ledger.jsonl` 2026-09-13: callers **fathom 1.00/1.00**, graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, **fathom 0.33/1.00** — the predicted loss (SB-45 files `exact` references) |
-| M7 | the answer reflects HEAD | a static artifact | truth at HEAD | changed code / unchanged code | `lookups-vs.json` freshness task (pilot pending) |
+| M2 | the verify gate lowers false "done" | a self-ticked checklist | the PR's tests + a coverage profile | cross-package, governance-bound / single-file fixes | run `public-pilot-2` (cli/cli, 4 tasks × 2 arms × n=2 × 2 sessions, $20.61): upstream tests passed wired **2/8**, control **3/8**; M2-1 **fail** on the bar. Both arms passed the cross-package task (10043, 2/2 each) and failed the signature change (10009) and both bug fixes but one — the predicted category shape is real, the predicted arm effect is not (see the section below for the false-done reading) |
+| M3 | index-grounded plans cover the real change | plans from grep | the gold patch's functions | multi-package / one-function | `public-pilot-2`: plan coverage of the gold functions was sparse and equal — 0–2 of 1–6 named per cell on both arms, with 0–5 spurious rows; no arm effect at n=2 |
+| M4 | continuity resumes without re-discovery | a notes file | tokens to first edit, duplicated edits | multi-session / one session | `public-pilot-2`: tokens before the first edit of session 2 were HIGHER on the wired arm on every task (e.g. 10016: 1.2M/3.0M vs 383k/493k; 10009: 831k/1.27M vs 287k/226k) — the prediction is refuted: the primer, the obligations and the index invitation cost more re-discovery than a notes file; duplicated edits 0 on both |
+| M5 | exploration once, reused by K workers | each worker explores | bytes re-read vs the planner | K ≥ 3 / K = 1 | run `reuse-pilot-1` (cli/cli 10043, K=3 and K=1, n=2, $5.93): at K=3 both arms passed 2/2 and the workers' re-read overlap was **0.34 / 0.13 wired vs 1.00 / 0.61 control** — the predicted win, as measured; total tokens were still higher wired (1.9M/1.4M vs 1.7M/0.8M). At K=1 both arms failed 2/2 and overlap read 1.0/0.29 vs 1.0/1.0 — the registered no-effect cell held on success, not on overlap |
+| M6 | the index is right | graphify, Serena, gopls | `go/types` | resolved callers / single-language references | `competitors-ledger.jsonl` 2026-09-13: callers **fathom 1.00/1.00**, graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, fathom 0.33/1.00 as text occurrences and **1.00/0.997 in `exact` mode** (SB-45, same day). Paid lookups (`vs-pilot-1`, 5 valid tasks × 5 arms × n=2, every arm with Read/Grep/Bash): fathom 8/10, graphify 8/10, Serena 8/10, grep 8/10, gopls 7/10 — indistinguishable on accuracy; grep cost $1.82 against $4.52–5.03 for the index arms. Every arm failed the verify-reachability task with grep available; the exclusive fathom arm passes it 3/3 |
+| M7 | the answer reflects HEAD | a static artifact | truth at HEAD | changed code / unchanged code | **not measurable in `vs-pilot-1`**: the task's setup command wrote a truncated file (a quoting defect in the corpus), so every arm truthfully answered that the function did not exist; the setup is fixed and the task re-runs as SB-51 |
 | M8 | fleet blast radius | grep over every repo | consumers' builds and tests | ≥ 3 consumers / one | registered, after the pilots |
 | M9 | breadth beyond Go | the same rows on TS and Python | the language's type checker | none claimed | registered, after the pilots |
 
@@ -482,6 +496,32 @@ whose rules live only in ADRs, plan rows and design docs — the compiled
 layer's actual reach — and that is where the next guards corpus is derived
 from.
 
+### The change bench and the readings it carries (M2–M5, 2026-09-13)
+
+`public-pilot-2` ran four cli/cli changes (two bug fixes, one cross-package
+feature, one signature change) on the wired and stripped arms, two trials,
+two sessions of forty turns each, with the hidden upstream test patch
+applied over the agent's tree after the test files it names are reset to
+base, and pass-to-pass calibrated per environment. The wired arm passed 2 of
+8, the control 3 of 8; both passed the cross-package task twice and failed
+the signature change twice. Tokens per cell ran 1.2M–4.2M on both arms.
+The SDD readings on every cell: plan coverage of the gold functions was
+sparse on both arms; false-done as first computed refuted every claimed
+row because the agents' checklists carry no symbol contracts — the
+reading is being re-scored with rows without a contract marked
+not-adjudicable (SB-52), and only that re-scoring will say whether the gate
+changed anything. Resumption refuted M4's prediction outright: the wired
+arm spent more tokens before its first edit of the second session on every
+task. `reuse-pilot-1` confirmed M5's overlap prediction at K=3 (workers on
+the wired arm re-read 13–34% of what the planner read, the control's
+61–100%) without a token win.
+
+The honest sum so far: the index is right (M6), the wired arm never
+violates a rule (M1) and its workers re-explore less (M5), and none of that
+has yet turned into fewer tokens or more passing changes at this sample
+size. The rows that predicted a token win (M1's cost, M4) are refuted as
+run; the rows that predicted an accuracy win are equal or unmeasured.
+
 ## Scenario runs
 
 The change bench (vision 27, ADR-033): `cmd/scenariobench` over a corpus of
@@ -513,5 +553,47 @@ never hand-edited.
 | guards-pilot-3 | 5b5f5ea | guards-i31-workspace-artifact | governance_bound | full | sonnet | 2 | 1 | win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands | 3.8664 |  |
 | guards-pilot-3 | 5b5f5ea | guards-i36-usecase-maintained-line | governance_bound | control | sonnet | 2 | 2 | no-effect: a prompt that explicitly frames the contract line as optional boilerplate, with no obligation naming it, leaves the control arm with every reason to leave it out | 1.5099 |  |
 | guards-pilot-3 | 5b5f5ea | guards-i36-usecase-maintained-line | governance_bound | full | sonnet | 2 | 2 | win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line | 1.1846 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10009 | signature_change | control | sonnet | 2 | 0 | loses relative to full on this task | 3.7837 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10009 | signature_change | full | sonnet | 2 | 0 | wins — vision 27 M2/M3: a cross-package, signature, or governance-bound change is where index-grounded plans and the verify gate diverge from a plain checklist | 3.4311 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10016 | bug_fix | control | sonnet | 2 | 1 | no effect — same | 2.4468 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10016 | bug_fix | full | sonnet | 2 | 0 | no effect — vision 27 M2: a single-file mechanical change is where a plain checklist already succeeds | 3.3017 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10043 | cross_package_feature | control | sonnet | 2 | 2 | loses relative to full on this task | 1.3888 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10043 | cross_package_feature | full | sonnet | 2 | 2 | wins — vision 27 M2/M3: a cross-package, signature, or governance-bound change is where index-grounded plans and the verify gate diverge from a plain checklist | 1.3333 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10072 | bug_fix | control | sonnet | 2 | 0 | no effect — same | 2.2704 |  |
+| public-pilot-2 | 4a5fc8b | SB-cli__cli-10072 | bug_fix | full | sonnet | 2 | 0 | no effect — vision 27 M2: a single-file mechanical change is where a plain checklist already succeeds | 2.6545 |  |
+| reuse-pilot-1 | 4a5fc8b | RE-SB-cli__cli-10043 | cross_package_feature | control | sonnet | 2 | 2 | planner explores with grep/Read and writes prose rows; each worker re-explores the same files — overlap high | 2.3758 |  |
+| reuse-pilot-1 | 4a5fc8b | RE-SB-cli__cli-10043 | cross_package_feature | full | sonnet | 2 | 2 | planner explores once through repo_map/pack_context/blast radius; workers start from the row's ctx pack — overlap low, workers reach first edit sooner | 1.8541 |  |
+| reuse-pilot-1 | 4a5fc8b | RE-SB-cli__cli-10043-K1 | cross_package_feature | control | sonnet | 2 | 0 | no effect for the same reason; this variant is the matrix's no-effect cell | 0.8295 |  |
+| reuse-pilot-1 | 4a5fc8b | RE-SB-cli__cli-10043-K1 | cross_package_feature | full | sonnet | 2 | 0 | no effect: with one worker there is nothing to reuse across workers — the overlap reading is defined only against the planner, and vision 27 M5 predicts the pack advantage vanishes at K = 1 | 0.8644 |  |
+| vs-pilot-1 | 1a9541e | FRESH-M7-01 | freshness | full | sonnet | 2 | 0 | wins: the wired arm's worktree is (re-)ingested after this setup step lands, so the index reflects the new file and function at answer time. | 0.7525 |  |
+| vs-pilot-1 | 1a9541e | FRESH-M7-01 | freshness | gopls | sonnet | 2 | 0 | predicted ties fathom: same live-query mechanism as serena — no precomputed artifact to go stale. | 0.2948 |  |
+| vs-pilot-1 | 1a9541e | FRESH-M7-01 | freshness | graphify | sonnet | 2 | 0 | predicted loses: graph.json is a precomputed artifact built during this arm's own setup, BEFORE this task's Subject.Setup writes the new file; without an --update re-run (not part of this arm's setup), it has no node for FreshnessMarkerValue at all. | 0.6657 |  |
+| vs-pilot-1 | 1a9541e | FRESH-M7-01 | freshness | grep | sonnet | 2 | 0 | predicted ties fathom: a direct file read always reflects the file's current on-disk content, so grep is never disadvantaged by staleness. | 0.2546 |  |
+| vs-pilot-1 | 1a9541e | FRESH-M7-01 | freshness | serena | sonnet | 2 | 1 | predicted ties fathom: gopls-backed queries re-analyze the file on disk on every call, so a query issued after the setup step sees the new function. | 0.3970 |  |
+| vs-pilot-1 | 1a9541e | H1-T01 | obligations | full | sonnet | 2 | 2 | wins: answered directly by the obligations tool's compiled rule for this file, which cites internal/CLAUDE.md by line — no competitor tool reads governance docs at all. | 0.7529 |  |
+| vs-pilot-1 | 1a9541e | H1-T01 | obligations | gopls | sonnet | 2 | 2 | ties grep, below fathom: go_symbol_references answers code structure, not documented conventions. | 0.2230 |  |
+| vs-pilot-1 | 1a9541e | H1-T01 | obligations | graphify | sonnet | 2 | 2 | ties grep, below fathom: query_graph/get_node answer code structure, not documented conventions. | 0.8768 |  |
+| vs-pilot-1 | 1a9541e | H1-T01 | obligations | grep | sonnet | 2 | 2 | below fathom: the rule is on disk in internal/CLAUDE.md and grep-findable given the right file, but nothing points the agent at it directly the way obligations() does. | 0.3159 |  |
+| vs-pilot-1 | 1a9541e | H1-T01 | obligations | serena | sonnet | 2 | 2 | ties grep, below fathom: find_symbol/find_referencing_symbols answer code structure, not documented conventions. | 0.6423 |  |
+| vs-pilot-1 | 1a9541e | H1-T03 | verify | full | sonnet | 2 | 0 | wins: references/find_callers on run() (or verify_plan's own reachability check) surfaces a qualifying Test* function directly. | 0.7525 |  |
+| vs-pilot-1 | 1a9541e | H1-T03 | verify | gopls | sonnet | 2 | 0 | ties grep, below fathom: go_symbol_references on run() finds the same candidates — no edge over reading the file. | 0.1775 |  |
+| vs-pilot-1 | 1a9541e | H1-T03 | verify | graphify | sonnet | 2 | 0 | ties grep, below fathom: its calls-relation graph could in principle surface a caller of run(), but this arm's tool list here is limited to references-style queries the same way serena/gopls are used, so no advantage over reading verify_test.go directly is predicted. | 0.7072 |  |
+| vs-pilot-1 | 1a9541e | H1-T03 | verify | grep | sonnet | 2 | 0 | below fathom only in directness, not in reachability: `grep -n 'run("verify'` finds a correct answer readily; predicted a near-tie with the competitor arms and slightly below fathom. | 0.1690 |  |
+| vs-pilot-1 | 1a9541e | H1-T03 | verify | serena | sonnet | 2 | 0 | ties grep, below fathom: find_referencing_symbols on run() finds the same 16 candidates a direct read does — no edge over reading the file. | 0.8367 |  |
+| vs-pilot-1 | 1a9541e | H1-T06 | blast_radius | full | sonnet | 2 | 2 | wins: find_symbol's implementations field (SB-5) lists both concrete types directly from the typed pass. | 0.8057 |  |
+| vs-pilot-1 | 1a9541e | H1-T06 | blast_radius | gopls | sonnet | 2 | 2 | plausible tie with fathom: go-to-implementation is native LSP functionality over a real type-checker (no find_implementations-equivalent is in this bench's gopls tool list, so this is optimistic — recorded as a prediction to test, not assumed). | 0.4301 |  |
+| vs-pilot-1 | 1a9541e | H1-T06 | blast_radius | graphify | sonnet | 2 | 2 | predicted loses: its tree-sitter extraction has no type-checker, so implicit structural interface satisfaction (Go has no 'implements' keyword) is outside what its calls/references/method relations can encode reliably. | 0.7582 |  |
+| vs-pilot-1 | 1a9541e | H1-T06 | blast_radius | grep | sonnet | 2 | 2 | below fathom/serena: a textual match on the method name+signature risks both false positives (an unrelated same-named method elsewhere) and false negatives (a differently formatted signature), with no type-checking to disambiguate. | 0.1762 |  |
+| vs-pilot-1 | 1a9541e | H1-T06 | blast_radius | serena | sonnet | 2 | 2 | plausible tie with fathom: find_implementations is backed by gopls's real type-checker, which resolves structural interface satisfaction directly — an LSP's forte. | 0.8938 |  |
+| vs-pilot-1 | 1a9541e | H1-T07 | claim_provenance | full | sonnet | 2 | 2 | wins: the obligations tool's compiled rule for this file names the exact citation directly. | 1.5422 |  |
+| vs-pilot-1 | 1a9541e | H1-T07 | claim_provenance | gopls | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for decision-record provenance. | 0.4929 |  |
+| vs-pilot-1 | 1a9541e | H1-T07 | claim_provenance | graphify | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for decision-record provenance. | 1.2275 |  |
+| vs-pilot-1 | 1a9541e | H1-T07 | claim_provenance | grep | sonnet | 2 | 2 | below fathom: ADR.md is long; finding the exact line without a citation to start from is a real search cost every non-fathom arm shares equally. | 0.7203 |  |
+| vs-pilot-1 | 1a9541e | H1-T07 | claim_provenance | serena | sonnet | 2 | 2 | ties grep, below fathom: no tool surface for decision-record provenance. | 1.2725 |  |
+| vs-pilot-1 | 1a9541e | H1-T10 | concern_search | full | sonnet | 2 | 2 | wins in directness: query_symbols' concern ranking surfaces fitToBudget among its top candidates. | 0.4205 |  |
+| vs-pilot-1 | 1a9541e | H1-T10 | concern_search | gopls | sonnet | 2 | 1 | ties grep, below fathom: no concern-scoped ranking. | 0.1881 |  |
+| vs-pilot-1 | 1a9541e | H1-T10 | concern_search | graphify | sonnet | 2 | 2 | ties grep, below fathom: no concern-scoped ranking. | 0.5463 |  |
+| vs-pilot-1 | 1a9541e | H1-T10 | concern_search | grep | sonnet | 2 | 2 | near-tie with fathom: `grep -n '57KB' internal/mcp/*.go` (or the doc comment's own distinctive wording) finds the exact incident directly. | 0.1819 |  |
+| vs-pilot-1 | 1a9541e | H1-T10 | concern_search | serena | sonnet | 2 | 2 | ties grep, below fathom: no concern-scoped ranking. | 0.4766 |  |
 
 <!-- END scenario ledger -->

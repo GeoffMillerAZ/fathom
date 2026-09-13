@@ -514,7 +514,7 @@
         "service": "fathom",
         "language": "go",
         "setup": [
-          "printf 'package store\\n\\n// FreshnessMarkerValue exists only for the M7 freshness scenario\\n// (docs/vision/27-strengths-bench.md \\xc2\\xa76): it is written by\\n// Subject.Setup AFTER each arm'\\''s own setup step (a competitor's\\n// artifact build, or fathom'\\''s worktree ingest) has already run, so a\\n// precomputed artifact answers stale and a live index or query does not.\\nfunc FreshnessMarkerValue() int { return 42 }\\n' > internal/store/freshnessmarker.go"
+          "mkdir -p internal/store && printf '%s\\n' 'package store' '' '// FreshnessMarkerValue exists only for the M7 freshness scenario (vision 27 §6):' '// it is written by Subject.Setup AFTER each arm has built its artifact or ingested' '// the worktree, so a precomputed artifact answers stale and a live query does not.' 'func FreshnessMarkerValue() int { return 42 }' > internal/store/freshnessmarker.go && grep -q 'return 42' internal/store/freshnessmarker.go"
         ]
       },
       "sessions": {
@@ -542,7 +542,7 @@
         "gopls": "predicted ties fathom: same live-query mechanism as serena — no precomputed artifact to go stale.",
         "grep": "predicted ties fathom: a direct file read always reflects the file's current on-disk content, so grep is never disadvantaged by staleness."
       },
-      "derivation": "New task, not from tasks-home.json: constructed for M7 (docs/vision/27-strengths-bench.md §6) per SB-32's instruction. category is CategoryFreshness (types.go), the one existing const this corpus uses as-is. Uses a brand-new file rather than editing an existing one so the scripted change never depends on any existing file's current line numbers drifting."
+      "derivation": "New task, not from tasks-home.json: constructed for M7 (docs/vision/27-strengths-bench.md §6) per SB-32's instruction. category is CategoryFreshness (types.go), the one existing const this corpus uses as-is. Uses a brand-new file rather than editing an existing one so the scripted change never depends on any existing file's current line numbers drifting. | setup rewritten 2026-09-13: the first form used shell-escaped apostrophes inside a JSON string and wrote a 208-byte truncated file, so every arm truthfully answered \"no such function\" (vs-pilot-1); the new form is printf with one-line arguments and a grep that fails the setup if the file is not whole."
     }
   ],
   "criterion": {
