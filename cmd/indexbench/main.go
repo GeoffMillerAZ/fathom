@@ -15,6 +15,13 @@
 //
 // The report is the same schema internal/indexbench commits as a golden, so
 // a self run and a fixture run are directly comparable.
+//
+// A "compare" subcommand (SB-31, docs/plans/strengths-bench.md wave 4) puts
+// fathom's own L0 row beside a competitor's, from a graphify graph.json
+// and/or a competitor's MCP server, and appends
+// docs/bench/competitors-ledger.jsonl:
+//
+//	indexbench compare -repo <dir> [-graphify <graph.json>] [-mcp <config.json> -tool <name> -arm <name>]
 package main
 
 import (
@@ -33,7 +40,18 @@ import (
 )
 
 func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+	os.Exit(mainRun(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+// mainRun dispatches to the "compare" subcommand (SB-31) or falls back to
+// the original flags-only self-run behavior — "compare" is not a valid
+// -root value, so this is unambiguous and every existing invocation
+// (`indexbench -root … `, the bench-l0-self task) is unaffected.
+func mainRun(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "compare" {
+		return cmdCompare(args[1:], stdout, stderr)
+	}
+	return run(args, stdout, stderr)
 }
 
 func run(args []string, stdout, stderr io.Writer) int {

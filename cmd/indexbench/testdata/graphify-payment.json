@@ -1,0 +1,10 @@
+{
+  "nodes": [
+    {"id": "n1", "label": "Charge", "file_type": "go", "source_file": "payment.go", "source_location": "L23"},
+    {"id": "n2", "label": "validateCharge", "file_type": "go", "source_file": "payment.go", "source_location": "L30"}
+  ],
+  "edges": [
+    {"source": "n1", "target": "n2", "relation": "calls", "confidence": "EXTRACTED", "source_file": "payment.go", "source_location": "L24", "weight": 1.0},
+    {"source": "n1", "target": "n2", "relation": "contains", "confidence": "EXTRACTED", "source_file": "payment.go", "source_location": "L24", "weight": 1.0}
+  ]
+}
