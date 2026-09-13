@@ -44,6 +44,16 @@ targeted run over the losing tasks shows them. Before ADR-032 the single three-a
 could only test what grep can also do and measured the harness more than the index
 (O23–O26); the public run (PB-19) and any publication stay operator decisions (Q4, F2).
 
+**G10. Every claim fathom makes is on a ledger, against its alternative (ADR-033).** Done
+when: `docs/plans/strengths-bench.md` waves 1–5 are proven (the doctrine routes by question
+shape; `cmd/scenariobench` runs arms as data with the tests-and-coverage oracle; SDD, guards
+and exploration-reuse readings compute offline; competitor edges are scored free against
+`go/types`; the public scenario corpus is derived and the runbook lets a stranger repeat each
+tier) and the pilot rows for M1–M6 are on `docs/bench/scenarios-ledger.jsonl` with their
+predictions beside their verdicts, honest either way. M8 and M9 stay registered behind the
+pilots. The bar is the prediction, not the win: a row that refutes its own prediction is a
+product finding and is recorded as one.
+
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** Waves 1
 and 2 shipped 2026-08-27: the verb, the ledger, the doctor rows, the clock, the shared
 attention line, the capped primer, the guard proposal with provenance, U12/U13, the fleet

@@ -1394,3 +1394,58 @@ another dollar goes to L4.
 reports precision or recall under 0.95 for an adjudicable tool on a pinned repo (the index is
 the bottleneck; L4 must not run); the `none` arm passes more than half the corpus; two
 same-corpus L4 rows exist and `regress` has compared them.
+
+## ADR-033: The strengths matrix — every claim measured on a real change, against its alternative, by an oracle fathom does not own, with the prediction written first (2026-09-13)
+
+**Status.** Accepted. Vision: `docs/vision/27-strengths-bench.md`. Plan: `docs/plans/strengths-bench.md`.
+
+**Context.** The first replicated home run (ADR-032 as amended) measured a cold single lookup
+with each arm locked to one tool and found fathom more accurate and more expensive. Every
+claim fathom makes to an adopter — obligations at the edit, the verify gate, continuity,
+packs for workers, freshness, fleet blast radius — is a claim about a *change*, and none was
+on a ledger. The operator's lived experience (a large tokenomic effect in real sessions) and
+the bench disagreed because they measured different things; the session-level A/B (MI-5)
+never collected an OFF arm.
+
+**Decision.**
+1. *A matrix, not a bench.* Each claim is a row with fixed columns: versus, oracle, readings,
+   predicted win, predicted no-effect. Rows M1–M9 are registered in vision 27 §1. A row may
+   not be run without its no-effect prediction written; a run that visits only expected wins
+   is refused as marketing.
+2. *One driver, arms as data.* `cmd/scenariobench` runs scenarios (a change to a pinned
+   subject under a session budget) with arms declared in the corpus — wired or stripped, MCP
+   config, tools, instruction variant, notes file, competitor setup — never in code. The
+   realistic arm (fathom plus Read/Grep/Bash) is the default treatment; the control is the
+   same fork stripped of fathom with the same notes-file instruction.
+3. *Oracles fathom does not own.* Success is the pinned PR's failing-to-passing and
+   passing-to-passing tests; SDD reachability is a `go test -cover` profile; rule violations
+   are the invariant's own detector; graph and reference correctness is `go/types`. Fathom's
+   verify, obligations and index are never the judge of their own readings.
+4. *Competitors run as documented.* A static graph or an LSP server is installed and invoked
+   exactly as its own README says, at a pinned version named on the row; `docs/bench/
+   competitors.md` carries the commands. The free edge comparison runs before any paid arm.
+5. *Cells and keys as ADR-032.* Control and competitor cells are keyed by their own surface
+   (empty, or the competitor's version) and survive every fathom change.
+6. *The doctrine follows the data.* The stanza, skills and adoption guides route by question
+   shape (index for where/who-calls/what-breaks/what-governs/what-was-known; grep for
+   literal text); tool descriptions say when a result is the answer.
+7. *Repeatable by a stranger.* Corpora derive from pinned public sources with per-task
+   derivation; the runbook gives one command per layer and the cost per tier; the free layers
+   join `task validate`.
+
+**Consequences.** Paid runs stay operator-initiated within the tiers in vision 27 §9 (the
+2026-09-13 directive authorises the targeted and pilot tiers; the credible tier is a
+separate decision). M8 (fleet blast radius) and M9 (breadth) are registered and scheduled
+after the pilots. A gold-patch coverage reading is a lower bound and is reported, never gated.
+
+**Alternatives rejected.** Extending the home bench with more lookup tasks (measures the
+wrong regime); a hand-written "fathom vs X" comparison (not reproducible, not pre-registered);
+a session-level A/B on the operator's own work as the only instrument (admissible but not
+repeatable by a stranger — it stays as L5 beside this).
+
+**Revisit when.** M2 or M3 shows no effect on the cross-package and governance-bound
+categories at n=3 (the SDD story is prose); M5's control overlap is under 30%; M6 shows an
+LSP beating fathom on multi-package resolved callers (vision 21's typed edges are the fix,
+not more bench); payload stays over 1.0× after wave 1 (replace the lookup tools with
+answer-shaped tools); a competitor ships an MCP surface that makes the free comparison
+one command (fold it into L0).
