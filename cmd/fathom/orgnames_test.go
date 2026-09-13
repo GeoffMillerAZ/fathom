@@ -32,6 +32,16 @@ var orgSkipDirs = map[string]bool{
 	"node_modules": true, "bin": true, ".claude": true, "calibration": true,
 }
 
+// orgDerivedCorpora are committed files whose content is PINNED UPSTREAM
+// DATA, not ours: a scenario corpus derived from a public benchmark
+// carries that project's own test names verbatim (cli/cli's
+// "at@signs.jpg" fixture reads as an email to the scanner). They are
+// derived, hash-checked against their sources, and never hand-edited —
+// ADR-011 governs what fathom writes, not what it quotes.
+var orgDerivedCorpora = map[string]bool{
+	"testdata/scenariobench/public-go.json": true,
+}
+
 // orgSkipExt marks binary or generated files.
 var orgSkipExt = map[string]bool{
 	".sqlite": true, ".db": true, ".png": true, ".jpg": true, ".jpeg": true, ".gif": true,
@@ -185,8 +195,8 @@ func TestNoOrgSpecificNames(t *testing.T) {
 	var findings []string
 	self := filepath.ToSlash(filepath.Join("cmd", "fathom", "orgnames_test.go"))
 	for _, rel := range orgScanFiles(t, root) {
-		if rel == self {
-			continue // the scanner's own fixtures are shapes, not names
+		if rel == self || orgDerivedCorpora[rel] {
+			continue // the scanner's own fixtures are shapes, not names; derived corpora quote upstream
 		}
 		if orgSkipDirs[strings.SplitN(rel, "/", 2)[0]] || orgSkipExt[strings.ToLower(filepath.Ext(rel))] {
 			continue
