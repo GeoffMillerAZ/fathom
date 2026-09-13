@@ -243,6 +243,8 @@ func cmdRun(args []string) int {
 	ctx := context.Background()
 	anyFailed := false
 	ran := 0
+	lost := 0
+	absRawDir, _ := filepath.Abs(*rawDir) // claude -p runs in the worktree and resolves --mcp-config against ITS cwd
 	for _, cp := range cells {
 		if len(onlyTasks) > 0 && !onlyTasks[cp.task.ID] {
 			continue
@@ -265,10 +267,20 @@ func cmdRun(args []string) int {
 			return 2
 		}
 
-		result, err := runOneCell(ctx, *root, cp, arm, harness, *rawDir, *model, *runID)
+		result, err := runOneCell(ctx, *root, cp, arm, harness, absRawDir, *model, *runID)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "scenariobench run: %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
 			return 2
+		}
+		if reason := scenariobench.CellLost(result.Sessions); reason != "" {
+			// A session that never ran is not a reading: it is not stored
+			// (a later run would borrow it as data) and the row counts it
+			// lost, exactly as context-bench does (guards pilot 1,
+			// 2026-09-13: 16 cells whose harness died at startup were
+			// stored, then borrowed by the re-run).
+			lost++
+			fmt.Fprintf(os.Stderr, "%s/%s/t%d: LOST — %s\n", cp.task.ID, cp.arm, cp.trial, reason)
+			continue
 		}
 		if err := scenariobench.StoreScenarioCell(*cellsDir, result); err != nil {
 			fmt.Fprintf(os.Stderr, "scenariobench run: storing %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
@@ -283,7 +295,10 @@ func cmdRun(args []string) int {
 		}
 		fmt.Fprintf(os.Stdout, "%s/%s/t%d: %s tokens=%d cost=%.4f\n", cp.task.ID, cp.arm, cp.trial, status, result.Readings.TotalTokens, result.Readings.TotalCostUSD)
 	}
-	fmt.Fprintf(os.Stdout, "scenariobench run: %d cell(s) run\n", ran)
+	fmt.Fprintf(os.Stdout, "scenariobench run: %d cell(s) run, %d lost\n", ran, lost)
+	if lost > 0 && ran == 0 {
+		return 3
+	}
 	if anyFailed {
 		return 1
 	}
@@ -318,7 +333,7 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		Sessions:       sessions,
 		Oracle:         oracle,
 		Readings:       readings,
-		Success:        oracle.Passed,
+		Success:        oracle.Passed && scenariobench.AnyEdits(sessions), // an untouched tree cannot pass (guards pilot 1)
 		CellKey:        cp.key,
 		CorpusSHA256:   cp.inv.CorpusSHA256,
 		ModelID:        cp.inv.ModelID,
@@ -374,7 +389,7 @@ func cmdScore(args []string) int {
 		return 2
 	}
 	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
-	cell.Success = cell.Oracle.Passed
+	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 
 	dest := *out
 	if dest == "" {

@@ -146,7 +146,7 @@ func TestCmdScore_RecomputesReadings(t *testing.T) {
 		"cell_key": "k1",
 		"run_id":   "run-1",
 		"sessions": []map[string]any{
-			{"index": 0, "role": "single", "total_tokens": 42, "turns": 3, "cost_usd": 0.01, "payload_bytes": 100},
+			{"index": 0, "role": "single", "total_tokens": 42, "turns": 3, "cost_usd": 0.01, "payload_bytes": 100, "files_edited": []string{"pkg/a.go"}},
 		},
 		"oracle":   map[string]any{"passed": true},
 		"readings": map[string]any{},
@@ -167,7 +167,7 @@ func TestCmdScore_RecomputesReadings(t *testing.T) {
 		t.Errorf("expected recomputed readings to include total_tokens=42: %s", out)
 	}
 	if !strings.Contains(string(out), `"success": true`) {
-		t.Errorf("expected success to be recomputed from oracle.passed: %s", out)
+		t.Errorf("expected success to be recomputed from oracle.passed AND an edited file: %s", out)
 	}
 }
 

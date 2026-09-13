@@ -85,17 +85,31 @@ func anyViolated(drs []DetectorResult) bool {
 // names, in wt.Path.
 func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string) (passed map[string]bool, outputRef, coverRef string, err error) {
 	tmpl := task.Subject.TestCommand
+	// Test names are DATA, never shell: upstream subtest names carry
+	// apostrophes, commas and regex metacharacters ("TestX/ghe.com's_…"
+	// broke `sh -c` on the first public dry cell, 2026-09-13). Each name
+	// is regex-quoted per slash-separated element and anchored; the
+	// default command is exec'd as argv with no shell at all, and a
+	// subject's own template gets the pattern single-quote-escaped.
+	testsArg := goTestRunPattern(names)
+	var cmd *exec.Cmd
+	var cmdStr string
 	if tmpl == "" {
-		tmpl = defaultTestCommand
+		args := []string{"test", "./...", "-run", testsArg, "-v"}
+		if task.Oracle.Coverage {
+			coverRef = filepath.Join(wt.CellDir, "coverage.out")
+			args = append(args, "-coverprofile="+coverRef)
+		}
+		cmd = exec.CommandContext(ctx, "go", args...)
+		cmdStr = "go " + strings.Join(args, " ")
+	} else {
+		cmdStr = strings.ReplaceAll(tmpl, "{{tests}}", shellSingleQuoteEscape(testsArg)) + " -v"
+		if task.Oracle.Coverage {
+			coverRef = filepath.Join(wt.CellDir, "coverage.out")
+			cmdStr += " -coverprofile=" + coverRef
+		}
+		cmd = exec.CommandContext(ctx, "sh", "-c", cmdStr)
 	}
-	testsArg := strings.Join(names, "|")
-	cmdStr := strings.ReplaceAll(tmpl, "{{tests}}", testsArg) + " -v"
-	if task.Oracle.Coverage {
-		coverRef = filepath.Join(wt.CellDir, "coverage.out")
-		cmdStr += " -coverprofile=" + coverRef
-	}
-
-	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr)
 	cmd.Dir = wt.Path
 	cmd.Env = SubjectEnv(wt.Path, nil)
 	out, runErr := cmd.CombinedOutput() // a failing test set is a normal, expected exit != 0
@@ -149,4 +163,25 @@ func sanitizeName(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// goTestRunPattern builds the -run pattern for a set of test names: each
+// slash-separated element regex-quoted (go test matches each element of
+// the pattern against the corresponding subtest level), anchored so
+// "TestRun" never also selects "TestRunCancel", joined by |.
+func goTestRunPattern(names []string) string {
+	parts := make([]string, 0, len(names))
+	for _, n := range names {
+		elems := strings.Split(n, "/")
+		for i, e := range elems {
+			elems[i] = regexp.QuoteMeta(e)
+		}
+		parts = append(parts, "^"+strings.Join(elems, "$/^")+"$")
+	}
+	return strings.Join(parts, "|")
+}
+
+// shellSingleQuoteEscape makes s safe inside a single-quoted sh word.
+func shellSingleQuoteEscape(s string) string {
+	return strings.ReplaceAll(s, "'", `'\''`)
 }

@@ -40,6 +40,7 @@ var orgSkipDirs = map[string]bool{
 // ADR-011 governs what fathom writes, not what it quotes.
 var orgDerivedCorpora = map[string]bool{
 	"testdata/scenariobench/public-go.json": true,
+	"testdata/scenariobench/reuse-go.json":  true, // re-shaped from public-go.json, same upstream names
 }
 
 // orgSkipExt marks binary or generated files.

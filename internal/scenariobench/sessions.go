@@ -225,3 +225,38 @@ func findPlanFile(worktree string) (string, error) {
 	}
 	return "", nil
 }
+
+// CellLost reports why a cell is not a reading: every session errored, or
+// no session ever produced a turn. A lost cell is never stored or scored.
+func CellLost(sessions []SessionResult) string {
+	if len(sessions) == 0 {
+		return "no sessions ran"
+	}
+	errs := 0
+	turns := 0
+	for _, s := range sessions {
+		if s.Error != "" {
+			errs++
+		}
+		turns += s.Turns
+	}
+	if errs == len(sessions) {
+		return "every session errored: " + sessions[0].Error
+	}
+	if turns == 0 {
+		return "no session produced a turn"
+	}
+	return ""
+}
+
+// AnyEdits reports whether any session edited a file: the floor under
+// "success" — an agent that did nothing cannot pass a change task by
+// never violating a rule.
+func AnyEdits(sessions []SessionResult) bool {
+	for _, s := range sessions {
+		if len(s.FilesEdited) > 0 {
+			return true
+		}
+	}
+	return false
+}

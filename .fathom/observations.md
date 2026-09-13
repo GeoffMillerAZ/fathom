@@ -780,3 +780,16 @@ triage if it matters.
 - **Fix:** TODO (execute-and-flag, ADR-014: degrade per service, never the call)
 - **Status:** open
 - **Impact:** every fleet-wide references call on this store since the `demo` service was registered; the bench's fathom arm always passes `services: ["fathom"]` and was not affected.
+
+### O37 — Guards pilot 1 (2026-09-13) scored 16 cells that never ran: `claude -p` died at startup ("MCP config file not found" — the driver passed --mcp-config relative to ITS cwd while the session runs in the worktree), the dead sessions were stored as cells with zero tokens, the untouched tree passed every detector so the full arm read PASS, and the re-run borrowed the dead cells as data. The first public dry cell's oracle also never ran: a subtest name with an apostrophe broke the `sh -c` test command.
+
+- **Symptom:** `guards-i31-workspace-artifact/full/t1: PASS tokens=0 cost=0.0000`; control arm `borrowed` ×16 on the second launch; `sh: -c: line 1: syntax error near unexpected token 'ghe.com'` in the cli/cli oracle output.
+- **Evidence:**
+  - **Tool:** cmd/scenariobench run (ClaudeHarness, runOneCell, runOracleTests)
+  - **Expected:** a session that never started is LOST, not a cell; success needs an edited tree; test names are data, not shell.
+  - **Actual:** as above; raw stderr under workspace/artifacts/scenariobench/raw/*/session-0-single.stream.jsonl.stderr.
+  - **Repro:** the three fixes' commit names the paths.
+- **Root cause:** the harness was only ever driven by the fake transcript in tests; the fake never touches --mcp-config, never errors, always "edits" /repo/foo.go, and the guards oracle has no positive check, so a no-op tree passes.
+- **Fix:** absolute raw dir; `CellLost` (never stored, counted); `Success = oracle.Passed && AnyEdits`; a `change-present` detector on every guards task; `go test` exec'd as argv with regex-quoted, anchored names.
+- **Status:** fixed
+- **Impact:** no scored row was published; ~$0.50 of dead-session spend; the 21 junk cells were deleted from the store.

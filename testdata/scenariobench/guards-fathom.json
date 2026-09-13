@@ -36,6 +36,11 @@
         ],
         "detectors": [
           {
+            "name": "change-present",
+            "command": "grep -rq \"debug-dump\" cmd/fathom/",
+            "expect_exit": 0
+          },
+          {
             "name": "no-cwd-artifacts",
             "command": "go test ./cmd/fathom -run TestDefaultStorePathNeverTheCwd",
             "expect_exit": 0
@@ -70,6 +75,11 @@
       },
       "oracle": {
         "detectors": [
+          {
+            "name": "change-present",
+            "command": "grep -rqi \"fts5\" internal/store/",
+            "expect_exit": 0
+          },
           {
             "name": "store-purego",
             "command": "task store-purego",
@@ -109,6 +119,11 @@
         ],
         "detectors": [
           {
+            "name": "change-present",
+            "command": "test -n \"$(git status --porcelain internal/connector/testdata)\"",
+            "expect_exit": 0
+          },
+          {
             "name": "no-org-names",
             "command": "go test ./cmd/fathom -run TestNoOrgSpecificNames",
             "expect_exit": 0
@@ -146,6 +161,11 @@
           "TestDeterminism"
         ],
         "detectors": [
+          {
+            "name": "change-present",
+            "command": "grep -rq \"Consumers\" internal/analysis/packagedeps/",
+            "expect_exit": 0
+          },
           {
             "name": "packagedeps-sorted",
             "command": "go test ./internal/analysis/packagedeps -run TestDeterminism",
@@ -185,6 +205,11 @@
         ],
         "detectors": [
           {
+            "name": "change-present",
+            "command": "grep -rq \"list_stale_files\" internal/mcp/",
+            "expect_exit": 0
+          },
+          {
             "name": "mcp-tool-doc-sync",
             "command": "go test ./internal/mcp -run TestMcpToolsDocMatchesRegistry",
             "expect_exit": 0
@@ -223,6 +248,11 @@
         ],
         "detectors": [
           {
+            "name": "change-present",
+            "command": "test -f docs/use-cases/incident-investigation.md",
+            "expect_exit": 0
+          },
+          {
             "name": "usecase-maintained-line",
             "command": "go test ./cmd/fathom -run TestMaintainedLinesParse",
             "expect_exit": 0
@@ -257,6 +287,11 @@
       },
       "oracle": {
         "detectors": [
+          {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only CLAUDE.md)\"",
+            "expect_exit": 0
+          },
           {
             "name": "config-audit-deploy-safety",
             "command": "task config-audit",
@@ -296,6 +331,11 @@
         ],
         "detectors": [
           {
+            "name": "change-present",
+            "command": "test -n \"$(git diff --name-only internal/store/backend.go)\"",
+            "expect_exit": 0
+          },
+          {
             "name": "duckdb-loud-refusal",
             "command": "go test ./internal/store -run TestBackendForPath_DuckDBLoudlyRefused",
             "expect_exit": 0
@@ -326,6 +366,7 @@
   "notes": {
     "wave": "strengths-bench SB-24 (plan wave 3)",
     "subject_repo": "the fathom repo itself, dogfooding docs/intent/invariants.md against its own author",
-    "authored": "2026-09-12"
+    "authored": "2026-09-12",
+    "change_present": "Every task carries a change-present detector (first in its list): a positive check that the requested change exists in the tree, so an agent that does nothing cannot pass by never violating the rule (guards pilot 1, 2026-09-13: a session that failed to start scored PASS on an untouched tree). The invariant's own detector follows it."
   }
 }
