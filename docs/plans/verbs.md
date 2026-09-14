@@ -51,8 +51,8 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave G — a corpus fathom does not own (R10, R12, BC-15)
 
-- [ ] A harness adapter runs the same model with and without the agent surface on Long Code Arena's bug-localization track, emitting rows into the scenario ledger with instrument truth (server connected, hooks fired, surface calls) {id: VB-25, symbol: RunExternalCorpus, package: internal/scenariobench}
-- [ ] `localize`: given a stack trace, failing test, error string or concern, one bounded, budgeted, logged loop over the index ranked by graph proximity, recency and open obligations, returning a diagnosis object with citations and the hops taken — never a bare list {id: VB-26, symbol: registerLocalize, package: internal/mcp}
+- [x] A harness adapter runs the same model with and without the agent surface on Long Code Arena's bug-localization track, emitting rows into the scenario ledger with instrument truth (server connected, hooks fired, surface calls) {id: VB-25, symbol: RunExternalCorpus, package: internal/scenariobench}
+- [x] `localize`: given a stack trace, failing test, error string or concern, one bounded, budgeted, logged loop over the index ranked by graph proximity, recency and open obligations, returning a diagnosis object with citations and the hops taken — never a bare list {id: VB-26, symbol: registerLocalize, package: internal/mcp}
 - [ ] (op) M12 and M16 written with paired statistics at n ≥ 3 over ≥ 30 tasks; a confidence interval that includes zero publishes the null and closes BC-15 on it {id: VB-27, skip_test: true, skip: "operator spend; evidence is the ledger rows and the published raw cells", needs: VB-25}
 
 ## Wave H — the custodian over harness memory (R8)
