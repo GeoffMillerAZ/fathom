@@ -1,10 +1,13 @@
 // PrepareSubject (SB-12) turns a Task's pinned subject into a git worktree
 // ready for sessions: a shared clone under
-// workspace/scenariobench/subjects/<sha256(repo_url)>, one `git worktree
-// add` per cell at base_commit, the subject's and the arm's setup commands,
-// and — for a wired arm — a scratch daemon that ingests ONLY that worktree
-// (never the fleet store) so `fathom init --harness claude-code --json` can
-// wire it for real.
+// workspace/scenariobench/subjects/<sha256(repo_url)>, one cell worktree
+// per (base_commit, arm) archived from that clone at base_commit and given
+// its own single-commit history (O55 item 1 — see archiveCommitIntoWorktree:
+// a cell worktree must have NO future, so `git log --all` inside it can
+// never resolve a commit that only merged after base_commit), the subject's
+// and the arm's setup commands, and — for a wired arm — a scratch daemon
+// that ingests ONLY that worktree (never the fleet store) so `fathom init
+// --harness claude-code --json` can wire it for real.
 package scenariobench
 
 import (
@@ -132,7 +135,18 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			// live git process owns.
 			reapStaleScratchDaemon(wtPath)
 			removeStaleIndexLock(ctx, wtPath)
-			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
+			// wtPath is its own repository (archiveCommitIntoWorktree) whose
+			// history starts at its own root commit — that commit's sha is
+			// NOT task.Subject.BaseCommit (it was re-committed by `git
+			// commit`, never `git reset` to the original sha, which this
+			// repo's object store does not even contain). A session may have
+			// added commits on top since the last cell; the root commit is
+			// always the one to reset back to, regardless of how many.
+			root, err := runIn(ctx, wtPath, "git", "rev-list", "--max-parents=0", "HEAD")
+			if err != nil {
+				return fmt.Errorf("preparing subject: finding the worktree's base commit: %w (%s)", err, root)
+			}
+			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", strings.TrimSpace(root)); err != nil {
 				return fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
 			}
 			if out, err := runIn(ctx, wtPath, "git", "clean", "-fdx"); err != nil {
@@ -140,9 +154,12 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			}
 			return nil
 		}
-		_, _ = runIn(ctx, cloneDir, "git", "worktree", "prune")
-		if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
-			return fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
+		if err := os.MkdirAll(wtPath, 0o755); err != nil {
+			return fmt.Errorf("preparing subject: creating %s: %w", wtPath, err)
+		}
+		if err := archiveCommitIntoWorktree(ctx, cloneDir, task.Subject.BaseCommit, wtPath); err != nil {
+			_ = os.RemoveAll(wtPath)
+			return err
 		}
 		return nil
 	}(); err != nil {
@@ -498,6 +515,39 @@ func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
 	}
 	if out, err := runIn(ctx, "", "git", "clone", "--no-single-branch", repoURL, cloneDir); err != nil {
 		return fmt.Errorf("preparing subject: git clone %s: %w (%s)", repoURL, err, out)
+	}
+	return nil
+}
+
+// archiveCommitIntoWorktree makes wtPath (an existing, empty directory) its
+// own git repository containing exactly base's tree, in exactly one commit
+// with no parents — O55 item 1: a full clone's worktree carries the WHOLE
+// history, including any merge that lands after base (a control planner ran
+// `git log --all | grep -i autolink` against a shared-clone worktree and
+// found the very fix PR #10124 the task was measuring), so a cell worktree
+// built off one can leak the answer. `git archive <base> | tar -x` copies
+// only base's tree (no .git at all) into wtPath; `git init` + `add -A` +
+// `commit` then gives it a single root commit, authored "bench
+// <bench@example.invalid>" so it is never mistaken for a real contributor.
+// cloneDir is read here only as the archive source — the worktree shares
+// none of its history, refs, or object store afterward.
+func archiveCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath string) error {
+	archive := exec.CommandContext(ctx, "sh", "-c", `git -C "$1" archive --format=tar "$2" | tar -x -C "$3"`, "sh", cloneDir, base, wtPath)
+	if out, err := archive.CombinedOutput(); err != nil {
+		return fmt.Errorf("preparing subject: archiving %s into %s: %w (%s)", base, wtPath, err, out)
+	}
+	if out, err := runIn(ctx, wtPath, "git", "init", "-q", "-b", "bench"); err != nil {
+		return fmt.Errorf("preparing subject: git init: %w (%s)", err, out)
+	}
+	if out, err := runIn(ctx, wtPath, "git", "add", "-A"); err != nil {
+		return fmt.Errorf("preparing subject: git add: %w (%s)", err, out)
+	}
+	commitEnv := map[string]string{
+		"GIT_AUTHOR_NAME": "bench", "GIT_AUTHOR_EMAIL": "bench@example.invalid",
+		"GIT_COMMITTER_NAME": "bench", "GIT_COMMITTER_EMAIL": "bench@example.invalid",
+	}
+	if out, err := runInEnv(ctx, wtPath, commitEnv, "git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base "+base); err != nil {
+		return fmt.Errorf("preparing subject: git commit: %w (%s)", err, out)
 	}
 	return nil
 }

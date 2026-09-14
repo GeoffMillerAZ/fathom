@@ -131,6 +131,86 @@ func TestPrepareSubject_RemovesExcludedPathsBeforeSetup(t *testing.T) {
 	}
 }
 
+// gitFixtureRepoWithFuture is gitFixtureRepo plus a SECOND commit after the
+// base commit — the shape a repo with a merged fix has: the fix (or, as in
+// O55, a control planner's discovery of it) lives strictly after base in
+// `git log`. Returns the repo path, base's sha, and the future commit's own
+// sha.
+func gitFixtureRepoWithFuture(t *testing.T) (repoPath, base, future string) {
+	t.Helper()
+	dir, baseSHA := gitFixtureRepo(t)
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	writeTestFile(t, filepath.Join(dir, "future.txt"), "PR #10124's merged fix\n")
+	run("add", "future.txt")
+	run("commit", "-q", "-m", "merge: PR #10124 the fix the task is measuring")
+	futureSHA := run("rev-parse", "HEAD")
+	return dir, baseSHA, futureSHA
+}
+
+// TestPrepareSubject_WorktreeHasNoFuture pins O55 item 1: a cell worktree
+// built off a full clone must never let `git log --all` (or any other
+// means) resolve a commit that only exists after base_commit — a control
+// planner found the task's own merged fix that way. After PrepareSubject,
+// the worktree's own history is exactly one commit and the future commit's
+// sha is unresolvable inside it.
+func TestPrepareSubject_WorktreeHasNoFuture(t *testing.T) {
+	repoPath, base, future := gitFixtureRepoWithFuture(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: base}}
+	arm := Arm{Instructions: "none"}
+
+	wt, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	out, err := exec.Command("git", "-C", wt.Path, "log", "--all", "--oneline").CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log --all: %v (%s)", err, out)
+	}
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) != 1 || lines[0] == "" {
+		t.Errorf("expected exactly one commit in the cell worktree's history, got %d: %q", len(lines), out)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "future.txt")); err == nil {
+		t.Error("the future commit's own file must not be present in the cell worktree's tree")
+	}
+	resolve, err := exec.Command("git", "-C", wt.Path, "cat-file", "-e", future+"^{commit}").CombinedOutput()
+	if err == nil {
+		t.Errorf("expected the future commit's sha to be unresolvable in the cell worktree, but it resolved: %s", resolve)
+	}
+
+	// Reuse (the same subject+base_commit+arm cell prepared again) must
+	// still land on a single-commit history, not accumulate one per call.
+	wt2, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (2nd): %v", err)
+	}
+	defer StopWorktree(&wt2)
+	out2, err := exec.Command("git", "-C", wt2.Path, "log", "--all", "--oneline").CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log --all (2nd): %v (%s)", err, out2)
+	}
+	lines2 := strings.Split(strings.TrimSpace(string(out2)), "\n")
+	if len(lines2) != 1 || lines2[0] == "" {
+		t.Errorf("expected exactly one commit after reuse, got %d: %q", len(lines2), out2)
+	}
+}
+
 func TestPrepareSubject_UnwiredArm(t *testing.T) {
 	repoPath, commit := gitFixtureRepo(t)
 	root := t.TempDir()
