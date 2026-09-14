@@ -95,14 +95,59 @@ const workerRowPromptFmt = "You are one worker in a team completing this task:\n
 // trouble is still returned as data (SessionResult.Error) and the run
 // continues, since a bad transcript on its own is not a reason to abandon
 // a multi-session budget.
+//
+// O53 defect 2: the raw transcript directory for this cell key
+// (task-arm-trial) is allocated ONCE here, as a fresh attempt-<k>
+// subdirectory (allocateRawAttemptDir) — never recomputed per session, and
+// never the same directory a prior attempt of this exact cell key already
+// claimed. Before this, the directory was a pure function of
+// (task, arm, trial, run-id), so a re-run of the same cell key — a LOST
+// retry, a resume — wrote its stream to the SAME raw path an earlier
+// attempt used, silently overwriting it: 32 of 140 cells' on-disk
+// transcript was a different session than the one the cell record scored.
 func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+	cellRawDir, err := allocateRawAttemptDir(cellRawBase(task, armName, opts))
+	if err != nil {
+		return nil, fmt.Errorf("running sessions for task %s: %w", task.ID, err)
+	}
 	switch task.Sessions.Mode {
 	case ModeSingle:
-		return runSingle(ctx, h, task, armName, arm, wt, opts)
+		return runSingle(ctx, h, task, armName, arm, wt, opts, cellRawDir)
 	case ModePlannerWorkers:
-		return runPlannerWorkers(ctx, h, task, armName, arm, wt, opts)
+		return runPlannerWorkers(ctx, h, task, armName, arm, wt, opts, cellRawDir)
 	default:
 		return nil, fmt.Errorf("running sessions for task %s: unknown mode %q", task.ID, task.Sessions.Mode)
+	}
+}
+
+// cellRawBase is the directory identifying one cell key (task, arm, trial)
+// under one run — the same formula RunSessions has always used — BEFORE
+// the per-attempt subdirectory allocateRawAttemptDir adds beneath it.
+func cellRawBase(task Task, armName string, opts RunOptions) string {
+	rawBase := opts.RawDir
+	if opts.RunID != "" {
+		rawBase = filepath.Join(opts.RawDir, opts.RunID)
+	}
+	return filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+}
+
+// allocateRawAttemptDir returns a fresh "attempt-<k>" directory under
+// cellDir, creating it exclusively (os.Mkdir, not MkdirAll, on the leaf)
+// so two executions of the same cell key — sequential (a retry, a resume)
+// or concurrent — never share a directory and neither ever overwrites the
+// other. Attempts are numbered from 1 and the first unused number wins, so
+// the ordinary, non-retried case always gets attempt-1.
+func allocateRawAttemptDir(cellDir string) (string, error) {
+	if err := os.MkdirAll(cellDir, 0o755); err != nil {
+		return "", fmt.Errorf("allocating raw attempt dir: creating %s: %w", cellDir, err)
+	}
+	for k := 1; ; k++ {
+		dir := filepath.Join(cellDir, fmt.Sprintf("attempt-%d", k))
+		if err := os.Mkdir(dir, 0o755); err == nil {
+			return dir, nil
+		} else if !os.IsExist(err) {
+			return "", fmt.Errorf("allocating raw attempt dir: creating %s: %w", dir, err)
+		}
 	}
 }
 
@@ -124,7 +169,7 @@ func isChangeShaped(task Task) bool {
 	return len(task.Gold.Files) > 0 || task.Gold.TestPatch != "" || len(task.Oracle.Detectors) > 0
 }
 
-func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	changeShaped := isChangeShaped(task)
 	for i := 0; i < task.Sessions.Count; i++ {
@@ -144,7 +189,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		default:
 			prompt = scenarioContinuationPrompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i, "single", "", prompt)
 		if err != nil {
 			return results, err
 		}
@@ -160,14 +205,14 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 	return results, nil
 }
 
-func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	// RC-32 (docs/vision/28-receipts.md §4): the planner's own session
 	// start, captured BEFORE it runs — workerDiscoveryBrief's `--since`
 	// must cover what the PLANNER established, not just what happened
 	// between the planner and each worker.
 	sessionStart := time.Now()
-	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+planFirstInstructionFor(arm))
+	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, 0, "planner", "", task.Prompt+planFirstInstructionFor(arm))
 	if err != nil {
 		return results, err
 	}
@@ -203,7 +248,7 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if brief != "" {
 			prompt = brief + "\n\n" + prompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i+1, "worker", rowID, prompt)
 		if err != nil {
 			return results, err
 		}
@@ -296,12 +341,14 @@ func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStar
 // TODO(RC-13): set this to a thin adapter over FactsReused once it lands.
 var factsReusedHook func(session *SessionResult, pointers []string)
 
-func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) (SessionRequest, error) {
-	rawBase := opts.RawDir
-	if opts.RunID != "" {
-		rawBase = filepath.Join(opts.RawDir, opts.RunID)
-	}
-	rawDir := filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+// newSessionRequest builds one session's harness input. cellRawDir is this
+// cell KEY's already-allocated attempt directory (RunSessions'
+// allocateRawAttemptDir, called once per RunSessions invocation) — every
+// session of the same cell attempt shares it, distinguished on disk only
+// by their own "session-<index>-<role>" file names, exactly as before this
+// fix; what changed is that cellRawDir itself is now unique PER ATTEMPT
+// rather than a pure function of (task, arm, trial, run-id).
+func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string, index int, role, rowID, prompt string) (SessionRequest, error) {
 	env, err := sessionEnv(wt, opts)
 	if err != nil {
 		return SessionRequest{}, fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, index, err)
@@ -313,7 +360,7 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 		Arm:             arm,
 		MaxTurns:        task.Sessions.MaxTurns,
 		Model:           opts.Model,
-		RawDir:          rawDir,
+		RawDir:          cellRawDir,
 		Index:           index,
 		Role:            role,
 		RowID:           rowID,
