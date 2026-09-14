@@ -68,6 +68,6 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave J — tests that adjudicate (M2)
 
-- [ ] `fathom tests select --since <ref>` ranks tests for a diff by typed-edge reachability, statement coverage over the changed lines and layer, emitting a `go test -run` invocation and the changed symbols no test reaches {id: VB-33, symbol: cmdTestsSelect, package: cmd/fathom}
-- [ ] A mutation report (go-mutesting first) is ingested as a code fact and the verify gate distinguishes covered from covered-and-asserted {id: VB-34, symbol: ParseMutationReport, package: internal/analysis/coverage}
+- [x] `fathom tests select --since <ref>` ranks tests for a diff by typed-edge reachability, statement coverage over the changed lines and layer, emitting a `go test -run` invocation and the changed symbols no test reaches {id: VB-33, symbol: cmdTestsSelect, package: cmd/fathom}
+- [x] A mutation report (go-mutesting first) is ingested as a code fact and the verify gate distinguishes covered from covered-and-asserted {id: VB-34, symbol: ParseMutationReport, package: internal/analysis/coverage}
 - [ ] (op) M12b and M2 from a replay of ~100 historical commits: selection recall ≥ 0.98 at ≤ 25 % of full-suite time, else advisory only {id: VB-35, skip_test: true, skip: "replay spend; evidence is the replay report", needs: VB-33}
