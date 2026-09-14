@@ -129,6 +129,12 @@ fresh at read time and the index marks what no longer holds (ADR-028).
   over the last thirty days, resolved fresh and dropped when the index
   no longer has them; the primer names routes in one line only when one
   exists; `thread promote` can write a route onto a plan row's `ctx:`.
+- **Every discovery action counts (reuse-pilot-2, 2026-09-13).** The
+  first rerun with tools present showed the wired planners reaching for
+  grep and Read, not the index, so the call log held no pointers and every
+  worker brief was empty. A discovery is any act of locating — a grep hit,
+  a file read — and the hook that already counts them records their
+  targets as pointers; the index adds the enclosing symbol when it can.
 - **Scope by identity.** The thread scope is the repo's identity (origin
   URL, else path), not a directory basename (F5).
 - **Kill criteria, pre-registered.** M5 at K=3 with the worker brief:

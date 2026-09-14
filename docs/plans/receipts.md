@@ -55,6 +55,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/receipts.md`.
 - [x] The thread scope is the repo's identity — the origin URL normalized, else the path — with the basename as a read-side fallback so no existing deposit is lost {id: RC-31, symbol: repoIdentity, package: cmd/fathom}
 - [x] The scenario driver gives a wired arm's workers the same discoveries brief SubagentStart renders, and `facts_reused` is read from it {id: RC-32, symbol: workerDiscoveryBrief, package: internal/scenariobench}
 - [x] `docs/mcp-tools.md`, the fleet guide, the adoption docs and the skills describe discoveries and routes with their kill criteria {id: RC-33, oracle: lexical, path: docs/mcp-tools.md, pattern: discoveries}
+- [ ] Discoveries derive from every discovery action, not only fathom answers: the PreToolUse observer that already counts greps, globs and reads (`cmd/fathom/discovery.go`) records their targets as pointers (paths; the enclosing symbol when the index knows it), so a planner that grepped still hands its workers a brief — reuse-pilot-2 found the wired planners called no fathom tool and every worker brief was empty {id: RC-56, symbol: observedDiscoveryPointers, package: cmd/fathom}
 
 ## Wave 3 — receipts on readings
 
