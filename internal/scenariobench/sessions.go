@@ -56,13 +56,32 @@ const PlanFirstInstruction = "\n\nBefore making any changes, write your plan as 
 // "wired" means, not a prompt advantage handed to one arm by the driver.
 const planGrammarInstruction = " Because this repository is indexed by fathom, write the plan to docs/plans/<slug>.md in its plan grammar: one row per change, `- [ ] <what changes> {id: <SLUG>-<n>, symbol: <the function you will add or change>, package: <its package path>}`, anchoring every row to a function. A row is done only when `fathom verify --plan docs/plans/<slug>.md` proves it — never mark `[x]` on a claim."
 
+// PlanThenImplementInstruction is the single-session sibling of
+// PlanFirstInstruction: the same checklist first, then the rows implemented
+// in the SAME session. PlanFirstInstruction's "later sessions will pick up
+// individual rows" is a lie on a task with one session — the dry cell for
+// clean room v3 (2026-09-13) watched a wired arm write a plan and stop,
+// scored FAIL on a task it was never told to finish.
+const PlanThenImplementInstruction = "\n\nBefore making any changes, write your plan as a markdown checklist (`- [ ] ...` per row) to NOTES.md at the repo root, or to a file under docs/plans/ if the repository already keeps plans there. Then implement the rows in this same session — there is no later session — marking each `- [x]` when it is done."
+
 // planFirstInstructionFor returns the plan-first instruction for one arm:
 // the shared checklist text, plus the plan-grammar addendum on a wired arm.
 func planFirstInstructionFor(arm Arm) string {
-	if arm.Wired {
-		return PlanFirstInstruction + planGrammarInstruction
+	return planInstructionFor(arm, true)
+}
+
+// planInstructionFor picks the checklist instruction by whether later
+// sessions exist to implement the rows (planner-workers, or single mode
+// with more than one session) or this session must finish the work itself.
+func planInstructionFor(arm Arm, laterSessions bool) string {
+	base := PlanFirstInstruction
+	if !laterSessions {
+		base = PlanThenImplementInstruction
 	}
-	return PlanFirstInstruction
+	if arm.Wired {
+		return base + planGrammarInstruction
+	}
+	return base
 }
 
 // workerRowPromptFmt formats one worker's assignment in "planner-workers"
@@ -109,7 +128,7 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 			// nothing for PlanCoverage/FalseDoneRate to read. Same
 			// instruction planner-workers gives its planner, appended
 			// here instead of replacing the task prompt.
-			prompt = task.Prompt + planFirstInstructionFor(arm)
+			prompt = task.Prompt + planInstructionFor(arm, task.Sessions.Count > 1)
 		case i == 0:
 			// A pure-lookup task (isChangeShaped false): the prompt IS the
 			// whole ask, verbatim — no plan to write, no checklist to hand

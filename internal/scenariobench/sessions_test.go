@@ -410,6 +410,41 @@ func TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction(t *testing.T
 	}
 }
 
+// TestRunSessions_SingleModeOneSessionPlansThenImplements: a change-shaped
+// task with ONE session must not be told that later sessions will implement
+// its rows — it gets PlanThenImplementInstruction instead (clean room v3's
+// dry cell, 2026-09-13: the wired arm wrote a plan and stopped).
+func TestRunSessions_SingleModeOneSessionPlansThenImplements(t *testing.T) {
+	task := Task{
+		ID: "T1", Prompt: "do the thing",
+		Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10},
+		Gold:     Gold{Files: []string{"a.go"}},
+	}
+	for _, wired := range []bool{false, true} {
+		h := &recordingHarness{FakeHarness: &FakeHarness{
+			StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
+			Streams: map[string]string{"T1/full": "single-session.jsonl"},
+		}}
+		opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+		arm := Arm{Wired: wired}
+		if _, err := RunSessions(context.Background(), h, task, "full", arm, Worktree{Path: t.TempDir()}, opts); err != nil {
+			t.Fatalf("wired=%v: RunSessions: %v", wired, err)
+		}
+		if len(h.prompts) != 1 {
+			t.Fatalf("wired=%v: %d prompts, want 1", wired, len(h.prompts))
+		}
+		if !strings.HasPrefix(h.prompts[0], task.Prompt+PlanThenImplementInstruction) {
+			t.Errorf("wired=%v: prompt = %q, want the plan-then-implement instruction", wired, h.prompts[0])
+		}
+		if strings.Contains(h.prompts[0], "later sessions") {
+			t.Errorf("wired=%v: a one-session task was told later sessions exist", wired)
+		}
+		if wired != strings.Contains(h.prompts[0], "fathom verify") {
+			t.Errorf("wired=%v: grammar addendum presence wrong", wired)
+		}
+	}
+}
+
 // TestRunSessions_SingleModeLookupTaskSkipsPlanFirstInstruction is O45 item
 // 2's own converse: a pure-lookup task (Oracle.AnswerAllOf, no Gold files,
 // no test patch, no detectors — SB-32's lookups-vs.json shape) has nothing
