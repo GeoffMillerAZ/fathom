@@ -20,6 +20,7 @@ package fusion_test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -97,8 +98,13 @@ func TestTypedEdgeEnv_RepairsGoPath(t *testing.T) {
 				t.Fatalf("GOPATH=%q: %s = %q carries an unexpanded variable — this is the daemon's exact failure", broken, key, v)
 			}
 		}
-		if _, set := got["GOFLAGS"]; set {
-			t.Fatalf("GOPATH=%q: GOFLAGS was set by the loader — not needed by this repo, and a guess that changes build semantics", broken)
+		// The contract is that the LOADER adds nothing: an ambient GOFLAGS
+		// (an operator's -p=2, a CI's -mod=vendor) passes through unchanged,
+		// and only a value the environment did not already carry is the
+		// loader's own guess.
+		ambient, ambientSet := os.LookupEnv("GOFLAGS")
+		if v, set := got["GOFLAGS"]; set && !(ambientSet && v == ambient) {
+			t.Fatalf("GOPATH=%q: GOFLAGS=%q was set by the loader — not needed by this repo, and a guess that changes build semantics", broken, v)
 		}
 	}
 }
