@@ -49,6 +49,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/hitl"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -262,12 +263,11 @@ func requireLocalMutation(reg wiringRegistry, next http.Handler) http.Handler {
 // remedy line has been nagging about.
 func serviceWiringSpec(root, service string) (wiring.Spec, []string) {
 	spec := wiring.Spec{}
-	for _, name := range stanzaFiles {
-		spec.Regions = append(spec.Regions, stanzaRegion(name, service, intentChannelWired(root)))
-	}
+	regions, stanzaNotes := stanzaRegionsFit(root, stanzaFiles, harness.ClaudeCode, service, intentChannelWired(root))
+	spec.Regions = append(spec.Regions, regions...)
 	keys, notes := shimHookKeys(root)
 	spec.Keys = keys
-	return spec, notes
+	return spec, append(notes, stanzaNotes...)
 }
 
 // wiringPreview is one repository's typed diff plus the freshness token the

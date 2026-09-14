@@ -687,10 +687,8 @@ func initWiringSpec(root, service, binPath string) (wiring.Spec, []string) {
 func initWiringSpecFor(root, service, binPath string, targets initTargets, hooksScope string) (wiring.Spec, []string) {
 	intentOn := intentChannelWired(root)
 	spec := wiring.Spec{}
-	for _, file := range targets.StanzaFiles {
-		spec.Regions = append(spec.Regions, stanzaRegionFor(targets.StanzaID, file, service, intentOn))
-	}
-	var notes []string
+	regions, notes := stanzaRegionsFit(root, targets.StanzaFiles, targets.StanzaID, service, intentOn)
+	spec.Regions = append(spec.Regions, regions...)
 	if !targets.Hooks {
 		return spec, notes
 	}
@@ -1117,6 +1115,170 @@ func stanzaBodyOf(stanza string) string {
 		s = s[:i]
 	}
 	return strings.TrimSuffix(s, "\n")
+}
+
+// ─── e. line-budget fitting (O57 item 3) ──────────────────────────────────
+//
+// The stanza refresh must be idempotent in line count: re-rendering the
+// fathom region over an existing region must never change a file's line
+// count unless the stanza's OWN content changed, and when a router_thin
+// budget applies (.fathom/concerns.cue, KindMaxLines) the generator trims
+// the stanza's optional blocks to fit rather than tripping it — trading
+// nothing safety-relevant away. Both properties are corollaries of the
+// same design: fitStanzaBody is a pure function of (repo state, template,
+// budget), so two consecutive calls over the same repo state necessarily
+// pick the same trim level and render the same bytes, and a call that
+// WOULD trip a budget picks a smaller trim level instead of writing
+// anyway.
+
+// fathomStanzaBodyTrimmed is fathomStanzaBodyFor with 0, 1, or 2 of its
+// optional blocks removed. drop 0 is byte-identical to fathomStanzaBodyFor
+// — the golden every wired repository carries
+// (TestStanzaHookSentencesClaudeByteIdentical) — and this function must
+// never change what that returns. drop 1 additionally removes the worked
+// "opening moves" example (the live, concrete tool-call sequences — useful
+// but not itself a rule). drop 2 additionally removes the Continuity
+// paragraph (moot on a harness whose hooks are actually wired, which is
+// exactly the state a repo carrying a router_thin budget is in). Every
+// other block — the routing paragraph, the refresh-index paragraph, the
+// Obligations paragraph, and the done-means-proven / verify block — is
+// never dropped: those carry the stanza's actual instructions, not
+// decoration.
+func fathomStanzaBodyTrimmed(id, service string, intentOn bool, drop int) (body string, dropped []string) {
+	body = fathomStanzaBodyFor(id, service, intentOn)
+	if drop <= 0 {
+		return body, nil
+	}
+	_, continuity := stanzaHookSentences(id, intentOn)
+	if drop >= 1 {
+		if block := openingMovesTable + "\n\n"; strings.Contains(body, block) {
+			body = strings.Replace(body, block, "", 1)
+			dropped = append(dropped, "live-example (the opening-moves table)")
+		}
+	}
+	if drop >= 2 {
+		if block := continuity + "\n\n"; strings.Contains(body, block) {
+			body = strings.Replace(body, block, "", 1)
+			dropped = append(dropped, "continuity paragraph")
+		}
+	}
+	return body, dropped
+}
+
+// countTextLines is custodian's countLines (unexported there), applied to
+// a string: the number of lines a file of this content would report to
+// `wc -l` / a max_lines concern — every "\n" plus one more if the content
+// does not already end with one. Empty content is zero lines.
+func countTextLines(s string) int {
+	if s == "" {
+		return 0
+	}
+	n := strings.Count(s, "\n")
+	if !strings.HasSuffix(s, "\n") {
+		n++
+	}
+	return n
+}
+
+// stanzaLineBudget reads .fathom/concerns.cue (both scopes, project
+// governing — law 13) for a live, non-off KindMaxLines concern targeting
+// file (repo-relative, e.g. "CLAUDE.md") and returns its line budget. ok
+// is false when no such concern is registered, or the concern file itself
+// cannot be loaded — fail-open, matching every other custodian consumer in
+// this codebase: an unreadable or absent concerns.cue imposes no budget
+// rather than blocking the write.
+func stanzaLineBudget(root, file string) (lines int, ok bool) {
+	concerns, errs := loadConcernsBoth(root)
+	if len(errs) > 0 && len(concerns) == 0 {
+		return 0, false
+	}
+	for _, c := range concerns {
+		if c.Off || c.Check.Kind != custodian.KindMaxLines {
+			continue
+		}
+		if filepath.ToSlash(c.Check.File) != file {
+			continue
+		}
+		if !ok || c.Check.Lines < lines {
+			lines, ok = c.Check.Lines, true
+		}
+	}
+	return lines, ok
+}
+
+// fitStanzaBody computes the ONE body every file in files gets. Multiple
+// stanza-carrying files must always carry the identical body (doctor's
+// stanza-identical check, HP-11) — so the fit decision is made ONCE, by
+// previewing each successively-more-trimmed candidate against every file
+// in files that carries its own max_lines budget, and applied uniformly;
+// it is never decided independently per file, or CLAUDE.md and AGENTS.md
+// could pick different trim levels and drift apart. A file with no budget
+// concern imposes no constraint; a file that cannot be read imposes none
+// either (fail-open — the write to that file, if any, surfaces its own
+// error downstream). dropped names what the winning candidate removed,
+// nil when nothing was.
+func fitStanzaBody(root string, files []string, id, service string, intentOn bool) (body string, dropped []string) {
+	type constraint struct {
+		file   string
+		budget int
+	}
+	var budgets []constraint
+	for _, f := range files {
+		if n, ok := stanzaLineBudget(root, f); ok {
+			budgets = append(budgets, constraint{f, n})
+		}
+	}
+	for drop := 0; drop <= 2; drop++ {
+		body, dropped = fathomStanzaBodyTrimmed(id, service, intentOn, drop)
+		fits := true
+		for _, b := range budgets {
+			content, _, perr := wiring.PreviewRegionFile(root, wiring.Region{
+				File: b.file, Syntax: wiring.HTMLMarkers, Version: fathomStanzaVersion,
+				Body: body, AdoptUntracked: true,
+			})
+			if perr != nil {
+				continue // unreadable: imposes no constraint, same convention as stanzaLineBudget
+			}
+			if countTextLines(content) > b.budget {
+				fits = false
+				break
+			}
+		}
+		if fits {
+			return body, dropped
+		}
+	}
+	// Every optional block is gone and a budget still would not hold —
+	// return the maximally trimmed candidate anyway (the caller reports
+	// what was dropped; refusing to write at all would be worse than a
+	// stanza that stays over budget by less than it otherwise would).
+	return body, dropped
+}
+
+// stanzaRegionsFit builds one wiring.Region per file in files, all
+// carrying fitStanzaBody's single shared body. notes names what was
+// trimmed to make it fit, for the caller to surface to the operator; nil
+// when nothing was dropped.
+func stanzaRegionsFit(root string, files []string, id, service string, intentOn bool) ([]wiring.Region, []string) {
+	body, dropped := fitStanzaBody(root, files, id, service, intentOn)
+	regions := make([]wiring.Region, 0, len(files))
+	for _, f := range files {
+		regions = append(regions, wiring.Region{
+			File:           f,
+			Syntax:         wiring.HTMLMarkers,
+			Version:        fathomStanzaVersion,
+			Body:           body,
+			AdoptUntracked: true,
+		})
+	}
+	var notes []string
+	if len(dropped) > 0 {
+		notes = append(notes, fmt.Sprintf(
+			"stanza trimmed to fit a router_thin line budget (.fathom/concerns.cue): dropped %s",
+			strings.Join(dropped, ", "),
+		))
+	}
+	return regions, notes
 }
 
 // applyWiringSpec runs spec through internal/wiring's plan → apply and

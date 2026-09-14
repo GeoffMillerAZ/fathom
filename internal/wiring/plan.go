@@ -227,6 +227,25 @@ func PlanWiring(root string, spec Spec) (Plan, error) {
 	return p, nil
 }
 
+// PreviewRegionFile computes the full prospective content of r.File under
+// root after writing region r into it — exactly what ApplyWiring would
+// write for that one region — without touching disk. It shares the same
+// splice logic apply uses (placeRegion), so a caller measuring a candidate
+// body against a real budget (a router_thin max_lines concern, say) sees
+// precisely what would land, chrome included, before committing to it.
+func PreviewRegionFile(root string, r Region) (content string, existed bool, err error) {
+	path := filepath.Join(root, filepath.FromSlash(r.File))
+	content, existed, err = readFileIfPresent(path)
+	if err != nil {
+		return "", existed, err
+	}
+	next, err := placeRegion(content, existed, r)
+	if err != nil {
+		return "", existed, err
+	}
+	return next, existed, nil
+}
+
 func readFileIfPresent(path string) (string, bool, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
