@@ -13,6 +13,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -367,12 +368,91 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 // buildFathomBinary mirrors scripts/context-bench.sh's own scratch build:
 // GOWORK=off (a linked worktree cannot always resolve ../agentic-kit) and
 // CGO_ENABLED=1 (tree-sitter, ADR-013).
+// buildFathomBinary puts the fathom binary a wired cell runs at out. It is
+// built from a clean export of the repository's HEAD — never from the
+// working tree — and cached per commit under workspace/tmp/, so (1) a cell
+// runs exactly the commit its ledger row names, and (2) another editor's
+// in-progress edits in the checkout cannot break or leak into a cell
+// (guards-pilot-4 lost a wired cell to an uncommitted compile error,
+// 2026-09-13). The cache key is the HEAD sha; a dirty tree changes nothing.
 func buildFathomBinary(ctx context.Context, root, out string) (string, error) {
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", out, "./cmd/fathom")
-	cmd.Dir = root
+	sha, err := gitHeadSHA(ctx, root)
+	if err != nil {
+		return "", err
+	}
+	cached := filepath.Join(root, "workspace", "tmp", "fathom-bin-"+sha, "fathom")
+	if _, statErr := os.Stat(cached); statErr != nil {
+		if output, buildErr := buildFathomFromExport(ctx, root, sha, cached); buildErr != nil {
+			return output, buildErr
+		}
+	}
+	buildBinaryMu.Lock()
+	defer buildBinaryMu.Unlock()
+	return "", copyFile(cached, out)
+}
+
+// buildBinaryMu serializes the copy of a cached binary into a cell dir —
+// two arms of one task wire their daemons concurrently under -parallel-arms.
+var buildBinaryMu sync.Mutex
+
+func gitHeadSHA(ctx context.Context, root string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("building fathom: git rev-parse HEAD in %s: %w", root, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// buildFathomFromExport exports HEAD into a temporary directory with
+// `git archive` (tracked files only — the in-tree module mirror included,
+// the working tree's edits excluded) and builds ./cmd/fathom there.
+func buildFathomFromExport(ctx context.Context, root, sha, dest string) (string, error) {
+	tmp, err := os.MkdirTemp(filepath.Join(root, "workspace", "tmp"), "fathom-src-")
+	if err != nil {
+		return "", fmt.Errorf("building fathom: %w", err)
+	}
+	defer os.RemoveAll(tmp)
+	archive := exec.CommandContext(ctx, "sh", "-c", "git -C \"$1\" archive --format=tar \"$2\" | tar -x -C \"$3\"", "sh", root, sha, tmp)
+	if output, err := archive.CombinedOutput(); err != nil {
+		return string(output), fmt.Errorf("building fathom: exporting %s: %w", sha[:12], err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return "", fmt.Errorf("building fathom: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", dest, "./cmd/fathom")
+	cmd.Dir = tmp
 	cmd.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
 	output, err := cmd.CombinedOutput()
-	return string(output), err
+	if err != nil {
+		_ = os.Remove(dest)
+		return string(output), fmt.Errorf("building fathom from export of %s: %w", sha[:12], err)
+	}
+	return string(output), nil
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return err
+	}
+	tmp := dst + ".tmp"
+	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp, dst)
 }
 
 func freePort() (int, error) {

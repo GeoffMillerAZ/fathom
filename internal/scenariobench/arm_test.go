@@ -1,6 +1,7 @@
 package scenariobench
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -161,10 +162,9 @@ func TestRenderArm_WiredKeepsRealFathomInitHooks(t *testing.T) {
 
 	binDir := t.TempDir()
 	bin := filepath.Join(binDir, "fathom")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/fathom")
-	build.Dir = repoRoot
-	build.Env = append(os.Environ(), "GOWORK=off", "CGO_ENABLED=1")
-	if out, err := build.CombinedOutput(); err != nil {
+	// Built the way a cell builds it: from a clean export of HEAD, cached
+	// per commit — the working tree may carry another editor's half-edit.
+	if out, err := buildFathomBinary(context.Background(), repoRoot, bin); err != nil {
 		t.Fatalf("building fathom: %v\n%s", err, out)
 	}
 
