@@ -1008,6 +1008,7 @@ legacy items are never hidden. The continuity-thread bet itself is
 
 ```sh
 fathom config audit [--repo .] [--json] [--format text|json|sarif] [--hook [--harness claude-code]]
+fathom config audit [--repo .] --code-facts [--json] [--strict]
 ```
 
 `--hook` is the harness **ConfigChange** hook (PC-24): it reads the event
@@ -1034,6 +1035,19 @@ verify`, or a `workspace/artifacts/retros/` path — and
 scoped to this repo's own id shape so a sibling repo's records are named
 rather than reported missing. Fathom reports and never edits your prose —
 the session applies fixes. Full model: `docs/design/config-custodian.md`.
+
+`--code-facts` (VB-28, *experimental*, **off by default**): audit
+code-fact-shaped sentences across every auto-loaded file — CLAUDE.md,
+AGENTS.md, `.cursor/rules/*`, `.windsurf/rules/*`, the Cline memory bank
+(`memory-bank/*.md`), and Claude Code's per-project auto-memory
+(`~/.claude/projects/<encoded-root>/memory/*.md`) — classifying each as
+`anchored-fresh`, `anchored-drifted` (with a receipt naming what the tree
+says now), `unanchorable-code-claim`, or `preference`. Advisory: exits `0`
+regardless of findings unless `--strict` is also given, in which case any
+`anchored-drifted` sentence exits `1`. A file this cannot read is named on
+stderr and the run reports itself as a lower bound, never a silent clean
+bill. Stays off by default until precision holds ≥ 0.8 on a real labelled
+set (VB-29, `docs/vision/22-config-custodian.md` §3c).
 
 ### `daemon` — install, inspect and remove the serve-http agent
 
