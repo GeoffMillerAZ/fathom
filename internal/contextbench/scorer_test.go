@@ -90,6 +90,78 @@ func TestScore_EmptyOutputAlwaysFails(t *testing.T) {
 	}
 }
 
+// TestScore_AnswerAnyOf_GroupSatisfiedByEitherSpelling pins VB-36/O47: an
+// answer_any_of group is satisfied by ANY of its members, so the specific
+// spelling an arm chose does not matter as long as it names one of them.
+func TestScore_AnswerAnyOf_GroupSatisfiedByEitherSpelling(t *testing.T) {
+	task := Task{
+		ID:          "T7",
+		GroundTruth: []string{"ADR-021"},
+		AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}},
+		ScoringRule: AllOf,
+	}
+
+	canonical := Score(task, "Per ADR-021, typed edges must be carried on core.Edge.")
+	if !canonical.Pass {
+		t.Fatalf("expected pass on the canonical spelling, got fail: %+v", canonical)
+	}
+	if got, want := canonical.Matched, []string{"ADR-021", "core.Edge"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("matched = %v, want %v", got, want)
+	}
+
+	variant := Score(task, "Per ADR-021, typed edges must be carried on the Edge struct.")
+	if !variant.Pass {
+		t.Fatalf("expected pass on the alternate spelling, got fail: %+v", variant)
+	}
+	if got, want := variant.Matched, []string{"ADR-021", "Edge struct"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("matched = %v, want %v", got, want)
+	}
+}
+
+// TestScore_AnswerAnyOf_UnsatisfiedByNeitherSpelling pins the failure side:
+// a group with no member present is missing, named by its full alternatives
+// so a reader can see what was demanded.
+func TestScore_AnswerAnyOf_UnsatisfiedByNeitherSpelling(t *testing.T) {
+	task := Task{
+		ID:          "T8",
+		GroundTruth: []string{"ADR-021"},
+		AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}},
+		ScoringRule: AllOf,
+	}
+	r := Score(task, "Per ADR-021, typed edges must be carried on a Node.")
+	if r.Pass {
+		t.Fatalf("expected fail (neither spelling present), got pass: %+v", r)
+	}
+	if got, want := r.Missing, []string{"core.Edge | Edge struct"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("missing = %v, want %v", got, want)
+	}
+}
+
+// TestScore_AnswerAnyOf_MixedWithRequiredTokens pins the combination O47
+// actually needs: a plain GroundTruth token stays required exactly as
+// before, alongside a spelling-tolerant group.
+func TestScore_AnswerAnyOf_MixedWithRequiredTokens(t *testing.T) {
+	task := Task{
+		ID:          "T9",
+		GroundTruth: []string{"ADR-021", "internal/core"},
+		AnswerAnyOf: [][]string{{"core.Edge", "Edge struct"}},
+		ScoringRule: AllOf,
+	}
+
+	pass := Score(task, "ADR-021 governs internal/core; typed edges live on the Edge struct.")
+	if !pass.Pass {
+		t.Fatalf("expected pass (required tokens present, group satisfied by alt spelling), got fail: %+v", pass)
+	}
+
+	missingRequired := Score(task, "ADR-021 says typed edges live on the Edge struct.")
+	if missingRequired.Pass {
+		t.Fatalf("expected fail (required token internal/core missing even though the group is satisfied), got pass: %+v", missingRequired)
+	}
+	if got, want := missingRequired.Missing, []string{"internal/core"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("missing = %v, want %v", got, want)
+	}
+}
+
 func TestScore_MatchedMissingAreSortedAndDeterministic(t *testing.T) {
 	task := Task{
 		ID:          "T6",

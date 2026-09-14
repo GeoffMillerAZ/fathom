@@ -185,15 +185,17 @@
       "category": "what_governs",
       "prompt": "Per fathom's compiled obligations layer, a decision-record rule governs internal/core/model.go about where typed call-edge kinds must be carried. Name the Go type they must reside on, and the identifier of the decision record that rule comes from.",
       "ground_truth": [
-        "core.Edge",
         "ADR-021"
+      ],
+      "answer_any_of": [
+        ["core.Edge", "Edge struct"]
       ],
       "scoring_rule": "all-of",
       "exercises": [
         "obligations",
         "read_source"
       ],
-      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The task's previous truth ('internal/core', 'pkg/client') sat verbatim in the root CLAUDE.md, which every `claude -p` session auto-loads: the no-tools arm passed it 2 of 2 at ~28k tokens in 5.5s by quoting its own system prompt (O25, run-20260902T211103Z), and it cost six tool-arm cells to discover that. Re-derived against the same file (internal/core/model.go) and the same class (what governs this file, per the compiled layer) onto a rule the baseline does not contain: obligations(internal/core/model.go) served, at compiled_at_watermark 5a7bd81, 'ADR-021: Typed call edges must reside on core.Edge, never mutating Calls contract.' src ADR.md#L635-L636, layer adr-rules, no staleness flag. Hand-verified at HEAD: ADR.md#L621 is the ADR-021 heading and ADR.md#L636 reads 'carried on core.Edge, never mutating the existing syntax-derived Calls'. Neither token appears in CLAUDE.md or AGENTS.md.",
+      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The task's previous truth ('internal/core', 'pkg/client') sat verbatim in the root CLAUDE.md, which every `claude -p` session auto-loads: the no-tools arm passed it 2 of 2 at ~28k tokens in 5.5s by quoting its own system prompt (O25, run-20260902T211103Z), and it cost six tool-arm cells to discover that. Re-derived against the same file (internal/core/model.go) and the same class (what governs this file, per the compiled layer) onto a rule the baseline does not contain: obligations(internal/core/model.go) served, at compiled_at_watermark 5a7bd81, 'ADR-021: Typed call edges must reside on core.Edge, never mutating Calls contract.' src ADR.md#L635-L636, layer adr-rules, no staleness flag. Hand-verified at HEAD: ADR.md#L621 is the ADR-021 heading and ADR.md#L636 reads 'carried on core.Edge, never mutating the existing syntax-derived Calls'. Neither token appears in CLAUDE.md or AGENTS.md. VB-36/O47 (2026-09-13): the home bench run-20260914T035806Z scored two otherwise-correct wired trials a miss because they answered 'Edge struct' where the corpus demanded the literal 'core.Edge' — same fact, different spelling. 'core.Edge' moved from ground_truth into an answer_any_of group with 'Edge struct'; 'ADR-021' stays a plain required token. The rule's substance (must be core.Edge, per ADR-021) is unchanged.",
       "notes": "RECOMPILE-EXPOSED: premise assumes the layer still serves this rule for this file post-recompile — see post_recompile_rederivation. RE-DERIVED 2026-07-24 (H3-1): ground truth confirmed still accurate at current HEAD; used as T12's new re-anchor claim (same file, same drifted citation) — see H1-T12.",
       "requires": [
         "compiled-layer"

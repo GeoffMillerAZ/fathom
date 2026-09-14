@@ -59,6 +59,9 @@ func ScoreWithPrecision(task Task, output string) PrecisionScore {
 	ps.Fenced = ok
 	if !ok {
 		ps.Missing = append([]string(nil), gold...)
+		for _, group := range task.AnswerAnyOf {
+			ps.Missing = append(ps.Missing, strings.Join(group, " | "))
+		}
 		sort.Strings(ps.Missing)
 		return ps
 	}
@@ -72,25 +75,48 @@ func ScoreWithPrecision(task Task, output string) PrecisionScore {
 	ps.Predicted = len(lines)
 	ps.OverBudget = ps.Predicted > ps.MaxPredicted
 
-	scored := Score(Task{ID: task.ID, GroundTruth: gold, ScoringRule: task.ScoringRule}, block)
+	// VB-36/O47: answer_any_of travels through unchanged — a group is
+	// still satisfied by any of its spelling-equivalent members.
+	scored := Score(Task{ID: task.ID, GroundTruth: gold, AnswerAnyOf: task.AnswerAnyOf, ScoringRule: task.ScoringRule}, block)
 	ps.Matched, ps.Missing = scored.Matched, scored.Missing
 
 	hits := 0
 	for _, l := range lines {
+		hit := false
 		for _, g := range gold {
 			if strings.Contains(l, g) {
-				hits++
+				hit = true
 				break
 			}
 		}
+		if !hit {
+			for _, group := range task.AnswerAnyOf {
+				for _, alt := range group {
+					if strings.Contains(l, alt) {
+						hit = true
+						break
+					}
+				}
+				if hit {
+					break
+				}
+			}
+		}
+		if hit {
+			hits++
+		}
 	}
+	// A group counts as one gold item for precision/recall purposes, same
+	// as one plain GroundTruth token — satisfying it by either spelling
+	// earns the same credit.
+	totalGold := len(gold) + len(task.AnswerAnyOf)
 	if ps.Predicted > 0 {
 		ps.Precision = float64(hits) / float64(ps.Predicted)
 	}
-	if len(gold) > 0 {
-		ps.Recall = float64(len(ps.Matched)) / float64(len(gold))
+	if totalGold > 0 {
+		ps.Recall = float64(len(ps.Matched)) / float64(totalGold)
 	}
-	ps.Pass = scored.Pass && !ps.OverBudget && len(gold) > 0
+	ps.Pass = scored.Pass && !ps.OverBudget && totalGold > 0
 	return ps
 }
 
