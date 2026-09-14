@@ -115,15 +115,29 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	if err := ensureCommit(ctx, cloneDir, task.Subject.BaseCommit); err != nil {
 		return Worktree{}, err
 	}
-	if _, err := os.Stat(filepath.Join(wtPath, ".git")); err == nil {
-		if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
-			return Worktree{}, fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
+	// git's worktree registration files are not safe under concurrent
+	// `worktree add` in one clone (eight parallel cells read a half-written
+	// commondir, "Result too large", 2026-09-14): every worktree operation
+	// on a clone runs under that clone's lock, like the clone itself.
+	if err := func() error {
+		unlock := lockClone(cloneDir)
+		defer unlock()
+		if _, err := os.Stat(filepath.Join(wtPath, ".git")); err == nil {
+			if out, err := runIn(ctx, wtPath, "git", "reset", "--hard", task.Subject.BaseCommit); err != nil {
+				return fmt.Errorf("preparing subject: resetting the shared worktree: %w (%s)", err, out)
+			}
+			if out, err := runIn(ctx, wtPath, "git", "clean", "-fdx"); err != nil {
+				return fmt.Errorf("preparing subject: cleaning the shared worktree: %w (%s)", err, out)
+			}
+			return nil
 		}
-		if out, err := runIn(ctx, wtPath, "git", "clean", "-fdx"); err != nil {
-			return Worktree{}, fmt.Errorf("preparing subject: cleaning the shared worktree: %w (%s)", err, out)
+		_, _ = runIn(ctx, cloneDir, "git", "worktree", "prune")
+		if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
+			return fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
 		}
-	} else if out, err := runIn(ctx, cloneDir, "git", "worktree", "add", "--detach", wtPath, task.Subject.BaseCommit); err != nil {
-		return Worktree{}, fmt.Errorf("preparing subject: git worktree add: %w (%s)", err, out)
+		return nil
+	}(); err != nil {
+		return Worktree{}, err
 	}
 
 	wt := Worktree{Path: wtPath, SubjectClone: cloneDir}
