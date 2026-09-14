@@ -146,12 +146,47 @@ func TestTokenCounts_QuotedLinePlusAssertiveMentionCounts(t *testing.T) {
 	}
 }
 
-// TestTokenCounts_BacktickWrappedDoesNotCountAlone covers the inline
-// (non-blockquote) quoting shape.
-func TestTokenCounts_BacktickWrappedDoesNotCountAlone(t *testing.T) {
+// TestTokenCounts_InlineBacktickCounts is the fix-first review's own PIN:
+// a backticked identifier inside otherwise ordinary prose — the way a
+// model routinely formats an identifier, path, or symbol name — must
+// COUNT. Only a line that is ENTIRELY a quotation (isQuotedPosition) is
+// excluded; an inline backtick span within a longer sentence never was
+// that, by design.
+func TestTokenCounts_InlineBacktickCounts(t *testing.T) {
 	text := "The old code referenced `ADR-010` before the rewrite."
+	if !tokenCounts(text, "ADR-010") {
+		t.Error("expected an inline backtick-wrapped identifier in ordinary prose to count")
+	}
+}
+
+// TestTokenCounts_ConcludingSpanBacktickedIdentifierCounts is the exact
+// case the review names: "whose distinctive identifier is `ADR-014`" —
+// a backticked identifier inside the concluding span must count.
+func TestTokenCounts_ConcludingSpanBacktickedIdentifierCounts(t *testing.T) {
+	text := "whose distinctive identifier is `ADR-014`"
+	if !tokenCounts(text, "ADR-014") {
+		t.Error("expected a backticked identifier inside the concluding span to count")
+	}
+}
+
+// TestOracleAnswerMatches_BacktickedConclusionPasses proves the same PIN
+// at the oracle layer: an answer whose entire conclusion is a backticked
+// identifier must PASS for that gold token.
+func TestOracleAnswerMatches_BacktickedConclusionPasses(t *testing.T) {
+	answer := "Some reasoning here.\n\nwhose distinctive identifier is `ADR-014`"
+	if !oracleAnswerMatches(answer, []string{"ADR-014"}, nil) {
+		t.Error("expected PASS — a backticked identifier in the concluding prose is the answer's own claim, not a citation")
+	}
+}
+
+// TestTokenCounts_WholeLineBacktickFenceStillExcluded covers the
+// surviving exclusion: a line that is NOTHING but a backtick-fenced
+// quotation (unlike an inline span inside a longer sentence) is still a
+// quoted LINE.
+func TestTokenCounts_WholeLineBacktickFenceStillExcluded(t *testing.T) {
+	text := "Background:\n\n`ADR-010`\n\nNothing else mentions it."
 	if tokenCounts(text, "ADR-010") {
-		t.Error("expected tokenCounts to reject a backtick-wrapped occurrence")
+		t.Error("expected a line that is nothing but a backtick-fenced quotation to still be excluded")
 	}
 }
 

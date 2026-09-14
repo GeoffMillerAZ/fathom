@@ -277,48 +277,44 @@ func tokenCounts(text, tok string) bool {
 	return false
 }
 
-// isQuotedPosition reports whether pos sits on a markdown blockquote line
-// (a line whose first non-whitespace character is ">") or inside an
-// inline span wrapped in backticks or quote marks — text the answer is
-// CITING rather than asserting, so a gold token appearing only there must
-// not count as the answer's own claim (O53 defect 5b).
+// isQuotedPosition reports whether pos sits on a QUOTED LINE — a
+// markdown blockquote (first non-whitespace character ">") or a line
+// whose ENTIRE trimmed content is fenced start-to-end by the same
+// backtick or quote mark — text the answer is CITING rather than
+// asserting, so a gold token appearing only there must not count as the
+// answer's own claim (O53 defect 5b).
+//
+// PIN (fix-first review, wave-n1): an inline backtick span inside an
+// otherwise ordinary prose line — "whose distinctive identifier is
+// `ADR-014`" — does NOT count as quoting, and never did by design;
+// models routinely format identifiers, paths and symbol names as inline
+// code, and excluding every backtick-wrapped span would reject the most
+// common way a model states its own conclusion. Only a line that is
+// ENTIRELY a quotation counts. "A line the prose rejects" is a SEPARATE
+// concern — clauseIsNegated, checked independently by tokenCounts — this
+// function only ever answers the QUOTING half.
 func isQuotedPosition(text string, pos int) bool {
 	lineStart := strings.LastIndexByte(text[:pos], '\n') + 1
 	lineEnd := len(text)
 	if rel := strings.IndexByte(text[pos:], '\n'); rel >= 0 {
 		lineEnd = pos + rel
 	}
-	line := text[lineStart:lineEnd]
-	if strings.HasPrefix(strings.TrimSpace(line), ">") {
+	trimmed := strings.TrimSpace(text[lineStart:lineEnd])
+	if strings.HasPrefix(trimmed, ">") {
 		return true
 	}
-	relPos := pos - lineStart
-	return insideDelimitedSpan(line, relPos, '`') ||
-		insideDelimitedSpan(line, relPos, '"') ||
-		insideDelimitedSpan(line, relPos, '\'')
+	return isWhollyDelimited(trimmed, '`') ||
+		isWhollyDelimited(trimmed, '"') ||
+		isWhollyDelimited(trimmed, '\'')
 }
 
-// insideDelimitedSpan reports whether relPos (a byte offset into line)
-// falls strictly between an opening and a matching closing delim on the
-// same line — a naive, non-nesting pairing (open, close, open, close,
-// …), sufficient for the inline backtick/quote spans this file's answers
-// actually use.
-func insideDelimitedSpan(line string, relPos int, delim byte) bool {
-	open := -1
-	for i := 0; i < len(line); i++ {
-		if line[i] != delim {
-			continue
-		}
-		if open < 0 {
-			open = i
-			continue
-		}
-		if relPos > open && relPos < i {
-			return true
-		}
-		open = -1
-	}
-	return false
+// isWhollyDelimited reports whether trimmed (a line's own trimmed
+// content, at least 2 bytes) both starts AND ends with delim — a line
+// that is nothing but "`ADR-014`" on its own, never an inline span
+// inside a longer sentence (isQuotedPosition's whole point, per the pin
+// above).
+func isWhollyDelimited(trimmed string, delim byte) bool {
+	return len(trimmed) >= 2 && trimmed[0] == delim && trimmed[len(trimmed)-1] == delim
 }
 
 func allPassed(passed map[string]bool, names []string) bool {
