@@ -184,6 +184,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdModule(args[1:], stdout, stderr)
 	case "rules":
 		return cmdRules(args[1:], stdout, stderr)
+	case "receipt":
+		return cmdReceipt(args[1:], stdout, stderr)
 	case "metrics":
 		return cmdMetrics(args[1:], stdout, stderr)
 	case "findings":

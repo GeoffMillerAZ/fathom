@@ -73,6 +73,7 @@ var verbTable = []verb{
 	{Name: "research", Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"},
 	{Name: "module", Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"},
 	{Name: "rules", Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules"},
+	{Name: "receipt", Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"},
 	{Name: "metrics", Summary: "Observability surfaces: spend | traffic | channels | interventions | series | rollup | rotate"},
 	{Name: "findings", Summary: "Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)"},
 	{Name: "memory", Summary: "Anchored memory: add | list | review | show — a memory with no anchor is refused, and drift expires it"},
