@@ -105,6 +105,125 @@ $ fathom review --service myapp --since origin/main \
 
 ---
 
+## Selecting tests
+
+`fathom tests select --since <ref>` answers a different question than
+coverage does: not "what ran", but "what should I run for THIS diff" —
+which `Test*` functions to actually invoke, ranked, plus the changed
+symbols no test reaches at all (VB-33, `docs/vision/29-verbs-not-lookups.md`
+§3 wave J).
+
+It reuses the SAME diff→changed-symbols composition `fathom review` and
+`review_diff`'s `test_impact` dimension already use
+(`internal/analysis/impact.TestGap`, built on the call graph's
+`TestImpactDetail`): every ranked test is a `Test*` function that statically
+reaches at least one changed symbol.
+
+```
+fathom tests select --since origin/main --service myapp \
+  --profile unit=workspace/cov/unit.out
+```
+
+Ranking, in priority order:
+
+1. **Direct reach before dispatch-mediated reach.** A test whose call site
+   literally names the changed symbol outranks one whose only path crossed
+   a typed interface-dispatch edge (ADR-021 §3) — real evidence, but weaker.
+2. **WHEN `--profile` is supplied:** descending mean statement-coverage
+   percent over the changed symbols the test reaches — a reach corroborated
+   by a real, executed run outranks one that is only a static (possibly
+   dead) edge. A standard Go cover profile carries no per-test attribution
+   (see `internal/analysis/coverage`'s own doc comments), so this is a
+   symbol-level corroboration signal, never a per-test one, and it has NO
+   effect on ranking when no profile is given.
+3. **Test layer** (`internal/testlayer.Classify`): unit before integration
+   before e2e — run the cheap tests first.
+4. **Reach breadth**, descending — a test touching more of the change first.
+5. **Test name**, for a total deterministic order.
+
+The output is a ranked list, a `go test` invocation PER PACKAGE (grouped —
+`-run` only makes sense within one package's test binary), and the test
+gap:
+
+```json
+{
+  "since": "origin/main",
+  "ranked_tests": [
+    {"test": "myapp::internal/widget.TestParse", "file": "internal/widget/widget_test.go", "citation": "internal/widget/widget_test.go#L10-L18", "layer": "unit", "reaches": ["myapp::internal/widget.Parse"]}
+  ],
+  "invocations": [
+    {"package": "internal/widget", "tests": ["TestParse"], "command": "go test ./internal/widget -run '^(TestParse)$'"}
+  ],
+  "test_gap": [
+    {"symbol": "myapp::internal/widget.newHelper", "file": "internal/widget/widget.go", "citation": "internal/widget/widget.go#L61"}
+  ]
+}
+```
+
+**Predicted catch-rate — never a promised number.** When a replay ledger
+exists at `workspace/artifacts/tests-select/replay.jsonl` (newline-
+delimited JSON, one historical replay per line —
+`{"commit":"<sha>","selected":<n>,"total":<n>,"caught":<bool>}`), the
+report adds a `replay` block: the measured fraction of past replays where
+the selection would have included a test that actually failed. No ledger,
+no block — fathom never fabricates a catch-rate it hasn't measured.
+
+---
+
+## Mutation: covered is not the same as asserted
+
+Statement coverage answers "did SOME test execute this line". It says
+nothing about whether that test would have NOTICED the line breaking — a
+symbol can be 100% covered with every assertion in its reaching test
+disconnected from the mutated behavior. Mutation testing (VB-34) closes
+that gap: `internal/analysis/coverage.ParseMutationReport` joins a mutation
+run to symbols exactly like a cover profile does, producing per-symbol
+`{mutants, killed, survived, score}`.
+
+Two input shapes are accepted, detected by content:
+
+- **go-mutesting's own log output** (`github.com/zimmski/go-mutesting`) —
+  its per-mutant outcome line, `PASS "<tmpfile>" with checksum <hex>` (the
+  mutant was KILLED: the exec step's tests failed) or `FAIL "..."` (the
+  mutant SURVIVED: tests still passed) or `SKIP "..."` (didn't compile — no
+  evidence either way, counted separately, never joined). A FAIL record
+  always carries the `diff -u` block go-mutesting prints before it, which is
+  how the file and line are recovered; a PASS/SKIP record only carries one
+  under `go-mutesting --debug` — **run it with `--debug` for symbol-level
+  attribution** (`go-mutesting --debug ./... > workspace/artifacts/mutation.txt`).
+  Without `--debug`, a killed mutant's location can still often be recovered
+  from its own temp-file path, but never its line — such a mutant is kept
+  (never dropped) and counted in `--json`'s `mutation_summary.unattributed`
+  (`mutation_summary.skipped` counts the SKIP records; the table form
+  prints the same two counts as a line when either is non-zero).
+  The trailing `The mutation score is F (P passed, F failed, D duplicated,
+  S skipped, total is T)` summary line is cross-checked against what was
+  parsed; a mismatch, or its absence when records were found, is a parse
+  error, not a silent partial report.
+- **fathom's own JSON shape**, for any other tool a caller adapts to it:
+  `{"mutants":[{"file":"path/to/x.go","line":42,"killed":true}]}` (a bare
+  top-level array of the same records is accepted too).
+
+```
+fathom tests coverage --profile workspace/cov/unit.out --mutation workspace/artifacts/mutation.txt --service myapp
+```
+
+adds a `MUTATION` score column (0.0-1.0) next to the coverage table, and a
+`"mutation": {"mutants": N, "killed": N, "survived": N, "score": 0.0-1.0}`
+field per symbol in `--json`.
+
+**The verify gate.** `fathom verify --mutation <report>` (or the
+`FATHOM_MUTATION_REPORT` env var; `--store`/direct mode only) re-evaluates
+every already-Pass'd `test_reaches` criterion: a claimed row whose symbol IS
+reached by a test but whose mutants ALL survived (score 0) gets a
+`covered-not-asserted` note appended to that criterion's detail — advisory
+by default, so it never fails the gate on its own. `--strict-mutation`
+turns that finding into a gate-blocking `Fail` (label
+`covered-not-asserted`), the same advisory/strict split every other verify
+criterion uses.
+
+---
+
 ## Maintained
 
-This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`). Update it when these change.
+This doc covers: `review_diff` (`coverage_profile`, `coverage_profiles` args), `fathom review` (`--coverage-profile`), `fathom tests coverage` (`--profile`, `--service`, `--diff`, `--json`, `--mutation`), `fathom tests select` (`--since`, `--profile`, `--json`), `fathom verify` (`--mutation`, `--strict-mutation`). Update it when these change.

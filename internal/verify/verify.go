@@ -151,6 +151,14 @@ type TaskVerdict struct {
 	Skipped    bool // propagated from Task.Skipped ([-])
 	InProgress bool // propagated from Task.InProgress ([~])
 	Line       int  // propagated from Task.Line (0 when unknown)
+	// EvidenceFile / EvidenceLine are the resolved location of the task's
+	// claimed symbol when symbol_present passed — the SAME location
+	// verifyTask's own symbol_present Pass detail names in prose ("%s at
+	// %s:%d"), carried here as typed fields so a caller that needs the
+	// location (OverlayMutation) never re-parses that free text. Both are
+	// zero when the task carries no symbol or symbol_present did not pass.
+	EvidenceFile string
+	EvidenceLine int
 }
 
 // Summary holds report-level counts.
@@ -397,6 +405,8 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			fail("symbol_present", detail, "claimed-but-absent")
 		} else {
 			pass("symbol_present", fmt.Sprintf("%s at %s:%d", e.Symbol, matches[0].FilePath, matches[0].Line))
+			v.EvidenceFile = matches[0].FilePath
+			v.EvidenceLine = matches[0].Line
 		}
 
 		// tier

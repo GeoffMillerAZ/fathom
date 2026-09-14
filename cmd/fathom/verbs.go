@@ -41,7 +41,7 @@ var verbTable = []verb{
 	{Name: "layers", Summary: "List/show/install semantic-layer packs (embedded + project .fathom/layers/)"},
 	{Name: "report", Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge)"},
 	{Name: "review", Summary: "Store-direct review of files changed since a git ref (arch conformance, spec coverage); --no-persist = report only, --budget-seconds = advisory bound"},
-	{Name: "tests", Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer, joined against indexed symbols; --diff <base> narrows to changed symbols with no covering test"},
+	{Name: "tests", Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer, emits go test invocations grouped per package plus the test gap"},
 	{Name: "session-hook", Summary: "SessionStart hook: resolve this repo's service and emit a one-line reminder (or an honest not-indexed line); always exits 0"},
 	{Name: "prime", Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0"},
 	{Name: "discoveries", Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index (docs/vision/28-receipts.md §4)"},

@@ -104,7 +104,10 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		if len(args) > 1 && args[1] == "coverage" {
 			return cmdTestsCoverage(args[2:], stdout, stderr)
 		}
-		fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]")
+		if len(args) > 1 && args[1] == "select" {
+			return cmdTestsSelect(args[2:], stdout, stderr)
+		}
+		fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]")
 		return 1
 	case "edit-hook":
 		return cmdEditHook(args[1:], stdout, stderr)

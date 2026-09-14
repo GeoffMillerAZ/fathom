@@ -13,10 +13,17 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
+
+// mutationReportEnvVar is the env-var fallback for `fathom verify
+// --mutation` (VB-34): a CI pipeline that already sets it once for every
+// gate invocation needn't repeat the flag on every `fathom verify` call.
+// The flag, when given, always wins.
+const mutationReportEnvVar = "FATHOM_MUTATION_REPORT"
 
 // planFlags is a repeatable --plan flag value.
 type planFlags []string
@@ -51,9 +58,14 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line (PC-21)")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
+	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
+	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	if *mutationPath == "" {
+		*mutationPath = os.Getenv(mutationReportEnvVar)
 	}
 	if *jsonOut && *format == "" {
 		*format = "json"
@@ -119,13 +131,17 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	var prov verifyProvenance
 	if *storePath != "" {
 		prov = verifyLedgerProvenance(nil, "", *storePath, *service)
-		reps, err := verifyAllAgainstStore(localPlans, *service, *storePath, *concern, files)
+		reps, err := verifyAllAgainstStore(localPlans, *service, *storePath, *concern, files, *mutationPath, *strictMutation)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 2
 		}
 		reports = reps
 	} else {
+		if *mutationPath != "" {
+			fmt.Fprintln(stderr, "error: --mutation requires --store (direct mode) — HTTP/daemon mode has no local symbol join for it yet")
+			return 2
+		}
 		// verify_plan measured 10-15 s on the fleet daemon on 2026-09-13
 		// (4.5 s on 2026-09-09; O33). A client deadline under that turns
 		// the pre-push verify gate into exit 2 — operational, fail-open —
@@ -252,8 +268,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 }
 
 // verifyAllAgainstStore opens the store once and runs VerifyPlan for each plan
-// in sequence, sharing the call graph and contradiction index.
-func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern string, files verify.FileEvidence) ([]verify.Report, error) {
+// in sequence, sharing the call graph and contradiction index. mutationPath,
+// when non-empty (VB-34), is parsed and joined against nodes once and
+// overlaid onto every report via verify.OverlayMutation; strictMutation is
+// passed straight through.
+func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern string, files verify.FileEvidence, mutationPath string, strictMutation bool) ([]verify.Report, error) {
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)
 	if err != nil {
 		return nil, fmt.Errorf("opening store %q: %w", storePath, err)
@@ -308,9 +327,31 @@ func verifyAllAgainstStore(plans []verify.Plan, service, storePath, concern stri
 		files:   files,
 	}
 
+	var mutationScores []verify.MutationScore
+	if mutationPath != "" {
+		mf, ferr := os.Open(mutationPath) //nolint:gosec — an operator-supplied CLI flag / env var
+		if ferr != nil {
+			return nil, fmt.Errorf("open --mutation %q: %w", mutationPath, ferr)
+		}
+		mrep, perr := coverage.ParseMutationReport(mf)
+		mf.Close()
+		if perr != nil {
+			return nil, fmt.Errorf("parse --mutation %q: %w", mutationPath, perr)
+		}
+		for _, m := range coverage.JoinMutationSymbols(mrep, nodes) {
+			mutationScores = append(mutationScores, verify.MutationScore{
+				File: m.File, Line: m.Line, Mutants: m.Mutants, Killed: m.Killed, Survived: m.Survived, Score: m.Score,
+			})
+		}
+	}
+
 	reports := make([]verify.Report, 0, len(plans))
 	for _, plan := range plans {
-		reports = append(reports, verify.VerifyPlan(plan, ev))
+		rep := verify.VerifyPlan(plan, ev)
+		if len(mutationScores) > 0 {
+			verify.OverlayMutation(&rep, mutationScores, strictMutation)
+		}
+		reports = append(reports, rep)
 	}
 	return reports, nil
 }

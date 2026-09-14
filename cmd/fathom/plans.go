@@ -104,7 +104,7 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 
 	var reports []verify.Report
 	if storePath != "" {
-		reps, err := verifyAllAgainstStore(localPlans, service, storePath, "", files)
+		reps, err := verifyAllAgainstStore(localPlans, service, storePath, "", files, "", false)
 		if err != nil {
 			return nil, err
 		}
