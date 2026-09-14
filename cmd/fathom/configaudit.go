@@ -16,7 +16,10 @@ import (
 	"path/filepath"
 	"time"
 
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -37,6 +40,12 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 		return cmdConfigAuditHook(*harnessFlag, *hookEvent, stderr)
 	}
 	if *codeFacts {
+		switch *format {
+		case "", "text", "json":
+		default:
+			fmt.Fprintf(stderr, "error: --code-facts does not support --format %q (text or json only)\n", *format)
+			return 1
+		}
 		root, err := filepath.Abs(*repo)
 		if err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
@@ -270,11 +279,14 @@ func concernAttentionLine(projDir string) string {
 // classify every code-fact-shaped sentence across the auto-loaded corpus.
 // Mechanical only, same discipline as the rest of this command — reports,
 // never edits — and, per the design, advisory: exit 0 unless --strict asks
-// for a gate on drift. An unreadable file is named on stderr, never
-// silently absorbed into a clean-looking table (ADR-027's lesson).
+// for a gate on drift. Every read goes through custodian.AuditCodeFacts'
+// read-manifest, so an unreadable file or directory is named and the
+// sentence count is rendered as a lower bound (readcoverage.RenderCount)
+// rather than a bare total that would read as a clean sweep over a
+// directory this audit could not even list (ADR-027's lesson).
 func cmdConfigAuditCodeFacts(root string, asJSON, strict bool, stdout, stderr io.Writer) int {
 	home, _ := os.UserHomeDir()
-	findings, unreadable, err := custodian.AuditCodeFacts(root, home)
+	findings, coverage, err := custodian.AuditCodeFacts(root, home)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -284,19 +296,24 @@ func cmdConfigAuditCodeFacts(root string, asJSON, strict bool, stdout, stderr io
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		if encErr := enc.Encode(codeFactsAuditJSON{
-			RepoRoot:   root,
-			Findings:   findings,
-			Unreadable: unreadable,
+			RepoRoot: root,
+			Findings: findings,
+			Coverage: codeFactsCoverageJSON{
+				Complete:   coverage.Complete(),
+				Note:       readcoverage.Note(coverage),
+				Unreadable: coverage.Unreadable(),
+				Entries:    len(coverage.Entries),
+			},
 		}); encErr != nil {
 			fmt.Fprintf(stderr, "error: %v\n", encErr)
 			return 1
 		}
 	} else {
-		renderCodeFactsAudit(stdout, findings, unreadable)
+		renderCodeFactsAudit(stdout, findings, coverage)
 	}
 
-	if len(unreadable) > 0 {
-		fmt.Fprintf(stderr, "config: %d auto-loaded file(s) could not be read and were NOT audited (this run is a lower bound): %v\n", len(unreadable), unreadable)
+	if note := readcoverage.Note(coverage); note != "" {
+		fmt.Fprintf(stderr, "config: %s — this run is a lower bound, not a clean bill\n", note)
 	}
 
 	if strict {
@@ -310,12 +327,19 @@ func cmdConfigAuditCodeFacts(root string, asJSON, strict bool, stdout, stderr io
 }
 
 type codeFactsAuditJSON struct {
-	RepoRoot   string                      `json:"repo_root"`
-	Findings   []custodian.CodeFactFinding `json:"findings"`
-	Unreadable []string                    `json:"unreadable,omitempty"`
+	RepoRoot string                      `json:"repo_root"`
+	Findings []custodian.CodeFactFinding `json:"findings"`
+	Coverage codeFactsCoverageJSON       `json:"coverage"`
 }
 
-func renderCodeFactsAudit(w io.Writer, findings []custodian.CodeFactFinding, unreadable []string) {
+type codeFactsCoverageJSON struct {
+	Complete   bool                 `json:"complete"`
+	Note       string               `json:"note,omitempty"`
+	Unreadable []readmanifest.Entry `json:"unreadable,omitempty"`
+	Entries    int                  `json:"entries"`
+}
+
+func renderCodeFactsAudit(w io.Writer, findings []custodian.CodeFactFinding, coverage readmanifest.Manifest) {
 	var fresh, drifted, unanchorable, preference int
 	for _, f := range findings {
 		switch f.Class {
@@ -329,8 +353,8 @@ func renderCodeFactsAudit(w io.Writer, findings []custodian.CodeFactFinding, unr
 			preference++
 		}
 	}
-	fmt.Fprintf(w, "code-fact sentence audit (%d sentence(s): %d anchored-fresh, %d anchored-drifted, %d unanchorable, %d preference)\n\n",
-		len(findings), fresh, drifted, unanchorable, preference)
+	fmt.Fprintf(w, "code-fact sentence audit (%s: %d anchored-fresh, %d anchored-drifted, %d unanchorable, %d preference)\n\n",
+		readcoverage.RenderCount(coverage, len(findings), "sentence(s)"), fresh, drifted, unanchorable, preference)
 
 	for _, f := range findings {
 		if f.Class == custodian.ClassPreference {
@@ -349,8 +373,8 @@ func renderCodeFactsAudit(w io.Writer, findings []custodian.CodeFactFinding, unr
 		}
 	}
 
-	if len(unreadable) > 0 {
-		fmt.Fprintf(w, "\n%d auto-loaded file(s) could not be read (see stderr) — this audit is a LOWER BOUND, not a clean bill.\n", len(unreadable))
+	if note := readcoverage.Note(coverage); note != "" {
+		fmt.Fprintf(w, "\n%s — this audit is a LOWER BOUND, not a clean bill.\n", note)
 	}
 	fmt.Fprintf(w, "\n--code-facts is advisory and OFF by default until precision holds on a larger labelled set (VB-29); pass --strict to fail on anchored-drifted sentences.\n")
 }

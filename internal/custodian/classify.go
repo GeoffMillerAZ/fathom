@@ -9,8 +9,17 @@ package custodian
 // it is a preference regardless of what it mentions: "Keep CLAUDE.md a
 // thin router" names a real path but asserts no fact about the code's
 // current state.
+//
+// An anchor check has THREE outcomes, not two: it holds, it definitely
+// fails (the path is gone, the symbol is not declared anywhere reachable),
+// or it is unverifiable (a file or directory this check needed to read
+// could not be read). Only a definite failure may produce
+// anchored-drifted; an unverifiable check downgrades the sentence to
+// unanchorable-code-claim instead — an unreadable .go file must never
+// manufacture a false drift.
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -34,9 +43,18 @@ var (
 	lineCountClaimRe  = regexp.MustCompile("`?([A-Za-z0-9_./-]+\\.(?:go|md|cue|ya?ml|json|sh))`?[^.\\n]{0,60}?\\b(\\d[\\d,]*)\\s+lines?\\b")
 )
 
+// anchorOutcome is a check's tri-state verdict.
+type anchorOutcome int
+
+const (
+	anchorHolds anchorOutcome = iota
+	anchorFailed
+	anchorUnverifiable
+)
+
 // anchorResult is one concrete anchor's resolution.
 type anchorResult struct {
-	ok      bool
+	outcome anchorOutcome
 	receipt string
 }
 
@@ -45,7 +63,7 @@ type anchorResult struct {
 // path the sentence came from (sourceFile; "" when unknown, e.g. a
 // hand-supplied test sentence, or when the source lives outside root such
 // as Claude Code auto-memory), and the sentence's text, return its class
-// and, for anchored-drifted, the receipt.
+// and, for anchored-drifted or unanchorable-code-claim, the receipt.
 func classifySentence(root, sourceFile, text string) (CodeFactClass, string) {
 	text = strings.TrimSpace(text)
 	if text == "" {
@@ -139,29 +157,53 @@ func classifySentence(root, sourceFile, text string) (CodeFactClass, string) {
 		return ClassUnanchorable, ""
 	}
 
-	var failReceipt string
-	allOK := true
+	var failReceipt, unverifiableReceipt string
+	anyFailed := false
+	anyUnverifiable := false
 	for _, c := range checks {
-		if !c.ok {
-			allOK = false
+		switch c.outcome {
+		case anchorFailed:
+			anyFailed = true
 			if failReceipt == "" {
 				failReceipt = c.receipt
 			}
+		case anchorUnverifiable:
+			anyUnverifiable = true
+			if unverifiableReceipt == "" {
+				unverifiableReceipt = c.receipt
+			}
 		}
 	}
-	if allOK {
-		return ClassAnchoredFresh, checks[0].receipt
+	// A definite failure always wins: it is more certain and more
+	// actionable than "could not fully check". But when NOTHING failed
+	// outright and at least one check could not complete, the honest
+	// verdict is "cannot confirm this is still true" — never a claimed
+	// drift and never a claimed fresh.
+	if anyFailed {
+		return ClassAnchoredDrifted, failReceipt
 	}
-	return ClassAnchoredDrifted, failReceipt
+	if anyUnverifiable {
+		return ClassUnanchorable, unverifiableReceipt
+	}
+	return ClassAnchoredFresh, checks[0].receipt
 }
 
-// resolveRepoPath tries relRaw two ways — repo-root-relative (the house
-// style for backticked pointers) and relative to sourceFile's own
-// directory (the other style PointersResolve already accepts) — and
-// reports whether relRaw's first path segment belongs to neither
-// resolution root at all, which marks it foreign (a sibling module, an
-// external Go import path) rather than a stale pointer into THIS repo.
-func resolveRepoPath(root, sourceFile, relRaw string) (abs string, foreign bool) {
+// resolveRepoPath tries relRaw's possible locations and reports which one
+// (if any) exists, whether relRaw is foreign (its first path segment
+// belongs to neither candidate root — a sibling module, an external Go
+// import path — rather than a stale pointer into THIS repo), and any
+// non-not-exist stat error encountered along the way (permission denied
+// on an intermediate directory) — a signal that the check is
+// UNVERIFIABLE, not that the path is gone.
+//
+// Two candidate locations, tried in different orders depending on shape:
+// repo-root-relative (the house style for backticked pointers with a
+// slash) and relative to sourceFile's own directory (the style
+// PointersResolve also accepts). For a BARE single-segment filename
+// (`CLAUDE.md`, no slash) the source file's own directory is tried FIRST
+// — a nested CLAUDE.md saying "CLAUDE.md is 32 lines" means itself, not
+// the root file of the same name.
+func resolveRepoPath(root, sourceFile, relRaw string) (abs string, foreign bool, blocked error) {
 	rel := strings.TrimSuffix(relRaw, "/")
 	fileDir := ""
 	// Claude Code auto-memory's display path is "~/…", outside root — its
@@ -170,28 +212,41 @@ func resolveRepoPath(root, sourceFile, relRaw string) (abs string, foreign bool)
 	if sourceFile != "" && !filepath.IsAbs(sourceFile) && !strings.HasPrefix(sourceFile, "~") {
 		fileDir = filepath.Dir(sourceFile)
 	}
-	if idx := strings.IndexByte(rel, '/'); idx >= 0 {
-		first := rel[:idx]
+
+	bareName := !strings.Contains(rel, "/")
+	if !bareName {
+		first := rel[:strings.IndexByte(rel, '/')]
 		if first == "." || first == ".." {
-			return "", true
+			return "", true, nil
 		}
 		rootFirst := dirExists(filepath.Join(root, first))
 		fileFirst := fileDir != "" && dirExists(filepath.Join(root, fileDir, first))
 		if !rootFirst && !fileFirst {
-			return "", true
+			return "", true, nil
 		}
 	}
+
 	fromRoot := filepath.Join(root, filepath.FromSlash(rel))
-	if _, err := os.Stat(fromRoot); err == nil {
-		return fromRoot, false
-	}
+	candidates := []string{fromRoot}
 	if fileDir != "" {
 		fromFile := filepath.Join(root, fileDir, filepath.FromSlash(rel))
-		if _, err := os.Stat(fromFile); err == nil {
-			return fromFile, false
+		if bareName {
+			candidates = []string{fromFile, fromRoot} // itself before the root's same-named file
+		} else {
+			candidates = append(candidates, fromFile)
 		}
 	}
-	return "", false
+
+	for _, p := range candidates {
+		if _, err := os.Stat(p); err == nil {
+			return p, false, nil
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			if blocked == nil {
+				blocked = err
+			}
+		}
+	}
+	return "", false, blocked
 }
 
 // checkPathAnchor reports relRaw's existence, or nil when relRaw is
@@ -199,34 +254,40 @@ func resolveRepoPath(root, sourceFile, relRaw string) (abs string, foreign bool)
 // all, since it does not name anything under this repo.
 func checkPathAnchor(root, sourceFile, relRaw string) *anchorResult {
 	rel := strings.TrimSuffix(relRaw, "/")
-	abs, foreign := resolveRepoPath(root, sourceFile, relRaw)
+	abs, foreign, blocked := resolveRepoPath(root, sourceFile, relRaw)
 	if foreign {
 		return nil
 	}
-	if abs != "" {
-		return &anchorResult{ok: true, receipt: rel + " resolves under " + root}
+	if blocked != nil {
+		return &anchorResult{outcome: anchorUnverifiable, receipt: rel + ": unverifiable (" + blocked.Error() + ")"}
 	}
-	return &anchorResult{ok: false, receipt: rel + ": no such file or directory under " + root}
+	if abs != "" {
+		return &anchorResult{outcome: anchorHolds, receipt: rel + " resolves under " + root}
+	}
+	return &anchorResult{outcome: anchorFailed, receipt: rel + ": no such file or directory under " + root}
 }
 
 func checkLineCountAnchor(root, sourceFile, path, claimedRaw string) *anchorResult {
 	claimed := strings.ReplaceAll(claimedRaw, ",", "")
-	abs, foreign := resolveRepoPath(root, sourceFile, path)
+	abs, foreign, blocked := resolveRepoPath(root, sourceFile, path)
 	if foreign {
 		return nil
 	}
+	if blocked != nil {
+		return &anchorResult{outcome: anchorUnverifiable, receipt: path + ": unverifiable (" + blocked.Error() + ")"}
+	}
 	if abs == "" {
-		return &anchorResult{ok: false, receipt: path + ": no such file under " + root}
+		return &anchorResult{outcome: anchorFailed, receipt: path + ": no such file under " + root}
 	}
 	data, err := os.ReadFile(abs)
 	if err != nil {
-		return &anchorResult{ok: false, receipt: path + ": unreadable under " + root}
+		return &anchorResult{outcome: anchorUnverifiable, receipt: path + ": unverifiable (" + err.Error() + ")"}
 	}
 	actual := countLines(data)
 	if itoa(actual) != claimed {
-		return &anchorResult{ok: false, receipt: path + " is " + itoa(actual) + " lines now, not " + claimedRaw}
+		return &anchorResult{outcome: anchorFailed, receipt: path + " is " + itoa(actual) + " lines now, not " + claimedRaw}
 	}
-	return &anchorResult{ok: true, receipt: path + " is still " + claimedRaw + " lines"}
+	return &anchorResult{outcome: anchorHolds, receipt: path + " is still " + claimedRaw + " lines"}
 }
 
 func itoa(n int) string {
@@ -257,9 +318,15 @@ func itoa(n int) string {
 // distinguish "still declared somewhere" from "renamed or deleted",
 // which is the drift this row exists to catch; the receipt says so
 // plainly rather than overclaiming precision it does not have.
+//
+// A .go file (or directory) this walk cannot read is NOT treated as
+// "no declaration there": it is recorded as the reason the search is
+// unverifiable, and reported as such only when nothing else in the
+// tree resolved the name — a positive match elsewhere still holds
+// regardless of what else was unreadable.
 func checkSymbolAnchor(root, name string) anchorResult {
 	if !identRe.MatchString(name) {
-		return anchorResult{ok: false, receipt: name + ": not a checkable identifier"}
+		return anchorResult{outcome: anchorFailed, receipt: name + ": not a checkable identifier"}
 	}
 	q := regexp.QuoteMeta(name)
 	pats := []*regexp.Regexp{
@@ -270,9 +337,17 @@ func checkSymbolAnchor(root, name string) anchorResult {
 		regexp.MustCompile(`(?m)^var\s+` + q + `\b`),
 	}
 	found := false
+	var blockedPath string
+	var blockedErr error
 	_ = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || found {
-			return nil //nolint:nilerr // best-effort scan; an unreadable subtree just narrows the search
+		if found {
+			return nil
+		}
+		if err != nil {
+			if blockedPath == "" {
+				blockedPath, blockedErr = p, err
+			}
+			return nil
 		}
 		if d.IsDir() {
 			if _, skip := walkSkipDirs[d.Name()]; skip && p != root {
@@ -285,6 +360,9 @@ func checkSymbolAnchor(root, name string) anchorResult {
 		}
 		data, rerr := os.ReadFile(p)
 		if rerr != nil {
+			if blockedPath == "" {
+				blockedPath, blockedErr = p, rerr
+			}
 			return nil
 		}
 		for _, re := range pats {
@@ -296,7 +374,13 @@ func checkSymbolAnchor(root, name string) anchorResult {
 		return nil
 	})
 	if found {
-		return anchorResult{ok: true, receipt: "`" + name + "` is declared under " + root}
+		return anchorResult{outcome: anchorHolds, receipt: "`" + name + "` is declared under " + root}
 	}
-	return anchorResult{ok: false, receipt: "no declaration of `" + name + "` found under " + root}
+	if blockedPath != "" {
+		return anchorResult{
+			outcome: anchorUnverifiable,
+			receipt: "verification of `" + name + "` is incomplete: " + blockedPath + " is unreadable (" + blockedErr.Error() + ")",
+		}
+	}
+	return anchorResult{outcome: anchorFailed, receipt: "no declaration of `" + name + "` found under " + root}
 }

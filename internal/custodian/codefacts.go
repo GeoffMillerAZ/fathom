@@ -14,8 +14,9 @@ package custodian
 //   - anchored-drifted:        it resolved once but does not hold now —
 //                               the receipt names what the tree says
 //   - unanchorable-code-claim: shaped like a code fact (a trigger phrase,
-//                               a bare count) but names nothing this
-//                               audit can check
+//                               a bare count, or a check this audit could
+//                               not complete) but names nothing this audit
+//                               can confirm
 //   - preference:               not a code fact — an instruction, a
 //                               principle, an imperative
 //
@@ -25,15 +26,23 @@ package custodian
 // against — an agent auditing its own instructions cares what the files
 // say right now).
 //
-// ADR-027's lesson applies unchanged: a file this cannot read is named,
-// never silently absorbed into a clean bill (see AuditCodeFacts).
-
+// ADR-027's lesson applies unchanged: every read goes through the kit's
+// read-manifest (agentic-kit foundations/telemetry/read-manifest, the
+// same mechanism internal/intent/audit.go and internal/wiring use), so an
+// unreadable file is NAMED and every count derived from an incomplete
+// read is rendered as a lower bound (readcoverage.RenderCount) — never a
+// bare total that reads as a clean bill over a directory this audit could
+// not even list.
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // CodeFactClass is one of the four audit outcomes for a sentence.
@@ -66,9 +75,11 @@ type CodeFactFinding struct {
 // AutoLoadedFile is one file a coding harness loads into context
 // automatically, discovered by AutoLoadedFiles.
 type AutoLoadedFile struct {
-	// Path is repo-relative for files inside root, or absolute for
-	// harness-global files (Claude Code's per-project auto-memory lives
-	// under the user's home directory, outside the repo).
+	// Path is repo-relative for files inside root, or a "~/…" display
+	// path for harness-global files (Claude Code's per-project
+	// auto-memory lives under the user's home directory, outside the
+	// repo) — never the real absolute path, which would put the
+	// operator's home directory into a report (ADR-011).
 	Path string
 	Kind string // agent-config | cursor-rule | windsurf-rule | memory-bank | claude-auto-memory
 }
@@ -77,17 +88,21 @@ const excerptCap = 160
 
 // AuditCodeFacts is the `--code-facts` entry point: discover every
 // auto-loaded file for root, split each into sentences, and classify
-// them. A file that cannot be read is named in unreadable, never
-// dropped silently from the count (ADR-027) — the caller must report an
-// audit that skipped files as PARTIAL, not clean.
+// them. Every read — each auto-loaded file's content, and each
+// directory this walks to find them — goes through a *readmanifest.Set,
+// so an unreadable file or directory is NAMED in the returned coverage,
+// never dropped silently from the count (ADR-027); the caller renders
+// any count derived from findings through readcoverage.RenderCount so an
+// incomplete read is shown as a lower bound, not a clean bill.
 //
 // home is the harness home directory (os.UserHomeDir() in production,
 // injectable for tests); "" skips Claude Code auto-memory discovery
 // rather than erroring.
-func AuditCodeFacts(root, home string) (findings []CodeFactFinding, unreadable []string, err error) {
-	files, ferr := AutoLoadedFiles(root, home)
+func AuditCodeFacts(root, home string) (findings []CodeFactFinding, coverage readmanifest.Manifest, err error) {
+	reads := readmanifest.NewSet()
+	files, ferr := AutoLoadedFiles(root, home, reads)
 	if ferr != nil {
-		return nil, nil, ferr
+		return nil, reads.Manifest(), ferr
 	}
 	var sentences []Sentence
 	for _, f := range files {
@@ -95,16 +110,35 @@ func AuditCodeFacts(root, home string) (findings []CodeFactFinding, unreadable [
 		if !filepath.IsAbs(abs) {
 			abs = filepath.Join(root, f.Path)
 		}
-		data, rerr := os.ReadFile(abs)
-		if rerr != nil {
-			unreadable = append(unreadable, f.Path)
+		data, ok := readTracked(reads, f.Path, abs)
+		if !ok {
 			continue
 		}
 		for _, rs := range splitSentences(string(data)) {
 			sentences = append(sentences, Sentence{File: f.Path, Line: rs.Line, Text: rs.Text})
 		}
 	}
-	return auditCodeFactSentences(root, sentences), unreadable, nil
+	return auditCodeFactSentences(root, sentences), reads.Manifest(), nil
+}
+
+// readTracked reads absPath and records the outcome under displayPath —
+// the path a finding would show — rather than letting the manifest
+// derive its own key, since a Claude Code auto-memory path is outside
+// root and must stay in its anonymized "~/…" form (never the operator's
+// real home directory) even when the read fails.
+func readTracked(reads *readmanifest.Set, displayPath, absPath string) ([]byte, bool) {
+	data, err := os.ReadFile(absPath)
+	switch {
+	case err == nil:
+		reads.Record(displayPath, readmanifest.Read(len(data)))
+		return data, true
+	case errors.Is(err, fs.ErrNotExist):
+		reads.Record(displayPath, readmanifest.Absent())
+		return nil, false
+	default:
+		reads.Record(displayPath, readmanifest.Unreadable(err))
+		return nil, false
+	}
 }
 
 // auditCodeFactSentences classifies each given sentence against root —
@@ -127,12 +161,15 @@ func auditCodeFactSentences(root string, sentences []Sentence) []CodeFactFinding
 	return out
 }
 
+// excerpt trims and caps a sentence at excerptCap RUNES (not bytes) so a
+// multibyte character is never split in half.
 func excerpt(s string) string {
 	s = strings.TrimSpace(s)
-	if len(s) <= excerptCap {
+	r := []rune(s)
+	if len(r) <= excerptCap {
 		return s
 	}
-	return s[:excerptCap-1] + "…"
+	return string(r[:excerptCap-1]) + "…"
 }
 
 // AutoLoadedFiles discovers every file a coding harness auto-loads for
@@ -142,7 +179,14 @@ func excerpt(s string) string {
 // Windsurf rules (`.windsurf/rules/*`), the Cline memory bank
 // (`memory-bank/*.md`), and — when home is non-empty — Claude Code's
 // per-project auto-memory (`~/.claude/projects/<encoded-root>/memory/*.md`).
-func AutoLoadedFiles(root, home string) ([]AutoLoadedFile, error) {
+//
+// Each directory is listed with os.ReadDir through reads: an absent
+// directory (the common case — most repos have no `.cursor/`) is not a
+// failure, but a directory that exists and cannot be LISTED (permission
+// denied) is recorded unreadable rather than silently yielding zero
+// files, which would read as "no Cursor rules" instead of "could not
+// check for Cursor rules".
+func AutoLoadedFiles(root, home string, reads *readmanifest.Set) ([]AutoLoadedFile, error) {
 	var out []AutoLoadedFile
 
 	agentFiles, err := AgentConfigFiles(root)
@@ -153,47 +197,68 @@ func AutoLoadedFiles(root, home string) ([]AutoLoadedFile, error) {
 		out = append(out, AutoLoadedFile{Path: f, Kind: "agent-config"})
 	}
 
-	globs := []struct{ pattern, kind string }{
-		{".cursor/rules/*", "cursor-rule"},
-		{".windsurf/rules/*", "windsurf-rule"},
-		{"memory-bank/*.md", "memory-bank"},
+	dirs := []struct {
+		rel, kind string
+		match     func(name string) bool
+	}{
+		{".cursor/rules", "cursor-rule", anyFile},
+		{".windsurf/rules", "windsurf-rule", anyFile},
+		{"memory-bank", "memory-bank", isMarkdownFile},
 	}
-	for _, g := range globs {
-		matches, _ := filepath.Glob(filepath.Join(root, filepath.FromSlash(g.pattern)))
-		sort.Strings(matches)
-		for _, m := range matches {
-			fi, statErr := os.Stat(m)
-			if statErr != nil || fi.IsDir() {
-				continue
-			}
-			rel, relErr := filepath.Rel(root, m)
-			if relErr != nil {
-				continue
-			}
-			out = append(out, AutoLoadedFile{Path: filepath.ToSlash(rel), Kind: g.kind})
+	for _, d := range dirs {
+		dirAbs := filepath.Join(root, filepath.FromSlash(d.rel))
+		for _, name := range listDirFiles(reads, dirAbs, d.rel, d.match) {
+			out = append(out, AutoLoadedFile{Path: filepath.ToSlash(filepath.Join(d.rel, name)), Kind: d.kind})
 		}
 	}
 
 	if home != "" {
 		memDir := ClaudeCodeMemoryDir(root, home)
-		matches, _ := filepath.Glob(filepath.Join(memDir, "*.md"))
-		sort.Strings(matches)
-		for _, m := range matches {
-			fi, statErr := os.Stat(m)
-			if statErr != nil || fi.IsDir() {
-				continue
-			}
-			out = append(out, AutoLoadedFile{Path: displayHomePath(home, m), Kind: "claude-auto-memory"})
+		memDisplay := displayHomePath(home, memDir)
+		for _, name := range listDirFiles(reads, memDir, memDisplay, isMarkdownFile) {
+			out = append(out, AutoLoadedFile{Path: filepath.ToSlash(filepath.Join(memDisplay, name)), Kind: "claude-auto-memory"})
 		}
 	}
 
 	return out, nil
 }
 
+func anyFile(string) bool             { return true }
+func isMarkdownFile(name string) bool { return strings.HasSuffix(name, ".md") }
+
+// listDirFiles lists dirAbs's regular files matching match, sorted by
+// name. A directory that genuinely does not exist yields no files and no
+// failure — most repos have no `.cursor/`, `.windsurf/`, or
+// `memory-bank/`. Any OTHER read error (permission denied, not a
+// directory) is recorded against dirDisplay in reads as unreadable —
+// this is the fix for the failure class where an unreadable directory
+// silently looked identical to an absent one.
+func listDirFiles(reads *readmanifest.Set, dirAbs, dirDisplay string, match func(name string) bool) []string {
+	entries, err := os.ReadDir(dirAbs)
+	switch {
+	case err == nil:
+		var names []string
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			if match(e.Name()) {
+				names = append(names, e.Name())
+			}
+		}
+		sort.Strings(names)
+		return names
+	case errors.Is(err, fs.ErrNotExist):
+		return nil
+	default:
+		reads.Record(dirDisplay, readmanifest.Unreadable(err))
+		return nil
+	}
+}
+
 // ClaudeCodeMemoryDir resolves the per-project auto-memory directory the
 // way Claude Code does: the project's absolute path with every "/"
-// replaced by "-" (observed convention — this repo's own auto-memory
-// lives at exactly this path for its own checkout).
+// replaced by "-" (observed convention).
 func ClaudeCodeMemoryDir(root, home string) string {
 	abs, err := filepath.Abs(root)
 	if err != nil {

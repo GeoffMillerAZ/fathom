@@ -8,10 +8,15 @@ package custodian
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
+
+	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 type labelledSentence struct {
@@ -87,7 +92,18 @@ func TestClassifySentenceLabelledSet(t *testing.T) {
 	}
 	exactAccuracy := float64(exactMatches) / float64(len(labels))
 
-	t.Logf("labelled set: %d sentences, classes: %v", len(labels), byClass)
+	// Sorted, not a map iteration — determinism is a contract even in a
+	// log line (internal/CLAUDE.md).
+	classNames := make([]string, 0, len(byClass))
+	for c := range byClass {
+		classNames = append(classNames, string(c))
+	}
+	sort.Strings(classNames)
+	counts := make([]string, 0, len(classNames))
+	for _, c := range classNames {
+		counts = append(counts, fmt.Sprintf("%s=%d", c, byClass[CodeFactClass(c)]))
+	}
+	t.Logf("labelled set: %d sentences, classes: [%s]", len(labels), strings.Join(counts, " "))
 	t.Logf("binary (code-fact-shaped vs preference): precision=%.3f recall=%.3f (recall recorded, not a floor)", precision, recall)
 	t.Logf("exact 4-way class accuracy (golden, not asserted): %.3f", exactAccuracy)
 
@@ -144,9 +160,13 @@ func TestSplitSentences(t *testing.T) {
 	}
 }
 
+// TestClaudeCodeMemoryDir uses wholly invented, neutral paths (ADR-011) —
+// never a real developer's home or repo checkout — with a hardcoded
+// expected value, so the test independently verifies the documented
+// transform rather than re-deriving it from the function under test.
 func TestClaudeCodeMemoryDir(t *testing.T) {
-	dir := ClaudeCodeMemoryDir("/Volumes/m2ext/code/geoffmilleraz/sextant", "/Users/geoff")
-	want := "/Users/geoff/.claude/projects/-Volumes-m2ext-code-geoffmilleraz-sextant/memory"
+	dir := ClaudeCodeMemoryDir("/srv/acme/repo", "/home/dev")
+	want := "/home/dev/.claude/projects/-srv-acme-repo/memory"
 	if dir != want {
 		t.Errorf("ClaudeCodeMemoryDir = %q, want %q", dir, want)
 	}
@@ -165,7 +185,8 @@ func TestAutoLoadedFiles(t *testing.T) {
 	memDir := ClaudeCodeMemoryDir(root, home)
 	mustWriteCF(t, filepath.Join(memDir, "MEMORY.md"), "# claude auto-memory\n")
 
-	files, err := AutoLoadedFiles(root, home)
+	reads := readmanifest.NewSet()
+	files, err := AutoLoadedFiles(root, home, reads)
 	if err != nil {
 		t.Fatalf("AutoLoadedFiles: %v", err)
 	}
@@ -183,12 +204,16 @@ func TestAutoLoadedFiles(t *testing.T) {
 			t.Errorf("AutoLoadedFiles: missing kind %q among %d file(s)", want, len(files))
 		}
 	}
-	if claudeMemPath != "~/.claude/projects/"+filepathEncode(root)+"/memory/MEMORY.md" {
-		t.Errorf("claude-auto-memory display path = %q", claudeMemPath)
+	wantMemPath := "~/" + strings.TrimPrefix(strings.TrimPrefix(memDir, home), string(filepath.Separator)) + "/MEMORY.md"
+	if claudeMemPath != filepath.ToSlash(wantMemPath) {
+		t.Errorf("claude-auto-memory display path = %q, want %q", claudeMemPath, filepath.ToSlash(wantMemPath))
+	}
+	if m := reads.Manifest(); !m.Complete() {
+		t.Errorf("manifest reports incomplete for a run with no unreadable directory: %v", m.Unreadable())
 	}
 
 	// No home directory: auto-memory is skipped, not an error.
-	files2, err := AutoLoadedFiles(root, "")
+	files2, err := AutoLoadedFiles(root, "", readmanifest.NewSet())
 	if err != nil {
 		t.Fatalf("AutoLoadedFiles with no home: %v", err)
 	}
@@ -199,26 +224,58 @@ func TestAutoLoadedFiles(t *testing.T) {
 	}
 }
 
-func filepathEncode(root string) string {
-	abs, _ := filepath.Abs(root)
-	return replaceSlashes(abs)
-}
+// TestAutoLoadedFilesNamesUnreadableDirectory is BLOCK item 1: an
+// unreadable memory-bank/ must show up in the manifest as unreadable,
+// never silently read as "no Cline memory bank here".
+func TestAutoLoadedFilesNamesUnreadableDirectory(t *testing.T) {
+	root := t.TempDir()
+	// A real (if empty) git repo so AgentConfigFiles takes the git
+	// ls-files path — `git` silently tolerates an unreadable subdirectory
+	// (a warning on stderr, exit 0) — rather than the non-git fallback's
+	// plain fs.WalkDir, which would itself fail descending into the
+	// chmod-000 directory below and mask what this test means to check.
+	initGitRepo(t, root)
+	blockedDir := filepath.Join(root, "memory-bank")
+	mustWriteCF(t, filepath.Join(blockedDir, "notes.md"), "notes\n")
+	if err := os.Chmod(blockedDir, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blockedDir, 0o755) })
 
-func replaceSlashes(s string) string {
-	out := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
-		if s[i] == '/' {
-			out[i] = '-'
-		} else {
-			out[i] = s[i]
+	if _, err := os.ReadDir(blockedDir); err == nil {
+		t.Skip("this process can still list a 0000 directory — running as root or on a filesystem that ignores mode; skipping")
+	}
+
+	reads := readmanifest.NewSet()
+	files, err := AutoLoadedFiles(root, "", reads)
+	if err != nil {
+		t.Fatalf("AutoLoadedFiles: %v", err)
+	}
+	for _, f := range files {
+		if f.Kind == "memory-bank" {
+			t.Errorf("found memory-bank file %+v despite the directory being unreadable", f)
 		}
 	}
-	return string(out)
+
+	m := reads.Manifest()
+	if m.Complete() {
+		t.Fatal("manifest reports complete despite an unreadable memory-bank/ directory")
+	}
+	found := false
+	for _, e := range m.Unreadable() {
+		if e.Path == "memory-bank" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("manifest.Unreadable() = %v, want an entry for %q", m.Unreadable(), "memory-bank")
+	}
 }
 
 // TestAuditCodeFactsNamesUnreadableFiles is ADR-027's lesson applied to
 // this row: a file the audit cannot read must be named, never silently
-// dropped from the count.
+// dropped from the count — via the shared read-manifest mechanism, not a
+// bespoke unreadable list.
 func TestAuditCodeFactsNamesUnreadableFiles(t *testing.T) {
 	root := t.TempDir()
 	mustWriteCF(t, filepath.Join(root, "CLAUDE.md"), "# readable\n\nKeep this router thin.\n")
@@ -233,12 +290,16 @@ func TestAuditCodeFactsNamesUnreadableFiles(t *testing.T) {
 		t.Skipf("this process can still read a 0000 file (%d bytes) — running as root or on a filesystem that ignores mode; skipping", len(data))
 	}
 
-	_, unreadable, err := AuditCodeFacts(root, "")
+	_, coverage, err := AuditCodeFacts(root, "")
 	if err != nil {
 		t.Fatalf("AuditCodeFacts: %v", err)
 	}
-	if len(unreadable) != 1 || unreadable[0] != "AGENTS.md" {
-		t.Errorf("unreadable = %v, want [AGENTS.md] — an unreadable auto-loaded file must be named, not dropped (ADR-027)", unreadable)
+	if coverage.Complete() {
+		t.Fatal("coverage reports complete despite an unreadable AGENTS.md")
+	}
+	bad := coverage.Unreadable()
+	if len(bad) != 1 || bad[0].Path != "AGENTS.md" {
+		t.Errorf("coverage.Unreadable() = %v, want [AGENTS.md] — an unreadable auto-loaded file must be named, not dropped (ADR-027)", bad)
 	}
 }
 
@@ -251,12 +312,12 @@ func TestAuditCodeFactsEndToEnd(t *testing.T) {
 			"- `Compute` lives in `internal/widget`.\n"+
 			"- Always run the failing test first.\n")
 
-	findings, unreadable, err := AuditCodeFacts(root, "")
+	findings, coverage, err := AuditCodeFacts(root, "")
 	if err != nil {
 		t.Fatalf("AuditCodeFacts: %v", err)
 	}
-	if len(unreadable) != 0 {
-		t.Fatalf("unreadable = %v, want none", unreadable)
+	if !coverage.Complete() {
+		t.Fatalf("coverage = %v, want complete", coverage.Unreadable())
 	}
 
 	var classes []CodeFactClass
@@ -277,6 +338,57 @@ func TestAuditCodeFactsEndToEnd(t *testing.T) {
 		if !ok {
 			t.Errorf("findings %v missing expected class %s", classes, c)
 		}
+	}
+}
+
+// TestUnreadableGoFileYieldsUnanchorableNotDrifted is BLOCK item 2: an
+// unreadable .go file inside checkSymbolAnchor's walk must never
+// manufacture a false anchored-drifted — the honest verdict is that the
+// search could not complete.
+func TestUnreadableGoFileYieldsUnanchorableNotDrifted(t *testing.T) {
+	root := t.TempDir()
+	mustWriteCF(t, filepath.Join(root, "internal", "widget", "widget.go"),
+		"package widget\n\nfunc Other() {}\n")
+	blocked := filepath.Join(root, "internal", "widget", "blocked.go")
+	mustWriteCF(t, blocked, "package widget\n\nfunc Compute(x int) int { return x }\n")
+	if err := os.Chmod(blocked, 0o000); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0o644) })
+
+	if data, err := os.ReadFile(blocked); err == nil {
+		t.Skipf("this process can still read a 0000 file (%d bytes) — running as root or on a filesystem that ignores mode; skipping", len(data))
+	}
+
+	class, receipt := classifySentence(root, "", "`Compute` lives in `internal/widget`.")
+	if class != ClassUnanchorable {
+		t.Fatalf("class = %s (receipt %q), want %s — an unreadable .go file must never manufacture a false drift", class, receipt, ClassUnanchorable)
+	}
+	if !strings.Contains(receipt, "blocked.go") {
+		t.Errorf("receipt %q does not name the unreadable file", receipt)
+	}
+}
+
+// TestBareFilenamePrefersSourceFileDirectory is FIX-BEFORE-MERGE item 5:
+// a bare filename (no slash) must resolve relative to its OWN citing
+// file before falling back to the repo root's same-named file.
+func TestBareFilenamePrefersSourceFileDirectory(t *testing.T) {
+	root := t.TempDir()
+	mustWriteCF(t, filepath.Join(root, "CLAUDE.md"), "root one\nroot two\n") // 2 lines
+	mustWriteCF(t, filepath.Join(root, "cmd", "widget", "CLAUDE.md"),
+		"a\nb\nc\nd\ne\nf\ng\nh\ni\n") // 9 lines
+
+	class, receipt := classifySentence(root, "cmd/widget/CLAUDE.md", "`CLAUDE.md` is 9 lines.")
+	if class != ClassAnchoredFresh {
+		t.Fatalf("class = %s (receipt %q), want anchored-fresh — a nested CLAUDE.md claiming its own line count must resolve to itself, not the root file of the same name", class, receipt)
+	}
+}
+
+func initGitRepo(t *testing.T, root string) {
+	t.Helper()
+	cmd := exec.Command("git", "init", "-q", root)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Skipf("git init unavailable, skipping: %v: %s", err, out)
 	}
 }
 
