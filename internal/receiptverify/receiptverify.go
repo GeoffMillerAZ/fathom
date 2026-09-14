@@ -106,8 +106,28 @@ func BareSymbolName(s string) string {
 	return s
 }
 
+// declaredNames flattens truth.DeclsByFile into the set of every function/
+// method name go/types actually saw declared at this commit — the check a
+// map miss on CallersByName/UsesByName cannot substitute for (review F2):
+// a symbol that was RENAMED OR REMOVED since IndexCommit has no entry in
+// either map, which is indistinguishable from a real, currently-declared
+// symbol that genuinely has zero callers/uses unless declaration itself is
+// checked first.
+func declaredNames(truth publicloc.GoTruth) map[string]bool {
+	names := make(map[string]bool)
+	for _, ns := range truth.DeclsByFile {
+		for _, n := range ns {
+			names[n] = true
+		}
+	}
+	return names
+}
+
 func verifyCallers(r core.Receipt, truth publicloc.GoTruth) Outcome {
 	symbol := BareSymbolName(r.Symbol)
+	if !declaredNames(truth)[symbol] {
+		return Outcome{OK: false, Diff: fmt.Sprintf("%s is not declared at %s", symbol, r.IndexCommit)}
+	}
 	want := sortedCopy(r.Callers)
 	got := sortedCopy(truth.CallersByName[symbol])
 	if equalSlices(want, got) {
@@ -123,6 +143,9 @@ func verifyCallers(r core.Receipt, truth publicloc.GoTruth) Outcome {
 
 func verifyReferences(r core.Receipt, truth publicloc.GoTruth) Outcome {
 	symbol := BareSymbolName(r.Symbol)
+	if !declaredNames(truth)[symbol] {
+		return Outcome{OK: false, Diff: fmt.Sprintf("%s is not declared at %s", symbol, r.IndexCommit)}
+	}
 	want := sortedCopy(r.Files)
 	got := sortedCopy(truth.UsesByName[symbol])
 	if equalSlices(want, got) {

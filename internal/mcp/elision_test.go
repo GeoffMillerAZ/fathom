@@ -332,6 +332,31 @@ func TestTextElisionToolsDiscloseOnOverflow(t *testing.T) {
 	}
 	assertElisionLine(t, "find_callers", fcResp, "package or file")
 
+	// VB-19 fix (review F1): resolution must describe exactly the rows
+	// this response returns (callers + transitive_callers), never the
+	// full pre-elision fan-in — a claim of evidence for 250 rows when
+	// only a fraction were actually returned is exactly the O23 shape
+	// this envelope exists to prevent.
+	fcCallers, ok := fcResp["callers"].([]any)
+	if !ok {
+		t.Fatalf("find_callers: callers missing or wrong type: %v", fcResp)
+	}
+	if len(fcCallers) == 250 {
+		t.Fatalf("find_callers: callers returned all 250 rows — fixture no longer forces truncation, resolution assertion below would not be meaningful")
+	}
+	transitive, _ := fcResp["transitive_callers"].([]any)
+	fcResolution, ok := fcResp["resolution"].(map[string]any)
+	if !ok {
+		t.Fatalf("find_callers: resolution missing or wrong type: %v", fcResp)
+	}
+	typed, _ := fcResolution["typed"].(float64)
+	heuristic, _ := fcResolution["heuristic"].(float64)
+	wantMix := len(fcCallers) + len(transitive)
+	if got := int(typed + heuristic); got != wantMix {
+		t.Errorf("find_callers: resolution typed(%v)+heuristic(%v) = %d, want %d (len(callers)=%d + len(transitive_callers)=%d) — not the pre-elision 250",
+			typed, heuristic, got, wantMix, len(fcCallers), len(transitive))
+	}
+
 	// outline: many symbols in one file.
 	outlineNodes := make([]core.SymbolNode, 600)
 	for i := range outlineNodes {

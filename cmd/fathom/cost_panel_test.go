@@ -87,7 +87,13 @@ const (
 	// savings — plus `safe_delete_check`, a genuinely new tool: 52,273
 	// bytes measured at 24 tools (TestAgentSurfaceDiet's own pin moved to
 	// 24 alongside it).
-	agentSurfaceSchemaByteCeiling = 56000 // 53,441 measured 2026-09-14 after obligations gained `layer` (VB-9) on the 24-tool surface (VB-1/2)
+	// Re-pinned again for VB-19 (ADR-035 decision 4, docs/vision/
+	// 29-verbs-not-lookups.md §3 wave E): every result schema for
+	// find_callers/references/blast_radius/symbol_context/safe_delete_check/
+	// rename_impact/test_impact/review_diff gained `resolution: {typed,
+	// heuristic}` and `index_commit` — still 24 tools, a widened result
+	// shape, not a new one: 54,872 bytes measured.
+	agentSurfaceSchemaByteCeiling = 56000 // 54,872 measured 2026-09-14 after VB-19's resolution/index_commit fields on 8 tools (24-tool surface, VB-1/2)
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile

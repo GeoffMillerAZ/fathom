@@ -1252,6 +1252,10 @@ bounded run must never be a store writer).
 fathom receipt verify [--repo <path>] <receipt.json>
 ```
 
+Flags precede the positional argument (Go's `flag` package stops parsing
+flags at the first bare argument, the same convention `fleet undo` already
+uses) — `--repo` before `<receipt.json>`, never after.
+
 Re-derives a saved agent-surface answer's claim from a bare checkout of the
 receipt's own `index_commit` (the envelope field VB-19 adds to `find_callers`,
 `references`, `blast_radius`, `symbol_context`, `safe_delete_check`,

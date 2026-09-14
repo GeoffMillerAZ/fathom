@@ -288,6 +288,17 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// budget line at all before this row.
 		var elidedCount int
 		wireCallers, elidedCount = fitToolBudget(wireCallers, defaultCharBudget)
+		// infos and wireCallers were built 1:1 from the SAME "callers"
+		// order above, and fitToBudget's own contract is a deterministic
+		// PREFIX — never a reordering or arbitrary subset — so trimming
+		// infos to the survivors' length keeps by_depth/resolution
+		// describing exactly the depth-1 rows this response returns,
+		// never a wider set the budget already cut (the same discipline
+		// blastBucketsOf's `include` filter and references_tool.go's own
+		// post-elision infos already apply). transitive_callers (added
+		// below) is never itself budgeted, so its own infos entries
+		// already match what it returns.
+		infos = infos[:len(wireCallers)]
 		result := map[string]any{"callers": wireCallers, "edge_filter": edgeFilter}
 		if line := elisionLine(elidedCount, "package or file"); line != "" {
 			result["elision"] = line

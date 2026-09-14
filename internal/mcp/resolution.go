@@ -11,6 +11,17 @@
 // returned — never a wider set a budget or elision line trimmed away
 // (the same discipline blastBucketsOf's `include` filter already
 // established for by_depth, depth.go).
+//
+// index_commit has no snapshot isolation with the rows beside it: each
+// handler computes its rows first and calls indexCommitFor (or
+// uniformIndexCommit) after, as a separate ServiceMeta read — a concurrent
+// ingest landing in between can make index_commit name a commit NEWER
+// than what the rows actually reflect. Narrow in practice (both reads
+// happen within one request), and a receipt naming a too-new commit fails
+// `fathom receipt verify` loudly (a real mismatch) rather than silently,
+// but it is not a guarantee — a future revision could snapshot the
+// watermark once per call, before the rows are computed, if this is ever
+// observed to matter.
 package mcp
 
 import (
