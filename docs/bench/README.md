@@ -187,6 +187,15 @@ bytes (±5%), result counts and `obligations`' `displaced` count at
 `internal/indexbench/testdata/l1-replay.json` — both scored on the
 fauxtown fixture fleet in under a second.
 
+The same `bench-l0-gate` run also carries the L0 freshness probe (VB-17,
+`TestFreshnessProbe`, `internal/indexbench/testdata/freshness-probe.json`,
+`task bench-freshness-probe`; `docs/bench/scenarios.md` "Freshness (M7)"):
+five scripted mechanical edits against a mutable fixture copy, each scored
+before and after the hash-gated re-ingest with no model in the loop, so the
+free half of M7 ("the answer reflects HEAD") runs continuously — the paid
+five-arm task and a graphify `--watch`-mode arm are the reading still to
+buy.
+
 ### What each layer shows about fathom
 
 | Differentiated capability | Instrument | Number to read |

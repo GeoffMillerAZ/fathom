@@ -449,6 +449,24 @@ with the single word ok" --max-turns 1 --model claude-haiku-4-5-20251001
   `"slash_commands":[]`, `"plugins":[]`; the operator's own stanza text
   ("fathom code-intelligence is live") appears zero times in the stream.
 
+## Freshness (M7)
+
+M7 ("the answer reflects HEAD", `docs/vision/27-strengths-bench.md` §1/§6)
+splits into a free half and a paid one. Free: `internal/indexbench.FreshnessProbe`
+(VB-17, `task bench-freshness-probe`, part of `bench-l0-gate`) runs
+continuously, on every commit — five scripted mechanical edits (rename, add
+a parameter, delete, move, change a return literal) against a mutable copy
+of the fixture fleet, each paired with a question only the current on-disk
+state can answer, scored before and after the hash-gated re-ingest with no
+model in the loop. Paid: `FRESH-M7-01` in `testdata/scenariobench/lookups-vs.json`
+runs the same shape of question through a live agent session across fathom,
+grep, and the competitors named in `docs/bench/competitors.md` — currently
+scoring graphify's default one-shot build, which the free probe's own
+staleness gap already predicts loses; a graphify arm run in its own
+`--watch` mode (docs/vision/27-strengths-bench.md §3 wave D) is the paid
+reading still to add, once per release, before this row can credit
+graphify with the live-refresh mode its own docs recommend.
+
 ## Dropped tasks
 
 A task can carry `"disposition": "dropped"` with a `"reason"` (RC-15,

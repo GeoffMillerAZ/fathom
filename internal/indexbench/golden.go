@@ -32,6 +32,11 @@ const (
 	// authored half is hand-written, the measured half (bytes, result_count,
 	// displaced) is rewritten by PayloadReplay/ReplayGolden with -update.
 	l1ReplayPath = "testdata/l1-replay.json"
+	// freshnessGoldenPath is VB-17's committed golden: a per-edit millisecond
+	// CEILING (map[id]budget_ms), generous on purpose — TestFreshnessProbe
+	// gates timing as a regression floor, never an exact value, since
+	// FreshnessProbe's ms_to_correct is wall-clock and unavoidably noisy.
+	freshnessGoldenPath = "testdata/freshness-probe.json"
 )
 
 // packageDir resolves this package's directory from the compiled-in source
