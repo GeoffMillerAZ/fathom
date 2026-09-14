@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -640,5 +641,103 @@ func TestVerifyMarkdownPlan_WrongPackage(t *testing.T) {
 	}
 	if !strings.Contains(got, `status: "fail"`) {
 		t.Errorf("expected fail status; got:\n%s", got)
+	}
+}
+
+// ─── mutation (VB-34) ───────────────────────────────────────────────────────
+
+// mutationFixture ingests a tiny package with a Test* function that reaches
+// Widget via a direct syntax call edge, so test_reaches Passes and
+// OverlayMutation has something to act on.
+func mutationFixture(t *testing.T) (storePath, service string, widgetLine int) {
+	t.Helper()
+	root := t.TempDir()
+	src := "package widget\n\nfunc Widget() int {\n\treturn 1\n}\n"
+	testSrc := "package widget\n\nimport \"testing\"\n\nfunc TestWidget(t *testing.T) {\n\t_ = Widget()\n}\n"
+	if err := os.WriteFile(filepath.Join(root, "widget.go"), []byte(src), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "widget_test.go"), []byte(testSrc), 0o644); err != nil {
+		t.Fatalf("write fixture test: %v", err)
+	}
+	storePath = filepath.Join(t.TempDir(), "s.sqlite")
+	service = "mutation-svc"
+	var ing bytes.Buffer
+	if code := run([]string{"ingest", "--service", service, "--path", root, "--store", storePath}, &ing, &ing); code != 0 {
+		t.Fatalf("ingest failed (%d): %s", code, ing.String())
+	}
+	return storePath, service, 3 // `func Widget() int {` is line 3
+}
+
+func writeVerifyMutationReport(t *testing.T, line int, killed bool) string {
+	t.Helper()
+	body := fmt.Sprintf(`{"mutants":[{"file":"widget.go","line":%d,"killed":%t}]}`, line, killed)
+	path := filepath.Join(t.TempDir(), "mutation.json")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write mutation report: %v", err)
+	}
+	return path
+}
+
+func TestCmdVerify_Mutation_Advisory_NotesCoveredNotAsserted(t *testing.T) {
+	storePath, service, line := mutationFixture(t)
+	pf := writeTempPlan(t, "- [x] widget works {symbol: Widget}\n")
+	mutationPath := writeVerifyMutationReport(t, line, false)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"verify", "--service", service, "--plan", pf, "--store", storePath,
+		"--mutation", mutationPath, "--format", "json",
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("advisory mutation must not fail the gate: exit %d\nstdout=%s\nstderr=%s", code, out.String(), errBuf.String())
+	}
+	if !strings.Contains(out.String(), "covered-not-asserted") {
+		t.Errorf("expected a covered-not-asserted note in the JSON report:\n%s", out.String())
+	}
+}
+
+func TestCmdVerify_Mutation_Strict_FailsGate(t *testing.T) {
+	storePath, service, line := mutationFixture(t)
+	pf := writeTempPlan(t, "- [x] widget works {symbol: Widget}\n")
+	mutationPath := writeVerifyMutationReport(t, line, false)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"verify", "--service", service, "--plan", pf, "--store", storePath,
+		"--mutation", mutationPath, "--strict-mutation", "--format", "json",
+	}, &out, &errBuf)
+	if code != 1 {
+		t.Fatalf("--strict-mutation must fail the gate on a score-0 finding: exit %d\nstdout=%s\nstderr=%s", code, out.String(), errBuf.String())
+	}
+	if !strings.Contains(out.String(), "covered-not-asserted") {
+		t.Errorf("expected a covered-not-asserted label in the JSON report:\n%s", out.String())
+	}
+}
+
+func TestCmdVerify_Mutation_KilledScore_NeverFails(t *testing.T) {
+	storePath, service, line := mutationFixture(t)
+	pf := writeTempPlan(t, "- [x] widget works {symbol: Widget}\n")
+	mutationPath := writeVerifyMutationReport(t, line, true)
+
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"verify", "--service", service, "--plan", pf, "--store", storePath,
+		"--mutation", mutationPath, "--strict-mutation",
+	}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("a killed mutant (score 1.0) must never fail the gate: exit %d\nstdout=%s\nstderr=%s", code, out.String(), errBuf.String())
+	}
+}
+
+func TestCmdVerify_Mutation_RequiresStore(t *testing.T) {
+	pf := writeTempPlan(t, "- [x] task {symbol: Widget, skip_test: true}\n")
+	var out, errBuf bytes.Buffer
+	code := run([]string{
+		"verify", "--service", "svc", "--plan", pf,
+		"--mutation", filepath.Join(t.TempDir(), "mutation.json"),
+	}, &out, &errBuf)
+	if code != 2 {
+		t.Fatalf("--mutation without --store must be an operational error (exit 2), got %d; stderr=%q", code, errBuf.String())
 	}
 }

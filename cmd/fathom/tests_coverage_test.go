@@ -235,3 +235,82 @@ func TestTestsCoverage_DiffNamesUncoveredChangedSymbol(t *testing.T) {
 		t.Errorf("gap uncovered_at = %v, want [unit] (bare path default layer)", entry["uncovered_at"])
 	}
 }
+
+// writeMutationReport writes fathom's own JSON mutation-report shape with
+// one mutant inside fn's [Line, EndLine] span.
+func writeMutationReport(t *testing.T, fn core.SymbolNode, killed bool) string {
+	t.Helper()
+	body := fmt.Sprintf(`{"mutants":[{"file":"pkg/a.go","line":%d,"killed":%t}]}`, fn.Line, killed)
+	path := filepath.Join(t.TempDir(), "mutation.json")
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatalf("write mutation report: %v", err)
+	}
+	return path
+}
+
+func TestTestsCoverage_MutationJSON_SurvivedScoreZero(t *testing.T) {
+	storePath, service, fn := testsCoverageFixture(t)
+	profilePath := writeCoverProfile(t, fn, 1)
+	mutationPath := writeMutationReport(t, fn, false)
+
+	var out, errBuf bytes.Buffer
+	code := runTestsCoverage(
+		[]string{"--profile", profilePath, "--mutation", mutationPath, "--service", service, "--store", storePath, "--json"},
+		fakeGitRunner(nil), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(out.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal %q: %v", out.String(), err)
+	}
+	syms, _ := payload["symbols"].([]any)
+	if len(syms) != 1 {
+		t.Fatalf("symbols = %+v", payload["symbols"])
+	}
+	entry := syms[0].(map[string]any)
+	mut, ok := entry["mutation"].(map[string]any)
+	if !ok {
+		t.Fatalf("entry missing mutation field: %+v", entry)
+	}
+	if mut["mutants"].(float64) != 1 || mut["killed"].(float64) != 0 || mut["survived"].(float64) != 1 || mut["score"].(float64) != 0 {
+		t.Errorf("mutation = %+v, want {mutants:1 killed:0 survived:1 score:0}", mut)
+	}
+}
+
+func TestTestsCoverage_MutationTable_AddsColumn(t *testing.T) {
+	storePath, service, fn := testsCoverageFixture(t)
+	profilePath := writeCoverProfile(t, fn, 1)
+	mutationPath := writeMutationReport(t, fn, true)
+
+	var out, errBuf bytes.Buffer
+	code := runTestsCoverage(
+		[]string{"--profile", profilePath, "--mutation", mutationPath, "--service", service, "--store", storePath},
+		fakeGitRunner(nil), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("exit = %d, stderr: %s", code, errBuf.String())
+	}
+	header := strings.ToUpper(strings.SplitN(out.String(), "\n", 2)[0])
+	if !strings.Contains(header, "MUTATION") {
+		t.Errorf("table header %q missing MUTATION column", header)
+	}
+	if !strings.Contains(out.String(), "1.00") {
+		t.Errorf("table output missing the score 1.00 (all mutants killed): %q", out.String())
+	}
+}
+
+func TestTestsCoverage_MutationBadPath(t *testing.T) {
+	storePath, service, fn := testsCoverageFixture(t)
+	profilePath := writeCoverProfile(t, fn, 1)
+
+	var out, errBuf bytes.Buffer
+	code := runTestsCoverage(
+		[]string{"--profile", profilePath, "--mutation", filepath.Join(t.TempDir(), "missing.json"), "--service", service, "--store", storePath},
+		fakeGitRunner(nil), &out, &errBuf,
+	)
+	if code == 0 {
+		t.Fatal("expected nonzero exit for an unreadable --mutation path")
+	}
+}

@@ -131,6 +131,7 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	diffBase := fs.String("diff", "", "git ref: narrow the report to changed symbols (vs this ref) with no covering test in any layer")
+	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see internal/analysis/coverage.ParseMutationReport); adds a MUTATION score column")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -139,6 +140,23 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 		fmt.Fprintln(stderr, "error: tests coverage requires at least one --profile")
 		fs.Usage()
 		return 1
+	}
+
+	var mutationReport coverage.MutationReport
+	haveMutation := *mutationPath != ""
+	if haveMutation {
+		mf, ferr := os.Open(*mutationPath) //nolint:gosec — an operator-supplied CLI flag
+		if ferr != nil {
+			fmt.Fprintf(stderr, "error: open --mutation %q: %v\n", *mutationPath, ferr)
+			return 1
+		}
+		mrep, perr := coverage.ParseMutationReport(mf)
+		mf.Close()
+		if perr != nil {
+			fmt.Fprintf(stderr, "error: parse --mutation %q: %v\n", *mutationPath, perr)
+			return 1
+		}
+		mutationReport = mrep
 	}
 
 	profiles, err := loadLabeledProfiles(profileFlags)
@@ -174,6 +192,15 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 
 	symbols := review.ResolveCoverage(profiles, nodes)
 
+	var mutationsBySymbol map[string]coverage.SymbolMutation
+	if haveMutation {
+		joined := coverage.JoinMutationSymbols(mutationReport, nodes)
+		mutationsBySymbol = make(map[string]coverage.SymbolMutation, len(joined))
+		for _, m := range joined {
+			mutationsBySymbol[m.Symbol] = m
+		}
+	}
+
 	var changedFiles []string
 	if *diffBase != "" {
 		out, gerr := gitRunner("diff", "--name-only", *diffBase)
@@ -190,9 +217,9 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	}
 
 	if *jsonOut {
-		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase)
+		return renderTestsCoverageJSON(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol)
 	}
-	renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase)
+	renderTestsCoverageTable(stdout, profiles, symbols, nodes, changedFiles, *diffBase, mutationsBySymbol)
 	return 0
 }
 
@@ -277,7 +304,7 @@ func layerColumns(profiles []coverage.LabeledProfile) []string {
 	return out
 }
 
-func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string) {
+func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation) {
 	if diffBase != "" {
 		gaps := changedCoverageGap(nodes, changedFiles, symbols)
 		fmt.Fprintf(w, "tests coverage --diff %s: %d changed symbol(s) with no covering test in any layer\n", diffBase, len(gaps))
@@ -296,7 +323,11 @@ func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, s
 	for _, l := range layers {
 		fmt.Fprintf(w, " %10s", strings.ToUpper(l))
 	}
-	fmt.Fprintf(w, " %10s\n", "ANY")
+	fmt.Fprintf(w, " %10s", "ANY")
+	if mutations != nil {
+		fmt.Fprintf(w, " %10s", "MUTATION")
+	}
+	fmt.Fprintln(w)
 	for _, s := range symbols {
 		fmt.Fprintf(w, "%-60s", s.Symbol)
 		for _, l := range layers {
@@ -306,7 +337,15 @@ func renderTestsCoverageTable(w io.Writer, profiles []coverage.LabeledProfile, s
 				fmt.Fprintf(w, " %10s", "-")
 			}
 		}
-		fmt.Fprintf(w, " %9.1f%%\n", s.Any.Percent)
+		fmt.Fprintf(w, " %9.1f%%", s.Any.Percent)
+		if mutations != nil {
+			if m, ok := mutations[s.Symbol]; ok {
+				fmt.Fprintf(w, " %9.2f", m.Score)
+			} else {
+				fmt.Fprintf(w, " %10s", "-")
+			}
+		}
+		fmt.Fprintln(w)
 	}
 }
 
@@ -320,14 +359,14 @@ func nonNilStrList(ss []string) []string {
 	return ss
 }
 
-func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string) int {
+func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, symbols []coverage.SymbolLayerCoverage, nodes []core.SymbolNode, changedFiles []string, diffBase string, mutations map[string]coverage.SymbolMutation) int {
 	symItems := make([]any, len(symbols))
 	for i, s := range symbols {
 		byLayer := make(map[string]any, len(s.ByLayer))
 		for layer, st := range s.ByLayer {
 			byLayer[layer] = map[string]any{"statements": st.Statements, "covered": st.Covered, "percent": st.Percent}
 		}
-		symItems[i] = map[string]any{
+		item := map[string]any{
 			"symbol":       s.Symbol,
 			"file":         s.File,
 			"line":         s.Line,
@@ -336,6 +375,10 @@ func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, sy
 			"by_layer":     byLayer,
 			"any":          map[string]any{"statements": s.Any.Statements, "covered": s.Any.Covered, "percent": s.Any.Percent},
 		}
+		if m, ok := mutations[s.Symbol]; ok {
+			item["mutation"] = map[string]any{"mutants": m.Mutants, "killed": m.Killed, "survived": m.Survived, "score": m.Score}
+		}
+		symItems[i] = item
 	}
 	payload := map[string]any{
 		"modes":   profileModes(profiles),
