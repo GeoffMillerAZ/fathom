@@ -151,7 +151,7 @@
       "rule": {
         "id": "ADR-025",
         "text": "internal/store stays pure Go (ADR-020's SQLite/WAL backend; the DuckDB/CGO backend was deleted outright in SS-8). CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013); CGO_ENABLED=0 go build ./internal/store/ must keep succeeding.",
-        "source": "ADR.md#L814"
+        "source": "ADR.md#L823"
       },
       "predictions": {
         "full": "win: ADR-020/025's store-stays-pure-Go obligation is bound to edits under internal/store and fires on this exact file regardless of its own comment's misleading framing",
