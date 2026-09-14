@@ -51,10 +51,18 @@ var orgSkipExt = map[string]bool{
 	".sum": true, ".css": true,
 }
 
+// orgInternalHostSuffixes are the private-network TLDs a host is denied
+// under — the ONE list orgInternalHostRe is built from and
+// TestADR011EnforcedPatternsMatchOrgNames checks ADR-011's own served text
+// against (O57 item 7): the ADR's prose must name exactly these, in this
+// shape, so a reader of the ADR — human or a compiled obligation — learns
+// what the gate actually checks instead of "invented, neutral names" alone.
+var orgInternalHostSuffixes = []string{"corp", "internal", "intranet", "lan"}
+
 var (
 	// An internal-network host: a name under one of the private TLDs
-	// (corp, internal, intranet, lan).
-	orgInternalHostRe = regexp.MustCompile(`(?i)\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:corp|internal|intranet|lan)\b`)
+	// (orgInternalHostSuffixes).
+	orgInternalHostRe = regexp.MustCompile(`(?i)\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9-]+)*\.(?:` + strings.Join(orgInternalHostSuffixes, "|") + `)\b`)
 	// An email address; the domain is checked against the neutral set.
 	orgEmailRe = regexp.MustCompile(`\b[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})\b`)
 	// A cloud account in an ARN (12 digits) other than the documented
@@ -160,6 +168,57 @@ func orgScanFiles(t *testing.T, root string) []string {
 		return nil
 	})
 	return files
+}
+
+// adr011SectionRe isolates ADR-011's own section of ADR.md — from its
+// heading up to (not including) the next "## " heading — so the guard
+// below reads exactly what a session sees when it reads ADR-011, not the
+// whole document.
+var adr011SectionRe = regexp.MustCompile(`(?s)## ADR-011 —.*?(?:\n## |\z)`)
+
+// adr011BacktickedSuffixRe finds every backticked "*.suffix" pattern in
+// ADR-011's text — the shape the ADR states its enforced host patterns in.
+var adr011BacktickedSuffixRe = regexp.MustCompile("`\\*\\.([a-z]+)`")
+
+// TestADR011EnforcedPatternsMatchOrgNames pins O57 item 7: ADR-011's own
+// served text named "invented, neutral names" while the test it describes
+// rejects any host under *.corp/*.internal/*.intranet/*.lan specifically —
+// a good-faith reader of the served rule had no way to know that. This
+// guard reads ADR.md's ADR-011 section directly and fails if the
+// backticked "*.suffix" patterns it states ever diverge from
+// orgInternalHostSuffixes (the list orgInternalHostRe is actually built
+// from) in EITHER direction: the ADR claiming a pattern the code does not
+// enforce, or enforcing one the ADR never names.
+func TestADR011EnforcedPatternsMatchOrgNames(t *testing.T) {
+	root := repoRootForDocs(t)
+	raw, err := os.ReadFile(filepath.Join(root, "ADR.md"))
+	if err != nil {
+		t.Fatalf("reading ADR.md: %v", err)
+	}
+	section := adr011SectionRe.FindString(string(raw))
+	if section == "" {
+		t.Fatal("ADR.md has no ## ADR-011 section")
+	}
+
+	stated := map[string]bool{}
+	for _, m := range adr011BacktickedSuffixRe.FindAllStringSubmatch(section, -1) {
+		stated[m[1]] = true
+	}
+	enforced := map[string]bool{}
+	for _, s := range orgInternalHostSuffixes {
+		enforced[s] = true
+	}
+
+	for _, s := range orgInternalHostSuffixes {
+		if !stated[s] {
+			t.Errorf("ADR-011's text does not name `*.%s`, but orgInternalHostRe (TestNoOrgSpecificNames) enforces it", s)
+		}
+	}
+	for s := range stated {
+		if !enforced[s] {
+			t.Errorf("ADR-011's text names `*.%s` as enforced, but orgInternalHostRe does not check it — the ADR promises more than the gate delivers", s)
+		}
+	}
 }
 
 func TestNoOrgSpecificNames(t *testing.T) {

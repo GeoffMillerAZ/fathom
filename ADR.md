@@ -181,7 +181,14 @@ which was judged a defect, not a feature.
 
 **Decision.** No organization-specific names, hosts, catalogs, or product
 references anywhere in code, docs, tests, or fixtures. Anything org-specific is
-configuration. The `testdata/fauxtown/` fixtures use invented, neutral names.
+configuration. Mechanically enforced (`cmd/fathom/orgnames_test.go`'s
+`TestNoOrgSpecificNames`, invariant I19): a host under `*.corp`, `*.internal`,
+`*.intranet`, or `*.lan`, a non-neutral email domain, a real cloud
+account/ARN, or a non-neutral storage bucket URI all fail the gate. The
+`testdata/fauxtown/` fixtures' invented, neutral names are what a name must
+be instead of an org's own — not a description of what the gate checks, so
+an otherwise-plausible invented host still fails if it lands under one of
+those four TLDs (O57 item 7).
 
 **Why.** The project is intended to be open-sourced and adopted by any org.
 
