@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
@@ -519,13 +520,18 @@ func TestStopWorktree_NilAndZeroValueAreNoOps(t *testing.T) {
 
 // TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics pins O55 item 4:
 // every file internal/wiring's own ledger (.fathom/owned.json) records a
-// key for is instrument-owned, plus the two paths that carry no ledger
-// entry of their own — .fathomignore and the ledger file itself.
+// KEY for (KindKey — a structured file like .claude/settings.json's own
+// hooks block, or another lefthook.yml-shaped entry) is instrument-owned,
+// plus the two paths that carry no ledger entry of their own —
+// .fathomignore and the ledger file itself. CLAUDE.md/AGENTS.md's own
+// fathom stanza is deliberately NOT exercised here — it is a KindREGION,
+// which apply.go never records in this ledger at all (fix-first review,
+// 2026-09-14); TestInstrumentRegionRanges_* below covers that path.
 func TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics(t *testing.T) {
 	dir := t.TempDir()
 	ledger := wiring.NewLedger()
-	ledger.Record("CLAUDE.md", wiring.OwnedKey{ID: "stanza", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
 	ledger.Record(".claude/settings.json", wiring.OwnedKey{ID: "hooks", Digest: "sha256:y", Wrote: "2026-09-14T00:00:00Z"})
+	ledger.Record(".claude/skills/foo/SKILL.md", wiring.OwnedKey{ID: "file", Digest: "sha256:z", Wrote: "2026-09-14T00:00:00Z"})
 	if err := wiring.SaveLedger(dir, ledger); err != nil {
 		t.Fatal(err)
 	}
@@ -534,13 +540,56 @@ func TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InstrumentOwnedPaths: %v", err)
 	}
-	for _, want := range []string{"CLAUDE.md", ".claude/settings.json", ".fathomignore", ".fathom/owned.json"} {
+	for _, want := range []string{".claude/settings.json", ".claude/skills/foo/SKILL.md", ".fathomignore", ".fathom/owned.json"} {
 		if !owned[want] {
 			t.Errorf("expected %q to be instrument-owned, got %v", want, owned)
 		}
 	}
 	if owned["real_agent_file.go"] {
 		t.Error("a file the ledger never mentions must not be reported owned")
+	}
+	if owned["CLAUDE.md"] {
+		t.Error("CLAUDE.md must never be reported owned via the ledger — its stanza is a KindRegion, never ledger-tracked")
+	}
+}
+
+// TestInstrumentRegionRanges_RealRegionFromWiring pins O55 item 4
+// (fix-first review): InstrumentRegionRanges must find a region internal
+// wiring's OWN production code actually wrote — wiring.ApplyWiring, never
+// a hand-crafted marker string standing in for it — and report exactly the
+// lines its own markers (wiring.HTMLMarkers) delimit.
+func TestInstrumentRegionRanges_RealRegionFromWiring(t *testing.T) {
+	dir := t.TempDir()
+	fixedNow := func() time.Time { return time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC) }
+	spec := wiring.Spec{Regions: []wiring.Region{{
+		File: "CLAUDE.md", Syntax: wiring.HTMLMarkers, Version: "v3",
+		Body: "line one of the real stanza\nline two of the real stanza",
+	}}}
+	if _, err := wiring.ApplyWiring(dir, spec, wiring.ApplyOptions{Now: fixedNow}); err != nil {
+		t.Fatalf("wiring.ApplyWiring: %v", err)
+	}
+
+	ranges := InstrumentRegionRanges(context.Background(), Worktree{Path: dir})
+	rng, ok := ranges["CLAUDE.md"]
+	if !ok {
+		t.Fatalf("expected CLAUDE.md to carry a detected region, got %v", ranges)
+	}
+	if rng.oldStart != 0 || rng.oldEnd != 0 {
+		t.Errorf("expected no base-side region (no git repo/base commit here), got old=[%d,%d]", rng.oldStart, rng.oldEnd)
+	}
+	if rng.newStart == 0 || rng.newEnd < rng.newStart {
+		t.Fatalf("expected a real new-side region range, got %+v", rng)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(raw), "\n")
+	if !strings.HasPrefix(lines[rng.newStart-1], wiring.HTMLMarkers.BeginPrefix) {
+		t.Errorf("line %d = %q, want the begin marker", rng.newStart, lines[rng.newStart-1])
+	}
+	if !strings.HasPrefix(lines[rng.newEnd-1], wiring.HTMLMarkers.End) {
+		t.Errorf("line %d = %q, want the end marker", rng.newEnd, lines[rng.newEnd-1])
 	}
 }
 

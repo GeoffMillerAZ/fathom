@@ -907,10 +907,17 @@ func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) (path stri
 	if err != nil {
 		return "", 0
 	}
-	owned, err := scenariobench.InstrumentOwnedPaths(wt)
-	if err == nil {
-		out, instrumentFilesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned)
+	// Region-aware first (CLAUDE.md/AGENTS.md's own fathom stanza — never
+	// ledger-tracked, O55 item 4 fix-first review), then the ledger/
+	// workspace-driven whole-file exclusion; the two act on disjoint files,
+	// so order between them does not matter, and their counts simply add.
+	var regionsExcluded int
+	out, regionsExcluded = scenariobench.StripInstrumentRegions(ctx, wt, out)
+	var filesExcluded int
+	if owned, err := scenariobench.InstrumentOwnedPaths(wt); err == nil {
+		out, filesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned)
 	}
+	instrumentFilesExcluded = regionsExcluded + filesExcluded
 	dest := filepath.Join(wt.CellDir, "agent.diff")
 	if err := os.WriteFile(dest, out, 0o644); err != nil {
 		return "", 0

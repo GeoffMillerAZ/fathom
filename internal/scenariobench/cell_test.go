@@ -663,3 +663,85 @@ func TestPathIsInstrumentOwned(t *testing.T) {
 		}
 	}
 }
+
+// TestStripFathomRegionsFromDiff_WholeHunkIsRegionIsDropped pins O55 item
+// 4 (fix-first review): a hunk whose ENTIRE own change is the fathom
+// region (nothing else in the hunk changed) is dropped in full — header
+// included — never left behind as a hunk-less "diff --git" stub.
+func TestStripFathomRegionsFromDiff_WholeHunkIsRegionIsDropped(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,2 +1,6 @@\n" +
+		" # notes\n" +
+		" human content\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+stanza line 2\n" +
+		"+<!-- fathom:end -->\n" +
+		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n")
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 3, newEnd: 6}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "CLAUDE.md") {
+		t.Errorf("expected CLAUDE.md's whole section dropped (its only change was the region), got:\n%s", s)
+	}
+	if !strings.Contains(s, "real.go") || !strings.Contains(s, "func New()") {
+		t.Errorf("expected real.go's own section to survive untouched, got:\n%s", s)
+	}
+}
+
+// TestStripFathomRegionsFromDiff_MixedHunkKeepsTheRealEdit pins the other
+// half: a hunk that mixes the fathom region with a genuine agent edit to
+// the SAME file keeps the real edit and drops only the region's own
+// lines, with a correctly recomputed hunk header.
+func TestStripFathomRegionsFromDiff_MixedHunkKeepsTheRealEdit(t *testing.T) {
+	diff := "diff --git a/CLAUDE.md b/CLAUDE.md\n" +
+		"index aaa..bbb 100644\n" +
+		"--- a/CLAUDE.md\n" +
+		"+++ b/CLAUDE.md\n" +
+		"@@ -1,2 +1,6 @@\n" +
+		" # notes\n" +
+		"-old human content\n" +
+		"+new human content\n" +
+		"+<!-- fathom:begin v3 sha256:x -->\n" +
+		"+stanza line 1\n" +
+		"+stanza line 2\n" +
+		"+<!-- fathom:end -->\n"
+	// New-file line numbers: 1 "# notes" (context), 2 "new human content",
+	// 3 begin marker, 4-5 stanza body, 6 end marker — the region spans
+	// new-file lines 3-6.
+	ranges := map[string]regionRange{"CLAUDE.md": {newStart: 3, newEnd: 6}}
+
+	got, excluded := stripFathomRegionsFromDiff([]byte(diff), ranges)
+	if excluded != 1 {
+		t.Fatalf("excluded = %d, want 1", excluded)
+	}
+	s := string(got)
+	if strings.Contains(s, "stanza line") || strings.Contains(s, "fathom:begin") {
+		t.Errorf("expected the region's own lines stripped, got:\n%s", s)
+	}
+	if !strings.Contains(s, "-old human content") || !strings.Contains(s, "+new human content") {
+		t.Errorf("expected the genuine agent edit to CLAUDE.md to survive, got:\n%s", s)
+	}
+	if !strings.Contains(s, "@@ -1,2 +1,2 @@") {
+		t.Errorf("expected the hunk header recomputed to 2 old/2 new lines, got:\n%s", s)
+	}
+}
+
+// TestStripFathomRegionsFromDiff_NoRangesIsNoop covers the common case —
+// an unwired arm, or a wired one whose CLAUDE.md/AGENTS.md never changed
+// at all (InstrumentRegionRanges found nothing) — passes the diff through
+// byte for byte.
+func TestStripFathomRegionsFromDiff_NoRangesIsNoop(t *testing.T) {
+	diff := []byte(unifiedDiffFile("real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	got, excluded := stripFathomRegionsFromDiff(diff, nil)
+	if excluded != 0 || string(got) != string(diff) {
+		t.Errorf("expected a no-op pass-through, got %q, %d", got, excluded)
+	}
+}

@@ -1292,10 +1292,19 @@ func TestCmdVoid_MarksRowCellAndRerendersReadme(t *testing.T) {
 // .fathom/owned.json ledger (as `fathom init` would leave it after writing
 // its stanza) and edited alongside a genuine source change; only the real
 // edit's section survives, and InstrumentFilesExcluded reports the drop.
-func TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles(t *testing.T) {
+// TestCaptureAgentDiff_ExcludesLedgerOwnedFiles covers the ledger-driven
+// half of O55 item 4: a REAL KindKey ledger entry (.claude/settings.json's
+// own hooks block — the shape `fathom init` actually records, never a
+// KindRegion stanza, which apply.go never puts in the ledger at all) is
+// excluded wholesale, alongside the ledger file itself; a real agent edit
+// survives.
+func TestCaptureAgentDiff_ExcludesLedgerOwnedFiles(t *testing.T) {
 	wtDir := t.TempDir()
 	runGit(t, wtDir, "init", "-q", "-b", "main")
-	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# original\n"), 0o644); err != nil {
+	if err := os.MkdirAll(filepath.Join(wtDir, ".claude"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, ".claude", "settings.json"), []byte("{}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
@@ -1304,14 +1313,15 @@ func TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles(t *testing.T) {
 	runGit(t, wtDir, "add", "-A")
 	runGit(t, wtDir, "commit", "-q", "-m", "base")
 
-	// The instrument's own writes: a CLAUDE.md stanza, recorded in the
-	// ledger it also writes — exactly what wireScratchDaemon's `fathom
-	// init` call leaves behind in a real wired cell.
-	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# original\n\n<!-- fathom:begin v3 sha256:x -->\nstanza\n<!-- fathom:end -->\n"), 0o644); err != nil {
+	// The instrument's own write: `fathom init` wiring its hook stack into
+	// .claude/settings.json and recording that KEY in the ledger — exactly
+	// what wireScratchDaemon's `fathom init` call leaves behind in a real
+	// wired cell.
+	if err := os.WriteFile(filepath.Join(wtDir, ".claude", "settings.json"), []byte(`{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"fathom hook session-start"}]}]}}`+"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ledger := wiring.NewLedger()
-	ledger.Record("CLAUDE.md", wiring.OwnedKey{ID: "stanza", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
+	ledger.Record(".claude/settings.json", wiring.OwnedKey{ID: "hooks", Digest: "sha256:x", Wrote: "2026-09-14T00:00:00Z"})
 	if err := wiring.SaveLedger(wtDir, ledger); err != nil {
 		t.Fatal(err)
 	}
@@ -1326,17 +1336,18 @@ func TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles(t *testing.T) {
 		t.Fatal("expected a non-empty diff path")
 	}
 	// The ledger file itself is also instrument-written, so both it and
-	// CLAUDE.md's section are dropped — a one-file (real.go) diff.
+	// .claude/settings.json's section are dropped — a one-file (real.go)
+	// diff.
 	if excluded != 2 {
-		t.Errorf("instrumentFilesExcluded = %d, want 2 (CLAUDE.md, .fathom/owned.json)", excluded)
+		t.Errorf("instrumentFilesExcluded = %d, want 2 (.claude/settings.json, .fathom/owned.json)", excluded)
 	}
 	raw, err := os.ReadFile(diffPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	diff := string(raw)
-	if strings.Contains(diff, "CLAUDE.md") {
-		t.Errorf("expected CLAUDE.md's section excluded from agent.diff, got:\n%s", diff)
+	if strings.Contains(diff, "settings.json") {
+		t.Errorf("expected .claude/settings.json's section excluded from agent.diff, got:\n%s", diff)
 	}
 	if strings.Contains(diff, "owned.json") {
 		t.Errorf("expected the ledger's own section excluded from agent.diff, got:\n%s", diff)
@@ -1346,5 +1357,76 @@ func TestCaptureAgentDiff_ExcludesInstrumentOwnedFiles(t *testing.T) {
 	}
 	if strings.Count(diff, "diff --git ") != 1 {
 		t.Errorf("expected exactly one file section in the diff, got:\n%s", diff)
+	}
+}
+
+// TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits is O55 item
+// 4's fix-first review, in the finding's own words: CLAUDE.md/AGENTS.md
+// stanzas are a KindRegion, never ledger-tracked, so the whole-file/
+// ledger-driven exclusion above can never catch one — the region must be
+// placed by internal/wiring's OWN production code (wiring.ApplyWiring),
+// never a hand-recorded ledger entry, and only ITS OWN lines must be
+// stripped from the diff: an agent's own edit to CLAUDE.md outside the
+// region, and a real source edit, must both survive.
+func TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), []byte("# Project notes\n\nSome human-authored content.\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// fathom init's own write: a REAL region placed via internal/wiring's
+	// own ApplyWiring — never a hand-crafted marker string.
+	fixedNow := func() time.Time { return time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC) }
+	spec := wiring.Spec{Regions: []wiring.Region{{
+		File: "CLAUDE.md", Syntax: wiring.HTMLMarkers, Version: "v3",
+		Body: "This repo is indexed by fathom. Route by question shape.",
+	}}}
+	if _, err := wiring.ApplyWiring(wtDir, spec, wiring.ApplyOptions{Now: fixedNow}); err != nil {
+		t.Fatalf("wiring.ApplyWiring: %v", err)
+	}
+
+	// The agent's own edits: a real source change, AND its own hand edit
+	// to CLAUDE.md OUTSIDE the fathom region — both must survive.
+	if err := os.WriteFile(filepath.Join(wtDir, "real.go"), []byte("package thing\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	claude, err := os.ReadFile(filepath.Join(wtDir, "CLAUDE.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "CLAUDE.md"), append(claude, []byte("\nAgent's own new note.\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, excluded := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	if excluded < 1 {
+		t.Errorf("instrumentFilesExcluded = %d, want at least 1 (the region strip on CLAUDE.md)", excluded)
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if strings.Contains(diff, "indexed by fathom") {
+		t.Errorf("expected the fathom region's own body stripped from agent.diff, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "fathom:begin") {
+		t.Errorf("expected the region's own marker lines stripped, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "Agent's own new note") {
+		t.Errorf("expected the agent's own CLAUDE.md edit (outside the region) to survive, got:\n%s", diff)
+	}
+	if !strings.Contains(diff, "real.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected real.go's edit to survive, got:\n%s", diff)
 	}
 }

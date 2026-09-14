@@ -875,15 +875,21 @@ func compileLayers(ctx context.Context, root string, task Task, wt Worktree) (*C
 
 // InstrumentOwnedPaths returns the repo-relative paths (slash-separated,
 // matching `git diff --name-only`'s own spelling) that PrepareSubject's own
-// instrument — `fathom init`'s wiring, never the agent — wrote into wt
+// instrument — `fathom init`'s wiring, never the agent — OWNS OUTRIGHT
 // (O55 item 4): every file internal/wiring's own ledger
-// (`.fathom/owned.json`) records a key for (a whole owned file, a marked
-// CLAUDE.md/AGENTS.md stanza, or a structured key in a file like
-// lefthook.yml — every kind fathom's own ownership tracking recognizes),
-// plus `.fathomignore` and everything under workspace/, which carry no
-// ledger entry of their own. cell.go's FilterInstrumentOwnedDiff and
-// captureAgentDiff (cmd/scenariobench) use this so the instrument's own
-// footprint is never credited to the agent as its diff. A worktree
+// (`.fathom/owned.json`) records a key for — a whole owned file (KindFile)
+// or a structured key in a file like `.claude/settings.json`/lefthook.yml
+// (KindKey) — plus `.fathomignore` and the ledger file itself, which carry
+// no entry of their own. A MARKED REGION (KindRegion — CLAUDE.md/
+// AGENTS.md's own fathom stanza) is deliberately NOT here: apply.go only
+// calls ledger.Record for KindKey/KindFile, so a region's ownership lives
+// entirely in-band (the marker line's own digest, region.go) and never
+// touches this ledger at all (fix-first review, 2026-09-14: the original
+// version of this fix assumed it did, and so never actually excluded a
+// real wired cell's stanza). cell.go's FilterInstrumentOwnedDiff uses this
+// set for whole-file exclusion; InstrumentRegionRanges below is the
+// separate, region-aware path captureAgentDiff also runs, which strips
+// only a region's own lines rather than the whole file. A worktree
 // PrepareSubject never wired (no `.fathom/owned.json` at all, an unwired
 // arm's ordinary case) returns just the two static entries, never an
 // error.
@@ -899,6 +905,88 @@ func InstrumentOwnedPaths(wt Worktree) (map[string]bool, error) {
 		owned[filepath.ToSlash(file)] = true
 	}
 	return owned, nil
+}
+
+// instrumentRegionFiles are the only files internal/wiring ever places a
+// MARKED REGION into, always with wiring.HTMLMarkers (region.go's own
+// doc comment: "HTMLMarkers delimits regions in Markdown files (CLAUDE.md,
+// AGENTS.md)").
+var instrumentRegionFiles = []string{"CLAUDE.md", "AGENTS.md"}
+
+// InstrumentRegionRanges returns, for each of instrumentRegionFiles that
+// currently carries fathom's own marked region on either side of the
+// change, the 1-based inclusive line range that region occupies in the
+// BASE commit's version of the file and in the worktree's CURRENT version
+// — cell.go's stripFathomRegionsFromDiff strips exactly those lines from
+// agent.diff's hunks for that file, keeping any other edit to it byte for
+// byte. Base content comes from `git show HEAD:<path>` run IN wt.Path,
+// which — since PrepareSubject gives every cell worktree a single root
+// commit at base_commit (O55 item 1) — is always base_commit's own
+// content, regardless of what the shared clone's own history looks like.
+// A file absent at base, or carrying no region on EITHER side, is simply
+// omitted from the result (nothing to strip for it); this never errors —
+// an unreadable git show or a missing file are both "no base region",
+// exactly as intended for a file that did not exist yet.
+func InstrumentRegionRanges(ctx context.Context, wt Worktree) map[string]regionRange {
+	out := map[string]regionRange{}
+	for _, name := range instrumentRegionFiles {
+		var rng regionRange
+		if base, err := runIn(ctx, wt.Path, "git", "show", "HEAD:"+name); err == nil {
+			if start, end, ok := regionLineRange(base, wiring.HTMLMarkers); ok {
+				rng.oldStart, rng.oldEnd = start, end
+			}
+		}
+		if cur, err := os.ReadFile(filepath.Join(wt.Path, name)); err == nil {
+			if start, end, ok := regionLineRange(string(cur), wiring.HTMLMarkers); ok {
+				rng.newStart, rng.newEnd = start, end
+			}
+		}
+		if rng.oldStart == 0 && rng.newStart == 0 {
+			continue
+		}
+		out[name] = rng
+	}
+	return out
+}
+
+// StripInstrumentRegions is InstrumentRegionRanges +
+// stripFathomRegionsFromDiff (cell.go) as one exported call —
+// cmd/scenariobench's captureAgentDiff's entry point for the region-aware
+// half of O55 item 4, so regionRange and stripFathomRegionsFromDiff itself
+// can stay package-private.
+func StripInstrumentRegions(ctx context.Context, wt Worktree, diff []byte) ([]byte, int) {
+	return stripFathomRegionsFromDiff(diff, InstrumentRegionRanges(ctx, wt))
+}
+
+// regionLineRange finds internal/wiring's own marker pair (syn —
+// wiring.HTMLMarkers for CLAUDE.md/AGENTS.md) in content and returns the
+// 1-based inclusive line range from the begin marker line through the end
+// marker line — exactly the lines a region occupies on disk. ok is false
+// when no complete marker pair is present (content carries no region at
+// all, or — treated the same here — an unterminated one; a malformed
+// marker is internal/wiring's own concern to refuse at write time, not
+// this read-only filter's).
+func regionLineRange(content string, syn wiring.MarkerSyntax) (start, end int, ok bool) {
+	if content == "" {
+		return 0, 0, false
+	}
+	lines := strings.Split(content, "\n")
+	begin := -1
+	for i, line := range lines {
+		if strings.HasPrefix(line, syn.BeginPrefix) {
+			begin = i
+			break
+		}
+	}
+	if begin < 0 {
+		return 0, 0, false
+	}
+	for i := begin; i < len(lines); i++ {
+		if strings.HasPrefix(lines[i], syn.End) {
+			return begin + 1, i + 1, true
+		}
+	}
+	return 0, 0, false
 }
 
 // SubjectEnv is the environment every subprocess that runs INSIDE a subject
