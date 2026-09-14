@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
@@ -903,6 +904,170 @@ func TestCmdLedger_TrialsDefaultCountsAllStoredTrials(t *testing.T) {
 	if !strings.Contains(stdout, "T1/control:2") {
 		t.Errorf("expected the summary line to print the row's own trial count, got %q", stdout)
 	}
+}
+
+// runThenPrepareLedgerFixture runs one fake-harness cell under run-id
+// "run-1" and returns everything TestCmdLedger_GeneratedAt*/StoreRoot/
+// StrictBorrow need: the corpus/cells/ledger/readme paths, with readme
+// already carrying the marker-fenced section `ledger` rewrites.
+func runThenPrepareLedgerFixture(t *testing.T) (dir, corpusPath, cellsDir, ledgerPath, readmePath string) {
+	t.Helper()
+	dir = t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath = writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir = filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	if rc := run([]string{
+		"run",
+		"-corpus", corpusPath, "-root", root, "-cells", cellsDir, "-raw-dir", rawDir,
+		"-run-id", "run-1", "-harness-version", "fake-1", "-harness", "fake",
+		"-fake-streams-dir", streamsDir, "-fake-streams", `{"T1/control":"single-session.jsonl"}`,
+	}); rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+
+	ledgerPath = filepath.Join(dir, "ledger.jsonl")
+	readmePath = filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir, corpusPath, cellsDir, ledgerPath, readmePath
+}
+
+// TestCmdLedger_GeneratedAtFromInjectedClock pins O55 item 5: every filed
+// row carries generated_at, RFC3339 UTC, from ledgerClock — deterministic
+// under a test's own override, never "" (the defect: the field existed on
+// ScenarioLedgerRow but cmdLedger never set it).
+func TestCmdLedger_GeneratedAtFromInjectedClock(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	old := ledgerClock
+	fixed := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	ledgerClock = func() time.Time { return fixed }
+	t.Cleanup(func() { ledgerClock = old })
+
+	if rc := run([]string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}); rc != 0 {
+		t.Fatalf("ledger exited %d, want 0", rc)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 filed row, got %d", len(rows))
+	}
+	if want := "2026-09-14T12:00:00Z"; rows[0].GeneratedAt != want {
+		t.Errorf("GeneratedAt = %q, want %q", rows[0].GeneratedAt, want)
+	}
+}
+
+// TestCmdLedger_BorrowedCellsCarryStoreRoot pins O55 item 5's other half:
+// every entry in a filed row's own Borrowed list names the store
+// (cellsDir) it was actually read from — `ledger` only ever borrows (it
+// never runs a cell itself), so every cell it files is borrowed.
+func TestCmdLedger_BorrowedCellsCarryStoreRoot(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+
+	if rc := run([]string{
+		"ledger",
+		"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+		"-run-id", "run-1", "-harness-version", "fake-1",
+	}); rc != 0 {
+		t.Fatalf("ledger exited %d, want 0", rc)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || len(rows[0].Borrowed) != 1 {
+		t.Fatalf("expected 1 filed row with 1 borrowed entry, got %+v", rows)
+	}
+	if rows[0].Borrowed[0].StoreRoot != cellsDir {
+		t.Errorf("Borrowed[0].StoreRoot = %q, want %q", rows[0].Borrowed[0].StoreRoot, cellsDir)
+	}
+}
+
+// setStoredCellRunID rewrites the one stored cell under cellsDir's own
+// run_id field on disk — simulating a cell filed by a DIFFERENT run than
+// the one `ledger` is about to ask for, the shape a wrong -cells/-run-id
+// pairing produces.
+func setStoredCellRunID(t *testing.T, cellsDir, runID string) {
+	t.Helper()
+	path := findStoredCell(t, cellsDir)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatal(err)
+	}
+	m["run_id"] = runID
+	out, err := json.Marshal(m)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, out, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCmdLedger_StrictBorrowRefusesRunIDMismatch pins O55 item 5's
+// -strict-borrow behavior: a stored cell whose own run_id differs from
+// -run-id is, by default, a hard refusal (exit 2) naming the cell, its
+// key, the store it resolved, and both run ids — not a silent skip that
+// could leave an operator staring at an empty or short ledger with no clue
+// why. -strict-borrow=false restores the old skip (nothing filed, the
+// criterion goes indeterminate for lack of trials).
+func TestCmdLedger_StrictBorrowRefusesRunIDMismatch(t *testing.T) {
+	_, corpusPath, cellsDir, ledgerPath, readmePath := runThenPrepareLedgerFixture(t)
+	setStoredCellRunID(t, cellsDir, "some-other-run")
+
+	t.Run("default (strict) refuses", func(t *testing.T) {
+		stderr := captureStderr(t, func() {
+			rc := run([]string{
+				"ledger",
+				"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+				"-run-id", "run-1", "-harness-version", "fake-1",
+			})
+			if rc != 2 {
+				t.Errorf("ledger exited %d, want 2 (strict-borrow refusal)", rc)
+			}
+		})
+		for _, want := range []string{"some-other-run", "run-1", cellsDir, "refusing to borrow"} {
+			if !strings.Contains(stderr, want) {
+				t.Errorf("expected stderr to mention %q, got %q", want, stderr)
+			}
+		}
+		if rows, err := scenariobench.LoadScenarioLedger(ledgerPath); err != nil || len(rows) != 0 {
+			t.Errorf("expected no row filed on refusal, got %v (err=%v)", rows, err)
+		}
+	})
+
+	t.Run("-strict-borrow=false restores the old skip", func(t *testing.T) {
+		rc := run([]string{
+			"ledger",
+			"-corpus", corpusPath, "-cells", cellsDir, "-ledger", ledgerPath, "-readme", readmePath,
+			"-run-id", "run-1", "-harness-version", "fake-1", "-strict-borrow=false",
+		})
+		if rc != 3 {
+			t.Errorf("ledger exited %d, want 3 (indeterminate: nothing matched -run-id)", rc)
+		}
+		if rows, err := scenariobench.LoadScenarioLedger(ledgerPath); err != nil || len(rows) != 0 {
+			t.Errorf("expected no row filed (the mismatched cell was skipped, not counted), got %v (err=%v)", rows, err)
+		}
+	})
 }
 
 // TestCmdScore_GoldSourceToolCorpusFlag is item 3's own proof: without

@@ -236,6 +236,13 @@ func BorrowScenarioCell(cellsDir, key string, trial int) (CellResult, bool, erro
 		// hand-migrated from elsewhere).
 		r.SourceRunID = orUnrecordedScenario(r.RunID)
 	}
+	// O55 item 5: cellsDir verbatim, exactly as the caller passed it — the
+	// store this borrow actually resolved against, so a later consumer
+	// (the ledger's own Borrowed list, cmdLedger's -strict-borrow error)
+	// can name it. Ephemeral like Borrowed/SourceRunID above: never
+	// written back (StoreScenarioCell already refuses to write a borrowed
+	// cell at all).
+	r.StoreRoot = cellsDir
 	return r, true, nil
 }
 
@@ -296,6 +303,11 @@ type BorrowedScenarioCell struct {
 	Trial       int    `json:"trial"`
 	CellKey     string `json:"cell_key"`
 	SourceRunID string `json:"source_run_id"`
+	// StoreRoot is the cell store (cellsDir) this reading was actually
+	// borrowed from (O55 item 5, BorrowScenarioCell's own CellResult.
+	// StoreRoot) — named on the ledger row so a reader can tell WHICH
+	// store a borrowed cell's provenance points at, not just which run.
+	StoreRoot string `json:"store_root,omitempty"`
 }
 
 // AggregateReadings computes the basic, always-available Readings fields
@@ -609,7 +621,7 @@ func BorrowedScenarioCellsOf(results []CellResult) []BorrowedScenarioCell {
 		if !r.Borrowed {
 			continue
 		}
-		out = append(out, BorrowedScenarioCell{TaskID: r.TaskID, Arm: r.Arm, Trial: r.Trial, CellKey: r.CellKey, SourceRunID: orUnrecordedScenario(r.SourceRunID)})
+		out = append(out, BorrowedScenarioCell{TaskID: r.TaskID, Arm: r.Arm, Trial: r.Trial, CellKey: r.CellKey, SourceRunID: orUnrecordedScenario(r.SourceRunID), StoreRoot: r.StoreRoot})
 	}
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].TaskID != out[j].TaskID {

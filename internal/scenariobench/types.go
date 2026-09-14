@@ -705,6 +705,11 @@ type CellResult struct {
 	// (the common unwired-arm case) is a real, reported count, not absence
 	// — always present, never omitempty.
 	InstrumentFilesExcluded int `json:"instrument_files_excluded"`
+	// StoreRoot is set only by BorrowScenarioCell (O55 item 5), to the
+	// cellsDir the cell was actually read from — ephemeral like Borrowed/
+	// SourceRunID (StoreScenarioCell never writes a borrowed cell back), so
+	// this is never present on a cell as originally stored.
+	StoreRoot string `json:"store_root,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

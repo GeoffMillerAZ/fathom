@@ -560,6 +560,13 @@ func cmdRun(args []string) int {
 // turn it into a LOST cell instead of aborting the run.
 var errSubjectPrep = errors.New("preparing subject")
 
+// ledgerClock is cmdLedger's own injected clock (internal/CLAUDE.md's
+// determinism contract: inject clocks, never call time.Now() directly in
+// logic a test needs to pin) — GeneratedAt on every row cmdLedger files
+// (O55 item 5). Tests override it for a deterministic timestamp; production
+// leaves it as time.Now.
+var ledgerClock = time.Now
+
 type cellOutcome struct {
 	cp         cellPlan
 	borrowed   bool
@@ -1134,6 +1141,18 @@ func cmdScore(args []string) int {
 
 // ─── ledger ──────────────────────────────────────────────────────────────
 
+// borrowRunMismatchError builds cmdLedger's -strict-borrow refusal message
+// (O55 item 5): a stored cell record exists at key/trial, but names a
+// different run than -run-id expects — usually -cells pointed at the wrong
+// store, or -run-id was mistyped, not "this cell just wasn't part of this
+// run" (that case is !ok, handled separately). Names the store it actually
+// resolved (storeRoot, CellResult.StoreRoot — BorrowScenarioCell's own
+// cellsDir) so the operator has something to check.
+func borrowRunMismatchError(taskID, arm string, trial int, key, storeRoot, gotRunID, wantRunID string) error {
+	return fmt.Errorf("cell %s/%s/t%d (key %s) in store %s was filed under run %q, not the expected run %q — refusing to borrow (pass -strict-borrow=false to allow across-run borrowing)",
+		taskID, arm, trial, key, storeRoot, gotRunID, wantRunID)
+}
+
 func cmdLedger(args []string) int {
 	fs := newFlagSet("ledger")
 	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
@@ -1145,6 +1164,7 @@ func cmdLedger(args []string) int {
 	runID := fs.String("run-id", "", "the run whose cells to file (required)")
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
 	trials := fs.Int("trials", 0, "trials per (task, arm) this run intended (default: the corpus criterion's own min_trials; a cell key with MORE stored trials than this is still counted in full, never capped)")
+	strictBorrow := fs.Bool("strict-borrow", true, "refuse (exit 2) to file a row when a stored cell's own run_id differs from -run-id, rather than silently skipping it — false restores the old silent-skip behavior for a cellsDir deliberately shared across runs")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -1162,7 +1182,10 @@ func cmdLedger(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2
 	}
-	generatedAt := ""
+	// O55 item 5: RFC3339 UTC from the injected clock — every filed row
+	// carries WHEN this filing happened, deterministic in tests
+	// (ledgerClock), real wall time in production.
+	generatedAt := ledgerClock().UTC().Format(time.RFC3339)
 	resolvedCommit := *commit
 	if resolvedCommit == "" {
 		resolvedCommit = resolveFathomCommit("")
@@ -1194,6 +1217,7 @@ func cmdLedger(args []string) int {
 			fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
 			return 2
 		}
+		resolvedKey := cp.key
 		if seenTrial[cp.key] == nil {
 			seenTrial[cp.key] = map[int]bool{}
 		}
@@ -1207,8 +1231,16 @@ func cmdLedger(args []string) int {
 				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 				return 2
 			}
+			resolvedKey = alt
 		}
-		if !ok || cell.RunID != *runID {
+		if !ok {
+			continue
+		}
+		if cell.RunID != *runID {
+			if *strictBorrow {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", borrowRunMismatchError(cp.task.ID, cp.arm, cp.trial, resolvedKey, cell.StoreRoot, cell.RunID, *runID))
+				return 2
+			}
 			continue
 		}
 		k := key{cp.task.ID, cp.arm}
@@ -1238,7 +1270,14 @@ func cmdLedger(args []string) int {
 				return 2
 			}
 			seenTrial[primaryKey][trial] = true
-			if !ok || cell.RunID != *runID {
+			if !ok {
+				continue
+			}
+			if cell.RunID != *runID {
+				if *strictBorrow {
+					fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", borrowRunMismatchError(k.task, k.arm, trial, primaryKey, cell.StoreRoot, cell.RunID, *runID))
+					return 2
+				}
 				continue
 			}
 			byTaskArm[k] = append(byTaskArm[k], cell)
