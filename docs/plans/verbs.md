@@ -35,7 +35,7 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 ## Wave D — the freshness receipt (R5, SB-51)
 
 - [x] A scripted-edit freshness probe: N mechanical changes at HEAD, one question per change that only HEAD can answer, scored as post-edit correctness and time to a correct answer, run against fathom's own index for free {id: VB-17, symbol: FreshnessProbe, package: internal/indexbench}
-- [ ] (op) M7 written: the repaired FRESH task across five arms (SB-51) plus the probe once per release against graphify in `--watch` mode; if graphify answers four of five post-edit questions, freshness leaves positioning {id: VB-18, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: VB-17}
+- [ ] (op) M7 written: the repaired FRESH task across five arms (SB-51) plus the probe once per release against graphify in `--watch` mode; if graphify answers four of five post-edit questions, freshness leaves positioning — 2026-09-14: graphify --watch probe 4/5 (docs/bench/readings/vb18-freshness-graphify-watch.md); five-arm FRESH task pending vs-pilot-4 {id: VB-18, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: VB-17}
 
 ## Wave E — receipts a stranger can check (R6)
 
