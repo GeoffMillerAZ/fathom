@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -280,10 +281,17 @@ func groupTestInvocations(nodes []core.SymbolNode, ranked []rankedTest) []testIn
 		if pkgArg == "." || pkgArg == "" {
 			pkgArg = "."
 		}
+		quoted := make([]string, len(names))
+		for i, n := range names {
+			// A Go identifier never contains a regex metacharacter, but
+			// quoting is what makes that a guarantee of the -run pattern
+			// rather than an assumption about what a test can be named.
+			quoted[i] = regexp.QuoteMeta(n)
+		}
 		out = append(out, testInvocation{
 			Package: pkg,
 			Tests:   names,
-			Command: fmt.Sprintf("go test ./%s -run '^(%s)$'", pkgArg, strings.Join(names, "|")),
+			Command: fmt.Sprintf("go test ./%s -run '^(%s)$'", pkgArg, strings.Join(quoted, "|")),
 		})
 	}
 	return out
