@@ -214,6 +214,91 @@ func TestPrepareSubject_WorktreeHasNoFuture(t *testing.T) {
 	}
 }
 
+// gitFixtureRepoWithExportIgnore builds a local git repository whose
+// .gitattributes marks one committed file export-ignore — `git archive`
+// silently drops such a file from its own output, a real checkout
+// (`git worktree add`, `checkout-index`) never does. Returns the repo path
+// and the commit's sha.
+func gitFixtureRepoWithExportIgnore(t *testing.T) (repoPath, commit string) {
+	t.Helper()
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, "normal.txt"), "normal content\n")
+	writeTestFile(t, filepath.Join(dir, "secret.txt"), "export-ignore'd content\n")
+	writeTestFile(t, filepath.Join(dir, ".gitattributes"), "secret.txt export-ignore\n")
+	run("add", "-A")
+	run("commit", "-q", "-m", "initial commit")
+	sha := run("rev-parse", "HEAD")
+	return dir, sha
+}
+
+// TestCheckoutCommitTree_KeepsExportIgnoredFiles pins O55 item 1's
+// fix-first review directly: checkoutCommitTree's own read-tree +
+// checkout-index must keep an export-ignore'd file that `git archive`
+// would silently drop.
+func TestCheckoutCommitTree_KeepsExportIgnoredFiles(t *testing.T) {
+	repoPath, commit := gitFixtureRepoWithExportIgnore(t)
+	wtPath := filepath.Join(t.TempDir(), "wt")
+	if err := os.MkdirAll(wtPath, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkoutCommitTree(context.Background(), repoPath, commit, wtPath); err != nil {
+		t.Fatalf("checkoutCommitTree: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(wtPath, "secret.txt"))
+	if err != nil {
+		t.Fatalf("expected secret.txt (export-ignore'd) to be present — git archive would have dropped it: %v", err)
+	}
+	if string(raw) != "export-ignore'd content\n" {
+		t.Errorf("secret.txt content = %q, want the committed content", raw)
+	}
+	if _, err := os.Stat(filepath.Join(wtPath, "normal.txt")); err != nil {
+		t.Errorf("expected normal.txt present: %v", err)
+	}
+	// checkoutCommitTree must never mutate the CLONE's own main index —
+	// only a temporary one.
+	if _, err := os.Stat(filepath.Join(repoPath, ".git", "index")); err != nil {
+		t.Fatalf("the clone's own index vanished: %v", err)
+	}
+}
+
+// TestPrepareSubject_ExportIgnoredFilesSurvive is the end-to-end proof:
+// PrepareSubject's own cell worktree still carries a subject's
+// export-ignore'd file, not just checkoutCommitTree in isolation.
+func TestPrepareSubject_ExportIgnoredFilesSurvive(t *testing.T) {
+	repoPath, commit := gitFixtureRepoWithExportIgnore(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: commit}}
+	arm := Arm{Instructions: "none"}
+
+	wt, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	if _, err := os.Stat(filepath.Join(wt.Path, "secret.txt")); err != nil {
+		t.Errorf("expected the export-ignore'd file to survive PrepareSubject's checkout, got: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "normal.txt")); err != nil {
+		t.Errorf("expected the ordinary file present: %v", err)
+	}
+}
+
 func TestPrepareSubject_UnwiredArm(t *testing.T) {
 	repoPath, commit := gitFixtureRepo(t)
 	root := t.TempDir()

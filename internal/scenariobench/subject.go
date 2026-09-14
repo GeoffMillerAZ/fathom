@@ -1,9 +1,10 @@
 // PrepareSubject (SB-12) turns a Task's pinned subject into a git worktree
 // ready for sessions: a shared clone under
 // workspace/scenariobench/subjects/<sha256(repo_url)>, one cell worktree
-// per (base_commit, arm) archived from that clone at base_commit and given
-// its own single-commit history (O55 item 1 — see archiveCommitIntoWorktree:
-// a cell worktree must have NO future, so `git log --all` inside it can
+// per (base_commit, arm) checked out from that clone at base_commit and
+// given its own single-commit history (O55 item 1 — see
+// checkoutCommitIntoWorktree: a cell worktree must have NO future, so
+// `git log --all` inside it can
 // never resolve a commit that only merged after base_commit), the subject's
 // and the arm's setup commands, and — for a wired arm — a scratch daemon
 // that ingests ONLY that worktree (never the fleet store) so `fathom init
@@ -137,7 +138,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			// live git process owns.
 			reapStaleScratchDaemon(wtPath)
 			removeStaleIndexLock(ctx, wtPath)
-			// wtPath is its own repository (archiveCommitIntoWorktree) whose
+			// wtPath is its own repository (checkoutCommitIntoWorktree) whose
 			// history starts at its own root commit — that commit's sha is
 			// NOT task.Subject.BaseCommit (it was re-committed by `git
 			// commit`, never `git reset` to the original sha, which this
@@ -159,7 +160,7 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 		if err := os.MkdirAll(wtPath, 0o755); err != nil {
 			return fmt.Errorf("preparing subject: creating %s: %w", wtPath, err)
 		}
-		if err := archiveCommitIntoWorktree(ctx, cloneDir, task.Subject.BaseCommit, wtPath); err != nil {
+		if err := checkoutCommitIntoWorktree(ctx, cloneDir, task.Subject.BaseCommit, wtPath); err != nil {
 			_ = os.RemoveAll(wtPath)
 			return err
 		}
@@ -521,22 +522,30 @@ func ensureClone(ctx context.Context, repoURL, cloneDir string) error {
 	return nil
 }
 
-// archiveCommitIntoWorktree makes wtPath (an existing, empty directory) its
-// own git repository containing exactly base's tree, in exactly one commit
-// with no parents — O55 item 1: a full clone's worktree carries the WHOLE
-// history, including any merge that lands after base (a control planner ran
-// `git log --all | grep -i autolink` against a shared-clone worktree and
-// found the very fix PR #10124 the task was measuring), so a cell worktree
-// built off one can leak the answer. `git archive <base> | tar -x` copies
-// only base's tree (no .git at all) into wtPath; `git init` + `add -A` +
-// `commit` then gives it a single root commit, authored "bench
+// checkoutCommitIntoWorktree makes wtPath (an existing, empty directory)
+// its own git repository containing exactly base's tree, in exactly one
+// commit with no parents — O55 item 1: a full clone's worktree carries the
+// WHOLE history, including any merge that lands after base (a control
+// planner ran `git log --all | grep -i autolink` against a shared-clone
+// worktree and found the very fix PR #10124 the task was measuring), so a
+// cell worktree built off one can leak the answer.
+//
+// Its own source of base's tree is checkoutCommitTree (read-tree +
+// checkout-index against a TEMPORARY index), never `git archive`
+// (fix-first review, 2026-09-14): archive
+// honors .gitattributes' export-ignore, silently DROPPING any file a
+// subject marks that way from the tarball — export-ignore exists
+// specifically to shape distribution archives, and a real checkout
+// (`git worktree add`, `checkout-index`) never consults it, so the first
+// version of this fix (archive-based) could silently lose files a normal
+// `git worktree add` would have kept. `git init` + `add -A` + `commit`
+// then gives wtPath a single root commit, authored "bench
 // <bench@example.invalid>" so it is never mistaken for a real contributor.
-// cloneDir is read here only as the archive source — the worktree shares
+// cloneDir is read here only as the checkout source — the worktree shares
 // none of its history, refs, or object store afterward.
-func archiveCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath string) error {
-	archive := exec.CommandContext(ctx, "sh", "-c", `git -C "$1" archive --format=tar "$2" | tar -x -C "$3"`, "sh", cloneDir, base, wtPath)
-	if out, err := archive.CombinedOutput(); err != nil {
-		return fmt.Errorf("preparing subject: archiving %s into %s: %w (%s)", base, wtPath, err, out)
+func checkoutCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath string) error {
+	if err := checkoutCommitTree(ctx, cloneDir, base, wtPath); err != nil {
+		return err
 	}
 	if out, err := runIn(ctx, wtPath, "git", "init", "-q", "-b", "bench"); err != nil {
 		return fmt.Errorf("preparing subject: git init: %w (%s)", err, out)
@@ -550,6 +559,38 @@ func archiveCommitIntoWorktree(ctx context.Context, cloneDir, base, wtPath strin
 	}
 	if out, err := runInEnv(ctx, wtPath, commitEnv, "git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", "base "+base); err != nil {
 		return fmt.Errorf("preparing subject: git commit: %w (%s)", err, out)
+	}
+	return nil
+}
+
+// checkoutCommitTree populates wtPath (an existing, empty directory) with
+// base's FULL tree read from cloneDir, via `git read-tree` + `git
+// checkout-index` against a TEMPORARY index file (GIT_INDEX_FILE) —
+// never cloneDir's own main index, so this never interferes with anything
+// else the shared clone's index is used for (concurrent cells already
+// serialize on lockClone(cloneDir), but there is no reason to touch
+// persistent state here at all when a throwaway index does the same job).
+// Unlike `git archive`, checkout-index never consults .gitattributes'
+// export-ignore — it is a real checkout, the same shape `git worktree add`
+// would have produced.
+func checkoutCommitTree(ctx context.Context, cloneDir, base, wtPath string) error {
+	gitDir := filepath.Join(cloneDir, ".git")
+	tmpIndex, err := os.CreateTemp("", "fathom-scenariobench-index-")
+	if err != nil {
+		return fmt.Errorf("preparing subject: creating a temporary index: %w", err)
+	}
+	tmpIndexPath := tmpIndex.Name()
+	if err := tmpIndex.Close(); err != nil {
+		return fmt.Errorf("preparing subject: closing the temporary index: %w", err)
+	}
+	defer os.Remove(tmpIndexPath)
+	extra := map[string]string{"GIT_INDEX_FILE": tmpIndexPath}
+
+	if out, err := runInEnv(ctx, cloneDir, extra, "git", "--git-dir="+gitDir, "read-tree", base); err != nil {
+		return fmt.Errorf("preparing subject: reading %s's tree: %w (%s)", base, err, out)
+	}
+	if out, err := runInEnv(ctx, cloneDir, extra, "git", "--git-dir="+gitDir, "--work-tree="+wtPath, "checkout-index", "-a", "-f"); err != nil {
+		return fmt.Errorf("preparing subject: checking out %s into %s: %w (%s)", base, wtPath, err, out)
 	}
 	return nil
 }
