@@ -27,14 +27,14 @@ Verify: `fathom verify --service fathom --plan docs/plans/verbs.md`.
 
 ## Wave C — governance that bites (R4)
 
-- [ ] A `layer-rule` obligation kind in CUE: import direction, no cycles, package boundaries, cross-service dependency direction; checked live against the index at obligations time {id: VB-13, symbol: EvaluateLayerRule, package: internal/guardspec}
-- [ ] `fathom rules gen-test` emits a Go test per layer rule so the same rule fails `task validate` and any CI; a seeded violation proves the generated test fails {id: VB-14, symbol: cmdRulesGenTest, package: cmd/fathom}
-- [ ] A GitHub Ruleset template makes `fathom verify` and the generated rule tests a required check, documented for a stranger {id: VB-15, oracle: lexical, path: docs/adoption/github-rulesets.md, pattern: required_status_checks}
+- [x] A `layer-rule` obligation kind in CUE: import direction, no cycles, package boundaries, cross-service dependency direction; checked live against the index at obligations time {id: VB-13, symbol: EvaluateLayerRule, package: internal/guardspec}
+- [x] `fathom rules gen-test` emits a Go test per layer rule so the same rule fails `task validate` and any CI; a seeded violation proves the generated test fails {id: VB-14, symbol: cmdRulesGenTest, package: cmd/fathom}
+- [x] A GitHub Ruleset template makes `fathom verify` and the generated rule tests a required check, documented for a stranger {id: VB-15, oracle: lexical, path: docs/adoption/github-rulesets.md, pattern: required_status_checks}
 - [ ] (op) M13: this repository's last 200 commits replayed against its authored layer rules, and the gated arm against the advisory arm on the far-from-edit corpus (RC-50) at n=3; if nothing is caught anywhere, governance stays advisory and the row says so {id: VB-16, skip_test: true, skip: "replay and pilot spend; evidence is the replay report under workspace/ and the ledger rows", needs: VB-14}
 
 ## Wave D — the freshness receipt (R5, SB-51)
 
-- [ ] A scripted-edit freshness probe: N mechanical changes at HEAD, one question per change that only HEAD can answer, scored as post-edit correctness and time to a correct answer, run against fathom's own index for free {id: VB-17, symbol: FreshnessProbe, package: internal/indexbench}
+- [x] A scripted-edit freshness probe: N mechanical changes at HEAD, one question per change that only HEAD can answer, scored as post-edit correctness and time to a correct answer, run against fathom's own index for free {id: VB-17, symbol: FreshnessProbe, package: internal/indexbench}
 - [ ] (op) M7 written: the repaired FRESH task across five arms (SB-51) plus the probe once per release against graphify in `--watch` mode; if graphify answers four of five post-edit questions, freshness leaves positioning {id: VB-18, skip_test: true, skip: "operator spend; evidence is the ledger rows", needs: VB-17}
 
 ## Wave E — receipts a stranger can check (R6)
