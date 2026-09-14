@@ -319,7 +319,17 @@ subject clone carrying the merged fix in its history. On this evidence
 fathom does not help a capable model make a change on a repository it has
 never seen, and costs more; the case for the tools rests on the verify
 gate, on governance that bites, and on the answers a type-checked index
-gives that grep cannot, not on lookup or change speed.
+gives that grep cannot, not on lookup or change speed. guards-pilot-5
+(eight governance-bound change tasks on this repository, 32 cells) is the
+third null on the ledger, 8 of 16 on both arms at level cost; its second
+reading (O57) found one wired pass written by an orphaned agent, twelve
+trials that scored a correct refusal as a failure, a wired failure caused
+by the arm's own stanza refresh, and served obligations that never named
+the governing rule before the edit in any wired trial. On adjudicable
+trials fathom's arm violated a rule once in nine and control three times
+in eleven, at 1.4 times the tokens per clean success. Governance at the
+edit has not yet been measured on a fair instrument; waves N6 and N7
+repair the driver and the product before the next run.
 
 `pass` and `fail` are both measured results and both belong in the ledger; a
 recorded refutation is the instrument working. `indeterminate` is different —
