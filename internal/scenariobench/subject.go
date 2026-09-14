@@ -52,6 +52,22 @@ type Worktree struct {
 	Path string
 	// SubjectClone is the shared clone this worktree was added from.
 	SubjectClone string
+	// LocalBase is THIS worktree's own root commit sha — set once, here
+	// in PrepareSubject, via `git rev-list --max-parents=0 HEAD` in Path.
+	// checkoutCommitIntoWorktree gives every worktree a single root
+	// commit whose sha is NEVER task.Subject.BaseCommit (re-committed by
+	// `git commit`, not `git reset` to the original sha — which this
+	// worktree's own object store does not contain at all: `git cat-file
+	// -e <base_commit>^{commit}` fails here, confirmed directly,
+	// fix-first review 2026-09-14). Every git operation INSIDE this
+	// worktree that means "diff/checkout against base" — refusal.go's
+	// changedPaths, oracleEnv's $SCENARIO_BASE_COMMIT, ApplyTestPatch's
+	// resetTestPatchTargets — must use LocalBase, never
+	// task.Subject.BaseCommit directly. The task record itself
+	// (CellResult.BaseCommit, the ledger, a detector's own name in the
+	// corpus) keeps the REAL base_commit unchanged: LocalBase is a
+	// worktree-local implementation detail, never persisted.
+	LocalBase string
 	// CellDir is where this cell's own working artifacts (oracle output,
 	// raw session transcripts) belong — distinct from the content-addressed
 	// cell store (cell.go), whose key is not known until scoring time.
@@ -138,6 +154,13 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 			// live git process owns.
 			reapStaleScratchDaemon(wtPath)
 			removeStaleIndexLock(ctx, wtPath)
+			// O57 finding 1: unlike a stray scratch daemon (fathom's own
+			// process, safe to kill on sight), a live SESSION pidfile here
+			// names an agent process that may still be actively editing —
+			// refuse the reset (LOST) rather than race or destroy it.
+			if reason := RefuseIfLiveSessionInWorktree(wtPath); reason != "" {
+				return fmt.Errorf("preparing subject: refusing to reset the shared worktree: %s", reason)
+			}
 			// wtPath is its own repository (checkoutCommitIntoWorktree) whose
 			// history starts at its own root commit — that commit's sha is
 			// NOT task.Subject.BaseCommit (it was re-committed by `git
@@ -170,6 +193,17 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 	}
 
 	wt := Worktree{Path: wtPath, SubjectClone: cloneDir}
+	// Computed once here (fresh or reused — the reset-to-root-commit
+	// branch above already put wtPath back at its own root commit, so
+	// this is correct either way) rather than inside the branches above,
+	// so callers never see a Worktree with LocalBase unset. See the
+	// field's own doc comment (Worktree, above) for why this can never be
+	// task.Subject.BaseCommit itself.
+	localBase, err := runIn(ctx, wtPath, "git", "rev-list", "--max-parents=0", "HEAD")
+	if err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: finding the worktree's own root commit: %w (%s)", err, localBase)
+	}
+	wt.LocalBase = strings.TrimSpace(localBase)
 	wt.CellDir = filepath.Join(root, "workspace", "artifacts", "scenariobench", "worktrees", task.ID+"-"+filepath.Base(wtPath))
 	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", wt.CellDir, err)
@@ -410,6 +444,7 @@ func StopWorktree(wt *Worktree) error {
 		return fmt.Errorf("stopping scratch daemon: %w", err)
 	}
 	_ = wt.daemon.Wait()
+	unregisterLiveProcessGroup(pid) // O57 finding 1
 	wt.daemon = nil
 	_ = os.Remove(scratchDaemonPIDFile(wt.Path))
 	return nil
@@ -700,6 +735,7 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	wt.daemon = daemon
 	wt.DaemonURL = "http://" + addr
 	_ = os.WriteFile(scratchDaemonPIDFile(wt.Path), []byte(strconv.Itoa(daemon.Process.Pid)+"\n"), 0o644)
+	registerLiveProcessGroup(daemon.Process.Pid, "scratch-daemon:"+wt.Path) // O57 finding 1
 
 	if err := waitDaemonReady(wt.DaemonURL, 30*time.Second); err != nil {
 		_ = StopWorktree(wt)

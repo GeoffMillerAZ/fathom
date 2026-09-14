@@ -183,9 +183,35 @@ func RenderArm(arm Arm, worktree string) (ArmFiles, error) {
 
 	if arm.NotesFile {
 		out.SystemAppend = notesInstructionText
+		if err := seedNotesFile(worktree); err != nil {
+			return ArmFiles{}, fmt.Errorf("rendering arm: %w", err)
+		}
 	}
 
 	return out, nil
+}
+
+// notesFileHeader is the one line RenderArm seeds NOTES.md with for an arm
+// declaring NotesFile (O57 finding 6: "the control arm's promised NOTES.md
+// was never seeded" — the instruction told every session to "consult it at
+// the start of every session", but nothing ever created the file the FIRST
+// session was meant to find).
+const notesFileHeader = "# Notes\n"
+
+// seedNotesFile writes worktree/NOTES.md with notesFileHeader, UNLESS a
+// file is already there (a subject that already commits its own NOTES.md
+// is left alone — this seeds the promise, never clobbers real content).
+func seedNotesFile(worktree string) error {
+	path := filepath.Join(worktree, "NOTES.md")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("statting %s: %w", path, err)
+	}
+	if err := os.WriteFile(path, []byte(notesFileHeader), 0o644); err != nil {
+		return fmt.Errorf("seeding %s: %w", path, err)
+	}
+	return nil
 }
 
 // assertWiredHooksPresent reads the settings.json a wired cell's `fathom

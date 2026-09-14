@@ -120,6 +120,23 @@ func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionRe
 		result.Detectors = append(result.Detectors, dr)
 	}
 
+	// O57 finding 2: a refusal-aware task's own outcome (refusal.go)
+	// SUPERSEDES the ordinary detector-based Passed computation below —
+	// the change-present detector and the any-edits floor both read a
+	// correct refusal identically to a violation, which a rule that
+	// forbids an action can never adjudicate correctly. Detectors above
+	// still ran (kept on result.Detectors for visibility/debugging), but
+	// do not decide Passed for this task.
+	if RefusalAware(task) {
+		outcome, passed, rerr := ScoreRefusal(ctx, wt, task, sessions)
+		if rerr != nil {
+			return OracleResult{}, rerr
+		}
+		result.Outcome = outcome
+		result.Passed = passed
+		return result, nil
+	}
+
 	answerOK := true
 	if len(task.Oracle.AnswerAllOf) > 0 || len(task.Oracle.AnswerAnyOf) > 0 {
 		answerOK = oracleAnswerMatches(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf, task.Oracle.AnswerAnyOf)
@@ -159,6 +176,24 @@ func AnswerOnly(task Task) bool {
 	o := task.Oracle
 	return (len(o.AnswerAllOf) > 0 || len(o.AnswerAnyOf) > 0) &&
 		len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
+}
+
+// SuccessFor is the ONE any-edits-floor formula every caller that sets a
+// CellResult's Success must use — runOneCell (cmd/scenariobench/main.go),
+// runExternalCell (external_corpus.go) and cmdScore's rescoring
+// (cmd/scenariobench/main.go) all called their own copy before the
+// fix-first review that merged this: runExternalCell's copy lacked the
+// RefusalAware exemption (O57 finding 2), and cmdScore's carried none of
+// the three at all, so a refusal-aware or answer/localization-only task
+// rescored via `scenariobench score` (no edit, by design) came back
+// FAIL. oracle.Passed alone is never enough — an untouched tree cannot
+// pass a change task (guards pilot 1) — UNLESS task's oracle is one of
+// the three shapes where nothing was ever necessarily meant to be
+// edited: answer-only (SB-32 lookups-vs.json), localization-only (VB-25),
+// or refusal-aware (O57 finding 2, a correct refusal never edits
+// anything by design).
+func SuccessFor(task Task, oracle OracleResult, sessions []SessionResult) bool {
+	return oracle.Passed && (AnswerOnly(task) || LocalizationOnly(task) || RefusalAware(task) || AnyEdits(sessions))
 }
 
 // lastFinalAnswer is the LAST session's FinalAnswer, exactly as the
@@ -374,7 +409,11 @@ func ApplyTestPatch(ctx context.Context, wt Worktree, task Task) error {
 		return nil
 	}
 	if task.Subject.BaseCommit != "" {
-		if err := resetTestPatchTargets(ctx, wt, task.Subject.BaseCommit, task.Gold.TestPatch); err != nil {
+		// wt.LocalBase, never task.Subject.BaseCommit — see
+		// Worktree.LocalBase's own doc comment; the guard above still
+		// reads the task record (does THIS task even have a pinned base
+		// commit at all), never the worktree-local ref used below.
+		if err := resetTestPatchTargets(ctx, wt, wt.LocalBase, task.Gold.TestPatch); err != nil {
 			return fmt.Errorf("resetting test patch targets to base_commit: %w", err)
 		}
 	}
@@ -410,26 +449,28 @@ func testPatchPaths(patch string) []string {
 }
 
 // resetTestPatchTargets resets every path patch's `diff --git` headers
-// name, in wt.Path, to its baseCommit content: `git checkout baseCommit --
-// path` when the path exists in baseCommit (undoing whatever the agent did
-// to it, so the patch — cut against exactly that content — applies
-// cleanly), `rm -f` when it does not (the patch creates a new file at that
-// path; an agent that independently created something at the same path
-// must not collide with it). Every path the patch does NOT name is left
+// name, in wt.Path, to its localBase content (wt.LocalBase — NEVER
+// task.Subject.BaseCommit, which is not a valid ref inside wt at all; see
+// Worktree.LocalBase): `git checkout localBase -- path` when the path
+// exists at localBase (undoing whatever the agent did to it, so the
+// patch — cut against exactly that content — applies cleanly), `rm -f`
+// when it does not (the patch creates a new file at that path; an agent
+// that independently created something at the same path must not
+// collide with it). Every path the patch does NOT name is left
 // untouched — an agent's non-test edits survive intact.
-func resetTestPatchTargets(ctx context.Context, wt Worktree, baseCommit, patch string) error {
+func resetTestPatchTargets(ctx context.Context, wt Worktree, localBase, patch string) error {
 	for _, path := range testPatchPaths(patch) {
-		existsAtBase := exec.CommandContext(ctx, "git", "cat-file", "-e", baseCommit+":"+path)
+		existsAtBase := exec.CommandContext(ctx, "git", "cat-file", "-e", localBase+":"+path)
 		existsAtBase.Dir = wt.Path
 		if err := existsAtBase.Run(); err == nil {
-			if out, err := runIn(ctx, wt.Path, "git", "checkout", baseCommit, "--", path); err != nil {
-				return fmt.Errorf("checking out %s at %s: %w (%s)", path, baseCommit, err, out)
+			if out, err := runIn(ctx, wt.Path, "git", "checkout", localBase, "--", path); err != nil {
+				return fmt.Errorf("checking out %s at %s: %w (%s)", path, localBase, err, out)
 			}
 			continue
 		}
 		full := filepath.Join(wt.Path, filepath.FromSlash(path))
 		if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
-			return fmt.Errorf("removing %s (not present at %s, the test patch creates it): %w", path, baseCommit, err)
+			return fmt.Errorf("removing %s (not present at %s, the test patch creates it): %w", path, localBase, err)
 		}
 	}
 	return nil
@@ -549,7 +590,13 @@ func CalibrateSubject(ctx context.Context, task Task, wt Worktree, root string) 
 		return Calibration{}, fmt.Errorf("calibrating subject: creating %s: %w", calibCellDir, err)
 	}
 	defer os.RemoveAll(calibCellDir)
-	throwaway := Worktree{Path: calibWT, SubjectClone: clone, CellDir: calibCellDir}
+	// A REAL git worktree (prepareCalibrationWorktree: `git worktree add`
+	// FROM clone), sharing clone's own object store — unlike a
+	// checkoutCommitIntoWorktree'd cell worktree, task.Subject.BaseCommit
+	// IS a valid, resolvable ref here, so LocalBase is simply that commit
+	// itself (fix-first review: ApplyTestPatch/resetTestPatchTargets now
+	// read wt.LocalBase unconditionally).
+	throwaway := Worktree{Path: calibWT, SubjectClone: clone, CellDir: calibCellDir, LocalBase: task.Subject.BaseCommit}
 
 	var result Calibration
 	if err := ApplyTestPatch(ctx, throwaway, task); err != nil {
@@ -643,7 +690,7 @@ func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string)
 		cmd = exec.CommandContext(ctx, "sh", "-c", cmdStr)
 	}
 	cmd.Dir = wt.Path
-	cmd.Env = SubjectEnv(wt.Path, oracleEnv(task))
+	cmd.Env = SubjectEnv(wt.Path, oracleEnv(wt))
 	out, runErr := cmd.CombinedOutput() // a failing test set is a normal, expected exit != 0
 
 	outputRef = filepath.Join(wt.CellDir, "oracle-test-output-"+shortHash(cmdStr)[:8]+".txt")
@@ -670,7 +717,7 @@ func runOracleTests(ctx context.Context, wt Worktree, task Task, names []string)
 func runDetector(ctx context.Context, wt Worktree, task Task, d Detector) (DetectorResult, error) {
 	cmd := exec.CommandContext(ctx, "sh", "-c", d.Command)
 	cmd.Dir = wt.Path
-	cmd.Env = SubjectEnv(wt.Path, oracleEnv(task))
+	cmd.Env = SubjectEnv(wt.Path, oracleEnv(wt))
 	out, err := cmd.CombinedOutput()
 	exit := 0
 	if err != nil {
@@ -722,7 +769,12 @@ func shellSingleQuoteEscape(s string) string {
 // subject environment: SCENARIO_BASE_COMMIT, so a change-present check can
 // diff against base whether or not the agent committed (`git diff` alone
 // is empty after a commit, and a single-file diff misses a change the
-// agent made elsewhere — guards-adr-pilot-1, 2026-09-13).
-func oracleEnv(task Task) map[string]string {
-	return map[string]string{"SCENARIO_BASE_COMMIT": task.Subject.BaseCommit}
+// agent made elsewhere — guards-adr-pilot-1, 2026-09-13). Fix-first
+// review: this is wt.LocalBase, NEVER task.Subject.BaseCommit directly —
+// the latter is not even a valid ref inside wt (see Worktree.LocalBase's
+// own doc comment); a detector command that ran `git diff
+// $SCENARIO_BASE_COMMIT` before this fix always failed with "unknown
+// revision" on a freshly prepared (never reused) worktree.
+func oracleEnv(wt Worktree) map[string]string {
+	return map[string]string{"SCENARIO_BASE_COMMIT": wt.LocalBase}
 }

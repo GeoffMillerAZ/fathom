@@ -98,6 +98,10 @@ type TrialReading struct {
 	// preserved verbatim (the row's own LocalizationHitAt1Rate etc. only
 	// average it away).
 	Localization *LocalizationReading `json:"localization,omitempty"`
+	// RefusalOutcome is O57 finding 2: this trial's own
+	// Readings.RefusalOutcome, preserved verbatim (the row's own
+	// RefusalOutcomes map only counts it).
+	RefusalOutcome string `json:"refusal_outcome,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose

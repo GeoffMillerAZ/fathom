@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -402,6 +403,70 @@ func TestPrepareSubject_ReusesSharedClone(t *testing.T) {
 	}
 }
 
+// TestPrepareSubject_RefusesResetWithLiveSessionInWorktree is O57 finding
+// 1's second half: a shared worktree whose own session pidfile names a
+// STILL LIVE process refuses the reset (an error, which cmd/scenariobench
+// turns into a LOST cell) rather than resetting out from under a live
+// agent; once that pidfile names a DEAD process, the next prepare succeeds
+// and clears it, exactly like a normal reused worktree.
+func TestPrepareSubject_RefusesResetWithLiveSessionInWorktree(t *testing.T) {
+	old := sessionCommandMarker
+	sessionCommandMarker = "sleep"
+	t.Cleanup(func() { sessionCommandMarker = old })
+
+	repoPath, commit := gitFixtureRepo(t)
+	root := t.TempDir()
+	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: commit}}
+	arm := Arm{Instructions: "none"}
+
+	wt1, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject (1st): %v", err)
+	}
+	defer StopWorktree(&wt1)
+
+	stray := exec.Command("sleep", "300")
+	stray.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := stray.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = stray.Process.Kill(); _, _ = stray.Process.Wait() })
+	pidfile := sessionWorktreePIDFile(wt1.Path)
+	if err := os.WriteFile(pidfile, []byte(fmt.Sprintf("%d\n", stray.Process.Pid)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := PrepareSubject(context.Background(), task, arm, root); err == nil {
+		t.Fatal("expected PrepareSubject to refuse the reset with a live session pidfile in place")
+	} else if !strings.Contains(err.Error(), "refusing to reset") {
+		t.Errorf("PrepareSubject error = %v, want it to name the refusal", err)
+	}
+
+	// The refusal must not have touched the live process or its pidfile.
+	if syscall.Kill(stray.Process.Pid, 0) != nil {
+		t.Error("a live session must not be killed by a refused reset")
+	}
+
+	// Once the process is gone, the next prepare succeeds and clears the
+	// stale pidfile.
+	_ = stray.Process.Kill()
+	waited := make(chan error, 1)
+	go func() { _, err := stray.Process.Wait(); waited <- err }()
+	select {
+	case <-waited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("stray session did not die")
+	}
+	wt2, err := PrepareSubject(context.Background(), task, arm, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject after the session died: %v", err)
+	}
+	defer StopWorktree(&wt2)
+	if _, err := os.Stat(pidfile); !os.IsNotExist(err) {
+		t.Errorf("stale session pidfile should be cleared once prepare succeeds: %v", err)
+	}
+}
+
 // TestPrepareSubject_ConcurrentCallsShareOneCloneWithoutRacing is the
 // -parallel-arms clone race's own proof: two cells of the same subject
 // (as -parallel-arms' batching would produce — distinct arms, one shared
@@ -458,6 +523,114 @@ func TestPrepareSubject_UnknownCommitIsAnError(t *testing.T) {
 	task := Task{ID: "T1", Subject: Subject{RepoURL: repoPath, BaseCommit: strings.Repeat("0", 40)}}
 	if _, err := PrepareSubject(context.Background(), task, Arm{Instructions: "none"}, root); err == nil {
 		t.Fatal("expected an error for a base_commit that does not exist")
+	}
+}
+
+// TestPrepareSubject_LocalBaseUsableForInWorktreeGitDiffs is the
+// fix-first review's own regression test: the fixture repo carries a
+// commit AFTER task.Subject.BaseCommit — a "future" commit, standing in
+// for the real source repo having moved on past this task's pin — so the
+// test proves two things at once: PrepareSubject's worktree checks out
+// ONLY base's own tree (never the future commit's), and
+// task.Subject.BaseCommit is not even a valid git object inside that
+// worktree at all (checkoutCommitIntoWorktree re-commits under a NEW
+// sha) — which is exactly why every in-worktree git diff/checkout
+// against "base" must go through wt.LocalBase instead: a change-present
+// detector reading $SCENARIO_BASE_COMMIT (oracleEnv, via runDetector)
+// and refusal.go's own changedPaths both prove it directly, end to end,
+// through the real PrepareSubject.
+func TestPrepareSubject_LocalBaseUsableForInWorktreeGitDiffs(t *testing.T) {
+	dir := t.TempDir()
+	run := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, "x.go"), "package x\n\nfunc Base() {}\n")
+	run("add", "x.go")
+	run("commit", "-q", "-m", "base commit")
+	baseCommit := run("rev-parse", "HEAD")
+
+	// The "future" commit: the source repo kept moving after this task
+	// was pinned to baseCommit. PrepareSubject must still check out only
+	// baseCommit's own tree.
+	writeTestFile(t, filepath.Join(dir, "future.txt"), "the source repo kept moving after base_commit\n")
+	run("add", "future.txt")
+	run("commit", "-q", "-m", "a commit after base_commit")
+
+	root := t.TempDir()
+	task := Task{
+		ID:      "T-localbase",
+		Subject: Subject{RepoURL: dir, BaseCommit: baseCommit},
+	}
+	wt, err := PrepareSubject(context.Background(), task, Arm{Instructions: "plain"}, root)
+	if err != nil {
+		t.Fatalf("PrepareSubject: %v", err)
+	}
+	defer StopWorktree(&wt)
+
+	if wt.LocalBase == "" {
+		t.Fatal("expected wt.LocalBase to be set")
+	}
+	if wt.LocalBase == baseCommit {
+		t.Errorf("wt.LocalBase = %q, want a sha DIFFERENT from baseCommit %q — checkoutCommitIntoWorktree re-commits under its own root", wt.LocalBase, baseCommit)
+	}
+	if _, err := os.Stat(filepath.Join(wt.Path, "future.txt")); !os.IsNotExist(err) {
+		t.Errorf("expected future.txt (the future commit's own file) to be absent from the checked-out tree, got err=%v", err)
+	}
+	// The whole reason LocalBase exists: task.Subject.BaseCommit does not
+	// resolve inside this worktree at all.
+	if err := exec.Command("git", "-C", wt.Path, "cat-file", "-e", baseCommit+"^{commit}").Run(); err == nil {
+		t.Error("expected task.Subject.BaseCommit to NOT resolve inside wt.Path — that gap is exactly what this fix addresses")
+	}
+
+	detector := Detector{
+		Name:       "change-present",
+		Command:    "git diff --name-only $SCENARIO_BASE_COMMIT -- . | grep -q x.go",
+		ExpectExit: 0,
+	}
+	task.Oracle.Detectors = []Detector{detector}
+
+	before, err := runDetector(context.Background(), wt, task, detector)
+	if err != nil {
+		t.Fatalf("runDetector (before edit): %v", err)
+	}
+	if before.Exit != 1 {
+		t.Errorf("before any edit: detector exit = %d, want 1 (no diff against $SCENARIO_BASE_COMMIT yet)", before.Exit)
+	}
+
+	writeTestFile(t, filepath.Join(wt.Path, "x.go"), "package x\n\nfunc Base() {}\nfunc Added() {}\n")
+
+	after, err := runDetector(context.Background(), wt, task, detector)
+	if err != nil {
+		t.Fatalf("runDetector (after edit): %v", err)
+	}
+	if after.Exit != 0 {
+		t.Errorf("after editing x.go: detector exit = %d, want 0", after.Exit)
+	}
+
+	changed, err := changedPaths(context.Background(), wt, wt.LocalBase)
+	if err != nil {
+		t.Fatalf("changedPaths: %v", err)
+	}
+	found := false
+	for _, p := range changed {
+		if p == "x.go" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("changedPaths = %v, want it to include x.go", changed)
 	}
 }
 

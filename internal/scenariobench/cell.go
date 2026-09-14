@@ -364,6 +364,7 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 	var resumptionN int
 	var hitAt1Sum, hitAt5Sum, recallSum float64
 	var localizationN int
+	var refusalOutcomes map[string]int // O57 finding 2
 	trials := make([]TrialReading, 0, len(cells))
 
 	for _, c := range cells {
@@ -422,6 +423,12 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			recallSum += cr.Localization.Recall
 			localizationN++
 		}
+		if cr.RefusalOutcome != "" {
+			if refusalOutcomes == nil {
+				refusalOutcomes = map[string]int{}
+			}
+			refusalOutcomes[cr.RefusalOutcome]++
+		}
 		trials = append(trials, TrialReading{
 			Trial:          c.Trial,
 			GoldSourceTool: cr.GoldSourceTool,
@@ -431,6 +438,7 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 			Resumption:     cr.Resumption,
 			Overlap:        cr.Overlap,
 			Localization:   cr.Localization,
+			RefusalOutcome: cr.RefusalOutcome,
 		})
 	}
 
@@ -455,6 +463,9 @@ func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
 		r.LocalizationHitAt5Rate = hitAt5Sum / float64(localizationN)
 		r.LocalizationFileRecallMean = recallSum / float64(localizationN)
 		r.LocalizationN = localizationN
+	}
+	if refusalOutcomes != nil {
+		r.RefusalOutcomes = refusalOutcomes // O57 finding 2
 	}
 	sort.Slice(trials, func(i, j int) bool { return trials[i].Trial < trials[j].Trial })
 	return r, trials

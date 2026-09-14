@@ -603,6 +603,50 @@ func TestRenderArm_NotesFileSystemAppend(t *testing.T) {
 	}
 }
 
+// TestRenderArm_NotesFileSeeded is O57 finding 6: an arm declaring
+// NotesFile must actually seed NOTES.md at prepare time (not merely
+// promise, via SystemAppend, that one exists) — a real file with a
+// one-line header, never clobbering one the subject already commits.
+func TestRenderArm_NotesFileSeeded(t *testing.T) {
+	dir := t.TempDir()
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: true}, dir); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "NOTES.md"))
+	if err != nil {
+		t.Fatalf("NOTES.md was not seeded: %v", err)
+	}
+	if string(raw) != notesFileHeader {
+		t.Errorf("NOTES.md = %q, want the one-line header %q", raw, notesFileHeader)
+	}
+
+	// An arm with no NotesFile never creates one.
+	dir2 := t.TempDir()
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: false}, dir2); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir2, "NOTES.md")); !os.IsNotExist(err) {
+		t.Errorf("NOTES.md should not exist when NotesFile is false: %v", err)
+	}
+
+	// A subject that already commits its own NOTES.md is never clobbered.
+	dir3 := t.TempDir()
+	existing := "already here\n"
+	if err := os.WriteFile(filepath.Join(dir3, "NOTES.md"), []byte(existing), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RenderArm(Arm{Instructions: "none", NotesFile: true}, dir3); err != nil {
+		t.Fatalf("RenderArm: %v", err)
+	}
+	raw3, err := os.ReadFile(filepath.Join(dir3, "NOTES.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(raw3) != existing {
+		t.Errorf("NOTES.md = %q, want the subject's own pre-existing content %q untouched", raw3, existing)
+	}
+}
+
 // markedStanza returns a CLAUDE.md-shaped fathom stanza using the SAME
 // marker syntax internal/wiring uses, so StripFathom's removal is tested
 // against the real convention, not a stand-in.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -118,7 +119,7 @@ func TestFalseDoneRate_NoAdjudicableRows(t *testing.T) {
 	if got.NotAdjudicable != 2 {
 		t.Errorf("not_adjudicable = %d, want 2", got.NotAdjudicable)
 	}
-	if got.NotMeasurable != "no claimed row carries a symbol contract" {
+	if got.NotMeasurable != "no claimed row carries a symbol contract or a lexical oracle" {
 		t.Errorf("not_measurable = %q", got.NotMeasurable)
 	}
 }
@@ -261,11 +262,77 @@ func TestFalseDoneRate_UnknownSymbolKindIsNotAdjudicable(t *testing.T) {
 func TestFalseDoneRate_NoCoverprofile(t *testing.T) {
 	tree, _, _ := writeFalseDoneFixture(t)
 	got := FalseDoneRate([]BoxCheck{{RowID: "r1", Symbol: "Foo", Package: "pkg"}}, tree, "")
-	if got.NotMeasurable != "no coverprofile" {
+	if got.NotMeasurable != "no coverprofile (symbol rows not adjudicable; lexical rows still adjudicated)" {
 		t.Fatalf("not_measurable = %q", got.NotMeasurable)
 	}
 	if got.Claimed != 1 {
 		t.Fatalf("claimed = %d, want 1", got.Claimed)
+	}
+}
+
+// TestFalseDoneRate_LexicalOracle is O57 finding 6: a row carrying
+// oracle:lexical is adjudicated directly against the final tree — a
+// matching pattern is not refuted, a non-matching one is, and an absent
+// path is refuted too — with NO coverprofile required at all, unlike a
+// symbol row.
+func TestFalseDoneRate_LexicalOracle(t *testing.T) {
+	tree := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tree, "NOTES.md"), []byte("plan\n- [x] done\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	checks := []BoxCheck{
+		{RowID: "r1", Oracle: "lexical", Path: "NOTES.md", Pattern: "^plan$"},
+		{RowID: "r2", Oracle: "lexical", Path: "NOTES.md", Pattern: "^nope$"},
+		{RowID: "r3", Oracle: "lexical", Path: "does-not-exist.md", Pattern: "x"},
+	}
+	got := FalseDoneRate(checks, tree, "") // no coverprofile at all
+	if got.NotMeasurable != "" {
+		t.Fatalf("not_measurable = %q, want \"\" (lexical rows need no coverprofile)", got.NotMeasurable)
+	}
+	if got.Claimed != 3 {
+		t.Fatalf("claimed = %d, want 3", got.Claimed)
+	}
+	if got.Refuted != 2 {
+		t.Fatalf("refuted = %d, want 2 (%+v)", got.Refuted, got)
+	}
+	want := []string{
+		"r2: pattern \"^nope$\" matches nothing in NOTES.md",
+		"r3: path \"does-not-exist.md\" not readable in the final tree: open " + filepath.Join(tree, "does-not-exist.md") + ": no such file or directory",
+	}
+	sort.Strings(want)
+	if len(got.RefutedRows) != len(want) {
+		t.Fatalf("refuted rows = %v, want %v", got.RefutedRows, want)
+	}
+	for i := range want {
+		if got.RefutedRows[i] != want[i] {
+			t.Errorf("refuted[%d] = %q, want %q", i, got.RefutedRows[i], want[i])
+		}
+	}
+}
+
+// TestFalseDoneRate_LexicalAlongsideSymbol: a lexical row is adjudicated
+// even when a SIBLING symbol row in the same claim set has no coverprofile
+// to be judged against — the two are independent, and the lexical verdict
+// must never be discarded merely because the symbol row cannot be judged.
+func TestFalseDoneRate_LexicalAlongsideSymbol(t *testing.T) {
+	tree, _, _ := writeFalseDoneFixture(t)
+	if err := os.WriteFile(filepath.Join(tree, "NOTES.md"), []byte("plan\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	checks := []BoxCheck{
+		{RowID: "r1", Symbol: "Foo", Package: "pkg"},
+		{RowID: "r2", Oracle: "lexical", Path: "NOTES.md", Pattern: "^plan$"},
+	}
+	got := FalseDoneRate(checks, tree, "") // no coverprofile: r1 not judgeable
+	if got.Claimed != 2 {
+		t.Fatalf("claimed = %d, want 2", got.Claimed)
+	}
+	if got.Refuted != 0 {
+		t.Fatalf("refuted = %d, want 0 (r2's lexical pattern matches)", got.Refuted)
+	}
+	if got.NotMeasurable == "" {
+		t.Errorf("not_measurable = %q, want a non-empty note (the symbol row still has no coverprofile)", got.NotMeasurable)
 	}
 }
 
