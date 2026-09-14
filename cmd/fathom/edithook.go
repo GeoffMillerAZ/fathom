@@ -133,6 +133,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// only the envelope around it belongs to the codec.
 	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID)
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
+	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
 	if !ok {
 		return 0 // renderPostEdit already emitted the beat that names the silence
 	}

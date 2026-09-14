@@ -87,6 +87,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// root is the tree every local, git-aware check reads against: the
+	// lexical oracles (ADR-030) AND the self-skip comparison (O56) — both
+	// read the SAME working tree the plan file itself came from.
+	root := verifyRepoRoot()
+
 	// Read and parse all plan files locally — claimed/skipped state is always
 	// derived from the local file, never from the daemon.
 	localPlans := make([]verify.Plan, 0, len(plans))
@@ -102,6 +107,15 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			return 2
 		}
 		lp := verify.ParseMarkdownPlan(*service, raw)
+		// O56: mark any claimed row whose skip_test/skip was added in the
+		// working tree or in the commit that flipped its box — self-skipped,
+		// never proven by the agent's own hand. Inapplicable (never flagged)
+		// outside a git repo, or when pf resolves outside root.
+		if absPF, aerr := filepath.Abs(pf); aerr == nil {
+			if rel, ok := relativeToRoot(root, absPF); ok {
+				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, *service, raw))
+			}
+		}
 		for _, w := range verify.LintPlan(lp) {
 			fmt.Fprintf(stderr, "lint: %s: %s\n", pf, w)
 		}
@@ -124,7 +138,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 
 	// The working tree lexical oracles (ADR-030) read: the tree the plan
 	// files themselves were read from, in both modes.
-	files := verify.DirFiles(verifyRepoRoot())
+	files := verify.DirFiles(root)
 
 	// Gather verdicts — either in-process (--store) or via the daemon (HTTP).
 	var reports []verify.Report
@@ -175,6 +189,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			// lexical verdicts are Unknown-with-reason, replaced here from
 			// the tree the plan came from; every verdict gains its line.
 			verify.OverlayLocal(&rep, lp, files)
+			// O56: the daemon parsed plan_markdown with no git access, so a
+			// self-skipped row it verdicted from lp's skip: reason alone may
+			// read Pass — force it back to Fail/self-skipped from the LOCAL
+			// AnnotateSelfSkip result already folded into lp above.
+			verify.OverlaySelfSkip(&rep, lp)
 			reports = append(reports, rep)
 		}
 	}

@@ -45,13 +45,13 @@ tasks block.
 | `package` | Repo-relative directory the symbol's file must live under. Disambiguates a bare name that exists in several packages: matches are filtered to that directory, and when exactly one canonical symbol remains, `test_reaches`/`edge_wired` query its canonical key instead of the bare name. If the filter empties the match set, `symbol_present` fails with `claimed-but-absent`. If the directory still contains several distinct symbols with that name, the name stays ambiguous and resolves to nothing — never first-match-wins. | unset (no filter) |
 | `reachable_from` | An entrypoint that must statically reach `symbol` | unset |
 | `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
-| `skip_test` | `true` exempts the symbol from the test-reaches requirement | `false` (a `Test*` must statically reach it) |
+| `skip_test` | `true` exempts the symbol from the test-reaches requirement. **Never free (O56): requires a `skip:` reason** — a bare `skip_test: true` is a grammar error, reported by `fathom verify` and `verify_plan` as `skip-without-reason`, and counted unproven exactly like an absent contract. See "Self-skip" below for the second half of the check. | `false` (a `Test*` must statically reach it) |
 | `allow_contradiction` | `true` lets contradictions on the symbol pass | `false` |
 | `id` | Author-owned stable task ID, overriding positional `md-NNN` (which renumbers when lines are inserted). Use in every gated plan that will be diffed across edits — the Stop hook matches tasks by ID. | positional |
 | `disposition` | `refused` \| `deferred` — types WHY a `[-]` line is skipped; requires `reason` | unset |
 | `reason` | Free-text justification for a disposition or skip. **Double-quote a value containing commas** (`reason: "kit-side done, donor NOT deleted"`); unquoted values must be comma-free. | unset |
 | `trigger` | Revival condition for a `deferred` task — recorded and surfaced, never machine-evaluated in v0 | unset |
-| `skip` | Justification for `skip_test: true` (machine-visible; linted when absent) | unset |
+| `skip` | Justification for `skip_test: true` (machine-visible; **required, not merely linted — see O56 above**) | unset |
 | `oracle` | `lexical` — a non-code row's contract (ADR-030): `path` must exist in the working tree `fathom verify` reads the plan from (never `git show HEAD:`), be non-empty, and match `pattern` at least once. `ledger` — a published-bench-reading contract (ADR-034 decision 2, RC-34): see `run_id`/`task`/`arm`/`min_trials` below. Either class verifies and leaves U2 — it IS a contract the gate can refute. **One contract per row**: `symbol` and `oracle` together are refused by lint and fail verification. A `skip:` reason never lifts U2 — only a symbol or an oracle does. | unset |
 | `path` | Repo-relative file the oracle reads (the lexical file, or a committed JSONL bench ledger for `oracle: ledger`). Never absolute, never `..`. | unset |
 | `pattern` | Go regexp (line-anchored: `^`/`$` match at line bounds) the lexical oracle must find in `path`. **Required when `path` is `.md`** — a document that merely exists proves nothing about a claim. Double-quote it (regexps carry commas and braces). | unset |
@@ -73,10 +73,43 @@ tasks block.
 > named by ingest as a discovery failure, never a clean 0 (VS-9). `skip_test` is for
 > rows with no test at all, never for "the wiring is indirect".
 
+### Self-skip (O56) — an agent may not grade its own row
+
+A `skip_test` escape is gated TWICE, and both halves are gate failures, not
+lint warnings:
+
+1. **skip-without-reason.** `skip_test: true` with no `skip:` value is a
+   grammar error. `fathom verify` and `verify_plan` report it as
+   `skip-without-reason` and count the row unproven — the same treatment as
+   a claimed symbol that doesn't exist.
+2. **self-skipped.** Even with a reason, a claimed (`[x]`) row's
+   `skip_test`/`skip` may not have been introduced by the SAME edit or
+   commit that claims the row done — an agent may not grade its own row.
+   `fathom verify` and `verify_plan` compare the plan file against git: the
+   working tree against HEAD (catches a skip added in an uncommitted edit,
+   right before the box is claimed), or — when the working tree already
+   matches HEAD, the ordinary case at push time — HEAD against its own
+   first parent (catches a skip added in the SAME commit that flipped the
+   box to `[x]`). Either way it is a bounded, single git read, never a
+   `git log -L` or `git blame` walk. A row flagged this way is reported
+   `self-skipped` and counted unproven, whatever its `skip:` reason says.
+   A skip that PREDATES the claim — already present at the comparison
+   point — stands: refining an existing skip's wording, or claiming a row
+   whose skip was decided in an earlier, separate commit, is not
+   self-grading.
+
+The PostToolUse edit hook also notes, at the moment of the edit and without
+needing the daemon, when a row's `skip_test` was just introduced: `row <id>
+gained skip_test in this edit — verify will count it unproven until the
+skip predates the claim`. This is informational (it fires whether or not
+the row is even claimed yet) — the two checks above are what actually gate.
+
 The zero value of every key is the **strictest** contract; loosen explicitly.
 `verify.LintPlan` reports v2 convention violations (duplicate IDs, dispositions
 without reasons, unjustified skips) as **warnings** on stderr — they never
-change exit codes in v0.
+change exit codes in v0. skip-without-reason and self-skip are the two
+exceptions: both are ALSO gate failures (`verify.VerifyPlan`/`Gate`), not
+merely lint.
 
 ## Annotation placement (load-bearing)
 

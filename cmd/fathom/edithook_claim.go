@@ -112,6 +112,12 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 	}
 	newly := newlyClaimedTasks(oldMD, newMD, service)
 	localPlan := verify.ParseMarkdownPlan(service, newMD)
+	// O56: this hook IS the working-tree-vs-HEAD moment — oldMD (nil for a
+	// brand-new file) is always the right prior to compare against; a row
+	// whose skip_test/skip is new relative to it is self-skipped, however
+	// good its skip: reason reads.
+	priorPlan := verify.ParseMarkdownPlan(service, oldMD)
+	localPlan = verify.AnnotateSelfSkip(localPlan, &priorPlan)
 	rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan)
 	if err != nil {
 		// A timeout or a bad response is operational, never evidence
@@ -120,6 +126,7 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 		emitBeat(claimMomentChannel, "error", firingMeta(map[string]string{"plan": rel, "stage": "verify"}, sessionID, filePath))
 		return ""
 	}
+	verify.OverlaySelfSkip(&rep, localPlan)
 	appendVerifyLedgerFrom(verifyOriginClaimMoment, root, []string{rel}, service, []verify.Report{rep},
 		verifyLedgerProvenance(hc, baseURL, "", service))
 	refusals := claimRefusals(root, rel, newly, rep)

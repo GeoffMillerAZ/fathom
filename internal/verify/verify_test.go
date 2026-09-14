@@ -91,12 +91,13 @@ func TestVerifyPlan_PresentButUntested(t *testing.T) {
 	if v.Status != verify.Fail || v.Label != "present-but-untested" {
 		t.Fatalf("got %s/%s, want fail/present-but-untested", v.Status, v.Label)
 	}
-	// Skipping the test requirement flips it to verified.
+	// Skipping the test requirement flips it to verified — but only with a
+	// skip: reason; a bare skip_test is refused (TestVerifyPlan_SkipWithoutReason).
 	rep2 := verify.VerifyPlan(verify.Plan{Tasks: []verify.Task{
-		{ID: "T-1", Expect: verify.Expect{Symbol: "Foo", SkipTest: true}},
+		{ID: "T-1", Expect: verify.Expect{Symbol: "Foo", SkipTest: true, SkipReason: "cmd oracle pending"}},
 	}}, ev)
 	if rep2.Tasks[0].Status != verify.Pass {
-		t.Fatalf("with SkipTest, want pass, got %s", rep2.Tasks[0].Status)
+		t.Fatalf("with SkipTest+reason, want pass, got %s", rep2.Tasks[0].Status)
 	}
 }
 

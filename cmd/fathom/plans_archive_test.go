@@ -64,8 +64,8 @@ func TestCmdPlansArchive_RefusesIncompleteRows(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Incomplete\n\n" +
-		"- [x] Charge handler {id: R1-1, symbol: Charge, skip_test: true}\n" +
-		"- [ ] Not started {id: R1-2, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: R1-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n" +
+		"- [ ] Not started {id: R1-2, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	gitFixtureForArchive(t, root, "incomplete.md", planMD, "R1-1 R1-2 shipped\n", "")
 
 	var out, errBuf bytes.Buffer
@@ -88,7 +88,7 @@ func TestCmdPlansArchive_RefusesClaimedRowsNotGreen(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# NotGreen\n\n" +
-		"- [x] Missing symbol {id: R2-1, symbol: NoSuchSymbolXYZ, skip_test: true}\n"
+		"- [x] Missing symbol {id: R2-1, symbol: NoSuchSymbolXYZ, skip_test: true, skip: \"test fixture\"}\n"
 	gitFixtureForArchive(t, root, "notgreen.md", planMD, "R2-1 shipped\n", "")
 
 	var out, errBuf bytes.Buffer
@@ -111,7 +111,7 @@ func TestCmdPlansArchive_RefusesUnabsorbedIDs(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Unabsorbed\n\n" +
-		"- [x] Charge handler {id: R3-1, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: R3-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	// Neither CHANGELOG.md nor ADR.md mentions R3-1.
 	gitFixtureForArchive(t, root, "unabsorbed.md", planMD, "nothing relevant here\n", "nothing relevant here either\n")
 
@@ -137,7 +137,7 @@ func TestCmdPlansArchive_SuccessTombstoneAndRestore(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Archivable\n\n" +
-		"- [x] Charge handler {id: S-1, symbol: Charge, skip_test: true}\n" +
+		"- [x] Charge handler {id: S-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n" +
 		"- [-] Extra, out of scope {id: S-2, disposition: refused, reason: \"n/a\"}\n"
 	gitFixtureForArchive(t, root, "archivable.md", planMD, "S-1 and S-2 shipped\n", "")
 
@@ -242,7 +242,7 @@ func TestCmdPlansArchive_AbsorptionTokenBoundary(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Boundary\n\n" +
-		"- [x] Charge handler {id: E3-1, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: E3-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	gitFixtureForArchive(t, root, "boundary.md", planMD, "E3-10 shipped\n", "")
 
 	var out, errBuf bytes.Buffer
@@ -281,7 +281,7 @@ func TestCmdPlansArchive_RefusesDirtyPlan(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Dirty\n\n" +
-		"- [x] Charge handler {id: D-1, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: D-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	gitFixtureForArchive(t, root, "dirty.md", planMD, "D-1 shipped\n", "")
 
 	// Uncommitted edit to the plan — every archival criterion still holds,
@@ -356,7 +356,7 @@ func TestCmdPlansArchive_AbsorbedByReleaseNarrative(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# Narrative\n\n" +
-		"- [x] Charge handler {id: N4-1, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: N4-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	// CHANGELOG.md and ADR.md say nothing about N4-1 …
 	gitFixtureForArchive(t, root, "narrative.md", planMD, "condensed: nothing here\n", "")
 	// … the per-release narrative does. (Only the PLAN must be clean.)
@@ -418,7 +418,7 @@ func TestCmdPlansArchive_AbsorbedByGitHistory(t *testing.T) {
 	storePath := seedPlansFixtureStore(t)
 	root := t.TempDir()
 	planMD := "# History\n\n" +
-		"- [x] Charge handler {id: GH-1, symbol: Charge, skip_test: true}\n"
+		"- [x] Charge handler {id: GH-1, symbol: Charge, skip_test: true, skip: \"test fixture\"}\n"
 	// Neither CHANGELOG.md nor ADR.md mentions GH-1.
 	gitFixtureForArchive(t, root, "history.md", planMD, "nothing here\n", "")
 

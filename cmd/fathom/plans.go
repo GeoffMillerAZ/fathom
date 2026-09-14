@@ -88,6 +88,7 @@ func activePlanFiles(root string) ([]string, error) {
 // slice is sorted by TaskID, which is why this rebuilds rows from the
 // locally-parsed Plan.Tasks and only looks up each one's verdict by ID).
 func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][]planRow, error) {
+	root := verifyRepoRoot()
 	localPlans := make([]verify.Plan, 0, len(planFiles))
 	raws := make([][]byte, 0, len(planFiles))
 	for _, pf := range planFiles {
@@ -95,12 +96,21 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 		if err != nil {
 			return nil, fmt.Errorf("reading plan %q: %w", pf, err)
 		}
-		localPlans = append(localPlans, verify.ParseMarkdownPlan(service, raw))
+		lp := verify.ParseMarkdownPlan(service, raw)
+		// O56: same self-skip comparison cmdVerify runs — "done means
+		// proven" computed progress must not read a self-graded skip as
+		// proven either.
+		if absPF, aerr := filepath.Abs(pf); aerr == nil {
+			if rel, ok := relativeToRoot(root, absPF); ok {
+				lp = verify.AnnotateSelfSkip(lp, priorSelfSkipPlan(root, rel, service, raw))
+			}
+		}
+		localPlans = append(localPlans, lp)
 		raws = append(raws, raw)
 	}
 
 	// Lexical oracles (ADR-030) read the working tree the plans came from.
-	files := verify.DirFiles(verifyRepoRoot())
+	files := verify.DirFiles(root)
 
 	var reports []verify.Report
 	if storePath != "" {
@@ -139,6 +149,7 @@ func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][
 				reports[i], verifyErrs[i] = verifyViaHTTP(hc, urlStr, service, "", raws[i], localPlans[i])
 				if verifyErrs[i] == nil {
 					verify.OverlayLocal(&reports[i], localPlans[i], files)
+					verify.OverlaySelfSkip(&reports[i], localPlans[i])
 				}
 			}(i)
 		}
