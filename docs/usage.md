@@ -629,7 +629,8 @@ push); exit `2` — operational error (daemon unreachable, service unindexed, em
 ```sh
 fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
   [--store <path> | --url http://localhost:7575] [--strict] [--require-all] \
-  [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass]
+  [--concern <id>] [--json | --format text|json|sarif] [--quiet] [--quiet-pass] \
+  [--mutation <report>] [--strict-mutation]
 ```
 
 | Flag | Default | Description |
@@ -645,6 +646,8 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--format` | `text` | `text`, `json`, or `sarif` — SARIF 2.1.0 of the refusals: one rule per criterion (`symbol_present`, `test_reaches`, `lexical_oracle`, …), each result located at the plan file and row line, so code scanning and editor problem panes render them. `fathom intent audit --format sarif` and `fathom config audit --format sarif` share the emitter. Exit codes are unchanged |
 | `--quiet` | `false` | Print only failing rows (and, with `--strict`, unknown rows) plus the summary line -- the gate mode |
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
+| `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
+| `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
 
 See [docs/plans/README.md](plans/README.md) for the plan grammar and
 [docs/adoption/spec-driven-development.md](adoption/spec-driven-development.md) for the
@@ -1245,6 +1248,50 @@ the deterministic-oracle findings to the claims store unless `--no-persist`
 (the pre-push summary hook uses it). `--budget-seconds` is advisory — on
 excess it prints a named skip and exits 0; it requires `--no-persist` (a
 bounded run must never be a store writer).
+
+### `tests coverage` / `tests select` — coverage, mutation, and test selection
+
+Full walkthrough: [docs/use-cases/test-coverage.md](use-cases/test-coverage.md).
+
+```sh
+fathom tests coverage --profile [layer=]<file> [--profile <more>...] \
+  [--service <id>] [--store <path>] [--diff <ref>] [--mutation <report>] [--json]
+
+fathom tests select --since <ref> [--profile [layer=]<file>...] \
+  [--service <id>] [--store <path>] [--json]
+```
+
+`tests coverage` joins one or more `go test -coverprofile` files (each
+labeled by test layer) to indexed symbols: a per-symbol table (one column
+per layer, plus `ANY`), or `--diff <ref>` to narrow to changed symbols with
+no covering test in any layer. `--mutation <report>` (VB-34) adds a
+`MUTATION` score column (0.0-1.0) from a joined mutation-testing report — see
+"Mutation" in the use-case doc for the two accepted report shapes.
+
+`tests select --since <ref>` (VB-33) ranks `Test*` functions for a diff by
+typed-edge reachability, corroborating statement coverage (when `--profile`
+is given), and test layer (unit before integration before e2e), then emits
+a `go test ./<pkg> -run '^(TestA|TestB)$'` invocation per package plus the
+changed symbols no test reaches. A replay ledger at
+`workspace/artifacts/tests-select/replay.jsonl`, when present, adds a
+measured predicted catch-rate — never a fabricated one.
+
+| Flag (`tests coverage`) | Default | Description |
+|---|---|---|
+| `--profile` | (required, repeatable) | Go cover profile, as `[layer=]path`; a bare path defaults to layer `unit` |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--diff` | `""` | git ref: narrow to changed symbols with no covering test in any layer |
+| `--mutation` | `""` | mutation-testing report; adds the `MUTATION` score column |
+| `--json` | `false` | Emit JSON instead of a table |
+
+| Flag (`tests select`) | Default | Description |
+|---|---|---|
+| `--since` | (required) | git ref: rank tests for the diff since this ref |
+| `--profile` | (none, repeatable) | Go cover profile(s); enables the coverage ranking tie-break |
+| `--service` | resolved from cwd | Service ID |
+| `--store` | `<repo>/workspace/db/fathom.sqlite` | store path |
+| `--json` | `false` | Emit JSON instead of a table |
 
 ### `gen-plan-cue`
 
