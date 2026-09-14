@@ -3,18 +3,26 @@
 //
 // Subcommands:
 //
-//	scenariobench plan -corpus <path> [-cells <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N]
+//	scenariobench plan -corpus <path|lca> [-dataset <path.jsonl>] [-cells <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N]
 //	    Lists every (task, arm, trial) cell the corpus implies, its key, and
 //	    whether it would borrow from the cell store or run for real. Spends
-//	    nothing: no process is started.
+//	    nothing: no process is started. -corpus lca (VB-25, vision 29 Wave
+//	    G) builds the corpus in memory from -dataset — the operator's own
+//	    downloaded Long Code Arena bug-localization JSONL, never fetched
+//	    automatically (docs/bench/scenarios.md "External corpus (LCA bug
+//	    localization)") — instead of reading a committed corpus file.
 //
-//	scenariobench run -corpus <path> -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms]
+//	scenariobench run -corpus <path|lca> [-dataset <path.jsonl>] -root <fathom repo root> [-cells <dir>] [-raw-dir <dir>] [-model-id <id>] [-harness-version <v>] [-scoring <id>] [-fathom-commit <sha>] [-trials N] [-model <name>] [-only <task id>] [-arm <name>] [-harness claude|fake] [-fake-streams-dir <dir>] [-fake-streams <json>] [-parallel-arms]
 //	    For each selected cell not already in the cell store: PrepareSubject,
 //	    RunSessions, RunOracle, stores the scored CellResult. `-harness fake`
 //	    (with -fake-streams-dir / -fake-streams, a JSON map of lookup key to
 //	    stream file name) replays committed transcripts instead of shelling
 //	    out to `claude -p` — the only spend-free way to exercise this
-//	    subcommand, and what this package's own tests use.
+//	    subcommand (the "dry cell", docs/bench/scenarios.md), and what this
+//	    package's own tests use. -corpus lca is the same sentinel plan
+//	    documents above; internal/scenariobench.RunExternalCorpus is the
+//	    same pipeline as a package-level call, used directly by this
+//	    package's own tests.
 //
 //	scenariobench score -in <cell.json> [-out <path>] [-corpus <path>]
 //	    Recomputes a stored cell's basic aggregate readings (total tokens,
@@ -24,7 +32,7 @@
 //	    value is left exactly as it was (never overwritten with
 //	    not_measured), and a stderr line says so.
 //
-//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...] [-trials N]
+//	scenariobench ledger -corpus <path|lca> [-dataset <path.jsonl>] -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...] [-trials N]
 //	    Reads every stored cell for -run-id, groups by (task, arm) into
 //	    ScenarioLedgerRow, appends them to -ledger, re-renders -readme's
 //	    marker-fenced section — a "Where fathom stands" verdict block
@@ -239,6 +247,47 @@ func loadCorpus(path string) (scenariobench.Corpus, string, error) {
 	return c, sha, nil
 }
 
+// externalCorpusSentinel is the -corpus value that switches plan/run/
+// ledger from loading a committed corpus FILE to building one in memory
+// from an operator-supplied -dataset (VB-25, vision 29 Wave G): Long Code
+// Arena's bug-localization track. Only one external corpus is wired so
+// far; a second would get its own sentinel, never overload this one.
+const externalCorpusSentinel = "lca"
+
+// loadCorpusOrLCA resolves -corpus/-dataset into a Corpus and its
+// SHA256, exactly as loadCorpus does for a committed JSON file — except
+// when corpusPath is externalCorpusSentinel ("lca"): datasetPath (the
+// operator's OWN downloaded Long Code Arena bug-localization JSONL —
+// never fetched automatically, docs/bench/scenarios.md "External corpus
+// (LCA bug localization)") is loaded via scenariobench.LoadLCARecords and
+// converted via scenariobench.BuildLCACorpus, hashed over its own
+// canonical JSON bytes (scenariobench.CanonicalCorpusSHA256) so a cell
+// key stays stable across identical dataset content regardless of where
+// it happens to sit on disk.
+func loadCorpusOrLCA(corpusPath, datasetPath string) (scenariobench.Corpus, string, error) {
+	if corpusPath != externalCorpusSentinel {
+		return loadCorpus(corpusPath)
+	}
+	if datasetPath == "" {
+		return scenariobench.Corpus{}, "", fmt.Errorf("-corpus %s requires -dataset <path.jsonl> (the operator's own downloaded Long Code Arena bug-localization snapshot — never fetched automatically)", externalCorpusSentinel)
+	}
+	records, err := scenariobench.LoadLCARecords(datasetPath)
+	if err != nil {
+		return scenariobench.Corpus{}, "", err
+	}
+	corpus, err := scenariobench.BuildLCACorpus(records, datasetPath)
+	if err != nil {
+		return scenariobench.Corpus{}, "", err
+	}
+	sha, err := scenariobench.CanonicalCorpusSHA256(corpus)
+	if err != nil {
+		return scenariobench.Corpus{}, "", err
+	}
+	return corpus, sha, nil
+}
+
+const datasetFlagUsage = "for -corpus " + externalCorpusSentinel + ": path to the operator's own downloaded Long Code Arena bug-localization JSONL (never fetched automatically — docs/bench/scenarios.md \"External corpus (LCA bug localization)\")"
+
 // criteriaBySHA256 loads every corpus matching glob and returns its
 // registered Criterion keyed by the corpus's own SHA256 — the same key a
 // ScenarioLedgerRow carries as CorpusSHA256 (RC-35), so RenderVerdict can
@@ -264,7 +313,8 @@ func criteriaBySHA256(glob string) (map[string]scenariobench.Criterion, error) {
 
 func cmdPlan(args []string) int {
 	fs := newFlagSet("plan")
-	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
+	datasetPath := fs.String("dataset", "", datasetFlagUsage)
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
 	trials := fs.Int("trials", 1, "trials per (task, arm)")
 	escalate := fs.Bool("escalate", false, "RC-14: instead of listing cells, read -ledger and list the n=2 tasks whose treatment/control delta sits within -margin of the corpus criterion's own thresholds — candidates to re-run at n>=3")
@@ -279,7 +329,7 @@ func cmdPlan(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench plan: -corpus is required")
 		return 2
 	}
-	corpus, sha, err := loadCorpus(*corpusPath)
+	corpus, sha, err := loadCorpusOrLCA(*corpusPath, *datasetPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench plan: %v\n", err)
 		return 2
@@ -359,7 +409,8 @@ func cmdPlanEscalate(ledgerPath, runIDFilter string, criterion scenariobench.Cri
 
 func cmdRun(args []string) int {
 	fs := newFlagSet("run")
-	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
+	datasetPath := fs.String("dataset", "", datasetFlagUsage)
 	root := fs.String("root", "", "this repo's root, where `go build ./cmd/fathom` runs from (required for a wired arm)")
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
 	rawDir := fs.String("raw-dir", filepath.Join("workspace", "artifacts", "scenariobench", "raw"), "base directory for per-session raw transcripts")
@@ -384,7 +435,7 @@ func cmdRun(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench run: -harness-version is required")
 		return 2
 	}
-	corpus, sha, err := loadCorpus(*corpusPath)
+	corpus, sha, err := loadCorpusOrLCA(*corpusPath, *datasetPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench run: %v\n", err)
 		return 2
@@ -612,6 +663,10 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	readings.Violation = cellViolation(oracle)
 
 	readings.GoldSourceTool, readings.GoldSourceEvidence = scenariobench.GoldSourceTool(sessions, cp.task)
+	// VB-25: carry the oracle's own localization verdict (set only for a
+	// task with Oracle.Localization) onto the cell's Readings, exactly as
+	// PlanCoverage/FalseDone/Drift already are above.
+	readings.Localization = oracle.Localization
 
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
@@ -622,9 +677,10 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		Oracle:   oracle,
 		Readings: readings,
 		// An untouched tree cannot pass (guards pilot 1) — UNLESS the
-		// task's oracle is answer-only (SB-32 lookups-vs.json), where
-		// nothing was ever meant to be edited.
-		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.AnyEdits(sessions)),
+		// task's oracle is answer-only (SB-32 lookups-vs.json) or
+		// localization-only (VB-25, the LCA bug-localization track),
+		// where nothing was ever meant to be edited.
+		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.AnyEdits(sessions)),
 		CellKey:        cp.key,
 		CorpusSHA256:   cp.inv.CorpusSHA256,
 		ModelID:        cp.inv.ModelID,
@@ -1038,7 +1094,8 @@ func cmdScore(args []string) int {
 
 func cmdLedger(args []string) int {
 	fs := newFlagSet("ledger")
-	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON (required)")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON, or \""+externalCorpusSentinel+"\" to build one from -dataset (required)")
+	datasetPath := fs.String("dataset", "", datasetFlagUsage)
 	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
 	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "committed JSONL ledger")
 	readmePath := fs.String("readme", filepath.Join("docs", "bench", "README.md"), "README carrying the marker-fenced scenario ledger table")
@@ -1058,7 +1115,7 @@ func cmdLedger(args []string) int {
 		fmt.Fprintln(os.Stderr, "scenariobench ledger: -harness-version is required")
 		return 2
 	}
-	corpus, sha, err := loadCorpus(*corpusPath)
+	corpus, sha, err := loadCorpusOrLCA(*corpusPath, *datasetPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
 		return 2

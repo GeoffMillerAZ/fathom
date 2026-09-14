@@ -93,8 +93,15 @@ func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm 
 // work off across cold sessions. A pure lookup task (SB-32's
 // lookups-vs.json, Oracle.AnswerAllOf with none of these) has nothing to
 // plan: appending the instruction there only spent the turn budget on a
-// plan the oracle never reads (O45 item 2).
+// plan the oracle never reads (O45 item 2). A localization task (VB-25,
+// Oracle.Localization) is never change-shaped either, even though it
+// carries Gold.Files: those name the files the answer must correctly
+// NAME, not files this session is meant to edit — the diagnosis IS the
+// answer, exactly like AnswerAllOf, so it is excluded here first.
 func isChangeShaped(task Task) bool {
+	if task.Oracle.Localization {
+		return false
+	}
 	return len(task.Gold.Files) > 0 || task.Gold.TestPatch != "" || len(task.Oracle.Detectors) > 0
 }
 

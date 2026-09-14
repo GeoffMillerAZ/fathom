@@ -601,3 +601,99 @@ result could still flip the verdict. A task whose n=2 delta is already
 decisive, or that already ran at n≥3, is not a candidate. No cell store is
 touched and nothing spends: `-escalate` is a read of the ledger, the same
 free-until-you-choose-to-spend shape as `plan`'s normal cell listing.
+
+## External corpus (LCA bug localization) (VB-25, vision 29 Wave G)
+
+A corpus fathom does not own: [Long Code Arena's bug-localization
+track](https://huggingface.co/datasets/JetBrains-Research/lca-bug-localization)
+(JetBrains Research, **Apache-2.0**, verified 2026-09-13) — Python, Java
+and Kotlin issues from real GitHub repos, each carrying the upstream
+developer's own changed-file set. This tests the `localize` verb (VB-26)
+on a corpus this repo never wrote a task for by hand, "the same model with
+and without the agent surface" (vision 29 §3 row G).
+
+**Fetching it** (network, one-time, cached outside the repo — nothing here
+downloads it automatically):
+
+```sh
+mkdir -p workspace/bench/sources
+# Verified 2026-09-13: one parquet file per (language subset, split) —
+# java/, kt/, py/, each with dev-/test-/train-00000-of-00001.parquet. Pick
+# a language and split (py/test is the smallest, 50 hand-verified rows).
+curl -sL -o workspace/bench/sources/lca-py-test.parquet \
+  "https://huggingface.co/datasets/JetBrains-Research/lca-bug-localization/resolve/main/py/test-00000-of-00001.parquet"
+# This loader reads JSONL, not parquet — convert the file you fetched
+# before pointing -dataset at it, e.g.:
+#   duckdb -c "COPY (SELECT * FROM read_parquet('workspace/bench/sources/lca-py-test.parquet')) TO 'workspace/bench/sources/lca-py-test.jsonl' (FORMAT JSON)"
+# (a short pandas `read_parquet` + `to_json(orient="records", lines=True)`
+# script works just as well). Re-verify the license tag on the dataset
+# card before relying on the Apache-2.0 recorded above — a HF dataset's
+# license tag can change after a repo is forked from it.
+```
+
+**Field mapping** — `internal/scenariobench/lca.go`'s `LCARecord` decodes
+these upstream columns verbatim (the dataset card lists many more this
+bench has no use for: token/line counts, repo stars, …):
+
+| Upstream column | Task field |
+|---|---|
+| `repo_owner`, `repo_name` | `Subject.RepoURL` (`https://github.com/<owner>/<name>`) |
+| `base_sha` | `Subject.BaseCommit` |
+| `repo_language` | `Subject.Language` (informational only) |
+| `issue_title`, `issue_body` | `Task.Prompt` (`issue_body` may be empty) |
+| `changed_files` | `Task.Gold.Files` — the gold answer set, never an edit target |
+| `text_id` | `Task.ID` (falls back to `<owner>__<name>-<line index>` when empty) |
+
+**Running it** — `-corpus lca -dataset <path.jsonl>` on `plan`/`run`/`ledger`
+builds the corpus in memory (`scenariobench.LoadLCARecords` +
+`BuildLCACorpus`) instead of reading a committed corpus file, hashed over
+its own canonical JSON bytes (`CanonicalCorpusSHA256`) so the cell key
+stays stable across identical dataset content:
+
+```sh
+go run ./cmd/scenariobench plan -corpus lca -dataset workspace/bench/sources/lca-bug-localization.jsonl \
+  -harness-version fake   # lists cells, no spend
+
+go run ./cmd/scenariobench run -corpus lca -dataset workspace/bench/sources/lca-bug-localization.jsonl \
+  -root . -harness fake -fake-streams-dir testdata/scenariobench/streams \
+  -fake-streams '{"<a text_id>/fathom":"lca-fathom-hit.jsonl","<a text_id>/control":"lca-control-miss.jsonl"}' \
+  -run-id dry -harness-version fake -only <a text_id>   # the dry cell — no model call
+```
+
+Every task carries `Oracle.Localization` (never `fail_to_pass`/
+`pass_to_pass`): change-shaped=false, no plan-first (`isChangeShaped`
+excludes it explicitly), because the diagnosis IS the answer — the prompt
+says "do not edit anything". `internal/scenariobench.RunExternalCorpus` is
+the same run+score+ledger pipeline as a single package-level call
+(`PrepareSubject` → `RunSessions` → `RunOracle` → `StoreScenarioCell` →
+`AggregateRowReadings` → `AppendScenarioLedger`), under the identical
+instrument-truth gate (`CellLost`) every other cell runs under — server
+connected, hooks fired, surface calls, never trusted merely because an arm
+claims it is wired; a voided cell is never scored, only counted as lost.
+
+**The files oracle** (`localization.go`) scores the last session's own
+final answer, not a bare list: `ParseAnswerFiles` extracts a candidate
+file set in first-mention order (a path-shaped token — contains `/`, or a
+bare filename with a recognized extension — deduplicated on the exact
+string; deliberately conservative, since no regex parses free-form
+prose perfectly), then `ScoreLocalization` compares it against
+`Gold.Files` (`sameFile`'s own path-suffix rule): `hit_at_1` (the
+top-ranked answered file is gold — this decides `Oracle.Passed`, the
+standard file-level accuracy@1 bar the literature reports, R10), `hit_at_5`
+(any of the top 5), and set-based `recall`/`precision` over the full
+answered set. Every field rides the cell's `Readings.localization` and the
+ledger row's own `readings.localization_hit_at_1` /
+`readings.localization_hit_at_5` / `readings.file_recall` (row-level means
+across trials, `AggregateRowReadings`) — an empty answer scores a
+legitimate zero, never `not_measurable`; only a task carrying no gold
+files at all (a corpus bug `BuildLCACorpus` already refuses at load time)
+is.
+
+**The pre-registered kill criterion (VB-27, M12 and M16):** paired
+statistics at n ≥ 3 over ≥ 30 tasks; a confidence interval that includes
+zero on the treatment/control lift publishes the null and closes BC-15 on
+it (vision 29 §5) — `Criterion.Evaluate`'s own pass/fail (registered here
+as `lca-bug-localization-m12-m16`, `MinTrials: 3`) is the floor that makes
+a row countable at all, never a substitute for that confidence interval;
+VB-27 is deliberately `skip_test: true` (operator spend) and reads the
+published ledger rows this section's own pipeline writes.

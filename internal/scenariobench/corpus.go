@@ -109,7 +109,7 @@ func validateScenarioTask(t Task, armNames []string) error {
 
 // hasOracle reports whether o could decide anything at all.
 func hasOracle(o Oracle) bool {
-	return len(o.FailToPass) > 0 || len(o.PassToPass) > 0 || len(o.Detectors) > 0 || len(o.AnswerAllOf) > 0
+	return len(o.FailToPass) > 0 || len(o.PassToPass) > 0 || len(o.Detectors) > 0 || len(o.AnswerAllOf) > 0 || o.Localization
 }
 
 // CorpusSHA256 returns the hex SHA-256 of the corpus file's bytes — the

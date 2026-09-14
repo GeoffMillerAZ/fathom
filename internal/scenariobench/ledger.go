@@ -94,6 +94,10 @@ type TrialReading struct {
 	Drift          *DriftReading        `json:"drift,omitempty"`
 	Resumption     *ResumptionReading   `json:"resumption,omitempty"`
 	Overlap        *OverlapReading      `json:"overlap,omitempty"`
+	// Localization is VB-25: this trial's own Readings.Localization,
+	// preserved verbatim (the row's own LocalizationHitAt1Rate etc. only
+	// average it away).
+	Localization *LocalizationReading `json:"localization,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose

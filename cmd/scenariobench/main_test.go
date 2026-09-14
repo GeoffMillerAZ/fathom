@@ -115,6 +115,53 @@ func TestCmdPlan_NoSpend(t *testing.T) {
 	}
 }
 
+// TestCmdPlan_LCACorpusFlagWiring is VB-25's own CLI wiring proof: `-corpus
+// lca -dataset <path.jsonl>` builds the corpus in memory from the
+// operator's own downloaded dataset instead of reading a committed corpus
+// file — using the same fixture internal/scenariobench's own loader tests
+// read (internal/scenariobench/testdata/lca/fixture.jsonl), so this test
+// never downloads anything either. Spends nothing: `plan` inspects the
+// corpus and the cell store only.
+func TestCmdPlan_LCACorpusFlagWiring(t *testing.T) {
+	dir := t.TempDir()
+	datasetPath := repoRelative(t, "internal", "scenariobench", "testdata", "lca", "fixture.jsonl")
+	cellsDir := filepath.Join(dir, "cells")
+
+	var stdout bytes.Buffer
+	origStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout = w
+	rc := run([]string{"plan", "-corpus", "lca", "-dataset", datasetPath, "-cells", cellsDir, "-harness-version", "test-1"})
+	w.Close()
+	os.Stdout = origStdout
+	io.Copy(&stdout, r)
+
+	if rc != 0 {
+		t.Fatalf("plan -corpus lca exited %d, stdout:\n%s", rc, stdout.String())
+	}
+	// Three records in the fixture, two arms (fathom/control): 6 cells.
+	if !strings.Contains(stdout.String(), "6 cell(s) — 6 would run, 0 would borrow") {
+		t.Errorf("expected 6 cells listed (3 tasks x 2 arms) with no spend, got:\n%s", stdout.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, "workspace")); !os.IsNotExist(err) {
+		t.Errorf("plan should spend nothing and create no workspace, but found one (err=%v)", err)
+	}
+}
+
+// TestCmdPlan_LCACorpusRequiresDataset proves the sentinel refuses to run
+// silently against nothing: -corpus lca with no -dataset is a usage
+// error, never a corpus of zero tasks.
+func TestCmdPlan_LCACorpusRequiresDataset(t *testing.T) {
+	dir := t.TempDir()
+	rc := run([]string{"plan", "-corpus", "lca", "-cells", filepath.Join(dir, "cells"), "-harness-version", "test-1"})
+	if rc == 0 {
+		t.Error("expected -corpus lca with no -dataset to fail")
+	}
+}
+
 // TestPlanCells_SkipsDroppedTasks is RC-15's own proof: a task the corpus
 // marks disposition=dropped (an oracle that cannot be won from the task
 // text) never becomes a cell — plan/run/ledger all build their cell list
