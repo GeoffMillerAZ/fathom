@@ -406,6 +406,56 @@ fall, and raw transcripts are published as a release artifact
 `workspace/artifacts/` are the evidence; do not hand-edit
 `scenarios-ledger.jsonl`.
 
+## What a row carries (the row-aggregation defect, 2026-09-13)
+
+The first rows filed with tools present (`reuse-pilot-2`, `guards-pilot-4`)
+showed the gap directly: a `ScenarioLedgerRow`'s `readings` carried only
+`payload_bytes`/`surface_calls`/`tool_calls`/`total_cost_usd`/
+`total_tokens`/`total_turns` — every other per-cell reading
+(`hooks_fired`, `rule_served_before_edit`, `violation`, `overlap`,
+`facts_reused`, `resumption`, `plan_coverage`, `false_done`, `drift`,
+`compile_cost_usd`, `gold_source_tool` per trial) was silently dropped by
+the row's own hand-rolled field summation. `AggregateRowReadings`
+(`internal/scenariobench/cell.go`, called from `cmdLedger`) is now the
+single place a row's `readings` is built from its group of cells: every
+count is summed (`hooks_fired` per event, `tool_calls`, `facts_reused`),
+every boolean-per-trial reading becomes a count of trials true
+(`violation_trials`, `rule_served_before_edit_trials`), every ratio-per-
+trial reading is averaged with its own n (`overlap_ratio_mean`/`_n`,
+`resumption_tokens_to_first_edit_mean`/`_n`), and the full structured
+reading for every trial (`gold_source_tool`, `plan_coverage`,
+`false_done`, `drift`, `resumption`, `overlap`) is preserved verbatim
+under the row's own `per_trial` array — nothing is summarized away.
+`gold_source_rate` stays the one summary that was already correct. Every
+new field is additive with `omitempty`; a row filed before this change
+loads exactly as it did, with the new fields simply absent.
+`RenderScenarioLedger`'s table fills these in only where the corpus
+category makes them meaningful — a governance (guards) row shows hooks
+fired/rule served/violation, a reuse row shows overlap ratio/facts
+reused, a public row shows resumption/false done/plan coverage — every
+other row's cell for that column renders `–`.
+
+`scenariobench ledger -trials`, left unset, no longer defaults to a bare
+1: it falls back to the corpus's own registered `Criterion.MinTrials`.
+Either way that number is only a floor — if a cell key has MORE trials
+actually stored on disk than the resolved floor asked for
+(`StoredScenarioTrials` lists every `t<N>.json` under the cell's own
+directory), every one of them is still counted, never capped at the
+floor the way a run's real second trial was once silently dropped
+because `-trials` defaulted to 1 while 2 trials were actually run. The
+summary line prints each filed row's own trial count
+(`<task>/<arm>:<trials>`) so this is visible without opening the ledger.
+
+`scenariobench score -in <cell> -corpus <corpus.json>` recomputes
+`gold_source_tool`/`gold_source_evidence` against the task's own gold —
+`AggregateReadings` (the readings reset every `score` invocation performs)
+does not touch either field, so recomputing needs the corpus in hand.
+Without `-corpus`, `score` leaves the stored value exactly as it was and
+says `gold_source_tool: not recomputed (no -corpus)` on stderr — it never
+overwrites a measured value with `not_measured` (the defect a bare
+re-score used to cause, visible as `gold_source_rate: {not_measured: 1}`
+on a row whose cells really had been measured).
+
 ## Gold source, not just pass/fail (VB-4, ADR-035 decision 5)
 
 A cell passes the task; a **tool** passes only when it was the gold

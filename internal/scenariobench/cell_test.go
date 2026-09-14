@@ -294,6 +294,178 @@ func TestSurfaceCallCount(t *testing.T) {
 	}
 }
 
+// intPtr/boolPtr are tiny test helpers for the *int/*bool reading fields.
+func intPtr(n int) *int    { return &n }
+func boolPtr(b bool) *bool { return &b }
+
+// TestAggregateRowReadings_TwoTrialsSurviveEveryField is item 1's own
+// proof: a ledger row built from two trials whose per-cell readings
+// differ in every field must carry every one of them — counts summed,
+// ratios averaged with n, and the full per-trial detail preserved
+// verbatim — never the pre-fix defect where only total_tokens/turns/
+// cost/payload_bytes/tool_calls/surface_calls survived.
+func TestAggregateRowReadings_TwoTrialsSurviveEveryField(t *testing.T) {
+	cells := []CellResult{
+		{
+			Trial: 1,
+			Readings: Readings{
+				TotalTokens: 100, TotalTurns: 5, TotalCostUSD: 1.0, PayloadBytes: 500,
+				CompileCostUSD:       0.10,
+				ToolCalls:            map[string]int{"Read": 2},
+				HooksFired:           map[string]int{"SessionStart": 1},
+				FactsReused:          intPtr(3),
+				Violation:            boolPtr(true),
+				RuleServedBeforeEdit: boolPtr(true),
+				Overlap:              &OverlapReading{Workers: 2, Ratio: 0.4},
+				Resumption:           &ResumptionReading{TokensToFirstEditAll: 200},
+				PlanCoverage:         &PlanCoverageReading{Fraction: 0.5},
+				FalseDone:            &FalseDoneReading{Claimed: 2, Refuted: 1},
+				Drift:                &DriftReading{Rows: 3},
+				GoldSourceTool:       "Read",
+			},
+		},
+		{
+			Trial: 2,
+			Readings: Readings{
+				TotalTokens: 50, TotalTurns: 3, TotalCostUSD: 0.5, PayloadBytes: 250,
+				CompileCostUSD:       0.05,
+				ToolCalls:            map[string]int{"Read": 1, "Grep": 4},
+				HooksFired:           map[string]int{"SessionStart": 1, "PostToolUse": 2},
+				FactsReused:          intPtr(1),
+				Violation:            boolPtr(false),
+				RuleServedBeforeEdit: boolPtr(false),
+				Overlap:              &OverlapReading{Workers: 3, Ratio: 0.6},
+				Resumption:           &ResumptionReading{TokensToFirstEditAll: 400},
+				PlanCoverage:         &PlanCoverageReading{Fraction: 0.9},
+				FalseDone:            &FalseDoneReading{Claimed: 1, Refuted: 0},
+				Drift:                &DriftReading{Rows: 1},
+				GoldSourceTool:       GoldSourceNone,
+			},
+		},
+	}
+
+	got, trials := AggregateRowReadings(cells)
+
+	if got.TotalTokens != 150 || got.TotalTurns != 8 || got.TotalCostUSD != 1.5 || got.PayloadBytes != 750 {
+		t.Errorf("basic sums = %+v, want tokens=150 turns=8 cost=1.5 payload=750", got)
+	}
+	if diff := got.CompileCostUSD - 0.15; diff > 1e-9 || diff < -1e-9 {
+		t.Errorf("CompileCostUSD = %v, want ~0.15", got.CompileCostUSD)
+	}
+	if got.ToolCalls["Read"] != 3 || got.ToolCalls["Grep"] != 4 {
+		t.Errorf("ToolCalls = %v, want Read=3 Grep=4", got.ToolCalls)
+	}
+	if got.HooksFired["SessionStart"] != 2 || got.HooksFired["PostToolUse"] != 2 {
+		t.Errorf("HooksFired = %v, want SessionStart=2 PostToolUse=2", got.HooksFired)
+	}
+	if got.FactsReused == nil || *got.FactsReused != 4 {
+		t.Errorf("FactsReused = %v, want 4", got.FactsReused)
+	}
+	if got.ViolationTrials == nil || *got.ViolationTrials != 1 {
+		t.Errorf("ViolationTrials = %v, want 1 (one of two trials violated)", got.ViolationTrials)
+	}
+	if got.RuleServedBeforeEditTrials == nil || *got.RuleServedBeforeEditTrials != 1 {
+		t.Errorf("RuleServedBeforeEditTrials = %v, want 1", got.RuleServedBeforeEditTrials)
+	}
+	if got.OverlapRatioN != 2 || got.OverlapRatioMean != 0.5 {
+		t.Errorf("Overlap ratio mean/n = %v/%v, want 0.5/2", got.OverlapRatioMean, got.OverlapRatioN)
+	}
+	if got.ResumptionTokensToFirstEditN != 2 || got.ResumptionTokensToFirstEditMean != 300 {
+		t.Errorf("Resumption mean/n = %v/%v, want 300/2", got.ResumptionTokensToFirstEditMean, got.ResumptionTokensToFirstEditN)
+	}
+
+	if len(trials) != 2 {
+		t.Fatalf("expected 2 per-trial entries, got %d", len(trials))
+	}
+	if trials[0].Trial != 1 || trials[1].Trial != 2 {
+		t.Fatalf("expected per-trial entries sorted by trial, got %+v", trials)
+	}
+	if trials[0].GoldSourceTool != "Read" || trials[1].GoldSourceTool != GoldSourceNone {
+		t.Errorf("per-trial GoldSourceTool = %q/%q, want Read/none", trials[0].GoldSourceTool, trials[1].GoldSourceTool)
+	}
+	if trials[0].PlanCoverage == nil || trials[0].PlanCoverage.Fraction != 0.5 {
+		t.Errorf("trial 1 PlanCoverage = %+v, want Fraction=0.5", trials[0].PlanCoverage)
+	}
+	if trials[1].FalseDone == nil || trials[1].FalseDone.Claimed != 1 {
+		t.Errorf("trial 2 FalseDone = %+v, want Claimed=1", trials[1].FalseDone)
+	}
+	if trials[0].Drift == nil || trials[0].Drift.Rows != 3 {
+		t.Errorf("trial 1 Drift = %+v, want Rows=3", trials[0].Drift)
+	}
+	if trials[1].Overlap == nil || trials[1].Overlap.Workers != 3 {
+		t.Errorf("trial 2 Overlap = %+v, want Workers=3", trials[1].Overlap)
+	}
+	if trials[0].Resumption == nil || trials[0].Resumption.TokensToFirstEditAll != 200 {
+		t.Errorf("trial 1 Resumption = %+v, want TokensToFirstEditAll=200", trials[0].Resumption)
+	}
+}
+
+// TestAggregateRowReadings_NeverMeasuredStaysNil covers a row whose
+// trials never measured a reading at all (a plain public-corpus task with
+// no Rule, no ModePlannerWorkers): the corresponding row-level field must
+// stay nil/zero, never a false 0 that would read as "measured, zero".
+func TestAggregateRowReadings_NeverMeasuredStaysNil(t *testing.T) {
+	cells := []CellResult{
+		{Trial: 1, Readings: Readings{TotalTokens: 10}},
+		{Trial: 2, Readings: Readings{TotalTokens: 20}},
+	}
+	got, trials := AggregateRowReadings(cells)
+	if got.ViolationTrials != nil {
+		t.Errorf("ViolationTrials = %v, want nil", got.ViolationTrials)
+	}
+	if got.RuleServedBeforeEditTrials != nil {
+		t.Errorf("RuleServedBeforeEditTrials = %v, want nil", got.RuleServedBeforeEditTrials)
+	}
+	if got.FactsReused != nil {
+		t.Errorf("FactsReused = %v, want nil", got.FactsReused)
+	}
+	if got.OverlapRatioN != 0 {
+		t.Errorf("OverlapRatioN = %d, want 0", got.OverlapRatioN)
+	}
+	if got.ResumptionTokensToFirstEditN != 0 {
+		t.Errorf("ResumptionTokensToFirstEditN = %d, want 0", got.ResumptionTokensToFirstEditN)
+	}
+	if len(trials) != 2 {
+		t.Fatalf("expected 2 per-trial entries even with nothing structured measured, got %d", len(trials))
+	}
+}
+
+func TestStoredScenarioTrials_ListsAndSorts(t *testing.T) {
+	dir := t.TempDir()
+	keyDir := filepath.Join(dir, "somekey")
+	if err := os.MkdirAll(keyDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"t1.json", "t5.json", "t2.json", "not-a-trial.json"} {
+		if err := os.WriteFile(filepath.Join(keyDir, name), []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := StoredScenarioTrials(dir, "somekey")
+	if err != nil {
+		t.Fatalf("StoredScenarioTrials: %v", err)
+	}
+	want := []int{1, 2, 5}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i, w := range want {
+		if got[i] != w {
+			t.Errorf("got[%d] = %d, want %d", i, got[i], w)
+		}
+	}
+}
+
+func TestStoredScenarioTrials_MissingKeyIsEmptyNotError(t *testing.T) {
+	got, err := StoredScenarioTrials(t.TempDir(), "does-not-exist")
+	if err != nil {
+		t.Fatalf("expected no error for a missing cell dir, got %v", err)
+	}
+	if got != nil {
+		t.Errorf("expected nil trials, got %v", got)
+	}
+}
+
 func TestBorrowedScenarioCellsOf_SortedByTaskArmTrial(t *testing.T) {
 	results := []CellResult{
 		{TaskID: "T2", Arm: "full", Trial: 1, Borrowed: true, CellKey: "k1", SourceRunID: "r1"},

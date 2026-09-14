@@ -73,6 +73,27 @@ type ScenarioLedgerRow struct {
 	// M passes" line sums across a run's treatment-arm rows. Nil when the
 	// row has no successes.
 	GoldSourcePasses map[string]int `json:"gold_source_passes,omitempty"`
+
+	// PerTrial preserves each cell's own structured readings verbatim, one
+	// entry per trial filed into this row (AggregateRowReadings, cell.go)
+	// — the detail Readings' own summed counts and averaged ratios
+	// deliberately do not carry, so a reader who needs the raw per-trial
+	// shape still has it. Empty for a row filed before this field existed.
+	PerTrial []TrialReading `json:"per_trial,omitempty"`
+}
+
+// TrialReading is one trial's own structured readings, carried on the
+// ledger row in full even though the row's own Readings summarizes most
+// of these fields away (a count, a mean, a rate) rather than repeating
+// them per trial.
+type TrialReading struct {
+	Trial          int                  `json:"trial"`
+	GoldSourceTool string               `json:"gold_source_tool,omitempty"`
+	PlanCoverage   *PlanCoverageReading `json:"plan_coverage,omitempty"`
+	FalseDone      *FalseDoneReading    `json:"false_done,omitempty"`
+	Drift          *DriftReading        `json:"drift,omitempty"`
+	Resumption     *ResumptionReading   `json:"resumption,omitempty"`
+	Overlap        *OverlapReading      `json:"overlap,omitempty"`
 }
 
 // GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose
@@ -142,13 +163,113 @@ func LoadScenarioLedger(path string) ([]ScenarioLedgerRow, error) {
 	return rows, nil
 }
 
+// notMeasuredCell is the render placeholder for a column this row's own
+// category never made meaningful (e.g. "violation" on a public-corpus
+// row) — dash, never a blank cell that could be misread as a zero.
+const notMeasuredCell = "–"
+
+// renderTrialsTrueOf formats a row-level "count of trials true" reading
+// (ViolationTrials, RuleServedBeforeEditTrials) as "<true>/<trials>", or
+// notMeasuredCell when no trial in the row ever measured it.
+func renderTrialsTrueOf(trueCount *int, trials int) string {
+	if trueCount == nil {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%d/%d", *trueCount, trials)
+}
+
+// renderHooksFiredTotal sums a row's own HooksFired map (every hook event,
+// every trial) to one number — the per-event breakdown still lives in the
+// map itself for a caller that wants it.
+func renderHooksFiredTotal(hooks map[string]int) string {
+	if len(hooks) == 0 {
+		return notMeasuredCell
+	}
+	total := 0
+	for _, n := range hooks {
+		total += n
+	}
+	return fmt.Sprintf("%d", total)
+}
+
+// renderOverlapRatio formats the row's OverlapRatioMean/N (reuse corpora,
+// ModePlannerWorkers tasks), or notMeasuredCell when no trial measured it.
+func renderOverlapRatio(r Readings) string {
+	if r.OverlapRatioN == 0 {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%.2f (n=%d)", r.OverlapRatioMean, r.OverlapRatioN)
+}
+
+// renderFactsReused formats the row's own FactsReused sum, or
+// notMeasuredCell when no trial ever measured it.
+func renderFactsReused(n *int) string {
+	if n == nil {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%d", *n)
+}
+
+// renderResumption formats the row's ResumptionTokensToFirstEditMean/N, or
+// notMeasuredCell when no trial measured it.
+func renderResumption(r Readings) string {
+	if r.ResumptionTokensToFirstEditN == 0 {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%.0f (n=%d)", r.ResumptionTokensToFirstEditMean, r.ResumptionTokensToFirstEditN)
+}
+
+// renderFalseDoneSummary sums Claimed/Refuted across every per-trial
+// FalseDoneReading that was actually measurable, from the row's own
+// PerTrial detail — public-corpus rows are the ones that carry this.
+func renderFalseDoneSummary(trials []TrialReading) string {
+	var claimed, refuted, n int
+	for _, t := range trials {
+		if t.FalseDone == nil || t.FalseDone.NotMeasurable != "" {
+			continue
+		}
+		claimed += t.FalseDone.Claimed
+		refuted += t.FalseDone.Refuted
+		n++
+	}
+	if n == 0 {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%d/%d refuted", refuted, claimed)
+}
+
+// renderPlanCoverageSummary averages Fraction across every per-trial
+// PlanCoverageReading that was actually measurable, from the row's own
+// PerTrial detail.
+func renderPlanCoverageSummary(trials []TrialReading) string {
+	var sum float64
+	var n int
+	for _, t := range trials {
+		if t.PlanCoverage == nil || t.PlanCoverage.NotMeasurable != "" {
+			continue
+		}
+		sum += t.PlanCoverage.Fraction
+		n++
+	}
+	if n == 0 {
+		return notMeasuredCell
+	}
+	return fmt.Sprintf("%.2f", sum/float64(n))
+}
+
 // RenderScenarioLedger renders rows (in the order given — the caller's
 // LoadScenarioLedger order, oldest first) as a markdown table, one row per
-// (run, task, arm).
+// (run, task, arm). Columns beyond the always-present run/task/trials
+// header carry a reading only where the corpus category that produced the
+// row makes it meaningful — a governance (guards) row fills hooks
+// fired/rule served/violation, a reuse row fills overlap ratio/facts
+// reused, a public row fills resumption/false done/plan coverage — every
+// other row's cell for that column renders notMeasuredCell rather than a
+// misleading zero (docs/bench/scenarios.md, the row-aggregation defect).
 func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 	var b strings.Builder
-	b.WriteString("| run | commit | task | category | arm | model | trials | successes | prediction | surface calls | cost | notes |\n")
-	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+	b.WriteString("| run | commit | task | category | arm | model | trials | successes | prediction | surface calls | hooks fired | rule served | violation | overlap ratio | facts reused | resumption | false done | plan coverage | cost | notes |\n")
+	b.WriteString("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
 	for _, r := range rows {
 		surfaceCalls := fmt.Sprintf("%d", r.Readings.SurfaceCalls)
 		if r.SurfaceUnused {
@@ -161,9 +282,18 @@ func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 		if r.InstrumentDefect != "" {
 			notes = strings.TrimSpace("VOIDED (" + r.InstrumentDefect + ") " + notes)
 		}
-		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %s | %.4f | %s |\n",
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %.4f | %s |\n",
 			r.RunID, r.Commit, r.TaskID, r.Category, r.Arm, r.ModelID,
-			r.Trials, r.Successes, r.Prediction, surfaceCalls, r.CostUSD, notes)
+			r.Trials, r.Successes, r.Prediction, surfaceCalls,
+			renderHooksFiredTotal(r.Readings.HooksFired),
+			renderTrialsTrueOf(r.Readings.RuleServedBeforeEditTrials, r.Trials),
+			renderTrialsTrueOf(r.Readings.ViolationTrials, r.Trials),
+			renderOverlapRatio(r.Readings),
+			renderFactsReused(r.Readings.FactsReused),
+			renderResumption(r.Readings),
+			renderFalseDoneSummary(r.PerTrial),
+			renderPlanCoverageSummary(r.PerTrial),
+			r.CostUSD, notes)
 	}
 	return b.String()
 }

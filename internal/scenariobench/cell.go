@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -255,6 +256,140 @@ func AggregateReadings(sessions []SessionResult) Readings {
 		}
 	}
 	return r
+}
+
+// AggregateRowReadings computes a ScenarioLedgerRow's own Readings from
+// every cell filed into it (one row's own group of same-task/arm trials),
+// plus the per-trial detail (TrialReading) that the row's own summed/
+// averaged fields do not carry — the fix for a ledger-row defect
+// (docs/bench/scenarios.md, 2026-09-13) where only 6 of 17 per-cell
+// reading fields survived into the row: every count is summed
+// (hooks_fired per event, tool_calls, facts_reused), every boolean-per-
+// trial reading is reduced to a count of trials true (violation,
+// rule_served_before_edit), every ratio-per-trial reading is averaged
+// with its own n (overlap ratio, resumption tokens-to-first-edit), and
+// the full structured readings (gold_source_tool, plan_coverage,
+// false_done, drift, resumption, overlap) are preserved verbatim per
+// trial — nothing is summarized away. Trial order in the input does not
+// matter; the returned per-trial slice is sorted by CellResult.Trial.
+func AggregateRowReadings(cells []CellResult) (Readings, []TrialReading) {
+	var r Readings
+	var violationMeasured, violationTrue int
+	var ruleServedMeasured, ruleServedTrue int
+	var overlapSum float64
+	var overlapN int
+	var resumptionSum int64
+	var resumptionN int
+	trials := make([]TrialReading, 0, len(cells))
+
+	for _, c := range cells {
+		cr := c.Readings
+		r.TotalTokens += cr.TotalTokens
+		r.TotalTurns += cr.TotalTurns
+		r.TotalCostUSD += cr.TotalCostUSD
+		r.PayloadBytes += cr.PayloadBytes
+		r.CompileCostUSD += cr.CompileCostUSD
+		for name, n := range cr.ToolCalls {
+			if r.ToolCalls == nil {
+				r.ToolCalls = map[string]int{}
+			}
+			r.ToolCalls[name] += n
+		}
+		for name, n := range cr.HooksFired {
+			if r.HooksFired == nil {
+				r.HooksFired = map[string]int{}
+			}
+			r.HooksFired[name] += n
+		}
+		if cr.FactsReused != nil {
+			if r.FactsReused == nil {
+				zero := 0
+				r.FactsReused = &zero
+			}
+			*r.FactsReused += *cr.FactsReused
+		}
+		if cr.Violation != nil {
+			violationMeasured++
+			if *cr.Violation {
+				violationTrue++
+			}
+		}
+		if cr.RuleServedBeforeEdit != nil {
+			ruleServedMeasured++
+			if *cr.RuleServedBeforeEdit {
+				ruleServedTrue++
+			}
+		}
+		if cr.Overlap != nil && cr.Overlap.NotMeasurable == "" {
+			overlapSum += cr.Overlap.Ratio
+			overlapN++
+		}
+		if cr.Resumption != nil && cr.Resumption.NotMeasurable == "" {
+			resumptionSum += cr.Resumption.TokensToFirstEditAll
+			resumptionN++
+		}
+		trials = append(trials, TrialReading{
+			Trial:          c.Trial,
+			GoldSourceTool: cr.GoldSourceTool,
+			PlanCoverage:   cr.PlanCoverage,
+			FalseDone:      cr.FalseDone,
+			Drift:          cr.Drift,
+			Resumption:     cr.Resumption,
+			Overlap:        cr.Overlap,
+		})
+	}
+
+	if violationMeasured > 0 {
+		v := violationTrue
+		r.ViolationTrials = &v
+	}
+	if ruleServedMeasured > 0 {
+		v := ruleServedTrue
+		r.RuleServedBeforeEditTrials = &v
+	}
+	if overlapN > 0 {
+		r.OverlapRatioMean = overlapSum / float64(overlapN)
+		r.OverlapRatioN = overlapN
+	}
+	if resumptionN > 0 {
+		r.ResumptionTokensToFirstEditMean = float64(resumptionSum) / float64(resumptionN)
+		r.ResumptionTokensToFirstEditN = resumptionN
+	}
+	sort.Slice(trials, func(i, j int) bool { return trials[i].Trial < trials[j].Trial })
+	return r, trials
+}
+
+// StoredScenarioTrials returns every trial number actually stored for key
+// under cellsDir (parsed from its "t<N>.json" filenames), sorted
+// ascending — used by `scenariobench ledger` so a cell's row counts every
+// trial on disk, never silently capping at a fixed -trials count (the
+// defect that dropped a stored t2 because -trials defaulted to 1). A key
+// with no directory at all reports zero trials, not an error.
+func StoredScenarioTrials(cellsDir, key string) ([]int, error) {
+	entries, err := os.ReadDir(filepath.Join(cellsDir, key))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("reading cell dir %s/%s: %w", cellsDir, key, err)
+	}
+	var trials []int
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasPrefix(name, "t") || !strings.HasSuffix(name, ".json") {
+			continue
+		}
+		n, err := strconv.Atoi(strings.TrimSuffix(strings.TrimPrefix(name, "t"), ".json"))
+		if err != nil {
+			continue
+		}
+		trials = append(trials, n)
+	}
+	sort.Ints(trials)
+	return trials, nil
 }
 
 // readingsCompileCost derives the CompileCostReading a cell's Readings

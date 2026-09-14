@@ -780,3 +780,163 @@ func readStoredCell(t *testing.T, path string) scenariobench.CellResult {
 	}
 	return cell
 }
+
+// TestCmdLedger_TrialsDefaultCountsAllStoredTrials is item 2's own proof:
+// writeCorpusFixture's own criterion registers min_trials=1, but the run
+// below stores 2 trials (-trials 2). `ledger` invoked with NO -trials must
+// still count both — never silently drop t2 the way a bare default of 1
+// once did — and the summary line must name the row's own trial count.
+func TestCmdLedger_TrialsDefaultCountsAllStoredTrials(t *testing.T) {
+	dir := t.TempDir()
+	repoURL, commit := gitFixtureSubject(t)
+	corpusPath := writeCorpusFixture(t, dir, repoURL, commit)
+	root := filepath.Join(dir, "fathom-root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cellsDir := filepath.Join(dir, "cells")
+	rawDir := filepath.Join(dir, "raw")
+	streamsDir := repoRelative(t, "testdata", "scenariobench", "streams")
+
+	rc := run([]string{
+		"run",
+		"-corpus", corpusPath,
+		"-root", root,
+		"-cells", cellsDir,
+		"-raw-dir", rawDir,
+		"-run-id", "run-1",
+		"-harness-version", "fake-1",
+		"-harness", "fake",
+		"-fake-streams-dir", streamsDir,
+		"-fake-streams", `{"T1/control":"single-session.jsonl"}`,
+		"-trials", "2",
+	})
+	if rc != 0 {
+		t.Fatalf("run exited %d, want 0", rc)
+	}
+	matches, err := filepath.Glob(filepath.Join(cellsDir, "*", "t*.json"))
+	if err != nil || len(matches) != 2 {
+		t.Fatalf("expected 2 stored trial cells, got %v (err=%v)", matches, err)
+	}
+
+	ledgerPath := filepath.Join(dir, "ledger.jsonl")
+	readmePath := filepath.Join(dir, "README.md")
+	if err := os.WriteFile(readmePath, []byte("# Bench\n\n## Scenario runs\n\n"+
+		scenariobench.ScenarioLedgerBeginMarker+"\n\n"+scenariobench.ScenarioLedgerEndMarker+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stdout := captureStdout(t, func() {
+		rc = run([]string{
+			"ledger",
+			"-corpus", corpusPath,
+			"-cells", cellsDir,
+			"-ledger", ledgerPath,
+			"-readme", readmePath,
+			"-run-id", "run-1",
+			"-harness-version", "fake-1",
+			// deliberately no -trials
+		})
+	})
+	if rc != 0 {
+		t.Fatalf("ledger exited %d, want 0: stdout=%s", rc, stdout)
+	}
+	rows, err := scenariobench.LoadScenarioLedger(ledgerPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 filed row, got %d", len(rows))
+	}
+	if rows[0].Trials != 2 {
+		t.Errorf("row.Trials = %d, want 2 (both stored trials, not the corpus's min_trials=1 floor)", rows[0].Trials)
+	}
+	if !strings.Contains(stdout, "T1/control:2") {
+		t.Errorf("expected the summary line to print the row's own trial count, got %q", stdout)
+	}
+}
+
+// TestCmdScore_GoldSourceToolCorpusFlag is item 3's own proof: without
+// -corpus, `score` must leave a stored gold_source_tool exactly as it was
+// (never overwritten to empty/not_measured) and say so on stderr; with
+// -corpus, it must recompute it from the task's own gold against the
+// cell's raw transcript.
+func TestCmdScore_GoldSourceToolCorpusFlag(t *testing.T) {
+	streamPath := repoRelative(t, "testdata", "scenariobench", "streams", "single-session.jsonl")
+
+	newCell := func(t *testing.T, dir string) string {
+		cellPath := filepath.Join(dir, "cell.json")
+		raw, _ := json.Marshal(map[string]any{
+			"task_id":  "T1",
+			"arm":      "control",
+			"cell_key": "k1",
+			"run_id":   "run-1",
+			"sessions": []map[string]any{
+				{"index": 0, "role": "single", "raw_path": streamPath},
+			},
+			"oracle": map[string]any{"passed": true},
+			"readings": map[string]any{
+				"gold_source_tool":     "mcp__fathom__obligations",
+				"gold_source_evidence": "some-prior-evidence",
+			},
+		})
+		if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return cellPath
+	}
+
+	t.Run("without -corpus preserves the stored value", func(t *testing.T) {
+		dir := t.TempDir()
+		cellPath := newCell(t, dir)
+		stderr := captureStderr(t, func() {
+			if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+				t.Fatalf("score exited %d", rc)
+			}
+		})
+		if !strings.Contains(stderr, "gold_source_tool: not recomputed (no -corpus)") {
+			t.Errorf("expected the not-recomputed stderr line, got %q", stderr)
+		}
+		cell := readStoredCell(t, cellPath)
+		if cell.Readings.GoldSourceTool != "mcp__fathom__obligations" {
+			t.Errorf("GoldSourceTool = %q, want the preserved stored value", cell.Readings.GoldSourceTool)
+		}
+		if cell.Readings.GoldSourceEvidence != "some-prior-evidence" {
+			t.Errorf("GoldSourceEvidence = %q, want the preserved stored value", cell.Readings.GoldSourceEvidence)
+		}
+	})
+
+	t.Run("with -corpus recomputes from the task's own gold", func(t *testing.T) {
+		dir := t.TempDir()
+		cellPath := newCell(t, dir)
+		corpus := `{
+  "arms": {"control": {"wired": false, "instructions": "none", "surface": ""}},
+  "tasks": [{
+    "id": "T1",
+    "category": "bug_fix",
+    "prompt": "fix it",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/subject.git", "base_commit": "deadbeef"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"fail_to_pass": ["TestPass"]},
+    "gold": {"files": ["foo.go"]},
+    "predictions": {"control": "no-effect (this is the control)"}
+  }],
+  "criterion": {"id": "C1", "treatment": "control", "control": "control", "min_trials": 1}
+}`
+		corpusPath := filepath.Join(dir, "corpus.json")
+		if err := os.WriteFile(corpusPath, []byte(corpus), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if rc := run([]string{"score", "-in", cellPath, "-corpus", corpusPath}); rc != 0 {
+			t.Fatalf("score exited %d", rc)
+		}
+		cell := readStoredCell(t, cellPath)
+		if cell.Readings.GoldSourceTool != "Read" {
+			t.Errorf("GoldSourceTool = %q, want Read (single-session.jsonl reads /repo/foo.go)", cell.Readings.GoldSourceTool)
+		}
+		if cell.Readings.GoldSourceEvidence != "foo.go" {
+			t.Errorf("GoldSourceEvidence = %q, want foo.go", cell.Readings.GoldSourceEvidence)
+		}
+	})
+}

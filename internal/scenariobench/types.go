@@ -431,6 +431,31 @@ type Readings struct {
 	// GoldSourceEvidence is the matched token, file, or rule path that
 	// decided GoldSourceTool.
 	GoldSourceEvidence string `json:"gold_source_evidence,omitempty"`
+
+	// --- row-only aggregates (AggregateRowReadings, cell.go) ---
+	// A single cell/trial never sets these — they summarize what cannot
+	// simply sum across a ledger row's own trials: a bool per trial, or a
+	// ratio per trial. Nil/zero means no trial in the row measured it, the
+	// same convention every other not-measured field here uses.
+
+	// ViolationTrials counts, among a row's own trials, how many reported
+	// Violation == true — nil when no trial ever measured Violation (no
+	// Rule on the task).
+	ViolationTrials *int `json:"violation_trials,omitempty"`
+	// RuleServedBeforeEditTrials counts, among a row's own trials, how many
+	// reported RuleServedBeforeEdit == true — nil when no trial ever
+	// measured it.
+	RuleServedBeforeEditTrials *int `json:"rule_served_before_edit_trials,omitempty"`
+	// OverlapRatioMean/OverlapRatioN average Overlap.Ratio across the
+	// row's own trials that measured it (ModePlannerWorkers tasks only);
+	// N is the trial count the mean was taken over, so a mean of 1 reads
+	// differently from a mean of 5. N == 0 means no trial measured it.
+	OverlapRatioMean float64 `json:"overlap_ratio_mean,omitempty"`
+	OverlapRatioN    int     `json:"overlap_ratio_n,omitempty"`
+	// ResumptionTokensToFirstEditMean/N average Resumption's own
+	// TokensToFirstEditAll across the row's own trials that measured it.
+	ResumptionTokensToFirstEditMean float64 `json:"resumption_tokens_to_first_edit_mean,omitempty"`
+	ResumptionTokensToFirstEditN    int     `json:"resumption_tokens_to_first_edit_n,omitempty"`
 }
 
 // CompileCostReading is the wave-0 receipt (RC-10) of what a wired,

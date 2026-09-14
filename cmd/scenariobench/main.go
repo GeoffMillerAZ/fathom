@@ -16,20 +16,25 @@
 //	    out to `claude -p` — the only spend-free way to exercise this
 //	    subcommand, and what this package's own tests use.
 //
-//	scenariobench score -in <cell.json> [-out <path>]
+//	scenariobench score -in <cell.json> [-out <path>] [-corpus <path>]
 //	    Recomputes a stored cell's basic aggregate readings (total tokens,
 //	    turns, cost, payload bytes) from its sessions and rewrites it. Free:
-//	    it reads what run already captured.
+//	    it reads what run already captured. -corpus additionally recomputes
+//	    gold_source_tool against the task's own gold; without it the stored
+//	    value is left exactly as it was (never overwritten with
+//	    not_measured), and a stderr line says so.
 //
-//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...]
+//	scenariobench ledger -corpus <path> -cells <dir> -ledger <path.jsonl> -readme <path> -run-id <id> [-commit <sha>] [-corpus-glob <glob>] [-arm-surface arm=value ...] [-trials N]
 //	    Reads every stored cell for -run-id, groups by (task, arm) into
 //	    ScenarioLedgerRow, appends them to -ledger, re-renders -readme's
 //	    marker-fenced section — a "Where fathom stands" verdict block
 //	    (RC-35, scenariobench.RenderVerdict) above the table, built from
 //	    every corpus under -corpus-glob — and evaluates the corpus's
-//	    registered criterion. Exit 0 pass, 1 fail (a measured refutation —
-//	    recorded, not excused), 3 indeterminate (re-run: not enough was
-//	    measured).
+//	    registered criterion. -trials, left unset, defaults to the corpus's
+//	    own Criterion.MinTrials; whatever it resolves to is only a floor —
+//	    a cell key with more trials actually stored is still counted in
+//	    full. Exit 0 pass, 1 fail (a measured refutation — recorded, not
+//	    excused), 3 indeterminate (re-run: not enough was measured).
 package main
 
 import (
@@ -934,6 +939,7 @@ func cmdScore(args []string) int {
 	fs := newFlagSet("score")
 	in := fs.String("in", "", "path to a stored CellResult JSON (required)")
 	out := fs.String("out", "", "path to write the recomputed CellResult (default: overwrite -in)")
+	corpusPath := fs.String("corpus", "", "path to the scenario corpus JSON — recomputes gold_source_tool against the task's own gold; without it, the stored value is left untouched (never overwritten with not_measured)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -956,13 +962,45 @@ func cmdScore(args []string) int {
 	// outside any session, so it survives the replacement only if carried
 	// across by hand, USD rolled back into the recomputed total exactly as
 	// ApplyCompileCost would from a live Worktree (which score never has).
+	// GoldSourceTool/GoldSourceEvidence survive the same way — AggregateReadings
+	// does not touch them at all, so recomputing needs the corpus (below) and
+	// NOT recomputing must still preserve whatever was already stored, never
+	// silently reset it to empty (which the ledger's own sentinel reads as
+	// GoldSourceNotMeasured — a false regression, not an honest not-measured).
 	compileCost := cell.Readings.CompileCost
 	compileCostUSD := cell.Readings.CompileCostUSD
+	goldSourceTool := cell.Readings.GoldSourceTool
+	goldSourceEvidence := cell.Readings.GoldSourceEvidence
 	cell.Readings = scenariobench.AggregateReadings(cell.Sessions)
 	cell.Readings.CompileCost = compileCost
 	cell.Readings.CompileCostUSD = compileCostUSD
 	if compileCost != nil {
 		cell.Readings.TotalCostUSD += compileCostUSD
+	}
+	if *corpusPath == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench score: gold_source_tool: not recomputed (no -corpus)")
+		cell.Readings.GoldSourceTool = goldSourceTool
+		cell.Readings.GoldSourceEvidence = goldSourceEvidence
+	} else {
+		corpus, _, err := loadCorpus(*corpusPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench score: %v\n", err)
+			return 2
+		}
+		task, found := scenariobench.Task{}, false
+		for _, t := range corpus.Tasks {
+			if t.ID == cell.TaskID {
+				task, found = t, true
+				break
+			}
+		}
+		if !found {
+			fmt.Fprintf(os.Stderr, "scenariobench score: task %q not found in %s — gold_source_tool not recomputed\n", cell.TaskID, *corpusPath)
+			cell.Readings.GoldSourceTool = goldSourceTool
+			cell.Readings.GoldSourceEvidence = goldSourceEvidence
+		} else {
+			cell.Readings.GoldSourceTool, cell.Readings.GoldSourceEvidence = scenariobench.GoldSourceTool(cell.Sessions, task)
+		}
 	}
 	cell.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(cell.Readings.ToolCalls, cell.Surface)
 	if cell.Surface != "" && cell.Readings.SurfaceCalls == 0 {
@@ -1000,7 +1038,7 @@ func cmdLedger(args []string) int {
 	corpusGlob := fs.String("corpus-glob", filepath.Join("testdata", "scenariobench", "*.json"), "every corpus whose criterion the verdict block may cite, keyed by corpus SHA256")
 	runID := fs.String("run-id", "", "the run whose cells to file (required)")
 	commit := fs.String("commit", "", "repo HEAD this run measured (default: git rev-parse --short HEAD)")
-	trials := fs.Int("trials", 1, "trials per (task, arm) this run intended")
+	trials := fs.Int("trials", 0, "trials per (task, arm) this run intended (default: the corpus criterion's own min_trials; a cell key with MORE stored trials than this is still counted in full, never capped)")
 	cf := addCellFlags(fs)
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -1024,15 +1062,36 @@ func cmdLedger(args []string) int {
 		resolvedCommit = resolveFathomCommit("")
 	}
 
-	cells := planCells(corpus, cf, *trials, sha)
+	// -trials unset (0) falls back to the corpus's OWN registered floor
+	// (Criterion.MinTrials) rather than a bare 1 — a run that intended
+	// only 1 trial passes -trials 1 explicitly; leaving it unset means
+	// "count what the corpus itself commits to".
+	effectiveTrials := *trials
+	if effectiveTrials <= 0 {
+		effectiveTrials = corpus.Criterion.MinTrials
+		if effectiveTrials <= 0 {
+			effectiveTrials = 1
+		}
+	}
+
+	cells := planCells(corpus, cf, effectiveTrials, sha)
 	type key struct{ task, arm string }
 	byTaskArm := map[key][]scenariobench.CellResult{}
+	seenTrial := map[string]map[int]bool{} // primary cell key -> trials already fetched
+	primaryKeyOf := map[key]string{}       // (task,arm) -> its own primary (never alt) cell key
 	for _, cp := range cells {
+		if _, exists := primaryKeyOf[key{cp.task.ID, cp.arm}]; !exists {
+			primaryKeyOf[key{cp.task.ID, cp.arm}] = cp.key
+		}
 		cell, ok, err := scenariobench.BorrowScenarioCell(*cellsDir, cp.key, cp.trial)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/%s/t%d: %v\n", cp.task.ID, cp.arm, cp.trial, err)
 			return 2
 		}
+		if seenTrial[cp.key] == nil {
+			seenTrial[cp.key] = map[int]bool{}
+		}
+		seenTrial[cp.key][cp.trial] = true
 		for _, alt := range cp.altKeys {
 			if ok {
 				break
@@ -1048,6 +1107,36 @@ func cmdLedger(args []string) int {
 		}
 		k := key{cp.task.ID, cp.arm}
 		byTaskArm[k] = append(byTaskArm[k], cell)
+	}
+
+	// A cell key may carry MORE trials on disk than effectiveTrials asked
+	// for (a run that stored t1 and t2 while -trials defaulted to 1 for
+	// this invocation) — count every one of them, never silently drop the
+	// extra (docs/bench/scenarios.md's ledger-row defect, 2026-09-13).
+	// Only the PRIMARY key is probed: a cell that only ever matched under
+	// an alt fathom-commit key (rare, multi-commit filing) is not
+	// re-discovered here beyond what planCells already asked for.
+	for k, primaryKey := range primaryKeyOf {
+		stored, err := scenariobench.StoredScenarioTrials(*cellsDir, primaryKey)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench ledger: %v\n", err)
+			return 2
+		}
+		for _, trial := range stored {
+			if seenTrial[primaryKey][trial] {
+				continue
+			}
+			cell, ok, err := scenariobench.BorrowScenarioCell(*cellsDir, primaryKey, trial)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "scenariobench ledger: reading cell %s/t%d: %v\n", primaryKey, trial, err)
+				return 2
+			}
+			seenTrial[primaryKey][trial] = true
+			if !ok || cell.RunID != *runID {
+				continue
+			}
+			byTaskArm[k] = append(byTaskArm[k], cell)
+		}
 	}
 
 	var rows []scenariobench.ScenarioLedgerRow
@@ -1080,6 +1169,13 @@ func cmdLedger(args []string) int {
 			ModelID:        *cf.modelID,
 			HarnessVersion: *cf.harnessVersion,
 		}
+		// AggregateRowReadings is the single source of truth for a row's
+		// own Readings (every count summed, every ratio averaged with its
+		// own n) plus the full per-trial detail nothing else here
+		// recomputes by hand — the fix for the row-aggregation defect
+		// that dropped every reading but a handful (docs/bench/scenarios.md).
+		row.Readings, row.PerTrial = scenariobench.AggregateRowReadings(group)
+
 		goldCounts := map[string]int{}
 		goldPassCounts := map[string]int{}
 		for _, cell := range group {
@@ -1087,18 +1183,7 @@ func cmdLedger(args []string) int {
 			if cell.Success {
 				row.Successes++
 			}
-			row.Readings.TotalTokens += cell.Readings.TotalTokens
-			row.Readings.TotalTurns += cell.Readings.TotalTurns
-			row.Readings.TotalCostUSD += cell.Readings.TotalCostUSD
-			row.Readings.PayloadBytes += cell.Readings.PayloadBytes
-			row.Readings.CompileCostUSD += cell.Readings.CompileCostUSD
 			row.CostUSD += cell.Readings.TotalCostUSD
-			for name, n := range cell.Readings.ToolCalls {
-				if row.Readings.ToolCalls == nil {
-					row.Readings.ToolCalls = map[string]int{}
-				}
-				row.Readings.ToolCalls[name] += n
-			}
 			// VB-4: a cell scored before this reading existed carries no
 			// GoldSourceTool at all — GoldSourceNotMeasured names that,
 			// never blended silently into GoldSourceNone ("the agent knew
@@ -1170,7 +1255,12 @@ func cmdLedger(args []string) int {
 	}
 
 	ev := corpus.Criterion.Evaluate(rows)
-	fmt.Fprintf(os.Stdout, "scenariobench ledger: filed %d row(s); criterion %s: %s (%s)\n", len(rows), ev.CriterionID, ev.Verdict, ev.Reason)
+	trialCounts := make([]string, 0, len(rows))
+	for _, row := range rows {
+		trialCounts = append(trialCounts, fmt.Sprintf("%s/%s:%d", row.TaskID, row.Arm, row.Trials))
+	}
+	fmt.Fprintf(os.Stdout, "scenariobench ledger: filed %d row(s) [%s]; criterion %s: %s (%s)\n",
+		len(rows), strings.Join(trialCounts, ", "), ev.CriterionID, ev.Verdict, ev.Reason)
 	switch ev.Verdict {
 	case scenariobench.ScenarioVerdictPass:
 		return 0
