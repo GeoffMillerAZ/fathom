@@ -1,0 +1,365 @@
+{
+  "oracle": "governing-rules",
+  "entries": [
+    {
+      "path": "internal/store/backend.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L20-L26",
+        "text": "internal/store is pure Go (modernc.org/sqlite) \u2014 no CGO. CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013). Do not add CGO dependencies to the store or query layers \u2014 task store-purego fails the gate if you do (invariant I2)."
+      },
+      "notes": "internal/store is the pure-Go store package the purity rule names directly; task store-purego gates it."
+    },
+    {
+      "path": "internal/store/conformance.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L20-L26",
+        "text": "internal/store is pure Go (modernc.org/sqlite) \u2014 no CGO. CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013). Do not add CGO dependencies to the store or query layers \u2014 task store-purego fails the gate if you do (invariant I2)."
+      },
+      "notes": "internal/store is the pure-Go store package the purity rule names directly; task store-purego gates it."
+    },
+    {
+      "path": "internal/store/memory.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L20-L26",
+        "text": "internal/store is pure Go (modernc.org/sqlite) \u2014 no CGO. CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013). Do not add CGO dependencies to the store or query layers \u2014 task store-purego fails the gate if you do (invariant I2)."
+      },
+      "notes": "internal/store is the pure-Go store package the purity rule names directly; task store-purego gates it."
+    },
+    {
+      "path": "internal/store/platform_store.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L20-L26",
+        "text": "internal/store is pure Go (modernc.org/sqlite) \u2014 no CGO. CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013). Do not add CGO dependencies to the store or query layers \u2014 task store-purego fails the gate if you do (invariant I2)."
+      },
+      "notes": "internal/store is the pure-Go store package the purity rule names directly; task store-purego gates it."
+    },
+    {
+      "path": "internal/store/purge.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L20-L26",
+        "text": "internal/store is pure Go (modernc.org/sqlite) \u2014 no CGO. CGO in this repo comes only from the tree-sitter extractor bindings (ADR-013). Do not add CGO dependencies to the store or query layers \u2014 task store-purego fails the gate if you do (invariant I2)."
+      },
+      "notes": "internal/store is the pure-Go store package the purity rule names directly; task store-purego gates it."
+    },
+    {
+      "path": "internal/extractor/goextract.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L35-L36",
+        "text": "Extractor: implement extractor.Extractor, register by extension in fusion.New(), add its ext\u2192kind in connector, golden-test it."
+      },
+      "notes": "O23's own example (goextract.go) plus five sibling extractors governed by the same fusion.New()/golden-test bullet, never by a plan row's prose."
+    },
+    {
+      "path": "internal/extractor/cppextract.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L35-L36",
+        "text": "Extractor: implement extractor.Extractor, register by extension in fusion.New(), add its ext\u2192kind in connector, golden-test it."
+      },
+      "notes": "O23's own example (goextract.go) plus five sibling extractors governed by the same fusion.New()/golden-test bullet, never by a plan row's prose."
+    },
+    {
+      "path": "internal/extractor/cextract.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L35-L36",
+        "text": "Extractor: implement extractor.Extractor, register by extension in fusion.New(), add its ext\u2192kind in connector, golden-test it."
+      },
+      "notes": "O23's own example (goextract.go) plus five sibling extractors governed by the same fusion.New()/golden-test bullet, never by a plan row's prose."
+    },
+    {
+      "path": "internal/extractor/cheaderextract.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L35-L36",
+        "text": "Extractor: implement extractor.Extractor, register by extension in fusion.New(), add its ext\u2192kind in connector, golden-test it."
+      },
+      "notes": "O23's own example (goextract.go) plus five sibling extractors governed by the same fusion.New()/golden-test bullet, never by a plan row's prose."
+    },
+    {
+      "path": "internal/extractor/cmakeextract.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L35-L36",
+        "text": "Extractor: implement extractor.Extractor, register by extension in fusion.New(), add its ext\u2192kind in connector, golden-test it."
+      },
+      "notes": "O23's own example (goextract.go) plus five sibling extractors governed by the same fusion.New()/golden-test bullet, never by a plan row's prose."
+    },
+    {
+      "path": "internal/mcp/analysis_tools.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L39-L46",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+      },
+      "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
+    },
+    {
+      "path": "internal/mcp/budget.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L39-L46",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+      },
+      "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
+    },
+    {
+      "path": "internal/mcp/calllog.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L39-L46",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+      },
+      "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
+    },
+    {
+      "path": "internal/mcp/crossservice.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L39-L46",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+      },
+      "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
+    },
+    {
+      "path": "internal/mcp/depth.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L39-L46",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+      },
+      "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
+    },
+    {
+      "path": "cmd/fathom/observatory_apply.go",
+      "governing_rule": {
+        "source": "cmd/fathom/CLAUDE.md",
+        "line_hint": "L30-L32",
+        "text": "Mutations stay local. /observatory/wiring/* (observatory_apply.go) writes only via internal/wiring behind requireLocalMutation \u2014 loopback Host, same-origin, registered roots, the digest the previous step returned."
+      },
+      "notes": "Named literally in item 7 (\"Mutations stay local\") \u2014 the file IS the example the rule cites."
+    },
+    {
+      "path": "cmd/fathom/observatory_series.go",
+      "governing_rule": {
+        "source": "cmd/fathom/CLAUDE.md",
+        "line_hint": "L27-L29",
+        "text": "Absent is never 0. No call-log rows for a day, or an unreadable store/log, renders stat.Absent with a reason; sparklines never draw across an absent day (observatory_series.go); JSON carries no zero for it."
+      },
+      "notes": "Named literally in item 6 (\"Absent is never 0\") \u2014 the file IS the example the rule cites."
+    },
+    {
+      "path": "cmd/fathom/observatory_render.go",
+      "governing_rule": {
+        "source": "cmd/fathom/CLAUDE.md",
+        "line_hint": "L14-L16",
+        "text": "Role utilities only (bg-surface-raised, text-ink-muted, text-caution\u2026): never a palette color, never an inline color, never dark: color variants \u2014 the kit tokens carry light/dark."
+      },
+      "notes": "Renders observatory markup; governed by the role-utilities-only rule (item 2)."
+    },
+    {
+      "path": "cmd/fathom/observatory_brief.go",
+      "governing_rule": {
+        "source": "cmd/fathom/CLAUDE.md",
+        "line_hint": "L1-L7",
+        "text": "The web surfaces are rendered by Go files here (observatory_*.go, brief.go, statusz.go) on app-kit (Path A, Go server-rendered): appkit/ui/dashboard for layout, appkit/ui/stat for KPIs, appkit/ui/viz for charts."
+      },
+      "notes": "Named directly in the doctrine's intro sentence (brief.go / observatory_*.go on app-kit)."
+    },
+    {
+      "path": "cmd/fathom/brief.go",
+      "governing_rule": {
+        "source": "cmd/fathom/CLAUDE.md",
+        "line_hint": "L1-L7",
+        "text": "The web surfaces are rendered by Go files here (observatory_*.go, brief.go, statusz.go) on app-kit (Path A, Go server-rendered): appkit/ui/dashboard for layout, appkit/ui/stat for KPIs, appkit/ui/viz for charts."
+      },
+      "notes": "Named directly in the doctrine's intro sentence (brief.go / observatory_*.go on app-kit)."
+    },
+    {
+      "path": "schema/plan/schema.cue",
+      "governing_rule": {
+        "source": "schema/CLAUDE.md",
+        "line_hint": "L1-L4",
+        "text": "A new schema is a schema.cue package with <package>/testdata/valid.cue (positive) and a commented <package>/testdata/invalid.cue (negative) \u2014 placeholder written as a pattern: these live under each schema package, not at a fixed path."
+      },
+      "notes": "Every schema.cue package is governed by the same valid.cue/invalid.cue testdata convention, not by its own subject matter."
+    },
+    {
+      "path": "schema/config/schema.cue",
+      "governing_rule": {
+        "source": "schema/CLAUDE.md",
+        "line_hint": "L1-L4",
+        "text": "A new schema is a schema.cue package with <package>/testdata/valid.cue (positive) and a commented <package>/testdata/invalid.cue (negative) \u2014 placeholder written as a pattern: these live under each schema package, not at a fixed path."
+      },
+      "notes": "Every schema.cue package is governed by the same valid.cue/invalid.cue testdata convention, not by its own subject matter."
+    },
+    {
+      "path": "schema/module/schema.cue",
+      "governing_rule": {
+        "source": "schema/CLAUDE.md",
+        "line_hint": "L1-L4",
+        "text": "A new schema is a schema.cue package with <package>/testdata/valid.cue (positive) and a commented <package>/testdata/invalid.cue (negative) \u2014 placeholder written as a pattern: these live under each schema package, not at a fixed path."
+      },
+      "notes": "Every schema.cue package is governed by the same valid.cue/invalid.cue testdata convention, not by its own subject matter."
+    },
+    {
+      "path": "schema/binding/schema.cue",
+      "governing_rule": {
+        "source": "schema/CLAUDE.md",
+        "line_hint": "L1-L4",
+        "text": "A new schema is a schema.cue package with <package>/testdata/valid.cue (positive) and a commented <package>/testdata/invalid.cue (negative) \u2014 placeholder written as a pattern: these live under each schema package, not at a fixed path."
+      },
+      "notes": "Every schema.cue package is governed by the same valid.cue/invalid.cue testdata convention, not by its own subject matter."
+    },
+    {
+      "path": "schema/harness/schema.cue",
+      "governing_rule": {
+        "source": "schema/CLAUDE.md",
+        "line_hint": "L1-L4",
+        "text": "A new schema is a schema.cue package with <package>/testdata/valid.cue (positive) and a commented <package>/testdata/invalid.cue (negative) \u2014 placeholder written as a pattern: these live under each schema package, not at a fixed path."
+      },
+      "notes": "Every schema.cue package is governed by the same valid.cue/invalid.cue testdata convention, not by its own subject matter."
+    },
+    {
+      "path": "docs/plans/bench-pyramid.md",
+      "governing_rule": {
+        "source": "docs/CLAUDE.md",
+        "line_hint": "L5-L8",
+        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+      },
+      "notes": "Every top-level plan file (this one included) is governed by docs/CLAUDE.md's gate rule, not by its own subject matter."
+    },
+    {
+      "path": "docs/plans/bench-confidence.md",
+      "governing_rule": {
+        "source": "docs/CLAUDE.md",
+        "line_hint": "L5-L8",
+        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+      },
+      "notes": "Every top-level plan file (this one included) is governed by docs/CLAUDE.md's gate rule, not by its own subject matter."
+    },
+    {
+      "path": "docs/plans/blast-depth.md",
+      "governing_rule": {
+        "source": "docs/CLAUDE.md",
+        "line_hint": "L5-L8",
+        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+      },
+      "notes": "Every top-level plan file (this one included) is governed by docs/CLAUDE.md's gate rule, not by its own subject matter."
+    },
+    {
+      "path": "docs/plans/config-experience.md",
+      "governing_rule": {
+        "source": "docs/CLAUDE.md",
+        "line_hint": "L5-L8",
+        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+      },
+      "notes": "Every top-level plan file (this one included) is governed by docs/CLAUDE.md's gate rule, not by its own subject matter."
+    },
+    {
+      "path": "docs/plans/verbs.md",
+      "governing_rule": {
+        "source": "docs/CLAUDE.md",
+        "line_hint": "L5-L8",
+        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+      },
+      "notes": "Every top-level plan file (this one included) is governed by docs/CLAUDE.md's gate rule, not by its own subject matter."
+    },
+    {
+      "path": "Taskfile.yml",
+      "governing_rule": {
+        "source": "CLAUDE.md",
+        "line_hint": "L16",
+        "text": "Gate \u2014 task validate (fmt-check, vet, cue-vet, vendor-check, scripts-check, go test -race) stays green; lefthook install once (pre-commit fmt+cue, pre-push validate+verify)"
+      },
+      "notes": "Named directly in the Gate row's own pointer column."
+    },
+    {
+      "path": "lefthook.yml",
+      "governing_rule": {
+        "source": "CLAUDE.md",
+        "line_hint": "L16",
+        "text": "Gate \u2014 task validate (fmt-check, vet, cue-vet, vendor-check, scripts-check, go test -race) stays green; lefthook install once (pre-commit fmt+cue, pre-push validate+verify)"
+      },
+      "notes": "Named directly in the Gate row's own pointer column."
+    },
+    {
+      "path": "docs/intent/README.md",
+      "governing_rule": {
+        "source": "CLAUDE.md",
+        "line_hint": "L23-L27",
+        "text": "Durable intent lives at docs/intent/README.md (router)... Decisions: ADR.md (general decision records, not only architecture; index at docs/intent/decisions/README.md)."
+      },
+      "notes": "The router the Project Intent paragraph names directly."
+    },
+    {
+      "path": "ADR.md",
+      "governing_rule": {
+        "source": "CLAUDE.md",
+        "line_hint": "L23-L27",
+        "text": "Durable intent lives at docs/intent/README.md (router)... Decisions: ADR.md (general decision records, not only architecture; index at docs/intent/decisions/README.md)."
+      },
+      "notes": "The decisions record the Project Intent paragraph names directly."
+    },
+    {
+      "path": "internal/core/model.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L28-L31",
+        "text": "The domain model is the keystone. Shared types live in internal/core; extend it additively. pkg/client re-exports for external consumers."
+      },
+      "notes": "internal/core is the keystone package the rule names directly."
+    },
+    {
+      "path": "internal/core/claims.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L28-L31",
+        "text": "The domain model is the keystone. Shared types live in internal/core; extend it additively. pkg/client re-exports for external consumers."
+      },
+      "notes": "internal/core is the keystone package the rule names directly."
+    },
+    {
+      "path": "internal/connector/testdata/fauxtown/payment-service/payment.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L13-L14",
+        "text": "Golden fixtures: internal/connector/testdata/fauxtown/ is the deterministic fixture fleet; prefer golden tests against it."
+      },
+      "notes": "Fixture file inside the fixture fleet the bullet names by path; has no CLAUDE.md of its own."
+    },
+    {
+      "path": "internal/connector/testdata/fauxtown/ledger-service/ledger.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L13-L14",
+        "text": "Golden fixtures: internal/connector/testdata/fauxtown/ is the deterministic fixture fleet; prefer golden tests against it."
+      },
+      "notes": "Fixture file inside the fixture fleet the bullet names by path; has no CLAUDE.md of its own."
+    },
+    {
+      "path": "internal/connector/testdata/fauxtown/polyglot-service/app.py",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L13-L14",
+        "text": "Golden fixtures: internal/connector/testdata/fauxtown/ is the deterministic fixture fleet; prefer golden tests against it."
+      },
+      "notes": "Fixture file inside the fixture fleet the bullet names by path; has no CLAUDE.md of its own."
+    },
+    {
+      "path": "internal/connector/testdata/fauxtown/worktree-service/main.go",
+      "governing_rule": {
+        "source": "internal/CLAUDE.md",
+        "line_hint": "L13-L14",
+        "text": "Golden fixtures: internal/connector/testdata/fauxtown/ is the deterministic fixture fleet; prefer golden tests against it."
+      },
+      "notes": "Fixture file inside the fixture fleet the bullet names by path; has no CLAUDE.md of its own."
+    }
+  ]
+}

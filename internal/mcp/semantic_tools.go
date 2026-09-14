@@ -31,6 +31,23 @@ type rootObligationsBackend interface {
 	RootObligations(ctx context.Context, service string, maxRules int) (semantic.Obligations, error)
 }
 
+// obligationLayerBackend is the optional backend capability for VB-9's
+// layer split (ADR-035 decision 2): a file-scoped obligations call that
+// takes an explicit semantic.ObligationLayerFilter. pkg/client implements
+// it via semantic.ObligationsForLayer; a backend that omits it (an older
+// module, a minimal test fake) degrades to the pre-VB-9 obligationsBackend
+// call, which always serves the "all" union regardless of what the caller
+// asked for — see obligationLayers' doc comment.
+type obligationLayerBackend interface {
+	ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error)
+}
+
+// rootObligationsLayerBackend is obligationLayerBackend's root-scope
+// sibling (semantic.RootObligationsForLayer).
+type rootObligationsLayerBackend interface {
+	RootObligationsLayer(ctx context.Context, service string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error)
+}
+
 // compileBackend is the optional backend capability for on-demand
 // semantic-layer compilation. CompileLayer takes the layer name the caller
 // requested (FT-1/F7: compile_layer previously validated the name via
@@ -97,6 +114,155 @@ func rootObligations(ctx context.Context, backend QueryInterface, ob obligations
 	return obl, err
 }
 
+// validObligationLayer normalizes the obligations tool's "layer" request
+// value: "" defaults to "rules" (VB-9, ADR-035 decision 2 — the default
+// answers "what governs this file" with human-authored rules only), a
+// recognized value passes through, anything else is refused rather than
+// silently degraded — a typo in "layer" must not be read as "give me
+// everything".
+func validObligationLayer(raw string) (semantic.ObligationLayerFilter, *rpcError) {
+	switch semantic.ObligationLayerFilter(raw) {
+	case "":
+		return semantic.ObligationLayerRules, nil
+	case semantic.ObligationLayerRules, semantic.ObligationLayerClaims, semantic.ObligationLayerAll:
+		return semantic.ObligationLayerFilter(raw), nil
+	default:
+		return "", &rpcError{Code: ErrCodeParams, Message: `obligations: layer must be "rules", "claims" or "all"`}
+	}
+}
+
+// obligationLayers resolves the obligations tool's request to the compiled
+// rules it actually serves (VB-9, ADR-035 decision 2, the anchor for this
+// function): "layer" defaults to "rules" — human-authored CLAUDE.md/
+// AGENTS.md/ADR claims only (RoleGoverns) — "claims" serves ONLY plan-row
+// bindings resolved by their own {symbol, package} contract (a row with no
+// contract binds to nothing — never by prose keyword, the O23 defect),
+// and "all" is the pre-VB-9 union, prose fallback for a non-plan-row
+// corpus (findings/**) included. rootScope selects semantic.
+// RootObligationsFor's "what governs this repository" question instead of
+// a file lookup.
+//
+// A backend that predates the layer split (obligationLayerBackend /
+// rootObligationsLayerBackend) degrades to its pre-VB-9 Obligations/
+// RootObligations call and reports servedLayer "all" — the caller sees
+// the legacy union, never an error, because a lookup that still works
+// beats one that refuses.
+func obligationLayers(ctx context.Context, backend QueryInterface, ob obligationsBackend, service, file string, maxRules int, layer semantic.ObligationLayerFilter, rootScope bool) (obl semantic.Obligations, servedLayer string, rerr *rpcError) {
+	if rootScope {
+		if rb, ok := backend.(rootObligationsLayerBackend); ok {
+			o, err := rb.RootObligationsLayer(ctx, service, maxRules, layer)
+			if err != nil {
+				return semantic.Obligations{}, "", &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+			}
+			o.File = ""
+			return o, string(layer), nil
+		}
+		o, err := rootObligations(ctx, backend, ob, service, maxRules)
+		if err != nil {
+			return semantic.Obligations{}, "", &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		}
+		return o, string(semantic.ObligationLayerAll), nil
+	}
+
+	if lb, ok := backend.(obligationLayerBackend); ok {
+		o, err := lb.ObligationsLayer(ctx, service, file, maxRules, layer)
+		if err != nil {
+			return semantic.Obligations{}, "", &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		}
+		return o, string(layer), nil
+	}
+	o, err := ob.Obligations(ctx, service, file, maxRules)
+	if err != nil {
+		return semantic.Obligations{}, "", &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+	}
+	return o, string(semantic.ObligationLayerAll), nil
+}
+
+// renderObligationReceipt assembles the obligations tool's response
+// envelope (VB-10, ADR-035 decision 2, the anchor for this function).
+// Three guarantees, stated once so the shape means the same thing on every
+// call:
+//
+//  1. Rules ride the shared 16 KB tool budget (fitToolBudget — the same
+//     discipline find_callers/outline/symbol_context use), so a
+//     snippet-laden payload can never blow the caller's context even
+//     though MaxObligations already caps rule COUNT to 6. Rules arrive
+//     already ordered fresh-before-stale (semantic.ObligationsFor's own
+//     contract), so a byte-budget cut here can only ever drop from the
+//     stale tail — a stale rule is demoted below the budget line, never
+//     served first, by construction rather than by a second sort.
+//  2. Each rule carries its cited lines inlined (withSnippets/BP-20,
+//     reusing symbol_context's read_source-backed snippet mechanism) so a
+//     trusted rule costs no extra round trip.
+//  3. displaced is broken out per governing-scope tier (VB-8's
+//     rankByGoverningScope, semantic.Obligations.DisplacedByTier) — a
+//     caller can see WHAT KIND of rule the cap dropped: a root-level
+//     catch-all crowding out a package rule reads very differently than
+//     the reverse.
+func renderObligationReceipt(ctx context.Context, backend QueryInterface, service string, obl semantic.Obligations, rootScope bool, servedLayer string, includeSnippets, indexStale bool) map[string]any {
+	result := map[string]any{
+		"service": obl.Service,
+		"file":    obl.File,
+	}
+	if rootScope {
+		result["root"] = true
+		result["note"] = "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
+	}
+	if servedLayer != "" {
+		result["layer"] = servedLayer
+	}
+	displaced := obl.Displaced
+	if len(obl.Rules) > 0 {
+		var rendered []any
+		if includeSnippets {
+			// BP-20/D3: inline each rule's cited lines so the agent stops
+			// paying a read_source turn per rule it trusts. Default ON for
+			// the TOOL (an agent calling obligations directly is about to
+			// read the citation anyway) and OFF for the EDIT HOOK, which
+			// passes include_snippets:false — the decision-moment payload's
+			// budget is ~150 tokens and its rendered bytes must not move.
+			rendered = withSnippets(ctx, backend, service, obl.Rules)
+		} else {
+			rendered = make([]any, len(obl.Rules))
+			for i, r := range obl.Rules {
+				rendered[i] = r
+			}
+		}
+		kept, byteElided := fitToolBudget(rendered, defaultCharBudget)
+		result["rules"] = kept
+		// A byte-budget cut is the SAME kind of eviction the MaxObligations
+		// cap already reports — fold it into the same honest integer rather
+		// than introducing a second, differently-named count.
+		displaced += byteElided
+	}
+	if obl.Watermark != "" {
+		result["compiled_at_watermark"] = obl.Watermark
+	}
+	// T5-2/O14: surface how many served-eligible claims a cap dropped this
+	// call — a recompile that blends a new layer in can silently evict a
+	// rule an agent relied on yesterday; displaced turns that into a
+	// visible integer instead of silence.
+	if displaced > 0 {
+		result["displaced"] = displaced
+	}
+	if len(obl.DisplacedByTier) > 0 {
+		result["displaced_by_tier"] = obl.DisplacedByTier
+	}
+	if obl.DisplacedRepo > 0 {
+		result["displaced_repo"] = obl.DisplacedRepo
+	}
+	if obl.DisplacedModule > 0 {
+		result["displaced_module"] = obl.DisplacedModule
+	}
+	if len(obl.ModuleNotes) > 0 {
+		result["module_notes"] = obl.ModuleNotes
+	}
+	if indexStale {
+		result["index_stale"] = true
+	}
+	return result
+}
+
 // ─── registerSemanticTools ───────────────────────────────────────────────────
 
 // registerSemanticTools wires the obligations and compile_layer MCP tools.
@@ -109,7 +275,9 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 	// Returns empty rules when no rules apply (zero-output-on-clean contract).
 	s.registerTool(toolDescriptor{
 		Name: "obligations",
-		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file and no action — the root-scope rules that answer \"what governs this repository\" (RC-22): the compiled layer's rules whose scope reaches the repo root / CLAUDE.md level, budgeted the same way, with root:true and a note to pass file for file-scoped rules. Empty rules with index_stale:false means a clean file. Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules the shared cap dropped this call; displaced_repo/displaced_module split it once a binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file (or the repository) right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
+		Description: "Return compiled obligations (governing rules) for a file at decision time, or — with no file and no action — the root-scope rules that answer \"what governs this repository\" (RC-22): the compiled layer's rules whose scope reaches the repo root / CLAUDE.md level, budgeted the same way, with root:true and a note to pass file for file-scoped rules. Empty rules with index_stale:false means a clean file. " +
+			"layer (VB-9, ADR-035 decision 2) selects WHICH claims answer: \"rules\" (default) is human-authored governing rules only — CLAUDE.md/AGENTS.md, ADR invariants, docs/intent — the \"what governs this file\" question; \"claims\" is plan-row bindings ONLY, bound strictly by a row's own {symbol, package} contract (a row naming no contract binds to nothing, never by prose keyword) — the \"what plan rows claim this file\" question, a different reader; \"all\" is the pre-VB-9 union of both, prose fallback included for a non-plan-row corpus (findings/**). The response echoes the layer actually served. " +
+			"Each rule carries a layer label (which manifest layer compiled it) and, when federated in from a bound platform module (docs/design/platform-modules.md), a module label naming it. displaced:N (when present) is the total count of served-eligible rules a cap dropped this call (the 6-rule MaxObligations cap plus, rarely, a 16KB payload-size cut); displaced_by_tier breaks that count out by governing-scope proximity (\"exact_file\"/\"package\"/\"parent_dir\"/\"root\") so a dropped root-level catch-all reads differently from a dropped package rule; displaced_repo/displaced_module split it once a module binding is configured. module_notes (when present) names any bound module this daemon does not have mounted — never silent. This result IS the answer for which rules govern this file (or the repository) right now — a follow-up call only helps once the file or the rule set changes, or to record a verdict via action. " +
 			"Also serves the claim feedback write path (D2): pass action:\"refute\"|\"corroborate\" with claim_id and note instead of file to record a verdict — refute flips the claim's status and stops it serving; corroborate never changes status or tier. Reach for it when you are about to edit a file and the hook did not run (a harness without PostToolUse hooks), to ask what governs the whole repository, or to record a verdict on a served claim. Required: service.",
 		InputSchema: map[string]any{
 			"type": "object",
@@ -121,6 +289,11 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				"file": map[string]any{
 					"type":        "string",
 					"description": "Repo-relative file path being edited. Omit (with no action) for root-scope obligations — \"what governs this repository\" — instead of an error.",
+				},
+				"layer": map[string]any{
+					"type":        "string",
+					"enum":        []string{"rules", "claims", "all"},
+					"description": "Which claims to serve (VB-9): \"rules\" (default) is human-authored governing rules only; \"claims\" is plan-row bindings bound strictly by their own {symbol, package} contract; \"all\" is the pre-VB-9 union of both.",
 				},
 				"max_rules": map[string]any{
 					"type":        "integer",
@@ -155,6 +328,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 		var p struct {
 			Service         string `json:"service"`
 			File            string `json:"file"`
+			Layer           string `json:"layer"`
 			MaxRules        int    `json:"max_rules"`
 			IncludeSnippets *bool  `json:"include_snippets"`
 			Action          string `json:"action"`
@@ -198,21 +372,20 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not serve semantic layers"}
 		}
 
+		layer, lerr := validObligationLayer(p.Layer)
+		if lerr != nil {
+			return nil, lerr
+		}
+
 		// RC-22 (docs/vision/28-receipts.md §3.5): no file means "what
 		// governs this repository" — root-scope rules only, never an
 		// error. A real file argument keeps the exact pre-RC-22 behavior
 		// below, module union included.
 		rootScope := p.File == ""
 
-		var obl semantic.Obligations
-		var err error
-		if rootScope {
-			obl, err = rootObligations(ctx, backend, ob, p.Service, p.MaxRules)
-		} else {
-			obl, err = ob.Obligations(ctx, p.Service, p.File, p.MaxRules)
-		}
-		if err != nil {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
+		obl, servedLayer, oerr := obligationLayers(ctx, backend, ob, p.Service, p.File, p.MaxRules, layer, rootScope)
+		if oerr != nil {
+			return nil, oerr
 		}
 
 		// Platform-modules.md §3.3: union in rules from every module this
@@ -234,59 +407,13 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			}
 		}
 
-		// Build response: always include obligations payload; append index_stale
-		// when true. Serialise as map so index_stale is a first-class field.
-		result := map[string]any{
-			"service": obl.Service,
-			"file":    obl.File,
-		}
-		if rootScope {
-			result["root"] = true
-			result["note"] = "Root-scope obligations only (repo-root/CLAUDE.md-level rules) — pass file for file-scoped rules."
-		}
-		if len(obl.Rules) > 0 {
-			// BP-20/D3: inline each rule's cited lines so the agent stops
-			// paying a read_source turn per rule it trusts. Default ON for
-			// the TOOL (an agent calling obligations directly is about to
-			// read the citation anyway) and OFF for the EDIT HOOK, which
-			// passes include_snippets:false — the decision-moment payload's
-			// budget is ~150 tokens and its rendered bytes must not move.
-			if p.IncludeSnippets == nil || *p.IncludeSnippets {
-				result["rules"] = withSnippets(ctx, backend, p.Service, obl.Rules)
-			} else {
-				result["rules"] = obl.Rules
-			}
-		}
-		if obl.Watermark != "" {
-			result["compiled_at_watermark"] = obl.Watermark
-		}
-		// T5-2/O14: surface how many served-eligible claims the
-		// MaxObligations cap dropped this call — a recompile that blends a
-		// new layer in can silently evict a rule an agent relied on
-		// yesterday; displaced turns that into a visible integer instead of
-		// silence. O14 split (platform-modules.md §3.3 deliverable 2):
-		// displaced stays the TOTAL (back-compat superset); displaced_repo/
-		// displaced_module appear only once a binding actually contributed.
-		if obl.Displaced > 0 {
-			result["displaced"] = obl.Displaced
-		}
-		if obl.DisplacedRepo > 0 {
-			result["displaced_repo"] = obl.DisplacedRepo
-		}
-		if obl.DisplacedModule > 0 {
-			result["displaced_module"] = obl.DisplacedModule
-		}
-		if len(obl.ModuleNotes) > 0 {
-			result["module_notes"] = obl.ModuleNotes
-		}
 		staleFile := p.File
 		if rootScope {
 			staleFile = rootObligationsProbe
 		}
-		if ob.ObligationsIndexStale(ctx, p.Service, staleFile) {
-			result["index_stale"] = true
-		}
-		return result, nil
+		indexStale := ob.ObligationsIndexStale(ctx, p.Service, staleFile)
+		includeSnippets := p.IncludeSnippets == nil || *p.IncludeSnippets
+		return renderObligationReceipt(ctx, backend, p.Service, obl, rootScope, servedLayer, includeSnippets, indexStale), nil
 	})
 
 	// compile_layer: trigger obligations compilation for a service. Defaults to

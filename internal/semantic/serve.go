@@ -121,11 +121,49 @@ type Obligations struct {
 	// the shared budget — set only by internal/modserve.Bind, never by
 	// ObligationsFor itself.
 	DisplacedModule int `json:"displaced_module,omitempty"`
+	// DisplacedByTier is VB-10's receipt (ADR-035 decision 2): the same
+	// Displaced count, broken out by the governing-scope tier
+	// (rankByGoverningScope's "exact_file"/"package"/"parent_dir"/"root")
+	// each cut, file-scoped-eligible claim carried. A caller can tell a
+	// dropped root-level catch-all from a dropped package rule — they read
+	// very differently. Populated only for a file-scoped call (a root-scope
+	// answer has no "distance to a path" to tier); nil when nothing this
+	// call cut had a computable tier.
+	DisplacedByTier map[string]int `json:"displaced_by_tier,omitempty"`
 	// ModuleNotes carries explicit, never-silent notes about this service's
 	// bound platform modules (e.g. bound but not mounted on this daemon) —
 	// set only by internal/modserve.Bind.
 	ModuleNotes []ModuleNote `json:"module_notes,omitempty"`
 }
+
+// ObligationLayerFilter selects which claims obligations serves (VB-9,
+// ADR-035 decision 2). The default answers "what governs this file" with
+// human-authored rules only — the split O23 asked for: "what governs this
+// file" (CLAUDE.md/AGENTS.md/ADR invariants — RoleGoverns) and "what plan
+// rows claim this file" (spec-bindings — RoleClaims) are different
+// questions with different readers, and serving them through one ranked
+// list is what let prose-matched plan rows crowd out the rule that
+// mattered.
+type ObligationLayerFilter string
+
+const (
+	// ObligationLayerRules serves ONLY RoleGoverns claims — the default.
+	ObligationLayerRules ObligationLayerFilter = "rules"
+	// ObligationLayerClaims serves ONLY RoleClaims claims bound STRICTLY by
+	// a plan row's own {symbol, package} contract (ContractScope ok=true
+	// and non-empty) — never the compile-time prose fallback. A row with
+	// no contract binds to nothing under this filter, exactly as it always
+	// has under the default; a row whose citation is not a plan row at all
+	// (a findings/** corpus) is likewise excluded — "layer: claims" means
+	// plan-row bindings specifically, not every RoleClaims claim.
+	ObligationLayerClaims ObligationLayerFilter = "claims"
+	// ObligationLayerAll is the pre-VB-9 union: every served claim,
+	// RoleClaims claims scoped by contract when the citation is a plan row
+	// and by the compile-time (prose) fallback otherwise. ObligationsFor
+	// and RootObligationsFor always pass this — VB-9's split is additive,
+	// reached only through ObligationsForLayer / RootObligationsForLayer.
+	ObligationLayerAll ObligationLayerFilter = "all"
+)
 
 // ObligationsFor returns the claims governing file across EVERY compiled
 // layer (FT-2: obligations plus, when compiled, findings and any future
@@ -154,7 +192,25 @@ type Obligations struct {
 //     stopped run led with stale rules; the agent reads top-down, so the
 //     freshest binding rule goes first.
 func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, file, max, func(_ core.SemanticClaim, scope []string) int {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), ObligationLayerAll)
+}
+
+// ObligationsForLayer is ObligationsFor's VB-9 sibling: layer selects which
+// claims are eligible before scope, budget and order ever run (see
+// ObligationLayerFilter). ObligationsFor itself always passes
+// ObligationLayerAll, so every pre-VB-9 caller sees byte-identical
+// behavior; a caller that wants the split asks for it explicitly.
+func ObligationsForLayer(ctx context.Context, st store.Store, serviceID, file string, max int, layer ObligationLayerFilter) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, file, max, fileScopeMatch(file), layer)
+}
+
+// fileScopeMatch is the match function ObligationsFor/ObligationsForLayer
+// share: a claim's specificity is the byte length of its longest scope glob
+// that actually matches file — the KEYWORD tie-break rankByGoverningScope
+// (VB-8) now sits behind, inside a proximity tier, rather than in front of
+// it.
+func fileScopeMatch(file string) func(core.SemanticClaim, []string) int {
+	return func(_ core.SemanticClaim, scope []string) int {
 		best := -1
 		for _, g := range scope {
 			if filter.New([]string{g}).Match(file) {
@@ -164,7 +220,7 @@ func ObligationsFor(ctx context.Context, st store.Store, serviceID, file string,
 			}
 		}
 		return best
-	})
+	}
 }
 
 // globReachesRoot reports whether glob g is unanchored or wildcard-rooted —
@@ -207,23 +263,32 @@ func isRootLevelSource(subject string) bool {
 // file-scoped call (BP-17/BP-18); out.File is always "" (no single file
 // answers this question).
 func RootObligationsFor(ctx context.Context, st store.Store, serviceID string, max int) (Obligations, error) {
-	return obligationsCore(ctx, st, serviceID, "", max, func(cl core.SemanticClaim, scope []string) int {
-		best := -1
-		for _, g := range scope {
-			if globReachesRoot(g) && len(g) > best {
-				best = len(g)
-			}
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, ObligationLayerAll)
+}
+
+// RootObligationsForLayer is RootObligationsFor's VB-9 sibling — see
+// ObligationsForLayer's doc comment; the same layer split applies to the
+// root-scope question.
+func RootObligationsForLayer(ctx context.Context, st store.Store, serviceID string, max int, layer ObligationLayerFilter) (Obligations, error) {
+	return obligationsCore(ctx, st, serviceID, "", max, rootScopeMatch, layer)
+}
+
+func rootScopeMatch(cl core.SemanticClaim, scope []string) int {
+	best := -1
+	for _, g := range scope {
+		if globReachesRoot(g) && len(g) > best {
+			best = len(g)
 		}
-		if best < 0 && isRootLevelSource(cl.Subject) {
-			// The SOURCE alone is enough even when the model proposed a
-			// scope glob that is not itself wildcard-rooted (a narrow
-			// "CLAUDE.md#section" restatement scoped to one file, say) —
-			// a root-level governing doc's claim is root-scope by where it
-			// came from, not only by how widely its glob reaches.
-			best = 0
-		}
-		return best
-	})
+	}
+	if best < 0 && isRootLevelSource(cl.Subject) {
+		// The SOURCE alone is enough even when the model proposed a
+		// scope glob that is not itself wildcard-rooted (a narrow
+		// "CLAUDE.md#section" restatement scoped to one file, say) —
+		// a root-level governing doc's claim is root-scope by where it
+		// came from, not only by how widely its glob reaches.
+		best = 0
+	}
+	return best
 }
 
 // obligationsCore is the shared match/budget/order engine behind
@@ -234,7 +299,7 @@ func RootObligationsFor(ctx context.Context, st store.Store, serviceID string, m
 // the answer, returning a specificity (higher wins ties) or <0 for no
 // match. See ObligationsFor's doc comment for the SCOPE/BUDGET/ORDER
 // contract this enforces regardless of which match function is passed.
-func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int) (Obligations, error) {
+func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile string, max int, match func(cl core.SemanticClaim, scope []string) int, layerFilter ObligationLayerFilter) (Obligations, error) {
 	if max <= 0 || max > MaxObligations {
 		max = MaxObligations
 	}
@@ -298,22 +363,42 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		cl          core.SemanticClaim
 		specificity int
 		claims      bool // RoleClaims: fills the budget only after governs
+		governing   governingScope
 	}
 	var matched []scored
 	for _, cl := range served {
 		claims := layerRole(cl.Layer) == RoleClaims
 		scope := cl.Scope
+		contractBound := false
 		if claims {
 			// BP-19/D2: the plan row's own contract, not its prose. ok=false
 			// means the citation is not a plan row — a findings-style corpus
 			// — and the compile-time scope stands.
 			if cs, ok := ContractScope(citedText(primaryCite[cl.ClaimID], cl.ClaimID), lookup); ok {
 				scope = cs
+				contractBound = len(cs) > 0
+			}
+		}
+		// VB-9 (ADR-035 decision 2): the layer split happens BEFORE match —
+		// an excluded claim never even competes for a scope tier or a
+		// budget slot.
+		switch layerFilter {
+		case ObligationLayerRules:
+			if claims {
+				continue
+			}
+		case ObligationLayerClaims:
+			if !claims || !contractBound {
+				continue
 			}
 		}
 		best := match(cl, scope)
 		if best >= 0 {
-			matched = append(matched, scored{cl: cl, specificity: best, claims: claims})
+			governing := noGoverningScope
+			if outFile != "" {
+				governing = rankByGoverningScope(scope, outFile)
+			}
+			matched = append(matched, scored{cl: cl, specificity: best, claims: claims, governing: governing})
 		}
 	}
 	if len(matched) == 0 {
@@ -326,6 +411,19 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 		if a.claims != b.claims {
 			return !a.claims // BP-18/D1: governs before claims
 		}
+		// VB-8 (ADR-035 decision 2): proximity to the edited path is the
+		// PRIMARY tie-break inside a role/freshness tier — exact file beats
+		// package beats a named ancestor directory beats the repo root.
+		// Only meaningful for a file-scoped call (outFile != ""); a
+		// root-scope answer has no path to be proximate to, so every
+		// candidate carries the same noGoverningScope and this comparison
+		// is always a no-op there.
+		if outFile != "" && a.governing != b.governing {
+			return a.governing.closerThan(b.governing)
+		}
+		// The keyword score (byte length of the matched glob) breaks ties
+		// INSIDE a tier — two claims scoped to the same directory still
+		// need a deterministic order.
 		if a.specificity != b.specificity {
 			return a.specificity > b.specificity
 		}
@@ -357,6 +455,25 @@ func obligationsCore(ctx context.Context, st store.Store, serviceID, outFile str
 			}
 			if m.claims {
 				kept = append(kept, m)
+			}
+		}
+		// VB-10 (ADR-035 decision 2): before the survivors are re-sorted,
+		// tally the DROPPED claims by governing-scope tier — a caller can
+		// then see WHAT KIND of rule the cap displaced, not just how many.
+		// File-scoped only: a root-scope call carries no computable tier.
+		if outFile != "" {
+			keptIDs := make(map[string]bool, len(kept))
+			for _, k := range kept {
+				keptIDs[k.cl.ClaimID] = true
+			}
+			byTier := map[string]int{}
+			for _, m := range matched {
+				if !keptIDs[m.cl.ClaimID] {
+					byTier[m.governing.name()]++
+				}
+			}
+			if len(byTier) > 0 {
+				out.DisplacedByTier = byTier
 			}
 		}
 		// Re-order the survivors: the role partition above is a BUDGET

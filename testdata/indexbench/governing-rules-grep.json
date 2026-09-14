@@ -1,0 +1,11 @@
+{
+  "oracle": "grep-nearest-claude-md",
+  "labels": 40,
+  "top1_hits": 39,
+  "top3_hits": 39,
+  "top1_rate": 0.975,
+  "top3_rate": 0.975,
+  "misses": [
+    "docs/intent/README.md"
+  ]
+}

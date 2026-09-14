@@ -1,0 +1,8 @@
+{
+  "oracle": "governing-rules",
+  "labels": 40,
+  "top1_hits": 40,
+  "top3_hits": 40,
+  "top1_rate": 1,
+  "top3_rate": 1
+}

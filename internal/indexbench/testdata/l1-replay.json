@@ -8,8 +8,8 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 754,
-    "result_count": 4,
+    "bytes": 605,
+    "result_count": 3,
     "displaced": 0
   },
   {
@@ -21,8 +21,8 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 575,
-    "result_count": 3,
+    "bytes": 426,
+    "result_count": 2,
     "displaced": 0
   },
   {
@@ -34,8 +34,8 @@
     },
     "count_field": "rules",
     "budget_ms": 250,
-    "bytes": 605,
-    "result_count": 3,
+    "bytes": 456,
+    "result_count": 2,
     "displaced": 0
   },
   {

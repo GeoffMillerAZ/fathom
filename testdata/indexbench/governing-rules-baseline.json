@@ -1,0 +1,8 @@
+{
+  "oracle": "governing-rules-legacy-ranker",
+  "labels": 40,
+  "top1_hits": 35,
+  "top3_hits": 40,
+  "top1_rate": 0.875,
+  "top3_rate": 1
+}

@@ -41,6 +41,19 @@ func (c *Client) RootObligations(ctx context.Context, service string, maxRules i
 	return semantic.RootObligationsFor(ctx, c.st, service, maxRules)
 }
 
+// ObligationsLayer is Obligations' VB-9 sibling (ADR-035 decision 2):
+// layer selects rules/claims/all — see semantic.ObligationsForLayer and
+// semantic.ObligationLayerFilter.
+func (c *Client) ObligationsLayer(ctx context.Context, service, file string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
+	return semantic.ObligationsForLayer(ctx, c.st, service, file, maxRules, layer)
+}
+
+// RootObligationsLayer is RootObligations' VB-9 sibling — see
+// semantic.RootObligationsForLayer.
+func (c *Client) RootObligationsLayer(ctx context.Context, service string, maxRules int, layer semantic.ObligationLayerFilter) (semantic.Obligations, error) {
+	return semantic.RootObligationsForLayer(ctx, c.st, service, maxRules, layer)
+}
+
 // ObligationsIndexStale reports whether the index's fingerprint for file
 // differs from the file's current content on disk. It is best-effort: true
 // only when both the disk file and the stored fingerprint exist AND they
