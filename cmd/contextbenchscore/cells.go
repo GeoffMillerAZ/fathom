@@ -186,7 +186,7 @@ func applyTranscriptMetrics(ar *contextbench.ArmResult, transcript []byte, gold 
 // reading is left at its zero value, "not checked", never a false "clean".
 func applyPathChecks(ar *contextbench.ArmResult, transcript []byte, liveCheckout, sessionRoot string) {
 	if liveCheckout != "" {
-		leak := contextbench.DetectPathLeak(transcript, liveCheckout)
+		leak := contextbench.DetectPathLeak(transcript, liveCheckout, sessionRoot)
 		ar.PathLeak = leak.Leaked
 		ar.PathLeakPaths = leak.Paths
 	}
