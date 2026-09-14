@@ -104,6 +104,54 @@ func TestBashWriteTargets(t *testing.T) {
 			wantPaths:   nil,
 			wantWritten: true,
 		},
+		{
+			name:        "cd into a subdirectory before a redirect resolves relative to it, not the root",
+			cmd:         `cd internal/store && cat > y.go`,
+			wantPaths:   []string{"internal/store/y.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "cd chains: a second relative cd is relative to the first",
+			cmd:         `cd internal && cd store && echo x > y.go`,
+			wantPaths:   []string{"internal/store/y.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "pushd into a subdirectory before a redirect resolves relative to it",
+			cmd:         `pushd internal/mcp && cat > z.go`,
+			wantPaths:   []string{"internal/mcp/z.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "popd restores the cwd pushd saved",
+			cmd:         `pushd internal/mcp && echo x > z.go && popd && echo y > w.go`,
+			wantPaths:   []string{"internal/mcp/z.go", "w.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "an absolute cd makes the resolved target absolute too",
+			cmd:         `cd /tmp/out && cat > w.go`,
+			wantPaths:   []string{"/tmp/out/w.go"},
+			wantWritten: true,
+		},
+		{
+			name:        "cd to a variable target is unparseable: doubt, not a wrong-directory guess",
+			cmd:         `cd $DYNAMIC_DIR && cat > y.go`,
+			wantPaths:   nil,
+			wantWritten: true,
+		},
+		{
+			name:        "bare cd - (previous dir) is unparseable: doubt",
+			cmd:         `cd - && cat > y.go`,
+			wantPaths:   nil,
+			wantWritten: true,
+		},
+		{
+			name:        "a subshell's cd does not leak into what follows it",
+			cmd:         `(cd internal/store && cat > y.go) && cat > z.go`,
+			wantPaths:   []string{"internal/store/y.go", "z.go"},
+			wantWritten: true,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
