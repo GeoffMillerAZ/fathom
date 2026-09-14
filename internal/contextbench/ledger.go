@@ -106,6 +106,10 @@ type LedgerRow struct {
 	TreatmentToolSearchAvg float64                       `json:"treatment_toolsearch_turns_mean,omitempty"`
 	ControlToolSearchAvg   float64                       `json:"control_toolsearch_turns_mean,omitempty"`
 	GoldSourceRates        map[string]map[string]float64 `json:"gold_source_rate,omitempty"`
+	// GoldSourceByShape is VB-5: the same reading, broken down by each
+	// task's own Category (question shape) and then by arm — see
+	// GoldSourceByShape.
+	GoldSourceByShape map[string]map[string]map[string]float64 `json:"gold_source_by_shape,omitempty"`
 
 	// TrustedWithoutRecheck is the RC-17 reading (F8, vision 28 §2.4): how
 	// often a fathom tool call in this run stood without a Grep/Read/Bash

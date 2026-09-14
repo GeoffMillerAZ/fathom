@@ -406,6 +406,25 @@ fall, and raw transcripts are published as a release artifact
 `workspace/artifacts/` are the evidence; do not hand-edit
 `scenarios-ledger.jsonl`.
 
+## Gold source, not just pass/fail (VB-4, ADR-035 decision 5)
+
+A cell passes the task; a **tool** passes only when it was the gold
+source. Every cell's `Readings.gold_source_tool` (`GoldSourceTool`,
+goldsource.go) names the tool whose OWN result FIRST held the task's gold
+signal — the `answer_all_of` strings for a lookup task, a `Gold.Files`
+path for a change task, the rule's own source path for a guards task —
+`"none"` when no tool result ever carried it (the agent knew or guessed).
+A `ScenarioLedgerRow` rolls this up as `gold_source_rate` (the fraction of
+that row's own cells attributable to each tool, `not_measured` naming
+cells scored before this reading existed) and `gold_source_passes` (the
+same reading narrowed to cells that PASSED — what a tool actually
+*earned*); `scenariobench ledger`'s render adds a "Gold source by question
+shape" table (`GoldSourceRateByCategory`, one row per task category, every
+tool column present down to 0.00) and the verdict block's own "gold
+source: `<tool>` earned N of M passes" line for the treatment arm — so
+"obligations served six displaced rules and the arm passed the task by
+reading the file grep's way" (E1/O23) is a number, not a narration.
+
 ## Trial escalation (RC-14)
 
 Every task screens at n=2 first — a third trial is spent only where the

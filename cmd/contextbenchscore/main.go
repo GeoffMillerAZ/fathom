@@ -480,7 +480,8 @@ func cmdLedger(args []string) int {
 	row.CellsLost = cellsLost
 	row.LeakedTasks = leaked
 	row.Borrowed = contextbench.BorrowedCellsOf(results)
-	row.GoldSourceRates = contextbench.GoldSourceRate(results)
+	row.GoldSourceRates = contextbench.GoldSourceRateByArm(results)
+	row.GoldSourceByShape = contextbench.GoldSourceByShape(results, tasks)
 	row.TrustedWithoutRecheck = contextbench.AggregateTrustedWithoutRecheck(results)
 	// Reported, never gating (PB-10): the verdict above is already fixed;
 	// the figures describe how much evidence stands behind it. A run with
@@ -569,6 +570,9 @@ func cmdLedger(args []string) int {
 	}
 	if len(row.GoldSourceRates) > 0 {
 		fmt.Print(contextbench.RenderGoldSourceRate(row.GoldSourceRates))
+	}
+	if len(row.GoldSourceByShape) > 0 {
+		fmt.Print(contextbench.RenderGoldSourceByShape(row.GoldSourceByShape))
 	}
 	if row.TrustedWithoutRecheck != nil {
 		fmt.Print(contextbench.RenderTrustedWithoutRecheck(row.TrustedWithoutRecheck))

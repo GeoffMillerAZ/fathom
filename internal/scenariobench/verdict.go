@@ -130,6 +130,7 @@ func renderRunVerdict(runID string, sound, voided []ScenarioLedgerRow, criteria 
 		b.WriteString(".\n")
 		b.WriteString(surfaceCallsLine(arms, byArm))
 		b.WriteString(plainLanguageLine(runID, crit, crit.Evaluate(sound), t, c))
+		b.WriteString(goldSourceLine(sound, crit.Treatment))
 	default:
 		if sha == "" {
 			b.WriteString(" (voided or no sound row named a corpus)")
@@ -208,4 +209,42 @@ func plainLanguageLine(runID string, crit Criterion, ev ScenarioEvaluation, t, c
 	return fmt.Sprintf("On %s, fathom's arm %s on success (%d v %d) at %s the tokens; the tools were called %d time(s). Registered criterion %s: %s (%s).\n",
 		runID, verdictPhrase, t.successes, c.successes, tokenPart, t.surfaceCalls,
 		ev.CriterionID, ev.Verdict, ev.Reason)
+}
+
+// goldSourceLine is ADR-035 decision 5's verdict-block receipt: among the
+// TREATMENT arm's own rows in this run, which tool earned the most PASSES
+// (GoldSourcePasses) — "a cell passes the task; a tool passes only when
+// it was the gold source." Empty when no row recorded a GoldSourcePasses
+// reading at all (rows filed before VB-4).
+func goldSourceLine(rows []ScenarioLedgerRow, treatment string) string {
+	counts := map[string]int{}
+	total := 0
+	seen := false
+	for _, r := range rows {
+		if r.Arm != treatment {
+			continue
+		}
+		total += r.Successes
+		if len(r.GoldSourcePasses) > 0 {
+			seen = true
+			for tool, n := range r.GoldSourcePasses {
+				counts[tool] += n
+			}
+		}
+	}
+	if !seen || total == 0 {
+		return ""
+	}
+	tools := make([]string, 0, len(counts))
+	for t := range counts {
+		tools = append(tools, t)
+	}
+	sort.Slice(tools, func(i, j int) bool {
+		if counts[tools[i]] != counts[tools[j]] {
+			return counts[tools[i]] > counts[tools[j]]
+		}
+		return tools[i] < tools[j]
+	})
+	top := tools[0]
+	return fmt.Sprintf("gold source: %s earned %d of %d passes.\n", top, counts[top], total)
 }

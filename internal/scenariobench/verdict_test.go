@@ -146,3 +146,36 @@ func TestRenderVerdict_ExportedWrapperMatches(t *testing.T) {
 		t.Error("RenderVerdict must delegate to renderVerdict verbatim")
 	}
 }
+
+// TestRenderVerdict_GoldSourceLine is VB-4: the verdict block names which
+// tool earned the treatment arm's passes.
+func TestRenderVerdict_GoldSourceLine(t *testing.T) {
+	criteria := map[string]Criterion{"sha": {ID: "M1", Treatment: "full", Control: "grep"}}
+	rows := []ScenarioLedgerRow{
+		{
+			RunID: "r1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha", Trials: 2, Successes: 2,
+			GoldSourcePasses: map[string]int{"mcp__fathom__obligations": 2},
+		},
+		{
+			RunID: "r1", TaskID: "t2", Arm: "full", CorpusSHA256: "sha", Trials: 1, Successes: 1,
+			GoldSourcePasses: map[string]int{"Grep": 1},
+		},
+		{RunID: "r1", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 1},
+	}
+	out := renderVerdict(rows, criteria)
+	if !strings.Contains(out, "gold source: mcp__fathom__obligations earned 2 of 3 passes.") {
+		t.Errorf("must name the top tool and the pass totals for the TREATMENT arm:\n%s", out)
+	}
+}
+
+func TestRenderVerdict_GoldSourceLineAbsentWhenUnrecorded(t *testing.T) {
+	criteria := map[string]Criterion{"sha": {ID: "M1", Treatment: "full", Control: "grep"}}
+	rows := []ScenarioLedgerRow{
+		{RunID: "r1", TaskID: "t1", Arm: "full", CorpusSHA256: "sha", Trials: 2, Successes: 2},
+		{RunID: "r1", TaskID: "t1", Arm: "grep", CorpusSHA256: "sha", Trials: 2, Successes: 1},
+	}
+	out := renderVerdict(rows, criteria)
+	if strings.Contains(out, "gold source:") {
+		t.Errorf("a run with no GoldSourcePasses reading anywhere must not print the line:\n%s", out)
+	}
+}

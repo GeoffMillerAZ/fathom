@@ -421,6 +421,16 @@ type Readings struct {
 	// pointers, how many did this session's own transcript reference (tool
 	// input or a read result) before its first edit — see FactsReused.
 	FactsReused *int `json:"facts_reused,omitempty"`
+	// GoldSourceTool is VB-4 (vision 29 §1 R2, ADR-035 decision 5): the
+	// tool whose result FIRST held this task's own gold signal — never
+	// merely whether the cell passed. GoldSourceNone ("none") when no
+	// tool result ever carried it (the agent knew or guessed); empty only
+	// for a cell this reading was never computed for (a cell scored
+	// before VB-4). See GoldSourceTool (goldsource.go).
+	GoldSourceTool string `json:"gold_source_tool,omitempty"`
+	// GoldSourceEvidence is the matched token, file, or rule path that
+	// decided GoldSourceTool.
+	GoldSourceEvidence string `json:"gold_source_evidence,omitempty"`
 }
 
 // CompileCostReading is the wave-0 receipt (RC-10) of what a wired,

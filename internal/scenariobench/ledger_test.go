@@ -266,3 +266,60 @@ func TestEscalationPlan(t *testing.T) {
 		}
 	})
 }
+
+// TestGoldSourceRateByCategory_WeightsByTrialsAndFillsZero is VB-4: the
+// per-question-shape breakdown must reconstruct exact counts across rows
+// of different sizes, and the render must list every tool seen in ANY
+// category — including at zero for a category that never won with it.
+func TestGoldSourceRateByCategory_WeightsByTrialsAndFillsZero(t *testing.T) {
+	rows := []ScenarioLedgerRow{
+		{
+			TaskID: "g1", Category: "guards", Trials: 4,
+			GoldSourceRate: map[string]float64{"mcp__fathom__obligations": 0.75, GoldSourceNone: 0.25},
+		},
+		{
+			TaskID: "l1", Category: "lookup", Trials: 2,
+			GoldSourceRate: map[string]float64{"Grep": 1.0},
+		},
+		// A row scored before VB-4 (no GoldSourceRate at all) must not
+		// distort either category's total.
+		{TaskID: "l2", Category: "lookup", Trials: 5},
+	}
+	byCat := GoldSourceRateByCategory(rows)
+	guards := byCat["guards"]
+	if got := guards["mcp__fathom__obligations"]; got != 0.75 {
+		t.Errorf("guards obligations rate = %v, want 0.75", got)
+	}
+	if got := guards[GoldSourceNone]; got != 0.25 {
+		t.Errorf("guards none rate = %v, want 0.25", got)
+	}
+	lookup := byCat["lookup"]
+	if got := lookup["Grep"]; got != 1.0 {
+		t.Errorf("lookup Grep rate = %v, want 1.0 (the unmeasured row must not water it down)", got)
+	}
+
+	table := RenderGoldSourceByCategory(byCat)
+	if !strings.Contains(table, "### Gold source by question shape") {
+		t.Errorf("must carry the section heading:\n%s", table)
+	}
+	if !strings.Contains(table, "| category | Grep | mcp__fathom__obligations | none |") {
+		t.Errorf("header must list every tool seen in ANY category, sorted:\n%s", table)
+	}
+	// "Grep" never won in "guards" — the row must still show it at 0.00,
+	// never a silent absence.
+	if !strings.Contains(table, "| guards | 0.00 | 0.75 | 0.25 |") {
+		t.Errorf("guards row must show Grep at 0.00:\n%s", table)
+	}
+	if !strings.Contains(table, "| lookup | 1.00 | 0.00 | 0.00 |") {
+		t.Errorf("lookup row must show the other tools at 0.00:\n%s", table)
+	}
+}
+
+func TestGoldSourceRateByCategory_Empty(t *testing.T) {
+	if GoldSourceRateByCategory(nil) != nil {
+		t.Error("no rows, no breakdown")
+	}
+	if RenderGoldSourceByCategory(nil) != "" {
+		t.Error("no breakdown, no rendered table")
+	}
+}

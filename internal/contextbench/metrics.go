@@ -131,55 +131,104 @@ func TranscriptMetrics(transcript []byte, gold []string) TranscriptStats {
 	return st
 }
 
-// GoldSourceRate reports, per arm, the share of that arm's cells whose
-// gold_source_tool was each tool — the reading that separates "the task
-// passed" from "the tool that was supposed to answer it did". Cells with
-// no gold source anywhere are counted in the denominator under the empty
-// key "" (recorded, never dropped: a run where the arm never touched the
-// answer is the finding, not a gap). Output is a map, which marshals in
-// sorted key order, so the ledger row is deterministic.
-func GoldSourceRate(results []ArmResult) map[string]map[string]float64 {
-	counts := map[string]map[string]int{}
-	totals := map[string]int{}
-	for _, r := range results {
-		if counts[r.Arm] == nil {
-			counts[r.Arm] = map[string]int{}
-		}
-		counts[r.Arm][r.GoldSourceTool]++
-		totals[r.Arm]++
-	}
-	if len(counts) == 0 {
+// GoldSourceRate reports the share of results whose gold_source_tool was
+// each tool — the reading that separates "the task passed" from "the tool
+// that was supposed to answer it did". Cells with no gold source anywhere
+// are counted in the denominator under the empty key "" (recorded, never
+// dropped: a run where the arm never touched the answer is the finding,
+// not a gap). This is the SINGLE per-tool computation every caller that
+// needs a rate over some slice of results goes through — one arm's own
+// cells (GoldSourceRateByArm), one question shape's own cells
+// (GoldSourceByShape), or any later grouping — so how a rate is computed
+// never drifts between the summary and the ledger (VB-5). Output is a
+// map, which marshals in sorted key order, so a caller's result is
+// deterministic. nil for no results.
+func GoldSourceRate(results []ArmResult) map[string]float64 {
+	if len(results) == 0 {
 		return nil
 	}
-	out := make(map[string]map[string]float64, len(counts))
-	for arm, byTool := range counts {
-		rates := make(map[string]float64, len(byTool))
-		for tool, n := range byTool {
-			rates[tool] = float64(n) / float64(totals[arm])
-		}
-		out[arm] = rates
+	counts := map[string]int{}
+	for _, r := range results {
+		counts[r.GoldSourceTool]++
+	}
+	rates := make(map[string]float64, len(counts))
+	for tool, n := range counts {
+		rates[tool] = float64(n) / float64(len(results))
+	}
+	return rates
+}
+
+// GoldSourceRateByArm groups results by arm and computes GoldSourceRate
+// independently within each group.
+func GoldSourceRateByArm(results []ArmResult) map[string]map[string]float64 {
+	byArm := map[string][]ArmResult{}
+	for _, r := range results {
+		byArm[r.Arm] = append(byArm[r.Arm], r)
+	}
+	if len(byArm) == 0 {
+		return nil
+	}
+	out := make(map[string]map[string]float64, len(byArm))
+	for arm, subset := range byArm {
+		out[arm] = GoldSourceRate(subset)
 	}
 	return out
 }
 
-// RenderGoldSourceRate renders GoldSourceRate as one deterministic line
-// per arm, highest rate first then tool name — for the ledger summary a
-// human reads.
+// GoldSourceByShape groups results by their task's own Category (tasks,
+// keyed by TaskID) and then by arm, computing GoldSourceRate
+// independently within each (shape, arm) group (VB-5): does a tool's
+// share of the gold source change with the question shape, or is
+// "obligations wins on governance, grep wins on lookups" one number
+// hiding two different findings? A result whose task carries no Category
+// (or whose TaskID is absent from tasks) groups under the empty-string
+// shape — never dropped.
+func GoldSourceByShape(results []ArmResult, tasks []Task) map[string]map[string]map[string]float64 {
+	catByID := make(map[string]string, len(tasks))
+	for _, t := range tasks {
+		catByID[t.ID] = t.Category
+	}
+	byShape := map[string][]ArmResult{}
+	for _, r := range results {
+		shape := catByID[r.TaskID]
+		byShape[shape] = append(byShape[shape], r)
+	}
+	if len(byShape) == 0 {
+		return nil
+	}
+	out := make(map[string]map[string]map[string]float64, len(byShape))
+	for shape, subset := range byShape {
+		out[shape] = GoldSourceRateByArm(subset)
+	}
+	return out
+}
+
+// RenderGoldSourceRate renders a GoldSourceRateByArm result as one
+// deterministic line per arm, highest rate first then tool name — for the
+// ledger summary a human reads. Every arm's line lists the UNION of tools
+// seen across every arm, defaulting a tool an arm never won with to 0 —
+// so a reader sees "obligations was zero of those three" without having
+// to notice an absence (VB-5).
 func RenderGoldSourceRate(rates map[string]map[string]float64) string {
 	arms := make([]string, 0, len(rates))
+	toolSet := map[string]bool{}
 	for arm := range rates {
 		arms = append(arms, arm)
+		for tool := range rates[arm] {
+			toolSet[tool] = true
+		}
 	}
 	sort.Strings(arms)
+	tools := make([]string, 0, len(toolSet))
+	for tool := range toolSet {
+		tools = append(tools, tool)
+	}
 	var b strings.Builder
 	for _, arm := range arms {
-		tools := make([]string, 0, len(rates[arm]))
-		for tool := range rates[arm] {
-			tools = append(tools, tool)
-		}
 		sort.Slice(tools, func(i, j int) bool {
-			if rates[arm][tools[i]] != rates[arm][tools[j]] {
-				return rates[arm][tools[i]] > rates[arm][tools[j]]
+			ri, rj := rates[arm][tools[i]], rates[arm][tools[j]]
+			if ri != rj {
+				return ri > rj
 			}
 			return tools[i] < tools[j]
 		})
@@ -192,6 +241,31 @@ func RenderGoldSourceRate(rates map[string]map[string]float64) string {
 			b.WriteString(" " + name + "=" + trimFloat(rates[arm][tool]))
 		}
 		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// RenderGoldSourceByShape renders a GoldSourceByShape result as one
+// RenderGoldSourceRate block per question shape, shapes in sorted order,
+// each headed by its own name (the empty shape prints as "(uncategorized)")
+// — the per-question-shape companion to RenderGoldSourceRate's per-arm
+// view (VB-5).
+func RenderGoldSourceByShape(byShape map[string]map[string]map[string]float64) string {
+	shapes := make([]string, 0, len(byShape))
+	for shape := range byShape {
+		shapes = append(shapes, shape)
+	}
+	sort.Strings(shapes)
+	var b strings.Builder
+	for _, shape := range shapes {
+		name := shape
+		if name == "" {
+			name = "(uncategorized)"
+		}
+		b.WriteString("  gold_source_by_shape[" + name + "]:\n")
+		for _, line := range strings.Split(strings.TrimRight(RenderGoldSourceRate(byShape[shape]), "\n"), "\n") {
+			b.WriteString("  " + line + "\n")
+		}
 	}
 	return b.String()
 }

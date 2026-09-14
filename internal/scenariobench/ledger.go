@@ -56,7 +56,31 @@ type ScenarioLedgerRow struct {
 
 	Borrowed []BorrowedScenarioCell `json:"borrowed_cells,omitempty"`
 	Notes    string                 `json:"notes,omitempty"`
+
+	// GoldSourceRate is VB-4 (ADR-035 decision 5): the fraction of this
+	// row's own cells (successes and failures alike — "which tool touched
+	// the gold signal at all", E1/O23 as a number) whose
+	// Readings.GoldSourceTool equalled each key. GoldSourceNone ("none")
+	// is a normal key: the agent knew or guessed on some cells.
+	// GoldSourceNotMeasured names cells scored before this reading
+	// existed — never silently folded into GoldSourceNone, which is
+	// itself a finding, not an absence of one.
+	GoldSourceRate map[string]float64 `json:"gold_source_rate,omitempty"`
+	// GoldSourcePasses narrows the same reading to cells that PASSED:
+	// among this row's Successes, how many did each tool actually earn
+	// (ADR-035 decision 5: "a tool passes only if it was the gold
+	// source"). What the verdict block's "gold source: <tool> earned N of
+	// M passes" line sums across a run's treatment-arm rows. Nil when the
+	// row has no successes.
+	GoldSourcePasses map[string]int `json:"gold_source_passes,omitempty"`
 }
+
+// GoldSourceNotMeasured is the gold_source_rate bucket for a cell whose
+// Readings.GoldSourceTool was never computed (scored before VB-4) — kept
+// distinct from GoldSourceNone ("no tool result held it, the agent knew
+// or guessed") so an old cell is never silently read as a negative
+// finding.
+const GoldSourceNotMeasured = "not_measured"
 
 // AppendScenarioLedger appends one row to the JSONL ledger at path,
 // creating the file (and its parent directory) if it does not exist.
@@ -140,6 +164,85 @@ func RenderScenarioLedger(rows []ScenarioLedgerRow) string {
 		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %d | %d | %s | %s | %.4f | %s |\n",
 			r.RunID, r.Commit, r.TaskID, r.Category, r.Arm, r.ModelID,
 			r.Trials, r.Successes, r.Prediction, surfaceCalls, r.CostUSD, notes)
+	}
+	return b.String()
+}
+
+// GoldSourceRateByCategory aggregates every row's own GoldSourceRate by
+// task Category (VB-4): a per-question-shape breakdown of which tool
+// earned the gold source, so "obligations wins" is not one number hiding
+// a lookup/change/guards split. Weighted by each row's own Trials so the
+// aggregate reconstructs exact counts rather than averaging fractions of
+// different sizes; a row with no GoldSourceRate (scored before VB-4)
+// contributes nothing.
+func GoldSourceRateByCategory(rows []ScenarioLedgerRow) map[Category]map[string]float64 {
+	type acc struct {
+		counts map[string]int
+		total  int
+	}
+	byCat := map[Category]*acc{}
+	for _, r := range rows {
+		if len(r.GoldSourceRate) == 0 || r.Trials == 0 {
+			continue
+		}
+		a, ok := byCat[r.Category]
+		if !ok {
+			a = &acc{counts: map[string]int{}}
+			byCat[r.Category] = a
+		}
+		for tool, rate := range r.GoldSourceRate {
+			a.counts[tool] += int(rate*float64(r.Trials) + 0.5)
+		}
+		a.total += r.Trials
+	}
+	if len(byCat) == 0 {
+		return nil
+	}
+	out := make(map[Category]map[string]float64, len(byCat))
+	for cat, a := range byCat {
+		rates := make(map[string]float64, len(a.counts))
+		for tool, n := range a.counts {
+			rates[tool] = float64(n) / float64(a.total)
+		}
+		out[cat] = rates
+	}
+	return out
+}
+
+// RenderGoldSourceByCategory renders GoldSourceRateByCategory as a
+// markdown table: one row per category, one column per tool seen in ANY
+// category — so a shape where a tool never won still shows it at 0.00,
+// never a silent absence (VB-4). Empty string when byCat is empty.
+func RenderGoldSourceByCategory(byCat map[Category]map[string]float64) string {
+	if len(byCat) == 0 {
+		return ""
+	}
+	cats := make([]string, 0, len(byCat))
+	toolSet := map[string]bool{}
+	for cat, rates := range byCat {
+		cats = append(cats, string(cat))
+		for tool := range rates {
+			toolSet[tool] = true
+		}
+	}
+	sort.Strings(cats)
+	tools := make([]string, 0, len(toolSet))
+	for t := range toolSet {
+		tools = append(tools, t)
+	}
+	sort.Strings(tools)
+
+	var b strings.Builder
+	b.WriteString("### Gold source by question shape\n\n")
+	b.WriteString("| category | " + strings.Join(tools, " | ") + " |\n")
+	b.WriteString("|---|" + strings.Repeat("---|", len(tools)) + "\n")
+	for _, cat := range cats {
+		row := byCat[Category(cat)]
+		fmt.Fprintf(&b, "| %s |", cat)
+		for _, tool := range tools {
+			fmt.Fprintf(&b, " %.2f |", row[tool])
+		}
+		b.WriteByte('\n')
 	}
 	return b.String()
 }

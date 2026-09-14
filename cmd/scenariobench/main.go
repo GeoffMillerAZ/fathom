@@ -599,6 +599,8 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	}
 	readings.Violation = cellViolation(oracle)
 
+	readings.GoldSourceTool, readings.GoldSourceEvidence = scenariobench.GoldSourceTool(sessions, cp.task)
+
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
 		Arm:      cp.arm,
@@ -1078,6 +1080,8 @@ func cmdLedger(args []string) int {
 			ModelID:        *cf.modelID,
 			HarnessVersion: *cf.harnessVersion,
 		}
+		goldCounts := map[string]int{}
+		goldPassCounts := map[string]int{}
 		for _, cell := range group {
 			row.Trials++
 			if cell.Success {
@@ -1095,6 +1099,27 @@ func cmdLedger(args []string) int {
 				}
 				row.Readings.ToolCalls[name] += n
 			}
+			// VB-4: a cell scored before this reading existed carries no
+			// GoldSourceTool at all — GoldSourceNotMeasured names that,
+			// never blended silently into GoldSourceNone ("the agent knew
+			// or guessed"), which is itself a finding.
+			tool := cell.Readings.GoldSourceTool
+			if tool == "" {
+				tool = scenariobench.GoldSourceNotMeasured
+			}
+			goldCounts[tool]++
+			if cell.Success {
+				goldPassCounts[tool]++
+			}
+		}
+		if row.Trials > 0 {
+			row.GoldSourceRate = make(map[string]float64, len(goldCounts))
+			for tool, n := range goldCounts {
+				row.GoldSourceRate[tool] = float64(n) / float64(row.Trials)
+			}
+		}
+		if len(goldPassCounts) > 0 {
+			row.GoldSourcePasses = goldPassCounts
 		}
 		row.Prediction = taskByID[k.task].Predictions[k.arm]
 		surface := corpus.Arms[k.arm].Surface
@@ -1136,6 +1161,9 @@ func cmdLedger(args []string) int {
 		return 2
 	}
 	body := scenariobench.RenderVerdict(all, criteria) + "\n" + scenariobench.RenderScenarioLedger(all)
+	if shapeTable := scenariobench.RenderGoldSourceByCategory(scenariobench.GoldSourceRateByCategory(all)); shapeTable != "" {
+		body += "\n" + shapeTable
+	}
 	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, body); err != nil {
 		fmt.Fprintf(os.Stderr, "scenariobench ledger: rendering %s: %v\n", *readmePath, err)
 		return 2
