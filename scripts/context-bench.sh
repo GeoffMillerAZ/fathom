@@ -57,13 +57,41 @@
 #     faked) and every task's fathom-arm cell is ABSENT in the results
 #     artifact; the other arms still run for real. This is the
 #     honest-degradation path required by docs/plans/falsifiability.md B1-3.
-#   - --scratch-daemon (PB-5) never touches the fleet store: it builds
-#     bin/fathom from this tree, ingests --subject-root into a store under
-#     workspace/tmp/, serves it on a free loopback port for the run, and
-#     kills it at exit. A scratch daemon has no LLM-compiled obligations
-#     layer, so --env defaults to "" there and tasks that declare
-#     `requires: [compiled-layer]` are skipped (never scored as misses);
-#     against the fleet daemon --env defaults to "compiled-layer".
+#   - scratch-daemon-default (VB-36, O47): the scratch daemon (PB-5) is now
+#     the DEFAULT for the wired arms ("fathom", "full") — never the fleet
+#     store, and never the live checkout. The subject is `git archive HEAD`
+#     exported to a scratch dir (prepare_session_root's SESSION_ROOT, the
+#     SAME export the sessions themselves run in), a scratch fathom binary
+#     is built FROM THAT EXPORT with `-buildvcs=false` (an export has no
+#     .git for vcs stamping), and a scratch store is ingested from it —
+#     never from the live dev tree. This closes O47: a fleet daemon or a
+#     scratch daemon built/ingested from the live checkout can serve an
+#     answer that cites the live checkout's own absolute path, which is
+#     also a path a live editor may be changing mid-run. The binary+store
+#     are cached under workspace/tmp/ keyed by the export's own commit sha
+#     and REUSED across cells, across `--repeat`, and across separate
+#     invocations of this script for the same export — the obligations-
+#     layer compile (below) is the expensive part this protects, so a
+#     repeated run pays it once. `--no-scratch-daemon` (or `--daemon-url`,
+#     an alias of `--fathom-url`) keeps the old behavior for a deliberate
+#     operator run against a daemon they already run. A scratch daemon has
+#     no LLM-compiled obligations layer UNTIL ONE IS COMPILED: --env
+#     defaults to "" there and tasks that declare `requires:
+#     [compiled-layer]` are skipped (never scored as misses) unless the
+#     operator explicitly passes `--env compiled-layer`, which both admits
+#     those tasks AND (COSTS LLM TOKENS) compiles the layer for real,
+#     once per export, cached exactly like the binary/store above. Against
+#     the fleet daemon (`--no-scratch-daemon`/`--daemon-url`) --env
+#     defaults to "compiled-layer", as before.
+#   - Every served payload in a transcript is checked against the live
+#     checkout's own absolute path (DetectPathLeak): a hit sets
+#     `path_leak: true` on the cell. Every Bash/Read tool input is checked
+#     against the session's own root (DetectOutOfRootReads, the O47 shape:
+#     `--restricted` confines Read/Glob/Grep to the session root, but a
+#     Bash command naming an absolute path escapes it completely): a hit
+#     is counted on `out_of_root_reads` and named in `out_of_root_paths`.
+#     Both are recorded on the cell (never silently), summed/listed on the
+#     ledger row, and documented in docs/bench/README.md.
 #
 # Output: workspace/artifacts/context-bench/run-<ts>/ (raw claude -p JSON
 # per cell + scored ArmResult JSON per cell) and, at the top level,
@@ -111,11 +139,19 @@
 #   scripts/context-bench.sh --resume <run-dir>    # fill the gaps of an earlier run
 #   scripts/context-bench.sh --scoring precision   # H2-2's fenced-block scoring
 #   scripts/context-bench.sh --criterion H2-2      # evaluate a registered criterion
-#   scripts/context-bench.sh --stream              # capture stream-json transcripts
-#                                                  # (tokens-to-first-gold-hit, tool calls)
+#   scripts/context-bench.sh --stream              # accepted for back-compat; every
+#                                                  # cell captures a stream-json transcript
+#                                                  # unconditionally now (VB-36 needs one on
+#                                                  # every cell for the path-leak/out-of-root
+#                                                  # checks below, and it also fills
+#                                                  # tokens-to-first-gold-hit/tool calls)
 #   scripts/context-bench.sh --subject-root <dir> --service <id> \
-#                            --prompt-subject 'the acme codebase' --scratch-daemon
-#   scripts/context-bench.sh --env compiled-layer  # capabilities the environment provides
+#                            --prompt-subject 'the acme codebase'   # scratch-daemon-default: on by default
+#   scripts/context-bench.sh --no-scratch-daemon --fathom-url <url>  # talk to a daemon you already run
+#   scripts/context-bench.sh --env compiled-layer  # admits compiled-layer tasks; with the
+#                                                  # (default) scratch daemon this ALSO
+#                                                  # compiles the layer for real (COSTS
+#                                                  # LLM TOKENS), once per export, cached
 #   scripts/context-bench.sh --only 'H1-T01 H1-T05' --scope targeted
 #   scripts/context-bench.sh --no-reuse-cells      # never borrow a stored cell
 #
@@ -141,6 +177,11 @@
 # plugins, and fathom's own SessionStart primer (F4/O25): the control was
 # not a control. Combined with prepare_session_root's hook-free export of
 # the SUBJECT tree below, no operator configuration reaches either arm.
+# Every call also passes `--add-dir "$SESSION_ROOT"` (VB-36): sessions run
+# WITH the export as cwd already, so this is belt-and-braces, not the only
+# confinement — `--restricted` is what actually confines the Read/Glob/Grep
+# tools, and it is a shell command naming an absolute path that escapes
+# both (O47's out_of_root_reads finding, checked separately below).
 #
 # Env:
 #   FATHOM_HTTP_URL          base URL of the fathom daemon (default
@@ -176,7 +217,17 @@ RESUME_DIR=""
 SUBJECT_ROOT="$ROOT"
 SERVICE="fathom"
 PROMPT_SUBJECT="the fathom codebase"
-SCRATCH_DAEMON=0
+# scratch-daemon-default (VB-36): the wired arms talk to a scratch daemon
+# of the exported subject by default now, never the fleet store and never
+# the live checkout — see the header. --no-scratch-daemon, or naming a
+# daemon explicitly (--fathom-url/--daemon-url), opts back into the old
+# fleet-daemon behavior for a deliberate operator run; SCRATCH_DAEMON_SET
+# / FATHOM_URL_SET record which flags were actually passed so that
+# decision can be made once, after argument parsing, regardless of the
+# order the operator gave them in.
+SCRATCH_DAEMON=1
+SCRATCH_DAEMON_SET=0
+FATHOM_URL_SET=0
 SCORING="substring"
 CRITERION=""
 TREATMENT="fathom"
@@ -191,8 +242,9 @@ usage() {
   cat >&2 <<USAGE
 usage: $(basename "$0") [--arms 'fathom grep none full'] [--tasks <path>] [--repeat N] [--ledger <path>]
           [--resume <run-dir>] [--scoring substring|precision] [--criterion <id>] [--stream]
-          [--subject-root <dir>] [--service <id>] [--fathom-url <url>] [--prompt-subject <text>]
-          [--scratch-daemon] [--env <cap,cap>] [--only '<id id>'] [--scope full|targeted]
+          [--subject-root <dir>] [--service <id>] [--fathom-url <url>] [--daemon-url <url>]
+          [--prompt-subject <text>] [--scratch-daemon] [--no-scratch-daemon]
+          [--env <cap,cap>] [--only '<id id>'] [--scope full|targeted]
           [--no-reuse-cells]
 USAGE
   exit 2
@@ -211,9 +263,11 @@ while [ "$#" -gt 0 ]; do
     --stream) STREAM=1; shift ;;
     --subject-root) SUBJECT_ROOT="$(cd "$2" && pwd)" || exit 2; shift 2 ;;
     --service) SERVICE="$2"; shift 2 ;;
-    --fathom-url) FATHOM_HTTP_URL="$2"; shift 2 ;;
+    --fathom-url) FATHOM_HTTP_URL="$2"; FATHOM_URL_SET=1; shift 2 ;;
+    --daemon-url) FATHOM_HTTP_URL="$2"; FATHOM_URL_SET=1; shift 2 ;;
     --prompt-subject) PROMPT_SUBJECT="$2"; shift 2 ;;
-    --scratch-daemon) SCRATCH_DAEMON=1; shift ;;
+    --scratch-daemon) SCRATCH_DAEMON=1; SCRATCH_DAEMON_SET=1; shift ;;
+    --no-scratch-daemon) SCRATCH_DAEMON=0; SCRATCH_DAEMON_SET=1; shift ;;
     --env) ENV="$2"; ENV_SET=1; shift 2 ;;
     --only) ONLY="$2"; shift 2 ;;
     --scope) SCOPE="$2"; shift 2 ;;
@@ -247,8 +301,21 @@ if [ ! -f "$TASKS" ]; then
   exit 2
 fi
 
+# scratch-daemon-default (VB-36): naming a daemon explicitly
+# (--fathom-url/--daemon-url) without ALSO naming --scratch-daemon
+# explicitly is the deliberate-operator-run signal — "talk to the daemon I
+# named", not "and also build a throwaway one nobody asked for". An
+# explicit --scratch-daemon (or --no-scratch-daemon) always wins outright,
+# regardless of argument order.
+if [ "$FATHOM_URL_SET" -eq 1 ] && [ "$SCRATCH_DAEMON_SET" -eq 0 ]; then
+  SCRATCH_DAEMON=0
+fi
+
 # The environment's capabilities decide which tasks are runnable
-# (`requires`, PB-12). A scratch daemon has no compiled layer.
+# (`requires`, PB-12). A scratch daemon has no compiled layer UNTIL one is
+# compiled (see the header and the scratch-daemon block below) — so --env
+# still defaults to "" there, admitting compiled-layer tasks only when the
+# operator explicitly asks (which then also triggers the real compile).
 if [ "$ENV_SET" -eq 0 ]; then
   if [ "$SCRATCH_DAEMON" -eq 1 ]; then ENV=""; else ENV="compiled-layer"; fi
 fi
@@ -301,7 +368,40 @@ if ! GOWORK=off CGO_ENABLED=1 go build -o "$SCORER" "$ROOT/cmd/contextbenchscore
   exit 2
 fi
 
-# ─── scratch daemon (PB-5): never the fleet store ─────────────────────
+# Sessions run in SESSION_ROOT, an export of the subject's tracked tree with
+# .claude/settings.json removed: a subject that is itself a fathom-wired
+# repo carries hooks (the Stop verify gate, obligations) that otherwise fire
+# INSIDE the bench session and replace the answer with a reply to the hook
+# (the 2026-09-13 `full` arm answered a stop-hook message about a plan file,
+# not the question). The tracked tree is also what a stranger's clone has —
+# no workspace/ artifacts for grep to stumble on. Cached by the subject's
+# own commit sha (SESSION_SHA) and reused across cells/runs, exactly like
+# the scratch daemon below — which is why this is called BEFORE it: the
+# scratch daemon (scratch-daemon-default, VB-36) ingests THIS SAME export,
+# never the live checkout, so a session and the daemon answering it read
+# identical bytes.
+prepare_session_root() {
+  local sha
+  sha="$(git -C "$SUBJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
+  SESSION_SHA="$sha"
+  SESSION_ROOT="$ROOT/workspace/tmp/bench-subject-$sha"
+  if [ ! -d "$SESSION_ROOT" ]; then
+    mkdir -p "$SESSION_ROOT"
+    if git -C "$SUBJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
+      git -C "$SUBJECT_ROOT" archive HEAD | tar -x -C "$SESSION_ROOT"
+    else
+      cp -R "$SUBJECT_ROOT"/. "$SESSION_ROOT"/
+    fi
+    rm -f "$SESSION_ROOT/.claude/settings.json" "$SESSION_ROOT/.claude/settings.local.json"
+  fi
+  echo "context-bench: sessions run in $SESSION_ROOT (tracked tree at $sha, hooks removed)"
+}
+prepare_session_root
+
+# ─── scratch daemon (PB-5; scratch-daemon-default, VB-36) ─────────────
+# Never the fleet store, never the live checkout — see the header for the
+# full rationale. SCRATCH_PID/cleanup/trap are declared unconditionally so
+# a --no-scratch-daemon run's EXIT trap is still a harmless no-op.
 SCRATCH_PID=""
 cleanup() {
   if [ -n "$SCRATCH_PID" ]; then
@@ -312,20 +412,92 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [ "$SCRATCH_DAEMON" -eq 1 ]; then
-  SCRATCH_BIN="$RUN_DIR/fathom"
-  SCRATCH_STORE="$ROOT/workspace/tmp/bench-scratch-$TS.sqlite"
-  mkdir -p "$ROOT/workspace/tmp"
-  echo "context-bench: building bin/fathom for the scratch daemon"
-  if ! GOWORK=off CGO_ENABLED=1 go build -o "$SCRATCH_BIN" "$ROOT/cmd/fathom"; then
-    echo "context-bench: failed to build cmd/fathom" >&2
-    exit 2
+# LIVE_CHECKOUT_FOR_LEAK_CHECK is passed to `contextbenchscore score
+# -live-checkout` (VB-36): non-empty only when the scratch daemon is
+# actually serving the export, since a deliberate --no-scratch-daemon run
+# against the fleet daemon is EXPECTED to answer from the live checkout —
+# that is not a leak, it is the operator's own choice.
+LIVE_CHECKOUT_FOR_LEAK_CHECK=""
+# Only the wired arms ("fathom", "full") ever talk to a daemon at all — a
+# --arms grep or --arms none run has no use for one, so the default flip
+# to SCRATCH_DAEMON=1 must not start building/ingesting/serving one it
+# will never be asked a question against.
+if [ "$SCRATCH_DAEMON" -eq 1 ] && { echo "$ARMS" | grep -qw fathom || echo "$ARMS" | grep -qw full; }; then
+  # The scratch fathom BINARY is built from fathom's own source at HEAD —
+  # never a dirty working tree, and (for a cross-repo run, --subject-root
+  # pointing elsewhere) never the external subject's export, which has no
+  # cmd/fathom to build. When the subject IS this repo (the common,
+  # default home-bench case) FATHOM_SRC_EXPORT is simply SESSION_ROOT
+  # itself — no second export to pay for.
+  if [ "$SUBJECT_ROOT" = "$ROOT" ]; then
+    FATHOM_SRC_SHA="$SESSION_SHA"
+    FATHOM_SRC_EXPORT="$SESSION_ROOT"
+  else
+    FATHOM_SRC_SHA="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
+    FATHOM_SRC_EXPORT="$ROOT/workspace/tmp/bench-scratch-src-$FATHOM_SRC_SHA"
+    if [ ! -d "$FATHOM_SRC_EXPORT" ]; then
+      mkdir -p "$FATHOM_SRC_EXPORT"
+      if git -C "$ROOT" rev-parse HEAD >/dev/null 2>&1; then
+        git -C "$ROOT" archive HEAD | tar -x -C "$FATHOM_SRC_EXPORT"
+      else
+        cp -R "$ROOT"/. "$FATHOM_SRC_EXPORT"/
+      fi
+    fi
   fi
-  echo "context-bench: ingesting $SUBJECT_ROOT as service '$SERVICE' into $SCRATCH_STORE"
-  if ! "$SCRATCH_BIN" ingest -service "$SERVICE" -path "$SUBJECT_ROOT" -store "$SCRATCH_STORE" > "$RUN_DIR/scratch-ingest.log" 2>&1; then
-    echo "context-bench: scratch ingest failed (see $RUN_DIR/scratch-ingest.log)" >&2
-    exit 2
+
+  # scratch-daemon-default: binary + store are cached under workspace/tmp/,
+  # keyed by BOTH the fathom source's commit (what the binary can do) and
+  # the subject export's commit (what the store contains) — reused across
+  # cells, across --repeat, and across separate invocations of this script
+  # for the same two shas, so a rebuild only happens when either changes.
+  SCRATCH_CACHE_DIR="$ROOT/workspace/tmp/bench-scratch-$FATHOM_SRC_SHA-$SESSION_SHA"
+  SCRATCH_BIN="$SCRATCH_CACHE_DIR/fathom"
+  SCRATCH_STORE="$SCRATCH_CACHE_DIR/store.sqlite"
+  SCRATCH_COMPILED_MARKER="$SCRATCH_CACHE_DIR/.compiled-obligations"
+  mkdir -p "$SCRATCH_CACHE_DIR"
+
+  if [ -x "$SCRATCH_BIN" ] && [ -s "$SCRATCH_STORE" ]; then
+    echo "context-bench: reusing cached scratch daemon for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA ($SCRATCH_CACHE_DIR) — build+ingest paid once per export"
+  else
+    echo "context-bench: building the scratch fathom binary FROM THE EXPORT $FATHOM_SRC_EXPORT (-buildvcs=false; never the live checkout)"
+    # `go build` resolves an absolute/relative PATH argument against the
+    # module rooted at the CURRENT directory — a target that merely
+    # CONTAINS its own go.mod (the export does, since git archive HEAD
+    # includes it) is refused as "outside main module" unless the build
+    # actually runs FROM INSIDE that directory, so this cd's there rather
+    # than passing $FATHOM_SRC_EXPORT/cmd/fathom as a path from $ROOT.
+    if ! ( cd "$FATHOM_SRC_EXPORT" && GOWORK=off CGO_ENABLED=1 go build -buildvcs=false -o "$SCRATCH_BIN" ./cmd/fathom ); then
+      echo "context-bench: failed to build cmd/fathom from the export" >&2
+      exit 2
+    fi
+    echo "context-bench: ingesting the export $SESSION_ROOT as service '$SERVICE' into $SCRATCH_STORE (never $ROOT)"
+    if ! "$SCRATCH_BIN" ingest -service "$SERVICE" -path "$SESSION_ROOT" -store "$SCRATCH_STORE" > "$RUN_DIR/scratch-ingest.log" 2>&1; then
+      echo "context-bench: scratch ingest failed (see $RUN_DIR/scratch-ingest.log)" >&2
+      exit 2
+    fi
   fi
+
+  # The obligations layer (PB-12's compiled-layer capability) is compiled
+  # for real ONLY when the operator explicitly asked for compiled-layer
+  # tasks (--env compiled-layer) — that flag is the existing "I accept LLM
+  # spend for this run" signal (see `task bench-home`'s own COSTS TOKENS
+  # warning), never triggered by a default invocation. Cached by the same
+  # two shas as the binary/store above (SCRATCH_COMPILED_MARKER), so a
+  # second cell, a --repeat, or a re-run of this script for the same
+  # export never re-pays for the compile.
+  if echo "$ENV" | tr ',' ' ' | grep -qw compiled-layer; then
+    if [ -s "$SCRATCH_COMPILED_MARKER" ]; then
+      echo "context-bench: obligations layer already compiled for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA (compiled once per export) — reusing"
+    else
+      echo "context-bench: COSTS LLM TOKENS — compiling the obligations layer once for fathom@$FATHOM_SRC_SHA / subject@$SESSION_SHA (cached for every later cell/run against this export)"
+      if ! "$SCRATCH_BIN" compile -service "$SERVICE" -layer obligations -store "$SCRATCH_STORE" -dry-run=false > "$RUN_DIR/scratch-compile.log" 2>&1; then
+        echo "context-bench: obligations-layer compile failed (see $RUN_DIR/scratch-compile.log) — compiled-layer tasks will score as misses" >&2
+      else
+        date -u +%Y%m%dT%H%M%SZ > "$SCRATCH_COMPILED_MARKER"
+      fi
+    fi
+  fi
+
   SCRATCH_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
   FATHOM_HTTP_URL="http://127.0.0.1:$SCRATCH_PORT"
   ( cd "$ROOT" && exec "$SCRATCH_BIN" serve-http -store "$SCRATCH_STORE" -addr "127.0.0.1:$SCRATCH_PORT" -auto-refresh=false -call-log "" ) > "$RUN_DIR/scratch-daemon.log" 2>&1 &
@@ -342,7 +514,12 @@ if [ "$SCRATCH_DAEMON" -eq 1 ]; then
     echo "context-bench: scratch daemon did not become ready at $FATHOM_HTTP_URL (see $RUN_DIR/scratch-daemon.log)" >&2
     exit 2
   fi
-  echo "context-bench: scratch daemon serving $SCRATCH_STORE at $FATHOM_HTTP_URL (pid $SCRATCH_PID)"
+  echo "context-bench: scratch daemon serving the export $SESSION_ROOT ($SCRATCH_STORE) at $FATHOM_HTTP_URL (pid $SCRATCH_PID) — no served path can name the live checkout $ROOT"
+  LIVE_CHECKOUT_FOR_LEAK_CHECK="$ROOT"
+elif [ "$SCRATCH_DAEMON" -eq 1 ]; then
+  echo "context-bench: --arms '$ARMS' names no wired arm (fathom/full) — scratch daemon not started, nothing would talk to it"
+else
+  echo "context-bench: --no-scratch-daemon (or an explicit --fathom-url/--daemon-url) — talking to $FATHOM_HTTP_URL, the old fleet-daemon behavior; path_leak is not checked for this deliberate operator run"
 fi
 
 # ─── fathom-arm reachability preflight (honest degradation, B1-3) ─────────
@@ -459,30 +636,8 @@ FULL_TOOLS="$(tools_from_allowed "$FULL_ALLOWED")"
 # this is the standard background-watchdog substitute. Runs CMD in the
 # subject root, redirects its stdout to OUTFILE (stderr to OUTFILE.stderr),
 # returns CMD's exit code, or 124 (GNU timeout's convention) if the
-# watchdog had to kill it.
-# Sessions run in SESSION_ROOT, an export of the subject's tracked tree with
-# .claude/settings.json removed: a subject that is itself a fathom-wired
-# repo carries hooks (the Stop verify gate, obligations) that otherwise fire
-# INSIDE the bench session and replace the answer with a reply to the hook
-# (the 2026-09-13 `full` arm answered a stop-hook message about a plan file,
-# not the question). The tracked tree is also what a stranger's clone has —
-# no workspace/ artifacts for grep to stumble on.
-prepare_session_root() {
-  local sha
-  sha="$(git -C "$SUBJECT_ROOT" rev-parse --short HEAD 2>/dev/null || echo nogit)"
-  SESSION_ROOT="$ROOT/workspace/tmp/bench-subject-$sha"
-  if [ ! -d "$SESSION_ROOT" ]; then
-    mkdir -p "$SESSION_ROOT"
-    if git -C "$SUBJECT_ROOT" rev-parse HEAD >/dev/null 2>&1; then
-      git -C "$SUBJECT_ROOT" archive HEAD | tar -x -C "$SESSION_ROOT"
-    else
-      cp -R "$SUBJECT_ROOT"/. "$SESSION_ROOT"/
-    fi
-    rm -f "$SESSION_ROOT/.claude/settings.json" "$SESSION_ROOT/.claude/settings.local.json"
-  fi
-  echo "context-bench: sessions run in $SESSION_ROOT (tracked tree at $sha, hooks removed)"
-}
-
+# watchdog had to kill it. SESSION_ROOT/prepare_session_root are set up
+# above, before the scratch daemon block.
 run_with_timeout() {
   local outfile="$1"; shift
   ( cd "$SESSION_ROOT" && exec "$@" ) < /dev/null > "$outfile" 2>"$outfile.stderr" &
@@ -533,12 +688,14 @@ run_arm() {
   CELLS_RUN=$((CELLS_RUN + 1))
 
   echo "context-bench: [$task_id/$arm/t$trial] running..."
-  local -a fmt=(--output-format json)
-  local capture="$raw"
-  if [ "$STREAM" -eq 1 ]; then
-    fmt=(--output-format stream-json --verbose)
-    capture="$stream"
-  fi
+  # VB-36: every cell captures a stream-json transcript unconditionally now
+  # — the path-leak/out-of-root-reads safety checks below need to see every
+  # served tool_result and every Bash/Read tool_use, and --output-format
+  # json's envelope carries neither (--stream is accepted for back-compat
+  # but changes nothing; see the header). last_result.py still derives the
+  # plain result envelope from the stream's last {"type":"result"} event.
+  local -a fmt=(--output-format stream-json --verbose)
+  local capture="$stream"
   if ! run_with_timeout "$capture" claude -p "$prompt" \
       --append-system-prompt "$system_prompt" \
       "${fmt[@]}" \
@@ -551,10 +708,11 @@ run_arm() {
       --allowedTools "$allowed" \
       --disallowedTools "$disallowed" \
       --permission-mode default \
+      --add-dir "$SESSION_ROOT" \
       --model "$MODEL"; then
     echo "context-bench: [$task_id/$arm/t$trial] claude -p exited non-zero (see $capture.stderr)" >&2
   fi
-  if [ "$STREAM" -eq 1 ] && [ -s "$stream" ]; then
+  if [ -s "$stream" ]; then
     python3 "$RUN_DIR/last_result.py" "$stream" "$raw" || true
   fi
 
@@ -564,8 +722,8 @@ run_arm() {
   fi
 
   local -a extra=()
-  if [ "$STREAM" -eq 1 ] && [ -s "$stream" ]; then
-    extra=(-transcript "$stream")
+  if [ -s "$stream" ]; then
+    extra=(-transcript "$stream" -live-checkout "$LIVE_CHECKOUT_FOR_LEAK_CHECK" -session-root "$SESSION_ROOT")
   fi
   if ! "$SCORER" score -tasks "$TASKS" -task-id "$task_id" -arm "$arm" -trial "$trial" -scoring "$SCORING" -claude-json "$raw" -out "$scored" \
       -cells "$CELLS_DIR" -run-id "$TS" -model-id "$MODEL_ID" -harness-version "$HARNESS_VERSION" \
@@ -574,6 +732,9 @@ run_arm() {
     return 1
   fi
   python3 "$RUN_DIR/print_result.py" < "$scored"
+  if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d.get('path_leak') or d.get('out_of_root_reads') else 1)" "$scored" 2>/dev/null; then
+    echo "context-bench: [$task_id/$arm/t$trial] FLAGGED — see path_leak/out_of_root_reads in $scored" >&2
+  fi
 }
 
 # ─── main loop ──────────────────────────────────────────────────────────
@@ -586,7 +747,6 @@ GREP_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT
 NONE_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT from your own knowledge only. You have no tools: do not attempt to read files, run commands, or call any tool. If you do not know, say so. $ANSWER_FORM"
 FULL_SYSTEM_PROMPT="You are answering one factual question about $PROMPT_SUBJECT; the subject is indexed as service \"$SERVICE\". You have the fathom MCP tools AND Bash/Read/Grep/Glob available — use whichever gets you to a confident answer fastest. $ANSWER_FORM"
 
-prepare_session_root
 TASK_COUNT=0
 while IFS= read -r -d '' task_id && IFS= read -r -d '' prompt && IFS= read -r -d '' task_min_trials; do
   if [ -n "$ONLY" ] && ! echo " $ONLY " | grep -q " $task_id "; then
