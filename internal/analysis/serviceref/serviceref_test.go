@@ -56,6 +56,33 @@ func TestNormalizeTemplate(t *testing.T) {
 		{"no params unchanged", "/items", "/items"},
 		{"missing leading slash gains one", "items/:id", "/items/{}"},
 		{"multi-segment with two params", "/accounts/:acct/items/{id}", "/accounts/{}/items/{}"},
+
+		// Host-strip must be ANCHORED at the string's start — a scheme+host
+		// appearing later (e.g. inside a query value) is not a leading
+		// host and must not be stripped.
+		{"unanchored scheme in query value is not a host strip", "/redirect?next=http://evil.com/path", "/redirect"},
+
+		// Query string and fragment stripping.
+		{"query string stripped", "/items?limit=10", "/items"},
+		{"fragment stripped", "/items#frag", "/items"},
+		{"query then fragment stripped", "/items?limit=10#frag", "/items"},
+		{"colon param with trailing query", "/items/:id?limit=10", "/items/{}"},
+
+		// Trailing slash normalisation.
+		{"trailing slash normalised", "/items/", "/items"},
+		{"root stays root", "/", "/"},
+		{"trailing slash after colon param", "/items/:id/", "/items/{}"},
+
+		// Colon params are segment-anchored: the colon must be the FIRST
+		// character of its segment, or it stays completely literal.
+		{"colon not segment-anchored stays literal", "/events/at:noon", "/events/at:noon"},
+		{"colon mid-word in last segment stays literal", "/foo/bar:baz", "/foo/bar:baz"},
+
+		// Wildcards normalise wherever they form a WHOLE segment, not only
+		// at the end of the path.
+		{"bare wildcard mid-path", "/foo/*/bar", "/foo/{}/bar"},
+		{"named wildcard mid-path", "/foo/*rest/bar", "/foo/{}/bar"},
+		{"bare wildcard at end", "/foo/*", "/foo/{}"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -114,8 +141,8 @@ func Unresolvable(u string) error {
 
 	want := []ClientCall{
 		{Method: "GET", Template: "/widgets/{}", RawURL: `fmt.Sprintf("http://widgets/widgets/%s", id)`, Symbol: "FetchWidget", File: "demo.go", Line: 10},
-		{Method: "GET", Template: "/health", RawURL: "http://widgets/health", Symbol: "Ping", File: "demo.go", Line: 19},
-		{Method: "POST", Template: "/widgets", RawURL: "http://widgets/widgets", Symbol: "CreateWidget", File: "demo.go", Line: 24},
+		{Method: "GET", Template: "/health", RawURL: `"http://widgets/health"`, Symbol: "Ping", File: "demo.go", Line: 19},
+		{Method: "POST", Template: "/widgets", RawURL: `"http://widgets/widgets"`, Symbol: "CreateWidget", File: "demo.go", Line: 24},
 	}
 	if len(calls) != len(want) {
 		t.Fatalf("ExtractClientCalls: got %d calls, want %d: %+v", len(calls), len(want), calls)
@@ -124,6 +151,55 @@ func Unresolvable(u string) error {
 		if calls[i] != w {
 			t.Errorf("call[%d] = %+v, want %+v", i, calls[i], w)
 		}
+	}
+}
+
+func TestExtractClientCalls_CommentOnlyExampleYieldsNoCalls(t *testing.T) {
+	// A regex over raw bytes would find this; the AST walk must not — the
+	// example lives inside a doc comment, never becoming an ast.CallExpr.
+	src := []byte(`package demo
+
+// FetchExample shows typical usage:
+//
+//	resp, err := http.Get("http://example.com/should-not-count")
+//	_ = resp
+//	_ = err
+func FetchExample() {}
+`)
+	if calls := ExtractClientCalls("go", "demo.go", src); len(calls) != 0 {
+		t.Fatalf("ExtractClientCalls found calls inside a doc comment: %+v", calls)
+	}
+}
+
+func TestExtractClientCalls_HTTPMethodConstant(t *testing.T) {
+	src := []byte(`package demo
+
+import (
+	"context"
+	"net/http"
+)
+
+func Fetch(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://svc/widgets", nil)
+	if err != nil {
+		return err
+	}
+	_, err = http.DefaultClient.Do(req)
+	return err
+}
+`)
+	calls := ExtractClientCalls("go", "demo.go", src)
+	if len(calls) != 1 {
+		t.Fatalf("ExtractClientCalls = %+v, want exactly one call", calls)
+	}
+	if calls[0].Method != "GET" || calls[0].Template != "/widgets" {
+		t.Errorf("call = %+v, want Method GET, Template /widgets (from http.MethodGet)", calls[0])
+	}
+}
+
+func TestExtractClientCalls_UnparsableSourceYieldsNoCalls(t *testing.T) {
+	if calls := ExtractClientCalls("go", "broken.go", []byte(`package demo(((not valid go`)); calls != nil {
+		t.Fatalf("ExtractClientCalls(unparsable source) = %+v, want nil", calls)
 	}
 }
 
@@ -189,11 +265,13 @@ func TestServiceRefEdges_FixtureJoin(t *testing.T) {
 		ToHandler:   "getItemHandler",
 		Method:      "GET",
 		Template:    "/items/{}",
+		Ambiguous:   false,
+		Candidates:  []string{"catalog-service"},
 	}
 	if got.FromLine == 0 || got.ToLine == 0 {
 		t.Fatalf("hop line numbers must be nonzero: %+v", got)
 	}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("hop = %+v, want %+v", got, want)
 	}
 }
@@ -230,6 +308,37 @@ func TestServiceRefEdges_FanOutToMultipleServices(t *testing.T) {
 	}
 	if hops[0].ToService != "svc-a" || hops[1].ToService != "svc-b" {
 		t.Errorf("hops not sorted by ToService: %+v", hops)
+	}
+	// A key matched by more than one service is fan-out, not dropped —
+	// AND each resulting hop is marked ambiguous with the full candidate
+	// set, so a consumer can tell this apart from a unique join.
+	wantCandidates := []string{"svc-a", "svc-b"}
+	for _, h := range hops {
+		if !h.Ambiguous {
+			t.Errorf("hop %+v: Ambiguous = false, want true (two services register the same route)", h)
+		}
+		if !reflect.DeepEqual(h.Candidates, wantCandidates) {
+			t.Errorf("hop %+v: Candidates = %v, want %v", h, h.Candidates, wantCandidates)
+		}
+	}
+}
+
+func TestServiceRefEdges_UniqueJoinIsNotAmbiguous(t *testing.T) {
+	routesByService := map[string][]routes.Route{
+		"svc-a": {{Method: "GET", Path: "/items/:id", Handler: "ha", File: "a.go", Line: 1}},
+	}
+	callsByService := map[string][]ClientCall{
+		"client-svc": {{Method: "GET", Template: "/items/{}", File: "c.go", Line: 3}},
+	}
+	hops := ServiceRefEdges(routesByService, callsByService)
+	if len(hops) != 1 {
+		t.Fatalf("got %d hops, want 1: %+v", len(hops), hops)
+	}
+	if hops[0].Ambiguous {
+		t.Errorf("hop = %+v, want Ambiguous false (only one service registers this route)", hops[0])
+	}
+	if want := []string{"svc-a"}; !reflect.DeepEqual(hops[0].Candidates, want) {
+		t.Errorf("Candidates = %v, want %v", hops[0].Candidates, want)
 	}
 }
 
@@ -270,13 +379,22 @@ func TestHop_CrossRepoEdge(t *testing.T) {
 }
 
 func TestHop_Payload(t *testing.T) {
-	h := Hop{FromService: "checkout-service", ToService: "catalog-service", Method: "GET", Template: "/items/{}"}
+	h := Hop{
+		FromService: "checkout-service", ToService: "catalog-service", Method: "GET", Template: "/items/{}",
+		Ambiguous: true, Candidates: []string{"catalog-service", "other-service"},
+	}
 	p := h.Payload()
 	if p["kind"] != "service_ref" {
 		t.Errorf("Payload()[kind] = %v, want service_ref", p["kind"])
 	}
 	if p["tier"] != "heuristic" {
 		t.Errorf("Payload()[tier] = %v, want heuristic", p["tier"])
+	}
+	if p["ambiguous"] != true {
+		t.Errorf("Payload()[ambiguous] = %v, want true", p["ambiguous"])
+	}
+	if !reflect.DeepEqual(p["candidates"], []string{"catalog-service", "other-service"}) {
+		t.Errorf("Payload()[candidates] = %v, want [catalog-service other-service]", p["candidates"])
 	}
 }
 

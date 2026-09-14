@@ -390,22 +390,35 @@ Extraction is two-sided:
   registrations, language-agnostic across Go/JS/TS/Python.
 - **Client side** — `internal/analysis/serviceref.ExtractClientCalls`: Go-only for VB-30
   (language coverage for a brand-new edge kind grows one language at a time, same rule as
-  the edge kind itself), detecting `http.NewRequest[WithContext]` / `http.Get` /
-  `http.Post` / `http.Head` / `http.PostForm` call sites and resolving the URL argument —
-  a string literal, or the first `%`-verb literal of an inline `fmt.Sprintf(...)` — to a
-  path template.
+  the edge kind itself), parsed with `go/parser` and walked as real `ast.CallExpr` nodes
+  (never a byte-level regex over raw source — a call written inside a `//` comment is
+  plain text to the parser, never an AST node, so it can never manufacture a hop)
+  detecting `http.NewRequest[WithContext]` / `http.Get` / `http.Post` / `http.Head` /
+  `http.PostForm` call sites. The method argument accepts a quoted literal ("GET") or a
+  net/http `Method*` constant (`http.MethodGet`); the URL argument accepts a string
+  literal or an inline `fmt.Sprintf("template", args...)` call, whose `%`-verbs
+  `NormalizeTemplate` collapses to `"{}"`.
 
-`NormalizeTemplate` collapses `:param` (chi/gin/express), `{param}` (gorilla/echo,
-including a `{param:regex}` constraint), a trailing `*`/`*wildcard`, and a printf verb
-(`%s`, `%d`, `%02d`, …) into one placeholder, `"{}"`, and strips a leading scheme+host, so
-`"/items/:id"` and `"http://host/items/%s"` compare equal.
+`NormalizeTemplate` collapses `:param` (chi/gin/express, segment-anchored: the colon must
+be the first character of its segment, so `/events/at:noon` stays literal), `{param}`
+(gorilla/echo, including a `{param:regex}` constraint), a `*wildcard` segment (anywhere
+in the path, not only the last segment), and a printf verb (`%s`, `%d`, `%02d`, …) into
+one placeholder, `"{}"`; strips a leading scheme+host ONLY when the string starts with
+one (an unanchored search would be fooled by a decoy like
+`/redirect?next=http://evil.com/path`); strips a query string/fragment; and normalises a
+trailing slash — so `"/items/:id"`, `"/items/"` and `"http://host/items/%s"` all compare
+equal to `"/items/{}"` / `"/items"` as appropriate.
 
 `blast_radius`, `cross_repo_blast_radius` and `review_diff` each report matching
 `service_ref` hops as an additive `service_ref_hops` array (one object per hop, always
 `"kind":"service_ref"`, `"tier":"heuristic"`) — computed fleet-wide via
 `serviceref.BuildFromStore`, the same no-caching-layer precedent
-`cross_repo_blast_radius` already sets for the `call`-kind graph. `docs/bench/` documents
-how VB-31 (precision/recall ≥ 0.90 against a hand-verified route table) will be measured.
+`cross_repo_blast_radius` already sets for the `call`-kind graph. A `(method, template)`
+key registered by more than one service fans out to all of them (edges are never dropped
+for being ambiguous) and each such hop carries `"ambiguous":true` plus the full sorted
+`"candidates"` list, so a consumer can tell a genuine fan-out from a unique join.
+`docs/bench/` documents how VB-31 (precision/recall ≥ 0.90 against a hand-verified route
+table) will be measured.
 
 `PlatformStore` (`internal/store/platform_store.go`) loads many store files
 (`*.sqlite`/`*.db`, plus `*.duckdb` recognized only so a pre-SS-8 leftover can lose a
