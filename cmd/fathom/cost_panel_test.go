@@ -87,7 +87,7 @@ const (
 	// savings — plus `safe_delete_check`, a genuinely new tool: 52,273
 	// bytes measured at 24 tools (TestAgentSurfaceDiet's own pin moved to
 	// 24 alongside it).
-	agentSurfaceSchemaByteCeiling = 53000
+	agentSurfaceSchemaByteCeiling = 56000 // 53,441 measured 2026-09-14 after obligations gained `layer` (VB-9) on the 24-tool surface (VB-1/2)
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
