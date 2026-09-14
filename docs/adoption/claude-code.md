@@ -891,7 +891,11 @@ Two more CUE files live here, both law-13-scoped (a user-scope default in
   exists. The custodian is otherwise offline: `stanza_tools_served` is the
   one kind that asks the daemon, and it degrades honestly. Fathom never
   edits your prose — it reports; the session decides (the
-  `fathom-custodian` skill carries the loop).
+  `fathom-custodian` skill carries the loop). `fathom config audit
+  --code-facts` (VB-28, *experimental*, off by default) extends the same
+  audit to code-fact-shaped sentences in CLAUDE.md and beyond — including
+  Claude Code's own per-project auto-memory under
+  `~/.claude/projects/<encoded-root>/memory/*.md`, not only the stanza.
 - **`.fathom/memories.jsonl`** — anchored memory (AM-*, *experimental*):
   `fathom memory add --store <db> --service <svc> --claim "…" --anchor
   symbol:Name --evidence machine-check:<ref>` refuses a memory with no

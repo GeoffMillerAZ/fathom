@@ -27,12 +27,23 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the violated concerns, one rule per concern id, located at the first evidence file:line (PC-21)")
 	hook := fs.Bool("hook", false, "run as the harness ConfigChange hook: audit the changed repo, write one beat, exit 0 always (PC-24; configchangehook.go)")
 	hookEvent := fs.String("event", "", "which harness event --hook is answering: config-change (default) | file-changed (HP-28) — only the beat's trigger differs")
+	codeFacts := fs.Bool("code-facts", false, "audit code-fact-shaped sentences across every auto-loaded file — CLAUDE.md, AGENTS.md, .cursor/rules, .windsurf/rules, the Cline memory bank, Claude Code auto-memory (VB-28, vision 29 §2). OFF by default: classify only, never autofix; combine with --strict to fail on drift")
+	strict := fs.Bool("strict", false, "with --code-facts: exit 1 if any sentence classifies anchored-drifted (default: advisory, exit 0 always)")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 	if *hook {
 		return cmdConfigAuditHook(*harnessFlag, *hookEvent, stderr)
+	}
+	if *codeFacts {
+		root, err := filepath.Abs(*repo)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		wantJSON := *asJSON || *format == "json"
+		return cmdConfigAuditCodeFacts(root, wantJSON, *strict, stdout, stderr)
 	}
 	if *asJSON && *format == "" {
 		*format = "json"
@@ -253,4 +264,93 @@ func violatedConcernCount(projDir string) int {
 // unproven claims share ONE line. It reports; it never edits (vision 22 §3b).
 func concernAttentionLine(projDir string) string {
 	return attentionLine(projDir, time.Now())
+}
+
+// cmdConfigAuditCodeFacts is `fathom config audit --code-facts` (VB-28):
+// classify every code-fact-shaped sentence across the auto-loaded corpus.
+// Mechanical only, same discipline as the rest of this command — reports,
+// never edits — and, per the design, advisory: exit 0 unless --strict asks
+// for a gate on drift. An unreadable file is named on stderr, never
+// silently absorbed into a clean-looking table (ADR-027's lesson).
+func cmdConfigAuditCodeFacts(root string, asJSON, strict bool, stdout, stderr io.Writer) int {
+	home, _ := os.UserHomeDir()
+	findings, unreadable, err := custodian.AuditCodeFacts(root, home)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
+	if asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetIndent("", "  ")
+		if encErr := enc.Encode(codeFactsAuditJSON{
+			RepoRoot:   root,
+			Findings:   findings,
+			Unreadable: unreadable,
+		}); encErr != nil {
+			fmt.Fprintf(stderr, "error: %v\n", encErr)
+			return 1
+		}
+	} else {
+		renderCodeFactsAudit(stdout, findings, unreadable)
+	}
+
+	if len(unreadable) > 0 {
+		fmt.Fprintf(stderr, "config: %d auto-loaded file(s) could not be read and were NOT audited (this run is a lower bound): %v\n", len(unreadable), unreadable)
+	}
+
+	if strict {
+		for _, f := range findings {
+			if f.Class == custodian.ClassAnchoredDrifted {
+				return 1
+			}
+		}
+	}
+	return 0
+}
+
+type codeFactsAuditJSON struct {
+	RepoRoot   string                      `json:"repo_root"`
+	Findings   []custodian.CodeFactFinding `json:"findings"`
+	Unreadable []string                    `json:"unreadable,omitempty"`
+}
+
+func renderCodeFactsAudit(w io.Writer, findings []custodian.CodeFactFinding, unreadable []string) {
+	var fresh, drifted, unanchorable, preference int
+	for _, f := range findings {
+		switch f.Class {
+		case custodian.ClassAnchoredFresh:
+			fresh++
+		case custodian.ClassAnchoredDrifted:
+			drifted++
+		case custodian.ClassUnanchorable:
+			unanchorable++
+		case custodian.ClassPreference:
+			preference++
+		}
+	}
+	fmt.Fprintf(w, "code-fact sentence audit (%d sentence(s): %d anchored-fresh, %d anchored-drifted, %d unanchorable, %d preference)\n\n",
+		len(findings), fresh, drifted, unanchorable, preference)
+
+	for _, f := range findings {
+		if f.Class == custodian.ClassPreference {
+			continue // advisory table highlights code claims only
+		}
+		mark := "~"
+		switch f.Class {
+		case custodian.ClassAnchoredFresh:
+			mark = "✓"
+		case custodian.ClassAnchoredDrifted:
+			mark = "✗"
+		}
+		fmt.Fprintf(w, "  %s %-24s %s:%d  %s\n", mark, f.Class, f.File, f.Line, f.Sentence)
+		if f.Receipt != "" {
+			fmt.Fprintf(w, "      receipt: %s\n", f.Receipt)
+		}
+	}
+
+	if len(unreadable) > 0 {
+		fmt.Fprintf(w, "\n%d auto-loaded file(s) could not be read (see stderr) — this audit is a LOWER BOUND, not a clean bill.\n", len(unreadable))
+	}
+	fmt.Fprintf(w, "\n--code-facts is advisory and OFF by default until precision holds on a larger labelled set (VB-29); pass --strict to fail on anchored-drifted sentences.\n")
 }

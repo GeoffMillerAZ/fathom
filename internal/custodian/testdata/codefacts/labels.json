@@ -1,0 +1,37 @@
+[
+  {"sentence": "The config custodian's contract layer lives in `internal/custodian`.", "class": "anchored-fresh"},
+  {"sentence": "`fathom config audit` is implemented by `cmdConfigAudit` in `cmd/fathom`.", "class": "anchored-fresh"},
+  {"sentence": "`Audit` evaluates every concern against the repository at root.", "class": "anchored-fresh"},
+  {"sentence": "`LoadFile` reads one scope's concerns file.", "class": "anchored-fresh"},
+  {"sentence": "Decisions are recorded in `ADR.md`.", "class": "anchored-fresh"},
+  {"sentence": "`Merge` resolves the two scopes by ID.", "class": "anchored-fresh"},
+  {"sentence": "The root router is `CLAUDE.md`.", "class": "anchored-fresh"},
+  {"sentence": "Usage documentation lives at `docs/usage.md`.", "class": "anchored-fresh"},
+
+  {"sentence": "`internal/custodian/audit.go` is 200 lines.", "class": "anchored-drifted"},
+  {"sentence": "The stanza check is implemented by `checkStanzaFreshness` in `internal/custodian`.", "class": "anchored-drifted"},
+  {"sentence": "Concerns are loaded from `internal/concerns/loader.go`.", "class": "anchored-drifted"},
+  {"sentence": "`fathom config audit` is implemented by `cmdAuditConfig` in `cmd/fathom`.", "class": "anchored-drifted"},
+  {"sentence": "The example template is rendered by `RenderExampleTemplate` in `internal/custodian`.", "class": "anchored-drifted"},
+  {"sentence": "Decisions are recorded in `DECISIONS.md`.", "class": "anchored-drifted"},
+  {"sentence": "`Finding` is defined in `internal/custodian/finding.go`.", "class": "anchored-drifted"},
+  {"sentence": "The router lives at `README.md`.", "class": "anchored-drifted"},
+
+  {"sentence": "This repo is indexed by fathom as service \"fathom\" (12745 symbols).", "class": "unanchorable-code-claim"},
+  {"sentence": "The pinned agent surface exposes 19 tools.", "class": "unanchorable-code-claim"},
+  {"sentence": "The store calls into cgo only for the tree-sitter bindings.", "class": "unanchorable-code-claim"},
+  {"sentence": "It calls out to the daemon only when the stanza check runs.", "class": "unanchorable-code-claim"},
+  {"sentence": "The function returns holds, violated, or unable-to-check for every concern.", "class": "unanchorable-code-claim"},
+  {"sentence": "This package is defined in the evidence plane.", "class": "unanchorable-code-claim"},
+  {"sentence": "The audit reads roughly 40 files across two harnesses.", "class": "unanchorable-code-claim"},
+  {"sentence": "The daemon is located at the loopback address.", "class": "unanchorable-code-claim"},
+
+  {"sentence": "Keep the root CLAUDE.md a thin router.", "class": "preference"},
+  {"sentence": "Prefer small, focused commits.", "class": "preference"},
+  {"sentence": "Always write the failing test first.", "class": "preference"},
+  {"sentence": "Ask before deleting things or touching global agent config.", "class": "preference"},
+  {"sentence": "Route by question shape: where/who-calls/what-breaks resolve via fathom MCP tools.", "class": "preference"},
+  {"sentence": "Never restart the launchd daemon via launchctl from the Bash tool.", "class": "preference"},
+  {"sentence": "Read files to edit them, not to discover them.", "class": "preference"},
+  {"sentence": "Use the appkit MCP before writing UI markup.", "class": "preference"}
+]

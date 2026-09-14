@@ -94,6 +94,27 @@ ever being the thing that destroyed someone's config: the component with
 standing access has no write authority, and the component with write
 authority acts only inside a session where a human can see it.
 
+## 3c. Code-fact sentences (VB-28, vision 29 §2 thesis 3, ADR-035 decision 7)
+
+The concern model above audits *structure* (line budgets, dead pointers, a
+forbidden phrase); it says nothing about whether a sentence's own claim is
+still true. `fathom config audit --code-facts` closes that gap: it reads
+every auto-loaded file it can find for the repo — CLAUDE.md, AGENTS.md,
+`.cursor/rules/*`, `.windsurf/rules/*`, the Cline memory bank, and (R8's
+named gap) the harness's own auto-memory, not only its stanza — and
+classifies each code-fact-shaped sentence (a path, a backticked symbol, a
+count, "returns"/"calls"/"is defined in") as `anchored-fresh` (the anchor
+still resolves), `anchored-drifted` (it once resolved and no longer does —
+the receipt names what the tree says now), `unanchorable-code-claim` (a
+code claim this audit cannot check), or `preference` (not a code fact at
+all). Precision first: a sentence needs a concrete, checkable anchor to be
+called anchored; an instruction ("Keep CLAUDE.md a thin router") is a
+preference no matter what it names. It reports; it never edits (§3b
+unchanged). Off by default — `--code-facts` is opt-in — until precision
+holds at ≥ 0.8 on a real labelled set (VB-29); `--strict` turns
+`anchored-drifted` into a gate failure, otherwise the run is advisory
+(exit 0). `internal/custodian` (`auditCodeFactSentences`).
+
 ## 4. Surfaces
 
 - `fathom config audit [--repo R]` — the verb; JSON for the observatory.
