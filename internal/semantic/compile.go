@@ -150,6 +150,24 @@ type CompileInput struct {
 	// an explicit override flag let this run proceed past a guard that would
 	// otherwise have refused it. Empty for every normal run.
 	Escape string
+
+	// Resume is O54 deliverable 3 (`fathom compile --layer obligations
+	// --continue`): a prior run of the SAME (service, layer) at the SAME
+	// budget can leave most of the corpus uncompiled (BudgetStopped) —
+	// section-level progress already survives via the digest gate (an
+	// unbudgeted or larger-budget follow-up compiles only what's left), but
+	// a follow-up run at the SAME max_tokens_per_run budget refuses at the
+	// PRE-FLIGHT gate below whenever the REMAINING corpus alone still
+	// estimates over that budget, even though the mid-run gate would
+	// happily make further incremental progress and stop cleanly again —
+	// an all-or-nothing gate over the remaining work, not a resume. Resume
+	// skips that pre-flight refusal so a budget-stopped layer keeps making
+	// progress call over call, the mid-run gate capping each call exactly
+	// as it always has; it also asks Compile to name the first
+	// not-yet-compiled section (in orderSectionsByGoverningScope's own
+	// order) as run.ResumedFrom — proof, not a claim, that this call picked
+	// up where the last one left off rather than restarting.
+	Resume bool
 }
 
 // docSections pairs one governing doc with its already-split sections, so
@@ -284,17 +302,45 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 		all = append(all, docSections{doc: doc, sections: sections})
 	}
 
+	// O54 deliverable 1: a FLAT, nearest-scope-first compile order —
+	// every path-scoped guide before every root-scoped document, smaller
+	// sections first within a tier — replacing the old doc-then-section
+	// walk whose doc order was merely alphabetical (see
+	// orderSectionsByGoverningScope's doc comment for the bug this fixes).
+	ordered := orderSectionsByGoverningScope(all)
+
+	needsCompile := func(sec Section) bool {
+		prior := bySubject[sec.Subject]
+		return len(prior) == 0 || !allDigestsMatch(prior, sec.Digest, promptVersion)
+	}
+
+	// O54 deliverable 3 (`--continue`): name the first not-yet-compiled
+	// section in the resume order — proof this call picked up where a
+	// prior budget-stopped run left off, never a restart. Computed
+	// up front so it is recorded even on a DryRun estimate.
+	if in.Resume {
+		for _, item := range ordered {
+			if needsCompile(item.sec) {
+				run.ResumedFrom = item.sec.Subject
+				break
+			}
+		}
+	}
+
 	// Budget gate, pre-flight (ADR-016 §4.1, M1-7): a real (non-dry-run)
 	// compile refuses to start when its own digest-gate-aware cost estimate
-	// exceeds the layer's budget — before any LLM call is made.
-	if !in.DryRun && c.Layer.Name != "" {
+	// exceeds the layer's budget — before any LLM call is made. Skipped
+	// entirely when Resume is set: the whole point of resuming a
+	// budget-stopped layer is that the REMAINING corpus alone may still
+	// estimate over the same per-run budget — refusing here would turn
+	// "make more progress" into a permanent refusal instead of a resume.
+	// The mid-run gate below still caps this call's real spend exactly as
+	// it always has.
+	if !in.DryRun && c.Layer.Name != "" && !in.Resume {
 		estTokensIn := 0
-		for _, ds := range all {
-			for _, sec := range ds.sections {
-				if prior := bySubject[sec.Subject]; len(prior) > 0 && allDigestsMatch(prior, sec.Digest, promptVersion) {
-					continue
-				}
-				estTokensIn += cost.Estimate(sec.Text) + promptOverheadTokens
+		for _, item := range ordered {
+			if needsCompile(item.sec) {
+				estTokensIn += cost.Estimate(item.sec.Text) + promptOverheadTokens
 			}
 		}
 		if refuse, reason := enforceBudgets(c.Layer, estTokensIn, 0, c.InRatePerKTok); refuse {
@@ -322,90 +368,104 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	rejectionCounts := map[rejectionCause]int{}
 	rejectionSamples := map[rejectionCause][]string{}
 
+	// stoppedAt is the ordered-index of the section a mid-run budget stop
+	// broke on; -1 means the whole ordered corpus was walked (O54
+	// deliverable 2's layer_coverage.uncompiled_scopes needs to know
+	// exactly which tail, if any, this run never reached).
+	stoppedAt := -1
+
 sectionLoop:
-	for _, ds := range all {
-		doc := ds.doc
-		for _, sec := range ds.sections {
-			// Digest gate: an unchanged section (same content AND prompt
-			// identity) keeps its claims untouched.
-			if prior := bySubject[sec.Subject]; len(prior) > 0 && allDigestsMatch(prior, sec.Digest, promptVersion) {
-				continue
-			}
-			if in.DryRun {
-				run.SectionsCompiled++
-				run.TokensIn += cost.Estimate(sec.Text) + promptOverheadTokens
-				continue
-			}
-			if c.LLM == nil {
-				return run, fmt.Errorf("semantic: no LLM client configured (section %s needs compilation; run with dry_run to estimate)", sec.Subject)
-			}
-
-			drafts, usage, err := c.compileSection(ctx, sec, systemPrompt)
-			run.TokensIn += usage.InputTokens
-			run.TokensOut += usage.OutputTokens
-			if err != nil && ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-				// One retry after a short pause: a harness that hit a rate
-				// limit or printed a non-envelope line usually answers the
-				// second time (the 2026-09-13 scenario dry cells failed one
-				// section of ~130 on two different runs, a different section
-				// each time).
-				time.Sleep(compileRetryPause)
-				var usage2 llmclient.Usage
-				drafts, usage2, err = c.compileSection(ctx, sec, systemPrompt)
-				run.TokensIn += usage2.InputTokens
-				run.TokensOut += usage2.OutputTokens
-			}
-			if err != nil {
-				// A section whose answer never arrived poisons only its own
-				// section: count it, name it, keep the section's prior
-				// claims, and move on — one bad response must never abort
-				// an 88-section corpus. Only a cancelled or expired context
-				// aborts; a run in which NOTHING compiled fails at the end.
-				if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-					return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
-				}
-				run.SectionsFailed++
-				if len(run.SectionErrors) < maxSectionErrors {
-					run.SectionErrors = append(run.SectionErrors, fmt.Sprintf("%s: %v", sec.Subject, firstLine(err.Error())))
-				}
-				continue
-			}
+	for i, item := range ordered {
+		doc, sec := item.doc, item.sec
+		// Digest gate: an unchanged section (same content AND prompt
+		// identity) keeps its claims untouched.
+		if !needsCompile(sec) {
+			continue
+		}
+		if in.DryRun {
 			run.SectionsCompiled++
-			recompiledSubjects = append(recompiledSubjects, sec.Subject)
+			run.TokensIn += cost.Estimate(sec.Text) + promptOverheadTokens
+			continue
+		}
+		if c.LLM == nil {
+			return run, fmt.Errorf("semantic: no LLM client configured (section %s needs compilation; run with dry_run to estimate)", sec.Subject)
+		}
 
-			for _, d := range drafts {
-				claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion, driftTracked)
-				if verr != nil {
-					// A drift-anchor failure is infrastructure, not a bad
-					// draft: abort the run loudly (FT-6 — see errDriftAnchor).
-					if errors.Is(verr, errDriftAnchor) {
-						return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
-					}
-					run.ClaimsRejected++
-					cause := classifyRejectionCause(verr)
-					rejectionCounts[cause]++
-					if len(rejectionSamples[cause]) < maxRejectionSamplesPerCause {
-						rejectionSamples[cause] = append(rejectionSamples[cause], fmt.Sprintf("%s: %v", sec.Subject, verr))
-					}
-					continue
+		drafts, usage, err := c.compileSection(ctx, sec, systemPrompt)
+		run.TokensIn += usage.InputTokens
+		run.TokensOut += usage.OutputTokens
+		if err != nil && ctx.Err() == nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			// One retry after a short pause: a harness that hit a rate
+			// limit or printed a non-envelope line usually answers the
+			// second time (the 2026-09-13 scenario dry cells failed one
+			// section of ~130 on two different runs, a different section
+			// each time).
+			time.Sleep(compileRetryPause)
+			var usage2 llmclient.Usage
+			drafts, usage2, err = c.compileSection(ctx, sec, systemPrompt)
+			run.TokensIn += usage2.InputTokens
+			run.TokensOut += usage2.OutputTokens
+		}
+		if err != nil {
+			// A section whose answer never arrived poisons only its own
+			// section: count it, name it, keep the section's prior
+			// claims, and move on — one bad response must never abort
+			// an 88-section corpus. Only a cancelled or expired context
+			// aborts; a run in which NOTHING compiled fails at the end.
+			if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, err)
+			}
+			run.SectionsFailed++
+			if len(run.SectionErrors) < maxSectionErrors {
+				run.SectionErrors = append(run.SectionErrors, fmt.Sprintf("%s: %v", sec.Subject, firstLine(err.Error())))
+			}
+			continue
+		}
+		run.SectionsCompiled++
+		recompiledSubjects = append(recompiledSubjects, sec.Subject)
+
+		for _, d := range drafts {
+			claim, links, verr := c.verifyDraft(ctx, in.ServiceID, d, sec, doc, in.IndexedFiles, in.Watermark, started, layerName, layerVersion, kind, tier, tierProfile, promptVersion, driftTracked)
+			if verr != nil {
+				// A drift-anchor failure is infrastructure, not a bad
+				// draft: abort the run loudly (FT-6 — see errDriftAnchor).
+				if errors.Is(verr, errDriftAnchor) {
+					return run, fmt.Errorf("semantic: compile %s: %w", sec.Subject, verr)
 				}
-				newClaims = append(newClaims, claim)
-				newLinks = append(newLinks, links...)
+				run.ClaimsRejected++
+				cause := classifyRejectionCause(verr)
+				rejectionCounts[cause]++
+				if len(rejectionSamples[cause]) < maxRejectionSamplesPerCause {
+					rejectionSamples[cause] = append(rejectionSamples[cause], fmt.Sprintf("%s: %v", sec.Subject, verr))
+				}
+				continue
 			}
+			newClaims = append(newClaims, claim)
+			newLinks = append(newLinks, links...)
+		}
 
-			// Budget gate, mid-run (M1-7): the REAL running token total may
-			// cross max_tokens_per_run (or, opportunistically, the real
-			// spend so far may cross max_usd_per_run) after any section.
-			// Stop cleanly — sections not yet reached stay untouched and
-			// resume via the digest gate on the next invocation.
-			if refuse, reason := enforceBudgets(c.Layer, run.TokensIn, run.TokensOut, c.InRatePerKTok); refuse {
-				run.BudgetStopped = true
-				run.RefusalReason = reason
-				break sectionLoop
-			}
+		// Budget gate, mid-run (M1-7): the REAL running token total may
+		// cross max_tokens_per_run (or, opportunistically, the real
+		// spend so far may cross max_usd_per_run) after any section.
+		// Stop cleanly — sections not yet reached stay untouched and
+		// resume via the digest gate on the next invocation.
+		if refuse, reason := enforceBudgets(c.Layer, run.TokensIn, run.TokensOut, c.InRatePerKTok); refuse {
+			run.BudgetStopped = true
+			run.RefusalReason = reason
+			stoppedAt = i
+			break sectionLoop
 		}
 	}
 	run.ClaimsEmitted = len(newClaims)
+	if stoppedAt >= 0 {
+		// O54 deliverable 2: the tail of the deterministic order this run
+		// never reached, by document — exactly what layer_coverage.
+		// uncompiled_scopes discloses at serve time. Sections skipped via
+		// the digest gate above are NOT in this tail (they already have a
+		// compiled claim, from this run's corpus or an earlier one) —
+		// only sections the loop never got to at all.
+		run.UncompiledScopes = uncompiledDocScopes(ordered[stoppedAt+1:])
+	}
 	run.RejectionReasons = buildRejectionReasons(rejectionCounts, rejectionSamples)
 	run.CostUSD = cost.PriceUSD(run.TokensIn, c.InRatePerKTok) + cost.PriceUSD(run.TokensOut, c.OutRatePerKTok)
 	if run.SectionsCompiled == 0 && run.SectionsFailed > 0 {

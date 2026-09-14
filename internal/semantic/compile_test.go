@@ -1422,3 +1422,260 @@ func TestObligationsCorpusIncludesNestedInstructionFiles(t *testing.T) {
 		t.Errorf("SelectCorpus = %v, want %s", got, want)
 	}
 }
+
+// ─── O54: nearest-scope-first compile order, layer coverage, resume ────────
+
+// TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled is
+// O54 deliverable 1's integration proof: a fixture corpus shaped exactly
+// like the obligations layer's real one (a root document plus nested
+// package guides) compiled under a small budget leaves the NESTED GUIDES
+// compiled and the ROOT document the uncompiled tail — never the reverse,
+// which is what plain alphabetical doc order produced (ADR.md sorts before
+// every nested CLAUDE.md). Also pins deliverable 2's UncompiledScopes
+// source data.
+func TestCompile_BudgetStopLeavesNearestGuidesCompiledRootTailUncompiled(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	docs := CompileInput{
+		ServiceID: "svc",
+		Docs: []core.SourceFile{
+			// Alphabetically FIRST (would compile first under the old,
+			// plain doc-sort order) but ROOT tier — must compile LAST.
+			{Path: "ADR.md", Content: []byte("# Decisions\n\n- Some root decision.\n")},
+			// Nested guides — NEAREST-SCOPE tier, must compile first,
+			// smaller section (internal/CLAUDE.md) before the larger one.
+			{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd fathom\n\n- Wire every new verb into verbs.go and keep the registry sorted and documented end to end for the CLI help text, covering every edge case thoroughly and with care.\n")},
+			{Path: "internal/CLAUDE.md", Content: []byte("# internal\n\n- Register every extractor in fusion.New.\n")},
+		},
+		IndexedFiles: []string{
+			"internal/extractor/goextract.go",
+			"cmd/fathom/compile.go",
+			"pkg/client/client.go",
+			"docs/x.md",
+			"schema/semantic/schema.cue",
+		},
+		Watermark: "manifest:aaa",
+	}
+
+	mock := llmclient.NewMockClient(
+		// internal/CLAUDE.md's section: smallest, nested tier — compiles FIRST.
+		llmclient.MockEntry{Response: llmclient.Response{
+			Text:  `{"claims":[{"rule":"Register every extractor in fusion.New.","scope":["internal/**"],"cite_start":3,"cite_end":3}]}`,
+			Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
+		}},
+		// cmd/fathom/CLAUDE.md's section: still nested tier, next smallest —
+		// compiles SECOND, and its real usage crosses the budget.
+		llmclient.MockEntry{Response: llmclient.Response{
+			Text:  `{"claims":[{"rule":"Wire every new verb into verbs.go and keep the registry sorted.","scope":["cmd/fathom/**"],"cite_start":3,"cite_end":3}]}`,
+			Usage: llmclient.Usage{InputTokens: 800, OutputTokens: 100},
+		}},
+		// ADR.md must NEVER be reached — no entry scripted for it; a call
+		// here would still return the mock's harmless fallback text, so
+		// mock.CallCount() is what actually proves it was never asked.
+	)
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 1000, MaxUSDPerRun: 1000}
+	c := &Compiler{
+		St:            st,
+		LLM:           mock,
+		Model:         "mock-model",
+		Layer:         layer,
+		InRatePerKTok: 0.001,
+		Now:           fixedNow,
+	}
+	run, err := c.Compile(ctx, docs)
+	if err != nil {
+		t.Fatalf("a clean mid-run budget stop must not return an error: %v", err)
+	}
+	if !run.BudgetStopped {
+		t.Fatalf("run.BudgetStopped = false, want true")
+	}
+	if run.SectionsTotal != 3 {
+		t.Fatalf("run.SectionsTotal = %d, want 3", run.SectionsTotal)
+	}
+	if run.SectionsCompiled != 2 {
+		t.Fatalf("run.SectionsCompiled = %d, want 2 (both nested guides — ADR.md never reached)", run.SectionsCompiled)
+	}
+	if mock.CallCount() != 2 {
+		t.Fatalf("mock.CallCount() = %d, want 2 — ADR.md must never be reached", mock.CallCount())
+	}
+	if want := []string{"ADR.md"}; len(run.UncompiledScopes) != 1 || run.UncompiledScopes[0] != want[0] {
+		t.Fatalf("run.UncompiledScopes = %v, want %v", run.UncompiledScopes, want)
+	}
+
+	claims, err := st.ClaimsForService(ctx, "svc", LayerObligations)
+	if err != nil {
+		t.Fatalf("ClaimsForService: %v", err)
+	}
+	if len(claims) != 2 {
+		t.Fatalf("len(claims) = %d, want 2", len(claims))
+	}
+	for _, cl := range claims {
+		if strings.HasPrefix(cl.Subject, "ADR.md#") {
+			t.Fatalf("claim %s compiled from ADR.md — the root tail must never compile before a budget stop that starves the nested guides", cl.ClaimID)
+		}
+	}
+
+	// The recorded compile_runs row is what layer_coverage (O54 deliverable
+	// 2) reads at serve time.
+	cov, found, cerr := ObligationsLayerCoverage(ctx, st, "svc", LayerObligations)
+	if cerr != nil || !found {
+		t.Fatalf("ObligationsLayerCoverage: found=%v err=%v", found, cerr)
+	}
+	if cov.SectionsTotal != 3 || cov.SectionsCompiled != 2 || !cov.BudgetStopped {
+		t.Fatalf("coverage = %+v, want {3 2 true ...}", cov)
+	}
+	// The uncompiled tail is ADR.md alone — root tier, never a "nearest
+	// guide" for any file. NearestUncompiledGuide must say so.
+	if guide, ok := NearestUncompiledGuide(cov, "internal/extractor/goextract.go"); ok {
+		t.Fatalf("NearestUncompiledGuide = (%q, true), want ok=false — internal/CLAUDE.md itself DID compile; only the root ADR.md tail is uncompiled", guide)
+	}
+}
+
+// TestCompile_Resume_SkipsPreflightRefusalAndMakesProgress is O54
+// deliverable 3: a layer budgeted BELOW promptOverheadTokens (260) refuses
+// EVERY plain compile at the pre-flight gate before a single section is
+// ever attempted — the layer is permanently wedged, not merely stopped
+// mid-run, since even ONE section's fixed overhead alone exceeds the
+// budget. Resume:true skips that refusal so real progress happens where a
+// plain call makes none, and records which section it started from.
+func TestCompile_Resume_SkipsPreflightRefusalAndMakesProgress(t *testing.T) {
+	ctx := context.Background()
+
+	oneDoc := CompileInput{
+		ServiceID:    "svc",
+		Docs:         []core.SourceFile{{Path: "internal/CLAUDE.md", Content: []byte(govDoc)}},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+	}
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatalf("LoadLayer(obligations): %v", err)
+	}
+	// Below promptOverheadTokens (260): no section, however small, can
+	// ever pass the pre-flight estimate — a plain compile of this layer is
+	// wedged from the very first invocation, not just a resume.
+	layer.Budgets = LayerBudgets{MaxTokensPerRun: 50, MaxUSDPerRun: 1000}
+
+	t.Run("plain compile refuses and makes zero progress", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		mock := llmclient.NewMockClient() // no entries: a call would prove the gate leaked
+		c := &Compiler{St: st, LLM: mock, Model: "mock-model", Layer: layer, InRatePerKTok: 0.001, Now: fixedNow}
+		run, err := c.Compile(ctx, oneDoc)
+		if err == nil {
+			t.Fatal("want a pre-flight refusal, got nil error")
+		}
+		if !run.Refused || run.SectionsCompiled != 0 {
+			t.Fatalf("run = %+v, want Refused=true, SectionsCompiled=0", run)
+		}
+		if mock.CallCount() != 0 {
+			t.Errorf("CallCount = %d, want 0 — refused before any LLM call", mock.CallCount())
+		}
+	})
+
+	t.Run("resume skips the refusal and compiles", func(t *testing.T) {
+		st := store.NewMemoryStore()
+		mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+			Text:  `{"claims":[{"rule":"Sort all outputs.","scope":["internal/mcp/**"],"cite_start":3,"cite_end":3}]}`,
+			Usage: llmclient.Usage{InputTokens: 100, OutputTokens: 50},
+		}})
+		c := &Compiler{St: st, LLM: mock, Model: "mock-model", Layer: layer, InRatePerKTok: 0.001, Now: fixedNow}
+		run, err := c.Compile(ctx, CompileInput{
+			ServiceID: oneDoc.ServiceID, Docs: oneDoc.Docs, IndexedFiles: oneDoc.IndexedFiles,
+			Watermark: oneDoc.Watermark, Resume: true,
+		})
+		if err != nil {
+			t.Fatalf("resume Compile: %v", err)
+		}
+		if run.Refused {
+			t.Fatalf("run.Refused = true, want false — Resume must skip the pre-flight refusal")
+		}
+		if run.SectionsCompiled != 1 || run.ClaimsEmitted != 1 {
+			t.Fatalf("compiled/emitted = %d/%d, want 1/1", run.SectionsCompiled, run.ClaimsEmitted)
+		}
+		if mock.CallCount() != 1 {
+			t.Errorf("CallCount = %d, want 1", mock.CallCount())
+		}
+		wantSubject := "internal/CLAUDE.md#conventions"
+		if run.ResumedFrom != wantSubject {
+			t.Errorf("run.ResumedFrom = %q, want %q", run.ResumedFrom, wantSubject)
+		}
+		// The real usage (150) also exceeds the tiny 50-token budget, so
+		// the mid-run gate stops the run cleanly right after — a
+		// DIFFERENT, already-existing mechanism (BudgetStopped, not
+		// Refused) that Resume never needs to touch.
+		if !run.BudgetStopped {
+			t.Errorf("run.BudgetStopped = false, want true (mid-run stop after the one section it compiled)")
+		}
+
+		runs, err := st.CompileRuns(ctx, "svc", LayerObligations)
+		if err != nil || len(runs) != 1 {
+			t.Fatalf("CompileRuns: %d, %v", len(runs), err)
+		}
+		if runs[0].ResumedFrom != wantSubject {
+			t.Errorf("recorded run.ResumedFrom = %q, want %q", runs[0].ResumedFrom, wantSubject)
+		}
+	})
+}
+
+// TestCompile_Resume_NamesFirstNotYetCompiledSection_DryRun is O54
+// deliverable 3's "test with the dry-run seam": ResumedFrom names the
+// first section NOT already covered by a prior compile — never the
+// already-digest-gated one — with no LLM call at all (DryRun structurally
+// never calls the LLM, independent of Resume).
+func TestCompile_Resume_NamesFirstNotYetCompiledSection_DryRun(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+
+	twoDocs := CompileInput{
+		ServiceID: "svc",
+		Docs: []core.SourceFile{
+			{Path: "internal/CLAUDE.md", Content: []byte("# internal\n\n- Register every extractor in fusion.New.\n")},
+			{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd fathom\n\n- Wire every new verb into verbs.go.\n")},
+		},
+		IndexedFiles: indexedFiles,
+		Watermark:    "manifest:aaa",
+	}
+
+	// Seed internal/CLAUDE.md's section as already compiled (an unbudgeted
+	// compiler, mirroring how a real prior run would have written it).
+	seed := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Register every extractor in fusion.New.","scope":["internal/mcp/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	cSeed := &Compiler{St: st, LLM: seed, Model: "mock-model", Now: fixedNow}
+	seedRun, err := cSeed.Compile(ctx, CompileInput{
+		ServiceID:    "svc",
+		Docs:         []core.SourceFile{twoDocs.Docs[0]},
+		IndexedFiles: twoDocs.IndexedFiles, Watermark: twoDocs.Watermark,
+	})
+	if err != nil || seedRun.SectionsCompiled != 1 {
+		t.Fatalf("seed compile: run=%+v err=%v", seedRun, err)
+	}
+
+	// Now a DryRun+Resume over BOTH docs: internal/CLAUDE.md is
+	// digest-gated (already compiled), so ResumedFrom must name
+	// cmd/fathom/CLAUDE.md's section — never restate the first one.
+	dry := llmclient.NewMockClient() // a call here would fail CallCount below
+	cDry := &Compiler{St: st, LLM: dry, Model: "mock-model", Now: fixedNow}
+	run, err := cDry.Compile(ctx, CompileInput{
+		ServiceID: "svc", Docs: twoDocs.Docs, IndexedFiles: twoDocs.IndexedFiles,
+		Watermark: twoDocs.Watermark, DryRun: true, Resume: true,
+	})
+	if err != nil {
+		t.Fatalf("dry-run resume Compile: %v", err)
+	}
+	if dry.CallCount() != 0 {
+		t.Fatalf("CallCount = %d, want 0 — a dry run never calls the LLM", dry.CallCount())
+	}
+	wantSubject := "cmd/fathom/CLAUDE.md#cmd-fathom"
+	if run.ResumedFrom != wantSubject {
+		t.Fatalf("run.ResumedFrom = %q, want %q (internal/CLAUDE.md is already compiled)", run.ResumedFrom, wantSubject)
+	}
+	if run.SectionsCompiled != 1 {
+		t.Fatalf("run.SectionsCompiled = %d, want 1 (only the not-yet-compiled section counts, even in estimate mode)", run.SectionsCompiled)
+	}
+}
