@@ -231,6 +231,7 @@ and only matter for `bench-compare-edges`.
    |---|---|---|
    | targeted | `task bench-scenario-guards` | ≈ $20–40 |
    | pilot | `task bench-scenario-pilot` | ≈ $90–130 |
+   | lookups-vs | `task bench-scenario-lookups-vs` | fathom vs. graphify/serena/gopls/grep, 2 trials — 140 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-vs.json` lists them free first) |
    | credible | 30 tasks × 3 trials per matrix row (`docs/vision/27-strengths-bench.md` §9) | several hundred dollars per row; operator decision, not a Taskfile target |
 
    Regenerate `testdata/scenariobench/public-go.json` itself (after a
@@ -404,30 +405,44 @@ disclaimer at all. Parity by construction fixes this: every competitor
 arm's `instructions_text` now follows ONE template —
 
 - an opening line naming the tool, by its real tool names
-  (`docs/bench/competitors.md`), as the way to answer where / who-calls /
-  what-breaks / what-governs / what-changed questions in this repository;
+  (`docs/bench/competitors.md`), as the way to answer where a symbol is
+  defined, who calls it, and what breaks if it changes — the ONLY
+  capability a tree-sitter graph or an LSP genuinely has; it never claims
+  "what governs" or "what changed since a prior citation", since fathom's
+  own stanza routes those shapes to `obligations` and `staleness_report`
+  specifically, not to its where/who-calls/what-breaks tools either
+  (review fix-first, 2026-09-14: the first draft of this template DID
+  claim both, an overclaim no competitor tool backs);
 - an "Opening moves by task shape" list keyed to the corpus's OWN eight
   categories (`obligations`, `claim_provenance`, `concern_search`,
   `contradiction`, `freshness`, `staleness`, `verify`, `blast_radius` — not
   fathom's own four dev-task shapes from `openingMovesTable`, which this
-  corpus never asks), naming the competitor's own tool first and `grep`
-  second on every line, even where the competitor has no real tool for
-  that shape (the nearest structural/symbol/workspace query is still named
-  first — a graph query for graphify, a symbol lookup for serena, a
-  workspace query for gopls);
-- no sentence that routes away from the tool. Where a tool is genuinely
-  expected to lose a category, that expectation lives in the task's own
+  corpus never asks). `blast_radius` alone sits inside the claimed
+  capability (who-calls/what-breaks), so its line names the competitor's
+  own chained query with no hedge. Every other line — including
+  `freshness`, since a tool's live-query mechanism is not the same thing
+  as a designed "is this fresh" capability — names the competitor's
+  closest query first, described only as an attempt ("`query_graph` for
+  the symbol's neighbourhood, then grep the nearest CLAUDE.md / ADR.md"),
+  with `grep` always the named fallback in the same line, never a claim
+  that the query resolves the shape;
+- no sentence that routes away from the tool, and no sentence that claims
+  a capability the tool does not have. Where a tool is genuinely expected
+  to lose a category, that expectation lives in the task's own
   `predictions` field, never in the stanza a session reads.
 
-Length parity is a proof, not a promise:
 `TestLookupsVSCorpus_CompetitorStanzaParity`
-(`internal/scenariobench/lookups_vs_test.go`) measures each competitor's
-routing section (everything after the `## <tool> ... navigation` header),
-fails on any banned disclaimer phrase, fails if any opening-move line does
-not end `-> grep`, and fails if a routing section sits outside ±15% of the
-other two competitors' or of fathom's own stanza's routing section (the
-paragraph plus `openingMovesTable`, `cmd/fathom/init.go` — 1,052 bytes,
-hardcoded in the test with a comment to keep in sync, since
+(`internal/scenariobench/lookups_vs_test.go`) checks what the template
+above actually promises, nothing more: no banned disclaimer phrase
+anywhere in the text; no overclaim phrase ("what governs", "what changed
+since", "governs its conventions", "decision records") in the intro
+paragraph specifically (`stanzaIntroParagraph`, the text between the
+header and the "Reach for these..." sentence); `grep` named somewhere in
+every non-`blast_radius` category's own line; and a routing section
+(everything after the `## <tool> ... navigation` header) within ±15% of
+the other two competitors' and of fathom's own stanza's routing section
+(the paragraph plus `openingMovesTable`, `cmd/fathom/init.go` — 1,052
+bytes, hardcoded in the test with a comment to keep in sync, since
 `internal/scenariobench` cannot import `cmd/fathom`, `package main`).
 
 **Delivery assumes append (wave-n1).** `RenderArm`'s `"text"` mode is
@@ -663,16 +678,28 @@ function are already named, so the freshness discriminator never fired.
 The task now asks a call-graph fact instead, the same question shape as
 `FreshnessProbe`'s own `add_param` edit ("how many callers does
 applyEntry have now") above: `internal/metrics.IsPlumbingTool` already has
-exactly one committed caller (`AggregateTraffic`,
-`internal/metrics/traffic.go`); `Subject.PostWireSetup` adds a SECOND call
-site in a brand-new file the prompt never names
-(`internal/metrics/toolkind_freshprobe.go`), and asks which function now
-calls it. A graphify graph built during this arm's own setup — before the
-edit lands — still reports only the one pre-existing caller; a live gopls
-query (serena, gopls) or a re-ingested fathom index sees both; grep across
-the tree for `IsPlumbingTool(` finds both regardless of any artifact's
-staleness, since the new caller is textually present in the tree the
-moment it lands.
+THREE committed callers at `base_commit` — the production function
+`AggregateTraffic` (`internal/metrics/traffic.go`) and two tests in
+`internal/metrics/discovery_test.go`
+(`TestIsDiscoveryIndexTool_PlumbingTool_False`,
+`TestIsDiscoveryIndexTool_UnknownTool_False`), verified directly against
+that commit (`git archive 1b8765d | tar -x`, then `grep -rn
+'IsPlumbingTool(' internal/metrics` — the task's own `derivation` field
+carries the full command and output, including the two string-literal
+false positives inside `Errorf`/`Error` messages that are not real calls).
+Review fix-first (2026-09-14) caught an earlier draft asserting "exactly
+one committed caller", which a live query would have contradicted outright
+— the prompt now states the true three-caller baseline and asks for the
+caller NOT among them. `Subject.PostWireSetup` adds a FOURTH call site in
+a brand-new file the prompt never names
+(`internal/metrics/toolkind_freshprobe.go`), and the task asks which
+function now calls `IsPlumbingTool` that is not one of the three named
+callers. A graphify graph built during this arm's own setup — before the
+edit lands — still reports only the three pre-existing edges; a live gopls
+query (serena, gopls) or a re-ingested fathom index sees all four; grep
+across the tree for `IsPlumbingTool(` finds all four real call sites
+regardless of any artifact's staleness, since the new caller is textually
+present in the tree the moment it lands.
 
 ## Dropped tasks
 
