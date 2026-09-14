@@ -410,6 +410,41 @@ func TestRunSessions_SingleModeFirstSessionGetsPlanFirstInstruction(t *testing.T
 	}
 }
 
+// TestRunSessions_SingleModeOneSessionPlansThenImplements: a change-shaped
+// task with ONE session must not be told that later sessions will implement
+// its rows — it gets PlanThenImplementInstruction instead (clean room v3's
+// dry cell, 2026-09-13: the wired arm wrote a plan and stopped).
+func TestRunSessions_SingleModeOneSessionPlansThenImplements(t *testing.T) {
+	task := Task{
+		ID: "T1", Prompt: "do the thing",
+		Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10},
+		Gold:     Gold{Files: []string{"a.go"}},
+	}
+	for _, wired := range []bool{false, true} {
+		h := &recordingHarness{FakeHarness: &FakeHarness{
+			StreamsDir: streamsDir, TaskID: "T1", ArmName: "full",
+			Streams: map[string]string{"T1/full": "single-session.jsonl"},
+		}}
+		opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+		arm := Arm{Wired: wired}
+		if _, err := RunSessions(context.Background(), h, task, "full", arm, Worktree{Path: t.TempDir()}, opts); err != nil {
+			t.Fatalf("wired=%v: RunSessions: %v", wired, err)
+		}
+		if len(h.prompts) != 1 {
+			t.Fatalf("wired=%v: %d prompts, want 1", wired, len(h.prompts))
+		}
+		if !strings.HasPrefix(h.prompts[0], task.Prompt+PlanThenImplementInstruction) {
+			t.Errorf("wired=%v: prompt = %q, want the plan-then-implement instruction", wired, h.prompts[0])
+		}
+		if strings.Contains(h.prompts[0], "later sessions") {
+			t.Errorf("wired=%v: a one-session task was told later sessions exist", wired)
+		}
+		if wired != strings.Contains(h.prompts[0], "fathom verify") {
+			t.Errorf("wired=%v: grammar addendum presence wrong", wired)
+		}
+	}
+}
+
 // TestRunSessions_SingleModeLookupTaskSkipsPlanFirstInstruction is O45 item
 // 2's own converse: a pure-lookup task (Oracle.AnswerAllOf, no Gold files,
 // no test patch, no detectors — SB-32's lookups-vs.json shape) has nothing
@@ -534,4 +569,72 @@ func mustJSON(v any) string {
 		panic(err)
 	}
 	return string(b)
+}
+
+// TestPostToolUseInstrumentError covers postToolUseInstrumentError
+// directly (clean room v3): only a wired session that edited a file with
+// no PostToolUse entry in HooksFired is an instrument error; an unwired
+// arm never is, regardless of edits, and a wired session that never
+// edited anything has no governed-or-not edit for the hook to have
+// answered, so it is not measurable either way.
+func TestPostToolUseInstrumentError(t *testing.T) {
+	cases := []struct {
+		name        string
+		wired       bool
+		filesEdited []string
+		fired       map[string]int
+		wantMsg     string
+	}{
+		{"unwired, edited a file, no PostToolUse", false, []string{"CLAUDE.md"}, nil, ""},
+		{"wired, no edits at all", true, nil, nil, ""},
+		{"wired, edited a file, PostToolUse fired", true, []string{"CLAUDE.md"}, map[string]int{"PostToolUse": 1}, ""},
+		{"wired, edited a file, nil HooksFired", true, []string{"CLAUDE.md"}, nil, "instrument: no PostToolUse hook fired despite an edit"},
+		{"wired, edited a file, HooksFired present but no PostToolUse", true, []string{"CLAUDE.md"}, map[string]int{"SessionStart": 1}, "instrument: no PostToolUse hook fired despite an edit"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := postToolUseInstrumentError(c.wired, SessionResult{FilesEdited: c.filesEdited, HooksFired: c.fired})
+			if got != c.wantMsg {
+				t.Errorf("postToolUseInstrumentError = %q, want %q", got, c.wantMsg)
+			}
+		})
+	}
+}
+
+// TestRunSessions_WiredArmEditNoPostToolUseHook_LosesTheCell is the
+// PostToolUse instrument-truth gate's own end-to-end proof (clean room
+// v3): a wired session whose transcript shows a working SessionStart
+// primer (so hooksInstrumentError/primerInstrumentError both pass) but
+// edits a file with no PostToolUse hook_response anywhere in the stream —
+// exactly the pre-`--include-hook-events` defect ("dry-r4-change") — must
+// not pass as a reading.
+func TestRunSessions_WiredArmEditNoPostToolUseHook_LosesTheCell(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir}
+	h := &FakeHarness{
+		StreamsDir: streamsDir,
+		TaskID:     "T1",
+		ArmName:    "full",
+		Streams:    map[string]string{"T1/full": "sessionstart-edit-no-posttool.jsonl"},
+	}
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: filepath.Join(t.TempDir(), "raw")}
+
+	results, err := RunSessions(context.Background(), h, task, "full", Arm{Wired: true}, wt, opts)
+	if err != nil {
+		t.Fatalf("RunSessions: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected the single (failing) session, got %d", len(results))
+	}
+	wantErr := "instrument: no PostToolUse hook fired despite an edit"
+	if results[0].Error != wantErr {
+		t.Errorf("Error = %q, want %q", results[0].Error, wantErr)
+	}
+	if results[0].InstrumentError != wantErr {
+		t.Errorf("InstrumentError = %q, want %q", results[0].InstrumentError, wantErr)
+	}
+	if reason := CellLost(results); reason == "" {
+		t.Error("expected CellLost to report this cell as lost")
+	}
 }

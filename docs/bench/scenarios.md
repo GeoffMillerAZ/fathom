@@ -385,7 +385,8 @@ own rendered text — always `<= PostToolUse`, never a new event class.
 
 Every session (`buildClaudeArgs`, `harness_claude.go`, RC-6, vision 28 §2
 F4) runs under Claude Code 2.1.270's own `--restricted` mode plus
-`--disable-slash-commands`: `--restricted` ignores the operator's user,
+`--disable-slash-commands` plus `--include-hook-events` (the last one is
+clean room v3 — see below): `--restricted` ignores the operator's user,
 project and local settings files — so the second reading's own defect
 ("every session inherited the operator's config: ~90 slash commands,
 plugins, and fathom's own SessionStart primer on the control arm") cannot
@@ -406,8 +407,10 @@ replaces the hooks key itself. (A first version of `RenderArm` overwrote that fi
 one-hook stand-in naming a fathom subcommand that does not exist —
 `obligations-hook` — so every wired cell ran with none of fathom's real
 hooks; the instrument-truth gate now also fails a cell whose transcript
-shows no `SessionStart` hook_response at all, so this cannot recur
-silently.) `--tools` is exactly what the arm allows
+shows no `SessionStart` hook_response at all, and — clean room v3,
+`postToolUseInstrumentError` — a cell whose transcript shows an edit
+(`FilesEdited` non-empty) but no `PostToolUse` hook_response at all, so
+neither defect can recur silently.) `--tools` is exactly what the arm allows
 (`restrictedToolsList`): the arm's own `AllowedTools` with every `mcp__`
 entry stripped (MCP access is already governed by
 `--mcp-config`/`--strict-mcp-config`, not `--tools`) when non-empty, else
@@ -448,6 +451,68 @@ with the single word ok" --max-turns 1 --model claude-haiku-4-5-20251001
   `"tools":["Read"]` (exactly `--tools`' value), `"mcp_servers":[]`,
   `"slash_commands":[]`, `"plugins":[]`; the operator's own stanza text
   ("fathom code-intelligence is live") appears zero times in the stream.
+
+**Clean room v3 (2026-09-13 experiment matrix): the RC-6 smoke test only
+ever proved `SessionStart`.** Two real dry cells found `PostToolUse` never
+showed a `hook_response` event under the RC-6 argv, on any arm, with or
+without `--restricted` — the exact shape of `dry-r4-change`'s defect (a
+`Write` with only `SessionStart` events, the obligations rule never
+served). A one-turn Haiku matrix (`claude -p`, `--max-turns 4`,
+`--model claude-haiku-4-5-20251001`, a side-channel marker file
+independent of the transcript so a hook's *process* running could be told
+apart from Claude Code *reporting* that it ran) isolated the cause:
+
+| cell | settings source | `--restricted` | matcher | event | hook **process** ran (marker file) | hook **event** in the stream |
+|---|---|---|---|---|---|---|
+| a | `--settings <file>`, PostToolUse | no | present | PostToolUse | yes | **no** |
+| b | cwd project `.claude/settings.json` | no | present | PostToolUse | yes | **no** |
+| c | cwd project `.claude/settings.json`, **no `--settings` flag** | yes | present | PostToolUse | **no** | no |
+| d | `--settings <file>` | no | omitted | PostToolUse | yes | **no** |
+| e | `--settings <file>` | no | present | PreToolUse | yes | **no** |
+| f | `--settings '<inline JSON>'` | yes (+ explicit `--settings`) | present | PostToolUse | yes | **no** |
+
+Every cell's hook **ran** (its marker file landed, timestamped inside the
+session's own window) — including the OPERATOR's real, already-registered
+`~/.claude/settings.json` `PostToolUse`/`Stop` hooks in cells a/b/d/e,
+which also wrote their own real side effects (`workspace/logs/sessions
+.jsonl`, `workspace/artifacts/retros/*.json`) — yet **zero** cells showed a
+`hook_started`/`hook_response` system event for anything but
+`SessionStart`, in either transcript. Cell c is the one exception with a
+different cause: `--restricted` with no explicit `--settings` flag
+ignores the cwd's own project-scope `settings.json` entirely (no marker
+at all) — expected, and exactly why `SessionRequest.SettingsPath` is
+always passed via `--settings` today.
+
+Re-running cell a with `claude --help`'s `--include-hook-events`
+("Include all hook lifecycle events in the output stream") flipped every
+`no` above to `yes`: `PreToolUse:Write`, `PostToolUse:Write` and `Stop`
+`hook_started`/`hook_response` pairs all appeared, the `PostToolUse`
+one carrying the hook's own `hookSpecificOutput.additionalContext`
+verbatim. Re-running cell c (`--restricted`, explicit `--settings
+<cwd>/.claude/settings.json`, `--include-hook-events`) showed exactly one
+hook — the cell's own `PostToolUse` — with zero operator leakage,
+confirming `--restricted` was never the gap: it excludes the operator's
+real hooks/plugins/slash-commands in every configuration tried, and the
+cell's own project-scope `settings.json` reaches a `--restricted` session
+the same way it always required — named explicitly via `--settings`.
+
+**The fix is one flag, not a redesign.** `buildClaudeArgs` now always
+passes `--include-hook-events` alongside `--restricted` and
+`--disable-slash-commands`; nothing else about the clean room's shape
+changed. `runOneSession` gained a parallel gate to `hooksInstrumentError`
+— `postToolUseInstrumentError` — that fails a wired cell whose transcript
+shows an edit but no `PostToolUse` hook_response, the same way an absent
+`SessionStart` hook_response already did.
+
+**`FATHOM_CHANNELS=off` was checked and is not needed for isolation.**
+`bin/fathom session-hook` and `bin/fathom edit-hook`, run directly with
+realistic stdin, both go completely silent (exit 0, zero stdout) under
+`FATHOM_CHANNELS=off` and render their normal output without it — the
+kill switch works exactly as documented (`cmd/fathom/channels.go`). But
+since `--restricted` already excludes the operator's hooks structurally
+(proven above, cell c/f), the clean room needs no additional env-based
+silencing of the operator's fathom hooks; `FATHOM_CHANNELS` stays a
+manual operator escape hatch, not part of the harness's own argv or env.
 
 ## Freshness (M7)
 

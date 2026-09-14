@@ -511,7 +511,12 @@ func wireScratchDaemon(ctx context.Context, wt *Worktree, task Task, renderedArm
 	// of fathom's hooks at all. Forcing project scope here is what makes
 	// assertWiredHooksPresent's promise (RenderArm never invents a hook
 	// stand-in; `fathom init` already wrote the real one) true regardless
-	// of the machine running the bench.
+	// of the machine running the bench. Getting these hooks to actually
+	// show up in the transcript this package reads — PostToolUse/Stop
+	// included, not only SessionStart — additionally needs
+	// buildClaudeArgs' `--include-hook-events` (clean room v3,
+	// harness_claude.go's own comment); this init call and that flag are
+	// independent fixes for independent gaps.
 	out, err := runIn(ctx, wt.Path, bin, "init", "--path", wt.Path, "--service", service, "--url", wt.DaemonURL, "--harness", "claude-code", "--hooks-scope", "project", "--json")
 	if err != nil {
 		return fmt.Errorf("wiring scratch daemon: fathom init: %w (%s)", err, out)
