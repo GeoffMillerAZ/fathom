@@ -102,7 +102,7 @@ func registerExtraTools(s *Server, backend QueryInterface) {
 func registerBlastRadius(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "blast_radius",
-		Description: "Blast radius of changed files: the symbols they define plus transitive callers, with affected tests, file paths, and by_depth (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence. DEFAULTS changed in 0.9: resolved edges only, depth 2, at most 500 symbols — widen with include_heuristic / max_depth / max_symbols (0 = unbounded). Always reports edge_filter, total_symbols, truncated and depth_capped, so a bounded answer never reads as complete.",
+		Description: "The answer grep cannot give: blast radius of changed files — the symbols they define plus transitive callers, with affected tests, file paths, and by_depth (depth 0 = changed symbols, 1 = direct callers, …), each labeled edge_confidence. DEFAULTS changed in 0.9: resolved edges only, depth 2, at most 500 symbols — widen with include_heuristic / max_depth / max_symbols (0 = unbounded). Always reports edge_filter, total_symbols, truncated and depth_capped, so a bounded answer never reads as complete. Reach for it when you changed a file and need to know who transitively breaks — no grep query walks a call graph. Required: service, changed_files.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

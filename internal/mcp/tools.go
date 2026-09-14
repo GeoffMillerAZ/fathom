@@ -453,6 +453,10 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 	// Register analysis tools (call-graph and import-cycle analysis).
 	registerAnalysisTools(s, backend)
 
+	// Register safe_delete_check, rename_impact's read-only sibling
+	// (ADR-035 decision 1, plan VB-2).
+	registerSafeDeleteCheck(s, backend)
+
 	// Register navigation and structural analysis tools.
 	registerNavTools(s, backend, fleet)
 

@@ -12,10 +12,17 @@ import "testing"
 // criterion (M5 at K=3 — facts_reused >= 3 and tokens-to-first-edit below
 // control on two of three tasks, else it reverts to pull-only and the cap
 // drops back to 18).
+//
+// ADR-035 decision 1 (docs/vision/29-verbs-not-lookups.md §3 wave A, plan
+// VB-1/VB-2) raises the cap again, on its own measured case: the verbs
+// lead because grep cannot give their answer at all (blast radius,
+// review, test reach, rename impact) — never another lookup pitched on
+// token savings — plus safe_delete_check, rename_impact's read-only
+// sibling. 19 + 5 = 24.
 func TestAgentSurfaceDiet(t *testing.T) {
 	tools := AgentSurfaceTools()
-	if len(tools) > 19 {
-		t.Fatalf("agent surface carries %d tools — the diet caps it at 19 (16 + memory_search AM-8 + search RC-24 + discoveries RC-27); the long tail belongs on /rpc (TD-2)", len(tools))
+	if len(tools) > 24 {
+		t.Fatalf("agent surface carries %d tools — the diet caps it at 24 (19 + the four ADR-035 verbs + safe_delete_check); the long tail belongs on /rpc (TD-2)", len(tools))
 	}
 	on := map[string]bool{}
 	for _, name := range tools {

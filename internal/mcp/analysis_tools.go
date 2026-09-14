@@ -43,7 +43,7 @@ func buildGraph(ctx context.Context, backend QueryInterface, service string) (*c
 func registerRenameImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "rename_impact",
-		Description: "List every call site that would need updating if symbol were renamed (direct callers only).",
+		Description: "The answer grep cannot give: every call site that would need updating if symbol were renamed (direct callers only) — grep's text match cannot resolve identity across a bare name shared by unrelated symbols. Reach for it when you are about to rename a symbol and need every call site a text search would miss or over-match. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -145,7 +145,7 @@ func registerReachable(s *Server, backend QueryInterface) {
 func registerTestImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "test_impact",
-		Description: "Return all test functions (names prefixed with 'Test') that transitively reach the given symbol via the call graph.",
+		Description: "The answer grep cannot give: every test function (names prefixed with 'Test') that transitively reaches the given symbol via the call graph — no text search walks a call graph to a Test* root. Reach for it when you changed a symbol and need to know which tests actually exercise it, not which tests merely mention its name. Required: service, symbol.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{

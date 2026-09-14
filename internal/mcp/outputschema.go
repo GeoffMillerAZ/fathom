@@ -264,6 +264,57 @@ type verifyPlanTask struct {
 	Criteria []any  `json:"criteria"`
 }
 
+// ADR-035 decision 1 (docs/vision/29-verbs-not-lookups.md §3 wave A, plan
+// VB-1/VB-2): the four promoted verbs plus safe_delete_check.
+
+// renameImpactResult mirrors rename_impact's payload (analysis_tools.go).
+type renameImpactResult struct {
+	Callers []string `json:"callers"`
+}
+
+// testImpactResult mirrors test_impact's payload (analysis_tools.go).
+type testImpactResult struct {
+	Tests []string `json:"tests"`
+}
+
+// blastRadiusResult mirrors blast_radius' payload (extra_tools.go).
+type blastRadiusResult struct {
+	Symbols      []string      `json:"symbols"`
+	Tests        []string      `json:"tests"`
+	Files        []string      `json:"files"`
+	EdgeFilter   string        `json:"edge_filter"`
+	TotalSymbols int           `json:"total_symbols"`
+	Truncated    bool          `json:"truncated"`
+	DepthCapped  bool          `json:"depth_capped"`
+	MaxDepth     int           `json:"max_depth"`
+	ByDepth      []blastBucket `json:"by_depth"`
+}
+
+// reviewDiffResult mirrors review_diff's payload (review_tool.go): the
+// composed verdict's top-level envelope. Dimensions/VerdictOutcome/
+// TestImpact stay `any` — review.Verdict.Payload builds them as ad-hoc
+// maps (one dimension shape per analysis kind), the same reason
+// capabilitiesResult.ExtractionEngines is `any` rather than a fully
+// reflected type.
+type reviewDiffResult struct {
+	Service           string   `json:"service"`
+	ChangedFiles      []string `json:"changed_files"`
+	Dimensions        []any    `json:"dimensions"`
+	Summary           string   `json:"summary"`
+	FindingsPersisted bool     `json:"findings_persisted"`
+	VerdictOutcome    any      `json:"verdict_outcome,omitempty"`
+	TestImpact        any      `json:"test_impact"`
+}
+
+// safeDeleteCheckResult mirrors safe_delete_check's payload (safe_delete.go).
+type safeDeleteCheckResult struct {
+	Referents     []safeDeleteReferent `json:"referents"`
+	ReferentCount int                  `json:"referent_count"`
+	CheckedEdges  string               `json:"checked_edges"`
+	TestReferents []safeDeleteReferent `json:"test_referents,omitempty"`
+	IndexCommit   string               `json:"index_commit,omitempty"`
+}
+
 type capabilitiesResult struct {
 	Tools             []string `json:"tools"`
 	ActiveSurface     string   `json:"active_surface"`
@@ -277,25 +328,30 @@ type capabilitiesResult struct {
 // single source outputSchemaFor generates from. Adding a tool to
 // companionTools without a row here fails TestOutputSchemasMatchLiveResults.
 var agentResultTypes = map[string]reflect.Type{
-	"capabilities":     reflect.TypeOf(capabilitiesResult{}),
-	"discoveries":      reflect.TypeOf(discoveriesResult{}),
-	"entrypoints":      reflect.TypeOf(entrypointsResult{}),
-	"find_callers":     reflect.TypeOf(findCallersResult{}),
-	"find_symbol":      reflect.TypeOf(findSymbolResult{}),
-	"ingest":           reflect.TypeOf(ingestResult{}),
-	"list_services":    reflect.TypeOf(listServicesResult{}),
-	"memory_search":    reflect.TypeOf(memorySearchResult{}),
-	"obligations":      reflect.TypeOf(obligationsResult{}),
-	"outline":          reflect.TypeOf(outlineResult{}),
-	"pack_context":     reflect.TypeOf(packContextResult{}),
-	"query_symbols":    reflect.TypeOf(symbolQueryResult{}),
-	"read_source":      reflect.TypeOf(readSourceResult{}),
-	"references":       reflect.TypeOf(referencesResult{}),
-	"repo_map":         reflect.TypeOf(repoMapResult{}),
-	"search":           reflect.TypeOf(searchResult{}),
-	"staleness_report": reflect.TypeOf(stalenessReportResult{}),
-	"symbol_context":   reflect.TypeOf(symbolContextResult{}),
-	"verify_plan":      reflect.TypeOf(verifyPlanResult{}),
+	"blast_radius":      reflect.TypeOf(blastRadiusResult{}),
+	"capabilities":      reflect.TypeOf(capabilitiesResult{}),
+	"discoveries":       reflect.TypeOf(discoveriesResult{}),
+	"entrypoints":       reflect.TypeOf(entrypointsResult{}),
+	"find_callers":      reflect.TypeOf(findCallersResult{}),
+	"find_symbol":       reflect.TypeOf(findSymbolResult{}),
+	"ingest":            reflect.TypeOf(ingestResult{}),
+	"list_services":     reflect.TypeOf(listServicesResult{}),
+	"memory_search":     reflect.TypeOf(memorySearchResult{}),
+	"obligations":       reflect.TypeOf(obligationsResult{}),
+	"outline":           reflect.TypeOf(outlineResult{}),
+	"pack_context":      reflect.TypeOf(packContextResult{}),
+	"query_symbols":     reflect.TypeOf(symbolQueryResult{}),
+	"read_source":       reflect.TypeOf(readSourceResult{}),
+	"references":        reflect.TypeOf(referencesResult{}),
+	"rename_impact":     reflect.TypeOf(renameImpactResult{}),
+	"repo_map":          reflect.TypeOf(repoMapResult{}),
+	"review_diff":       reflect.TypeOf(reviewDiffResult{}),
+	"safe_delete_check": reflect.TypeOf(safeDeleteCheckResult{}),
+	"search":            reflect.TypeOf(searchResult{}),
+	"staleness_report":  reflect.TypeOf(stalenessReportResult{}),
+	"symbol_context":    reflect.TypeOf(symbolContextResult{}),
+	"test_impact":       reflect.TypeOf(testImpactResult{}),
+	"verify_plan":       reflect.TypeOf(verifyPlanResult{}),
 }
 
 // outputSchemaFor returns the JSON Schema (2025-11-25 `outputSchema` shape:

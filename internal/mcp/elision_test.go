@@ -229,7 +229,7 @@ var nonTruncatingTools = map[string]bool{
 	// notice" shape as brief/read_source below, not elisionFor's
 	// {count, of, ordering, how_to_get_more} object.
 	"discoveries":   true,
-	"rename_impact": true, "reachable": true,
+	"rename_impact": true, "reachable": true, "safe_delete_check": true,
 	"test_impact": true, "dead_code": true, "find_callees": true,
 	"entrypoints": true,
 	"complexity":  true, "god_object": true, "community": true,

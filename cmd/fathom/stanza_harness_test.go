@@ -10,7 +10,10 @@ import (
 // preSeamStanzaTemplate is cmd/fathom/init.go's fathomStanzaTemplate as
 // it stood before the harness seam, with the plain obligations paragraph
 // in place — the Claude Code stanza golden every wired repository carries
-// (HP-11: the Claude Code stanza stays byte-identical).
+// (HP-11: the Claude Code stanza stays byte-identical ACROSS RENDERING
+// PATHS — this golden and fathomStanzaTemplate move together on any
+// deliberate content change, most recently ADR-035 decision 1's
+// verb-first opening moves, docs/vision/29-verbs-not-lookups.md §3 wave A).
 const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"svc\". Route by\n" +
@@ -27,10 +30,10 @@ const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"Read files to *edit* them, not to discover them.\n" +
 	"\n" +
 	"Opening moves by task shape (first 2-3 calls, then edit):\n" +
-	"- debug/trace: find_symbol -> find_callers/references -> symbol_context\n" +
-	"- feature/change: repo_map -> pack_context(concern) -> references\n" +
-	"- review/verify: verify_plan -> obligations -> references on changed symbols\n" +
-	"- refactor: references -> outline -> symbol_context\n" +
+	"- debug/trace: blast_radius -> find_callers -> symbol_context\n" +
+	"- feature/change: repo_map -> pack_context(concern) -> test_impact\n" +
+	"- review/verify: review_diff -> obligations -> references\n" +
+	"- refactor/delete: rename_impact / safe_delete_check -> references\n" +
 	"\n" +
 	"Refresh the index via the `ingest` MCP tool (`{\"service\":\"svc\"}`) at\n" +
 	"session start and after each commit; it is hash-gated, so a clean repo\n" +

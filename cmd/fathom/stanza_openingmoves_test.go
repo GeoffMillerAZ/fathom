@@ -19,10 +19,10 @@ func TestStanzaCarriesOpeningMovesAndPrime(t *testing.T) {
 
 	for _, want := range []string{
 		"Opening moves by task shape (first 2-3 calls, then edit):",
-		"debug/trace: find_symbol -> find_callers/references -> symbol_context",
-		"feature/change: repo_map -> pack_context(concern) -> references",
-		"review/verify: verify_plan -> obligations -> references on changed symbols",
-		"refactor: references -> outline -> symbol_context",
+		"debug/trace: blast_radius -> find_callers -> symbol_context",
+		"feature/change: repo_map -> pack_context(concern) -> test_impact",
+		"review/verify: review_diff -> obligations -> references",
+		"refactor/delete: rename_impact / safe_delete_check -> references",
 		"fathom prime",
 	} {
 		if !strings.Contains(stanza, want) {

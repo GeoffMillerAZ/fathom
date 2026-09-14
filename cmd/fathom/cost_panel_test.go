@@ -80,7 +80,14 @@ const (
 	// the agent-surface diet (surface_diet_test.go), alongside `search`,
 	// carrying its own kill criterion: 41,733 bytes measured at 19 tools
 	// combined with RC-19/20/21/24.
-	agentSurfaceSchemaByteCeiling = 42500
+	// Re-pinned again for ADR-035 decision 1 (docs/vision/
+	// 29-verbs-not-lookups.md §3 wave A, plan VB-1/VB-2): `blast_radius`,
+	// `review_diff`, `test_impact` and `rename_impact` join the surface —
+	// the answers grep cannot give, never another lookup pitched on token
+	// savings — plus `safe_delete_check`, a genuinely new tool: 52,273
+	// bytes measured at 24 tools (TestAgentSurfaceDiet's own pin moved to
+	// 24 alongside it).
+	agentSurfaceSchemaByteCeiling = 53000
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -92,8 +99,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 19 {
-		t.Errorf("agent surface tools = %d, want 19 (TestAgentSurfaceDiet's own pin: 16 + memory_search AM-8 + search RC-24 + discoveries RC-27)", tools)
+	if tools != 24 {
+		t.Errorf("agent surface tools = %d, want 24 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+

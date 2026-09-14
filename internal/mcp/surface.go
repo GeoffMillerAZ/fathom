@@ -59,27 +59,40 @@ const SurfaceModules = "modules"
 // else. Kept deliberately small; the full registry stays one endpoint away
 // at POST /rpc. Changing membership is a contract change — update the pinned
 // test in surface_test.go and docs/mcp-tools.md together.
-var companionTools = map[string]bool{
-	"capabilities":     true,
-	"discoveries":      true,
-	"entrypoints":      true,
-	"find_callers":     true,
-	"find_symbol":      true,
-	"ingest":           true,
-	"list_services":    true,
-	"memory_search":    true,
-	"obligations":      true,
-	"outline":          true,
-	"pack_context":     true,
-	"query_symbols":    true,
-	"read_source":      true,
-	"references":       true,
-	"repo_map":         true,
-	"search":           true,
-	"staleness_report": true,
-	"symbol_context":   true,
-	"verify_plan":      true,
-}
+//
+// ADR-035 decision 1 (docs/vision/29-verbs-not-lookups.md §3 wave A, plan
+// VB-1/VB-2) adds the four verbs promotedVerbs() names plus
+// safe_delete_check, its read-only sibling: the agent surface leads with
+// the answers grep cannot give, not another lookup pitched on token
+// savings.
+var companionTools = func() map[string]bool {
+	m := map[string]bool{
+		"capabilities":     true,
+		"discoveries":      true,
+		"entrypoints":      true,
+		"find_callers":     true,
+		"find_symbol":      true,
+		"ingest":           true,
+		"list_services":    true,
+		"memory_search":    true,
+		"obligations":      true,
+		"outline":          true,
+		"pack_context":     true,
+		"query_symbols":    true,
+		"read_source":      true,
+		"references":       true,
+		"repo_map":         true,
+		"search":           true,
+		"staleness_report": true,
+		"symbol_context":   true,
+		"verify_plan":      true,
+	}
+	for _, v := range promotedVerbs() {
+		m[v.Name] = true
+	}
+	m["safe_delete_check"] = true
+	return m
+}()
 
 // hostedModulesTools is /rpc/modules' EXPLICIT allowlist while hosted mode
 // is active (Server.hostedModules, set by cmd/fathom's serve-http exactly

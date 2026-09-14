@@ -11,7 +11,7 @@ Fathom indexes the fleet (agentic-kit, app-kit, fathom; platform-kit once
 it's added) into `workspace/db/fleet.sqlite`, served by a **single always-on
 HTTP daemon** — a launchd agent (`fathom daemon status` names yours) running `serve-http`
 at `http://localhost:7575/rpc/agent`, registered user-scope as an **HTTP
-MCP**. `/rpc/agent` is the curated 19-tool agent surface
+MCP**. `/rpc/agent` is the curated 24-tool agent surface
 (`internal/mcp/surface.go`; `/rpc/companion` is a compatible alias; bare
 `/rpc` is the full, unscoped registry — see `docs/mcp-tools.md`). Every
 session shares one index and one
@@ -53,7 +53,15 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
 
 ## Working against the index
 
-1. **Index first.** Resolve where / what / who-calls via fathom
+1. **A verb first, a lookup second (ADR-035 decision 1, docs/vision/
+   29-verbs-not-lookups.md §3 wave A).** Name the verb whose answer grep
+   cannot give before reaching for a lookup: `blast_radius` (who
+   transitively breaks), `review_diff` (one cited verdict over a diff),
+   `test_impact` (which tests reach a symbol), `rename_impact` (every call
+   site a rename must touch) and its read-only sibling
+   `safe_delete_check` (can this symbol go, or a proven-zero receipt) lead
+   — never chase another lookup-cost claim, since the shapes grep already
+   answers stay grep's job. Resolve where / what / who-calls via fathom
    (`find_symbol`, `query_symbols`, `references`, `find_callers`,
    `symbol_context`, `outline`, `repo_map`, `pack_context`, `obligations`,
    `staleness_report`) for the questions only an index answers — where,
@@ -70,7 +78,7 @@ repaired by `fathom daemon install --force` followed by a `launchctl kickstart`.
    exact line range from the indexed corpus, `obligations` surfaces
    governing rules for a file before editing it. Read files to *edit*
    them, not to discover them. The index is fleet-wide, so cross-repo
-   questions are one query. (These are the core of the 19-tool `agent`
+   questions are one query. (These are the core of the 24-tool `agent`
    surface — see `docs/mcp-tools.md`; `memory_search` is **experimental**;
    `search` (RC-24) and `discoveries` (RC-27, its own kill criterion — see
    "Discoveries and routes" below) are the newest members.)

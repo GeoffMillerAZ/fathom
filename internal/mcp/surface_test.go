@@ -25,11 +25,16 @@ import (
 // AM-8 added memory_search — 17; RC-24, docs/plans/receipts.md, added
 // search, the grep-with-a-receipt tool — 18 total; RC-27, docs/vision/
 // 28-receipts.md §4, added discoveries, the hand-off receipt tool — 19
-// total, companionWantCount below).
+// total; ADR-035 decision 1 (docs/vision/29-verbs-not-lookups.md §3 wave
+// A, plan VB-1/VB-2) promotes blast_radius, review_diff, test_impact and
+// rename_impact — the answers grep cannot give, never another lookup
+// pitched on token savings — and adds safe_delete_check, rename_impact's
+// read-only sibling — 24 total, companionWantCount below).
 // Changing the surface is deliberate: update this list and docs/mcp-tools.md
 // together. Served identically at both /rpc/agent (the primary path) and
 // /rpc/companion (a compatible alias).
 var companionWant = []string{
+	"blast_radius",
 	"capabilities",
 	"discoveries",
 	"entrypoints",
@@ -44,10 +49,14 @@ var companionWant = []string{
 	"query_symbols",
 	"read_source",
 	"references",
+	"rename_impact",
 	"repo_map",
+	"review_diff",
+	"safe_delete_check",
 	"search",
 	"staleness_report",
 	"symbol_context",
+	"test_impact",
 	"verify_plan",
 }
 
@@ -100,7 +109,7 @@ func toolNames(t *testing.T, resp map[string]any) []string {
 // a checked fact; docs/mcp-tools.md, docs/CLAUDE.md, internal/CLAUDE.md and
 // every other prose mention are asserted equal to companionWant's own
 // length here, never independently counted by hand.
-const companionWantCount = 19
+const companionWantCount = 24
 
 func TestCompanionSurfaceToolsList(t *testing.T) {
 	if len(companionWant) != companionWantCount {
@@ -401,8 +410,12 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 		t.Fatalf("unscoped prompts/list = %d prompts, want 4", len(all))
 	}
 
-	// Companion surface: every canned prompt references gated tools, so none
-	// are advertised and prompts/get refuses them.
+	// Companion surface: review_change is the one canned prompt whose
+	// ONLY referenced tool (review_diff) ADR-035 decision 1 promoted onto
+	// the surface, so it alone is advertised; the other three still
+	// reference at least one gated tool (investigate_incident needs
+	// complexity/community, onboard_service needs god_object,
+	// plan_requirement needs dead_code) and stay hidden.
 	ctx := mcp.WithRequestScope(context.Background(), "companion", true)
 	scoped := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 34, Method: "prompts/list", Params: map[string]any{},
@@ -411,8 +424,11 @@ func TestPromptsScopedOnSurface(t *testing.T) {
 		t.Fatalf("prompts/list on companion: %v", scoped["error"])
 	}
 	visible := scoped["result"].(map[string]any)["prompts"].([]any)
-	if len(visible) != 0 {
-		t.Fatalf("companion prompts/list = %d prompts, want 0 (all reference gated tools): %v", len(visible), visible)
+	if len(visible) != 1 {
+		t.Fatalf("companion prompts/list = %d prompts, want 1 (review_change only): %v", len(visible), visible)
+	}
+	if name := visible[0].(map[string]any)["name"]; name != "review_change" {
+		t.Fatalf("companion prompts/list = %v, want [review_change]", visible)
 	}
 	got := scopedRoundtrip(t, srv, ctx, request{
 		JSONRPC: "2.0", ID: 35, Method: "prompts/get",
