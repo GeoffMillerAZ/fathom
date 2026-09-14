@@ -81,6 +81,43 @@ func TestTokenCounts_NegatedClauseDoesNotCount(t *testing.T) {
 	}
 }
 
+// TestOracleAnswerMatches_BareNotButFailsOldFailsNewPasses is the
+// fix-first review's own oracle-level proof: "not ADR-010 but ADR-014"
+// must FAIL an oracle demanding ADR-010 (the bare "not" negationMarkers'
+// fixed phrases alone missed) and PASS one demanding ADR-014 (the
+// correction after "but" is not itself negated).
+func TestOracleAnswerMatches_BareNotButFailsOldFailsNewPasses(t *testing.T) {
+	answer := "Consider not ADR-010 but ADR-014 as the distinctive identifier."
+	if oracleAnswerMatches(answer, []string{"ADR-010"}, nil) {
+		t.Error("expected FAIL for gold ADR-010 — it is what the answer explicitly rejects")
+	}
+	if !oracleAnswerMatches(answer, []string{"ADR-014"}, nil) {
+		t.Error("expected PASS for gold ADR-014 — it is what the answer concludes, after \"but\"")
+	}
+}
+
+// TestOracleAnswerMatches_BareNever mirrors the same proof for "never".
+func TestOracleAnswerMatches_BareNever(t *testing.T) {
+	answer := "Typed call edges never core.Edge, always Node."
+	if oracleAnswerMatches(answer, []string{"core.Edge"}, nil) {
+		t.Error("expected FAIL for gold core.Edge — a bare \"never\" rejects it")
+	}
+}
+
+// TestOracleAnswerMatches_NotOnlyButAlsoBothPass is the review's third
+// required case at the oracle layer: "not only X but also Y" is a
+// correlative idiom meaning BOTH — an oracle demanding either alone must
+// PASS.
+func TestOracleAnswerMatches_NotOnlyButAlsoBothPass(t *testing.T) {
+	answer := "The rule covers not only ADR-010 but also ADR-014."
+	if !oracleAnswerMatches(answer, []string{"ADR-010"}, nil) {
+		t.Error("expected PASS for gold ADR-010 — \"not only\" is not a rejection")
+	}
+	if !oracleAnswerMatches(answer, []string{"ADR-014"}, nil) {
+		t.Error("expected PASS for gold ADR-014")
+	}
+}
+
 // TestTokenCounts_NonNegatedOccurrenceCounts is the converse — an
 // ordinary assertive mention counts.
 func TestTokenCounts_NonNegatedOccurrenceCounts(t *testing.T) {
