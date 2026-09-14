@@ -759,12 +759,11 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		Sessions: sessions,
 		Oracle:   oracle,
 		Readings: readings,
-		// An untouched tree cannot pass (guards pilot 1) — UNLESS the
-		// task's oracle is answer-only (SB-32 lookups-vs.json),
-		// localization-only (VB-25, the LCA bug-localization track), or
-		// refusal-aware (O57 finding 2) — in each of these three shapes,
-		// nothing was ever necessarily meant to be edited.
-		Success:                 oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.RefusalAware(cp.task) || scenariobench.AnyEdits(sessions)),
+		// Fix-first review: the any-edits floor is now the ONE SuccessFor
+		// formula (oracle.go) every Success-setting caller shares — runOneCell
+		// here, runExternalCell (external_corpus.go) and cmdScore's rescoring
+		// (below) — see its own doc comment for why.
+		Success:                 scenariobench.SuccessFor(cp.task, oracle, sessions),
 		CellKey:                 cp.key,
 		CorpusSHA256:            cp.inv.CorpusSHA256,
 		ModelID:                 cp.inv.ModelID,
@@ -1150,6 +1149,17 @@ func cmdScore(args []string) int {
 	if compileCost != nil {
 		cell.Readings.TotalCostUSD += compileCostUSD
 	}
+	// Success (fix-first review) IS always recomputed here, unlike
+	// GoldSourceTool just below: the bare any-edits floor, oracle.Passed
+	// && AnyEdits(sessions), needs no task at all, and recomputing it is
+	// never a "false regression" the way silently resetting
+	// GoldSourceTool to not-measured would be. Only SuccessFor's three
+	// exemptions (AnswerOnly/LocalizationOnly/RefusalAware) need the
+	// task's own oracle shape, which -corpus is what supplies — without
+	// it (or without a matching task id), this still recomputes, just
+	// via the SAME bare formula cmdScore always used, honestly narrower
+	// (no exemptions applied) rather than a stale preserved value.
+	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 	if *corpusPath == "" {
 		fmt.Fprintln(os.Stderr, "scenariobench score: gold_source_tool: not recomputed (no -corpus)")
 		cell.Readings.GoldSourceTool = goldSourceTool
@@ -1168,11 +1178,20 @@ func cmdScore(args []string) int {
 			}
 		}
 		if !found {
-			fmt.Fprintf(os.Stderr, "scenariobench score: task %q not found in %s — gold_source_tool not recomputed\n", cell.TaskID, *corpusPath)
+			fmt.Fprintf(os.Stderr, "scenariobench score: task %q not found in %s — gold_source_tool not recomputed, success recomputed WITHOUT its oracle-shape exemptions\n", cell.TaskID, *corpusPath)
 			cell.Readings.GoldSourceTool = goldSourceTool
 			cell.Readings.GoldSourceEvidence = goldSourceEvidence
 		} else {
 			cell.Readings.GoldSourceTool, cell.Readings.GoldSourceEvidence = scenariobench.GoldSourceTool(cell.Sessions, task)
+			// Fix-first review: with task's own oracle shape known, use
+			// the SAME SuccessFor (oracle.go) runOneCell and
+			// runExternalCell use, so an answer-only, localization-only
+			// or refusal-aware cell (none of which ever necessarily
+			// edited anything, by design) is not scored FAIL purely for
+			// having no edits — the bug this review found (runExternalCell
+			// carried no exemptions at all; cmdScore's bare formula above
+			// carries none either, until this line overrides it).
+			cell.Success = scenariobench.SuccessFor(task, cell.Oracle, cell.Sessions)
 		}
 	}
 	cell.Readings.SurfaceCalls = scenariobench.SurfaceCallCount(cell.Readings.ToolCalls, cell.Surface)
@@ -1180,7 +1199,6 @@ func cmdScore(args []string) int {
 		fmt.Fprintf(os.Stderr, "scenariobench score: %s/%s/t%d: surface %q unused — zero %s* tool calls across the cell\n",
 			cell.TaskID, cell.Arm, cell.Trial, cell.Surface, scenariobench.SurfaceToolPrefix(cell.Surface))
 	}
-	cell.Success = cell.Oracle.Passed && scenariobench.AnyEdits(cell.Sessions)
 	rescoreSDDReadings(&cell)
 
 	dest := *out

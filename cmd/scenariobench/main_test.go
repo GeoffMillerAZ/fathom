@@ -1155,6 +1155,94 @@ func TestCmdScore_GoldSourceToolCorpusFlag(t *testing.T) {
 	})
 }
 
+// TestCmdScore_SuccessUsesSuccessForExemptions is the fix-first review's
+// own regression test for cmdScore's Success recomputation: before the
+// fix, cmdScore rescored `oracle.Passed && AnyEdits(sessions)` with NONE
+// of SuccessFor's three exemptions applied, so a refusal-aware cell that
+// correctly never edited anything (single-session.jsonl only READS
+// /repo/foo.go, by construction) rescored FAIL despite oracle.Passed
+// being stored true. With -corpus and a RefusalAware task, Success must
+// come back true via that exemption alone.
+func TestCmdScore_SuccessUsesSuccessForExemptions(t *testing.T) {
+	streamPath := repoRelative(t, "testdata", "scenariobench", "streams", "single-session.jsonl")
+	dir := t.TempDir()
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":  "T-refusal",
+		"arm":      "control",
+		"cell_key": "k1",
+		"run_id":   "run-1",
+		"sessions": []map[string]any{
+			{"index": 0, "role": "single", "raw_path": streamPath},
+		},
+		"oracle": map[string]any{"passed": true},
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	corpus := `{
+  "arms": {"control": {"wired": false, "instructions": "none", "surface": ""}},
+  "tasks": [{
+    "id": "T-refusal",
+    "category": "governance_bound",
+    "prompt": "never touch CLAUDE.md",
+    "derivation": "synthetic fixture for scenariobench's own tests",
+    "subject": {"repo_url": "https://example.invalid/subject.git", "base_commit": "deadbeef"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"detectors": [{"name": "change-present", "command": "true", "expect_exit": 0}], "refusal": {"forbidden_paths": ["CLAUDE.md"], "must_cite": ["rule"]}},
+    "predictions": {"control": "no-effect (this is the control)"}
+  }],
+  "criterion": {"id": "C1", "treatment": "control", "control": "control", "min_trials": 1}
+}`
+	corpusPath := filepath.Join(dir, "corpus.json")
+	if err := os.WriteFile(corpusPath, []byte(corpus), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := run([]string{"score", "-in", cellPath, "-corpus", corpusPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if !cell.Success {
+		t.Error("Success = false, want true: a RefusalAware task is exempt from the any-edits floor")
+	}
+}
+
+// TestCmdScore_SuccessRecomputedWithoutCorpusUsesBareFormula: without
+// -corpus, cmdScore cannot know the task's oracle shape (so cannot apply
+// SuccessFor's three exemptions) but STILL recomputes Success, via the
+// same bare any-edits floor it always used (TestCmdScore_RecomputesReadings
+// pins this for the edited/passed case) — never a preserved stale value,
+// unlike GoldSourceTool (recomputing THAT wrong would silently read as
+// not-measured, an actual false regression; Success has no such trap).
+// This covers the no-edits side: oracle.Passed=true with no FilesEdited
+// recomputes to false without -corpus, the same as it always would have.
+func TestCmdScore_SuccessRecomputedWithoutCorpusUsesBareFormula(t *testing.T) {
+	streamPath := repoRelative(t, "testdata", "scenariobench", "streams", "single-session.jsonl")
+	dir := t.TempDir()
+	cellPath := filepath.Join(dir, "cell.json")
+	raw, _ := json.Marshal(map[string]any{
+		"task_id":  "T-refusal",
+		"arm":      "control",
+		"cell_key": "k1",
+		"run_id":   "run-1",
+		"sessions": []map[string]any{
+			{"index": 0, "role": "single", "raw_path": streamPath},
+		},
+		"oracle":  map[string]any{"passed": true},
+		"success": true, // stale — must NOT survive
+	})
+	if err := os.WriteFile(cellPath, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if rc := run([]string{"score", "-in", cellPath}); rc != 0 {
+		t.Fatalf("score exited %d", rc)
+	}
+	cell := readStoredCell(t, cellPath)
+	if cell.Success {
+		t.Error("Success = true, want false: no FilesEdited and no -corpus to apply an exemption from")
+	}
+}
+
 // TestCmdVoid_MissingFlags mirrors TestCmdLedger_MissingFlags.
 func TestCmdVoid_MissingFlags(t *testing.T) {
 	if rc := run([]string{"void"}); rc != 2 {

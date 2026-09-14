@@ -493,3 +493,45 @@ func TestAnswerOnly(t *testing.T) {
 		})
 	}
 }
+
+// TestSuccessFor is the fix-first review's direct unit test of the ONE
+// any-edits-floor formula runOneCell, runExternalCell and cmdScore all
+// now share: oracle.Passed alone is never enough for a change task with
+// no edits, UNLESS the task's oracle is one of the three exempt shapes
+// (AnswerOnly, LocalizationOnly, RefusalAware) — and oracle.Passed=false
+// always loses regardless of shape.
+func TestSuccessFor(t *testing.T) {
+	changeTask := Task{Oracle: Oracle{FailToPass: []string{"TestX"}}}
+	answerOnlyTask := Task{Oracle: Oracle{AnswerAllOf: []string{"tok"}}}
+	localizationOnlyTask := Task{Oracle: Oracle{Localization: true}}
+	refusalTask := Task{Oracle: Oracle{
+		FailToPass: []string{"TestX"}, // a refusal-aware task still carries a tree oracle
+		Refusal:    &Refusal{ForbiddenPaths: []string{"CLAUDE.md"}, MustCite: []string{"rule"}},
+	}}
+	edited := []SessionResult{{FilesEdited: []string{"foo.go"}}}
+	unedited := []SessionResult{{FinalAnswer: "done, nothing to change"}}
+
+	cases := []struct {
+		name     string
+		task     Task
+		passed   bool
+		sessions []SessionResult
+		want     bool
+	}{
+		{"change task, edited, passed", changeTask, true, edited, true},
+		{"change task, unedited, passed: any-edits floor fails it", changeTask, true, unedited, false},
+		{"change task, edited, not passed", changeTask, false, edited, false},
+		{"answer-only, unedited, passed: exempt", answerOnlyTask, true, unedited, true},
+		{"answer-only, unedited, not passed", answerOnlyTask, false, unedited, false},
+		{"localization-only, unedited, passed: exempt", localizationOnlyTask, true, unedited, true},
+		{"refusal-aware, unedited, passed: exempt (O57 finding 2)", refusalTask, true, unedited, true},
+		{"refusal-aware, unedited, not passed", refusalTask, false, unedited, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := SuccessFor(c.task, OracleResult{Passed: c.passed}, c.sessions); got != c.want {
+				t.Errorf("SuccessFor(...) = %v, want %v", got, c.want)
+			}
+		})
+	}
+}

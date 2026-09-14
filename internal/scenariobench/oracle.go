@@ -178,6 +178,24 @@ func AnswerOnly(task Task) bool {
 		len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
 }
 
+// SuccessFor is the ONE any-edits-floor formula every caller that sets a
+// CellResult's Success must use — runOneCell (cmd/scenariobench/main.go),
+// runExternalCell (external_corpus.go) and cmdScore's rescoring
+// (cmd/scenariobench/main.go) all called their own copy before the
+// fix-first review that merged this: runExternalCell's copy lacked the
+// RefusalAware exemption (O57 finding 2), and cmdScore's carried none of
+// the three at all, so a refusal-aware or answer/localization-only task
+// rescored via `scenariobench score` (no edit, by design) came back
+// FAIL. oracle.Passed alone is never enough — an untouched tree cannot
+// pass a change task (guards pilot 1) — UNLESS task's oracle is one of
+// the three shapes where nothing was ever necessarily meant to be
+// edited: answer-only (SB-32 lookups-vs.json), localization-only (VB-25),
+// or refusal-aware (O57 finding 2, a correct refusal never edits
+// anything by design).
+func SuccessFor(task Task, oracle OracleResult, sessions []SessionResult) bool {
+	return oracle.Passed && (AnswerOnly(task) || LocalizationOnly(task) || RefusalAware(task) || AnyEdits(sessions))
+}
+
 // lastFinalAnswer is the LAST session's FinalAnswer, exactly as the
 // answer-only oracle is specified: not the first non-empty one, the last
 // session's, empty if there were none.

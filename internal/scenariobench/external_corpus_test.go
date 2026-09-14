@@ -250,3 +250,55 @@ func TestRunExternalCorpus_DryMode_LedgerRow(t *testing.T) {
 		}
 	}
 }
+
+// TestRunExternalCell_SuccessAnswerOnlyExemption is the fix-first
+// review's own regression test for runExternalCell's Success wiring:
+// before the fix it computed Success from its own inlined copy of the
+// any-edits floor (missing the RefusalAware exemption runOneCell's copy
+// had, O57 finding 2) instead of the ONE shared SuccessFor. This proves
+// that wiring along the REAL path (PrepareSubject + RunSessions +
+// RunOracle) with an answer-only task (no edits ever expected, by
+// design) — SuccessFor's RefusalAware exemption specifically is covered
+// directly and exhaustively by TestSuccessFor (oracle_test.go), since
+// exercising ScoreRefusal here would need a refusal-aware oracle's
+// detector/git-diff step, which runs against a freshly `checkoutCommitIntoWorktree`d
+// worktree whose own history does not contain task.Subject.BaseCommit at
+// all (confirmed separately, PRE-EXISTING and unrelated to this review —
+// see the report) — not something this test should paper over by
+// avoiding forbidden_paths/detectors, since a real refusal-aware corpus
+// task always carries both.
+func TestRunExternalCell_SuccessAnswerOnlyExemption(t *testing.T) {
+	repoPath, commit := gitFixtureRepo(t)
+	task := Task{
+		ID:         "answer-only-external-1",
+		Category:   CategoryOrientation,
+		Prompt:     "what is the answer?",
+		Subject:    Subject{RepoURL: repoPath, BaseCommit: commit},
+		Sessions:   Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 5},
+		Derivation: "test fixture for TestRunExternalCell_SuccessAnswerOnlyExemption",
+		Oracle: Oracle{
+			// answer-token.jsonl's final answer reads "The answer is
+			// fusion.New and also golden-test appear here."
+			AnswerAllOf: []string{"golden-test"},
+		},
+	}
+	arm := Arm{Wired: false, Instructions: "plain"}
+	harness := &FakeHarness{StreamsDir: streamsDir, Default: "answer-token.jsonl"}
+	root := t.TempDir()
+	inv := CellInvariants{TaskID: task.ID, Arm: "control", ModelID: "fake-model", HarnessVersion: "fake-1"}
+	key := ScenarioCellKey(inv)
+
+	cell, err := runExternalCell(context.Background(), root, task, "control", arm, harness, filepath.Join(root, "raw"), "fake", "run-1", 1, inv, key)
+	if err != nil {
+		t.Fatalf("runExternalCell: %v", err)
+	}
+	if !cell.Oracle.Passed {
+		t.Fatalf("expected oracle.Passed=true (the answer cites the token), got %+v", cell.Oracle)
+	}
+	if AnyEdits(cell.Sessions) {
+		t.Fatalf("expected no edits at all in this fixture, got FilesEdited on %+v", cell.Sessions)
+	}
+	if !cell.Success {
+		t.Error("Success = false, want true: an AnswerOnly task is exempt from the any-edits floor, via the SAME SuccessFor runOneCell and cmdScore now share")
+	}
+}

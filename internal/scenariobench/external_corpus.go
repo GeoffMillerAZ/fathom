@@ -261,10 +261,12 @@ func runExternalCell(ctx context.Context, root string, task Task, armName string
 	readings.GoldSourceTool, readings.GoldSourceEvidence = GoldSourceTool(sessions, task)
 	readings.Localization = oracle.Localization
 
-	// An untouched tree cannot pass a change task — but a Localization
-	// (or AnswerOnly) task never asked for an edit in the first place;
-	// mirrors cmd/scenariobench's own runOneCell Success formula.
-	success := oracle.Passed && (AnswerOnly(task) || LocalizationOnly(task) || AnyEdits(sessions))
+	// Fix-first review: the any-edits floor is the ONE SuccessFor formula
+	// (oracle.go) every Success-setting caller shares — this used to carry
+	// its own copy, missing the RefusalAware exemption runOneCell's copy
+	// had (O57 finding 2), scoring a correct refusal on an externally-run
+	// cell FAIL for never editing anything, by design.
+	success := SuccessFor(task, oracle, sessions)
 
 	return CellResult{
 		TaskID:         task.ID,
