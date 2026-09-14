@@ -115,6 +115,20 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			payload["verdict_outcome"] = vo
 		}
 		payload["test_impact"] = reviewTestGap(in).Payload()
+
+		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+		// §3 wave E): the typed/heuristic mix behind the impact dimension's
+		// blast radius (the edge-derived facts review_diff composes) — the
+		// same by_depth tally blast_radius itself reports, over the SAME
+		// nodes/changed_files/typed edges the impact dimension already
+		// resolved — plus the daemon's watermark for the service.
+		// Governance dimensions (obligations, arch_conformance, spec
+		// coverage, test coverage) are not edge-derived and are outside
+		// this tally.
+		payload["resolution"] = resolutionFromBlastBuckets(blastRadiusByDepth(in.Nodes, in.ChangedFiles, in.TypedEdges))
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			payload["index_commit"] = ic
+		}
 		return payload, nil
 	})
 }

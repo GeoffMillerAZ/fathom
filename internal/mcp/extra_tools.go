@@ -144,7 +144,7 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 		// what the verify engine's reachability reads.
 		res := blastRadiusResolved(navs, p.ChangedFiles, p.IncludeHeuristic,
 			intOr(p.MaxDepth, defaultBlastDepth), intOr(p.MaxSymbols, defaultBlastSymbols))
-		return map[string]any{
+		result := map[string]any{
 			"symbols":       stringsToAny(res.Symbols),
 			"tests":         stringsToAny(res.Tests),
 			"files":         stringsToAny(res.Files),
@@ -158,7 +158,14 @@ func registerBlastRadius(s *Server, backend QueryInterface) {
 			// confidence of the edge that pulled it in — under the SAME
 			// graph and bounds the listing used (BP-27).
 			"by_depth": res.Buckets,
-		}, nil
+			// resolution (VB-19): the same by_depth counts, summed to one
+			// envelope-level typed/heuristic mix.
+			"resolution": resolutionFromBlastBuckets(res.Buckets),
+		}
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
+		}
+		return result, nil
 	})
 }
 

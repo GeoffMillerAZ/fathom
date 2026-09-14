@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/complexity"
 	"github.com/geoffmilleraz/fathom/internal/analysis/godobject"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // registerNavTools is called from registerTools (tools.go). fleet may be
@@ -151,6 +152,41 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		}
 		if line := elisionLine(callersElided+calleesElided, "depth"); line != "" {
 			result["elision"] = line
+		}
+
+		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
+		// §3 wave E): the typed/heuristic mix behind exactly the "callers"
+		// and "callees" this response returned (post-budget), tallied from
+		// a graph augmented with typed edges (best-effort — a non-Go
+		// service or one with no typed edges tallies every row heuristic).
+		{
+			var mix resolutionMix
+			var tg *callgraph.Graph
+			if typed, tErr := backend.TypedEdges(ctx, p.Service); tErr == nil && len(typed) > 0 {
+				tg = callgraph.Build(nodes)
+				callgraph.AddTypedEdges(tg, typed)
+			} else {
+				tg = g
+			}
+			kindOf := func(details []callgraph.EdgeInfo) map[string]core.EdgeKind {
+				m := make(map[string]core.EdgeKind, len(details))
+				for _, d := range details {
+					m[d.Key] = d.Kind
+				}
+				return m
+			}
+			callerKinds := kindOf(callgraph.CallersDetail(tg, p.Symbol))
+			calleeKinds := kindOf(callgraph.CalleesDetail(tg, p.Symbol))
+			for _, k := range callers {
+				mix.addKind(callerKinds[k])
+			}
+			for _, k := range callees {
+				mix.addKind(calleeKinds[k])
+			}
+			result["resolution"] = mix
+		}
+		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
+			result["index_commit"] = ic
 		}
 
 		// Inline definition snippet (T5-6): additive, honest-absence field —

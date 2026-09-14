@@ -498,6 +498,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 				"edge_filter":    map[bool]string{true: "all", false: "resolved"}[p.IncludeHeuristic],
 				"truncated":      true,
 				"by_depth":       []any{},
+				"resolution":     resolutionMix{},
 				"exact":          exact,
 				"scope_required": true,
 				"top_packages":   sum.TopPackages,
@@ -556,6 +557,7 @@ func registerReferences(s *Server, backend QueryInterface) {
 			wireOccs = append(wireOccs, renderReferenceOccurrence(o, !svcUniform))
 		}
 
+		byDepth := withDepthBuckets(infos)
 		resp := map[string]any{
 			"query":       p.Query,
 			"definitions": defs,
@@ -565,9 +567,20 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// exact-name definitions only, "all" = plus substring hits.
 			"edge_filter": map[bool]string{true: "all", false: "resolved"}[p.IncludeHeuristic],
 			"truncated":   truncated || el != nil,
-			"by_depth":    withDepthBuckets(infos),
+			"by_depth":    byDepth,
+			// resolution (VB-19): the same by_depth counts, summed to one
+			// envelope-level typed/heuristic mix.
+			"resolution": resolutionFromDepthBuckets(byDepth),
 			// SB-45: whether occurrences answered from the typed pass only.
 			"exact": exact,
+		}
+		// index_commit (VB-19): lifted only when every SCANNED service (not
+		// just the ones with a surviving definition/occurrence) resolves to
+		// the same commit — references is fleet-wide, so a mixed-commit
+		// scan has no single honest watermark to report, mirroring this
+		// tool's own occurrence_service uniform-lift discipline above.
+		if ic, uniform := uniformIndexCommit(ctx, backend, svcs); uniform && ic != "" {
+			resp["index_commit"] = ic
 		}
 		if exact {
 			// exact_available is false when at least one scanned service
