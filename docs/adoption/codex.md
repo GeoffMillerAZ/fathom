@@ -337,6 +337,7 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `cwd-prime` | `absent` | verified — Codex documents no cwd-change or directory-added event |
 | `setup-doctor` | `absent` | verified — Codex documents no setup event — run `fathom doctor --brief` by hand after wiring |
 | `prompt-obligations` | `absent` | verified — Codex documents a UserPromptSubmit-shaped event but fathom has not ported prompt-hook to it yet — `fathom prime` covers identity/freshness, and `obligations` is a call away |
+| `obligations-post-shell` | `absent` | verified — not ported to Codex yet — PostToolUse on apply_patch answers only the patch's own file |
 <!-- fathom:harness-capabilities codex end -->
 
 `subagent-prime`'s ≤600 B primer now carries an addition (RC-28, docs/vision/

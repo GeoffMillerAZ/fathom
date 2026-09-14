@@ -20,12 +20,10 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
-	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 const (
@@ -132,69 +130,33 @@ func renderPromptObligations(url, projDir, prompt, sessionID string) (string, pr
 	if len(resolved) == 0 {
 		return "", promptObligationsMeta{}, false
 	}
-
-	type ruleKey struct{ rule, src string }
-	seen := map[ruleKey]bool{}
-	var rules []semantic.Obligation
-	displaced := 0
-	stale := false
-	filesQueried := 0
-	var namedFiles []string
-	for _, r := range resolved {
-		obl, indexStale, ok := fetchObligations(url, r.service, r.file, 0, promptHookTimeout)
-		if !ok {
-			emitBeat("prompt-hook", "error", firingMeta(map[string]string{"target": r.file}, sessionID, ""))
-			continue // one failed candidate must not silence the others (§5.3: silent on error, not silent on partial success)
-		}
-		filesQueried++
-		if len(obl.Rules) > 0 {
-			namedFiles = append(namedFiles, r.file)
-		}
-		stale = stale || indexStale
-		displaced += obl.Displaced
-		for _, rule := range obl.Rules {
-			k := ruleKey{rule.Rule, rule.Src}
-			if seen[k] {
-				continue
-			}
-			seen[k] = true
-			rules = append(rules, rule)
-		}
+	svc := resolved[0].service // resolvePromptCandidates resolves ONE service per call
+	files := make([]string, len(resolved))
+	for i, r := range resolved {
+		files[i] = r.file
 	}
-	if len(rules) == 0 {
+	filesQueried := 0
+	m := mergeObligationsAcrossFiles(url, svc, files, promptHookTimeout, func(f string) {
+		emitBeat("prompt-hook", "error", firingMeta(map[string]string{"target": f}, sessionID, ""))
+	})
+	filesQueried = len(files)
+	if len(m.rules) == 0 {
 		emitBeat("prompt-hook", "answered", firingMeta(map[string]string{"emitted": "false"}, sessionID, ""))
 		return "", promptObligationsMeta{}, false
 	}
-	// Deterministic before the cap: fetchObligations already orders each
-	// FILE's own rules (BP-17/BP-18), but the merge across several files
-	// interleaves them in resolution order — sort the union the same way
-	// a single-file answer is ordered (fresh first, rule text breaks
-	// ties) so which rules the cap keeps does not depend on which
-	// candidate happened to resolve first.
-	sort.SliceStable(rules, func(i, j int) bool {
-		fi, fj := rules[i].Status == "", rules[j].Status == ""
-		if fi != fj {
-			return fi // fresh (empty status) before flagged
-		}
-		return rules[i].Rule < rules[j].Rule
-	})
-	if len(rules) > semantic.MaxObligations {
-		displaced += len(rules) - semantic.MaxObligations
-		rules = rules[:semantic.MaxObligations]
-	}
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "⚖️ fathom obligations — this prompt names %s:", promptNamesLabel(namedFiles))
-	for _, r := range rules {
+	fmt.Fprintf(&sb, "⚖️ fathom obligations — this prompt names %s:", promptNamesLabel(m.namedFiles))
+	for _, r := range m.rules {
 		writeRuleBullet(&sb, r)
 	}
-	if displaced > 0 {
-		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", displaced)
+	if m.displaced > 0 {
+		fmt.Fprintf(&sb, "\n⚠️ %d more eligible rule(s) not shown (cap)", m.displaced)
 	}
-	if stale {
+	if m.stale {
 		sb.WriteString("\n⚠️ index is behind your working tree for one of these paths")
 	}
-	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: filesQueried, displaced: displaced}, true
+	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: filesQueried, displaced: m.displaced}, true
 }
 
 // promptNamesLabel renders the resolved files a prompt's rules actually

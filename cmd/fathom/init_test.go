@@ -267,16 +267,31 @@ func TestMergeHookSettings_PreservesExisting(t *testing.T) {
 	}
 
 	// The pre-existing PostToolUse group (same matcher) must gain the fathom
-	// hook alongside the unrelated one — never split into a duplicate sibling.
+	// hook alongside the unrelated one — never split into a duplicate
+	// sibling. O57 item 4/5(b) added a SECOND PostToolUse matcher group
+	// (Bash, the write-detecting edit-hook), so there are now two groups —
+	// exactly the shape PreToolUse's three matcher groups already prove
+	// ensureHookEntry's per-group marker scoping handles correctly.
 	hooksObj, _ := got["hooks"].(map[string]any)
 	ptu, _ := hooksObj["PostToolUse"].([]any)
-	if len(ptu) != 1 {
-		t.Fatalf("PostToolUse groups = %d, want 1 (merged into the existing matcher group): %v", len(ptu), ptu)
+	if len(ptu) != 2 {
+		t.Fatalf("PostToolUse groups = %d, want 2 (Edit|Write|MultiEdit merged into the existing matcher group, Bash a new sibling): %v", len(ptu), ptu)
 	}
 	group, _ := ptu[0].(map[string]any)
+	if group["matcher"] != "Edit|Write|MultiEdit" {
+		t.Fatalf("PostToolUse group 0 matcher = %v, want Edit|Write|MultiEdit", group["matcher"])
+	}
 	hooks, _ := group["hooks"].([]any)
 	if len(hooks) != 2 {
-		t.Fatalf("PostToolUse hooks = %d, want 2 (existing + fathom): %v", len(hooks), hooks)
+		t.Fatalf("PostToolUse Edit|Write|MultiEdit hooks = %d, want 2 (existing + fathom): %v", len(hooks), hooks)
+	}
+	bashGroup, _ := ptu[1].(map[string]any)
+	if bashGroup["matcher"] != "Bash" {
+		t.Fatalf("PostToolUse group 1 matcher = %v, want Bash", bashGroup["matcher"])
+	}
+	bashHooks, _ := bashGroup["hooks"].([]any)
+	if len(bashHooks) != 1 {
+		t.Fatalf("PostToolUse Bash hooks = %d, want 1 (fathom only): %v", len(bashHooks), bashHooks)
 	}
 
 	// Re-running against the merged output is a byte-identical no-op.
@@ -336,8 +351,18 @@ func TestMergeHookSettings_SkipsUserScopeWiring(t *testing.T) {
 		if _, ok := hooksObj["Stop"]; ok {
 			t.Errorf("Stop must not be written at project scope — already wired at user scope: %v", hooksObj)
 		}
-		if ptu, ok := hooksObj["PostToolUse"]; ok && len(ptu.([]any)) != 0 {
-			t.Errorf("PostToolUse (the post edit-hook) must not be written at project scope — already wired at user scope: %v", ptu)
+		// The Edit|Write|MultiEdit group is already wired at user scope and
+		// must not be duplicated at project scope; the Bash group (O57 item
+		// 4/5b) is genuinely missing from the user-scope fixture above (only
+		// the pre-phase-O three are wired there) and so DOES get written —
+		// its own matcher, not a dupe of Edit|Write|MultiEdit's.
+		ptu, _ := hooksObj["PostToolUse"].([]any)
+		if len(ptu) != 1 {
+			t.Fatalf("PostToolUse groups = %d, want 1 (only Bash, genuinely missing at user scope): %v", len(ptu), ptu)
+		}
+		group, _ := ptu[0].(map[string]any)
+		if group["matcher"] != "Bash" {
+			t.Errorf("PostToolUse group matcher = %v, want Bash (Edit|Write|MultiEdit is already wired at user scope)", group["matcher"])
 		}
 		pre, _ := hooksObj["PreToolUse"].([]any)
 		if len(pre) != 3 {

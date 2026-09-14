@@ -87,6 +87,13 @@ const (
 	// after it — edit-hook can only answer for a file once something has
 	// already been written to it).
 	CapPromptObligations Capability = "prompt-obligations"
+	// CapObligationsPostShell is CapObligationsPostEdit's Bash sibling
+	// (mirroring CapGuardPreEdit/CapGuardPreShell's existing split): a
+	// Bash command that WRITES a file (heredoc/redirection, `sed -i`,
+	// `tee`, `cp`/`mv` into the tree, `git apply`) bypasses the
+	// Edit|Write|MultiEdit matcher entirely, so it never got obligations
+	// at all — O57 item 4/5(b).
+	CapObligationsPostShell Capability = "obligations-post-shell"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -99,7 +106,7 @@ var Capabilities = []Capability{
 	// Wave 3, appended so every existing table row keeps its position.
 	CapSubagentPrime, CapToolFailureAdvice, CapWorktreeAdvice, CapCwdPrime, CapSetupDoctor,
 	// O57 items 4/5, appended for the same reason.
-	CapPromptObligations,
+	CapPromptObligations, CapObligationsPostShell,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.

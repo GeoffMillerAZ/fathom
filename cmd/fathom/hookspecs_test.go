@@ -52,12 +52,13 @@ var waveThreeHookSpecAdditions = []hookSpec{
 	{event: "Setup", matcher: "", marker: "fathom doctor --brief", sub: "doctor --brief", timeout: 15},
 }
 
-// promptHookSpecAddition is O57 items 4/5's one row, appended after
+// promptHookSpecAddition is O57 items 4/5's two rows, appended after
 // waveThreeHookSpecAdditions for the same reason that group was appended
 // after the vision 26 §4 pair. internal/harness/harness_test.go carries
 // the registry-side twin.
 var promptHookSpecAddition = []hookSpec{
 	{event: "UserPromptSubmit", matcher: "", marker: "fathom prompt-hook", sub: "prompt-hook", timeout: 10},
+	{event: "PostToolUse", matcher: "Bash", marker: "fathom edit-hook", sub: "edit-hook", timeout: 5},
 }
 
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and

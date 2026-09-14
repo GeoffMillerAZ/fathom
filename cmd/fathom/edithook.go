@@ -103,6 +103,15 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 
 	filePath := hook.FilePath
 	if filePath == "" {
+		// O57 item 4/5(b): a Bash command that WRITES a file never matched
+		// Edit|Write|MultiEdit's file_path, so it fell straight through
+		// here and got nothing. The Bash matcher group (claudeCode.Hooks,
+		// CapObligationsPostShell) routes here too, with tool_input.command
+		// where tool_input.file_path would be — every other tool (a read,
+		// a search) still has neither and stays silent, exactly as before.
+		if hook.Tool == harness.ToolShell && strings.TrimSpace(hook.Command) != "" {
+			return cmdEditHookBashWrite(codec, hook, url, armOff, stdout)
+		}
 		return 0
 	}
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post"}, sessionID, filePath, armOff)) // GI-1: the coverage denominator

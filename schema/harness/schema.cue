@@ -18,7 +18,7 @@ package harness
 	// Wave 3 (HP-26..HP-31): the advisory capabilities.
 	"subagent-prime" | "tool-failure-advice" | "worktree-advice" | "cwd-prime" | "setup-doctor" |
 	// O57 items 4/5: governance from the prompt itself, before the first edit.
-	"prompt-obligations"
+	"prompt-obligations" | "obligations-post-shell"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -141,6 +141,7 @@ package harness
 		"cwd-prime":             #Vehicle
 		"setup-doctor":          #Vehicle
 		"prompt-obligations":    #Vehicle
+		"obligations-post-shell": #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string
