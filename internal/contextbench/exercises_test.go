@@ -55,18 +55,35 @@ func TestAgentSurfaceToolsMatchRegistry(t *testing.T) {
 		t.Fatalf("reading the registry: %v", err)
 	}
 	body := string(raw)
-	start := strings.Index(body, "var companionTools = map[string]bool{")
+	// companionTools is built by a function since VB-1: a base map literal,
+	// the verbs promotedVerbs() names, and safe_delete_check. Parse all three
+	// without importing the server package into the bench.
+	start := strings.Index(body, "var companionTools = func() map[string]bool {")
 	if start < 0 {
-		t.Fatal("companionTools is no longer a map literal in internal/mcp/surface.go — re-point this test at the registry")
+		t.Fatal("companionTools is no longer built by a func literal in internal/mcp/surface.go — re-point this test at the registry")
 	}
-	end := strings.Index(body[start:], "\n}")
+	end := strings.Index(body[start:], "\n}()")
 	if end < 0 {
-		t.Fatal("could not find the end of the companionTools literal")
+		t.Fatal("could not find the end of the companionTools builder")
 	}
-	keys := regexp.MustCompile(`"([a-z_]+)":`).FindAllStringSubmatch(body[start:start+end], -1)
+	builder := body[start : start+end]
+	seen := map[string]bool{}
+	for _, m := range regexp.MustCompile(`"([a-z_]+)":\s*true`).FindAllStringSubmatch(builder, -1) {
+		seen[m[1]] = true
+	}
+	for _, m := range regexp.MustCompile(`m\["([a-z_]+)"\] = true`).FindAllStringSubmatch(builder, -1) {
+		seen[m[1]] = true
+	}
+	verbs, err := os.ReadFile("../mcp/promoted_verbs.go")
+	if err != nil {
+		t.Fatalf("reading the promoted verbs: %v", err)
+	}
+	for _, m := range regexp.MustCompile(`Name:\s*"([a-z_]+)"`).FindAllStringSubmatch(string(verbs), -1) {
+		seen[m[1]] = true
+	}
 	var want []string
-	for _, m := range keys {
-		want = append(want, m[1])
+	for k := range seen {
+		want = append(want, k)
 	}
 	sort.Strings(want)
 	got := AgentSurfaceTools()

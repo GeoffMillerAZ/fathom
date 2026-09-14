@@ -27,6 +27,7 @@ import (
 // TestAgentSurfaceToolsMatchRegistry re-reads internal/mcp/surface.go and
 // fails when the two drift, so the copy cannot go quietly stale.
 var agentSurfaceTools = []string{
+	"blast_radius",
 	"capabilities",
 	"discoveries",
 	"entrypoints",
@@ -41,10 +42,14 @@ var agentSurfaceTools = []string{
 	"query_symbols",
 	"read_source",
 	"references",
+	"rename_impact",
 	"repo_map",
+	"review_diff",
+	"safe_delete_check",
 	"search",
 	"staleness_report",
 	"symbol_context",
+	"test_impact",
 	"verify_plan",
 }
 
@@ -85,6 +90,10 @@ var handlerTable = []handlerRule{
 	{Path: "internal/mcp/nav_tools.go", Tools: []string{"entrypoints", "outline", "symbol_context"}},
 	{Path: "internal/mcp/references_tool.go", Tools: []string{"references"}},
 	{Path: "internal/mcp/discoveries_tool.go", Tools: []string{"discoveries"}},
+	{Path: "internal/mcp/analysis_tools.go", Tools: []string{"rename_impact", "test_impact"}, Why: "the impact verbs promoted by VB-1"},
+	{Path: "internal/mcp/extra_tools.go", Tools: []string{"blast_radius"}, Why: "promoted by VB-1"},
+	{Path: "internal/mcp/review_tool.go", Tools: []string{"review_diff"}, Why: "promoted by VB-1"},
+	{Path: "internal/mcp/safe_delete.go", Tools: []string{"safe_delete_check"}, Why: "VB-2"},
 	{Path: "internal/mcp/readsource.go", Tools: []string{"read_source"}},
 	{Path: "internal/mcp/semantic_tools.go", Tools: []string{"obligations"}},
 	{Path: "internal/mcp/verify_plan_tool.go", Tools: []string{"verify_plan"}},
