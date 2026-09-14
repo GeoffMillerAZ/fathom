@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // fakePromptDaemon serves obligations (canned per exact file) and
@@ -56,6 +57,115 @@ func fakePromptDaemon(t *testing.T, obligationsByFile map[string]any, symbolFile
 		}
 		_ = json.NewEncoder(w).Encode(resp)
 	}))
+}
+
+// fakeSlowPromptDaemon is fakePromptDaemon plus a per-file artificial
+// delay on the "obligations" call — lets a test make ONE candidate file
+// resolve fast and another hang well past a shortened deadline, so the
+// deadline (not luck) is what bounds the hook's total wall-clock time.
+func fakeSlowPromptDaemon(t *testing.T, obligationsByFile map[string]any, delayByFile map[string]time.Duration) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Params struct {
+				Name      string `json:"name"`
+				Arguments struct {
+					File string `json:"file"`
+					Name string `json:"name"`
+				} `json:"arguments"`
+			} `json:"params"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.Params.Name == "obligations" {
+			if d, ok := delayByFile[req.Params.Arguments.File]; ok {
+				select {
+				case <-time.After(d):
+				case <-r.Context().Done(): // the client gave up (its own Timeout fired): stop holding the connection open
+					return
+				}
+			}
+		}
+		var inner string
+		switch req.Params.Name {
+		case "obligations":
+			payload, ok := obligationsByFile[req.Params.Arguments.File]
+			if !ok {
+				payload = map[string]any{"service": "svc", "file": req.Params.Arguments.File}
+			}
+			inner = mustJSON(payload)
+		case "list_services":
+			inner = mustJSON(map[string]any{"services": []any{}})
+		default:
+			inner = "{}"
+		}
+		resp := map[string]any{
+			"jsonrpc": "2.0", "id": 1,
+			"result": map[string]any{"content": []any{
+				map[string]any{"type": "text", "text": inner},
+			}},
+		}
+		_ = json.NewEncoder(w).Encode(resp)
+	}))
+}
+
+// TestPromptHook_SlowDaemonReturnsWithinBudget pins the review finding on
+// O57 item 4/5(a): prompt-hook must share ONE deadline across every RPC a
+// call makes, not hand each its own fresh timeout — a prompt naming
+// several files could otherwise spend several multiples of a single
+// call's budget against the hook's own wall-clock limit. Two candidate
+// files: one the fake daemon answers immediately, one it holds well past
+// a deliberately shortened deadline. The hook must still return quickly
+// (bounded by the shortened deadline, not the daemon's artificial delay),
+// serve the file that DID resolve, and say so resolved partially.
+func TestPromptHook_SlowDaemonReturnsWithinBudget(t *testing.T) {
+	orig := promptHookDeadlineBudget
+	promptHookDeadlineBudget = 300 * time.Millisecond
+	defer func() { promptHookDeadlineBudget = orig }()
+
+	dir := t.TempDir()
+	srv := fakeSlowPromptDaemon(t, map[string]any{
+		"internal/store/backend.go": map[string]any{
+			"service": strings.ToLower(filepath.Base(dir)),
+			"file":    "internal/store/backend.go",
+			"rules": []any{
+				map[string]any{
+					"rule": "internal/store stays pure Go — the DuckDB backend was deleted outright (ADR-025); never reintroduce CGO or DuckDB there.",
+					"src":  "ADR.md#L814-L814", "tier": "doc-claimed", "layer": "adr-rules",
+				},
+			},
+		},
+		"internal/mcp/tools.go": map[string]any{
+			"service": strings.ToLower(filepath.Base(dir)),
+			"file":    "internal/mcp/tools.go",
+			"rules":   []any{map[string]any{"rule": "Register every tool in the mcp registry.", "src": "internal/CLAUDE.md#L4-L4", "tier": "doc-claimed", "layer": "obligations"}},
+		},
+	}, map[string]time.Duration{
+		"internal/mcp/tools.go": 5 * time.Second, // far longer than the 300ms deadline: must time out, not block the hook
+	})
+	defer srv.Close()
+
+	promptHookStdin(t, dir, "please update internal/store/backend.go and internal/mcp/tools.go together")
+
+	var out, errBuf bytes.Buffer
+	start := time.Now()
+	code := runWithStdin([]string{"prompt-hook", "--url=" + srv.URL}, nil, &out, &errBuf)
+	elapsed := time.Since(start)
+
+	if code != 0 {
+		t.Fatalf("prompt-hook exit = %d, want 0; stderr=%s", code, errBuf.String())
+	}
+	// Generous margin above the 300ms deadline (scheduling/HTTP overhead),
+	// but nowhere near the slow file's 5s artificial delay or what a
+	// sequential-with-a-fresh-timeout-each-call implementation would take.
+	if elapsed > 2*time.Second {
+		t.Fatalf("prompt-hook took %s, want well under the slow file's 5s delay (shared 300ms deadline should have bounded it)", elapsed)
+	}
+	if !strings.Contains(out.String(), "ADR-025") {
+		t.Fatalf("output missing the fast file's rule: %s", out.String())
+	}
+	if !strings.Contains(out.String(), "partial: 1 of 2 resolved") {
+		t.Fatalf("output missing the partial-resolution note: %s", out.String())
+	}
 }
 
 func promptHookStdin(t *testing.T, cwd, prompt string) {

@@ -38,12 +38,18 @@ const (
 	// from path/package candidates, which cost one obligations call each
 	// and no resolution round trip of their own.
 	maxPromptSymbolLookups = 3
-	// promptHookTimeout is the per-RPC budget — generous relative to
-	// edit-hook's 2s because prompt-hook can make several calls (symbol
-	// resolution plus one obligations call per resolved file) and still
-	// has to fit inside its 10s hook timeout.
-	promptHookTimeout = 3 * time.Second
 )
+
+// promptHookDeadlineBudget is the ONE wall-clock budget every RPC this
+// hook makes shares — symbol resolution, candidate-identity resolution,
+// and one obligations call per resolved file all draw against it, rather
+// than each getting its own fresh timeout. Up to nine sequential 3s
+// calls against a 10s hook timeout was the actual defect (O57 review): a
+// prompt naming several files could spend several multiples of a single
+// call's own budget. 8s leaves headroom inside the 10s hook timeout for
+// encode/decode and process startup. A var, not a const, so a test can
+// shorten it against a deliberately slow fake daemon.
+var promptHookDeadlineBudget = 8 * time.Second
 
 // cmdPromptHook implements the "prompt-hook" subcommand.
 func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
@@ -87,7 +93,8 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
-	text, meta, ok := renderPromptObligations(url, projDir, prompt, sessionID)
+	deadline := time.Now().Add(promptHookDeadlineBudget)
+	text, meta, ok := renderPromptObligations(url, projDir, prompt, sessionID, deadline)
 	if !ok {
 		return 0 // renderPromptObligations already emitted the beat that names the silence
 	}
@@ -99,6 +106,9 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	if meta.displaced > 0 {
 		answeredMeta["displaced"] = fmt.Sprint(meta.displaced)
 	}
+	if meta.resolved < meta.files {
+		answeredMeta["resolved"] = fmt.Sprint(meta.resolved)
+	}
 	emitBeat("prompt-hook", "answered", firingMetaArm(answeredMeta, sessionID, "", armOff))
 	fmt.Fprintln(stdout, string(out))
 	return 0
@@ -108,8 +118,9 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 // answered beat.
 type promptObligationsMeta struct {
 	candidates int // tokens extracted from the prompt
-	files      int // distinct files obligations were actually fetched for
+	files      int // distinct files obligations were attempted for
 	displaced  int
+	resolved   int // of files, how many got a definite answer before the deadline
 }
 
 // renderPromptObligations builds the UserPromptSubmit payload for prompt as
@@ -117,7 +128,7 @@ type promptObligationsMeta struct {
 // (service, file), fetch and merge obligations across every resolved
 // file, cap and render. ok=false is the silence contract — nothing named,
 // nothing resolved, nothing governs it, or the capability is off.
-func renderPromptObligations(url, projDir, prompt, sessionID string) (string, promptObligationsMeta, bool) {
+func renderPromptObligations(url, projDir, prompt, sessionID string, deadline time.Time) (string, promptObligationsMeta, bool) {
 	if capabilityOffForFile(projDir, "", "obligations") {
 		return "", promptObligationsMeta{}, false
 	}
@@ -125,8 +136,8 @@ func renderPromptObligations(url, projDir, prompt, sessionID string) (string, pr
 	if len(candidates) == 0 {
 		return "", promptObligationsMeta{}, false
 	}
-	hc := &http.Client{Timeout: promptHookTimeout}
-	resolved := resolvePromptCandidates(hc, url, projDir, candidates)
+	hc := &http.Client{Timeout: deadlineRemaining(deadline)}
+	resolved := resolvePromptCandidates(hc, url, projDir, candidates, deadline)
 	if len(resolved) == 0 {
 		return "", promptObligationsMeta{}, false
 	}
@@ -135,11 +146,9 @@ func renderPromptObligations(url, projDir, prompt, sessionID string) (string, pr
 	for i, r := range resolved {
 		files[i] = r.file
 	}
-	filesQueried := 0
-	m := mergeObligationsAcrossFiles(url, svc, files, promptHookTimeout, func(f string) {
+	m := mergeObligationsAcrossFiles(url, svc, files, deadline, func(f string) {
 		emitBeat("prompt-hook", "error", firingMeta(map[string]string{"target": f}, sessionID, ""))
 	})
-	filesQueried = len(files)
 	if len(m.rules) == 0 {
 		emitBeat("prompt-hook", "answered", firingMeta(map[string]string{"emitted": "false"}, sessionID, ""))
 		return "", promptObligationsMeta{}, false
@@ -156,7 +165,22 @@ func renderPromptObligations(url, projDir, prompt, sessionID string) (string, pr
 	if m.stale {
 		sb.WriteString("\n⚠️ index is behind your working tree for one of these paths")
 	}
-	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: filesQueried, displaced: m.displaced}, true
+	if m.resolved < m.total {
+		fmt.Fprintf(&sb, "\n⚠️ partial: %d of %d resolved (time budget)", m.resolved, m.total)
+	}
+	return sb.String(), promptObligationsMeta{candidates: len(candidates), files: m.total, displaced: m.displaced, resolved: m.resolved}, true
+}
+
+// deadlineRemaining is deadline's remaining wall-clock time, floored at
+// one nanosecond — an http.Client Timeout of exactly ZERO means
+// UNLIMITED, never "no time left", so a caller with nothing left in its
+// budget still gets a real (if minuscule) Timeout that fails the call
+// almost immediately, rather than one with none at all.
+func deadlineRemaining(deadline time.Time) time.Duration {
+	if d := time.Until(deadline); d > 0 {
+		return d
+	}
+	return time.Nanosecond
 }
 
 // promptNamesLabel renders the resolved files a prompt's rules actually
@@ -184,8 +208,10 @@ type promptResolved struct {
 // (candidatesWithDaemon, the same fallback ladder edit-hook uses). Path
 // and package tokens resolve locally (a prompt names REPO-RELATIVE text,
 // not a filesystem path to relativize); symbol tokens cost one find_symbol
-// RPC each, capped at maxPromptSymbolLookups.
-func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []promptCandidate) []promptResolved {
+// RPC each, capped at maxPromptSymbolLookups AND stopped early once
+// deadline arrives — every RPC here draws against the SAME shared budget
+// the caller's later per-file obligations calls also draw against.
+func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []promptCandidate, deadline time.Time) []promptResolved {
 	cands := candidatesWithDaemon(hc, url, projDir)
 	if len(cands) == 0 {
 		return nil
@@ -214,11 +240,12 @@ func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []
 			// semantic.ObligationsFor.
 			add(strings.TrimSuffix(c.text, "/") + "/__prompt__.go")
 		case candidateSymbol:
-			if symbolLookups >= maxPromptSymbolLookups {
-				continue
+			if symbolLookups >= maxPromptSymbolLookups || !time.Now().Before(deadline) {
+				continue // cap reached, or nothing left in the shared budget to spend on a lookup
 			}
 			symbolLookups++
-			if fp, ok := fetchSymbolFile(hc, url, svc, c.text); ok {
+			symHC := &http.Client{Timeout: deadlineRemaining(deadline)}
+			if fp, ok := fetchSymbolFile(symHC, url, svc, c.text); ok {
 				add(fp)
 			}
 		}

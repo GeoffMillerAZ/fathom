@@ -28,6 +28,7 @@ const bashWriteTimeout = 2 * time.Second
 // cmdEditHookBashWrite is cmdEditHook's Bash branch: hook.FilePath is
 // empty, hook.Tool is shell, hook.Command is non-empty.
 func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url string, armOff bool, stdout io.Writer) int {
+	deadline := time.Now().Add(bashWriteTimeout) // one shared budget for every RPC this call makes, not a fresh one each
 	sessionID := hook.SessionID
 	paths, writeShaped := bashWriteTargets(hook.Command)
 	if !writeShaped {
@@ -45,7 +46,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return 0
 	}
 
-	hc := &http.Client{Timeout: bashWriteTimeout}
+	hc := &http.Client{Timeout: time.Until(deadline)}
 	cands := candidatesWithDaemon(hc, url, projDir)
 	if len(cands) == 0 {
 		return 0
@@ -90,7 +91,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		files = []string{filepath.ToSlash(filepath.Join(relCwd, "__bash_write__.go"))}
 	}
 
-	m := mergeObligationsAcrossFiles(url, svc, files, bashWriteTimeout, func(f string) {
+	m := mergeObligationsAcrossFiles(url, svc, files, deadline, func(f string) {
 		emitBeat("edit-hook", "error", firingMetaArm(map[string]string{"phase": "post-bash", "target": f}, sessionID, "", armOff))
 	})
 	if len(m.rules) == 0 {
