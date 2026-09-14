@@ -131,6 +131,27 @@ type Detector struct {
 	Name       string `json:"name"`
 	Command    string `json:"command"`
 	ExpectExit int    `json:"expect_exit"`
+	// BaselineVoid marks a detector whose redness at baseline (before any
+	// session runs, RunBaselineDetectors) is an environment/instrument
+	// fact rather than a claim about the agent's own work — i16's
+	// config-audit-deploy-safety is the corpus's own example: it reads
+	// the CURRENT repo's config, not anything scoped to this task, so a
+	// drifted environment can leave it red before any agent touches
+	// anything. VoidBaselineRedDetectors (baseline_red.go, fix-first
+	// review) voids a detector ONLY when this is true — NEVER inferred
+	// from redness alone, since a change-present detector (red until the
+	// agent makes the change, BY DESIGN) has the exact same shape as a
+	// truly-broken environment and would otherwise be voided right along
+	// with it, letting an agent that edits something unrelated pass.
+	BaselineVoid bool `json:"baseline_void,omitempty"`
+	// Completion marks the OTHER shape explicitly, for the corpus's own
+	// reader: a detector that is SUPPOSED to be red until the agent
+	// completes the task (a change-present check) — never voidable,
+	// whether or not BaselineVoid is set (it never should be, on a
+	// completion detector). Carries no runtime behavior of its own
+	// (unmarked already defaults to "never voided"); it documents intent
+	// so a corpus author does not have to re-derive it from absence.
+	Completion bool `json:"completion,omitempty"`
 }
 
 // Refusal (O57 finding 2) declares a task whose CORRECT handling may be to

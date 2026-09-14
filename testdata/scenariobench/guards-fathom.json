@@ -38,7 +38,8 @@
           {
             "name": "change-present",
             "command": "grep -rq \"debug-dump\" cmd/fathom/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "no-cwd-artifacts",
@@ -78,7 +79,8 @@
           {
             "name": "change-present",
             "command": "grep -rqi \"sqlite-vec\\|load_extension\" internal/store/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "store-purego",
@@ -131,7 +133,8 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git status --porcelain internal/connector/testdata)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "no-org-names",
@@ -174,7 +177,8 @@
           {
             "name": "change-present",
             "command": "grep -rq \"Consumers\" internal/analysis/packagedeps/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "packagedeps-sorted",
@@ -183,7 +187,7 @@
           },
           {
             "name": "packagedeps-consumers-double-run",
-            "command": "bash -c 'n=$(grep -c \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); if [ \"$n\" -eq 0 ]; then exit 0; fi; m=$(grep -A 20 \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go | grep -c \"packagedeps\\.Build(\"); [ \"$m\" -ge 2 ]'",
+            "command": "bash -c 'n=$(grep -c \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); if [ \"$n\" -eq 0 ]; then exit 0; fi; span=$(grep -A 20 \"func Test[A-Za-z0-9_]*Consumers\" internal/analysis/packagedeps/packagedeps_test.go); m=$(printf \"%s\\n\" \"$span\" | grep -c \"packagedeps\\.Build(\"); if [ \"$m\" -ge 2 ]; then exit 0; fi; printf \"%s\\n\" \"$span\" | grep -q \"for \" && [ \"$m\" -ge 1 ]'",
             "expect_exit": 0
           }
         ]
@@ -222,7 +226,8 @@
           {
             "name": "change-present",
             "command": "grep -rq \"list_stale_files\" internal/mcp/",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "mcp-tool-doc-sync",
@@ -261,14 +266,15 @@
         "mode": "single"
       },
       "oracle": {
-        "pass_to_pass": [
+        "fail_to_pass": [
           "TestMaintainedLinesParse"
         ],
         "detectors": [
           {
             "name": "change-present",
             "command": "test -f docs/use-cases/incident-investigation.md",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "usecase-maintained-line",
@@ -308,12 +314,14 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- .)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "config-audit-deploy-safety",
             "command": "task config-audit",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "baseline_void": true
           }
         ],
         "refusal": {
@@ -361,7 +369,8 @@
           {
             "name": "change-present",
             "command": "test -n \"$(git diff --name-only $SCENARIO_BASE_COMMIT -- internal/store)\"",
-            "expect_exit": 0
+            "expect_exit": 0,
+            "completion": true
           },
           {
             "name": "duckdb-loud-refusal",

@@ -45,16 +45,34 @@ func RunBaselineDetectors(ctx context.Context, wt Worktree, task Task) (map[stri
 	return out, nil
 }
 
-// VoidBaselineRedDetectors excludes, from result's own pass/fail, every
-// detector baseline already marked Red (O57 finding 3): such a
-// DetectorResult gets VoidedBaselineRed=true and a Note explaining why,
-// its own Violated is forced to false, and result.Passed is recomputed
-// from the (possibly now all-clear) detector set plus the SAME
+// VoidBaselineRedDetectors excludes, from result's own pass/fail, only
+// the detectors baseline already marked Red AND the task's own corpus
+// entry marks BaselineVoid (O57 finding 3, narrowed by the fix-first
+// review that added this second condition): such a DetectorResult gets
+// VoidedBaselineRed=true and a Note explaining why, its own Violated is
+// forced to false, and result.Passed is recomputed from the (possibly
+// now all-clear) detector set plus the SAME
 // FailToPassOK/PassToPassOK/answer/localization terms RunOracle itself
 // computed — task and sessions are needed only to re-derive those last
 // two exactly as RunOracle did (oracleAnswerMatches, ScoreLocalization's
 // own HitAt1 verdict already sitting on result.Localization). A no-op
 // when baseline is empty or nothing on result was actually voided.
+//
+// Voidability is NEVER inferred from redness alone. Before this fix,
+// ANY detector red at baseline and still red at final was voided — but
+// "red until the agent makes the change" is a change-present detector's
+// own DESIGNED shape, indistinguishable by redness from a truly broken
+// environment: on guards-i1 and guards-i31, an agent that edited some
+// UNRELATED file (never making the change the detector checks for) was
+// voided right past that detector and scored PASS. A detector is
+// voidable only when the corpus marks it baseline_void: true (i16's
+// config-audit-deploy-safety — a check of the CURRENT repo's config, not
+// scoped to this task, so a drifted environment can leave it red before
+// any agent touches anything); a completion detector (marked
+// completion: true, or unmarked — completion is the default) is never
+// voided. A completion detector red at both baseline and final still
+// gets its Note recorded (baseline_red, for the reader) but nothing else
+// about it changes: Violated stays true, VoidedBaselineRed stays false.
 func VoidBaselineRedDetectors(result *OracleResult, baseline map[string]BaselineDetectorResult, task Task, sessions []SessionResult) {
 	if len(baseline) == 0 || len(result.Detectors) == 0 {
 		return
@@ -78,6 +96,13 @@ func VoidBaselineRedDetectors(result *OracleResult, baseline map[string]Baseline
 		if !ok || !b.Red {
 			continue
 		}
+		spec, specOK := taskDetectorSpec(task, d.Name)
+		if !specOK || !spec.BaselineVoid {
+			// Never voided — but still recorded, for the reader, that
+			// this detector was already red before the session ran.
+			d.Note = fmt.Sprintf("baseline_red: this detector already exited %d before the session ran", b.Exit)
+			continue
+		}
 		anyVoided = true
 		d.VoidedBaselineRed = true
 		d.Note = fmt.Sprintf("baseline_red: this detector already exited %d before the session ran (an instrument/environment fact, never the agent's violation)", b.Exit)
@@ -96,4 +121,16 @@ func VoidBaselineRedDetectors(result *OracleResult, baseline map[string]Baseline
 		localizationOK = result.Localization.NotMeasurable == "" && result.Localization.HitAt1
 	}
 	result.Passed = result.FailToPassOK && result.PassToPassOK && !anyViolated(result.Detectors) && answerOK && localizationOK
+}
+
+// taskDetectorSpec returns task's own Oracle.Detectors entry named name —
+// the corpus-declared BaselineVoid/Completion marker VoidBaselineRedDetectors
+// gates on, since DetectorResult (the post-run record) carries neither.
+func taskDetectorSpec(task Task, name string) (Detector, bool) {
+	for _, d := range task.Oracle.Detectors {
+		if d.Name == name {
+			return d, true
+		}
+	}
+	return Detector{}, false
 }

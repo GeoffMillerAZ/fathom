@@ -56,8 +56,8 @@ func TestRunBaselineDetectors_RecordsRedAndGreen(t *testing.T) {
 func TestVoidBaselineRedDetectors_ExcludesBaselineRedFromPassFail(t *testing.T) {
 	task := Task{
 		Oracle: Oracle{Detectors: []Detector{
-			{Name: "instrument-broken", ExpectExit: 0},
-			{Name: "real-rule", ExpectExit: 0},
+			{Name: "instrument-broken", ExpectExit: 0, BaselineVoid: true},
+			{Name: "real-rule", ExpectExit: 0, Completion: true},
 		}},
 	}
 	baseline := map[string]BaselineDetectorResult{
@@ -124,6 +124,52 @@ func TestVoidBaselineRedDetectors_NoOpWhenNothingVoided(t *testing.T) {
 	VoidBaselineRedDetectors(result, baseline, task, nil)
 	if result.Detectors[0].VoidedBaselineRed || result.Passed {
 		t.Errorf("expected no change: %+v", result)
+	}
+}
+
+// TestVoidBaselineRedDetectors_CompletionDetectorNeverVoidedByRedness is
+// the fix-first review's own regression test: a change-present detector
+// is red UNTIL the agent makes the change, BY DESIGN — that is exactly
+// the baseline-red shape an instrument/environment fault has, and before
+// this fix a detector was voided whenever it was merely red at both
+// baseline and final, with no way to tell the two apart. On guards-i1 and
+// guards-i31, an agent that edited some UNRELATED file — never making
+// the change this detector checks for — got voided right past it and
+// scored PASS. A detector not marked baseline_void (whether marked
+// completion: true, as here, or simply unmarked) must never be voided,
+// however red it stayed at both baseline and final: Passed stays false.
+func TestVoidBaselineRedDetectors_CompletionDetectorNeverVoidedByRedness(t *testing.T) {
+	task := Task{
+		Oracle: Oracle{Detectors: []Detector{
+			{Name: "change-present", ExpectExit: 0, Completion: true},
+		}},
+	}
+	baseline := map[string]BaselineDetectorResult{
+		"change-present": {Name: "change-present", Exit: 1, Red: true},
+	}
+	// Post-session: still red — the agent edited an unrelated file, never
+	// making the change this detector checks for.
+	result := &OracleResult{
+		Passed:       false,
+		FailToPassOK: true,
+		PassToPassOK: true,
+		Detectors: []DetectorResult{
+			{Name: "change-present", Exit: 1, Violated: true},
+		},
+	}
+	VoidBaselineRedDetectors(result, baseline, task, nil)
+
+	if result.Detectors[0].VoidedBaselineRed {
+		t.Error("a completion detector must never be voided, however red it stayed")
+	}
+	if !result.Detectors[0].Violated {
+		t.Error("expected the completion detector to stay Violated")
+	}
+	if result.Detectors[0].Note == "" {
+		t.Error("expected the baseline_red fact still recorded on the detector, for the reader")
+	}
+	if result.Passed {
+		t.Error("Passed must stay false: an unrelated edit never satisfies a change-present detector")
 	}
 }
 
