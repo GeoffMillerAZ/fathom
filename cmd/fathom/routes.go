@@ -20,9 +20,24 @@ import (
 const routesWindow = 30 * 24 * time.Hour
 
 // routedPointer is one pointer that crossed the two-distinct-session bar.
+// FromIndex/ObservedVerb carry the same RC-56 provenance
+// discoveryPointerAgg does, so a route established only by grepping (never
+// by an index tool) still renders with its "grepped"/"read" verb instead
+// of a wrong "stale (unresolved)".
 type routedPointer struct {
-	Pointer  string
-	Sessions int
+	Pointer      string
+	Sessions     int
+	FromIndex    bool
+	ObservedVerb string
+}
+
+// routedPointerAgg is routedPointers' internal accumulator: which
+// sessions named a pointer, and whether an index tool ever did (vs. only
+// the discovery observer).
+type routedPointerAgg struct {
+	sessions     map[string]bool
+	fromIndex    bool
+	observedVerb string
 }
 
 // sessionForTimestamp attributes ts to the most recent session window that
@@ -45,28 +60,46 @@ func sessionForTimestamp(windows []sessionWindowRow, ts time.Time) string {
 }
 
 // routedPointers folds logPath's rows (service-scoped, within `since`)
-// into the pointers established in >= 2 distinct sessions, ranked by
-// session count then lexical.
-func routedPointers(logPath, service string, windows []sessionWindowRow, since time.Time) []routedPointer {
-	bySession := map[string]map[string]bool{} // pointer -> set of session ids
+// plus root's observed-discoveries log (RC-56: "fathom routes counts
+// observed pointers too" — attributed directly by each row's own
+// session_id, no sessionForTimestamp approximation needed) into the
+// pointers established in >= 2 distinct sessions, ranked by session count
+// then lexical.
+func routedPointers(logPath, service string, windows []sessionWindowRow, since time.Time, root string) []routedPointer {
+	agg := map[string]*routedPointerAgg{}
+	touch := func(p, sid string, fromIndex bool, observedVerb string) {
+		if sid == "" {
+			return
+		}
+		e, ok := agg[p]
+		if !ok {
+			e = &routedPointerAgg{sessions: map[string]bool{}}
+			agg[p] = e
+		}
+		e.sessions[sid] = true
+		if fromIndex {
+			e.fromIndex = true
+		}
+		if observedVerb != "" && e.observedVerb == "" {
+			e.observedVerb = observedVerb
+		}
+	}
 	for _, row := range readCallLogPointerRows(logPath, service, since) {
 		sid := sessionForTimestamp(windows, row.TS)
-		if sid == "" {
-			continue
-		}
 		for _, p := range row.Pointers {
-			set, ok := bySession[p]
-			if !ok {
-				set = map[string]bool{}
-				bySession[p] = set
-			}
-			set[sid] = true
+			touch(p, sid, true, "")
+		}
+	}
+	for _, row := range readObservedDiscoveryRows(root, since) {
+		verb := observedDiscoveryVerb(row.Tool)
+		for _, p := range row.Pointers {
+			touch(p, row.SessionID, false, verb)
 		}
 	}
 	var out []routedPointer
-	for p, set := range bySession {
-		if len(set) >= 2 {
-			out = append(out, routedPointer{Pointer: p, Sessions: len(set)})
+	for p, e := range agg {
+		if len(e.sessions) >= 2 {
+			out = append(out, routedPointer{Pointer: p, Sessions: len(e.sessions), FromIndex: e.fromIndex, ObservedVerb: e.observedVerb})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -136,7 +169,7 @@ func cmdRoutes(args []string, stdout, stderr io.Writer) int {
 
 	now := time.Now()
 	windows := readSessionWindows(rootAbs)
-	routed := routedPointers(logPath, svc, windows, now.Add(-routesWindow))
+	routed := routedPointers(logPath, svc, windows, now.Add(-routesWindow), rootAbs)
 
 	idx, idxErr := openCtxIndex(svc, *storePath, *url)
 	type resolvedRoute struct {
@@ -147,7 +180,7 @@ func cmdRoutes(args []string, stdout, stderr io.Writer) int {
 	}
 	var resolved []resolvedRoute
 	for _, r := range routed {
-		line, res := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0)
+		line, res := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0, r.FromIndex, r.ObservedVerb)
 		if res == discoveryStale {
 			continue // dropped: the index confirmed it's genuinely gone (RC-30)
 		}
@@ -229,7 +262,7 @@ func routesSummaryCount(root, service string, now time.Time) int {
 	}
 	windows := readSessionWindows(root)
 	logPath := callLogPathFor(root)
-	return len(routedPointers(logPath, service, windows, now.Add(-routesWindow)))
+	return len(routedPointers(logPath, service, windows, now.Add(-routesWindow), root))
 }
 
 // routesSummaryLine renders the one-line primer addition, "" when no
@@ -242,7 +275,7 @@ func routesSummaryLine(root, service string, now time.Time) string {
 	pkgs := map[string]bool{}
 	windows := readSessionWindows(root)
 	logPath := callLogPathFor(root)
-	for _, r := range routedPointers(logPath, service, windows, now.Add(-routesWindow)) {
+	for _, r := range routedPointers(logPath, service, windows, now.Add(-routesWindow), root) {
 		pkgs[routePackagePrefix(r.Pointer)] = true
 	}
 	return fmt.Sprintf("routes known for %d package(s) — fathom routes", len(pkgs))

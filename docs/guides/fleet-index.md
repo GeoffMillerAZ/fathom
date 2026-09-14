@@ -162,6 +162,19 @@ resolves it FRESH against the live index and marks what no longer holds.
   to share a basename no longer merge each other's notes (F5); an older
   item with no identity tag still matches on the legacy basename rule, so
   nothing existing is hidden.
+- **Every discovery action counts (RC-56).** reuse-pilot-2 found the wired
+  planners reaching for grep and Read, never a fathom tool, so the call log
+  held no pointers and every worker brief was empty. The counting-only
+  PreToolUse observer that already sees every Grep/Glob/Read/shell-search
+  call (`cmd/fathom/discovery.go`, instrument B) also records what it saw —
+  a Read's file, a Grep/Glob's `path` argument (never its pattern: a
+  pattern is not a location), a recognizable shell read/search's literal
+  path — to `workspace/logs/observed-discoveries.jsonl`, zero daemon calls,
+  zero index lookups. `fathom discoveries` and `fathom routes` merge these
+  rows into the same ranked pointer set the call log feeds; a pointer that
+  came only from observation renders `read <path>` or `grepped <path>`
+  instead of a wrong "stale (unresolved)", so a planner that only grepped
+  still hands its workers a brief.
 - **Kill criteria, pre-registered (vision 28 §4).** The `discoveries` tool
   is the one deliberate exception to the 19-tool agent-surface diet
   (`surface_diet_test.go`, TD-2): M5 at K=3 with the worker brief —

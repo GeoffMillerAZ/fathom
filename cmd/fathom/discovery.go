@@ -39,12 +39,20 @@ import (
 // active OFF arm most needs to keep: silencing it too would delete the one
 // signal that proves the arm's sessions are doing anything at all. armOff
 // only decides whether the beat is stamped "arm":"off".
-func cmdEditHookPreDiscovery(tool harness.ToolClass, filePath, cwd, sessionID string, armOff bool) int {
-	if tool == harness.ToolDiscoveryRead && fileInEditSet(filePath, cwd, sessionID) {
+//
+// RC-56 (vision 28 §4, "every discovery action counts"): alongside the
+// beat, the observer also records what the call FOUND — recordObservedDiscoveryIfAny
+// appends a pointer row to workspace/logs/observed-discoveries.jsonl so a
+// planner that only grepped or read still leaves its workers a brief
+// (gatherDiscoveryPointers, discoveries.go). Same local-only, zero-daemon
+// discipline; armOff never gates it either, for the same reason.
+func cmdEditHookPreDiscovery(in harness.HookInput, armOff bool) int {
+	if in.Tool == harness.ToolDiscoveryRead && fileInEditSet(in.FilePath, in.Cwd, in.SessionID) {
 		return 0 // verification read of a just-edited file — excluded, not discovery
 	}
-	meta := firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff)
-	emitBeat("discovery", discoveryBeatName(tool), meta)
+	meta := firingMetaArm(map[string]string{"phase": "pre"}, in.SessionID, "", armOff)
+	emitBeat("discovery", discoveryBeatName(in.Tool), meta)
+	recordObservedDiscoveryIfAny(in)
 	return 0
 }
 

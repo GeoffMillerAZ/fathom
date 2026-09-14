@@ -45,8 +45,10 @@ type HookInput struct {
 	// ToolError is the failure message on the tool-failure event.
 	ToolError string
 	// Path is the directory an event is ABOUT rather than the session's
-	// own cwd: the new worktree's root (worktree-create), or the root the
-	// session moved to or added (cwd-changed).
+	// own cwd: the new worktree's root (worktree-create), the root the
+	// session moved to or added (cwd-changed), or a Grep/Glob tool call's
+	// own tool_input.path argument (RC-56, the file/dir the call searched
+	// — never its pattern, which is not a location).
 	Path string
 }
 
@@ -116,6 +118,10 @@ type claudeEnvelope struct {
 	ToolInput      struct {
 		FilePath string `json:"file_path"`
 		Command  string `json:"command"`
+		// Path is Grep/Glob's own tool_input.path (RC-56) — the file or
+		// directory argument, never Pattern (unread: a search pattern is
+		// not a location, docs/vision/28-receipts.md §4).
+		Path string `json:"path"`
 	} `json:"tool_input"`
 	StopHookActive bool `json:"stop_hook_active"`
 	// InstructionsLoaded / ConfigChange carry file_path at the top level
@@ -155,6 +161,7 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		Tool:           ClassifyTool(ClaudeCode, env.ToolName),
 		FilePath:       env.ToolInput.FilePath,
 		Command:        env.ToolInput.Command,
+		Path:           env.ToolInput.Path,
 		ReEntrant:      env.StopHookActive,
 		MemoryType:     env.MemoryType,
 		LoadReason:     env.LoadReason,

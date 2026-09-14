@@ -177,7 +177,7 @@ func cmdThreadPromoteRoute(route, planFile, row, repo, service, url, storePath, 
 
 	now := time.Now()
 	windows := readSessionWindows(rootAbs)
-	routed := routedPointers(logPath, svc, windows, now.Add(-routesWindow))
+	routed := routedPointers(logPath, svc, windows, now.Add(-routesWindow), rootAbs)
 
 	idx, idxErr := openCtxIndex(svc, storePath, url)
 	if idxErr != nil {
@@ -191,7 +191,7 @@ func cmdThreadPromoteRoute(route, planFile, row, repo, service, url, storePath, 
 		if pkg != route && !strings.HasPrefix(pkg, route) {
 			continue
 		}
-		if _, res := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0); res != discoveryResolved {
+		if _, res := renderOneDiscoveryLine(idx, idxErr, r.Pointer, 0, r.FromIndex, r.ObservedVerb); res != discoveryResolved {
 			continue // dropped: the index no longer confirms it (RC-30)
 		}
 		pointers = append(pointers, r.Pointer)

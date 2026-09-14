@@ -131,12 +131,20 @@ func sessionStartFor(root, sessionID string) (time.Time, bool) {
 
 // ─── pointer aggregation (shared: discoveries + routes) ─────────────────
 
-// discoveryPointerAgg is one pointer's aggregate over a call-log window:
-// how many rows established it and the most recent timestamp.
+// discoveryPointerAgg is one pointer's aggregate over a call-log +
+// observed-discoveries window: how many rows established it, the most
+// recent timestamp, and (RC-56) whether an MCP call-log row or filed
+// thread item ever named it (FromIndex) vs. only the discovery observer
+// having seen it (ObservedVerb: "read"/"grepped" — vision 28 §4, "renders
+// with a read/grep verb … so the reader knows it was located, not
+// established by the index"). A pointer named by BOTH keeps FromIndex —
+// it WAS established by a tool answer, so it renders exactly as before.
 type discoveryPointerAgg struct {
-	Pointer string
-	Count   int
-	Last    time.Time
+	Pointer      string
+	Count        int
+	Last         time.Time
+	FromIndex    bool
+	ObservedVerb string
 }
 
 // callLogPointerRow is the minimal shape read back from a call-log JSONL
@@ -186,9 +194,9 @@ func readCallLogPointerRows(logPath, service string, since time.Time) []callLogP
 // filed, vision 28 §4's "no model distills anything" write path) into a
 // ranked, deduped pointer list: most recent first, then most frequent,
 // then lexical (determinism, internal/CLAUDE.md).
-func gatherDiscoveryPointers(logPath, service string, since time.Time, scope threadScope) []discoveryPointerAgg {
+func gatherDiscoveryPointers(logPath, service string, since time.Time, scope threadScope, root string) []discoveryPointerAgg {
 	agg := map[string]*discoveryPointerAgg{}
-	bump := func(ptr string, ts time.Time) {
+	bump := func(ptr string, ts time.Time, fromIndex bool, observedVerb string) {
 		ptr = strings.TrimSpace(ptr)
 		if ptr == "" {
 			return
@@ -202,10 +210,16 @@ func gatherDiscoveryPointers(logPath, service string, since time.Time, scope thr
 		if ts.After(e.Last) {
 			e.Last = ts
 		}
+		if fromIndex {
+			e.FromIndex = true
+		}
+		if observedVerb != "" && e.ObservedVerb == "" {
+			e.ObservedVerb = observedVerb
+		}
 	}
 	for _, row := range readCallLogPointerRows(logPath, service, since) {
 		for _, p := range row.Pointers {
-			bump(p, row.TS)
+			bump(p, row.TS, true, "")
 		}
 	}
 	for _, it := range loadThreadItems(threadsPath()) {
@@ -221,7 +235,16 @@ func gatherDiscoveryPointers(logPath, service string, since time.Time, scope thr
 			continue
 		}
 		for _, p := range strings.Fields(disc) {
-			bump(p, filedAt)
+			bump(p, filedAt, true, "")
+		}
+	}
+	// RC-56: the discovery observer's own log — a planner that only grepped
+	// or read still contributes pointers here, tagged with the verb that
+	// located them rather than the index tool that would otherwise have.
+	for _, row := range readObservedDiscoveryRows(root, since) {
+		verb := observedDiscoveryVerb(row.Tool)
+		for _, p := range row.Pointers {
+			bump(p, row.TS, false, verb)
 		}
 	}
 	out := make([]discoveryPointerAgg, 0, len(agg))
@@ -269,11 +292,15 @@ const (
 // (planscontext.go's own seam) and renders one line — "read <path>" for a
 // file, "symbol <ptr> → file:line" for a resolved symbol, "<ptr> —
 // unresolved (index unreachable: <err>)" when the index itself could not
-// be consulted, or "<ptr> — stale (unresolved)" when the index WAS
-// reachable and genuinely does not know the pointer. Mirrors internal/mcp's
-// renderDiscoveryPointer exactly (same grammar, different package: the two
-// surfaces share the POINTER SHAPE, not code).
-func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (line string, res discoveryResolution) {
+// be consulted, "<ptr> — stale (unresolved)" when the index WAS reachable
+// and genuinely does not know the pointer, or (RC-56) "read <ptr>"/
+// "grepped <ptr>" for a pointer the discovery OBSERVER saw but no index
+// tool ever established (fromIndex false, observedVerb set) and that
+// resolves as neither a file nor a symbol — a directory a Grep searched,
+// say. Mirrors internal/mcp's renderDiscoveryPointer exactly (same
+// grammar, different package: the two surfaces share the POINTER SHAPE,
+// not code).
+func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int, fromIndex bool, observedVerb string) (line string, res discoveryResolution) {
 	freq := ""
 	if count > 1 {
 		freq = fmt.Sprintf(" (%d)", count)
@@ -286,6 +313,15 @@ func renderOneDiscoveryLine(idx ctxIndex, idxErr error, ptr string, count int) (
 		}
 		_ = lines
 		return fmt.Sprintf("read %s%s%s", filePath, suffix, freq), discoveryResolved
+	}
+	if !fromIndex && observedVerb != "" {
+		// Came only from observation (vision 28 §4): the observer located it
+		// — a grepped directory, say — even though it is not a file on disk
+		// right now. This needs no index lookup at all (it was never a
+		// symbol claim), so it renders BEFORE the idxErr/idx checks below —
+		// an unreachable index must never turn an observed pointer into a
+		// spurious "unresolved (index unreachable)" line.
+		return fmt.Sprintf("%s %s%s", observedVerb, ptr, freq), discoveryResolved
 	}
 	if idxErr != nil {
 		return fmt.Sprintf("%s — unresolved (index unreachable: %v)%s", ptr, idxErr, freq), discoveryUnreachable
@@ -322,7 +358,7 @@ func renderDiscoveryLines(idx ctxIndex, idxErr error, ptrs []discoveryPointerAgg
 		if budget > 0 && b.Len() >= budget && included > 0 {
 			break
 		}
-		line, _ := renderOneDiscoveryLine(idx, idxErr, p.Pointer, p.Count)
+		line, _ := renderOneDiscoveryLine(idx, idxErr, p.Pointer, p.Count, p.FromIndex, p.ObservedVerb)
 		row := line + "\n"
 		if budget > 0 && b.Len()+len(row) > budget && included > 0 {
 			break
@@ -401,7 +437,7 @@ func cmdDiscoveries(args []string, stdout, stderr io.Writer) int {
 		since = t
 	}
 
-	ptrs := gatherDiscoveryPointers(logPath, svc, since, scope)
+	ptrs := gatherDiscoveryPointers(logPath, svc, since, scope, rootAbs)
 	idx, idxErr := openCtxIndex(svc, *storePath, *url)
 	rendered := renderDiscoveryLines(idx, idxErr, ptrs, *budget)
 
@@ -476,7 +512,7 @@ func subagentDiscoveries(baseURL, root, service, parentSessionID string, now tim
 	}
 	logPath := callLogPathFor(root)
 	scope := threadScopeFor(root)
-	ptrs := gatherDiscoveryPointers(logPath, service, since, scope)
+	ptrs := gatherDiscoveryPointers(logPath, service, since, scope, root)
 	if len(ptrs) == 0 {
 		return ""
 	}
@@ -531,7 +567,7 @@ func sessionEndPointers(root, sessionID string, now time.Time) []string {
 	scope := threadScopeFor(root)
 	svc := scope.service
 	logPath := callLogPathFor(root)
-	agg := gatherDiscoveryPointers(logPath, svc, since, scope)
+	agg := gatherDiscoveryPointers(logPath, svc, since, scope, root)
 	if len(agg) == 0 {
 		return nil
 	}
@@ -569,7 +605,7 @@ func sessionEndDiscoveriesLine(it threadItem, root string) string {
 	idx, idxErr := openCtxIndex(scope.service, "", defaultFathomURL())
 	agg := make([]discoveryPointerAgg, len(ptrs))
 	for i, p := range ptrs {
-		agg[i] = discoveryPointerAgg{Pointer: p, Count: 1}
+		agg[i] = discoveryPointerAgg{Pointer: p, Count: 1, FromIndex: true}
 	}
 	rendered := renderDiscoveryLines(idx, idxErr, agg, sessionEndBriefPointerBudget)
 	rendered = strings.TrimRight(rendered, "\n")

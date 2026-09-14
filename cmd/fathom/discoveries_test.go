@@ -151,7 +151,7 @@ func TestGatherDiscoveryPointers_RanksByRecencyThenFrequency(t *testing.T) {
 		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"other","pointers":["should/never.Appear"]}`,
 	})
 	scope := threadScopeFor(root)
-	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope)
+	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope, root)
 	if len(got) != 2 {
 		t.Fatalf("gatherDiscoveryPointers = %d pointers, want 2 (service-scoped): %+v", len(got), got)
 	}
@@ -173,7 +173,7 @@ func TestGatherDiscoveryPointers_HonoursSince(t *testing.T) {
 		`{"ts":"` + now.Format(time.RFC3339Nano) + `","service":"fathom","pointers":["recent.Pointer"]}`,
 	})
 	scope := threadScopeFor(root)
-	got := gatherDiscoveryPointers(logPath, "fathom", now.Add(-time.Hour), scope)
+	got := gatherDiscoveryPointers(logPath, "fathom", now.Add(-time.Hour), scope, root)
 	if len(got) != 1 || got[0].Pointer != "recent.Pointer" {
 		t.Fatalf("gatherDiscoveryPointers with --since = %+v, want just recent.Pointer", got)
 	}
@@ -192,9 +192,48 @@ func TestGatherDiscoveryPointers_IncludesFiledThreadPoints(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope)
+	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope, root)
 	if len(got) != 1 || got[0].Pointer != "internal/mcp.registerDiscoveries" {
 		t.Fatalf("gatherDiscoveryPointers from filed thread items = %+v, want [internal/mcp.registerDiscoveries]", got)
+	}
+}
+
+// TestGatherDiscoveryPointers_ObservedRowsFillAZeroCallLogSession is RC-56's
+// load-bearing proof: reuse-pilot-2 found the wired planners reaching for
+// grep and Read, never a fathom tool, so the call log held no pointers and
+// every worker brief was empty. A session with ZERO MCP calls but three
+// observed reads must still yield a non-empty brief.
+func TestGatherDiscoveryPointers_ObservedRowsFillAZeroCallLogSession(t *testing.T) {
+	pinNoEnclosingRepo(t)
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "mcp-calls.jsonl") // never created: zero MCP calls
+	now := time.Now().UTC()
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-3 * time.Minute).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "read", Pointers: []string{"internal/core/model.go"},
+	})
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-2 * time.Minute).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "grep", Pointers: []string{"internal/mcp"},
+	})
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-time.Minute).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "read", Pointers: []string{"cmd/fathom/main.go"},
+	})
+
+	scope := threadScopeFor(root)
+	got := gatherDiscoveryPointers(logPath, "fathom", time.Time{}, scope, root)
+	if len(got) != 3 {
+		t.Fatalf("gatherDiscoveryPointers with zero call-log rows = %d pointers, want 3 (from observation alone): %+v", len(got), got)
+	}
+	for _, p := range got {
+		if p.FromIndex {
+			t.Errorf("pointer %q: FromIndex = true, want false (never established by an MCP call)", p.Pointer)
+		}
+		if p.ObservedVerb == "" {
+			t.Errorf("pointer %q: ObservedVerb unset, want \"read\" or \"grepped\"", p.Pointer)
+		}
 	}
 }
 
@@ -210,14 +249,14 @@ func TestRenderOneDiscoveryLine_ResolvesAFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Chdir(wd)
-	line, res := renderOneDiscoveryLine(nil, nil, "model.go", 3)
+	line, res := renderOneDiscoveryLine(nil, nil, "model.go", 3, true, "")
 	if res != discoveryResolved || !strings.HasPrefix(line, "read model.go") || !strings.Contains(line, "(3)") {
 		t.Errorf("renderOneDiscoveryLine(file) = (%q, %v), want a \"read model.go ... (3)\" line", line, res)
 	}
 }
 
 func TestRenderOneDiscoveryLine_UnresolvedIsStale(t *testing.T) {
-	line, res := renderOneDiscoveryLine(nil, nil, "internal/nope.GoneNow", 1)
+	line, res := renderOneDiscoveryLine(nil, nil, "internal/nope.GoneNow", 1, true, "")
 	if res != discoveryStale {
 		t.Fatalf("expected discoveryStale, got %v: %q", res, line)
 	}
@@ -231,7 +270,7 @@ func TestRenderOneDiscoveryLine_UnresolvedIsStale(t *testing.T) {
 // it never made when it was never consulted.
 func TestRenderOneDiscoveryLine_IndexUnreachableIsNotStale(t *testing.T) {
 	unreachable := errors.New(`probing daemon for service "fathom": dial tcp: connection refused`)
-	line, res := renderOneDiscoveryLine(nil, unreachable, "internal/nope.GoneNow", 1)
+	line, res := renderOneDiscoveryLine(nil, unreachable, "internal/nope.GoneNow", 1, true, "")
 	if res != discoveryUnreachable {
 		t.Fatalf("expected discoveryUnreachable, got %v: %q", res, line)
 	}
@@ -240,6 +279,26 @@ func TestRenderOneDiscoveryLine_IndexUnreachableIsNotStale(t *testing.T) {
 	}
 	if !strings.Contains(line, "unreachable") {
 		t.Errorf("renderOneDiscoveryLine with an unreachable index = %q, want it to say \"unreachable\"", line)
+	}
+}
+
+// TestRenderOneDiscoveryLine_ObservedOnlyRendersWithItsVerb is RC-56 (vision
+// 28 §4): a pointer the discovery OBSERVER saw but no index tool ever
+// established — here, a directory a Grep searched, which resolves as
+// neither a file on disk nor a symbol — renders with its own verb instead
+// of the wrong "stale (unresolved)" (that word is the index's claim the
+// pointer is GONE, which it never made: it was never established by the
+// index in the first place).
+func TestRenderOneDiscoveryLine_ObservedOnlyRendersWithItsVerb(t *testing.T) {
+	line, res := renderOneDiscoveryLine(nil, nil, "pkg/cmd/run", 0, false, "grepped")
+	if res != discoveryResolved {
+		t.Fatalf("expected discoveryResolved, got %v: %q", res, line)
+	}
+	if line != "grepped pkg/cmd/run" {
+		t.Errorf("renderOneDiscoveryLine(observed-only) = %q, want %q", line, "grepped pkg/cmd/run")
+	}
+	if strings.Contains(line, "stale") {
+		t.Errorf("renderOneDiscoveryLine(observed-only) = %q, must never say \"stale\"", line)
 	}
 }
 
@@ -260,6 +319,39 @@ func TestCmdDiscoveries_RendersFromCallLog(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "some/pkg.Thing") {
 		t.Errorf("cmdDiscoveries output = %q, want it to name the pointer", out.String())
+	}
+}
+
+// TestCmdDiscoveries_RendersObservedOnlySession is RC-56's end-to-end
+// proof: a session with an EMPTY call log (the planner never called an
+// MCP tool) still gets a non-empty `fathom discoveries` brief from what
+// the counting-only observer saw it read and grep.
+func TestCmdDiscoveries_RendersObservedOnlySession(t *testing.T) {
+	pinNoEnclosingRepo(t)
+	threadEnv(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl") // never created
+	now := time.Now().UTC()
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-2 * time.Minute).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "read", Pointers: []string{"internal/core/model.go"},
+	})
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-time.Minute).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "grep", Pointers: []string{"pkg/cmd/run"},
+	})
+	var out, errb bytes.Buffer
+	code := cmdDiscoveries([]string{"--root", root, "--service", "fathom", "--call-log", logPath}, &out, &errb)
+	if code != 0 {
+		t.Fatalf("cmdDiscoveries exit %d: %s", code, errb.String())
+	}
+	rendered := out.String()
+	t.Logf("fathom discoveries (observed-only session):\n%s", rendered)
+	if !strings.Contains(rendered, "read internal/core/model.go") {
+		t.Errorf("cmdDiscoveries output = %q, want a \"read internal/core/model.go\" line", rendered)
+	}
+	if !strings.Contains(rendered, "grepped pkg/cmd/run") {
+		t.Errorf("cmdDiscoveries output = %q, want a \"grepped pkg/cmd/run\" line", rendered)
 	}
 }
 
@@ -472,9 +564,39 @@ func TestRoutedPointers_RequiresTwoDistinctSessions(t *testing.T) {
 		`{"ts":"` + now.Add(-29*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.OnceOnly"]}`,
 		`{"ts":"` + now.Add(-28*time.Minute).Format(time.RFC3339Nano) + `","pointers":["pkg.OnceOnly"]}`,
 	})
-	routed := routedPointers(logPath, "", windows, now.Add(-3*time.Hour))
+	routed := routedPointers(logPath, "", windows, now.Add(-3*time.Hour), root)
 	if len(routed) != 1 || routed[0].Pointer != "pkg.Routed" || routed[0].Sessions != 2 {
 		t.Fatalf("routedPointers = %+v, want exactly [pkg.Routed sessions=2]", routed)
+	}
+}
+
+// TestRoutedPointers_CountsObservedRows is RC-56 item 4 ("fathom routes
+// counts observed pointers too"): a pointer named only by the discovery
+// observer, in two distinct sessions (attributed directly by each row's
+// own session_id — no sessionForTimestamp approximation needed), crosses
+// the same two-distinct-session bar a call-log pointer does.
+func TestRoutedPointers_CountsObservedRows(t *testing.T) {
+	pinNoEnclosingRepo(t)
+	root := t.TempDir()
+	logPath := filepath.Join(root, "calls.jsonl") // never created: zero MCP calls
+	now := time.Now().UTC()
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-2 * time.Hour).Format(time.RFC3339Nano),
+		SessionID: "s1", Tool: "grep", Pointers: []string{"internal/mcp"},
+	})
+	recordObservedDiscovery(root, observedDiscoveryRow{
+		SchemaVersion: observedDiscoverySchemaVersion, TS: now.Add(-time.Hour).Format(time.RFC3339Nano),
+		SessionID: "s2", Tool: "grep", Pointers: []string{"internal/mcp"},
+	})
+	routed := routedPointers(logPath, "", nil, now.Add(-3*time.Hour), root)
+	if len(routed) != 1 || routed[0].Pointer != "internal/mcp" || routed[0].Sessions != 2 {
+		t.Fatalf("routedPointers(observed) = %+v, want exactly [internal/mcp sessions=2]", routed)
+	}
+	if routed[0].FromIndex {
+		t.Errorf("routed[0].FromIndex = true, want false (never an MCP call)")
+	}
+	if routed[0].ObservedVerb != "grepped" {
+		t.Errorf("routed[0].ObservedVerb = %q, want \"grepped\"", routed[0].ObservedVerb)
 	}
 }
 

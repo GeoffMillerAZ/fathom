@@ -42,9 +42,10 @@ func cmdEditHookPre(codec harness.Codec, in harness.HookInput, url string, armOf
 	switch in.Tool {
 	case harness.ToolShell:
 		emitDiscoveryBeatIfShellSearch(in.Command, in.SessionID, armOff)
+		recordObservedDiscoveryIfAny(in) // RC-56: a recognized shell read/search counts too
 		return cmdEditHookPreCommand(codec, in.Command, in.Cwd, in.SessionID, url, armOff, stdout)
 	case harness.ToolDiscoveryRead, harness.ToolDiscoveryGrep, harness.ToolDiscoveryGlob:
-		return cmdEditHookPreDiscovery(in.Tool, in.FilePath, in.Cwd, in.SessionID, armOff)
+		return cmdEditHookPreDiscovery(in, armOff)
 	default:
 		return cmdEditHookPreFile(codec, in.FilePath, in.Cwd, in.SessionID, url, armOff, stdout)
 	}
