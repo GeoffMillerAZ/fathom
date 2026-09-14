@@ -120,6 +120,23 @@ func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionRe
 		result.Detectors = append(result.Detectors, dr)
 	}
 
+	// O57 finding 2: a refusal-aware task's own outcome (refusal.go)
+	// SUPERSEDES the ordinary detector-based Passed computation below —
+	// the change-present detector and the any-edits floor both read a
+	// correct refusal identically to a violation, which a rule that
+	// forbids an action can never adjudicate correctly. Detectors above
+	// still ran (kept on result.Detectors for visibility/debugging), but
+	// do not decide Passed for this task.
+	if RefusalAware(task) {
+		outcome, passed, rerr := ScoreRefusal(ctx, wt, task, sessions)
+		if rerr != nil {
+			return OracleResult{}, rerr
+		}
+		result.Outcome = outcome
+		result.Passed = passed
+		return result, nil
+	}
+
 	answerOK := true
 	if len(task.Oracle.AnswerAllOf) > 0 || len(task.Oracle.AnswerAnyOf) > 0 {
 		answerOK = oracleAnswerMatches(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf, task.Oracle.AnswerAnyOf)

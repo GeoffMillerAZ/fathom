@@ -91,6 +91,9 @@ func validateScenarioTask(t Task, armNames []string) error {
 			}
 		}
 	}
+	if t.Oracle.Refusal != nil && len(t.Oracle.Refusal.MustCite) == 0 {
+		return fmt.Errorf("task %s: oracle.refusal needs at least one must_cite token — a refusal with nothing to cite could never be told apart from an agent that just did nothing", t.ID)
+	}
 	for _, arm := range armNames {
 		if t.Predictions[arm] == "" {
 			return fmt.Errorf("task %s: missing a registered prediction for arm %q", t.ID, arm)

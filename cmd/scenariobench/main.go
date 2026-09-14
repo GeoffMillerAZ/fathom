@@ -716,6 +716,9 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	// task with Oracle.Localization) onto the cell's Readings, exactly as
 	// PlanCoverage/FalseDone/Drift already are above.
 	readings.Localization = oracle.Localization
+	// O57 finding 2: carry the oracle's own refusal outcome (set only for
+	// a refusal-aware task) onto the cell's Readings, same pattern.
+	readings.RefusalOutcome = oracle.Outcome
 
 	return scenariobench.CellResult{
 		TaskID:   cp.task.ID,
@@ -726,10 +729,11 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 		Oracle:   oracle,
 		Readings: readings,
 		// An untouched tree cannot pass (guards pilot 1) — UNLESS the
-		// task's oracle is answer-only (SB-32 lookups-vs.json) or
-		// localization-only (VB-25, the LCA bug-localization track),
-		// where nothing was ever meant to be edited.
-		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.AnyEdits(sessions)),
+		// task's oracle is answer-only (SB-32 lookups-vs.json),
+		// localization-only (VB-25, the LCA bug-localization track), or
+		// refusal-aware (O57 finding 2) — in each of these three shapes,
+		// nothing was ever necessarily meant to be edited.
+		Success:        oracle.Passed && (scenariobench.AnswerOnly(cp.task) || scenariobench.LocalizationOnly(cp.task) || scenariobench.RefusalAware(cp.task) || scenariobench.AnyEdits(sessions)),
 		CellKey:        cp.key,
 		CorpusSHA256:   cp.inv.CorpusSHA256,
 		ModelID:        cp.inv.ModelID,
