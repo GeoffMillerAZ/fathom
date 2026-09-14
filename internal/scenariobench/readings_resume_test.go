@@ -145,3 +145,47 @@ func TestContractDrift_NoSymbolRows(t *testing.T) {
 		t.Fatalf("not_measurable = %q", got.NotMeasurable)
 	}
 }
+
+// TestContractDrift_TestAndMethodRowsAreFound pins O55 item 2, shared with
+// FalseDoneRate: a plan row anchored to a Test* function or a receiver
+// method (in either spelling) must resolve against the final tree, not be
+// reported drifted just because findFuncInTree used to skip _test.go files
+// and require an exact sp.Name match.
+func TestContractDrift_TestAndMethodRowsAreFound(t *testing.T) {
+	tree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	testSrc := "package pkg\n\nimport \"testing\"\n\nfunc TestFoo(t *testing.T) {}\n"
+	if err := os.WriteFile(filepath.Join(tree, "pkg", "foo_test.go"), []byte(testSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	methodSrc := "package pkg\n\ntype Recv struct{}\n\nfunc (r Recv) Method() int {\n\treturn 1\n}\n"
+	if err := os.WriteFile(filepath.Join(tree, "pkg", "recv.go"), []byte(methodSrc), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plan := []byte(`- [x] test still passes {id: R1, symbol: TestFoo, package: pkg}
+- [x] method kept, bare form {id: R2, symbol: Method, package: pkg}
+- [x] method kept, qualified form {id: R3, symbol: Recv.Method, package: pkg}
+`)
+	got := ContractDrift(plan, tree, "")
+	if got.Rows != 3 {
+		t.Fatalf("rows = %d, want 3", got.Rows)
+	}
+	if len(got.Drifted) != 0 {
+		t.Fatalf("drifted = %v, want none — all three symbols exist in the final tree", got.Drifted)
+	}
+}
+
+// TestContractDrift_UnknownSymbolKindNeverDrifts pins O55 item 2's other
+// half: a symbol whose shape can never be a function or method declaration
+// is not adjudicable by this detector and must never be reported drifted.
+func TestContractDrift_UnknownSymbolKindNeverDrifts(t *testing.T) {
+	tree := t.TempDir()
+	plan := []byte("- [x] {id: R1, symbol: pkg.Type.Field, package: pkg}\n")
+	got := ContractDrift(plan, tree, "")
+	if len(got.Drifted) != 0 {
+		t.Fatalf("drifted = %v, want none — pkg.Type.Field cannot be a function or method", got.Drifted)
+	}
+}

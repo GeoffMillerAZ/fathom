@@ -94,6 +94,13 @@ func ContractDrift(planMD []byte, tree, coverprofile string) DriftReading {
 		if label == "" {
 			label = r.Symbol
 		}
+		if classifySymbolKind(r.Symbol) == symbolKindUnknown {
+			// O55 item 2 (shared with FalseDoneRate): findFuncInTree only
+			// ever finds functions and methods — a row whose symbol cannot
+			// even shape as one is not adjudicable by this detector, so it
+			// is never reported as drifted.
+			continue
+		}
 		loc, found, err := findFuncInTree(tree, r.Package, r.Symbol)
 		if err != nil || !found {
 			drifted = append(drifted, label+": symbol vanished")

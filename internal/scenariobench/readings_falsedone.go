@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
 )
@@ -46,13 +47,73 @@ func skipTreeDir(name string) bool {
 	return strings.HasPrefix(name, ".")
 }
 
+// isTestSymbol reports whether symbol names a Go test/benchmark/example
+// function by its own convention (`go test` recognizes exactly these three
+// prefixes on a top-level func) — findFuncInTree's signal to search
+// _test.go files at all: a plan row or box check anchored to `TestFoo` (or
+// a receiver method inside one) lives ONLY in a _test.go file, which the
+// default search skips (O55 item 2 — every such row was refuted as "symbol
+// not found" regardless of the work).
+func isTestSymbol(symbol string) bool {
+	name := symbol
+	if i := strings.LastIndex(symbol, "."); i >= 0 {
+		name = symbol[i+1:] // a test helper method: Recv.TestFoo is unusual but not impossible
+	}
+	return strings.HasPrefix(name, "Test") || strings.HasPrefix(name, "Benchmark") || strings.HasPrefix(name, "Example")
+}
+
+// splitReceiver splits a publicloc-qualified func name ("Recv.Method", or a
+// bare "Method"/"Func") into its receiver and method/func parts. isMethod
+// is false for a bare name (no ".").
+func splitReceiver(name string) (recv, method string, isMethod bool) {
+	i := strings.LastIndex(name, ".")
+	if i < 0 {
+		return "", name, false
+	}
+	return name[:i], name[i+1:], true
+}
+
+// funcSpanMatchesSymbol reports whether spanName — publicloc.FuncSpans' own
+// QualifiedFuncName, "Recv.Method" for a method or a bare name for a
+// top-level func — is what symbol names, accepting either spelling of a
+// method on either side (O55 item 2): a plan row or box check is free to
+// write a governed method as the bare method name OR the qualified
+// "Recv.Method" form, and a tree symbol found under one form must still
+// match a row written in the other. Two DIFFERENT receivers with the same
+// method name are never conflated: the bare-vs-qualified fallback only
+// fires when at least one side carries no receiver at all.
+func funcSpanMatchesSymbol(spanName, symbol string) bool {
+	if spanName == symbol {
+		return true
+	}
+	spanRecv, spanMethod, spanIsMethod := splitReceiver(spanName)
+	symRecv, symMethod, symIsMethod := splitReceiver(symbol)
+	switch {
+	case spanIsMethod && symIsMethod:
+		return spanRecv == symRecv && spanMethod == symMethod
+	case spanIsMethod && !symIsMethod:
+		return spanMethod == symbol
+	case !spanIsMethod && symIsMethod:
+		return spanName == symMethod
+	default:
+		return false
+	}
+}
+
 // findFuncInTree finds symbol's declaration in the final tree: when pkgDir
 // is non-empty it searches only that directory's own .go files (Go package
 // scope is non-recursive); when pkgDir is empty it walks the whole tree,
-// skipping skipTreeDir. Unreadable or unparsable files are skipped rather
-// than failing the search — this is a best-effort span finder for a bench
-// reading, not an audit instrument that must account for every byte.
+// skipping skipTreeDir. _test.go files are searched too, but ONLY when
+// symbol itself looks like a test/benchmark/example function (isTestSymbol)
+// — a normal source symbol has no business being "found" only inside a
+// _test.go file, and the default search stays scoped to non-test sources
+// exactly as before. Method symbols match either the bare method name or
+// its "Recv.Method" qualification (funcSpanMatchesSymbol) on both sides.
+// Unreadable or unparsable files are skipped rather than failing the
+// search — this is a best-effort span finder for a bench reading, not an
+// audit instrument that must account for every byte.
 func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
+	includeTests := isTestSymbol(symbol)
 	var files []string
 	if pkgDir != "" {
 		dir := filepath.Join(tree, filepath.FromSlash(pkgDir))
@@ -61,7 +122,10 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 			return funcLoc{}, false, err
 		}
 		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+				continue
+			}
+			if strings.HasSuffix(e.Name(), "_test.go") && !includeTests {
 				continue
 			}
 			files = append(files, filepath.Join(dir, e.Name()))
@@ -77,9 +141,13 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 				}
 				return nil
 			}
-			if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
-				files = append(files, path)
+			if !strings.HasSuffix(path, ".go") {
+				return nil
 			}
+			if strings.HasSuffix(path, "_test.go") && !includeTests {
+				return nil
+			}
+			files = append(files, path)
 			return nil
 		})
 		if err != nil {
@@ -98,7 +166,7 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 			continue
 		}
 		for _, sp := range spans {
-			if sp.Name == symbol {
+			if funcSpanMatchesSymbol(sp.Name, symbol) {
 				rel, err := filepath.Rel(tree, path)
 				if err != nil {
 					rel = path
@@ -108,6 +176,69 @@ func findFuncInTree(tree, pkgDir, symbol string) (funcLoc, bool, error) {
 		}
 	}
 	return funcLoc{}, false, nil
+}
+
+// Symbol kinds classifySymbolKind reports — never persisted, just the
+// vocabulary FalseDoneRate/ContractDrift use to route a row.
+const (
+	symbolKindFunc    = "func"
+	symbolKindMethod  = "method"
+	symbolKindTest    = "test"
+	symbolKindUnknown = "unknown"
+)
+
+// classifySymbolKind reports what shape of Go declaration symbol names, so
+// FalseDoneRate/ContractDrift can tell "this detector cannot judge this
+// symbol at all" (report not_adjudicable) apart from "this detector judged
+// it and it is gone" (refuted/drifted) — O55 item 2: findFuncInTree only
+// ever finds FUNCTION and METHOD declarations (publicloc.FuncSpans walks
+// go/ast's *ast.FuncDecl exclusively), so a symbol that cannot even shape as
+// one — empty, a package-qualified reference, anything with more than one
+// ".", or containing a character no Go identifier ever carries — is unknown
+// to it, never merely "not found".
+func classifySymbolKind(symbol string) string {
+	if symbol == "" {
+		return symbolKindUnknown
+	}
+	if isTestSymbol(symbol) {
+		if _, name, isMethod := splitReceiver(symbol); !isMethod && isValidGoIdent(name) {
+			return symbolKindTest
+		}
+	}
+	recv, name, isMethod := splitReceiver(symbol)
+	if !isValidGoIdent(name) {
+		return symbolKindUnknown
+	}
+	if !isMethod {
+		return symbolKindFunc
+	}
+	if isValidGoIdent(recv) {
+		return symbolKindMethod
+	}
+	return symbolKindUnknown
+}
+
+// isValidGoIdent reports whether s could be a Go identifier — letters,
+// digits, underscore, not starting with a digit. It does not check against
+// Go's keyword list: a plan row will never legitimately name a keyword as a
+// symbol, and rejecting one here would only turn a clearly-wrong row into a
+// silently-skipped one instead of a refuted/drifted one.
+func isValidGoIdent(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 {
+			if !(unicode.IsLetter(r) || r == '_') {
+				return false
+			}
+			continue
+		}
+		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_') {
+			return false
+		}
+	}
+	return true
 }
 
 // coverBlock is one line of a `go test -coverprofile` file:
@@ -231,6 +362,14 @@ func FalseDoneRate(checks []BoxCheck, tree string, coverprofile string) FalseDon
 		symbol, viaBacktick, ok := resolveCheckSymbol(c, tree)
 		if !ok {
 			notAdjudicableRows = append(notAdjudicableRows, label+": no symbol")
+			continue
+		}
+		if kind := classifySymbolKind(symbol); kind == symbolKindUnknown {
+			// O55 item 2: this detector only ever finds functions and
+			// methods (findFuncInTree/publicloc.FuncSpans) — a symbol whose
+			// own shape cannot even be one is not adjudicable, never
+			// refuted, regardless of what the work actually did.
+			notAdjudicableRows = append(notAdjudicableRows, fmt.Sprintf("%s: symbol `%s` is not a function or method this detector can adjudicate", label, symbol))
 			continue
 		}
 		if viaBacktick {

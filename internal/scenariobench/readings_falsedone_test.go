@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/contextbench/publicloc"
@@ -147,6 +148,113 @@ func TestFalseDoneRate_BacktickFallback(t *testing.T) {
 	}
 	if len(got.MatchedByBacktick) != 1 || got.MatchedByBacktick[0] != "r1: matched by backtick `Foo`" {
 		t.Errorf("matched_by_backtick = %v, want [r1: matched by backtick `Foo`]", got.MatchedByBacktick)
+	}
+}
+
+// TestFalseDoneRate_TestFunctionRowIsAdjudicated pins O55 item 2: a plan
+// row anchored to a Test* function lives in a _test.go file, which the
+// detector must search (not silently skip) — the old behavior refuted this
+// unconditionally, "regardless of the work".
+func TestFalseDoneRate_TestFunctionRowIsAdjudicated(t *testing.T) {
+	tree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "package pkg\n\nimport \"testing\"\n\nfunc TestFoo(t *testing.T) {\n\tif 1+1 != 2 {\n\t\tt.Fail()\n\t}\n}\n"
+	file := filepath.Join(tree, "pkg", "foo_test.go")
+	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spans, err := publicloc.FuncSpans([]byte(src), file)
+	if err != nil || len(spans) != 1 {
+		t.Fatalf("FuncSpans: %v %v", spans, err)
+	}
+	sp := spans[0]
+	cover := filepath.Join(tree, "cover.out")
+	profile := "mode: set\n" + fmt.Sprintf("github.com/example/mod/pkg/foo_test.go:%d.1,%d.2 1 1\n", sp.Start, sp.End)
+	if err := os.WriteFile(cover, []byte(profile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := FalseDoneRate([]BoxCheck{{RowID: "r1", Symbol: "TestFoo", Package: "pkg"}}, tree, cover)
+	if got.Claimed != 1 {
+		t.Fatalf("claimed = %d, want 1", got.Claimed)
+	}
+	if got.NotAdjudicable != 0 {
+		t.Errorf("not_adjudicable = %d, want 0: %v", got.NotAdjudicable, got.NotAdjudicableRows)
+	}
+	if got.Refuted != 0 {
+		t.Errorf("refuted = %d, want 0 (TestFoo exists and is covered): %v", got.Refuted, got.RefutedRows)
+	}
+}
+
+// TestFalseDoneRate_MethodRowBothForms pins O55 item 2: a receiver method
+// must be found whether the row names it bare ("Method") or qualified
+// ("Recv.Method") — findFuncInTree's exact sp.Name == symbol comparison
+// refuted every method row regardless of which spelling it used.
+func TestFalseDoneRate_MethodRowBothForms(t *testing.T) {
+	tree := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tree, "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	src := "package pkg\n\ntype Recv struct{}\n\nfunc (r Recv) Method() int {\n\treturn 1\n}\n"
+	file := filepath.Join(tree, "pkg", "recv.go")
+	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	spans, err := publicloc.FuncSpans([]byte(src), file)
+	if err != nil || len(spans) != 1 {
+		t.Fatalf("FuncSpans: %v %v", spans, err)
+	}
+	sp := spans[0]
+	if sp.Name != "Recv.Method" {
+		t.Fatalf("expected publicloc to qualify the method as Recv.Method, got %q", sp.Name)
+	}
+	cover := filepath.Join(tree, "cover.out")
+	profile := "mode: set\n" + fmt.Sprintf("github.com/example/mod/pkg/recv.go:%d.1,%d.2 1 1\n", sp.Start, sp.End)
+	if err := os.WriteFile(cover, []byte(profile), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got := FalseDoneRate([]BoxCheck{
+		{RowID: "bare", Symbol: "Method", Package: "pkg"},
+		{RowID: "qualified", Symbol: "Recv.Method", Package: "pkg"},
+	}, tree, cover)
+	if got.Claimed != 2 {
+		t.Fatalf("claimed = %d, want 2", got.Claimed)
+	}
+	if got.NotAdjudicable != 0 {
+		t.Errorf("not_adjudicable = %d, want 0: %v", got.NotAdjudicable, got.NotAdjudicableRows)
+	}
+	if got.Refuted != 0 {
+		t.Errorf("refuted = %d, want 0 (both name the same real method): %v", got.Refuted, got.RefutedRows)
+	}
+}
+
+// TestFalseDoneRate_UnknownSymbolKindIsNotAdjudicable pins O55 item 2's
+// other half: a symbol whose own shape can never be a function or method
+// declaration (more than one ".", here) must be reported not_adjudicable,
+// never refuted — this detector (findFuncInTree/publicloc.FuncSpans) can
+// only ever find functions and methods, so it cannot judge this row at all,
+// which is a different fact from "judged it and it's gone".
+func TestFalseDoneRate_UnknownSymbolKindIsNotAdjudicable(t *testing.T) {
+	tree, _, _ := writeFalseDoneFixture(t)
+	cover := filepath.Join(tree, "cover.out")
+	if err := os.WriteFile(cover, []byte("mode: set\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := FalseDoneRate([]BoxCheck{{RowID: "r1", Symbol: "pkg.Type.Field", Package: "pkg"}}, tree, cover)
+	if got.Claimed != 0 {
+		t.Errorf("claimed = %d, want 0 (an unadjudicable symbol is never claimed)", got.Claimed)
+	}
+	if got.Refuted != 0 {
+		t.Errorf("refuted = %d, want 0: %v", got.Refuted, got.RefutedRows)
+	}
+	if got.NotAdjudicable != 1 || len(got.NotAdjudicableRows) != 1 {
+		t.Fatalf("not_adjudicable = %d %v, want 1 row", got.NotAdjudicable, got.NotAdjudicableRows)
+	}
+	if !strings.Contains(got.NotAdjudicableRows[0], "r1") || !strings.Contains(got.NotAdjudicableRows[0], "pkg.Type.Field") {
+		t.Errorf("not_adjudicable row = %q, want it to name r1 and the symbol", got.NotAdjudicableRows[0])
 	}
 }
 
