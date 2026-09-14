@@ -44,18 +44,33 @@ func extractPromptCandidates(prompt string) []promptCandidate {
 		if len(out) >= maxPromptCandidates {
 			break
 		}
-		tok := strings.Trim(raw, promptTokenCutset)
+		// A prompt marks code two ways Fields+Trim alone can't preserve on
+		// tok itself: wrapped in backticks ("`core.Edge`"), or immediately
+		// called ("registerTool(ctx)" — the "(" is cut off here, before
+		// promptTokenCutset would otherwise mangle it into the middle of
+		// the token instead of trimming a clean end).
+		backticked := strings.HasPrefix(raw, "`") && strings.Count(raw, "`") >= 2
+		work := raw
+		calledLike := false
+		if idx := strings.IndexByte(raw, '('); idx > 0 {
+			work = raw[:idx]
+			calledLike = true
+		}
+		tok := strings.Trim(work, promptTokenCutset)
 		if tok == "" || seen[tok] {
 			continue
 		}
 		switch {
-		case strings.Contains(tok, "/") && looksLikeFilePath(tok):
+		case looksLikeFilePath(tok):
+			// No slash requirement here (unlike looksLikePackagePath
+			// below): a bare same-directory filename ("README.md" with no
+			// path prefix) is still a file, not a directory.
 			seen[tok] = true
 			out = append(out, promptCandidate{candidatePath, tok})
 		case looksLikePackagePath(tok):
 			seen[tok] = true
 			out = append(out, promptCandidate{candidatePackage, tok})
-		case looksLikeSymbol(tok):
+		case looksLikeSymbol(tok, backticked, calledLike):
 			seen[tok] = true
 			out = append(out, promptCandidate{candidateSymbol, tok})
 		}
@@ -84,6 +99,15 @@ func looksLikeFilePath(tok string) bool {
 		return false
 	}
 	for _, r := range ext {
+		if r >= 'A' && r <= 'Z' {
+			// An uppercase "extension" is never a real one ("go", "md",
+			// "json" — every extension in this repo's own tree is
+			// lowercase); it reads as Type.Method instead ("Store.Get"),
+			// which is a symbol shape (looksLikeSymbol), not a file one —
+			// this is what keeps a bare, no-slash dotted token like
+			// "README.md" a file without also swallowing "Store.Get".
+			return false
+		}
 		if !isASCIILetterOrDigit(r) {
 			return false
 		}
@@ -120,40 +144,103 @@ func looksLikePackagePath(tok string) bool {
 }
 
 // looksLikeSymbol reports whether tok reads as a code identifier rather
-// than an English word: CamelCase/mixedCase, or snake_case with a letter
-// on either side of an underscore, at least 4 characters, no slash or
-// dot-as-sentence-punctuation. A plain lowercase or uppercase word
-// ("fix", "REFUSE") is not a symbol reference — it costs a wasted
-// find_symbol call for nothing, which is exactly what maxPromptSymbolLookups
-// bounds even when this heuristic lets one through.
-func looksLikeSymbol(tok string) bool {
+// than an English word. A single leading capital is NOT enough — every
+// capitalized sentence word ("Update", "Edge", "Fixed", or "README" in
+// "README.md") satisfies that trivially, and a prompt exploring a design
+// is FULL of them; admitting all of them starves the real symbols a
+// prompt names out of maxPromptSymbolLookups' few slots. tok counts as a
+// symbol only when the PROMPT marked it as code some other way:
+// backticked or immediately called (both decided by the caller from the
+// original token, since trimming has already erased backticks and a
+// trailing "(...)" by the time tok reaches here), package-qualified
+// (dotted, "pkg.Name" or "Type.Method" shaped), CamelCase/mixedCase with
+// an internal capital — one not merely the first rune ("FindSymbol",
+// "registerTool") — or snake_case with a letter on either side of an
+// underscore ("max_rules"). At least 4 characters, no slash, no more
+// than one embedded dot (a URL fragment or a sentence with a mid-token
+// period is not this shape).
+func looksLikeSymbol(tok string, backticked, calledLike bool) bool {
 	if len(tok) < 4 || strings.ContainsAny(tok, "/@#") {
 		return false
 	}
-	// A single embedded dot reads as Type.Method ("Store.Get"); anything
-	// else (a URL fragment, a sentence with a mid-token period) is not a
-	// symbol shape this heuristic accepts.
 	if strings.Count(tok, ".") > 1 {
 		return false
 	}
-	hasUpper, hasLower, hasUnderscore := false, false, false
+	for _, r := range tok {
+		if !(isASCIILetterOrDigit(r) || r == '_' || r == '.') {
+			return false
+		}
+	}
+	if backticked || calledLike {
+		return true
+	}
+	if isDotQualifiedSymbol(tok) {
+		return true
+	}
+	if hasInternalCapital(tok) {
+		return true
+	}
+	return hasUnderscoreLowerShape(tok)
+}
+
+// isDotQualifiedSymbol reports whether tok is a single-dot, two-segment
+// identifier shape ("core.Edge", "Store.Get") — a package- or
+// type-qualified reference, regardless of which side carries the capital.
+func isDotQualifiedSymbol(tok string) bool {
+	i := strings.IndexByte(tok, '.')
+	if i <= 0 || i == len(tok)-1 {
+		return false
+	}
+	return isIdentifierShape(tok[:i]) && isIdentifierShape(tok[i+1:])
+}
+
+func isIdentifierShape(s string) bool {
+	if s == "" {
+		return false
+	}
+	for i, r := range s {
+		if i == 0 && !(isASCIILetterOrDigit(r) || r == '_') {
+			return false
+		}
+		if !(isASCIILetterOrDigit(r) || r == '_') {
+			return false
+		}
+	}
+	return true
+}
+
+// hasInternalCapital reports whether tok has at least one lowercase
+// letter AND at least one uppercase letter that is not merely tok's
+// first rune — the shape that separates "FindSymbol"/"registerTool" from
+// "Update"/"Edge", which carry a capital only because they open a
+// sentence-cased word.
+func hasInternalCapital(tok string) bool {
+	hasLower, hasUpperAfterFirst := false, false
+	for i, r := range tok {
+		switch {
+		case r >= 'a' && r <= 'z':
+			hasLower = true
+		case r >= 'A' && r <= 'Z' && i > 0:
+			hasUpperAfterFirst = true
+		}
+	}
+	return hasLower && hasUpperAfterFirst
+}
+
+// hasUnderscoreLowerShape reports the snake_case admission this
+// heuristic already covered before this defect: an underscore with a
+// lowercase letter somewhere in tok too.
+func hasUnderscoreLowerShape(tok string) bool {
+	hasLower, hasUnderscore := false, false
 	for _, r := range tok {
 		switch {
-		case r >= 'A' && r <= 'Z':
-			hasUpper = true
 		case r >= 'a' && r <= 'z':
 			hasLower = true
 		case r == '_':
 			hasUnderscore = true
-		case r == '.':
-			// allowed once, already bounded above
-		case isASCIIDigit(r):
-			// allowed anywhere; does not itself signal "symbol"
-		default:
-			return false
 		}
 	}
-	return (hasUpper && hasLower) || (hasUnderscore && hasLower)
+	return hasUnderscore && hasLower
 }
 
 func isASCIILetterOrDigit(r rune) bool {

@@ -57,6 +57,16 @@ func TestExtractPromptCandidates(t *testing.T) {
 			want:   []promptCandidate{{candidatePath, "internal/store/backend.go"}},
 		},
 		{
+			name:   "a plain capitalized sentence word is not a symbol; only the backticked, dotted reference is",
+			prompt: "Update the Edge struct in `core.Edge`",
+			want:   []promptCandidate{{candidateSymbol, "core.Edge"}},
+		},
+		{
+			name:   "a bare filename with no directory prefix is a path candidate, not a symbol",
+			prompt: "does README.md still describe this correctly?",
+			want:   []promptCandidate{{candidatePath, "README.md"}},
+		},
+		{
 			name: "capped at maxPromptCandidates",
 			prompt: "internal/a/a.go internal/b/b.go internal/c/c.go internal/d/d.go " +
 				"internal/e/e.go internal/f/f.go",
