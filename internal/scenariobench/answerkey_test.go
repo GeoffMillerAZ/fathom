@@ -75,6 +75,56 @@ func TestAnswerKeyLeakScan_BashCatOfExcludedPathIsCaught(t *testing.T) {
 	}
 }
 
+// TestAnswerKeyLeakScan_ReadInputNamesExcludedPath is the fix-first
+// review's own proof: a Read tool_use whose INPUT names an excluded path
+// returns raw file content in its RESULT with no path mentioned anywhere
+// — the earlier version scanned tool_result text only, so a plain Read
+// of the answer key escaped the scan entirely.
+func TestAnswerKeyLeakScan_ReadInputNamesExcludedPath(t *testing.T) {
+	dir := t.TempDir()
+	path := writeGoldTranscript(t, dir, "read-leak.jsonl", []goldStep{
+		{
+			Name:   "Read",
+			Input:  `{"file_path":"/repo/testdata/contextbench/tasks-home.json"}`,
+			Result: "     1\t{\n     2\t  \"H1-T01\": {\"ground_truth\": \"fusion.New\"}\n     3\t}\n",
+		},
+	})
+	session := SessionResult{RawPath: path}
+	if !AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
+		t.Error("expected a leak from the Read tool_use's own input path, even though the result text names no path at all")
+	}
+}
+
+// TestAnswerKeyLeakScan_BashCommandNamesExcludedPath covers the review's
+// second required case: a Bash tool_use whose "command" INPUT (not its
+// result) names an excluded path via `cat`.
+func TestAnswerKeyLeakScan_BashCommandNamesExcludedPath(t *testing.T) {
+	dir := t.TempDir()
+	path := writeGoldTranscript(t, dir, "bash-cmd-leak.jsonl", []goldStep{
+		{Name: "Bash", Input: `{"command":"cat testdata/contextbench/tasks-home.json"}`, Result: "(command not yet run)"},
+	})
+	session := SessionResult{RawPath: path}
+	if !AnswerKeyLeakScan(session, homeCorpusExcludePaths) {
+		t.Error("expected a leak from the Bash tool_use's own command text, even though the result carries nothing")
+	}
+}
+
+// TestContainsPathNeedle covers the word-boundary claim directly: a
+// needle must not match as a mere substring of a differently-named
+// directory that happens to end the same way.
+func TestContainsPathNeedle(t *testing.T) {
+	needle := "testdata/contextbench/"
+	if !containsPathNeedle("cat testdata/contextbench/tasks-home.json", needle) {
+		t.Error("expected a match on an ordinary path reference")
+	}
+	if containsPathNeedle("cat mytestdata/contextbench/tasks-home.json", needle) {
+		t.Error("expected no match: a differently-named directory merely ending the same way")
+	}
+	if !containsPathNeedle("testdata/contextbench/tasks-home.json", needle) {
+		t.Error("expected a match at the very start of text")
+	}
+}
+
 // TestExcludeNeedle covers the glob-to-literal conversion directly.
 func TestExcludeNeedle(t *testing.T) {
 	cases := []struct{ pattern, want string }{
