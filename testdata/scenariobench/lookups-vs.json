@@ -159,8 +159,13 @@
       },
       "oracle": {
         "answer_all_of": [
-          "core.Edge",
           "ADR-021"
+        ],
+        "answer_any_of": [
+          [
+            "core.Edge",
+            "Edge struct"
+          ]
         ]
       },
       "predictions": {
@@ -173,7 +178,7 @@
       "requires": [
         "compiled-layer"
       ],
-      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T02. category hand-assigned ('obligations'); not a ClassifyChange shape."
+      "derivation": "Copied verbatim from testdata/contextbench/tasks-home.json id H1-T02. category hand-assigned ('obligations'); not a ClassifyChange shape. O53 defect 5 (2026-09-14): 'core.Edge' moved from answer_all_of into an answer_any_of group with 'Edge struct' — the same spelling-variant false fail contextbench's own H1-T02 hit (VB-36/O47), mirrored here now that scenariobench's oracle supports answer_any_of groups; 'ADR-021' stays a plain required token."
     },
     {
       "id": "H1-T03",

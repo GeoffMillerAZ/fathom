@@ -78,8 +78,18 @@ func validateScenarioTask(t Task, armNames []string) error {
 	if !hasOracle(t.Oracle) {
 		return fmt.Errorf("task %s: no oracle (fail_to_pass, pass_to_pass, or detectors) — nothing would decide success", t.ID)
 	}
-	if t.Oracle.Localization && len(t.Oracle.AnswerAllOf) > 0 {
-		return fmt.Errorf("task %s: oracle carries both localization and answer_all_of — the two answer-only oracles ask different questions and never combine on one task", t.ID)
+	if t.Oracle.Localization && (len(t.Oracle.AnswerAllOf) > 0 || len(t.Oracle.AnswerAnyOf) > 0) {
+		return fmt.Errorf("task %s: oracle carries both localization and answer_all_of/answer_any_of — the two answer-only oracles ask different questions and never combine on one task", t.ID)
+	}
+	for i, group := range t.Oracle.AnswerAnyOf {
+		if len(group) == 0 {
+			return fmt.Errorf("task %s: oracle.answer_any_of[%d] is empty", t.ID, i)
+		}
+		for _, alt := range group {
+			if alt == "" {
+				return fmt.Errorf("task %s: oracle.answer_any_of[%d] contains an empty string", t.ID, i)
+			}
+		}
 	}
 	for _, arm := range armNames {
 		if t.Predictions[arm] == "" {
@@ -121,7 +131,8 @@ func validateScenarioTask(t Task, armNames []string) error {
 
 // hasOracle reports whether o could decide anything at all.
 func hasOracle(o Oracle) bool {
-	return len(o.FailToPass) > 0 || len(o.PassToPass) > 0 || len(o.Detectors) > 0 || len(o.AnswerAllOf) > 0 || o.Localization
+	return len(o.FailToPass) > 0 || len(o.PassToPass) > 0 || len(o.Detectors) > 0 ||
+		len(o.AnswerAllOf) > 0 || len(o.AnswerAnyOf) > 0 || o.Localization
 }
 
 // CorpusSHA256 returns the hex SHA-256 of the corpus file's bytes — the

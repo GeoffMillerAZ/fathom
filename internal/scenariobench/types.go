@@ -135,10 +135,22 @@ type Oracle struct {
 	// Coverage requests a coverprofile from the test run (SDD readings).
 	Coverage bool `json:"coverage,omitempty"`
 	// AnswerAllOf is the answer-only oracle (SB-32 lookups-vs.json): every
-	// token must appear (case-insensitive substring) in the LAST session's
-	// SessionResult.FinalAnswer. A task may carry this ALONE — no
-	// tree-level check at all — see AnswerOnly (oracle.go).
+	// token must appear (case-insensitive substring, subject to
+	// oracleAnswerMatches' negation/quoting/conclusion-span rules — O53
+	// defect 5) in the LAST session's SessionResult.FinalAnswer. A task
+	// may carry this ALONE — no tree-level check at all — see AnswerOnly
+	// (oracle.go).
 	AnswerAllOf []string `json:"answer_all_of,omitempty"`
+	// AnswerAnyOf declares groups of spelling-equivalent gold tokens (O53
+	// defect 5a, mirroring internal/contextbench.Task.AnswerAnyOf/VB-36):
+	// each inner slice is one required fact, satisfied by ANY member
+	// appearing in the answer — the same false-fail contextbench's own
+	// H1-T02 hit ("Edge struct" vs the literal "core.Edge") for the same
+	// fact spelled differently. Groups are required exactly like
+	// AnswerAllOf's own tokens: every group (and every plain AnswerAllOf
+	// token) must be satisfied. AnswerAllOf keeps working unchanged when
+	// this is empty — AnswerAnyOf only ADDS grouped alternatives.
+	AnswerAnyOf [][]string `json:"answer_any_of,omitempty"`
 	// Localization is VB-25's "files" oracle (vision 29 Wave G, the LCA
 	// bug-localization track): the LAST session's FinalAnswer is parsed
 	// for a file set (ParseAnswerFiles) and scored against Gold.Files

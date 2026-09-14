@@ -272,6 +272,82 @@ func TestLoadScenarioCorpus_TaskNotDerivedFromHomeCorpusNeedsNoExcludePaths(t *t
 	}
 }
 
+// TestLoadScenarioCorpus_AnswerAnyOfAlone proves a task whose ONLY oracle
+// is answer_any_of (no answer_all_of at all) loads without error — hasOracle
+// must accept it, mirroring answer_all_of's own acceptance (O53 defect 5a).
+func TestLoadScenarioCorpus_AnswerAnyOfAlone(t *testing.T) {
+	dir := t.TempDir()
+	good := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p", "derivation": "d",
+    "subject": {"repo_url": "u", "base_commit": "c"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"answer_any_of": [["core.Edge", "Edge struct"]]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", good)
+	c, err := LoadScenarioCorpus(path)
+	if err != nil {
+		t.Fatalf("LoadScenarioCorpus: %v", err)
+	}
+	if len(c.Tasks) != 1 || len(c.Tasks[0].Oracle.AnswerAnyOf) != 1 {
+		t.Fatalf("unexpected tasks: %+v", c.Tasks)
+	}
+}
+
+// TestLoadScenarioCorpus_RefusesEmptyAnswerAnyOfGroup covers the
+// structural check: a group with zero alternatives, or containing an
+// empty string, can never be satisfied and is refused at load time.
+func TestLoadScenarioCorpus_RefusesEmptyAnswerAnyOfGroup(t *testing.T) {
+	cases := []string{
+		`{"answer_any_of": [[]]}`,
+		`{"answer_any_of": [[""]]}`,
+	}
+	for _, oracle := range cases {
+		dir := t.TempDir()
+		bad := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p", "derivation": "d",
+    "subject": {"repo_url": "u", "base_commit": "c"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": ` + oracle + `,
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+		path := writeCorpusFixture(t, dir, "corpus.json", bad)
+		if _, err := LoadScenarioCorpus(path); err == nil {
+			t.Errorf("oracle %s: expected an error for an unsatisfiable answer_any_of group", oracle)
+		}
+	}
+}
+
+// TestLoadScenarioCorpus_RefusesLocalizationCombinedWithAnswerAnyOf mirrors
+// the existing AnswerAllOf/Localization refusal for the new group form.
+func TestLoadScenarioCorpus_RefusesLocalizationCombinedWithAnswerAnyOf(t *testing.T) {
+	dir := t.TempDir()
+	bad := `{
+  "arms": {"full": {"wired": true, "instructions": "stanza"}},
+  "tasks": [{
+    "id": "T1", "prompt": "p", "derivation": "d",
+    "subject": {"repo_url": "u", "base_commit": "c"},
+    "sessions": {"mode": "single", "count": 1, "max_turns": 5},
+    "oracle": {"localization": true, "answer_any_of": [["a", "b"]]},
+    "gold": {"files": ["a.go"]},
+    "predictions": {"full": "wins"}
+  }],
+  "criterion": {"id": "C1", "treatment": "full", "control": "control", "min_trials": 1}
+}`
+	path := writeCorpusFixture(t, dir, "corpus.json", bad)
+	if _, err := LoadScenarioCorpus(path); err == nil {
+		t.Fatal("expected an error for a task carrying both localization and answer_any_of")
+	}
+}
+
 func TestCorpusSHA256_Deterministic(t *testing.T) {
 	dir := t.TempDir()
 	path := writeCorpusFixture(t, dir, "corpus.json", validCorpusJSON())
