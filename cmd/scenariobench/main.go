@@ -632,6 +632,28 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	}
 	defer scenariobench.StopWorktree(&wt)
 
+	// O57 finding 3: "an instrument-caused violation is voided, never
+	// scored" — run every detector once against the worktree AS PREPARED
+	// (post-wire, before any session), so a detector PrepareSubject's own
+	// wiring left red (a scratch daemon, a compiled layer, PostWireSetup
+	// drift) can be told apart from one the agent's session actually broke.
+	baseline, err := scenariobench.RunBaselineDetectors(ctx, wt, cp.task)
+	if err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("running baseline detectors: %w", err)
+	}
+
+	// O57 finding 6: "per-arm artifacts are shared across trials" —
+	// PrepareSubject's own wt.CellDir carries no trial component (it is
+	// SHARED across every trial of this (task, arm)); everything captured
+	// from here on (agent.diff, oracle-test-output, detector logs,
+	// plan.md) goes into this trial's own subdirectory instead. "" for
+	// attemptDir until wave-n1's own attempt-layout directory (if any) is
+	// threaded through here.
+	wt.CellDir = scenariobench.PerTrialCellDir(wt.CellDir, "", cp.trial)
+	if err := os.MkdirAll(wt.CellDir, 0o755); err != nil {
+		return scenariobench.CellResult{}, fmt.Errorf("creating per-trial cell dir %s: %w", wt.CellDir, err)
+	}
+
 	// The clean room (RC-6) is Claude Code's own --restricted mode
 	// (buildClaudeArgs) plus --settings <wt.Arm.SettingsPath> — both
 	// derived from req/wt.Arm inside RunSessions/buildClaudeArgs, nothing
@@ -658,6 +680,10 @@ func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench
 	if err != nil {
 		return scenariobench.CellResult{}, fmt.Errorf("running oracle: %w", err)
 	}
+	// O57 finding 3: exclude any detector already red at baseline from
+	// this cell's own pass/fail, now that RunOracle has computed its
+	// post-session verdict.
+	scenariobench.VoidBaselineRedDetectors(&oracle, baseline, cp.task, sessions)
 
 	readings := scenariobench.AggregateReadings(sessions)
 	readings.SurfaceCalls = scenariobench.SurfaceCallCount(readings.ToolCalls, arm.Surface)

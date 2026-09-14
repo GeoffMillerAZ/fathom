@@ -421,6 +421,14 @@ type DetectorResult struct {
 	Name     string `json:"name"`
 	Exit     int    `json:"exit"`
 	Violated bool   `json:"violated"`
+	// VoidedBaselineRed is O57 finding 3: true when RunBaselineDetectors
+	// found this SAME detector already red on the prepared (post-wire, but
+	// pre-session) worktree — an instrument/environment fact, never the
+	// agent's own violation. Violated above is forced to false and this
+	// detector is excluded from the cell's pass/fail when this is true;
+	// Note explains why.
+	VoidedBaselineRed bool   `json:"voided_baseline_red,omitempty"`
+	Note              string `json:"note,omitempty"`
 }
 
 // OracleResult is what the tests and detectors said after the last session.
