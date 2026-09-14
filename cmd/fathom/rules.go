@@ -1,12 +1,16 @@
 // rules.go — the `fathom rules` verb family (VB-14, docs/vision/29-verbs-
-// not-lookups.md §3 wave C; ADR-035 decision 3): today just `gen-test`,
-// which compiles a repo's `.fathom/guard.cue` layer_rules (VB-13) to a Go
-// test file so the SAME rule text obligations serves live at the edit also
-// fails `task validate` and any CI on an actual regression — "governance
-// moves from advice to enforcement."
+// not-lookups.md §3 wave C; ADR-035 decision 3): `gen-test` compiles a
+// repo's `.fathom/guard.cue` layer_rules (VB-13) to a Go test file so the
+// SAME rule text obligations serves live at the edit also fails `task
+// validate` and any CI on an actual regression — "governance moves from
+// advice to enforcement." `replay` (VB-16, §5 bullet 3) answers whether
+// that enforcement has ever actually caught anything: it evaluates
+// today's rules against a historical commit range and reports which
+// commits would have failed the gate.
 package main
 
 import (
+	"context"
 	"fmt"
 	"go/format"
 	"io"
@@ -17,22 +21,74 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/rulereplay"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 )
 
 // cmdRules dispatches to the rules verb named by args[0].
 func cmdRules(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: rules requires a verb: gen-test")
+		fmt.Fprintln(stderr, "error: rules requires a verb: gen-test, replay")
 		return 1
 	}
 	switch args[0] {
 	case "gen-test":
 		return cmdRulesGenTest(args[1:], stdout, stderr)
+	case "replay":
+		return cmdRulesReplay(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown rules verb %q (want gen-test)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown rules verb %q (want gen-test, replay)\n", args[0])
 		return 1
 	}
+}
+
+// cmdRulesReplay evaluates --rules' layer_rules (read once) against every
+// commit in --since's range under --root, reporting which commits would
+// have failed the gate and, of those, which were a new regression at that
+// commit versus one merely inherited from its parent (VB-16).
+func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("rules replay", stderr)
+	root := fs.String("root", ".", "git repository to replay")
+	rulesPath := fs.String("rules", ".fathom/guard.cue", "layer-rule file to evaluate, read once (relative to --root unless absolute)")
+	since := fs.String("since", "", "a git ref (replay ref..HEAD) or a bare positive integer N (replay the last N commits)")
+	jsonOut := fs.Bool("json", false, "emit the report as JSON instead of a table")
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	if *since == "" {
+		fmt.Fprintln(stderr, "error: --since is required (a git ref or a bare commit count)")
+		return 1
+	}
+
+	rootAbs, err := filepath.Abs(*root)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	ruleFile := *rulesPath
+	if !filepath.IsAbs(ruleFile) {
+		ruleFile = filepath.Join(rootAbs, ruleFile)
+	}
+
+	report, err := rulereplay.Replay(context.Background(), rulereplay.Options{
+		RepoRoot: rootAbs,
+		RuleFile: ruleFile,
+		Since:    *since,
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
+	if *jsonOut {
+		if err := report.WriteJSON(stdout); err != nil {
+			fmt.Fprintf(stderr, "error: encoding report: %v\n", err)
+			return 1
+		}
+		return 0
+	}
+	report.WriteTable(stdout)
+	return 0
 }
 
 // cmdRulesGenTest emits <out>/layer_rules_test.go: one subtest per rule

@@ -439,6 +439,14 @@ cannot load; both engines also exclude `.env`-pattern files and never follow
 a symlink, so a file ingest and `read_source` refuse is never still served
 by `search`.
 
+**`fathom rules replay --since <ref|N>` (VB-16).** Evaluates today's
+`.fathom/guard.cue` layer rules against every commit in a historical range
+by checking each one out with `git archive` and building its import graph
+with `go/parser` alone (no daemon, no store, no module resolution),
+classifying each violation NEW (absent at the parent) or INHERITED;
+`--json` emits the full per-commit report. Run against this repository's
+last 200 commits: zero violations found (`docs/bench/rule-replay-2026-09-14.md`).
+
 ## [0.8.0] -- 2026-09-02
 
 **What this release is.** fathom stopped being a Claude Code program and

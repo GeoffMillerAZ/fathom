@@ -1,0 +1,1017 @@
+{
+  "since": "200",
+  "range_spec": "last 200 commits",
+  "rule_file": ".fathom/guard.cue",
+  "rule_ids": [
+    "store-no-cgo",
+    "core-no-mcp-or-cmd",
+    "internal-no-cycles"
+  ],
+  "total_commits": 200,
+  "total_violations": 0,
+  "new_violations": 0,
+  "elapsed_ms": 190659,
+  "per_commit_avg_ms": 953.295,
+  "commits": [
+    {
+      "sha": "24f9edac2735bf461531d450a4cce54605bb982c",
+      "date": "2026-09-12T14:32:38-07:00",
+      "subject": "docs(intent): ADR-032 the bench pyramid; plan bench-pyramid BP-1..25; harness-port wave 3 (advisory hooks, Codex for real, INTENT.md); O23–O26 filed"
+    },
+    {
+      "sha": "1b8765d1ec49363c4b48d55ba176b8cb0a6d0e7b",
+      "date": "2026-09-12T14:33:15-07:00",
+      "subject": "docs(vision): vision 26 and scope G9 restated under ADR-032; the July token figure named a turn-count result"
+    },
+    {
+      "sha": "c3fda96d015dc95465235cebb5524691cdbfe891",
+      "date": "2026-09-12T15:18:19-07:00",
+      "subject": "feat(indexbench): bench pyramid L0 index oracle and L1 payload replay (BP-12..16)"
+    },
+    {
+      "sha": "defa27a54953df699ffa2da86d2a82566420c148",
+      "date": "2026-09-12T15:20:20-07:00",
+      "subject": "merge(bp-index): index oracle harness"
+    },
+    {
+      "sha": "7d34d34faa6a4a0e889506e60c0e95f8b825d777",
+      "date": "2026-09-12T15:55:17-07:00",
+      "subject": "feat(nav): resolved-by-default find_callers, references and blast_radius; watermark-keyed graph memo"
+    },
+    {
+      "sha": "86057e63e7e5d0848689ed476c92d9b728109df7",
+      "date": "2026-09-12T16:08:16-07:00",
+      "subject": "fix(callgraph): answer an ambiguous bare name from resolved edges instead of falling back"
+    },
+    {
+      "sha": "3f88b5d00af420908759ffc60d6bbe075c9b1634",
+      "date": "2026-09-12T14:55:58-07:00",
+      "subject": "fix(obligations): fresh-first, layer roles, contract scoping and inlined citations (BP-17..20, BP-23)"
+    },
+    {
+      "sha": "0d709c0937da6d31e1f20f91d92e88cf6afac3ff",
+      "date": "2026-09-12T15:20:20-07:00",
+      "subject": "merge(bp-obligations): semantic ranking/roles/contract scoping, obligation snippets (BP wave)"
+    },
+    {
+      "sha": "2b284f137385c62d07334bcd0700585fec748ab5",
+      "date": "2026-09-12T14:40:11-07:00",
+      "subject": "test(contextbench): the corpus gate refuses leaked truths and self-answering prompts"
+    },
+    {
+      "sha": "85d88e08cc47995e49e57e41b7781384f19b15e7",
+      "date": "2026-09-12T14:59:06-07:00",
+      "subject": "feat(contextbench): remembered cells, targeted runs, and H2-3"
+    },
+    {
+      "sha": "b9a085ab4728843a2dd03eb6ae891d9fbd160770",
+      "date": "2026-09-12T15:03:43-07:00",
+      "subject": "docs(plans): BP-1..BP-11 proven by the index"
+    },
+    {
+      "sha": "cb6350f2b7fea5bf86834a5892e5ab3d47e295fe",
+      "date": "2026-09-12T15:21:10-07:00",
+      "subject": "merge(bp-core): contextbench cells/keys/select, transcript metrics, targeted bench harness"
+    },
+    {
+      "sha": "a48cb7473a42e8755e2475634f8a06682570ed1c",
+      "date": "2026-09-12T15:21:17-07:00",
+      "subject": "merge(bp-index): indexbench oracle + payload replay goldens, loctruth alias"
+    },
+    {
+      "sha": "f7227af0cd95de363a66beb132432729d7bcfe2a",
+      "date": "2026-09-12T15:17:49-07:00",
+      "subject": "feat(harness): wave 3 — seven advisory hook rows, hooks_coverage, Codex verified, INTENT.md"
+    },
+    {
+      "sha": "536348a48d3af2acad49528d16706a7f09576b81",
+      "date": "2026-09-12T15:22:16-07:00",
+      "subject": "merge(hp-hooks): harness wave-3 events, verified Codex descriptor, session-hook/doctor/intent verbs"
+    },
+    {
+      "sha": "cb7f4864890b677ea6f45ccdc7c772b773be2928",
+      "date": "2026-09-12T15:40:07-07:00",
+      "subject": "fix(integration): BP-21 proven on the merged ranking; BP-22 refused against the 2.1.270 measurement"
+    },
+    {
+      "sha": "b912738d9c3018c900729cc637e308486cb250b7",
+      "date": "2026-09-12T16:12:20-07:00",
+      "subject": "merge(main): bench-pyramid BP-1..BP-25 under the resolved-by-default nav tools"
+    },
+    {
+      "sha": "197d88c6de3708b49ed6df9e4c47c2b9de1b16ee",
+      "date": "2026-09-12T16:32:45-07:00",
+      "subject": "fix(semantic): obligations compile nested CLAUDE.md under a directory scope floor"
+    },
+    {
+      "sha": "d36f4d4e22deeb0e3d10b1553989d559cc1c982e",
+      "date": "2026-09-12T16:32:59-07:00",
+      "subject": "fix(contextbench): targeted rows leave the committed ledger alone; honest cells_lost and model_id"
+    },
+    {
+      "sha": "080aa8480ed6fdde984c751d7c37391c85c9fe18",
+      "date": "2026-09-12T16:43:06-07:00",
+      "subject": "docs(bench): the pyramid table, the strengths map and the gates; ADR-032 amended with the L0 findings; this repo's hooks carry wave 3"
+    },
+    {
+      "sha": "60bdd627ea1cf80cb9f3896793bc5167ecbc5721",
+      "date": "2026-09-12T16:59:06-07:00",
+      "subject": "fix(fusion): the typed-edge loader builds its own Go env; the failure is reported, not logged"
+    },
+    {
+      "sha": "e4cbeb545b84db231da66495735779d249187be5",
+      "date": "2026-09-12T17:02:33-07:00",
+      "subject": "merge(bp-typed): typed-edge pass env, doctor typed_edges row, daemon install writes the Go env (BP-35..37)"
+    },
+    {
+      "sha": "a75e64e635f51e427622ae5b6f43a8c97690cc14",
+      "date": "2026-09-12T17:29:46-07:00",
+      "subject": "obs: O29 daemon install/launchd wedge; O30 doctor typed_edges service id"
+    },
+    {
+      "sha": "ba6ce0b4106d6ecdb226ddf291aa6c9d098ef092",
+      "date": "2026-09-12T18:40:44-07:00",
+      "subject": "fix(bench): newest registered criterion by default, marker-only README render, alwaysLoad on every Claude Code entry fathom writes"
+    },
+    {
+      "sha": "1f015cb9b0036fa987f2288fdad65e062e8dab4a",
+      "date": "2026-09-12T18:41:10-07:00",
+      "subject": "bench(ledger): the first replicated home run fails both criteria on cost — recorded, read, and turned into the next bar (BP-25, BC-14, O31, O32)"
+    },
+    {
+      "sha": "bf2167b94be348d2e5d9c8ea0ecb459fc93ca0eb",
+      "date": "2026-09-12T18:44:06-07:00",
+      "subject": "docs(plans): BP-22 keeps its refusal without a trigger key (lint: trigger applies to deferred rows only)"
+    },
+    {
+      "sha": "d2e6398ebb10747b5b1fdfa57735ac3f7d346449",
+      "date": "2026-09-12T18:45:31-07:00",
+      "subject": "fix(verify): the CLI's daemon budget is 60 s, set from the measured verify_plan latency (O33)"
+    },
+    {
+      "sha": "cb9bf8437da5f5d2d6c19260a126ff6830b279c0",
+      "date": "2026-09-12T19:30:07-07:00",
+      "subject": "docs(intent): vision 27 + ADR-033 — the strengths matrix, one scenario driver with arms as data, oracles fathom does not own, predictions first"
+    },
+    {
+      "sha": "f168ca9e015ce451d7ce176426c5fe78b0066591",
+      "date": "2026-09-12T19:34:31-07:00",
+      "subject": "fix(harness): advisory hooks emit systemMessage where Claude Code does not accept additionalContext (O34)"
+    },
+    {
+      "sha": "ffd44f8d0ec4a9cb6053d110872885097b0d5419",
+      "date": "2026-09-12T19:37:04-07:00",
+      "subject": "fix(harness): WorktreeCreate emits nothing on stdout — the harness reads it as the worktree path (O34, second form)"
+    },
+    {
+      "sha": "e0ec0c01f6eadd88b56a3aac87af9019f419db9c",
+      "date": "2026-09-12T19:41:07-07:00",
+      "subject": "fix(harness): withdraw the WorktreeCreate hook — it is a creation hook, not an advisory one (O34, HP-29 refused)"
+    },
+    {
+      "sha": "f67f06adfea927de6296c1ccd27520c6a4d7090b",
+      "date": "2026-09-12T19:43:12-07:00",
+      "subject": "docs(changelog): the WorktreeCreate withdrawal and vision 27 / ADR-033"
+    },
+    {
+      "sha": "a4b76fe440307f0dc367d2e60f7665ff25091d14",
+      "date": "2026-09-12T20:04:07-07:00",
+      "subject": "feat(scenariobench): PlanCoverage scores an agent's own plan against gold functions (SB-20)"
+    },
+    {
+      "sha": "8063043fd358d928df65e9e79023456805e79852",
+      "date": "2026-09-12T20:04:17-07:00",
+      "subject": "feat(scenariobench): FalseDoneRate matches [x] claims to the final tree and coverage (SB-21)"
+    },
+    {
+      "sha": "a26e454981edbd6c5c91088029188f35fde909d2",
+      "date": "2026-09-12T20:04:27-07:00",
+      "subject": "feat(scenariobench): ResumptionReadings and ContractDrift (SB-22)"
+    },
+    {
+      "sha": "7e3e4c603bb44eb01a64e6cd12e2d6b78c8e712f",
+      "date": "2026-09-12T20:04:35-07:00",
+      "subject": "feat(scenariobench): SessionReadBytes and ReexplorationOverlap (SB-23)"
+    },
+    {
+      "sha": "831c748795458d87801e1044f39d5f3f13a38709",
+      "date": "2026-09-12T20:04:43-07:00",
+      "subject": "feat(scenariobench): RuleServed reads the wired arm's edit-hook beats (SB-25)"
+    },
+    {
+      "sha": "b950029e097ee14278cdd8a9cf9b9fa5c1e561da",
+      "date": "2026-09-12T20:04:55-07:00",
+      "subject": "test(scenariobench): guards-fathom corpus + detector/prediction gates (SB-24, SB-26)"
+    },
+    {
+      "sha": "e4e703ff4657f8796efba70ae845f2bf3fa9a8d0",
+      "date": "2026-09-12T20:10:25-07:00",
+      "subject": "feat(scenariobench): ClassifyChange assigns a category from patch shape (SB-33)"
+    },
+    {
+      "sha": "7b8b20c9ce3f58c053d2e501f35d7bb0274ffcd0",
+      "date": "2026-09-12T20:10:25-07:00",
+      "subject": "feat(scenariobench): DeriveScenarioTasks derives the public Go corpus (SB-34)"
+    },
+    {
+      "sha": "7749b72da3a088505931d575521046b9de667798",
+      "date": "2026-09-12T20:10:25-07:00",
+      "subject": "feat(taskfile): scenariobench validate dep + bench-scenario-* tasks (SB-36)"
+    },
+    {
+      "sha": "aea4c7c3723816aedbc28c4fe14b4727dcaf943e",
+      "date": "2026-09-12T20:10:26-07:00",
+      "subject": "docs(bench): scenarios.md runbook for the change-scenario bench (SB-35)"
+    },
+    {
+      "sha": "beb5081f8b0ea690bebb9f9a1d247a71111b8da1",
+      "date": "2026-09-12T20:10:43-07:00",
+      "subject": "docs(bench): competitors.md — graphify, Serena, gopls pinned and verified (SB-27)"
+    },
+    {
+      "sha": "2bb506e9265b86f0bf9838a72ebdc1097457dc55",
+      "date": "2026-09-12T20:10:44-07:00",
+      "subject": "feat(indexbench): CompareEdges — score any edge set against the L0 truth (SB-28)"
+    },
+    {
+      "sha": "92279ca7ddc55569b38319e1bd179a206ef4a431",
+      "date": "2026-09-12T20:10:44-07:00",
+      "subject": "feat(indexbench): LoadGraphifyEdges — graphify graph.json to comparable edges (SB-29)"
+    },
+    {
+      "sha": "8471db78c8ef3447fe9812468d4dee37f297148a",
+      "date": "2026-09-12T20:10:44-07:00",
+      "subject": "feat(indexbench): ProbeReferencesViaMCP — query a competitor's MCP server for references (SB-30)"
+    },
+    {
+      "sha": "e137c7bda80743de67589d04fe87b4316f2849f4",
+      "date": "2026-09-12T20:10:44-07:00",
+      "subject": "feat(indexbench): compare subcommand + competitors ledger (SB-31)"
+    },
+    {
+      "sha": "d5abf3c045ecbcaf78e88ae3b03c5604c7df0896",
+      "date": "2026-09-12T20:10:45-07:00",
+      "subject": "test(scenariobench): lookups-vs.json — home lookup tasks vs graphify/serena/gopls/grep (SB-32)"
+    },
+    {
+      "sha": "874a5ece0652b16f435b5e804616bb88e9597b21",
+      "date": "2026-09-12T20:11:39-07:00",
+      "subject": "fix(bench): SWE-Explore-Bench is CC-BY-NC-ND-4.0, not MIT — the pin and the runbook say so, and nothing committed derives from it"
+    },
+    {
+      "sha": "b957140df900d87d62dbb4ccf3dce552c2dd61ff",
+      "date": "2026-09-12T20:14:18-07:00",
+      "subject": "feat(scenariobench): corpus gate and cell store (SB-10, SB-17)"
+    },
+    {
+      "sha": "bd96a00801a0082cac76c0eeed1becd8ecb66f7e",
+      "date": "2026-09-12T20:14:18-07:00",
+      "subject": "feat(scenariobench): render/strip an arm, prepare a subject worktree, run the oracle (SB-11, SB-12, SB-16)"
+    },
+    {
+      "sha": "a781a576bc2266e45b6392e74ca5f73f0014566f",
+      "date": "2026-09-12T20:14:19-07:00",
+      "subject": "feat(scenariobench): parse claude -p transcripts, real and fake harnesses (SB-14, SB-15)"
+    },
+    {
+      "sha": "17c190e18ffeb1e86669c84fc7b347ac235ee002",
+      "date": "2026-09-12T20:14:19-07:00",
+      "subject": "feat(scenariobench): run one task's sessions under budget (SB-13)"
+    },
+    {
+      "sha": "c20da9c1fa2b7f8e0d90ca7ac2c76afcad5be158",
+      "date": "2026-09-12T20:14:19-07:00",
+      "subject": "feat(scenariobench): the scenario ledger and its criterion evaluation (SB-18)"
+    },
+    {
+      "sha": "49f7c94aeea8c23bd4dafcc5170bae399fb17f7e",
+      "date": "2026-09-12T20:14:19-07:00",
+      "subject": "feat(scenariobench): cmd/scenariobench driver — plan, run, score, ledger (SB-19)"
+    },
+    {
+      "sha": "d33cf4e424ab9c5b5782127afd56beb70fad1c4c",
+      "date": "2026-09-12T20:19:54-07:00",
+      "subject": "fix(indexbench): probes and loader match the live competitors — Serena's object-shaped references with '\u003e N:' markers and bare method names, gopls's absolute paths relativized, graphify's node-link 'links' with '()'/'.'-stripped labels and calls-only edges; scenariobench helper clash resolved"
+    },
+    {
+      "sha": "85f8596b0ac87acfb0319cdce73de5c3b93ece9b",
+      "date": "2026-09-12T20:22:50-07:00",
+      "subject": "bench(competitors): the free M6 row — callers fathom 1.00/1.00 vs graphify 0.95/0.93; references gopls 1.00/0.96, Serena 1.00/0.79, fathom 0.33/1.00 (text occurrences); ledger rows name their oracle; SB-45 exact references filed"
+    },
+    {
+      "sha": "eaa0953cceb867bacc80fb174ae3a2298e00b104",
+      "date": "2026-09-12T20:23:22-07:00",
+      "subject": "chore: ignore competitor artifacts (.serena/, graphify-out/) that their CLIs write into a subject tree"
+    },
+    {
+      "sha": "bb040b1f7bc1e371621f2b219a408a2106523ff1",
+      "date": "2026-09-12T20:33:18-07:00",
+      "subject": "feat(mcp): SB-1/SB-2 — compact references wire format, refuse non-symbol queries"
+    },
+    {
+      "sha": "f76d98928b463233470ea0bc745d7f26a9059850",
+      "date": "2026-09-12T20:33:18-07:00",
+      "subject": "feat(mcp): SB-3 — read_source per-call byte budget with elision"
+    },
+    {
+      "sha": "cc3ad58ac3256e80f00556c9c4d5f870ca23d1fc",
+      "date": "2026-09-12T20:33:18-07:00",
+      "subject": "feat(mcp): SB-5 — find_symbol reports a Go interface's implementations"
+    },
+    {
+      "sha": "5c974b378b665faaee4dd7f2ec8e79d243d373b5",
+      "date": "2026-09-12T20:33:19-07:00",
+      "subject": "feat(mcp): SB-4 — symbol_context/verify_plan/obligations state when the result is the answer"
+    },
+    {
+      "sha": "5d47a38f342b8b5dd8a77443d1e9706b3af36dd5",
+      "date": "2026-09-12T20:33:19-07:00",
+      "subject": "feat(bench): SB-6 — context-bench gains the realistic 'full' arm"
+    },
+    {
+      "sha": "36d041f79959fdd4fb31a48894c79daa3a8ca077",
+      "date": "2026-09-12T20:33:19-07:00",
+      "subject": "feat(stanza): SB-7 — the stanza and session primers route by question shape"
+    },
+    {
+      "sha": "7bd3f13b263e7941696d7d5d11c06effed896873",
+      "date": "2026-09-12T20:33:19-07:00",
+      "subject": "docs(skills): SB-8 — shipped skills and coding-agents use-case carry question-shape routing"
+    },
+    {
+      "sha": "eab006d4c5912c897797957922fbe17e6c929f3e",
+      "date": "2026-09-12T20:36:56-07:00",
+      "subject": "docs(plans): strengths-bench SB-1..8, SB-10..36, SB-40 proven; guidance docs route by question shape; guards arm compiles layers; subject root absolute"
+    },
+    {
+      "sha": "79d35b9f1be90624f8419255e1b91c254c68b9b2",
+      "date": "2026-09-12T20:39:48-07:00",
+      "subject": "fix(scenariobench): one worktree and one compiled store per (subject, commit, arm), reset between cells; the compiler survives a malformed CLI envelope"
+    },
+    {
+      "sha": "e8241cfb3d90d052fdd3a3fa51d945ad7f18a55f",
+      "date": "2026-09-12T20:40:38-07:00",
+      "subject": "docs(bench): the strengths matrix on the bench README with the free M6 row read; changelog for waves 1–5"
+    },
+    {
+      "sha": "670dc0fd18d16bf58bccac8be26f3269d366a81f",
+      "date": "2026-09-12T20:45:34-07:00",
+      "subject": "fix(semantic): a section whose model answer never arrives is retried once, then counted and named — only a cancelled context aborts a compile; the scenario driver stops its scratch daemon on every failure path"
+    },
+    {
+      "sha": "83cec60daac61a418bf52ae9fee3271ac59ce750",
+      "date": "2026-09-12T20:47:42-07:00",
+      "subject": "test(orgnames): a corpus derived from a pinned public benchmark quotes upstream test names — exempt it from the org-name scan (I19 governs what fathom writes, not what it quotes)"
+    },
+    {
+      "sha": "05247564361dab1d2b51eb7c157ed986848cd87c",
+      "date": "2026-09-12T21:19:24-07:00",
+      "subject": "fix(scenariobench): every subprocess inside a subject worktree gets SubjectEnv — GOWORK=off when the subject carries a go.work, so a linked worktree builds from its own go.mod"
+    },
+    {
+      "sha": "10c2f956aeb3177f59ee287ffd37b2f193a6f55b",
+      "date": "2026-09-12T21:20:06-07:00",
+      "subject": "docs(bench): the dry cell is the tier before spend (O35); runbook says so"
+    },
+    {
+      "sha": "069d021097bd667a18f677a86a07d846815423ca",
+      "date": "2026-09-12T21:32:59-07:00",
+      "subject": "fix(scenariobench): subject subprocesses always run GOWORK=off — a worktree under workspace/ otherwise inherits this repo's go.work"
+    },
+    {
+      "sha": "492d9723130983676301759fa1fa9c96c1110c97",
+      "date": "2026-09-12T21:33:15-07:00",
+      "subject": "docs(plans): SB-9 records the targeted reading — payload still 5.13×, find_callers now the largest payload; O36 filed (references aborts on a dead service)"
+    },
+    {
+      "sha": "2dc8a4c60d209e8e1fee0430a61b0591260c110e",
+      "date": "2026-09-12T21:33:41-07:00",
+      "subject": "docs(plans): SB-47 — compact find_callers rendering, the targeted run's largest payload"
+    },
+    {
+      "sha": "e9bdfcf3ed07530ec72f237a5ddf5d8fa2057067",
+      "date": "2026-09-12T21:34:52-07:00",
+      "subject": "bench(scenarios): reuse-go.json — three cross-package tasks in planner-workers mode (K=3) plus the K=1 no-effect cell (vision 27 M5)"
+    },
+    {
+      "sha": "be8cde6a2459f3560517cff3fbcb53a8975f80f9",
+      "date": "2026-09-12T21:38:41-07:00",
+      "subject": "fix(scenariobench): a session that never ran is LOST, never a cell; success needs an edited tree; --mcp-config is absolute; go test is exec'd as argv with regex-quoted anchored names; every guards task carries a change-present detector (O37)"
+    },
+    {
+      "sha": "dce43aa4e2d428fb88672c1f3793b5c6285373ca",
+      "date": "2026-09-12T21:58:17-07:00",
+      "subject": "bench(scenarios): the graphify arm builds headless (graphify update . --no-cluster) — never the plugin install or the in-session slash command"
+    },
+    {
+      "sha": "1ba5f9bb3266b7efac65e7111d422e6ebb28b0ae",
+      "date": "2026-09-12T22:00:00-07:00",
+      "subject": "fix(scenariobench): the turn budget ending a session is a hand-off (SessionResult.BudgetHit), not an error; guards sessions get 50 turns"
+    },
+    {
+      "sha": "22e569d81fc1a0591d1899e55ba90f691904f041",
+      "date": "2026-09-12T22:18:41-07:00",
+      "subject": "fix(scenariobench): additive Gold/Oracle/SessionResult fields for test-patch calibration and answer-only oracle"
+    },
+    {
+      "sha": "51d545cd03af0f78ad19f7a9bbe73a20aa6ed606",
+      "date": "2026-09-12T22:18:42-07:00",
+      "subject": "fix(scenariobench): carry test_patch verbatim in derivation; regenerate corpora; add DeriveReuseTasks"
+    },
+    {
+      "sha": "45523b309109574b7f477ffef03e42c63edd4789",
+      "date": "2026-09-12T22:19:10-07:00",
+      "subject": "fix(scenariobench): apply and calibrate the hidden test patch; add the answer-only oracle (SB-32)"
+    },
+    {
+      "sha": "4ecdf77b7448d2302461cbcf6d6a0138c2569b83",
+      "date": "2026-09-12T22:22:51-07:00",
+      "subject": "fix(scenariobench): a non-zero claude -p exit with a terminal result is a reading, not an error — the budget hand-off exits 1"
+    },
+    {
+      "sha": "5b5f5ea4e35a0924841b5a73e6267ccf771c1f28",
+      "date": "2026-09-13T00:22:03-07:00",
+      "subject": "docs(plans): SB-48 — search as grep with a receipt, pre-registered against the lookup tasks grep won"
+    },
+    {
+      "sha": "45c230733d1744a0d4d6b9de367d58ebe3ad051a",
+      "date": "2026-09-13T00:46:36-07:00",
+      "subject": "bench(scenarios): the guards pilot on the ledger — M1-1 passes its bar and refutes its predicted wins (SB-37); SB-49 files the ADR-only guards corpus"
+    },
+    {
+      "sha": "cbe695a5a9f873d6d5bb1208f307a730aa8a1816",
+      "date": "2026-09-13T01:50:38-07:00",
+      "subject": "obs: O38 — public pilot 1's zero successes separate into an oracle protocol gap and the false-done pattern M2 exists to measure"
+    },
+    {
+      "sha": "4a7cf9814e589b68ef9c7b1d9eda2503fc0adbcb",
+      "date": "2026-09-13T02:07:32-07:00",
+      "subject": "fix(scenariobench): sanitize tool-input paths to their first line"
+    },
+    {
+      "sha": "24852ef58014c742e4285776e909c8b88ee4c371",
+      "date": "2026-09-13T02:07:32-07:00",
+      "subject": "fix(scenariobench): give single-mode's first session a plan-first instruction"
+    },
+    {
+      "sha": "8eecefba924d9145b6a3a24d25c60dd90e45bc21",
+      "date": "2026-09-13T02:07:33-07:00",
+      "subject": "fix(scenariobench): reset a test patch's own targets before applying it"
+    },
+    {
+      "sha": "02b93af784d5b18ac6080eb67741064049293119",
+      "date": "2026-09-13T02:07:33-07:00",
+      "subject": "feat(scenariobench): wire the SDD readings into runOneCell and score"
+    },
+    {
+      "sha": "e57a033eb97b58bcf982eca43f0811d5c8fb7966",
+      "date": "2026-09-13T02:14:20-07:00",
+      "subject": "test(scenariobench): guards-adr corpus proves M1's rule-outside-instructions win condition (SB-49)"
+    },
+    {
+      "sha": "c6e4c090e1a4bd0b20e3bb91e4a3da65c3c479a7",
+      "date": "2026-09-13T02:16:58-07:00",
+      "subject": "test(scenariobench): the detector gate covers every guards-*.json corpus; an ADR heading line satisfies the rule-source check"
+    },
+    {
+      "sha": "9cff259cdc60b41c07b71bfc83c8221edab9f5b3",
+      "date": "2026-09-13T02:22:03-07:00",
+      "subject": "fix(doctor): resolve typed_edges service via daemon path, not dir basename"
+    },
+    {
+      "sha": "170a080383c1c26de6033394a0e9d082df19115e",
+      "date": "2026-09-13T02:22:04-07:00",
+      "subject": "fix(mcp): wire verify_plan's call graph into the watermark memo (O33)"
+    },
+    {
+      "sha": "727204e7f9ff1bab7ad1f6a57e19c1765905648d",
+      "date": "2026-09-13T02:22:29-07:00",
+      "subject": "docs(plans): SB-50 — the cold call-graph build's ambiguous-name fallback (O33 follow-up)"
+    },
+    {
+      "sha": "89c8fdf634b907c7edcb8c3922b8d2110b3d4eb6",
+      "date": "2026-09-13T02:44:55-07:00",
+      "subject": "feat(mcp): find_callers renders compact wire rows (SB-47)"
+    },
+    {
+      "sha": "3655eaaf3d8ddc0d5f368ec6b3870226ff458dc5",
+      "date": "2026-09-13T02:44:55-07:00",
+      "subject": "feat(mcp): references exact mode (SB-45) + degrade-per-service (O36)"
+    },
+    {
+      "sha": "06e89ab486b3542ebdbf2d6ffb29a0852de91fd4",
+      "date": "2026-09-13T02:46:43-07:00",
+      "subject": "docs(plans): SB-45, SB-47, SB-49 proven; SB-45 anchored to registerReferences with the measured precision"
+    },
+    {
+      "sha": "2e809a8a2cddc8b6f53f4ecac654c2dca592621f",
+      "date": "2026-09-13T02:50:36-07:00",
+      "subject": "perf(callgraph): resolveAmbiguousCallees indexes Build's ambiguous-name fallback (SB-50)"
+    },
+    {
+      "sha": "6fe092c2b54ab0b4787943db52656bd379adb9db",
+      "date": "2026-09-13T02:51:42-07:00",
+      "subject": "docs(plans): one SB-50 row (the worker's, proven)"
+    },
+    {
+      "sha": "68a534854f1bb8d4e68b2377a2ff4d198e6bef48",
+      "date": "2026-09-13T02:52:14-07:00",
+      "subject": "docs(changelog): exact references, compact callers, the memoised call graph, and the SWE-bench-style scenario oracle"
+    },
+    {
+      "sha": "4a5fc8bd7f3537bbc8aa2a87315fe641fc0a4422",
+      "date": "2026-09-13T08:22:47-07:00",
+      "subject": "test(cost-panel): the agent-surface schema budget is 36 kB — exact references, caller signatures and implementations added 821 bytes past the old pin"
+    },
+    {
+      "sha": "1a9541e75af523ffedf124ec731b3c46f2b75c32",
+      "date": "2026-09-13T08:25:18-07:00",
+      "subject": "fix(bench): sessions run in a hook-free export of the subject's tracked tree; --treatment names the ledger's treatment arm"
+    },
+    {
+      "sha": "ed7c33647cc9ff4e326450dde2172e0329e71e47",
+      "date": "2026-09-13T08:27:19-07:00",
+      "subject": "bench: the public, reuse and competitor pilots and the wave-1 home rerun are on the ledgers and read (SB-38, SB-39, SB-41); the freshness task's setup repaired (SB-51); false-done re-scoring filed (SB-52)"
+    },
+    {
+      "sha": "e817a43a9100ee4b38bfefbcee09ff63155e3f3e",
+      "date": "2026-09-13T08:40:23-07:00",
+      "subject": "fix(scenariobench): FalseDoneRate stops refuting rows with no symbol contract"
+    },
+    {
+      "sha": "196daec5fb67945ead81a41d3081387579143f84",
+      "date": "2026-09-13T08:40:24-07:00",
+      "subject": "fix(scenariobench): reconstruct the final tree when a shared worktree is gone"
+    },
+    {
+      "sha": "f1169efdcc0aad254abeaa3b58845e1209a9c4f1",
+      "date": "2026-09-13T08:41:08-07:00",
+      "subject": "bench: false-done re-scored — not measurable on public-pilot-2 (no row carried a contract on either arm); SB-52 proven, SB-53 filed"
+    },
+    {
+      "sha": "0b9196f2178130651f618d591faa93d72a985fa9",
+      "date": "2026-09-13T08:42:16-07:00",
+      "subject": "fix(bench): the realistic arm's Bash is read-only forms — the fleet daemon's paths name the real checkout"
+    },
+    {
+      "sha": "1e512140807688f5178de80c8848d0db52ca1154",
+      "date": "2026-09-13T08:51:12-07:00",
+      "subject": "fix(scenariobench): detectors see SCENARIO_BASE_COMMIT; change-present diffs the package against base, not one file against the index"
+    },
+    {
+      "sha": "4c27058d841c779878cffb2778dc1aa6c63c4b68",
+      "date": "2026-09-13T08:51:30-07:00",
+      "subject": "bench: the ADR-only guards pilot on the ledger — zero violations again, success not measurable (mis-targeted change-present, O40); SB-54 proven"
+    },
+    {
+      "sha": "f4cb84470da90cdf6d5293ce8621a996c3cb3fc5",
+      "date": "2026-09-13T08:52:49-07:00",
+      "subject": "fix(scenariobench): runDetector carries the task so detectors get SCENARIO_BASE_COMMIT (build fix for 1e51214)"
+    },
+    {
+      "sha": "47ee05f893e43da234992e40ab0f24fc4b299503",
+      "date": "2026-09-13T08:53:13-07:00",
+      "subject": "docs(changelog): the strengths matrix's first readings"
+    },
+    {
+      "sha": "9a9f88fab1b0715d5bd26780f5ae123c6949dca5",
+      "date": "2026-09-13T08:59:33-07:00",
+      "subject": "bench: the realistic arm on the home ledger (35 v 34, payload 1.62×, H2-3 FAIL); SB-43 and BP-44 proven; scope G10 restated on the readings"
+    },
+    {
+      "sha": "9aef4786ae663d1a2b43b5d5ee834d098ac7f9cb",
+      "date": "2026-09-13T09:00:45-07:00",
+      "subject": "docs(plans): SB-44 — changelog written and the readings artifact published"
+    },
+    {
+      "sha": "db1c16d9714efde47f565500427179fdd9888dcb",
+      "date": "2026-09-13T12:02:40-07:00",
+      "subject": "fix(scenariobench): the harness runs the rendered MCP config — every wired cell had run without fathom's tools"
+    },
+    {
+      "sha": "25892131b40ea741ea47ef56829e2f8b2aa5201f",
+      "date": "2026-09-13T12:07:42-07:00",
+      "subject": "docs(intent): vision 28 and ADR-034 — receipts: the first round's second reading and the program that answers it"
+    },
+    {
+      "sha": "c30e3489c635dacf9ece68f7fb446cc0a972d988",
+      "date": "2026-09-13T12:35:38-07:00",
+      "subject": "feat(scenariobench): clean room, fair competitors, dropped tasks, parallel arms"
+    },
+    {
+      "sha": "c42f72c200e4238f9683261a42e64c0eda2e9adb",
+      "date": "2026-09-13T12:46:16-07:00",
+      "subject": "fix(scenariobench): RC-6 clean room is Claude Code's --restricted mode, not a scratch config dir"
+    },
+    {
+      "sha": "48895a1055354ebced4744ddf9507bab1f4d4b43",
+      "date": "2026-09-13T12:49:29-07:00",
+      "subject": "feat(contextbench): clean room, trusted_without_recheck, per-task min_trials (RC-7/17/18)"
+    },
+    {
+      "sha": "623c7a2243836b81e56a1c1e4ed1aafbfb7df70d",
+      "date": "2026-09-13T12:52:02-07:00",
+      "subject": "feat(scenariobench): receipts on readings — RC-11..14 (vision 28 §2.4, §2.6)"
+    },
+    {
+      "sha": "8324dc180fd8a07263820f37774fa614badfaeda",
+      "date": "2026-09-13T12:53:30-07:00",
+      "subject": "feat(mcp): budget find_callers/outline/symbol_context/staleness_report; scope_required fan-in escape hatch (RC-19, RC-20)"
+    },
+    {
+      "sha": "d3a5af6988cdb26c226074de9aa44d08a88d115b",
+      "date": "2026-09-13T13:03:54-07:00",
+      "subject": "feat(mcp): RC-21/RC-22 receipts on the answer; RC-23 routing text names the tool"
+    },
+    {
+      "sha": "a7a0ead4580c0bb3441f14c05f86780bed204d3f",
+      "date": "2026-09-13T13:14:36-07:00",
+      "subject": "feat(mcp): search — grep with a receipt (RC-24, ships SB-48)"
+    },
+    {
+      "sha": "d1f1cb8c665be13e5dd91c032048996ac0e1377a",
+      "date": "2026-09-13T13:36:29-07:00",
+      "subject": "docs(config): CLAUDE.md router back to 120 lines (router_thin)"
+    },
+    {
+      "sha": "159c13d19c04a919ecd0fe7246e155a50710f283",
+      "date": "2026-09-13T13:40:22-07:00",
+      "subject": "feat(verify,scenariobench): oracle: ledger, the verdict block, and the first round voided (RC-34..36)"
+    },
+    {
+      "sha": "2afba551a1a780313211661a1319eea57fe92cca",
+      "date": "2026-09-13T13:44:29-07:00",
+      "subject": "feat(coverage): RC-37..41 — test coverage as an asserted fact, by layer"
+    },
+    {
+      "sha": "088d04587387a7ca3b59a364a0068bb9517d9320",
+      "date": "2026-09-13T13:53:56-07:00",
+      "subject": "feat(receipts): RC-25..RC-33 - discoveries and routes (vision 28 par.4)"
+    },
+    {
+      "sha": "86c42d82e53e6787833269386bdd731f43bb90eb",
+      "date": "2026-09-13T14:21:47-07:00",
+      "subject": "docs(observations): O41 addendum — the wired arm had no fathom hooks either (RenderArm truncated fathom init's settings.json)"
+    },
+    {
+      "sha": "f07861fe1a6f8776e08987488adb482974aeb11a",
+      "date": "2026-09-13T14:22:15-07:00",
+      "subject": "docs(intent): the clean room is --restricted with the arm's settings file, not a scratch config dir (RC-6/RC-7 restated)"
+    },
+    {
+      "sha": "6e8acef17b66d9d582f0e24775a4441d751eb423",
+      "date": "2026-09-13T14:49:08-07:00",
+      "subject": "docs(plans): receipts wave-0 addendum — hooks preserved and gated (RC-53, RC-54), symbol end lines (RC-52), the engine languages deferred (RC-55)"
+    },
+    {
+      "sha": "43310a864a0fd69c8476161f5ef66b2c6868b316",
+      "date": "2026-09-13T14:56:25-07:00",
+      "subject": "fix(scenariobench): RenderArm hooks, instrument gate, parallel-arms batching, workerDiscoveryBrief env"
+    },
+    {
+      "sha": "ce857a78a0c94a45375750b365795650bcdbed0f",
+      "date": "2026-09-13T14:57:33-07:00",
+      "subject": "fix(contextbench,verify): discoveries exercise, trust.go fixes, gated verdict verb, ledger oracle"
+    },
+    {
+      "sha": "738465fe4f9fb35e2060f5c604f4d71973c72be5",
+      "date": "2026-09-13T14:59:28-07:00",
+      "subject": "fix(fathom,verify,mcp): discoveries deadline/staleness, routes, thread promote --route, review_tool coverage, testlayer pathglob"
+    },
+    {
+      "sha": "5c7d23a25ebb7334886babdce27261ac0584987a",
+      "date": "2026-09-13T15:00:24-07:00",
+      "subject": "fix(extractor): SymbolNode.EndLine set by 13 extractors; outline renders end_line (T5-5)"
+    },
+    {
+      "sha": "dce2a2091b55c663c482bf03f00bde4b478fc6c5",
+      "date": "2026-09-13T15:00:56-07:00",
+      "subject": "fix(bench): context-bench.sh clean room is --restricted, not a scratch CLAUDE_CONFIG_DIR (RC-7)"
+    },
+    {
+      "sha": "4280be20322b3ece70c852146214d3040bdbf95f",
+      "date": "2026-09-13T15:02:13-07:00",
+      "subject": "fix(mcp,semantic): search mirrors .fathomignore, root obligations by scope, discoveries budgeted pointers"
+    },
+    {
+      "sha": "b9036c5935308536188b70f42832451665d8bbab",
+      "date": "2026-09-13T15:06:44-07:00",
+      "subject": "docs(plans): receipts RC-1..RC-41, RC-52..RC-54 and SB-48 proven"
+    },
+    {
+      "sha": "9ea84915bd60fab7982404414a9e57f2891f2e58",
+      "date": "2026-09-13T15:11:03-07:00",
+      "subject": "docs(observations): O42 — fathom init writes no project-scope hooks when user scope already has them (invisible under --restricted / CI)"
+    },
+    {
+      "sha": "cc28e627325a98416078967f776e01b3cf9915ef",
+      "date": "2026-09-13T15:12:05-07:00",
+      "subject": "chore(taskfile): bench-scenario-* tasks use the runner's real flags (-trials; every arm by default)"
+    },
+    {
+      "sha": "d29a50c1da5ec127882296c210fe3b230d5a8fda",
+      "date": "2026-09-13T15:29:23-07:00",
+      "subject": "feat(init): --hooks-scope project writes fathom's hooks at project scope even when user scope has them; the scenario driver requires it (O42)"
+    },
+    {
+      "sha": "61d0ce34c654dcedb512faced766dcce591e0f01",
+      "date": "2026-09-13T15:38:27-07:00",
+      "subject": "feat(scenariobench): the wired arm's plan-first instruction names the plan grammar and the verify verb (SB-53)"
+    },
+    {
+      "sha": "1c58d2d94fd89e74feb3aa57e91a088b1f7244f4",
+      "date": "2026-09-13T15:38:55-07:00",
+      "subject": "docs(plans): SB-53 proven"
+    },
+    {
+      "sha": "4bea25093ddae27f80f2d41adfc18fd7bb1f8f14",
+      "date": "2026-09-13T15:57:25-07:00",
+      "subject": "fix(scenariobench): calibration is serialized per key and prunes a stale worktree registration before adding"
+    },
+    {
+      "sha": "17f63459bb0979b86205ae8c5e1014c580f93fb4",
+      "date": "2026-09-13T16:25:48-07:00",
+      "subject": "fix(scenariobench): every session gets an allow-list, --permission-mode default and --add-dir; raw transcripts keyed by run id"
+    },
+    {
+      "sha": "832761eea0d1d9a5532e03471dc184389fb09660",
+      "date": "2026-09-13T16:26:42-07:00",
+      "subject": "docs(bench): O43 — the clean room denied the agent's own hands; two real dry cells before any pilot (RC-43 restated)"
+    },
+    {
+      "sha": "6a2a124d5756b2aefd6605dbe660a7419bd22aad",
+      "date": "2026-09-13T16:35:07-07:00",
+      "subject": "fix(scenariobench): a transcript write refused by the volume wedge loses the cell, not the run"
+    },
+    {
+      "sha": "a7546dc3a1dbf2eb0b5091d73cd6b90492b34cae",
+      "date": "2026-09-13T17:01:18-07:00",
+      "subject": "fix(scenariobench): a subject that cannot be prepared loses its cell, not the run"
+    },
+    {
+      "sha": "d5d32a124ccda966c04938ee1b4c0cb34d008cea",
+      "date": "2026-09-13T18:03:39-07:00",
+      "subject": "docs(receipts): RC-56 — discoveries derive from observed greps and reads, not only fathom answers (reuse-pilot-2 reading)"
+    },
+    {
+      "sha": "3909c716731b7c8068941f295f0acacb54b83d2d",
+      "date": "2026-09-13T18:05:15-07:00",
+      "subject": "fix(scenariobench): stop the run on a wedged-volume LOST cell — the verdict sticks to the process; ignore the stray root binary"
+    },
+    {
+      "sha": "513ea7da5d48611bda37f91cdc7ef8d10533cbf9",
+      "date": "2026-09-13T18:36:59-07:00",
+      "subject": "feat(discoveries): every discovery action counts — observed greps, globs and reads become pointers (RC-56)"
+    },
+    {
+      "sha": "b0f2e2d3cb202583aecffd12e968d3a37e9b00d9",
+      "date": "2026-09-13T18:37:43-07:00",
+      "subject": "docs(plans): RC-56 proven"
+    },
+    {
+      "sha": "5908e15d8d2257ed8cfb1ae1f994826f23b70833",
+      "date": "2026-09-13T18:52:38-07:00",
+      "subject": "fix(scenariobench): a wired cell's fathom binary is built from a clean export of HEAD and cached per commit"
+    },
+    {
+      "sha": "7e1f2a4a9b7bff69c9acac4b68eed8cc19c866ca",
+      "date": "2026-09-13T20:29:51-07:00",
+      "subject": "docs(intent): vision 29 and ADR-035 — verbs, not lookups: the next wave from the research sweep and the receipts rerun"
+    },
+    {
+      "sha": "a746a59ab457eb47608c5623b7e82245f62c6951",
+      "date": "2026-09-13T20:50:25-07:00",
+      "subject": "fix(scenariobench): the export build creates workspace/tmp when a fresh worktree lacks it"
+    },
+    {
+      "sha": "3bdee967843a0b8d7050f98ac7452fb3665a18f6",
+      "date": "2026-09-13T20:51:32-07:00",
+      "subject": "feat(bench): gold_source_tool on every scenario cell; gold_source_by_shape on the home bench (VB-4, VB-5)"
+    },
+    {
+      "sha": "efb3c47b75b7cb0392d4dee3f9250cfe86b13aa5",
+      "date": "2026-09-13T20:51:51-07:00",
+      "subject": "docs(plans): VB-4 and VB-5 proven"
+    },
+    {
+      "sha": "84ec790da946b13c86215262943280788f5b801d",
+      "date": "2026-09-13T20:53:07-07:00",
+      "subject": "bench: reuse-pilot-2 and guards-pilot-4 on the ledger — the first rows with tools present, hooks fired, and gold_source_tool"
+    },
+    {
+      "sha": "79de342d3303675dfe25f1c54eb5c1cb1579bbd2",
+      "date": "2026-09-13T20:58:01-07:00",
+      "subject": "chore(taskfile): bench-home uses the script's real --repeat flag"
+    },
+    {
+      "sha": "b4505326d3ade6185096323a5f961e6df5e274e4",
+      "date": "2026-09-13T21:07:36-07:00",
+      "subject": "feat(mcp): the verbs lead — blast_radius, review_diff, test_impact and rename_impact join the agent surface with safe_delete_check; opening moves name a verb first (VB-1..3)"
+    },
+    {
+      "sha": "66127280054c3e3f10f1c2484edf2a2a77e79d06",
+      "date": "2026-09-13T21:09:19-07:00",
+      "subject": "test(mcp): TestPromotedVerbs pins the four promoted verbs on the agent surface (VB-1 reachability); VB-1..3 proven"
+    },
+    {
+      "sha": "5f5135332c6a6fbd3e803eb70b93c44becd63ce7",
+      "date": "2026-09-13T21:12:11-07:00",
+      "subject": "feat(scenariobench): a ledger row carries every cell reading; -trials defaults to the criterion floor and counts every stored trial; score -corpus recomputes gold_source_tool"
+    },
+    {
+      "sha": "7c2f49f1a3c4e797b6e6ea45255b53e6f8c4ae5b",
+      "date": "2026-09-13T21:14:03-07:00",
+      "subject": "feat(indexbench): the L0 index oracle and the L1 payload replay run in task validate (VB-6, VB-7)"
+    },
+    {
+      "sha": "13161ff65ad5ef34fa8a07846d1aebb2d3a8fb8e",
+      "date": "2026-09-13T21:15:09-07:00",
+      "subject": "bench: reuse-pilot-2, guards-pilot-4 and vs-pilot-2 on the ledger with every trial and reading; their wired rows carry instrument_defect (O45, O46); VB-6 and VB-7 proven"
+    },
+    {
+      "sha": "379741bcc8e52272588d842123108c4f56923385",
+      "date": "2026-09-13T21:43:26-07:00",
+      "subject": "fix(scenariobench): the wired cell is wired end to end — FATHOM_HTTP in its env, the primer must name the indexed service, the compiled layer is probed, plan-first only on change tasks, a turn-budget hand-off's last answer counts (O45, O46)"
+    },
+    {
+      "sha": "4560588084f9281b0e84a082ff6a615f74060ef5",
+      "date": "2026-09-13T21:45:31-07:00",
+      "subject": "docs(bench): H2-3 verdict for run 20260914T035806Z is FAIL, not indeterminate"
+    },
+    {
+      "sha": "c364e320c453c5995601786a0800aa46d21a9dda",
+      "date": "2026-09-13T21:46:32-07:00",
+      "subject": "feat(semantic,mcp): obligations names the rule that governs — ranked by governing scope, human rules by default, plan-row claims opt-in, a tiered receipt; a forty-file oracle with its baseline (VB-8..VB-11)"
+    },
+    {
+      "sha": "4c2306a0e46347af1e0a3e46d584c01cf380823d",
+      "date": "2026-09-13T21:48:56-07:00",
+      "subject": "test(contextbench): the bench's agent-surface copy follows the 24-tool surface; the registry test parses the builder; O47 and VB-36 filed; VB-8..VB-12 proven"
+    },
+    {
+      "sha": "00b551f1ae86f8e6a17efc640270bf102732e198",
+      "date": "2026-09-13T21:52:15-07:00",
+      "subject": "feat(indexbench): the scripted-edit freshness probe runs on every commit (VB-17)"
+    },
+    {
+      "sha": "ff9e851e70c21aa809a0949089b7d9782dd0ca49",
+      "date": "2026-09-13T21:58:14-07:00",
+      "subject": "docs(plans): BP-16 anchored to TestPayloadReplay after the VB-7 refactor"
+    },
+    {
+      "sha": "bdcb234605566b6ba815a429b52e337158e100a4",
+      "date": "2026-09-13T21:59:38-07:00",
+      "subject": "feat(guardspec): layer rules — import direction, no cycles, boundaries and cross-service direction in CUE, evaluated against the index and compiled to a Go test by fathom rules gen-test; a Rulesets guide; three rules for this repository (VB-13..VB-15)"
+    },
+    {
+      "sha": "db34b913b5dabacbc31fe3209cf516dd6e830032",
+      "date": "2026-09-13T22:01:36-07:00",
+      "subject": "test(fathom): re-pin the agent-surface schema-tax ceiling at the measured 53,441 bytes plus headroom"
+    },
+    {
+      "sha": "c12c49a10fca42e6ad4af3e3fcc494472caa8249",
+      "date": "2026-09-13T22:07:53-07:00",
+      "subject": "docs(plans): VB-13, VB-14, VB-15 and VB-17 proven"
+    },
+    {
+      "sha": "c567901f0a593f3177423fa43f4ea145587e952f",
+      "date": "2026-09-13T22:18:41-07:00",
+      "subject": "fix(scenariobench): git spawned by the driver and its tests never sees a hook's GIT_DIR; the cell binary builds with -buildvcs=false"
+    },
+    {
+      "sha": "79d8af1abc619b459ed9ea91333f5bb87707443e",
+      "date": "2026-09-13T22:19:36-07:00",
+      "subject": "docs(observations): O48 — a git hook's GIT_DIR reached the test fixtures and the driver"
+    },
+    {
+      "sha": "6a92182806de51ddb0df22ad5895a3d0a927da42",
+      "date": "2026-09-13T22:24:20-07:00",
+      "subject": "test(indexbench): the freshness probe's time ceiling tolerates a loaded gate machine; correctness stays the gate"
+    },
+    {
+      "sha": "c48125c8dd6ccb13e31135e83eb75fc8098cf9d0",
+      "date": "2026-09-13T22:28:08-07:00",
+      "subject": "fix(scenariobench): every worktree operation on a subject clone runs under the clone's lock"
+    },
+    {
+      "sha": "97f08e7961d0d273614e397dfcb03e3bc0dde4b0",
+      "date": "2026-09-13T22:28:33-07:00",
+      "subject": "feat(review): fathom review --format github — one deterministic, cited PR comment; a GitHub Action and a required check (VB-22, VB-23)"
+    },
+    {
+      "sha": "8a8a68c64026bff2530d7af48c002f64570e95f6",
+      "date": "2026-09-13T22:36:50-07:00",
+      "subject": "fix(gate): scratch-tree scripts scrub the hook's git environment before their first git call (O48 addendum)"
+    },
+    {
+      "sha": "4ef0d0c9f4f7dc34633e76063856c153853e864b",
+      "date": "2026-09-13T22:47:17-07:00",
+      "subject": "test(indexbench): the payload replay's latency budget tolerates a loaded gate machine; bytes, counts and elisions stay the gate"
+    },
+    {
+      "sha": "9fe1b2328b7bffd9c48d38106fc5e6d4fd5d9eb4",
+      "date": "2026-09-13T22:55:35-07:00",
+      "subject": "test(fusion): the typed-edge env contract tolerates an ambient GOFLAGS; only a value the loader adds fails"
+    },
+    {
+      "sha": "9aae409a9b7972bda242f7037464aab47a15ce8a",
+      "date": "2026-09-13T22:35:09-07:00",
+      "subject": "feat(custodian): VB-28 audit code-fact sentences across auto-loaded config"
+    },
+    {
+      "sha": "bb2d8fbb8bdb814cf7469c0667f68240e1718ab7",
+      "date": "2026-09-13T23:09:33-07:00",
+      "subject": "fix(custodian): VB-28 review fixes — read-manifest, unverifiable anchors, bare-filename order"
+    },
+    {
+      "sha": "30466057d33d38fab330a1f4d87aee9329b8e519",
+      "date": "2026-09-13T23:10:57-07:00",
+      "subject": "merge(wave-h): the custodian audits code-fact sentences across every auto-loaded file (VB-28)"
+    },
+    {
+      "sha": "fe737911509712d40fc66b109a96eb054ad69e80",
+      "date": "2026-09-13T22:42:57-07:00",
+      "subject": "fix(scenariobench): clean room v3 — --include-hook-events was the gap, not --restricted"
+    },
+    {
+      "sha": "fdda6508c86f2d342045c2ba069606e36c335d65",
+      "date": "2026-09-13T23:17:23-07:00",
+      "subject": "fix(scenariobench): a one-session change task plans then implements in the same session; O50 records the hook-visibility artifact"
+    },
+    {
+      "sha": "c36bd4f6778901d11eee4ebc0de858652e30ef79",
+      "date": "2026-09-13T23:18:13-07:00",
+      "subject": "merge(wave-a6): clean room v3 — the cell's hooks were firing; --include-hook-events makes the transcript say so (O50)"
+    },
+    {
+      "sha": "c05902428afd065595369c7c03d518b6cfe23ae5",
+      "date": "2026-09-13T22:50:29-07:00",
+      "subject": "feat(core,mcp): resolution tier + envelope mix/index_commit on every edge-derived answer (VB-19)"
+    },
+    {
+      "sha": "923eb08c7fc6a3e0969cbb1f8bb5959eb4bef8fc",
+      "date": "2026-09-13T22:50:59-07:00",
+      "subject": "feat(cmd/fathom): fathom receipt verify — a stranger re-derives a claim with go/types and git alone (VB-20)"
+    },
+    {
+      "sha": "22a275227e71bdac78611d5367f7eb9ac37be1c3",
+      "date": "2026-09-13T22:51:11-07:00",
+      "subject": "docs(usage,vision): fathom receipt verify usage + vision 28 §3 pointer (VB-20)"
+    },
+    {
+      "sha": "37d90070aa6f6c360246796f9e0195b1f18a4645",
+      "date": "2026-09-13T23:27:58-07:00",
+      "subject": "fix(mcp,receiptverify): review fix-first — post-elision resolution, declared-symbol check, coverage (VB-19/VB-20)"
+    },
+    {
+      "sha": "9aadc080c63b213ae751291bbe8ce42c8e6ca976",
+      "date": "2026-09-13T23:29:17-07:00",
+      "subject": "merge(wave-e): every edge-derived answer carries its resolution mix and index commit; fathom receipt verify re-derives a claim with go/types and git alone (VB-19, VB-20)"
+    },
+    {
+      "sha": "543caffdd6ab7957604cfe651862b88d656c103d",
+      "date": "2026-09-13T23:36:00-07:00",
+      "subject": "docs(plans): VB-19, VB-20 and VB-28 proven — resolution envelope, receipt verify, custodian code facts"
+    },
+    {
+      "sha": "551665bb8e010ba0a4df086f677cef10ae0d6965",
+      "date": "2026-09-13T22:57:55-07:00",
+      "subject": "feat(coverage,verify): mutation-testing join + covered-not-asserted gate finding (VB-34)"
+    },
+    {
+      "sha": "2316621bd6681279f121506b035103dfd53b8ac2",
+      "date": "2026-09-13T22:58:14-07:00",
+      "subject": "feat(cmd/fathom): tests select — ranked test selection for a diff (VB-33)"
+    },
+    {
+      "sha": "9b2361f29249a9591b9908b0a3c710599c2fb6d5",
+      "date": "2026-09-13T22:58:35-07:00",
+      "subject": "docs: tests select + mutation (VB-33, VB-34)"
+    },
+    {
+      "sha": "100e2f6d95f5a8a05ccce3e30c62439825b7f99a",
+      "date": "2026-09-13T23:36:49-07:00",
+      "subject": "fix(coverage): rebuild the go-mutesting parser against its real wire format (VB-34 review block)"
+    },
+    {
+      "sha": "e05ae5a07e9ce97a1d49dc9a24393abd3ed8320d",
+      "date": "2026-09-13T23:37:07-07:00",
+      "subject": "fix(verify): carry symbol location as typed TaskVerdict fields (review nit)"
+    },
+    {
+      "sha": "017920acaae4781a2a411ad97b36816698a5fe3c",
+      "date": "2026-09-13T23:37:30-07:00",
+      "subject": "fix(cmd/fathom): quote test names in tests select's -run regex (review nit)"
+    },
+    {
+      "sha": "24d1c0c364a54e4f9f6f7b688ec8b61b6931688a",
+      "date": "2026-09-13T23:41:22-07:00",
+      "subject": "merge(wave-j): tests that adjudicate — fathom tests select ranks the tests a diff needs; mutation reports become code facts the verify gate reads (VB-33, VB-34)"
+    },
+    {
+      "sha": "4bdc043df0ce37d57f14ce4589f38cc7068031ef",
+      "date": "2026-09-13T23:46:14-07:00",
+      "subject": "docs(plans): VB-33 and VB-34 proven — tests select and mutation reports as code facts"
+    }
+  ]
+}
