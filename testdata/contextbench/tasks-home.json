@@ -137,7 +137,7 @@
       "H1-T02, T03, T04, T05, T06, T07, T09, T10: re-verified unchanged at HEAD.",
       "Split (PB-12): H1-T01, T02, T07, T12, T13 declare requires: [compiled-layer]; the other eight are deterministic and run on a scratch daemon with no compiled layer.",
       "H1-T02: LEAKED — 'internal/core' and 'pkg/client' are verbatim in the auto-loaded root CLAUDE.md (O25). Re-derived onto the ADR-021 typed-call-edge rule the layer serves for the same file: ground truth 'core.Edge' + 'ADR-021'.",
-      "H1-T07: LEAKED — the answer was the bare file name 'ADR.md', which both CLAUDE.md and AGENTS.md contain. Re-derived to the citation 'ADR.md#L590' (document AND line), exact-match.",
+      "H1-T07: LEAKED — the answer was the bare file name 'ADR.md', which both CLAUDE.md and AGENTS.md contain. Re-derived to the citation 'ADR.md#L597' (document AND line), exact-match.",
       "H1-T08: LEAKED — 'workspace/' is in CLAUDE.md and AGENTS.md. Dropped; the task is now scored on the citation 'CLAUDE.md#L15' alone (exact-match) and the prompt no longer names the file.",
       "H1-T11: LEAKED — 'never a shell' is in CLAUDE.md and AGENTS.md, and any-of made it sufficient. Dropped; the surviving tokens live only in docs/guides/fleet-index.md.",
       "H1-T12: LEAKED — 'keystone' is in CLAUDE.md. Part (b) now asks for the line the rule's text occupies at HEAD ('CLAUDE.md#L48').",
@@ -423,25 +423,25 @@
       "category": "which_sources_feed_claim",
       "prompt": "internal/store/duckdb.go was deleted outright by SS-8/ADR-025 (the DuckDB backend removal); its closest living successor for store-backend governance is internal/store/backend.go. Per fathom's compiled obligations layer, the rules currently governing internal/store/backend.go are fed by exactly ONE governing document in this repo. Cite the line of that document on which the rule requiring a single shared, extension-based backend-selection helper begins, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
-        "ADR.md#L590"
+        "ADR.md#L597"
       ],
       "scoring_rule": "exact-match",
       "exercises": [
         "obligations",
         "read_source"
       ],
-      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The previous ground truth was the bare file name 'ADR.md', which appears in both auto-loaded baseline files (CLAUDE.md's source-of-truth table and AGENTS.md), so any arm could answer it from context. The provenance question is unchanged and strictly harder: the answer must now name the document AND the line. Live reconnaissance: obligations(internal/store/backend.go) at compiled_at_watermark 976134c returns six rules, all six cited to ADR.md (displaced 83), including 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' src ADR.md#L590-L591. Hand-verified at HEAD: ADR.md#L590 ends '... then is removed. Backend selection' and #L591 continues 'is extension-based in a single shared helper (`store.BackendForPath`),'.",
+      "source": "fathom @ 1b8765d, RE-DERIVED under BP-1/BP-2 (2026-09-12). The previous ground truth was the bare file name 'ADR.md', which appears in both auto-loaded baseline files (CLAUDE.md's source-of-truth table and AGENTS.md), so any arm could answer it from context. The provenance question is unchanged and strictly harder: the answer must now name the document AND the line. Live reconnaissance: obligations(internal/store/backend.go) at compiled_at_watermark 976134c returns six rules, all six cited to ADR.md (displaced 83), including 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' src ADR.md#L597-L591. Hand-verified at HEAD: ADR.md#L597 ends '... then is removed. Backend selection' and #L591 continues 'is extension-based in a single shared helper (`store.BackendForPath`),'.",
       "notes": "RECOMPILE-EXPOSED (original): the source-document set is a compile-time scope decision. RE-ANCHORED 2026-07-24 (H3-1): original target file (duckdb.go) no longer exists post-SS-8 — re-anchored to backend.go per the source field; prompt and ground_truth both changed, which is more than ordinary re-derivation but required because the file itself is gone.",
       "requires": [
         "compiled-layer"
       ],
       "truth_at_head": [
         {
-          "token": "ADR.md#L590",
+          "token": "ADR.md#L597",
           "kind": "line",
           "file": "ADR.md",
           "needle": "Backend selection",
-          "why": "the served rule 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' cites ADR.md#L590-L591; line 590 is where its text begins"
+          "why": "the served rule 'Backend selection must use extension-based approach in single shared helper store.BackendForPath.' cites ADR.md#L597-L591; line 590 is where its text begins"
         }
       ]
     },

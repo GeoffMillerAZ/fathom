@@ -345,7 +345,7 @@
       },
       "oracle": {
         "answer_all_of": [
-          "ADR.md#L590"
+          "ADR.md#L597"
         ]
       },
       "predictions": {
@@ -700,7 +700,7 @@
       },
       "H1-T07": {
         "ground_truth": [
-          "ADR.md#L590"
+          "ADR.md#L597"
         ],
         "scoring_rule": "exact-match"
       },
