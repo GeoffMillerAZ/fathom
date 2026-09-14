@@ -408,6 +408,9 @@ func gitHeadSHA(ctx context.Context, root string) (string, error) {
 // `git archive` (tracked files only — the in-tree module mirror included,
 // the working tree's edits excluded) and builds ./cmd/fathom there.
 func buildFathomFromExport(ctx context.Context, root, sha, dest string) (string, error) {
+	if err := os.MkdirAll(filepath.Join(root, "workspace", "tmp"), 0o755); err != nil {
+		return "", fmt.Errorf("building fathom: %w", err)
+	}
 	tmp, err := os.MkdirTemp(filepath.Join(root, "workspace", "tmp"), "fathom-src-")
 	if err != nil {
 		return "", fmt.Errorf("building fathom: %w", err)
