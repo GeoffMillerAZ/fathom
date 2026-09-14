@@ -121,8 +121,8 @@ func RunOracle(ctx context.Context, wt Worktree, task Task, sessions []SessionRe
 	}
 
 	answerOK := true
-	if len(task.Oracle.AnswerAllOf) > 0 {
-		answerOK = answerMatchesAllOf(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf)
+	if len(task.Oracle.AnswerAllOf) > 0 || len(task.Oracle.AnswerAnyOf) > 0 {
+		answerOK = oracleAnswerMatches(lastFinalAnswer(sessions), task.Oracle.AnswerAllOf, task.Oracle.AnswerAnyOf)
 	}
 
 	localizationOK := true
@@ -151,12 +151,14 @@ func LocalizationOnly(task Task) bool {
 }
 
 // AnswerOnly reports whether task's oracle is answer-only: an
-// Oracle.AnswerAllOf with no tree-level check at all (fail_to_pass,
-// pass_to_pass, detectors) — SB-32's lookups-vs.json shape, where success
-// cannot require an edited file because nothing was meant to be edited.
+// Oracle.AnswerAllOf and/or Oracle.AnswerAnyOf with no tree-level check
+// at all (fail_to_pass, pass_to_pass, detectors) — SB-32's
+// lookups-vs.json shape, where success cannot require an edited file
+// because nothing was meant to be edited.
 func AnswerOnly(task Task) bool {
 	o := task.Oracle
-	return len(o.AnswerAllOf) > 0 && len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
+	return (len(o.AnswerAllOf) > 0 || len(o.AnswerAnyOf) > 0) &&
+		len(o.FailToPass) == 0 && len(o.PassToPass) == 0 && len(o.Detectors) == 0
 }
 
 // lastFinalAnswer is the LAST session's FinalAnswer, exactly as the
@@ -169,16 +171,150 @@ func lastFinalAnswer(sessions []SessionResult) string {
 	return sessions[len(sessions)-1].FinalAnswer
 }
 
-// answerMatchesAllOf reports whether every token appears, case-insensitive
-// substring, in answer.
-func answerMatchesAllOf(answer string, tokens []string) bool {
-	lower := strings.ToLower(answer)
-	for _, tok := range tokens {
-		if !strings.Contains(lower, strings.ToLower(tok)) {
+// oracleAnswerMatches is O53 defect 5's answer-only oracle: every allOf
+// token AND every anyOf group (satisfied by any ONE of its members) must
+// each find a match in answer — restricted to answer's own concluding
+// span when it carries an explicit conclusion marker (concludingSpan,
+// defect 5c), and counting only occurrences that are neither inside a
+// negated clause nor solely inside a quoted line (tokenCounts, defect
+// 5b). anyOf mirrors internal/contextbench's Score/AnswerAnyOf: a group
+// is a spelling-equivalent alternative for ONE required fact, not a
+// second, looser requirement.
+func oracleAnswerMatches(answer string, allOf []string, anyOf [][]string) bool {
+	span := answer
+	if cs := concludingSpan(answer); cs != "" {
+		span = cs
+	}
+	for _, tok := range allOf {
+		if !tokenCounts(span, tok) {
+			return false
+		}
+	}
+	for _, group := range anyOf {
+		matched := false
+		for _, alt := range group {
+			if tokenCounts(span, alt) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
 			return false
 		}
 	}
 	return true
+}
+
+// boldConclusionRE matches a markdown **bold** span — concludingSpan's
+// signal that a paragraph states the answer's own conclusion, not merely
+// emphasizes a word in passing.
+var boldConclusionRE = regexp.MustCompile(`\*\*[^*]+\*\*`)
+
+// concludingSpanMarkers are the plain-text conclusion phrases
+// concludingSpan looks for, checked case-insensitively, independent of
+// paragraph position (unlike the bold-span rule, which is restricted to
+// the LAST paragraph — a **bold** phrase elsewhere is common emphasis,
+// not necessarily the conclusion).
+var concludingSpanMarkers = []string{"the answer is", "answer:"}
+
+// concludingSpan returns the portion of answer O53 defect 5c restricts
+// oracle token matching to, when answer carries an explicit conclusion
+// marker: a **bold** span in the answer's LAST paragraph (split on a
+// blank line), or the LAST occurrence of a concludingSpanMarkers phrase,
+// from there to the end of the answer. "" when answer carries no such
+// marker — oracleAnswerMatches then searches the whole answer, exactly
+// as before this fix (the H1-T13 false pass: a gold ADR id appeared only
+// inside an earlier, quoted aside about a DIFFERENT decision, while the
+// answer's own concluding paragraph named the wrong one — restricting
+// the search to that concluding paragraph is what turns the false pass
+// into a correct fail).
+func concludingSpan(answer string) string {
+	trimmed := strings.TrimSpace(answer)
+	if trimmed == "" {
+		return ""
+	}
+	paras := strings.Split(trimmed, "\n\n")
+	if last := paras[len(paras)-1]; boldConclusionRE.MatchString(last) {
+		return last
+	}
+	lower := strings.ToLower(answer)
+	bestIdx := -1
+	for _, marker := range concludingSpanMarkers {
+		if idx := strings.LastIndex(lower, marker); idx > bestIdx {
+			bestIdx = idx
+		}
+	}
+	if bestIdx >= 0 {
+		return answer[bestIdx:]
+	}
+	return ""
+}
+
+// tokenCounts reports whether tok has at least one case-insensitive
+// occurrence in text that COUNTS toward an oracle match: not inside a
+// negated clause (clauseIsNegated, localization.go's own negation-marker
+// logic — reused here rather than duplicated, per O53 defect 5b) and not
+// solely inside a quoted line/span (isQuotedPosition). A token with every
+// occurrence excluded this way does not count — the answer only CITED or
+// REJECTED it, never asserted it as its own conclusion.
+func tokenCounts(text, tok string) bool {
+	if tok == "" {
+		return true
+	}
+	lowerText := strings.ToLower(text)
+	lowerTok := strings.ToLower(tok)
+	for start := 0; start < len(lowerText); {
+		idx := strings.Index(lowerText[start:], lowerTok)
+		if idx < 0 {
+			return false
+		}
+		pos := start + idx
+		if !isQuotedPosition(text, pos) && !clauseIsNegated(text, pos) {
+			return true
+		}
+		start = pos + 1
+	}
+	return false
+}
+
+// isQuotedPosition reports whether pos sits on a QUOTED LINE — a
+// markdown blockquote (first non-whitespace character ">") or a line
+// whose ENTIRE trimmed content is fenced start-to-end by the same
+// backtick or quote mark — text the answer is CITING rather than
+// asserting, so a gold token appearing only there must not count as the
+// answer's own claim (O53 defect 5b).
+//
+// PIN (fix-first review, wave-n1): an inline backtick span inside an
+// otherwise ordinary prose line — "whose distinctive identifier is
+// `ADR-014`" — does NOT count as quoting, and never did by design;
+// models routinely format identifiers, paths and symbol names as inline
+// code, and excluding every backtick-wrapped span would reject the most
+// common way a model states its own conclusion. Only a line that is
+// ENTIRELY a quotation counts. "A line the prose rejects" is a SEPARATE
+// concern — clauseIsNegated, checked independently by tokenCounts — this
+// function only ever answers the QUOTING half.
+func isQuotedPosition(text string, pos int) bool {
+	lineStart := strings.LastIndexByte(text[:pos], '\n') + 1
+	lineEnd := len(text)
+	if rel := strings.IndexByte(text[pos:], '\n'); rel >= 0 {
+		lineEnd = pos + rel
+	}
+	trimmed := strings.TrimSpace(text[lineStart:lineEnd])
+	if strings.HasPrefix(trimmed, ">") {
+		return true
+	}
+	return isWhollyDelimited(trimmed, '`') ||
+		isWhollyDelimited(trimmed, '"') ||
+		isWhollyDelimited(trimmed, '\'')
+}
+
+// isWhollyDelimited reports whether trimmed (a line's own trimmed
+// content, at least 2 bytes) both starts AND ends with delim — a line
+// that is nothing but "`ADR-014`" on its own, never an inline span
+// inside a longer sentence (isQuotedPosition's whole point, per the pin
+// above).
+func isWhollyDelimited(trimmed string, delim byte) bool {
+	return len(trimmed) >= 2 && trimmed[0] == delim && trimmed[len(trimmed)-1] == delim
 }
 
 func allPassed(passed map[string]bool, names []string) bool {

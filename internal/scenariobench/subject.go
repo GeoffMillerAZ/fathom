@@ -155,6 +155,14 @@ func PrepareSubject(ctx context.Context, task Task, arm Arm, root string) (Workt
 		return Worktree{}, fmt.Errorf("preparing subject: creating %s: %w", wt.CellDir, err)
 	}
 
+	// O53 defect 3: after checkout, before ingest, for EVERY arm — a task
+	// copied from the home corpus must never carry that corpus (or its
+	// scenariobench/docs siblings) inside its own worktree, where an
+	// agent's Read/Grep/Bash tools can surface it as an answer key.
+	if err := removeExcludedPaths(wtPath, task.Subject.ExcludePaths); err != nil {
+		return Worktree{}, fmt.Errorf("preparing subject: %w", err)
+	}
+
 	if err := runSetup(ctx, wtPath, task.Subject.Setup, filepath.Join(wt.CellDir, "subject-setup.log")); err != nil {
 		return Worktree{}, fmt.Errorf("preparing subject: subject setup: %w", err)
 	}

@@ -107,6 +107,16 @@ type Subject struct {
 	// TestCommand runs the oracle's test selection; {{tests}} is replaced
 	// by the regex of test names. Default: go test -run '{{tests}}' ./...
 	TestCommand string `json:"test_command,omitempty"`
+	// ExcludePaths (O53 defect 3) are glob patterns, relative to the
+	// worktree root, that PrepareSubject removes from the worktree at
+	// prepare time — after checkout, before any ingest, for EVERY arm —
+	// so a file the corpus itself was derived from (an answer key) never
+	// sits inside the worktree an agent can Read/Grep/Bash its way into.
+	// The corpus loader (corpus.go) requires this to cover
+	// "testdata/contextbench/**", "testdata/scenariobench/**" and
+	// "docs/bench/**" for any task whose derivation names the home lookup
+	// corpus (testdata/contextbench/tasks-home.json).
+	ExcludePaths []string `json:"exclude_paths,omitempty"`
 }
 
 // Detector is a rule's own enforcement: a command whose exit code decides.
@@ -125,10 +135,22 @@ type Oracle struct {
 	// Coverage requests a coverprofile from the test run (SDD readings).
 	Coverage bool `json:"coverage,omitempty"`
 	// AnswerAllOf is the answer-only oracle (SB-32 lookups-vs.json): every
-	// token must appear (case-insensitive substring) in the LAST session's
-	// SessionResult.FinalAnswer. A task may carry this ALONE — no
-	// tree-level check at all — see AnswerOnly (oracle.go).
+	// token must appear (case-insensitive substring, subject to
+	// oracleAnswerMatches' negation/quoting/conclusion-span rules — O53
+	// defect 5) in the LAST session's SessionResult.FinalAnswer. A task
+	// may carry this ALONE — no tree-level check at all — see AnswerOnly
+	// (oracle.go).
 	AnswerAllOf []string `json:"answer_all_of,omitempty"`
+	// AnswerAnyOf declares groups of spelling-equivalent gold tokens (O53
+	// defect 5a, mirroring internal/contextbench.Task.AnswerAnyOf/VB-36):
+	// each inner slice is one required fact, satisfied by ANY member
+	// appearing in the answer — the same false-fail contextbench's own
+	// H1-T02 hit ("Edge struct" vs the literal "core.Edge") for the same
+	// fact spelled differently. Groups are required exactly like
+	// AnswerAllOf's own tokens: every group (and every plain AnswerAllOf
+	// token) must be satisfied. AnswerAllOf keeps working unchanged when
+	// this is empty — AnswerAnyOf only ADDS grouped alternatives.
+	AnswerAnyOf [][]string `json:"answer_any_of,omitempty"`
 	// Localization is VB-25's "files" oracle (vision 29 Wave G, the LCA
 	// bug-localization track): the LAST session's FinalAnswer is parsed
 	// for a file set (ParseAnswerFiles) and scored against Gold.Files
@@ -351,6 +373,21 @@ type SessionResult struct {
 	// every session in it errored.
 	Error           string `json:"error,omitempty"`
 	InstrumentError string `json:"instrument_error,omitempty"`
+	// AnswerKeyLeak (O53 defect 3) is set when a post-session scan
+	// (AnswerKeyLeakScan) found a tool_result in this session's raw
+	// transcript naming a path Subject.ExcludePaths was supposed to have
+	// removed from the worktree before any session ran — proof the answer
+	// key the task was derived from reached the agent anyway. CellLost
+	// treats any ONE such session as voiding the whole cell, exactly like
+	// InstrumentError.
+	AnswerKeyLeak bool `json:"answer_key_leak,omitempty"`
+	// BaselineRanFathom (O53 defect 4) is set when a post-session scan
+	// (BaselineRanFathomScan) found a Bash tool_use in this session's raw
+	// transcript invoking the fathom binary despite this arm's PATH
+	// exclusion — proof the "no fathom on PATH" isolation a non-wired arm
+	// depends on did not hold. CellLost treats any ONE such session as
+	// voiding the whole cell, exactly like InstrumentError.
+	BaselineRanFathom bool `json:"baseline_ran_fathom,omitempty"`
 }
 
 // DetectorResult is one detector's verdict.
@@ -639,6 +676,13 @@ type CellResult struct {
 	// SHARED, REUSED directory has already been reset by a later cell.
 	SubjectClone string `json:"subject_clone,omitempty"`
 	BaseCommit   string `json:"base_commit,omitempty"`
+	// InstrumentDefect mirrors ScenarioLedgerRow's own field (ADR-034
+	// decision 2, RC-36): O53 defect 7's `scenariobench void` command sets
+	// it on every stored cell record filed under the voided
+	// (run_id, task_id, arm), so the cell store itself — not only the
+	// ledger row — carries the fact that this reading measured an
+	// instrument defect, not the thing it claims. Empty for a sound cell.
+	InstrumentDefect string `json:"instrument_defect,omitempty"`
 }
 
 // Harness runs one session and returns what happened; the Claude Code

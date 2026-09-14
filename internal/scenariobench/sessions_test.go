@@ -3,6 +3,7 @@ package scenariobench
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -636,5 +637,85 @@ func TestRunSessions_WiredArmEditNoPostToolUseHook_LosesTheCell(t *testing.T) {
 	}
 	if reason := CellLost(results); reason == "" {
 		t.Error("expected CellLost to report this cell as lost")
+	}
+}
+
+// TestAllocateRawAttemptDir_TwoAttemptsGetDistinctDirs is O53 defect 2's
+// low-level proof: a second allocation against the SAME cell directory
+// must never return the directory the first allocation already claimed,
+// and content written into the first attempt must survive the second
+// allocation untouched.
+func TestAllocateRawAttemptDir_TwoAttemptsGetDistinctDirs(t *testing.T) {
+	cellDir := filepath.Join(t.TempDir(), "T1-full-t1")
+
+	first, err := allocateRawAttemptDir(cellDir)
+	if err != nil {
+		t.Fatalf("first allocateRawAttemptDir: %v", err)
+	}
+	marker := filepath.Join(first, "session-0-single.stream.jsonl")
+	if err := os.WriteFile(marker, []byte("attempt one's transcript"), 0o644); err != nil {
+		t.Fatalf("writing marker: %v", err)
+	}
+
+	second, err := allocateRawAttemptDir(cellDir)
+	if err != nil {
+		t.Fatalf("second allocateRawAttemptDir: %v", err)
+	}
+	if second == first {
+		t.Fatalf("second attempt reused the first attempt's directory: %s", second)
+	}
+
+	entries, err := os.ReadDir(cellDir)
+	if err != nil {
+		t.Fatalf("reading cell dir: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 attempt dirs under %s, got %d: %v", cellDir, len(entries), entries)
+	}
+
+	raw, err := os.ReadFile(marker)
+	if err != nil || string(raw) != "attempt one's transcript" {
+		t.Errorf("first attempt's transcript did not survive the second allocation: %q, err=%v", raw, err)
+	}
+}
+
+// TestRunSessions_RepeatedCellKeyGetsDistinctAttemptDirs is O53 defect 2's
+// end-to-end proof: two RunSessions calls for the EXACT SAME cell key
+// (task, arm, trial, run-id) — a LOST retry or a resume re-running the
+// same cell — must land their sessions in two different attempt-<k>
+// directories on disk rather than one call's raw transcript silently
+// overwriting the other's (the defect: 32 of 140 cells' on-disk transcript
+// was a different session than the one the cell record scored).
+func TestRunSessions_RepeatedCellKeyGetsDistinctAttemptDirs(t *testing.T) {
+	wtDir := t.TempDir()
+	task := Task{ID: "T1", Prompt: "do the thing", Sessions: Sessions{Mode: ModeSingle, Count: 1, MaxTurns: 10}}
+	wt := Worktree{Path: wtDir}
+	rawDir := filepath.Join(t.TempDir(), "raw")
+	opts := RunOptions{Trial: 1, Model: "sonnet", RawDir: rawDir, RunID: "run-1"}
+
+	h1 := &FakeHarness{StreamsDir: streamsDir, TaskID: "T1", ArmName: "full", Streams: map[string]string{"T1/full": "single-session.jsonl"}}
+	if _, err := RunSessions(context.Background(), h1, task, "full", Arm{}, wt, opts); err != nil {
+		t.Fatalf("first RunSessions: %v", err)
+	}
+
+	h2 := &FakeHarness{StreamsDir: streamsDir, TaskID: "T1", ArmName: "full", Streams: map[string]string{"T1/full": "single-session.jsonl"}}
+	if _, err := RunSessions(context.Background(), h2, task, "full", Arm{}, wt, opts); err != nil {
+		t.Fatalf("second (retried) RunSessions: %v", err)
+	}
+
+	cellDir := filepath.Join(rawDir, "run-1", "T1-full-t1")
+	entries, err := os.ReadDir(cellDir)
+	if err != nil {
+		t.Fatalf("reading cell dir %s: %v", cellDir, err)
+	}
+	var attemptNames []string
+	for _, e := range entries {
+		attemptNames = append(attemptNames, e.Name())
+	}
+	if len(attemptNames) != 2 {
+		t.Fatalf("expected 2 attempt dirs for the repeated cell key, got %v", attemptNames)
+	}
+	if attemptNames[0] == attemptNames[1] {
+		t.Errorf("the two RunSessions calls shared one attempt dir: %v", attemptNames)
 	}
 }

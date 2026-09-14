@@ -43,6 +43,16 @@
 //	    a cell key with more trials actually stored is still counted in
 //	    full. Exit 0 pass, 1 fail (a measured refutation — recorded, not
 //	    excused), 3 indeterminate (re-run: not enough was measured).
+//
+//	scenariobench void -run-id <id> -task <id> -arm <name> -reason <text> [-cells <dir>] [-ledger <path.jsonl>] [-readme <path>] [-corpus-glob <glob>]
+//	    Marks a FILED ledger row's own InstrumentDefect (and every stored
+//	    cell record filed under that same run/task/arm) with -reason —
+//	    ADR-034 decision 2's own retroactive voiding, for an instrument
+//	    defect discovered only after the numbers were already read — then
+//	    re-renders -readme's marker-fenced section exactly as `ledger`
+//	    does. Refuses, changing nothing, when no ledger row matches
+//	    (run_id, task_id, arm): voiding a row that was never filed would
+//	    invent a defect claim for a reading that does not exist.
 package main
 
 import (
@@ -74,7 +84,7 @@ func main() {
 
 func run(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger> [flags]")
+		fmt.Fprintln(os.Stderr, "usage: scenariobench <plan|run|score|ledger|void> [flags]")
 		return 2
 	}
 	switch args[0] {
@@ -86,8 +96,10 @@ func run(args []string) int {
 		return cmdScore(args[1:])
 	case "ledger":
 		return cmdLedger(args[1:])
+	case "void":
+		return cmdVoid(args[1:])
 	default:
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, or ledger)\n", args[0])
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q (want plan, run, score, ledger, or void)\n", args[0])
 		return 2
 	}
 }
@@ -1333,6 +1345,81 @@ func cmdLedger(args []string) int {
 	default:
 		return 1
 	}
+}
+
+// ─── void ────────────────────────────────────────────────────────────────
+
+// cmdVoid is O53 defect 7: `scenariobench void` marks a FILED ledger
+// row's own InstrumentDefect (and every matching stored cell record's)
+// after the fact — a defect discovered only once the numbers were
+// already read, ADR-034 decision 2's own escape hatch, which had no
+// command to drive it before this one. It refuses when the row is
+// absent: voiding something that was never filed would silently invent a
+// defect claim for a reading that does not exist.
+func cmdVoid(args []string) int {
+	fs := newFlagSet("void")
+	cellsDir := fs.String("cells", filepath.Join("workspace", "artifacts", "scenariobench", "cells"), "content-addressed cell store")
+	ledgerPath := fs.String("ledger", filepath.Join("docs", "bench", "scenarios-ledger.jsonl"), "committed JSONL ledger")
+	readmePath := fs.String("readme", filepath.Join("docs", "bench", "README.md"), "README carrying the marker-fenced scenario ledger table")
+	corpusGlob := fs.String("corpus-glob", filepath.Join("testdata", "scenariobench", "*.json"), "every corpus whose criterion the re-rendered verdict block may cite, keyed by corpus SHA256")
+	runID := fs.String("run-id", "", "the run whose row to void (required)")
+	taskID := fs.String("task", "", "the task id (required)")
+	arm := fs.String("arm", "", "the arm name (required)")
+	reason := fs.String("reason", "", "the instrument defect naming why this row is voided (required)")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *runID == "" || *taskID == "" || *arm == "" || *reason == "" {
+		fmt.Fprintln(os.Stderr, "scenariobench void: -run-id, -task, -arm, and -reason are required")
+		return 2
+	}
+
+	if err := scenariobench.VoidScenarioLedgerRow(*ledgerPath, *runID, *taskID, *arm, *reason); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+
+	// "and the cell record": every stored cell filed under this exact
+	// (run_id, task_id, arm) — never only the ledger row's own summary —
+	// carries the same InstrumentDefect, so a reader of the cell store
+	// directly sees the same fact the ledger does.
+	cells, err := scenariobench.FindScenarioCellsByRun(*cellsDir, *taskID, *arm, *runID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	for _, c := range cells {
+		c.InstrumentDefect = *reason
+		if err := scenariobench.OverwriteScenarioCell(*cellsDir, c); err != nil {
+			fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+			return 2
+		}
+	}
+
+	// Re-render the README block exactly as `ledger` does: the SAME
+	// three pieces (verdict, table, gold-source-by-category), from the
+	// ledger's own current (now-voided) contents.
+	rows, err := scenariobench.LoadScenarioLedger(*ledgerPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	criteria, err := criteriaBySHA256(*corpusGlob)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: %v\n", err)
+		return 2
+	}
+	body := scenariobench.RenderVerdict(rows, criteria) + "\n" + scenariobench.RenderScenarioLedger(rows)
+	if shapeTable := scenariobench.RenderGoldSourceByCategory(scenariobench.GoldSourceRateByCategory(rows)); shapeTable != "" {
+		body += "\n" + shapeTable
+	}
+	if err := scenariobench.RewriteScenarioLedgerSection(*readmePath, body); err != nil {
+		fmt.Fprintf(os.Stderr, "scenariobench void: rendering %s: %v\n", *readmePath, err)
+		return 2
+	}
+
+	fmt.Fprintf(os.Stdout, "scenariobench void: voided run %s task %s arm %s (%d cell record(s)): %s\n", *runID, *taskID, *arm, len(cells), *reason)
+	return 0
 }
 
 // ─── flag helpers ────────────────────────────────────────────────────────

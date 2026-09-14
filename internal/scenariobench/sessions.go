@@ -95,14 +95,59 @@ const workerRowPromptFmt = "You are one worker in a team completing this task:\n
 // trouble is still returned as data (SessionResult.Error) and the run
 // continues, since a bad transcript on its own is not a reason to abandon
 // a multi-session budget.
+//
+// O53 defect 2: the raw transcript directory for this cell key
+// (task-arm-trial) is allocated ONCE here, as a fresh attempt-<k>
+// subdirectory (allocateRawAttemptDir) — never recomputed per session, and
+// never the same directory a prior attempt of this exact cell key already
+// claimed. Before this, the directory was a pure function of
+// (task, arm, trial, run-id), so a re-run of the same cell key — a LOST
+// retry, a resume — wrote its stream to the SAME raw path an earlier
+// attempt used, silently overwriting it: 32 of 140 cells' on-disk
+// transcript was a different session than the one the cell record scored.
 func RunSessions(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+	cellRawDir, err := allocateRawAttemptDir(cellRawBase(task, armName, opts))
+	if err != nil {
+		return nil, fmt.Errorf("running sessions for task %s: %w", task.ID, err)
+	}
 	switch task.Sessions.Mode {
 	case ModeSingle:
-		return runSingle(ctx, h, task, armName, arm, wt, opts)
+		return runSingle(ctx, h, task, armName, arm, wt, opts, cellRawDir)
 	case ModePlannerWorkers:
-		return runPlannerWorkers(ctx, h, task, armName, arm, wt, opts)
+		return runPlannerWorkers(ctx, h, task, armName, arm, wt, opts, cellRawDir)
 	default:
 		return nil, fmt.Errorf("running sessions for task %s: unknown mode %q", task.ID, task.Sessions.Mode)
+	}
+}
+
+// cellRawBase is the directory identifying one cell key (task, arm, trial)
+// under one run — the same formula RunSessions has always used — BEFORE
+// the per-attempt subdirectory allocateRawAttemptDir adds beneath it.
+func cellRawBase(task Task, armName string, opts RunOptions) string {
+	rawBase := opts.RawDir
+	if opts.RunID != "" {
+		rawBase = filepath.Join(opts.RawDir, opts.RunID)
+	}
+	return filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
+}
+
+// allocateRawAttemptDir returns a fresh "attempt-<k>" directory under
+// cellDir, creating it exclusively (os.Mkdir, not MkdirAll, on the leaf)
+// so two executions of the same cell key — sequential (a retry, a resume)
+// or concurrent — never share a directory and neither ever overwrites the
+// other. Attempts are numbered from 1 and the first unused number wins, so
+// the ordinary, non-retried case always gets attempt-1.
+func allocateRawAttemptDir(cellDir string) (string, error) {
+	if err := os.MkdirAll(cellDir, 0o755); err != nil {
+		return "", fmt.Errorf("allocating raw attempt dir: creating %s: %w", cellDir, err)
+	}
+	for k := 1; ; k++ {
+		dir := filepath.Join(cellDir, fmt.Sprintf("attempt-%d", k))
+		if err := os.Mkdir(dir, 0o755); err == nil {
+			return dir, nil
+		} else if !os.IsExist(err) {
+			return "", fmt.Errorf("allocating raw attempt dir: creating %s: %w", dir, err)
+		}
 	}
 }
 
@@ -124,7 +169,7 @@ func isChangeShaped(task Task) bool {
 	return len(task.Gold.Files) > 0 || task.Gold.TestPatch != "" || len(task.Oracle.Detectors) > 0
 }
 
-func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	changeShaped := isChangeShaped(task)
 	for i := 0; i < task.Sessions.Count; i++ {
@@ -144,11 +189,11 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 		default:
 			prompt = scenarioContinuationPrompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, i, "single", "", prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i, "single", "", prompt)
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, i, err)
 		}
@@ -160,18 +205,18 @@ func runSingle(ctx context.Context, h Harness, task Task, armName string, arm Ar
 	return results, nil
 }
 
-func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions) ([]SessionResult, error) {
+func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string) ([]SessionResult, error) {
 	var results []SessionResult
 	// RC-32 (docs/vision/28-receipts.md §4): the planner's own session
 	// start, captured BEFORE it runs — workerDiscoveryBrief's `--since`
 	// must cover what the PLANNER established, not just what happened
 	// between the planner and each worker.
 	sessionStart := time.Now()
-	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, 0, "planner", "", task.Prompt+planFirstInstructionFor(arm))
+	plannerReq, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, 0, "planner", "", task.Prompt+planFirstInstructionFor(arm))
 	if err != nil {
 		return results, err
 	}
-	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames)
+	plannerRes, err := runOneSession(h, plannerReq, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 	if err != nil {
 		return append(results, plannerRes), fmt.Errorf("task %s arm %s planner session: %w", task.ID, armName, err)
 	}
@@ -203,11 +248,11 @@ func runPlannerWorkers(ctx context.Context, h Harness, task Task, armName string
 		if brief != "" {
 			prompt = brief + "\n\n" + prompt
 		}
-		req, err := newSessionRequest(task, armName, arm, wt, opts, i+1, "worker", rowID, prompt)
+		req, err := newSessionRequest(task, armName, arm, wt, opts, cellRawDir, i+1, "worker", rowID, prompt)
 		if err != nil {
 			return results, err
 		}
-		res, err := runOneSession(h, req, wt.Arm.MCPServerNames)
+		res, err := runOneSession(h, req, wt.Arm.MCPServerNames, task.Subject.ExcludePaths)
 		if err != nil {
 			return append(results, res), fmt.Errorf("task %s arm %s worker %d: %w", task.ID, armName, i+1, err)
 		}
@@ -296,13 +341,15 @@ func workerDiscoveryBrief(ctx context.Context, wt Worktree, arm Arm, sessionStar
 // TODO(RC-13): set this to a thin adapter over FactsReused once it lands.
 var factsReusedHook func(session *SessionResult, pointers []string)
 
-func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, index int, role, rowID, prompt string) (SessionRequest, error) {
-	rawBase := opts.RawDir
-	if opts.RunID != "" {
-		rawBase = filepath.Join(opts.RawDir, opts.RunID)
-	}
-	rawDir := filepath.Join(rawBase, fmt.Sprintf("%s-%s-t%d", task.ID, armName, orOne(opts.Trial)))
-	env, err := sessionEnv(wt, opts)
+// newSessionRequest builds one session's harness input. cellRawDir is this
+// cell KEY's already-allocated attempt directory (RunSessions'
+// allocateRawAttemptDir, called once per RunSessions invocation) — every
+// session of the same cell attempt shares it, distinguished on disk only
+// by their own "session-<index>-<role>" file names, exactly as before this
+// fix; what changed is that cellRawDir itself is now unique PER ATTEMPT
+// rather than a pure function of (task, arm, trial, run-id).
+func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string, index int, role, rowID, prompt string) (SessionRequest, error) {
+	env, err := sessionEnv(arm, wt, opts)
 	if err != nil {
 		return SessionRequest{}, fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, index, err)
 	}
@@ -313,7 +360,7 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 		Arm:             arm,
 		MaxTurns:        task.Sessions.MaxTurns,
 		Model:           opts.Model,
-		RawDir:          rawDir,
+		RawDir:          cellRawDir,
 		Index:           index,
 		Role:            role,
 		RowID:           rowID,
@@ -329,11 +376,25 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 // sessionEnv is opts.Env with the clean room's own FATHOM_THREADS merged
 // underneath it (cleanRoomEnv), keyed on wt.CellDir being set — a
 // hand-built Worktree with no CellDir (every existing test fixture that
-// predates RC-6) simply gets opts.Env unchanged, same as before RC-6.
-// opts.Env, when set, wins on a key collision.
-func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
+// predates RC-6) simply gets opts.Env layered onto baselineIsolationEnv
+// unchanged, same as before RC-6. opts.Env, when set, wins on a key
+// collision.
+//
+// O53 defect 4: for every non-wired arm — baselineIsolationEnv, applied
+// regardless of whether wt.CellDir is set — a real fathom binary must
+// never be reachable via PATH and a real fathom daemon must never be
+// reachable via FATHOM_HTTP/FATHOM_HTTP_URL, however the operator's own
+// environment happened to be set up. A wired arm gets none of this: it is
+// SUPPOSED to reach fathom, and wt.DaemonURL below points it at the
+// cell's own scratch daemon, never the unroutable placeholder.
+func sessionEnv(arm Arm, wt Worktree, opts RunOptions) (map[string]string, error) {
+	overrides, err := baselineIsolationEnv(arm, wt.CellDir)
+	if err != nil {
+		return nil, err
+	}
+
 	if wt.CellDir == "" {
-		return opts.Env, nil
+		return mergeStringMaps(overrides, opts.Env), nil
 	}
 	cr, err := cleanRoomEnv(wt.CellDir)
 	if err != nil {
@@ -354,14 +415,50 @@ func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
 		// daemon ingested exactly wt.Path.
 		cr["FATHOM_HTTP"] = wt.DaemonURL
 	}
-	merged := make(map[string]string, len(cr)+len(opts.Env))
-	for k, v := range cr {
-		merged[k] = v
+	return mergeStringMaps(overrides, cr, opts.Env), nil
+}
+
+// baselineIsolationEnv returns the PATH/FATHOM_HTTP overrides a non-wired
+// arm's session must run with (O53 defect 4); nil for a wired arm, which
+// is supposed to reach fathom. FATHOM_HTTP/FATHOM_HTTP_URL are pinned
+// unconditionally; the PATH shim additionally needs a real directory to
+// write into (cellDir) — "" (a hand-built Worktree with no CellDir, every
+// existing test fixture that predates RC-6) skips the shim rather than
+// erroring, leaving PATH exactly as inherited.
+func baselineIsolationEnv(arm Arm, cellDir string) (map[string]string, error) {
+	if arm.Wired {
+		return nil, nil
 	}
-	for k, v := range opts.Env {
-		merged[k] = v
+	env := map[string]string{
+		"FATHOM_HTTP":     unroutableFathomURL,
+		"FATHOM_HTTP_URL": unroutableFathomURL,
 	}
-	return merged, nil
+	if cellDir != "" {
+		shimDir, err := installFathomShim(filepath.Join(cellDir, "baseline-fathom-shim"))
+		if err != nil {
+			return nil, err
+		}
+		env["PATH"] = baselinePathWithFathomShim(os.Getenv("PATH"), shimDir)
+	}
+	return env, nil
+}
+
+// mergeStringMaps merges maps left to right — a later map's keys win over
+// an earlier one's, exactly like sessionEnv's existing opts.Env-wins
+// contract — and returns nil (never an empty non-nil map) when nothing
+// was merged, so a caller that never set anything sees the same nil it
+// always did.
+func mergeStringMaps(maps ...map[string]string) map[string]string {
+	var merged map[string]string
+	for _, m := range maps {
+		for k, v := range m {
+			if merged == nil {
+				merged = map[string]string{}
+			}
+			merged[k] = v
+		}
+	}
+	return merged
 }
 
 func orOne(trial int) int {
@@ -470,7 +567,7 @@ func findPlanFile(worktree string) (string, error) {
 // disqualifying the whole cell regardless of how the other sessions in it
 // went. err is non-nil only when the harness failed to even start the
 // process.
-func runOneSession(h Harness, req SessionRequest, wantServers []string) (SessionResult, error) {
+func runOneSession(h Harness, req SessionRequest, wantServers []string, excludePaths []string) (SessionResult, error) {
 	res, err := h.RunSession(req)
 	if err != nil {
 		return res, err
@@ -490,6 +587,19 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string) (Session
 			res.Error = msg
 			res.InstrumentError = msg
 		}
+	}
+	// O53 defect 3: independent of whatever the harness itself reported —
+	// an answer-key leak is a fact about the transcript, not the session's
+	// own success/failure.
+	if AnswerKeyLeakScan(res, excludePaths) {
+		res.AnswerKeyLeak = true
+	}
+	// O53 defect 4: only a non-wired ("baseline") arm is required to have
+	// no fathom available at all — a wired arm's own transcript naming
+	// `fathom` (its stanza tells it to run `fathom verify`, say) is
+	// expected, not a defect.
+	if !req.Arm.Wired && BaselineRanFathomScan(res) {
+		res.BaselineRanFathom = true
 	}
 	return res, nil
 }
@@ -587,15 +697,27 @@ func hooksInstrumentError(wired bool, res SessionResult) string {
 }
 
 // CellLost reports why a cell is not a reading: any session carrying an
-// instrument error (instrumentTruthError/hooksInstrumentError, via
-// runOneSession), every session errored some other way, or no session
-// ever produced a turn. A single instrument-broken session voids the
-// whole cell regardless of how the other sessions in it went — unlike a
-// session that merely errored in-band, which only loses the cell when
-// EVERY session did. A lost cell is never stored or scored.
+// answer-key leak (AnswerKeyLeakScan), a baseline that ran fathom
+// (BaselineRanFathomScan), an instrument error
+// (instrumentTruthError/hooksInstrumentError, via runOneSession), every
+// session errored some other way, or no session ever produced a turn. A
+// single such session voids the whole cell regardless of how the other
+// sessions in it went — unlike a session that merely errored in-band,
+// which only loses the cell when EVERY session did. A lost cell is never
+// stored or scored.
 func CellLost(sessions []SessionResult) string {
 	if len(sessions) == 0 {
 		return "no sessions ran"
+	}
+	for _, s := range sessions {
+		if s.AnswerKeyLeak {
+			return "answer_key_leak: a tool result named a path subject.exclude_paths should have removed from the worktree"
+		}
+	}
+	for _, s := range sessions {
+		if s.BaselineRanFathom {
+			return "baseline_ran_fathom: a Bash call invoked the fathom binary despite this arm's PATH exclusion"
+		}
 	}
 	for _, s := range sessions {
 		if s.InstrumentError != "" {
