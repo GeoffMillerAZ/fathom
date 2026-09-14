@@ -246,6 +246,12 @@ var nonTruncatingTools = map[string]bool{
 	"traverse": true, "history": true, "obligations": true,
 	"compile_layer": true, "list_services": true, "fleet_drift": true,
 	"cross_repo_callers": true,
+	// localize (VB-26) is bounded by its own explicit numeric ceiling —
+	// budget (hops, default 12, max 40, echoed back as budget.used/
+	// allowed) — exactly like blast_radius's maxDepth/maxSymbols above:
+	// a bounded, budgeted walk report, never a slice of an unbounded
+	// countable list needing elisionFor's own disclosure.
+	"localize": true,
 }
 
 // TestEveryTruncatingToolDiscloses is BA-1's registry-iteration test: every

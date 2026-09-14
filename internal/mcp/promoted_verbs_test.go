@@ -2,10 +2,10 @@ package mcp
 
 import "testing"
 
-// TestPromotedVerbs pins VB-1: the four verbs the agent surface leads with,
-// each carrying the reason grep cannot give that answer.
+// TestPromotedVerbs pins VB-1/VB-26: the impact verbs the agent surface
+// leads with, each carrying the reason grep cannot give that answer.
 func TestPromotedVerbs(t *testing.T) {
-	want := []string{"blast_radius", "review_diff", "test_impact", "rename_impact"}
+	want := []string{"blast_radius", "review_diff", "test_impact", "rename_impact", "localize"}
 	got := promotedVerbs()
 	if len(got) != len(want) {
 		t.Fatalf("promotedVerbs: got %d verbs, want %d", len(got), len(want))

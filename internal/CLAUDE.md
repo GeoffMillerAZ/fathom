@@ -40,7 +40,7 @@ Shared types live in `internal/core`; extend it additively.
   backend interface minimally if it needs new data; cover with a
   fake-backend test (`fakeBackend`, `tools_test.go`). If coding agents need
   it, add it to the `companionTools` allowlist in `internal/mcp/surface.go`
-  (24 tools) and the pinned `TestCompanionSurfaceToolsList`. Then update
+  (25 tools) and the pinned `TestCompanionSurfaceToolsList`. Then update
   `docs/mcp-tools.md` — `TestMcpToolsDocMatchesRegistry`
   (`surface_prune_test.go`) fails until the doc matches the registry — and
   the relevant `docs/use-cases/*.md` `## Maintained` line.

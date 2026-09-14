@@ -19,10 +19,14 @@ import "testing"
 // review, test reach, rename impact) — never another lookup pitched on
 // token savings — plus safe_delete_check, rename_impact's read-only
 // sibling. 19 + 5 = 24.
+//
+// Wave G (plan VB-26) raises it once more: localize — where a bug lives
+// before anyone knows the file, R10's own case (LocAgent/SHERLOC) for a
+// verb grep cannot substitute for. 24 + 1 = 25.
 func TestAgentSurfaceDiet(t *testing.T) {
 	tools := AgentSurfaceTools()
-	if len(tools) > 24 {
-		t.Fatalf("agent surface carries %d tools — the diet caps it at 24 (19 + the four ADR-035 verbs + safe_delete_check); the long tail belongs on /rpc (TD-2)", len(tools))
+	if len(tools) > 25 {
+		t.Fatalf("agent surface carries %d tools — the diet caps it at 25 (19 + the four ADR-035 verbs + safe_delete_check + localize); the long tail belongs on /rpc (TD-2)", len(tools))
 	}
 	on := map[string]bool{}
 	for _, name := range tools {

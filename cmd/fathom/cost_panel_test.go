@@ -87,7 +87,11 @@ const (
 	// savings — plus `safe_delete_check`, a genuinely new tool: 52,273
 	// bytes measured at 24 tools (TestAgentSurfaceDiet's own pin moved to
 	// 24 alongside it).
-	agentSurfaceSchemaByteCeiling = 56000 // 53,441 measured 2026-09-14 after obligations gained `layer` (VB-9) on the 24-tool surface (VB-1/2)
+	// Re-pinned once more for wave G (plan VB-26): `localize` joins the
+	// surface — where a bug lives before anyone knows the file, R10's own
+	// case (LocAgent/SHERLOC) — 56,655 bytes measured at 25 tools
+	// (TestAgentSurfaceDiet's own pin moved to 25 alongside it).
+	agentSurfaceSchemaByteCeiling = 59000 // 53,441 measured 2026-09-14 after obligations gained `layer` (VB-9) on the 24-tool surface (VB-1/2); 56,655 measured after localize (VB-26) on the 25-tool surface
 )
 
 // TestNarrowProfileSchemaBytes is BA-7: the narrow/agent surface profile
@@ -99,8 +103,8 @@ func TestNarrowProfileSchemaBytes(t *testing.T) {
 	hc := &http.Client{}
 
 	tools, schemaBytes := surfaceSchemaTax(hc, ts.URL)
-	if tools != 24 {
-		t.Errorf("agent surface tools = %d, want 24 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check)", tools)
+	if tools != 25 {
+		t.Errorf("agent surface tools = %d, want 25 (TestAgentSurfaceDiet's own pin: 19 + the four ADR-035 verbs + safe_delete_check + localize)", tools)
 	}
 	if schemaBytes < agentSurfaceSchemaByteFloor || schemaBytes > agentSurfaceSchemaByteCeiling {
 		t.Errorf("agent surface schema bytes = %d, want between %d and %d — "+
