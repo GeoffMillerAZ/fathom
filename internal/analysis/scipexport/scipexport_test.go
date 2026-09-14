@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sourcegraph/scip/bindings/go/scip"
+	"google.golang.org/protobuf/proto"
+
+	scip "github.com/geoffmilleraz/fathom/third_party/scip"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
@@ -31,33 +33,63 @@ func fixtureTypedEdges() []core.Edge {
 	}
 }
 
+// ---------------------------------------------------------------------
+// SymbolID / formatSymbolID
+// ---------------------------------------------------------------------
+
 func TestSymbolID_Deterministic(t *testing.T) {
-	a := SymbolID("svc", "pkg", "A")
-	b := SymbolID("svc", "pkg", "A")
+	a := SymbolID("svc", "pkg", "A", core.KindGoFunc)
+	b := SymbolID("svc", "pkg", "A", core.KindGoFunc)
 	if a != b {
 		t.Fatalf("SymbolID not deterministic: %q vs %q", a, b)
 	}
-	if a == SymbolID("svc", "pkg", "B") {
+	if a == SymbolID("svc", "pkg", "B", core.KindGoFunc) {
 		t.Fatalf("SymbolID collided for different names")
 	}
-	if a == SymbolID("other-svc", "pkg", "A") {
+	if a == SymbolID("other-svc", "pkg", "A", core.KindGoFunc) {
 		t.Fatalf("SymbolID collided across services")
 	}
 }
 
-func TestSymbolID_RoundTripsThroughParser(t *testing.T) {
-	id := SymbolID("svc", "pkg", "A")
-	parsed, err := scip.ParseSymbol(id)
-	if err != nil {
-		t.Fatalf("scip.ParseSymbol(%q): %v", id, err)
+// TestSymbolID_Format pins the exact rendered grammar (scheme SP manager SP
+// name SP version SP descriptors) against a literal string, rather than
+// parsing it back — third_party/scip vendors only the generated wire-format
+// types, not the hand-written parser (see its README.md), so fathom's own
+// producer and consumer of this format agree by construction, not by
+// round-tripping through a parser this package doesn't have.
+func TestSymbolID_Format(t *testing.T) {
+	cases := []struct {
+		name string
+		kind core.SourceKind
+		want string
+	}{
+		{"function: term suffix", core.KindGoFunc, "fathom service svc . pkg/A."},
+		{"variable: term suffix", core.KindGoVar, "fathom service svc . pkg/A."},
+		{"const: term suffix", core.KindGoConst, "fathom service svc . pkg/A."},
+		{"method: method suffix", core.KindGoMethod, "fathom service svc . pkg/A()."},
+		{"type: type suffix", core.KindGoType, "fathom service svc . pkg/A#"},
+		{"interface: type suffix", core.KindGoInterface, "fathom service svc . pkg/A#"},
 	}
-	if parsed.Package == nil || parsed.Package.Name != "svc" {
-		t.Errorf("parsed package name = %+v, want svc", parsed.Package)
-	}
-	if len(parsed.Descriptors) != 2 || parsed.Descriptors[0].Name != "pkg" || parsed.Descriptors[1].Name != "A" {
-		t.Errorf("parsed descriptors = %+v, want [pkg A]", parsed.Descriptors)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := SymbolID("svc", "pkg", "A", tc.kind); got != tc.want {
+				t.Errorf("SymbolID(svc, pkg, A, %v) = %q, want %q", tc.kind, got, tc.want)
+			}
+		})
 	}
 }
+
+func TestSymbolID_EscapesSpacesAndBackticks(t *testing.T) {
+	got := SymbolID("my svc", "pkg", "A", core.KindGoFunc)
+	want := "fathom service `my svc` . pkg/A."
+	if got != want {
+		t.Errorf("SymbolID with a spaced service name = %q, want %q", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------
+// BuildFromNodes: documents, occurrences, ranges
+// ---------------------------------------------------------------------
 
 func TestBuildFromNodes_DocumentsAndOccurrences(t *testing.T) {
 	idx := BuildFromNodes("svc", fixtureNodes(), nil, nil)
@@ -81,9 +113,8 @@ func TestBuildFromNodes_DocumentsAndOccurrences(t *testing.T) {
 		t.Fatalf("a.go: got %d symbols, want 2 (A, B)", len(docA.Symbols))
 	}
 
-	// A's occurrence spans Line..EndLine (10..12), 0-based.
 	var aOcc *scip.Occurrence
-	wantA := SymbolID("svc", "pkg", "A")
+	wantA := SymbolID("svc", "pkg", "A", core.KindGoFunc)
 	for _, o := range docA.Occurrences {
 		if o.Symbol == wantA {
 			aOcc = o
@@ -92,26 +123,50 @@ func TestBuildFromNodes_DocumentsAndOccurrences(t *testing.T) {
 	if aOcc == nil {
 		t.Fatalf("no occurrence found for A's symbol %q", wantA)
 	}
-	if got, want := aOcc.Range, []int32{9, 0, 11, 1}; !int32SliceEqual(got, want) {
-		t.Errorf("A occurrence range = %v, want %v", got, want)
+	// Range is a SYNTHETIC one-column name-marker at the start line only
+	// (10, 0-based 9) — never the whole body span.
+	if got, want := aOcc.Range, []int32{9, 0, 9, 1}; !int32SliceEqual(got, want) {
+		t.Errorf("A occurrence Range = %v, want %v (a synthetic name-marker, not the body span)", got, want)
+	}
+	// EnclosingRange carries the real body span, Line..EndLine (10..12,
+	// 0-based 9..11).
+	if got, want := aOcc.EnclosingRange, []int32{9, 0, 11, 1}; !int32SliceEqual(got, want) {
+		t.Errorf("A occurrence EnclosingRange = %v, want %v", got, want)
 	}
 	if aOcc.SymbolRoles != int32(scip.SymbolRole_Definition) {
 		t.Errorf("A occurrence SymbolRoles = %d, want Definition", aOcc.SymbolRoles)
 	}
 }
 
-func TestBuildFromNodes_TypedEdgesBecomeRelationshipsWithTier(t *testing.T) {
-	idx := BuildFromNodes("svc", fixtureNodes(), fixtureTypedEdges(), nil)
-
-	var aInfo *scip.SymbolInformation
-	wantA := SymbolID("svc", "pkg", "A")
+func TestBuildFromNodes_RangeFallsBackToLineWhenNoEndLine(t *testing.T) {
+	// B has no EndLine set (fixtureNodes leaves it zero) — EnclosingRange
+	// must fall back to Line..Line, per T5-5's "0 == unknown" convention.
+	idx := BuildFromNodes("svc", fixtureNodes(), nil, nil)
+	wantB := SymbolID("svc", "pkg", "B", core.KindGoFunc)
+	var bOcc *scip.Occurrence
 	for _, d := range idx.Documents {
-		for _, s := range d.Symbols {
-			if s.Symbol == wantA {
-				aInfo = s
+		for _, o := range d.Occurrences {
+			if o.Symbol == wantB {
+				bOcc = o
 			}
 		}
 	}
+	if bOcc == nil {
+		t.Fatal("no occurrence found for B")
+	}
+	if got, want := bOcc.EnclosingRange, []int32{19, 0, 19, 1}; !int32SliceEqual(got, want) {
+		t.Errorf("B EnclosingRange = %v, want %v (EndLine unset, falls back to Line)", got, want)
+	}
+}
+
+// ---------------------------------------------------------------------
+// BuildFromNodes: typed edges -> Relationships + resolution-tier Documentation
+// ---------------------------------------------------------------------
+
+func TestBuildFromNodes_TypedEdgesBecomeRelationshipsWithTier(t *testing.T) {
+	idx := BuildFromNodes("svc", fixtureNodes(), fixtureTypedEdges(), nil)
+
+	aInfo := findSymbolInfo(idx, SymbolID("svc", "pkg", "A", core.KindGoFunc))
 	if aInfo == nil {
 		t.Fatalf("no SymbolInformation found for A")
 	}
@@ -121,7 +176,7 @@ func TestBuildFromNodes_TypedEdgesBecomeRelationshipsWithTier(t *testing.T) {
 	if len(aInfo.Relationships) != 1 {
 		t.Fatalf("A.Relationships = %+v, want exactly 1 (A->B; A->Nowhere must be skipped)", aInfo.Relationships)
 	}
-	wantB := SymbolID("svc", "pkg", "B")
+	wantB := SymbolID("svc", "pkg", "B", core.KindGoFunc)
 	rel := aInfo.Relationships[0]
 	if rel.Symbol != wantB || !rel.IsReference {
 		t.Errorf("relationship = %+v, want {Symbol:%q IsReference:true}", rel, wantB)
@@ -139,6 +194,10 @@ func TestBuildFromNodes_TypedEdgesBecomeRelationshipsWithTier(t *testing.T) {
 	if !found {
 		t.Errorf("A.Documentation = %+v, want a line %q", aInfo.Documentation, wantLine)
 	}
+	// The signature line stays first, ahead of any resolution line.
+	if len(aInfo.Documentation) == 0 || aInfo.Documentation[0] != "func A()" {
+		t.Errorf("A.Documentation[0] = %+v, want the signature line first", aInfo.Documentation)
+	}
 }
 
 func TestBuildFromNodes_HeuristicEdgeTier(t *testing.T) {
@@ -147,22 +206,47 @@ func TestBuildFromNodes_HeuristicEdgeTier(t *testing.T) {
 	edges := []core.Edge{{FromSymbol: "svc::pkg.A", ToSymbol: "svc::pkg.B", Kind: ""}}
 	idx := BuildFromNodes("svc", fixtureNodes(), edges, nil)
 
-	var aInfo *scip.SymbolInformation
-	wantA := SymbolID("svc", "pkg", "A")
-	for _, d := range idx.Documents {
-		for _, s := range d.Symbols {
-			if s.Symbol == wantA {
-				aInfo = s
-			}
-		}
-	}
+	aInfo := findSymbolInfo(idx, SymbolID("svc", "pkg", "A", core.KindGoFunc))
 	if aInfo == nil {
 		t.Fatal("no SymbolInformation for A")
 	}
-	wantB := SymbolID("svc", "pkg", "B")
+	wantB := SymbolID("svc", "pkg", "B", core.KindGoFunc)
 	wantLine := "fathom:resolution " + wantB + " = heuristic"
 	if len(aInfo.Documentation) == 0 || aInfo.Documentation[len(aInfo.Documentation)-1] != wantLine {
 		t.Errorf("A.Documentation = %+v, want to end with %q", aInfo.Documentation, wantLine)
+	}
+}
+
+// TestBuildFromNodes_RelationshipsSortedRegardlessOfInputOrder is the NIT
+// fix's real proof (wave-i review): the SAME edges, fed in two different
+// orders, must produce byte-identical output — this package sorts
+// Relationships/Documentation itself rather than trusting the caller
+// (a store) to already return them in a stable order.
+func TestBuildFromNodes_RelationshipsSortedRegardlessOfInputOrder(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "pkg", Name: "A", Kind: core.KindGoFunc, FilePath: "a.go", Line: 1},
+		{Service: "svc", Package: "pkg", Name: "B", Kind: core.KindGoFunc, FilePath: "a.go", Line: 2},
+		{Service: "svc", Package: "pkg", Name: "C", Kind: core.KindGoFunc, FilePath: "a.go", Line: 3},
+	}
+	forward := []core.Edge{
+		{FromSymbol: "svc::pkg.A", ToSymbol: "svc::pkg.B", Kind: core.EdgeDirect},
+		{FromSymbol: "svc::pkg.A", ToSymbol: "svc::pkg.C", Kind: core.EdgeDirect},
+	}
+	reversed := []core.Edge{forward[1], forward[0]}
+
+	idxForward := BuildFromNodes("svc", nodes, forward, nil)
+	idxReversed := BuildFromNodes("svc", nodes, reversed, nil)
+
+	if !proto.Equal(idxForward, idxReversed) {
+		t.Fatalf("BuildFromNodes depends on typed-edge input order:\nforward=%v\nreversed=%v", idxForward, idxReversed)
+	}
+
+	aInfo := findSymbolInfo(idxForward, SymbolID("svc", "pkg", "A", core.KindGoFunc))
+	if aInfo == nil || len(aInfo.Relationships) != 2 {
+		t.Fatalf("A.Relationships = %+v, want 2", aInfo)
+	}
+	if aInfo.Relationships[0].Symbol > aInfo.Relationships[1].Symbol {
+		t.Errorf("Relationships not sorted: %+v", aInfo.Relationships)
 	}
 }
 
@@ -185,8 +269,8 @@ func TestBuildFromNodes_Deterministic(t *testing.T) {
 	first := BuildFromNodes("svc", nodes, edges, nil)
 	for i := 0; i < 10; i++ {
 		again := BuildFromNodes("svc", nodes, edges, nil)
-		if !indexesEqual(first, again) {
-			t.Fatalf("BuildFromNodes not deterministic across repeated calls (iteration %d)", i)
+		if !proto.Equal(first, again) {
+			t.Fatalf("BuildFromNodes is not deterministic across repeated calls (iteration %d)", i)
 		}
 	}
 }
@@ -197,11 +281,14 @@ func TestSymbolSet(t *testing.T) {
 	if len(set) != 3 {
 		t.Fatalf("SymbolSet = %v, want 3 entries (A, B, MyType)", set)
 	}
-	for _, name := range []string{"A", "B", "MyType"} {
-		id := SymbolID("svc", "pkg", name)
-		if !set[id] {
-			t.Errorf("SymbolSet missing %q", id)
-		}
+	if !set[SymbolID("svc", "pkg", "A", core.KindGoFunc)] {
+		t.Errorf("SymbolSet missing A")
+	}
+	if !set[SymbolID("svc", "pkg", "B", core.KindGoFunc)] {
+		t.Errorf("SymbolSet missing B")
+	}
+	if !set[SymbolID("svc", "pkg", "MyType", core.KindGoType)] {
+		t.Errorf("SymbolSet missing MyType")
 	}
 }
 
@@ -268,20 +355,13 @@ func int32SliceEqual(a, b []int32) bool {
 	return true
 }
 
-func indexesEqual(a, b *scip.Index) bool {
-	if len(a.Documents) != len(b.Documents) {
-		return false
-	}
-	for i := range a.Documents {
-		da, db := a.Documents[i], b.Documents[i]
-		if da.RelativePath != db.RelativePath || len(da.Occurrences) != len(db.Occurrences) || len(da.Symbols) != len(db.Symbols) {
-			return false
-		}
-		for j := range da.Symbols {
-			if da.Symbols[j].Symbol != db.Symbols[j].Symbol {
-				return false
+func findSymbolInfo(idx *scip.Index, symbol string) *scip.SymbolInformation {
+	for _, d := range idx.Documents {
+		for _, s := range d.Symbols {
+			if s.Symbol == symbol {
+				return s
 			}
 		}
 	}
-	return true
+	return nil
 }

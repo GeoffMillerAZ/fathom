@@ -1,9 +1,11 @@
 // export.go — `fathom export scip` (VB-32, docs/plans/verbs.md;
 // docs/vision/29-verbs-not-lookups.md §I): writes one service's symbol and
-// typed-edge tables as a SCIP index (github.com/sourcegraph/scip/bindings/
-// go/scip), store-direct only (mirrors cmd/fathom/review.go's structure —
-// no daemon round trip). `ingest --scip` (importing FROM a SCIP index) is a
-// later, separate decision (docs/usage.md).
+// typed-edge tables as a SCIP index (internal/analysis/scipexport, over the
+// generated wire-format types vendored at third_party/scip — see that
+// directory's README.md for why), store-direct only (mirrors
+// cmd/fathom/review.go's structure — no daemon round trip). `ingest --scip`
+// (importing FROM a SCIP index) is a later, separate decision
+// (docs/usage.md).
 package main
 
 import (

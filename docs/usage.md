@@ -1357,8 +1357,10 @@ fathom export scip --service <id> [--store <path>] [-o index.scip] [--module <di
 ```
 
 Writes `service`'s symbol and typed-edge tables as a [SCIP](https://sourcegraph.com/blog/announcing-scip)
-index (`github.com/sourcegraph/scip/bindings/go/scip`) — store-direct only, mirroring
-`review`'s structure (no daemon round trip). Each symbol's resolution tier
+index, over the generated wire-format types vendored at `third_party/scip` (see that
+directory's `README.md` for the exact upstream tag/commit and why only those files are
+vendored rather than depending on the upstream module directly) — store-direct only,
+mirroring `review`'s structure (no daemon round trip). Each symbol's resolution tier
 (`core.EdgeConfidenceOf`: `resolved`/`heuristic`) travels on the CALLER's
 `SymbolInformation.Documentation`, one line per typed-edge relationship, formatted
 `fathom:resolution <target-symbol> = <tier>` — SCIP's `Relationship` message has no

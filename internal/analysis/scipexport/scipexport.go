@@ -1,7 +1,10 @@
 // Package scipexport renders one service's symbol and typed-edge tables as
 // a SCIP index (VB-32, docs/plans/verbs.md; docs/vision/29-verbs-not-
-// lookups.md §I "fathom export scip"), using the official bindings
-// github.com/sourcegraph/scip/bindings/go/scip.
+// lookups.md §I "fathom export scip"), using the generated wire-format
+// types vendored at third_party/scip (see that directory's README.md for
+// exactly which upstream files, at which tag/commit, and why only those —
+// depending on the upstream module directly pulled in a `//go:build tools`
+// dev-dependency chain with a real, unrelated version conflict).
 //
 // Resolution-tier placement (state exactly where and why, per VB-32):
 // SCIP's Relationship message is {Symbol, IsReference, IsImplementation,
@@ -15,9 +18,22 @@
 // carries no tier: tier is a property of an EDGE, never of a definition
 // site.
 //
+// Range vs EnclosingRange (NIT, wave-i review): core.SymbolNode carries no
+// column information, only a 1-based Line (and, when set, EndLine — T5-5's
+// "0 == unknown" convention). SCIP's Occurrence.Range is meant to span just
+// the symbol's NAME token; without a column we cannot point at it, so
+// Range here is a SYNTHETIC one-column marker at the definition's start
+// line (columns 0..1) — legible as "roughly here", never a fabricated name
+// extent. EnclosingRange carries the real, meaningful span instead: the
+// whole definition's body, Line..EndLine — so a consumer that wants to
+// highlight "the name" vs "the whole function" reads the field that
+// actually means that.
+//
 // BuildFromNodes is pure (no I/O) and deterministic: documents are sorted
-// by RelativePath, and each document's occurrences/symbols are sorted for
-// stable byte output across repeated runs over the same input.
+// by RelativePath, each document's occurrences/symbols are sorted, and
+// each symbol's Relationships/Documentation are sorted too (never trusting
+// the caller's `typed` edges to already be in a stable order) — stable
+// byte output across repeated runs over the same input.
 package scipexport
 
 import (
@@ -27,9 +43,11 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 
-	"github.com/sourcegraph/scip/bindings/go/scip"
 	"google.golang.org/protobuf/proto"
+
+	scip "github.com/geoffmilleraz/fathom/third_party/scip"
 
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -43,6 +61,66 @@ const (
 	schemeName     = "fathom"
 	packageManager = "service"
 )
+
+// escapeSymbolComponent renders one SCIP symbol component (scheme, package
+// manager, package name, or a descriptor name): SCIP's own escaping rule
+// for "any UTF-8 string" component is to wrap it in backticks (doubling
+// any internal backtick) when it is empty or contains a space or backtick.
+func escapeSymbolComponent(s string) string {
+	if s == "" || strings.ContainsAny(s, " `") {
+		return "`" + strings.ReplaceAll(s, "`", "``") + "`"
+	}
+	return s
+}
+
+// descriptorSuffix picks the SCIP descriptor suffix a fathom SourceKind
+// should render with (NIT, wave-i review): "()." for a Go method (SCIP's
+// method suffix is name + "(" + disambiguator + ")." — no disambiguator is
+// tracked here, so it is always empty), "#" (type) for a Go type or
+// interface, "." (term) for everything else — functions, variables,
+// constants, and any kind this package doesn't specifically recognise.
+func descriptorSuffix(k core.SourceKind) string {
+	switch k {
+	case core.KindGoMethod:
+		return "()."
+	case core.KindGoType, core.KindGoInterface:
+		return "#"
+	default:
+		return "."
+	}
+}
+
+// formatSymbolID hand-renders a SCIP symbol string for (service, pkg, name,
+// kind) directly against the grammar — scheme SP manager SP name SP
+// version SP descriptor+, each descriptor being escapedName+suffix,
+// version rendered "." when absent (SCIP's own empty-field sentinel) —
+// rather than using the upstream bindings' Symbol/Package/Descriptor types
+// and its SymbolFormatter: third_party/scip vendors only the generated
+// wire-format file (scip.pb.go) fathom's Index/Document/SymbolInformation/
+// Occurrence/Relationship construction needs, not the hand-written
+// formatter/parser (see third_party/scip/README.md for why). This is the
+// entire, fixed-shape subset of the grammar fathom's own symbol IDs ever
+// use, so hand-writing it directly is simpler than vendoring the generic
+// machinery to produce exactly one shape. The rendered form matches the
+// upstream VerboseSymbolFormatter's own output for this exact structure
+// (empirically confirmed against v0.6.1 before this package stopped
+// depending on it).
+func formatSymbolID(service, pkg, name string, kind core.SourceKind) string {
+	var b strings.Builder
+	b.WriteString(escapeSymbolComponent(schemeName))
+	b.WriteByte(' ')
+	b.WriteString(escapeSymbolComponent(packageManager))
+	b.WriteByte(' ')
+	b.WriteString(escapeSymbolComponent(service))
+	b.WriteString(" . ") // version: fathom symbols carry none; "." is SCIP's empty-field sentinel
+	if pkg != "" {
+		b.WriteString(escapeSymbolComponent(pkg))
+		b.WriteString("/")
+	}
+	b.WriteString(escapeSymbolComponent(name))
+	b.WriteString(descriptorSuffix(kind))
+	return b.String()
+}
 
 // Backend is the minimal capability Build needs — pkg/client.Client and
 // internal/mcp.QueryInterface both satisfy it structurally (Go interfaces
@@ -70,20 +148,13 @@ func Build(ctx context.Context, backend Backend, service string) (*scip.Index, e
 }
 
 // SymbolID renders the canonical SCIP symbol string for one fathom symbol
-// (service, package, name). Exported so a caller decoding a written index
-// can recompute the same ID for a symbol-table comparison (the round-trip
+// (service, package, name, kind — kind picks the descriptor suffix, see
+// descriptorSuffix). Exported so a caller decoding a written index can
+// recompute the same ID for a symbol-table comparison (the round-trip
 // check `fathom export scip` runs when scip-go is not on PATH) without
 // re-deriving the grammar by hand.
-func SymbolID(service, pkg, name string) string {
-	sym := &scip.Symbol{
-		Scheme:  schemeName,
-		Package: &scip.Package{Manager: packageManager, Name: service},
-		Descriptors: []*scip.Descriptor{
-			{Name: pkg, Suffix: scip.Descriptor_Namespace},
-			{Name: name, Suffix: scip.Descriptor_Term},
-		},
-	}
-	return scip.VerboseSymbolFormatter.FormatSymbol(sym)
+func SymbolID(service, pkg, name string, kind core.SourceKind) string {
+	return formatSymbolID(service, pkg, name, kind)
 }
 
 // symbolKind best-effort maps a core.SourceKind to SCIP's SymbolInformation
@@ -143,18 +214,24 @@ func BuildFromNodes(service string, nodes []core.SymbolNode, typed []core.Edge, 
 
 	idByKey := make(map[string]string, len(nodes))
 	infoByKey := make(map[string]*scip.SymbolInformation, len(nodes))
+	// fixedDocLen records, per SymbolInformation, how many Documentation
+	// lines were present BEFORE the typed-edge loop below (0 or 1: the
+	// node's own Signature, if any) — so the post-loop sort only reorders
+	// the RESOLUTION lines the loop appends, never the signature.
+	fixedDocLen := make(map[*scip.SymbolInformation]int, len(nodes))
 	docByPath := make(map[string]*scip.Document)
 	pathSeen := make(map[string]bool)
 	var pathOrder []string
 
 	for _, n := range nodes {
-		id := SymbolID(service, n.Package, n.Name)
+		id := SymbolID(service, n.Package, n.Name, n.Kind)
 		idByKey[n.Key()] = id
 
 		info := &scip.SymbolInformation{Symbol: id, DisplayName: n.Name, Kind: symbolKind(n.Kind)}
 		if n.Signature != "" {
 			info.Documentation = append(info.Documentation, n.Signature)
 		}
+		fixedDocLen[info] = len(info.Documentation)
 		infoByKey[n.Key()] = info
 
 		doc, ok := docByPath[n.FilePath]
@@ -172,9 +249,14 @@ func BuildFromNodes(service string, nodes []core.SymbolNode, typed []core.Edge, 
 			endLine = n.EndLine
 		}
 		doc.Occurrences = append(doc.Occurrences, &scip.Occurrence{
-			Range:       []int32{zeroBased(n.Line), 0, zeroBased(endLine), 1},
-			Symbol:      id,
-			SymbolRoles: int32(scip.SymbolRole_Definition),
+			// Range is a SYNTHETIC name-marker (see the package doc
+			// comment): a one-column pointer at the definition's start
+			// line, never the whole body. EnclosingRange carries the real
+			// body span.
+			Range:          []int32{zeroBased(n.Line), 0, zeroBased(n.Line), 1},
+			EnclosingRange: []int32{zeroBased(n.Line), 0, zeroBased(endLine), 1},
+			Symbol:         id,
+			SymbolRoles:    int32(scip.SymbolRole_Definition),
 		})
 		doc.Symbols = append(doc.Symbols, info)
 	}
@@ -191,6 +273,18 @@ func BuildFromNodes(service string, nodes []core.SymbolNode, typed []core.Edge, 
 		tier := string(core.EdgeConfidenceOf(e))
 		fromInfo.Relationships = append(fromInfo.Relationships, &scip.Relationship{Symbol: toID, IsReference: true})
 		fromInfo.Documentation = append(fromInfo.Documentation, fmt.Sprintf("fathom:resolution %s = %s", toID, tier))
+	}
+
+	// Determinism (NIT, wave-i review): a store is free to return typed
+	// edges in any order, so the Relationships/Documentation the loop above
+	// appended are sorted HERE, by this package, rather than trusted to
+	// already be stable. The signature line (if any), recorded in
+	// fixedDocLen, stays first; only the resolution lines after it sort.
+	for _, info := range infoByKey {
+		sort.Slice(info.Relationships, func(i, j int) bool {
+			return info.Relationships[i].Symbol < info.Relationships[j].Symbol
+		})
+		sort.Strings(info.Documentation[fixedDocLen[info]:])
 	}
 
 	sort.Strings(pathOrder)
@@ -253,7 +347,7 @@ func SymbolSet(idx *scip.Index) map[string]bool {
 func ExpectedSymbolSet(service string, nodes []core.SymbolNode) map[string]bool {
 	out := make(map[string]bool, len(nodes))
 	for _, n := range nodes {
-		out[SymbolID(service, n.Package, n.Name)] = true
+		out[SymbolID(service, n.Package, n.Name, n.Kind)] = true
 	}
 	return out
 }
@@ -332,20 +426,33 @@ func scipGoSymbolNames(scipGoPath, modulePath string) (map[string]bool, error) {
 	return names, nil
 }
 
-// bareSymbolName extracts a best-effort display name from a SCIP symbol
-// string for cross-scheme comparison (fathom's "fathom service <svc>
-// <pkg>/<name>." vs scip-go's own gomod-based scheme): the text of the
-// LAST descriptor, stripped of its trailing suffix punctuation
-// (`.`/`#`/`)`/`/`). Falls back to the raw string when scip.ParseSymbol
-// can't parse it (a "local ..." symbol, or a scheme scip-go formats
-// differently) — a bare-name comparison degrades to no-match rather than
-// panicking on either producer's own quirks.
+// bareSymbolName extracts a best-effort display name from ANY SCIP symbol
+// string — fathom's own ("fathom service <svc> . <pkg>/<name><suffix>") or
+// one scip-go itself produced, in its own gomod-based scheme — for
+// cross-tool comparison: strip one trailing descriptor suffix
+// (")."/")"/"#"/"."), then take the text after the last remaining "/" (a
+// namespace separator) or, absent one, after the last " " (the space
+// before the first descriptor). This is intentionally NOT a full SCIP
+// grammar parser — third_party/scip vendors only the generated wire-format
+// types, not the hand-written parser (see its README.md) — and this whole
+// code path (the scip-go comparison) is untested in any environment
+// without scip-go installed; a symbol this heuristic can't cleanly split
+// degrades to "no match" rather than a wrong one.
 func bareSymbolName(sym string) string {
-	parsed, err := scip.ParseSymbol(sym)
-	if err != nil || len(parsed.Descriptors) == 0 {
-		return sym
+	s := sym
+	switch {
+	case strings.HasSuffix(s, ")."):
+		s = strings.TrimSuffix(s, ").")
+	case strings.HasSuffix(s, ")"), strings.HasSuffix(s, "#"), strings.HasSuffix(s, "."):
+		s = s[:len(s)-1]
 	}
-	return parsed.Descriptors[len(parsed.Descriptors)-1].Name
+	if idx := strings.LastIndexByte(s, '/'); idx >= 0 {
+		return s[idx+1:]
+	}
+	if idx := strings.LastIndexByte(s, ' '); idx >= 0 {
+		return s[idx+1:]
+	}
+	return s
 }
 
 func setNamesEqualCount(want map[string]bool, gotBareNames map[string]bool) int {
