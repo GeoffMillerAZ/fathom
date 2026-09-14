@@ -34,3 +34,16 @@ func EdgeConfidenceOf(e Edge) EdgeConfidence {
 		return EdgeConfidenceResolved
 	}
 }
+
+// CrossRepoEdgeConfidenceOf reports a CrossRepoEdge's confidence, mirroring
+// EdgeConfidenceOf's two-word vocabulary for the cross-repo platform graph
+// (VB-30). Every kind produced today is heuristic: CrossRepoEdgeServiceRef
+// is a normalized (method, path template) string match across
+// repositories, and CrossRepoEdgeCall (platformlink.BuildFromSymbols, the
+// zero-value Kind) joins by bare "pkg.Name" string equality across repos —
+// neither is ever confirmed by a compiler-grade resolver. A future typed
+// cross-repo resolver adds a branch here (and to CrossRepoEdgeKind) when it
+// exists; until then there is none to take.
+func CrossRepoEdgeConfidenceOf(e CrossRepoEdge) EdgeConfidence {
+	return EdgeConfidenceHeuristic
+}

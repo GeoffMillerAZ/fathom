@@ -147,6 +147,8 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return cmdPostCommitHook(args[1:], stdout, stderr)
 	case "intent":
 		return cmdIntent(args[1:], stdout, stderr)
+	case "export":
+		return cmdExport(args[1:], stdout, stderr)
 	case "daemon":
 		return cmdDaemon(args[1:], stdout, stderr)
 	case "fleet":

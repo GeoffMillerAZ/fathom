@@ -356,11 +356,69 @@ type CrossRepoEdge struct {
     ToService   string
     ToKey       string
     ToFile      string
+    Kind        CrossRepoEdgeKind // "" (call) or "service_ref" (VB-30)
 }
 ```
 
 The `platform-callers` CLI subcommand and the `cross_repo_callers` / `platform_callers`
 MCP tools use this graph to answer "which services call this symbol?"
+
+### Edge kinds (vision 02 §4.7: one at a time)
+
+`CrossRepoEdge.Kind` classifies the relationship an edge records. It is additive —
+every edge produced before the field existed carries the zero value — and grows one kind
+at a time:
+
+| Kind | Value | Producer | Join key | Tier |
+|---|---|---|---|---|
+| call | `""` (`core.CrossRepoEdgeCall`) | `platformlink.BuildFromSymbols` | bare `pkg.Name` string equality | heuristic (`core.CrossRepoEdgeConfidenceOf`) |
+| service_ref | `"service_ref"` (`core.CrossRepoEdgeServiceRef`) | `internal/analysis/serviceref.ServiceRefEdges` (VB-30) | normalized `(HTTP method, path template)` | heuristic, never typed |
+
+`service_ref` (docs/vision/29-verbs-not-lookups.md §I) is the edge that lets blast radius
+cross a *process* boundary rather than only a *repo* boundary within one call graph: a
+client in one service issues an HTTP request whose method + path template matches a
+route another service registers, and `internal/analysis/serviceref` joins the two sides
+across the whole fleet (never within the same service — that is an ordinary intra-service
+call, not a cross-repo reference). `ToKey` carries `"METHOD /normalized/template"` (the
+same `"METHOD path"` convention `internal/mcp`'s `traverse` tool already uses for
+`graph.KindRoute`), never a bare symbol name.
+
+Extraction is two-sided:
+
+- **Server side** — `internal/analysis/routes.Extract` (already used by the `endpoints`
+  analyzer and the `traverse` MCP tool): `net/http`, chi, gin and echo route
+  registrations, language-agnostic across Go/JS/TS/Python.
+- **Client side** — `internal/analysis/serviceref.ExtractClientCalls`: Go-only for VB-30
+  (language coverage for a brand-new edge kind grows one language at a time, same rule as
+  the edge kind itself), parsed with `go/parser` and walked as real `ast.CallExpr` nodes
+  (never a byte-level regex over raw source — a call written inside a `//` comment is
+  plain text to the parser, never an AST node, so it can never manufacture a hop)
+  detecting `http.NewRequest[WithContext]` / `http.Get` / `http.Post` / `http.Head` /
+  `http.PostForm` call sites. The method argument accepts a quoted literal ("GET") or a
+  net/http `Method*` constant (`http.MethodGet`); the URL argument accepts a string
+  literal or an inline `fmt.Sprintf("template", args...)` call, whose `%`-verbs
+  `NormalizeTemplate` collapses to `"{}"`.
+
+`NormalizeTemplate` collapses `:param` (chi/gin/express, segment-anchored: the colon must
+be the first character of its segment, so `/events/at:noon` stays literal), `{param}`
+(gorilla/echo, including a `{param:regex}` constraint), a `*wildcard` segment (anywhere
+in the path, not only the last segment), and a printf verb (`%s`, `%d`, `%02d`, …) into
+one placeholder, `"{}"`; strips a leading scheme+host ONLY when the string starts with
+one (an unanchored search would be fooled by a decoy like
+`/redirect?next=http://evil.com/path`); strips a query string/fragment; and normalises a
+trailing slash — so `"/items/:id"`, `"/items/"` and `"http://host/items/%s"` all compare
+equal to `"/items/{}"` / `"/items"` as appropriate.
+
+`blast_radius`, `cross_repo_blast_radius` and `review_diff` each report matching
+`service_ref` hops as an additive `service_ref_hops` array (one object per hop, always
+`"kind":"service_ref"`, `"tier":"heuristic"`) — computed fleet-wide via
+`serviceref.BuildFromStore`, the same no-caching-layer precedent
+`cross_repo_blast_radius` already sets for the `call`-kind graph. A `(method, template)`
+key registered by more than one service fans out to all of them (edges are never dropped
+for being ambiguous) and each such hop carries `"ambiguous":true` plus the full sorted
+`"candidates"` list, so a consumer can tell a genuine fan-out from a unique join.
+`docs/bench/` documents how VB-31 (precision/recall ≥ 0.90 against a hand-verified route
+table) will be measured.
 
 `PlatformStore` (`internal/store/platform_store.go`) loads many store files
 (`*.sqlite`/`*.db`, plus `*.duckdb` recognized only so a pre-SS-8 leftover can lose a
