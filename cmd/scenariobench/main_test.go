@@ -1430,3 +1430,64 @@ func TestCaptureAgentDiff_StripsRealFathomRegionKeepsOtherEdits(t *testing.T) {
 		t.Errorf("expected real.go's edit to survive, got:\n%s", diff)
 	}
 }
+
+// TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore is O55 item 4's
+// fix-first review, in the finding's own words: a subject with real
+// workspace/ sources must not lose them. A subject whose own .gitignore
+// ignores workspace/artifacts/ but not workspace/pkg/ gets exactly that
+// distinction honored in agent.diff. Both files are already TRACKED at
+// base (git add -f for the gitignored one, simulating a build artifact
+// that was committed once despite the later ignore rule — the realistic
+// shape: an UNTRACKED ignored file is never even added by `git add -N .`
+// in the first place, so it would never reach a diff either way; a
+// MODIFIED tracked one is what actually exercises this filter) and then
+// modified, exactly like an agent's own edit.
+func TestCaptureAgentDiff_WorkspaceGatedBySubjectGitignore(t *testing.T) {
+	wtDir := t.TempDir()
+	runGit(t, wtDir, "init", "-q", "-b", "main")
+	if err := os.WriteFile(filepath.Join(wtDir, ".gitignore"), []byte("workspace/artifacts/\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(wtDir, "workspace", "pkg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "pkg", "real_source.go"), []byte("package pkg\n\nfunc Old() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(wtDir, "workspace", "artifacts"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "artifacts", "scratch.json"), []byte("{}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, wtDir, "add", "-A")
+	runGit(t, wtDir, "add", "-f", "workspace/artifacts/scratch.json")
+	runGit(t, wtDir, "commit", "-q", "-m", "base")
+
+	// The agent's own real edit to a genuinely tracked subject source file
+	// that happens to live under workspace/, plus a change to the
+	// gitignored (but already-tracked) build artifact.
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "pkg", "real_source.go"), []byte("package pkg\n\nfunc New() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(wtDir, "workspace", "artifacts", "scratch.json"), []byte(`{"changed":true}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	wt := scenariobench.Worktree{Path: wtDir, CellDir: t.TempDir()}
+	diffPath, _ := captureAgentDiff(context.Background(), wt)
+	if diffPath == "" {
+		t.Fatal("expected a non-empty diff path")
+	}
+	raw, err := os.ReadFile(diffPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff := string(raw)
+	if !strings.Contains(diff, "workspace/pkg/real_source.go") || !strings.Contains(diff, "func New()") {
+		t.Errorf("expected the real subject source under workspace/pkg/ to survive, got:\n%s", diff)
+	}
+	if strings.Contains(diff, "workspace/artifacts") {
+		t.Errorf("expected the .gitignore'd workspace/artifacts/ file excluded, got:\n%s", diff)
+	}
+}

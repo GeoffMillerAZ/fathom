@@ -562,7 +562,23 @@ func SurfaceCallCount(toolCalls map[string]int, surface string) int {
 // convention (root CLAUDE.md's workspace/ rule) for instrument/runtime
 // state, which never carries a ledger entry of its own and is never a
 // subject's tracked source.
-func pathIsInstrumentOwned(owned map[string]bool, repoRelPath string) bool {
+// pathIsInstrumentOwned reports whether repoRelPath (as `git diff
+// --name-only`/a `diff --git a/X b/X` header spells it) is one
+// PrepareSubject's own instrument wrote (O55 item 4): owned outright
+// (owned — InstrumentOwnedPaths' ledger-driven set), anywhere under the
+// whole .fathom/ namespace (fathom's own reserved directory in ANY repo it
+// wires — this is a fathom-tool convention, not a subject-repo one, so it
+// is excluded unconditionally), or under workspace/ — BUT ONLY when
+// gitIgnoredWorkspace says the SUBJECT's own .gitignore actually ignores
+// that path (fix-first review, 2026-09-14: workspace/ is THIS repo's own
+// convention, not a universal one — ADR-011 keeps fathom itself org/repo-
+// agnostic, and a subject that genuinely tracks real source under its own
+// workspace/ directory must not lose it wholesale just because this repo
+// happens to reserve that name for build artifacts).
+// gitIgnoredWorkspace (GitIgnoredWorkspacePaths) is nil-safe: an absent or
+// empty map means no workspace/ path is excluded on that basis alone —
+// the ledger's own owned set can still name one explicitly.
+func pathIsInstrumentOwned(owned, gitIgnoredWorkspace map[string]bool, repoRelPath string) bool {
 	repoRelPath = filepath.ToSlash(repoRelPath)
 	if owned[repoRelPath] {
 		return true
@@ -572,12 +588,15 @@ func pathIsInstrumentOwned(owned map[string]bool, repoRelPath string) bool {
 		// state — not just owned.json: internal/wiring's own ApplyWiring
 		// also writes .fathom/receipts.jsonl (undo receipts) unprompted,
 		// found leaking into agent.diff while testing the region-aware
-		// fix below (O55 item 4, fix-first review) — never a subject's own
-		// tracked source by convention, so excluded wholesale like
-		// workspace/ rather than enumerated file by file.
+		// fix (O55 item 4) — never a subject's own tracked source by
+		// convention, so excluded wholesale like workspace/ rather than
+		// enumerated file by file.
 		return true
 	}
-	return repoRelPath == "workspace" || strings.HasPrefix(repoRelPath, "workspace/")
+	if repoRelPath == "workspace" || strings.HasPrefix(repoRelPath, "workspace/") {
+		return gitIgnoredWorkspace[repoRelPath]
+	}
+	return false
 }
 
 // diffGitHeaderPath extracts the "b/" (destination) path from one `diff
@@ -595,14 +614,19 @@ func diffGitHeaderPath(headerLine string) string {
 // diff (as `git diff` emits it, one "diff --git a/X b/X" header per file)
 // whose path is instrument-owned (O55 item 4: everything internal/wiring's
 // ledger records — KindKey/KindFile, never a KindRegion stanza, see
-// stripFathomRegionsFromDiff for that — .fathomignore, anything under
-// workspace/ — must never be credited to the agent as agent.diff or
-// counted toward any byte metric derived from it). Returns the filtered
-// diff and how many file sections were dropped, so the caller can record
-// instrument_files_excluded. A nil or empty owned set, or an empty diff,
-// returns diff unchanged with 0 excluded.
-func FilterInstrumentOwnedDiff(diff []byte, owned map[string]bool) ([]byte, int) {
-	if len(diff) == 0 || len(owned) == 0 {
+// stripFathomRegionsFromDiff for that — .fathomignore, the whole .fathom/
+// namespace, and any workspace/ path gitIgnoredWorkspace confirms the
+// SUBJECT's own .gitignore actually ignores (GitIgnoredWorkspacePaths;
+// fix-first review, 2026-09-14 — workspace/ is THIS repo's own convention,
+// never assumed of an arbitrary subject) — must never be credited to the
+// agent as agent.diff or counted toward any byte metric derived from it).
+// Returns the filtered diff and how many file sections were dropped, so
+// the caller can record instrument_files_excluded. gitIgnoredWorkspace may
+// be nil (no workspace/ path is excluded on that basis alone). An empty
+// diff, or both owned and gitIgnoredWorkspace empty, returns diff
+// unchanged with 0 excluded.
+func FilterInstrumentOwnedDiff(diff []byte, owned, gitIgnoredWorkspace map[string]bool) ([]byte, int) {
+	if len(diff) == 0 || (len(owned) == 0 && len(gitIgnoredWorkspace) == 0) {
 		return diff, 0
 	}
 	lines := strings.Split(string(diff), "\n")
@@ -612,7 +636,7 @@ func FilterInstrumentOwnedDiff(diff []byte, owned map[string]bool) ([]byte, int)
 	for _, line := range lines {
 		if strings.HasPrefix(line, "diff --git ") {
 			path := diffGitHeaderPath(line)
-			keep = !(path != "" && pathIsInstrumentOwned(owned, path))
+			keep = !(path != "" && pathIsInstrumentOwned(owned, gitIgnoredWorkspace, path))
 			if !keep {
 				excluded++
 			}

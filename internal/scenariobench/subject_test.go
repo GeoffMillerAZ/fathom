@@ -558,6 +558,62 @@ func TestInstrumentOwnedPaths_ReadsTheLedgerPlusStatics(t *testing.T) {
 // wiring's OWN production code actually wrote — wiring.ApplyWiring, never
 // a hand-crafted marker string standing in for it — and report exactly the
 // lines its own markers (wiring.HTMLMarkers) delimit.
+// TestGitIgnoredWorkspacePaths_RealGitignore pins O55 item 4 (fix-first
+// review) end to end: a real .gitignore that ignores one workspace/ path
+// but not another is respected exactly — the ignored path is reported,
+// real subject source under workspace/ is not (ADR-011: workspace/ is
+// this repo's own convention, never assumed of an arbitrary subject).
+func TestGitIgnoredWorkspacePaths_RealGitignore(t *testing.T) {
+	dir := t.TempDir()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(
+			gitEnv(),
+			"GIT_AUTHOR_NAME=test", "GIT_AUTHOR_EMAIL=test@example.invalid",
+			"GIT_COMMITTER_NAME=test", "GIT_COMMITTER_EMAIL=test@example.invalid",
+		)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v (%s)", args, err, out)
+		}
+	}
+	run("init", "-q", "-b", "main")
+	writeTestFile(t, filepath.Join(dir, ".gitignore"), "workspace/artifacts/\n")
+	run("add", "-A")
+	run("commit", "-q", "-m", "base")
+
+	diff := []byte("diff --git a/workspace/artifacts/scratch.json b/workspace/artifacts/scratch.json\n" +
+		"new file mode 100644\n" +
+		"--- /dev/null\n" +
+		"+++ b/workspace/artifacts/scratch.json\n" +
+		"@@ -0,0 +1 @@\n+{}\n" +
+		"diff --git a/workspace/pkg/real_source.go b/workspace/pkg/real_source.go\n" +
+		"new file mode 100644\n" +
+		"--- /dev/null\n" +
+		"+++ b/workspace/pkg/real_source.go\n" +
+		"@@ -0,0 +1 @@\n+package pkg\n")
+
+	ignored := GitIgnoredWorkspacePaths(context.Background(), Worktree{Path: dir}, diff)
+	if !ignored["workspace/artifacts/scratch.json"] {
+		t.Errorf("expected workspace/artifacts/scratch.json to be reported gitignored, got %v", ignored)
+	}
+	if ignored["workspace/pkg/real_source.go"] {
+		t.Errorf("expected workspace/pkg/real_source.go (real subject source, not gitignored) to NOT be reported, got %v", ignored)
+	}
+}
+
+// TestGitIgnoredWorkspacePaths_NoGitRepoReportsNothing covers the safe
+// default: a git failure (no repository at all) reports no paths ignored
+// rather than erroring — never a reason to silently drop a subject's real
+// source.
+func TestGitIgnoredWorkspacePaths_NoGitRepoReportsNothing(t *testing.T) {
+	diff := []byte(unifiedDiffFile("workspace/pkg/real.go", "@@ -1 +1 @@\n-a\n+b\n"))
+	ignored := GitIgnoredWorkspacePaths(context.Background(), Worktree{Path: t.TempDir()}, diff)
+	if len(ignored) != 0 {
+		t.Errorf("expected no ignored paths when wt.Path is not a git repo at all, got %v", ignored)
+	}
+}
+
 func TestInstrumentRegionRanges_RealRegionFromWiring(t *testing.T) {
 	dir := t.TempDir()
 	fixedNow := func() time.Time { return time.Date(2026, 9, 14, 0, 0, 0, 0, time.UTC) }

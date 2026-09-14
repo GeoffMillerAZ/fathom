@@ -608,16 +608,20 @@ func unifiedDiffFile(path, body string) string {
 
 // TestFilterInstrumentOwnedDiff_DropsOwnedFileSections pins O55 item 4: a
 // diff naming both an instrument-owned file and a real one keeps only the
-// real one's section, and reports how many were dropped.
+// real one's section, and reports how many were dropped. workspace/
+// artifacts/scratch.json is dropped only because it is named in
+// gitIgnoredWorkspace (fix-first review: workspace/ is gated, never a
+// blanket exclusion — see TestFilterInstrumentOwnedDiff_WorkspaceIsGated).
 func TestFilterInstrumentOwnedDiff_DropsOwnedFileSections(t *testing.T) {
 	diff := unifiedDiffFile("CLAUDE.md", "@@ -1 +1,2 @@\n+<!-- fathom:begin v3 sha256:x -->\n") +
 		unifiedDiffFile("real.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n") +
 		unifiedDiffFile("workspace/artifacts/scratch.json", "@@ -0,0 +1 @@\n+{}\n")
 	owned := map[string]bool{"CLAUDE.md": true}
+	gitIgnored := map[string]bool{"workspace/artifacts/scratch.json": true}
 
-	got, excluded := FilterInstrumentOwnedDiff([]byte(diff), owned)
+	got, excluded := FilterInstrumentOwnedDiff([]byte(diff), owned, gitIgnored)
 	if excluded != 2 {
-		t.Fatalf("excluded = %d, want 2 (CLAUDE.md by the owned set, workspace/ by convention)", excluded)
+		t.Fatalf("excluded = %d, want 2 (CLAUDE.md by the owned set, workspace/... by the subject's own .gitignore)", excluded)
 	}
 	s := string(got)
 	if strings.Contains(s, "CLAUDE.md") {
@@ -631,34 +635,53 @@ func TestFilterInstrumentOwnedDiff_DropsOwnedFileSections(t *testing.T) {
 	}
 }
 
+// TestFilterInstrumentOwnedDiff_WorkspaceIsGated pins the fix-first review
+// directly: a workspace/ path the SUBJECT's own .gitignore does NOT ignore
+// (gitIgnoredWorkspace silent about it) is a real subject file and must
+// survive — workspace/ is this repo's own convention, never assumed of an
+// arbitrary subject (ADR-011).
+func TestFilterInstrumentOwnedDiff_WorkspaceIsGated(t *testing.T) {
+	diff := []byte(unifiedDiffFile("workspace/pkg/real_source.go", "@@ -1 +1 @@\n-func Old() {}\n+func New() {}\n"))
+	got, excluded := FilterInstrumentOwnedDiff(diff, map[string]bool{".fathomignore": true}, nil)
+	if excluded != 0 {
+		t.Fatalf("excluded = %d, want 0 — no .gitignore entry named this workspace/ path", excluded)
+	}
+	if !strings.Contains(string(got), "func New()") {
+		t.Errorf("expected the un-ignored workspace/ file to survive, got:\n%s", got)
+	}
+}
+
 // TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops covers the two
-// degenerate cases: an empty diff, and a nil/empty owned set.
+// degenerate cases: an empty diff, and every owned set empty.
 func TestFilterInstrumentOwnedDiff_EmptyInputsAreNoops(t *testing.T) {
-	if got, n := FilterInstrumentOwnedDiff(nil, map[string]bool{"x": true}); got != nil || n != 0 {
+	if got, n := FilterInstrumentOwnedDiff(nil, map[string]bool{"x": true}, nil); got != nil || n != 0 {
 		t.Errorf("empty diff: got %q, %d", got, n)
 	}
 	diff := []byte(unifiedDiffFile("real.go", "@@ -1 +1 @@\n-a\n+b\n"))
-	got, n := FilterInstrumentOwnedDiff(diff, nil)
+	got, n := FilterInstrumentOwnedDiff(diff, nil, nil)
 	if n != 0 || string(got) != string(diff) {
-		t.Errorf("nil owned set should pass the diff through unchanged, got %q, %d", got, n)
+		t.Errorf("nil owned/gitIgnoredWorkspace should pass the diff through unchanged, got %q, %d", got, n)
 	}
 }
 
 func TestPathIsInstrumentOwned(t *testing.T) {
 	owned := map[string]bool{".fathomignore": true, "CLAUDE.md": true}
+	gitIgnoredWorkspace := map[string]bool{"workspace/tmp/x.log": true}
 	cases := []struct {
 		path string
 		want bool
 	}{
 		{".fathomignore", true},
 		{"CLAUDE.md", true},
-		{"workspace", true},
-		{"workspace/tmp/x.log", true},
+		{".fathom/receipts.jsonl", true},
+		{"workspace/tmp/x.log", true},   // named in gitIgnoredWorkspace
+		{"workspace", false},            // not named — bare prefix alone proves nothing now
+		{"workspace/pkg/real.go", false}, // a real subject file under workspace/, not gitignored
 		{"real.go", false},
 		{"workspace-lookalike/real.go", false},
 	}
 	for _, c := range cases {
-		if got := pathIsInstrumentOwned(owned, c.path); got != c.want {
+		if got := pathIsInstrumentOwned(owned, gitIgnoredWorkspace, c.path); got != c.want {
 			t.Errorf("pathIsInstrumentOwned(%q) = %v, want %v", c.path, got, c.want)
 		}
 	}

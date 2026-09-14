@@ -949,6 +949,59 @@ func InstrumentRegionRanges(ctx context.Context, wt Worktree) map[string]regionR
 	return out
 }
 
+// GitIgnoredWorkspacePaths reports which of the workspace/-prefixed paths
+// diff names (in its own "diff --git a/X b/X" headers) are actually
+// ignored by the SUBJECT's own .gitignore, checked with `git check-ignore
+// --stdin` run in wt.Path (O55 item 4, fix-first review): workspace/ is
+// THIS repo's own convention (root CLAUDE.md), never assumed of an
+// arbitrary subject repo (ADR-011 keeps fathom itself org/repo-agnostic) —
+// a subject that genuinely tracks real source under its own workspace/
+// directory must not lose it wholesale. Only a workspace/ path the
+// subject's own .gitignore actually ignores is reported; paths outside
+// workspace/ are never queried at all. A git failure (not a repository,
+// check-ignore unavailable) reports no paths ignored, never an error — the
+// safer default is to KEEP a path in the diff, not silently drop a
+// subject's real source over a git failure. nil when diff names no
+// workspace/ path at all.
+func GitIgnoredWorkspacePaths(ctx context.Context, wt Worktree, diff []byte) map[string]bool {
+	var candidates []string
+	for _, line := range strings.Split(string(diff), "\n") {
+		if !strings.HasPrefix(line, "diff --git ") {
+			continue
+		}
+		if p := diffGitHeaderPath(line); p == "workspace" || strings.HasPrefix(p, "workspace/") {
+			candidates = append(candidates, p)
+		}
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	// --no-index: a pure gitignore-pattern question ("would the subject's
+	// own rules ignore this pathname"), not an index-state one. Without
+	// it, git check-ignore reports an ALREADY-TRACKED path as "not
+	// ignored" regardless of matching a pattern (its own documented
+	// behavior — a later .gitignore rule does not retroactively un-track
+	// a file already in the index), which would silently defeat this
+	// filter for the realistic case captureAgentDiff hits: a workspace/
+	// path that was tracked before a .gitignore rule started covering it,
+	// then the agent edits it again.
+	cmd := exec.CommandContext(ctx, "git", "check-ignore", "--no-index", "--stdin")
+	cmd.Dir = wt.Path
+	cmd.Stdin = strings.NewReader(strings.Join(candidates, "\n") + "\n")
+	// git check-ignore exits 1 when NONE of the stdin paths are ignored —
+	// not a failure worth reporting, just an empty result; its stdout
+	// (the ignored subset, one per line) is populated regardless of exit
+	// code, so the error return is deliberately ignored here.
+	out, _ := cmd.Output()
+	ignored := map[string]bool{}
+	for _, line := range strings.Split(string(out), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			ignored[line] = true
+		}
+	}
+	return ignored
+}
+
 // StripInstrumentRegions is InstrumentRegionRanges +
 // stripFathomRegionsFromDiff (cell.go) as one exported call —
 // cmd/scenariobench's captureAgentDiff's entry point for the region-aware

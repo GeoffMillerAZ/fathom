@@ -915,7 +915,13 @@ func captureAgentDiff(ctx context.Context, wt scenariobench.Worktree) (path stri
 	out, regionsExcluded = scenariobench.StripInstrumentRegions(ctx, wt, out)
 	var filesExcluded int
 	if owned, err := scenariobench.InstrumentOwnedPaths(wt); err == nil {
-		out, filesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned)
+		// workspace/ is THIS repo's own convention, never assumed of an
+		// arbitrary subject (O55 item 4, fix-first review) — only a
+		// workspace/ path the SUBJECT's own .gitignore actually ignores
+		// is excluded; GitIgnoredWorkspacePaths queries just the
+		// workspace/ paths this diff names.
+		gitIgnored := scenariobench.GitIgnoredWorkspacePaths(ctx, wt, out)
+		out, filesExcluded = scenariobench.FilterInstrumentOwnedDiff(out, owned, gitIgnored)
 	}
 	instrumentFilesExcluded = regionsExcluded + filesExcluded
 	dest := filepath.Join(wt.CellDir, "agent.diff")
