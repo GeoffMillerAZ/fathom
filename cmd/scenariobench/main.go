@@ -35,6 +35,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -472,6 +473,10 @@ func cmdRun(args []string) int {
 // runCellForReport's own result type, so a caller feeding it through
 // scenariobench.RunArmsConcurrently (RC-16) or a plain sequential loop
 // prints/stores/counts it identically either way.
+// errSubjectPrep marks a PrepareSubject failure so runCellForReport can
+// turn it into a LOST cell instead of aborting the run.
+var errSubjectPrep = errors.New("preparing subject")
+
 type cellOutcome struct {
 	cp         cellPlan
 	borrowed   bool
@@ -498,6 +503,13 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 	}
 
 	result, err := runOneCell(ctx, root, cp, arm, harness, rawDir, model, runID)
+	if err != nil && errors.Is(err, errSubjectPrep) {
+		// A subject that could not be prepared (a fetch refused by the
+		// volume wedge, a daemon that never came up) is an instrument fault
+		// of this cell: LOST, never stored, and the run goes on — one task's
+		// clone must not abort a hundred other cells (vs-pilot-2, 2026-09-13).
+		return cellOutcome{cp: cp, lostReason: "instrument: " + err.Error()}, nil
+	}
 	if err != nil {
 		return cellOutcome{cp: cp}, fmt.Errorf("%s/%s/t%d: %w", cp.task.ID, cp.arm, cp.trial, err)
 	}
@@ -513,7 +525,7 @@ func runCellForReport(ctx context.Context, root string, cp cellPlan, corpus scen
 func runOneCell(ctx context.Context, root string, cp cellPlan, arm scenariobench.Arm, harness scenariobench.Harness, rawDir, model, runID string) (scenariobench.CellResult, error) {
 	wt, err := scenariobench.PrepareSubject(ctx, cp.task, arm, root)
 	if err != nil {
-		return scenariobench.CellResult{}, fmt.Errorf("preparing subject: %w", err)
+		return scenariobench.CellResult{}, fmt.Errorf("%w: %v", errSubjectPrep, err)
 	}
 	defer scenariobench.StopWorktree(&wt)
 
