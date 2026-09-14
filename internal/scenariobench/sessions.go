@@ -349,7 +349,7 @@ var factsReusedHook func(session *SessionResult, pointers []string)
 // fix; what changed is that cellRawDir itself is now unique PER ATTEMPT
 // rather than a pure function of (task, arm, trial, run-id).
 func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts RunOptions, cellRawDir string, index int, role, rowID, prompt string) (SessionRequest, error) {
-	env, err := sessionEnv(wt, opts)
+	env, err := sessionEnv(arm, wt, opts)
 	if err != nil {
 		return SessionRequest{}, fmt.Errorf("task %s arm %s session %d: %w", task.ID, armName, index, err)
 	}
@@ -376,11 +376,22 @@ func newSessionRequest(task Task, armName string, arm Arm, wt Worktree, opts Run
 // sessionEnv is opts.Env with the clean room's own FATHOM_THREADS merged
 // underneath it (cleanRoomEnv), keyed on wt.CellDir being set — a
 // hand-built Worktree with no CellDir (every existing test fixture that
-// predates RC-6) simply gets opts.Env unchanged, same as before RC-6.
-// opts.Env, when set, wins on a key collision.
-func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
+// predates RC-6) simply gets opts.Env layered onto baselineIsolationEnv
+// unchanged, same as before RC-6. opts.Env, when set, wins on a key
+// collision.
+//
+// O53 defect 4: for every non-wired arm — baselineIsolationEnv, applied
+// regardless of whether wt.CellDir is set — a real fathom binary must
+// never be reachable via PATH and a real fathom daemon must never be
+// reachable via FATHOM_HTTP/FATHOM_HTTP_URL, however the operator's own
+// environment happened to be set up. A wired arm gets none of this: it is
+// SUPPOSED to reach fathom, and wt.DaemonURL below points it at the
+// cell's own scratch daemon, never the unroutable placeholder.
+func sessionEnv(arm Arm, wt Worktree, opts RunOptions) (map[string]string, error) {
+	overrides := baselineIsolationEnv(arm, wt.CellDir)
+
 	if wt.CellDir == "" {
-		return opts.Env, nil
+		return mergeStringMaps(overrides, opts.Env), nil
 	}
 	cr, err := cleanRoomEnv(wt.CellDir)
 	if err != nil {
@@ -401,14 +412,39 @@ func sessionEnv(wt Worktree, opts RunOptions) (map[string]string, error) {
 		// daemon ingested exactly wt.Path.
 		cr["FATHOM_HTTP"] = wt.DaemonURL
 	}
-	merged := make(map[string]string, len(cr)+len(opts.Env))
-	for k, v := range cr {
-		merged[k] = v
+	return mergeStringMaps(overrides, cr, opts.Env), nil
+}
+
+// baselineIsolationEnv returns the PATH/FATHOM_HTTP overrides a non-wired
+// arm's session must run with (O53 defect 4); nil for a wired arm, which
+// is supposed to reach fathom.
+func baselineIsolationEnv(arm Arm, cellBinDir string) map[string]string {
+	if arm.Wired {
+		return nil
 	}
-	for k, v := range opts.Env {
-		merged[k] = v
+	return map[string]string{
+		"PATH":            baselinePathExcludingFathom(os.Getenv("PATH"), cellBinDir),
+		"FATHOM_HTTP":     unroutableFathomURL,
+		"FATHOM_HTTP_URL": unroutableFathomURL,
 	}
-	return merged, nil
+}
+
+// mergeStringMaps merges maps left to right — a later map's keys win over
+// an earlier one's, exactly like sessionEnv's existing opts.Env-wins
+// contract — and returns nil (never an empty non-nil map) when nothing
+// was merged, so a caller that never set anything sees the same nil it
+// always did.
+func mergeStringMaps(maps ...map[string]string) map[string]string {
+	var merged map[string]string
+	for _, m := range maps {
+		for k, v := range m {
+			if merged == nil {
+				merged = map[string]string{}
+			}
+			merged[k] = v
+		}
+	}
+	return merged
 }
 
 func orOne(trial int) int {
@@ -543,6 +579,13 @@ func runOneSession(h Harness, req SessionRequest, wantServers []string, excludeP
 	// own success/failure.
 	if AnswerKeyLeakScan(res, excludePaths) {
 		res.AnswerKeyLeak = true
+	}
+	// O53 defect 4: only a non-wired ("baseline") arm is required to have
+	// no fathom available at all — a wired arm's own transcript naming
+	// `fathom` (its stanza tells it to run `fathom verify`, say) is
+	// expected, not a defect.
+	if !req.Arm.Wired && BaselineRanFathomScan(res) {
+		res.BaselineRanFathom = true
 	}
 	return res, nil
 }
